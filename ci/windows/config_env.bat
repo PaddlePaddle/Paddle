@@ -36,41 +36,41 @@ if not defined TENSORRT_ROOT echo TENSORRT_ROOT=D:/TensorRT>> %GITHUB_ENV%
 if not defined WITH_GPU echo WITH_GPU=ON>> %GITHUB_ENV%
 if not defined WITH_MKL echo WITH_MKL=ON>> %GITHUB_ENV%
 if not defined WITH_AVX echo WITH_AVX=ON>> %GITHUB_ENV%
-if not defined WITH_TESTING echo WITH_TESTING=ON >> %GITHUB_ENV%
-if not defined MSVC_STATIC_CRT echo MSVC_STATIC_CRT=ON >> %GITHUB_ENV%
-if not defined WITH_PYTHON echo WITH_PYTHON=ON >> %GITHUB_ENV%
-if not defined ON_INFER echo ON_INFER=ON >> %GITHUB_ENV%
-if not defined WITH_ONNXRUNTIME echo WITH_ONNXRUNTIME=OFF >> %GITHUB_ENV%
-if not defined WITH_INFERENCE_API_TEST echo WITH_INFERENCE_API_TEST=ON >> %GITHUB_ENV%
-if not defined WITH_STATIC_LIB echo WITH_STATIC_LIB=ON >> %GITHUB_ENV%
-if not defined WITH_UNITY_BUILD echo WITH_UNITY_BUILD=OFF >> %GITHUB_ENV%
-if not defined NEW_RELEASE_ALL echo NEW_RELEASE_ALL=ON >> %GITHUB_ENV%
-if not defined NEW_RELEASE_PYPI echo NEW_RELEASE_PYPI=OFF >> %GITHUB_ENV%
-if not defined NEW_RELEASE_JIT echo NEW_RELEASE_JIT=OFF >> %GITHUB_ENV%
-if not defined WITH_CPP_TEST echo WITH_CPP_TEST=ON >> %GITHUB_ENV%
-if not defined WITH_NIGHTLY_BUILD echo WITH_NIGHTLY_BUILD=OFF >> %GITHUB_ENV%
+if not defined WITH_TESTING echo WITH_TESTING=ON>> %GITHUB_ENV%
+if not defined MSVC_STATIC_CRT echo MSVC_STATIC_CRT=ON>> %GITHUB_ENV%
+if not defined WITH_PYTHON echo WITH_PYTHON=ON>> %GITHUB_ENV%
+if not defined ON_INFER echo ON_INFER=ON>> %GITHUB_ENV%
+if not defined WITH_ONNXRUNTIME echo WITH_ONNXRUNTIME=OFF>> %GITHUB_ENV%
+if not defined WITH_INFERENCE_API_TEST echo WITH_INFERENCE_API_TEST=ON>> %GITHUB_ENV%
+if not defined WITH_STATIC_LIB echo WITH_STATIC_LIB=ON>> %GITHUB_ENV%
+if not defined WITH_UNITY_BUILD echo WITH_UNITY_BUILD=OFF>> %GITHUB_ENV%
+if not defined NEW_RELEASE_ALL echo NEW_RELEASE_ALL=ON>> %GITHUB_ENV%
+if not defined NEW_RELEASE_PYPI echo NEW_RELEASE_PYPI=OFF>> %GITHUB_ENV%
+if not defined NEW_RELEASE_JIT echo NEW_RELEASE_JIT=OFF>> %GITHUB_ENV%
+if not defined WITH_CPP_TEST echo WITH_CPP_TEST=ON>> %GITHUB_ENV%
+if not defined WITH_NIGHTLY_BUILD echo WITH_NIGHTLY_BUILD=OFF>> %GITHUB_ENV%
 
-if not defined WITH_TPCACHE echo WITH_TPCACHE=OFF >> %GITHUB_ENV%
-if not defined WITH_CACHE echo WITH_CACHE=OFF >> %GITHUB_ENV%
-if not defined WITH_SCCACHE echo WITH_SCCACHE=OFF >> %GITHUB_ENV%
-if not defined INFERENCE_DEMO_INSTALL_DIR echo INFERENCE_DEMO_INSTALL_DIR=%cache_dir:\=/%/inference_demo >> %GITHUB_ENV%
-if not defined LOG_LEVEL echo LOG_LEVEL=normal >> %GITHUB_ENV%
-if not defined PRECISION_TEST echo PRECISION_TEST=OFF >> %GITHUB_ENV%
-if not defined WIN_UNITTEST_LEVEL echo WIN_UNITTEST_LEVEL=2 >> %GITHUB_ENV%
+if not defined WITH_TPCACHE echo WITH_TPCACHE=OFF>> %GITHUB_ENV%
+if not defined WITH_CACHE echo WITH_CACHE=OFF>> %GITHUB_ENV%
+if not defined WITH_SCCACHE echo WITH_SCCACHE=OFF>> %GITHUB_ENV%
+if not defined INFERENCE_DEMO_INSTALL_DIR echo INFERENCE_DEMO_INSTALL_DIR=%cache_dir:\=/%/inference_demo>> %GITHUB_ENV%
+if not defined LOG_LEVEL echo LOG_LEVEL=normal>> %GITHUB_ENV%
+if not defined PRECISION_TEST echo PRECISION_TEST=OFF>> %GITHUB_ENV%
+if not defined WIN_UNITTEST_LEVEL echo WIN_UNITTEST_LEVEL=2>> %GITHUB_ENV%
 rem LEVEL 0: For unittests unrelated to CUDA/TRT or unittests without GPU memory, only run on
 rem Windows-Infernece(CUDA 11.2), skip them on Windows-GPU(CUDA 12.0)
 rem LEVEL 1: For unittests unrelated to CUDA/TRT, only run on Windows-Infernece(CUDA 11.2),
 rem skip them on Windows-GPU(CUDA 12.0)
 rem LEVEL 2: run all test
-if not defined NIGHTLY_MODE echo NIGHTLY_MODE=OFF >> %GITHUB_ENV%
-if not defined retry_times echo retry_times=1 >> %GITHUB_ENV%
+if not defined NIGHTLY_MODE echo NIGHTLY_MODE=OFF>> %GITHUB_ENV%
+if not defined retry_times echo retry_times=1>> %GITHUB_ENV%
 if not defined PYTHON_ROOT echo PYTHON_ROOT=C:\Python38>> %GITHUB_ENV%
 if not defined BUILD_DIR echo BUILD_DIR=build>> %GITHUB_ENV%
-if not defined TEST_INFERENCE echo TEST_INFERENCE=ON >> %GITHUB_ENV%
-if not defined WITH_PIP_CUDA_LIBRARIES echo WITH_PIP_CUDA_LIBRARIES=OFF >> %GITHUB_ENV%
+if not defined TEST_INFERENCE echo TEST_INFERENCE=ON>> %GITHUB_ENV%
+if not defined WITH_PIP_CUDA_LIBRARIES echo WITH_PIP_CUDA_LIBRARIES=OFF>> %GITHUB_ENV%
 
-echo UPLOAD_TP_FILE=OFF >> %GITHUB_ENV%
-echo UPLOAD_TP_CODE=OFF >> %GITHUB_ENV%
+echo UPLOAD_TP_FILE=OFF>> %GITHUB_ENV%
+echo UPLOAD_TP_CODE=OFF>> %GITHUB_ENV%
 
 echo error_code=0 >> %GITHUB_ENV%
 type %cache_dir%\error_code.txt

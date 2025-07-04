@@ -68,6 +68,7 @@ jobs:
           WIN_UNITTEST_LEVEL: 0
           CUDA_ARCH_NAME: "Auto"
         run: |
+          @ECHO ON
           python -m pip install bce-python-sdk==0.8.74
           call %ACTION_DIR%\proxy.bat
           call %ci_scripts%\build.bat

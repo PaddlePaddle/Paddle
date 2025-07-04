@@ -314,10 +314,70 @@ if "%WITH_SCCACHE%"=="ON" (
     call :collect_sccache_hits
 )
 
-goto:eof
+goto:timesummary
 
 :build_error
 echo 7 > %cache_dir%\error_code.txt
 type %cache_dir%\error_code.txt
 echo Build Paddle failed, will exit!
 exit /b 7
+
+:timesummary
+for /f "usebackq" %%i in (`powershell -NoProfile -Command "Get-Date -Format 'yyyyMMddHHmmss'"`) do set end=%%i
+set end=%end:~4,10%
+call :timestamp "%start%" "%end%" "Build"
+goto:eof
+
+:timestamp
+@ECHO OFF
+set start=%~1
+set dd=%start:~2,2%
+set /a dd=100%dd%%%100
+set hh=%start:~4,2%
+set /a hh=100%hh%%%100
+set nn=%start:~6,2%
+set /a nn=100%nn%%%100
+set ss=%start:~8,2%
+set /a ss=100%ss%%%100
+set /a start_sec=dd*86400+hh*3600+nn*60+ss
+echo %start_sec%
+
+set end=%~2
+set dd=%end:~2,2%
+set /a dd=100%dd%%%100
+if %start:~0,2% NEQ %end:~0,2% (
+    set month_day=0
+    for %%i in (01 03 05 07 08 10 12) DO if %%i EQU %start:~0,2% set month_day=31
+    for %%i in (04 06 09 11) DO if %%i EQU %start:~0,2% set month_day=30
+    for %%i in (02) DO if %%i EQU %start:~0,2% set month_day=28
+    set /a dd=%dd%+!month_day!
+)
+set hh=%end:~4,2%
+set /a hh=100%hh%%%100
+set nn=%end:~6,2%
+set /a nn=100%nn%%%100
+set ss=%end:~8,2%
+set /a ss=100%ss%%%100
+set /a end_secs=dd*86400+hh*3600+nn*60+ss
+set /a cost_secs=end_secs-start_sec
+echo "Windows %~3 Time: %cost_secs%s"
+set tempTaskName=%~3
+echo ipipe_log_param_Windows_%tempTaskName: =_%_Time: %cost_secs%s
+goto:eof
+
+:collect_sccache_hits
+sccache -s > sccache_summary.txt
+echo    ========================================
+echo    sccache statistical summary ...
+echo    ========================================
+type sccache_summary.txt
+for /f "tokens=2,3" %%i in ('type sccache_summary.txt ^| findstr "requests hits" ^| findstr /V "executed C/C++ CUDA"') do set %%i=%%j
+if %requests% EQU 0 (
+    echo "sccache hit rate: 0%"
+    echo ipipe_log_param_sccache_Hit_Hate: 0%
+) else (
+    set /a rate=!hits!*10000/!requests!
+    echo "sccache hit rate: !rate:~0,-2!.!rate:~-2!%%"
+    echo ipipe_log_param_sccache_Hit_Hate: !rate:~0,-2!.!rate:~-2!%%
+)
+goto:eof
