@@ -4170,8 +4170,9 @@ def multi_margin_loss(
             )
         weight = paddle.gather(weight, label, axis=0).reshape((-1, 1))
         loss = paddle.mean(
-            paddle.pow(
-                paddle.clip(weight * (margin - index_sample + input), min=0.0),
+            weight
+            * paddle.pow(
+                paddle.clip((margin - index_sample + input), min=0.0),
                 p,
             ),
             axis=1,

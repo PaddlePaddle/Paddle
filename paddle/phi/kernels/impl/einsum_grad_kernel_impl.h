@@ -17,7 +17,7 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/complex_kernel.h"
-#include "paddle/phi/kernels/impl/einsum_impl.h"
+#include "paddle/phi/kernels/impl/einsum_kernel_impl.h"
 #include "paddle/phi/kernels/tile_grad_kernel.h"
 #include "paddle/phi/kernels/tile_kernel.h"
 #include "paddle/utils/string/string_helper.h"

@@ -20,7 +20,7 @@ from test_fusion_gru_op import fusion_gru
 from test_fusion_lstm_op import ACTIVATION
 
 
-class TestFusionGRUINT8MKLDNNOp(OpTest):
+class TestFusionGRUINT8ONEDNNOp(OpTest):
     def set_confs(self):
         pass
 
@@ -157,22 +157,22 @@ class TestFusionGRUINT8MKLDNNOp(OpTest):
         )
 
 
-class TestFusionGRUINT8MKLDNNOp2(TestFusionGRUINT8MKLDNNOp):
+class TestFusionGRUINT8ONEDNNOp2(TestFusionGRUINT8ONEDNNOp):
     def set_confs(self):
         self.force_fp32_output = False
 
 
-class TestFusionGRUINT8MKLDNNOp3(TestFusionGRUINT8MKLDNNOp):
+class TestFusionGRUINT8ONEDNNOp3(TestFusionGRUINT8ONEDNNOp):
     def set_confs(self):
         self.origin_mode = False
 
 
-class TestFusionGRUINT8MKLDNNOp4(TestFusionGRUINT8MKLDNNOp):
+class TestFusionGRUINT8ONEDNNOp4(TestFusionGRUINT8ONEDNNOp):
     def set_confs(self):
         self.with_bias = False
 
 
-class TestFusionGRUINT8MKLDNNOp5(TestFusionGRUINT8MKLDNNOp):
+class TestFusionGRUINT8ONEDNNOp5(TestFusionGRUINT8ONEDNNOp):
     def set_confs(self):
         self.with_h0 = False
 
