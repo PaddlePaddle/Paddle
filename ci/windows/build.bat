@@ -109,6 +109,7 @@ rem clear third party cache every ten days
 for /f "usebackq" %%i in (`powershell -NoProfile -Command "Get-Date -Format 'yyyyMMddHHmmss'"`) do set datetime=%%i
 set day_now=%datetime:~6,2%
 set day_before=-1
+echo echo [%cache_dir%]
 set /p day_before=< %cache_dir%\day_third_party.txt
 if %day_now% NEQ %day_before% (
     echo %day_now% > %cache_dir%\day_third_party.txt
@@ -191,12 +192,7 @@ if "%UPLOAD_TP_CODE%"=="ON" (
 set THIRD_PARTY_HOME=%cache_dir:\=/%/third_party/%sub_dir%
 set THIRD_PARTY_PATH=%THIRD_PARTY_HOME%/%md5%
 
-echo %task_name%|findstr build >nul && (
-    echo %task_name% is a whl-build task, will only reuse local third_party cache.
-    goto :cmake_impl
-) || (
-    echo %task_name% is a PR-CI-Windows task, will try to reuse bos and local third_party cache both.
-)
+echo this is a CI-Windows task, will try to reuse bos and local third_party cache both.
 
 :cmake_impl
 if "%WITH_TESTING%"=="ON" (
