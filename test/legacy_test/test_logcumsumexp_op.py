@@ -77,12 +77,22 @@ def np_logcumsumexp_grad(
     exclusive: bool = False,
 ):
     out = np_logcumsumexp(x, axis, flatten, reverse, exclusive)
-    log_grad_positive = np.where(dout > 0, np.log(dout), np.finfo(x.dtype).min)
-    log_grad_negative = np.where(dout < 0, np.log(-dout), np.finfo(x.dtype).min)
+    dout = np.asarray(dout)
+    log_grad_positive = np.full_like(dout, -np.inf, dtype=x.dtype)
+    log_grad_negative = np.full_like(dout, -np.inf, dtype=x.dtype)
+    positive_mask = dout > 0
+    negative_mask = dout < 0
+    log_grad_positive[positive_mask] = np.log(dout[positive_mask])
+    log_grad_negative[negative_mask] = np.log(-dout[negative_mask])
+    with np.errstate(invalid='ignore'):
+        log_diff_pos = log_grad_positive - out
+        log_diff_neg = log_grad_negative - out
+        log_diff_pos[~positive_mask] = -np.inf
+        log_diff_neg[~negative_mask] = -np.inf
 
     output_pos = np.exp(
         np_logcumsumexp(
-            log_grad_positive - out,
+            log_diff_pos,
             axis=axis,
             flatten=flatten,
             reverse=not reverse,
@@ -92,7 +102,7 @@ def np_logcumsumexp_grad(
     )
     output_neg = np.exp(
         np_logcumsumexp(
-            log_grad_negative - out,
+            log_diff_neg,
             axis=axis,
             flatten=flatten,
             reverse=not reverse,
@@ -245,7 +255,7 @@ class BaseTestCases:
             self.outputs = {'Out': np_logcumsumexp(input, **attrs)}
 
         def test_check_output(self):
-            self.check_output(atol=1e-4, check_pir=True)
+            self.check_output(check_pir=True)
 
         def test_check_grad(self):
             self.check_grad(
