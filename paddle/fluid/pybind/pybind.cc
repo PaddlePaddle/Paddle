@@ -773,6 +773,7 @@ enum MMapLoadModes {
 struct MmapStorage {
   MmapStorage(const std::string &filename_, int64_t nbytes)
       : base_ptr_(nullptr), size(nbytes) {
+    // https://github.com/pytorch/pytorch/blob/d58ed04d89c34c6930d0f28be351c53db407078f/aten/src/ATen/MapAllocator.cpp#L234-L370
     /* open file */
     int flags_{0};
     if ((flags_ ^ ALLOCATOR_MAPPED_EXCLUSIVE) == 0) {
