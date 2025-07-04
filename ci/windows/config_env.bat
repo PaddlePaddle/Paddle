@@ -1,10 +1,10 @@
 setlocal enabledelayedexpansion
 @ECHO ON
 set work_dir=%cd%
-echo work_dir=%work_dir% >> %GITHUB_ENV%
+echo work_dir=%work_dir%>> %GITHUB_ENV%
 if not defined cache_dir (
     set "cache_dir=%work_dir%\..\cache"
-    echo "cache_dir=%cache_dir%" >> %GITHUB_ENV%
+    echo cache_dir=%cache_dir%>> %GITHUB_ENV%
 )
 if not exist %cache_dir% mkdir %cache_dir%
 if not exist %cache_dir%\tools (
@@ -30,12 +30,12 @@ git --no-pager pull upstream %BRANCH% --no-edit
 if %errorlevel% NEQ 0 exit /b 1
 if exist .git\index.lock del .git\index.lock 2>NUL
 
-if not defined GENERATOR echo GENERATOR="Visual Studio 15 2017 Win64" >> %GITHUB_ENV%
-if not defined WITH_TENSORRT echo WITH_TENSORRT=ON >> %GITHUB_ENV%
-if not defined TENSORRT_ROOT echo TENSORRT_ROOT=D:/TensorRT >> %GITHUB_ENV%
-if not defined WITH_GPU echo WITH_GPU=ON >> %GITHUB_ENV%
-if not defined WITH_MKL echo WITH_MKL=ON >> %GITHUB_ENV%
-if not defined WITH_AVX echo WITH_AVX=ON >> %GITHUB_ENV%
+if not defined GENERATOR echo GENERATOR="Visual Studio 15 2017 Win64">> %GITHUB_ENV%
+if not defined WITH_TENSORRT echo WITH_TENSORRT=ON>> %GITHUB_ENV%
+if not defined TENSORRT_ROOT echo TENSORRT_ROOT=D:/TensorRT>> %GITHUB_ENV%
+if not defined WITH_GPU echo WITH_GPU=ON>> %GITHUB_ENV%
+if not defined WITH_MKL echo WITH_MKL=ON>> %GITHUB_ENV%
+if not defined WITH_AVX echo WITH_AVX=ON>> %GITHUB_ENV%
 if not defined WITH_TESTING echo WITH_TESTING=ON >> %GITHUB_ENV%
 if not defined MSVC_STATIC_CRT echo MSVC_STATIC_CRT=ON >> %GITHUB_ENV%
 if not defined WITH_PYTHON echo WITH_PYTHON=ON >> %GITHUB_ENV%
@@ -64,8 +64,8 @@ rem skip them on Windows-GPU(CUDA 12.0)
 rem LEVEL 2: run all test
 if not defined NIGHTLY_MODE echo NIGHTLY_MODE=OFF >> %GITHUB_ENV%
 if not defined retry_times echo retry_times=1 >> %GITHUB_ENV%
-if not defined PYTHON_ROOT echo PYTHON_ROOT=C:\Python38 >> %GITHUB_ENV%
-if not defined BUILD_DIR echo BUILD_DIR=build >> %GITHUB_ENV%
+if not defined PYTHON_ROOT echo PYTHON_ROOT=C:\Python38>> %GITHUB_ENV%
+if not defined BUILD_DIR echo BUILD_DIR=build>> %GITHUB_ENV%
 if not defined TEST_INFERENCE echo TEST_INFERENCE=ON >> %GITHUB_ENV%
 if not defined WITH_PIP_CUDA_LIBRARIES echo WITH_PIP_CUDA_LIBRARIES=OFF >> %GITHUB_ENV%
 
@@ -80,10 +80,10 @@ git config --global core.longpaths true
 
 rem ------initialize the python environment------
 set "PYTHON_VENV_ROOT=%cache_dir%\python_venv"
-echo PYTHON_VENV_ROOT=%PYTHON_VENV_ROOT% >> %GITHUB_ENV%
+echo PYTHON_VENV_ROOT=%PYTHON_VENV_ROOT%>> %GITHUB_ENV%
 if not exist %PYTHON_VENV_ROOT% mkdir %PYTHON_VENV_ROOT%
 set "PYTHON_EXECUTABLE=%PYTHON_VENV_ROOT%\Scripts\python.exe"
-echo PYTHON_EXECUTABLE=%PYTHON_EXECUTABLE% >> %GITHUB_ENV%
+echo PYTHON_EXECUTABLE=%PYTHON_EXECUTABLE%>> %GITHUB_ENV%
 %PYTHON_ROOT%\python.exe -m venv --clear %PYTHON_VENV_ROOT%
 call "%PYTHON_VENV_ROOT%\Scripts\activate.bat"
 if %ERRORLEVEL% NEQ 0 (
