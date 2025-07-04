@@ -42,7 +42,9 @@ goto:eof
 
 call :cmake || goto cmake_error
 goto:eof
-
+echo ----------------------------------------------------------------------
+dir third_party\openvino
+echo ----------------------------------------------------------------------
 :cmake
 @ECHO ON
 echo    ========================================
@@ -90,7 +92,9 @@ if %GENERATOR% == "Ninja" (
         exit /b 5
     )
 )
-
+echo ----------------------------------------------------------------------
+dir third_party\openvino
+echo ----------------------------------------------------------------------
 rem ------show summary of current GPU environment----------
 cmake --version
 if "%WITH_GPU%"=="ON" (
@@ -106,7 +110,9 @@ if "%WITH_TPCACHE%"=="OFF" (
     set THIRD_PARTY_PATH=%work_dir:\=/%/%BUILD_DIR%/third_party
     goto :cmake_impl
 )
-
+echo ----------------------------------------------------------------------
+dir third_party\openvino
+echo ----------------------------------------------------------------------
 rem clear third party cache every ten days
 for /f "usebackq" %%i in (`powershell -NoProfile -Command "Get-Date -Format 'yyyyMMddHHmmss'"`) do set datetime=%%i
 set day_now=%datetime:~6,2%
@@ -126,7 +132,9 @@ if %day_now% NEQ %day_before% (
         rmdir %cache_dir%\third_party /s/q
     )
 )
-
+echo ----------------------------------------------------------------------
+dir third_party\openvino
+echo ----------------------------------------------------------------------
 echo set -ex > cache.sh
 echo md5_content=$(cat %work_dir:\=/%/cmake/external/*.cmake^|md5sum^|awk '{print $1}')$(git submodule status^|md5sum^|awk '{print $1}')>>cache.sh
 echo echo ${md5_content}^>md5.txt>>cache.sh
@@ -141,11 +149,13 @@ if "%WITH_GPU%"=="ON" (
 ) else (
     set sub_dir=cpu
 )
-
+echo ----------------------------------------------------------------------
+dir third_party\openvino
+echo ----------------------------------------------------------------------
 @ECHO ON
 cd /d %work_dir%
-@REM python -c "import wget;wget.download('https://paddle-github-action.bj.bcebos.com/windows/third_party_code/%sub_dir%/%md5%.tar.zst')" 2>nul
-python -c "import wget;wget.download('https://paddle-windows.bj.bcebos.com/third_party_code/%sub_dir%/%md5%.tar.gz')" 2>nul
+python -c "import wget;wget.download('https://paddle-github-action.bj.bcebos.com/windows/third_party_code/%sub_dir%/%md5%.tar.zst')" 2>nul
+@REM python -c "import wget;wget.download('https://paddle-windows.bj.bcebos.com/third_party_code/%sub_dir%/%md5%.tar.gz')" 2>nul
 if !ERRORLEVEL! EQU 0 (
     echo Getting source code of third party : extracting ...
     tar -xf %md5%.tar.zst
@@ -154,6 +164,9 @@ if !ERRORLEVEL! EQU 0 (
         echo Getting source code of third party : successful
     )
 ) else (
+    echo ----------------------------------------------------------------------
+    dir third_party\openvino
+    echo ----------------------------------------------------------------------
     git submodule update --init --recursive
     if !errorlevel! EQU 0 (
         set UPLOAD_TP_CODE=ON

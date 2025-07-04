@@ -55,6 +55,8 @@ jobs:
       - name: Config env
         run: |
           call %ci_scripts%\config_env.bat
+          echo ----------------------------------------------------------------------
+          dir third_party\openvino
 
       - name: Build paddle
         env:
@@ -71,6 +73,9 @@ jobs:
           @ECHO ON
           python -m pip install bce-python-sdk==0.8.74
           call %ACTION_DIR%\proxy.bat
+          echo ----------------------------------------------------------------------
+          dir third_party\openvino
+          echo ----------------------------------------------------------------------
           call %ci_scripts%\build.bat
 
     # - name: Clean up dir
