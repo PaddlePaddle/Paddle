@@ -1,11 +1,20 @@
 setlocal enabledelayedexpansion
 @ECHO ON
+echo ----------------------------------------------------------------------
+dir third_party\openvino
+echo ----------------------------------------------------------------------
 set work_dir=%cd%
 echo work_dir=%work_dir%>> %GITHUB_ENV%
+echo ----------------------------------------------------------------------
+dir third_party\openvino
+echo ----------------------------------------------------------------------
 if not defined cache_dir (
     set "cache_dir=%work_dir%\..\cache"
     echo cache_dir=%cache_dir%>> %GITHUB_ENV%
 )
+echo ----------------------------------------------------------------------
+dir third_party\openvino
+echo ----------------------------------------------------------------------
 if not exist %cache_dir% mkdir %cache_dir%
 if not exist %cache_dir%\tools (
     cd /d %cache_dir%
