@@ -154,6 +154,9 @@ void ReshapeKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const IntArray& shape,
                    DenseTensor* out) {
+  if (x.numel() == 0) {
+    dev_ctx.Alloc(out, x.dtype());
+  }
   auto x_dims = x.dims();
   ExecuteReshape<T, Context>(dev_ctx, x, shape, x_dims, out);
 }
