@@ -23,7 +23,7 @@ class TestMmapStorageBase(unittest.TestCase):
         self.init_cfg()
         np.random.seed(2025)
         paddle.seed(2025)
-        self.file_name = "/tmp/test.pp"
+        self.file_name = "./test.pp"
         self.data = paddle.randn(self.shape, dtype=self.dtype)
         self.nbytes = self.data.size * self.data.element_size()
 
@@ -61,7 +61,7 @@ class TestMmapStorage4(TestMmapStorageBase):
         self.init_cfg()
         np.random.seed(2025)
         paddle.seed(2025)
-        self.file_name = "/tmp/test.pp"
+        self.file_name = "./test.pp"
         self.data = paddle.randint(0, 128, self.shape).astype(self.dtype)
         self.nbytes = self.data.size * self.data.element_size()
 
@@ -93,8 +93,8 @@ class TestMmapStorage8(TestMmapStorage4):
         self.init_cfg()
         np.random.seed(2025)
         paddle.seed(2025)
-        self.file_name = "/tmp/test.pp"
-        self.data = paddle.randint(0, 1, self.shape).astype(self.dtype)
+        self.file_name = "./test.pp"
+        self.data = paddle.randint(0, 2, self.shape).astype(self.dtype)
         self.nbytes = self.data.size * self.data.element_size()
 
     def init_cfg(self):
