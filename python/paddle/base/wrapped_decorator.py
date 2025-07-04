@@ -55,4 +55,8 @@ def wrap_decorator(
     return __impl__
 
 
-signature_safe_contextmanager = wrap_decorator(contextlib.contextmanager)
+# signature_safe_contextmanager = wrap_decorator(contextlib.contextmanager)
+def signature_safe_contextmanager(fn):
+    wrapper = wrap_decorator(contextlib.contextmanager)(fn)
+    wrapper._original_func__ = contextlib.contextmanager(fn)
+    return wrapper
