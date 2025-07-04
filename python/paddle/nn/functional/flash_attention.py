@@ -1028,7 +1028,7 @@ def flash_attn_unpadded(
     return out, softmax if return_softmax else None
 
 
-def flash_attn_varlen_v3(
+def flash_attention_v3_varlen(
     query,
     key,
     value,
@@ -1052,11 +1052,11 @@ def flash_attn_varlen_v3(
 ):
     assert (
         "xpu" not in paddle.get_device()
-    ), "flash_attn_varlen_v3 is not supported on xpu"
+    ), "flash_attention_v3_varlen is not supported on xpu"
 
     assert not paddle.get_flags(["FLAGS_cudnn_deterministic"])[
         "FLAGS_cudnn_deterministic"
-    ], "flash_attn_varlen_v3 does not support deterministic"
+    ], "flash_attention_v3_varlen does not support deterministic"
 
     assert (
         paddle.base.framework.get_flags(["FLAGS_flash_attn_version"])[
@@ -1067,14 +1067,16 @@ def flash_attn_varlen_v3(
 
     assert (
         in_dynamic_or_pir_mode()
-    ), "flash_attn_varlen_v3 only support dynamic or pir mode"
+    ), "flash_attention_v3_varlen only support dynamic or pir mode"
+
+    assert qv is None, "flash_attention_v3_varlen does not support setting qv"
 
     if softmax_scale is None:
         softmax_scale = (
             query.shape[-1] + (qv.shape[-1] if qv is not None else 0)
         ) ** (-0.5)
 
-    out, softmax_lse = _C_ops.flash_attn_varlen_v3(
+    out, softmax_lse = _C_ops.flash_attn_v3_varlen(
         query,
         key,
         value,

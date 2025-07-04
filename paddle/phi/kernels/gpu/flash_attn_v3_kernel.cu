@@ -1072,7 +1072,7 @@ void FlashAttnV3Kernel(const Context &dev_ctx,
 }
 
 template <typename T, typename Context>
-void FlashAttnVarlenV3Kernel(const Context &dev_ctx,
+void FlashAttnV3VarlenKernel(const Context &dev_ctx,
                              const DenseTensor &q,
                              const DenseTensor &k,
                              const DenseTensor &v,
@@ -1205,9 +1205,9 @@ PD_REGISTER_KERNEL(flash_attn_v3,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 
-PD_REGISTER_KERNEL(flash_attn_varlen_v3,
+PD_REGISTER_KERNEL(flash_attn_v3_varlen,
                    GPU,
                    ALL_LAYOUT,
-                   phi::FlashAttnVarlenV3Kernel,
+                   phi::FlashAttnV3VarlenKernel,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}

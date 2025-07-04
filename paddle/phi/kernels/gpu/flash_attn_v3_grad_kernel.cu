@@ -696,7 +696,7 @@ void FlashAttnV3GradKernel(const Context &dev_ctx,
 }
 
 template <typename T, typename Context>
-void FlashAttnVarlenV3GradKernel(const Context &dev_ctx,
+void FlashAttnV3VarlenGradKernel(const Context &dev_ctx,
                                  const DenseTensor &q,
                                  const DenseTensor &k,
                                  const DenseTensor &v,
@@ -828,9 +828,9 @@ PD_REGISTER_KERNEL(flash_attn_v3_grad,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 
-PD_REGISTER_KERNEL(flash_attn_varlen_v3_grad,
+PD_REGISTER_KERNEL(flash_attn_v3_varlen_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::FlashAttnVarlenV3GradKernel,
+                   phi::FlashAttnV3VarlenGradKernel,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
