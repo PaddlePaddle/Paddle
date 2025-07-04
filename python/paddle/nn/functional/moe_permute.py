@@ -36,8 +36,15 @@ def moe_permute(
     r"""
     Permute tokens for Mixture of Experts (MoE) computation in distributed training scenarios.
 
-    This function reorganizes input tokens based on expert assignments to prepare for expert computation.
-    It handles both bfloat16 and float8_e4m3fn data types with proper scaling for float8 inputs.
+    Note:
+        This function reorganizes input tokens based on expert assignments to prepare for expert computation.
+        It handles both bfloat16 and float8_e4m3fn data types with proper scaling for float8 inputs.
+
+        1. This function is typically used in pair of moe_unpermute to provide complete MoE functionality.
+        2. For float8 inputs, proper scaling must be provided via the scale parameter.
+        3. The padding_alignment parameter affects memory efficiency but not correctness.
+        4. Any output tokens can find an exact-match in the original input tokens.
+        5. This permute function has overcomed the aadiff issue, is deterministic.
 
     Args:
         hidden_states (Tensor): The input tensor containing tokens to be permuted, stored in row-major layout.
@@ -78,6 +85,8 @@ def moe_permute(
             - scale_unzipped (Tensor): Broadcasted scale tensor (only valid for float8 inputs).
                 Shape: [total_tokens_after_broadcast, ceil(token_dimension / 128)]
                 Data type: float32
+
+
     Examples:
         .. code-block:: python
 
@@ -106,18 +115,6 @@ def moe_permute(
             ...     tokens_per_expert,
             ...     padding_alignment,
             ... )
-            >>> print(zipped_expertwise_rowmap)
-            Tensor(shape=[3, 3], dtype=int32, place=Place(gpu:0), stop_gradient=True,
-                [[ 0, -1,  4],
-                [-1,  2, -1],
-                [-1,  3, -1]])
-
-    Note:
-        1. This function is typically used in pair of moe_unpermute to provide complete MoE functionality.
-        2. For float8 inputs, proper scaling must be provided via the scale parameter.
-        3. The padding_alignment parameter affects memory efficiency but not correctness.
-        4. Any output tokens can find an exact-match in the original input tokens.
-        5. This permute function has overcomed the aadiff issue, is deterministic.
     """
     if in_dynamic_or_pir_mode():
         (
