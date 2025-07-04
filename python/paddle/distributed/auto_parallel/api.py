@@ -2324,7 +2324,12 @@ def shard_scaler(scaler: GradScaler) -> GradScaler:
             for group in optimizer._param_groups:
                 for param in group['params']:
                     tgt_grad = param._grad_ivar()
-                    if tgt_grad is not None:
+                    if (
+                        tgt_grad is not None
+                        and getattr(
+                            tgt_grad, '_is_initialized', lambda: False
+                        )()
+                    ):
                         if src_mesh is None:
                             src_mesh = tgt_grad.process_mesh
                         if (
@@ -2341,7 +2346,10 @@ def shard_scaler(scaler: GradScaler) -> GradScaler:
         else:
             for param in optimizer._parameter_list:
                 tgt_grad = param._grad_ivar()
-                if tgt_grad is not None:
+                if (
+                    tgt_grad is not None
+                    and getattr(tgt_grad, '_is_initialized', lambda: False)()
+                ):
                     if src_mesh is None:
                         src_mesh = tgt_grad.process_mesh
                     if (

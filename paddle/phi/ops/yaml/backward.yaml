@@ -3859,6 +3859,7 @@
   kernel :
     func : view_dtype_grad
     data_type : out_grad
+  no_need_buffer: input
 
 - backward_op : warpctc_grad
   forward : warpctc (Tensor logits, Tensor label, Tensor logits_length, Tensor labels_length, int blank = 0, bool norm_by_times = false) -> Tensor(loss), Tensor(warpctcgrad)
