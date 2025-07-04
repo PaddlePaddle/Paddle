@@ -696,7 +696,7 @@ void FlashAttnV3GradKernel(const Context &dev_ctx,
 }
 
 template <typename T, typename Context>
-void FlashAttnVarlenV3GradKernel(const Context &ctx,
+void FlashAttnVarlenV3GradKernel(const Context &dev_ctx,
                                  const DenseTensor &q,
                                  const DenseTensor &k,
                                  const DenseTensor &v,
@@ -757,7 +757,7 @@ void FlashAttnVarlenV3GradKernel(const Context &ctx,
   DenseTensor dq_accum;
   DenseTensor dk_accum;
   DenseTensor dv_accum;
-  FlashAttnV3GradBaseKernel<T, Context>(ctx,
+  FlashAttnV3GradBaseKernel<T, Context>(dev_ctx,
                                         out_grad,
                                         q,
                                         k,

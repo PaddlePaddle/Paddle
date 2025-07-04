@@ -1072,7 +1072,7 @@ void FlashAttnV3Kernel(const Context &dev_ctx,
 }
 
 template <typename T, typename Context>
-void FlashAttnVarlenV3Kernel(const Context &ctx,
+void FlashAttnVarlenV3Kernel(const Context &dev_ctx,
                              const DenseTensor &q,
                              const DenseTensor &k,
                              const DenseTensor &v,
@@ -1152,7 +1152,7 @@ void FlashAttnVarlenV3Kernel(const Context &ctx,
 
   DenseTensor out_accum;
   DenseTensor softmax_lse_accum;
-  FlashAttnV3BaseKernel<T, Context>(ctx,
+  FlashAttnV3BaseKernel<T, Context>(dev_ctx,
                                     q,
                                     k,
                                     v,
