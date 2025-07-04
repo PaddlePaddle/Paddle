@@ -90,7 +90,7 @@ def moe_permute(
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:GPU)
+            >>> # doctest: +SKIP('This is only support in cuda 12.0+')
             >>> import paddle
             >>> import paddle.nn.functional as F
             >>> paddle.set_device('gpu')
