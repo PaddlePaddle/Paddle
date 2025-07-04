@@ -544,7 +544,10 @@ PD_REGISTER_SPMD_RULE(
 PD_REGISTER_SPMD_RULE(fused_rms_norm,
                       PD_INFER_SPMD(phi::distributed::RmsNormInferSpmd),
                       PD_INFER_SPMD(phi::distributed::RmsNormInferSpmdReverse));
-
+// index_put
+PD_REGISTER_SPMD_RULE(index_put,
+                      PD_INFER_SPMD(phi::distributed::IndexPutInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::IndexPutGradInferSpmd));
 PD_REGISTER_SPMD_RULE(
     flash_attention,
     PD_INFER_SPMD(phi::distributed::FlashAttInferSpmdStatic),
@@ -810,4 +813,9 @@ PD_REGISTER_SPMD_RULE(
     take_along_axis,
     PD_INFER_SPMD(phi::distributed::TakeAlongAxisInferSpmd),
     PD_INFER_SPMD(phi::distributed::TakeAlongAxisGradInferSpmd));
+
+// conv3d
+PD_REGISTER_SPMD_RULE(conv3d,
+                      PD_INFER_SPMD(phi::distributed::Conv3dInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::Conv3dGradInferSpmd));
 }  // namespace phi::distributed
