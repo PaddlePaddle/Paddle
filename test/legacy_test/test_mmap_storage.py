@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+import tempfile
 import unittest
 
 import numpy as np
@@ -24,7 +25,8 @@ class TestMmapStorageBase(unittest.TestCase):
         self.init_cfg()
         np.random.seed(2025)
         paddle.seed(2025)
-        self.file_name = os.path.join(os.path.dirname(__file__), "test.pp")
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pp') as tmpfile:
+            self.file_name = tmpfile.name
         self.data = paddle.randn(self.shape, dtype=self.dtype)
         self.nbytes = self.data.size * self.data.element_size()
 
@@ -37,6 +39,10 @@ class TestMmapStorageBase(unittest.TestCase):
         tmp = paddle.MmapStorage(self.file_name, self.nbytes)
         res = tmp.get_slice(self.dtype, 0, self.data.size).reshape(self.shape)
         np.testing.assert_allclose(res.numpy(), self.data.numpy())
+
+    def tearDown(self):
+        if os.path.exists(self.file_name):
+            os.remove(self.file_name)
 
 
 class TestMmapStorage1(TestMmapStorageBase):
@@ -62,7 +68,8 @@ class TestMmapStorage4(TestMmapStorageBase):
         self.init_cfg()
         np.random.seed(2025)
         paddle.seed(2025)
-        self.file_name = os.path.join(os.path.dirname(__file__), "test.pp")
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pp') as tmpfile:
+            self.file_name = tmpfile.name
         self.data = paddle.randint(0, 128, self.shape).astype(self.dtype)
         self.nbytes = self.data.size * self.data.element_size()
 
@@ -94,7 +101,8 @@ class TestMmapStorage8(TestMmapStorage4):
         self.init_cfg()
         np.random.seed(2025)
         paddle.seed(2025)
-        self.file_name = os.path.join(os.path.dirname(__file__), "test.pp")
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pp') as tmpfile:
+            self.file_name = tmpfile.name
         self.data = paddle.randint(0, 2, self.shape).astype(self.dtype)
         self.nbytes = self.data.size * self.data.element_size()
 
