@@ -40,10 +40,6 @@ class TestMmapStorageBase(unittest.TestCase):
         res = tmp.get_slice(self.dtype, 0, self.data.size).reshape(self.shape)
         np.testing.assert_allclose(res.numpy(), self.data.numpy())
 
-    def tearDown(self):
-        if os.path.exists(self.file_name):
-            os.remove(self.file_name)
-
 
 class TestMmapStorage1(TestMmapStorageBase):
     def init_cfg(self):
