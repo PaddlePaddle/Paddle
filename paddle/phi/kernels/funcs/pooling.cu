@@ -1315,6 +1315,10 @@ __global__ void KernelMaxPool3DGrad(const IndexT nthreads,
                                     const IndexT dilation_width,
                                     T* input_grad,
                                     bool channel_last = false) {
+  const int dilation_ksize_depth = (ksize_depth - 1) * dilation_depth + 1;
+  const int dilation_ksize_height = (ksize_height - 1) * dilation_height + 1;
+  const int dilation_ksize_width = (ksize_width - 1) * dilation_width + 1;
+
   const IndexT start_index =
       static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
   const IndexT step = static_cast<IndexT>(blockDim.x) * gridDim.x;
