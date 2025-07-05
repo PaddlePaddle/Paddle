@@ -30,10 +30,20 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#ifdef _WIN32
+#if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <aclapi.h>
+#include <sddl.h>
+#include <stdio.h>
+#include <strsafe.h>
+#include <tchar.h>
 #include <winbase.h>
 #include <windows.h>
+#include <winternl.h>
 #include <codecvt>
+#include <iostream>
 #include <locale>
 #else
 #include <sys/mman.h>
@@ -792,7 +802,7 @@ struct MmapStorage {
         !(flags_ & ALLOCATOR_MAPPED_SHAREDMEM)) {
       flags_ &= ~ALLOCATOR_MAPPED_NOCREATE;
     }
-#ifdef _WIN32
+#if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
     constexpr const char *unknown_eventname = "eventname not specified";
     void *handle_ = INVALID_HANDLE_VALUE;
     void *event_ = INVALID_HANDLE_VALUE;
