@@ -33,6 +33,9 @@ void UnfoldKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   const int batch_size = static_cast<int>(x.dims()[0]);
   dev_ctx.template Alloc<T>(out);
+  if (out->numel() == 0) {
+    return;
+  }
 
   phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kCFO, Context, T> im2col;
   const auto& x_dims = x.dims();

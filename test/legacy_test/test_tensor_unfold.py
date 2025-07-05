@@ -112,5 +112,50 @@ class TestTensorUnfold2(unittest.TestCase):
                 self.assertEqual((b.grad.numpy() == 1).all().item(), True)
 
 
+class TestTensorUnfold_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.shape = [5, 0]
+        self.typelist = ['float32', 'float64', 'int32', 'int64', 'float16']
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not base.core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
+        if base.core.is_compiled_with_cuda():
+            self.places.append(base.CUDAPlace(0))
+            self.places.append(base.CUDAPinnedPlace())
+
+    def test_tensor_unfold_forward(self):
+        for idx, p in enumerate(self.places):
+            if idx == 0:
+                paddle.set_device('cpu')
+            else:
+                paddle.set_device('gpu')
+            for dtype in self.typelist:
+                x_np = np.random.random(self.shape).astype(dtype)
+                x = paddle.to_tensor(x_np, place=p)
+                a = paddle.unfold(x, 0, 5, 1)
+                np.testing.assert_allclose(a.numpy()[0], x_np.T)
+
+    def test_tensor_unfold_backward(self):
+        for idx, p in enumerate(self.places):
+            if idx == 0:
+                paddle.set_device('cpu')
+            else:
+                paddle.set_device('gpu')
+            for dtype in self.typelist:
+                x_np = np.random.random(self.shape).astype(dtype)
+                x = paddle.to_tensor(x_np, place=p)
+                x.stop_gradient = False
+                a = paddle.unfold(x, 0, 5, 1)
+                b = a * 2
+                b.retain_grads()
+                loss = b.sum()
+                loss.backward()
+                self.assertEqual((b.grad.numpy() == 1).all().item(), True)
+
+
 if __name__ == '__main__':
     unittest.main()
