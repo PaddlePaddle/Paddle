@@ -12,6 +12,17 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#include <winternl.h>
+#include <codecvt>
+#include <locale>
+#else
+#include <sys/mman.h>
+#endif
 #include <Python.h>
 
 #include <algorithm>
@@ -29,18 +40,6 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
-
-#if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include <windows.h>
-#include <winternl.h>
-#include <codecvt>
-#include <locale>
-#else
-#include <sys/mman.h>
-#endif
 
 #include "paddle/common/ddim.h"
 #include "paddle/fluid/eager/grad_node_info.h"
