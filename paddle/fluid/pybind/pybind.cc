@@ -34,16 +34,10 @@ limitations under the License. */
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <aclapi.h>
-#include <sddl.h>
-#include <stdio.h>
-#include <strsafe.h>
-#include <tchar.h>
 #include <winbase.h>
 #include <windows.h>
 #include <winternl.h>
 #include <codecvt>
-#include <iostream>
 #include <locale>
 #else
 #include <sys/mman.h>
