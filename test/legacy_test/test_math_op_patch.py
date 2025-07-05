@@ -564,7 +564,7 @@ class TestDygraphMathOpPatches(unittest.TestCase):
             actual_out = self.tensor_a >= self.np_b
             np.testing.assert_equal(actual_out, expect_out)
 
-    def test_dygraph_reminder(self):
+    def test_dygraph_remainder(self):
         with dygraph_guard():
             self.init_data()
             # normal case: tenor % nparray
