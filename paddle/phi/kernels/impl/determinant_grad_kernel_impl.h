@@ -21,14 +21,18 @@
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/determinant_grad_kernel.h"
+#include "paddle/phi/kernels/determinant_kernel.h"
+#include "paddle/phi/kernels/diag_kernel.h"
+#include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
-#include "paddle/phi/kernels/full_kernel.h"
+#include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/matrix_inverse.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
+
 namespace phi {
 namespace detail {
 
@@ -108,21 +112,45 @@ void DeterminantGradKernel(const Context& dev_ctx,
     // checked in forward, pass
   }
 
-  // Check Whether the matrix is invertible
-  // (matrix A not invertible) == (det(A)=0)
-  if (!detail::CheckMatrixInvertible<T, Context>(dev_ctx, &out)) {
-    // The matrix is not invertible
-    VLOG(3) << "The input matrix not invertible!";
-    x_grad->Resize(x.dims());
-    phi::Full<T>(
-        dev_ctx, common::vectorize(x.dims()), static_cast<T>(0.0f), x_grad);
-    return;
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  DenseTensor x_mp;
+  DenseTensor out_grad_mp;
+  if (!std::is_same_v<MPType, T>) {
+    x_mp = phi::Cast<T, Context>(
+        dev_ctx, x, phi::CppTypeToDataType<MPType>::Type());
+    out_grad_mp = phi::Cast<T, Context>(
+        dev_ctx, out_grad, phi::CppTypeToDataType<MPType>::Type());
+  } else {
+    x_mp = x;
+    out_grad_mp = out_grad;
   }
 
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  auto origin_dt = std::is_same<phi::dtype::float16, T>::value
-                       ? DataType::FLOAT16
-                       : DataType::BFLOAT16;
+  // Tikhonov Regularization
+  const auto& x_dims = x.dims();
+  const int n = x_dims[x_dims.size() - 1];
+  MPType epsilon = std::is_same_v<MPType, double> ? 1e-12 : 1e-6;
+
+  DenseTensor diag;
+  diag.Resize({n});
+  dev_ctx.template Alloc<MPType>(&diag);
+  phi::funcs::SetConstant<Context, MPType>()(dev_ctx, &diag, epsilon);
+
+  DenseTensor reg_item;
+  reg_item.Resize({n, n});
+  dev_ctx.template Alloc<MPType>(&reg_item);
+  phi::DiagKernel<MPType, Context>(dev_ctx, diag, 0, 0.0, &reg_item);
+
+  DenseTensor x_reg;
+  x_reg.Resize(x_dims);
+  dev_ctx.template Alloc<MPType>(&x_reg);
+  phi::ExpandKernel<MPType, Context>(
+      dev_ctx, reg_item, IntArray(common::vectorize(x_dims)), &x_reg);
+  phi::Add<MPType, Context>(dev_ctx, x_mp, x_reg, &x_reg);
+
+  DenseTensor out_reg;
+  out_reg.Resize(out.dims());
+  dev_ctx.template Alloc<MPType>(&out_reg);
+  phi::DeterminantKernel<MPType, Context>(dev_ctx, x_reg, &out_reg);
 
   // The matrix is invertible
   // let |A| = Determinant(A)
@@ -133,17 +161,11 @@ void DeterminantGradKernel(const Context& dev_ctx,
   // First: inverse(A)
   DenseTensor inverse_A;
   // A must be square matrices!
-  inverse_A.Resize(x.dims());
+  inverse_A.Resize(x_dims);
   dev_ctx.template Alloc<MPType>(&inverse_A);
 
   phi::funcs::MatrixInverseFunctor<Context, MPType> mat_inv;
-  if (!std::is_same<MPType, T>::value) {
-    mat_inv(dev_ctx,
-            phi::Cast<T, Context>(dev_ctx, x, DataType::FLOAT32),
-            &inverse_A);
-  } else {
-    mat_inv(dev_ctx, x, &inverse_A);
-  }
+  mat_inv(dev_ctx, x_reg, &inverse_A);
 
   auto conj_inverse_A = phi::Conj<MPType>(dev_ctx, inverse_A);
   VLOG(3) << "inverse(A).conj() dims: " << conj_inverse_A.dims();
@@ -151,13 +173,12 @@ void DeterminantGradKernel(const Context& dev_ctx,
   // Second: inverse(A).conj().transpose(-2, -1)
   DenseTensor transpose_inverse_A =
       phi::TransposeLast2Dim<MPType>(dev_ctx, conj_inverse_A);
-
   VLOG(3) << "(dA * |A|).transpose(-2, -1) dims: "
           << transpose_inverse_A.dims();
 
   // Third: dA * |A|.conj()
-  auto conj_out = phi::Conj<MPType>(dev_ctx, out);
-  auto mul_dA_detA = phi::Multiply<T>(dev_ctx, out_grad, conj_out);
+  auto conj_out_reg = phi::Conj<MPType>(dev_ctx, out_reg);
+  auto mul_dA_detA = phi::Multiply<MPType>(dev_ctx, out_grad_mp, conj_out_reg);
   VLOG(3) << "dA * |A| dims: " << mul_dA_detA.dims();
 
   // Fourth: unsqueeze(dA * |A|, [-1, -2])
@@ -166,22 +187,14 @@ void DeterminantGradKernel(const Context& dev_ctx,
   VLOG(3) << "unsqueezed(dA * |A|) dims: " << unsqueeze2.dims();
 
   // Finally: unsqueeze(dA * |A|) * inverse(A)
-  DenseTensor res;
-  if (!std::is_same<MPType, T>::value) {
-    res = phi::Multiply<T>(
-        dev_ctx,
-        unsqueeze2,
-        phi::Cast<MPType, Context>(dev_ctx, transpose_inverse_A, origin_dt));
-  } else {
-    res = phi::Multiply<T>(dev_ctx, unsqueeze2, transpose_inverse_A);
-  }
+  DenseTensor res_mp;
+  res_mp = phi::Multiply<MPType>(dev_ctx, unsqueeze2, transpose_inverse_A);
+  VLOG(3) << "unsqueeze(dA * |A|) * inverse(A) dims: " << res_mp.dims();
 
-  VLOG(3) << "unsqueeze(dA * |A|) * inverse(A) dims: " << res.dims();
-
-  x_grad->Resize(x.dims());
+  x_grad->Resize(x_dims);
   VLOG(3) << "d|A| dims: " << x_grad->dims();
 
-  phi::Copy(dev_ctx, res, dev_ctx.GetPlace(), false, x_grad);
+  phi::Copy(dev_ctx, res_mp, dev_ctx.GetPlace(), false, x_grad);
 }
 
 }  // namespace phi
