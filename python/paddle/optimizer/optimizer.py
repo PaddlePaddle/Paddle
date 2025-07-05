@@ -52,7 +52,6 @@ from ..base.backward import (
 from ..base.framework import Parameter
 from ..base.layer_helper import LayerHelper, LayerHelperBase
 from ..base.log_helper import get_logger
-from .fusion_utils import FusionStorage
 from .lr import LambdaDecay, LRScheduler
 
 if TYPE_CHECKING:
@@ -359,6 +358,8 @@ class Optimizer:
 
     @imperative_base.no_grad()
     def _maybe_refuse(self):
+        from .fusion_utils import FusionStorage
+
         # only support dygraph mode
         if not framework.in_dygraph_mode():
             return
@@ -882,10 +883,11 @@ class Optimizer:
                 if param_lr == 1.0:
                     return self._global_learning_rate()
                 else:
-                    with paddle.static.default_main_program()._lr_schedule_guard(
-                        is_with_opt=True
-                    ), framework.name_scope(
-                        'scale_with_param_lr'
+                    with (
+                        paddle.static.default_main_program()._lr_schedule_guard(
+                            is_with_opt=True
+                        ),
+                        framework.name_scope('scale_with_param_lr'),
                     ):
                         return self._global_learning_rate() * param_lr
         else:
@@ -1293,9 +1295,12 @@ class Optimizer:
                     ):
                         param_grad_list.append(param_and_grad[0])
                         param_grad_list.append(param_and_grad[1])
-                with param_grad_list[0].block.program._optimized_guard(
-                    param_grad_list
-                ), name_scope("optimizer"):
+                with (
+                    param_grad_list[0].block.program._optimized_guard(
+                        param_grad_list
+                    ),
+                    name_scope("optimizer"),
+                ):
                     device = self._get_device_for_param(param_grad_list[0].name)
                     with device_guard(device):
                         self._append_optimize_multi_tensor_op(
@@ -1387,9 +1392,12 @@ class Optimizer:
                 for param_and_grad in parameters_and_grads:
                     if param_and_grad[1] is None:
                         continue
-                    with param_and_grad[0].block.program._optimized_guard(
-                        param_and_grad
-                    ), name_scope("optimizer"):
+                    with (
+                        param_and_grad[0].block.program._optimized_guard(
+                            param_and_grad
+                        ),
+                        name_scope("optimizer"),
+                    ):
                         if param_and_grad[0].stop_gradient is False:
                             device = self._get_device_for_param(
                                 param_and_grad[0].name
@@ -1661,6 +1669,14 @@ class Optimizer:
                 paddle.static.default_main_program(),
                 paddle.static.default_startup_program(),
             ):
+                auto_dp = (
+                    paddle.distributed.auto_parallel.auto_dp_utils.in_auto_dp_mode()
+                )
+                if auto_dp:
+                    paddle.distributed.auto_parallel.auto_dp_utils._convert_fake_replicate_grad_to_partial(
+                        params_grads
+                    )
+
                 if isinstance(params_grads, list):
                     if self._grad_clip is not None:
                         params_grads = self._grad_clip(params_grads)
@@ -2000,9 +2016,24 @@ class Optimizer:
             for param in self._param_groups:
                 if param.stop_gradient:
                     continue
-                if param._grad_ivar() is not None:
-                    grad_var = param._grad_ivar()
-                    params_grads.append((param, grad_var))
+                if os.getenv("FLAGS_enable_tensor_fusion") in [
+                    "True",
+                    "true",
+                    "1",
+                ] or os.getenv("FLAGS_enable_main_grad") in [
+                    "True",
+                    "true",
+                    "1",
+                ]:
+                    if (
+                        hasattr(param, "main_grad")
+                        and param.main_grad is not None
+                    ):
+                        params_grads.append((param, param.main_grad))
+                else:
+                    if param._grad_ivar() is not None:
+                        grad_var = param._grad_ivar()
+                        params_grads.append((param, grad_var))
 
             self._apply_optimize(
                 loss=None,

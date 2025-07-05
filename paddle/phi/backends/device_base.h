@@ -23,6 +23,33 @@
 
 namespace phi {
 
+struct DeviceProp {
+  std::string name;
+  int deviceMajor = 0;
+  int deviceMinor = 0;
+  size_t totalGlobalMem = 0;
+  int multiProcessorCount = 0;
+  bool isMultiGpuBoard = false;
+  bool integrated = false;
+
+  DeviceProp() = default;
+
+  DeviceProp(const std::string& name_,
+             int deviceMajor_,
+             int deviceMinor_,
+             size_t totalGlobalMem_,
+             int multiProcessorCount_,
+             bool isMultiGpuBoard_,
+             bool integrated_)
+      : name(name_),
+        deviceMajor(deviceMajor_),
+        deviceMinor(deviceMinor_),
+        totalGlobalMem(totalGlobalMem_),
+        multiProcessorCount(multiProcessorCount_),
+        isMultiGpuBoard(isMultiGpuBoard_),
+        integrated(integrated_) {}
+};
+
 class TraceEventCollector;
 
 class DeviceInterface {  // Driver / Runtime
@@ -37,6 +64,8 @@ class DeviceInterface {  // Driver / Runtime
 
   // Info
   virtual size_t GetComputeCapability(size_t dev_id);
+
+  virtual DeviceProp& GetDeviceProperties(size_t dev_id);
 
   virtual size_t GetRuntimeVersion(size_t dev_id);
 
@@ -92,13 +121,13 @@ class DeviceInterface {  // Driver / Runtime
       const stream::Stream::Flag& flag = stream::Stream::Flag::kDefaultFlag);
 
   // ! Destroys an asynchronous stream.
-  virtual void DestroyStream(size_t dev_id, stream::Stream* stream);
+  virtual void DestroyStream(size_t dev_id, stream::stream_t stream);
 
   // ! Waits for stream tasks to complete.
-  virtual void SynchronizeStream(size_t dev_id, const stream::Stream* stream);
+  virtual void SynchronizeStream(size_t dev_id, stream::stream_t stream);
 
   // ! Queries an asynchronous stream for completion status.
-  virtual bool QueryStream(size_t dev_id, const stream::Stream* stream);
+  virtual bool QueryStream(size_t dev_id, stream::stream_t stream);
 
   // ! Add a callback to a compute stream.
   virtual void AddCallback(size_t dev_id,
@@ -201,7 +230,7 @@ class DeviceInterface {  // Driver / Runtime
                             phi::DataType data_type,
                             size_t root,
                             const ccl::CCLComm& ccl_comm,
-                            const stream::Stream& stream);
+                            const stream::stream_t& stream);
 
   virtual void CCLAllReduce(void* in_data,
                             void* out_data,
@@ -209,7 +238,7 @@ class DeviceInterface {  // Driver / Runtime
                             phi::DataType data_type,
                             ccl::CCLReduceOp reduce_op,
                             const ccl::CCLComm& ccl_comm,
-                            const stream::Stream& stream);
+                            const stream::stream_t& stream);
   virtual void CCLReduce(void* in_data,
                          void* out_data,
                          size_t num,
@@ -217,20 +246,20 @@ class DeviceInterface {  // Driver / Runtime
                          ccl::CCLReduceOp reduce_op,
                          size_t root_id,
                          const ccl::CCLComm& ccl_comm,
-                         const stream::Stream& stream);
+                         const stream::stream_t& stream);
   virtual void CCLAllGather(void* in_data,
                             void* out_data,
                             size_t num,
                             phi::DataType data_type,
                             const ccl::CCLComm& ccl_comm,
-                            const stream::Stream& stream);
+                            const stream::stream_t& stream);
   virtual void CCLReduceScatter(void* in_data,
                                 void* out_data,
                                 size_t num,
                                 phi::DataType data_type,
                                 ccl::CCLReduceOp op,
                                 const ccl::CCLComm& ccl_comm,
-                                const stream::Stream& stream);
+                                const stream::stream_t& stream);
   virtual void CCLGroupStart();
   virtual void CCLGroupEnd();
   virtual void CCLSend(void* sendbuf,
@@ -238,13 +267,13 @@ class DeviceInterface {  // Driver / Runtime
                        phi::DataType data_type,
                        size_t dst_rank,
                        const ccl::CCLComm& ccl_comm,
-                       const stream::Stream& stream);
+                       const stream::stream_t& stream);
   virtual void CCLRecv(void* recvbuf,
                        size_t num,
                        phi::DataType data_type,
                        size_t src_rank,
                        const ccl::CCLComm& ccl_comm,
-                       const stream::Stream& stream);
+                       const stream::stream_t& stream);
 
   virtual void CCLAllToAll(const void** send_buf,
                            const size_t* send_count,
@@ -255,10 +284,10 @@ class DeviceInterface {  // Driver / Runtime
                            size_t rank,
                            size_t nranks,
                            const ccl::CCLComm& comm,
-                           const stream::Stream& stream);
+                           const stream::stream_t& stream);
   // blas
   virtual void BlasAXPBY(size_t dev_id,
-                         const stream::Stream& stream,
+                         const stream::stream_t& stream,
                          phi::DataType dtype,
                          size_t numel,
                          float alpha,

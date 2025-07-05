@@ -20,7 +20,7 @@ import typing
 import warnings
 import weakref
 from collections import OrderedDict
-from typing import TYPE_CHECKING, Any, Callable, Dict, Union
+from typing import TYPE_CHECKING, Any, Callable, Union
 
 import numpy as np
 from typing_extensions import Self
@@ -71,7 +71,7 @@ _ForwardPreHook = Callable[
 _ForwardPostHook = Callable[
     ["Layer", Tensor, Tensor], Tensor
 ]  # (layer, input, output) -> transformed_output
-_StateDict = Union[Dict[str, Tensor], typing.OrderedDict[str, Tensor]]
+_StateDict = Union[dict[str, Tensor], typing.OrderedDict[str, Tensor]]
 _StateDictHook = Callable[[_StateDict], None]
 
 _first_cap_re = re.compile('(.)([A-Z][a-z]+)')
@@ -462,14 +462,14 @@ class Layer:
         # Records original functions after @to_static to support to rollback
         self._original_funcs = OrderedDict()
 
-    def train(self) -> None:
+    def train(self) -> Self:
         """
 
         Sets this Layer and all its sublayers to training mode.
         This only effects certain modules like `Dropout` and `BatchNorm`.
 
         Returns:
-            None
+            Layer: self
 
         Examples:
             .. code-block:: python
@@ -518,13 +518,15 @@ class Layer:
         for layer in self.sublayers():
             layer.training = True
 
-    def eval(self) -> None:
+        return self
+
+    def eval(self) -> Self:
         """
         Sets this Layer and all its sublayers to evaluation mode.
         This only effects certain modules like `Dropout` and `BatchNorm`.
 
         Returns:
-            None
+            Layer: self
 
         Examples:
             .. code-block:: python
@@ -569,6 +571,8 @@ class Layer:
         self.training = False
         for layer in self.sublayers():
             layer.training = False
+
+        return self
 
     def apply(self, fn: Callable[[Self], None]) -> Self:
         """
@@ -2002,15 +2006,12 @@ class Layer:
         if include_sublayers:
             for layer_name, layer_item in self._sub_layers.items():
                 if layer_item is not None:
-                    destination_temp = destination.copy()
-                    destination_temp.update(
-                        layer_item._obtain_parameters_buffers(
-                            destination_temp,
-                            include_sublayers,
-                            structured_name_prefix + layer_name + ".",
-                        )
+                    layer_item._obtain_parameters_buffers(
+                        destination,
+                        include_sublayers,
+                        structured_name_prefix + layer_name + ".",
                     )
-                    destination = destination_temp
+
         return destination
 
     def _state_dict_impl(
@@ -2058,18 +2059,15 @@ class Layer:
         if include_sublayers:
             for layer_name, layer_item in self._sub_layers.items():
                 if layer_item is not None:
-                    destination_temp = destination.copy()
-                    destination_temp.update(
-                        layer_item._state_dict_impl(
-                            destination_temp,
-                            include_sublayers,
-                            structured_name_prefix + layer_name + ".",
-                            include_non_persistable_buffer,
-                            use_hook,
-                            keep_vars,
-                        )
+                    layer_item._state_dict_impl(
+                        destination,
+                        include_sublayers,
+                        structured_name_prefix + layer_name + ".",
+                        include_non_persistable_buffer,
+                        use_hook,
+                        keep_vars,
                     )
-                    destination = destination_temp
+
         if use_hook:
             for state_dict_hook in self._state_dict_hooks.values():
                 hook_result = state_dict_hook(destination)

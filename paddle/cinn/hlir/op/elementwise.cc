@@ -326,10 +326,10 @@ std::shared_ptr<OpStrategy> StrategyForScaleSymbolic(
 
               Expr cast_scale = should_upscale_fp32
                                     ? Expr(scale)
-                                    : ir::Cast::Make(A->type(), Expr(scale));
+                                    : common::cast(Expr(scale), A->type());
               Expr cast_bias = should_upscale_fp32
                                    ? Expr(bias)
-                                   : ir::Cast::Make(A->type(), Expr(bias));
+                                   : common::cast(Expr(bias), A->type());
               Expr add_result;
               if (scale == 1.0f) {
                 if (bias == 0.0f) {
@@ -1310,8 +1310,20 @@ std::shared_ptr<framework::OpStrategy> StrategyForArangeSymbolic(
     EXPR_FROM_ATTR(int)
   } else if (dtype.is_int(64)) {
     EXPR_FROM_ATTR(int64_t)
+  } else if (dtype.is_bfloat16()) {
+    EXPR_FROM_ATTR(float)
+    start->set_type(cinn::common::BFloat16());
+    step->set_type(cinn::common::BFloat16());
+  } else if (dtype.is_float16()) {
+    EXPR_FROM_ATTR(float)
+    start->set_type(cinn::common::Float16());
+    step->set_type(cinn::common::Float16());
   } else {
-    CINN_NOT_IMPLEMENTED
+    PADDLE_ENFORCE_NOT_NULL(
+        nullptr,
+        ::common::errors::InvalidArgument(
+            "The dtype of arange op should be float32, float64, int32, int64, "
+            "bfloat16 or float16."));
   }
 
 #undef EXPR_FROM_ATTR

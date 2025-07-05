@@ -152,9 +152,7 @@ class DummyDistribution(paddle.distribution.Distribution):
 
 
 @param.place(config.DEVICES)
-@param.param_cls(
-    (param.TEST_CASE_NAME, 'p', 'q'), [('test-dispatch-exception')]
-)
+@param.param_cls((param.TEST_CASE_NAME, 'p', 'q'), ['test-dispatch-exception'])
 class TestDispatch(unittest.TestCase):
     def setUp(self):
         self.mp = paddle.static.Program()
@@ -165,11 +163,13 @@ class TestDispatch(unittest.TestCase):
             self.q = DummyDistribution()
 
     def test_dispatch_with_unregister(self):
-        with self.assertRaises(NotImplementedError):
-            with paddle.static.program_guard(self.mp, self.sp):
-                out = paddle.distribution.kl_divergence(self.p, self.q)
-                self.executor.run(self.sp)
-                self.executor.run(self.mp, feed={}, fetch_list=[out])
+        with (
+            self.assertRaises(NotImplementedError),
+            paddle.static.program_guard(self.mp, self.sp),
+        ):
+            out = paddle.distribution.kl_divergence(self.p, self.q)
+            self.executor.run(self.sp)
+            self.executor.run(self.mp, feed={}, fetch_list=[out])
 
 
 @param.place(config.DEVICES)

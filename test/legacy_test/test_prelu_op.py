@@ -194,7 +194,7 @@ class PReluTest(OpTest):
         elif self.attrs == {'mode': "channel", "data_format": "NHWC"}:
             alpha_np = np.random.uniform(-1, -0.5, [1, 1, 1, self.x_shape[-1]])
         else:
-            alpha_np = np.random.uniform(-1, -0.5, [1] + self.x_shape[1:])
+            alpha_np = np.random.uniform(-1, -0.5, [1, *self.x_shape[1:]])
         alpha_np = alpha_np.astype(as_type)
 
         self.inputs = {'X': x_np, 'Alpha': alpha_np}
@@ -377,6 +377,11 @@ class TestModeElementRank6NHWC(PReluTest):
 
     def init_attr(self):
         self.attrs = {'mode': "element", "data_format": "NHWC"}
+
+
+class TestModeElt_ZeroSize(PReluTest):
+    def init_input_shape(self):
+        self.x_shape = [3, 0, 5, 10]
 
 
 def create_test_fp16_class(

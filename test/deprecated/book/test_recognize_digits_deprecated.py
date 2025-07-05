@@ -267,9 +267,11 @@ def inject_test_method(use_cuda, parallel, nn_type, combine):
         prog = base.Program()
         startup_prog = base.Program()
         scope = base.core.Scope()
-        with base.scope_guard(scope):
-            with base.program_guard(prog, startup_prog):
-                main(use_cuda, parallel, nn_type, combine)
+        with (
+            base.scope_guard(scope),
+            base.program_guard(prog, startup_prog),
+        ):
+            main(use_cuda, parallel, nn_type, combine)
 
     fn = 'test_{}_{}_{}_{}'.format(
         nn_type,

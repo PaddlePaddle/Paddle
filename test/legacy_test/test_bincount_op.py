@@ -71,6 +71,18 @@ class TestBincountOpAPI(unittest.TestCase):
                 msg='bincount output is wrong, out =' + str(actual.numpy()),
             )
 
+    def test_dygraph_cpu(self):
+        with base.dygraph.guard():
+            paddle.device.set_device('cpu')
+            inputs_np = np.array([0, 1, 1, 3, 2, 1, 7]).astype(np.int64)
+            inputs = paddle.to_tensor(inputs_np)
+            actual = paddle.bincount(inputs)
+            expected = np.bincount(inputs)
+            self.assertTrue(
+                (actual.numpy() == expected).all(),
+                msg='bincount output is wrong, out =' + str(actual.numpy()),
+            )
+
 
 class TestBincountOpError(unittest.TestCase):
     """Test bincount op error."""
@@ -304,6 +316,13 @@ class TestTensorMinlength(unittest.TestCase):
             output_handle = predictor.get_output_handle(output_names[0])
             infer_out = output_handle.copy_to_cpu()
             np.testing.assert_allclose(static_out[0], infer_out)
+
+
+class TestBincountOp_ZeroSize(TestBincountOp):
+    def init_test_case(self):
+        self.minlength = 0
+        self.np_input = np.random.randint(low=0, high=20, size=0)
+        self.Out = np.bincount(self.np_input, minlength=self.minlength)
 
 
 if __name__ == "__main__":

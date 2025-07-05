@@ -57,6 +57,10 @@ void ArangeInferMeta(const Scalar& start,
         GET_SIZE_GIVEN_TYPE(double)
       case DataType::INT32:
         GET_SIZE_GIVEN_TYPE(int)
+      case DataType::FLOAT16:
+        GET_SIZE_GIVEN_TYPE(float)
+      case DataType::BFLOAT16:
+        GET_SIZE_GIVEN_TYPE(float)
       default:
         GET_SIZE_GIVEN_TYPE(int64_t)
     }

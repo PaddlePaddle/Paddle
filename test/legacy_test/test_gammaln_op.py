@@ -35,11 +35,14 @@ class TestGammalnOp(OpTest):
         self.op_type = 'gammaln'
         self.python_api = paddle.gammaln
         self.init_dtype_type()
-        self.shape = (3, 40)
+        self.init_shape()
         self.x = np.random.random(self.shape).astype(self.dtype) + 1
         self.inputs = {'x': self.x}
         out = ref_gammaln(self.x)
         self.outputs = {'out': out}
+
+    def init_shape(self):
+        self.shape = (3, 40)
 
     def init_dtype_type(self):
         self.dtype = np.float64
@@ -49,6 +52,21 @@ class TestGammalnOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['x'], 'out', check_pir=True)
+
+
+class TestGammalnOpZeroSize(TestGammalnOp):
+    def init_shape(self):
+        self.shape = (0, 3, 40)
+
+
+class TestGammalnOpZeroSize1(TestGammalnOp):
+    def init_shape(self):
+        self.shape = (10, 3, 0, 1)
+
+
+class TestGammalnOpZeroSize2(TestGammalnOp):
+    def init_shape(self):
+        self.shape = (10, 0)
 
 
 class TestGammalnOpFp32(TestGammalnOp):
@@ -69,6 +87,36 @@ class TestGammalnBigNumberOp(TestGammalnOp):
         self.shape = (100, 1)
         self.x = np.random.random(self.shape).astype(self.dtype) + 1
         self.x[:5, 0] = np.array([1e5, 1e10, 1e20, 1e40, 1e80])
+        self.inputs = {'x': self.x}
+        out = ref_gammaln(self.x)
+        self.outputs = {'out': out}
+
+    def init_dtype_type(self):
+        self.dtype = np.float64
+
+    def test_check_grad(self):
+        d_out = self.outputs['out']
+        d_x = ref_gammaln_grad(self.x, d_out)
+        self.check_grad(
+            ['x'],
+            'out',
+            user_defined_grads=[
+                d_x,
+            ],
+            user_defined_grad_outputs=[
+                d_out,
+            ],
+            check_pir=True,
+        )
+
+
+class TestGammalnNegativeInputFP64Op(TestGammalnOp):
+    def setUp(self):
+        self.op_type = 'gammaln'
+        self.python_api = paddle.gammaln
+        self.init_dtype_type()
+        self.init_shape()
+        self.x = np.random.random(self.shape).astype(self.dtype) - 1
         self.inputs = {'x': self.x}
         out = ref_gammaln(self.x)
         self.outputs = {'out': out}

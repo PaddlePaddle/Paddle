@@ -27,7 +27,7 @@ void SerializeToStream(std::ostream &os,
              sizeof(kCurTensorVersion));
   }
   {
-    // the 2st field, LoD information
+    // the 2nd field, LoD information
     // uint64_t lod_level
     // uint64_t lod_level_1 size in byte.
     // int*     lod_level_1 data
@@ -43,7 +43,7 @@ void SerializeToStream(std::ostream &os,
                static_cast<std::streamsize>(size));
     }
   }
-  // the 3st field, Tensor
+  // the 3rd field, Tensor
   TensorToStream(os, static_cast<phi::DenseTensor>(tensor), dev_ctx);
 }
 
@@ -81,13 +81,13 @@ void DeserializeFromStream(std::istream &is,
             version));
   }
   {
-    // the 2st field, LoD information
+    // the 2nd field, LoD information
     uint64_t lod_level = 0;
     is.read(reinterpret_cast<char *>(&lod_level), sizeof(lod_level));
     auto &lod = *tensor->mutable_lod();
     lod.resize(lod_level);
   }
-  // the 3st filed, Tensor
+  // the 3rd filed, Tensor
   TensorFromStream(
       is, static_cast<phi::DenseTensor *>(tensor), dev_ctx, seek, shape);
 }
@@ -109,7 +109,7 @@ void DeserializeFromStream(std::istream &is,
             version));
   }
   {
-    // the 2st field, LoD information
+    // the 2nd field, LoD information
     uint64_t lod_level = 0;
     is.read(reinterpret_cast<char *>(&lod_level), sizeof(lod_level));
     auto &lod = *tensor->mutable_lod();
@@ -123,7 +123,7 @@ void DeserializeFromStream(std::istream &is,
       lod[i] = tmp;
     }
   }
-  // the 3st filed, Tensor
+  // the 3rd filed, Tensor
   TensorFromStream(is, static_cast<phi::DenseTensor *>(tensor), dev_ctx);
 }
 

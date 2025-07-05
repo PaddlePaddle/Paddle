@@ -16,17 +16,18 @@
 
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace phi {
 
 template <typename T>
 __global__ void MVGradDxCUDAKernel(
-    const int m, const int n, const T *dout, const T *vec, T *dx) {
-  int idx = blockDim.x * blockIdx.x + threadIdx.x;
-  for (; idx < m * n; idx += blockDim.x * gridDim.x) {
-    int i = idx / n;
-    int j = idx % n;
+    const int64_t m, const int64_t n, const T *dout, const T *vec, T *dx) {
+  int64_t idx = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  for (; idx < m * n; idx += static_cast<int64_t>(blockDim.x) * gridDim.x) {
+    int64_t i = idx / n;
+    int64_t j = idx % n;
     dx[idx] = dout[i] * vec[j];
   }
 }
@@ -41,10 +42,25 @@ void MvGradKernel(const Context &dev_ctx,
   auto dout = out_grad;
   auto dx = x_grad;
   auto dvec = vec_grad;
+  if (x.numel() == 0 || vec.numel() == 0) {
+    if (dx) {
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(dx->dims())),
+                            static_cast<T>(0),
+                            dx);
+    }
+    if (dvec) {
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(dvec->dims())),
+                            static_cast<T>(0),
+                            dvec);
+    }
+    return;
+  }
 
   auto dim_x = x.dims();
-  int m = dim_x[0];
-  int n = dim_x[1];
+  int64_t m = dim_x[0];
+  int64_t n = dim_x[1];
 
   // get data ptr
   const T *x_data = x.data<T>();

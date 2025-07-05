@@ -258,11 +258,25 @@ def monkey_patch_tensor():
                         self.value().process_mesh,
                         self.value().placements,
                     )
-                self.value().get_tensor().set(value.get_tensor())
+                if (
+                    isinstance(value, paddle.Tensor)
+                    and value.is_contiguous()
+                    and self.value().is_contiguous()
+                ):
+                    self.value().set_tensor(value)
+                else:
+                    self.value().get_tensor().set(value.get_tensor())
                 return
-            self.value().get_tensor().set(
-                value, framework._current_expected_place()
-            )
+            if (
+                isinstance(value, paddle.Tensor)
+                and value.is_contiguous()
+                and self.value().is_contiguous()
+            ):
+                self.value().set_tensor(value)
+            else:
+                self.value().get_tensor().set(
+                    value, framework._current_expected_place()
+                )
 
     @framework.dygraph_only
     def backward(
@@ -736,29 +750,29 @@ def monkey_patch_tensor():
             .. code-block:: python
 
                 >>> import paddle
-                >>> tensorx = paddle.to_tensor([1,2,3])
-                >>> print(tensorx)
+                >>> x = paddle.to_tensor([1,2,3])
+                >>> print(x)
                 Tensor(shape=[3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
                     [1, 2, 3])
 
-                >>> tensorx = tensorx.to("cpu")
-                >>> print(tensorx.place)
+                >>> x = x.to("cpu")
+                >>> print(x.place)
                 Place(cpu)
 
-                >>> tensorx = tensorx.to("float32")
-                >>> print(tensorx.dtype)
+                >>> x = x.to("float32")
+                >>> print(x.dtype)
                 paddle.float32
 
-                >>> tensorx = tensorx.to("gpu", "int16")
-                >>> print(tensorx)
+                >>> x = x.to("gpu", "int16")
+                >>> print(x)
                 Tensor(shape=[3], dtype=int16, place=Place(gpu:0), stop_gradient=True,
                     [1, 2, 3])
-                >>> tensor2 = paddle.to_tensor([4,5,6])
-                >>> tensor2
+                >>> y = paddle.to_tensor([4,5,6])
+                >>> y
                 Tensor(shape=[3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
                     [4, 5, 6])
-                >>> tensor2 = tensor2.to(tensorx)
-                >>> print(tensor2)
+                >>> y = y.to(x)
+                >>> print(y)
                 Tensor(shape=[3], dtype=int16, place=Place(gpu:0), stop_gradient=True,
                     [4, 5, 6])
         """

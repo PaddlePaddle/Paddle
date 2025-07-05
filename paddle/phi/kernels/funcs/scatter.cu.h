@@ -96,7 +96,7 @@ __global__ void ScatterCUDAKernel(const T* params,
   }
 }
 
-template <typename T, typename IndexT = int>
+template <typename T, typename IndexT, int VecSize>
 __global__ void ScatterNdCUDAKernel(const T* update,
                                     const IndexT* indices,
                                     T* output,
@@ -104,12 +104,20 @@ __global__ void ScatterNdCUDAKernel(const T* update,
                                     size_t remain_size,
                                     size_t slice_size,
                                     size_t end_size) {
-  CUDA_KERNEL_LOOP_TYPE(i, remain_size * slice_size, int64_t) {
-    int64_t indices_i = i / slice_size;
-    int64_t slice_i = i - indices_i * slice_size;  // offset inside the slice
-    int64_t gather_i = 0;
-    int64_t temp = slice_size;
-    for (int64_t j = end_size - 1; j >= 0; --j) {
+  size_t total_size = remain_size * slice_size;
+  size_t idx =
+      (static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x) * VecSize;
+  size_t stride = static_cast<size_t>(blockDim.x) * gridDim.x * VecSize;
+
+#pragma unroll
+  for (; idx < total_size; idx += stride) {
+    size_t indices_i = idx / slice_size;
+    size_t slice_i = idx % slice_size;
+    size_t gather_i = 0;
+    size_t gather_stride = slice_size;
+
+#pragma unroll
+    for (int j = end_size - 1; j >= 0; --j) {
       IndexT index_value = indices[indices_i * end_size + j];
       PADDLE_ENFORCE(
           index_value >= -output_dims[j] && index_value < output_dims[j],
@@ -125,11 +133,20 @@ __global__ void ScatterNdCUDAKernel(const T* update,
         index_value += output_dims[j];
       }
 
-      gather_i += (index_value * temp);
-      temp *= output_dims[j];
+      gather_i += index_value * gather_stride;
+      gather_stride *= output_dims[j];
     }
-    int64_t output_i = gather_i + slice_i;
-    phi::CudaAtomicAdd(output + output_i, *(update + i));
+
+    size_t output_i = gather_i + slice_i;
+
+    using VecType = kps::details::VectorType<T, VecSize>;
+    const VecType* src = reinterpret_cast<const VecType*>(&update[idx]);
+    VecType* dst = reinterpret_cast<VecType*>(&output[output_i]);
+
+#pragma unroll
+    for (int k = 0; k < VecSize; ++k) {
+      phi::CudaAtomicAdd(&(dst->val[k]), src->val[k]);
+    }
   }
 }
 
@@ -200,7 +217,7 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
   }
 
   // for overwrite mode, use vectorization
-  int vec_size = 4;
+  int vec_size = 8;
   vec_size = std::min(phi::GetVectorizedSize(&src), vec_size);
   vec_size = std::min(phi::GetVectorizedSize(output), vec_size);
   while (vec_size > 1 && slice_size % vec_size != 0) {
@@ -210,7 +227,6 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
   constexpr int loop_count = 4;
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(ctx, n, vec_size * loop_count);
-
   switch (vec_size) {
 #define CASE_VEC_SIZE(__Sz)                                                    \
   case __Sz:                                                                   \
@@ -218,6 +234,7 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
         <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>( \
             p_src, p_index, p_output, output_dims[0], index_size, slice_size); \
     break
+    CASE_VEC_SIZE(8);
     CASE_VEC_SIZE(4);
     CASE_VEC_SIZE(2);
     CASE_VEC_SIZE(1);
@@ -286,19 +303,40 @@ void GPUScatterNdAdd(const phi::GPUContext& ctx,
     g_output_dims[i] = output_dims[i];
   }
 
-  int block = 512;
-  int64_t n = slice_size * remain_numel;
-  dim3 grid = dim3((n + block - 1) / block);
-  phi::backends::gpu::LimitGridDim(ctx, &grid);
+  int vec_size = 8;
+  vec_size = std::min(phi::GetVectorizedSize(p_update), vec_size);
+  vec_size = std::min(phi::GetVectorizedSize(p_output), vec_size);
+  while (vec_size > 1 && slice_size % vec_size != 0) {
+    vec_size /= 2;
+  }
 
-  ScatterNdCUDAKernel<T, IndexT>
-      <<<grid, block, 0, ctx.stream()>>>(p_update,
-                                         p_index,
-                                         p_output,
-                                         g_output_dims,
-                                         remain_numel,
-                                         slice_size,
-                                         end_size);
+  constexpr int loop_count = 4;
+  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+      ctx, remain_numel * slice_size, vec_size * loop_count);
+
+  auto stream = ctx.stream();
+  switch (vec_size) {
+#define CASE_VEC_SIZE(__Sz)                                              \
+  case __Sz:                                                             \
+    ScatterNdCUDAKernel<T, IndexT, __Sz>                                 \
+        <<<config.block_per_grid, config.thread_per_block, 0, stream>>>( \
+            p_update,                                                    \
+            p_index,                                                     \
+            p_output,                                                    \
+            g_output_dims,                                               \
+            remain_numel,                                                \
+            slice_size,                                                  \
+            end_size);                                                   \
+    break
+    CASE_VEC_SIZE(8);
+    CASE_VEC_SIZE(4);
+    CASE_VEC_SIZE(2);
+    CASE_VEC_SIZE(1);
+#undef CASE_VEC_SIZE
+    default:
+      PADDLE_THROW(common::errors::Unimplemented(
+          "Unsupported vectorized size: %d", vec_size));
+  }
 }
 
 }  // namespace funcs

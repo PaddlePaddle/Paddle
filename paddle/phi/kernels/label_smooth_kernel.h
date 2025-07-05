@@ -21,7 +21,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void LabelSmoothKernel(const Context& ctx,
+void LabelSmoothKernel(const Context& dev_ctx,
                        const DenseTensor& label,
                        const paddle::optional<DenseTensor>& prior_dist,
                        float epsilon,

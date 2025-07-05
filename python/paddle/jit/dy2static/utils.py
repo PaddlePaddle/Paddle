@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import atexit
 import builtins
+import dataclasses
 import functools
 import importlib.util
 import inspect
@@ -29,7 +30,8 @@ import time
 import types
 import warnings
 from contextlib import contextmanager
-from enum import Enum, auto
+from dataclasses import fields, is_dataclass
+from enum import Enum, Flag, IntEnum, auto
 from importlib.machinery import SourceFileLoader
 from typing import TYPE_CHECKING, Any
 
@@ -85,10 +87,13 @@ ENV_ENABLE_CINN_IN_DY2ST = BooleanEnvironmentVariable(
     "ENABLE_CINN_IN_DY2ST", True
 )
 
+DYNAMIC_DIMS_ATTR_NAME = "__sot_dynamic_dims"
+
 
 class Backend(Enum):
     CINN = auto()
     PHI = auto()
+    PCC = auto()
 
     @staticmethod
     def from_arg(arg: str | Backend | None):
@@ -98,6 +103,8 @@ class Backend(Enum):
             return Backend.PHI
         if arg.upper() == "CINN":
             return Backend.CINN
+        if arg.upper() == "PCC":
+            return Backend.PCC
         raise ValueError(
             f"Unknown backend {arg}. Only support 'CINN' or None for PHI."
         )
@@ -105,8 +112,56 @@ class Backend(Enum):
     def is_cinn(self):
         return self == Backend.CINN
 
+    def is_pcc(self):
+        return self == Backend.PCC
+
     def is_phi(self):
         return self == Backend.PHI
+
+
+class CUDAGraphState(IntEnum):
+    DISABLE = 0
+    WARMUP = 1
+    CAPTURE = 2
+    REPLAY = 3
+
+
+class TransformOptions:
+
+    class ToStaticMode(Flag):
+        SOT = auto()
+        AST = auto()
+
+        @classmethod
+        def Nil(cls):
+            return cls(0)
+
+    TRANSFORM_OPTIONS_ATTR_NAME = "___jit_transform_options___"
+
+    def __init__(self, skip_transform_mode: ToStaticMode = ToStaticMode.Nil()):
+        self.skip_transform_mode = skip_transform_mode
+
+    def attach(self, fn):
+        if inspect.ismethod(fn):
+            fn = fn.__func__
+
+        if inspect.isfunction(fn) or issubclass(fn, paddle.nn.Layer):
+            setattr(fn, TransformOptions.TRANSFORM_OPTIONS_ATTR_NAME, self)
+        else:
+            warnings.warn(
+                f"Only support @jit.marker.unified to type(function) or type(method), but received {type(fn)}"
+            )
+
+    def need_transform(self, mode: ToStaticMode):
+        return not (self.skip_transform_mode & mode)
+
+    @staticmethod
+    def check_fn_need_transform(fn, mode: ToStaticMode):
+        if not hasattr(fn, TransformOptions.TRANSFORM_OPTIONS_ATTR_NAME):
+            return True
+        return getattr(
+            fn, TransformOptions.TRANSFORM_OPTIONS_ATTR_NAME
+        ).need_transform(mode)
 
 
 class TimeCounter:
@@ -242,6 +297,34 @@ def type_name(v):
     return type(v).__name__
 
 
+def is_dataclass_instance(obj):
+    """Check if the object is an instance of a dataclass.
+    Refer to https://docs.python.org/3/library/dataclasses.html#dataclasses.is_dataclass
+    """
+    return is_dataclass(obj) and not isinstance(obj, type)
+
+
+def is_dataclass_type(obj):
+    return is_dataclass(obj) and isinstance(obj, type)
+
+
+def is_plain_dataclass_type(cls: type):
+    return is_dataclass_type(cls) and len(cls.__mro__) == 2
+
+
+def dataclass_as_dict(obj):
+    return {f.name: getattr(obj, f.name) for f in dataclasses.fields(obj)}
+
+
+def dataclass_from_dict(dataclass_type: type[Any], data: dict[str, Any]):
+    # NOTE(SigureMo): Create dataclass without __post_init__,
+    # because __post_init__ has been run in simulation
+    instance = dataclass_type.__new__(dataclass_type, **data)
+    for fd in dataclasses.fields(dataclass_type):
+        setattr(instance, fd.name, data[fd.name])
+    return instance
+
+
 def make_hashable(x, error_msg=None):
     """
     Makes input `x` hashable.
@@ -250,6 +333,15 @@ def make_hashable(x, error_msg=None):
     """
     if isinstance(x, (tuple, list, set)):
         return tuple(map(make_hashable, x))
+
+    if is_dataclass_instance(x):
+        return (
+            type(x).__name__,
+            *map(
+                make_hashable,
+                [getattr(x, field.name) for field in fields(x)],
+            ),
+        )
 
     try:
         hash(x)
@@ -758,6 +850,18 @@ def cse_is_enabled():
     ]
 
 
+def use_specialized_device():
+    return paddle.get_flags(["FLAGS_specialize_device_in_dy2st"])[
+        "FLAGS_specialize_device_in_dy2st"
+    ]
+
+
+def parameters_persistent_mode_is_enabled():
+    return paddle.get_flags(["FLAGS_parameters_persistent_mode_in_dy2st"])[
+        "FLAGS_parameters_persistent_mode_in_dy2st"
+    ]
+
+
 def prim_is_enabled():
     return core._is_bwd_prim_enabled() or core._is_fwd_prim_enabled()
 
@@ -795,9 +899,11 @@ def compose_guards(*guard_creators):
         if not guard_creators:
             yield
             return
-        with guard_creators[0]():
-            with compose_guards(*guard_creators[1:])():
-                yield
+        with (
+            guard_creators[0](),
+            compose_guards(*guard_creators[1:])(),
+        ):
+            yield
 
     return composed_guard
 
@@ -925,3 +1031,26 @@ def patch_method_guard(
         yield
     finally:
         restorer(instance)
+
+
+def extract_tensor_dynamic_dims(
+    tensor: paddle.Tensor,
+) -> tuple[int]:
+    """
+    Extract dynamic dimensions from a paddle.Tensor.
+    Returns a list of dynamic dimensions or None if no dynamic dimensions exist.
+    """
+    if not isinstance(tensor, paddle.Tensor):
+        raise TypeError(
+            f"Expected a paddle.Tensor, but got {type(tensor).__name__}"
+        )
+
+    if not hasattr(tensor, DYNAMIC_DIMS_ATTR_NAME):
+        return []
+
+    dynamic_dims = getattr(tensor, DYNAMIC_DIMS_ATTR_NAME)
+    if not isinstance(dynamic_dims, tuple):
+        raise TypeError(
+            f"Expected {DYNAMIC_DIMS_ATTR_NAME} to be a tuple, but got {type(dynamic_dims).__name__}"
+        )
+    return dynamic_dims

@@ -19,6 +19,7 @@
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
+COMMON_DECLARE_bool(check_cuda_error);
 
 paddle::small_vector<std::vector<paddle::Tensor>,
                      egr::kSlotSmallVectorSize>  // NOLINT
@@ -30,6 +31,9 @@ ReshardGradNode::operator()(
 #ifdef PADDLE_WITH_DISTRIBUTE
   VLOG(3) << "Running AD API GRAD: "
           << "reshard_grad";
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("ReshardGradNode begin");
+  }
   // This 'Local_XXXGradNode' record event is different with
   // 'Global_XXXGradNode' event.
   // * 'Local_XXXGradNode' will only cover execution time of this function.
@@ -46,9 +50,10 @@ ReshardGradNode::operator()(
 
   // Collect GradIn Tensors, Attrs and Recovered TensorWrappers
   auto input = egr::EagerUtils::RecoverTensorWrapper(&this->input_);
-  const auto& dist_attr =
+  auto dist_attr =
       std::static_pointer_cast<phi::distributed::DistTensor>(input.impl())
           ->dist_attr();
+  dist_attr.clean_partial_status();
   auto& grad_out = hooked_grad[0][0];
   // Prepare Grad function call
 
@@ -105,7 +110,9 @@ ReshardGradNode::operator()(
     VLOG(4) << paddle::string::Sprintf(
         INPUT_PRINT_TEMPLATE, input_str, output_str);
   }
-
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("ReshardGradNode finish");
+  }
   return returns;
 #else
   PADDLE_THROW(common::errors::Unavailable(

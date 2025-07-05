@@ -127,6 +127,7 @@ from . import (
     linalg as linalg,
     signal as signal,
     tensor as tensor,
+    utils as utils,
 )
 from .autograd import (
     enable_grad,
@@ -611,17 +612,8 @@ if is_compiled_with_cinn():
     if os.path.exists(cuh_file):
         os.environ.setdefault('runtime_include_dir', runtime_include_dir)
 
-    if sys.version_info >= (3, 9):
-
-        data_file_path = resources.files('paddle.cinn_config')
-        os.environ['CINN_CONFIG_PATH'] = str(data_file_path)
-    else:
-        import pkg_resources
-
-        data_file_path = pkg_resources.resource_filename(
-            'paddle.cinn_config', ''
-        )
-        os.environ['CINN_CONFIG_PATH'] = data_file_path
+    data_file_path = resources.files('paddle.cinn_config')
+    os.environ['CINN_CONFIG_PATH'] = str(data_file_path)
 
 if __is_metainfo_generated and is_compiled_with_cuda():
     import os
@@ -656,6 +648,10 @@ if __is_metainfo_generated and is_compiled_with_cuda():
 
         cupti_dir_lib_path = package_dir + "/.." + "/nvidia/cuda_cupti/lib"
         set_flags({"FLAGS_cupti_dir": cupti_dir_lib_path})
+
+        if is_compiled_with_cinn():
+            cuda_cccl_path = package_dir + "/.." + "/nvidia/cuda_cccl/include/"
+            set_flags({"FLAGS_cuda_cccl_dir": cuda_cccl_path})
 
     elif (
         platform.system() == 'Windows'

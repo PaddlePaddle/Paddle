@@ -117,7 +117,7 @@ symbol::ShapeOrDataDimExprs Pool2dRawInferSymbolicShape(
         op->attributes().at("strides").dyn_cast<pir::ArrayAttribute>();
     for (size_t i = 0; i < stride_attr.size(); i++) {
       res.emplace_back(
-          stride_attr.at(i).dyn_cast<pir::Int32Attribute>().data());
+          stride_attr.at(i).dyn_cast<pir::Int64Attribute>().data());
     }
     return res;
   }();
@@ -156,7 +156,7 @@ symbol::ShapeOrDataDimExprs Pool2dRawInferSymbolicShape(
         op->attributes().at("paddings").dyn_cast<pir::ArrayAttribute>();
     for (size_t i = 0; i < padding_attr.size(); i++) {
       paddings.emplace_back(
-          padding_attr.at(i).dyn_cast<pir::Int32Attribute>().data());
+          padding_attr.at(i).dyn_cast<pir::Int64Attribute>().data());
     }
     return GetRealPadding(paddings,
                           global_pooling,
@@ -795,7 +795,9 @@ bool CropOpInferSymbolicShape(pir::Operation *op,
 
   for (size_t i = 0; i < in_shape.size(); ++i) {
     if (in_shape[i].isa<int64_t>()) {
-      if (in_shape[i].Get<int64_t>() == -1) {
+      if (x_shape[i].Get<int64_t>() == 0) {  // x is 0-size
+        out_dims.push_back(symbol::DimExpr(x_shape[i]));
+      } else if (in_shape[i].Get<int64_t>() == -1) {
         out_dims.push_back(symbol::DimExpr(x_shape[i] - offsets[i]));
       } else {
         out_dims.push_back(symbol::DimExpr(in_shape[i]));
@@ -896,6 +898,9 @@ bool DiagOpInferSymbolicShape(pir::Operation *op,
         } else {
           size_ = x_shape[1].dyn_cast<int64_t>();
         }
+      }
+      if (size_ < 0) {
+        size_ = 0;
       }
       infer_context->SetShapeOrDataForValue(
           op->result(0), symbol::TensorShapeOrDataDimExprs({size_}));
@@ -2168,6 +2173,15 @@ bool MatrixRankOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
 
+  const auto &GetProduct = [&](const auto &dim_exprs) {
+    symbol::DimExpr product{1};
+    for (const auto &dim_expr : dim_exprs) {
+      product = product * dim_expr;
+    }
+    return product;
+  };
+  const auto &x_numel = GetProduct(x_shape);
+
   // 确保输入x的维度大于等于2
   PADDLE_ENFORCE_GE(x_shape.size(),
                     2,
@@ -2177,8 +2191,8 @@ bool MatrixRankOpInferSymbolicShape(
   // 获取Hermitian属性
   bool hermitian = op->attribute<pir::BoolAttribute>("hermitian").data();
 
-  // 如果hermitian为true，确保输入x是方阵
-  if (hermitian) {
+  // 如果hermitian为true，确保输入x是方阵,0-size Tensor不需要此检查
+  if (hermitian && x_numel != 0) {
     infer_context->AddEqualCstr(x_shape[x_shape.size() - 2],
                                 x_shape[x_shape.size() - 1]);
   }
@@ -2314,6 +2328,7 @@ bool NanmedianOpInferSymbolicShape(
   if (mode == "avg") {
     median_shape.emplace_back(2);
   }
+
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{
@@ -2322,7 +2337,6 @@ bool NanmedianOpInferSymbolicShape(
       op->result(1),
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(median_shape)});
-
   return true;
 }
 
@@ -2841,8 +2855,8 @@ bool Pool2dOpInferSymbolicShape(pir::Operation *op,
 
 bool Pool3dOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
-  std::vector<int> kernel_size_ =
-      paddle::dialect::details::GetVectorAttr<int>(op, "kernel_size");
+  std::vector<int64_t> kernel_size_ =
+      paddle::dialect::details::GetVectorAttr<int64_t>(op, "kernel_size");
   std::vector<symbol::DimExpr> kernel_size;
   for (size_t i = 0; i < kernel_size_.size(); ++i) {
     kernel_size.push_back(symbol::DimExpr(kernel_size_[i]));

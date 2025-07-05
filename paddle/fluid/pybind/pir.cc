@@ -91,6 +91,7 @@
 
 #ifdef PADDLE_WITH_CINN
 #include "paddle/ap/include/paddle/hlir/op_dialect.h"
+#include "paddle/ap/include/paddle/pass/add_pcc_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_cinn_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/check_infer_symbolic_util.h"
@@ -508,6 +509,10 @@ void BindProgram(py::module *m) {
             return vars;
           },
           return_value_policy::reference)
+      .def("_list_named_vars",
+           [](std::shared_ptr<Program> self) {
+             return name_analysis::GetAllNamedValues(*self);
+           })
       .def(
           "global_block",
           [](const std::shared_ptr<Program> &self) { return self->block(); },
@@ -1286,14 +1291,14 @@ const phi::DDim &GetTensorDims(Type type) {
   } else if (auto sparse_coo_tensor_type =
                  type.dyn_cast<SparseCooTensorType>()) {
     return sparse_coo_tensor_type.dims();
-  } else if (auto sparse_csr_tensr_type =
+  } else if (auto sparse_csr_tensor_type =
                  type.dyn_cast<SparseCsrTensorType>()) {
-    return sparse_csr_tensr_type.dims();
+    return sparse_csr_tensor_type.dims();
   } else if (auto dense_array_type = type.dyn_cast<DenseTensorArrayType>()) {
     return dense_array_type.dims();
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "Currently, we can only get shape for dense and selsect rows type."));
+        "Currently, we can only get shape for dense and select rows type."));
   }
 }
 const phi::DDim &GetValueDims(Value value) {
@@ -2544,6 +2549,8 @@ void BindUtils(pybind11::module *m) {
   m->def("append_print", AppendPrintOp);
   m->def("append_prints", AppendPrintOps);
   m->def("fake_value", FakeValue);
+  m->def("get_fake_value_name",
+         []() -> std::string { return paddle::framework::kFakeVarName; });
   m->def("is_fake_value", IsFakeValue);
   m->def("get_current_insertion_point", []() -> PyInsertionPoint {
     return {ApiBuilder::Instance().GetCurrentInsertionPoint()};
@@ -2775,6 +2782,32 @@ void ApplyCinnPass(Program &program) {  // NOLINT
 #endif
 }
 
+void ApplyPccPass(Program &program) {  // NOLINT
+#ifdef PADDLE_WITH_CINN
+  auto CreatePassManager = [&]() -> std::shared_ptr<pir::PassManager> {
+    pir::IrContext *ctx = pir::IrContext::Instance();
+    ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+    ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+    ctx->GetOrRegisterDialect<ap::dialect::OperatorDialect>();
+    ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
+    auto pass_manager = std::make_shared<pir::PassManager>(ctx);
+    if (FLAGS_print_ir && VLOG_IS_ON(4)) {
+      pass_manager->EnableIRPrinting();
+    }
+    auto &shape_analysis = pir::ShapeAnalysisManager::Instance().Get(&program);
+    pass_manager->SetValueReplacedHook([&](pir::Value from, pir::Value to) {
+      shape_analysis.ShareShapeOrData(from, to);
+    });
+    return pass_manager;
+  };
+  ap::paddle::ApplyPccPass(&program, CreatePassManager);
+#else
+  PADDLE_THROW(common::errors::Unimplemented(
+      "Currently we only support CINN Pass for Pir under @to_static, please "
+      "compile PaddlePaddle with CINN"));
+#endif
+}
+
 void CheckInferSymbolicIfNeed(Program &program) {  // NOLINT
 #ifdef PADDLE_WITH_CINN
   auto CreatePassManager = [&]() -> std::shared_ptr<pir::PassManager> {
@@ -2848,6 +2881,7 @@ std::shared_ptr<Program> ApplyFusedBnAddActPass(
 
 void BindIrPass(pybind11::module *m) {
   m->def("apply_cinn_pass", ApplyCinnPass);
+  m->def("apply_pcc_pass", ApplyPccPass);
   m->def("check_infer_symbolic_if_need", CheckInferSymbolicIfNeed);
   m->def("infer_symbolic_shape_pass", InferSymbolicShapePass);
   m->def("apply_cse_pass", ApplyCommonSubexpressionEliminationPass);
@@ -3328,7 +3362,7 @@ void BindShapeOrDataDimExprs(pybind11::module *m) {
               if (actual.size() != expect.size()) {
                 LOG(ERROR) << compare_type << " expect size " << expect.size()
                            << " is not equal to actual size " << actual.size()
-                           << " . The detailed infermation is as follows:";
+                           << " . The detailed information is as follows:";
                 PrintExpectAndActual(compare_type);
                 return false;
               } else if (actual.empty()) {
@@ -3349,7 +3383,7 @@ void BindShapeOrDataDimExprs(pybind11::module *m) {
                       << compare_type << " expect[" << i
                       << "]: " << expect.at(i) << " is not equal to actual["
                       << i << "]: " << actual.at(i)
-                      << " . The detailed infermation is as follows:";
+                      << " . The detailed information is as follows:";
                   PrintExpectAndActual(compare_type);
                   return false;
                 }

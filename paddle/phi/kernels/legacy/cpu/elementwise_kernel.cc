@@ -136,6 +136,8 @@ PD_REGISTER_KERNEL(remainder_raw,
                    phi::RemainderRawKernel,
                    float,
                    double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>,
                    int,
                    int64_t) {}
 PD_REGISTER_KERNEL(floor_divide_raw,
@@ -159,4 +161,6 @@ PD_REGISTER_KERNEL(elementwise_pow_raw,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

@@ -31,13 +31,28 @@ void AsComplexStridedKernel(const Context& dev_ctx,
         "FLAGS_use_stride_kernel is closed. Strided kernel "
         "be called, something wrong has happened!"));
   }
+  if (out && out->numel() == 0) {
+    if (x.dtype() == DataType::FLOAT32) {
+      out->set_type(DataType::COMPLEX64);
+    } else if (x.dtype() == DataType::FLOAT64) {
+      out->set_type(DataType::COMPLEX128);
+    } else {
+      PADDLE_THROW(common::errors::Unimplemented(
+          "as_complex is not supported data type (%s).",
+          DataTypeToString(x.dtype())));
+    }
+    out->set_offset(x.offset());
+    out->ResetHolder(x.Holder());
+    out->ShareInplaceVersionCounterWith(x);
+    return;
+  }
 
   PADDLE_ENFORCE_EQ(
       x.strides()[x.strides().size() - 1],
       1,
       common::errors::InvalidArgument(
           "Expected the stride of last dimension of input(X) to be 1."
-          "But received %d. This means that the last dimension of the"
+          "But received %d. This means that the last dimension of the "
           "Tensor(x) is not continuous and cannot be as_complex directly."
           "You can call x.contiguous() to make the Tensor(x) contiguous first.",
           x.strides()[x.strides().size() - 1]));

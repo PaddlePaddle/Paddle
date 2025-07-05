@@ -48,67 +48,69 @@ class TestAddReaderDependency(unittest.TestCase):
             self.run_main(base.CUDAPlace(0))
 
     def run_main(self, place):
-        with base.program_guard(base.Program(), base.Program()):
-            with base.scope_guard(base.Scope()):
-                tmp_in = paddle.static.data(
-                    name='tmp_in', dtype='float32', shape=[1]
-                )
-                loader = base.io.DataLoader.from_generator(
-                    feed_list=[tmp_in],
-                    capacity=16,
-                    iterable=False,
-                    use_double_buffer=self.use_double_buffer,
-                )
+        with (
+            base.program_guard(base.Program(), base.Program()),
+            base.scope_guard(base.Scope()),
+        ):
+            tmp_in = paddle.static.data(
+                name='tmp_in', dtype='float32', shape=[1]
+            )
+            loader = base.io.DataLoader.from_generator(
+                feed_list=[tmp_in],
+                capacity=16,
+                iterable=False,
+                use_double_buffer=self.use_double_buffer,
+            )
 
-                def data_source():
-                    for _ in range(self.batch_num):
-                        time.sleep(self.sleep_time)  # sleep some times
-                        yield np.random.uniform(
-                            low=-1, high=1, size=[1]
-                        ).astype('float32'),
+            def data_source():
+                for _ in range(self.batch_num):
+                    time.sleep(self.sleep_time)  # sleep some times
+                    yield np.random.uniform(low=-1, high=1, size=[1]).astype(
+                        'float32'
+                    ),
 
-                persistable_in = paddle.static.data(
-                    name='persistable_in', dtype='float32', shape=[1]
-                )
-                persistable_in.persistable = True
+            persistable_in = paddle.static.data(
+                name='persistable_in', dtype='float32', shape=[1]
+            )
+            persistable_in.persistable = True
 
-                persistable_in = inplace_add(persistable_in, bias=1)
-                prog = base.CompiledProgram(base.default_main_program())
+            persistable_in = inplace_add(persistable_in, bias=1)
+            prog = base.CompiledProgram(base.default_main_program())
 
-                exe = base.Executor(place)
+            exe = base.Executor(place)
 
-                loader.set_batch_generator(data_source)
-                loader.start()
-                batch_id = 0
-                try:
-                    while True:
-                        if batch_id == 0:
-                            feed = {
-                                persistable_in.name: np.array([-1]).astype(
-                                    'float32'
-                                )
-                            }
-                        else:
-                            feed = None
+            loader.set_batch_generator(data_source)
+            loader.start()
+            batch_id = 0
+            try:
+                while True:
+                    if batch_id == 0:
+                        feed = {
+                            persistable_in.name: np.array([-1]).astype(
+                                'float32'
+                            )
+                        }
+                    else:
+                        feed = None
 
-                        (ret,) = exe.run(
-                            prog, feed=feed, fetch_list=[persistable_in]
-                        )
-                        self.assertEqual(ret.shape, (1,))
-                        self.assertEqual(ret[0], batch_id)
-                        batch_id += 1
-                except base.core.EOFException:
-                    loader.reset()
-
-                    self.assertEqual(batch_id, self.batch_num)
-                    t = (
-                        base.global_scope()
-                        .find_var(persistable_in.name)
-                        .get_tensor()
+                    (ret,) = exe.run(
+                        prog, feed=feed, fetch_list=[persistable_in]
                     )
-                    t_val = np.array(t)
-                    self.assertEqual(t_val.shape, (1,))
-                    self.assertEqual(t_val[0] + 1, batch_id)
+                    self.assertEqual(ret.shape, (1,))
+                    self.assertEqual(ret[0], batch_id)
+                    batch_id += 1
+            except base.core.EOFException:
+                loader.reset()
+
+                self.assertEqual(batch_id, self.batch_num)
+                t = (
+                    base.global_scope()
+                    .find_var(persistable_in.name)
+                    .get_tensor()
+                )
+                t_val = np.array(t)
+                self.assertEqual(t_val.shape, (1,))
+                self.assertEqual(t_val[0] + 1, batch_id)
 
 
 class TestAddReaderDependencyWithoutDoubleBuffer(TestAddReaderDependency):

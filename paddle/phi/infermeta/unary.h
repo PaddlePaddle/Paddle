@@ -248,6 +248,13 @@ void ExpandInferMeta(const MetaTensor& x,
                      const IntArray& shape,
                      MetaTensor* out);
 
+void ExpandModalityExpertIdInferMeta(const MetaTensor& expert_id,
+                                     int64_t num_expert_per_modality,
+                                     int64_t group_size,
+                                     int64_t modality_offset,
+                                     bool is_group_expert,
+                                     MetaTensor* expert_id_out);
+
 void FakeChannelWiseQuantizeAbsMaxInferMeta(const MetaTensor& x,
                                             int bit_length,
                                             int round_type,
@@ -348,6 +355,18 @@ void FrameInferMeta(const MetaTensor& x,
                     int axis,
                     MetaTensor* out,
                     MetaConfig = MetaConfig());
+
+void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
+                                float epsilon,
+                                bool using_1x128_vec_quant,
+                                bool input_transpose,
+                                bool output_scale_transpose,
+                                bool using_e5m2,
+                                bool using_pow2_scale,
+                                MetaTensor* out,
+                                MetaTensor* scale,
+                                MetaTensor* out_transposed,
+                                MetaTensor* scale_transposed);
 
 void FullBatchSizeLikeInferMeta(const MetaTensor& x,
                                 const std::vector<int>& shape,
@@ -531,10 +550,10 @@ void PNormInferMeta(const MetaTensor& x,
                     MetaTensor* out);
 
 void PoolInferMeta(const MetaTensor& x,
-                   const std::vector<int>& kernel_size,
-                   const std::vector<int>& strides,
-                   const std::vector<int>& paddings,
-                   const std::vector<int>& dilations,
+                   const std::vector<int64_t>& kernel_size,
+                   const std::vector<int64_t>& strides,
+                   const std::vector<int64_t>& paddings,
+                   const std::vector<int64_t>& dilations,
                    bool ceil_mode,
                    bool exclusive,
                    const std::string& data_format,
@@ -547,9 +566,9 @@ void PoolInferMeta(const MetaTensor& x,
 
 void Pool2DInferMeta(const MetaTensor& x,
                      const IntArray& kernel_size,
-                     const std::vector<int>& strides,
-                     const std::vector<int>& paddings,
-                     const std::vector<int>& dilations,
+                     const std::vector<int64_t>& strides,
+                     const std::vector<int64_t>& paddings,
+                     const std::vector<int64_t>& dilations,
                      bool ceil_mode,
                      bool exclusive,
                      const std::string& data_format,
@@ -619,6 +638,19 @@ void ReduceIntArrayAxisInferMeta(const MetaTensor& x,
                                  bool keep_dim,
                                  MetaTensor* out,
                                  MetaConfig config = MetaConfig());
+
+void StrictReduceIntArrayAxisInferMetaBase(const MetaTensor& x,
+                                           const IntArray& axis,
+                                           bool keep_dim,
+                                           bool reduce_all,
+                                           MetaTensor* out,
+                                           MetaConfig config = MetaConfig());
+
+void StrictReduceIntArrayAxisInferMeta(const MetaTensor& x,
+                                       const IntArray& axis,
+                                       bool keep_dim,
+                                       MetaTensor* out,
+                                       MetaConfig config = MetaConfig());
 
 void ReduceScatterInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
 
@@ -1001,5 +1033,18 @@ void ArrayPopInferMeta(const MetaTensor& array,
                        MetaTensor* array_out,
                        MetaTensor* out,
                        MetaConfig config = MetaConfig());
+
+void BuildSrcRankAndLocalExpertIdInferMeta(
+    const MetaTensor& expert_num_global_tensor,
+    const std::vector<int64_t>& expert_num_global,
+    int64_t num_local_experts,
+    MetaTensor* src_rank,
+    MetaTensor* local_expert_id);
+
+void IntBincountInferMeta(const MetaTensor& x,
+                          int64_t low,
+                          int64_t high,
+                          int64_t dtype,
+                          MetaTensor* out);
 
 }  // namespace phi

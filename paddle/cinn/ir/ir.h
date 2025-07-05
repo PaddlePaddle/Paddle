@@ -35,10 +35,6 @@
 
 namespace cinn {
 
-namespace poly {
-class Stage;
-}  // namespace poly
-
 namespace ir {
 class Buffer;
 class BufferRange;

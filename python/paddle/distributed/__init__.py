@@ -18,7 +18,10 @@ from .value_patch import monkey_patch_value_in_dist
 
 monkey_patch_value_in_dist()
 from paddle.base.core import Placement, ReduceType
-from paddle.distributed.fleet.base.topology import ParallelMode
+from paddle.distributed.fleet.base.topology import (
+    ParallelMode,
+    create_nccl_config,
+)
 from paddle.distributed.fleet.dataset import InMemoryDataset, QueueDataset
 
 from . import (
@@ -35,6 +38,7 @@ from .auto_parallel.api import (
     ShardingStage3,
     Strategy,
     dtensor_from_fn,
+    enable_auto_dp,  # noqa: F401
     in_auto_parallel_align_mode,  # noqa: F401
     reshard,
     shard_dataloader,
@@ -47,10 +51,15 @@ from .auto_parallel.api import (
 )
 from .auto_parallel.high_level_api import to_distributed
 from .auto_parallel.interface import get_mesh, set_mesh
+from .auto_parallel.intermediate.context_parallel import (
+    ContextParallel,
+    PrepareContextParallel,
+)
 from .auto_parallel.intermediate.parallelize import parallelize
 from .auto_parallel.intermediate.pipeline_parallel import SplitPoint
 from .auto_parallel.intermediate.tensor_parallel import (
     ColWiseParallel,
+    ConvParallel,
     PrepareLayerInput,
     PrepareLayerOutput,
     RowWiseParallel,
@@ -216,4 +225,8 @@ __all__ = [
     "set_mesh",
     "get_mesh",
     "to_distributed",
+    "ConvParallel",
+    "ContextParallel",
+    "PrepareContextParallel",
+    "create_nccl_config",
 ]

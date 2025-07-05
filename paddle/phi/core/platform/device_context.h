@@ -55,7 +55,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_DNNL
 #include "dnnl.hpp"  // NOLINT
-#include "paddle/fluid/framework/data_layout.h"
+#include "paddle/common/layout.h"
 #include "paddle/phi/backends/onednn/onednn_context.h"
 #endif
 
@@ -108,7 +108,8 @@ class IPUDeviceContext
 namespace xpu = baidu::xpu::api;
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+    !defined(PADDLE_WITH_CUSTOM_DEVICE)
 using CUDAPinnedDeviceContext = phi::GPUPinnedContext;
 #endif
 
@@ -137,7 +138,8 @@ struct DefaultDeviceContextType<phi::IPUPlace> {
 };
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+    !defined(PADDLE_WITH_CUSTOM_DEVICE)
 template <>
 struct DefaultDeviceContextType<phi::GPUPinnedPlace> {
   using TYPE = paddle::platform::CUDAPinnedDeviceContext;

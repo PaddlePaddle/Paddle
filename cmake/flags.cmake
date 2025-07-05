@@ -152,7 +152,6 @@ if(NOT WIN32)
       -fdata-sections
       -Wl
       -gc-sections
-      -Werror
       -Wall
       -Wextra
       -Wno-unused-parameter
@@ -245,7 +244,6 @@ if(APPLE)
   set(COMMON_FLAGS
       -Wno-deprecated-register
       -Werror=format
-      -Werror=inconsistent-missing-override
       -Werror=braced-scalar-init
       -Werror=uninitialized
       -Werror=tautological-constant-out-of-range-compare

@@ -8,7 +8,7 @@ on:
 permissions: read-all
 
 concurrency:
-  group: ${{ github.event.pull_request.number }}
+  group: ${{ github.event.pull_request.number }}-${{ github.workflow }}
   cancel-in-progress: true
 
 env:
@@ -32,9 +32,19 @@ jobs:
     with:
       docker_cpu_image: ${{ needs.build-docker.outputs.docker_cpu_image }}
 
+  mac:
+    name: Mac-CPU
+    uses: ./.github/workflows/_Mac.yml
+    needs: clone
+
   xpu:
     name: Linux-XPU
     uses: ./.github/workflows/_Linux-XPU.yml
+    needs: clone
+
+  dcu:
+    name: Linux-DCU
+    uses: ./.github/workflows/_Linux-DCU.yml
     needs: clone
 
   inference:
@@ -47,29 +57,20 @@ jobs:
   cpu:
     name: Linux-CPU
     uses: ./.github/workflows/_Linux-CPU.yml
-    needs: clone
+    needs: build-docker
+    with:
+      docker_cpu_image: ${{ needs.build-docker.outputs.docker_cpu_image }}
 
   npu:
     name: Linux-NPU
     uses: ./.github/workflows/_Linux-NPU.yml
     needs: cpu
+    with:
+      can-skip: ${{ needs.cpu.outputs.can-skip }}
 
   distribute:
     name: Distribute-stable
     uses: ./.github/workflows/_Distribute-stable.yml
-    needs: clone
-
-  build:
-    name: Linux-build
-    uses: ./.github/workflows/_Linux-build.yml
     needs: build-docker
     with:
-      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
-
-  static-check:
-    name: Static-Check
-    uses: ./.github/workflows/_Static-Check.yml
-    needs: [build-docker, build]
-    with:
-      can-skip: ${{ needs.build.outputs.can-skip }}
-      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
+      docker_distribute_image: ${{ needs.build-docker.outputs.docker_distribute_image }}

@@ -1,0 +1,156 @@
+name: Model-benchmark
+
+on:
+  workflow_call:
+    inputs:
+      docker_build_image:
+        type: string
+        required: true
+      can-skip:
+        type: string
+        required: false
+
+env:
+  PR_ID: ${{ github.event.pull_request.number }}
+  COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+  ci_scripts: /workspace/paddle/ci
+  BRANCH: ${{ github.event.pull_request.base.ref }}
+  TASK: paddle-CI-${{ github.event.pull_request.number }}-Model-benchmark
+  CI_name: model-benchmark
+  no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  check-bypass:
+    name: Check bypass for Api-Benchmark
+    uses: ./.github/workflows/check-bypass.yml
+    with:
+      workflow-name: 'model-benchmark'
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  model-benchmark:
+    name: Benchmark test
+    if: ${{ inputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' }}
+    runs-on:
+      group: model-bm
+    steps:
+      - name: Check docker image and run container
+        env:
+          AGILE_PULL_ID: ${{ github.event.pull_request.number }}
+          GIT_PR_ID: ${{ github.event.pull_request.number }}
+          PRID: ${{ github.event.pull_request.number }}
+          AGILE_REVISION: ${{ github.event.pull_request.head.sha }}
+          CUDA_ARCH_NAME: Volta
+          CCACHE_MAXSIZE: 150G
+          CCACHE_LIMIT_MULTIPLE: 0.8
+          benchmark_ci_cache: /home/data/cfs/.cache/model_benchmark/new_benchmark
+          ROOT_DIR: /workspace
+          bos_path: modelBK_CI
+          CACHE_DIR: /root/.cache/model_benchmark
+          work_dir: /workspace/paddle
+          AGILE_COMMENTS: '[{"Commit":"${{ github.event.pull_request.head.sha }}","author":"${{ github.event.pull_request.user.login }}"}]'
+        run: |
+          container_name=${TASK}-${core_index}-$(date +%Y%m%d-%H%M%S)
+          echo "container_name=${container_name}" >> ${{ github.env }}
+          docker_image=${{ inputs.docker_build_image }}
+          docker run -d -t --gpus all --name ${container_name} --shm-size=128g \
+            -v "/home/data/cfs:/home/data/cfs" \
+            -v "/home/data/cfs/.cache:/root/.cache" \
+            -v "/dev/shm:/dev/shm" \
+            -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
+            -v ${{ github.workspace }}:/workspace \
+            -e PR_ID \
+            -e COMMIT_ID \
+            -e BRANCH \
+            -e ci_scripts \
+            -e no_proxy \
+            -e CI_name \
+            -e AGILE_PULL_ID \
+            -e GIT_PR_ID \
+            -e PRID \
+            -e AGILE_REVISION \
+            -e CUDA_ARCH_NAME \
+            -e CCACHE_MAXSIZE \
+            -e CCACHE_LIMIT_MULTIPLE \
+            -e benchmark_ci_cache \
+            -e bos_path \
+            -e ROOT_DIR \
+            -e CACHE_DIR \
+            -e work_dir \
+            -e AGILE_COMMENTS \
+            -w /workspace --network host ${docker_image}
+
+      - name: Prepare environment and download paddle
+        run: |
+          docker exec ${container_name} bash -c '
+          rm -rf * .[^.]*
+          echo $AGILE_COMMENTS
+          DEVICE_ID=$(cat /sys/class/dmi/id/product_uuid |awk -F "-" "{print \$5}")
+          echo "export DEVICE_ID=$DEVICE_ID" >> ~/.bashrc
+          echo $DEVICE_ID
+          echo "Downloading build.tar.gz"
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+          echo "Extracting build.tar.gz"
+          tar --use-compress-program="pzstd -1" -xpf build.tar.gz
+          rm build.tar.gz
+          git config --global --add safe.directory ${work_dir}
+          cd paddle && git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
+          source ${ci_scripts}/model_benchmark.sh
+          check_paddle ${{ github.env }}
+          '
+
+      - name: Download model_benchmark_ci
+        if: ${{ env.can-skip != 'true' }}
+        run: |
+          docker exec ${container_name} bash -c '
+          source ~/.bashrc
+          source ${ci_scripts}/model_benchmark.sh
+          wget_model_benchmark_ci
+          '
+
+      - name: Download paddlescope
+        if: ${{ env.can-skip != 'true' }}
+        run: |
+          docker exec ${container_name} bash -c '
+          source ~/.bashrc
+          source ${ci_scripts}/model_benchmark.sh
+          get_paddlescope_tar
+          '
+
+      - name: Check skip
+        if: ${{ env.can-skip != 'true' }}
+        run: |
+          docker exec ${container_name} bash -c '
+          source ~/.bashrc
+          source ${ci_scripts}/model_benchmark.sh
+          check_skip ${{ github.env }}
+          '
+
+      - name: Check model benchmark
+        if: ${{ env.can-skip != 'true' }}
+        run: |
+          docker exec ${container_name} bash -c '
+          source ~/.bashrc
+          source ${ci_scripts}/model_benchmark.sh
+          check_model_benchmark
+          if [[ $EXCODE -eq 0 ]];then
+              echo "Congratulations!  Your PR passed the model benchmark ci."
+          elif [[ $EXCODE -eq 10 ]];then
+              echo "Sorry, some models failed to run, Please check the result_html.html."
+          elif [[ $EXCODE -eq 11 ]];then
+              echo "Sorry, some models have abnormal performance, Please check the result_html.html."
+          else
+              echo "Sorry, There are environmental issues, please contact QA(guomengmeng01) for exemption."
+          fi
+          '
+
+      - name: Terminate and delete the container
+        if: always()
+        run: |
+          set +e
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+          docker rm -f ${{ env.container_name }}

@@ -32,7 +32,7 @@ bool ArangeOpInferSymbolicShape(pir::Operation *op,
                  result.type().isa<paddle::dialect::DenseTensorType>();
     PADDLE_ENFORCE_EQ(check,
                       true,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "result for arange must be DenseTensorType"));
     const auto dims =
         result.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
@@ -56,9 +56,9 @@ bool ArangeOpInferSymbolicShape(pir::Operation *op,
     const auto &end = end_shape_or_data.data()->at(0);
     const auto &step = step_shape_or_data.data()->at(0);
     std::vector<symbol::DimExpr> out_dims;
-    // TODO(lanxianghit, jiahy0825): here should be ceil((end - start) / step),
-    // but DimExpr doesn't support ceil and float now
-    out_dims.emplace_back((end - start) / step);
+    // Use ceiling div to avoid incorrect shape calculation
+    // introduced by rounded division
+    out_dims.emplace_back((end - start + step - 1) / step);
     return symbol::ShapeOrDataDimExprs{
         symbol::TensorShapeOrDataDimExprs(out_dims)};
   }();

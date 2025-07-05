@@ -145,34 +145,36 @@ class TestFuseResUnitBase(unittest.TestCase):
     def build_program(
         self, main_program, startup_program, is_shortcut=True, is_training=False
     ):
-        with paddle.static.program_guard(main_program, startup_program):
-            with paddle.utils.unique_name.guard():
-                x1 = paddle.static.data(
-                    name="input",
-                    shape=[-1, self.height, self.width, self.hidden],
-                    dtype='float16',
-                )
-                layer1 = ConvBNActLayer(self.hidden, self.hidden, 3)
-                resunit_layer1 = ResUnit(self.hidden, is_shortcut)
-                resunit_layer2 = ResUnit(self.hidden, is_shortcut)
-                layer2 = ConvBNActLayer(self.hidden, self.hidden, 3)
-                optimizer = None
-                with paddle.static.amp.fp16_guard():
-                    out = layer1(x1)
-                    out = resunit_layer1(out)
-                    out = resunit_layer2(out)
-                    out = layer2(out)
-                    loss = paddle.mean(out)
-                    if is_training:
-                        optimizer = paddle.optimizer.SGD(learning_rate=0.001)
-                        optimizer = paddle.static.amp.decorate(
-                            optimizer=optimizer,
-                            init_loss_scaling=128.0,
-                            use_dynamic_loss_scaling=True,
-                            use_pure_fp16=True,
-                            use_fp16_guard=True,
-                        )
-                        optimizer.minimize(loss)
+        with (
+            paddle.static.program_guard(main_program, startup_program),
+            paddle.utils.unique_name.guard(),
+        ):
+            x1 = paddle.static.data(
+                name="input",
+                shape=[-1, self.height, self.width, self.hidden],
+                dtype='float16',
+            )
+            layer1 = ConvBNActLayer(self.hidden, self.hidden, 3)
+            resunit_layer1 = ResUnit(self.hidden, is_shortcut)
+            resunit_layer2 = ResUnit(self.hidden, is_shortcut)
+            layer2 = ConvBNActLayer(self.hidden, self.hidden, 3)
+            optimizer = None
+            with paddle.static.amp.fp16_guard():
+                out = layer1(x1)
+                out = resunit_layer1(out)
+                out = resunit_layer2(out)
+                out = layer2(out)
+                loss = paddle.mean(out)
+                if is_training:
+                    optimizer = paddle.optimizer.SGD(learning_rate=0.001)
+                    optimizer = paddle.static.amp.decorate(
+                        optimizer=optimizer,
+                        init_loss_scaling=128.0,
+                        use_dynamic_loss_scaling=True,
+                        use_pure_fp16=True,
+                        use_fp16_guard=True,
+                    )
+                    optimizer.minimize(loss)
         return loss.name, optimizer
 
     def cal_output(self, enable_fusion):

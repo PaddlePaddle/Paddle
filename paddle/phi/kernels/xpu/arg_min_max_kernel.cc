@@ -31,7 +31,7 @@ void ArgMaxKernel(const Context& dev_ctx,
                   bool flatten,
                   DataType dtype,
                   DenseTensor* out) {
-  PADDLE_ENFORCE_GT(
+  PADDLE_ENFORCE_GE(
       x.numel(),
       0,
       common::errors::InvalidArgument(
@@ -61,6 +61,7 @@ void ArgMaxKernel(const Context& dev_ctx,
   auto xdims_vec = common::vectorize<int64_t>(x_dims);
   if (dtype != DataType::INT32) {
     dev_ctx.template Alloc<int64_t>(out);
+    if (x.numel() == 0) return;
     if (x.dims().size() == 0) {
       int r = xpu::constant(dev_ctx.x_context(),
                             out->data<int64_t>(),
@@ -76,6 +77,8 @@ void ArgMaxKernel(const Context& dev_ctx,
                         axis_val);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "argmax");
   } else {
+    dev_ctx.template Alloc<int>(out);
+    if (x.numel() == 0) return;
     DenseTensor out_int64;
     out_int64.Resize(out->dims());
     dev_ctx.template Alloc<int64_t>(&out_int64);
@@ -94,7 +97,6 @@ void ArgMaxKernel(const Context& dev_ctx,
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "argmax");
     }
 
-    dev_ctx.template Alloc<int>(out);
     int r = xpu::cast<int64_t, int>(dev_ctx.x_context(),
                                     out_int64.data<int64_t>(),
                                     out->data<int>(),
@@ -112,7 +114,7 @@ void ArgMinKernel(const Context& dev_ctx,
                   bool flatten,
                   DataType dtype,
                   DenseTensor* out) {
-  PADDLE_ENFORCE_GT(
+  PADDLE_ENFORCE_GE(
       x.numel(),
       0,
       common::errors::InvalidArgument(
@@ -142,6 +144,7 @@ void ArgMinKernel(const Context& dev_ctx,
   auto xdims_vec = common::vectorize<int64_t>(x_dims);
   if (dtype != DataType::INT32) {
     dev_ctx.template Alloc<int64_t>(out);
+    if (x.numel() == 0) return;
     if (x.dims().size() == 0) {
       int r = xpu::constant(dev_ctx.x_context(),
                             out->data<int64_t>(),
@@ -157,6 +160,8 @@ void ArgMinKernel(const Context& dev_ctx,
                         axis_val);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "argmin");
   } else {
+    dev_ctx.template Alloc<int>(out);
+    if (x.numel() == 0) return;
     DenseTensor out_int64;
     out_int64.Resize(out->dims());
     dev_ctx.template Alloc<int64_t>(&out_int64);
@@ -175,7 +180,6 @@ void ArgMinKernel(const Context& dev_ctx,
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "argmin");
     }
 
-    dev_ctx.template Alloc<int>(out);
     int r = xpu::cast<int64_t, int>(dev_ctx.x_context(),
                                     out_int64.data<int64_t>(),
                                     out->data<int>(),

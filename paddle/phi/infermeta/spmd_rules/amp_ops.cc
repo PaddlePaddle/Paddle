@@ -48,7 +48,7 @@ SpmdInfo CheckFiniteAndUnscaleSpmd(const std::vector<DistMetaTensor>& xs,
   TensorDistAttr found_infinite_attr =
       CopyTensorDistAttrForOutput(scale.dist_attr());
   found_infinite_attr.set_partial_status(partial_on_dims);
-  found_infinite_attr.set_dims_mapping({-1});
+  found_infinite_attr.set_dims_mapping(std::vector<int64_t>{-1});
   return {{xs_attrs, scale.dist_attr()}, {xs_attrs, found_infinite_attr}};
 }
 
@@ -70,7 +70,7 @@ SpmdInfo UpdateLossScalingSpmd(const std::vector<DistMetaTensor>& xs,
   }
   TensorDistAttr found_infinite_attr =
       CopyTensorDistAttrForOutput(found_infinite.dist_attr());
-  found_infinite_attr.set_dims_mapping({-1});
+  found_infinite_attr.set_dims_mapping(std::vector<int64_t>{-1});
   return {{xs_attrs,
            found_infinite_attr,
            prev_loss_scaling.dist_attr(),

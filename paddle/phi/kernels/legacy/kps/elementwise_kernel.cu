@@ -147,6 +147,8 @@ PD_REGISTER_KERNEL(remainder_raw,
                    double,
                    int,
                    float16,
+                   complex64,
+                   complex128,
                    int64_t,
                    bfloat16) {}
 PD_REGISTER_KERNEL(floor_divide_raw,
@@ -171,5 +173,7 @@ PD_REGISTER_KERNEL(elementwise_pow_raw,
                    int,
                    float16,
                    int64_t,
-                   bfloat16) {}
+                   bfloat16,
+                   complex64,
+                   complex128) {}
 #endif

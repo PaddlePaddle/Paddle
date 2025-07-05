@@ -220,7 +220,6 @@ class GlobalThreadLocal(threading.local):
         """
         global _dygraph_tracer_
         self._in_to_static_mode_ = False
-        self._in_sot_simulation_mode_ = False
         self._functional_dygraph_context_manager = None
         self._dygraph_tracer_ = _dygraph_tracer_
         env_pir_enabled = os.environ.get("FLAGS_enable_pir_api")
@@ -242,9 +241,6 @@ class GlobalThreadLocal(threading.local):
     def __str__(self):
         strings = []
         strings.append("_in_to_static_mode_:" + str(self._in_to_static_mode_))
-        strings.append(
-            "_in_sot_simulation_mode_:" + str(self._in_sot_simulation_mode_)
-        )
         strings.append(
             "_functional_dygraph_context_manager:"
             + str(self._functional_dygraph_context_manager)
@@ -707,7 +703,7 @@ def require_version(min_version: str, max_version: str | None = None) -> None:
 
 
 def _dygraph_not_support_(
-    func: Callable[_InputT, _RetT]
+    func: Callable[_InputT, _RetT],
 ) -> Callable[_InputT, _RetT]:
     def __impl__(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         assert (
@@ -729,7 +725,7 @@ def _dygraph_only_(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
 
 
 def _non_static_only_(
-    func: Callable[_InputT, _RetT]
+    func: Callable[_InputT, _RetT],
 ) -> Callable[_InputT, _RetT]:
     def __impl__(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         from .dygraph.base import in_to_static_mode
@@ -765,7 +761,7 @@ def _set_pipeline_stage(stage):
 # TODO(zhiqiu): We should make Tensor consistent with Variable in future, for example, by inheriting
 # same base class.
 def _fake_interface_only_(
-    func: Callable[_InputT, _RetT]
+    func: Callable[_InputT, _RetT],
 ) -> Callable[_InputT, _RetT]:
     def __impl__(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         raise AssertionError(
@@ -784,7 +780,7 @@ def _fake_interface_only_(
 # NOTE(chenweihang): not using `wrap_decorator` here is because `wrap_decorator` will
 # move kwargs to args, which doesn't work in this decorate case
 def deprecate_stat_dict(
-    func: Callable[_InputT, _RetT]
+    func: Callable[_InputT, _RetT],
 ) -> Callable[_InputT, _RetT]:
     @functools.wraps(func)
     def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
@@ -813,8 +809,9 @@ def _dygraph_tracer():
 
 def _current_expected_place_():
     global _global_expected_place_
-    if _global_expected_place_ is None or isinstance(
-        _global_expected_place_, core.Place
+    if (
+        _global_expected_place_ is None
+        or type(_global_expected_place_) is core.Place
     ):
         if core.is_compiled_with_cuda():
             try:
@@ -1715,7 +1712,7 @@ class Variable(metaclass=VariableMetaClass):
     two variables in different :ref:`api_guide_Block_en` could have the same name.
 
     There are many kinds of variables. Each kind of them has its own attributes
-    and usages. Please refer to the `framework.proto <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/base/framework/framework.proto>`_ for details.
+    and usages. Please refer to the `framework.proto <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/phi/core/framework/framework.proto>`_ for details.
 
     Most of a Variable's member variables can be set to be None. It mean
     it is not available or will be specified later.
@@ -4788,7 +4785,7 @@ class Block:
     def _insert_op_without_sync(self, index, *args, **kwargs):
         """
         Insert an Operator according to the giving arguments,
-        without sync_with_cpp to meke the compilation faster.
+        without sync_with_cpp to make the compilation faster.
 
         Args:
             index(int): the place that the operator to insert.
@@ -5953,7 +5950,7 @@ class Program:
     it will contain nested block.
 
     Please reference the
-    `framework.proto <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/base/framework/framework.proto>`_
+    `framework.proto <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/phi/core/framework/framework.proto>`_
     for details.
 
     A set of Program usually contains startup program and main program.

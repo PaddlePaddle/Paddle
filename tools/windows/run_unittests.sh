@@ -41,6 +41,7 @@ disable_wingpu_test="^test_model$|\
 ^test_fuse_bn_add_act_pass$|\
 ^test_gather_op$|\
 ^test_activation_op$|\
+^test_activation_op_zero_size$|\
 ^test_norm_nn_grad$|\
 ^test_bilinear_interp_op$|\
 ^disable_wingpu_test$"
@@ -452,6 +453,7 @@ long_time_test="^test_gru_op$|\
 ^test_sequence_conv$|\
 ^test_activation_nn_grad$|\
 ^test_activation_op$|\
+^test_activation_op_zero_size$|\
 ^test_bicubic_interp_v2_op$|\
 ^test_bilinear_interp_v2_op$|\
 ^test_crop_tensor_op$|\

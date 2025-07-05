@@ -133,18 +133,20 @@ class DistPassTestBase(unittest.TestCase):
         scope = paddle.static.Scope()
         if model is None:
             model = self.get_model
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
+        with (
+            paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ),
+            paddle.static.scope_guard(scope),
+            paddle.base.unique_name.guard(),
         ):
-            with paddle.static.scope_guard(scope):
-                with paddle.base.unique_name.guard():
-                    main_prog, startup_prog, inputs, outputs, reader = model(
-                        place, **kwargs
-                    )
-                    inputs = self._to_var_names(inputs)
-                    outputs = self._to_var_names(outputs)
-                    if apply_pass:
-                        self.apply_passes(main_prog, startup_prog)
+            main_prog, startup_prog, inputs, outputs, reader = model(
+                place, **kwargs
+            )
+            inputs = self._to_var_names(inputs)
+            outputs = self._to_var_names(outputs)
+            if apply_pass:
+                self.apply_passes(main_prog, startup_prog)
 
         all_fetch_values = []
         exe = paddle.static.Executor(place)

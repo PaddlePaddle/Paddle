@@ -12,13 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_places,
+    skip_check_grad_ci,
+)
 
 import paddle
 import paddle.distributed as dist
@@ -899,16 +903,7 @@ class TestConcatDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func(p)
 
 
@@ -948,16 +943,7 @@ class TestConcatTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func(p)
 
 
@@ -1056,11 +1042,54 @@ class TestConcatOpErrorWithPir(unittest.TestCase):
             paddle.concat([])
 
     def test_empty_inputs_static(self):
-        with IrGuard(), paddle.base.program_guard(
-            paddle.base.Program(), paddle.base.Program()
+        with (
+            IrGuard(),
+            paddle.base.program_guard(
+                paddle.base.Program(), paddle.base.Program()
+            ),
+            self.assertRaisesRegex(ValueError, "but got empty list"),
         ):
-            with self.assertRaisesRegex(ValueError, "but got empty list"):
-                paddle.concat([], axis=0)
+            paddle.concat([], axis=0)
+
+
+class TestConcatOpZeroSize1(TestConcatOp):
+    def init_test_data(self):
+        self.x0 = np.random.random((2, 0, 4, 5)).astype(self.dtype)
+        self.x1 = np.random.random((2, 3, 4, 5)).astype(self.dtype)
+        self.x2 = np.random.random((2, 3, 4, 5)).astype(self.dtype)
+        self.axis = 1
+
+
+class TestConcatOpZeroSize2(TestConcatOp):
+    def init_test_data(self):
+        self.x0 = np.random.random((2, 0, 1, 5)).astype(self.dtype)
+        self.x1 = np.random.random((2, 0, 2, 5)).astype(self.dtype)
+        self.x2 = np.random.random((2, 0, 4, 5)).astype(self.dtype)
+        self.axis = 2
+
+
+class TestConcatOpZeroSize3(TestConcatOp):
+    def init_test_data(self):
+        self.x0 = np.random.random((0, 0, 0, 0)).astype(self.dtype)
+        self.x1 = np.random.random((0, 0, 0, 0)).astype(self.dtype)
+        self.x2 = np.random.random((0, 0, 0, 0)).astype(self.dtype)
+        self.axis = 2
+
+
+class TestConcatOpZeroSize4(TestConcatOp):
+    def init_test_data(self):
+        self.x0 = np.random.random((0, 1, 2, 3)).astype(self.dtype)
+        self.x1 = np.random.random((0, 1, 2, 3)).astype(self.dtype)
+        self.x2 = np.random.random((0, 1, 2, 3)).astype(self.dtype)
+        self.axis = 2
+
+
+class TestConcatOpZeroSize5(TestConcatOp):
+    def init_test_data(self):
+        self.x0 = np.random.random((0, 1, 2, 3)).astype(self.dtype)
+        self.x1 = np.random.random((0, 1, 2, 3)).astype(self.dtype)
+        self.x2 = np.random.random((0, 1, 2, 3)).astype(self.dtype)
+        self.axis = 2
 
 
 if __name__ == '__main__':

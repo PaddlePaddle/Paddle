@@ -17,7 +17,7 @@ import unittest
 
 import numpy as np
 from op import Operator
-from op_test import OpTest
+from op_test import OpTest, get_places
 
 import paddle
 from paddle import base
@@ -413,16 +413,7 @@ class TestSparseMomentumOp(unittest.TestCase):
         pass
 
     def test_sparse_momentum(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(core.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-        for place in places:
+        for place in get_places():
             self.check_with_place(place)
 
 
@@ -896,17 +887,7 @@ class TestMomentumOpVsMomentumOpWithDecayAPI(unittest.TestCase):
         )
 
     def test_vs(self, place=base.CPUPlace()):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if paddle.base.core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-
-        for place in places:
+        for place in get_places():
             self.__test_vs(place=place)
 
 

@@ -30,6 +30,7 @@ from ..meta_optimizers.dygraph_optimizer import HybridParallelOptimizer
 from ..utils import timer_helper as timer
 from ..utils.hybrid_parallel_util import (
     broadcast_dp_parameters,
+    broadcast_moe_sharding_parameters,
     broadcast_mp_parameters,
     broadcast_sep_parameters,
     broadcast_sharding_parameters,
@@ -259,6 +260,9 @@ class PipelineParallel(MetaParallelBase):
         self.use_sharding_parallel = (
             self._hcg.get_sharding_parallel_world_size() > 1
         )
+        self.use_moe_sharding_parallel = (
+            self._hcg.get_moe_sharding_parallel_world_size() > 1
+        )
 
         self.total_loss = None
 
@@ -430,6 +434,10 @@ class PipelineParallel(MetaParallelBase):
         if self.use_data_parallel:
             logger.info("start broadcast dp parameters")
             broadcast_dp_parameters(self._layers, self._hcg)
+
+        if self.use_moe_sharding_parallel:
+            logger.info("start broadcast moe_sharding parameters")
+            broadcast_moe_sharding_parameters(self._layers, self._hcg)
 
         if self._dp_comm_overlap:
             self.register_allreduce_overlap_hook(
@@ -694,8 +702,7 @@ class PipelineParallel(MetaParallelBase):
                 f'./profile_record_tmp_file_for_rank_{self.global_rank}',
                 'a+',
             ) as f:
-                for record in self._records:
-                    f.write(record + '\n')
+                f.writelines(record + '\n' for record in self._records)
             self._records = []
 
     def forward_backward_pipeline(
@@ -1558,8 +1565,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                 f'./profile_record_tmp_file_for_rank_{self.global_rank}',
                 'a+',
             ) as f:
-                for record in self._records:
-                    f.write(record + '\n')
+                f.writelines(record + '\n' for record in self._records)
             self._records = []
             self._reset_counter()
 

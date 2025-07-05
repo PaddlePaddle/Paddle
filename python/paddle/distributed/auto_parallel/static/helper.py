@@ -564,21 +564,25 @@ class ProgramHelper:
                     param.get_tensor()._clear()
                 with paddle.base.dygraph.guard():
                     if amp_dtype == "float16":
-                        with paddle.no_grad():
-                            with paddle.base.framework._dygraph_place_guard(
+                        with (
+                            paddle.no_grad(),
+                            paddle.base.framework._dygraph_place_guard(
                                 place=place
-                            ):
-                                t_casted = param_used.cast(
-                                    dtype=core.VarDesc.VarType.FP16
-                                )
+                            ),
+                        ):
+                            t_casted = param_used.cast(
+                                dtype=core.VarDesc.VarType.FP16
+                            )
                     elif amp_dtype == "bfloat16":
-                        with paddle.no_grad():
-                            with paddle.base.framework._dygraph_place_guard(
+                        with (
+                            paddle.no_grad(),
+                            paddle.base.framework._dygraph_place_guard(
                                 place=place
-                            ):
-                                t_casted = param_used.cast(
-                                    dtype=core.VarDesc.VarType.BF16
-                                )
+                            ),
+                        ):
+                            t_casted = param_used.cast(
+                                dtype=core.VarDesc.VarType.BF16
+                            )
                     # NOTE(lizhiyu): Clear the origin param. Don't use `param_used.get_tensor().get_tensor()._clear()` to
                     #                clear the `DistTensor`, because it can't clear the `_holder`,
                     #                which `param_used.get_tensor().get_tensor()` will copy one `DenseTensor`.

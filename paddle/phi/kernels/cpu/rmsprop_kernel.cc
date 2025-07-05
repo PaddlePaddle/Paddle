@@ -20,7 +20,7 @@
 namespace phi {
 template <typename T>
 struct RmsFunctor<T, phi::CPUContext> {
-  RmsFunctor(const phi::CPUContext &ctx,
+  RmsFunctor(const phi::CPUContext &dev_ctx,
              const DenseTensor &param,
              const DenseTensor &mean_square,
              const DenseTensor &grad,
@@ -62,7 +62,7 @@ struct RmsFunctor<T, phi::CPUContext> {
             "MeanSquare and MeanSquareOut must be the same Tensor"));
 
     auto &grad_tensor = grad;
-    auto &place = *ctx.eigen_device();
+    auto &place = *dev_ctx.eigen_device();
     auto lr_value = lr_tensor.data<T>()[0];
 
     auto p = EigenVector<T>::Flatten(p_tensor);

@@ -10,18 +10,19 @@ else()
       CACHE PATH "CUDNN ROOT")
 endif()
 
-find_path(
-  CUDNN_INCLUDE_DIR cudnn.h
-  PATHS ${CUDNN_ROOT} ${CUDNN_ROOT}/include $ENV{CUDNN_ROOT}
-        $ENV{CUDNN_ROOT}/include ${CUDA_TOOLKIT_INCLUDE}
-  NO_DEFAULT_PATH)
-
-get_filename_component(__libpath_hist ${CUDA_CUDART_LIBRARY} PATH)
-
 set(TARGET_ARCH "x86_64")
 if(NOT ${CMAKE_SYSTEM_PROCESSOR})
   set(TARGET_ARCH ${CMAKE_SYSTEM_PROCESSOR})
 endif()
+
+find_path(
+  CUDNN_INCLUDE_DIR cudnn.h
+  PATHS ${CUDNN_ROOT} ${CUDNN_ROOT}/include
+        ${CUDNN_ROOT}/include/${TARGET_ARCH}-linux-gnu $ENV{CUDNN_ROOT}
+        $ENV{CUDNN_ROOT}/include ${CUDA_TOOLKIT_INCLUDE}
+  NO_DEFAULT_PATH)
+
+get_filename_component(__libpath_hist ${CUDA_CUDART_LIBRARY} PATH)
 
 list(
   APPEND
@@ -43,6 +44,9 @@ set(CUDNN_LIB_NAME "")
 
 if(LINUX)
   set(CUDNN_LIB_NAME "libcudnn.so")
+  if(${CUDA_VERSION} GREATER_EQUAL 12.6)
+    set(CUDNN_LIB_NAME "libcudnn.so.9")
+  endif()
 endif()
 
 if(WIN32)
