@@ -1959,7 +1959,9 @@ def pad(
     ], f"mode should be one of constant, reflect, replicate, circular, but got {mode}."
 
     x_dim = len(x.shape)
-
+    if in_dynamic_mode():
+        if isinstance(pad, (Variable, paddle.Tensor)) and pad.size == 0:
+            return x.clone()
     if (
         mode == "constant"
         and isinstance(pad, (list, tuple))
