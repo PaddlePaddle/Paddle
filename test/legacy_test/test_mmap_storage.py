@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
 import unittest
 
 import numpy as np
@@ -23,7 +24,7 @@ class TestMmapStorageBase(unittest.TestCase):
         self.init_cfg()
         np.random.seed(2025)
         paddle.seed(2025)
-        self.file_name = "test.pp"
+        self.file_name = os.path.join(os.path.dirname(__file__), "test.pp")
         self.data = paddle.randn(self.shape, dtype=self.dtype)
         self.nbytes = self.data.size * self.data.element_size()
 
@@ -61,7 +62,7 @@ class TestMmapStorage4(TestMmapStorageBase):
         self.init_cfg()
         np.random.seed(2025)
         paddle.seed(2025)
-        self.file_name = "test.pp"
+        self.file_name = os.path.join(os.path.dirname(__file__), "test.pp")
         self.data = paddle.randint(0, 128, self.shape).astype(self.dtype)
         self.nbytes = self.data.size * self.data.element_size()
 
@@ -93,7 +94,7 @@ class TestMmapStorage8(TestMmapStorage4):
         self.init_cfg()
         np.random.seed(2025)
         paddle.seed(2025)
-        self.file_name = "test.pp"
+        self.file_name = os.path.join(os.path.dirname(__file__), "test.pp")
         self.data = paddle.randint(0, 2, self.shape).astype(self.dtype)
         self.nbytes = self.data.size * self.data.element_size()
 
