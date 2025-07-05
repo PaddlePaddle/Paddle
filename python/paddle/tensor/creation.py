@@ -992,12 +992,12 @@ class MmapStorage(paddle.base.core.MmapStorage):
 
             >>> import paddle
             >>> shape = [4,5]
-            >>> dtype = "float32"
+            >>> dtype = paddle.float32
             >>> a = paddle.arange(4*5).reshape(shape).astype(dtype)
             >>> a.numpy().tofile("test.pp")
             >>> size = a.size * a.element_size()
             >>> t = paddle.MmapStorage("test.pp", size)
-            >>> t.get_slice(dtype, 0, a.size).reshape(shape)
+            >>> t.get_slice(dtype = dtype, start = 0, stop = a.size).reshape(shape)
             Tensor(shape=[4, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
                    [[0. , 1. , 2. , 3. , 4. ],
                     [5. , 6. , 7. , 8. , 9. ],

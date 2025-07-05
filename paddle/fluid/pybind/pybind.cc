@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <Python.h>
 
-#include <sys/mman.h>
 #include <algorithm>
 #include <cctype>
 #include <cstdlib>
@@ -36,6 +35,8 @@ limitations under the License. */
 #include <windows.h>
 #include <codecvt>
 #include <locale>
+#else
+#include <sys/mman.h>
 #endif
 
 #include "paddle/common/ddim.h"
