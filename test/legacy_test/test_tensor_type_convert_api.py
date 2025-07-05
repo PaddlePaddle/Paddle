@@ -165,6 +165,53 @@ class TensorDtypeConversionsTest(unittest.TestCase):
         result = tensor.int32().float64().int64()
         self.assertEqual(result.dtype, paddle.int64)
 
+    def test_pir_all_dtype_conversions(self):
+        """Test all dtype conversion methods for pir.Value in static graph."""
+        paddle.enable_static()
+        startup_prog = paddle.static.Program()
+        main_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
+            for (
+                method_name,
+                target_dtype,
+            ) in self._supported_dtype_conversions.items():
+                with self.subTest(
+                    pir_method=method_name, pir_target_dtype=target_dtype
+                ):
+                    self._pir_single_dtype_conversion(method_name, target_dtype)
+
+    def _pir_single_dtype_conversion(self, method_name, target_dtype):
+        # Select appropriate test data
+        test_data = self._get_appropriate_test_data(target_dtype)
+        shape = test_data.shape
+        dtype = 'float32'
+        if target_dtype in ['complex64', 'complex128']:
+            dtype = 'complex64'
+        elif target_dtype == 'bool':
+            dtype = 'bool'
+        # Create static graph input
+        x = paddle.static.data(name="x", shape=shape, dtype=dtype)
+        # Check if the method exists
+        self.assertTrue(
+            hasattr(x, method_name),
+            f"pir.Value should have method '{method_name}'",
+        )
+        # Perform dtype conversion
+        converted = getattr(x, method_name)()
+        # Check the dtype
+        expected_dtype = self._get_paddle_dtype(target_dtype)
+        self.assertEqual(
+            converted.dtype,
+            expected_dtype,
+            f"Expected pir.Value dtype {expected_dtype}, but got {converted.dtype} for method '{method_name}'",
+        )
+        # Check the shape
+        self.assertEqual(
+            tuple(x.shape),
+            tuple(converted.shape),
+            f"pir.Value shape should remain unchanged after {method_name} conversion",
+        )
+
 
 if __name__ == '__main__':
     unittest.main()
