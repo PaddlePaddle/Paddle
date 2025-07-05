@@ -540,6 +540,7 @@ class Pool3dFunctor<CPUContext, PoolProcess, T> {
                   const std::vector<int64_t>& ksize,
                   const std::vector<int64_t>& strides,
                   const std::vector<int64_t>& paddings,
+                  const std::vector<int64_t>& dilations,
                   const std::string data_format,
                   bool exclusive,
                   bool adaptive,
