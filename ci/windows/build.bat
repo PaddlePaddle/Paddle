@@ -318,7 +318,7 @@ if "%WITH_TESTING%"=="ON" (
 
 echo Build Paddle the %build_times% time:
 if %GENERATOR% == "Ninja" (
-    echo 111111111111111
+    echo 1111111111111111
     ninja all
 ) else (
     MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:TrackFileAccess=false /p:Configuration=Release /verbosity:%LOG_LEVEL% ALL_BUILD.vcxproj
