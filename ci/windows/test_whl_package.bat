@@ -4,6 +4,7 @@ echo    ========================================
 @ECHO ON
 setlocal enabledelayedexpansion
 
+call "%PYTHON_VENV_ROOT%\Scripts\activate.bat"
 rem Record the exact size of dll and whl files and save them to disk D
 set dll_file=%cd%\paddle\fluid\pybind\libpaddle.dll
 for /F "tokens=1-5" %%a in ('dir "%dll_file%"') do (

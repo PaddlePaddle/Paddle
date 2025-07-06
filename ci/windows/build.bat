@@ -1,5 +1,7 @@
 setlocal enabledelayedexpansion
 
+call "%PYTHON_VENV_ROOT%\Scripts\activate.bat"
+
 if not defined SCCACHE_ROOT set "SCCACHE_ROOT=D:\sccache"
 set "PATH=%SCCACHE_ROOT%;%PATH%"
 if "%WITH_SCCACHE%"=="ON" (
