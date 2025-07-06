@@ -12,7 +12,7 @@ env:
   ci_scripts: ${{ github.workspace }}\ci\windows
   ACTION_DIR: ${{ github.workspace }}\..\..\..
   WORKSPACE_DIR: ${{ github.workspace }}\..
-  cache_dir: C:\actions-runner\_work\Paddle\cache
+  cache_dir: C:\action-cache
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 
 defaults:
