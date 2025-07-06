@@ -187,6 +187,24 @@ class TestLUOp3(TestLUOp):
         self.dtype = "float64"
 
 
+# complex64
+class TestLUOp4(TestLUOp):
+    def config(self):
+        self.x_shape = [8, 8]
+        self.pivot = True
+        self.get_infos = True
+        self.dtype = "complex64"
+
+
+# complex128
+class TestLUOp5(TestLUOp):
+    def config(self):
+        self.x_shape = [3, 10, 12]
+        self.pivot = True
+        self.get_infos = True
+        self.dtype = "complex128"
+
+
 class TestLUAPI(unittest.TestCase):
     def test_dygraph(self):
         def run_lu_dygraph(shape, dtype):
