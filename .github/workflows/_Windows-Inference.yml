@@ -88,4 +88,4 @@ jobs:
           call %ci_scripts%\clean_env.bat
           if "%WITH_TESTING%"=="ON" (
               for /F "tokens=1 delims= " %%# in ('tasklist ^| findstr /i test') do taskkill /f /im %%# /t
-          )
+          )  || ver >nul

@@ -209,6 +209,8 @@ if "%WITH_TESTING%"=="ON" (
     if exist %work_dir%\%BUILD_DIR%\only_change_python_file.txt set WITH_CPP_TEST=OFF
     echo WITH_CPP_TEST: %WITH_CPP_TEST%
 )
+
+python -m pip install numpy
 cd /d %work_dir%\%BUILD_DIR%
 echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DPYTHON_EXECUTABLE=%PYTHON_EXECUTABLE% -DON_INFER=%ON_INFER% ^

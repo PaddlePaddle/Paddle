@@ -45,7 +45,6 @@ jobs:
         run: |
           cd
           rmdir /s/q %WORKSPACE_DIR%\Paddle
-          echo "path=%path%;C:\Program Files\NVIDIA Corporation\NVSMI" >> %GITHUB_ENV%
           python -m pip install wget
           python -c "import wget;wget.download('https://paddle-github-action.bj.bcebos.com/windows/PR/%PR_ID%/%COMMIT_ID%/Paddle.tar.zst')"
           zstd -d Paddle.tar.zst && tar -xf Paddle.tar
@@ -86,4 +85,4 @@ jobs:
           call %ci_scripts%\clean_env.bat
           if "%WITH_TESTING%"=="ON" (
               for /F "tokens=1 delims= " %%# in ('tasklist ^| findstr /i test') do taskkill /f /im %%# /t
-          )
+          )  || ver >nul
