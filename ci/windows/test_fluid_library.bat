@@ -1,3 +1,5 @@
+setlocal enabledelayedexpansion
+
 echo    ========================================
 echo    Step 7. Testing fluid library with infer_ut for inference ...
 echo    ========================================

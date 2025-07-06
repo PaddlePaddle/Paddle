@@ -1,8 +1,9 @@
+setlocal enabledelayedexpansion
+
 echo    ========================================
 echo    Step 3. Test pip install whl package ...
 echo    ========================================
 @ECHO ON
-setlocal enabledelayedexpansion
 
 call "%PYTHON_VENV_ROOT%\Scripts\activate.bat"
 rem Record the exact size of dll and whl files and save them to disk D

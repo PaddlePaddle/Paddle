@@ -1,3 +1,5 @@
+setlocal enabledelayedexpansion
+
 echo    ========================================
 echo    Step 4. Running unit tests ...
 echo    ========================================
