@@ -216,6 +216,15 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             res = a * b
             np.testing.assert_array_equal(res.numpy(), a_np * b_np)
 
+    def test_mul_fp16(self):
+        a_np = np.random.random(self.shape).astype(np.float16)
+        b_np = np.random.random(self.shape).astype(np.float16)
+        with base.dygraph.guard():
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
+            res = a * b
+            np.testing.assert_array_equal(res.numpy(), a_np * b_np)
+
     def test_type_promotion_mul_F2_F4(self):
         a_np = np.random.random(self.shape).astype(np.float16)
         b_np = np.random.random(self.shape).astype(np.float32)
