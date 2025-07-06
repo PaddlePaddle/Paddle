@@ -57,14 +57,11 @@ jobs:
 
       - name: Build paddle
         env:
-          WITH_MKL: "ON"
-          WITH_GPU: "ON"
-          WITH_AVX: "ON"
+          WITH_MKL: "OFF"
+          WITH_GPU: "OFF"
+          WITH_AVX: "OFF"
           MSVC_STATIC_CRT: "ON"
           ON_INFER: "ON"
-          WITH_TENSORRT: "ON"
-          WITH_INFERENCE_API_TEST: "ON"
-          WITH_ONNXRUNTIME: "ON"
           WIN_UNITTEST_LEVEL: 2
           CUDA_ARCH_NAME: "Auto"
         run: |
