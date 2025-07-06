@@ -165,6 +165,9 @@ void NllLossRawKernel(const Context& dev_ctx,
   auto weight_data = weight.get_ptr() ? weight.get_ptr()->data<T>() : nullptr;
   auto out_data = dev_ctx.template Alloc<T>(out);
   auto total_weight_data = dev_ctx.template Alloc<T>(total_weight);
+  if (out->numel() == 0 && total_weight->numel()) {
+    return;
+  }
   *total_weight_data = 0;
 
   auto x_dims = x.dims();

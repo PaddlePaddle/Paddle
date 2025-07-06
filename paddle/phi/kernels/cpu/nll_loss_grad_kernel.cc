@@ -129,6 +129,9 @@ void NllLossGradKernel(const Context& dev_ctx,
                        const std::string& reduction,
                        DenseTensor* dx) {
   auto dx_data = dev_ctx.template Alloc<T>(dx);
+  if (d_out.numel() == 0 || dx->numel() == 0) {
+    return;
+  }
   auto dout_data = d_out.data<T>();
   auto label_data = labels.data<int64_t>();
   auto weight_data = weight.get_ptr() ? weight.get_ptr()->data<T>() : nullptr;

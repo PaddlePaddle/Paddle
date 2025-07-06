@@ -47,6 +47,9 @@ void NllLossRawKernel(const Context& dev_ctx,
       weight.get_ptr() ? weight.get_ptr()->data<XPUType>() : nullptr;
 
   auto total_weight_data = dev_ctx.template Alloc<XPUType>(total_weight);
+  if (out->numel() == 0 && total_weight->numel()) {
+    return;
+  }
 
   auto x_dims = x.dims();
   std::vector<int64_t> x_shape = common::vectorize<int64_t>(x_dims);
