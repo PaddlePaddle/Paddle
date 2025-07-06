@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from typing import TYPE_CHECKING, Literal, overload
 
 import numpy as np
@@ -23,7 +24,6 @@ import paddle.nn.functional as F
 from paddle import _C_ops
 from paddle.base.framework import in_dynamic_or_pir_mode
 from paddle.base.layer_helper import LayerHelper
-from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.device.cuda import get_device_capability
 
 g_enable_math = None
@@ -140,7 +140,7 @@ def can_use_efficient(query) -> bool:
     return True
 
 
-@signature_safe_contextmanager
+@contextlib.contextmanager
 def sdp_kernel(
     enable_math: bool = False,
     enable_flash: bool = True,

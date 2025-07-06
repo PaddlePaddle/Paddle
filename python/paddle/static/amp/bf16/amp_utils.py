@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import collections
+import contextlib
 import logging
 import struct
 
@@ -22,7 +23,6 @@ import numpy as np
 import paddle
 from paddle.base import core, framework, global_scope
 from paddle.base.log_helper import get_logger
-from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
 from ..fp16_utils import (
     _rename_arg,
@@ -216,7 +216,7 @@ def _need_keep_fp32(op, unsupported_op_list, use_bf16_guard):
         return False
 
 
-@signature_safe_contextmanager
+@contextlib.contextmanager
 def bf16_guard():
     """
     As for the pure bf16 training, if users set `use_bf16_guard` to True,

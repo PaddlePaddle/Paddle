@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import logging
 import math
 import os
@@ -26,7 +27,6 @@ import paddle
 from paddle.base import core, global_scope
 from paddle.base.framework import Parameter, Variable, static_only
 from paddle.base.log_helper import get_logger
-from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.framework import in_pir_mode
 
 _logger = get_logger(
@@ -166,7 +166,7 @@ def _clone_var_in_block_(block, var):
         )
 
 
-@signature_safe_contextmanager
+@contextlib.contextmanager
 def _load_program_scope(main=None, startup=None, scope=None):
     prog = main if main else paddle.base.Program()
     startup_prog = startup if startup else paddle.base.Program()

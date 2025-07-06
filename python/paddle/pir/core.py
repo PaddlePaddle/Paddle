@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+import contextlib
+
 import numpy as np
 
 import paddle
@@ -30,7 +32,6 @@ from paddle.base.libpaddle.pir import (
 from .._pir_ops import data, parameter, set_parameter, set_persistable_value
 from ..base import unique_name
 from ..base.core import set_static_op_arg_pre_cast_hook
-from ..base.wrapped_decorator import signature_safe_contextmanager
 
 vartype_to_datatype = {
     VarDesc.VarType.FP32: DataType.FLOAT32,
@@ -241,7 +242,7 @@ def switch_startup_program(program):
     return prev_program
 
 
-@signature_safe_contextmanager
+@contextlib.contextmanager
 def program_guard(main_program, startup_program=None):
     """
     :api_attr: Static Graph
@@ -506,7 +507,7 @@ def _convert_into_value(tensor):
     return tensor
 
 
-@signature_safe_contextmanager
+@contextlib.contextmanager
 def static_op_arg_cast_guard(hook):
     """
     Set a hook function to cast the arguments of static op.

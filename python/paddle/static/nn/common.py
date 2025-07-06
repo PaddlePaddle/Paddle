@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import inspect
 import warnings
 from functools import reduce
@@ -33,7 +34,6 @@ from paddle.base.framework import (
     static_only,
 )
 from paddle.base.param_attr import ParamAttr
-from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.common_ops_import import (
     LayerHelper,
     check_type,
@@ -4054,7 +4054,7 @@ class ExponentialMovingAverage:
                 },
             )
 
-    @signature_safe_contextmanager
+    @contextlib.contextmanager
     def apply(self, executor, need_restore=True):
         """
         Apply moving average to parameters for evaluation.

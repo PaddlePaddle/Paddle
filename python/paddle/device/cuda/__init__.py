@@ -13,13 +13,13 @@
 # limitations under the License.
 from __future__ import annotations
 
+import contextlib
 from typing import TYPE_CHECKING, NoReturn, Union
 
 from typing_extensions import TypeAlias
 
 import paddle
 from paddle.base import core
-from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.utils import deprecated
 
 from .streams import Event, Stream
@@ -455,7 +455,7 @@ def _set_current_stream(stream: Stream) -> core.CUDAStream:
     level=1,
     reason="stream_guard in paddle.device.cuda will be removed in future",
 )
-@signature_safe_contextmanager
+@contextlib.contextmanager
 def stream_guard(stream: Stream) -> NoReturn:
     '''
     Notes:

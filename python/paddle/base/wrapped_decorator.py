@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import contextlib
+
+import functools
 from typing import Callable, TypeVar
 
-import decorator
 from typing_extensions import ParamSpec
 
 _InputT = ParamSpec("_InputT")
@@ -30,16 +30,12 @@ def wrap_decorator(
         [Callable[_InputT, _RetT1]], Callable[_InputT, _RetT2]
     ],
 ) -> Callable[[Callable[_InputT, _RetT1]], Callable[_InputT, _RetT2]]:
-    @decorator.decorator
-    def __impl__(
-        func: Callable[_InputT, _RetT1],
-        *args: _InputT.args,
-        **kwargs: _InputT.kwargs,
-    ) -> _RetT2:
-        wrapped_func = decorator_func(func)
-        return wrapped_func(*args, **kwargs)
+    @functools.wraps(decorator_func)
+    def __impl__(func: Callable[_InputT, _RetT1]) -> Callable[_InputT, _RetT2]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT2:
+            return decorator_func(func)(*args, **kwargs)
+
+        return wrapper
 
     return __impl__
-
-
-signature_safe_contextmanager = wrap_decorator(contextlib.contextmanager)

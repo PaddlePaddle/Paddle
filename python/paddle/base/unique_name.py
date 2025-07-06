@@ -13,9 +13,8 @@
 # limitations under the License.
 
 import collections
+import contextlib
 from copy import deepcopy
-
-from .wrapped_decorator import signature_safe_contextmanager
 
 __all__ = []
 
@@ -202,7 +201,7 @@ def switch(new_generator=None, new_para_name_checker=None):
     return old_generator, old_para_name_checker
 
 
-@signature_safe_contextmanager
+@contextlib.contextmanager
 def guard(new_generator=None):
     """
     Change the namespace of unique name with :code:`with` statement. After calling it,

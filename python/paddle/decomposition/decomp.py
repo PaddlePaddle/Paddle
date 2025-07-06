@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import contextlib
 import logging
 import typing
 import warnings
@@ -32,7 +33,6 @@ from paddle.base.framework import (
     pir_op_role_guard,
 )
 from paddle.base.libpaddle.pir import Block, Operation
-from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.decomposition.recompute import DebugPrint, auto_recompute
 from paddle.framework import core
 
@@ -41,7 +41,7 @@ from . import register
 logger = logging.getLogger(__name__)
 
 
-@signature_safe_contextmanager
+@contextlib.contextmanager
 def prim_guard():
     prim_state = core._is_all_prim_enabled()
     try:

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import functools
 import inspect
 import os
@@ -45,6 +46,7 @@ test_dir = legacy_test_dir.parent  # test
 sys.path.append(str(legacy_test_dir.absolute()))
 sys.path.append(str(test_dir.absolute()))
 
+
 from utils import pir_executor_guard, static_guard
 from white_list import (
     check_shape_white_list,
@@ -69,10 +71,9 @@ from paddle.base.framework import (
     get_flags,
     set_flags,
 )
-from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
 
-@signature_safe_contextmanager
+@contextlib.contextmanager
 def paddle_static_guard():
     try:
         paddle.enable_static()

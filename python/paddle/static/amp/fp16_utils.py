@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
 from dataclasses import dataclass
 
@@ -23,7 +24,6 @@ import paddle
 from paddle.base import core, framework, global_scope
 from paddle.base.framework import in_pir_mode
 from paddle.base.log_helper import get_logger
-from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
 from .fp16_lists import (
     AutoMixedPrecisionLists,
@@ -374,7 +374,7 @@ def _need_keep_fp32(op, unsupported_op_list, use_fp16_guard):
         return False
 
 
-@signature_safe_contextmanager
+@contextlib.contextmanager
 def fp16_guard():
     """
     As for the pure fp16 training, if users set `use_fp16_guard` to True,

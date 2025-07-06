@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
+
 from paddle.base.libpaddle.pir import (  # noqa: F401
     Block,
     CloneOptions,
@@ -48,7 +50,6 @@ from paddle.base.libpaddle.pir import (  # noqa: F401
     translate_to_pir_with_param_map,
     value_is_persistable,
 )
-from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
 from . import core  # noqa: F401
 from .dtype_patch import monkey_patch_dtype  # noqa: F401
@@ -56,7 +57,7 @@ from .math_op_patch import monkey_patch_value  # noqa: F401
 from .program_patch import monkey_patch_program  # noqa: F401
 
 
-@signature_safe_contextmanager
+@contextlib.contextmanager
 def _optimized_guard(self, param_and_grads):
     try:
         yield

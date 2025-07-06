@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.base.wrapped_decorator import signature_safe_contextmanager
+import contextlib
 
 from . import Program
 
@@ -20,7 +20,7 @@ _already_patch_program = False
 
 
 def monkey_patch_program():
-    @signature_safe_contextmanager
+    @contextlib.contextmanager
     def _lr_schedule_guard(self, is_with_opt=False):
         # TODO(dev): Currently there has not equivalent of op_role in PIR
         # mode, so we simply remove _lr_schedule_guard here, this should
