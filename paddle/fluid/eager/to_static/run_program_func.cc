@@ -188,23 +188,48 @@ std::vector<paddle::Tensor> legacy_filter_unused_input_var_in_backward(
   return filter_x;
 }
 
+std::vector<egr::AutogradMeta*> AttachAutoGradMeta(
+
+    std::vector<paddle::Tensor>& tensors,  // NOLINT
+    const std::vector<pir::Value>& values) {
+  auto GetValueBoolAttr = [](pir::Value value, const std::string& attr_name) {
+    auto bool_attr = value.attribute<pir::BoolAttribute>(attr_name);
+    return !bool_attr || bool_attr.data();
+  };
+  PADDLE_ENFORCE_EQ(tensors.size(),
+                    values.size(),
+                    common::errors::InvalidArgument(
+                        "The size of tensors (%d) must be equal to the "
+                        "size of values (%d).",
+                        tensors.size(),
+                        values.size()));
+  std::vector<egr::AutogradMeta*> result;
+  auto size = tensors.size();
+  result.reserve(tensors.size());
+  for (size_t i = 0; i < size; ++i) {
+    auto& tensor = tensors[i];
+    const auto& value = values[i];
+    auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
+    autograd_meta->SetPersistable(false);
+    autograd_meta->SetStopGradient(GetValueBoolAttr(value, kAttrStopGradients));
+    result.push_back(autograd_meta);
+  }
+  return result;
+}
+
 }  // namespace
 
-void run_program_ad_func(
+std::vector<paddle::Tensor> run_program_ad_func(
     const std::vector<paddle::Tensor>& x,
     const std::vector<paddle::Tensor>& params,
-    std::vector<paddle::Tensor*>& out,                   // NOLINT
     std::vector<paddle::framework::Scope*>& step_scope,  // NOLINT
     const paddle::framework::AttributeMap& attrs) {
   // Prepare Autograd Meta
   VLOG(2) << "start run pir run_program ad function.";
-  auto deref_out = egr::to_static::DereferenceTensors(out);
   std::vector<egr::AutogradMeta*> p_autograd_x =
       egr::EagerUtils::nullable_autograd_meta(x);
   std::vector<egr::AutogradMeta*> p_autograd_params =
       egr::EagerUtils::nullable_autograd_meta(params);
-  std::vector<egr::AutogradMeta*> p_autograd_outs =
-      egr::EagerUtils::nullable_autograd_meta(deref_out);
 
   bool trace_backward = egr::Controller::Instance().HasGrad();
   bool require_any_grad = egr::EagerUtils::ComputeRequireGrad(
@@ -225,13 +250,12 @@ void run_program_ad_func(
     int64_t device_type = static_cast<int64_t>(tensor.place().GetType());
     place_hash_key = hash_with_seed(place_hash_key, device_type);
   }
-  egr::to_static::RunProgramImpl(x_tmp,
-                                 params_tmp,
-                                 out,
-                                 step_scope,
-                                 require_any_grad,
-                                 attrs,
-                                 place_hash_key);
+  auto out = egr::to_static::RunProgramImpl(
+      x_tmp, params_tmp, step_scope, require_any_grad, attrs, place_hash_key);
+  const auto& out_values =
+      PADDLE_GET_CONST(std::vector<pir::Value>, attrs.at("fo_values"));
+  std::vector<egr::AutogradMeta*> p_autograd_outs =
+      AttachAutoGradMeta(out, out_values);
   if (!is_test && require_any_grad) {
     // Create GradOpNode (1 means [out_grad], 2 means [x_grad, paramx_grad])
     auto grad_node = std::make_shared<GradNodeRunProgram>(1, 2);
@@ -279,13 +303,13 @@ void run_program_ad_func(
                         grad_node.get(),
                         /*slot id*/ 1);
 
-    grad_node->SetGradInMeta(deref_out, 0);
-
+    grad_node->SetGradInMeta(out, 0);
     egr::EagerUtils::SetOutRankWithSlot(&p_autograd_outs, 0);
 
     // Set History for output set current Grad Node for
     egr::EagerUtils::SetHistory(&p_autograd_outs, grad_node);
   }
+  return out;
 }
 
 void legacy_run_program_ad_func(
