@@ -81,32 +81,40 @@ class TestAllcloseLayer(unittest.TestCase):
     def test_allclose_cpu_fp32(self):
         main = base.Program()
         startup = base.Program()
-        with base.unique_name.guard():
-            with base.program_guard(main, startup):
-                self.allclose_check(use_cuda=False, dtype='float32')
+        with (
+            base.unique_name.guard(),
+            base.program_guard(main, startup),
+        ):
+            self.allclose_check(use_cuda=False, dtype='float32')
 
     def test_allclose_cpu_fp64(self):
         main = base.Program()
         startup = base.Program()
-        with base.unique_name.guard():
-            with base.program_guard(main, startup):
-                self.allclose_check(use_cuda=False, dtype='float64')
+        with (
+            base.unique_name.guard(),
+            base.program_guard(main, startup),
+        ):
+            self.allclose_check(use_cuda=False, dtype='float64')
 
     def test_allclose_gpu_fp32(self):
         if base.core.is_compiled_with_cuda():
             main = base.Program()
             startup = base.Program()
-            with base.unique_name.guard():
-                with base.program_guard(main, startup):
-                    self.allclose_check(use_cuda=True, dtype='float32')
+            with (
+                base.unique_name.guard(),
+                base.program_guard(main, startup),
+            ):
+                self.allclose_check(use_cuda=True, dtype='float32')
 
     def test_allclose_gpu_fp64(self):
         if base.core.is_compiled_with_cuda():
             main = base.Program()
             startup = base.Program()
-            with base.unique_name.guard():
-                with base.program_guard(main, startup):
-                    self.allclose_check(use_cuda=True, dtype='float64')
+            with (
+                base.unique_name.guard(),
+                base.program_guard(main, startup),
+            ):
+                self.allclose_check(use_cuda=True, dtype='float64')
 
     def test_dygraph_mode(self):
         x_1 = np.array([10000.0, 1e-07]).astype("float32")

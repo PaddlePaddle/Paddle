@@ -20,15 +20,20 @@ namespace phi {
 
 template <typename T, typename MTP, int k>
 __global__ void combine_no_weight_kernel(const T* __restrict__ x,
+                                         const T* __restrict__ combine_weights,
                                          const int* __restrict__ scatter_index,
                                          T* __restrict__ y,
                                          const int64_t hidden_size,
-                                         const int64_t seqlen) {
+                                         const int64_t seqlen,
+                                         const float epsilon) {
   extern __shared__ char shared_mem[];
-  int64_t* shared_indices = reinterpret_cast<int64_t*>(shared_mem);
+  MTP* shared_weights = reinterpret_cast<MTP*>(shared_mem);
+  int64_t* shared_indices =
+      reinterpret_cast<int64_t*>(shared_mem + sizeof(MTP) * k);
 
   int64_t seq_i = blockIdx.x;
   for (int ki = threadIdx.x; ki < k; ki += blockDim.x) {
+    shared_weights[ki] = static_cast<MTP>(combine_weights[seq_i * k + ki]);
     shared_indices[ki] = scatter_index[seq_i * k + ki];
   }
   __syncthreads();
@@ -36,6 +41,9 @@ __global__ void combine_no_weight_kernel(const T* __restrict__ x,
     MTP sum = static_cast<MTP>(0);
 #pragma unroll
     for (int ki = 0; ki < k; ++ki) {
+      if (fabsf(shared_weights[ki]) <= epsilon) {
+        continue;
+      }
       int64_t scatter_idx = shared_indices[ki];
       T x_val = x[scatter_idx * hidden_size + h_i];
       sum += static_cast<MTP>(x_val);
@@ -46,22 +54,29 @@ __global__ void combine_no_weight_kernel(const T* __restrict__ x,
 
 template <typename T>
 void moe_combine_no_weight_fwd(const T* x,
+                               const T* combine_weights,
                                const int* scatter_index,
                                T* y,
                                const int64_t k,
                                const int64_t seqlen,
                                const int64_t hidden_size,
+                               const float epsilon,
                                cudaStream_t stream) {
   int threads_per_block = 1024;
   dim3 blockDim(threads_per_block);
   dim3 gridDim(seqlen);
-  size_t sharedMemSize = k * sizeof(int64_t);
+  size_t sharedMemSize = k * (sizeof(int64_t) + sizeof(T));
 
-#define CALL_KERNEL(K)                                 \
-  case K:                                              \
-    combine_no_weight_kernel<T, float, K>              \
-        <<<gridDim, blockDim, sharedMemSize>>>(        \
-            x, scatter_index, y, hidden_size, seqlen); \
+#define CALL_KERNEL(K)                                          \
+  case K:                                                       \
+    combine_no_weight_kernel<T, float, K>                       \
+        <<<gridDim, blockDim, sharedMemSize>>>(x,               \
+                                               combine_weights, \
+                                               scatter_index,   \
+                                               y,               \
+                                               hidden_size,     \
+                                               seqlen,          \
+                                               epsilon);        \
     break;
 
   switch (k) {
@@ -82,7 +97,7 @@ void moe_combine_no_weight_fwd(const T* x,
     CALL_KERNEL(15);
     CALL_KERNEL(16);
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument("Invalid k value."));
+      PADDLE_THROW(common::errors::InvalidArgument("Invalid k value."));
       break;
   }
 #undef CALL_KERNEL
@@ -91,7 +106,9 @@ void moe_combine_no_weight_fwd(const T* x,
 template <typename T, typename Context>
 void MoeCombineNoWeightKernel(const Context& dev_ctx,
                               const DenseTensor& x,
+                              const DenseTensor& combine_weights,
                               const DenseTensor& scatter_index,
+                              const float epsilon,
                               DenseTensor* y) {
   const auto x_shape = x.dims();
   const int64_t hidden_size = x_shape[1];
@@ -103,11 +120,13 @@ void MoeCombineNoWeightKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(y);
 
   moe_combine_no_weight_fwd<T>(x.data<T>(),
+                               combine_weights.data<T>(),
                                scatter_index.data<int>(),
                                y->data<T>(),
                                k,
                                seqlen,
                                hidden_size,
+                               epsilon,
                                dev_ctx.stream());
 }
 

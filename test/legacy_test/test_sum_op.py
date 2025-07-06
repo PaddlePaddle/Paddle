@@ -21,7 +21,12 @@ import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
 from op import Operator
-from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+    get_places,
+)
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -165,16 +170,7 @@ class TestSelectedRowsSumOp(unittest.TestCase):
         return var
 
     def test_w_is_selected_rows(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(core.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-        for place in places:
+        for place in get_places():
             for inplace in [True, False]:
                 self.check_with_place(place, inplace)
 
@@ -587,15 +583,17 @@ class TestSumOpDtype(unittest.TestCase):
         self.assertEqual(paddle_result.dtype, self.paddle_output_dtype)
 
     def test_static(self):
-        with static_guard():
-            with paddle.static.program_guard(
+        with (
+            static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                x = paddle.static.data(
-                    name='x', shape=self.shape, dtype=self.input_dtype
-                )
-                result = paddle.sum(x, axis=self.axis, dtype=self.output_dtype)
-                self.assertEqual(result[0].dtype, self.paddle_output_dtype)
+            ),
+        ):
+            x = paddle.static.data(
+                name='x', shape=self.shape, dtype=self.input_dtype
+            )
+            result = paddle.sum(x, axis=self.axis, dtype=self.output_dtype)
+            self.assertEqual(result[0].dtype, self.paddle_output_dtype)
 
 
 class TestSumOpError(unittest.TestCase):
@@ -758,16 +756,7 @@ class TestAddNDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func(p)
 
 
@@ -808,16 +797,7 @@ class TestAddNTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func(p)
 
 
@@ -845,16 +825,7 @@ class TestSumDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func(p)
 
 
@@ -882,45 +853,36 @@ class TestSumTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func(p)
 
 
 class TestSumAPIWarnings(unittest.TestCase):
     def test_warnings(self):
-        with paddle.pir_utils.OldIrGuard():
-            with warnings.catch_warnings(record=True) as context:
-                warnings.simplefilter("always")
-                paddle.enable_static()
-                helper = LayerHelper("sum")
-                data = paddle.static.data(
-                    name='data', shape=[32, 32], dtype='float32'
-                )
-                out = helper.create_variable_for_type_inference(
-                    dtype=data.dtype
-                )
-                attrs = {'dim': [1], 'keep_dim': True, 'reduce_all': True}
-                os.environ["FLAGS_print_extra_attrs"] = '1'
-                helper.append_op(
-                    type="reduce_sum",
-                    inputs={'X': data},
-                    outputs={'Out': out},
-                    attrs=attrs,
-                )
-                self.assertTrue(
-                    "op reduce_sum's attr reduce_all = True is not the default value: False"
-                    in str(context[-1].message)
-                )
-                os.environ["FLAGS_print_extra_attrs"] = '0'
+        with (
+            paddle.pir_utils.OldIrGuard(),
+            warnings.catch_warnings(record=True) as context,
+        ):
+            warnings.simplefilter("always")
+            paddle.enable_static()
+            helper = LayerHelper("sum")
+            data = paddle.static.data(
+                name='data', shape=[32, 32], dtype='float32'
+            )
+            out = helper.create_variable_for_type_inference(dtype=data.dtype)
+            attrs = {'dim': [1], 'keep_dim': True, 'reduce_all': True}
+            os.environ["FLAGS_print_extra_attrs"] = '1'
+            helper.append_op(
+                type="reduce_sum",
+                inputs={'X': data},
+                outputs={'Out': out},
+                attrs=attrs,
+            )
+            self.assertTrue(
+                "op reduce_sum's attr reduce_all = True is not the default value: False"
+                in str(context[-1].message)
+            )
+            os.environ["FLAGS_print_extra_attrs"] = '0'
 
 
 class TestSum_BoolToInt64_ZeroSize(unittest.TestCase):

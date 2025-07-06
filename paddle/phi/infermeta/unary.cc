@@ -30,7 +30,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/strided_slice.h"
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
-#include "paddle/phi/kernels/impl/einsum_impl.h"
+#include "paddle/phi/kernels/impl/einsum_kernel_impl.h"
 
 namespace phi {
 
@@ -954,6 +954,9 @@ void DiagInferMeta(const MetaTensor& x,
       } else {
         size_ = x_dims[1];
       }
+    }
+    if (size_ < 0) {
+      size_ = 0;
     }
     out->set_dims({size_});
     out->set_dtype(x.dtype());
@@ -5373,7 +5376,7 @@ void TileInferMeta(const MetaTensor& x,
   auto out_rank =
       std::max(static_cast<size_t>(x_dims.size()), repeat_times_data.size());
   std::vector<int64_t> out_shape(out_rank);
-  auto x_dim_vec = common::vectorize<int>(x_dims);
+  auto x_dim_vec = common::vectorize<int64_t>(x_dims);
   if (x_dim_vec.size() > repeat_times_data.size()) {
     auto diff = x_dim_vec.size() - repeat_times_data.size();
     repeat_times_data.insert(repeat_times_data.begin(), diff, 1);
@@ -6318,11 +6321,6 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
     PADDLE_THROW(common::errors::InvalidArgument(
         "The algo must be in ['weight_only_int8', 'weight_only_int4', "
         "'llm.int8', 'w4a8'], but got[%s]",
-        algo));
-  }
-  if (x.dtype() == DataType::INT8 && algo != "w4a8") {
-    PADDLE_THROW(common::errors::InvalidArgument(
-        "The algo must be 'w4a8' while the x's dtype is INT8, but got[%s]",
         algo));
   }
   out->set_dims(common::make_ddim(dim_out));

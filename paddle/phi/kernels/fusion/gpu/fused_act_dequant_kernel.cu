@@ -94,8 +94,6 @@ void FusedActDequantKernel(const Context& dev_ctx,
 
   auto out_ptr =
       reinterpret_cast<void*>(out->template data<phi::dtype::bfloat16>());
-  cudaMemsetAsync(
-      out_ptr, 0, sizeof(phi::dtype::bfloat16) * rows * cols, dev_ctx.stream());
 
   dim3 grid(rows);
   dim3 block(256);

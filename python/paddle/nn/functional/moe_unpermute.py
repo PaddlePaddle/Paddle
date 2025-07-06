@@ -33,6 +33,35 @@ def moe_unpermute(
     use_mix_precision: bool = True,
     name: str | None = None,
 ) -> tuple[Tensor, Tensor]:
+    r"""
+    Permute tokens for Mixture of Experts (MoE) computation.
+
+    Args:
+        hidden_states (Tensor): Input tensor storing tokens in row-major layout.
+            Shape: [seq_len, token_len], dtype: bfloat16 or float8_e4m3fn.
+        scale (Tensor|None): Input tensor required when hidden_states is fp8 type.
+            Shape: [seq_len, (token_len + 127) // 128], dtype: float32.
+        expert_routemap_topk (Tensor): Tensor recording which expert each token is dispatched to.
+            Shape: [seq_len, topk], dtype: int32, value range: [-1, num_experts).
+        expert_prob_topk (Tensor): Tensor storing expert probabilities.
+            Shape: [seq_len, topk], dtype: float32.
+        num_experts (int): Number of experts.
+        tokens_per_expert (list[int]): List indicating how many tokens each expert receives.
+        padding_alignment (int): Alignment requirement for expert buffers (must be multiple of this value).
+        name (str|None, optional): Name for the operation. Defaults to None.
+
+    Returns:
+        tuple[Tensor, Tensor, Tensor, Tensor]:
+            - hidden_states_unzipped: Permuted and broadcasted tensor.
+                Shape: [seqlen_broadcasted, token_len], dtype same as input.
+            - zipped_expertwise_rowmap: Mapping tensor for unpermute operation.
+                Shape: [seqlen, num_experts], dtype: int32.
+            - token_prob_unzipped: Flattened expert probabilities aligned with hidden_states_unzipped.
+                Shape: [seqlen_broadcasted, 1], dtype: float32.
+            - scale_unzipped: Scaled tensor (only valid when hidden_states is fp8).
+                Shape: [seqlen_broadcasted, (token_len + 127) // 128], dtype: float32.
+
+    """
     if in_dynamic_or_pir_mode():
         zipped_tokens, zipped_probs_topk = _C_ops.moe_unpermute(
             hidden_states_unzipped,

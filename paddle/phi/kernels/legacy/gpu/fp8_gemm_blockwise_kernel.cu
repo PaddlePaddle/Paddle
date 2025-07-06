@@ -63,20 +63,22 @@ cudaDataType_t ScalarTypeToCudaDataType(phi::DataType dtype) {
     case phi::DataType::FLOAT16:
       return CUDA_R_16F;
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument("Unsupported data type"));
+      PADDLE_THROW(common::errors::InvalidArgument("Unsupported data type"));
   }
 }
 
 // cuBLAS error checking macro
-#define PADDLE_CUDABLAS_CHECK(func)                                    \
-  do {                                                                 \
-    cublasStatus_t status = func;                                      \
-    if (status != CUBLAS_STATUS_SUCCESS) {                             \
-      PADDLE_THROW(phi::errors::External("cuBLAS error: %d", status)); \
-    }                                                                  \
+#define PADDLE_CUDABLAS_CHECK(func)                                       \
+  do {                                                                    \
+    cublasStatus_t status = func;                                         \
+    if (status != CUBLAS_STATUS_SUCCESS) {                                \
+      PADDLE_THROW(common::errors::External("cuBLAS error: %d", status)); \
+    }                                                                     \
   } while (0)
 
-void cublas_gemm_blockwise_impl(const DenseTensor& A,
+template <typename Context>
+void cublas_gemm_blockwise_impl(const Context& dev_ctx,
+                                const DenseTensor& A,
                                 const DenseTensor& A_decode_scale,
                                 const DenseTensor& B,
                                 const DenseTensor& B_decode_scale,
@@ -97,49 +99,51 @@ void cublas_gemm_blockwise_impl(const DenseTensor& A,
   PADDLE_ENFORCE_EQ(
       transa,
       true,
-      phi::errors::InvalidArgument("Only transa == true is supported"));
+      common::errors::InvalidArgument("Only transa == true is supported"));
   PADDLE_ENFORCE_EQ(
       transb,
       false,
-      phi::errors::InvalidArgument("Only transb == false is supported"));
-  PADDLE_ENFORCE_EQ(
-      A.place().GetType(),
-      phi::AllocationType::GPU,
-      phi::errors::InvalidArgument("Input tensor A must be on CUDA device."));
-  PADDLE_ENFORCE_EQ(
-      B.place().GetType(),
-      phi::AllocationType::GPU,
-      phi::errors::InvalidArgument("Input tensor B must be on CUDA device."));
-  PADDLE_ENFORCE_EQ(
-      D->place().GetType(),
-      phi::AllocationType::GPU,
-      phi::errors::InvalidArgument("Output tensor D must be on CUDA device."));
+      common::errors::InvalidArgument("Only transb == false is supported"));
+  PADDLE_ENFORCE_EQ(A.place().GetType(),
+                    phi::AllocationType::GPU,
+                    common::errors::InvalidArgument(
+                        "Input tensor A must be on CUDA device."));
+  PADDLE_ENFORCE_EQ(B.place().GetType(),
+                    phi::AllocationType::GPU,
+                    common::errors::InvalidArgument(
+                        "Input tensor B must be on CUDA device."));
+  PADDLE_ENFORCE_EQ(D->place().GetType(),
+                    phi::AllocationType::GPU,
+                    common::errors::InvalidArgument(
+                        "Output tensor D must be on CUDA device."));
   PADDLE_ENFORCE_EQ(IsFp8Dtype(A.dtype()),
                     true,
-                    phi::errors::InvalidArgument("A must be FP8"));
+                    common::errors::InvalidArgument("A must be FP8"));
   PADDLE_ENFORCE_EQ(IsFp8Dtype(B.dtype()),
                     true,
-                    phi::errors::InvalidArgument("B must be FP8"));
+                    common::errors::InvalidArgument("B must be FP8"));
   PADDLE_ENFORCE_EQ(
       D->dtype() == phi::DataType::BFLOAT16 ||
           D->dtype() == phi::DataType::FLOAT32,
       true,
-      phi::errors::InvalidArgument("D must be BFloat16 or float"));
+      common::errors::InvalidArgument("D must be BFloat16 or float"));
   PADDLE_ENFORCE_EQ(
       A_decode_scale.dtype() == phi::DataType::FLOAT32,
       true,
-      phi::errors::InvalidArgument("A_decode_scale must be float"));
+      common::errors::InvalidArgument("A_decode_scale must be float"));
   PADDLE_ENFORCE_EQ(
       B_decode_scale.dtype() == phi::DataType::FLOAT32,
       true,
-      phi::errors::InvalidArgument("B_decode_scale must be float"));
-  PADDLE_ENFORCE_EQ(
-      A.dims().size() == 2, true, phi::errors::InvalidArgument("A must be 2D"));
-  PADDLE_ENFORCE_EQ(
-      B.dims().size() == 2, true, phi::errors::InvalidArgument("B must be 2D"));
+      common::errors::InvalidArgument("B_decode_scale must be float"));
+  PADDLE_ENFORCE_EQ(A.dims().size() == 2,
+                    true,
+                    common::errors::InvalidArgument("A must be 2D"));
+  PADDLE_ENFORCE_EQ(B.dims().size() == 2,
+                    true,
+                    common::errors::InvalidArgument("B must be 2D"));
   PADDLE_ENFORCE_EQ(D->dims().size() == 2,
                     true,
-                    phi::errors::InvalidArgument("D must be 2D"));
+                    common::errors::InvalidArgument("D must be 2D"));
 
   const int m = transa ? A.dims()[0] : A.dims()[1];
   const int k = transa ? A.dims()[1] : A.dims()[0];
@@ -148,15 +152,13 @@ void cublas_gemm_blockwise_impl(const DenseTensor& A,
   int lda = k, ldb = k, ldc = m, ldd = m;
   float alpha = 1.0, beta = accumulate ? 1.0 : 0.0;
 
-  cublasLtHandle_t ltHandle;
-  PADDLE_CUDABLAS_CHECK(phi::dynload::cublasLtCreate(&ltHandle));
-
+  cublasLtHandle_t ltHandle = dev_ctx.cublaslt_handle();
   // Create operation descriptor
   cublasLtMatmulDesc_t operationDesc = nullptr;
   PADDLE_CUDABLAS_CHECK(phi::dynload::cublasLtMatmulDescCreate(
       &operationDesc, CUBLAS_COMPUTE_32F, CUDA_R_32F));
 
-#if CUBLAS_VERSION >= 120804 && CUDA_VERSION >= 12060
+#if CUBLAS_VERSION >= 120805 && CUDA_VERSION >= 12080
   // Setup scaling for A and B
   cublasLtMatmulMatrixScale_t A_scale_mode, B_scale_mode;
   // Note: in cuBLAS term, tensor name A and B are swapped.
@@ -173,7 +175,7 @@ void cublas_gemm_blockwise_impl(const DenseTensor& A,
     B_scale_mode = CUBLASLT_MATMUL_MATRIX_SCALE_VEC128_32F;
   } else {
     PADDLE_THROW(
-        phi::errors::InvalidArgument("2Dx2D scaling is not supported"));
+        common::errors::InvalidArgument("2Dx2D scaling is not supported"));
   }
   PADDLE_CUDABLAS_CHECK(phi::dynload::cublasLtMatmulDescSetAttribute(
       operationDesc,
@@ -186,8 +188,8 @@ void cublas_gemm_blockwise_impl(const DenseTensor& A,
       &B_scale_mode,
       sizeof(B_scale_mode)));
 #else
-  PADDLE_THROW(phi::errors::InvalidArgument(
-      "Sub-channel FP8 GEMM requires CUDA 12.8 and cuBLAS 12.8.4 or later."));
+  PADDLE_THROW(common::errors::InvalidArgument(
+      "Sub-channel FP8 GEMM requires CUDA 12.8 and cuBLAS 12.8.5 or later."));
 #endif
 
   // setup transa and transb
@@ -285,7 +287,6 @@ void cublas_gemm_blockwise_impl(const DenseTensor& A,
                                                      workspace->data(),
                                                      workspace_size,
                                                      stream));
-
   // Cleanup
   if (preference)
     PADDLE_CUDABLAS_CHECK(
@@ -301,7 +302,6 @@ void cublas_gemm_blockwise_impl(const DenseTensor& A,
   if (operationDesc)
     PADDLE_CUDABLAS_CHECK(
         phi::dynload::cublasLtMatmulDescDestroy(operationDesc));
-  if (ltHandle) PADDLE_CUDABLAS_CHECK(phi::dynload::cublasLtDestroy(ltHandle));
 }
 
 }  // anonymous namespace
@@ -327,23 +327,24 @@ void Fp8GemmBlockwiseKernel(const Context& dev_ctx,
                             DenseTensor* output,
                             DenseTensor* pre_gelu_out,
                             DenseTensor* workspace_out) {
-  cublas_gemm_blockwise_impl(A,
-                             A_scale,
-                             B,
-                             B_scale,
-                             output,
-                             bias,
-                             pre_gelu_out,
-                             transa,
-                             transb,
-                             grad,
-                             workspace_out,
-                             accumulate,
-                             use_split_accumulator,
-                             math_sm_count,
-                             is_A_1d_scaled,
-                             is_B_1d_scaled,
-                             dev_ctx.stream());
+  cublas_gemm_blockwise_impl<Context>(dev_ctx,
+                                      A,
+                                      A_scale,
+                                      B,
+                                      B_scale,
+                                      output,
+                                      bias,
+                                      pre_gelu_out,
+                                      transa,
+                                      transb,
+                                      grad,
+                                      workspace_out,
+                                      accumulate,
+                                      use_split_accumulator,
+                                      math_sm_count,
+                                      is_A_1d_scaled,
+                                      is_B_1d_scaled,
+                                      dev_ctx.stream());
 }
 
 }  // namespace phi

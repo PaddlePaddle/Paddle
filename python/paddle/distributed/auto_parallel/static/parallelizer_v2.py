@@ -244,9 +244,11 @@ class Parallelizer:
         self._dist_context._serial_optimizer = optimizer
         self._dist_context._serial_optimizer._learning_rate = learning_rate
 
-        with program_guard(main_program, startup_program):
-            with main_program.switch_name_generator_guard("opt_"):
-                optimizer_ops = new_optimizer.apply_gradients(params_grads)
+        with (
+            program_guard(main_program, startup_program),
+            main_program.switch_name_generator_guard("opt_"),
+        ):
+            optimizer_ops = new_optimizer.apply_gradients(params_grads)
         self._completer.complete_update_annotation(main_program)
         return optimizer_ops
 

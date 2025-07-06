@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
 from op import Operator
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_places
 
 import paddle
 from paddle.base import core
@@ -188,17 +187,7 @@ class TestClipByNormOpWithSelectedRows(unittest.TestCase):
         )
 
     def test_clip_by_norm_with_selected_ros(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(core.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-
-        for place in places:
+        for place in get_places():
             self.check_with_place(place)
 
     def config_test_case(self):

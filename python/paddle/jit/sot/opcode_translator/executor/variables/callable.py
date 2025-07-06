@@ -36,7 +36,10 @@ from paddle.base.dygraph.base import (
     _DecoratorContextManager,
     in_sot_simulation_mode,
 )
-from paddle.jit.dy2static.utils import TransformOptions, is_dataclass_type
+from paddle.jit.dy2static.utils import (
+    TransformOptions,
+    is_plain_dataclass_type,
+)
 
 from .... import psdb
 from ....profiler import EventGuard
@@ -73,6 +76,7 @@ from ....utils.exceptions import (
     PsdbBreakReason,
     SotCapturedException,
     SotCapturedExceptionFactory,
+    SotCapturedStopIteration,
     SotErrorBase,
     UnsupportedNumPyAPIBreak,
     UnsupportedOperationBreak,
@@ -964,6 +968,11 @@ class BuiltinVariable(FunctionVariable):
         if handler is not None:
             try:
                 return handler(*args, **kwargs)
+            except SotCapturedStopIteration:
+                # Although SotCapturedStopIteration is a subclass of SotErrorBase,
+                # this exception is handled separately because StopIteration is essential for generator operation.
+                # Explicitly separating this branch clarifies its role and makes debugging easier.
+                raise
             except SotErrorBase as e:
                 # NOTE: BuiltinVariable.call_function cat not raise SotCapturedException,
                 # so we can directly raise SotErrorBase.
@@ -1320,11 +1329,7 @@ class DataClassVariable(ClassVariable):
             DummyTracker([*args, *kwargs.values()]),
         )
         if hasattr(self.value, "__post_init__"):
-            post_init = VariableFactory.from_value(
-                self.value.__post_init__,
-                self.graph,
-                GetAttrTracker(self, "__post_init__"),
-            ).bind(instance, "__post_init__")
+            post_init = instance.getattr("__post_init__")
             post_init()
         return instance
 
@@ -1352,7 +1357,7 @@ class DataClassVariable(ClassVariable):
 
     @VariableFactory.register_from_value(successor="ClassVariable")
     def from_value(value: object, graph: FunctionGraph, tracker: Tracker):
-        if is_dataclass_type(value):
+        if is_plain_dataclass_type(value):
             var = DataClassVariable(value, graph=graph, tracker=tracker)
             return var
         return None

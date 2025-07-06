@@ -415,19 +415,30 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
       continue;
     }
     is_all_0d_tensor = false;
-    if (common::product(in_dim) == 0) {
+    // use the first dimension
+    if (i == 0) {
       in_dim = x_dim;
     } else {
       if (config.is_runtime) {
-        PADDLE_ENFORCE_EQ(in_dim,
-                          x_dim,
-                          common::errors::InvalidArgument(
-                              "The input tensor X of AddNOp must"
-                              " have same shape. But received X[0]'s shape = "
-                              "[%s], X[%d]'s shape = [%s].",
-                              in_dim,
-                              i,
-                              x_dim));
+        for (int j = 0; j < x_dim.size(); ++j) {
+          if (in_dim[j] != 0) {
+            if (x_dim[j] == 0) {
+              // update the 0 dim
+              in_dim[j] = 0;
+            } else {
+              PADDLE_ENFORCE_EQ(
+                  in_dim[j],
+                  x_dim[j],
+                  common::errors::InvalidArgument(
+                      "The input tensor X of AddNOp must"
+                      " have same shape. But received X[0]'s shape = "
+                      "[%s], X[%d]'s shape = [%s].",
+                      in_dim,
+                      i,
+                      x_dim));
+            }
+          }
+        }
       } else {
         PADDLE_ENFORCE_EQ(
             in_dim.size(),
@@ -2488,12 +2499,22 @@ void FusedBiasActInferMeta(const MetaTensor& x,
   }
 
   if (act_method == "geglu" || act_method == "swiglu") {
-    PADDLE_ENFORCE_EQ(
-        dim % 2,
-        0,
-        common::errors::InvalidArgument(
-            "The second dimension of x must be even, but receive %d", dim));
-    x_shapes[x_last_dim] /= 2;
+    if (config.is_runtime || dim >= 0) {
+      PADDLE_ENFORCE_EQ(
+          dim % 2,
+          0,
+          common::errors::InvalidArgument(
+              "The last dimension of x must be even, but receive %d", dim));
+      x_shapes[x_last_dim] /= 2;
+    } else {
+      PADDLE_ENFORCE_EQ(
+          dim,
+          -1,
+          common::errors::InvalidArgument("At compile time, a negative last "
+                                          "dimension must be -1, but got %d",
+                                          dim));
+    }
+
     out->set_dims(common::make_ddim(x_shapes));
   } else if (act_method == "gelu" || act_method == "relu") {
     out->set_dims(common::make_ddim(x_shapes));
@@ -2613,14 +2634,29 @@ void FusedLayerNormInferMeta(const MetaTensor& x,
   std::vector<int64_t> x_dims_vec = common::vectorize(x.dims());
   auto x_dims_size = x_dims_vec.size();
 
-  size_t normalized_dims = 1;
-  for (size_t i = begin_norm_axis; i < x_dims_size; ++i) {
+  int64_t normalized_dims = 1;
+  for (int i = begin_norm_axis; i < x_dims_size; ++i) {
     normalized_dims *= x_dims_vec[i];
   }
 
-  int32_t rows = 1;
+  if (residual) {
+    std::vector<int64_t> residual_dims_vec = common::vectorize(residual.dims());
+    for (int i = 0; i < x_dims_vec.size(); ++i) {
+      if (x_dims_vec[i] == -1 || residual_dims_vec[i] == -1) continue;
+
+      PADDLE_ENFORCE_EQ(x_dims_vec[i],
+                        residual_dims_vec[i],
+                        common::errors::InvalidArgument(
+                            "The shape of Input(x) and input(residual) do not "
+                            "match: %s vs %s.",
+                            x_dims_vec[i],
+                            residual_dims_vec[i]));
+    }
+  }
+
+  int64_t rows = 1;
   for (int i = 0; i < begin_norm_axis; i++) {
-    rows *= static_cast<int32_t>(x.dims()[i]);
+    rows *= x.dims()[i];
   }
   if (config.is_runtime) {
     if (norm_weight) {

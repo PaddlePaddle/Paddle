@@ -45,7 +45,7 @@ void TileKernel(const Context& dev_ctx,
             repeat_times_data[i]));
   }
 
-  auto vec_x_dims = common::vectorize<int>(x_dims);
+  auto vec_x_dims = common::vectorize<int64_t>(x_dims);
   if (repeat_times_data.size() < vec_x_dims.size()) {
     int diff = vec_x_dims.size() - repeat_times_data.size();
     repeat_times_data.insert(repeat_times_data.begin(), diff, 1);
@@ -107,6 +107,9 @@ PD_REGISTER_KERNEL(tile,
                    double,
                    int,
                    int64_t,
+                   int8_t,
+                   int16_t,
+                   uint8_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
                    phi::dtype::float8_e4m3fn,

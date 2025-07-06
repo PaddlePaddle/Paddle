@@ -21,12 +21,14 @@
 namespace phi {
 
 template <typename T, typename MTP, int VecSize>
-__global__ void combine_no_weight_bwd_kernel(const int* scatter_index,
+__global__ void combine_no_weight_bwd_kernel(const T* combine_weights,
+                                             const int* scatter_index,
                                              const T* grad_y,
                                              T* grad_x,
                                              const int64_t k,
                                              const int64_t seqlen,
-                                             const int64_t hidden_size) {
+                                             const int64_t hidden_size,
+                                             const float epsilon) {
   using LoadT = phi::AlignedVector<T, VecSize>;
   LoadT grad_y_vec;
   int i = blockIdx.x;   // Batch index (sequence length)
@@ -34,7 +36,10 @@ __global__ void combine_no_weight_bwd_kernel(const int* scatter_index,
 
   if (i < seqlen && ki < k) {
     int idx = scatter_index[i * k + ki];  // Index into x
-
+    if (fabsf(combine_weights[i * k + ki]) <=
+        epsilon) {  // no grad for padding tokens
+      return;
+    }
     // Loop over h dimension in strides of block
     for (int h_i = threadIdx.x * VecSize; h_i < hidden_size;
          h_i += blockDim.x * VecSize) {
@@ -45,12 +50,14 @@ __global__ void combine_no_weight_bwd_kernel(const int* scatter_index,
 }
 
 template <typename T>
-void moe_combine_no_weight_bwd(const int* scatter_index,
+void moe_combine_no_weight_bwd(const T* combine_weights,
+                               const int* scatter_index,
                                const T* grad_y,
                                T* grad_x,
                                const int64_t k,
                                const int64_t seqlen,
                                const int64_t hidden_size,
+                               const float epsilon,
                                cudaStream_t stream) {
   int block_size = 512;
   int grid_size_i = seqlen;
@@ -61,19 +68,34 @@ void moe_combine_no_weight_bwd(const int* scatter_index,
   constexpr int max_pack_size = 16 / sizeof(T);
   if (hidden_size % max_pack_size == 0) {
     combine_no_weight_bwd_kernel<T, float, max_pack_size>
-        <<<gridDim, blockDim, 0, stream>>>(
-            scatter_index, grad_y, grad_x, k, seqlen, hidden_size);
+        <<<gridDim, blockDim, 0, stream>>>(combine_weights,
+                                           scatter_index,
+                                           grad_y,
+                                           grad_x,
+                                           k,
+                                           seqlen,
+                                           hidden_size,
+                                           epsilon);
   } else {
-    combine_no_weight_bwd_kernel<T, float, 1><<<gridDim, blockDim, 0, stream>>>(
-        scatter_index, grad_y, grad_x, k, seqlen, hidden_size);
+    combine_no_weight_bwd_kernel<T, float, 1>
+        <<<gridDim, blockDim, 0, stream>>>(combine_weights,
+                                           scatter_index,
+                                           grad_y,
+                                           grad_x,
+                                           k,
+                                           seqlen,
+                                           hidden_size,
+                                           epsilon);
   }
 }
 
 template <typename T, typename Context>
 void MoeCombineNoWeightGradKernel(const Context& dev_ctx,
                                   const DenseTensor& x,
+                                  const DenseTensor& combine_weights,
                                   const DenseTensor& scatter_index,
                                   const DenseTensor& grad_y,
+                                  const float epsilon,
                                   DenseTensor* grad_x) {
   const auto x_shape = x.dims();
   const int64_t hidden_size = x_shape[1];
@@ -86,12 +108,14 @@ void MoeCombineNoWeightGradKernel(const Context& dev_ctx,
   phi::Full<T, Context>(
       dev_ctx, phi::IntArray(common::vectorize(grad_x->dims())), 0, grad_x);
 
-  moe_combine_no_weight_bwd<T>(scatter_index.data<int>(),
+  moe_combine_no_weight_bwd<T>(combine_weights.data<T>(),
+                               scatter_index.data<int>(),
                                grad_y.data<T>(),
                                grad_x->data<T>(),
                                k,
                                seqlen,
                                hidden_size,
+                               epsilon,
                                dev_ctx.stream());
 }
 

@@ -18,19 +18,21 @@
 #include "paddle/phi/kernels/gpu/moe_permute_utils.h"
 
 namespace phi {
-struct __custom_bfloat162 {
+struct __custom_bfloat164 {
   __nv_bfloat16 x;
   __nv_bfloat16 y;
+  __nv_bfloat16 z;
+  __nv_bfloat16 w;
 };
-__device__ __nv_bfloat16 __custoom_hadd(__nv_bfloat16 x, __nv_bfloat16 y) {
+__device__ __nv_bfloat16 __custom_hadd(__nv_bfloat16 x, __nv_bfloat16 y) {
   return static_cast<__nv_bfloat16>(static_cast<float>(x) +
                                     static_cast<float>(y));
 }
 #ifndef MAX_NUM_EXPERTS
-#define MAX_NUM_EXPERTS 8
+#define MAX_NUM_EXPERTS 64
 #endif
 template <bool MP>
-__global__ void tokens_zip_kernel(
+__global__ __launch_bounds__(256) void tokens_zip_kernel(
     const phi::bfloat16 *__restrict__ unzipped_tokens_in,
     const int *__restrict__ zipped_expertwise_rowmap,
     const int *__restrict__ expert_routemap_topk,
@@ -68,7 +70,7 @@ __global__ void tokens_zip_kernel(
         unzipped_token_probs[expert_fetch_row];
   }
 
-  constexpr int vecSize = 2;  // __nv_bfloat162 = 2 x bfloat16
+  constexpr int vecSize = 4;
   const int num_full_vec = token_length / vecSize;
   const int remaining_elems = token_length % vecSize;
   const int thread_stride = blockDim.x * vecSize;
@@ -77,28 +79,34 @@ __global__ void tokens_zip_kernel(
     for (int x_offset = threadIdx.x * vecSize;
          x_offset < num_full_vec * vecSize;
          x_offset += thread_stride) {
-      float2 sum = {0.0f, 0.0f};
-      __custom_bfloat162 raw = {0.0f, 0.0f};
+      float4 sum = {0.0f, 0.0f, 0.0f, 0.0f};
+      __custom_bfloat164 raw = {0.0f, 0.0f, 0.0f, 0.0f};
       int aggreg_cnt = 0;
-      __custom_bfloat162 *out_ptr = reinterpret_cast<__custom_bfloat162 *>(
+      __custom_bfloat164 *out_ptr = reinterpret_cast<__custom_bfloat164 *>(
           &zipped_tokens[(int64_t)this_row * (int64_t)token_length + x_offset]);
 #pragma unroll
       for (int expert = 0; expert < num_experts; ++expert) {
         const int fetch_row = local_row_fetchlist[expert];
         if (fetch_row < 0) continue;
         aggreg_cnt++;
-        raw = *reinterpret_cast<const __custom_bfloat162 *>(
+        raw = *reinterpret_cast<const __custom_bfloat164 *>(
             &unzipped_tokens[(int64_t)fetch_row * (int64_t)token_length +
                              x_offset]);
-        float2 token_vec = {0.0f, 0.0f};
+        float4 token_vec = {0.0f, 0.0f, 0.0f, 0.0f};
         token_vec.x = static_cast<float>(raw.x);
         token_vec.y = static_cast<float>(raw.y);
+        token_vec.z = static_cast<float>(raw.z);
+        token_vec.w = static_cast<float>(raw.w);
         sum.x = __fadd_rn(token_vec.x, sum.x);
         sum.y = __fadd_rn(token_vec.y, sum.y);
+        sum.z = __fadd_rn(token_vec.z, sum.z);
+        sum.w = __fadd_rn(token_vec.w, sum.w);
       }
       if (aggreg_cnt > 1) {
         (*out_ptr).x = static_cast<__nv_bfloat16>(sum.x);
         (*out_ptr).y = static_cast<__nv_bfloat16>(sum.y);
+        (*out_ptr).z = static_cast<__nv_bfloat16>(sum.z);
+        (*out_ptr).w = static_cast<__nv_bfloat16>(sum.w);
       } else {
         *out_ptr = raw;
       }
@@ -125,19 +133,21 @@ __global__ void tokens_zip_kernel(
     for (int x_offset = threadIdx.x * vecSize;
          x_offset < num_full_vec * vecSize;
          x_offset += thread_stride) {
-      __custom_bfloat162 sum = {0.0f, 0.0f};
-      __custom_bfloat162 *out_ptr = reinterpret_cast<__custom_bfloat162 *>(
+      __custom_bfloat164 sum = {0.0f, 0.0f, 0.0f, 0.0f};
+      __custom_bfloat164 *out_ptr = reinterpret_cast<__custom_bfloat164 *>(
           &zipped_tokens[(int64_t)this_row * (int64_t)token_length + x_offset]);
 #pragma unroll
       for (int expert = 0; expert < num_experts; ++expert) {
         const int fetch_row = local_row_fetchlist[expert];
         if (fetch_row < 0) continue;
-        __custom_bfloat162 token_vec =
-            *reinterpret_cast<const __custom_bfloat162 *>(
+        __custom_bfloat164 token_vec =
+            *reinterpret_cast<const __custom_bfloat164 *>(
                 &unzipped_tokens[(int64_t)fetch_row * (int64_t)token_length +
                                  x_offset]);
-        sum.x = __custoom_hadd(sum.x, token_vec.x);
-        sum.y = __custoom_hadd(sum.y, token_vec.y);
+        sum.x = __custom_hadd(sum.x, token_vec.x);
+        sum.y = __custom_hadd(sum.y, token_vec.y);
+        sum.z = __custom_hadd(sum.z, token_vec.z);
+        sum.w = __custom_hadd(sum.w, token_vec.w);
       }
       *out_ptr = sum;
     }
@@ -151,7 +161,7 @@ __global__ void tokens_zip_kernel(
         if (fetch_row < 0) continue;
         __nv_bfloat16 token_val =
             unzipped_tokens[(int64_t)fetch_row * (int64_t)token_length + i];
-        sum = __custoom_hadd(sum, token_val);
+        sum = __custom_hadd(sum, token_val);
       }
       zipped_tokens[(int64_t)this_row * (int64_t)token_length + i] = sum;
     }

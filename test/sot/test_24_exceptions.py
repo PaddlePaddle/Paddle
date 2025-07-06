@@ -945,6 +945,7 @@ class TestGuard(TestCaseBase):
 
 
 class TestBuiltinFunctionRaiseExceptionGuard(TestCaseBase):
+    @strict_mode_guard(False)
     def test_guard_run(self):
         def foo_floordiv(x):
             1 / x

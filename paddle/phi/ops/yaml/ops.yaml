@@ -1145,6 +1145,7 @@
   output : Tensor
   infer_meta :
     func : Conv3DInferMeta
+    spmd_rule : Conv3dInferSpmd
   kernel :
     func : conv3d
     data_type : input
@@ -2799,7 +2800,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : index_elementwise_get
-  args : (Tensor x, Tensor[] index, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_stride)
+  args : (Tensor x, Tensor[] index, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_stride, int64_t slice_offset = 0, bool accumulate = true)
   output : Tensor (out)
   infer_meta :
     func : IndexElementwiseGetInferMeta
@@ -2825,6 +2826,7 @@
   output : Tensor(out)
   infer_meta :
     func : IndexPutInferMeta
+    spmd_rule : IndexPutInferSpmd
   kernel :
     func : index_put
     data_type : x
@@ -3679,7 +3681,7 @@
   backward : moe_combine_grad
 
 - op : moe_combine_no_weight
-  args : (Tensor x, Tensor scatter_index)
+  args : (Tensor x, Tensor combine_weight, Tensor scatter_index, float epsilon = 1.0e-15)
   output : Tensor(y)
   infer_meta :
     func : MoeCombineNoWeightInferMeta
@@ -5229,6 +5231,7 @@
   infer_meta :
     func : TakeAlongAxisInferMeta
     param : [arr, indices, axis]
+    spmd_rule : TakeAlongAxisInferSpmd
   kernel :
     func : take_along_axis
     data_type : arr

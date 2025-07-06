@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
+from op_test import get_places
 
 import paddle
 
@@ -201,15 +201,7 @@ class TestTripletMarginLoss(unittest.TestCase):
         positive = np.random.uniform(0, 2, size=shape).astype(np.float64)
         negative = np.random.uniform(0, 2, size=shape).astype(np.float64)
 
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.device.is_compiled_with_cuda()
-        ):
-            places.append(paddle.CPUPlace())
-        if paddle.device.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
+        places = get_places()
         reductions = ['sum', 'mean', 'none']
         for place in places:
             for reduction in reductions:

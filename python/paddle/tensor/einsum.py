@@ -959,7 +959,7 @@ def einsum(equation: str, *operands: Tensor) -> Tensor | None:
     The current version of this API should be used in dynamic graph only mode.
 
     Einsum offers a tensor operation API which allows using the Einstein summation
-    convention or Einstain notation. It takes as input one or multiple tensors and
+    convention or Einstein notation. It takes as input one or multiple tensors and
     produces as output one tensor.
 
     Einsum is able to perform a variety of tensor operations. Following lists a few:

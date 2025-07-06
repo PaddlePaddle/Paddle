@@ -55,11 +55,6 @@ prog_logger = TranslatorLogger()
 FAKE_VALUE_NAME = get_fake_value_name()
 
 
-def hash_with_seed(value, seed):
-    result = seed + 0x9E3779B9 + (value << 6) + (value >> 2)
-    return result & ((1 << 64) - 1)
-
-
 def get_value_name(value):
     if is_fake_value(value):
         return FAKE_VALUE_NAME
@@ -217,6 +212,7 @@ class RunnableProgram:
         self,
         program,
         in_out_values,
+        out_stop_gradients,
         grad_in_out_values=None,
         forward_range=None,
         backward_range=None,
@@ -234,6 +230,7 @@ class RunnableProgram:
         self.x_names = self.convert_name(in_out_values[0])
         self.param_names = self.convert_name(in_out_values[1])
         self.out_names = self.convert_name(in_out_values[2])
+        self.out_stop_gradients = out_stop_gradients
         self.forward_range = forward_range
         self.backward_range = backward_range
         self.has_splited = False
@@ -305,6 +302,7 @@ class RunnableProgram:
         return RunnableProgram(
             cloned_program,
             (self.x_names, self.param_names, self.out_names),
+            self.out_stop_gradients,
             None,
             self.forward_range,
             self.backward_range,
@@ -409,6 +407,9 @@ class RunnableProgram:
         ), "program_attr() is called by PartialProgramLayer, don't call it manually, use program_name_attr instead."
         # can't apply pass after call this function.
         self.finish_pass = True
+        fwd_map = RunnableProgram._get_name_value_map_from_program(
+            self.forward_program
+        )
         program_name_attr = self.program_name_attr
         no_need_buffer_names = program_name_attr["no_need_buffers"]
         rename_mapping = {}
@@ -432,7 +433,23 @@ class RunnableProgram:
 
         program_attr = {}
         for k, ns in self.program_name_attr.items():
+            # Pass output values to create tensors in run program impl
+            if k == "fo":
+                program_attr[f"{k}_values"] = [
+                    fwd_map.get(n, fake_value()) for n in ns
+                ]
             program_attr[f"{k}_names"] = ns
+
+        # Restore stop_gradient for output values
+        assert len(program_attr["fo_values"]) == len(
+            self.out_stop_gradients
+        ), "Output values and stop gradients length mismatch"
+        for v, stop_gradient in zip(
+            program_attr["fo_values"], self.out_stop_gradients
+        ):
+            if is_fake_value(v):
+                continue
+            v.stop_gradient = stop_gradient
 
         return program_attr
 
@@ -729,23 +746,21 @@ class PartialProgramLayer:
         self._compile_time_counter = TimeCounter()
 
     @staticmethod
-    def run_impl(partial_program_layer, inputs, parameters, outputs, attrs):
-        _C_ops.run_program(
+    def run_impl(partial_program_layer, inputs, parameters, attrs):
+        scope_cache_key = paddle.base.core.calc_scope_cache_key(
+            attrs["program_id"],
             inputs,
-            parameters,
-            outputs,
+            attrs["cuda_graph_state"] != CUDAGraphState.DISABLE,
+            attrs["cuda_graph_dispatch_key"],
+        )
+        return _C_ops.run_program(
+            PartialProgramLayer._valid_vars(inputs),
+            PartialProgramLayer._valid_vars(parameters),
             partial_program_layer._create_scope_vec(
-                cache_key=(
-                    PartialProgramLayer._calc_scope_cache_key(
-                        attrs["program_id"],
-                        inputs,
-                        attrs["cuda_graph_state"] != CUDAGraphState.DISABLE,
-                        attrs["cuda_graph_dispatch_key"],
-                    )
-                ),
+                cache_key=scope_cache_key,
                 use_scope_cache=True,
             ),
-            *PartialProgramLayer._dict_attributes_to_op_fn_attrs(attrs),
+            attrs,
         )
 
     def __call__(self, inputs):
@@ -753,19 +768,15 @@ class PartialProgramLayer:
         Execute static graph by Interpreter and Return dynamic Tensors.
         """
         attrs = self._prepare_attributes(in_sot_mode=False)
-        inputs = self._valid_vars(self._prepare_inputs(inputs))
-        parameters = self._valid_vars(self._params)
-        out_vars = self._prepare_outputs()
-        outputs = self._valid_vars(out_vars)
+        inputs = self._prepare_inputs(inputs)
 
-        self.call_run_impl_with_hook(
+        out = self.call_run_impl_with_hook(
             inputs,
-            parameters,
-            outputs,
+            self._params,
             attrs,
         )
 
-        restored_nest_out = self._restore_out(out_vars)
+        restored_nest_out = self._restore_out(out)
         return self._remove_no_value(restored_nest_out)
 
     def sot_call(self, inputs):
@@ -773,39 +784,31 @@ class PartialProgramLayer:
         In sot, inputs and outputs of partial program only contain tensors, so we can skip some step to speed up
         """
         attrs = self._prepare_attributes(in_sot_mode=True)
-        inputs = self._valid_vars(inputs)
-        parameters = self._valid_vars(self._params)
-        out_vars = self._prepare_outputs()
-        outputs = self._valid_vars(out_vars)
 
-        self.call_run_impl_with_hook(
+        out = self.call_run_impl_with_hook(
             inputs,
-            parameters,
-            outputs,
+            self._params,
             attrs,
         )
-        return self._outputs.quick_restore(out_vars)
+        return self._outputs.quick_restore(out)
 
     def call_run_impl_with_hook(
         self,
         inputs,
         parameters,
-        outputs,
         attrs,
     ):
         if PartialProgramLayer.HOOKED_RUN_IMPL is None:
-            PartialProgramLayer.run_impl.__get__(self)(
+            return PartialProgramLayer.run_impl.__get__(self)(
                 inputs,
                 parameters,
-                outputs,
                 attrs,
             )
         else:
-            PartialProgramLayer.HOOKED_RUN_IMPL(
+            return PartialProgramLayer.HOOKED_RUN_IMPL(
                 PartialProgramLayer.run_impl.__get__(self),
                 inputs,
                 parameters,
-                outputs,
                 attrs,
             )
 
@@ -813,6 +816,9 @@ class PartialProgramLayer:
     def origin_runnable_program(self) -> RunnableProgram:
         inputs = list(self._inputs.var_list)
         outputs = list(self._outputs.var_list)
+        # NOTE(SigureMo): Record original stop gradient for output values to avoid
+        # losing during optimization passes.
+        out_stop_gradients = [v.stop_gradient for v in outputs]
         params = self._param_values
         paddle.base.libpaddle.pir.append_shadow_outputs(
             self._origin_main_program,
@@ -821,7 +827,9 @@ class PartialProgramLayer:
             "output_",
         )
         return RunnableProgram(
-            self._origin_main_program, (inputs, params, outputs)
+            self._origin_main_program,
+            (inputs, params, outputs),
+            out_stop_gradients,
         )
 
     def add_hooker(self, hooker):
@@ -839,23 +847,6 @@ class PartialProgramLayer:
         scope = core.Scope()
         cached_scopes.append(scope)
         return scope
-
-    @staticmethod
-    def _calc_input_places_hash(inputs):
-        if not inputs:
-            return 0
-        return paddle.base.libpaddle.calc_place_hash(inputs)
-
-    @staticmethod
-    def _calc_scope_cache_key(
-        program_id, inputs, use_cuda_graph, cuda_graph_dispatch_key
-    ):
-        res = hash_with_seed(
-            program_id, PartialProgramLayer._calc_input_places_hash(inputs)
-        )
-        res = hash_with_seed(res, int(use_cuda_graph))
-        res = hash_with_seed(res, cuda_graph_dispatch_key)
-        return res
 
     # whole
     @switch_to_static_graph
@@ -1190,6 +1181,7 @@ class PartialProgramLayer:
         whole_program = RunnableProgram(
             program,
             (inputs, params, targets),
+            train_runnable_program.out_stop_gradients,
             (x_grad_value, p_grad_value, o_grad_value),
             (0, forward_end_idx),
             (backward_start_op_index, backward_end_op_index),
@@ -1198,7 +1190,7 @@ class PartialProgramLayer:
         return whole_program
 
     def _prepare_attributes(self, in_sot_mode=False):
-        attrs = {
+        return {
             'forward_program': self.program.forward_program,
             'backward_program': self.program.backward_program,
             'is_test': not self.training,
@@ -1206,19 +1198,7 @@ class PartialProgramLayer:
             'in_sot_mode': in_sot_mode,
             'cuda_graph_state': CUDAGraphState.DISABLE,  # default value for not use cuda graph
             'cuda_graph_dispatch_key': 0,  # default value for not use cuda graph
-        }
-        attrs |= self.program.program_attr.items()
-        return attrs
-
-    @staticmethod
-    def _dict_attributes_to_op_fn_attrs(attrs):
-        op_fn_attrs = []
-        for k, v in attrs.items():
-            if k == "cuda_graph_state":
-                v = int(v)
-            op_fn_attrs.append(k)
-            op_fn_attrs.append(v)
-        return op_fn_attrs
+        } | self.program.program_attr
 
     def _prepare_inputs(self, inputs):
         """
@@ -1255,11 +1235,6 @@ class PartialProgramLayer:
                 continue
             input_vars.append(var)
         return input_vars
-
-    def _prepare_outputs(self):
-        return paddle.framework.core.create_empty_tensors_with_values(
-            self._outputs.var_list
-        )
 
     def _create_scope_vec(self, cache_key=None, use_scope_cache=False):
         inner_scope = self._get_scope(
@@ -1360,7 +1335,8 @@ class PartialProgramLayer:
                 )
             param_and_buffer_names_set.add(var.name)
 
-    def _valid_vars(self, vars):
+    @staticmethod
+    def _valid_vars(vars):
         return vars if vars else None
 
 
