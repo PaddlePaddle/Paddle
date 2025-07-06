@@ -146,7 +146,7 @@ if "%WITH_GPU%"=="ON" (
 
 @ECHO ON
 cd /d %work_dir%
-python -c "import wget;wget.download('https://paddle-github-action.bj.bcebos.com/windows/third_party_code/%sub_dir%/%md5%.tar.zst')" 2>nul
+python -c "import wget;wget.download('https://paddle-github-action.bj.bcebos.com/windows/third_party_code/%sub_dir%/%md5%.tar.zst')"
 if !ERRORLEVEL! EQU 0 (
     echo Getting source code of third party : extracting ...
     zstd -d %md5%.tar.zst && tar -xf %md5%.tar
