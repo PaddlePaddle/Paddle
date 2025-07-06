@@ -317,7 +317,7 @@ if "%WITH_TESTING%"=="ON" (
 )
 
 echo Build Paddle the %build_times% time:
-if %GENERATOR% == "Ninja" (
+if "%GENERATOR%" == "Ninja" (
     echo 1111111111111111
     ninja all
 ) else (
