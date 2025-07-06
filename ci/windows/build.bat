@@ -28,10 +28,10 @@ if "%WITH_SCCACHE%"=="ON" (
 
     sccache --start-server
     sccache -z
-    goto :cmake
+    goto :begin_cmake
 ) else (
     del %SCCACHE_ROOT%\sccache.exe 2> NUL
-    goto :cmake
+    goto :begin_cmake
 )
 
 :install_sccache
@@ -42,8 +42,9 @@ xcopy sccache.exe %SCCACHE_ROOT%\ /Y
 del sccache.exe
 goto:eof
 
+:begin_cmake
 call :cmake || goto cmake_error
-goto:build
+goto :begin_build
 
 :cmake
 @ECHO ON
@@ -241,6 +242,7 @@ type %cache_dir%\error_code.txt
 echo Cmake failed, will exit!
 exit /b 7
 
+:begin_build
 call :build || goto build_error
 goto:eof
 
