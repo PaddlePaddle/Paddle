@@ -289,7 +289,28 @@ set build_times=1
 rem clcache.exe -z
 
 rem -------clean up environment again-----------
-call %ci_scripts%\clean_env.bat
+taskkill /f /im cmake.exe /t 2>NUL
+taskkill /f /im MSBuild.exe /t 2>NUL
+taskkill /f /im cl.exe /t 2>NUL
+taskkill /f /im lib.exe /t 2>NUL
+taskkill /f /im link.exe /t 2>NUL
+taskkill /f /im vctip.exe /t 2>NUL
+taskkill /f /im cvtres.exe /t 2>NUL
+taskkill /f /im rc.exe /t 2>NUL
+taskkill /f /im mspdbsrv.exe /t 2>NUL
+taskkill /f /im csc.exe /t 2>NUL
+taskkill /f /im nvcc.exe /t 2>NUL
+taskkill /f /im cicc.exe /t 2>NUL
+taskkill /f /im ptxas.exe /t 2>NUL
+taskkill /f /im eager_generator.exe /t 2>NUL
+taskkill /f /im eager_legacy_op_function_generator.exe /t 2>NUL
+wmic process where name="eager_generator.exe" call terminate 2>NUL
+wmic process where name="eager_legacy_op_function_generator.exe" call terminate 2>NUL
+wmic process where name="cmake.exe" call terminate 2>NUL
+wmic process where name="cvtres.exe" call terminate 2>NUL
+wmic process where name="rc.exe" call terminate 2>NUL
+wmic process where name="cl.exe" call terminate 2>NUL
+wmic process where name="lib.exe" call terminate 2>NUL
 
 if "%WITH_TESTING%"=="ON" (
     for /F "tokens=1 delims= " %%# in ('tasklist ^| findstr /i test') do taskkill /f /im %%# /t
