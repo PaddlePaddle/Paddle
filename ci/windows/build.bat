@@ -43,7 +43,7 @@ del sccache.exe
 goto:eof
 
 call :cmake || goto cmake_error
-goto:eof
+goto:build
 
 :cmake
 @ECHO ON
