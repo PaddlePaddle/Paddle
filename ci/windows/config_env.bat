@@ -38,7 +38,10 @@ if not defined WITH_MKL echo WITH_MKL=ON>> %GITHUB_ENV%
 if not defined WITH_AVX echo WITH_AVX=ON>> %GITHUB_ENV%
 if not defined WITH_TESTING echo WITH_TESTING=ON>> %GITHUB_ENV%
 if not defined MSVC_STATIC_CRT echo MSVC_STATIC_CRT=ON>> %GITHUB_ENV%
-if not defined WITH_PYTHON echo WITH_PYTHON=ON>> %GITHUB_ENV%
+if not defined WITH_PYTHON (
+    set WITH_PYTHON=ON
+    echo WITH_PYTHON=ON>> %GITHUB_ENV%
+)
 if not defined ON_INFER echo ON_INFER=ON>> %GITHUB_ENV%
 if not defined WITH_ONNXRUNTIME echo WITH_ONNXRUNTIME=OFF>> %GITHUB_ENV%
 if not defined WITH_INFERENCE_API_TEST echo WITH_INFERENCE_API_TEST=ON>> %GITHUB_ENV%
@@ -90,7 +93,7 @@ if %ERRORLEVEL% NEQ 0 (
     echo activate python virtual environment failed!
     exit /b 5
 )
-
+python -m pip install wget
 if "%WITH_PYTHON%" == "ON" (
     where python
     where pip
