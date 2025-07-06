@@ -13,6 +13,7 @@ env:
   ACTION_DIR: ${{ github.workspace }}\..\..\..
   WORKSPACE_DIR: ${{ github.workspace }}\..
   cache_dir: C:\action-cache
+  SCCACHE_ROOT: C:\sccache
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 
 defaults:
