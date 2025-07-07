@@ -21,7 +21,7 @@ if "%WITH_SCCACHE%"=="ON" (
     set "SCCACHE_ERROR_LOG=%SCCACHE_ROOT%\sccache_log.txt"
     set SCCACHE_LOG=quiet
 
-    :: Distributed storage on windows
+    @REM :: Distributed storage on windows
     @REM set SCCACHE_ENDPOINT=s3.bj.bcebos.com
     @REM set SCCACHE_BUCKET=paddle-windows
     @REM set SCCACHE_S3_KEY_PREFIX=sccache/

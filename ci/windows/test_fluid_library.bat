@@ -1,5 +1,9 @@
 setlocal enabledelayedexpansion
 
+call :test_inference || goto test_inference_ut_error
+goto :eof
+
+:test_inference
 echo    ========================================
 echo    Step 7. Testing fluid library with infer_ut for inference ...
 echo    ========================================

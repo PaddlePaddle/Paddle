@@ -46,11 +46,6 @@ if not defined ON_INFER echo ON_INFER=ON>> %GITHUB_ENV%
 if not defined WITH_ONNXRUNTIME echo WITH_ONNXRUNTIME=OFF>> %GITHUB_ENV%
 if not defined WITH_INFERENCE_API_TEST echo WITH_INFERENCE_API_TEST=ON>> %GITHUB_ENV%
 if not defined WITH_STATIC_LIB echo WITH_STATIC_LIB=ON>> %GITHUB_ENV%
-
-if not defined WITH_STATIC_LIB echo aaaaaaaa=2>> %GITHUB_ENV%
-if not defined WITH_STATIC_LIB echo bbbbbbbb="1">> %GITHUB_ENV%
-if not defined WITH_STATIC_LIB echo cccccccc=1 >> %GITHUB_ENV%
-
 if not defined WITH_UNITY_BUILD echo WITH_UNITY_BUILD=OFF>> %GITHUB_ENV%
 if not defined NEW_RELEASE_ALL echo NEW_RELEASE_ALL=ON>> %GITHUB_ENV%
 if not defined NEW_RELEASE_PYPI echo NEW_RELEASE_PYPI=OFF>> %GITHUB_ENV%

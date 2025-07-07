@@ -1,5 +1,5 @@
 setlocal enabledelayedexpansion
-
+@ECHO ON
 call :test_unit || goto test_unit_error
 goto:eof
 
