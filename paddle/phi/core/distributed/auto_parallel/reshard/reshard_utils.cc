@@ -16,6 +16,7 @@
 
 #include "glog/logging.h"
 #include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
@@ -197,7 +198,12 @@ bool NeedComputationClipForPP(
 }
 
 Place GetDefaultPlace() {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+  auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+  if (phi::DeviceManager::GetDeviceCount(dev_types[0]) >= 0) {
+    return paddle::DefaultCustomPlace();
+  }
+#elif defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (phi::backends::gpu::GetGPUDeviceCount() >= 0) {
     return paddle::DefaultGPUPlace();
   }
