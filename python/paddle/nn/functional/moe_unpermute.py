@@ -55,38 +55,6 @@ def moe_unpermute(
               Shape: (seqlen, token_len). Dtype: bfloat16.
             - expert_prob_topk (Tensor): The output Tensor with unpermuted probabilities.
               Shape: (seqlen, topk). Dtype: float32.
-    Examples:
-        .. code-block:: python
-
-            >>> # doctest: +REQUIRES(env:GPU)
-            >>> # doctest: +SKIP('This is only support in cuda 12.0+')
-            >>> import paddle
-            >>> import paddle.nn.functional as F
-            >>> hidden_states = paddle.randn([3, 128], dtype='bfloat16')
-            >>> expert_routemap_topk = paddle.to_tensor([[-1, 0, -1, -1, 2, -1, -1, -1],
-            ...                                          [1, -1, -1, -1, -1, -1, -1, -1],
-            ...                                          [-1, -1, -1, -1, -1, -1, 1, -1]],
-            ...                                           dtype='int32')
-            >>> expert_prob_topk= paddle.to_tensor([[0.0, 0.6, 0.0, 0.0, 0.4, 0.0, 0.0, 0.0],
-            ...                                     [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            ...                                     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0]],
-            ...                                          dtype='float32')
-            >>> num_experts = 3
-            >>> tokens_per_expert = [1, 2, 1]
-            >>> padding_alignment = 2
-            >>> hidden_states_unzipped, zipped_expertwise_rowmap, token_prob_unzipped, scale_unzipped = F.moe_permute(
-            ...     hidden_states,
-            ...     None,
-            ...     expert_routemap_topk,
-            ...     expert_prob_topk,
-            ...     num_experts,
-            ...     tokens_per_expert,
-            ...     padding_alignment,
-            ... )
-            >>> # weighted by probs.
-            >>> hidden_states_unzipped = (hidden_states_unzipped.astype("float32") * token_prob_unzipped.astype("float32").unsqueeze(-1)).astype("bfloat16")
-            >>> zipped_tokens, zipped_probs = F.moe_unpermute(hidden_states_unzipped, zipped_expertwise_rowmap, expert_routemap_topk, token_prob_unzipped,3,3)
-            >>> np.testing.assert_allclose(zipped_tokens.numpy(), hidden_states.numpy(), rtol=1e-05, atol=1e-06)
     """
     if in_dynamic_or_pir_mode():
         zipped_tokens, zipped_probs_topk = _C_ops.moe_unpermute(
