@@ -20,7 +20,7 @@ if "%WITH_SCCACHE%"=="ON" (
     set "SCCACHE_ERROR_LOG=%SCCACHE_ROOT%\sccache_log.txt"
     set SCCACHE_LOG=quiet
 
-    @REM :: Distributed storage on windows
+    :: Distributed storage on windows
     @REM set SCCACHE_ENDPOINT=s3.bj.bcebos.com
     @REM set SCCACHE_BUCKET=paddle-windows
     @REM set SCCACHE_S3_KEY_PREFIX=sccache/
@@ -107,6 +107,7 @@ echo [%work_dir%]
 echo [%work_dir:\=/%]
 if "%WITH_TPCACHE%"=="OFF" (
     set THIRD_PARTY_PATH=%work_dir:\=/%/%BUILD_DIR%/third_party
+    echo THIRD_PARTY_PATH=%THIRD_PARTY_PATH%>> %GITHUB_ENV%
     goto :cmake_impl
 )
 
@@ -197,6 +198,8 @@ if "%UPLOAD_TP_CODE%"=="ON" (
 
 set THIRD_PARTY_HOME=%cache_dir:\=/%/third_party/%sub_dir%
 set THIRD_PARTY_PATH=%THIRD_PARTY_HOME%/%md5%
+echo THIRD_PARTY_HOME=%THIRD_PARTY_HOME%>> %GITHUB_ENV%
+echo THIRD_PARTY_PATH=%THIRD_PARTY_PATH%>> %GITHUB_ENV%
 
 echo this is a CI-Windows task, will try to reuse bos and local third_party cache both.
 

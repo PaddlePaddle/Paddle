@@ -5,9 +5,10 @@ echo    Step 3. Test pip install whl package ...
 echo    ========================================
 @ECHO ON
 
-call "%PYTHON_VENV_ROOT%\Scripts\activate.bat"
 rem Record the exact size of dll and whl files and save them to disk D
-set dll_file=%cd%\paddle\fluid\pybind\libpaddle.dll
+cd
+echo %cd%
+set dll_file=%cd%\build\paddle\fluid\pybind\libpaddle.dll
 for /F "tokens=1-5" %%a in ('dir "%dll_file%"') do (
     echo "%%e" | findstr  "libpaddle.dll" >nul
     if !errorlevel! equ 0 (
@@ -31,7 +32,7 @@ if exist "%dllsize_folder%\%AGILE_PULL_ID%.txt" (
 )
 echo %dllsize% > %dllsize_folder%\%AGILE_PULL_ID%.txt
 
-set whl_folder=%cd%\python\dist
+set whl_folder=%cd%\build\python\dist
 for /F "tokens=1-5" %%a in ('dir "%whl_folder%"') do (
     echo "%%e" | findstr  ".whl" >nul
     if !errorlevel! equ 0 (
