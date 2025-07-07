@@ -91,7 +91,13 @@ CUSOLVER_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP);
   __macro(cusolverDnCgesvdj_bufferSize);        \
   __macro(cusolverDnZgesvdj_bufferSize);        \
   __macro(cusolverDnSgesvdjBatched_bufferSize); \
+  __macro(cusolverDnDgesvdjBatched_bufferSize); \
+  __macro(cusolverDnCgesvdjBatched_bufferSize); \
+  __macro(cusolverDnZgesvdjBatched_bufferSize); \
   __macro(cusolverDnSgesvdjBatched);            \
+  __macro(cusolverDnDgesvdjBatched);            \
+  __macro(cusolverDnCgesvdjBatched);            \
+  __macro(cusolverDnZgesvdjBatched);            \
   __macro(cusolverDnSgesvdj);                   \
   __macro(cusolverDnDgesvdj);                   \
   __macro(cusolverDnCgesvdj);                   \

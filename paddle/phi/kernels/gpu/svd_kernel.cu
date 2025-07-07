@@ -61,9 +61,11 @@ void GesvdjBatched<float>(const phi::GPUContext& dev_ctx,
   int ldt = n;
   int lwork = 0;
   auto handle = dev_ctx.cusolver_dn_handle();
+  // cusolverDnSgesvdjBatched need max(m,n) < 32 and U V must be not thin
+  bool can_used_batched = !thin_UV && m <= 32 && n <= 32;
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::cusolverDnCreateGesvdjInfo(&gesvdj_params));
-  if (thin_UV) {
+  if (can_used_batched == false) {
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cusolverDnSgesvdj_bufferSize(handle,
                                                    jobz,
@@ -105,7 +107,8 @@ void GesvdjBatched<float>(const phi::GPUContext& dev_ctx,
   int stride_A = lda * n;
   int stride_U = ldu * (thin_UV ? k : m);
   int stride_V = ldt * (thin_UV ? k : n);
-  if (thin_UV) {
+
+  if (can_used_batched == false) {
     for (int i = 0; i < batchSize; ++i) {
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::cusolverDnSgesvdj(handle,
@@ -182,23 +185,43 @@ void GesvdjBatched<double>(const phi::GPUContext& dev_ctx,
   int ldt = n;
   int lwork = 0;
   auto handle = dev_ctx.cusolver_dn_handle();
+  bool can_used_batched = !thin_UV && m <= 32 && n <= 32;
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::cusolverDnCreateGesvdjInfo(&gesvdj_params));
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cusolverDnDgesvdj_bufferSize(handle,
-                                                 jobz,
-                                                 thin_UV,
-                                                 m,
-                                                 n,
-                                                 A,
-                                                 lda,
-                                                 S,
-                                                 U,
-                                                 ldu,
-                                                 V,
-                                                 ldt,
-                                                 &lwork,
-                                                 gesvdj_params));
+
+  if (can_used_batched == false) {
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cusolverDnDgesvdj_bufferSize(handle,
+                                                   jobz,
+                                                   thin_UV,
+                                                   m,
+                                                   n,
+                                                   A,
+                                                   lda,
+                                                   S,
+                                                   U,
+                                                   ldu,
+                                                   V,
+                                                   ldt,
+                                                   &lwork,
+                                                   gesvdj_params));
+  } else {
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cusolverDnDgesvdjBatched_bufferSize(handle,
+                                                          jobz,
+                                                          m,
+                                                          n,
+                                                          A,
+                                                          lda,
+                                                          S,
+                                                          U,
+                                                          ldu,
+                                                          V,
+                                                          ldt,
+                                                          &lwork,
+                                                          gesvdj_params,
+                                                          batchSize));
+  }
   auto workspace = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       lwork * sizeof(double),
@@ -207,36 +230,57 @@ void GesvdjBatched<double>(const phi::GPUContext& dev_ctx,
   int stride_A = lda * n;
   int stride_U = ldu * (thin_UV ? k : m);
   int stride_V = ldt * (thin_UV ? k : n);
-  for (int i = 0; i < batchSize; ++i) {
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnDgesvdj(handle,
-                                                               jobz,
-                                                               thin_UV,
-                                                               m,
-                                                               n,
-                                                               A + stride_A * i,
-                                                               lda,
-                                                               S + k * i,
-                                                               U + stride_U * i,
-                                                               ldu,
-                                                               V + stride_V * i,
-                                                               ldt,
-                                                               workspace_ptr,
-                                                               lwork,
-                                                               info,
-                                                               gesvdj_params));
-    // check the error info
-    int error_info;
-    memory_utils::Copy(phi::CPUPlace(),
-                       &error_info,
-                       dev_ctx.GetPlace(),
-                       info,
-                       sizeof(int),
-                       dev_ctx.stream());
-    PADDLE_ENFORCE_EQ(
-        error_info,
-        0,
-        common::errors::PreconditionNotMet(
-            "For batch [%d]: CUSolver SVD is not zero. [%d]", i, error_info));
+  if (can_used_batched == false) {
+    for (int i = 0; i < batchSize; ++i) {
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::cusolverDnDgesvdj(handle,
+                                          jobz,
+                                          thin_UV,
+                                          m,
+                                          n,
+                                          A + stride_A * i,
+                                          lda,
+                                          S + k * i,
+                                          U + stride_U * i,
+                                          ldu,
+                                          V + stride_V * i,
+                                          ldt,
+                                          workspace_ptr,
+                                          lwork,
+                                          info,
+                                          gesvdj_params));
+      // check the error info
+      int error_info;
+      memory_utils::Copy(phi::CPUPlace(),
+                         &error_info,
+                         dev_ctx.GetPlace(),
+                         info,
+                         sizeof(int),
+                         dev_ctx.stream());
+      PADDLE_ENFORCE_EQ(
+          error_info,
+          0,
+          common::errors::PreconditionNotMet(
+              "For batch [%d]: CUSolver SVD is not zero. [%d]", i, error_info));
+    }
+  } else {
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cusolverDnDgesvdjBatched(handle,
+                                               jobz,
+                                               m,
+                                               n,
+                                               A,
+                                               lda,
+                                               S,
+                                               U,
+                                               ldu,
+                                               V,
+                                               ldt,
+                                               workspace_ptr,
+                                               lwork,
+                                               info,
+                                               gesvdj_params,
+                                               batchSize));
   }
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::cusolverDnDestroyGesvdjInfo(gesvdj_params));
@@ -265,21 +309,40 @@ void GesvdjBatched<phi::dtype::complex<float>>(const phi::GPUContext& dev_ctx,
   auto handle = dev_ctx.cusolver_dn_handle();
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::cusolverDnCreateGesvdjInfo(&gesvdj_params));
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnCgesvdj_bufferSize(
-      handle,
-      jobz,
-      thin_UV,
-      m,
-      n,
-      reinterpret_cast<cuComplex*>(A),
-      lda,
-      S,
-      reinterpret_cast<cuComplex*>(U),
-      ldu,
-      reinterpret_cast<cuComplex*>(V),
-      ldt,
-      &lwork,
-      gesvdj_params));
+  if (thin_UV) {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnCgesvdj_bufferSize(
+        handle,
+        jobz,
+        thin_UV,
+        m,
+        n,
+        reinterpret_cast<cuComplex*>(A),
+        lda,
+        S,
+        reinterpret_cast<cuComplex*>(U),
+        ldu,
+        reinterpret_cast<cuComplex*>(V),
+        ldt,
+        &lwork,
+        gesvdj_params));
+  } else {
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cusolverDnCgesvdjBatched_bufferSize(
+            handle,
+            jobz,
+            m,
+            n,
+            reinterpret_cast<cuComplex*>(A),
+            lda,
+            S,
+            reinterpret_cast<cuComplex*>(U),
+            ldu,
+            reinterpret_cast<cuComplex*>(V),
+            ldt,
+            &lwork,
+            gesvdj_params,
+            batchSize));
+  }
   auto workspace = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       lwork * sizeof(phi::dtype::complex<float>),
@@ -289,37 +352,57 @@ void GesvdjBatched<phi::dtype::complex<float>>(const phi::GPUContext& dev_ctx,
   int stride_A = lda * n;
   int stride_U = ldu * (thin_UV ? k : m);
   int stride_V = ldt * (thin_UV ? k : n);
-  for (int i = 0; i < batchSize; ++i) {
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnCgesvdj(
+  if (thin_UV) {
+    for (int i = 0; i < batchSize; ++i) {
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnCgesvdj(
+          handle,
+          jobz,
+          thin_UV,
+          m,
+          n,
+          reinterpret_cast<cuComplex*>(A + stride_A * i),
+          lda,
+          reinterpret_cast<float*>(S + k * i),
+          reinterpret_cast<cuComplex*>(U + stride_U * i),
+          ldu,
+          reinterpret_cast<cuComplex*>(V + stride_V * i),
+          ldt,
+          reinterpret_cast<cuComplex*>(workspace_ptr),
+          lwork,
+          info,
+          gesvdj_params));
+      // check the error info
+      int error_info;
+      memory_utils::Copy(phi::CPUPlace(),
+                         &error_info,
+                         dev_ctx.GetPlace(),
+                         info,
+                         sizeof(int),
+                         dev_ctx.stream());
+      PADDLE_ENFORCE_EQ(
+          error_info,
+          0,
+          common::errors::PreconditionNotMet(
+              "For batch [%d]: CUSolver SVD is not zero. [%d]", i, error_info));
+    }
+  } else {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnCgesvdjBatched(
         handle,
         jobz,
-        thin_UV,
         m,
         n,
-        reinterpret_cast<cuComplex*>(A + stride_A * i),
+        reinterpret_cast<cuComplex*>(A),
         lda,
-        reinterpret_cast<float*>(S + k * i),
-        reinterpret_cast<cuComplex*>(U + stride_U * i),
+        reinterpret_cast<float*>(S),
+        reinterpret_cast<cuComplex*>(U),
         ldu,
-        reinterpret_cast<cuComplex*>(V + stride_V * i),
+        reinterpret_cast<cuComplex*>(V),
         ldt,
         reinterpret_cast<cuComplex*>(workspace_ptr),
         lwork,
         info,
-        gesvdj_params));
-    // check the error info
-    int error_info;
-    memory_utils::Copy(phi::CPUPlace(),
-                       &error_info,
-                       dev_ctx.GetPlace(),
-                       info,
-                       sizeof(int),
-                       dev_ctx.stream());
-    PADDLE_ENFORCE_EQ(
-        error_info,
-        0,
-        common::errors::PreconditionNotMet(
-            "For batch [%d]: CUSolver SVD is not zero. [%d]", i, error_info));
+        gesvdj_params,
+        batchSize));
   }
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::cusolverDnDestroyGesvdjInfo(gesvdj_params));
@@ -348,21 +431,41 @@ void GesvdjBatched<phi::dtype::complex<double>>(const phi::GPUContext& dev_ctx,
   auto handle = dev_ctx.cusolver_dn_handle();
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::cusolverDnCreateGesvdjInfo(&gesvdj_params));
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnZgesvdj_bufferSize(
-      handle,
-      jobz,
-      thin_UV,
-      m,
-      n,
-      reinterpret_cast<cuDoubleComplex*>(A),
-      lda,
-      S,
-      reinterpret_cast<cuDoubleComplex*>(U),
-      ldu,
-      reinterpret_cast<cuDoubleComplex*>(V),
-      ldt,
-      &lwork,
-      gesvdj_params));
+  if (thin_UV) {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnZgesvdj_bufferSize(
+        handle,
+        jobz,
+        thin_UV,
+        m,
+        n,
+        reinterpret_cast<cuDoubleComplex*>(A),
+        lda,
+        S,
+        reinterpret_cast<cuDoubleComplex*>(U),
+        ldu,
+        reinterpret_cast<cuDoubleComplex*>(V),
+        ldt,
+        &lwork,
+        gesvdj_params));
+  } else {
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cusolverDnZgesvdjBatched_bufferSize(
+            handle,
+            jobz,
+            m,
+            n,
+            reinterpret_cast<cuDoubleComplex*>(A),
+            lda,
+            S,
+            reinterpret_cast<cuDoubleComplex*>(U),
+            ldu,
+            reinterpret_cast<cuDoubleComplex*>(V),
+            ldt,
+            &lwork,
+            gesvdj_params,
+            batchSize));
+  }
+
   auto workspace = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       lwork * sizeof(phi::dtype::complex<double>),
@@ -372,37 +475,57 @@ void GesvdjBatched<phi::dtype::complex<double>>(const phi::GPUContext& dev_ctx,
   int stride_A = lda * n;
   int stride_U = ldu * (thin_UV ? k : m);
   int stride_V = ldt * (thin_UV ? k : n);
-  for (int i = 0; i < batchSize; ++i) {
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnZgesvdj(
+  if (thin_UV) {
+    for (int i = 0; i < batchSize; ++i) {
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnZgesvdj(
+          handle,
+          jobz,
+          thin_UV,
+          m,
+          n,
+          reinterpret_cast<cuDoubleComplex*>(A + stride_A * i),
+          lda,
+          reinterpret_cast<double*>(S + k * i),
+          reinterpret_cast<cuDoubleComplex*>(U + stride_U * i),
+          ldu,
+          reinterpret_cast<cuDoubleComplex*>(V + stride_V * i),
+          ldt,
+          reinterpret_cast<cuDoubleComplex*>(workspace_ptr),
+          lwork,
+          info,
+          gesvdj_params));
+      // check the error info
+      int error_info;
+      memory_utils::Copy(phi::CPUPlace(),
+                         &error_info,
+                         dev_ctx.GetPlace(),
+                         info,
+                         sizeof(int),
+                         dev_ctx.stream());
+      PADDLE_ENFORCE_EQ(
+          error_info,
+          0,
+          common::errors::PreconditionNotMet(
+              "For batch [%d]: CUSolver SVD is not zero. [%d]", i, error_info));
+    }
+  } else {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnZgesvdjBatched(
         handle,
         jobz,
-        thin_UV,
         m,
         n,
-        reinterpret_cast<cuDoubleComplex*>(A + stride_A * i),
+        reinterpret_cast<cuDoubleComplex*>(A),
         lda,
-        reinterpret_cast<double*>(S + k * i),
-        reinterpret_cast<cuDoubleComplex*>(U + stride_U * i),
+        reinterpret_cast<double*>(S),
+        reinterpret_cast<cuDoubleComplex*>(U),
         ldu,
-        reinterpret_cast<cuDoubleComplex*>(V + stride_V * i),
+        reinterpret_cast<cuDoubleComplex*>(V),
         ldt,
         reinterpret_cast<cuDoubleComplex*>(workspace_ptr),
         lwork,
         info,
-        gesvdj_params));
-    // check the error info
-    int error_info;
-    memory_utils::Copy(phi::CPUPlace(),
-                       &error_info,
-                       dev_ctx.GetPlace(),
-                       info,
-                       sizeof(int),
-                       dev_ctx.stream());
-    PADDLE_ENFORCE_EQ(
-        error_info,
-        0,
-        common::errors::PreconditionNotMet(
-            "For batch [%d]: CUSolver SVD is not zero. [%d]", i, error_info));
+        gesvdj_params,
+        batchSize));
   }
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::cusolverDnDestroyGesvdjInfo(gesvdj_params));
