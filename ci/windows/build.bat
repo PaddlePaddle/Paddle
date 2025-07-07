@@ -256,6 +256,7 @@ for /F %%# in ('powershell -NoProfile -Command "(Get-CimInstance Win32_Processor
 echo "PARALLEL PROJECT COUNT is %PARALLEL_PROJECT_COUNT%"
 
 set build_times=1
+set retry_times=1
 rem MSbuild will build third_party first to improve compiler stability.
 if NOT "%GENERATOR%" == "Ninja" (
     goto :build_tp
@@ -318,7 +319,6 @@ if "%WITH_TESTING%"=="ON" (
 
 echo Build Paddle the %build_times% time:
 if "%GENERATOR%" == "Ninja" (
-    echo 1111111111111111
     ninja all
 ) else (
     MSBuild /m:%PARALLEL_PROJECT_COUNT% /p:PreferredToolArchitecture=x64 /p:TrackFileAccess=false /p:Configuration=Release /verbosity:%LOG_LEVEL% ALL_BUILD.vcxproj

@@ -46,6 +46,11 @@ if not defined ON_INFER echo ON_INFER=ON>> %GITHUB_ENV%
 if not defined WITH_ONNXRUNTIME echo WITH_ONNXRUNTIME=OFF>> %GITHUB_ENV%
 if not defined WITH_INFERENCE_API_TEST echo WITH_INFERENCE_API_TEST=ON>> %GITHUB_ENV%
 if not defined WITH_STATIC_LIB echo WITH_STATIC_LIB=ON>> %GITHUB_ENV%
+
+if not defined WITH_STATIC_LIB echo aaaaaaaa=2>> %GITHUB_ENV%
+if not defined WITH_STATIC_LIB echo bbbbbbbb="1">> %GITHUB_ENV%
+if not defined WITH_STATIC_LIB echo cccccccc=1 >> %GITHUB_ENV%
+
 if not defined WITH_UNITY_BUILD echo WITH_UNITY_BUILD=OFF>> %GITHUB_ENV%
 if not defined NEW_RELEASE_ALL echo NEW_RELEASE_ALL=ON>> %GITHUB_ENV%
 if not defined NEW_RELEASE_PYPI echo NEW_RELEASE_PYPI=OFF>> %GITHUB_ENV%
@@ -66,7 +71,6 @@ rem LEVEL 1: For unittests unrelated to CUDA/TRT, only run on Windows-Infernece(
 rem skip them on Windows-GPU(CUDA 12.0)
 rem LEVEL 2: run all test
 if not defined NIGHTLY_MODE echo NIGHTLY_MODE=OFF>> %GITHUB_ENV%
-if not defined retry_times echo retry_times=1>> %GITHUB_ENV%
 if not defined PYTHON_ROOT echo PYTHON_ROOT=C:\Python38>> %GITHUB_ENV%
 if not defined BUILD_DIR echo BUILD_DIR=build>> %GITHUB_ENV%
 if not defined TEST_INFERENCE echo TEST_INFERENCE=ON>> %GITHUB_ENV%
