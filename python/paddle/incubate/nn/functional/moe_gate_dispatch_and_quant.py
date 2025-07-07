@@ -35,34 +35,22 @@ def moe_gate_dispatch_and_quant(
 ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
     """
     Args:
-        x:
-            Input tensor, usually of shape [batch_size, sequence_length, feature_dim].
-        gate_logits:
-            Logits for gating mechanism, determining input routing to experts.
-        corr_bias:
-            Bias for adjusting gate logits.
-        k:
-            Number of top experts to select for each input.
-        capacity:
-            Max tokens each expert can process per batch.
-        use_pad:
-            Boolean indicating if padding is used for uniform input length.
-        use_pow2_scale:
-            Boolean indicating if power-of-two scaling is applied for quantization.
+        x: Input tensor [batch_size, seq_len, hidden_dim].
+        gate_logits: Gate logits for choosing experts [batch_size, seq_len, num_experts].
+        corr_bias: Optional correction bias to adjust gate logits.
+        k: Top-k experts to be selected.
+        capacity: The maximum number of tokens an expert can handle.
+        use_pad: Boolean indicating if padding is used for uniform input length.
+        use_pow2_scale: Boolean indicating if power-of-two scaling is applied for quantization.
 
     Returns:
-        fp8_out:
-            Processed output tensor in FP8 format.
-        scale:
-            Scaling factors used during processing.
-        combine_weights:
-            Weights for combining expert outputs.
-        scatter_index:
-            Indices for scattering outputs back to original order.
-        expert_offset:
-            Start index of each expert's output.
-        expert_id:
-            IDs of selected experts for each input.
+        Tuple of Tensors containing:
+        - fp8_out: Processed output tensor in FP8 format.
+        - scale: Scaling factors used during processing.
+        - combine_weights: Weights for combining experts' outputs.
+        - scatter_index: Indices for scattering inputs to experts.
+        - expert_offset: Offset indices for each expert.
+        - expert_id: IDs of selected experts for each position.
     """
     if not in_dynamic_or_pir_mode():
         raise NotImplementedError('Static graph mode not implemented')
