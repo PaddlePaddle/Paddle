@@ -942,7 +942,10 @@ class PipelineStage(_PipelineStageBase):
     def broadcast_shared_params(self):
         # When initializing the stage, perform broadcast synchronization
         # on the shared parameters.
-        for _, a_map in self.shared_param_map.items():
+        if len(self.shared_param_map) == 0:
+            logger.debug("No shared parameters need to be processed.")
+            return
+        for key, a_map in self.shared_param_map.items():
             assert (
                 "param" in a_map
             ), "Missing 'param' key in `shared_param_map` entry"
@@ -956,6 +959,10 @@ class PipelineStage(_PipelineStageBase):
                 sync_param is not None and sync_group is not None
             ), "Shared parameter (param) or synchronization group (group) in shared_param_map is None."
             group_ranks = sorted(sync_group.ranks)
+            logger.debug(
+                "Call `broadcast` for synchronization of shared parameters `%s`",
+                key,
+            )
             with paddle.no_grad():
                 paddle.distributed.broadcast(
                     sync_param._local_value(),
@@ -966,7 +973,10 @@ class PipelineStage(_PipelineStageBase):
     def sync_shared_param_grads(self):
         # After the stage scheduling ends, perform allreduce synchronization
         # on the gradients of shared parameters.
-        for _, a_map in self.shared_param_map.items():
+        if len(self.shared_param_map) == 0:
+            logger.debug("No shared parameters need to be processed.")
+            return
+        for key, a_map in self.shared_param_map.items():
             assert (
                 "param" in a_map
             ), "Missing 'param' key in `shared_param_map` entry"
@@ -979,6 +989,10 @@ class PipelineStage(_PipelineStageBase):
             assert (
                 sync_param is not None and sync_group is not None
             ), "Shared parameter (param) or synchronization group (group) in shared_param_map is None."
+            logger.debug(
+                "Call `all_reduce` for gradient synchronization of shared parameters `%s`",
+                key,
+            )
             with paddle.no_grad():
                 paddle.distributed.all_reduce(
                     sync_param.grad._local_value(),
