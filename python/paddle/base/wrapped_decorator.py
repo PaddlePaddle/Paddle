@@ -14,6 +14,7 @@
 
 
 import functools
+import inspect
 from typing import Callable, TypeVar
 
 from typing_extensions import ParamSpec
@@ -32,10 +33,14 @@ def wrap_decorator(
 ) -> Callable[[Callable[_InputT, _RetT1]], Callable[_InputT, _RetT2]]:
     @functools.wraps(decorator_func)
     def __impl__(func: Callable[_InputT, _RetT1]) -> Callable[_InputT, _RetT2]:
+        sig = inspect.signature(func)
+        dec_params = list(sig.parameters.values())
+
         @functools.wraps(func)
         def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT2:
             return decorator_func(func)(*args, **kwargs)
 
+        wrapper.__signature__ = sig.replace(parameters=dec_params)
         return wrapper
 
     return __impl__
