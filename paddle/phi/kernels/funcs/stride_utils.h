@@ -63,24 +63,58 @@ static inline std::vector<int64_t> compute_strides(
     const int64_t ndim,
     const std::vector<int64_t>* shape_,
     std::vector<int64_t>* stride_size) {
+  // std::cout << "========== compute_strides ==================" << std::endl;
   std::vector<int64_t> stride_bytes(ndim, 0);
   const auto& original_shape = input_dims;
   const auto& original_stride = input_strides;
   int64_t element_size_in_bytes = input_elesize;
   int offset = ndim - original_shape.size();
 
-  if (offset > 0)
+  // std::cout << "Original shape: [";
+  // for (const auto& dim : original_shape) {
+  //   std::cout << dim << " ";
+  // }
+  // std::cout << "]" << std::endl;
+
+  // std::cout << "Original strides: [";
+  // for (const auto& stride : original_stride) {
+  //   std::cout << stride << " ";
+  // }
+  // std::cout << "]" << std::endl;
+
+  // std::cout << "Element size in bytes: " << element_size_in_bytes <<
+  // std::endl; std::cout << "Offset: " << offset << std::endl;
+
+  if (offset > 0) {
     stride_bytes.resize(ndim, 0);
-  else
+    // std::cout << "Resized stride_bytes with 0 padding for " << offset
+    // << " additional dimensions." << std::endl;
+  } else {
     stride_bytes.resize(ndim);
+    // std::cout << "Resized stride_bytes to " << ndim << " dimensions."
+    // << std::endl;
+  }
   for (int i = 0; i < original_shape.size(); i++) {
     if (original_shape[i] == 1 && (*shape_)[offset + i] != 1) {
       stride_bytes[offset + i] = 0;
+      // std::cout << "  Broadcast dimension detected. Setting stride_bytes["
+      // << (offset + i) << "] = 0" << std::endl;
+
     } else {
       stride_bytes[offset + i] = original_stride[i] * element_size_in_bytes;
+      // std::cout << "  Non-broadcast dimension. Setting stride_bytes["
+      //           << (offset + i) << "] = " << original_stride[i] << " * "
+      //           << element_size_in_bytes << " = " << stride_bytes[offset + i]
+      //           << std::endl;
     }
   }
   stride_size->push_back(stride_bytes.size());
+  // std::cout << "stride_bytes: [";
+  // for (const auto& stride : stride_bytes) {
+  //   std::cout << stride << " ";
+  // }
+  // std::cout << "]" << std::endl;
+  // std::cout << "================================" << std::endl;
   return stride_bytes;
 }
 
@@ -359,6 +393,12 @@ static inline void IndexGetStride(
   std::vector<int64_t> stride_size;
 
   *desired_shape = compute_shapes({input_dims, output_dims, index_dims});
+  std::cout << "desired_shape: [";
+  for (size_t i = 0; i < desired_shape->size(); i++) {
+    std::cout << (*desired_shape)[i];
+    if (i != desired_shape->size() - 1) std::cout << ", ";
+  }
+  std::cout << "]" << std::endl;
 
   strides_vec[0] = compute_strides(input_dims,
                                    input_strides,
@@ -398,5 +438,126 @@ static inline void IndexGetStride(
   *numel = num;
 }
 
+template <int N>
+static inline void ScatterAddStride(
+    const std::vector<int64_t> output_dims,
+    const std::vector<int64_t> output_strides,
+    const int64_t output_elesize,
+    const std::vector<int64_t> input_dims,
+    const std::vector<int64_t> input_strides,
+    const int64_t input_elesize,
+    const std::vector<int64_t> index_dims,
+    const std::vector<int64_t> index_strides,
+    const int64_t index_elesize,
+    std::vector<int64_t>* desired_shape,
+    std::array<int64_t*, N>* strides_array,
+    int64_t* numel,
+    std::array<std::vector<int64_t>, N>& strides_vec) {  // NOLINT
+  int ndim = output_dims.size();
+
+  std::vector<int64_t> stride_size;
+
+  *desired_shape = compute_shapes({input_dims, output_dims, index_dims});
+  // std::cout << "desired_shape: [";
+  // for (size_t i = 0; i < desired_shape->size(); i++) {
+  //   std::cout << (*desired_shape)[i];
+  //   if (i != desired_shape->size() - 1) std::cout << ", ";
+  // }
+  // std::cout << "]" << std::endl;
+
+  strides_vec[0] = compute_strides(input_dims,
+                                   input_strides,
+                                   input_elesize,
+                                   ndim,
+                                   desired_shape,
+                                   &stride_size);
+
+  strides_vec[1] = compute_strides(output_dims,
+                                   output_strides,
+                                   output_elesize,
+                                   ndim,
+                                   desired_shape,
+                                   &stride_size);
+
+  strides_vec[2] = compute_strides(index_dims,
+                                   index_strides,
+                                   index_elesize,
+                                   ndim,
+                                   desired_shape,
+                                   &stride_size);
+
+  auto print_strides = [](const std::vector<int64_t>& strides,
+                          const std::string& name) {
+    std::cout << name << ": [";
+    for (size_t i = 0; i < strides.size(); i++) {
+      std::cout << strides[i];
+      if (i != strides.size() - 1) std::cout << ", ";
+    }
+    std::cout << "]" << std::endl;
+  };
+  // print_strides(strides_vec[0], "input_strides");
+  // print_strides(strides_vec[1], "output_strides");
+  // print_strides(strides_vec[2], "index_strides");
+
+  // std::cout << "stride_size: [";
+  // for (size_t i = 0; i < stride_size.size(); i++) {
+  //   std::cout << stride_size[i];
+  //   if (i != stride_size.size() - 1) std::cout << ", ";
+  // }
+  // std::cout << "]" << std::endl;
+
+  for (size_t i = 0; i < N; i++) {
+    (*strides_array)[i] = strides_vec[i].data();
+  }
+
+  // std::cout << "strides_array:" << std::endl;
+  // for (size_t i = 0; i < N; i++) {
+  //   std::cout << "  [" << i << "]: ";
+  //   for (size_t j = 0; j < desired_shape->size(); j++) {
+  //     std::cout << (*strides_array)[i][j];
+  //     if (j != desired_shape->size() - 1) std::cout << ", ";
+  //   }
+  //   std::cout << std::endl;
+  // }
+
+  reorder_dimensions<N>(stride_size, desired_shape, strides_array);
+  // std::cout << "desired_shape 1: [";
+  // for (size_t i = 0; i < desired_shape->size(); i++) {
+  //   std::cout << (*desired_shape)[i];
+  //   if (i != desired_shape->size() - 1) std::cout << ", ";
+  // }
+  // std::cout << "]" << std::endl;
+  // std::cout << "strides_array 1:" << std::endl;
+  // for (size_t i = 0; i < N; i++) {
+  //   std::cout << "  [" << i << "]: ";
+  //   for (size_t j = 0; j < desired_shape->size(); j++) {
+  //     std::cout << (*strides_array)[i][j];
+  //     if (j != desired_shape->size() - 1) std::cout << ", ";
+  //   }
+  //   std::cout << std::endl;
+  // }
+
+  coalesce_dimensions<N>(ndim, strides_array, &stride_size, desired_shape);
+  // std::cout << "desired_shape 3: [";
+  // for (size_t i = 0; i < desired_shape->size(); i++) {
+  //   std::cout << (*desired_shape)[i];
+  //   if (i != desired_shape->size() - 1) std::cout << ", ";
+  // }
+  // std::cout << "]" << std::endl;
+  // std::cout << "strides_array 3:" << std::endl;
+  // for (size_t i = 0; i < N; i++) {
+  //   std::cout << "  [" << i << "]: ";
+  //   for (size_t j = 0; j < desired_shape->size(); j++) {
+  //     std::cout << (*strides_array)[i][j];
+  //     if (j != desired_shape->size() - 1) std::cout << ", ";
+  //   }
+  //   std::cout << std::endl;
+  // }
+  int num = 1;
+  for (int i = 0; i < desired_shape->size(); i++) {
+    num *= (*desired_shape)[i];
+  }
+  *numel = num;
+}
 }  // namespace funcs
 }  // namespace phi

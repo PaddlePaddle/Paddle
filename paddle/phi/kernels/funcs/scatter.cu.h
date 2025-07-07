@@ -21,7 +21,9 @@ limitations under the License. */
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
+#include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/stride_utils.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 namespace phi {
@@ -337,6 +339,224 @@ void GPUScatterNdAdd(const phi::GPUContext& ctx,
       PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported vectorized size: %d", vec_size));
   }
+}
+
+template <typename TensorType>
+void PrintTensorInfo(const std::string& name, const TensorType& tensor) {
+  std::cout << name << ": shape=[";
+  for (int i = 0; i < tensor.dims().size(); ++i) {
+    if (i > 0) std::cout << ", ";
+    std::cout << tensor.dims()[i];
+  }
+  std::cout << "]"
+            << ", dtype=" << tensor.dtype() << ", place=" << tensor.place()
+            << ", stride=[";
+  for (int i = 0; i < tensor.strides().size(); ++i) {
+    if (i > 0) std::cout << ", ";
+    std::cout << tensor.strides()[i];
+  }
+  std::cout << "]" << std::endl;
+}
+
+inline void PrintTensorInfo1(const std::string& name,
+                             const phi::DenseTensor& tensor) {
+  std::cout << name << " shape: [";
+  for (size_t i = 0; i < tensor.dims().size(); i++) {
+    std::cout << tensor.dims()[i];
+    if (i != tensor.dims().size() - 1) std::cout << ", ";
+  }
+  std::cout << "]" << std::endl;
+
+  std::cout << name << " stride: [";
+  for (size_t i = 0; i < tensor.strides().size(); i++) {
+    std::cout << tensor.strides()[i];
+    if (i != tensor.strides().size() - 1) std::cout << ", ";
+  }
+  std::cout << "]" << std::endl;
+}
+
+inline int64_t ensure_nonempty_size(const phi::DenseTensor& t, int64_t dim) {
+  return t.dims().size() == 0 ? 1 : t.dims()[dim];
+}
+
+inline int64_t ensure_nonempty_stride(const phi::DenseTensor& t, int64_t dim) {
+  if (t.dims().size() == 0) {
+    return 1;
+  }
+  auto strides = common::stride(t.dims());
+  return strides[dim];
+}
+
+using IdxVec = std::vector<int64_t>;
+inline IdxVec ensure_nonempty_vec(IdxVec vec) {
+  if (vec.empty()) {
+    vec.push_back(1);
+  }
+  return vec;
+}
+
+inline phi::DDim ensure_nonempty_ddim(phi::DDim dim) {
+  if (dim.size() == 0) {
+    return phi::make_ddim({1});
+  }
+  return dim;
+}
+
+inline DenseTensor as_strided(const DenseTensor& src,
+                              const std::vector<int64_t>& shape,
+                              const std::vector<int64_t>& strides) {
+  phi::DenseTensor out;
+  out.ShareDataWith(src);
+  out.Resize(phi::make_ddim(shape));
+  out.set_strides(phi::make_ddim(strides));
+  return out;
+}
+
+inline DenseTensor restride_dim(const phi::DenseTensor& src,
+                                int dim,
+                                const std::vector<int64_t>& replacement_shape) {
+  auto strides = ensure_nonempty_vec(common::vectorize(src.strides()));
+  strides[dim] = 0;
+  return as_strided(src, replacement_shape, strides);
+}
+
+template <int nt, int vt, typename func_t>
+__global__ void scatter_gather_elementwise_kernel(int N, func_t f) {
+  constexpr int nv = nt * vt;
+  int idx = nv * blockIdx.x + threadIdx.x;
+
+#pragma unroll
+  for (int i = 0; i < vt; ++i) {
+    if (idx < N) {
+      f(idx);
+      idx += nt;
+    }
+  }
+}
+
+template <typename T, typename IndexT = int>
+void GPUScatterAdd(const phi::GPUContext& ctx,
+                   const DenseTensor& src,
+                   const DenseTensor& index,
+                   DenseTensor* output,
+                   int dim) {
+  // std::cout << "GPUScatterAdd inputs:" << std::endl;
+  // PrintTensorInfo("src", src);
+  // PrintTensorInfo("index", index);
+  // PrintTensorInfo("output (initial)", *output);
+
+  auto index_dims = src.dims();
+  auto index_sizes = ensure_nonempty_vec(common::vectorize(index_dims));
+  auto self_strides = ensure_nonempty_vec(common::vectorize(output->strides()));
+  auto src_strides = ensure_nonempty_vec(common::vectorize(src.strides()));
+
+  auto self_restrided = restride_dim(*output, dim, index_sizes);
+  auto src_restrided = as_strided(src, index_sizes, src_strides);
+
+  // PrintTensorInfo1("self_restrided", self_restrided);
+  // PrintTensorInfo1("src_restrided", src_restrided);
+  // PrintTensorInfo1("index", index);
+
+  int64_t numel = 0;
+  std::vector<int64_t> desired_shape;
+  std::array<int64_t*, 3> strides_array;
+  std::array<std::vector<int64_t>, 3> strides_vec;
+
+  std::vector<int64_t> new_strides(index_dims.size(), 0);
+  if (!new_strides.empty()) {
+    new_strides[0] = index.strides()[0];
+  }
+
+  ScatterAddStride<3>(common::vectorize(src_restrided.dims()),
+                      common::vectorize(src_restrided.strides()),
+                      phi::SizeOf(src_restrided.dtype()),
+                      common::vectorize(self_restrided.dims()),
+                      common::vectorize(self_restrided.strides()),
+                      phi::SizeOf(self_restrided.dtype()),
+                      index_sizes,
+                      // common::vectorize(index.strides()),
+                      new_strides,
+                      phi::SizeOf(index.dtype()),
+                      &desired_shape,
+                      &strides_array,
+                      &numel,
+                      strides_vec);
+  // std::cout << "IndexGetStride" << std::endl;
+
+  auto self_dim_stride = ensure_nonempty_stride(*output, dim);
+  auto self_dim_size = ensure_nonempty_size(*output, dim);
+  auto index_stride = self_dim_stride;
+  auto index_size = self_dim_size;
+
+  char* self_ptr = reinterpret_cast<char*>(self_restrided.data<T>());
+  const char* src_ptr = reinterpret_cast<const char*>(src_restrided.data<T>());
+  const char* index_ptr = reinterpret_cast<const char*>(index.data<IndexT>());
+
+  auto offset_calc =
+      make_offset_calculator_put<3>(desired_shape, strides_array);
+  // std::cout << "make_offset_calculator_put" << std::endl;
+
+  auto reduce_add = [=] __device__(int i) {
+    const auto offsets = offset_calc.get(i);
+
+    // if (blockIdx.x == 0 && threadIdx.x == 0) {
+    //   printf("index_stride: %d\n", index_stride);
+    // }
+    // __syncthreads();
+    // printf("Thread (%d,%d): offsets = [%u, %u, %u]\n",
+    //        blockIdx.x,
+    //        threadIdx.x,
+    //        offsets[0],
+    //        offsets[1],
+    //        offsets[2]);
+    // __syncthreads();
+    // if (blockIdx.x == 0 && threadIdx.x == 0) {
+    //   printf("\n--- Debug b_index ---\n");
+    //   printf("b_index pointer: %p\n", index_ptr);
+    //   for (int k = 0; k < 3; k++) {
+    //     printf("Layer %d:\n", k);
+    //     for (int i = 0; i < 3; i++) {
+    //       for (int j = 0; j < 3; j++) {
+    //         size_t offset = (k * 9 + i * 3 + j) * sizeof(int64_t);
+    //         int64_t val = *(reinterpret_cast<const int64_t*>(
+    //             reinterpret_cast<const char*>(index_ptr) + offset));
+    //         printf("%ld ", val);
+    //       }
+    //       printf("\n");
+    //     }
+    //   }
+    //   printf("-------------------\n");
+    //   printf("index_ptr raw data (first 3 elements): %ld, %ld, %ld\n",
+    //    *(int64_t*)index_ptr,
+    //    *(int64_t*)(index_ptr + sizeof(int64_t)),
+    //    *(int64_t*)(index_ptr + 2 * sizeof(int64_t)));
+    // }
+    // __syncthreads();
+
+    int64_t idx_dim = *reinterpret_cast<const int64_t*>(index_ptr + offsets[2]);
+
+    // printf("Thread (%d,%d): idx_dim = %ld\n", blockIdx.x, threadIdx.x,
+    // idx_dim);
+
+    T* self_data = reinterpret_cast<T*>(self_ptr + offsets[0]);
+    const T* src_data = reinterpret_cast<const T*>(src_ptr + offsets[1]);
+
+    // phi::fastAtomicAdd(self_data, idx_dim * index_stride, numel,
+    // *src_data);
+    phi::CudaAtomicAdd(self_data + idx_dim * index_stride, *src_data);
+  };  // NOLINT
+
+  const int64_t N = output->numel();
+  constexpr int nt = 128;
+  constexpr int vt = 8;
+  const dim3 block(nt);
+  const dim3 grid((N + block.x * vt - 1) / (block.x * vt));
+  auto stream = ctx.stream();
+
+  scatter_gather_elementwise_kernel<nt, vt>
+      <<<grid, block, 0, stream>>>(N, reduce_add);
+
+  // std::cout << "GPUScatterAdd end" << std::endl;
 }
 
 }  // namespace funcs
