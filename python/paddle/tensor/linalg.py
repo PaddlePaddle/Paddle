@@ -3513,7 +3513,7 @@ def lu(
 
     Args:
 
-        X (Tensor): the tensor to factor of N-dimensions(N>=2).
+        X (Tensor): the tensor to factor of N-dimensions(N>=2). Its data type should be float32, float64, complex64, or complex128.
 
         pivot (bool, optional): controls whether pivoting is done. Default: True.
 
