@@ -1851,11 +1851,12 @@ class _ShardOptimizer(Optimizer):
 
     def _fused_comm_before_apply_optimize(self, params_grads):
         '''
-        In sharding dynamic mode, optimize grad clip on partial grads causes redundant allreduce.
-        Fusing reduce_scatter can modify grad partial state by fusing comms before optimize. It
-        shards states in placements unchanged, transform others to `shard(dim)` states via `reduce_scatter`
-        comms if possible, or replicate states otherwise. In particular, the `placement[sharding_axis]`
-        should be `shard(0)` if possible.
+        In dynamic sharding mode, gradient clipping on partial gradients can trigger redundant allreduce
+        operations. Fused reduce_scatter optimizes this by marking mesh dimensions as shard in priority
+        order to reduce redundant synchronization:
+            1. Prioritize shard(0) for the specified sharding axis.
+            2. Sequentially mark other dimensions as shard(dim).
+            3. Default to replicate for non-shardable dimensions.
             e.g.
                 a) sharding_axis = 0, tensor rank = 2,
                     placements: [partial, partial, partial] -> [shard(0), shard(1), replicate]
