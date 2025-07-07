@@ -161,13 +161,6 @@ class TestLUOp(OpTest):
         L[..., diag_indices, diag_indices] += random_gen([*batch_shape, k])
         U[..., diag_indices, diag_indices] += random_gen([*batch_shape, k])
         A = L @ U
-        # batch_size = int(np.prod(batch_shape))
-        # P_batch = np.zeros(shape=batch_shape + [m, m], dtype=self.dtype)
-        # P_flat = P_batch.reshape(batch_size, m, m)
-        # for i in range(batch_size):
-        #     P_flat[i] = np.random.permutation(np.eye(m, dtype=self.dtype))
-        # P = P_flat.reshape(P_batch.shape)
-        # A = P @ A
         self.inputs = {'X': A}
 
     def setUp(self):
