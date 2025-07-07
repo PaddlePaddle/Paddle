@@ -21,7 +21,9 @@ import paddle.distributed as dist
 from paddle import nn
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.pipelining.schedules import (
+    Schedule1F1B,
     ScheduleFThenB,
+    ScheduleVPP,
 )
 from paddle.distributed.auto_parallel.pipelining.stage import PipelineStage
 from paddle.io import DataLoader, Dataset
@@ -34,8 +36,8 @@ def fix_seeds(seed=2025):
     np.random.seed(seed)
 
 
-class PPMyModel(nn.Layer):
-    def __init__(self, name_prefix="", shared_param_map={}):
+class PPModel(nn.Layer):
+    def __init__(self, name_prefix="", schedule="FThenB", shared_param_map={}):
         super().__init__(name_scope=name_prefix)
         self.name_prefix = name_prefix
         self.mesh = paddle.distributed.ProcessMesh(
@@ -54,11 +56,17 @@ class PPMyModel(nn.Layer):
             # Mark network parameters
             linear.weight = dist.shard_tensor(
                 linear.weight,
-                self.get_pp_mesh(i),
+                (
+                    self.get_pp_mesh(i)
+                    if schedule != "VPP"
+                    else self.get_vpp_mesh(i)
+                ),
                 [dist.Replicate()],
             )
 
             self.linears.append(linear)
+
+        self.model_shared_param_mp = {}
 
         self.set_shared_param()
 
@@ -75,13 +83,16 @@ class PPMyModel(nn.Layer):
                 elif sync_name == linear.weight.name:
                     sync_weight_idx = idx
             assert ori_weight_idx != -1 and sync_weight_idx != -1
-            self.linears[sync_weight_idx].weight = self.linears[
+            self.model_shared_param_mp[sync_name] = self.linears[
                 ori_weight_idx
             ].weight
 
     def get_pp_mesh(self, layer_index):
-        # layer_index=0-3 corresponds to mesh_idx 0,0,1,1,2,2,3,3
         mesh_idx = int(layer_index / (self.num_layers / 4))
+        return self.mesh[mesh_idx]
+
+    def get_vpp_mesh(self, layer_index):
+        mesh_idx = int(layer_index % 4)
         return self.mesh[mesh_idx]
 
     def forward(self, x):
@@ -92,11 +103,14 @@ class PPMyModel(nn.Layer):
             cur_mesh = self.get_pp_mesh(i)
             if i % self.num_layers_per_card == 0 and i > 0:
                 out = dist.reshard(out, cur_mesh, [dist.Replicate()])
-            if self.linears[i].weight.process_mesh != cur_mesh:
-                y = dist.reshard(
-                    self.linears[i].weight, cur_mesh, [dist.Replicate()]
+            weight = self.linears[i].weight
+            if weight.name in self.model_shared_param_mp:
+                weight = dist.reshard(
+                    self.model_shared_param_mp[weight.name],
+                    cur_mesh,
+                    [dist.Replicate()],
                 )
-                out = paddle.matmul(out, y)
+                out = paddle.matmul(out, weight)
             else:
                 out = self.linears[i](out)
         return paddle.cast(out, 'float32')
@@ -181,7 +195,7 @@ def build_shared_param_map(shared_params_names, model):
     return shared_mp
 
 
-rtol = 1e-2
+rtol = 1e-5
 
 
 class TestSharedParameters:
@@ -196,10 +210,10 @@ class TestSharedParameters:
         )
         fleet.auto.set_mesh(cls.mesh)
 
-    def test_ScheduleFThenB(self):
+    def test_single_schedule(self, sing_schedule="FThenB"):
         fix_seeds()
-        name_prefix = "ScheduleFThenB"
-        self.model = PPMyModel(name_prefix=name_prefix)
+        name_prefix = "pp_" + sing_schedule
+        self.model = PPModel(name_prefix=name_prefix)
 
         self.micro_batches = 8
         shared_params_names = {
@@ -230,16 +244,26 @@ class TestSharedParameters:
 
         self.stage.has_backward = True
         loss_fn_ = nn.MSELoss()
-        schedule = ScheduleFThenB(
-            self.stage, self.micro_batches, loss_fn=loss_fn_
-        )
+        if sing_schedule == "FThenB":
+            schedule = ScheduleFThenB(
+                self.stage, self.micro_batches, loss_fn=loss_fn_
+            )
+        elif sing_schedule == "1F1B":
+            schedule = Schedule1F1B(
+                self.stage, self.micro_batches, loss_fn=loss_fn_
+            )
+        else:
+            raise ValueError(
+                f"Unknown schedule type: {sing_schedule}. "
+                f"Currently `test_single_schedule` supported types are 'FThenB' and '1F1B'."
+            )
         opt = paddle.optimizer.AdamW(
             learning_rate=0.001, parameters=self.model.parameters()
         )
         dataset = RandomDataset(image_size=8, output_size=8, num_samples=8)
         loader = DataLoader(dataset, batch_size=8)
         losses_by_step = []
-        num_iterations = 4
+        num_iterations = 20
 
         for _ in range(num_iterations):
             losses_by_micro_batch = []
@@ -253,8 +277,64 @@ class TestSharedParameters:
             opt.clear_grad()
         return losses_by_step
 
+    def test_multi_schedule(self, multi_schedule="VPP"):
+        fix_seeds()
+        name_prefix = "pp_" + multi_schedule
+        self.model = PPModel(name_prefix=name_prefix, schedule="VPP")
+        self.local_stages = 2
+        self.micro_batches = 8
+        self.stage_list = []
+
+        shared_params_names = {
+            "gpt_shared_weight": [
+                f"{name_prefix}_linear_0_weight.dist",
+                f"{name_prefix}_linear_7_weight.dist",
+            ]
+        }
+        shared_mp = build_shared_param_map(shared_params_names, self.model)
+
+        cur_rank = dist.get_rank()
+        for i in range(self.local_stages):
+            stage_layers = SingleStage(
+                self.model.linears[cur_rank + i * 4 : cur_rank + i * 4 + 1]
+            )
+            self.stage_list.append(
+                PipelineStage(
+                    stage_layers,
+                    cur_rank + i * 4,
+                    8,
+                    group=self.group,
+                    shared_param_map=shared_mp,
+                )
+            )
+            self.stage_list[i].has_backward = True
+
+        loss_fn_ = nn.MSELoss()
+        schedule = ScheduleVPP(
+            self.stage_list, self.micro_batches, loss_fn=loss_fn_
+        )
+        opt = paddle.optimizer.AdamW(
+            learning_rate=0.001, parameters=self.model.parameters()
+        )
+        dataset = RandomDataset(image_size=8, output_size=8, num_samples=8)
+        loader = DataLoader(dataset, batch_size=8)
+        losses_by_micro_batch = []
+        losses_by_step = []
+        num_iterations = 20
+
+        for _ in range(num_iterations):
+            for _, (data, label) in enumerate(loader):
+                schedule.step(data, target=label, losses=losses_by_micro_batch)
+                if self.rank == 3:
+                    losses_by_step.append(
+                        np.array(losses_by_micro_batch, dtype=np.float32).mean()
+                    )
+            opt.step()
+            opt.clear_grad()
+        return losses_by_step
+
     def test_pp_model(self):
-        """Test pipeline parallel model using PPMyModel as the baseline"""
+        """Test pipeline parallel model using PPModel as the baseline"""
         fix_seeds()
         name_prefix = "pp_model"
         shared_params_names = {
@@ -263,7 +343,7 @@ class TestSharedParameters:
                 f"{name_prefix}_linear_7_weight.dist",
             ]
         }
-        pp_model = PPMyModel(
+        pp_model = PPModel(
             name_prefix=name_prefix, shared_param_map=shared_params_names
         )
         opt = paddle.optimizer.AdamW(
@@ -273,7 +353,7 @@ class TestSharedParameters:
         dataset = RandomDataset(image_size=8, output_size=8, num_samples=8)
         loader = DataLoader(dataset, batch_size=1)
         pp_losses_step = []
-        num_iterations = 4
+        num_iterations = 20
 
         for _ in range(num_iterations):
             pp_losses_micro_batch = []
@@ -290,15 +370,27 @@ class TestSharedParameters:
         return pp_losses_step
 
     def run_test(self):
-        """Compare losses between three training methods"""
+        """Compare shared params losses between three training methods"""
         self.setUpClass()
-        scheduleFThenB_losses = self.test_ScheduleFThenB()
         pp_losses = self.test_pp_model()
+        pp_FThenB_losses = self.test_single_schedule(sing_schedule="FThenB")
+        pp_1F1B_losses = self.test_single_schedule(sing_schedule="1F1B")
+        pp_vpp_losses = self.test_multi_schedule(multi_schedule="VPP")
 
         if self.rank == 3:
             np.testing.assert_allclose(
                 pp_losses,
-                scheduleFThenB_losses,
+                pp_FThenB_losses,
+                rtol=rtol,
+            )
+            np.testing.assert_allclose(
+                pp_losses,
+                pp_1F1B_losses,
+                rtol=rtol,
+            )
+            np.testing.assert_allclose(
+                pp_losses,
+                pp_vpp_losses,
                 rtol=rtol,
             )
 
