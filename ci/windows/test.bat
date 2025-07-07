@@ -4,6 +4,7 @@ echo    ========================================
 echo    Step 4. Running unit tests ...
 echo    ========================================
 
+cd %BUILD_DIR%
 call "%PYTHON_VENV_ROOT%\Scripts\activate.bat"
 pip install -r %work_dir%\python\unittest_py\requirements.txt
 if %ERRORLEVEL% NEQ 0 (

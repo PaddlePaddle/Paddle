@@ -6,8 +6,7 @@ echo    ========================================
 @ECHO ON
 
 rem Record the exact size of dll and whl files and save them to disk D
-cd
-echo %cd%
+cd %BUILD_DIR%
 set dll_file=%cd%\build\paddle\fluid\pybind\libpaddle.dll
 for /F "tokens=1-5" %%a in ('dir "%dll_file%"') do (
     echo "%%e" | findstr  "libpaddle.dll" >nul
@@ -27,12 +26,12 @@ set dllsize_folder=D:\record\dll_size
 if not exist "%dllsize_folder%" (
     mkdir %dllsize_folder%
 )
-if exist "%dllsize_folder%\%AGILE_PULL_ID%.txt" (
-    del "%dllsize_folder%\%AGILE_PULL_ID%.txt"
+if exist "%dllsize_folder%\%PR_ID%.txt" (
+    del "%dllsize_folder%\%PR_ID%.txt"
 )
-echo %dllsize% > %dllsize_folder%\%AGILE_PULL_ID%.txt
+echo %dllsize% > %dllsize_folder%\%PR_ID%.txt
 
-set whl_folder=%cd%\build\python\dist
+set whl_folder=%cd%\python\dist
 for /F "tokens=1-5" %%a in ('dir "%whl_folder%"') do (
     echo "%%e" | findstr  ".whl" >nul
     if !errorlevel! equ 0 (
@@ -52,10 +51,10 @@ set whlsize_folder=D:\record\whl_size
 if not exist "%whlsize_folder%" (
     mkdir %whlsize_folder%
 )
-if exist "%whlsize_folder%\%AGILE_PULL_ID%.txt" (
-    del "%whlsize_folder%\%AGILE_PULL_ID%.txt"
+if exist "%whlsize_folder%\%PR_ID%.txt" (
+    del "%whlsize_folder%\%PR_ID%.txt"
 )
-echo %whlsize% > %whlsize_folder%\%AGILE_PULL_ID%.txt
+echo %whlsize% > %whlsize_folder%\%PR_ID%.txt
 
 dir /s /b python\dist\*.whl > whl_file.txt
 set /p PADDLE_WHL_FILE_WIN=< whl_file.txt

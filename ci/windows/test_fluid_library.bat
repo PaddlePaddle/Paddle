@@ -4,6 +4,7 @@ echo    ========================================
 echo    Step 7. Testing fluid library with infer_ut for inference ...
 echo    ========================================
 
+cd %BUILD_DIR%
 call "%PYTHON_VENV_ROOT%\Scripts\activate.bat"
 cd /d %work_dir%\test\cpp\inference\infer_ut
 %cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %TENSORRT_ROOT% %WITH_ONNXRUNTIME% %MSVC_STATIC_CRT% "%CUDA_TOOLKIT_ROOT_DIR%"
