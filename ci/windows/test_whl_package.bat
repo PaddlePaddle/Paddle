@@ -1,5 +1,9 @@
 setlocal enabledelayedexpansion
 
+call :test_whl_package || goto test_whl_package_error
+goto:eof
+
+:test_whl_package
 echo    ========================================
 echo    Step 3. Test pip install whl package ...
 echo    ========================================
@@ -7,7 +11,7 @@ echo    ========================================
 
 rem Record the exact size of dll and whl files and save them to disk D
 cd %BUILD_DIR%
-set dll_file=%cd%\build\paddle\fluid\pybind\libpaddle.dll
+set dll_file=%cd%\paddle\fluid\pybind\libpaddle.dll
 for /F "tokens=1-5" %%a in ('dir "%dll_file%"') do (
     echo "%%e" | findstr  "libpaddle.dll" >nul
     if !errorlevel! equ 0 (

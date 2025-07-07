@@ -1,4 +1,5 @@
 setlocal enabledelayedexpansion
+@ECHO ON
 
 call "%PYTHON_VENV_ROOT%\Scripts\activate.bat"
 
@@ -79,6 +80,7 @@ if "%WITH_GPU%"=="ON" (
     )
 )
 echo %PATH%
+echo PATH=%PATH%>> %GITHUB_ENV%
 rem CUDA_TOOLKIT_ROOT_DIR in cmake must use / rather than \
 set "TENSORRT_ROOT=%TENSORRT_ROOT:\=/%"
 set "CUDA_TOOLKIT_ROOT_DIR=%CUDA_TOOLKIT_ROOT_DIR:\=/%"

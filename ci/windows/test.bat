@@ -1,5 +1,9 @@
 setlocal enabledelayedexpansion
 
+call :test_unit || goto test_unit_error
+goto:eof
+
+:test_unit
 echo    ========================================
 echo    Step 4. Running unit tests ...
 echo    ========================================
