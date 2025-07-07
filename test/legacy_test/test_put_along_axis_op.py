@@ -13,11 +13,10 @@
 # limitations under the License.
 
 import copy
-import os
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_places
 from utils import dygraph_guard
 
 import paddle
@@ -680,19 +679,11 @@ class TestPutAlongAxisAPI(unittest.TestCase):
         self.index_shape = [1, 1]
         self.index_np = np.array([[0]]).astype('int64')
         self.x_np = np.random.random(self.shape).astype(np.float32)
-        self.place = []
+        self.place = get_places()
         self.axis = 0
         self.value_np = 99.0
         self.value_shape = []
         self.x_feed = copy.deepcopy(self.x_np)
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
 
     def test_api_static(self):
         paddle.enable_static()
@@ -824,19 +815,11 @@ class TestPutAlongAxisAPICase2(TestPutAlongAxisAPI):
         self.index_shape = [2, 2]
         self.index_np = np.array([[0, 0], [1, 0]]).astype('int64')
         self.x_np = np.random.random(self.shape).astype(np.float32)
-        self.place = []
+        self.place = get_places()
         self.axis = 0
         self.value_np = 99.0
         self.value_shape = []
         self.x_feed = copy.deepcopy(self.x_np)
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
 
 
 class TestPutAlongAxisAPICase3(TestPutAlongAxisAPI):
@@ -848,19 +831,11 @@ class TestPutAlongAxisAPICase3(TestPutAlongAxisAPI):
             'int64'
         )
         self.x_np = np.random.random(self.shape).astype(np.float32)
-        self.place = []
+        self.place = get_places()
         self.axis = 0
         self.value_np = 99.0
         self.value_shape = []
         self.x_feed = copy.deepcopy(self.x_np)
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
 
     def test_inplace_dygraph(self):
         pass
@@ -879,15 +854,7 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
         self.value = (
             np.arange(1, 11).reshape(self.value_shape).astype(np.float32)
         )
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
+        self.place = get_places()
 
     def test_api_dygraph(self):
         def run(place):

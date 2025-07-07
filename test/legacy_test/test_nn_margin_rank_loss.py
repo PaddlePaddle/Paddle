@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
+from op_test import get_places
 
 import paddle
-from paddle import base
-from paddle.base import core
 from paddle.base.framework import in_pir_mode
 
 
@@ -42,15 +40,7 @@ def create_test_case(margin, reduction):
             self.label_data = np.random.choice([-1, 1], size=[10, 10]).astype(
                 "float64"
             )
-            self.places = []
-            if (
-                os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-                in ['1', 'true', 'on']
-                or not core.is_compiled_with_cuda()
-            ):
-                self.places.append(base.CPUPlace())
-            if core.is_compiled_with_cuda():
-                self.places.append(paddle.CUDAPlace(0))
+            self.places = get_places()
 
         def run_static_functional_api(self, place):
             paddle.enable_static()
@@ -212,15 +202,7 @@ def create_test_case_zero_size(margin, reduction):
             self.label_data = np.random.choice(
                 [-1, 1], size=self.label_shape
             ).astype("float64")
-            self.places = []
-            if (
-                os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-                in ['1', 'true', 'on']
-                or not core.is_compiled_with_cuda()
-            ):
-                self.places.append(base.CPUPlace())
-            if core.is_compiled_with_cuda():
-                self.places.append(paddle.CUDAPlace(0))
+            self.places = get_places()
 
         def run_dynamic_functional_api(self, place):
             paddle.disable_static(place)
