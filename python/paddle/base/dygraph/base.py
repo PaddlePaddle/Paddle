@@ -410,7 +410,6 @@ class _DecoratorContextManager:
         else:
             decorated_fn = _decorate_function
 
-        sig = inspect.signature(func)
         copy_signature(func, decorated_fn)
 
         setattr(
