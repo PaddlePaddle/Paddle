@@ -428,41 +428,51 @@ class TestElementwiseDygraph(unittest.TestCase):
             places = [paddle.CPUPlace()]  # only test in cpu
             if core.is_compiled_with_cuda():
                 places.append(paddle.CUDAPlace(0))
+            shape_combinations = [
+                ([0], [0]),
+                ([2, 0, 4], [1]),
+                ([5, 0], [1, 5, 0]),
+                ([0, 4], [2, 0, 4]),
+                ([1, 0, 3], [1, 0, 3]),
+                ([3, 0, 2], [3, 1, 2]),
+                ([5, 1, 3], [5, 0, 3]),
+                ([2, 1, 0, 1], [1, 0, 1, 5]),
+            ]
             for dtype in dtypes:
                 for place in places:
-                    x_shape = [2, 1, 0, 1]
-                    y_shape = [1, 0, 1, 5]
-                    # x_shape = y_shape
-                    x_np = np.random.uniform(-1000, 1000, x_shape).astype(dtype)
-                    # make sure all element in y is non-zero
-                    x_np[x_np == 0] = -1
-                    y_np = np.random.uniform(-1000, 1000, y_shape).astype(dtype)
-                    # make sure all element in y is non-zero
-                    y_np[np.isclose(y_np, 0)] = -1
-                    z_np = np.remainder(x_np, y_np)
+                    for x_shape, y_shape in shape_combinations:
+                        x_np = np.random.uniform(-1000, 1000, x_shape).astype(
+                            dtype
+                        )
+                        x_np[x_np == 0] = -1
+                        y_np = np.random.uniform(-1000, 1000, y_shape).astype(
+                            dtype
+                        )
+                        y_np[np.isclose(y_np, 0)] = -1
+                        z_np = np.remainder(x_np, y_np)
 
-                    x = paddle.to_tensor(
-                        x_np, dtype=dtype, place=place, stop_gradient=False
-                    )
-                    y = paddle.to_tensor(
-                        y_np, dtype=dtype, place=place, stop_gradient=False
-                    )
-                    z = paddle.remainder(x, y)
-                    self.assertEqual(z.dtype, x.dtype)
-                    np.testing.assert_allclose(z_np, z.numpy())
+                        x = paddle.to_tensor(
+                            x_np, dtype=dtype, place=place, stop_gradient=False
+                        )
+                        y = paddle.to_tensor(
+                            y_np, dtype=dtype, place=place, stop_gradient=False
+                        )
+                        z = paddle.remainder(x, y)
+                        self.assertEqual(z.dtype, x.dtype)
+                        np.testing.assert_allclose(z_np, z.numpy())
 
-                    v_np = np.random.uniform(-1000, 1000, z_np.shape).astype(
-                        dtype
-                    )
-                    v = paddle.to_tensor(v_np, dtype=dtype, place=place)
+                        v_np = np.random.uniform(
+                            -1000, 1000, z_np.shape
+                        ).astype(dtype)
+                        v = paddle.to_tensor(v_np, dtype=dtype, place=place)
 
-                    dx = paddle.grad(z, x, v, retain_graph=True)[0]
-                    dx_np = np.zeros_like(dx.numpy())
-                    np.testing.assert_allclose(dx_np, dx.numpy(), 5e-5)
+                        dx = paddle.grad(z, x, v, retain_graph=True)[0]
+                        dx_np = np.zeros_like(dx.numpy())
+                        np.testing.assert_allclose(dx_np, dx.numpy(), 5e-5)
 
-                    dy = paddle.grad(z, y, v, retain_graph=True)[0]
-                    dy_np = np.zeros_like(dy.numpy())
-                    np.testing.assert_allclose(dy_np, dy.numpy(), 5e-5)
+                        dy = paddle.grad(z, y, v, retain_graph=True)[0]
+                        dy_np = np.zeros_like(dy.numpy())
+                        np.testing.assert_allclose(dy_np, dy.numpy(), 5e-5)
 
 
 class TestRemainderOp(unittest.TestCase):
