@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import functools
 import inspect
 import sys
 import warnings
@@ -25,7 +26,6 @@ from typing import (
     overload,
 )
 
-import decorator
 from typing_extensions import ParamSpec
 
 import paddle
@@ -370,16 +370,15 @@ def no_grad(func=None):
         return _switch_tracer_mode_guard_(is_train=False)
     else:
 
-        @decorator.decorator
+        @functools.wraps(func)
         def __impl__(
-            func: Callable[_InputT, _RetT],
             *args: _InputT.args,
             **kwargs: _InputT.kwargs,
         ) -> _RetT:
             with _switch_tracer_mode_guard_(is_train=False):
                 return func(*args, **kwargs)
 
-        return __impl__(func)
+        return __impl__
 
 
 class _DecoratorContextManager:
@@ -390,21 +389,27 @@ class _DecoratorContextManager:
     def __call__(
         self, func: Callable[_InputT, _RetT]
     ) -> Callable[_InputT, _RetT]:
-        @decorator.decorator
-        def _decorate_function(func, *args, **kwargs):
+        @functools.wraps(func)
+        def _decorate_function(*args, **kwargs):
             with self:
                 return func(*args, **kwargs)
 
-        @decorator.decorator
-        def _decorate_generator(func, *args, **kwargs):
+        @functools.wraps(func)
+        def _decorate_generator(*args, **kwargs):
             gen = func(*args, **kwargs)
             with self:
                 yield from gen
 
         if inspect.isgeneratorfunction(func):
-            decorated_fn = _decorate_generator(func)
+            decorated_fn = _decorate_generator
         else:
-            decorated_fn = _decorate_function(func)
+            decorated_fn = _decorate_function
+
+        sig = inspect.signature(func)
+        decorated_fn.__signature__ = sig.replace(
+            parameters=list(sig.parameters.values())
+        )
+
         setattr(
             decorated_fn,
             _DecoratorContextManager.DECORATED_BY_MARKER_ATTR,

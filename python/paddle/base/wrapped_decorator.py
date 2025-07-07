@@ -35,14 +35,15 @@ def wrap_decorator(
     @functools.wraps(decorator_func)
     def __impl__(func: Callable[_InputT, _RetT1]) -> Callable[_InputT, _RetT2]:
         sig = inspect.signature(func)
-        dec_params = list(sig.parameters.values())
         decorated = decorator_func(func)
 
         @functools.wraps(func)
         def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT2:
             return decorated(*args, **kwargs)
 
-        wrapper.__signature__ = sig.replace(parameters=dec_params)
+        wrapper.__signature__ = sig.replace(
+            parameters=list(sig.parameters.values())
+        )
         return wrapper
 
     return __impl__
