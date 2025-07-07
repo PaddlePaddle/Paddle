@@ -963,7 +963,7 @@ class PipelineStage(_PipelineStageBase):
                     group=sync_group,
                 )
 
-    def sync_shared_params(self):
+    def sync_shared_param_grads(self):
         # After the stage scheduling ends, perform allreduce synchronization
         # on the gradients of shared parameters.
         for _, a_map in self.shared_param_map.items():
