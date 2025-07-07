@@ -195,7 +195,7 @@ jobs:
           set -x
           runner_name=`(echo $PWD|awk -F '/' '{print $3}')`
           wget -q https://xly-devops.bj.bcebos.com/PR/utils.sh
-          source ${ci_scripts_runner}/utils.sh
+          source utils.sh
           determine_dcu_runner ${runner_name}
 
       - name: Check docker image and run container
