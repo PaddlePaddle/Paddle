@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-import contextlib
 import inspect
 import sys
 import warnings
@@ -35,7 +34,7 @@ from paddle.base.framework import global_var
 from paddle.base.multiprocess_utils import CleanupFuncRegistrar
 
 from ..framework import _get_paddle_place
-from ..wrapped_decorator import wrap_decorator
+from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 from .tracer import Tracer
 
 if TYPE_CHECKING:
@@ -114,7 +113,7 @@ def _switch_to_static_graph_(
 switch_to_static_graph = wrap_decorator(_switch_to_static_graph_)
 
 
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def to_static_mode_guard(
     is_to_static: bool = True,
 ) -> Generator[None, None, None]:
@@ -127,7 +126,7 @@ def to_static_mode_guard(
         global_var._in_to_static_mode_ = original_val
 
 
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def param_guard(
     parameters: OrderedDict[str, Tensor],
 ) -> Generator[None, None, None]:
@@ -300,7 +299,7 @@ def disable_dygraph() -> None:
         global_var._functional_dygraph_context_manager = None
 
 
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def _switch_tracer_mode_guard_(
     is_train: bool = True,
 ) -> Generator[None, None, None]:
@@ -610,7 +609,7 @@ class enable_grad(_DecoratorContextManager):
         _set_grad_enabled(self.prev)
 
 
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def guard(place: PlaceLike | None = None) -> Generator[None, None, None]:
     """
     :api_attr: imperative

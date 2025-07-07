@@ -15,7 +15,6 @@
 from __future__ import annotations
 
 import collections
-import contextlib
 import copy
 import functools
 import multiprocessing
@@ -45,7 +44,7 @@ from .proto import (
     framework_pb2,
 )
 from .variable_index import _getitem_static, _setitem_static
-from .wrapped_decorator import wrap_decorator
+from .wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 
 _InputT = ParamSpec("_InputT")
 _RetT = TypeVar("_RetT")
@@ -461,7 +460,7 @@ ipu_index_attr_name = "ipu_index"
 ipu_stage_attr_name = "ipu_stage"
 
 
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def ipu_shard_guard(
     index: int = -1, stage: int = -1
 ) -> Generator[None, None, None]:
@@ -1243,7 +1242,7 @@ class NameScope:
 _name_scope = NameScope()
 
 
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def name_scope(prefix: str | None = None) -> Generator[None, None, None]:
     """
 
@@ -1334,7 +1333,7 @@ class NameStruct:
 _name_struct = NameStruct()
 
 
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def name_struct(prefix=None):
     """
     Note: This should only used in Paddle/python/paddle/nn/layer/layers.py
@@ -4058,7 +4057,7 @@ class Operator:
         self._struct_name = struct_name
 
 
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def _stride_in_no_check_dy2st_diff():
     global _stride_in_no_check_dy2st_diff_mode
     _stride_in_no_check_dy2st_diff_mode = True
@@ -6257,7 +6256,7 @@ class Program:
         """
         return self.__op_role_var
 
-    @contextlib.contextmanager
+    @signature_safe_contextmanager
     def _backward_role_guard(self):
         tmp_role = self._current_role
 
@@ -6268,7 +6267,7 @@ class Program:
         finally:
             self._current_role = tmp_role
 
-    @contextlib.contextmanager
+    @signature_safe_contextmanager
     def _optimized_guard(self, param_and_grads):
         """
         A with guard to set :code:`Optimization` :code:`OpRole` and
@@ -6301,7 +6300,7 @@ class Program:
             self.__op_role_var = tmp_var
             self._current_role = tmp_role
 
-    @contextlib.contextmanager
+    @signature_safe_contextmanager
     def _lr_schedule_guard(self, is_with_opt=False):
         """
         A with guard to set :code:`LRSched` :code:`OpRole` and
@@ -6692,7 +6691,7 @@ class Program:
         p._name_generator = self._name_generator.clone()
         return p
 
-    @contextlib.contextmanager
+    @signature_safe_contextmanager
     def switch_name_generator_guard(self, new_generator):
         if isinstance(new_generator, str):
             new_generator = unique_name.UniqueNameGenerator(new_generator)
@@ -8012,7 +8011,7 @@ def switch_startup_program(program: Program) -> Program:
     return prev_program
 
 
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def program_guard(
     main_program: Program, startup_program: Program | None = None
 ) -> Generator[None, None, None]:
@@ -8103,7 +8102,7 @@ def _get_var(name, program=None):
     return program.global_block().var(name)
 
 
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def dygraph_guard_if_declarative():
     from .dygraph import Tracer
     from .dygraph.base import in_to_static_mode
@@ -8116,7 +8115,7 @@ def dygraph_guard_if_declarative():
         yield
 
 
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def _dygraph_guard(tracer):
     tmp_tracer = global_var._dygraph_tracer_
     global_var._dygraph_tracer_ = tracer
@@ -8127,7 +8126,7 @@ def _dygraph_guard(tracer):
         global_var._dygraph_tracer_ = tmp_tracer
 
 
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def _dygraph_place_guard(place):
     global _global_expected_place_
     tmp_place = _global_expected_place_
@@ -8148,7 +8147,7 @@ def switch_device(device):
     return pre_device
 
 
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def device_guard(device: str | None = None) -> Generator[None, None, None]:
     """
 
@@ -8225,7 +8224,7 @@ def _switch_cuda_graph_mode(cuda_graph_attr):
     return pre_mode
 
 
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def _cuda_graph_guard(cuda_graph_attr=None):
     """
 
@@ -8491,7 +8490,7 @@ def process_type_promotion(program):
 
 
 # complete the op_role of the new added ops
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def auto_complete_op_role(program, op_role):
     def is_dist_block(block):
         return any(op.dist_attr is not None for op in block.ops)
@@ -8542,7 +8541,7 @@ def auto_complete_op_role(program, op_role):
 # set op when op_role when it is add by apibuilder
 # pir_op_role_guard could not distinguish "always_forward_ops", therefore if
 # there would be always_forward_ops in your region, you should use "auto_complete_op_role"
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def pir_op_role_guard(op_role: int - 1) -> Generator[None, None, None]:
 
     if paddle.framework.in_pir_mode():
@@ -8555,7 +8554,7 @@ def pir_op_role_guard(op_role: int - 1) -> Generator[None, None, None]:
             pir.set_op_role(original_op_rope)
 
 
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def pir_chunk_id_guard(chunk_id: int - 1) -> Generator[None, None, None]:
 
     if paddle.framework.in_pir_mode():
@@ -8568,7 +8567,7 @@ def pir_chunk_id_guard(chunk_id: int - 1) -> Generator[None, None, None]:
             pir.set_chunk_id(original_chunk_id)
 
 
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def pir_op_name_guard(op_name: str) -> Generator[None, None, None]:
 
     if paddle.framework.in_pir_mode() and core._is_bwd_prim_enabled():

@@ -14,7 +14,6 @@
 from __future__ import annotations
 
 import collections
-import contextlib
 import logging
 import warnings
 from collections.abc import Sequence
@@ -26,6 +25,7 @@ from paddle.base import core
 from paddle.base.libpaddle.pir import (
     get_used_external_value,
 )
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
 # TODO(CZ): to be removed when we support dynamic shape by default.
 ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
@@ -356,7 +356,7 @@ def _check_vjp_dynamic_shape(op, inputs):
 
 
 # Prim currently does not support dynamic shape, when dynamic shape exits in shape of op inputs, prim will be skipped its vjp op.
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def dynamic_shape_prim_vjp_guard(op, inputs):
     origin_prim = core._is_bwd_prim_enabled()
     if op.name() == "cf.tuple_push":

@@ -168,4 +168,4 @@ pip install --upgrade pip 1>nul
 pip install -r "${work_dir}/python/requirements.txt" 1>nul
 pip install -r "${work_dir}/python/unittest_py/requirements.txt" 1>nul
 
-# exec_samplecode_checking
+exec_samplecode_checking

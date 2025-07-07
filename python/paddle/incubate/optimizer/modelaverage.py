@@ -13,7 +13,6 @@
 # limitations under the License.
 from __future__ import annotations
 
-import contextlib
 from typing import TYPE_CHECKING
 
 import paddle
@@ -21,6 +20,7 @@ from paddle import _C_ops
 from paddle.base import framework
 from paddle.base.dygraph import base as imperative_base
 from paddle.base.layer_helper import LayerHelper
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.framework import (
     in_dynamic_mode,
     in_dynamic_or_pir_mode,
@@ -416,7 +416,7 @@ class ModelAverage(Optimizer):
         for param_and_grad in params_grads:
             self._append_optimize_op(block, param_and_grad)
 
-    @contextlib.contextmanager
+    @signature_safe_contextmanager
     @imperative_base.no_grad
     def apply(
         self, executor: Executor | None = None, need_restore: bool = True

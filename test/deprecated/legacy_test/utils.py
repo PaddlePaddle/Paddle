@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import contextlib
 import os
 from functools import wraps
 
@@ -22,6 +21,7 @@ import paddle
 from paddle import base, get_flags, set_flags, static
 from paddle.base import core
 from paddle.base.framework import _dygraph_guard
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.pir_utils import DygraphOldIrGuard
 from paddle.utils.environments import (
     BooleanEnvironmentVariable,
@@ -129,7 +129,7 @@ class DyGraphProgramDescTracerTestHelper:
             self.unittest_obj.assertTrue(func(v1.numpy(), v2))
 
 
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def dygraph_guard():
     in_dygraph_outside = paddle.base.framework.in_dygraph_mode()
     try:
@@ -141,7 +141,7 @@ def dygraph_guard():
             paddle.enable_static()
 
 
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def static_guard():
     in_dygraph_outside = paddle.base.framework.in_dygraph_mode()
     try:
@@ -153,7 +153,7 @@ def static_guard():
             paddle.disable_static()
 
 
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def pir_executor_guard():
     tmp_env = os.environ.get("FLAGS_enable_pir_in_executor")
     tmp_cpp = get_flags("FLAGS_enable_pir_in_executor")[

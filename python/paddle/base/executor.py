@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-import contextlib
 import copy
 import logging
 import os
@@ -51,6 +50,7 @@ from .framework import (
 )
 from .incubate.checkpoint import auto_checkpoint as acp
 from .trainer_factory import FetchHandlerMonitor, TrainerFactory
+from .wrapped_decorator import signature_safe_contextmanager
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Sequence
@@ -102,7 +102,7 @@ def _switch_scope(scope: core._Scope) -> core._Scope:
     return ex
 
 
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def scope_guard(scope: core._Scope) -> Generator[None, None, None]:
     """
 

@@ -13,7 +13,6 @@
 # limitations under the License.
 from __future__ import annotations
 
-import contextlib
 import copy
 import os
 import warnings
@@ -37,6 +36,7 @@ from paddle.base.framework import (
     in_dynamic_or_pir_mode,
     in_pir_mode,
 )
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.static.amp.decorator import OptimizerWithMixedPrecision
 
 from .amp_lists import black_list, white_list
@@ -458,7 +458,7 @@ def check_optimizers(optimizers: list[Any]) -> None:
             )
 
 
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def amp_guard(
     enable: bool = True,
     custom_white_list: _CustomList | None = None,

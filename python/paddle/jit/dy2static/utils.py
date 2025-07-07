@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import atexit
 import builtins
-import contextlib
 import dataclasses
 import functools
 import importlib.util
@@ -42,6 +41,7 @@ import paddle
 from paddle.base import backward, core, framework, unique_name
 from paddle.base.data_feeder import convert_dtype
 from paddle.base.layer_helper import LayerHelper
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.framework import CUDAPinnedPlace
 from paddle.jit.utils import OrderedSet
 from paddle.utils import flatten, gast
@@ -954,7 +954,7 @@ def construct_grad_names(grad_info_map, x_vars, param_vars, out_vars):
     return grad_var_names
 
 
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def tensor_name_guard(tensors, names):
     try:
         assert len(tensors) == len(names)
