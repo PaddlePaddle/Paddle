@@ -34,7 +34,11 @@ from paddle.base.framework import global_var
 from paddle.base.multiprocess_utils import CleanupFuncRegistrar
 
 from ..framework import _get_paddle_place
-from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
+from ..wrapped_decorator import (
+    copy_signature,
+    signature_safe_contextmanager,
+    wrap_decorator,
+)
 from .tracer import Tracer
 
 if TYPE_CHECKING:
@@ -378,6 +382,7 @@ def no_grad(func=None):
             with _switch_tracer_mode_guard_(is_train=False):
                 return func(*args, **kwargs)
 
+        copy_signature(func, __impl__)
         return __impl__
 
 
@@ -406,9 +411,7 @@ class _DecoratorContextManager:
             decorated_fn = _decorate_function
 
         sig = inspect.signature(func)
-        decorated_fn.__signature__ = sig.replace(
-            parameters=list(sig.parameters.values())
-        )
+        copy_signature(func, decorated_fn)
 
         setattr(
             decorated_fn,

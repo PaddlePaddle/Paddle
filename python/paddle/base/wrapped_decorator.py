@@ -27,6 +27,15 @@ _RetT2 = TypeVar("_RetT2")
 __all__ = []
 
 
+def copy_signature(
+    src: Callable[_InputT, _RetT1], dst: Callable[_InputT, _RetT1]
+):
+    src_signature = inspect.signature(src)
+    dst.__signature__ = src_signature.replace(
+        parameters=list(src_signature.parameters.values())
+    )
+
+
 def wrap_decorator(
     decorator_func: Callable[
         [Callable[_InputT, _RetT1]], Callable[_InputT, _RetT2]
@@ -34,16 +43,13 @@ def wrap_decorator(
 ) -> Callable[[Callable[_InputT, _RetT1]], Callable[_InputT, _RetT2]]:
     @functools.wraps(decorator_func)
     def __impl__(func: Callable[_InputT, _RetT1]) -> Callable[_InputT, _RetT2]:
-        sig = inspect.signature(func)
         decorated = decorator_func(func)
 
         @functools.wraps(func)
         def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT2:
             return decorated(*args, **kwargs)
 
-        wrapper.__signature__ = sig.replace(
-            parameters=list(sig.parameters.values())
-        )
+        copy_signature(func, wrapper)
         return wrapper
 
     return __impl__
