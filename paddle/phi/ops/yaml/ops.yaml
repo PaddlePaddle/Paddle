@@ -1419,6 +1419,7 @@
   output : Tensor(out)
   infer_meta :
     func : DepthwiseConvInferMeta
+    spmd_rule : DepthwiseConv2dInferSpmd
   kernel :
     func : depthwise_conv2d
     data_type : input

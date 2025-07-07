@@ -19,7 +19,6 @@
 
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
-
 #define MAX_RANK_SUPPORTED 8
 
 namespace phi {
@@ -39,10 +38,10 @@ void ExpandAs(const Context& context,
     return;
   }
   for (size_t i = 0; i < vec_in_dims.size(); ++i) {
-    PADDLE_ENFORCE_NE(
-        target_shape[i],
-        0,
-        errors::InvalidArgument("The value of target shape cannot be zero."));
+    if (target_shape[i] == 0) {
+      context.template Alloc<T>(out);
+      return;
+    }
     if (i < diff) {
       PADDLE_ENFORCE_GT(
           target_shape[i],
@@ -100,6 +99,10 @@ void ExpandAsKernel(const Context& dev_ctx,
                     const paddle::optional<DenseTensor>& y,
                     const std::vector<int64_t>& target_shape,
                     DenseTensor* out) {
+  if (x.numel() == 0 || (y.get_ptr() && y.get_ptr()->numel() == 0)) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   auto rank = x.dims().size();
   auto target_rank = target_shape.size();
   PADDLE_ENFORCE_GE(target_rank,

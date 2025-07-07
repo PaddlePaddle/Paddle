@@ -81,7 +81,7 @@ jobs:
           echo "Extracting build.tar.gz"
           tar --use-compress-program="pzstd" -xpf build.tar.gz
           mv paddle Paddle
-          rm build.tar.gz
+          rm -f build.tar.gz
           '
 
       - name: Download PaddleTest
@@ -96,7 +96,7 @@ jobs:
           cd PaddleNLP
           git pull
           git submodule update --init --recursive --force
-          python -m pip install bce-python-sdk==0.8.74
+          python3.10 -m pip install bce-python-sdk==0.8.74
           '
 
       - name: Test
@@ -105,12 +105,11 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           ldconfig
-          ln -sf $(which python${python_version}) /usr/bin/python
-          '
-          docker exec -t ${{ env.container_name }} /bin/bash -c '
-          ldconfig
-          pip config set global.cache-dir "/home/.cache/pip"
           set -e
+          pip config set global.cache-dir "/home/.cache/pip"
+          ln -sf $(which python${python_version}) /usr/bin/python
+          python -c "import sys; print(sys.version_info[:])"
+          source ${{ github.workspace }}/../../../proxy
           timeout 80m bash Paddle/ci/auto_parallel/ci_auto_parallel.sh ${paddle_whl}
           '
 

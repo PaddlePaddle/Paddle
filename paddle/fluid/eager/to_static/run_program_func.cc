@@ -114,7 +114,40 @@ std::vector<paddle::Tensor> filter_no_need_buffer_input_var_in_backward(
   return filter_x;
 }
 
-std::vector<paddle::Tensor> Trans2ContiguousTensors(
+std::vector<size_t> GetNonContiguousTensorIndices(
+    const std::vector<paddle::Tensor>& tensors) {
+  std::vector<size_t> need_trans_idx;
+  for (size_t idx = 0; idx < tensors.size(); idx++) {
+    auto& t = tensors[idx];
+    if (t.initialized() && t.is_dense_tensor() &&
+        !std::static_pointer_cast<phi::DenseTensor>(t.impl())
+             ->meta()
+             .is_contiguous()) {
+      need_trans_idx.push_back(idx);
+    }
+  }
+  return need_trans_idx;
+}
+
+void Trans2ContiguousTensors(const std::vector<paddle::Tensor>& tensors,
+                             const std::vector<size_t>& need_trans_idx,
+                             std::vector<paddle::Tensor>* tensors_contig) {
+  if (!need_trans_idx.empty()) {
+    tensors_contig->insert(
+        tensors_contig->end(), tensors.begin(), tensors.end());
+    for (auto idx : need_trans_idx) {
+      auto& t = tensors[idx];
+      tensors_contig->at(idx) = paddle::Tensor(
+          std::make_shared<phi::DenseTensor>(
+              paddle::experimental::Trans2Contiguous(
+                  *(std::static_pointer_cast<phi::DenseTensor>(t.impl())))),
+          t.mutable_autograd_meta(),
+          t.name());
+    }
+  }
+}
+
+std::vector<paddle::Tensor> LegacyTrans2ContiguousTensors(
     const std::vector<paddle::Tensor>& tensors) {
   std::vector<paddle::Tensor> res;
   for (const auto& t : tensors) {
@@ -241,8 +274,17 @@ std::vector<paddle::Tensor> run_program_ad_func(
   }
   VLOG(2) << "start run run_program with require_any_grad = "
           << require_any_grad << ", is_test = " << is_test;
-  auto x_tmp = Trans2ContiguousTensors(x);
-  auto params_tmp = Trans2ContiguousTensors(params);
+  // Note: We should only perform contiguous transformations in the presence of
+  // non-contiguous tensors. Otherwise, unnecessary overhead will be incurred
+  // during Tensor construction.
+  auto x_need_trans_idx = GetNonContiguousTensorIndices(x);
+  auto params_need_trans_idx = GetNonContiguousTensorIndices(params);
+  std::vector<paddle::Tensor> x_contig, params_contig;
+  Trans2ContiguousTensors(x, x_need_trans_idx, &x_contig);
+  Trans2ContiguousTensors(params, params_need_trans_idx, &params_contig);
+  const auto& x_tmp = x_need_trans_idx.empty() ? x : x_contig;
+  const auto& params_tmp =
+      params_need_trans_idx.empty() ? params : params_contig;
   // Call forward function
   // if require_any_grad is False, don't save any middle vars.
   int64_t place_hash_key = 0x9e3779b9;
@@ -334,8 +376,8 @@ void legacy_run_program_ad_func(
 
   VLOG(2) << "start run run_program with require_any_grad = "
           << require_any_grad;
-  auto x_tmp = Trans2ContiguousTensors(x);
-  auto params_tmp = Trans2ContiguousTensors(params);
+  auto x_tmp = LegacyTrans2ContiguousTensors(x);
+  auto params_tmp = LegacyTrans2ContiguousTensors(params);
   // Call forward function
   // if require_any_grad is False, don't save any middle vars.
   int64_t place_hash_key = 0;

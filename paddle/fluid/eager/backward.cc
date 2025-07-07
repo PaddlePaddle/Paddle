@@ -19,6 +19,7 @@
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 
 COMMON_DECLARE_int32(call_stack_level);
+COMMON_DECLARE_bool(paddle_grad_inputs_zero_copy);
 namespace egr {
 
 std::unordered_map<GradNodeBase*, int> getInDegreeMap(
@@ -203,7 +204,7 @@ std::vector<paddle::Tensor> RunBackward(
         use_shared_buffer = output_tensor->IsSharedBufferWith(*input_tensor);
       }
 
-      if (use_shared_buffer) {
+      if (use_shared_buffer || FLAGS_paddle_grad_inputs_zero_copy) {
         // Share buffer with given grad_tensor
         paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
             inputs_grad_tensors;
