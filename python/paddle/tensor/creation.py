@@ -983,6 +983,7 @@ def to_tensor(
 class MmapStorage(paddle.base.core.MmapStorage):
     """
     This class will use mmap to load a file.
+
     Args:
         filename(str): the name of .safetensors file.
         nbytes(int): number of bytes to map into memory.
