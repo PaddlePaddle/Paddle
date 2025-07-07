@@ -847,12 +847,6 @@ class DygraphShardingOptimizerV2:
                     self._color_to_comm_buffer_list[g_color] = []
                 self._color_to_comm_buffer_list[g_color].append(buffer)
 
-                for p in parameters:
-                    if p.name in self.param2bucket:
-                        self.param2bucket[p.name].append(buffer)
-                    else:
-                        self.param2bucket[p.name] = [buffer]
-
     def clear_param_storage(self, color):
         self.clear_color = color
         if color in self._color_to_comm_buffer_list.keys():
