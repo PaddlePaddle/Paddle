@@ -45,12 +45,14 @@ class PPModel(nn.Layer):
         )
         self.num_layers = 8
         self.num_layers_per_card = self.num_layers // 4
+        # Store the names of each pair of shared parameters.
         self.shared_param_map = shared_param_map
 
         self.linears = nn.LayerList()
         for i in range(self.num_layers):
             linear = nn.Linear(8, 8, bias_attr=False)
 
+            # Different models have distinct parameter name spaces to avoid naming conflicts.
             linear.weight.name = f"{self.name_prefix}_linear_{i}_weight"
 
             # Mark network parameters
@@ -66,8 +68,10 @@ class PPModel(nn.Layer):
 
             self.linears.append(linear)
 
+        # Store the parameters to be shared under different model names.
         self.model_shared_param_mp = {}
 
+        # Build `model_shared_param_mp`.
         self.set_shared_param()
 
     def set_shared_param(self):
@@ -75,17 +79,12 @@ class PPModel(nn.Layer):
             assert len(pair) == 2
             ori_name = pair[0]
             sync_name = pair[1]
-            ori_weight_idx = -1
-            sync_weight_idx = -1
-            for idx, linear in enumerate(self.linears):
+            ori_param = None
+            for _, linear in enumerate(self.linears):
                 if ori_name == linear.weight.name:
-                    ori_weight_idx = idx
-                elif sync_name == linear.weight.name:
-                    sync_weight_idx = idx
-            assert ori_weight_idx != -1 and sync_weight_idx != -1
-            self.model_shared_param_mp[sync_name] = self.linears[
-                ori_weight_idx
-            ].weight
+                    ori_param = linear.weight
+            assert ori_param is not None
+            self.model_shared_param_mp[sync_name] = ori_param
 
     def get_pp_mesh(self, layer_index):
         mesh_idx = int(layer_index / (self.num_layers / 4))
@@ -211,6 +210,7 @@ class TestSharedParameters:
         fleet.auto.set_mesh(cls.mesh)
 
     def test_single_schedule(self, sing_schedule="FThenB"):
+        """Test pipeline parallel model with shared parameters using FThenB/1F1B strategy"""
         fix_seeds()
         name_prefix = "pp_" + sing_schedule
         self.model = PPModel(name_prefix=name_prefix)
@@ -278,6 +278,7 @@ class TestSharedParameters:
         return losses_by_step
 
     def test_multi_schedule(self, multi_schedule="VPP"):
+        """Test pipeline parallel with shared parameters model using VPP strategy"""
         fix_seeds()
         name_prefix = "pp_" + multi_schedule
         self.model = PPModel(name_prefix=name_prefix, schedule="VPP")

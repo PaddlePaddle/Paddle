@@ -859,8 +859,10 @@ class PipelineStage(_PipelineStageBase):
         output_args (TensorMeta|tuple[TensorMeta, ...]|None): The output arguments for the layer.
         group (Group, None): The process group for distributed training. If None, default group.
         shared_param_map (dict[str, dict[str, paddle.Tensor | paddle.distributed.collective.Group]] | None): A description
-            for shared parameter pairs. Each pair of shared parameters includes a unique identifier for the shared parameter,
-            the shared model parameter tensor, and the process group for synchronization operations.
+            of information for multiple groups of shared parameter pairs. Each entry contains:
+                - key: Unique identifier for the shared parameter.
+                    - param: The shared model parameter tensor.
+                    - group: The process group for synchronization operations.
     """
 
     def __init__(
@@ -941,6 +943,13 @@ class PipelineStage(_PipelineStageBase):
         # When initializing the stage, perform broadcast synchronization
         # on the shared parameters.
         for _, a_map in self.shared_param_map.items():
+            assert (
+                "param" in a_map
+            ), "Missing 'param' key in `shared_param_map` entry"
+            assert (
+                "group" in a_map
+            ), "Missing 'group' key in `shared_param_map` entry"
+
             sync_param = a_map["param"]
             sync_group = a_map["group"]
             assert (
@@ -958,6 +967,13 @@ class PipelineStage(_PipelineStageBase):
         # After the stage scheduling ends, perform allreduce synchronization
         # on the gradients of shared parameters.
         for _, a_map in self.shared_param_map.items():
+            assert (
+                "param" in a_map
+            ), "Missing 'param' key in `shared_param_map` entry"
+            assert (
+                "group" in a_map
+            ), "Missing 'group' key in `shared_param_map` entry"
+
             sync_param = a_map["param"]
             sync_group = a_map["group"]
             assert (
