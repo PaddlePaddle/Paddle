@@ -87,7 +87,9 @@ from .extension import (
     temporal_shift,
 )
 from .flash_attention import (
+    flash_attention_v3_varlen,
     flash_attn_qkvpacked,
+    flash_attn_varlen_func,
     flash_attn_varlen_qkvpacked,
     flashmask_attention,
     scaled_dot_product_attention,
@@ -295,5 +297,7 @@ __all__ = [
     'flashmask_attention',
     'flash_attn_qkvpacked',
     'flash_attn_varlen_qkvpacked',
+    'flash_attn_varlen_func',
+    'flash_attention_v3_varlen',
     'group_norm',
 ]
