@@ -17,7 +17,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
+#include "paddle/phi/kernels/funcs/index_elementwise.h"
 #include "paddle/phi/kernels/funcs/stride_utils.h"
 
 namespace phi {
@@ -34,7 +34,7 @@ void CPUIndexElementwiseGetKernel(const phi::CPUContext& ctx,
   int64_t numel = 0;
   auto num_indices = index_dims.size();
 
-  auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
+  auto index_ptrs = funcs::CPUGetIndexDataPtrs<IndexT>(index);
 
   auto sizes = std::array<int64_t, DDim::kMaxRank>{};
   auto strides = std::array<int64_t, DDim::kMaxRank>{};
@@ -62,7 +62,7 @@ void CPUIndexElementwiseGetKernel(const phi::CPUContext& ctx,
                            &numel,
                            strides_vec);
   auto offset_calc =
-      funcs::make_offset_calculator_put<3>(desired_shape, strides_array);
+      funcs::CPUmake_offset_calculator_put<3>(desired_shape, strides_array);
 
   const int64_t N = output->numel();
   PADDLE_ENFORCE_GE(
@@ -72,13 +72,13 @@ void CPUIndexElementwiseGetKernel(const phi::CPUContext& ctx,
       std::numeric_limits<int32_t>::max(),
       common::errors::InvalidArgument("Output numel must <= INT32_MAX"));
 
-  using dtype = funcs::OpaqueType<sizeof(T)>;
+  using dtype = funcs::CPUOpaqueType<sizeof(T)>;
 
   const char* in_ptr =
       reinterpret_cast<const char*>(input.data<T>()) + slice_offset;
   char* out_ptr = reinterpret_cast<char*>(output->data<T>());
 
-  for (int64_t idx = 0; idx < N; i++) {
+  for (int64_t idx = 0; idx < N; idx++) {
     const auto offsets = offset_calc.cpu_get(idx);
     char* const out_data = out_ptr + offsets[0];
     const char* const in_data = in_ptr + offsets[1];

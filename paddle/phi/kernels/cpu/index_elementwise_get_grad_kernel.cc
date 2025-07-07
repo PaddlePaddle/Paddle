@@ -14,16 +14,14 @@
 
 #include "paddle/phi/kernels/index_elementwise_get_grad_kernel.h"
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
+#include "paddle/phi/kernels/funcs/index_elementwise.h"
 #include "paddle/phi/kernels/funcs/stride_utils.h"
 
 namespace phi {
-template <typename T, typename IndexT, int nt, int vt, typename offset_calc_t>
+template <typename T, typename IndexT, typename offset_calc_t>
 void IndexEleGetGradAccKernel(
     int64_t N,
     const char* in_ptr,
@@ -39,20 +37,19 @@ void IndexEleGetGradAccKernel(
     const char* const in_data = in_ptr + offsets[1];
 
     int64_t offset = 0;
-#pragma unroll
     for (int i = 0; i < num_indices; i++) {
       int64_t index = *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
       if (index < 0) index += sizes[i];
       offset += index * strides[i];
     }
 
-    reinterpret_cast<T*>(out_data + offset) +=
+    *reinterpret_cast<T*>(out_data + offset) +=
         *reinterpret_cast<const T*>(in_data);
   }
 }
 
 template <typename T, typename IndexT = int>
-void CPUIndexElementwiseGetGrad(const phi::GPUContext& ctx,
+void CPUIndexElementwiseGetGrad(const phi::CPUContext& ctx,
                                 const DenseTensor& input,
                                 const DenseTensor& value,
                                 const std::vector<const DenseTensor*>& index,
@@ -73,7 +70,7 @@ void CPUIndexElementwiseGetGrad(const phi::GPUContext& ctx,
     sizes[i] = index_dims[i];
     strides[i] = index_strides[i];
   }
-  auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
+  auto index_ptrs = funcs::CPUGetIndexDataPtrs<IndexT>(index);
 
   std::array<int64_t*, 3> strides_array;
   std::vector<int64_t> desired_shape;
@@ -93,33 +90,31 @@ void CPUIndexElementwiseGetGrad(const phi::GPUContext& ctx,
                            &numel,
                            strides_vec);
   auto offset_calc =
-      funcs::make_offset_calculator_put<3>(desired_shape, strides_array);
+      funcs::CPUmake_offset_calculator_put<3>(desired_shape, strides_array);
 
   const int64_t N = numel;
 
-  using dtype = funcs::OpaqueType<sizeof(T)>;
+  using dtype = funcs::CPUOpaqueType<sizeof(T)>;
 
   const char* in_ptr = reinterpret_cast<const char*>(value.data<T>());
   char* out_ptr = reinterpret_cast<char*>(output->data<T>()) + slice_offset;
 
   if (accumulate) {
-    IndexEleGetGradAccKernel<T, IndexT, nt, vt>
-        <<<grid, block, 0, stream>>>(N,
-                                     in_ptr,
-                                     out_ptr,
-                                     index_ptrs,
-                                     sizes,
-                                     strides,
-                                     num_indices,
-                                     offset_calc);
+    IndexEleGetGradAccKernel<T, IndexT>(N,
+                                        in_ptr,
+                                        out_ptr,
+                                        index_ptrs,
+                                        sizes,
+                                        strides,
+                                        num_indices,
+                                        offset_calc);
   } else {
-    for (int64_t idx = 0; idx < N; i++) {
+    for (int64_t idx = 0; idx < N; idx++) {
       const auto offsets = offset_calc.cpu_get(idx);
       char* const out_data = out_ptr + offsets[0];
       const char* const in_data = in_ptr + offsets[1];
 
       int64_t offset = 0;
-#pragma unroll
       for (int i = 0; i < num_indices; i++) {
         int64_t index = *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
         if (index < 0) {

@@ -17,7 +17,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
+#include "paddle/phi/kernels/funcs/index_elementwise.h"
 #include "paddle/phi/kernels/funcs/stride_utils.h"
 
 namespace phi {
@@ -43,7 +43,7 @@ void CPUIndexElementwisePutKernel(const phi::CPUContext& dev_ctx,
     sizes[i] = index_dims[i];
     strides[i] = index_strides[i];
   }
-  auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
+  auto index_ptrs = funcs::CPUGetIndexDataPtrs<IndexT>(index);
 
   std::array<int64_t*, 3> strides_array;
   std::vector<int64_t> desired_shape;
@@ -64,18 +64,18 @@ void CPUIndexElementwisePutKernel(const phi::CPUContext& dev_ctx,
                            strides_vec);
 
   auto offset_calc =
-      funcs::make_offset_calculator_put<3>(desired_shape, strides_array);
+      funcs::CPUmake_offset_calculator_put<3>(desired_shape, strides_array);
 
   const int64_t N = numel;
   PADDLE_ENFORCE(N >= 0 && N <= std::numeric_limits<int32_t>::max(),
                  "N >= 0 && N <= std::numeric_limits<int32_t>::max()");
 
-  using dtype = funcs::OpaqueType<sizeof(T)>;
+  using dtype = funcs::CPUOpaqueType<sizeof(T)>;
 
   const char* in_ptr = reinterpret_cast<const char*>(value.data<T>());
   char* out_ptr = reinterpret_cast<char*>(output->data<T>());
 
-  for (int64_t idx = 0; idx < N; i++) {
+  for (int64_t idx = 0; idx < N; idx++) {
     const auto offsets = offset_calc.cpu_get(idx);
     char* const out_data = out_ptr + offsets[0] + slice_offset;
     const char* const in_data = in_ptr + offsets[1];

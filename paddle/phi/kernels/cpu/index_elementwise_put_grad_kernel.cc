@@ -19,7 +19,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
-#include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
+#include "paddle/phi/kernels/funcs/index_elementwise.h"
 #include "paddle/phi/kernels/funcs/index_put_utils.h"
 #include "paddle/phi/kernels/funcs/stride_utils.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
@@ -48,7 +48,7 @@ void CPUIndexElementwisePutGradKernel(
     sizes[i] = index_dims[i];
     strides[i] = index_strides[i];
   }
-  auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
+  auto index_ptrs = funcs::CPUGetIndexDataPtrs<IndexT>(index);
 
   std::array<int64_t*, 3> strides_array;
   std::vector<int64_t> desired_shape;
@@ -74,16 +74,16 @@ void CPUIndexElementwisePutGradKernel(
                            &numel,
                            strides_vec);
   auto offset_calc =
-      funcs::make_offset_calculator_put<3>(desired_shape, strides_array);
+      funcs::CPUmake_offset_calculator_put<3>(desired_shape, strides_array);
   const int64_t N = numel;
   PADDLE_ENFORCE(N >= 0 && N <= std::numeric_limits<int32_t>::max(),
                  "N >= 0 && N <= std::numeric_limits<int32_t>::max()");
 
-  using dtype = funcs::OpaqueType<sizeof(T)>;
+  using dtype = funcs::CPUOpaqueType<sizeof(T)>;
   if (!value_grad) {
     char* out_ptr = reinterpret_cast<char*>(x_grad->data<T>());
 
-    for (int64_t idx = 0; idx < N; i++) {
+    for (int64_t idx = 0; idx < N; idx++) {
       const auto offsets = offset_calc.cpu_get(idx);
       char* const out_data = out_ptr + offsets[0] + slice_offset;
 
@@ -105,7 +105,7 @@ void CPUIndexElementwisePutGradKernel(
     const char* out_ptr = reinterpret_cast<const char*>(out_grad.data<T>());
     char* value_ptr = reinterpret_cast<char*>(value_grad->data<T>());
 
-    for (int64_t idx = 0; idx < N; i++) {
+    for (int64_t idx = 0; idx < N; idx++) {
       const auto offsets = offset_calc.cpu_get(idx);
       const char* const out_data = out_ptr + offsets[0] + slice_offset;
       char* const value_data = value_ptr + offsets[1];
@@ -127,7 +127,7 @@ void CPUIndexElementwisePutGradKernel(
     char* out_ptr = reinterpret_cast<char*>(x_grad->data<T>());
     char* value_ptr = reinterpret_cast<char*>(value_grad->data<T>());
 
-    for (int64_t idx = 0; idx < N; i++) {
+    for (int64_t idx = 0; idx < N; idx++) {
       const auto offsets = offset_calc.cpu_get(idx);
       char* const out_data = out_ptr + offsets[0] + slice_offset;
       char* const value_data = value_ptr + offsets[1];
