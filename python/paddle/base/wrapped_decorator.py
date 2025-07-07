@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import contextlib
 import functools
 import inspect
 from typing import Callable, TypeVar
@@ -44,3 +45,6 @@ def wrap_decorator(
         return wrapper
 
     return __impl__
+
+
+signature_safe_contextmanager = wrap_decorator(contextlib.contextmanager)
