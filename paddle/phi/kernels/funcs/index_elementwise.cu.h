@@ -75,6 +75,10 @@ struct IntDivider {
     return DivMod<Value>(n / divisor, n % divisor);
   }
 
+  inline DivMod<Value> cpu_divmod(Value n) const {
+    return DivMod<Value>(n / divisor, n % divisor);
+  }
+
   Value divisor;
 };
 
@@ -116,6 +120,28 @@ struct OffsetCalculator {
         break;
       }
       auto divmod = sizes_[dim].divmod(linear_idx);
+      linear_idx = divmod.div;
+
+#pragma unroll
+      for (int arg = 0; arg < NARGS; arg++) {
+        offsets[arg] += divmod.mod * strides_[dim][arg];
+      }
+    }
+    return offsets;
+  }
+
+  offset_type cpu_get(index_t linear_idx) const {
+    offset_type offsets;
+#pragma unroll
+    for (int arg = 0; arg < NARGS; arg++) {
+      offsets[arg] = 0;
+    }
+#pragma unroll
+    for (int dim = 0; dim < MAX_DIMS; ++dim) {
+      if (dim == dims) {
+        break;
+      }
+      auto divmod = sizes_[dim].cpu_divmod(linear_idx);
       linear_idx = divmod.div;
 
 #pragma unroll

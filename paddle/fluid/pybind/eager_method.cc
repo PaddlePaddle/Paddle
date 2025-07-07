@@ -1639,8 +1639,6 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
   } else {
     // get value for int tensor
     ParseBoolAndBroadcastIndices(&transed_index);
-
-#ifdef PADDLE_WITH_CUDA
     bool has_empty_index = false;
     for (const auto& tensor : transed_index) {
       if (!tensor.initialized()) {
@@ -1715,27 +1713,6 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
       handle_transpose(out);
       return ToPyObject(out);
     }
-#else
-    paddle::Tensor transed_advanced_index_tensor;
-    if (transed_index.size() > 1) {
-      transed_advanced_index_tensor = stack_ad_func(transed_index, -1);
-    } else {
-      // fast path for single index tensor, since stack is much slower than
-      // unsqueeze
-      transed_advanced_index_tensor = unsqueeze_ad_func(transed_index[0], {-1});
-    }
-
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(
-            &mesh, transed_tensor, transed_advanced_index_tensor)) {
-      ConvertAllInputsToDistTensor(
-          mesh, transed_tensor, transed_advanced_index_tensor);
-    }
-
-    out = gather_nd_ad_func(transed_tensor, transed_advanced_index_tensor);
-    handle_transpose(out);
-    return ToPyObject(out);
-#endif
   }
 
   handle_transpose(out);
@@ -2105,7 +2082,6 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
         transed_sub_tensor =
             masked_fill__ad_func(transed_sub_tensor, mask_tensor, value_tensor);
       } else {
-#ifdef PADDLE_WITH_CUDA
         // TODO(czy): remove in the future
         if (transed_sub_tensor.is_gpu()) {
           transed_index = expandTensors(transed_index);
@@ -2152,10 +2128,6 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
           transed_sub_tensor = index_put__ad_func(
               transed_sub_tensor, transed_index, value_tensor);
         }
-#else
-        transed_sub_tensor =
-            index_put__ad_func(transed_sub_tensor, transed_index, value_tensor);
-#endif
       }
       if (out_is_view) {
         // NOTE(zoooo0820): if out_is_view is true, it is a case of
