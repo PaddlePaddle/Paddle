@@ -108,7 +108,7 @@ class TestLUOp(OpTest):
     """
 
     def config(self):
-        self.x_shape = [3, 10, 12]
+        self.x_shape = [2, 10, 12]
         self.pivot = True
         self.get_infos = True
         self.dtype = "float64"
@@ -139,13 +139,44 @@ class TestLUOp(OpTest):
             np.zeros(self.x_shape[:-2]) if len(X.shape) > 2 else np.array(0)
         )
 
+    def set_input(self):
+        x_shape = self.x_shape
+        batch_shape = x_shape[:-2]
+        m, n = x_shape[-2], x_shape[-1]
+        k = min(m, n)
+
+        is_complex = 'complex' in self.dtype
+
+        def random_gen(shape):
+            if is_complex:
+                return np.random.random(shape).astype(
+                    self.dtype
+                ) + 1j * np.random.random(shape).astype(self.dtype)
+            else:
+                return np.random.random(shape).astype(self.dtype)
+
+        L = np.tril(random_gen([*batch_shape, m, k]))
+        U = np.triu(random_gen([*batch_shape, k, n]))
+        diag_indices = np.arange(k)
+        L[..., diag_indices, diag_indices] += random_gen([*batch_shape, k])
+        U[..., diag_indices, diag_indices] += random_gen([*batch_shape, k])
+        A = L @ U
+        # batch_size = int(np.prod(batch_shape))
+        # P_batch = np.zeros(shape=batch_shape + [m, m], dtype=self.dtype)
+        # P_flat = P_batch.reshape(batch_size, m, m)
+        # for i in range(batch_size):
+        #     P_flat[i] = np.random.permutation(np.eye(m, dtype=self.dtype))
+        # P = P_flat.reshape(P_batch.shape)
+        # A = P @ A
+        self.inputs = {'X': A}
+
     def setUp(self):
         self.op_type = "lu"
         self.python_api = paddle.tensor.linalg.lu
         self.python_out_sig = ["Out", "Pivots"]
         self.config()
 
-        self.inputs = {'X': np.random.random(self.x_shape).astype(self.dtype)}
+        self.set_input()
         self.attrs = {'pivots': self.pivot}
         self.set_output()
         self.outputs = {
@@ -212,8 +243,14 @@ class TestLUAPI(unittest.TestCase):
                 np_dtype = np.float32
             elif dtype == "float64":
                 np_dtype = np.float64
+            elif dtype == "complex64":
+                np_dtype = np.complex64
+            elif dtype == "complex128":
+                np_dtype = np.complex128
             np.random.seed(1024)
             a = np.random.rand(*shape).astype(np_dtype)
+            if dtype in {"complex64", "complex128"}:
+                a = a + 1j * np.random.rand(*shape).astype(np_dtype)
             m = a.shape[-2]
             n = a.shape[-1]
             min_mn = min(m, n)
@@ -248,7 +285,7 @@ class TestLUAPI(unittest.TestCase):
             (3, 5, 5, 5),
             (4, 5, 5, 3),  # 4-dim Tensors
         ]
-        dtypes = ["float32", "float64"]
+        dtypes = ["float32", "float64", "complex64", "complex128"]
         for tensor_shape, dtype in itertools.product(tensor_shapes, dtypes):
             run_lu_dygraph(tensor_shape, dtype)
 
@@ -260,7 +297,13 @@ class TestLUAPI(unittest.TestCase):
                 np_dtype = np.float32
             elif dtype == "float64":
                 np_dtype = np.float64
+            elif dtype == "complex64":
+                np_dtype = np.complex64
+            elif dtype == "complex128":
+                np_dtype = np.complex128
             a = np.random.rand(*shape).astype(np_dtype)
+            if dtype in {"complex64", "complex128"}:
+                a = a + 1j * np.random.rand(*shape).astype(np_dtype)
             m = a.shape[-2]
             n = a.shape[-1]
             min_mn = min(m, n)
@@ -314,7 +357,7 @@ class TestLUAPI(unittest.TestCase):
             (3, 5, 5, 5),
             (4, 5, 5, 3),  # 4-dim Tensors
         ]
-        dtypes = ["float32", "float64"]
+        dtypes = ["float32", "float64", "complex64", "complex128"]
         for tensor_shape, dtype in itertools.product(tensor_shapes, dtypes):
             run_lu_static(tensor_shape, dtype)
 
