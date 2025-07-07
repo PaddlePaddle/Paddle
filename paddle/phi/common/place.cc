@@ -306,7 +306,7 @@ phi::CustomPlace DefaultCustomPlace() {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       dev_types[0], device_id);
 #else
-      "CUSTOM_DEVICE", 0);
+      "custom_device", 0);
 #endif
 }
 
