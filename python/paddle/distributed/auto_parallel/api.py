@@ -1859,9 +1859,9 @@ class _ShardOptimizer(Optimizer):
             3. Default to replicate for non-shardable dimensions.
             e.g.
                 a) sharding_axis = 0, tensor rank = 2,
-                    placements: [partial, partial, partial] -> [shard(0), shard(1), replicate]
+                    placements: [Partial(), Partial(), partial] -> [Shard(0), Shard(1), Repliacate()]
                 b) sharding_axis = 0, tensor rank = 2,
-                    placements: [partial, shard(0), partial ] -> [shard(1), shard(0), replicate]
+                    placements: [Partial(), Shard(0), Partial() ] -> [Shard(1), Shard(0), Repliacate()]
         '''
         new_params_grads = []
 
