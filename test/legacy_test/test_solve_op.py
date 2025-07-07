@@ -320,6 +320,7 @@ class TestSolveOpAPI_1(unittest.TestCase):
         self.dtype = "float64"
 
     def check_static_result(self, place):
+        paddle.enable_static()
         with base.program_guard(base.Program(), base.Program()):
             paddle_input_x = paddle.static.data(
                 name="input_x", shape=[3, 3], dtype=self.dtype
@@ -878,7 +879,7 @@ class TestSolveOpAPIZeroDimCase(unittest.TestCase):
             self.check_static_result(
                 place=place,
                 x_shape=[10, 0, 0],
-                y_shape=[6, 0, 0],
+                y_shape=[10, 0, 0],
                 np_y_shape=[10, 0, 0],
             )
             with self.assertRaises(ValueError):
