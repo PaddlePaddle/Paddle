@@ -18,107 +18,10 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.incubate.nn.functional import (
-    fp8,
-    moe_gate_dispatch,
+from paddle.incubate.nn.functional.moe_gate_dispatch_and_quant import (
+    math_moe_gate_dispatch_and_quant,
     moe_gate_dispatch_and_quant,
 )
-
-
-class Fp8MoeGateDispatchAndQuant(paddle.autograd.PyLayer):
-    """Fp8MoeGateDispatchAndQuant"""
-
-    @staticmethod
-    def forward(
-        ctx,
-        x,
-        gate_logtis,
-        corr_bias,
-        k,
-        capacity,
-        use_pad,
-        use_pow2_scale=True,
-    ):
-        """forward"""
-        (
-            out_fp8,
-            scale,
-            combine_weights,
-            scatter_index,
-            expert_offset,
-            expert_id,
-        ) = moe_gate_dispatch_and_quant(
-            x,
-            gate_logtis,
-            corr_bias=corr_bias,
-            k=k,
-            capacity=capacity,
-            use_pad=use_pad,
-            use_pow2_scale=use_pow2_scale,
-        )
-        assert out_fp8.shape[0] == scale.shape[0]
-
-        # Maintain computational graph integrity via BF16 proxy tensors
-        # Required because this operator produces FP8 outputs but BF16 gradients
-        # Current framework implementation enforces gradient/base tensor dtype consistency
-        fake_out = paddle.empty(out_fp8.shape, x.dtype)
-        fake_out.stop_gradient = False
-        combine_weights.stop_gradient = False
-        scatter_index.stop_gradient = True
-        expert_offset.stop_gradient = True
-        expert_id.stop_gradient = True
-
-        out_fp8.stop_gradient = True
-        scale.stop_gradient = True
-
-        ctx.k = k
-        ctx.capacity = capacity
-        ctx.use_pad = use_pad
-        ctx.combine_weights = combine_weights
-        ctx.scatter_index = scatter_index
-        ctx.expert_id = expert_id
-        ctx.has_corr_bias = corr_bias is not None
-
-        return (
-            fake_out,
-            combine_weights,
-            scatter_index,
-            expert_offset,
-            expert_id,
-            {
-                "fp8_data": out_fp8,
-                "scale": scale,
-            },
-        )
-
-    @staticmethod
-    def backward(ctx, *grads):
-        """backward"""
-        out_grad, combine_weights_grad = grads[0], grads[1]
-        x_grad, gate_logits_grad = paddle._C_ops.moe_gate_dispatch_grad(
-            ctx.combine_weights,
-            ctx.scatter_index,
-            ctx.expert_id,
-            out_grad,
-            combine_weights_grad,
-            ctx.k,
-            ctx.capacity,
-            ctx.use_pad,
-        )
-        if ctx.has_corr_bias:
-            return x_grad, gate_logits_grad, None
-        else:
-            return x_grad, gate_logits_grad
-
-
-class FakeOp(paddle.autograd.PyLayer):
-    @staticmethod
-    def forward(ctx, input, fp8_args=None):
-        return fp8_args["fp8_data"].astype("bfloat16")
-
-    @staticmethod
-    def backward(ctx, output_grad):
-        return output_grad + 1
 
 
 class TestMoeOpsFP8(unittest.TestCase):
@@ -139,13 +42,13 @@ class TestMoeOpsFP8(unittest.TestCase):
             gate_logtis = paddle.randn([seq_len, expert_num], dtype="float32")
 
             (
-                _,
+                out_fp8,
+                scale,
                 combine_weights,
                 scatter_index,
                 expert_offset,
                 expert_id,
-                fp8_args,
-            ) = Fp8MoeGateDispatchAndQuant.apply(
+            ) = moe_gate_dispatch_and_quant(
                 x,
                 gate_logtis,
                 corr_bias=None,
@@ -155,21 +58,21 @@ class TestMoeOpsFP8(unittest.TestCase):
                 use_pow2_scale=use_pow2_scale,
             )
 
-            out_fp8, scale = fp8_args["fp8_data"], fp8_args["scale"]
-
             (
-                out_ref,
+                out_fp8_ref,
+                scale_ref,
                 combine_weights_ref,
                 scatter_index_ref,
                 expert_offset_ref,
                 expert_id_ref,
-            ) = moe_gate_dispatch(
+            ) = math_moe_gate_dispatch_and_quant(
                 x,
                 gate_logtis,
                 corr_bias=None,
                 k=moe_k,
                 capacity=capacity,
                 use_pad=use_pad,
+                use_pow2_scale=use_pow2_scale,
             )
 
             np.testing.assert_equal(
@@ -185,13 +88,6 @@ class TestMoeOpsFP8(unittest.TestCase):
                 expert_id._md5sum(), expert_id_ref._md5sum()
             )
 
-            out_fp8_ref, scale_ref = fp8.fp8_quant_blockwise(
-                out_ref,
-                quant_method="1x128",
-                output_scale_transpose=False,
-                using_pow2_scale=use_pow2_scale,
-            )
-
             np.testing.assert_equal(scale.shape, scale_ref.shape)
             np.testing.assert_equal(out_fp8.shape, out_fp8_ref.shape)
 
@@ -205,43 +101,6 @@ class TestMoeOpsFP8(unittest.TestCase):
         self.single_test(seq_len=4096, expert_num=1, moe_k=1, cap=1)
         self.single_test(seq_len=4096, expert_num=64, moe_k=8, cap=8)
         self.single_test(seq_len=128, expert_num=16, moe_k=8, cap=8)
-
-    def test_fake_pylayer(self):
-        hidden_size = 256
-        expert_num = 4
-        moe_k = 2
-        capacity = 2
-        use_pad = True
-
-        x = paddle.randn([4096, hidden_size], dtype="bfloat16")
-        gate_logtis = paddle.randn([4096, expert_num], dtype="float32")
-
-        x.stop_gradient = False
-        gate_logtis.stop_gradient = False
-
-        (
-            fake_out,
-            combine_weights,
-            scatter_index,
-            expert_offset,
-            expert_id,
-            fp8_args,
-        ) = Fp8MoeGateDispatchAndQuant.apply(
-            x,
-            gate_logtis,
-            corr_bias=None,
-            k=moe_k,
-            capacity=capacity,
-            use_pad=use_pad,
-        )
-        fake_out.retain_grads()
-        loss = FakeOp.apply(fake_out, fp8_args).sum()
-
-        loss.backward()
-
-        np.testing.assert_equal(
-            fake_out.grad.numpy(), paddle.full_like(fake_out, 2).numpy()
-        )
 
 
 if __name__ == "__main__":

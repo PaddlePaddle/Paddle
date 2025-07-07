@@ -16,8 +16,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import paddle
 from paddle import _C_ops
 from paddle.base.framework import in_dynamic_or_pir_mode
+from paddle.incubate.nn.functional import (
+    fp8,
+    moe_gate_dispatch,
+)
 
 if TYPE_CHECKING:
     from paddle import Tensor
@@ -31,7 +36,6 @@ def moe_gate_dispatch_and_quant(
     capacity: int,
     use_pad: bool,
     use_pow2_scale: bool,
-    name: str | None = None,
 ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
     """
     Args:
@@ -55,6 +59,33 @@ def moe_gate_dispatch_and_quant(
     if not in_dynamic_or_pir_mode():
         raise NotImplementedError('Static graph mode not implemented')
     else:
-        return _C_ops.moe_gate_dispatch_and_quant(
-            x, gate_logits, corr_bias, k, capacity, use_pad, use_pow2_scale
-        )
+        if paddle.device.is_compiled_with_custom_device('npu'):
+            return math_moe_gate_dispatch_and_quant(
+                x, gate_logits, corr_bias, k, capacity, use_pad
+            )
+        else:
+            return _C_ops.moe_gate_dispatch_and_quant(
+                x, gate_logits, corr_bias, k, capacity, use_pad, use_pow2_scale
+            )
+
+
+def math_moe_gate_dispatch_and_quant(
+    x, gate_logits, corr_bias, k, capacity, use_pad, use_pow2_scale
+):
+    y, combine_weights, scatter_index, expert_offset, expert_id = (
+        moe_gate_dispatch(x, gate_logits, corr_bias, k, capacity, use_pad)
+    )
+    y_fp8, scale = fp8.fp8_quant_blockwise(
+        y,
+        quant_method="1x128",
+        output_scale_transpose=False,
+        using_pow2_scale=use_pow2_scale,
+    )
+    return (
+        y_fp8,
+        scale,
+        combine_weights,
+        scatter_index,
+        expert_offset,
+        expert_id,
+    )
