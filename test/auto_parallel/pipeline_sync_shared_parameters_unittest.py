@@ -152,7 +152,7 @@ def _get_param_from_name(param_name, model):
 
 
 def build_shared_param_map(shared_params_names, model):
-    # Find the two shared parameters and their process meshes based on parameter names.
+    # Find the two shared parameters and build shared parameter information.
     shared_mp = {}
     for key, pair in shared_params_names.items():
         assert len(pair) == 2
@@ -160,14 +160,8 @@ def build_shared_param_map(shared_params_names, model):
         sync_name = pair[1]
         ori_param = _get_param_from_name(ori_name, model)
         sync_param = _get_param_from_name(sync_name, model)
-        ori_mesh = ori_param.process_mesh
-        sync_mesh = sync_param.process_mesh
-        shared_mp[key] = {
-            "ori_param": ori_param,
-            "sync_param": sync_param,
-            "ori_mesh": ori_mesh,
-            "sync_mesh": sync_mesh,
-        }
+        # Note: Users must strictly maintain the format of the data structure here.
+        shared_mp[key] = {"params": [ori_param, sync_param]}
     return shared_mp
 
 
@@ -194,11 +188,12 @@ class TestSharedParameters:
 
         self.micro_batches = 8
         shared_params_names = {
-            "gpt_shared_weight": [
+            "embedding_shared_weight": [
                 f"{name_prefix}_linear_0_weight.dist",
                 f"{name_prefix}_linear_7_weight.dist",
             ]
         }
+        # Pre-build shared parameter information.
         shared_mp = build_shared_param_map(shared_params_names, self.model)
 
         num_layers_per_card = 2
@@ -264,11 +259,12 @@ class TestSharedParameters:
         self.stage_list = []
 
         shared_params_names = {
-            "gpt_shared_weight": [
+            "embedding_shared_weight": [
                 f"{name_prefix}_linear_0_weight.dist",
                 f"{name_prefix}_linear_7_weight.dist",
             ]
         }
+        # Pre-build shared parameter information.
         shared_mp = build_shared_param_map(shared_params_names, self.model)
 
         cur_rank = dist.get_rank()
@@ -276,6 +272,8 @@ class TestSharedParameters:
             stage_layers = SingleStage(
                 self.model.linears[cur_rank + i * 4 : cur_rank + i * 4 + 1]
             )
+            # Note: In VPP mode, the same `shared_mp` is used for building multiple
+            # stages to avoid redundant group creation.
             self.stage_list.append(
                 PipelineStage(
                     stage_layers,
@@ -316,7 +314,7 @@ class TestSharedParameters:
         fix_seeds()
         name_prefix = "pp_model"
         shared_params_names = {
-            "gpt_shared_weight": [
+            "embedding_shared_weight": [
                 f"{name_prefix}_linear_0_weight.dist",
                 f"{name_prefix}_linear_7_weight.dist",
             ]

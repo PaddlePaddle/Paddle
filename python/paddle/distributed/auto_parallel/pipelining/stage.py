@@ -17,15 +17,17 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from functools import partial
-from typing import TYPE_CHECKING, Any, Callable, Union
+from typing import Any, Callable, Union
 
 import paddle
 import paddle.distributed as dist
 from paddle import nn
+from paddle.base.framework import EagerParamBase
 from paddle.distributed.auto_parallel.api import (
     dtensor_from_local,
     dtensor_to_local,
 )
+from paddle.distributed.communication.group import Group
 
 from ._backward import stage_backward
 from .utils import (
@@ -39,10 +41,6 @@ from .utils import (
     _zero_initialize_with_meta,
     map_structure,
 )
-
-if TYPE_CHECKING:
-    from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
-    from paddle.distributed.communication.group import Group
 
 logger = logging.getLogger(__name__)
 
@@ -859,14 +857,14 @@ class PipelineStage(_PipelineStageBase):
         input_args (TensorMeta|tuple[TensorMeta, ...]|None): The input arguments for the layer.
         output_args (TensorMeta|tuple[TensorMeta, ...]|None): The output arguments for the layer.
         group (Group, None): The process group for distributed training. If None, default group.
-        shared_param_map (dict[str, dict[str, paddle.Tensor | ProcessMesh]] | None): A nested dictionary containing
-            information about multiple groups of shared parameter pairs.Each entry in the dictionary maps a unique
-            identifier to a sub-dictionary. Each entry has following keys:
-                - key: Unique identifier for the shared parameter.
-                    - ori_param (paddle.Tensor): The original parameter before synchronization.
-                    - sync_param (paddle.Tensor): The synchronized parameter after communication.
-                    - ori_mesh (ProcessMesh): The process mesh of the original parameter.
-                    - sync_mesh (ProcessMesh): The process mesh of the synchronized parameter.
+        shared_param_map (dict[str, dict], optional): A dictionary that defines shared parameters between pipeline stages.
+            Each key is a unique name for a pair of shared parameters, and the corresponding value is a nested dictionary
+            with the following optional keys:
+                - params (list[EagerParamBase], required): Exact 2 parameters to share across stages.
+            In VPP mode, a same shared_param_map is reused across multiple stage builds. To avoid redundant group creation,
+            it may include:
+                - group (Group, optional): initialized sync group matching the ranks of the two shared parameters.
+                - shared_param (EagerParamBase, optional): The shared parameter instance assigned to the current rank.
     """
 
     def __init__(
@@ -877,7 +875,7 @@ class PipelineStage(_PipelineStageBase):
         input_args: TensorMeta | tuple[TensorMeta, ...] | None = None,
         output_args: TensorMeta | tuple[TensorMeta, ...] | None = None,
         group: Group | None = None,
-        shared_param_map: dict[str, dict[str, paddle.Tensor | ProcessMesh]] | None = None,  # type: ignore
+        shared_param_map: dict[str, dict] | None = None,
     ):
         super().__init__(layer, stage_index, num_stages, group)
         self.inputs: list[paddle.Tensor] | None = None
@@ -946,91 +944,136 @@ class PipelineStage(_PipelineStageBase):
 
         logger.debug(dbg_str)
 
+    def check_a_shared_param_map(self, key_name, a_shared_map):
+        # Validate map structure and key_name.
+        assert (
+            isinstance(key_name, str) and key_name.strip()
+        ), f"Invalid shared parameter pair name: expected non-empty string, but got {type(key_name).__name__} '{key_name}'."
+        assert len(a_shared_map) <= 3, (
+            f"Shared param pair '{key_name}' exceeds size limit (max 3 keys). "
+            f"Allowed: ['params', 'group', 'shared_param'], got: {list(a_shared_map)}"
+        )
+        # Validate required 'params' entry.
+        params = a_shared_map.get("params")
+        assert (
+            params is not None
+        ), f"Missing shared parameter 'params' not found in shared_param_map['{key_name}']. Available keys: {list(a_shared_map)}."
+        assert (
+            isinstance(params, list) and len(params) == 2
+        ), f"Shared parameter only support 2 shared parameters, but got {len(params)}."
+        # Validate parameter types and placements.
+        param_1, param_2 = params
+        assert isinstance(param_1, EagerParamBase) and isinstance(
+            param_2, EagerParamBase
+        ), (
+            f"Shared parameter expects parameters are 'EagerParamBase' type, but got "
+            f"'{type(param_1).__name__}' and '{type(param_2).__name__}' respectively."
+        )
+        assert param_1.placements == param_2.placements, (
+            f"Shared parameters must have identical placements for optimal performance."
+            f"But placements mismatch: {param_1.placements} vs {param_2.placements}"
+        )
+        # Validate process meshes.
+        ranks_1 = param_1.process_mesh.process_ids
+        ranks_2 = param_2.process_mesh.process_ids
+        assert len(ranks_1) == len(ranks_2)
+        assert (
+            ranks_1 != ranks_2
+        ), f"Shared parameters must be on different stage meshes, but both are on {ranks_1}."
+
+        # In VPP mode, `shared_param_map` may contain "group" and "shared_param" as it's reused for multiple stage builds.
+        # Validate optional 'group' entry.
+        if "group" in a_shared_map:
+            group = a_shared_map["group"]
+            assert group is None or isinstance(
+                group, Group
+            ), f"Expected 'shared_param_map[\"{key_name}\"][\"group\"]' is 'Group' or None, but got '{type(a_shared_map['group']).__name__}'."
+        # Validate optional 'sync_param' entry.
+        if "sync_param" in a_shared_map:
+            sync_param = a_shared_map["sync_param"]
+            assert sync_param is None or sync_param in list(
+                param_1, param_2
+            ), f"Expected 'shared_param_map[\"{key_name}\"][\"sync_param\"]' is one of the two params or None."
+
     def init_shared_group(self):
         get_group_from_ranks = {}
         for key, a_map in self.shared_param_map.items():
-            if "param" in a_map and "group" in a_map:
-                continue
-            # Build identical communication groups for each rank within the mesh.
-            assert (
-                "ori_mesh" in a_map and "sync_mesh" in a_map
-            ), "Missing 'ori_mesh' or `sync_mesh` key in `shared_param_map` entry"
-            ori_ranks = a_map["ori_mesh"].process_ids
-            sync_ranks = a_map["sync_mesh"].process_ids
-            assert len(ori_ranks) == len(sync_ranks)
-            assert (
-                ori_ranks != sync_ranks
-            ), "Shared parameters must be on different stage meshes."
+            # TODO: Currently, shared parameter information relies on user input, so strict validation is required here.
+            # A more robust interface implementation is desired in the future.
+            self.check_a_shared_param_map(key, a_map)
+
+            params = a_map["params"]
+            ranks_1 = params[0].process_mesh.process_ids
+            ranks_2 = params[1].process_mesh.process_ids
             cur_rank = dist.get_rank()
-            for ori_rank, sync_rank in zip(ori_ranks, sync_ranks):
-                group_ranks = tuple(sorted([ori_rank, sync_rank]))
-                if group_ranks not in get_group_from_ranks:
-                    get_group_from_ranks[group_ranks] = dist.new_group(
-                        ranks=list(group_ranks)
-                    )
-                if cur_rank in group_ranks:
-                    # Record communication group associated with the current rank.
-                    a_map["group"] = get_group_from_ranks[group_ranks]
-                    logger.debug(
-                        f"Build communication group {a_map['group'].name} for shared parameter `{key}` in rank {cur_rank}"
-                    )
+
+            # Build communication groups for every shared parameters pair.
+            for rank_1, rank_2 in zip(ranks_1, ranks_2):
+                group_ranks = tuple(sorted([rank_1, rank_2]))
+                if "group" in a_map:
+                    assert group_ranks == tuple(
+                        a_map["group"].ranks
+                    ), f"Shared Parameter group ranks mismatch: expected {group_ranks}, but got {a_map['group'].ranks}. "
+                else:
+                    if group_ranks not in get_group_from_ranks:
+                        get_group_from_ranks[group_ranks] = dist.new_group(
+                            ranks=list(group_ranks)
+                        )
+                    if cur_rank in group_ranks:
+                        # Record communication group associated with the current rank.
+                        a_map["group"] = get_group_from_ranks[group_ranks]
+                        logger.debug(
+                            f"Build communication group {a_map['group'].name} for shared parameter `{key}` in rank {cur_rank}"
+                        )
+
             # Find the shared parameter on the current rank.
-            assert (
-                "ori_param" in a_map and "sync_param" in a_map
-            ), "Missing 'ori_param' or `sync_param` key in `shared_param_map` entry"
-            ori_param = a_map["ori_param"]
-            sync_param = a_map["sync_param"]
             # Default no shared parameter exists on current rank.
             cur_param = None
-            if ori_param is not None and ori_param._is_initialized():
-                cur_param = ori_param
-            elif sync_param is not None and sync_param._is_initialized():
-                cur_param = sync_param
+            if cur_rank in ranks_1:
+                cur_param = params[0]
+            elif cur_rank in ranks_2:
+                cur_param = params[1]
             # Record shared parameter associated with the current rank.
-            a_map["param"] = cur_param
+            a_map["shared_param"] = cur_param
 
     def broadcast_shared_params(self):
         # When initializing the stage, perform broadcast synchronization
         # on the shared parameters.
         for key, a_map in self.shared_param_map.items():
-            if "param" not in a_map or "group" not in a_map:
+            shared_param = a_map["shared_param"]
+            if shared_param is None or not shared_param._is_initialized():
+                # Skip processing shared parameters that are not assigned to the current rank.
                 continue
-            param = a_map["param"]
-            if param is None or not param._is_initialized():
-                continue
-            sync_group = a_map["group"]
-            cur_rank = dist.get_rank()
-            assert cur_rank in sync_group.ranks
+            group = a_map.get("group")
+            assert group is not None and dist.get_rank() in group.ranks
             logger.debug(
                 f"Call `broadcast` for synchronization of shared parameters `{key}`",
             )
             with paddle.no_grad():
                 paddle.distributed.broadcast(
-                    param._local_value(),
-                    src=sync_group.ranks[0],
-                    group=sync_group,
+                    shared_param._local_value(),
+                    src=group.ranks[0],
+                    group=group,
                 )
 
     def sync_shared_param_grads(self):
         # After the stage scheduling ends, perform allreduce synchronization
         # on the gradients of shared parameters.
         for key, a_map in self.shared_param_map.items():
-            if "param" not in a_map or "group" not in a_map:
+            shared_param = a_map["shared_param"]
+            if shared_param is None or not shared_param._is_initialized():
+                # Skip processing shared parameters that are not assigned to the current rank.
                 continue
-            param = a_map["param"]
-            if param is None or not param._is_initialized():
-                continue
-            sync_group = a_map["group"]
-            cur_rank = dist.get_rank()
-            assert cur_rank in sync_group.ranks
+            group = a_map.get("group")
+            assert group is not None and dist.get_rank() in group.ranks
             logger.debug(
                 f"Call `all_reduce` for gradient synchronization of shared parameters `{key}`",
             )
             with paddle.no_grad():
                 paddle.distributed.all_reduce(
-                    param.grad._local_value(),
+                    shared_param.grad._local_value(),
                     op=paddle.distributed.ReduceOp.SUM,
-                    group=sync_group,
+                    group=group,
                 )
 
     def _shape_inference(
