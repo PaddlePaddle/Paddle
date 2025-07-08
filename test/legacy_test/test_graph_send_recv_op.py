@@ -18,6 +18,7 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
+from paddle.base import core
 
 
 def graph_send_recv_wrapper(
@@ -162,12 +163,26 @@ class TestGraphSendRecvMaxOp_ZeroSize(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output_with_place(core.CPUPlace(), check_pir=True)
+        if paddle.is_compiled_with_cuda():
+            self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Out', user_defined_grads=[self.gradient], check_pir=True
+        self.check_grad_with_place(
+            core.CPUPlace(),
+            ['X'],
+            'Out',
+            user_defined_grads=[self.gradient],
+            check_pir=True,
         )
+        if paddle.is_compiled_with_cuda():
+            self.check_grad_with_place(
+                core.CUDAPlace(0),
+                ['X'],
+                'Out',
+                user_defined_grads=[self.gradient],
+                check_pir=True,
+            )
 
 
 class TestGraphSendRecvMinOp_ZeroSize(OpTest):
@@ -192,12 +207,26 @@ class TestGraphSendRecvMinOp_ZeroSize(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output_with_place(core.CPUPlace(), check_pir=True)
+        if paddle.is_compiled_with_cuda():
+            self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Out', user_defined_grads=[self.gradient], check_pir=True
+        self.check_grad_with_place(
+            core.CPUPlace(),
+            ['X'],
+            'Out',
+            user_defined_grads=[self.gradient],
+            check_pir=True,
         )
+        if paddle.is_compiled_with_cuda():
+            self.check_grad_with_place(
+                core.CUDAPlace(0),
+                ['X'],
+                'Out',
+                user_defined_grads=[self.gradient],
+                check_pir=True,
+            )
 
 
 class TestGraphSendRecvSumOp_ZeroSize(OpTest):
@@ -220,10 +249,18 @@ class TestGraphSendRecvSumOp_ZeroSize(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output_with_place(core.CPUPlace(), check_pir=True)
+        if paddle.is_compiled_with_cuda():
+            self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_pir=True)
+        self.check_grad_with_place(
+            core.CPUPlace(), ['X'], 'Out', check_pir=True
+        )
+        if paddle.is_compiled_with_cuda():
+            self.check_grad_with_place(
+                core.CUDAPlace(0), ['X'], 'Out', check_pir=True
+            )
 
 
 class TestGraphSendRecvMeanOp_ZeroSize(OpTest):
@@ -248,10 +285,18 @@ class TestGraphSendRecvMeanOp_ZeroSize(OpTest):
         self.outputs = {'Out': out, 'Dst_count': dst_count}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output_with_place(core.CPUPlace(), check_pir=True)
+        if paddle.is_compiled_with_cuda():
+            self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_pir=True)
+        self.check_grad_with_place(
+            core.CPUPlace(), ['X'], 'Out', check_pir=True
+        )
+        if paddle.is_compiled_with_cuda():
+            self.check_grad_with_place(
+                core.CUDAPlace(0), ['X'], 'Out', check_pir=True
+            )
 
 
 def compute_graph_send_recv_for_sum_mean(inputs, attributes):
