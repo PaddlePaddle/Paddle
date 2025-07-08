@@ -360,6 +360,8 @@ jobs:
           unset GREP_OPTIONS
           source ${{ github.workspace }}/../../../proxy
           source ${ci_scripts}/utils.sh; check_coverage
+          mkdir -p /home/data/cfs/coverage/${PR_ID}/${COMMIT_ID}
+          cp build/coverage_files/* /home/data/cfs/coverage/${PR_ID}/${COMMIT_ID}
           '
 
       - name: Upload coverage report
