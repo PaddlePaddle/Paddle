@@ -56,6 +56,32 @@ __global__ void MatrixRowReverse(const T* matrix_data,
   }
 }
 
+template <typename T, typename Op>
+struct BlockPrefixCallbackOp {
+  // Running prefix
+  T running_total_;
+  T compensation_;
+  Op op_;
+
+  __device__ BlockPrefixCallbackOp(T identity, Op op)
+      : running_total_(identity), compensation_(identity), op_(op) {}
+
+  // Callback operator to be entered by the first warp of threads in the block.
+  // tid 0 is responsible for returning a value for seeding the block-wide scan.
+  __device__ T operator()(T block_aggregate) {
+    T old_prefix = running_total_;
+
+    // Kahan Summation
+    T y = op_(block_aggregate, -compensation_);
+    T t = op_(running_total_, y);
+    T y_high = op_(t, -running_total_);
+    compensation_ = op_(y_high, -y);
+    running_total_ = t;
+
+    return old_prefix;
+  }
+};
+
 // No bank-conflict transpose
 template <typename T, int TILE_DIM, int BLOCK_ROWS>
 __global__ void MatrixTranspose(T* odata,
@@ -92,7 +118,7 @@ __global__ void MatrixTranspose(T* odata,
   }
 }
 
-struct LogSumExp {
+struct LogAddExp {
   template <typename T>
   __host__ __device__ __forceinline__ T operator()(const T& a,
                                                    const T& b) const {
@@ -119,90 +145,13 @@ struct Identity<T, cub::Sum> {
 };
 
 template <typename T>
-struct Identity<T, LogSumExp> {
+struct Identity<T, LogAddExp> {
   static constexpr T value = -std::numeric_limits<T>::infinity();
 };
 
 template <typename T>
 struct Identity<T, ComplexSum> {
   static constexpr T value = {0, 0};
-};
-
-template <typename T, typename Op>
-struct BlockPrefixCallbackOp {
-  // Running prefix
-  T running_total_;
-  T compensation_;
-  Op op_;
-
-  __device__ BlockPrefixCallbackOp(T identity, Op op)
-      : running_total_(identity), compensation_(identity), op_(op) {}
-
-  // Callback operator to be entered by the first warp of threads in the block.
-  // tid 0 is responsible for returning a value for seeding the block-wide scan.
-  __device__ T operator()(T block_aggregate) {
-    T old_prefix = running_total_;
-
-    // Kahan Summation
-    T y = op_(block_aggregate, -compensation_);
-    T t = op_(running_total_, y);
-    compensation_ = op_(op_(t, -running_total_), -y);
-    running_total_ = t;
-
-    return old_prefix;
-  }
-};
-
-template <typename T>
-struct BlockPrefixCallbackOp<T, LogSumExp> {
-  T max_so_far_;
-  T scaled_sum_;
-  T compensation_;
-  LogSumExp op_;
-
-  __device__ BlockPrefixCallbackOp(T identity, LogSumExp op)
-      : max_so_far_(identity),
-        scaled_sum_(0.0f),
-        compensation_(0.0f),
-        op_(op) {}
-
-  __device__ T operator()(T block_aggregate) {
-    if (block_aggregate == -std::numeric_limits<T>::infinity()) {
-      if (scaled_sum_ == 0.0f) {
-        return -std::numeric_limits<T>::infinity();
-      } else {
-        return max_so_far_ + std::log(scaled_sum_);
-      }
-    }
-
-    if (scaled_sum_ == 0.0f) {
-      max_so_far_ = block_aggregate;
-      scaled_sum_ = 1.0f;
-      compensation_ = 0.0f;
-      return -std::numeric_limits<T>::infinity();
-    }
-
-    // Online Scaling
-    T old_prefix = max_so_far_ + std::log(scaled_sum_);
-    T m_old = max_so_far_;
-    T m_new = std::fmax(m_old, block_aggregate);
-
-    if (m_new > m_old) {
-      T scale = std::exp(m_old - m_new);
-      scaled_sum_ *= scale;
-      compensation_ *= scale;
-    }
-
-    // Kahan Summation
-    T term = std::exp(block_aggregate - m_new);
-    T y = term - compensation_;
-    T t = scaled_sum_ + y;
-    compensation_ = (t - scaled_sum_) - y;
-    scaled_sum_ = t;
-    max_so_far_ = m_new;
-
-    return old_prefix;
-  }
 };
 
 template <typename T, int BLOCK_THREADS, int ITEMS_PER_THREAD, typename Op>
@@ -402,7 +351,7 @@ void LogcumsumexpKernel(const Context& dev_ctx,
                         bool exclusive,
                         bool reverse,
                         DenseTensor* out) {
-  using Op = LogSumExp;
+  using Op = LogAddExp;
   auto op = Op();
   ScanKernel<T, Context, Op>(
       dev_ctx, x, axis, flatten, exclusive, reverse, op, out);

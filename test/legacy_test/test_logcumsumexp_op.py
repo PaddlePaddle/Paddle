@@ -269,7 +269,7 @@ class BaseTestCases:
                     )
                 ],
                 check_pir=True,
-                # check_prim_pir=True,
+                check_prim_pir=True,
             )
 
         def input_and_attrs(self):
