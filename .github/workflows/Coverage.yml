@@ -368,6 +368,7 @@ jobs:
         uses: codecov/codecov-action@v4
         with:
           directory: build/coverage_files
+          verbose: true
 
       - name: Determine whether the coverage rate reaches 90%
         run: |
