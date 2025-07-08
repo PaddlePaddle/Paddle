@@ -61,7 +61,18 @@ if not defined vcvars64_dir (
     set "vcvars64_dir=C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
     echo vcvars64_dir=%vcvars64_dir%>> %GITHUB_ENV%
 )
-call "%vcvars64_dir%"
+echo %vcvars64_dir%
+call %vcvars64_dir%
+
+
+
+set "vcvars64_dir1=aaaa bbb"
+echo vcvars64_dir1=%vcvars64_dir1%>> %GITHUB_ENV%
+
+set "vcvars64_dir2=aaaa bbb"
+echo vcvars64_dir2="%vcvars64_dir2%">> %GITHUB_ENV%
+
+
 
 set DISTUTILS_USE_SDK=1
 rem Windows 10 Kit bin dir

@@ -8,6 +8,9 @@ echo    ========================================
 echo    Step 4. Running unit tests ...
 echo    ========================================
 
+echo %vcvars64_dir1%
+echo %vcvars64_dir2%
+
 cd %BUILD_DIR%
 call "%PYTHON_VENV_ROOT%\Scripts\activate.bat"
 pip install -r %work_dir%\python\unittest_py\requirements.txt
