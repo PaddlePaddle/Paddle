@@ -948,6 +948,8 @@ class PipelineStage(_PipelineStageBase):
     def init_shared_group(self):
         get_group_from_ranks = {}
         for key, a_map in self.shared_param_map.items():
+            if "param" in a_map and "group" in a_map:
+                continue
             # Build identical communication groups for each rank within the mesh.
             assert (
                 "ori_mesh" in a_map and "sync_mesh" in a_map
