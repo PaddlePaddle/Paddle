@@ -62,7 +62,7 @@ if not defined vcvars64_dir (
     echo vcvars64_dir=!vcvars64_dir!>> %GITHUB_ENV%
 )
 echo %vcvars64_dir%
-call %vcvars64_dir%
+call "%vcvars64_dir%"
 
 
 

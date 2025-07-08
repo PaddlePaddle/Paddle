@@ -11,7 +11,7 @@ echo    ========================================
 
 cd %BUILD_DIR%
 echo %vcvars64_dir%
-call %vcvars64_dir%
+call "%vcvars64_dir%"
 tree /F %cd%\paddle_inference_install_dir\paddle
 %cache_dir%\tools\busybox64.exe du -h -d 0 %cd%\paddle_inference_install_dir > lib_size.txt
 type lib_size.txt
