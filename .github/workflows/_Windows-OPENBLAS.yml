@@ -66,15 +66,20 @@ jobs:
       - name: Build paddle
         run: |
           python -m pip install bce-python-sdk==0.8.74
-          call %ci_scripts%\build.bat
+          call paddle\scripts\paddle_build.bat wincheck_openblas
 
-      - name: Test whl package
-        run: |
-          call %ci_scripts%\test_whl_package.bat
+      # - name: Build paddle
+      #   run: |
+      #     python -m pip install bce-python-sdk==0.8.74
+      #     call %ci_scripts%\build.bat
 
-      - name: Test paddle
-        run: |
-          call %ci_scripts%\test.bat
+      # - name: Test whl package
+      #   run: |
+      #     call %ci_scripts%\test_whl_package.bat
+
+      # - name: Test paddle
+      #   run: |
+      #     call %ci_scripts%\test.bat
 
       - name: Clean up dir
         if: always()
