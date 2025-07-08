@@ -813,4 +813,15 @@ PD_REGISTER_SPMD_RULE(
     take_along_axis,
     PD_INFER_SPMD(phi::distributed::TakeAlongAxisInferSpmd),
     PD_INFER_SPMD(phi::distributed::TakeAlongAxisGradInferSpmd));
+
+// conv3d
+PD_REGISTER_SPMD_RULE(conv3d,
+                      PD_INFER_SPMD(phi::distributed::Conv3dInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::Conv3dGradInferSpmd));
+
+// depthwise_conv2d
+PD_REGISTER_SPMD_RULE(
+    depthwise_conv2d,
+    PD_INFER_SPMD(phi::distributed::DepthwiseConv2dInferSpmd),
+    PD_INFER_SPMD(phi::distributed::DepthwiseConv2dGradInferSpmd));
 }  // namespace phi::distributed

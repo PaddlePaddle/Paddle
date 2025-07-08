@@ -18,7 +18,7 @@ import unittest
 from functools import partial
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_places
 
 import paddle
 from paddle import base, nn
@@ -758,15 +758,7 @@ class TestAdamWOpMultiPrecision(unittest.TestCase):
                 optimizer.clear_grad()
 
     def _get_places(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            places.append('cpu')
-        if paddle.is_compiled_with_cuda():
-            places.append('gpu')
+        places = get_places(string_format=True)
         if paddle.is_compiled_with_xpu():
             places.append('xpu')
         return places

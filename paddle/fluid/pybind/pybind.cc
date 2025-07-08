@@ -3340,7 +3340,7 @@ All parameter, weight, gradient are variables in Paddle.
                      } else {
                        PADDLE_THROW(common::errors::InvalidArgument(
                            "Invalid argument, key must be one of paddle_op, "
-                           "popart_op, domain or version, but revecived %s",
+                           "popart_op, domain or version, but received %s",
                            option_key));
                      }
                    }

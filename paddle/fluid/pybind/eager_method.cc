@@ -1651,8 +1651,10 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
 
     if (transed_tensor.is_gpu() && !is_combined_bool && !has_empty_index) {
       const phi::distributed::ProcessMesh* mesh = nullptr;
-      if (InputsContainDistTensor(&mesh, transed_tensor, transed_index)) {
-        ConvertAllInputsToDistTensor(mesh, transed_tensor, transed_index);
+      if (InputsContainDistTensor(
+              &mesh, self->tensor, transed_tensor, transed_index)) {
+        ConvertAllInputsToDistTensor(
+            mesh, self->tensor, transed_tensor, transed_index);
       }
 
       transed_index = expand_outplace(transed_index);
@@ -1684,7 +1686,7 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
 
       AdvancedIndex ad = AdvancedIndex(transed_tensor, transed_index_int64);
       const bool accumulate = true;
-      out = index_elementwise_get_ad_func(tensor,
+      out = index_elementwise_get_ad_func(self->tensor,
                                           ad.indices,
                                           ad.src_sizes,
                                           ad.src_strides,
@@ -2099,7 +2101,7 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
             mesh, self->tensor, transed_sub_tensor, value_tensor);
       }
       paddle::Tensor mask_tensor;
-      if (pos_of_new_dim == 0 &&
+      if (!out_is_view &&
           MaskedFillDispatching(
               transed_sub_tensor, transed_index, &mask_tensor, &value_tensor)) {
         transed_sub_tensor =
@@ -2465,6 +2467,36 @@ static PyObject* tensor__clear_dataptr(TensorObject* self,
   EAGER_TRY
   self->tensor.set_impl(nullptr);
   RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor__clear_to_zero_allocation(TensorObject* self,
+                                                  PyObject* args,
+                                                  PyObject* kwargs) {
+  EAGER_TRY
+  auto* dense_tensor =
+      dynamic_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  if (dense_tensor != nullptr && dense_tensor->Holder() != nullptr) {
+    phi::DenseTensor tmp(std::make_shared<phi::Allocation>(
+                             nullptr, 0, dense_tensor->Holder()->place()),
+                         dense_tensor->meta());
+    dense_tensor->ShareBufferWith(std::move(tmp), /*only_buffer=*/true);
+  }
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor__holder_size(TensorObject* self,
+                                     PyObject* args,
+                                     PyObject* kwargs) {
+  EAGER_TRY
+  auto* dense_tensor =
+      dynamic_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  size_t size = 0;
+  if (dense_tensor != nullptr && dense_tensor->Holder() != nullptr) {
+    size = dense_tensor->Holder()->size();
+  }
+  return PyLong_FromSize_t(size);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -3951,6 +3983,14 @@ PyMethodDef variable_methods[] = {  // NOLINT
      nullptr},
     {"_clear_dataptr",
      (PyCFunction)(void (*)())tensor__clear_dataptr,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_clear_to_zero_allocation",
+     (PyCFunction)(void (*)())tensor__clear_to_zero_allocation,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_holder_size",
+     (PyCFunction)(void (*)())tensor__holder_size,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
     {"_copy_gradient_from",

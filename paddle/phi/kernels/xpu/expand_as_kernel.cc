@@ -32,10 +32,10 @@ void ExpandAs(const Context& context,
   auto diff = target_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   for (size_t i = 0; i < vec_in_dims.size(); ++i) {
-    PADDLE_ENFORCE_NE(target_shape[i],
-                      0,
-                      common::errors::InvalidArgument(
-                          "The value of target shape cannot be zero."));
+    if (target_shape[i] == 0) {
+      context.template Alloc<T>(out);
+      return;
+    }
     if (vec_in_dims[i] != 1) {
       PADDLE_ENFORCE_EQ(
           vec_in_dims[i],
@@ -89,6 +89,10 @@ void ExpandAsKernel(const Context& dev_ctx,
                     const paddle::optional<DenseTensor>& y,
                     const std::vector<int64_t>& target_shape,
                     DenseTensor* out) {
+  if (x.numel() == 0 || (y.get_ptr() && y.get_ptr()->numel() == 0)) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   auto rank = x.dims().size();
   auto target_rank = target_shape.size();
   PADDLE_ENFORCE_GE(target_rank,

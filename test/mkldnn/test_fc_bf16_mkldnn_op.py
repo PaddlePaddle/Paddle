@@ -76,7 +76,7 @@ class TestFcBf16MklDNNOp(OpTest):
         pass
 
 
-class TestFCMKLDNNOp1(TestFcBf16MklDNNOp):
+class TestFCONEDNNOp1(TestFcBf16MklDNNOp):
     def generate_data(self):
         self.matrix = MatrixGenerate(2, 15, 48, 2, 2)
         self.bias = np.random.random(48).astype(np.float32)
