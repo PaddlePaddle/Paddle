@@ -15,4 +15,4 @@
 export devices=0,1,2,3,4,5,6,7
 python -m paddle.distributed.launch \
         --gpus ${devices} \
-        tests/test_low_latency_all2all_two_stage.py
+        test_low_latency_all2all_two_stage.py
