@@ -314,10 +314,12 @@ def is_plain_dataclass_type(cls: type):
     Returns True if `cls` and all its non-ABC, non-object base classes are dataclasses.
     Disallows inheritance from any non-dataclass types except for ABC and object.
     """
-    for _cls in cls.__mro__[-2 : -len(cls.__mro__) - 1 : -1]:
-        if _cls == ABC:
+    if not is_dataclass_type(cls):
+        return False
+    for base_cls in cls.__mro__[-2 : -len(cls.__mro__) - 1 : -1]:
+        if base_cls is ABC:
             continue
-        if not is_dataclass_type(_cls):
+        if not is_dataclass_type(base_cls):
             return False
     return True
 
