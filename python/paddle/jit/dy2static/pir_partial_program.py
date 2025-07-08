@@ -20,6 +20,7 @@ from functools import cached_property
 from typing import TYPE_CHECKING
 
 import numpy as np
+from sot.profiler import event_register
 
 import paddle
 import paddle.pir.core as ir_static
@@ -779,6 +780,7 @@ class PartialProgramLayer:
         restored_nest_out = self._restore_out(out)
         return self._remove_no_value(restored_nest_out)
 
+    @event_register("sot call partial_program")
     def sot_call(self, inputs):
         """
         In sot, inputs and outputs of partial program only contain tensors, so we can skip some step to speed up

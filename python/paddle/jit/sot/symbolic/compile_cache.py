@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING
 import paddle
 
 from ..infer_meta import convert_meta_to_input_spec
-from ..profiler import EventGuard
+from ..profiler import EventGuard, event_register
 from ..utils import (
     ENV_SOT_EXPORT,
     Cache,
@@ -210,7 +210,8 @@ class FallbackWrapper:
         ] += partial_program_layer._compile_time_counter.get_total_time()
 
     def __call__(self, *args, **kwargs):
-        with EventGuard(f"FallbackWrapper: {self.SIR.name}"):
+        @event_register(f"FallbackWrapper: {self.SIR.name}")
+        def call_fn():
             if StepInfoManager().need_back_trace:
                 trace_back_frames()
 
@@ -233,8 +234,7 @@ class FallbackWrapper:
                         self.partial_program,
                     ) = self.compiled_fn.get_concrete_program(*args, **kwargs)
                     self.partial_program.training = self.is_training
-            with EventGuard("FallbackWrapper: sot call partial_program"):
-                outputs = self.partial_program.sot_call(*args, **kwargs)
+            outputs = self.partial_program.sot_call(*args, **kwargs)
 
             clear_eager_tensor_name(outputs)
             log_do(
@@ -251,6 +251,8 @@ class FallbackWrapper:
 
             self.is_first_call = False
             return outputs
+
+        return call_fn()
 
 
 class CompileSIRCache(Cache, metaclass=Singleton):
