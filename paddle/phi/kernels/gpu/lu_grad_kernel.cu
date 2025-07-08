@@ -12,15 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef PADDLE_WITH_HIP
-// HIP not support cusolver in LUKernel
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 #include "paddle/phi/kernels/impl/lu_grad_kernel_impl.h"
 #include "paddle/phi/kernels/lu_grad_kernel.h"
 
+#ifdef PADDLE_WITH_HIP
+// HIP not support cusolver in LUKernel
+PD_REGISTER_KERNEL(lu_grad, GPU, ALL_LAYOUT, phi::LUGradKernel, float, double) {
+}
+#else
 PD_REGISTER_KERNEL(lu_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -29,4 +31,4 @@ PD_REGISTER_KERNEL(lu_grad,
                    double,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
-#endif  // not PADDLE_WITH_HIP
+#endif  // PADDLE_WITH_HIP
