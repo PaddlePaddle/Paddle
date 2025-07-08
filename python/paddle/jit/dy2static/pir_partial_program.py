@@ -212,6 +212,7 @@ class RunnableProgram:
         self,
         program,
         in_out_values,
+        out_stop_gradients,
         grad_in_out_values=None,
         forward_range=None,
         backward_range=None,
@@ -229,6 +230,7 @@ class RunnableProgram:
         self.x_names = self.convert_name(in_out_values[0])
         self.param_names = self.convert_name(in_out_values[1])
         self.out_names = self.convert_name(in_out_values[2])
+        self.out_stop_gradients = out_stop_gradients
         self.forward_range = forward_range
         self.backward_range = backward_range
         self.has_splited = False
@@ -300,6 +302,7 @@ class RunnableProgram:
         return RunnableProgram(
             cloned_program,
             (self.x_names, self.param_names, self.out_names),
+            self.out_stop_gradients,
             None,
             self.forward_range,
             self.backward_range,
@@ -404,6 +407,9 @@ class RunnableProgram:
         ), "program_attr() is called by PartialProgramLayer, don't call it manually, use program_name_attr instead."
         # can't apply pass after call this function.
         self.finish_pass = True
+        fwd_map = RunnableProgram._get_name_value_map_from_program(
+            self.forward_program
+        )
         program_name_attr = self.program_name_attr
         no_need_buffer_names = program_name_attr["no_need_buffers"]
         rename_mapping = {}
@@ -427,7 +433,23 @@ class RunnableProgram:
 
         program_attr = {}
         for k, ns in self.program_name_attr.items():
+            # Pass output values to create tensors in run program impl
+            if k == "fo":
+                program_attr[f"{k}_values"] = [
+                    fwd_map.get(n, fake_value()) for n in ns
+                ]
             program_attr[f"{k}_names"] = ns
+
+        # Restore stop_gradient for output values
+        assert len(program_attr["fo_values"]) == len(
+            self.out_stop_gradients
+        ), "Output values and stop gradients length mismatch"
+        for v, stop_gradient in zip(
+            program_attr["fo_values"], self.out_stop_gradients
+        ):
+            if is_fake_value(v):
+                continue
+            v.stop_gradient = stop_gradient
 
         return program_attr
 
@@ -724,17 +746,16 @@ class PartialProgramLayer:
         self._compile_time_counter = TimeCounter()
 
     @staticmethod
-    def run_impl(partial_program_layer, inputs, parameters, outputs, attrs):
+    def run_impl(partial_program_layer, inputs, parameters, attrs):
         scope_cache_key = paddle.base.core.calc_scope_cache_key(
             attrs["program_id"],
             inputs,
             attrs["cuda_graph_state"] != CUDAGraphState.DISABLE,
             attrs["cuda_graph_dispatch_key"],
         )
-        _C_ops.run_program(
+        return _C_ops.run_program(
             PartialProgramLayer._valid_vars(inputs),
             PartialProgramLayer._valid_vars(parameters),
-            PartialProgramLayer._valid_vars(outputs),
             partial_program_layer._create_scope_vec(
                 cache_key=scope_cache_key,
                 use_scope_cache=True,
@@ -748,16 +769,14 @@ class PartialProgramLayer:
         """
         attrs = self._prepare_attributes(in_sot_mode=False)
         inputs = self._prepare_inputs(inputs)
-        out_vars = self._prepare_outputs()
 
-        self.call_run_impl_with_hook(
+        out = self.call_run_impl_with_hook(
             inputs,
             self._params,
-            out_vars,
             attrs,
         )
 
-        restored_nest_out = self._restore_out(out_vars)
+        restored_nest_out = self._restore_out(out)
         return self._remove_no_value(restored_nest_out)
 
     def sot_call(self, inputs):
@@ -765,36 +784,31 @@ class PartialProgramLayer:
         In sot, inputs and outputs of partial program only contain tensors, so we can skip some step to speed up
         """
         attrs = self._prepare_attributes(in_sot_mode=True)
-        out_vars = self._prepare_outputs()
 
-        self.call_run_impl_with_hook(
+        out = self.call_run_impl_with_hook(
             inputs,
             self._params,
-            out_vars,
             attrs,
         )
-        return self._outputs.quick_restore(out_vars)
+        return self._outputs.quick_restore(out)
 
     def call_run_impl_with_hook(
         self,
         inputs,
         parameters,
-        outputs,
         attrs,
     ):
         if PartialProgramLayer.HOOKED_RUN_IMPL is None:
-            PartialProgramLayer.run_impl.__get__(self)(
+            return PartialProgramLayer.run_impl.__get__(self)(
                 inputs,
                 parameters,
-                outputs,
                 attrs,
             )
         else:
-            PartialProgramLayer.HOOKED_RUN_IMPL(
+            return PartialProgramLayer.HOOKED_RUN_IMPL(
                 PartialProgramLayer.run_impl.__get__(self),
                 inputs,
                 parameters,
-                outputs,
                 attrs,
             )
 
@@ -802,6 +816,9 @@ class PartialProgramLayer:
     def origin_runnable_program(self) -> RunnableProgram:
         inputs = list(self._inputs.var_list)
         outputs = list(self._outputs.var_list)
+        # NOTE(SigureMo): Record original stop gradient for output values to avoid
+        # losing during optimization passes.
+        out_stop_gradients = [v.stop_gradient for v in outputs]
         params = self._param_values
         paddle.base.libpaddle.pir.append_shadow_outputs(
             self._origin_main_program,
@@ -810,7 +827,9 @@ class PartialProgramLayer:
             "output_",
         )
         return RunnableProgram(
-            self._origin_main_program, (inputs, params, outputs)
+            self._origin_main_program,
+            (inputs, params, outputs),
+            out_stop_gradients,
         )
 
     def add_hooker(self, hooker):
@@ -1162,6 +1181,7 @@ class PartialProgramLayer:
         whole_program = RunnableProgram(
             program,
             (inputs, params, targets),
+            train_runnable_program.out_stop_gradients,
             (x_grad_value, p_grad_value, o_grad_value),
             (0, forward_end_idx),
             (backward_start_op_index, backward_end_op_index),
@@ -1215,11 +1235,6 @@ class PartialProgramLayer:
                 continue
             input_vars.append(var)
         return input_vars
-
-    def _prepare_outputs(self):
-        return paddle.framework.core.create_empty_tensors_with_values(
-            self._outputs.var_list
-        )
 
     def _create_scope_vec(self, cache_key=None, use_scope_cache=False):
         inner_scope = self._get_scope(

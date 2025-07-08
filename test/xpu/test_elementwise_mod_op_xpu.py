@@ -22,6 +22,7 @@ from get_test_cover_info import (
 )
 from op_test import OpTest
 from op_test_xpu import XPUOpTest
+from utils import dygraph_guard
 
 import paddle
 from paddle import base
@@ -109,8 +110,41 @@ class XPUTestElementwiseModOp(XPUOpTestWrapper):
 
 
 support_types = get_xpu_op_support_types('elementwise_mod')
-for stype in support_types:
+real_types = [t for t in support_types if t != 'complex64']
+for stype in real_types:
     create_test_class(globals(), XPUTestElementwiseModOp, stype)
+
+if 'complex64' in support_types:
+
+    class TestElementwiseModOpComplex64(unittest.TestCase):
+        def test_check_output(self):
+            with dygraph_guard():
+                dtype = "complex64"
+                a = np.array([6 + 4j]).astype(dtype)
+                b = np.array([3 + 5j]).astype(dtype)
+                res = np.array([-2 + 2j]).astype(dtype)
+
+                res_pd = paddle.remainder(
+                    paddle.to_tensor(a), paddle.to_tensor(b)
+                )
+                np.testing.assert_allclose(res, res_pd.numpy())
+
+                dtype = "complex64"
+                a = np.array([6 + 4j]).astype(dtype)
+                b = np.array([3 + 5j]).astype(dtype)
+                res = np.array([-2 + 2j]).astype(dtype)
+
+                res_pd = paddle.remainder(
+                    paddle.to_tensor(a), paddle.to_tensor(b)
+                )
+                np.testing.assert_allclose(res, res_pd.numpy())
+
+                with base.device_guard("xpu"):
+                    res_pd = paddle.remainder(
+                        paddle.to_tensor(a), paddle.to_tensor(b)
+                    )
+                np.testing.assert_allclose(res, res_pd.numpy())
+
 
 if __name__ == '__main__':
     unittest.main()
