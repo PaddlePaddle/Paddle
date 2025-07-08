@@ -14,9 +14,7 @@
 
 from __future__ import annotations
 
-import functools
 import math
-import operator
 from typing import TYPE_CHECKING, Literal, overload
 
 import paddle
@@ -110,10 +108,6 @@ def dice_loss(
     assert (
         input.shape[:-1] == label.shape[:-1]
     ), "All dimensions should be equal except the last one."
-    assert (
-        functools.reduce(operator.mul, input.shape) != 0
-        and functools.reduce(operator.mul, label.shape) != 0
-    ), "Any dimension of input and label cannot be equal to 0."
 
     label = paddle.squeeze(label, [-1])
     label = paddle.nn.functional.one_hot(label, input.shape[-1])
@@ -4170,8 +4164,9 @@ def multi_margin_loss(
             )
         weight = paddle.gather(weight, label, axis=0).reshape((-1, 1))
         loss = paddle.mean(
-            paddle.pow(
-                paddle.clip(weight * (margin - index_sample + input), min=0.0),
+            weight
+            * paddle.pow(
+                paddle.clip((margin - index_sample + input), min=0.0),
                 p,
             ),
             axis=1,

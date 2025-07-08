@@ -24,6 +24,7 @@ from ...utils import (
     FallbackError,
     UnsupportedIteratorBreak,
 )
+from ...utils.exceptions import SotCapturedStopIteration
 from ..instruction_utils import Instruction
 from .dispatch_functions import generator_send
 from .opcode_executor import OpcodeExecutorBase, Stop
@@ -53,7 +54,7 @@ def inline_for_iter_impl(exe: OpcodeExecutorBase, instr: Instruction):
     if not isinstance(iterator, UserDefinedIterVariable):
         try:
             exe.stack.push(iterator.next())
-        except StopIteration:
+        except SotCapturedStopIteration:
             exe.stack.pop()
             assert isinstance(instr.jump_to, Instruction)
             exe.vframe.lasti = exe.indexof(instr.jump_to)

@@ -230,15 +230,15 @@ function determine_kunlun_runner() {
         echo "XPU_CODE_1=/dev/xpu0" >> $GITHUB_ENV
         echo "XPU_CODE_2=/dev/xpu1" >> $GITHUB_ENV
     elif [[ $runner_name == "paddle-2" ]]; then
-        echo "CUDA_VISIBLE_DEVICES=2,3" >> $GITHUB_ENV
+        echo "CUDA_VISIBLE_DEVICES=0,1" >> $GITHUB_ENV
         echo "XPU_CODE_1=/dev/xpu2" >> $GITHUB_ENV
         echo "XPU_CODE_2=/dev/xpu3" >> $GITHUB_ENV
     elif [[ $runner_name == "paddle-3" ]]; then
-        echo "CUDA_VISIBLE_DEVICES=4,5" >> $GITHUB_ENV
+        echo "CUDA_VISIBLE_DEVICES=0,1" >> $GITHUB_ENV
         echo "XPU_CODE_1=/dev/xpu4" >> $GITHUB_ENV
         echo "XPU_CODE_2=/dev/xpu5" >> $GITHUB_ENV
     elif [[ $runner_name == "paddle-4" ]]; then
-        echo "CUDA_VISIBLE_DEVICES=6,7" >> $GITHUB_ENV
+        echo "CUDA_VISIBLE_DEVICES=0,1" >> $GITHUB_ENV
         echo "XPU_CODE_1=/dev/xpu6" >> $GITHUB_ENV
         echo "XPU_CODE_2=/dev/xpu7" >> $GITHUB_ENV
     else

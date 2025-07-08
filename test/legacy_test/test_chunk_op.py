@@ -60,6 +60,19 @@ class TestChunkOpError(unittest.TestCase):
 
             self.assertRaises(ValueError, test_0_chunks_tensor)
 
+            def test_negative_chunks_tensor():
+                x = paddle.uniform([2, 3, 4], dtype='float32')
+                paddle.chunk(x, chunks=-1)
+
+            self.assertRaises(ValueError, test_negative_chunks_tensor)
+
+            def test_chunks_greater_than_dim():
+                x = paddle.uniform([2, 3, 4], dtype='float32')
+                # axis=1, shape=3, chunks=5 > 3
+                paddle.chunk(x, chunks=5, axis=1)
+
+            self.assertRaises(ValueError, test_chunks_greater_than_dim)
+
 
 class API_TestChunk(unittest.TestCase):
     def test_out(self):

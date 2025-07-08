@@ -30,7 +30,7 @@ from test_pool2d_op import (
 
 
 def create_test_mkldnn_use_ceil_class(parent):
-    class TestMKLDNNPool2DUseCeilCase(parent):
+    class TestONEDNNPool2DUseCeilCase(parent):
         def init_kernel_type(self):
             self.use_mkldnn = True
             self.check_pir_onednn = True
@@ -41,9 +41,9 @@ def create_test_mkldnn_use_ceil_class(parent):
         def init_data_type(self):
             self.dtype = np.float32
 
-    cls_name = "{}_{}".format(parent.__name__, "MKLDNNCeilModeCast")
-    TestMKLDNNPool2DUseCeilCase.__name__ = cls_name
-    globals()[cls_name] = TestMKLDNNPool2DUseCeilCase
+    cls_name = "{}_{}".format(parent.__name__, "ONEDNNCeilModeCast")
+    TestONEDNNPool2DUseCeilCase.__name__ = cls_name
+    globals()[cls_name] = TestONEDNNPool2DUseCeilCase
 
 
 create_test_mkldnn_use_ceil_class(TestPool2D_Op)
@@ -52,7 +52,7 @@ create_test_mkldnn_use_ceil_class(TestCase2)
 
 
 def create_test_mkldnn_class(parent):
-    class TestMKLDNNCase(parent):
+    class TestONEDNNCase(parent):
         def init_kernel_type(self):
             self.use_mkldnn = True
             self.check_pir_onednn = True
@@ -60,9 +60,9 @@ def create_test_mkldnn_class(parent):
         def init_data_type(self):
             self.dtype = np.float32
 
-    cls_name = "{}_{}".format(parent.__name__, "MKLDNNOp")
-    TestMKLDNNCase.__name__ = cls_name
-    globals()[cls_name] = TestMKLDNNCase
+    cls_name = "{}_{}".format(parent.__name__, "ONEDNNOp")
+    TestONEDNNCase.__name__ = cls_name
+    globals()[cls_name] = TestONEDNNCase
 
 
 create_test_mkldnn_class(TestPool2D_Op)

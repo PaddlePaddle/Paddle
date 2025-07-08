@@ -469,7 +469,7 @@ create_test_int8_class(TestWith1x1)
 create_test_int8_class(TestWithInput1x1Filter1x1)
 
 
-class TestConv2DOp_AsyPadding_INT_MKLDNN(TestConv2DInt8Op):
+class TestConv2DOp_AsyPadding_INT_ONEDNN(TestConv2DInt8Op):
     def init_kernel_type(self):
         self.use_mkldnn = True
 
@@ -478,13 +478,13 @@ class TestConv2DOp_AsyPadding_INT_MKLDNN(TestConv2DInt8Op):
         self.padding_algorithm = "EXPLICIT"
 
 
-class TestConv2DOp_Same_INT_MKLDNN(TestConv2DOp_AsyPadding_INT_MKLDNN):
+class TestConv2DOp_Same_INT_ONEDNN(TestConv2DOp_AsyPadding_INT_ONEDNN):
     def init_paddings(self):
         self.pad = [0, 0]
         self.padding_algorithm = "SAME"
 
 
-class TestConv2DOp_Valid_INT_MKLDNN(TestConv2DOp_AsyPadding_INT_MKLDNN):
+class TestConv2DOp_Valid_INT_ONEDNN(TestConv2DOp_AsyPadding_INT_ONEDNN):
     def init_paddings(self):
         self.pad = [1, 1]
         self.padding_algorithm = "VALID"

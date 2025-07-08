@@ -66,7 +66,7 @@ void Array2Poly(const T* box,
   (*poly).num_contours = 1;
   (*poly).hole = reinterpret_cast<int*>(malloc(sizeof(int)));
   PADDLE_ENFORCE_NOT_NULL((*poly).hole,
-                          phi::errors::ResourceExhausted(
+                          common::errors::ResourceExhausted(
                               "Failed to allocate memory for poly.hole."));
   (*poly).hole[0] = 0;
   (*poly).contour =
@@ -76,7 +76,7 @@ void Array2Poly(const T* box,
       (phi::funcs::gpc_vertex*)malloc(sizeof(phi::funcs::gpc_vertex) * pts_num);
   PADDLE_ENFORCE_NOT_NULL(
       (*poly).contour->vertex,
-      phi::errors::ResourceExhausted(
+      common::errors::ResourceExhausted(
           "malloc failed for contour->vertex (pts_num = %zu)", pts_num));
   for (size_t i = 0; i < pts_num; ++i) {
     (*poly).contour->vertex[i].x = box[2 * i];
@@ -92,7 +92,7 @@ void PointVec2Poly(const std::vector<Point_<T>>& vec,
   (*poly).hole = reinterpret_cast<int*>(malloc(sizeof(int)));
   PADDLE_ENFORCE_NOT_NULL(
       (*poly).hole,
-      phi::errors::ResourceExhausted("malloc failed for poly.hole"));
+      common::errors::ResourceExhausted("malloc failed for poly.hole"));
   (*poly).hole[0] = 0;
   (*poly).contour =
       (phi::funcs::gpc_vertex_list*)malloc(sizeof(phi::funcs::gpc_vertex_list));
@@ -101,7 +101,7 @@ void PointVec2Poly(const std::vector<Point_<T>>& vec,
       (phi::funcs::gpc_vertex*)malloc(sizeof(phi::funcs::gpc_vertex) * pts_num);
   PADDLE_ENFORCE_NOT_NULL(
       (*poly).contour->vertex,
-      phi::errors::ResourceExhausted(
+      common::errors::ResourceExhausted(
           "malloc failed for contour->vertex (pts_num = %zu)", pts_num));
   for (size_t i = 0; i < pts_num; ++i) {
     (*poly).contour->vertex[i].x = vec[i].x;

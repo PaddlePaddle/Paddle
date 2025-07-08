@@ -50,7 +50,7 @@ repos:
             paddle/cinn/utils/registry.h
           )$
   - repo: https://github.com/PFCCLab/typos-pre-commit-mirror.git
-    rev: v1.30.2
+    rev: v1.33.1
     hooks:
       - id: typos
         args: [--force-exclude]

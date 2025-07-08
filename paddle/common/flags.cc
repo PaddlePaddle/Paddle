@@ -434,8 +434,8 @@ PHI_DEFINE_EXPORTED_bool(
 
 /**
  * Memory related FLAG
- * Name: FLAGS_enable_async_fast_gc
- * Since Version: 3.1.0
+ * Name: FLAGS_async_fast_eager_deletion_mode
+ * Since Version: 3.1.1
  * Value Range: bool, default=false
  * Example:
  * Note: Enable async fast garbage collection mode. If enabled, allocation will
@@ -443,7 +443,7 @@ PHI_DEFINE_EXPORTED_bool(
  *       faster. This flag is valid when fast_eager_deletion_mode is enabled.
  */
 PHI_DEFINE_EXPORTED_bool(
-    enable_async_fast_gc,
+    async_fast_eager_deletion_mode,
     false,
     "Enable async fast garbage collection mode. If enabled, allocation will "
     "be released asynchronously, which make the garbage collection process "
@@ -1928,6 +1928,21 @@ PHI_DEFINE_EXPORTED_bool(specialize_device_in_dy2st,
                          "Run Dy2St in specialized device");
 
 /**
+ * Persist parameters in scope to avoid the overhead of
+ * repeated sharing during each execution period.
+ * Name: parameters_persistent_mode_in_dy2st
+ * Since Version: 3.1.1
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True, will persist parameters in scope to avoid the overhead of
+ * repeated sharing during each execution period.
+ */
+PHI_DEFINE_EXPORTED_bool(parameters_persistent_mode_in_dy2st,
+                         false,
+                         "Persist parameters in scope to avoid the overhead of "
+                         "repeated sharing during each execution period.");
+
+/**
  * Max count of eliminate redundant computation in CSE, for debug usage
  * Name: cse_max_count
  * Since Version: 3.0.0
@@ -2143,3 +2158,14 @@ PHI_DEFINE_EXPORTED_int32(
 PHI_DEFINE_EXPORTED_bool(check_cuda_error,
                          false,
                          "Checking whether CUDA error occurred or not.");
+
+/**
+ * Dygraph related FLAG
+ * Name: FLAGS_paddle_grad_inputs_zero_copy
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Whether zero copy paddle.grad's inputs.
+ */
+PHI_DEFINE_EXPORTED_bool(paddle_grad_inputs_zero_copy,
+                         false,
+                         "Whether zero copy paddle.grad's inputs.");

@@ -3170,7 +3170,7 @@ def svd_lowrank(
     m, n = x.shape[-2:]
     if q is None:
         q = min(6, m, n)
-    elif not (q >= 0 and q <= min(m, n)):
+    elif min(m, n) != 0 and not (q >= 0 and q <= min(m, n)):
         raise ValueError(
             f'q(={q}) must be non-negative integer'
             f' and not greater than min(m, n)={min(m, n)}'
@@ -3194,7 +3194,8 @@ def svd_lowrank(
         else:
             B_t = paddle.matmul(x, Q_c) - paddle.matmul(M, Q_c)
         assert B_t.shape[-2] == m, (B_t.shape, m)
-        assert B_t.shape[-1] == q, (B_t.shape, q)
+        if B_t.shape[-1] != 0:
+            assert B_t.shape[-1] == q, (B_t.shape, q)
         assert B_t.shape[-1] <= B_t.shape[-2], B_t.shape
         U, S, Vh = paddle.linalg.svd(B_t, full_matrices=False)
         V = _transjugate(Vh)
@@ -3207,7 +3208,8 @@ def svd_lowrank(
         else:
             B = paddle.matmul(A_t, Q_c) - paddle.matmul(M_t, Q_c)
         B_t = _transpose(B)
-        assert B_t.shape[-2] == q, (B_t.shape, q)
+        if B_t.shape[-2] != 0:
+            assert B_t.shape[-2] == q, (B_t.shape, q)
         assert B_t.shape[-1] == n, (B_t.shape, n)
         assert B_t.shape[-1] <= B_t.shape[-2], B_t.shape
         U, S, Vh = paddle.linalg.svd(B_t, full_matrices=False)
@@ -3687,7 +3689,7 @@ def lu_unpack(
 ) -> tuple[Tensor, Tensor, Tensor]:
     r"""
     Unpack L U and P to single matrix tensor .
-    unpack L and U matrix from LU, unpack permutation matrix P from Pivtos .
+    unpack L and U matrix from LU, unpack permutation matrix P from Pivots .
 
     P mat can be get by pivots:
 
@@ -3705,7 +3707,7 @@ def lu_unpack(
 
         unpack_ludata (bool, optional): whether to unpack L and U from x. Default: True.
 
-        unpack_pivots (bool, optional): whether to unpack permutation matrix P from Pivtos. Default: True.
+        unpack_pivots (bool, optional): whether to unpack permutation matrix P from Pivots. Default: True.
 
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
@@ -3735,8 +3737,8 @@ def lu_unpack(
             Tensor(shape=[2], dtype=int32, place=Place(cpu), stop_gradient=True,
             [3, 3])
             >>> print(info)
-            Tensor(shape=[1], dtype=int32, place=Place(cpu), stop_gradient=True,
-            [0])
+            Tensor(shape=[], dtype=int32, place=Place(cpu), stop_gradient=True,
+            0)
 
             >>> P,L,U = paddle.linalg.lu_unpack(lu,p)
 
@@ -3802,7 +3804,7 @@ def eig(x: Tensor, name: str | None = None) -> tuple[Tensor, Tensor]:
 
     Args:
         x (Tensor): A tensor with shape math:`[*, N, N]`, The data type of the x should be one of ``float32``,
-            ``float64``, ``compplex64`` or ``complex128``.
+            ``float64``, ``complex64`` or ``complex128``.
         name (str|None, optional): The default value is `None`. Normally there is no need for user to set
             this property. For more information, please refer to :ref:`api_guide_Name`.
 
@@ -5580,7 +5582,7 @@ def histogramdd(
 
     Examples:
         .. code-block:: python
-            :name: exampl
+            :name: example
 
             >>> import paddle
             >>> x = paddle.to_tensor([[0., 1.], [1., 0.], [2.,0.], [2., 2.]])
