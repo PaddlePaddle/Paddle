@@ -579,6 +579,7 @@ inline static bool MaskedFillDispatching(
   bool can_expand = phi::funcs::CheckIsDimsMatchBool(
       static_cast<phi::DenseTensor*>(tensor.impl().get())->dims(),
       static_cast<phi::DenseTensor*>(value_tensor->impl().get())->dims());
+  if (value_tensor->numel() > 1) return false;
   if (indices.size() != 1 || !(value_tensor->numel() == 1 || can_expand))
     return false;
 
