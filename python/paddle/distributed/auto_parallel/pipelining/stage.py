@@ -41,6 +41,7 @@ from .utils import (
 )
 
 if TYPE_CHECKING:
+    from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
     from paddle.distributed.communication.group import Group
 
 logger = logging.getLogger(__name__)
@@ -858,14 +859,14 @@ class PipelineStage(_PipelineStageBase):
         input_args (TensorMeta|tuple[TensorMeta, ...]|None): The input arguments for the layer.
         output_args (TensorMeta|tuple[TensorMeta, ...]|None): The output arguments for the layer.
         group (Group, None): The process group for distributed training. If None, default group.
-        shared_param_map (dict[str, dict[str, paddle.Tensor | paddle.distributed.collective.Group]] | None): A nested
-            dictionary containing information about multiple groups of shared parameter pairs.
-            Each entry in the dictionary maps a unique identifier to a sub-dictionary. Each entry has following keys:
+        shared_param_map (dict[str, dict[str, paddle.Tensor | ProcessMesh]] | None): A nested dictionary containing
+            information about multiple groups of shared parameter pairs.Each entry in the dictionary maps a unique
+            identifier to a sub-dictionary. Each entry has following keys:
                 - key: Unique identifier for the shared parameter.
                     - ori_param (paddle.Tensor): The original parameter before synchronization.
                     - sync_param (paddle.Tensor): The synchronized parameter after communication.
-                    - ori_mesh (paddle.distributed.collective.Group): The process mesh of the original parameter.
-                    - sync_mesh (paddle.distributed.collective.Group): The process mesh of the synchronized parameter.
+                    - ori_mesh (ProcessMesh): The process mesh of the original parameter.
+                    - sync_mesh (ProcessMesh): The process mesh of the synchronized parameter.
     """
 
     def __init__(
@@ -876,7 +877,7 @@ class PipelineStage(_PipelineStageBase):
         input_args: TensorMeta | tuple[TensorMeta, ...] | None = None,
         output_args: TensorMeta | tuple[TensorMeta, ...] | None = None,
         group: Group | None = None,
-        shared_param_map: dict[str, dict[str, paddle.Tensor | paddle.distributed.collective.Group]] | None = None,  # type: ignore
+        shared_param_map: dict[str, dict[str, paddle.Tensor | ProcessMesh]] | None = None,  # type: ignore
     ):
         super().__init__(layer, stage_index, num_stages, group)
         self.inputs: list[paddle.Tensor] | None = None
