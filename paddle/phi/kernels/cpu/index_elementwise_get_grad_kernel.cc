@@ -70,7 +70,7 @@ void CPUIndexElementwiseGetGrad(const phi::CPUContext& ctx,
     sizes[i] = index_dims[i];
     strides[i] = index_strides[i];
   }
-  auto index_ptrs = funcs::CPUGetIndexDataPtrs<IndexT>(index);
+  auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
 
   std::array<int64_t*, 3> strides_array;
   std::vector<int64_t> desired_shape;
@@ -94,7 +94,7 @@ void CPUIndexElementwiseGetGrad(const phi::CPUContext& ctx,
 
   const int64_t N = numel;
 
-  using dtype = funcs::CPUOpaqueType<sizeof(T)>;
+  using dtype = funcs::OpaqueType<sizeof(T)>;
 
   const char* in_ptr = reinterpret_cast<const char*>(value.data<T>());
   char* out_ptr = reinterpret_cast<char*>(output->data<T>()) + slice_offset;
@@ -115,7 +115,7 @@ void CPUIndexElementwiseGetGrad(const phi::CPUContext& ctx,
       const char* const in_data = in_ptr + offsets[1];
 
       int64_t offset = 0;
-      for (int i = 0; i < num_indices; i++) {
+      for (size_t i = 0; i < num_indices; i++) {
         int64_t index = *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
         if (index < 0) {
           index += sizes[i];

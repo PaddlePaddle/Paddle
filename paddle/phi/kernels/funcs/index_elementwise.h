@@ -19,21 +19,10 @@ limitations under the License. */
 #include <type_traits>
 #include <vector>
 
-#include "paddle/phi/common/memory_utils.h"
-#include "paddle/phi/common/place.h"
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/funcs/stride_utils.h"
+#include "paddle/phi/kernels/funcs/index_elementwise_utils.h"
 
 namespace phi {
 namespace funcs {
-
-constexpr int MAX_DIMS = 9;
-
-template <int N>
-struct alignas(N) CPUOpaqueType {
-  char data[N];
-};
 
 template <typename Value>
 struct CPUDivMod {
@@ -110,31 +99,6 @@ CPUmake_offset_calculator_put(std::vector<int64_t> desired_shape,
                               std::array<int64_t*, N> strides_array) {
   return CPUOffsetCalculator<N, uint32_t, signed_strides>(
       desired_shape.size(), desired_shape.data(), strides_array.data());
-}
-
-template <typename IndexT>
-std::array<char*, DDim::kMaxRank> CPUGetIndexDataPtrs(
-    const std::vector<const DenseTensor*> index) {
-  std::array<char*, DDim::kMaxRank> index_ptrs{};
-
-  PADDLE_ENFORCE_LE(index.size(),
-                    DDim::kMaxRank,
-                    "The number of index tensors exceeds the maximum rank.");
-
-  for (size_t i = 0; i < index.size(); ++i) {
-    const IndexT* p_index = index[i]->data<IndexT>();
-
-    PADDLE_ENFORCE_NOT_NULL(
-        p_index,
-        ::common::errors::InvalidArgument(
-            "The pointer p_index is nullptr, "
-            "please check whether the index tensor is valid and "
-            "its data is correctly initialized."));
-
-    index_ptrs[i] = reinterpret_cast<char*>(const_cast<IndexT*>(p_index));
-  }
-
-  return index_ptrs;
 }
 
 template <int N, bool signed_strides = false>

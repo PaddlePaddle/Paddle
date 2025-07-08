@@ -2059,16 +2059,6 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
         }
       }
 
-      if (value_tensor.dims().size() > 1 && pos_of_new_dim != 0) {
-#ifdef PADDLE_WITH_CUDA
-        if (!value_tensor.is_gpu()) {
-          value_tensor = transpose_ad_func(value_tensor, trans_dim);
-        }
-#else
-        value_tensor = transpose_ad_func(value_tensor, trans_dim);
-#endif
-      }
-
       const phi::distributed::ProcessMesh* mesh = nullptr;
       if (InputsContainDistTensor(
               &mesh, self->tensor, transed_sub_tensor, value_tensor)) {
@@ -2083,51 +2073,44 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
             masked_fill__ad_func(transed_sub_tensor, mask_tensor, value_tensor);
       } else {
         // TODO(czy): remove in the future
-        if (transed_sub_tensor.is_gpu()) {
-          transed_index = expandTensors(transed_index);
-          transed_index = expand_outplace(transed_index);
-          for (int i = 0; i < pos_of_new_dim; ++i) {
-            transed_index.insert(
-                transed_index.begin(),
-                empty_ad_func(
-                    {}, transed_index[0].dtype(), transed_index[0].place()));
-          }
-          while (transed_index.size() <
-                 static_cast<size_t>(transed_sub_tensor.dims().size())) {
-            transed_index.emplace_back(empty_ad_func(
-                {}, transed_index[0].dtype(), transed_index[0].place()));
-          }
-          int64_t slice_offset =
-              static_cast<int64_t>(reinterpret_cast<char*>(sub_tensor.data()) -
-                                   reinterpret_cast<char*>(tensor.data()));
-
-          std::vector<paddle::Tensor> transed_index_int64;
-          for (auto& indice : transed_index) {
-            if (indice.defined() && indice.dtype() == paddle::DataType::INT32) {
-              indice = indice.cast(paddle::DataType::INT64);  // int32 -> int64
-            }
-            transed_index_int64.push_back(indice);
-          }
-
-          AdvancedIndex ad =
-              AdvancedIndex(transed_sub_tensor, transed_index_int64);
-          transed_sub_tensor =
-              index_elementwise_put__ad_func(tensor,
-                                             ad.indices,
-                                             value_tensor,
-                                             ad.src_sizes,
-                                             ad.src_strides,
-                                             ad.indexed_sizes,
-                                             ad.indexed_strides,
-                                             slice_offset);
-          // New kernel does not need to transpose back, so set out_is_view to
-          // false. Remove when all cases use this branch.
-          out_is_view = false;
-
-        } else {
-          transed_sub_tensor = index_put__ad_func(
-              transed_sub_tensor, transed_index, value_tensor);
+        transed_index = expandTensors(transed_index);
+        transed_index = expand_outplace(transed_index);
+        for (int i = 0; i < pos_of_new_dim; ++i) {
+          transed_index.insert(
+              transed_index.begin(),
+              empty_ad_func(
+                  {}, transed_index[0].dtype(), transed_index[0].place()));
         }
+        while (transed_index.size() <
+               static_cast<size_t>(transed_sub_tensor.dims().size())) {
+          transed_index.emplace_back(empty_ad_func(
+              {}, transed_index[0].dtype(), transed_index[0].place()));
+        }
+        int64_t slice_offset =
+            static_cast<int64_t>(reinterpret_cast<char*>(sub_tensor.data()) -
+                                 reinterpret_cast<char*>(tensor.data()));
+
+        std::vector<paddle::Tensor> transed_index_int64;
+        for (auto& indice : transed_index) {
+          if (indice.defined() && indice.dtype() == paddle::DataType::INT32) {
+            indice = indice.cast(paddle::DataType::INT64);  // int32 -> int64
+          }
+          transed_index_int64.push_back(indice);
+        }
+
+        AdvancedIndex ad =
+            AdvancedIndex(transed_sub_tensor, transed_index_int64);
+        transed_sub_tensor = index_elementwise_put__ad_func(tensor,
+                                                            ad.indices,
+                                                            value_tensor,
+                                                            ad.src_sizes,
+                                                            ad.src_strides,
+                                                            ad.indexed_sizes,
+                                                            ad.indexed_strides,
+                                                            slice_offset);
+        // New kernel does not need to transpose back, so set out_is_view to
+        // false. Remove when all cases use this branch.
+        out_is_view = false;
       }
       if (out_is_view) {
         // NOTE(zoooo0820): if out_is_view is true, it is a case of

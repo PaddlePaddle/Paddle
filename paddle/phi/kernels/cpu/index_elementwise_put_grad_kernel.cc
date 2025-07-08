@@ -48,7 +48,7 @@ void CPUIndexElementwisePutGradKernel(
     sizes[i] = index_dims[i];
     strides[i] = index_strides[i];
   }
-  auto index_ptrs = funcs::CPUGetIndexDataPtrs<IndexT>(index);
+  auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
 
   std::array<int64_t*, 3> strides_array;
   std::vector<int64_t> desired_shape;
@@ -79,7 +79,7 @@ void CPUIndexElementwisePutGradKernel(
   PADDLE_ENFORCE(N >= 0 && N <= std::numeric_limits<int32_t>::max(),
                  "N >= 0 && N <= std::numeric_limits<int32_t>::max()");
 
-  using dtype = funcs::CPUOpaqueType<sizeof(T)>;
+  using dtype = funcs::OpaqueType<sizeof(T)>;
   if (!value_grad) {
     char* out_ptr = reinterpret_cast<char*>(x_grad->data<T>());
 
@@ -88,8 +88,7 @@ void CPUIndexElementwisePutGradKernel(
       char* const out_data = out_ptr + offsets[0] + slice_offset;
 
       int64_t offset = 0;
-#pragma unroll
-      for (int i = 0; i < num_indices; i++) {
+      for (size_t i = 0; i < num_indices; i++) {
         int64_t index = *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
         if (index < 0) {
           index += sizes[i];
@@ -111,8 +110,7 @@ void CPUIndexElementwisePutGradKernel(
       char* const value_data = value_ptr + offsets[1];
 
       int64_t offset = 0;
-#pragma unroll
-      for (int i = 0; i < num_indices; i++) {
+      for (size_t i = 0; i < num_indices; i++) {
         int64_t index = *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
         if (index < 0) {
           index += sizes[i];
@@ -133,8 +131,7 @@ void CPUIndexElementwisePutGradKernel(
       char* const value_data = value_ptr + offsets[1];
 
       int64_t offset = 0;
-#pragma unroll
-      for (int i = 0; i < num_indices; i++) {
+      for (size_t i = 0; i < num_indices; i++) {
         int64_t index = *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
         if (index < 0) {
           index += sizes[i];

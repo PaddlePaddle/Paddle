@@ -34,7 +34,7 @@ void CPUIndexElementwiseGetKernel(const phi::CPUContext& ctx,
   int64_t numel = 0;
   auto num_indices = index_dims.size();
 
-  auto index_ptrs = funcs::CPUGetIndexDataPtrs<IndexT>(index);
+  auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
 
   auto sizes = std::array<int64_t, DDim::kMaxRank>{};
   auto strides = std::array<int64_t, DDim::kMaxRank>{};
@@ -72,7 +72,7 @@ void CPUIndexElementwiseGetKernel(const phi::CPUContext& ctx,
       std::numeric_limits<int32_t>::max(),
       common::errors::InvalidArgument("Output numel must <= INT32_MAX"));
 
-  using dtype = funcs::CPUOpaqueType<sizeof(T)>;
+  using dtype = funcs::OpaqueType<sizeof(T)>;
 
   const char* in_ptr =
       reinterpret_cast<const char*>(input.data<T>()) + slice_offset;
@@ -85,7 +85,7 @@ void CPUIndexElementwiseGetKernel(const phi::CPUContext& ctx,
 
     int64_t offset = 0;
 #pragma unroll
-    for (int i = 0; i < num_indices; i++) {
+    for (size_t i = 0; i < num_indices; i++) {
       int64_t index = *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
       if (index < 0) {
         index += sizes[i];
