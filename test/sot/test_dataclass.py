@@ -45,12 +45,12 @@ class DataTensorWithPostInit:
 
 
 @dataclass
-class MultiInheriDataTensor(DataTensorWithPostInit):
+class MultiInheritDataTensor(DataTensorWithPostInit):
     place: str
 
 
 @dataclass
-class MultiInheriDataTensorWithIdx(MultiInheriDataTensor):
+class MultiInheriDataTensorWithIdx(MultiInheritDataTensor):
     idx: int
 
 
