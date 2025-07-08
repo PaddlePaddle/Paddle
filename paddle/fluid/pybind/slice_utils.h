@@ -657,17 +657,11 @@ static paddle::Tensor dealWithAdvancedIndex(
     transed_tensor = tensor;
   } else {
     *out_is_view = true;
-#ifdef PADDLE_WITH_CUDA
-    // Remove the conditions when all cases are supported.
-    if (tensor.is_gpu() && *pos_of_new_dim != 0 &&
-        (is_for_setitem || int_tensor_only)) {
+    if (*pos_of_new_dim != 0 && (is_for_setitem || int_tensor_only)) {
       transed_tensor = tensor;
     } else {
       transed_tensor = transpose_ad_func(tensor, *trans_dim);
     }
-#else
-    transed_tensor = transpose_ad_func(tensor, *trans_dim);
-#endif
   }
 
   if (is_for_setitem) {

@@ -1647,7 +1647,7 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
       }
     }
 
-    if (transed_tensor.is_gpu() && !is_combined_bool && !has_empty_index) {
+    if (!is_combined_bool && !has_empty_index) {
       const phi::distributed::ProcessMesh* mesh = nullptr;
       if (InputsContainDistTensor(&mesh, transed_tensor, transed_index)) {
         ConvertAllInputsToDistTensor(mesh, transed_tensor, transed_index);
@@ -2072,7 +2072,6 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
         transed_sub_tensor =
             masked_fill__ad_func(transed_sub_tensor, mask_tensor, value_tensor);
       } else {
-        // TODO(czy): remove in the future
         transed_index = expandTensors(transed_index);
         transed_index = expand_outplace(transed_index);
         for (int i = 0; i < pos_of_new_dim; ++i) {

@@ -81,7 +81,6 @@ void CPUIndexElementwisePutKernel(const phi::CPUContext& dev_ctx,
     const char* const in_data = in_ptr + offsets[1];
 
     int64_t offset = 0;
-#pragma unroll
     for (size_t i = 0; i < num_indices; i++) {
       int64_t index = *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
       if (index < 0) {
