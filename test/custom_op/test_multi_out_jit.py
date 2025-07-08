@@ -58,58 +58,60 @@ def discrete_out_dynamic(use_custom, device, dtype, np_w, np_x, np_y, np_z):
 def discrete_out_static(use_custom, device, dtype, np_w, np_x, np_y, np_z):
     paddle.enable_static()
     paddle.set_device(device)
-    with static.scope_guard(static.Scope()):
-        with static.program_guard(static.Program()):
-            w = static.data(name="w", shape=[None, np_x.shape[1]], dtype=dtype)
-            x = static.data(name="x", shape=[None, np_x.shape[1]], dtype=dtype)
-            y = static.data(name="y", shape=[None, np_y.shape[1]], dtype=dtype)
-            z = static.data(name="z", shape=[None, np_z.shape[1]], dtype=dtype)
-            w.stop_gradient = False
-            x.stop_gradient = False
-            y.stop_gradient = False
-            z.stop_gradient = False
-            if use_custom:
-                print(static.default_main_program())
-                out = multi_out_module.discrete_out(w, x, y, z)
-                print(static.default_main_program())
-            else:
-                out = w * 1 + x * 2 + y * 3 + z * 4
-            static.append_backward(out)
+    with (
+        static.scope_guard(static.Scope()),
+        static.program_guard(static.Program()),
+    ):
+        w = static.data(name="w", shape=[None, np_x.shape[1]], dtype=dtype)
+        x = static.data(name="x", shape=[None, np_x.shape[1]], dtype=dtype)
+        y = static.data(name="y", shape=[None, np_y.shape[1]], dtype=dtype)
+        z = static.data(name="z", shape=[None, np_z.shape[1]], dtype=dtype)
+        w.stop_gradient = False
+        x.stop_gradient = False
+        y.stop_gradient = False
+        z.stop_gradient = False
+        if use_custom:
             print(static.default_main_program())
-            exe = static.Executor()
-            exe.run(static.default_startup_program())
+            out = multi_out_module.discrete_out(w, x, y, z)
+            print(static.default_main_program())
+        else:
+            out = w * 1 + x * 2 + y * 3 + z * 4
+        static.append_backward(out)
+        print(static.default_main_program())
+        exe = static.Executor()
+        exe.run(static.default_startup_program())
 
-            if paddle.framework.in_pir_mode():
-                ops = static.default_main_program().global_block().ops
-                if use_custom:
-                    fetch_list = [
-                        out,
-                        ops[-1].result(0),  # w_grad
-                        ops[-1].result(1),
-                    ]  # y_grad
-                else:
-                    fetch_list = [
-                        out,
-                        ops[-2].result(0),  # w_grad
-                        ops[-3].result(0),
-                    ]  # y_grad
+        if paddle.framework.in_pir_mode():
+            ops = static.default_main_program().global_block().ops
+            if use_custom:
+                fetch_list = [
+                    out,
+                    ops[-1].result(0),  # w_grad
+                    ops[-1].result(1),
+                ]  # y_grad
             else:
                 fetch_list = [
-                    out.name,
-                    w.name + "@GRAD",
-                    y.name + "@GRAD",
-                ]
+                    out,
+                    ops[-2].result(0),  # w_grad
+                    ops[-3].result(0),
+                ]  # y_grad
+        else:
+            fetch_list = [
+                out.name,
+                w.name + "@GRAD",
+                y.name + "@GRAD",
+            ]
 
-            out_v, w_grad_v, y_grad_v = exe.run(
-                static.default_main_program(),
-                feed={
-                    "w": np_w.astype(dtype),
-                    "x": np_x.astype(dtype),
-                    "y": np_y.astype(dtype),
-                    "z": np_z.astype(dtype),
-                },
-                fetch_list=fetch_list,
-            )
+        out_v, w_grad_v, y_grad_v = exe.run(
+            static.default_main_program(),
+            feed={
+                "w": np_w.astype(dtype),
+                "x": np_x.astype(dtype),
+                "y": np_y.astype(dtype),
+                "z": np_z.astype(dtype),
+            },
+            fetch_list=fetch_list,
+        )
     paddle.disable_static()
     return out_v, w_grad_v, y_grad_v
 
@@ -128,20 +130,22 @@ class TestMultiOutputDtypes(unittest.TestCase):
         paddle.set_device(device)
         x_data = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
 
-        with paddle.static.scope_guard(paddle.static.Scope()):
-            with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.static.data(name='X', shape=[None, 8], dtype=dtype)
-                outs = self.custom_op(x)
+        with (
+            paddle.static.scope_guard(paddle.static.Scope()),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            x = paddle.static.data(name='X', shape=[None, 8], dtype=dtype)
+            outs = self.custom_op(x)
 
-                exe = paddle.static.Executor()
-                exe.run(paddle.static.default_startup_program())
-                res = exe.run(
-                    paddle.static.default_main_program(),
-                    feed={'X': x_data},
-                    fetch_list=outs,
-                )
+            exe = paddle.static.Executor()
+            exe.run(paddle.static.default_startup_program())
+            res = exe.run(
+                paddle.static.default_main_program(),
+                feed={'X': x_data},
+                fetch_list=outs,
+            )
 
-                return res
+            return res
 
     def check_multi_outputs(self, outs, is_dynamic=False):
         out, zero_float64, one_int32 = outs

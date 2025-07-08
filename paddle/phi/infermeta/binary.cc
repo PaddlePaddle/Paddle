@@ -295,16 +295,18 @@ void BincountInferMeta(const MetaTensor& x,
                           "But the dimension of Input(Weights) is [%d]",
                           weights_dim.size()));
 
-    PADDLE_ENFORCE_EQ(
-        weights_dim[0],
-        input_dim[0],
-        common::errors::InvalidArgument(
-            "The 'shape' of Input(Weights) must be equal to the 'shape' of "
-            "Input(X)."
-            "But received: the 'shape' of Input(Weights) is [%s],"
-            "the 'shape' of Input(X) is [%s]",
-            weights_dim,
-            input_dim));
+    if (input_dim[0] != 0) {
+      PADDLE_ENFORCE_EQ(
+          weights_dim[0],
+          input_dim[0],
+          common::errors::InvalidArgument(
+              "The 'shape' of Input(Weights) must be equal to the 'shape' of "
+              "Input(X)."
+              "But received: the 'shape' of Input(Weights) is [%s],"
+              "the 'shape' of Input(X) is [%s]",
+              weights_dim,
+              input_dim));
+    }
   }
   out->set_dims(common::make_ddim({-1}));
   if (weights) {
@@ -588,13 +590,6 @@ void ConvInferMeta(const MetaTensor& input,
   const bool channel_last = (config.is_run_mkldnn_kernel == false) &&
                             (data_format == "NHWC" || data_format == "NDHWC");
 
-  for (int i = 0; i < 2; ++i) {
-    PADDLE_ENFORCE_NE(in_dims[i],
-                      0,
-                      common::errors::InvalidArgument(
-                          "The size of Op(Conv) inputs should not be 0."));
-  }
-
   PADDLE_ENFORCE_EQ(
       in_dims.size() == 4 || in_dims.size() == 5,
       true,
@@ -706,11 +701,15 @@ void ConvInferMeta(const MetaTensor& input,
 
   std::vector<int64_t> output_shape({in_dims[0]});
   if (!channel_last) {
-    output_shape.push_back(filter_dims[0]);
+    if (filter_dims[1] == 0) {
+      output_shape.push_back(0);
+    } else {
+      output_shape.push_back(filter_dims[0]);
+    }
   }
   for (int i = 0; i < in_data_dims.size(); ++i) {
     if ((!config.is_runtime) &&
-        (in_data_dims[i] <= 0 || filter_dims[i + 2] <= 0)) {
+        (in_data_dims[i] < 0 || filter_dims[i + 2] < 0)) {
       output_shape.push_back(-1);
     } else {
       const int dkernel =
@@ -723,7 +722,11 @@ void ConvInferMeta(const MetaTensor& input,
     }
   }
   if (channel_last) {
-    output_shape.push_back(filter_dims[0]);
+    if (filter_dims[1] == 0) {
+      output_shape.push_back(0);
+    } else {
+      output_shape.push_back(filter_dims[0]);
+    }
   }
 
   out->set_dims(common::make_ddim(output_shape));
@@ -888,19 +891,23 @@ void ConvTransposeInferMeta(const MetaTensor& x,
                 common::make_ddim(output_size).to_str(),
                 i,
                 infer_shape));
-        PADDLE_ENFORCE_LT(
-            output_size[i],
-            infer_shape + strides[i],
-            errors::InvalidArgument(
-                "output_size of Op(ConvTransposeOp) should be less "
-                "than inferred size + stride. But received output_size = [%s], "
-                "whose dim %d is not less than the inferred output size (%d) + "
-                "stride (%d) = %d",
-                common::make_ddim(output_size).to_str(),
-                i,
-                infer_shape,
-                strides[i],
-                infer_shape + strides[i]));
+        if (common::product(x_dims) != 0) {
+          PADDLE_ENFORCE_LT(
+              output_size[i],
+              infer_shape + strides[i],
+              errors::InvalidArgument(
+                  "output_size of Op(ConvTransposeOp) should be less "
+                  "than inferred size + stride. But received output_size = "
+                  "[%s], "
+                  "whose dim %d is not less than the inferred output size (%d) "
+                  "+ "
+                  "stride (%d) = %d",
+                  common::make_ddim(output_size).to_str(),
+                  i,
+                  infer_shape,
+                  strides[i],
+                  infer_shape + strides[i]));
+        }
       }
       output_shape.push_back(output_size[i]);
     } else if (!output_padding.empty()) {
@@ -1613,6 +1620,9 @@ void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
           x_dims.to_str()));
   bool shape_match = true;
   for (int i = 0; i < x_rank; ++i) {
+    if (x_dims[i] == 0 || y_dims[i] == 0) {
+      continue;
+    }
     if (x_dims[i] != y_dims[i]) {
       shape_match = false;
       break;
@@ -1627,10 +1637,16 @@ void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
                         "with input tensor Y: %s",
                         x_dims.to_str(),
                         y_dims.to_str()));
-  std::vector<int64_t> x_dims_vec = common::vectorize(x_dims);
-  std::vector<int64_t> x_dims_vec_cut(x_dims_vec.begin(), x_dims_vec.end() - 1);
-  x_dims = common::make_ddim(x_dims_vec_cut);
-  out->set_dims(x_dims);
+
+  auto out_dims = x_dims;
+  // The output dims need to be modified.
+  if (x_rank == 2 && x_dims[0] != 0 && y_dims[0] == 0) {
+    out_dims[0] = 0;
+  }
+  std::vector<int64_t> out_dims_vec = common::vectorize(out_dims);
+  std::vector<int64_t> out_dims_vec_cut(out_dims_vec.begin(),
+                                        out_dims_vec.end() - 1);
+  out->set_dims(common::make_ddim(out_dims_vec_cut));
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
 }
@@ -2001,12 +2017,14 @@ void GatherInferMeta(const MetaTensor& x,
   auto index_dims = index.dims();
 
   if (index_dims.size() == 2) {
-    PADDLE_ENFORCE_EQ(
-        index_dims[1],
-        1,
-        common::errors::InvalidArgument(
-            "The last dim of index should be 1 when it is 2D, but we get %d",
-            index_dims[1]));
+    if (index_dims[1] != 0) {
+      PADDLE_ENFORCE_EQ(
+          index_dims[1],
+          1,
+          common::errors::InvalidArgument("The last dim of index should be 0 "
+                                          "or 1 when it is 2D, but we get %d",
+                                          index_dims[1]));
+    }
   } else {
     PADDLE_ENFORCE_EQ(
         index_dims.size() == 1 || index_dims.size() == 0,
@@ -2075,6 +2093,9 @@ void GatherInferMeta(const MetaTensor& x,
     if (axis.FromTensor() || axis_v == 0) {
       // if axis.FromTensor(), we can not obtain correct shape of output
       int batch_size = static_cast<int>(index_dims[0]);
+      if (index_dims.size() == 2 && index_dims[1] == 0) {
+        batch_size = 0;
+      }
       phi::DDim output_dims(input_dim);
       output_dims[0] = batch_size;
       out->set_dims(output_dims);
@@ -2082,6 +2103,9 @@ void GatherInferMeta(const MetaTensor& x,
       out->share_lod(x);
     } else {
       int index_size = static_cast<int>(index_dims[0]);
+      if (index_dims.size() == 2 && index_dims[1] == 0) {
+        index_size = 0;
+      }
       std::vector<int> out_dim_vec;
       for (int i = 0; i < axis_v; i++) {
         out_dim_vec.push_back(input_dim[i]);  // NOLINT
@@ -2138,11 +2162,13 @@ void GatherTreeMeta(const MetaTensor& ids,
                     MetaTensor* out) {
   auto ids_dims = ids.dims();
   auto parents_dims = parents.dims();
-  PADDLE_ENFORCE_EQ(ids_dims == parents_dims,
-                    true,
-                    common::errors::InvalidArgument(
-                        "The shape of Input(Parents) must be same with the "
-                        "shape of Input(Ids)."));
+  if (common::product(ids_dims) != 0) {
+    PADDLE_ENFORCE_EQ(ids_dims == parents_dims,
+                      true,
+                      common::errors::InvalidArgument(
+                          "The shape of Input(Parents) must be same with the "
+                          "shape of Input(Ids)."));
+  }
   out->set_dims(ids_dims);
   out->set_dtype(ids.dtype());
 }
@@ -2356,7 +2382,7 @@ void IndexSampleInferMeta(const MetaTensor& x,
           "Inputs(Index) shape of IndexSample op should be 2-D, but "
           "got Index's shape [%s] , please check index shape.",
           input_dims));
-  if (config.is_runtime) {
+  if (config.is_runtime && index_dims[0] != 0) {  // 0-size not check
     PADDLE_ENFORCE_EQ(input_dims[0],
                       index_dims[0],
                       errors::InvalidArgument(
@@ -2500,11 +2526,6 @@ void IndexAddInferMeta(const MetaTensor& x,
                         index_dim,
                         index_dim.size()));
 
-  PADDLE_ENFORCE_EQ(index_dim[0] != 0,
-                    true,
-                    common::errors::InvalidArgument(
-                        "The length of Input(Index) can't be 0."));
-
   // Note, add_value does not support broadcast now.
   PADDLE_ENFORCE_EQ(input_dim.size() == add_value_dim.size(),
                     true,
@@ -2516,8 +2537,12 @@ void IndexAddInferMeta(const MetaTensor& x,
                         true,
                         common::errors::InvalidArgument(
                             "The add_value parameter does not supported "
-                            "broadcast, so input_dim[i] must be equal to "
-                            "add_value_dim[i] when i != axis."));
+                            "broadcast, so input_dim[i](%d) must be equal to "
+                            "add_value_dim[i](%d) when i(%d) != axis(%d).",
+                            input_dim[i],
+                            add_value_dim[i],
+                            i,
+                            real_axis));
     }
   }
 
@@ -2546,6 +2571,7 @@ void IndexElementwisePutInferMeta(const MetaTensor& x,
                                   const std::vector<int64_t>& input_strides,
                                   const std::vector<int64_t>& index_dims,
                                   const std::vector<int64_t>& index_strides,
+                                  const int64_t slice_offset,
                                   MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(x.dtype());
@@ -2557,30 +2583,10 @@ void IndexElementwiseGetInferMeta(const MetaTensor& x,
                                   const std::vector<int64_t>& input_strides,
                                   const std::vector<int64_t>& index_dims,
                                   const std::vector<int64_t>& index_stride,
+                                  const int64_t slice_offset,
+                                  const bool accumulate,
                                   MetaTensor* out) {
-  const auto& x_dims = x.dims();
-
-  PADDLE_ENFORCE_LE(
-      index_dims.size(),
-      x_dims.size(),
-      common::errors::InvalidArgument(
-          "Input(index).rank should be less than or equal to Input(x).rank"));
-
-  for (size_t i = 0; i < index_dims.size(); ++i) {
-    PADDLE_ENFORCE_EQ(index_dims[i],
-                      x_dims[i],
-                      common::errors::InvalidArgument(
-                          "Input(index).shape should match the first k "
-                          "dimensions of Input(x).shape"));
-  }
-  std::vector<int64_t> result_dims;
-  result_dims.push_back(-1);
-
-  int64_t k = index_dims.size();
-  for (int64_t i = k; i < static_cast<int64_t>(x_dims.size()); ++i) {
-    result_dims.push_back(x_dims[i]);
-  }
-  out->set_dims(common::make_ddim(result_dims));
+  out->set_dims(common::make_ddim(input_dims));
   out->set_dtype(x.dtype());
 }
 
@@ -4452,12 +4458,21 @@ void SwiGLUInferMeta(const MetaTensor& x,
                      const MetaTensor& y,
                      MetaTensor* out) {
   if (y) {
-    PADDLE_ENFORCE_EQ(
-        x.dims(),
-        y.dims(),
-        common::errors::InvalidArgument(
-            "The shape of Input(X) should be equal of the shape of Input(Y)."));
+    auto x_numel = common::product(x.dims());
+    auto y_numel = common::product(y.dims());
+    // skip 0-size
+    if (x_numel != 0 && y_numel != 0) {
+      PADDLE_ENFORCE_EQ(
+          x.dims(),
+          y.dims(),
+          common::errors::InvalidArgument("The shape of Input(X) should be "
+                                          "equal of the shape of Input(Y)."));
+    }
     out->share_meta(x);
+    // If y is 0-size, out is 0-size
+    if (x_numel != 0 && y_numel == 0) {
+      out->set_dims(y.dims());
+    }
   } else {
     auto dims = x.dims();
     PADDLE_ENFORCE_EQ(

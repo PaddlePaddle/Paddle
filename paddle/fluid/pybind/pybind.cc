@@ -310,6 +310,14 @@ bool IsCompiledWithFlagcx() {
 #endif
 }
 
+bool IsCompiledWithDeepEP() {
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_DEEP_EP)
+  return true;
+#else
+  return false;
+#endif
+}
+
 bool IsCompiledWithMPI() {
 #ifdef PADDLE_WITH_MPI
   return true;
@@ -2583,6 +2591,7 @@ All parameter, weight, gradient are variables in Paddle.
     VLOG(4) << "Initialize tensor operants successfully";
   });
   m.def("is_compiled_with_flagcx", IsCompiledWithFlagcx);
+  m.def("is_compiled_with_deepep", IsCompiledWithDeepEP);
   m.def("is_compiled_with_avx", IsCompiledWithAVX);
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
   m.def("is_compiled_with_cudnn_frontend", IsCompiledWithCudnnFrontend);
@@ -2715,6 +2724,9 @@ All parameter, weight, gradient are variables in Paddle.
   BindGlobalValueGetterSetter(&m);
   BindTCPStore(&m);
   BindCommContextManager(&m);
+#if defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)
+  BindNCCLConfig(&m);
+#endif
   BindAutoParallel(&m);
   BindJitProperty(&m);
 
@@ -2937,9 +2949,9 @@ All parameter, weight, gradient are variables in Paddle.
       .def_property_readonly(
           "name", [](const phi::DeviceProp &prop) { return prop.name; })
       .def_property_readonly(
-          "major", [](const phi::DeviceProp &prop) { return prop.major; })
+          "major", [](const phi::DeviceProp &prop) { return prop.deviceMajor; })
       .def_property_readonly(
-          "minor", [](const phi::DeviceProp &prop) { return prop.minor; })
+          "minor", [](const phi::DeviceProp &prop) { return prop.deviceMinor; })
       .def_property_readonly(
           "total_memory",
           [](const phi::DeviceProp &prop) { return prop.totalGlobalMem; })
@@ -2955,7 +2967,8 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__repr__", [](const phi::DeviceProp &prop) {
         std::stringstream ostr;
         ostr << "_customDeviceProperties(name='" << prop.name
-             << "', major=" << prop.major << ", minor=" << prop.minor
+             << "', major=" << prop.deviceMajor
+             << ", minor=" << prop.deviceMinor
              << ", total_memory=" << prop.totalGlobalMem / (1024 * 1024)
              << "MB, multi_processor_count=" << prop.multiProcessorCount << ")";
         return ostr.str();
@@ -3327,7 +3340,7 @@ All parameter, weight, gradient are variables in Paddle.
                      } else {
                        PADDLE_THROW(common::errors::InvalidArgument(
                            "Invalid argument, key must be one of paddle_op, "
-                           "popart_op, domain or version, but revecived %s",
+                           "popart_op, domain or version, but received %s",
                            option_key));
                      }
                    }

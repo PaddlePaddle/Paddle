@@ -25,9 +25,9 @@ struct SequenceMaskForRangeFunctor {
   HOSTDEVICE SequenceMaskForRangeFunctor(const Tx *x, Ty *y, int maxlen)
       : x_(x), y_(y), maxlen_(maxlen) {}
 
-  HOSTDEVICE void operator()(int y_idx) const {
-    int x_idx = y_idx / maxlen_;
-    int j = y_idx % maxlen_;
+  HOSTDEVICE void operator()(int64_t y_idx) const {
+    int64_t x_idx = y_idx / maxlen_;
+    int64_t j = y_idx % maxlen_;
     y_[y_idx] = static_cast<Ty>(j < x_[x_idx] ? 1 : 0);
   }
 
@@ -39,25 +39,25 @@ struct SequenceMaskForRangeFunctor {
 
 template <typename DeviceContext, typename Tx>
 struct SequenceMaskFunctor {
-  SequenceMaskFunctor(const DeviceContext &ctx,
+  SequenceMaskFunctor(const DeviceContext &dev_ctx,
                       const Tx *x,
                       phi::DenseTensor *y,
-                      int limits,
+                      int64_t limits,
                       int maxlen)
-      : ctx_(ctx), x_(x), y_(y), limits_(limits), maxlen_(maxlen) {}
+      : dev_ctx_(dev_ctx), x_(x), y_(y), limits_(limits), maxlen_(maxlen) {}
   template <typename Ty>
   void apply() const {
-    ctx_.template Alloc<Ty>(y_);
+    dev_ctx_.template Alloc<Ty>(y_);
     auto *y_data = y_->data<Ty>();
-    phi::funcs::ForRange<DeviceContext> for_range(ctx_, limits_);
+    phi::funcs::ForRange<DeviceContext> for_range(dev_ctx_, limits_);
     for_range(SequenceMaskForRangeFunctor<Tx, Ty>(x_, y_data, maxlen_));
   }
 
  private:
-  const DeviceContext &ctx_;
+  const DeviceContext &dev_ctx_;
   const Tx *x_;
   phi::DenseTensor *y_;
-  int limits_;
+  int64_t limits_;
   int maxlen_;
 };
 

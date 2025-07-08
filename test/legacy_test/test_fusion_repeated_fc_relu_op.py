@@ -31,7 +31,7 @@ class TestFusionRepeatedFCReluOp(OpTest):
         self.set_conf()
         self.op_type = 'fusion_repeated_fc_relu'
         sz = len(self.oc)
-        ics = [self.ic] + self.oc[0 : sz - 1]
+        ics = [self.ic, *self.oc[0 : sz - 1]]
         assert len(ics) == len(self.oc)
         weights = []
         biases = []

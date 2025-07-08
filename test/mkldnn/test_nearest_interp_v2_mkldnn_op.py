@@ -60,7 +60,7 @@ def nearest_neighbor_interp_mkldnn_np(
 
 @skip_check_grad_ci(reason="Haven not implement interpolate grad kernel.")
 @OpTestTool.skip_if_not_cpu_bf16()
-class TestNearestInterpV2MKLDNNOp(OpTest):
+class TestNearestInterpV2ONEDNNOp(OpTest):
     def init_test_case(self):
         pass
 
@@ -154,7 +154,7 @@ class TestNearestInterpV2MKLDNNOp(OpTest):
         self.check_output(check_dygraph=False, check_pir_onednn=True)
 
 
-class TestNearestInterpOpV2MKLDNNNHWC(TestNearestInterpV2MKLDNNOp):
+class TestNearestInterpOpV2ONEDNNNHWC(TestNearestInterpV2ONEDNNOp):
     def init_test_case(self):
         self.input_shape = [3, 2, 32, 16]
         self.out_h = 27
@@ -163,14 +163,14 @@ class TestNearestInterpOpV2MKLDNNNHWC(TestNearestInterpV2MKLDNNOp):
         self.data_layout = 'NHWC'
 
 
-class TestNearestNeighborInterpV2MKLDNNCase2(TestNearestInterpV2MKLDNNOp):
+class TestNearestNeighborInterpV2ONEDNNCase2(TestNearestInterpV2ONEDNNOp):
     def init_test_case(self):
         self.input_shape = [3, 3, 9, 6]
         self.out_h = 12
         self.out_w = 12
 
 
-class TestNearestNeighborInterpV2MKLDNNCase3(TestNearestInterpV2MKLDNNOp):
+class TestNearestNeighborInterpV2ONEDNNCase3(TestNearestInterpV2ONEDNNOp):
     def init_test_case(self):
         self.input_shape = [1, 1, 32, 64]
         self.out_h = 64
@@ -178,7 +178,7 @@ class TestNearestNeighborInterpV2MKLDNNCase3(TestNearestInterpV2MKLDNNOp):
         self.scale = [0.1, 0.05]
 
 
-class TestNearestNeighborInterpV2MKLDNNCase4(TestNearestInterpV2MKLDNNOp):
+class TestNearestNeighborInterpV2ONEDNNCase4(TestNearestInterpV2ONEDNNOp):
     def init_test_case(self):
         self.input_shape = [1, 1, 32, 64]
         self.out_h = 64
@@ -187,7 +187,7 @@ class TestNearestNeighborInterpV2MKLDNNCase4(TestNearestInterpV2MKLDNNOp):
         self.out_size = np.array([65, 129]).astype("int32")
 
 
-class TestNearestNeighborInterpV2MKLDNNSame(TestNearestInterpV2MKLDNNOp):
+class TestNearestNeighborInterpV2ONEDNNSame(TestNearestInterpV2ONEDNNOp):
     def init_test_case(self):
         self.input_shape = [2, 3, 32, 64]
         self.out_h = 32
@@ -220,12 +220,12 @@ def create_test_class(parent):
     globals()[TestUint8Case.__name__] = TestUint8Case
 
 
-create_test_class(TestNearestInterpV2MKLDNNOp)
-create_test_class(TestNearestInterpOpV2MKLDNNNHWC)
-create_test_class(TestNearestNeighborInterpV2MKLDNNCase2)
-create_test_class(TestNearestNeighborInterpV2MKLDNNCase3)
-create_test_class(TestNearestNeighborInterpV2MKLDNNCase4)
-create_test_class(TestNearestNeighborInterpV2MKLDNNSame)
+create_test_class(TestNearestInterpV2ONEDNNOp)
+create_test_class(TestNearestInterpOpV2ONEDNNNHWC)
+create_test_class(TestNearestNeighborInterpV2ONEDNNCase2)
+create_test_class(TestNearestNeighborInterpV2ONEDNNCase3)
+create_test_class(TestNearestNeighborInterpV2ONEDNNCase4)
+create_test_class(TestNearestNeighborInterpV2ONEDNNSame)
 
 if __name__ == "__main__":
     from paddle import enable_static

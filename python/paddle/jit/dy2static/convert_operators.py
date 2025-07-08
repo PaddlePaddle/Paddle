@@ -539,11 +539,11 @@ def _remove_no_value_return_var(out):
                 ):
                     # return None
                     if index == 0:
-                        processed_out = (None,) + out[1:]
+                        processed_out = (None, *out[1:])
                     elif index == 1:
                         processed_out = align_ret[:1] + out[1:]
                     else:
-                        processed_out = (align_ret[:index],) + out[1:]
+                        processed_out = (align_ret[:index], *out[1:])
                     break
 
         for index, item in enumerate(processed_out):

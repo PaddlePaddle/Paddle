@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import random
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_places
 
 import paddle
 from paddle.base import core
@@ -263,15 +262,7 @@ class TestCumprodAPI(unittest.TestCase):
         paddle.enable_static()
         self.init_dtype()
         self.x = (np.random.rand(2, 3, 10, 10) + 0.5).astype(self.dtype)
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
+        self.place = get_places()
 
     # test static graph api.
 
@@ -1089,6 +1080,33 @@ class TestCumprodOuter1AndInner1(OpTest):  # used to pass ci-coverage
                     user_defined_grad_outputs=[self.grad_out],
                     check_pir=True,
                 )
+
+
+class TestCumprodAPI_ZeroSize(unittest.TestCase):
+    def init_dtype(self):
+        self.dtype = 'float64'
+        self.shape = [0, 3, 10, 10]
+
+    def setUp(self):
+        self.init_dtype()
+        self.x = (np.random.rand(0, 3, 10, 10) + 0.5).astype(self.dtype)
+        self.place = get_places()
+
+    # test dynamic graph api.
+    def test_dygraph_api(self):
+        def run(place):
+            paddle.disable_static(place)
+            x = paddle.to_tensor(self.x)
+            x.stop_gradient = False
+            out = paddle.cumprod(x, 1)
+            out_ref = np.cumprod(self.x, 1)
+            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
+            paddle.sum(out).backward()
+            np.testing.assert_allclose(x.grad.shape, x.shape)
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place)
 
 
 if __name__ == "__main__":

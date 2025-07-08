@@ -13,15 +13,14 @@
 # limitations under the License.
 
 import contextlib
-import os
 import random
 import unittest
 
 import numpy as np
+from op_test import get_places
 
 import paddle
 from paddle import base
-from paddle.base import core
 
 
 class TestRegularizer(unittest.TestCase):
@@ -32,16 +31,7 @@ class TestRegularizer(unittest.TestCase):
         ]
 
     def get_places(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(core.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-        return places
+        return get_places()
 
     @contextlib.contextmanager
     def scope_prog_guard(self, main_prog, startup_prog):

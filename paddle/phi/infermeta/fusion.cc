@@ -861,20 +861,20 @@ void FusedActDequantInferMeta(const MetaTensor& x,
   PADDLE_ENFORCE_EQ(
       x.dtype(),
       phi::DataType::FLOAT8_E4M3FN,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The data type of X should be FLOAT8_E4M3FN, but received %s.",
           x.dtype()));
 
   PADDLE_ENFORCE_EQ(
       x_scale.dtype(),
       phi::DataType::FLOAT32,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The data type of X_scale should be FLOAT32, but received %s.",
           x_scale.dtype()));
 
   PADDLE_ENFORCE_EQ(x_dims.size(),
                     2,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The input X should be a 2D tensor, but received %dD.",
                         x_dims.size()));
 
@@ -884,13 +884,13 @@ void FusedActDequantInferMeta(const MetaTensor& x,
   PADDLE_ENFORCE_GT(
       rows,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The rows of X should be positive, but received %d.", rows));
 
   PADDLE_ENFORCE_GT(
       cols,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The cols of X should be positive, but received %d.", cols));
 
   out->set_dims(x_dims);
@@ -2502,6 +2502,88 @@ void FusedTransposeSplitQuantInferMeta(const MetaTensor& x,
                     65535LL * 128,
                     common::errors::InvalidArgument(
                         "x.shape[1] (%d) must be <= 65535 * 128", N));
+}
+
+void FusedTransposeWLCHSplitQuantInferMeta(const MetaTensor& x,
+                                           const IntArray& tokens_per_expert,
+                                           bool pow_2_scales,
+                                           std::vector<MetaTensor*> outs,
+                                           std::vector<MetaTensor*> scales) {
+  PADDLE_ENFORCE_EQ(
+      x.dtype(),
+      DataType::BFLOAT16,
+      common::errors::InvalidArgument(
+          "The dtype of Input(x) must be BFLOAT16, but received %s",
+          x.dtype()));
+
+  auto x_dims = x.dims();
+
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      4,
+      common::errors::InvalidArgument(
+          "Input(x) must have dimension of 4, but got %d.", x_dims.size()));
+
+  const int64_t M = x_dims[0] * x_dims[1] * x_dims[2];
+  const int64_t H = x_dims[3];
+
+  auto tokens_list = tokens_per_expert.GetData();
+  const size_t num_experts = tokens_list.size();
+
+  PADDLE_ENFORCE_EQ(
+      outs.size(),
+      num_experts,
+      common::errors::InvalidArgument(
+          "Size of outs (%d) must equal size of tokens_per_expert (%d)",
+          outs.size(),
+          num_experts));
+
+  PADDLE_ENFORCE_EQ(
+      scales.size(),
+      num_experts,
+      common::errors::InvalidArgument(
+          "Size of scales (%d) must equal size of tokens_per_expert (%d)",
+          scales.size(),
+          num_experts));
+
+  int64_t sum_tokens = 0;
+  for (size_t i = 0; i < num_experts; ++i) {
+    const int64_t tokens = tokens_list[i];
+
+    PADDLE_ENFORCE_EQ(
+        tokens % 128,
+        0,
+        common::errors::InvalidArgument(
+            "tokens_per_expert[%d] (%d) must be divisible by 128", i, tokens));
+
+    sum_tokens += tokens;
+
+    if (outs[i] != nullptr) {
+      outs[i]->set_dims(common::make_ddim({H, tokens}));
+      outs[i]->set_dtype(DataType::FLOAT8_E4M3FN);
+      outs[i]->set_layout(x.layout());
+    }
+
+    if (scales[i] != nullptr) {
+      scales[i]->set_dims(common::make_ddim({tokens / 128, H}));
+      scales[i]->set_dtype(DataType::FLOAT32);
+      scales[i]->set_layout(x.layout());
+    }
+  }
+
+  PADDLE_ENFORCE_EQ(
+      sum_tokens,
+      M,
+      common::errors::InvalidArgument("Sum of tokens_per_expert (%d) must "
+                                      "equal the upper dims of Input(x) (%d)",
+                                      sum_tokens,
+                                      M));
+  PADDLE_ENFORCE_LE(
+      H,
+      65535 * 128,
+      common::errors::InvalidArgument("Currently only supports the hidden size "
+                                      "of Input(x) <= 65535 * 128, but got %d.",
+                                      H));
 }
 
 void YoloBoxXPUInferMeta(const MetaTensor& x,
@@ -5691,20 +5773,20 @@ void FusedSwigluWeightedBwdInferMeta(const MetaTensor& o1,
   PADDLE_ENFORCE_EQ(
       o1.dtype(),
       phi::DataType::BFLOAT16,
-      phi::errors::InvalidArgument("The data type of o1 must be bfloat16. "
-                                   "But received o1 dtype: %s",
-                                   phi::DataTypeToString(o1.dtype())));
+      common::errors::InvalidArgument("The data type of o1 must be bfloat16. "
+                                      "But received o1 dtype: %s",
+                                      phi::DataTypeToString(o1.dtype())));
 
-  PADDLE_ENFORCE_EQ(
-      do2_s.dtype(),
-      phi::DataType::BFLOAT16,
-      phi::errors::InvalidArgument("The data type of do2_s must be bfloat16. "
-                                   "But received do2_s dtype: %s",
-                                   phi::DataTypeToString(do2_s.dtype())));
+  PADDLE_ENFORCE_EQ(do2_s.dtype(),
+                    phi::DataType::BFLOAT16,
+                    common::errors::InvalidArgument(
+                        "The data type of do2_s must be bfloat16. "
+                        "But received do2_s dtype: %s",
+                        phi::DataTypeToString(do2_s.dtype())));
 
   PADDLE_ENFORCE_EQ(unzipped_probs.dtype(),
                     phi::DataType::FLOAT32,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The data type of unzipped_probs must be float32. "
                         "But received unzipped_probs dtype: %s",
                         phi::DataTypeToString(unzipped_probs.dtype())));
@@ -5716,7 +5798,7 @@ void FusedSwigluWeightedBwdInferMeta(const MetaTensor& o1,
   PADDLE_ENFORCE_EQ(
       o1_dims.size(),
       do2_s_dims.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "o1 and do2_s should have the same number of dimensions. "
           "But received o1 dims: %d, do2_s dims: %d",
           o1_dims.size(),
@@ -5725,7 +5807,7 @@ void FusedSwigluWeightedBwdInferMeta(const MetaTensor& o1,
   PADDLE_ENFORCE_EQ(
       o1_dims.size(),
       probs_dims.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "o1 and unzipped_probs should have the same number of dimensions. "
           "But received o1 dims: %d, unzipped_probs dims: %d",
           o1_dims.size(),
@@ -5736,7 +5818,7 @@ void FusedSwigluWeightedBwdInferMeta(const MetaTensor& o1,
 
   PADDLE_ENFORCE_EQ(o1_last_dim,
                     do2_s_last_dim * 2,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The last dimension of o1 should be twice the last "
                         "dimension of do2_s. "
                         "But received o1 last dim: %d, do2_s last dim: %d",
@@ -5755,7 +5837,7 @@ void FusedSwigluWeightedBwdInferMeta(const MetaTensor& o1,
 
   PADDLE_ENFORCE_EQ(o1_batch_size,
                     do2_s_batch_size,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "o1 and do2_s should have the same batch size (product "
                         "of all dimensions except last). "
                         "But received o1 batch size: %d, do2_s batch size: %d",
@@ -5764,7 +5846,7 @@ void FusedSwigluWeightedBwdInferMeta(const MetaTensor& o1,
 
   PADDLE_ENFORCE_EQ(o1_batch_size,
                     probs_batch_size,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "o1 and unzipped_probs should have the same batch size "
                         "(product of all dimensions except last). "
                         "But received o1 batch size: %d, probs batch size: %d",

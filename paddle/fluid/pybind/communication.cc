@@ -25,6 +25,9 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/phi/core/distributed/comm_context_manager.h"
+#if defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)
+#include "paddle/phi/core/distributed/nccl_config.h"
+#endif
 #include "paddle/phi/core/distributed/store/store_utils.h"
 #include "paddle/phi/core/distributed/store/tcp_store.h"
 
@@ -54,6 +57,7 @@ void BindCommContextManager(py::module *m) {
               py::arg("hash_key") = "",
               py::arg("p2p_opt") = nullptr,
               py::arg("nccl_comm_init_option") = 0,
+              py::arg("nccl_config") = nullptr,
               py::call_guard<py::gil_scoped_release>())
 #endif
 #if defined(PADDLE_WITH_XPU_BKCL)
@@ -137,4 +141,21 @@ void BindTCPStore(py::module *m) {
          &phi::distributed::CreateOrGetGlobalTCPStore);
 }
 
+#if defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)
+void BindNCCLConfig(py::module *m) {
+  py::class_<phi::distributed::NCCLConfig,
+             std::shared_ptr<phi::distributed::NCCLConfig>>(*m, "NCCLConfig")
+      .def_static("create",
+                  &phi::distributed::NCCLConfig::CreateNCCLConfig,
+                  py::arg("commName") = "",
+                  py::arg("ll_buffsize") = -1,
+                  py::arg("ll128_buffsize") = -1,
+                  py::arg("simple_buffsize") = -1,
+                  py::arg("buffsize_align") = -1,
+                  py::arg("nchannels") = -1,
+                  py::arg("algoStr") = "",
+                  py::arg("protoStr") = "",
+                  py::call_guard<py::gil_scoped_release>());
+}
+#endif
 }  // namespace paddle::pybind

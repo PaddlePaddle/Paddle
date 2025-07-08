@@ -18,7 +18,7 @@ import numpy as np
 from op_test import OpTest
 
 
-class TestTransposeMKLDNN(OpTest):
+class TestTransposeONEDNN(OpTest):
     def setUp(self):
         self.init_op_type()
         self.initTestCase()
@@ -53,43 +53,43 @@ class TestTransposeMKLDNN(OpTest):
         self.axis = (1, 0)
 
 
-class TestCase0MKLDNN(TestTransposeMKLDNN):
+class TestCase0ONEDNN(TestTransposeONEDNN):
     def initTestCase(self):
         self.shape = (100,)
         self.axis = (0,)
 
 
-class TestCase1a(TestTransposeMKLDNN):
+class TestCase1a(TestTransposeONEDNN):
     def initTestCase(self):
         self.shape = (3, 4, 10)
         self.axis = (0, 2, 1)
 
 
-class TestCase1b(TestTransposeMKLDNN):
+class TestCase1b(TestTransposeONEDNN):
     def initTestCase(self):
         self.shape = (3, 4, 10)
         self.axis = (2, 1, 0)
 
 
-class TestCase2(TestTransposeMKLDNN):
+class TestCase2(TestTransposeONEDNN):
     def initTestCase(self):
         self.shape = (2, 3, 4, 5)
         self.axis = (0, 2, 3, 1)
 
 
-class TestCase3(TestTransposeMKLDNN):
+class TestCase3(TestTransposeONEDNN):
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6)
         self.axis = (4, 2, 3, 1, 0)
 
 
-class TestCase4(TestTransposeMKLDNN):
+class TestCase4(TestTransposeONEDNN):
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6, 1)
         self.axis = (4, 2, 3, 1, 0, 5)
 
 
-class TestCase_ZeroDim(TestTransposeMKLDNN):
+class TestCase_ZeroDim(TestTransposeONEDNN):
     def initTestCase(self):
         self.shape = ()
         self.axis = ()

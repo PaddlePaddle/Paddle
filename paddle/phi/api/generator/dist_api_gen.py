@@ -87,8 +87,12 @@ NCCL_COMMCONTEXT_INIT = """
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_XPU_BKCL)
   const auto & comm_context_manager_ = phi::distributed::CommContextManager::GetInstance();
   if (nranks > 1 && !comm_context_manager_.Has(std::to_string(ring_id))) {{
-    auto store = phi::distributed::CreateOrGetGlobalTCPStore();
-    CREATE_COMM_CONTEXT(store, std::to_string(ring_id), rank, nranks);
+    std::string store_key;
+    store_key = "nccl_ids/" + std::to_string(ring_id) + "/0";
+    if (!comm_context_manager_.Has(store_key)) {{
+        auto store = phi::distributed::CreateOrGetGlobalTCPStore();
+        CREATE_COMM_CONTEXT(store, std::to_string(ring_id), rank, nranks);
+    }}
   }}
 #elif defined(PADDLE_WITH_CUSTOM_DEVICE)
   const auto & comm_context_manager_ = phi::distributed::CommContextManager::GetInstance();
@@ -103,9 +107,16 @@ SET_NCCL_COMMCONTEXT = """
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CUSTOM_DEVICE)
   const auto & comm_context_manager = phi::distributed::CommContextManager::GetInstance();
   COMM_CONTEXT* comm_context = nullptr;
-  if (comm_context_manager.Has(std::to_string(ring_id))) {{
-    comm_context = static_cast<COMM_CONTEXT*>(
+  std::string store_key;
+  store_key = "nccl_ids/" + std::to_string(ring_id) + "/0";
+  if (comm_context_manager.Has(std::to_string(ring_id))||comm_context_manager.Has(store_key)) {{
+    if (comm_context_manager.Has(std::to_string(ring_id))) {{
+        comm_context = static_cast<COMM_CONTEXT*>(
           comm_context_manager.Get(std::to_string(ring_id)));
+    }} else {{
+        comm_context = static_cast<COMM_CONTEXT*>(
+          comm_context_manager.Get(store_key));
+    }}
     PADDLE_ENFORCE_NE(
         comm_context,
         nullptr,
@@ -114,17 +125,14 @@ SET_NCCL_COMMCONTEXT = """
             "has ring_id(%d) attr.",
             std::to_string(ring_id)));
     #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_XPU_BKCL)
-        if (!comm_context->GetDevContext() || !comm_context->GetDevContext()->GetCommContext())
-        {{
-            auto kernel_res = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-            "{}", {{kernel_backend, kernel_layout, kernel_data_type}}, true);
-            if (FLAGS_low_precision_op_list) {{
-            phi::KernelFactory::Instance().AddToLowPrecisionKernelList("{}", kernel_data_type);
-            }}
-            Backend act_kernel_backend = kernel_res.has_fallback_cpu ? Backend::CPU : kernel_backend;
-            auto* dev_context = GetDeviceContextByBackend(act_kernel_backend);
-            dev_context->SetCommContext(comm_context);
+        auto kernel_res = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+        "{}", {{kernel_backend, kernel_layout, kernel_data_type}}, true);
+        if (FLAGS_low_precision_op_list) {{
+        phi::KernelFactory::Instance().AddToLowPrecisionKernelList("{}", kernel_data_type);
         }}
+        Backend act_kernel_backend = kernel_res.has_fallback_cpu ? Backend::CPU : kernel_backend;
+        auto* dev_context = GetDeviceContextByBackend(act_kernel_backend);
+        dev_context->SetCommContext(comm_context);
     #elif defined(PADDLE_WITH_CUSTOM_DEVICE)
         auto kernel_res = phi::KernelFactory::Instance().SelectKernelOrThrowError(
             "{}", {{kernel_backend, kernel_layout, kernel_data_type}}, true);
@@ -563,20 +571,47 @@ CALCULATE_LOCAL_SHAPE_TEMPLATE = """
       auto out_shape = {out_name}->dims();
       std::vector<{dtype}> local_shape;
       const auto& out_dist_attr = {out_dist_attr};
+      const auto& mesh_shape = out_dist_attr.process_mesh().shape();
       for (int i = 0; i < out_shape.size(); i++) {{
-        if (out_dist_attr.dims_mapping()[i] >= 0) {{
+        const auto& dims = out_dist_attr.multi_dims_mapping()[i];
+        if (dims.size() > 0) {{
           {dtype} shape_i = out_shape[i];
-          int64_t dim = out_dist_attr.dims_mapping()[i];
-          int64_t mesh_dim = out_dist_attr.process_mesh().shape()[dim];
+          int64_t num_shard = 1;
+          for (auto dim : dims) {{
+            num_shard *= mesh_shape[dim];
+          }}
+          // TODO: Support aliquant condition.
+          PADDLE_ENFORCE_EQ(shape_i % num_shard, 0,
+                common::errors::InvalidArgument(
+                    "{op_name} only support local shape dim is divisible "
+                    "by the mesh dim, however local_shape[%lld] is %lld "
+                    "and shard mesh dims is %lld.", i, shape_i, num_shard));
+          local_shape.push_back(shape_i / num_shard);
+        }} else {{
+          local_shape.push_back(out_shape[i]);
+        }}
+      }}
+"""
+
+CALCULATE_LOCAL_SHAPE_KERNEL_TEMPLATE = """
+
+      auto out_grad_shape = out_grad.dims();
+      std::vector<{dtype}> local_kernel_shape;
+      const auto& out_grad_dist_attr = {out_grad_dist_attr};
+      for (int i = 0; i < out_grad_shape.size(); i++) {{
+        if (out_grad_dist_attr.dims_mapping()[i] >= 0) {{
+          {dtype} shape_i = out_grad_shape[i];
+          int64_t dim = out_grad_dist_attr.dims_mapping()[i];
+          int64_t mesh_dim = out_grad_dist_attr.process_mesh().shape()[dim];
           // TODO: Support aliquant condition.
           PADDLE_ENFORCE(shape_i % mesh_dim == 0,
                 common::errors::InvalidArgument(
                     "{op_name} only support local shape dim is divisible "
-                    "by the mesh dim, however local_shape[%lld] is %lld "
+                    "by the mesh dim, however local_kernel_shape[%lld] is %lld "
                     "and shard mesh dims is %lld.", i, shape_i, mesh_dim));
-          local_shape.push_back(shape_i / mesh_dim);
+          local_kernel_shape.push_back(shape_i / mesh_dim);
         }} else {{
-          local_shape.push_back(out_shape[i]);
+          local_kernel_shape.push_back(out_grad_shape[i]);
         }}
       }}
 """
@@ -1755,7 +1790,7 @@ class DistForwardAPI(ForwardAPI):
 
         return output_decl_code + infer_meta_code
 
-    def generate_kernel_call_code(self) -> str:
+    def generate_kernel_call_code(self, is_forward=True) -> str:
         dense_input_trans_map = {
             'const Tensor&': 'const phi::DenseTensor&',
             'const std::vector<Tensor>&': 'const std::vector<const phi::DenseTensor*>&',
@@ -1773,6 +1808,7 @@ class DistForwardAPI(ForwardAPI):
         kernel_args_type_list = ['const phi::DeviceContext&']
 
         attr_names = self.attrs['names']
+        pure_kernel_args = self.kernel['param']
         kernel_args = self.kernel['param']
         if kernel_args is None:
             kernel_args = input_names + attr_names
@@ -1803,7 +1839,14 @@ class DistForwardAPI(ForwardAPI):
                     kernel_args_type_list.append('const phi::IntArray&')
                     # TODO(GhostScreaming): kernel like reshape need calculate local_shape
                     if self.infer_meta['local_shape'] is not None:
-                        arg = 'phi::IntArray(local_shape)'
+                        if is_forward or (
+                            pure_kernel_args is not None
+                            and self.infer_meta['local_shape']
+                            not in pure_kernel_args
+                        ):
+                            arg = 'phi::IntArray(local_shape)'
+                        else:
+                            arg = 'phi::IntArray(local_kernel_shape)'
                     else:
                         arg = 'phi::IntArray(' + arg + ')'
                 elif 'vector<phi::Scalar>' in self.attrs['attr_info'][arg][0]:
@@ -1818,9 +1861,15 @@ class DistForwardAPI(ForwardAPI):
                         self.attrs['attr_info'][arg][0]
                     )
                     # calculate local_shape for expand_as
-                    # TODO(ooooo): bwd reuse this function to kernel, but actually the local_shape isn't same meaning.
                     if self.infer_meta['local_shape'] is not None:
-                        arg = "local_shape"
+                        if is_forward or (
+                            pure_kernel_args is not None
+                            and self.infer_meta['local_shape']
+                            not in pure_kernel_args
+                        ):
+                            arg = 'local_shape'
+                        else:
+                            arg = 'local_kernel_shape'
                 input_args.append(arg)
             elif isinstance(arg, bool):
                 input_args.append(str(arg).lower())

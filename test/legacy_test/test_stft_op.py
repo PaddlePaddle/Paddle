@@ -31,11 +31,11 @@ def frame_from_librosa(x, frame_length, hop_length, axis=-1):
     strides = np.asarray(x.strides)
 
     if axis == -1:
-        shape = list(x.shape)[:-1] + [frame_length, n_frames]
+        shape = [*list(x.shape)[:-1], frame_length, n_frames]
         strides = [*strides, hop_length * x.itemsize]
 
     elif axis == 0:
-        shape = [n_frames, frame_length] + list(x.shape)[1:]
+        shape = [n_frames, frame_length, *list(x.shape)[1:]]
         strides = [hop_length * x.itemsize, *strides]
 
     else:

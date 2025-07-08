@@ -17,6 +17,7 @@
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/gpu/depthwise_conv.h"
 
@@ -33,6 +34,11 @@ void DepthwiseConvKernel(const Context& dev_ctx,
                          const std::vector<int>& dilations_t,
                          const std::string& data_format,
                          DenseTensor* out) {
+  if (input.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    return;
+  }
   DenseTensor* output = out;
   dev_ctx.template Alloc<T>(output);
 

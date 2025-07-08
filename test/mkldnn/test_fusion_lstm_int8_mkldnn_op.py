@@ -19,7 +19,7 @@ from op_test import OpTest
 from test_fusion_lstm_op import ACTIVATION, fusion_lstm
 
 
-class TestFusionLSTMINT8MKLDNNOp(OpTest):
+class TestFusionLSTMINT8ONEDNNOp(OpTest):
     def set_confs(self):
         pass
 
@@ -149,17 +149,17 @@ class TestFusionLSTMINT8MKLDNNOp(OpTest):
             )
 
 
-class TestFusionLSTMINT8MKLDNNOp2(TestFusionLSTMINT8MKLDNNOp):
+class TestFusionLSTMINT8ONEDNNOp2(TestFusionLSTMINT8ONEDNNOp):
     def set_confs(self):
         self.force_fp32_output = True
 
 
-class TestFusionLSTMINT8MKLDNNOp4(TestFusionLSTMINT8MKLDNNOp):
+class TestFusionLSTMINT8ONEDNNOp4(TestFusionLSTMINT8ONEDNNOp):
     def set_confs(self):
         self.is_reverse = True
 
 
-class TestFusionLSTMINT8MKLDNNOp5(TestFusionLSTMINT8MKLDNNOp):
+class TestFusionLSTMINT8ONEDNNOp5(TestFusionLSTMINT8ONEDNNOp):
     def set_confs(self):
         self.has_initial_state = True
 

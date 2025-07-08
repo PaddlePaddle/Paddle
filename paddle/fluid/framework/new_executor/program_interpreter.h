@@ -120,6 +120,12 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   std::tuple<double, double> InterpreterRunTime() override;
 
+  void SetCUDAGraphState(uint8_t cuda_graph_state) override {
+    PADDLE_THROW(common::errors::Unavailable(
+        "ProgramInterpreter does not support SetCUDAGraphState, "
+        "please use PirInterpreter instead."));
+  }
+
   // Only for debug
   Variable* DebugVar(const std::string& name) const override;
 

@@ -231,9 +231,11 @@ class TestFitALineBase(unittest.TestCase):
         prog = base.Program()
         startup_prog = base.Program()
         scope = base.core.Scope()
-        with base.scope_guard(scope):
-            with base.program_guard(prog, startup_prog):
-                yield
+        with (
+            base.scope_guard(scope),
+            base.program_guard(prog, startup_prog),
+        ):
+            yield
 
 
 class TestFitALine(TestFitALineBase):

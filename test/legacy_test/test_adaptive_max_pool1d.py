@@ -12,16 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
-from op_test import check_out_dtype, paddle_static_guard
+from op_test import check_out_dtype, get_places, paddle_static_guard
 
 import paddle
 import paddle.nn.functional as F
 from paddle import base
-from paddle.base import core
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -74,15 +72,7 @@ def max_pool1D_forward_naive(
 class TestPool1D_API(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def check_adaptive_max_dygraph_results(self, place):
         with base.dygraph.guard(place):
@@ -102,29 +92,31 @@ class TestPool1D_API(unittest.TestCase):
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_adaptive_max_static_results(self, place):
-        with paddle_static_guard():
-            with base.program_guard(base.Program(), base.Program()):
-                input = paddle.static.data(
-                    name="input", shape=[2, 3, 32], dtype="float32"
-                )
-                result = F.adaptive_max_pool1d(input, output_size=16)
+        with (
+            paddle_static_guard(),
+            base.program_guard(base.Program(), base.Program()),
+        ):
+            input = paddle.static.data(
+                name="input", shape=[2, 3, 32], dtype="float32"
+            )
+            result = F.adaptive_max_pool1d(input, output_size=16)
 
-                input_np = np.random.random([2, 3, 32]).astype("float32")
-                result_np = max_pool1D_forward_naive(
-                    input_np,
-                    ksize=[16],
-                    strides=[2],
-                    paddings=[0],
-                    adaptive=True,
-                )
+            input_np = np.random.random([2, 3, 32]).astype("float32")
+            result_np = max_pool1D_forward_naive(
+                input_np,
+                ksize=[16],
+                strides=[2],
+                paddings=[0],
+                adaptive=True,
+            )
 
-                exe = base.Executor(place)
-                fetches = exe.run(
-                    base.default_main_program(),
-                    feed={"input": input_np},
-                    fetch_list=[result],
-                )
-                np.testing.assert_allclose(fetches[0], result_np, rtol=1e-05)
+            exe = base.Executor(place)
+            fetches = exe.run(
+                base.default_main_program(),
+                feed={"input": input_np},
+                fetch_list=[result],
+            )
+            np.testing.assert_allclose(fetches[0], result_np, rtol=1e-05)
 
     def test_adaptive_max_pool1d(self):
         for place in self.places:
@@ -147,15 +139,7 @@ class TestOutDtype(unittest.TestCase):
 class TestPool1D_API_ZeroSize(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def check_adaptive_max_dygraph_results(self, place):
         with base.dygraph.guard(place):
@@ -175,29 +159,31 @@ class TestPool1D_API_ZeroSize(unittest.TestCase):
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_adaptive_max_static_results(self, place):
-        with paddle_static_guard():
-            with base.program_guard(base.Program(), base.Program()):
-                input = paddle.static.data(
-                    name="input", shape=[0, 3, 32], dtype="float32"
-                )
-                result = F.adaptive_max_pool1d(input, output_size=16)
+        with (
+            paddle_static_guard(),
+            base.program_guard(base.Program(), base.Program()),
+        ):
+            input = paddle.static.data(
+                name="input", shape=[0, 3, 32], dtype="float32"
+            )
+            result = F.adaptive_max_pool1d(input, output_size=16)
 
-                input_np = np.random.random([0, 3, 32]).astype("float32")
-                result_np = max_pool1D_forward_naive(
-                    input_np,
-                    ksize=[16],
-                    strides=[2],
-                    paddings=[0],
-                    adaptive=True,
-                )
+            input_np = np.random.random([0, 3, 32]).astype("float32")
+            result_np = max_pool1D_forward_naive(
+                input_np,
+                ksize=[16],
+                strides=[2],
+                paddings=[0],
+                adaptive=True,
+            )
 
-                exe = base.Executor(place)
-                fetches = exe.run(
-                    base.default_main_program(),
-                    feed={"input": input_np},
-                    fetch_list=[result],
-                )
-                np.testing.assert_allclose(fetches[0], result_np, rtol=1e-05)
+            exe = base.Executor(place)
+            fetches = exe.run(
+                base.default_main_program(),
+                feed={"input": input_np},
+                fetch_list=[result],
+            )
+            np.testing.assert_allclose(fetches[0], result_np, rtol=1e-05)
 
     def check_grad(self, place):
         with base.dygraph.guard(place):

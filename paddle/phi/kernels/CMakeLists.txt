@@ -64,6 +64,8 @@ if(((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
     "legacy/gpu/expand_modality_expert_id_kernel.cu"
     "legacy/gpu/moe_combine_kernel.cu"
     "legacy/gpu/moe_combine_grad_kernel.cu"
+    "legacy/gpu/moe_combine_no_weight_kernel.cu"
+    "legacy/gpu/moe_combine_no_weight_grad_kernel.cu"
     "legacy/gpu/cal_aux_loss_kernel.cu"
     "legacy/gpu/cal_aux_loss_grad_kernel.cu"
     "legacy/gpu/ext_build_src_rank_and_local_expert_id_kernel.cu"
@@ -71,10 +73,12 @@ if(((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
     "legacy/gpu/moe_gate_dispatch_grad_kernel.cu"
     "legacy/gpu/int_bincount.cu"
     "legacy/gpu/layer_norm_cuda_kernel.cu"
+    "legacy/gpu/fp8_gemm_blockwise_kernel.cu"
+    "legacy/gpu/fp8_quant_blockwise_kernel.cu"
     "fusion/gpu/fused_act_dequant_kernel.cu"
     "fusion/gpu/fused_stack_transpose_quant_kernel.cu"
-    "fusion/gpu/fused_stack_quant_kernel.cu"
     "fusion/gpu/fused_transpose_split_quant_kernel.cu"
+    "fusion/gpu/fused_transpose_wlch_split_quant_kernel.cu"
     "fusion/gpu/fused_swiglu_weighted_bwd_kernel.cu"
     "fusion/gpu/fused_weighted_swiglu_act_quant_kernel.cu")
 endif()
@@ -89,7 +93,7 @@ foreach(arch ${NVCC_ARCH_BIN})
 endforeach()
 
 if(WITH_GPU
-   AND NOT has_arch_ge80
+   AND (NOT has_arch_ge80 OR (CUDA_VERSION VERSION_LESS 12.0))
    OR WIN32
    OR APPLE
    OR WITH_ROCM) # need support BF16
@@ -377,8 +381,15 @@ if(WITH_XPU)
 
   # The kernel related to xpufft must have WITH_XPU_FFT enabled.
   if(NOT WITH_XPU_FFT)
-    list(REMOVE_ITEM kernel_xpu "xpu/complex_kernel.cc"
-         "xpu/complex_grad_kernel.cc")
+    list(
+      REMOVE_ITEM
+      kernel_xpu
+      "xpu/complex_kernel.cc"
+      "xpu/complex_grad_kernel.cc"
+      "xpu/fft_kernel.cc"
+      "xpu/fft_grad_kernel.cc"
+      "xpu/as_real_kernel.cc"
+      "xpu/as_complex_kernel.cc")
   endif()
 
   collect_srcs(kernels_srcs SRCS ${kernel_xpu})
