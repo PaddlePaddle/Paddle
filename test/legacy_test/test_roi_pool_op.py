@@ -21,6 +21,7 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
+from paddle.base import core
 
 
 def _round(x):
@@ -202,7 +203,7 @@ class TestROIPoolInLodOp(TestROIPoolOp):
 class TestROIPoolInLodOp_ZeroSize(TestROIPoolOp):
     def init_test_case(self):
         self.batch_size = 3
-        self.channels = 3
+        self.channels = 0
         self.height = 6
         self.width = 4
 
@@ -268,6 +269,20 @@ class TestROIPoolInLodOp_ZeroSize(TestROIPoolOp):
         }
 
         self.outputs = {'Out': self.outs, 'Argmax': self.argmaxes}
+
+    def test_check_output(self):
+        self.check_output_with_place(
+            core.CPUPlace(),
+        )
+        if paddle.is_compiled_with_cuda():
+            self.check_output_with_place(
+                core.CUDAPlace(0),
+            )
+
+    def test_check_grad(self):
+        self.check_grad_with_place(core.CPUPlace(), ['X'], 'Out')
+        if paddle.is_compiled_with_cuda():
+            self.check_grad_with_place(core.CUDAPlace(0), ['X'], 'Out')
 
 
 if __name__ == '__main__':
