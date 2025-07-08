@@ -253,7 +253,6 @@ class TestMultiLabelMarginLoss(unittest.TestCase):
                     reduction=reduction,
                 )
                 np.testing.assert_allclose(static_result, expected, rtol=1e-5)
-                np.testing.assert_allclose(static_result, dy_result, rtol=1e-5)
                 np.testing.assert_allclose(dy_result, expected, rtol=1e-5)
 
                 static_functional = test_static(
@@ -272,9 +271,6 @@ class TestMultiLabelMarginLoss(unittest.TestCase):
                 )
                 np.testing.assert_allclose(
                     static_functional, expected, rtol=1e-5
-                )
-                np.testing.assert_allclose(
-                    static_functional, dy_functional, rtol=1e-5
                 )
                 np.testing.assert_allclose(dy_functional, expected, rtol=1e-5)
 
