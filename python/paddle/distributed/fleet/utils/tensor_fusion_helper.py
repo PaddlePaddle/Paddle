@@ -403,17 +403,6 @@ def build_reduce_scatter_buffer(
     )
 
 
-def get_grad_address(param, use_main_grad):
-    addr = None
-    if use_main_grad:
-        if param.main_grad is not None:
-            addr = param.main_grad.data_ptr()
-    else:
-        if (param.grad is not None) and param.grad._is_initialized():
-            addr = param.grad.data_ptr()
-    return addr
-
-
 class FusedCommBuffer:
     def __init__(
         self,
@@ -542,11 +531,27 @@ class FusedCommBuffer:
         if not self._release_grads:
             self._record_addr()
 
+    def _get_grad_address(self, param):
+        addr = None
+        if self.use_main_grad:
+            if param.main_grad is not None:
+                addr = param.main_grad.data_ptr()
+        else:
+            if (param.grad is not None) and param.grad._is_initialized():
+                addr = param.grad.data_ptr()
+
+        if addr is None:
+            return None
+
+        assert self.grad_storage is not None, "grad_storage should not be None"
+        start = self.grad_storage.data_ptr()
+        end = start + self.buffer_size
+        assert start <= addr and addr < end, self._noninplace_err_msg(param)
+        return addr - start
+
     def _record_addr(self):
         for param in self._params:
-            self._grads_to_addr[param.name] = get_grad_address(
-                param, self.use_main_grad
-            )
+            self._grads_to_addr[param.name] = self._get_grad_address(param)
 
     def _clear_param_storage(self):
         self.param_storage._clear_to_zero_allocation()
@@ -630,9 +635,7 @@ class FusedCommBuffer:
                 param._copy_gradient_from(tmp_var)
 
         # record address for the following `acc_steps - 1` steps.
-        self._grads_to_addr[param.name] = get_grad_address(
-            param, self.use_main_grad
-        )
+        self._grads_to_addr[param.name] = self._get_grad_address(param)
 
     def _reset_params_checked_in(self):
         self._task = None
@@ -646,16 +649,19 @@ class FusedCommBuffer:
             and len(self._params_step_dict) == 0
         )
 
+    def _noninplace_err_msg(self, param):
+        return f"The address of the grad/main_grad of param {param.name} has been changed during training, which is not allowed for dp/sharding overlap with pp. This may be caused by some non-inplace operations on the grad/main_grad. Here are some examples: 1. The grad/main_grad of the param is changed by other operations, such as: clear_grad; 2. Using non-inplace operations on the grad/main_grad, such as: add, sub, mul, div, etc."
+
     def add_grad(self, param, use_comm=True, param_grad_is_none=False):
         assert param.name in self._params_step_dict
 
         if not self._release_grads or self._params_step_dict[param.name] > 0:
-            current_ptr = get_grad_address(param, self.use_main_grad)
+            current_ptr = self._get_grad_address(param)
             if (
                 self._grads_to_addr[param.name] is not None
                 and self._grads_to_addr[param.name] != current_ptr
             ):
-                error_message = f"The address of the grad/main_grad of param {param.name} has been changed during training, which is not allowed for dp/sharding overlap with pp. This may be caused by some non-inplace operations on the grad/main_grad. Here are some examples: 1. The grad/main_grad of the param is changed by other operations, such as: clear_grad; 2. Using non-inplace operations on the grad/main_grad, such as: add, sub, mul, div, etc."
+                error_message = self._noninplace_err_msg(param)
                 logger.error(error_message)
                 raise ValueError(error_message)
         else:
