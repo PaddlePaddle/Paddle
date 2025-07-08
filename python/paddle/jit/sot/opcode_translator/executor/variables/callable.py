@@ -207,11 +207,8 @@ class FunctionVariable(CallableVariable):
         return self.value
 
     def get_code(self) -> VariableBase:
-        value = self.value
-        if hasattr(value, "_original_func__"):
-            value = value._original_func__
         code_obj_var = VariableFactory.from_value(
-            value.__code__, self.graph, GetAttrTracker(self, "__code__")
+            self.value.__code__, self.graph, GetAttrTracker(self, "__code__")
         )
         return code_obj_var
 

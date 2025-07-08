@@ -30,7 +30,6 @@ from paddle.framework import core
 from paddle.jit.dy2static.utils import (
     dataclass_as_dict,
     dataclass_from_dict,
-    is_contextmanager_class,
     is_plain_dataclass_type,
     parameters_persistent_mode_is_enabled,
 )
@@ -133,8 +132,6 @@ from ..tracker import (
 from .base import VariableBase, VariableFactory
 
 if TYPE_CHECKING:
-    from contextlib import AbstractContextManager
-
     import numpy.typing as npt
     from typing_extensions import TypeAlias
 
@@ -2573,33 +2570,5 @@ class DataClassInstanceVariable(VariableBase):
                 tracker=tracker,
             )
             class_var.tracker = GetAttrTracker(var, "__class__")
-            return var
-        return None
-
-
-class ContextManagerVariable(VariableBase):
-    def __init__(
-        self,
-        value: AbstractContextManager,
-        graph: FunctionGraph,
-        tracker: Tracker,
-    ):
-        super().__init__(graph=graph, tracker=tracker)
-        self.value = value
-
-    def get_py_type(self):
-        return self.value.__class__
-
-    def get_py_value(self, allow_tensor=False):
-        return self.value
-
-    @VariableFactory.register_from_value()
-    def from_value(value: object, graph: FunctionGraph, tracker: Tracker):
-        if is_contextmanager_class(type(value)):
-            var = ContextManagerVariable(
-                value,
-                graph=graph,
-                tracker=tracker,
-            )
             return var
         return None
