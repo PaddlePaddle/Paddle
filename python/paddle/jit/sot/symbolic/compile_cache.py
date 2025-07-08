@@ -211,7 +211,7 @@ class FallbackWrapper:
 
     def __call__(self, *args, **kwargs):
         @event_register(f"FallbackWrapper: {self.SIR.name}")
-        def call_fn():
+        def call_fn(*args, **kwargs):
             if StepInfoManager().need_back_trace:
                 trace_back_frames()
 
@@ -257,7 +257,7 @@ class FallbackWrapper:
             self.is_first_call = False
             return outputs
 
-        return call_fn()
+        return call_fn(*args, **kwargs)
 
 
 class CompileSIRCache(Cache, metaclass=Singleton):
