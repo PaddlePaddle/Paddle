@@ -29,7 +29,7 @@ void PadGradKernel(const Context& dev_ctx,
   std::vector<int64_t> pad_left, pad_right;
   std::vector<int64_t> out_shape = common::vectorize<int64_t>(d_out.dims());
   dev_ctx.template Alloc<T>(d_x);
-  if (x.numel() == 0) return;
+  if (d_x && d_x->numel() == 0) return;
 
   for (size_t i = 0; i < paddings.size() / 2; ++i) {
     pad_left.push_back(-paddings[i * 2]);
