@@ -143,7 +143,7 @@ jobs:
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/paddle \
             -e AGILE_PULL_ID \
-            -e AGILE_REVISION
+            -e AGILE_REVISION \
             -e BUILD_DOC \
             -e UPLOAD_DOC \
             -e BOSBUCKET \
