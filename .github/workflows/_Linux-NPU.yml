@@ -22,7 +22,7 @@ env:
 
 jobs:
   check-bypass:
-    name: Check bypass for NPU
+    name: Check bypass
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: 'npu'
