@@ -487,17 +487,19 @@ class TestSlogDeterminantAPIComplex(unittest.TestCase):
 
     def test_api_static(self):
         for place in self.places:
-            with static_guard():
-                with paddle.static.program_guard(paddle.static.Program()):
-                    x = paddle.static.data('X', self.shape, self.dtype)
-                    x.stop_gradient = False
-                    sign, logabsdet = paddle.linalg.slogdet(x)
-                    x_grad = paddle.static.gradients(logabsdet, x)
-                    exe = paddle.static.Executor(place)
-                    res = exe.run(
-                        feed={'X': self.x},
-                        fetch_list=[sign, logabsdet, x_grad[0]],
-                    )
+            with (
+                static_guard(),
+                paddle.static.program_guard(paddle.static.Program()),
+            ):
+                x = paddle.static.data('X', self.shape, self.dtype)
+                x.stop_gradient = False
+                sign, logabsdet = paddle.linalg.slogdet(x)
+                x_grad = paddle.static.gradients(logabsdet, x)
+                exe = paddle.static.Executor(place)
+                res = exe.run(
+                    feed={'X': self.x},
+                    fetch_list=[sign, logabsdet, x_grad[0]],
+                )
 
             sign_ref = np.array(np.linalg.slogdet(self.x)[0])
             logabsdet_ref = np.array(np.linalg.slogdet(self.x)[1])
