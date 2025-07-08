@@ -40,6 +40,15 @@ jobs:
       CTEST_PARALLEL_LEVEL: 1
       GENERATOR: "Ninja"
       GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      MSVC_STATIC_CRT: "OFF"
+      WITH_MKL: "ON"
+      WITH_GPU: "ON"
+      WITH_AVX: "ON"
+      ON_INFER: "ON"
+      WITH_TENSORRT: "ON"
+      WITH_INFERENCE_API_TEST: "OFF"
+      WIN_UNITTEST_LEVEL: 0
+      CUDA_ARCH_NAME: "Auto"
     steps:
       - name: Download Paddle and clean env
         working-directory: ..
@@ -58,16 +67,6 @@ jobs:
           call %ci_scripts%\config_env.bat
 
       - name: Build paddle
-        env:
-          WITH_MKL: "ON"
-          WITH_GPU: "ON"
-          WITH_AVX: "ON"
-          MSVC_STATIC_CRT: "OFF"
-          ON_INFER: "ON"
-          WITH_TENSORRT: "ON"
-          WITH_INFERENCE_API_TEST: "OFF"
-          WIN_UNITTEST_LEVEL: 0
-          CUDA_ARCH_NAME: "Auto"
         run: |
           python -m pip install bce-python-sdk==0.8.74
           call %ACTION_DIR%\proxy.bat
