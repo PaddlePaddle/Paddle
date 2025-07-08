@@ -61,8 +61,8 @@ if not defined vcvars64_dir (
     set "vcvars64_dir=C:\Program Files (x86^)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
     echo vcvars64_dir=!vcvars64_dir!>> %GITHUB_ENV%
 )
-echo %vcvars64_dir%
-call "%vcvars64_dir%"
+echo !vcvars64_dir!
+call "!vcvars64_dir!"
 
 
 
