@@ -907,6 +907,7 @@ __global__ void __launch_bounds__(
     if (last_rdma_tail_idx >= 0)
       st_release_cta(const_cast<const int*>(rdma_send_channel_tail + lane_id),
                      last_rdma_tail_idx + 1);
+    __syncwarp();
 
     // Release sequential lock
     lane_id == 0 ? (rdma_send_next_token_idx += 1) : 0;
@@ -943,8 +944,11 @@ __global__ void __launch_bounds__(
         // Read progress
         auto synced_last_issued_tail =
             __shfl_sync(0xffffffff, last_issued_tail, dst_rdma_rank);
-        auto processed_tail = ld_acquire_cta(
-            const_cast<const int*>(rdma_send_channel_tail + dst_rdma_rank));
+        auto processed_tail = __shfl_sync(
+            0xffffffff,
+            ld_acquire_cta(
+                const_cast<const int*>(rdma_send_channel_tail + dst_rdma_rank)),
+            0);
         auto num_tokens_processed = processed_tail - synced_last_issued_tail;
         if (num_tokens_processed != synced_num_tokens_to_send &&
             num_tokens_processed < num_max_rdma_chunked_send_tokens)
@@ -993,6 +997,7 @@ __global__ void __launch_bounds__(
               channel_id,
               dst_rdma_rank == rdma_rank);
         }
+        __syncwarp();
       }
     }
   } else if (warp_role == WarpRole::kRDMAAndNVLForwarder) {

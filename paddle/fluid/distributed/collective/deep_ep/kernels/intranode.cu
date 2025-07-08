@@ -844,9 +844,9 @@ __global__ void __launch_bounds__(kNumThreads, 1)
     const auto num_threads_per_rank = num_send_warps_per_rank * 32;
     const auto send_thread_id = thread_id;
     const auto send_lane_id = send_thread_id % 32;
-    const auto send_rank_id = thread_id / num_threads_per_rank;
-    const auto send_warp_id_in_rank =
-        send_thread_id % num_threads_per_rank / 32;
+    const auto send_warp_id = send_thread_id / 32;
+    const auto send_rank_id = (responsible_channel + send_warp_id) % kNumRanks;
+    const auto send_warp_id_in_rank = send_warp_id / kNumRanks;
 
     // Calculate pointers by the specific layout
     auto ptr = reinterpret_cast<void*>(
@@ -1071,8 +1071,9 @@ __global__ void __launch_bounds__(kNumThreads, 1)
               ld_nc_global(send_head + token_idx * kNumRanks + recv_lane_id);
         }
         auto start_time = clock64();
-        while (channel_tail_idx[recv_lane_id] <= expected_head &&
-               expected_head >= 0) {
+        while (__any_sync(0xffffffff,
+                          channel_tail_idx[recv_lane_id] <= expected_head &&
+                              expected_head >= 0)) {
           // Timeout check
           if (clock64() - start_time > NUM_TIMEOUT_CYCLES) {
             printf(

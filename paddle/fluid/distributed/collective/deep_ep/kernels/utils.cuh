@@ -493,8 +493,12 @@ __forceinline__ __device__ void timeout_check(
     int **task_fifo_ptrs, int head, int rank, int expected, int tag = 0) {
   auto start_time = clock64();
   while (not_finished<kNumRanks>(task_fifo_ptrs[rank] + head, expected)) {
-    if (clock64() - start_time > NUM_TIMEOUT_CYCLES and threadIdx.x == 0) {
-      printf("DeepEP timeout check failed: %d (rank = %d)\n", tag, rank);
+    if (clock64() - start_time > NUM_TIMEOUT_CYCLES and
+        threadIdx.x < kNumRanks) {
+      printf("DeepEP timeout check failed: %d (rank = %d, thread = %d)\n",
+             tag,
+             rank,
+             threadIdx.x);
       trap();
     }
   }
