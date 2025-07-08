@@ -210,6 +210,8 @@ class FallbackWrapper:
         ] += partial_program_layer._compile_time_counter.get_total_time()
 
     def __call__(self, *args, **kwargs):
+        a = 1
+
         @event_register(f"FallbackWrapper: {self.SIR.name}")
         def call_fn(*args, **kwargs):
             if StepInfoManager().need_back_trace:
