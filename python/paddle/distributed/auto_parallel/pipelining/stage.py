@@ -858,11 +858,14 @@ class PipelineStage(_PipelineStageBase):
         input_args (TensorMeta|tuple[TensorMeta, ...]|None): The input arguments for the layer.
         output_args (TensorMeta|tuple[TensorMeta, ...]|None): The output arguments for the layer.
         group (Group, None): The process group for distributed training. If None, default group.
-        shared_param_map (dict[str, dict[str, paddle.Tensor | paddle.distributed.collective.Group]] | None): A description
-            of information for multiple groups of shared parameter pairs. Each entry contains:
+        shared_param_map (dict[str, dict[str, paddle.Tensor | paddle.distributed.collective.Group]] | None): A nested
+            dictionary containing information about multiple groups of shared parameter pairs.
+            Each entry in the dictionary maps a unique identifier to a sub-dictionary. Each entry has following keys:
                 - key: Unique identifier for the shared parameter.
-                    - param: The shared model parameter tensor.
-                    - group: The process group for synchronization operations.
+                    - ori_param (paddle.Tensor): The original parameter before synchronization.
+                    - sync_param (paddle.Tensor): The synchronized parameter after communication.
+                    - ori_mesh (paddle.distributed.collective.Group): The process mesh of the original parameter.
+                    - sync_mesh (paddle.distributed.collective.Group): The process mesh of the synchronized parameter.
     """
 
     def __init__(
@@ -883,6 +886,12 @@ class PipelineStage(_PipelineStageBase):
         self.shared_param_map = (
             shared_param_map if shared_param_map is not None else {}
         )
+
+        # Build shared parameter information for the current rank.
+        self.init_shared_group()
+
+        # Synchronize the initialized shared parameters.
+        self.broadcast_shared_params()
 
         if input_args is None:
             assert output_args is None, (
@@ -936,66 +945,87 @@ class PipelineStage(_PipelineStageBase):
 
         logger.debug(dbg_str)
 
-        # Synchronize the shared parameters.
-        self.broadcast_shared_params()
+    def init_shared_group(self):
+        get_group_from_ranks = {}
+        for key, a_map in self.shared_param_map.items():
+            # Build identical communication groups for each rank within the mesh.
+            assert (
+                "ori_mesh" in a_map and "sync_mesh" in a_map
+            ), "Missing 'ori_mesh' or `sync_mesh` key in `shared_param_map` entry"
+            ori_ranks = a_map["ori_mesh"].process_ids
+            sync_ranks = a_map["sync_mesh"].process_ids
+            assert len(ori_ranks) == len(sync_ranks)
+            assert (
+                ori_ranks != sync_ranks
+            ), "Shared parameters must be on different stage meshes."
+            cur_rank = dist.get_rank()
+            for ori_rank, sync_rank in zip(ori_ranks, sync_ranks):
+                group_ranks = tuple(sorted([ori_rank, sync_rank]))
+                if group_ranks not in get_group_from_ranks:
+                    get_group_from_ranks[group_ranks] = dist.new_group(
+                        ranks=list(group_ranks)
+                    )
+                if cur_rank in group_ranks:
+                    # Record communication group associated with the current rank.
+                    a_map["group"] = get_group_from_ranks[group_ranks]
+                    logger.debug(
+                        f"Build communication group {a_map['group'].name} for shared parameter `{key}` in rank {cur_rank}"
+                    )
+            # Find the shared parameter on the current rank.
+            assert (
+                "ori_param" in a_map and "sync_param" in a_map
+            ), "Missing 'ori_param' or `sync_param` key in `shared_param_map` entry"
+            ori_param = a_map["ori_param"]
+            sync_param = a_map["sync_param"]
+            # Default no shared parameter exists on current rank.
+            cur_param = None
+            if ori_param is not None and ori_param._is_initialized():
+                cur_param = ori_param
+            elif sync_param is not None and sync_param._is_initialized():
+                cur_param = sync_param
+            # Record shared parameter associated with the current rank.
+            a_map["param"] = cur_param
 
     def broadcast_shared_params(self):
         # When initializing the stage, perform broadcast synchronization
         # on the shared parameters.
-        if len(self.shared_param_map) == 0:
-            logger.debug("No shared parameters need to be processed.")
-            return
         for key, a_map in self.shared_param_map.items():
-            assert (
-                "param" in a_map
-            ), "Missing 'param' key in `shared_param_map` entry"
-            assert (
-                "group" in a_map
-            ), "Missing 'group' key in `shared_param_map` entry"
-
-            sync_param = a_map["param"]
+            if "param" not in a_map or "group" not in a_map:
+                continue
+            param = a_map["param"]
+            if param is None or not param._is_initialized():
+                continue
             sync_group = a_map["group"]
-            assert (
-                sync_param is not None and sync_group is not None
-            ), "Shared parameter (param) or synchronization group (group) in shared_param_map is None."
-            group_ranks = sorted(sync_group.ranks)
+            cur_rank = dist.get_rank()
+            assert cur_rank in sync_group.ranks
             logger.debug(
-                "Call `broadcast` for synchronization of shared parameters `%s`",
-                key,
+                f"Call `broadcast` for synchronization of shared parameters `{key}`",
             )
             with paddle.no_grad():
                 paddle.distributed.broadcast(
-                    sync_param._local_value(),
-                    src=group_ranks[0],
+                    param._local_value(),
+                    src=sync_group.ranks[0],
                     group=sync_group,
                 )
 
     def sync_shared_param_grads(self):
         # After the stage scheduling ends, perform allreduce synchronization
         # on the gradients of shared parameters.
-        if len(self.shared_param_map) == 0:
-            logger.debug("No shared parameters need to be processed.")
-            return
         for key, a_map in self.shared_param_map.items():
-            assert (
-                "param" in a_map
-            ), "Missing 'param' key in `shared_param_map` entry"
-            assert (
-                "group" in a_map
-            ), "Missing 'group' key in `shared_param_map` entry"
-
-            sync_param = a_map["param"]
+            if "param" not in a_map or "group" not in a_map:
+                continue
+            param = a_map["param"]
+            if param is None or not param._is_initialized():
+                continue
             sync_group = a_map["group"]
-            assert (
-                sync_param is not None and sync_group is not None
-            ), "Shared parameter (param) or synchronization group (group) in shared_param_map is None."
+            cur_rank = dist.get_rank()
+            assert cur_rank in sync_group.ranks
             logger.debug(
-                "Call `all_reduce` for gradient synchronization of shared parameters `%s`",
-                key,
+                f"Call `all_reduce` for gradient synchronization of shared parameters `{key}`",
             )
             with paddle.no_grad():
                 paddle.distributed.all_reduce(
-                    sync_param.grad._local_value(),
+                    param.grad._local_value(),
                     op=paddle.distributed.ReduceOp.SUM,
                     group=sync_group,
                 )

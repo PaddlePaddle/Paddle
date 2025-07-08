@@ -151,46 +151,23 @@ def _get_param_from_name(param_name, model):
     return None
 
 
-def _build_current_sync_commm_group(ranks_1, ranks_2, get_group_from_ranks):
-    cur_rank = paddle.distributed.get_rank()
-    cur_group = None
-    assert len(ranks_1) == len(ranks_2)
-    for idx in range(len(ranks_1)):
-        group_ranks = tuple(sorted([ranks_1[idx], ranks_2[idx]]))
-        if group_ranks not in get_group_from_ranks:
-            new_group = dist.new_group(ranks=list(group_ranks))
-            get_group_from_ranks[group_ranks] = new_group
-        if cur_rank in group_ranks:
-            cur_group = get_group_from_ranks[group_ranks]
-    return cur_group
-
-
 def build_shared_param_map(shared_params_names, model):
+    # Find the two shared parameters and their process meshes based on parameter names.
     shared_mp = {}
-    get_group_from_ranks = {}
-    cur_rank = paddle.distributed.get_rank()
     for key, pair in shared_params_names.items():
         assert len(pair) == 2
         ori_name = pair[0]
         sync_name = pair[1]
         ori_param = _get_param_from_name(ori_name, model)
         sync_param = _get_param_from_name(sync_name, model)
-        assert ori_param is not None and sync_param is not None
-        ori_process_ids = ori_param.process_mesh.process_ids
-        sync_process_ids = sync_param.process_mesh.process_ids
-        cur_group = _build_current_sync_commm_group(
-            ori_process_ids, sync_process_ids, get_group_from_ranks
-        )
-        cur_param = None
-        if cur_rank in ori_process_ids:
-            cur_param = ori_param
-        elif cur_rank in sync_process_ids:
-            cur_param = sync_param
-        if cur_param is not None and cur_group is not None:
-            shared_mp[key] = {
-                "param": cur_param,
-                "group": cur_group,
-            }
+        ori_mesh = ori_param.process_mesh
+        sync_mesh = sync_param.process_mesh
+        shared_mp[key] = {
+            "ori_param": ori_param,
+            "sync_param": sync_param,
+            "ori_mesh": ori_mesh,
+            "sync_mesh": sync_mesh,
+        }
     return shared_mp
 
 
