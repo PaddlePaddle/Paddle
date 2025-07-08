@@ -77,7 +77,7 @@ class TestDataclassBasic(TestCaseBase):
 
     def test_dtype_reconstruct_with_multi_inheri(self):
         x = paddle.to_tensor(1)
-        self.assert_results(return_dataclass_with_multi_inheri, x, "nyapu", 1)
+        self.assert_results(return_dataclass_with_multi_inherit, x, "nyapu", 1)
 
 
 @dataclass
