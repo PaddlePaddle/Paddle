@@ -135,7 +135,6 @@ ENV_SOT_ENABLE_GUARD_TREE = BooleanEnvironmentVariable(
     "SOT_ENABLE_GUARD_TREE",
     False,
 )
-ENV_SOT_EVENT_LEVEL = IntegerEnvironmentVariable("SOT_EVENT_LEVEL", 0)
 ENV_ENABLE_SOT_STEP_PROFILER = BooleanEnvironmentVariable(
     "ENABLE_SOT_STEP_PROFILER", False
 )
