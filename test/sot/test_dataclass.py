@@ -62,7 +62,7 @@ def return_dataclass_with_post_init(x):
     return DataTensorWithPostInit(x)
 
 
-def return_dataclass_with_multi_inheri(x, place="gpu", idx=-1):
+def return_dataclass_with_multi_inherit(x, place="gpu", idx=-1):
     return MultiInheriDataTensorWithIdx(x, place, idx)
 
 
