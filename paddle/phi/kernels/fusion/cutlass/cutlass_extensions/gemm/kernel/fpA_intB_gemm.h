@@ -164,12 +164,16 @@ struct GemmFpAIntB {
                                       ThreadblockShape,
                                       ElementA,
                                       ElementB,
-                                      ElementC> {
+                                      ElementC,
+                                      LayoutA,
+                                      LayoutB> {
     using ParamsBase = UniversalParamsBase<ThreadblockSwizzle,
                                            ThreadblockShape,
                                            ElementA,
                                            ElementB,
-                                           ElementC>;
+                                           ElementC,
+                                           LayoutA,
+                                           LayoutB>;
 
     typename Mma::IteratorA::Params params_A;
     typename Mma::IteratorB::Params params_B;

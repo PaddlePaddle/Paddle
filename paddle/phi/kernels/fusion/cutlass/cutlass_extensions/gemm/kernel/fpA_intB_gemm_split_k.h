@@ -39,6 +39,8 @@ limitations under the License. */
 
 #include "cutlass/arch/arch.h"
 #include "cutlass/gemm/gemm.h"
+#include "cutlass/gemm/threadblock/threadblock_swizzle.h"
+#include "cutlass/gemm/threadblock/threadblock_swizzle_streamk.h"
 #include "cutlass/matrix_coord.h"
 #include "cutlass/semaphore.h"
 
@@ -260,16 +262,32 @@ struct GemmFpAIntBSplitK {
                           : fast_min(args.avail_sms, device_sms);
 
       // Initialize the block mapping structure
+      // block_mapping = ThreadblockSwizzle(
+      //     typename ThreadblockSwizzle::template KernelTraits<
+      //         GemmFpAIntBSplitK>(),
+      //     args.mode,
+      //     args.problem_size,
+      //     {ThreadblockShape::kM, ThreadblockShape::kN, ThreadblockShape::kK},
+      //     args.batch_count,
+      //     sm_occupancy,
+      //     device_sms,
+      //     avail_sms);
+      cutlass::gemm::GemmCoord tile_size(128, 128, 32);
       block_mapping = ThreadblockSwizzle(
-          typename ThreadblockSwizzle::template KernelTraits<
-              GemmFpAIntBSplitK>(),
+          // typename ThreadblockSwizzle::template
+          // KernelTraits<GemmFpAIntBSplitK>(),
           args.mode,
           args.problem_size,
-          {ThreadblockShape::kM, ThreadblockShape::kN, ThreadblockShape::kK},
-          args.batch_count,
+          tile_size,
+          1,
           sm_occupancy,
           device_sms,
-          avail_sms);
+          avail_sms,
+          sizeof(float),  // assuming your matrix elements are float
+          sizeof(float),  // assuming your matrix elements are float
+          sizeof(float),  // assuming your matrix elements are float
+          1               // assuming your warp size is 32
+      );
     }
 
     /// Returns the workspace size (in bytes) needed for these parameters
