@@ -218,7 +218,6 @@ def test_main(
     return hash_value
 
 
-# noinspection PyUnboundLocalVariable
 def test_loop():
     rank = dist.get_rank()
     num_ranks = dist.get_world_size()
