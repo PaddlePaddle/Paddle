@@ -548,13 +548,16 @@ void dispatch(void* packed_recv_x,
               cudaStream_t stream,
               int phases) {
   constexpr int kNumMaxTopK = 9;
-  constexpr int kNumWarpsPerGroup = 10;
-  constexpr int kNumWarpGroups = 3;
+  constexpr int kNumWarpsPerGroup = 32;
+  constexpr int kNumWarpGroups = 1;
   EP_STATIC_ASSERT(kNumMaxTopK + 1 <= kNumWarpGroups * kNumWarpsPerGroup,
                    "Too many top-k selections");
 
   const auto num_warps = kNumWarpGroups * kNumWarpsPerGroup;
-  const auto num_sms = cell_div(num_experts, kNumWarpGroups);
+  const int dev_id = 0;
+  int sm_count;
+  cudaDeviceGetAttribute(&sm_count, cudaDevAttrMultiProcessorCount, dev_id);
+  const auto num_sms = max(sm_count, cell_div(num_experts, kNumWarpGroups));
   EP_HOST_ASSERT(num_topk <= kNumMaxTopK);
 
   // Workspace checks
@@ -870,12 +873,15 @@ void combine(void* combined_x,
              cudaStream_t stream,
              int phases,
              bool zero_copy) {
-  constexpr int kNumWarpsPerGroup = 10;
-  constexpr int kNumWarpGroups = 3;
+  constexpr int kNumWarpsPerGroup = 32;
+  constexpr int kNumWarpGroups = 1;
   constexpr int kNumMaxTopk = 9;
 
   const auto num_warps = kNumWarpGroups * kNumWarpsPerGroup;
-  const auto num_sms = cell_div(num_experts, kNumWarpGroups);
+  const int dev_id = 0;
+  int sm_count;
+  cudaDeviceGetAttribute(&sm_count, cudaDevAttrMultiProcessorCount, dev_id);
+  const auto num_sms = max(sm_count, cell_div(num_experts, kNumWarpGroups));
 
   // Check workspace
   auto atomic_clean_flag = reinterpret_cast<int*>(workspace);
