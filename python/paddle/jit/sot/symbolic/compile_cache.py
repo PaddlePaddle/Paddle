@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING
 import paddle
 
 from ..infer_meta import convert_meta_to_input_spec
-from ..profiler import EventGuard, event_register
+from ..profiler import event_register
 from ..utils import (
     ENV_SOT_EXPORT,
     Cache,
@@ -228,13 +228,18 @@ class FallbackWrapper:
                 ),
             )
             if self.partial_program is None:
-                with EventGuard("FallbackWrapper: get_concrete_program"):
-                    (
-                        self.concrete_program,
-                        self.partial_program,
-                    ) = self.compiled_fn.get_concrete_program(*args, **kwargs)
-                    self.partial_program.training = self.is_training
-            outputs = self.partial_program.sot_call(*args, **kwargs)
+                get_concrete_program_fn = event_register(
+                    "FallbackWrapper: get_concrete_program"
+                )(self.compiled_fn.get_concrete_program)
+                (
+                    self.concrete_program,
+                    self.partial_program,
+                ) = get_concrete_program_fn(*args, **kwargs)
+                self.partial_program.training = self.is_training
+            partial_program_sot_call_fn = event_register(
+                "FallbackWrapper: sot call partial_program"
+            )(self.partial_program.sot_call)
+            outputs = partial_program_sot_call_fn(*args, **kwargs)
 
             clear_eager_tensor_name(outputs)
             log_do(
