@@ -146,6 +146,7 @@ jobs:
           else
               echo "Sorry, There are environmental issues, please contact QA(guomengmeng01) for exemption."
           fi
+          exit $EXCODE
           '
 
       - name: Terminate and delete the container

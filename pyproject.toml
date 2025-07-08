@@ -203,7 +203,7 @@ show_column_numbers = true
 [[tool.mypy.overrides]]
 module = [
     "cv2",
-    "decorator",
+    "networkx",
     "scipy",
     "xlsxwriter"
 ]
