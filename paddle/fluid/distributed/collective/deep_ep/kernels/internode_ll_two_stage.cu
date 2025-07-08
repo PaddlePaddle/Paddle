@@ -810,7 +810,7 @@ __global__ __launch_bounds__(
                          st_na_global);
       __syncwarp();
     }
-    // Put nvl finishing flag
+    // Put nvl finished flag
     EP_STATIC_ASSERT(kNumWarpsPerGroup > 1,
                      "Requires more than one warp per group");
     asm volatile("bar.sync %0, %1;" ::"r"(warp_group_id + 1),
@@ -844,6 +844,7 @@ __global__ __launch_bounds__(
     }
   }
   cg::this_grid().sync();
+
   /* NVL Receiver / NVL Reducer */
   {
     const int sms_per_rdma = num_sms / kNumRdmaRanks;
@@ -880,7 +881,6 @@ __global__ __launch_bounds__(
       int4* dst_ptr = reinterpret_cast<int4*>(
           rdma_send_x_this_rdma_rank + index_source * combine_hidden_bytes);
       float combined_values[kNumElemsPerInt4] = {0.0f};
-      // reduce
       if (thread_id < hidden_bf16_int4) {
         for (int nvl_rank_idx = 0; nvl_rank_idx < nvl_rank_nums;
              nvl_rank_idx += 1) {
@@ -895,7 +895,6 @@ __global__ __launch_bounds__(
                    num_max_dispatch_tokens_per_rank +
                dst_cum_index) *
                   num_bytes_per_slot);
-          // reduce
           auto x_vec = ld_nc_global(src_ptr + thread_id);
           const auto x_bf16 = reinterpret_cast<nv_bfloat16*>(&x_vec);
 #pragma unroll
@@ -970,6 +969,7 @@ __global__ __launch_bounds__(
       }
     }
   }
+
   /* RDMA Receiver / RDMA Reducer */
   // Wait all rdma ranks to arrive
   if (sm_id < kNumRdmaRanks) {
