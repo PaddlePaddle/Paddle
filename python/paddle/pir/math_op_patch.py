@@ -43,15 +43,19 @@ _supported_dtype_conversions = {
     'bfloat16': 'bfloat16',
     'float32': 'float32',
     'float64': 'float64',
+    'double': 'float64',
     # int
     'int8': 'int8',
+    'uint8': 'uint8',
     'int16': 'int16',
     'int32': 'int32',
     'int64': 'int64',
+    'long': 'int64',
     # other
     'bool': 'bool',
     'complex64': 'complex64',
     'complex128': 'complex128',
+    'cfloat': 'complex64',
 }
 
 SUPPORT_PROMOTION_OPS = [
