@@ -1415,7 +1415,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                         else forward_api_name
                     ) in special_inplace_list:
                         set_grad_out_meta = f"""
-    if ({name}.is_dist_tensor()&& {name}.impl()){{
+    if ({name}.is_dist_tensor() && {name}.impl()){{
   {indent}grad_node->SetGradOutMeta({name}, {pos}, {name}_dist_attr, {name}_dims);
     }} else{{
   {indent}grad_node->SetGradOutMeta({name}, {pos});
@@ -1856,9 +1856,9 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     f"""
   phi::distributed::TensorDistAttr {name}_dist_attr;
   phi::DDim {name}_dims;
-  if ({name}.is_dist_tensor()&& {name}.impl()){{
+  if ({name}.is_dist_tensor() && {name}.impl()){{
     auto* {name}_dist_tensor = static_cast<phi::distributed::DistTensor*>({name}.impl().get());
-    {name}_dist_attr = {name}_dist_tensor -> dist_attr();
+    {name}_dist_attr = {name}_dist_tensor->dist_attr();
     {name}_dims = {name}_dist_tensor->dims();
    }}"""
                 )
