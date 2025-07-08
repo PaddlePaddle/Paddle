@@ -17,41 +17,41 @@ import unittest
 from test_fusion_gru_op import TestFusionGRUOp
 
 
-class TestFusionGRUMKLDNNOp(TestFusionGRUOp):
+class TestFusionGRUONEDNNOp(TestFusionGRUOp):
     def set_confs(self):
         self.use_mkldnn = True
         self.check_pir_onednn = True
 
 
-class TestFusionGRUMKLDNNOpNoInitial(TestFusionGRUOp):
+class TestFusionGRUONEDNNOpNoInitial(TestFusionGRUOp):
     def set_confs(self):
         self.with_h0 = False
         self.use_mkldnn = True
         self.check_pir_onednn = True
 
 
-class TestFusionGRUMKLDNNOpNoBias(TestFusionGRUOp):
+class TestFusionGRUONEDNNOpNoBias(TestFusionGRUOp):
     def set_confs(self):
         self.with_bias = False
         self.use_mkldnn = True
         self.check_pir_onednn = True
 
 
-class TestFusionGRUMKLDNNOpReverse(TestFusionGRUOp):
+class TestFusionGRUONEDNNOpReverse(TestFusionGRUOp):
     def set_confs(self):
         self.is_reverse = True
         self.use_mkldnn = True
         self.check_pir_onednn = True
 
 
-class TestFusionGRUMKLDNNOpOriginMode(TestFusionGRUOp):
+class TestFusionGRUONEDNNOpOriginMode(TestFusionGRUOp):
     def set_confs(self):
         self.origin_mode = True
         self.use_mkldnn = True
         self.check_pir_onednn = True
 
 
-class TestFusionGRUMKLDNNOpMD1(TestFusionGRUOp):
+class TestFusionGRUONEDNNOpMD1(TestFusionGRUOp):
     def set_confs(self):
         self.M = 36
         self.D = 8
@@ -59,7 +59,7 @@ class TestFusionGRUMKLDNNOpMD1(TestFusionGRUOp):
         self.check_pir_onednn = True
 
 
-class TestFusionGRUMKLDNNOpMD2(TestFusionGRUOp):
+class TestFusionGRUONEDNNOpMD2(TestFusionGRUOp):
     def set_confs(self):
         self.M = 8
         self.D = 8
@@ -67,7 +67,7 @@ class TestFusionGRUMKLDNNOpMD2(TestFusionGRUOp):
         self.check_pir_onednn = True
 
 
-class TestFusionGRUMKLDNNOpMD3(TestFusionGRUOp):
+class TestFusionGRUONEDNNOpMD3(TestFusionGRUOp):
     def set_confs(self):
         self.M = 17
         self.D = 15
@@ -75,7 +75,7 @@ class TestFusionGRUMKLDNNOpMD3(TestFusionGRUOp):
         self.check_pir_onednn = True
 
 
-class TestFusionGRUMKLDNNOpBS1(TestFusionGRUOp):
+class TestFusionGRUONEDNNOpBS1(TestFusionGRUOp):
     def set_confs(self):
         self.lod = [[3]]
         self.D = 16

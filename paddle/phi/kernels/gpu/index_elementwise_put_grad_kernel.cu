@@ -30,13 +30,15 @@ namespace phi {
 template <typename T, typename IndexT = int>
 void GPUIndexElementwisePutGradKernel(
     const phi::GPUContext& dev_ctx,
+    const DenseTensor& out_grad,
     const std::vector<const DenseTensor*>& index,
     const std::vector<int64_t>& input_dims,
     const std::vector<int64_t>& input_strides,
     const std::vector<int64_t>& index_dims,
     const std::vector<int64_t>& index_strides,
     const int64_t slice_offset,
-    DenseTensor* output) {
+    DenseTensor* x_grad,
+    DenseTensor* value_grad) {
   int64_t numel = 0;
 
   auto num_indices = index_dims.size();
@@ -52,12 +54,18 @@ void GPUIndexElementwisePutGradKernel(
   std::array<int64_t*, 3> strides_array;
   std::vector<int64_t> desired_shape;
   std::array<std::vector<int64_t>, 3> strides_vec;
+  std::vector<int64_t> value_dims;
+  std::vector<int64_t> value_strides;
+  if (value_grad) {
+    value_dims = common::vectorize<int64_t>(value_grad->dims());
+    value_strides = common::vectorize<int64_t>(value_grad->strides());
+  }
 
   funcs::IndexPutStride<3>(input_dims,
                            input_strides,
-                           phi::SizeOf(output->dtype()),
-                           std::vector<int64_t>(),
-                           std::vector<int64_t>(),
+                           phi::SizeOf(out_grad.dtype()),
+                           value_dims,
+                           value_strides,
                            4,
                            common::vectorize<int64_t>(index[0]->dims()),
                            common::vectorize<int64_t>(index[0]->strides()),
@@ -78,102 +86,82 @@ void GPUIndexElementwisePutGradKernel(
   auto stream = dev_ctx.stream();
 
   using dtype = funcs::OpaqueType<sizeof(T)>;
+  if (!value_grad) {
+    char* out_ptr = reinterpret_cast<char*>(x_grad->data<T>());
+    funcs::index_elementwise_kernel<nt, vt>
+        <<<grid, block, 0, stream>>>(N, [=] __device__(int idx) {
+          const auto offsets = offset_calc.get(idx);
+          char* const out_data = out_ptr + offsets[0] + slice_offset;
 
-  char* out_ptr = reinterpret_cast<char*>(output->data<T>());
-  funcs::index_elementwise_kernel<nt, vt>
-      <<<grid, block, 0, stream>>>(N, [=] __device__(int idx) {
-        const auto offsets = offset_calc.get(idx);
-        char* const out_data = out_ptr + offsets[0] + slice_offset;
-
-        int64_t offset = 0;
+          int64_t offset = 0;
 #pragma unroll
-        for (int i = 0; i < num_indices; i++) {
-          int64_t index =
-              *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
-          if (index < 0) {
-            index += sizes[i];
+          for (int i = 0; i < num_indices; i++) {
+            int64_t index =
+                *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
+            if (index < 0) {
+              index += sizes[i];
+            }
+            offset += index * strides[i];
           }
-          offset += index * strides[i];
-        }
-        T num = T(0);
+          T num = T(0);
+          *reinterpret_cast<dtype*>(out_data + offset) =
+              *reinterpret_cast<dtype*>(&num);
+        });
+  } else if (!x_grad) {
+    const char* out_ptr = reinterpret_cast<const char*>(out_grad.data<T>());
+    char* value_ptr = reinterpret_cast<char*>(value_grad->data<T>());
+    funcs::index_elementwise_kernel<nt, vt>
+        <<<grid, block, 0, stream>>>(N, [=] __device__(int idx) {
+          const auto offsets = offset_calc.get(idx);
+          const char* const out_data = out_ptr + offsets[0] + slice_offset;
+          char* const value_data = value_ptr + offsets[1];
 
-        *reinterpret_cast<dtype*>(out_data + offset) =
-            *reinterpret_cast<dtype*>(&num);
-      });
-}
-
-template <typename T>
-__global__ void SetZeroElementwiseCudaKernel(
-    int64_t** indices,
-    Array<int64_t, DDim::kMaxRank> stride,
-    Array<int64_t, DDim::kMaxRank> shape,
-    const int rank,
-    const int64_t numel,
-    T* out) {
-  int64_t idx =
-      static_cast<int64_t>(threadIdx.x) +
-      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x);
-  if (idx >= numel) {
-    return;
-  }
-
-  int64_t cur_ix = 0;
-  int64_t offset = 0;
+          int64_t offset = 0;
 #pragma unroll
-  for (int i = 0; i < DDim::kMaxRank; ++i) {
-    if (i >= rank) {
-      break;
-    }
-    cur_ix = (static_cast<int64_t>(*(indices[i] + idx)));
-    if (cur_ix < 0) {
-      cur_ix += shape[i];
-    }
-    offset += stride[i] * cur_ix;
-  }
+          for (int i = 0; i < num_indices; i++) {
+            int64_t index =
+                *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
+            if (index < 0) {
+              index += sizes[i];
+            }
+            offset += index * strides[i];
+          }
+          *reinterpret_cast<dtype*>(value_data) =
+              *reinterpret_cast<const dtype*>(out_data + offset);
+        });
+  } else {
+    char* out_ptr = reinterpret_cast<char*>(x_grad->data<T>());
+    char* value_ptr = reinterpret_cast<char*>(value_grad->data<T>());
+    funcs::index_elementwise_kernel<nt, vt>
+        <<<grid, block, 0, stream>>>(N, [=] __device__(int idx) {
+          const auto offsets = offset_calc.get(idx);
+          char* const out_data = out_ptr + offsets[0] + slice_offset;
+          char* const value_data = value_ptr + offsets[1];
 
-  *(out + offset) = 0;
-}
-
-template <typename T>
-__global__ void IndexElementwisePutGradCudaKernel(
-    const T* out_grad,
-    int64_t** indices,
-    Array<int64_t, DDim::kMaxRank> stride,
-    Array<int64_t, DDim::kMaxRank> shape,
-    const int rank,
-    const int64_t numel,
-    T* value_grad) {
-  int64_t idx =
-      static_cast<int64_t>(threadIdx.x) +
-      static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x);
-  if (idx >= numel) {
-    return;
-  }
-
-  int64_t cur_ix = 0;
-  int64_t offset = 0;
+          int64_t offset = 0;
 #pragma unroll
-  for (int i = 0; i < DDim::kMaxRank; ++i) {
-    if (i >= rank) {
-      break;
-    }
-    cur_ix = (static_cast<int64_t>(*(indices[i] + idx)));
-    if (cur_ix < 0) {
-      cur_ix += shape[i];
-    }
-    offset += stride[i] * cur_ix;
+          for (int i = 0; i < num_indices; i++) {
+            int64_t index =
+                *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
+            if (index < 0) {
+              index += sizes[i];
+            }
+            offset += index * strides[i];
+          }
+          T num = T(0);
+          *reinterpret_cast<dtype*>(value_data) =
+              *reinterpret_cast<dtype*>(out_data + offset);
+          *reinterpret_cast<dtype*>(out_data + offset) =
+              *reinterpret_cast<dtype*>(&num);
+        });
   }
-
-  *(value_grad + idx) = *(out_grad + offset);
 }
 
 template <typename T, typename Context>
 void LaunchIndexElementwisePutGradCudaKernel(
     const Context& dev_ctx,
-    const std::vector<const DenseTensor*>& x_indices,
     const std::vector<const DenseTensor*>& indices,
     const DenseTensor& out_grad,
-    const int rank,
     const std::vector<int64_t>& input_dims,
     const std::vector<int64_t>& input_strides,
     const std::vector<int64_t>& index_dims,
@@ -181,55 +169,38 @@ void LaunchIndexElementwisePutGradCudaKernel(
     const int64_t slice_offset,
     DenseTensor* value_grad,
     DenseTensor* x_grad) {
-  phi::Allocator::AllocationPtr indices_holder_1, indices_holder_2;
-  const auto& index_type = indices[0]->dtype();
-  if (x_grad) {
+  if (x_grad && !value_grad) {
     phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
 
     GPUIndexElementwisePutGradKernel<T, int64_t>(dev_ctx,
-                                                 x_indices,
+                                                 out_grad,
+                                                 indices,
                                                  input_dims,
                                                  input_strides,
                                                  index_dims,
                                                  index_strides,
                                                  slice_offset,
-                                                 x_grad);
-  }
-
-  auto out_grad_dims = out_grad.dims();
-  auto out_grad_stride = common::stride(out_grad_dims);
-
-  Array<int64_t, DDim::kMaxRank> stride_array;
-  Array<int64_t, DDim::kMaxRank> shape_array;
-  for (int i = 0; i < rank; ++i) {
-    stride_array[i] = out_grad_stride[i];
-    shape_array[i] = out_grad_dims[i];
-  }
-
-  const int64_t numel = indices[0]->numel();
-  auto pd_indices = funcs::GetDevicePointerArray<int64_t, Context>(
-      dev_ctx, indices, &indices_holder_2);
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
-
-  if (value_grad) {
+                                                 x_grad,
+                                                 value_grad);
+  } else if (value_grad) {
+    if (x_grad) {
+      phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    }
     if (value_grad->numel() == 1) {
       DenseTensor tmp_value_grad(value_grad->dtype());
-      tmp_value_grad.Resize(indices[0]->dims());
+      tmp_value_grad.Resize(common::make_ddim(input_dims));
+      dev_ctx.template Alloc<T>(&tmp_value_grad);
 
-      T* tmp_value_grad_data = dev_ctx.template Alloc<T>(&tmp_value_grad);
-      auto out_grad_data = out_grad.data<T>();
-
-      IndexElementwisePutGradCudaKernel<T>
-          <<<config.block_per_grid,
-             config.thread_per_block,
-             0,
-             dev_ctx.stream()>>>(out_grad_data,
-                                 pd_indices,
-                                 stride_array,
-                                 shape_array,
-                                 rank,
-                                 numel,
-                                 tmp_value_grad_data);
+      GPUIndexElementwisePutGradKernel<T, int64_t>(dev_ctx,
+                                                   out_grad,
+                                                   indices,
+                                                   input_dims,
+                                                   input_strides,
+                                                   index_dims,
+                                                   index_strides,
+                                                   slice_offset,
+                                                   x_grad,
+                                                   &tmp_value_grad);
 
       std::vector<int> v_dims(tmp_value_grad.dims().size());
       std::iota(v_dims.begin(), v_dims.end(), 0);
@@ -240,39 +211,33 @@ void LaunchIndexElementwisePutGradCudaKernel(
                             value_grad->dtype(),
                             false,
                             value_grad);
-    } else if (value_grad->numel() == indices[0]->numel()) {
-      T* value_grad_data = dev_ctx.template Alloc<T>(value_grad);
-      auto out_grad_data = out_grad.data<T>();
-
-      IndexElementwisePutGradCudaKernel<T>
-          <<<config.block_per_grid,
-             config.thread_per_block,
-             0,
-             dev_ctx.stream()>>>(out_grad_data,
-                                 pd_indices,
-                                 stride_array,
-                                 shape_array,
-                                 rank,
-                                 numel,
-                                 value_grad_data);
+    } else if (value_grad->dims() == common::make_ddim(input_dims)) {
+      dev_ctx.template Alloc<T>(value_grad);
+      GPUIndexElementwisePutGradKernel<T, int64_t>(dev_ctx,
+                                                   out_grad,
+                                                   indices,
+                                                   input_dims,
+                                                   input_strides,
+                                                   index_dims,
+                                                   index_strides,
+                                                   slice_offset,
+                                                   x_grad,
+                                                   value_grad);
     } else {
       DenseTensor tmp_value_grad(value_grad->dtype());
       tmp_value_grad.Resize(common::make_ddim(input_dims));
+      dev_ctx.template Alloc<T>(&tmp_value_grad);
 
-      T* tmp_value_grad_data = dev_ctx.template Alloc<T>(&tmp_value_grad);
-      auto out_grad_data = out_grad.data<T>();
-
-      IndexElementwisePutGradCudaKernel<T>
-          <<<config.block_per_grid,
-             config.thread_per_block,
-             0,
-             dev_ctx.stream()>>>(out_grad_data,
-                                 pd_indices,
-                                 stride_array,
-                                 shape_array,
-                                 rank,
-                                 numel,
-                                 tmp_value_grad_data);
+      GPUIndexElementwisePutGradKernel<T, int64_t>(dev_ctx,
+                                                   out_grad,
+                                                   indices,
+                                                   input_dims,
+                                                   input_strides,
+                                                   index_dims,
+                                                   index_strides,
+                                                   slice_offset,
+                                                   x_grad,
+                                                   &tmp_value_grad);
 
       std::vector<int64_t> after_dims =
           common::vectorize(tmp_value_grad.dims());
@@ -335,33 +300,9 @@ void IndexElementwisePutGradKernel(
     return;
   }
 
-  auto bd_dim = funcs::BroadCastTensorsDims(indices);
-
-  std::vector<int64_t> res_dim_v(common::vectorize(bd_dim));
-  std::vector<const phi::DenseTensor*> res_indices_v(x.dims().size(), nullptr);
-  std::vector<DenseTensor> tmp_res_indices_v;
-  std::vector<DenseTensor> range_tensor_v;
-
-  for (int i = indices.size(); i < x.dims().size(); ++i) {
-    range_tensor_v.emplace_back(funcs::GetRangeCudaTensor<int64_t, Context>(
-        dev_ctx, x.dims()[i], phi::DataType::INT64));
-  }
-
-  funcs::DealWithIndices<T, Context>(dev_ctx,
-                                     x,
-                                     indices,
-                                     &res_indices_v,
-                                     &tmp_res_indices_v,
-                                     range_tensor_v,
-                                     bd_dim,
-                                     &res_dim_v);
-
-  const int rank = x.dims().size();
   LaunchIndexElementwisePutGradCudaKernel<T, Context>(dev_ctx,
                                                       indices,
-                                                      res_indices_v,
                                                       out_grad,
-                                                      rank,
                                                       input_dims,
                                                       input_strides,
                                                       index_dims,

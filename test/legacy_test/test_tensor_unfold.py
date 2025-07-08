@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
+from op_test import get_places
 
 import paddle
 from paddle import base
@@ -25,15 +25,8 @@ class TestTensorUnfold(unittest.TestCase):
     def setUp(self):
         self.shape = [5, 5]
         self.typelist = ['float32', 'float64', 'int32', 'int64', 'float16']
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not base.core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
+        self.places = get_places()
         if base.core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
             self.places.append(base.CUDAPinnedPlace())
 
     def test_tensor_unfold_forward(self):
@@ -70,15 +63,8 @@ class TestTensorUnfold2(unittest.TestCase):
     def setUp(self):
         self.shape = [12]
         self.typelist = ['float32', 'float64', 'int32', 'int64', 'float16']
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not base.core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
+        self.places = get_places()
         if base.core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
             self.places.append(base.CUDAPinnedPlace())
 
     def test_tensor_unfold_forward(self):

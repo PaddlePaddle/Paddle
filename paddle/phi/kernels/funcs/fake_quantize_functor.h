@@ -83,13 +83,13 @@ class QuantTensorFunctor {
 template <typename Context, typename T>
 class FindAbsMaxFunctor {
  public:
-  void operator()(const Context &ctx, const T *in, const int num, T *out);
+  void operator()(const Context &dev_ctx, const T *in, const int num, T *out);
 };
 
 template <typename Context, typename T>
 class ClipAndFakeQuantFunctor {
  public:
-  void operator()(const Context &ctx,
+  void operator()(const Context &dev_ctx,
                   const DenseTensor &in,
                   const DenseTensor &scale,
                   const int qmax,
@@ -100,7 +100,7 @@ class ClipAndFakeQuantFunctor {
 template <typename Context, typename T>
 class FindMovingAverageAbsMaxFunctor {
  public:
-  void operator()(const Context &ctx,
+  void operator()(const Context &dev_ctx,
                   const DenseTensor &in_accum,
                   const DenseTensor &in_state,
                   const T *cur_scale,
@@ -113,7 +113,7 @@ class FindMovingAverageAbsMaxFunctor {
 template <typename Context, typename T>
 class FindChannelAbsMaxFunctor {
  public:
-  void operator()(const Context &ctx,
+  void operator()(const Context &dev_ctx,
                   const DenseTensor &in_tensor,
                   const int quant_axis,
                   T *out_abs_max);
@@ -122,7 +122,7 @@ class FindChannelAbsMaxFunctor {
 template <typename Context, typename T>
 class ChannelClipAndFakeQuantFunctor {
  public:
-  void operator()(const Context &ctx,
+  void operator()(const Context &dev_ctx,
                   const DenseTensor &in,
                   const DenseTensor &scale,
                   const int qmax,
@@ -134,7 +134,7 @@ class ChannelClipAndFakeQuantFunctor {
 template <typename Context, typename T>
 class ChannelClipFakeQuantDequantFunctor {
  public:
-  void operator()(const Context &ctx,
+  void operator()(const Context &dev_ctx,
                   const DenseTensor &in,
                   const DenseTensor &scale,
                   const int bin_cnt,
@@ -146,7 +146,7 @@ class ChannelClipFakeQuantDequantFunctor {
 template <typename Context, typename T>
 class FindRangeAbsMaxFunctor {
  public:
-  void operator()(const Context &ctx,
+  void operator()(const Context &dev_ctx,
                   const DenseTensor &cur_scale,
                   const DenseTensor &last_scale,
                   const DenseTensor &iter,
@@ -158,7 +158,7 @@ class FindRangeAbsMaxFunctor {
 template <typename Context, typename T>
 class ClipAndFakeQuantDequantFunctor {
  public:
-  void operator()(const Context &ctx,
+  void operator()(const Context &dev_ctx,
                   const DenseTensor &in,
                   const DenseTensor &scale,
                   const int bin_cnt,

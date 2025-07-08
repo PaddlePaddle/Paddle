@@ -18,7 +18,6 @@ import dataclasses
 import operator
 import sys
 import types
-from dataclasses import asdict
 from enum import Enum
 from functools import cached_property, reduce
 from typing import TYPE_CHECKING, Any
@@ -29,6 +28,7 @@ import paddle
 from paddle._typing import unreached
 from paddle.framework import core
 from paddle.jit.dy2static.utils import (
+    dataclass_as_dict,
     dataclass_from_dict,
     is_plain_dataclass_type,
     parameters_persistent_mode_is_enabled,
@@ -358,7 +358,6 @@ class TensorDtypeVariable(DataVariable):
             self.tracker.obj, TensorVariable
         ):
             expr_node = self.tracker.obj.tracker.guard_tree_expr_node()
-            assert paddle.framework.use_pir_api(), "Only support PIR"
             return [
                 paddle.framework.core.GuardNode(
                     paddle.framework.core.DtypeMatchGuard(self.value),
@@ -377,19 +376,6 @@ class TensorDtypeVariable(DataVariable):
                 self.tracker.obj.tracker.trace_value_from_frame()
             )
             dtype_str, dtype_free_vars = stringify_pyobject(self.value)
-            # TODO(cleanup-legacy-ir): Remove this branch after we remove legacy IR
-            if not paddle.framework.use_pir_api():
-                return [
-                    StringifiedExpression(
-                        f"MetaInfoOrNull.from_tensor({{}}).unwrap_unsafe().dtype == {dtype_str}",
-                        [tensor_value_tracer],
-                        union_free_vars(
-                            {"MetaInfoOrNull": MetaInfoOrNull},
-                            tensor_value_tracer.free_vars,
-                            dtype_free_vars,
-                        ),
-                    )
-                ]
             return [
                 FasterStringifiedExpression(
                     f"{{}}.dtype == {dtype_str}",
@@ -540,7 +526,6 @@ class TensorVariable(VariableBase):
 
     @check_faster_guard
     def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
-        assert paddle.framework.use_pir_api(), "Only support PIR"
         expr_node = self.tracker.guard_tree_expr_node()
         meta = self.origin_meta
         if meta.is_null():
@@ -586,26 +571,6 @@ class TensorVariable(VariableBase):
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
         frame_value_tracer = self.tracker.trace_value_from_frame()
-
-        # TODO(cleanup-legacy-ir): Remove this branch after we remove legacy IR
-        if not paddle.framework.use_pir_api():
-            if (
-                ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
-                and not self.origin_meta.is_null()
-            ):
-                str_left_expr = f"MetaInfoOrNull.from_tensor({{}}, dynamic_axes={self.meta.unwrap_unsafe().dynamic_axes}).guard_str()"
-            else:
-                str_left_expr = "MetaInfoOrNull.from_tensor({}).guard_str()"
-            return [
-                StringifiedExpression(
-                    f"{str_left_expr} == '{self.origin_meta.guard_str()}'",
-                    [frame_value_tracer],
-                    union_free_vars(
-                        {"MetaInfoOrNull": MetaInfoOrNull},
-                        frame_value_tracer.free_vars,
-                    ),
-                )
-            ]
 
         # A quick check path for PIR, we don't need dtype conversion for AMP in PIR
         meta = self.origin_meta
@@ -2475,7 +2440,10 @@ class DataClassInstanceVariable(VariableBase):
             ).bind(self, "__post_init__")
         if name == "__dataclass_fields__":
             return VariableFactory.from_value(
-                {fd.name: fd for fd in dataclasses.fields(self.value)},
+                {
+                    fd.name: fd
+                    for fd in dataclasses.fields(self.class_var.value)
+                },
                 graph=self.graph,
                 tracker=GetAttrTracker(self, "__dataclass_fields__"),
             )
@@ -2591,7 +2559,7 @@ class DataClassInstanceVariable(VariableBase):
                 type(value), graph, DanglingTracker()
             )
             try:
-                data_dict = asdict(value)
+                data_dict = dataclass_as_dict(value)
             except:
                 data_dict = {}
             var = DataClassInstanceVariable(

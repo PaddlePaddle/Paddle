@@ -21,11 +21,15 @@ from itertools import product
 from typing import TYPE_CHECKING, Any, Literal
 
 import paddle
+from paddle.distributed.fleet.proto.distributed_strategy_pb2 import (
+    NCCLConfig as NCCLConfig_Message,
+)
 from paddle.distributed.utils.nccl_utils import check_nccl_version_for_p2p
 
 from ..utils.log_util import logger
 
 if TYPE_CHECKING:
+    from paddle.base.libpaddle import NCCLConfig
     from paddle.distributed.collective import Group
 
 __all__ = ['CommunicateTopology', 'HybridCommunicateGroup']
@@ -38,6 +42,69 @@ _use_four_directions = os.environ.get(
 g_pipeline_nccl_comm_init_option = int(
     os.environ.get("FLAGS_pipeline_nccl_comm_init_option", 0)
 )
+
+
+def message2nccl_config(
+    message: NCCLConfig_Message | dict[str, int | str] | None = None,
+    default_name: str | None = None,
+) -> NCCLConfig:
+    if paddle.distributed.collective._default_backend != 'nccl':
+        return None
+
+    if not isinstance(message, (NCCLConfig_Message, dict)):
+        return None
+    from google.protobuf.json_format import MessageToDict
+
+    from paddle.base import core
+
+    if isinstance(message, dict):
+        ret_dict = message
+    else:
+        ret_dict = MessageToDict(message, preserving_proto_field_name=True)
+    if "commName" not in ret_dict and default_name is not None:
+        ret_dict["commName"] = default_name
+    return core.NCCLConfig.create(**ret_dict)
+
+
+def create_nccl_config(
+    nccl_config: dict[str, int | str] | None = None,
+) -> NCCLConfig | None:
+    """
+
+    Function that creates nccl config.
+
+    Args:
+        nccl_config (dict[str, int | str] | None): None or a dict containing the following keys:
+            commName (str): name of the process group. ll_buffsize (int): buffer size of ll protocol.
+            ll128_buffsize (int): buffer size of ll128 protocol. simple_buffsize (int): buffer size of
+            simple protocol. buffsize_align (int): alignment unit of the total buffer size.
+            nchannels (int): max number of channels. algoStr (str): communication algorithm.
+            protoStr (str): communication protocol.
+
+    Returns:
+        NCCLConfig (NCCLConfig | None): an object containing the information,
+        which can be used as an argument of new_group().
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
+            >>> import paddle.distributed as dist
+            >>> from typing import Union
+            >>> dist.init_parallel_env()
+            >>> nccl_config: dict[str, Union[int, str]] = {"commName":"tp_comm","ll_buffsize":0,"ll128_buffsize":0,"simple_buffsize":1024,"buffsize_align":1024,"nchannels":4,"algoStr":"Ring","protoStr":"Simple",}
+            >>> ranks=[0,1,2,3,4,5,6,7]
+            >>> nccl_config=dist.create_nccl_config(nccl_config)
+            >>> pg=dist.new_group(ranks, nccl_config=nccl_config)
+            >>> m, n = 4096, 8192
+            >>> local_rank = dist.get_rank(pg)
+            >>> num_local_ranks = dist.get_world_size(pg)
+            >>> x = paddle.ones(shape=[m, n], dtype=paddle.float32) * (local_rank + 1)
+            >>> dist.all_reduce(x, group=pg)
+
+    """
+    return message2nccl_config(nccl_config, None)
 
 
 class ParallelMode:
@@ -188,7 +255,11 @@ class CommunicateTopology:
 
 
 class HybridCommunicateGroup:
-    def __init__(self, topology: CommunicateTopology) -> None:
+    def __init__(
+        self,
+        topology: CommunicateTopology,
+        hybrid_configs: NCCLConfig_Message | None = None,
+    ) -> None:
         self.nranks = paddle.distributed.get_world_size()
         self.global_rank = paddle.distributed.get_rank()
         self._topo = topology
@@ -210,7 +281,16 @@ class HybridCommunicateGroup:
         ), f"nranks: {self.nranks}, mp_num: {self._mp_degree}, sharding_num: {self._sharding_degree}, pp_num: {self._pp_degree}, dp_num: {self._dp_degree}, sep_num: {self._sep_degree}"
 
         # create comm group for pipe parallel
-        self._pp_group, self._pp_comm_group = self._set_comm_group("pipe")
+        self._pp_group, self._pp_comm_group = self._set_comm_group(
+            "pipe",
+            nccl_config=(
+                message2nccl_config(
+                    hybrid_configs["pp_configs"].coll_nccl_config, "pp_coll"
+                )
+                if hybrid_configs is not None
+                else None
+            ),
+        )
         # NOTE(shenliang03): In pipeline parallel, we use batch_isend_irecv.
         # if batch_isend_irecv is the first collective operation, all ranks of
         # the pipeline group must participate in this call. In order to avoid
@@ -225,48 +305,119 @@ class HybridCommunicateGroup:
         env_name = "FLAGS_eager_communication_connection"
         if paddle.get_flags(env_name)[env_name]:
             if self._pp_comm_group.nranks > 1:
-                self._pp_comm_group.process_group.eager_connect_ring_exchange()
+                self._pp_comm_group.process_group.eager_connect_ring_exchange(
+                    nccl_config=(
+                        message2nccl_config(
+                            hybrid_configs["pp_configs"].p2p_nccl_config,
+                            "pp_p2p",
+                        )
+                        if hybrid_configs is not None
+                        else None
+                    )
+                )
 
         # create comm group for data parallel
-        self._dp_group, self._dp_comm_group = self._set_comm_group("data")
+        self._dp_group, self._dp_comm_group = self._set_comm_group(
+            "data",
+            nccl_config=(
+                message2nccl_config(
+                    hybrid_configs["dp_configs"].nccl_config, "dp"
+                )
+                if hybrid_configs is not None
+                else None
+            ),
+        )
 
         # create comm group for model parallel
-        self._mp_group, self._mp_comm_group = self._set_comm_group("model")
+        self._mp_group, self._mp_comm_group = self._set_comm_group(
+            "model",
+            nccl_config=(
+                message2nccl_config(
+                    hybrid_configs["mp_configs"].nccl_config, "tp"
+                )
+                if hybrid_configs is not None
+                else None
+            ),
+        )
 
         # create comm group for sharding parallel
         self._sharding_group, self._sharding_comm_group = self._set_comm_group(
-            "sharding"
+            "sharding",
+            nccl_config=(
+                message2nccl_config(
+                    hybrid_configs["sharding_configs"].nccl_config, "sharding"
+                )
+                if hybrid_configs is not None
+                else None
+            ),
         )
         self._sep_group = None
         if self._sep_degree > 1:
             # create comm group for sep parallel
-            self._sep_group, self._sep_comm_group = self._set_comm_group("sep")
+            self._sep_group, self._sep_comm_group = self._set_comm_group(
+                "sep",
+                nccl_config=(
+                    message2nccl_config(
+                        hybrid_configs["sep_configs"].nccl_config, "sep"
+                    )
+                    if hybrid_configs is not None
+                    else None
+                ),
+            )
 
         # create global group for check inf_nan / clip global norm
         self._check_group, self._check_comm_group = self._set_check_group(
-            "data"
+            "data",
+            nccl_config=(
+                message2nccl_config(
+                    hybrid_configs["dp_configs"].check_nccl_config, "dp_check"
+                )
+                if hybrid_configs is not None
+                else None
+            ),
         )
 
         if self._sharding_degree > 1:
             (
                 self.sharding_check_group,
                 self.sharding_check_comm_group,
-            ) = self._set_check_group("sharding")
+            ) = self._set_check_group(
+                "sharding",
+                nccl_config=(
+                    message2nccl_config(
+                        hybrid_configs["sharding_configs"].check_nccl_config,
+                        "sharding_check",
+                    )
+                    if hybrid_configs is not None
+                    else None
+                ),
+            )
 
         # create fused comm group
         if self._sep_degree > 1:
             (
                 self._dp_sep_group,
                 self._dp_sep_comm_group,
-            ) = self.create_fuse_group(["data", "sep"])
-            self._pp_mp_group, self._pp_mp_comm_group = self.create_fuse_group(
-                ["pipe", "model"]
+            ) = self.create_fuse_group(
+                ["data", "sep"],
+                nccl_config=(
+                    message2nccl_config(
+                        hybrid_configs["dp_sep_configs"].nccl_config, "dp_sep"
+                    )
+                    if hybrid_configs is not None
+                    else None
+                ),
             )
-
-        (
-            self.sharding_check_group,
-            self.sharding_check_comm_group,
-        ) = self._set_check_group("sharding")
+            self._pp_mp_group, self._pp_mp_comm_group = self.create_fuse_group(
+                ["pipe", "model"],
+                nccl_config=(
+                    message2nccl_config(
+                        hybrid_configs["pp_tp_configs"].nccl_config, "pp_tp"
+                    )
+                    if hybrid_configs is not None
+                    else None
+                ),
+            )
 
         # create p2p group
         self.is_first_stage = self.stage_id == 0
@@ -342,7 +493,10 @@ class HybridCommunicateGroup:
         assert self._sep_degree > 1, "sep not exist"
 
     def _set_comm_group(
-        self, parallel_method: str = "data", topo: CommunicateTopology = None
+        self,
+        parallel_method: str = "data",
+        topo: CommunicateTopology = None,
+        nccl_config: NCCLConfig | None = None,
     ) -> tuple[list[int], Group]:
         parallel_group = []
         parallel_comm_group = None
@@ -359,6 +513,7 @@ class HybridCommunicateGroup:
             comm_group = paddle.distributed.new_group(
                 ranks=group,
                 nccl_comm_init_option=group_nccl_comm_init_option,
+                nccl_config=nccl_config,
             )
             if self.global_rank in group:
                 parallel_group = group
@@ -373,7 +528,10 @@ class HybridCommunicateGroup:
         return parallel_group, parallel_comm_group
 
     def _set_check_group(
-        self, parallel_method: str = "data", topo: CommunicateTopology = None
+        self,
+        parallel_method: str = "data",
+        topo: CommunicateTopology = None,
+        nccl_config: NCCLConfig | None = None,
     ) -> tuple[list[int], Group]:
         parallel_group = []
         parallel_comm_group = None
@@ -382,7 +540,9 @@ class HybridCommunicateGroup:
         parallel_size = topo.get_dim(parallel_method)
         for idx in range(parallel_size):
             parallel_groups = self._topo.get_axis_list(parallel_method, idx)
-            comm_group = paddle.distributed.new_group(ranks=parallel_groups)
+            comm_group = paddle.distributed.new_group(
+                ranks=parallel_groups, nccl_config=nccl_config
+            )
             if self.global_rank in parallel_groups:
                 parallel_group = parallel_groups
                 parallel_comm_group = comm_group
@@ -572,7 +732,9 @@ class HybridCommunicateGroup:
         return 0
 
     def create_fuse_group(
-        self, fused_strategy_list: list[str]
+        self,
+        fused_strategy_list: list[str],
+        nccl_config: NCCLConfig | None = None,
     ) -> tuple[list[list[int]], list[Group]] | tuple[list[int], Group]:
         assert (
             len(fused_strategy_list) > 0
@@ -584,7 +746,9 @@ class HybridCommunicateGroup:
         parallel_groups.sort()
 
         for group in parallel_groups:
-            comm_group = paddle.distributed.new_group(ranks=group)
+            comm_group = paddle.distributed.new_group(
+                ranks=group, nccl_config=nccl_config
+            )
             if self.global_rank in group:
                 parallel_group.append(group)
                 parallel_comm_group.append(comm_group)
@@ -614,6 +778,7 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
             "model",
         ],
         dims: list[int] = [1, 1, 1, 1, 1, 1, 1],
+        hybrid_configs: NCCLConfig_Message | None = None,
     ) -> None:
         self.nranks = paddle.distributed.get_world_size()
         self.global_rank = paddle.distributed.get_rank()
@@ -697,7 +862,15 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
         ), f"sep_degree {self._sep_degree} and dp_degree {self._dp_degree} must be 1 in MoE."
 
         self._pp_group, self._pp_comm_group = self._set_comm_group(
-            "pipe", self._moe_topo
+            "pipe",
+            self._moe_topo,
+            nccl_config=(
+                message2nccl_config(
+                    hybrid_configs["pp_configs"].coll_nccl_config, "pp_coll"
+                )
+                if hybrid_configs is not None
+                else None
+            ),
         )
         paddle.distributed.all_reduce(
             paddle.zeros([1], dtype="int32"),
@@ -707,53 +880,128 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
         env_name = "FLAGS_eager_communication_connection"
         if paddle.get_flags(env_name)[env_name]:
             if self._pp_comm_group.nranks > 1:
-                self._pp_comm_group.process_group.eager_connect_ring_exchange()
+                self._pp_comm_group.process_group.eager_connect_ring_exchange(
+                    nccl_config=(
+                        message2nccl_config(
+                            hybrid_configs["pp_configs"].p2p_nccl_config,
+                            "pp_p2p",
+                        )
+                        if hybrid_configs is not None
+                        else None
+                    )
+                )
 
         # create comm group for expert parallel
         self._ep_group, self._ep_comm_group = self._set_comm_group(
-            "expert", self._moe_topo
+            "expert",
+            self._moe_topo,
+            nccl_config=(
+                message2nccl_config(
+                    hybrid_configs["ep_configs"].nccl_config, "ep"
+                )
+                if hybrid_configs is not None
+                else None
+            ),
         )
 
         # create comm group for sharding parallel in MoE layer
         self._moe_sharding_group, self._moe_sharding_comm_group = (
-            self._set_comm_group("moe_sharding", self._moe_topo)
+            self._set_comm_group(
+                "moe_sharding",
+                self._moe_topo,
+                nccl_config=(
+                    message2nccl_config(
+                        hybrid_configs["moe_sharding_configs"].nccl_config,
+                        "moe_sharding",
+                    )
+                    if hybrid_configs is not None
+                    else None
+                ),
+            )
         )
 
         # create comm group for data parallel
         self._dp_group, self._dp_comm_group = self._set_comm_group(
-            "data", self._dense_topo
+            "data",
+            self._dense_topo,
+            nccl_config=(
+                message2nccl_config(
+                    hybrid_configs["dp_configs"].nccl_config, "dp"
+                )
+                if hybrid_configs is not None
+                else None
+            ),
         )
 
         # create comm group for sep parallel
         self._sep_group, self._sep_comm_group = self._set_comm_group(
-            "sep", self._dense_topo
+            "sep",
+            self._dense_topo,
+            nccl_config=(
+                message2nccl_config(
+                    hybrid_configs["sep_configs"].nccl_config, "sep"
+                )
+                if hybrid_configs is not None
+                else None
+            ),
         )
 
         # create comm group for model parallel
         self._mp_group, self._mp_comm_group = self._set_comm_group(
-            "model", self._dense_topo
+            "model",
+            self._dense_topo,
+            nccl_config=(
+                message2nccl_config(
+                    hybrid_configs["mp_configs"].nccl_config, "tp"
+                )
+                if hybrid_configs is not None
+                else None
+            ),
         )
 
         # create comm group for sharding parallel
         self._sharding_group, self._sharding_comm_group = (
-            self.build_sharding_group(self._dense_topo)
+            self.build_sharding_group(
+                self._dense_topo,
+                nccl_config=(
+                    message2nccl_config(
+                        hybrid_configs["sharding_configs"].nccl_config,
+                        "sharding",
+                    )
+                    if hybrid_configs is not None
+                    else None
+                ),
+            )
         )
 
         # create global group for check inf_nan / clip global norm
         self._check_group, self._check_comm_group = self._set_check_group(
-            "data", self._dense_topo
+            "data",
+            self._dense_topo,
+            nccl_config=(
+                message2nccl_config(
+                    hybrid_configs["dp_configs"].check_nccl_config, "data_check"
+                )
+                if hybrid_configs is not None
+                else None
+            ),
         )
         self.sharding_check_group, self.sharding_check_comm_group = (
             self._set_check_group(
                 "moe_sharding",
                 self._moe_topo,
+                nccl_config=(
+                    message2nccl_config(
+                        hybrid_configs[
+                            "moe_sharding_configs"
+                        ].check_nccl_config,
+                        "moe_sharding_check",
+                    )
+                    if hybrid_configs is not None
+                    else None
+                ),
             )
         )
-
-        # (
-        #     self.sharding_check_group,
-        #     self.sharding_check_comm_group,
-        # ) = self._set_check_group("sharding")
 
         # create p2p group
         self.is_first_stage = self.stage_id == 0
@@ -778,7 +1026,7 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
         global _HYBRID_PARALLEL_GROUP
         _HYBRID_PARALLEL_GROUP = self
 
-    def build_sharding_group(self, topo):
+    def build_sharding_group(self, topo, nccl_config=None):
         parallel_group = []
         parallel_comm_group = None
 
@@ -792,6 +1040,7 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
             comm_group = paddle.distributed.new_group(
                 ranks=group,
                 nccl_comm_init_option=group_nccl_comm_init_option,
+                nccl_config=nccl_config,
             )
             if self.global_rank in group:
                 parallel_group = group

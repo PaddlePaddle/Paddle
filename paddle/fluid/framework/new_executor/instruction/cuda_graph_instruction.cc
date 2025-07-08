@@ -35,8 +35,7 @@
 
 COMMON_DECLARE_bool(check_cuda_error);
 
-#ifdef PADDLE_WITH_CUDA || defined(PADDLE_WITH_HIP)
-
+#ifdef PADDLE_WITH_CUDA
 namespace paddle::framework {
 
 CudaGraphInstruction::CudaGraphInstruction(
