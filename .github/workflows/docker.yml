@@ -50,6 +50,7 @@ jobs:
       docker_coverage_image: ${{ steps.build-docker-images.outputs.docker_coverage_image }}
       docker_build_image: ${{ steps.build-docker-images.outputs.docker_build_image }}
       docker_distribute_image: ${{ steps.build-docker-images.outputs.docker_distribute_image }}
+      docker_doc_image: ${{ steps.build-docker-images.outputs.docker_doc_image }}
     steps:
       - id: build-docker-images
         name: Build docker images
