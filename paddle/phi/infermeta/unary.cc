@@ -5249,21 +5249,21 @@ void SvdInferMeta(const MetaTensor& x,
                   MetaTensor* u,
                   MetaTensor* s,
                   MetaTensor* vh) {
-  auto UDDim = [](const DDim& x_dim, int k) {
+  auto UDDim = [](const DDim& x_dim, int64_t k) {
     // get x_dim and return the ddim of U
     auto x_vec = common::vectorize(x_dim);
     x_vec[x_vec.size() - 1] = k;
     return common::make_ddim(x_vec);
   };
 
-  auto VHDDim = [](const DDim& x_dim, int k) {
+  auto VHDDim = [](const DDim& x_dim, int64_t k) {
     // get x_dim and return the ddim of U
     auto x_vec = common::vectorize(x_dim);
     x_vec[x_vec.size() - 2] = k;
     return common::make_ddim(x_vec);
   };
 
-  auto SDDim = [](const DDim& x_dim, int k) {
+  auto SDDim = [](const DDim& x_dim, int64_t k) {
     // get x_dim and return the ddim of U
     auto x_vec = common::vectorize(x_dim);
     x_vec[x_vec.size() - 2] = k;
@@ -5277,9 +5277,9 @@ void SvdInferMeta(const MetaTensor& x,
       in_dims.size(),
       2,
       common::errors::InvalidArgument("the rank of input must greater than 2"));
-  int m = static_cast<int>(in_dims[x_rank - 2]);
-  int n = static_cast<int>(in_dims[x_rank - 1]);
-  int k = std::min(m, n);
+  int64_t m = static_cast<int64_t>(in_dims[x_rank - 2]);
+  int64_t n = static_cast<int64_t>(in_dims[x_rank - 1]);
+  int64_t k = std::min(m, n);
   u->set_dims(!full_matrices ? UDDim(in_dims, k) : UDDim(in_dims, m));
   vh->set_dims(!full_matrices ? VHDDim(in_dims, k) : VHDDim(in_dims, n));
   s->set_dims(SDDim(in_dims, k));

@@ -29,10 +29,10 @@ namespace phi {
 
 template <class T>
 static void GesvdjBatched(const phi::GPUContext& dev_ctx,
-                          int batchSize,
-                          int m,
-                          int n,
-                          int k,
+                          int64_t batchSize,
+                          int64_t m,
+                          int64_t n,
+                          int64_t k,
                           T* A,
                           T* U,
                           T* V,
@@ -42,10 +42,10 @@ static void GesvdjBatched(const phi::GPUContext& dev_ctx,
 
 template <>
 void GesvdjBatched<float>(const phi::GPUContext& dev_ctx,
-                          int batchSize,
-                          int m,
-                          int n,
-                          int k,
+                          int64_t batchSize,
+                          int64_t m,
+                          int64_t n,
+                          int64_t k,
                           float* A,
                           float* U,
                           float* V,
@@ -56,16 +56,16 @@ void GesvdjBatched<float>(const phi::GPUContext& dev_ctx,
   const cusolverEigMode_t jobz =
       CUSOLVER_EIG_MODE_VECTOR; /* compute singular vectors */
   gesvdjInfo_t gesvdj_params = NULL;
-  int lda = m;
-  int ldu = m;
-  int ldt = n;
+  int64_t lda = m;
+  int64_t ldu = m;
+  int64_t ldt = n;
   int lwork = 0;
   auto handle = dev_ctx.cusolver_dn_handle();
   // cusolverDnSgesvdjBatched need max(m,n) < 32 and U V must be not thin
-  bool can_used_batched = !thin_UV && m <= 32 && n <= 32;
+  bool can_use_batched = !thin_UV && m <= 32 && n <= 32;
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::cusolverDnCreateGesvdjInfo(&gesvdj_params));
-  if (can_used_batched == false) {
+  if (can_use_batched == false) {
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cusolverDnSgesvdj_bufferSize(handle,
                                                    jobz,
@@ -104,12 +104,12 @@ void GesvdjBatched<float>(const phi::GPUContext& dev_ctx,
       lwork * sizeof(float),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   float* workspace_ptr = reinterpret_cast<float*>(workspace->ptr());
-  int stride_A = lda * n;
-  int stride_U = ldu * (thin_UV ? k : m);
-  int stride_V = ldt * (thin_UV ? k : n);
+  int64_t stride_A = lda * n;
+  int64_t stride_U = ldu * (thin_UV ? k : m);
+  int64_t stride_V = ldt * (thin_UV ? k : n);
 
-  if (can_used_batched == false) {
-    for (int i = 0; i < batchSize; ++i) {
+  if (can_use_batched == false) {
+    for (int64_t i = 0; i < batchSize; ++i) {
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::cusolverDnSgesvdj(handle,
                                           jobz,
@@ -166,10 +166,10 @@ void GesvdjBatched<float>(const phi::GPUContext& dev_ctx,
 
 template <>
 void GesvdjBatched<double>(const phi::GPUContext& dev_ctx,
-                           int batchSize,
-                           int m,
-                           int n,
-                           int k,
+                           int64_t batchSize,
+                           int64_t m,
+                           int64_t n,
+                           int64_t k,
                            double* A,
                            double* U,
                            double* V,
@@ -180,16 +180,16 @@ void GesvdjBatched<double>(const phi::GPUContext& dev_ctx,
   const cusolverEigMode_t jobz =
       CUSOLVER_EIG_MODE_VECTOR; /* compute singular vectors */
   gesvdjInfo_t gesvdj_params = NULL;
-  int lda = m;
-  int ldu = m;
-  int ldt = n;
+  int64_t lda = m;
+  int64_t ldu = m;
+  int64_t ldt = n;
   int lwork = 0;
   auto handle = dev_ctx.cusolver_dn_handle();
-  bool can_used_batched = !thin_UV && m <= 32 && n <= 32;
+  bool can_use_batched = !thin_UV && m <= 32 && n <= 32;
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::cusolverDnCreateGesvdjInfo(&gesvdj_params));
 
-  if (can_used_batched == false) {
+  if (can_use_batched == false) {
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cusolverDnDgesvdj_bufferSize(handle,
                                                    jobz,
@@ -227,11 +227,11 @@ void GesvdjBatched<double>(const phi::GPUContext& dev_ctx,
       lwork * sizeof(double),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   double* workspace_ptr = reinterpret_cast<double*>(workspace->ptr());
-  int stride_A = lda * n;
-  int stride_U = ldu * (thin_UV ? k : m);
-  int stride_V = ldt * (thin_UV ? k : n);
-  if (can_used_batched == false) {
-    for (int i = 0; i < batchSize; ++i) {
+  int64_t stride_A = lda * n;
+  int64_t stride_U = ldu * (thin_UV ? k : m);
+  int64_t stride_V = ldt * (thin_UV ? k : n);
+  if (can_use_batched == false) {
+    for (int64_t i = 0; i < batchSize; ++i) {
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::cusolverDnDgesvdj(handle,
                                           jobz,
@@ -288,10 +288,10 @@ void GesvdjBatched<double>(const phi::GPUContext& dev_ctx,
 
 template <>
 void GesvdjBatched<phi::dtype::complex<float>>(const phi::GPUContext& dev_ctx,
-                                               int batchSize,
-                                               int m,
-                                               int n,
-                                               int k,
+                                               int64_t batchSize,
+                                               int64_t m,
+                                               int64_t n,
+                                               int64_t k,
                                                phi::dtype::complex<float>* A,
                                                phi::dtype::complex<float>* U,
                                                phi::dtype::complex<float>* V,
@@ -302,14 +302,15 @@ void GesvdjBatched<phi::dtype::complex<float>>(const phi::GPUContext& dev_ctx,
   const cusolverEigMode_t jobz =
       CUSOLVER_EIG_MODE_VECTOR; /* compute singular vectors */
   gesvdjInfo_t gesvdj_params = NULL;
-  int lda = m;
-  int ldu = m;
-  int ldt = n;
+  int64_t lda = m;
+  int64_t ldu = m;
+  int64_t ldt = n;
   int lwork = 0;
   auto handle = dev_ctx.cusolver_dn_handle();
+  bool can_use_batched = !thin_UV && m <= 32 && n <= 32;
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::cusolverDnCreateGesvdjInfo(&gesvdj_params));
-  if (thin_UV) {
+  if (can_use_batched == false) {
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnCgesvdj_bufferSize(
         handle,
         jobz,
@@ -349,11 +350,11 @@ void GesvdjBatched<phi::dtype::complex<float>>(const phi::GPUContext& dev_ctx,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   phi::dtype::complex<float>* workspace_ptr =
       reinterpret_cast<phi::dtype::complex<float>*>(workspace->ptr());
-  int stride_A = lda * n;
-  int stride_U = ldu * (thin_UV ? k : m);
-  int stride_V = ldt * (thin_UV ? k : n);
-  if (thin_UV) {
-    for (int i = 0; i < batchSize; ++i) {
+  int64_t stride_A = lda * n;
+  int64_t stride_U = ldu * (thin_UV ? k : m);
+  int64_t stride_V = ldt * (thin_UV ? k : n);
+  if (can_use_batched == false) {
+    for (int64_t i = 0; i < batchSize; ++i) {
       PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnCgesvdj(
           handle,
           jobz,
@@ -410,10 +411,10 @@ void GesvdjBatched<phi::dtype::complex<float>>(const phi::GPUContext& dev_ctx,
 
 template <>
 void GesvdjBatched<phi::dtype::complex<double>>(const phi::GPUContext& dev_ctx,
-                                                int batchSize,
-                                                int m,
-                                                int n,
-                                                int k,
+                                                int64_t batchSize,
+                                                int64_t m,
+                                                int64_t n,
+                                                int64_t k,
                                                 phi::dtype::complex<double>* A,
                                                 phi::dtype::complex<double>* U,
                                                 phi::dtype::complex<double>* V,
@@ -424,14 +425,15 @@ void GesvdjBatched<phi::dtype::complex<double>>(const phi::GPUContext& dev_ctx,
   const cusolverEigMode_t jobz =
       CUSOLVER_EIG_MODE_VECTOR; /* compute singular vectors */
   gesvdjInfo_t gesvdj_params = NULL;
-  int lda = m;
-  int ldu = m;
-  int ldt = n;
+  int64_t lda = m;
+  int64_t ldu = m;
+  int64_t ldt = n;
   int lwork = 0;
   auto handle = dev_ctx.cusolver_dn_handle();
+  bool can_use_batched = !thin_UV && m <= 32 && n <= 32;
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::cusolverDnCreateGesvdjInfo(&gesvdj_params));
-  if (thin_UV) {
+  if (can_use_batched == false) {
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnZgesvdj_bufferSize(
         handle,
         jobz,
@@ -472,11 +474,11 @@ void GesvdjBatched<phi::dtype::complex<double>>(const phi::GPUContext& dev_ctx,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   phi::dtype::complex<double>* workspace_ptr =
       reinterpret_cast<phi::dtype::complex<double>*>(workspace->ptr());
-  int stride_A = lda * n;
-  int stride_U = ldu * (thin_UV ? k : m);
-  int stride_V = ldt * (thin_UV ? k : n);
-  if (thin_UV) {
-    for (int i = 0; i < batchSize; ++i) {
+  int64_t stride_A = lda * n;
+  int64_t stride_U = ldu * (thin_UV ? k : m);
+  int64_t stride_V = ldt * (thin_UV ? k : n);
+  if (can_use_batched == false) {
+    for (int64_t i = 0; i < batchSize; ++i) {
       PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnZgesvdj(
           handle,
           jobz,
@@ -545,13 +547,13 @@ void SvdKernel(const Context& dev_ctx,
     return;
   }
   auto& dims = X.dims();
-  int batch_count = 1;
+  int64_t batch_count = 1;
   for (int i = 0; i < dims.size() - 2; i++) {
     batch_count *= dims[i];
   }
   int rank = dims.size();
-  int m = dims[rank - 2];
-  int n = dims[rank - 1];
+  int64_t m = dims[rank - 2];
+  int64_t n = dims[rank - 1];
 
   auto* u_data = dev_ctx.template Alloc<T>(U);
   auto* vh_data = dev_ctx.template Alloc<T>(VH);
