@@ -44,12 +44,26 @@ class DataTensorWithPostInit:
         self.x += 1
 
 
+@dataclass
+class MultiInheriDataTensor(DataTensorWithPostInit):
+    place: str
+
+
+@dataclass
+class MultiInheriDataTensorWithIdx(MultiInheriDataTensor):
+    idx: int
+
+
 def return_dataclass(x):
     return DataTensor(x + 1)
 
 
 def return_dataclass_with_post_init(x):
     return DataTensorWithPostInit(x)
+
+
+def return_dataclass_with_multi_inheri(x, place="gpu", idx=-1):
+    return MultiInheriDataTensorWithIdx(x, place, idx)
 
 
 class TestDataclassBasic(TestCaseBase):
@@ -60,6 +74,10 @@ class TestDataclassBasic(TestCaseBase):
     def test_dtype_reconstruct_with_post_init(self):
         x = paddle.to_tensor(1)
         self.assert_results(return_dataclass_with_post_init, x)
+
+    def test_dtype_reconstruct_with_multi_inheri(self):
+        x = paddle.to_tensor(1)
+        self.assert_results(return_dataclass_with_multi_inheri, x, "nyapu", 1)
 
 
 @dataclass

@@ -29,6 +29,7 @@ import textwrap
 import time
 import types
 import warnings
+from abc import ABC
 from contextlib import contextmanager
 from dataclasses import fields, is_dataclass
 from enum import Enum, Flag, IntEnum, auto
@@ -309,7 +310,17 @@ def is_dataclass_type(obj):
 
 
 def is_plain_dataclass_type(cls: type):
-    return is_dataclass_type(cls) and len(cls.__mro__) == 2
+    """
+    Returns True if `cls` and all its non-ABC, non-object base classes are dataclasses.
+    Disallows inheritance from any non-dataclass types except for ABC and object.
+    """
+    for idx in range(-2, -len(cls.__mro__) - 1, -1):
+        _cls = cls.__mro__[idx]
+        if _cls == ABC:
+            continue
+        if not is_dataclass_type(_cls):
+            return False
+    return True
 
 
 def dataclass_as_dict(obj):
