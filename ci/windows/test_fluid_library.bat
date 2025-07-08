@@ -10,6 +10,7 @@ echo    Step 5. Testing fluid library for inference ...
 echo    ========================================
 
 cd %BUILD_DIR%
+call "%vcvars64_dir%"
 tree /F %cd%\paddle_inference_install_dir\paddle
 %cache_dir%\tools\busybox64.exe du -h -d 0 %cd%\paddle_inference_install_dir > lib_size.txt
 type lib_size.txt
