@@ -14,9 +14,16 @@
 
 #include "paddle/phi/kernels/repeat_interleave_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_decls.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_resources.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/index_select_impl.h"
+#include "paddle/phi/kernels/funcs/repeat_tensor2index_tensor.h"
+#include "paddle/phi/kernels/gpu/index_select_impl.h"
+#include "paddle/phi/kernels/primitive/functor_primitives.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 namespace phi {
