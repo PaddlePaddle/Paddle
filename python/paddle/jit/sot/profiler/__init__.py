@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .kernel_stats import SotStepProfilerGuard as SotStepProfilerGuard
-from .profiler import (
+from paddle.jit.profiler import (
     EventGuard as EventGuard,
     SotProfiler as SotProfiler,
     event_register as event_register,
 )
+
+from .kernel_stats import SotStepProfilerGuard as SotStepProfilerGuard
