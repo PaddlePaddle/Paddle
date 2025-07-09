@@ -37,7 +37,7 @@ def fix_seeds(seed=2025):
 
 
 class PPModel(nn.Layer):
-    def __init__(self, name_prefix="", schedule="FThenB", shared_param_map={}):
+    def __init__(self, name_prefix="", schedule="FThenB", shared_parameters={}):
         super().__init__(name_scope=name_prefix)
         self.name_prefix = name_prefix
         self.mesh = paddle.distributed.ProcessMesh(
@@ -46,7 +46,7 @@ class PPModel(nn.Layer):
         self.num_layers = 8
         self.num_layers_per_card = self.num_layers // 4
         # Store the names of each pair of shared parameters.
-        self.shared_param_map = shared_param_map
+        self.shared_parameters = shared_parameters
 
         self.linears = nn.LayerList()
         for i in range(self.num_layers):
@@ -75,7 +75,7 @@ class PPModel(nn.Layer):
         self.set_shared_param()
 
     def set_shared_param(self):
-        for _, pair in self.shared_param_map.items():
+        for pair in self.shared_parameters:
             assert len(pair) == 2
             ori_name = pair[0]
             sync_name = pair[1]
@@ -151,17 +151,17 @@ def _get_param_from_name(param_name, model):
     return None
 
 
-def build_shared_param_map(shared_params_names, model):
+def build_shared_parameters(shared_params_names, model):
     # Find the two shared parameters and build shared parameter information.
     shared_mp = {}
-    for key, pair in shared_params_names.items():
+    for pair in shared_params_names:
         assert len(pair) == 2
         ori_name = pair[0]
         sync_name = pair[1]
         ori_param = _get_param_from_name(ori_name, model)
         sync_param = _get_param_from_name(sync_name, model)
         # Note: Users must strictly maintain the format of the data structure here.
-        shared_mp[key] = {"params": [ori_param, sync_param]}
+        shared_mp.append({"params": [ori_param, sync_param]})
     return shared_mp
 
 
@@ -187,14 +187,14 @@ class TestSharedParameters:
         self.model = PPModel(name_prefix=name_prefix)
 
         self.micro_batches = 8
-        shared_params_names = {
-            "embedding_shared_weight": [
+        shared_params_names = [
+            [
                 f"{name_prefix}_linear_0_weight.dist",
                 f"{name_prefix}_linear_7_weight.dist",
             ]
-        }
+        ]
         # Pre-build shared parameter information.
-        shared_mp = build_shared_param_map(shared_params_names, self.model)
+        shared_mp = build_shared_parameters(shared_params_names, self.model)
 
         num_layers_per_card = 2
         cur_rank = dist.get_rank()
@@ -211,7 +211,7 @@ class TestSharedParameters:
             self.rank,
             4,
             group=self.group,
-            shared_param_map=shared_mp,
+            shared_parameters=shared_mp,
         )
 
         self.stage.has_backward = True
@@ -265,7 +265,7 @@ class TestSharedParameters:
             ]
         }
         # Pre-build shared parameter information.
-        shared_mp = build_shared_param_map(shared_params_names, self.model)
+        shared_mp = build_shared_parameters(shared_params_names, self.model)
 
         cur_rank = dist.get_rank()
         for i in range(self.local_stages):
@@ -280,7 +280,7 @@ class TestSharedParameters:
                     cur_rank + i * 4,
                     8,
                     group=self.group,
-                    shared_param_map=shared_mp,
+                    shared_parameters=shared_mp,
                 )
             )
             self.stage_list[i].has_backward = True
@@ -320,7 +320,7 @@ class TestSharedParameters:
             ]
         }
         pp_model = PPModel(
-            name_prefix=name_prefix, shared_param_map=shared_params_names
+            name_prefix=name_prefix, shared_parameters=shared_params_names
         )
         opt = paddle.optimizer.AdamW(
             learning_rate=0.001, parameters=pp_model.parameters()
