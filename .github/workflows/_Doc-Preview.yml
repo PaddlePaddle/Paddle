@@ -131,6 +131,7 @@ jobs:
           UPLOAD_DOC: "true"
           BOSBUCKET: "paddle-site-web-dev"
           PREVIEW_SITE: "paddle-docs-preview.paddlepaddle.org.cn"
+          AGILE_COMPILE_BRANCH: ${{ github.event.pull_request.base.ref }}
         run: |
           container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
@@ -149,6 +150,7 @@ jobs:
             -e BOSBUCKET \
             -e PREVIEW_SITE \
             -e BRANCH \
+            -e AGILE_COMPILE_BRANCH \
             -e no_proxy \
             -w /paddle --network host ${docker_image}
 
