@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/repeat_interleave_grad_kernel.h"
-#include "cub/cub.cuh"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
@@ -26,6 +25,12 @@
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
+#ifdef __NVCC__
+#include "cub/cub.cuh"
+#else
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
 namespace phi {
 using phi::PADDLE_CUDA_NUM_THREADS;
 
