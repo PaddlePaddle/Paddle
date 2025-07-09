@@ -183,8 +183,12 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
             self._places
         )
 
-        self._init_thread()
         self._shutdown = False
+        try:
+            self._init_thread()
+        except Exception:
+            self._try_shutdown_all()
+            raise
 
         global _loader
         _loader = self
@@ -432,8 +436,12 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         for _ in range(self._outstanding_capacity):
             self._try_put_indices()
 
-        self._init_thread()
         self._shutdown = False
+        try:
+            self._init_thread()
+        except Exception:
+            self._try_shutdown_all()
+            raise
 
     def _init_workers(self):
         from paddle.incubate import multiprocessing
