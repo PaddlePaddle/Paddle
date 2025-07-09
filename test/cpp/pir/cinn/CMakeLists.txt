@@ -44,6 +44,9 @@ if(WITH_TESTING AND WITH_CINN)
 
   paddle_test(ir_simplify_test SRCS ir_simplify_test.cc)
 
+  paddle_test(eliminate_common_factor_of_local_index_test SRCS
+              eliminate_common_factor_of_local_index_test.cc)
+
   # DO NOT forget add test name here, otherwise it will not be executed in
   # CINN CI.
   set(cinn_unit_tests
