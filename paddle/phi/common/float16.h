@@ -107,8 +107,8 @@ struct PADDLE_ALIGN(2) float16 {
   HOSTDEVICE inline explicit float16(float val) {
 #if defined(PADDLE_CUDA_FP16) && \
     (defined(__HIPCC__) || (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300))
-    half tmp = __float2half(val);
-    x = *reinterpret_cast<uint16_t*>(&tmp);
+      half tmp = __float2half(val);
+      x = *reinterpret_cast<uint16_t*>(&tmp);
 
 #elif defined(PADDLE_WITH_NATIVE_FP16)
     float32x4_t tmp = vld1q_dup_f32(&val);
@@ -131,6 +131,11 @@ struct PADDLE_ALIGN(2) float16 {
     v.si ^= (s.si ^ v.si) & -(minN > v.si);
     v.si ^= (infN ^ v.si) & -((infN > v.si) & (v.si > maxN));
     v.si ^= (nanN ^ v.si) & -((nanN > v.si) & (v.si > infN));
+    // Rounding conditions (round to nearest, ties to even). https://en.wikipedia.org/wiki/Rounding#Rounding_half_to_even
+    if (v.ui < infN) {                               // Skip special values (infinity and NaN)
+        const uint32_t lsb = (v.ui >> shift) & 0x1;  // Lowest significant bit of the retained part
+        v.ui = (v.ui + 0xFFF + lsb);                 // rounding up
+    }
     v.ui >>= shift;  // logical shift
     v.si ^= ((v.si - maxD) ^ v.si) & -(v.si > maxC);
     v.si ^= ((v.si - minD) ^ v.si) & -(v.si > subC);
