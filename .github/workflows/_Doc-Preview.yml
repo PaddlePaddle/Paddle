@@ -148,6 +148,7 @@ jobs:
             -e UPLOAD_DOC \
             -e BOSBUCKET \
             -e PREVIEW_SITE \
+            -e BRANCH \
             -e no_proxy \
             -w /paddle --network host ${docker_image}
 
@@ -161,5 +162,6 @@ jobs:
           fi
           curl -sS -o /tmp/entrypoint.sh https://paddle-dev-tools-open.bj.bcebos.com/fluiddoc-preview/entrypoint-paddle-docs-review.sh
           cd /
+          source ${{ github.workspace }}/../../../proxy
           bash "/tmp/entrypoint.sh"
           '
