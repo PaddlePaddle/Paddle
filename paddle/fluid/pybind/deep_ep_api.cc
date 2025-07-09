@@ -54,11 +54,11 @@ void BindDeepEPApi(pybind11::module *m) {
          &deep_ep::GetEventHandleFromCommStream);
 
   m->def("get_comm_stream_from_group",
-         &deep_ep::detail::GetCommStreamFromGroup) m
-      ->def("get_calc_stream_from_group",
-            &deep_ep::detail::GetCalcStreamFromGroup)
+         &deep_ep::detail::GetCommStreamFromGroup);
+  m->def("get_calc_stream_from_group",
+         &deep_ep::detail::GetCalcStreamFromGroup);
 
-          pybind11::class_<deep_ep::Buffer>(*m, "Buffer")
+  pybind11::class_<deep_ep::Buffer>(*m, "Buffer")
       .def(pybind11::init<int, int, int64_t, int64_t, bool, int>())
       .def("is_available", &deep_ep::Buffer::is_available)
       .def("get_num_rdma_ranks", &deep_ep::Buffer::get_num_rdma_ranks)
