@@ -360,12 +360,15 @@ jobs:
           unset GREP_OPTIONS
           source ${{ github.workspace }}/../../../proxy
           source ${ci_scripts}/utils.sh; check_coverage
+          mkdir -p /home/data/cfs/coverage/${PR_ID}/${COMMIT_ID}
+          cp build/coverage_files/* /home/data/cfs/coverage/${PR_ID}/${COMMIT_ID}
           '
 
       - name: Upload coverage report
         uses: codecov/codecov-action@v4
         with:
           directory: build/coverage_files
+          verbose: true
 
       - name: Determine whether the coverage rate reaches 90%
         run: |

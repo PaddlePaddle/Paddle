@@ -3702,6 +3702,16 @@
   optional : corr_bias
   backward : moe_gate_dispatch_grad
 
+- op : moe_gate_dispatch_and_quant
+  args : (Tensor x, Tensor gate_logits, Tensor corr_bias, int64_t k, int64_t capacity, bool use_pad, bool use_pow2_scale)
+  output : Tensor(out_fp8), Tensor(scale), Tensor(combine_weights), Tensor(scatter_index), Tensor(expert_offset), Tensor(expert_id)
+  infer_meta :
+    func : MoeGateDispatchAndQuantInferMeta
+  kernel :
+    func : moe_gate_dispatch_and_quant
+    data_type : x
+  optional : corr_bias
+
 - op : moe_gate_dispatch_partial_nosoftmaxtopk
   args : (Tensor x, Tensor combine_weights, Tensor expert_id, int64_t k, int64_t capacity, int64_t num_experts, bool use_pad, int64_t expert_start_index, int64_t expert_end_index, bool reverse_token_drop)
   output : Tensor(y), Tensor(combine_weights_out), Tensor(scatter_index), Tensor(scatter_index_rev), Tensor(expert_offset), Tensor(expert_nums_local)

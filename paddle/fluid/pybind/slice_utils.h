@@ -97,7 +97,7 @@ static inline std::vector<paddle::Tensor> expand_outplace(
   bool first = true;
   common::DDim sizes;
   for (size_t i = 0; i < to_expand.size(); i++) {
-    if (!to_expand[i].initialized()) {
+    if (!to_expand[i].defined()) {
       continue;
     } else if (first) {
       sizes = to_expand[i].dims();
@@ -109,7 +109,7 @@ static inline std::vector<paddle::Tensor> expand_outplace(
 
   std::vector<paddle::Tensor> result(to_expand.size());
   for (size_t i = 0; i < to_expand.size(); i++) {
-    if (!to_expand[i].initialized()) {
+    if (!to_expand[i].defined()) {
       continue;
     } else if (to_expand[i].dims() == sizes) {
       result[i] = to_expand[i];
@@ -173,7 +173,7 @@ inline AdvancedIndex::AdvancedIndex(paddle::Tensor src,
   std::vector<int64_t> idx_stride_vec = {};
 
   for (size_t dim = 0; dim < indices_list.size(); dim++) {
-    if (!indices_list[dim].defined() || indices_list[dim].dims().size() == 0) {
+    if (!indices_list[dim].defined()) {
       if (dims_indexed == 0) {
         dims_before++;
       } else {
@@ -200,7 +200,7 @@ inline AdvancedIndex::AdvancedIndex(paddle::Tensor src,
 
   // use dims_before and dims_after / move to cuda kernel
   for (auto& index : indices_list) {
-    if (index.defined() && index.dims().size() > 0) {
+    if (index.defined()) {
       this->indices.push_back(reshape_indexer(&index, dims_before, dims_after));
     }
   }
