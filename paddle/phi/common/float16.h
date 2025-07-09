@@ -107,8 +107,8 @@ struct PADDLE_ALIGN(2) float16 {
   HOSTDEVICE inline explicit float16(float val) {
 #if defined(PADDLE_CUDA_FP16) && \
     (defined(__HIPCC__) || (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300))
-      half tmp = __float2half(val);
-      x = *reinterpret_cast<uint16_t*>(&tmp);
+    half tmp = __float2half(val);
+    x = *reinterpret_cast<uint16_t*>(&tmp);
 
 #elif defined(PADDLE_WITH_NATIVE_FP16)
     float32x4_t tmp = vld1q_dup_f32(&val);
