@@ -20,6 +20,7 @@ from test_case_base import (
 )
 
 import paddle
+from paddle import nn
 from paddle.jit.sot.psdb import check_no_breakgraph
 from paddle.jit.sot.utils import strict_mode_guard
 
@@ -147,6 +148,30 @@ class TestWithStatement(TestCaseBase):
 
     def test_no_grad(self):
         self.assert_results(test_no_grad_behavior)
+
+
+class SimpleNet(nn.Layer):
+    def __init__(self, input_dim, output_dim):
+        super().__init__()
+        self.layer = nn.Linear(input_dim, output_dim)
+
+    def forward(self, x):
+        with paddle.static.amp.fp16_guard():
+            return self._forward(x)
+
+    def _forward(self, x):
+        return self.layer(x)
+
+
+def net_call(x: paddle.Tensor, net):
+    return net(x)
+
+
+class TestPaddleContextManager(TestCaseBase):
+    def test_fp16_guard(self):
+        x = paddle.randn([4, 4])
+        model = SimpleNet(4, 8)
+        self.assert_results(net_call, x, model)
 
 
 if __name__ == '__main__':
