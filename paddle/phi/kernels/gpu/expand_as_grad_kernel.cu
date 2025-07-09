@@ -17,9 +17,9 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -28,6 +28,11 @@ void ExpandAsGradKernel(const Context& context,
                         const DenseTensor& out_grad,
                         const std::vector<int64_t>& target_shape,
                         DenseTensor* in_grad) {
+  if (out_grad.numel() == 0) {
+    phi::Full<T, Context>(
+        context, phi::IntArray(common::vectorize(in_grad->dims())), 0, in_grad);
+    return;
+  }
   auto in_dims = x.dims();
   auto out_dims = out_grad.dims();
   int in_rank = in_dims.size();
