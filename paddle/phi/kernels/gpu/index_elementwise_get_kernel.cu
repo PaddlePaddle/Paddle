@@ -82,7 +82,7 @@ void GPUIndexElementwiseGetKernel(const phi::GPUContext& ctx,
   const char* in_ptr =
       reinterpret_cast<const char*>(input.data<T>()) + slice_offset;
   char* out_ptr = reinterpret_cast<char*>(output->data<T>());
-  funcs::index_elementwise_kernel<nt, vt>
+  funcs::index_elementwise_with_tensor_kernel<nt, vt>
       <<<grid, block, 0, stream>>>(N, [=] __device__(int idx) {
         const auto offsets = offset_calc.get(idx);
         char* const out_data = out_ptr + offsets[0];

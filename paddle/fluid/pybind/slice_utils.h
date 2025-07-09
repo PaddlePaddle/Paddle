@@ -599,6 +599,26 @@ inline static bool MaskedFillDispatching(
   return true;
 }
 
+inline static bool MaskedFillValueDispatching(
+    const paddle::Tensor& tensor,
+    const std::vector<paddle::Tensor>& indices,
+    paddle::Tensor* mask_tensor) {
+  if (indices.size() != 1)
+    return false;
+
+  int64_t num_ind = 0;
+  if ((indices)[0].dtype() != phi::DataType::BOOL) {
+    return false;
+  } else {
+    num_ind += (indices)[0].shape().size();
+  }
+  *mask_tensor = (indices)[0];
+  for (size_t i = num_ind; i < tensor.shape().size(); i++) {
+    *mask_tensor = unsqueeze_ad_func(*mask_tensor, {-1});
+  }
+  return true;
+}
+
 static paddle::Tensor dealWithAdvancedIndex(
     const paddle::Tensor& tensor,
     std::vector<int>* advanced_index_dim,
@@ -902,7 +922,7 @@ static paddle::Tensor dealWithValues(const paddle::Tensor& tensor,
           Py_TYPE(value_obj)));
     }
 
-    if (trans_to_tensor) {
+    if (trans_to_tensor && (*values).size() > 1) {
       value_tensor =
           full_ad_func({1}, (*values)[0], tensor.dtype(), tensor.place());
     }

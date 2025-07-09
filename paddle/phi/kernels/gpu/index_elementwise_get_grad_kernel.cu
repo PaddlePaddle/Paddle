@@ -125,7 +125,7 @@ void GPUIndexElementwiseGetGrad(const phi::GPUContext& ctx,
                                      num_indices,
                                      offset_calc);
   } else {
-    funcs::index_elementwise_kernel<nt, vt>
+    funcs::index_elementwise_with_tensor_kernel<nt, vt>
         <<<grid, block, 0, stream>>>(N, [=] __device__(int idx) {
           const auto offsets = offset_calc.get(idx);
           char* const out_data = out_ptr + offsets[0];
