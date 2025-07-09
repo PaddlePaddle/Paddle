@@ -1,4 +1,4 @@
-# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,10 +21,10 @@ import paddle
 
 class TestFusedRmsNorm(unittest.TestCase):
     def setUp(self):
-        self.func = paddle.incubate.nn.functional.fused_rms_norm
         paddle.seed(123)
         self.init_data()
         self.modify_data()
+        self.func = paddle.incubate.nn.functional.fused_rms_norm
 
     def tearDown(self):
         pass
