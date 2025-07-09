@@ -14,9 +14,11 @@
 
 #include "paddle/phi/kernels/repeat_interleave_grad_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/funcs/repeat_tensor2index_tensor.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 namespace phi {
 using phi::PADDLE_CUDA_NUM_THREADS;
