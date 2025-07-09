@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/repeat_interleave_kernel.h"
-
+#include "paddle/phi/kernels/impl/repeat_interleave_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -59,11 +58,11 @@ __global__ void RepeatInterleaveVecKernel(const T* __restrict__ input,
   }
 }
 template <typename T, typename Context>
-void RepeatInterleaveKernelV2(const Context& dev_ctx,
-                              const DenseTensor& x,
-                              int repeats,
-                              int dim,
-                              DenseTensor* out) {
+void RepeatInterleaveKernel(const Context& dev_ctx,
+                            const DenseTensor& x,
+                            int repeats,
+                            int dim,
+                            DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
   if (out && out->numel() == 0) {
     return;
@@ -129,7 +128,7 @@ void RepeatInterleaveKernelV2(const Context& dev_ctx,
 PD_REGISTER_KERNEL(repeat_interleave,
                    GPU,
                    ALL_LAYOUT,
-                   phi::RepeatInterleaveKernelV2,
+                   phi::RepeatInterleaveKernel,
                    float,
                    double,
                    int,

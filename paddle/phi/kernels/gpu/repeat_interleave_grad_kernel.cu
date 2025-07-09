@@ -21,12 +21,12 @@
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 namespace phi {
 template <typename T, typename Context>
-void RepeatInterleaveGradKernelV2(const Context& dev_ctx,
-                                  const DenseTensor& x,
-                                  const DenseTensor& out_grad,
-                                  int repeats,
-                                  int dim,
-                                  DenseTensor* x_grad) {
+void RepeatInterleaveGradKernel(const Context& dev_ctx,
+                                const DenseTensor& x,
+                                const DenseTensor& out_grad,
+                                int repeats,
+                                int dim,
+                                DenseTensor* x_grad) {
   if (x_grad && x_grad->numel() == 0) {
     dev_ctx.template Alloc<T>(x_grad);
     return;
@@ -67,7 +67,7 @@ PD_REGISTER_KERNEL(repeat_interleave_with_tensor_index_grad,
 PD_REGISTER_KERNEL(repeat_interleave_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::RepeatInterleaveGradKernelV2,
+                   phi::RepeatInterleaveGradKernel,
                    float,
                    double,
                    int,
