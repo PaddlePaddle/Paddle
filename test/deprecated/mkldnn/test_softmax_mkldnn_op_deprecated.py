@@ -17,7 +17,7 @@ import unittest
 
 sys.path.append("../../mkldnn")
 import numpy as np
-from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
+from onednn_op_test import check_if_onednn_primitives_exist_in_bwd
 from op_test import OpTest
 from test_softmax_op import (
     TestSoftmaxOp,
@@ -167,7 +167,7 @@ class TestSoftmaxMKLDNNPrimitivesAlreadyExist(unittest.TestCase):
 
     @compare_legacy_with_pt
     def test_check(self):
-        check_if_mkldnn_primitives_exist_in_bwd(
+        check_if_onednn_primitives_exist_in_bwd(
             self, self.op_type, self.x, self.out, self.out_grad, self.x_grad
         )
 
