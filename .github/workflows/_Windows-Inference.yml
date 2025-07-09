@@ -54,6 +54,7 @@ jobs:
       - name: Download Paddle and clean env
         working-directory: ..
         run: |
+          whoami
           cd
           rmdir /s/q %WORKSPACE_DIR%\Paddle
           echo "path=%path%;C:\Program Files\NVIDIA Corporation\NVSMI" >> %GITHUB_ENV%
