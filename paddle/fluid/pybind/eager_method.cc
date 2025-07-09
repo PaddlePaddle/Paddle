@@ -1660,16 +1660,12 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
       transed_index = expand_outplace(transed_index);
 
       for (int i = 0; i < pos_of_new_dim; ++i) {
-        transed_index.insert(
-            transed_index.begin(),
-            empty_ad_func(
-                {}, transed_index[0].dtype(), transed_index[0].place()));
+        transed_index.insert(transed_index.begin(), paddle::Tensor());
       }
 
       while (transed_index.size() <
              static_cast<size_t>(transed_tensor.dims().size())) {
-        transed_index.emplace_back(empty_ad_func(
-            {}, transed_index[0].dtype(), transed_index[0].place()));
+        transed_index.emplace_back(paddle::Tensor());
       }
 
       int64_t slice_offset =
@@ -2113,15 +2109,11 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
           transed_index = expandTensors(transed_index);
           transed_index = expand_outplace(transed_index);
           for (int i = 0; i < pos_of_new_dim; ++i) {
-            transed_index.insert(
-                transed_index.begin(),
-                empty_ad_func(
-                    {}, transed_index[0].dtype(), transed_index[0].place()));
+            transed_index.insert(transed_index.begin(), paddle::Tensor());
           }
           while (transed_index.size() <
                  static_cast<size_t>(transed_sub_tensor.dims().size())) {
-            transed_index.emplace_back(empty_ad_func(
-                {}, transed_index[0].dtype(), transed_index[0].place()));
+            transed_index.emplace_back(paddle::Tensor());
           }
           int64_t slice_offset =
               static_cast<int64_t>(reinterpret_cast<char*>(sub_tensor.data()) -
@@ -2137,6 +2129,15 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
 
           AdvancedIndex ad =
               AdvancedIndex(transed_sub_tensor, transed_index_int64);
+          PADDLE_ENFORCE_EQ(
+              phi::funcs::CheckIsDimsMatchBool(common::make_ddim(ad.src_sizes),
+                                               value_tensor.dims()),
+              true,
+              common::errors::InvalidArgument(
+                  "shape mismatch: value tensor of shape %s cannot be "
+                  "broadcast to indexing result of shape %s.",
+                  value_tensor.dims().to_str(),
+                  common::make_ddim(ad.src_sizes).to_str()));
           transed_sub_tensor =
               index_elementwise_put__ad_func(tensor,
                                              ad.indices,
@@ -2149,7 +2150,6 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
           // New kernel does not need to transpose back, so set out_is_view to
           // false. Remove when all cases use this branch.
           out_is_view = false;
-
         } else {
           transed_sub_tensor = index_put__ad_func(
               transed_sub_tensor, transed_index, value_tensor);
