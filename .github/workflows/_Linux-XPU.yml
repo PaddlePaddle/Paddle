@@ -22,7 +22,7 @@ defaults:
 
 jobs:
   check-bypass:
-    name: Check bypass for XPU
+    name: Check bypass
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: 'xpu'

@@ -58,24 +58,24 @@ struct StackGradFunctor {
 };
 
 template <typename DeviceContext, typename VecXType, typename T>
-static inline void StackFunctorForRange(const DeviceContext &ctx,
+static inline void StackFunctorForRange(const DeviceContext &dev_ctx,
                                         const VecXType &x,
                                         T *y,
                                         int total_num,
                                         int n,
                                         int post) {
-  phi::funcs::ForRange<DeviceContext> for_range(ctx, total_num);
+  phi::funcs::ForRange<DeviceContext> for_range(dev_ctx, total_num);
   for_range(StackFunctor<VecXType, T>(x, y, n, post));
 }
 
 template <typename DeviceContext, typename VecDxType, typename T>
-static inline void StackGradFunctorForRange(const DeviceContext &ctx,
+static inline void StackGradFunctorForRange(const DeviceContext &dev_ctx,
                                             const VecDxType &dx,
                                             const T *dy,
                                             int total_num,
                                             int n,
                                             int post) {
-  phi::funcs::ForRange<DeviceContext> for_range(ctx, total_num);
+  phi::funcs::ForRange<DeviceContext> for_range(dev_ctx, total_num);
   for_range(StackGradFunctor<VecDxType, T>(dx, dy, n, post));
 }
 

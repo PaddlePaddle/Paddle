@@ -35,7 +35,7 @@ void GetMaxLenTensor(const phi::GPUContext& dev_ctx,
   max_len_tensor.Resize({{1}});
   auto* max_len_tensor_data = dev_ctx.template Alloc<int>(
       &max_len_tensor, max_len_tensor.numel() * sizeof(int));
-  const int bsz = batch_size.dims()[0];
+  const int64_t bsz = batch_size.dims()[0];
   constexpr int blockSize = 128;
   int max_len_cpu = 0;
   GetMaxLenKernel<blockSize><<<1, blockSize, 0, dev_ctx.stream()>>>(

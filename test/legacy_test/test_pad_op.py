@@ -17,7 +17,7 @@ import sys
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_places
 
 sys.path.append("../deprecated/legacy_test")
 from test_attribute_var import UnittestBase
@@ -558,6 +558,53 @@ class TestPadOrder3(TestPadOrder):
     def init_case(self):
         self.shape = [2, 3, 4, 5]
         self.paddings = [(0, 1)]
+        self.pad_value = 0.5
+
+
+class TestPadOp_ZeroSize(unittest.TestCase):
+    def init_case(self):
+        self.shape = [0, 16]
+        self.paddings = [(0, 1), (2, 3)]
+        self.paddings_empty_tensor = False
+        self.pad_value = 0.5
+
+    def test_dygraph(self):
+        self.init_case()
+        for place in get_places():
+            paddle.disable_static(place)
+            x_np = np.random.random(self.shape).astype('float32')
+            paddings_np = self.paddings.copy()
+            x = paddle.to_tensor(x_np)
+            x.stop_gradient = False
+            paddings = list(np.array(self.paddings).flatten())
+            if self.paddings_empty_tensor:
+                paddings = paddle.to_tensor(paddings)
+                # output the same as x
+                out_np = x_np
+            else:
+                out_np = np.pad(
+                    x_np,
+                    paddings_np,
+                    mode="constant",
+                    constant_values=self.pad_value,
+                )
+            out = paddle.nn.functional.pad(
+                x,
+                paddings,
+                mode='constant',
+                value=self.pad_value,
+                pad_from_left_axis=True,
+            )
+            np.testing.assert_array_equal(out, out_np)
+            out.sum().backward()
+            np.testing.assert_allclose(x.grad.numpy(), np.ones(self.shape))
+
+
+class TestPadOp_ZeroSize2(TestPadOp_ZeroSize):
+    def init_case(self):
+        self.shape = [4, 6, 6]
+        self.paddings = []
+        self.paddings_empty_tensor = True
         self.pad_value = 0.5
 
 

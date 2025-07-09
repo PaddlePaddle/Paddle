@@ -59,7 +59,7 @@ void call_gemm(const Context& dev_ctx,
                T* C) {
   int lda = (TransA == CblasNoTrans) ? K : M;
   int ldb = (TransB == CblasNoTrans) ? N : K;
-  // auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
+  // auto& dev_ctx = dev_ctx.template device_context<phi::CPUContext>();
   auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
   blas.GEMM(TransA, TransB, M, N, K, alpha, A, lda, B, ldb, beta, C, N);
 }
@@ -83,7 +83,7 @@ void call_gemm_with_lda(const phi::funcs::BlasT<DeviceContext, T>& blas,
 }
 
 template <typename T, typename Context>
-void call_gemm_batched(const Context& ctx,
+void call_gemm_batched(const Context& dev_ctx,
                        const CBLAS_TRANSPOSE TransA,
                        const CBLAS_TRANSPOSE TransB,
                        const int M,
@@ -96,7 +96,7 @@ void call_gemm_batched(const Context& ctx,
                        T** C,
                        const int batch) {
   for (int i = 0; i < batch; ++i) {
-    call_gemm(ctx, TransA, TransB, M, N, K, alpha, A[i], B[i], beta, C[i]);
+    call_gemm(dev_ctx, TransA, TransB, M, N, K, alpha, A[i], B[i], beta, C[i]);
   }
 }
 

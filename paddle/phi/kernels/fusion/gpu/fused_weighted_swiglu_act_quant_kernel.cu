@@ -350,13 +350,13 @@ void FusedWeightedSwigluActQuantKernel(
   PADDLE_ENFORCE_EQ(
       x.dtype(),
       phi::DataType::BFLOAT16,
-      phi::errors::InvalidArgument("Input X must be bfloat16, but got %s",
-                                   phi::DataTypeToString(x.dtype())));
+      common::errors::InvalidArgument("Input X must be bfloat16, but got %s",
+                                      phi::DataTypeToString(x.dtype())));
 
   if (prob) {
     PADDLE_ENFORCE_EQ(prob.get().dtype(),
                       phi::DataType::FLOAT32,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Input prob must be float32, but got %s",
                           phi::DataTypeToString(prob.get().dtype())));
   }
@@ -367,7 +367,7 @@ void FusedWeightedSwigluActQuantKernel(
 
   PADDLE_ENFORCE_EQ(cols % 2,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The last dim of Input(X) should be exactly divided "
                         "by 2, but got %d",
                         cols));
@@ -375,7 +375,7 @@ void FusedWeightedSwigluActQuantKernel(
   if (prob) {
     PADDLE_ENFORCE_EQ(prob.get().dims()[0],
                       rows,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The first dim of Input(X) should be equal to the "
                           "first dim of Input(prob) but got X.shape[0]: %d, "
                           "prob.shape[0]: %d",

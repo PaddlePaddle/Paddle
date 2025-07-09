@@ -18,14 +18,14 @@ import numpy as np
 from op_test import OpTest
 
 
-class TestTransposeMKLDNN(OpTest):
+class TestTransposeONEDNN(OpTest):
     def setUp(self):
         self.init_op_type()
         self.initTestCase()
         self.inputs = {'X': np.random.random(self.shape).astype("float32")}
         self.attrs = {
             'axis': list(self.axis),
-            'use_mkldnn': self.use_mkldnn,
+            'use_mkldnn': self.use_onednn,
         }
         self.outputs = {
             'XShape': np.random.random(self.shape).astype("float32"),
@@ -34,7 +34,7 @@ class TestTransposeMKLDNN(OpTest):
 
     def init_op_type(self):
         self.op_type = "transpose2"
-        self.use_mkldnn = True
+        self.use_onednn = True
 
     def test_check_output(self):
         # TODO(wangzhongpu): support onednn op in dygraph mode
@@ -53,43 +53,43 @@ class TestTransposeMKLDNN(OpTest):
         self.axis = (1, 0)
 
 
-class TestCase0MKLDNN(TestTransposeMKLDNN):
+class TestCase0ONEDNN(TestTransposeONEDNN):
     def initTestCase(self):
         self.shape = (100,)
         self.axis = (0,)
 
 
-class TestCase1a(TestTransposeMKLDNN):
+class TestCase1a(TestTransposeONEDNN):
     def initTestCase(self):
         self.shape = (3, 4, 10)
         self.axis = (0, 2, 1)
 
 
-class TestCase1b(TestTransposeMKLDNN):
+class TestCase1b(TestTransposeONEDNN):
     def initTestCase(self):
         self.shape = (3, 4, 10)
         self.axis = (2, 1, 0)
 
 
-class TestCase2(TestTransposeMKLDNN):
+class TestCase2(TestTransposeONEDNN):
     def initTestCase(self):
         self.shape = (2, 3, 4, 5)
         self.axis = (0, 2, 3, 1)
 
 
-class TestCase3(TestTransposeMKLDNN):
+class TestCase3(TestTransposeONEDNN):
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6)
         self.axis = (4, 2, 3, 1, 0)
 
 
-class TestCase4(TestTransposeMKLDNN):
+class TestCase4(TestTransposeONEDNN):
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6, 1)
         self.axis = (4, 2, 3, 1, 0, 5)
 
 
-class TestCase_ZeroDim(TestTransposeMKLDNN):
+class TestCase_ZeroDim(TestTransposeONEDNN):
     def initTestCase(self):
         self.shape = ()
         self.axis = ()

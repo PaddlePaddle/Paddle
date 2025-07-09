@@ -20,9 +20,37 @@ namespace paddle {
 namespace framework {
 
 SingleThreadLockFreeWorker::SingleThreadLockFreeWorker(int capacity)
-    : capacity_(capacity), head_(0), tail_(0), running_(true) {
+    : capacity_(capacity),
+      head_(0),
+      tail_(0),
+      running_(true),
+      break_loop_(false) {
   tasks_queue_.resize(capacity);
   worker_ = std::thread([this]() { this->WorkerLoop(); });
+}
+
+SingleThreadLockFreeWorker::~SingleThreadLockFreeWorker() {
+  Wait();
+  break_loop_ = true;
+  if (worker_.joinable()) {
+    worker_.join();
+  }
+}
+
+void SingleThreadLockFreeWorker::Reset(int capacity) {
+  Wait();
+  running_ = false;
+  tasks_queue_.clear();
+  tasks_queue_.resize(capacity);
+  capacity_ = capacity;
+  tail_ = 0;
+  head_ = 0;
+  running_ = true;
+}
+
+void SingleThreadLockFreeWorker::Wait() {
+  // Wait util all the tasks have been executed
+  while (head_ < tail_) std::this_thread::yield();
 }
 
 void SingleThreadLockFreeWorker::AddTask(Task task) {
@@ -33,21 +61,16 @@ void SingleThreadLockFreeWorker::AddTask(Task task) {
   }
 }
 
-void SingleThreadLockFreeWorker::Wait() {
-  running_ = false;
-  if (worker_.joinable()) worker_.join();
-}
-
 void SingleThreadLockFreeWorker::WorkerLoop() {
-  while (true) {
-    if (head_ < tail_) {
-      Task task = tasks_queue_[head_];
+  while (!break_loop_) {
+    const int head = head_.load();
+    const int tail = tail_.load();
+    if (head < tail && running_) {
+      Task task = tasks_queue_.at(head);
       task();
       head_++;
-    } else if (head_ == tail_ && running_) {
+    } else {  // head_ == tail || !running_
       std::this_thread::yield();
-    } else {
-      break;
     }
   }
 }
@@ -56,6 +79,10 @@ InterpreterCoreAsyncFastGarbageCollector::
     InterpreterCoreAsyncFastGarbageCollector(int num_instructions) {
   async_worker_ =
       std::make_unique<SingleThreadLockFreeWorker>(num_instructions);
+}
+
+void InterpreterCoreAsyncFastGarbageCollector::Reset(int num_instructions) {
+  async_worker_->Reset(num_instructions);
 }
 
 void FreeVariable(Variable* var) {
