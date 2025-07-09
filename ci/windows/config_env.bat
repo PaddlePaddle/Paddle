@@ -1,5 +1,5 @@
 setlocal enabledelayedexpansion
-@ECHO ON
+
 set work_dir=%cd%
 echo work_dir=%work_dir%>> %GITHUB_ENV%
 if not defined cache_dir (

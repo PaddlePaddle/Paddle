@@ -4,7 +4,6 @@ call :test_inference || goto test_inference_error
 goto :eof
 
 :test_inference
-@ECHO ON
 echo    ========================================
 echo    Step 5. Testing fluid library for inference ...
 echo    ========================================

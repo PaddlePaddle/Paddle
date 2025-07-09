@@ -7,7 +7,6 @@ goto:eof
 echo    ========================================
 echo    Step 3. Test pip install whl package ...
 echo    ========================================
-@ECHO ON
 
 rem Record the exact size of dll and whl files and save them to disk D
 cd %BUILD_DIR%

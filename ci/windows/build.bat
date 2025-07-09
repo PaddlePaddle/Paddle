@@ -1,5 +1,4 @@
 setlocal enabledelayedexpansion
-@ECHO ON
 
 call "%PYTHON_VENV_ROOT%\Scripts\activate.bat"
 
@@ -48,7 +47,6 @@ call :cmake || goto cmake_error
 goto :begin_build
 
 :cmake
-@ECHO ON
 echo    ========================================
 echo    Step 1. Cmake ...
 echo    ========================================
@@ -60,16 +58,6 @@ rem Configure the environment for 64-bit builds. 'DISTUTILS_USE_SDK' indicates t
 if not defined vcvars64_dir set "vcvars64_dir=C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat" & echo vcvars64_dir=!vcvars64_dir!>> %GITHUB_ENV%
 echo %vcvars64_dir%
 call "%vcvars64_dir%"
-
-
-
-set "vcvars64_dir1=aaaa bbb"
-echo vcvars64_dir1=%vcvars64_dir1%>> %GITHUB_ENV%
-
-set "vcvars64_dir2=aaaa bbb"
-echo vcvars64_dir2="%vcvars64_dir2%">> %GITHUB_ENV%
-
-
 
 set DISTUTILS_USE_SDK=1
 rem Windows 10 Kit bin dir
@@ -84,7 +72,6 @@ set start=%start:~4,10%
 if not defined CUDA_TOOLKIT_ROOT_DIR set "CUDA_TOOLKIT_ROOT_DIR=C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.2"
 set "PATH=%TENSORRT_ROOT:/=\%\lib;%CUDA_TOOLKIT_ROOT_DIR:/=\%\bin;%CUDA_TOOLKIT_ROOT_DIR:/=\%\libnvvp;%PATH%"
 
-@ECHO ON
 if "%WITH_GPU%"=="ON" (
     set cuda_version=%CUDA_TOOLKIT_ROOT_DIR:~-4%
     if "!cuda_version!"=="12.0" (
@@ -157,7 +144,6 @@ if "%WITH_GPU%"=="ON" (
     set sub_dir=cpu
 )
 
-@ECHO ON
 cd /d %work_dir%
 python -c "import wget;wget.download('https://paddle-github-action.bj.bcebos.com/windows/third_party_code/%sub_dir%/%md5%.tar.zst')"
 if !ERRORLEVEL! EQU 0 (
@@ -168,7 +154,6 @@ if !ERRORLEVEL! EQU 0 (
         echo Getting source code of third party : successful
     )
 ) else (
-    @REM rmdir third_party\openvino\doc
     git submodule update --init --recursive
     if !errorlevel! EQU 0 (
         set UPLOAD_TP_CODE=ON
@@ -257,7 +242,6 @@ call :build || goto build_error
 goto:eof
 
 :build
-@ECHO ON
 echo    ========================================
 echo    Step 2. Build Paddle ...
 echo    ========================================
