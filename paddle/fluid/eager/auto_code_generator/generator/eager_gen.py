@@ -519,6 +519,8 @@ FORWARD_BODY_BEFORE_API_CALL_TEMPLATE = """  if (require_any_grad) {{
 {}
     // Node Construction
 {}
+    VLOG(3) << "Create node " << grad_node->name() << "addr " << grad_node;
+
     // Set for forward trace
   if (FLAGS_check_nan_inf || FLAGS_call_stack_level == 3) {{
     grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());

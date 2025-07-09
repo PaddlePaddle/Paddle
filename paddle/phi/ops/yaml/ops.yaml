@@ -5836,7 +5836,7 @@
     func: fp8_gemm_blockwise
 
 - op: fp8_quant_blockwise
-  args: (Tensor x, float epsilon, bool using_1x128_vec_quant, bool input_transpose, bool output_scale_transpose, bool using_e5m2, bool using_pow2_scale)
+  args: (Tensor x, float epsilon, bool using_1x128_vec_quant, bool input_transpose, bool output_scale_transpose, bool return_transpose_only, bool using_e5m2, bool using_pow2_scale)
   output: Tensor(out), Tensor(scale), Tensor(out_transposed), Tensor(scale_transposed)
   infer_meta:
     func: Fp8QuantBlockwiseInferMeta
