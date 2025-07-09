@@ -74,7 +74,8 @@ class OpcodeExecutorCache(metaclass=Singleton):
 
     MAX_CACHE_SIZE = 20
     MAX_COMPILE_TIME_PER_CODE = 40
-    MAX_COMPILE_TIME_TOTAL = 15 * 60
+    # MAX_COMPILE_TIME_TOTAL = 15 * 60
+    MAX_COMPILE_TIME_TOTAL = 1 * 60
     CACHE_HIT_FASTPATH_THRESHOLD = 32
     cache: dict[
         types.CodeType, tuple[GuardedFunctions, paddle.framework.core.GuardTree]

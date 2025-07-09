@@ -45,6 +45,7 @@ from .symbolic_shape.symbolic_value import SymbolicInt
 from .utils import (
     Cache,
     Singleton,
+    get_min_non_specialized_number,
     map_if_extend,
     meta_str,
 )
@@ -718,5 +719,6 @@ class ConstrainedInputSpec(InputSpec):
             []
         )  # (idx of dim, min, max)
         super().__init__(*args, **kwargs)
+        min_non_specalized_number = get_min_non_specialized_number()
         for i in dynamic_axes:
-            self.ranges.append((i, 1, None))
+            self.ranges.append((i, min_non_specalized_number, None))

@@ -67,6 +67,7 @@ from ....utils.exceptions import (
     BreakGraphError,
     BreakGraphInlineCallBreak,
     BuiltinFunctionBreak,
+    ConditionalFallbackError,
     DataDependencyOperationBreak,
     FallbackError,
     FallbackInlineCallBreak,
@@ -325,7 +326,11 @@ class UserDefinedFunctionVariable(FunctionVariable):
                 f"Inline Call: {inline_executor.vframe.code.co_name}, file {inline_executor.vframe.code.co_filename}, line {int(inline_executor.vframe.code.co_firstlineno)}"
             ):
                 output = inline_executor.inline_call()
-        except (SotCapturedException, InnerError) as e:
+        except (
+            SotCapturedException,
+            InnerError,
+            ConditionalFallbackError,
+        ) as e:
             raise e
         except SotErrorBase as error:
             self.graph.restore_memo(checkpoint)

@@ -95,6 +95,7 @@ from .utils import (  # noqa: F401
     flatten,
     flatten_extend,
     get_api_fullname,
+    get_min_non_specialized_number,
     get_numpy_ufuncs,
     get_obj_stable_repr,
     get_unbound_method,
