@@ -25,6 +25,9 @@ void AddNKernel(const Context& dev_ctx,
                 DenseTensor* out) {
   size_t in_num = x.size();
   dev_ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) {
+    return;
+  }
 
   bool in_place = false;
   if (!x.empty() && x[0]->initialized() && DenseTensor::classof(x[0])) {

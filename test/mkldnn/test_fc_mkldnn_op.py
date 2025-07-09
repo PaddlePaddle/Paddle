@@ -29,7 +29,7 @@ class MatrixGenerate:
         self.weights = np.random.random((ic * h * w, oc)).astype("float32")
 
 
-class TestFCMKLDNNOp(OpTest):
+class TestFCONEDNNOp(OpTest):
     def create_data(self):
         self.matrix = MatrixGenerate(1, 10, 15, 3, 3)
         self.bias = np.random.random(15).astype("float32")
@@ -64,7 +64,7 @@ class TestFCMKLDNNOp(OpTest):
         pass
 
 
-class TestFCMKLDNNOp1(TestFCMKLDNNOp):
+class TestFCONEDNNOp1(TestFCONEDNNOp):
     def create_data(self):
         self.matrix = MatrixGenerate(2, 15, 48, 2, 2)
         self.bias = np.random.random(48).astype("float32")

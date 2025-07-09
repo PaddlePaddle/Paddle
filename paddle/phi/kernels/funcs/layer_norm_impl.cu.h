@@ -2156,7 +2156,8 @@ static void LayerNormBackward(
         uint64_t addr = reinterpret_cast<uint64_t>(d_y) |
                         reinterpret_cast<uint64_t>(x) |
                         reinterpret_cast<uint64_t>(d_x);
-        int vec_size = phi::GetVectorizedSize<T>(reinterpret_cast<T *>(addr));
+        int vec_size =
+            std::min(4, phi::GetVectorizedSize<T>(reinterpret_cast<T *>(addr)));
         int real_vec = VecSizeJudgeForeGradInput(feature_size, vec_size);
 
         if (feature_size <= 2048) {

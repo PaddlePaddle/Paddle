@@ -303,3 +303,56 @@ else
 fi
 mkdir -p ${TARGET_DIR}/cudnn-frontend
 cp ${PREDOWNLOAD_DIR}/${filename} ${TARGET_DIR}/cudnn-frontend/${filename}
+
+# test/cpp/pir/core
+filename=resnet50_main.prog
+echo "check ${filename}"
+if [ ! -f "${PREDOWNLOAD_DIR}/${filename}" ]; then
+    echo "NO cfs cache, try to wget"
+    URL=https://paddle-ci.gz.bcebos.com/ir_translator_test/resnet50_main.prog
+    EXPECTED_MD5=b64c0ad3c96d99fc37d12094623ce1ad
+    download_and_verify ${URL} ${EXPECTED_MD5} ${filename}
+else
+    echo "use cfs cache"
+fi
+mkdir -p /paddle/build/test/cpp/pir/core/
+cp ${PREDOWNLOAD_DIR}/${filename} /paddle/build/test/cpp/pir/core/${filename}
+
+filename=resnet50_startup.prog
+echo "check ${filename}"
+if [ ! -f "${PREDOWNLOAD_DIR}/${filename}" ]; then
+    echo "NO cfs cache, try to wget"
+    URL=https://paddle-ci.gz.bcebos.com/ir_translator_test/resnet50_startup.prog
+    EXPECTED_MD5=6affc5f40f0f0bb84d956919b95eaf50
+    download_and_verify ${URL} ${EXPECTED_MD5} ${filename}
+else
+    echo "use cfs cache"
+fi
+mkdir -p /paddle/build/test/cpp/pir/core/
+cp ${PREDOWNLOAD_DIR}/${filename} /paddle/build/test/cpp/pir/core/${filename}
+
+filename=conditional_block_test.prog
+echo "check ${filename}"
+if [ ! -f "${PREDOWNLOAD_DIR}/${filename}" ]; then
+    echo "NO cfs cache, try to wget"
+    URL=https://paddle-ci.gz.bcebos.com/ir_translator_test/conditional_block_test.prog
+    EXPECTED_MD5=cf9dc869ca7f69e2d57b38dbf8427134
+    download_and_verify ${URL} ${EXPECTED_MD5} ${filename}
+else
+    echo "use cfs cache"
+fi
+mkdir -p /paddle/build/test/cpp/pir/core/
+cp ${PREDOWNLOAD_DIR}/${filename} /paddle/build/test/cpp/pir/core/${filename}
+
+filename=while_op_test.prog
+echo "check ${filename}"
+if [ ! -f "${PREDOWNLOAD_DIR}/${filename}" ]; then
+    echo "NO cfs cache, try to wget"
+    URL=https://paddle-ci.gz.bcebos.com/ir_translator_test/while_op_test.prog
+    EXPECTED_MD5=290164ae52a496332b0be5829fc93bcd
+    download_and_verify ${URL} ${EXPECTED_MD5} ${filename}
+else
+    echo "use cfs cache"
+fi
+mkdir -p /paddle/build/test/cpp/pir/core/
+cp ${PREDOWNLOAD_DIR}/${filename} /paddle/build/test/cpp/pir/core/${filename}

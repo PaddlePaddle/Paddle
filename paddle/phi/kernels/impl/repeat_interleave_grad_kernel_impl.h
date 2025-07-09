@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/cpu/index_select_impl.h"
@@ -21,6 +22,7 @@
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
+#include "paddle/phi/kernels/primitive/kernel_primitives.h"
 #ifdef __NVCC__
 #include "cub/cub.cuh"
 #else
@@ -40,12 +42,12 @@ template <typename T, typename IndexT>
 __global__ void index_select_grad_cuda_kernel(const T* output_grad,
                                               T* input_grad,
                                               const IndexT* index,
-                                              int64_t N,
+                                              int64_t output_grad_numel,
                                               int64_t stride,
                                               int64_t size,
                                               int64_t delta) {
   int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx >= N) {
+  if (idx >= output_grad_numel) {
     return;
   }
 
@@ -56,13 +58,25 @@ __global__ void index_select_grad_cuda_kernel(const T* output_grad,
   phi::CudaAtomicAdd(&input_grad[input_idx], output_grad[idx]);
 }
 
-template <typename T>
-__global__ void index_select_grad_init(T* input_grad, int64_t N) {
-  int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx >= N) {
-    return;
+template <typename T, int VecSize>
+__global__ void index_select_grad_init(T* input_grad, int64_t numel) {
+  using VecType = kps::details::VectorType<T, VecSize>;
+
+  const int64_t tid = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
+  if (tid >= numel) return;
+
+  T set_value[VecSize];
+#pragma unroll
+  for (int i = 0; i < VecSize; i++) {
+    set_value[i] = 0;
   }
-  input_grad[idx] = 0.0;
+  const VecType* vec_value = reinterpret_cast<const VecType*>(&set_value[0]);
+
+#pragma unroll
+  for (int64_t i = tid; i < numel; i += blockDim.x * gridDim.x * VecSize) {
+    VecType* vec_output = reinterpret_cast<VecType*>(&input_grad[tid]);
+    *vec_output = *vec_value;
+  }
 }
 #endif
 template <typename T, typename Context>
@@ -113,11 +127,27 @@ void RepeatInterleaveWithTensorIndexGradKernel(
   dev_ctx.template Alloc<T>(x_grad);
   auto* in_grad_data = x_grad->data<T>();
   auto stream = dev_ctx.stream();
-  index_select_grad_init<T>
-      <<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
-         PADDLE_CUDA_NUM_THREADS,
-         0,
-         stream>>>(in_grad_data, numel);
+  int vec_size = 8;
+  vec_size = std::min(phi::GetVectorizedSize(in_grad_data), vec_size);
+  auto config =
+      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, vec_size);
+
+  switch (vec_size) {
+#define CASE_VEC_SIZE(__Sz)                                              \
+  case __Sz:                                                             \
+    index_select_grad_init<T, __Sz>                                      \
+        <<<config.block_per_grid, config.thread_per_block, 0, stream>>>( \
+            in_grad_data, numel);                                        \
+    break
+    CASE_VEC_SIZE(8);
+    CASE_VEC_SIZE(4);
+    CASE_VEC_SIZE(2);
+    CASE_VEC_SIZE(1);
+#undef CASE_VEC_SIZE
+    default:
+      PADDLE_THROW(common::errors::Unimplemented(
+          "Unsupported vectorized size: %d", vec_size));
+  }
 
   if (index_type == DataType::INT64) {
     phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
@@ -169,8 +199,20 @@ void RepeatInterleaveGradKernel(const Context& dev_ctx,
     return;
   }
   auto input_dim = x_grad->dims();
-  if (dim < 0) {
-    dim += input_dim.size();
+  const int ndim = input_dim.size();
+  dim = (dim < 0) ? ndim + dim : dim;
+
+  // Calculate sizes
+  int64_t outer_size = 1;
+  for (int i = 0; i < dim; i++) {
+    outer_size *= input_dim[i];
+  }
+
+  const int64_t repeat_size = input_dim[dim];
+
+  int64_t inner_size = 1;
+  for (int i = dim + 1; i < ndim; i++) {
+    inner_size *= input_dim[i];
   }
 
   DenseTensor index;
@@ -186,14 +228,32 @@ void RepeatInterleaveGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(x_grad);
   auto* in_grad_data = x_grad->data<T>();
   auto stream = dev_ctx.stream();
-  index_select_grad_init<T>
-      <<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
-         PADDLE_CUDA_NUM_THREADS,
-         0,
-         stream>>>(in_grad_data, numel);
-  int64_t index_size = x_grad->dims()[dim] * repeats;
+
+  int vec_size = 8;
+  vec_size = std::min(phi::GetVectorizedSize(in_grad_data), vec_size);
+  auto config =
+      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, vec_size);
+
+  switch (vec_size) {
+#define CASE_VEC_SIZE(__Sz)                                              \
+  case __Sz:                                                             \
+    index_select_grad_init<T, __Sz>                                      \
+        <<<config.block_per_grid, config.thread_per_block, 0, stream>>>( \
+            in_grad_data, numel);                                        \
+    break
+    CASE_VEC_SIZE(8);
+    CASE_VEC_SIZE(4);
+    CASE_VEC_SIZE(2);
+    CASE_VEC_SIZE(1);
+#undef CASE_VEC_SIZE
+    default:
+      PADDLE_THROW(common::errors::Unimplemented(
+          "Unsupported vectorized size: %d", vec_size));
+  }
+
+  int64_t index_size = input_dim[dim] * repeats;
   std::vector<int> index_vec(index_size);
-  for (int i = 0; i < x_grad->dims()[dim]; i++) {
+  for (int i = 0; i < input_dim[dim]; i++) {
     std::fill_n(index_vec.begin() + i * repeats, repeats, i);
   }
   index.Resize(common::make_ddim({index_size}));
