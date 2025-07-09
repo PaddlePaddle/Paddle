@@ -96,7 +96,6 @@ jobs:
           cd PaddleNLP
           git pull
           git submodule update --init --recursive --force
-          python3.10 -m pip install bce-python-sdk==0.8.74
           '
 
       - name: Test
@@ -110,6 +109,7 @@ jobs:
           ln -sf $(which python${python_version}) /usr/bin/python
           python -c "import sys; print(sys.version_info[:])"
           source ${{ github.workspace }}/../../../proxy
+          python -m pip install bce-python-sdk==0.8.74
           timeout 80m bash Paddle/ci/auto_parallel/ci_auto_parallel.sh ${paddle_whl}
           '
 
