@@ -73,12 +73,12 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf  * .[^.]*
           curl -O https://xly-devops.bj.bcebos.com/PR/build_whl/${AGILE_PULL_ID}/${AGILE_REVISION}/build.tar.gz
-          tar --use-compress-program="pigz -1" -xpf build.tar.gz
+          tar --use-compress-program="pigz -1" -xp build.tar.gz
           cd ./paddle
           api_doc_spec_diff=$(python tools/diff_api.py  paddle/fluid/API_DEV.spec.doc paddle/fluid/API_PR.spec.doc)
           if [ "$api_doc_spec_diff" == "" ]; then
             echo "API documents no change."
-            exit 0
+            #exit 0
           fi
 
           curl -sS -o /tmp/entrypoint.sh https://paddle-dev-tools-open.bj.bcebos.com/fluiddoc-preview/entrypoint-paddle-docs-review.sh
