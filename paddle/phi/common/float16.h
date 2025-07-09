@@ -131,10 +131,12 @@ struct PADDLE_ALIGN(2) float16 {
     v.si ^= (s.si ^ v.si) & -(minN > v.si);
     v.si ^= (infN ^ v.si) & -((infN > v.si) & (v.si > maxN));
     v.si ^= (nanN ^ v.si) & -((nanN > v.si) & (v.si > infN));
-    // Rounding conditions (round to nearest, ties to even). https://en.wikipedia.org/wiki/Rounding#Rounding_half_to_even
-    if (v.ui < infN) {                               // Skip special values (infinity and NaN)
-        const uint32_t lsb = (v.ui >> shift) & 0x1;  // Lowest significant bit of the retained part
-        v.ui = (v.ui + 0xFFF + lsb);                 // rounding up
+    // Rounding conditions (round to nearest, ties to even).
+    // https://en.wikipedia.org/wiki/Rounding#Rounding_half_to_even
+    if (v.ui < infN) {  // Skip special values (infinity and NaN)
+      // Lowest significant bit of the retained part
+      const uint32_t lsb = (v.ui >> shift) & 0x1;
+      v.ui = (v.ui + 0xFFF + lsb);  // rounding up
     }
     v.ui >>= shift;  // logical shift
     v.si ^= ((v.si - maxD) ^ v.si) & -(v.si > maxC);
