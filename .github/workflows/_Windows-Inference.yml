@@ -70,7 +70,6 @@ jobs:
 
       - name: Build paddle
         run: |
-          @ECHO ON
           python -m pip install bce-python-sdk==0.8.74
           python -c "import wget;wget.download('https://paddle-github-action.cdn.bcebos.com/windows/tp_predownload/onnxruntime-win-x64-1.11.1.zip')"
           if not exist "third_party/onnxruntime/Windows" mkdir "third_party/onnxruntime/Windows"
