@@ -242,6 +242,7 @@ class TestDistEmbeddingTraining(unittest.TestCase):
             print("loss", loss_a.numpy(), loss_b.numpy())
             np.testing.assert_allclose(loss_a.numpy(), loss_b.numpy())
 
+
 class TestDistEmbeddingTrainingWithSync(TestDistEmbeddingTraining):
     def setUp(self):
         strategy = fleet.DistributedStrategy()

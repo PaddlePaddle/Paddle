@@ -46,6 +46,7 @@ __all__ = []
 
 SHARED_WEIGHT_SYNC_PREFIX = "@SHARED_WEIGHT"
 
+
 class HybridParallelClipGrad:
     def __init__(self, clip, hcg, split_norm_comm=False, timers=None):
         self._clip = clip
@@ -411,7 +412,7 @@ class HybridParallelOptimizer:
             if SHARED_WEIGHT_SYNC_PREFIX in str(color_color):
                 return True
         return False
-        
+
     def _mp_filter_fn(self, param, strategy):
         p_name = param.name
         tar_param = strategy.sync_param_name
@@ -420,22 +421,18 @@ class HybridParallelOptimizer:
                 if tar in p_name:
                     return True
         return False
-    
+
     def syc_grad(self, param, src_rank, group, sync_mode):
         if hasattr(param, "main_grad") and param.main_grad is not None:
             assert param.grad is None
-            self._insert_sync(
-                param.main_grad, src_rank, group, sync_mode
-            )
+            self._insert_sync(param.main_grad, src_rank, group, sync_mode)
         elif param.grad is not None:
-            self._insert_sync(
-                param.grad, src_rank, group, sync_mode
-            )
+            self._insert_sync(param.grad, src_rank, group, sync_mode)
 
     def syc_param(self, param, src_rank, group, sync_mode):
         # Param sync after opt
         self._insert_sync(param, src_rank, group, sync_mode)
-    
+
     def syc_master_weight(self, param, src_rank, group, sync_mode):
         # Master param sync after opt
         if (
@@ -449,12 +446,17 @@ class HybridParallelOptimizer:
                 group,
                 sync_mode,
             )
-    
+
     def syc_moment(self, param, src_rank, group, sync_mode):
-        if isinstance(
-            self._inner_opt,
-            (paddle.optimizer.Adam, paddle.optimizer.AdamW),
-        ):
+        _OPTIMIZER_TYPES = (paddle.optimizer.Adam, paddle.optimizer.AdamW)
+
+        def recursive_isinstance(opt):
+            return isinstance(opt, _OPTIMIZER_TYPES) or (
+                hasattr(opt, "_inner_opt")
+                and recursive_isinstance(opt._inner_opt)
+            )
+
+        if recursive_isinstance(self._inner_opt):
             if (
                 param.name
                 in self._inner_opt._accumulators[
@@ -464,12 +466,10 @@ class HybridParallelOptimizer:
                 moment1 = self._inner_opt._get_accumulator(
                     self._inner_opt._moment1_acc_str, param
                 )
-                self._insert_sync(
-                    moment1, src_rank, group, sync_mode
-                )
+                self._insert_sync(moment1, src_rank, group, sync_mode)
 
             if (
-                p.name
+                param.name
                 in self._inner_opt._accumulators[
                     self._inner_opt._moment2_acc_str
                 ]
@@ -477,9 +477,7 @@ class HybridParallelOptimizer:
                 moment2 = self._inner_opt._get_accumulator(
                     self._inner_opt._moment2_acc_str, param
                 )
-                self._insert_sync(
-                    moment2, src_rank, group, sync_mode
-                )
+                self._insert_sync(moment2, src_rank, group, sync_mode)
 
     def _sync_mp_grads(self, params, mp_configs):
         mp_group = self._hcg.get_model_parallel_group()
@@ -495,7 +493,7 @@ class HybridParallelOptimizer:
 
         if self.processed_steps < g_profile_optimizer_details_steps:
             get_sync_logger().info("Finished mp grad sync")
-            
+
     def _sync_mp_params_and_moments(self, params, mp_configs):
         mp_group = self._hcg.get_model_parallel_group()
         src_rank = self._hcg.get_model_parallel_group_src_rank()
@@ -504,13 +502,15 @@ class HybridParallelOptimizer:
         if mp_group.nranks > 1 and mp_configs and mp_configs.sync_param:
             for p in params:
                 self.syc_param(p, src_rank, mp_group, mp_configs.sync_mode)
-                self.syc_master_weight(p, src_rank, mp_group, mp_configs.sync_mode)
+                self.syc_master_weight(
+                    p, src_rank, mp_group, mp_configs.sync_mode
+                )
 
         # Moment sync after opt
         if mp_group.nranks > 1 and mp_configs and mp_configs.sync_moment:
             for p in params:
                 self.syc_moment(p, src_rank, mp_group, mp_configs.sync_mode)
-    
+
     def _get_pp_sync_params(self, parameters_list):
         pp_group = self._hcg.get_pipe_parallel_group()
         params = None
@@ -520,18 +520,14 @@ class HybridParallelOptimizer:
             pp_configs = fleet.fleet._user_defined_strategy.hybrid_configs[
                 "pp_configs"
             ]
-        
-        if pp_configs and (
-            pp_configs.sync_param
-            or pp_configs.sync_grad
-            or pp_configs.sync_moment
-        ):
+
+        if pp_configs and (pp_configs.sync_param or pp_configs.sync_moment):
             params = sorted(
                 [p for p in parameters_list if self._pp_filter_fn(p)],
                 key=lambda p: p.name,
             )
         return params, pp_configs
-    
+
     def _sync_pp_params_and_moments(self, params, pp_configs):
         pp_group = self._hcg.get_pipe_parallel_group()
 
@@ -539,18 +535,20 @@ class HybridParallelOptimizer:
         if pp_group.nranks > 1 and pp_configs and pp_configs.sync_param:
             for p in params:
                 assert hasattr(p, 'color'), f"{p.name} has no color"
-                color_group = getattr(p, 'color')["group"]
+                color_group = p.color["group"]
                 src_rank = min(color_group.ranks)
                 self.syc_param(p, src_rank, color_group, pp_configs.sync_mode)
-                self.syc_master_weight(p, src_rank, color_group, pp_configs.sync_mode)
+                self.syc_master_weight(
+                    p, src_rank, color_group, pp_configs.sync_mode
+                )
 
         # Moment sync after opt
         if pp_group.nranks > 1 and pp_configs and pp_configs.sync_moment:
             for p in params:
-                color_group = getattr(p, 'color')["group"]
+                color_group = p.color["group"]
                 src_rank = min(color_group.ranks)
                 self.syc_moment(p, src_rank, color_group, pp_configs.sync_mode)
-        
+
     def _get_mp_sync_params(self, parameters_list):
         mp_group = self._hcg.get_model_parallel_group()
         params = None
@@ -575,7 +573,7 @@ class HybridParallelOptimizer:
                 key=lambda p: p.name,
             )
         return params, mp_configs
-        
+
     def _step(self, parameters_list):
         if self.processed_steps < g_profile_optimizer_details_steps:
             get_sync_logger().info("Starting hybridoptimizer step")

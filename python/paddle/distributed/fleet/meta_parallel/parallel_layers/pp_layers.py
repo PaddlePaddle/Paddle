@@ -50,6 +50,9 @@ import paddle
 import paddle.distributed as dist
 from paddle import framework, nn
 from paddle.device.cuda.cuda_graphed_layer import CUDAGraphedLayer
+from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.hybrid_parallel_optimizer import (
+    SHARED_WEIGHT_SYNC_PREFIX,
+)
 from paddle.distributed.fleet.utils.log_util import layer_to_str, logger
 from paddle.framework import core
 from paddle.incubate.distributed.fleet import recompute_hybrid
@@ -57,9 +60,6 @@ from paddle.incubate.distributed.fleet import recompute_hybrid
 from ..pp_utils.forward_backward_overlap_utils import (
     ScheduleChunk,
 )
-from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.hybrid_parallel_optimizer import (
-    SHARED_WEIGHT_SYNC_PREFIX,
-) 
 
 __all__ = []
 
@@ -703,8 +703,13 @@ class PipelineLayer(nn.Layer):
                     # Set color for shared parameters to facilitate synchronization of parameters
                     # and optimizer states after each step
                     for weight_attr in shared_attrs:
-                        shared_param = getattr(self.shared_layers[layer_name], weight_attr)
-                        setattr(shared_param, "color", {"color": f"{SHARED_WEIGHT_SYNC_PREFIX}_{comm_key}", "group": group})
+                        shared_param = getattr(
+                            self.shared_layers[layer_name], weight_attr
+                        )
+                        shared_param.color = {
+                            "color": f"{SHARED_WEIGHT_SYNC_PREFIX}_{comm_key}",
+                            "group": group,
+                        }
         return shared_comm
 
     def _synchronize_shared_weights(self):
