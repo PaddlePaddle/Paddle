@@ -153,7 +153,7 @@ def _get_param_from_name(param_name, model):
 
 def build_shared_parameters(shared_params_names, model):
     # Find the two shared parameters and build shared parameter information.
-    shared_mp = {}
+    shared_mp = []
     for pair in shared_params_names:
         assert len(pair) == 2
         ori_name = pair[0]
@@ -258,12 +258,12 @@ class TestSharedParameters:
         self.micro_batches = 8
         self.stage_list = []
 
-        shared_params_names = {
-            "embedding_shared_weight": [
+        shared_params_names = [
+            [
                 f"{name_prefix}_linear_0_weight.dist",
                 f"{name_prefix}_linear_7_weight.dist",
             ]
-        }
+        ]
         # Pre-build shared parameter information.
         shared_mp = build_shared_parameters(shared_params_names, self.model)
 
@@ -313,12 +313,12 @@ class TestSharedParameters:
         """Test pipeline parallel model using PPModel as the baseline"""
         fix_seeds()
         name_prefix = "pp_model"
-        shared_params_names = {
-            "embedding_shared_weight": [
+        shared_params_names = [
+            [
                 f"{name_prefix}_linear_0_weight.dist",
                 f"{name_prefix}_linear_7_weight.dist",
             ]
-        }
+        ]
         pp_model = PPModel(
             name_prefix=name_prefix, shared_parameters=shared_params_names
         )

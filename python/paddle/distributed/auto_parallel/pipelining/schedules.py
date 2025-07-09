@@ -523,7 +523,7 @@ class ScheduleFThenB(PipelineScheduleSingle):
             work.wait()
 
         # Synchronize the gradients of shared parameters.
-        self._stage.sync_shared_param_grads()
+        self._stage._sync_shared_param_grads()
 
 
 class Schedule1F1B(PipelineScheduleSingle):
@@ -685,7 +685,7 @@ class Schedule1F1B(PipelineScheduleSingle):
         self._update_losses(self._stage, losses)
 
         # Synchronize the gradients of shared parameters.
-        self._stage.sync_shared_param_grads()
+        self._stage._sync_shared_param_grads()
 
 
 class PipelineScheduleMulti(_PipelineSchedule):
@@ -987,7 +987,7 @@ class PipelineScheduleMulti(_PipelineSchedule):
 
         # Synchronize the gradients of shared parameters.
         for stage in self._stages:
-            stage.sync_shared_param_grads()
+            stage._sync_shared_param_grads()
 
 
 def _get_1f1b_rank_ops(

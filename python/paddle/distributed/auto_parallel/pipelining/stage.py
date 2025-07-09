@@ -880,7 +880,7 @@ class PipelineStage(_PipelineStageBase):
 
         # Synchronize shared parameters on the current rank.
         self.shared_parameters = shared_parameters
-        self.sync_shared_param()
+        self._sync_shared_param()
 
         if input_args is None:
             assert output_args is None, (
@@ -934,19 +934,19 @@ class PipelineStage(_PipelineStageBase):
 
         logger.debug(dbg_str)
 
-    def sync_shared_param(self):
+    def _sync_shared_param(self):
         if self.shared_parameters is None:
             # 1. Default no shared parameters to process.
             self.shared_parameters = {}
             return
 
         # 2. Validate parameters.
-        # TODO: Currently, shared parameter information relies on user input, so strict validation is required here.
+        # TODO(xuexixi): Currently, shared parameter information relies on user input, so strict validation is required here.
         # A more robust interface implementation is desired in the future.
-        self.validate_shared_parameter_pair()
+        self._validate_shared_parameter_pair()
 
         # 3. Build shared parameter information for the current rank.
-        self.init_shared_group()
+        self._init_shared_group()
 
         # 4. Synchronize the initialized shared parameters.
         # When initializing the stage, perform broadcast synchronization on the shared parameters.
@@ -967,7 +967,7 @@ class PipelineStage(_PipelineStageBase):
                     group=group,
                 )
 
-    def validate_shared_parameter_pair(self):
+    def _validate_shared_parameter_pair(self):
         # Validate shared_parameters structure.
         assert isinstance(
             self.shared_parameters, list
@@ -1012,7 +1012,7 @@ class PipelineStage(_PipelineStageBase):
             ), f"Shared parameters must be on different stage meshes, but both are on {ranks_1}."
 
             # In VPP mode, a same shared_parameters is reused across stage builds. To avoid redundant group creation, the 'shared_param'
-            # and 'group' attributes may already exist, as they are created during the `init_shared_group` call.
+            # and 'group' attributes may already exist, as they are created during the `_init_shared_group` call.
             # Validate optional 'group' entry.
             if "group" in a_shared_map:
                 group = a_shared_map["group"]
@@ -1026,7 +1026,7 @@ class PipelineStage(_PipelineStageBase):
                     param_1, param_2
                 ), f"Expected 'shared_parameters[{idx}][\"sync_param\"]' is one of the two params or None."
 
-    def init_shared_group(self):
+    def _init_shared_group(self):
         # Retrieve the parameters to be shared and the required communication group information for the current rank, and store them in
         # the 'shared_param' and 'group' attributes of the shared_parameters respectively:
         #   - group (Group, optional): Communication group for sharing the current parameter pair on the current rank (auto-created if missing)
@@ -1045,9 +1045,10 @@ class PipelineStage(_PipelineStageBase):
                 if "group" in a_map:
                     # In VPP mode, since `shared_parameters`` is reused across stage creations,
                     # the 'group' may already exist, avoiding redundant group creation.
-                    assert group_ranks == tuple(
-                        a_map["group"].ranks
-                    ), f"Shared Parameter group ranks mismatch: expected {group_ranks}, but got {a_map['group'].ranks}. "
+                    if cur_rank in group_ranks:
+                        assert group_ranks == tuple(
+                            a_map["group"].ranks
+                        ), f"Shared Parameter group ranks mismatch: expected {group_ranks}, but got {a_map['group'].ranks}. "
                 else:
                     if group_ranks not in get_group_from_ranks:
                         get_group_from_ranks[group_ranks] = dist.new_group(
@@ -1070,7 +1071,7 @@ class PipelineStage(_PipelineStageBase):
             # Record shared parameter associated with the current rank.
             a_map["shared_param"] = cur_param
 
-    def sync_shared_param_grads(self):
+    def _sync_shared_param_grads(self):
         # After the stage scheduling ends, perform allreduce synchronization
         # on the gradients of shared parameters.
         for idx, a_map in enumerate(self.shared_parameters):
