@@ -33,9 +33,6 @@ void NllLossRawKernel(const Context& dev_ctx,
   auto x_data = x->data<T>();
   auto out_data = dev_ctx.template Alloc<T>(out);
   auto total_weight_data = dev_ctx.template Alloc<T>(total_weight);
-  if (out->numel() == 0 && total_weight->numel()) {
-    return;
-  }
   auto label_data = label.data<int64_t>();
   auto weight_data = weight.get_ptr() ? weight.get_ptr()->data<T>() : nullptr;
 #ifdef PADDLE_WITH_HIP
