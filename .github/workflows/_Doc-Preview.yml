@@ -72,7 +72,7 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf  * .[^.]*
-          curl -o https://xly-devops.bj.bcebos.com/PR/build_whl/${AGILE_PULL_ID}/${AGILE_REVISION}/build.tar.gz
+          curl -O https://xly-devops.bj.bcebos.com/PR/build_whl/${AGILE_PULL_ID}/${AGILE_REVISION}/build.tar.gz
           tar --use-compress-program="pigz -1" -xpf build.tar.gz
           cd ./paddle
           api_doc_spec_diff=$(python tools/diff_api.py  paddle/fluid/API_DEV.spec.doc paddle/fluid/API_PR.spec.doc)
