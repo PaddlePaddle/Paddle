@@ -112,22 +112,9 @@ class TestTensorUnfold2(unittest.TestCase):
                 self.assertEqual((b.grad.numpy() == 1).all().item(), True)
 
 
-class TestTensorUnfold_ZeroSize(unittest.TestCase):
-    def setUp(self):
-        self.shape = [5, 0]
-        self.typelist = ['float32', 'float64', 'int32', 'int64', 'float16']
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not base.core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if base.core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
-            self.places.append(base.CUDAPinnedPlace())
-
+class TestTensorUnfold_ZeroSize(TestTensorUnfold):
     def test_tensor_unfold_forward(self):
+        self.shape = [5, 0]
         for idx, p in enumerate(self.places):
             if idx == 0:
                 paddle.set_device('cpu')
@@ -140,6 +127,7 @@ class TestTensorUnfold_ZeroSize(unittest.TestCase):
                 np.testing.assert_allclose(a.numpy()[0], x_np.T)
 
     def test_tensor_unfold_backward(self):
+        self.shape = [5, 0]
         for idx, p in enumerate(self.places):
             if idx == 0:
                 paddle.set_device('cpu')
