@@ -393,12 +393,12 @@ static inline void IndexGetStride(
   std::vector<int64_t> stride_size;
 
   *desired_shape = compute_shapes({input_dims, output_dims, index_dims});
-  std::cout << "desired_shape: [";
-  for (size_t i = 0; i < desired_shape->size(); i++) {
-    std::cout << (*desired_shape)[i];
-    if (i != desired_shape->size() - 1) std::cout << ", ";
-  }
-  std::cout << "]" << std::endl;
+  // std::cout << "desired_shape: [";
+  // for (size_t i = 0; i < desired_shape->size(); i++) {
+  //   std::cout << (*desired_shape)[i];
+  //   if (i != desired_shape->size() - 1) std::cout << ", ";
+  // }
+  // std::cout << "]" << std::endl;
 
   strides_vec[0] = compute_strides(input_dims,
                                    input_strides,
