@@ -1649,23 +1649,21 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
 
     if (!is_combined_bool && !has_empty_index) {
       const phi::distributed::ProcessMesh* mesh = nullptr;
-      if (InputsContainDistTensor(&mesh, transed_tensor, transed_index)) {
-        ConvertAllInputsToDistTensor(mesh, transed_tensor, transed_index);
+      if (InputsContainDistTensor(
+              &mesh, self->tensor, transed_tensor, transed_index)) {
+        ConvertAllInputsToDistTensor(
+            mesh, self->tensor, transed_tensor, transed_index);
       }
 
       transed_index = expand_outplace(transed_index);
 
       for (int i = 0; i < pos_of_new_dim; ++i) {
-        transed_index.insert(
-            transed_index.begin(),
-            empty_ad_func(
-                {}, transed_index[0].dtype(), transed_index[0].place()));
+        transed_index.insert(transed_index.begin(), paddle::Tensor());
       }
 
       while (transed_index.size() <
              static_cast<size_t>(transed_tensor.dims().size())) {
-        transed_index.emplace_back(empty_ad_func(
-            {}, transed_index[0].dtype(), transed_index[0].place()));
+        transed_index.emplace_back(paddle::Tensor());
       }
 
       int64_t slice_offset =
@@ -1682,7 +1680,7 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
 
       AdvancedIndex ad = AdvancedIndex(transed_tensor, transed_index_int64);
       const bool accumulate = true;
-      out = index_elementwise_get_ad_func(tensor,
+      out = index_elementwise_get_ad_func(self->tensor,
                                           ad.indices,
                                           ad.src_sizes,
                                           ad.src_strides,
