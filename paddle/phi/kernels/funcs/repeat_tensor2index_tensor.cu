@@ -19,7 +19,6 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/exclusive_scan.h"
-#include "paddle/phi/kernels/impl/repeat_interleave_kernel_impl.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 namespace phi {

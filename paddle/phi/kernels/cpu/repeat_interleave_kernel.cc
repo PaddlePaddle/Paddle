@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/repeat_interleave_kernel.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/repeat_interleave_kernel_impl.h"
 
+#include "paddle/phi/kernels/cpu/index_select_impl.h"
 #include "paddle/phi/kernels/funcs/repeat_tensor2index_tensor.h"
 
 namespace phi {
