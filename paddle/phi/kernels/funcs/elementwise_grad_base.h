@@ -32,6 +32,10 @@ limitations under the License. */
 
 #endif
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/backends/device_manager.h"
+#endif
+
 constexpr int ELEMWISE_MAX_BLOCK_DIM = 1024;
 
 #define BLOCK_X 32
