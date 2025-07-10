@@ -62,12 +62,18 @@ inline int64_t GetCurrentDeviceMaxGridDim() {
       phi::DeviceContextPool::Instance().Get(gplace));
   int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
   return max_grid_dim;
-#else
+#elifdef PADDLE_WITH_CUDA
   auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
   auto *dev_ctx =
       static_cast<GPUContext *>(phi::DeviceContextPool::Instance().Get(gplace));
   int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
   return max_grid_dim;
+#else
+  PADDLE_THROW(common::errors::Unimplemented(
+      "Unsupported usage of GetCurrentDeviceMaxGridDim! This function only "
+      "support CUDA and "
+      "Custom Device."));
+  return 0;
 #endif
 }
 
