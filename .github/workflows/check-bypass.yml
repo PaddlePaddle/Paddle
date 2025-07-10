@@ -46,3 +46,7 @@ jobs:
                 }
               ]
             }
+
+      - name: clean
+        run: |
+          rm -rf * .[^.]*
