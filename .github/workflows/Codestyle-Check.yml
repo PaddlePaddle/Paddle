@@ -9,7 +9,7 @@ jobs:
     name: Pre Commit
     if: ${{ github.repository_owner == 'PaddlePaddle' }}
     runs-on:
-      group: HK-Clone
+      group: APPROVAL
     env:
       PR_ID: ${{ github.event.pull_request.number }}
       BRANCH: develop
