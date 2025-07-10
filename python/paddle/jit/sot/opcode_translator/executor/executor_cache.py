@@ -198,7 +198,6 @@ class OpcodeExecutorCache(metaclass=Singleton):
         if enable_strict_guard or enable_guard_tree:
             log(4, f"[Cache] Guard tree: \n{guard_tree.stringify()}")
             cache_index = guard_tree.lookup(frame)
-            # print(guard_tree.stringify(), cache_index)
 
         if not enable_strict_guard and enable_guard_tree:
             if cache_index is not None:
