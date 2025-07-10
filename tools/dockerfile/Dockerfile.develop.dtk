@@ -7,7 +7,7 @@ RUN yum install -y bzip2-devel openssh-server elfutils-devel diffutils libtool i
         blas-devel lapack-devel make git patch unzip bison hostname yasm libsndfile-devel \
         automake which file net-tools zlib-devel libffi-devel vim tk-devel tkinter rpm-build \
         sqlite-devel xz-devel wget curl-devel initscripts mesa-libGL numactl-devel pcre-devel \
-        openssl-devel libjpeg-turbo-devel libpng-devel ninja-build pciutils libzstd-devel
+        openssl-devel libjpeg-turbo-devel libpng-devel ninja-build pciutils libzstd-devel zstd
 
 COPY build_scripts /build_scripts
 RUN bash /build_scripts/install_gcc.sh gcc82

@@ -6,10 +6,12 @@ on:
       can-skip:
         type: string
         required: false
+      docker_npu_image:
+        type: string
+        required: true
 
 env:
-  dockerfile: dockerfile
-  docker_image: 885123926a90
+  docker_image: ${{ inputs.docker_npu_image }}
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   ci_scripts: /paddle/ci

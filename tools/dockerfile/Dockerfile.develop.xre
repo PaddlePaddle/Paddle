@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y software-properties-common && add-apt-r
 RUN apt-get update && apt-get install -y curl wget vim git unzip unrar tar ntp xz-utils libssl-dev bzip2 gzip make automake \
     coreutils language-pack-zh-hans libsm6 libxext6 libxrender-dev libgl1-mesa-glx libsqlite3-dev libopenblas-dev liblapack3 \
     bison libjpeg-dev zlib1g zlib1g-dev swig locales net-tools libtool numactl libnuma-dev liblzma-dev libbz2-dev libblas-dev \
-    openssl openssh-server libffi-dev pciutils libblas3 liblapack-dev libzstd-dev default-jre libgcc-s1 gcc g++ gfortran gdb
+    openssl openssh-server libffi-dev pciutils libblas3 liblapack-dev libzstd-dev default-jre libgcc-s1 gcc g++ gfortran gdb zstd
 
 # workdir
 WORKDIR /opt
