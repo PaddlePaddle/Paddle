@@ -463,7 +463,20 @@ void GPUScatterAdd(const phi::GPUContext& ctx,
     phi::fastAtomicAdd(self_data, idx_dim * index_stride, numel, *src_data);
   };  // NOLINT
 
-  const int64_t N = output->numel();
+  int64_t N;
+  const auto output_dims = common::vectorize(output->dims());
+
+  if (index.numel() == output_dims[dim]) {
+    N = output->numel();
+  } else {
+    auto adjusted_dims = output_dims;
+    adjusted_dims[dim] = index.numel();
+    N = std::accumulate(adjusted_dims.begin(),
+                        adjusted_dims.end(),
+                        1LL,
+                        std::multiplies<int64_t>());
+  }
+
   constexpr int nt = 128;
   constexpr int vt = 8;
   const dim3 block(nt);
