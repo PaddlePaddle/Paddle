@@ -25,11 +25,11 @@ template <typename T, typename Context>
 void TruncKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  DenseTensor* out) {
-  size_t numel = x.numel();
+  int64_t numel = x.numel();
   const T* x_data = x.data<T>();
   T* out_data = dev_ctx.template Alloc<T>(out);
 
-  for (size_t i = 0; i < numel; i++) {
+  for (int64_t i = 0; i < numel; i++) {
     out_data[i] = trunc(x_data[i]);
   }
 }
