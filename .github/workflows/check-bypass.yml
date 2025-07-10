@@ -16,7 +16,7 @@ jobs:
   check-bypass:
     name: Check bypass
     runs-on:
-      group: HK-Clone
+      group: APPROVAL 
     permissions:
       contents: read
     env:
@@ -46,7 +46,3 @@ jobs:
                 }
               ]
             }
-
-      - name: clean
-        run: |
-          rm -rf * .[^.]*
