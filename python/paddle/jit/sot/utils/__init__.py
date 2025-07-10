@@ -32,11 +32,13 @@ from .envs import (  # noqa: F401
     ENV_STRICT_MODE,
     PEP508LikeEnvironmentVariable,
     allow_dynamic_shape_guard,
+    enable_0_size_fallback_guard,
     export_guard,
     faster_guard_guard,
     guard_tree_guard,
     min_graph_size_guard,
     sot_step_profiler_guard,
+    specialized_dim_numbers_guard,
     strict_mode_guard,
     with_control_flow_guard,
 )

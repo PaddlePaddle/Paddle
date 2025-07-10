@@ -719,6 +719,6 @@ class ConstrainedInputSpec(InputSpec):
             []
         )  # (idx of dim, min, max)
         super().__init__(*args, **kwargs)
-        min_non_specalized_number = get_min_non_specialized_number()
+        min_non_specialized_number = get_min_non_specialized_number()
         for i in dynamic_axes:
-            self.ranges.append((i, min_non_specalized_number, None))
+            self.ranges.append((i, min_non_specialized_number, None))

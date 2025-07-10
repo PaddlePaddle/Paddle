@@ -74,8 +74,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
 
     MAX_CACHE_SIZE = 20
     MAX_COMPILE_TIME_PER_CODE = 40
-    # MAX_COMPILE_TIME_TOTAL = 15 * 60
-    MAX_COMPILE_TIME_TOTAL = 1 * 60
+    MAX_COMPILE_TIME_TOTAL = 15 * 60
     CACHE_HIT_FASTPATH_THRESHOLD = 32
     cache: dict[
         types.CodeType, tuple[GuardedFunctions, paddle.framework.core.GuardTree]
@@ -199,6 +198,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
         if enable_strict_guard or enable_guard_tree:
             log(4, f"[Cache] Guard tree: \n{guard_tree.stringify()}")
             cache_index = guard_tree.lookup(frame)
+            # print(guard_tree.stringify(), cache_index)
 
         if not enable_strict_guard and enable_guard_tree:
             if cache_index is not None:

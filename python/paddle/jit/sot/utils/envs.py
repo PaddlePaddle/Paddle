@@ -223,3 +223,15 @@ def guard_tree_guard(value: bool):
 def sot_step_profiler_guard(value: bool):
     with EnvironmentVariableGuard(ENV_ENABLE_SOT_STEP_PROFILER, value):
         yield
+
+
+@contextmanager
+def specialized_dim_numbers_guard(value: str):
+    with EnvironmentVariableGuard(ENV_SOT_SPECIALIZED_DIM_NUMBERS, value):
+        yield
+
+
+@contextmanager
+def enable_0_size_fallback_guard(value: bool):
+    with EnvironmentVariableGuard(ENV_SOT_ENABLE_0_SIZE_FALLBACK, value):
+        yield
