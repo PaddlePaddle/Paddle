@@ -30,7 +30,7 @@ import time
 import types
 import warnings
 from abc import ABC
-from contextlib import AbstractContextManager, contextmanager
+from contextlib import contextmanager
 from dataclasses import fields, is_dataclass
 from enum import Enum, Flag, IntEnum, auto
 from importlib.machinery import SourceFileLoader
@@ -1066,7 +1066,3 @@ def extract_tensor_dynamic_dims(
             f"Expected {DYNAMIC_DIMS_ATTR_NAME} to be a tuple, but got {type(dynamic_dims).__name__}"
         )
     return dynamic_dims
-
-
-def is_contextmanager_class(cls):
-    return issubclass(cls, AbstractContextManager)

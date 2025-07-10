@@ -163,7 +163,8 @@ class SimpleNet(nn.Layer):
         return self.layer(x)
 
 
-def net_call(x: paddle.Tensor, net):
+@check_no_breakgraph
+def net_call(x: paddle.Tensor, net: nn.Layer):
     return net(x)
 
 

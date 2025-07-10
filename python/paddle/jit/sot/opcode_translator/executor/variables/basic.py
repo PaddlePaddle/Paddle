@@ -18,6 +18,7 @@ import dataclasses
 import operator
 import sys
 import types
+from contextlib import AbstractContextManager
 from enum import Enum
 from functools import cached_property, reduce
 from typing import TYPE_CHECKING, Any
@@ -30,7 +31,6 @@ from paddle.framework import core
 from paddle.jit.dy2static.utils import (
     dataclass_as_dict,
     dataclass_from_dict,
-    is_contextmanager_class,
     is_plain_dataclass_type,
     parameters_persistent_mode_is_enabled,
 )
@@ -133,7 +133,6 @@ from ..tracker import (
 from .base import VariableBase, VariableFactory
 
 if TYPE_CHECKING:
-    from contextlib import AbstractContextManager
 
     import numpy.typing as npt
     from typing_extensions import TypeAlias
@@ -2595,7 +2594,7 @@ class ContextManagerVariable(VariableBase):
 
     @VariableFactory.register_from_value()
     def from_value(value: object, graph: FunctionGraph, tracker: Tracker):
-        if is_contextmanager_class(type(value)):
+        if isinstance(value, AbstractContextManager):
             var = ContextManagerVariable(
                 value,
                 graph=graph,
