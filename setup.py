@@ -163,7 +163,7 @@ class InstallHeaders(Command):
     description = 'install C/C++ header files'
 
     user_options = [
-        ('install-dir=',  'd', 'directory to install header files to'),
+        ('install-dir=', 'd', 'directory to install header files to'),
         ('force', 'f', 'force installation (overwrite existing files)'),
     ]
 
