@@ -144,7 +144,10 @@ jobs:
           echo "Extracting Paddle.tar.gz"
           tar xf Paddle.tar.gz --strip-components=1
           rm Paddle.tar.gz
+          git remote -v
+          set +e
           git remote add upstream https://github.com/PaddlePaddle/Paddle.git
+          set -e
           git config pull.rebase false
           git checkout test
           echo "Pull upstream $BRANCH"
