@@ -54,8 +54,8 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
   funcs::IndexPutStride<3>(input_dims,
                            input_strides,
                            phi::SizeOf(input.dtype()),
-                          {},
-                          {},
+                           {},
+                           {},
                            4,
                            common::vectorize<int64_t>(index[0]->dims()),
                            common::vectorize<int64_t>(index[0]->strides()),
@@ -79,8 +79,8 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
 
   char* out_ptr = reinterpret_cast<char*>(output->data<T>());
 
-  funcs::index_elementwise_kernel<nt, vt, T>
-      <<<grid, block, 0, stream>>>(N, value_T, [=] __device__(int idx, const T value_tmp) {
+  funcs::index_elementwise_kernel<nt, vt, T><<<grid, block, 0, stream>>>(
+      N, value_T, [=] __device__(int idx, const T value_tmp) {
         const auto offsets = offset_calc.get(idx);
         char* const out_data = out_ptr + offsets[0] + slice_offset;
 
@@ -99,16 +99,17 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
 }
 
 template <typename T, typename IndexT = int>
-void GPUIndexElementwisePutWithTensorKernel(const phi::GPUContext& dev_ctx,
-                                  const DenseTensor& input,
-                                  const DenseTensor& value,
-                                  const std::vector<const DenseTensor*>& index,
-                                  const std::vector<int64_t>& input_dims,
-                                  const std::vector<int64_t>& input_strides,
-                                  const std::vector<int64_t>& index_dims,
-                                  const std::vector<int64_t>& index_strides,
-                                  const int64_t slice_offset,
-                                  DenseTensor* output) {
+void GPUIndexElementwisePutWithTensorKernel(
+    const phi::GPUContext& dev_ctx,
+    const DenseTensor& input,
+    const DenseTensor& value,
+    const std::vector<const DenseTensor*>& index,
+    const std::vector<int64_t>& input_dims,
+    const std::vector<int64_t>& input_strides,
+    const std::vector<int64_t>& index_dims,
+    const std::vector<int64_t>& index_strides,
+    const int64_t slice_offset,
+    DenseTensor* output) {
   int64_t numel = 0;
 
   auto num_indices = index_dims.size();
@@ -212,16 +213,17 @@ void IndexElementwisePutKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void IndexElementwisePutWithTensorKernel(const Context& dev_ctx,
-                               const DenseTensor& x,
-                               const std::vector<const DenseTensor*>& index,
-                               const DenseTensor& value,
-                               const std::vector<int64_t>& input_dims,
-                               const std::vector<int64_t>& input_strides,
-                               const std::vector<int64_t>& index_dims,
-                               const std::vector<int64_t>& index_strides,
-                               const int64_t slice_offset,
-                               DenseTensor* out) {
+void IndexElementwisePutWithTensorKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const std::vector<const DenseTensor*>& index,
+    const DenseTensor& value,
+    const std::vector<int64_t>& input_dims,
+    const std::vector<int64_t>& input_strides,
+    const std::vector<int64_t>& index_dims,
+    const std::vector<int64_t>& index_strides,
+    const int64_t slice_offset,
+    DenseTensor* out) {
   const auto& index_type = index[0]->dtype();
   PADDLE_ENFORCE_EQ(index_type == phi::DataType::INT64,
                     true,
@@ -234,15 +236,15 @@ void IndexElementwisePutWithTensorKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   if (out->numel() == 0) return;
   GPUIndexElementwisePutWithTensorKernel<T, int64_t>(dev_ctx,
-                                           x,
-                                           value,
-                                           index,
-                                           input_dims,
-                                           input_strides,
-                                           index_dims,
-                                           index_strides,
-                                           slice_offset,
-                                           out);
+                                                     x,
+                                                     value,
+                                                     index,
+                                                     input_dims,
+                                                     input_strides,
+                                                     index_dims,
+                                                     index_strides,
+                                                     slice_offset,
+                                                     out);
 }
 
 }  // namespace phi

@@ -603,8 +603,7 @@ inline static bool MaskedFillValueDispatching(
     const paddle::Tensor& tensor,
     const std::vector<paddle::Tensor>& indices,
     paddle::Tensor* mask_tensor) {
-  if (indices.size() != 1)
-    return false;
+  if (indices.size() != 1) return false;
 
   int64_t num_ind = 0;
   if ((indices)[0].dtype() != phi::DataType::BOOL) {

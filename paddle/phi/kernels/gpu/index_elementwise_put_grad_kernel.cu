@@ -320,7 +320,7 @@ void IndexElementwisePutGradKernel(
 
   LaunchIndexElementwisePutGradCudaKernel<T, Context>(dev_ctx,
                                                       indices,
-                                                   out_grad,
+                                                      out_grad,
                                                       input_dims,
                                                       input_strides,
                                                       index_dims,
@@ -368,15 +368,15 @@ void IndexElementwisePutWithTensorGradKernel(
   }
 
   LaunchIndexElementwisePutWithTensorGradCudaKernel<T, Context>(dev_ctx,
-                                                      indices,
-                                                      out_grad,
-                                                      input_dims,
-                                                      input_strides,
-                                                      index_dims,
-                                                      index_strides,
-                                                      slice_offset,
-                                                      value_grad,
-                                                      x_grad);
+                                                                indices,
+                                                                out_grad,
+                                                                input_dims,
+                                                                input_strides,
+                                                                index_dims,
+                                                                index_strides,
+                                                                slice_offset,
+                                                                value_grad,
+                                                                x_grad);
 }
 
 }  // namespace phi

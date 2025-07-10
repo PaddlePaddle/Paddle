@@ -2140,13 +2140,13 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
                   common::make_ddim(ad.src_sizes).to_str()));
           transed_sub_tensor =
               index_elementwise_put_with_tensor__ad_func(tensor,
-                                             ad.indices,
-                                             value_tensor,
-                                             ad.src_sizes,
-                                             ad.src_strides,
-                                             ad.indexed_sizes,
-                                             ad.indexed_strides,
-                                             slice_offset);
+                                                         ad.indices,
+                                                         value_tensor,
+                                                         ad.src_sizes,
+                                                         ad.src_strides,
+                                                         ad.indexed_sizes,
+                                                         ad.indexed_strides,
+                                                         slice_offset);
           // New kernel does not need to transpose back, so set out_is_view to
           // false. Remove when all cases use this branch.
           out_is_view = false;
@@ -2240,16 +2240,15 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
       }
     } else {
       const phi::distributed::ProcessMesh* mesh = nullptr;
-      if (InputsContainDistTensor(
-              &mesh, self->tensor, transed_sub_tensor)) {
-        ConvertAllInputsToDistTensor(
-            mesh, self->tensor, transed_sub_tensor);
+      if (InputsContainDistTensor(&mesh, self->tensor, transed_sub_tensor)) {
+        ConvertAllInputsToDistTensor(mesh, self->tensor, transed_sub_tensor);
       }
       paddle::Tensor mask_tensor;
       if (!out_is_view &&
           MaskedFillValueDispatching(
               transed_sub_tensor, transed_index, &mask_tensor)) {
-        paddle::Tensor value_tensor = full_ad_func({1}, values[0], tensor.dtype(), tensor.place());
+        paddle::Tensor value_tensor =
+            full_ad_func({1}, values[0], tensor.dtype(), tensor.place());
         transed_sub_tensor =
             masked_fill__ad_func(transed_sub_tensor, mask_tensor, value_tensor);
       } else {
