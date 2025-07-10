@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING, Union
 from typing_extensions import TypeAlias
 
 import paddle
+from paddle import device
 from paddle.base import core, framework
 from paddle.base.framework import (
     is_compiled_with_cinn,
@@ -41,6 +42,7 @@ if TYPE_CHECKING:
 
     from paddle import IPUPlace as _IPUPlace, XPUPlace as _XPUPlace
     from paddle._typing.device_like import PlaceLike
+    from paddle.base.core import Place
 
     _InitStreamBase = Union[core.CUDAStream, core.CustomDeviceStream]
     _InitEventBase = Union[core.CUDAEvent, core.CustomDeviceEvent]
@@ -1107,6 +1109,72 @@ class stream_guard:
             set_stream(self.src_prev_stream)
         else:
             set_stream(self.src_prev_stream)
+
+
+class place_guard:
+    '''
+
+    Notes:
+        This API only supports dynamic graph mode currently.
+
+    A context manager that specifies the current device context by the given device.
+
+    Args:
+        place(PlaceLike): The specified place.
+
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+
+            >>> # Set the global default device to CPU
+            >>> paddle.set_device("cpu")
+
+            >>> # Temporarily switch to GPU:0 using place_guard with string input
+            >>> with paddle.device.place_guard("gpu:0"):
+            ...     x = paddle.randn([4, 4])       # Create a Tensor on GPU:0
+            ...     x = x.tanh() * 2               # Perform computation on GPU:0
+            ...     print(x.place)                 # Check the device of the Tensor
+            Place(gpu:0)
+
+            >>> # Set the global default device to GPU:0
+            >>> paddle.set_device("gpu:0")
+
+            >>> # Temporarily switch to CPU using place_guard with Place object (CPUPlace)
+            >>> cpu_place = paddle.CPUPlace()
+            >>> with paddle.device.place_guard(cpu_place):
+            ...     x = paddle.randn([4, 4])       # Create a Tensor on CPU
+            ...     x = x.tanh() * 2               # Perform computation on CPU
+            ...     print(x.place)
+            Place(cpu)
+    '''
+
+    _target_place: Place
+    _original_place: Place
+
+    def __init__(self, place: PlaceLike) -> None:
+        if isinstance(place, str):
+            self._target_place = device._convert_to_place(place)
+        else:
+            self._target_place = place
+
+    def __enter__(self) -> None:
+        self._original_place = paddle.framework._current_expected_place_()
+        if self._original_place != self._target_place:
+            paddle.device.set_device(self._target_place)
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        if self._original_place != self._target_place:
+            paddle.device.set_device(self._original_place)
 
 
 def synchronize(device: PlaceLike | None = None) -> None:
