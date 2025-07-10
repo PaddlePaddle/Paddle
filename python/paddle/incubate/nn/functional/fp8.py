@@ -383,6 +383,7 @@ def fp8_quant_blockwise(
     epsilon: float = 0.0,
     input_transpose: bool = False,
     output_scale_transpose: bool = True,
+    return_transpose_only: bool = False,
     using_pow2_scale: bool = True,
     quant_method: str = "1x128",
     output_type: str = "e4m3",
@@ -407,11 +408,14 @@ def fp8_quant_blockwise(
             using_1x128,
             input_transpose,
             output_scale_transpose,
+            return_transpose_only,
             using_e5m2,
             using_pow2_scale,
         )
         # Aligned with kitchen's logic
         if not input_transpose:
             return x_fp8, scale
+        elif return_transpose_only:
+            return x_fp8_t, scale_t
         else:
             return x_fp8, scale, x_fp8_t, scale_t

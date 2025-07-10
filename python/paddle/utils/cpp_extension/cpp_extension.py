@@ -467,6 +467,20 @@ class BuildExtension(build_ext):
                         # {'nvcc': {}, 'cxx: {}}
                         if isinstance(cflags, dict):
                             cflags = cflags['hipcc']
+                    elif core.is_compiled_with_custom_device("iluvatar_gpu"):
+                        ixcc_cmd = os.path.join(
+                            os.getenv("COREX_HOME", "/usr/local/corex/"),
+                            'bin',
+                            'clang++',
+                        )
+                        if not os.path.isfile(ixcc_cmd):
+                            raise ValueError(
+                                "Corex compiler is unavailable, please set `COREX_HOME` to specify it."
+                            )
+                        self.set_executable('compiler_so', ixcc_cmd)
+                        # {'nvcc': {}, 'cxx: {}}
+                        if isinstance(cflags, dict):
+                            cflags = cflags['nvcc']
                     else:
                         assert (
                             CUDA_HOME is not None

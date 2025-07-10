@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_places
 
 import paddle
-from paddle import base
 from paddle.base import Program, core, program_guard
 
 
@@ -166,15 +164,7 @@ def create_test_case(op_type):
         def setUp(self):
             np.random.seed(123)
             self.input_data = np.random.rand(10, 10).astype("float32")
-            self.places = []
-            if (
-                os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-                in ['1', 'true', 'on']
-                or not paddle.is_compiled_with_cuda()
-            ):
-                self.places.append(base.CPUPlace())
-            if core.is_compiled_with_cuda():
-                self.places.append(paddle.CUDAPlace(0))
+            self.places = get_places()
             self.op = eval(f"paddle.{op_type}")
             self.numpy_op = eval(f"np.{op_type}")
 

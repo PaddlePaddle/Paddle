@@ -2029,6 +2029,13 @@
   outputs :
     out : Out
 
+- op : index_elementwise_get
+  backward : index_elementwise_get_grad, index_elementwise_get_double_grad
+  inputs :
+     {x : x, index : index, input_dims : input_dims, input_strides : input_strides, index_dims : index_dims, index_stride : index_stride, slice_offset : slice_offset, accumulate : accumulate}
+  outputs :
+     out : Out
+
 - op : index_sample
   inputs :
     {x : X, index : Index}

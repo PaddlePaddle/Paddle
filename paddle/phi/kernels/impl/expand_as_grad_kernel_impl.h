@@ -15,8 +15,8 @@
 #pragma once
 
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/impl/expand_as_kernel_impl.h"
-
 namespace phi {
 template <typename Context, typename T, int Dims>
 void ExpandAsBackward(const Context& dev_ctx,
@@ -48,6 +48,11 @@ void ExpandAsGradKernel(const Context& context,
                         const DenseTensor& out_grad,
                         const std::vector<int64_t>& target_shape,
                         DenseTensor* in_grad) {
+  if (out_grad.numel() == 0) {
+    phi::Full<T, Context>(
+        context, phi::IntArray(common::vectorize(in_grad->dims())), 0, in_grad);
+    return;
+  }
   auto x_dims = x.dims();
   auto out_grad_dims = out_grad.dims();
   std::vector<int64_t> real_target_shape =

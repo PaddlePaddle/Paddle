@@ -118,7 +118,7 @@ class InterpreterCoreInfoCacheKey {
     // the current key itself. This function is used to switch legacy IR
     // and PT mode.
     if (in_pir_mode == in_pir_mode_) {
-      return std::move(*this);
+      return *this;
     }
     return InterpreterCoreInfoCacheKey(program_id_,
                                        scope_,
