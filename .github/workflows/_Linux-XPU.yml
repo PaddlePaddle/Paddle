@@ -251,9 +251,11 @@ jobs:
 
       - name: Download build.tar.gz
         run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
           wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/xpu/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
           tar --use-compress-program="pzstd" -xf build.tar.gz --strip-components=1
           rm build.tar.gz
+          '
 
       - name: Run test
         run: |

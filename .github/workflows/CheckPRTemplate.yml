@@ -9,7 +9,7 @@ jobs:
   check:
     name: Check
     runs-on:
-      group: HK-Clone
+      group: APPROVAL
     permissions:
       contents: read
     steps:
