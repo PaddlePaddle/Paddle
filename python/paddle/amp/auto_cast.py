@@ -693,11 +693,7 @@ def amp_guard(
                                 ].append(param)
                     amp_global_state().already_classify_params_meshes = True
 
-                if os.getenv("FLAGS_enable_tensor_fusion") not in [
-                    "True",
-                    "true",
-                    "1",
-                ] and os.getenv("FLAGS_enable_main_grad") not in [
+                if os.getenv("FLAGS_enable_main_grad") not in [
                     "True",
                     "true",
                     "1",
@@ -737,11 +733,7 @@ def amp_guard(
 
                 return param_hook
 
-            if os.getenv("FLAGS_enable_tensor_fusion") in [
-                "True",
-                "true",
-                "1",
-            ] or os.getenv("FLAGS_enable_main_grad") in [
+            if os.getenv("FLAGS_enable_main_grad") in [
                 "True",
                 "true",
                 "1",
