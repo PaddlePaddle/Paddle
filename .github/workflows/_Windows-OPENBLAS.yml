@@ -21,8 +21,18 @@ defaults:
     shell: cmd
 
 jobs:
+  check-bypass:
+    name: Check bypass
+    uses: ./.github/workflows/check-bypass.yml
+    with:
+      workflow-name: 'win-openblas'
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
   build-and-test:
     name: Build and test
+    needs: check-bypass
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: win-openblas
     env:
