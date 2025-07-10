@@ -26,7 +26,10 @@ jobs:
       - name: Update paddle
         run: |
           git switch -c test
-          # git remote add upstream https://github.com/PaddlePaddle/Paddle.git
+          git remote -v
+          set +e
+          git remote add upstream https://github.com/PaddlePaddle/Paddle.git
+          set -e
           git fetch upstream $BRANCH
           git checkout --track upstream/develop
           git config --global user.name "PaddleCI"
