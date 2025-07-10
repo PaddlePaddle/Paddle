@@ -511,6 +511,10 @@ void BindProgram(py::module *m) {
             return vars;
           },
           return_value_policy::reference)
+      .def("_list_named_vars",
+           [](std::shared_ptr<Program> self) {
+             return name_analysis::GetAllNamedValues(*self);
+           })
       .def(
           "global_block",
           [](const std::shared_ptr<Program> &self) { return self->block(); },
@@ -1289,14 +1293,14 @@ const phi::DDim &GetTensorDims(Type type) {
   } else if (auto sparse_coo_tensor_type =
                  type.dyn_cast<SparseCooTensorType>()) {
     return sparse_coo_tensor_type.dims();
-  } else if (auto sparse_csr_tensr_type =
+  } else if (auto sparse_csr_tensor_type =
                  type.dyn_cast<SparseCsrTensorType>()) {
-    return sparse_csr_tensr_type.dims();
+    return sparse_csr_tensor_type.dims();
   } else if (auto dense_array_type = type.dyn_cast<DenseTensorArrayType>()) {
     return dense_array_type.dims();
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "Currently, we can only get shape for dense and selsect rows type."));
+        "Currently, we can only get shape for dense and select rows type."));
   }
 }
 const phi::DDim &GetValueDims(Value value) {
@@ -2547,6 +2551,8 @@ void BindUtils(pybind11::module *m) {
   m->def("append_print", AppendPrintOp);
   m->def("append_prints", AppendPrintOps);
   m->def("fake_value", FakeValue);
+  m->def("get_fake_value_name",
+         []() -> std::string { return paddle::framework::kFakeVarName; });
   m->def("is_fake_value", IsFakeValue);
   m->def("get_current_insertion_point", []() -> PyInsertionPoint {
     return {ApiBuilder::Instance().GetCurrentInsertionPoint()};
@@ -3397,7 +3403,7 @@ void BindShapeOrDataDimExprs(pybind11::module *m) {
               if (actual.size() != expect.size()) {
                 LOG(ERROR) << compare_type << " expect size " << expect.size()
                            << " is not equal to actual size " << actual.size()
-                           << " . The detailed infermation is as follows:";
+                           << " . The detailed information is as follows:";
                 PrintExpectAndActual(compare_type);
                 return false;
               } else if (actual.empty()) {
@@ -3418,7 +3424,7 @@ void BindShapeOrDataDimExprs(pybind11::module *m) {
                       << compare_type << " expect[" << i
                       << "]: " << expect.at(i) << " is not equal to actual["
                       << i << "]: " << actual.at(i)
-                      << " . The detailed infermation is as follows:";
+                      << " . The detailed information is as follows:";
                   PrintExpectAndActual(compare_type);
                   return false;
                 }

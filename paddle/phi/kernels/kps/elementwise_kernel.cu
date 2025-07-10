@@ -32,8 +32,7 @@ void SubtractKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     DenseTensor* out) {
-  if (x.numel() == 0 || y.numel() == 0) {
-    out->Resize(out->dims());
+  if (out->numel() == 0) {
     dev_ctx.template Alloc<T>(out);
     return;
   }
@@ -46,7 +45,6 @@ void MultiplyKernel(const Context& dev_ctx,
                     const DenseTensor& y,
                     DenseTensor* out) {
   if (x.numel() == 0 || y.numel() == 0) {
-    out->Resize(out->dims());
     dev_ctx.template Alloc<T>(out);
     return;
   }
@@ -59,7 +57,6 @@ void DivideKernel(const Context& dev_ctx,
                   const DenseTensor& y,
                   DenseTensor* out) {
   if (x.numel() == 0 || y.numel() == 0) {
-    out->Resize(out->dims());
     dev_ctx.template Alloc<T>(out);
     return;
   }
@@ -101,7 +98,6 @@ void AddKernel(const Context& dev_ctx,
                const DenseTensor& y,
                DenseTensor* out) {
   if (x.numel() == 0 || y.numel() == 0) {
-    out->Resize(out->dims());
     dev_ctx.template Alloc<T>(out);
     return;
   }
@@ -200,6 +196,22 @@ void CopySignKernel(const Context& dev_ctx,
       dev_ctx, inputs, &outputs, funcs::CopySignFunctor<T>());
 }
 
+template <typename T, typename Context>
+void NextafterKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     DenseTensor* out) {
+  if (x.numel() == 0 || y.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
+  std::vector<const DenseTensor*> inputs = {&x, &y};
+  std::vector<DenseTensor*> outputs = {out};
+  dev_ctx.template Alloc<T>(out);
+  funcs::BroadcastKernel<T>(
+      dev_ctx, inputs, &outputs, funcs::NextafterFunctor<T>());
+}
+
 }  // namespace phi
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -233,6 +245,8 @@ PD_REGISTER_KERNEL(remainder,
                    int,
                    int64_t,
                    phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>,
                    phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(floor_divide,
                    KPS,
@@ -273,6 +287,8 @@ PD_REGISTER_KERNEL(copysign,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    nextafter, GPU, ALL_LAYOUT, phi::NextafterKernel, float, double) {}
 
 #endif
 

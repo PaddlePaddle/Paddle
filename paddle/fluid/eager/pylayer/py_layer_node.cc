@@ -17,6 +17,7 @@
 #include "glog/logging.h"
 #include "paddle/common/errors.h"
 #include "paddle/fluid/eager/eager_tensor.h"
+#include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
@@ -26,6 +27,8 @@
 #pragma GCC diagnostic ignored "-Wattributes"
 #include "pybind11/pytypes.h"
 
+COMMON_DECLARE_bool(check_cuda_error);
+COMMON_DECLARE_int32(call_stack_level);
 namespace egr {
 GradNodePyLayer::~GradNodePyLayer() {  // NOLINT
   pybind11::gil_scoped_acquire gil;
@@ -38,6 +41,9 @@ GradNodePyLayer::operator()(
                          kSlotSmallVectorSize>& grads,  // NOLINT
     bool create_graph,
     bool is_new_grad) {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("GradNodePyLayer begin");
+  }
   pybind11::gil_scoped_acquire gil;
   VLOG(3) << "Running Eager Backward Node: " << name();
 
@@ -161,6 +167,10 @@ GradNodePyLayer::operator()(
         common::errors::External(pybind11::detail::error_string().c_str()));
   }
 
+  if (FLAGS_call_stack_level == 3) {
+    this->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
+  }
+
   VLOG(6) << "PyLayer backward function finish...";
 
   PyObject* outputs_tuple = nullptr;
@@ -237,6 +247,10 @@ GradNodePyLayer::operator()(
   Py_XDECREF(outputs);
   Py_XDECREF(ctx_);
   ctx_ = nullptr;
+
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("GradNodePyLayer finish");
+  }
 
   return grad_out;
 }

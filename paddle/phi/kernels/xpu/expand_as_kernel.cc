@@ -24,7 +24,7 @@ namespace phi {
 template <typename Context, typename T>
 void ExpandAs(const Context& context,
               const DenseTensor& x,
-              const std::vector<int>& target_shape_,
+              const std::vector<int64_t>& target_shape_,
               DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto vec_in_dims = common::vectorize<int64_t>(x.dims());
@@ -32,10 +32,10 @@ void ExpandAs(const Context& context,
   auto diff = target_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   for (size_t i = 0; i < vec_in_dims.size(); ++i) {
-    PADDLE_ENFORCE_NE(target_shape[i],
-                      0,
-                      common::errors::InvalidArgument(
-                          "The value of target shape cannot be zero."));
+    if (target_shape[i] == 0) {
+      context.template Alloc<T>(out);
+      return;
+    }
     if (vec_in_dims[i] != 1) {
       PADDLE_ENFORCE_EQ(
           vec_in_dims[i],
@@ -84,11 +84,15 @@ void ExpandAs(const Context& context,
 }
 
 template <typename T, typename Context>
-void ExpandAsKernel(const Context& ctx,
+void ExpandAsKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const paddle::optional<DenseTensor>& y,
-                    const std::vector<int>& target_shape,
+                    const std::vector<int64_t>& target_shape,
                     DenseTensor* out) {
+  if (x.numel() == 0 || (y.get_ptr() && y.get_ptr()->numel() == 0)) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   auto rank = x.dims().size();
   auto target_rank = target_shape.size();
   PADDLE_ENFORCE_GE(target_rank,
@@ -112,7 +116,7 @@ void ExpandAsKernel(const Context& ctx,
                         "expand_as_v2 op must be less than or equal to %d.",
                         target_rank,
                         MAX_RANK_SUPPORTED));
-  ExpandAs<Context, T>(ctx, x, target_shape, out);
+  ExpandAs<Context, T>(dev_ctx, x, target_shape, out);
 }
 }  // namespace phi
 

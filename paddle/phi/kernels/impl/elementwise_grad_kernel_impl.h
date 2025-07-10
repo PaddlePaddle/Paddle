@@ -746,6 +746,27 @@ void ElementwiseFMaxGradKernel(const Context& dev_ctx,
   auto x_dim = x.dims();
   auto y_dim = y.dims();
   int axis = -1;
+  if (out_grad.numel() == 0) {
+    if (x_grad) {
+      dev_ctx.template Alloc<T>(x_grad);
+      if (x_grad->numel() != 0) {
+        phi::Full<T, Context>(dev_ctx,
+                              phi::IntArray(common::vectorize(x_grad->dims())),
+                              0,
+                              x_grad);
+      }
+    }
+    if (y_grad) {
+      dev_ctx.template Alloc<T>(y_grad);
+      if (y_grad->numel() != 0) {
+        phi::Full<T, Context>(dev_ctx,
+                              phi::IntArray(common::vectorize(y_grad->dims())),
+                              0,
+                              y_grad);
+      }
+    }
+    return;
+  }
   if (x.dims() == y.dims()) {
     funcs::ElemwiseGradComputeNoBroadcast<Context,
                                           T,
@@ -791,6 +812,27 @@ void ElementwiseFMinGradKernel(const Context& dev_ctx,
                                DenseTensor* y_grad) {
   funcs::ElementwiseGradPreProcess(out_grad, x_grad);
   auto out = out_grad;  // Fake out, not used
+  if (out_grad.numel() == 0) {
+    if (x_grad) {
+      dev_ctx.template Alloc<T>(x_grad);
+      if (x_grad->numel() != 0) {
+        phi::Full<T, Context>(dev_ctx,
+                              phi::IntArray(common::vectorize(x_grad->dims())),
+                              0,
+                              x_grad);
+      }
+    }
+    if (y_grad) {
+      dev_ctx.template Alloc<T>(y_grad);
+      if (y_grad->numel() != 0) {
+        phi::Full<T, Context>(dev_ctx,
+                              phi::IntArray(common::vectorize(y_grad->dims())),
+                              0,
+                              y_grad);
+      }
+    }
+    return;
+  }
   auto x_dim = x.dims();
   auto y_dim = y.dims();
   int axis = -1;
@@ -1379,11 +1421,13 @@ void HeavisideGradKernel(const Context& dev_ctx,
 template <typename T, typename MPType>
 HOSTDEVICE typename std::enable_if<std::is_integral<T>::value, T>::type
 compute_pow_grad_dx(T x, T y, T out, T dout) {
+  if (y == static_cast<T>(0.0)) return static_cast<T>(0.0);
   return dout * y * pow(static_cast<double>(x), static_cast<double>(y - 1));
 }
 template <typename T, typename MPType>
 HOSTDEVICE typename std::enable_if<!std::is_integral<T>::value, T>::type
 compute_pow_grad_dx(T x, T y, T out, T dout) {
+  if (y == static_cast<T>(0.0)) return static_cast<T>(0.0);
   MPType x_val = static_cast<MPType>(x);
   MPType y_val = static_cast<MPType>(y);
   return static_cast<T>(static_cast<MPType>(dout) * y_val *
@@ -1392,12 +1436,16 @@ compute_pow_grad_dx(T x, T y, T out, T dout) {
 template <typename T, typename MPType>
 HOSTDEVICE typename std::enable_if<std::is_integral<T>::value, T>::type
 compute_pow_grad_dy(T x, T y, T out, T dout) {
+  if (x == static_cast<T>(0) && y >= static_cast<T>(0))
+    return static_cast<T>(0);
   return dout * log(static_cast<double>(x)) *
          pow(static_cast<double>(x), static_cast<double>(y));
 }
 template <typename T, typename MPType>
 HOSTDEVICE typename std::enable_if<!std::is_integral<T>::value, T>::type
 compute_pow_grad_dy(T x, T y, T out, T dout) {
+  if (x == static_cast<T>(0) && y >= static_cast<T>(0))
+    return static_cast<T>(0);
   MPType x_val = static_cast<MPType>(x);
   MPType y_val = static_cast<MPType>(y);
   return static_cast<T>(static_cast<MPType>(dout) * log(x_val) *
@@ -1406,6 +1454,7 @@ compute_pow_grad_dy(T x, T y, T out, T dout) {
 #else
 template <typename T, typename MPType>
 HOSTDEVICE T compute_pow_grad_dx(T x, T y, T out UNUSED, T dout) {
+  if (y == static_cast<T>(0.0)) return static_cast<T>(0.0);
   MPType x_val = static_cast<MPType>(x);
   MPType y_val = static_cast<MPType>(y);
   return static_cast<T>(static_cast<MPType>(dout) * y_val *
@@ -1413,6 +1462,8 @@ HOSTDEVICE T compute_pow_grad_dx(T x, T y, T out UNUSED, T dout) {
 }
 template <typename T, typename MPType>
 HOSTDEVICE T compute_pow_grad_dy(T x, T y, T out UNUSED, T dout) {
+  if (x == static_cast<T>(0) && y >= static_cast<T>(0))
+    return static_cast<T>(0);
   MPType x_val = static_cast<MPType>(x);
   MPType y_val = static_cast<MPType>(y);
   return static_cast<T>(static_cast<MPType>(dout) * std::log(x_val) *
@@ -1480,6 +1531,21 @@ void ElementwisePowGradKernel(const Context& dev_ctx,
                               const DenseTensor& dout,
                               DenseTensor* dx,
                               DenseTensor* dy) {
+  if (dout.numel() == 0) {
+    if (dx) {
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(x.dims())),
+                            static_cast<T>(0),
+                            dx);
+    }
+    if (dy) {
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(y.dims())),
+                            static_cast<T>(0),
+                            dy);
+    }
+    return;
+  }
   funcs::ElementwiseGradPreProcess(dout, dx);
   int axis = -1;
   phi::funcs::ElemwiseGradCompute<Context, T, PowGradDX<T>, PowGradDY<T>>(

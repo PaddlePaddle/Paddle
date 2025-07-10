@@ -19,7 +19,7 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void CheckNumericsKernel(const Context& ctx,
+void CheckNumericsKernel(const Context& dev_ctx,
                          const DenseTensor& tensor,
                          const std::string& op_type,
                          const std::string& var_name,

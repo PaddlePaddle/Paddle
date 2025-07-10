@@ -193,16 +193,18 @@ def get_bert_program():
     )
     pir_program = main_program
 
-    with paddle.pir_utils.IrGuard():
-        with paddle.static.program_guard(pir_program, startup_program):
-            x = np.ones([1, seq_length]).astype('int64')
-            executor = paddle.static.Executor(place)
-            executor.run(startup_program)
-            fetches = executor.run(
-                pir_program,
-                feed={"input_ids": x},
-                fetch_list=pir_program.list_vars()[-3],
-            )
+    with (
+        paddle.pir_utils.IrGuard(),
+        paddle.static.program_guard(pir_program, startup_program),
+    ):
+        x = np.ones([1, seq_length]).astype('int64')
+        executor = paddle.static.Executor(place)
+        executor.run(startup_program)
+        fetches = executor.run(
+            pir_program,
+            feed={"input_ids": x},
+            fetch_list=pir_program.list_vars()[-3],
+        )
 
     params = main_program.global_block().all_parameters()
     param_dict = {}

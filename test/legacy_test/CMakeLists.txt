@@ -72,12 +72,21 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_fused_transformer_encoder_layer)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op_api)
+  list(REMOVE_ITEM TEST_OPS test_fused_transpose_spilt_quant_op)
+  list(REMOVE_ITEM TEST_OPS test_fused_transpose_wlch_split_quant_op)
   list(REMOVE_ITEM TEST_OPS test_rms_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_layernorm_op)
+  list(REMOVE_ITEM TEST_OPS test_fused_swiglu_weighted_bwd_op)
   list(REMOVE_ITEM TEST_OPS test_fused_comm_buffer)
+  list(REMOVE_ITEM TEST_OPS test_fused_weighted_swiglu_act_quant_op)
+  list(REMOVE_ITEM TEST_OPS test_fused_act_dequant_op)
+  list(REMOVE_ITEM TEST_OPS test_fused_stack_transpose_quant_op)
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_hapi_model")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_spmt")
   list(REMOVE_ITEM TEST_OPS test_async_read_write)
+  list(REMOVE_ITEM TEST_OPS test_fp8_gemm)
+  list(REMOVE_ITEM TEST_OPS test_fp8_quant)
+  list(REMOVE_ITEM TEST_OPS test_incubate_moe_gate_dispatch_and_quant)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_audio_logmel_feature test_audio_mel_feature)
@@ -159,9 +168,18 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_masked_multihead_attention_op)
   list(REMOVE_ITEM TEST_OPS test_rms_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_layernorm_op)
+  list(REMOVE_ITEM TEST_OPS test_fused_weighted_swiglu_act_quant_op)
+  list(REMOVE_ITEM TEST_OPS test_fused_swiglu_weighted_bwd_op)
+  list(REMOVE_ITEM TEST_OPS test_fused_act_dequant_op)
+  list(REMOVE_ITEM TEST_OPS test_fused_stack_transpose_quant_op)
   list(REMOVE_ITEM TEST_OPS test_matmul_int8_op)
   list(REMOVE_ITEM TEST_OPS test_variable_length_memory_efficient_attention)
   list(REMOVE_ITEM TEST_OPS test_ops_nms)
+  list(REMOVE_ITEM TEST_OPS test_fp8_gemm)
+  list(REMOVE_ITEM TEST_OPS test_fp8_quant)
+  list(REMOVE_ITEM TEST_OPS test_fused_transpose_spilt_quant_op)
+  list(REMOVE_ITEM TEST_OPS test_fused_transpose_wlch_split_quant_op)
+  list(REMOVE_ITEM TEST_OPS test_incubate_moe_gate_dispatch_and_quant)
 endif()
 list(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
 
@@ -172,6 +190,7 @@ endif()
 
 if(APPLE)
   list(REMOVE_ITEM TEST_OPS test_compare_op_0size)
+  list(REMOVE_ITEM TEST_OPS test_run)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_hybrid_parallel)
@@ -479,6 +498,56 @@ if(NOT WITH_GPU
   list(REMOVE_ITEM TEST_OPS test_sparse_conv_igemm_op)
 endif()
 
+# New Op only supported by CUDA>=12.0 and Linux, CUDA_ARCH_NAME==Volta, skip some op test
+if(NOT WITH_GPU
+   OR WIN32
+   OR APPLE
+   OR WITH_ROCM
+   OR (${CUDA_ARCH_NAME} STREQUAL "Volta") # Affects the accuracy of op tests
+   OR ((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
+)# Restrict the use of older versions of CUB
+  list(
+    REMOVE_ITEM
+    TEST_OPS
+    test_incubate_build_src_rank_and_local_expert_id
+    test_incubate_cal_aux_loss
+    test_incubate_expand_modality_expert_id
+    test_incubate_fused_loss
+    test_incubate_fused_rmsnorm_ext
+    test_incubate_int_bincount
+    test_incubate_moe_combine
+    test_incubate_moe_combine_no_weight
+    test_incubate_moe_gate_dispatch_partial_nosoftmaxtopk
+    test_incubate_moe_gate_dispatch_w_permute_bwd
+    test_incubate_moe_gate_dispatch_w_permute
+    test_incubate_moe_gate_dispatch_and_quant
+    test_fp8_gemm
+    test_fp8_quant
+    test_fused_act_dequant_op
+    test_fused_stack_transpose_quant_op
+    test_fused_swiglu_weighted_bwd_op
+    test_fused_transpose_spilt_quant_op
+    test_fused_transpose_wlch_split_quant_op
+    test_fused_weighted_swiglu_act_quant_op)
+endif()
+
+set(has_arch_ge80 FALSE)
+foreach(arch ${NVCC_ARCH_BIN})
+  if(${arch} GREATER_EQUAL 80)
+    set(has_arch_ge80 TRUE)
+    break()
+  endif()
+endforeach()
+
+if(NOT WITH_GPU
+   OR WITH_GPU
+   AND (NOT has_arch_ge80 OR (CUDA_VERSION VERSION_LESS 12.0))
+   OR WIN32
+   OR APPLE
+   OR WITH_ROCM)
+  list(REMOVE_ITEM TEST_OPS test_moe_permute_unpermute)
+endif()
+
 if(NOT WITH_CUDNN_FRONTEND)
   list(REMOVE_ITEM TEST_OPS test_fused_scale_bias_relu_conv_bn_op)
   list(REMOVE_ITEM TEST_OPS test_fused_scale_bias_add_relu_op)
@@ -599,6 +668,7 @@ endif()
 
 set_tests_properties(test_norm_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+
 if(WITH_DISTRIBUTE)
   # FIXME(typhoonzero): add these tests back
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
@@ -747,8 +817,10 @@ endif()
 set_tests_properties(test_cross_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_isin PROPERTIES TIMEOUT 30)
 set_tests_properties(test_binomial_op PROPERTIES TIMEOUT 30)
-set_tests_properties(test_run PROPERTIES TIMEOUT 120)
 set_tests_properties(test_gather_nd_op PROPERTIES TIMEOUT 120)
+if(NOT APPLE)
+  set_tests_properties(test_run PROPERTIES TIMEOUT 120)
+endif()
 
 set_tests_properties(test_profiler PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cross_entropy_loss PROPERTIES TIMEOUT 180)
@@ -852,6 +924,8 @@ set_tests_properties(test_imperative_transformer_sorted_gradient
 set_tests_properties(test_imperative_optimizer PROPERTIES TIMEOUT 250)
 set_tests_properties(test_imperative_optimizer_v2 PROPERTIES TIMEOUT 250)
 set_tests_properties(test_activation_op PROPERTIES TIMEOUT 270)
+set_tests_properties(test_activation_op_zero_size PROPERTIES TIMEOUT 200)
+
 set_tests_properties(test_normal PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cyclic_cifar_dataset PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fused_elemwise_activation_op PROPERTIES TIMEOUT 270)

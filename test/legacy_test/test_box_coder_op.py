@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_places
 
 import paddle
 
@@ -340,15 +339,7 @@ class TestBoxCoderOpWithVarianceDygraphAPI(unittest.TestCase):
             self.box_normalized,
             self.axis,
         )
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if paddle.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
+        self.place = get_places()
 
     def test_dygraph_api(self):
         def run(place):
@@ -480,6 +471,39 @@ class TestBoxCoderSupporttuple(unittest.TestCase):
 
         np.testing.assert_allclose(boxes_np, boxes_dy_np)
         paddle.enable_static()
+
+
+class TestBoxCoderOp_ZeroSize(OpTest):
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def setUp(self):
+        self.op_type = "box_coder"
+        self.python_api = paddle.vision.ops.box_coder
+        lod = [[1, 1, 1, 1, 1]]
+        prior_box = np.random.random((81, 4)).astype('float32')
+        prior_box_var = np.random.random((81, 4)).astype('float32')
+        target_box = np.random.random((0, 81, 4)).astype('float32')
+        code_type = "DecodeCenterSize"
+        box_normalized = False
+        output_box = batch_box_coder(
+            prior_box,
+            prior_box_var,
+            target_box,
+            lod[0],
+            code_type,
+            box_normalized,
+        )
+        self.inputs = {
+            'PriorBox': prior_box,
+            'PriorBoxVar': prior_box_var,
+            'TargetBox': target_box,
+        }
+        self.attrs = {
+            'code_type': 'decode_center_size',
+            'box_normalized': False,
+        }
+        self.outputs = {'OutputBox': output_box}
 
 
 if __name__ == '__main__':

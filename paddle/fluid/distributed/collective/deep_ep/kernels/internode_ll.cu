@@ -279,13 +279,33 @@ __global__ __launch_bounds__(
             rank * num_max_dispatch_tokens_per_rank * num_bytes_per_msg +
             slot_idx * num_bytes_per_msg;
         if (dst_rank != rank) {
-          nvshmemi_ibgda_put_nbi_warp(dst_ptr,
-                                      src_ptr,
-                                      num_bytes_per_msg,
-                                      dst_rank,
-                                      dst_expert_local_idx,
-                                      lane_id,
-                                      slot_idx);
+          void* peer_base_addr = reinterpret_cast<void*>(
+              __ldg(reinterpret_cast<const uint64_t*>(
+                        nvshmemi_device_state_d.peer_heap_base_p2p) +
+                    dst_rank));
+          if (peer_base_addr) {
+            char* req_rptr_actual =
+                reinterpret_cast<char*>(peer_base_addr) +
+                (reinterpret_cast<char*>(dst_ptr) -
+                 reinterpret_cast<char*>(nvshmemi_device_state_d.heap_base));
+            const auto* src_int4_ptr = reinterpret_cast<const int4*>(src_ptr);
+            const auto* dst_int4_ptr = reinterpret_cast<int4*>(req_rptr_actual);
+            UNROLLED_WARP_COPY(8,
+                               lane_id,
+                               num_int4_per_msg,
+                               dst_int4_ptr,
+                               src_int4_ptr,
+                               ld_nc_global,
+                               st_na_global);
+          } else {
+            nvshmemi_ibgda_put_nbi_warp(dst_ptr,
+                                        src_ptr,
+                                        num_bytes_per_msg,
+                                        dst_rank,
+                                        dst_expert_local_idx,
+                                        lane_id,
+                                        slot_idx);
+          }
         } else {
           // NOTES: only 2 load iterations for 7K hidden with 8 unrolls
           const auto* src_int4_ptr = reinterpret_cast<const int4*>(src_ptr);
@@ -367,11 +387,24 @@ __global__ __launch_bounds__(
                              responsible_expert_idx) != FINISHED_SUM_TAG * 2) {
     }
     if (dst_rank != rank) {
-      nvshmemi_ibgda_amo_nonfetch_add(
-          rdma_recv_count + dst_expert_local_idx * num_ranks + rank,
-          -num_tokens_sent - 1,
-          dst_rank,
-          dst_expert_local_idx);
+      void* peer_base_addr = reinterpret_cast<void*>(
+          __ldg(reinterpret_cast<const uint64_t*>(
+                    nvshmemi_device_state_d.peer_heap_base_p2p) +
+                dst_rank));
+      if (peer_base_addr) {  // P2P enabled
+        int* rptr_actual = reinterpret_cast<int*>(
+            reinterpret_cast<char*>(peer_base_addr) +
+            (reinterpret_cast<char*>(rdma_recv_count +
+                                     dst_expert_local_idx * num_ranks + rank) -
+             reinterpret_cast<char*>(nvshmemi_device_state_d.heap_base)));
+        st_release_sys_global(rptr_actual, -num_tokens_sent - 1);
+      } else {
+        nvshmemi_ibgda_amo_nonfetch_add(
+            rdma_recv_count + dst_expert_local_idx * num_ranks + rank,
+            -num_tokens_sent - 1,
+            dst_rank,
+            dst_expert_local_idx);
+      }
     } else {
       st_na_release(rdma_recv_count + dst_expert_local_idx * num_ranks + rank,
                     -num_tokens_sent - 1);
@@ -523,8 +556,6 @@ void dispatch(void* packed_recv_x,
   const auto num_warps = kNumWarpGroups * kNumWarpsPerGroup;
   const auto num_sms = cell_div(num_experts, kNumWarpGroups);
   EP_HOST_ASSERT(num_topk <= kNumMaxTopK);
-  EP_HOST_ASSERT(cell_div(static_cast<int>(hidden * 2 / sizeof(int4)),
-                          32 * (num_warps - 1)) <= 2);
 
   // Workspace checks
   auto atomic_counter_per_expert = reinterpret_cast<int*>(workspace);
@@ -662,7 +693,7 @@ __global__ __launch_bounds__(
       const auto rdma_send_type_row = reinterpret_cast<int*>(
           rdma_send_x_vec + token_idx * num_bytes_per_slot);
       const auto rdma_send_x_vec_row =
-          reinterpret_cast<uint8_t*>(rdma_send_type_row + 4);
+          reinterpret_cast<uint8_t*>(rdma_send_type_row);
 
       // Copy directly to local rank, or copy to buffer and issue RDMA
       auto src_idx = __ldg(local_src_info + token_idx);
@@ -670,8 +701,7 @@ __global__ __launch_bounds__(
       const auto dst_ptr =
           reinterpret_cast<uint64_t>(rdma_recv_x) +
           (global_expert_idx * num_max_dispatch_tokens_per_rank + src_idx) *
-              num_bytes_per_slot +
-          sizeof(int4);
+              num_bytes_per_slot;
       if (dst_rank == rank) {
         const auto dst_int4_ptr = reinterpret_cast<int4*>(dst_ptr);
         UNROLLED_WARP_COPY(7,
@@ -691,13 +721,32 @@ __global__ __launch_bounds__(
                              x_int4,
                              ld_nc_global,
                              st_na_global);
-        nvshmemi_ibgda_put_nbi_warp(dst_ptr,
-                                    buf_ptr,
-                                    hidden * sizeof(nv_bfloat16),
-                                    dst_rank,
-                                    local_expert_idx,
-                                    lane_id,
-                                    token_idx - offset);
+        void* peer_base_addr = reinterpret_cast<void*>(
+            __ldg(reinterpret_cast<const uint64_t*>(
+                      nvshmemi_device_state_d.peer_heap_base_p2p) +
+                  dst_rank));
+        if (peer_base_addr) {
+          char* req_rptr_actual =
+              reinterpret_cast<char*>(peer_base_addr) +
+              (reinterpret_cast<char*>(dst_ptr) -
+               reinterpret_cast<char*>(nvshmemi_device_state_d.heap_base));
+          const auto dst_int4_ptr = reinterpret_cast<int4*>(req_rptr_actual);
+          UNROLLED_WARP_COPY(7,
+                             lane_id,
+                             hidden_bf16_int4,
+                             dst_int4_ptr,
+                             x_int4,
+                             ld_nc_global,
+                             st_na_global);
+        } else {
+          nvshmemi_ibgda_put_nbi_warp(dst_ptr,
+                                      buf_ptr,
+                                      hidden * sizeof(nv_bfloat16),
+                                      dst_rank,
+                                      local_expert_idx,
+                                      lane_id,
+                                      token_idx - offset);
+        }
       }
     }
 
@@ -710,8 +759,22 @@ __global__ __launch_bounds__(
       while (ld_acquire_global(atomic_clean_flag) == 0) {
       }
       if (dst_rank != rank) {
-        nvshmemi_ibgda_amo_nonfetch_add(
-            rdma_recv_flag + global_expert_idx, 1, dst_rank, local_expert_idx);
+        void* peer_base_addr = reinterpret_cast<void*>(
+            __ldg(reinterpret_cast<const uint64_t*>(
+                      nvshmemi_device_state_d.peer_heap_base_p2p) +
+                  dst_rank));
+        if (peer_base_addr) {
+          int* req_rptr_actual = reinterpret_cast<int*>(
+              reinterpret_cast<char*>(peer_base_addr) +
+              (reinterpret_cast<char*>(rdma_recv_flag + global_expert_idx) -
+               reinterpret_cast<char*>(nvshmemi_device_state_d.heap_base)));
+          st_release_sys_global(req_rptr_actual, 1);
+        } else {
+          nvshmemi_ibgda_amo_nonfetch_add(rdma_recv_flag + global_expert_idx,
+                                          1,
+                                          dst_rank,
+                                          local_expert_idx);
+        }
       } else {
         st_na_release(rdma_recv_flag + global_expert_idx, 1);
       }
@@ -761,7 +824,7 @@ LOW_LATENCY_COMBINE_RECV:
               (reg_topk_idx[i] * num_max_dispatch_tokens_per_rank + token_idx) *
                   num_bytes_per_slot);
           auto rdma_buffer_row =
-              reinterpret_cast<const uint8_t*>(rdma_buffer_type + 4);
+              reinterpret_cast<const uint8_t*>(rdma_buffer_type);
 
           // Reduce
           auto x_vec = ld_nc_global(
@@ -805,7 +868,8 @@ void combine(void* combined_x,
              int num_ranks,
              void* workspace,
              cudaStream_t stream,
-             int phases) {
+             int phases,
+             bool zero_copy) {
   constexpr int kNumWarpsPerGroup = 10;
   constexpr int kNumWarpGroups = 3;
   constexpr int kNumMaxTopk = 9;
@@ -844,7 +908,7 @@ void combine(void* combined_x,
                   rank,                                                  \
                   num_ranks,                                             \
                   phases,                                                \
-                  false);                                                \
+                  zero_copy);                                            \
   }                                                                      \
   break
 

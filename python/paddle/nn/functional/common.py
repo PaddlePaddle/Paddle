@@ -1959,7 +1959,9 @@ def pad(
     ], f"mode should be one of constant, reflect, replicate, circular, but got {mode}."
 
     x_dim = len(x.shape)
-
+    if in_dynamic_mode():
+        if isinstance(pad, (Variable, paddle.Tensor)) and pad.size == 0:
+            return x.clone()
     if (
         mode == "constant"
         and isinstance(pad, (list, tuple))
@@ -2227,9 +2229,15 @@ def cosine_similarity(
             [ 0.97689527,  0.99996042, -0.55138415])
 
     """
+    bs = paddle.broadcast_shape([x1.shape[axis]], [x2.shape[axis]])
     w12 = sum(paddle.multiply(x1, x2), axis=axis)
     w1 = sum(paddle.multiply(x1, x1), axis=axis)
     w2 = sum(paddle.multiply(x2, x2), axis=axis)
+    m1, m2 = bs[0] / x1.shape[axis], bs[0] / x2.shape[axis]
+    if m1 != 1:
+        w1 = w1 * m1
+    if m2 != 1:
+        w2 = w2 * m2
     n12 = sqrt(clip(w1 * w2, min=eps * eps))
     cos_sim = w12 / n12
     return cos_sim

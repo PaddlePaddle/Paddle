@@ -14,9 +14,7 @@
 
 from __future__ import annotations
 
-import functools
 import math
-import operator
 from typing import TYPE_CHECKING, Literal, overload
 
 import paddle
@@ -110,10 +108,6 @@ def dice_loss(
     assert (
         input.shape[:-1] == label.shape[:-1]
     ), "All dimensions should be equal except the last one."
-    assert (
-        functools.reduce(operator.mul, input.shape) != 0
-        and functools.reduce(operator.mul, label.shape) != 0
-    ), "Any dimension of input and label cannot be equal to 0."
 
     label = paddle.squeeze(label, [-1])
     label = paddle.nn.functional.one_hot(label, input.shape[-1])
@@ -642,7 +636,7 @@ def binary_cross_entropy(
     Parameters:
         input (Tensor): The input predications tensor. 2-D tensor with shape: [N, *],
             N is batch_size, `*` means number of additional dimensions. The ``input``
-            should always be the output of sigmod.  Available dtype is float16, float32, float64.
+            should always be the output of sigmoid.  Available dtype is float16, float32, float64.
         label (Tensor): The target labels tensor. 2-D tensor with the same shape as
             ``input``. The target labels which values should be numbers between 0 and 1.
             Available dtype is float16, float32, float64.
@@ -1105,6 +1099,7 @@ def smooth_l1_loss(
     label: Tensor,
     reduction: _ReduceMode = 'mean',
     delta: float = 1.0,
+    is_huber: bool = True,
     name: str | None = None,
 ) -> Tensor:
     r"""
@@ -1143,6 +1138,7 @@ def smooth_l1_loss(
             The value determines how large the errors need to be to use L1. Errors
             smaller than delta are minimized with L2. Parameter is ignored for
             negative/zero values. Default = 1.0
+        is_huber (bool, optional): If True, use the Huber loss, otherwise use a modified version where the Huber loss is divided by delta. Default is True.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1191,6 +1187,9 @@ def smooth_l1_loss(
             outputs={'Out': out, 'Residual': residual},
             attrs={'delta': delta},
         )
+
+    if not is_huber:
+        out = out / delta
 
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
@@ -1520,7 +1519,7 @@ def nll_loss(
         if input_dims != 2 and input_dims != 4:
             input = _C_ops.reshape(input, [n, c, 1, -1])
             label = _C_ops.reshape(label, [n, 1, -1])
-            out_shape = [n] + input_shape[2:]
+            out_shape = [n, *input_shape[2:]]
         out, total_weight = _C_ops.nll_loss(
             input, label, weight, ignore_index, reduction
         )
@@ -1533,7 +1532,7 @@ def nll_loss(
         if input_dims != 2 and input_dims != 4:
             input = reshape(input, shape=[n, c, 1, -1])
             label = reshape(label, shape=[n, 1, -1])
-            out_shape = [n] + input_shape[2:]
+            out_shape = [n, *input_shape[2:]]
 
         check_variable_and_dtype(
             input, 'input', ['float32', 'float64'], 'nll_loss'
@@ -4165,8 +4164,9 @@ def multi_margin_loss(
             )
         weight = paddle.gather(weight, label, axis=0).reshape((-1, 1))
         loss = paddle.mean(
-            paddle.pow(
-                paddle.clip(weight * (margin - index_sample + input), min=0.0),
+            weight
+            * paddle.pow(
+                paddle.clip((margin - index_sample + input), min=0.0),
                 p,
             ),
             axis=1,
@@ -4188,6 +4188,125 @@ def multi_margin_loss(
         return paddle.sum(loss, name=name)
     elif reduction == 'none':
         return loss
+
+
+def multi_label_margin_loss(
+    input: Tensor,
+    label: Tensor,
+    reduction: _ReduceMode = 'mean',
+    name: str | None = None,
+) -> Tensor:
+    r"""Measures a multi-class multi-classification hinge loss (margin-based loss) between input :math:`input` and label :math:`label`:
+
+    For i-th mini-batch sample, the loss in terms of the 2D input :math:`input_i` and 2D label :math:`label_i` is:
+
+    .. math::
+        \text{loss}(input_i, label_i) = \frac{\sum_{j \in \text{valid_labels}} \sum_{k \neq \text{valid_labels}} \max(0, 1 - (input_i[\text{valid_labels}[j]] - input_i[k]))}{C}
+
+    where :math:`C` is the number of classes, :math:`\text{valid_labels}` contains all non-negative label indices
+    for sample :math:`i` (stopping at the first -1 encountered), and :math:`k` ranges over all class indices
+    except those in :math:`\text{valid_labels}`.
+
+    The criterion only considers the first non-negative label values, allowing different samples to have variable numbers of target classes.
+
+    Parameters:
+        input (Tensor): Input tensor, the data type is float32 or float64. Shape is (N, C), where C is number of classes.
+        label (Tensor): Label tensor, the data type is int32 or int64. Shape is (N, C), same shape as input.
+            Label values should be class indices (non-negative values) and -1 values.
+            The -1 values are ignored and stop processing for each sample.
+        reduction (str, optional): Indicate how to calculate the loss by batch_size,
+            the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+            If :attr:`reduction` is ``'sum'``, the summed loss is returned.
+            Default: ``'mean'``
+        name (str|None, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, The tensor variable storing the multi_label_margin_loss of input and label.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn.functional as F
+
+            >>> input = paddle.to_tensor([[0.1, 0.2, 0.4, 0.8], [0.2, 0.5, 0.3, 0.1]], dtype='float32')
+            >>> label = paddle.to_tensor([[3, 0, -1, -1], [0, 2, -1, -1]], dtype='int64')
+
+            >>> loss = F.multi_label_margin_loss(input, label, reduction='mean')
+            >>> print(loss)
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   0.94999999)
+    """
+    if reduction not in ['sum', 'mean', 'none']:
+        raise ValueError(
+            "'reduction' in 'multi_label_margin_loss' should be 'sum', 'mean' or 'none', "
+            f"but received {reduction}."
+        )
+
+    if not in_dynamic_mode():
+        check_variable_and_dtype(
+            input, 'input', ['float32', 'float64'], 'multi_label_margin_loss'
+        )
+        check_variable_and_dtype(
+            label, 'label', ['int32', 'int64'], 'multi_label_margin_loss'
+        )
+
+    if input.dim() != 2:
+        raise ValueError(f'Expected 2D input tensor, but got {input.dim()}D')
+
+    if label.dim() != 2:
+        raise ValueError(f'Expected 2D label tensor, but got {label.dim()}D')
+
+    N, C = input.shape
+
+    if paddle.in_dynamic_mode() and label.numel() > 0:
+        min_val = paddle.min(label).item()
+        max_val = paddle.max(label).item()
+
+        if min_val < -1:
+            raise ValueError("label values should be >= -1")
+        if max_val >= C:
+            raise ValueError(f"label values should be < {C}")
+
+    # calculate valid_mask
+    valid_mask = (label != -1).cast('int32')
+    valid_mask = valid_mask * valid_mask.cumprod(dim=1)
+
+    row_ids, col_ids = paddle.where(valid_mask)
+    targets_flat = label[row_ids, col_ids]
+
+    invalid_mask = paddle.ones([N, C], dtype='bool')
+    invalid_mask[row_ids, targets_flat] = False
+
+    # calculate margin by broadcasting
+    input_target = input[row_ids, targets_flat].unsqueeze(-1)
+    margin = 1 - input_target + input[row_ids]
+    margin = paddle.where(
+        invalid_mask[row_ids], margin, paddle.zeros_like(margin)
+    )
+
+    relu_margin = paddle.maximum(margin, paddle.zeros_like(margin))
+
+    losses = paddle.scatter_nd_add(
+        paddle.zeros([N], dtype=input.dtype),
+        row_ids.unsqueeze(-1),
+        relu_margin.sum(
+            axis=1,
+        ),
+    )
+
+    # average by number of valid labels
+    losses /= C
+
+    if reduction == 'mean':
+        return paddle.mean(losses, name=name)
+    elif reduction == 'sum':
+        return paddle.sum(losses, name=name)
+    elif reduction == 'none':
+        return losses
 
 
 def soft_margin_loss(
@@ -4551,6 +4670,9 @@ def adaptive_log_softmax_with_loss(
 
         label_mask = (label >= low_idx) & (label < high_idx)
         row_indices = label_mask.nonzero().squeeze()
+
+        if row_indices.dim() == 0:
+            row_indices.unsqueeze_(0)
 
         if row_indices.numel() == 0:
             continue

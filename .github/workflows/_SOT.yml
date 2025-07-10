@@ -21,7 +21,7 @@ defaults:
 
 jobs:
   check-bypass:
-    name: Check bypass for SOT
+    name: Check bypass
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: "sot"
@@ -36,7 +36,6 @@ jobs:
       group: GZ_BD-CPU
 
     steps:
-      # sudo usermod -aG docker $USER
       - name: run container
         env:
           BRANCH: ${{ github.base_ref }}
@@ -58,6 +57,7 @@ jobs:
           CCACHE_MAXSIZE: 150G
           CCACHE_LIMIT_MULTIPLE: 0.8
           WITH_AVX: "OFF"
+          CACHE_DIR: "/root/.cache/sot"
           CCACHE_DIR: "/root/.ccache/sot"
         run: |
           set -x
@@ -95,6 +95,7 @@ jobs:
             -e GITHUB_ENV \
             -e ci_scripts \
             -e WITH_AVX \
+            -e CACHE_DIR \
             -e CCACHE_DIR \
             -e no_proxy \
             -w /paddle --network host ${docker_image}
@@ -111,8 +112,9 @@ jobs:
           git config --global user.email "paddle_ci@example.com"
           git remote add upstream https://github.com/PaddlePaddle/Paddle.git
           source ${{ github.workspace }}/../../../proxy
+          cp ci/git_pull.sh ci/git_pull_copy.sh
           git checkout $BRANCH
-          git pull upstream $BRANCH
+          bash ci/git_pull_copy.sh $BRANCH
           git fetch upstream $BRANCH
           git checkout test
           git merge --no-edit $BRANCH
@@ -139,6 +141,7 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           export PY_VERSION=3.9
           source ${{ github.workspace }}/../../../proxy
+          bash ${ci_scripts}/cmake-predownload.sh
           bash ${ci_scripts}/run_setup.sh bdist_wheel
           EXCODE=$?
           exit $EXCODE

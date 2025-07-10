@@ -25,6 +25,7 @@ from .statement_ir import (
     CallStatement,
     LayerStatement,
     MethodStatement,
+    ParametersHolder,
     StatementContext,
     StatementIR,
     StatementIRFactory,
@@ -149,7 +150,7 @@ class StatementIRBuilder:
 
     def finalize(self, ret_vals):
         current_sir: StatementIR = self.current_sir
-        current_sir.inputs = current_sir.analyse_inputs()
+        current_sir.inputs, current_sir.params = current_sir.analyse_inputs()
         current_sir.outputs = ret_vals
         log(2, "start subgraph compile and execution.\n")
         log(2, current_sir, "\n")
@@ -173,11 +174,17 @@ class StatementIRBuilder:
         return DummyFunc()
 
     def compile_fn(
-        self, sir_name: str, input_spec: tuple[InputSpec | None, ...], **kwargs
+        self,
+        sir_name: str,
+        parameters_holder: ParametersHolder,
+        input_spec: tuple[InputSpec | None, ...],
+        **kwargs,
     ):
         """
         start compile and return the python function, which must can be to_static without errors.
         """
-        static_func = CompileSIRCache()(self, sir_name, input_spec, **kwargs)
+        static_func = CompileSIRCache()(
+            self, sir_name, parameters_holder, input_spec, **kwargs
+        )
 
         return static_func

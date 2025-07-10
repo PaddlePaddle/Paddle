@@ -17,18 +17,48 @@ from __future__ import annotations
 import functools
 import weakref
 from typing import TYPE_CHECKING, Any, Callable, TypeVar
+from weakref import WeakValueDictionary
 
 import paddle
+from paddle.jit.dy2static.utils import parameters_persistent_mode_is_enabled
 from paddle.jit.utils import OrderedSet
 from paddle.utils import flatten, map_structure
 
-from ..utils import NameGenerator, Singleton, flatten_extend, get_api_fullname
+from ..utils import (
+    InnerError,
+    NameGenerator,
+    Singleton,
+    flatten_extend,
+    get_api_fullname,
+)
 
 if TYPE_CHECKING:
     from contextlib import AbstractContextManager
 
 
 _StatementContextT = TypeVar("_StatementContextT", bound="StatementContext")
+
+
+class ParametersHolder:
+    def __init__(self):
+        self._params = WeakValueDictionary[
+            str, paddle.base.framework.EagerParamBase
+        ]()
+
+    def set(self, name, param):
+        self._params[name] = param
+
+    def get(self, name):
+        if (param := self._params.get(name)) is None:
+            raise InnerError(
+                f"Parameter '{name}' not found in ParametersHolder."
+            )
+        return param
+
+    def copy(self):
+        new_holder = ParametersHolder()
+        new_holder._params = self._params.copy()
+        return new_holder
 
 
 class Reference:  # to unify weak_ref and strong_ref
@@ -268,13 +298,18 @@ class StatementIR:
 
     def __init__(self, name: str):
         self.name = name
-        self.inputs = []  # list of Symbol | PythonObj
-        self.outputs = []  # list of Symbol | PythonObj
-        self.statements: list[Statement] = []  # list of Statement
+        self.inputs: list[Symbol] = []
+        self.params: list[Symbol] = []
+        self.outputs: list[Symbol] = []
+        self.statements: list[Statement] = []
 
         self.symbol_meta_map = {}
         self.param_symbol = set()
         self.non_param_symbol = set()
+
+    @property
+    def input_with_params(self):
+        return self.inputs + self.params
 
     def __len__(self):
         return len(self.statements)
@@ -282,6 +317,7 @@ class StatementIR:
     def __deepcopy__(self, memo=None):
         new_sir = StatementIR(self.name)
         new_sir.inputs = list(self.inputs)
+        new_sir.params = list(self.params)
         new_sir.outputs = list(self.outputs)
         new_sir.statements = list(self.statements)
         new_sir.symbol_meta_map = dict(self.symbol_meta_map.items())
@@ -319,13 +355,22 @@ class StatementIR:
                 if isinstance(out, Symbol):
                     generated_symbols.add(out)
 
-        input_symbols = sorted(used_symbols, key=lambda x: x.name)
-        return input_symbols
+        used_symbols = sorted(used_symbols, key=lambda x: x.name)
+        if not parameters_persistent_mode_is_enabled():
+            return used_symbols, []
+        input_symbols = [
+            symbol for symbol in used_symbols if symbol not in self.param_symbol
+        ]
+        param_symbols = [
+            symbol for symbol in used_symbols if symbol in self.param_symbol
+        ]
+        return input_symbols, param_symbols
 
     def __str__(self):
         strs = []
         strs.append(f"StatementIR: {self.name}")
         strs.append(f"  inputs: {map_structure(lambda x: x.name, self.inputs)}")
+        strs.append(f"  params: {map_structure(lambda x: x.name, self.params)}")
         strs.append(
             f"  outputs: {map_structure(lambda x: x.name, self.outputs)}"
         )
@@ -372,82 +417,3 @@ class StatementIRFactory(metaclass=Singleton):
         ]
         for key in want_clear:
             del self.cache[key]
-
-
-class SIRRuntimeCache(metaclass=Singleton):
-    """
-    It is used to cache the runtime information of the StatementIR.
-    """
-
-    def __init__(self):
-        self.cache = {}
-        #     { name : (inputs, outputs, free_vars) }
-        #       inputs  : can be used when call_SIR, if free_vars exist
-        #       outputs : used for generator new ProxyTensor output before fallback
-        #       free_vars: (name, function)
-
-    def __getitem__(self, key):
-        return self.cache[key]
-
-    def has_key(self, key: str) -> bool:
-        """
-        has_key is used to check whether the key is in the cache.
-        """
-        return key in self.cache.keys()
-
-    def set_origin_inputs(self, key: str, inputs: Any):
-        """
-        Set Cache origin Inputs of the StatementIR
-        """
-        if key in self.cache.keys():
-            val = self.cache[key]
-            self.cache[key] = (inputs, val[1], val[2])
-        else:
-            self.cache[key] = (inputs, None, None)
-
-    def set_origin_outputs(self, key: str, outputs: Any):
-        """
-        Set Cache origin outputs of the StatementIR
-        """
-        if key in self.cache.keys():
-            val = self.cache[key]
-            self.cache[key] = (val[0], outputs, val[2])
-        else:
-            self.cache[key] = (None, outputs, None)
-
-    def set_free_vars(self, key: str, free_vars: Any):
-        """
-        Set Cache free variables of the StatementIR
-        """
-        if key in self.cache.keys():
-            val = self.cache[key]
-            self.cache[key] = (val[0], val[1], free_vars)
-        else:
-            self.cache[key] = (None, None, free_vars)
-
-    def get_origin_inputs(self, key: str):
-        """
-        Get the origin inputs of the StatementIR.
-        """
-        if key in self.cache.keys():
-            return self.cache[key][0]
-        else:
-            return None
-
-    def get_origin_outputs(self, key: str):
-        """
-        Get the origin outputs of the StatementIR.
-        """
-        if key in self.cache.keys():
-            return self.cache[key][1]
-        else:
-            return None
-
-    def get_free_vars(self, key: str):
-        """
-        Get the free variables of the StatementIR.
-        """
-        if key in self.cache.keys():
-            return self.cache[key][2]
-        else:
-            return None

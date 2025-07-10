@@ -70,13 +70,13 @@ void AddKernel(const Context& dev_ctx,
     } else {
       using Type = DataTypeToCppType<phi::DataType::FLOAT32>::type;
       using XPUType = typename XPUTypeTrait<Type>::Type;
-      auto f = [](xpu::Context* ctx,
+      auto f = [](xpu::Context* xpu_ctx,
                   const XPUType* x,
                   const XPUType* y,
                   XPUType* z,
                   const std::vector<int64_t>& xshape,
                   const std::vector<int64_t>& yshape) {
-        return xpu::broadcast_add<XPUType>(ctx, x, y, z, xshape, yshape);
+        return xpu::broadcast_add<XPUType>(xpu_ctx, x, y, z, xshape, yshape);
       };
       auto casted_y = phi::Cast<T>(dev_ctx, y, phi::DataType::FLOAT32);
       XPUElementwise<Type, XPUType>(dev_ctx, x, casted_y, -1, out, f);
@@ -84,13 +84,13 @@ void AddKernel(const Context& dev_ctx,
   } else {
     using XPUType = typename XPUTypeTrait<T>::Type;
 
-    auto f = [](xpu::Context* ctx,
+    auto f = [](xpu::Context* xpu_ctx,
                 const XPUType* x,
                 const XPUType* y,
                 XPUType* z,
                 const std::vector<int64_t>& xshape,
                 const std::vector<int64_t>& yshape) {
-      return xpu::broadcast_add<XPUType>(ctx, x, y, z, xshape, yshape);
+      return xpu::broadcast_add<XPUType>(xpu_ctx, x, y, z, xshape, yshape);
     };
 
     XPUElementwise<T, XPUType>(dev_ctx, x, y, -1, out, f);
@@ -128,13 +128,13 @@ void AddKernel<phi::dtype::complex<float>, XPUContext>(
     dev_ctx.template Alloc<T>(out);
     return;
   }
-  auto f = [](xpu::Context* ctx,
+  auto f = [](xpu::Context* xpu_ctx,
               const float* x,
               const float* y,
               float* z,
               const std::vector<int64_t>& xshape,
               const std::vector<int64_t>& yshape) {
-    return xpu::broadcast_add<float>(ctx, x, y, z, xshape, yshape);
+    return xpu::broadcast_add<float>(xpu_ctx, x, y, z, xshape, yshape);
   };
   // The current complex number implementation uses separate real/imaginary
   // parts,resulting in redundant operations and performance

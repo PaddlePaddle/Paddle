@@ -55,9 +55,6 @@ inplace_check_blacklist = {"assign_out_"}
 
 # Black Ops list that's NO NEED to apply code generation
 black_ops_list = [
-    "conv2d",
-    "conv2d_grad",
-    "conv2d_grad_grad",
     "add_n",
     "add_n_grad",
     "sync_batch_norm_",
@@ -67,6 +64,8 @@ black_ops_list = [
     "pull_sparse_v2_grad",
     "push_gpups_sparse",
 ]
+
+only_backward_ops_list = ["conv2d"]
 
 
 # white ops list whose kernel can be deleted after performance analysis
@@ -92,6 +91,7 @@ prim_white_list = [
     "index_add_double_grad",
     "acos_double_grad",
     "put_along_axis_double_grad",
+    "masked_fill_double_grad",
 ]
 
 # white ops list whose kernel can automatically do type promotion.
@@ -121,6 +121,8 @@ type_promote_white_list = {
     "nextafter": ["x", "y"],
     "atan2": ["x", "y"],
     "copysign": ["x", "y"],
+    "cross": ["x", "y"],
+    "multiply": ["x", "y"],
 }
 
 type_promote_inplace_white_list = {
@@ -190,6 +192,12 @@ type_autocast_valid_grad_op_list = {
 special_prune_dict = {
     "matmul_grad": {"x": "grad_y", "y": "grad_x"},
 }
+
+
+# temporary list of inplace api to add record_inplace_original_dist_attr_list,
+# all inplace api in auto parallel should apply, for now only reshape_.
+special_inplace_list = {"reshape_"}
+
 
 strided_op_list = {
     "as_complex",
@@ -326,6 +334,9 @@ class {} : public egr::GradNodeBase {{
 GRAD_FUNCTION_TEMPLATE = """
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}::operator()(paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>& grads, bool create_graph, bool is_new_grad) {{
   VLOG(3) << \"Running AD API GRAD: \" << \"{}\";
+  if (FLAGS_check_cuda_error) [[unlikely]] {{
+    egr::CUDAErrorCheck(\"{} begin\");
+  }}
 
    // This 'Local_XXXGradNode' record event is different with 'Global_XXXGradNode' event.
    // * 'Local_XXXGradNode' will only cover execution time of this function.
@@ -373,6 +384,10 @@ paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}:
     returns = ApplyNodePostHooks(returns, hooked_grads);
   }}
 
+  if (FLAGS_check_cuda_error) [[unlikely]] {{
+    egr::CUDAErrorCheck(\"{} finish\");
+  }}
+
   // Return
 {}
 }}
@@ -382,6 +397,9 @@ FORWARD_FUNCTION_TEMPLATE = """
 TEST_API {} {}({}) {{
   FLAGS_tensor_operants_mode = "eager";
   VLOG(3) << \"Running AD API: \" << \"{}\";
+  if (FLAGS_check_cuda_error) [[unlikely]] {{
+    egr::CUDAErrorCheck(\"{} begin\");
+  }}
 {}
   // Dygraph Record Event
 {}
@@ -430,6 +448,9 @@ TEST_API {} {}({}) {{
   VLOG(4) << \"Finish AD API: {}";
   // LOG IF DEBUG
 {}
+  if (FLAGS_check_cuda_error) [[unlikely]] {{
+    egr::CUDAErrorCheck(\"{} finish\");
+  }}
   // Returns
   return {};
 }}
@@ -461,6 +482,9 @@ FORWARD_ONLY_FUNCTION_TEMPLATE = """
 TEST_API {} {}({}) {{
   FLAGS_tensor_operants_mode = "eager";
   VLOG(3) << \"Running AD API: \" << \"{}\";
+  if (FLAGS_check_cuda_error) [[unlikely]] {{
+    egr::CUDAErrorCheck(\"{} begin\");
+  }}
 {}
   // Dygraph Record Event
 {}
@@ -489,6 +513,9 @@ TEST_API {} {}({}) {{
 {}{}
   // LOG IF DEBUG
 {}
+  if (FLAGS_check_cuda_error) [[unlikely]] {{
+    egr::CUDAErrorCheck(\"{} finish\");
+  }}
   // Returns
   return {};
 }}
@@ -498,6 +525,8 @@ FORWARD_BODY_BEFORE_API_CALL_TEMPLATE = """  if (require_any_grad) {{
 {}
     // Node Construction
 {}
+    VLOG(3) << "Create node " << grad_node->name() << "addr " << grad_node;
+
     // Set for forward trace
   if (FLAGS_check_nan_inf || FLAGS_call_stack_level == 3) {{
     grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
@@ -562,7 +591,7 @@ NODE_CC_FILE_TEMPLATE = """
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/nodes.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
-#include "paddle/fluid/eager/to_static/run_program_op_node.h"
+#include "paddle/fluid/eager/to_static/run_program_node.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/nodes/nodes.h"
@@ -573,6 +602,7 @@ NODE_CC_FILE_TEMPLATE = """
 #include "paddle/phi/core/memory/stats.h"
 #include "paddle/phi/api/lib/data_transform.h"
 COMMON_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_bool(check_cuda_error);
 {}
 """
 
@@ -616,6 +646,7 @@ COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_int32(call_stack_level);
 COMMON_DECLARE_string(tensor_operants_mode);
 COMMON_DECLARE_bool(use_stride_kernel);
+COMMON_DECLARE_bool(check_cuda_error);
 {}
 {}
 """
@@ -1380,9 +1411,21 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                     )
                     set_grad_out_meta = f"{indent}grad_node->SetGradOutMeta({name}, {meta_name}, {pos});"
                 else:
-                    set_grad_out_meta = (
-                        f"{indent}grad_node->SetGradOutMeta({name}, {pos});"
-                    )
+                    if (
+                        GetInplacedFunctionName(forward_api_name)
+                        if is_inplaced
+                        else forward_api_name
+                    ) in special_inplace_list:
+                        set_grad_out_meta = f"""
+    if ({name}.is_dist_tensor() && {name}.impl()){{
+  {indent}grad_node->SetGradOutMeta({name}, {pos}, {name}_dist_attr, {name}_dims);
+    }} else{{
+  {indent}grad_node->SetGradOutMeta({name}, {pos});
+    }}"""
+                    else:
+                        set_grad_out_meta = (
+                            f"{indent}grad_node->SetGradOutMeta({name}, {pos});"
+                        )
 
             set_grad_out_meta_list.append(set_grad_out_meta)
         set_grad_out_meta_str = "\n".join(set_grad_out_meta_list)
@@ -1697,6 +1740,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         layout_autotune_list = []
         layout_autotune_optional_list = []
         layout_tensors_vector_optional_list = []
+        record_inplace_original_dist_attr_list = []
         for name, (ttype, pos) in forward_inputs_position_map.items():
             inputs_call_list[pos] = f"{name}"
             amp_inputs_call_list[pos] = f"new_{name}"
@@ -1809,6 +1853,18 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             inputs_args_definition_list[pos] = arg_str
             inputs_args_declaration_list[pos] = arg_str
 
+            if is_inplaced and forward_api_name in special_inplace_list:
+                record_inplace_original_dist_attr_list.append(
+                    f"""
+  phi::distributed::TensorDistAttr {name}_dist_attr;
+  phi::DDim {name}_dims;
+  if ({name}.is_dist_tensor() && {name}.impl()){{
+    auto* {name}_dist_tensor = static_cast<phi::distributed::DistTensor*>({name}.impl().get());
+    {name}_dist_attr = {name}_dist_tensor->dist_attr();
+    {name}_dims = {name}_dist_tensor->dims();
+   }}"""
+                )
+
         # forward attrs
         for name, atype, default_val, pos in forward_attrs_list:
             inputs_call_list[pos] = name
@@ -1868,7 +1924,16 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
   }}
 """
         else:
-            forward_call_str = f"{indent}{api_out_type} api_result = paddle::experimental::{namespace}{function_name}({inputs_call_args_str});"
+            if is_inplaced and forward_api_name in special_inplace_list:
+                record_inplace_original_dist_attr_srt = (
+                    "\n".join(record_inplace_original_dist_attr_list) + "\n"
+                )
+                forward_call_str = (
+                    record_inplace_original_dist_attr_srt
+                    + f"{indent}{api_out_type} api_result = paddle::experimental::{namespace}{function_name}({inputs_call_args_str});"
+                )
+            else:
+                forward_call_str = f"{indent}{api_out_type} api_result = paddle::experimental::{namespace}{function_name}({inputs_call_args_str});"
         num_outputs = len(forward_outputs_position_map) - len(
             intermediate_outputs
         )
@@ -2201,6 +2266,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     forward_ad_function_name,
                     inputs_args_definition_str,
                     forward_api_name,
+                    forward_ad_function_name,
                     strided_flags_check,
                     dygraph_event_str,
                     amp_logic_str,
@@ -2217,6 +2283,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     check_inplace_str,
                     bump_inplace_version_str,
                     log_str,
+                    forward_ad_function_name,
                     returns_str,
                 )
             )
@@ -2226,6 +2293,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 forward_ad_function_name,
                 inputs_args_definition_str,
                 forward_api_name,
+                forward_ad_function_name,
                 strided_flags_check,
                 dygraph_event_str,
                 amp_logic_str,
@@ -2249,6 +2317,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 node_creation_after_call_str,
                 forward_api_name,
                 log_str,
+                forward_ad_function_name,
                 returns_str,
             )
 
@@ -3124,6 +3193,7 @@ if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
             grad_node_name,
             self.backward_api_name,
             grad_node_name,
+            grad_node_name,
             fill_zero_str,
             get_grad_in_args_str,
             convert_input_to_dist_tensor_str,
@@ -3140,6 +3210,7 @@ if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
             next_grad_node_creation_str,
             self.backward_api_name,
             log_str,
+            grad_node_name,
             returns_str,
         )
 
@@ -3248,10 +3319,14 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
         for forward_api_contents in true_forward_api_list:
             if forward_api_contents[op_string] in black_ops_list:
                 continue
-            if op_string == 'backward_op' and (
-                forward_api_contents[op_string].endswith(
-                    ('double_grad', 'triple_grad', 'grad_grad')
+            if (
+                op_string == 'backward_op'
+                and (
+                    forward_api_contents[op_string].endswith(
+                        ('double_grad', 'triple_grad', 'grad_grad')
+                    )
                 )
+                and "conv2d" not in forward_api_contents[op_string]
             ):
                 continue
 
@@ -3264,21 +3339,22 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
                     forward_api_contents
                 )
 
-            # Generate Dygraph Forward Function
-            function_generator = DygraphForwardFunctionGenerator(
-                forward_api_contents,
-                backward_api_contents,
-                forward_apis_dict,
-                namespace,
-            )
-            function_generator.run(grad_flag)
+            if forward_api_contents[op_string] not in only_backward_ops_list:
+                # Generate Dygraph Forward Function
+                function_generator = DygraphForwardFunctionGenerator(
+                    forward_api_contents,
+                    backward_api_contents,
+                    forward_apis_dict,
+                    namespace,
+                )
+                function_generator.run(grad_flag)
 
-            self.forward_definition_str += (
-                function_generator.forward_definition_str + "\n"
-            )
-            self.forward_declaration_str += (
-                function_generator.forward_declaration_str + "\n"
-            )
+                self.forward_definition_str += (
+                    function_generator.forward_definition_str + "\n"
+                )
+                self.forward_declaration_str += (
+                    function_generator.forward_declaration_str + "\n"
+                )
 
             if not grad_flag:
                 # Generate Dygraph GradNode Function
@@ -3317,8 +3393,7 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
                     backward_api_contents = next_grad_api_contents
 
         if len(namespace) > 0:
-            if namespace.endswith("::"):
-                namespace = namespace[:-2]
+            namespace = namespace.removesuffix("::")
             self.forward_definition_str = NAMESPACE_WRAPPER_TEMPLATE.format(
                 namespace, self.forward_definition_str
             )

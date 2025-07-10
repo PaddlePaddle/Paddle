@@ -164,14 +164,14 @@ class IPUOpTest(IPUTest):
             self.main_prog = paddle.static.Program()
             self.startup_prog = paddle.static.Program()
             paddle.seed(self.SEED)
-            with paddle.static.scope_guard(self.scope):
-                with paddle.utils.unique_name.guard(
+            with (
+                paddle.static.scope_guard(self.scope),
+                paddle.utils.unique_name.guard(
                     paddle.utils.unique_name.generate('')
-                ):
-                    with paddle.static.program_guard(
-                        self.main_prog, self.startup_prog
-                    ):
-                        builder(self, *args, **kwargs)
+                ),
+                paddle.static.program_guard(self.main_prog, self.startup_prog),
+            ):
+                builder(self, *args, **kwargs)
 
         return wrapper
 

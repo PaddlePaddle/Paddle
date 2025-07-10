@@ -21,7 +21,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void IndexSampleGradKernel(const Context& ctx,
+void IndexSampleGradKernel(const Context& dev_ctx,
                            const DenseTensor& x,
                            const DenseTensor& index,
                            const DenseTensor& out_grad,
@@ -39,18 +39,20 @@ void IndexSampleGradKernel(const Context& ctx,
                         phi::DataType::INT32,
                         phi::DataType::INT64));
 
-  XPUType* in_grad_data = ctx.template Alloc<XPUType>(in_grad);
+  XPUType* in_grad_data = dev_ctx.template Alloc<XPUType>(in_grad);
   const XPUType* out_grad_data = out_grad.data<XPUType>();
   auto in_grad_shape = common::vectorize<int64_t>(in_grad->dims());
   auto out_grad_shape = common::vectorize<int64_t>(out_grad.dims());
   auto index_shape = common::vectorize<int64_t>(index.dims());
 
-  int r = xpu::constant(
-      ctx.x_context(), in_grad_data, in_grad->numel(), static_cast<XPUType>(0));
+  int r = xpu::constant(dev_ctx.x_context(),
+                        in_grad_data,
+                        in_grad->numel(),
+                        static_cast<XPUType>(0));
 
   if (index_type == phi::DataType::INT32) {
     const int* index_data = index.data<int>();
-    r = xpu::scatter_element(ctx.x_context(),
+    r = xpu::scatter_element(dev_ctx.x_context(),
                              in_grad_data,
                              out_grad_data,
                              index_data,
@@ -62,7 +64,7 @@ void IndexSampleGradKernel(const Context& ctx,
                              1);
   } else if (index_type == phi::DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();
-    r = xpu::scatter_element(ctx.x_context(),
+    r = xpu::scatter_element(dev_ctx.x_context(),
                              in_grad_data,
                              out_grad_data,
                              index_data,

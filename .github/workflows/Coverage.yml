@@ -21,6 +21,7 @@ env:
   PADDLE_ROOT: /paddle
   GIT_PR_ID: ${{ github.event.pull_request.number }}
   CI_name: coverage
+  CFS_DIR: /home/data/cfs
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 
 defaults:
@@ -41,6 +42,7 @@ jobs:
     uses: ./.github/workflows/docker.yml
     with:
       bos_dir: Paddle-coverage
+      task: coverage
 
   build:
     name: Coverage build
@@ -54,6 +56,7 @@ jobs:
     steps:
       - name: Check docker image and run container
         env:
+          CACHE_DIR: "/root/.cache/coverage"
           CCACHE_DIR: "/root/.ccache/coverage"
           FLAGS_fraction_of_gpu_memory_to_use: 0.15
           CTEST_PARALLEL_LEVEL: 2
@@ -66,6 +69,8 @@ jobs:
           CUDA_VISIBLE_DEVICES: 0,1
           WITH_DISTRIBUTE: "ON"
           PRECISION_TEST: "ON"
+          WITH_PIP_CUDA_LIBRARIES: "OFF"
+          WITH_FLAGCX: "ON"
           LITE_GIT_TAG: develop
           WITH_UNITY_BUILD: "ON"
           PY_VERSION: 3.9
@@ -97,6 +102,7 @@ jobs:
             -e work_dir \
             -e PADDLE_ROOT \
             -e GIT_PR_ID \
+            -e CACHE_DIR \
             -e CCACHE_DIR \
             -e ci_scripts \
             -e FLAGS_fraction_of_gpu_memory_to_use \
@@ -109,6 +115,8 @@ jobs:
             -e PADDLE_VERSION \
             -e WITH_DISTRIBUTE \
             -e PRECISION_TEST \
+            -e WITH_PIP_CUDA_LIBRARIES \
+            -e WITH_FLAGCX \
             -e LITE_GIT_TAG \
             -e WITH_UNITY_BUILD \
             -e PY_VERSION \
@@ -122,6 +130,7 @@ jobs:
             -e GITHUB_TOKEN \
             -e GITHUB_API_TOKEN \
             -e UT_RUN_TYPE_SETTING \
+            -e CFS_DIR \
             -e no_proxy \
             -w /paddle --network host ${docker_image}
 
@@ -140,7 +149,7 @@ jobs:
           git checkout test
           echo "Pull upstream $BRANCH"
           source ${{ github.workspace }}/../../../proxy
-          git pull upstream $BRANCH --no-edit
+          bash ci/git_pull.sh $BRANCH
           '
 
       - name: Check bypass
@@ -154,9 +163,10 @@ jobs:
         if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }}  /bin/bash -c '
-          mkdir -p /home/data/cfs/.cache/coverage
-          mkdir -p /home/data/cfs/.ccache/coverage
+          mkdir -p ${CFS_DIR}/.cache/coverage
+          mkdir -p ${CFS_DIR}/.ccache/coverage
           source ${{ github.workspace }}/../../../proxy
+          bash ${ci_scripts}/cmake-predownload.sh
           bash $ci_scripts/coverage_build.sh bdist_wheel
           '
 
@@ -203,7 +213,7 @@ jobs:
         if: steps.check-bypass.outputs.can-skip != 'true'
         env:
           home_path: ${{ github.workspace }}/..
-          bos_file: ${{ github.workspace }}/../bos/BosClient.py
+          bos_file: ${{ github.workspace }}/../bos_retry/BosClient.py
           paddle_whl: paddlepaddle_gpu-0.0.0-cp39-cp39-linux_x86_64.whl
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
@@ -214,18 +224,19 @@ jobs:
           export AK=paddle
           export SK=paddle
           if [ ! -f "${{ env.bos_file }}" ]; then
-            wget -q --no-proxy -O ${{ env.home_path }}/bos_new.tar.gz https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz --no-check-certificate
-            mkdir ${{ env.home_path }}/bos
-            tar xf ${{ env.home_path }}/bos_new.tar.gz -C ${{ env.home_path }}/bos
+            wget -q --no-proxy -O ${{ env.home_path }}/bos_retry.tar.gz https://xly-devops.bj.bcebos.com/home/bos_retry.tar.gz --no-check-certificate
+            mkdir ${{ env.home_path }}/bos_retry
+            tar xf ${{ env.home_path }}/bos_retry.tar.gz -C ${{ env.home_path }}/bos_retry
           fi
           cd /paddle/dist
+          mkdir -p ${CFS_DIR}/coverage_bos/${PR_ID}/${COMMIT_ID}
           echo "Uploading coverage build size"
           python ${{ env.bos_file }} coverage_build_size paddle-github-action/PR/coverage/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
           echo "Uploading coverage wheel"
           python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/coverage/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
           cd /
           echo "Uploading Paddle.tar.gz"
-          python ${{ env.bos_file }} Paddle.tar.gz paddle-github-action/PR/coverage/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
+          cp Paddle.tar.gz ${CFS_DIR}/coverage_bos/${PR_ID}/${COMMIT_ID}
           rm Paddle.tar.gz
           '
 
@@ -252,7 +263,7 @@ jobs:
           FLAGS_fraction_of_gpu_memory_to_use: 0.15
           CTEST_PARALLEL_LEVEL: 2
           WITH_GPU: "ON"
-          CUDA_ARCH_NAME: Volta
+          CUDA_ARCH_NAME: Auto
           WITH_AVX: "ON"
           WITH_COVERAGE: "ON"
           COVERALLS_UPLOAD: "ON"
@@ -313,7 +324,8 @@ jobs:
             -e ON_INFER \
             -e COVERAGE_FILE \
             -e GITHUB_TOKEN \
-            -e GITHUB_API_TOKEN  \
+            -e GITHUB_API_TOKEN \
+            -e CFS_DIR \
             -e no_proxy \
             -w /paddle --network host ${docker_image}
 
@@ -322,15 +334,11 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*
           set -e
-          echo "Downloading Paddle.tar.gz"
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/coverage/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
+          echo "Downloading Paddle.tar.gz from cfs"
+          cp ${CFS_DIR}/coverage_bos/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz .
           echo "Extracting Paddle.tar.gz"
           tar --use-compress-program="pzstd -1" -xf Paddle.tar.gz --strip-components=1
           rm Paddle.tar.gz
-          source ${{ github.workspace }}/../../../proxy
-          git checkout test
-          echo "Pull upstream develop"
-          git pull upstream $BRANCH --no-edit
           '
 
       - name: Test
@@ -352,12 +360,15 @@ jobs:
           unset GREP_OPTIONS
           source ${{ github.workspace }}/../../../proxy
           source ${ci_scripts}/utils.sh; check_coverage
+          mkdir -p /home/data/cfs/coverage/${PR_ID}/${COMMIT_ID}
+          cp build/coverage_files/* /home/data/cfs/coverage/${PR_ID}/${COMMIT_ID}
           '
 
       - name: Upload coverage report
         uses: codecov/codecov-action@v4
         with:
           directory: build/coverage_files
+          verbose: true
 
       - name: Determine whether the coverage rate reaches 90%
         run: |

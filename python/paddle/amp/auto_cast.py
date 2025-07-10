@@ -20,12 +20,8 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    ContextManager,
-    List,
     Literal,
     Protocol,
-    Set,
-    Tuple,
     TypeVar,
     Union,
     overload,
@@ -46,7 +42,8 @@ from paddle.static.amp.decorator import OptimizerWithMixedPrecision
 from .amp_lists import black_list, white_list
 
 if TYPE_CHECKING:
-    from typing import Generator
+    from collections.abc import Generator
+    from contextlib import AbstractContextManager
 
     from typing_extensions import TypeAlias, TypeGuard
 
@@ -57,7 +54,7 @@ if TYPE_CHECKING:
     from paddle.static import Operator, Program
 
     _AmpLevelLiteral = Literal["O0", "OD", "O1", "O2"]
-    _CustomList: TypeAlias = Union[List[str], Tuple[str, ...], Set[str]]
+    _CustomList: TypeAlias = Union[list[str], tuple[str, ...], set[str]]
 
     class _OptimizerLike(Protocol):
         def minimize(
@@ -75,8 +72,8 @@ if TYPE_CHECKING:
         def clear_grad(self, set_to_zero: bool) -> None: ...
 
 
-_ModelsT = TypeVar("_ModelsT", "Layer", List["Layer"])
-_OptimizersT = TypeVar("_OptimizersT", "_OptimizerLike", List["_OptimizerLike"])
+_ModelsT = TypeVar("_ModelsT", "Layer", list["Layer"])
+_OptimizersT = TypeVar("_OptimizersT", "_OptimizerLike", list["_OptimizerLike"])
 
 
 AMP_RELATED_FLAGS = [
@@ -236,6 +233,8 @@ def _is_custom_device_bfloat16_supported() -> bool:
     return (
         place.get_device_type() == 'npu'
         or place.get_device_type() == 'intel_hpu'
+        or place.get_device_type() == 'iluvatar_gpu'
+        or place.get_device_type() == 'metax_gpu'
     )
 
 
@@ -698,6 +697,10 @@ def amp_guard(
                     "True",
                     "true",
                     "1",
+                ] and os.getenv("FLAGS_enable_main_grad") not in [
+                    "True",
+                    "true",
+                    "1",
                 ]:
                     if len(amp_global_state().mesh2params):
                         for _, params in amp_global_state().mesh2params.items():
@@ -734,7 +737,15 @@ def amp_guard(
 
                 return param_hook
 
-            if os.getenv("FLAGS_enable_tensor_fusion") in ["True", "true", "1"]:
+            if os.getenv("FLAGS_enable_tensor_fusion") in [
+                "True",
+                "true",
+                "1",
+            ] or os.getenv("FLAGS_enable_main_grad") in [
+                "True",
+                "true",
+                "1",
+            ]:
                 for param in amp_global_state().model_parameters:
                     if not hasattr(param, "main_grad"):
                         param.main_grad = None
@@ -1066,7 +1077,7 @@ def auto_cast(
     level: _AmpLevelLiteral = 'O1',
     dtype: _DTypeLiteral = 'float16',
     use_promote: bool = True,
-) -> ContextManager:
+) -> AbstractContextManager:
     """
     Create a context which enables auto-mixed-precision(AMP) of operators executed in dynamic graph mode.
     If enabled, the input data type (float32, float16 or bfloat16) of each operator is decided

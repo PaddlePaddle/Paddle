@@ -24,7 +24,6 @@ from contextlib import contextmanager
 from enum import Flag, auto
 from functools import wraps
 from pathlib import Path
-from typing import Tuple
 
 from typing_extensions import TypeAlias
 
@@ -111,7 +110,7 @@ class BackendMode(Flag):
         return self.name.lower()
 
 
-ModeTuple: TypeAlias = Tuple[ToStaticMode, IrMode, BackendMode]
+ModeTuple: TypeAlias = tuple[ToStaticMode, IrMode, BackendMode]
 DEFAULT_TO_STATIC_MODE = (
     ToStaticMode.AST | ToStaticMode.SOT | ToStaticMode.SOT_MGS10
 )
@@ -192,9 +191,11 @@ def to_sot_test(fn):
         logger.info("[SOT] running SOT (MIN_GRAPH_SIZE=0)")
 
         OpcodeExecutorCache().clear()
-        with sot_mode_guard(True):
-            with min_graph_size_guard(0):
-                fn(*args, **kwargs)
+        with (
+            sot_mode_guard(True),
+            min_graph_size_guard(0),
+        ):
+            fn(*args, **kwargs)
 
     return sot_impl
 
@@ -209,9 +210,11 @@ def to_sot_mgs10_test(fn):
         logger.info("[SOT_MGS10] running SOT (MIN_GRAPH_SIZE=10)")
 
         OpcodeExecutorCache().clear()
-        with sot_mode_guard(True):
-            with min_graph_size_guard(10):
-                fn(*args, **kwargs)
+        with (
+            sot_mode_guard(True),
+            min_graph_size_guard(10),
+        ):
+            fn(*args, **kwargs)
 
     return sot_mgs10_impl
 
@@ -244,16 +247,16 @@ def to_pt_test(fn):
             original_flag_value = get_flags(pt_in_dy2st_flag)[pt_in_dy2st_flag]
             if os.environ.get('FLAGS_use_stride_kernel', False):
                 return
-            with static.scope_guard(static.Scope()):
-                with static.program_guard(static.Program()):
-                    with EnvironmentVariableGuard(
-                        ENV_ENABLE_PIR_WITH_PT_IN_DY2ST, True
-                    ):
-                        try:
-                            set_flags({pt_in_dy2st_flag: True})
-                            return fn(*args, **kwargs)
-                        finally:
-                            set_flags({pt_in_dy2st_flag: original_flag_value})
+            with (
+                static.scope_guard(static.Scope()),
+                static.program_guard(static.Program()),
+                EnvironmentVariableGuard(ENV_ENABLE_PIR_WITH_PT_IN_DY2ST, True),
+            ):
+                try:
+                    set_flags({pt_in_dy2st_flag: True})
+                    return fn(*args, **kwargs)
+                finally:
+                    set_flags({pt_in_dy2st_flag: original_flag_value})
 
     return pt_impl
 

@@ -318,6 +318,21 @@ def broadcast_sep_parameters(model, hcg, fuse_params=True):
     )
 
 
+def broadcast_moe_sharding_parameters(model, hcg, fuse_params=True):
+    # TODO TO save memory, use un-fused broadcast to avoid potential OOM
+    logger.debug("moe sharding start init parameters sync")
+    moe_sharding_group = hcg.get_moe_sharding_parallel_group()
+    src_rank = hcg.get_moe_sharding_parallel_group_src_rank()
+    sync_params_buffers(
+        model,
+        moe_sharding_group,
+        src_rank,
+        is_model_parallel=False,
+        fuse_params=fuse_params,
+        is_moe_sharding_parallel=True,
+    )
+
+
 def unwrap_optimizer(optimizer, optimizer_instances=()):
     _inner_opt = optimizer
     while isinstance(_inner_opt, optimizer_instances):

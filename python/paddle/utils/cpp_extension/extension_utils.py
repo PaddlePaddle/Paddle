@@ -80,6 +80,8 @@ CLANG_COMPILE_FLAGS = [
     '-O3',
     '-arch',
     'x86_64',
+    '-arch',
+    'arm64',
 ]
 CLANG_LINK_FLAGS = [
     '-dynamiclib',
@@ -87,6 +89,8 @@ CLANG_LINK_FLAGS = [
     'dynamic_lookup',
     '-arch',
     'x86_64',
+    '-arch',
+    'arm64',
 ]
 
 MSVC_LINK_FLAGS = ['/MACHINE:X64']
@@ -390,6 +394,8 @@ def prepare_unix_cudaflags(cflags):
             *cflags,
             *get_rocm_arch_flags(cflags),
         ]
+    elif core.is_compiled_with_custom_device("iluvatar_gpu"):
+        cflags = [*COMMON_NVCC_FLAGS, '-fPIC', '-DPADDLE_WITH_COREX', *cflags]
     else:
         cflags = [
             *COMMON_NVCC_FLAGS,

@@ -278,12 +278,14 @@ def embedding(
         )
     )
 
-    if padding_idx >= weight.shape[0] or padding_idx < -weight.shape[0]:
+    if weight.shape[0] != 0 and (
+        padding_idx >= weight.shape[0] or padding_idx < -weight.shape[0]
+    ):
         raise ValueError(
             f"padding_idx must be within [-{weight.shape[0]}, {weight.shape[0]})"
         )
 
-    if max_norm:
+    if max_norm and weight.size != 0:
         weight = embedding_renorm_(
             x, weight, max_norm=max_norm, norm_type=norm_type
         )

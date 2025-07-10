@@ -291,18 +291,20 @@ class TestQuantizationFreezePass(unittest.TestCase):
     ):
         def build_program(main, startup, is_test):
             paddle.seed(seed)
-            with paddle.utils.unique_name.guard():
-                with paddle.static.program_guard(main, startup):
-                    img = paddle.static.data(
-                        name='image', shape=[-1, 1, 28, 28], dtype='float32'
-                    )
-                    label = paddle.static.data(
-                        name='label', shape=[-1, 1], dtype='int64'
-                    )
-                    loss = conv_net(img, label, quant_skip_pattern)
-                    if not is_test:
-                        opt = paddle.optimizer.Adam(learning_rate=0.001)
-                        opt.minimize(loss)
+            with (
+                paddle.utils.unique_name.guard(),
+                paddle.static.program_guard(main, startup),
+            ):
+                img = paddle.static.data(
+                    name='image', shape=[-1, 1, 28, 28], dtype='float32'
+                )
+                label = paddle.static.data(
+                    name='label', shape=[-1, 1], dtype='int64'
+                )
+                loss = conv_net(img, label, quant_skip_pattern)
+                if not is_test:
+                    opt = paddle.optimizer.Adam(learning_rate=0.001)
+                    opt.minimize(loss)
             return [img, label], loss
 
         random.seed(0)

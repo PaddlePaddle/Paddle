@@ -23,6 +23,7 @@ import copyreg
 import dataclasses
 import enum
 import functools
+import genericpath
 import importlib
 import inspect
 import linecache
@@ -47,7 +48,6 @@ import uuid
 import warnings
 import weakref
 
-import decorator
 import google.protobuf
 import numpy
 import setuptools
@@ -87,11 +87,11 @@ NEED_SKIP_THIRD_PARTY_MODULES = {
     weakref,
     _collections_abc,
     _weakrefset,
-    decorator,
     codecs,
     uuid,
     setuptools,
     warnings,
+    genericpath,
 }
 
 if sys.version_info < (3, 11):

@@ -35,21 +35,23 @@ class TestRandnLikeAPI(unittest.TestCase):
         )
 
     def test_static_api(self):
-        with static_guard():
-            with paddle.static.program_guard(
+        with (
+            static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                x_float32 = paddle.static.data(
-                    name="x_float32", shape=[10, 12], dtype="float32"
-                )
-                exe = paddle.static.Executor(self.place)
-                outlist = [paddle.randn_like(x_float32)]
-                outs = exe.run(
-                    feed={'x_float32': self.x_float32}, fetch_list=outlist
-                )
-                for out, dtype in zip(outs, self.dtype):
-                    self.assertTrue(out.dtype, np.dtype(dtype))
-                    self.assertTrue(((out >= -25) & (out <= 25)).all(), True)
+            ),
+        ):
+            x_float32 = paddle.static.data(
+                name="x_float32", shape=[10, 12], dtype="float32"
+            )
+            exe = paddle.static.Executor(self.place)
+            outlist = [paddle.randn_like(x_float32)]
+            outs = exe.run(
+                feed={'x_float32': self.x_float32}, fetch_list=outlist
+            )
+            for out, dtype in zip(outs, self.dtype):
+                self.assertTrue(out.dtype, np.dtype(dtype))
+                self.assertTrue(((out >= -25) & (out <= 25)).all(), True)
 
     def test_static_api_with_fp16(self):
         with static_guard():
@@ -75,44 +77,48 @@ class TestRandnLikeAPI(unittest.TestCase):
                         )
 
     def test_static_api_with_fp32(self):
-        with static_guard():
-            with paddle.static.program_guard(
+        with (
+            static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                x_float32 = paddle.static.data(
-                    name="x_float32", shape=[10, 12], dtype="float32"
-                )
-                exe = paddle.static.Executor(self.place)
-                outlist2 = [
-                    paddle.randn_like(x_float32, dtype=dtype)
-                    for dtype in self.dtype
-                ]
-                outs2 = exe.run(
-                    feed={'x_float32': self.x_float32}, fetch_list=outlist2
-                )
-                for out, dtype in zip(outs2, self.dtype):
-                    self.assertTrue(out.dtype, np.dtype(dtype))
-                    self.assertTrue(((out >= -25) & (out <= 25)).all(), True)
+            ),
+        ):
+            x_float32 = paddle.static.data(
+                name="x_float32", shape=[10, 12], dtype="float32"
+            )
+            exe = paddle.static.Executor(self.place)
+            outlist2 = [
+                paddle.randn_like(x_float32, dtype=dtype)
+                for dtype in self.dtype
+            ]
+            outs2 = exe.run(
+                feed={'x_float32': self.x_float32}, fetch_list=outlist2
+            )
+            for out, dtype in zip(outs2, self.dtype):
+                self.assertTrue(out.dtype, np.dtype(dtype))
+                self.assertTrue(((out >= -25) & (out <= 25)).all(), True)
 
     def test_static_api_with_fp64(self):
-        with static_guard():
-            with paddle.static.program_guard(
+        with (
+            static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                x_float64 = paddle.static.data(
-                    name="x_float64", shape=[10, 12], dtype="float64"
-                )
-                exe = paddle.static.Executor(self.place)
-                outlist3 = [
-                    paddle.randn_like(x_float64, dtype=dtype)
-                    for dtype in self.dtype
-                ]
-                outs3 = exe.run(
-                    feed={'x_float64': self.x_float64}, fetch_list=outlist3
-                )
-                for out, dtype in zip(outs3, self.dtype):
-                    self.assertTrue(out.dtype, dtype)
-                    self.assertTrue(((out >= -25) & (out <= 25)).all(), True)
+            ),
+        ):
+            x_float64 = paddle.static.data(
+                name="x_float64", shape=[10, 12], dtype="float64"
+            )
+            exe = paddle.static.Executor(self.place)
+            outlist3 = [
+                paddle.randn_like(x_float64, dtype=dtype)
+                for dtype in self.dtype
+            ]
+            outs3 = exe.run(
+                feed={'x_float64': self.x_float64}, fetch_list=outlist3
+            )
+            for out, dtype in zip(outs3, self.dtype):
+                self.assertTrue(out.dtype, dtype)
+                self.assertTrue(((out >= -25) & (out <= 25)).all(), True)
 
     def test_dygraph_api(self):
         with dygraph_guard():

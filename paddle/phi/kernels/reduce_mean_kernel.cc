@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/reduce_kernel_impl.h"
 
 namespace phi {
@@ -27,7 +28,24 @@ void MeanKernel(const Context& dev_ctx,
                 bool keep_dim,
                 DenseTensor* out) {
   bool reduce_all = recompute_reduce_all(x, dims);
-  MeanRawKernel<T>(dev_ctx, x, dims, keep_dim, reduce_all, out);
+  if (std::is_same<T, int>::value || std::is_same<T, int64_t>::value ||
+      std::is_same<T, bool>::value) {
+    using Type =
+        typename std::conditional<std::is_same<T, int>::value ||
+                                      std::is_same<T, int64_t>::value ||
+                                      std::is_same<T, bool>::value,
+                                  float,
+                                  T>::type;
+    DenseTensor x_float =
+        phi::Cast<T, Context>(dev_ctx, x, phi::DataType::FLOAT32);
+    DenseTensor* out_float = new DenseTensor();
+    out_float->Resize(out->dims());
+    MeanRawKernel<Type>(
+        dev_ctx, x_float, dims, keep_dim, reduce_all, out_float);
+    phi::CastKernel<Type, Context>(dev_ctx, *out_float, x.dtype(), out);
+  } else {
+    MeanRawKernel<T>(dev_ctx, x, dims, keep_dim, reduce_all, out);
+  }
 }
 
 }  // namespace phi

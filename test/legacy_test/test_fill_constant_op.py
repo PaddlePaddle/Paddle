@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import sys
 import unittest
 
@@ -20,7 +19,12 @@ import numpy as np
 
 sys.path.append("../../legacy_test")
 from op import Operator
-from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_places,
+    paddle_static_guard,
+)
 
 import paddle
 from paddle import base
@@ -141,17 +145,7 @@ class TestFillConstantOpWithSelectedRows(unittest.TestCase):
         np.testing.assert_array_equal(result_array, full_array)
 
     def test_fill_constant_with_selected_rows(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(core.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-
-        for place in places:
+        for place in get_places():
             self.check_with_place(place)
 
 
@@ -430,8 +424,11 @@ class TestFillConstantImperative(unittest.TestCase):
 class TestFillConstantOpError(unittest.TestCase):
 
     def test_errors1(self):
-        with paddle_static_guard(), paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
+        with (
+            paddle_static_guard(),
+            paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ),
         ):
             # for ci coverage
             x1 = paddle.static.data(name='x1', shape=[-1, 1], dtype="int16")
@@ -463,8 +460,11 @@ class TestFillConstantOpError(unittest.TestCase):
             )
 
     def test_errors2(self):
-        with paddle_static_guard(), paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
+        with (
+            paddle_static_guard(),
+            paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ),
         ):
             # The argument dtype of fill_constant_op must be one of bool, float16,
             # float32, float64, uint8, int16, int32 or int64
@@ -545,6 +545,21 @@ class TestFillConstantOp_ValueTensorBf16(OpTest):
         self.check_output_with_place(
             core.CPUPlace(), check_dygraph=False, check_pir=False
         )
+
+
+class TestFillConstantOp_ZeroSize(unittest.TestCase):
+
+    def test_shape(self):
+        out = paddle.full(
+            shape=[
+                paddle.to_tensor([1]),
+                paddle.to_tensor([1]),
+                paddle.to_tensor([]),
+            ],
+            fill_value=1.0,
+        )
+        out_np = out.numpy()
+        np.testing.assert_allclose(out_np, np.ones([1, 1]).astype(out_np.dtype))
 
 
 if __name__ == "__main__":

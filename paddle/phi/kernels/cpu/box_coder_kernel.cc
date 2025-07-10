@@ -17,9 +17,9 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/impl/box_coder.h"
-
 namespace phi {
 
 template <typename T>
@@ -179,6 +179,15 @@ void BoxCoderKernel(const Context &dev_ctx,
                     int axis,
                     const std::vector<float> &variance,
                     DenseTensor *output_box) {
+  // prior_box and prior_box_var have the same shape, so do not judge
+  // prior_box_var
+  if (prior_box.numel() == 0 || target_box.numel() == 0) {
+    phi::Full<T, Context>(dev_ctx,
+                          phi::IntArray(common::vectorize(output_box->dims())),
+                          0,
+                          output_box);
+    return;
+  }
   if (!target_box.lod().empty()) {
     PADDLE_ENFORCE_EQ(target_box.lod().size(),
                       1UL,
