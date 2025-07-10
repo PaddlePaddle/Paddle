@@ -141,6 +141,9 @@
   } else if (num_rdma_ranks == 2) {                             \
     constexpr int kNumRdmaRanks = 2;                            \
     __VA_ARGS__                                                 \
+  } else if (num_rdma_ranks == 3) {                             \
+    constexpr int kNumRdmaRanks = 3;                            \
+    __VA_ARGS__                                                 \
   } else if (num_rdma_ranks == 4) {                             \
     constexpr int kNumRdmaRanks = 4;                            \
     __VA_ARGS__                                                 \
@@ -152,6 +155,29 @@
   if (num_experts == 64) {                                  \
     constexpr int kNumExperts = 64;                         \
     __VA_ARGS__                                             \
+  } else if (num_experts == 128) {                          \
+    constexpr int kNumExperts = 128;                        \
+    __VA_ARGS__                                             \
+  } else if (num_experts == 192) {                          \
+    constexpr int kNumExperts = 192;                        \
+    __VA_ARGS__                                             \
   } else {                                                  \
-    EP_HOST_ASSERT(false && "num_experts num_topk");        \
+    EP_HOST_ASSERT(false && "Unsupported num_experts");     \
+  }
+
+#define DISPATCH_NUM_WARP_GROUPS(num_warp_groups, kNumWarpGroups, ...) \
+  if (num_warp_groups == 1) {                                          \
+    constexpr int kNumWarpGroups = 1;                                  \
+    __VA_ARGS__                                                        \
+  } else if (num_warp_groups == 2) {                                   \
+    constexpr int kNumWarpGroups = 2;                                  \
+    __VA_ARGS__                                                        \
+  } else if (num_warp_groups == 3) {                                   \
+    constexpr int kNumWarpGroups = 3;                                  \
+    __VA_ARGS__                                                        \
+  } else if (num_warp_groups == 4) {                                   \
+    constexpr int kNumWarpGroups = 4;                                  \
+    __VA_ARGS__                                                        \
+  } else {                                                             \
+    EP_HOST_ASSERT(false && "Unsupported num_warp_groups");            \
   }

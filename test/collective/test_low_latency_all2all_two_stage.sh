@@ -11,8 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+for name in `env | grep -E 'PADDLE|ENDPOINT' | awk -F"=" '{print $1}'`; do
+unset ${name}
+done
+
+export IP_LIST="127.0.0.1"
 
 export devices=0,1,2,3,4,5,6,7
 python -m paddle.distributed.launch \
         --gpus ${devices} \
+        --ips ${IP_LIST} \
         test_low_latency_all2all_two_stage.py

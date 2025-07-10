@@ -23,41 +23,69 @@ import paddle.distributed as dist
 from paddle.distributed import fleet
 from paddle.distributed.communication import deep_ep
 
+num_max_tokens = 256
 
-def bench_paddle(fn, num_warmups: int = 50, num_tests: int = 50):
+
+def bench_split(fn1, fn2, num_warmups: int = 50, num_tests: int = 50):
     # clear
     cache = paddle.empty((int(256e6 // 4),), dtype="int32")
     cache.zero_()
 
     # Warmup
     for _ in range(num_warmups):
-        fn()
+        fn1()
+        fn2()
 
     # Flush L2
     cache.zero_()
     del cache
 
     # Testing
-    start_events = [
+    start_events_fn1 = [
         paddle.device.Event(enable_timing=True) for _ in range(num_tests)
     ]
-    end_events = [
+    end_events_fn1 = [
+        paddle.device.Event(enable_timing=True) for _ in range(num_tests)
+    ]
+    start_events_fn2 = [
+        paddle.device.Event(enable_timing=True) for _ in range(num_tests)
+    ]
+    end_events_fn2 = [
         paddle.device.Event(enable_timing=True) for _ in range(num_tests)
     ]
     for i in range(num_tests):
         # Record
-        start_events[i].record()
-        fn()
-        end_events[i].record()
+        start_events_fn1[i].record()
+        fn1()
+        end_events_fn1[i].record()
+        start_events_fn2[i].record()
+        fn2()
+        end_events_fn2[i].record()
     paddle.device.synchronize()
 
-    times = np.array(
-        [s.elapsed_time(e) / 1e3 for s, e in zip(start_events, end_events)]
+    times_fn1 = np.array(
+        [
+            s.elapsed_time(e) / 1e3
+            for s, e in zip(start_events_fn1, end_events_fn1)
+        ]
     )[1:]
-    return np.average(times), np.min(times), np.max(times)
+    times_fn2 = np.array(
+        [
+            s.elapsed_time(e) / 1e3
+            for s, e in zip(start_events_fn2, end_events_fn2)
+        ]
+    )[1:]
+    return (
+        np.average(times_fn1),
+        np.min(times_fn1),
+        np.max(times_fn1),
+        np.average(times_fn2),
+        np.min(times_fn2),
+        np.max(times_fn2),
+    )
 
 
-def paddle_per_token_cast_back(x_fp8: paddle.Tensor, x_scales: paddle.Tensor):
+def per_token_cast_back(x_fp8: paddle.Tensor, x_scales: paddle.Tensor):
     x_fp32 = x_fp8.to("float32").view((x_fp8.shape[0], -1, 128))
     x_scales = x_scales.view((x_fp8.shape[0], -1, 1))
     return (x_fp32 * x_scales).view(x_fp8.shape).to("bfloat16")
@@ -102,12 +130,6 @@ def test_main(
     print("topk_idx: ", topk_idx, flush=True)
     print("topk_weights: ", topk_weights, flush=True)
 
-    # Randomly mask some positions
-    for i in range(10):
-        topk_idx[
-            random.randint(0, num_tokens - 1), random.randint(0, num_topk - 1)
-        ] = -1
-
     # Calculate bandwidth
     num_fp8_bytes, num_bf16_bytes = (hidden + hidden / 128 * 4 + 16), hidden * 2
     num_dispatch_comm_bytes, num_combine_comm_bytes = 0, 0
@@ -121,7 +143,9 @@ def test_main(
     do_check = True
     hash_value, num_times = 0, 0
     all_times = 10000
-    warp_up_time = 1
+    warp_up_time = 10
+    print("warp_up_time: ", warp_up_time)
+    print("num_experts: ", num_experts)
     for return_recv_hook in (False,):
         print(f"rank: {rank}, use_fp8: {use_fp8}", flush=True)
         for i in range(warp_up_time):
@@ -136,7 +160,7 @@ def test_main(
                 x,
                 topk_idx,
                 topk_weights,
-                num_tokens,
+                num_max_tokens,
                 num_experts,
                 use_fp8=use_fp8,
                 async_finish=not return_recv_hook,
@@ -155,7 +179,7 @@ def test_main(
                 print("packed_recv_x: ", paddle.cast(packed_recv_x, "float32"))
             out = paddle.empty((num_tokens, hidden), dtype="bfloat16")
             if use_fp8:
-                simulated_gemm_x = paddle_per_token_cast_back(
+                simulated_gemm_x = per_token_cast_back(
                     packed_recv_x[0].view((-1, hidden)),
                     packed_recv_x[1].view((-1, hidden // 128)),
                 ).view(packed_recv_x[0].shape)
@@ -175,44 +199,69 @@ def test_main(
         dist.barrier()
         paddle.device.synchronize()
 
-        def test_func(return_recv_hook: bool):
-            (
-                packed_recv_x,
-                packed_recv_count,
-                rdma_send_flags,
-                handle,
-                event,
-                hook,
-            ) = buffer.low_latency_dispatch_two_stage(
-                x,
-                topk_idx,
-                topk_weights,
-                num_tokens,
-                num_experts,
-                use_fp8=use_fp8,
-                async_finish=not return_recv_hook,
-                return_recv_hook=return_recv_hook,
-            )
-            combined_x, event, hook = buffer.low_latency_combine_two_stage(
-                simulated_gemm_x,
-                topk_idx,
-                topk_weights,
-                handle,
-                async_finish=not return_recv_hook,
-                dispatch_use_fp8=use_fp8,
-                return_recv_hook=return_recv_hook,
-                out=out,
-            )
+        def test_func(return_recv_hook: bool, do_send: bool, do_recv: bool):
+            if do_send:
+                (
+                    packed_recv_x,
+                    packed_recv_count,
+                    rdma_send_flags,
+                    _,
+                    event,
+                    hook,
+                ) = buffer.low_latency_dispatch_two_stage(
+                    x,
+                    topk_idx,
+                    topk_weights,
+                    num_max_tokens,
+                    num_experts,
+                    use_fp8=use_fp8,
+                    async_finish=not return_recv_hook,
+                    return_recv_hook=return_recv_hook,
+                )
+            if do_recv:
+                combined_x, event, hook = buffer.low_latency_combine_two_stage(
+                    simulated_gemm_x,
+                    topk_idx,
+                    topk_weights,
+                    handle,
+                    async_finish=not return_recv_hook,
+                    dispatch_use_fp8=use_fp8,
+                    return_recv_hook=return_recv_hook,
+                    out=out,
+                )
 
         # dispatch + combine
-        avg_t, min_t, max_t = bench_paddle(
-            partial(test_func, return_recv_hook=False),
-            num_warmups=200,
-            num_tests=10000,
+        avg_t_fn1, min_t_fn1, max_t_fn1, avg_t_fn2, min_t_fn2, max_t_fn2 = (
+            bench_split(
+                partial(
+                    test_func,
+                    return_recv_hook=False,
+                    do_send=True,
+                    do_recv=False,
+                ),  # dispatch
+                partial(
+                    test_func,
+                    return_recv_hook=False,
+                    do_send=False,
+                    do_recv=True,
+                ),  # combine
+                num_warmups=200,
+                num_tests=10000,
+            )
         )
         print(
-            f'[rank {rank}] Dispatch + combine bandwidth: {(num_dispatch_comm_bytes + num_combine_comm_bytes) / 1e9 / avg_t:.2f} GB/s, '
-            f'avg_t={avg_t * 1e6:.2f} us, min_t={min_t * 1e6:.2f} us, max_t={max_t * 1e6:.2f} us',
+            f'[rank {rank}] Dispatch bandwidth: {(num_dispatch_comm_bytes) / 1e9 / avg_t_fn1:.2f} GB/s, '
+            f'avg_t={avg_t_fn1 * 1e6:.2f} us, min_t={min_t_fn1 * 1e6:.2f} us, max_t={max_t_fn1 * 1e6:.2f} us',
+            flush=True,
+        )
+        print(
+            f'[rank {rank}] Combine bandwidth: {(num_combine_comm_bytes) / 1e9 / avg_t_fn2:.2f} GB/s, '
+            f'avg_t={avg_t_fn2 * 1e6:.2f} us, min_t={min_t_fn2 * 1e6:.2f} us, max_t={max_t_fn2 * 1e6:.2f} us',
+            flush=True,
+        )
+        print(
+            f'[rank {rank}] Dispatch + Combine bandwidth: {(num_dispatch_comm_bytes + num_combine_comm_bytes) / 1e9 / (avg_t_fn1 + avg_t_fn2):.2f} GB/s, '
+            f'avg_t={(avg_t_fn1 + avg_t_fn2) * 1e6:.2f} us, min_t={(min_t_fn1 + min_t_fn2) * 1e6:.2f} us, max_t={(max_t_fn1 + max_t_fn2) * 1e6:.2f} us',
             flush=True,
         )
     return hash_value
@@ -225,15 +274,18 @@ def test_loop():
     print("rank: ", rank, flush=True)
     print("num_ranks: ", num_ranks, flush=True)
 
-    num_tokens, hidden, num_topk, num_experts = 128, 7168, 8, 64
+    num_tokens, hidden, num_topk, num_experts = 128, 8192, 8, 64
+    assert (
+        num_tokens <= num_max_tokens
+    ), "num_tokens must be less equal to num_max_tokens"
     num_rdma_ranks = num_ranks / 8
     num_local_experts = num_experts / num_ranks
     num_rdma_bytes = deep_ep.Buffer.get_low_latency_rdma_size_hint_two_stage(
-        num_tokens, hidden, num_ranks, num_experts, num_topk
+        num_max_tokens, hidden, num_ranks, num_experts, num_topk
     )
     use_fp8 = True
     num_nvl_bytes = deep_ep.Buffer.get_low_latency_nvl_size_hint_two_stage(
-        num_tokens, hidden, num_ranks, num_experts, num_topk, use_fp8
+        num_max_tokens, hidden, num_ranks, num_experts, num_topk, use_fp8
     )
     print(
         f'Allocating rdma buffer size: {num_rdma_bytes / 1e6} MB, nvl buffer size: {num_nvl_bytes / 1e6} MB...',
@@ -261,16 +313,6 @@ def test_loop():
 
 
 def init_dist_env(world_size, seed=20):
-    """
-    初始化分布式环境。
-
-    Args:
-        world_size (int): 分布式训练任务的机器数量。
-        seed (int): 随机种子。默认值为20。
-
-    Returns:
-        None。
-    """
     context = contextlib.nullcontext()
     with context:
         # start to init distributed env
