@@ -53,7 +53,7 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
     def setUp(self):
         self.op_type = "softmax"
         self.use_cudnn = False
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.dtype = np.float32
         self.init_kernel_type()
         self.shape = self.get_x_shape()
@@ -67,7 +67,7 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
         self.attrs = {
             'axis': self.axis,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_mkldnn,
+            'use_mkldnn': self.use_onednn,
         }
 
     def test_check_output(self):
@@ -103,12 +103,12 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
             )
 
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
 
 
 class TestSoftmaxMKLDNNOp2(TestSoftmaxOp2):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
         # oneDNN doesn't support float64 dtype
         self.dtype = np.float32
         self.check_pir_onednn = False
@@ -116,35 +116,35 @@ class TestSoftmaxMKLDNNOp2(TestSoftmaxOp2):
 
 class TestSoftmaxMKLDNNOp3(TestSoftmaxOp3):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.dtype = np.float32
         self.check_pir_onednn = False
 
 
 class TestSoftmaxMKLDNNOp4(TestSoftmaxOp4):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.dtype = np.float32
         self.check_pir_onednn = False
 
 
 class TestSoftmaxMKLDNNOp5(TestSoftmaxOp5):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.dtype = np.float32
         self.check_pir_onednn = False
 
 
 class TestSoftmaxMKLDNNOp6(TestSoftmaxOp6):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.dtype = np.float32
         self.check_pir_onednn = False
 
 
 class TestSoftmaxMKLDNNOp_ZeroDim(TestSoftmaxOp_ZeroDim1):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.dtype = np.float32
         self.check_pir_onednn = False
 
