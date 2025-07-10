@@ -17,11 +17,8 @@ defaults:
     shell: cmd
 
 jobs:
-
   clone:
     name: Clone Paddle
-    needs: check-bypass
-    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: win-clone
     steps:
