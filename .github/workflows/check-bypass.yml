@@ -16,7 +16,7 @@ jobs:
   check-bypass:
     name: Check bypass
     runs-on:
-      group: HK-CPU
+      group: HK-Clone
     permissions:
       contents: read
     env:
