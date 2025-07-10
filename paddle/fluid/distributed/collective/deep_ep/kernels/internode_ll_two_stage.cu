@@ -256,15 +256,25 @@ __global__ __launch_bounds__(
                                ld_nc_global,
                                st_na_global);
           } else {
-            // no batching now
-            nvshmemi_ibgda_put_nbi_warp<true>(
-                dst_ptr,
-                src_ptr,
-                num_bytes_per_msg,
-                dst_rdma_rank * NUM_MAX_NVL_PEERS + nvl_rank,
-                qp_id,
-                lane_id,
-                0);
+            if constexpr (kNumQPs > 1) {
+              nvshmemi_ibgda_put_nbi_warp<true>(
+                  dst_ptr,
+                  src_ptr,
+                  num_bytes_per_msg,
+                  dst_rdma_rank * NUM_MAX_NVL_PEERS + nvl_rank,
+                  qp_id,
+                  lane_id,
+                  0);
+            } else {
+              nvshmemi_ibgda_put_nbi_warp(
+                  dst_ptr,
+                  src_ptr,
+                  num_bytes_per_msg,
+                  dst_rdma_rank * NUM_MAX_NVL_PEERS + nvl_rank,
+                  qp_id,
+                  lane_id,
+                  dst_cum_index);
+            }
           }
           __syncwarp();
           lane_id == 0
@@ -935,14 +945,25 @@ __global__ __launch_bounds__(
                              ld_nc_global,
                              st_na_global);
         } else {
-          nvshmemi_ibgda_put_nbi_warp<true>(
-              dst_ptr,
-              src_ptr,
-              combine_hidden_bytes,
-              deal_rdma_rank * NUM_MAX_NVL_PEERS + nvl_rank,
-              qp_id,
-              lane_id,
-              0);
+          if constexpr (kNumQPs > 1) {
+            nvshmemi_ibgda_put_nbi_warp<true>(
+                dst_ptr,
+                src_ptr,
+                combine_hidden_bytes,
+                deal_rdma_rank * NUM_MAX_NVL_PEERS + nvl_rank,
+                qp_id,
+                lane_id,
+                0);
+          } else {
+            nvshmemi_ibgda_put_nbi_warp(
+                dst_ptr,
+                src_ptr,
+                combine_hidden_bytes,
+                deal_rdma_rank * NUM_MAX_NVL_PEERS + nvl_rank,
+                qp_id,
+                lane_id,
+                rdma_recv_token_idx);
+          }
         }
         __syncwarp();
       }

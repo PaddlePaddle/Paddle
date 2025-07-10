@@ -23,7 +23,7 @@ import paddle.distributed as dist
 from paddle.distributed import fleet
 from paddle.distributed.communication import deep_ep
 
-num_max_tokens = 256
+num_max_tokens = 512
 
 
 def bench_split(fn1, fn2, num_warmups: int = 50, num_tests: int = 50):
@@ -85,6 +85,45 @@ def bench_split(fn1, fn2, num_warmups: int = 50, num_tests: int = 50):
     )
 
 
+def bench(fn, num_warmups: int = 50, num_tests: int = 50):
+    # clear
+    cache = paddle.empty((int(256e6 // 4),), dtype="int32")
+    cache.zero_()
+
+    # Warmup
+    for _ in range(num_warmups):
+        fn()
+
+    # Flush L2
+    cache.zero_()
+    del cache
+
+    # Testing
+    start_events_fn = [
+        paddle.device.Event(enable_timing=True) for _ in range(num_tests)
+    ]
+    end_events_fn = [
+        paddle.device.Event(enable_timing=True) for _ in range(num_tests)
+    ]
+    for i in range(num_tests):
+        start_events_fn[i].record()
+        fn()
+        end_events_fn[i].record()
+    paddle.device.synchronize()
+
+    times_fn = np.array(
+        [
+            s.elapsed_time(e) / 1e3
+            for s, e in zip(start_events_fn, end_events_fn)
+        ]
+    )[1:]
+    return (
+        np.average(times_fn),
+        np.min(times_fn),
+        np.max(times_fn),
+    )
+
+
 def per_token_cast_back(x_fp8: paddle.Tensor, x_scales: paddle.Tensor):
     x_fp32 = x_fp8.to("float32").view((x_fp8.shape[0], -1, 128))
     x_scales = x_scales.view((x_fp8.shape[0], -1, 1))
@@ -120,13 +159,12 @@ def test_main(
         rank - rank_offset
     )
     x[:, -128:] = paddle.arange(0, num_tokens, dtype="bfloat16").view((-1, 1))
-    scores = paddle.randn((num_tokens, num_experts), dtype="float32").abs_() + 1
-    topk_idx = paddle.topk(
-        scores, num_topk, axis=-1, largest=True, sorted=True
-    )[1]
+    topk_idx = paddle.randint(
+        0, num_experts, shape=[num_tokens, num_topk], dtype="int64"
+    )
+    print(f"rank: {rank}, num_local_experts: {num_local_experts}")
     topk_weights = paddle.randn((num_tokens, num_topk), dtype="float32").abs_()
     print("x: ", x, flush=True)
-    print("scores: ", scores, flush=True)
     print("topk_idx: ", topk_idx, flush=True)
     print("topk_weights: ", topk_weights, flush=True)
 
@@ -140,15 +178,12 @@ def test_main(
 
     paddle.device.synchronize()
     dist.barrier()
-    do_check = True
-    hash_value, num_times = 0, 0
-    all_times = 10000
-    warp_up_time = 10
-    print("warp_up_time: ", warp_up_time)
+    run_time = 1
+    print("run_time: ", run_time)
     print("num_experts: ", num_experts)
     for return_recv_hook in (False,):
         print(f"rank: {rank}, use_fp8: {use_fp8}", flush=True)
-        for i in range(warp_up_time):
+        for i in range(run_time):
             (
                 packed_recv_x,
                 packed_recv_count,
@@ -231,6 +266,38 @@ def test_main(
                 )
 
         # dispatch + combine
+        for do_send, do_recv in [(True, False), (False, True), (True, True)]:
+            avg_t_fn, min_t_fn, max_t_fn = bench(
+                partial(
+                    test_func,
+                    return_recv_hook=False,
+                    do_send=do_send,
+                    do_recv=do_recv,
+                ),  # combine
+                num_warmups=50,
+                num_tests=100,
+            )
+            if do_send and do_recv:
+                print(
+                    f'[rank {rank}] Dispatch + Combine bandwidth: {(num_dispatch_comm_bytes + num_combine_comm_bytes) / 1e9 / (avg_t_fn):.2f} GB/s, '
+                    f'avg_t={(avg_t_fn) * 1e6:.2f} us, min_t={(min_t_fn) * 1e6:.2f} us, max_t={(max_t_fn) * 1e6:.2f} us',
+                    flush=True,
+                )
+            elif do_send:
+                print(
+                    f'[rank {rank}] Dispatch bandwidth: {(num_dispatch_comm_bytes) / 1e9 / avg_t_fn:.2f} GB/s, '
+                    f'avg_t={avg_t_fn * 1e6:.2f} us, min_t={min_t_fn * 1e6:.2f} us, max_t={max_t_fn * 1e6:.2f} us',
+                    flush=True,
+                )
+            elif do_recv:
+                print(
+                    f'[rank {rank}] Combine bandwidth: {(num_combine_comm_bytes) / 1e9 / avg_t_fn:.2f} GB/s, '
+                    f'avg_t={avg_t_fn * 1e6:.2f} us, min_t={min_t_fn * 1e6:.2f} us, max_t={max_t_fn * 1e6:.2f} us',
+                    flush=True,
+                )
+            paddle.device.synchronize()
+            dist.barrier()
+
         avg_t_fn1, min_t_fn1, max_t_fn1, avg_t_fn2, min_t_fn2, max_t_fn2 = (
             bench_split(
                 partial(
@@ -245,8 +312,8 @@ def test_main(
                     do_send=False,
                     do_recv=True,
                 ),  # combine
-                num_warmups=200,
-                num_tests=10000,
+                num_warmups=50,
+                num_tests=100,
             )
         )
         print(
@@ -264,7 +331,6 @@ def test_main(
             f'avg_t={(avg_t_fn1 + avg_t_fn2) * 1e6:.2f} us, min_t={(min_t_fn1 + min_t_fn2) * 1e6:.2f} us, max_t={(max_t_fn1 + max_t_fn2) * 1e6:.2f} us',
             flush=True,
         )
-    return hash_value
 
 
 def test_loop():
