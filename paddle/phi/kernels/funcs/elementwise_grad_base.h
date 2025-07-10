@@ -62,7 +62,7 @@ inline int64_t GetCurrentDeviceMaxGridDim() {
       phi::DeviceContextPool::Instance().Get(gplace));
   int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
   return max_grid_dim;
-#elifdef PADDLE_WITH_CUDA
+#elif defined(PADDLE_WITH_CUDA)
   auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
   auto *dev_ctx =
       static_cast<GPUContext *>(phi::DeviceContextPool::Instance().Get(gplace));
