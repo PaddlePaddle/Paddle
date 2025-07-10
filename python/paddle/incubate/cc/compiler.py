@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import inspect
 import os
-import tempfile
 from collections import OrderedDict
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -101,46 +100,9 @@ def _compile(
         # Force to generate the program immediately.
         if train:
             _ = partial_program_layer.train_program.forward_program
-            return lambda *args: partial_program_layer(inputs=args)
         else:
-            pir_program = partial_program_layer.infer_program.forward_program
-            generated_class = _GetGeneratedClassByPirProgram(
-                pir_program, ap_workspace_dir
-            )
-            return generated_class()
-
-
-def _GetGeneratedClassByPirProgram(pir_program, ap_workspace_dir):
-    from paddle.incubate.cc.py_code_gen.tools.pir_py_code_to_py_module_op import (
-        GetSha256sum,
-        TranslatePirPyCodeToPyModuleOp,
-    )
-
-    pir_py_code = paddle.base.libpaddle.pir.pir_program_to_py_code(pir_program)
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        tmpfile_path = f"{tmpdirname}/pir_py_code.py"
-        with open(tmpfile_path, "w") as f:
-            f.write(pir_py_code)
-        module_op_pycode = TranslatePirPyCodeToPyModuleOp(
-            pir_py_code_file_path=tmpfile_path,
-        )
-        hash_value = GetSha256sum(module_op_pycode)
-        code_gen_dir = (
-            f"{ap_workspace_dir}/{hash_value[0:32]}/{hash_value[32:]}"
-        )
-        os.makedirs(code_gen_dir, exist_ok=True)
-        pir_py_code_file_path = f"{code_gen_dir}/pir_py_code.py"
-        with open(pir_py_code_file_path, "w") as f:
-            f.write(pir_py_code)
-        output_file_path = f"{code_gen_dir}/generated_module_op.py"
-        with open(output_file_path, "w") as f:
-            f.write(module_op_pycode)
-        from importlib.machinery import SourceFileLoader
-
-        module = SourceFileLoader(
-            "generated_module_op", output_file_path
-        ).load_module()
-        return module.ModuleOp
+            _ = partial_program_layer.infer_program.forward_program
+        return partial_program_layer
 
 
 @dataclass
@@ -156,7 +118,7 @@ class OverloadedFunc:
         dtypes = tuple(tensor.dtype for tensor in args)
         func = self.func_overload_ctx.dtypes2func.get(dtypes, None)
         assert func is not None, self.mismatched_debug_info(dtypes)
-        return func(*args)
+        return func(inputs=[*args])
 
     def mismatched_debug_info(self, dtypes):
         valid_signatures = "; ".join(
