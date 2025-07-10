@@ -23,6 +23,7 @@ class TestFusedRmsNorm(unittest.TestCase):
     def setUp(self):
         paddle.seed(123)
         self.init_data()
+        self.modify_data()
         self.func = paddle.incubate.nn.functional.fused_rms_norm
 
     def tearDown(self):
@@ -50,6 +51,9 @@ class TestFusedRmsNorm(unittest.TestCase):
         self.quant_round_type = 0
         self.quant_max_bound = 0
         self.quant_min_bound = 0
+
+    def modify_data(self):
+        pass
 
     def inputs(self):
         return (
@@ -79,6 +83,22 @@ class TestFusedRmsNorm(unittest.TestCase):
             paddle.utils.flatten(dy_out), paddle.utils.flatten(st_out)
         ):
             numpy.testing.assert_allclose(a, b, atol=1e-6, rtol=1e-6)
+
+
+class TestFusedRmsNormQuantRint(TestFusedRmsNorm):
+    def modify_data(self):
+        self.quant_scale = 0.15
+        self.quant_round_type = 0
+        self.quant_max_bound = 127
+        self.quant_min_bound = -127
+
+
+class TestFusedRmsNormQuantRound(TestFusedRmsNorm):
+    def modify_data(self):
+        self.quant_scale = 0.15
+        self.quant_round_type = 1
+        self.quant_max_bound = 127
+        self.quant_min_bound = -127
 
 
 if __name__ == '__main__':
