@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@ class TestPlaceGuard(unittest.TestCase):
 
         with dygraph_guard():
             for place_str, place_obj in places:
-                with paddle.device.place_guard(place_str):
+                with paddle.device.device_guard(place_str):
                     x = paddle.randn([2, 2])
                     x = x.tanh() ** 2
                     self.assertEqual(x.place, place_obj)
@@ -53,12 +53,34 @@ class TestPlaceGuard(unittest.TestCase):
         with dygraph_guard():
             for place_obj in places:
                 x = paddle.randn([2, 2])  # create on default place
-                with paddle.device.place_guard("cpu"):
+                with paddle.device.device_guard("cpu"):
                     x = (
                         x.tanh() ** 2
                     )  # should be still in place rather than cpu
                     self.assertNotEqual(x.place, paddle.CPUPlace())
                     self.assertEqual(x.place, place_obj)
+
+    def test_wrong_device_name(self):
+        with (
+            dygraph_guard(),
+            self.assertRaisesRegex(
+                ValueError,
+                "The device must be a string which is like 'cpu', 'gpu', 'gpu:x',",
+            ),
+            paddle.device.device_guard("xxx"),
+        ):
+            pass
+
+    def test_wrong_device_type(self):
+        with (
+            dygraph_guard(),
+            self.assertRaisesRegex(
+                ValueError,
+                "'device' must be a string or an instance of a subclass of",
+            ),
+            paddle.device.device_guard(paddle.randn([2])),
+        ):
+            pass
 
     def test_str_place_obj_nested(self):
         places = [paddle.CPUPlace()]
@@ -75,22 +97,22 @@ class TestPlaceGuard(unittest.TestCase):
             place_obj1, place_obj2 = places[:2]
 
         with dygraph_guard():
-            with paddle.device.place_guard(place_obj1):
+            with paddle.device.device_guard(place_obj1):
                 x = paddle.randn([2, 2])  # create on place1
                 self.assertEqual(x.place, place_obj1)
                 self.assertNotEqual(x.place, place_obj2)
 
-                with paddle.device.place_guard(place_obj2):
+                with paddle.device.device_guard(place_obj2):
                     xx = paddle.randn([2, 2])  # create on place1
                     self.assertEqual(xx.place, place_obj2)
                     self.assertNotEqual(xx.place, place_obj1)
 
-                    with paddle.device.place_guard(place_obj1):
+                    with paddle.device.device_guard(place_obj1):
                         xxx = paddle.randn([2, 2])  # create on place1
                         self.assertEqual(xxx.place, place_obj1)
                         self.assertNotEqual(xxx.place, place_obj2)
 
-                        with paddle.device.place_guard(place_obj2):
+                        with paddle.device.device_guard(place_obj2):
                             xxxx = paddle.randn([2, 2])  # create on place1
                             self.assertEqual(xxxx.place, place_obj2)
                             self.assertNotEqual(xxxx.place, place_obj1)
