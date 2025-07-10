@@ -335,9 +335,9 @@ static int _PySlice_GetIndices(PySliceObject* r,
 static void ParseIndex(const paddle::Tensor& tensor,
                        PyObject* index,
                        std::vector<int64_t>* slice_axes,
-                       std::vector<int>* slice_starts,
-                       std::vector<int>* slice_ends,
-                       std::vector<int>* slice_strides,
+                       std::vector<int64_t>* slice_starts,
+                       std::vector<int64_t>* slice_ends,
+                       std::vector<int64_t>* slice_strides,
                        std::vector<int64_t>* decrease_axis,
                        std::vector<int64_t>* none_axes,
                        std::vector<int64_t>* infer_flags,
@@ -371,7 +371,7 @@ static void ParseIndex(const paddle::Tensor& tensor,
 
   // deal with indexing_item
   int none_count = 0;
-  for (int i = 0, current_dim = 0, estimated_dim = 0; i < size; ++i) {
+  for (int64_t i = 0, current_dim = 0, estimated_dim = 0; i < size; ++i) {
     PyObject* slice_item = PyTuple_GetItem(index, i);
 
     infer_flags->push_back(1);
@@ -518,9 +518,9 @@ static void ParseIndex(const paddle::Tensor& tensor,
 static paddle::Tensor getTensorWithBasicIndexing(
     const paddle::Tensor& tensor,
     std::vector<int64_t>* slice_axes,
-    std::vector<int>* slice_starts,
-    std::vector<int>* slice_ends,
-    std::vector<int>* slice_strides,
+    std::vector<int64_t>* slice_starts,
+    std::vector<int64_t>* slice_ends,
+    std::vector<int64_t>* slice_strides,
     std::vector<int64_t>* decrease_axis,
     std::vector<int64_t>* none_axes,
     std::vector<int64_t>* infer_flags,
