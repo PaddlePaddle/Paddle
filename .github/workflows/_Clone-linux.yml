@@ -40,10 +40,6 @@ jobs:
       group: HK-Clone
 
     steps:
-      - name: Clean environment
-        run: |
-          rm -rf * .[^.]*
-
       - name: Clone paddle
         uses: actions/checkout@v4
         with:
