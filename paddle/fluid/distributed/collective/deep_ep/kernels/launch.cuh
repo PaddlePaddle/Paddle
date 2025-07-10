@@ -155,6 +155,9 @@
   if (num_experts == 64) {                                  \
     constexpr int kNumExperts = 64;                         \
     __VA_ARGS__                                             \
+  } else if (num_experts == 72) {                           \
+    constexpr int kNumExperts = 72;                         \
+    __VA_ARGS__                                             \
   } else if (num_experts == 128) {                          \
     constexpr int kNumExperts = 128;                        \
     __VA_ARGS__                                             \

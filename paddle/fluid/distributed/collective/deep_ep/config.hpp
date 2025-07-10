@@ -397,7 +397,9 @@ inline size_t get_low_latency_nvl_size_hint_two_stage(
   const size_t signal_bytes = num_local_experts * num_ranks * sizeof(int);
   auto nvl_num_bytes = dispatch_nvl_num_bytes + signal_bytes +
                        combine_nvl_num_bytes + signal_bytes;
-  return nvl_num_bytes;
+  return ((nvl_num_bytes + NUM_BUFFER_ALIGNMENT_BYTES - 1) /
+          NUM_BUFFER_ALIGNMENT_BYTES) *
+         NUM_BUFFER_ALIGNMENT_BYTES;
 }
 
 }  // namespace deep_ep
