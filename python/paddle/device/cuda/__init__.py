@@ -252,6 +252,7 @@ def max_memory_allocated(device: _CudaPlaceLike | None = None) -> int:
         .. code-block:: python
 
             >>> # doctest: +REQUIRES(env:GPU)
+            >>> # test set_device to gpu
             >>> import paddle
             >>> paddle.device.set_device('gpu')
 

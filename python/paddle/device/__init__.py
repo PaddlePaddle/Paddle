@@ -226,6 +226,7 @@ def _convert_to_place(device: str) -> PlaceLike:
                 "The device should not be 'gpu', "
                 "since PaddlePaddle is not compiled with CUDA"
             )
+        print("dev_id is", paddle.distributed.ParallelEnv().dev_id)
         place = core.CUDAPlace(paddle.distributed.ParallelEnv().dev_id)
     elif lower_device == 'xpu':
         if not core.is_compiled_with_xpu():
