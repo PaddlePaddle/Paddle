@@ -202,7 +202,7 @@ class _NdMeshAlltoAll(PyLayer):
         ctx.out_placements = copy.deepcopy(placements)
 
         local_shape = _cal_local_shape(
-            dist_tensor.shape, sub_mesh, dist_tensor.placements
+            dist_tensor.shape, sub_mesh, [dist_tensor.placements[dim]]
         )
         out = _dtensor_from_local(
             dist_tensor._local_value(),
@@ -211,7 +211,7 @@ class _NdMeshAlltoAll(PyLayer):
             local_shape,
         )
         out = dist.reshard(out, sub_mesh, [placements[dim]])
-        local_shape = _cal_local_shape(out.shape, mesh, out.placements)
+        local_shape = _cal_local_shape(out.shape, sub_mesh, out.placements)
         out = _dtensor_from_local(
             out._local_value(), mesh, placements, local_shape
         )
