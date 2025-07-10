@@ -17,11 +17,11 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/complex_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/impl/einsum_kernel_impl.h"
 #include "paddle/phi/kernels/tile_grad_kernel.h"
 #include "paddle/phi/kernels/tile_kernel.h"
 #include "paddle/utils/string/string_helper.h"
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -116,6 +116,17 @@ void EinsumGradKernel(const Context& dev_ctx,
                       const std::string& equation,
                       std::vector<DenseTensor*> x_grad) {
   VLOG(5) << "Start EinsumGradKernel:";
+  bool has_zero_size_tensor = false;
+  for (auto& i : x_grad) {
+    if (i->numel() == 0) {
+      has_zero_size_tensor = true;
+    }
+    if (i != nullptr) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(i->dims())), 0, i);
+    }
+  }
+  if (has_zero_size_tensor) return;
   LabelMap labelshape(0);
   LabelMap labeltype(LabelType::Reduction);
   std::vector<LabelMap> label2perms(x.size(), LabelMap(-1));

@@ -327,6 +327,8 @@ void FusedFeedForwardGradKernel(
   dev_ctx.template Alloc<T>(d_linear2_weight,
                             d_linear2_weight->numel() * sizeof(T));
 
+  if (d_x->numel() == 0) return;
+
   auto x_dim = x.dims();
   auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(
       phi::RowMatrixFromVector(x_dim), 0, false);
