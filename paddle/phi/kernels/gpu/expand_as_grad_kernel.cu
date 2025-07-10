@@ -30,7 +30,7 @@ void ExpandAsGradKernel(const Context& dev_ctx,
                         DenseTensor* in_grad) {
   if (out_grad.numel() == 0) {
     phi::Full<T, Context>(
-        context, phi::IntArray(common::vectorize(in_grad->dims())), 0, in_grad);
+        dev_ctx, phi::IntArray(common::vectorize(in_grad->dims())), 0, in_grad);
     return;
   }
   auto in_dims = x.dims();
