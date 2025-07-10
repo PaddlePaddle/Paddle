@@ -1122,6 +1122,7 @@
   output : Tensor(out)
   infer_meta :
     func : Conv2dTransposeInferMeta
+    spmd_rule : Conv2dTransposeInferSpmd
   kernel :
     func : conv2d_transpose
     data_type : x

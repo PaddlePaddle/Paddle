@@ -192,6 +192,8 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
     FLAGS_embedding_deterministic=1
     NVIDIA_TF32_OVERRIDE=0)
   py_test_modules(test_PP_Schedules MODULES test_PP_Schedules)
+  py_test_modules(test_pipeline_sync_shared_parameters MODULES
+                  test_pipeline_sync_shared_parameters)
   py_test_modules(
     test_context_parallel
     MODULES

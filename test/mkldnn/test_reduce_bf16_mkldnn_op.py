@@ -32,12 +32,12 @@ paddle.enable_static()
 class TestReduceSumDefaultBF16OneDNNOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.x_fp32 = np.random.random((5, 6, 10)).astype("float32")
         self.x_bf16 = convert_float_to_uint16(self.x_fp32)
         self.inputs = {'X': self.x_bf16}
         self.outputs = {'Out': self.x_fp32.sum(axis=0)}
-        self.attrs = {'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'use_mkldnn': self.use_onednn}
 
     def test_check_output(self):
         self.check_output(
@@ -96,11 +96,11 @@ class TestReduceSum4DReduceAllDimAttributeBF16OneDNNOp(
 ):
     def setUp(self):
         self.op_type = "reduce_sum"
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.x_fp32 = np.random.normal(size=(2, 3, 5, 6)).astype('float32')
         self.x_bf16 = convert_float_to_uint16(self.x_fp32)
         self.inputs = {'X': self.x_bf16}
-        self.attrs = {'use_mkldnn': self.use_mkldnn, 'dim': [0, 1, 2, 3]}
+        self.attrs = {'use_mkldnn': self.use_onednn, 'dim': [0, 1, 2, 3]}
         self.outputs = {'Out': self.x_fp32.sum(axis=tuple(self.attrs['dim']))}
 
 
@@ -109,11 +109,11 @@ class TestReduceSum4DReduceAllWithoutReduceAllAttributeNegativeDimsBF16OneDNNOp(
 ):
     def setUp(self):
         self.op_type = "reduce_sum"
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.x_fp32 = np.random.normal(size=(4, 7, 6, 6)).astype('float32')
         self.x_bf16 = convert_float_to_uint16(self.x_fp32)
         self.inputs = {'X': self.x_bf16}
-        self.attrs = {'use_mkldnn': self.use_mkldnn, 'dim': [-1, -2, -3, -4]}
+        self.attrs = {'use_mkldnn': self.use_onednn, 'dim': [-1, -2, -3, -4]}
         self.outputs = {'Out': self.x_fp32.sum(axis=tuple(self.attrs['dim']))}
 
 
@@ -122,7 +122,7 @@ class TestReduceSum5DReduceAllKeepDimsBF16OneDNNOp(
 ):
     def setUp(self):
         self.op_type = "reduce_sum"
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.x_fp32 = np.random.normal(size=(2, 5, 3, 2, 5)).astype('float32')
         self.x_bf16 = convert_float_to_uint16(self.x_fp32)
         self.inputs = {'X': self.x_bf16}
@@ -135,11 +135,11 @@ class TestReduceSum4DReduceAllBF16OneDNNOp(
 ):
     def setUp(self):
         self.op_type = "reduce_sum"
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.x_fp32 = np.random.normal(size=(4, 5, 4, 5)).astype('float32')
         self.x_bf16 = convert_float_to_uint16(self.x_fp32)
         self.inputs = {'X': self.x_bf16}
-        self.attrs = {'reduce_all': True, 'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'reduce_all': True, 'use_mkldnn': self.use_onednn}
         self.outputs = {'Out': self.x_fp32.sum()}
 
 
@@ -152,11 +152,11 @@ class TestReduceMax3DBF16OneDNNOp(TestReduceSumDefaultBF16OneDNNOp):
 
     def setUp(self):
         self.op_type = "reduce_max"
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.x_fp32 = np.random.random((5, 6, 10)).astype("float32")
         self.x_bf16 = convert_float_to_uint16(self.x_fp32)
         self.inputs = {'X': self.x_bf16}
-        self.attrs = {'dim': [-1], 'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'dim': [-1], 'use_mkldnn': self.use_onednn}
         self.outputs = {'Out': self.x_fp32.max(axis=tuple(self.attrs['dim']))}
 
 
@@ -171,11 +171,11 @@ class TestReduceMax4DNegativeAndPositiveDimsBF16OneDNNOp(
 
     def setUp(self):
         self.op_type = "reduce_max"
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.x_fp32 = np.random.random((5, 6, 10, 9)).astype("float32")
         self.x_bf16 = convert_float_to_uint16(self.x_fp32)
         self.inputs = {'X': self.x_bf16}
-        self.attrs = {'dim': [-1, 0, 1], 'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'dim': [-1, 0, 1], 'use_mkldnn': self.use_onednn}
         self.outputs = {'Out': self.x_fp32.max(axis=tuple(self.attrs['dim']))}
 
 
@@ -188,33 +188,33 @@ class TestReduceMin3DBF16OneDNNOp(TestReduceSumDefaultBF16OneDNNOp):
 
     def setUp(self):
         self.op_type = "reduce_min"
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.x_fp32 = np.random.random((5, 6, 10)).astype("float32")
         self.x_bf16 = convert_float_to_uint16(self.x_fp32)
         self.inputs = {'X': self.x_bf16}
-        self.attrs = {'dim': [2], 'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'dim': [2], 'use_mkldnn': self.use_onednn}
         self.outputs = {'Out': self.x_fp32.min(axis=tuple(self.attrs['dim']))}
 
 
 class TestReduceMean3DBF16OneDNNOp(TestReduceDefaultWithGradBF16OneDNNOp):
     def setUp(self):
         self.op_type = "reduce_mean"
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.x_fp32 = np.random.random((5, 6, 10)).astype("float32")
         self.x_bf16 = convert_float_to_uint16(self.x_fp32)
         self.inputs = {'X': self.x_bf16}
-        self.attrs = {'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'use_mkldnn': self.use_onednn}
         self.outputs = {'Out': self.x_fp32.sum(axis=0) / self.x_fp32.shape[0]}
 
 
 class TestReduceMean4DBF16OneDNNOp(TestReduceDefaultWithGradBF16OneDNNOp):
     def setUp(self):
         self.op_type = "reduce_mean"
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.x_fp32 = np.random.random((5, 6, 3, 5)).astype("float32")
         self.x_bf16 = convert_float_to_uint16(self.x_fp32)
         self.inputs = {'X': self.x_bf16}
-        self.attrs = {'use_mkldnn': self.use_mkldnn, 'dim': [0, 1]}
+        self.attrs = {'use_mkldnn': self.use_onednn, 'dim': [0, 1]}
         self.outputs = {
             'Out': self.x_fp32.sum(axis=tuple(self.attrs['dim']))
             / (self.x_fp32.shape[0] * self.x_fp32.shape[1])
