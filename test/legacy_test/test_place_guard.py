@@ -95,6 +95,8 @@ class TestPlaceGuard(unittest.TestCase):
 
         if len(places) >= 2:
             place_obj1, place_obj2 = places[:2]
+        else:
+            self.skipTest("Not compiled with HPC hardware.")
 
         with dygraph_guard():
             with paddle.device.device_guard(place_obj1):
