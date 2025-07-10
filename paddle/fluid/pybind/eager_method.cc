@@ -2104,7 +2104,6 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
     }
 
     bool masked_fill_shortcut = false;
-
     if (value_tensor.initialized()) {
       paddle::Tensor mask_tensor;
       if (!out_is_view &&
