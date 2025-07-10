@@ -556,6 +556,86 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
   }
 }
 
+/*
+Special func for inplace ops in auto parallel. For now, this func is only used
+in reshape_.
+*/
+void GradNodeBase::SetGradOutMeta(
+    const paddle::Tensor& fwd_in,
+    size_t slot_rank,
+    const phi::distributed::TensorDistAttr& fwd_in_dist_attr,
+    const phi::DDim& fwd_in_dims) {
+  auto* fwd_in_meta = egr::EagerUtils::nullable_autograd_meta(fwd_in);
+  PADDLE_ENFORCE_LE(
+      (slot_rank + 1),
+      bwd_out_meta_.size(),
+      common::errors::InvalidArgument(
+          "Slot Rank should less equal than bwd_out_meta_ size, "
+          "since bwd_out_meta_ is designed to hold as same num as "
+          "backward outputs."));
+  auto& metas = bwd_out_meta_.at(slot_rank);
+  // Init stop gradient vector before use to avoid push back
+  if (metas.empty()) {
+    metas.resize(1);
+  }
+  auto& meta = metas[0];
+  // Set Stop_gradient
+  if (fwd_in_meta) {
+    meta.SetStopGradient(fwd_in_meta->StopGradient());
+  } else {
+    meta.SetStopGradient(true);
+  }
+  // Set Adj Edges
+  if (fwd_in_meta && !fwd_in_meta->StopGradient()) {
+    auto node = fwd_in_meta->GetMutableGradNode();
+    if (!node || !node.get()) {
+      fwd_in_meta->SetGradNode(
+          std::make_shared<egr::GradNodeAccumulation>(fwd_in_meta));
+    }
+    VLOG(3) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
+            << this->name() << " (addr: " << this << ") "
+            << " to " << fwd_in_meta->GetMutableGradNode()->name()
+            << " (addr: " << fwd_in_meta->GetMutableGradNode().get() << ")";
+
+    meta.SetEdge(fwd_in_meta->GetMutableGradNode(), fwd_in_meta->OutRankInfo());
+  }
+  // Record TensorMeta
+  if (fwd_in.impl() && fwd_in.impl().get()) {
+    if (phi::distributed::DistTensor::classof(fwd_in.impl().get())) {
+      const phi::distributed::DistTensor* dist_tensor =
+          static_cast<phi::distributed::DistTensor*>(fwd_in.impl().get());
+      const phi::DenseTensor& dense_tensor = dist_tensor->value();
+      PADDLE_ENFORCE_NE(
+          dense_tensor.meta().dtype,
+          phi::DataType::UNDEFINED,
+          common::errors::Fatal("Attempting to copy DenseTensorMeta "
+                                "with phi::DataType::UNDEFINED,"
+                                "which is illegal."));
+      meta.SetTensorMeta(dense_tensor.meta());
+      meta.SetPlace(fwd_in.place());
+      // Set DistAttr
+      // Forward input DistTensor could be uninitialized.
+      PADDLE_ENFORCE_NE(
+          dist_tensor->dist_attr().empty(),
+          true,
+          common::errors::InvalidArgument(
+              "The forward input DistTensor's dist attr is empty."));
+      auto dist_attr = fwd_in_dist_attr;
+      dist_attr.clean_partial_status();
+      meta.SetDistAttr(dist_attr);
+      meta.SetDistTensorGlobalDims(fwd_in_dims);
+      SetIsRunAutoParallel(true);
+    } else {
+      VLOG(7)
+          << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
+             "non-DistTensor argument.";
+    }
+  } else {
+    VLOG(7) << "Unable to initialize the DenseTensorMeta because the Tensor "
+               "is not initialized.";
+  }
+}
+
 void GradNodeBase::SetGradOutMeta(const std::vector<paddle::Tensor>& fwd_in,
                                   size_t slot_rank) {
   size_t slot_size = fwd_in.size();

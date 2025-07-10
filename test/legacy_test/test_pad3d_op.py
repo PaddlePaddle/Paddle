@@ -1196,8 +1196,9 @@ class TestPad3dOpError(unittest.TestCase):
             self.assertRaises(Exception, test_reflect_1)
             self.assertRaises(Exception, test_reflect_2)
             self.assertRaises(Exception, test_reflect_3)
-            self.assertRaises(Exception, test_circular_1)
-            self.assertRaises(Exception, test_replicate_1)
+            # comment out because pad3d support 0-size now.
+            # self.assertRaises(Exception, test_circular_1)
+            # self.assertRaises(Exception, test_replicate_1)
         paddle.enable_static()
 
 
