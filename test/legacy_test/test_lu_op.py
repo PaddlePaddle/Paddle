@@ -108,7 +108,7 @@ class TestLUOp(OpTest):
     """
 
     def config(self):
-        self.x_shape = [2, 10, 12]
+        self.x_shape = [3, 10, 12]
         self.pivot = True
         self.get_infos = True
         self.dtype = "float64"
@@ -140,27 +140,9 @@ class TestLUOp(OpTest):
         )
 
     def set_input(self):
-        x_shape = self.x_shape
-        batch_shape = x_shape[:-2]
-        m, n = x_shape[-2], x_shape[-1]
-        k = min(m, n)
-
-        is_complex = 'complex' in self.dtype
-
-        def random_gen(shape):
-            if is_complex:
-                return np.random.random(shape).astype(
-                    self.dtype
-                ) + 1j * np.random.random(shape).astype(self.dtype)
-            else:
-                return np.random.random(shape).astype(self.dtype)
-
-        L = np.tril(random_gen([*batch_shape, m, k]))
-        U = np.triu(random_gen([*batch_shape, k, n]))
-        diag_indices = np.arange(k)
-        L[..., diag_indices, diag_indices] += random_gen([*batch_shape, k])
-        U[..., diag_indices, diag_indices] += random_gen([*batch_shape, k])
-        A = L @ U
+        A = np.random.random(self.x_shape).astype(self.dtype)
+        if 'complex' in self.dtype:
+            A += 1j * np.random.random(self.x_shape).astype(self.dtype)
         self.inputs = {'X': A}
 
     def setUp(self):
@@ -214,7 +196,7 @@ class TestLUOp3(TestLUOp):
 # complex64
 class TestLUOp4(TestLUOp):
     def config(self):
-        self.x_shape = [8, 8]
+        self.x_shape = [10, 10]
         self.pivot = True
         self.get_infos = True
         self.dtype = "complex64"
@@ -223,7 +205,7 @@ class TestLUOp4(TestLUOp):
 # complex128
 class TestLUOp5(TestLUOp):
     def config(self):
-        self.x_shape = [3, 10, 12]
+        self.x_shape = [10, 10]
         self.pivot = True
         self.get_infos = True
         self.dtype = "complex128"
