@@ -13,46 +13,16 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/set_value_grad_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/impl/set_value_grad_kernel_impl.h"
 #include "paddle/phi/kernels/impl/set_value_kernel_impl.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 #include "paddle/phi/kernels/strided_slice_kernel.h"
 
 namespace phi {
-
-phi::IntArray ComputeReduceDims(const DDim& first, const DDim& second) {
-  std::vector<int> reduce_axes;
-  int i = 0, j = 0;
-  int n1 = first.size(), n2 = second.size();
-
-  while (i < n1 && j < n2) {
-    if (first[i] == second[j]) {
-      i++;
-      j++;
-    } else {
-      reduce_axes.push_back(i);
-      i++;
-    }
-  }
-
-  while (i < n1) {
-    reduce_axes.push_back(i);
-    i++;
-  }
-
-  if (j != n2) {
-    PADDLE_THROW(
-        errors::InvalidArgument("The shape %d must can be reduce be shape %d.",
-                                second.to_str(),
-                                first.to_str()));
-  }
-
-  return IntArray(reduce_axes);
-}
 
 template <typename T, typename Context>
 void SetValueGradKernelV2(const Context& dev_ctx,
@@ -81,17 +51,15 @@ void SetValueGradKernelV2(const Context& dev_ctx,
 
   if (ellipsis_flag) {
     if (x_grad) {
-      FullKernel<T, Context>(dev_ctx,
-                             common::vectorize(x_grad->dims()),
-                             Scalar(0),
-                             x_grad->dtype(),
-                             x_grad);
+      dev_ctx.template Alloc<T>(x_grad);
+      phi::funcs::set_constant(dev_ctx, x_grad, static_cast<float>(0.0));
     }
     if (value_grad) {
       if (value_grad->numel() == out_grad.numel()) {
         if (value_grad->dims() != out_grad.dims()) {
           DenseTensor out_grad_temp;
           ShareDataKernel<T, Context>(dev_ctx, out_grad, &out_grad_temp);
+          out_grad_temp.Resize(value_grad->dims());
           ReshapeKernel<Context>(dev_ctx,
                                  out_grad_temp,
                                  IntArray(vectorize(value_grad->dims())),
@@ -101,12 +69,9 @@ void SetValueGradKernelV2(const Context& dev_ctx,
           Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, value_grad);
         }
       } else {
-        SumKernel<T, Context>(dev_ctx,
-                              out_grad,
-                              IntArray(vectorize(value_grad->dims())),
-                              out_grad.dtype(),
-                              false,
-                              value_grad);
+        auto reduce_dim = phi::funcs::GetReduceDims(out_grad, *value_grad);
+        SumKernel<T, Context>(
+            dev_ctx, out_grad, reduce_dim, out_grad.dtype(), false, value_grad);
       }
     }
     return;
@@ -130,30 +95,55 @@ void SetValueGradKernelV2(const Context& dev_ctx,
 
   if (value_grad) {
     DenseTensor value_grad_orig;
+    MetaTensor meta_out(&value_grad_orig);
+    MetaTensor meta_in(out_grad);
     std::vector<int> infer_flags(axes.size(), 1);
     std::vector<int> axes_int32(axes.begin(), axes.end());
     std::vector<int> decrease_axes_int32(decrease_axes.begin(),
                                          decrease_axes.end());
-    StridedSliceRawKernel<T, Context>(dev_ctx,
-                                      out_grad,
-                                      axes_int32,
-                                      starts,
-                                      ends,
-                                      steps,
-                                      infer_flags,
-                                      decrease_axes_int32,
-                                      &value_grad_orig);
-    if (value_grad_orig.dims() == value_grad->dims()) {
-      value_grad = &value_grad_orig;
+    phi::StridedSliceRawInferMeta(meta_in,
+                                  axes_int32,
+                                  starts,
+                                  ends,
+                                  steps,
+                                  infer_flags,
+                                  decrease_axes_int32,
+                                  &meta_out,
+                                  MetaConfig(true, false));
+    if (value_grad_orig.dims() != value_grad->dims()) {
+      StridedSliceRawKernel<T, Context>(dev_ctx,
+                                        out_grad,
+                                        axes_int32,
+                                        starts,
+                                        ends,
+                                        steps,
+                                        infer_flags,
+                                        decrease_axes_int32,
+                                        &value_grad_orig);
+
+      if (value_grad->numel() == value_grad_orig.numel()) {
+        value_grad_orig.set_meta(value_grad->meta());
+        Copy(dev_ctx, value_grad_orig, dev_ctx.GetPlace(), false, value_grad);
+      } else {
+        auto reduce_dim =
+            phi::funcs::GetReduceDims(value_grad_orig, *value_grad);
+        SumKernel<T, Context>(dev_ctx,
+                              value_grad_orig,
+                              reduce_dim,
+                              value_grad->dtype(),
+                              false,
+                              value_grad);
+      }
     } else {
-      auto reduce_dims =
-          ComputeReduceDims(value_grad_orig.dims(), value_grad->dims());
-      SumKernel<T, Context>(dev_ctx,
-                            value_grad_orig,
-                            reduce_dims,
-                            value_grad->dtype(),
-                            false,
-                            value_grad);
+      StridedSliceRawKernel<T, Context>(dev_ctx,
+                                        out_grad,
+                                        axes_int32,
+                                        starts,
+                                        ends,
+                                        steps,
+                                        infer_flags,
+                                        decrease_axes_int32,
+                                        value_grad);
     }
   }
 }

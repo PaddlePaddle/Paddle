@@ -20,6 +20,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/full_kernel.h"
+#include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -294,12 +295,9 @@ void SetValueGradKernel(const Context& dev_ctx,
           Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, value_grad);
         }
       } else {
-        SumKernel<T, Context>(dev_ctx,
-                              out_grad,
-                              IntArray(vectorize(value_grad->dims())),
-                              out_grad.dtype(),
-                              false,
-                              value_grad);
+        auto reduce_dim = phi::funcs::GetReduceDims(out_grad, *value_grad);
+        SumKernel<T, Context>(
+            dev_ctx, out_grad, reduce_dim, out_grad.dtype(), false, value_grad);
       }
     }
     return;
