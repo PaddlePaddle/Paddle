@@ -39,7 +39,7 @@ void MemcpyH2DKernel(const Context& dev_ctx,
       (dst_place_type >= 0 && dst_place_type <= 3) || (dst_place_type == 6),
       errors::OutOfRange("dst_place_type only supports 0-3 or 6, but got: %d",
                          dst_place_type));
-  Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+  Copy(dev_ctx, x, dev_ctx.GetPlace(), true, out);
 }
 
 template <typename Context>
