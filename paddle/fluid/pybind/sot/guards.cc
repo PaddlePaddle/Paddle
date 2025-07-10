@@ -64,9 +64,14 @@ static inline bool check_shape(
     return false;
   }
   for (size_t i = 0; i < expected.size(); ++i) {
-    if (!expected[i] && actual_shape[i] >= min_non_specialized_number) continue;
-    if (actual_shape[i] != expected[i].value()) {
-      return false;
+    if (!expected[i]) {
+      // For dynamic dim check
+      // Check the inherent constraint for dynamic dim
+      // i.e. Ge(min_non_specialized_number)
+      if (actual_shape[i] < min_non_specialized_number) return false;
+    } else {
+      // For static dim check, need exactly match
+      if (actual_shape[i] != expected[i].value()) return false;
     }
   }
   return true;
