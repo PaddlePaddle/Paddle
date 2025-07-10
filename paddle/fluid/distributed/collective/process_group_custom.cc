@@ -25,6 +25,7 @@
 #include "paddle/phi/core/utils/data_type.h"
 
 #include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/utils/string/string_helper.h"
 
 constexpr int64_t kWaitBlockTImeout = 10;
 
@@ -284,10 +285,28 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllToAll(
       [&](const phi::stream::Stream& stream) {
         auto comm_context = this->GetCommContext();
 
-        int64_t in_row_size = in_tensor.numel() / in_dim[0],
-                out_row_size = out_tensor->numel() / out_dim[0];
+        int64_t in_row_size =
+            in_dim[0] == 0 ? 0 : in_tensor.numel() / in_dim[0];
+        int64_t out_row_size =
+            out_dim[0] == 0 ? 0 : out_tensor->numel() / out_dim[0];
         int64_t in_offset = 0, in_numel = 0, out_offset = 0, out_numel = 0;
         phi::DenseTensor input_partial, output_partial;
+
+        VLOG(3) << "[AllToAll] "
+                << "sendbuff: " << in_tensor.data()
+                << ", recvbuff: " << out_tensor->data()
+                << ", count: " << in_tensor.numel()
+                << ", datatype: " << phi::DataTypeToString(in_tensor.dtype())
+                << ", xcclcomm: " << comm_context->GetXcclComm()
+                << ", stream address: " << &stream
+                << ", rank_in_group: " << rank_ << ", nranks: " << size_
+                << ", out_split_sizes: "
+                << string::join_strings(out_split_sizes, ',')
+                << ", in_split_sizes: "
+                << string::join_strings(in_split_sizes, ',')
+                << ", sync_op: " << sync_op
+                << ", use_calc_stream: " << use_calc_stream << ", "
+                << GetGroupMessage();
 
         std::vector<void*> send_buf, recv_buf;
         std::vector<size_t> send_count, recv_count;

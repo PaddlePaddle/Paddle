@@ -271,6 +271,40 @@ class TestEmbeddingBF16OP(OpTest):
         )
 
 
+class TestLookupTableOp_ZeroSize(OpTest):
+    def setUp(self):
+        self.op_type = "lookup_table_v2"
+        self.public_python_api = paddle.nn.functional.embedding
+        self.python_api = paddle.nn.functional.embedding
+        table = np.random.random((2, 10)).astype("float64")
+        ids = np.random.randint(low=0, high=17, size=(0, 1)).astype("int32")
+        self.inputs = {'W': table, 'Ids': ids}
+        self.outputs = {'Out': table[ids.flatten()].reshape((0, 1, 10))}
+
+    def test_check_output(self):
+        self.check_output(check_cinn=True, check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['W'],
+            'Out',
+            no_grad_set=set('Ids'),
+            check_cinn=True,
+            check_pir=True,
+        )
+
+
+class TestLookupTableOp_ZeroSize2(TestLookupTableOp_ZeroSize):
+    def setUp(self):
+        self.op_type = "lookup_table_v2"
+        self.public_python_api = paddle.nn.functional.embedding
+        self.python_api = paddle.nn.functional.embedding
+        table = np.random.random((0, 10)).astype("float64")
+        ids = np.random.randint(low=0, high=17, size=(0, 1)).astype("int32")
+        self.inputs = {'W': table, 'Ids': ids}
+        self.outputs = {'Out': table[ids.flatten()].reshape((0, 1, 10))}
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
