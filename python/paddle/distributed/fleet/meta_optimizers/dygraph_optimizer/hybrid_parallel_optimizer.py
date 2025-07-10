@@ -249,6 +249,8 @@ class HybridParallelClipGrad:
             )
             or paddle.framework._current_expected_place().get_device_type()
             == 'npu'
+            or paddle.framework._current_expected_place().get_device_type()
+            == 'iluvatar_gpu'
         ):
             clip_var_bf16 = paddle.cast(clip_var, paddle.bfloat16)
         for p, g in params_grads:
