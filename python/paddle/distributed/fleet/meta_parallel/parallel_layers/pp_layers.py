@@ -50,9 +50,6 @@ import paddle
 import paddle.distributed as dist
 from paddle import framework, nn
 from paddle.device.cuda.cuda_graphed_layer import CUDAGraphedLayer
-from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.hybrid_parallel_optimizer import (
-    SHARED_WEIGHT_SYNC_PREFIX,
-)
 from paddle.distributed.fleet.utils.log_util import layer_to_str, logger
 from paddle.framework import core
 from paddle.incubate.distributed.fleet import recompute_hybrid
@@ -662,6 +659,9 @@ class PipelineLayer(nn.Layer):
 
         from paddle.distributed import fleet
         from paddle.distributed.fleet.base.topology import message2nccl_config
+        from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.hybrid_parallel_optimizer import (
+            SHARED_WEIGHT_SYNC_PREFIX,
+        )
 
         hybrid_configs = fleet.fleet._user_defined_strategy.hybrid_configs
 
