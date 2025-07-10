@@ -19,6 +19,7 @@
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 
@@ -117,11 +118,13 @@ void RoiPoolKernel(const Context& dev_ctx,
   int64_t channels = x_dims[1];
   int64_t height = x_dims[2];
   int64_t width = x_dims[3];
-
   int64_t rois_num = boxes.dims()[0];
 
-  if (rois_num == 0) {
-    dev_ctx.template Alloc<T>(out);
+  if (x.numel() == 0 || boxes.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    phi::Full<int64_t, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(arg_max->dims())), 0, arg_max);
     return;
   }
 
