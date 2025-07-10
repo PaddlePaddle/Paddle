@@ -35,9 +35,13 @@ void ParseEinsumEquation(const std::string& equation,
 
 void ConstraintOnDiagLabel(std::vector<std::string>* operands,
                            std::string* output) {
-  // For fwd spmd rule, only those diagonal labels in output should not be
-  // sharded. But for bwd spmd rule, input and output are switched. So we simply
-  // set the spmd rule here to replace all diagonal labels as 1.
+  // Empirically, for fwd calculation, only those diagonal labels in output
+  // should not be sharded. e.g. iji->ii (diag), 'i' cannot be sharded;
+  // e.g. iji->i (trace), 'i' can be sharded.
+  // But during bwd calculation, input and output are switched.
+  // e.g. in the 'trace' case above when calculating x_grad, it will use
+  // i->ii, so 'i' cannot be sharded.
+  // Thus we simply set the spmd rule here to replace all diagonal labels as 1.
 
   // find diagonal labels
   std::unordered_map<char, int> char_count;
@@ -76,11 +80,9 @@ void ConstraintOnDiagLabel(std::vector<std::string>* operands,
   }
 }
 
-bool IsEinsumOuter(const std::string& equation) {
-  std::vector<std::string> inputs;
-  std::string output;
-  ParseEinsumEquation(equation, &inputs, &output);
-
+bool IsEinsumOuter(const std::vector<std::string>& inputs,
+                   const std::string& output) {
+  // Outer case: e.g. i, j -> ij; ij, kl -> ijkl
   if (inputs.size() != 2) {
     return false;
   }
@@ -103,6 +105,48 @@ bool IsEinsumOuter(const std::string& equation) {
     return false;
   }
   return true;
+}
+
+void ConstraintOnOuter(const phi::distributed::TensorDistAttr& x_attr,
+                       const phi::distributed::TensorDistAttr& y_attr,
+                       int x_ndim,
+                       int y_ndim,
+                       std::vector<int64_t>* x_dims_mapping,
+                       std::vector<int64_t>* y_dims_mapping) {
+  // For outer operation, only one operand and one dimension can be sharded
+  // todo: if multiple dimensions are requested to be sharded, decide which
+  // operand and which dimension to be sharded could be better
+
+  // we simply choose the first operand requested to be sharded and the
+  // first dimension requested to be sharded here
+  if (x_attr.is_shard()) {
+    bool meet_shard_axis = false;
+    for (int i = 0; i < x_ndim; ++i) {
+      if ((*x_dims_mapping)[i] != -1) {
+        meet_shard_axis = true;
+        continue;
+      }
+      if (meet_shard_axis) {
+        (*x_dims_mapping)[i] = -1;
+      }
+    }
+    // reset y_dims_mapping to all replicated
+    for (int i = 0; i < y_ndim; ++i) {
+      (*y_dims_mapping)[i] = -1;
+    }
+  } else if (y_attr.is_shard()) {
+    bool meet_shard_axis = false;
+    for (int i = 0; i < y_ndim; ++i) {
+      if ((*y_dims_mapping)[i] != -1) {
+        meet_shard_axis = true;
+        continue;
+      }
+      if (meet_shard_axis) {
+        (*y_dims_mapping)[i] = -1;
+      }
+    }
+    // no need to reset x_dims_mapping
+  }
 }
 
 SpmdInfo EinsumInferSpmd(const std::vector<DistMetaTensor>& inputs,
@@ -172,43 +216,14 @@ SpmdInfo EinsumInferSpmd(const std::vector<DistMetaTensor>& inputs,
     std::vector<int64_t> x_dims_mapping(x_dims_mapping_src);
     std::vector<int64_t> y_dims_mapping(y_dims_mapping_src);
 
-    // outer case
-    // for outer operation, only one operand and one dimension can be sharded
-    // todo: if multiple dimensions are requested to be sharded, decide which
-    // operand and which dimension to be sharded could be better
-    if (IsEinsumOuter(equation)) {
-      // we simply choose the first operand requested to be sharded and the
-      // first dimension requested to be sharded here
-      if (x_dist_attr_src.is_shard()) {
-        bool meet_shard_axis = false;
-        for (int i = 0; i < x_ndim; ++i) {
-          if (x_dims_mapping[i] != -1) {
-            meet_shard_axis = true;
-            continue;
-          }
-          if (meet_shard_axis) {
-            x_dims_mapping[i] = -1;
-          }
-        }
-        // reset y_dims_mapping to all replicated
-        for (int i = 0; i < y_ndim; ++i) {
-          y_dims_mapping[i] = -1;
-        }
-      } else if (y_dist_attr_src.is_shard()) {
-        bool meet_shard_axis = false;
-        for (int i = 0; i < y_ndim; ++i) {
-          if (y_dims_mapping[i] != -1) {
-            meet_shard_axis = true;
-            continue;
-          }
-          if (meet_shard_axis) {
-            y_dims_mapping[i] = -1;
-          }
-        }
-        // no need to reset x_dims_mapping
-      }
+    if (IsEinsumOuter(operands, right)) {
+      ConstraintOnOuter(x_dist_attr_src,
+                        y_dist_attr_src,
+                        x_ndim,
+                        y_ndim,
+                        &x_dims_mapping,
+                        &y_dims_mapping);
     }
-
     VLOG(6) << "EinsumInferSpmd InferForward Inputs: "
             << "X shape: [" << str_join(x_shape) << "], x_dims_mapping: ["
             << str_join(x_dims_mapping) << "], Y shape: [" << str_join(y_shape)
@@ -312,40 +327,13 @@ SpmdInfo EinsumGradInferSpmd(const std::vector<DistMetaTensor>& inputs,
     std::vector<int64_t> y_dims_mapping(y_dims_mapping_src);
     std::vector<int64_t> out_grad_dims_mapping(out_grad_dims_mapping_src);
 
-    // outer case
-    // for outer operation, only one operand and one dimension can be sharded
-    // todo: if multiple dimensions are requested to be sharded, decide which
-    // operand and which dimension to be sharded could be better
-    if (IsEinsumOuter(equation)) {
-      // inputs
-      if (x_dist_attr_src.is_shard()) {
-        bool meet_shard_axis = false;
-        for (int i = 0; i < x_ndim; ++i) {
-          if (x_dims_mapping[i] != -1) {
-            meet_shard_axis = true;
-            continue;
-          }
-          if (meet_shard_axis) {
-            x_dims_mapping[i] = -1;
-          }
-        }
-        // reset y_dims_mapping to all replicated
-        for (int i = 0; i < y_ndim; ++i) {
-          y_dims_mapping[i] = -1;
-        }
-      } else if (y_dist_attr_src.is_shard()) {
-        bool meet_shard_axis = false;
-        for (int i = 0; i < y_ndim; ++i) {
-          if (y_dims_mapping[i] != -1) {
-            meet_shard_axis = true;
-            continue;
-          }
-          if (meet_shard_axis) {
-            y_dims_mapping[i] = -1;
-          }
-        }
-        // no need to reset x_dims_mapping
-      }
+    if (IsEinsumOuter(operands, right)) {
+      ConstraintOnOuter(x_dist_attr_src,
+                        y_dist_attr_src,
+                        x_ndim,
+                        y_ndim,
+                        &x_dims_mapping,
+                        &y_dims_mapping);
     }
     // out_grad, x, y
     std::unordered_map<std::string, int64_t> fwd_axis_to_dim_map =
