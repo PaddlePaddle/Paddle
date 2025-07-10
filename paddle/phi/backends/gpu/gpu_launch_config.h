@@ -71,11 +71,11 @@ inline int64_t RoundToPowerOfTwo(int64_t n) {
 #ifdef WITH_NV_JETSON
 // The number of threads cannot be assigned 1024 in some cases when the device
 // is nano or tx2 .
-inline void ChangeThreadNum(const phi::GPUContext& context,
+inline void ChangeThreadNum(const phi::GPUContext& dev_ctx,
                             int* num_thread,
                             int alternative_num_thread = 512) {
-  if (context.GetComputeCapability() == 53 ||
-      context.GetComputeCapability() == 62) {
+  if (dev_ctx.GetComputeCapability() == 53 ||
+      dev_ctx.GetComputeCapability() == 62) {
     *num_thread = alternative_num_thread;
   }
 }
@@ -104,7 +104,7 @@ struct GpuLaunchConfig {
  * cuda performs better. And number of blocks should be greater (at least
  * 2x~4x) than number of SMs. Hence, SM count is took into account within
  * this function to determine the right number of threads per block. */
-inline GpuLaunchConfig GetGpuLaunchConfig1D(const phi::GPUContext& context,
+inline GpuLaunchConfig GetGpuLaunchConfig1D(const phi::GPUContext& dev_ctx,
                                             int64_t numel,
                                             int vec_size = 1) {
   PADDLE_ENFORCE_GE(numel,
@@ -119,17 +119,17 @@ inline GpuLaunchConfig GetGpuLaunchConfig1D(const phi::GPUContext& context,
       common::errors::InvalidArgument(
           "vec_size is expected greater than 0, but received %d.", vec_size));
   // Get compute_capability
-  const int capability = context.GetComputeCapability();
+  const int capability = dev_ctx.GetComputeCapability();
   // If thread number per block is 64/128/256/512, cuda performs better.
   int limit_threads =
-      std::min(PREDEFINED_BLOCK_SIZE, context.GetMaxThreadsPerBlock());
+      std::min(PREDEFINED_BLOCK_SIZE, dev_ctx.GetMaxThreadsPerBlock());
 #ifdef WITH_NV_JETSON
   if (capability == 53 || capability == 62) {
     limit_threads = 512;
   }
 #endif
   int threads = limit_threads;
-  int sm_count = context.GetSMCount();
+  int sm_count = dev_ctx.GetSMCount();
   int64_t active_threads_num = numel / vec_size;
   if (active_threads_num / (sm_count << 1) < limit_threads) {
     // Round up threads number into an exponential multiple of 2, while number
@@ -143,7 +143,7 @@ inline GpuLaunchConfig GetGpuLaunchConfig1D(const phi::GPUContext& context,
   // Number of threads per block shall be larger than 64.
   threads = std::max(64, threads);
   int blocks = DivUp<int64_t>(DivUp<int64_t>(numel, vec_size), threads);
-  int limit_blocks = context.GetCUDAMaxGridDimSize()[0];
+  int limit_blocks = dev_ctx.GetCUDAMaxGridDimSize()[0];
   if (blocks > limit_blocks) {
     blocks = limit_blocks;
   }
@@ -160,7 +160,7 @@ inline GpuLaunchConfig GetGpuLaunchConfig1D(const phi::GPUContext& context,
   return config;
 }
 
-inline GpuLaunchConfig GetGpuLaunchConfig2D(const phi::GPUContext& context,
+inline GpuLaunchConfig GetGpuLaunchConfig2D(const phi::GPUContext& dev_ctx,
                                             int64_t x_dim,
                                             int64_t y_dim) {
   PADDLE_ENFORCE_GT(
@@ -180,7 +180,7 @@ inline GpuLaunchConfig GetGpuLaunchConfig2D(const phi::GPUContext& context,
   int block_cols = std::min<int64_t>(x_dim, kThreadsPerBlock);
   int block_rows = std::max(kThreadsPerBlock / block_cols, 1);
 
-  int max_physical_threads = context.GetMaxPhysicalThreadCount();
+  int max_physical_threads = dev_ctx.GetMaxPhysicalThreadCount();
   const int max_blocks = std::max(max_physical_threads / kThreadsPerBlock, 1);
 
   GpuLaunchConfig config;
@@ -204,19 +204,19 @@ static inline int GetLastPow2(int n) {
   return std::max(1, n - (n >> 1));
 }
 
-inline GpuLaunchConfig GetGpuLaunchConfig3D(const phi::GPUContext& context,
+inline GpuLaunchConfig GetGpuLaunchConfig3D(const phi::GPUContext& dev_ctx,
                                             int num_img,
                                             int height,
                                             int width) {
   const int kThreadsPerBlock = 256;
-  int max_threads_per_block = context.GetMaxThreadsPerBlock();  // 1024
+  int max_threads_per_block = dev_ctx.GetMaxThreadsPerBlock();  // 1024
   int max_threads = std::min(kThreadsPerBlock, max_threads_per_block);
 
   int block_x = std::min(GetLastPow2(width), max_threads);
   int block_y = std::min(GetLastPow2(height), max_threads / block_x);
   int block_z = std::min(num_img, max_threads / block_x / block_y);
 
-  std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
+  std::array<unsigned int, 3> max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize();
   unsigned int grid_x =
       std::min(max_grid_dim[0], DivUp<unsigned int>(width, block_x));
   unsigned int grid_y =
@@ -224,7 +224,7 @@ inline GpuLaunchConfig GetGpuLaunchConfig3D(const phi::GPUContext& context,
   unsigned int grid_z =
       std::min(max_grid_dim[2], DivUp<unsigned int>(num_img, block_z * 4));
 
-  const int capability = context.GetComputeCapability();
+  const int capability = dev_ctx.GetComputeCapability();
   GpuLaunchConfig config;
   config.compute_capability = capability;
   config.thread_per_block = dim3(block_x, block_y, block_z);
@@ -233,9 +233,9 @@ inline GpuLaunchConfig GetGpuLaunchConfig3D(const phi::GPUContext& context,
 }
 
 template <typename Context>
-void LimitGridDim(const Context& ctx, dim3* grid_dim) {
+void LimitGridDim(const Context& dev_ctx, dim3* grid_dim) {
   auto max_grid_dim =
-      reinterpret_cast<const phi::GPUContext&>(ctx).GetCUDAMaxGridDimSize();
+      reinterpret_cast<const phi::GPUContext&>(dev_ctx).GetCUDAMaxGridDimSize();
   grid_dim->x = grid_dim->x < max_grid_dim[0] ? grid_dim->x : max_grid_dim[0];
   grid_dim->y = grid_dim->y < max_grid_dim[1] ? grid_dim->y : max_grid_dim[1];
   grid_dim->z = grid_dim->z < max_grid_dim[2] ? grid_dim->z : max_grid_dim[2];
