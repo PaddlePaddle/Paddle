@@ -258,6 +258,11 @@ void SetValueGradKernel(const Context& dev_ctx,
                         const std::vector<int64_t>& none_axes,
                         DenseTensor* x_grad,
                         DenseTensor* value_grad) {
+  if (out_grad.numel() == 0) {
+    if (x_grad) dev_ctx.template Alloc<T>(x_grad);
+    if (value_grad) dev_ctx.template Alloc<T>(value_grad);
+    return;
+  }
   const int rank = out_grad.dims().size();
   std::vector<int64_t> starts_local = starts.GetData();
   std::vector<int64_t> ends_local = ends.GetData();
