@@ -541,9 +541,8 @@ void GPUScatterAdd(const phi::GPUContext& ctx,
     T* self_data = reinterpret_cast<T*>(self_ptr + offsets[0]);
     const T* src_data = reinterpret_cast<const T*>(src_ptr + offsets[1]);
 
-    // phi::fastAtomicAdd(self_data, idx_dim * index_stride, numel,
-    // *src_data);
-    phi::CudaAtomicAdd(self_data + idx_dim * index_stride, *src_data);
+    phi::fastAtomicAdd(self_data, idx_dim * index_stride, numel, *src_data);
+    // phi::CudaAtomicAdd(self_data + idx_dim * index_stride, *src_data);
   };  // NOLINT
 
   const int64_t N = output->numel();
