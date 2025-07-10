@@ -2247,10 +2247,10 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
       if (!out_is_view &&
           MaskedFillValueDispatching(
               transed_sub_tensor, transed_index, &mask_tensor)) {
-        paddle::Tensor value_tensor =
+        paddle::Tensor value_tmp_tensor =
             full_ad_func({1}, values[0], tensor.dtype(), tensor.place());
-        transed_sub_tensor =
-            masked_fill__ad_func(transed_sub_tensor, mask_tensor, value_tensor);
+        transed_sub_tensor = masked_fill__ad_func(
+            transed_sub_tensor, mask_tensor, value_tmp_tensor);
       } else {
 #ifdef PADDLE_WITH_CUDA
         // TODO(czy): remove in the future
@@ -2291,12 +2291,16 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
           // false. Remove when all cases use this branch.
           out_is_view = false;
         } else {
+          paddle::Tensor value_tmp_tensor =
+              full_ad_func({1}, values[0], tensor.dtype(), tensor.place());
           transed_sub_tensor = index_put__ad_func(
-              transed_sub_tensor, transed_index, value_tensor);
+              transed_sub_tensor, transed_index, value_tmp_tensor);
         }
 #else
-        transed_sub_tensor =
-            index_put__ad_func(transed_sub_tensor, transed_index, value_tensor);
+        paddle::Tensor value_tmp_tensor =
+            full_ad_func({1}, values[0], tensor.dtype(), tensor.place());
+        transed_sub_tensor = index_put__ad_func(
+            transed_sub_tensor, transed_index, value_tmp_tensor);
 #endif
       }
       if (out_is_view) {
