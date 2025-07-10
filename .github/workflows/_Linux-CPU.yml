@@ -111,7 +111,8 @@ jobs:
           rm Paddle.tar.gz
           git config --global user.name "PaddleCI"
           git config --global user.email "paddle_ci@example.com"
-          git remote add upstream https://github.com/PaddlePaddle/Paddle.git
+          # git remote add upstream https://github.com/PaddlePaddle/Paddle.git
+          git remote -v
           source ${{ github.workspace }}/../../../proxy
           cp ci/git_pull.sh ci/git_pull_copy.sh
           git checkout $BRANCH
