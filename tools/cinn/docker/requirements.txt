@@ -7,5 +7,4 @@ gast>=0.3.3 ; platform_system != "Windows"
 gast==0.3.3 ; platform_system == "Windows"
 Pillow
 six
-decorator==4.4.2
 xgboost

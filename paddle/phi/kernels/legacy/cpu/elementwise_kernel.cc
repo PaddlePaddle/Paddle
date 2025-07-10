@@ -59,10 +59,14 @@ void RemainderRawKernel(const Context& dev_ctx,
                         const DenseTensor& y,
                         int axis,
                         DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   // allocate memory for out
   dev_ctx.template Alloc<T>(out);
-  auto x_dims = x.dims();
-  auto y_dims = y.dims();
+  const auto& x_dims = x.dims();
+  const auto& y_dims = y.dims();
   if (x_dims.size() >= y_dims.size()) {  // NOLINT
     funcs::ElementwiseCompute<funcs::RemainderFunctor<T>, T>(
         dev_ctx, x, y, funcs::RemainderFunctor<T>(), out, axis);
