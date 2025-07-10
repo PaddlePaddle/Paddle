@@ -193,6 +193,12 @@ special_prune_dict = {
     "matmul_grad": {"x": "grad_y", "y": "grad_x"},
 }
 
+
+# temporary list of inplace api to add record_inplace_original_dist_attr_list,
+# all inplace api in auto parallel should apply, for now only reshape_.
+special_inplace_list = {"reshape_"}
+
+
 strided_op_list = {
     "as_complex",
     "as_real",
@@ -1405,9 +1411,21 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                     )
                     set_grad_out_meta = f"{indent}grad_node->SetGradOutMeta({name}, {meta_name}, {pos});"
                 else:
-                    set_grad_out_meta = (
-                        f"{indent}grad_node->SetGradOutMeta({name}, {pos});"
-                    )
+                    if (
+                        GetInplacedFunctionName(forward_api_name)
+                        if is_inplaced
+                        else forward_api_name
+                    ) in special_inplace_list:
+                        set_grad_out_meta = f"""
+    if ({name}.is_dist_tensor() && {name}.impl()){{
+  {indent}grad_node->SetGradOutMeta({name}, {pos}, {name}_dist_attr, {name}_dims);
+    }} else{{
+  {indent}grad_node->SetGradOutMeta({name}, {pos});
+    }}"""
+                    else:
+                        set_grad_out_meta = (
+                            f"{indent}grad_node->SetGradOutMeta({name}, {pos});"
+                        )
 
             set_grad_out_meta_list.append(set_grad_out_meta)
         set_grad_out_meta_str = "\n".join(set_grad_out_meta_list)
@@ -1722,6 +1740,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         layout_autotune_list = []
         layout_autotune_optional_list = []
         layout_tensors_vector_optional_list = []
+        record_inplace_original_dist_attr_list = []
         for name, (ttype, pos) in forward_inputs_position_map.items():
             inputs_call_list[pos] = f"{name}"
             amp_inputs_call_list[pos] = f"new_{name}"
@@ -1834,6 +1853,18 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             inputs_args_definition_list[pos] = arg_str
             inputs_args_declaration_list[pos] = arg_str
 
+            if is_inplaced and forward_api_name in special_inplace_list:
+                record_inplace_original_dist_attr_list.append(
+                    f"""
+  phi::distributed::TensorDistAttr {name}_dist_attr;
+  phi::DDim {name}_dims;
+  if ({name}.is_dist_tensor() && {name}.impl()){{
+    auto* {name}_dist_tensor = static_cast<phi::distributed::DistTensor*>({name}.impl().get());
+    {name}_dist_attr = {name}_dist_tensor->dist_attr();
+    {name}_dims = {name}_dist_tensor->dims();
+   }}"""
+                )
+
         # forward attrs
         for name, atype, default_val, pos in forward_attrs_list:
             inputs_call_list[pos] = name
@@ -1893,7 +1924,16 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
   }}
 """
         else:
-            forward_call_str = f"{indent}{api_out_type} api_result = paddle::experimental::{namespace}{function_name}({inputs_call_args_str});"
+            if is_inplaced and forward_api_name in special_inplace_list:
+                record_inplace_original_dist_attr_srt = (
+                    "\n".join(record_inplace_original_dist_attr_list) + "\n"
+                )
+                forward_call_str = (
+                    record_inplace_original_dist_attr_srt
+                    + f"{indent}{api_out_type} api_result = paddle::experimental::{namespace}{function_name}({inputs_call_args_str});"
+                )
+            else:
+                forward_call_str = f"{indent}{api_out_type} api_result = paddle::experimental::{namespace}{function_name}({inputs_call_args_str});"
         num_outputs = len(forward_outputs_position_map) - len(
             intermediate_outputs
         )
