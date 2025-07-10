@@ -8,7 +8,8 @@ on:
 jobs:
   check:
     name: Check
-    runs-on: ubuntu-latest
+    runs-on:
+      group: HK-Clone
     permissions:
       contents: read
     steps:

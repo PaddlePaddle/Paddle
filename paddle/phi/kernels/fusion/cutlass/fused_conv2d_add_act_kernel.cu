@@ -29,7 +29,7 @@ namespace cutlass_internal {
 typedef bool (*func)(phi::fusion::cutlass_internal::ConvAllParams);
 
 template <typename T, typename Context>
-void FusedConv2dAddActKernel(const Context& ctx,
+void FusedConv2dAddActKernel(const Context& dev_ctx,
                              const DenseTensor& x,
                              const DenseTensor& filter,
                              const DenseTensor& bias,
@@ -47,7 +47,7 @@ void FusedConv2dAddActKernel(const Context& ctx,
                              float fuse_alpha,
                              DenseTensor* output,
                              std::vector<DenseTensor*> outputs) {
-  ctx.template Alloc<T>(output);
+  dev_ctx.template Alloc<T>(output);
   auto in_dims = x.dims();
   auto filter_dims = filter.dims();
   auto out_dims = output->dims();
@@ -136,7 +136,7 @@ void FusedConv2dAddActKernel(const Context& ctx,
   const int oh = out_dims[1];
   const int ow = out_dims[2];
 
-  int64_t device_id = ctx.GetPlace().GetDeviceId();
+  int64_t device_id = dev_ctx.GetPlace().GetDeviceId();
   int sm_version = backends::gpu::GetGPUComputeCapability(device_id);
 
   auto get_conv2d_dtype = [&](decltype(x.dtype()) x_type)
@@ -190,7 +190,7 @@ void FusedConv2dAddActKernel(const Context& ctx,
       oh,
       ow,
       groups,
-      ctx.stream(),
+      dev_ctx.stream(),
       0,  // alpha
       cutlass_dispatch_sm_version(sm_version),
       get_conv2d_dtype(x.dtype()),
@@ -207,9 +207,9 @@ void FusedConv2dAddActKernel(const Context& ctx,
   if (groups == ic && ic == oc) {
     // conv2d_depthwise need a tmp workspace.
     phi::Allocator::AllocationPtr tmp_ptr = phi::memory_utils::Alloc(
-        ctx.GetPlace(),
+        dev_ctx.GetPlace(),
         oc * kh * kw * sizeof(T),
-        phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
     params.workspace = tmp_ptr->ptr();
     // cutlass conv2d_depthwise not support residual
     if (residual) {

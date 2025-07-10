@@ -79,6 +79,32 @@ class TestExpandAs_ZeroDim2(TestExpandAsBasic):
         self.enable_cinn = False
 
 
+class TestExpandAs_ZeroSize(TestExpandAsBasic):
+    def init_inputs_and_outputs(self):
+        x = np.random.random([2, 1]).astype(self.dtype)
+        target_tensor = np.random.random([2, 0]).astype(self.dtype)
+        self.inputs = {'X': x, "Y": target_tensor}
+        self.attrs = {'target_shape': target_tensor.shape}
+        output = np.random.random([2, 0]).astype(self.dtype)
+        self.outputs = {'Out': output}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_pir=True)
+
+
+class TestExpandAs_ZeroSize2(TestExpandAs_ZeroSize):
+    def init_inputs_and_outputs(self):
+        x = np.random.random([3, 0]).astype(self.dtype)
+        target_tensor = np.random.random([3, 0]).astype(self.dtype)
+        self.inputs = {'X': x, "Y": target_tensor}
+        self.attrs = {'target_shape': target_tensor.shape}
+        output = np.random.random([3, 0]).astype(self.dtype)
+        self.outputs = {'Out': output}
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
