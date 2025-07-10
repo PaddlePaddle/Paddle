@@ -17,6 +17,10 @@ jobs:
     runs-on:
       group: HK-Clone
     steps:
+      - name: clean
+        run: |
+          rm -rf * .[^.]*
+
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:

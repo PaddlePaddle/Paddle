@@ -58,7 +58,6 @@ jobs:
           git submodule foreach --recursive sh -c "git config --local --unset-all 'http.https://github.com/.extraheader'"
           git submodule foreach --recursive sh -c "git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'"
           git switch ${{ github.event.pull_request.base.ref }}
-          echo hhh
           set +e
           git branch -D test
           set -e
