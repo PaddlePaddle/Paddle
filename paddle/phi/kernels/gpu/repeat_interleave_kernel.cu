@@ -60,9 +60,6 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
                                            const DenseTensor& repeats_tensor,
                                            int dim,
                                            DenseTensor* out) {
-  auto place = dev_ctx.GetPlace();
-  auto cpu_place = phi::CPUPlace();
-
   auto input_dim = x.dims();
   if (dim < 0) {
     dim += input_dim.size();
@@ -105,66 +102,46 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(out);
     return;
   }
-  if (place == cpu_place) {
-    auto x_copy = x;
-    if (index_type == phi::DataType::INT32) {
-      phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
-          dev_ctx, repeats_tensor, &index);
-      auto output_dim = common::vectorize(x.dims());
-      output_dim[dim] = index.dims()[0];
-      out->Resize(common::make_ddim(output_dim));
-      IndexSelectInner<Context, T, int>(dev_ctx, &x_copy, index, out, dim);
-    } else if (index_type == phi::DataType::INT64) {
-      phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
-          dev_ctx, repeats_tensor, &index);
-      auto output_dim = common::vectorize(x.dims());
-      output_dim[dim] = index.dims()[0];
-      out->Resize(common::make_ddim(output_dim));
-      IndexSelectInner<Context, T, int64_t>(dev_ctx, &x_copy, index, out, dim);
-    }
+
+  auto stride_dim = common::stride(input_dim);
+  int64_t stride = stride_dim[dim];
+  auto stream = dev_ctx.stream();
+  auto* in_data = x.data<T>();
+  if (index_type == phi::DataType::INT64) {
+    phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
+        dev_ctx, repeats_tensor, &index);
+
+    const int64_t* index_data = index.data<int64_t>();
+    auto output_dim = common::vectorize(x.dims());
+    output_dim[dim] = index.dims()[0];
+    out->Resize(common::make_ddim(output_dim));
+    T* out_data = dev_ctx.template Alloc<T>(out);
+    int64_t numel = out->numel();
+    int64_t size = output_dim[dim];
+    int64_t delta = input_dim[dim] - size;
+
+    index_select_cuda_kernel<T, int64_t>
+        <<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
+           PADDLE_CUDA_NUM_THREADS,
+           0,
+           stream>>>(in_data, out_data, index_data, numel, stride, size, delta);
   } else {
-    auto stride_dim = common::stride(input_dim);
-    int64_t stride = stride_dim[dim];
-    auto stream = dev_ctx.stream();
-    auto* in_data = x.data<T>();
-    if (index_type == phi::DataType::INT64) {
-      phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
-          dev_ctx, repeats_tensor, &index);
+    phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
+        dev_ctx, repeats_tensor, &index);
 
-      const int64_t* index_data = index.data<int64_t>();
-      auto output_dim = common::vectorize(x.dims());
-      output_dim[dim] = index.dims()[0];
-      out->Resize(common::make_ddim(output_dim));
-      T* out_data = dev_ctx.template Alloc<T>(out);
-      int64_t numel = out->numel();
-      int64_t size = output_dim[dim];
-      int64_t delta = input_dim[dim] - size;
-
-      index_select_cuda_kernel<T, int64_t>
-          <<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
-             PADDLE_CUDA_NUM_THREADS,
-             0,
-             stream>>>(
-              in_data, out_data, index_data, numel, stride, size, delta);
-    } else {
-      phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
-          dev_ctx, repeats_tensor, &index);
-
-      const int* index_data = index.data<int>();
-      auto output_dim = common::vectorize(x.dims());
-      output_dim[dim] = index.dims()[0];
-      out->Resize(common::make_ddim(output_dim));
-      T* out_data = dev_ctx.template Alloc<T>(out);
-      int64_t numel = out->numel();
-      int64_t size = output_dim[dim];
-      int64_t delta = input_dim[dim] - size;
-      index_select_cuda_kernel<T, int>
-          <<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
-             PADDLE_CUDA_NUM_THREADS,
-             0,
-             stream>>>(
-              in_data, out_data, index_data, numel, stride, size, delta);
-    }
+    const int* index_data = index.data<int>();
+    auto output_dim = common::vectorize(x.dims());
+    output_dim[dim] = index.dims()[0];
+    out->Resize(common::make_ddim(output_dim));
+    T* out_data = dev_ctx.template Alloc<T>(out);
+    int64_t numel = out->numel();
+    int64_t size = output_dim[dim];
+    int64_t delta = input_dim[dim] - size;
+    index_select_cuda_kernel<T, int>
+        <<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS,
+           PADDLE_CUDA_NUM_THREADS,
+           0,
+           stream>>>(in_data, out_data, index_data, numel, stride, size, delta);
   }
 }
 
