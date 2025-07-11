@@ -588,6 +588,7 @@ inline static bool MaskedFillDispatching(
   } else {
     num_ind += (indices)[0].shape().size();
   }
+
   *mask_tensor = (indices)[0];
   for (size_t i = num_ind; i < tensor.shape().size(); i++) {
     *mask_tensor = unsqueeze_ad_func(*mask_tensor, {-1});
@@ -611,6 +612,7 @@ inline static bool MaskedFillValueDispatching(
   } else {
     num_ind += (indices)[0].shape().size();
   }
+
   *mask_tensor = (indices)[0];
   for (size_t i = num_ind; i < tensor.shape().size(); i++) {
     *mask_tensor = unsqueeze_ad_func(*mask_tensor, {-1});
