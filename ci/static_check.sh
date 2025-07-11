@@ -31,6 +31,7 @@ function exec_samplecode_test() {
     if [ "$1" = "cpu" ] ; then
         python sampcd_processor.py --mode cpu; example_error=$?
     elif [ "$1" = "gpu" ] ; then
+        export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
         SAMPLE_CODE_EXEC_THREADS=${SAMPLE_CODE_EXEC_THREADS:-2}
         python sampcd_processor.py --threads=${SAMPLE_CODE_EXEC_THREADS} --mode gpu; example_error=$?
     fi
@@ -142,12 +143,16 @@ function exec_samplecode_checking() {
     type_checking_code=$?
 
     # summary
+    example_code_gpu=0
     summary_check_example_code_problems $[${example_code_gpu} + ${example_code}] "${example_info_gpu}\n${example_info}"
     summary_type_checking_problems $type_checking_code "$type_checking_info"
 
     # exit with error code
     if [ $example_code -ne 0 ];then
         exit $example_code
+    fi
+    if [ $example_code_gpu -ne 0 ];then
+        exit $example_code_gpu
     fi
     if [ $type_checking_code -ne 0 ];then
         exit $type_checking_code
