@@ -42,8 +42,8 @@ class TestFcBf16MklDNNOp(OpTest):
 
     def setUp(self):
         self.op_type = "fc"
-        self.use_mkldnn = True
-        self.mkldnn_data_type = "bfloat16"
+        self.use_onednn = True
+        self.onednn_data_type = "bfloat16"
         self.force_fp32_output = False
         self.generate_data()
 
@@ -60,7 +60,7 @@ class TestFcBf16MklDNNOp(OpTest):
         }
 
         self.attrs = {
-            'use_mkldnn': self.use_mkldnn,
+            'use_mkldnn': self.use_onednn,
             'force_fp32_output': self.force_fp32_output,
         }
 

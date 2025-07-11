@@ -546,6 +546,7 @@
   output : Tensor(x_grad), Tensor(filter_grad)
   infer_meta :
     func : Conv2dTransposeGradInferMeta
+    spmd_rule : Conv2dTransposeGradInferSpmd
   kernel :
     func : conv2d_transpose_grad
     data_type : x

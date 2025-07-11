@@ -135,6 +135,7 @@ jobs:
         run: |
           docker exec ${container_name} bash -c '
           source ~/.bashrc
+          export EXCODE=0
           source ${ci_scripts}/model_benchmark.sh
           check_model_benchmark
           if [[ $EXCODE -eq 0 ]];then

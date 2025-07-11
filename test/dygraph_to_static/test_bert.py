@@ -157,14 +157,16 @@ class TestBert(Dy2StTestBase):
                         print(
                             f"Step: {step_idx}, loss: {loss:f}, ppl: {ppl:f}, next_sent_acc: {acc:f}"
                         )
-                        avg_batch_time = time.time()
+                        avg_batch_time = time.perf_counter()
                     else:
-                        speed = PRINT_STEP / (time.time() - avg_batch_time)
+                        speed = PRINT_STEP / (
+                            time.perf_counter() - avg_batch_time
+                        )
                         speed_list.append(speed)
                         print(
                             f"Step: {step_idx}, loss: {loss:f}, ppl: {ppl:f}, next_sent_acc: {acc:f}, speed: {speed:.3f} steps/s"
                         )
-                        avg_batch_time = time.time()
+                        avg_batch_time = time.perf_counter()
 
                 step_idx += 1
                 if step_idx == STEP_NUM:
