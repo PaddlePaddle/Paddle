@@ -21,6 +21,9 @@ from test_case_base import (
 
 import paddle
 from paddle import nn
+from paddle.jit.sot.opcode_translator.executor.opcode_executor import (
+    ALREADY_SUPPORTED_EXCEPTION,
+)
 from paddle.jit.sot.psdb import check_no_breakgraph
 from paddle.jit.sot.utils import strict_mode_guard
 
@@ -169,6 +172,9 @@ def net_call(x: paddle.Tensor, net: nn.Layer):
 
 
 class TestPaddleContextManager(TestCaseBase):
+    # TODO(DrRyanHuang): Python 3.11 introduced a new opcode, BEFORE_WITH, which is not supported yet.
+    # Therefore, for versions 3.11 and above, fallback is allowed for now.
+    @strict_mode_guard(ALREADY_SUPPORTED_EXCEPTION)
     def test_fp16_guard(self):
         x = paddle.randn([4, 4])
         model = SimpleNet(4, 8)
