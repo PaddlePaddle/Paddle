@@ -118,7 +118,7 @@ void EinsumGradKernel(const Context& dev_ctx,
   VLOG(5) << "Start EinsumGradKernel:";
   bool has_zero_size_tensor = false;
   for (auto& i : x_grad) {
-    if (i->numel() == 0) {
+    if (i == nullptr || i->numel() == 0) {
       has_zero_size_tensor = true;
     }
     if (i != nullptr) {
