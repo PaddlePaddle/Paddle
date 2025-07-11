@@ -252,12 +252,6 @@ if(APPLE)
       -Werror=c++17-extensions)
 endif()
 
-if(WITH_HETERPS AND WITH_PSLIB)
-  set(COMMON_FLAGS -D_GLIBCXX_USE_CXX11_ABI=0 ${COMMON_FLAGS})
-
-  set(GPU_COMMON_FLAGS -D_GLIBCXX_USE_CXX11_ABI=0 ${GPU_COMMON_FLAGS})
-endif()
-
 if(LINUX)
   set(GPU_COMMON_FLAGS -Wall -Wextra -Werror ${GPU_COMMON_FLAGS})
 endif()
@@ -294,9 +288,7 @@ if(WITH_ROCM)
   string(APPEND CMAKE_CXX_FLAGS " -Wno-strict-aliasing")
 endif()
 
-if(WITH_PSCORE
-   OR WITH_PSLIB
-   OR WITH_TENSORRT)
+if(WITH_TENSORRT)
   string(REPLACE "-Wnon-virtual-dtor" "-Wno-non-virtual-dtor" CMAKE_CXX_FLAGS
                  ${CMAKE_CXX_FLAGS})
   string(REPLACE "-Wnon-virtual-dtor" "-Wno-non-virtual-dtor" CMAKE_C_FLAGS

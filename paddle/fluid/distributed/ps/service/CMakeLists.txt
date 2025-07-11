@@ -1,19 +1,7 @@
 set(BRPC_SRCS ps_client.cc server.cc)
 set_source_files_properties(${BRPC_SRCS})
 
-if(WITH_HETERPS)
-
-  set(BRPC_DEPS ${EXTERNAL_BRPC_DEPS} phi common zlib device_context rocksdb)
-
-else()
-
-  set(BRPC_DEPS ${EXTERNAL_BRPC_DEPS} phi common zlib device_context)
-
-endif()
-
-if(WITH_PSCORE AND NOT WITH_HETERPS)
-  set(BRPC_DEPS ${BRPC_DEPS} ps_service)
-endif()
+set(BRPC_DEPS ${EXTERNAL_BRPC_DEPS} phi common zlib device_context)
 
 brpc_library(
   sendrecv_rpc

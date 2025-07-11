@@ -44,14 +44,9 @@ if(WITH_PYTHON)
       "Copy generated python ps_pb2.py into directory ${PSLIB_PROTO_DSTPATH}")
 endif()
 
-if(WITH_RPC)
-  add_subdirectory(rpc)
-endif()
-
 if(NOT WITH_PSCORE)
   return()
 endif()
-
 proto_library(ps_framework_proto SRCS the_one_ps.proto)
 
 set(DISTRIBUTE_COMPILE_FLAGS

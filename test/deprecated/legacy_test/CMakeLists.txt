@@ -485,9 +485,7 @@ if(WITH_DISTRIBUTE)
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_word2vec")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_gloo")
 
-  if(NOT WITH_HETERPS)
-    list(REMOVE_ITEM DIST_TEST_OPS "test_communicator_ps_gpu")
-  endif()
+  list(REMOVE_ITEM DIST_TEST_OPS "test_communicator_ps_gpu")
 
   py_test_modules(test_communicator_geo_deprecated MODULES
                   test_communicator_geo_deprecated ENVS ${dist_ENVS})

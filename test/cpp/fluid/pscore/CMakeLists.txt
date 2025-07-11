@@ -1,7 +1,3 @@
-if(WITH_PSLIB)
-  return()
-endif()
-
 set(DISTRIBUTE_DEPS "")
 
 if(WITH_ARM_BRPC)

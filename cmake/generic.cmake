@@ -92,7 +92,7 @@ include_directories("${PADDLE_SOURCE_DIR}/paddle/fluid/framework/io")
 if(NOT APPLE AND NOT WIN32)
   find_package(Threads REQUIRED)
   link_libraries(${CMAKE_THREAD_LIBS_INIT})
-  if(WITH_PSLIB OR WITH_DISTRIBUTE)
+  if(WITH_DISTRIBUTE)
     set(CMAKE_CXX_LINK_EXECUTABLE
         "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -ldl -lrt -lz -lssl -lcrypto")
   else()
