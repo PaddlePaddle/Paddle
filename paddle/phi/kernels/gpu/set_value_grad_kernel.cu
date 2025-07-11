@@ -60,10 +60,6 @@ void SetValueGradKernelV2(const Context& dev_ctx,
           DenseTensor out_grad_temp;
           ShareDataKernel<T, Context>(dev_ctx, out_grad, &out_grad_temp);
           out_grad_temp.Resize(value_grad->dims());
-          ReshapeKernel<Context>(dev_ctx,
-                                 out_grad_temp,
-                                 IntArray(vectorize(value_grad->dims())),
-                                 &out_grad_temp);
           Copy(dev_ctx, out_grad_temp, dev_ctx.GetPlace(), false, value_grad);
         } else {
           Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, value_grad);
@@ -78,7 +74,6 @@ void SetValueGradKernelV2(const Context& dev_ctx,
   }
 
   if (x_grad) {
-    // Set gradient of `Input`
     Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     SetValueKernelV2<T, Context>(dev_ctx,
                                  *x_grad,
@@ -122,7 +117,7 @@ void SetValueGradKernelV2(const Context& dev_ctx,
                                         &value_grad_orig);
 
       if (value_grad->numel() == value_grad_orig.numel()) {
-        value_grad_orig.set_meta(value_grad->meta());
+        value_grad_orig.Resize(value_grad->dims());
         Copy(dev_ctx, value_grad_orig, dev_ctx.GetPlace(), false, value_grad);
       } else {
         auto reduce_dim =
@@ -144,6 +139,10 @@ void SetValueGradKernelV2(const Context& dev_ctx,
                                         infer_flags,
                                         decrease_axes_int32,
                                         value_grad);
+      // 0-dim will change to 1 dim so we need to set meta
+      value_grad->set_meta(value_grad_orig.meta());
+      std::cout << "4 value_grad_orig: " << value_grad_orig.dims()
+                << " value_grad: " << value_grad->dims() << std::endl;
     }
   }
 }
