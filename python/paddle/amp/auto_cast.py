@@ -693,7 +693,9 @@ def amp_guard(
                                 ].append(param)
                     amp_global_state().already_classify_params_meshes = True
 
-                if os.getenv("FLAGS_enable_main_grad") not in [
+                if not amp_global_state().use_main_grad and os.getenv(
+                    "FLAGS_enable_main_grad"
+                ) not in [
                     "True",
                     "true",
                     "1",
@@ -733,7 +735,9 @@ def amp_guard(
 
                 return param_hook
 
-            if os.getenv("FLAGS_enable_main_grad") in [
+            if amp_global_state().use_main_grad or os.getenv(
+                "FLAGS_enable_main_grad"
+            ) in [
                 "True",
                 "true",
                 "1",
@@ -830,6 +834,7 @@ def amp_decorate(
     master_weight: bool | None = ...,
     save_dtype: _DTypeLiteral | None = ...,
     master_grad: bool = ...,
+    main_grad: bool = ...,
     excluded_layers: (
         Layer | list[Layer | type[Layer]] | type[Layer] | None
     ) = ...,
@@ -845,6 +850,7 @@ def amp_decorate(
     master_weight: bool | None = ...,
     save_dtype: _DTypeLiteral | None = ...,
     master_grad: bool = ...,
+    main_grad: bool = ...,
     excluded_layers: (
         Layer | list[Layer | type[Layer]] | type[Layer] | None
     ) = ...,
@@ -860,6 +866,7 @@ def amp_decorate(
     master_weight: bool | None = None,
     save_dtype: _DTypeLiteral | None = None,
     master_grad: bool = False,
+    main_grad: bool = False,
     excluded_layers: (
         Layer | list[Layer | type[Layer]] | type[Layer] | None
     ) = None,
@@ -881,6 +888,7 @@ def amp_decorate(
              The save_dtype will not change model parameters dtype, it just change the state_dict dtype. When save_dtype is None, the save dtype is same as model dtype. Default is None.
         master_grad(bool, optional): For level='O2', whether to use float32 weight gradients for calculations such as gradient clipping, weight decay, and weight updates. If master_grad is enabled, the weight
              gradients will be float32 dtype after the back propagation. Default is False, there is only float16 weight gradients.
+        main_grad(bool, optional): Compared to master_grad, main_grad updates FP32 master gradients in-place, reducing memory copy overhead.
         excluded_layers(Layer|list of Layer, optional): Specify the layers not to be decorated. The weights of these layers will always keep float32 when level is O2. `excluded_layers` can be specified as
              an Layer instance/type or a list of Layer instances/types. Default is None, the weights of the whole model will be casted to float16 or bfloat16.
 
@@ -1031,6 +1039,8 @@ def amp_decorate(
 
     # support master_grad
     if master_grad:
+        if main_grad:
+            amp_global_state().use_main_grad = True
         amp_global_state().use_master_grad = True
         for idx in range(len(models)):
             amp_global_state().model_parameters.extend(models[idx].parameters())
@@ -1155,6 +1165,7 @@ def decorate(
     master_weight: bool | None = ...,
     save_dtype: _DTypeLiteral | None = ...,
     master_grad: bool = ...,
+    main_grad: bool = ...,
     excluded_layers: (
         Layer | list[Layer | type[Layer]] | type[Layer] | None
     ) = ...,
@@ -1170,6 +1181,7 @@ def decorate(
     master_weight: bool | None = ...,
     save_dtype: _DTypeLiteral | None = ...,
     master_grad: bool = ...,
+    main_grad: bool = ...,
     excluded_layers: (
         Layer | list[Layer | type[Layer]] | type[Layer] | None
     ) = ...,
@@ -1184,6 +1196,7 @@ def decorate(
     master_weight: bool | None = None,
     save_dtype: _DTypeLiteral | None = None,
     master_grad: bool = False,
+    main_grad: bool = False,
     excluded_layers: (
         Layer | list[Layer | type[Layer]] | type[Layer] | None
     ) = None,
@@ -1205,6 +1218,7 @@ def decorate(
              The save_dtype will not change model parameters dtype, it just change the state_dict dtype. When save_dtype is None, the save dtype is same as model dtype. Default is None.
         master_grad(bool, optional): For level='O2', whether to use float32 weight gradients for calculations such as gradient clipping, weight decay, and weight updates. If master_grad is enabled, the weight
              gradients will be float32 dtype after the back propagation. Default is False, there is only float16 weight gradients.
+        main_grad(bool, optional): Compared to master_grad, main_grad updates FP32 master gradients in-place, reducing memory copy overhead.
         excluded_layers(Layer|list of Layer, optional): Specify the layers not to be decorated. The weights of these layers will always keep float32 when level is O2. `excluded_layers` can be specified as
              an Layer instance/type or a list of Layer instances/types. Default is None, the weights of the whole model will be casted to float16 or bfloat16.
 
