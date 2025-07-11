@@ -2726,17 +2726,17 @@ void MaxOutInferMeta(const MetaTensor& x,
 }
 
 void MaxPoolWithIndexInferMeta(const MetaTensor& x,
-                               const std::vector<int>& kernel_size,
-                               const std::vector<int>& strides,
-                               const std::vector<int>& paddings,
+                               const std::vector<int64_t>& kernel_size,
+                               const std::vector<int64_t>& strides,
+                               const std::vector<int64_t>& paddings,
                                bool global_pooling,
                                bool adaptive,
                                bool ceil_mode,
                                MetaTensor* out,
                                MetaTensor* mask,
                                MetaConfig config) {
-  std::vector<int> paddings_ = paddings;
-  std::vector<int> kernel_size_ = kernel_size;
+  std::vector<int64_t> paddings_ = paddings;
+  std::vector<int64_t> kernel_size_ = kernel_size;
 
   auto x_dims = x.dims();
 
@@ -2749,9 +2749,9 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
 
   if (global_pooling) {
     kernel_size_.resize(static_cast<size_t>(x_dims.size()) - 2);
-    for (int i = 0; i < static_cast<int>(kernel_size_.size()); ++i) {
+    for (int64_t i = 0; i < static_cast<int64_t>(kernel_size_.size()); ++i) {
       paddings_[i] = 0;
-      kernel_size_[i] = static_cast<int>(x_dims[i + 2]);
+      kernel_size_[i] = static_cast<int64_t>(x_dims[i + 2]);
     }
   }
 
@@ -2782,12 +2782,12 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
     output_shape.insert(
         output_shape.end(), kernel_size_.begin(), kernel_size_.end());
   } else {
-    for (int i = 0; i < static_cast<int>(kernel_size_.size()); ++i) {
+    for (int64_t i = 0; i < static_cast<int64_t>(kernel_size_.size()); ++i) {
       if ((!config.is_runtime) && (x_dims[i + 2] < 0)) {
         output_shape.push_back(x_dims[i + 2]);
       } else {
         output_shape.push_back(
-            funcs::MaxPoolOutputSize(static_cast<int>(x_dims[i + 2]),
+            funcs::MaxPoolOutputSize(static_cast<int64_t>(x_dims[i + 2]),
                                      kernel_size_[i],
                                      paddings_[i],
                                      strides[i],

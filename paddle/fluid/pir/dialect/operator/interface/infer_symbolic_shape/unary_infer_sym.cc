@@ -1957,12 +1957,12 @@ bool MaxPoolWithIndexOpInferSymbolicShape(
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
-  std::vector<int> paddings =
-      paddle::dialect::details::GetVectorAttr<int>(op, "paddings");
-  std::vector<int> strides =
-      paddle::dialect::details::GetVectorAttr<int>(op, "strides");
-  std::vector<int> kernel_size =
-      paddle::dialect::details::GetVectorAttr<int>(op, "kernel_size");
+  std::vector<int64_t> paddings =
+      paddle::dialect::details::GetVectorAttr<int64_t>(op, "paddings");
+  std::vector<int64_t> strides =
+      paddle::dialect::details::GetVectorAttr<int64_t>(op, "strides");
+  std::vector<int64_t> kernel_size =
+      paddle::dialect::details::GetVectorAttr<int64_t>(op, "kernel_size");
   bool adaptive = op->attribute<pir::BoolAttribute>("adaptive").data();
   bool ceil_mode = op->attribute<pir::BoolAttribute>("ceil_mode").data();
   bool global_pooling =
@@ -2039,10 +2039,10 @@ bool MaxPool2dWithIndexOpInferSymbolicShape(
                                       "but received %dD-Tensor",
                                       x_shape.size()));
 
-  std::vector<int> paddings =
-      paddle::dialect::details::GetVectorAttr<int>(op, "paddings");
-  std::vector<int> strides =
-      paddle::dialect::details::GetVectorAttr<int>(op, "strides");
+  std::vector<int64_t> paddings =
+      paddle::dialect::details::GetVectorAttr<int64_t>(op, "paddings");
+  std::vector<int64_t> strides =
+      paddle::dialect::details::GetVectorAttr<int64_t>(op, "strides");
 
   PADDLE_ENFORCE_EQ(
       paddings.size(),
@@ -2073,10 +2073,10 @@ bool MaxPool3dWithIndexOpInferSymbolicShape(
                                       "but received %dD-Tensor",
                                       x_shape.size()));
 
-  std::vector<int> paddings =
-      paddle::dialect::details::GetVectorAttr<int>(op, "paddings");
-  std::vector<int> strides =
-      paddle::dialect::details::GetVectorAttr<int>(op, "strides");
+  std::vector<int64_t> paddings =
+      paddle::dialect::details::GetVectorAttr<int64_t>(op, "paddings");
+  std::vector<int64_t> strides =
+      paddle::dialect::details::GetVectorAttr<int64_t>(op, "strides");
 
   PADDLE_ENFORCE_EQ(
       paddings.size(),

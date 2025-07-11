@@ -437,9 +437,9 @@ void MaxOutInferMeta(const MetaTensor& x,
                      MetaTensor* out);
 
 void MaxPoolWithIndexInferMeta(const MetaTensor& x,
-                               const std::vector<int>& kernel_size,
-                               const std::vector<int>& strides,
-                               const std::vector<int>& paddings,
+                               const std::vector<int64_t>& kernel_size,
+                               const std::vector<int64_t>& strides,
+                               const std::vector<int64_t>& paddings,
                                bool global_pooling,
                                bool adaptive,
                                bool ceil_mode,
