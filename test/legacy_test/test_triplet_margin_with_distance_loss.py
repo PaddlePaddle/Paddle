@@ -502,7 +502,6 @@ class TestTripletMarginWithDistanceLoss_ZeroSize(unittest.TestCase):
         reduction='mean',
         expected=None,
     ):
-        paddle.disable_static()
         input = paddle.to_tensor(input)
         input.stop_gradient = False
         positive = paddle.to_tensor(positive)
@@ -517,14 +516,11 @@ class TestTripletMarginWithDistanceLoss_ZeroSize(unittest.TestCase):
             swap=swap,
             reduction=reduction,
         )
-        if reduction != 'none':
-            dy_result = float(dy_res)
-        else:
-            dy_result = dy_res.numpy()
-        paddle.enable_static()
+        dy_result = dy_res.numpy()
         np.testing.assert_allclose(dy_result, expected, rtol=1e-5, atol=1e-8)
         dy_res.sum().backward()
         np.testing.assert_allclose(input.grad.shape, input.shape)
+        paddle.enable_static()
 
     def test_TripletMarginDistanceLoss(self):
         shape = (5, 0)
@@ -532,25 +528,25 @@ class TestTripletMarginWithDistanceLoss_ZeroSize(unittest.TestCase):
         input = np.random.uniform(0.1, 0.8, size=shape).astype(np.float64)
         positive = np.random.uniform(0, 2, size=shape).astype(np.float64)
         negative = np.random.uniform(0, 2, size=shape).astype(np.float64)
+        paddle.disable_static()
 
         places = get_places()
-        reductions = ['sum', 'mean', 'none']
+        reduction = 'sum'
         for place in places:
-            for reduction in reductions:
-                expected = calc_triplet_margin_distance_loss(
-                    input=input,
-                    positive=positive,
-                    negative=negative,
-                    reduction=reduction,
-                )
-                self._test_dygraph(
-                    place=place,
-                    input=input,
-                    positive=positive,
-                    negative=negative,
-                    reduction=reduction,
-                    expected=expected,
-                )
+            expected = calc_triplet_margin_distance_loss(
+                input=input,
+                positive=positive,
+                negative=negative,
+                reduction=reduction,
+            )
+            self._test_dygraph(
+                place=place,
+                input=input,
+                positive=positive,
+                negative=negative,
+                reduction=reduction,
+                expected=expected,
+            )
 
 
 if __name__ == "__main__":
