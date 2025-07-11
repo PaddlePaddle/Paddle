@@ -24,16 +24,13 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/elementwise_utils.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
+#include "paddle/phi/kernels/funcs/get_current_context.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
-#endif
-
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-#include "paddle/phi/backends/device_manager.h"
 #endif
 
 constexpr int ELEMWISE_MAX_BLOCK_DIM = 1024;
@@ -52,30 +49,6 @@ namespace phi {
 
 namespace funcs {
 using DDim = phi::DDim;
-
-inline int64_t GetCurrentDeviceMaxGridDim() {
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-  auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
-  int device_id = phi::DeviceManager::GetDevice(dev_types[0]);
-  auto gplace = phi::CustomPlace(dev_types[0], device_id);
-  auto *dev_ctx = static_cast<CustomContext *>(
-      phi::DeviceContextPool::Instance().Get(gplace));
-  int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
-  return max_grid_dim;
-#elif defined(PADDLE_WITH_CUDA)
-  auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
-  auto *dev_ctx =
-      static_cast<GPUContext *>(phi::DeviceContextPool::Instance().Get(gplace));
-  int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
-  return max_grid_dim;
-#else
-  PADDLE_THROW(common::errors::Unimplemented(
-      "Unsupported usage of GetCurrentDeviceMaxGridDim! This function only "
-      "support CUDA and "
-      "Custom Device."));
-  return 0;
-#endif
-}
 
 template <typename T, typename DX_OP, typename DY_OP, typename Tout = T>
 void CommonGradBroadcastCPU(const DenseTensor &x,
@@ -1039,7 +1012,8 @@ static void ElemwiseGradBroadcast1CUDA(gpuStream_t stream,
   if (w < half_walf || h < half_walf) {
     int block_size = std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), h);
     int64_t grid_size = w;
-    int64_t max_grid_dim = GetCurrentDeviceMaxGridDim();
+    auto *dev_ctx = phi::funcs::GetCurrentContext();
+    int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
     grid_size = std::min(grid_size, max_grid_dim);
     if (h * w > std::numeric_limits<int>::max()) {
       ElemwiseGradBroadcast1CUDAKernel<int64_t>
@@ -1055,7 +1029,8 @@ static void ElemwiseGradBroadcast1CUDA(gpuStream_t stream,
     // suppose performance improves with h increased.
     dim3 block_size = dim3(BLOCK_X, BLOCK_Y);
     int64_t grid_size = (w + BLOCK_X - 1) / BLOCK_X;
-    int64_t max_grid_dim = GetCurrentDeviceMaxGridDim();
+    auto *dev_ctx = phi::funcs::GetCurrentContext();
+    int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
     grid_size = std::min(grid_size, max_grid_dim);
     if (h * w > std::numeric_limits<int>::max()) {
       FastElemwiseGradBroadcast1CUDAKernel<int64_t>
@@ -1086,7 +1061,8 @@ static void ElemwiseGradBroadcast2CUDA(gpuStream_t stream,
   int block_size =
       std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), pre * post);
   int64_t grid_size = n;
-  int64_t max_grid_dim = GetCurrentDeviceMaxGridDim();
+  auto *dev_ctx = phi::funcs::GetCurrentContext();
+  int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
   grid_size = std::min(grid_size, max_grid_dim);
 
   if (pre * n * post > std::numeric_limits<int>::max()) {
@@ -1291,7 +1267,8 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
         int block_size =
             std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), h);
         int64_t grid_size = w;
-        int64_t max_grid_dim = GetCurrentDeviceMaxGridDim();
+        auto *dev_ctx = phi::funcs::GetCurrentContext();
+        int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
         grid_size = std::min(grid_size, max_grid_dim);
         if (use_int64_index) {
           CommonGradBroadcast1CUDAKernelHeight<int64_t>
@@ -1324,7 +1301,8 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
       } else {
         dim3 block_size = dim3(BLOCK_X, BLOCK_Y);
         int64_t grid_size = (w + BLOCK_X - 1) / BLOCK_X;
-        int64_t max_grid_dim = GetCurrentDeviceMaxGridDim();
+        auto *dev_ctx = phi::funcs::GetCurrentContext();
+        int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
         grid_size = std::min(grid_size, max_grid_dim);
         if (use_int64_index) {
           FastCommonGradBroadcastCUDAKernelHeight<int64_t>
@@ -1359,7 +1337,8 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
         int block_size =
             std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), h);
         int64_t grid_size = w;
-        int64_t max_grid_dim = GetCurrentDeviceMaxGridDim();
+        auto *dev_ctx = phi::funcs::GetCurrentContext();
+        int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
         grid_size = std::min(grid_size, max_grid_dim);
         if (use_int64_index) {
           CommonGradBroadcast1CUDAKernelHeight<int64_t>
@@ -1392,7 +1371,8 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
       } else {
         dim3 block_size = dim3(BLOCK_X, BLOCK_Y);
         int64_t grid_size = (w + BLOCK_X - 1) / BLOCK_X;
-        int64_t max_grid_dim = GetCurrentDeviceMaxGridDim();
+        auto *dev_ctx = phi::funcs::GetCurrentContext();
+        int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
         grid_size = std::min(grid_size, max_grid_dim);
         if (use_int64_index) {
           FastCommonGradBroadcastCUDAKernelHeight<int64_t>
@@ -1446,7 +1426,8 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
       int block_size =
           std::min(static_cast<int64_t>(ELEMWISE_MAX_BLOCK_DIM), h);
       int64_t grid_size = w;
-      int64_t max_grid_dim = GetCurrentDeviceMaxGridDim();
+      auto *dev_ctx = phi::funcs::GetCurrentContext();
+      int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
       grid_size = std::min(grid_size, max_grid_dim);
       if (use_int64_index) {
         ElemwiseGradBroadcast1CUDAKernel<int64_t>
@@ -1479,7 +1460,8 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
     } else {
       dim3 block_size = dim3(BLOCK_X, BLOCK_Y);
       int64_t grid_size = (w + BLOCK_X - 1) / BLOCK_X;
-      int64_t max_grid_dim = GetCurrentDeviceMaxGridDim();
+      auto *dev_ctx = phi::funcs::GetCurrentContext();
+      int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
       grid_size = std::min(grid_size, max_grid_dim);
       if (use_int64_index) {
         FastElemwiseGradBroadcast1CUDAKernel<int64_t>
@@ -1542,7 +1524,8 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
 
     int block_size = std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), mid);
     int64_t grid_size = pre * post;
-    int64_t max_grid_dim = GetCurrentDeviceMaxGridDim();
+    auto *dev_ctx = phi::funcs::GetCurrentContext();
+    int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
     grid_size = std::min(grid_size, max_grid_dim);
     if (pre * mid * post > std::numeric_limits<int32_t>::max()) {
       FastCommonGradBroadcastAllCUDAKernel<int64_t>
@@ -1605,7 +1588,8 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
           int block_size =
               std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), mid);
           int64_t grid_size = pre * post;
-          int64_t max_grid_dim = GetCurrentDeviceMaxGridDim();
+          auto *dev_ctx = phi::funcs::GetCurrentContext();
+          int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
           grid_size = std::min(grid_size, max_grid_dim);
           // we need to calc y offset with blockid, so do x_pre/y_pre to get
           // left size.
@@ -1656,7 +1640,8 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
           int block_size =
               std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), mid);
           int64_t grid_size = pre * post;
-          int64_t max_grid_dim = GetCurrentDeviceMaxGridDim();
+          auto *dev_ctx = phi::funcs::GetCurrentContext();
+          int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
           grid_size = std::min(grid_size, max_grid_dim);
           if (k_pre != pre) k_pre = pre / k_pre;
 
