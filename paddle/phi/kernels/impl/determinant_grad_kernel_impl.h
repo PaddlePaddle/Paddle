@@ -38,24 +38,27 @@ template <typename T>
 struct FoundZeroFunctor {
   using RealType = phi::dtype::Real<T>;
 
+  // epsilon_ should be smaller if linalg.det achieves higher precision
+  template <typename RealType>
+  inline constexpr RealType epsilon_v = 1e-3f;  // For float16
+
+  template <>
+  inline constexpr float epsilon_v<float> = 1e-5f;
+
+  template <>
+  inline constexpr double epsilon_v<double> = 1e-12;
+
   FoundZeroFunctor(const T* x, int64_t numel, bool* res)
-      : x_(x), numel_(numel), res_(res) {
-    // epsilon_ should be smaller if linalg.det achieves higher precision
-    if (std::is_same_v<RealType, float>) {
-      epsilon_ = 1e-5f;
-    } else if (std::is_same_v<RealType, double>) {
-      epsilon_ = 1e-12;
-    } else {  // For float16
-      epsilon_ = 1e-3f;
-    }
-  }
+      : x_(x), numel_(numel), res_(res), epsilon_(epsilon_v<RealType>) {}
 
   HOSTDEVICE void operator()(size_t idx) const {
     if (*res_ || idx >= static_cast<size_t>(numel_)) {
       // found a singular matrix
       return;
     }
-    *res_ = (abs(x_[idx]) < static_cast<RealType>(epsilon_));
+    if (abs(x_[idx]) < static_cast<RealType>(epsilon_)) {
+      *res_ = true;
+    }
   }
 
  private:
