@@ -386,6 +386,7 @@ class PipelineLayer(nn.Layer):
         num_virtual_pipeline_stages=None,
         use_cudagraph=False,
         use_dualpipev=False,
+        use_fused_shared_comm=False,
     ):
         super().__init__()
         if num_stages is None and topology is None:
@@ -665,13 +666,22 @@ class PipelineLayer(nn.Layer):
 
         hybrid_configs = fleet.fleet._user_defined_strategy.hybrid_configs
 
+        key_list = comm_keys
+        if self.use_fused_shared_comm:
+            key_list = layer_name_to_stage_idx.keys()
         # The third loop generates comm group for each comm key.
-        for comm_key in comm_keys:
-            shared_stages = comm_key_to_stage_idx[comm_key]
-            layer_name = comm_key_to_layer_name[comm_key]
-            shared_attrs = comm_key_to_shared_attrs[comm_key]
+        # if use_fused_shared_comm is True, generates comm group for each shared_layer
+        for key in key_list:
+            if self.use_fused_shared_comm:
+                shared_stages = layer_name_to_stage_idx[key]
+                layer_name = key
+                shared_attrs = layer_name_to_pivot_attrs[layer_name]
+            else:
+                shared_stages = comm_key_to_stage_idx[key]
+                layer_name = comm_key_to_layer_name[key]
+                shared_attrs = comm_key_to_shared_attrs[key]
             logger.info(
-                f'Constructing shared comm for {comm_key} among pp stages {shared_stages}, '
+                f'Constructing shared comm for {key} among pp stages {shared_stages}, '
                 f'this shared comm will communicate attrs: {shared_attrs}.'
             )
 
@@ -693,7 +703,7 @@ class PipelineLayer(nn.Layer):
                 )
                 if self.global_rank in shared_ranks:
                     assert layer_name in self.shared_layers
-                    shared_comm[comm_key] = {
+                    shared_comm[key] = {
                         "ranks": shared_ranks,
                         "group": group,
                         "weight_attr": shared_attrs,
@@ -707,7 +717,7 @@ class PipelineLayer(nn.Layer):
                             self.shared_layers[layer_name], weight_attr
                         )
                         shared_param.color = {
-                            "color": f"{SHARED_WEIGHT_SYNC_PREFIX}_{comm_key}",
+                            "color": f"{SHARED_WEIGHT_SYNC_PREFIX}_{key}",
                             "group": group,
                         }
         return shared_comm
