@@ -105,6 +105,7 @@ __device__ __forceinline__ float ScaleWrapper(const float amax,
 
 template <bool input_transpose,
           bool output_scale_transpose,
+          bool return_transpose_only,
           bool use_pow2_scale>
 __global__ void __launch_bounds__(256)
     quantize_128x128_kernel(const __nv_bfloat16 *const input,
@@ -218,10 +219,14 @@ __global__ void __launch_bounds__(256)
     const float output_scale = 1.0f / blockwise_scale;
     size_t row_idx = blockIdx.y;
     size_t col_idx = blockIdx.x;
-    if constexpr (output_scale_transpose) {
-      scale[col_idx * scale_stride_y + row_idx * scale_stride_x] = output_scale;
-    } else {
-      scale[row_idx * scale_stride_y + col_idx * scale_stride_x] = output_scale;
+    if constexpr (!return_transpose_only) {
+      if constexpr (output_scale_transpose) {
+        scale[col_idx * scale_stride_y + row_idx * scale_stride_x] =
+            output_scale;
+      } else {
+        scale[row_idx * scale_stride_y + col_idx * scale_stride_x] =
+            output_scale;
+      }
     }
 
     if constexpr (input_transpose) {
@@ -243,12 +248,16 @@ __global__ void __launch_bounds__(256)
       __nv_fp8_e4m3 output_fp8 = static_cast<__nv_fp8_e4m3>(
           static_cast<float>(thread_local_input[i].data.scalar[j]) *
           blockwise_scale);
-      thread_local_output.data.scalar[j] = output_fp8;
+      if constexpr (!return_transpose_only) {
+        thread_local_output.data.scalar[j] = output_fp8;
+      }
       if constexpr (input_transpose) {
         thread_local_output_transposed[j].data.scalar[i] = output_fp8;
       }
     }
-    thread_local_output.store(output + thread_base_idx + i * cols);
+    if constexpr (!return_transpose_only) {
+      thread_local_output.store(output + thread_base_idx + i * cols);
+    }
   }
   if constexpr (input_transpose) {
 #pragma unroll
@@ -339,6 +348,7 @@ __device__ void ComputeRowScale(const bf16x4_t x[8],
 
 template <bool input_transpose,
           bool output_scale_transpose,
+          bool return_transpose_only,
           bool use_pow2_scale>
 __global__ void __launch_bounds__(512)
     quantize_1x128_kernel(const __nv_bfloat16 *const input,
@@ -366,34 +376,36 @@ __global__ void __launch_bounds__(512)
     x[i] = *reinterpret_cast<const bf16x4_t *>(input + idx);
   }
 
-  // 2. Compute scale along the row.
-  ComputeRowScale<use_pow2_scale>(
-      x, block_scale, reinterpret_cast<__nv_bfloat16 *>(shm), epsilon);
+  if constexpr (!return_transpose_only) {
+    // 2. Compute scale along the row.
+    ComputeRowScale<use_pow2_scale>(
+        x, block_scale, reinterpret_cast<__nv_bfloat16 *>(shm), epsilon);
 
-  // 3. Write 1x128 scale.
-  if (threadIdx.y < 4) {
-    float scale_out = 1.0f / block_scale[threadIdx.y * 32 + threadIdx.x];
-    size_t col_idx = block_offset_y + threadIdx.y * 32 + threadIdx.x;
-    size_t row_idx = blockIdx.x;
-    if constexpr (output_scale_transpose) {
-      scale[row_idx * quanted_rows + col_idx] = scale_out;
-    } else {
-      scale[col_idx * quanted_rows + row_idx] = scale_out;
+    // 3. Write 1x128 scale.
+    if (threadIdx.y < 4) {
+      float scale_out = 1.0f / block_scale[threadIdx.y * 32 + threadIdx.x];
+      size_t col_idx = block_offset_y + threadIdx.y * 32 + threadIdx.x;
+      size_t row_idx = blockIdx.x;
+      if constexpr (output_scale_transpose) {
+        scale[row_idx * quanted_rows + col_idx] = scale_out;
+      } else {
+        scale[col_idx * quanted_rows + row_idx] = scale_out;
+      }
     }
-  }
 
-  // 4. Do quantization on X and write 128x128 output.
-  for (uint32_t i = 0; i < 8; i++) {
-    size_t col_idx = block_offset_y + threadIdx.y + i * 16;
-    size_t row_idx = block_offset_x + threadIdx.x * 4;
-    size_t idx = col_idx * rows + row_idx;
-    float scale_val = block_scale[i * 16 + threadIdx.y];
-    fp8x4_t data;
-    for (uint32_t j = 0; j < 4; j++) {
-      float x_scaled = static_cast<float>(x[i].val[j]) * scale_val;
-      data.val[j] = static_cast<__nv_fp8_e4m3>(x_scaled);
+    // 4. Do quantization on X and write 128x128 output.
+    for (uint32_t i = 0; i < 8; i++) {
+      size_t col_idx = block_offset_y + threadIdx.y + i * 16;
+      size_t row_idx = block_offset_x + threadIdx.x * 4;
+      size_t idx = col_idx * rows + row_idx;
+      float scale_val = block_scale[i * 16 + threadIdx.y];
+      fp8x4_t data;
+      for (uint32_t j = 0; j < 4; j++) {
+        float x_scaled = static_cast<float>(x[i].val[j]) * scale_val;
+        data.val[j] = static_cast<__nv_fp8_e4m3>(x_scaled);
+      }
+      *reinterpret_cast<fp8x4_t *>(output + idx) = data;
     }
-    *reinterpret_cast<fp8x4_t *>(output + idx) = data;
   }
 
   if constexpr (input_transpose) {
@@ -442,6 +454,7 @@ template <typename Context,
           bool using_1x128_vec_quant,
           bool input_transpose,
           bool output_scale_transpose,
+          bool return_transpose_only,
           bool using_pow2_scale>
 void FP8QuantBlockWiseKernelImpl(const Context &dev_ctx,
                                  const DenseTensor &X,
@@ -471,9 +484,11 @@ void FP8QuantBlockWiseKernelImpl(const Context &dev_ctx,
   auto kernel = using_1x128_vec_quant
                     ? quantize_1x128_kernel<input_transpose,
                                             output_scale_transpose,
+                                            return_transpose_only,
                                             using_pow2_scale>
                     : quantize_128x128_kernel<input_transpose,
                                               output_scale_transpose,
+                                              return_transpose_only,
                                               using_pow2_scale>;
   kernel<<<grid, block, 0, dev_ctx.stream()>>>(
       reinterpret_cast<const __nv_bfloat16 *>(X.data<phi::bfloat16>()),
@@ -500,6 +515,7 @@ void FP8QuantBlockWiseKernel(const Context &dev_ctx,
                              bool using_1x128_vec_quant,
                              bool input_transpose,
                              bool output_scale_transpose,
+                             bool return_transpose_only,
                              bool using_e5m2,
                              bool using_pow2_scale,
                              DenseTensor *out,
@@ -528,20 +544,24 @@ void FP8QuantBlockWiseKernel(const Context &dev_ctx,
               output_scale_transpose,
               k_output_scale_transpose,
               DISPATCH_BOOL(
-                  using_pow2_scale,
-                  k_using_pow2_scale,
-                  FP8QuantBlockWiseKernelImpl<Context,
-                                              k_using_1x128_vec_quant,
-                                              k_input_transpose,
-                                              k_output_scale_transpose,
-                                              k_using_pow2_scale>(
-                      dev_ctx,
-                      X,
-                      epsilon,
-                      out,
-                      scale,
-                      out_transposed,
-                      scale_transposed);))));
+                  return_transpose_only,
+                  k_return_transpose_only,
+                  DISPATCH_BOOL(
+                      using_pow2_scale,
+                      k_using_pow2_scale,
+                      FP8QuantBlockWiseKernelImpl<Context,
+                                                  k_using_1x128_vec_quant,
+                                                  k_input_transpose,
+                                                  k_output_scale_transpose,
+                                                  k_return_transpose_only,
+                                                  k_using_pow2_scale>(
+                          dev_ctx,
+                          X,
+                          epsilon,
+                          out,
+                          scale,
+                          out_transposed,
+                          scale_transposed);)))));
 }
 }  // namespace phi
 

@@ -477,7 +477,7 @@ class OpTest(unittest.TestCase):
             all_op_kernels = core._get_all_register_op_kernels()
             grad_op = op_type + '_grad'
             if grad_op in all_op_kernels.keys():
-                if is_mkldnn_op_test():
+                if is_onednn_op_test():
                     grad_op_kernels = all_op_kernels[grad_op]
                     for grad_op_kernel in grad_op_kernels:
                         if 'MKLDNN' in grad_op_kernel:
@@ -489,8 +489,10 @@ class OpTest(unittest.TestCase):
         def is_xpu_op_test():
             return hasattr(cls, "use_xpu") and cls.use_xpu
 
-        def is_mkldnn_op_test():
-            return hasattr(cls, "use_mkldnn") and cls.use_mkldnn
+        def is_onednn_op_test():
+            return (hasattr(cls, "use_mkldnn") and cls.use_mkldnn) or (
+                hasattr(cls, "use_onednn") and cls.use_onednn
+            )
 
         def is_rocm_op_test():
             return core.is_compiled_with_rocm()
@@ -534,7 +536,7 @@ class OpTest(unittest.TestCase):
                 not in op_accuracy_white_list.NO_FP64_CHECK_GRAD_OP_LIST
                 and not hasattr(cls, 'exist_fp64_check_grad')
                 and not is_xpu_op_test()
-                and not is_mkldnn_op_test()
+                and not is_onednn_op_test()
                 and not is_rocm_op_test()
                 and not is_custom_device_op_test()
                 and not cls.check_prim
@@ -578,6 +580,10 @@ class OpTest(unittest.TestCase):
                 and 'mkldnn_data_type' in self.attrs
                 and self.attrs['mkldnn_data_type'] == 'bfloat16'
             )
+            or (
+                hasattr(self, 'onednn_data_type')
+                and self.onednn_data_type == "bfloat16"
+            )
         )
 
     def is_float16_op(self):
@@ -599,13 +605,21 @@ class OpTest(unittest.TestCase):
                 and 'mkldnn_data_type' in self.attrs
                 and self.attrs['mkldnn_data_type'] == 'float16'
             )
+            or (
+                hasattr(self, 'onednn_data_type')
+                and self.onednn_data_type == "float16"
+            )
         )
 
-    def is_mkldnn_op(self):
-        return (hasattr(self, "use_mkldnn") and self.use_mkldnn) or (
-            hasattr(self, "attrs")
-            and "use_mkldnn" in self.attrs
-            and self.attrs["use_mkldnn"]
+    def is_onednn_op(self):
+        return (
+            (hasattr(self, "use_mkldnn") and self.use_mkldnn)
+            or (hasattr(self, "use_onednn") and self.use_onednn)
+            or (
+                hasattr(self, "attrs")
+                and "use_mkldnn" in self.attrs
+                and self.attrs["use_mkldnn"]
+            )
         )
 
     def is_xpu_op(self):
@@ -867,7 +881,7 @@ class OpTest(unittest.TestCase):
         self.__class__.op_type = (
             self.op_type
         )  # for ci check, please not delete it for now
-        if self.is_mkldnn_op():
+        if self.is_onednn_op():
             self.__class__.use_mkldnn = True
 
         if self.is_xpu_op():
@@ -2204,7 +2218,7 @@ class OpTest(unittest.TestCase):
     ):
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
-        if not self.is_mkldnn_op():
+        if not self.is_onednn_op():
             set_flags({"FLAGS_use_mkldnn": False})
 
         if hasattr(self, "use_custom_device") and self.use_custom_device:
@@ -2683,7 +2697,7 @@ class OpTest(unittest.TestCase):
             atol = 0
 
         if self.is_bfloat16_op():
-            if self.is_mkldnn_op():
+            if self.is_onednn_op():
                 check_dygraph = False
 
                 if (
@@ -2940,7 +2954,7 @@ class OpTest(unittest.TestCase):
         check_symbol_infer=True,
     ):
         self.__class__.op_type = self.op_type
-        if self.is_mkldnn_op():
+        if self.is_onednn_op():
             self.__class__.use_mkldnn = True
 
         if self.is_xpu_op():
@@ -3273,7 +3287,7 @@ class OpTest(unittest.TestCase):
         if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
 
-        if not self.is_mkldnn_op():
+        if not self.is_onednn_op():
             set_flags({"FLAGS_use_mkldnn": False})
 
         core._set_prim_all_enabled(False)
@@ -3382,7 +3396,7 @@ class OpTest(unittest.TestCase):
         op_attrs = self.attrs if hasattr(self, "attrs") else {}
         self._check_grad_helper()
         if self.is_bfloat16_op():
-            if self.is_mkldnn_op():
+            if self.is_onednn_op():
                 check_dygraph = False
             atol = max(atol, 0.01)
 
