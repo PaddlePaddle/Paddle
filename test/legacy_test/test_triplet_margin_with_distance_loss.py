@@ -490,7 +490,7 @@ class TestTripletMarginWithDistanceLossMargin(unittest.TestCase):
 
 
 class TestTripletMarginWithDistanceLoss_ZeroSize(unittest.TestCase):
-    def test_dygraph(
+    def _test_dygraph(
         self,
         place,
         input,
@@ -543,7 +543,7 @@ class TestTripletMarginWithDistanceLoss_ZeroSize(unittest.TestCase):
                     negative=negative,
                     reduction=reduction,
                 )
-                self.test_dygraph(
+                self._test_dygraph(
                     place=place,
                     input=input,
                     positive=positive,
