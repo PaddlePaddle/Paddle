@@ -85,4 +85,11 @@ jobs:
           cd /
           source ${{ github.workspace }}/../../../proxy
           bash "/tmp/entrypoint.sh"
+          sleep 30d
           '
+
+      - name: Terminate and delete the container
+        if: always()
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+          docker rm -f ${{ env.container_name }}
