@@ -28,7 +28,7 @@
 #include "pybind11/pytypes.h"
 
 COMMON_DECLARE_bool(check_cuda_error);
-
+COMMON_DECLARE_int32(call_stack_level);
 namespace egr {
 GradNodePyLayer::~GradNodePyLayer() {  // NOLINT
   pybind11::gil_scoped_acquire gil;
@@ -165,6 +165,10 @@ GradNodePyLayer::operator()(
   if (!outputs) {
     PADDLE_THROW(
         common::errors::External(pybind11::detail::error_string().c_str()));
+  }
+
+  if (FLAGS_call_stack_level == 3) {
+    this->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
   }
 
   VLOG(6) << "PyLayer backward function finish...";

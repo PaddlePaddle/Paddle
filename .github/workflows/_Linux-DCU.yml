@@ -23,7 +23,7 @@ defaults:
 
 jobs:
   check-bypass:
-    name: Check bypass for DCU
+    name: Check bypass
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: 'dcu'
