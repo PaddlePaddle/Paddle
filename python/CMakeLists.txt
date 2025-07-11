@@ -178,10 +178,6 @@ else()
       COMMAND cp -r ${PADDLE_SOURCE_DIR}/python/paddle
               ${PADDLE_BINARY_DIR}/python
       COMMAND cp -r ${PADDLE_SOURCE_DIR}/test ${PADDLE_BINARY_DIR}/
-      COMMAND
-        python3
-        ${PADDLE_SOURCE_DIR}/python/paddle/incubate/cc/tools/apy_to_axpr_json.py
-        ${PADDLE_BINARY_DIR}/python/paddle/apy
       DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
               pass_desc_py_proto ${PY_FILES})
     if(APPLE AND WITH_ARM)
