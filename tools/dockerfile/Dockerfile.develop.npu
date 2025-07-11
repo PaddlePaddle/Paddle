@@ -1,7 +1,11 @@
 # Docker Image for PaddlePaddle Ascend NPU
 
-FROM <baseimg>
+FROM registry.baidubce.com/device/paddle-cpu:ubuntu20-npu-base-x86_64-gcc84
 LABEL maintainer="PaddlePaddle Authors <paddle-dev@baidu.com>"
+
+ARG CANN_VERSION=8.0.T113
+ARG SYSTEM=x86_64
+ARG NPU_VERSION=910b
 
 # HwHiAiUser
 RUN groupadd -g 1000 HwHiAiUser && \

@@ -81,6 +81,7 @@ ENV CCACHE_MAXSIZE=80G \
     CCACHE_SLOPPINESS=clang_index_store,time_macros,include_file_mtime
 
 # Install XRE 5.0.21.21
+WORKDIR /opt
 ARG XRE_VERSION=5.0.21.21
 ARG XRE_INSTALL=/usr/local/xpu-${XRE_VERSION}
 RUN wget -q https://klx-sdk-release-public.su.bcebos.com/xre/kl3-release/${XRE_VERSION}/xre-ubuntu_2004-x86_64-${XRE_VERSION}.tar.gz && \

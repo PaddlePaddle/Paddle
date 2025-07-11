@@ -9,7 +9,7 @@ RUN yum install -y bzip2-devel openssh-server elfutils-devel diffutils libtool i
         sqlite-devel xz-devel wget curl-devel initscripts mesa-libGL numactl-devel pcre-devel \
         openssl-devel libjpeg-turbo-devel libpng-devel ninja-build pciutils libzstd-devel zstd
 
-COPY build_scripts /build_scripts
+COPY tools/dockerfile/build_scripts /build_scripts
 RUN bash /build_scripts/install_gcc.sh gcc82
 RUN ln -sf /usr/local/gcc-8.2/bin/gcc /usr/local/bin/gcc
 RUN ln -sf /usr/local/gcc-8.2/bin/g++ /usr/local/bin/g++
