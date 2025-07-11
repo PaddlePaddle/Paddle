@@ -158,7 +158,9 @@ inline static paddle::Tensor reshape_indexer(paddle::Tensor* index,
   shape.insert(shape.end(), dims_before, 1);
   shape.insert(shape.end(), orig_shape.begin(), orig_shape.end());
   shape.insert(shape.end(), dims_after, 1);
-  *index = reshape_ad_func(*index, shape);
+  phi::DenseTensor* index_ptr =
+      static_cast<phi::DenseTensor*>(index->impl().get());
+  index_ptr->Resize(phi::make_ddim(shape));
   return *index;
 }
 
