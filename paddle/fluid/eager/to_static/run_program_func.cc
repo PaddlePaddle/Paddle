@@ -16,6 +16,7 @@
 
 #include <vector>
 
+#include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/to_static/run_program_impl.h"
 #include "paddle/fluid/eager/to_static/run_program_utils.h"
@@ -245,6 +246,12 @@ std::vector<egr::AutogradMeta*> AttachAutoGradMeta(
     auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
     autograd_meta->SetPersistable(false);
     autograd_meta->SetStopGradient(GetValueBoolAttr(value, kAttrStopGradients));
+
+    if (!autograd_meta->GetMutableGradNode()) {
+      autograd_meta->SetGradNode(
+          std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
+    }
+
     result.push_back(autograd_meta);
   }
   return result;
