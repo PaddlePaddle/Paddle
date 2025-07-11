@@ -1,0 +1,36 @@
+name: CI-Windows
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [develop, release/**]
+
+permissions: read-all
+
+concurrency:
+  group: ${{ github.event.pull_request.number }}-Windows
+  cancel-in-progress: true
+
+env:
+  PR_ID: ${{ github.event.pull_request.number }}
+  COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+
+jobs:
+  clone:
+    name: Clone-windows
+    uses: ./.github/workflows/_Clone-windows.yml
+
+  win-openblas:
+    name: Windows-OPENBLAS
+    uses: ./.github/workflows/_Windows-OPENBLAS.yml
+    needs: clone
+
+  win-gpu:
+    name: Windows-GPU
+    uses: ./.github/workflows/_Windows-GPU.yml
+    needs: clone
+
+  win-inference:
+    name: Windows-Inference
+    uses: ./.github/workflows/_Windows-Inference.yml
+    needs: clone

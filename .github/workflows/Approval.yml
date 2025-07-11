@@ -15,7 +15,7 @@ jobs:
   check-approvers:
     name: Check approval
     runs-on:
-      group: HK-Clone
+      group: APPROVAL
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
