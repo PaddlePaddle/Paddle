@@ -1,0 +1,76 @@
+name: Clone-windows
+
+on:
+  workflow_call:
+
+permissions: read-all
+
+env:
+  PR_ID: ${{ github.event.pull_request.number }}
+  COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+  BRANCH: ${{ github.base_ref }}
+  ci_scripts: ${{ github.workspace }}\ci\windows
+  WORK_DIR: ${{ github.workspace }}\..
+
+defaults:
+  run:
+    shell: cmd
+
+jobs:
+  clone:
+    name: Clone Paddle
+    runs-on:
+      group: win-clone
+    steps:
+      - name: Git config
+        run: |
+          git config --global user.name "PaddleCI"
+          git config --global user.email "paddle_ci@example.com"
+          git config --global http.postBuffer 524288000
+          git config --global core.longpaths true
+
+      - name: Clone paddle
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+          fetch-depth: 1000
+
+      - name: Merge pr
+        run: |
+          git config --unset http.https://github.com/.extraheader
+          REM git submodule foreach --recursive sh -c "git config --local --unset-all 'http.https://github.com/.extraheader'"
+          REM git submodule foreach --recursive sh -c "git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'"
+          git switch %BRANCH%
+          git branch -D test
+          git gc
+          git switch -c test
+          git fetch origin pull/%PR_ID%/head:pr
+          git merge --no-ff pr
+          git branch -d pr
+          REM call %ci_scripts%\third_party_tag.bat
+
+      - name: Upload paddle to bos
+        working-directory: ..
+        env:
+          BCE_FILE: ${{ github.workspace }}\..\bce-python-sdk-new\BosClient.py
+        run: |
+          if not exist %WORK_DIR%\bce-python-sdk-new (
+            echo There is no bce in this PC, will install bce.
+            pip install wget
+            pip install shutil
+            echo Download package from https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz
+            python -c "import wget;wget.download('https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz')"
+            python -c "import shutil;shutil.unpack_archive('bos_new.tar.gz', extract_dir='./bce-python-sdk-new',format='gztar')"
+          )
+          python -m pip install pycryptodome
+          python -m pip install bce-python-sdk==0.8.74
+          tar -cf Paddle.tar Paddle && zstd Paddle.tar
+          python %BCE_FILE% Paddle.tar.zst paddle-github-action/windows/PR/%PR_ID%/%COMMIT_ID%
+          del Paddle.tar Paddle.tar.zst
+
+      - name: Clean env
+        run: |
+          cd ${{ github.workspace }}
+          git switch %BRANCH%
+          git branch -D test
+          git gc
