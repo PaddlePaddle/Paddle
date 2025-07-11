@@ -141,8 +141,6 @@ void SetValueGradKernelV2(const Context& dev_ctx,
                                         value_grad);
       // 0-dim will change to 1 dim so we need to set meta
       value_grad->set_meta(value_grad_orig.meta());
-      std::cout << "4 value_grad_orig: " << value_grad_orig.dims()
-                << " value_grad: " << value_grad->dims() << std::endl;
     }
   }
 }
