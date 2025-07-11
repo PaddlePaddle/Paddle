@@ -30,7 +30,7 @@ def fabricate_dispatch_result(
     broadcast_ratio=0.5,
 ):
     """Helper function to generate test data."""
-    hidden_states = paddle.randn([seqlen, token_length], dtype=data_type)
+    hidden_states = paddle.randn([seqlen, token_length]).astype(data_type)
 
     scale = paddle.empty([0])
     if data_type == "float8_e4m3fn":
@@ -93,7 +93,7 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
 
     SEQLEN = 16384
     TOKEN_LEN = 7168
-    DTYPES = ["bfloat16"]
+    DTYPES = ["float8_e4m3fn", "bfloat16"]
     EXPERT_NUMS = [4, 8, 16, 32, 64]
     TOPKS = [4, 8, 16]
 
@@ -141,7 +141,8 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
                 )
 
                 unpermute_input = (
-                    unzipped_tokens * unzipped_probs.unsqueeze(-1)
+                    unzipped_tokens.astype("float32")
+                    * unzipped_probs.unsqueeze(-1)
                 ).astype("bfloat16")
 
                 unzipped_tokens_recovered, expert_prob_topk_recovered = (
@@ -157,12 +158,13 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
 
                 # Check tensor recovery
                 max_abs_err, max_rel_err = tensor_max_abs_rel_err(
-                    hidden_states, unzipped_tokens_recovered
+                    hidden_states.astype("float32"),
+                    unzipped_tokens_recovered.astype("float32"),
                 )
 
                 self.assertLess(
                     max_rel_err,
-                    1e-2,
+                    1e-1 if dt == "float8_e4m3fn" else 1e-2,
                     f"Tokens relative error too large, permute-unpermute tokens max relative error: {max_rel_err}",
                 )
 

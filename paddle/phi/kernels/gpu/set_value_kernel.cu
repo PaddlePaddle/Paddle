@@ -42,6 +42,11 @@ void SetTensorValueKernelV2(const Context& dev_ctx,
                             const std::vector<int64_t>& decrease_axes,
                             const std::vector<int64_t>& none_axes,
                             DenseTensor* out) {
+  if (in.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
+
   auto in_dims = in.dims();
   auto meta = in.meta();
   std::vector<int64_t> starts_local = starts.GetData();

@@ -65,6 +65,8 @@ if(WITH_DISTRIBUTE)
     py_test_modules(test_conv3d_rule MODULES test_conv3d_rule)
     py_test_modules(test_depthwise_conv2d_rule MODULES
                     test_depthwise_conv2d_rule)
+    py_test_modules(test_conv2d_transpose_rule MODULES
+                    test_conv2d_transpose_rule)
   endif()
   # End of unittests WITH single card WITHOUT timeout
 
