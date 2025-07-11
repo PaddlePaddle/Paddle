@@ -502,6 +502,7 @@ class TestTripletMarginWithDistanceLoss_ZeroSize(unittest.TestCase):
         reduction='mean',
         expected=None,
     ):
+        paddle.disable_static(place)
         input = paddle.to_tensor(input)
         input.stop_gradient = False
         positive = paddle.to_tensor(positive)
@@ -528,7 +529,6 @@ class TestTripletMarginWithDistanceLoss_ZeroSize(unittest.TestCase):
         input = np.random.uniform(0.1, 0.8, size=shape).astype(np.float64)
         positive = np.random.uniform(0, 2, size=shape).astype(np.float64)
         negative = np.random.uniform(0, 2, size=shape).astype(np.float64)
-        paddle.disable_static()
 
         places = get_places()
         reduction = 'sum'
