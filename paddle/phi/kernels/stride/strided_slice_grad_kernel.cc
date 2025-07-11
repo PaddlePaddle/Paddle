@@ -44,6 +44,7 @@ void StridedSliceRawGradStridedKernel(const Context& dev_ctx,
   PD_VISIT_ALL_TYPES(x_grad->dtype(), "StridedSliceRawGradStridedKernel", ([&] {
                        phi::StridedTensorFill<data_t>(*x_grad, 0, x_grad);
                      }));
+  if (x_grad->numel() == 0) return;
   DenseTensor tmp;
   tmp.set_layout(out_grad.layout());
   tmp.set_lod(out_grad.lod());

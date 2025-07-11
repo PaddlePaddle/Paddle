@@ -133,6 +133,12 @@ void LUKernel(const Context& dev_ctx,
       2,
       ::common::errors::PreconditionNotMet(
           "Invalid input x dimensionality: %d (expected ≥2)", x.dims().size()));
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<int>(infos);
+    dev_ctx.template Alloc<int>(pivots);
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   int64_t largest_matrix = (1LL << 31) - 1;
   int64_t last = x.dims()[x.dims().size() - 1],
           second_last = x.dims()[x.dims().size() - 2];
