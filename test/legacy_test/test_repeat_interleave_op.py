@@ -438,7 +438,6 @@ class TestIndexSelectAPI(unittest.TestCase):
                 1e-5,
                 1e-5,
             )
-            print(8)
 
 
 if __name__ == '__main__':

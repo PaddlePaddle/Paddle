@@ -31,10 +31,6 @@ void RepeatInterleaveKernel(const Context& dev_ctx,
                     0,
                     common::errors::InvalidArgument(
                         "repeats must grater than 0, but got %d", repeats));
-  if (out && out->numel() == 0) {
-    dev_ctx.template Alloc<T>(out);
-    return;
-  }
   auto place = dev_ctx.GetPlace();
   auto cpu_place = phi::CPUPlace();
 
