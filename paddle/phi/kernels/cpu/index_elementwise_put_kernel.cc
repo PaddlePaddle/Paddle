@@ -35,6 +35,19 @@ void CPUIndexElementwisePutKernel(const phi::CPUContext& dev_ctx,
                                   DenseTensor* output) {
   int64_t numel = 0;
 
+  bool is_initialized = output->initialized();
+  bool is_same_place = true;
+
+  if (is_initialized) {
+    is_same_place = (input.place() == output->place());
+  }
+
+  T* output_ = dev_ctx.template Alloc<T>(output);
+
+  if (!is_initialized || !is_same_place) {
+    phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
+  }
+
   auto num_indices = index_dims.size();
 
   auto sizes = std::array<int64_t, 25>{};
@@ -73,7 +86,7 @@ void CPUIndexElementwisePutKernel(const phi::CPUContext& dev_ctx,
   using dtype = funcs::OpaqueType<sizeof(T)>;
 
   const char* in_ptr = reinterpret_cast<const char*>(value.data<T>());
-  char* out_ptr = reinterpret_cast<char*>(output->data<T>());
+  char* out_ptr = reinterpret_cast<char*>(output_);
 
   for (int64_t idx = 0; idx < N; idx++) {
     const auto offsets = offset_calc.cpu_get(idx);
@@ -113,7 +126,18 @@ void IndexElementwisePutKernel(const Context& dev_ctx,
                         index_type,
                         phi::DataType::INT64));
 
-  dev_ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
+
+  if (index.empty()) {
+    if (!out->initialized()) {
+      phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    }
+    return;
+  }
+
   if (out->numel() == 0) return;
   CPUIndexElementwisePutKernel<T, int64_t>(dev_ctx,
                                            x,
