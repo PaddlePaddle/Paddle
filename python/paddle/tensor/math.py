@@ -6742,6 +6742,11 @@ def diff(
             if x.dtype == paddle.bool or x.dtype == core.DataType.BOOL:
                 return _C_ops.logical_xor(input_back, input_front)
             else:
+                # NOTE(zrr1999): If input.numel() exceeds int32 range, elementwise_xxx two slices of the same variable may yield incorrect results.
+                if input_back.numel() >= 2**31:
+                    return _C_ops.subtract(
+                        paddle.clone(input_back), input_front
+                    )
                 return _C_ops.subtract(input_back, input_front)
         else:
             check_variable_and_dtype(
