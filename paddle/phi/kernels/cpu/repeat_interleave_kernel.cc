@@ -35,8 +35,6 @@ void RepeatInterleaveKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(out);
     return;
   }
-  auto place = dev_ctx.GetPlace();
-  auto cpu_place = phi::CPUPlace();
 
   auto input_dim = x.dims();
   if (dim < 0) {
@@ -50,15 +48,13 @@ void RepeatInterleaveKernel(const Context& dev_ctx,
     std::fill_n(index_vec.begin() + i * repeats, repeats, i);
   }
   index.Resize(common::make_ddim({index_size}));
-  if (place == cpu_place) {
-    DenseTensor x_copy = x;
-    phi::TensorFromVector<int>(index_vec, dev_ctx, &index);
+  DenseTensor x_copy = x;
+  phi::TensorFromVector<int>(index_vec, dev_ctx, &index);
 
-    auto output_dim = common::vectorize(x.dims());
-    output_dim[dim] = index_size;
-    out->Resize(common::make_ddim(output_dim));
-    phi::IndexSelectInner<Context, T, int>(dev_ctx, &x_copy, index, out, dim);
-  }
+  auto output_dim = common::vectorize(x.dims());
+  output_dim[dim] = index_size;
+  out->Resize(common::make_ddim(output_dim));
+  phi::IndexSelectInner<Context, T, int>(dev_ctx, &x_copy, index, out, dim);
 }
 
 template <typename T, typename Context>
