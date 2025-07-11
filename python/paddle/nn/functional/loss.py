@@ -2971,8 +2971,8 @@ def cross_entropy(
 
     if input_dims - 1 != label_dims and input_dims != label_dims:
         raise ValueError(
-            f'Expected nput_dims - 1 = label_dims or input_dims == label_dims\
-             (got nput_dims{input_dims}, label_dims{label_dims})'
+            f'Expected input_dims - 1 = label_dims or input_dims == label_dims\
+             (got input_dims{input_dims}, label_dims{label_dims})'
         )
 
     if label_smoothing > 0.0:
