@@ -3912,10 +3912,10 @@ def triplet_margin_with_distance_loss(
 
     if (
         not isinstance(positive_dist, paddle.pir.Value)
-        and not paddle.all(positive_dist > 0)
+        and not paddle.all(positive_dist >= 0)
     ) or (
         not isinstance(negative_dist, paddle.pir.Value)
-        and not paddle.all(negative_dist > 0)
+        and not paddle.all(negative_dist >= 0)
     ):
         raise ValueError(
             "The positive distance or negative distance should be greater than 0, "
