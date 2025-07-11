@@ -1191,6 +1191,22 @@ class UserDefinedGeneratorFunctionVariable(FunctionVariable):
         return None
 
 
+class InternalFunctionVariable(FunctionVariable):
+    # Handles internal implementations specific for SOT, such as passing hook functions.
+    # Refer to NoGradContextManagerVariable.getattr for usage examples.
+    def __init__(
+        self, fn: Callable[..., Any], graph: FunctionGraph, tracker: Tracker
+    ):
+        super().__init__(fn, graph, tracker)
+        self.fn = fn
+
+    def call_function(self, /, *args, **kwargs):
+        return self.fn(*args, **kwargs)
+
+    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        raise NotImplementedError
+
+
 class ClassVariable(CallableVariable):
     def __init__(self, class_: type, graph: FunctionGraph, tracker: Tracker):
         super().__init__(graph, tracker)

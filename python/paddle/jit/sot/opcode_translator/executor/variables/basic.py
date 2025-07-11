@@ -18,6 +18,7 @@ import dataclasses
 import operator
 import sys
 import types
+from contextlib import AbstractContextManager
 from enum import Enum
 from functools import cached_property, reduce
 from typing import TYPE_CHECKING, Any
@@ -2570,5 +2571,79 @@ class DataClassInstanceVariable(VariableBase):
                 tracker=tracker,
             )
             class_var.tracker = GetAttrTracker(var, "__class__")
+            return var
+        return None
+
+
+class ContextManagerVariable(VariableBase):
+    def __init__(
+        self,
+        value: AbstractContextManager,
+        graph: FunctionGraph,
+        tracker: Tracker,
+    ):
+        super().__init__(graph=graph, tracker=tracker)
+        self.value = value
+
+    def get_py_type(self):
+        return self.value.__class__
+
+    def get_py_value(self, allow_tensor=False):
+        return self.value
+
+    @VariableFactory.register_from_value()
+    def from_value(value: object, graph: FunctionGraph, tracker: Tracker):
+        if isinstance(value, AbstractContextManager):
+            var = ContextManagerVariable(
+                value,
+                graph=graph,
+                tracker=tracker,
+            )
+            return var
+        return None
+
+
+class NoGradContextManagerVariable(ContextManagerVariable):
+    def getattr(self, name: str, default=None):
+        from .callable import InternalFunctionVariable, MethodVariable
+
+        if name == "__enter__":
+            from ..function_graph import NoGradContext
+
+            def no_grap_enter(self):
+                self.graph.sir_builder._current_statement_ctxs.append(
+                    NoGradContext()
+                )
+                return self
+
+            variable = InternalFunctionVariable(
+                no_grap_enter, self.graph, DummyTracker([])
+            )
+            return MethodVariable(
+                self, variable, self.graph, GetAttrTracker(self, "__enter__")
+            )
+
+        if name == "__exit__":
+
+            def no_grad_exit(self, exc, value, traceback):
+                self.graph.sir_builder._current_statement_ctxs.pop()
+                return ConstantVariable.wrap_literal(False, graph=self.graph)
+
+            variable = InternalFunctionVariable(
+                no_grad_exit, self.graph, DummyTracker([])
+            )
+            return MethodVariable(
+                self, variable, self.graph, GetAttrTracker(self, "__exit__")
+            )
+        return super().getattr(name, default)
+
+    @VariableFactory.register_from_value(successor="ContextManagerVariable")
+    def from_value(value: object, graph: FunctionGraph, tracker: Tracker):
+        if isinstance(value, paddle.no_grad):
+            var = NoGradContextManagerVariable(
+                value,
+                graph=graph,
+                tracker=tracker,
+            )
             return var
         return None
