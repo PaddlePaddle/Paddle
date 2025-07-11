@@ -3154,7 +3154,7 @@ template <typename T>
 void kthvalue_grad(const Tensor& x,
                    const Tensor& indices,
                    const Tensor& out_grad,
-                   int k,
+                   int64_t k UNUSED,
                    int axis,
                    bool keepdim,
                    Tensor* x_grad) {

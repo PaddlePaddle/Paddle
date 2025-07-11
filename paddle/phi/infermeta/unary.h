@@ -403,7 +403,7 @@ void IsEmptyInferMeta(const MetaTensor& x, MetaTensor* out);
 void IsfiniteInferMeta(const MetaTensor& input, MetaTensor* out);
 
 void KthvalueInferMeta(const MetaTensor& x,
-                       int k,
+                       int64_t k,
                        int axis,
                        bool keepdim,
                        MetaTensor* out,

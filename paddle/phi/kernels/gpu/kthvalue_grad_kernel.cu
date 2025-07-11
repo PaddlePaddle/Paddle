@@ -37,7 +37,7 @@ void KthvalueGradKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& indices,
                         const DenseTensor& d_out,
-                        int k,
+                        int64_t k,
                         int axis,
                         bool keepdim,
                         DenseTensor* d_x) {
