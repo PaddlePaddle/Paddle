@@ -17,15 +17,15 @@
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/enforce.h"
 
-#if defined(__NVCC__) || defined(__HIPCC__)
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+#include "paddle/phi/backends/device_manager.h"
+#define CONTEXT_TYPE CustomContext
+#elif defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #define CONTEXT_TYPE GPUContext
-#endif
-
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-#include "paddle/phi/backends/device_manager.h"
-#define CONTEXT_TYPE CustomContext
+#else
+#define CONTEXT_TYPE DeviceContext
 #endif
 
 namespace phi {
