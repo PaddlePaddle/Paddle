@@ -446,15 +446,16 @@ void FractionalMaxPoolRawKernel(const Context& dev_ctx,
     return;
   }
 
-  std::vector<int> output_size_ = output_size;
+  std::vector<int64_t> output_size_(output_size.begin(), output_size.end());
+  std::vector<int64_t> kernel_size_(kernel_size.begin(), kernel_size.end());
 
   switch (output_size_.size()) {
     case 2: {
       funcs::FractionalMaxPool2dFunctor<Context, T1, T2> pool2d_forward;
       pool2d_forward(dev_ctx,
                      x,
-                     output_size,
-                     kernel_size,
+                     output_size_,
+                     kernel_size_,
                      random_u,
                      return_mask,
                      out,
@@ -464,8 +465,8 @@ void FractionalMaxPoolRawKernel(const Context& dev_ctx,
       funcs::FractionalMaxPool3dFunctor<Context, T1, T2> pool3d_forward;
       pool3d_forward(dev_ctx,
                      x,
-                     output_size,
-                     kernel_size,
+                     output_size_,
+                     kernel_size_,
                      random_u,
                      return_mask,
                      out,

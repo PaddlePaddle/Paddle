@@ -390,8 +390,8 @@ class FractionalMaxPool2dFunctor {
  public:
   void operator()(const Context& context,
                   const DenseTensor& input,
-                  const std::vector<int>& output_size,
-                  const std::vector<int>& kernel_size,
+                  const std::vector<int64_t>& output_size,
+                  const std::vector<int64_t>& kernel_size,
                   float random_u,
                   bool return_mask,
                   DenseTensor* output,
@@ -404,8 +404,8 @@ class FractionalMaxPool2dGradFunctor {
   void operator()(const Context& context,
                   const DenseTensor& output_grad,
                   const DenseTensor& mask,
-                  const std::vector<int>& output_size,
-                  const std::vector<int>& kernel_size,
+                  const std::vector<int64_t>& output_size,
+                  const std::vector<int64_t>& kernel_size,
                   float random_u,
                   bool return_mask,
                   DenseTensor* input_grad);
@@ -416,8 +416,8 @@ class FractionalMaxPool3dFunctor {
  public:
   void operator()(const Context& context,
                   const DenseTensor& input,
-                  const std::vector<int>& output_size,
-                  const std::vector<int>& kernel_size,
+                  const std::vector<int64_t>& output_size,
+                  const std::vector<int64_t>& kernel_size,
                   float random_u,
                   bool return_mask,
                   DenseTensor* output,
@@ -430,8 +430,8 @@ class FractionalMaxPool3dGradFunctor {
   void operator()(const Context& context,
                   const DenseTensor& output_grad,
                   const DenseTensor& mask,
-                  const std::vector<int>& output_size,
-                  const std::vector<int>& kernel_size,
+                  const std::vector<int64_t>& output_size,
+                  const std::vector<int64_t>& kernel_size,
                   float random_u,
                   bool return_mask,
                   DenseTensor* input_grad);

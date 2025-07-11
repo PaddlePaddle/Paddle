@@ -426,7 +426,9 @@ void FractionalMaxPoolGradRawKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T1>(dx);
     return;
   }
-  std::vector<int> output_size_ = output_size;
+
+  std::vector<int64_t> output_size_(output_size.begin(), output_size.end());
+  std::vector<int64_t> kernel_size_(kernel_size.begin(), kernel_size.end());
 
   if (dx) {
     dev_ctx.template Alloc<T1>(dx);
@@ -438,8 +440,8 @@ void FractionalMaxPoolGradRawKernel(const Context& dev_ctx,
         pool2d_backward(dev_ctx,
                         dout,
                         mask,
-                        output_size,
-                        kernel_size,
+                        output_size_,
+                        kernel_size_,
                         random_u,
                         return_mask,
                         dx);
@@ -449,8 +451,8 @@ void FractionalMaxPoolGradRawKernel(const Context& dev_ctx,
         pool3d_backward(dev_ctx,
                         dout,
                         mask,
-                        output_size,
-                        kernel_size,
+                        output_size_,
+                        kernel_size_,
                         random_u,
                         return_mask,
                         dx);
