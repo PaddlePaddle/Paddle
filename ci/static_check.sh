@@ -143,7 +143,6 @@ function exec_samplecode_checking() {
     type_checking_code=$?
 
     # summary
-    example_code_gpu=0
     summary_check_example_code_problems $[${example_code_gpu} + ${example_code}] "${example_info_gpu}\n${example_info}"
     summary_type_checking_problems $type_checking_code "$type_checking_info"
 
