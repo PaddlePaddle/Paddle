@@ -30,7 +30,8 @@ jobs:
   whl:
     name: Whl
     if: ${{ inputs.can-skip != 'true' }}
-    runs-on: ubuntu-latest
+    runs-on:
+      group: GZ_BD-CPU
     env:
       TASK: paddle-CI-${{ github.event.pull_request.number }}-CE-Framework-whl
     steps:
@@ -59,6 +60,11 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           bash ci/check_whl_size.sh
+
+      - name: Terminate and delete the container
+        if: always()
+        run: |
+          rm -rf * .[^.]*
 
   infer:
     name: Infer
