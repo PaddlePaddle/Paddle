@@ -220,9 +220,9 @@ void PoolRawKernel(const Context& dev_ctx,
 template <typename Context, typename T1, typename T2 = int>
 void MaxPoolWithIndexRawKernel(const Context& dev_ctx,
                                const DenseTensor& x,
-                               const std::vector<int>& kernel_size,
-                               const std::vector<int>& strides,
-                               const std::vector<int>& paddings,
+                               const std::vector<int64_t>& kernel_size,
+                               const std::vector<int64_t>& strides,
+                               const std::vector<int64_t>& paddings,
                                bool global_pooling,
                                bool adaptive,
                                DenseTensor* out,
@@ -246,7 +246,7 @@ void MaxPoolWithIndexRawKernel(const Context& dev_ctx,
   if (global_pooling) {
     for (size_t i = 0; i < kernel_size_.size(); ++i) {
       paddings_[i] = 0;
-      kernel_size_[i] = static_cast<int>(x.dims()[i + 2]);
+      kernel_size_[i] = static_cast<int64_t>(x.dims()[i + 2]);
     }
   }
 
@@ -355,9 +355,9 @@ void LPPool2dKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void MaxPool2dWithIndexKernel(const Context& dev_ctx,
                               const DenseTensor& x,
-                              const std::vector<int>& kernel_size,
-                              const std::vector<int>& strides,
-                              const std::vector<int>& paddings,
+                              const std::vector<int64_t>& kernel_size,
+                              const std::vector<int64_t>& strides,
+                              const std::vector<int64_t>& paddings,
                               bool global_pooling,
                               bool adaptive,
                               bool ceil_mode UNUSED,
@@ -406,9 +406,9 @@ void Pool3dKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void MaxPool3dWithIndexKernel(const Context& dev_ctx,
                               const DenseTensor& x,
-                              const std::vector<int>& kernel_size,
-                              const std::vector<int>& strides,
-                              const std::vector<int>& paddings,
+                              const std::vector<int64_t>& kernel_size,
+                              const std::vector<int64_t>& strides,
+                              const std::vector<int64_t>& paddings,
                               bool global_pooling,
                               bool adaptive,
                               bool ceil_mode UNUSED,

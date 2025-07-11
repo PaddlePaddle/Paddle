@@ -174,9 +174,9 @@ void MaxPoolWithIndexGradRawKernel(const Context& dev_ctx,
                                    const DenseTensor& x UNUSED,
                                    const DenseTensor& mask,
                                    const DenseTensor& dout,
-                                   const std::vector<int>& kernel_size,
-                                   const std::vector<int>& strides,
-                                   const std::vector<int>& paddings,
+                                   const std::vector<int64_t>& kernel_size,
+                                   const std::vector<int64_t>& strides,
+                                   const std::vector<int64_t>& paddings,
                                    bool global_pooling,
                                    bool adaptive,
                                    DenseTensor* dx) {
@@ -188,12 +188,14 @@ void MaxPoolWithIndexGradRawKernel(const Context& dev_ctx,
   std::vector<int64_t> kernel_size_(kernel_size.begin(), kernel_size.end());
   std::vector<int64_t> strides_(strides.begin(), strides.end());
 
+  std::cout << "kernel size 1 : " << kernel_size_.size() << std::endl;
   if (global_pooling) {
     for (size_t i = 0; i < kernel_size_.size(); ++i) {
       paddings_[i] = 0;
-      kernel_size_[i] = static_cast<int>(dx->dims()[i + 2]);
+      kernel_size_[i] = static_cast<int64_t>(dx->dims()[i + 2]);
     }
   }
+  std::cout << " kernel size: " << kernel_size_.size() << std::endl;
 
   if (dx) {
     dev_ctx.template Alloc<T1>(dx);
@@ -336,9 +338,9 @@ void MaxPool2dWithIndexGradKernel(const Context& dev_ctx,
                                   const DenseTensor& x,
                                   const DenseTensor& mask,
                                   const DenseTensor& dout,
-                                  const std::vector<int>& kernel_size,
-                                  const std::vector<int>& strides,
-                                  const std::vector<int>& paddings,
+                                  const std::vector<int64_t>& kernel_size,
+                                  const std::vector<int64_t>& strides,
+                                  const std::vector<int64_t>& paddings,
                                   bool global_pooling,
                                   bool adaptive,
                                   bool ceil_mode UNUSED,
@@ -393,9 +395,9 @@ void MaxPool3dWithIndexGradKernel(const Context& dev_ctx,
                                   const DenseTensor& x,
                                   const DenseTensor& mask,
                                   const DenseTensor& dout,
-                                  const std::vector<int>& kernel_size,
-                                  const std::vector<int>& strides,
-                                  const std::vector<int>& paddings,
+                                  const std::vector<int64_t>& kernel_size,
+                                  const std::vector<int64_t>& strides,
+                                  const std::vector<int64_t>& paddings,
                                   bool global_pooling,
                                   bool adaptive,
                                   bool ceil_mode UNUSED,

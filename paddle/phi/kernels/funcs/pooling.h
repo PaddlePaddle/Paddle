@@ -478,8 +478,11 @@ inline T PoolOutputSize(T input_size,
   return output_size;
 }
 
-inline int MaxPoolOutputSize(
-    int input_size, int filter_size, int padding, int stride, bool ceil_mode) {
+inline int MaxPoolOutputSize(int64_t input_size,
+                             int64_t filter_size,
+                             int64_t padding,
+                             int64_t stride,
+                             bool ceil_mode) {
   PADDLE_ENFORCE_NE(
       stride,
       0,
