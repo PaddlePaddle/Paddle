@@ -332,9 +332,9 @@ class MaxPool2dWithIndexFunctor {
  public:
   void operator()(const Context& context,
                   const DenseTensor& input,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
+                  const std::vector<int64_t>& ksize,
+                  const std::vector<int64_t>& strides,
+                  const std::vector<int64_t>& paddings,
                   bool adaptive,
                   DenseTensor* output,
                   DenseTensor* mask);
@@ -346,9 +346,9 @@ class MaxPool2dWithIndexGradFunctor {
   void operator()(const Context& context,
                   const DenseTensor& output_grad,
                   const DenseTensor& mask,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
+                  const std::vector<int64_t>& ksize,
+                  const std::vector<int64_t>& strides,
+                  const std::vector<int64_t>& paddings,
                   bool adaptive,
                   DenseTensor* input_grad);
 };
@@ -358,9 +358,9 @@ class MaxPool3dWithIndexFunctor {
  public:
   void operator()(const Context& context,
                   const DenseTensor& input,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
+                  const std::vector<int64_t>& ksize,
+                  const std::vector<int64_t>& strides,
+                  const std::vector<int64_t>& paddings,
                   bool adaptive,
                   DenseTensor* output,
                   DenseTensor* mask);
@@ -372,9 +372,9 @@ class MaxPool3dWithIndexGradFunctor {
   void operator()(const Context& context,
                   const DenseTensor& output_grad,
                   const DenseTensor& mask,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
+                  const std::vector<int64_t>& ksize,
+                  const std::vector<int64_t>& strides,
+                  const std::vector<int64_t>& paddings,
                   bool adaptive,
                   DenseTensor* input_grad);
 };

@@ -184,8 +184,9 @@ void MaxPoolWithIndexGradRawKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T1>(dx);
     return;
   }
-  std::vector<int> paddings_ = paddings;
-  std::vector<int> kernel_size_ = kernel_size;
+  std::vector<int64_t> paddings_(paddings.begin(), paddings.end());
+  std::vector<int64_t> kernel_size_(kernel_size.begin(), kernel_size.end());
+  std::vector<int64_t> strides_(strides.begin(), strides.end());
 
   if (global_pooling) {
     for (size_t i = 0; i < kernel_size_.size(); ++i) {
@@ -205,7 +206,7 @@ void MaxPoolWithIndexGradRawKernel(const Context& dev_ctx,
                         dout,
                         mask,
                         kernel_size_,
-                        strides,
+                        strides_,
                         paddings_,
                         adaptive,
                         dx);
@@ -216,7 +217,7 @@ void MaxPoolWithIndexGradRawKernel(const Context& dev_ctx,
                         dout,
                         mask,
                         kernel_size_,
-                        strides,
+                        strides_,
                         paddings_,
                         adaptive,
                         dx);
