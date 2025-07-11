@@ -165,6 +165,7 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
                   rulebook_len,
                   out_channels,
                   out_grad_features_ptr);
+
   const T* kernel_ptr = kernel.data<T>();
   T* tmp_d_x_ptr = nullptr;
   T* tmp_d_kernel_ptr = nullptr;

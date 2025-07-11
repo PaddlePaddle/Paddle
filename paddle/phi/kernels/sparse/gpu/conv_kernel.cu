@@ -193,7 +193,6 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                                     rulebook,
                                     counter);
   }
-
   if (subm) {
     auto config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
