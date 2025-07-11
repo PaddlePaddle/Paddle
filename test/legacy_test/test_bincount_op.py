@@ -318,5 +318,12 @@ class TestTensorMinlength(unittest.TestCase):
             np.testing.assert_allclose(static_out[0], infer_out)
 
 
+class TestBincountOp_ZeroSize(TestBincountOp):
+    def init_test_case(self):
+        self.minlength = 0
+        self.np_input = np.random.randint(low=0, high=20, size=0)
+        self.Out = np.bincount(self.np_input, minlength=self.minlength)
+
+
 if __name__ == "__main__":
     unittest.main()

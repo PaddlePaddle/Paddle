@@ -19,7 +19,7 @@ from op_test import OpTest
 from test_fusion_lstm_op import ACTIVATION, fusion_lstm
 
 
-class TestFusionLSTMINT8MKLDNNOp(OpTest):
+class TestFusionLSTMINT8ONEDNNOp(OpTest):
     def set_confs(self):
         pass
 
@@ -34,8 +34,8 @@ class TestFusionLSTMINT8MKLDNNOp(OpTest):
         self.act_gate = 'sigmoid'
         self.act_cand = 'tanh'
         self.use_peepholes = False  # LSTM u8 doesn't support peepholes
-        self.use_mkldnn = True
-        self.mkldnn_data_type = "int8"
+        self.use_onednn = True
+        self.onednn_data_type = "int8"
         self.force_fp32_output = False
         self.error_margin = 1e-5
         self.set_confs()
@@ -130,8 +130,8 @@ class TestFusionLSTMINT8MKLDNNOp(OpTest):
             'candidate_activation': self.act_cand,
             'is_reverse': self.is_reverse,
             'use_peepholes': self.use_peepholes,
-            'use_mkldnn': self.use_mkldnn,
-            'mkldnn_data_type': self.mkldnn_data_type,
+            'use_mkldnn': self.use_onednn,
+            'mkldnn_data_type': self.onednn_data_type,
             'force_fp32_output': self.force_fp32_output,
             'Scale_data': scale_data,
             'Shift_data': shift_data,
@@ -149,17 +149,17 @@ class TestFusionLSTMINT8MKLDNNOp(OpTest):
             )
 
 
-class TestFusionLSTMINT8MKLDNNOp2(TestFusionLSTMINT8MKLDNNOp):
+class TestFusionLSTMINT8ONEDNNOp2(TestFusionLSTMINT8ONEDNNOp):
     def set_confs(self):
         self.force_fp32_output = True
 
 
-class TestFusionLSTMINT8MKLDNNOp4(TestFusionLSTMINT8MKLDNNOp):
+class TestFusionLSTMINT8ONEDNNOp4(TestFusionLSTMINT8ONEDNNOp):
     def set_confs(self):
         self.is_reverse = True
 
 
-class TestFusionLSTMINT8MKLDNNOp5(TestFusionLSTMINT8MKLDNNOp):
+class TestFusionLSTMINT8ONEDNNOp5(TestFusionLSTMINT8ONEDNNOp):
     def set_confs(self):
         self.has_initial_state = True
 

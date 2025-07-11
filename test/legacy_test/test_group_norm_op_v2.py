@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
+from op_test import get_places
 from utils import dygraph_guard
 
 import paddle
@@ -64,17 +64,7 @@ class TestGroupNormAPIV2_With_General_Dimensions(unittest.TestCase):
             (2, 6, 6, 6, 2, 3),
         ]
         np.random.seed(10)
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
-            places.append(base.CUDAPlace(0))
-
-        for place in places:
+        for place in get_places():
             for shape in shapes:
                 scale = np.array([1]).astype("float32")
                 bias = np.array([0]).astype("float32")
@@ -100,17 +90,8 @@ class TestGroupNormAPIV2_With_NCL(unittest.TestCase):
         paddle.disable_static()
         shape = (2, 6, 4)
         np.random.seed(10)
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
-            places.append(base.CUDAPlace(0))
 
-        for place in places:
+        for place in get_places():
             paddle.disable_static(place)
             scale = np.array([1]).astype("float32")
             bias = np.array([0]).astype("float32")
@@ -140,17 +121,7 @@ class TestGroupNormAPIV2_With_NCDHW(unittest.TestCase):
         paddle.disable_static()
         shape = (2, 6, 4, 2, 2)
         np.random.seed(10)
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
-            places.append(base.CUDAPlace(0))
-
-        for place in places:
+        for place in get_places():
             paddle.disable_static(place)
             scale = np.array([1]).astype("float32")
             bias = np.array([0]).astype("float32")
@@ -214,17 +185,7 @@ class TestGroupNormAPIV2_With_NHWC(unittest.TestCase):
         paddle.disable_static()
         shape = (2, 4, 2, 6)
         np.random.seed(10)
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
-            places.append(base.CUDAPlace(0))
-
-        for place in places:
+        for place in get_places():
             paddle.disable_static(place)
             scale = np.array([1]).astype("float32")
             bias = np.array([0]).astype("float32")
@@ -254,17 +215,7 @@ class TestGroupNormAPIV2_With_NDHWC(unittest.TestCase):
         paddle.disable_static()
         shape = (2, 4, 2, 2, 6)
         np.random.seed(10)
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
-            places.append(base.CUDAPlace(0))
-
-        for place in places:
+        for place in get_places():
             paddle.disable_static(place)
             scale = np.array([1]).astype("float32")
             bias = np.array([0]).astype("float32")
@@ -303,17 +254,7 @@ class TestGroupNormAPIV2_With_General_Dimensions_fp16(unittest.TestCase):
             (2, 6, 6, 6, 256, 3),
         ]
         np.random.seed(10)
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
-            places.append(base.CUDAPlace(0))
-
-        for place in places:
+        for place in get_places():
             for shape in shapes:
                 scale = np.array([1]).astype("float32")
                 bias = np.array([0]).astype("float32")
@@ -350,17 +291,7 @@ class TestGroupNormAPIV2_With_NCL_fp16(unittest.TestCase):
         paddle.disable_static()
         shape = (2, 6, 4)
         np.random.seed(10)
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
-            places.append(base.CUDAPlace(0))
-
-        for place in places:
+        for place in get_places():
             paddle.disable_static(place)
             scale = np.array([1]).astype("float32")
             bias = np.array([0]).astype("float32")
@@ -401,17 +332,7 @@ class TestGroupNormAPIV2_With_NCDHW_fp16(unittest.TestCase):
         paddle.disable_static()
         shape = (2, 6, 4, 2, 2)
         np.random.seed(10)
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
-            places.append(base.CUDAPlace(0))
-
-        for place in places:
+        for place in get_places():
             paddle.disable_static(place)
             scale = np.array([1]).astype("float32")
             bias = np.array([0]).astype("float32")
@@ -452,17 +373,7 @@ class TestGroupNormAPIV2_With_NLC_fp16(unittest.TestCase):
         paddle.disable_static()
         shape = (2, 4, 6)
         np.random.seed(10)
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
-            places.append(base.CUDAPlace(0))
-
-        for place in places:
+        for place in get_places():
             paddle.disable_static(place)
             scale = np.array([1]).astype("float32")
             bias = np.array([0]).astype("float32")
@@ -503,17 +414,7 @@ class TestGroupNormAPIV2_With_NHWC_fp16(unittest.TestCase):
         paddle.disable_static()
         shape = (2, 4, 2, 6)
         np.random.seed(10)
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
-            places.append(base.CUDAPlace(0))
-
-        for place in places:
+        for place in get_places():
             paddle.disable_static(place)
             scale = np.array([1]).astype("float32")
             bias = np.array([0]).astype("float32")
@@ -554,17 +455,7 @@ class TestGroupNormAPIV2_With_NDHWC_fp16(unittest.TestCase):
         paddle.disable_static()
         shape = (2, 4, 2, 2, 6)
         np.random.seed(10)
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
-            places.append(base.CUDAPlace(0))
-
-        for place in places:
+        for place in get_places():
             paddle.disable_static(place)
             scale = np.array([1]).astype("float32")
             bias = np.array([0]).astype("float32")
@@ -606,17 +497,7 @@ class TestGroupNormAPIV2_ZeroSize(unittest.TestCase):
             [(0, 1, 0, 0, 1), 1],
         ]
         np.random.seed(10)
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
-            places.append(base.CUDAPlace(0))
-
-        for place in places:
+        for place in get_places():
             paddle.disable_static(place)
             for shape_group in shape_groups:
                 shape = shape_group[0]

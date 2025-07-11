@@ -72,23 +72,23 @@ enum LabelType {
   Reduction,    // A, B
 };
 
-// map a label('a' - 'z') -> int, O(1) speed.
+// map a label('a' - 'z') -> int64_t, O(1) speed.
 class LabelMap {
   constexpr static int N =
       26 + 1;  // 'a' - 'z' + '.', '.' is for broadcast dims
-  int default_value;
-  int map[N];
+  int64_t default_value;
+  int64_t map[N];
 
  public:
-  explicit LabelMap(int default_value = 0) {
+  explicit LabelMap(int64_t default_value = 0) {
     this->default_value = default_value;
     for (size_t i = 0; i < N; ++i) map[i] = default_value;
   }
-  int& operator[](int label) {
+  int64_t& operator[](int label) {
     int i = label - 'a';
     return map[i];
   }
-  int operator[](int label) const {
+  int64_t operator[](int label) const {
     int i = label - 'a';
     return map[i];
   }
@@ -204,7 +204,7 @@ inline static void InferLabelShape(
     const std::vector<std::string>& op_labels,
     const std::vector<DDim>& inputs,
     LabelMap* labelshape,
-    std::vector<std::vector<int>>* broadcast_shapes) {
+    std::vector<std::vector<int64_t>>* broadcast_shapes) {
   VLOG(5) << "Start InferLabelShape";
   for (size_t i = 0; i < op_labels.size(); ++i) {
     auto& op_str = op_labels[i];
@@ -212,7 +212,7 @@ inline static void InferLabelShape(
     int dim_ptr = 0;
     for (auto& c : op_str) {
       if (!labelshape->exist(c) || abs((*labelshape)[c]) == 1) {
-        (*labelshape)[c] = static_cast<int>(op_dim[dim_ptr]);
+        (*labelshape)[c] = op_dim[dim_ptr];
       } else if (abs(op_dim[dim_ptr]) != 1) {
         PADDLE_ENFORCE_EQ(
             (*labelshape)[c],
@@ -248,7 +248,7 @@ inline static void InferLabelPerm(const CharIterable& op,
 
 inline static void InferOutputDims(const std::string& right,
                                    const LabelMap& labelshape,
-                                   std::vector<int>* output_dims) {
+                                   std::vector<int64_t>* output_dims) {
   for (int c : right) {
     output_dims->push_back(labelshape[c]);
   }
@@ -261,8 +261,8 @@ inline static void ParseEinsumEquation(
     LabelMap* labeltype,
     std::vector<char>* all_labels,
     std::vector<LabelMap>* label2perms,
-    std::vector<std::vector<int>>* broadcast_shapes,
-    std::vector<int>* output_dims,
+    std::vector<std::vector<int64_t>>* broadcast_shapes,
+    std::vector<int64_t>* output_dims,
     std::string* right,
     std::vector<std::string>* input_strs) {
   VLOG(5) << "Start ParseEinsumEquation " << equation;
@@ -351,7 +351,7 @@ DenseTensor Undiagonal(const Context& dev_ctx,
   // output is (3, 4, 5, 2, 1, 5)
   VLOG(5) << "Start undiagonal with args: insert_pos = " << insert_pos
           << ", axis = " << axis;
-  std::vector<int> shape(tensor.dims().size() + 1);
+  std::vector<int64_t> shape(tensor.dims().size() + 1);
   int point = 0;  // point to the tensor.dims()
   for (size_t i = 0; i < shape.size(); ++i) {
     if (i == insert_pos)
@@ -391,17 +391,18 @@ DenseTensor PerformUndiagonal(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-DenseTensor PerformDiagonalAndReduction(const Context& dev_ctx,
-                                        const DenseTensor& tensor,
-                                        const std::string& equ,
-                                        const LabelMap& label2perm,
-                                        const std::vector<char>& all_labels,
-                                        const std::vector<int>& broadcast_shape,
-                                        const LabelMap& label2type) {
+DenseTensor PerformDiagonalAndReduction(
+    const Context& dev_ctx,
+    const DenseTensor& tensor,
+    const std::string& equ,
+    const LabelMap& label2perm,
+    const std::vector<char>& all_labels,
+    const std::vector<int64_t>& broadcast_shape,
+    const LabelMap& label2type) {
   auto res = tensor;
   int tot = equ.size();
   // tiling tensor for broadcast
-  std::vector<int> repeat_times;
+  std::vector<int64_t> repeat_times;
   auto tensor_origin_shape = common::vectorize(tensor.dims());
   for (size_t i = 0; i < tensor_origin_shape.size(); ++i) {
     VLOG(4) << "broadcast shape is " << broadcast_shape[i]
@@ -409,8 +410,9 @@ DenseTensor PerformDiagonalAndReduction(const Context& dev_ctx,
     repeat_times.push_back(broadcast_shape[i] / tensor_origin_shape[i]);
   }
   DenseTensor after_tile;
-  bool is_all_ones = std::all_of(
-      repeat_times.begin(), repeat_times.end(), [](int x) { return x == 1; });
+  bool is_all_ones = std::all_of(repeat_times.begin(),
+                                 repeat_times.end(),
+                                 [](int64_t x) { return x == 1; });
   if (!is_all_ones) {
     TileKernel<T, Context>(dev_ctx, res, repeat_times, &after_tile);
     res = after_tile;
@@ -423,7 +425,7 @@ DenseTensor PerformDiagonalAndReduction(const Context& dev_ctx,
       // do diagonal, followed by movedim().
       VLOG(5) << "Do diagonal with shape="
               << paddle::string::join_strings(
-                     common::vectorize<int>(res.dims()), ',')
+                     common::vectorize<int64_t>(res.dims()), ',')
               << ", axis1=" << cur << ", axis2=" << label2perm[c];
       res = Diagonal<T, Context>(dev_ctx, res, 0, cur, label2perm[c]);
       res = Transpose<T, Context>(
@@ -474,23 +476,23 @@ DenseTensor PerformContraction(
     const std::vector<char>& all_labels,
     const LabelMap& label2type,
     const LabelMap& label2shape,
-    const std::vector<std::vector<int>>& broadcast_shapes,
+    const std::vector<std::vector<int64_t>>& broadcast_shapes,
     std::vector<DenseTensor*> cache,
     bool use_cache) {
   auto all_valid = LabelMap(1);
-  auto recover_dim = GetShapeByType<int>(
+  auto recover_dim = GetShapeByType<int64_t>(
       all_labels, label2type, all_valid, label2shape, {LabelType::Batch});
   auto preprocess = [&](const DenseTensor& t,
                         const LabelMap& perm,
-                        const std::vector<int>& broadcast,
+                        const std::vector<int64_t>& broadcast,
                         int operand_idx) -> DenseTensor {
     // reshape
-    auto frees = GetShapeByType<int>(all_labels,
-                                     label2type,
-                                     perm,
-                                     label2shape,
-                                     {LabelType::AO, LabelType::BO});
-    auto conts = GetShapeByType<int>(
+    auto frees = GetShapeByType<int64_t>(all_labels,
+                                         label2type,
+                                         perm,
+                                         label2shape,
+                                         {LabelType::AO, LabelType::BO});
+    auto conts = GetShapeByType<int64_t>(
         all_labels, label2type, perm, label2shape, {LabelType::Contraction});
     std::vector<char> reordered_all_labels = all_labels;
     if (operand_idx == 1) {
@@ -526,19 +528,19 @@ DenseTensor PerformContraction(
                 << "]: " << trans_t.dims();
       }
     }
-    auto mul_dims = GetShapeByType<int>(
+    auto mul_dims = GetShapeByType<int64_t>(
         all_labels, label2type, perm, label2shape, {LabelType::Batch});
     recover_dim.insert(recover_dim.end(), frees.begin(), frees.end());
     if (operand_idx == 0) {
       mul_dims.push_back(std::accumulate(
-          frees.begin(), frees.end(), 1, std::multiplies<int>()));
+          frees.begin(), frees.end(), 1, std::multiplies<int64_t>()));
       mul_dims.push_back(std::accumulate(
-          conts.begin(), conts.end(), 1, std::multiplies<int>()));
+          conts.begin(), conts.end(), 1, std::multiplies<int64_t>()));
     } else {
       mul_dims.push_back(std::accumulate(
-          conts.begin(), conts.end(), 1, std::multiplies<int>()));
+          conts.begin(), conts.end(), 1, std::multiplies<int64_t>()));
       mul_dims.push_back(std::accumulate(
-          frees.begin(), frees.end(), 1, std::multiplies<int>()));
+          frees.begin(), frees.end(), 1, std::multiplies<int64_t>()));
     }
     VLOG(5) << "PerformContraction: mul_dims: "
             << paddle::string::join_strings(mul_dims, ",");
@@ -608,8 +610,8 @@ void EinsumKernelImpl(const Context& dev_ctx,
   LabelMap labeltype(LabelType::Reduction);
   std::vector<LabelMap> label2perms(inputs.size(), LabelMap(-1));
   std::vector<char> all_labels;  // order: ABO, AO, BO, AB, Reduce
-  std::vector<std::vector<int>> broadcast_shapes(2);
-  std::vector<int> output_dims;
+  std::vector<std::vector<int64_t>> broadcast_shapes(2);
+  std::vector<int64_t> output_dims;
 
   std::vector<DDim> input_dims;
   for (auto& i : inputs) {

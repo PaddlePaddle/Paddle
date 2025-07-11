@@ -703,21 +703,21 @@ inline void CombineTransposeDim3(const DDim& shape,
 
 template <typename T>
 struct TransposeSimple {
-  static bool Run(const phi::GPUContext& ctx,
+  static bool Run(const phi::GPUContext& dev_ctx,
                   const phi::DenseTensor& in,
                   const std::vector<int32_t>& perm,
                   phi::DenseTensor* out,
                   const int64_t numel) {
     if (numel >= std::numeric_limits<int32_t>::max()) {
-      return RunImpl<int64_t>(ctx, in, perm, out);
+      return RunImpl<int64_t>(dev_ctx, in, perm, out);
     } else {
-      return RunImpl<int32_t>(ctx, in, perm, out);
+      return RunImpl<int32_t>(dev_ctx, in, perm, out);
     }
   }
 
  private:
   template <typename IndexType = int32_t>
-  static bool RunImpl(const phi::GPUContext& ctx,
+  static bool RunImpl(const phi::GPUContext& dev_ctx,
                       const phi::DenseTensor& in,
                       const std::vector<int32_t>& perm,
                       phi::DenseTensor* out) {
@@ -733,16 +733,19 @@ struct TransposeSimple {
     if (new_perm.size() == 2 && new_perm[1] == 0) {
       // Add the first dimension size as 1.
       new_dims.insert(new_dims.begin(), 1);
-      SwapDim1And2InTranspose<T, IndexType>()(ctx, in_data, new_dims, out_data);
+      SwapDim1And2InTranspose<T, IndexType>()(
+          dev_ctx, in_data, new_dims, out_data);
       return true;
     } else if (new_perm == std::vector<int>({0, 2, 1})) {
-      SwapDim1And2InTranspose<T, IndexType>()(ctx, in_data, new_dims, out_data);
+      SwapDim1And2InTranspose<T, IndexType>()(
+          dev_ctx, in_data, new_dims, out_data);
       return true;
     } else if (new_perm == std::vector<int>({2, 1, 0})) {
       // Maybe can optimize later, find a way to do coalescing memory copy.
       // But I think it depends on the data size. If span is not large,
       // maybe can do coalescing.
-      SwapDim0And2InTranspose<T, IndexType>()(ctx, in_data, new_dims, out_data);
+      SwapDim0And2InTranspose<T, IndexType>()(
+          dev_ctx, in_data, new_dims, out_data);
       return true;
     } else {
       return false;
@@ -1215,7 +1218,7 @@ __global__ void BatchTransposeKernel(const T* __restrict__ src_data,
 template <typename T, typename IndexT, int VecSize>
 struct PermuteLauncher {
  public:
-  void operator()(const phi::GPUContext& ctx,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const int& rank,
                   const IndexT& count,
                   const PermuteType& perm_type,
@@ -1225,10 +1228,10 @@ struct PermuteLauncher {
                   T* dst) {
     dims_ = dims;
     main_cnt_ = count / VecSize;
-#define CALL_PERMUTE_DISPATCH_RANK(rank_)              \
-  case rank_: {                                        \
-    Run<rank_>(ctx, perm, perm_type, count, src, dst); \
-    break;                                             \
+#define CALL_PERMUTE_DISPATCH_RANK(rank_)                  \
+  case rank_: {                                            \
+    Run<rank_>(dev_ctx, perm, perm_type, count, src, dst); \
+    break;                                                 \
   }
 
     switch (rank) {
@@ -1248,19 +1251,19 @@ struct PermuteLauncher {
   std::vector<int64_t> dims_;
 
   template <int Rank>
-  void Run(const phi::GPUContext& ctx,
+  void Run(const phi::GPUContext& dev_ctx,
            const std::vector<int32_t>& perm,
            const PermuteType& perm_type,
            const IndexT& count,
            const T* src,
            T* dst) {
-    auto cfg = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, main_cnt_);
+    auto cfg = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, main_cnt_);
     if (perm_type == PermuteType::kVecPermute) {
       dims_[Rank - 1] /= VecSize;
       const auto params = PermuteParams<IndexT, Rank>(dims_, perm);
 
       VectorizedPermuteKernel<T, IndexT, VecSize, Rank>
-          <<<cfg.block_per_grid, cfg.thread_per_block, 0, ctx.stream()>>>(
+          <<<cfg.block_per_grid, cfg.thread_per_block, 0, dev_ctx.stream()>>>(
               params, main_cnt_, src, dst);
     } else {
       IndexT tail_cnt = count - main_cnt_ * VecSize;
@@ -1268,7 +1271,7 @@ struct PermuteLauncher {
       const auto params = PermuteParams<IndexT, Rank>(dims_, perm);
 
       GeneralPermuteKernel<T, IndexT, VecSize, Rank>
-          <<<cfg.block_per_grid, cfg.thread_per_block, 0, ctx.stream()>>>(
+          <<<cfg.block_per_grid, cfg.thread_per_block, 0, dev_ctx.stream()>>>(
               params, main_cnt_, tail_cnt, main_offset, src, dst);
     }
   }
@@ -1277,7 +1280,7 @@ struct PermuteLauncher {
 template <typename T, typename IndexT, int VecSize>
 struct TransposeLauncher {
  public:
-  void operator()(const phi::GPUContext& ctx,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const int& rank,
                   const PermuteType& perm_type,
                   const std::vector<int64_t>& dims,
@@ -1291,35 +1294,35 @@ struct TransposeLauncher {
     if (perm_type == PermuteType::kGeneralTranspose) {
       IndexT chs = (rank == 2) ? 1 : dims[0];
       IndexT rows = dims[rank - 2];
-      IndexT n_rows_tile =
-          FindRowTiles(chs, rows, num_rows_tile, n_cols_tile, ctx.GetSMCount());
+      IndexT n_rows_tile = FindRowTiles(
+          chs, rows, num_rows_tile, n_cols_tile, dev_ctx.GetSMCount());
       dim3 blocks(n_cols_tile, n_rows_tile, chs);
       dim3 threads(kTileSize, kBlockRows, 1);
 
       if (is_vec_write) {
         BatchTransposeKernel<T, IndexT, true, ReadSize>
-            <<<blocks, threads, 0, ctx.stream()>>>(
+            <<<blocks, threads, 0, dev_ctx.stream()>>>(
                 src, dst, n_rows_tile - 1, n_cols_tile - 1, cols, rows);
       } else {
         BatchTransposeKernel<T, IndexT, false, ReadSize>
-            <<<blocks, threads, 0, ctx.stream()>>>(
+            <<<blocks, threads, 0, dev_ctx.stream()>>>(
                 src, dst, n_rows_tile - 1, n_cols_tile - 1, cols, rows);
       }
     } else {
       IndexT rows = dims[0];
       IndexT chs = dims[rank - 2];
-      IndexT n_rows_tile =
-          FindRowTiles(chs, rows, num_rows_tile, n_cols_tile, ctx.GetSMCount());
+      IndexT n_rows_tile = FindRowTiles(
+          chs, rows, num_rows_tile, n_cols_tile, dev_ctx.GetSMCount());
       dim3 blocks(n_cols_tile, n_rows_tile, chs);
       dim3 threads(kTileSize, kBlockRows, 1);
 
       if (is_vec_write) {
         SwapTransposeKernel<T, IndexT, true, ReadSize>
-            <<<blocks, threads, 0, ctx.stream()>>>(
+            <<<blocks, threads, 0, dev_ctx.stream()>>>(
                 src, dst, n_rows_tile - 1, n_cols_tile - 1, cols, rows, chs);
       } else {
         SwapTransposeKernel<T, IndexT, false, ReadSize>
-            <<<blocks, threads, 0, ctx.stream()>>>(
+            <<<blocks, threads, 0, dev_ctx.stream()>>>(
                 src, dst, n_rows_tile - 1, n_cols_tile - 1, cols, rows, chs);
       }
     }
@@ -1349,7 +1352,7 @@ struct TransposeLauncher {
 };
 
 template <typename T, typename IndexT>
-inline void PermuteDispatch(const phi::GPUContext& ctx,
+inline void PermuteDispatch(const phi::GPUContext& dev_ctx,
                             const IndexT& count,
                             PermTypeClassifier<T>* cls_ptr,
                             const std::vector<int64_t>& dims,
@@ -1359,18 +1362,18 @@ inline void PermuteDispatch(const phi::GPUContext& ctx,
   int rank = dims.size();
   PermuteType type = cls_ptr->GetPermType();
 
-#define TRANSPOSE_DISPATCH_VEC_SIZE(size)                         \
-  case size: {                                                    \
-    TransposeLauncher<T, IndexT, size>()(                         \
-        ctx, rank, type, dims, cls_ptr->GetRowsTile(), src, dst); \
-    break;                                                        \
+#define TRANSPOSE_DISPATCH_VEC_SIZE(size)                             \
+  case size: {                                                        \
+    TransposeLauncher<T, IndexT, size>()(                             \
+        dev_ctx, rank, type, dims, cls_ptr->GetRowsTile(), src, dst); \
+    break;                                                            \
   }
 
-#define PERMUTE_DISPATCH_VEC_SIZE(size)                \
-  case size: {                                         \
-    PermuteLauncher<T, IndexT, size>()(                \
-        ctx, rank, count, type, dims, perm, src, dst); \
-    break;                                             \
+#define PERMUTE_DISPATCH_VEC_SIZE(size)                    \
+  case size: {                                             \
+    PermuteLauncher<T, IndexT, size>()(                    \
+        dev_ctx, rank, count, type, dims, perm, src, dst); \
+    break;                                                 \
   }
 
   switch (type) {
@@ -1396,7 +1399,7 @@ inline void PermuteDispatch(const phi::GPUContext& ctx,
 
 template <typename T>
 inline void PermuteAndTranspose(
-    const phi::GPUContext& ctx,
+    const phi::GPUContext& dev_ctx,
     const int& rank,
     const phi::DenseTensor& in,
     phi::DenseTensor* out,
@@ -1404,7 +1407,7 @@ inline void PermuteAndTranspose(
   T* dst_data = out->data<T>();
   const T* src_data = in.data<T>();
   const auto count = simplifier.GetCount();
-  auto classifier = PermTypeClassifier<T>(ctx.GetSMCount(),
+  auto classifier = PermTypeClassifier<T>(dev_ctx.GetSMCount(),
                                           simplifier.GetRank(),
                                           simplifier.GetPerm(),
                                           simplifier.GetSrcDims(),
@@ -1416,10 +1419,10 @@ inline void PermuteAndTranspose(
                                        src_data,
                                        count * sizeof(T),
                                        phi::gpuMemcpyDeviceToDevice,
-                                       ctx.stream());
+                                       dev_ctx.stream());
   } else {
     if (count < std::numeric_limits<uint32_t>::max()) {
-      PermuteDispatch<T, uint32_t>(ctx,
+      PermuteDispatch<T, uint32_t>(dev_ctx,
                                    static_cast<uint32_t>(count),
                                    &classifier,
                                    simplifier.GetSrcDims(),
@@ -1427,7 +1430,7 @@ inline void PermuteAndTranspose(
                                    src_data,
                                    dst_data);
     } else {
-      PermuteDispatch<T, int64_t>(ctx,
+      PermuteDispatch<T, int64_t>(dev_ctx,
                                   static_cast<int64_t>(count),
                                   &classifier,
                                   simplifier.GetSrcDims(),
@@ -1440,7 +1443,7 @@ inline void PermuteAndTranspose(
 
 template <typename T>
 inline void PermuteWithEigen(
-    const phi::GPUContext& ctx,
+    const phi::GPUContext& dev_ctx,
     const int& rank,
     const phi::DenseTensor& in,
     phi::DenseTensor* out,
@@ -1455,22 +1458,22 @@ inline void PermuteWithEigen(
     out->Resize(common::make_ddim(simplifier.GetDstDims()));
 
     TransCompute<phi::GPUContext, T>(
-        simplifier.GetRank(), ctx, temp_in, out, simplifier.GetPerm());
+        simplifier.GetRank(), dev_ctx, temp_in, out, simplifier.GetPerm());
     out->Resize(dst_dims);
   } else {
     TransCompute<phi::GPUContext, T>(
-        simplifier.GetRank(), ctx, in, out, simplifier.GetPerm());
+        simplifier.GetRank(), dev_ctx, in, out, simplifier.GetPerm());
   }
 }
 
 template <typename T>
-void TransposeGPUKernelDriver(const phi::GPUContext& ctx,
+void TransposeGPUKernelDriver(const phi::GPUContext& dev_ctx,
                               const phi::DenseTensor& in,
                               const std::vector<int32_t>& perm,
                               phi::DenseTensor* out) {
   const int rank = perm.size();
   int64_t numel = in.numel();
-  bool ret = TransposeSimple<T>::Run(ctx, in, perm, out, numel);
+  bool ret = TransposeSimple<T>::Run(dev_ctx, in, perm, out, numel);
   if (!ret) {
     auto simplifier = phi::funcs::PermuteDimsSimplifier(
         rank, numel, perm, common::vectorize<int64_t>(in.dims()));
@@ -1481,10 +1484,10 @@ void TransposeGPUKernelDriver(const phi::GPUContext& ctx,
                                              simplifier.GetPerm(),
                                              phi::CppTypeToDataType<T>::Type());
 
-    tuner->Run(ctx,
+    tuner->Run(dev_ctx,
                phi::autotune::AlgorithmType::kTranspose,
                key,
-               ctx,
+               dev_ctx,
                rank,
                in,
                out,

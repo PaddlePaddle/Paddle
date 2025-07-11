@@ -55,7 +55,7 @@ else()
 endif()
 
 if(NOT DEFINED XPU_FFT_BASE_DATE)
-  set(XPU_FFT_BASE_DATE "20250630")
+  set(XPU_FFT_BASE_DATE "20250704")
 endif()
 
 set(XPU_XRE_BASE_URL

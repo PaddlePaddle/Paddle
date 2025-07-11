@@ -1080,7 +1080,7 @@ __global__ void AssignGradWithAxis(const T* grad_out,
 }
 // use the radix sort for the topk
 template <typename T>
-bool SortTopk(const phi::GPUContext& ctx,
+bool SortTopk(const phi::GPUContext& dev_ctx,
               const phi::DenseTensor* input_tensor,
               const int64_t num_cols,
               const int64_t num_rows,
@@ -1088,13 +1088,13 @@ bool SortTopk(const phi::GPUContext& ctx,
               phi::DenseTensor* out_tensor,
               phi::DenseTensor* indices_tensor,
               bool largest = true) {
-  auto cu_stream = ctx.stream();
+  auto cu_stream = dev_ctx.stream();
 
   Tensor input_indices;
   const std::vector<int64_t> dims = {num_rows, num_cols};
   auto dim = common::make_ddim(dims);
   input_indices.Resize(dim);
-  ctx.template Alloc<int64_t>(&input_indices);
+  dev_ctx.template Alloc<int64_t>(&input_indices);
   size_t temp_storage_bytes = -1;
 
   auto ComputeBlockSize = [](int col) {
@@ -1111,7 +1111,7 @@ bool SortTopk(const phi::GPUContext& ctx,
   };
   int block_size = ComputeBlockSize(num_cols);
 
-  unsigned int maxGridDimX = ctx.GetCUDAMaxGridDimSize()[0];
+  unsigned int maxGridDimX = dev_ctx.GetCUDAMaxGridDimSize()[0];
   // actually, int num_rows < max_grid_size
   unsigned int grid_size = num_rows < maxGridDimX
                                ? static_cast<unsigned int>(num_rows)
@@ -1136,7 +1136,7 @@ bool SortTopk(const phi::GPUContext& ctx,
 
   const T* input = input_tensor->data<T>();
   T* values = out_tensor->data<T>();
-  int64_t* indices = ctx.template Alloc<int64_t>(indices_tensor);
+  int64_t* indices = dev_ctx.template Alloc<int64_t>(indices_tensor);
 
   if (k == num_cols) {
     // Doing a full sort.
@@ -1145,8 +1145,8 @@ bool SortTopk(const phi::GPUContext& ctx,
   } else {
     temp_values.Resize(dim);
     temp_indices.Resize(dim);
-    sorted_values_ptr = ctx.template Alloc<T>(&temp_values);
-    sorted_indices_ptr = ctx.template Alloc<int64_t>(&temp_indices);
+    sorted_values_ptr = dev_ctx.template Alloc<T>(&temp_values);
+    sorted_indices_ptr = dev_ctx.template Alloc<int64_t>(&temp_indices);
   }
 
   // Get temp storage buffer size, maybe can allocate a fixed buffer to save
@@ -1219,7 +1219,7 @@ bool SortTopk(const phi::GPUContext& ctx,
 #endif
   }
   Tensor temp_storage;
-  ctx.template Alloc<uint8_t>(&temp_storage, temp_storage_bytes);
+  dev_ctx.template Alloc<uint8_t>(&temp_storage, temp_storage_bytes);
 
   if (largest) {
     auto err = cub::DeviceSegmentedRadixSort::SortPairsDescending(
@@ -1294,7 +1294,7 @@ bool SortTopk(const phi::GPUContext& ctx,
     }
 #endif
   }
-  auto& dev = *ctx.eigen_device();
+  auto& dev = *dev_ctx.eigen_device();
   if (k < num_cols) {
     // copy sliced data to output.
     const Eigen::DSizes<Eigen::DenseIndex, 2> slice_indices{0, 0};
