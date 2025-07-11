@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/instance_norm_grad_kernel.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/norm_utils.h"
 
 namespace phi {
@@ -23,6 +24,7 @@ template <typename T, typename Context>
 void InstanceNormGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const paddle::optional<DenseTensor>& scale,
+                            const paddle::optional<DenseTensor>& bias UNUSED,
                             const DenseTensor& saved_mean,
                             const DenseTensor& saved_variance,
                             const DenseTensor& d_y,
@@ -44,6 +46,23 @@ void InstanceNormGradKernel(const Context& dev_ctx,
           x_dims.size()));
 
   dev_ctx.template Alloc<T>(d_x);
+  if (x.numel() == 0) {
+    if (d_scale) {
+      phi::Full<float, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(d_scale->dims())),
+          0.f,
+          d_scale);
+    }
+    if (d_bias) {
+      phi::Full<float, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(d_bias->dims())),
+          0.f,
+          d_bias);
+    }
+    return;
+  }
   T* d_scale_data = nullptr;
   T* d_bias_data = nullptr;
   if (d_scale && d_bias) {

@@ -15,8 +15,8 @@
 #include "paddle/phi/kernels/instance_norm_kernel.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -38,6 +38,27 @@ void InstanceNormKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(y);
   dev_ctx.template Alloc<float>(saved_mean);
   dev_ctx.template Alloc<float>(saved_var);
+  if (x.numel() == 0) {
+    if (y) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(y->dims())), 0, y);
+    }
+    if (saved_mean) {
+      phi::Full<float, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(saved_mean->dims())),
+          0.f,
+          saved_mean);
+    }
+    if (saved_var) {
+      phi::Full<float, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(saved_var->dims())),
+          0.f,
+          saved_var);
+    }
+    return;
+  }
 
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
 

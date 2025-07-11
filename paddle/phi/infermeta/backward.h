@@ -345,6 +345,7 @@ void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
 
 void InstanceNormGradInferMeta(const MetaTensor& x,
                                const MetaTensor& scale,
+                               const MetaTensor& bias,
                                const MetaTensor& saved_mean,
                                const MetaTensor& saved_variance,
                                const MetaTensor& y_grad,
