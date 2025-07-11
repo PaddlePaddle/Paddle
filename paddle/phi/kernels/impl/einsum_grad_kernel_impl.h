@@ -117,14 +117,14 @@ void EinsumGradKernel(const Context& dev_ctx,
                       const std::string& equation,
                       std::vector<DenseTensor*> x_grad) {
   VLOG(5) << "Start EinsumGradKernel:";
-  bool has_zero_size_tensor = false;
+  bool has_zero_size_tensor = out_grad.numel() == 0;
   for (auto& i : x_grad) {
-    if (i == nullptr || i->numel() == 0) {
-      has_zero_size_tensor = true;
-    }
     if (i != nullptr) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(i->dims())), 0, i);
+      if (i->numel() == 0) {
+        has_zero_size_tensor = true;
+        phi::Full<T, Context>(
+            dev_ctx, phi::IntArray(common::vectorize(i->dims())), 0, i);
+      }
     }
   }
   if (has_zero_size_tensor) return;
