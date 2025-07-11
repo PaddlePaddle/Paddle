@@ -155,6 +155,7 @@ jobs:
       - name: Terminate and delete the container
         if: always()
         run: |
+          set +e
           docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
           docker rm -f ${{ env.container_name }}
 
@@ -253,5 +254,6 @@ jobs:
       - name: Terminate and delete the container
         if: always()
         run: |
+          set +e
           docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
           docker rm -f ${{ env.container_name }}

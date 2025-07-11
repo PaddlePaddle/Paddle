@@ -19,7 +19,7 @@ sys.path.append("../deprecated/legacy_test")
 from test_lrn_op import TestLRNOp
 
 
-class TestLRNMKLDNNOp(TestLRNOp):
+class TestLRNONEDNNOp(TestLRNOp):
     def get_attrs(self):
         attrs = TestLRNOp.get_attrs(self)
         attrs['use_mkldnn'] = True
@@ -42,9 +42,9 @@ class TestLRNMKLDNNOp(TestLRNOp):
         )
 
 
-class TestLRNMKLDNNOpWithIsTest(TestLRNMKLDNNOp):
+class TestLRNONEDNNOpWithIsTest(TestLRNONEDNNOp):
     def get_attrs(self):
-        attrs = TestLRNMKLDNNOp.get_attrs(self)
+        attrs = TestLRNONEDNNOp.get_attrs(self)
         attrs['is_test'] = True
         return attrs
 
@@ -62,7 +62,7 @@ class TestLRNMKLDNNOpWithIsTest(TestLRNMKLDNNOp):
         self.assertRaises(AttributeError, check_raise_is_test)
 
 
-class TestLRNMKLDNNOpNHWC(TestLRNMKLDNNOp):
+class TestLRNONEDNNOpNHWC(TestLRNONEDNNOp):
     def init_test_case(self):
         self.data_format = 'NHWC'
 

@@ -490,6 +490,9 @@ XPUOpMap& get_kl3_ops() {
       {"elementwise_mod",
        XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16,
+#ifdef PADDLE_WITH_XPU_FFT
+                     phi::DataType::COMPLEX64,
+#endif
                      phi::DataType::INT64,
                      phi::DataType::INT32})},
       {"embedding_with_eltwise_add_xpu",
