@@ -378,7 +378,7 @@ class TestLocalResponseNormAPI_ZeroSize(unittest.TestCase):
 
     def check_dygraph(self, place):
         with base.dygraph.guard(place):
-            in_np1 = np.random.random([3, 0, 40]).astype("float32")
+            in_np1 = np.random.random([0, 40, 40]).astype("float32")
             in_np2 = np.transpose(in_np1, (0, 2, 1))
 
             in1 = paddle.to_tensor(in_np1)
