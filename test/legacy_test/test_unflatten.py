@@ -133,6 +133,12 @@ class TestUnflattenAPI(unittest.TestCase):
 
                 np.testing.assert_allclose(fetches[0], self.output, rtol=1e-05)
 
+class TestUnflattenInputZeroSize(TestUnflattenAPI):
+    def set_args(self):
+        self.x = np.random.rand(4, 0, 16).astype('int16')
+        self.axis = 0
+        self.shape = (2, 2)
+        self.shape_is_tensor = False
 
 # check the data type of the input x
 class TestUnflattenInputInt16(TestUnflattenAPI):
