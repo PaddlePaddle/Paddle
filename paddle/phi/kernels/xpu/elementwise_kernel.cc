@@ -63,6 +63,10 @@ void RemainderKernel(const Context& dev_ctx,
                      const DenseTensor& y,
                      DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   auto f = [](xpu::Context* xpu_ctx,
               const XPUType* x,
               const XPUType* y,
@@ -92,8 +96,12 @@ void RemainderKernel<phi::dtype::complex<float>, XPUContext>(
     const DenseTensor& y,
     DenseTensor* out) {
   using T = phi::dtype::complex<float>;
-  auto x_dims = x.dims();
-  auto y_dims = y.dims();
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
+  const auto& x_dims = x.dims();
+  const auto& y_dims = y.dims();
   auto out_dims = phi::funcs::BroadcastTwoDims(x_dims, y_dims);
   std::vector<int64_t> out_dims_vec = phi::vectorize(out_dims);
 
