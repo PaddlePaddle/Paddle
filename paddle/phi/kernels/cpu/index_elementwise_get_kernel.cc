@@ -33,21 +33,16 @@ void CPUIndexElementwiseGetKernel(const phi::CPUContext& ctx,
                                   DenseTensor* output) {
   int64_t numel = 0;
   auto num_indices = index_dims.size();
-
   auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
-
   auto sizes = std::array<int64_t, DDim::kMaxRank>{};
   auto strides = std::array<int64_t, DDim::kMaxRank>{};
-
   for (unsigned i = 0; i < num_indices; i++) {
     sizes[i] = index_dims[i];
     strides[i] = index_stride[i];
   }
-
   std::array<int64_t*, 3> strides_array;
   std::vector<int64_t> desired_shape;
   std::array<std::vector<int64_t>, 3> strides_vec;
-
   funcs::IndexGetStride<3>(input_dims,
                            input_strides,
                            phi::SizeOf(input.dtype()),
@@ -63,7 +58,6 @@ void CPUIndexElementwiseGetKernel(const phi::CPUContext& ctx,
                            strides_vec);
   auto offset_calc =
       funcs::CPUmake_offset_calculator_put<3>(desired_shape, strides_array);
-
   const int64_t N = output->numel();
   PADDLE_ENFORCE_GE(
       N, 0, common::errors::InvalidArgument("Output numel must >= 0"));
@@ -71,18 +65,14 @@ void CPUIndexElementwiseGetKernel(const phi::CPUContext& ctx,
       N,
       std::numeric_limits<int32_t>::max(),
       common::errors::InvalidArgument("Output numel must <= INT32_MAX"));
-
   using dtype = funcs::OpaqueType<sizeof(T)>;
-
   const char* in_ptr =
       reinterpret_cast<const char*>(input.data<T>()) + slice_offset;
   char* out_ptr = reinterpret_cast<char*>(output->data<T>());
-
   for (int64_t idx = 0; idx < N; idx++) {
     const auto offsets = offset_calc.cpu_get(idx);
     char* const out_data = out_ptr + offsets[0];
     const char* const in_data = in_ptr + offsets[1];
-
     int64_t offset = 0;
 #pragma unroll
     for (size_t i = 0; i < num_indices; i++) {
@@ -92,7 +82,6 @@ void CPUIndexElementwiseGetKernel(const phi::CPUContext& ctx,
       }
       offset += index * strides[i];
     }
-
     *reinterpret_cast<dtype*>(out_data) =
         *reinterpret_cast<const dtype*>(in_data + offset);
   }
@@ -123,10 +112,8 @@ void IndexElementwiseGetKernel(const Context& ctx,
     std::vector<int64_t> output_dims(input_dims);
     out->Resize(phi::make_ddim(output_dims));
   }
-
   ctx.template Alloc<T>(out);
   if (out->numel() == 0) return;
-
   CPUIndexElementwiseGetKernel<T, int64_t>(ctx,
                                            x,
                                            index,

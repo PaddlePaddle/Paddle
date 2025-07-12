@@ -34,22 +34,16 @@ void CPUIndexElementwisePutKernel(const phi::CPUContext& dev_ctx,
                                   const int64_t slice_offset,
                                   DenseTensor* output) {
   int64_t numel = 0;
-
   bool is_initialized = output->initialized();
   bool is_same_place = true;
-
   if (is_initialized) {
     is_same_place = (input.place() == output->place());
   }
-
   T* output_ = dev_ctx.template Alloc<T>(output);
-
   if (!is_initialized || !is_same_place) {
     phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
   }
-
   auto num_indices = index_dims.size();
-
   auto sizes = std::array<int64_t, 25>{};
   auto strides = std::array<int64_t, 25>{};
   for (unsigned i = 0; i < num_indices; i++) {
@@ -57,11 +51,9 @@ void CPUIndexElementwisePutKernel(const phi::CPUContext& dev_ctx,
     strides[i] = index_strides[i];
   }
   auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
-
   std::array<int64_t*, 3> strides_array;
   std::vector<int64_t> desired_shape;
   std::array<std::vector<int64_t>, 3> strides_vec;
-
   funcs::IndexPutStride<3>(input_dims,
                            input_strides,
                            phi::SizeOf(input.dtype()),
@@ -75,24 +67,21 @@ void CPUIndexElementwisePutKernel(const phi::CPUContext& dev_ctx,
                            &strides_array,
                            &numel,
                            strides_vec);
-
   auto offset_calc =
       funcs::CPUmake_offset_calculator_put<3>(desired_shape, strides_array);
-
   const int64_t N = numel;
-  PADDLE_ENFORCE(N >= 0 && N <= std::numeric_limits<int32_t>::max(),
-                 "N >= 0 && N <= std::numeric_limits<int32_t>::max()");
-
+  PADDLE_ENFORCE_GE(N, 0, ::common::errors::InvalidArgument("N >= 0"));
+  PADDLE_ENFORCE_LE(N,
+                    std::numeric_limits<int32_t>::max(),
+                    ::common::errors::InvalidArgument(
+                        "N <= std::numeric_limits<int32_t>::max()"));
   using dtype = funcs::OpaqueType<sizeof(T)>;
-
   const char* in_ptr = reinterpret_cast<const char*>(value.data<T>());
   char* out_ptr = reinterpret_cast<char*>(output_);
-
   for (int64_t idx = 0; idx < N; idx++) {
     const auto offsets = offset_calc.cpu_get(idx);
     char* const out_data = out_ptr + offsets[0] + slice_offset;
     const char* const in_data = in_ptr + offsets[1];
-
     int64_t offset = 0;
     for (size_t i = 0; i < num_indices; i++) {
       int64_t index = *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
@@ -125,19 +114,16 @@ void IndexElementwisePutKernel(const Context& dev_ctx,
                         "desires to be [%s].",
                         index_type,
                         phi::DataType::INT64));
-
   if (out && out->numel() == 0) {
     dev_ctx.template Alloc<T>(out);
     return;
   }
-
   if (index.empty()) {
     if (!out->initialized()) {
       phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     }
     return;
   }
-
   if (out->numel() == 0) return;
   CPUIndexElementwisePutKernel<T, int64_t>(dev_ctx,
                                            x,

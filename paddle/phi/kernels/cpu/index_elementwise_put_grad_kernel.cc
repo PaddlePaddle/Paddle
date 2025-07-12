@@ -39,9 +39,7 @@ void CPUIndexElementwisePutGradKernel(
     DenseTensor* x_grad,
     DenseTensor* value_grad) {
   int64_t numel = 0;
-
   auto num_indices = index_dims.size();
-
   auto sizes = std::array<int64_t, 25>{};
   auto strides = std::array<int64_t, 25>{};
   for (unsigned i = 0; i < num_indices; i++) {
@@ -49,7 +47,6 @@ void CPUIndexElementwisePutGradKernel(
     strides[i] = index_strides[i];
   }
   auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
-
   std::array<int64_t*, 3> strides_array;
   std::vector<int64_t> desired_shape;
   std::array<std::vector<int64_t>, 3> strides_vec;
@@ -59,7 +56,6 @@ void CPUIndexElementwisePutGradKernel(
     value_dims = common::vectorize<int64_t>(value_grad->dims());
     value_strides = common::vectorize<int64_t>(value_grad->strides());
   }
-
   funcs::IndexPutStride<3>(input_dims,
                            input_strides,
                            phi::SizeOf(out_grad.dtype()),
@@ -76,17 +72,18 @@ void CPUIndexElementwisePutGradKernel(
   auto offset_calc =
       funcs::CPUmake_offset_calculator_put<3>(desired_shape, strides_array);
   const int64_t N = numel;
-  PADDLE_ENFORCE(N >= 0 && N <= std::numeric_limits<int32_t>::max(),
-                 "N >= 0 && N <= std::numeric_limits<int32_t>::max()");
+  PADDLE_ENFORCE_GE(N, 0, ::common::errors::InvalidArgument("N >= 0"));
+  PADDLE_ENFORCE_LE(N,
+                    std::numeric_limits<int32_t>::max(),
+                    ::common::errors::InvalidArgument(
+                        "N <= std::numeric_limits<int32_t>::max()"));
 
   using dtype = funcs::OpaqueType<sizeof(T)>;
   if (!value_grad) {
     char* out_ptr = reinterpret_cast<char*>(x_grad->data<T>());
-
     for (int64_t idx = 0; idx < N; idx++) {
       const auto offsets = offset_calc.cpu_get(idx);
       char* const out_data = out_ptr + offsets[0] + slice_offset;
-
       int64_t offset = 0;
       for (size_t i = 0; i < num_indices; i++) {
         int64_t index = *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
@@ -99,16 +96,13 @@ void CPUIndexElementwisePutGradKernel(
       *reinterpret_cast<dtype*>(out_data + offset) =
           *reinterpret_cast<dtype*>(&num);
     }
-
   } else if (!x_grad) {
     const char* out_ptr = reinterpret_cast<const char*>(out_grad.data<T>());
     char* value_ptr = reinterpret_cast<char*>(value_grad->data<T>());
-
     for (int64_t idx = 0; idx < N; idx++) {
       const auto offsets = offset_calc.cpu_get(idx);
       const char* const out_data = out_ptr + offsets[0] + slice_offset;
       char* const value_data = value_ptr + offsets[1];
-
       int64_t offset = 0;
       for (size_t i = 0; i < num_indices; i++) {
         int64_t index = *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
@@ -120,16 +114,13 @@ void CPUIndexElementwisePutGradKernel(
       *reinterpret_cast<dtype*>(value_data) =
           *reinterpret_cast<const dtype*>(out_data + offset);
     }
-
   } else {
     char* out_ptr = reinterpret_cast<char*>(x_grad->data<T>());
     char* value_ptr = reinterpret_cast<char*>(value_grad->data<T>());
-
     for (int64_t idx = 0; idx < N; idx++) {
       const auto offsets = offset_calc.cpu_get(idx);
       char* const out_data = out_ptr + offsets[0] + slice_offset;
       char* const value_data = value_ptr + offsets[1];
-
       int64_t offset = 0;
       for (size_t i = 0; i < num_indices; i++) {
         int64_t index = *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
@@ -161,7 +152,6 @@ void LaunchIndexElementwisePutGradCudaKernel(
     DenseTensor* x_grad) {
   if (x_grad && !value_grad) {
     phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
-
     CPUIndexElementwisePutGradKernel<T, int64_t>(dev_ctx,
                                                  out_grad,
                                                  indices,
@@ -180,7 +170,6 @@ void LaunchIndexElementwisePutGradCudaKernel(
       DenseTensor tmp_value_grad(value_grad->dtype());
       tmp_value_grad.Resize(common::make_ddim(input_dims));
       dev_ctx.template Alloc<T>(&tmp_value_grad);
-
       CPUIndexElementwisePutGradKernel<T, int64_t>(dev_ctx,
                                                    out_grad,
                                                    indices,
@@ -217,7 +206,6 @@ void LaunchIndexElementwisePutGradCudaKernel(
       DenseTensor tmp_value_grad(value_grad->dtype());
       tmp_value_grad.Resize(common::make_ddim(input_dims));
       dev_ctx.template Alloc<T>(&tmp_value_grad);
-
       CPUIndexElementwisePutGradKernel<T, int64_t>(dev_ctx,
                                                    out_grad,
                                                    indices,
@@ -228,16 +216,13 @@ void LaunchIndexElementwisePutGradCudaKernel(
                                                    slice_offset,
                                                    x_grad,
                                                    &tmp_value_grad);
-
       std::vector<int64_t> after_dims =
           common::vectorize(tmp_value_grad.dims());
       std::vector<int64_t> before_dims = common::vectorize(value_grad->dims());
       std::vector<int64_t> compress_dims;
       std::vector<int64_t> dims_without_1;
-
       funcs::CalCompressedDimsWith1AndWithout1(
           &after_dims, &before_dims, &compress_dims, &dims_without_1);
-
       auto pre_dims = value_grad->dims();
       value_grad->Resize(common::make_ddim(dims_without_1));
       IntArray v_axis(compress_dims);
@@ -289,7 +274,6 @@ void IndexElementwisePutGradKernel(
     }
     return;
   }
-
   LaunchIndexElementwisePutGradCudaKernel<T, Context>(dev_ctx,
                                                       indices,
                                                       out_grad,

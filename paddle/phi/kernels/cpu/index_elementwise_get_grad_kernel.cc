@@ -35,14 +35,12 @@ void IndexEleGetGradAccKernel(
     const auto offsets = offset_calc.cpu_get(idx);
     char* const out_data = out_ptr + offsets[0];
     const char* const in_data = in_ptr + offsets[1];
-
     int64_t offset = 0;
     for (int i = 0; i < num_indices; i++) {
       int64_t index = *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
       if (index < 0) index += sizes[i];
       offset += index * strides[i];
     }
-
     *reinterpret_cast<T*>(out_data + offset) +=
         *reinterpret_cast<const T*>(in_data);
   }
@@ -61,9 +59,7 @@ void CPUIndexElementwiseGetGrad(const phi::CPUContext& ctx,
                                 const bool accumulate,
                                 DenseTensor* output) {
   int64_t numel = 0;
-
   auto num_indices = index_dims.size();
-
   auto sizes = std::array<int64_t, 25>{};
   auto strides = std::array<int64_t, 25>{};
   for (unsigned i = 0; i < num_indices; i++) {
@@ -71,11 +67,9 @@ void CPUIndexElementwiseGetGrad(const phi::CPUContext& ctx,
     strides[i] = index_strides[i];
   }
   auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
-
   std::array<int64_t*, 3> strides_array;
   std::vector<int64_t> desired_shape;
   std::array<std::vector<int64_t>, 3> strides_vec;
-
   funcs::IndexPutStride<3>(input_dims,
                            input_strides,
                            phi::SizeOf(input.dtype()),
@@ -91,14 +85,10 @@ void CPUIndexElementwiseGetGrad(const phi::CPUContext& ctx,
                            strides_vec);
   auto offset_calc =
       funcs::CPUmake_offset_calculator_put<3>(desired_shape, strides_array);
-
   const int64_t N = numel;
-
   using dtype = funcs::OpaqueType<sizeof(T)>;
-
   const char* in_ptr = reinterpret_cast<const char*>(value.data<T>());
   char* out_ptr = reinterpret_cast<char*>(output->data<T>()) + slice_offset;
-
   if (accumulate) {
     IndexEleGetGradAccKernel<T, IndexT>(N,
                                         in_ptr,
@@ -113,7 +103,6 @@ void CPUIndexElementwiseGetGrad(const phi::CPUContext& ctx,
       const auto offsets = offset_calc.cpu_get(idx);
       char* const out_data = out_ptr + offsets[0];
       const char* const in_data = in_ptr + offsets[1];
-
       int64_t offset = 0;
       for (size_t i = 0; i < num_indices; i++) {
         int64_t index = *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
@@ -145,7 +134,6 @@ void IndexElementwiseGetGradKernel(const Context& ctx,
   auto& place = *ctx.eigen_device();
   dxt.device(place) = dxt.constant(static_cast<T>(0));
   if (out_grad.numel() == 0) return;
-
   const auto& index_type = index[0]->dtype();
   PADDLE_ENFORCE_EQ(index_type == phi::DataType::INT64,
                     true,
@@ -155,7 +143,6 @@ void IndexElementwiseGetGradKernel(const Context& ctx,
                         index_type,
                         phi::DataType::INT32,
                         phi::DataType::INT64));
-
   CPUIndexElementwiseGetGrad<T, int64_t>(ctx,
                                          x,
                                          out_grad,
