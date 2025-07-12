@@ -37,7 +37,7 @@ limitations under the License.
 #include "paddle/phi/kernels/rms_norm_kernel.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
-
+#include "paddle/phi/kernels/full_kernel.h"
 namespace phi {
 
 template <typename T, typename Context>
@@ -56,6 +56,18 @@ void RmsNormKernel(const Context& dev_ctx,
                    DenseTensor* out,
                    DenseTensor* residual_out,
                    DenseTensor* inv_var) {
+  if (x.numel() == 0) {
+    if (out) dev_ctx.template Alloc<T>(out);
+    if (residual_out) dev_ctx.template Alloc<T>(residual_out);
+    if (inv_var) {
+      phi::Full<float, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(inv_var->dims())),
+          0.f,
+          inv_var);
+    }
+    return;
+  }
   if (quant_scale > 0.0f) {
     PADDLE_THROW(common::errors::Unimplemented(
         "Quantization is not supported in XPU rms_norm yet"));

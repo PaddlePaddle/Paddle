@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/rms_norm_grad_kernel.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 
@@ -33,6 +34,24 @@ void RmsNormGradKernel(const Context& dev_ctx,
                        DenseTensor* x_grad,
                        DenseTensor* norm_weight_grad,
                        DenseTensor* norm_bias_grad) {
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    if (norm_weight_grad) {
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(norm_weight_grad->dims())),
+          0,
+          norm_weight_grad);
+    }
+    if (norm_bias_grad) {
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(norm_bias_grad->dims())),
+          0,
+          norm_bias_grad);
+    }
+    return;
+  }
   if (bias || residual) {
     PADDLE_THROW(common::errors::Unimplemented(
         "bias or residual is not supported in XPU rms_norm_grad yet"));

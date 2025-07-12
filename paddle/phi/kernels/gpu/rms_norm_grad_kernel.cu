@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_fp16.h>
 #include <hip/hip_runtime.h>
@@ -130,6 +131,16 @@ void cuda_rms_norm_gradient(const Context& dev_ctx,
   int rows = static_cast<int>(matrix_dim[0]);
   int cols = static_cast<int>(matrix_dim[1]);
   dev_ctx.template Alloc<T>(grad_x);
+  if (x.numel() == 0) {
+    if (grad_scale) {
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(grad_scale->dims())),
+          0,
+          grad_scale);
+    }
+    return;
+  }
 
   DISPATCH_SCALE_TYPE(T,
                       scale.type(),
