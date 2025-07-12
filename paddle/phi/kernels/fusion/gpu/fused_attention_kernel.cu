@@ -21,6 +21,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/functors.h"
@@ -86,6 +87,31 @@ void FusedAttentionKernel(const Context &dev_ctx,
                           DenseTensor *cache_kv_out,
                           DenseTensor *out) {
   using U = phi::funcs::LayerNormParamType<T>;
+  if (x.numel() == 0) {
+    if (ln_mean) dev_ctx.template Alloc<U>(ln_mean);
+    if (ln_var) dev_ctx.template Alloc<U>(ln_var);
+    if (ln_out) dev_ctx.template Alloc<T>(ln_out);
+    if (qkv_out) dev_ctx.template Alloc<T>(qkv_out);
+    if (qkv_bias_out) dev_ctx.template Alloc<T>(qkv_bias_out);
+    if (transpose_out_2) dev_ctx.template Alloc<T>(transpose_out_2);
+    if (qk_out) dev_ctx.template Alloc<T>(qk_out);
+    if (qktv_out) dev_ctx.template Alloc<T>(qktv_out);
+    if (softmax_out) dev_ctx.template Alloc<T>(softmax_out);
+    if (attn_dropout_mask_out)
+      dev_ctx.template Alloc<uint8_t>(attn_dropout_mask_out);
+    if (attn_dropout_out) dev_ctx.template Alloc<T>(attn_dropout_out);
+    if (src_mask_out) dev_ctx.template Alloc<T>(src_mask_out);
+    if (fmha_out) dev_ctx.template Alloc<T>(fmha_out);
+    if (out_linear_out) dev_ctx.template Alloc<T>(out_linear_out);
+    if (dropout_mask_out) dev_ctx.template Alloc<uint8_t>(dropout_mask_out);
+    if (ln_mean_2) dev_ctx.template Alloc<U>(ln_mean_2);
+    if (ln_var_2) dev_ctx.template Alloc<U>(ln_var_2);
+    if (bias_dropout_residual_out)
+      dev_ctx.template Alloc<T>(bias_dropout_residual_out);
+    if (cache_kv_out) dev_ctx.template Alloc<T>(cache_kv_out);
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
 
   // x: qkv's input [batch_size, seq_len, dim_embed]
   // if transpose_qkv_wb is False
@@ -347,6 +373,19 @@ void FusedAttentionKernel(const Context &dev_ctx,
         dev_ctx.template Alloc<U>(ln_mean_2, ln_mean_2->numel() * sizeof(U));
     U *ln_var_2_ptr =
         dev_ctx.template Alloc<U>(ln_var_2, ln_var_2->numel() * sizeof(U));
+
+    // 0-size
+    if (ln_scale_2_p && ln_scale_2_p->numel() == 0) {
+      // output = (residual + dropout(input + bias))
+      fused_dropout_layernorm_helper.ResidualDropoutBias(dev_ctx,
+                                                         out_linear_out_data,
+                                                         residual_ptr,
+                                                         out_linear_bias_data,
+                                                         final_out_data,
+                                                         dropout_mask_out_data);
+      return;
+    }
+
     // output = layernorm(residual + dropout(input + bias))
     fused_dropout_layernorm_helper.LayernormResidualDropoutBias(
         dev_ctx,
