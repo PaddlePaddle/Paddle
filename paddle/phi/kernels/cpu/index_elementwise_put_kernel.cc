@@ -70,11 +70,8 @@ void CPUIndexElementwisePutKernel(const phi::CPUContext& dev_ctx,
   auto offset_calc =
       funcs::CPUmake_offset_calculator_put<3>(desired_shape, strides_array);
   const int64_t N = numel;
-  PADDLE_ENFORCE_GE(N, 0, ::common::errors::InvalidArgument("N >= 0"));
-  PADDLE_ENFORCE_LE(N,
-                    std::numeric_limits<int32_t>::max(),
-                    ::common::errors::InvalidArgument(
-                        "N <= std::numeric_limits<int32_t>::max()"));
+  PADDLE_ENFORCE(N >= 0 && N <= std::numeric_limits<int32_t>::max(),
+                 "N >= 0 && N <= std::numeric_limits<int32_t>::max()");
   using dtype = funcs::OpaqueType<sizeof(T)>;
   const char* in_ptr = reinterpret_cast<const char*>(value.data<T>());
   char* out_ptr = reinterpret_cast<char*>(output_);
