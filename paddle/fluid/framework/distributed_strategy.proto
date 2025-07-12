@@ -97,6 +97,9 @@ message PpConfig {
     optional NCCLConfig coll_nccl_config = 15;
     optional NCCLConfig p2p_nccl_config = 16;
     optional NCCLConfig shared_nccl_config = 17;
+    optional bool sync_param = 18 [ default = true ];
+    optional bool sync_moment = 19 [ default = false ];
+    optional string sync_mode = 20 [ default = 'broadcast' ];
 }
 
 message DygraphShardingConfig {
