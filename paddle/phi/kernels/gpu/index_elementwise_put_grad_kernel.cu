@@ -41,7 +41,10 @@ void GPUIndexElementwisePutGradKernel(
     DenseTensor* value_grad) {
   int64_t numel = 0;
 
-  auto num_indices = index_dims.size();
+  int64_t num_indices = 0;
+  std::vector<int64_t> shape_tmp;
+  std::vector<int64_t> stride_tmp;
+  funcs::cal_shape_stride(index_dims, &num_indices, &shape_tmp, &stride_tmp);
 
   auto sizes = std::array<int64_t, 25>{};
   auto strides = std::array<int64_t, 25>{};
@@ -67,8 +70,8 @@ void GPUIndexElementwisePutGradKernel(
                            value_dims,
                            value_strides,
                            4,
-                           common::vectorize<int64_t>(index[0]->dims()),
-                           common::vectorize<int64_t>(index[0]->strides()),
+                           shape_tmp,
+                           stride_tmp,
                            phi::SizeOf(index[0]->dtype()),
                            &desired_shape,
                            &strides_array,

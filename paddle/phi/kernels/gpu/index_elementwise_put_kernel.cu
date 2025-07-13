@@ -34,8 +34,10 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
                                   const int64_t slice_offset,
                                   DenseTensor* output) {
   int64_t numel = 0;
-
-  auto num_indices = index_dims.size();
+  int64_t num_indices = 0;
+  std::vector<int64_t> shape_tmp;
+  std::vector<int64_t> stride_tmp;
+  funcs::cal_shape_stride(index_dims, &num_indices, &shape_tmp, &stride_tmp);
 
   auto sizes = std::array<int64_t, 25>{};
   auto strides = std::array<int64_t, 25>{};
@@ -57,8 +59,8 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
                            {},
                            {},
                            4,
-                           common::vectorize<int64_t>(index[0]->dims()),
-                           common::vectorize<int64_t>(index[0]->strides()),
+                           shape_tmp,
+                           stride_tmp,
                            phi::SizeOf(index[0]->dtype()),
                            &desired_shape,
                            &strides_array,
@@ -111,8 +113,10 @@ void GPUIndexElementwisePutWithTensorKernel(
     const int64_t slice_offset,
     DenseTensor* output) {
   int64_t numel = 0;
-
-  auto num_indices = index_dims.size();
+  int64_t num_indices = 0;
+  std::vector<int64_t> shape_tmp;
+  std::vector<int64_t> stride_tmp;
+  funcs::cal_shape_stride(index_dims, &num_indices, &shape_tmp, &stride_tmp);
 
   auto sizes = std::array<int64_t, 25>{};
   auto strides = std::array<int64_t, 25>{};
@@ -132,8 +136,8 @@ void GPUIndexElementwisePutWithTensorKernel(
                            common::vectorize<int64_t>(value.dims()),
                            common::vectorize<int64_t>(value.strides()),
                            phi::SizeOf(value.dtype()),
-                           common::vectorize<int64_t>(index[0]->dims()),
-                           common::vectorize<int64_t>(index[0]->strides()),
+                           shape_tmp,
+                           stride_tmp,
                            phi::SizeOf(index[0]->dtype()),
                            &desired_shape,
                            &strides_array,

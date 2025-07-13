@@ -150,18 +150,15 @@ inline static void restride_src(std::vector<int64_t>* shape,
 }
 
 // move to cuda kernel
-inline static paddle::Tensor reshape_indexer(paddle::Tensor* index,
-                                             int64_t dims_before,
-                                             int64_t dims_after) {
+inline static std::vector<int64_t> reshape_indexer(paddle::Tensor* index,
+                                                   int64_t dims_before,
+                                                   int64_t dims_after) {
   auto orig_shape = common::vectorize<int64_t>(index->dims());
   auto shape = std::vector<int64_t>{};
   shape.insert(shape.end(), dims_before, 1);
   shape.insert(shape.end(), orig_shape.begin(), orig_shape.end());
   shape.insert(shape.end(), dims_after, 1);
-  phi::DenseTensor* index_ptr =
-      static_cast<phi::DenseTensor*>(index->impl().get());
-  index_ptr->Resize(phi::make_ddim(shape));
-  return *index;
+  return shape;
 }
 
 inline AdvancedIndex::AdvancedIndex(paddle::Tensor src,
@@ -203,7 +200,12 @@ inline AdvancedIndex::AdvancedIndex(paddle::Tensor src,
   // use dims_before and dims_after / move to cuda kernel
   for (auto& index : indices_list) {
     if (index.defined()) {
-      this->indices.push_back(reshape_indexer(&index, dims_before, dims_after));
+      std::vector<int64_t> vec_size =
+          reshape_indexer(&index, dims_before, dims_after);
+      this->indices.push_back(index);
+      this->indexed_sizes.push_back(-1);
+      this->indexed_sizes.insert(
+          this->indexed_sizes.end(), vec_size.begin(), vec_size.end());
     }
   }
 }
