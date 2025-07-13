@@ -1531,7 +1531,7 @@ std::tuple<Tensor, Tensor, Tensor> rms_norm_decomp(
     } else {
       round_out = round<T>(scale_out);
     }
-    auto clip_out = backend::clip<T>(
+    auto clip_out = clip_decomp<T>(
         round_out, quant_min_bound_scalar, quant_max_bound_scalar);
     if (fabs(quant_max_bound - 127.0f) < 0.000001) {
       out = cast<T>(clip_out, phi::DataType::INT8);
