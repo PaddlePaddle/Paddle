@@ -2445,6 +2445,10 @@ def margin_cross_entropy(
             )
             nranks = parallel_env.world_size if group is None else group.nranks
 
+    if logits.shape[-1] == 0:
+        raise ValueError(
+            f'Expected logit_dims[-1] > 0 (got logit_dims {logits.shape})'
+        )
     input_dims = len(list(logits.shape))
     label_dims = len(list(label.shape))
     if input_dims - 1 != label_dims and input_dims != label_dims:
