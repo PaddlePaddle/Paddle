@@ -316,6 +316,8 @@ class HybridParallelOptimizer:
 
         self._sep_enable = self._hcg.get_sep_parallel_world_size() > 1
 
+        self._cp_enable = self._hcg.get_context_parallel_world_size() > 1
+
         split_norm_comm = strategy.hybrid_configs["split_norm_comm"]
 
         if (
@@ -538,7 +540,7 @@ class HybridParallelOptimizer:
             dp_parameter_list = self._inner_opt.filter_parameters(
                 parameter_list, self._hcg
             )
-        if self._dp_enable or self._sep_enable:
+        if self._dp_enable or self._sep_enable or self._cp_enable:
             fused_allreduce_gradients(dp_parameter_list, self._hcg)
 
     @no_grad()

@@ -36,6 +36,7 @@ from .pipeline_parallel import (  # noqa: F401
 )
 from .dualpipev import DualPipeVParallel  # noqa: F401
 from .segment_parallel import SegmentParallel  # noqa: F401
+from .context_parallel import ContextParallel  # noqa: F401
 from .sharding_parallel import ShardingParallel  # noqa: F401
 from .tensor_parallel import TensorParallel  # noqa: F401
 from .pp_utils.forward_backward_overlap_utils import (  # noqa: F401
