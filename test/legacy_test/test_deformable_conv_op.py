@@ -465,5 +465,37 @@ class TestDeformConv2DAPI(unittest.TestCase):
         test_deform_conv2d_v2()
 
 
+class TestDeformConv2DAPI_CPU_FP16(unittest.TestCase):
+    def setUp(self):
+        self.padding = [1, 1]
+        self.stride = [1, 1]
+        self.dilation = [1, 1]
+        self.groups = 1
+        self.data_format = "NCL"
+
+    def test_cpu_fp16(self):
+        with paddle.base.dygraph.guard(paddle.CPUPlace()):
+            x = paddle.ones([4, 5, 5, 5])
+            offset = paddle.ones([4, 90, 5, 5]).astype(paddle.float16)
+            weight = paddle.ones([5, 5, 3, 3]).astype(paddle.float16)
+            bias = paddle.ones([5]).astype(paddle.float16)
+            mask = paddle.ones([4, 45, 5, 5]).astype(paddle.float16)
+
+            # If there is an error, an error will be thrown.
+            out = paddle.vision.ops.deform_conv2d(
+                x,
+                offset,
+                weight,
+                bias,
+                stride=self.stride,
+                padding=self.padding,
+                dilation=self.dilation,
+                groups=self.groups,
+                deformable_groups=5,
+                mask=mask,
+            )
+            np.testing.assert_allclose(out.shape, [4, 5, 5, 5])
+
+
 if __name__ == '__main__':
     unittest.main()
