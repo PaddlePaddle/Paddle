@@ -162,7 +162,6 @@ SpmdInfo EinsumInferSpmd(const std::vector<DistMetaTensor>& inputs,
   std::string right;
   // ellipsis labels are already parsed in python API (einsum_v2)
   ParseEinsumEquation(equation, &operands, &right);
-
   // diagonal case
   ConstraintOnDiagLabel(&operands, &right);
 
@@ -287,7 +286,6 @@ SpmdInfo EinsumGradInferSpmd(const std::vector<DistMetaTensor>& inputs,
   std::string right;
   // ellipsis labels are already parsed in python API (einsum_v2)
   ParseEinsumEquation(equation, &operands, &right);
-
   // diagonal case
   ConstraintOnDiagLabel(&operands, &right);
 
