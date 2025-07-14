@@ -1249,6 +1249,8 @@ void BindDistributed(py::module *m) {
                   py::call_guard<py::gil_scoped_release>())
       .def_static("group_start", distributed::ProcessGroupNCCL::GroupStart)
       .def_static("group_end", distributed::ProcessGroupNCCL::GroupEnd)
+      .def("get_stream", &distributed::ProcessGroupNCCL::GetStream)
+      .def("set_outer_wait", &distributed::ProcessGroupNCCL::SetOuterEventWait)
       .def("shutdown", &distributed::ProcessGroupNCCL::Shutdown)
       .def("restart", &distributed::ProcessGroupNCCL::Restart)
       .def(
