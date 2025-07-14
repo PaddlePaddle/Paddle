@@ -409,6 +409,8 @@ void GPUScatterAdd(const phi::GPUContext& ctx,
                    const DenseTensor& index,
                    DenseTensor* output,
                    int dim) {
+  if (index.numel() == 0 || src.numel() == 0) return;
+
   auto index_dims = src.dims();
   auto index_sizes = ensure_nonempty_vec(common::vectorize(index_dims));
   auto self_strides = ensure_nonempty_vec(common::vectorize(output->strides()));
