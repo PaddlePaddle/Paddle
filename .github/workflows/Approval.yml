@@ -46,5 +46,4 @@ jobs:
       - name: Display Required Approvers
         if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
-          pip install github
           bash ci/check_approval.sh
