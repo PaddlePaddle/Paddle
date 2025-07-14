@@ -78,6 +78,7 @@ __all__ = [
     'current_stream',
     'set_stream',
     'stream_guard',
+    'device_guard',
     'synchronize',
 ]
 
