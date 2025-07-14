@@ -72,10 +72,10 @@ struct BlockPrefixCallbackOp {
     T old_prefix = running_total_;
 
     // Kahan Summation
-    T y = op_(block_aggregate, -compensation_);
+    T y = op_(block_aggregate, static_cast<T>(-compensation_));
     T t = op_(running_total_, y);
-    T y_high = op_(t, -running_total_);
-    compensation_ = op_(y_high, -y);
+    T y_high = op_(t, static_cast<T>(-running_total_));
+    compensation_ = op_(y_high, static_cast<T>(-y));
     running_total_ = t;
 
     return old_prefix;
