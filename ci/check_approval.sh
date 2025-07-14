@@ -16,7 +16,6 @@ if [ -z ${BRANCH} ]; then
     BRANCH="develop"
 fi
 
-
 PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../" && pwd )"
 # If you want to add monitoring file modifications, please perform the. github/CODEOWNERS operation
 API_FILES=(
@@ -548,25 +547,6 @@ SKIP_CI=`git log --pretty=oneline|grep $COMMIT_ID |grep -w "test=document_fix" |
 if [[ ${SKIP_CI} ]];then
     echo_line="You must have one RD (tianshuo78520a (Recommend), zhiqiu, phlrain ) or PM (Ligoml) approval you add test=document_fix method in commit skips CI"
     check_approval 1 tianshuo78520a zhiqiu phlrain Ligoml
-fi
-
-echo "::group:: Installing dependencies..."
-# Get the list of PR authors with unresolved unit test issues
-pip install PyGithub
-echo "::endgroup::"
-# For getting PR related data
-wget https://sys-p0.bj.bcebos.com/blk/block.txt --no-check-certificate --no-proxy
-wget https://sys-p0.bj.bcebos.com/bk-ci/bk.txt --no-check-certificate --no-proxy
-HASUTFIXED=`python ${PADDLE_ROOT}/tools/check_ut.py | grep "has unit-test to be fixed" || true`
-if [ "${HASUTFIXED}" != "" ]; then
-    echo_line="${HASUTFIXED} You must have one RD (chalsliu (Recommend) or kolinwei) approval.\n"
-    check_approval 1 chalsliu kolinwei
-fi
-
-HASUTFIXED=`python ${PADDLE_ROOT}/tools/check_ut.py | grep "has benchmark issue to be fixed" || true`
-if [ "${HASUTFIXED}" != "" ]; then
-    echo_line="${HASUTFIXED} You must have one RD (hysunflower or xiegegege or Xreki) approval.\n"
-    check_approval 1 hysunflower xiegegege Xreki
 fi
 
 # NOTE(Avin0323): Files with the name "unity_build_rule.cmake" are rules used
