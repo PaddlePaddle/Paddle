@@ -21,6 +21,7 @@
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
+COMMON_DECLARE_bool(check_cuda_error);
 
 namespace egr {
 
@@ -166,6 +167,9 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
                                                  kSlotSmallVectorSize>& grads,
                             bool create_graph,
                             bool is_new_grad) {  // NOLINT
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("RunCustomOpNode begin");
+  }
   paddle::CustomOpKernelContext ctx;
   const auto& meta_info_map = egr::Controller::Instance().GetOpMetaInfoMap();
   const auto& vec_map = meta_info_map.at(op_type_);
@@ -377,6 +381,10 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
     outs = ApplyNodePostHooks(outs, hooked_grads);
   }
 
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("RunCustomOpNode finish");
+  }
+
   return outs;
 }
 
@@ -386,6 +394,9 @@ RunCustomOpDoubleGradNode::operator()(
         grads,
     bool create_graph,
     bool is_new_grad) {  // NOLINT
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("RunCustomOpDoubleGradNode begin");
+  }
   paddle::CustomOpKernelContext ctx;
   const auto& meta_info_map = egr::Controller::Instance().GetOpMetaInfoMap();
   const auto& vec_map = meta_info_map.at(op_type_);
@@ -465,6 +476,10 @@ RunCustomOpDoubleGradNode::operator()(
 
   if (HasNodePostHook()) {
     outs = ApplyNodePostHooks(outs, hooked_grads);
+  }
+
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("RunCustomOpDoubleGradNode finish");
   }
 
   return outs;

@@ -3,10 +3,6 @@ name: Linux-build
 on:
   workflow_call:
     inputs:
-      bos_dir:
-        required: false
-        type: string
-        default: "Paddle"
       docker_build_image:
         type: string
         required: true
@@ -24,6 +20,7 @@ env:
   ci_scripts: /paddle/ci
   BRANCH: ${{ github.event.pull_request.base.ref }}
   CI_name: build
+  CFS_DIR: /home/data/cfs
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 
 defaults:
@@ -114,6 +111,7 @@ jobs:
             -e CCACHE_DIR \
             -e CCACHE_SLOPPINESS \
             -e CCACHE_STATSLOG \
+            -e CFS_DIR \
             -e no_proxy \
             -e CI_name \
             -w /paddle --network host ${docker_image}
@@ -126,7 +124,7 @@ jobs:
           rm -rf * .[^.]*
           set -e
           echo "Downloading Paddle.tar.gz"
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/${{ inputs.bos_dir }}/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle-build/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
           echo "Extracting Paddle.tar.gz"
           git config --global --add safe.directory ${work_dir}
           tar xf Paddle.tar.gz --strip-components=1
@@ -134,7 +132,10 @@ jobs:
           rm Paddle.tar.gz
           git config --global user.name "PaddleCI"
           git config --global user.email "paddle_ci@example.com"
+          git remote -v
+          set +e
           git remote add upstream https://github.com/PaddlePaddle/Paddle.git
+          set -e
           source ${{ github.workspace }}/../../../proxy
           cp ci/git_pull.sh ci/git_pull_copy.sh
           git checkout $BRANCH
@@ -195,8 +196,9 @@ jobs:
           tar --use-compress-program="pzstd -1" -cf build.tar.gz paddle
           echo "Uploading build.tar.gz to bos"
           python ${{ env.bos_file }} build.tar.gz paddle-github-action/PR/build/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
-          mkdir -p /home/data/cfs/build/${PR_ID}/${COMMIT_ID}
-          mv build.tar.gz /home/data/cfs/build/${PR_ID}/${COMMIT_ID}
+          echo "Uploading build.tar.gz to cfs"
+          mkdir -p ${CFS_DIR}/build_bos/${PR_ID}/${COMMIT_ID}
+          mv build.tar.gz ${CFS_DIR}/build_bos/${PR_ID}/${COMMIT_ID} && echo success
           mv /paddle/build/pr_whl/${{ env.paddle_whl }} .
           echo "Uploading paddle_whl to bos"
           python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/build/${{ env.PR_ID }}/${{ env.COMMIT_ID }}

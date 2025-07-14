@@ -44,12 +44,26 @@ class DataTensorWithPostInit:
         self.x += 1
 
 
+@dataclass
+class MultiInheritDataTensor(DataTensorWithPostInit):
+    place: str
+
+
+@dataclass
+class MultiInheritDataTensorWithIdx(MultiInheritDataTensor):
+    idx: int
+
+
 def return_dataclass(x):
     return DataTensor(x + 1)
 
 
 def return_dataclass_with_post_init(x):
     return DataTensorWithPostInit(x)
+
+
+def return_dataclass_with_multi_inherit(x, place="gpu", idx=-1):
+    return MultiInheritDataTensorWithIdx(x, place, idx)
 
 
 class TestDataclassBasic(TestCaseBase):
@@ -60,6 +74,10 @@ class TestDataclassBasic(TestCaseBase):
     def test_dtype_reconstruct_with_post_init(self):
         x = paddle.to_tensor(1)
         self.assert_results(return_dataclass_with_post_init, x)
+
+    def test_dtype_reconstruct_with_multi_inherit(self):
+        x = paddle.to_tensor(1)
+        self.assert_results(return_dataclass_with_multi_inherit, x, "nyapu", 1)
 
 
 @dataclass
@@ -100,10 +118,18 @@ def set_attr(data: DataMeta):
     return res
 
 
+@check_no_breakgraph
+def get__dataclass_fields__(data: DataMeta):
+    return list(data.__dataclass_fields__), list(
+        data.__class__.__dataclass_fields__
+    )
+
+
 class TestDataClassInstance(TestCaseBase):
     def test_get_attr(self):
         dm = DataMeta(x=paddle.randn([1, 2]), y=paddle.randn([1]))
         self.assert_results(get_attr, dm)
+        self.assert_results(get__dataclass_fields__, dm)
 
     def test_set_attr(self):
         dm = DataMeta(x=paddle.ones([1, 2]), n=2)

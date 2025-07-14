@@ -50,6 +50,9 @@ import paddle
 import paddle.distributed as dist
 from paddle import framework, nn
 from paddle.device.cuda.cuda_graphed_layer import CUDAGraphedLayer
+from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.hybrid_parallel_optimizer import (
+    SHARED_WEIGHT_SYNC_PREFIX,
+)
 from paddle.distributed.fleet.utils.log_util import layer_to_str, logger
 from paddle.framework import core
 from paddle.incubate.distributed.fleet import recompute_hybrid
@@ -657,6 +660,11 @@ class PipelineLayer(nn.Layer):
                 "this may happen when all shared attrs are on a same stage."
             )
 
+        from paddle.distributed import fleet
+        from paddle.distributed.fleet.base.topology import message2nccl_config
+
+        hybrid_configs = fleet.fleet._user_defined_strategy.hybrid_configs
+
         # The third loop generates comm group for each comm key.
         for comm_key in comm_keys:
             shared_stages = comm_key_to_stage_idx[comm_key]
@@ -676,15 +684,32 @@ class PipelineLayer(nn.Layer):
                 shared_ranks = [comm[s] for s in sorted(shared_stages)]
 
                 logger.info(f"Building comm group among {shared_ranks}.")
-                group = paddle.distributed.new_group(ranks=shared_ranks)
+                group = paddle.distributed.new_group(
+                    ranks=shared_ranks,
+                    nccl_config=message2nccl_config(
+                        hybrid_configs["pp_configs"].shared_nccl_config,
+                        "pp_shared",
+                    ),
+                )
                 if self.global_rank in shared_ranks:
                     assert layer_name in self.shared_layers
                     shared_comm[comm_key] = {
                         "ranks": shared_ranks,
                         "group": group,
-                        "weight_attr": comm_key_to_shared_attrs[comm_key],
+                        "weight_attr": shared_attrs,
                         "layer": self.shared_layers[layer_name],
                     }
+
+                    # Set color for shared parameters to facilitate synchronization of parameters
+                    # and optimizer states after each step
+                    for weight_attr in shared_attrs:
+                        shared_param = getattr(
+                            self.shared_layers[layer_name], weight_attr
+                        )
+                        shared_param.color = {
+                            "color": f"{SHARED_WEIGHT_SYNC_PREFIX}_{comm_key}",
+                            "group": group,
+                        }
         return shared_comm
 
     def _synchronize_shared_weights(self):

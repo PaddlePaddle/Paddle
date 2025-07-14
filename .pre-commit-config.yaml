@@ -50,7 +50,7 @@ repos:
             paddle/cinn/utils/registry.h
           )$
   - repo: https://github.com/PFCCLab/typos-pre-commit-mirror.git
-    rev: v1.30.2
+    rev: v1.33.1
     hooks:
       - id: typos
         args: [--force-exclude]
@@ -60,7 +60,7 @@ repos:
     hooks:
       - id: black
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.11
+    rev: v0.12.0
     hooks:
       - id: ruff-check
         args: [--fix, --exit-non-zero-on-fix, --no-cache]
@@ -154,7 +154,7 @@ repos:
           )$
   # For YAML files
   - repo: https://github.com/PFCCLab/yamlfmt-pre-commit-mirror.git
-    rev: v0.16.0
+    rev: v0.17.2
     hooks:
       - id: yamlfmt
         files: |

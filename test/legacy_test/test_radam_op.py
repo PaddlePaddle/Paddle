@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 from copy import deepcopy
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_places
 
 import paddle
 from paddle import base
@@ -298,22 +297,24 @@ class TestRAdamAPI(unittest.TestCase):
         exe = base.Executor(place)
         train_prog = base.Program()
         startup = base.Program()
-        with base.program_guard(train_prog, startup):
-            with base.unique_name.guard():
-                data = paddle.static.data(name="data", shape=shape)
-                hidden = paddle.static.nn.fc(x=data, size=10)
-                loss = paddle.mean(hidden)
+        with (
+            base.program_guard(train_prog, startup),
+            base.unique_name.guard(),
+        ):
+            data = paddle.static.data(name="data", shape=shape)
+            hidden = paddle.static.nn.fc(x=data, size=10)
+            loss = paddle.mean(hidden)
 
-                beta1 = 0.85
-                beta2 = 0.95
-                opt = paddle.optimizer.RAdam(
-                    learning_rate=1e-5,
-                    beta1=beta1,
-                    beta2=beta2,
-                    weight_decay=0.01,
-                    epsilon=1e-8,
-                )
-                opt.minimize(loss)
+            beta1 = 0.85
+            beta2 = 0.95
+            opt = paddle.optimizer.RAdam(
+                learning_rate=1e-5,
+                beta1=beta1,
+                beta2=beta2,
+                weight_decay=0.01,
+                epsilon=1e-8,
+            )
+            opt.minimize(loss)
 
         exe.run(startup)
         data_np = np.random.random(shape).astype("float32")
@@ -469,20 +470,8 @@ class TestRAdamMultiPrecision(unittest.TestCase):
                 optimizer.step()
                 optimizer.clear_grad()
 
-    def _get_places(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            places.append('cpu')
-        if paddle.is_compiled_with_cuda():
-            places.append('gpu')
-        return places
-
     def test_main(self):
-        for place in self._get_places():
+        for place in get_places(string_format=True):
             use_amp_list = [True, False]
             for use_amp in use_amp_list:
                 self._test_radam_dygraph_place_amp(place, use_amp)
@@ -635,19 +624,6 @@ class TestRAdamGroupWithLR(TestRAdamAPI):
             out.backward()
             radam.step()
             radam.clear_gradients()
-
-
-def get_places():
-    places = []
-    if (
-        os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-        in ['1', 'true', 'on']
-        or not core.is_compiled_with_cuda()
-    ):
-        places.append(base.CPUPlace())
-    if base.is_compiled_with_cuda():
-        places.append(base.CUDAPlace(0))
-    return places
 
 
 def main_test_func(place, dtype):

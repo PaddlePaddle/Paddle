@@ -20,9 +20,14 @@ import paddle
 from paddle.jit.dy2static.utils import compose_guards
 from paddle.utils import to_sequence
 
-from ..utils import InnerError, log_do, map_if, map_if_extend
+from ..utils import (
+    InnerError,
+    log_do,
+    map_if,
+    map_if_extend,
+)
 from .statement_ir import (
-    SIRRuntimeCache,
+    ParametersHolder,
     StatementContext,
     StatementContextRegistry,
     Symbol,
@@ -58,20 +63,11 @@ def replace_symbol(
 
 def _append_opstack_between(start, end, stack):
     # The range is [start, end)
-    from paddle.framework import core
-
-    op_maker = core.op_proto_and_checker_maker
-    callstack_attr_name = op_maker.kOpCreationCallstackAttrName()
     for op in for_each_ops_between(start, end):
-        if paddle.framework.use_pir_api():
-            op.callstack = stack
-        else:
-            # NOTE(xiongkun): we don't sync for speed. careful!!
-            op._set_attr(callstack_attr_name, stack)
+        op.callstack = stack
 
 
 def for_each_ops_between(start, end):
-    # NOTE(xiongkun): we don't sync for speed. careful!!
     # [start, end)
     program = paddle.static.default_main_program()
     ops = program.global_block().ops[start:end]
@@ -79,7 +75,6 @@ def for_each_ops_between(start, end):
 
 
 def opnum_in_program():
-    # NOTE(xiongkun): we don't sync for speed. careful!!
     program = paddle.static.default_main_program()
     return len(program.global_block().ops)
 
@@ -148,11 +143,6 @@ class Interpreter:
         # fetch outputs
         return replace_symbol(SIR.outputs, state)
 
-    def call(self, stmt: Statement, inputs):
-        SIR = self.get_sir(stmt.sir_name)
-        state = prepare_state(SIR, inputs)
-        return self.run_sir(stmt.sir_name, state)
-
     def api(self, stmt, inputs):
         args, kwargs = inputs
         return stmt.api(*args, **kwargs)
@@ -173,7 +163,9 @@ class Interpreter:
         return stmt.converted_func(*args, **kwargs)
 
 
-def compile_sir(builder: StatementIRBuilder, name: str):
+def compile_sir(
+    builder: StatementIRBuilder, name: str, parameters_holder: ParametersHolder
+):
     """
     Compile a SIR to a new function
 
@@ -191,24 +183,25 @@ def compile_sir(builder: StatementIRBuilder, name: str):
         """
         interpreter = Interpreter(builder)
         SIR = interpreter.get_sir(name)
-        state = prepare_state(SIR, args)
+        state = prepare_state(SIR, args, parameters_holder)
         return interpreter.run_sir(name, state)
 
     return wrapper
 
 
-def prepare_state(SIR, inputs):
+def prepare_state(
+    SIR: StatementIR, inputs, parameters_holder: ParametersHolder
+):
     state = {}
-
-    # update free vars if exists
-    if SIRRuntimeCache().has_key(SIR.name):
-        free_var_seeker = SIRRuntimeCache().get_free_vars(SIR.name)
-        if free_var_seeker:
-            state = free_var_seeker()
-
     # bind inputs
+    assert len(SIR.inputs) == len(inputs), "Inputs length mismatch."
     for sir_inp, inp in zip(SIR.inputs, inputs):
         state[sir_inp.name] = inp
+
+    for sir_param in SIR.params:
+        state[sir_param.name] = paddle.base.dygraph.base._convert_into_variable(
+            parameters_holder.get(sir_param.name)
+        )
 
     return state
 

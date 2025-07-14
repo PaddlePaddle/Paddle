@@ -66,9 +66,11 @@ class TestDy2staticException(Dy2StTestBase):
     @test_ast_only
     def test_error(self):
         if self.dyfunc:
-            with self.assertRaisesRegex(Dygraph2StaticException, self.error):
-                with enable_to_static_guard(True):
-                    self.assertTrue(paddle.jit.to_static(self.dyfunc)(self.x))
+            with (
+                self.assertRaisesRegex(Dygraph2StaticException, self.error),
+                enable_to_static_guard(True),
+            ):
+                self.assertTrue(paddle.jit.to_static(self.dyfunc)(self.x))
 
 
 class TestDy2StIfElseRetInt2(TestDy2staticException):
@@ -524,10 +526,12 @@ class TestDy2StIfElseRetInt4(TestDy2StIfElseRetInt1):
 
     @test_ast_only
     def test_ast_to_func(self):
-        with enable_to_static_guard(True):
-            with self.assertRaises(Dygraph2StaticException):
-                static_func = paddle.jit.to_static(self.dyfunc)
-                out = static_func(self.x)
+        with (
+            enable_to_static_guard(True),
+            self.assertRaises(Dygraph2StaticException),
+        ):
+            static_func = paddle.jit.to_static(self.dyfunc)
+            out = static_func(self.x)
 
 
 class IfElseNet(paddle.nn.Layer):
