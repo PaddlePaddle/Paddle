@@ -260,6 +260,7 @@ jobs:
       - name: Run test
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          source ${{ github.workspace }}/../../../proxy
           bash ${ci_scripts}/kunlun_test.sh
           '
 
