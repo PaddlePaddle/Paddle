@@ -181,7 +181,7 @@ jobs:
         run: |
           runner_name=`(echo $PWD|awk -F '/' '{print $3}')`
           echo $runner_name
-          wget -q https://xly-devops.bj.bcebos.com/PR/utils.sh
+          wget -q https://xly-devops.bj.bcebos.com/utils.sh
           source utils.sh
           determine_kunlun_runner ${runner_name}
 
