@@ -338,7 +338,6 @@ option(WITH_RECORD_BUILDTIME
 option(WITH_CUSTOM_DEVICE "Compile with custom device support" OFF)
 option(WITH_ARM_BRPC "Support Brpc in Arm" OFF)
 option(WITH_FLPS "FL PS mode" OFF)
-option(WITH_RPC "Compile with rpc support" ${WITH_DISTRIBUTE})
 option(WITH_CUDNN_FRONTEND
        "Compile with CUDNN Frontend API support (experimental)" OFF)
 option(WITH_SHARED_IR "Compile PaddlePaddle with SHARED LIB of IR" ON)
@@ -557,40 +556,6 @@ if(WITH_DISTRIBUTE)
     set(WITH_GLOO
         ON
         CACHE STRING "Enable GLOO when compiling WITH_DISTRIBUTE=ON." FORCE)
-  endif()
-endif()
-
-if(WITH_RPC)
-  if(NOT LINUX)
-    message(
-      WARNING "Disable WITH_RPC when not compiled on Linux. Force WITH_RPC=OFF."
-    )
-    set(WITH_RPC
-        OFF
-        CACHE BOOL "Disable WITH_RPC when not compiled on Linux" FORCE)
-  endif()
-  if(NOT WITH_DISTRIBUTE AND WITH_RPC)
-    message(
-      WARNING
-        "Disable WITH_RPC when not compiled with distribute. Force WITH_RPC=OFF."
-    )
-    set(WITH_RPC
-        OFF
-        CACHE BOOL "Disable WITH_RPC when not compiled with distribute" FORCE)
-  endif()
-  if(WITH_ROCM AND WITH_RPC)
-    message(
-      WARNING "Disable WITH_RPC when compiling with ROCM. Force WITH_RPC=OFF.")
-    set(WITH_RPC
-        OFF
-        CACHE BOOL "Disable WITH_RPC when compiling with ROCM" FORCE)
-  endif()
-  if(WITH_XPU AND WITH_RPC)
-    message(
-      WARNING "Disable WITH_RPC when compiling with XPU. Force WITH_RPC=OFF.")
-    set(WITH_RPC
-        OFF
-        CACHE BOOL "Disable WITH_RPC when compiling with XPU" FORCE)
   endif()
 endif()
 

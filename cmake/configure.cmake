@@ -197,10 +197,6 @@ if(WITH_DISTRIBUTE)
   add_definitions(-DPADDLE_WITH_DISTRIBUTE)
 endif()
 
-if(WITH_RPC)
-  add_definitions(-DPADDLE_WITH_RPC)
-endif()
-
 if(WITH_BRPC_RDMA)
   add_definitions(-DPADDLE_WITH_BRPC_RDMA)
 endif()
