@@ -16,7 +16,7 @@ if [ -z ${BRANCH} ]; then
     BRANCH="develop"
 fi
 
-
+set -x
 PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../" && pwd )"
 # If you want to add monitoring file modifications, please perform the. github/CODEOWNERS operation
 API_FILES=(
