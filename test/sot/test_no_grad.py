@@ -40,6 +40,26 @@ def outer_no_grad_fn(x, y):
     return z + a
 
 
+def inner_no_grad_fn_with(x, y):
+    with paddle.no_grad():
+        return x * y + x**2
+
+
+@check_no_breakgraph
+def no_grad_fn_caller_with(x, y):
+    z = inner_no_grad_fn_with(x * y, y)
+    a = x * y + x**3 - 1
+    return z + a
+
+
+@check_no_breakgraph
+def outer_no_grad_fn_with(x, y):
+    with paddle.no_grad():
+        z = x * y + x**2
+        a = inner_no_grad_fn_with(x, y)
+        return z + a
+
+
 class TestNoGrad(TestCaseBase):
     def test_inner_no_grad(self):
         x = paddle.randn([10, 3])
@@ -61,6 +81,30 @@ class TestNoGrad(TestCaseBase):
         self.assert_results_with_grad(
             [x, y],
             outer_no_grad_fn,
+            x,
+            y,
+        )
+
+    def test_inner_no_grad_with(self):
+        x = paddle.randn([10, 3])
+        y = paddle.randn([10, 3])
+        x.stop_gradient = False
+        y.stop_gradient = False
+        self.assert_results_with_grad(
+            [x, y],
+            no_grad_fn_caller_with,
+            x,
+            y,
+        )
+
+    def test_outer_no_grad_with(self):
+        x = paddle.randn([1, 3])
+        y = paddle.randn([1, 3])
+        x.stop_gradient = False
+        y.stop_gradient = False
+        self.assert_results_with_grad(
+            [x, y],
+            outer_no_grad_fn_with,
             x,
             y,
         )
