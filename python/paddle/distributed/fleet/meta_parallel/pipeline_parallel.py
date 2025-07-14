@@ -1027,7 +1027,9 @@ class PipelineParallel(MetaParallelBase):
 
         return train_loss
 
-    def eval_batch(self, data, compute_loss=False, loss_fn_idx=0, return_host_tensor=False):
+    def eval_batch(
+        self, data, compute_loss=False, loss_fn_idx=0, return_host_tensor=False
+    ):
         self.user_hooks_enabled = False
         # reset the virtual pp rank for each run
         self.set_virtual_pipeline_rank(0)
@@ -1055,7 +1057,6 @@ class PipelineParallel(MetaParallelBase):
         startup_steps = min(startup_steps, self.accumulate_steps)
         steady_steps = self.accumulate_steps - startup_steps
 
-        input_buffers = []
         output_buffers = []
 
         # convert to micro dataset
@@ -1076,9 +1077,11 @@ class PipelineParallel(MetaParallelBase):
                 skip_check_meta=True,
                 batch_p2p_comm=self._use_batch_p2p_comm,
             )
-            self._offload_tensors(output_tensor)
+            if not self.is_pipeline_last_stage():
+                self._release_output(output_tensor)
+            else:
+                self._offload_tensors(output_tensor)
 
-            input_buffers.append(input_tensor)
             output_buffers.append(output_tensor)
 
         if steady_steps > 0:
@@ -1099,9 +1102,11 @@ class PipelineParallel(MetaParallelBase):
                 skip_check_meta=True,
                 batch_p2p_comm=self._use_batch_p2p_comm,
             )
-            self._offload_tensors(output_tensor)
+            if not self.is_pipeline_last_stage():
+                self._release_output(output_tensor)
+            else:
+                self._offload_tensors(output_tensor)
 
-            input_buffers.append(input_tensor)
             output_buffers.append(output_tensor)
 
             if not last_iter:
@@ -1437,10 +1442,16 @@ class PipelineParallel(MetaParallelBase):
             return
         if isinstance(output_tensor, (tuple, list)):
             for t in output_tensor:
-                host_tensor = t.pin_memory() if hasattr(t, "pin_memory") else t.cpu()
+                host_tensor = (
+                    t.pin_memory() if hasattr(t, "pin_memory") else t.cpu()
+                )
                 host_tensor._share_buffer_to(t)
         else:
-            host_tensor = output_tensor.pin_memory() if hasattr(output_tensor, "pin_memory") else output_tensor.cpu()
+            host_tensor = (
+                output_tensor.pin_memory()
+                if hasattr(output_tensor, "pin_memory")
+                else output_tensor.cpu()
+            )
             host_tensor._share_buffer_to(output_tensor)
 
     def _release_output(self, output):
@@ -2827,7 +2838,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
             if self._enable_timer:
                 self.timers("broadcast_final_loss").start()
             with paddle.amp.auto_cast(enable=False):
-                train_loss_or_logits = self._broadcast_final_loss(return_micro_batch_loss)
+                train_loss_or_logits = self._broadcast_final_loss(
+                    return_micro_batch_loss
+                )
             if self._enable_timer:
                 self.timers("broadcast_final_loss").stop()
         else:
@@ -2881,7 +2894,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         return train_loss
 
-    def eval_batch(self, data, compute_loss=False, loss_fn_idx=0, return_host_tensor=False):
+    def eval_batch(
+        self, data, compute_loss=False, loss_fn_idx=0, return_host_tensor=False
+    ):
         self.user_hooks_enabled = False
         # reset the virtual pp rank for each run
         self.set_virtual_pipeline_rank(0)
@@ -2899,7 +2914,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
         ), f"loss function {loss_fn_idx} should exist to compute loss"
         self.loss_fn_idx = loss_fn_idx
 
-        train_loss_or_logits = self.forward_backward_pipeline(data, None, forward_only=True, compute_loss=compute_loss)
+        train_loss_or_logits = self.forward_backward_pipeline(
+            data, None, forward_only=True, compute_loss=compute_loss
+        )
         self._init_buffers()
         self._compute_loss = origin_compute_loss
         self._return_host_tensor = origin_return_host_tensor
@@ -2993,9 +3010,9 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
         if self.processed_steps < g_profile_pipeline_details_steps:
             get_sync_logger().info("start forward_backward_pipeline")
         if not compute_loss:
-            assert (
-                forward_only
-            ), "compute_loss can only be set to False when forward_only is set to True"
+            assert forward_only, (
+                "compute_loss can only be set to False when forward_only is set to True"
+            )
 
         # NOTE(shenliang03): Due to ring_exchange for pipeline with interleave, cache should be enabled
         assert self._using_cache, (
@@ -3011,15 +3028,10 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
 
         assert (
             self.accumulate_steps == self.num_stages
-<<<<<<< HEAD
-            or self.accumulate_steps % self.num_stages != 0
+            or self.accumulate_steps % self.num_stages == 0
         ), (
             f"accumulate_steps({self.accumulate_steps}) and num_stages({self.num_stages}) should be a multiple or accumulate_steps % num_stages == 0"
         )
-=======
-            or self.accumulate_steps % self.num_stages == 0
-        ), f"accumulate_steps({self.accumulate_steps}) and num_stages({self.num_stages}) should be a multiple or accumulate_steps % num_stages == 0"
->>>>>>> 4c472714c0 ([Distributed] fix eval batch & non-compute_loss in pipeline (#73479))
 
         self._backward_step_count = 0
         skip_steps = self.accumulate_steps - self.num_stages
@@ -3147,7 +3159,9 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
             if self._enable_timer:
                 self.timers("broadcast_final_loss").start()
             with paddle.amp.auto_cast(enable=False):
-                train_loss_or_logits = self._broadcast_final_loss(return_micro_batch_loss)
+                train_loss_or_logits = self._broadcast_final_loss(
+                    return_micro_batch_loss
+                )
             if self._enable_timer:
                 self.timers("broadcast_final_loss").stop()
         else:
@@ -3226,12 +3240,12 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
     ):
         self._reset_user_hooks_status()
         if not compute_loss:
-            assert (
-                forward_only
-            ), "compute_loss can only be set to False when forward_only is set to True"
-        assert (
-            self._using_cache
-        ), "cache should be enabled for pipeline with interleave"
+            assert forward_only, (
+                "compute_loss can only be set to False when forward_only is set to True"
+            )
+        assert self._using_cache, (
+            "cache should be enabled for pipeline with interleave"
+        )
         self.user_hooks_enabled = not forward_only
         if forward_only:
             return super().forward_backward_pipeline(
@@ -3501,7 +3515,9 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
             if self._enable_timer:
                 self.timers("broadcast_final_loss").start()
             with paddle.amp.auto_cast(enable=False):
-                train_loss_or_logits = self._broadcast_final_loss(return_micro_batch_loss)
+                train_loss_or_logits = self._broadcast_final_loss(
+                    return_micro_batch_loss
+                )
             if self._enable_timer:
                 self.timers("broadcast_final_loss").stop()
         else:
@@ -3517,8 +3533,7 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
             get_sync_logger().info("end forward_backward_pipeline")
         self.processed_steps += 1
         self._check_user_hooks_status_at_step_end()
-<<<<<<< HEAD
-        return train_loss
+        return train_loss_or_logits
 
 
 def tuple_to_dict_helper(input_tensor):
@@ -3571,6 +3586,3 @@ def convert_tensor_tuple_to_dict(input_tensor_tuple):
             input_tensor_dict[key] = tensor
         delattr(tensor, "key")
     return input_tensor_dict
-=======
-        return train_loss_or_logits
->>>>>>> 4c472714c0 ([Distributed] fix eval batch & non-compute_loss in pipeline (#73479))
