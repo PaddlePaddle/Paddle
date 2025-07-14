@@ -18,8 +18,8 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/impl/set_value_grad_kernel_impl.h"
-#include "paddle/phi/kernels/impl/set_value_kernel_impl.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
+#include "paddle/phi/kernels/set_value_kernel.h"
 #include "paddle/phi/kernels/strided_slice_kernel.h"
 
 namespace phi {
@@ -75,17 +75,17 @@ void SetValueGradKernelV2(const Context& dev_ctx,
 
   if (x_grad) {
     Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
-    SetValueKernelV2<T, Context>(dev_ctx,
-                                 *x_grad,
-                                 starts,
-                                 ends,
-                                 steps,
-                                 axes,
-                                 decrease_axes,
-                                 none_axes,
-                                 {1},
-                                 std::vector<Scalar>({Scalar(0)}),
-                                 x_grad);
+    SetValueKernel<T, Context>(dev_ctx,
+                               *x_grad,
+                               starts,
+                               ends,
+                               steps,
+                               axes,
+                               decrease_axes,
+                               none_axes,
+                               {1},
+                               std::vector<Scalar>({Scalar(0)}),
+                               x_grad);
   }
 
   if (value_grad) {
