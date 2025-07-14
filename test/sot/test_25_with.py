@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import unittest
 from contextlib import contextmanager
 
@@ -26,6 +27,19 @@ from paddle.jit.sot.opcode_translator.executor.opcode_executor import (
 )
 from paddle.jit.sot.psdb import check_no_breakgraph
 from paddle.jit.sot.utils import strict_mode_guard
+
+
+def check_no_breakgraph_if(cond: bool):
+    def decorator(original_func):
+        @functools.wraps(original_func)
+        def wrapped_func(*args, **kwargs):
+            if cond:
+                return check_no_breakgraph(original_func)(*args, **kwargs)
+            return original_func(*args, **kwargs)
+
+        return wrapped_func
+
+    return decorator
 
 
 class Manager:
@@ -166,7 +180,15 @@ class SimpleNet(nn.Layer):
         return self.layer(x)
 
 
-@check_no_breakgraph
+# TODO(DrRyanHuang): SOT does not support the BEFORE_WITH opcode introduced in Python 3.11+.
+# As a result, execution will fallback; when this occurs, the error is propagated and
+# eventually converted to BreakGraphError within UserDefinedFunctionVariable.call_function.
+# This conversion is necessary to prevent the entire execution from falling back to dynamic graph mode;
+# thus, FallbackError is transformed into BreakGraphError.
+# Since the @check_no_breakgraph decorator wraps the function, the error will ultimately be raised as an InnerError.
+# Therefore, we check the Python version here and conditionally apply @check_no_breakgraph using check_no_breakgraph_if.
+# If the Python version is greater than 3.11, the @check_no_breakgraph decorator is not applied.
+@check_no_breakgraph_if(ALREADY_SUPPORTED_EXCEPTION)
 def net_call(x: paddle.Tensor, net: nn.Layer):
     return net(x)
 
