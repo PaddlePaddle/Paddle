@@ -550,10 +550,6 @@ if [[ ${SKIP_CI} ]];then
     check_approval 1 tianshuo78520a zhiqiu phlrain Ligoml
 fi
 
-echo "::group:: Installing dependencies..."
-# Get the list of PR authors with unresolved unit test issues
-pip install PyGithub
-echo "::endgroup::"
 # NOTE(Avin0323): Files with the name "unity_build_rule.cmake" are rules used
 # by Unity Build to combine source files. Changes to these rules may cause
 # errors in the compilation. Specific personal are required to approve the
