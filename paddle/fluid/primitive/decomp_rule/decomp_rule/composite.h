@@ -1481,6 +1481,67 @@ Tensor diag_decomp(const Tensor& x,
   return ConvertToOrig<T>(res, x.dtype());
 }
 
+template <typename T>
+std::tuple<Tensor, Tensor, Tensor> rms_norm_decomp(
+    const Tensor& x,
+    const paddle::optional<Tensor>& bias,
+    const paddle::optional<Tensor>& residual,
+    const Tensor& norm_weight,
+    const paddle::optional<Tensor>& norm_bias,
+    float epsilon,
+    int begin_norm_axis,
+    float quant_scale,
+    int quant_round_type,
+    float quant_max_bound,
+    float quant_min_bound) {
+  auto orig_dtype = x.dtype();
+  Tensor x_cast = ConvertToMT<T>(x);
+
+  if (residual) x_cast = x_cast + ConvertToMT<T>(residual.get());
+  if (bias) x_cast = x_cast + ConvertToMT<T>(bias.get());
+
+  std::vector<int64_t> reduce_axis;
+  for (int i = begin_norm_axis; i < x.dims().size(); i++) {
+    reduce_axis.push_back(static_cast<int64_t>(i));
+  }
+  auto pow = x_cast * x_cast;
+  auto var = mean_decomp<T>(pow, reduce_axis, true);
+  auto rsqrt_var =
+      rsqrt<T>(var + full_scalar<T>(epsilon, var.dtype(), var.place()));
+  auto out = x_cast * rsqrt_var;
+
+  LayerNormDecompHelper decomp_helper(
+      x, norm_weight, norm_bias, begin_norm_axis);
+  out = out * ConvertToMT<T>(decomp_helper.Process<T>(norm_weight, x));
+  if (norm_bias) {
+    out = out + ConvertToMT<T>(decomp_helper.Process<T>(norm_bias.get(), x));
+  }
+
+  if (quant_scale > 0) {
+    auto quant_scale_scalar =
+        full_scalar<T>(quant_scale, out.dtype(), out.place());
+    auto quant_min_bound_scalar =
+        full_scalar<T>(quant_min_bound, out.dtype(), out.place());
+    auto quant_max_bound_scalar =
+        full_scalar<T>(quant_max_bound, out.dtype(), out.place());
+    auto scale_out = out * quant_scale_scalar * quant_max_bound_scalar;
+    auto clip_out = clip_decomp<T>(
+        round<T>(scale_out), quant_min_bound_scalar, quant_max_bound_scalar);
+    if (fabs(quant_max_bound - 127.0f) < 0.000001) {
+      out = cast<T>(clip_out, phi::DataType::INT8);
+    } else if (fabs(quant_max_bound - 448.0f) < 0.000001) {
+      out = cast<T>(clip_out, phi::DataType::FLOAT8_E4M3FN);
+    }
+  } else {
+    out = ConvertToOrig<T>(out, orig_dtype);
+  }
+
+  auto residual_out = ConvertToOrig<T>(x_cast, orig_dtype);
+  auto inv_var = squeeze<T>(rsqrt_var, reduce_axis);
+
+  return std::make_tuple(out, residual_out, inv_var);
+}
+
 }  // namespace details
 
 }  // namespace primitive
