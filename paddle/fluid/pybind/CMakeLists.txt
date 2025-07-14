@@ -224,9 +224,6 @@ if(WITH_RPC)
       set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
     endif()
   endif()
-  set_source_files_properties(rpc.cc PROPERTIES COMPILE_FLAGS
-                                                ${DISTRIBUTE_COMPILE_FLAGS})
-  set(PYBIND_SRCS rpc.cc ${PYBIND_SRCS})
 endif()
 
 if(WITH_NCCL OR WITH_RCCL)
