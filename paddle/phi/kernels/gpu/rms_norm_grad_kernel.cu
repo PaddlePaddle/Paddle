@@ -59,6 +59,7 @@ void HostRMSNormGradient(const Context& dev_ctx,
     const dim3 threads2(32, 4, 1);
     const dim3 blocks2((n2 + threads2.x - 1) / threads2.x, part_size, 1);
     const int nshared2_a =
+
         2 * sizeof(U) * threads2.y * threads2.y * (threads2.x + 1);
     const int nshared2_b = threads2.x * threads2.y * sizeof(U);
     const int nshared2 = nshared2_a > nshared2_b ? nshared2_a : nshared2_b;
