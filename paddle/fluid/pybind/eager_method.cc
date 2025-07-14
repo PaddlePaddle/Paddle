@@ -1639,8 +1639,6 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
   } else {
     // get value for int tensor
     ParseBoolAndBroadcastIndices(&transed_index);
-
-#ifdef PADDLE_WITH_CUDA
     bool has_empty_index = false;
     for (const auto& tensor : transed_index) {
       if (!tensor.initialized()) {
@@ -1649,7 +1647,7 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
       }
     }
 
-    if (transed_tensor.is_gpu() && !is_combined_bool && !has_empty_index) {
+    if (FLAGS_use_stride_kernel && !is_combined_bool && !has_empty_index) {
       const phi::distributed::ProcessMesh* mesh = nullptr;
       if (InputsContainDistTensor(
               &mesh, self->tensor, transed_tensor, transed_index)) {
@@ -1713,27 +1711,6 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
       handle_transpose(out);
       return ToPyObject(out);
     }
-#else
-    paddle::Tensor transed_advanced_index_tensor;
-    if (transed_index.size() > 1) {
-      transed_advanced_index_tensor = stack_ad_func(transed_index, -1);
-    } else {
-      // fast path for single index tensor, since stack is much slower than
-      // unsqueeze
-      transed_advanced_index_tensor = unsqueeze_ad_func(transed_index[0], {-1});
-    }
-
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(
-            &mesh, transed_tensor, transed_advanced_index_tensor)) {
-      ConvertAllInputsToDistTensor(
-          mesh, transed_tensor, transed_advanced_index_tensor);
-    }
-
-    out = gather_nd_ad_func(transed_tensor, transed_advanced_index_tensor);
-    handle_transpose(out);
-    return ToPyObject(out);
-#endif
   }
 
   handle_transpose(out);
@@ -2081,13 +2058,9 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
       }
 
       if (value_tensor.dims().size() > 1 && pos_of_new_dim != 0) {
-#ifdef PADDLE_WITH_CUDA
-        if (!value_tensor.is_gpu()) {
+        if (!FLAGS_use_stride_kernel) {
           value_tensor = transpose_ad_func(value_tensor, trans_dim);
         }
-#else
-        value_tensor = transpose_ad_func(value_tensor, trans_dim);
-#endif
       }
 
       const phi::distributed::ProcessMesh* mesh = nullptr;
@@ -2103,9 +2076,7 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
         transed_sub_tensor =
             masked_fill__ad_func(transed_sub_tensor, mask_tensor, value_tensor);
       } else {
-#ifdef PADDLE_WITH_CUDA
-        // TODO(czy): remove in the future
-        if (transed_sub_tensor.is_gpu()) {
+        if (FLAGS_use_stride_kernel) {
           transed_index = expandTensors(transed_index);
           transed_index = expand_outplace(transed_index);
           for (int i = 0; i < pos_of_new_dim; ++i) {
@@ -2154,10 +2125,6 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
           transed_sub_tensor = index_put__ad_func(
               transed_sub_tensor, transed_index, value_tensor);
         }
-#else
-        transed_sub_tensor =
-            index_put__ad_func(transed_sub_tensor, transed_index, value_tensor);
-#endif
       }
       if (out_is_view) {
         // NOTE(zoooo0820): if out_is_view is true, it is a case of

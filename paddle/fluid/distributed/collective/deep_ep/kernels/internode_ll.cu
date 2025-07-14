@@ -548,13 +548,12 @@ void dispatch(void* packed_recv_x,
               cudaStream_t stream,
               int phases) {
   constexpr int kNumMaxTopK = 9;
-  constexpr int kNumWarpsPerGroup = 10;
-  constexpr int kNumWarpGroups = 3;
-  EP_STATIC_ASSERT(kNumMaxTopK + 1 <= kNumWarpGroups * kNumWarpsPerGroup,
-                   "Too many top-k selections");
-
-  const auto num_warps = kNumWarpGroups * kNumWarpsPerGroup;
-  const auto num_sms = cell_div(num_experts, kNumWarpGroups);
+  constexpr int NUM_WARPS = 32;
+  const int dev_id = 0;
+  int sm_count;
+  cudaDeviceGetAttribute(&sm_count, cudaDevAttrMultiProcessorCount, dev_id);
+  const int num_warp_groups = cell_div(num_experts, sm_count);
+  const auto num_sms = max(sm_count, cell_div(num_experts, num_warp_groups));
   EP_HOST_ASSERT(num_topk <= kNumMaxTopK);
 
   // Workspace checks
@@ -563,41 +562,43 @@ void dispatch(void* packed_recv_x,
       atomic_counter_per_expert + num_experts;
   EP_HOST_ASSERT(num_experts * sizeof(int) * 2 <= NUM_WORKSPACE_BYTES);
 
-#define DISPATCH_LAUNCH_CASE(hidden)                                          \
-  {                                                                           \
-    auto dispatch_func =                                                      \
-        use_fp8 ? dispatch<true, kNumWarpGroups, kNumWarpsPerGroup, hidden>   \
-                : dispatch<false, kNumWarpGroups, kNumWarpsPerGroup, hidden>; \
-    LAUNCH_KERNEL(&cfg,                                                       \
-                  dispatch_func,                                              \
-                  packed_recv_x,                                              \
-                  packed_recv_x_scales,                                       \
-                  packed_recv_src_info,                                       \
-                  packed_recv_layout_range,                                   \
-                  packed_recv_count,                                          \
-                  rdma_recv_x,                                                \
-                  rdma_recv_count,                                            \
-                  rdma_x,                                                     \
-                  x,                                                          \
-                  topk_idx,                                                   \
-                  expertwise_scale,                                           \
-                  atomic_counter_per_expert,                                  \
-                  atomic_finish_counter_per_expert,                           \
-                  next_clean,                                                 \
-                  num_next_clean_int,                                         \
-                  num_tokens,                                                 \
-                  num_max_dispatch_tokens_per_rank,                           \
-                  num_topk,                                                   \
-                  num_experts,                                                \
-                  rank,                                                       \
-                  num_ranks,                                                  \
-                  phases);                                                    \
-  }                                                                           \
-  break
-
-  SETUP_LAUNCH_CONFIG(num_sms, num_warps * 32, stream);
-  SWITCH_HIDDEN(DISPATCH_LAUNCH_CASE);
-#undef DISPATCH_LAUNCH_CASE
+  DISPATCH_HIDDEN_SIZE(
+      hidden,
+      kHidden,
+      {DISPATCH_NUM_WARP_GROUPS(num_warp_groups, kNumWarpGroups, {
+        constexpr int kNumWarpsPerGroup = NUM_WARPS / kNumWarpGroups;
+        EP_STATIC_ASSERT(kNumMaxTopK + 1 <= kNumWarpGroups * kNumWarpsPerGroup,
+                         "Too many top-k selections");
+        auto dispatch_func =
+            use_fp8
+                ? dispatch<true, kNumWarpGroups, kNumWarpsPerGroup, kHidden>
+                : dispatch<false, kNumWarpGroups, kNumWarpsPerGroup, kHidden>;
+        SETUP_LAUNCH_CONFIG(num_sms, NUM_WARPS * 32, stream);
+        LAUNCH_KERNEL(&cfg,
+                      dispatch_func,
+                      packed_recv_x,
+                      packed_recv_x_scales,
+                      packed_recv_src_info,
+                      packed_recv_layout_range,
+                      packed_recv_count,
+                      rdma_recv_x,
+                      rdma_recv_count,
+                      rdma_x,
+                      x,
+                      topk_idx,
+                      expertwise_scale,
+                      atomic_counter_per_expert,
+                      atomic_finish_counter_per_expert,
+                      next_clean,
+                      num_next_clean_int,
+                      num_tokens,
+                      num_max_dispatch_tokens_per_rank,
+                      num_topk,
+                      num_experts,
+                      rank,
+                      num_ranks,
+                      phases);
+      })})
 }
 
 template <int kNumWarpGroups,
@@ -870,51 +871,52 @@ void combine(void* combined_x,
              cudaStream_t stream,
              int phases,
              bool zero_copy) {
-  constexpr int kNumWarpsPerGroup = 10;
-  constexpr int kNumWarpGroups = 3;
   constexpr int kNumMaxTopk = 9;
+  constexpr int NUM_WARPS = 32;
 
-  const auto num_warps = kNumWarpGroups * kNumWarpsPerGroup;
-  const auto num_sms = cell_div(num_experts, kNumWarpGroups);
+  const int dev_id = 0;
+  int sm_count;
+  cudaDeviceGetAttribute(&sm_count, cudaDevAttrMultiProcessorCount, dev_id);
+  const int num_warp_groups = cell_div(num_experts, sm_count);
+  const auto num_sms = max(sm_count, cell_div(num_experts, num_warp_groups));
 
   // Check workspace
   auto atomic_clean_flag = reinterpret_cast<int*>(workspace);
   EP_HOST_ASSERT(sizeof(int) <= NUM_WORKSPACE_BYTES);
   EP_HOST_ASSERT(num_topk <= kNumMaxTopk);
 
-#define COMBINE_LAUNCH_CASE(hidden)                                      \
-  {                                                                      \
-    auto combine_func =                                                  \
-        combine<kNumWarpGroups, kNumWarpsPerGroup, hidden, kNumMaxTopk>; \
-    LAUNCH_KERNEL(&cfg,                                                  \
-                  combine_func,                                          \
-                  combined_x,                                            \
-                  rdma_recv_x,                                           \
-                  rdma_recv_flag,                                        \
-                  rdma_send_x,                                           \
-                  x,                                                     \
-                  topk_idx,                                              \
-                  topk_weights,                                          \
-                  src_info,                                              \
-                  layout_range,                                          \
-                  next_clean,                                            \
-                  num_next_clean_int,                                    \
-                  atomic_clean_flag,                                     \
-                  num_combined_tokens,                                   \
-                  hidden,                                                \
-                  num_topk,                                              \
-                  num_max_dispatch_tokens_per_rank,                      \
-                  num_experts,                                           \
-                  rank,                                                  \
-                  num_ranks,                                             \
-                  phases,                                                \
-                  zero_copy);                                            \
-  }                                                                      \
-  break
-
-  SETUP_LAUNCH_CONFIG(num_sms, num_warps * 32, stream);
-  SWITCH_HIDDEN(COMBINE_LAUNCH_CASE);
-#undef COMBINE_LAUNCH_CASE
+  DISPATCH_HIDDEN_SIZE(
+      hidden,
+      kHidden,
+      {DISPATCH_NUM_WARP_GROUPS(num_warp_groups, kNumWarpGroups, {
+        constexpr int kNumWarpsPerGroup = NUM_WARPS / kNumWarpGroups;
+        auto combine_func =
+            combine<kNumWarpGroups, kNumWarpsPerGroup, kHidden, kNumMaxTopk>;
+        SETUP_LAUNCH_CONFIG(num_sms, NUM_WARPS * 32, stream);
+        LAUNCH_KERNEL(&cfg,
+                      combine_func,
+                      combined_x,
+                      rdma_recv_x,
+                      rdma_recv_flag,
+                      rdma_send_x,
+                      x,
+                      topk_idx,
+                      topk_weights,
+                      src_info,
+                      layout_range,
+                      next_clean,
+                      num_next_clean_int,
+                      atomic_clean_flag,
+                      num_combined_tokens,
+                      hidden,
+                      num_topk,
+                      num_max_dispatch_tokens_per_rank,
+                      num_experts,
+                      rank,
+                      num_ranks,
+                      phases,
+                      zero_copy);
+      })})
 }
 
 }  // namespace internode_ll
