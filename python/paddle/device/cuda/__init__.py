@@ -74,7 +74,6 @@ def current_stream(device: _CudaPlaceLike | None = None) -> core.CUDAStream:
         .. code-block:: python
 
             >>> # doctest: +REQUIRES(env:GPU)
-            >>> # test set_device to gpu
             >>> import paddle
             >>> paddle.device.set_device('gpu')
 
