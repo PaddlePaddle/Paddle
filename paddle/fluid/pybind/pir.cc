@@ -2881,6 +2881,8 @@ std::shared_ptr<Program> ApplyFusedBnAddActPass(
   return program;
 }
 
+#ifdef PADDLE_WITH_CINN
+
 ap::paddle::AxprValue AxprValueCall(const ap::paddle::AxprValue &obj,
                                     py::args args) {
   std::vector<ap::paddle::AxprValue> axpr_args;
@@ -2891,7 +2893,7 @@ ap::paddle::AxprValue AxprValueCall(const ap::paddle::AxprValue &obj,
   return ap::paddle::AxprValueCall(obj, axpr_args);
 }
 
-void BindIrPass(pybind11::module *m) {
+void BindApUtilsImpl(pybind11::module *m) {
   py::class_<ap::paddle::AxprValue> axpr_value(*m, "AxprValue");
   axpr_value.def(py::init(&ap::paddle::AxprValueFromBool));
   axpr_value.def(py::init(&ap::paddle::AxprValueFromInt));
@@ -2917,10 +2919,18 @@ void BindIrPass(pybind11::module *m) {
   axpr_value.def("__call__", &AxprValueCall);
   axpr_value.def("__str__", &ap::paddle::AxprValueStr);
   axpr_value.def("__len__", &ap::paddle::AxprValueLen);
-
   m->def("pir_program_to_py_code", ap::paddle::PirProgramToPyCode);
-  m->def("apply_pcc_pass", ApplyPccPass);
+}
+#endif
 
+void BindApUtils(pybind11::module *m) {
+#ifdef PADDLE_WITH_CINN
+  BindApUtilsImpl(m);
+#endif
+}
+
+void BindIrPass(pybind11::module *m) {
+  BindApUtils(m);
   m->def("apply_cinn_pass", ApplyCinnPass);
   m->def("apply_pcc_pass", ApplyPccPass);
   m->def("check_infer_symbolic_if_need", CheckInferSymbolicIfNeed);
