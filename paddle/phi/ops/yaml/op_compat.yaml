@@ -3206,6 +3206,13 @@
       support_tensor : true
   manual_signature : [reverse]
 
+- op : rint
+  backward : rint_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : rmsprop_ (rmsprop)
   inputs :
     {param: Param, mean_square: MeanSquare, mean_grad: MeanGrad, learning_rate: LearningRate, grad: Grad, moment: Moment, master_param: MasterParam}

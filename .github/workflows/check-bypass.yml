@@ -16,7 +16,7 @@ jobs:
   check-bypass:
     name: Check bypass
     runs-on:
-      group: APPROVAL 
+      group: APPROVAL
     permissions:
       contents: read
     env:
