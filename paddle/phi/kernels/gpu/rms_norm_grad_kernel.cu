@@ -54,7 +54,7 @@ void HostRMSNormGradient(const Context& dev_ctx,
                          T* grad_input,
                          V* grad_gamma) {
   GPU(Stream_t) stream = dev_ctx.stream();
-  if (gamma != NULL) {
+  if (gamma != NULL && grad_gamma != NULL) {
     const int part_size = 16;
     const dim3 threads2(32, 4, 1);
     const dim3 blocks2((n2 + threads2.x - 1) / threads2.x, part_size, 1);
@@ -130,12 +130,17 @@ void cuda_rms_norm_gradient(const Context& dev_ctx,
   int rows = static_cast<int>(matrix_dim[0]);
   int cols = static_cast<int>(matrix_dim[1]);
   dev_ctx.template Alloc<T>(grad_x);
-
-  DISPATCH_SCALE_TYPE(T,
-                      scale.type(),
-                      "scale grad allocate",
-                      dev_ctx.template Alloc<SCALE_TYPE>(grad_scale));
-
+  void* grad_scale_data = nullptr;
+  if (grad_scale != nullptr) {
+    DISPATCH_SCALE_TYPE(T,
+                        scale.type(),
+                        "scale grad allocate",
+                        dev_ctx.template Alloc<SCALE_TYPE>(grad_scale));
+    DISPATCH_SCALE_TYPE(T,
+                        scale.type(),
+                        "get scale grad data",
+                        grad_scale_data = grad_scale->data<SCALE_TYPE>());
+  }
   DISPATCH_SCALE_TYPE(T,
                       scale.type(),
                       "cuda_rms_norm_gradient_kernel",
@@ -149,7 +154,7 @@ void cuda_rms_norm_gradient(const Context& dev_ctx,
                           scale.data<SCALE_TYPE>(),
                           epsilon,
                           grad_x->data<T>(),
-                          grad_scale->data<SCALE_TYPE>()));
+                          static_cast<SCALE_TYPE*>(grad_scale_data)));
 }
 
 }  // namespace
