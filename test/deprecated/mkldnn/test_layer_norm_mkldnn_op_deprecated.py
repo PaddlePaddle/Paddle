@@ -57,7 +57,7 @@ def _reference_layer_norm_naive(x, scale, beta, epsilon, begin_norm_axis=1):
     return output, mean, var
 
 
-class TestLayerNormMKLDNNOp(unittest.TestCase):
+class TestLayerNormONEDNNOp(unittest.TestCase):
     def setUp(self):
         self.use_mkldnn = True
 

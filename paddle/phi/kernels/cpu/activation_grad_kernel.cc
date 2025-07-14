@@ -150,6 +150,7 @@ DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Relu, ReluGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Tanh, TanhGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Sigmoid, SigmoidGradFunctor);
 
+DEFINE_CPU_ACTIVATION_GRAD_KERNEL_NODEP(Rint, ZeroGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_NODEP(Round, ZeroGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_NODEP(Floor, ZeroGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_NODEP(Ceil, ZeroGradFunctor);
@@ -487,6 +488,15 @@ PD_REGISTER_ACTIVATION_GRAD_KERNEL(ceil_grad, CeilGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(celu_grad, CeluGradKernel)
 PD_REGISTER_ACTIVATION_DOUBLE_GRAD_KERNEL(celu_double_grad,
                                           CeluDoubleGradKernel)
+
+PD_REGISTER_KERNEL(rint_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::RintGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
 
 PD_REGISTER_KERNEL(round_grad,
                    CPU,

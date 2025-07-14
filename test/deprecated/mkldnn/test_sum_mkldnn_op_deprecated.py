@@ -21,7 +21,7 @@ from test_sum_op import TestSumOp
 from paddle.base import core
 
 
-class TestSumMKLDNN(TestSumOp):
+class TestSumONEDNN(TestSumOp):
     def setUp(self):
         self.op_type = "sum"
         self.init_data_type()
@@ -48,7 +48,7 @@ class TestSumMKLDNN(TestSumOp):
         )
 
 
-class TestMKLDNNSumInplaceOp(unittest.TestCase):
+class TestONEDNNSumInplaceOp(unittest.TestCase):
     def setUp(self):
         self.op_type = "sum"
         self.init_data_type()
