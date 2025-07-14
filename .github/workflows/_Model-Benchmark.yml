@@ -34,6 +34,7 @@ jobs:
 
   model-benchmark:
     name: Benchmark test
+    needs: check-bypass
     if: ${{ inputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: model-bm
