@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import functools
 import unittest
 from contextlib import contextmanager
 
@@ -31,13 +30,9 @@ from paddle.jit.sot.utils import strict_mode_guard
 
 def check_no_breakgraph_if(cond: bool):
     def decorator(original_func):
-        @functools.wraps(original_func)
-        def wrapped_func(*args, **kwargs):
-            if cond:
-                return check_no_breakgraph(original_func)(*args, **kwargs)
-            return original_func(*args, **kwargs)
-
-        return wrapped_func
+        if cond:
+            return check_no_breakgraph(original_func)
+        return original_func
 
     return decorator
 
