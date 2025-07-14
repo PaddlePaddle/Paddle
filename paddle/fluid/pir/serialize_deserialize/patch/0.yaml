@@ -1,0 +1,6 @@
+op_patches:
+  - op_name : pd_op.kthvalue
+    actions:
+      - action : modify_attr
+        object : k
+        type : pir::Int64Attribute
