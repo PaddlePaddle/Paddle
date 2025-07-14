@@ -145,41 +145,57 @@ class CommunicateTopology:
     ) -> None:
         self._parallel_names = [name for name in hybrid_group_names if name != "context"]
         self._dims = [dims[i] for i in range(len(dims)) if hybrid_group_names[i] != "context"]
-        self._parallel_names_cp = [name for name in hybrid_group_names if name != "sharding" and name != "sep" and name != "data"] + ["cp_sharding"]
-        self._dims_cp = [dims[i] for i in range(len(dims)) if name != "sharding" and name != "sep" and name != "data"]
+        self._parallel_names_cp = None
+        self._dims_cp = None
+        if "context" in hybrid_group_names:
+            self._parallel_names_cp = [name for name in hybrid_group_names if name == "model" or name == "context" or name == "pipe"] + ["cp_sharding"]
+            self._dims_cp = [dims[i] for i in range(len(hybrid_group_names)) if hybrid_group_names[i] == "model" or hybrid_group_names[i] == "context" or hybrid_group_names[i] == "pipe"]
 
         self.coordinate = collections.namedtuple(
             'Coordinate', self._parallel_names
         )
 
-        self.coordinate_cp = collections.namedtuple(
-            'Coordinate_cp', self._parallel_names_cp
-        )
+        self.coordinate_cp = None
+        if "context" in hybrid_group_names:
+            self.coordinate_cp = collections.namedtuple(
+                'Coordinate_cp', self._parallel_names_cp
+            )
 
         self._world_size = reduce(lambda x, y: x * y, self._dims, 1)
 
-        if "sharding" in hybrid_group_names:
-            idx = hybrid_group_names.index("sharding")
-            cp_degree = self._dims_cp[self._parallel_names_cp.index("context")]
-            self._dims_cp += [self._world_size // cp_degree]
-        else:
-            self._dims_cp += [1]
 
+        if "context" in hybrid_group_names:
+            if "sharding" in hybrid_group_names:
+                idx = self._parallel_names.index("sharding")
+                cp_degree = self._dims_cp[self._parallel_names_cp.index("context")]
+                self._dims_cp += [dims[idx] // cp_degree]
+            elif "dense_sharding" in hybrid_group_names:
+                idx = self._parallel_names.index("dense_sharding")
+                cp_degree = self._dims_cp[self._parallel_names_cp.index("context")]
+                self._dims_cp += [dims[idx] // cp_degree]
+            else:
+                assert False, "only support cp with sharding"
+
+        print(f"wsm debug {self._parallel_names_cp=}, {self._dims_cp=}, {self._parallel_names=}, {self._dims=}, {self._world_size=}")
 
         ranges = [range(d) for d in self._dims]
-        ranges_cp = [range(d) for d in self._dims_cp]
+
         all_coordinate = [self.coordinate(*x) for x in product(*ranges)]
-        all_coordinate_cp = [self.coordinate_cp(*x) for x in product(*ranges_cp)]
+
 
         self._coord2rank = dict(zip(all_coordinate, range(len(all_coordinate))))
-        self._coord2rank_cp = dict(zip(all_coordinate_cp, range(len(all_coordinate_cp))))
 
         self._rank2coord = dict(
             zip(self._coord2rank.values(), self._coord2rank.keys())
         )
-        self._rank2coord_cp = dict(
-            zip(self._coord2rank_cp.values(), self._coord2rank_cp.keys())
-        )
+
+        if "context" in hybrid_group_names:
+            ranges_cp = [range(d) for d in self._dims_cp]
+            all_coordinate_cp = [self.coordinate_cp(*x) for x in product(*ranges_cp)]
+            self._coord2rank_cp = dict(zip(all_coordinate_cp, range(len(all_coordinate_cp))))
+            self._rank2coord_cp = dict(
+                zip(self._coord2rank_cp.values(), self._coord2rank_cp.keys())
+            )
 
     def get_hybrid_group_names(self) -> list[str]:
         return self._parallel_names
@@ -236,17 +252,30 @@ class CommunicateTopology:
 
 
     def get_fused_ranks(self, fused_axis: list[int]) -> list[list[int]]:
-        non_fused_axis = list(set(self._parallel_names).difference(fused_axis))
+        if "context" not in fused_axis and "cp_sharding" not in fused_axis:
+            non_fused_axis = list(set(self._parallel_names).difference(fused_axis))
+        else:
+            non_fused_axis = list(set(self._parallel_names_cp).difference(fused_axis))
         non_fused_ranges = []
         for axis_name in non_fused_axis:
-            non_fused_ranges.append(
-                range(self._dims[self._parallel_names.index(axis_name)])
-            )
+            if "context" not in fused_axis and "cp_sharding" not in fused_axis:
+                non_fused_ranges.append(
+                    range(self._dims[self._parallel_names.index(axis_name)])
+                )
+            else:
+                non_fused_ranges.append(
+                    range(self._dims_cp[self._parallel_names_cp.index(axis_name)])
+                )
         fused_ranges = []
         for axis_name in fused_axis:
-            fused_ranges.append(
-                range(self._dims[self._parallel_names.index(axis_name)])
-            )
+            if "context" not in fused_axis and "cp_sharding" not in fused_axis:
+                fused_ranges.append(
+                    range(self._dims[self._parallel_names.index(axis_name)])
+                )
+            else:
+                fused_ranges.append(
+                    range(self._dims_cp[self._parallel_names_cp.index(axis_name)])
+                )
 
         rank_list = []
         for non_fused_ranks in product(*non_fused_ranges):
@@ -257,7 +286,10 @@ class CommunicateTopology:
             for fused_ranks in product(*fused_ranges):
                 for i, fused_rank in enumerate(fused_ranks):
                     coord_dict[fused_axis[i]] = fused_rank
-                ranks.append(self._coord2rank[self.coordinate(**coord_dict)])
+                if "context" not in fused_axis and "cp_sharding" not in fused_axis:
+                    ranks.append(self._coord2rank[self.coordinate(**coord_dict)])
+                else:
+                    ranks.append(self._coord2rank_cp[self.coordinate_cp(**coord_dict)])
             rank_list.append(ranks)
 
         return rank_list
@@ -273,10 +305,15 @@ class CommunicateTopology:
                 name for name in self._parallel_names if name != axis_name
             ]
 
+        if axis_name == "context":
+            print(f"wsm debug {other_axis_names=}")
         ranges = []
         for name in other_axis_names:
             dim_num = self.get_dim_size(name)
             ranges.append(range(dim_num))
+
+        if axis_name == "context":
+            print(f"wsm debug {ranges=}")
 
         all_result = []
         for x in product(*ranges):
@@ -1106,6 +1143,9 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
             ),
         )
 
+        self._cp_mp_group = None
+        self._cp_mp_comm_group = None
+
         if self._cp_degree > 1:
             (
                 self._cp_mp_group,
@@ -1196,7 +1236,7 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
             f"cp_degree: {self._cp_degree}, "
             f"ep_degree: {self._ep_degree}, moe_sharding_degree: {self._moe_sharding_degree}"
         )
-        debug_str += f", mp_group: {self._mp_group},  sharding_group: {self._sharding_group}, pp_group: {self._pp_group}, dp_group: {self._dp_group}, sep_group: {self._sep_group}, cp_group: {self._cp_group}, check/clip group: {self._check_group}, ep_group: {self._ep_group}, moe_sharding_group: {self._moe_sharding_group}."
+        debug_str += f", mp_group: {self._mp_group},  sharding_group: {self._sharding_group}, pp_group: {self._pp_group}, dp_group: {self._dp_group}, sep_group: {self._sep_group}, cp_group: {self._cp_group}, cp_sharding_group: {self._cp_sharding_group}, cp_mp_group: {self._cp_mp_group}, check/clip group: {self._check_group}, ep_group: {self._ep_group}, moe_sharding_group: {self._moe_sharding_group}."
         logger.info(debug_str)
 
         global _HYBRID_PARALLEL_GROUP
@@ -1279,6 +1319,8 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
 
     def _get_parallel_id(self, topo, parallel_type):
         comm_list = topo.get_comm_list(parallel_type)
+        if parallel_type == "context":
+          print(f"wsm debug {comm_list=} {self.global_rank=}")
         parallel_id = self.find_col_idx(comm_list, self.global_rank)
         assert parallel_id is not None
         return parallel_id

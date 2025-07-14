@@ -105,15 +105,6 @@ static std::vector<int64_t> GetAttnSparseMaskDims(
             "startend_row_indices is [%s]",
             rank,
             origin_dims));
-    PADDLE_ENFORCE_EQ(origin_dims[rank - 2],
-                      max_seqlen_q,
-                      common::errors::InvalidArgument(
-                          "The sparse_mask_dims[%d] of "
-                          "attn_mask_start_row_indices is expected to be "
-                          "equal to %d, but received %d.",
-                          rank - 2,
-                          max_seqlen_q,
-                          origin_dims[2]));
 
     int64_t first_dim = 1;
     for (int i = 0; i < rank - 3; i++) {
