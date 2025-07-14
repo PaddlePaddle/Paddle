@@ -1122,9 +1122,6 @@ class device_guard:
     Args:
         device(PlaceLike): The specified device.
 
-    Returns:
-        None.
-
     Examples:
         .. code-block:: python
 
