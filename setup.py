@@ -851,16 +851,7 @@ def is_transpiler():
         if e.errno != errno.EEXIST:
             raise
     with open(filename, 'w') as f:
-        f.write(
-            cnt
-            % {
-                'mode': (
-                    'PSLIB'
-                    if env_dict.get("WITH_PSLIB") == 'ON'
-                    else 'TRANSPILER'
-                )
-            }
-        )
+        f.write(cnt % {'mode': 'TRANSPILER'})
 
 
 def find_files(pattern, root, recursive=False):
@@ -1617,17 +1608,6 @@ def get_package_data_and_package_dir():
                     + ' failed',
                     f'command: {command}',
                 )
-    if env_dict.get("WITH_PSLIB") == 'ON':
-        shutil.copy(env_dict.get("PSLIB_LIB"), libs_path)
-        shutil.copy(env_dict.get("JVM_LIB"), libs_path)
-        if os.path.exists(env_dict.get("PSLIB_VERSION_PY")):
-            shutil.copy(
-                env_dict.get("PSLIB_VERSION_PY"),
-                paddle_binary_dir
-                + '/python/paddle/incubate/distributed/fleet/parameter_server/pslib/',
-            )
-        package_data['paddle.libs'] += ['libps' + ext_suffix]
-        package_data['paddle.libs'] += ['libjvm' + ext_suffix]
     if env_dict.get("WITH_ONEDNN") == 'ON':
         if env_dict.get("CMAKE_BUILD_TYPE") == 'Release' and os.name != 'nt':
             # only change rpath in Release mode.

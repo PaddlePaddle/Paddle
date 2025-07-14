@@ -448,10 +448,6 @@ function cmake_base() {
     distributed_flag=${WITH_DISTRIBUTE:-OFF}
     gloo_flag=${distributed_flag}
     pscore_flag=${distributed_flag}
-    pslib_flag=${WITH_PSLIB:-OFF}
-    if [ "${pslib_flag}" == "ON" ];then
-      pscore_flag=${WITH_PSCORE:-OFF}
-    fi
 
     if [ "$2" != "approval" ];then
       which python
@@ -504,7 +500,6 @@ function cmake_base() {
         -DWITH_ARM=${WITH_ARM:-OFF}
         -DWITH_STRIP=${WITH_STRIP:-ON}
         -DON_INFER=${ON_INFER:-OFF}
-        -DWITH_HETERPS=${WITH_HETERPS:-OFF}
         -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF}
         -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}"
         -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
@@ -558,7 +553,6 @@ EOF
         -DWITH_ARM=${WITH_ARM:-OFF} \
         -DWITH_STRIP=${WITH_STRIP:-ON} \
         -DON_INFER=${ON_INFER:-OFF} \
-        -DWITH_HETERPS=${WITH_HETERPS:-OFF} \
         -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}" \
         -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF} \
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}  \
