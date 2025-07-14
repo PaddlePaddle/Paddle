@@ -143,26 +143,52 @@ class CommunicateTopology:
         ],
         dims: list[int] = [1, 1, 1, 1, 1, 1],
     ) -> None:
-        self._parallel_names = hybrid_group_names
-        self._dims = dims
+        self._parallel_names = [name for name in hybrid_group_names if name != "context"]
+        self._dims = [dims[i] for i in range(len(dims)) if hybrid_group_names[i] != "context"]
+        self._parallel_names_cp = [name for name in hybrid_group_names if name != "sharding" and name != "sep" and name != "data"] + ["cp_sharding"]
+        self._dims_cp = [dims[i] for i in range(len(dims)) if name != "sharding" and name != "sep" and name != "data"]
+
         self.coordinate = collections.namedtuple(
             'Coordinate', self._parallel_names
         )
+
+        self.coordinate_cp = collections.namedtuple(
+            'Coordinate_cp', self._parallel_names_cp
+        )
+
         self._world_size = reduce(lambda x, y: x * y, self._dims, 1)
 
+        if "sharding" in hybrid_group_names:
+            idx = hybrid_group_names.index("sharding")
+            cp_degree = self._dims_cp[self._parallel_names_cp.index("context")]
+            self._dims_cp += [self._world_size // cp_degree]
+        else:
+            self._dims_cp += [1]
+
+
         ranges = [range(d) for d in self._dims]
+        ranges_cp = [range(d) for d in self._dims_cp]
         all_coordinate = [self.coordinate(*x) for x in product(*ranges)]
+        all_coordinate_cp = [self.coordinate_cp(*x) for x in product(*ranges_cp)]
 
         self._coord2rank = dict(zip(all_coordinate, range(len(all_coordinate))))
+        self._coord2rank_cp = dict(zip(all_coordinate_cp, range(len(all_coordinate_cp))))
+
         self._rank2coord = dict(
             zip(self._coord2rank.values(), self._coord2rank.keys())
+        )
+        self._rank2coord_cp = dict(
+            zip(self._coord2rank_cp.values(), self._coord2rank_cp.keys())
         )
 
     def get_hybrid_group_names(self) -> list[str]:
         return self._parallel_names
 
     def get_dim(self, axis_name: str) -> int:
-        return self._dims[self._parallel_names.index(axis_name)]
+        if "context" == axis_name or "cp_sharding" == axis_name:
+            return self._dims_cp[self._parallel_names_cp.index(axis_name)]
+        else:
+            return self._dims[self._parallel_names.index(axis_name)]
 
     def world_size(self) -> int:
         return self._world_size
@@ -178,19 +204,36 @@ class CommunicateTopology:
         assert rank in self._rank2coord.keys()
         return self._rank2coord[rank]
 
+    def get_coord_cp(self, rank: int) -> Any:
+        assert rank < self._world_size
+        assert rank in self._rank2coord_cp.keys()
+        return self._rank2coord_cp[rank]
+
     def get_axis_list(self, axis_name: str, index: int) -> list[int]:
-        axis = self._parallel_names.index(axis_name)
-        ranks = [
-            self._coord2rank[coord]
-            for coord in self._coord2rank.keys()
-            if coord[axis] == index
-        ]
+        if "context" == axis_name or "cp_sharding" == axis_name:
+            axis = self._parallel_names_cp.index(axis_name)
+            ranks = [
+                self._coord2rank_cp[coord]
+                for coord in self._coord2rank_cp.keys()
+                if coord[axis] == index
+            ]
+        else:
+            axis = self._parallel_names.index(axis_name)
+            ranks = [
+                self._coord2rank[coord]
+                for coord in self._coord2rank.keys()
+                if coord[axis] == index
+            ]
         ranks.sort()
         return ranks
 
     def get_dim_size(self, axis_name: str) -> int:
-        assert axis_name in self._parallel_names
-        return self._dims[self._parallel_names.index(axis_name)]
+        assert axis_name in self._parallel_names or axis_name in self._parallel_names_cp
+        if "context" == axis_name or "cp_sharding" == axis_name:
+            return self._dims_cp[self._parallel_names_cp.index(axis_name)]
+        else:
+            return self._dims[self._parallel_names.index(axis_name)]
+
 
     def get_fused_ranks(self, fused_axis: list[int]) -> list[list[int]]:
         non_fused_axis = list(set(self._parallel_names).difference(fused_axis))
@@ -220,10 +263,15 @@ class CommunicateTopology:
         return rank_list
 
     def get_comm_list(self, axis_name: str) -> list[list[int]]:
-        assert axis_name in self._parallel_names
-        other_axis_names = [
-            name for name in self._parallel_names if name != axis_name
-        ]
+        assert axis_name in self._parallel_names or axis_name in self._parallel_names_cp
+        if "context" == axis_name or "cp_sharding" == axis_name:
+            other_axis_names = [
+                name for name in self._parallel_names_cp if name != axis_name
+            ]
+        else:
+            other_axis_names = [
+                name for name in self._parallel_names if name != axis_name
+            ]
 
         ranges = []
         for name in other_axis_names:
@@ -239,7 +287,10 @@ class CommunicateTopology:
             result = []
             for i in range(0, self.get_dim_size(axis_name)):
                 key_coord[axis_name] = i
-                result.append(self._coord2rank[self.coordinate(**key_coord)])
+                if "context" == axis_name or "cp_sharding" == axis_name:
+                    result.append(self._coord2rank_cp[self.coordinate_cp(**key_coord)])
+                else:
+                    result.append(self._coord2rank[self.coordinate(**key_coord)])
             all_result.append(result)
 
         return all_result
@@ -264,17 +315,19 @@ class HybridCommunicateGroup:
         self._sharding_degree = self._topo.get_dim('sharding')
         self._sep_degree = self._topo.get_dim('sep')
         self._cp_degree = self._topo.get_dim('context')
+        self._cp_sharding_degree = self._topo.get_dim("cp_sharding")
 
         self._data_parallel_id = self._get_data_parallel_id()
         self._model_parallel_id = self._get_model_parallel_id()
         self._sharding_parallel_id = self._get_sharding_parallel_id()
         self._sep_parallel_id = self._get_sep_parallel_id()
-        self._cp_parallel_id = self._get_cp_parallel_id()
+        self._cp_parallel_id = self._get_context_parallel_id()
+        self._cp_sharding_id = self._get_cp_sharding_parallel_id()
         self.stage_id = self._get_pipe_parallel_id()
 
         assert (
             self._check_valid_topo()
-        ), f"nranks: {self.nranks}, mp_num: {self._mp_degree}, sharding_num: {self._sharding_degree}, pp_num: {self._pp_degree}, dp_num: {self._dp_degree}, sep_num: {self._sep_degree}, cp_num: {self._cp_degree}"
+        ), f"nranks: {self.nranks}, mp_num: {self._mp_degree}, sharding_num: {self._sharding_degree}, pp_num: {self._pp_degree}, dp_num: {self._dp_degree}, sep_num: {self._sep_degree}, cp_num: {self._cp_degree} cp_sharding_num: {self._cp_sharding_degree}"
 
         # create comm group for pipe parallel
         self._pp_group, self._pp_comm_group = self._set_comm_group(
@@ -374,6 +427,16 @@ class HybridCommunicateGroup:
                     else None
                 ),
             )
+            self._cp_sharding_group, self._cp_sharding_comm_group = self._set_comm_group(
+                "cp_sharding",
+                nccl_config=(
+                    message2nccl_config(
+                        hybrid_configs["cp_sharding_configs"].nccl_config, "cp_sharding"
+                    )
+                    if hybrid_configs is not None
+                    else None
+                ),
+            )
 
         # create global group for check inf_nan / clip global norm
         self._check_group, self._check_comm_group = self._set_check_group(
@@ -430,20 +493,6 @@ class HybridCommunicateGroup:
             )
 
         if self._cp_degree > 1:
-            (
-                self._dp_cp_group,
-                self._dp_cp_comm_group,
-            ) = self.create_fuse_group(
-                ["data", "context"],
-                nccl_config=(
-                    message2nccl_config(
-                        hybrid_configs["dp_cp_configs"].nccl_config, "dp_cp"
-                    )
-                    if hybrid_config is not None
-                    else None
-                ),
-            )
-
             (
                 self._cp_mp_group,
                 self._cp_mp_comm_group,
@@ -502,7 +551,6 @@ class HybridCommunicateGroup:
             self._pp_degree == 1
             and self._mp_degree == 1
             and self._sep_degree == 1
-            and self._cp_degree == 1
             and self._sharding_degree == 1
             and self._dp_degree > 1
         ):
@@ -511,7 +559,6 @@ class HybridCommunicateGroup:
             self._pp_degree == 1
             and self._mp_degree == 1
             and self._sep_degree == 1
-            and self._cp_degree == 1
             and self._sharding_degree > 1
         ):
             # sharding may coexist with dp
@@ -519,19 +566,10 @@ class HybridCommunicateGroup:
         elif (
             self._pp_degree == 1
             and self._mp_degree == 1
-            and self._cp_degree == 1
             and self._sep_degree > 1
         ):
             # sep may coexist with dp and sharding
             return ParallelMode.SEGMENT_PARALLEL
-        elif (
-            self._pp_degree == 1
-            and self._mp_degree == 1
-            and self._sep_degree == 1
-            and self._cp_degree > 1
-        ):
-            # cp may coexist with dp and sharding
-            return ParallelMode.CONTEXT_PARALLEL
         elif self._pp_degree == 1 and self._mp_degree > 1:
             # tp may coexist with sep、dp and sharding
             # initialize the seed
@@ -547,7 +585,12 @@ class HybridCommunicateGroup:
             * self._pp_degree
             * self._sharding_degree
             * self._sep_degree
+            == self.nranks
+        ) and (
+            self._mp_degree
+            * self._pp_degree
             * self._cp_degree
+            * self._cp_sharding_degree
             == self.nranks
         ) and (self._cp_degree == 1 or self._sep_degree == 1)
 
@@ -742,7 +785,7 @@ class HybridCommunicateGroup:
         return self._sep_comm_group.ranks[0]
 
     def _get_context_parallel_id(self) -> int:
-        return self._topo.get_coord(self.global_rank).cp
+        return self._topo.get_coord_cp(self.global_rank).cp
 
     def get_context_parallel_rank(self) -> int:
         return self._cp_parallel_id
@@ -757,6 +800,23 @@ class HybridCommunicateGroup:
     def get_context_parallel_group_src_rank(self) -> int:
         self._check_cp_exist()
         return self._cp_comm_group.ranks[0]
+
+    def _get_cp_sharding_parallel_id(self) -> int:
+        return self._topo.get_coord_cp(self.global_rank).cp_sharding
+
+    def get_cp_sharding_parallel_rank(self) -> int:
+        return self._cp_sharding_parallel_id
+
+    def get_cp_sharding_parallel_world_size(self) -> int:
+        return self._cp_sharding_degree
+
+    def get_cp_sharding_parallel_group(self) -> Group:
+        self._check_cp_exist()
+        return self._cp_sharding_comm_group
+
+    def get_cp_sharding_parallel_group_src_rank(self) -> int:
+        self._check_cp_exist()
+        return self._cp_sharding_comm_group.ranks[0]
 
     def get_pipe_parallel_group(self) -> Group:
         return self._pp_comm_group
@@ -805,10 +865,6 @@ class HybridCommunicateGroup:
     def get_dp_sep_parallel_group(self) -> Group:
         self._check_sep_exist()
         return self._dp_sep_comm_group
-
-    def get_dp_cp_parallel_group(self) -> Group:
-        self._check_cp_exist()
-        return self._dp_cp_comm_group
 
     def get_cp_mp_parallel_group(self) -> Group:
         self._check_cp_exist()
@@ -920,6 +976,8 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
         self._sharding_parallel_id = self._get_sharding_parallel_id()
         self._sep_parallel_id = self._get_parallel_id(self._dense_topo, "sep")
         self._cp_parallel_id = self._get_parallel_id(self._dense_topo, "context")
+        self._cp_sharding_parallel_id = self._get_parallel_id(self._dense_topo, "cp_sharding")
+        self._cp_sharding_degree = self._dense_topo.get_dim("cp_sharding")
         self.stage_id = self._get_parallel_id(self._moe_topo, "pipe")
         self._expert_parallel_id = self._get_parallel_id(
             self._moe_topo, "expert"
@@ -1030,6 +1088,18 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
             nccl_config=(
                 message2nccl_config(
                     hybrid_configs["cp_configs"].nccl_config, "context"
+                )
+                if hybrid_configs is not None
+                else None
+            ),
+        )
+
+        self._cp_sharding_group, self._cp_sharding_comm_group = self._set_comm_group(
+            "cp_sharding",
+            self._dense_topo,
+            nccl_config=(
+                message2nccl_config(
+                    hybrid_configs["cp_sharding_configs"].nccl_config, "cp_sharding"
                 )
                 if hybrid_configs is not None
                 else None
