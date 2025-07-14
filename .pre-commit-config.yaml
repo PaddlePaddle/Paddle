@@ -7,8 +7,6 @@ exclude: |
     python/paddle/utils/gast/.+|
     third_party/.+
   )$
-default_language_version:
-  python: python3.10
 repos:
   # Common hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
