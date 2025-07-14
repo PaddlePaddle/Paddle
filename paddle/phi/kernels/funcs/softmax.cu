@@ -29,7 +29,7 @@ using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
 
 template <typename T, typename DeviceContext>
 void SoftmaxCUDNNFunctor<T, DeviceContext>::operator()(
-    const DeviceContext& context,
+    const DeviceContext& dev_ctx,
     const phi::DenseTensor* X,
     phi::DenseTensor* Y) {
   // ------------------- cudnn descriptors ---------------------
@@ -51,13 +51,13 @@ void SoftmaxCUDNNFunctor<T, DeviceContext>::operator()(
   miopenTensorDescriptor_t cudnn_y_desc =
       xDesc.descriptor<T>(layout, cudnn_tensor_dims);
   PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::miopenSoftmaxForward_V2(context.cudnn_handle(),
+      phi::dynload::miopenSoftmaxForward_V2(dev_ctx.cudnn_handle(),
                                             CudnnDataType<T>::kOne(),
                                             cudnn_x_desc,
                                             X->data<T>(),
                                             CudnnDataType<T>::kZero(),
                                             cudnn_y_desc,
-                                            context.template Alloc<T>(Y),
+                                            dev_ctx.template Alloc<T>(Y),
                                             MIOPEN_SOFTMAX_ACCURATE,
                                             MIOPEN_SOFTMAX_MODE_INSTANCE));
 #else
@@ -66,7 +66,7 @@ void SoftmaxCUDNNFunctor<T, DeviceContext>::operator()(
   cudnnTensorDescriptor_t cudnn_y_desc =
       xDesc.descriptor<T>(layout, cudnn_tensor_dims);
   PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cudnnSoftmaxForward(context.cudnn_handle(),
+      phi::dynload::cudnnSoftmaxForward(dev_ctx.cudnn_handle(),
                                         CUDNN_SOFTMAX_ACCURATE,
                                         CUDNN_SOFTMAX_MODE_INSTANCE,
                                         CudnnDataType<T>::kOne(),
@@ -74,13 +74,13 @@ void SoftmaxCUDNNFunctor<T, DeviceContext>::operator()(
                                         X->data<T>(),
                                         CudnnDataType<T>::kZero(),
                                         cudnn_y_desc,
-                                        context.template Alloc<T>(Y)));
+                                        dev_ctx.template Alloc<T>(Y)));
 #endif
 }
 
 template <typename T, typename DeviceContext>
 void SoftmaxGradCUDNNFunctor<T, DeviceContext>::operator()(
-    const DeviceContext& context,
+    const DeviceContext& dev_ctx,
     const phi::DenseTensor* Y,
     const phi::DenseTensor* YGrad,
     phi::DenseTensor* XGrad) {
@@ -106,7 +106,7 @@ void SoftmaxGradCUDNNFunctor<T, DeviceContext>::operator()(
   miopenTensorDescriptor_t cudnn_ygrad_desc =
       dyDesc.descriptor<T>(layout, cudnn_tensor_dims);
   PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::miopenSoftmaxBackward_V2(context.cudnn_handle(),
+      phi::dynload::miopenSoftmaxBackward_V2(dev_ctx.cudnn_handle(),
                                              CudnnDataType<T>::kOne(),
                                              cudnn_y_desc,
                                              Y->data<T>(),
@@ -114,7 +114,7 @@ void SoftmaxGradCUDNNFunctor<T, DeviceContext>::operator()(
                                              YGrad->data<T>(),
                                              CudnnDataType<T>::kZero(),
                                              cudnn_xgrad_desc,
-                                             context.template Alloc<T>(XGrad),
+                                             dev_ctx.template Alloc<T>(XGrad),
                                              MIOPEN_SOFTMAX_ACCURATE,
                                              MIOPEN_SOFTMAX_MODE_INSTANCE));
 #else
@@ -125,7 +125,7 @@ void SoftmaxGradCUDNNFunctor<T, DeviceContext>::operator()(
   cudnnTensorDescriptor_t cudnn_ygrad_desc =
       dyDesc.descriptor<T>(layout, cudnn_tensor_dims);
   PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cudnnSoftmaxBackward(context.cudnn_handle(),
+      phi::dynload::cudnnSoftmaxBackward(dev_ctx.cudnn_handle(),
                                          CUDNN_SOFTMAX_ACCURATE,
                                          CUDNN_SOFTMAX_MODE_INSTANCE,
                                          CudnnDataType<T>::kOne(),
@@ -135,7 +135,7 @@ void SoftmaxGradCUDNNFunctor<T, DeviceContext>::operator()(
                                          YGrad->data<T>(),
                                          CudnnDataType<T>::kZero(),
                                          cudnn_xgrad_desc,
-                                         context.template Alloc<T>(XGrad)));
+                                         dev_ctx.template Alloc<T>(XGrad)));
 #endif
 }
 
