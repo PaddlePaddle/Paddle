@@ -3005,6 +3005,26 @@ struct FloorFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+// rint(x) = [x]
+template <typename T, typename Enable = void>
+struct RintFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.unaryExpr([](const T& val) {
+      return (std::isnan(val) || std::isinf(val)) ? val : std::rint(val);
+    });
+  }
+};
+
+template <typename T>
+struct RintFunctor<T, std::enable_if_t<std::is_integral_v<T>>>
+    : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x;
+  }
+};
+
 // round(x) = [x]
 template <typename T, typename Enable = void>
 struct RoundFunctor : public BaseActivationFunctor<T> {
@@ -5408,6 +5428,25 @@ struct CudaFloorFunctor : public BaseActivationFunctor<T> {
     MPType x = static_cast<MPType>(arg_x);
     return static_cast<T>(floor(x));
   }
+};
+
+template <typename T, typename Enable = void>
+struct CudaRintFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  // rint(x) = rint(x)
+  __device__ __forceinline__ T operator()(const T arg_x) const {
+    MPType x = static_cast<MPType>(arg_x);
+    if (isnan(x) || isinf(x)) return arg_x;
+    return static_cast<T>(std::rint(x));
+  }
+};
+
+template <typename T>
+struct CudaRintFunctor<T, std::enable_if_t<std::is_integral_v<T>>>
+    : public BaseActivationFunctor<T> {
+  // rint(x) = x
+  __device__ __forceinline__ T operator()(const T arg_x) const { return arg_x; }
 };
 
 template <typename T, typename Enable = void>

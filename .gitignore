@@ -85,8 +85,6 @@ tools/nvcc_lazy
 # TODO(zhiqiang) Move this file to build directory.
 paddle/fluid/pybind/eager_op_function.*
 tools/nvcc_lazy
-paddle/phi/kernels/sparse/gpu/cutlass_generator/all_gemm_operations.h
-paddle/phi/kernels/sparse/gpu/cutlass_generator/configurations.h
 
 #these files (directories) are generated before build system generation
 paddle/fluid/operators/generated_op*.cc
