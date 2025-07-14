@@ -93,6 +93,13 @@ class TEST_API DenseTensor : public TensorBase,
   /// \param meta The stride of the tensor.
   void set_strides(const DDim& strides) { meta_.strides = strides; }
 
+  /// \brief Creates a strided view of the current tensor.
+  /// \param shape The desired shape of the output tensor.
+  /// \param strides The desired strides of the output tensor.
+  /// \return A new tensor sharing data with the original but with new
+  /// shape/strides.
+  DenseTensor as_strided(const DDim& shape, const DDim& strides);
+
   /// \brief Returns the lod of the tensor.
   /// \return The lod of the tensor.
   const LegacyLoD& lod() const noexcept { return meta_.legacy_lod; }
