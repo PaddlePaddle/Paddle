@@ -1501,6 +1501,7 @@ class _ShardOptimizer(Optimizer):
                     self.param_storage[idx].is_sync = False
 
     def _enable_tensor_fusion(self):
+        os.environ["FLAGS_enable_tensor_fusion"] = "1"
         self.enable_tensor_fusion = True
         self._shard_fn._enable_tensor_fusion()
 

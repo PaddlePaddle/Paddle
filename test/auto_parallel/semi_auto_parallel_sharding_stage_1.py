@@ -147,11 +147,7 @@ class TestSemiAutoParallelShardingStage1:
             if enable_tensor_fusion:
                 opt._enable_tensor_fusion()
             model, opt = paddle.amp.decorate(
-                model,
-                optimizers=opt,
-                level='O2',
-                master_grad=True,
-                main_grad=True,
+                model, optimizers=opt, level='O2', master_grad=True
             )
             for _ in range(5):
                 with paddle.amp.auto_cast(level='O2'):
@@ -184,7 +180,7 @@ class TestSemiAutoParallelShardingStage1:
         )
         opt._enable_tensor_fusion()
         model, opt = paddle.amp.decorate(
-            model, optimizers=opt, level='O2', master_grad=True, main_grad=True
+            model, optimizers=opt, level='O2', master_grad=True
         )
         for _ in range(5):
             with paddle.amp.auto_cast(level='O2'):
@@ -208,11 +204,7 @@ class TestSemiAutoParallelShardingStage1:
             if enable_sharding_overlap:
                 opt._enable_sharding_overlap(model)
             model, opt = paddle.amp.decorate(
-                model,
-                optimizers=opt,
-                level='O2',
-                master_grad=True,
-                main_grad=True,
+                model, optimizers=opt, level='O2', master_grad=True
             )
             for _ in range(5):
                 with paddle.amp.auto_cast(level='O2'):
