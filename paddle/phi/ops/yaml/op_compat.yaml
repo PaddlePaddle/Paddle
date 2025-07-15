@@ -2029,6 +2029,13 @@
   outputs :
     out : Out
 
+- op : index_elementwise_get
+  backward : index_elementwise_get_grad, index_elementwise_get_double_grad
+  inputs :
+     {x : x, index : index, input_dims : input_dims, input_strides : input_strides, index_dims : index_dims, index_stride : index_stride, slice_offset : slice_offset, accumulate : accumulate}
+  outputs :
+     out : Out
+
 - op : index_sample
   inputs :
     {x : X, index : Index}
@@ -2443,6 +2450,7 @@
     {softmax : Softmax, loss : Loss}
 
 - op : masked_select
+  backward : masked_select_grad, masked_select_double_grad
   inputs :
     {x : X, mask : Mask}
   outputs :
@@ -3197,6 +3205,13 @@
       data_type : int
       support_tensor : true
   manual_signature : [reverse]
+
+- op : rint
+  backward : rint_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : rmsprop_ (rmsprop)
   inputs :

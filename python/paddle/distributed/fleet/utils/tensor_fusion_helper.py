@@ -284,8 +284,8 @@ class ShardingGradView:
         slice_begin = self._param_begin
         slice_end = self._param_end
         slice_buffer = self._param_buffer._slice(slice_begin, slice_end)
-        slice_param.get_tensor()._set_dims([slice_end - slice_begin])
         slice_buffer._share_buffer_to(slice_param)
+        slice_param.get_tensor()._set_dims([slice_end - slice_begin])
 
     def assign_slice_grad(self, slice_param):
         assert self._param_buffer._is_shared_buffer_with(self._param)
@@ -303,6 +303,16 @@ class ShardingGradView:
                 slice_param._copy_gradient_from(slice_grad)
             else:
                 assert slice_param.grad._is_shared_buffer_with(slice_grad)
+
+    def _clear_param_buffer(self):
+        self._param._clear_to_zero_allocation()
+        self._param_buffer._clear_to_zero_allocation()
+
+    def _reset_param_buffer(self, new_param_storage):
+        new_param = paddle.empty_like(self._param)
+        new_param._share_buffer_to(self._param)
+        new_param_storage._share_buffer_to(self._param_buffer)
+        self._share_param_buffer()
 
     def _clear_grad_buffer(self):
         if self._slice_grad is not None:
@@ -553,6 +563,18 @@ class FusedCommBuffer:
                 param, self.use_main_grad
             )
 
+    def _clear_param_storage(self):
+        self.param_storage._clear_to_zero_allocation()
+        for param in self._params:
+            self._sharding_param_grad_view[param.name]._clear_param_buffer()
+
+    def _reset_param_storage(self):
+        new_param_storage = paddle.empty_like(self.param_storage)
+        new_param_storage._share_buffer_to(self.param_storage)
+        for param in self._params:
+            grad_view = self._sharding_param_grad_view[param.name]
+            grad_view._reset_param_buffer(new_param_storage)
+
     def _clear_grad_storage(self):
         self.grad_storage._clear_dataptr()
         self.grad_storage = None
@@ -775,6 +797,7 @@ class FusedCommBuffer:
                 group=self._comm_group,
                 sync_op=False,
             )
+
             if self._free_grads_in_comm:
                 self._reset_grad_storage(reduce_scattered)
 

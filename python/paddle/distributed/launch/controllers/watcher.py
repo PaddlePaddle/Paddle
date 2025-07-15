@@ -87,8 +87,8 @@ class Watcher:
             self.gpu_fd.write('\n')
 
             self.gpu_fd.flush()
-        except:
-            self.ctx.logger.warning("save gpu info failed")
+        except Exception as e:
+            self.ctx.logger.warning(f"save gpu info failed: {e!s}")
 
     def _save_gpu_log(self, util_key):
         try:
@@ -96,8 +96,8 @@ class Watcher:
                 self.gpu_fd.write(line.str(util_key))
                 self.gpu_fd.write('\n')
             self.gpu_fd.flush()
-        except:
-            self.ctx.logger.warning("save gpu log failed")
+        except Exception as e:
+            self.ctx.logger.warning(f"save gpu log failed: {e!s}")
 
     def stop(self):
         if hasattr(self, "proc"):

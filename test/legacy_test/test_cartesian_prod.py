@@ -11,12 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
 import random
 import unittest
 from itertools import product
 
 import numpy as np
+from op_test import get_places
 
 import paddle
 from paddle.base import core
@@ -36,15 +36,7 @@ class TestCartesianProdAPIBase(unittest.TestCase):
         self.c_np = np.random.random(self.c_shape).astype(self.dtype_np)
         self.d_np = np.empty(0, self.dtype_np)
 
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            self.place.append('cpu')
-        if paddle.is_compiled_with_cuda():
-            self.place.append('gpu')
+        self.place = get_places(string_format=True)
 
     def init_setting(self):
         self.dtype_np = 'float32'
@@ -127,15 +119,7 @@ class TestCartesianProd_ZeroSize(unittest.TestCase):
         self.a_np = np.random.random(self.a_shape).astype(self.dtype_np)
         self.b_np = np.empty(0, self.dtype_np)
 
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            self.place.append('cpu')
-        if paddle.is_compiled_with_cuda():
-            self.place.append('gpu')
+        self.place = get_places(string_format=True)
 
     def init_setting(self):
         self.dtype_np = 'float32'

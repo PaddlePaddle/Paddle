@@ -269,7 +269,7 @@ class ArrangeHelper {
 };
 
 template <typename T, typename Index>
-void SegmentPoolCUDAGradFunctor(const phi::GPUContext& ctx,
+void SegmentPoolCUDAGradFunctor(const phi::GPUContext& dev_ctx,
                                 const DenseTensor& input,
                                 const DenseTensor& segment_ids,
                                 const DenseTensor& output,
@@ -279,18 +279,18 @@ void SegmentPoolCUDAGradFunctor(const phi::GPUContext& ctx,
   auto h = ArrangeHelper<Index>(
       input.numel(), segment_ids.dims()[0], output.dims()[0]);
   auto config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(ctx, h.total_stripe_count);
+      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, h.total_stripe_count);
   if (pooltype == "MAX" || pooltype == "MIN") {
     SegmentIndexGradKernel<T, Index, ArrangeHelper<Index>>
         <<<config.block_per_grid.x,
            config.thread_per_block.x,
            0,
-           ctx.stream()>>>(segment_ids.data<Index>(),
-                           input.data<T>(),
-                           output.data<T>(),
-                           out_grad.data<T>(),
-                           in_grad->data<T>(),
-                           h);
+           dev_ctx.stream()>>>(segment_ids.data<Index>(),
+                               input.data<T>(),
+                               output.data<T>(),
+                               out_grad.data<T>(),
+                               in_grad->data<T>(),
+                               h);
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "Unsupported segment pooling grad operation, Only MAX, MIN "
@@ -317,7 +317,7 @@ __global__ void SimpleDiv(T* x, const T* y, const int len, const int dim) {
 template <typename T, typename IndexT>
 class SegmentPoolFunctor<phi::GPUContext, T, IndexT> {
  public:
-  void operator()(const phi::GPUContext& ctx,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& segment_ids,
                   DenseTensor* output,
@@ -330,67 +330,67 @@ class SegmentPoolFunctor<phi::GPUContext, T, IndexT> {
       auto total_stripe_count =
           (input_length_size + DimTileSize - 1) / DimTileSize;
       auto config =
-          phi::backends::gpu::GetGpuLaunchConfig1D(ctx, total_stripe_count);
+          phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total_stripe_count);
       SegmentSumIdsKernel<T, IndexT, IndexT(8)>
           <<<config.block_per_grid.x,
              config.thread_per_block.x,
              0,
-             ctx.stream()>>>(segment_ids.data<IndexT>(),
-                             summed_ids->data<T>(),
-                             input_length_size,
-                             total_stripe_count);
+             dev_ctx.stream()>>>(segment_ids.data<IndexT>(),
+                                 summed_ids->data<T>(),
+                                 input_length_size,
+                                 total_stripe_count);
     }
 
     auto h = ArrangeHelper<IndexT>(
         input.numel(), segment_ids.dims()[0], output->dims()[0]);
     auto config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(ctx, h.total_stripe_count);
+        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, h.total_stripe_count);
     if (pooltype == "MEAN") {
       SegmentMeanKernel<T, IndexT, IndexT(8)>
           <<<config.block_per_grid.x,
              config.thread_per_block.x,
              0,
-             ctx.stream()>>>(segment_ids.data<IndexT>(),
-                             input.data<T>(),
-                             output->data<T>(),
-                             summed_ids->data<T>(),
-                             h.input_length_size,
-                             h.inner_dim_size,
-                             h.output_length_size,
-                             h.total_stripe_count);
+             dev_ctx.stream()>>>(segment_ids.data<IndexT>(),
+                                 input.data<T>(),
+                                 output->data<T>(),
+                                 summed_ids->data<T>(),
+                                 h.input_length_size,
+                                 h.inner_dim_size,
+                                 h.output_length_size,
+                                 h.total_stripe_count);
     } else if (pooltype == "SUM") {
       SumPool<T> pool;
       SegmentOpsKernel<T, IndexT, ArrangeHelper<IndexT>, SumPool<T>>
           <<<config.block_per_grid.x,
              config.thread_per_block.x,
              0,
-             ctx.stream()>>>(segment_ids.data<IndexT>(),
-                             input.data<T>(),
-                             output->data<T>(),
-                             h,
-                             pool);
+             dev_ctx.stream()>>>(segment_ids.data<IndexT>(),
+                                 input.data<T>(),
+                                 output->data<T>(),
+                                 h,
+                                 pool);
     } else if (pooltype == "MAX") {
       MaxPool<T> pool;
       SegmentOpsKernel<T, IndexT, ArrangeHelper<IndexT>, MaxPool<T>>
           <<<config.block_per_grid.x,
              config.thread_per_block.x,
              0,
-             ctx.stream()>>>(segment_ids.data<IndexT>(),
-                             input.data<T>(),
-                             output->data<T>(),
-                             h,
-                             pool);
+             dev_ctx.stream()>>>(segment_ids.data<IndexT>(),
+                                 input.data<T>(),
+                                 output->data<T>(),
+                                 h,
+                                 pool);
     } else if (pooltype == "MIN") {
       MinPool<T> pool;
       SegmentOpsKernel<T, IndexT, ArrangeHelper<IndexT>, MinPool<T>>
           <<<config.block_per_grid.x,
              config.thread_per_block.x,
              0,
-             ctx.stream()>>>(segment_ids.data<IndexT>(),
-                             input.data<T>(),
-                             output->data<T>(),
-                             h,
-                             pool);
+             dev_ctx.stream()>>>(segment_ids.data<IndexT>(),
+                                 input.data<T>(),
+                                 output->data<T>(),
+                                 h,
+                                 pool);
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
           "Unsupported segment pooling operation, Only MEAN, SUM, MAX, MIN "

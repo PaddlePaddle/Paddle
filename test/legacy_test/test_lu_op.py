@@ -14,17 +14,15 @@
 
 import copy
 import itertools
-import os
 import unittest
 
 import numpy as np
 import scipy
 import scipy.linalg
-from op_test import OpTest
+from op_test import OpTest, get_places
 
 import paddle
 from paddle import base
-from paddle.base import core
 
 
 def scipy_lu(A, pivot):
@@ -203,16 +201,7 @@ class TestLUAPI(unittest.TestCase):
             min_mn = min(m, n)
             pivot = True
 
-            places = []
-            if (
-                os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-                in ['1', 'true', 'on']
-                or not core.is_compiled_with_cuda()
-            ):
-                places.append(base.CPUPlace())
-            if core.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
-            for place in places:
+            for place in get_places():
                 paddle.disable_static(place)
                 batch_size = a.size // (a.shape[-1] * a.shape[-2])
                 x = paddle.to_tensor(a, dtype=dtype)
@@ -259,16 +248,7 @@ class TestLUAPI(unittest.TestCase):
             min_mn = min(m, n)
             pivot = True
 
-            places = []
-            if (
-                os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-                in ['1', 'true', 'on']
-                or not core.is_compiled_with_cuda()
-            ):
-                places.append(base.CPUPlace())
-            if core.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
-            for place in places:
+            for place in get_places():
                 with paddle.static.program_guard(
                     paddle.static.Program(), paddle.static.Program()
                 ):
@@ -321,18 +301,37 @@ class TestLUAPI(unittest.TestCase):
             run_lu_static(tensor_shape, dtype)
 
 
-class TestLUAPIError(unittest.TestCase):
-    def test_errors(self):
-        with paddle.base.dygraph.guard():
-            # The size of input in lu should not be 0.
-            def test_0_size():
-                array = np.array([], dtype=np.float32)
-                x = paddle.to_tensor(
-                    np.reshape(array, [0, 0, 0]), dtype='float32'
-                )
-                paddle.linalg.lu(x, get_infos=True)
+# class TestLUAPIError(unittest.TestCase):
+#     def test_errors(self):
+#         with paddle.base.dygraph.guard():
+#             # The size of input in lu should not be 0.
+#             def test_0_size():
+#                 array = np.array([], dtype=np.float32)
+#                 x = paddle.to_tensor(
+#                     np.reshape(array, [0, 0, 0]), dtype='float32'
+#                 )
+#                 paddle.linalg.lu(x, get_infos=True)
 
-            self.assertRaises(ValueError, test_0_size)
+#             self.assertRaises(ValueError, test_0_size)
+
+
+class TestLUAPIZeroSize(unittest.TestCase):
+    def init_test_case(self):
+        self.x_shape = [1, 0, 10]
+        self.dtype = "float32"
+
+    def _test_dygraph(self):
+        paddle.disable_static()
+        array = np.ones(self.x_shape).astype(self.dtype)
+        x = paddle.to_tensor(array, stop_gradient=False)
+        lu, p, info = paddle.linalg.lu(x, get_infos=True)
+        loss = lu.sum()
+        loss.backward()
+        self.assertEqual(x.grad.shape, x.shape)
+
+    def test_zero_size(self):
+        self.init_test_case()
+        self._test_dygraph()
 
 
 if __name__ == "__main__":

@@ -278,6 +278,12 @@ def _select_sdp(head_dim: int) -> str:
     if "xpu" in place:
         return "flash_attn"
 
+    if "iluvatar_gpu" in place:
+        return "flash_attn"
+
+    if "metax_gpu" in place:
+        return "flash_attn"
+
     # not use sdp_kernel
     if g_enable_flash is None:
         if "gpu" not in place:
@@ -312,6 +318,12 @@ def _select_sdp_for_sdpa(query, key, attn_mask, dropout, is_causal) -> str:
     """
     place = paddle.get_device()
     if "xpu" in place:
+        return "flash_attn"
+
+    if "iluvatar_gpu" in place:
+        return "flash_attn"
+
+    if "metax_gpu" in place:
         return "flash_attn"
 
     # not use sdp_kernel
@@ -1408,6 +1420,7 @@ def scaled_dot_product_attention(
     Returns:
         out(Tensor): The attention tensor.
                     4-D tensor with shape: [batch_size, seq_len, num_heads, head_dim].
+                    3-D tensor with shape: [seq_len, num_heads, head_dim].
                     The dtype can be float16 or bfloat16.
 
     Examples:
@@ -1420,6 +1433,16 @@ def scaled_dot_product_attention(
             >>> print(output)
             >>> # doctest: -SKIP
     """
+    query_ndim = query.ndim
+    if query.ndim == 3:
+        query = paddle.unsqueeze(query, axis=0)
+
+    if key.ndim == 3:
+        key = paddle.unsqueeze(key, axis=0)
+
+    if value.ndim == 3:
+        value = paddle.unsqueeze(value, axis=0)
+
     if (
         backend == 'p2p'
         and query.is_dist()
@@ -1435,21 +1458,10 @@ def scaled_dot_product_attention(
             dropout_p,
             is_causal,
         )
-        return out
-
-    if query.ndim == 3:
-        query = paddle.unsqueeze(query, axis=0)
-
-    if key.ndim == 3:
-        key = paddle.unsqueeze(key, axis=0)
-
-    if value.ndim == 3:
-        value = paddle.unsqueeze(value, axis=0)
 
     if attn_mask is None:
         # downgraded to ordinary flash attention implementation
         out, _ = flash_attention(query, key, value, dropout_p, is_causal)
-        return out
     else:
         head_dim = query.shape[3]
         sdp_func_name = _select_sdp_for_sdpa(
@@ -1478,7 +1490,6 @@ def scaled_dot_product_attention(
                     not training,
                     rng_name,
                 )
-                return out
             else:
                 helper = LayerHelper('flash_attn', **locals())
                 dtype = helper.input_dtype(input_param_name='q')
@@ -1514,7 +1525,6 @@ def scaled_dot_product_attention(
                         'rng_name': '',
                     },
                 )
-                return out
         elif sdp_func_name == "mem_efficient":
             from paddle.incubate.nn.functional.variable_length_memory_efficient_attention import (
                 variable_length_memory_efficient_attention,
@@ -1534,11 +1544,10 @@ def scaled_dot_product_attention(
                 query, key, value, seq_lens, seq_lens, attn_mask, scale
             )
 
-            output = output.transpose([0, 2, 1, 3])
+            out = output.transpose([0, 2, 1, 3])
 
-            return output
         elif sdp_func_name == "math":
-            return _math_attention(
+            out = _math_attention(
                 query,
                 key,
                 value,
@@ -1548,6 +1557,10 @@ def scaled_dot_product_attention(
                 False,
                 training,
             )[0]
+
+    if query_ndim == 3:
+        out = paddle.squeeze(out, axis=0)
+    return out
 
 
 def flashmask_attention(
@@ -2234,7 +2247,7 @@ def flashmask_attention(
         assert startend_row_indices.shape[1] in [
             1,
             key.shape[2],
-        ], "startend_row_indices head_num must be equal to 1(broadcast) or hean_num_k."
+        ], "startend_row_indices head_num must be equal to 1(broadcast) or head_num_k."
 
         if causal:
             if startend_row_indices.shape[-1] == 1:

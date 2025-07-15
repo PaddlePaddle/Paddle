@@ -65,6 +65,7 @@ GENERATE_IMPL_DECOMP = [
     "reciprocal",
     "relu",
     "relu6",
+    "rms_norm",
     "sigmoid_cross_entropy_with_logits",
     "silu",
     "softmax",
@@ -138,6 +139,8 @@ GENERATE_IMPL_VJP = [
     'unsqueeze_grad',
     'p_norm_grad',
     'masked_fill_grad',
+    'index_put_grad',
+    'index_add_grad',
 ]
 
 # declare belongs to codegen, but implementation not

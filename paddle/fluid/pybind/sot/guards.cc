@@ -58,14 +58,20 @@ template <typename T>
 static inline bool check_shape(
     const std::vector<std::optional<int64_t>>& expected,
     int ndim,
-    const T& actual_shape) {
+    const T& actual_shape,
+    int64_t min_non_specialized_number) {
   if (expected.size() != static_cast<size_t>(ndim)) {
     return false;
   }
   for (size_t i = 0; i < expected.size(); ++i) {
-    if (!expected[i] || actual_shape[i] < 1) continue;
-    if (actual_shape[i] != expected[i].value()) {
-      return false;
+    if (!expected[i]) {
+      // For dynamic dim check
+      // Check the inherent constraint for dynamic dim
+      // i.e. Ge(min_non_specialized_number)
+      if (actual_shape[i] < min_non_specialized_number) return false;
+    } else {
+      // For static dim check, need exactly match
+      if (actual_shape[i] != expected[i].value()) return false;
     }
   }
   return true;
@@ -148,7 +154,8 @@ bool ShapeMatchGuard::check(PyObject* value) {
   auto tensor = GetTensorFromPyObject(value);
   HANDLE_NULL_TENSOR(tensor);
   auto shape = tensor->shape();
-  return check_shape<std::vector<int64_t>>(expected_, shape.size(), shape);
+  return check_shape<std::vector<int64_t>>(
+      expected_, shape.size(), shape, min_non_specialized_number_);
 }
 
 bool AttributeMatchGuard::check(PyObject* value) {
@@ -203,7 +210,8 @@ bool NumPyArrayShapeMatchGuard::check(PyObject* value) {
   }
   int ndim = array.ndim();
   const Py_ssize_t* shape = array.shape();
-  return check_shape<const Py_ssize_t*>(expected_, ndim, shape);
+  return check_shape<const Py_ssize_t*>(
+      expected_, ndim, shape, min_non_specialized_number_);
 }
 
 bool WeakRefMatchGuard::check(PyObject* value) {
@@ -509,7 +517,7 @@ std::string DummyGuardNode::stringify(int indent) {
 void GuardTree::add_guard_chain(
     const std::vector<std::shared_ptr<GuardNodeBase>>& guard_chain) {
   if (guard_chain.empty()) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Empty guard chain, please check the guard chain"));
   }
   for (size_t i = 1; i < guard_chain.size(); ++i) {

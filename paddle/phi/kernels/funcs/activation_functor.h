@@ -1955,8 +1955,8 @@ struct HardShrinkFunctor : public BaseActivationFunctor<T> {
   }
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    auto temp1 = x < static_cast<T>(threshold * -1.f);  // NOLINT
-    auto temp2 = x > static_cast<T>(threshold);
+    auto temp1 = x <= static_cast<T>(threshold * -1.f);  // NOLINT
+    auto temp2 = x >= static_cast<T>(threshold);
     out.device(d) = x * (temp1 || temp2).template cast<T>();
   }
 };
@@ -1975,8 +1975,8 @@ struct HardShrinkGradFunctor : public BaseActivationFunctor<T> {
             typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
-    auto temp1 = x < static_cast<T>(threshold * -1.f);  // NOLINT
-    auto temp2 = x > static_cast<T>(threshold);
+    auto temp1 = x <= static_cast<T>(threshold * -1.f);  // NOLINT
+    auto temp2 = x >= static_cast<T>(threshold);
     dx.device(d) = dout * (temp1 || temp2).template cast<T>();
   }
 
@@ -3002,6 +3002,26 @@ struct FloorFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
     out.device(d) = x.floor();
+  }
+};
+
+// rint(x) = [x]
+template <typename T, typename Enable = void>
+struct RintFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.unaryExpr([](const T& val) {
+      return (std::isnan(val) || std::isinf(val)) ? val : std::rint(val);
+    });
+  }
+};
+
+template <typename T>
+struct RintFunctor<T, std::enable_if_t<std::is_integral_v<T>>>
+    : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x;
   }
 };
 
@@ -4578,7 +4598,7 @@ struct CudaHardShrinkFunctor : public BaseActivationFunctor<T> {
   // hadrshrink(x) = (x > -threshold && x < threshold) ? 0 : x
   __device__ __forceinline__ T operator()(const T x) const {
     T t = static_cast<T>(threshold);
-    return (x > -t && x < t) ? zero : x;
+    return (x >= -t && x <= t) ? zero : x;
   }
 };
 
@@ -4594,7 +4614,7 @@ struct CudaHardShrinkGradFunctor : public BaseActivationFunctor<T> {
   // dx = (x > -threshold && x < threshold) ? 0 : dout
   __device__ __forceinline__ T operator()(const T dout, const T x) const {
     T t = static_cast<T>(threshold);
-    return (x > -t && x < t) ? zero : dout;
+    return (x >= -t && x <= t) ? zero : dout;
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
@@ -5408,6 +5428,25 @@ struct CudaFloorFunctor : public BaseActivationFunctor<T> {
     MPType x = static_cast<MPType>(arg_x);
     return static_cast<T>(floor(x));
   }
+};
+
+template <typename T, typename Enable = void>
+struct CudaRintFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  // rint(x) = rint(x)
+  __device__ __forceinline__ T operator()(const T arg_x) const {
+    MPType x = static_cast<MPType>(arg_x);
+    if (isnan(x) || isinf(x)) return arg_x;
+    return static_cast<T>(std::rint(x));
+  }
+};
+
+template <typename T>
+struct CudaRintFunctor<T, std::enable_if_t<std::is_integral_v<T>>>
+    : public BaseActivationFunctor<T> {
+  // rint(x) = x
+  __device__ __forceinline__ T operator()(const T arg_x) const { return arg_x; }
 };
 
 template <typename T, typename Enable = void>

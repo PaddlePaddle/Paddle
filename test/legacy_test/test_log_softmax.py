@@ -263,6 +263,34 @@ class TestLogSoftmaxLargeOp(unittest.TestCase):
         paddle.nn.functional.log_softmax(x, axis=-1)
 
 
+class TestLogSoftmaxOp_ZeroSize(OpTest):
+    def setUp(self):
+        self.op_type = 'log_softmax'
+        self.python_api = F.log_softmax
+        self.public_python_api = F.log_softmax
+        self.dtype = 'float64'
+        self.shape = [2, 0, 4, 5]
+        self.axis = -1
+        self.set_attrs()
+
+        x = np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype)
+        # shape is same as x, size is 0.
+        out = np.random.random(self.shape).astype(self.dtype)
+
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
+        self.attrs = {'axis': self.axis}
+
+    def set_attrs(self):
+        pass
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(['X'], ['Out'], check_pir=True)
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

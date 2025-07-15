@@ -25,13 +25,13 @@ namespace phi {
 
 template <typename T, typename Context, size_t D>
 void LaunchEigenPadding(
-    const Context& context,
+    const Context& dev_ctx,
     DenseTensor* d_input,
     const DDim& in_dims,
     const DenseTensor* d_out,
     const DDim& out_dims,
     const std::array<std::pair<int64_t, int64_t>, D>& paddings) {
-  auto& place = *context.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   auto d_in_t = EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
       *d_input, in_dims);
   auto d_out_t = EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
@@ -58,7 +58,7 @@ void LaunchEigenPadding(
 
 template <typename T, typename Context, size_t D>
 void EigenPaddingCompute(
-    const Context& context,
+    const Context& dev_ctx,
     DenseTensor* d_input,
     const DDim& in_dims,
     const DenseTensor* d_out,
@@ -67,7 +67,7 @@ void EigenPaddingCompute(
   if (D <= 3) {
     // if dimension less than 3, cannot reduce dimension
     LaunchEigenPadding<T, Context, D>(
-        context, d_input, in_dims, d_out, out_dims, paddings);
+        dev_ctx, d_input, in_dims, d_out, out_dims, paddings);
   } else {  // else we can reduce dimension
     // count not-zero padding number, and record the dimension
     int need_pad_num = 0, pad_dim = -1;
@@ -119,7 +119,7 @@ void EigenPaddingCompute(
         reshaped_padding[1].first = paddings[pad_dim].first;
         reshaped_padding[1].second = paddings[pad_dim].second;
 
-        LaunchEigenPadding<T, Context, 2>(context,
+        LaunchEigenPadding<T, Context, 2>(dev_ctx,
                                           d_input,
                                           reshaped_in_dims,
                                           d_out,
@@ -152,7 +152,7 @@ void EigenPaddingCompute(
         // the second dimension do not need padding, set padding[1] zero
         reshaped_padding[1].first = reshaped_padding[1].second = 0;
 
-        LaunchEigenPadding<T, Context, 2>(context,
+        LaunchEigenPadding<T, Context, 2>(dev_ctx,
                                           d_input,
                                           reshaped_in_dims,
                                           d_out,
@@ -192,7 +192,7 @@ void EigenPaddingCompute(
         // the third dimension do not need padding, set padding[2] zero
         reshaped_padding[2].first = reshaped_padding[2].second = 0;
 
-        LaunchEigenPadding<T, Context, 3>(context,
+        LaunchEigenPadding<T, Context, 3>(dev_ctx,
                                           d_input,
                                           reshaped_in_dims,
                                           d_out,
@@ -202,7 +202,7 @@ void EigenPaddingCompute(
     } else {
       // need padding at many dimension, cannot reduce dimension
       LaunchEigenPadding<T, Context>(
-          context, d_input, in_dims, d_out, out_dims, paddings);
+          dev_ctx, d_input, in_dims, d_out, out_dims, paddings);
     }
   }
 }

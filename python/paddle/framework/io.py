@@ -172,7 +172,11 @@ def _build_saved_state_dict(state_dict):
                     raise ValueError(
                         "The saved tensor is not initialized. If you used group sharded, please use save_group_sharded_model."
                     )
-                if value.is_dense() and value.place.is_custom_place():
+                if (
+                    value.is_dense()
+                    and value.place.is_custom_place()
+                    and core.is_compiled_with_custom_device('npu')
+                ):
                     value = paddle._C_ops.npu_identity(value, -1)
                 save_dict[key] = np.array(value.cpu())
             name_table[key] = value.name
@@ -1008,8 +1012,10 @@ def _legacy_save(obj, path, protocol=2):
         pickle_bytes = pickle.dumps(saved_obj, protocol=protocol)
         with open(path, 'wb') as f:
             max_bytes = 2**30
-            for i in range(0, len(pickle_bytes), max_bytes):
-                f.write(pickle_bytes[i : i + max_bytes])
+            f.writelines(
+                pickle_bytes[i : i + max_bytes]
+                for i in range(0, len(pickle_bytes), max_bytes)
+            )
     else:
         with _open_file_buffer(path, 'wb') as f:
             pickle.dump(saved_obj, f, protocol=protocol)

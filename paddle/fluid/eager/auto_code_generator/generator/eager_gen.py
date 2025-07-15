@@ -193,6 +193,12 @@ special_prune_dict = {
     "matmul_grad": {"x": "grad_y", "y": "grad_x"},
 }
 
+
+# temporary list of inplace api to add record_inplace_original_dist_attr_list,
+# all inplace api in auto parallel should apply, for now only reshape_.
+special_inplace_list = {"reshape_"}
+
+
 strided_op_list = {
     "as_complex",
     "as_real",
@@ -328,6 +334,9 @@ class {} : public egr::GradNodeBase {{
 GRAD_FUNCTION_TEMPLATE = """
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}::operator()(paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>& grads, bool create_graph, bool is_new_grad) {{
   VLOG(3) << \"Running AD API GRAD: \" << \"{}\";
+  if (FLAGS_check_cuda_error) [[unlikely]] {{
+    egr::CUDAErrorCheck(\"{} begin\");
+  }}
 
    // This 'Local_XXXGradNode' record event is different with 'Global_XXXGradNode' event.
    // * 'Local_XXXGradNode' will only cover execution time of this function.
@@ -375,6 +384,10 @@ paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}:
     returns = ApplyNodePostHooks(returns, hooked_grads);
   }}
 
+  if (FLAGS_check_cuda_error) [[unlikely]] {{
+    egr::CUDAErrorCheck(\"{} finish\");
+  }}
+
   // Return
 {}
 }}
@@ -384,6 +397,9 @@ FORWARD_FUNCTION_TEMPLATE = """
 TEST_API {} {}({}) {{
   FLAGS_tensor_operants_mode = "eager";
   VLOG(3) << \"Running AD API: \" << \"{}\";
+  if (FLAGS_check_cuda_error) [[unlikely]] {{
+    egr::CUDAErrorCheck(\"{} begin\");
+  }}
 {}
   // Dygraph Record Event
 {}
@@ -432,6 +448,9 @@ TEST_API {} {}({}) {{
   VLOG(4) << \"Finish AD API: {}";
   // LOG IF DEBUG
 {}
+  if (FLAGS_check_cuda_error) [[unlikely]] {{
+    egr::CUDAErrorCheck(\"{} finish\");
+  }}
   // Returns
   return {};
 }}
@@ -463,6 +482,9 @@ FORWARD_ONLY_FUNCTION_TEMPLATE = """
 TEST_API {} {}({}) {{
   FLAGS_tensor_operants_mode = "eager";
   VLOG(3) << \"Running AD API: \" << \"{}\";
+  if (FLAGS_check_cuda_error) [[unlikely]] {{
+    egr::CUDAErrorCheck(\"{} begin\");
+  }}
 {}
   // Dygraph Record Event
 {}
@@ -491,6 +513,9 @@ TEST_API {} {}({}) {{
 {}{}
   // LOG IF DEBUG
 {}
+  if (FLAGS_check_cuda_error) [[unlikely]] {{
+    egr::CUDAErrorCheck(\"{} finish\");
+  }}
   // Returns
   return {};
 }}
@@ -500,6 +525,8 @@ FORWARD_BODY_BEFORE_API_CALL_TEMPLATE = """  if (require_any_grad) {{
 {}
     // Node Construction
 {}
+    VLOG(3) << "Create node " << grad_node->name() << " addr " << grad_node;
+
     // Set for forward trace
   if (FLAGS_check_nan_inf || FLAGS_call_stack_level == 3) {{
     grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
@@ -575,6 +602,7 @@ NODE_CC_FILE_TEMPLATE = """
 #include "paddle/phi/core/memory/stats.h"
 #include "paddle/phi/api/lib/data_transform.h"
 COMMON_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_bool(check_cuda_error);
 {}
 """
 
@@ -618,6 +646,7 @@ COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_int32(call_stack_level);
 COMMON_DECLARE_string(tensor_operants_mode);
 COMMON_DECLARE_bool(use_stride_kernel);
+COMMON_DECLARE_bool(check_cuda_error);
 {}
 {}
 """
@@ -1382,9 +1411,21 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                     )
                     set_grad_out_meta = f"{indent}grad_node->SetGradOutMeta({name}, {meta_name}, {pos});"
                 else:
-                    set_grad_out_meta = (
-                        f"{indent}grad_node->SetGradOutMeta({name}, {pos});"
-                    )
+                    if (
+                        GetInplacedFunctionName(forward_api_name)
+                        if is_inplaced
+                        else forward_api_name
+                    ) in special_inplace_list:
+                        set_grad_out_meta = f"""
+    if ({name}.is_dist_tensor() && {name}.impl()){{
+  {indent}grad_node->SetGradOutMeta({name}, {pos}, {name}_dist_attr, {name}_dims);
+    }} else{{
+  {indent}grad_node->SetGradOutMeta({name}, {pos});
+    }}"""
+                    else:
+                        set_grad_out_meta = (
+                            f"{indent}grad_node->SetGradOutMeta({name}, {pos});"
+                        )
 
             set_grad_out_meta_list.append(set_grad_out_meta)
         set_grad_out_meta_str = "\n".join(set_grad_out_meta_list)
@@ -1699,6 +1740,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         layout_autotune_list = []
         layout_autotune_optional_list = []
         layout_tensors_vector_optional_list = []
+        record_inplace_original_dist_attr_list = []
         for name, (ttype, pos) in forward_inputs_position_map.items():
             inputs_call_list[pos] = f"{name}"
             amp_inputs_call_list[pos] = f"new_{name}"
@@ -1811,6 +1853,18 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             inputs_args_definition_list[pos] = arg_str
             inputs_args_declaration_list[pos] = arg_str
 
+            if is_inplaced and forward_api_name in special_inplace_list:
+                record_inplace_original_dist_attr_list.append(
+                    f"""
+  phi::distributed::TensorDistAttr {name}_dist_attr;
+  phi::DDim {name}_dims;
+  if ({name}.is_dist_tensor() && {name}.impl()){{
+    auto* {name}_dist_tensor = static_cast<phi::distributed::DistTensor*>({name}.impl().get());
+    {name}_dist_attr = {name}_dist_tensor->dist_attr();
+    {name}_dims = {name}_dist_tensor->dims();
+   }}"""
+                )
+
         # forward attrs
         for name, atype, default_val, pos in forward_attrs_list:
             inputs_call_list[pos] = name
@@ -1870,7 +1924,16 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
   }}
 """
         else:
-            forward_call_str = f"{indent}{api_out_type} api_result = paddle::experimental::{namespace}{function_name}({inputs_call_args_str});"
+            if is_inplaced and forward_api_name in special_inplace_list:
+                record_inplace_original_dist_attr_srt = (
+                    "\n".join(record_inplace_original_dist_attr_list) + "\n"
+                )
+                forward_call_str = (
+                    record_inplace_original_dist_attr_srt
+                    + f"{indent}{api_out_type} api_result = paddle::experimental::{namespace}{function_name}({inputs_call_args_str});"
+                )
+            else:
+                forward_call_str = f"{indent}{api_out_type} api_result = paddle::experimental::{namespace}{function_name}({inputs_call_args_str});"
         num_outputs = len(forward_outputs_position_map) - len(
             intermediate_outputs
         )
@@ -2203,6 +2266,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     forward_ad_function_name,
                     inputs_args_definition_str,
                     forward_api_name,
+                    forward_ad_function_name,
                     strided_flags_check,
                     dygraph_event_str,
                     amp_logic_str,
@@ -2219,6 +2283,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     check_inplace_str,
                     bump_inplace_version_str,
                     log_str,
+                    forward_ad_function_name,
                     returns_str,
                 )
             )
@@ -2228,6 +2293,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 forward_ad_function_name,
                 inputs_args_definition_str,
                 forward_api_name,
+                forward_ad_function_name,
                 strided_flags_check,
                 dygraph_event_str,
                 amp_logic_str,
@@ -2251,6 +2317,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 node_creation_after_call_str,
                 forward_api_name,
                 log_str,
+                forward_ad_function_name,
                 returns_str,
             )
 
@@ -3126,6 +3193,7 @@ if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
             grad_node_name,
             self.backward_api_name,
             grad_node_name,
+            grad_node_name,
             fill_zero_str,
             get_grad_in_args_str,
             convert_input_to_dist_tensor_str,
@@ -3142,6 +3210,7 @@ if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
             next_grad_node_creation_str,
             self.backward_api_name,
             log_str,
+            grad_node_name,
             returns_str,
         )
 
