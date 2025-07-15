@@ -181,7 +181,7 @@ jobs:
         run: |
           runner_name=`(echo $PWD|awk -F '/' '{print $3}')`
           echo $runner_name
-          wget -q https://xly-devops.bj.bcebos.com/PR/utils.sh
+          wget -q https://xly-devops.bj.bcebos.com/utils.sh
           source utils.sh
           determine_kunlun_runner ${runner_name}
 
@@ -260,6 +260,7 @@ jobs:
       - name: Run test
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          source ${{ github.workspace }}/../../../proxy
           bash ${ci_scripts}/kunlun_test.sh
           '
 

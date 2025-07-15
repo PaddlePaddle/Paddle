@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/datatype_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/weight_only_gemv.h"
 #if defined(PADDLE_WITH_CUTLASS)
 #include "paddle/phi/kernels/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/fpA_intB_gemm_template.h"
@@ -46,6 +47,11 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
 #endif
 
   dev_ctx.template Alloc<T>(out);
+  Full<T, Context>(
+      dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+  if (out->numel() == 0 || x.numel() == 0 || weight.numel() == 0) {
+    return;
+  }
   const T* x_data = x.data<T>();
   const int8_t* weight_data = weight.data<int8_t>();
   const T* bias_data = bias ? bias.get().data<T>() : nullptr;
