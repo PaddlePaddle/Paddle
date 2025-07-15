@@ -68,7 +68,7 @@ jobs:
   npu:
     name: Linux-NPU
     uses: ./.github/workflows/_Linux-NPU.yml
-    needs: cpu
+    needs: [cpu, build-docker]
     with:
       can-skip: ${{ needs.cpu.outputs.can-skip }}
       docker_npu_image: ${{ needs.build-docker.outputs.docker_npu_image }}
