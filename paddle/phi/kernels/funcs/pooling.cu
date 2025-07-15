@@ -21,7 +21,6 @@ limitations under the License. */
 #include <hiprand_kernel.h>
 #endif
 
-#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
