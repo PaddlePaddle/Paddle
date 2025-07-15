@@ -25,34 +25,40 @@
 
 namespace phi {
 
-template <typename T>
-static __forceinline__ __device__ void AtomicAdd(
-    T* data, int h, int w, int sH, int sW, int H, int W, T delta) {
+template <typename T, typename IndexT>
+static __forceinline__ __device__ void AtomicAdd(T* data,
+                                                 IndexT h,
+                                                 IndexT w,
+                                                 IndexT sH,
+                                                 IndexT sW,
+                                                 IndexT H,
+                                                 IndexT W,
+                                                 T delta) {
   if (InBounds(h, w, H, W)) {
     phi::CudaAtomicAdd(data + h * sH + w * sW, delta);
   }
 }
 
-template <typename T>
+template <typename T, typename IndexT>
 static __forceinline__ __device__ void AtomicAdd3D(T* data,
-                                                   int d,
-                                                   int h,
-                                                   int w,
-                                                   int sD,
-                                                   int sH,
-                                                   int sW,
-                                                   int D,
-                                                   int H,
-                                                   int W,
+                                                   IndexT d,
+                                                   IndexT h,
+                                                   IndexT w,
+                                                   IndexT sD,
+                                                   IndexT sH,
+                                                   IndexT sW,
+                                                   IndexT D,
+                                                   IndexT H,
+                                                   IndexT W,
                                                    T delta) {
   if (InBounds3D(d, h, w, D, H, W)) {
     phi::CudaAtomicAdd(data + d * sD + h * sH + w * sW, delta);
   }
 }
 
-template <typename T>
+template <typename T, typename IndexT>
 static __forceinline__ __device__ T
-UnnormalizeWithMask(T coord, int size, bool align_corners, T* grad_in) {
+UnnormalizeWithMask(T coord, IndexT size, bool align_corners, T* grad_in) {
   if (align_corners) {
     *grad_in = static_cast<T>(size - 1) / 2;
     return ((coord + 1.f) / 2) * (size - 1);
@@ -62,9 +68,9 @@ UnnormalizeWithMask(T coord, int size, bool align_corners, T* grad_in) {
   }
 }
 
-template <typename T>
+template <typename T, typename IndexT>
 static __forceinline__ __device__ T ClipIndexesWithMask(T in,
-                                                        int clip_limit,
+                                                        IndexT clip_limit,
                                                         T* grad_in) {
   if (in <= static_cast<T>(0)) {
     *grad_in = static_cast<T>(0);
@@ -81,14 +87,14 @@ static __forceinline__ __device__ T ClipIndexesWithMask(T in,
   }
 }
 
-template <typename T>
+template <typename T, typename IndexT>
 static __forceinline__ __device__ T
-ReflectIndexesWithMask(T in, int twice_low, int twice_high, T* grad_in) {
+ReflectIndexesWithMask(T in, IndexT twice_low, IndexT twice_high, T* grad_in) {
   if (twice_low == twice_high) {
     *grad_in = static_cast<T>(0);
     return static_cast<T>(0);
   }
-  int grad_in_mult_;
+  IndexT grad_in_mult_;
   T min = static_cast<T>(twice_low) / 2;
   T span = static_cast<T>(twice_high - twice_low) / 2;
   in = in - min;
@@ -99,7 +105,7 @@ ReflectIndexesWithMask(T in, int twice_low, int twice_high, T* grad_in) {
     grad_in_mult_ = 1;
   }
   T extra = fmod(in, span);
-  int flips = static_cast<int>(floor(in / span));
+  IndexT flips = static_cast<IndexT>(floor(in / span));
   if (flips % 2 == 0) {
     *grad_in = static_cast<T>(grad_in_mult_);
     return extra + min;
@@ -109,10 +115,10 @@ ReflectIndexesWithMask(T in, int twice_low, int twice_high, T* grad_in) {
   }
 }
 
-template <typename T>
+template <typename T, typename IndexT>
 static __forceinline__ __device__ T
 ComputePositionsWithMask(T coord,
-                         int size,
+                         IndexT size,
                          PaddingMode padding_mode,
                          bool align_corners,
                          T* grad_in) {
@@ -122,69 +128,70 @@ ComputePositionsWithMask(T coord,
     coord = ClipIndexesWithMask(coord, size, &grad_clip);
     *grad_in = (*grad_in) * grad_clip;
   } else if (padding_mode == PaddingMode::reflect) {
-    coord = align_corners
-                ? ReflectIndexesWithMask(coord, 0, 2 * (size - 1), &grad_refl)
-                : ReflectIndexesWithMask(coord, -1, 2 * size - 1, &grad_refl);
+    coord = align_corners ? ReflectIndexesWithMask<T, IndexT>(
+                                coord, 0, 2 * (size - 1), &grad_refl)
+                          : ReflectIndexesWithMask<T, IndexT>(
+                                coord, -1, 2 * size - 1, &grad_refl);
     coord = ClipIndexesWithMask(coord, size, &grad_clip);
     *grad_in = (*grad_in) * grad_refl * grad_clip;
   }
   return SafeDownGradeToIntRange(coord);
 }
 
-template <typename T>
-__global__ void GridSamplerCudaBackwardKernel(const int nthreads,
+template <typename T, typename IndexT>
+__global__ void GridSamplerCudaBackwardKernel(const IndexT nthreads,
                                               const T* grad_output,
                                               const T* input,
                                               const T* grid,
-                                              int n,
-                                              int out_c,
-                                              int out_h,
-                                              int out_w,
-                                              int in_h,
-                                              int in_w,
+                                              IndexT n,
+                                              IndexT out_c,
+                                              IndexT out_h,
+                                              IndexT out_w,
+                                              IndexT in_h,
+                                              IndexT in_w,
                                               T* grad_input,
                                               T* grad_grid,
                                               const Mode mode,
                                               const PaddingMode padding_mode,
                                               bool align_corners) {
-  int inp_sN = out_c * in_h * in_w;
-  int inp_sC = in_h * in_w;
-  int inp_sH = in_w;
-  int inp_sW = 1;
-  int grid_sN = out_h * out_w * 2;
-  int grid_sH = out_w * 2;
-  int grid_sW = 2;
-  int grid_sCoor = 1;
+  IndexT inp_sN = out_c * in_h * in_w;
+  IndexT inp_sC = in_h * in_w;
+  IndexT inp_sH = in_w;
+  IndexT inp_sW = 1;
+  IndexT grid_sN = out_h * out_w * 2;
+  IndexT grid_sH = out_w * 2;
+  IndexT grid_sW = 2;
+  IndexT grid_sCoor = 1;
 
-  int gOut_sN = out_c * out_h * out_w;
-  int gOut_sC = out_h * out_w;
-  int gOut_sH = out_w;
-  int gOut_sW = 1;
+  IndexT gOut_sN = out_c * out_h * out_w;
+  IndexT gOut_sC = out_h * out_w;
+  IndexT gOut_sH = out_w;
+  IndexT gOut_sW = 1;
 
   CUDA_KERNEL_LOOP(index, nthreads) {
-    const int w = index % out_w;
-    const int h = (index / out_w) % out_h;
-    const int n = index / (out_h * out_w);
-    const int grid_offset = n * grid_sN + h * grid_sH + w * grid_sW;
+    const IndexT w = index % out_w;
+    const IndexT h = (index / out_w) % out_h;
+    const IndexT n = index / (out_h * out_w);
+    const IndexT grid_offset = n * grid_sN + h * grid_sH + w * grid_sW;
 
     T ix = grid[grid_offset];
     T iy = grid[grid_offset + grid_sCoor];
 
     T gix_mult, giy_mult;
-    ix = ComputePositionsWithMask(
+    ix = ComputePositionsWithMask<T, IndexT>(
         ix, in_w, padding_mode, align_corners, &gix_mult);
-    iy = ComputePositionsWithMask(
+    iy = ComputePositionsWithMask<T, IndexT>(
         iy, in_h, padding_mode, align_corners, &giy_mult);
 
     if (mode == Mode::bilinear) {
-      int ix_nw = static_cast<int>(floor(ix));
-      int iy_nw = static_cast<int>(floor(iy));
-      int ix_ne = ix_nw + 1;
-      int iy_ne = iy_nw;
-      int ix_sw = ix_nw;
-      int iy_sw = iy_nw + 1;
-      int ix_se = ix_nw + 1;
-      int iy_se = iy_nw + 1;
+      IndexT ix_nw = static_cast<IndexT>(floor(ix));
+      IndexT iy_nw = static_cast<IndexT>(floor(iy));
+      IndexT ix_ne = ix_nw + 1;
+      IndexT iy_ne = iy_nw;
+      IndexT ix_sw = ix_nw;
+      IndexT iy_sw = iy_nw + 1;
+      IndexT ix_se = ix_nw + 1;
+      IndexT iy_se = iy_nw + 1;
 
       T nw = (ix_se - ix) * (iy_se - iy);
       T ne = (ix - ix_sw) * (iy_sw - iy);
@@ -192,13 +199,13 @@ __global__ void GridSamplerCudaBackwardKernel(const int nthreads,
       T se = (ix - ix_nw) * (iy - iy_nw);
 
       T gix = static_cast<T>(0), giy = static_cast<T>(0);
-      int gOut_offset = n * gOut_sN + h * gOut_sH + w * gOut_sW;
+      IndexT gOut_offset = n * gOut_sN + h * gOut_sH + w * gOut_sW;
       T* gInp_ptr_NC = grad_input + n * inp_sN;
-      int inp_offset_NC = n * inp_sN;
-      for (int c = 0; c < out_c; ++c,
-               inp_offset_NC += inp_sC,
-               gInp_ptr_NC += inp_sC,
-               gOut_offset += gOut_sC) {
+      IndexT inp_offset_NC = n * inp_sN;
+      for (IndexT c = 0; c < out_c; ++c,
+                  inp_offset_NC += inp_sC,
+                  gInp_ptr_NC += inp_sC,
+                  gOut_offset += gOut_sC) {
         T gOut = grad_output[gOut_offset];
 
         AtomicAdd(
@@ -238,12 +245,12 @@ __global__ void GridSamplerCudaBackwardKernel(const int nthreads,
         gGrid_ptr_NHW[1] = giy_mult * giy;
       }
     } else if (mode == Mode::nearest) {
-      int ix_nearest = static_cast<int>(std::nearbyint(ix));
-      int iy_nearest = static_cast<int>(std::nearbyint(iy));
+      IndexT ix_nearest = static_cast<IndexT>(std::nearbyint(ix));
+      IndexT iy_nearest = static_cast<IndexT>(std::nearbyint(iy));
 
-      int gOut_offset = n * gOut_sN + h * gOut_sH + w * gOut_sW;
+      IndexT gOut_offset = n * gOut_sN + h * gOut_sH + w * gOut_sW;
       T* gInp_ptr_NC = grad_input + n * inp_sN;
-      for (int c = 0; c < out_c;
+      for (IndexT c = 0; c < out_c;
            ++c, gInp_ptr_NC += inp_sC, gOut_offset += gOut_sC) {
         AtomicAdd(gInp_ptr_NC,
                   iy_nearest,
@@ -264,46 +271,46 @@ __global__ void GridSamplerCudaBackwardKernel(const int nthreads,
   }
 }
 
-template <typename T>
-__global__ void GridSampler3DCudaBackwardKernel(const int nthreads,
+template <typename T, typename IndexT>
+__global__ void GridSampler3DCudaBackwardKernel(const IndexT nthreads,
                                                 const T* grad_output,
                                                 const T* input,
                                                 const T* grid,
-                                                int out_c,
-                                                int out_d,
-                                                int out_h,
-                                                int out_w,
-                                                int in_d,
-                                                int in_h,
-                                                int in_w,
+                                                IndexT out_c,
+                                                IndexT out_d,
+                                                IndexT out_h,
+                                                IndexT out_w,
+                                                IndexT in_d,
+                                                IndexT in_h,
+                                                IndexT in_w,
                                                 T* grad_input,
                                                 T* grad_grid,
                                                 const Mode mode,
                                                 const PaddingMode padding_mode,
                                                 bool align_corners) {
-  int inp_sW = 1;
-  int inp_sH = in_w;
-  int inp_sD = in_h * in_w;
-  int inp_sC = in_d * inp_sD;
-  int inp_sN = out_c * inp_sC;
+  IndexT inp_sW = 1;
+  IndexT inp_sH = in_w;
+  IndexT inp_sD = in_h * in_w;
+  IndexT inp_sC = in_d * inp_sD;
+  IndexT inp_sN = out_c * inp_sC;
 
-  int grid_sCoor = 1;
-  int grid_sW = 3;
-  int grid_sH = out_w * grid_sW;
-  int grid_sD = out_h * grid_sH;
-  int grid_sN = out_d * grid_sD;
+  IndexT grid_sCoor = 1;
+  IndexT grid_sW = 3;
+  IndexT grid_sH = out_w * grid_sW;
+  IndexT grid_sD = out_h * grid_sH;
+  IndexT grid_sN = out_d * grid_sD;
 
-  int gOut_sW = 1;
-  int gOut_sH = out_w;
-  int gOut_sD = out_h * out_w;
-  int gOut_sC = out_d * gOut_sD;
-  int gOut_sN = out_c * gOut_sC;
+  IndexT gOut_sW = 1;
+  IndexT gOut_sH = out_w;
+  IndexT gOut_sD = out_h * out_w;
+  IndexT gOut_sC = out_d * gOut_sD;
+  IndexT gOut_sN = out_c * gOut_sC;
 
-  CUDA_KERNEL_LOOP_TYPE(index, nthreads, int) {
-    const int w = index % out_w;
-    const int h = (index / out_w) % out_h;
-    const int d = (index / (out_h * out_w)) % out_d;
-    const int n = index / (out_d * out_h * out_w);
+  CUDA_KERNEL_LOOP_TYPE(index, nthreads, IndexT) {
+    const IndexT w = index % out_w;
+    const IndexT h = (index / out_w) % out_h;
+    const IndexT d = (index / (out_h * out_w)) % out_d;
+    const IndexT n = index / (out_d * out_h * out_w);
     const auto grid_offset =
         n * grid_sN + d * grid_sD + h * grid_sH + w * grid_sW;
 
@@ -325,37 +332,37 @@ __global__ void GridSampler3DCudaBackwardKernel(const int nthreads,
       // get corner pixel values from (x, y, z)
       // for 4d, we used north-east-south-west
       // for 5d, we add top-bottom
-      int ix_tnw = static_cast<int>(std::floor(ix));
-      int iy_tnw = static_cast<int>(std::floor(iy));
-      int iz_tnw = static_cast<int>(std::floor(iz));
+      IndexT ix_tnw = static_cast<IndexT>(std::floor(ix));
+      IndexT iy_tnw = static_cast<IndexT>(std::floor(iy));
+      IndexT iz_tnw = static_cast<IndexT>(std::floor(iz));
 
-      int ix_tne = ix_tnw + 1;
-      int iy_tne = iy_tnw;
-      int iz_tne = iz_tnw;
+      IndexT ix_tne = ix_tnw + 1;
+      IndexT iy_tne = iy_tnw;
+      IndexT iz_tne = iz_tnw;
 
-      int ix_tsw = ix_tnw;
-      int iy_tsw = iy_tnw + 1;
-      int iz_tsw = iz_tnw;
+      IndexT ix_tsw = ix_tnw;
+      IndexT iy_tsw = iy_tnw + 1;
+      IndexT iz_tsw = iz_tnw;
 
-      int ix_tse = ix_tnw + 1;
-      int iy_tse = iy_tnw + 1;
-      int iz_tse = iz_tnw;
+      IndexT ix_tse = ix_tnw + 1;
+      IndexT iy_tse = iy_tnw + 1;
+      IndexT iz_tse = iz_tnw;
 
-      int ix_bnw = ix_tnw;
-      int iy_bnw = iy_tnw;
-      int iz_bnw = iz_tnw + 1;
+      IndexT ix_bnw = ix_tnw;
+      IndexT iy_bnw = iy_tnw;
+      IndexT iz_bnw = iz_tnw + 1;
 
-      int ix_bne = ix_tnw + 1;
-      int iy_bne = iy_tnw;
-      int iz_bne = iz_tnw + 1;
+      IndexT ix_bne = ix_tnw + 1;
+      IndexT iy_bne = iy_tnw;
+      IndexT iz_bne = iz_tnw + 1;
 
-      int ix_bsw = ix_tnw;
-      int iy_bsw = iy_tnw + 1;
-      int iz_bsw = iz_tnw + 1;
+      IndexT ix_bsw = ix_tnw;
+      IndexT iy_bsw = iy_tnw + 1;
+      IndexT iz_bsw = iz_tnw + 1;
 
-      int ix_bse = ix_tnw + 1;
-      int iy_bse = iy_tnw + 1;
-      int iz_bse = iz_tnw + 1;
+      IndexT ix_bse = ix_tnw + 1;
+      IndexT iy_bse = iy_tnw + 1;
+      IndexT iz_bse = iz_tnw + 1;
 
       // get surfaces to each neighbor:
       T tnw = (ix_bse - ix) * (iy_bse - iy) * (iz_bse - iz);
@@ -369,13 +376,14 @@ __global__ void GridSampler3DCudaBackwardKernel(const int nthreads,
 
       T gix = static_cast<T>(0), giy = static_cast<T>(0),
         giz = static_cast<T>(0);
-      int gOut_offset = n * gOut_sN + d * gOut_sD + h * gOut_sH + w * gOut_sW;
-      int inp_offset_NC = n * inp_sN;
+      IndexT gOut_offset =
+          n * gOut_sN + d * gOut_sD + h * gOut_sH + w * gOut_sW;
+      IndexT inp_offset_NC = n * inp_sN;
       T* gInp_ptr_NC = grad_input + n * inp_sN;
-      for (int c = 0; c < out_c; ++c,
-               gOut_offset += gOut_sC,
-               gInp_ptr_NC += inp_sC,
-               inp_offset_NC += inp_sC) {
+      for (IndexT c = 0; c < out_c; ++c,
+                  gOut_offset += gOut_sC,
+                  gInp_ptr_NC += inp_sC,
+                  inp_offset_NC += inp_sC) {
         T gOut = grad_output[gOut_offset];
 
         AtomicAdd3D(gInp_ptr_NC,
@@ -532,14 +540,15 @@ __global__ void GridSampler3DCudaBackwardKernel(const int nthreads,
         gGrid_ptr_NDHW[2] = giz_mult * giz;
       }
     } else if (mode == Mode::nearest) {
-      auto ix_nearest = static_cast<int>(std::round(ix));
-      auto iy_nearest = static_cast<int>(std::round(iy));
-      auto iz_nearest = static_cast<int>(std::round(iz));
+      IndexT ix_nearest = static_cast<IndexT>(std::round(ix));
+      IndexT iy_nearest = static_cast<IndexT>(std::round(iy));
+      IndexT iz_nearest = static_cast<IndexT>(std::round(iz));
 
       // assign nearest neighbor pixel value to output pixel
-      int gOut_offset = n * gOut_sN + d * gOut_sD + h * gOut_sH + w * gOut_sW;
+      IndexT gOut_offset =
+          n * gOut_sN + d * gOut_sD + h * gOut_sH + w * gOut_sW;
       T* gInp_ptr_NC = grad_input + n * inp_sN;
-      for (int c = 0; c < out_c;
+      for (IndexT c = 0; c < out_c;
            ++c, gOut_offset += gOut_sC, gInp_ptr_NC += inp_sC) {
         AtomicAdd3D(gInp_ptr_NC,
                     iz_nearest,
@@ -603,13 +612,17 @@ void GridSampleGradKernel(const Context& dev_ctx,
     enum_mode = Mode::bilinear;
   }
 
+  bool use_int32_index = x.numel() <= std::numeric_limits<int>::max() &&
+                         grid.numel() <= std::numeric_limits<int>::max() &&
+                         out_grad.numel() <= std::numeric_limits<int>::max();
+
   if (x.dims().size() == 4) {
-    const int n = grid.dims()[0];
-    const int out_h = grid.dims()[1];
-    const int out_w = grid.dims()[2];
-    const int c = x.dims()[1];
-    const int in_h = x.dims()[2];
-    const int in_w = x.dims()[3];
+    const int64_t n = grid.dims()[0];
+    const int64_t out_h = grid.dims()[1];
+    const int64_t out_w = grid.dims()[2];
+    const int64_t c = x.dims()[1];
+    const int64_t in_h = x.dims()[2];
+    const int64_t in_w = x.dims()[3];
 
     dev_ctx.template Alloc<T>(x_grad);
     phi::funcs::SetConstant<Context, T>()(dev_ctx, x_grad, static_cast<T>(0));
@@ -619,36 +632,44 @@ void GridSampleGradKernel(const Context& dev_ctx,
       grid_grad_data = dev_ctx.template Alloc<T>(grid_grad);
     }
 
-    int count = static_cast<int>(n * out_h * out_w);
+    int64_t count = n * out_h * out_w;
     auto cu_stream = dev_ctx.stream();
     backends::gpu::GpuLaunchConfig config =
         backends::gpu::GetGpuLaunchConfig1D(dev_ctx, count);
-    GridSamplerCudaBackwardKernel<T>
-        <<<config.block_per_grid, config.thread_per_block, 0, cu_stream>>>(
-            count,
-            out_grad.data<T>(),
-            x.data<T>(),
-            grid.data<T>(),
-            n,
-            c,
-            out_h,
-            out_w,
-            in_h,
-            in_w,
-            x_grad->data<T>(),
-            grid_grad_data,
-            enum_mode,
-            enum_padding_mode,
-            align_corners);
+
+#define LAUNCH_KERNEL(INDEX_TYPE)                                         \
+  GridSamplerCudaBackwardKernel<T, INDEX_TYPE>                            \
+      <<<config.block_per_grid, config.thread_per_block, 0, cu_stream>>>( \
+          count,                                                          \
+          out_grad.data<T>(),                                             \
+          x.data<T>(),                                                    \
+          grid.data<T>(),                                                 \
+          n,                                                              \
+          c,                                                              \
+          out_h,                                                          \
+          out_w,                                                          \
+          in_h,                                                           \
+          in_w,                                                           \
+          x_grad->data<T>(),                                              \
+          grid_grad_data,                                                 \
+          enum_mode,                                                      \
+          enum_padding_mode,                                              \
+          align_corners);
+    if (use_int32_index) {
+      LAUNCH_KERNEL(int32_t)
+    } else {
+      LAUNCH_KERNEL(int64_t)
+    }
+#undef LAUNCH_KERNEL
   } else {
-    const int out_d = grid.dims()[1];
-    const int out_h = grid.dims()[2];
-    const int out_w = grid.dims()[3];
-    const int n = x.dims()[0];
-    const int c = x.dims()[1];
-    const int in_d = x.dims()[2];
-    const int in_h = x.dims()[3];
-    const int in_w = x.dims()[4];
+    const int64_t out_d = grid.dims()[1];
+    const int64_t out_h = grid.dims()[2];
+    const int64_t out_w = grid.dims()[3];
+    const int64_t n = x.dims()[0];
+    const int64_t c = x.dims()[1];
+    const int64_t in_d = x.dims()[2];
+    const int64_t in_h = x.dims()[3];
+    const int64_t in_w = x.dims()[4];
 
     dev_ctx.template Alloc<T>(x_grad);
     phi::funcs::SetConstant<Context, T>()(dev_ctx, x_grad, static_cast<T>(0));
@@ -658,28 +679,36 @@ void GridSampleGradKernel(const Context& dev_ctx,
       grid_grad_data = dev_ctx.template Alloc<T>(grid_grad);
     }
 
-    int count = static_cast<int>(n * out_d * out_h * out_w);
+    int64_t count = static_cast<int64_t>(n * out_d * out_h * out_w);
     auto cu_stream = dev_ctx.stream();
     backends::gpu::GpuLaunchConfig config =
         backends::gpu::GetGpuLaunchConfig1D(dev_ctx, count);
-    GridSampler3DCudaBackwardKernel<T>
-        <<<config.block_per_grid, config.thread_per_block, 0, cu_stream>>>(
-            count,
-            out_grad.data<T>(),
-            x.data<T>(),
-            grid.data<T>(),
-            c,
-            out_d,
-            out_h,
-            out_w,
-            in_d,
-            in_h,
-            in_w,
-            x_grad->data<T>(),
-            grid_grad_data,
-            enum_mode,
-            enum_padding_mode,
-            align_corners);
+
+#define LAUNCH_KERNEL(INDEX_TYPE)                                         \
+  GridSampler3DCudaBackwardKernel<T, INDEX_TYPE>                          \
+      <<<config.block_per_grid, config.thread_per_block, 0, cu_stream>>>( \
+          count,                                                          \
+          out_grad.data<T>(),                                             \
+          x.data<T>(),                                                    \
+          grid.data<T>(),                                                 \
+          c,                                                              \
+          out_d,                                                          \
+          out_h,                                                          \
+          out_w,                                                          \
+          in_d,                                                           \
+          in_h,                                                           \
+          in_w,                                                           \
+          x_grad->data<T>(),                                              \
+          grid_grad_data,                                                 \
+          enum_mode,                                                      \
+          enum_padding_mode,                                              \
+          align_corners);
+    if (use_int32_index) {
+      LAUNCH_KERNEL(int32_t)
+    } else {
+      LAUNCH_KERNEL(int64_t)
+    }
+#undef LAUNCH_KERNEL
   }
 }
 
