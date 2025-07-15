@@ -294,7 +294,7 @@ def base_softmax_with_cross_entropy(
         # label = paddle.unsqueeze(label, axis)
         # ------
 
-        # notice : dim of label [-1,2,10] while logits is [-1,1] ,if use unsquezee
+        # notice : dim of label [-1,2,10] while logits is [-1,1], if use unsqueeze
         # logits [-1,1]->[-1,1,1], but input need 1 != 2 so change
         # the modified function make logits [-1,1] -> [-1,2] (uncertain)
         # another possible modify [-1,1] -> [-1,2,1]
@@ -2971,8 +2971,8 @@ def cross_entropy(
 
     if input_dims - 1 != label_dims and input_dims != label_dims:
         raise ValueError(
-            f'Expected nput_dims - 1 = label_dims or input_dims == label_dims\
-             (got nput_dims{input_dims}, label_dims{label_dims})'
+            f'Expected input_dims - 1 = label_dims or input_dims == label_dims\
+             (got input_dims{input_dims}, label_dims{label_dims})'
         )
 
     if label_smoothing > 0.0:
@@ -3457,7 +3457,7 @@ def multi_label_soft_margin_loss(
     Parameters:
         input (Tensor): Input tensor, the data type is float32 or float64. Shape is (N, C), where C is number of classes, and if shape is more than 2D, this is (N, C, D1, D2,..., Dk), k >= 1.
         label (Tensor): Label tensor, the data type is float32 or float64. The shape of label is the same as the shape of input.
-        weight (Tensor,optional): a manual rescaling weight given to each class.
+        weight (Tensor, optional): a manual rescaling weight given to each class.
                 If given, has to be a Tensor of size C and the data type is float32, float64.
                 Default is ``'None'`` .
         reduction (str, optional): Indicate how to average the loss by batch_size,
@@ -3472,7 +3472,7 @@ def multi_label_soft_margin_loss(
     Shape:
         input: N-D Tensor, the shape is [N, \*], N is batch size and `\*` means number of classes, available dtype is float32, float64. The sum operation operates over all the elements.
         label: N-D Tensor, same shape as the input.
-        weight:N-D Tensor, the shape is [N,1]
+        weight: N-D Tensor, the shape is [N,1]
         output: scalar. If :attr:`reduction` is ``'none'``, then same shape as the input.
 
     Returns:
@@ -3513,13 +3513,13 @@ def multi_label_soft_margin_loss(
             input,
             'input',
             ['float32', 'float64'],
-            'multilabel_soft_margin_loss',
+            'multi_label_soft_margin_loss',
         )
         check_variable_and_dtype(
             label,
             'label',
             ['float32', 'float64'],
-            'multilabel_soft_margin_loss',
+            'multi_label_soft_margin_loss',
         )
 
     loss = -(
@@ -3533,7 +3533,7 @@ def multi_label_soft_margin_loss(
                 weight,
                 'weight',
                 ['float32', 'float64'],
-                'multilabel_soft_margin_loss',
+                'multi_label_soft_margin_loss',
             )
         loss = loss * weight
 
