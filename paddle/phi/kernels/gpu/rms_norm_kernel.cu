@@ -106,8 +106,6 @@ __inline__ __device__ T BlockAllReduce(T val) {
   return result_broadcast;
 }
 
-
-
 template <typename T>
 __inline__ __device__ T Div(T a, T b);
 
