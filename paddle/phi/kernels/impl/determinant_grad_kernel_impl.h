@@ -35,20 +35,20 @@ namespace phi {
 namespace detail {
 
 // epsilon_ should be smaller if linalg.det achieves higher precision
-template <typename RealType>
+template <typename T>
 struct FoundZeroEpsilon {
   // default for float16
-  static constexpr RealType value = static_cast<RealType>(1e-3f);
+  static constexpr T value() { return static_cast<T>(1e-3f); }
 };
 
 template <>
 struct FoundZeroEpsilon<float> {
-  static constexpr float value = 1e-5f;
+  static constexpr float value() { return 1e-5f; }
 };
 
 template <>
 struct FoundZeroEpsilon<double> {
-  static constexpr double value = 1e-12;
+  static constexpr double value() { return 1e-12; }
 };
 
 template <typename T>
@@ -63,7 +63,7 @@ struct FoundZeroFunctor {
       // found a singular matrix
       return;
     }
-    if (abs(x_[idx]) < FoundZeroEpsilon<RealType>::value) {
+    if (abs(x_[idx]) < FoundZeroEpsilon<RealType>::value()) {
       *res_ = true;
     }
   }
@@ -72,7 +72,6 @@ struct FoundZeroFunctor {
   const T* x_;
   int64_t numel_;
   bool* res_;
-  RealType epsilon_;
 };
 
 template <typename T, typename Context>
