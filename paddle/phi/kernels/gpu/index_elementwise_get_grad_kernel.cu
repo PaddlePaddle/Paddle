@@ -160,9 +160,7 @@ void IndexElementwiseGetGradKernel(const Context& ctx,
                                    const bool accumulate,
                                    DenseTensor* x_grad) {
   ctx.template Alloc<T>(x_grad);
-  auto dxt = phi::EigenVector<T>::Flatten(*x_grad);
-  auto& place = *ctx.eigen_device();
-  dxt.device(place) = dxt.constant(static_cast<T>(0));
+  phi::funcs::set_constant(ctx, x_grad, static_cast<float>(0));
   if (out_grad.numel() == 0) return;
 
   const auto& index_type = index[0]->dtype();
