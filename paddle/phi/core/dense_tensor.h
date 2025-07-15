@@ -98,7 +98,7 @@ class TEST_API DenseTensor : public TensorBase,
   /// \param strides The desired strides of the output tensor.
   /// \return A new tensor sharing data with the original but with new
   /// shape/strides.
-  DenseTensor as_strided(const DDim& shape, const DDim& strides);
+  DenseTensor as_strided(const DDim& shape, const DDim& strides) const;
 
   /// \brief Returns the lod of the tensor.
   /// \return The lod of the tensor.

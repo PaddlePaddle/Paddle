@@ -334,7 +334,8 @@ void DenseTensor::set_storage_properties(
   storage_properties_ = std::move(storage_properties);
 }
 
-DenseTensor DenseTensor::as_strided(const DDim& shape, const DDim& strides) {
+DenseTensor DenseTensor::as_strided(const DDim& shape,
+                                    const DDim& strides) const {
   DenseTensor out;
   out.ShareDataWith(*this);
   out.Resize(shape);

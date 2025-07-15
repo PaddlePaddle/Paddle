@@ -371,22 +371,13 @@ inline phi::DDim ensure_nonempty_ddim(phi::DDim dim) {
   return dim;
 }
 
-inline DenseTensor as_strided(const DenseTensor& src,
-                              const std::vector<int64_t>& shape,
-                              const std::vector<int64_t>& strides) {
-  phi::DenseTensor out;
-  out.ShareDataWith(src);
-  out.Resize(phi::make_ddim(shape));
-  out.set_strides(phi::make_ddim(strides));
-  return out;
-}
-
 inline DenseTensor restride_dim(const phi::DenseTensor& src,
                                 int dim,
                                 const std::vector<int64_t>& replacement_shape) {
   auto strides = ensure_nonempty_vec(common::vectorize(src.strides()));
   strides[dim] = 0;
-  return as_strided(src, replacement_shape, strides);
+  return src.as_strided(phi::make_ddim(replacement_shape),
+                        phi::make_ddim(strides));
 }
 
 template <int nt, int vt, typename func_t>
@@ -417,7 +408,8 @@ void GPUScatterAdd(const phi::GPUContext& ctx,
   auto src_strides = ensure_nonempty_vec(common::vectorize(src.strides()));
 
   auto self_restrided = restride_dim(*output, dim, index_sizes);
-  auto src_restrided = as_strided(src, index_sizes, src_strides);
+  auto src_restrided =
+      src.as_strided(phi::make_ddim(index_sizes), phi::make_ddim(src_strides));
 
   int64_t numel = 0;
   std::vector<int64_t> desired_shape;
