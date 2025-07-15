@@ -34,6 +34,12 @@ void LUKernel(const Context& dev_ctx,
                         "lu without pivoting is not implemented on the CPU, "
                         "but got pivots=False"));
 
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<int>(infos);
+    dev_ctx.template Alloc<int>(pivots);
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   *out = Transpose2DTo6D<Context, T>(dev_ctx, x);
 
   auto outdims = out->dims();

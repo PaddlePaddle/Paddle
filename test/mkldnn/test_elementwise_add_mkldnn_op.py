@@ -23,7 +23,7 @@ from paddle import enable_static
 
 class TestOneDNNElementwiseAddOp(TestElementwiseAddOp):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.check_pir_onednn = True
 
     def init_dtype(self):
@@ -131,7 +131,7 @@ class TestOneDNNElementwiseAddOpZeroDim3(TestOneDNNElementwiseAddOp):
 )
 class TestInt8(TestElementwiseAddOp):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
         self._cpu_only = True
         self.check_pir_onednn = True
 
@@ -152,7 +152,7 @@ class TestInt8(TestElementwiseAddOp):
         # TODO(wangzhongpu): support onednn op in dygraph mode
         self.init_scales()
         self.check_output(
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
         )
 

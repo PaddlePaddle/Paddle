@@ -546,6 +546,7 @@
   output : Tensor(x_grad), Tensor(filter_grad)
   infer_meta :
     func : Conv2dTransposeGradInferMeta
+    spmd_rule : Conv2dTransposeGradInferSpmd
   kernel :
     func : conv2d_transpose_grad
     data_type : x
@@ -792,6 +793,7 @@
   infer_meta :
     func : GeneralBinaryGradInferMeta
     param : [input, filter]
+    spmd_rule : DepthwiseConv2dGradInferSpmd
   kernel :
     func : depthwise_conv2d_grad
     data_type : input
@@ -1687,6 +1689,12 @@
   backward : index_add_double_grad
   no_need_buffer: add_value
 
+- backward_op : index_elementwise_get_double_grad
+  forward : index_elementwise_get_grad (Tensor x, Tensor[] index, Tensor out_grad, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_stride, int64_t slice_offset, bool accumulate) -> Tensor(x_grad)
+  args : (Tensor[] index, Tensor x_grad_grad, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_stride, int64_t slice_offset = 0, bool accumulate = true)
+  output : Tensor(out_grad_grad)
+  invoke : index_elementwise_get(x_grad_grad, index, input_dims, input_strides, index_dims, index_stride, slice_offset, accumulate)
+
 - backward_op : index_elementwise_get_grad
   forward : index_elementwise_get (Tensor x, Tensor[] index, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_stride, int64_t slice_offset, bool accumulate) -> Tensor(out)
   args : (Tensor x, Tensor[] index, Tensor out_grad, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_stride, int64_t slice_offset = 0, bool accumulate = true)
@@ -1695,6 +1703,7 @@
     func : IndexElementwiseGetGradInferMeta
   kernel :
     func : index_elementwise_get_grad
+  backward: index_elementwise_get_double_grad
 
 - backward_op : index_elementwise_put_grad
   forward : index_elementwise_put (Tensor x, Tensor[] index, Tensor value, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset) -> Tensor(out)
@@ -2887,6 +2896,17 @@
   output : Tensor(x_grad)
   invoke : reverse(out_grad, axis)
 
+- backward_op : rint_grad
+  forward : rint(Tensor x) -> Tensor(out)
+  args : (Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [out_grad]
+  kernel :
+    func : rint_grad
+  inplace : (out_grad -> x_grad)
+
 - backward_op : rms_norm_grad
   forward : rms_norm (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, float epsilon, int begin_norm_axis, float quant_scale, int quant_round_type, float quant_max_bound, float quant_min_bound) -> Tensor(out), Tensor(residual_out), Tensor(inv_var)
   args : (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, Tensor inv_var, Tensor out_grad, float epsilon, int begin_norm_axis, float quant_scale)
@@ -3859,6 +3879,7 @@
   kernel :
     func : view_dtype_grad
     data_type : out_grad
+  no_need_buffer: input
 
 - backward_op : warpctc_grad
   forward : warpctc (Tensor logits, Tensor label, Tensor logits_length, Tensor labels_length, int blank = 0, bool norm_by_times = false) -> Tensor(loss), Tensor(warpctcgrad)

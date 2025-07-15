@@ -1251,12 +1251,12 @@ void EinsumInferMeta(const std::vector<const MetaTensor*>& inputs,
                      const std::string& equation,
                      MetaTensor* out) {
   // collect the following information to prepare einsum.
-  LabelMap labelshape(0);
+  LabelMap labelshape(-1);
   LabelMap labeltype(LabelType::Reduction);
   std::vector<LabelMap> label2perms(inputs.size(), LabelMap(-1));
   std::vector<char> all_labels;
-  std::vector<int> output_dims;
-  std::vector<std::vector<int>> broadcast_shapes(2);
+  std::vector<int64_t> output_dims;
+  std::vector<std::vector<int64_t>> broadcast_shapes(2);
 
   std::vector<DDim> input_dims;
   for (auto& i : inputs) {
@@ -2123,6 +2123,7 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
                                 bool using_1x128_vec_quant,
                                 bool input_transpose,
                                 bool output_scale_transpose,
+                                bool return_transpose_only,
                                 bool using_e5m2,
                                 bool using_pow2_scale,
                                 MetaTensor* out,
@@ -2211,10 +2212,17 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
                         "invalid shape encountered in scale inner dim."));
 
   if (X && out && scale) {
-    out->set_dims(common::make_ddim({output_outer_dim, output_inner_dim}));
-    out->set_dtype(phi::DataType::FLOAT8_E4M3FN);
-    scale->set_dims(common::make_ddim({scale_outer_dim, scale_inner_dim}));
-    scale->set_dtype(phi::DataType::FLOAT32);
+    if (!return_transpose_only) {
+      out->set_dims(common::make_ddim({output_outer_dim, output_inner_dim}));
+      out->set_dtype(phi::DataType::FLOAT8_E4M3FN);
+      scale->set_dims(common::make_ddim({scale_outer_dim, scale_inner_dim}));
+      scale->set_dtype(phi::DataType::FLOAT32);
+    } else {
+      out->set_dims(common::make_ddim({0}));
+      out->set_dtype(phi::DataType::FLOAT8_E4M3FN);
+      scale->set_dims(common::make_ddim({0}));
+      scale->set_dtype(phi::DataType::FLOAT32);
+    }
     if (input_transpose) {
       out_transposed->set_dims(
           common::make_ddim({output_inner_dim, output_outer_dim}));
@@ -2941,7 +2949,7 @@ void NanmedianInferMeta(const MetaTensor& x,
   auto x_dim = x.dims();
   int64_t x_rank = x_dim.size();
 
-  std::vector<int32_t> out_dim;
+  std::vector<int64_t> out_dim;
   if (axis_list.empty()) {
     if (keep_dim) {
       for (int64_t i = 0; i < x_rank; i++) {
