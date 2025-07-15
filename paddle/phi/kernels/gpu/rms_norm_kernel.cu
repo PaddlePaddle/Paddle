@@ -202,11 +202,11 @@ struct alignas(sizeof(T) * N) Pack {
 template <typename SRC, typename DST>
 struct DirectLoad {
   using LoadType = DST;
-  DirectLoad(const SRC* src, int32_t row_size) : src(src), row_size(row_size) {}
+  DirectLoad(const SRC* src, int64_t row_size) : src(src), row_size(row_size) {}
   template <int N>
-  __device__ void load(DST* dst, int32_t row, int32_t col) const {
+  __device__ void load(DST* dst, int64_t row, int64_t col) const {
     Pack<SRC, N> pack;
-    const int32_t offset = (row * row_size + col) / N;
+    const int64_t offset = (row * row_size + col) / N;
     pack = *(reinterpret_cast<const Pack<SRC, N>*>(src) + offset);
 #pragma unroll
     for (int i = 0; i < N; ++i) {
@@ -214,7 +214,7 @@ struct DirectLoad {
     }
   }
   const SRC* src;
-  int32_t row_size;
+  int64_t row_size;
 };
 
 template <typename SRC, typename DST>
@@ -427,8 +427,8 @@ template <typename LOAD,
 __global__ void __launch_bounds__(block_size)
     RmsNormBlockSMemImpl(LOAD load,
                          STORE store,
-                         const int32_t rows,
-                         const int32_t cols,
+                         const int64_t rows,
+                         const int64_t cols,
                          const float epsilon,
                          ComputeType col_divisor,
                          float* inv_var_data) {
@@ -437,10 +437,10 @@ __global__ void __launch_bounds__(block_size)
   auto* buf = reinterpret_cast<LoadType*>(shared_buf);
   const int tid = threadIdx.x;
   assert(cols % kPackSize == 0);
-  const int num_packs = static_cast<int>(cols) / kPackSize;
-  for (int32_t row = blockIdx.x; row < rows; row += gridDim.x) {
+  const int64_t num_packs = cols / kPackSize;
+  for (int64_t row = blockIdx.x; row < rows; row += gridDim.x) {
     ComputeType thread_sum_square = 0;
-    for (int pack_id = tid; pack_id < num_packs; pack_id += block_size) {
+    for (int64_t pack_id = tid; pack_id < num_packs; pack_id += block_size) {
       LoadType pack[kPackSize];
       load.template load<kPackSize>(pack, row, pack_id * kPackSize);
 #pragma unroll
@@ -462,10 +462,10 @@ __global__ void __launch_bounds__(block_size)
     if (inv_var_data != nullptr) {
       inv_var_data[row] = row_inv_rms;
     }
-    for (int pack_id = tid; pack_id < num_packs; pack_id += block_size) {
+    for (int64_t pack_id = tid; pack_id < num_packs; pack_id += block_size) {
       ComputeType pack[kPackSize];
 #pragma unroll
-      for (int i = 0; i < kPackSize; ++i) {
+      for (int64_t i = 0; i < kPackSize; ++i) {
         pack[i] = static_cast<ComputeType>(buf[i * num_packs + pack_id]) *
                   row_inv_rms;
       }
@@ -483,8 +483,8 @@ inline GPU(Error_t) LaunchRmsNormBlockSMemImpl(GPU(Stream_t) stream,
                                                LOAD load,
                                                STORE store,
                                                int smem,
-                                               const int32_t rows,
-                                               const int32_t cols,
+                                               const int64_t rows,
+                                               const int64_t cols,
                                                const float epsilon,
                                                ComputeType col_divisor,
                                                float* inv_var_data) {
@@ -540,8 +540,8 @@ inline GPU(Error_t)
     TryDispatchRmsNormBlockSMemImplBlockSize(GPU(Stream_t) stream,
                                              LOAD load,
                                              STORE store,
-                                             const int32_t rows,
-                                             const int32_t cols,
+                                             const int64_t rows,
+                                             const int64_t cols,
                                              const float epsilon,
                                              ComputeType col_divisor,
                                              bool* success,
@@ -622,7 +622,6 @@ inline GPU(Error_t)
   }();
 
   const size_t smem = cols * sizeof(typename LOAD::LoadType);
-
   int max_active_blocks_conf_1;
   {
     GPU(Error_t)
@@ -729,6 +728,7 @@ inline GPU(Error_t)
       return err;
     }
   }
+
   if (max_active_blocks_conf_2 == max_active_blocks_conf_1 ||
       (max_active_blocks_conf_2 > 0 && rows <= sm_count)) {
     *success = true;
@@ -746,7 +746,6 @@ inline GPU(Error_t)
                                                          col_divisor,
                                                          inv_var_data);
   }
-
   *success = true;
   return LaunchRmsNormBlockSMemImpl<LOAD,
                                     STORE,
@@ -769,8 +768,8 @@ struct TryDispatchRmsNormBlockSMemImplPackSize {
   operator()(GPU(Stream_t) stream,
              LOAD load,
              STORE store,
-             const int32_t rows,
-             const int32_t cols,
+             const int64_t rows,
+             const int64_t cols,
              const float epsilon,
              ComputeType col_divisor,
              bool* success,
@@ -824,8 +823,8 @@ template <typename LOAD, typename STORE, typename ComputeType>
 inline GPU(Error_t) TryDispatchRmsNormBlockSMemImpl(GPU(Stream_t) stream,
                                                     LOAD load,
                                                     STORE store,
-                                                    const int32_t rows,
-                                                    const int32_t cols,
+                                                    const int64_t rows,
+                                                    const int64_t cols,
                                                     const float epsilon,
                                                     ComputeType col_divisor,
                                                     bool* success,
@@ -848,12 +847,12 @@ inline typename std::enable_if<!std::is_same<ComputeType, double>::value,
 DispatchRmsNorm(GPU(Stream_t) stream,
                 LOAD load,
                 STORE store,
-                const int32_t rows,
-                const int32_t cols,
+                const int64_t rows,
+                const int64_t cols,
                 const float epsilon,
                 float* inv_var_data) {
   const ComputeType col_divisor = 1.0f / cols;
-  bool dispatch_smem_impl_success;
+  bool dispatch_smem_impl_success = false;
   {
     GPU(Error_t)
     err = TryDispatchRmsNormBlockSMemImpl<LOAD, STORE, ComputeType>(
@@ -870,6 +869,16 @@ DispatchRmsNorm(GPU(Stream_t) stream,
       return err;
     }
   }
+  PADDLE_ENFORCE_EQ(
+      dispatch_smem_impl_success,
+      true,
+      common::errors::Fatal(
+          "Failed to launch RMSNorm kernel with shared memory implementation!"
+          "This is likely due to large 'cols' value (%ld) requiring too much "
+          "shared memory. "
+          "Consider using smaller 'cols' or switching to global memory "
+          "implementation.",
+          cols));
   return GPU(Success);
 }
 
@@ -924,15 +933,15 @@ struct SkipLoadAndStoreResidual {
 
 template <typename SRC, typename DST>
 struct AffineStore {
-  AffineStore(DST* y, int32_t row_size, const DST* gamma, const DST* beta)
+  AffineStore(DST* y, int64_t row_size, const DST* gamma, const DST* beta)
       : y(y), row_size(row_size), gamma(gamma), beta(beta) {}
   template <int N>
-  __device__ void store(const SRC* src, int32_t row, int32_t col) {
+  __device__ void store(const SRC* src, int64_t row, int64_t col) {
     Pack<DST, N> y_pack;
     Pack<DST, N> gamma_pack;
     Pack<DST, N> beta_pack;
-    const int32_t offset = (row * row_size + col) / N;
-    const int32_t gamma_offset = col / N;
+    const int64_t offset = (row * row_size + col) / N;
+    const int64_t gamma_offset = col / N;
     gamma_pack = *(reinterpret_cast<const Pack<DST, N>*>(gamma) + gamma_offset);
 
     // Author(Zhengzekang): Bias maybe optional.
@@ -956,7 +965,7 @@ struct AffineStore {
     *(reinterpret_cast<Pack<DST, N>*>(y) + offset) = y_pack;
   }
   DST* y;
-  int32_t row_size;
+  int64_t row_size;
   const DST* gamma;
   const DST* beta;
 };
@@ -1132,8 +1141,8 @@ void RmsNormKernel(const Context& dev_ctx,
     inv_var_data = dev_ctx.template Alloc<float>(inv_var);
   }
 
-  int32_t rows = 1;
-  int32_t cols = 1;
+  int64_t rows = 1;
+  int64_t cols = 1;
   for (int i = 0; i < begin_norm_axis; i++) {
     rows *= x.dims()[i];
   }
