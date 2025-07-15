@@ -34,28 +34,36 @@
 namespace phi {
 namespace detail {
 
+// epsilon_ should be smaller if linalg.det achieves higher precision
+template <typename RealType>
+struct FoundZeroEpsilon {
+  // default for float16
+  static constexpr RealType value = static_cast<RealType>(1e-3f);
+};
+
+template <>
+struct FoundZeroEpsilon<float> {
+  static constexpr float value = 1e-5f;
+};
+
+template <>
+struct FoundZeroEpsilon<double> {
+  static constexpr double value = 1e-12;
+};
+
 template <typename T>
 struct FoundZeroFunctor {
   using RealType = phi::dtype::Real<T>;
 
   FoundZeroFunctor(const T* x, int64_t numel, bool* res)
-      : x_(x), numel_(numel), res_(res) {
-    // epsilon_ should be smaller if linalg.det achieves higher precision
-    if constexpr (std::is_same_v<RealType, float>) {
-      epsilon_ = 1e-5f;
-    } else if constexpr (std::is_same_v<RealType, double>) {
-      epsilon_ = 1e-12;
-    } else {
-      epsilon_ = 1e-3f;  // Default for float16
-    }
-  }
+      : x_(x), numel_(numel), res_(res) {}
 
   HOSTDEVICE void operator()(size_t idx) const {
     if (*res_ || idx >= static_cast<size_t>(numel_)) {
       // found a singular matrix
       return;
     }
-    if (abs(x_[idx]) < epsilon_) {
+    if (abs(x_[idx]) < FoundZeroEpsilon<RealType>::value) {
       *res_ = true;
     }
   }
