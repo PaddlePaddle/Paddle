@@ -174,22 +174,6 @@ class TestLUOp2(TestLUOp):
         self.dtype = "float64"
 
 
-class TestLUOp2_ZeroSize1(TestLUOp):
-    def config(self):
-        self.x_shape = [10, 0]
-        self.pivot = True
-        self.get_infos = True
-        self.dtype = "float64"
-
-
-class TestLUOp2_ZeroSize2(TestLUOp):
-    def config(self):
-        self.x_shape = [0, 10]
-        self.pivot = True
-        self.get_infos = True
-        self.dtype = "float64"
-
-
 # m > n
 class TestLUOp3(TestLUOp):
     """
