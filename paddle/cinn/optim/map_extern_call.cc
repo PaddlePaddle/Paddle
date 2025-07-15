@@ -27,7 +27,7 @@ static const std::set<std::string> kExternFp32CallsGPU{
      "floor", "ceil",  "round",   "trunc",    "cos",   "cosh",      "tan",
      "sin",   "sinh",  "acos",    "acosh",    "asin",  "asinh",     "atan",
      "atanh", "isnan", "tanh",    "isfinite", "isinf", "remainder", "rsqrt",
-     "cbrt",  "abs",   "pow",     "mod"}};
+     "cbrt",  "abs",   "pow",     "mod",      "rint"}};
 
 static const std::set<std::string> kExternInt32CallsGPU{{"left_shift",
                                                          "right_shift",

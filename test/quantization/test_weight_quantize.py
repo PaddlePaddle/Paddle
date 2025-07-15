@@ -113,5 +113,22 @@ class WeightQuantizeW4a8TestCase(unittest.TestCase):
         baseline = np.array(ref_out).reshape([-1])
         np.allclose(baseline, out.astype("int32").numpy(), atol=1e-2)
 
+class WeightQuantizeW4a8ZeroSizeTensorTestCase(unittest.TestCase):
+    def setUp(self):
+        self.x_shape = [1, 0, 10]
+        self.dtype = "float32"
+    def _test_dygraph(self):
+        paddle.disable_static()
+        x = paddle.rand(shape= self.x_shape, dtype=paddle.float16)
+        x.stop_gradient=False
+        out, scale = weight_quantize(x, algo='weight_only_int8')
+        loss = out.sum()
+        loss.backward()
+        np.assert_allclose(x.grad.shape,x.shape)
+    def run_test(self):
+        self.setUp()
+        self._test_dygraph()
+
+
 if __name__ == '__main__':
     unittest.main()
