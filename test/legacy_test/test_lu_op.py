@@ -301,18 +301,37 @@ class TestLUAPI(unittest.TestCase):
             run_lu_static(tensor_shape, dtype)
 
 
-class TestLUAPIError(unittest.TestCase):
-    def test_errors(self):
-        with paddle.base.dygraph.guard():
-            # The size of input in lu should not be 0.
-            def test_0_size():
-                array = np.array([], dtype=np.float32)
-                x = paddle.to_tensor(
-                    np.reshape(array, [0, 0, 0]), dtype='float32'
-                )
-                paddle.linalg.lu(x, get_infos=True)
+# class TestLUAPIError(unittest.TestCase):
+#     def test_errors(self):
+#         with paddle.base.dygraph.guard():
+#             # The size of input in lu should not be 0.
+#             def test_0_size():
+#                 array = np.array([], dtype=np.float32)
+#                 x = paddle.to_tensor(
+#                     np.reshape(array, [0, 0, 0]), dtype='float32'
+#                 )
+#                 paddle.linalg.lu(x, get_infos=True)
 
-            self.assertRaises(ValueError, test_0_size)
+#             self.assertRaises(ValueError, test_0_size)
+
+
+class TestLUAPIZeroSize(unittest.TestCase):
+    def init_test_case(self):
+        self.x_shape = [1, 0, 10]
+        self.dtype = "float32"
+
+    def _test_dygraph(self):
+        paddle.disable_static()
+        array = np.ones(self.x_shape).astype(self.dtype)
+        x = paddle.to_tensor(array, stop_gradient=False)
+        lu, p, info = paddle.linalg.lu(x, get_infos=True)
+        loss = lu.sum()
+        loss.backward()
+        self.assertEqual(x.grad.shape, x.shape)
+
+    def test_zero_size(self):
+        self.init_test_case()
+        self._test_dygraph()
 
 
 if __name__ == "__main__":
