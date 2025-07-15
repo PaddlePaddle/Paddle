@@ -6,8 +6,9 @@ if(WITH_NVSHMEM)
   string(REGEX REPLACE "-gencode arch=compute_[0-8][0-9],code=sm_[0-8][0-9]" ""
                        CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS}")
 
-  set(DEEPEP_KERNEL_SRCS kernels/intranode.cu kernels/runtime.cu
-                         kernels/internode.cu kernels/internode_ll.cu)
+  set(DEEPEP_KERNEL_SRCS
+      kernels/intranode.cu kernels/runtime.cu kernels/internode.cu
+      kernels/internode_ll.cu kernels/internode_ll_two_stage.cu)
   cc_library(
     deepep_kernels
     SRCS ${DEEPEP_KERNEL_SRCS}

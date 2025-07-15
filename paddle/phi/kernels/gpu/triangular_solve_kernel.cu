@@ -33,6 +33,10 @@ void TriangularSolveKernel(const Context& dev_ctx,
                            bool transpose,
                            bool unitriangular,
                            DenseTensor* out) {
+  if (x.numel() == 0 || y.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   // get broadcast dim
   std::vector<int64_t> x_bst_dims_vec;
   std::vector<int64_t> y_bst_dims_vec;

@@ -29,7 +29,6 @@ class TestCpuCuda(Dy2StTestBase):
             return x
 
         x = paddle.to_tensor([3])
-        # print(paddle.jit.to_static(func).code)
         if paddle.is_compiled_with_cuda():
             res = paddle.jit.to_static(func)(x)
             self.assertTrue(res.place.is_cpu_place())
@@ -44,7 +43,6 @@ class TestToTensor(Dy2StTestBase):
             return x
 
         x = paddle.to_tensor([3])
-        # print(paddle.jit.to_static(func).code)
         np.testing.assert_allclose(
             paddle.jit.to_static(func)(x).numpy(),
             np.array([1, 2, 3, 4]),
