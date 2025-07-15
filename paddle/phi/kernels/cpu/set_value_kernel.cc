@@ -157,78 +157,26 @@ void SetTensorValueKernel(const Context& dev_ctx,
   const int rank = x.dims().size();
 
   switch (rank) {
-    case 1:
-      SetValueImpl<T, Context, 1>(dev_ctx,
-                                  x,
-                                  value,
-                                  starts,
-                                  ends,
-                                  steps,
-                                  axes,
-                                  decrease_axes,
-                                  none_axes,
-                                  out);
-      break;
-    case 2:
-      SetValueImpl<T, Context, 2>(dev_ctx,
-                                  x,
-                                  value,
-                                  starts,
-                                  ends,
-                                  steps,
-                                  axes,
-                                  decrease_axes,
-                                  none_axes,
-                                  out);
-      break;
-    case 3:
-      SetValueImpl<T, Context, 3>(dev_ctx,
-                                  x,
-                                  value,
-                                  starts,
-                                  ends,
-                                  steps,
-                                  axes,
-                                  decrease_axes,
-                                  none_axes,
-                                  out);
-      break;
-    case 4:
-      SetValueImpl<T, Context, 4>(dev_ctx,
-                                  x,
-                                  value,
-                                  starts,
-                                  ends,
-                                  steps,
-                                  axes,
-                                  decrease_axes,
-                                  none_axes,
-                                  out);
-      break;
-    case 5:
-      SetValueImpl<T, Context, 5>(dev_ctx,
-                                  x,
-                                  value,
-                                  starts,
-                                  ends,
-                                  steps,
-                                  axes,
-                                  decrease_axes,
-                                  none_axes,
-                                  out);
-      break;
-    case 6:
-      SetValueImpl<T, Context, 6>(dev_ctx,
-                                  x,
-                                  value,
-                                  starts,
-                                  ends,
-                                  steps,
-                                  axes,
-                                  decrease_axes,
-                                  none_axes,
-                                  out);
-      break;
+#define CASE_RANK(__RK)                           \
+  case __RK:                                      \
+    SetValueImpl<T, Context, __RK>(dev_ctx,       \
+                                   x,             \
+                                   value,         \
+                                   starts,        \
+                                   ends,          \
+                                   steps,         \
+                                   axes,          \
+                                   decrease_axes, \
+                                   none_axes,     \
+                                   out);          \
+    break;
+    CASE_RANK(1)
+    CASE_RANK(2)
+    CASE_RANK(3)
+    CASE_RANK(4)
+    CASE_RANK(5)
+    CASE_RANK(6)
+#undef CASE_RANK
     default:
       PADDLE_THROW(errors::InvalidArgument(
           "The rank of input should be less than 7, but received %d.", rank));
