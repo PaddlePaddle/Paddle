@@ -1889,41 +1889,45 @@ __global__ void AdaptiveKernelMaxPool2dWithIdx(
     const IndexT padding_width,
     T1* output_data,
     T2* mask_data,
+    int64_t batch_size,
     FastDivModForPooling<IndexT> divmods) {
-  const IndexT n_offset = blockIdx.y;
-  const IndexT c_offset =
-      static_cast<IndexT>(blockIdx.x) * blockDim.y + threadIdx.y;
-  if (c_offset >= channels) {
-    return;
-  }
-  IndexT hstart, hend, wstart, wend;
-  IndexT input_offset =
-      (n_offset * channels + c_offset) * input_height * input_width;
-  IndexT output_offset =
-      (n_offset * channels + c_offset) * output_height * output_width;
-  for (IndexT hw_offset = threadIdx.x; hw_offset < output_height * output_width;
-       hw_offset += blockDim.x) {
-    IndexT w_offset = hw_offset % output_width;
-    IndexT h_offset = hw_offset / output_width;
-    hstart = AdaptStartIndex(h_offset, input_height, output_height);
-    hend = AdaptEndIndex(h_offset, input_height, output_height);
-    wstart = AdaptStartIndex(w_offset, input_width, output_width);
-    wend = AdaptEndIndex(w_offset, input_width, output_width);
+  for (IndexT n_offset = blockIdx.y; n_offset < batch_size;
+       n_offset += gridDim.y) {
+    const IndexT c_offset =
+        static_cast<IndexT>(blockIdx.x) * blockDim.y + threadIdx.y;
+    if (c_offset >= channels) {
+      return;
+    }
+    IndexT hstart, hend, wstart, wend;
+    IndexT input_offset =
+        (n_offset * channels + c_offset) * input_height * input_width;
+    IndexT output_offset =
+        (n_offset * channels + c_offset) * output_height * output_width;
+    for (IndexT hw_offset = threadIdx.x;
+         hw_offset < output_height * output_width;
+         hw_offset += blockDim.x) {
+      IndexT w_offset = hw_offset % output_width;
+      IndexT h_offset = hw_offset / output_width;
+      hstart = AdaptStartIndex(h_offset, input_height, output_height);
+      hend = AdaptEndIndex(h_offset, input_height, output_height);
+      wstart = AdaptStartIndex(w_offset, input_width, output_width);
+      wend = AdaptEndIndex(w_offset, input_width, output_width);
 
-    T1 ele = static_cast<T1>(-FLT_MAX);
-    IndexT max_index = -1;
-    for (IndexT h = hstart; h < hend; ++h) {
-      for (IndexT w = wstart; w < wend; ++w) {
-        IndexT input_index = h * input_width + w;
-        if (ele < input_data[input_offset + input_index]) {
-          max_index = input_index;
-          ele = input_data[input_offset + input_index];
+      T1 ele = static_cast<T1>(-FLT_MAX);
+      IndexT max_index = -1;
+      for (IndexT h = hstart; h < hend; ++h) {
+        for (IndexT w = wstart; w < wend; ++w) {
+          IndexT input_index = h * input_width + w;
+          if (ele < input_data[input_offset + input_index]) {
+            max_index = input_index;
+            ele = input_data[input_offset + input_index];
+          }
         }
       }
+      IndexT output_idx = output_offset + h_offset * output_width + w_offset;
+      output_data[output_idx] = ele;
+      mask_data[output_idx] = max_index;
     }
-    IndexT output_idx = output_offset + h_offset * output_width + w_offset;
-    output_data[output_idx] = ele;
-    mask_data[output_idx] = max_index;
   }
 }
 
@@ -2067,6 +2071,7 @@ class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
                                                      padding_width,
                                                      output_data,
                                                      mask_data,
+                                                     batch_size,
                                                      pool_divmods);
       } else {
         auto pool_divmods = FastDivModForPooling<int64_t>(
@@ -2087,6 +2092,7 @@ class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
                                                      padding_width,
                                                      output_data,
                                                      mask_data,
+                                                     batch_size,
                                                      pool_divmods);
       }
     } else {
