@@ -696,6 +696,7 @@ StrategyForUnary(sqrt, Sqrt);
 StrategyForUnary(log, Log);
 StrategyForUnary(floor, Floor);
 StrategyForUnary(ceil, Ceil);
+StrategyForUnary(rint, Rint);
 StrategyForUnary(round, Round);
 StrategyForUnary(tanh, Tanh);
 StrategyForUnary(log2, Log2);
@@ -1635,6 +1636,7 @@ CINN_REGISTER_HELPER(elementwise_ops) {
   CINN_REGISTER_UNARY(log, Log);
   CINN_REGISTER_UNARY(floor, Floor);
   CINN_REGISTER_UNARY(ceil, Ceil);
+  CINN_REGISTER_UNARY(rint, Rint);
   CINN_REGISTER_UNARY(round, Round);
   CINN_REGISTER_UNARY(tanh, Tanh);
   CINN_REGISTER_UNARY(log2, Log2);

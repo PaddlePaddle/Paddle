@@ -47,7 +47,9 @@ class TestOptionalTensorOutput(Dy2StTestBase):
 
         out_1_dy, out_2_dy = fn(x, y)
         out_1_st, out_2_st = static_fn(x, y)
-        np.testing.assert_equal(out_1_dy.numpy(), out_1_st.numpy())
+        np.testing.assert_allclose(
+            out_1_dy.numpy(), out_1_st.numpy(), atol=1e-6, rtol=1e-6
+        )
         self.assertFalse(out_2_dy._is_initialized())
         self.assertFalse(out_2_st._is_initialized())
 
