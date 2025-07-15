@@ -23,6 +23,7 @@ namespace phi {
 
 namespace funcs {
 inline bool CheckIsLastDimsMatch(const DDim& first, const DDim& second) {
+  if (first.size() == 1 && first[0] == 1) return true;
   auto n1 = first.size();
   auto n2 = second.size();
   size_t min_len = std::min(n1, n2);

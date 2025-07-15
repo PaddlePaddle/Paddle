@@ -754,78 +754,15 @@ void StridedCopyKernel(const Context& dev_ctx,
   if (output_stride[meta.dims.size() - 1] != 1) {
     VecSize = 1;
   }
-  if (input.dims() != out->dims()) {
-    if (input_numel == 1) {
-      DenseTensor vec_input = Empty<T>(dev_ctx, IntArray{VecSize});
-      ExpandKernel<T, Context>(dev_ctx, input, IntArray{VecSize}, &vec_input);
-      const T* vec_input_data = vec_input.data<T>();
-      switch (VecSize) {
-#define CASE_VECSIZE(__Sz)                                    \
-  case __Sz:                                                  \
-    StrideCopyDiffDimKernel<T, Context, __Sz>(dev_ctx,        \
-                                              vec_input_data, \
-                                              output_data,    \
-                                              output_stride,  \
-                                              output_dims,    \
-                                              rank,           \
-                                              input_numel,    \
-                                              output_numel);  \
-    break;
-        CASE_VECSIZE(1);
-        CASE_VECSIZE(2);
-        CASE_VECSIZE(4);
-        CASE_VECSIZE(8);
-#undef CASE_VECSIZE
-        default:
-          PADDLE_THROW(common::errors::InvalidArgument(
-              "unsurport vecsize %d for StrideCopyDiffDimKernel", VecSize));
-      }
-      return;
-    } else {
-      bool can_expand =
-          phi::funcs::CheckIsLastDimsMatch(input.dims(), out->dims());
-      if (can_expand && input.meta().is_contiguous()) {
-        switch (VecSize) {
-#define CASE_VECSIZE(__Sz)                                                 \
-  case __Sz:                                                               \
-    LaunchContiguous2StridedDefaultKernel<T, Context, __Sz>(dev_ctx,       \
-                                                            input_data,    \
-                                                            output_data,   \
-                                                            output_stride, \
-                                                            output_dims,   \
-                                                            rank,          \
-                                                            input_numel,   \
-                                                            output_numel,  \
-                                                            false);        \
-    break;
-          CASE_VECSIZE(1);
-          CASE_VECSIZE(2);
-          CASE_VECSIZE(4);
-          CASE_VECSIZE(8);
-#undef CASE_VECSIZE
-          default:
-            PADDLE_THROW(common::errors::InvalidArgument(
-                "unsurport vecsize %d for "
-                "LaunchContiguous2StridedDefaultKernel",
-                VecSize));
-        }
-        return;
-      }
-    }
-  }
-  PADDLE_ENFORCE_EQ(input.dims(),
-                    out->dims(),
+
+  bool can_expand = phi::funcs::CheckIsLastDimsMatch(input.dims(), out->dims());
+
+  PADDLE_ENFORCE_EQ(can_expand,
+                    true,
                     common::errors::InvalidArgument(
-                        "Input shape(%s) must be equal with out shape(%s).",
+                        "Input shape(%s) must can expand to out shape(%s).",
                         input.dims(),
                         out->dims()));
-
-  PADDLE_ENFORCE_EQ(input_numel,
-                    output_numel,
-                    common::errors::InvalidArgument(
-                        "Input numel(%d) must be equal with out numel(%d).",
-                        input_numel,
-                        output_numel));
 
   Array<int64_t, phi::DDim::kMaxRank + 1> input_dims;
   Array<int64_t, phi::DDim::kMaxRank + 1> input_stride;
@@ -867,6 +804,11 @@ void StridedCopyKernel(const Context& dev_ctx,
                                                                  output_numel,
                                                                  false)) {
     } else {
+      if (input_numel == 1) {
+        DenseTensor vec_input = Empty<T>(dev_ctx, IntArray{VecSize});
+        ExpandKernel<T, Context>(dev_ctx, input, IntArray{VecSize}, &vec_input);
+        input_data = vec_input.data<T>();
+      }
       switch (VecSize) {
 #define CASE_VECSIZE(__Sz)                                                 \
   case __Sz:                                                               \
@@ -877,9 +819,8 @@ void StridedCopyKernel(const Context& dev_ctx,
                                                             output_dims,   \
                                                             rank,          \
                                                             input_numel,   \
-                                                            output_numel,  \
-                                                            false);        \
-    break;
+                                                            output_numel);
+        break;
         CASE_VECSIZE(1);
         CASE_VECSIZE(2);
         CASE_VECSIZE(4);
