@@ -31,7 +31,7 @@ void GatherGradKernel(const Context& dev_ctx,
                       const Scalar& axis,
                       DenseTensor* x_grad) {
   // x [4, 2], index [2, 0], out [2, 0], x_grad [4, 2]
-  if (out_grad.numel() == 0) {
+  if (out_grad.numel() == 0 || (x_grad && x_grad->numel() == 0)) {
     if (x_grad) {
       phi::Full<T, Context>(
           dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
