@@ -21,6 +21,7 @@ limitations under the License. */
 #include <hiprand_kernel.h>
 #endif
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
@@ -602,11 +603,23 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
           max_threads);
       int64_t blocks = std::min(max_threads / thread_num,
                                 static_cast<int64_t>(output_channels));
+
+      int max_grid_x = 65535;
       dim3 threads(thread_num, blocks, 1);
-      dim3 grid(std::max((output_channels + blocks - 1) / blocks,
-                         static_cast<int64_t>(1)),
-                batch_size,
-                1);
+      dim3 grid;
+      if (batch_size <= max_grid_x) {
+        grid = dim3(std::max((output_channels + blocks - 1) / blocks,
+                             static_cast<int64_t>(1)),
+                    batch_size,
+                    1);
+
+      } else {
+        int64_t grid_x =
+            std::max((output_channels + blocks - 1) / blocks *
+                         (batch_size + max_grid_x - 1) / max_grid_x,
+                     static_cast<int64_t>(1));
+        grid = dim3(grid_x, max_grid_x, 1);
+      }
       if (input.numel() <= std::numeric_limits<int>::max()) {
         auto pool_divmods = FastDivModForPooling<int>(
             input_channels, output_width, output_height);
