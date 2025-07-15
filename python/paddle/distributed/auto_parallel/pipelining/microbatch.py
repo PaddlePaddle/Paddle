@@ -53,7 +53,6 @@ def _split_tensor(x, num_chunks, split_axis=0):
                 for s_id in range(shardings):
                     for row_in_shard in range(rows_per_shard):
                         new_indices.append(s_id + row_in_shard * shardings)
-                print("new_indices index", new_indices)
                 tmp = x[new_indices]
                 x = dist.reshard(tmp, x.process_mesh, x.placements)
 
