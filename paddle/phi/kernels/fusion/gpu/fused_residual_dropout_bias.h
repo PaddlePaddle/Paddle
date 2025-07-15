@@ -186,8 +186,8 @@ __global__ void FusedResidualDropoutBiasGrad(const T *dout,
                                                factor == static_cast<T>(1.0));
 
   if (col_id * VecSize < cols) {
-    for (int row_id = threadIdx.y; row_id < rows; row_id += blockDim.y) {
-      int index = row_id * cols + col_id * VecSize;
+    for (int64_t row_id = threadIdx.y; row_id < rows; row_id += blockDim.y) {
+      int64_t index = row_id * cols + col_id * VecSize;
       LoadT out_vec;
       MaskLoadT mask_vec;
       StoreT dx_vec;
