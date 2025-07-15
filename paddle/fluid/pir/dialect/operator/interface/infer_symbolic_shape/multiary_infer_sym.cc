@@ -4495,7 +4495,8 @@ bool WarpctcOpInferSymbolicShape(
     }
   }
   if (logits_0_size) {
-    PADDLE_THROW(errors::InvalidArgument("The input size can not be zero."));
+    PADDLE_THROW(
+        common::errors::InvalidArgument("The input size can not be zero."));
   }
 
   symbol::DimExpr max_sequence_length, num_sequences;
