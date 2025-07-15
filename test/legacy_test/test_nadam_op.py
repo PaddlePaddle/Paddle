@@ -440,11 +440,16 @@ class TestNAdamMultiPrecision(unittest.TestCase):
         optimizer._multi_precision = use_amp
 
         for _ in range(2):
-            if place == 'gpu' and use_amp:
+            dev_type = (
+                f"{paddle.device.get_all_custom_device_type()[0]}:0"
+                if len(paddle.device.get_all_custom_device_type()) > 0
+                else None
+            )
+            if (place == 'gpu' or place == dev_type) and use_amp:
                 model = paddle.amp.decorate(models=model, level='O2')
                 scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
 
-            if place == 'gpu' and use_amp:
+            if (place == 'gpu' or place == dev_type) and use_amp:
                 with paddle.amp.auto_cast(level='O2'):
                     output = model(input)
                     loss = paddle.mean(output)
