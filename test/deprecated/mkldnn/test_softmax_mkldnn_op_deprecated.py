@@ -43,7 +43,7 @@ def stable_softmax(x):
     return exps / np.sum(exps)
 
 
-class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
+class TestSoftmaxONEDNNOp(TestSoftmaxOp):
     def get_x_shape(self):
         return [10, 10]
 
@@ -106,7 +106,7 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
         self.use_mkldnn = True
 
 
-class TestSoftmaxMKLDNNOp2(TestSoftmaxOp2):
+class TestSoftmaxONEDNNOp2(TestSoftmaxOp2):
     def init_kernel_type(self):
         self.use_mkldnn = True
         # oneDNN doesn't support float64 dtype
@@ -114,35 +114,35 @@ class TestSoftmaxMKLDNNOp2(TestSoftmaxOp2):
         self.check_pir_onednn = False
 
 
-class TestSoftmaxMKLDNNOp3(TestSoftmaxOp3):
+class TestSoftmaxONEDNNOp3(TestSoftmaxOp3):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.dtype = np.float32
         self.check_pir_onednn = False
 
 
-class TestSoftmaxMKLDNNOp4(TestSoftmaxOp4):
+class TestSoftmaxONEDNNOp4(TestSoftmaxOp4):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.dtype = np.float32
         self.check_pir_onednn = False
 
 
-class TestSoftmaxMKLDNNOp5(TestSoftmaxOp5):
+class TestSoftmaxONEDNNOp5(TestSoftmaxOp5):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.dtype = np.float32
         self.check_pir_onednn = False
 
 
-class TestSoftmaxMKLDNNOp6(TestSoftmaxOp6):
+class TestSoftmaxONEDNNOp6(TestSoftmaxOp6):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.dtype = np.float32
         self.check_pir_onednn = False
 
 
-class TestSoftmaxMKLDNNOp_ZeroDim(TestSoftmaxOp_ZeroDim1):
+class TestSoftmaxONEDNNOp_ZeroDim(TestSoftmaxOp_ZeroDim1):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.dtype = np.float32
@@ -150,7 +150,7 @@ class TestSoftmaxMKLDNNOp_ZeroDim(TestSoftmaxOp_ZeroDim1):
 
 
 # Check if primitives already exist in backward
-class TestSoftmaxMKLDNNPrimitivesAlreadyExist(unittest.TestCase):
+class TestSoftmaxONEDNNPrimitivesAlreadyExist(unittest.TestCase):
     def setUp(self):
         super().setUp()
 

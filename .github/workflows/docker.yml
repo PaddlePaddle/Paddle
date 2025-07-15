@@ -34,6 +34,10 @@ on:
         description: "Generate images for all CI usage"
         value: ${{ jobs.build-docker-images.outputs.docker_distribute_image }}
 
+      docker_doc_image:
+        description: "Generate images for all CI usage"
+        value: ${{ jobs.build-docker-images.outputs.docker_doc_image }}
+
 jobs:
   build-docker-images:
     if: github.repository_owner == 'PaddlePaddle'
@@ -46,6 +50,7 @@ jobs:
       docker_coverage_image: ${{ steps.build-docker-images.outputs.docker_coverage_image }}
       docker_build_image: ${{ steps.build-docker-images.outputs.docker_build_image }}
       docker_distribute_image: ${{ steps.build-docker-images.outputs.docker_distribute_image }}
+      docker_doc_image: ${{ steps.build-docker-images.outputs.docker_doc_image }}
     steps:
       - id: build-docker-images
         name: Build docker images
@@ -57,6 +62,7 @@ jobs:
           docker_coverage_file: Dockerfile.cuda117_cudnn8_gcc82_ubuntu18_coverage
           docker_build_file: Dockerfile.cuda11.2_cudnn8_gcc82_trt8
           docker_distribute_file: Dockerfile.cuda123_cudnn9_gcc122_ubuntu20
+          docker_doc_file: Dockerfile.doc
           dockerfile_script: https://raw.githubusercontent.com/PaddlePaddle/Paddle/refs/heads/develop/tools/dockerfile/ci_dockerfile.sh
           dockerfile_origin: https://raw.githubusercontent.com/PaddlePaddle/Paddle/refs/heads/develop/tools/dockerfile/Dockerfile.ubuntu20
         run: |
@@ -78,11 +84,10 @@ jobs:
           if [ "${{ inputs.task }}" == "cpu" ]; then
             declare -A docker_files=(["docker_cpu"]="$docker_cpu_file" ["docker_inference"]="$docker_inference_file" ["docker_distribute"]="$docker_distribute_file")
           elif [ "${{ inputs.task }}" == "build" ]; then
-            declare -A docker_files=(["docker_build"]="$docker_build_file")
+            declare -A docker_files=(["docker_build"]="$docker_build_file" ["docker_doc"]="$docker_doc_file")
           else
             declare -A docker_files=(["docker_coverage"]="$docker_coverage_file")
           fi
-          declare -A docker_files=(["docker_cpu"]="$docker_cpu_file" ["docker_inference"]="$docker_inference_file" ["docker_coverage"]="$docker_coverage_file" ["docker_build"]="$docker_build_file" ["docker_distribute"]="$docker_distribute_file")
           for name in "${!docker_files[@]}"
           do
             md5_value=`md5sum tools/dockerfile/${docker_files[$name]} | awk '{print $1}'`
