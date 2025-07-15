@@ -26,21 +26,21 @@ import paddle
 
 class TestONEDNNGaussianRandomOpSeed10(TestGaussianRandomOp):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.check_pir_onednn = True
 
 
 class TestONEDNNGaussianRandomOpSeed0(TestGaussianRandomOp):
     def setUp(self):
         TestGaussianRandomOp.setUp(self)
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.check_pir_onednn = True
         self.attrs = {
             "shape": [123, 92],
             "mean": 1.0,
             "std": 2.0,
             "seed": 10,
-            "use_mkldnn": self.use_mkldnn,
+            "use_mkldnn": self.use_onednn,
         }
 
 
@@ -51,13 +51,13 @@ class TestGaussianRandomOp_ZeroDim(OpTest):
         self.python_api = paddle.normal
         self.set_attrs()
         self.inputs = {}
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.attrs = {
             "shape": [],
             "mean": self.mean,
             "std": self.std,
             "seed": 10,
-            "use_mkldnn": self.use_mkldnn,
+            "use_mkldnn": self.use_onednn,
         }
         paddle.seed(10)
 

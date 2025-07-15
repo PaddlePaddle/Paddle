@@ -181,7 +181,7 @@ jobs:
         run: |
           runner_name=`(echo $PWD|awk -F '/' '{print $3}')`
           echo $runner_name
-          wget -q https://xly-devops.bj.bcebos.com/PR/utils.sh
+          wget -q https://xly-devops.bj.bcebos.com/utils.sh
           source utils.sh
           determine_kunlun_runner ${runner_name}
 
@@ -251,13 +251,16 @@ jobs:
 
       - name: Download build.tar.gz
         run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
           wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/xpu/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
           tar --use-compress-program="pzstd" -xf build.tar.gz --strip-components=1
           rm build.tar.gz
+          '
 
       - name: Run test
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          source ${{ github.workspace }}/../../../proxy
           bash ${ci_scripts}/kunlun_test.sh
           '
 

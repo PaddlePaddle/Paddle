@@ -73,7 +73,7 @@ static inline std::vector<int64_t> compute_strides(
     stride_bytes.resize(ndim, 0);
   else
     stride_bytes.resize(ndim);
-  for (int i = 0; i < original_shape.size(); i++) {
+  for (size_t i = 0; i < original_shape.size(); i++) {
     if (original_shape[i] == 1 && (*shape_)[offset + i] != 1) {
       stride_bytes[offset + i] = 0;
     } else {
@@ -105,7 +105,7 @@ static inline void permute_dimensions(const std::vector<int64_t> stride_size,
                                       std::vector<int64_t>* shape_) {
   auto reorder = [perm](std::vector<int64_t> data) {
     auto res = std::vector<int64_t>(data.size(), 0);
-    for (int64_t i = 0; i < perm.size(); i++) {
+    for (size_t i = 0; i < perm.size(); i++) {
       res[i] = data[perm[i]];
     }
     return res;
@@ -180,7 +180,7 @@ static inline void reorder_dimensions(const std::vector<int64_t> stride_size,
     return 0;
   };
   // insertion sort with support for ambiguous comparisons
-  for (int64_t i = 0; i < ndim; i++) {
+  for (size_t i = 0; i < ndim; i++) {
     int dim1 = i;
     for (int dim0 = i - 1; dim0 >= 0; dim0--) {
       int comparison = should_swap(perm_[dim0], perm_[dim1]);
@@ -230,10 +230,6 @@ static inline void coalesce_dimensions(const int64_t ndim,
                                        std::array<int64_t*, N>* strides_array,
                                        std::vector<int64_t>* stride_size,
                                        std::vector<int64_t>* shape_) {
-  for (size_t i = 0; i < N; i++) {
-    int64_t* stride_tmp = (*strides_array)[i];
-  }
-
   if (ndim <= 1) {
     return;
   }
@@ -333,7 +329,7 @@ static inline void IndexPutStride(
   coalesce_dimensions<N>(ndim, strides_array, &stride_size, desired_shape);
 
   int num = 1;
-  for (int i = 0; i < desired_shape->size(); i++) {
+  for (size_t i = 0; i < desired_shape->size(); i++) {
     num *= (*desired_shape)[i];
   }
   *numel = num;
@@ -392,7 +388,7 @@ static inline void IndexGetStride(
   coalesce_dimensions<N>(ndim, strides_array, &stride_size, desired_shape);
 
   int num = 1;
-  for (int i = 0; i < desired_shape->size(); i++) {
+  for (size_t i = 0; i < desired_shape->size(); i++) {
     num *= (*desired_shape)[i];
   }
   *numel = num;
@@ -436,5 +432,61 @@ static inline void cal_shape_stride(const std::vector<int64_t> index_dims,
   }
 }
 
+template <int N>
+static inline void ScatterAddStride(
+    const std::vector<int64_t> output_dims,
+    const std::vector<int64_t> output_strides,
+    const int64_t output_elesize,
+    const std::vector<int64_t> input_dims,
+    const std::vector<int64_t> input_strides,
+    const int64_t input_elesize,
+    const std::vector<int64_t> index_dims,
+    const std::vector<int64_t> index_strides,
+    const int64_t index_elesize,
+    std::vector<int64_t>* desired_shape,
+    std::array<int64_t*, N>* strides_array,
+    int64_t* numel,
+    std::array<std::vector<int64_t>, N>& strides_vec) {  // NOLINT
+  int ndim = output_dims.size();
+
+  std::vector<int64_t> stride_size;
+
+  *desired_shape = compute_shapes({input_dims, output_dims, index_dims});
+
+  strides_vec[0] = compute_strides(input_dims,
+                                   input_strides,
+                                   input_elesize,
+                                   ndim,
+                                   desired_shape,
+                                   &stride_size);
+
+  strides_vec[1] = compute_strides(output_dims,
+                                   output_strides,
+                                   output_elesize,
+                                   ndim,
+                                   desired_shape,
+                                   &stride_size);
+
+  strides_vec[2] = compute_strides(index_dims,
+                                   index_strides,
+                                   index_elesize,
+                                   ndim,
+                                   desired_shape,
+                                   &stride_size);
+
+  for (size_t i = 0; i < N; i++) {
+    (*strides_array)[i] = strides_vec[i].data();
+  }
+
+  reorder_dimensions<N>(stride_size, desired_shape, strides_array);
+
+  coalesce_dimensions<N>(ndim, strides_array, &stride_size, desired_shape);
+
+  int num = 1;
+  for (int i = 0; i < desired_shape->size(); i++) {
+    num *= (*desired_shape)[i];
+  }
+  *numel = num;
+}
 }  // namespace funcs
 }  // namespace phi

@@ -1255,8 +1255,8 @@ void EinsumInferMeta(const std::vector<const MetaTensor*>& inputs,
   LabelMap labeltype(LabelType::Reduction);
   std::vector<LabelMap> label2perms(inputs.size(), LabelMap(-1));
   std::vector<char> all_labels;
-  std::vector<int> output_dims;
-  std::vector<std::vector<int>> broadcast_shapes(2);
+  std::vector<int64_t> output_dims;
+  std::vector<std::vector<int64_t>> broadcast_shapes(2);
 
   std::vector<DDim> input_dims;
   for (auto& i : inputs) {
