@@ -28,12 +28,6 @@ void LUKernel(const Context& dev_ctx,
               DenseTensor* out,
               DenseTensor* pivots,
               DenseTensor* infos) {
-  if (x.numel() == 0 || out->numel() == 0) {
-    dev_ctx.template Alloc<T>(out);
-    dev_ctx.template Alloc<int>(pivots);
-    dev_ctx.template Alloc<int>(infos);
-    return;
-  }
   PADDLE_ENFORCE_EQ(pivot,
                     true,
                     errors::InvalidArgument(
