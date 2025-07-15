@@ -42,6 +42,8 @@ namespace phi {
 
 namespace {
 
+  
+
 template <typename T, typename U, typename V, typename Context>
 void HostRMSNormGradient(const Context& dev_ctx,
                          const T* dout,
