@@ -54,7 +54,7 @@ class TestConv2DTransposeBF16ONEDNNOp(OpTest):
     def init_test_case(self):
         self.pad = [0, 0]
         self.fuse_bias = False
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.is_test = True
         self.bias_size = None
         self.fuse_activation = ""
@@ -76,7 +76,7 @@ class TestConv2DTransposeBF16ONEDNNOp(OpTest):
     def setUp(self):
         self.input_type = np.uint16
         self.dtype = np.uint16
-        self.mkldnn_data_type = "bfloat16"
+        self.onednn_data_type = "bfloat16"
         self.init_op_type()
         self.init_test_case()
 
@@ -90,8 +90,8 @@ class TestConv2DTransposeBF16ONEDNNOp(OpTest):
             'groups': self.groups,
             'dilations': self.dilations,
             'is_test': self.is_test,
-            'use_mkldnn': self.use_mkldnn,
-            'mkldnn_data_type': self.mkldnn_data_type,
+            'use_mkldnn': self.use_onednn,
+            'mkldnn_data_type': self.onednn_data_type,
             'force_fp32_output': self.force_fp32_output,
             'data_format': self.data_format,
             'fuse_activation': self.fuse_activation,
