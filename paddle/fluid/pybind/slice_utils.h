@@ -456,12 +456,6 @@ static void ParseIndex(const paddle::Tensor& tensor,
         py::object index_obj_tmp =
             py::reinterpret_borrow<py::object>(slice_item);
         py::object index_tmp = index_obj_tmp;
-        if (tensor.dtype() == phi::DataType::INT64) {
-          if (!py::isinstance<py::array_t<int64_t>>(index_obj_tmp)) {
-            index_tmp =
-                pybind11::detail::CastNumpyArray<int64_t>(index_obj_tmp);
-          }
-        }
         SetTensorFromPyArray(
             static_cast<phi::DenseTensor*>(index_tensor_tmp.impl().get()),
             index_tmp,
