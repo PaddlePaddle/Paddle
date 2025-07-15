@@ -38,6 +38,7 @@ void SigmoidCrossEntropyWithLogitsKernel(
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   dev_ctx.template Alloc<T>(out);
+  if (x.numel() == 0) return;
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   int* hit = RAII_GUARD.alloc_l3_or_gm<int>(x.numel());
   PADDLE_ENFORCE_NOT_NULL(

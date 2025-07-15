@@ -522,6 +522,9 @@ class ScheduleFThenB(PipelineScheduleSingle):
         for work in bwd_sends_to_wait:
             work.wait()
 
+        # Synchronize the gradients of shared parameters.
+        self._stage._sync_shared_param_grads()
+
 
 class Schedule1F1B(PipelineScheduleSingle):
     """
@@ -680,6 +683,9 @@ class Schedule1F1B(PipelineScheduleSingle):
 
         # Return losses if there is a container passed in
         self._update_losses(self._stage, losses)
+
+        # Synchronize the gradients of shared parameters.
+        self._stage._sync_shared_param_grads()
 
 
 class PipelineScheduleMulti(_PipelineSchedule):
@@ -978,6 +984,10 @@ class PipelineScheduleMulti(_PipelineSchedule):
                 raise e
         # Return losses if there is a container passed in
         self._update_losses(self._stages, losses)
+
+        # Synchronize the gradients of shared parameters.
+        for stage in self._stages:
+            stage._sync_shared_param_grads()
 
 
 def _get_1f1b_rank_ops(
