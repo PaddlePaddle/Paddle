@@ -246,6 +246,11 @@ static bool IsNumpyType(PyObject* obj) {
          type_name == "numpy.int32" || type_name == "numpy.int16";
 }
 
+static bool IsNumpyArray(PyObject* obj) {
+  auto type_name = std::string(Py_TYPE(obj)->tp_name);
+  return type_name == "numpy.ndarray";
+}
+
 static Py_ssize_t GetSliceIndexFromTensor(const phi::DenseTensor& tensor) {
   if (tensor.numel() == 1) {
     if (framework::TransToProtoVarType(tensor.type()) ==
@@ -440,8 +445,34 @@ static void ParseIndex(const paddle::Tensor& tensor,
       advanced_index->push_back(std::move(slice_tensor));
       (*advanced_index_dim)[estimated_dim] = estimated_dim;
       estimated_dim++;
-    } else if (PyCheckTensor(slice_item)) {
-      auto slice_tensor = CastPyArg2Tensor(slice_item, 0);
+    } else if (PyCheckTensor(slice_item) || IsNumpyArray(slice_item)) {
+      paddle::Tensor slice_tensor;
+
+      if (IsNumpyArray(slice_item)) {
+        paddle::Tensor index_tensor_tmp(
+            std::make_shared<phi::DenseTensor>(),
+            egr::Controller::Instance().GenerateUniqueName());
+
+        py::object index_obj_tmp =
+            py::reinterpret_borrow<py::object>(slice_item);
+        py::object index_tmp = index_obj_tmp;
+        if (tensor.dtype() == phi::DataType::INT64) {
+          if (!py::isinstance<py::array_t<int64_t>>(index_obj_tmp)) {
+            index_tmp =
+                pybind11::detail::CastNumpyArray<int64_t>(index_obj_tmp);
+          }
+        }
+        SetTensorFromPyArray(
+            static_cast<phi::DenseTensor*>(index_tensor_tmp.impl().get()),
+            index_tmp,
+            tensor.place(),
+            false);
+        slice_tensor = index_tensor_tmp;
+
+      } else {
+        slice_tensor = CastPyArg2Tensor(slice_item, 0);
+      }
+
       if (slice_tensor.shape().size() == 0) {
         if (slice_tensor.dtype() != phi::DataType::BOOL) {
           // 0-D int tensor is same with scalar
