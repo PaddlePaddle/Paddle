@@ -56,7 +56,7 @@ void NonZeroKernel(const Context& dev_ctx,
   const int rank = dims.size();
 
   if (numel == 0) {
-    dev_ctx.template Alloc<T>(out);
+    dev_ctx.template Alloc<int64_t>(out);
     return;
   }
 

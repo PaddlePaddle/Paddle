@@ -66,7 +66,7 @@ void NonZeroKernel(const Context &dev_ctx,
                    const DenseTensor &condition,
                    DenseTensor *out) {
   if (condition.numel() == 0) {
-    dev_ctx.template Alloc<T>(out);
+    dev_ctx.template Alloc<int64_t>(out);
     return;
   }
   DenseTensor in_data;

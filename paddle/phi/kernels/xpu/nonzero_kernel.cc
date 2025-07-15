@@ -33,7 +33,7 @@ void NonZeroKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   if (numel == 0) {
-    dev_ctx.template Alloc<T>(out);
+    dev_ctx.template Alloc<int64_t>(out);
     return;
   }
 
