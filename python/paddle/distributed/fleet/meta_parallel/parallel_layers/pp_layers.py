@@ -710,9 +710,11 @@ class PipelineLayer(nn.Layer):
                             shared_param = getattr(
                                 self.shared_layers[layer_name], weight_attr
                             )
+                            hcg = fleet.get_hybrid_communicate_group()
                             shared_param.color = {
                                 "color": f"{SHARED_WEIGHT_SYNC_PREFIX}_{comm_key}",
-                                "group": group,
+                                "group": hcg.get_sharding_parallel_group(),
+                                "broadcast_group": group,
                             }
         return shared_comm
 
