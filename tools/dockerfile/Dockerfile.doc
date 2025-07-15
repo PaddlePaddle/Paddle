@@ -1,0 +1,39 @@
+ARG BASEIMAGE=registry.baidubce.com/paddleopen/fluiddoc-sphinx:20230828-py310-cuda11.8.0-cudnn8-runtime-ubuntu20.04-v3
+FROM ${BASEIMAGE}
+
+RUN apt-get update \
+ && apt-get install -yq --no-install-recommends \
+        git \
+        jq \
+        wget \
+        pigz \
+        zstd \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+
+ARG PYPI_MIRROR=https://pypi.tuna.tsinghua.edu.cn/simple
+ARG no_proxy=127.0.0.1,localhost,bcebos.com,tuna.tsinghua.edu.cn,mirror.baidu.com,bce.baidu.com
+#ARG PYPI_MIRROR=https://mirror.baidu.com/pypi/simple
+RUN pip3 install --no-cache-dir -i ${PYPI_MIRROR} pylint && \
+    pip3 install --no-cache-dir -i ${PYPI_MIRROR} pre-commit && \
+    pip3 install --no-cache-dir -i ${PYPI_MIRROR} yapf==0.16.0 && \
+    pip3 install --no-cache-dir -i ${PYPI_MIRROR} importlib-metadata==4.11.0
+
+
+RUN curl -o /entrypoint.sh -Lk https://paddle-dev-tools-open.bj.bcebos.com/fluiddoc-preview/entrypoint-paddle-docs-review.sh && \
+    chmod +x /entrypoint.sh && \
+    curl -o /tmp/linux-bcecmd-0.3.0.zip https://sdk.bce.baidu.com/console-sdk/linux-bcecmd-0.3.0.zip && \
+    python -m zipfile -e /tmp/linux-bcecmd-0.3.0.zip /opt && \
+    chmod +x /opt/linux-bcecmd-0.3.0/bcecmd && \
+    rm /tmp/linux-bcecmd-0.3.0.zip && \
+    curl -o /tmp/boscmdconfig.tgz https://paddle-dev-tools-open.bj.bcebos.com/fluiddoc-preview/boscmdconfig.tgz && \
+    tar xzf /tmp/boscmdconfig.tgz -C /opt/linux-bcecmd-0.3.0/ && \
+    rm /tmp/boscmdconfig.tgz
+# COPY boscmdconfig /opt/linux-bcecmd-0.3.0/boscmdconfig/
+
+ENV BCECMD=/opt/linux-bcecmd-0.3.0/bcecmd
+ENV BCECMD_CONFIG=/opt/linux-bcecmd-0.3.0/boscmdconfig
+# credentials file is empty, please build it if need.
+
+WORKDIR /
+ENTRYPOINT ["bash"]

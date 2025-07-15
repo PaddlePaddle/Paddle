@@ -172,7 +172,11 @@ def _build_saved_state_dict(state_dict):
                     raise ValueError(
                         "The saved tensor is not initialized. If you used group sharded, please use save_group_sharded_model."
                     )
-                if value.is_dense() and value.place.is_custom_place():
+                if (
+                    value.is_dense()
+                    and value.place.is_custom_place()
+                    and core.is_compiled_with_custom_device('npu')
+                ):
                     value = paddle._C_ops.npu_identity(value, -1)
                 save_dict[key] = np.array(value.cpu())
             name_table[key] = value.name

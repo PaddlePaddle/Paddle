@@ -19,7 +19,7 @@ namespace fusion {
 
 template <typename T, typename Context>
 void MultiHeadAttentionVariableForwardKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& query,
     const DenseTensor& key,
     const DenseTensor& value,
@@ -30,7 +30,7 @@ void MultiHeadAttentionVariableForwardKernel(
     const bool causal,
     const int pre_cache_length,
     DenseTensor* output) {
-  ctx.template Alloc<T>(output);
+  dev_ctx.template Alloc<T>(output);
   Params params{};
   // [B, N, S, H]
   params.seq_lens = seq_lens.data<int>();
@@ -109,9 +109,9 @@ void MultiHeadAttentionVariableForwardKernel(
       return;
     }
     kernel_launched = true;
-    kernel_fn(k_, params, ctx);
+    kernel_fn(k_, params, dev_ctx);
   };
-  dispatch_cutlass_forward<T, decltype(launchKernel)>(ctx, launchKernel);
+  dispatch_cutlass_forward<T, decltype(launchKernel)>(dev_ctx, launchKernel);
   PADDLE_ENFORCE_EQ(
       kernel_launched,
       true,

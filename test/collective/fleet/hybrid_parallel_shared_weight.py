@@ -243,5 +243,30 @@ class TestDistEmbeddingTraining(unittest.TestCase):
             np.testing.assert_allclose(loss_a.numpy(), loss_b.numpy())
 
 
+class TestDistEmbeddingTrainingWithSync(TestDistEmbeddingTraining):
+    def setUp(self):
+        strategy = fleet.DistributedStrategy()
+        self.model_parallel_size = 1
+        self.data_parallel_size = 1
+        self.pipeline_parallel_size = 2
+        strategy.hybrid_configs = {
+            "dp_degree": self.data_parallel_size,
+            "mp_degree": self.model_parallel_size,
+            "pp_degree": self.pipeline_parallel_size,
+        }
+        strategy.pipeline_configs = {
+            "accumulate_steps": batch_size // micro_batch_size,
+            "micro_batch_size": micro_batch_size,
+        }
+        strategy.hybrid_configs["pp_configs"].clear_every_step_cache = True
+        strategy.hybrid_configs["pp_configs"].sync_moment = True
+        strategy.hybrid_configs["pp_configs"].sync_param = True
+
+        fleet.init(is_collective=True, strategy=strategy)
+
+    def test_pp_model(self):
+        super().test_pp_model()
+
+
 if __name__ == "__main__":
     unittest.main()

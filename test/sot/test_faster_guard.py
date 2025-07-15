@@ -94,14 +94,18 @@ class TestBasicFasterGuard(unittest.TestCase):
 
     def test_shape_match_guard(self):
         tensor = paddle.randn([2, 3])
-        guard_shape = paddle.framework.core.ShapeMatchGuard([2, 3])
+        guard_shape = paddle.framework.core.ShapeMatchGuard([2, 3], 0)
         self.assertTrue(guard_shape.check(tensor))
-        guard_shape = paddle.framework.core.ShapeMatchGuard([2, None])
+        guard_shape = paddle.framework.core.ShapeMatchGuard([2, None], 0)
         self.assertTrue(guard_shape.check(tensor))
-        guard_shape = paddle.framework.core.ShapeMatchGuard([3, 2])
+        guard_shape = paddle.framework.core.ShapeMatchGuard([3, 2], 0)
         self.assertFalse(guard_shape.check(tensor))
-        guard_shape = paddle.framework.core.ShapeMatchGuard([2, 3, 1])
+        guard_shape = paddle.framework.core.ShapeMatchGuard([2, 3, 1], 0)
         self.assertFalse(guard_shape.check(tensor))
+        guard_shape = paddle.framework.core.ShapeMatchGuard([2, None], 2)
+        self.assertTrue(guard_shape.check(paddle.randn([2, 2])))
+        guard_shape = paddle.framework.core.ShapeMatchGuard([2, None], 2)
+        self.assertFalse(guard_shape.check(paddle.randn([2, 1])))
 
     def test_attribute_match_guard(self):
         a = range(1, 10, 2)
@@ -151,7 +155,7 @@ class TestBasicFasterGuard(unittest.TestCase):
     def test_numpu_array_shape_match_guard(self):
         np_array = np.array([1, 2])
         guard_numpy_array_shape = (
-            paddle.framework.core.NumPyArrayShapeMatchGuard(np_array.shape)
+            paddle.framework.core.NumPyArrayShapeMatchGuard(np_array.shape, 0)
         )
         self.assertTrue(guard_numpy_array_shape.check(np_array))
         self.assertTrue(
@@ -166,7 +170,7 @@ class TestBasicFasterGuard(unittest.TestCase):
 
         np_array = np.array([1, None])
         guard_numpy_array_shape = (
-            paddle.framework.core.NumPyArrayShapeMatchGuard(np_array.shape)
+            paddle.framework.core.NumPyArrayShapeMatchGuard(np_array.shape, 0)
         )
         self.assertTrue(guard_numpy_array_shape.check(np_array))
         self.assertTrue(guard_numpy_array_shape.check(np.array([2, 3])))
@@ -174,7 +178,7 @@ class TestBasicFasterGuard(unittest.TestCase):
 
         np_array = np.array(1)
         guard_numpy_array_shape = (
-            paddle.framework.core.NumPyArrayShapeMatchGuard(np_array.shape)
+            paddle.framework.core.NumPyArrayShapeMatchGuard(np_array.shape, 0)
         )
         self.assertTrue(guard_numpy_array_shape.check(np_array))
         self.assertTrue(

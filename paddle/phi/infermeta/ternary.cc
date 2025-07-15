@@ -1878,6 +1878,112 @@ void MoeGateDispatchPermuteInferMeta(const MetaTensor& x,
   expert_id->set_dtype(phi::DataType::INT32);
 }
 
+void MoeGateDispatchAndQuantInferMeta(const MetaTensor& x,
+                                      const MetaTensor& gate_logits,
+                                      const MetaTensor& corr_bias,
+                                      const int64_t k,
+                                      const int64_t capacity,
+                                      const bool use_pad,
+                                      const bool use_pow2_scale,
+                                      MetaTensor* fp8_out,
+                                      MetaTensor* scale,
+                                      MetaTensor* combine_weights,
+                                      MetaTensor* scatter_index,
+                                      MetaTensor* expert_offset,
+                                      MetaTensor* expert_id) {
+  auto x_dims = x.dims();
+  auto gate_logits_dims = gate_logits.dims();
+
+  const int64_t num_rows = x_dims[0];
+  const int64_t num_experts = gate_logits_dims[1];
+
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      2,
+      errors::InvalidArgument("Input x should have 2 dimensions"));
+
+  PADDLE_ENFORCE_EQ(
+      gate_logits_dims.size(),
+      2,
+      errors::InvalidArgument("Input gate_logits should have 2 dimensions"));
+
+  PADDLE_ENFORCE_EQ(
+      x_dims[0],
+      gate_logits_dims[0],
+      errors::InvalidArgument(
+          "The 0-th dimension of x [%d] "
+          "must match that of the 0-th dimension gate_logits [%d].",
+          x_dims[0],
+          gate_logits_dims[0]));
+
+  PADDLE_ENFORCE_EQ(gate_logits_dims[1] >= k,
+                    true,
+                    errors::InvalidArgument(
+                        "The 1-th dimension of gate_logits [%d] "
+                        "must be greater than or equal to that of k [%d].",
+                        gate_logits_dims[1],
+                        k));
+
+  PADDLE_ENFORCE_EQ(
+      x_dims[1] % 128,
+      0,
+      common::errors::InvalidArgument("The last dimensions of Input(x) must be "
+                                      "divided to tile size, but received "
+                                      "Input(x) shape is [%d]",
+                                      x_dims[0]));
+
+  PADDLE_ENFORCE_EQ(
+      x.dtype(),
+      phi::DataType::BFLOAT16,
+      common::errors::InvalidArgument(
+          "The dtype of Input(x) must be BFLOAT16, but received %s",
+          x.dtype()));
+
+  if (corr_bias) {
+    auto corr_bias_dims = corr_bias.dims();
+    PADDLE_ENFORCE_EQ(
+        corr_bias_dims.size(),
+        1,
+        common::errors::InvalidArgument(
+            "The dimensions of Input(corr_bias) must be 1, but received "
+            "dimensions of Input(corr_bias) is [%d]",
+            corr_bias_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        corr_bias.dtype(),
+        paddle::DataType::FLOAT32,
+        common::errors::InvalidArgument(
+            "The dtype of Input(corr_bias) must be FLOAT32, but received %s",
+            corr_bias.dtype()));
+  }
+  std::vector<int64_t> fp8_out_dims;
+  std::vector<int64_t> scale_dims;
+  if (use_pad) {
+    fp8_out_dims = {num_experts * capacity, x_dims[1]};
+    scale_dims = {num_experts * capacity, x_dims[1] / 128};
+  } else {
+    fp8_out_dims = {num_rows * k, x_dims[1]};
+    scale_dims = {num_rows * k, x_dims[1] / 128};
+  }
+
+  fp8_out->set_dims(common::make_ddim(fp8_out_dims));
+  fp8_out->set_dtype(paddle::DataType::FLOAT8_E4M3FN);
+
+  scale->set_dims(common::make_ddim(scale_dims));
+  scale->set_dtype(paddle::DataType::FLOAT32);
+
+  combine_weights->set_dims(common::make_ddim({num_rows, k}));
+  combine_weights->set_dtype(phi::DataType::FLOAT32);
+
+  scatter_index->set_dims(common::make_ddim({k, num_rows}));
+  scatter_index->set_dtype(phi::DataType::INT32);
+
+  expert_offset->set_dims(common::make_ddim({num_experts}));
+  expert_offset->set_dtype(phi::DataType::INT64);
+
+  expert_id->set_dims(common::make_ddim({num_rows, k}));
+  expert_id->set_dtype(phi::DataType::INT32);
+}
+
 void MovingAverageAbsMaxScaleInferMeta(const MetaTensor& x,
                                        const MetaTensor& in_accum,
                                        const MetaTensor& in_state,
