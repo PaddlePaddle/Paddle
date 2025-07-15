@@ -202,49 +202,53 @@ __global__ void AdaptiveKernelPool2D(const IndexT nthreads,
                                      const IndexT padding_width,
                                      FastDivModForPooling<IndexT> divmods,
                                      PoolProcess pool_process,
+                                     int64_t batch_size,
                                      bool exclusive,
                                      T* output_data,
                                      bool channel_last = false) {
-  const IndexT n_offset = blockIdx.y;
-  const IndexT c_offset =
-      static_cast<IndexT>(blockIdx.x) * blockDim.y + threadIdx.y;
-  if (c_offset >= channels) {
-    return;
-  }
-  IndexT hstart, hend, wstart, wend;
-  IndexT input_offset =
-      channel_last
-          ? n_offset * input_height * input_width * channels
-          : (n_offset * channels + c_offset) * input_height * input_width;
-  IndexT output_offset =
-      channel_last
-          ? n_offset * output_height * output_width * channels
-          : (n_offset * channels + c_offset) * output_height * output_width;
-  for (IndexT hw_offset = threadIdx.x; hw_offset < output_height * output_width;
-       hw_offset += blockDim.x) {
-    IndexT w_offset = hw_offset % output_width;
-    IndexT h_offset = hw_offset / output_width;
-    hstart = AdaptStartIndex(h_offset, input_height, output_height);
-    hend = AdaptEndIndex(h_offset, input_height, output_height);
-    wstart = AdaptStartIndex(w_offset, input_width, output_width);
-    wend = AdaptEndIndex(w_offset, input_width, output_width);
-
-    T ele = pool_process.initial();
-    for (IndexT h = hstart; h < hend; ++h) {
-      for (IndexT w = wstart; w < wend; ++w) {
-        auto input_idx = channel_last
-                             ? (h * input_width + w) * channels + c_offset
-                             : h * input_width + w;
-        pool_process.compute(input_data[input_offset + input_idx], &ele);
-      }
+  for (IndexT n_offset = blockIdx.y; n_offset < batch_size;
+       n_offset += gridDim.y) {
+    const IndexT c_offset =
+        static_cast<IndexT>(blockIdx.x) * blockDim.y + threadIdx.y;
+    if (c_offset >= channels) {
+      return;
     }
-    IndexT pool_size = (hend - hstart) * (wend - wstart);
-    pool_process.finalize(static_cast<T>(pool_size), &ele);
-    IndexT output_idx =
+    IndexT hstart, hend, wstart, wend;
+    IndexT input_offset =
         channel_last
-            ? (h_offset * output_width + w_offset) * channels + c_offset
-            : h_offset * output_width + w_offset;
-    output_data[output_offset + output_idx] = ele;
+            ? n_offset * input_height * input_width * channels
+            : (n_offset * channels + c_offset) * input_height * input_width;
+    IndexT output_offset =
+        channel_last
+            ? n_offset * output_height * output_width * channels
+            : (n_offset * channels + c_offset) * output_height * output_width;
+    for (IndexT hw_offset = threadIdx.x;
+         hw_offset < output_height * output_width;
+         hw_offset += blockDim.x) {
+      IndexT w_offset = hw_offset % output_width;
+      IndexT h_offset = hw_offset / output_width;
+      hstart = AdaptStartIndex(h_offset, input_height, output_height);
+      hend = AdaptEndIndex(h_offset, input_height, output_height);
+      wstart = AdaptStartIndex(w_offset, input_width, output_width);
+      wend = AdaptEndIndex(w_offset, input_width, output_width);
+
+      T ele = pool_process.initial();
+      for (IndexT h = hstart; h < hend; ++h) {
+        for (IndexT w = wstart; w < wend; ++w) {
+          auto input_idx = channel_last
+                               ? (h * input_width + w) * channels + c_offset
+                               : h * input_width + w;
+          pool_process.compute(input_data[input_offset + input_idx], &ele);
+        }
+      }
+      IndexT pool_size = (hend - hstart) * (wend - wstart);
+      pool_process.finalize(static_cast<T>(pool_size), &ele);
+      IndexT output_idx =
+          channel_last
+              ? (h_offset * output_width + w_offset) * channels + c_offset
+              : h_offset * output_width + w_offset;
+      output_data[output_offset + output_idx] = ele;
+    }
   }
 }
 
@@ -493,7 +497,7 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
     dim3 threads(thread_num, blocks, 1);
     dim3 grid(std::max((output_channels + blocks - 1) / blocks,
                        static_cast<int64_t>(1)),
-              batch_size,
+              std::min(batch_size, 65535),
               1);
     AdaptiveKernelPool2D<PoolProcess, T, int>
         <<<grid, threads, 0, stream>>>(nthreads,
@@ -511,6 +515,7 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
                                        padding_width,
                                        pool_divmods,
                                        pool_compute,
+                                       batch_size,
                                        exclusive,
                                        output);
 
@@ -602,23 +607,11 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
           max_threads);
       int64_t blocks = std::min(max_threads / thread_num,
                                 static_cast<int64_t>(output_channels));
-
-      int max_grid_x = 65535;
       dim3 threads(thread_num, blocks, 1);
-      dim3 grid;
-      if (batch_size <= max_grid_x) {
-        grid = dim3(std::max((output_channels + blocks - 1) / blocks,
-                             static_cast<int64_t>(1)),
-                    batch_size,
-                    1);
-
-      } else {
-        int64_t grid_x =
-            std::max((output_channels + blocks - 1) / blocks *
-                         (batch_size + max_grid_x - 1) / max_grid_x,
-                     static_cast<int64_t>(1));
-        grid = dim3(grid_x, max_grid_x, 1);
-      }
+      dim3 grid(std::max((output_channels + blocks - 1) / blocks,
+                         static_cast<int64_t>(1)),
+                std::min(static_cast<int>(batch_size), 65535),
+                1);
       if (input.numel() <= std::numeric_limits<int>::max()) {
         auto pool_divmods = FastDivModForPooling<int>(
             input_channels, output_width, output_height);
@@ -639,6 +632,7 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
                                                      pool_divmods,
                                                      pool_process,
                                                      exclusive,
+                                                     batch_size,
                                                      output_data,
                                                      channel_last);
       } else {
@@ -660,6 +654,7 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
                                                      padding_width,
                                                      pool_divmods,
                                                      pool_process,
+                                                     batch_size,
                                                      exclusive,
                                                      output_data,
                                                      channel_last);
