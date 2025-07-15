@@ -140,7 +140,6 @@ jobs:
           cp ci/git_pull.sh ci/git_pull_copy.sh
           git checkout $BRANCH
           bash ci/git_pull_copy.sh $BRANCH
-          # git fetch upstream $BRANCH
           git checkout test
           git merge --no-edit $BRANCH
           '
