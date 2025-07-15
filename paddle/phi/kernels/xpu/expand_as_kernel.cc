@@ -22,7 +22,7 @@
 namespace phi {
 
 template <typename Context, typename T>
-void ExpandAs(const Context& context,
+void ExpandAs(const Context& dev_ctx,
               const DenseTensor& x,
               const std::vector<int64_t>& target_shape_,
               DenseTensor* out) {
@@ -33,7 +33,7 @@ void ExpandAs(const Context& context,
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   for (size_t i = 0; i < vec_in_dims.size(); ++i) {
     if (target_shape[i] == 0) {
-      context.template Alloc<T>(out);
+      dev_ctx.template Alloc<T>(out);
       return;
     }
     if (vec_in_dims[i] != 1) {
@@ -51,9 +51,9 @@ void ExpandAs(const Context& context,
   if (target_shape.size() == 0) {
     phi::DDim out_dims = common::make_ddim(target_shape);
     out->Resize(out_dims);
-    context.template Alloc<T>(out);
+    dev_ctx.template Alloc<T>(out);
 
-    int r = xpu::copy<XPUType>(context.x_context(),
+    int r = xpu::copy<XPUType>(dev_ctx.x_context(),
                                reinterpret_cast<const XPUType*>(x.data<T>()),
                                reinterpret_cast<XPUType*>(out->data<T>()),
                                x.numel());
@@ -63,7 +63,7 @@ void ExpandAs(const Context& context,
 
   phi::DDim out_dims = common::make_ddim(target_shape);
   out->Resize(out_dims);
-  context.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   auto& x_shape = vec_in_dims;
   auto out_shape = common::vectorize<int64_t>(out_dims);
 
@@ -73,12 +73,12 @@ void ExpandAs(const Context& context,
     auto x_data = reinterpret_cast<const int8_t*>(x.data<T>());
     auto out_data = reinterpret_cast<int8_t*>(out->data<T>());
     r = xpu::broadcast<int8_t>(
-        context.x_context(), x_data, out_data, x_shape, out_shape);
+        dev_ctx.x_context(), x_data, out_data, x_shape, out_shape);
   } else {
     auto x_data = reinterpret_cast<const XPUType*>(x.data<T>());
     auto out_data = reinterpret_cast<XPUType*>(out->data<T>());
     r = xpu::broadcast<XPUType>(
-        context.x_context(), x_data, out_data, x_shape, out_shape);
+        dev_ctx.x_context(), x_data, out_data, x_shape, out_shape);
   }
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast");
 }
