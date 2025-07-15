@@ -284,4 +284,16 @@ void SetValueKernel(const Context& dev_ctx,
                                    out);
 }
 
+template <typename T, typename Context>
+void SetValueKernelV2(const Context& dev_ctx,
+                      const DenseTensor& in,
+                      const IntArray& starts,
+                      const IntArray& ends,
+                      const IntArray& steps,
+                      const std::vector<int64_t>& axes,
+                      const std::vector<int64_t>& decrease_axes,
+                      const std::vector<int64_t>& none_axes,
+                      const std::vector<int64_t>& shape,
+                      const std::vector<Scalar>& values,
+                      DenseTensor* out);
 }  // namespace phi

@@ -34,4 +34,8 @@ EventHandle GetEventHandleFromCalcStream(int context_ring_id) {
 EventHandle GetEventHandleFromCommStream(int context_ring_id) {
   return EventHandle(detail::GetCommStreamFromGroup(context_ring_id));
 }
+
+EventHandle GetEventHandleFromCustomStream(const phi::CUDAStream& stream) {
+  return EventHandle(stream);
+}
 }  // namespace deep_ep

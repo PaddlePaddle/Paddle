@@ -34,6 +34,7 @@ on:
         description: "Generate images for all CI usage"
         value: ${{ jobs.build-docker-images.outputs.docker_distribute_image }}
 
+<<<<<<< HEAD
       docker_xpu_image:
         description: "Generate images for all CI usage"
         value: ${{ jobs.build-docker-images.outputs.docker_xpu_image }}
@@ -46,6 +47,11 @@ on:
         description: "Generate images for all CI usage"
         value: ${{ jobs.build-docker-images.outputs.docker_dcu_image }}
 
+=======
+      docker_doc_image:
+        description: "Generate images for all CI usage"
+        value: ${{ jobs.build-docker-images.outputs.docker_doc_image }}
+>>>>>>> e1842d4ce364b6e8334c39a8807b256682185d23
 
 jobs:
   build-docker-images:
@@ -62,6 +68,7 @@ jobs:
       docker_xpu_image: ${{ steps.build-docker-images.outputs.docker_xpu_image }}
       docker_npu_image: ${{ steps.build-docker-images.outputs.docker_npu_image }}
       docker_dcu_image: ${{ steps.build-docker-images.outputs.docker_dcu_image }}
+      docker_doc_image: ${{ steps.build-docker-images.outputs.docker_doc_image }}
     steps:
       - id: build-docker-images
         name: Build docker images
@@ -76,6 +83,7 @@ jobs:
           docker_xpu_file: Dockerfile.develop.xre
           docker_npu_file: Dockerfile.develop.npu
           docker_dcu_file: Dockerfile.develop.dtk
+          docker_doc_file: Dockerfile.doc
           dockerfile_script: https://raw.githubusercontent.com/PaddlePaddle/Paddle/refs/heads/develop/tools/dockerfile/ci_dockerfile.sh
           dockerfile_origin: https://raw.githubusercontent.com/PaddlePaddle/Paddle/refs/heads/develop/tools/dockerfile/Dockerfile.ubuntu20
         run: |
@@ -97,7 +105,7 @@ jobs:
           if [ "${{ inputs.task }}" == "cpu" ]; then
             declare -A docker_files=(["docker_cpu"]="$docker_cpu_file" ["docker_inference"]="$docker_inference_file" ["docker_distribute"]="$docker_distribute_file" ["docker_xpu"]="$docker_xpu_file" ["docker_npu"]="$docker_npu_file" ["docker_dcu"]="$docker_dcu_file")
           elif [ "${{ inputs.task }}" == "build" ]; then
-            declare -A docker_files=(["docker_build"]="$docker_build_file")
+            declare -A docker_files=(["docker_build"]="$docker_build_file" ["docker_doc"]="$docker_doc_file")
           else
             declare -A docker_files=(["docker_coverage"]="$docker_coverage_file")
           fi
