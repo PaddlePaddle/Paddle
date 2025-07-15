@@ -44,7 +44,12 @@ void CPUIndexElementwisePutWithTensorKernel(
   if (!is_initialized || !is_same_place) {
     phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
   }
-  auto num_indices = index_dims.size();
+
+  int64_t num_indices = 0;
+  std::vector<int64_t> shape_tmp;
+  std::vector<int64_t> stride_tmp;
+  funcs::cal_shape_stride(index_dims, &num_indices, &shape_tmp, &stride_tmp);
+
   auto sizes = std::array<int64_t, 25>{};
   auto strides = std::array<int64_t, 25>{};
   for (unsigned i = 0; i < num_indices; i++) {
@@ -61,8 +66,8 @@ void CPUIndexElementwisePutWithTensorKernel(
                            common::vectorize<int64_t>(value.dims()),
                            common::vectorize<int64_t>(value.strides()),
                            phi::SizeOf(value.dtype()),
-                           common::vectorize<int64_t>(index[0]->dims()),
-                           common::vectorize<int64_t>(index[0]->strides()),
+                           shape_tmp,
+                           stride_tmp,
                            phi::SizeOf(index[0]->dtype()),
                            &desired_shape,
                            &strides_array,
@@ -115,7 +120,12 @@ void CPUIndexElementwisePutKernel(const phi::CPUContext& dev_ctx,
   if (!is_initialized || !is_same_place) {
     phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
   }
-  auto num_indices = index_dims.size();
+
+  int64_t num_indices = 0;
+  std::vector<int64_t> shape_tmp;
+  std::vector<int64_t> stride_tmp;
+  funcs::cal_shape_stride(index_dims, &num_indices, &shape_tmp, &stride_tmp);
+
   auto sizes = std::array<int64_t, 25>{};
   auto strides = std::array<int64_t, 25>{};
   for (unsigned i = 0; i < num_indices; i++) {
@@ -132,8 +142,8 @@ void CPUIndexElementwisePutKernel(const phi::CPUContext& dev_ctx,
                            {},
                            {},
                            4,
-                           common::vectorize<int64_t>(index[0]->dims()),
-                           common::vectorize<int64_t>(index[0]->strides()),
+                           shape_tmp,
+                           stride_tmp,
                            phi::SizeOf(index[0]->dtype()),
                            &desired_shape,
                            &strides_array,
@@ -144,13 +154,10 @@ void CPUIndexElementwisePutKernel(const phi::CPUContext& dev_ctx,
   const int64_t N = numel;
   PADDLE_ENFORCE(N >= 0 && N <= std::numeric_limits<int32_t>::max(),
                  "N >= 0 && N <= std::numeric_limits<int32_t>::max()");
-  using dtype = funcs::OpaqueType<sizeof(T)>;
-  const char* in_ptr = reinterpret_cast<const char*>(&value_T);
   char* out_ptr = reinterpret_cast<char*>(output_);
   for (int64_t idx = 0; idx < N; idx++) {
     const auto offsets = offset_calc.cpu_get(idx);
     char* const out_data = out_ptr + offsets[0] + slice_offset;
-    const char* const in_data = in_ptr + offsets[1];
     int64_t offset = 0;
     for (size_t i = 0; i < num_indices; i++) {
       int64_t index = *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
@@ -159,8 +166,7 @@ void CPUIndexElementwisePutKernel(const phi::CPUContext& dev_ctx,
       }
       offset += index * strides[i];
     }
-    *reinterpret_cast<dtype*>(out_data + offset) =
-        *reinterpret_cast<const dtype*>(in_data);
+    *reinterpret_cast<T*>(out_data + offset) = value_T;
   }
 }
 
