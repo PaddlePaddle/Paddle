@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 
 namespace phi {
@@ -31,6 +32,20 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
                                    int axis_in,
                                    DenseTensor* softmax,
                                    DenseTensor* loss) {
+  if (softmax->numel() == 0) {
+    // When soft_label is False, the axis column cannot be 0. Other dimensions
+    // are the same, so the numel of softmax and loss are both 0.
+    dev_ctx.template Alloc<T>(softmax);
+    dev_ctx.template Alloc<T>(loss);
+
+    // When soft_label is True, the axis column is 1.
+    if (soft_label) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(loss->dims())), 0, loss);
+    }
+    return;
+  }
+
   using XPUType = typename XPUTypeTrait<T>::Type;
   const int rank = logits.dims().size();
   const int axis = phi::funcs::CanonicalAxis(axis_in, rank);
