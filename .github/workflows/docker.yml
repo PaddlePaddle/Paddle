@@ -34,7 +34,6 @@ on:
         description: "Generate images for all CI usage"
         value: ${{ jobs.build-docker-images.outputs.docker_distribute_image }}
 
-<<<<<<< HEAD
       docker_xpu_image:
         description: "Generate images for all CI usage"
         value: ${{ jobs.build-docker-images.outputs.docker_xpu_image }}
@@ -47,11 +46,9 @@ on:
         description: "Generate images for all CI usage"
         value: ${{ jobs.build-docker-images.outputs.docker_dcu_image }}
 
-=======
       docker_doc_image:
         description: "Generate images for all CI usage"
         value: ${{ jobs.build-docker-images.outputs.docker_doc_image }}
->>>>>>> e1842d4ce364b6e8334c39a8807b256682185d23
 
 jobs:
   build-docker-images:
