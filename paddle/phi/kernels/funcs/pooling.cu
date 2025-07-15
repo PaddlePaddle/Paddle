@@ -2433,6 +2433,8 @@ class MaxPool3dWithIndexFunctor<phi::GPUContext, T1, T2> {
           input_channels, output_width, output_height, output_depth);
       KernelMaxPool3DWithIdx<T1, T2, int>
           <<<grid, threads, 0, context.stream()>>>(ncd,
+                                                   input_data,
+                                                   input_channels,
                                                    input_depth,
                                                    input_height,
                                                    input_width,
