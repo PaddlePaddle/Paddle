@@ -610,7 +610,7 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
       dim3 threads(thread_num, blocks, 1);
       dim3 grid(std::max((output_channels + blocks - 1) / blocks,
                          static_cast<int64_t>(1)),
-                std::min(static_cast<int>(batch_size), 65535),
+                std::min(batch_size, 65535L),
                 1);
       if (input.numel() <= std::numeric_limits<int>::max()) {
         auto pool_divmods = FastDivModForPooling<int>(
@@ -2046,7 +2046,7 @@ class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
       dim3 threads(thread_num, blocks, 1);
       dim3 grid(std::max((output_channels + blocks - 1) / blocks,
                          static_cast<int64_t>(1)),
-                batch_size,
+                std::min(batch_size, 65535L),
                 1);
       if (input.numel() <= std::numeric_limits<int>::max()) {
         auto pool_divmods = FastDivModForPooling<int>(
