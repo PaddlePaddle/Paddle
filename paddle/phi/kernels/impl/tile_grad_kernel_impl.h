@@ -27,8 +27,8 @@ namespace phi {
 template <typename Context, typename T, int Dims>
 void TileBackward(const Context& dev_ctx,
                   const DenseTensor& out_grad,
-                  const std::vector<int>& reshape_dims_vec,
-                  const std::vector<int>& reduce_dims_vec,
+                  const std::vector<int64_t>& reshape_dims_vec,
+                  const std::vector<int64_t>& reduce_dims_vec,
                   DenseTensor* x_grad) {
   size_t reshape_size = reshape_dims_vec.size();
   size_t reduce_size = reduce_dims_vec.size();
@@ -86,7 +86,7 @@ void TileGradKernel(const Context& dev_ctx,
                     const IntArray& repeat_times,
                     DenseTensor* x_grad) {
   auto x_dims = x.dims();
-  auto vec_x_dims = common::vectorize<int>(x_dims);
+  auto vec_x_dims = common::vectorize<int64_t>(x_dims);
   auto repeat_times_data = repeat_times.GetData();
   if (repeat_times_data.size() < vec_x_dims.size()) {
     int diff = vec_x_dims.size() - repeat_times_data.size();
@@ -99,8 +99,8 @@ void TileGradKernel(const Context& dev_ctx,
   // 2. reduce_dims_vec is the dimension parameter to compute gradients. For
   //    each dimension expanded, the gradients should be summed to original
   //    size.
-  std::vector<int> reshape_dims_vec;
-  std::vector<int> reduce_dims_vec;
+  std::vector<int64_t> reshape_dims_vec;
+  std::vector<int64_t> reduce_dims_vec;
   for (size_t i = 0; i < repeat_times_data.size(); ++i) {
     reduce_dims_vec.push_back(reshape_dims_vec.size());
     reshape_dims_vec.push_back(repeat_times_data[i]);

@@ -375,6 +375,7 @@ void Pad3dGradKernel(const Context& dev_ctx,
   auto d_out_dims = d_out->dims();
   const T* d_out_data = d_out->data<T>();
   T* d_in_data = dev_ctx.template Alloc<T>(d_in);
+  if (x.numel() == 0) return;
   phi::funcs::SetConstant<Context, T>()(dev_ctx, d_in, static_cast<T>(0));
 
   const int pad_left = static_cast<int>(pads[0]);
