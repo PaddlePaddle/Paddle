@@ -175,6 +175,30 @@ void DeformableConvGradKernel(const Context& dev_ctx,
                               DenseTensor* offset_grad,
                               DenseTensor* filter_grad,
                               DenseTensor* mask_grad) {
+  if (x.numel() == 0 || filter.numel() == 0) {
+    if (dx)
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+    if (offset_grad)
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(offset_grad->dims())),
+          0,
+          offset_grad);
+    if (filter_grad)
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(filter_grad->dims())),
+          0,
+          filter_grad);
+    if (mask_grad)
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(mask_grad->dims())),
+                            0,
+                            mask_grad);
+    return;
+  }
+
   const int batch_size = static_cast<int>(x.dims()[0]);
 
   DDim input_shape = common::slice_ddim(x.dims(), 1, x.dims().size());

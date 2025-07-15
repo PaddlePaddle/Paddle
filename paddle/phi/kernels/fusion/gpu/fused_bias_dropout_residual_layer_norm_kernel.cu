@@ -61,6 +61,7 @@ void FusedBiasDropoutResidualLnKernel(
           : dev_ctx.template Alloc<uint8_t>(
                 dropout_mask_out, dropout_mask_out->numel() * sizeof(uint8_t));
   auto* y_data = dev_ctx.template Alloc<T>(y, y->numel() * sizeof(T));
+  if (y->numel() == 0) return;
 
   const auto input_x_dims = x.dims();
   int bsz_seq = 1;
