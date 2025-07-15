@@ -550,6 +550,37 @@ __global__ void Contiguous2StridedDefaultFunc(
     T* output_data,
     Array<int64_t, phi::DDim::kMaxRank + 1> output_stride,
     Array<int64_t, phi::DDim::kMaxRank + 1> dims,
+    const int64_t output_numel) {
+  int MAX_LOAD_BYTES = VecSize * sizeof(T);
+  int64_t gid = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
+#pragma unroll
+  for (int64_t i = gid; i < output_numel;
+       i += blockDim.x * gridDim.x * VecSize) {
+    int64_t output_offset = 0;
+    int64_t index_tmp = i;
+    for (int dim = OUT_RANK - 1; dim >= 0; --dim) {
+      output_offset += (index_tmp % dims[dim]) * output_stride[dim];
+      index_tmp = index_tmp / dims[dim];
+    }
+    if (is_aligned(&output_data[output_offset], MAX_LOAD_BYTES)) {
+      using VecType = kps::details::VectorType<T, VecSize>;
+      const VecType* src = reinterpret_cast<const VecType*>(&input_data[i]);
+      VecType* dst = reinterpret_cast<VecType*>(&output_data[output_offset]);
+      *dst = *src;
+    } else {
+      for (int j = 0; j < VecSize; j++) {
+        output_data[output_offset + j] = input_data[i + j];
+      }
+    }
+  }
+}
+
+template <typename T, int VecSize, size_t OUT_RANK>
+__global__ void Contiguous2StridedSameDefaultFunc(
+    const T* input_data,
+    T* output_data,
+    Array<int64_t, phi::DDim::kMaxRank + 1> output_stride,
+    Array<int64_t, phi::DDim::kMaxRank + 1> dims,
     const int64_t input_numel,
     const int64_t output_numel) {
   int MAX_LOAD_BYTES = VecSize * sizeof(T);
@@ -594,7 +625,6 @@ void LaunchContiguous2StridedDefaultKernel(
       dev_ctx, output_numel, VecSize * loop_count);
   auto& grid = config.block_per_grid;
   auto& block = config.thread_per_block;
-
   if (diff_dims) {
     if (VecSize == 8) {
       switch (rank) {
@@ -694,12 +724,12 @@ void LaunchContiguous2StridedDefaultKernel(
               rank));
       }
     }
-  } else {
+  } else if (input_numel == output_numel) {
     if (VecSize == 8) {
       switch (rank) {
 #define CASE_RANK(__Rk)                                       \
   case __Rk:                                                  \
-    Contiguous2StridedDefaultFunc<T, 8, __Rk>                 \
+    Contiguous2StridedSameDefaultFunc<T, 8, __Rk>             \
         <<<grid, block, 0, dev_ctx.stream()>>>(input_data,    \
                                                output_data,   \
                                                output_stride, \
@@ -728,7 +758,7 @@ void LaunchContiguous2StridedDefaultKernel(
       switch (rank) {
 #define CASE_RANK(__Rk)                                       \
   case __Rk:                                                  \
-    Contiguous2StridedDefaultFunc<T, 4, __Rk>                 \
+    Contiguous2StridedSameDefaultFunc<T, 4, __Rk>             \
         <<<grid, block, 0, dev_ctx.stream()>>>(input_data,    \
                                                output_data,   \
                                                output_stride, \
@@ -756,7 +786,7 @@ void LaunchContiguous2StridedDefaultKernel(
       switch (rank) {
 #define CASE_RANK(__Rk)                                       \
   case __Rk:                                                  \
-    Contiguous2StridedDefaultFunc<T, 2, __Rk>                 \
+    Contiguous2StridedSameDefaultFunc<T, 2, __Rk>             \
         <<<grid, block, 0, dev_ctx.stream()>>>(input_data,    \
                                                output_data,   \
                                                output_stride, \
@@ -784,13 +814,112 @@ void LaunchContiguous2StridedDefaultKernel(
       switch (rank) {
 #define CASE_RANK(__Rk)                                       \
   case __Rk:                                                  \
-    Contiguous2StridedDefaultFunc<T, 1, __Rk>                 \
+    Contiguous2StridedSameDefaultFunc<T, 1, __Rk>             \
         <<<grid, block, 0, dev_ctx.stream()>>>(input_data,    \
                                                output_data,   \
                                                output_stride, \
                                                dims,          \
                                                input_numel,   \
                                                output_numel); \
+    break
+
+        CASE_RANK(1);
+        CASE_RANK(2);
+        CASE_RANK(3);
+        CASE_RANK(4);
+        CASE_RANK(5);
+        CASE_RANK(6);
+        CASE_RANK(7);
+        CASE_RANK(8);
+        CASE_RANK(9);
+#undef CASE_RANK
+        default:
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "The rank of input should be less than 9, but received %d.",
+              rank));
+      }
+    }
+  } else {
+    if (VecSize == 8) {
+      switch (rank) {
+#define CASE_RANK(__Rk)                                                  \
+  case __Rk:                                                             \
+    Contiguous2StridedDefaultFunc<T, 8, __Rk>                            \
+        <<<grid, block, 0, dev_ctx.stream()>>>(                          \
+            input_data, output_data, output_stride, dims, output_numel); \
+    break
+
+        CASE_RANK(1);
+        CASE_RANK(2);
+        CASE_RANK(3);
+        CASE_RANK(4);
+        CASE_RANK(5);
+        CASE_RANK(6);
+        CASE_RANK(7);
+        CASE_RANK(8);
+        CASE_RANK(9);
+#undef CASE_RANK
+        default:
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "The rank of input should be less than 9, but received %d.",
+              rank));
+      }
+
+    } else if (VecSize == 4) {
+      switch (rank) {
+#define CASE_RANK(__Rk)                                                  \
+  case __Rk:                                                             \
+    Contiguous2StridedDefaultFunc<T, 4, __Rk>                            \
+        <<<grid, block, 0, dev_ctx.stream()>>>(                          \
+            input_data, output_data, output_stride, dims, output_numel); \
+    break
+
+        CASE_RANK(1);
+        CASE_RANK(2);
+        CASE_RANK(3);
+        CASE_RANK(4);
+        CASE_RANK(5);
+        CASE_RANK(6);
+        CASE_RANK(7);
+        CASE_RANK(8);
+        CASE_RANK(9);
+#undef CASE_RANK
+        default:
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "The rank of input should be less than 9, but received %d.",
+              rank));
+      }
+    } else if (VecSize == 2) {
+      switch (rank) {
+#define CASE_RANK(__Rk)                                                  \
+  case __Rk:                                                             \
+    Contiguous2StridedDefaultFunc<T, 2, __Rk>                            \
+        <<<grid, block, 0, dev_ctx.stream()>>>(                          \
+            input_data, output_data, output_stride, dims, output_numel); \
+    break
+
+        CASE_RANK(1);
+        CASE_RANK(2);
+        CASE_RANK(3);
+        CASE_RANK(4);
+        CASE_RANK(5);
+        CASE_RANK(6);
+        CASE_RANK(7);
+        CASE_RANK(8);
+        CASE_RANK(9);
+#undef CASE_RANK
+        default:
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "The rank of input should be less than 9, but received %d.",
+              rank));
+      }
+    } else {
+      switch (rank) {
+#define CASE_RANK(__Rk)                                                  \
+  case __Rk:                                                             \
+    Contiguous2StridedDefaultFunc<T, 1, __Rk>                            \
+        <<<grid, block, 0, dev_ctx.stream()>>>(                          \
+            input_data, output_data, output_stride, dims, output_numel); \
     break
 
         CASE_RANK(1);
@@ -858,7 +987,8 @@ void StrideCopyDiffDimKernel(
 #undef CASE_VECSIZE
       default:
         PADDLE_THROW(common::errors::InvalidArgument(
-            "unsurport vecsize %d for StrideCopyDiffDimKernel", VecSize));
+            "unsurport vecsize %d for LaunchContiguous2StridedDefaultKernel",
+            VecSize));
     }
   }
 }

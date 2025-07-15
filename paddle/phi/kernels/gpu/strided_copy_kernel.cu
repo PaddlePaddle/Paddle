@@ -740,19 +740,20 @@ void StridedCopyKernel(const Context& dev_ctx,
   int VecSize = 8;
   VecSize = std::min(phi::GetVectorizedSize<T>(input_data), VecSize);
   VecSize = std::min(phi::GetVectorizedSize<T>(output_data), VecSize);
-  while (VecSize > 1 &&
-         (output_numel % VecSize != 0 || input_numel % VecSize != 0)) {
+  while (VecSize > 1 && output_numel % VecSize != 0) {
     VecSize /= 2;
   }
-
+  if (input_numel != 1 && input_numel != output_numel) {
+    while (VecSize > 1 && input_numel % VecSize != 0) {
+      VecSize /= 2;
+    }
+  }
   while (VecSize > 1 && output_dims[meta.dims.size() - 1] % VecSize != 0) {
     VecSize /= 2;
   }
-
   if (output_stride[meta.dims.size() - 1] != 1) {
     VecSize = 1;
   }
-
   if (input.dims() != out->dims()) {
     if (input_numel == 1) {
       DenseTensor vec_input = Empty<T>(dev_ctx, IntArray{VecSize});
