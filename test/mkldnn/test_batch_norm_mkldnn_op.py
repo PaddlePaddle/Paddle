@@ -16,7 +16,7 @@ import sys
 import unittest
 
 import numpy as np
-from mkldnn_op_test import check_if_mkldnn_batchnorm_primitives_exist_in_bwd
+from onednn_op_test import check_if_onednn_batchnorm_primitives_exist_in_bwd
 from op_test import _set_use_system_allocator, pir_executor_guard
 
 sys.path.append("../deprecated/legacy_test")
@@ -131,7 +131,7 @@ class TestONEDNNBatchNormOpExistedPrimitives(TestONEDNNBatchNormOpTraining):
         var_dict['x@GRAD'] = x_grad
         var_dict['scale@GRAD'] = scale_grad
         var_dict['bias@GRAD'] = bias_grad
-        check_if_mkldnn_batchnorm_primitives_exist_in_bwd(
+        check_if_onednn_batchnorm_primitives_exist_in_bwd(
             self, var_dict, place, shape, data_layout
         )
 
