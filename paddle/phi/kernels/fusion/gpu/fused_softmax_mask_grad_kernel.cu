@@ -120,7 +120,6 @@ __global__ void SoftmaxMaskFuseGradGPUKernel(const T* grad_input,
 
 template <typename T, typename Context>
 void FusedSoftmaxMaskGradKernel(const Context& dev_ctx,
-                                const DenseTensor& x UNUSED,
                                 const DenseTensor& out,
                                 const DenseTensor& out_grad,
                                 DenseTensor* x_grad) {
