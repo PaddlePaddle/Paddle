@@ -24,7 +24,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install httpx
+          pip install httpx requests pymysql github 
 
       - name: Check PR Template
         env:
