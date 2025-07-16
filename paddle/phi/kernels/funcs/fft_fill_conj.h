@@ -138,7 +138,7 @@ struct FFTFillConjFunctor {
 };
 
 template <typename DeviceContext, typename C>
-void FFTFillConj(const DeviceContext& ctx,
+void FFTFillConj(const DeviceContext& dev_ctx,
                  const DenseTensor* src,
                  DenseTensor* dst,
                  const std::vector<int64_t>& axes) {
@@ -160,49 +160,49 @@ void FFTFillConj(const DeviceContext& ctx,
 #if defined(__NVCC__) || defined(__HIPCC__)
   DenseTensor src_strides_g;
   src_strides_g.Resize({(int64_t)src_strides_v.size()});
-  int64_t* src_strides = ctx.template Alloc<int64_t>(&src_strides_g);
+  int64_t* src_strides = dev_ctx.template Alloc<int64_t>(&src_strides_g);
   DenseTensor dst_strides_g;
   dst_strides_g.Resize({(int64_t)dst_strides_v.size()});
-  int64_t* dst_strides = ctx.template Alloc<int64_t>(&dst_strides_g);
+  int64_t* dst_strides = dev_ctx.template Alloc<int64_t>(&dst_strides_g);
   DenseTensor dst_shape_g;
   dst_shape_g.Resize({(int64_t)dst_shape_v.size()});
-  int64_t* dst_shape = ctx.template Alloc<int64_t>(&dst_shape_g);
+  int64_t* dst_shape = dev_ctx.template Alloc<int64_t>(&dst_shape_g);
   DenseTensor is_fft_axis_g;
   is_fft_axis_g.Resize({rank});
-  bool* p_is_fft_axis = ctx.template Alloc<bool>(&is_fft_axis_g);
+  bool* p_is_fft_axis = dev_ctx.template Alloc<bool>(&is_fft_axis_g);
   auto cplace = phi::CPUPlace();
-  const auto gplace = ctx.GetPlace();
+  const auto gplace = dev_ctx.GetPlace();
   memory_utils::Copy(gplace,
                      src_strides,
                      cplace,
                      src_strides_v.data(),
                      sizeof(int64_t) * src_strides_v.size(),
-                     ctx.stream());
+                     dev_ctx.stream());
   memory_utils::Copy(gplace,
                      dst_strides,
                      cplace,
                      dst_strides_v.data(),
                      sizeof(int64_t) * dst_strides_v.size(),
-                     ctx.stream());
+                     dev_ctx.stream());
   memory_utils::Copy(gplace,
                      dst_shape,
                      cplace,
                      dst_shape_v.data(),
                      sizeof(int64_t) * dst_shape_v.size(),
-                     ctx.stream());
+                     dev_ctx.stream());
   memory_utils::Copy(gplace,
                      p_is_fft_axis,
                      cplace,
                      _is_fft_axis.get(),
                      sizeof(bool) * rank,
-                     ctx.stream());
+                     dev_ctx.stream());
 #else
   const auto src_strides = src_strides_v.data();
   const auto dst_strides = dst_strides_v.data();
   const auto dst_shape = dst_shape_v.data();
   const auto p_is_fft_axis = _is_fft_axis.get();
 #endif
-  ForRange<DeviceContext> for_range(ctx, dst->numel());
+  ForRange<DeviceContext> for_range(dev_ctx, dst->numel());
   FFTFillConjFunctor<C> fill_conj_functor(src_data,
                                           dst_data,
                                           src_strides,
