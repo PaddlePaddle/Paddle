@@ -34,6 +34,11 @@ void CrossEntropyWithSoftmaxGradCPUKernel(const CPUContext& dev_ctx,
                                           int ignore_index,
                                           int axis,
                                           DenseTensor* logits_grad) {
+  if (logits_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(logits_grad);
+    return;
+  }
+
   const DenseTensor* out_grad = &loss_grad;
   DenseTensor* logit_grad = logits_grad;
 

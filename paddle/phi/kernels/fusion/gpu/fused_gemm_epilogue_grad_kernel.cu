@@ -36,6 +36,7 @@ void FusedGemmEpilogueGradKernel(
     DenseTensor* y_grad,
     DenseTensor* bias_grad) {
   if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
     dev_ctx.template Alloc<T>(y_grad);
     phi::FullKernel<T>(
         dev_ctx, common::vectorize(y.dims()), 0.0, y.dtype(), y_grad);

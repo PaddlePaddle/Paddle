@@ -46,6 +46,14 @@ void WeightQuantizeKernel(const Context& dev_ctx,
 
   DenseTensor quanted_x;
   dev_ctx.template Alloc<int8_t>(out);
+  if (out->numel() == 0) {
+    if (algo == "llm.int8") {
+      dev_ctx.template Alloc<float>(scale);
+    } else {
+      dev_ctx.template Alloc<T>(scale);
+    }
+    return;
+  }
   quanted_x.Resize({m, n});
   dev_ctx.template Alloc<int8_t>(&quanted_x);
   std::vector<int64_t> weight_shape{m, n};

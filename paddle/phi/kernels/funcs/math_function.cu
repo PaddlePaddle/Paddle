@@ -246,7 +246,7 @@ void TransposeNormal<DeviceContext, T>::operator()(
   auto* out_ptr = out->data<T>();
 
   // copy in_stride, out_stride, axis to gpu device
-  const phi::GPUPlace& cuda_place = context.GetPlace();
+  const phi::Place& cuda_place = context.GetPlace();
   phi::CPUPlace cpu_place = phi::CPUPlace();
   size_t size = 3 * rank * sizeof(int64_t);
   auto cpu_buf_holder = phi::memory_utils::Alloc(cpu_place, size);
@@ -289,7 +289,7 @@ struct TransposeNormal<phi::GPUContext, T> {
     auto* out_ptr = out->data<T>();
 
     // copy in_stride, out_stride, axis to gpu device
-    const phi::GPUPlace& cuda_place = context.GetPlace();
+    const phi::Place& cuda_place = context.GetPlace();
     phi::CPUPlace cpu_place = phi::CPUPlace();
     size_t size = 3 * rank * sizeof(int64_t);
     auto cpu_buf_holder = phi::memory_utils::Alloc(cpu_place, size);
