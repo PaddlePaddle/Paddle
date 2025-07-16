@@ -300,22 +300,38 @@ __global__ void KernelPool2DGrad(
     output_grad += output_offset;
 
     if (adaptive) {
+      auto tmp_phstart = divmods.height.Divmod(h_offset * output_height);
+      auto tmp_pwstart = divmods.width.Divmod(w_offset * output_width);
       auto tmp_phend = divmods.height.Divmod((h_offset + 1) * output_height);
       auto tmp_pwend = divmods.width.Divmod((w_offset + 1) * output_width);
-      phstart = divmods.height.Div(h_offset * output_height);
-      pwstart = divmods.width.Div(w_offset * output_width);
+      phstart = tmp_phstart.val[0];
+      pwstart = tmp_pwstart.val[0];
       phend = tmp_phend.val[1] > 0 ? tmp_phend.val[0] + 1 : tmp_phend.val[0];
       pwend = tmp_pwend.val[1] > 0 ? tmp_pwend.val[0] + 1 : tmp_pwend.val[0];
 
       for (IndexT ph = phstart; ph < phend; ++ph) {
+        auto ksize_h_divmod = divmods.ksize_h.Divmod(input_height);
+        auto tmp_height = ksize_h_divmod.val[1] > 0 ? ksize_h_divmod.val[0] + 1
+                                                    : ksize_h_divmod.val[0];
+        if (phstart != phend) {
+          if (tmp_phstart.val[1] != 0 && ph == phstart) {
+            tmp_height += 1;
+          } else if (tmp_phend.val[1] != 0 && ph == phend - 1) {
+            tmp_height += 1;
+          }
+        }
+
         for (IndexT pw = pwstart; pw < pwend; ++pw) {
           auto ksize_w_divmod = divmods.ksize_w.Divmod(input_width);
-          auto ksize_h_divmod = divmods.ksize_h.Divmod(input_height);
           auto tmp_width = ksize_w_divmod.val[1] > 0 ? ksize_w_divmod.val[0] + 1
                                                      : ksize_w_divmod.val[0];
-          auto tmp_height = ksize_h_divmod.val[1] > 0
-                                ? ksize_h_divmod.val[0] + 1
-                                : ksize_h_divmod.val[0];
+          if (pwstart != pwend) {
+            if (tmp_pwstart.val[1] != 0 && pw == pwstart) {
+              tmp_width += 1;
+            } else if (tmp_pwend.val[1] != 0 && pw == pwend - 1) {
+              tmp_width += 1;
+            }
+          }
           IndexT pool_size = tmp_height * tmp_width;
           IndexT tmp_idx = ph * output_width + pw;
           IndexT output_sub_idx =
