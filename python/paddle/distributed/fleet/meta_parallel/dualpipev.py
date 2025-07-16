@@ -299,7 +299,7 @@ class DualPipeVParallel(PipelineParallel):
             _, backward_grads = self._get_backward_inputs(
                 backward_phase, backward_acc_id
             )
-
+        event_to_wait = paddle.device.current_stream().record_event()
         # forward & backward
         forward_chunk = self._layers.get_schedule_chunk(chunk_id=forward_phase)
         backward_chunk = self.schedule_chunks[backward_phase][backward_acc_id]

@@ -19,6 +19,7 @@ from .utils import (
     EventOverlap,
     get_event_from_calc_stream,
     get_event_from_comm_stream,
+    get_event_from_custom_stream,
 )
 
 __all__ = [
@@ -27,4 +28,5 @@ __all__ = [
     "Config",
     "get_event_from_calc_stream",
     "get_event_from_comm_stream",
+    "get_event_from_custom_stream",
 ]

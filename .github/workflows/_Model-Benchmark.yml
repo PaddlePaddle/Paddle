@@ -94,7 +94,7 @@ jobs:
           echo "export DEVICE_ID=$DEVICE_ID" >> ~/.bashrc
           echo $DEVICE_ID
           echo "Downloading build.tar.gz"
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
           echo "Extracting build.tar.gz"
           tar --use-compress-program="pzstd -1" -xpf build.tar.gz
           rm build.tar.gz
