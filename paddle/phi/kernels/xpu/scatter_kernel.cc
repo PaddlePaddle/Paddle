@@ -27,6 +27,15 @@ void ScatterKernel(const Context &dev_ctx,
                    const DenseTensor &updates,
                    bool overwrite,
                    DenseTensor *out) {
+  if (index.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    return;
+  }
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   using XPUTypeT = typename XPUTypeTrait<T>::Type;
   out->Resize(x.dims());
   auto *x_data = reinterpret_cast<const XPUTypeT *>(x.data<T>());

@@ -28,6 +28,10 @@ void ScatterNdAddKernel(const Context &dev_ctx,
                         const DenseTensor &index,
                         const DenseTensor &updates,
                         DenseTensor *out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   const auto &index_type = index.dtype();
   bool index_type_match =

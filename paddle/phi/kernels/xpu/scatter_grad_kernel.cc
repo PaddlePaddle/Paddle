@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 
@@ -27,6 +28,19 @@ void ScatterGradKernel(const Context &dev_ctx,
                        bool overwrite,
                        DenseTensor *x_grad,
                        DenseTensor *updates_grad) {
+  if (out_grad.numel() == 0) {
+    if (x_grad) {
+      dev_ctx.template Alloc<T>(x_grad);
+    }
+    if (updates_grad) {
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(updates_grad->dims())),
+          0,
+          updates_grad);
+    }
+    return;
+  }
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   const auto &index_type = index.dtype();
