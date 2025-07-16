@@ -77,7 +77,7 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*
           echo "Downloading build.tar.gz"
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}/build.tar.gz --no-check-certificate
+          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}/build.tar.gz --no-check-certificate
           echo "Extracting build.tar.gz"
           tar --use-compress-program="pzstd" -xpf build.tar.gz
           mv paddle Paddle
@@ -90,7 +90,7 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           echo "Download and extract PaddleNLP.tar.gz"
-          wget -q --no-proxy  https://paddle-qa.bj.bcebos.com/CodeSync/develop/PaddleNLP.tar --no-check-certificate
+          wget -q --tries=5 --no-proxy  https://paddle-qa.bj.bcebos.com/CodeSync/develop/PaddleNLP.tar --no-check-certificate
           tar xf PaddleNLP.tar && rm -rf PaddleNLP.tar
           source ${{ github.workspace }}/../../../proxy
           cd PaddleNLP

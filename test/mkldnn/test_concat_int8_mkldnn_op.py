@@ -21,7 +21,7 @@ from op_test import OpTest
 class TestConcatOp(OpTest):
     def setUp(self):
         self.op_type = "concat"
-        self.use_mkldnn = True
+        self.use_onednn = True
         self._cpu_only = True
         self.init_axis()
         self.init_shape()

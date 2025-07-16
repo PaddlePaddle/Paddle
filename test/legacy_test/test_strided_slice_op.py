@@ -327,6 +327,17 @@ class TestStrideSliceOp21(TestStrideSliceOp):
         pass
 
 
+# zero size tensor
+class TestStrideSliceOp22(TestStrideSliceOp):
+    def initTestCase(self):
+        self.input = np.random.rand(10, 0, 100)
+        self.axes = [1]
+        self.starts = [-101]
+        self.ends = [-101]
+        self.strides = [1]
+        self.infer_flags = [1]
+
+
 class TestStrideSliceOpBool(TestStrideSliceOp):
     def test_check_grad(self):
         pass

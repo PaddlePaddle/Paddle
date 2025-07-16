@@ -589,7 +589,7 @@
 
 - op : bce_loss
   args : (Tensor input, Tensor label)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : BCELossInferMeta
   kernel :
@@ -4468,6 +4468,18 @@
     data_type : x
   backward : reverse_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
+
+- op : rint
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : rint
+  inplace : (x -> out)
+  backward : rint_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : rms_norm
   args : (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, float epsilon, int begin_norm_axis, float quant_scale, int quant_round_type, float quant_max_bound, float quant_min_bound)

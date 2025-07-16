@@ -878,6 +878,52 @@ class WeightOnlyLinearBackwardAndWeightDequantizeTestCase(unittest.TestCase):
                 quant_x.grad, x.grad, rtol=1e-3, atol=1e-3
             )
 
+    def test_weightonly_linear_backward_int4_zerosize(self):
+        def test_weightonly_linear_backward(
+            self, algo='weight_only_int4', weight_dtype='int4'
+        ):
+            x = (
+                paddle.rand(shape=(0, 4096), dtype='float16')
+                * 1
+                / math.sqrt(4096)
+            )
+            x.stop_gradient = False
+            quant_x = copy.deepcopy(x)
+            quant_x.stop_gradient = False
+            weight = (
+                paddle.rand(shape=(0, 12288), dtype='float16')
+                * 1
+                / math.sqrt(4096)
+            )
+
+            quant_weight, quant_scale = Q.weight_quantize(
+                x=weight.cuda(), algo=algo
+            )
+            quant_weight = quant_weight.view(
+                [quant_weight.shape[0] * 2, quant_weight.shape[1] // 2]
+            )
+            dequant_weight = Q.weight_dequantize(
+                quant_weight.cuda(), quant_scale, algo=algo
+            )
+            np.testing.assert_allclose(
+                weight, dequant_weight, rtol=1e-2, atol=1e-2
+            )
+
+            quant_out = Q.weight_only_linear(
+                x=quant_x,
+                weight=quant_weight,
+                weight_scale=quant_scale,
+                weight_dtype=weight_dtype,
+            )
+            out = paddle.matmul(x=x, y=weight)
+            np.testing.assert_allclose(quant_out, out, rtol=1e-3, atol=1e-3)
+
+            quant_out.backward()
+            out.backward()
+            np.testing.assert_allclose(
+                quant_x.grad, x.grad, rtol=1e-3, atol=1e-3
+            )
+
 
 if __name__ == '__main__':
     unittest.main()
