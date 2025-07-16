@@ -179,6 +179,17 @@
     param : [x, out_grad]
   inplace : (out_grad -> x_grad)
 
+- backward_op : kthvalue_grad
+  forward : kthvalue(Tensor x, int k, int axis, bool keepdim) -> Tensor(out), Tensor(indices)
+  args : (Tensor x, Tensor indices, Tensor out_grad, int k, int axis, bool keepdim)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : kthvalue_grad
+    data_type : out_grad
+
 - backward_op : legacy_bilinear_interp_grad
   forward : legacy_bilinear_interp (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float scale=0.0, str interp_method="bilinear", bool align_corners=true, int align_mode=1) -> Tensor(output)
   args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, Tensor output_grad, str data_format, int out_d, int out_h, int out_w, float scale, str interp_method, bool align_corners, int align_mode)
