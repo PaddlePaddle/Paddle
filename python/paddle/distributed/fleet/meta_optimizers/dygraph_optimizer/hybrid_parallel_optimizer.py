@@ -534,20 +534,29 @@ class HybridParallelOptimizer:
         # syc param and master weight after opt
         if pp_group.nranks > 1 and pp_configs and pp_configs.sync_param:
             for p in params:
-                assert hasattr(p, 'color'), f"{p.name} has no color"
-                color_group = p.color["group"]
-                src_rank = min(color_group.ranks)
-                self.syc_param(p, src_rank, color_group, pp_configs.sync_mode)
+                assert (
+                    hasattr(p, 'color') and 'broadcast_group' in p.color
+                ), f"{p.name} has no color"
+                broadcast_group = p.color["broadcast_group"]
+                src_rank = min(broadcast_group.ranks)
+                self.syc_param(
+                    p, src_rank, broadcast_group, pp_configs.sync_mode
+                )
                 self.syc_master_weight(
-                    p, src_rank, color_group, pp_configs.sync_mode
+                    p, src_rank, broadcast_group, pp_configs.sync_mode
                 )
 
         # Moment sync after opt
         if pp_group.nranks > 1 and pp_configs and pp_configs.sync_moment:
             for p in params:
-                color_group = p.color["group"]
-                src_rank = min(color_group.ranks)
-                self.syc_moment(p, src_rank, color_group, pp_configs.sync_mode)
+                assert (
+                    hasattr(p, 'color') and 'broadcast_group' in p.color
+                ), f"{p.name} has no color"
+                broadcast_group = p.color["broadcast_group"]
+                src_rank = min(broadcast_group.ranks)
+                self.syc_moment(
+                    p, src_rank, broadcast_group, pp_configs.sync_mode
+                )
 
     def _get_mp_sync_params(self, parameters_list):
         mp_group = self._hcg.get_model_parallel_group()
