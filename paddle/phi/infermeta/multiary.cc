@@ -5331,6 +5331,14 @@ void SendUERecvInferMeta(const MetaTensor& x,
                                         dst_index_dims.size()));
   }
 
+  if (src_index_dims[0] != 0) {
+    PADDLE_ENFORCE_EQ(
+        src_index_dims[0],
+        dst_index_dims[0],
+        common::errors::InvalidArgument(
+            "Src_index and Dst_index should have the same shape."));
+  }
+
   auto y_dims = y.dims();
   PADDLE_ENFORCE_EQ(
       y_dims[0],
@@ -5409,6 +5417,14 @@ void SendUVInferMeta(const MetaTensor& x,
         common::errors::InvalidArgument("The Dst_index should be 1D, "
                                         "when it is not 2D, but we get %d",
                                         dst_index_dims.size()));
+  }
+
+  if (src_index_dims[0] != 0) {
+    PADDLE_ENFORCE_EQ(
+        src_index_dims[0],
+        dst_index_dims[0],
+        common::errors::InvalidArgument(
+            "Src_index and Dst_index should have the same shape."));
   }
 
   // Infer out's shape according to x and y(need broadcasting condition)
