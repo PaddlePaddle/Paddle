@@ -2175,6 +2175,17 @@
   optional: grad_x_grad, grad_value_grad
   composite : masked_fill_double_grad(mask, grad_x_grad, grad_value_grad, grad_out_grad)
 
+- backward_op : masked_fill_elementwise_grad
+  forward : masked_fill_elementwise (Tensor x, Tensor mask, Scalar value, int64_t[] input_dims, int64_t[] input_strides, int64_t slice_offset) -> Tensor(out)
+  args : (Tensor x, Tensor mask, Tensor out_grad, Scalar value, int64_t[] input_dims, int64_t[] input_strides, int64_t slice_offset)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : GeneralUnaryGradInferMeta
+    param : [x]
+  kernel :
+    func : masked_fill_elementwise_grad
+    data_type : out_grad
+
 - backward_op : masked_fill_grad
   forward : masked_fill (Tensor x, Tensor mask, Tensor value) -> Tensor(out)
   args : (Tensor x, Tensor mask, Tensor value, Tensor out_grad)

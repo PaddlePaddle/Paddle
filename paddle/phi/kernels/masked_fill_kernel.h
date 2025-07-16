@@ -27,4 +27,13 @@ void MaskedFillKernel(const Context& dev_ctx,
                       const DenseTensor& value,
                       DenseTensor* out);
 
+template <typename T, typename Context>
+void MaskedFillElementwiseKernel(const Context& dev_ctx,
+                                 const DenseTensor& x,
+                                 const DenseTensor& mask,
+                                 const Scalar& value,
+                                 const std::vector<int64_t>& input_dims,
+                                 const std::vector<int64_t>& input_strides,
+                                 const int64_t slice_offset,
+                                 DenseTensor* out);
 }  // namespace phi

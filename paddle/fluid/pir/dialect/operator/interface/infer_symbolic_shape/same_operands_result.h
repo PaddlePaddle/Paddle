@@ -213,6 +213,8 @@ OP_DECLARE_INFER_SYMBOLIC_SHAPE(IndexElementwisePut)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(IndexElementwisePut_)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(IndexElementwisePutWithTensor)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(IndexElementwisePutWithTensor_)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(MaskedFillElementwise)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(MaskedFillElementwise_)
 
 }  // namespace paddle::dialect
 

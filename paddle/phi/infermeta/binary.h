@@ -565,6 +565,14 @@ void MaskedFillInferMeta(const MetaTensor& x,
                          const MetaTensor& value,
                          MetaTensor* out);
 
+void MaskedFillElementwiseInferMeta(const MetaTensor& x,
+                                    const MetaTensor& mask,
+                                    const Scalar& value,
+                                    const std::vector<int64_t>& input_dims,
+                                    const std::vector<int64_t>& input_strides,
+                                    const int64_t slice_offset,
+                                    MetaTensor* out);
+
 void MatmulInferMeta(const MetaTensor& x,
                      const MetaTensor& y,
                      bool trans_x,
