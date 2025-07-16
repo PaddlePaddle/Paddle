@@ -4215,7 +4215,11 @@ void LstsqInferMeta(const MetaTensor& x,
           m,
           y_dims[y_rank - 2]));
 
-  rank->set_dims(common::make_ddim(batch_dims_vec));
+  if (x.numel() == 0 || y.numel() == 0) {
+    rank->set_dims(common::make_ddim({0}));
+  } else {
+    rank->set_dims(common::make_ddim(batch_dims_vec));
+  }
 
   if (m > n) {
     batch_dims_vec.emplace_back(nrhs);
@@ -4227,7 +4231,11 @@ void LstsqInferMeta(const MetaTensor& x,
   residuals->set_dtype(y.dtype());
 
   batch_dims_vec.emplace_back(std::min(m, n));
-  singular_values->set_dims(common::make_ddim(batch_dims_vec));
+  if (x.numel() == 0 || y.numel() == 0) {
+    singular_values->set_dims(common::make_ddim({0}));
+  } else {
+    singular_values->set_dims(common::make_ddim(batch_dims_vec));
+  }
   singular_values->set_dtype(y.dtype());
 
   batch_dims_vec[x_rank - 2] = n;
