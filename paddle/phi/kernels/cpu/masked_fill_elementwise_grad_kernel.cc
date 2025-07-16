@@ -49,24 +49,16 @@ void GPUMaskedFillElementwiseGrad(const phi::CPUContext& dev_ctx,
                            &numel,
                            strides_vec);
   auto offset_calc =
-      funcs::make_offset_calculator_put<3>(desired_shape, strides_array);
+      funcs::CPUmake_offset_calculator_put<3>(desired_shape, strides_array);
   const int64_t N = numel;
-  constexpr int nt = 128;
-  constexpr int vt = 4;
-  const dim3 block(nt);
-  const dim3 grid((N + block.x * vt - 1) / (block.x * vt));
-  auto stream = dev_ctx.stream();
-
-  funcs::index_elementwise_with_tensor_kernel<nt, vt>
-      <<<grid, block, 0, stream>>>(N, [=] __device__(int idx) {
-        char* out_ptr = reinterpret_cast<char*>(x_grad_data);
-        const auto offsets = offset_calc.get(idx);
-        char* const out_data = out_ptr + offsets[0] + slice_offset;
-#pragma unroll
-        if (mask_data[idx]) {
-          *reinterpret_cast<T*>(out_data) = 0;
-        }
-      });
+  char* out_ptr = reinterpret_cast<char*>(output_data);
+  for (int64_t idx = 0; idx < N; idx++) {
+    const auto offsets = offset_calc.cpu_get(idx);
+    char* const out_data = out_ptr + offsets[0] + slice_offset;
+    if (mask_data[idx]) {
+      *reinterpret_cast<T*>(out_data) = T{0};
+    }
+  }
 }
 
 template <typename T, typename Context>

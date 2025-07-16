@@ -64,7 +64,7 @@ void GPUMaskedFillElementwiseGrad(const phi::GPUContext& dev_ctx,
         char* const out_data = out_ptr + offsets[0] + slice_offset;
 #pragma unroll
         if (mask_data[idx]) {
-          *reinterpret_cast<T*>(out_data) = 0;
+          *reinterpret_cast<T*>(out_data) = T{0};
         }
       });
 }
