@@ -349,8 +349,6 @@ class DualPipeVParallel(PipelineParallel):
 
         use_stream_wait_event = self._overlap_p2p_comm
 
-        merge_comm_ops = self.comm_forward_ops + self.comm_backward_ops
-
         pp_raw_stream = self.pp_group.process_group.get_stream(
             paddle.framework._current_expected_place_()
         )
@@ -362,9 +360,9 @@ class DualPipeVParallel(PipelineParallel):
                 for req in fwd_reqs:
                     req.wait()
 
-        send_recv_stream = paddle.device.Stream(stream_base=pp_raw_stream)
-        send_recv_event = paddle.device.Event()
-        send_recv_event.record(send_recv_stream)
+        forward_event_to_wait = deep_ep.get_event_from_custom_stream(
+            pp_raw_stream
+        )
 
         if common_backward_ops_num > 0:
             bwd_reqs = batch_isend_irecv(self.comm_backward_ops)
@@ -374,8 +372,7 @@ class DualPipeVParallel(PipelineParallel):
                     req.wait()
 
         if use_stream_wait_event:
-            current_stream = paddle.device.current_stream()
-            current_stream.wait_event(send_recv_event)
+            forward_event_to_wait.current_stream_wait()
 
         combine_bw_event_to_wait = deep_ep.get_event_from_custom_stream(
             pp_raw_stream
