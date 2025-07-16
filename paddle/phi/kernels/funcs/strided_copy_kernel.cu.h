@@ -576,7 +576,7 @@ __global__ void Contiguous2StridedDefaultFunc(
 }
 
 template <typename T, int VecSize, size_t OUT_RANK>
-__global__ void Contiguous2StridedSameDefaultFunc(
+__global__ void Contiguous2StridedExpandDefaultFunc(
     const T* input_data,
     T* output_data,
     Array<int64_t, phi::DDim::kMaxRank + 1> output_stride,
@@ -724,12 +724,12 @@ void LaunchContiguous2StridedDefaultKernel(
               rank));
       }
     }
-  } else if (input_numel == output_numel) {
+  } else if (input_numel != output_numel) {
     if (VecSize == 8) {
       switch (rank) {
 #define CASE_RANK(__Rk)                                       \
   case __Rk:                                                  \
-    Contiguous2StridedSameDefaultFunc<T, 8, __Rk>             \
+    Contiguous2StridedExpandDefaultFunc<T, 8, __Rk>           \
         <<<grid, block, 0, dev_ctx.stream()>>>(input_data,    \
                                                output_data,   \
                                                output_stride, \
@@ -758,7 +758,7 @@ void LaunchContiguous2StridedDefaultKernel(
       switch (rank) {
 #define CASE_RANK(__Rk)                                       \
   case __Rk:                                                  \
-    Contiguous2StridedSameDefaultFunc<T, 4, __Rk>             \
+    Contiguous2StridedExpandDefaultFunc<T, 4, __Rk>           \
         <<<grid, block, 0, dev_ctx.stream()>>>(input_data,    \
                                                output_data,   \
                                                output_stride, \
@@ -786,7 +786,7 @@ void LaunchContiguous2StridedDefaultKernel(
       switch (rank) {
 #define CASE_RANK(__Rk)                                       \
   case __Rk:                                                  \
-    Contiguous2StridedSameDefaultFunc<T, 2, __Rk>             \
+    Contiguous2StridedExpandDefaultFunc<T, 2, __Rk>           \
         <<<grid, block, 0, dev_ctx.stream()>>>(input_data,    \
                                                output_data,   \
                                                output_stride, \
@@ -814,7 +814,7 @@ void LaunchContiguous2StridedDefaultKernel(
       switch (rank) {
 #define CASE_RANK(__Rk)                                       \
   case __Rk:                                                  \
-    Contiguous2StridedSameDefaultFunc<T, 1, __Rk>             \
+    Contiguous2StridedExpandDefaultFunc<T, 1, __Rk>           \
         <<<grid, block, 0, dev_ctx.stream()>>>(input_data,    \
                                                output_data,   \
                                                output_stride, \
