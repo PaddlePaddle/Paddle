@@ -9,7 +9,7 @@ jobs:
   check:
     name: Check
     runs-on:
-      group: APPROVAL
+      group: Template
     permissions:
       contents: read
     steps:
@@ -43,3 +43,12 @@ jobs:
             echo -e "[ https://github.com/PaddlePaddle/Paddle/wiki/paddle_ci_manual ]"
             echo -e "######################################################"
           fi
+          [[ $EXCODE -eq 0 ]] && {
+            export method=$method
+            echo $method
+            set +x
+            source ~/.icafe
+            wget -q --no-check-certificate https://paddle-qa.bj.bcebos.com/baidu/cloud/modify_icafe.py
+            set -x
+            python3 modify_icafe.py
+          }
