@@ -1897,8 +1897,7 @@ class DistributedStrategy:
         Dynamic graph hybrid parallel strategy configuration. Five-way hybrid parallelism
         needs to meet the following relationships
 
-        total_number_GPUs = dp_degree * mp_degree * pp_degree * sharding_degree * sep_degree or
-        total_number_GPUs = dp_degree * mp_degree * pp_degree * sharding_degree * cp_degree
+        total_number_GPUs = dp_degree * mp_degree * pp_degree * sharding_degree * sep_degree
 
         **Note**:
             **dp_degree(int)**: set number of GPUs in a data parallel group. Default -1.

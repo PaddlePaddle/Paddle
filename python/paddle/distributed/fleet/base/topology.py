@@ -127,7 +127,6 @@ class ParallelMode:
     PIPELINE_PARALLEL = 2
     SHARDING_PARALLEL = 3
     SEGMENT_PARALLEL = 4
-    CONTEXT_PARALLEL = 5
 
 
 class CommunicateTopology:
@@ -683,9 +682,6 @@ class HybridCommunicateGroup:
         self._check_sep_exist()
         return self._sep_comm_group.ranks[0]
 
-    def _get_context_parallel_id(self) -> int:
-        return self._topo.get_coord_cp(self.global_rank).cp
-
     def get_context_parallel_rank(self) -> int:
         return self._cp_parallel_id
 
@@ -699,15 +695,6 @@ class HybridCommunicateGroup:
     def get_context_parallel_group_src_rank(self) -> int:
         self._check_cp_exist()
         return self._cp_comm_group.ranks[0]
-
-    def _get_cp_sharding_parallel_id(self) -> int:
-        return self._topo.get_coord_cp(self.global_rank).cp_sharding
-
-    def get_cp_sharding_parallel_rank(self) -> int:
-        return self._cp_sharding_parallel_id
-
-    def get_cp_sharding_parallel_world_size(self) -> int:
-        return self._cp_sharding_degree
 
     def get_cp_sharding_parallel_group(self) -> Group:
         self._check_cp_exist()
@@ -1349,10 +1336,11 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
         assert parallel_id is not None
         return parallel_id
 
+    def _get_context_parallel_id(self) -> int:
+        return self._cp_group.index(self.global_rank)
 
     def _get_cp_sharding_parallel_id(self):
         return self._cp_sharding_group.index(self.global_rank)
-
 
     def get_expert_parallel_rank(self) -> int:
         return self._expert_parallel_id
