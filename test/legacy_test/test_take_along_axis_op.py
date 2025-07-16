@@ -429,6 +429,26 @@ class TestTakeAlongAxisAPICase4(unittest.TestCase):
 
 
 class TestTakeAlongAxisAPICase_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(0)
+        self.shape = [3, 0]
+        self.axis = 0
+        dim_size = self.shape[self.axis]
+        self.index_np = np.random.randint(
+            -dim_size, dim_size, size=(3, 0)
+        ).astype('int64')
+        self.x_np = np.random.random(self.shape).astype(np.float32)
+        self.place = get_places()
+
+    def test_api_dygraph(self):
+        paddle.disable_static(self.place[0])
+        x_tensor = paddle.to_tensor(self.x_np)
+        self.index = paddle.to_tensor(self.index_np)
+        out = paddle.take_along_axis(x_tensor, self.index, self.axis, False)
+        loss = out.sum()
+        loss.backward()
+        paddle.enable_static()
+
     def test_static_shape_take_along_axis(self):
         with dygraph_guard():
 
