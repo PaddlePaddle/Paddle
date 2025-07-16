@@ -416,29 +416,19 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
     }
     is_all_0d_tensor = false;
     // use the first dimension
-    if (i == 0) {
+    if (common::product(in_dim) == 0) {
       in_dim = x_dim;
     } else {
       if (config.is_runtime) {
-        for (int j = 0; j < x_dim.size(); ++j) {
-          if (in_dim[j] != 0) {
-            if (x_dim[j] == 0) {
-              // update the 0 dim
-              in_dim[j] = 0;
-            } else {
-              PADDLE_ENFORCE_EQ(
-                  in_dim[j],
-                  x_dim[j],
-                  common::errors::InvalidArgument(
-                      "The input tensor X of AddNOp must"
-                      " have same shape. But received X[0]'s shape = "
-                      "[%s], X[%d]'s shape = [%s].",
-                      in_dim,
-                      i,
-                      x_dim));
-            }
-          }
-        }
+        PADDLE_ENFORCE_EQ(in_dim,
+                          x_dim,
+                          common::errors::InvalidArgument(
+                              "The input tensor X of AddNOp must"
+                              " have same shape. But received X[0]'s shape = "
+                              "[%s], X[%d]'s shape = [%s].",
+                              in_dim,
+                              i,
+                              x_dim));
       } else {
         PADDLE_ENFORCE_EQ(
             in_dim.size(),
@@ -2635,13 +2625,13 @@ void FusedLayerNormInferMeta(const MetaTensor& x,
   auto x_dims_size = x_dims_vec.size();
 
   int64_t normalized_dims = 1;
-  for (int i = begin_norm_axis; i < x_dims_size; ++i) {
+  for (size_t i = begin_norm_axis; i < x_dims_size; ++i) {
     normalized_dims *= x_dims_vec[i];
   }
 
   if (residual) {
     std::vector<int64_t> residual_dims_vec = common::vectorize(residual.dims());
-    for (int i = 0; i < x_dims_vec.size(); ++i) {
+    for (size_t i = 0; i < x_dims_vec.size(); ++i) {
       if (x_dims_vec[i] == -1 || residual_dims_vec[i] == -1) continue;
 
       PADDLE_ENFORCE_EQ(x_dims_vec[i],
@@ -6128,10 +6118,11 @@ void MoePermuteInferMeta(const MetaTensor& X,
       2,
       common::errors::InvalidArgument("Input X's dims should be 2, but got %u.",
                                       X.dims().size()));
-  PADDLE_ENFORCE_EQ(
-      X.dtype() == phi::DataType::BFLOAT16,
-      true,
-      common::errors::InvalidArgument("Input X's dtype should be BFLOAT16"));
+  PADDLE_ENFORCE_EQ(X.dtype() == phi::DataType::BFLOAT16 ||
+                        X.dtype() == phi::DataType::FLOAT8_E4M3FN,
+                    true,
+                    common::errors::InvalidArgument(
+                        "Input X's dtype should be BFLOAT16 or FLOAT8_E4M3FN"));
   PADDLE_ENFORCE_EQ(expert_routemap_topk.dtype() == phi::DataType::INT32,
                     true,
                     common::errors::InvalidArgument(

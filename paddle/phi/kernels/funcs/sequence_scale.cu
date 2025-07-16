@@ -38,7 +38,7 @@ __global__ void SequenceScaleKernel(T* seq,
 template <typename T>
 class ScaleDenseTensorFunctor<phi::GPUContext, T> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const T* scales,
                   phi::DenseTensor* seq) {
     const size_t level = 0;
@@ -46,7 +46,7 @@ class ScaleDenseTensorFunctor<phi::GPUContext, T> {
     const size_t num_seq = lod[level].size() - 1;
     const size_t seq_width = seq->numel() / seq->dims()[0];
     auto abs_offset_lod = phi::ToAbsOffset(lod);
-    T* seq_data = context.template Alloc<T>(seq);
+    T* seq_data = dev_ctx.template Alloc<T>(seq);
     phi::MixVector<size_t> mix_vector(&(abs_offset_lod[level]));
 
 #ifdef PADDLE_WITH_HIP
@@ -55,16 +55,16 @@ class ScaleDenseTensorFunctor<phi::GPUContext, T> {
         dim3(num_seq),
         dim3(PADDLE_CUDA_NUM_THREADS),
         0,
-        context.stream(),
+        dev_ctx.stream(),
         seq_data,
-        mix_vector.CUDAMutableData(context.GetPlace()),
+        mix_vector.CUDAMutableData(dev_ctx.GetPlace()),
         scales,
         seq_width);
 #else
     SequenceScaleKernel<T, PADDLE_CUDA_NUM_THREADS>
-        <<<num_seq, PADDLE_CUDA_NUM_THREADS, 0, context.stream()>>>(
+        <<<num_seq, PADDLE_CUDA_NUM_THREADS, 0, dev_ctx.stream()>>>(
             seq_data,
-            mix_vector.CUDAMutableData(context.GetPlace()),
+            mix_vector.CUDAMutableData(dev_ctx.GetPlace()),
             scales,
             seq_width);
 #endif

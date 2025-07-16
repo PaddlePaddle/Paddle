@@ -1483,24 +1483,43 @@ class _ShardOptimizer(Optimizer):
             param_and_grad = (param_and_grad[0], grad)
         self._inner_opt._append_optimize_op(block, param_and_grad)
         if self.enable_sharding_overlap:
-            # overlap all_gather with optimizer op
+            # overlap the first param all_gather with optimizer pass
             if hasattr(param_and_grad[0], 'last_idx'):
                 idx = param_and_grad[0].last_idx
-                shard_size = (
-                    self.param_storage[idx]._numel()
-                    // self._sharding_group.nranks
-                )
-                begin = shard_size * max(self._sharding_group.rank, 0)
-                end = begin + shard_size
-                slice_buffer = paddle._C_ops.view_slice(
-                    self.param_storage[idx], begin, end
-                )
-                task = paddle.distributed.all_gather(
-                    self.param_storage[idx],
-                    slice_buffer,
-                    group=self._sharding_group,
-                    sync_op=False,
-                )
+                if param_and_grad[0].last_idx == 0:
+                    shard_size = (
+                        self.param_storage[idx]._numel()
+                        // self._sharding_group.nranks
+                    )
+                    begin = shard_size * max(self._sharding_group.rank, 0)
+                    end = begin + shard_size
+                    slice_buffer = paddle._C_ops.view_slice(
+                        self.param_storage[idx], begin, end
+                    )
+                    task = paddle.distributed.all_gather(
+                        self.param_storage[idx],
+                        slice_buffer,
+                        group=self._sharding_group,
+                        sync_op=False,
+                    )
+                    self.param_storage[idx].is_sync = True
+                else:
+                    self.param_storage[idx].is_sync = False
+
+    def _enable_tensor_fusion(self):
+        # TODO: enable after clear FLAGS_enable_tensor_fusion
+        # self.enable_tensor_fusion = True
+        pass
+
+    def _enable_sharding_overlap(self, layers):
+        if hasattr(layers, 'config') and layers.config.get("to_static", False):
+            return
+        # self.enable_sharding_overlap = True
+        if not isinstance(layers, paddle.nn.Layer):
+            raise RuntimeError(
+                f"`layers` must be `paddle.nn.Layer` but got {type(layers)}"
+            )
+        self._layers = layers
 
     def _reduce_scatter_gradients(self, grad_storage):
         shard_size = grad_storage._numel() // self._sharding_group.nranks
@@ -1515,13 +1534,24 @@ class _ShardOptimizer(Optimizer):
             sync_op=False,
         ).wait()
 
-    def _async_reduce_scatter(self):
+    def _async_sharding_comm(self):
+        if not self._layers:
+            raise RuntimeError(
+                "Sharding overlap requires an initialized model. "
+                "Call `_enable_sharding_overlap()` to set model."
+            )
+        param2layer = {}
+        for layer in self._layers.sublayers():
+            for p in layer.parameters(include_sublayers=False):
+                param2layer[id(p)] = layer
+
         for i in range(len(self.fuse_param_view)):
             self._reduce_scatter_gradients(self.grad_storage[i])
 
             def fuse_comm_hook_func(param_group_len, grad_storage, comm_group):
                 @paddle.autograd.no_grad()
                 def fuse_comm(*_):
+                    # Ensures all gards in grad_storage have be checked in
                     grad_storage.check_in += 1
                     if grad_storage.check_in == param_group_len:
                         shard_size = grad_storage._numel() // comm_group.nranks
@@ -1541,6 +1571,28 @@ class _ShardOptimizer(Optimizer):
 
                 return fuse_comm
 
+            def fuse_all_gather_hook_func(param_storage, comm_group):
+                @paddle.autograd.no_grad()
+                def fuse_comm(*_):
+                    # Ensures all_gather param just once per nosync param_storage
+                    if not param_storage.is_sync:
+                        shard_size = param_storage._numel() // comm_group.nranks
+                        begin = shard_size * max(comm_group.rank, 0)
+                        end = begin + shard_size
+                        slice_buffer = paddle._C_ops.view_slice(
+                            param_storage, begin, end
+                        )
+                        task = paddle.distributed.all_gather(
+                            param_storage,
+                            slice_buffer,
+                            group=comm_group,
+                            sync_op=False,
+                        )
+                        param_storage.is_sync = True
+
+                return fuse_comm
+
+            # Register reduce_scatter hooks on all parameters in this group
             param_group_len = (
                 len(self.fuse_param_view[i]) * self.gradient_accumulation_steps
             )
@@ -1553,6 +1605,20 @@ class _ShardOptimizer(Optimizer):
                     fuse_comm_hook_func(
                         param_group_len,
                         self.grad_storage[i],
+                        self._sharding_group,
+                    )
+                )
+
+            # Register all_gather hooks for next chuck's parameters
+            # (Uses i+1 because we need to prefetch parameters for next layer)
+            if i < len(self.fuse_param_view) - 1:
+                first_param = next(iter(self.fuse_param_view[i].values()))[
+                    'param'
+                ]
+                layer = param2layer.get(id(first_param))
+                layer.register_forward_pre_hook(
+                    fuse_all_gather_hook_func(
+                        self.param_storage[i + 1],
                         self._sharding_group,
                     )
                 )
@@ -1571,19 +1637,24 @@ class _ShardOptimizer(Optimizer):
             )
             return ((size + align_size - 1) // align_size) * align_size
 
+        # Calculate total buffer size needed (with padding)
         total_buffer_size = 0
         param2index = {}
         for param, _ in params_and_grads:
             param2index[param.name] = total_buffer_size
             total_buffer_size += get_padded_size(param)
+
+        # Create fused buffers
         param_buffer = paddle.zeros(
             shape=[total_buffer_size], dtype=params_and_grads[0][0].dtype
         )
+        param_buffer.is_sync = False
         grad_dtype = paddle.float32
         grad_buffer = paddle.zeros(shape=[total_buffer_size], dtype=grad_dtype)
         grad_buffer.check_in = 0
         grad_buffer.comm_task = None
 
+        # Create views into the fused buffers
         views = {}
         for param, grad in params_and_grads:
             padded_size = get_padded_size(param)
@@ -1637,13 +1708,29 @@ class _ShardOptimizer(Optimizer):
                 grad.placements,
             )
             param.main_grad = tmp_grad
+
+            # Clean up original gradient storage
             grad.get_tensor()._clear()
             paddle.device.cuda.empty_cache()
 
         return (views, param_buffer, grad_buffer)
 
     def _tensor_fusion(self, params_grads):
+        """
+        1. Tensor Fusion
+            - Groups params/grads into contiguous param_storage/grad_storage buffers
+            - Supports non-uniform partitioning across GPUs
+            - Uses view_slice to access individual params/grads each step
+        2. Reduce_scatter Overlap
+            - Overlaps grad reduce_scatter with backward
+        3. All_gather Overlap
+            - Overlaps param all_gather with forward
+            - Strategically scatters all_gather during forward
+            (Launching all all_gather at once blocks overlap with other sync/comm ops)
+        """
         if self.do_tensor_fusion_once:
+            # Execute only once during first step
+            # Groups params/grads and registers hooks for comm overlap
             mesh = dist.auto_parallel.get_mesh()
             shard_groups = get_mesh_comm_list(mesh, "dp")
             for group in shard_groups:
@@ -1692,8 +1779,11 @@ class _ShardOptimizer(Optimizer):
                 self.grad_storage.append(grad_storage)
 
             if self.enable_sharding_overlap:
-                self._async_reduce_scatter()
+                # overlap reduce_scatter with backward
+                # overlap all_gather with forward
+                self._async_sharding_comm()
 
+            # Configure gradient clipping for sharding
             if self._inner_opt._grad_clip is not None:
                 self._inner_opt._grad_clip.should_comm_on_shard_dim = True
                 self._inner_opt._grad_clip.sharding_group = self._sharding_group
@@ -1759,130 +1849,83 @@ class _ShardOptimizer(Optimizer):
 
         return new_params_grads
 
-    def _fused_comm_before_apply_optimize(self, flags, params_grads):
+    def _fused_comm_before_apply_optimize(self, params_grads):
         '''
-        In sharding dynamic mode, optimize grad clip on partial grads causes redundant allreduce.
-        Below are 2 methods to modify grad partial state by fusing comms before optimize:
-            1) fuse allreduce: Change all partial state in placements to replicate via `allreduce` comms,
-                e.g.
-                    a) sharding_axis = 0, tensor rank = 2,
-                       placements: [partial, shard(0), partial] -> [replicate, shard(0), replicate].
-
-            2) fuse reduce_scatter: Keep shard states in placements unchanged, transform others to `shard(dim)`
-               states via `reduce_scatter` comms if possible, or replicate states otherwise. In particular,
-               the `placement[sharding_axis]` should be `shard(0)` if possible.
-                e.g.
-                    a) sharding_axis = 0, tensor rank = 2,
-                       placements: [partial, partial, partial] -> [shard(0), shard(1), replicate]
-                    b) sharding_axis = 0, tensor rank = 2,
-                       placements: [partial, shard(0), partial ] -> [shard(1), shard(0), replicate]
+        In dynamic sharding mode, gradient clipping on partial gradients can trigger redundant allreduce
+        operations. Fused reduce_scatter optimizes this by marking mesh dimensions as shard in priority
+        order to reduce redundant synchronization:
+            1. Prioritize shard(0) for the specified sharding axis.
+            2. Sequentially mark other dimensions as shard(dim).
+            3. Default to replicate for non-shardable dimensions.
+            e.g.
+                a) sharding_axis = 0, tensor rank = 2,
+                    placements: [Partial(), Partial(), partial] -> [Shard(0), Shard(1), Repliacate()]
+                b) sharding_axis = 0, tensor rank = 2,
+                    placements: [Partial(), Shard(0), Partial() ] -> [Shard(1), Shard(0), Repliacate()]
         '''
         new_params_grads = []
 
-        if flags["fuse_allreduce"]:
-            for param, grad in params_grads:
-                new_grad = grad
-                new_placements = copy.deepcopy(grad.placements)
-                for mesh_axis, placement in enumerate(grad.placements):
-                    # 1. Convert all partial states to allreduce states.
-                    if placement.is_partial():
-                        new_placements[mesh_axis] = dist.Replicate()
+        # Get the first non-shard dim of tensor shape in ascending order.
+        # `shard_dims_set` records if dim is marked as shard in placement.
+        def get_first_can_shard_dim(tensor_shape, shard_dims_set):
+            for dim in range(len(tensor_shape)):
+                if dim not in shard_dims_set:
+                    return dim
+            return -1
 
-                if grad.placements != new_placements:
-                    # 2. Add allreduce comms via reshard API.
-                    new_grad = dist.reshard(
-                        grad, grad.process_mesh, new_placements
-                    )
-                new_params_grads.append((param, new_grad))
+        for param, grad in params_grads:
+            new_placements = copy.deepcopy(grad.placements)
+            new_grad = grad
+            tensor_shape = grad._local_shape
+            shard_dims_set = set()
 
-        elif flags["fuse_reducescatter"]:
-            # Get the first non-shard dim of tensor shape in ascending order.
-            # `shard_dims_set` records if dim is marked as shard in placement.
-            def get_first_can_shard_dim(tensor_shape, shard_dims_set):
-                for dim in range(len(tensor_shape)):
-                    if dim not in shard_dims_set:
-                        return dim
-                return -1
-
-            for param, grad in params_grads:
-                new_placements = copy.deepcopy(grad.placements)
-                new_grad = grad
-                tensor_shape = grad._local_shape
-                shard_dims_set = set()
-
-                # 1. `shard_dims_set` records dims marked as shard in placement.
-                for placement in grad.placements:
-                    if placement.is_shard():
-                        dim = placement.get_dim()
-                        shard_dims_set.add(dim)
-
-                # 2. Prioritize setting placement[sharding_axis] as shard (usually shard(0)), otherwise set as replicate.
-                dim = get_first_can_shard_dim(tensor_shape, shard_dims_set)
-                if dim != -1:
+            # 1. `shard_dims_set` records dims marked as shard in placement.
+            for placement in grad.placements:
+                if placement.is_shard():
+                    dim = placement.get_dim()
                     shard_dims_set.add(dim)
-                    new_placements[self._sharding_axis] = dist.Shard(dim)
-                else:
-                    new_placements[self._sharding_axis] = dist.Replicate()
 
-                for mesh_axis, placement in enumerate(grad.placements):
-                    if mesh_axis == self._sharding_axis:
-                        continue
-                    # 3. Keep shard states in placements unchanged.
-                    if placement.is_shard():
-                        continue
+            # 2. Prioritize setting placement[sharding_axis] as shard (usually shard(0)), otherwise set as replicate.
+            dim = get_first_can_shard_dim(tensor_shape, shard_dims_set)
+            new_placements[self._sharding_axis] = dist.Replicate()
+            if dim != -1:
+                shard_dims_set.add(dim)
+                new_placements[self._sharding_axis] = dist.Shard(dim)
+
+            for mesh_axis, placement in enumerate(grad.placements):
+                if mesh_axis == self._sharding_axis:
+                    continue
+                # 3. Keep shard states in placements unchanged.
+                if not placement.is_shard():
                     dim = get_first_can_shard_dim(tensor_shape, shard_dims_set)
+                    # 4. Default all tensor dims are in shard state, set remaining placements to replicate.
+                    new_placements[mesh_axis] = dist.Replicate()
                     if dim != -1:
-                        # 4. Turn other placements into shard state if possible.
+                        # 5. Turn other placements into shard state if possible.
                         shard_dims_set.add(dim)
                         new_placements[mesh_axis] = dist.Shard(dim)
-                    else:
-                        # 5. When all tensor dims are in shard state, set remaining placements to replicate.
-                        new_placements[mesh_axis] = dist.Replicate()
 
-                if grad.placements != new_placements:
-                    # 6. Add reduce_scatter comms via reshard API.
-                    new_grad = dist.reshard(
-                        grad, grad.process_mesh, new_placements
-                    )
+            if grad.placements != new_placements:
+                # 6. Add reduce_scatter comms via reshard API.
+                new_grad = dist.reshard(grad, grad.process_mesh, new_placements)
 
-                new_params_grads.append((param, new_grad))
-        else:
-            new_params_grads = params_grads
+            new_params_grads.append((param, new_grad))
+
         return new_params_grads
 
     def _apply_optimize(
         self, loss, startup_program, params_grads, param_group_idx=0
     ):
-        if self.enable_tensor_fusion:
-            params_grads = self._tensor_fusion(params_grads)
-        else:
-            # Fuse the communication of gradients prior to the optimization operation in the dynamic mode.
-            if paddle.in_dynamic_mode() and isinstance(
-                self._shard_fn, ShardingStage1
-            ):
-                # Get fuse optimization flag.
-                def get_env(flag_name):
-                    if os.getenv(flag_name) in ['True', 'true', '1']:
-                        return True
-                    return False
-
-                # TODO: This optimization hasn't been verified on a wide range of models. Currently,
-                # it's controlled by a flag switch and will be removed later.
-                fuse_allreduce_in_opt = get_env("FLAGS_fuse_allreduce_in_opt")
-                fuse_reducescatter_in_opt = get_env(
-                    "FLAGS_fuse_reducescatter_in_opt"
+        if paddle.in_dynamic_mode() and isinstance(
+            self._shard_fn, ShardingStage1
+        ):
+            if self.enable_tensor_fusion:
+                # tensor fusion fuse params/grads into large chunks, no need _fused_comm_before_apply_optimize.
+                params_grads = self._tensor_fusion(params_grads)
+            else:
+                params_grads = self._fused_comm_before_apply_optimize(
+                    params_grads
                 )
-                assert not (
-                    fuse_allreduce_in_opt and fuse_reducescatter_in_opt
-                ), "The `FLAGS_fuse_allreduce_in_opt` switch and the `FLAGS_fuse_reducescatter_in_opt` switch cannot be turned on simultaneously."
-
-                if fuse_allreduce_in_opt or fuse_reducescatter_in_opt:
-                    flags = {}
-                    flags["fuse_allreduce"] = fuse_allreduce_in_opt
-                    flags["fuse_reducescatter"] = fuse_reducescatter_in_opt
-                    params_grads = self._fused_comm_before_apply_optimize(
-                        flags, params_grads
-                    )
 
         return super()._apply_optimize(
             loss, startup_program, params_grads, param_group_idx

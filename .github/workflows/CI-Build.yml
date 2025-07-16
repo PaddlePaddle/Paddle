@@ -85,6 +85,15 @@ jobs:
       can-skip: ${{ needs.build.outputs.can-skip }}
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
 
+  doc-preview:
+    name: Doc-Preview
+    uses: ./.github/workflows/_Doc-Preview.yml
+    needs: [build-docker, build]
+    with:
+      can-skip: ${{ needs.build.outputs.can-skip }}
+      docker_doc_image: ${{ needs.build-docker.outputs.docker_doc_image }}
+
+
   slice:
     name: Slice
     uses: ./.github/workflows/_Slice.yml

@@ -71,6 +71,18 @@ class XPUTestElementwiseModOp(XPUOpTestWrapper):
                 place = paddle.XPUPlace(0)
                 self.check_output_with_place(place)
 
+    class ElementwiseModOpZeroSize(ElementwiseModOp):
+        def init_input_output(self):
+            self.x = np.random.uniform(0, 10000, [0, 10]).astype(self.dtype)
+            self.y = np.random.uniform(0, 1000, [0, 10]).astype(self.dtype)
+            self.out = np.mod(self.x, self.y)
+            self.inputs = {
+                'X': OpTest.np_dtype_to_base_dtype(self.x),
+                'Y': OpTest.np_dtype_to_base_dtype(self.y),
+            }
+            self.outputs = {'Out': self.out}
+            self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+
     class TestRemainderOp(unittest.TestCase):
         def test_dygraph(self):
             with base.dygraph.guard():

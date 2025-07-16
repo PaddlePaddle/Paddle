@@ -28,6 +28,10 @@ extern "C" void dgetrf_(
     int *m, int *n, double *a, int *lda, int *ipiv, int *info);
 extern "C" void sgetrf_(
     int *m, int *n, float *a, int *lda, int *ipiv, int *info);
+extern "C" void cgetrf_(
+    int *m, int *n, std::complex<float> *a, int *lda, int *ipiv, int *info);
+extern "C" void zgetrf_(
+    int *m, int *n, std::complex<double> *a, int *lda, int *ipiv, int *info);
 
 // getrs_
 extern "C" void sgetrs_(char *trans,
@@ -388,6 +392,8 @@ extern void *lapack_dso_handle;
 #define LAPACK_ROUTINE_EACH(__macro) \
   __macro(dgetrf_);                  \
   __macro(sgetrf_);                  \
+  __macro(cgetrf_);                  \
+  __macro(zgetrf_);                  \
   __macro(sgetrs_);                  \
   __macro(dgetrs_);                  \
   __macro(zheevd_);                  \

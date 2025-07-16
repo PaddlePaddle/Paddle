@@ -34,6 +34,12 @@ void LUKernel(const Context& dev_ctx,
                         "lu without pivoting is not implemented on the CPU, "
                         "but got pivots=False"));
 
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<int>(infos);
+    dev_ctx.template Alloc<int>(pivots);
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   *out = Transpose2DTo6D<Context, T>(dev_ctx, x);
 
   auto outdims = out->dims();
@@ -70,7 +76,14 @@ void LUKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(lu, CPU, ALL_LAYOUT, phi::LUKernel, float, double) {
+PD_REGISTER_KERNEL(lu,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::LUKernel,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
   kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
 }

@@ -36,7 +36,7 @@ class TestScaleOpBF16(OpTest):
         self.scale = -2.3
         self.inputs = {'X': self.x_bf16}
         self.attrs = {'scale': self.scale, 'use_mkldnn': True, 'bias': 0.4}
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.outputs = {
             'Out': (self.x_fp32 * self.attrs['scale']) + self.attrs['bias']
         }
@@ -82,7 +82,7 @@ class TestScaleOpBF16BiasNotAfterScale(TestScaleOpBF16):
             'bias': 0.0,
             'bias_after_scale': False,
         }
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.outputs = {
             'Out': (self.x_fp32 + self.attrs['bias']) * self.attrs['scale']
         }

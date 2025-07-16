@@ -202,7 +202,7 @@ def embedding(
 
     Args:
         x(Tensor): A Tensor with type int32/int64, which contains the id information. The value of the input id should
-            satisfy :math:`0<= id < weight.shape[0]` .
+            satisfy :math:`0 <= id < weight.shape[0]` .
         weight (Tensor): The weight. A Tensor with shape of lookup table parameter. It should have two elements which
             indicates the size of the dictionary of embeddings and the size of each embedding vector respectively.
         sparse(bool, optional): The flag indicating whether to use sparse update. This parameter only
@@ -278,12 +278,14 @@ def embedding(
         )
     )
 
-    if padding_idx >= weight.shape[0] or padding_idx < -weight.shape[0]:
+    if weight.shape[0] != 0 and (
+        padding_idx >= weight.shape[0] or padding_idx < -weight.shape[0]
+    ):
         raise ValueError(
             f"padding_idx must be within [-{weight.shape[0]}, {weight.shape[0]})"
         )
 
-    if max_norm:
+    if max_norm and weight.size != 0:
         weight = embedding_renorm_(
             x, weight, max_norm=max_norm, norm_type=norm_type
         )
