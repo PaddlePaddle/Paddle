@@ -428,46 +428,39 @@ class TestTakeAlongAxisAPICase4(unittest.TestCase):
             _ = static_f(x, ind, axis=0, broadcast=False)
 
 
-class TestTakeAlongAxisAPICase_ZeroSize(unittest.TestCase):
+class TestTakeAlongAxis_ZeroSize(OpTest):
     def setUp(self):
-        np.random.seed(0)
-        self.shape = [3, 0]
-        self.axis = 0
-        dim_size = self.shape[self.axis]
-        self.index_np = np.random.randint(
-            -dim_size, dim_size, size=(3, 0)
-        ).astype('int64')
-        self.x_np = np.random.random(self.shape).astype(np.float32)
-        self.place = get_places()
+        self.python_api = paddle.take_along_axis
+        self.op_type = "take_along_axis"
+        self.dtype = "float64"
+        self.check_pir = True
 
-    def test_api_dygraph(self):
-        paddle.disable_static(self.place[0])
-        x_tensor = paddle.to_tensor(self.x_np)
-        self.index = paddle.to_tensor(self.index_np)
-        out = paddle.take_along_axis(x_tensor, self.index, self.axis, False)
-        loss = out.sum()
-        loss.backward()
-        paddle.enable_static()
+        x = np.zeros((2, 0, 5)).astype(self.dtype)
+        indices = np.zeros((2, 3, 5)).astype("int64")
 
-    def test_static_shape_take_along_axis(self):
-        with dygraph_guard():
+        self.inputs = {'Input': x, 'Index': indices}
+        self.attrs = {'Axis': 1}
 
-            x = paddle.randn([4, 0])
-            ind = paddle.to_tensor([[]])
+        output = np.zeros((2, 3, 5)).astype(self.dtype)
+        self.outputs = {'Result': output}
 
-            static_f = paddle.jit.to_static(
-                paddle.take_along_axis,
-                input_spec=[
-                    paddle.static.InputSpec(
-                        shape=[-1, -1], dtype="float32", name="arr"
-                    ),
-                    paddle.static.InputSpec(
-                        shape=[-1, 0], dtype="int64", name="indices"
-                    ),
-                ],
-                full_graph=True,
+    def test_check_output(self):
+        self.check_output_with_place(
+            paddle.CPUPlace(), check_pir=self.check_pir
+        )
+        if core.is_compiled_with_cuda():
+            self.check_output_with_place(
+                core.CUDAPlace(0), check_pir=self.check_pir
             )
-            _ = static_f(x, ind, axis=-1, broadcast=False)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            paddle.CPUPlace(), ['Input'], 'Result', check_pir=self.check_pir
+        )
+        if core.is_compiled_with_cuda():
+            self.check_grad_with_place(
+                core.CUDAPlace(0), ['Input'], 'Result', check_pir=self.check_pir
+            )
 
 
 if __name__ == "__main__":
