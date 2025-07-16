@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from mkldnn_op_test import format_reorder
+from onednn_op_test import format_reorder
 from op_test import OpTest
 
 from paddle.base import core

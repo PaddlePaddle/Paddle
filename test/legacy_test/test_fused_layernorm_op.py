@@ -1204,5 +1204,30 @@ class TestlayernormStaticOpCPU(unittest.TestCase):
         )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
+    "core is not compiled with CUDA or ROCM",
+)
+class TestlayernormOp_ZeroSize(TestlayernormOp):
+    def setUp(self):
+        np.random.seed(20)
+        # 0-size
+        batch = 0
+        cols = 256
+
+        self.x_np = np.random.uniform(-0.05, 0.05, [batch, cols])
+        self.residual_np = np.random.uniform(-0.05, 0.05, [batch, cols])
+        self.bias_np = np.random.uniform(-0.05, 0.05, [cols])
+        self.norm_weight_np = np.random.uniform(-0.05, 0.05, [cols])
+        self.norm_bias_np = np.random.uniform(-0.05, 0.05, [cols])
+        self.epsilon = 1e-5
+        self.residual_alpha = np.random.uniform(low=0.1, high=1.1, size=[1])
+
+        self.quant_scale = 0.15
+        self.quant_round_type = 1
+        self.quant_max_bound = 127
+        self.quant_min_bound = -127
+
+
 if __name__ == "__main__":
     unittest.main()

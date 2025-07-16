@@ -17,24 +17,26 @@
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/infermeta/unary.h"
-#include "paddle/phi/kernels/impl/set_value_grad_kernel_impl.h"
-#include "paddle/phi/kernels/impl/set_value_kernel_impl.h"
+#include "paddle/phi/kernels/funcs/common_shape.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/impl/share_data_kernel_impl.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
+#include "paddle/phi/kernels/set_value_kernel.h"
+#include "paddle/phi/kernels/shape_kernel.h"
 #include "paddle/phi/kernels/strided_slice_kernel.h"
 
 namespace phi {
-
 template <typename T, typename Context>
-void SetValueGradKernelV2(const Context& dev_ctx,
-                          const DenseTensor& out_grad,
-                          const IntArray& starts,
-                          const IntArray& ends,
-                          const IntArray& steps,
-                          const std::vector<int64_t>& axes,
-                          const std::vector<int64_t>& decrease_axes,
-                          const std::vector<int64_t>& none_axes,
-                          DenseTensor* x_grad,
-                          DenseTensor* value_grad) {
+void SetValueGradKernel(const Context& dev_ctx,
+                        const DenseTensor& out_grad,
+                        const IntArray& starts,
+                        const IntArray& ends,
+                        const IntArray& steps,
+                        const std::vector<int64_t>& axes,
+                        const std::vector<int64_t>& decrease_axes,
+                        const std::vector<int64_t>& none_axes,
+                        DenseTensor* x_grad,
+                        DenseTensor* value_grad) {
   const int rank = out_grad.dims().size();
   std::vector<int64_t> starts_local = starts.GetData();
   std::vector<int64_t> ends_local = ends.GetData();
@@ -75,17 +77,17 @@ void SetValueGradKernelV2(const Context& dev_ctx,
 
   if (x_grad) {
     Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
-    SetValueKernelV2<T, Context>(dev_ctx,
-                                 *x_grad,
-                                 starts,
-                                 ends,
-                                 steps,
-                                 axes,
-                                 decrease_axes,
-                                 none_axes,
-                                 {1},
-                                 std::vector<Scalar>({Scalar(0)}),
-                                 x_grad);
+    SetValueKernel<T, Context>(dev_ctx,
+                               *x_grad,
+                               starts,
+                               ends,
+                               steps,
+                               axes,
+                               decrease_axes,
+                               none_axes,
+                               {1},
+                               std::vector<Scalar>({Scalar(0)}),
+                               x_grad);
   }
 
   if (value_grad) {
@@ -146,32 +148,32 @@ void SetValueGradKernelV2(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void SetValueWithScalarGradKernelV2(const Context& dev_ctx,
-                                    const DenseTensor& out_grad,
-                                    const IntArray& starts,
-                                    const IntArray& ends,
-                                    const IntArray& steps,
-                                    const std::vector<int64_t>& axes,
-                                    const std::vector<int64_t>& decrease_axes,
-                                    const std::vector<int64_t>& none_axes,
-                                    DenseTensor* x_grad) {
-  SetValueGradKernelV2<T, Context>(dev_ctx,
-                                   out_grad,
-                                   starts,
-                                   ends,
-                                   steps,
-                                   axes,
-                                   decrease_axes,
-                                   none_axes,
-                                   x_grad,
-                                   nullptr);
+void SetValueWithScalarGradKernel(const Context& dev_ctx,
+                                  const DenseTensor& out_grad,
+                                  const IntArray& starts,
+                                  const IntArray& ends,
+                                  const IntArray& steps,
+                                  const std::vector<int64_t>& axes,
+                                  const std::vector<int64_t>& decrease_axes,
+                                  const std::vector<int64_t>& none_axes,
+                                  DenseTensor* x_grad) {
+  SetValueGradKernel<T, Context>(dev_ctx,
+                                 out_grad,
+                                 starts,
+                                 ends,
+                                 steps,
+                                 axes,
+                                 decrease_axes,
+                                 none_axes,
+                                 x_grad,
+                                 nullptr);
 }
 
 }  // namespace phi
 PD_REGISTER_KERNEL(set_value_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::SetValueGradKernelV2,
+                   phi::SetValueGradKernel,
                    float,
                    double,
                    int,
@@ -188,7 +190,7 @@ PD_REGISTER_KERNEL(set_value_grad,
 PD_REGISTER_KERNEL(set_value_with_scalar_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::SetValueWithScalarGradKernelV2,
+                   phi::SetValueWithScalarGradKernel,
                    float,
                    double,
                    int,

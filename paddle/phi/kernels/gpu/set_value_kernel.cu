@@ -27,21 +27,20 @@
 #include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
-#include "paddle/phi/kernels/impl/set_value_kernel_impl.h"
 #include "paddle/phi/kernels/strided_copy_kernel.h"
 namespace phi {
 
 template <typename T, typename Context>
-void SetTensorValueKernelV2(const Context& dev_ctx,
-                            const DenseTensor& in,
-                            const DenseTensor& value,
-                            const IntArray& starts,
-                            const IntArray& ends,
-                            const IntArray& steps,
-                            const std::vector<int64_t>& axes,
-                            const std::vector<int64_t>& decrease_axes,
-                            const std::vector<int64_t>& none_axes,
-                            DenseTensor* out) {
+void SetTensorValueKernel(const Context& dev_ctx,
+                          const DenseTensor& in,
+                          const DenseTensor& value,
+                          const IntArray& starts,
+                          const IntArray& ends,
+                          const IntArray& steps,
+                          const std::vector<int64_t>& axes,
+                          const std::vector<int64_t>& decrease_axes,
+                          const std::vector<int64_t>& none_axes,
+                          DenseTensor* out) {
   if (in.numel() == 0) {
     dev_ctx.template Alloc<T>(out);
     return;
@@ -139,17 +138,17 @@ void SetTensorValueKernelV2(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void SetValueKernelV2(const Context& dev_ctx,
-                      const DenseTensor& in,
-                      const IntArray& starts,
-                      const IntArray& ends,
-                      const IntArray& steps,
-                      const std::vector<int64_t>& axes,
-                      const std::vector<int64_t>& decrease_axes,
-                      const std::vector<int64_t>& none_axes,
-                      const std::vector<int64_t>& shape,
-                      const std::vector<Scalar>& values,
-                      DenseTensor* out) {
+void SetValueKernel(const Context& dev_ctx,
+                    const DenseTensor& in,
+                    const IntArray& starts,
+                    const IntArray& ends,
+                    const IntArray& steps,
+                    const std::vector<int64_t>& axes,
+                    const std::vector<int64_t>& decrease_axes,
+                    const std::vector<int64_t>& none_axes,
+                    const std::vector<int64_t>& shape,
+                    const std::vector<Scalar>& values,
+                    DenseTensor* out) {
   std::vector<T> assign_values;
   assign_values.reserve(values.size());
   for (const auto& val : values) {
@@ -176,16 +175,16 @@ void SetValueKernelV2(const Context& dev_ctx,
   DenseTensor value_tensor = Empty<T>(dev_ctx, shape);
   phi::TensorFromVector(assign_values, dev_ctx, &value_tensor);
   value_tensor.Resize(common::make_ddim(shape));
-  SetTensorValueKernelV2<T, Context>(dev_ctx,
-                                     in,
-                                     value_tensor,
-                                     starts,
-                                     ends,
-                                     steps,
-                                     axes,
-                                     decrease_axes,
-                                     none_axes,
-                                     out);
+  SetTensorValueKernel<T, Context>(dev_ctx,
+                                   in,
+                                   value_tensor,
+                                   starts,
+                                   ends,
+                                   steps,
+                                   axes,
+                                   decrease_axes,
+                                   none_axes,
+                                   out);
 }
 
 }  // namespace phi
@@ -193,7 +192,7 @@ void SetValueKernelV2(const Context& dev_ctx,
 PD_REGISTER_KERNEL(set_value,
                    GPU,
                    ALL_LAYOUT,
-                   phi::SetValueKernelV2,
+                   phi::SetValueKernel,
                    float,
                    double,
                    int,
@@ -209,7 +208,7 @@ PD_REGISTER_KERNEL(set_value,
 PD_REGISTER_KERNEL(set_value_with_tensor,
                    GPU,
                    ALL_LAYOUT,
-                   phi::SetTensorValueKernelV2,
+                   phi::SetTensorValueKernel,
                    float,
                    double,
                    int,

@@ -25,7 +25,7 @@ def __assert_close(test_case, tensor, np_array, msg, atol=1e-4):
     )
 
 
-def check_if_mkldnn_primitives_exist_in_bwd(
+def check_if_onednn_primitives_exist_in_bwd(
     test_case, op_type, x, out, out_grad, x_grad
 ):
     place = core.CPUPlace()
@@ -79,7 +79,7 @@ def check_if_mkldnn_primitives_exist_in_bwd(
             __assert_close(test_case, x_grad, out[0], 'x@GRAD')
 
 
-def check_if_mkldnn_batchnorm_primitives_exist_in_bwd(
+def check_if_onednn_batchnorm_primitives_exist_in_bwd(
     test_case, var_dict, place, shape, data_layout
 ):
     var_names = [

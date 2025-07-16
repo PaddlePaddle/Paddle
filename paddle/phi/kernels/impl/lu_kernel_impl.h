@@ -18,6 +18,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
@@ -26,8 +27,6 @@
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 #include "paddle/phi/kernels/funcs/tril_triu_compute.h"
-#include "paddle/phi/kernels/impl/set_value_kernel_impl.h"
-
 namespace phi {
 
 template <typename T>

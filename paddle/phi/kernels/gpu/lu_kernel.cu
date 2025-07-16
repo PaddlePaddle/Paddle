@@ -65,6 +65,30 @@ void cusolver_bufferSize<double>(const cusolverDnHandle_t& cusolverH,
 }
 
 template <>
+void cusolver_bufferSize<dtype::complex<float>>(
+    const cusolverDnHandle_t& cusolverH,
+    int m,
+    int n,
+    dtype::complex<float>* d_A,
+    int lda,
+    int* lwork) {
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnCgetrf_bufferSize(
+      cusolverH, m, n, reinterpret_cast<cuComplex*>(d_A), lda, lwork));
+}
+
+template <>
+void cusolver_bufferSize<dtype::complex<double>>(
+    const cusolverDnHandle_t& cusolverH,
+    int m,
+    int n,
+    dtype::complex<double>* d_A,
+    int lda,
+    int* lwork) {
+  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnZgetrf_bufferSize(
+      cusolverH, m, n, reinterpret_cast<cuDoubleComplex*>(d_A), lda, lwork));
+}
+
+template <>
 void cusolver_getrf<float>(const cusolverDnHandle_t& cusolverH,
                            int m,
                            int n,
@@ -88,6 +112,46 @@ void cusolver_getrf<double>(const cusolverDnHandle_t& cusolverH,
                             int* d_info) {
   PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnDgetrf(
       cusolverH, m, n, d_A, lda, d_work, d_Ipiv, d_info));
+}
+
+template <>
+void cusolver_getrf<dtype::complex<float>>(const cusolverDnHandle_t& cusolverH,
+                                           int m,
+                                           int n,
+                                           dtype::complex<float>* d_A,
+                                           int lda,
+                                           dtype::complex<float>* d_work,
+                                           int* d_Ipiv,
+                                           int* d_info) {
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      dynload::cusolverDnCgetrf(cusolverH,
+                                m,
+                                n,
+                                reinterpret_cast<cuComplex*>(d_A),
+                                lda,
+                                reinterpret_cast<cuComplex*>(d_work),
+                                d_Ipiv,
+                                d_info));
+}
+
+template <>
+void cusolver_getrf<dtype::complex<double>>(const cusolverDnHandle_t& cusolverH,
+                                            int m,
+                                            int n,
+                                            dtype::complex<double>* d_A,
+                                            int lda,
+                                            dtype::complex<double>* d_work,
+                                            int* d_Ipiv,
+                                            int* d_info) {
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      dynload::cusolverDnZgetrf(cusolverH,
+                                m,
+                                n,
+                                reinterpret_cast<cuDoubleComplex*>(d_A),
+                                lda,
+                                reinterpret_cast<cuDoubleComplex*>(d_work),
+                                d_Ipiv,
+                                d_info));
 }
 
 template <typename T, typename Context>
@@ -199,7 +263,9 @@ PD_REGISTER_KERNEL(lu,  // cuda_only
                    ALL_LAYOUT,
                    phi::LUKernel,
                    float,
-                   double) {
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
   kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
 }

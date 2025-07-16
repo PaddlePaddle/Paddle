@@ -60,6 +60,26 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
       input_y, nullptr, m, n, n, false};
   baidu::xpu::xblas::FcFusionTensor<XPUType> tensor_y{
       input_y, nullptr, m, n, n, false};
+  DenseTensor weight_scale_fp32;
+  if (weight_scale.dtype() != phi::DataType::FLOAT32 &&
+      weight_scale.dims().size() != 0) {
+    weight_scale_fp32.Resize(weight_scale.dims());
+    dev_ctx.template Alloc<float>(&weight_scale_fp32);
+    int r = baidu::xpu::api::cast<XPUType, float>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(weight_scale.data<T>()),
+        weight_scale_fp32.data<float>(),
+        weight_scale.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+  }
+  const float* weight_scale_ptr = nullptr;
+  if (weight_scale.dims().size() != 0) {
+    if (weight_scale.dtype() == phi::DataType::FLOAT32) {
+      weight_scale_ptr = weight_scale.data<float>();
+    } else {
+      weight_scale_ptr = weight_scale_fp32.data<float>();
+    }
+  }
   baidu::xpu::xblas::FcFusionEpilogue<float, float> epilogue{
       api::Activation_t::LINEAR,
       bias.is_initialized() ? (bias.get().dtype() == phi::DataType::FLOAT16
@@ -67,7 +87,7 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
                                    : bias.get().data<float>())
                             : nullptr,
       nullptr,
-      weight_scale.dims().size() != 0 ? weight_scale.data<float>() : nullptr,
+      weight_scale_ptr,
       0,
       1,
       nullptr};

@@ -48,7 +48,7 @@ void CopyDataByCondition(const T *x, T **y, int len, const Place &place) {
 template <typename T>
 class BeamSearchFunctor<phi::XPUContext, T> {
  public:
-  void operator()(const phi::XPUContext &context,
+  void operator()(const phi::XPUContext &dev_ctx,
                   const phi::DenseTensor *pre_ids,
                   const phi::DenseTensor *pre_scores,
                   const phi::DenseTensor *ids,
@@ -95,15 +95,15 @@ class BeamSearchFunctor<phi::XPUContext, T> {
     auto dims = common::make_ddim(
         std::vector<int64_t>({static_cast<int>(num_instances), 1}));
     selected_ids->Resize(dims);
-    auto *selected_ids_data = context.template HostAlloc<int64_t>(selected_ids);
+    auto *selected_ids_data = dev_ctx.template HostAlloc<int64_t>(selected_ids);
     selected_scores->Resize(dims);
     auto *selected_scores_data =
-        context.template HostAlloc<float>(selected_scores);
+        dev_ctx.template HostAlloc<float>(selected_scores);
     if (parent_idx != nullptr) {
       parent_idx->Resize({static_cast<int64_t>(num_instances)});
     }
     auto *parent_idx_data =
-        parent_idx ? context.template HostAlloc<int>(parent_idx) : nullptr;
+        parent_idx ? dev_ctx.template HostAlloc<int>(parent_idx) : nullptr;
 
     // fill in data
     std::vector<size_t> low_level;

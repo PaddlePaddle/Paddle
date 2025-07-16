@@ -43,14 +43,14 @@ class TestFusionGRUBF16ONEDNNOp(OpTest):
         self.D = 5
         self.is_reverse = False
         self.with_h0 = False
-        self.use_mkldnn = True
+        self.use_onednn = True
         self._cpu_only = True
         self.with_bias = True
         self.act_state = 'tanh'
         self.act_gate = 'sigmoid'
         self.origin_mode = False
-        self.use_mkldnn = True
-        self.mkldnn_data_type = "bfloat16"
+        self.use_onednn = True
+        self.onednn_data_type = "bfloat16"
         self.force_fp32_output = False
         self.weights_dtype = 'fp32'
         self.set_confs()
@@ -129,8 +129,8 @@ class TestFusionGRUBF16ONEDNNOp(OpTest):
             'is_reverse': self.is_reverse,
             'origin_mode': self.origin_mode,
             'force_fp32_output': self.force_fp32_output,
-            'use_mkldnn': self.use_mkldnn,
-            'mkldnn_data_type': self.mkldnn_data_type,
+            'use_mkldnn': self.use_onednn,
+            'mkldnn_data_type': self.onednn_data_type,
         }
 
 

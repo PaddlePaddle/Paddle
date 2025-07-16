@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 sys.path.append("../../mkldnn")
-from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
+from onednn_op_test import check_if_onednn_primitives_exist_in_bwd
 from op_test import OpTest, convert_float_to_uint16
 from test_activation_op import (
     TestAbs,
@@ -666,7 +666,7 @@ class TestONEDNNAbsPrimitivesAlreadyExist(unittest.TestCase):
 
     @compare_legacy_with_pt
     def test_check(self):
-        check_if_mkldnn_primitives_exist_in_bwd(
+        check_if_onednn_primitives_exist_in_bwd(
             self, self.op_type, self.x, self.out, self.out_grad, self.x_grad
         )
 
