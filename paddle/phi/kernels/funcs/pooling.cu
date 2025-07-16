@@ -494,10 +494,12 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
                  max_threads);
     int64_t blocks = std::min(max_threads / thread_num,
                               static_cast<int64_t>(output_channels));
+    auto max_grid_dim = backends::gpu::GetGpuMaxGridDimSize(
+        phi::backends::gpu::GetCurrentDeviceId());
     dim3 threads(thread_num, blocks, 1);
     dim3 grid(std::max((output_channels + blocks - 1) / blocks,
                        static_cast<int64_t>(1)),
-              std::min(batch_size, 65535),
+              std::min(batch_size, static_cast<int>(max_grid_dim[1])),
               1);
     AdaptiveKernelPool2D<PoolProcess, T, int>
         <<<grid, threads, 0, stream>>>(nthreads,
