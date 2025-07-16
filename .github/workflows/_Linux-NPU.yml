@@ -41,12 +41,24 @@ jobs:
     steps:
       - name: Download paddle.tar.gz and update test branch
         run: |
-          docker run -i --rm -v ${{ github.workspace }}:/paddle -w /paddle $docker_image /bin/bash -c 'rm -rf * .[^.]*'
+          docker run -i --rm \
+          -v ${{ github.workspace }}:/paddle \
+          -e PR_ID \
+          -e COMMIT_ID \
+          -e ci_scripts \
+          -e ci_scripts_runner \
+          -e work_dir \
+          -e PADDLE_ROOT \
+          -e TASK \
+          -e BRANCH \
+          -e CI_name \
+          -w /paddle $docker_image /bin/bash -c 'rm -rf * .[^.]*'
           source ~/.bashrc
           set -e
           echo "Downloading Paddle.tar.gz"
           wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
           echo "Extracting Paddle.tar.gz"
+          sleep 30m
           tar -xf Paddle.tar.gz --strip-components=1
           rm Paddle.tar.gz
           cd Paddle
