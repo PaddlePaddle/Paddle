@@ -2812,7 +2812,7 @@
   backward : index_elementwise_get_grad
 
 - op : index_elementwise_put
-  args : (Tensor x, Tensor[] index, Tensor value, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset)
+  args : (Tensor x, Tensor[] index, Scalar value, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset)
   output : Tensor (out)
   infer_meta :
     func : IndexElementwisePutInferMeta
@@ -2821,6 +2821,18 @@
     data_type : x
   inplace : (x -> out)
   backward : index_elementwise_put_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : index_elementwise_put_with_tensor
+  args : (Tensor x, Tensor[] index, Tensor value, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset)
+  output : Tensor (out)
+  infer_meta :
+    func : IndexElementwisePutWithTensorInferMeta
+  kernel :
+    func : index_elementwise_put_with_tensor
+    data_type : x
+  inplace : (x -> out)
+  backward : index_elementwise_put_with_tensor_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : index_put

@@ -2566,13 +2566,27 @@ void IndexAddInferMeta(const MetaTensor& x,
 
 void IndexElementwisePutInferMeta(const MetaTensor& x,
                                   const std::vector<const MetaTensor*>& index,
-                                  const MetaTensor& value,
+                                  const Scalar& value,
                                   const std::vector<int64_t>& input_dims,
                                   const std::vector<int64_t>& input_strides,
                                   const std::vector<int64_t>& index_dims,
                                   const std::vector<int64_t>& index_strides,
                                   const int64_t slice_offset,
                                   MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+}
+
+void IndexElementwisePutWithTensorInferMeta(
+    const MetaTensor& x,
+    const std::vector<const MetaTensor*>& index,
+    const MetaTensor& value,
+    const std::vector<int64_t>& input_dims,
+    const std::vector<int64_t>& input_strides,
+    const std::vector<int64_t>& index_dims,
+    const std::vector<int64_t>& index_strides,
+    const int64_t slice_offset,
+    MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(x.dtype());
 }
