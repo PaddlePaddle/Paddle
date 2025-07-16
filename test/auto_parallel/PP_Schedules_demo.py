@@ -439,7 +439,7 @@ class Test_Schedules:
         dataset = RandomDataset(image_size=8, output_size=8, num_samples=8)
         loader = DataLoader(dataset, batch_size=8)
         losses_by_step = []
-        num_iterations = 2
+        num_iterations = 20
         for iter_idx in range(num_iterations):
             losses_by_micro_batch = []
             for i, (data, label) in enumerate(loader):
