@@ -163,5 +163,44 @@ class TestCosineSimilarityAPI(unittest.TestCase):
         np.testing.assert_allclose(y.numpy(), np_out, rtol=1e-05)
 
 
+class TestCosineSimilarityAPI_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.places = get_places()
+
+    def _get_numpy_out(self, x1, x2, axis=1, eps=1e-8):
+        bs = np.broadcast_shapes([x1.shape[axis]], [x2.shape[axis]])
+        w12 = np.sum(x1 * x2, axis=axis)
+        w1 = np.sum(x1 * x1, axis=axis)
+        w2 = np.sum(x2 * x2, axis=axis)
+        m1, m2 = bs[0] / x1.shape[axis], bs[0] / x2.shape[axis]
+        if m1 != 1:
+            w1 = w1 * m1
+        if m2 != 1:
+            w2 = w2 * m2
+        n12 = np.sqrt(np.clip(w1 * w2, eps * eps, None))
+        cos_sim = w12 / n12
+        return cos_sim
+
+    def test_dygraph_1(self):
+        paddle.disable_static()
+
+        shape = [0, 15]
+        axis = 1
+        eps = 1e-8
+        np.random.seed(1)
+        np_x1 = np.random.rand(*shape).astype(np.float32)
+        np_x2 = np.random.rand(*shape).astype(np.float32)
+        np_out = self._get_numpy_out(np_x1, np_x2, axis=axis, eps=eps)
+
+        tensor_x1 = paddle.to_tensor(np_x1)
+        tensor_x1.stop_gradient = False
+        tensor_x2 = paddle.to_tensor(np_x2)
+        y = F.cosine_similarity(tensor_x1, tensor_x2, axis=axis, eps=eps)
+
+        np.testing.assert_allclose(y.numpy(), np_out, rtol=1e-05)
+        y.sum().backward()
+        np.testing.assert_allclose(tensor_x1.grad.shape, tensor_x1.shape)
+
+
 if __name__ == '__main__':
     unittest.main()
