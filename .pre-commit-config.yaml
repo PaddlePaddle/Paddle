@@ -154,7 +154,7 @@ repos:
           )$
   # For YAML files
   - repo: https://github.com/PFCCLab/yamlfmt-pre-commit-mirror.git
-    rev: v0.17.2
+    rev: v0.16.0
     hooks:
       - id: yamlfmt
         files: |
