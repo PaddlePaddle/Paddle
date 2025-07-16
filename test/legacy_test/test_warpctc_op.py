@@ -629,6 +629,7 @@ class TestWarpCTCOpError(unittest.TestCase):
             )
 
         paddle.disable_static()
+        self.assertRaises(ValueError, test_dygraph_with_lod)
         self.assertRaises(ValueError, test_dygraph_zero_size)
         paddle.enable_static()
 
