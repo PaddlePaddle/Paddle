@@ -1044,6 +1044,13 @@ void FusedLayerNormKernel(const Context& dev_ctx,
   }
 
   using U = phi::funcs::LayerNormParamType<T>;
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    if (residual_out) dev_ctx.template Alloc<T>(residual_out);
+    if (mean) dev_ctx.template Alloc<U>(mean);
+    if (variance) dev_ctx.template Alloc<U>(variance);
+    return;
+  }
   const T* x_data = x.data<T>();
   const U* norm_weight_data =
       norm_weight ? norm_weight.get().data<U>() : nullptr;

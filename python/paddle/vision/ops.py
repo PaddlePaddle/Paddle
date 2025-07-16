@@ -892,6 +892,17 @@ def deform_conv2d(
 
     use_deform_conv2d_v1 = True if mask is None else False
 
+    # cpu not support float16, need to convert dtype.
+    if paddle.device.get_device() == "cpu":
+        if offset.dtype == paddle.float16:
+            offset = offset.astype(x.dtype)
+        if weight.dtype == paddle.float16:
+            weight = weight.astype(x.dtype)
+        if bias is not None and bias.dtype == paddle.float16:
+            bias = bias.astype(x.dtype)
+        if mask is not None and mask.dtype == paddle.float16:
+            mask = mask.astype(x.dtype)
+
     if in_dynamic_or_pir_mode():
         pre_bias = _C_ops.deformable_conv(
             x,

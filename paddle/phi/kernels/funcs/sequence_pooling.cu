@@ -191,7 +191,7 @@ __global__ void sequence_pool_kernel(Range_OP op,
 template <typename T>
 class SequencePoolFunctor<phi::GPUContext, T> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const std::string pooltype,
                   T pad_value,
                   const phi::DenseTensor& input,
@@ -206,69 +206,69 @@ class SequencePoolFunctor<phi::GPUContext, T> {
     phi::MixVector<size_t> mix_vector(&lod);
     if (pooltype == "MAX") {
       sequence_pool_kernel<T, MaxPoolFunctor<T>>
-          <<<grid, threads, 0, context.stream()>>>(
+          <<<grid, threads, 0, dev_ctx.stream()>>>(
               MaxPoolFunctor<T>(),
               input.data<T>(),
               pad_value,
-              mix_vector.CUDAData(context.GetPlace()),
+              mix_vector.CUDAData(dev_ctx.GetPlace()),
               lod.size(),
               item_dim,
-              context.template Alloc<T>(output),
+              dev_ctx.template Alloc<T>(output),
               index->data<int>());
     } else if (pooltype == "AVERAGE") {
       sequence_pool_kernel<T, AvgPoolFunctor<T>>
-          <<<grid, threads, 0, context.stream()>>>(
+          <<<grid, threads, 0, dev_ctx.stream()>>>(
               AvgPoolFunctor<T>(),
               input.data<T>(),
               pad_value,
-              mix_vector.CUDAData(context.GetPlace()),
+              mix_vector.CUDAData(dev_ctx.GetPlace()),
               lod.size(),
               item_dim,
-              context.template Alloc<T>(output),
+              dev_ctx.template Alloc<T>(output),
               nullptr);
     } else if (pooltype == "SUM") {
       sequence_pool_kernel<T, SumPoolFunctor<T>>
-          <<<grid, threads, 0, context.stream()>>>(
+          <<<grid, threads, 0, dev_ctx.stream()>>>(
               SumPoolFunctor<T>(),
               input.data<T>(),
               pad_value,
-              mix_vector.CUDAData(context.GetPlace()),
+              mix_vector.CUDAData(dev_ctx.GetPlace()),
               lod.size(),
               item_dim,
-              context.template Alloc<T>(output),
+              dev_ctx.template Alloc<T>(output),
               nullptr);
     } else if (pooltype == "SQRT") {
       sequence_pool_kernel<T, SqrtPoolFunctor<T>>
-          <<<grid, threads, 0, context.stream()>>>(
+          <<<grid, threads, 0, dev_ctx.stream()>>>(
               SqrtPoolFunctor<T>(),
               input.data<T>(),
               pad_value,
-              mix_vector.CUDAData(context.GetPlace()),
+              mix_vector.CUDAData(dev_ctx.GetPlace()),
               lod.size(),
               item_dim,
-              context.template Alloc<T>(output),
+              dev_ctx.template Alloc<T>(output),
               nullptr);
     } else if (pooltype == "LAST") {
       sequence_pool_kernel<T, LastPoolFunctor<T>>
-          <<<grid, threads, 0, context.stream()>>>(
+          <<<grid, threads, 0, dev_ctx.stream()>>>(
               LastPoolFunctor<T>(),
               input.data<T>(),
               pad_value,
-              mix_vector.CUDAData(context.GetPlace()),
+              mix_vector.CUDAData(dev_ctx.GetPlace()),
               lod.size(),
               item_dim,
-              context.template Alloc<T>(output),
+              dev_ctx.template Alloc<T>(output),
               nullptr);
     } else if (pooltype == "FIRST") {
       sequence_pool_kernel<T, FirstPoolFunctor<T>>
-          <<<grid, threads, 0, context.stream()>>>(
+          <<<grid, threads, 0, dev_ctx.stream()>>>(
               FirstPoolFunctor<T>(),
               input.data<T>(),
               pad_value,
-              mix_vector.CUDAData(context.GetPlace()),
+              mix_vector.CUDAData(dev_ctx.GetPlace()),
               lod.size(),
               item_dim,
-              context.template Alloc<T>(output),
+              dev_ctx.template Alloc<T>(output),
               nullptr);
     } else {
       PADDLE_THROW(errors::InvalidArgument(
@@ -410,7 +410,7 @@ __global__ void sequence_pool_grad_kernel(Range_OP op,
 template <typename T>
 class SequencePoolGradFunctor<phi::GPUContext, T> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const std::string pooltype,
                   const phi::DenseTensor& out_grad,
                   phi::DenseTensor* in_grad,
@@ -424,63 +424,63 @@ class SequencePoolGradFunctor<phi::GPUContext, T> {
     phi::MixVector<size_t> mix_vector(&lod);
     if (pooltype == "MAX") {
       sequence_pool_grad_kernel<T, MaxPoolGradFunctor<T>>
-          <<<grid, threads, 0, context.stream()>>>(
+          <<<grid, threads, 0, dev_ctx.stream()>>>(
               MaxPoolGradFunctor<T>(),
               out_grad.data<T>(),
-              mix_vector.CUDAData(context.GetPlace()),
+              mix_vector.CUDAData(dev_ctx.GetPlace()),
               lod.size(),
               item_dim,
-              context.template Alloc<T>(in_grad),
+              dev_ctx.template Alloc<T>(in_grad),
               index->data<int>());
     } else if (pooltype == "AVERAGE") {
       sequence_pool_grad_kernel<T, AvgPoolGradFunctor<T>>
-          <<<grid, threads, 0, context.stream()>>>(
+          <<<grid, threads, 0, dev_ctx.stream()>>>(
               AvgPoolGradFunctor<T>(),
               out_grad.data<T>(),
-              mix_vector.CUDAData(context.GetPlace()),
+              mix_vector.CUDAData(dev_ctx.GetPlace()),
               lod.size(),
               item_dim,
-              context.template Alloc<T>(in_grad),
+              dev_ctx.template Alloc<T>(in_grad),
               nullptr);
     } else if (pooltype == "SUM") {
       sequence_pool_grad_kernel<T, SumPoolGradFunctor<T>>
-          <<<grid, threads, 0, context.stream()>>>(
+          <<<grid, threads, 0, dev_ctx.stream()>>>(
               SumPoolGradFunctor<T>(),
               out_grad.data<T>(),
-              mix_vector.CUDAData(context.GetPlace()),
+              mix_vector.CUDAData(dev_ctx.GetPlace()),
               lod.size(),
               item_dim,
-              context.template Alloc<T>(in_grad),
+              dev_ctx.template Alloc<T>(in_grad),
               nullptr);
     } else if (pooltype == "SQRT") {
       sequence_pool_grad_kernel<T, SqrtPoolGradFunctor<T>>
-          <<<grid, threads, 0, context.stream()>>>(
+          <<<grid, threads, 0, dev_ctx.stream()>>>(
               SqrtPoolGradFunctor<T>(),
               out_grad.data<T>(),
-              mix_vector.CUDAData(context.GetPlace()),
+              mix_vector.CUDAData(dev_ctx.GetPlace()),
               lod.size(),
               item_dim,
-              context.template Alloc<T>(in_grad),
+              dev_ctx.template Alloc<T>(in_grad),
               nullptr);
     } else if (pooltype == "LAST") {
       sequence_pool_grad_kernel<T, LastPoolGradFunctor<T>>
-          <<<grid, threads, 0, context.stream()>>>(
+          <<<grid, threads, 0, dev_ctx.stream()>>>(
               LastPoolGradFunctor<T>(),
               out_grad.data<T>(),
-              mix_vector.CUDAData(context.GetPlace()),
+              mix_vector.CUDAData(dev_ctx.GetPlace()),
               lod.size(),
               item_dim,
-              context.template Alloc<T>(in_grad),
+              dev_ctx.template Alloc<T>(in_grad),
               nullptr);
     } else if (pooltype == "FIRST") {
       sequence_pool_grad_kernel<T, FirstPoolGradFunctor<T>>
-          <<<grid, threads, 0, context.stream()>>>(
+          <<<grid, threads, 0, dev_ctx.stream()>>>(
               FirstPoolGradFunctor<T>(),
               out_grad.data<T>(),
-              mix_vector.CUDAData(context.GetPlace()),
+              mix_vector.CUDAData(dev_ctx.GetPlace()),
               lod.size(),
               item_dim,
-              context.template Alloc<T>(in_grad),
+              dev_ctx.template Alloc<T>(in_grad),
               nullptr);
 
     } else {

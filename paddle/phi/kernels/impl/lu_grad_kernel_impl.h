@@ -31,7 +31,7 @@ void LUGradKernel(const Context& dev_ctx,
                   bool pivot UNUSED,
                   DenseTensor* x_grad) {
   dev_ctx.template Alloc<T>(x_grad);
-
+  if (x_grad->numel() == 0) return;
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
 
   auto xdims = x.dims();

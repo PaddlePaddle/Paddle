@@ -964,6 +964,79 @@ class TestSoftmaxWithCrossEntropyOpError(unittest.TestCase):
             self.assertRaises(ValueError, test_input_dims2)
 
 
+class TestSoftmaxWithCrossEntropyOp_ZeroSize(OpTest):
+    def initParams(self):
+        self.op_type = "softmax_with_cross_entropy"
+        self.__class__.op_type = "softmax_with_cross_entropy"
+        self.__class__.exist_fp64_check_grad = True
+        self.python_api = python_api
+        self.python_out_sig = ["Loss", "Softmax"]
+        self.numeric_stable_mode = False
+        self.soft_label = False
+        self.dtype = np.float32
+        self.axis = -1
+        self.ignore_index = -1
+        self.shape = [0, 10]
+        self.use_softmax = True
+
+    def hard_label_dtype(self):
+        return "int64"
+
+    def setUp(self):
+        self.initParams()
+
+        logits = getattr(
+            self,
+            "logits",
+            np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype),
+        )
+        if logits.size == 0:
+            softmax = logits
+        else:
+            softmax = np.apply_along_axis(stable_softmax, self.axis, logits)
+
+        if self.soft_label:
+            labels = np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype)
+            labels /= np.sum(labels, axis=self.axis, keepdims=True)
+        else:
+            axis_dim = self.shape[self.axis]
+            self.shape[self.axis] = 1
+            labels = np.random.randint(
+                0, axis_dim, self.shape, dtype=self.hard_label_dtype()
+            )
+
+        loss = cross_entropy(
+            softmax, labels, self.soft_label, self.axis, self.ignore_index
+        )
+
+        if not self.use_softmax:
+            self.inputs = {"Logits": softmax, "Label": labels}
+        else:
+            self.inputs = {"Logits": logits, "Label": labels}
+
+        self.outputs = {
+            "Softmax": softmax.astype(self.dtype),
+            "Loss": loss.astype(self.dtype),
+        }
+        self.attrs = {
+            "numeric_stable_mode": self.numeric_stable_mode,
+            "soft_label": self.soft_label,
+            "ignore_index": self.ignore_index,
+            "use_softmax": self.use_softmax,
+        }
+
+        if self.axis != -1:
+            self.attrs['axis'] = self.axis
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ["Logits"], "Loss", numeric_grad_delta=0.001, check_pir=True
+        )
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

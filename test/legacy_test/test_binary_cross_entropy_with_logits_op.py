@@ -84,5 +84,47 @@ class TestBinaryCrossEntropyWithLogits3(TestBinaryCrossEntropyWithLogits):
         self.pos_weight = None
 
 
+class TestBinaryCrossEntropyWithLogits_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.x = np.random.randn(0, 10).astype("float32")
+        self.y = np.random.randint(0, 2, (0, 10)).astype("float32")
+        self.logits = paddle.to_tensor(self.x)
+        self.labels = paddle.to_tensor(self.y)
+        self.weight = None
+        self.reduction = ["none", "mean", "sum"]
+        self.pos_weight = None
+
+    def test_binary_cross_entropy_with_logits(self):
+        for reduction in self.reduction:
+            dynamic_result = (
+                paddle.nn.functional.binary_cross_entropy_with_logits(
+                    self.logits,
+                    self.labels,
+                    weight=self.weight,
+                    reduction=reduction,
+                    pos_weight=self.pos_weight,
+                )
+            )
+            paddle.core._set_prim_all_enabled(True)
+            static_result = paddle.jit.to_static(
+                paddle.nn.functional.binary_cross_entropy_with_logits,
+                full_graph=True,
+            )(
+                self.logits,
+                self.labels,
+                weight=self.weight,
+                reduction=reduction,
+                pos_weight=self.pos_weight,
+            )
+            paddle.core._set_prim_all_enabled(False)
+            np.testing.assert_allclose(
+                dynamic_result.numpy(),
+                static_result.numpy(),
+                rtol=1e-4,
+                atol=1e-6,
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

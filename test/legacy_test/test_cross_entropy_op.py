@@ -468,5 +468,34 @@ class TestCrossEntropyOpError(unittest.TestCase):
             self.assertRaises(ValueError, test_input_dims)
 
 
+class TestCrossEntropyOp_ZeroSize(TestCrossEntropyOp):
+    def setUp(self):
+        self.op_type = "cross_entropy"
+        self.python_api = api_wrapper
+        self.soft_label = False
+        self.ignore_index = -100
+        self.dtype = np.float64
+        # 0-size
+        self.batch_size = 0
+        self.class_num = 10
+
+        self.init_dtype_type()
+        self.init_attr_type()
+        self.init_bs_class_num()
+        self.init_x()
+        self.init_label()
+        self.get_cross_entropy()
+
+        self.inputs = {"X": self.x, "Label": self.label}
+        self.outputs = {"Y": self.cross_entropy}
+        self.attrs = {
+            "soft_label": self.soft_label,
+            "ignore_index": self.ignore_index,
+        }
+
+    def get_cross_entropy(self):
+        self.cross_entropy = np.random.random([0, 1]).astype(np.float64)
+
+
 if __name__ == "__main__":
     unittest.main()

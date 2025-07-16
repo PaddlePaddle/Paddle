@@ -209,11 +209,19 @@ inline static void InferLabelShape(
   for (size_t i = 0; i < op_labels.size(); ++i) {
     auto& op_str = op_labels[i];
     auto& op_dim = inputs[i];
+    VLOG(5) << "i = " << i << " op_str " << op_str << " op_dim " << op_dim;
     int dim_ptr = 0;
     for (auto& c : op_str) {
       if (!labelshape->exist(c) || abs((*labelshape)[c]) == 1) {
-        (*labelshape)[c] = op_dim[dim_ptr];
+        VLOG(5)
+            << "if (!labelshape->exist(c) || abs((*labelshape)[c]) == 1) c = "
+            << c << " (*labelshape)[c] " << (*labelshape)[c]
+            << " op_dim[dim_ptr] " << op_dim[dim_ptr];
+        (*labelshape)[c] = static_cast<int>(op_dim[dim_ptr]);
       } else if (abs(op_dim[dim_ptr]) != 1) {
+        VLOG(5) << "if (abs(op_dim[dim_ptr]) != 1) c = " << c
+                << " (*labelshape)[c] " << (*labelshape)[c]
+                << " op_dim[dim_ptr] " << op_dim[dim_ptr];
         PADDLE_ENFORCE_EQ(
             (*labelshape)[c],
             op_dim[dim_ptr],

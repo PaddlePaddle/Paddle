@@ -147,6 +147,8 @@ class TestEinsum(unittest.TestCase):
             "I": np.random.rand(2, 2),
             "J": np.random.rand(1, 3, 5),
             "K": np.random.rand(1, 2, 3, 4),
+            "L": np.random.rand(2, 0, 13),
+            "M": np.random.rand(13),
         }
 
     def _get_place(self, force_to_use_cpu=False):
@@ -318,6 +320,42 @@ class TestEinsumTestEinsumOthers2(TestEinsum):
 class TestEinsumBatch1(TestEinsum):
     def setUp(self):
         self.sample = {"paradigm": "blq,bhlk->bhlqk", "data": ["J", "K"]}
+
+
+class TestEinsumZeroSizeTensor(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "...i, ...i", "data": ["L", "M"]}
+
+    def test_backward(self):
+        operands = [
+            TestEinsum.TEST_SAMPLES[operand] for operand in self.sample["data"]
+        ]
+        expected_result = np.einsum(self.sample["paradigm"], *operands)
+        equation = self.sample["paradigm"]
+
+        with paddle.base.dygraph.guard(self._get_place(force_to_use_cpu=False)):
+            pd_operands = [
+                paddle.to_tensor(operand, stop_gradient=False)
+                for operand in operands
+            ]
+            result = paddle.einsum(equation, *pd_operands)
+            self.check_output_equal(result.numpy(), expected_result)
+            loss = result.sum()
+            loss.backward()
+            for x in pd_operands:
+                np.testing.assert_allclose(x.grad.shape, x.shape)
+
+        with paddle.base.dygraph.guard(self._get_place(force_to_use_cpu=True)):
+            pd_operands = [
+                paddle.to_tensor(operand, stop_gradient=False)
+                for operand in operands
+            ]
+            result = paddle.einsum(equation, *pd_operands)
+            self.check_output_equal(result.numpy(), expected_result)
+            loss = result.sum()
+            loss.backward()
+            for x in pd_operands:
+                np.testing.assert_allclose(x.grad.shape, x.shape)
 
 
 class TestNumpyTests(unittest.TestCase):

@@ -59,7 +59,7 @@ def _reference_layer_norm_naive(x, scale, beta, epsilon, begin_norm_axis=1):
 
 class TestLayerNormONEDNNOp(unittest.TestCase):
     def setUp(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
 
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
         np.testing.assert_allclose(
