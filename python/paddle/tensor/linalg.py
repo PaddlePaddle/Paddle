@@ -5680,6 +5680,19 @@ def histogramdd(
             ranges
         ), f"The length of ranges list must be {D * 2}\n"
 
+    def __compute_flattened_index(index_list, hist_shape):
+        strides = []
+        acc = 1
+        for size in reversed(hist_shape):
+            strides.insert(0, acc)
+            acc *= size
+
+        flattened_index = paddle.zeros_like(index_list[0])
+        for idx, stride in zip(index_list, strides):
+            flattened_index += idx * stride
+
+        return flattened_index
+
     check_type(density, 'density', bool, 'histogramdd')
 
     __check_x(x)
@@ -5759,10 +5772,7 @@ def histogramdd(
             )
             index_list = paddle.static.setitem(index_list, i, index_list_i)
     index_list = tuple(index_list)
-    lut = paddle.arange(
-        paddle.to_tensor(hist_shape).prod(),
-    ).reshape(hist_shape)
-    flattened_index = lut[index_list]
+    flattened_index = __compute_flattened_index(index_list, hist_shape)
     hist = paddle.bincount(
         flattened_index,
         reshaped_weights,
