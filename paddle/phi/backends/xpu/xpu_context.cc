@@ -169,7 +169,7 @@ struct XPUContext::Impl {
                         errors::PreconditionNotMet(
                             "No ctx_guard when overload_free is called"));
       allocations_to_free_.pop_back();
-      VLOG(3) << "XHPC ctx_guard destropyed, " << GetStackLevel()
+      VLOG(3) << "XHPC ctx_guard destroyed, " << GetStackLevel()
               << " are in use now.";
     }
 

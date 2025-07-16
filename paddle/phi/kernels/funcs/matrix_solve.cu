@@ -143,7 +143,7 @@ void BatchedSolveLU(const phi::funcs::BlasT<Context, T>& blas,
 #endif
 
 template <typename Context, typename T>
-void MatrixSolveFunctor<Context, T>::operator()(const Context& context,
+void MatrixSolveFunctor<Context, T>::operator()(const Context& dev_ctx,
                                                 const DenseTensor& a,
                                                 const DenseTensor& b,
                                                 DenseTensor* out) {
@@ -170,17 +170,17 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& context,
   // 1. Copy input A to a temporary tensor tmp_a for LU factorization.
   DenseTensor tmp_a(a.dtype());
   tmp_a.Resize(a.dims());
-  context.template Alloc<T>(&tmp_a);
-  phi::Copy(context, a, context.GetPlace(), false, &tmp_a);
+  dev_ctx.template Alloc<T>(&tmp_a);
+  phi::Copy(dev_ctx, a, dev_ctx.GetPlace(), false, &tmp_a);
 
   // 2. Transpose B and save it in out, because cuBlas assumes column-major
   // while Paddle uses row-majar.
   const auto& new_b_dims = getNewDimsVec(b_dims);
   out->Resize(common::make_ddim(new_b_dims));
-  context.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   phi::funcs::TransposeNormal<Context, T> trans;
   std::vector<int> new_axis = getNewAxis(b_rank);
-  trans(context, b, out, new_axis);
+  trans(dev_ctx, b, out, new_axis);
 
   const T* a_data_in_gpu = tmp_a.data<T>();
   T* b_data_in_gpu = out->data<T>();
@@ -193,15 +193,15 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& context,
 
   // 3. Copy the addresses of A and B from host to device.
   phi::Allocator::AllocationPtr tmp_gpu_ptrs_data = phi::memory_utils::Alloc(
-      context.GetPlace(),
+      dev_ctx.GetPlace(),
       cpu_ptrs.size() * sizeof(T*),
-      phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
-  memory_utils::Copy(context.GetPlace(),
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  memory_utils::Copy(dev_ctx.GetPlace(),
                      tmp_gpu_ptrs_data->ptr(),
                      phi::CPUPlace(),
                      static_cast<void*>(cpu_ptrs.data()),
                      cpu_ptrs.size() * sizeof(T*),
-                     context.stream());
+                     dev_ctx.stream());
 
   T** gpu_tmp_b_ptrs =
       reinterpret_cast<T**>(tmp_gpu_ptrs_data->ptr()) + batch_size;
@@ -209,12 +209,12 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& context,
   // 4. Allocate device memory for BatchedGETRF's info and pivots.
   int64_t num_ints = batch_size * (n + 1);
   phi::Allocator::AllocationPtr tmp_gpu_info_data = phi::memory_utils::Alloc(
-      context.GetPlace(),
+      dev_ctx.GetPlace(),
       num_ints * sizeof(int),
-      phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   int* gpu_info_ptr = reinterpret_cast<int*>(tmp_gpu_info_data->ptr());
 
-  auto blas = phi::funcs::GetBlas<Context, T>(context);
+  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
 
   // only for singular checking
   std::vector<int> info;
@@ -234,10 +234,10 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& context,
   // check whether BatchedGETRF is executed successfully or not
   memory_utils::Copy(phi::CPUPlace(),
                      info.data(),
-                     context.GetPlace(),
+                     dev_ctx.GetPlace(),
                      gpu_info_ptr,
                      sizeof(int) * batch_size,
-                     context.stream());
+                     dev_ctx.stream());
   for (int i = 0; i < batch_size; ++i) {
     PADDLE_ENFORCE_EQ(info[i],
                       0,
@@ -270,30 +270,30 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& context,
   // 7. Transpose B back to row-major form.
   DenseTensor tmp_b(b.type());
   tmp_b.Resize(b_dims);
-  context.template Alloc<T>(&tmp_b);
+  dev_ctx.template Alloc<T>(&tmp_b);
   phi::funcs::TransposeNormal<Context, T> trans2;
-  trans2(context, *out, &tmp_b, new_axis);
+  trans2(dev_ctx, *out, &tmp_b, new_axis);
 
   // 8. Permute B according to pivots to get the final result.
   DenseTensor perm;
   perm.Resize({batch_size * n});
-  context.template Alloc<int>(&perm);
+  dev_ctx.template Alloc<int>(&perm);
 
   auto config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(context, batch_size * 32);
-  auto stream = context.stream();
+      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, batch_size * 32);
+  auto stream = dev_ctx.stream();
   UnpackPivot<<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
       gpu_pivot_ptr, perm.data<int>(), batch_size, n);
 
   // fuse dims 0...n-2 because scatter only supports one index dim
   tmp_b.Resize({batch_size * n, nrhs});
   out->Resize({batch_size * n, nrhs});
-  GPUScatterAssign<T>(context, tmp_b, perm, out);
+  GPUScatterAssign<T>(dev_ctx, tmp_b, perm, out);
   out->Resize(b_dims);
   // After: X = P^T @ L^T^-1 @ U^T^-1 @ B
 
 #else
-  compute_solve_eigen<Context, T>(context, a, b, out);
+  compute_solve_eigen<Context, T>(dev_ctx, a, b, out);
 #endif
 }
 

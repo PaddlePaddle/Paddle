@@ -24,7 +24,7 @@ template <typename DeviceContext, typename T>
 class SequencePoolFunctor {
  public:
   /* max pool has index output */
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const std::string pooltype,
                   T pad_value,
                   const phi::DenseTensor& input,
@@ -36,7 +36,7 @@ class SequencePoolFunctor {
 template <typename DeviceContext, typename T>
 class SequencePoolGradFunctor {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const std::string pooltype,
                   const phi::DenseTensor& out_grad,
                   phi::DenseTensor* in_grad,

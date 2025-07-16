@@ -371,5 +371,37 @@ class TestLocalResponseNormCAPI(unittest.TestCase):
                 np.testing.assert_array_equal(res[0].shape, input.shape)
 
 
+class TestLocalResponseNormAPI_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        self.places = get_places()
+
+    def check_dygraph(self, place):
+        with base.dygraph.guard(place):
+            in_np1 = np.random.random([0, 40, 40]).astype("float32")
+            in_np2 = np.transpose(in_np1, (0, 2, 1))
+
+            in1 = paddle.to_tensor(in_np1)
+            in1.stop_gradient = False
+            in2 = paddle.to_tensor(in_np2)
+
+            res1 = paddle.nn.functional.local_response_norm(
+                x=in1, size=5, data_format='NCL'
+            )
+            res2 = paddle.nn.functional.local_response_norm(
+                x=in2, size=5, data_format='NLC'
+            )
+
+            res2_tran = np.transpose(res2.numpy(), (0, 2, 1))
+            np.testing.assert_allclose(res1.numpy(), res2_tran, rtol=1e-05)
+
+            res1.sum().backward()
+            np.testing.assert_allclose(in1.grad.shape, in1.shape)
+
+    def test_dygraph(self):
+        for place in self.places:
+            self.check_dygraph(place)
+
+
 if __name__ == "__main__":
     unittest.main()

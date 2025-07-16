@@ -18,6 +18,7 @@
 
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/tile_grad_kernel.h"
@@ -85,6 +86,12 @@ void TileGradKernel(const Context& dev_ctx,
                     const DenseTensor& out_grad,
                     const IntArray& repeat_times,
                     DenseTensor* x_grad) {
+  // x_grad->numel() may be not 0.
+  if (out_grad.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    return;
+  }
   auto x_dims = x.dims();
   auto vec_x_dims = common::vectorize<int64_t>(x_dims);
   auto repeat_times_data = repeat_times.GetData();

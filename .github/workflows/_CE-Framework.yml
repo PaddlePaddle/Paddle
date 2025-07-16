@@ -35,16 +35,45 @@ jobs:
     env:
       TASK: paddle-CI-${{ github.event.pull_request.number }}-CE-Framework-whl
     steps:
-      - name: Download build.tar.gz
+      - name: Check docker image and run container
+        env:
+          CACHE_DIR: /home/data/cfs/.cache
         run: |
+          container_name=${TASK}-${core_index}-$(date +%Y%m%d-%H%M%S)
+          echo "container_name=${container_name}" >> ${{ github.env }}
+          docker_image=${{ inputs.docker_build_image }}
+          docker run -d -t --name ${container_name} \
+            -v "/home/data/cfs:/home/data/cfs" \
+            -v "/home/data/cfs/.cache:/root/.cache" \
+            -v "/home/data/cfs/.ccache:/root/.ccache" \
+            -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
+            -v ${{ github.workspace }}:/paddle \
+            -e BRANCH \
+            -e PR_ID \
+            -e COMMIT_ID \
+            -e work_dir \
+            -e PADDLE_ROOT \
+            -e ci_scripts \
+            -e no_proxy \
+            -e CI_name \
+            -e CACHE_DIR \
+            -e CFS_DIR \
+            -w /paddle --network host ${docker_image}
+
+      - name: Download Paddle and PaddleTest
+        env:
+          work_dir: ${{ github.workspace }}
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*
-          echo "Downloading build.tar.gz"
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+          echo "Downloading build.tar.gz from cfs"
+          cp ${CFS_DIR}/build_bos/${PR_ID}/${COMMIT_ID}/build.tar.gz .
           echo "Extracting build.tar.gz"
-          # git config --global --add safe.directory ${work_dir}
+          git config --global --add safe.directory ${work_dir}
           tar --use-compress-program="pzstd -1" -xpf build.tar.gz --strip-components=1
-          # git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
+          git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
           rm build.tar.gz
+          '
 
       - name: Check bypass
         id: check-bypass
@@ -59,12 +88,16 @@ jobs:
           PADDLE_ROOT: ${{ github.workspace }}
           GITHUB_TOKEN: ${{ github.token }}
         run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
           bash ci/check_whl_size.sh
+          '
 
       - name: Terminate and delete the container
         if: always()
         run: |
-          rm -rf * .[^.]*
+          set +e
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+          docker rm -f ${{ env.container_name }}
 
   infer:
     name: Infer
@@ -118,7 +151,7 @@ jobs:
           cd /
           cp /paddle/build/pr_whl/*.whl .
           echo "Downloading PaddleTest.tar.gz"
-          wget -q --no-proxy https://xly-devops.bj.bcebos.com/PaddleTest/PaddleTest.tar.gz --no-check-certificate
+          wget -q --tries=5 --no-proxy https://xly-devops.bj.bcebos.com/PaddleTest/PaddleTest.tar.gz --no-check-certificate
           echo "Extracting PaddleTest.tar.gz"
           tar -zvxf PaddleTest.tar.gz 1>/dev/null 2>&1
           '
@@ -217,7 +250,7 @@ jobs:
           cd /
           cp /paddle/build/pr_whl/*.whl .
           echo "Downloading PaddleTest.tar.gz"
-          wget -q --no-proxy https://xly-devops.bj.bcebos.com/PaddleTest/PaddleTest.tar.gz --no-check-certificate
+          wget -q --tries=5 --no-proxy https://xly-devops.bj.bcebos.com/PaddleTest/PaddleTest.tar.gz --no-check-certificate
           echo "Extracting PaddleTest.tar.gz"
           tar -zvxf PaddleTest.tar.gz 1>/dev/null 2>&1
           '

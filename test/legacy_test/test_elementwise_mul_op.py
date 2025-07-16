@@ -24,7 +24,7 @@ from paddle.base import core
 
 class ElementwiseMulOp(OpTest):
     def init_kernel_type(self):
-        self.use_mkldnn = False
+        self.use_onednn = False
 
     def setUp(self):
         self.op_type = "elementwise_mul"
@@ -44,13 +44,13 @@ class ElementwiseMulOp(OpTest):
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.outputs = {'Out': self.out}
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_onednn}
 
     def test_check_output(self):
         # TODO(wangzhongpu): support onednn op in dygraph mode
         self.check_output(
-            check_dygraph=(not self.use_mkldnn),
-            check_pir=(not self.use_mkldnn),
+            check_dygraph=(not self.use_onednn),
+            check_pir=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
         )
 
@@ -59,10 +59,10 @@ class ElementwiseMulOp(OpTest):
         self.check_grad(
             ['X', 'Y'],
             'Out',
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_onednn),
             check_prim=True,
-            check_prim_pir=(not self.use_mkldnn),
-            check_pir=(not self.use_mkldnn),
+            check_prim_pir=(not self.use_onednn),
+            check_pir=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
         )
 
@@ -72,10 +72,10 @@ class ElementwiseMulOp(OpTest):
             ['Y'],
             'Out',
             no_grad_set=set("X"),
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_onednn),
             check_prim=True,
-            check_prim_pir=(not self.use_mkldnn),
-            check_pir=(not self.use_mkldnn),
+            check_prim_pir=(not self.use_onednn),
+            check_pir=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
         )
 
@@ -85,10 +85,10 @@ class ElementwiseMulOp(OpTest):
             ['X'],
             'Out',
             no_grad_set=set('Y'),
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_onednn),
             check_prim=True,
-            check_prim_pir=(not self.use_mkldnn),
-            check_pir=(not self.use_mkldnn),
+            check_prim_pir=(not self.use_onednn),
+            check_pir=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
         )
 
@@ -314,7 +314,7 @@ class TestElementwiseMulOp_Vector(ElementwiseMulOp):
 
 class ElementwiseMulOp_broadcast(OpTest):
     def init_kernel_type(self):
-        self.use_mkldnn = False
+        self.use_onednn = False
 
     def setUp(self):
         self.op_type = "elementwise_mul"
@@ -376,7 +376,7 @@ class ElementwiseMulOp_broadcast(OpTest):
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.outputs = {'Out': self.out}
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_onednn}
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -388,7 +388,7 @@ class ElementwiseMulOp_broadcast(OpTest):
         self.check_prim = self.axis == -1
 
     def if_check_dygraph(self):
-        self.check_dygraph = (not self.use_mkldnn) and (self.axis == -1)
+        self.check_dygraph = (not self.use_onednn) and (self.axis == -1)
 
 
 class TestElementwiseMulOp_broadcast_0(ElementwiseMulOp_broadcast):
@@ -401,7 +401,7 @@ class TestElementwiseMulOp_broadcast_0(ElementwiseMulOp_broadcast):
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.outputs = {'Out': self.out}
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_onednn}
 
     def init_axis(self):
         self.axis = 0
@@ -484,7 +484,7 @@ class TestElementwiseMulOpFp16(ElementwiseMulOp):
     def test_check_output(self):
         # TODO(wangzhongpu): support onednn op in dygraph mode
         self.check_output(
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
         )
 
@@ -493,10 +493,10 @@ class TestElementwiseMulOpFp16(ElementwiseMulOp):
         self.check_grad(
             ['X', 'Y'],
             'Out',
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_onednn),
             check_prim=True,
-            check_prim_pir=(not self.use_mkldnn),
-            check_pir=(not self.use_mkldnn),
+            check_prim_pir=(not self.use_onednn),
+            check_pir=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
         )
 
@@ -506,10 +506,10 @@ class TestElementwiseMulOpFp16(ElementwiseMulOp):
             ['Y'],
             'Out',
             no_grad_set=set("X"),
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_onednn),
             check_prim=True,
-            check_prim_pir=(not self.use_mkldnn),
-            check_pir=(not self.use_mkldnn),
+            check_prim_pir=(not self.use_onednn),
+            check_pir=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
         )
 
@@ -519,10 +519,10 @@ class TestElementwiseMulOpFp16(ElementwiseMulOp):
             ['X'],
             'Out',
             no_grad_set=set('Y'),
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_onednn),
             check_prim=True,
-            check_prim_pir=(not self.use_mkldnn),
-            check_pir=(not self.use_mkldnn),
+            check_prim_pir=(not self.use_onednn),
+            check_pir=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
         )
 

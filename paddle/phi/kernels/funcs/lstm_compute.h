@@ -48,7 +48,7 @@ struct LstmMetaGrad {
 template <typename DeviceContext, typename T>
 class LstmUnitFunctor {
  public:
-  static void compute(const DeviceContext &context,
+  static void compute(const DeviceContext &dev_ctx,
                       LstmMetaValue<T> value,
                       int frame_size,
                       int batch_size,
@@ -62,7 +62,7 @@ class LstmUnitFunctor {
 template <typename DeviceContext, typename T>
 class LstmUnitGradFunctor {
  public:
-  static void compute(const DeviceContext &context,
+  static void compute(const DeviceContext &dev_ctx,
                       LstmMetaValue<T> value,
                       LstmMetaGrad<T> grad,
                       int frame_size,
