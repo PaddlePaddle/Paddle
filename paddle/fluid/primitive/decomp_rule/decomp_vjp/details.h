@@ -2982,17 +2982,17 @@ void logcumsumexp_grad(const Tensor& x,
       const Tensor reshape_x = backend::reshape<T>(x_cast, out_grad_shape);
 
       if (out_grad_dtype == DataType::FLOAT32) {
-        lowest =
-            backend::full_with_tensor<T>(out_grad_shape,
-                                         std::numeric_limits<float>::lowest(),
-                                         out_grad_dtype,
-                                         out_grad.place());
+        lowest = backend::full_with_tensor<T>(
+            out_grad_shape,
+            -std::numeric_limits<float>::infinity(),
+            out_grad_dtype,
+            out_grad.place());
       } else if (out_grad_dtype == DataType::FLOAT64) {
-        lowest =
-            backend::full_with_tensor<T>(out_grad_shape,
-                                         std::numeric_limits<double>::lowest(),
-                                         out_grad_dtype,
-                                         out_grad.place());
+        lowest = backend::full_with_tensor<T>(
+            out_grad_shape,
+            -std::numeric_limits<float>::infinity(),
+            out_grad_dtype,
+            out_grad.place());
       }
       const Tensor zero = backend::full_with_tensor<T>(
           out_grad_shape, 0.0, out_grad_dtype, out_grad.place());
@@ -3016,12 +3016,12 @@ void logcumsumexp_grad(const Tensor& x,
       const Tensor reshape_x = reshape<T>(x_cast, out_grad_cast.shape());
       if (out_grad_dtype == DataType::FLOAT32) {
         lowest = full<T>(out_grad_cast.shape(),
-                         std::numeric_limits<float>::lowest(),
+                         -std::numeric_limits<float>::infinity(),
                          out_grad_dtype,
                          out_grad_cast.place());
       } else if (out_grad_dtype == DataType::FLOAT64) {
         lowest = full<T>(out_grad_cast.shape(),
-                         std::numeric_limits<double>::lowest(),
+                         -std::numeric_limits<float>::infinity(),
                          out_grad_dtype,
                          out_grad_cast.place());
       }
