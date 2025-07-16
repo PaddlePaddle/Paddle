@@ -39,7 +39,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
 
     class ElementwiseMulOp(XPUOpTest):
         def init_kernel_type(self):
-            self.use_mkldnn = False
+            self.use_onednn = False
 
         def setUp(self):
             self.op_type = 'elementwise_mul'
@@ -126,7 +126,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
                 'Y': self.y,
             }
             self.outputs = {'Out': self.out}
-            self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+            self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_onednn}
 
         def init_axis(self):
             pass
@@ -257,7 +257,7 @@ if 'complex64' in support_types:
 
     class ElementwiseMulComplexOp(XPUTestElementwiseMulOp.ElementwiseMulOp):
         def init_kernel_type(self):
-            self.use_mkldnn = False
+            self.use_onednn = False
 
         def setUp(self):
             self.op_type = 'elementwise_mul'
@@ -281,7 +281,7 @@ if 'complex64' in support_types:
                 'Y': self.y,
             }
             self.outputs = {'Out': self.out}
-            self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+            self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_onednn}
 
         def gen_output(self):
             if self.cal_x is None:

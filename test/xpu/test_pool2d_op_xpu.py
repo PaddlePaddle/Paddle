@@ -295,7 +295,7 @@ class XPUTestPool2D_Op(XPUOpTestWrapper):
             self.place = paddle.XPUPlace(0)
             self.use_cudnn = False
             self.init_kernel_type()
-            self.use_mkldnn = False
+            self.use_onednn = False
             self.init_test_case()
             self.padding_algorithm = "EXPLICIT"
             self.init_paddings()
@@ -331,7 +331,7 @@ class XPUTestPool2D_Op(XPUOpTestWrapper):
                 'pooling_type': self.pool_type,
                 'global_pooling': self.global_pool,
                 'use_cudnn': self.use_cudnn,
-                'use_mkldnn': self.use_mkldnn,
+                'use_mkldnn': self.use_onednn,
                 'data_format': self.data_format,
                 'exclusive': self.exclusive,
                 'adaptive': self.adaptive,
