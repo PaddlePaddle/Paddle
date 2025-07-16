@@ -24,6 +24,10 @@ jobs:
     outputs:
       can-skip: ${{ steps.check-bypass.outputs.can-skip }}
     steps:
+      - name: Cleanup
+        run: |
+          rm -rf * .[^.]*
+
       - id: check-bypass
         name: Check Bypass
         uses: PFCCLab/ci-bypass@v1

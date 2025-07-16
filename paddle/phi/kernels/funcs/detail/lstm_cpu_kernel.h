@@ -411,7 +411,7 @@ void avx_lstm_backward_one_sequence(Op op,
 }
 
 template <class T, class Context>
-void eigen_lstm_forward_one_sequence(const Context &context,
+void eigen_lstm_forward_one_sequence(const Context &dev_ctx,
                                      phi::funcs::LstmMetaValue<T> value,
                                      int frame_size) {
   auto eigen_value_ig =
@@ -429,7 +429,7 @@ void eigen_lstm_forward_one_sequence(const Context &context,
   auto eigen_output =
       typename EigenVector<T>::Type(value.output_value, Array1(frame_size));
 
-  auto &place = *context.eigen_device();
+  auto &place = *dev_ctx.eigen_device();
   TanhFunctor<T>()(place, eigen_value_in, eigen_value_in);
   SigmoidFunctor<T>()(place, eigen_value_ig, eigen_value_ig);
   SigmoidFunctor<T>()(place, eigen_value_fg, eigen_value_fg);
@@ -447,7 +447,7 @@ void eigen_lstm_forward_one_sequence(const Context &context,
 }
 
 template <class T, class Context>
-void eigen_lstm_backward_one_sequence(const Context &context,
+void eigen_lstm_backward_one_sequence(const Context &dev_ctx,
                                       phi::funcs::LstmMetaValue<T> value,
                                       phi::funcs::LstmMetaGrad<T> grad,
                                       int frame_size) {
@@ -475,7 +475,7 @@ void eigen_lstm_backward_one_sequence(const Context &context,
   auto eigen_grad_state =
       typename EigenVector<T>::Type(grad.state_grad, Array1(frame_size));
 
-  auto &place = *context.eigen_device();
+  auto &place = *dev_ctx.eigen_device();
   SigmoidGradFunctor<T>()(place,
                           1 /*useless*/,
                           eigen_value_og,
@@ -514,7 +514,7 @@ void eigen_lstm_backward_one_sequence(const Context &context,
 }
 
 template <class T, class Op, class Context>
-void cpu_lstm_forward(const Context &context,
+void cpu_lstm_forward(const Context &dev_ctx,
                       Op op,
                       phi::funcs::LstmMetaValue<T> value,
                       int frame_size,
@@ -524,7 +524,7 @@ void cpu_lstm_forward(const Context &context,
                       ActivationType active_state,
                       bool old_api_version) {
   if (!old_api_version) {
-    eigen_lstm_forward_one_sequence<T>(context, value, frame_size);
+    eigen_lstm_forward_one_sequence<T>(dev_ctx, value, frame_size);
   } else {
     if (Op::avx && !(frame_size & (8 - 1)) && (std::is_same<T, float>::value)) {
       avx_lstm_forward_one_sequence<T>(op,
@@ -549,7 +549,7 @@ void cpu_lstm_forward(const Context &context,
 }
 
 template <class T, class Op, class Context>
-void cpu_lstm_backward(const Context &context,
+void cpu_lstm_backward(const Context &dev_ctx,
                        Op op,
                        phi::funcs::LstmMetaValue<T> value,
                        phi::funcs::LstmMetaGrad<T> grad,
@@ -560,7 +560,7 @@ void cpu_lstm_backward(const Context &context,
                        ActivationType active_state,
                        bool old_api_version) {
   if (!old_api_version) {
-    eigen_lstm_backward_one_sequence<T>(context, value, grad, frame_size);
+    eigen_lstm_backward_one_sequence<T>(dev_ctx, value, grad, frame_size);
   } else {
     if (Op::avx && !(frame_size & (8 - 1)) && (std::is_same<T, float>::value)) {
       avx_lstm_backward_one_sequence<T>(op,

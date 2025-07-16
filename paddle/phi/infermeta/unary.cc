@@ -937,6 +937,11 @@ void DiagInferMeta(const MetaTensor& x,
     out->set_dims({size_, size_});
     out->set_dtype(x.dtype());
   } else if (x_dims.size() == 2ULL) {
+    if (common::contain_unknown_dim(x_dims)) {
+      out->set_dims({-1});
+      out->set_dtype(x.dtype());
+      return;
+    }
     int64_t size_ = 0;
     if (offset >= 0) {
       // Note(LutaoChu): Do not use std::min here, otherwise the calculation

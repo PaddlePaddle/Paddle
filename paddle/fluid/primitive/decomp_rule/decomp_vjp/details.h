@@ -485,12 +485,12 @@ void index_put_grad(const Tensor& x,
             indices.cend(),
             [](const Tensor& t) { return has_dynamic_shape(t.shape()); }) ||
         has_dynamic_shape(out_grad.shape())) {
-      for (int i = 0; i < indices.size(); ++i) {
+      for (size_t i = 0; i < indices.size(); ++i) {
         indices_vec.push_back(backend::unsqueeze<T>(
             indices[i], full<T>({1}, -1, DataType::INT64, indices[i].place())));
       }
     } else {
-      for (int i = 0; i < indices.size(); ++i) {
+      for (size_t i = 0; i < indices.size(); ++i) {
         indices_vec.push_back(unsqueeze<T>(indices[i], {-1}));
       }
     }
@@ -617,7 +617,7 @@ void index_add_grad(const Tensor& index,
       auto index_expand_shape = std::vector<int64_t>(out_grad_shape.size(), 1);
       auto index_unsqueeze_shape =
           std::vector<int64_t>(out_grad_shape.size(), 1);
-      for (int i = 0; i < out_grad_shape.size(); ++i) {
+      for (int i = 0; i < static_cast<int>(out_grad_shape.size()); ++i) {
         if (i != axis) {
           index_expand_shape.at(i) = out_grad_shape.at(i);
         } else {

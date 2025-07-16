@@ -33,7 +33,7 @@ namespace funcs {
 // The real computation happens in dealing with DenseTensor.
 template <typename DeviceContext, typename T>
 struct SelectedRowsAdd {
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::SelectedRows& input1,
                   const phi::SelectedRows& input2,
                   phi::SelectedRows* output);
@@ -41,7 +41,7 @@ struct SelectedRowsAdd {
 
 template <typename DeviceContext, typename T>
 struct SelectedRowsAddTensor {
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::SelectedRows& input1,
                   const phi::DenseTensor& input2,
                   phi::DenseTensor* output);
@@ -50,7 +50,7 @@ struct SelectedRowsAddTensor {
 // input2 = input1 + input2
 template <typename DeviceContext, typename T>
 struct SelectedRowsAddTo {
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::SelectedRows& input1,
                   const int64_t input2_offset,
                   phi::SelectedRows* input2);
@@ -59,7 +59,7 @@ struct SelectedRowsAddTo {
 // input2 = [all input in input1] + input2
 template <typename DeviceContext, typename T>
 struct SelectedRowsSumTo {
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const std::vector<phi::SelectedRows*>& input1,
                   const std::vector<int64_t>& input2_offsets,
                   phi::SelectedRows* input2);
@@ -70,7 +70,7 @@ struct SelectedRowsSumTo {
 // input2 = input1 + input2
 template <typename DeviceContext, typename T>
 struct SelectedRowsAddToTensor {
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::SelectedRows& input1,
                   phi::DenseTensor* input2);
 };
@@ -81,14 +81,14 @@ template <typename DeviceContext, typename T>
 struct MergeAdd {
   // unary functor, merge by adding duplicated rows in
   // the input SelectedRows object.
-  phi::SelectedRows operator()(const DeviceContext& context,
+  phi::SelectedRows operator()(const DeviceContext& dev_ctx,
                                const phi::SelectedRows& input,
                                const bool sorted_result = false);
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::SelectedRows& input,
                   phi::SelectedRows* output,
                   const bool sorted_result = false);
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const std::vector<const phi::SelectedRows*>& inputs,
                   phi::SelectedRows* output,
                   const bool sorted_result = false);
@@ -96,12 +96,12 @@ struct MergeAdd {
 
 template <typename DeviceContext, typename T>
 struct MergeAverage {
-  phi::SelectedRows operator()(const DeviceContext& context,
+  phi::SelectedRows operator()(const DeviceContext& dev_ctx,
                                const phi::SelectedRows& input);
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::SelectedRows& input,
                   phi::SelectedRows* output);
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const std::vector<const phi::SelectedRows*>& inputs,
                   phi::SelectedRows* output);
 };
@@ -111,7 +111,7 @@ enum class ScatterOps { ASSIGN, ADD, SUB, SUBBY, MUL, DIV, DIVBY };
 // out = selected_rows_in / tensor
 template <typename DeviceContext, typename T>
 struct UpdateToTensor {
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const ScatterOps& op,
                   const phi::SelectedRows& input1,
                   phi::DenseTensor* input2);

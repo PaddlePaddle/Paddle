@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 from itertools import combinations
 
 import numpy as np
+from op_test import get_places
 
 import paddle
 from paddle.base import Program
@@ -44,17 +44,9 @@ class TestIndexFillAPIBase(unittest.TestCase):
             self.index_type
         )
 
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            self.place.append('cpu')
-        if self.dtype_np == 'float16':
-            self.place = []
-        if paddle.is_compiled_with_cuda():
-            self.place.append('gpu')
+        self.place = get_places(string_format=True)
+        if self.dtype_np == 'float16' and 'cpu' in self.place:
+            self.place.remove('cpu')
 
     def init_setting(self):
         self.dtype_np = 'float64'
@@ -158,17 +150,9 @@ class TestIndexFillAPI_ZeroSize(unittest.TestCase):
             self.index_type
         )
 
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            self.place.append('cpu')
-        if self.dtype_np == 'float16':
-            self.place = []
-        if paddle.is_compiled_with_cuda():
-            self.place.append('gpu')
+        self.place = get_places(string_format=True)
+        if self.dtype_np == 'float16' and 'cpu' in self.place:
+            self.place.remove('cpu')
 
     def init_setting(self):
         self.dtype_np = 'float64'

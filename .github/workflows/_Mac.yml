@@ -52,7 +52,7 @@ jobs:
           cd ${work_dir}
           [ -d "${work_dir}/Paddle" ] && rm -rf ${work_dir}/Paddle
           [ -f "${work_dir}/Paddle.tar.gz" ] && rm -rf ${work_dir}/Paddle.tar.gz
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
+          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
           tar xf Paddle.tar.gz && cd Paddle
 
           git config --global user.name "PaddleCI"

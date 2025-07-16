@@ -2625,13 +2625,13 @@ void FusedLayerNormInferMeta(const MetaTensor& x,
   auto x_dims_size = x_dims_vec.size();
 
   int64_t normalized_dims = 1;
-  for (int i = begin_norm_axis; i < x_dims_size; ++i) {
+  for (size_t i = begin_norm_axis; i < x_dims_size; ++i) {
     normalized_dims *= x_dims_vec[i];
   }
 
   if (residual) {
     std::vector<int64_t> residual_dims_vec = common::vectorize(residual.dims());
-    for (int i = 0; i < x_dims_vec.size(); ++i) {
+    for (size_t i = 0; i < x_dims_vec.size(); ++i) {
       if (x_dims_vec[i] == -1 || residual_dims_vec[i] == -1) continue;
 
       PADDLE_ENFORCE_EQ(x_dims_vec[i],
