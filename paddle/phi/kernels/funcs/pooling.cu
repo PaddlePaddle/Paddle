@@ -124,6 +124,31 @@ __device__ void OffsetPreparationFor4Dimension(IndexT index,
   }
 }
 
+template <typename IndexT>
+__device__ void PreparationPoolSize(IndexT index,
+                                    IndexT input_size,
+                                    IndexT output_size,
+                                    FastDivMod<IndexT> divmods,
+                                    IndexT* tmp_size
+
+) {
+  if (index == 0) {
+    auto ksize_divmod_next = divmods.Divmod((index + 1) * input_size);
+    *tmp_size = ksize_divmod_next.val[1] > 0 ? ksize_divmod_next.val[0] + 1
+                                             : ksize_divmod_next.val[0];
+
+  } else if (index == output_size - 1) {
+    *tmp_size = input_size - divmods.Div(index * input_size);
+  } else {
+    auto ksize_divmod = divmods.Divmod(index * input_size);
+    auto ksize_divmod_next = divmods.Divmod((index + 1) * input_size);
+    *tmp_size = ksize_divmod_next.val[0] - ksize_divmod.val[0];
+    if (ksize_divmod_next.val[1] != 0) {
+      *tmp_size += 1;
+    }
+  }
+}
+
 template <typename PoolProcess, typename T, typename IndexT>
 __global__ void KernelPool2D(const IndexT nthreads,
                              const T* input_data,
@@ -309,29 +334,14 @@ __global__ void KernelPool2DGrad(
       phend = tmp_phend.val[1] > 0 ? tmp_phend.val[0] + 1 : tmp_phend.val[0];
       pwend = tmp_pwend.val[1] > 0 ? tmp_pwend.val[0] + 1 : tmp_pwend.val[0];
 
+      IndexT tmp_height, tmp_width;
       for (IndexT ph = phstart; ph < phend; ++ph) {
-        auto ksize_h_divmod = divmods.ksize_h.Divmod(input_height);
-        auto tmp_height = ksize_h_divmod.val[1] > 0 ? ksize_h_divmod.val[0] + 1
-                                                    : ksize_h_divmod.val[0];
-        if (phstart != phend) {
-          if (tmp_phstart.val[1] != 0 && ph == phstart) {
-            tmp_height += 1;
-          } else if (tmp_phend.val[1] != 0 && ph == phend - 1) {
-            tmp_height += 1;
-          }
-        }
+        PreparationPoolSize(
+            ph, input_height, output_height, divmods.ksize_h, &tmp_height);
 
         for (IndexT pw = pwstart; pw < pwend; ++pw) {
-          auto ksize_w_divmod = divmods.ksize_w.Divmod(input_width);
-          auto tmp_width = ksize_w_divmod.val[1] > 0 ? ksize_w_divmod.val[0] + 1
-                                                     : ksize_w_divmod.val[0];
-          if (pwstart != pwend) {
-            if (tmp_pwstart.val[1] != 0 && pw == pwstart) {
-              tmp_width += 1;
-            } else if (tmp_pwend.val[1] != 0 && pw == pwend - 1) {
-              tmp_width += 1;
-            }
-          }
+          PreparationPoolSize(
+              pw, input_width, output_width, divmods.ksize_w, &tmp_width);
           IndexT pool_size = tmp_height * tmp_width;
           IndexT tmp_idx = ph * output_width + pw;
           IndexT output_sub_idx =
