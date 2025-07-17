@@ -24,7 +24,7 @@ namespace funcs {
 
 template <typename OutT, typename Functor, int NumOuts = 1>
 void LaunchSameDimsElementwiseCudaKernel(
-    const KPDevice &ctx,
+    const KPDevice &dev_ctx,
     const std::vector<const phi::DenseTensor *> &ins,
     std::vector<phi::DenseTensor *> *outs,
     Functor func) {
@@ -52,7 +52,7 @@ void LaunchSameDimsElementwiseCudaKernel(
     pt_outputs.push_back(pt_outputs_tmp[i].get());
   }
   phi::funcs::ElementwiseKernel<OutT, Functor, NumOuts>(
-      ctx, pt_inputs, &pt_outputs, func);
+      dev_ctx, pt_inputs, &pt_outputs, func);
 }
 
 }  // namespace funcs

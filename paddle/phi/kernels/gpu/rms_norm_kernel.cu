@@ -39,6 +39,7 @@ limitations under the License.
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_fp16.h>
 #include <hip/hip_runtime.h>
@@ -1093,6 +1094,18 @@ void RmsNormKernel(const Context& dev_ctx,
                    DenseTensor* out,
                    DenseTensor* residual_out,
                    DenseTensor* inv_var) {
+  if (x.numel() == 0) {
+    if (out) dev_ctx.template Alloc<T>(out);
+    if (residual_out) dev_ctx.template Alloc<T>(residual_out);
+    if (inv_var) {
+      phi::Full<float, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(inv_var->dims())),
+          0.f,
+          inv_var);
+    }
+    return;
+  }
   if (out->dtype() == phi::DataType::INT8 ||
       out->dtype() == phi::DataType::FLOAT8_E4M3FN) {
     PADDLE_ENFORCE_EQ(quant_scale != 0.0f,
