@@ -16,6 +16,7 @@
 
 #include <unordered_map>
 
+#include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
@@ -531,6 +532,14 @@ class TransformLocalIndicesVisitor : public ir::IRMutator<>,
   void ExtractIterFromIndice(
       const ir::Expr& expr,
       std::unordered_map<std::string, ir::Expr>* name_to_iter) {
+    // Set OptLevel::kLevel3 to enable BoundSimplify
+    ir::Expr simplified_expr =
+        optim::ArithSimplify(expr, ir::IndexExpr::OptLevel::kLevel3);
+    if (simplified_expr.is_constant()) {
+      // If index(k) can be simplified into constant,
+      // we should not extract iter k.
+      return;
+    }
     if (expr.As<ir::_Var_>()) {
       const auto var = expr.As<ir::_Var_>();
       if (name_to_iter->count(var->name) == 0) {
