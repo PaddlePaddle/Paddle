@@ -700,16 +700,22 @@ class PipelineLayer(nn.Layer):
                         "layer": self.shared_layers[layer_name],
                     }
 
-                    # Set color for shared parameters to facilitate synchronization of parameters
-                    # and optimizer states after each step
-                    for weight_attr in shared_attrs:
-                        shared_param = getattr(
-                            self.shared_layers[layer_name], weight_attr
-                        )
-                        shared_param.color = {
-                            "color": f"{SHARED_WEIGHT_SYNC_PREFIX}_{comm_key}",
-                            "group": group,
-                        }
+                    if (
+                        hybrid_configs["pp_configs"].sync_moment
+                        or hybrid_configs["pp_configs"].sync_param
+                    ):
+                        # Set color for shared parameters to facilitate synchronization of parameters
+                        # and optimizer states after each step
+                        for weight_attr in shared_attrs:
+                            shared_param = getattr(
+                                self.shared_layers[layer_name], weight_attr
+                            )
+                            hcg = fleet.get_hybrid_communicate_group()
+                            shared_param.color = {
+                                "color": f"{SHARED_WEIGHT_SYNC_PREFIX}_{comm_key}",
+                                "group": hcg.get_sharding_parallel_group(),
+                                "broadcast_group": group,
+                            }
         return shared_comm
 
     def _synchronize_shared_weights(self):

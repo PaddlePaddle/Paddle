@@ -29,8 +29,8 @@ __global__ void IndexEleGetGradAccKernel(
     const char* in_ptr,
     char* out_ptr,
     const std::array<char*, DDim::kMaxRank> index_ptrs,
-    const std::array<int64_t, 25> sizes,
-    const std::array<int64_t, 25> strides,
+    const std::array<int64_t, phi::DDim::kMaxRank + 1> sizes,
+    const std::array<int64_t, phi::DDim::kMaxRank + 1> strides,
     int num_indices,
     offset_calc_t offset_calc) {
   const int tid = threadIdx.x;
@@ -77,9 +77,9 @@ void GPUIndexElementwiseGetGrad(const phi::GPUContext& ctx,
   std::vector<int64_t> stride_tmp;
   funcs::cal_shape_stride(index_dims, &num_indices, &shape_tmp, &stride_tmp);
 
-  auto sizes = std::array<int64_t, 25>{};
-  auto strides = std::array<int64_t, 25>{};
-  for (unsigned i = 0; i < num_indices; i++) {
+  auto sizes = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
+  auto strides = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
+  for (int64_t i = 0; i < num_indices; i++) {
     sizes[i] = index_dims[i];
     strides[i] = index_strides[i];
   }
@@ -136,7 +136,7 @@ void GPUIndexElementwiseGetGrad(const phi::GPUContext& ctx,
 
           int64_t offset = 0;
 #pragma unroll
-          for (int i = 0; i < num_indices; i++) {
+          for (int64_t i = 0; i < num_indices; i++) {
             int64_t index =
                 *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
             if (index < 0) {

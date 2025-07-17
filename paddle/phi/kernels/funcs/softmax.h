@@ -21,7 +21,7 @@ namespace funcs {
 template <typename DeviceContext, typename T, typename Enable = void>
 class SoftmaxFunctor {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const int axis_dim,
                   const phi::DenseTensor* X,
                   phi::DenseTensor* Y);
@@ -30,7 +30,7 @@ class SoftmaxFunctor {
 template <typename DeviceContext, typename T, typename Enable = void>
 class SoftmaxGradFunctor {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const int axis_dim,
                   const phi::DenseTensor* y,
                   const phi::DenseTensor* y_grad,
@@ -41,7 +41,7 @@ class SoftmaxGradFunctor {
 template <typename T, typename DeviceContext>
 class SoftmaxCUDNNFunctor {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor* X,
                   phi::DenseTensor* Y);
 };
@@ -49,7 +49,7 @@ class SoftmaxCUDNNFunctor {
 template <typename T, typename DeviceContext>
 class SoftmaxGradCUDNNFunctor {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor* Y,
                   const phi::DenseTensor* y_grad,
                   phi::DenseTensor* x_grad);

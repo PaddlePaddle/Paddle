@@ -43,10 +43,9 @@ void CPUIndexElementwisePutGradKernel(
   std::vector<int64_t> shape_tmp;
   std::vector<int64_t> stride_tmp;
   funcs::cal_shape_stride(index_dims, &num_indices, &shape_tmp, &stride_tmp);
-
-  auto sizes = std::array<int64_t, 25>{};
-  auto strides = std::array<int64_t, 25>{};
-  for (unsigned i = 0; i < num_indices; i++) {
+  auto sizes = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
+  auto strides = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
+  for (int64_t i = 0; i < num_indices; i++) {
     sizes[i] = index_dims[i];
     strides[i] = index_strides[i];
   }
@@ -85,7 +84,7 @@ void CPUIndexElementwisePutGradKernel(
       const auto offsets = offset_calc.cpu_get(idx);
       char* const out_data = out_ptr + offsets[0] + slice_offset;
       int64_t offset = 0;
-      for (size_t i = 0; i < num_indices; i++) {
+      for (int64_t i = 0; i < num_indices; i++) {
         int64_t index = *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
         if (index < 0) {
           index += sizes[i];
@@ -104,7 +103,7 @@ void CPUIndexElementwisePutGradKernel(
       const char* const out_data = out_ptr + offsets[0] + slice_offset;
       char* const value_data = value_ptr + offsets[1];
       int64_t offset = 0;
-      for (size_t i = 0; i < num_indices; i++) {
+      for (int64_t i = 0; i < num_indices; i++) {
         int64_t index = *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
         if (index < 0) {
           index += sizes[i];
@@ -122,7 +121,7 @@ void CPUIndexElementwisePutGradKernel(
       char* const out_data = out_ptr + offsets[0] + slice_offset;
       char* const value_data = value_ptr + offsets[1];
       int64_t offset = 0;
-      for (size_t i = 0; i < num_indices; i++) {
+      for (int64_t i = 0; i < num_indices; i++) {
         int64_t index = *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
         if (index < 0) {
           index += sizes[i];
