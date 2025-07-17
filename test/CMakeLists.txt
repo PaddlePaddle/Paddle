@@ -191,7 +191,6 @@ if(WITH_TESTING)
     add_subdirectory(collective)
     add_subdirectory(auto_parallel)
     add_subdirectory(distributed_passes)
-    add_subdirectory(ps)
   endif()
 
   if(NOT WIN32 OR NOT WITH_GPU)

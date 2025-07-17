@@ -465,6 +465,8 @@ endforeach()
 set_tests_properties(test_conv2d_api_deprecated PROPERTIES LABELS
                                                            "RUN_TYPE=EXCLUSIVE")
 if(WITH_DISTRIBUTE)
+  list(REMOVE_ITEM DIST_TEST_OPS " test_dist_sparse_tensor_load_sgd_deprecated")
+
   # FIXME(typhoonzero): add these tests back
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transpiler")
