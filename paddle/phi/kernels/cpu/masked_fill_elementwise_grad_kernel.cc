@@ -21,7 +21,7 @@
 
 namespace phi {
 template <typename T>
-void GPUMaskedFillElementwiseGrad(const phi::CPUContext& dev_ctx,
+void CPUMaskedFillElementwiseGrad(const phi::CPUContext& dev_ctx,
                                   const DenseTensor& x,
                                   const DenseTensor& mask,
                                   const DenseTensor& out_grad,
@@ -51,7 +51,7 @@ void GPUMaskedFillElementwiseGrad(const phi::CPUContext& dev_ctx,
   auto offset_calc =
       funcs::CPUmake_offset_calculator_put<3>(desired_shape, strides_array);
   const int64_t N = numel;
-  char* out_ptr = reinterpret_cast<char*>(output_data);
+  char* out_ptr = reinterpret_cast<char*>(x_grad_data);
   for (int64_t idx = 0; idx < N; idx++) {
     const auto offsets = offset_calc.cpu_get(idx);
     char* const out_data = out_ptr + offsets[0] + slice_offset;
