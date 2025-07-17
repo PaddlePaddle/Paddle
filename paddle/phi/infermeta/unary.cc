@@ -937,6 +937,11 @@ void DiagInferMeta(const MetaTensor& x,
     out->set_dims({size_, size_});
     out->set_dtype(x.dtype());
   } else if (x_dims.size() == 2ULL) {
+    if (common::contain_unknown_dim(x_dims)) {
+      out->set_dims({-1});
+      out->set_dtype(x.dtype());
+      return;
+    }
     int64_t size_ = 0;
     if (offset >= 0) {
       // Note(LutaoChu): Do not use std::min here, otherwise the calculation
@@ -5396,12 +5401,12 @@ void TileInferMeta(const MetaTensor& x,
     if (x_dim_vec[i] == -1 || repeat_times_data[i] == -1) {
       out_shape[i] = -1;
     } else {
-      PADDLE_ENFORCE_GT(
+      PADDLE_ENFORCE_GE(
           repeat_times_data[i],
           0,
           errors::InvalidArgument(
               "Every element of the input 'repeat_times' for tile op must be "
-              "greater than 0, but the value given is %d.",
+              "greater than or equal to 0, but the value given is %d.",
               repeat_times_data[i]));
       out_shape[i] = x_dim_vec[i] * repeat_times_data[i];
     }

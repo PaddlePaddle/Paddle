@@ -186,7 +186,7 @@ class TestConv2DTransposeOp(OpTest):
         self.need_check_grad = True
         self.is_test = False
         self.use_cudnn = False
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.output_size = None
         self.output_padding = []
         self.data_format = "NCHW"
@@ -210,7 +210,7 @@ class TestConv2DTransposeOp(OpTest):
             'dilations': self.dilations,
             'use_cudnn': self.use_cudnn,
             'is_test': self.is_test,
-            'use_mkldnn': self.use_mkldnn,
+            'use_mkldnn': self.use_onednn,
             'data_format': self.data_format,
         }
         if self.output_size is not None:
@@ -241,12 +241,12 @@ class TestConv2DTransposeOp(OpTest):
             self.check_output_with_place(
                 place,
                 atol=1e-5,
-                check_dygraph=(not self.use_mkldnn),
+                check_dygraph=(not self.use_onednn),
                 check_pir=True,
             )
         else:
             self.check_output(
-                check_dygraph=(not self.use_mkldnn), check_pir=True
+                check_dygraph=(not self.use_onednn), check_pir=True
             )
 
     def test_check_grad_no_input(self):
@@ -813,12 +813,12 @@ class TestCUDNN_FP16(TestConv2DTransposeOp):
                 self.check_output_with_place(
                     place,
                     atol=0.02,
-                    check_dygraph=(not self.use_mkldnn),
+                    check_dygraph=(not self.use_onednn),
                     check_pir=True,
                 )
         else:
             self.check_output(
-                check_dygraph=(not self.use_mkldnn), check_pir=True
+                check_dygraph=(not self.use_onednn), check_pir=True
             )
 
     def test_check_grad_no_input(self):
@@ -1012,7 +1012,7 @@ class TestCUDNN_BF16(TestConv2DTransposeOp):
         self.check_output_with_place(
             place,
             atol=0.02,
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_onednn),
             check_pir=True,
         )
 

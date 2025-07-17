@@ -589,7 +589,7 @@
 
 - op : bce_loss
   args : (Tensor input, Tensor label)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : BCELossInferMeta
   kernel :
