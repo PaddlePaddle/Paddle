@@ -20,10 +20,12 @@ from __future__ import annotations
 
 import paddle
 from paddle import framework
-from paddle.distributed.communication import deep_ep
 from paddle.distributed.communication.batch_isend_irecv import (
     P2POp,
     batch_isend_irecv,
+)
+from paddle.distributed.communication.deep_ep import (
+    get_event_from_custom_stream,
 )
 
 from ..utils.log_util import logger
@@ -360,9 +362,7 @@ class DualPipeVParallel(PipelineParallel):
                 for req in fwd_reqs:
                     req.wait()
 
-        forward_event_to_wait = deep_ep.get_event_from_custom_stream(
-            pp_raw_stream
-        )
+        forward_event_to_wait = get_event_from_custom_stream(pp_raw_stream)
 
         if common_backward_ops_num > 0:
             bwd_reqs = batch_isend_irecv(self.comm_backward_ops)
@@ -374,9 +374,7 @@ class DualPipeVParallel(PipelineParallel):
         if use_stream_wait_event:
             forward_event_to_wait.current_stream_wait()
 
-        combine_bw_event_to_wait = deep_ep.get_event_from_custom_stream(
-            pp_raw_stream
-        )
+        combine_bw_event_to_wait = get_event_from_custom_stream(pp_raw_stream)
 
         self.comm_forward_ops = []
         self.comm_backward_ops = []
