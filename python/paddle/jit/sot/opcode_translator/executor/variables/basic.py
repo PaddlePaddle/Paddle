@@ -92,6 +92,7 @@ from ....utils import (
     NameGenerator,
     SotCapturedExceptionFactory,
     UnsupportedOperationBreak,
+    get_min_non_specialized_number,
     get_tensor_methods,
     log,
     printable,
@@ -535,11 +536,14 @@ class TensorVariable(VariableBase):
                     [expr_node],
                 ),
             ]
+        min_non_specialized_number = get_min_non_specialized_number()
         meta = meta.unwrap_unsafe()
         return [
             # Check shape
             paddle.framework.core.GuardNode(
-                paddle.framework.core.ShapeMatchGuard(meta.shape),
+                paddle.framework.core.ShapeMatchGuard(
+                    meta.shape, min_non_specialized_number
+                ),
                 [expr_node],
             ),
             # Check dtype
@@ -582,6 +586,7 @@ class TensorVariable(VariableBase):
                     union_free_vars(frame_value_tracer.free_vars),
                 )
             ]
+        min_non_specialized_number = get_min_non_specialized_number()
         meta = meta.unwrap_unsafe()
         dtype_str, dtype_free_vars = stringify_pyobject(meta.dtype)
         guards = [
@@ -601,7 +606,7 @@ class TensorVariable(VariableBase):
                     )
                     if not isinstance(meta.shape[i], SymbolicInt)
                     else StringifiedExpression(
-                        f"{{}}.shape[{i}] >= 1",
+                        f"{{}}.shape[{i}] >= {min_non_specialized_number}",
                         [frame_value_tracer],
                         union_free_vars(frame_value_tracer.free_vars),
                     )
@@ -996,6 +1001,7 @@ class SymbolicVariable(VariableBase):
             ).wrap()
         self.need_guard_value = False
         self.graph.side_effects.record_mutable_variable(self)
+        min_non_specialized_number = get_min_non_specialized_number()
         self.constraints: list[SymbolicConstraint] = []
         if self.value.is_backed():
             # The inherent constraint of the symbolic variable is that it must be greater than or equal to 2.
@@ -1003,7 +1009,7 @@ class SymbolicVariable(VariableBase):
                 (
                     GreaterEqualConstraintNode(
                         SymbolicConstraintNode(self.var_name),
-                        ConstantConstraintNode(1),
+                        ConstantConstraintNode(min_non_specialized_number),
                     ),
                     {self.var_name: self},
                 )
@@ -1330,6 +1336,7 @@ class SymbolicVariable(VariableBase):
         symbolic_inputs: dict[str, dict[int, int] | None],
     ) -> bool | None:
         tracker_expr = tracker.trace_value_from_frame().inlined_expr
+        min_non_specialized_number = get_min_non_specialized_number()
         symbolic_inputs.setdefault(tracker_expr, {})
         if tracker_expr in symbolic_inputs:
             symbolic_input = symbolic_inputs[tracker_expr]
@@ -1337,9 +1344,9 @@ class SymbolicVariable(VariableBase):
                 return False
             symbolic_input.setdefault(value, 0)
             symbolic_input[value] += 1
-            if value == 0:
+            if value == 0 and ENV_SOT_ENABLE_0_SIZE_FALLBACK.get():
                 return None  # Fallback to dygraph
-            if value < 1:  # Specialize 0 and 1
+            if value < min_non_specialized_number:  # Specialize 0 or 1
                 return False
             if len(symbolic_input.keys()) > 1:
                 return True
@@ -1419,7 +1426,6 @@ class SymbolicVariable(VariableBase):
         )
         if (
             should_create_sym is None
-            and ENV_SOT_ENABLE_0_SIZE_FALLBACK.get()
             and SymbolicVariable.find_tensor_shape_source(tracker) is not None
         ):
             graph.add_global_guarded_variable(
@@ -1907,6 +1913,7 @@ class NumPyArrayVariable(NumPyVariable):
 
     @check_faster_guard
     def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
+        min_non_specialized_number = get_min_non_specialized_number()
         meta = self.meta.unwrap_unsafe()
         expr_node = self.tracker.guard_tree_expr_node()
         type_guard = paddle.framework.core.GuardNode(
@@ -1920,7 +1927,9 @@ class NumPyArrayVariable(NumPyVariable):
             [expr_node],
         )
         shape_guard = paddle.framework.core.GuardNode(
-            paddle.framework.core.NumPyArrayShapeMatchGuard(meta.shape),
+            paddle.framework.core.NumPyArrayShapeMatchGuard(
+                meta.shape, min_non_specialized_number
+            ),
             [expr_node],
         )
         return [type_guard, dtype_guard, shape_guard]
@@ -1938,6 +1947,7 @@ class NumPyArrayVariable(NumPyVariable):
             [frame_value_tracer],
             union_free_vars(frame_value_tracer.free_vars, {"np": np}),
         )
+        min_non_specialized_number = get_min_non_specialized_number()
 
         return [
             FasterStringifiedExpression(
@@ -1961,7 +1971,7 @@ class NumPyArrayVariable(NumPyVariable):
                     )
                     if not isinstance(meta.shape[i], SymbolicInt)
                     else StringifiedExpression(
-                        f"{{}}.shape[{i}] >= 1",
+                        f"{{}}.shape[{i}] >= {min_non_specialized_number}",
                         [frame_value_tracer],
                         union_free_vars(frame_value_tracer.free_vars),
                     )

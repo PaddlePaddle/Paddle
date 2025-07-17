@@ -824,4 +824,15 @@ PD_REGISTER_SPMD_RULE(
     depthwise_conv2d,
     PD_INFER_SPMD(phi::distributed::DepthwiseConv2dInferSpmd),
     PD_INFER_SPMD(phi::distributed::DepthwiseConv2dGradInferSpmd));
+
+// conv2d_transpose
+PD_REGISTER_SPMD_RULE(
+    conv2d_transpose,
+    PD_INFER_SPMD(phi::distributed::Conv2dTransposeInferSpmd),
+    PD_INFER_SPMD(phi::distributed::Conv2dTransposeGradInferSpmd));
+
+// einsum
+PD_REGISTER_SPMD_RULE(einsum,
+                      PD_INFER_SPMD(phi::distributed::EinsumInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::EinsumGradInferSpmd));
 }  // namespace phi::distributed

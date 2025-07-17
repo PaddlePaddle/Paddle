@@ -44,7 +44,7 @@ int FFTFillConjGrad(int N,
 namespace phi {
 namespace funcs {
 template <typename DeviceContext, typename C>
-void FFTFillConj(const DeviceContext& ctx,
+void FFTFillConj(const DeviceContext& dev_ctx,
                  DenseTensor* src,
                  DenseTensor* dst,
                  const std::vector<int64_t>& axes) {
@@ -63,7 +63,7 @@ void FFTFillConj(const DeviceContext& ctx,
     _is_fft_axis[i] = true;
   }
 
-  xpu::ctx_guard RAII_GUARD(ctx.x_context());
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   int64_t* src_strides_ptr =
       RAII_GUARD.alloc_l3_or_gm<int64_t>(src_strides_v.size());
   PADDLE_ENFORCE_NOT_NULL(src_strides_ptr,
@@ -111,7 +111,7 @@ void FFTFillConj(const DeviceContext& ctx,
 }
 
 template <typename DeviceContext, typename C>
-void FFTFillConjGrad(const DeviceContext& ctx,
+void FFTFillConjGrad(const DeviceContext& dev_ctx,
                      const DenseTensor& out_grad,
                      const std::vector<int64_t>& axes,
                      DenseTensor* x_grad) {

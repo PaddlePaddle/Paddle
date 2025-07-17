@@ -37,7 +37,7 @@ class TestONEDNNElementwiseDivOp(OpTest):
             'X': OpTest.np_dtype_to_base_dtype(self.x),
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_onednn}
         self.outputs = {'Out': self.out}
 
     def init_input_output(self):
@@ -64,7 +64,7 @@ class TestONEDNNElementwiseDivOp(OpTest):
         self.axis = -1
 
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -164,12 +164,12 @@ class TestBf16(TestONEDNNElementwiseDivOp):
         self.x_bf16 = convert_float_to_uint16(self.x)
         self.y_bf16 = convert_float_to_uint16(self.y)
         self.inputs = {'X': self.x_bf16, 'Y': self.y_bf16}
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_onednn}
         self.outputs = {'Out': convert_float_to_uint16(self.out)}
 
     def init_dtype(self):
         self.dtype = np.float32
-        self.mkldnn_data_type = "bfloat16"
+        self.onednn_data_type = "bfloat16"
 
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, [100]).astype(self.dtype)

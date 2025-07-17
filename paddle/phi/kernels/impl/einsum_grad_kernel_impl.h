@@ -17,19 +17,19 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/complex_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/impl/einsum_kernel_impl.h"
 #include "paddle/phi/kernels/tile_grad_kernel.h"
 #include "paddle/phi/kernels/tile_kernel.h"
 #include "paddle/utils/string/string_helper.h"
-
 namespace phi {
 
 template <typename T, typename Context>
 DenseTensor PerformTileAndReduction(const Context& dev_ctx,
                                     const LabelMap& label2type,
                                     const LabelMap& label2shape,
-                                    const std::vector<int>& broadcast_shape,
-                                    const std::vector<int> x_shape,
+                                    const std::vector<int64_t>& broadcast_shape,
+                                    const std::vector<int64_t> x_shape,
                                     std::string equ,   // value pass
                                     DenseTensor& t) {  // NOLINT
   auto tmp_label = equ;
@@ -37,12 +37,12 @@ DenseTensor PerformTileAndReduction(const Context& dev_ctx,
   auto op_label = std::string(tmp_union.begin(), tmp_union.end());
   VLOG(5) << "Start PerformTileAndReduction equation " << equ
           << " with operand shape: "
-          << paddle::string::join_strings(common::vectorize<int>(t.dims()),
+          << paddle::string::join_strings(common::vectorize<int64_t>(t.dims()),
                                           ",");
   DenseTensor ret;
-  std::vector<int> repeat_times;
-  std::vector<int> resize_dims;
-  std::vector<int> recover_shape;
+  std::vector<int64_t> repeat_times;
+  std::vector<int64_t> resize_dims;
+  std::vector<int64_t> recover_shape;
   for (int c : op_label) {
     if (label2type[c] == LabelType::Reduction) {
       repeat_times.push_back(label2shape[c]);
@@ -56,7 +56,7 @@ DenseTensor PerformTileAndReduction(const Context& dev_ctx,
   }
   t.Resize(common::make_ddim(resize_dims));
   DenseTensor after_tile;
-  if (std::all_of(repeat_times.begin(), repeat_times.end(), [](int x) {
+  if (std::all_of(repeat_times.begin(), repeat_times.end(), [](int64_t x) {
         return x == 1;
       })) {
     after_tile = t;
@@ -83,15 +83,16 @@ DenseTensor PerformTileAndReduction(const Context& dev_ctx,
   // call TileGradKernel to reverse broadcast operation.
   VLOG(5) << "After diagonalize, we have tensor with shape: "
           << paddle::string::join_strings(
-                 common::vectorize<int>(undiagonal_out.dims()), ',');
+                 common::vectorize<int64_t>(undiagonal_out.dims()), ',');
   repeat_times.clear();
   for (size_t i = 0; i < x_shape.size(); ++i) {
     VLOG(4) << "broadcast shape is " << broadcast_shape[i] << ", x_shape is "
             << x_shape[i];
     repeat_times.push_back(broadcast_shape[i] / x_shape[i]);
   }
-  bool is_all_ones = std::all_of(
-      repeat_times.begin(), repeat_times.end(), [](int x) { return x == 1; });
+  bool is_all_ones = std::all_of(repeat_times.begin(),
+                                 repeat_times.end(),
+                                 [](int64_t x) { return x == 1; });
   if (is_all_ones) {
     VLOG(4) << "don't need broadcast recover, we just return undiagonal_out.";
     return undiagonal_out;
@@ -104,7 +105,7 @@ DenseTensor PerformTileAndReduction(const Context& dev_ctx,
       dev_ctx, tmp_x, undiagonal_out, repeat_times, &broadcast_out);
   VLOG(5) << "After broadcast recover, we have tensor with shape: "
           << paddle::string::join_strings(
-                 common::vectorize<int>(broadcast_out.dims()), ',');
+                 common::vectorize<int64_t>(broadcast_out.dims()), ',');
   return broadcast_out;
 }
 
@@ -116,12 +117,23 @@ void EinsumGradKernel(const Context& dev_ctx,
                       const std::string& equation,
                       std::vector<DenseTensor*> x_grad) {
   VLOG(5) << "Start EinsumGradKernel:";
+  bool has_zero_size_tensor = out_grad.numel() == 0;
+  for (auto& i : x_grad) {
+    if (i != nullptr) {
+      if (i->numel() == 0) {
+        has_zero_size_tensor = true;
+        phi::Full<T, Context>(
+            dev_ctx, phi::IntArray(common::vectorize(i->dims())), 0, i);
+      }
+    }
+  }
+  if (has_zero_size_tensor) return;
   LabelMap labelshape(0);
   LabelMap labeltype(LabelType::Reduction);
   std::vector<LabelMap> label2perms(x.size(), LabelMap(-1));
   std::vector<char> all_labels;  // order: ABO, AO, BO, AB, Reduce
-  std::vector<std::vector<int>> broadcast_shapes(2);
-  std::vector<int> output_dims;
+  std::vector<std::vector<int64_t>> broadcast_shapes(2);
+  std::vector<int64_t> output_dims;
 
   std::vector<DDim> input_dims;
   for (auto& i : x) {
@@ -165,7 +177,7 @@ void EinsumGradKernel(const Context& dev_ctx,
         labeltype,
         labelshape,
         broadcast_shapes[0],
-        common::vectorize<int>(x[0]->dims()),
+        common::vectorize<int64_t>(x[0]->dims()),
         left,
         before_tile);
 #ifndef PADDLE_WITH_XPU  // xpu is not support conj now, we just disable it.
@@ -226,7 +238,7 @@ void EinsumGradKernel(const Context& dev_ctx,
           labeltype,
           labelshape,
           broadcast_shapes[0],
-          common::vectorize<int>(x[0]->dims()),
+          common::vectorize<int64_t>(x[0]->dims()),
           ops[0],
           dA);
       VLOG(4) << "After call dA";
@@ -240,7 +252,7 @@ void EinsumGradKernel(const Context& dev_ctx,
           labeltype,
           labelshape,
           broadcast_shapes[1],
-          common::vectorize<int>(x[1]->dims()),
+          common::vectorize<int64_t>(x[1]->dims()),
           ops[1],
           dB);
 #ifndef PADDLE_WITH_XPU  // xpu is not support conj now, we just disable it.

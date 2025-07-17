@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/complex_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 template <typename T, typename Context>
@@ -27,6 +28,15 @@ void PadKernel(const Context& dev_ctx,
                DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(out);
+  if (x.numel() == 0) {
+    if (out) {
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(out->dims())),
+                            pad_value,
+                            out);
+      return;
+    }
+  }
   std::vector<int64_t> pad_left, pad_right;
   std::vector<int64_t> xshape = common::vectorize<int64_t>(x.dims());
 

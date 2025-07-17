@@ -19,7 +19,7 @@ from test_fusion_lstm_op import TestFusionLSTMOp
 
 class TestFusionLSTMONEDNNOp(TestFusionLSTMOp):
     def set_conf(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.check_pir_onednn = True
 
     def test_check_output(self):
@@ -35,49 +35,49 @@ class TestFusionLSTMONEDNNOp(TestFusionLSTMOp):
 class TestFusionLSTMONEDNNOpReverse(TestFusionLSTMONEDNNOp):
     def set_conf(self):
         self.is_reverse = True
-        self.use_mkldnn = True
+        self.use_onednn = True
 
 
 class TestFusionLSTMONEDNNOpInitReverse(TestFusionLSTMONEDNNOp):
     def set_conf(self):
         self.has_initial_state = True
         self.is_reverse = True
-        self.use_mkldnn = True
+        self.use_onednn = True
 
 
 class TestFusionLSTMONEDNNOpMD1(TestFusionLSTMONEDNNOp):
     def set_conf(self):
         self.M = 36
         self.D = 8
-        self.use_mkldnn = True
+        self.use_onednn = True
 
 
 class TestFusionLSTMONEDNNOpMD2(TestFusionLSTMONEDNNOp):
     def set_conf(self):
         self.M = 8
         self.D = 8
-        self.use_mkldnn = True
+        self.use_onednn = True
 
 
 class TestFusionLSTMONEDNNOpMD3(TestFusionLSTMONEDNNOp):
     def set_conf(self):
         self.M = 15
         self.D = 3
-        self.use_mkldnn = True
+        self.use_onednn = True
 
 
 class TestFusionLSTMONEDNNOpBS1(TestFusionLSTMONEDNNOp):
     def set_conf(self):
         self.lod = [[3]]
         self.D = 16
-        self.use_mkldnn = True
+        self.use_onednn = True
 
 
 class TestFusionLSTMONEDNNOpPeepholesInit(TestFusionLSTMONEDNNOp):
     def set_conf(self):
         self.use_peepholes = True
         self.has_initial_state = True
-        self.use_mkldnn = True
+        self.use_onednn = True
 
 
 if __name__ == '__main__':

@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/expand_kernel.h"
+#include "paddle/phi/kernels/funcs/slice_utils.h"
 #include "paddle/phi/kernels/funcs/strided_copy_kernel.cu.h"
 
 namespace phi {
@@ -719,7 +720,8 @@ void StridedCopyKernel(const Context& dev_ctx,
   meta.offset = offset;
   out->set_meta(meta);
   int rank = out->dims().size();
-  auto numel = out->numel();
+  auto input_numel = input.numel();
+  auto output_numel = out->numel();
   T* output_data = out->data<T>();
   PADDLE_ENFORCE_NOT_NULL(output_data,
                           common::errors::InvalidArgument(
@@ -738,23 +740,26 @@ void StridedCopyKernel(const Context& dev_ctx,
   int VecSize = 8;
   VecSize = std::min(phi::GetVectorizedSize<T>(input_data), VecSize);
   VecSize = std::min(phi::GetVectorizedSize<T>(output_data), VecSize);
-  while (VecSize > 1 && numel % VecSize != 0) {
+  while (VecSize > 1 && output_numel % VecSize != 0) {
     VecSize /= 2;
   }
-
+  if (input_numel != 1 && input_numel != output_numel) {
+    while (VecSize > 1 && input_numel % VecSize != 0) {
+      VecSize /= 2;
+    }
+  }
   while (VecSize > 1 && output_dims[meta.dims.size() - 1] % VecSize != 0) {
     VecSize /= 2;
   }
-
   if (output_stride[meta.dims.size() - 1] != 1) {
     VecSize = 1;
   }
-
-  if (input.dims() != out->dims() && input.numel() == 1) {
-    DenseTensor vec_input = Empty<T>(dev_ctx, IntArray{VecSize});
-    ExpandKernel<T, Context>(dev_ctx, input, IntArray{VecSize}, &vec_input);
-    const T* vec_input_data = vec_input.data<T>();
-    switch (VecSize) {
+  if (input.dims() != out->dims()) {
+    if (input_numel == 1) {
+      DenseTensor vec_input = Empty<T>(dev_ctx, IntArray{VecSize});
+      ExpandKernel<T, Context>(dev_ctx, input, IntArray{VecSize}, &vec_input);
+      const T* vec_input_data = vec_input.data<T>();
+      switch (VecSize) {
 #define CASE_VECSIZE(__Sz)                                    \
   case __Sz:                                                  \
     StrideCopyDiffDimKernel<T, Context, __Sz>(dev_ctx,        \
@@ -763,18 +768,50 @@ void StridedCopyKernel(const Context& dev_ctx,
                                               output_stride,  \
                                               output_dims,    \
                                               rank,           \
-                                              numel);         \
+                                              input_numel,    \
+                                              output_numel);  \
     break;
-      CASE_VECSIZE(1);
-      CASE_VECSIZE(2);
-      CASE_VECSIZE(4);
-      CASE_VECSIZE(8);
+        CASE_VECSIZE(1);
+        CASE_VECSIZE(2);
+        CASE_VECSIZE(4);
+        CASE_VECSIZE(8);
 #undef CASE_VECSIZE
-      default:
-        PADDLE_THROW(common::errors::InvalidArgument(
-            "unsurport vecsize %d for StrideCopyDiffDimKernel", VecSize));
+        default:
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "unsurport vecsize %d for StrideCopyDiffDimKernel", VecSize));
+      }
+      return;
+    } else {
+      bool can_expand =
+          phi::funcs::CheckIsLastDimsMatch(input.dims(), out->dims());
+      if (can_expand && input.meta().is_contiguous()) {
+        switch (VecSize) {
+#define CASE_VECSIZE(__Sz)                                                 \
+  case __Sz:                                                               \
+    LaunchContiguous2StridedDefaultKernel<T, Context, __Sz>(dev_ctx,       \
+                                                            input_data,    \
+                                                            output_data,   \
+                                                            output_stride, \
+                                                            output_dims,   \
+                                                            rank,          \
+                                                            input_numel,   \
+                                                            output_numel,  \
+                                                            false);        \
+    break;
+          CASE_VECSIZE(1);
+          CASE_VECSIZE(2);
+          CASE_VECSIZE(4);
+          CASE_VECSIZE(8);
+#undef CASE_VECSIZE
+          default:
+            PADDLE_THROW(common::errors::InvalidArgument(
+                "unsurport vecsize %d for "
+                "LaunchContiguous2StridedDefaultKernel",
+                VecSize));
+        }
+        return;
+      }
     }
-    return;
   }
   PADDLE_ENFORCE_EQ(input.dims(),
                     out->dims(),
@@ -783,12 +820,12 @@ void StridedCopyKernel(const Context& dev_ctx,
                         input.dims(),
                         out->dims()));
 
-  PADDLE_ENFORCE_EQ(input.numel(),
-                    out->numel(),
+  PADDLE_ENFORCE_EQ(input_numel,
+                    output_numel,
                     common::errors::InvalidArgument(
                         "Input numel(%d) must be equal with out numel(%d).",
-                        input.numel(),
-                        out->numel()));
+                        input_numel,
+                        output_numel));
 
   Array<int64_t, phi::DDim::kMaxRank + 1> input_dims;
   Array<int64_t, phi::DDim::kMaxRank + 1> input_stride;
@@ -797,7 +834,7 @@ void StridedCopyKernel(const Context& dev_ctx,
     input_stride[i] = input.strides()[i];
   }
 
-  if (numel == 1) {
+  if (output_numel == 1) {
 #ifdef PADDLE_WITH_HIP
     hipMemcpy(output_data,
               input_data,
@@ -827,7 +864,7 @@ void StridedCopyKernel(const Context& dev_ctx,
                                                                  output_stride,
                                                                  output_dims,
                                                                  rank,
-                                                                 numel,
+                                                                 output_numel,
                                                                  false)) {
     } else {
       switch (VecSize) {
@@ -839,7 +876,8 @@ void StridedCopyKernel(const Context& dev_ctx,
                                                             output_stride, \
                                                             output_dims,   \
                                                             rank,          \
-                                                            numel,         \
+                                                            input_numel,   \
+                                                            output_numel,  \
                                                             false);        \
     break;
         CASE_VECSIZE(1);
@@ -849,19 +887,20 @@ void StridedCopyKernel(const Context& dev_ctx,
 #undef CASE_VECSIZE
         default:
           PADDLE_THROW(common::errors::InvalidArgument(
-              "unsurport vecsize %d for StrideCopyDiffDimKernel", VecSize));
+              "unsurport vecsize %d for StrideCopyKernel", VecSize));
       }
     }
   } else if (out->meta().is_contiguous()) {
     if (LaunchStrided2ContiguousCaseZeroKernel<T, Context>(
             dev_ctx, input_data, input_stride, output_data, input_dims, rank)) {
-    } else if (LaunchStrided2ContiguousCaseOneKernel<T, Context>(dev_ctx,
-                                                                 input_data,
-                                                                 input_stride,
-                                                                 output_data,
-                                                                 input_dims,
-                                                                 rank,
-                                                                 numel)) {
+    } else if (LaunchStrided2ContiguousCaseOneKernel<T, Context>(
+                   dev_ctx,
+                   input_data,
+                   input_stride,
+                   output_data,
+                   input_dims,
+                   rank,
+                   output_numel)) {
     } else {
       LaunchStrided2ContiguousDefaultKernel<T, Context>(dev_ctx,
                                                         input_data,
@@ -869,7 +908,7 @@ void StridedCopyKernel(const Context& dev_ctx,
                                                         output_data,
                                                         input_dims,
                                                         rank,
-                                                        numel);
+                                                        output_numel);
     }
   } else {
     if (LaunchStridedCopyCaseZeroKernel<T, Context>(dev_ctx,
@@ -886,7 +925,7 @@ void StridedCopyKernel(const Context& dev_ctx,
                                                           output_stride,
                                                           input_dims,
                                                           rank,
-                                                          numel)) {
+                                                          output_numel)) {
     } else {
       LaunchStridedCopyDefaultKernel<T, Context>(dev_ctx,
                                                  input_data,
@@ -895,7 +934,7 @@ void StridedCopyKernel(const Context& dev_ctx,
                                                  output_stride,
                                                  input_dims,
                                                  rank,
-                                                 numel);
+                                                 output_numel);
     }
   }
 }

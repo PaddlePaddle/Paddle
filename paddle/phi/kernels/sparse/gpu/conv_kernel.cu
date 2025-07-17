@@ -25,10 +25,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/sparse/gpu/conv.cu.h"
 #include "paddle/phi/kernels/sparse/gpu/conv_host_buffer.h"
 
-#if defined(PADDLE_WITH_CUTLASS) && SPCONV_WITH_CUTLASS
-#include "paddle/phi/kernels/sparse/gpu/gather_gemm_scatter.h"
-#endif
-
 #include "glog/logging.h"
 
 namespace phi {
@@ -197,129 +193,84 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                                     rulebook,
                                     counter);
   }
-
-#if defined(PADDLE_WITH_CUTLASS) && SPCONV_WITH_CUTLASS
-  bool mixed_precision = dev_ctx.GetComputeCapability() >= 75 &&
-                         dev_ctx.GetComputeCapability() < 80 &&
-                         std::is_same<T, float>::value;
-  bool cutlass = true;
-  // NOTE(HaipengMing): 256(in channel)x256(out channel) cutlass kernel could
-  // cause CUDA Error(700).
-  if (kernel_dims[kernel_dims.size() - 1] == 256 &&
-      kernel_dims[kernel_dims.size() - 2] == 256)
-    cutlass = false;
-  if (dev_ctx.GetComputeCapability() < 75) cutlass = false;
-  if (in_channels % 8 != 0 || out_channels % 8 != 0) {
-    if (std::is_same<T, phi::dtype::float16>::value) cutlass = false;
-    if (mixed_precision) cutlass = false;
+  if (subm) {
+    auto config =
+        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
+    unique_value.ResizeAndAllocate(
+        {static_cast<int>(out->nnz() * kernel_size)});
+    out_index.ResizeAndAllocate({static_cast<int>(rulebook_len)});
+    int* out_index_ptr = out_index.data<int>();
+    int* unique_value_ptr = unique_value.data<int>();
+    phi::backends::gpu::GpuMemsetAsync(
+        out_index_ptr, 0, sizeof(int) * rulebook_len, dev_ctx.stream());
+    GroupIndices<<<config.block_per_grid,
+                   config.thread_per_block,
+                   0,
+                   dev_ctx.stream()>>>(rulebook_len,
+                                       kernel_size,
+                                       rulebook_ptr + rulebook_len,
+                                       out_index_ptr,
+                                       unique_value_ptr);
   }
-  if (in_channels % 4 != 0 || out_channels % 4 != 0) {
-    if (std::is_same<T, float>::value) cutlass = false;
-  }
-  if (std::is_same<T, double>::value) cutlass = false;
-  if (!std::is_same<IntT, int32_t>::value) cutlass = false;
+  // 2. gather
+  phi::DenseTensor in_features =
+      phi::Empty<T>(dev_ctx, {rulebook_len, in_channels});
+  phi::DenseTensor out_features =
+      phi::Empty<T>(dev_ctx, {rulebook_len, out_channels});
+  T* in_features_ptr = in_features.data<T>();
+  T* out_features_ptr = out_features.data<T>();
+  phi::funcs::SetConstant<GPUContext, T> set_zero;
+  set_zero(dev_ctx, &out_features, static_cast<T>(0.0f));
 
-  if (cutlass) {
-    auto* out_values = out->mutable_non_zero_elements();
-    T* out_values_ptr = out_values->data<T>();
-    phi::funcs::SetConstant<GPUContext, T> set_zero;
-    set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
+  Gather<T, IntT>(dev_ctx,
+                  x.values().data<T>(),
+                  rulebook_ptr,
+                  rulebook_len,
+                  in_channels,
+                  in_features_ptr);
 
-    if (mixed_precision) {
-      DenseTensor kernel_fp16 =
-          phi::Cast<T, GPUContext>(dev_ctx, kernel, DataType::FLOAT16);
-      DenseTensor x_nnz_fp16 = phi::Cast<T, GPUContext>(
-          dev_ctx, x.non_zero_elements(), DataType::FLOAT16);
-      GATHER_GEMM_SCATTER(75, phi::dtype::float16, x_nnz_fp16, kernel_fp16);
-    } else {
-      if (dev_ctx.GetComputeCapability() < 80)
-        GATHER_GEMM_SCATTER(75, T, x.non_zero_elements(), kernel);
-      else
-        GATHER_GEMM_SCATTER(80, T, x.non_zero_elements(), kernel);
-    }
-  } else {
-#endif
-    if (subm) {
-      auto config =
-          phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
-      unique_value.ResizeAndAllocate(
-          {static_cast<int>(out->nnz() * kernel_size)});
-      out_index.ResizeAndAllocate({static_cast<int>(rulebook_len)});
-      int* out_index_ptr = out_index.data<int>();
-      int* unique_value_ptr = unique_value.data<int>();
-      phi::backends::gpu::GpuMemsetAsync(
-          out_index_ptr, 0, sizeof(int) * rulebook_len, dev_ctx.stream());
-      GroupIndices<<<config.block_per_grid,
-                     config.thread_per_block,
-                     0,
-                     dev_ctx.stream()>>>(rulebook_len,
-                                         kernel_size,
-                                         rulebook_ptr + rulebook_len,
-                                         out_index_ptr,
-                                         unique_value_ptr);
-    }
-    // 2. gather
-    phi::DenseTensor in_features =
-        phi::Empty<T>(dev_ctx, {rulebook_len, in_channels});
-    phi::DenseTensor out_features =
-        phi::Empty<T>(dev_ctx, {rulebook_len, out_channels});
-    T* in_features_ptr = in_features.data<T>();
-    T* out_features_ptr = out_features.data<T>();
-    phi::funcs::SetConstant<GPUContext, T> set_zero;
-    set_zero(dev_ctx, &out_features, static_cast<T>(0.0f));
+  // 3. call gemm for every werght
+  auto blas = phi::funcs::GetBlas<GPUContext, T>(dev_ctx);
+  auto* out_values = out->mutable_values();
+  T* out_values_ptr = out_values->data<T>();
+  set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
 
-    Gather<T, IntT>(dev_ctx,
-                    x.values().data<T>(),
-                    rulebook_ptr,
-                    rulebook_len,
-                    in_channels,
-                    in_features_ptr);
-
-    // 3. call gemm for every werght
-    auto blas = phi::funcs::GetBlas<GPUContext, T>(dev_ctx);
-    auto* out_values = out->mutable_values();
-    T* out_values_ptr = out_values->data<T>();
-    set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
-
-    const T* kernel_ptr = kernel.data<T>();
-    for (int i = 0; i < kernel_size; i++) {
-      if (h_counter_ptr[i] <= 0) {
-        continue;
-      }
-
-      // call gemm: (n, in_channels) * (in_channels, out_channels)
-      const int M = h_counter_ptr[i];
-      const int K = in_channels;
-      const int N = out_channels;
-      T* tmp_in_ptr = in_features_ptr + h_offsets_ptr[i] * in_channels;
-      const T* tmp_kernel_ptr = kernel_ptr + i * K * N;
-      T* tmp_out_ptr = out_features_ptr + h_offsets_ptr[i] * out_channels;
-
-      blas.GEMM(CblasNoTrans,
-                CblasNoTrans,
-                M,
-                N,
-                K,
-                static_cast<T>(1),
-                tmp_in_ptr,
-                tmp_kernel_ptr,
-                static_cast<T>(0),
-                tmp_out_ptr);
+  const T* kernel_ptr = kernel.data<T>();
+  for (int i = 0; i < kernel_size; i++) {
+    if (h_counter_ptr[i] <= 0) {
+      continue;
     }
 
-    // 4. scatter
-    phi::funcs::sparse::ScatterV2<T>(dev_ctx,
-                                     out_features_ptr,
-                                     out_index.data<int>(),
-                                     unique_value.data<int>(),
-                                     out->nnz(),
-                                     kernel_size,
-                                     out_channels,
-                                     1,
-                                     out_values_ptr);
-#if defined(PADDLE_WITH_CUTLASS) && SPCONV_WITH_CUTLASS
+    // call gemm: (n, in_channels) * (in_channels, out_channels)
+    const int M = h_counter_ptr[i];
+    const int K = in_channels;
+    const int N = out_channels;
+    T* tmp_in_ptr = in_features_ptr + h_offsets_ptr[i] * in_channels;
+    const T* tmp_kernel_ptr = kernel_ptr + i * K * N;
+    T* tmp_out_ptr = out_features_ptr + h_offsets_ptr[i] * out_channels;
+
+    blas.GEMM(CblasNoTrans,
+              CblasNoTrans,
+              M,
+              N,
+              K,
+              static_cast<T>(1),
+              tmp_in_ptr,
+              tmp_kernel_ptr,
+              static_cast<T>(0),
+              tmp_out_ptr);
   }
-#endif
+
+  // 4. scatter
+  phi::funcs::sparse::ScatterV2<T>(dev_ctx,
+                                   out_features_ptr,
+                                   out_index.data<int>(),
+                                   unique_value.data<int>(),
+                                   out->nnz(),
+                                   kernel_size,
+                                   out_channels,
+                                   1,
+                                   out_values_ptr);
 }
 
 /**

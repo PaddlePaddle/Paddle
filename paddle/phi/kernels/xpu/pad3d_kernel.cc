@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 
@@ -51,6 +52,11 @@ void Pad3dKernel(const Context& dev_ctx,
   }
 
   T* out_data = dev_ctx.template Alloc<T>(out);
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), pad_value, out);
+    return;
+  }
 
   const int64_t num = in_dims[0];  // n
   int64_t channels = in_dims[1];   // c

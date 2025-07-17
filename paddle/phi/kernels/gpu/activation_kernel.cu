@@ -116,6 +116,7 @@ DEFINE_GPU_ACTIVATION_KERNEL(Sigmoid, CudaSigmoidFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(LogSigmoid, CudaLogSigmoidFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Floor, CudaFloorFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Ceil, CudaCeilFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Rint, CudaRintFunctor)
 
 DEFINE_GPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Log, CudaLogFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Log2, CudaLog2Functor)
@@ -352,6 +353,16 @@ PD_REGISTER_ACTIVATION_KERNEL(celu, CeluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(selu, SeluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(logit, LogitCUDAKernel)
 
+PD_REGISTER_KERNEL(rint,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::RintKernel,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(round,
                    GPU,
                    ALL_LAYOUT,

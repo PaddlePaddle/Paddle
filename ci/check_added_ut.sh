@@ -13,6 +13,7 @@
 # limitations under the License.
 
 set +e
+set -x
 unset GREP_OPTIONS
 
 SYSTEM=`uname -s`
@@ -52,7 +53,12 @@ cd prec_build
 if [[ "$SYSTEM" == "Linux" ]] || [[ "$SYSTEM" == "Darwin" ]];then
     source ${PADDLE_ROOT}/ci/utils_copy.sh
     init
-    cmake_base ${PYTHON_ABI:-""} >prebuild.log 2>&1
+    if ! cmake_base ${PYTHON_ABI:-""} 2>&1 | tee prebuild.log; then
+        echo "CMake failed: $?" >&2
+        mkdir -p /home/data/cfs/coverage/${PR_ID}/${COMMIT_ID}
+        cp prebuild.log /home/data/cfs/coverage/${PR_ID}/${COMMIT_ID}
+        exit 1
+    fi
 elif [[ "$SYSTEM" == "Windows_NT" ]];then
     bash $PADDLE_ROOT/win_cmake.sh >prec_build.log 2>&1
 fi
