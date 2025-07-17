@@ -235,7 +235,7 @@ __global__ void TransposeNormalKernel(const T* in_ptr,
 
 template <typename DeviceContext, typename T>
 void TransposeNormal<DeviceContext, T>::operator()(
-    const DeviceContext& context,
+    const DeviceContext& dev_ctx,
     const phi::DenseTensor& in,
     phi::DenseTensor* out,
     const std::vector<int>& axis) {
@@ -246,7 +246,7 @@ void TransposeNormal<DeviceContext, T>::operator()(
   auto* out_ptr = out->data<T>();
 
   // copy in_stride, out_stride, axis to gpu device
-  const phi::Place& cuda_place = context.GetPlace();
+  const phi::Place& cuda_place = dev_ctx.GetPlace();
   phi::CPUPlace cpu_place = phi::CPUPlace();
   size_t size = 3 * rank * sizeof(int64_t);
   auto cpu_buf_holder = phi::memory_utils::Alloc(cpu_place, size);
@@ -259,26 +259,26 @@ void TransposeNormal<DeviceContext, T>::operator()(
     cpu_buf[2 * rank + i] = axis[i];
   }
   memory_utils::Copy(
-      cuda_place, cuda_buf, cpu_place, cpu_buf, size, context.stream());
+      cuda_place, cuda_buf, cpu_place, cpu_buf, size, dev_ctx.stream());
   REINTERPRET(const int64_t, in_stride_ptr, cuda_buf);
   REINTERPRET(const int64_t, out_stride_ptr, cuda_buf + rank);
   REINTERPRET(const int64_t, axis_ptr, cuda_buf + 2 * rank);
 
-  const int MAX_BLOCK_DIM = context.GetMaxThreadsPerBlock();
-  const int MAX_GRID_DIM = context.GetMaxPhysicalThreadCount() / MAX_BLOCK_DIM;
+  const int MAX_BLOCK_DIM = dev_ctx.GetMaxThreadsPerBlock();
+  const int MAX_GRID_DIM = dev_ctx.GetMaxPhysicalThreadCount() / MAX_BLOCK_DIM;
   int64_t elements = in.numel();
   int block_size = (elements >= MAX_BLOCK_DIM)
                        ? MAX_BLOCK_DIM
                        : (1 << static_cast<int>(std::log2(elements)));
   int grid_size = elements / block_size;
   grid_size = (grid_size >= MAX_GRID_DIM) ? MAX_GRID_DIM : grid_size;
-  TransposeNormalKernel<T><<<grid_size, block_size, 0, context.stream()>>>(
+  TransposeNormalKernel<T><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
       in_ptr, out_ptr, elements, in_stride_ptr, out_stride_ptr, axis_ptr, rank);
 }
 
 template <typename T>
 struct TransposeNormal<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& in,
                   DenseTensor* out,
                   const std::vector<int>& axis) {
@@ -289,7 +289,7 @@ struct TransposeNormal<phi::GPUContext, T> {
     auto* out_ptr = out->data<T>();
 
     // copy in_stride, out_stride, axis to gpu device
-    const phi::Place& cuda_place = context.GetPlace();
+    const phi::Place& cuda_place = dev_ctx.GetPlace();
     phi::CPUPlace cpu_place = phi::CPUPlace();
     size_t size = 3 * rank * sizeof(int64_t);
     auto cpu_buf_holder = phi::memory_utils::Alloc(cpu_place, size);
@@ -302,14 +302,14 @@ struct TransposeNormal<phi::GPUContext, T> {
       cpu_buf[2 * rank + i] = axis[i];
     }
     memory_utils::Copy(
-        cuda_place, cuda_buf, cpu_place, cpu_buf, size, context.stream());
+        cuda_place, cuda_buf, cpu_place, cpu_buf, size, dev_ctx.stream());
     REINTERPRET(const int64_t, in_stride_ptr, cuda_buf);
     REINTERPRET(const int64_t, out_stride_ptr, cuda_buf + rank);
     REINTERPRET(const int64_t, axis_ptr, cuda_buf + 2 * rank);
 
-    const int MAX_BLOCK_DIM = context.GetMaxThreadsPerBlock();
+    const int MAX_BLOCK_DIM = dev_ctx.GetMaxThreadsPerBlock();
     const int MAX_GRID_DIM =
-        context.GetMaxPhysicalThreadCount() / MAX_BLOCK_DIM;
+        dev_ctx.GetMaxPhysicalThreadCount() / MAX_BLOCK_DIM;
     int64_t elements = in.numel();
     int block_size = (elements >= MAX_BLOCK_DIM)
                          ? MAX_BLOCK_DIM
@@ -317,7 +317,7 @@ struct TransposeNormal<phi::GPUContext, T> {
     int grid_size = elements / block_size;
     grid_size = (grid_size >= MAX_GRID_DIM) ? MAX_GRID_DIM : grid_size;
     TransposeNormalKernel<T>
-        <<<grid_size, block_size, 0, context.stream()>>>(in_ptr,
+        <<<grid_size, block_size, 0, dev_ctx.stream()>>>(in_ptr,
                                                          out_ptr,
                                                          elements,
                                                          in_stride_ptr,
@@ -347,30 +347,30 @@ DEFINE_GPU_TRANS_NORMAL(phi::dtype::complex<float>);
 DEFINE_GPU_TRANS_NORMAL(phi::dtype::complex<double>);
 
 struct TensorSetConstantGPU {
-  TensorSetConstantGPU(const phi::DeviceContext& context,
+  TensorSetConstantGPU(const phi::DeviceContext& dev_ctx,
                        phi::DenseTensor* tensor,
                        float value)
-      : context_(context), tensor_(tensor), value_(value) {}
+      : dev_ctx_(dev_ctx), tensor_(tensor), value_(value) {}
 
   template <typename T>
   void apply() const {
     SetConstant<phi::GPUContext, T> functor;
-    functor(reinterpret_cast<const phi::GPUContext&>(context_),
+    functor(reinterpret_cast<const phi::GPUContext&>(dev_ctx_),
             tensor_,
             static_cast<T>(value_));
   }
 
-  const phi::DeviceContext& context_;
+  const phi::DeviceContext& dev_ctx_;
   phi::DenseTensor* tensor_;
   float value_;
 };
 
 template <>
-void set_constant_with_place<phi::GPUPlace>(const phi::DeviceContext& context,
+void set_constant_with_place<phi::GPUPlace>(const phi::DeviceContext& dev_ctx,
                                             phi::DenseTensor* tensor,
                                             float value) {
   phi::VisitDataType(tensor->dtype(),
-                     TensorSetConstantGPU(context, tensor, value));
+                     TensorSetConstantGPU(dev_ctx, tensor, value));
 }
 
 template <typename T>
@@ -386,7 +386,7 @@ __global__ void RowwiseAddKernel(
 
 template <typename T>
 struct RowwiseAdd<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const phi::DenseTensor& input,
                   const phi::DenseTensor& vector,
                   phi::DenseTensor* output) {
@@ -415,7 +415,7 @@ struct RowwiseAdd<phi::GPUContext, T> {
             out_dims_cstr));
     int blocks = 512;
     int grids = (input.numel() + blocks - 1) / blocks;
-    RowwiseAddKernel<T><<<grids, blocks, 0, context.stream()>>>(
+    RowwiseAddKernel<T><<<grids, blocks, 0, dev_ctx.stream()>>>(
         input.data<T>(),
         vector.data<T>(),
         output->data<T>(),

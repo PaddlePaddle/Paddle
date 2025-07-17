@@ -27,8 +27,8 @@ void IndexEleGetGradAccKernel(
     const char* in_ptr,
     char* out_ptr,
     const std::array<char*, DDim::kMaxRank> index_ptrs,
-    const std::array<int64_t, 25> sizes,
-    const std::array<int64_t, 25> strides,
+    const std::array<int64_t, phi::DDim::kMaxRank + 1> sizes,
+    const std::array<int64_t, phi::DDim::kMaxRank + 1> strides,
     int num_indices,
     offset_calc_t offset_calc) {
   for (int64_t idx = 0; idx < N; idx++) {
@@ -59,13 +59,9 @@ void CPUIndexElementwiseGetGrad(const phi::CPUContext& ctx,
                                 const bool accumulate,
                                 DenseTensor* output) {
   int64_t numel = 0;
-  int64_t num_indices = 0;
-  std::vector<int64_t> shape_tmp;
-  std::vector<int64_t> stride_tmp;
-  funcs::cal_shape_stride(index_dims, &num_indices, &shape_tmp, &stride_tmp);
-
-  auto sizes = std::array<int64_t, 25>{};
-  auto strides = std::array<int64_t, 25>{};
+  auto num_indices = index_dims.size();
+  auto sizes = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
+  auto strides = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
   for (unsigned i = 0; i < num_indices; i++) {
     sizes[i] = index_dims[i];
     strides[i] = index_strides[i];

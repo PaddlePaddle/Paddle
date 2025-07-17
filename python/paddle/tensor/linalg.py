@@ -4171,7 +4171,7 @@ def pinv(
             return out_2
         else:
             # combine eigh and matmul op
-            s, u = _C_ops.eigh(x, 'UPLO')
+            s, u = _C_ops.eigh(x, 'L')
             s_abs = paddle.abs(s)
             max_singular_val = _C_ops.max(s_abs, [-1], True)
             rcond = paddle.to_tensor(rcond, dtype=s.dtype)

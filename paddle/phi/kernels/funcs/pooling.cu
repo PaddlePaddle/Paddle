@@ -1447,15 +1447,15 @@ class Pool3dFunctor<phi::GPUContext, PoolProcess, T> {
 
     int64_t nthreads = batch_size * output_channels * output_depth *
                        output_height * output_width;
-    int thread_num = 1024;
-#ifdef WITH_NV_JETSON
-    backends::gpu::ChangeThreadNum(context, &thread_num);
-#endif
-    int64_t blocks = (nthreads + thread_num - 1) / thread_num;
-    dim3 threads(thread_num, 1);
-    dim3 grid(blocks, 1);
 
     if (input.numel() <= std::numeric_limits<int>::max()) {
+      int thread_num = 1024;
+#ifdef WITH_NV_JETSON
+      backends::gpu::ChangeThreadNum(context, &thread_num);
+#endif
+      int64_t blocks = (nthreads + thread_num - 1) / thread_num;
+      dim3 threads(thread_num, 1);
+      dim3 grid(blocks, 1);
       KernelPool3D<PoolProcess, T, int>
           <<<grid, threads, 0, context.stream()>>>(nthreads,
                                                    input_data,
@@ -1481,6 +1481,13 @@ class Pool3dFunctor<phi::GPUContext, PoolProcess, T> {
                                                    output_data,
                                                    channel_last);
     } else {
+      int thread_num = 512;
+#ifdef WITH_NV_JETSON
+      backends::gpu::ChangeThreadNum(context, &thread_num);
+#endif
+      int64_t blocks = (nthreads + thread_num - 1) / thread_num;
+      dim3 threads(thread_num, 1);
+      dim3 grid(blocks, 1);
       KernelPool3D<PoolProcess, T, int64_t>
           <<<grid, threads, 0, context.stream()>>>(nthreads,
                                                    input_data,
@@ -1572,12 +1579,13 @@ class Pool3dGradFunctor<phi::GPUContext, PoolProcess, T> {
 
     int64_t nthreads =
         batch_size * input_channels * input_depth * input_height * input_width;
-    int64_t blocks = (nthreads + 1024 - 1) / 1024;
-    dim3 threads(1024, 1);
-    dim3 grid(blocks, 1);
 
     if (input.numel() <= std::numeric_limits<int>::max() &&
         output.numel() <= std::numeric_limits<int>::max()) {
+      int thread_num = 1024;
+      int64_t blocks = (nthreads + thread_num - 1) / thread_num;
+      dim3 threads(thread_num, 1);
+      dim3 grid(blocks, 1);
       KernelPool3DGrad<T, PoolProcess, int>
           <<<grid, threads, 0, context.stream()>>>(
               nthreads,
@@ -1606,6 +1614,10 @@ class Pool3dGradFunctor<phi::GPUContext, PoolProcess, T> {
               input_grad_data,
               channel_last);  // add channel_last
     } else {
+      int thread_num = 512;
+      int64_t blocks = (nthreads + thread_num - 1) / thread_num;
+      dim3 threads(thread_num, 1);
+      dim3 grid(blocks, 1);
       KernelPool3DGrad<T, PoolProcess, int64_t>
           <<<grid, threads, 0, context.stream()>>>(
               nthreads,
