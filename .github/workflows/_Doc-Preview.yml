@@ -1,4 +1,4 @@
-name: Model-benchmark
+name: Doc-Preview
 
 on:
   workflow_call:
@@ -18,6 +18,7 @@ env:
   TASK: paddle-CI-${{ github.event.pull_request.number }}-Doc-Preview
   CI_name: Doc-Preview
   CFS_DIR: /home/data/cfs
+  work_dir: /paddle
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 
 defaults:
@@ -71,6 +72,7 @@ jobs:
             -e BOS_CREDENTIAL_AK \
             -e BOS_CREDENTIAL_SK \
             -e CFS_DIR \
+            -e work_dir \
             -e no_proxy \
             -w /paddle --network host ${docker_image}
 
