@@ -41,6 +41,7 @@ from ...infer_meta import (
 from ...profiler import EventGuard, event_register
 from ...symbolic.builder import StatementIRBuilder
 from ...symbolic.statement_ir import (
+    ParametersHolder,
     Reference,
     StatementContext,
     StatementContextRegistry,
@@ -106,15 +107,15 @@ if TYPE_CHECKING:
         TensorVariable, SymbolicVariable, NumPyArrayVariable
     ]
 
-
-CompileGraphResult: TypeAlias = tuple[
-    Callable[..., Any],
-    tuple[
-        StatementIR,
-        OrderedSet[Union[TensorVariable, SymbolicVariable]],
-        OrderedSet[Union[TensorVariable, SymbolicVariable]],
-    ],
-]
+    CompileGraphResult: TypeAlias = tuple[
+        Callable[..., Any],
+        tuple[
+            StatementIR,
+            OrderedSet[GraphNodeVariableType],
+            OrderedSet[GraphNodeVariableType],
+            OrderedSet[GraphNodeVariableType],
+        ],
+    ]
 GraphNodeVariableClasses = (
     TensorVariable,
     SymbolicVariable,
@@ -248,6 +249,7 @@ class FunctionGraph:
             "print_variables",
             "inplace_tensors",
             "need_cache",
+            "parameters_holder",
         ],
     )
 
@@ -260,6 +262,7 @@ class FunctionGraph:
         self.pycode_gen = PyCodeGen(code, globals, disable_eval_frame=True)
         self.side_effects = SideEffects()
         self.need_cache = True
+        self.parameters_holder = ParametersHolder()
         self._global_guarded_variables: OrderedSet[VariableBase] = OrderedSet()
         self._print_variables = []
         self._inplace_tensors = OrderedSet()
@@ -309,6 +312,7 @@ class FunctionGraph:
             print_variables=list(self._print_variables),
             inplace_tensors=OrderedSet(self._inplace_tensors),
             need_cache=self.need_cache,
+            parameters_holder=self.parameters_holder.copy(),
         )
 
     def restore_memo(self, memo: FunctionGraph.Memo):
@@ -327,6 +331,7 @@ class FunctionGraph:
         self._print_variables = memo.print_variables
         self._inplace_tensors = memo.inplace_tensors
         self.need_cache = memo.need_cache
+        self.parameters_holder = memo.parameters_holder
 
     def collect_input_variables(self, inputs: list[VariableBase]):
         """
@@ -480,16 +485,23 @@ class FunctionGraph:
                 statement_ir,
                 OrderedSet(),
                 OrderedSet(),
+                OrderedSet(),
             )
         SIRToCodeMap().register(statement_ir, self.pycode_gen._origin_code)
-        input_names = statement_ir.inputs
-        symbolic_inputs = self._find_tensor_inputs(input_names)
+        symbolic_inputs = self._find_tensor_inputs(statement_ir.inputs)
+        symbolic_params = self._find_tensor_inputs(statement_ir.params)
         compiled_fn = self.sir_builder.compile_fn(
             statement_ir.name,
+            self.parameters_holder,
             tuple(var.meta.to_input_spec() for var in symbolic_inputs),
             **self._kwargs,
         )
-        return compiled_fn, (statement_ir, symbolic_inputs, symbolic_outputs)
+        return compiled_fn, (
+            statement_ir,
+            symbolic_inputs,
+            symbolic_params,
+            symbolic_outputs,
+        )
 
     @event_register("compile_function", event_level=2)
     def compile_function(
@@ -511,9 +523,12 @@ class FunctionGraph:
         from ..breakpoint import BreakpointManager
 
         BreakpointManager().on_event("compile_function")
-        graph_fn, (statement_ir, symbolic_inputs, symbolic_outputs) = (
-            compile_graph_result
-        )
+        graph_fn, (
+            statement_ir,
+            symbolic_inputs,
+            _,
+            symbolic_outputs,
+        ) = compile_graph_result
         compiled_fn_name = f"___graph_fn_{statement_ir.name}"
         # prepare function and inputs
         self.pycode_gen.gen_load_object(graph_fn, compiled_fn_name)

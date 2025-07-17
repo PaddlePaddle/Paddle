@@ -929,13 +929,15 @@ class TestSubtractApi(unittest.TestCase):
         return paddle.subtract(x, y, name)
 
     def test_name(self):
-        with paddle.pir_utils.OldIrGuard():
-            with base.program_guard(base.Program()):
-                x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
-                y = paddle.static.data(name='y', shape=[2, 3], dtype=np.float32)
+        with (
+            paddle.pir_utils.OldIrGuard(),
+            base.program_guard(base.Program()),
+        ):
+            x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
+            y = paddle.static.data(name='y', shape=[2, 3], dtype=np.float32)
 
-                y_1 = self._executed_api(x, y, name='subtract_res')
-                self.assertEqual(('subtract_res' in y_1.name), True)
+            y_1 = self._executed_api(x, y, name='subtract_res')
+            self.assertEqual(('subtract_res' in y_1.name), True)
 
     def test_declarative(self):
         with paddle.static.program_guard(paddle.static.Program()):
@@ -1188,30 +1190,30 @@ class TestElementwiseOpZeroSize3(TestElementwiseOpZeroSize):
 
 class TestTensorSubAPIWarnings(unittest.TestCase):
     def test_warnings(self):
-        with paddle.pir_utils.OldIrGuard():
-            with warnings.catch_warnings(record=True) as context:
-                warnings.simplefilter("always")
+        with (
+            paddle.pir_utils.OldIrGuard(),
+            warnings.catch_warnings(record=True) as context,
+        ):
+            warnings.simplefilter("always")
 
-                paddle.enable_static()
-                helper = LayerHelper("elementwise_sub")
-                data = paddle.static.data(
-                    name='data', shape=[None, 3, 32, 32], dtype=np.float32
-                )
-                out = helper.create_variable_for_type_inference(
-                    dtype=data.dtype
-                )
-                os.environ['FLAGS_print_extra_attrs'] = "1"
-                helper.append_op(
-                    type="elementwise_sub",
-                    inputs={'X': data, 'Y': data},
-                    outputs={'Out': out},
-                    attrs={'axis': 1, 'use_mkldnn': False},
-                )
-                self.assertTrue(
-                    "op elementwise_sub's attr axis = 1 is not the default value: -1"
-                    in str(context[-1].message)
-                )
-                os.environ['FLAGS_print_extra_attrs'] = "0"
+            paddle.enable_static()
+            helper = LayerHelper("elementwise_sub")
+            data = paddle.static.data(
+                name='data', shape=[None, 3, 32, 32], dtype=np.float32
+            )
+            out = helper.create_variable_for_type_inference(dtype=data.dtype)
+            os.environ['FLAGS_print_extra_attrs'] = "1"
+            helper.append_op(
+                type="elementwise_sub",
+                inputs={'X': data, 'Y': data},
+                outputs={'Out': out},
+                attrs={'axis': 1, 'use_mkldnn': False},
+            )
+            self.assertTrue(
+                "op elementwise_sub's attr axis = 1 is not the default value: -1"
+                in str(context[-1].message)
+            )
+            os.environ['FLAGS_print_extra_attrs'] = "0"
 
 
 if __name__ == '__main__':

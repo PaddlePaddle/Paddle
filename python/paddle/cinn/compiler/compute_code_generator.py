@@ -221,20 +221,22 @@ class ComputeCodeGenerator(ast.NodeVisitor):
                     self.visit_compound_statement(node.body)
 
     def visit_With(self, node):
-        with self.variables_table:
-            with contextlib.ExitStack() as context_stack:
-                for item in node.items:
-                    cur_ctx = ExprExecutor(self.variables_table.get()).exec(
-                        item.context_expr
+        with (
+            self.variables_table,
+            contextlib.ExitStack() as context_stack,
+        ):
+            for item in node.items:
+                cur_ctx = ExprExecutor(self.variables_table.get()).exec(
+                    item.context_expr
+                )
+                cur_ctx = context_stack.enter_context(cur_ctx)
+                if item.optional_vars is not None:
+                    local_var_table = exec_assign(
+                        target=item.optional_vars, source=cur_ctx
                     )
-                    cur_ctx = context_stack.enter_context(cur_ctx)
-                    if item.optional_vars is not None:
-                        local_var_table = exec_assign(
-                            target=item.optional_vars, source=cur_ctx
-                        )
-                        for k, v in local_var_table.items():
-                            self.variables_table.add(k, v)
-                body = self.visit_compound_statement(node.body)
+                    for k, v in local_var_table.items():
+                        self.variables_table.add(k, v)
+            body = self.visit_compound_statement(node.body)
 
     def visit_Expr(self, node):
         if is_node_parsed_in_schedule(node.value):

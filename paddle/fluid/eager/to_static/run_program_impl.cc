@@ -22,6 +22,7 @@
 #include "paddle/fluid/framework/tensor_ref_array.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/cuda_graph_extract_pass.h"
@@ -46,6 +47,7 @@ COMMON_DECLARE_bool(enable_pir_with_pt_in_dy2st);
 COMMON_DECLARE_bool(enable_pir_in_executor);
 COMMON_DECLARE_bool(use_mkldnn);
 COMMON_DECLARE_bool(specialize_device_in_dy2st);
+COMMON_DECLARE_bool(parameters_persistent_mode_in_dy2st);
 
 namespace egr::to_static {
 namespace details {
@@ -197,18 +199,18 @@ void ShareTensorsIntoScope(const std::vector<Tensor> &tensors,
   ShareTensorsIntoScopeWithName(tensors, names, scope);
 }
 
-void ShareTensorsFromScopeWithName(const std::vector<Tensor *> &tensors,
+void ShareTensorsFromScopeWithName(std::vector<Tensor> *tensors,
                                    const std::vector<std::string> &names,
                                    paddle::framework::Scope *scope) {
   PADDLE_ENFORCE_EQ(
-      tensors.size(),
+      tensors->size(),
       names.size(),
       common::errors::InvalidArgument(
           "The size of tensors and names should be equal, but got "
           "tensors size: %d, names size: %d.",
-          tensors.size(),
+          tensors->size(),
           names.size()));
-  for (size_t i = 0; i < tensors.size(); ++i) {
+  for (size_t i = 0; i < tensors->size(); ++i) {
     auto &name = names[i];
     VLOG(4) << "Share Tensor From Scope: " << name;
 
@@ -223,33 +225,34 @@ void ShareTensorsFromScopeWithName(const std::vector<Tensor *> &tensors,
                                  "RunProgram(Grad)Op'"
                                  "s internal scope.",
                                  name));
-    CheckOutputVarStatus(*var, *tensors[i]);
+    const auto &tensor = tensors->at(i);
+    CheckOutputVarStatus(*var, tensor);
     // share tensor
     if (var->IsType<phi::DenseTensor>()) {
       auto &src_tensor = var->Get<phi::DenseTensor>();
-      if (tensors[i]->is_dist_tensor()) {
+      if (tensor.is_dist_tensor()) {
         auto *dst_tensor =
             std::dynamic_pointer_cast<phi::distributed::DistTensor>(
-                tensors[i]->impl())
+                tensor.impl())
                 ->unsafe_mutable_value();
         VLOG(2) << "actually do sharing " << name << " from scope";
         *dst_tensor = src_tensor;
       } else {
         auto *dst_tensor = const_cast<phi::DenseTensor *>(
-            dynamic_cast<const phi::DenseTensor *>(tensors[i]->impl().get()));
+            dynamic_cast<const phi::DenseTensor *>(tensor.impl().get()));
         VLOG(2) << "actually do sharing " << name << " from scope";
         *dst_tensor = src_tensor;
       }
     } else if (var->IsType<phi::SelectedRows>()) {
       auto &src_tensor = var->Get<phi::SelectedRows>();
       auto *dst_tensor = const_cast<phi::SelectedRows *>(
-          dynamic_cast<const phi::SelectedRows *>(tensors[i]->impl().get()));
+          dynamic_cast<const phi::SelectedRows *>(tensor.impl().get()));
       *dst_tensor = src_tensor;
     } else if (var->IsType<paddle::framework::VariableRefArray>()) {
       auto &src_tensor = var->Get<paddle::framework::VariableRefArray>();
       auto *dst_tensor = const_cast<paddle::framework::VariableRefArray *>(
           dynamic_cast<const paddle::framework::VariableRefArray *>(
-              tensors[i]->impl().get()));
+              tensor.impl().get()));
       *dst_tensor = src_tensor;
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
@@ -327,24 +330,27 @@ void BuildScopeByBlock(
   }
 }
 
-void GcScope(paddle::framework::Scope *scope) {
-  for (auto &[_, var] : scope->LocalVarsMap()) {
-    if (var != nullptr) {
-      if (var->IsType<phi::DenseTensor>()) {
-        var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder();
+void GcScope(paddle::framework::Scope *scope,
+             const std::unordered_set<std::string_view> &persistent_names) {
+  for (auto &[name, var] : scope->LocalVarsMap()) {
+    if (persistent_names.count(name)) {
+      continue;
+    }
+    if (var == nullptr) {
+      continue;
+    }
+    if (var->IsType<phi::DenseTensor>()) {
+      var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder();
+    }
+    if (var->IsType<phi::SelectedRows>()) {
+      var->GetMutable<phi::SelectedRows>()->mutable_value()->MoveMemoryHolder();
+    }
+    if (var->IsType<phi::TensorArray>()) {
+      auto *lod_tensor_arr = var->GetMutable<phi::TensorArray>();
+      for (auto &t : *lod_tensor_arr) {
+        t.MoveMemoryHolder();
       }
-      if (var->IsType<phi::SelectedRows>()) {
-        var->GetMutable<phi::SelectedRows>()
-            ->mutable_value()
-            ->MoveMemoryHolder();
-      }
-      if (var->IsType<phi::TensorArray>()) {
-        auto *lod_tensor_arr = var->GetMutable<phi::TensorArray>();
-        for (auto &t : *lod_tensor_arr) {
-          t.MoveMemoryHolder();
-        }
-        lod_tensor_arr->clear();
-      }
+      lod_tensor_arr->clear();
     }
   }
 }
@@ -362,12 +368,80 @@ inline bool is_use_cuda_graph(int64_t cuda_graph_state) {
   return cuda_graph_state != 0;
 }
 
+paddle::Tensor CreateTensorFromValue(const pir::Value &value) {
+  auto tensor = paddle::Tensor();
+  const auto &value_type = value.type();
+
+  if (value_type.isa<paddle::dialect::DenseTensorType>()) {
+    const auto &ddims =
+        value_type.dyn_cast<paddle::dialect::DenseTensorType>().dims();
+    const auto &dtype = paddle::dialect::TransToPhiDataType(
+        value_type.dyn_cast<paddle::dialect::DenseTensorType>().dtype());
+
+    std::shared_ptr<phi::DenseTensor> dense_tensor =
+        std::make_shared<phi::DenseTensor>();
+
+    if (value_type.isa<paddle::dialect::DistDenseTensorType>()) {
+      paddle::dialect::DistDenseTensorType dist_value_type =
+          value_type.dyn_cast<paddle::dialect::DistDenseTensorType>();
+      const auto &pir_attr = dist_value_type.tensor_dist_attr();
+      const auto &mesh = pir_attr.process_mesh_attr().process_mesh();
+      const auto &placements = pir_attr.placements();
+      tensor.set_impl(std::make_shared<phi::distributed::DistTensor>(
+          dense_tensor, mesh, placements));
+    } else {
+      tensor.set_impl(dense_tensor);
+    }
+  } else if (value_type.isa<paddle::dialect::SelectedRowsType>()) {
+    std::shared_ptr<phi::SelectedRows> selected_rows_tensor =
+        std::make_shared<phi::SelectedRows>();
+    tensor.set_impl(selected_rows_tensor);
+  }
+  return tensor;
+}
+
+std::vector<paddle::Tensor> CreateOutputTensorsFromValue(
+    const std::vector<::pir::Value> &values,
+    const std::vector<std::string> &names) {
+  PADDLE_ENFORCE_EQ(values.size(),
+                    names.size(),
+                    common::errors::InvalidArgument(
+                        "The size of values and names should be equal, but got "
+                        "values size: %d, names size: %d.",
+                        values.size(),
+                        names.size()));
+  std::vector<paddle::Tensor> result;
+  std::unordered_map<pir::Value, paddle::Tensor> out_tensor_map;
+  result.reserve(values.size());
+  auto CreateTensorFromValueWithCache =
+      [&out_tensor_map](const pir::Value &value) {
+        if (out_tensor_map.find(value) == out_tensor_map.end()) {
+          paddle::Tensor tensor = CreateTensorFromValue(value);
+          out_tensor_map[value] = tensor;
+          return tensor;
+        } else {
+          return out_tensor_map[value];
+        }
+      };
+  for (size_t i = 0; i < values.size(); ++i) {
+    const auto &value = values[i];
+    const auto &name = names[i];
+    if (value.impl() == nullptr || !value.type()) {
+      result.emplace_back();
+      continue;
+    }
+    auto tensor = CreateTensorFromValueWithCache(value);
+    tensor.set_name(name);
+    result.emplace_back(std::move(tensor));
+  }
+  return result;
+}
+
 }  // namespace details
 
-void RunProgramImpl(
+std::vector<paddle::Tensor> RunProgramImpl(
     const std::vector<paddle::Tensor> &x,
     const std::vector<paddle::Tensor> &params,
-    std::vector<paddle::Tensor *> &out,                   // NOLINT
     std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
     bool require_any_grad,
     const paddle::framework::AttributeMap &attrs,
@@ -389,6 +463,7 @@ void RunProgramImpl(
   if (attrs.count("in_sot_mode")) {
     in_sot_mode = PADDLE_GET_CONST(bool, attrs.at("in_sot_mode"));
   }
+  auto need_grad = !is_test && require_any_grad;
   auto place = egr::Controller::Instance().GetExpectedPlace();
 
   // NOTE(chenweihang): In order not to add new variable type, use vector
@@ -399,6 +474,12 @@ void RunProgramImpl(
       1,
       common::errors::InvalidArgument(
           "The OutScope of RunProgramGradOp should only hold one scope."));
+
+  if (FLAGS_parameters_persistent_mode_in_dy2st && need_grad) {
+    PADDLE_THROW(common::errors::PreconditionNotMet(
+        "Currently parameters persistent mode only support forward "
+        "process, but got need_grad is true."));
+  }
 
   VLOG(2) << "RunProgram use interpretercore to execute program.";
 
@@ -415,6 +496,9 @@ void RunProgramImpl(
       PADDLE_GET_CONST(std::vector<std::string>, attrs.at("fo_names"));
   const auto &no_need_buffer_names = PADDLE_GET_CONST(
       std::vector<std::string>, attrs.at("no_need_buffers_names"));
+
+  const auto &output_values =
+      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fo_values"));
 
   std::shared_ptr<::pir::Program> forward_program = PADDLE_GET_CONST(
       std::shared_ptr<::pir::Program>, attrs.at("forward_program"));
@@ -519,6 +603,9 @@ void RunProgramImpl(
       skip_names_set.erase(name);
     }
     skip_names_set.insert(output_names.begin(), output_names.end());
+    if (FLAGS_parameters_persistent_mode_in_dy2st) {
+      skip_names_set.insert(param_names.begin(), param_names.end());
+    }
 
     details::print_collection(skip_names_set);
     interpreter_core->SetSkipGcVars(skip_names_set);
@@ -534,8 +621,14 @@ void RunProgramImpl(
 #endif
     // Step 2. update scope for cache interpretercore
     details::ShareTensorsIntoScopeWithName(x, input_names, global_inner_scope);
-    details::ShareTensorsIntoScopeWithName(
-        params, param_names, global_inner_scope);
+    if (!FLAGS_parameters_persistent_mode_in_dy2st) {
+      // In parameters persistent mode, we only share params once, so
+      // we don't need to share params again.
+      // NOTE(dev): Currently, we only use this in LLM inference, so
+      // we don't modify this logic about backward impl.
+      details::ShareTensorsIntoScopeWithName(
+          params, param_names, global_inner_scope);
+    }
   }
 
   paddle::framework::RunFeedHooks(*forward_program, *global_inner_scope);
@@ -546,20 +639,32 @@ void RunProgramImpl(
     interpreter_core->Run({});
   }
 
+  // Create output tensors and fetch the real output tensors from scope.
+  auto out = details::CreateOutputTensorsFromValue(output_values, output_names);
+
   {
     phi::RecordEvent record_event(
         "fetch_and_gc", phi::TracerEventType::UserDefined, 1);
-    // Get Output, and Middle Outputs
+    // Get Output
     details::ShareTensorsFromScopeWithName(
-        out, output_names, global_inner_scope);
+        &out, output_names, global_inner_scope);
     VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(out_scope_vec->front());
 
-    if (is_test || !require_any_grad) {
-      VLOG(4) << "don't require any grad, set this scope can reused";
+    if (!need_grad) {
       VLOG(4) << "is_test: " << is_test
               << ", require_any_grad: " << require_any_grad;
+      if (FLAGS_parameters_persistent_mode_in_dy2st) {
+        VLOG(4) << "Parameters persistent mode is enabled, "
+                   "set this scope can not reused and skip gc "
+                   "for persistent parameters.";
+        const std::unordered_set<std::string_view> persistent_names(
+            param_names.begin(), param_names.end());
+        details::GcScope(global_inner_scope, persistent_names);
+      } else {
+        VLOG(4) << "don't require any grad, set this scope can reused";
+        details::GcScope(global_inner_scope);
+      }
       global_inner_scope->SetCanReused(true);
-      details::GcScope(global_inner_scope);
     } else {
       VLOG(4) << "not test, set this scope can not reused";
       global_inner_scope->SetCanReused(false);
@@ -569,17 +674,18 @@ void RunProgramImpl(
 #ifdef PADDLE_WITH_DNNL
   if (FLAGS_use_mkldnn) paddle::platform::DontClearMKLDNNCache(place);
 #endif
+  return out;
 }
 
 void RunProgramGradImpl(
     const std::vector<paddle::Tensor> &out_grad,
     const std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
     const paddle::framework::AttributeMap &attrs,
-    std::vector<paddle::Tensor *> &x_grad,       // NOLINT
-    std::vector<paddle::Tensor *> &params_grad,  // NOLINT
+    std::vector<paddle::Tensor> *x_grad,
+    std::vector<paddle::Tensor> *params_grad,
     const int64_t &place_hash_key) {
   // if all output vars are set to stop_gradient, grad op no need to executed
-  if (x_grad.empty() && params_grad.empty()) return;
+  if (x_grad->empty() && params_grad->empty()) return;
   auto *out_scope_vec = &step_scope;
   PADDLE_ENFORCE_EQ(
       out_scope_vec->size(),
@@ -608,10 +714,6 @@ void RunProgramGradImpl(
       std::shared_ptr<::pir::Program>, attrs.at("backward_program"));
 
   // Get All needed names
-  const auto &input_names =
-      PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bx_names"));
-  const auto &parameter_names =
-      PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bp_names"));
   const auto &output_grad_names =
       PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bo_g_names"));
   const auto &x_grad_names =

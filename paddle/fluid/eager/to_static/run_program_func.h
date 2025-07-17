@@ -21,10 +21,9 @@
 
 namespace egr::to_static {
 
-void run_program_ad_func(
+std::vector<paddle::Tensor> run_program_ad_func(
     const std::vector<paddle::Tensor>& x,
     const std::vector<paddle::Tensor>& params,
-    std::vector<paddle::Tensor*>& out,                   // NOLINT
     std::vector<paddle::framework::Scope*>& step_scope,  // NOLINT
     const paddle::framework::AttributeMap& attrs);
 

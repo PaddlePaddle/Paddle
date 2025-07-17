@@ -56,7 +56,7 @@ bool AddOp::InferSymbolicShape(pir::InferSymbolicShapeContext* infer_context) {
       infer_context->GetShapeOrDataForValue(operand_source(1));
   PADDLE_ENFORCE_GT(lhs_shape_or_data.shape().size(),
                     rhs_shape_or_data.shape().size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "lhs and rhs of ap_op.add should have same rank"));
   for (int i = 0; i < lhs_shape_or_data.shape().size(); ++i) {
     const auto& lhs_dim_expr = lhs_shape_or_data.shape().at(i);

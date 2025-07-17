@@ -82,7 +82,7 @@ inline DDim TrimTrailingSingularDims(const DDim &dims) {
     if (dims[actual_dims_size - 1] != 1) break;
   }
   if (actual_dims_size == dims.size()) return dims;
-  std::vector<int> trim_dims;
+  std::vector<int64_t> trim_dims;
   trim_dims.resize(actual_dims_size);
   for (int i = 0; i < actual_dims_size; ++i) {
     trim_dims[i] = dims[i];
@@ -94,7 +94,7 @@ inline DDim TrimTrailingSingularDims(const DDim &dims) {
   return actual_dims;
 }
 
-template <typename ShapeT = int>
+template <typename ShapeT = int64_t>
 inline ShapeT GetElementwiseIndex(const ShapeT *x_dims_array,
                                   const int max_dim,
                                   const ShapeT *index_array) {

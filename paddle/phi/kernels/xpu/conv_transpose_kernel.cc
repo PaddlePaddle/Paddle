@@ -19,6 +19,7 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/xpu/conv_utils_xpu.h"
 #include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
 #ifdef PADDLE_WITH_XPU_XRE5
@@ -41,7 +42,11 @@ void Conv2dTransposeKernel(const Context& dev_ctx,
                            const std::string& data_format,
                            DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-
+  if (x.numel() == 0 || filter.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    return;
+  }
   dev_ctx.template Alloc<T>(out);
 
   PADDLE_ENFORCE_EQ(

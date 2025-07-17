@@ -735,7 +735,7 @@ void StridedCopyKernel(const Context& dev_ctx,
   const T* input_data = input.data<T>();
 
   // count vecsize
-  int VecSize = 4;
+  int VecSize = 8;
   VecSize = std::min(phi::GetVectorizedSize<T>(input_data), VecSize);
   VecSize = std::min(phi::GetVectorizedSize<T>(output_data), VecSize);
   while (VecSize > 1 && numel % VecSize != 0) {
@@ -754,7 +754,6 @@ void StridedCopyKernel(const Context& dev_ctx,
     DenseTensor vec_input = Empty<T>(dev_ctx, IntArray{VecSize});
     ExpandKernel<T, Context>(dev_ctx, input, IntArray{VecSize}, &vec_input);
     const T* vec_input_data = vec_input.data<T>();
-
     switch (VecSize) {
 #define CASE_VECSIZE(__Sz)                                    \
   case __Sz:                                                  \
@@ -769,6 +768,7 @@ void StridedCopyKernel(const Context& dev_ctx,
       CASE_VECSIZE(1);
       CASE_VECSIZE(2);
       CASE_VECSIZE(4);
+      CASE_VECSIZE(8);
 #undef CASE_VECSIZE
       default:
         PADDLE_THROW(common::errors::InvalidArgument(
@@ -845,6 +845,7 @@ void StridedCopyKernel(const Context& dev_ctx,
         CASE_VECSIZE(1);
         CASE_VECSIZE(2);
         CASE_VECSIZE(4);
+        CASE_VECSIZE(8);
 #undef CASE_VECSIZE
         default:
           PADDLE_THROW(common::errors::InvalidArgument(

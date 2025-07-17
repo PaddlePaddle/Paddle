@@ -162,7 +162,7 @@ void LegacyExpandGradKernel(const Context& dev_ctx,
                             const IntArray& shape,
                             DenseTensor* in_grad) {
   auto* in0 = &x;
-  // auto& expand_times = context.Attr<std::vector<int>>("expand_times");
+  // auto& expand_times = dev_ctx.Attr<std::vector<int>>("expand_times");
   auto expand_times = shape.GetData();
   auto x_dims = in0->dims();
   // 1. reshape_dims_vec is the broadcast parameter.

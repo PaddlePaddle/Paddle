@@ -1,0 +1,98 @@
+name: Model-benchmark
+
+on:
+  workflow_call:
+    inputs:
+      docker_doc_image:
+        type: string
+        required: true
+      can-skip:
+        type: string
+        required: false
+
+env:
+  PR_ID: ${{ github.event.pull_request.number }}
+  COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+  ci_scripts: /workspace/paddle/ci
+  BRANCH: ${{ github.event.pull_request.base.ref }}
+  TASK: paddle-CI-${{ github.event.pull_request.number }}-Doc-Preview
+  CI_name: Doc-Preview
+  no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  check-bypass:
+    name: Check bypass for Doc-Preview
+    uses: ./.github/workflows/check-bypass.yml
+    with:
+      workflow-name: 'Doc-Preview'
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  build-doc:
+    name: Build doc
+    runs-on:
+      group: BD_BJ-V100
+    steps:
+      - name: Check docker image  and run container
+        env:
+          AGILE_PULL_ID: ${{ github.event.pull_request.number }}
+          AGILE_REVISION: ${{ github.event.pull_request.head.sha }}
+          BUILD_DOC: "true"
+          UPLOAD_DOC: "true"
+          BOSBUCKET: "paddle-site-web-dev"
+          PREVIEW_SITE: "paddle-docs-preview.paddlepaddle.org.cn"
+          AGILE_COMPILE_BRANCH: ${{ github.event.pull_request.base.ref }}
+          BOS_CREDENTIAL_AK: "paddle"
+          BOS_CREDENTIAL_SK: "paddle"
+        run: |
+          container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
+          echo "container_name=${container_name}" >> ${{ github.env }}
+          docker_image=${{ inputs.docker_doc_image }}
+          docker run -d -t --name ${container_name} \
+            -v "/home/data/cfs:/home/data/cfs" \
+            -v "/home/data/cfs/.cache/python35-cpu:/root/.cache" \
+            -v "/home/data/cfs/.ccache:/root/.ccache" \
+            -v "/dev/shm:/dev/shm"  \
+            -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
+            -v ${{ github.workspace }}:/paddle \
+            -e AGILE_PULL_ID \
+            -e AGILE_REVISION \
+            -e BUILD_DOC \
+            -e UPLOAD_DOC \
+            -e BOSBUCKET \
+            -e PREVIEW_SITE \
+            -e BRANCH \
+            -e AGILE_COMPILE_BRANCH \
+            -e BOS_CREDENTIAL_AK \
+            -e BOS_CREDENTIAL_SK \
+            -e no_proxy \
+            -w /paddle --network host ${docker_image}
+
+      - name: Doc build
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          rm -rf  * .[^.]*
+          wget -q https://xly-devops.bj.bcebos.com/PR/build_whl/${AGILE_PULL_ID}/${AGILE_REVISION}/build.tar.gz
+          tar --use-compress-program="pigz -1" -xpf build.tar.gz
+          cd ./paddle
+          api_doc_spec_diff=$(python tools/diff_api.py  paddle/fluid/API_DEV.spec.doc paddle/fluid/API_PR.spec.doc)
+          if [ "$api_doc_spec_diff" == "" ]; then
+            echo "API documents no change."
+            exit 0
+          fi
+
+          curl -sS -o /tmp/entrypoint.sh https://paddle-dev-tools-open.bj.bcebos.com/fluiddoc-preview/entrypoint-paddle-docs-review.sh
+          cd /
+          source ${{ github.workspace }}/../../../proxy
+          bash "/tmp/entrypoint.sh"
+          '
+
+      - name: Terminate and delete the container
+        if: always()
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+          docker rm -f ${{ env.container_name }}

@@ -20,6 +20,9 @@ limitations under the License. */
 #include <xpu/xpuml.h>
 #endif
 
+#ifdef PADDLE_WITH_XPU_FFT
+#include "fft/cufft.h"
+#endif
 #include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/core/enforce.h"
 #include "xre/cuda_runtime_api.h"
@@ -31,6 +34,9 @@ namespace xpu {
 std::string get_xpu_error_msg(int error_code);
 #ifdef PADDLE_WITH_XPU_BKCL
 std::string get_bkcl_error_msg(BKCLResult_t stat);
+#endif
+#ifdef PADDLE_WITH_XPU_FFT
+std::string get_fft_error_msg(cufftResult_t stat);
 #endif
 std::string get_xdnn_error_msg(int error_code, std::string msg);
 std::string get_xblas_error_msg(int error_code, std::string msg);
@@ -78,6 +84,19 @@ DEFINE_EXTERNAL_API_TYPE(cudaError_t, cudaSuccess);
     if (UNLIKELY(__cond__ != BKCLResult_t::BKCL_SUCCESS)) {   \
       std::string error_msg =                                 \
           ::phi::backends::xpu::get_bkcl_error_msg(__cond__); \
+      auto __summary__ = common::errors::External(error_msg); \
+      __THROW_ERROR_INTERNAL__(__summary__);                  \
+    }                                                         \
+  } while (0)
+#endif
+
+#ifdef PADDLE_WITH_XPU_FFT
+#define PADDLE_ENFORCE_FFT_SUCCESS(COND)                      \
+  do {                                                        \
+    auto __cond__ = (COND);                                   \
+    if (UNLIKELY(__cond__ != cufftResult_t::CUFFT_SUCCESS)) { \
+      std::string error_msg =                                 \
+          ::phi::backends::xpu::get_fft_error_msg(__cond__);  \
       auto __summary__ = common::errors::External(error_msg); \
       __THROW_ERROR_INTERNAL__(__summary__);                  \
     }                                                         \

@@ -26,6 +26,10 @@ void GatherKernel(const Context& dev_ctx,
                   const DenseTensor& index,
                   const Scalar& axis,
                   DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   const auto& index_type = index.dtype();
   auto axis_v = axis.to<int>();
   if (axis_v < 0) {

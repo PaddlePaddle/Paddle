@@ -80,6 +80,12 @@ inline void CompareAllKernelImpl(const Context& ctx,
     thrust::fill(out_dev_ptr, out_dev_ptr + 1, false);
     return;
   }
+  // shape equal and numel is 0, return true
+  if (x.numel() == 0) {
+    thrust::device_ptr<bool> out_dev_ptr(out_data);
+    thrust::fill(out_dev_ptr, out_dev_ptr + 1, true);
+    return;
+  }
 
   DenseTensor tmp;
   tmp.Resize(x.dims());

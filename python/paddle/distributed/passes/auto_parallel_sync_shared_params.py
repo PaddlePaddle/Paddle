@@ -113,20 +113,20 @@ class AutoParallelSyncSharedParamsPass(PassBase):
                     )
 
                     # Add shared parameter builtin.parameter with "shared_" prefix.
-                    with auto_complete_op_role(main_program, OpRole.Forward):
-                        with paddle.static.program_guard(
+                    with (
+                        auto_complete_op_role(main_program, OpRole.Forward),
+                        paddle.static.program_guard(
                             main_program, startup_program
-                        ):
-                            shared_param = paddle.pir.core.create_parameter(
-                                dtype=param.dtype,
-                                shape=param.shape,
-                                name="shared_" + param_name,
-                                process_mesh=dst_mesh,
-                                placements=src_dist_attr.placements,
-                                initializer=paddle.nn.initializer.Constant(
-                                    value=0
-                                ),
-                            )
+                        ),
+                    ):
+                        shared_param = paddle.pir.core.create_parameter(
+                            dtype=param.dtype,
+                            shape=param.shape,
+                            name="shared_" + param_name,
+                            process_mesh=dst_mesh,
+                            placements=src_dist_attr.placements,
+                            initializer=paddle.nn.initializer.Constant(value=0),
+                        )
                     main_program.set_parameters_from(startup_program)
 
                     # Record new shared parameter.

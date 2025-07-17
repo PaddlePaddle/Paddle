@@ -67,6 +67,7 @@ from ....utils.exceptions import (
     BreakGraphError,
     BreakGraphInlineCallBreak,
     BuiltinFunctionBreak,
+    ConditionalFallbackError,
     DataDependencyOperationBreak,
     FallbackError,
     FallbackInlineCallBreak,
@@ -76,6 +77,7 @@ from ....utils.exceptions import (
     PsdbBreakReason,
     SotCapturedException,
     SotCapturedExceptionFactory,
+    SotCapturedStopIteration,
     SotErrorBase,
     UnsupportedNumPyAPIBreak,
     UnsupportedOperationBreak,
@@ -324,7 +326,11 @@ class UserDefinedFunctionVariable(FunctionVariable):
                 f"Inline Call: {inline_executor.vframe.code.co_name}, file {inline_executor.vframe.code.co_filename}, line {int(inline_executor.vframe.code.co_firstlineno)}"
             ):
                 output = inline_executor.inline_call()
-        except (SotCapturedException, InnerError) as e:
+        except (
+            SotCapturedException,
+            InnerError,
+            ConditionalFallbackError,
+        ) as e:
             raise e
         except SotErrorBase as error:
             self.graph.restore_memo(checkpoint)
@@ -514,14 +520,7 @@ class TensorFunctionVariable(FunctionVariable):
     def __init__(
         self, method_name: str, graph: FunctionGraph, tracker: Tracker
     ):
-        fn = getattr(
-            (
-                paddle.pir.Value
-                if paddle.framework.use_pir_api()
-                else paddle.static.Variable
-            ),
-            method_name,
-        )
+        fn = getattr(paddle.pir.Value, method_name)
         super().__init__(fn, graph, tracker)
         self.method_name = method_name
 
@@ -967,6 +966,11 @@ class BuiltinVariable(FunctionVariable):
         if handler is not None:
             try:
                 return handler(*args, **kwargs)
+            except SotCapturedStopIteration:
+                # Although SotCapturedStopIteration is a subclass of SotErrorBase,
+                # this exception is handled separately because StopIteration is essential for generator operation.
+                # Explicitly separating this branch clarifies its role and makes debugging easier.
+                raise
             except SotErrorBase as e:
                 # NOTE: BuiltinVariable.call_function cat not raise SotCapturedException,
                 # so we can directly raise SotErrorBase.

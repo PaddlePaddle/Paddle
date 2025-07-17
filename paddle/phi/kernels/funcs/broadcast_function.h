@@ -436,7 +436,7 @@ __global__ void VectorizedBroadcastKernel(
 
 template <typename OutT, typename Functor, int Arity, int NumOuts, int VecSize>
 void LaunchBroadcastKernel(
-    const KPDevice &ctx,
+    const KPDevice &dev_ctx,
     const BroadcastTypeClassifier<OutT, Functor, Arity, NumOuts> &classifier,
     Functor func) {
 #ifdef PADDLE_WITH_XPU_KP
@@ -444,7 +444,7 @@ void LaunchBroadcastKernel(
   const int threads = 64;
   const int blocks = 8;
   int read_lens = configs[0].buf_len;
-  auto stream = ctx.x_context()->xpu_stream;
+  auto stream = dev_ctx.x_context()->xpu_stream;
   int main_offset = (numel / (read_lens * threads)) * read_lens * threads;
   int tail_tid = numel % (read_lens * threads);
 
@@ -461,8 +461,8 @@ void LaunchBroadcastKernel(
 #else
   const int &numel = classifier.numel;
   auto gpu_config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, VecSize);
-  auto stream = ctx.stream();
+      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, VecSize);
+  auto stream = dev_ctx.stream();
   auto threads = gpu_config.GetBlockSize();
   auto blocks = gpu_config.block_per_grid;
   int main_offset = (numel / (VecSize * threads)) * VecSize * threads;
@@ -513,7 +513,7 @@ void LaunchBroadcastKernel(
 
 template <typename OutT, typename Functor, int Arity, int NumOuts = 1>
 typename std::enable_if<!NeedVectorized<OutT>::value, void>::type
-BroadcastKernelForDifferentVecSize(const KPDevice &ctx,
+BroadcastKernelForDifferentVecSize(const KPDevice &dev_ctx,
                                    const std::vector<const DenseTensor *> &ins,
                                    std::vector<DenseTensor *> *outs,
                                    int axis,
@@ -521,12 +521,12 @@ BroadcastKernelForDifferentVecSize(const KPDevice &ctx,
   auto classifier =
       BroadcastTypeClassifier<OutT, Functor, Arity, NumOuts>(ins, outs, axis);
   LaunchBroadcastKernel<OutT, Functor, Arity, NumOuts, VecSizeS>(
-      ctx, classifier, func);
+      dev_ctx, classifier, func);
 }
 
 template <typename OutT, typename Functor, int Arity, int NumOuts = 1>
 typename std::enable_if<NeedVectorized<OutT>::value, void>::type
-BroadcastKernelForDifferentVecSize(const KPDevice &ctx,
+BroadcastKernelForDifferentVecSize(const KPDevice &dev_ctx,
                                    const std::vector<const DenseTensor *> &ins,
                                    std::vector<DenseTensor *> *outs,
                                    int axis,
@@ -545,17 +545,17 @@ BroadcastKernelForDifferentVecSize(const KPDevice &ctx,
   switch (vec_size) {
     case VecSizeL: {
       LaunchBroadcastKernel<OutT, Functor, Arity, NumOuts, VecSizeL>(
-          ctx, classifier, func);
+          dev_ctx, classifier, func);
       break;
     }
     case VecSizeM: {
       LaunchBroadcastKernel<OutT, Functor, Arity, NumOuts, VecSizeM>(
-          ctx, classifier, func);
+          dev_ctx, classifier, func);
       break;
     }
     case VecSizeS: {
       LaunchBroadcastKernel<OutT, Functor, Arity, NumOuts, VecSizeS>(
-          ctx, classifier, func);
+          dev_ctx, classifier, func);
       break;
     }
     default: {
@@ -591,7 +591,7 @@ static void SliceTensor(DenseTensor *x,
 }
 
 template <typename OutT, typename Functor, int kArity, int NumOuts = 1>
-void BroadcastKernelSplit(const KPDevice &ctx,
+void BroadcastKernelSplit(const KPDevice &dev_ctx,
                           const std::vector<const DenseTensor *> &ins,
                           std::vector<DenseTensor *> *outs,
                           int axis,
@@ -728,12 +728,12 @@ void BroadcastKernelSplit(const KPDevice &ctx,
     }
 
     BroadcastKernelForDifferentVecSize<OutT, Functor, kArity, NumOuts>(
-        ctx, new_ins, &new_outs, axis, func);
+        dev_ctx, new_ins, &new_outs, axis, func);
   }
 }
 
 template <typename OutT, typename Functor, int kArity, int NumOuts = 1>
-void BroadcastKernelApply(const KPDevice &ctx,
+void BroadcastKernelApply(const KPDevice &dev_ctx,
                           const std::vector<const DenseTensor *> &ins,
                           std::vector<DenseTensor *> *outs,
                           int axis,
@@ -748,16 +748,16 @@ void BroadcastKernelApply(const KPDevice &ctx,
   }
   if (use_int64_index_kernel) {  // use_int64_index_kernel
     BroadcastKernelSplit<OutT, Functor, kArity, NumOuts>(
-        ctx, ins, outs, axis, func, compute_size);
+        dev_ctx, ins, outs, axis, func, compute_size);
     return;
   }
 #endif
   BroadcastKernelForDifferentVecSize<OutT, Functor, kArity, NumOuts>(
-      ctx, ins, outs, axis, func);
+      dev_ctx, ins, outs, axis, func);
 }
 
 template <typename OutT, typename Functor, int NumOuts = 1>
-void BroadcastKernel(const KPDevice &ctx,
+void BroadcastKernel(const KPDevice &dev_ctx,
                      const std::vector<const DenseTensor *> &ins,
                      std::vector<DenseTensor *> *outs,
                      Functor func,
@@ -805,7 +805,7 @@ void BroadcastKernel(const KPDevice &ctx,
               "%d-th output tensor`s shape is not.",
               i));
     }
-    ctx.template Alloc<OutT>((*outs)[i]);
+    dev_ctx.template Alloc<OutT>((*outs)[i]);
   }
   if ((*outs)[0]->numel() == 0) {
     return;
@@ -823,7 +823,7 @@ void BroadcastKernel(const KPDevice &ctx,
   }
   axis = axis == -1 ? max_rank - min_rank : axis;
   BroadcastKernelApply<OutT, Functor, kArity, NumOuts>(
-      ctx, ins, outs, axis, func);
+      dev_ctx, ins, outs, axis, func);
 }
 
 template <typename Functor, typename T, typename OutType = T>

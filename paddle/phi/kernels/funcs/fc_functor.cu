@@ -336,7 +336,7 @@ void AddReluKernel(gpuStream_t stream,
 #endif
 
 template <typename DeviceContext, typename T>
-void FCFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
+void FCFunctor<DeviceContext, T>::operator()(const DeviceContext& dev_ctx,
                                              const int M,
                                              const int N,
                                              const int K,
@@ -350,7 +350,7 @@ void FCFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
                     false,
                     errors::PermissionDenied(
                         "Weight padding in fc can not be used in GPU scope."));
-  auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
+  auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
   blas.GEMM(CblasNoTrans,
             CblasNoTrans,
             M,
@@ -366,7 +366,7 @@ void FCFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
   }
 
   // M * N
-  AddReluKernel(context.stream(), M, N, Y, B, relu);
+  AddReluKernel(dev_ctx.stream(), M, N, Y, B, relu);
 }
 
 template class FCFunctor<GPUContext, float16>;
@@ -375,7 +375,7 @@ template class FCFunctor<GPUContext, double>;
 
 template <typename DeviceContext, typename T>
 void FCInt8Functor<DeviceContext, T>::operator()(
-    const DeviceContext& context,
+    const DeviceContext& dev_ctx,
     const int M,
     const int N,
     const int K,
@@ -399,9 +399,9 @@ void FCInt8Functor<DeviceContext, T>::operator()(
   DenseTensor quant_x_tensor, quant_y_tensor;
   quant_x_tensor.Resize(common::make_ddim({M, K}));
   quant_y_tensor.Resize(common::make_ddim({M, N}));
-  context.template Alloc<int8_t>(&quant_x_tensor,
+  dev_ctx.template Alloc<int8_t>(&quant_x_tensor,
                                  quant_x_tensor.numel() * sizeof(int8_t));
-  context.template Alloc<int32_t>(&quant_y_tensor,
+  dev_ctx.template Alloc<int32_t>(&quant_y_tensor,
                                   quant_y_tensor.numel() * sizeof(int32_t));
   LaunchQuantKernelWithVecSize<T>(X,
                                   quant_x_tensor.data<int8_t>(),
@@ -411,14 +411,14 @@ void FCInt8Functor<DeviceContext, T>::operator()(
                                   quant_round_type,
                                   quant_max_bound,
                                   quant_min_bound,
-                                  context.stream());
+                                  dev_ctx.stream());
 
   MatmulKernel<int8_t, GPUContext>(
-      context, quant_x_tensor, *w_tensor, false, false, &quant_y_tensor);
+      dev_ctx, quant_x_tensor, *w_tensor, false, false, &quant_y_tensor);
 
   DenseTensor scale_weights_dev;
   scale_weights_dev.Resize(common::make_ddim({N}));
-  context.template Alloc<float>(&scale_weights_dev,
+  dev_ctx.template Alloc<float>(&scale_weights_dev,
                                 scale_weights_dev.numel() * sizeof(float));
   float* scale_weights_dev_ptr = scale_weights_dev.data<float>();
 #ifdef PADDLE_WITH_HIP
@@ -436,15 +436,15 @@ void FCInt8Functor<DeviceContext, T>::operator()(
   phi::backends::gpu::GpuLaunchConfig config;
   if (N % DequantKernelVecSize == 0) {
     config = phi::backends::gpu::GetGpuLaunchConfig1D(
-        context, M * N, DequantKernelVecSize);
+        dev_ctx, M * N, DequantKernelVecSize);
   } else {
-    config = phi::backends::gpu::GetGpuLaunchConfig1D(context, M * N, 1);
+    config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, M * N, 1);
   }
   LaunchDequantKernelWithScaleOfInputAndWeight(quant_y_tensor.data<int32_t>(),
                                                Y,
                                                M,
                                                N,
-                                               context.stream(),
+                                               dev_ctx.stream(),
                                                &config,
                                                scale_in,
                                                scale_weights_dev_ptr,
@@ -455,7 +455,7 @@ void FCInt8Functor<DeviceContext, T>::operator()(
   }
 
   // M * N
-  AddReluKernel(context.stream(), M, N, Y, B, relu);
+  AddReluKernel(dev_ctx.stream(), M, N, Y, B, relu);
 }
 
 template class FCInt8Functor<GPUContext, float16>;

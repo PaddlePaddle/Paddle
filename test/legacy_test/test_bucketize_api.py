@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
+from op_test import get_places
 
 import paddle
-from paddle.base import core
 
 np.random.seed(10)
 
@@ -29,15 +28,7 @@ class TestBucketizeAPI(unittest.TestCase):
     def setUp(self):
         self.sorted_sequence = np.array([2, 4, 8, 16]).astype("float64")
         self.x = np.array([[0, 8, 4, 16], [-1, 2, 8, 4]]).astype("float64")
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
+        self.place = get_places()
 
     def test_api_static(self):
         paddle.enable_static()

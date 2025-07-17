@@ -24,7 +24,7 @@ from test_pool2d_op import TestPool2D_Op, max_pool2D_forward_naive
 from paddle.base import core
 
 
-class TestPool2DMKLDNNInt8_Op(TestPool2D_Op):
+class TestPool2DONEDNNInt8_Op(TestPool2D_Op):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.check_pir_onednn = True
@@ -68,7 +68,7 @@ class TestPool2DMKLDNNInt8_Op(TestPool2D_Op):
         pass
 
 
-class TestCase1Avg(TestPool2DMKLDNNInt8_Op):
+class TestCase1Avg(TestPool2DONEDNNInt8_Op):
     def init_test_case(self):
         self.shape = [2, 3, 7, 7]
         self.ksize = [3, 3]
@@ -82,7 +82,7 @@ class TestCase1Avg(TestPool2DMKLDNNInt8_Op):
         self.exclusive = True
 
 
-class TestCase2Avg(TestPool2DMKLDNNInt8_Op):
+class TestCase2Avg(TestPool2DONEDNNInt8_Op):
     def init_test_case(self):
         self.shape = [2, 3, 7, 7]
         self.ksize = [3, 3]
@@ -96,7 +96,7 @@ class TestCase2Avg(TestPool2DMKLDNNInt8_Op):
         self.exclusive = False
 
 
-class TestCase0Max(TestPool2DMKLDNNInt8_Op):
+class TestCase0Max(TestPool2DONEDNNInt8_Op):
     def init_pool_type(self):
         self.pool_type = "max"
         self.pool2D_forward_naive = max_pool2D_forward_naive
@@ -131,7 +131,7 @@ def create_test_s8_u8_class(parent):
     globals()[cls_name_u8] = TestU8Case
 
 
-create_test_s8_u8_class(TestPool2DMKLDNNInt8_Op)
+create_test_s8_u8_class(TestPool2DONEDNNInt8_Op)
 create_test_s8_u8_class(TestCase1Avg)
 create_test_s8_u8_class(TestCase2Avg)
 create_test_s8_u8_class(TestCase0Max)

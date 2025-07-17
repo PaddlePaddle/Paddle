@@ -18,6 +18,8 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 
+COMMON_DECLARE_bool(check_cuda_error);
+
 namespace paddle::framework {
 bool ParsePlace(const pir::Type& type, OpFuncType* type_) {
   if (type.isa<paddle::dialect::AllocatedDenseTensorType>()) {
@@ -95,6 +97,10 @@ TuplePushInstruction::TuplePushInstruction(size_t id,
 
 void TuplePushInstruction::Run() {
   VLOG(4) << "run tuple_push instruction";
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("TuplePushInstruction begin");
+  }
+
   if (tuple_push_op_.tuple_size() == 0) {
     stack_element_var_array_->emplace_back(nullptr);
   } else {
@@ -132,6 +138,10 @@ void TuplePushInstruction::Run() {
       VLOG(6) << "push back var: " << new_name << "[" << copy_var << "]"
               << "to: " << stack_element_var_array_;
     }
+  }
+
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("TuplePushInstruction finish");
   }
 }
 }  // namespace paddle::framework

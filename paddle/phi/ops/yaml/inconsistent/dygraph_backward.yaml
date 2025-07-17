@@ -365,6 +365,7 @@
   args : (Tensor input, Tensor out_grad, int64_t[] dims = {})
   output : Tensor(input_grad)
   invoke: view_shape(out_grad, input.shape())
+  no_need_buffer: input
 
 - backward_op: fused_gemm_epilogue_grad
   forward : fused_gemm_epilogue(Tensor x, Tensor y, Tensor bias, bool trans_x, bool trans_y, str activation) -> Tensor(out), Tensor(reserve_space)

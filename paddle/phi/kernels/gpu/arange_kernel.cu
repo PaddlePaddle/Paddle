@@ -28,7 +28,7 @@ namespace phi {
 
 template <typename T, typename OUT_TYPE>
 __global__ void Range(T start, T step, int64_t size, OUT_TYPE* out) {
-  CUDA_KERNEL_LOOP(index, size) {
+  CUDA_KERNEL_LOOP_TYPE(index, size, int64_t) {
     out[index] = static_cast<OUT_TYPE>(start + step * index);
   }
 }

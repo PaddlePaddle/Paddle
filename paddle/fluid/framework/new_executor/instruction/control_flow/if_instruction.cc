@@ -41,6 +41,8 @@
 #include "paddle/fluid/platform/onednn_helper.h"
 #endif
 
+COMMON_DECLARE_bool(check_cuda_error);
+
 namespace paddle::framework {
 
 IfInstruction::IfInstruction(size_t id,
@@ -216,6 +218,10 @@ void IfInstruction::SetInputHooks(const std::vector<PirHookFunc>& hookfuncs) {
 }
 
 void IfInstruction::Run() {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("IfInstruction begin");
+  }
+
   bool cond = true;
   if (cond_var_->IsType<phi::DenseTensor>()) {
     auto& cond_tensor = cond_var_->Get<phi::DenseTensor>();
@@ -263,6 +269,10 @@ void IfInstruction::Run() {
     false_branch_inter_->Run({}, false);
   }
   // copy output
+
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("IfInstruction finish");
+  }
 }
 
 }  // namespace paddle::framework

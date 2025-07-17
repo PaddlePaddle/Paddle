@@ -128,7 +128,7 @@ std::vector<uint64_t> GetOrder(const std::vector<const DenseTensor*>& ins,
   for (uint64_t l = 1; l < n; l++) {
     for (uint64_t i = 0; i < n - l; i++) {
       auto j = i + l;
-      m[i * n + j] = 0xffffffff;
+      m[i * n + j] = std::numeric_limits<uint64_t>::max();
       for (uint64_t k = i; k < j; k++) {
         uint64_t q =
             m[i * n + k] + m[(k + 1) * n + j] + p[i] * p[k + 1] * p[j + 1];

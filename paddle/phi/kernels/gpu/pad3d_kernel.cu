@@ -20,7 +20,7 @@
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
-
+#include "paddle/phi/kernels/full_kernel.h"
 namespace phi {
 
 using phi::PADDLE_CUDA_NUM_THREADS;
@@ -359,6 +359,11 @@ void Pad3dKernel(const Context& dev_ctx,
   }
   out->Resize(out_dims);
   T* out_data = dev_ctx.template Alloc<T>(out);
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), pad_value, out);
+    return;
+  }
 
   int64_t channels = in_dims[1];
   int64_t in_depth = in_dims[2];

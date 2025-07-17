@@ -389,7 +389,8 @@ void LaunchLayerNormKernel(const Context &dev_ctx,
                    : addr;
         addr = valid_bias ? (addr | reinterpret_cast<uint64_t>(void_bias_data))
                           : addr;
-        data_vec_size = phi::GetVectorizedSize<T>(reinterpret_cast<T *>(addr));
+        data_vec_size =
+            std::min(4, phi::GetVectorizedSize<T>(reinterpret_cast<T *>(addr)));
       } else {
         uint64_t bias_addr = reinterpret_cast<uint64_t>(void_bias_data);
         uint64_t attr_addr = valid_scale
@@ -401,6 +402,7 @@ void LaunchLayerNormKernel(const Context &dev_ctx,
         data_vec_size = std::min(
             phi::GetVectorizedSize<T>(reinterpret_cast<T *>(addr)),
             phi::GetVectorizedSize<U>(reinterpret_cast<U *>(attr_addr)));
+        data_vec_size = std::min(4, data_vec_size);
       }
     }
     for (int size = data_vec_size; size > 0; size /= 2) {

@@ -48,7 +48,6 @@ import uuid
 import warnings
 import weakref
 
-import decorator
 import google.protobuf
 import numpy
 import setuptools
@@ -88,7 +87,6 @@ NEED_SKIP_THIRD_PARTY_MODULES = {
     weakref,
     _collections_abc,
     _weakrefset,
-    decorator,
     codecs,
     uuid,
     setuptools,

@@ -730,6 +730,166 @@ class TestStride(unittest.TestCase):
 
         np.testing.assert_allclose(out_c.numpy(), np_out)
 
+    def call_view9(self):
+        x_np = np.random.random(size=[16, 12, 8]).astype('float16')
+        x = paddle.to_tensor(x_np)
+        np.testing.assert_allclose(x.numpy(), x_np)
+
+        out = paddle.view(x, paddle.float32)
+        np_out = x_np.view(np.float32)
+
+        np.testing.assert_allclose(out.numpy(), np_out)
+
+        self.assertTrue(out.is_contiguous())
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+
+        out_c = out.contiguous()
+
+        np.testing.assert_allclose(out_c.numpy(), np_out)
+
+        self.assertTrue(out_c._is_shared_buffer_with(out))
+
+    def call_view10(self):
+        x_np = np.random.random(size=[16, 12, 8]).astype('float16')
+        x = paddle.to_tensor(x_np)
+        np.testing.assert_allclose(x.numpy(), x_np)
+
+        out = paddle.view(x, paddle.float64)
+        np_out = x_np.view(np.float64)
+
+        np.testing.assert_allclose(out.numpy(), np_out)
+
+        self.assertTrue(out.is_contiguous())
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+
+        out_c = out.contiguous()
+
+        np.testing.assert_allclose(out_c.numpy(), np_out)
+
+        self.assertTrue(out_c._is_shared_buffer_with(out))
+
+    def call_view11(self):
+        x_np = np.random.randint(0, 256, size=[16, 12, 8]).astype('uint8')
+        x = paddle.to_tensor(x_np)
+        np.testing.assert_allclose(x.numpy(), x_np)
+
+        out = paddle.view(x, paddle.int16)
+        np_out = x_np.view(np.int16)
+
+        np.testing.assert_allclose(out.numpy(), np_out)
+
+        self.assertTrue(out.is_contiguous())
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+
+        out_c = out.contiguous()
+
+        np.testing.assert_allclose(out_c.numpy(), np_out)
+
+        self.assertTrue(out_c._is_shared_buffer_with(out))
+
+    def call_view12(self):
+        x_np = np.random.randint(0, 256, size=[16, 12, 8]).astype('uint8')
+        x = paddle.to_tensor(x_np)
+        np.testing.assert_allclose(x.numpy(), x_np)
+
+        out = paddle.view(x, paddle.int32)
+        np_out = x_np.view(np.int32)
+
+        np.testing.assert_allclose(out.numpy(), np_out)
+
+        self.assertTrue(out.is_contiguous())
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+
+        out_c = out.contiguous()
+
+        np.testing.assert_allclose(out_c.numpy(), np_out)
+
+        self.assertTrue(out_c._is_shared_buffer_with(out))
+
+    def call_view13(self):
+        x_np = np.random.randint(0, 256, size=[16, 12, 8]).astype('uint8')
+        x = paddle.to_tensor(x_np)
+        np.testing.assert_allclose(x.numpy(), x_np)
+
+        out = paddle.view(x, paddle.int64)
+        np_out = x_np.view(np.int64)
+
+        np.testing.assert_allclose(out.numpy(), np_out)
+
+        self.assertTrue(out.is_contiguous())
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+
+        out_c = out.contiguous()
+
+        np.testing.assert_allclose(out_c.numpy(), np_out)
+
+        self.assertTrue(out_c._is_shared_buffer_with(out))
+
+    def call_view14(self):
+        x_np = np.random.randint(0, 256, size=[16, 12, 8]).astype('uint8')
+        x = paddle.to_tensor(x_np)
+        np.testing.assert_allclose(x.numpy(), x_np)
+
+        out = paddle.view(x, paddle.float16)
+        np_out = x_np.view(np.float16)
+
+        np.testing.assert_allclose(out.numpy(), np_out)
+
+        self.assertTrue(out.is_contiguous())
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+
+        out_c = out.contiguous()
+
+        np.testing.assert_allclose(out_c.numpy(), np_out)
+
+        self.assertTrue(out_c._is_shared_buffer_with(out))
+
+    def call_view15(self):
+        x_np = np.random.randint(0, 256, size=[16, 12, 8]).astype('uint8')
+        x = paddle.to_tensor(x_np)
+        np.testing.assert_allclose(x.numpy(), x_np)
+
+        out = paddle.view(x, paddle.float32)
+        np_out = x_np.view(np.float32)
+
+        np.testing.assert_allclose(out.numpy(), np_out)
+
+        self.assertTrue(out.is_contiguous())
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+
+        out_c = out.contiguous()
+
+        np.testing.assert_allclose(out_c.numpy(), np_out)
+
+        self.assertTrue(out_c._is_shared_buffer_with(out))
+
+    def call_view16(self):
+        x_np = np.random.randint(0, 256, size=[16, 12, 8]).astype('uint8')
+        x = paddle.to_tensor(x_np)
+        np.testing.assert_allclose(x.numpy(), x_np)
+
+        out = paddle.view(x, paddle.float64)
+        np_out = x_np.view(np.float64)
+
+        np.testing.assert_allclose(out.numpy(), np_out)
+
+        self.assertTrue(out.is_contiguous())
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+
+        out_c = out.contiguous()
+
+        np.testing.assert_allclose(out_c.numpy(), np_out)
+
+        self.assertTrue(out_c._is_shared_buffer_with(out))
+
     def call_stride(self):
         self.call_transpose()
         self.call_diagonal()
@@ -758,6 +918,14 @@ class TestStride(unittest.TestCase):
         self.call_view5()
         self.call_view6()
         self.call_view7()
+        self.call_view9()
+        self.call_view10()
+        self.call_view11()
+        self.call_view12()
+        self.call_view13()
+        self.call_view14()
+        self.call_view15()
+        self.call_view16()
         self.call_view_as()
         self.call_unfold()
 

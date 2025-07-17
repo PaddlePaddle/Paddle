@@ -29,6 +29,8 @@
 #include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/core/type_defs.h"
 
+COMMON_DECLARE_bool(check_cuda_error);
+
 namespace paddle::framework {
 
 LegacyKernelInstruction::LegacyKernelInstruction(
@@ -186,6 +188,10 @@ LegacyKernelInstruction::~LegacyKernelInstruction() {
 }
 
 void LegacyKernelInstruction::Run() {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("LegacyKernelInstruction " + legacy_op_name_ + " begin");
+  }
+
   VLOG(6) << "Run op " << legacy_op_name_ << " infer meta.";
   if (infer_meta_interface_) {
     infer_meta_interface_->infer_meta_(&(infer_meta_context_));
@@ -195,5 +201,9 @@ void LegacyKernelInstruction::Run() {
   }
   VLOG(6) << "Run op " << legacy_op_name_ << " kernel.";
   (*(phi_kernel_))((kernel_context_));
+
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("LegacyKernelInstruction " + legacy_op_name_ + " finish");
+  }
 }
 }  // namespace paddle::framework

@@ -148,7 +148,51 @@ class BaseAPI:
                 if inplace_flag and out_name in self.inplace_map:
                     continue
                 define_string += "    " + out_type + " " + out_name + ";\n"
+                define_string += (
+                    "    "
+                    + out_type
+                    + "* "
+                    + out_name
+                    + "_ptr = &"
+                    + out_name
+                    + ";\n"
+                )
         return define_string
+
+    def get_optional_inputs_change(self, inplace_flag=False):
+        branch_string = ""
+        input_name = []
+        output_type = []
+        output_name = []
+
+        if len(self.optional_vars) == 0 or inplace_flag:
+            return branch_string
+
+        for name, type in zip(self.outputs['names'], self.outputs['types']):
+            name = name.split('@')[0]
+            output_name.append(name)
+            output_type.append(type)
+
+        for name in self.inputs['names']:
+            name = name.split('@')[0]
+            input_name.append(name)
+
+        for out_name, type in zip(output_name, output_type):
+            if out_name.endswith("_grad"):
+                name = out_name[:-5]
+            else:
+                continue
+
+            if (
+                name in input_name
+                and name in self.optional_vars
+                and type != "std::vector<Tensor>"
+            ):
+                branch_string += (
+                    f"    if (!{name}) {{ {name}_grad_ptr = nullptr; }} \n"
+                )
+
+        return branch_string
 
     def get_grad_api_call_args(self, inplace_flag):
         args = []
@@ -175,7 +219,7 @@ class BaseAPI:
                     else:
                         out_string = "&" + name
                 else:
-                    out_string = "&" + name
+                    out_string = name + "_ptr"
 
             args.append(out_string)
         return ", ".join(args)

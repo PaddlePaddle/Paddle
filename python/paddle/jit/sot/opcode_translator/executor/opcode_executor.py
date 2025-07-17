@@ -380,7 +380,7 @@ def parse_force_fallback_sir_ids() -> set[int]:
 
 
 def need_fallback(compile_graph_result: CompileGraphResult) -> bool:
-    graph_fn, (statement_ir, _, _) = compile_graph_result
+    graph_fn, (statement_ir, _, _, _) = compile_graph_result
 
     assert statement_ir.name[:4] == "SIR_"
     sir_id = int(statement_ir.name[4:])

@@ -37,8 +37,8 @@ void GPUIndexElementwisePutKernel(const phi::GPUContext& dev_ctx,
 
   auto num_indices = index_dims.size();
 
-  auto sizes = std::array<int64_t, 25>{};
-  auto strides = std::array<int64_t, 25>{};
+  auto sizes = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
+  auto strides = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
   for (unsigned i = 0; i < num_indices; i++) {
     sizes[i] = index_dims[i];
     strides[i] = index_strides[i];

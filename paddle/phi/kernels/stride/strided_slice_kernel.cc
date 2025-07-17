@@ -70,8 +70,7 @@ void StridedSliceRawStridedKernel(const Context& dev_ctx,
 
     auto out_dim = (std::abs(ends[i] - starts[i]) + step_size - 1) / step_size;
 
-    output_offset += static_cast<int>(starts[i] * output_stride[axes[i]] *
-                                      SizeOf(out->dtype()));
+    output_offset += starts[i] * output_stride[axes[i]] * SizeOf(out->dtype());
     output_dims[axes[i]] = out_dim;
     output_stride[axes[i]] *= strides[i];
   }

@@ -18,6 +18,7 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/gather_scatter_functor.h"
 
 namespace phi {
@@ -28,6 +29,16 @@ void TakeAlongAxisKernel(const Context& dev_ctx,
                          const DenseTensor& index,
                          int axis,
                          DenseTensor* out) {
+  if (index.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, common::vectorize(out->dims()), static_cast<T>(0), out);
+    return;
+  }
+
   out->Resize(index.dims());
   dev_ctx.template Alloc<T>(out);
 
