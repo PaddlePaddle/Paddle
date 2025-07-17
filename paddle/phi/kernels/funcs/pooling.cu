@@ -132,21 +132,11 @@ __device__ void PreparationPoolSize(IndexT index,
                                     IndexT* tmp_size
 
 ) {
-  if (index == 0) {
-    auto ksize_divmod_next = divmods.Divmod((index + 1) * input_size);
-    *tmp_size = ksize_divmod_next.val[1] > 0 ? ksize_divmod_next.val[0] + 1
-                                             : ksize_divmod_next.val[0];
-
-  } else if (index == output_size - 1) {
-    *tmp_size = input_size - divmods.Div(index * input_size);
-  } else {
-    auto ksize_divmod = divmods.Divmod(index * input_size);
-    auto ksize_divmod_next = divmods.Divmod((index + 1) * input_size);
-    *tmp_size = ksize_divmod_next.val[0] - ksize_divmod.val[0];
-    if (ksize_divmod_next.val[1] != 0) {
-      *tmp_size += 1;
-    }
-  }
+  IndexT left = (index == 0) ? 0 : divmods.Div(index * input_size);
+  IndexT right = (index == output_size - 1)
+                     ? input_size
+                     : divmods.DivCeil((index + 1) * input_size);
+  *tmp_size = right - left;
 }
 
 template <typename PoolProcess, typename T, typename IndexT>
