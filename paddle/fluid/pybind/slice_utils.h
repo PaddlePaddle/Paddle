@@ -242,6 +242,11 @@ static bool IsNumpyType(PyObject* obj) {
          type_name == "numpy.int32" || type_name == "numpy.int16";
 }
 
+static bool IsNumpyArray(PyObject* obj) {
+  auto type_name = std::string(Py_TYPE(obj)->tp_name);
+  return type_name == "numpy.ndarray";
+}
+
 static Py_ssize_t GetSliceIndexFromTensor(const phi::DenseTensor& tensor) {
   if (tensor.numel() == 1) {
     if (framework::TransToProtoVarType(tensor.type()) ==
@@ -436,8 +441,27 @@ static void ParseIndex(const paddle::Tensor& tensor,
       advanced_index->push_back(std::move(slice_tensor));
       (*advanced_index_dim)[estimated_dim] = estimated_dim;
       estimated_dim++;
-    } else if (PyCheckTensor(slice_item)) {
-      auto slice_tensor = CastPyArg2Tensor(slice_item, 0);
+    } else if (PyCheckTensor(slice_item) || IsNumpyArray(slice_item)) {
+      paddle::Tensor slice_tensor;
+
+      if (IsNumpyArray(slice_item)) {
+        paddle::Tensor index_tensor_tmp(
+            std::make_shared<phi::DenseTensor>(),
+            egr::Controller::Instance().GenerateUniqueName());
+
+        py::object index_obj_tmp =
+            py::reinterpret_borrow<py::object>(slice_item);
+        py::object index_tmp = index_obj_tmp;
+        SetTensorFromPyArray(
+            static_cast<phi::DenseTensor*>(index_tensor_tmp.impl().get()),
+            index_tmp,
+            tensor.place(),
+            false);
+        slice_tensor = index_tensor_tmp;
+
+      } else {
+        slice_tensor = CastPyArg2Tensor(slice_item, 0);
+      }
       if (slice_tensor.shape().size() == 0) {
         if (slice_tensor.dtype() != phi::DataType::BOOL) {
           // 0-D int tensor is same with scalar
@@ -735,14 +759,10 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
     return masked_select_ad_func(tensor, bool_index);
   }
 
-  if (bool_index.shape().size() == 1) {
-    auto bool_2_idx = nonzero_ad_func(bool_index);
-    return gather_ad_func(tensor, bool_2_idx);
-  }
-
   auto bool_2_idx = nonzero_ad_func(bool_index);
 #ifdef PADDLE_WITH_CUDA
   if (tensor.is_gpu() && !is_combined_bool) {
+    const bool is_gather = bool_index.shape().size() == 1;
     std::vector<paddle::Tensor> indices =
         PrepareIndices(tensor, bool_2_idx, bool_index);
     while (indices.size() < static_cast<size_t>(tensor.dims().size())) {
@@ -761,17 +781,27 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
     const bool accumulate = false;
 
     return index_elementwise_get_ad_func(tensor,
+                                         bool_2_idx,
                                          ad.indices,
                                          ad.src_sizes,
                                          ad.src_strides,
                                          ad.indexed_sizes,
                                          ad.indexed_strides,
                                          slice_offset,
-                                         accumulate);
+                                         accumulate,
+                                         is_gather);
   } else {
+    if (bool_index.shape().size() == 1) {
+      return gather_ad_func(tensor, bool_2_idx);
+    }
+
     return gather_nd_ad_func(tensor, bool_2_idx);
   }
 #else
+  if (bool_index.shape().size() == 1) {
+    return gather_ad_func(tensor, bool_2_idx);
+  }
+
   return gather_nd_ad_func(tensor, bool_2_idx);
 #endif
 }

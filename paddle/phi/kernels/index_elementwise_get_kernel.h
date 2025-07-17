@@ -22,6 +22,7 @@ namespace phi {
 template <typename T, typename Context>
 void IndexElementwiseGetKernel(const Context &ctx,
                                const DenseTensor &x,
+                               const DenseTensor &gather_index,
                                const std::vector<const DenseTensor *> &index,
                                const std::vector<int64_t> &input_dims,
                                const std::vector<int64_t> &input_strides,
@@ -29,6 +30,7 @@ void IndexElementwiseGetKernel(const Context &ctx,
                                const std::vector<int64_t> &index_stride,
                                const int64_t slice_offset,
                                const bool accumulate,
+                               const bool is_gather,
                                DenseTensor *out);
 
 }  // namespace phi

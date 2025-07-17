@@ -2578,6 +2578,7 @@ void IndexElementwisePutInferMeta(const MetaTensor& x,
 }
 
 void IndexElementwiseGetInferMeta(const MetaTensor& x,
+                                  const MetaTensor& gather_index,
                                   const std::vector<const MetaTensor*>& index,
                                   const std::vector<int64_t>& input_dims,
                                   const std::vector<int64_t>& input_strides,
@@ -2585,6 +2586,7 @@ void IndexElementwiseGetInferMeta(const MetaTensor& x,
                                   const std::vector<int64_t>& index_stride,
                                   const int64_t slice_offset,
                                   const bool accumulate,
+                                  const bool is_gather,
                                   MetaTensor* out) {
   out->set_dims(common::make_ddim(input_dims));
   out->set_dtype(x.dtype());
