@@ -48,6 +48,7 @@ jobs:
           AGILE_COMPILE_BRANCH: ${{ github.event.pull_request.base.ref }}
           BOS_CREDENTIAL_AK: "paddle"
           BOS_CREDENTIAL_SK: "paddle"
+          PIP_PROGRESS_BAR: off
         run: |
           container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
@@ -88,6 +89,8 @@ jobs:
           curl -sS -o /tmp/entrypoint.sh https://paddle-dev-tools-open.bj.bcebos.com/fluiddoc-preview/entrypoint-paddle-docs-review.sh
           cd /
           pip config set global.cache-dir "/home/data/cfs/.cache/pip"
+          pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+          pip config set global.trusted-host pypi.tuna.tsinghua.edu.cn
           source ${{ github.workspace }}/../../../proxy
           bash "/tmp/entrypoint.sh"
           '
