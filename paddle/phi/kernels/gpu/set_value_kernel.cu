@@ -126,7 +126,7 @@ void SetTensorValueKernelV2(const Context& dev_ctx,
   out->ResetHolder(in.Holder());
   out->ShareInplaceVersionCounterWith(in);
   if (starts_local.empty() && ends_local.empty() && steps_local.empty()) {
-    if (expand_tensor.numel() == 1) {
+    if (expand_tensor.numel() != out->numel()) {
       ExpandKernel<T, Context>(
           dev_ctx, expand_tensor, IntArray{new_out_shape}, out);
     } else {
