@@ -50,6 +50,13 @@ namespace pybind {
 
 namespace py = ::pybind11;
 
+using TensorVectorMap =
+    std::unordered_multimap<size_t,
+                            std::pair<bool, std::vector<paddle::Tensor>>>;
+using TensorVectorMapIter = std::unordered_multimap<
+    size_t,
+    std::pair<bool, std::vector<paddle::Tensor>>>::iterator;
+
 template <typename T>
 static T PyObjectCast(PyObject* obj) {
   try {
@@ -393,7 +400,12 @@ paddle::optional<std::vector<paddle::Tensor>> GetOptionalTensorListFromArgs(
     bool dispensable = false,
     const phi::distributed::ProcessMesh* mesh = nullptr);
 
-std::vector<paddle::Tensor> GetTensorListFromArgs(
+TensorVectorMap& GetTensorVectorMap();
+
+void ClearTensorVectorState(std::vector<paddle::Tensor>* x,
+                            std::vector<paddle::Tensor>* params);
+
+std::vector<paddle::Tensor>& GetTensorListFromArgs(
     const std::string& op_type,
     const std::string& arg_name,
     PyObject* args,

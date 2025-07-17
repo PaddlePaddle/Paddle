@@ -82,8 +82,10 @@ static PyObject *eager_api_run_program(PyObject *self,
                                        PyObject *kwargs) {
   PyThreadState *tstate = nullptr;
   try {
-    auto X = GetTensorListFromArgs("run_program", "X", args, 0, true);
-    auto Params = GetTensorListFromArgs("run_program", "Params", args, 1, true);
+    auto &X = GetTensorListFromArgs("run_program", "X", args, 0, true);
+
+    auto &Params =
+        GetTensorListFromArgs("run_program", "Params", args, 1, true);
     auto OutScope =
         GetScopePtrListFromArgs("run_program", "OutScope", args, 2, false);
     const phi::distributed::ProcessMesh *mesh = nullptr;
@@ -99,6 +101,7 @@ static PyObject *eager_api_run_program(PyObject *self,
     VLOG(6) << "Finish Pir ConstructAttrMapFromPyArgs";
     tstate = PyEval_SaveThread();
     auto out = egr::to_static::run_program_ad_func(X, Params, OutScope, attrs);
+    ClearTensorVectorState(&X, &Params);
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
     return ToPyObject(out);
