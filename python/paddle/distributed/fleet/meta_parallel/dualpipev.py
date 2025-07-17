@@ -361,8 +361,8 @@ class DualPipeVParallel(PipelineParallel):
             if not use_stream_wait_event:
                 for req in fwd_reqs:
                     req.wait()
-
-        forward_event_to_wait = get_event_from_custom_stream(pp_raw_stream)
+        if use_stream_wait_event:
+            forward_event_to_wait = get_event_from_custom_stream(pp_raw_stream)
 
         if common_backward_ops_num > 0:
             bwd_reqs = batch_isend_irecv(self.comm_backward_ops)
@@ -374,7 +374,11 @@ class DualPipeVParallel(PipelineParallel):
         if use_stream_wait_event:
             forward_event_to_wait.current_stream_wait()
 
-        combine_bw_event_to_wait = get_event_from_custom_stream(pp_raw_stream)
+            combine_bw_event_to_wait = get_event_from_custom_stream(
+                pp_raw_stream
+            )
+        else:
+            combine_bw_event_to_wait = None
 
         self.comm_forward_ops = []
         self.comm_backward_ops = []
