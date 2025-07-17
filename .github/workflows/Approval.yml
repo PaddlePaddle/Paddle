@@ -17,6 +17,10 @@ jobs:
     runs-on:
       group: APPROVAL
     steps:
+      - name: Cleanup
+        run: |
+          rm -rf * .[^.]*
+
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
@@ -26,12 +30,9 @@ jobs:
       - name: Update paddle
         run: |
           git switch -c test
-          git remote -v
-          set +e
           git remote add upstream https://github.com/PaddlePaddle/Paddle.git
-          set -e
           git fetch upstream $BRANCH
-          git checkout --track upstream/develop
+          git checkout $BRANCH
           git config --global user.name "PaddleCI"
           git config --global user.email "paddle_ci@example.com"
           git merge test

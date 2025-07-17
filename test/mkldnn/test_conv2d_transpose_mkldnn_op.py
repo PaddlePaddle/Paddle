@@ -47,10 +47,10 @@ class TestConv2DTransposeONEDNNOp(TestConv2DTransposeOp):
             self.check_output_with_place(
                 place,
                 atol=1e-5,
-                check_dygraph=(not self.use_mkldnn),
+                check_dygraph=(not self.use_onednn),
             )
         else:
-            self.check_output(check_dygraph=(not self.use_mkldnn))
+            self.check_output(check_dygraph=(not self.use_onednn))
 
     def init_op_type(self):
         self.data_format = "NCHW"
@@ -58,7 +58,7 @@ class TestConv2DTransposeONEDNNOp(TestConv2DTransposeOp):
         self._cpu_only = True
 
     def init_test_case(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.is_test = True
         self.pad = [0, 0]
         self.fuse_bias = False

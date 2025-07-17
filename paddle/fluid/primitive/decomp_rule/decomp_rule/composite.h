@@ -1525,8 +1525,14 @@ std::tuple<Tensor, Tensor, Tensor> rms_norm_decomp(
     auto quant_max_bound_scalar =
         full_scalar<T>(quant_max_bound, out.dtype(), out.place());
     auto scale_out = out * quant_scale_scalar * quant_max_bound_scalar;
+    Tensor round_out;
+    if (quant_round_type == 0) {
+      round_out = backend::rint<T>(scale_out);
+    } else {
+      round_out = round<T>(scale_out);
+    }
     auto clip_out = clip_decomp<T>(
-        round<T>(scale_out), quant_min_bound_scalar, quant_max_bound_scalar);
+        round_out, quant_min_bound_scalar, quant_max_bound_scalar);
     if (fabs(quant_max_bound - 127.0f) < 0.000001) {
       out = cast<T>(clip_out, phi::DataType::INT8);
     } else if (fabs(quant_max_bound - 448.0f) < 0.000001) {

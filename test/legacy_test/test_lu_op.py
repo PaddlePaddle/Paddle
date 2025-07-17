@@ -139,13 +139,19 @@ class TestLUOp(OpTest):
             np.zeros(self.x_shape[:-2]) if len(X.shape) > 2 else np.array(0)
         )
 
+    def set_input(self):
+        A = np.random.random(self.x_shape).astype(self.dtype)
+        if 'complex' in self.dtype:
+            A += 1j * np.random.random(self.x_shape).astype(self.dtype)
+        self.inputs = {'X': A}
+
     def setUp(self):
         self.op_type = "lu"
         self.python_api = paddle.tensor.linalg.lu
         self.python_out_sig = ["Out", "Pivots"]
         self.config()
 
-        self.inputs = {'X': np.random.random(self.x_shape).astype(self.dtype)}
+        self.set_input()
         self.attrs = {'pivots': self.pivot}
         self.set_output()
         self.outputs = {
@@ -187,6 +193,24 @@ class TestLUOp3(TestLUOp):
         self.dtype = "float64"
 
 
+# complex64
+class TestLUOp4(TestLUOp):
+    def config(self):
+        self.x_shape = [10, 10]
+        self.pivot = True
+        self.get_infos = True
+        self.dtype = "complex64"
+
+
+# complex128
+class TestLUOp5(TestLUOp):
+    def config(self):
+        self.x_shape = [10, 10]
+        self.pivot = True
+        self.get_infos = True
+        self.dtype = "complex128"
+
+
 class TestLUAPI(unittest.TestCase):
     def test_dygraph(self):
         def run_lu_dygraph(shape, dtype):
@@ -194,8 +218,14 @@ class TestLUAPI(unittest.TestCase):
                 np_dtype = np.float32
             elif dtype == "float64":
                 np_dtype = np.float64
+            elif dtype == "complex64":
+                np_dtype = np.complex64
+            elif dtype == "complex128":
+                np_dtype = np.complex128
             np.random.seed(1024)
             a = np.random.rand(*shape).astype(np_dtype)
+            if dtype in {"complex64", "complex128"}:
+                a = a + 1j * np.random.rand(*shape).astype(np_dtype)
             m = a.shape[-2]
             n = a.shape[-1]
             min_mn = min(m, n)
@@ -230,7 +260,7 @@ class TestLUAPI(unittest.TestCase):
             (3, 5, 5, 5),
             (4, 5, 5, 3),  # 4-dim Tensors
         ]
-        dtypes = ["float32", "float64"]
+        dtypes = ["float32", "float64", "complex64", "complex128"]
         for tensor_shape, dtype in itertools.product(tensor_shapes, dtypes):
             run_lu_dygraph(tensor_shape, dtype)
 
@@ -242,7 +272,13 @@ class TestLUAPI(unittest.TestCase):
                 np_dtype = np.float32
             elif dtype == "float64":
                 np_dtype = np.float64
+            elif dtype == "complex64":
+                np_dtype = np.complex64
+            elif dtype == "complex128":
+                np_dtype = np.complex128
             a = np.random.rand(*shape).astype(np_dtype)
+            if dtype in {"complex64", "complex128"}:
+                a = a + 1j * np.random.rand(*shape).astype(np_dtype)
             m = a.shape[-2]
             n = a.shape[-1]
             min_mn = min(m, n)
@@ -296,23 +332,55 @@ class TestLUAPI(unittest.TestCase):
             (3, 5, 5, 5),
             (4, 5, 5, 3),  # 4-dim Tensors
         ]
-        dtypes = ["float32", "float64"]
+        dtypes = ["float32", "float64", "complex64", "complex128"]
         for tensor_shape, dtype in itertools.product(tensor_shapes, dtypes):
             run_lu_static(tensor_shape, dtype)
 
 
-class TestLUAPIError(unittest.TestCase):
-    def test_errors(self):
-        with paddle.base.dygraph.guard():
-            # The size of input in lu should not be 0.
-            def test_0_size():
-                array = np.array([], dtype=np.float32)
-                x = paddle.to_tensor(
-                    np.reshape(array, [0, 0, 0]), dtype='float32'
-                )
-                paddle.linalg.lu(x, get_infos=True)
+# class TestLUAPIError(unittest.TestCase):
+#     def test_errors(self):
+#         with paddle.base.dygraph.guard():
+#             # The size of input in lu should not be 0.
+#             def test_0_size():
+#                 array = np.array([], dtype=np.float32)
+#                 x = paddle.to_tensor(
+#                     np.reshape(array, [0, 0, 0]), dtype='float32'
+#                 )
+#                 paddle.linalg.lu(x, get_infos=True)
 
-            self.assertRaises(ValueError, test_0_size)
+#             self.assertRaises(ValueError, test_0_size)
+
+
+class TestLUAPIZeroSize(unittest.TestCase):
+    def init_test_case(self):
+        self.x_shape = [1, 0, 10]
+        self.dtype = "float32"
+
+    def _test_dygraph(self):
+        paddle.disable_static()
+        array = np.ones(self.x_shape).astype(self.dtype)
+        x = paddle.to_tensor(array, stop_gradient=False)
+        lu, p, info = paddle.linalg.lu(x, get_infos=True)
+        loss = lu.sum()
+        loss.backward()
+        self.assertEqual(x.grad.shape, x.shape)
+
+    def test_zero_size(self):
+        self.init_test_case()
+        self._test_dygraph()
+
+
+class TestLUAPI_ZeroSize(unittest.TestCase):
+    def test_zero_size1(self):
+        self.x_shape = (2, 0, 12)
+        self.dtype = "float32"
+        paddle.disable_static()
+        a = np.random.randn(*self.x_shape)
+        x = paddle.to_tensor(a, dtype=self.dtype, stop_gradient=False)
+        lu, p, info = paddle.linalg.lu(x, get_infos=True)
+        loss = lu.sum()
+        loss.backward()
+        self.assertEqual(x.grad.shape, x.shape)
 
 
 if __name__ == "__main__":

@@ -496,5 +496,14 @@ class TestFusedFFNOpError(unittest.TestCase):
             self.assertRaises(ValueError, test_dropout_mode)
 
 
+class APITestStaticFusedFFNZeroSizeTensor(unittest.TestCase):
+    def setUp(self):
+        self.dtype = "float32"
+        self.layer_norm_dtype = "float32"
+        self.batch_size = 1
+        self.d_model = 8
+        self.dim_feedforward = 0
+
+
 if __name__ == "__main__":
     unittest.main()

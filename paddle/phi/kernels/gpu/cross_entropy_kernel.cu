@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/cross_entropy_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 #include "glog/logging.h"
 
@@ -1402,6 +1403,20 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
                                    int axis,
                                    DenseTensor* softmax,
                                    DenseTensor* loss) {
+  if (softmax->numel() == 0) {
+    // When soft_label is False, the axis column cannot be 0. Other dimensions
+    // are the same, so the numel of softmax and loss are both 0.
+    dev_ctx.template Alloc<T>(softmax);
+    dev_ctx.template Alloc<T>(loss);
+
+    // When soft_label is True, the axis column is 1.
+    if (soft_label) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(loss->dims())), 0, loss);
+    }
+    return;
+  }
+
   auto dtype = label.dtype();
   if (soft_label) {
     PADDLE_ENFORCE_EQ(

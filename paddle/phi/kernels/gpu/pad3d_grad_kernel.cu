@@ -52,9 +52,13 @@ __global__ void Pad3DGradConstNCDHW(const IndexType in_size,
     const IndexType out_d = in_d + pad_front;
     const IndexType out_h = in_h + pad_top;
     const IndexType out_w = in_w + pad_left;
+    bool out_of_bound = out_d < 0 || out_h < 0 || out_w < 0;
+
     d_in_data[in_index] =
-        d_out_data[nc * out_depth * out_height * out_width +
-                   out_d * out_height * out_width + out_h * out_width + out_w];
+        out_of_bound ? static_cast<T>(0)
+                     : d_out_data[nc * out_depth * out_height * out_width +
+                                  out_d * out_height * out_width +
+                                  out_h * out_width + out_w];
   }
 }
 
@@ -89,11 +93,13 @@ __global__ void Pad3DGradConstNDHWC(const IndexType in_size,
     const IndexType out_d = in_d + pad_front;
     const IndexType out_h = in_h + pad_top;
     const IndexType out_w = in_w + pad_left;
-
+    bool out_of_bound = out_d < 0 || out_h < 0 || out_w < 0;
     d_in_data[in_index] =
-        d_out_data[n * out_depth * out_height * out_width * channels +
-                   out_d * out_height * out_width * channels +
-                   out_h * out_width * channels + out_w * channels + c];
+        out_of_bound
+            ? static_cast<T>(0)
+            : d_out_data[n * out_depth * out_height * out_width * channels +
+                         out_d * out_height * out_width * channels +
+                         out_h * out_width * channels + out_w * channels + c];
   }
 }
 
