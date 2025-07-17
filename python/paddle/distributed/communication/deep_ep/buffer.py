@@ -26,7 +26,9 @@ import paddle.distributed as dist
 from paddle.base.core import (
     Buffer as CppBuffer,
     Config,
+    get_low_latency_nvl_size_hint_two_stage,
     get_low_latency_rdma_size_hint,
+    get_low_latency_rdma_size_hint_two_stage,
 )
 
 if TYPE_CHECKING:
@@ -107,11 +109,15 @@ class Buffer:
         if self.runtime.get_num_rdma_ranks() > 1 or low_latency_mode:
             # Enable IBGDA
             assert num_qps_per_rank > 0
+            num_qps = num_qps_per_rank
+            internode_ll_two_stage_num_max_qps = 32
+            if num_qps_per_rank < internode_ll_two_stage_num_max_qps:
+                num_qps = internode_ll_two_stage_num_max_qps
             if not os.getenv("NVSHMEM_DISABLE_P2P"):
                 os.environ['NVSHMEM_DISABLE_P2P'] = '1'
             os.environ['NVSHMEM_IB_ENABLE_IBGDA'] = '1'
             os.environ['NVSHMEM_IBGDA_NIC_HANDLER'] = 'gpu'
-            os.environ['NVSHMEM_IBGDA_NUM_RC_PER_PE'] = f'{num_qps_per_rank}'
+            os.environ['NVSHMEM_IBGDA_NUM_RC_PER_PE'] = f'{num_qps}'
             # Make sure QP depth is always larger than the number of on-flight WRs, so that we can skip WQ slot check
             os.environ['NVSHMEM_QP_DEPTH'] = '1024'
             # NOTES: NVSHMEM initialization requires at least 256 MiB
@@ -174,6 +180,67 @@ class Buffer:
         """
         return get_low_latency_rdma_size_hint(
             num_max_dispatch_tokens_per_rank, hidden, num_ranks, num_experts
+        )
+
+    @staticmethod
+    def get_low_latency_rdma_size_hint_two_stage(
+        num_max_dispatch_tokens_per_rank: int,
+        hidden: int,
+        num_ranks: int,
+        num_experts: int,
+        num_topk: int,
+    ) -> int:
+        """
+        Get a minimum size requirement for the RDMA buffer. The size calculation will be done with BF16.
+
+        Arguments:
+            num_max_dispatch_tokens_per_rank: the maximum number of tokens to dispatch, all the ranks must hold the same value.
+            hidden: the hidden dimension of each token.
+            num_ranks: the number of EP group ranks.
+            num_experts: the number of all experts.
+            num_topk: the number of moe topk.
+
+        Returns:
+            size: the RDMA buffer size recommended.
+        """
+        return get_low_latency_rdma_size_hint_two_stage(
+            num_max_dispatch_tokens_per_rank,
+            hidden,
+            num_ranks,
+            num_experts,
+            num_topk,
+        )
+
+    @staticmethod
+    def get_low_latency_nvl_size_hint_two_stage(
+        num_max_dispatch_tokens_per_rank: int,
+        hidden: int,
+        num_ranks: int,
+        num_experts: int,
+        num_topk: int,
+        use_fp8: bool,
+    ) -> int:
+        """
+        Get a minimum size requirement for the nvl buffer. The size calculation will be done with BF16.
+
+        Arguments:
+            num_max_dispatch_tokens_per_rank: the maximum number of tokens to dispatch, all the ranks must hold the same value.
+            hidden: the hidden dimension of each token.
+            num_ranks: the number of EP group ranks.
+            num_experts: the number of all experts.
+            num_topk: the number of moe topk.
+            use_fp8: whether use fp8 in dispatch.
+
+        Returns:
+            size: the RDMA buffer size recommended.
+        """
+        return get_low_latency_nvl_size_hint_two_stage(
+            num_max_dispatch_tokens_per_rank,
+            hidden,
+            num_ranks,
+            num_experts,
+            num_topk,
+            use_fp8,
         )
 
     @staticmethod
@@ -910,6 +977,190 @@ class Buffer:
             num_max_dispatch_tokens_per_rank,
             num_experts,
             zero_copy,
+            async_finish,
+            return_recv_hook,
+            out,
+        )
+        tensors_to_record = (
+            x,
+            topk_idx,
+            topk_weights,
+            src_info,
+            layout_range,
+            combined_x,
+        )
+        return (
+            combined_x,
+            EventOverlap(event, tensors_to_record if async_finish else None),
+            hook,
+        )
+
+    def low_latency_dispatch_two_stage(
+        self,
+        x: paddle.Tensor,
+        topk_idx: paddle.Tensor,
+        topk_weights: paddle.Tensor,
+        num_max_dispatch_tokens_per_rank: int,
+        num_experts: int,
+        use_fp8: bool = True,
+        async_finish: bool = False,
+        return_recv_hook: bool = False,
+    ) -> tuple[
+        tuple[paddle.Tensor, paddle.Tensor],
+        paddle.Tensor,
+        tuple,
+        EventOverlap,
+        Callable,
+    ]:
+        """
+        A low-latency-two-stage implementation for dispatching with IBGDA.
+        This kernel requires all the ranks (no matter intranode or internode) should be visible via RDMA
+            (specifically, IBGDA must be enabled).
+
+        Arguments:
+            x: `paddle.Tensor` with `bfloat16`, shaped as `[num_tokens, hidden]`, only several hidden shapes are
+                supported. The number of tokens to be dispatched must be less than `num_max_dispatch_tokens_per_rank`.
+            topk_idx: `paddle.Tensor` with `int64`, shaped as `[num_tokens, num_topk]`, only several top-k shapes
+                are supported. `-1` indices (not selecting any expert) are supported.
+            topk_weights: `paddle.Tensor` with `float`, shaped as `[num_tokens, num_topk]`, only several top-k shapes
+                are supported.
+            num_max_dispatch_tokens_per_rank: the maximum number of tokens to dispatch, all the ranks must hold the same value.
+            num_experts: the number of all experts.
+            use_fp8: whether to enable FP8 casting, with this, the received data will be a tuple of FP8 tensor and scaling factors.
+            async_finish: the current stream will not wait for the communication kernels to be finished if set.
+            return_recv_hook: return a receiving hook if set. If set, the kernel will just do the RDMA request issues,
+                but **without actually receiving the data**. You must call the received hook to make sure the data's arrival.
+                If you not set this flag, the kernel will ensure the data's arrival.
+
+        Returns:
+            recv_x: a tensor or tuple with received tokens for each expert.
+                With `use_fp8=True`: the first element is a `paddle.Tensor` shaped as
+                `[num_local_experts, num_max_dispatch_tokens_per_rank * num_ranks, hidden]` with `float8_e4m3fn`.
+                The second tensor is the corresponding scales for the first element with shape
+                `[num_local_experts, num_max_dispatch_tokens_per_rank * num_ranks, hidden // 128]` with `float`.
+                Notice that, the last-two-dimension of the scaling tensors are in column-major for TMA compatibility.
+                With `use_fp8=False`, the result would be a tensor shaped as
+                `[num_local_experts, num_max_dispatch_tokens_per_rank * num_ranks, hidden]` with `bfloat16`.
+                Moreover, not all tokens are valid, only some of the `num_max_dispatch_tokens_per_rank * num_ranks` are,
+                as we do not synchronize CPU received count with GPU (also not incompatible with CUDA graph if synced).
+            recv_count: a tensor shaped `[num_local_experts]` with type `int`, indicating how many tokens each
+                expert receive. As mentioned before, not all tokens are valid in `recv_x`.
+            packed_rdma_recv_count: a tensor shaped `[num_rdma_ranks]`  with type `int`, indicating how many tokens each
+                rdma_rank receive.
+            handle: the communication handle to be used in the `low_latency_combine` function.
+            event: the event after executing the kernel (valid only if `async_finish` is set).
+            hook: the receiving hook function (valid only if `return_recv_hook` is set).
+        """
+        (
+            packed_recv_x,
+            packed_recv_x_scales,
+            packed_recv_count,
+            packed_rdma_recv_count,
+            packed_recv_src_info,
+            packed_recv_layout_range,
+            rdma_send_flags,
+            event,
+            hook,
+        ) = self.runtime.low_latency_dispatch_two_stage(
+            x,
+            topk_idx,
+            topk_weights,
+            num_max_dispatch_tokens_per_rank,
+            num_experts,
+            use_fp8,
+            async_finish,
+            return_recv_hook,
+        )
+        handle = (
+            packed_recv_src_info,
+            packed_recv_layout_range,
+            rdma_send_flags,
+            packed_rdma_recv_count,
+            num_max_dispatch_tokens_per_rank,
+            x.shape[1],
+            num_experts,
+        )
+        tensors_to_record = (
+            x,
+            topk_idx,
+            topk_weights,
+            packed_recv_x,
+            packed_recv_x_scales,
+            packed_recv_count,
+            packed_rdma_recv_count,
+            packed_recv_src_info,
+            packed_recv_layout_range,
+            rdma_send_flags,
+        )
+        return (
+            (packed_recv_x, packed_recv_x_scales) if use_fp8 else packed_recv_x,
+            packed_recv_count,
+            rdma_send_flags,
+            handle,
+            EventOverlap(event, tensors_to_record if async_finish else None),
+            hook,
+        )
+
+    def low_latency_combine_two_stage(
+        self,
+        x: paddle.Tensor,
+        topk_idx: paddle.Tensor,
+        topk_weights: paddle.Tensor,
+        handle: tuple,
+        dispatch_use_fp8: bool = False,
+        async_finish: bool = False,
+        return_recv_hook: bool = False,
+        out: paddle.Tensor | None = None,
+    ) -> tuple[paddle.Tensor, EventOverlap, Callable]:
+        """
+        A low-latency implementation for combining tokens (reduce **with weights**) with IBGDA.
+        This kernel requires all the ranks (no matter intranode or internode) should be visible via RDMA
+            (specifically, IBGDA must be enabled).
+        Even for ranks in the same node, NVLink are fully disabled for simplicity.
+        Warning: as there are only two buffers, and the returned tensors reuse the buffer, you can not hold more than 2
+            low-latency kernels' result tensor at a single moment.
+
+        Arguments:
+            x: `[num_local_experts, num_max_dispatch_tokens_per_rank * num_ranks, hidden]` with `bfloat16`,
+                the local calculated tokens to be sent to this original rank and reduced.
+            topk_idx: `[num_combined_tokens, num_topk]` with `int64`, the expert indices selected by the dispatched
+                tokens. `-1` indices (not selecting any expert) are supported. Note that, `num_combined_tokens` equals
+                to the number of dispatched tokens.
+            topk_weights: `[num_combined_tokens, num_topk]` with `float`, the expert weights selected by the dispatched
+                tokens. The received tokens will be reduced with the weights in this tensor.
+            handle: the communication handle given by the `dispatch` function.
+            dispatch_use_fp8: whether to enable FP8 casting in dispatch.
+            async_finish: the current stream will not wait for the communication kernels to be finished if set.
+            return_recv_hook: return a receiving hook if set. If set, the kernel will just do the RDMA request issues,
+                but **without actually receiving the data**. You must call the received hook to make sure the data's arrival.
+                If you not set this flag, the kernel will ensure the data's arrival.
+            out: the in-place output tensor, if set, the kernel will write the result to this tensor and return it directly.
+
+        Returns:
+            combined_x: the reduced token tensor, with shape `[num_combined_tokens, hidden]` and type `bfloat16`.
+            event: the event after executing the kernel (valid only if `async_finish` is set).
+            hook: the receiving hook function (valid only if `return_recv_hook` is set).
+        """
+        (
+            src_info,
+            layout_range,
+            rdma_send_flags,
+            packed_rdma_recv_count,
+            num_max_dispatch_tokens_per_rank,
+            hidden,
+            num_experts,
+        ) = handle
+        combined_x, event, hook = self.runtime.low_latency_combine_two_stage(
+            x,
+            topk_idx,
+            topk_weights,
+            src_info,
+            layout_range,
+            rdma_send_flags,
+            packed_rdma_recv_count,
+            num_max_dispatch_tokens_per_rank,
+            num_experts,
+            dispatch_use_fp8,
             async_finish,
             return_recv_hook,
             out,

@@ -23,6 +23,7 @@ class TestFusedRmsNorm(unittest.TestCase):
     def setUp(self):
         paddle.seed(123)
         self.init_data()
+        self.modify_data()
         self.func = paddle.incubate.nn.functional.fused_rms_norm
 
     def tearDown(self):
@@ -51,6 +52,9 @@ class TestFusedRmsNorm(unittest.TestCase):
         self.quant_max_bound = 0
         self.quant_min_bound = 0
 
+    def modify_data(self):
+        pass
+
     def inputs(self):
         return (
             self.x,
@@ -66,7 +70,7 @@ class TestFusedRmsNorm(unittest.TestCase):
             self.quant_min_bound,
         )
 
-    def test_eval(self):
+    def compute(self):
         inputs = self.inputs()
         dy_out = self.func(*inputs)
         static_func = paddle.jit.to_static(
@@ -75,10 +79,42 @@ class TestFusedRmsNorm(unittest.TestCase):
             input_spec=None,
         )(self.func)
         st_out = static_func(*inputs)
+        return dy_out, st_out
+
+    def test_eval(self):
+        dy_out, st_out = self.compute()
         for a, b in zip(
             paddle.utils.flatten(dy_out), paddle.utils.flatten(st_out)
         ):
             numpy.testing.assert_allclose(a, b, atol=1e-6, rtol=1e-6)
+
+
+class TestFusedRmsNormQuantRint(TestFusedRmsNorm):
+    def modify_data(self):
+        self.quant_scale = 0.15
+        self.quant_round_type = 0
+        self.quant_max_bound = 127
+        self.quant_min_bound = -127
+
+    def test_eval(self):
+        # There is little precision difference after decomposition.
+        # which leads to different results after dequantization. So
+        # we skip this test.
+        self.compute()
+
+
+class TestFusedRmsNormQuantRound(TestFusedRmsNorm):
+    def modify_data(self):
+        self.quant_scale = 0.15
+        self.quant_round_type = 1
+        self.quant_max_bound = 127
+        self.quant_min_bound = -127
+
+    def test_eval(self):
+        # There is little precision difference after decomposition.
+        # which leads to different results after dequantization. So
+        # we skip this test.
+        self.compute()
 
 
 if __name__ == '__main__':

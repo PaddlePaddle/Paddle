@@ -29,8 +29,8 @@ __global__ void IndexEleGetGradAccKernel(
     const char* in_ptr,
     char* out_ptr,
     const std::array<char*, DDim::kMaxRank> index_ptrs,
-    const std::array<int64_t, 25> sizes,
-    const std::array<int64_t, 25> strides,
+    const std::array<int64_t, phi::DDim::kMaxRank + 1> sizes,
+    const std::array<int64_t, phi::DDim::kMaxRank + 1> strides,
     int num_indices,
     offset_calc_t offset_calc) {
   const int tid = threadIdx.x;
@@ -74,8 +74,8 @@ void GPUIndexElementwiseGetGrad(const phi::GPUContext& ctx,
 
   auto num_indices = index_dims.size();
 
-  auto sizes = std::array<int64_t, 25>{};
-  auto strides = std::array<int64_t, 25>{};
+  auto sizes = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
+  auto strides = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
   for (unsigned i = 0; i < num_indices; i++) {
     sizes[i] = index_dims[i];
     strides[i] = index_strides[i];
@@ -162,9 +162,7 @@ void IndexElementwiseGetGradKernel(const Context& ctx,
                                    const bool is_gather,
                                    DenseTensor* x_grad) {
   ctx.template Alloc<T>(x_grad);
-  auto dxt = phi::EigenVector<T>::Flatten(*x_grad);
-  auto& place = *ctx.eigen_device();
-  dxt.device(place) = dxt.constant(static_cast<T>(0));
+  phi::funcs::set_constant(ctx, x_grad, static_cast<float>(0));
   if (out_grad.numel() == 0) return;
 
   const auto& index_type = index[0]->dtype();
