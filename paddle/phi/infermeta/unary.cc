@@ -2353,18 +2353,18 @@ static phi::DDim ValidateShape(const std::vector<int64_t> shape,
                       0,
                       common::errors::InvalidArgument(
                           "Only Zero-Size Tensor'shape can contain 0"));
-    if(unk_dim_idx!=-1){
+    if (unk_dim_idx != -1) {
       size_t in_dims_zero_cnt = 0;
       for (size_t i = 0; i < in_dims_vec.size(); ++i)
-        if(in_dims_vec[i]==0)
-          in_dims_zero_cnt++;
+        if (in_dims_vec[i] == 0) in_dims_zero_cnt++;
       if (shape_zero_cnt == in_dims_zero_cnt) {
         int64_t in_dims_pdt = 1;
         int64_t shape_pdt = 1;
         for (size_t i = 0; i < shape.size(); ++i)
           if (shape[i] != 0 && shape[i] != -1) shape_pdt *= shape[i];
         for (size_t i = 0; i < in_dims_vec.size(); ++i)
-          if (in_dims_vec[i] != 0 && in_dims_vec[i] != -1) in_dims_pdt *= in_dims_vec[i];
+          if (in_dims_vec[i] != 0 && in_dims_vec[i] != -1)
+            in_dims_pdt *= in_dims_vec[i];
         output_shape[unk_dim_idx] = in_dims_pdt / shape_pdt;
         PADDLE_ENFORCE_EQ(
             output_shape[unk_dim_idx] * shape_pdt,
@@ -2378,14 +2378,15 @@ static phi::DDim ValidateShape(const std::vector<int64_t> shape,
                 in_dims,
                 common::make_ddim(shape)));
         return common::make_ddim(output_shape);
-      }else if (shape_zero_cnt > in_dims_zero_cnt) {
+      } else if (shape_zero_cnt > in_dims_zero_cnt) {
         int64_t in_dims_pdt = 1;
         int64_t shape_pdt = 1;
         for (size_t i = 0; i < shape.size(); ++i)
           if (shape[i] != 0 && shape[i] != -1) shape_pdt *= shape[i];
         for (size_t i = 0; i < in_dims_vec.size(); ++i)
-          if (in_dims_vec[i] != 0 && in_dims_vec[i] != -1) in_dims_pdt *= in_dims_vec[i];
-        if(shape_pdt != in_dims_pdt)
+          if (in_dims_vec[i] != 0 && in_dims_vec[i] != -1)
+            in_dims_pdt *= in_dims_vec[i];
+        if (shape_pdt != in_dims_pdt)
           common::errors::InvalidArgument(
               "Provided sizes don't multiply up to the size of dim given "
               "in the input tensor");
