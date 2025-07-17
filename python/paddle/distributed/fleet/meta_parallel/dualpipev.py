@@ -24,9 +24,11 @@ from paddle.distributed.communication.batch_isend_irecv import (
     P2POp,
     batch_isend_irecv,
 )
-from paddle.distributed.communication.deep_ep import (
-    get_event_from_custom_stream,
-)
+
+try:
+    from paddle.distributed.communication import deep_ep
+except ImportError:
+    deep_ep = None
 
 from ..utils.log_util import logger
 from .pipeline_parallel import (
@@ -349,7 +351,7 @@ class DualPipeVParallel(PipelineParallel):
         if common_forward_ops_num == 0 and common_backward_ops_num == 0:
             return
 
-        use_stream_wait_event = self._overlap_p2p_comm
+        use_stream_wait_event = self._overlap_p2p_comm and deep_ep is not None
 
         pp_raw_stream = self.pp_group.process_group.get_stream(
             paddle.framework._current_expected_place_()
@@ -362,7 +364,9 @@ class DualPipeVParallel(PipelineParallel):
                 for req in fwd_reqs:
                     req.wait()
         if use_stream_wait_event:
-            forward_event_to_wait = get_event_from_custom_stream(pp_raw_stream)
+            forward_event_to_wait = deep_ep.get_event_from_custom_stream(
+                pp_raw_stream
+            )
 
         if common_backward_ops_num > 0:
             bwd_reqs = batch_isend_irecv(self.comm_backward_ops)
@@ -374,7 +378,7 @@ class DualPipeVParallel(PipelineParallel):
         if use_stream_wait_event:
             forward_event_to_wait.current_stream_wait()
 
-            combine_bw_event_to_wait = get_event_from_custom_stream(
+            combine_bw_event_to_wait = deep_ep.get_event_from_custom_stream(
                 pp_raw_stream
             )
         else:
