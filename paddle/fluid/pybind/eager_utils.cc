@@ -1378,7 +1378,7 @@ void ClearTensorVectorState(std::vector<paddle::Tensor>* x,
   }
 }
 
-std::vector<paddle::Tensor>& GetTensorListFromArgs(
+std::vector<paddle::Tensor>& GetTensorListFromArgsWithoutMalloc(
     const std::string& op_type,
     const std::string& arg_name,
     PyObject* args,
@@ -1489,6 +1489,130 @@ std::vector<paddle::Tensor>& GetTensorListFromArgs(
       ConvertToDistTensor(&tensor, local_mesh);
       result[i] = tensor;
     }
+  } else {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "%s(): argument '%s' (position %d) must be list of Tensors, but got "
+        "%s",
+        op_type,
+        arg_name,
+        arg_idx,
+        (reinterpret_cast<PyTypeObject*>(list->ob_type))->tp_name));
+  }
+
+  return result;
+}
+
+std::vector<paddle::Tensor> GetTensorListFromArgs(
+    const std::string& op_type,
+    const std::string& arg_name,
+    PyObject* args,
+    ssize_t arg_idx,
+    bool dispensable,
+    const phi::distributed::ProcessMesh* mesh) {
+  PyObject* list = PyTuple_GET_ITEM(args, arg_idx);
+
+  if (list == nullptr) {
+    if (!dispensable) {
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "%s(): argument '%s' (position %d) must be list of Tensor, but got "
+          "None",
+          op_type,
+          arg_name,
+          arg_idx));
+    }
+    return {};
+  }
+
+  std::vector<paddle::Tensor> result;
+  const phi::distributed::ProcessMesh* local_mesh = nullptr;
+  int mesh_start_index = -1;
+
+  if (PyList_Check(list)) {
+    Py_ssize_t len = PyList_Size(list);
+    result.reserve(static_cast<size_t>(len));
+    if (len == 0) {
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "%s(): argument '%s' (position %d) must be list of Tensors, but got "
+          "empty list",
+          op_type,
+          arg_name,
+          arg_idx));
+    }
+    for (Py_ssize_t i = 0; i < len; i++) {
+      PyObject* tensor_obj = PyList_GetItem(list, i);
+      PADDLE_ENFORCE_EQ(
+          PyObject_TypeCheck(tensor_obj, p_tensor_type),
+          true,
+          common::errors::InvalidArgument(
+              "%s(): argument '%s' (position %d) must be list of Tensors",
+              op_type,
+              arg_name,
+              arg_idx));
+      paddle::Tensor& tensor =
+          reinterpret_cast<TensorObject*>(tensor_obj)->tensor;
+      if (local_mesh) {
+        ConvertToDistTensor(&tensor, local_mesh);
+      } else {
+        if (tensor.defined() && tensor.is_dist_tensor()) {
+          local_mesh =
+              &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                    tensor.impl())
+                    ->process_mesh());
+          mesh_start_index = i;
+        }
+      }
+      result.emplace_back(tensor);
+    }
+    for (Py_ssize_t i = 0; i < mesh_start_index; i++) {
+      paddle::Tensor& tensor =
+          reinterpret_cast<TensorObject*>(PyList_GetItem(list, i))->tensor;
+      ConvertToDistTensor(&tensor, local_mesh);
+      result[i] = tensor;
+    }
+  } else if (PyTuple_Check(list)) {
+    Py_ssize_t len = PyTuple_Size(list);
+    result.reserve(static_cast<size_t>(len));
+    if (len == 0) {
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "%s(): argument '%s' (position %d) must be list of Tensors, but got "
+          "empty list",
+          op_type,
+          arg_name,
+          arg_idx));
+    }
+    for (Py_ssize_t i = 0; i < len; i++) {
+      PyObject* tensor_obj = PyTuple_GetItem(list, i);
+      PADDLE_ENFORCE_EQ(
+          PyObject_TypeCheck(tensor_obj, p_tensor_type),
+          true,
+          common::errors::InvalidArgument(
+              "%s(): argument '%s' (position %d) must be list of Tensors",
+              op_type,
+              arg_name,
+              arg_idx));
+      paddle::Tensor& tensor =
+          reinterpret_cast<TensorObject*>(tensor_obj)->tensor;
+      if (local_mesh) {
+        ConvertToDistTensor(&tensor, local_mesh);
+      } else {
+        if (tensor.defined() && tensor.is_dist_tensor()) {
+          local_mesh =
+              &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                    tensor.impl())
+                    ->process_mesh());
+          mesh_start_index = i;
+        }
+      }
+      result.emplace_back(tensor);
+    }
+    for (Py_ssize_t i = 0; i < mesh_start_index; i++) {
+      paddle::Tensor& tensor =
+          reinterpret_cast<TensorObject*>(PyTuple_GetItem(list, i))->tensor;
+      ConvertToDistTensor(&tensor, local_mesh);
+      result[i] = tensor;
+    }
+  } else if (list == Py_None) {
+    return {};
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "%s(): argument '%s' (position %d) must be list of Tensors, but got "

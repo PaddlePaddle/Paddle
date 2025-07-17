@@ -82,17 +82,19 @@ static PyObject *eager_api_run_program(PyObject *self,
                                        PyObject *kwargs) {
   PyThreadState *tstate = nullptr;
   try {
-    auto &X = GetTensorListFromArgs("run_program", "X", args, 0, true);
+    auto &X =
+        GetTensorListFromArgsWithoutMalloc("run_program", "X", args, 0, true);
 
-    auto &Params =
-        GetTensorListFromArgs("run_program", "Params", args, 1, true);
+    auto &Params = GetTensorListFromArgsWithoutMalloc(
+        "run_program", "Params", args, 1, true);
     auto OutScope =
         GetScopePtrListFromArgs("run_program", "OutScope", args, 2, false);
     const phi::distributed::ProcessMesh *mesh = nullptr;
     if (InputsContainDistTensor(&mesh, X, Params)) {
-      X = GetTensorListFromArgs("run_program", "X", args, 0, true, mesh);
-      Params =
-          GetTensorListFromArgs("run_program", "Params", args, 1, true, mesh);
+      X = GetTensorListFromArgsWithoutMalloc(
+          "run_program", "X", args, 0, true, mesh);
+      Params = GetTensorListFromArgsWithoutMalloc(
+          "run_program", "Params", args, 1, true, mesh);
     }
     framework::AttributeMap attrs;
     VLOG(6) << "Start PIR ConstructAttrMapFromPyArgs";

@@ -405,7 +405,15 @@ TensorVectorMap& GetTensorVectorMap();
 void ClearTensorVectorState(std::vector<paddle::Tensor>* x,
                             std::vector<paddle::Tensor>* params);
 
-std::vector<paddle::Tensor>& GetTensorListFromArgs(
+std::vector<paddle::Tensor>& GetTensorListFromArgsWithoutMalloc(
+    const std::string& op_type,
+    const std::string& arg_name,
+    PyObject* args,
+    ssize_t arg_idx,
+    bool dispensable = false,
+    const phi::distributed::ProcessMesh* mesh = nullptr);
+
+std::vector<paddle::Tensor> GetTensorListFromArgs(
     const std::string& op_type,
     const std::string& arg_name,
     PyObject* args,
