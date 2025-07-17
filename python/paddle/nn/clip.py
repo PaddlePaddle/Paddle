@@ -793,7 +793,9 @@ class ClipGradByGlobalNorm(ClipGradBase):
 
         global_norm_var = async_add_n(global_norm_var)
         global_mesh = dist.get_mesh()
-        is_pp_enable = "pp" in global_mesh.dim_names
+        is_pp_enable = False
+        if global_mesh is not None:
+            is_pp_enable = "pp" in global_mesh.dim_names
         if (
             flag_new_pp and src_mesh is not None and is_pp_enable
         ):  # Use new pp_flask,At this point global_norm_var it's sub_norm_var_sum,we need to sum it between different pp_stage
