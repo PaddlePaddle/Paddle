@@ -5681,17 +5681,13 @@ def histogramdd(
         ), f"The length of ranges list must be {D * 2}\n"
 
     def __compute_flattened_index(index_list, hist_shape):
-        strides = (
-            paddle.to_tensor(hist_shape[::-1])
-            .cumprod(dim=0)
-            .flip(0)[1:]
-            .tolist()
+        strides = paddle.to_tensor(hist_shape[::-1]).cumprod(dim=0).flip(0)[1:]
+        strides = paddle.concat(
+            [strides, paddle.to_tensor([1], dtype=strides.dtype)]
         )
-        strides.append(1)
-        strides_tensor = paddle.to_tensor(strides)
 
         stacked_indices = paddle.stack(index_list, axis=-1)
-        flattened_index = (stacked_indices * strides_tensor).sum(axis=-1)
+        flattened_index = (stacked_indices * strides).sum(axis=-1)
 
         return flattened_index
 
