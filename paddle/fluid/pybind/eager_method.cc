@@ -1680,7 +1680,6 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
 
       AdvancedIndex ad = AdvancedIndex(transed_tensor, transed_index_int64);
       const bool is_gather = index_size == 1;
-      // const bool is_gather = false;
       paddle::Tensor flattened_index;
       if (is_gather) flattened_index = flatten_ad_func(transed_index[0], 0, -1);
       const bool accumulate = true;

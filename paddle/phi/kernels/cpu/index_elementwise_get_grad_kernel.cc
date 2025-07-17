@@ -120,6 +120,7 @@ void CPUIndexElementwiseGetGrad(const phi::CPUContext& ctx,
 template <typename T, typename Context>
 void IndexElementwiseGetGradKernel(const Context& ctx,
                                    const DenseTensor& x,
+                                   const DenseTensor& gather_index,
                                    const std::vector<const DenseTensor*>& index,
                                    const DenseTensor& out_grad,
                                    const std::vector<int64_t>& input_dims,
@@ -128,6 +129,7 @@ void IndexElementwiseGetGradKernel(const Context& ctx,
                                    const std::vector<int64_t>& index_strides,
                                    const int64_t slice_offset,
                                    const bool accumulate,
+                                   const bool is_gather,
                                    DenseTensor* x_grad) {
   ctx.template Alloc<T>(x_grad);
   auto dxt = phi::EigenVector<T>::Flatten(*x_grad);
