@@ -37,7 +37,7 @@ jobs:
     runs-on:
       group: BD_BJ-V100
     steps:
-      - name: Check docker image  and run container
+      - name: Check docker image and run container
         env:
           AGILE_PULL_ID: ${{ github.event.pull_request.number }}
           AGILE_REVISION: ${{ github.event.pull_request.head.sha }}
@@ -76,7 +76,7 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf  * .[^.]*
-          wget -q https://xly-devops.bj.bcebos.com/PR/build_whl/${AGILE_PULL_ID}/${AGILE_REVISION}/build.tar.gz
+          cp ${CFS_DIR}/build_bos/${AGILE_PULL_ID}/${AGILE_REVISION}/build.tar.gz .
           tar --use-compress-program="pigz -1" -xpf build.tar.gz
           cd ./paddle
           api_doc_spec_diff=$(python tools/diff_api.py  paddle/fluid/API_DEV.spec.doc paddle/fluid/API_PR.spec.doc)
