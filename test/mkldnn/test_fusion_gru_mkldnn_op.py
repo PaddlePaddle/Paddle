@@ -47,7 +47,7 @@ class TestFusionGRUONEDNNOpReverse(TestFusionGRUOp):
 class TestFusionGRUONEDNNOpOriginMode(TestFusionGRUOp):
     def set_confs(self):
         self.origin_mode = True
-        self.use_onednn = True
+        self.use_mkldnn = True
         self.check_pir_onednn = True
 
 
