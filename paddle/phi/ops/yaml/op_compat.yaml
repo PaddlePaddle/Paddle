@@ -3517,7 +3517,7 @@
   inputs :
     x : Input
   outputs :
-    {sign: Sign, logdet: Logdet}
+    {sign: Out, logdet: Logdet}
 
 - op : soft_relu
   backward : soft_relu_grad
