@@ -233,8 +233,8 @@ class TestNormOp_ZeroSize(OpTest):
         self.check_grad(['X'], 'Out')
 
     def init_test_case(self):
-        self.shape = [5, 3, 0, 7]
-        self.axis = 0
+        self.shape = [0, 3, 2, 7]
+        self.axis = 1
         self.epsilon = 1e-8
 
     def init_dtype(self):
