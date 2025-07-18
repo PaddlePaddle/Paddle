@@ -40,40 +40,6 @@ ExternalProject_Add(
   INSTALL_COMMAND ""
   TEST_COMMAND "")
 
-set(tmp_gemm_operations_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass_generator/generated/gemm/all_gemm_operations.h.tmp
-)
-set(tmp_configurations_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass_generator/generated/gemm/configurations.h.tmp
-)
-set(gemm_operations_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass_generator/all_gemm_operations.h
-)
-set(configurations_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass_generator/configurations.h
-)
-
-add_custom_target(
-  cutlass_codegen
-  COMMAND
-    ${PYTHON_EXECUTABLE} -B
-    ${CMAKE_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass_generator/gather_gemm_scatter_generator.py
-    "${CUTLASS_SOURCE_DIR}/tools/library/scripts/"
-    "${CMAKE_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass_generator"
-    "${CMAKE_CUDA_COMPILER_VERSION}"
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_gemm_operations_file}
-          ${gemm_operations_file}
-  COMMAND
-    ${CMAKE_COMMAND} -E echo
-    "copy_if_different ${tmp_gemm_operations_file} to ${gemm_operations_file}"
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_configurations_file}
-          ${configurations_file}
-  COMMAND
-    ${CMAKE_COMMAND} -E echo
-    "copy_if_different ${tmp_configurations_file} to ${configurations_file}"
-  VERBATIM)
-
 add_library(cutlass INTERFACE)
 
-add_dependencies(cutlass_codegen extern_cutlass)
 add_dependencies(cutlass extern_cutlass)

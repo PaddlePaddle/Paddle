@@ -32,6 +32,7 @@ from paddle.base.data_feeder import check_type
 from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.pir import Value, fake_value, get_fake_value_name, is_fake_value
 
+from ..profiler import event_register
 from .logging_utils import TranslatorLogger
 from .utils import (
     RETURN_NO_VALUE_MAGIC_NUM,
@@ -779,6 +780,7 @@ class PartialProgramLayer:
         restored_nest_out = self._restore_out(out)
         return self._remove_no_value(restored_nest_out)
 
+    @event_register("sot call partial_program")
     def sot_call(self, inputs):
         """
         In sot, inputs and outputs of partial program only contain tensors, so we can skip some step to speed up

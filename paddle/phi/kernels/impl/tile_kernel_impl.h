@@ -29,6 +29,10 @@ void Tile(const Context& dev_ctx,
           DenseTensor* out) {
   auto x_dims = x.dims();
   for (size_t i = 0; i < repeat_times.size(); ++i) {
+    if (repeat_times[i] == 0) {
+      dev_ctx.template Alloc<T>(out);
+      return;
+    }
     PADDLE_ENFORCE_GT(
         repeat_times[i],
         0,
@@ -92,6 +96,10 @@ void TileKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 const IntArray& repeat_times,
                 DenseTensor* out) {
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   auto rank = x.dims().size();
   auto& repeat_times_data = repeat_times.GetData();
   int repeat_times_size = repeat_times_data.size();

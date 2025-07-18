@@ -137,6 +137,7 @@ from .autograd import (
     set_grad_enabled,
 )
 from .device import (  # noqa: F401
+    device_guard,
     get_cudnn_version,
     get_device,
     is_compiled_with_cinn,

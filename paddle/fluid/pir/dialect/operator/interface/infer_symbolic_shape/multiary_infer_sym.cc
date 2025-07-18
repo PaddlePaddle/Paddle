@@ -3941,7 +3941,9 @@ bool RmsNormOpInferSymbolicShape(
   const std::vector<symbol::DimExpr> &norm_weight_dims =
       norm_weight_shape.shape();
 
-  infer_context->AddEqualCstr(normalized_dims, norm_weight_dims[0]);
+  if (normalized_dims != 0) {
+    infer_context->AddEqualCstr(normalized_dims, norm_weight_dims[0]);
+  }
 
   infer_context->SetShapeOrDataForValue(
       op->result(0),
