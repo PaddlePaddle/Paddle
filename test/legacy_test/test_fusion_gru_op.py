@@ -63,7 +63,7 @@ class TestFusionGRUOp(OpTest):
         self.act_state = 'tanh'
         self.act_gate = 'sigmoid'
         self.origin_mode = False
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.set_confs()
 
         T = sum(self.lod[0])
@@ -111,7 +111,7 @@ class TestFusionGRUOp(OpTest):
             'gate_activation': self.act_gate,
             'is_reverse': self.is_reverse,
             'origin_mode': self.origin_mode,
-            'use_mkldnn': self.use_mkldnn,
+            'use_mkldnn': self.use_onednn,
         }
 
     def test_check_output(self):
