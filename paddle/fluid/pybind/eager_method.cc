@@ -2096,14 +2096,31 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
       }
     } else {
       paddle::Tensor mask_tensor;
-      if (!out_is_view &&
-          MaskedFillValueDispatching(
+      if (MaskedFillValueDispatching(
               transed_sub_tensor, transed_index, &mask_tensor)) {
-        masked_fill_shortcut = true;
-        paddle::Tensor value_tmp_tensor =
-            full_ad_func({1}, values[0], tensor.dtype(), tensor.place());
-        transed_sub_tensor = masked_fill__ad_func(
-            transed_sub_tensor, mask_tensor, value_tmp_tensor);
+        if (!out_is_view) {
+          masked_fill_shortcut = true;
+          paddle::Tensor value_tmp_tensor =
+              full_ad_func({1}, values[0], tensor.dtype(), tensor.place());
+          transed_sub_tensor = masked_fill__ad_func(
+              transed_sub_tensor, mask_tensor, value_tmp_tensor);
+        } else {
+          masked_fill_shortcut = true;
+          mask_tensor = expand_inplace(transed_sub_tensor, mask_tensor);
+          int64_t slice_offset = static_cast<int64_t>(
+              reinterpret_cast<char*>(transed_sub_tensor.data()) -
+              reinterpret_cast<char*>(tensor.data()));
+          transed_sub_tensor = index_elementwise_put__ad_func(
+              tensor,
+              {mask_tensor},
+              values[0],
+              common::vectorize<int64_t>(transed_sub_tensor.dims()),
+              common::vectorize<int64_t>(transed_sub_tensor.strides()),
+              common::vectorize<int64_t>(mask_tensor.dims()),
+              common::vectorize<int64_t>(mask_tensor.strides()),
+              slice_offset);
+          out_is_view = false;
+        }
       }
     }
 
