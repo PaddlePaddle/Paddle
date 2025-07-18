@@ -108,7 +108,8 @@ DeviceContextPool::DeviceContextPool(const std::vector<phi::Place>& places) {
       &device_contexts_,
       places,
       /*disable_setting_default_stream_for_allocator=*/false,
-      /*stream_priority=*/0);
+      /*stream_priority=*/0,
+      true);
 }
 
 }  // namespace phi

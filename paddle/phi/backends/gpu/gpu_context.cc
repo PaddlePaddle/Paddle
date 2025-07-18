@@ -331,10 +331,10 @@ struct GPUContext::Impl {
 
   gpuStream_t stream() const {
     auto s = stream_->raw_stream();
-    PADDLE_ENFORCE_NOT_NULL(
-        s,
-        common::errors::InvalidArgument(
-            "The GPU stream is nullptr. It must not be null."));
+    // PADDLE_ENFORCE_NOT_NULL(
+    //     s,
+    //     common::errors::InvalidArgument(
+    //         "The GPU stream is nullptr. It must not be null."));
     return s;
   }
 
