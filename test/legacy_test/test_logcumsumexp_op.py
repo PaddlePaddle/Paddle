@@ -77,8 +77,13 @@ def np_logcumsumexp_grad(
     exclusive: bool = False,
 ):
     out = np_logcumsumexp(x, axis, flatten, reverse, exclusive)
-    log_grad_positive = np.where(dout > 0, np.log(dout), np.finfo(x.dtype).min)
-    log_grad_negative = np.where(dout < 0, np.log(-dout), np.finfo(x.dtype).min)
+    dout = np.asarray(dout)
+    pos_mask = dout > 0
+    neg_mask = dout < 0
+    log_grad_positive = np.full_like(dout, np.finfo(x.dtype).min)
+    log_grad_negative = np.full_like(dout, np.finfo(x.dtype).min)
+    log_grad_positive[pos_mask] = np.log(dout[pos_mask])
+    log_grad_negative[neg_mask] = np.log(-dout[neg_mask])
 
     output_pos = np.exp(
         np_logcumsumexp(

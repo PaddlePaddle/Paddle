@@ -6294,12 +6294,14 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
                                         "must be divisible by 32, but got[%d]",
                                         x_dims[0]));
   } else {
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
     PADDLE_ENFORCE_EQ(
         x_dims[0] % 64,
         0,
         common::errors::InvalidArgument(
             "The first dimension of input must be divisible by 64, but got[%d]",
             x_dims[0]));
+#endif  // Temporarily skip this check for iluvatar device
   }
 
   PADDLE_ENFORCE_EQ(
