@@ -1043,7 +1043,7 @@ class MmapStorage(paddle.base.core.MmapStorage):
 
 def full_like(
     x: paddle.Tensor,
-    fill_value: bool | builtins.complex,
+    fill_value: bool | builtins.complex | paddle.Tensor,
     dtype: DTypeLike | None = None,
     name: str | None = None,
 ) -> paddle.Tensor:
@@ -1054,7 +1054,8 @@ def full_like(
 
     Args:
         x(Tensor): The input tensor which specifies shape and data type. The data type can be bool, float16, float32, float64, int32, int64.
-        fill_value(bool|float|int|complex): The value to fill the tensor with. Note: this value shouldn't exceed the range of the output data type.
+        fill_value(bool|float|int|complex|Tensor): The value to fill the tensor with. Note: this value shouldn't exceed the range of the output data type.
+            If ``fill_value`` is an Tensor, it should be an 0-D Tensor which represents a scalar.
         dtype(np.dtype|str, optional): The data type of output. The data type can be one
             of bool, float16, float32, float64, int32, int64, complex64, complex128. The default value is None, which means the output
             data type is the same as input.
@@ -1074,7 +1075,9 @@ def full_like(
             [[2. 2. 2.]
              [2. 2. 2.]]
     """
-    if not isinstance(fill_value, (bool, int, float, builtins.complex)):
+    if not isinstance(
+        fill_value, (bool, int, float, builtins.complex, paddle.Tensor)
+    ):
         raise TypeError(
             f"fill_value should be bool, int, float or complex, but received {type(fill_value)}."
         )
@@ -1579,16 +1582,7 @@ def full(
              [2. 2.]]
     """
     if not isinstance(
-        fill_value,
-        (
-            int,
-            float,
-            bool,
-            builtins.complex,
-            core.eager.Tensor,
-            Variable,
-            paddle.pir.Value,
-        ),
+        fill_value, (int, float, bool, builtins.complex, paddle.Tensor)
     ):
         raise TypeError(
             f"The fill_value must be one of [int, float, bool, complex, core.eager.Tensor,Variable, paddle.pir.Value]. But received {type(fill_value)}."
