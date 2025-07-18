@@ -181,7 +181,8 @@ jobs:
       - name: Terminate and delete the container
         if: always()
         run: |
-          set +e
-          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
-          docker stop ${{ env.container_name }}
-          docker rm ${{ env.container_name }}
+          # set +e
+          # docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+          # docker stop ${{ env.container_name }}
+          # docker rm ${{ env.container_name }}
+          sleep 24h

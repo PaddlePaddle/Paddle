@@ -295,15 +295,6 @@ if(WIN32 OR APPLE)
         CACHE STRING "Disable BOX_PS package in Windows and MacOS" FORCE)
   endif()
 
-  if(WITH_ARM_BRPC)
-    message(
-      WARNING "Windows or Mac is not supported with ARM_BRPC in Paddle yet."
-              "Force WITH_ARM_BRPC=OFF")
-    set(WITH_ARM_BRPC
-        OFF
-        CACHE STRING "Disable ARM_BRPC package in Windows and MacOS" FORCE)
-  endif()
-
   if(WITH_LIBMCT)
     message(WARNING "Windows or Mac is not supported with LIBMCT in Paddle yet."
                     "Force WITH_LIBMCT=OFF")
