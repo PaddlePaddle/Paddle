@@ -205,5 +205,42 @@ create_TestSoftmaxMaskFuseOp_class(TestSoftmaxMaskFuseOp04, 1024)
 create_TestSoftmaxMaskFuseOp_class(TestSoftmaxMaskFuseOp04, 2048)
 create_TestSoftmaxMaskFuseOp_class(TestSoftmaxMaskFuseOp04, 4096)
 
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestSoftmaxMaskFuseAPI_ZeroSize(unittest.TestCase):
+    def init_shape(self):
+        self.x_shape = (0, 1, 8, 32)
+        self.mask_shape = (1, 1, 8, 32)
+        self.out_shape = (0, 1, 8, 32)
+
+    def test_dygraph_api(self):
+        paddle.disable_static()
+        self.init_shape()
+        paddle.disable_static()
+        paddle.set_device("gpu")
+        x = paddle.to_tensor(np.random.random(self.x_shape)).astype(
+            paddle.float32
+        )
+        x.stop_gradient = False
+        mask = paddle.to_tensor(np.random.random(self.mask_shape))
+        expect_out = paddle.incubate.softmax_mask_fuse(x, mask)
+        expect_out.sum().backward()
+        np_out = np.zeros(self.out_shape)
+        np.testing.assert_allclose(expect_out.numpy(), np_out, rtol=1e-05)
+        np.testing.assert_allclose(x.grad.numpy(), np.zeros(x.shape))
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestSoftmaxMaskFuseAPI_ZeroSize2(TestSoftmaxMaskFuseAPI_ZeroSize):
+    def init_shape(self):
+        self.x_shape = (1, 1, 8, 32)
+        self.mask_shape = (1, 0, 8, 32)
+        self.out_shape = (1, 0, 8, 32)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -31,23 +31,23 @@
 
 namespace phi {
 template <typename T, typename Context>
-void FFTC2CGradKernel(const Context& ctx,
+void FFTC2CGradKernel(const Context& dev_ctx,
                       const DenseTensor& out_grad,
                       const std::vector<int64_t>& axes,
                       const std::string& normalization,
                       bool forward,
                       DenseTensor* x_grad) {
-  ctx.template Alloc<T>(x_grad);
+  dev_ctx.template Alloc<T>(x_grad);
   if (x_grad && x_grad->numel() == 0) {
     return;
   }
   auto norm_type = funcs::get_norm_from_string(normalization, forward);
   funcs::FFTC2CFunctor<Context, T, T> fft_c2c_func;
-  fft_c2c_func(ctx, out_grad, x_grad, axes, norm_type, !forward);
+  fft_c2c_func(dev_ctx, out_grad, x_grad, axes, norm_type, !forward);
 }
 
 template <typename T, typename Context>
-void FFTR2CGradKernel(const Context& ctx,
+void FFTR2CGradKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& out_grad,
                       const std::vector<int64_t>& axes,
@@ -56,8 +56,8 @@ void FFTR2CGradKernel(const Context& ctx,
                       bool onesided,
                       DenseTensor* x_grad) {
   using R = typename T::value_type;
-  DenseTensor complex_x_grad = EmptyLike<T>(ctx, x);
-  ctx.template Alloc<R>(x_grad);
+  DenseTensor complex_x_grad = EmptyLike<T>(dev_ctx, x);
+  dev_ctx.template Alloc<R>(x_grad);
   if (x_grad && x_grad->numel() == 0) {
     return;
   }
@@ -65,7 +65,7 @@ void FFTR2CGradKernel(const Context& ctx,
   funcs::FFTC2CFunctor<Context, T, T> fft_c2c_func;
 
   if (!onesided) {
-    fft_c2c_func(ctx, out_grad, &complex_x_grad, axes, norm_type, !forward);
+    fft_c2c_func(dev_ctx, out_grad, &complex_x_grad, axes, norm_type, !forward);
   } else {
     DenseTensor full_dy;
     DenseTensorMeta full_dy_meta(out_grad.type(), x_grad->dims());
@@ -75,14 +75,14 @@ void FFTR2CGradKernel(const Context& ctx,
     auto rank = out_grad.dims().size();
     std::vector<int> pads(rank * 2, 0);
     pads[axes.back() * 2 + 1] = zero_length;
-    PadKernel<T>(ctx, out_grad, pads, static_cast<float>(0.0), &full_dy);
-    fft_c2c_func(ctx, full_dy, &complex_x_grad, axes, norm_type, !forward);
+    PadKernel<T>(dev_ctx, out_grad, pads, static_cast<float>(0.0), &full_dy);
+    fft_c2c_func(dev_ctx, full_dy, &complex_x_grad, axes, norm_type, !forward);
   }
-  RealKernel<T>(ctx, complex_x_grad, x_grad);
+  RealKernel<T>(dev_ctx, complex_x_grad, x_grad);
 }
 
 template <typename T, typename Context>
-void FFTC2RGradKernel(const Context& ctx,
+void FFTC2RGradKernel(const Context& dev_ctx,
                       const DenseTensor& out_grad,
                       const std::vector<int64_t>& axes,
                       const std::string& normalization,
@@ -90,14 +90,14 @@ void FFTC2RGradKernel(const Context& ctx,
                       int64_t last_dim_size UNUSED,
                       DenseTensor* x_grad) {
   using C = phi::dtype::complex<T>;
-  ctx.template Alloc<C>(x_grad);
+  dev_ctx.template Alloc<C>(x_grad);
   if (x_grad && x_grad->numel() == 0) {
     return;
   }
   auto norm_type = funcs::get_norm_from_string(normalization, forward);
   funcs::FFTR2CFunctor<Context, T, C> fft_r2c_func;
-  fft_r2c_func(ctx, out_grad, x_grad, axes, norm_type, !forward);
-  funcs::FFTFillConjGrad<Context, C>(ctx, out_grad, axes, x_grad);
+  fft_r2c_func(dev_ctx, out_grad, x_grad, axes, norm_type, !forward);
+  funcs::FFTFillConjGrad<Context, C>(dev_ctx, out_grad, axes, x_grad);
 }
 }  // namespace phi
 

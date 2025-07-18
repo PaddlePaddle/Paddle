@@ -208,7 +208,7 @@ def create_test_cudnn_bf16_class(parent):
             place = core.CUDAPlace(0)
             self.check_output_with_place(
                 place,
-                check_dygraph=(not self.use_mkldnn),
+                check_dygraph=(not self.use_onednn),
                 check_pir=True,
                 check_pir_onednn=self.check_pir_onednn,
             )
@@ -222,7 +222,7 @@ def create_test_cudnn_bf16_class(parent):
                 ['Input'],
                 'Output',
                 no_grad_set={'Filter'},
-                check_dygraph=(not self.use_mkldnn),
+                check_dygraph=(not self.use_onednn),
                 user_defined_grads=[numeric_grads],
                 check_pir=True,
                 check_pir_onednn=self.check_pir_onednn,
@@ -237,7 +237,7 @@ def create_test_cudnn_bf16_class(parent):
                 ['Filter'],
                 'Output',
                 no_grad_set={'Input'},
-                check_dygraph=(not self.use_mkldnn),
+                check_dygraph=(not self.use_onednn),
                 user_defined_grads=[numeric_grads],
                 check_pir=True,
                 check_pir_onednn=self.check_pir_onednn,
@@ -253,7 +253,7 @@ def create_test_cudnn_bf16_class(parent):
                 ['Input', 'Filter'],
                 'Output',
                 user_defined_grads=[numeric_input_grads, numeric_filter_grads],
-                check_dygraph=(not self.use_mkldnn),
+                check_dygraph=(not self.use_onednn),
                 check_pir=True,
                 check_pir_onednn=self.check_pir_onednn,
             )
@@ -393,7 +393,7 @@ class TestConv3DOp(OpTest):
         self.op_type = "conv3d"
         self.python_api = conv3d_wrapper
         self.use_cudnn = False
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.data_format = "AnyLayout"
         self.dtype = np.float64
         self.init_kernel_type()
@@ -444,7 +444,7 @@ class TestConv3DOp(OpTest):
             'groups': self.groups,
             'dilations': self.dilations,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_mkldnn,
+            'use_mkldnn': self.use_onednn,
             'data_format': self.data_format,
         }
         self.outputs = {'Output': output}
@@ -458,7 +458,7 @@ class TestConv3DOp(OpTest):
         self.check_output_with_place(
             place,
             atol=1e-5,
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_onednn),
             check_pir=True,
             check_pir_onednn=self.check_pir_onednn,
         )
@@ -471,7 +471,7 @@ class TestConv3DOp(OpTest):
             {'Input', 'Filter'},
             'Output',
             max_relative_error=0.03,
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_onednn),
             check_pir=True,
             check_pir_onednn=self.check_pir_onednn,
         )
@@ -485,7 +485,7 @@ class TestConv3DOp(OpTest):
             'Output',
             max_relative_error=0.03,
             no_grad_set={'Filter'},
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_onednn),
             check_pir=True,
             check_pir_onednn=self.check_pir_onednn,
         )
@@ -499,7 +499,7 @@ class TestConv3DOp(OpTest):
             'Output',
             max_relative_error=0.03,
             no_grad_set={'Input'},
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_onednn),
             check_pir=True,
             check_pir_onednn=self.check_pir_onednn,
         )
@@ -764,7 +764,7 @@ class TestConv3DOp_2(OpTest):
         self.op_type = "conv3d"
         self.python_api = conv3d_wrapper
         self.use_cudnn = False
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.data_format = "NCDHW"
         self.dtype = np.float64
         self.init_kernel_type()
@@ -804,7 +804,7 @@ class TestConv3DOp_2(OpTest):
             'groups': self.groups,
             'dilations': self.dilations,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_mkldnn,
+            'use_mkldnn': self.use_onednn,
             'data_format': self.data_format,
         }
         self.outputs = {'Output': output}

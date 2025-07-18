@@ -26,7 +26,7 @@ from paddle.base import core
 
 class TestPool2DONEDNNInt8_Op(TestPool2D_Op):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.check_pir_onednn = True
 
     def init_data_type(self):

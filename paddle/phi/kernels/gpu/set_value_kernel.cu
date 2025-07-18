@@ -110,17 +110,22 @@ void SetTensorValueKernel(const Context& dev_ctx,
       it = value_dims.erase(it);
     }
     if (value_dims.empty()) value_dims.push_back(1);
-    value_tensor.Resize(phi::make_ddim(value_dims));
-
-    expand_tensor = Empty<T>(dev_ctx, IntArray{new_out_shape});
-    ExpandKernel<T, Context>(
-        dev_ctx, value_tensor, IntArray{new_out_shape}, &expand_tensor);
+    auto v_dims = phi::make_ddim(value_dims);
+    auto out_dims = phi::make_ddim(new_out_shape);
+    value_tensor.Resize(v_dims);
+    if (phi::funcs::CheckIsLastDimsMatch(v_dims, out_dims)) {
+      expand_tensor = value_tensor;
+    } else {
+      expand_tensor = Empty<T>(dev_ctx, IntArray{new_out_shape});
+      ExpandKernel<T, Context>(
+          dev_ctx, value_tensor, IntArray{new_out_shape}, &expand_tensor);
+    }
   }
 
   out->ResetHolder(in.Holder());
   out->ShareInplaceVersionCounterWith(in);
   if (starts_local.empty() && ends_local.empty() && steps_local.empty()) {
-    if (expand_tensor.numel() == 1) {
+    if (expand_tensor.numel() != out->numel()) {
       ExpandKernel<T, Context>(
           dev_ctx, expand_tensor, IntArray{new_out_shape}, out);
     } else {
