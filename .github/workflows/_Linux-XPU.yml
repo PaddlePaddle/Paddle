@@ -270,5 +270,5 @@ jobs:
       - name: Terminate and delete the container
         if: always()
         run: |
-          docker exec -t ${container_name} /bin/bash -c 'rm -rf * .[^.]*'
+          docker exec -t ${container_name} /bin/bash -c 'sleep 30m && rm -rf * .[^.]*'
           docker rm -f ${container_name}
