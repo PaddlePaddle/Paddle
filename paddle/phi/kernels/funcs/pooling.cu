@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include <vector>
+#include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
 #ifdef __NVCC__
 #include <curand_kernel.h>
 #endif
@@ -328,15 +329,15 @@ __global__ void KernelPool2DGrad(
       phend = tmp_phend.val[1] > 0 ? tmp_phend.val[0] + 1 : tmp_phend.val[0];
       pwend = tmp_pwend.val[1] > 0 ? tmp_pwend.val[0] + 1 : tmp_pwend.val[0];
 
-      IndexT tmp_height, tmp_width;
+      IndexT pool_height, pool_width;
       for (IndexT ph = phstart; ph < phend; ++ph) {
         PreparationPoolSize(
-            ph, input_height, output_height, divmods.ksize_h, &tmp_height);
+            ph, input_height, output_height, divmods.ksize_h, &pool_height);
 
         for (IndexT pw = pwstart; pw < pwend; ++pw) {
           PreparationPoolSize(
-              pw, input_width, output_width, divmods.ksize_w, &tmp_width);
-          IndexT pool_size = tmp_height * tmp_width;
+              pw, input_width, output_width, divmods.ksize_w, &pool_width);
+          IndexT pool_size = pool_height * pool_width;
           IndexT tmp_idx = ph * output_width + pw;
           IndexT output_sub_idx =
               channel_last ? tmp_idx * divmods.channel.divisor + c_offset
@@ -1178,6 +1179,9 @@ __global__ void KernelPool3DGrad(const IndexT nthreads,
     IndexT pdstart, pdend;
     IndexT phstart, phend;
     IndexT pwstart, pwend;
+
+    IndexT pool_depth, pool_height, pool_width;
+
     if (adaptive) {
       pdstart = AdaptStartIndex(d_offset, output_depth, input_depth);
       pdend = AdaptEndIndex(d_offset, output_depth, input_depth);
@@ -1208,19 +1212,28 @@ __global__ void KernelPool3DGrad(const IndexT nthreads,
     output_grad += output_stride;
     T input_grad_data = static_cast<T>(0.0);
 
+    IndexT pool_size;
     for (IndexT pd = pdstart; pd < pdend; ++pd) {
       for (IndexT ph = phstart; ph < phend; ++ph) {
         for (IndexT pw = pwstart; pw < pwend; ++pw) {
           // figure out the pooling size
-          IndexT pool_size;
           if (adaptive) {
-            pool_size =
-                static_cast<IndexT>(
-                    ceil(static_cast<double>(input_depth) / ksize_depth)) *
-                static_cast<IndexT>(
-                    ceil(static_cast<double>(input_height) / ksize_height)) *
-                static_cast<IndexT>(
-                    ceil(static_cast<double>(input_width) / ksize_width));
+            PreparationPoolSize(pd,
+                                input_depth,
+                                output_depth,
+                                FastDivMod<IndexT>(output_depth),
+                                &pool_depth);
+            PreparationPoolSize(pw,
+                                input_width,
+                                output_width,
+                                FastDivMod<IndexT>(output_width),
+                                &pool_width);
+            PreparationPoolSize(ph,
+                                input_height,
+                                output_height,
+                                FastDivMod<IndexT>(output_height),
+                                &pool_height);
+            pool_size = pool_depth * pool_height * pool_width;
           } else {
             IndexT dstart = pd * stride_depth - padding_depth;
             IndexT hstart = ph * stride_height - padding_height;
