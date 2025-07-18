@@ -79,7 +79,7 @@ void GPUIndexElementwiseGetGrad(const phi::GPUContext& ctx,
 
   auto sizes = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
   auto strides = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
-  for (unsigned i = 0; i < num_indices; i++) {
+  for (int64_t i = 0; i < num_indices; i++) {
     sizes[i] = index_dims[i];
     strides[i] = index_strides[i];
   }
@@ -136,7 +136,7 @@ void GPUIndexElementwiseGetGrad(const phi::GPUContext& ctx,
 
           int64_t offset = 0;
 #pragma unroll
-          for (int i = 0; i < num_indices; i++) {
+          for (int64_t i = 0; i < num_indices; i++) {
             int64_t index =
                 *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
             if (index < 0) {

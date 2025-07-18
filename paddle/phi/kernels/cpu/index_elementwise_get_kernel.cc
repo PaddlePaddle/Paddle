@@ -40,7 +40,7 @@ void CPUIndexElementwiseGetKernel(const phi::CPUContext& ctx,
   auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
   auto sizes = std::array<int64_t, DDim::kMaxRank>{};
   auto strides = std::array<int64_t, DDim::kMaxRank>{};
-  for (unsigned i = 0; i < num_indices; i++) {
+  for (int64_t i = 0; i < num_indices; i++) {
     sizes[i] = index_dims[i];
     strides[i] = index_stride[i];
   }
@@ -78,8 +78,7 @@ void CPUIndexElementwiseGetKernel(const phi::CPUContext& ctx,
     char* const out_data = out_ptr + offsets[0];
     const char* const in_data = in_ptr + offsets[1];
     int64_t offset = 0;
-#pragma unroll
-    for (size_t i = 0; i < num_indices; i++) {
+    for (int64_t i = 0; i < num_indices; i++) {
       int64_t index = *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
       if (index < 0) {
         index += sizes[i];

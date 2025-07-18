@@ -2229,6 +2229,8 @@ def cosine_similarity(
             [ 0.97689527,  0.99996042, -0.55138415])
 
     """
+    if x1.shape[axis] == 0 or x2.shape[axis] == 0:
+        return sum(paddle.multiply(x1, x2), axis=axis)
     bs = paddle.broadcast_shape([x1.shape[axis]], [x2.shape[axis]])
     w12 = sum(paddle.multiply(x1, x2), axis=axis)
     w1 = sum(paddle.multiply(x1, x1), axis=axis)

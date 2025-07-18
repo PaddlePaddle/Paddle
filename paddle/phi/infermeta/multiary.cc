@@ -4949,15 +4949,17 @@ void RmsNormInferMeta(const MetaTensor& x,
     normalized_dims *= x.dims().at(i);
   }
 
-  PADDLE_ENFORCE_EQ(normalized_dims,
-                    norm_weight.dims()[0],
-                    common::errors::InvalidArgument(
-                        "The normalized size of Input(X) must equal to be "
-                        "the size of Weight, but received "
-                        "normalized size of Input(X) is [%d], received size "
-                        "of Weight is [%d]",
-                        normalized_dims,
-                        norm_weight.dims()[0]));
+  if (normalized_dims != 0) {
+    PADDLE_ENFORCE_EQ(normalized_dims,
+                      norm_weight.dims()[0],
+                      common::errors::InvalidArgument(
+                          "The normalized size of Input(X) must equal to be "
+                          "the size of Weight, but received "
+                          "normalized size of Input(X) is [%d], received size "
+                          "of Weight is [%d]",
+                          normalized_dims,
+                          norm_weight.dims()[0]));
+  }
 
   out->set_dims(x.dims());
 

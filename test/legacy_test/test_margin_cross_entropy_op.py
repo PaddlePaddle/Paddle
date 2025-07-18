@@ -603,9 +603,30 @@ class TestMarginCrossEntropyOpAPIError(unittest.TestCase):
                         group=True,
                     )
 
+        def test_shape_error():
+            for place in self.places:
+                with paddle.base.dygraph.guard(place):
+                    logits_np = np.random.random([5, 0]).astype(self.dtype)
+                    labels_np = np.random.random(5).astype(np.int64)
+                    labels = paddle.to_tensor(labels_np)
+                    logits = paddle.to_tensor(logits_np)
+
+                    loss, softmax = paddle.nn.functional.margin_cross_entropy(
+                        logits,
+                        labels,
+                        margin1=self.margin1,
+                        margin2=self.margin2,
+                        margin3=self.margin3,
+                        scale=self.scale,
+                        return_softmax=True,
+                        reduction=None,
+                        group=True,
+                    )
+
         self.assertRaises(ValueError, test_dim)
         self.assertRaises(NotImplementedError, test_label_type)
         self.assertRaises(ValueError, test_group_value)
+        self.assertRaises(ValueError, test_shape_error)
 
 
 if __name__ == '__main__':

@@ -499,6 +499,8 @@ def flash_attention(
     if sdp_func_name == "flash_attn":
         if "xpu" in paddle.get_device():
             fa_version = 2
+        elif "iluvatar_gpu" in paddle.get_device():
+            fa_version = 2
         elif paddle.get_flags(["FLAGS_cudnn_deterministic"])[
             "FLAGS_cudnn_deterministic"
         ]:

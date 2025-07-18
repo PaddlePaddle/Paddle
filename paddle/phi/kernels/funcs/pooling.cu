@@ -124,6 +124,21 @@ __device__ void OffsetPreparationFor4Dimension(IndexT index,
   }
 }
 
+template <typename IndexT>
+__device__ void PreparationPoolSize(IndexT index,
+                                    IndexT input_size,
+                                    IndexT output_size,
+                                    FastDivMod<IndexT> divmods,
+                                    IndexT* tmp_size
+
+) {
+  IndexT left = (index == 0) ? 0 : divmods.Div(index * input_size);
+  IndexT right = (index == output_size - 1)
+                     ? input_size
+                     : divmods.DivCeil((index + 1) * input_size);
+  *tmp_size = right - left;
+}
+
 template <typename PoolProcess, typename T, typename IndexT>
 __global__ void KernelPool2D(const IndexT nthreads,
                              const T* input_data,
@@ -200,51 +215,55 @@ __global__ void AdaptiveKernelPool2D(const IndexT nthreads,
                                      const IndexT stride_width,
                                      const IndexT padding_height,
                                      const IndexT padding_width,
+                                     const IndexT batch_size,
                                      FastDivModForPooling<IndexT> divmods,
                                      PoolProcess pool_process,
                                      bool exclusive,
                                      T* output_data,
                                      bool channel_last = false) {
-  const IndexT n_offset = blockIdx.y;
-  const IndexT c_offset =
-      static_cast<IndexT>(blockIdx.x) * blockDim.y + threadIdx.y;
-  if (c_offset >= channels) {
-    return;
-  }
-  IndexT hstart, hend, wstart, wend;
-  IndexT input_offset =
-      channel_last
-          ? n_offset * input_height * input_width * channels
-          : (n_offset * channels + c_offset) * input_height * input_width;
-  IndexT output_offset =
-      channel_last
-          ? n_offset * output_height * output_width * channels
-          : (n_offset * channels + c_offset) * output_height * output_width;
-  for (IndexT hw_offset = threadIdx.x; hw_offset < output_height * output_width;
-       hw_offset += blockDim.x) {
-    IndexT w_offset = hw_offset % output_width;
-    IndexT h_offset = hw_offset / output_width;
-    hstart = AdaptStartIndex(h_offset, input_height, output_height);
-    hend = AdaptEndIndex(h_offset, input_height, output_height);
-    wstart = AdaptStartIndex(w_offset, input_width, output_width);
-    wend = AdaptEndIndex(w_offset, input_width, output_width);
-
-    T ele = pool_process.initial();
-    for (IndexT h = hstart; h < hend; ++h) {
-      for (IndexT w = wstart; w < wend; ++w) {
-        auto input_idx = channel_last
-                             ? (h * input_width + w) * channels + c_offset
-                             : h * input_width + w;
-        pool_process.compute(input_data[input_offset + input_idx], &ele);
-      }
+  for (IndexT n_offset = blockIdx.y; n_offset < batch_size;
+       n_offset += gridDim.y) {
+    const IndexT c_offset =
+        static_cast<IndexT>(blockIdx.x) * blockDim.y + threadIdx.y;
+    if (c_offset >= channels) {
+      return;
     }
-    IndexT pool_size = (hend - hstart) * (wend - wstart);
-    pool_process.finalize(static_cast<T>(pool_size), &ele);
-    IndexT output_idx =
+    IndexT hstart, hend, wstart, wend;
+    IndexT input_offset =
         channel_last
-            ? (h_offset * output_width + w_offset) * channels + c_offset
-            : h_offset * output_width + w_offset;
-    output_data[output_offset + output_idx] = ele;
+            ? n_offset * input_height * input_width * channels
+            : (n_offset * channels + c_offset) * input_height * input_width;
+    IndexT output_offset =
+        channel_last
+            ? n_offset * output_height * output_width * channels
+            : (n_offset * channels + c_offset) * output_height * output_width;
+    for (IndexT hw_offset = threadIdx.x;
+         hw_offset < output_height * output_width;
+         hw_offset += blockDim.x) {
+      IndexT w_offset = hw_offset % output_width;
+      IndexT h_offset = hw_offset / output_width;
+      hstart = AdaptStartIndex(h_offset, input_height, output_height);
+      hend = AdaptEndIndex(h_offset, input_height, output_height);
+      wstart = AdaptStartIndex(w_offset, input_width, output_width);
+      wend = AdaptEndIndex(w_offset, input_width, output_width);
+
+      T ele = pool_process.initial();
+      for (IndexT h = hstart; h < hend; ++h) {
+        for (IndexT w = wstart; w < wend; ++w) {
+          auto input_idx = channel_last
+                               ? (h * input_width + w) * channels + c_offset
+                               : h * input_width + w;
+          pool_process.compute(input_data[input_offset + input_idx], &ele);
+        }
+      }
+      IndexT pool_size = (hend - hstart) * (wend - wstart);
+      pool_process.finalize(static_cast<T>(pool_size), &ele);
+      IndexT output_idx =
+          channel_last
+              ? (h_offset * output_width + w_offset) * channels + c_offset
+              : h_offset * output_width + w_offset;
+      output_data[output_offset + output_idx] = ele;
+    }
   }
 }
 
@@ -300,22 +319,23 @@ __global__ void KernelPool2DGrad(
     output_grad += output_offset;
 
     if (adaptive) {
+      auto tmp_phstart = divmods.height.Divmod(h_offset * output_height);
+      auto tmp_pwstart = divmods.width.Divmod(w_offset * output_width);
       auto tmp_phend = divmods.height.Divmod((h_offset + 1) * output_height);
       auto tmp_pwend = divmods.width.Divmod((w_offset + 1) * output_width);
-      phstart = divmods.height.Div(h_offset * output_height);
-      pwstart = divmods.width.Div(w_offset * output_width);
+      phstart = tmp_phstart.val[0];
+      pwstart = tmp_pwstart.val[0];
       phend = tmp_phend.val[1] > 0 ? tmp_phend.val[0] + 1 : tmp_phend.val[0];
       pwend = tmp_pwend.val[1] > 0 ? tmp_pwend.val[0] + 1 : tmp_pwend.val[0];
 
+      IndexT tmp_height, tmp_width;
       for (IndexT ph = phstart; ph < phend; ++ph) {
+        PreparationPoolSize(
+            ph, input_height, output_height, divmods.ksize_h, &tmp_height);
+
         for (IndexT pw = pwstart; pw < pwend; ++pw) {
-          auto ksize_w_divmod = divmods.ksize_w.Divmod(input_width);
-          auto ksize_h_divmod = divmods.ksize_h.Divmod(input_height);
-          auto tmp_width = ksize_w_divmod.val[1] > 0 ? ksize_w_divmod.val[0] + 1
-                                                     : ksize_w_divmod.val[0];
-          auto tmp_height = ksize_h_divmod.val[1] > 0
-                                ? ksize_h_divmod.val[0] + 1
-                                : ksize_h_divmod.val[0];
+          PreparationPoolSize(
+              pw, input_width, output_width, divmods.ksize_w, &tmp_width);
           IndexT pool_size = tmp_height * tmp_width;
           IndexT tmp_idx = ph * output_width + pw;
           IndexT output_sub_idx =
@@ -490,10 +510,12 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
                  max_threads);
     int64_t blocks = std::min(max_threads / thread_num,
                               static_cast<int64_t>(output_channels));
+    auto max_grid_dim = backends::gpu::GetGpuMaxGridDimSize(
+        phi::backends::gpu::GetCurrentDeviceId());
     dim3 threads(thread_num, blocks, 1);
     dim3 grid(std::max((output_channels + blocks - 1) / blocks,
                        static_cast<int64_t>(1)),
-              batch_size,
+              std::min(batch_size, static_cast<int>(max_grid_dim[1])),
               1);
     AdaptiveKernelPool2D<PoolProcess, T, int>
         <<<grid, threads, 0, stream>>>(nthreads,
@@ -509,6 +531,7 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
                                        stride_width,
                                        padding_height,
                                        padding_width,
+                                       batch_size,
                                        pool_divmods,
                                        pool_compute,
                                        exclusive,
@@ -593,6 +616,7 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
     const T* input_data = input.data<T>();
     T* output_data = context.template Alloc<T>(output);
 
+    std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
     int64_t nthreads =
         batch_size * output_channels * output_height * output_width;
     if (adaptive) {
@@ -605,7 +629,7 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
       dim3 threads(thread_num, blocks, 1);
       dim3 grid(std::max((output_channels + blocks - 1) / blocks,
                          static_cast<int64_t>(1)),
-                batch_size,
+                std::min(batch_size, static_cast<int64_t>(max_grid_dim[1])),
                 1);
       if (input.numel() <= std::numeric_limits<int>::max()) {
         auto pool_divmods = FastDivModForPooling<int>(
@@ -624,6 +648,7 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
                                                      stride_width,
                                                      padding_height,
                                                      padding_width,
+                                                     batch_size,
                                                      pool_divmods,
                                                      pool_process,
                                                      exclusive,
@@ -646,6 +671,7 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
                                                      stride_width,
                                                      padding_height,
                                                      padding_width,
+                                                     batch_size,
                                                      pool_divmods,
                                                      pool_process,
                                                      exclusive,
@@ -1892,43 +1918,47 @@ __global__ void AdaptiveKernelMaxPool2dWithIdx(
     const IndexT stride_width,
     const IndexT padding_height,
     const IndexT padding_width,
+    const IndexT batch_size,
     T1* output_data,
     T2* mask_data,
     FastDivModForPooling<IndexT> divmods) {
-  const IndexT n_offset = blockIdx.y;
-  const IndexT c_offset =
-      static_cast<IndexT>(blockIdx.x) * blockDim.y + threadIdx.y;
-  if (c_offset >= channels) {
-    return;
-  }
-  IndexT hstart, hend, wstart, wend;
-  IndexT input_offset =
-      (n_offset * channels + c_offset) * input_height * input_width;
-  IndexT output_offset =
-      (n_offset * channels + c_offset) * output_height * output_width;
-  for (IndexT hw_offset = threadIdx.x; hw_offset < output_height * output_width;
-       hw_offset += blockDim.x) {
-    IndexT w_offset = hw_offset % output_width;
-    IndexT h_offset = hw_offset / output_width;
-    hstart = AdaptStartIndex(h_offset, input_height, output_height);
-    hend = AdaptEndIndex(h_offset, input_height, output_height);
-    wstart = AdaptStartIndex(w_offset, input_width, output_width);
-    wend = AdaptEndIndex(w_offset, input_width, output_width);
+  for (IndexT n_offset = blockIdx.y; n_offset < batch_size;
+       n_offset += gridDim.y) {
+    const IndexT c_offset =
+        static_cast<IndexT>(blockIdx.x) * blockDim.y + threadIdx.y;
+    if (c_offset >= channels) {
+      return;
+    }
+    IndexT hstart, hend, wstart, wend;
+    IndexT input_offset =
+        (n_offset * channels + c_offset) * input_height * input_width;
+    IndexT output_offset =
+        (n_offset * channels + c_offset) * output_height * output_width;
+    for (IndexT hw_offset = threadIdx.x;
+         hw_offset < output_height * output_width;
+         hw_offset += blockDim.x) {
+      IndexT w_offset = hw_offset % output_width;
+      IndexT h_offset = hw_offset / output_width;
+      hstart = AdaptStartIndex(h_offset, input_height, output_height);
+      hend = AdaptEndIndex(h_offset, input_height, output_height);
+      wstart = AdaptStartIndex(w_offset, input_width, output_width);
+      wend = AdaptEndIndex(w_offset, input_width, output_width);
 
-    T1 ele = static_cast<T1>(-FLT_MAX);
-    IndexT max_index = -1;
-    for (IndexT h = hstart; h < hend; ++h) {
-      for (IndexT w = wstart; w < wend; ++w) {
-        IndexT input_index = h * input_width + w;
-        if (ele < input_data[input_offset + input_index]) {
-          max_index = input_index;
-          ele = input_data[input_offset + input_index];
+      T1 ele = static_cast<T1>(-FLT_MAX);
+      IndexT max_index = -1;
+      for (IndexT h = hstart; h < hend; ++h) {
+        for (IndexT w = wstart; w < wend; ++w) {
+          IndexT input_index = h * input_width + w;
+          if (ele < input_data[input_offset + input_index]) {
+            max_index = input_index;
+            ele = input_data[input_offset + input_index];
+          }
         }
       }
+      IndexT output_idx = output_offset + h_offset * output_width + w_offset;
+      output_data[output_idx] = ele;
+      mask_data[output_idx] = max_index;
     }
-    IndexT output_idx = output_offset + h_offset * output_width + w_offset;
-    output_data[output_idx] = ele;
-    mask_data[output_idx] = max_index;
   }
 }
 
@@ -2049,9 +2079,11 @@ class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
       int64_t blocks = std::min(max_threads / thread_num,
                                 static_cast<int64_t>(output_channels));
       dim3 threads(thread_num, blocks, 1);
+      std::array<unsigned int, 3> max_grid_dim =
+          context.GetCUDAMaxGridDimSize();
       dim3 grid(std::max((output_channels + blocks - 1) / blocks,
                          static_cast<int64_t>(1)),
-                batch_size,
+                std::min(batch_size, static_cast<int64_t>(max_grid_dim[1])),
                 1);
       if (input.numel() <= std::numeric_limits<int>::max()) {
         auto pool_divmods = FastDivModForPooling<int>(
@@ -2070,6 +2102,7 @@ class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
                                                      stride_width,
                                                      padding_height,
                                                      padding_width,
+                                                     batch_size,
                                                      output_data,
                                                      mask_data,
                                                      pool_divmods);
@@ -2090,6 +2123,7 @@ class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
                                                      stride_width,
                                                      padding_height,
                                                      padding_width,
+                                                     batch_size,
                                                      output_data,
                                                      mask_data,
                                                      pool_divmods);
@@ -2276,60 +2310,62 @@ __global__ void KernelMaxPool3DWithIdx(
   const T1* input_data_cur;
 
   w_offset = static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
-  h_offset = static_cast<IndexT>(blockIdx.y) * blockDim.y + threadIdx.y;
+  for (IndexT by = blockIdx.y; by < output_height; by += gridDim.y) {
+    h_offset = by * blockDim.y + threadIdx.y;
 
-  IndexT start_index =
-      static_cast<IndexT>(blockIdx.z) * blockDim.z + threadIdx.z;
-  IndexT step = static_cast<IndexT>(gridDim.z) * blockDim.z;
-  if (w_offset < output_width && h_offset < output_height) {
-    for (IndexT index_z = start_index; index_z < ncd; index_z += step) {
-      auto output_depth_divmod = divmods_output.depth.Divmod(index_z);
-      d_offset = output_depth_divmod.val[1];
-      nc_offset = output_depth_divmod.val[0];
-      IndexT output_index =
-          nc_offset * output_depth * output_height * output_width +
-          d_offset * output_height * output_width + h_offset * output_width +
-          w_offset;
-      IndexT input_offset =
-          nc_offset * input_depth * input_height * input_width;
-      input_data_cur = input_data + input_offset;
+    IndexT start_index =
+        static_cast<IndexT>(blockIdx.z) * blockDim.z + threadIdx.z;
+    IndexT step = static_cast<IndexT>(gridDim.z) * blockDim.z;
+    if (w_offset < output_width && h_offset < output_height) {
+      for (IndexT index_z = start_index; index_z < ncd; index_z += step) {
+        auto output_depth_divmod = divmods_output.depth.Divmod(index_z);
+        d_offset = output_depth_divmod.val[1];
+        nc_offset = output_depth_divmod.val[0];
+        IndexT output_index =
+            nc_offset * output_depth * output_height * output_width +
+            d_offset * output_height * output_width + h_offset * output_width +
+            w_offset;
+        IndexT input_offset =
+            nc_offset * input_depth * input_height * input_width;
+        input_data_cur = input_data + input_offset;
 
-      if (adaptive) {
-        dstart = AdaptStartIndex(d_offset, input_depth, output_depth);
-        dend = AdaptEndIndex(d_offset, input_depth, output_depth);
+        if (adaptive) {
+          dstart = AdaptStartIndex(d_offset, input_depth, output_depth);
+          dend = AdaptEndIndex(d_offset, input_depth, output_depth);
 
-        hstart = AdaptStartIndex(h_offset, input_height, output_height);
-        hend = AdaptEndIndex(h_offset, input_height, output_height);
+          hstart = AdaptStartIndex(h_offset, input_height, output_height);
+          hend = AdaptEndIndex(h_offset, input_height, output_height);
 
-        wstart = AdaptStartIndex(w_offset, input_width, output_width);
-        wend = AdaptEndIndex(w_offset, input_width, output_width);
-      } else {
-        dstart = d_offset * stride_depth - padding_depth;
-        hstart = h_offset * stride_height - padding_height;
-        wstart = w_offset * stride_width - padding_width;
-        dend = min(dstart + ksize_depth, input_depth);
-        hend = min(hstart + ksize_height, input_height);
-        wend = min(wstart + ksize_width, input_width);
-        dstart = max(dstart, static_cast<IndexT>(0));
-        hstart = max(hstart, static_cast<IndexT>(0));
-        wstart = max(wstart, static_cast<IndexT>(0));
-      }
+          wstart = AdaptStartIndex(w_offset, input_width, output_width);
+          wend = AdaptEndIndex(w_offset, input_width, output_width);
+        } else {
+          dstart = d_offset * stride_depth - padding_depth;
+          hstart = h_offset * stride_height - padding_height;
+          wstart = w_offset * stride_width - padding_width;
+          dend = min(dstart + ksize_depth, input_depth);
+          hend = min(hstart + ksize_height, input_height);
+          wend = min(wstart + ksize_width, input_width);
+          dstart = max(dstart, static_cast<IndexT>(0));
+          hstart = max(hstart, static_cast<IndexT>(0));
+          wstart = max(wstart, static_cast<IndexT>(0));
+        }
 
-      T1 ele = static_cast<T1>(-FLT_MAX);
-      IndexT max_index = -1;
-      for (IndexT d = dstart; d < dend; ++d) {
-        for (IndexT h = hstart; h < hend; ++h) {
-          for (IndexT w = wstart; w < wend; ++w) {
-            if (ele <
-                input_data_cur[(d * input_height + h) * input_width + w]) {
-              max_index = (d * input_height + h) * input_width + w;
-              ele = input_data_cur[max_index];
+        T1 ele = static_cast<T1>(-FLT_MAX);
+        IndexT max_index = -1;
+        for (IndexT d = dstart; d < dend; ++d) {
+          for (IndexT h = hstart; h < hend; ++h) {
+            for (IndexT w = wstart; w < wend; ++w) {
+              if (ele <
+                  input_data_cur[(d * input_height + h) * input_width + w]) {
+                max_index = (d * input_height + h) * input_width + w;
+                ele = input_data_cur[max_index];
+              }
             }
           }
         }
+        output_data[output_index] = ele;
+        mask_data[output_index] = max_index;
       }
-      output_data[output_index] = ele;
-      mask_data[output_index] = max_index;
     }
   }
 }
@@ -2361,26 +2397,28 @@ __global__ void KernelMaxPool3DWithIdxGrad(
   IndexT w_offset, h_offset, d_offset, nc_offset;
 
   w_offset = static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
-  h_offset = static_cast<IndexT>(blockIdx.y) * blockDim.y + threadIdx.y;
+  for (IndexT by = blockIdx.y; by < output_height; by += gridDim.y) {
+    h_offset = by * blockDim.y + threadIdx.y;
 
-  IndexT start_index =
-      static_cast<IndexT>(blockIdx.z) * blockDim.z + threadIdx.z;
-  IndexT step = static_cast<IndexT>(gridDim.z) * blockDim.z;
-  if (w_offset < output_width && h_offset < output_height) {
-    for (IndexT index_z = start_index; index_z < ncd; index_z += step) {
-      auto output_depth_divmod = divmods_output.depth.Divmod(index_z);
-      d_offset = output_depth_divmod.val[1];
-      nc_offset = output_depth_divmod.val[0];
-      IndexT output_index =
-          nc_offset * output_depth * output_height * output_width +
-          d_offset * output_height * output_width + h_offset * output_width +
-          w_offset;
-      IndexT max_index = mask[output_index];
-      if (max_index != -1) {
-        phi::CudaAtomicAdd(
-            &input_grad[nc_offset * input_depth * input_height * input_width +
-                        max_index],
-            output_grad[output_index]);
+    IndexT start_index =
+        static_cast<IndexT>(blockIdx.z) * blockDim.z + threadIdx.z;
+    IndexT step = static_cast<IndexT>(gridDim.z) * blockDim.z;
+    if (w_offset < output_width && h_offset < output_height) {
+      for (IndexT index_z = start_index; index_z < ncd; index_z += step) {
+        auto output_depth_divmod = divmods_output.depth.Divmod(index_z);
+        d_offset = output_depth_divmod.val[1];
+        nc_offset = output_depth_divmod.val[0];
+        IndexT output_index =
+            nc_offset * output_depth * output_height * output_width +
+            d_offset * output_height * output_width + h_offset * output_width +
+            w_offset;
+        IndexT max_index = mask[output_index];
+        if (max_index != -1) {
+          phi::CudaAtomicAdd(
+              &input_grad[nc_offset * input_depth * input_height * input_width +
+                          max_index],
+              output_grad[output_index]);
+        }
       }
     }
   }
@@ -2434,7 +2472,9 @@ class MaxPool3dWithIndexFunctor<phi::GPUContext, T1, T2> {
     dim3 threads(thread_x, thread_y, thread_z);
     std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
     int64_t block_x = (output_width + threads.x - 1) / threads.x;
-    int64_t block_y = (output_height + threads.y - 1) / threads.y;
+    int64_t block_y = (output_height > max_grid_dim[1] * threads.y)
+                          ? max_grid_dim[1]
+                          : (output_height + threads.y - 1) / threads.y;
     int64_t block_z = (ncd > max_grid_dim[2] * threads.z)
                           ? max_grid_dim[2]
                           : (ncd + threads.z - 1) / threads.z;
@@ -2542,7 +2582,9 @@ class MaxPool3dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
     dim3 threads(thread_x, thread_y, thread_z);
     std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
     int64_t block_x = (output_width + threads.x - 1) / threads.x;
-    int64_t block_y = (output_height + threads.y - 1) / threads.y;
+    int64_t block_y = (output_height > max_grid_dim[1] * threads.y)
+                          ? max_grid_dim[1]
+                          : (output_height + threads.y - 1) / threads.y;
     int64_t block_z = (ncd > max_grid_dim[2] * threads.z)
                           ? max_grid_dim[2]
                           : (ncd + threads.z - 1) / threads.z;
@@ -3030,55 +3072,60 @@ __global__ void FractionalKernelMaxPool3d(
   const T1* input_data_cur;
 
   w_offset = static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
-  h_offset = static_cast<IndexT>(blockIdx.y) * blockDim.y + threadIdx.y;
+  for (IndexT by = blockIdx.y; by < output_height; by += gridDim.y) {
+    h_offset = by * blockDim.y + threadIdx.y;
 
-  IndexT start_index =
-      static_cast<IndexT>(blockIdx.z) * blockDim.z + threadIdx.z;
-  IndexT step = static_cast<IndexT>(gridDim.z) * blockDim.z;
-  if (w_offset < output_width && h_offset < output_height) {
-    for (IndexT index_z = start_index; index_z < ncd; index_z += step) {
-      auto output_depth_divmod = divmods_output.depth.Divmod(index_z);
-      d_offset = output_depth_divmod.val[1];
-      nc_offset = output_depth_divmod.val[0];
-      IndexT output_index =
-          nc_offset * output_depth * output_height * output_width +
-          d_offset * output_height * output_width + h_offset * output_width +
-          w_offset;
-      IndexT input_offset =
-          nc_offset * input_depth * input_height * input_width;
-      input_data_cur = input_data + input_offset;
+    IndexT start_index =
+        static_cast<IndexT>(blockIdx.z) * blockDim.z + threadIdx.z;
+    IndexT step = static_cast<IndexT>(gridDim.z) * blockDim.z;
+    if (w_offset < output_width && h_offset < output_height) {
+      for (IndexT index_z = start_index; index_z < ncd; index_z += step) {
+        auto output_depth_divmod = divmods_output.depth.Divmod(index_z);
+        d_offset = output_depth_divmod.val[1];
+        nc_offset = output_depth_divmod.val[0];
+        IndexT output_index =
+            nc_offset * output_depth * output_height * output_width +
+            d_offset * output_height * output_width + h_offset * output_width +
+            w_offset;
+        IndexT input_offset =
+            nc_offset * input_depth * input_height * input_width;
+        input_data_cur = input_data + input_offset;
 
-      dstart = FractionalStartIndex(d_offset, alpha_depth, u_depth, pool_depth);
-      dend = FractionalEndIndex(d_offset, alpha_depth, u_depth, pool_depth);
-      dstart = std::max(dstart, static_cast<IndexT>(0));
-      dend = std::min(dend, input_depth);
+        dstart =
+            FractionalStartIndex(d_offset, alpha_depth, u_depth, pool_depth);
+        dend = FractionalEndIndex(d_offset, alpha_depth, u_depth, pool_depth);
+        dstart = std::max(dstart, static_cast<IndexT>(0));
+        dend = std::min(dend, input_depth);
 
-      hstart =
-          FractionalStartIndex(h_offset, alpha_height, u_height, pool_height);
-      hend = FractionalEndIndex(h_offset, alpha_height, u_height, pool_height);
-      hstart = std::max(hstart, static_cast<IndexT>(0));
-      hend = std::min(hend, input_height);
+        hstart =
+            FractionalStartIndex(h_offset, alpha_height, u_height, pool_height);
+        hend =
+            FractionalEndIndex(h_offset, alpha_height, u_height, pool_height);
+        hstart = std::max(hstart, static_cast<IndexT>(0));
+        hend = std::min(hend, input_height);
 
-      wstart = FractionalStartIndex(w_offset, alpha_width, u_width, pool_width);
-      wend = FractionalEndIndex(w_offset, alpha_width, u_width, pool_width);
-      wstart = std::max(wstart, static_cast<IndexT>(0));
-      wend = std::min(wend, input_width);
+        wstart =
+            FractionalStartIndex(w_offset, alpha_width, u_width, pool_width);
+        wend = FractionalEndIndex(w_offset, alpha_width, u_width, pool_width);
+        wstart = std::max(wstart, static_cast<IndexT>(0));
+        wend = std::min(wend, input_width);
 
-      T1 ele = static_cast<T1>(-FLT_MAX);
-      IndexT max_index = -1;
-      for (IndexT d = dstart; d < dend; ++d) {
-        for (IndexT h = hstart; h < hend; ++h) {
-          for (IndexT w = wstart; w < wend; ++w) {
-            if (ele <
-                input_data_cur[(d * input_height + h) * input_width + w]) {
-              max_index = (d * input_height + h) * input_width + w;
-              ele = input_data_cur[max_index];
+        T1 ele = static_cast<T1>(-FLT_MAX);
+        IndexT max_index = -1;
+        for (IndexT d = dstart; d < dend; ++d) {
+          for (IndexT h = hstart; h < hend; ++h) {
+            for (IndexT w = wstart; w < wend; ++w) {
+              if (ele <
+                  input_data_cur[(d * input_height + h) * input_width + w]) {
+                max_index = (d * input_height + h) * input_width + w;
+                ele = input_data_cur[max_index];
+              }
             }
           }
         }
+        output_data[output_index] = ele;
+        mask_data[output_index] = max_index;
       }
-      output_data[output_index] = ele;
-      mask_data[output_index] = max_index;
     }
   }
 }
@@ -3104,26 +3151,28 @@ __global__ void FractionalKernelMaxPool3dGrad(
   IndexT w_offset, h_offset, d_offset, nc_offset;
 
   w_offset = static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
-  h_offset = static_cast<IndexT>(blockIdx.y) * blockDim.y + threadIdx.y;
+  for (IndexT by = blockIdx.y; by < output_height; by += gridDim.y) {
+    h_offset = by * blockDim.y + threadIdx.y;
 
-  IndexT start_index =
-      static_cast<IndexT>(blockIdx.z) * blockDim.z + threadIdx.z;
-  IndexT step = static_cast<IndexT>(gridDim.z) * blockDim.z;
-  if (w_offset < output_width && h_offset < output_height) {
-    for (IndexT index_z = start_index; index_z < ncd; index_z += step) {
-      auto output_depth_divmod = divmods_output.depth.Divmod(index_z);
-      d_offset = output_depth_divmod.val[1];
-      nc_offset = output_depth_divmod.val[0];
-      IndexT output_index =
-          nc_offset * output_depth * output_height * output_width +
-          d_offset * output_height * output_width + h_offset * output_width +
-          w_offset;
-      IndexT max_index = mask[output_index];
-      if (max_index != -1) {
-        phi::CudaAtomicAdd(
-            &input_grad[nc_offset * input_depth * input_height * input_width +
-                        max_index],
-            output_grad[output_index]);
+    IndexT start_index =
+        static_cast<IndexT>(blockIdx.z) * blockDim.z + threadIdx.z;
+    IndexT step = static_cast<IndexT>(gridDim.z) * blockDim.z;
+    if (w_offset < output_width && h_offset < output_height) {
+      for (IndexT index_z = start_index; index_z < ncd; index_z += step) {
+        auto output_depth_divmod = divmods_output.depth.Divmod(index_z);
+        d_offset = output_depth_divmod.val[1];
+        nc_offset = output_depth_divmod.val[0];
+        IndexT output_index =
+            nc_offset * output_depth * output_height * output_width +
+            d_offset * output_height * output_width + h_offset * output_width +
+            w_offset;
+        IndexT max_index = mask[output_index];
+        if (max_index != -1) {
+          phi::CudaAtomicAdd(
+              &input_grad[nc_offset * input_depth * input_height * input_width +
+                          max_index],
+              output_grad[output_index]);
+        }
       }
     }
   }
@@ -3190,7 +3239,9 @@ class FractionalMaxPool3dFunctor<phi::GPUContext, T1, T2> {
     dim3 threads(thread_x, thread_y, thread_z);
     std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
     int64_t block_x = (output_width + threads.x - 1) / threads.x;
-    int64_t block_y = (output_height + threads.y - 1) / threads.y;
+    int64_t block_y = (output_height > max_grid_dim[1] * threads.y)
+                          ? max_grid_dim[1]
+                          : (output_height + threads.y - 1) / threads.y;
     int64_t block_z = (ncd > max_grid_dim[2] * threads.z)
                           ? max_grid_dim[2]
                           : (ncd + threads.z - 1) / threads.z;
@@ -3291,7 +3342,9 @@ class FractionalMaxPool3dGradFunctor<phi::GPUContext, T1, T2> {
     dim3 threads(thread_x, thread_y, thread_z);
     std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
     int64_t block_x = (output_width + threads.x - 1) / threads.x;
-    int64_t block_y = (output_height + threads.y - 1) / threads.y;
+    int64_t block_y = (output_height > max_grid_dim[1] * threads.y)
+                          ? max_grid_dim[1]
+                          : (output_height + threads.y - 1) / threads.y;
     int64_t block_z = (ncd > max_grid_dim[2] * threads.z)
                           ? max_grid_dim[2]
                           : (ncd + threads.z - 1) / threads.z;

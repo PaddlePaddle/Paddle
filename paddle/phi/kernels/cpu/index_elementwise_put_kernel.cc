@@ -52,7 +52,7 @@ void CPUIndexElementwisePutWithTensorKernel(
 
   auto sizes = std::array<int64_t, 25>{};
   auto strides = std::array<int64_t, 25>{};
-  for (unsigned i = 0; i < num_indices; i++) {
+  for (int64_t i = 0; i < num_indices; i++) {
     sizes[i] = index_dims[i];
     strides[i] = index_strides[i];
   }
@@ -86,7 +86,7 @@ void CPUIndexElementwisePutWithTensorKernel(
     char* const out_data = out_ptr + offsets[0] + slice_offset;
     const char* const in_data = in_ptr + offsets[1];
     int64_t offset = 0;
-    for (size_t i = 0; i < num_indices; i++) {
+    for (int64_t i = 0; i < num_indices; i++) {
       int64_t index = *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
       if (index < 0) {
         index += sizes[i];
@@ -126,7 +126,7 @@ void CPUIndexElementwisePutKernel(const phi::CPUContext& dev_ctx,
   funcs::cal_shape_stride(index_dims, &num_indices, &shape_tmp, &stride_tmp);
   auto sizes = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
   auto strides = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
-  for (unsigned i = 0; i < num_indices; i++) {
+  for (int64_t i = 0; i < num_indices; i++) {
     sizes[i] = index_dims[i];
     strides[i] = index_strides[i];
   }
@@ -157,7 +157,7 @@ void CPUIndexElementwisePutKernel(const phi::CPUContext& dev_ctx,
     const auto offsets = offset_calc.cpu_get(idx);
     char* const out_data = out_ptr + offsets[0] + slice_offset;
     int64_t offset = 0;
-    for (size_t i = 0; i < num_indices; i++) {
+    for (int64_t i = 0; i < num_indices; i++) {
       int64_t index = *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
       if (index < 0) {
         index += sizes[i];
@@ -166,6 +166,49 @@ void CPUIndexElementwisePutKernel(const phi::CPUContext& dev_ctx,
     }
     *reinterpret_cast<T*>(out_data + offset) = value_T;
   }
+}
+
+template <typename T, typename Context>
+void IndexElementwisePutWithTensorKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const std::vector<const DenseTensor*>& index,
+    const DenseTensor& value,
+    const std::vector<int64_t>& input_dims,
+    const std::vector<int64_t>& input_strides,
+    const std::vector<int64_t>& index_dims,
+    const std::vector<int64_t>& index_strides,
+    const int64_t slice_offset,
+    DenseTensor* out) {
+  const auto& index_type = index[0]->dtype();
+  PADDLE_ENFORCE_EQ(index_type == phi::DataType::INT64,
+                    true,
+                    common::errors::InvalidArgument(
+                        "Index holds the wrong type, it holds [%s], but "
+                        "desires to be [%s].",
+                        index_type,
+                        phi::DataType::INT64));
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
+  if (index.empty()) {
+    if (!out->initialized()) {
+      phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    }
+    return;
+  }
+  if (out->numel() == 0) return;
+  CPUIndexElementwisePutWithTensorKernel<T, int64_t>(dev_ctx,
+                                                     x,
+                                                     value,
+                                                     index,
+                                                     input_dims,
+                                                     input_strides,
+                                                     index_dims,
+                                                     index_strides,
+                                                     slice_offset,
+                                                     out);
 }
 
 template <typename T, typename Context>
