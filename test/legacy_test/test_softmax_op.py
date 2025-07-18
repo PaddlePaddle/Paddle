@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_places
 from utils import static_guard
 
 import paddle
@@ -644,6 +644,21 @@ class TestSoftmaxAPI_ZeroDim(unittest.TestCase):
 class TestSoftmaxInplaceAPI(TestSoftmaxAPI):
     def executed_api(self):
         self.softmax = F.softmax_
+
+
+class TestSoftmaxAPI_ZeroSize(unittest.TestCase):
+    def test_dygraph(self):
+        for place in get_places():
+            paddle.disable_static(place)
+            x = paddle.rand([0, 2, 3])
+            x.stop_gradient = False
+            x.retain_grads()
+            out = paddle.nn.functional.softmax(x)
+            out.retain_grads()
+            out.backward()
+            np.testing.assert_allclose(out.numpy(), np.random.random([0, 2, 3]))
+            np.testing.assert_allclose(x.grad.shape, x.shape)
+            paddle.enable_static()
 
 
 if __name__ == "__main__":
