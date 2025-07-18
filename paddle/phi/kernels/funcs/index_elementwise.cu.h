@@ -63,7 +63,47 @@ struct IntDivider {
   __host__ __device__ inline DivMod<Value> divmod(Value n) const {
     return DivMod<Value>(n / divisor, n % divisor);
   }
+
   Value divisor;
+};
+
+template <>
+struct IntDivider<unsigned int> {
+  static_assert(sizeof(unsigned int) == 4, "Assumes 32-bit unsigned int.");
+
+  IntDivider() = default;
+
+  explicit IntDivider(unsigned int d) : divisor(d) {
+    for (shift = 0; shift < 32; shift++)
+      if ((1U << shift) >= divisor) break;
+
+    uint64_t one = 1;
+    uint64_t magic = ((one << 32) * ((one << shift) - divisor)) / divisor + 1;
+    m1 = magic;
+  }
+
+  __host__ __device__ inline unsigned int div(unsigned int n) const {
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+    unsigned int t = __umulhi(n, m1);
+    return (t + n) >> shift;
+#else
+    uint64_t t = ((uint64_t)n * m1) >> 32;
+    return (t + n) >> shift;
+#endif
+  }
+
+  __host__ __device__ inline unsigned int mod(unsigned int n) const {
+    return n - div(n) * divisor;
+  }
+
+  __host__ __device__ inline DivMod<unsigned int> divmod(unsigned int n) const {
+    unsigned int q = div(n);
+    return DivMod<unsigned int>(q, n - q * divisor);
+  }
+
+  unsigned int divisor;
+  unsigned int m1;
+  unsigned int shift;
 };
 
 template <int NARGS, typename index_t = uint32_t, bool signed_strides = false>
