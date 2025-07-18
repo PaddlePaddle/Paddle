@@ -1680,21 +1680,34 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
 
       AdvancedIndex ad = AdvancedIndex(transed_tensor, transed_index_int64);
       const bool is_gather = index_size == 1;
-      paddle::Tensor flattened_index;
-      if (is_gather) flattened_index = flatten_ad_func(transed_index[0], 0, -1);
       const bool accumulate = true;
-      out = index_elementwise_get_ad_func(self->tensor,
-                                          flattened_index,
-                                          ad.indices,
-                                          ad.src_sizes,
-                                          ad.src_strides,
-                                          ad.indexed_sizes,
-                                          ad.indexed_strides,
-                                          slice_offset,
-                                          accumulate,
-                                          is_gather);
-      out_is_view = false;
 
+      if (is_gather) {
+        paddle::Tensor flattened_index =
+            flatten_ad_func(transed_index[0], 0, -1);
+        out = index_elementwise_get_ad_func(self->tensor,
+                                            flattened_index,
+                                            ad.indices,
+                                            ad.src_sizes,
+                                            ad.src_strides,
+                                            ad.indexed_sizes,
+                                            ad.indexed_strides,
+                                            slice_offset,
+                                            accumulate,
+                                            is_gather);
+      } else {
+        out = index_elementwise_get_ad_func(self->tensor,
+                                            self->tensor,
+                                            ad.indices,
+                                            ad.src_sizes,
+                                            ad.src_strides,
+                                            ad.indexed_sizes,
+                                            ad.indexed_strides,
+                                            slice_offset,
+                                            accumulate,
+                                            is_gather);
+      }
+      out_is_view = false;
       return ToPyObject(out);
     } else {
       paddle::Tensor transed_advanced_index_tensor;
