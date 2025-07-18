@@ -66,7 +66,7 @@ void TileKernel(const Context& dev_ctx,
 
   auto in_dims = x.dims();
   for (size_t i = 0; i < repeat_times.size(); ++i) {
-    PADDLE_ENFORCE_GT(
+    PADDLE_ENFORCE_GE(
         repeat_times[i],
         0,
         errors::InvalidArgument(
@@ -100,6 +100,7 @@ void TileKernel(const Context& dev_ctx,
   auto vec_out_dims = common::vectorize<int64_t>(out_dims);
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
+  if (out->numel() == 0) return;
 
   std::vector<int64_t> temp(repeat_times.size(), 1);
   if (rank == 0 || repeat_times == temp) {

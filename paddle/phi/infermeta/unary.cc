@@ -937,6 +937,11 @@ void DiagInferMeta(const MetaTensor& x,
     out->set_dims({size_, size_});
     out->set_dtype(x.dtype());
   } else if (x_dims.size() == 2ULL) {
+    if (common::contain_unknown_dim(x_dims)) {
+      out->set_dims({-1});
+      out->set_dtype(x.dtype());
+      return;
+    }
     int64_t size_ = 0;
     if (offset >= 0) {
       // Note(LutaoChu): Do not use std::min here, otherwise the calculation
@@ -1251,7 +1256,7 @@ void EinsumInferMeta(const std::vector<const MetaTensor*>& inputs,
                      const std::string& equation,
                      MetaTensor* out) {
   // collect the following information to prepare einsum.
-  LabelMap labelshape(0);
+  LabelMap labelshape(-1);
   LabelMap labeltype(LabelType::Reduction);
   std::vector<LabelMap> label2perms(inputs.size(), LabelMap(-1));
   std::vector<char> all_labels;
@@ -5396,12 +5401,12 @@ void TileInferMeta(const MetaTensor& x,
     if (x_dim_vec[i] == -1 || repeat_times_data[i] == -1) {
       out_shape[i] = -1;
     } else {
-      PADDLE_ENFORCE_GT(
+      PADDLE_ENFORCE_GE(
           repeat_times_data[i],
           0,
           errors::InvalidArgument(
               "Every element of the input 'repeat_times' for tile op must be "
-              "greater than 0, but the value given is %d.",
+              "greater than or equal to 0, but the value given is %d.",
               repeat_times_data[i]));
       out_shape[i] = x_dim_vec[i] * repeat_times_data[i];
     }
@@ -6289,12 +6294,14 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
                                         "must be divisible by 32, but got[%d]",
                                         x_dims[0]));
   } else {
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
     PADDLE_ENFORCE_EQ(
         x_dims[0] % 64,
         0,
         common::errors::InvalidArgument(
             "The first dimension of input must be divisible by 64, but got[%d]",
             x_dims[0]));
+#endif  // Temporarily skip this check for iluvatar device
   }
 
   PADDLE_ENFORCE_EQ(

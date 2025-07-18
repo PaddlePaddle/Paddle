@@ -2332,12 +2332,14 @@ void ScatterInferMeta(const MetaTensor& x,
   const auto& index_dims = index.dims();
 
   if (index_dims.size() == 2) {
-    PADDLE_ENFORCE_EQ(index_dims[1],
-                      1,
-                      common::errors::InvalidArgument(
-                          "The last dim of the index should be 1 when the "
-                          "index is a 2D tensor, but we get %d.",
-                          index_dims[1]));
+    if (index_dims[1] != 0) {
+      PADDLE_ENFORCE_EQ(index_dims[1],
+                        1,
+                        common::errors::InvalidArgument(
+                            "The last dim of the index should be 1 when the "
+                            "index is a 2D tensor, but we get %d.",
+                            index_dims[1]));
+    }
   } else {
     PADDLE_ENFORCE_EQ(index_dims.size() == 1 || index_dims.size() == 0,
                       true,
@@ -2517,10 +2519,13 @@ void SendURecvInferMeta(const MetaTensor& x,
                                         dst_index_dims.size()));
   }
 
-  PADDLE_ENFORCE_EQ(src_index_dims[0],
-                    dst_index_dims[0],
-                    common::errors::InvalidArgument(
-                        "Src_index and Dst_index should have the same shape."));
+  if (src_index_dims[0] != 0) {
+    PADDLE_ENFORCE_EQ(
+        src_index_dims[0],
+        dst_index_dims[0],
+        common::errors::InvalidArgument(
+            "Src_index and Dst_index should have the same shape."));
+  }
 
   auto dims = x.dims();
   std::vector<int64_t> dims_ = common::vectorize(dims);

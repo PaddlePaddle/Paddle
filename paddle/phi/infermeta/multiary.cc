@@ -2625,13 +2625,13 @@ void FusedLayerNormInferMeta(const MetaTensor& x,
   auto x_dims_size = x_dims_vec.size();
 
   int64_t normalized_dims = 1;
-  for (int i = begin_norm_axis; i < x_dims_size; ++i) {
+  for (size_t i = begin_norm_axis; i < x_dims_size; ++i) {
     normalized_dims *= x_dims_vec[i];
   }
 
   if (residual) {
     std::vector<int64_t> residual_dims_vec = common::vectorize(residual.dims());
-    for (int i = 0; i < x_dims_vec.size(); ++i) {
+    for (size_t i = 0; i < x_dims_vec.size(); ++i) {
       if (x_dims_vec[i] == -1 || residual_dims_vec[i] == -1) continue;
 
       PADDLE_ENFORCE_EQ(x_dims_vec[i],
@@ -4949,15 +4949,17 @@ void RmsNormInferMeta(const MetaTensor& x,
     normalized_dims *= x.dims().at(i);
   }
 
-  PADDLE_ENFORCE_EQ(normalized_dims,
-                    norm_weight.dims()[0],
-                    common::errors::InvalidArgument(
-                        "The normalized size of Input(X) must equal to be "
-                        "the size of Weight, but received "
-                        "normalized size of Input(X) is [%d], received size "
-                        "of Weight is [%d]",
-                        normalized_dims,
-                        norm_weight.dims()[0]));
+  if (normalized_dims != 0) {
+    PADDLE_ENFORCE_EQ(normalized_dims,
+                      norm_weight.dims()[0],
+                      common::errors::InvalidArgument(
+                          "The normalized size of Input(X) must equal to be "
+                          "the size of Weight, but received "
+                          "normalized size of Input(X) is [%d], received size "
+                          "of Weight is [%d]",
+                          normalized_dims,
+                          norm_weight.dims()[0]));
+  }
 
   out->set_dims(x.dims());
 
@@ -5331,10 +5333,13 @@ void SendUERecvInferMeta(const MetaTensor& x,
                                         dst_index_dims.size()));
   }
 
-  PADDLE_ENFORCE_EQ(src_index_dims[0],
-                    dst_index_dims[0],
-                    common::errors::InvalidArgument(
-                        "Src_index and Dst_index should have the same shape."));
+  if (src_index_dims[0] != 0) {
+    PADDLE_ENFORCE_EQ(
+        src_index_dims[0],
+        dst_index_dims[0],
+        common::errors::InvalidArgument(
+            "Src_index and Dst_index should have the same shape."));
+  }
 
   auto y_dims = y.dims();
   PADDLE_ENFORCE_EQ(
@@ -5416,10 +5421,13 @@ void SendUVInferMeta(const MetaTensor& x,
                                         dst_index_dims.size()));
   }
 
-  PADDLE_ENFORCE_EQ(src_index_dims[0],
-                    dst_index_dims[0],
-                    common::errors::InvalidArgument(
-                        "Src_index and Dst_index should have the same shape."));
+  if (src_index_dims[0] != 0) {
+    PADDLE_ENFORCE_EQ(
+        src_index_dims[0],
+        dst_index_dims[0],
+        common::errors::InvalidArgument(
+            "Src_index and Dst_index should have the same shape."));
+  }
 
   // Infer out's shape according to x and y(need broadcasting condition)
   out->set_dtype(x.dtype());
@@ -5637,6 +5645,9 @@ void WarpctcInferMeta(const MetaTensor& logits,
                       MetaTensor* loss,
                       MetaTensor* warpctcgrad) {
   auto logits_dims = logits.dims();
+  if (common::product(logits_dims) == 0) {
+    PADDLE_THROW(errors::InvalidArgument("The input size can not be zero."));
+  }
   int num_sequences, sequence_width, max_sequence_length;
 
   if (logits_length && labels_length) {

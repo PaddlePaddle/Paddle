@@ -91,6 +91,40 @@ class TestTileOpRank_ZeroDim3(TestTileOpRank1):
         self.enable_cinn = False
 
 
+class TestTileOpRank_ZeroSize(TestTileOpRank1):
+    def setUp(self):
+        self.op_type = "tile"
+        self.python_api = paddle.tile
+        self.public_python_api = paddle.tile
+        self.init_data()
+
+        self.inputs = {'X': np.random.random(self.ori_shape).astype("float64")}
+        self.attrs = {'repeat_times': self.repeat_times}
+        output = np.tile(self.inputs['X'], self.repeat_times)
+        self.outputs = {'Out': output}
+
+    def init_data(self):
+        self.ori_shape = [2, 0]
+        self.repeat_times = [1]
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            user_defined_grads=[np.zeros(self.ori_shape)],
+            check_pir=True,
+        )
+
+
+class TestTileOpRank_ZeroSize2(TestTileOpRank_ZeroSize):
+    def init_data(self):
+        self.ori_shape = [2, 100]
+        self.repeat_times = [0]
+
+
 # with dimension expanding
 class TestTileOpRank2Expanding(TestTileOpRank1):
     def init_data(self):

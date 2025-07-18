@@ -48,6 +48,7 @@ from paddle.jit.utils import OrderedSet
 from paddle.utils import flatten, gast
 from paddle.utils.environments import (
     BooleanEnvironmentVariable,
+    IntegerEnvironmentVariable,
 )
 
 from .ast_utils import ast_to_source_code
@@ -83,6 +84,7 @@ NO_SHAPE_VAR_TYPE = [
     core.VarDesc.VarType.FETCH_LIST,
 ]
 
+ENV_SOT_EVENT_LEVEL = IntegerEnvironmentVariable("SOT_EVENT_LEVEL", 0)
 ENV_ENABLE_SOT = BooleanEnvironmentVariable("ENABLE_FALL_BACK", True)
 ENV_ENABLE_CINN_IN_DY2ST = BooleanEnvironmentVariable(
     "ENABLE_CINN_IN_DY2ST", True

@@ -33,7 +33,8 @@ static constexpr int launch_bound2 = 4;
 static constexpr int launch_size_nd = 128;
 
 template <int nt, int vt, typename func_t>
-__global__ void index_elementwise_kernel(const int64_t N, const func_t f) {
+__global__ void index_elementwise_with_tensor_kernel(const int64_t N,
+                                                     const func_t f) {
   const auto tid = threadIdx.x;
   const auto nv = nt * vt;
   auto idx = nv * blockIdx.x + tid;
@@ -41,6 +42,22 @@ __global__ void index_elementwise_kernel(const int64_t N, const func_t f) {
   for (int i = 0; i < vt; i++) {
     if (idx < N) {
       f(idx);
+      idx += nt;
+    }
+  }
+}
+
+template <int nt, int vt, typename T, typename func_t>
+__global__ void index_elementwise_kernel(const int64_t N,
+                                         T value_T,
+                                         const func_t f) {
+  const auto tid = threadIdx.x;
+  const auto nv = nt * vt;
+  auto idx = nv * blockIdx.x + tid;
+#pragma unroll
+  for (int i = 0; i < vt; i++) {
+    if (idx < N) {
+      f(idx, value_T);
       idx += nt;
     }
   }

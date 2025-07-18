@@ -471,21 +471,11 @@ def _recompute_without_reentrant(
                 if inner_x is None:
                     storage[holder_list[unpack_counter - 1]()] = None
                     return
-                if hasattr(inner_x, "main_grad"):
+                if hasattr(inner_x, "main_grad") or inner_x.grad is not None:
                     storage[holder_list[unpack_counter - 1]()] = inner_x
                 else:
                     if inner_x.is_dist():
-                        # TODO(jeff41404): it seems better to use `tmp_tensor = core.eager.Tensor(inner_x)`,
-                        # but other errors will be triggered during the current period, and can be modified after resolution
-                        tmp_tensor = core.eager.Tensor(
-                            inner_x.dtype,
-                            inner_x.shape,
-                            inner_x.name + "cpy",
-                            core.VarDesc.VarType.DENSE_TENSOR,
-                            inner_x.persistable,
-                            inner_x.process_mesh,
-                            inner_x.placements,
-                        )
+                        tmp_tensor = core.eager.Tensor(inner_x)
                     else:
                         tmp_tensor = core.eager.Tensor(
                             inner_x.dtype,
