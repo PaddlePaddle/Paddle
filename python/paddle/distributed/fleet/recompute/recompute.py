@@ -471,7 +471,7 @@ def _recompute_without_reentrant(
                 if inner_x is None:
                     storage[holder_list[unpack_counter - 1]()] = None
                     return
-                if hasattr(inner_x, "main_grad"):
+                if hasattr(inner_x, "main_grad") or inner_x.grad is not None:
                     storage[holder_list[unpack_counter - 1]()] = inner_x
                 else:
                     if inner_x.is_dist():
