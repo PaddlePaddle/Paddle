@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
@@ -1744,6 +1745,21 @@ def cond(
                 raise ValueError(
                     "only support x is nonempty tensor in static graph mode"
                 )
+            # reshape([]) is invalid,
+            # so use reshae([0]) and sum to get a scalar when shape is []
+            old_size = input.numel()
+            if len(shape) == 0 and old_size == 0:
+                return input.reshape([0]).sum()
+            new_size = math.prod(shape)
+            # 0-size Tensor cannot be reshaped to non 0-size Tensor
+            if new_size > 0 and old_size == 0:
+                tmp = paddle.concat(
+                    [
+                        input.flatten(),
+                        paddle.zeros([new_size], dtype=input.dtype),
+                    ]
+                )
+                return tmp.reshape(shape)
             return input.reshape(shape)
         raise ValueError(
             "only support x is nonempty tensor in static graph mode"
