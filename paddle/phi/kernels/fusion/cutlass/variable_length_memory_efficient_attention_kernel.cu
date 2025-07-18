@@ -108,6 +108,9 @@ void MultiHeadAttentionVariableForwardKernel(
     if (params.head_size % KernelType::MM0::kAlignmentA) {
       return;
     }
+    if (params.value_head_size % KernelType::MM0::kAlignmentB) {
+      return;
+    }
     kernel_launched = true;
     kernel_fn(k_, params, dev_ctx);
   };
