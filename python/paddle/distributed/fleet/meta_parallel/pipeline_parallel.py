@@ -3187,7 +3187,8 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
 
         # Bubbles before startup_steps
         for _ in range(self.stage_id):
-            self.bubble_hooks.run_hook()
+            if self.user_hooks_enabled:
+                self.bubble_hooks.run_hook()
 
         self.set_virtual_pipeline_rank(0)
         self.input_tensors[0].append(
@@ -3255,7 +3256,8 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
 
             if first_iter:
                 for _ in range(self.num_stages - self.stage_id - 1):
-                    self.bubble_hooks.run_hook()
+                    if self.user_hooks_enabled:
+                        self.bubble_hooks.run_hook()
 
             # NOTE: `send_forward_recv_backward` is intentionally unused to
             # prevent hanging bugs in dynamic shape mode.
@@ -3312,7 +3314,8 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
                 )
             else:
                 for _ in range(self.num_stages - self.stage_id - 1):
-                    self.bubble_hooks.run_hook()
+                    if self.user_hooks_enabled:
+                        self.bubble_hooks.run_hook()
 
         assert (
             forward_send_recv_buffer_queue.qsize() == 0
@@ -3380,7 +3383,8 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
 
         # Bubbles after cooldown
         for _ in range(self.stage_id):
-            self.bubble_hooks.run_hook()
+            if self.user_hooks_enabled:
+                self.bubble_hooks.run_hook()
 
         # reset dynamic meta counter
         if self._dynamic_shape:
