@@ -42,8 +42,12 @@ if TYPE_CHECKING:
     from paddle import IPUPlace as _IPUPlace, XPUPlace as _XPUPlace
     from paddle._typing.device_like import PlaceLike
 
-    _InitStreamBase = Union[core.CUDAStream, core.CustomDeviceStream]
-    _InitEventBase = Union[core.CUDAEvent, core.CustomDeviceEvent]
+    _InitStreamBase = Union[
+        core.CUDAStream, core.CustomDeviceStream, core.XPUStream
+    ]
+    _InitEventBase = Union[
+        core.CUDAEvent, core.CustomDeviceEvent, core.XPUEvent
+    ]
 
     from paddle import CustomPlace
     from paddle.base.libpaddle import _customDeviceProperties
@@ -600,6 +604,11 @@ class Event:
             self.event_base = core.CUDAEvent(
                 enable_timing, blocking, interprocess
             )
+        elif paddle.is_compiled_with_xpu() and isinstance(
+            self.device, paddle.XPUPlace
+        ):
+            self.event_base = core.XPUEvent()
+
         elif isinstance(self.device, paddle.CustomPlace):
             self.event_base = core.CustomDeviceEvent(
                 self.device.get_device_type(),
@@ -763,13 +772,14 @@ class Stream:
     ) -> None:
         if stream_base is not None:
             if isinstance(
-                stream_base, (core.CUDAStream, core.CustomDeviceStream)
+                stream_base,
+                (core.CUDAStream, core.CustomDeviceStream, core.XPUStream),
             ):
                 self.stream_base = stream_base
                 self.device = stream_base.place
             else:
                 raise TypeError(
-                    "stream_base should be CUDAStream, CustomDeviceStream"
+                    "stream_base should be CUDAStream, XPUStream, CustomDeviceStream"
                 )
             return
 
@@ -786,6 +796,10 @@ class Stream:
             self.stream_base = core.CUDAStream(
                 self.device.get_device_id(), priority
             )
+        elif paddle.is_compiled_with_xpu() and isinstance(
+            self.device, paddle.XPUPlace
+        ):
+            self.stream_base = core.XPUStream(self.device.get_device_id())
         elif isinstance(self.device, paddle.CustomPlace):
             self.stream_base = core.CustomDeviceStream(
                 self.device.get_device_type(),
@@ -931,6 +945,8 @@ class Stream:
     def _as_parameter_(self):
         if isinstance(self.stream_base, core.CUDAStream):
             return ctypes.c_void_p(self.stream_base.cuda_stream)
+        elif isinstance(self.stream_base, core.XPUStream):
+            return ctypes.c_void_p(self.stream_base.xpu_stream)
         else:
             return ctypes.c_void_p(self.stream_base.raw_stream)
 
@@ -983,6 +999,10 @@ def current_stream(device: PlaceLike | None = None) -> Stream:
         return Stream(
             stream_base=core._get_current_stream(place.get_device_id())
         )
+    elif paddle.is_compiled_with_xpu() and isinstance(place, paddle.XPUPlace):
+        return Stream(
+            stream_base=core._xpu_get_current_stream(place.get_device_id())
+        )
     elif isinstance(place, paddle.CustomPlace):
         return Stream(
             stream_base=core._get_current_custom_device_stream(
@@ -1026,6 +1046,10 @@ def set_stream(stream: Stream) -> Stream:
         stream.stream_base.place, paddle.CUDAPlace
     ):
         core._set_current_stream(stream.stream_base)
+    elif paddle.is_compiled_with_xpu() and isinstance(
+        stream.stream_base.place, paddle.XPUPlace
+    ):
+        core._xpu_set_current_stream(stream.stream_base.idx)
     elif isinstance(stream.stream_base.place, paddle.CustomPlace):
         core._set_current_custom_device_stream(
             stream.stream_base.place.get_device_type(),
