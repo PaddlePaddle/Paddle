@@ -4489,6 +4489,17 @@ bool WarpctcOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &logits_shape =
       logits_shape_or_data.shape();
+  bool logits_0_size = false;
+  for (size_t i = 0; i < logits_shape.size(); ++i) {
+    if (logits_shape[i] == 0) {
+      logits_0_size = true;
+      break;
+    }
+  }
+  if (logits_0_size) {
+    PADDLE_THROW(
+        common::errors::InvalidArgument("The input size can not be zero."));
+  }
 
   symbol::DimExpr max_sequence_length, num_sequences;
   symbol::DimExpr sequence_width = symbol::DimExpr(1);
