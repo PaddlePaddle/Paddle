@@ -634,7 +634,8 @@ __global__ void cuComputePartGradGammaBeta(const T* __restrict__ dout,
       (threadIdx.x * blockDim.y) & (blockDim.x - 1);
   const int64_t thr_load_row_off =
       (threadIdx.x * blockDim.y) / blockDim.x + threadIdx.y * blockDim.y;
-  const int64_t i2_off = blockIdx.x * blockDim.x + thr_load_col_off;
+  const int64_t i2_off =
+      static_cast<int64_t>(blockIdx.x) * blockDim.x + thr_load_col_off;
   SharedMemory<U> shared;
   U* buf = shared.getPointer();  // buf has at least blockDim.x * blockDim.y *
                                  // blockDim.y + (blockDim.y -
@@ -707,7 +708,7 @@ __global__ void cuComputePartGradGammaBeta(const T* __restrict__ dout,
     }
     __syncthreads();
   }
-  int64_t i2 = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t i2 = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (threadIdx.y == 0 && i2 < n2) {
     int64_t row1 = threadIdx.y;
     int64_t row2 = threadIdx.y + 1;
@@ -751,12 +752,13 @@ __global__ void cuComputeGradGammaBeta(const U* part_grad_gamma,
       }
     }
     // inter-warp reductions
-    const int64_t nbsize3 = static_cast<int64_t>(blockDim.x) * blockDim.y / 2;
+    const int64_t nbsize3 = blockDim.x * blockDim.y / 2;
     for (int64_t offset = blockDim.y / 2; offset >= 1; offset /= 2) {
       // top half write to shared memory
       if (threadIdx.y >= offset && threadIdx.y < 2 * offset) {
         const int64_t write_idx =
-            static_cast<int64_t>(threadIdx.y - offset) * blockDim.x + threadIdx.x;
+            static_cast<int64_t>(threadIdx.y - offset) * blockDim.x +
+            threadIdx.x;
         buf[write_idx] = sum_gamma;
         if (!rms_only) {
           buf[write_idx + nbsize3] = sum_beta;
@@ -765,7 +767,8 @@ __global__ void cuComputeGradGammaBeta(const U* part_grad_gamma,
       __syncthreads();
       // bottom half sums
       if (threadIdx.y < offset) {
-        const int64_t read_idx = static_cast<int64_t>(threadIdx.y) * blockDim.x + threadIdx.x;
+        const int64_t read_idx =
+            static_cast<int64_t>(threadIdx.y) * blockDim.x + threadIdx.x;
         sum_gamma += buf[read_idx];
         if (!rms_only) {
           sum_beta += buf[read_idx + nbsize3];
