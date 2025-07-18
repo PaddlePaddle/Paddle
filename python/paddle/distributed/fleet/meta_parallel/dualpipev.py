@@ -259,7 +259,7 @@ class DualPipeVParallel(PipelineParallel):
         forward_phase: int,
         backward_phase: int,
         micro_datasets=None,
-        combine_bw_event_to_wait=None,
+        combine_backward_event_to_wait=None,
     ) -> None:
         if self.forward_only:
             self._forward_compute(forward_phase, micro_datasets)
@@ -303,7 +303,9 @@ class DualPipeVParallel(PipelineParallel):
             _, backward_grads = self._get_backward_inputs(
                 backward_phase, backward_acc_id
             )
-        event_to_wait = paddle.device.current_stream().record_event()
+
+        # event_to_wait = deep_ep.get_event_from_custom_stream(paddle.device.current_stream().stream_base)
+
         # forward & backward
         forward_chunk = self._layers.get_schedule_chunk(chunk_id=forward_phase)
         backward_chunk = self.schedule_chunks[backward_phase][backward_acc_id]
@@ -316,7 +318,7 @@ class DualPipeVParallel(PipelineParallel):
                 backward_loss_fn_node,
                 backward_grads,
                 self.scaler,
-                combine_bw_event_to_wait=combine_bw_event_to_wait,
+                combine_bw_event_to_wait=combine_backward_event_to_wait,
                 pp_stream=self.pp_group.process_group.get_stream(
                     paddle.framework._current_expected_place_()
                 ),
@@ -349,7 +351,9 @@ class DualPipeVParallel(PipelineParallel):
             else 0
         )
         if common_forward_ops_num == 0 and common_backward_ops_num == 0:
-            return
+            return deep_ep.get_event_from_custom_stream(
+                paddle.device.current_stream().stream_base
+            )
 
         use_stream_wait_event = self._overlap_p2p_comm and deep_ep is not None
 
@@ -382,7 +386,9 @@ class DualPipeVParallel(PipelineParallel):
                 pp_raw_stream
             )
         else:
-            combine_bw_event_to_wait = None
+            combine_bw_event_to_wait = deep_ep.get_event_from_custom_stream(
+                paddle.device.current_stream().stream_base
+            )
 
         self.comm_forward_ops = []
         self.comm_backward_ops = []
@@ -522,18 +528,25 @@ class DualPipeVParallel(PipelineParallel):
         if recv0:
             self._recv_forward(forward_phase)
         self._recv_backward(backward_phase)
-        if len(self.comm_forward_ops) > 0:
+
+        use_outer_wait = (
+            self._overlap_p2p_comm
+            and deep_ep is not None
+            and (len(self.comm_forward_ops) > 0)
+        )
+
+        if use_outer_wait:
             self.pp_group.process_group.set_outer_wait(True)
 
         combine_bw_wait_event = self._commit_and_wait_comm()
 
-        if len(self.comm_forward_ops) > 0:
+        if use_outer_wait:
             self.pp_group.process_group.set_outer_wait(False)
         self._forward_backward_compute(
             forward_phase,
             backward_phase,
             micro_datasets,
-            combine_bw_event_to_wait=combine_bw_wait_event,
+            combine_backward_event_to_wait=combine_bw_wait_event,
         )
 
         self._send_forward(forward_phase)
