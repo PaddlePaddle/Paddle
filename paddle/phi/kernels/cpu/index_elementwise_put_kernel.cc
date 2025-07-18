@@ -120,6 +120,7 @@ void CPUIndexElementwisePutKernel(const phi::CPUContext& dev_ctx,
   if (!is_initialized || !is_same_place) {
     phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
   }
+
   int64_t num_indices = 0;
   std::vector<int64_t> shape_tmp;
   std::vector<int64_t> stride_tmp;
@@ -166,49 +167,6 @@ void CPUIndexElementwisePutKernel(const phi::CPUContext& dev_ctx,
     }
     *reinterpret_cast<T*>(out_data + offset) = value_T;
   }
-}
-
-template <typename T, typename Context>
-void IndexElementwisePutWithTensorKernel(
-    const Context& dev_ctx,
-    const DenseTensor& x,
-    const std::vector<const DenseTensor*>& index,
-    const DenseTensor& value,
-    const std::vector<int64_t>& input_dims,
-    const std::vector<int64_t>& input_strides,
-    const std::vector<int64_t>& index_dims,
-    const std::vector<int64_t>& index_strides,
-    const int64_t slice_offset,
-    DenseTensor* out) {
-  const auto& index_type = index[0]->dtype();
-  PADDLE_ENFORCE_EQ(index_type == phi::DataType::INT64,
-                    true,
-                    common::errors::InvalidArgument(
-                        "Index holds the wrong type, it holds [%s], but "
-                        "desires to be [%s].",
-                        index_type,
-                        phi::DataType::INT64));
-  if (out && out->numel() == 0) {
-    dev_ctx.template Alloc<T>(out);
-    return;
-  }
-  if (index.empty()) {
-    if (!out->initialized()) {
-      phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
-    }
-    return;
-  }
-  if (out->numel() == 0) return;
-  CPUIndexElementwisePutWithTensorKernel<T, int64_t>(dev_ctx,
-                                                     x,
-                                                     value,
-                                                     index,
-                                                     input_dims,
-                                                     input_strides,
-                                                     index_dims,
-                                                     index_strides,
-                                                     slice_offset,
-                                                     out);
 }
 
 template <typename T, typename Context>
