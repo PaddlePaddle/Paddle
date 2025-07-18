@@ -24,7 +24,7 @@
 
 namespace phi {
 template <typename T, typename IndexT = int>
-void GPUIndexElementwiseGetKernel(const phi::GPUContext& ctx,
+void GPUIndexElementwiseGetKernel(const phi::GPUContext& dev_ctx,
                                   const DenseTensor& input,
                                   const std::vector<const DenseTensor*> index,
                                   const std::vector<int64_t>& input_dims,
@@ -80,7 +80,7 @@ void GPUIndexElementwiseGetKernel(const phi::GPUContext& ctx,
   constexpr int vt = 4;
   const dim3 block(nt);
   const dim3 grid((N + block.x * vt - 1) / (block.x * vt));
-  auto stream = ctx.stream();
+  auto stream = dev_ctx.stream();
 
   using dtype = funcs::OpaqueType<sizeof(T)>;
 
@@ -110,7 +110,7 @@ void GPUIndexElementwiseGetKernel(const phi::GPUContext& ctx,
 }
 
 template <typename T, typename Context>
-void IndexElementwiseGetKernel(const Context& ctx,
+void IndexElementwiseGetKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& gather_index,
                                const std::vector<const DenseTensor*>& index,
@@ -128,11 +128,11 @@ void IndexElementwiseGetKernel(const Context& ctx,
     out->Resize(phi::make_ddim(output_dims));
   }
 
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   if (out->numel() == 0) return;
 
   if (is_gather) {
-    phi::GatherKernel<T, Context>(ctx, x, gather_index, 0, out);
+    phi::GatherKernel<T, Context>(dev_ctx, x, gather_index, 0, out);
     return;
   }
 
@@ -145,7 +145,7 @@ void IndexElementwiseGetKernel(const Context& ctx,
                         index_type,
                         phi::DataType::INT64));
 
-  GPUIndexElementwiseGetKernel<T, int64_t>(ctx,
+  GPUIndexElementwiseGetKernel<T, int64_t>(dev_ctx,
                                            x,
                                            index,
                                            input_dims,

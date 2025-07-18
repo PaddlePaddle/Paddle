@@ -59,7 +59,7 @@ __global__ void IndexEleGetGradAccKernel(
 }
 
 template <typename T, typename IndexT = int>
-void GPUIndexElementwiseGetGrad(const phi::GPUContext& ctx,
+void GPUIndexElementwiseGetGrad(const phi::GPUContext& dev_ctx,
                                 const DenseTensor& input,
                                 const DenseTensor& value,
                                 const std::vector<const DenseTensor*>& index,
@@ -110,7 +110,7 @@ void GPUIndexElementwiseGetGrad(const phi::GPUContext& ctx,
   constexpr int vt = 4;
   const dim3 block(nt);
   const dim3 grid((N + block.x * vt - 1) / (block.x * vt));
-  auto stream = ctx.stream();
+  auto stream = dev_ctx.stream();
 
   using dtype = funcs::OpaqueType<sizeof(T)>;
 
@@ -151,7 +151,7 @@ void GPUIndexElementwiseGetGrad(const phi::GPUContext& ctx,
 }
 
 template <typename T, typename Context>
-void IndexElementwiseGetGradKernel(const Context& ctx,
+void IndexElementwiseGetGradKernel(const Context& dev_ctx,
                                    const DenseTensor& x,
                                    const DenseTensor& gather_index,
                                    const std::vector<const DenseTensor*>& index,
@@ -164,8 +164,8 @@ void IndexElementwiseGetGradKernel(const Context& ctx,
                                    const bool accumulate,
                                    const bool is_gather,
                                    DenseTensor* x_grad) {
-  ctx.template Alloc<T>(x_grad);
-  phi::funcs::set_constant(ctx, x_grad, static_cast<float>(0));
+  dev_ctx.template Alloc<T>(x_grad);
+  phi::funcs::set_constant(dev_ctx, x_grad, static_cast<float>(0));
   if (out_grad.numel() == 0) return;
 
   const auto& index_type = index[0]->dtype();
@@ -178,7 +178,7 @@ void IndexElementwiseGetGradKernel(const Context& ctx,
                         phi::DataType::INT32,
                         phi::DataType::INT64));
 
-  GPUIndexElementwiseGetGrad<T, int64_t>(ctx,
+  GPUIndexElementwiseGetGrad<T, int64_t>(dev_ctx,
                                          x,
                                          out_grad,
                                          index,

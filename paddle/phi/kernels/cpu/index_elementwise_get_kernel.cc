@@ -22,7 +22,7 @@
 
 namespace phi {
 template <typename T, typename IndexT = int>
-void CPUIndexElementwiseGetKernel(const phi::CPUContext& ctx,
+void CPUIndexElementwiseGetKernel(const phi::CPUContext& dev_ctx,
                                   const DenseTensor& input,
                                   const std::vector<const DenseTensor*> index,
                                   const std::vector<int64_t>& input_dims,
@@ -91,7 +91,7 @@ void CPUIndexElementwiseGetKernel(const phi::CPUContext& ctx,
 }
 
 template <typename T, typename Context>
-void IndexElementwiseGetKernel(const Context& ctx,
+void IndexElementwiseGetKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& gather_index,
                                const std::vector<const DenseTensor*>& index,
@@ -117,9 +117,9 @@ void IndexElementwiseGetKernel(const Context& ctx,
     std::vector<int64_t> output_dims(input_dims);
     out->Resize(phi::make_ddim(output_dims));
   }
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   if (out->numel() == 0) return;
-  CPUIndexElementwiseGetKernel<T, int64_t>(ctx,
+  CPUIndexElementwiseGetKernel<T, int64_t>(dev_ctx,
                                            x,
                                            index,
                                            input_dims,
