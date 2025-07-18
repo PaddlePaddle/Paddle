@@ -28,7 +28,7 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-constexpr int MAX_DIMS = 9;
+constexpr int MAX_DIMS = phi::DDim::kMaxRank;
 
 template <int N>
 struct alignas(N) OpaqueType {
