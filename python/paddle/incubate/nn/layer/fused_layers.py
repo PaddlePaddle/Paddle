@@ -16,9 +16,16 @@ import os
 import paddle
 import paddle.distributed as dist
 from paddle import _C_ops
+from paddle.device import (
+    is_compiled_with_cuda,
+    is_compiled_with_rocm,
+    is_compiled_with_xpu,
+)
 from paddle.distributed import fleet
 from paddle.distributed.fleet.utils.log_util import logger
 from paddle.framework import core
+from paddle.incubate.nn.functional import fused_linear
+from paddle.nn.functional import linear
 
 _raise_cuda_env_unset_warning = True
 _mp_async_allreduce = False
@@ -39,9 +46,9 @@ def check_environment_for_overlap():
 
 def is_fused_matmul_bias_supported():
     if (
-        paddle.is_compiled_with_cuda()
-        and not paddle.is_compiled_with_rocm()
-        or paddle.is_compiled_with_xpu()
+        is_compiled_with_cuda()
+        and not is_compiled_with_rocm()
+        or is_compiled_with_xpu()
     ):
         return hasattr(core.eager.ops.legacy, "fused_gemm_epilogue")
     else:
@@ -49,9 +56,9 @@ def is_fused_matmul_bias_supported():
 
 
 if is_fused_matmul_bias_supported():
-    origin_linear = paddle.incubate.nn.functional.fused_linear
+    origin_linear = fused_linear
 else:
-    origin_linear = paddle.nn.functional.linear
+    origin_linear = linear
 
 
 def mp_async_allreduce(x_grad):
