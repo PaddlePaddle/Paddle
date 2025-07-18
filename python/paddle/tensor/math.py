@@ -4794,7 +4794,7 @@ def cumprod_(
     """
     if dim is None:
         dim = -1
-        x = _C_ops.flatten_(0, len(x.shape) - 1)
+        x = _C_ops.flatten_(x, 0, len(x.shape) - 1)
 
     if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
         x = cast_(x, dtype)
