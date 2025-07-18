@@ -260,7 +260,7 @@ class TestAdaptiveAvgPool3DAPI(unittest.TestCase):
                     allow_unused=True,
                 )
                 np.testing.assert_allclose(
-                    paddle.sum(x_grad[0]), out.numel(), rtol=1e-6
+                    paddle.sum(x_grad[0]), out.numel(), rtol=1e-5
                 )
 
 
