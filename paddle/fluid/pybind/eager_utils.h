@@ -465,42 +465,29 @@ class TensorListBufferAllocator {
 
  public:
   explicit TensorListBufferAllocator(ssize_t len);
-  ~TensorListBufferAllocator();
-  std::vector<paddle::Tensor>& get() { return buffer_ptr_->buffer; }
   TensorListBufferAllocator(const TensorListBufferAllocator&) = delete;
   TensorListBufferAllocator& operator=(const TensorListBufferAllocator&) =
       delete;
+  ~TensorListBufferAllocator();
+  std::vector<paddle::Tensor>& GetAllocatedBuffer() const {
+    return buffer_ptr_->buffer;
+  }
 };
 
-class TensorListProcessor {
- public:
-  TensorListProcessor(const std::string& op_type,
-                      const std::string& arg_name,
-                      PyObject* args,
-                      ssize_t arg_idx,
-                      bool dispensable,
-                      const phi::distributed::ProcessMesh* mesh = nullptr);
+std::pair<PyObject*, ssize_t> GetPyArgumentInfo(const std::string& op_type,
+                                                const std::string& arg_name,
+                                                PyObject* args,
+                                                ssize_t arg_idx,
+                                                bool dispensable);
 
-  std::vector<paddle::Tensor>& get_tensor_list();
-  std::vector<paddle::Tensor>& update_tensor_list(
-      const phi::distributed::ProcessMesh* mesh);
-
-  TensorListProcessor(const TensorListProcessor&) = delete;
-  TensorListProcessor& operator=(const TensorListProcessor&) = delete;
-  TensorListProcessor(TensorListProcessor&&) = delete;
-  TensorListProcessor& operator=(TensorListProcessor&&) = delete;
-
- private:
-  PyObject* list_obj_ = nullptr;
-  ssize_t list_len_;
-  std::unique_ptr<TensorListBufferAllocator> allocator_ptr_;
-  std::string op_type_;
-  std::string arg_name_;
-  ssize_t arg_idx_;
-  // const phi::distributed::ProcessMesh* mesh_;
-  void GetTensorListFromArgsWithBuffer(
-      const phi::distributed::ProcessMesh* mesh);
-};
+std::vector<paddle::Tensor>& GetTensorListFromArgsWithBuffer(
+    const std::string& op_type,
+    const std::string& arg_name,
+    ssize_t arg_idx,
+    const phi::distributed::ProcessMesh* mesh,
+    PyObject* list,
+    ssize_t list_len,
+    const TensorListBufferAllocator& allocator);
 
 /* ------------------ for SetStaticOpArgPreCastHook ----------------------- */
 
