@@ -99,7 +99,7 @@ class TestFusedRmsNormQuantRint(TestFusedRmsNorm):
     def test_eval(self):
         # There is little precision difference after decomposition.
         # which leads to different results after dequantization. So
-        # we skip this test.
+        # we skip accuracy check this test.
         self.compute()
 
 
@@ -113,7 +113,7 @@ class TestFusedRmsNormQuantRound(TestFusedRmsNorm):
     def test_eval(self):
         # There is little precision difference after decomposition.
         # which leads to different results after dequantization. So
-        # we skip this test.
+        # we skip accuracy check in this test.
         self.compute()
 
 

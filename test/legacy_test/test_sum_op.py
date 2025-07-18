@@ -51,7 +51,7 @@ class TestSumOp(OpTest):
         self.public_python_api = paddle.add_n
         self.prim_op_type = "comp"
         self.init_kernel_type()
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.init_kernel_type()
         x0 = np.random.random((3, 40)).astype(self.dtype)
         x1 = np.random.random((3, 40)).astype(self.dtype)
@@ -59,7 +59,7 @@ class TestSumOp(OpTest):
         self.inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
         y = x0 + x1 + x2
         self.outputs = {'Out': y}
-        self.attrs = {'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'use_mkldnn': self.use_onednn}
 
     def init_kernel_type(self):
         self.dtype = np.float64
