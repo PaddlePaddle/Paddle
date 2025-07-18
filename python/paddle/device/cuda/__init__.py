@@ -279,7 +279,7 @@ def max_memory_allocated(device: _CudaPlaceLike | None = None) -> int:
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:GPU or env:CUSTOM_DEVICE)
+            >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> paddle.device.set_device('gpu')  # or '<custom_device>'
 
@@ -318,7 +318,7 @@ def max_memory_reserved(device: _CudaPlaceLike | None = None) -> int:
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:GPU or env:CUSTOM_DEVICE)
+            >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> paddle.device.set_device('gpu')  # or '<custom_device>'
 
@@ -354,7 +354,7 @@ def reset_max_memory_allocated(device: _CudaPlaceLike | None = None) -> None:
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:GPU or env:CUSTOM_DEVICE)
+            >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> paddle.device.set_device('gpu')  # or '<custom_device>'
 
@@ -391,7 +391,7 @@ def reset_max_memory_reserved(device: _CudaPlaceLike | None = None) -> None:
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:GPU or env:CUSTOM_DEVICE)
+            >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> paddle.device.set_device('gpu')  # or '<custom_device>'
 
@@ -435,7 +435,7 @@ def memory_allocated(device: _CudaPlaceLike | None = None) -> int:
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:GPU or env:CUSTOM_DEVICE)
+            >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> paddle.device.set_device('gpu')  # or '<custom_device>'
 
@@ -474,7 +474,7 @@ def memory_reserved(device: _CudaPlaceLike | None = None) -> int:
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:GPU or env:CUSTOM_DEVICE)
+            >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> paddle.device.set_device('gpu')  # or '<custom_device>'
 
