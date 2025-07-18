@@ -769,14 +769,10 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
     return masked_select_ad_func(tensor, bool_index);
   }
 
-  if (bool_index.shape().size() == 1) {
-    auto bool_2_idx = nonzero_ad_func(bool_index);
-    return gather_ad_func(tensor, bool_2_idx);
-  }
-
   auto bool_2_idx = nonzero_ad_func(bool_index);
 #ifdef PADDLE_WITH_CUDA
   if (tensor.is_gpu() && !is_combined_bool) {
+    const bool is_gather = bool_index.shape().size() == 1;
     std::vector<paddle::Tensor> indices =
         PrepareIndices(tensor, bool_2_idx, bool_index);
     while (indices.size() < static_cast<size_t>(tensor.dims().size())) {
@@ -795,17 +791,25 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
     const bool accumulate = false;
 
     return index_elementwise_get_ad_func(tensor,
+                                         bool_2_idx,
                                          ad.indices,
                                          ad.src_sizes,
                                          ad.src_strides,
                                          ad.indexed_sizes,
                                          ad.indexed_strides,
                                          slice_offset,
-                                         accumulate);
+                                         accumulate,
+                                         is_gather);
   } else {
+    if (bool_index.shape().size() == 1) {
+      return gather_ad_func(tensor, bool_2_idx);
+    }
     return gather_nd_ad_func(tensor, bool_2_idx);
   }
 #else
+  if (bool_index.shape().size() == 1) {
+    return gather_ad_func(tensor, bool_2_idx);
+  }
   return gather_nd_ad_func(tensor, bool_2_idx);
 #endif
 }

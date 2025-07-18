@@ -153,6 +153,7 @@ void GPUIndexElementwiseGetGrad(const phi::GPUContext& dev_ctx,
 template <typename T, typename Context>
 void IndexElementwiseGetGradKernel(const Context& dev_ctx,
                                    const DenseTensor& x,
+                                   const DenseTensor& gather_index,
                                    const std::vector<const DenseTensor*>& index,
                                    const DenseTensor& out_grad,
                                    const std::vector<int64_t>& input_dims,
@@ -161,6 +162,7 @@ void IndexElementwiseGetGradKernel(const Context& dev_ctx,
                                    const std::vector<int64_t>& index_strides,
                                    const int64_t slice_offset,
                                    const bool accumulate,
+                                   const bool is_gather,
                                    DenseTensor* x_grad) {
   dev_ctx.template Alloc<T>(x_grad);
   phi::funcs::set_constant(dev_ctx, x_grad, static_cast<float>(0));

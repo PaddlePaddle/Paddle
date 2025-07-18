@@ -772,6 +772,7 @@ void FusedRMSNormGradInferMeta(const MetaTensor& x,
 
 void IndexElementwiseGetGradInferMeta(
     const MetaTensor& x,
+    const MetaTensor& gather_index,
     const std::vector<const MetaTensor*>& index,
     const MetaTensor& out_grad,
     const std::vector<int64_t>& input_dims,
@@ -780,5 +781,6 @@ void IndexElementwiseGetGradInferMeta(
     const std::vector<int64_t>& index_strides,
     const int64_t slice_offset,
     const bool accumulate,
+    const bool is_gather,
     MetaTensor* x_grad);
 }  // namespace phi

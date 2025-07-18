@@ -1686,14 +1686,17 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
         out = reshape_ad_func(out, ad.src_sizes);
       } else {
         const bool accumulate = true;
+        const bool is_gather = false;
         out = index_elementwise_get_ad_func(self->tensor,
+                                            self->tensor,
                                             ad.indices,
                                             ad.src_sizes,
                                             ad.src_strides,
                                             ad.indexed_sizes,
                                             ad.indexed_strides,
                                             slice_offset,
-                                            accumulate);
+                                            accumulate,
+                                            is_gather);
         out_is_view = false;
       }
 
