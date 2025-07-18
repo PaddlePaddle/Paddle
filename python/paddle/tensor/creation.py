@@ -1043,7 +1043,7 @@ class MmapStorage(paddle.base.core.MmapStorage):
 
 def full_like(
     x: paddle.Tensor,
-    fill_value: bool | float,
+    fill_value: bool | builtins.complex,
     dtype: DTypeLike | None = None,
     name: str | None = None,
 ) -> paddle.Tensor:
@@ -1054,9 +1054,9 @@ def full_like(
 
     Args:
         x(Tensor): The input tensor which specifies shape and data type. The data type can be bool, float16, float32, float64, int32, int64.
-        fill_value(bool|float|int): The value to fill the tensor with. Note: this value shouldn't exceed the range of the output data type.
+        fill_value(bool|float|int|complex): The value to fill the tensor with. Note: this value shouldn't exceed the range of the output data type.
         dtype(np.dtype|str, optional): The data type of output. The data type can be one
-            of bool, float16, float32, float64, int32, int64. The default value is None, which means the output
+            of bool, float16, float32, float64, int32, int64, complex64, complex128. The default value is None, which means the output
             data type is the same as input.
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
@@ -1074,6 +1074,10 @@ def full_like(
             [[2. 2. 2.]
              [2. 2. 2.]]
     """
+    if not isinstance(fill_value, (bool, int, float, builtins.complex)):
+        raise TypeError(
+            f"fill_value should be bool, int, float or complex, but received {type(fill_value)}."
+        )
 
     if dtype is None:
         dtype = x.dtype
@@ -1516,7 +1520,7 @@ def eye(
 
 def full(
     shape: ShapeLike,
-    fill_value: bool | float | paddle.Tensor,
+    fill_value: bool | builtins.complex | paddle.Tensor,
     dtype: DTypeLike | None = None,
     name: str | None = None,
 ) -> paddle.Tensor:
@@ -1528,7 +1532,7 @@ def full(
         shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
-        fill_value(bool|float|int|Tensor): The constant value used to initialize the Tensor to be created.
+        fill_value(bool|float|int|complex|Tensor): The constant value used to initialize the Tensor to be created.
             If ``fill_value`` is an Tensor, it should be an 0-D Tensor which represents a scalar.
         dtype(np.dtype|str, optional): Data type of the output Tensor
             which can be float16, float32, float64, int32, int64, if dtype is `None`, the data
@@ -1574,6 +1578,21 @@ def full(
              [2. 2.]
              [2. 2.]]
     """
+    if not isinstance(
+        fill_value,
+        (
+            int,
+            float,
+            bool,
+            builtins.complex,
+            core.eager.Tensor,
+            Variable,
+            paddle.pir.Value,
+        ),
+    ):
+        raise TypeError(
+            f"The fill_value must be one of [int, float, bool, complex, core.eager.Tensor,Variable, paddle.pir.Value]. But received {type(fill_value)}."
+        )
 
     if dtype is None:
         if isinstance(fill_value, (bool)):

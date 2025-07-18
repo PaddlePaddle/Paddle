@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
+from utils import dygraph_guard
 
 import paddle
 import paddle.framework.dtype as dtypes
@@ -41,7 +42,7 @@ def fill_any_like_wrapper(x, value, out_dtype=None, name=None):
     return paddle.full_like(x, value, tmp_dtype, name)
 
 
-class TestFullOp(unittest.TestCase):
+class TestFullLikeOp(unittest.TestCase):
     """Test fill_any_like op(whose API is full_like) for attr out."""
 
     def test_attr_tensor_API(self):
@@ -94,7 +95,7 @@ class TestFullOp(unittest.TestCase):
         paddle.enable_static()
 
 
-class TestFullOpError(unittest.TestCase):
+class TestFullLikeOpError(unittest.TestCase):
 
     def test_errors(self):
         with paddle.static.program_guard(
@@ -113,6 +114,25 @@ class TestFullOpError(unittest.TestCase):
                 x=input_data,
                 fill_value=2,
                 dtype='uint4',
+            )
+
+    def test_fill_value_errors(self):
+        with dygraph_guard():
+            # The fill_value must be one of [int, float, bool, complex, core.eager.Tensor, Variable, paddle.pir.Value].
+            self.assertRaises(
+                TypeError,
+                paddle.full,
+                shape=[1],
+                dtype="float32",
+                fill_value=np.array([1.0], dtype=np.float32),
+            )
+
+            self.assertRaises(
+                TypeError,
+                paddle.full,
+                shape=[1],
+                dtype="float32",
+                fill_value=[1.0],
             )
 
 
