@@ -45,6 +45,9 @@ from ...utils.tensor_fusion_helper import (
 g_sharding_v2_check_zero_padding = int(
     os.getenv("FLAGS_sharding_v2_check_zero_padding", "0")
 )
+g_shard_bypass_dygraph_optimizer = int(
+    os.environ.get("FLAGS_shard_bypass_dygraph_optimizer", 0)
+)
 
 
 def _is_trainable(param):
@@ -618,6 +621,7 @@ class DygraphShardingOptimizerV2:
         self._hcg = hcg
         self._sharding_world_size = self._hcg.get_sharding_parallel_world_size()
         self._sharding_rank = self._hcg.get_sharding_parallel_rank()
+        self.clear_color = None
 
         self._parameter_list = optimizer._parameter_list
 
@@ -625,6 +629,7 @@ class DygraphShardingOptimizerV2:
         self._slice_params = {}
         # comm_buffer_list = []
         self._comm_buffer_list = []
+        self._color_to_comm_buffer_list = {}
 
         # slice parameter list
         self._local_parameter_list = [
@@ -814,11 +819,41 @@ class DygraphShardingOptimizerV2:
                 group_idx += 1
                 self._comm_buffer_list.append(buffer)
 
+                if g_color not in self._color_to_comm_buffer_list.keys():
+                    self._color_to_comm_buffer_list[g_color] = []
+                self._color_to_comm_buffer_list[g_color].append(buffer)
+
                 for p in parameters:
                     if p.name in self.param2bucket:
                         self.param2bucket[p.name].append(buffer)
                     else:
                         self.param2bucket[p.name] = [buffer]
+
+    def clear_param_storage(self, color):
+        self.clear_color = color
+        if color in self._color_to_comm_buffer_list.keys():
+            for comm_buffer in self._color_to_comm_buffer_list[color]:
+                for param in comm_buffer.params:
+                    grad_view = comm_buffer._sharding_param_grad_view[
+                        param.name
+                    ]
+                    slice_param = self._slice_params[param.name]
+                    if (
+                        not g_shard_bypass_dygraph_optimizer
+                        and grad_view._param_begin < grad_view._param_end
+                    ):
+                        grad_view.fill_slice_param(slice_param)
+                        self._create_master_weight(slice_param)
+                    slice_param._clear_dataptr()
+                comm_buffer._clear_param_storage()
+
+    def reset_param_storage(self):
+        color = self.clear_color
+        if color is None:
+            return
+        if color in self._color_to_comm_buffer_list.keys():
+            for comm_buffer in self._color_to_comm_buffer_list[color]:
+                comm_buffer._reset_param_storage()
 
     def clear_grad(self, set_to_zero=True):
         """
@@ -1096,6 +1131,7 @@ class DygraphShardingOptimizerV2:
     def step(self):
         # TODO Check whether the model trainable param changed and update state accordingly
         # hack for pp comm overlap
+        self.reset_param_storage()
 
         if self._all_gather_overlap_forward:
             # Clear the pre forward hook in the optimizer step.

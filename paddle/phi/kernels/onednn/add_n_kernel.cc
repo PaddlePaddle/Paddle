@@ -17,14 +17,14 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
-bool AddNCheckIfOneDNNSupport(const KernelContext* ctx) {
-  for (size_t i = 0; i < ctx->InputsSize(); i++) {
-    if (!DenseTensor::classof(ctx->MutableIutputAt(i))) {
+bool AddNCheckIfOneDNNSupport(const KernelContext* dev_ctx) {
+  for (size_t i = 0; i < dev_ctx->InputsSize(); i++) {
+    if (!DenseTensor::classof(dev_ctx->MutableIutputAt(i))) {
       return false;
     }
   }
-  KernelContext* ctx_tmp = const_cast<KernelContext*>(ctx);
-  if (!DenseTensor::classof(ctx_tmp->MutableOutputAt(0))) {
+  KernelContext* dev_ctx_tmp = const_cast<KernelContext*>(dev_ctx);
+  if (!DenseTensor::classof(dev_ctx_tmp->MutableOutputAt(0))) {
     return false;
   }
   return true;

@@ -37,6 +37,9 @@ void MatmulGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(dy);
   }
 
+  if (!transpose_x && transpose_y && y.dims().size() < 2) {
+    transpose_y = false;
+  }
   const XPUType* dout_ptr = reinterpret_cast<const XPUType*>(dout.data<T>());
   const XPUType* x_ptr = reinterpret_cast<const XPUType*>(x.data<T>());
   const XPUType* y_ptr = reinterpret_cast<const XPUType*>(y.data<T>());

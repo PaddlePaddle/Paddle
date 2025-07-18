@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest, get_places, skip_check_grad_ci
 
 import paddle
 from paddle import base
@@ -58,17 +57,7 @@ class TestExecutorReturnTensorNotOverwritingWithOptest(OpTest):
         return outs
 
     def test_executor_run_twice(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not base.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if base.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-
-        for place in places:
+        for place in get_places():
             for parallel in [True, False]:
                 add_out = self.calc_add_out(place, parallel)
                 add_out1 = np.array(add_out[0])
@@ -100,17 +89,7 @@ class TestExecutorReturnTensorNotOverOverwritingWithLayers(unittest.TestCase):
         return out
 
     def test_executor_run_twice(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not base.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if base.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-
-        for place in places:
+        for place in get_places():
             add_out = self.calc_add_out(place)
             add_out1 = np.array(add_out[0])
             sub_out = self.calc_sub_out(place)

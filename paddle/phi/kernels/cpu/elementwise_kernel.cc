@@ -166,6 +166,8 @@ PD_REGISTER_KERNEL(remainder,
                    float,
                    double,
                    int,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>,
                    int64_t) {}
 PD_REGISTER_KERNEL(floor_divide,
                    CPU,

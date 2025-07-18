@@ -42,6 +42,11 @@ jobs:
     uses: ./.github/workflows/_Linux-XPU.yml
     needs: clone
 
+  dcu:
+    name: Linux-DCU
+    uses: ./.github/workflows/_Linux-DCU.yml
+    needs: clone
+
   inference:
     name: PR-CI-Inference
     uses: ./.github/workflows/_Inference.yml

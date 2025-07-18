@@ -22,6 +22,7 @@ from op_test import (
     _set_use_system_allocator,
     convert_float_to_uint16,
     convert_uint16_to_float,
+    get_places,
 )
 
 import paddle
@@ -219,7 +220,7 @@ def set_output_grad(scope, outputs, place, feed_dict=None):
 class TestBatchNormOpInference(unittest.TestCase):
     def setUp(self):
         self.dtype = np.float32
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.fuse_with_relu = False
         self.init_kernel_type()
 
@@ -316,7 +317,7 @@ class TestBatchNormOpInference(unittest.TestCase):
             # attrs
             is_test=True,
             data_layout=data_layout,
-            use_mkldnn=self.use_mkldnn,
+            use_mkldnn=self.use_onednn,
             fuse_with_relu=self.fuse_with_relu,
             epsilon=epsilon,
         )
@@ -328,7 +329,7 @@ class TestBatchNormOpInference(unittest.TestCase):
         # dims will be in NCHW order as it is MKL-DNN way
         # of memory descripting. So we need to convert NCHW
         # dims into NHWC.
-        if data_layout == "NHWC" and self.use_mkldnn:
+        if data_layout == "NHWC" and self.use_onednn:
             # Create executor to have MKL-DNN cache
             # cleared after NHWC unit test
             place = core.CPUPlace()
@@ -453,17 +454,7 @@ class TestBatchNormOpInference(unittest.TestCase):
         )
 
     def test_check_output(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(core.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-
-        for place in places:
+        for place in get_places():
             for data_format in ["NCHW", "NHWC"]:
                 self.check_with_place(
                     place,
@@ -491,7 +482,7 @@ class TestBatchNormOpInference(unittest.TestCase):
 class TestFP16BatchNormOpInference(TestBatchNormOpInference):
     def setUp(self):
         self.dtype = np.float16
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.fuse_with_relu = False
         self.init_kernel_type()
 
@@ -526,7 +517,7 @@ class TestFP16BatchNormOpInference(TestBatchNormOpInference):
 class TestBF16BatchNormOpInference(TestBatchNormOpInference):
     def setUp(self):
         self.dtype = np.uint16
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.fuse_with_relu = False
         self.init_kernel_type()
 
@@ -572,16 +563,7 @@ class TestDygraphBatchNormAPIError(unittest.TestCase):
 
 class TestDygraphBatchNormTrainableStats(unittest.TestCase):
     def test_dygraph(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             shape = [4, 10, 4, 4]
 
             def compute(x, is_test, trainable_statistics):
@@ -600,16 +582,7 @@ class TestDygraphBatchNormTrainableStats(unittest.TestCase):
             np.testing.assert_allclose(y1, y2, rtol=1e-05)
 
     def test_static(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             exe = base.Executor(p)
             shape = [4, 10, 16, 16]
 

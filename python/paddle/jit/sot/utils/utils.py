@@ -40,6 +40,7 @@ from paddle.utils import flatten, map_structure
 
 from .envs import (
     ENV_SOT_LOG_LEVEL,
+    ENV_SOT_SPECIALIZED_DIM_NUMBERS,
     ENV_STRICT_MODE,
 )
 from .paddle_api_config import (
@@ -57,7 +58,7 @@ T = TypeVar("T")
 T1 = TypeVar("T1")
 T2 = TypeVar("T2")
 T3 = TypeVar("T3")
-ConstTypes = (int, float, str, bool, type(None))
+ConstTypes = (int, float, str, bool, type(None), bytes)
 
 
 class Singleton(type):
@@ -440,7 +441,10 @@ class StepInfoManager(metaclass=Singleton):
 
     @property
     def need_back_trace(self):
-        return self.current_step_info.need_back_trace()
+        return (
+            self.current_step_info is not None
+            and self.current_step_info.need_back_trace()
+        )
 
     @property
     def current_step(self):
@@ -476,11 +480,13 @@ def get_numpy_ufuncs():
 
 
 def do_until_stop_iteration(fn: Callable[[], T]) -> list[T]:
+    from paddle.jit.sot.utils.exceptions import SotCapturedStopIteration
+
     res = []
     while True:
         try:
             res.append(fn())
-        except StopIteration:
+        except SotCapturedStopIteration:
             break
     return res
 
@@ -508,3 +514,21 @@ def get_obj_stable_repr(obj) -> str:
             return f"{module}.{class_name}()"
 
     return f"{class_name}()"
+
+
+def get_min_non_specialized_number() -> int:
+    specialized_dim_numbers_raw_str = (
+        ENV_SOT_SPECIALIZED_DIM_NUMBERS.get().lower()
+    )
+    assert specialized_dim_numbers_raw_str in [
+        "no",
+        "0",
+        "01",
+    ], f"Unsupported specialized_dim_numbers: {specialized_dim_numbers_raw_str}"
+    to_min_non_specialized_number = {
+        # specialized numbers, minimum non-specialized number
+        "no": 0,
+        "0": 1,
+        "01": 2,
+    }
+    return to_min_non_specialized_number[specialized_dim_numbers_raw_str]

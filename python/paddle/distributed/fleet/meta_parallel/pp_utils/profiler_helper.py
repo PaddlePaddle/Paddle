@@ -32,8 +32,7 @@ def main():
 
     with open('pipeline_profile.json', 'w') as f:
         f.write('[ ')
-        for i in range(len(all_record) - 1):
-            f.write(all_record[i] + ',\n')
+        f.writelines(all_record[i] + ',\n' for i in range(len(all_record) - 1))
         f.write(all_record[-1])
         f.write(' ]\n')
 

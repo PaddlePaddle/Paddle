@@ -425,6 +425,7 @@ class BackwardAPI(ForwardAPI):
         api_code = f"""
 PADDLE_API {self.get_return_type(inplace_flag)} {inplace_name}({self.get_define_args(inplace_flag)}) {{
 {self.get_grad_outputs_define(inplace_flag)}
+{self.get_optional_inputs_change(inplace_flag)}
     {api_func_name}({self.get_grad_api_call_args(inplace_flag)});
     return {self.get_grad_output(inplace_flag)};
 }}

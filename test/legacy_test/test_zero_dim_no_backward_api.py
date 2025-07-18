@@ -17,11 +17,11 @@
 # 0D Tensor's shape is always [], numel is 1
 # which can be created by paddle.rand([])
 
-import os
 import unittest
 
 import numpy as np
 from decorator_helper import prog_scope
+from op_test import get_places
 
 import paddle
 
@@ -182,16 +182,7 @@ class TestNoBackwardAPI(unittest.TestCase):
         self.assertEqual(one_hot_label.numpy()[2], 1)
 
     def test_unique_consecutive(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            places.append('cpu')
-        if paddle.is_compiled_with_cuda():
-            places.append('gpu')
-        for place in places:
+        for place in get_places(string_format=True):
             paddle.set_device(place)
             x = paddle.rand([])
             y, inverse, counts = paddle.unique_consecutive(
@@ -208,16 +199,7 @@ class TestNoBackwardAPI(unittest.TestCase):
             self.assertEqual(counts.shape, [1])
 
     def test_unique(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            places.append('cpu')
-        if paddle.is_compiled_with_cuda():
-            places.append('gpu')
-        for place in places:
+        for place in get_places(string_format=True):
             paddle.set_device(place)
             x = paddle.rand([])
             y, index, inverse, counts = paddle.unique(

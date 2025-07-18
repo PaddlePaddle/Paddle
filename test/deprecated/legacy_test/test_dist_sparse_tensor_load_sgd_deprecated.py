@@ -43,34 +43,32 @@ class TestSparseLoadProgram(unittest.TestCase):
         train_program = base.Program()
         startup_program = base.Program()
         scope = base.Scope()
-        with base.scope_guard(scope):
-            with base.program_guard(train_program, startup_program):
-                with base.unique_name.guard():
-                    inputs = paddle.static.data(
-                        'input', shape=[None, 1], dtype="int64"
-                    )
-                    emb = paddle.static.nn.embedding(
-                        inputs, is_sparse=True, size=[10000, 128]
-                    )
-                    fc1 = paddle.static.nn.fc(
-                        x=emb, size=128, activation="relu"
-                    )
-                    fc2 = paddle.static.nn.fc(x=fc1, size=64, activation="relu")
-                    loss = paddle.mean(fc2)
+        with (
+            base.scope_guard(scope),
+            base.program_guard(train_program, startup_program),
+            base.unique_name.guard(),
+        ):
+            inputs = paddle.static.data('input', shape=[None, 1], dtype="int64")
+            emb = paddle.static.nn.embedding(
+                inputs, is_sparse=True, size=[10000, 128]
+            )
+            fc1 = paddle.static.nn.fc(x=emb, size=128, activation="relu")
+            fc2 = paddle.static.nn.fc(x=fc1, size=64, activation="relu")
+            loss = paddle.mean(fc2)
             return scope, train_program, startup_program, loss
 
 
 class TestSparseLoadProgramSGD(TestSparseLoadProgram):
     def test_server_init(self):
         scope, train_program, startup_program, loss = self.net()
-        with base.scope_guard(scope):
-            with base.program_guard(train_program, startup_program):
-                optimizer = paddle.optimizer.SGD(1e-3)
-                optimizer = fleet.distributed_optimizer(
-                    optimizer, self.strategy
-                )
-                optimizer.minimize(loss)
-                fleet.init_server()
+        with (
+            base.scope_guard(scope),
+            base.program_guard(train_program, startup_program),
+        ):
+            optimizer = paddle.optimizer.SGD(1e-3)
+            optimizer = fleet.distributed_optimizer(optimizer, self.strategy)
+            optimizer.minimize(loss)
+            fleet.init_server()
 
 
 if __name__ == "__main__":

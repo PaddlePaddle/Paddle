@@ -67,6 +67,11 @@ struct FastDivMod {
     return result;
   }
 
+  __device__ __forceinline__ uint32_t DivCeil(uint32_t n) const {
+    DivModT res = Divmod(n);
+    return res.val[1] > 0 ? res.val[0] + 1 : res.val[0];
+  }
+
   int32_t shift_val;
   uint32_t divisor;
   uint32_t multiplier;
@@ -107,6 +112,10 @@ struct FastDivMod<int64_t> {
   __device__ __forceinline__ DivModT Divmod(uint64_t n) const {
     uint64_t q = Div(n);
     return {q, n - q * divisor};
+  }
+  __device__ __forceinline__ uint64_t DivCeil(uint32_t n) const {
+    DivModT res = Divmod(n);
+    return res.val[1] > 0 ? res.val[0] + 1 : res.val[0];
   }
 
   int shift_val;

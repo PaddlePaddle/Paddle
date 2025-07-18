@@ -702,8 +702,7 @@ class PipelineParallel(MetaParallelBase):
                 f'./profile_record_tmp_file_for_rank_{self.global_rank}',
                 'a+',
             ) as f:
-                for record in self._records:
-                    f.write(record + '\n')
+                f.writelines(record + '\n' for record in self._records)
             self._records = []
 
     def forward_backward_pipeline(
@@ -1566,8 +1565,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                 f'./profile_record_tmp_file_for_rank_{self.global_rank}',
                 'a+',
             ) as f:
-                for record in self._records:
-                    f.write(record + '\n')
+                f.writelines(record + '\n' for record in self._records)
             self._records = []
             self._reset_counter()
 

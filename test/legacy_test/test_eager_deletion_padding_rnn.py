@@ -357,33 +357,35 @@ class PaddingRNNTestBase(unittest.TestCase):
         paddle.seed(config.random_seed)
         self.main_program = base.Program()
         self.startup_program = base.Program()
-        with base.program_guard(self.main_program, self.startup_program):
-            with base.unique_name.guard():
-                res_vars = lm_model(
-                    config.hidden_size,
-                    config.vocab_size,
-                    config.batch_size,
-                    num_layers=config.num_layers,
-                    num_steps=config.num_steps,
-                    init_scale=config.init_scale,
-                    dropout=config.dropout,
-                    rnn_model=config.rnn_model,
-                )
-                (
-                    self.loss,
-                    self.last_hidden,
-                    self.last_cell,
-                    self.feed_list,
-                ) = res_vars
+        with (
+            base.program_guard(self.main_program, self.startup_program),
+            base.unique_name.guard(),
+        ):
+            res_vars = lm_model(
+                config.hidden_size,
+                config.vocab_size,
+                config.batch_size,
+                num_layers=config.num_layers,
+                num_steps=config.num_steps,
+                init_scale=config.init_scale,
+                dropout=config.dropout,
+                rnn_model=config.rnn_model,
+            )
+            (
+                self.loss,
+                self.last_hidden,
+                self.last_cell,
+                self.feed_list,
+            ) = res_vars
 
-                paddle.nn.clip.set_gradient_clip(
-                    clip=paddle.nn.ClipGradByGlobalNorm(
-                        clip_norm=config.max_grad_norm
-                    )
+            paddle.nn.clip.set_gradient_clip(
+                clip=paddle.nn.ClipGradByGlobalNorm(
+                    clip_norm=config.max_grad_norm
                 )
+            )
 
-                optimizer = paddle.optimizer.SGD(learning_rate=1.0)
-                optimizer.minimize(self.loss)
+            optimizer = paddle.optimizer.SGD(learning_rate=1.0)
+            optimizer.minimize(self.loss)
 
         self.exe.run(self.startup_program)
 

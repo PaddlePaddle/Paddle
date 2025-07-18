@@ -88,13 +88,13 @@ __global__ void GetSlogDetFromLUComplex(const T* lu_data,
                                         int64_t n,
                                         int64_t batch_size,
                                         T* out_data) {
-  int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  int64_t idx = threadIdx.x + static_cast<int64_t>(blockIdx.x) * blockDim.x;
   if (idx < batch_size) {
-    int offset_lu = idx * n * n;
-    int offset_ipiv = idx * n;
+    int64_t offset_lu = idx * n * n;
+    int64_t offset_ipiv = idx * n;
     T det_val = T(1.0, 0.0);
     T negative = T(-1.0, 0.0);
-    for (int i = 0; i < n; ++i) {
+    for (int64_t i = 0; i < n; ++i) {
       det_val *= lu_data[offset_lu + i * n + i];
       if (ipiv[offset_ipiv + i] != i + 1) {
         det_val *= negative;
@@ -135,12 +135,12 @@ struct SlogDeterminantFunctor<phi::dtype::complex<T>, Context> {
         tmp_gpu_mat_data->ptr());
 
     std::vector<const phi::dtype::complex<T>*> cpu_ptrs(batch_count);
-    for (int i = 0; i < batch_count; ++i) {
+    for (int64_t i = 0; i < batch_count; ++i) {
       cpu_ptrs[i] = gpu_mat + i * rank * rank;
     }
 
     // num_ints is for pivot (rank * batch_count) and info (batch_count)
-    int num_ints = batch_count * (rank + 1);
+    int64_t num_ints = batch_count * (rank + 1);
     size_t total_bytes =
         batch_count * sizeof(phi::dtype::complex<T>*) + num_ints * sizeof(int);
     phi::Allocator::AllocationPtr tmp_gpu_ptrs_data = phi::memory_utils::Alloc(
@@ -218,7 +218,7 @@ void SlogDeterminantKernel(const Context& dev_ctx,
   // shape [*, M, M], check whether it contains 0 in '*'.
   if (input_dim.size() > 2) {
     bool size_0 = false;
-    std::vector<int> tmp_dim_vec(input_dim.begin(), input_dim.end() - 2);
+    std::vector<int64_t> tmp_dim_vec(input_dim.begin(), input_dim.end() - 2);
     for (size_t i = 0; i < tmp_dim_vec.size(); ++i) {
       if (tmp_dim_vec[i] == 0) {
         size_0 = true;
@@ -234,7 +234,7 @@ void SlogDeterminantKernel(const Context& dev_ctx,
     }
   }
 
-  auto batch_count = detail::GetBatchCount(x.dims());
+  int64_t batch_count = detail::GetBatchCount(x.dims());
   VLOG(2) << "input dim:" << x.dims();
   PADDLE_ENFORCE_GE(
       input_dim_size,
@@ -245,9 +245,9 @@ void SlogDeterminantKernel(const Context& dev_ctx,
       input_dim[input_dim_size - 1],
       input_dim[input_dim_size - 2],
       errors::InvalidArgument("the input matrix should be square matrix."));
-  auto rank = input_dim[input_dim_size - 1];  // square matrix length
+  int64_t rank = input_dim[input_dim_size - 1];  // square matrix length
   SlogDeterminantFunctor<T, Context>()(dev_ctx, x, rank, batch_count, out);
-  std::vector<int> output_dim_vec(input_dim.begin(), input_dim.end() - 2);
+  std::vector<int64_t> output_dim_vec(input_dim.begin(), input_dim.end() - 2);
   if (input_dim.size() == static_cast<size_t>(2)) {
     // when input is a two-dimension matrix, The det value is a number.
     output_dim_vec = {};

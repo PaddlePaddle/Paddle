@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/eager/eager_tensor.h"
 
@@ -23,14 +24,14 @@
 
 namespace egr::to_static {
 namespace details {
-void GcScope(paddle::framework::Scope *scope);
+void GcScope(paddle::framework::Scope *scope,
+             const std::unordered_set<std::string_view> &persistent_names = {});
 
 }  // namespace details
 
-void RunProgramImpl(
+std::vector<paddle::Tensor> RunProgramImpl(
     const std::vector<paddle::Tensor> &x,
     const std::vector<paddle::Tensor> &params,
-    std::vector<paddle::Tensor *> &out,                   // NOLINT
     std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
     bool require_any_grad,
     const paddle::framework::AttributeMap &attrs,
@@ -39,8 +40,8 @@ void RunProgramGradImpl(
     const std::vector<paddle::Tensor> &out_grad,
     const std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
     const paddle::framework::AttributeMap &attrs,
-    std::vector<paddle::Tensor *> &x_grad,       // NOLINT
-    std::vector<paddle::Tensor *> &params_grad,  // NOLINT
+    std::vector<paddle::Tensor> *x_grad,
+    std::vector<paddle::Tensor> *params_grad,
     const int64_t &place_hash_key);
 void LegacyRunProgramImpl(
     const std::vector<paddle::Tensor> &x,

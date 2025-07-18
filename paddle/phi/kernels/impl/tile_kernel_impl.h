@@ -29,6 +29,10 @@ void Tile(const Context& dev_ctx,
           DenseTensor* out) {
   auto x_dims = x.dims();
   for (size_t i = 0; i < repeat_times.size(); ++i) {
+    if (repeat_times[i] == 0) {
+      dev_ctx.template Alloc<T>(out);
+      return;
+    }
     PADDLE_ENFORCE_GT(
         repeat_times[i],
         0,
@@ -37,7 +41,7 @@ void Tile(const Context& dev_ctx,
             "be positive integers, but the value received is %d.",
             repeat_times[i]));
   }
-  auto vec_x_dims = common::vectorize<int>(x_dims);
+  auto vec_x_dims = common::vectorize<int64_t>(x_dims);
   if (repeat_times.size() < vec_x_dims.size()) {
     int diff = vec_x_dims.size() - repeat_times.size();
     repeat_times.insert(repeat_times.begin(), diff, 1);
@@ -92,6 +96,10 @@ void TileKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 const IntArray& repeat_times,
                 DenseTensor* out) {
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   auto rank = x.dims().size();
   auto& repeat_times_data = repeat_times.GetData();
   int repeat_times_size = repeat_times_data.size();

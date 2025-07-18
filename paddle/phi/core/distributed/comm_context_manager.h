@@ -26,6 +26,7 @@
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/backends/gpu/forwards.h"
+#include "paddle/phi/core/distributed/nccl_config.h"
 #endif
 
 #if defined(PADDLE_WITH_FLAGCX)
@@ -76,13 +77,15 @@ class CommContextManager {
   std::vector<int> GetGroupRanks(const std::string& pg_key) const;
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  static void CreateNCCLCommContext(const std::shared_ptr<Store>& store,
-                                    const std::string& unique_comm_key,
-                                    int rank,
-                                    int size,
-                                    const std::string& hash_key = "",
-                                    const P2POption* opt = nullptr,
-                                    int nccl_comm_init_option = 0);
+  static void CreateNCCLCommContext(
+      const std::shared_ptr<Store>& store,
+      const std::string& unique_comm_key,
+      int rank,
+      int size,
+      const std::string& hash_key = "",
+      const P2POption* opt = nullptr,
+      int nccl_comm_init_option = 0,
+      std::shared_ptr<phi::distributed::NCCLConfig> nccl_config_ptr = nullptr);
   static void RecreateNCCLComm(const std::shared_ptr<Store>& store,
                                const std::string& unique_comm_key,
                                int rank,

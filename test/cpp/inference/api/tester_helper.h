@@ -381,7 +381,9 @@ std::unique_ptr<PaddlePredictor> CreateTestPredictor(
   return CreatePaddlePredictor<NativeConfig>(native_config);
 }
 
-size_t GetSize(const PaddleTensor &out) { return VecReduceToInt(out.shape); }
+size_t GetSize(const PaddleTensor &out) {
+  return static_cast<size_t>(VecReduceToInt(out.shape));
+}
 
 void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
                        const std::string &dirname,

@@ -356,11 +356,13 @@ class BernoulliTestError(unittest.TestCase):
         ]
     )
     def test_bad_init_type(self, probs):
-        with paddle.static.program_guard(self.program):
-            with self.assertRaises(TypeError):
-                [_] = self.executor.run(
-                    self.program, feed={}, fetch_list=[Bernoulli(probs=probs)]
-                )
+        with (
+            paddle.static.program_guard(self.program),
+            self.assertRaises(TypeError),
+        ):
+            [_] = self.executor.run(
+                self.program, feed={}, fetch_list=[Bernoulli(probs=probs)]
+            )
 
     @parameterize_func(
         [

@@ -38,7 +38,7 @@ template <typename Context,
           typename IndexT,
           typename equal_T,
           typename not_equal_T>
-static void UniqueConsecutiveFlattenedCUDATensor(const Context& context,
+static void UniqueConsecutiveFlattenedCUDATensor(const Context& dev_ctx,
                                                  const DenseTensor& in,
                                                  DenseTensor* out,
                                                  bool return_inverse,
@@ -50,23 +50,23 @@ static void UniqueConsecutiveFlattenedCUDATensor(const Context& context,
                                                  DenseTensor* counts) {
   // 0. Preparation
   DenseTensor in_hat;
-  phi::Copy(context, in, context.GetPlace(), false, &in_hat);
-  auto in_data_hat = context.template Alloc<InT>(&in_hat);
+  phi::Copy(dev_ctx, in, dev_ctx.GetPlace(), false, &in_hat);
+  auto in_data_hat = dev_ctx.template Alloc<InT>(&in_hat);
 
   DenseTensor sorted_indices;
   sorted_indices.Resize(common::make_ddim({num_input}));
-  auto sorted_indices_data = context.template Alloc<IndexT>(&sorted_indices);
+  auto sorted_indices_data = dev_ctx.template Alloc<IndexT>(&sorted_indices);
   thrust::sequence(
       thrust::device, sorted_indices_data, sorted_indices_data + num_input);
   // 1. Calculate op result: 'out'
   DenseTensor range;
   range.Resize(common::make_ddim({num_input + 1}));
-  auto range_data_ptr = context.template Alloc<IndexT>(&range);
+  auto range_data_ptr = dev_ctx.template Alloc<IndexT>(&range);
   thrust::sequence(
       thrust::device, range_data_ptr, range_data_ptr + num_input + 1);
-  phi::Copy(context, in_hat, context.GetPlace(), false, out);
+  phi::Copy(dev_ctx, in_hat, dev_ctx.GetPlace(), false, out);
   int num_out;
-  auto out_data = context.template Alloc<InT>(out);
+  auto out_data = dev_ctx.template Alloc<InT>(out);
   num_out =
       thrust::unique_by_key(
           thrust::device, out_data, out_data + num_input, range_data_ptr, equal)
@@ -77,10 +77,10 @@ static void UniqueConsecutiveFlattenedCUDATensor(const Context& context,
   // 2. Calculate inverse index: 'inverse'
   if (return_inverse) {
     inverse->Resize(common::make_ddim({num_input}));
-    auto inverse_data = context.template Alloc<IndexT>(inverse);
+    auto inverse_data = dev_ctx.template Alloc<IndexT>(inverse);
     DenseTensor inv_loc;
     inv_loc.Resize(common::make_ddim({num_input}));
-    auto inv_loc_data_ptr = context.template Alloc<IndexT>(&inv_loc);
+    auto inv_loc_data_ptr = dev_ctx.template Alloc<IndexT>(&inv_loc);
     thrust::adjacent_difference(thrust::device,
                                 in_data_hat,
                                 in_data_hat + num_input,
@@ -101,7 +101,7 @@ static void UniqueConsecutiveFlattenedCUDATensor(const Context& context,
   // 3. Calculate 'counts'
   if (return_counts) {
     counts->Resize(common::make_ddim({num_out}));
-    auto count_data = context.template Alloc<IndexT>(counts);
+    auto count_data = dev_ctx.template Alloc<IndexT>(counts);
     // init 'count_data' as 0
     thrust::fill(thrust::device, count_data, count_data + num_out, 0);
     thrust::device_ptr<IndexT> range_data_ptr_dev(range_data_ptr);
@@ -116,7 +116,7 @@ static void UniqueConsecutiveFlattenedCUDATensor(const Context& context,
 // functor for processing a flattened Tensor
 template <typename Context, typename InT>
 struct UniqueConsecutiveFlattenedCUDAFunctor {
-  const Context& ctx_;
+  const Context& dev_ctx_;
   const DenseTensor& in_;
   DenseTensor* out_;
   const bool return_inverse_;
@@ -124,14 +124,14 @@ struct UniqueConsecutiveFlattenedCUDAFunctor {
   DenseTensor* inverse_;
   DenseTensor* count_;
 
-  UniqueConsecutiveFlattenedCUDAFunctor(const Context& context,
+  UniqueConsecutiveFlattenedCUDAFunctor(const Context& dev_ctx,
                                         const DenseTensor& in,
                                         DenseTensor* out,
                                         bool return_inverse,
                                         bool return_counts,
                                         DenseTensor* inverse,
                                         DenseTensor* count)
-      : ctx_(context),
+      : dev_ctx_(dev_ctx),
         in_(in),
         out_(out),
         return_inverse_(return_inverse),
@@ -142,7 +142,7 @@ struct UniqueConsecutiveFlattenedCUDAFunctor {
   template <typename IndexT>
   void apply() const {
     UniqueConsecutiveFlattenedCUDATensor<Context, InT, IndexT>(
-        ctx_,
+        dev_ctx_,
         in_,
         out_,
         return_inverse_,
@@ -162,7 +162,7 @@ template <typename Context,
           typename IndexT,
           typename equal_T,
           typename not_equal_T>
-static void ComputeUniqueConsecutiveDims(const Context& context,
+static void ComputeUniqueConsecutiveDims(const Context& dev_ctx,
                                          DenseTensor* sorted_indices,
                                          IndexT* sorted_indices_data,
                                          DenseTensor* out,
@@ -180,10 +180,10 @@ static void ComputeUniqueConsecutiveDims(const Context& context,
   }
 
   inverse->Resize(common::make_ddim({row}));
-  auto inverse_data = context.template Alloc<IndexT>(inverse);
+  auto inverse_data = dev_ctx.template Alloc<IndexT>(inverse);
   DenseTensor inv_loc;
   inv_loc.Resize(common::make_ddim({row}));
-  auto inv_loc_data_ptr = context.template Alloc<IndexT>(&inv_loc);
+  auto inv_loc_data_ptr = dev_ctx.template Alloc<IndexT>(&inv_loc);
   thrust::adjacent_difference(thrust::device,
                               sorted_indices_data,
                               sorted_indices_data + row,
@@ -204,7 +204,7 @@ static void ComputeUniqueConsecutiveDims(const Context& context,
   // 2. sorted indices
   DenseTensor range;
   range.Resize(common::make_ddim({row + 1}));
-  auto range_data_ptr = context.template Alloc<IndexT>(&range);
+  auto range_data_ptr = dev_ctx.template Alloc<IndexT>(&range);
   thrust::sequence(thrust::device, range_data_ptr, range_data_ptr + row + 1);
   int num_out;
   num_out = thrust::unique_by_key(thrust::device,
@@ -221,7 +221,7 @@ static void ComputeUniqueConsecutiveDims(const Context& context,
   // 3. counts: 'counts'
   if (return_counts) {
     counts->Resize(common::make_ddim({num_out}));
-    auto count_data = context.template Alloc<IndexT>(counts);
+    auto count_data = dev_ctx.template Alloc<IndexT>(counts);
     thrust::fill(thrust::device, count_data, count_data + row, 0);
     thrust::adjacent_difference(thrust::device,
                                 range_data_ptr + 1,
@@ -274,7 +274,7 @@ struct BinaryNotEqual {
 
 // index_select() function for Tensor
 template <typename Context, typename InT, typename IndexT>
-void IndexSelect(const Context& context,
+void IndexSelect(const Context& dev_ctx,
                  const DenseTensor& input,
                  const DenseTensor& index,
                  DenseTensor* output,
@@ -300,8 +300,8 @@ void IndexSelect(const Context& context,
 
   std::vector<InT> input_vec;
   std::vector<IndexT> index_vec;
-  phi::TensorToVector(input, context, &input_vec);
-  phi::TensorToVector(index, context, &index_vec);
+  phi::TensorToVector(input, dev_ctx, &input_vec);
+  phi::TensorToVector(index, dev_ctx, &index_vec);
   std::vector<InT> out_vec(output->numel());
 
   for (int i = 0; i < index_size; i++) {
@@ -342,14 +342,14 @@ void IndexSelect(const Context& context,
       }
     }
   }
-  context.template Alloc<InT>(output);
-  phi::TensorFromVector(out_vec, context, output);
+  dev_ctx.template Alloc<InT>(output);
+  phi::TensorFromVector(out_vec, dev_ctx, output);
   output->Resize(output_dim);
 }
 
 // Calculate unique consecutive when 'axis' is set
 template <typename Context, typename InT, typename IndexT>
-static void UniqueConsecutiveDimsCUDATensor(const Context& context,
+static void UniqueConsecutiveDimsCUDATensor(const Context& dev_ctx,
                                             const DenseTensor& in,
                                             DenseTensor* out,
                                             bool return_inverse,
@@ -369,9 +369,9 @@ static void UniqueConsecutiveDimsCUDATensor(const Context& context,
   DenseTensor in_trans;
   DDim in_trans_dims = common::make_ddim(in_trans_dims_vec);
   in_trans.Resize(in_trans_dims);
-  context.template Alloc<InT>(&in_trans);
+  dev_ctx.template Alloc<InT>(&in_trans);
   phi::funcs::TransCompute<Context, InT>(in.dims().size(),  // num of dims
-                                         context,           // device
+                                         dev_ctx,           // device
                                          in,                // original Tensor
                                          &in_trans,  // Tensor after reshape
                                          permute);   // index of axis
@@ -387,14 +387,14 @@ static void UniqueConsecutiveDimsCUDATensor(const Context& context,
 
   DenseTensor sorted_indices;
   sorted_indices.Resize(common::make_ddim({row}));
-  auto sorted_indices_data = context.template Alloc<IndexT>(&sorted_indices);
+  auto sorted_indices_data = dev_ctx.template Alloc<IndexT>(&sorted_indices);
 
   // 2. Calculate 'inverse', 'counts'
   // Init index
   thrust::sequence(
       thrust::device, sorted_indices_data, sorted_indices_data + row);
   ComputeUniqueConsecutiveDims<Context, InT, IndexT>(
-      context,
+      dev_ctx,
       &sorted_indices,
       sorted_indices_data,
       out,
@@ -411,25 +411,25 @@ static void UniqueConsecutiveDimsCUDATensor(const Context& context,
   std::vector<int64_t> out_trans_dims_vec = in_trans_dims_vec;
   out_trans_dims_vec[0] = sorted_indices.numel();
   out_trans.Resize(common::make_ddim(out_trans_dims_vec));
-  context.template Alloc<InT>(&out_trans);
+  dev_ctx.template Alloc<InT>(&out_trans);
 
   IndexSelect<Context, InT, IndexT>(
-      context, in_trans, sorted_indices, &out_trans, 0);
+      dev_ctx, in_trans, sorted_indices, &out_trans, 0);
 
   std::swap(out_trans_dims_vec[0], out_trans_dims_vec[axis]);
   out->Resize(common::make_ddim(out_trans_dims_vec));
-  context.template Alloc<InT>(out);
+  dev_ctx.template Alloc<InT>(out);
   std::vector<DenseTensor> out_trans_unbind = phi::funcs::Unbind(out_trans);
   phi::funcs::ConcatFunctor<Context, InT> concat_functor;
-  concat_functor(context, out_trans_unbind, 0, &out_trans);
+  concat_functor(dev_ctx, out_trans_unbind, 0, &out_trans);
   phi::funcs::TransCompute<Context, InT>(
-      out_trans.dims().size(), context, out_trans, out, permute);
+      out_trans.dims().size(), dev_ctx, out_trans, out, permute);
 }
 
 // functor for processing a multi-dimensional Tensor
 template <typename Context, typename InT>
 struct UniqueConsecutiveDimsCUDAFunctor {
-  const Context& ctx_;
+  const Context& dev_ctx_;
   const DenseTensor& in_;
   DenseTensor* out_;
   const int axis_;
@@ -438,7 +438,7 @@ struct UniqueConsecutiveDimsCUDAFunctor {
   DenseTensor* inverse_;
   DenseTensor* count_;
 
-  UniqueConsecutiveDimsCUDAFunctor(const Context& context,
+  UniqueConsecutiveDimsCUDAFunctor(const Context& dev_ctx,
                                    const DenseTensor& in,
                                    DenseTensor* out,
                                    const int axis,
@@ -446,7 +446,7 @@ struct UniqueConsecutiveDimsCUDAFunctor {
                                    bool return_counts,
                                    DenseTensor* inverse,
                                    DenseTensor* count)
-      : ctx_(context),
+      : dev_ctx_(dev_ctx),
         in_(in),
         out_(out),
         axis_(axis),
@@ -457,7 +457,7 @@ struct UniqueConsecutiveDimsCUDAFunctor {
 
   template <typename IndexT>
   void apply() const {
-    UniqueConsecutiveDimsCUDATensor<Context, InT, IndexT>(ctx_,
+    UniqueConsecutiveDimsCUDATensor<Context, InT, IndexT>(dev_ctx_,
                                                           in_,
                                                           out_,
                                                           return_inverse_,

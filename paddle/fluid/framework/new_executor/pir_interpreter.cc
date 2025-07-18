@@ -92,7 +92,7 @@ COMMON_DECLARE_bool(enable_pir_in_executor_trace_run);
 COMMON_DECLARE_bool(enable_collect_shape);
 COMMON_DECLARE_int32(low_precision_op_list);
 COMMON_DECLARE_bool(pir_interpreter_record_stream_for_gc_cache);
-COMMON_DECLARE_bool(enable_async_fast_gc);
+COMMON_DECLARE_bool(async_fast_eager_deletion_mode);
 
 #define CREATE_INSTR(instr_name)                                   \
   vec_instruction_base_.emplace_back(std::make_unique<instr_name>( \
@@ -887,7 +887,7 @@ void PirInterpreter::BuildInstruction() {
         CREATE_INSTR(SelectInputInstruction);
       } else if (op.isa<paddle::dialect::SelectOutputOp>()) {
         CREATE_INSTR(SelectOutputInstruction);
-#ifdef PADDLE_WITH_CUDA || defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_CUDA
       } else if (op.isa<paddle::dialect::CudaGraphOp>()) {
         auto cuda_graph_instr_ptr =
             std::make_unique<CudaGraphInstruction>(op_idx++,
@@ -1329,7 +1329,7 @@ void PirInterpreter::CheckGC(InstructionBase* instr) {
     if (is_ready) {
       VLOG(6) << "Async delete variable with name : "
               << value_exe_info_->GetNameById(static_cast<int>(var_id));
-      if (use_trace_run_ && FLAGS_enable_async_fast_gc) {
+      if (use_trace_run_ && FLAGS_async_fast_eager_deletion_mode) {
         gc_vars.push_back(refs_[var_id]->Var());
       } else {
         gc_->Add(refs_[var_id]->Var(), instr);
@@ -1337,7 +1337,7 @@ void PirInterpreter::CheckGC(InstructionBase* instr) {
     }
   }
 
-  if (use_trace_run_ && FLAGS_enable_async_fast_gc) {
+  if (use_trace_run_ && FLAGS_async_fast_eager_deletion_mode) {
     async_gc_->Add(gc_vars);
   }
 
@@ -1663,9 +1663,13 @@ void PirInterpreter::TraceRunImpl() {
     gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_base_);
   }
 
-  if (FLAGS_enable_async_fast_gc) {
-    async_gc_ = std::make_unique<InterpreterCoreAsyncFastGarbageCollector>(
-        vec_instruction_base_.size());
+  if (FLAGS_async_fast_eager_deletion_mode) {
+    if (!async_gc_) {
+      async_gc_ = std::make_unique<InterpreterCoreAsyncFastGarbageCollector>(
+          vec_instruction_base_.size());
+    } else {
+      async_gc_->Reset(vec_instruction_base_.size());
+    }
   }
 
   interpreter::ResetAtomicGuard guard(&deps_, &refs_);

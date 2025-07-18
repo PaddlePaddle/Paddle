@@ -39,45 +39,49 @@ class TestExecutor(unittest.TestCase):
         main_program = base.Program()
         startup_program = base.Program()
         scope = base.Scope()
-        with base.program_guard(main_program, startup_program):
-            with base.scope_guard(scope):
-                cpu = base.CPUPlace()
-                exe = base.Executor(cpu)
-                lr, cost = self.net()
-                exe.run(startup_program)
-                train_data = [[1.0], [2.0], [3.0], [4.0]]
-                y_true = [[2.0], [4.0], [6.0], [8.0]]
-                a = 0
-                with self.assertRaises(ValueError):
-                    exe.run(
-                        feed={'x': train_data, 'lr': a},
-                        fetch_list=[lr, cost],
-                        return_numpy=False,
-                        use_prune=True,
-                    )
+        with (
+            base.program_guard(main_program, startup_program),
+            base.scope_guard(scope),
+        ):
+            cpu = base.CPUPlace()
+            exe = base.Executor(cpu)
+            lr, cost = self.net()
+            exe.run(startup_program)
+            train_data = [[1.0], [2.0], [3.0], [4.0]]
+            y_true = [[2.0], [4.0], [6.0], [8.0]]
+            a = 0
+            with self.assertRaises(ValueError):
+                exe.run(
+                    feed={'x': train_data, 'lr': a},
+                    fetch_list=[lr, cost],
+                    return_numpy=False,
+                    use_prune=True,
+                )
 
     def test_compiled_program_check_feed(self):
         main_program = base.Program()
         startup_program = base.Program()
         scope = base.Scope()
-        with base.program_guard(main_program, startup_program):
-            with base.scope_guard(scope):
-                cpu = base.CPUPlace()
-                exe = base.Executor(cpu)
-                lr, cost = self.net()
-                exe.run(startup_program)
-                compiled_prog = base.CompiledProgram(main_program)
-                train_data = [[1.0], [2.0], [3.0], [4.0]]
-                y_true = [[2.0], [4.0], [6.0], [8.0]]
-                a = 0
-                with self.assertRaises(ValueError):
-                    exe.run(
-                        compiled_prog,
-                        feed={'x': train_data, 'lr': a},
-                        fetch_list=[lr, cost],
-                        return_numpy=False,
-                        use_prune=True,
-                    )
+        with (
+            base.program_guard(main_program, startup_program),
+            base.scope_guard(scope),
+        ):
+            cpu = base.CPUPlace()
+            exe = base.Executor(cpu)
+            lr, cost = self.net()
+            exe.run(startup_program)
+            compiled_prog = base.CompiledProgram(main_program)
+            train_data = [[1.0], [2.0], [3.0], [4.0]]
+            y_true = [[2.0], [4.0], [6.0], [8.0]]
+            a = 0
+            with self.assertRaises(ValueError):
+                exe.run(
+                    compiled_prog,
+                    feed={'x': train_data, 'lr': a},
+                    fetch_list=[lr, cost],
+                    return_numpy=False,
+                    use_prune=True,
+                )
 
 
 if __name__ == '__main__':

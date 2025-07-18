@@ -316,7 +316,7 @@ class FwdKernel:
     def get_all(cls) -> list[FwdKernel]:
         kernels: list[FwdKernel] = []
         for aligned, dtype, (sm, sm_max) in itertools.product(
-            [True, False], DTYPES.keys(), zip(SM, SM[1:] + [args.max_arch])
+            [True, False], DTYPES.keys(), zip(SM, [*SM[1:], args.max_arch])
         ):
             # Remove some kernels we don't use
             if dtype == "bf16" and sm < 80:

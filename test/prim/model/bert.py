@@ -364,7 +364,7 @@ class BertModel(nn.Layer):
             else:
                 sequence_output = encoder_outputs[0]
                 pooled_output = self.pooler(sequence_output)
-                return (sequence_output, pooled_output) + encoder_outputs[1:]
+                return (sequence_output, pooled_output, *encoder_outputs[1:])
 
 
 class Bert(nn.Layer):
@@ -423,7 +423,7 @@ class Bert(nn.Layer):
                 )
                 total_loss = masked_lm_loss + next_sentence_loss
 
-            output = (prediction_scores, seq_relationship_score) + outputs[2:]
+            output = (prediction_scores, seq_relationship_score, *outputs[2:])
             return ((total_loss, *output)) if total_loss is not None else output
 
 
@@ -510,7 +510,7 @@ def _transformer_encoder_layer_fwd(
         src = self.norm2(src)
 
     return (
-        src if outputs is None else ((src,) + outputs[::-1])
+        src if outputs is None else ((src, *outputs[::-1]))
     )  # hidden_states, cache, attentions
 
 

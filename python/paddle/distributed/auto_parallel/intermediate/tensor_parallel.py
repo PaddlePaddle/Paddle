@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from paddle.nn import Layer
 
 
-def c_split(x, process_mesh, need_transpose):
+def c_split(x, process_mesh, need_transpose, split_type="sp"):
     mp_index = process_mesh.dim_names.index('mp')  # get the axis for the split
     dp_index = process_mesh.dim_names.index('dp')
     if isinstance(x, tuple):
@@ -44,17 +44,23 @@ def c_split(x, process_mesh, need_transpose):
     placements = target_x.placements
     if placements is None:
         placements = [dist.Replicate() for _ in range(len(process_mesh.shape))]
-    if placements[dp_index] == dist.Shard(0):
-        # NOTE(zhangwl):if shard(0) , input shape should be [b,s,h]
-        split_dims = dist.Shard(1)
-    elif placements[dp_index] == dist.Shard(1):
-        # NOTE(zhangwl):if shard(1) , input shape should be [s,b,h]
-        split_dims = dist.Shard(0)
+    if split_type == "sp":
+        if placements[dp_index] == dist.Shard(0):
+            # NOTE(zhangwl):if shard(0) , input shape should be [b,s,h]
+            split_dims = dist.Shard(1)
+        elif placements[dp_index] == dist.Shard(1):
+            # NOTE(zhangwl):if shard(1) , input shape should be [s,b,h]
+            split_dims = dist.Shard(0)
+        else:
+            logging.warning(
+                f"parallel api don't know {target_x.shape} which dimension is batch, default is to cut to the 0th dimension"
+            )
+            split_dims = dist.Shard(0)
+    elif split_type == "mp":
+        split_dims = dist.Shard(2)  # split h [b,s,h]
     else:
-        logging.warning(
-            f"parallel api don't know {target_x.shape} which dimension is batch, default is to cut to the 0th dimension"
-        )
-        split_dims = dist.Shard(0)
+        raise ValueError(f"Unsupported split type {split_type}")
+
     placements[mp_index] = split_dims
     target_x = dist.reshard(target_x, process_mesh, placements)
     if isinstance(x, tuple):
@@ -251,7 +257,7 @@ class RowWiseParallel(PlanBase):
 
     def split_input_hook(self, process_mesh):
         def split_hook(layer, input):
-            return c_split(input, process_mesh, False)
+            return c_split(input, process_mesh, False, split_type="mp")
 
         return split_hook
 

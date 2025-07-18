@@ -316,14 +316,15 @@ bool ApOpFacadeOpInferSymbolicShape(
     pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
   const auto& ret = TryApOpFacadeOpInferSymbolicShape(op, infer_context);
   bool success = !ret.HasError();
-  PADDLE_ENFORCE_EQ(success,
-                    true,
-                    phi::errors::Fatal("ApOpFacadeOpInferSymbolicShape failed. "
-                                       "\nTraceback (most recent call "
-                                       "last):\n%s\n%s: %s. ",
-                                       ret.GetError().CallStackToString(),
-                                       ret.GetError().class_name(),
-                                       ret.GetError().msg()));
+  PADDLE_ENFORCE_EQ(
+      success,
+      true,
+      common::errors::Fatal("ApOpFacadeOpInferSymbolicShape failed. "
+                            "\nTraceback (most recent call "
+                            "last):\n%s\n%s: %s. ",
+                            ret.GetError().CallStackToString(),
+                            ret.GetError().class_name(),
+                            ret.GetError().msg()));
   return success;
 }
 
@@ -334,12 +335,12 @@ bool PdOpApFacadeOpInferSymbolicShape(
   PADDLE_ENFORCE_EQ(
       success,
       true,
-      phi::errors::Fatal("PdOpApFacadeOpInferSymbolicShape failed. "
-                         "\nTraceback (most recent call "
-                         "last):\n%s\n%s: %s. ",
-                         ret.GetError().CallStackToString(),
-                         ret.GetError().class_name(),
-                         ret.GetError().msg()));
+      common::errors::Fatal("PdOpApFacadeOpInferSymbolicShape failed. "
+                            "\nTraceback (most recent call "
+                            "last):\n%s\n%s: %s. ",
+                            ret.GetError().CallStackToString(),
+                            ret.GetError().class_name(),
+                            ret.GetError().msg()));
   return success;
 }
 
@@ -350,7 +351,7 @@ bool PdOpApVariadicOpInferSymbolicShape(
   PADDLE_ENFORCE_EQ(
       success,
       true,
-      phi::errors::Fatal(
+      common::errors::Fatal(
           "PdOpApVariadicOpInferSymbolicShape failed. \nTraceback (most "
           "recent call "
           "last):\n%s\n%s: %s. ",

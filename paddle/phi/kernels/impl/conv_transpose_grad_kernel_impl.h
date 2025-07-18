@@ -18,6 +18,7 @@
 #include "paddle/common/layout.h"
 #include "paddle/phi/kernels/conv_transpose_grad_kernel.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/im2col.h"
@@ -45,6 +46,26 @@ void ConvTransposeGradRawKernel(const Context& dev_ctx,
   DenseTensor filter_ = filter;
 
   if ((!dx) && (!dfilter)) {
+    return;
+  }
+
+  // 0-size
+  if (x.numel() == 0) {
+    if (dx) dev_ctx.template Alloc<T>(dx);
+    if (dfilter) {
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(dfilter->dims())),
+                            0,
+                            dfilter);
+    }
+    return;
+  }
+  if (filter.numel() == 0) {
+    if (dfilter) dev_ctx.template Alloc<T>(dfilter);
+    if (dx) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+    }
     return;
   }
 

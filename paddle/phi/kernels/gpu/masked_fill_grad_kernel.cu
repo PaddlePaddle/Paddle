@@ -155,6 +155,7 @@ void DispatchMaskFillGradKernel(
       CASE_VECSIZE(1)
       CASE_VECSIZE(2)
       CASE_VECSIZE(4)
+      CASE_VECSIZE(8)
 #undef CASE_VECSIZE
       default:
         PADDLE_THROW(common::errors::Unimplemented(
@@ -171,6 +172,7 @@ void DispatchMaskFillGradKernel(
       CASE_VECSIZE(1)
       CASE_VECSIZE(2)
       CASE_VECSIZE(4)
+      CASE_VECSIZE(8)
 #undef CASE_VECSIZE
       default:
         PADDLE_THROW(common::errors::Unimplemented(
@@ -187,6 +189,7 @@ void DispatchMaskFillGradKernel(
       CASE_VECSIZE(1)
       CASE_VECSIZE(2)
       CASE_VECSIZE(4)
+      CASE_VECSIZE(8)
 #undef CASE_VECSIZE
       default:
         PADDLE_THROW(common::errors::Unimplemented(
@@ -217,6 +220,7 @@ void DispatchMaskFillOneValueGradKernel(
       CASE_VECSIZE(1)
       CASE_VECSIZE(2)
       CASE_VECSIZE(4)
+      CASE_VECSIZE(8)
 #undef CASE_VECSIZE
       default:
         PADDLE_THROW(common::errors::Unimplemented(
@@ -241,7 +245,7 @@ void GPUMaskedFillGrad(const phi::GPUContext& dev_ctx,
   int64_t mask_len = mask.numel();
   int batch_size = input_len / mask_len;
 
-  int vec_size = 4;
+  int vec_size = 8;
   vec_size = std::min(phi::GetVectorizedSize(out_grad_data), vec_size);
   if (x_grad && x_grad->initialized()) {
     x_grad_data = x_grad->data<T>();
@@ -303,13 +307,14 @@ void MaskedFillGradKernel(const Context& dev_ctx,
                           DenseTensor* x_grad,
                           DenseTensor* v_grad) {
   if (out_grad.numel() == 0 || mask.numel() == 0) {
-    if (x_grad != nullptr) {
-      x_grad->Resize({0});
-      dev_ctx.template Alloc<T>(x_grad);
+    // x shape [2, 1, 3], mask shape [2, 0, 3], x_grad shape [2, 1, 3]
+    if (x_grad) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
     }
-    if (v_grad != nullptr) {
-      v_grad->Resize({0});
-      dev_ctx.template Alloc<T>(v_grad);
+    if (v_grad) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(v_grad->dims())), 0, v_grad);
     }
     return;
   }

@@ -155,8 +155,8 @@ def set_item_bench(
     torch.cuda.synchronize()
 
     for i in range(n_repeat):
-        start_event[i].record()
         cpu_start = time.perf_counter_ns()
+        start_event[i].record()
         y[index_t] = y_value
         end_event[i].record()
         torch.cuda.synchronize()
@@ -256,8 +256,8 @@ def get_item_bench(
     torch.cuda.synchronize()
     print("torch out shape ", torch_z.shape)
     for i in range(n_repeat):
-        start_event[i].record()
         cpu_start = time.perf_counter_ns()
+        start_event[i].record()
         torch_z = y[index_t]
         end_event[i].record()
         torch.cuda.synchronize()
@@ -397,8 +397,8 @@ def set_item_grad_bench(
     torch.cuda.synchronize()
 
     for i in range(n_repeat):
-        start_event[i].record()
         cpu_start = time.perf_counter_ns()
+        start_event[i].record()
         grad_y = torch.autograd.grad(
             [torch_z], [y], grad_outputs=grad_outputs, retain_graph=True
         )
@@ -510,8 +510,8 @@ def get_item_grad_bench(
     torch.cuda.synchronize()
 
     for i in range(n_repeat):
-        start_event[i].record()
         cpu_start = time.perf_counter_ns()
+        start_event[i].record()
         grad_y = torch.autograd.grad(
             [torch_z], [y], grad_outputs=grad_outputs, retain_graph=True
         )

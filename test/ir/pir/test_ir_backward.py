@@ -266,15 +266,15 @@ class TestBackward_4(unittest.TestCase):
             def true_func():
                 y = double_x * 3
                 out = grad(y, x)
-                filted_dx = [dxi for dxi in out if dxi is not None]
-                grad_x = filted_dx
+                filtered_dx = [dxi for dxi in out if dxi is not None]
+                grad_x = filtered_dx
                 return grad_x
 
             def false_func():
                 y = double_x * 4
                 out = grad(y, x)
-                filted_dx = [dxi for dxi in out if dxi is not None]
-                grad_x = filted_dx
+                filtered_dx = [dxi for dxi in out if dxi is not None]
+                grad_x = filtered_dx
                 return grad_x
 
             out = paddle.static.nn.cond(pred, true_func, false_func)

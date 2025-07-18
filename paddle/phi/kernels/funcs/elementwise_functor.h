@@ -751,6 +751,70 @@ struct RemainderFunctor<dtype::bfloat16> {
   }
 };
 
+/**
+ * Remainder for complex number rule
+ * Regarding a and b is gaussian integer, then
+ * r = mod(a, b) = a - b * round(a/b)
+ * and a, b is complex number
+ */
+template <typename T>
+struct RemainderFunctor<ComplexType<T>> {
+  inline HOSTDEVICE ComplexType<T> operator()(ComplexType<T> a,
+                                              ComplexType<T> b) const {
+    // remainder = z1 - q_rounded * z2
+    T a__ = a.real;
+    T b__ = a.imag;
+    T c__ = b.real;
+    T d__ = b.imag;
+
+    // (a + bi) / (c + di) = (ac + bd)/(c^2 + d^2) + (bc - ad)/(c^2 + d^2) i
+    // the calculation below follows numpy's complex division
+#if defined(__GNUC___) && !defined(__clang__)
+    // std::abs is already constexpr by gcc
+    auto abs_c = std::abs(c__);
+    auto abs_d = std::abs(d__);
+#else
+    auto abs_c = c__ < 0 ? -c__ : c__;
+    auto abs_d = d__ < 0 ? -d__ : d__;
+#endif
+
+    T real_, imag_;
+    if (abs_c >= abs_d) {
+      if (abs_c == T(0) && abs_d == T(0)) {
+        /* divide by zeros should yield a complex inf or nan */
+        real_ = a__ / abs_c;
+        imag_ = b__ / abs_d;
+      } else {
+        auto rat = d__ / c__;
+        auto scl = T(1.0) / (c__ + d__ * rat);
+        real_ = (a__ + b__ * rat) * scl;
+        imag_ = (b__ - a__ * rat) * scl;
+      }
+    } else {
+      auto rat = c__ / d__;
+      auto scl = T(1.0) / (d__ + c__ * rat);
+      real_ = (a__ * rat + b__) * scl;
+      imag_ = (b__ * rat - a__) * scl;
+    }
+    auto q = ComplexType<T>(real_, imag_);
+
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+    const auto& q_rounded = ComplexType<T>(round(q.real), round(q.imag));
+#else
+    const auto& q_rounded =
+        ComplexType<T>(std::round(q.real), std::round(q.imag));
+#endif
+    const auto& a_ = q_rounded.real;
+    const auto& b_ = q_rounded.imag;
+    const auto& c = b.real;
+    const auto& d = b.imag;
+    const auto& t_real_ = a_ * c - b_ * d;
+    const auto& t_imag_ = a_ * d + b_ * c;
+    auto remainder = ComplexType<T>(a.real - t_real_, a.imag - t_imag_);
+    return remainder;
+  }
+};
+
 // RemainderGradXFunctor
 template <typename T>
 struct RemainderGradXFunctor {
@@ -876,6 +940,72 @@ struct InverseRemainderFunctor<
     T res = fmod(b, a);
     if ((res != 0) && ((a < 0) != (res < 0))) res += a;
     return res;
+  }
+};
+
+/**
+ * Remainder for complex number rule
+ * Regarding a and b is gaussian integer, then
+ * r = mod(a, b) = a - b * round(a/b)
+ * and a, b is complex number
+ */
+template <typename T>
+struct InverseRemainderFunctor<
+    ComplexType<T>,
+    typename std::enable_if_t<std::is_floating_point<T>::value>> {
+  inline HOSTDEVICE ComplexType<T> operator()(ComplexType<T> b,
+                                              ComplexType<T> a) const {
+    // remainder = z1 - q_rounded * z2
+    T a__ = a.real;
+    T b__ = a.imag;
+    T c__ = b.real;
+    T d__ = b.imag;
+
+    // (a + bi) / (c + di) = (ac + bd)/(c^2 + d^2) + (bc - ad)/(c^2 + d^2) i
+    // the calculation below follows numpy's complex division
+#if defined(__GNUC___) && !defined(__clang__)
+    // std::abs is already constexpr by gcc
+    auto abs_c = std::abs(c__);
+    auto abs_d = std::abs(d__);
+#else
+    auto abs_c = c__ < 0 ? -c__ : c__;
+    auto abs_d = d__ < 0 ? -d__ : d__;
+#endif
+
+    T real_, imag_;
+    if (abs_c >= abs_d) {
+      if (abs_c == T(0) && abs_d == T(0)) {
+        /* divide by zeros should yield a complex inf or nan */
+        real_ = a__ / abs_c;
+        imag_ = b__ / abs_d;
+      } else {
+        auto rat = d__ / c__;
+        auto scl = T(1.0) / (c__ + d__ * rat);
+        real_ = (a__ + b__ * rat) * scl;
+        imag_ = (b__ - a__ * rat) * scl;
+      }
+    } else {
+      auto rat = c__ / d__;
+      auto scl = T(1.0) / (d__ + c__ * rat);
+      real_ = (a__ * rat + b__) * scl;
+      imag_ = (b__ * rat - a__) * scl;
+    }
+    auto q = ComplexType<T>(real_, imag_);
+
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+    const auto& q_rounded = ComplexType<T>(round(q.real), round(q.imag));
+#else
+    const auto& q_rounded =
+        ComplexType<T>(std::round(q.real), std::round(q.imag));
+#endif
+    const auto& a_ = q_rounded.real;
+    const auto& b_ = q_rounded.imag;
+    const auto& c = b.real;
+    const auto& d = b.imag;
+    const auto& t_real_ = a_ * c - b_ * d;
+    const auto& t_imag_ = a_ * d + b_ * c;
+    auto remainder = ComplexType<T>(a.real - t_real_, a.imag - t_imag_);
+    return remainder;
   }
 };
 

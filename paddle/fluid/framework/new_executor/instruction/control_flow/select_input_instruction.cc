@@ -18,6 +18,8 @@
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/framework/var_type.h"
 
+COMMON_DECLARE_bool(check_cuda_error);
+
 namespace paddle::framework {
 
 SelectInputInstruction::SelectInputInstruction(
@@ -124,6 +126,10 @@ class AssignFunctor {
 
 void SelectInputInstruction::Run() {
   VLOG(6) << "run select_input instruction";
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("SelectInputInstruction begin");
+  }
+
   auto &mask = mask_->Get<phi::DenseTensor>();
   size_t output_branch = static_cast<size_t>(GetBranchNumber(mask));
   PADDLE_ENFORCE_LT(
@@ -137,6 +143,9 @@ void SelectInputInstruction::Run() {
           inputs_.size()));
   Variable *selected = inputs_[output_branch];
   VisitVarType(*selected, AssignFunctor(out_));
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("SelectInputInstruction finish");
+  }
 }
 
 }  // namespace paddle::framework
