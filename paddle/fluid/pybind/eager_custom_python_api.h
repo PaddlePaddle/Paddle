@@ -82,19 +82,18 @@ static PyObject *eager_api_run_program(PyObject *self,
                                        PyObject *kwargs) {
   PyThreadState *tstate = nullptr;
   try {
-    auto &X =
-        GetTensorListFromArgsWithoutMalloc("run_program", "X", args, 0, true);
-
-    auto &Params = GetTensorListFromArgsWithoutMalloc(
+    TensorListProcessor X_processor("run_program", "X", args, 0, true);
+    auto &X = X_processor.get_tensor_list();
+    TensorListProcessor Params_processor(
         "run_program", "Params", args, 1, true);
+    auto &Params = Params_processor.get_tensor_list();
+
     auto OutScope =
         GetScopePtrListFromArgs("run_program", "OutScope", args, 2, false);
     const phi::distributed::ProcessMesh *mesh = nullptr;
     if (InputsContainDistTensor(&mesh, X, Params)) {
-      X = GetTensorListFromArgsWithoutMalloc(
-          "run_program", "X", args, 0, true, mesh);
-      Params = GetTensorListFromArgsWithoutMalloc(
-          "run_program", "Params", args, 1, true, mesh);
+      X = X_processor.update_tensor_list(mesh);
+      Params = Params_processor.update_tensor_list(mesh);
     }
     framework::AttributeMap attrs;
     VLOG(6) << "Start PIR ConstructAttrMapFromPyArgs";
@@ -103,7 +102,6 @@ static PyObject *eager_api_run_program(PyObject *self,
     VLOG(6) << "Finish Pir ConstructAttrMapFromPyArgs";
     tstate = PyEval_SaveThread();
     auto out = egr::to_static::run_program_ad_func(X, Params, OutScope, attrs);
-    ClearTensorVectorState(&X, &Params);
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
     return ToPyObject(out);

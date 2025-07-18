@@ -50,13 +50,6 @@ namespace pybind {
 
 namespace py = ::pybind11;
 
-using TensorVectorMap =
-    std::unordered_multimap<size_t,
-                            std::pair<bool, std::vector<paddle::Tensor>>>;
-using TensorVectorMapIter = std::unordered_multimap<
-    size_t,
-    std::pair<bool, std::vector<paddle::Tensor>>>::iterator;
-
 template <typename T>
 static T PyObjectCast(PyObject* obj) {
   try {
@@ -400,19 +393,6 @@ paddle::optional<std::vector<paddle::Tensor>> GetOptionalTensorListFromArgs(
     bool dispensable = false,
     const phi::distributed::ProcessMesh* mesh = nullptr);
 
-TensorVectorMap& GetTensorVectorMap();
-
-void ClearTensorVectorState(std::vector<paddle::Tensor>* x,
-                            std::vector<paddle::Tensor>* params);
-
-std::vector<paddle::Tensor>& GetTensorListFromArgsWithoutMalloc(
-    const std::string& op_type,
-    const std::string& arg_name,
-    PyObject* args,
-    ssize_t arg_idx,
-    bool dispensable = false,
-    const phi::distributed::ProcessMesh* mesh = nullptr);
-
 std::vector<paddle::Tensor> GetTensorListFromArgs(
     const std::string& op_type,
     const std::string& arg_name,
@@ -464,6 +444,62 @@ class eager_gil_scoped_release {
 
  private:
   PyThreadState* tstate{nullptr};
+};
+
+class TensorListBufferAllocator {
+ private:
+  struct TensorListBuffer {
+    bool is_available;
+    std::vector<paddle::Tensor> buffer;
+    TensorListBuffer() = default;
+    explicit TensorListBuffer(ssize_t len) : buffer(len), is_available(true) {}
+  };
+
+  using MapType =
+      std::unordered_multimap<ssize_t, std::unique_ptr<TensorListBuffer>>;
+  using MapIterType = MapType::iterator;
+
+  ssize_t key_;
+  TensorListBuffer* buffer_ptr_ = nullptr;
+  static MapType s_tensor_vector_map_;
+
+ public:
+  explicit TensorListBufferAllocator(ssize_t len);
+  ~TensorListBufferAllocator();
+  std::vector<paddle::Tensor>& get() { return buffer_ptr_->buffer; }
+  TensorListBufferAllocator(const TensorListBufferAllocator&) = delete;
+  TensorListBufferAllocator& operator=(const TensorListBufferAllocator&) =
+      delete;
+};
+
+class TensorListProcessor {
+ public:
+  TensorListProcessor(const std::string& op_type,
+                      const std::string& arg_name,
+                      PyObject* args,
+                      ssize_t arg_idx,
+                      bool dispensable,
+                      const phi::distributed::ProcessMesh* mesh = nullptr);
+
+  std::vector<paddle::Tensor>& get_tensor_list();
+  std::vector<paddle::Tensor>& update_tensor_list(
+      const phi::distributed::ProcessMesh* mesh);
+
+  TensorListProcessor(const TensorListProcessor&) = delete;
+  TensorListProcessor& operator=(const TensorListProcessor&) = delete;
+  TensorListProcessor(TensorListProcessor&&) = delete;
+  TensorListProcessor& operator=(TensorListProcessor&&) = delete;
+
+ private:
+  PyObject* list_obj_ = nullptr;
+  ssize_t list_len_;
+  std::unique_ptr<TensorListBufferAllocator> allocator_ptr_;
+  std::string op_type_;
+  std::string arg_name_;
+  ssize_t arg_idx_;
+  // const phi::distributed::ProcessMesh* mesh_;
+  void GetTensorListFromArgsWithBuffer(
+      const phi::distributed::ProcessMesh* mesh);
 };
 
 /* ------------------ for SetStaticOpArgPreCastHook ----------------------- */
