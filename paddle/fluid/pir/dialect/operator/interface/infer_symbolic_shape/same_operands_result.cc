@@ -139,6 +139,8 @@ OP_SAME_OPERANDS_AND_RESULT(Relu)
 OP_SAME_OPERANDS_AND_RESULT(Relu6)
 OP_SAME_OPERANDS_AND_RESULT(Relu_)
 OP_SAME_OPERANDS_AND_RESULT(Reverse)
+OP_SAME_OPERANDS_AND_RESULT(Rint)
+OP_SAME_OPERANDS_AND_RESULT(Rint_)
 OP_SAME_OPERANDS_AND_RESULT(Roll)
 OP_SAME_OPERANDS_AND_RESULT(Round)
 OP_SAME_OPERANDS_AND_RESULT(Round_)
@@ -212,6 +214,8 @@ OP_SAME_OPERANDS_AND_RESULT(MaskedFill)
 OP_SAME_OPERANDS_AND_RESULT(MaskedFill_)
 OP_SAME_OPERANDS_AND_RESULT(IndexElementwisePut)
 OP_SAME_OPERANDS_AND_RESULT(IndexElementwisePut_)
+OP_SAME_OPERANDS_AND_RESULT(IndexElementwisePutWithTensor)
+OP_SAME_OPERANDS_AND_RESULT(IndexElementwisePutWithTensor_)
 
 bool ScaleOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {

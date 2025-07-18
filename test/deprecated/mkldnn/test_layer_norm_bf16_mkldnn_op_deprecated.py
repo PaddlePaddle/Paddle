@@ -22,7 +22,7 @@ sys.path.append("../../mkldnn")
 import numpy as np
 from op_test import _set_use_system_allocator, convert_float_to_uint16
 from test_layer_norm_mkldnn_op_deprecated import (
-    TestLayerNormMKLDNNOp,
+    TestLayerNormONEDNNOp,
     _reference_layer_norm_naive,
 )
 from utils import pir_executor_guard
@@ -39,7 +39,7 @@ _set_use_system_allocator(True)
 @unittest.skipIf(
     not core.supports_bfloat16(), "place does not support BF16 evaluation"
 )
-class TestLayerNormBF16MKLDNNOp(TestLayerNormMKLDNNOp):
+class TestLayerNormBF16ONEDNNOp(TestLayerNormONEDNNOp):
     def __assert_close(self, tensor, np_array, msg, rtol=2e-02, atol=2):
         np.testing.assert_allclose(
             np.array(tensor), np_array, rtol=rtol, atol=atol, err_msg=msg

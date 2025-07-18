@@ -141,8 +141,8 @@ class CUDAStream {
 
   ~CUDAStream() {
     VLOG(10) << "~CUDAStream " << raw_stream();
-    Synchronize();
     if (owned_ && stream_.id() != 0) {
+      Synchronize();
       backends::gpu::GPUDeviceGuard guard(place_.device);
 #ifdef PADDLE_WITH_HIP
       hipStreamDestroy(raw_stream());

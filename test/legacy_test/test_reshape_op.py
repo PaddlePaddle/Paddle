@@ -376,7 +376,7 @@ class TestReshapeInt8Op(OpTest):
     def setUp(self):
         self.init_dtype()
         self.init_data()
-        self.use_mkldnn = True
+        self.use_onednn = True
         self._cpu_only = True
         self.op_type = "reshape2"
         self.python_api = paddle.tensor.reshape
@@ -385,7 +385,7 @@ class TestReshapeInt8Op(OpTest):
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(input)}
         self.attrs = {
             'shape': self.new_shape,
-            'use_mkldnn': self.use_mkldnn,
+            'use_mkldnn': self.use_onednn,
         }
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.inferred_shape),

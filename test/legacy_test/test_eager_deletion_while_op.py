@@ -19,6 +19,7 @@ os.environ['CPU_NUM'] = '2'
 import unittest
 
 import numpy
+from op_test import get_places
 
 import paddle
 from paddle import base
@@ -32,17 +33,7 @@ base.core._set_eager_deletion_mode(0.0, 1.0, True)
 class TestEagerDeletionWhileOpBase(unittest.TestCase):
 
     def test_main(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(core.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-
-        for p in places:
+        for p in get_places():
             with (
                 base.program_guard(base.Program(), base.Program()),
                 base.scope_guard(base.Scope()),

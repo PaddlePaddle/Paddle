@@ -18,6 +18,7 @@
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
+#include "paddle/phi/kernels/tile_kernel.h"
 
 namespace phi {
 
@@ -28,6 +29,21 @@ void GatherNdKernel(const Context &dev_ctx,
                     DenseTensor *out) {
   dev_ctx.template Alloc<T>(out);
   if (x.numel() == 0 || out->numel() == 0) return;
+  // The result dims is
+  //   Index.shape[:-1] + X.shape[Index.shape[-1]:]
+  // If the last dimension of index is 0, set it to 1 and tile x.
+  auto index_dims = index.dims();
+  std::vector<int64_t> out_dims;
+  if (index_dims[index_dims.size() - 1] == 0) {
+    for (int i = 0; i < index_dims.size() - 1; ++i) {
+      out_dims.emplace_back(index_dims[i]);
+    }
+    for (int i = 0; i < x.dims().size(); ++i) {
+      out_dims.emplace_back(1);
+    }
+    phi::TileKernel<T, Context>(dev_ctx, x, phi::IntArray(out_dims), out);
+    return;
+  }
   if (index.dims()[0] == 0 && index.numel() == 0) return;
   const auto &index_type = index.dtype();
   bool index_type_match =

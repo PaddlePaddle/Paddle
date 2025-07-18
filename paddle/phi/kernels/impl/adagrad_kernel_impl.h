@@ -22,7 +22,7 @@ namespace phi {
 
 template <typename DeviceContext, typename T>
 struct SparseAdagradFunctor {
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::SelectedRows& grad,
                   const DenseTensor& learning_rate,
                   T epsilon,
@@ -46,16 +46,16 @@ struct DenseAdagradFunctor {
 };
 
 template <typename DeviceContext, typename T>
-phi::SelectedRows SquareSelectedRows(const DeviceContext& context,
+phi::SelectedRows SquareSelectedRows(const DeviceContext& dev_ctx,
                                      const phi::SelectedRows& input) {
   phi::SelectedRows out;
   out.set_rows(input.rows());
   out.set_height(input.height());
   out.mutable_value()->Resize(input.value().dims());
-  context.template Alloc<T>(out.mutable_value());
+  dev_ctx.template Alloc<T>(out.mutable_value());
   auto e_out = EigenVector<T>::Flatten(*(out.mutable_value()));
   auto e_in = EigenVector<T>::Flatten(input.value());
-  e_out.device(*context.eigen_device()) = e_in.square();
+  e_out.device(*dev_ctx.eigen_device()) = e_in.square();
   return out;
 }
 

@@ -538,7 +538,7 @@ class TestFillConstantOp_ValueTensorBf16(OpTest):
         self.shape = [123, 92]
         self.value = 3.0
         self.dtype = np.uint16
-        self.mkldnn_data_type = "bfloat16"
+        self.onednn_data_type = "bfloat16"
 
     def test_check_output(self):
         # no dynamic graph test for mkldnn
