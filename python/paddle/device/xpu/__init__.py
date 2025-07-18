@@ -20,6 +20,8 @@ from typing_extensions import TypeAlias
 from paddle.base import core
 from paddle.utils import deprecated
 
+from .streams import Event, Stream
+
 if TYPE_CHECKING:
     from paddle import XPUPlace
 
@@ -27,7 +29,7 @@ if TYPE_CHECKING:
         XPUPlace,
         int,  # some int like 0, 1, etc.
     ]
-__all__ = ['synchronize', 'empty_cache']
+__all__ = ['Stream', 'Event', 'synchronize', 'device_count', 'empty_cache']
 
 
 @deprecated(
