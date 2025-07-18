@@ -2077,14 +2077,39 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
         ConvertAllInputsToDistTensor(
             mesh, self->tensor, transed_sub_tensor, value_tensor);
       }
+    } else {
+      const phi::distributed::ProcessMesh* mesh = nullptr;
+      if (InputsContainDistTensor(&mesh, self->tensor, transed_sub_tensor)) {
+        ConvertAllInputsToDistTensor(mesh, self->tensor, transed_sub_tensor);
+      }
+    }
+
+    bool masked_fill_shortcut = false;
+    if (value_tensor.initialized()) {
       paddle::Tensor mask_tensor;
       if (!out_is_view &&
           MaskedFillDispatching(
               transed_sub_tensor, transed_index, &mask_tensor, &value_tensor)) {
+        masked_fill_shortcut = true;
         transed_sub_tensor =
             masked_fill__ad_func(transed_sub_tensor, mask_tensor, value_tensor);
-      } else {
-        if (FLAGS_use_stride_kernel) {
+      }
+    } else {
+      paddle::Tensor mask_tensor;
+      if (!out_is_view &&
+          MaskedFillValueDispatching(
+              transed_sub_tensor, transed_index, &mask_tensor)) {
+        masked_fill_shortcut = true;
+        paddle::Tensor value_tmp_tensor =
+            full_ad_func({1}, values[0], tensor.dtype(), tensor.place());
+        transed_sub_tensor = masked_fill__ad_func(
+            transed_sub_tensor, mask_tensor, value_tmp_tensor);
+      }
+    }
+
+    if (!masked_fill_shortcut) {
+      if (FLAGS_use_stride_kernel) {
+        if (value_tensor.initialized()) {
           transed_index = expandTensors(transed_index);
           transed_index = expand_outplace(transed_index);
           for (int i = 0; i < pos_of_new_dim; ++i) {
@@ -2118,9 +2143,45 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
                   value_tensor.dims().to_str(),
                   common::make_ddim(ad.src_sizes).to_str()));
           transed_sub_tensor =
+              index_elementwise_put_with_tensor__ad_func(tensor,
+                                                         ad.indices,
+                                                         value_tensor,
+                                                         ad.src_sizes,
+                                                         ad.src_strides,
+                                                         ad.indexed_sizes,
+                                                         ad.indexed_strides,
+                                                         slice_offset);
+          // New kernel does not need to transpose back, so set out_is_view to
+          // false. Remove when all cases use this branch.
+          out_is_view = false;
+        } else {
+          transed_index = expandTensors(transed_index);
+          transed_index = expand_outplace(transed_index);
+          for (int i = 0; i < pos_of_new_dim; ++i) {
+            transed_index.insert(transed_index.begin(), paddle::Tensor());
+          }
+          while (transed_index.size() <
+                 static_cast<size_t>(transed_sub_tensor.dims().size())) {
+            transed_index.emplace_back(paddle::Tensor());
+          }
+          int64_t slice_offset =
+              static_cast<int64_t>(reinterpret_cast<char*>(sub_tensor.data()) -
+                                   reinterpret_cast<char*>(tensor.data()));
+
+          std::vector<paddle::Tensor> transed_index_int64;
+          for (auto& indice : transed_index) {
+            if (indice.defined() && indice.dtype() == paddle::DataType::INT32) {
+              indice = indice.cast(paddle::DataType::INT64);  // int32 -> int64
+            }
+            transed_index_int64.push_back(indice);
+          }
+
+          AdvancedIndex ad =
+              AdvancedIndex(transed_sub_tensor, transed_index_int64);
+          transed_sub_tensor =
               index_elementwise_put__ad_func(tensor,
                                              ad.indices,
-                                             value_tensor,
+                                             values[0],
                                              ad.src_sizes,
                                              ad.src_strides,
                                              ad.indexed_sizes,
@@ -2129,89 +2190,97 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
           // New kernel does not need to transpose back, so set out_is_view to
           // false. Remove when all cases use this branch.
           out_is_view = false;
-        } else {
-          transed_sub_tensor = index_put__ad_func(
-              transed_sub_tensor, transed_index, value_tensor);
-        }
-      }
-      if (out_is_view) {
-        // NOTE(zoooo0820): if out_is_view is true, it is a case of
-        // combined-indexing setitem, i.e. firstly we get a view of
-        // self->tensor, then modified it with inplace api index_put_ For now,
-        // in design of Paddle, the forward result is right. But the backward
-        // edge can not be established because the Base Tensor cannot sense
-        // whether it has been modified by other operations. Following codes are
-        // to add a new node (set_value_with_tensor_grad) to record the backward
-        // edge, with out ad_function which needs to do the forward calculation.
-
-        egr::AutogradMeta* x_autograd_meta =
-            egr::EagerUtils::nullable_autograd_meta(self->tensor);
-        egr::AutogradMeta* values_autograd_meta =
-            egr::EagerUtils::nullable_autograd_meta(transed_sub_tensor);
-        bool trace_backward = egr::Controller::Instance().HasGrad();
-        bool require_any_grad = egr::EagerUtils::ComputeRequireGrad(
-            trace_backward, x_autograd_meta, values_autograd_meta);
-        // Node Declaration
-        std::shared_ptr<SetValueWithTensorGradNode> grad_node;
-        // Set grad_node before API Call
-        if (require_any_grad) {
-          paddle::Tensor transback_sub_tensor =
-              transpose_ad_func(transed_sub_tensor, trans_back_dim);
-
-          const auto& values_tmp =
-              (require_any_grad && transback_sub_tensor.is_dense_tensor() &&
-               !std::dynamic_pointer_cast<phi::DenseTensor>(
-                    transback_sub_tensor.impl())
-                    ->meta()
-                    .is_contiguous())
-                  ? paddle::Tensor(
-                        std::make_shared<phi::DenseTensor>(
-                            paddle::experimental::Trans2Contiguous(
-                                *(std::dynamic_pointer_cast<phi::DenseTensor>(
-                                    transback_sub_tensor.impl())))),
-                        transback_sub_tensor.mutable_autograd_meta(),
-                        transback_sub_tensor.name())
-                  : transback_sub_tensor;
-          if (!x_autograd_meta) {
-            VLOG(3) << "x_autograd_meta is null and requires_any_grad is true";
-            x_autograd_meta = egr::EagerUtils::autograd_meta(&self->tensor);
-          }
-          grad_node = std::shared_ptr<SetValueWithTensorGradNode>(
-              new SetValueWithTensorGradNode(1, 2));  // NOLINT
-          grad_node->SetAttribute_starts(slice_starts);
-          grad_node->SetAttribute_ends(slice_ends);
-          grad_node->SetAttribute_steps(slice_strides);
-          grad_node->SetAttribute_axes(slice_axes);
-          grad_node->SetAttribute_decrease_axes(decrease_axis);
-          grad_node->SetAttribute_none_axes(none_axes);
-          grad_node->SetTensorWrapper_values(values_tmp);
-
-          paddle::memory::LogDeviceMemoryStats(
-              egr::Controller::Instance().GetExpectedPlace(),
-              "set_value_with_tensor");
-          egr::EagerUtils::CheckInplace(
-              self->tensor, x_autograd_meta, require_any_grad);
-          egr::EagerUtils::PassStopGradient(false, x_autograd_meta);
-          // SetGradOutMeta & SetEdges
-          grad_node->SetGradOutMeta(self->tensor, 0);
-          grad_node->SetGradOutMeta(transback_sub_tensor, 1);
-          grad_node->SetGradInMeta(self->tensor, 0);
-
-          egr::EagerUtils::SetOutRankWithSlot(x_autograd_meta, 0);
-          egr::EagerUtils::SetHistory(x_autograd_meta, grad_node);
         }
       } else {
-        self->tensor.set_autograd_meta(
-            transed_sub_tensor.mutable_autograd_meta());
-      }
-      if (PyCheckTensor(value_obj)) {
-        // pass the stop_gradient from value to tensor.
-        // pass stop gradient should be done after CheckInplace in
-        // set_value__dygraph_function.
-        if (!egr::EagerUtils::autograd_meta(&value_tensor)->StopGradient() &&
-            egr::EagerUtils::autograd_meta(&self->tensor)->StopGradient()) {
-          egr::EagerUtils::autograd_meta(&self->tensor)->SetStopGradient(false);
+        // TODO(czy): remove in the future
+        if (value_tensor.initialized()) {
+          transed_sub_tensor = index_put__ad_func(
+              transed_sub_tensor, transed_index, value_tensor);
+        } else {
+          paddle::Tensor value_tmp_tensor =
+              full_ad_func({1}, values[0], tensor.dtype(), tensor.place());
+          transed_sub_tensor = index_put__ad_func(
+              transed_sub_tensor, transed_index, value_tmp_tensor);
         }
+      }
+    }
+    if (out_is_view) {
+      // NOTE(zoooo0820): if out_is_view is true, it is a case of
+      // combined-indexing setitem, i.e. firstly we get a view of
+      // self->tensor, then modified it with inplace api index_put_ For now,
+      // in design of Paddle, the forward result is right. But the backward
+      // edge can not be established because the Base Tensor cannot sense
+      // whether it has been modified by other operations. Following codes are
+      // to add a new node (set_value_with_tensor_grad) to record the backward
+      // edge, with out ad_function which needs to do the forward calculation.
+
+      egr::AutogradMeta* x_autograd_meta =
+          egr::EagerUtils::nullable_autograd_meta(self->tensor);
+      egr::AutogradMeta* values_autograd_meta =
+          egr::EagerUtils::nullable_autograd_meta(transed_sub_tensor);
+      bool trace_backward = egr::Controller::Instance().HasGrad();
+      bool require_any_grad = egr::EagerUtils::ComputeRequireGrad(
+          trace_backward, x_autograd_meta, values_autograd_meta);
+      // Node Declaration
+      std::shared_ptr<SetValueWithTensorGradNode> grad_node;
+      // Set grad_node before API Call
+      if (require_any_grad) {
+        paddle::Tensor transback_sub_tensor =
+            transpose_ad_func(transed_sub_tensor, trans_back_dim);
+
+        const auto& values_tmp =
+            (require_any_grad && transback_sub_tensor.is_dense_tensor() &&
+             !std::dynamic_pointer_cast<phi::DenseTensor>(
+                  transback_sub_tensor.impl())
+                  ->meta()
+                  .is_contiguous())
+                ? paddle::Tensor(
+                      std::make_shared<phi::DenseTensor>(
+                          paddle::experimental::Trans2Contiguous(
+                              *(std::dynamic_pointer_cast<phi::DenseTensor>(
+                                  transback_sub_tensor.impl())))),
+                      transback_sub_tensor.mutable_autograd_meta(),
+                      transback_sub_tensor.name())
+                : transback_sub_tensor;
+        if (!x_autograd_meta) {
+          VLOG(3) << "x_autograd_meta is null and requires_any_grad is true";
+          x_autograd_meta = egr::EagerUtils::autograd_meta(&self->tensor);
+        }
+        grad_node = std::shared_ptr<SetValueWithTensorGradNode>(
+            new SetValueWithTensorGradNode(1, 2));  // NOLINT
+        grad_node->SetAttribute_starts(slice_starts);
+        grad_node->SetAttribute_ends(slice_ends);
+        grad_node->SetAttribute_steps(slice_strides);
+        grad_node->SetAttribute_axes(slice_axes);
+        grad_node->SetAttribute_decrease_axes(decrease_axis);
+        grad_node->SetAttribute_none_axes(none_axes);
+        grad_node->SetTensorWrapper_values(values_tmp);
+
+        paddle::memory::LogDeviceMemoryStats(
+            egr::Controller::Instance().GetExpectedPlace(),
+            "set_value_with_tensor");
+        egr::EagerUtils::CheckInplace(
+            self->tensor, x_autograd_meta, require_any_grad);
+        egr::EagerUtils::PassStopGradient(false, x_autograd_meta);
+        // SetGradOutMeta & SetEdges
+        grad_node->SetGradOutMeta(self->tensor, 0);
+        grad_node->SetGradOutMeta(transback_sub_tensor, 1);
+        grad_node->SetGradInMeta(self->tensor, 0);
+
+        egr::EagerUtils::SetOutRankWithSlot(x_autograd_meta, 0);
+        egr::EagerUtils::SetHistory(x_autograd_meta, grad_node);
+      }
+    } else {
+      self->tensor.set_autograd_meta(
+          transed_sub_tensor.mutable_autograd_meta());
+    }
+    if (value_tensor.initialized() && PyCheckTensor(value_obj)) {
+      // pass the stop_gradient from value to tensor.
+      // pass stop gradient should be done after CheckInplace in
+      // set_value__dygraph_function.
+      if (!egr::EagerUtils::autograd_meta(&value_tensor)->StopGradient() &&
+          egr::EagerUtils::autograd_meta(&self->tensor)->StopGradient()) {
+        egr::EagerUtils::autograd_meta(&self->tensor)->SetStopGradient(false);
       }
     }
   }

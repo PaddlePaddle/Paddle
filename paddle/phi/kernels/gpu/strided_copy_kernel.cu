@@ -756,20 +756,17 @@ void StridedCopyKernel(const Context& dev_ctx,
   }
   if (input.dims() != out->dims()) {
     if (input_numel == 1) {
-      DenseTensor vec_input = Empty<T>(dev_ctx, IntArray{VecSize});
-      ExpandKernel<T, Context>(dev_ctx, input, IntArray{VecSize}, &vec_input);
-      const T* vec_input_data = vec_input.data<T>();
       switch (VecSize) {
-#define CASE_VECSIZE(__Sz)                                    \
-  case __Sz:                                                  \
-    StrideCopyDiffDimKernel<T, Context, __Sz>(dev_ctx,        \
-                                              vec_input_data, \
-                                              output_data,    \
-                                              output_stride,  \
-                                              output_dims,    \
-                                              rank,           \
-                                              input_numel,    \
-                                              output_numel);  \
+#define CASE_VECSIZE(__Sz)                                   \
+  case __Sz:                                                 \
+    StrideCopyDiffDimKernel<T, Context, __Sz>(dev_ctx,       \
+                                              input_data,    \
+                                              output_data,   \
+                                              output_stride, \
+                                              output_dims,   \
+                                              rank,          \
+                                              input_numel,   \
+                                              output_numel); \
     break;
         CASE_VECSIZE(1);
         CASE_VECSIZE(2);

@@ -24,6 +24,10 @@ void ScatterNdAddKernel(const Context &dev_ctx,
                         const DenseTensor &index,
                         const DenseTensor &updates,
                         DenseTensor *out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   const T *x_ptr = x.data<T>();
   const T *updates_ptr = updates.data<T>();
 
