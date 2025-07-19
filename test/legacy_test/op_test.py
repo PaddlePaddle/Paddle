@@ -490,9 +490,7 @@ class OpTest(unittest.TestCase):
             return hasattr(cls, "use_xpu") and cls.use_xpu
 
         def is_onednn_op_test():
-            return (hasattr(cls, "use_mkldnn") and cls.use_mkldnn) or (
-                hasattr(cls, "use_onednn") and cls.use_onednn
-            )
+            return hasattr(cls, "use_onednn") and cls.use_onednn
 
         def is_rocm_op_test():
             return core.is_compiled_with_rocm()
@@ -572,10 +570,6 @@ class OpTest(unittest.TestCase):
                 hasattr(self, 'output_dtype') and self.output_dtype == np.uint16
             )
             or (
-                hasattr(self, 'mkldnn_data_type')
-                and self.mkldnn_data_type == "bfloat16"
-            )
-            or (
                 hasattr(self, 'attrs')
                 and 'mkldnn_data_type' in self.attrs
                 and self.attrs['mkldnn_data_type'] == 'bfloat16'
@@ -597,10 +591,6 @@ class OpTest(unittest.TestCase):
                 and self.output_dtype == np.float16
             )
             or (
-                hasattr(self, 'mkldnn_data_type')
-                and self.mkldnn_data_type == "float16"
-            )
-            or (
                 hasattr(self, 'attrs')
                 and 'mkldnn_data_type' in self.attrs
                 and self.attrs['mkldnn_data_type'] == 'float16'
@@ -612,14 +602,10 @@ class OpTest(unittest.TestCase):
         )
 
     def is_onednn_op(self):
-        return (
-            (hasattr(self, "use_mkldnn") and self.use_mkldnn)
-            or (hasattr(self, "use_onednn") and self.use_onednn)
-            or (
-                hasattr(self, "attrs")
-                and "use_mkldnn" in self.attrs
-                and self.attrs["use_mkldnn"]
-            )
+        return (hasattr(self, "use_onednn") and self.use_onednn) or (
+            hasattr(self, "attrs")
+            and "use_mkldnn" in self.attrs
+            and self.attrs["use_mkldnn"]
         )
 
     def is_xpu_op(self):
@@ -882,7 +868,7 @@ class OpTest(unittest.TestCase):
             self.op_type
         )  # for ci check, please not delete it for now
         if self.is_onednn_op():
-            self.__class__.use_mkldnn = True
+            self.__class__.use_onednn = True
 
         if self.is_xpu_op():
             self.__class__.use_xpu = True
@@ -2955,7 +2941,7 @@ class OpTest(unittest.TestCase):
     ):
         self.__class__.op_type = self.op_type
         if self.is_onednn_op():
-            self.__class__.use_mkldnn = True
+            self.__class__.use_onednn = True
 
         if self.is_xpu_op():
             self.__class__.use_xpu = True

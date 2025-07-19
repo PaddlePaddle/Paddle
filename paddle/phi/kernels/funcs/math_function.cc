@@ -105,7 +105,7 @@ DEFINE_CPU_TRANS(6);
 
 template <typename DeviceContext, typename T>
 void TransposeNormal<DeviceContext, T>::operator()(
-    const DeviceContext& context UNUSED,
+    const DeviceContext& dev_ctx UNUSED,
     const phi::DenseTensor& in,
     phi::DenseTensor* out,
     const std::vector<int>& axis) {
@@ -163,7 +163,7 @@ struct TensorSetConstantCPU {
 };
 
 template <>
-void set_constant_with_place<phi::XPUPlace>(const phi::DeviceContext& context,
+void set_constant_with_place<phi::XPUPlace>(const phi::DeviceContext& dev_ctx,
                                             phi::DenseTensor* tensor,
                                             float value) {
 #ifdef PADDLE_WITH_XPU
@@ -176,7 +176,7 @@ void set_constant_with_place<phi::XPUPlace>(const phi::DeviceContext& context,
 }
 
 template <>
-void set_constant_with_place<phi::IPUPlace>(const phi::DeviceContext& context,
+void set_constant_with_place<phi::IPUPlace>(const phi::DeviceContext& dev_ctx,
                                             phi::DenseTensor* tensor,
                                             float value) {
   PADDLE_THROW(common::errors::Unimplemented("IPUPlace is not supported"));
@@ -184,7 +184,7 @@ void set_constant_with_place<phi::IPUPlace>(const phi::DeviceContext& context,
 
 template <>
 void set_constant_with_place<phi::CustomPlace>(
-    const phi::DeviceContext& context, phi::DenseTensor* tensor, float value) {
+    const phi::DeviceContext& dev_ctx, phi::DenseTensor* tensor, float value) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "full",
@@ -198,7 +198,7 @@ void set_constant_with_place<phi::CustomPlace>(
                                     DataType,
                                     phi::DenseTensor*);
   auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-  (*kernel_fn)(context,
+  (*kernel_fn)(dev_ctx,
                phi::IntArray(common::vectorize(tensor->dims())),
                phi::Scalar(value),
                tensor->dtype(),
@@ -209,7 +209,7 @@ void set_constant_with_place<phi::CustomPlace>(
 }
 
 template <>
-void set_constant_with_place<phi::CPUPlace>(const phi::DeviceContext& context,
+void set_constant_with_place<phi::CPUPlace>(const phi::DeviceContext& dev_ctx,
                                             phi::DenseTensor* tensor,
                                             float value) {
   phi::VisitDataType(tensor->dtype(), TensorSetConstantCPU(tensor, value));
@@ -217,34 +217,34 @@ void set_constant_with_place<phi::CPUPlace>(const phi::DeviceContext& context,
 
 template <>
 void set_constant_with_place<phi::GPUPinnedPlace>(
-    const phi::DeviceContext& context, phi::DenseTensor* tensor, float value) {
+    const phi::DeviceContext& dev_ctx, phi::DenseTensor* tensor, float value) {
   phi::VisitDataType(tensor->dtype(), TensorSetConstantCPU(tensor, value));
 }
 
 struct TensorSetConstantWithPlace {
   using argument_type = phi::Place;
   using result_type = void;
-  TensorSetConstantWithPlace(const phi::DeviceContext& context,
+  TensorSetConstantWithPlace(const phi::DeviceContext& dev_ctx,
                              phi::DenseTensor* tensor,
                              float value)
-      : context_(context), tensor_(tensor), value_(value) {}
+      : dev_ctx_(dev_ctx), tensor_(tensor), value_(value) {}
 
   template <typename Place>
   void operator()(Place place UNUSED) const {
-    set_constant_with_place<Place>(context_, tensor_, value_);
+    set_constant_with_place<Place>(dev_ctx_, tensor_, value_);
   }
 
-  const phi::DeviceContext& context_;
+  const phi::DeviceContext& dev_ctx_;
   phi::DenseTensor* tensor_;
   float value_;
 };
 
-void set_constant(const phi::DeviceContext& context,
+void set_constant(const phi::DeviceContext& dev_ctx,
                   phi::DenseTensor* tensor,
                   float value) {
-  TensorSetConstantWithPlace func(context, tensor, value);
+  TensorSetConstantWithPlace func(dev_ctx, tensor, value);
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  if (context.GetPlace().GetType() == phi::AllocationType::CUSTOM) {
+  if (dev_ctx.GetPlace().GetType() == phi::AllocationType::CUSTOM) {
     func(phi::CustomPlace());
     return;
   }
@@ -253,7 +253,7 @@ void set_constant(const phi::DeviceContext& context,
   // tensor->place().apply_visitor(func);
   phi::VisitPlace(tensor->place(), func);
 #elif defined(PADDLE_WITH_XPU)
-  if (context.GetPlace().GetType() == phi::AllocationType::XPU) {
+  if (dev_ctx.GetPlace().GetType() == phi::AllocationType::XPU) {
     func(phi::XPUPlace());
     return;
   } else {
@@ -274,7 +274,7 @@ template struct RowwiseMean<phi::CPUContext, double>;
 
 template <typename T>
 struct RowwiseAdd<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext& context UNUSED,
+  void operator()(const phi::CPUContext& dev_ctx UNUSED,
                   const phi::DenseTensor& input,
                   const phi::DenseTensor& vector,
                   phi::DenseTensor* output) {

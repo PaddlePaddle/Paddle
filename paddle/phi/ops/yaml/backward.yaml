@@ -1706,13 +1706,25 @@
   backward: index_elementwise_get_double_grad
 
 - backward_op : index_elementwise_put_grad
-  forward : index_elementwise_put (Tensor x, Tensor[] index, Tensor value, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset) -> Tensor(out)
-  args : (Tensor x, Tensor[] index, Tensor value, Tensor out_grad, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset)
-  output : Tensor(x_grad), Tensor(value_grad)
+  forward : index_elementwise_put (Tensor x, Tensor[] index, Scalar value, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset) -> Tensor(out)
+  args : (Tensor x, Tensor[] index, Tensor out_grad, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset)
+  output : Tensor(x_grad)
   infer_meta :
     func : IndexElementwisePutGradInferMeta
   kernel :
     func : index_elementwise_put_grad
+    data_type : out_grad
+  data_transform :
+    skip_transform : index
+
+- backward_op : index_elementwise_put_with_tensor_grad
+  forward : index_elementwise_put_with_tensor (Tensor x, Tensor[] index, Tensor value, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset) -> Tensor(out)
+  args : (Tensor x, Tensor[] index, Tensor value, Tensor out_grad, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset)
+  output : Tensor(x_grad), Tensor(value_grad)
+  infer_meta :
+    func : IndexElementwisePutWithTensorGradInferMeta
+  kernel :
+    func : index_elementwise_put_with_tensor_grad
     data_type : out_grad
   data_transform :
     skip_transform : index

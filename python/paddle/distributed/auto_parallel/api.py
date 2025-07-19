@@ -1851,26 +1851,32 @@ class _ShardOptimizer(Optimizer):
 
     def _fused_comm_before_apply_optimize(self, params_grads):
         '''
-        In dynamic sharding mode, gradient clipping on partial gradients can trigger redundant allreduce
-        operations. Fused reduce_scatter optimizes this by marking mesh dimensions as shard in priority
-        order to reduce redundant synchronization:
-            1. Prioritize shard(0) for the specified sharding axis.
-            2. Sequentially mark other dimensions as shard(dim).
-            3. Default to replicate for non-shardable dimensions.
+        Optimizes gradient placements for parameters in dynamic sharding mode to minimize redundant allreduce
+        operations during gradient clipping. This function adjusts tensor placements across mesh axes based
+        on priority rules, prioritizing sharding for dimensions marked in `_sharding_axis`.
+        For each axis in the mesh:
+            1. Preserves existing `Shard(dim)` placements for any axis.
+            2. Converts `Partial()` placements to Shard(dim) where possible, falling back to `Replicate()` if sharding isn't feasible.
+            3. Maintains `Replicate()` placements unchanged.
+        Processes axes in order of `_sharding_axis` first before other mesh axes in their natural order.
+
             e.g.
                 a) sharding_axis = 0, tensor rank = 2,
-                    placements: [Partial(), Partial(), partial] -> [Shard(0), Shard(1), Repliacate()]
+                    placements: [Partial(), Partial(), Repliacate()] -> [Shard(0), Shard(1), Repliacate()]
                 b) sharding_axis = 0, tensor rank = 2,
                     placements: [Partial(), Shard(0), Partial() ] -> [Shard(1), Shard(0), Repliacate()]
         '''
         new_params_grads = []
 
-        # Get the first non-shard dim of tensor shape in ascending order.
-        # `shard_dims_set` records if dim is marked as shard in placement.
+        # Get the first non-shard tensor_dim of tensor shape in ascending order.
+        # `shard_dims_set` records if tensor_dim is marked as shard in placement.
         def get_first_can_shard_dim(tensor_shape, shard_dims_set):
-            for dim in range(len(tensor_shape)):
-                if dim not in shard_dims_set:
-                    return dim
+            for tensor_dim in range(len(tensor_shape)):
+                # The rank of the current dimension of the tensor is 1, so there is no need to shard it.
+                if tensor_shape[tensor_dim] == 1:
+                    continue
+                if tensor_dim not in shard_dims_set:
+                    return tensor_dim
             return -1
 
         for param, grad in params_grads:
@@ -1878,35 +1884,49 @@ class _ShardOptimizer(Optimizer):
             new_grad = grad
             tensor_shape = grad._local_shape
             shard_dims_set = set()
+            mesh_shape = grad.process_mesh.shape
 
             # 1. `shard_dims_set` records dims marked as shard in placement.
             for placement in grad.placements:
                 if placement.is_shard():
-                    dim = placement.get_dim()
-                    shard_dims_set.add(dim)
+                    tensor_dim = placement.get_dim()
+                    shard_dims_set.add(tensor_dim)
 
-            # 2. Prioritize setting placement[sharding_axis] as shard (usually shard(0)), otherwise set as replicate.
-            dim = get_first_can_shard_dim(tensor_shape, shard_dims_set)
-            new_placements[self._sharding_axis] = dist.Replicate()
-            if dim != -1:
-                shard_dims_set.add(dim)
-                new_placements[self._sharding_axis] = dist.Shard(dim)
+            # 2. Prioritize process `_sharding_axis`.
+            tensor_dim = get_first_can_shard_dim(tensor_shape, shard_dims_set)
+            # 2.1 Preserves existing shard status placements.
+            if not grad.placements[self._sharding_axis].is_shard():
+                # 2.2 Default to maintain replicate status.
+                new_placements[self._sharding_axis] = dist.Replicate()
+                # 2.3 Converts partial status to shard status where possible.
+                if tensor_dim != -1 and mesh_shape[self._sharding_axis] != 1:
+                    shard_dims_set.add(tensor_dim)
+                    new_placements[self._sharding_axis] = dist.Shard(tensor_dim)
 
+            # 3. Processes other mesh axes in their natural order.
             for mesh_axis, placement in enumerate(grad.placements):
                 if mesh_axis == self._sharding_axis:
                     continue
-                # 3. Keep shard states in placements unchanged.
-                if not placement.is_shard():
-                    dim = get_first_can_shard_dim(tensor_shape, shard_dims_set)
-                    # 4. Default all tensor dims are in shard state, set remaining placements to replicate.
+                # 3.1 No sharding is needed as single-device mesh axis.
+                if mesh_shape[mesh_axis] == 1:
                     new_placements[mesh_axis] = dist.Replicate()
-                    if dim != -1:
-                        # 5. Turn other placements into shard state if possible.
-                        shard_dims_set.add(dim)
-                        new_placements[mesh_axis] = dist.Shard(dim)
-
+                    continue
+                # 3.2  Keep shard states in placements unchanged.
+                if not placement.is_shard():
+                    new_placements[mesh_axis] = dist.Replicate()
+                    tensor_dim = get_first_can_shard_dim(
+                        tensor_shape, shard_dims_set
+                    )
+                    # 3.3 When in partial state, convert to shard state as much as possible.
+                    if placement.is_partial():
+                        if tensor_dim == -1:
+                            new_placements[mesh_axis] = dist.Replicate()
+                        else:
+                            # 3.4 Default to maintain replicate status.
+                            shard_dims_set.add(tensor_dim)
+                            new_placements[mesh_axis] = dist.Shard(tensor_dim)
+            # 4. Update placements.
             if grad.placements != new_placements:
-                # 6. Add reduce_scatter comms via reshard API.
                 new_grad = dist.reshard(grad, grad.process_mesh, new_placements)
 
             new_params_grads.append((param, new_grad))

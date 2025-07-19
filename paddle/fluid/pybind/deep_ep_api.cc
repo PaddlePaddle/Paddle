@@ -57,6 +57,9 @@ void BindDeepEPApi(pybind11::module *m) {
   m->def("get_event_handle_from_comm_stream",
          &deep_ep::GetEventHandleFromCommStream);
 
+  m->def("get_event_handle_from_custom_stream",
+         &deep_ep::GetEventHandleFromCustomStream);
+
   pybind11::class_<deep_ep::Buffer>(*m, "Buffer")
       .def(pybind11::init<int, int, int64_t, int64_t, bool, int>())
       .def("is_available", &deep_ep::Buffer::is_available)

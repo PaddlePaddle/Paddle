@@ -994,9 +994,25 @@ void ProcessGroupNCCL::Restart() {
     create_count_++;
   }
 }
+phi::CUDAStream ProcessGroupNCCL::GetStream(const Place& place) {
+  const auto& place_key = GetKeyFromPlace(place);
+
+  const auto* comm_ctx = place_to_comm_ctx_.at(place_key).get();
+
+  auto comm_stream = comm_ctx->cuda_stream();
+  return phi::CUDAStream(comm_stream->place(), comm_stream->id());
+}
+
+void ProcessGroupNCCL::SetOuterEventWait(bool outer_wait) {
+  outer_wait_ = outer_wait;
+}
 
 void ProcessGroupNCCL::SyncCalcStream(const Place& place,
                                       const std::string& place_key) {
+  if (outer_wait_) {
+    return;
+  }
+
   auto& calc_event = place_to_calc_event_.at(place_key);
   const auto* calc_ctx = place_to_calc_ctx_.at(place_key);
   const auto* comm_ctx = place_to_comm_ctx_.at(place_key).get();

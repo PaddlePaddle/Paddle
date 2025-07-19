@@ -63,17 +63,17 @@ void TriangularSolveKernel(const Context& dev_ctx,
 
   int M = static_cast<int>(y_bst_dims_vec[y_bst_ndim - 2]);
   int N = static_cast<int>(y_bst_dims_vec[y_bst_ndim - 1]);
-  auto lda = std::max(1, M);
-  auto ldb = std::max(1, N);
+  int lda = std::max(1, M);
+  int ldb = std::max(1, N);
 
-  int batch_size = 1;
-  for (int i = 0; i < x_bst_ndim - 2; i++) {
+  int64_t batch_size = 1;
+  for (int64_t i = 0; i < x_bst_ndim - 2; i++) {
     batch_size *= x_bst_dims_vec[i];
   }
 
   auto blas = phi::funcs::GetBlas<GPUContext, T>(dev_ctx);
   if (batch_size <= 8 && M >= 64) {
-    for (auto i = 0; i < batch_size; i++) {
+    for (int64_t i = 0; i < batch_size; i++) {
       blas.TRSM(CblasLeft,
                 uplo,
                 transA,
@@ -87,41 +87,112 @@ void TriangularSolveKernel(const Context& dev_ctx,
                 ldb);
     }
   } else {
-    std::vector<const T*> cpu_ptrs(batch_size * 2);
-    for (int i = 0; i < batch_size; ++i) {
-      cpu_ptrs[i] = x_bst_data + i * M * M;
-      cpu_ptrs[i + batch_size] = out_data + i * M * N;
+    bool use_chunking_workaround = false;
+    // Workaround the following a bug on CUDA < 12.1
+    // RuntimeError: CUDA error: CUBLAS_STATUS_EXECUTION_FAILED when calling
+    // `cublasStrsmBatched
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+    defined(CUSOLVER_VERSION) && (CUSOLVER_VERSION < 12100)
+
+    if (N > 524280) {
+      use_chunking_workaround = true;
     }
+#endif
 
-    // Copy the addresses of A and tmp_b from host to device.
-    phi::Allocator::AllocationPtr tmp_gpu_ptrs_data = phi::memory_utils::Alloc(
-        dev_ctx.GetPlace(),
-        cpu_ptrs.size() * sizeof(T*),
-        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+    if (use_chunking_workaround) {
+      constexpr int64_t max_n_size = 524280;
+      int64_t n_chunks = (N + max_n_size - 1) / max_n_size;
 
-    memory_utils::Copy(dev_ctx.GetPlace(),
-                       tmp_gpu_ptrs_data->ptr(),
-                       phi::CPUPlace(),
-                       static_cast<void*>(cpu_ptrs.data()),
-                       cpu_ptrs.size() * sizeof(T*),
-                       dev_ctx.stream());
+      std::vector<const T*> cpu_a_ptrs(batch_size);
+      for (int64_t i = 0; i < batch_size; ++i) {
+        cpu_a_ptrs[i] = x_bst_data + i * M * M;
+      }
+      phi::Allocator::AllocationPtr gpu_a_ptrs_data = phi::memory_utils::Alloc(
+          dev_ctx.GetPlace(),
+          cpu_a_ptrs.size() * sizeof(T*),
+          phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+      memory_utils::Copy(dev_ctx.GetPlace(),
+                         gpu_a_ptrs_data->ptr(),
+                         phi::CPUPlace(),
+                         static_cast<void*>(cpu_a_ptrs.data()),
+                         cpu_a_ptrs.size() * sizeof(T*),
+                         dev_ctx.stream());
+      const T** gpu_a_ptrs =
+          reinterpret_cast<const T**>(gpu_a_ptrs_data->ptr());
 
-    const T** gpu_a_ptrs =
-        reinterpret_cast<const T**>(tmp_gpu_ptrs_data->ptr());
-    T** gpu_b_ptrs =
-        reinterpret_cast<T**>(tmp_gpu_ptrs_data->ptr()) + batch_size;
-    blas.BatchedTRSM(CblasLeft,
-                     uplo,
-                     transA,
-                     diag,
-                     M,
-                     N,
-                     static_cast<T>(1.0),
-                     gpu_a_ptrs,
-                     lda,
-                     gpu_b_ptrs,
-                     ldb,
-                     batch_size);
+      phi::Allocator::AllocationPtr gpu_b_ptrs_data = phi::memory_utils::Alloc(
+          dev_ctx.GetPlace(),
+          batch_size * sizeof(T*),
+          phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+      T** gpu_b_ptrs = reinterpret_cast<T**>(gpu_b_ptrs_data->ptr());
+
+      for (int64_t i = 0; i < n_chunks; ++i) {
+        int64_t n_offset = i * max_n_size;
+        int current_n =
+            static_cast<int>(std::min((int64_t)N - n_offset, max_n_size));
+
+        std::vector<T*> cpu_b_ptrs_for_chunk(batch_size);
+        for (int64_t j = 0; j < batch_size; ++j) {
+          cpu_b_ptrs_for_chunk[j] = out_data + j * M * N + n_offset;
+        }
+        memory_utils::Copy(dev_ctx.GetPlace(),
+                           gpu_b_ptrs_data->ptr(),
+                           phi::CPUPlace(),
+                           static_cast<void*>(cpu_b_ptrs_for_chunk.data()),
+                           cpu_b_ptrs_for_chunk.size() * sizeof(T*),
+                           dev_ctx.stream());
+
+        blas.BatchedTRSM(CblasLeft,
+                         uplo,
+                         transA,
+                         diag,
+                         M,
+                         current_n,
+                         static_cast<T>(1.0),
+                         gpu_a_ptrs,
+                         lda,
+                         gpu_b_ptrs,
+                         ldb,
+                         batch_size);
+      }
+    } else {
+      std::vector<const T*> cpu_ptrs(batch_size * 2);
+      for (int64_t i = 0; i < batch_size; ++i) {
+        cpu_ptrs[i] = x_bst_data + i * M * M;
+        cpu_ptrs[i + batch_size] = out_data + i * M * N;
+      }
+
+      phi::Allocator::AllocationPtr tmp_gpu_ptrs_data =
+          phi::memory_utils::Alloc(
+              dev_ctx.GetPlace(),
+              cpu_ptrs.size() * sizeof(T*),
+              phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+
+      memory_utils::Copy(dev_ctx.GetPlace(),
+                         tmp_gpu_ptrs_data->ptr(),
+                         phi::CPUPlace(),
+                         static_cast<void*>(cpu_ptrs.data()),
+                         cpu_ptrs.size() * sizeof(T*),
+                         dev_ctx.stream());
+
+      const T** gpu_a_ptrs =
+          reinterpret_cast<const T**>(tmp_gpu_ptrs_data->ptr());
+      T** gpu_b_ptrs =
+          reinterpret_cast<T**>(tmp_gpu_ptrs_data->ptr()) + batch_size;
+
+      blas.BatchedTRSM(CblasLeft,
+                       uplo,
+                       transA,
+                       diag,
+                       M,
+                       N,
+                       static_cast<T>(1.0),
+                       gpu_a_ptrs,
+                       lda,
+                       gpu_b_ptrs,
+                       ldb,
+                       batch_size);
+    }
   }
 }
 

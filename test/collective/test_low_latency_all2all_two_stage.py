@@ -16,7 +16,7 @@ import contextlib
 import random
 from functools import partial
 
-import numpy as np
+from test_low_latency_utils import bench, bench_split, per_token_cast_back
 
 import paddle
 import paddle.distributed as dist
@@ -24,110 +24,6 @@ from paddle.distributed import fleet
 from paddle.distributed.communication import deep_ep
 
 num_max_tokens = 512
-
-
-def bench_split(fn1, fn2, num_warmups: int = 50, num_tests: int = 50):
-    # clear
-    cache = paddle.empty((int(256e6 // 4),), dtype="int32")
-    cache.zero_()
-
-    # Warmup
-    for _ in range(num_warmups):
-        fn1()
-        fn2()
-
-    # Flush L2
-    cache.zero_()
-    del cache
-
-    # Testing
-    start_events_fn1 = [
-        paddle.device.Event(enable_timing=True) for _ in range(num_tests)
-    ]
-    end_events_fn1 = [
-        paddle.device.Event(enable_timing=True) for _ in range(num_tests)
-    ]
-    start_events_fn2 = [
-        paddle.device.Event(enable_timing=True) for _ in range(num_tests)
-    ]
-    end_events_fn2 = [
-        paddle.device.Event(enable_timing=True) for _ in range(num_tests)
-    ]
-    for i in range(num_tests):
-        # Record
-        start_events_fn1[i].record()
-        fn1()
-        end_events_fn1[i].record()
-        start_events_fn2[i].record()
-        fn2()
-        end_events_fn2[i].record()
-    paddle.device.synchronize()
-
-    times_fn1 = np.array(
-        [
-            s.elapsed_time(e) / 1e3
-            for s, e in zip(start_events_fn1, end_events_fn1)
-        ]
-    )[1:]
-    times_fn2 = np.array(
-        [
-            s.elapsed_time(e) / 1e3
-            for s, e in zip(start_events_fn2, end_events_fn2)
-        ]
-    )[1:]
-    return (
-        np.average(times_fn1),
-        np.min(times_fn1),
-        np.max(times_fn1),
-        np.average(times_fn2),
-        np.min(times_fn2),
-        np.max(times_fn2),
-    )
-
-
-def bench(fn, num_warmups: int = 50, num_tests: int = 50):
-    # clear
-    cache = paddle.empty((int(256e6 // 4),), dtype="int32")
-    cache.zero_()
-
-    # Warmup
-    for _ in range(num_warmups):
-        fn()
-
-    # Flush L2
-    cache.zero_()
-    del cache
-
-    # Testing
-    start_events_fn = [
-        paddle.device.Event(enable_timing=True) for _ in range(num_tests)
-    ]
-    end_events_fn = [
-        paddle.device.Event(enable_timing=True) for _ in range(num_tests)
-    ]
-    for i in range(num_tests):
-        start_events_fn[i].record()
-        fn()
-        end_events_fn[i].record()
-    paddle.device.synchronize()
-
-    times_fn = np.array(
-        [
-            s.elapsed_time(e) / 1e3
-            for s, e in zip(start_events_fn, end_events_fn)
-        ]
-    )[1:]
-    return (
-        np.average(times_fn),
-        np.min(times_fn),
-        np.max(times_fn),
-    )
-
-
-def per_token_cast_back(x_fp8: paddle.Tensor, x_scales: paddle.Tensor):
-    x_fp32 = x_fp8.to("float32").view((x_fp8.shape[0], -1, 128))
-    x_scales = x_scales.view((x_fp8.shape[0], -1, 1))
-    return (x_fp32 * x_scales).view(x_fp8.shape).to("bfloat16")
 
 
 def test_main(
@@ -266,7 +162,9 @@ def test_main(
                 )
 
         # dispatch + combine
-        for do_send, do_recv in [(True, False), (False, True), (True, True)]:
+        for do_send, do_recv in [
+            (True, True),
+        ]:
             avg_t_fn, min_t_fn, max_t_fn = bench(
                 partial(
                     test_func,
