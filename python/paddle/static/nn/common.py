@@ -704,6 +704,9 @@ def conv2d(
     Examples:
         .. code-block:: python
 
+            >>> # set env var before import paddle to disable pir mode, following example code use os module.
+            >>> import os
+            >>> os.environ['FLAGS_enable_pir_api'] = '0'
             >>> import paddle
             >>> paddle.enable_static()
 

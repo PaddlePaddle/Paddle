@@ -21,6 +21,11 @@ from paddle.utils import deprecated
 __all__ = []
 
 
+@deprecated(
+    since="3.0.0",
+    level=1,
+    reason="This API will be deprecated in the future, because it's just for old statics mode.",
+)
 def sequence_conv(
     input,
     num_filters,
@@ -121,6 +126,9 @@ def sequence_conv(
 
         .. code-block:: python
 
+            >>> # set env var before import paddle to disable pir mode, following example code use os module.
+            >>> import os
+            >>> os.environ['FLAGS_enable_pir_api'] = '0'
             >>> import paddle
             >>> paddle.enable_static()
 
@@ -131,6 +139,9 @@ def sequence_conv(
     assert (
         not in_dygraph_mode()
     ), "sequence layer is not supported in dygraph mode yet."
+    assert (
+        not in_pir_mode()
+    ), "sequence layer is not supported in pir mode, please set the environment variable FLAGS_enable_pir_api=0 to switch old static mode."
     check_variable_and_dtype(
         input, 'input', ['float32', 'float64'], 'sequence_conv'
     )
@@ -161,6 +172,11 @@ def sequence_conv(
     return helper.append_activation(pre_act)
 
 
+@deprecated(
+    since="3.0.0",
+    level=1,
+    reason="This API will be deprecated in the future, because it's just for old statics mode.",
+)
 def sequence_softmax(input, use_cudnn=False, name=None):
     r"""
 
@@ -219,6 +235,9 @@ def sequence_softmax(input, use_cudnn=False, name=None):
 
         .. code-block:: python
 
+            >>> # set env var before import paddle to disable pir mode, following example code use os module.
+            >>> import os
+            >>> os.environ['FLAGS_enable_pir_api'] = '0'
             >>> import paddle
             >>> paddle.enable_static()
 
@@ -233,6 +252,9 @@ def sequence_softmax(input, use_cudnn=False, name=None):
     assert (
         not in_dygraph_mode()
     ), "sequence layer is not supported in dygraph mode yet."
+    assert (
+        not in_pir_mode()
+    ), "sequence layer is not supported in pir mode, please set the environment variable FLAGS_enable_pir_api=0 to switch old static mode."
     helper = LayerHelper('sequence_softmax', **locals())
     check_variable_and_dtype(
         input, 'input', ['float32', 'float64'], 'sequence_softmax'
@@ -329,6 +351,9 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
 
         .. code-block:: python
 
+            >>> # set env var before import paddle to disable pir mode, following example code use os module.
+            >>> import os
+            >>> os.environ['FLAGS_enable_pir_api'] = '0'
             >>> import paddle
             >>> paddle.enable_static()
 
@@ -374,6 +399,11 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
     return pool_out
 
 
+@deprecated(
+    since="3.0.0",
+    level=1,
+    reason="This API will be deprecated in the future, because it's just for old statics mode.",
+)
 def sequence_first_step(input):
     """
 
@@ -420,6 +450,9 @@ def sequence_first_step(input):
 
         .. code-block:: python
 
+            >>> # set env var before import paddle to disable pir mode, following example code use os module.
+            >>> import os
+            >>> os.environ['FLAGS_enable_pir_api'] = '0'
             >>> import paddle
             >>> paddle.enable_static()
 
@@ -432,6 +465,11 @@ def sequence_first_step(input):
     return sequence_pool(input=input, pool_type="first")
 
 
+@deprecated(
+    since="3.0.0",
+    level=1,
+    reason="This API will be deprecated in the future, because it's just for old statics mode.",
+)
 def sequence_last_step(input):
     """
 
@@ -479,6 +517,9 @@ def sequence_last_step(input):
 
         .. code-block:: python
 
+            >>> # set env var before import paddle to disable pir mode, following example code use os module.
+            >>> import os
+            >>> os.environ['FLAGS_enable_pir_api'] = '0'
             >>> import paddle
             >>> paddle.enable_static()
 
@@ -491,6 +532,11 @@ def sequence_last_step(input):
     return sequence_pool(input=input, pool_type="last")
 
 
+@deprecated(
+    since="3.0.0",
+    level=1,
+    reason="This API will be deprecated in the future, because it's just for old statics mode.",
+)
 def sequence_expand(x, y, ref_level=-1, name=None):
     r"""
 
@@ -571,6 +617,9 @@ def sequence_expand(x, y, ref_level=-1, name=None):
     Examples:
         .. code-block:: python
 
+            >>> # set env var before import paddle to disable pir mode, following example code use os module.
+            >>> import os
+            >>> os.environ['FLAGS_enable_pir_api'] = '0'
             >>> import paddle
             >>> from paddle import base
             >>> paddle.enable_static()
@@ -618,6 +667,9 @@ def sequence_expand(x, y, ref_level=-1, name=None):
     assert (
         not in_dygraph_mode()
     ), "sequence layer is not supported in dygraph mode yet."
+    assert (
+        not in_pir_mode()
+    ), "sequence layer is not supported in pir mode, please set the environment variable FLAGS_enable_pir_api=0 to switch old static mode."
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'sequence_expand'
     )
@@ -633,6 +685,10 @@ def sequence_expand(x, y, ref_level=-1, name=None):
     return tmp
 
 
+@deprecated(
+    update_to="paddle.nn.functional.sequence_mask",
+    level=1,
+)
 def sequence_mask(x, maxlen=None, dtype='int64', name=None):
     r"""
     **SequenceMask Layer**
