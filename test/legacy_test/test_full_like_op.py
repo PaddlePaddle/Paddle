@@ -298,7 +298,7 @@ class TestFullLikeWithTensorValue(unittest.TestCase):
             value_tensor = paddle.to_tensor(value_np)
             result = paddle.full_like(base_tensor, value_tensor)
             expected = np.full_like(base_np, value_np)
-            self.assertTrue(np.array_equal(result.numpy(), expected))
+            np.testing.assert_array_equal(result.numpy(), expected)
 
     def test_static_api(self):
         with static_guard():
@@ -326,7 +326,7 @@ class TestFullLikeWithTensorValue(unittest.TestCase):
                 )
 
                 expected = np.full_like(base_np, value_np)
-                self.assertTrue(np.array_equal(res[0], expected))
+                np.testing.assert_array_equal(res[0], expected)
 
 
 if __name__ == "__main__":
