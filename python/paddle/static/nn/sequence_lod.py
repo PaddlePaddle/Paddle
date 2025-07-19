@@ -126,6 +126,7 @@ def sequence_conv(
 
         .. code-block:: python
 
+            >>> # doctest: +SKIP("env set will not work in ci check because import paddle in global_exec")
             >>> # set env var before import paddle to disable pir mode, following example code use os module.
             >>> import os
             >>> os.environ['FLAGS_enable_pir_api'] = '0'
@@ -235,6 +236,7 @@ def sequence_softmax(input, use_cudnn=False, name=None):
 
         .. code-block:: python
 
+            >>> # doctest: +SKIP("env set will not work in ci check because import paddle in global_exec")
             >>> # set env var before import paddle to disable pir mode, following example code use os module.
             >>> import os
             >>> os.environ['FLAGS_enable_pir_api'] = '0'
@@ -351,6 +353,7 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
 
         .. code-block:: python
 
+            >>> # doctest: +SKIP("env set will not work in ci check because import paddle in global_exec")
             >>> # set env var before import paddle to disable pir mode, following example code use os module.
             >>> import os
             >>> os.environ['FLAGS_enable_pir_api'] = '0'
@@ -450,6 +453,7 @@ def sequence_first_step(input):
 
         .. code-block:: python
 
+            >>> # doctest: +SKIP("env set will not work in ci check because import paddle in global_exec")
             >>> # set env var before import paddle to disable pir mode, following example code use os module.
             >>> import os
             >>> os.environ['FLAGS_enable_pir_api'] = '0'
@@ -517,6 +521,7 @@ def sequence_last_step(input):
 
         .. code-block:: python
 
+            >>> # doctest: +SKIP("env set will not work in ci check because import paddle in global_exec")
             >>> # set env var before import paddle to disable pir mode, following example code use os module.
             >>> import os
             >>> os.environ['FLAGS_enable_pir_api'] = '0'
@@ -617,6 +622,7 @@ def sequence_expand(x, y, ref_level=-1, name=None):
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +SKIP("env set will not work in ci check because import paddle in global_exec")
             >>> # set env var before import paddle to disable pir mode, following example code use os module.
             >>> import os
             >>> os.environ['FLAGS_enable_pir_api'] = '0'

@@ -704,6 +704,7 @@ def conv2d(
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +SKIP("env set will not work in ci check because import paddle in global_exec")
             >>> # set env var before import paddle to disable pir mode, following example code use os module.
             >>> import os
             >>> os.environ['FLAGS_enable_pir_api'] = '0'
