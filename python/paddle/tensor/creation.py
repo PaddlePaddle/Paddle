@@ -1076,10 +1076,19 @@ def full_like(
              [2. 2. 2.]]
     """
     if not isinstance(
-        fill_value, (bool, int, float, builtins.complex, paddle.Tensor)
+        fill_value,
+        (
+            bool,
+            int,
+            float,
+            builtins.complex,
+            core.eager.Tensor,
+            Variable,
+            paddle.pir.Value,
+        ),
     ):
         raise TypeError(
-            f"fill_value should be bool, int, float or complex, but received {type(fill_value)}."
+            f"The fill_value should be bool, int, float, complex or Tensor, but received {type(fill_value)}."
         )
 
     if dtype is None:
@@ -1582,10 +1591,19 @@ def full(
              [2. 2.]]
     """
     if not isinstance(
-        fill_value, (int, float, bool, builtins.complex, paddle.Tensor)
+        fill_value,
+        (
+            int,
+            float,
+            bool,
+            builtins.complex,
+            core.eager.Tensor,
+            Variable,
+            paddle.pir.Value,
+        ),
     ):
         raise TypeError(
-            f"The fill_value must be one of [int, float, bool, complex, core.eager.Tensor,Variable, paddle.pir.Value]. But received {type(fill_value)}."
+            f"The fill_value should be bool, int, float, complex or Tensor, but received {type(fill_value)}."
         )
 
     if dtype is None:

@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
-from utils import dygraph_guard
+from utils import dygraph_guard, static_guard
 
 import paddle
 import paddle.framework.dtype as dtypes
@@ -118,7 +118,7 @@ class TestFullLikeOpError(unittest.TestCase):
 
     def test_fill_value_errors(self):
         with dygraph_guard():
-            # The fill_value must be one of [int, float, bool, complex, core.eager.Tensor, Variable, paddle.pir.Value].
+            # The fill_value must be one of [int, float, bool, complex, Tensor].
             self.assertRaises(
                 TypeError,
                 paddle.full,
@@ -287,6 +287,46 @@ class TestFullLikeKernelZeroSize(unittest.TestCase):
         expected = np.full_like(base_tensor.numpy(), value)
         self.assertTrue(np.array_equal(result.numpy(), expected))
         paddle.enable_static()
+
+
+class TestFullLikeWithTensorValue(unittest.TestCase):
+    def test_dygraph_api(self):
+        with dygraph_guard():
+            base_np = np.array([[1, 2], [3, 4]], dtype=np.float32)
+            value_np = np.array([5.0], dtype=np.float32)
+            base_tensor = paddle.to_tensor(base_np)
+            value_tensor = paddle.to_tensor(value_np)
+            result = paddle.full_like(base_tensor, value_tensor)
+            expected = np.full_like(base_np, value_np)
+            self.assertTrue(np.array_equal(result.numpy(), expected))
+
+    def test_static_api(self):
+        with static_guard():
+            startup_program = paddle.static.Program()
+            train_program = paddle.static.Program()
+            with paddle.static.program_guard(train_program, startup_program):
+                base_tensor = paddle.static.data(
+                    name='base_tensor', dtype='float32', shape=[2, 2]
+                )
+                value_tensor = paddle.static.data(
+                    name='value_tensor', dtype='float32', shape=[1]
+                )
+                result = paddle.full_like(base_tensor, value_tensor)
+
+                place = paddle.CPUPlace()
+                exe = paddle.static.Executor(place)
+
+                base_np = np.array([[1, 2], [3, 4]], dtype=np.float32)
+                value_np = np.array([5.0], dtype=np.float32)
+
+                res = exe.run(
+                    train_program,
+                    feed={'base_tensor': base_np, 'value_tensor': value_np},
+                    fetch_list=[result],
+                )
+
+                expected = np.full_like(base_np, value_np)
+                self.assertTrue(np.array_equal(res[0], expected))
 
 
 if __name__ == "__main__":
