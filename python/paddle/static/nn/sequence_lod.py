@@ -14,8 +14,9 @@
 
 import paddle
 from paddle.base.data_feeder import check_variable_and_dtype
-from paddle.base.framework import in_dygraph_mode
+from paddle.base.framework import in_dygraph_mode, in_pir_mode
 from paddle.base.layer_helper import LayerHelper
+from paddle.utils import deprecated
 
 __all__ = []
 
@@ -247,6 +248,11 @@ def sequence_softmax(input, use_cudnn=False, name=None):
     return softmax_out
 
 
+@deprecated(
+    since="3.0.0",
+    level=1,
+    reason="This API will be deprecated in the future, because it's just for old statics mode.",
+)
 def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
     r"""
 
@@ -337,6 +343,10 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
     assert (
         not in_dygraph_mode()
     ), "sequence layer is not supported in dygraph mode yet."
+    assert (
+        not in_pir_mode()
+    ), "sequence layer is not supported in pir mode, please set the environment variable FLAGS_enable_pir_api=0 to switch old static mode."
+
     check_variable_and_dtype(
         input, 'input', ['float32', 'float64'], 'sequence_pool'
     )

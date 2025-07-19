@@ -40,6 +40,7 @@ from paddle.common_ops_import import (
     check_variable_and_dtype,
 )
 from paddle.nn.initializer import Constant, Normal
+from paddle.utils import deprecated
 
 __all__ = []
 
@@ -570,6 +571,12 @@ def group_norm(
     return helper.append_activation(group_norm_out)
 
 
+@deprecated(
+    since="3.0.0",
+    update_to="paddle.nn.Conv2D",
+    level=1,
+    reason="This API will be deprecated in the future, because it's just for old statics mode, please use paddle.nn.Conv2D instead.",
+)
 def conv2d(
     input,
     num_filters,
@@ -705,6 +712,9 @@ def conv2d(
             >>> print(conv2d.shape)
             (-1, 2, 30, 30)
     """
+    assert (
+        not in_pir_mode()
+    ), "paddle.static.nn.conv2d is not supported in pir mode, please set the environment variable FLAGS_enable_pir_api=0 to switch old static mode."
 
     check_variable_and_dtype(
         input, 'input', ['uint16', 'float16', 'float32', 'float64'], 'conv2d'
