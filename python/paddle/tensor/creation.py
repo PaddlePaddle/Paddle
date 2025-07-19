@@ -1044,7 +1044,7 @@ class MmapStorage(paddle.base.core.MmapStorage):
 
 def full_like(
     x: paddle.Tensor,
-    fill_value: Numeric,
+    fill_value: Numeric | str,
     dtype: DTypeLike | None = None,
     name: str | None = None,
 ) -> paddle.Tensor:
@@ -1076,9 +1076,10 @@ def full_like(
             [[2. 2. 2.]
              [2. 2. 2.]]
     """
+    # Include str type check to handle string numeric values like "0.5" that occur in CI tests.
     if not isinstance(
         fill_value,
-        (numbers.Number, core.eager.Tensor, Variable, paddle.pir.Value),
+        (numbers.Number, str, core.eager.Tensor, Variable, paddle.pir.Value),
     ):
         raise TypeError(
             f"The fill_value should be scalar or Tensor, but received {type(fill_value)}."
@@ -1525,7 +1526,7 @@ def eye(
 
 def full(
     shape: ShapeLike,
-    fill_value: Numeric,
+    fill_value: Numeric | str,
     dtype: DTypeLike | None = None,
     name: str | None = None,
 ) -> paddle.Tensor:
@@ -1583,9 +1584,10 @@ def full(
              [2. 2.]
              [2. 2.]]
     """
+    # Include str type check to handle string numeric values like "0.5" that occur in CI tests.
     if not isinstance(
         fill_value,
-        (numbers.Number, core.eager.Tensor, Variable, paddle.pir.Value),
+        (numbers.Number, str, core.eager.Tensor, Variable, paddle.pir.Value),
     ):
         raise TypeError(
             f"The fill_value should be scalar or Tensor, but received {type(fill_value)}."
