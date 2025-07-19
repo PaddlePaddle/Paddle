@@ -330,135 +330,138 @@ __global__ __launch_bounds__(
   /* RDMA Receiver and NVL Sender */
   {
     const int sms_per_rdma = num_sms / kNumRdmaRanks;
-    EP_DEVICE_ASSERT(num_sms % kNumRdmaRanks == 0);
     const int src_rdma_rank = sm_id / sms_per_rdma;
-    const int sub_rdma_rank = sm_id % sms_per_rdma;
+    if (src_rdma_rank < kNumRdmaRanks) {
+      const int sub_rdma_rank = sm_id % sms_per_rdma;
 
-    const int src_rank = src_rdma_rank * NUM_MAX_NVL_PEERS + nvl_rank;
-    const auto rdma_recv_x_uint8 =
-        reinterpret_cast<uint8_t*>(rdma_recv_x) +
-        src_rdma_rank * num_max_dispatch_tokens_per_rank * num_bytes_per_msg;
-    const auto rdma_recv_x_uint8_bak =
-        reinterpret_cast<uint8_t*>(rdma_recv_x) +
-        kNumRdmaRanks * num_max_dispatch_tokens_per_rank * num_bytes_per_msg +
-        src_rdma_rank * num_max_dispatch_tokens_per_rank * num_bytes_per_msg;
+      const int src_rank = src_rdma_rank * NUM_MAX_NVL_PEERS + nvl_rank;
+      const auto rdma_recv_x_uint8 =
+          reinterpret_cast<uint8_t*>(rdma_recv_x) +
+          src_rdma_rank * num_max_dispatch_tokens_per_rank * num_bytes_per_msg;
+      const auto rdma_recv_x_uint8_bak =
+          reinterpret_cast<uint8_t*>(rdma_recv_x) +
+          kNumRdmaRanks * num_max_dispatch_tokens_per_rank * num_bytes_per_msg +
+          src_rdma_rank * num_max_dispatch_tokens_per_rank * num_bytes_per_msg;
 
-    __shared__ int shared_num_recv_tokens[1];
-    int num_recv_tokens_per_rdma;
-    if (thread_id < kNumQPs) {
-      while ((num_recv_tokens_per_rdma = ld_acquire_sys_global(
-                  rdma_recv_count + src_rdma_rank * kNumQPs + thread_id)) ==
-             0) {
-      }
-      if (thread_id == 0) {
-        sub_rdma_rank == 0
-            ? packed_rdma_recv_count[src_rdma_rank] = num_recv_tokens_per_rdma
-            : 0;
-        num_recv_tokens_per_rdma = -num_recv_tokens_per_rdma - 1;
-        shared_num_recv_tokens[0] = num_recv_tokens_per_rdma;
-      }
-    }
-    __syncthreads();
-    num_recv_tokens_per_rdma = shared_num_recv_tokens[0];
-    for (int rdma_recv_token_idx = sub_rdma_rank;
-         rdma_recv_token_idx < num_recv_tokens_per_rdma;
-         rdma_recv_token_idx += sms_per_rdma) {
-      const auto rdma_recv_x_uint8_now =
-          rdma_recv_x_uint8 + rdma_recv_token_idx * num_bytes_per_msg;
-      const auto rdma_recv_x_uint8_bak_now =
-          rdma_recv_x_uint8_bak + rdma_recv_token_idx * num_bytes_per_msg;
-      const auto src_data = reinterpret_cast<int4*>(rdma_recv_x_uint8_now);
-      const auto rdma_recv_x_scales = reinterpret_cast<float*>(
-          reinterpret_cast<uint8_t*>(src_data) + sizeof(int4) + hidden_bytes);
-      const auto rdma_recv_nvl_rank_meta = reinterpret_cast<int*>(
-          rdma_recv_x_scales + (kUseFP8 ? kNumScales : 0));
-      const int dst_nvl_experts =
-          *(rdma_recv_nvl_rank_meta + rdma_rank * (kTopk * 3 + 1));
-      const auto rdma_recv_nvl_rank_meta_now =
-          rdma_recv_nvl_rank_meta + rdma_rank * (kTopk * 3 + 1) + 1;
-
-      // Used in combine
-      // The buffer in the dispatch phase can be reused, we won’t use it this
-      // way for now.
-      if (warp_id == num_warps - 1) {
-        UNROLLED_WARP_COPY(UNROLL_FACTOR,
-                           lane_id,
-                           num_int4_per_msg,
-                           reinterpret_cast<int4*>(rdma_recv_x_uint8_bak_now),
-                           reinterpret_cast<int4*>(rdma_recv_x_uint8_now),
-                           ld_nc_global,
-                           st_na_global);
-      }
-
-      // nvl sender
-      for (int loop_nvl_expert_i = warp_id; loop_nvl_expert_i < dst_nvl_experts;
-           loop_nvl_expert_i += num_warps) {
-        const int rdma_local_expert_idx =
-            rdma_recv_nvl_rank_meta_now[loop_nvl_expert_i * 3];
-        const int rdma_local_expert_cumsum_index =
-            rdma_recv_nvl_rank_meta_now[loop_nvl_expert_i * 3 + 1];
-        const int dst_nvl_rank = rdma_local_expert_idx / kNumLocalExperts;
-        const int dst_nvl_local_expert =
-            rdma_local_expert_idx % kNumLocalExperts;
-        const auto dst_data =
-            reinterpret_cast<int4*>(nvl_recv_x[dst_nvl_rank]) +
-            ((dst_nvl_local_expert * kNumRanks + src_rank) *
-                 num_max_dispatch_tokens_per_rank +
-             rdma_local_expert_cumsum_index) *
-                num_int4_per_msg_rdma_revecier_and_nvl_sender;
-        if (lane_id == 0) {
-          int* rdma_dst_cumsum_idx = reinterpret_cast<int*>(dst_data);
-          st_na_global(rdma_dst_cumsum_idx, rdma_local_expert_cumsum_index);
+      __shared__ int shared_num_recv_tokens[1];
+      int num_recv_tokens_per_rdma;
+      if (thread_id < kNumQPs) {
+        while ((num_recv_tokens_per_rdma = ld_acquire_sys_global(
+                    rdma_recv_count + src_rdma_rank * kNumQPs + thread_id)) ==
+               0) {
         }
-        UNROLLED_WARP_COPY(UNROLL_FACTOR,
-                           lane_id,
-                           num_int4_per_msg_rdma_to_nvl,
-                           dst_data + 1,
-                           src_data + 1,
-                           ld_nc_global,
-                           st_na_global);
-        __syncwarp();
-        lane_id == 0
-            ? (atomic_add_release_global(atomic_recv_tokens_per_rdma_expert +
-                                             src_rdma_rank * kNumRdmaExperts +
-                                             rdma_local_expert_idx,
-                                         1))
-            : 0;
+        if (thread_id == 0) {
+          sub_rdma_rank == 0
+              ? packed_rdma_recv_count[src_rdma_rank] = num_recv_tokens_per_rdma
+              : 0;
+          num_recv_tokens_per_rdma = -num_recv_tokens_per_rdma - 1;
+          shared_num_recv_tokens[0] = num_recv_tokens_per_rdma;
+        }
       }
-    }
-    __syncthreads();
-    thread_id == 0 ? (atomic_add_release_global(
-                         atomic_nvl_sender_multi_sms + src_rdma_rank, 1))
-                   : 0;
-    if (sub_rdma_rank == 0 && thread_id == 0) {
-      while (ld_acquire_global(atomic_nvl_sender_multi_sms + src_rdma_rank) !=
-             sms_per_rdma) {
+      __syncthreads();
+      num_recv_tokens_per_rdma = shared_num_recv_tokens[0];
+      for (int rdma_recv_token_idx = sub_rdma_rank;
+           rdma_recv_token_idx < num_recv_tokens_per_rdma;
+           rdma_recv_token_idx += sms_per_rdma) {
+        const auto rdma_recv_x_uint8_now =
+            rdma_recv_x_uint8 + rdma_recv_token_idx * num_bytes_per_msg;
+        const auto rdma_recv_x_uint8_bak_now =
+            rdma_recv_x_uint8_bak + rdma_recv_token_idx * num_bytes_per_msg;
+        const auto src_data = reinterpret_cast<int4*>(rdma_recv_x_uint8_now);
+        const auto rdma_recv_x_scales = reinterpret_cast<float*>(
+            reinterpret_cast<uint8_t*>(src_data) + sizeof(int4) + hidden_bytes);
+        const auto rdma_recv_nvl_rank_meta = reinterpret_cast<int*>(
+            rdma_recv_x_scales + (kUseFP8 ? kNumScales : 0));
+        const int dst_nvl_experts =
+            *(rdma_recv_nvl_rank_meta + rdma_rank * (kTopk * 3 + 1));
+        const auto rdma_recv_nvl_rank_meta_now =
+            rdma_recv_nvl_rank_meta + rdma_rank * (kTopk * 3 + 1) + 1;
+
+        // Used in combine
+        // The buffer in the dispatch phase can be reused, we won’t use it this
+        // way for now.
+        if (warp_id == num_warps - 1) {
+          UNROLLED_WARP_COPY(UNROLL_FACTOR,
+                             lane_id,
+                             num_int4_per_msg,
+                             reinterpret_cast<int4*>(rdma_recv_x_uint8_bak_now),
+                             reinterpret_cast<int4*>(rdma_recv_x_uint8_now),
+                             ld_nc_global,
+                             st_na_global);
+        }
+
+        // nvl sender
+        for (int loop_nvl_expert_i = warp_id;
+             loop_nvl_expert_i < dst_nvl_experts;
+             loop_nvl_expert_i += num_warps) {
+          const int rdma_local_expert_idx =
+              rdma_recv_nvl_rank_meta_now[loop_nvl_expert_i * 3];
+          const int rdma_local_expert_cumsum_index =
+              rdma_recv_nvl_rank_meta_now[loop_nvl_expert_i * 3 + 1];
+          const int dst_nvl_rank = rdma_local_expert_idx / kNumLocalExperts;
+          const int dst_nvl_local_expert =
+              rdma_local_expert_idx % kNumLocalExperts;
+          const auto dst_data =
+              reinterpret_cast<int4*>(nvl_recv_x[dst_nvl_rank]) +
+              ((dst_nvl_local_expert * kNumRanks + src_rank) *
+                   num_max_dispatch_tokens_per_rank +
+               rdma_local_expert_cumsum_index) *
+                  num_int4_per_msg_rdma_revecier_and_nvl_sender;
+          if (lane_id == 0) {
+            int* rdma_dst_cumsum_idx = reinterpret_cast<int*>(dst_data);
+            st_na_global(rdma_dst_cumsum_idx, rdma_local_expert_cumsum_index);
+          }
+          UNROLLED_WARP_COPY(UNROLL_FACTOR,
+                             lane_id,
+                             num_int4_per_msg_rdma_to_nvl,
+                             dst_data + 1,
+                             src_data + 1,
+                             ld_nc_global,
+                             st_na_global);
+          __syncwarp();
+          lane_id == 0
+              ? (atomic_add_release_global(atomic_recv_tokens_per_rdma_expert +
+                                               src_rdma_rank * kNumRdmaExperts +
+                                               rdma_local_expert_idx,
+                                           1))
+              : 0;
+        }
       }
-      atomic_nvl_sender_multi_sms[src_rdma_rank] = 0;
-    }
-    __syncthreads();
-    if (sub_rdma_rank == 0) {
-      for (int dst_rdma_local_expert_idx = thread_id;
-           dst_rdma_local_expert_idx < NUM_MAX_NVL_PEERS * kNumLocalExperts;
-           dst_rdma_local_expert_idx += num_threads) {
-        const int dst_nvl_rank = dst_rdma_local_expert_idx / kNumLocalExperts;
-        const int dst_nvl_local_expert =
-            dst_rdma_local_expert_idx % kNumLocalExperts;
-        st_release_sys_global(
-            reinterpret_cast<int*>(
-                reinterpret_cast<uint8_t*>(nvl_recv_x[dst_nvl_rank]) +
-                NVL_BUFFER_X_BYTES) +
-                dst_nvl_local_expert * kNumRanks + src_rank,
-            -ld_acquire_global(atomic_recv_tokens_per_rdma_expert +
-                               src_rdma_rank * kNumRdmaExperts +
-                               dst_rdma_local_expert_idx) -
-                1);
-        // reset
-        *(atomic_recv_tokens_per_rdma_expert + src_rdma_rank * kNumRdmaExperts +
-          dst_rdma_local_expert_idx) = 0;
+      __syncthreads();
+      thread_id == 0 ? (atomic_add_release_global(
+                           atomic_nvl_sender_multi_sms + src_rdma_rank, 1))
+                     : 0;
+      if (sub_rdma_rank == 0 && thread_id == 0) {
+        while (ld_acquire_global(atomic_nvl_sender_multi_sms + src_rdma_rank) !=
+               sms_per_rdma) {
+        }
+        atomic_nvl_sender_multi_sms[src_rdma_rank] = 0;
       }
-      for (int reset_i = thread_id; reset_i < kNumQPs; reset_i += num_threads) {
-        rdma_recv_count[src_rdma_rank * kNumQPs + reset_i] = 0;
+      __syncthreads();
+      if (sub_rdma_rank == 0) {
+        for (int dst_rdma_local_expert_idx = thread_id;
+             dst_rdma_local_expert_idx < NUM_MAX_NVL_PEERS * kNumLocalExperts;
+             dst_rdma_local_expert_idx += num_threads) {
+          const int dst_nvl_rank = dst_rdma_local_expert_idx / kNumLocalExperts;
+          const int dst_nvl_local_expert =
+              dst_rdma_local_expert_idx % kNumLocalExperts;
+          st_release_sys_global(
+              reinterpret_cast<int*>(
+                  reinterpret_cast<uint8_t*>(nvl_recv_x[dst_nvl_rank]) +
+                  NVL_BUFFER_X_BYTES) +
+                  dst_nvl_local_expert * kNumRanks + src_rank,
+              -ld_acquire_global(atomic_recv_tokens_per_rdma_expert +
+                                 src_rdma_rank * kNumRdmaExperts +
+                                 dst_rdma_local_expert_idx) -
+                  1);
+          // reset
+          *(atomic_recv_tokens_per_rdma_expert +
+            src_rdma_rank * kNumRdmaExperts + dst_rdma_local_expert_idx) = 0;
+        }
+        for (int reset_i = thread_id; reset_i < kNumQPs;
+             reset_i += num_threads) {
+          rdma_recv_count[src_rdma_rank * kNumQPs + reset_i] = 0;
+        }
       }
     }
   }
@@ -657,7 +660,9 @@ void dispatch(void* packed_recv_x,
                                                   kNumExperts,
                                                   kTopk,
                                                   kNumQPs>;
-                    SETUP_LAUNCH_CONFIG(num_sms, NUM_WARPS * 32, stream);
+                    SETUP_LAUNCH_CONFIG(num_sms,
+                                        kNumWarpGroups * kNumWarpsPerGroup * 32,
+                                        stream);
                     LAUNCH_KERNEL(&cfg,
                                   dispatch_func,
                                   packed_recv_x,
@@ -758,15 +763,15 @@ __global__ __launch_bounds__(
   const auto sub_warp_id = warp_id % kNumWarpsPerGroup;
   const auto responsible_expert_idx = sm_id * kNumWarpGroups + warp_group_id;
 
-  if (sm_id == 0 && thread_id == 0) {
-    EP_DEVICE_ASSERT(ibgda_get_state()->num_rc_per_pe >= kNumQPs);
-  }
-
   const auto rdma_rank = rank / NUM_MAX_NVL_PEERS,
              nvl_rank = rank % NUM_MAX_NVL_PEERS;
 
   constexpr int kNumElemsPerInt4 = sizeof(int4) / sizeof(nv_bfloat16);
   const size_t hidden_bf16_int4 = kHidden / kNumElemsPerInt4;
+  if (sm_id == 0 && thread_id == 0) {
+    EP_DEVICE_ASSERT(ibgda_get_state()->num_rc_per_pe >= kNumQPs);
+    EP_DEVICE_ASSERT(num_threads >= hidden_bf16_int4);
+  }
 
   constexpr size_t num_bytes_per_slot = kHidden * sizeof(nv_bfloat16);
   const size_t DISPATCH_NVL_BUFFER_X_BYTES =
@@ -865,134 +870,137 @@ __global__ __launch_bounds__(
   {
     const int sms_per_rdma = num_sms / kNumRdmaRanks;
     const int deal_rdma_rank = sm_id / sms_per_rdma;
-    const int sub_deal_rdma_rank = sm_id % sms_per_rdma;
-    const int qp_id = sub_deal_rdma_rank % kNumQPs;
-    const int num_tokens_to_deal =
-        (-dispatch_rdma_recv_count[deal_rdma_rank] - 1);
-    const auto dispatch_rdma_recv_x_this_rdma_rank =
-        reinterpret_cast<uint8_t*>(dispatch_rdma_recv_x) +
-        kNumRdmaRanks * num_max_dispatch_tokens_per_rank *
-            num_bytes_per_msg_dispatch +
-        deal_rdma_rank * num_max_dispatch_tokens_per_rank *
-            num_bytes_per_msg_dispatch;
-    auto rdma_send_x_this_rdma_rank = reinterpret_cast<uint8_t*>(rdma_send_x) +
-                                      deal_rdma_rank *
-                                          num_max_dispatch_tokens_per_rank *
-                                          combine_hidden_bytes;
-    // reduce
-    for (int rdma_recv_token_idx = sub_deal_rdma_rank;
-         rdma_recv_token_idx < num_tokens_to_deal;
-         rdma_recv_token_idx += sms_per_rdma) {
-      const auto dispatch_rdma_recv_x_now =
-          dispatch_rdma_recv_x_this_rdma_rank +
-          rdma_recv_token_idx * num_bytes_per_msg_dispatch;
-      const auto index_source =
-          reinterpret_cast<const int*>(dispatch_rdma_recv_x_now)[0];
-      const int* nvl_rank_meta = reinterpret_cast<const int*>(
-          dispatch_rdma_recv_x_now + sizeof(int4) + dispatch_hidden_bytes +
-          (kDispatchUseFP8 ? kNumScales * sizeof(float) : 0));
-      const int nvl_rank_nums = *(nvl_rank_meta + rdma_rank * (kTopk * 3 + 1));
-      const int* nvl_rank_meta_now =
-          nvl_rank_meta + rdma_rank * (kTopk * 3 + 1) + 1;
-      int4* dst_ptr = reinterpret_cast<int4*>(
-          rdma_send_x_this_rdma_rank + index_source * combine_hidden_bytes);
-      float combined_values[kNumElemsPerInt4] = {0.0f};
-      if (thread_id < hidden_bf16_int4) {
-        for (int nvl_rank_idx = 0; nvl_rank_idx < nvl_rank_nums;
-             nvl_rank_idx += 1) {
-          const int dst_rdma_expert_idx = nvl_rank_meta_now[nvl_rank_idx * 3];
-          const int dst_cum_index = nvl_rank_meta_now[nvl_rank_idx * 3 + 1];
-          const float topk_weight = reinterpret_cast<const float*>(
-              nvl_rank_meta_now)[nvl_rank_idx * 3 + 2];
-          const int4* src_ptr = reinterpret_cast<int4*>(
-              reinterpret_cast<uint8_t*>(nvl_recv_buffer[nvl_rank]) +
-              DISPATCH_NVL_BUFFER_X_BYTES +
-              ((dst_rdma_expert_idx * kNumRdmaRanks + deal_rdma_rank) *
-                   num_max_dispatch_tokens_per_rank +
-               dst_cum_index) *
-                  num_bytes_per_slot);
-          auto x_vec = ld_nc_global(src_ptr + thread_id);
-          const auto x_bf16 = reinterpret_cast<nv_bfloat16*>(&x_vec);
+    if (deal_rdma_rank < kNumRdmaRanks) {
+      const int sub_deal_rdma_rank = sm_id % sms_per_rdma;
+      const int qp_id = sub_deal_rdma_rank % kNumQPs;
+      const int num_tokens_to_deal =
+          (-dispatch_rdma_recv_count[deal_rdma_rank] - 1);
+      const auto dispatch_rdma_recv_x_this_rdma_rank =
+          reinterpret_cast<uint8_t*>(dispatch_rdma_recv_x) +
+          kNumRdmaRanks * num_max_dispatch_tokens_per_rank *
+              num_bytes_per_msg_dispatch +
+          deal_rdma_rank * num_max_dispatch_tokens_per_rank *
+              num_bytes_per_msg_dispatch;
+      auto rdma_send_x_this_rdma_rank =
+          reinterpret_cast<uint8_t*>(rdma_send_x) +
+          deal_rdma_rank * num_max_dispatch_tokens_per_rank *
+              combine_hidden_bytes;
+      // reduce
+      for (int rdma_recv_token_idx = sub_deal_rdma_rank;
+           rdma_recv_token_idx < num_tokens_to_deal;
+           rdma_recv_token_idx += sms_per_rdma) {
+        const auto dispatch_rdma_recv_x_now =
+            dispatch_rdma_recv_x_this_rdma_rank +
+            rdma_recv_token_idx * num_bytes_per_msg_dispatch;
+        const auto index_source =
+            reinterpret_cast<const int*>(dispatch_rdma_recv_x_now)[0];
+        const int* nvl_rank_meta = reinterpret_cast<const int*>(
+            dispatch_rdma_recv_x_now + sizeof(int4) + dispatch_hidden_bytes +
+            (kDispatchUseFP8 ? kNumScales * sizeof(float) : 0));
+        const int nvl_rank_nums =
+            *(nvl_rank_meta + rdma_rank * (kTopk * 3 + 1));
+        const int* nvl_rank_meta_now =
+            nvl_rank_meta + rdma_rank * (kTopk * 3 + 1) + 1;
+        int4* dst_ptr = reinterpret_cast<int4*>(
+            rdma_send_x_this_rdma_rank + index_source * combine_hidden_bytes);
+        float combined_values[kNumElemsPerInt4] = {0.0f};
+        if (thread_id < hidden_bf16_int4) {
+          for (int nvl_rank_idx = 0; nvl_rank_idx < nvl_rank_nums;
+               nvl_rank_idx += 1) {
+            const int dst_rdma_expert_idx = nvl_rank_meta_now[nvl_rank_idx * 3];
+            const int dst_cum_index = nvl_rank_meta_now[nvl_rank_idx * 3 + 1];
+            const float topk_weight = reinterpret_cast<const float*>(
+                nvl_rank_meta_now)[nvl_rank_idx * 3 + 2];
+            const int4* src_ptr = reinterpret_cast<int4*>(
+                reinterpret_cast<uint8_t*>(nvl_recv_buffer[nvl_rank]) +
+                DISPATCH_NVL_BUFFER_X_BYTES +
+                ((dst_rdma_expert_idx * kNumRdmaRanks + deal_rdma_rank) *
+                     num_max_dispatch_tokens_per_rank +
+                 dst_cum_index) *
+                    num_bytes_per_slot);
+            auto x_vec = ld_nc_global(src_ptr + thread_id);
+            const auto x_bf16 = reinterpret_cast<nv_bfloat16*>(&x_vec);
+#pragma unroll
+            for (int j = 0; j < kNumElemsPerInt4; ++j)
+              combined_values[j] += static_cast<float>(x_bf16[j]) * topk_weight;
+          }
+          int4& combined_int4 = *reinterpret_cast<int4*>(combined_values);
+          auto combined_bf16 = reinterpret_cast<nv_bfloat16*>(&combined_values);
 #pragma unroll
           for (int j = 0; j < kNumElemsPerInt4; ++j)
-            combined_values[j] += static_cast<float>(x_bf16[j]) * topk_weight;
+            combined_bf16[j] = static_cast<nv_bfloat16>(combined_values[j]);
+          dst_ptr[thread_id] = combined_int4;
         }
-        int4& combined_int4 = *reinterpret_cast<int4*>(combined_values);
-        auto combined_bf16 = reinterpret_cast<nv_bfloat16*>(&combined_values);
-#pragma unroll
-        for (int j = 0; j < kNumElemsPerInt4; ++j)
-          combined_bf16[j] = static_cast<nv_bfloat16>(combined_values[j]);
-        dst_ptr[thread_id] = combined_int4;
+        __syncthreads();
+        // issue copy to remote rdma per token
+        if (warp_id == 0) {
+          const auto src_ptr = reinterpret_cast<uint64_t>(
+              rdma_send_x_this_rdma_rank + index_source * combine_hidden_bytes);
+          const auto dst_ptr =
+              reinterpret_cast<uint64_t>(rdma_recv_x) +
+              (rdma_rank * num_max_dispatch_tokens_per_rank + index_source) *
+                  combine_hidden_bytes;
+          if (rdma_rank == deal_rdma_rank) {
+            // local copy
+            const auto* src_int4_ptr = reinterpret_cast<const int4*>(src_ptr);
+            const auto* dst_int4_ptr = reinterpret_cast<int4*>(dst_ptr);
+            UNROLLED_WARP_COPY(UNROLL_FACTOR,
+                               lane_id,
+                               combine_hidden_int4_num,
+                               dst_int4_ptr,
+                               src_int4_ptr,
+                               ld_nc_global,
+                               st_na_global);
+          } else {
+            if constexpr (kNumQPs > 1) {
+              nvshmemi_ibgda_put_nbi_warp<true>(
+                  dst_ptr,
+                  src_ptr,
+                  combine_hidden_bytes,
+                  deal_rdma_rank * NUM_MAX_NVL_PEERS + nvl_rank,
+                  qp_id,
+                  lane_id,
+                  0);
+            } else {
+              nvshmemi_ibgda_put_nbi_warp(
+                  dst_ptr,
+                  src_ptr,
+                  combine_hidden_bytes,
+                  deal_rdma_rank * NUM_MAX_NVL_PEERS + nvl_rank,
+                  qp_id,
+                  lane_id,
+                  rdma_recv_token_idx);
+            }
+          }
+          __syncwarp();
+        }
+      }
+      thread_id == 0 ? (atomic_add_release_global(
+                           atomic_nvl_sender_multi_sms + deal_rdma_rank, 1))
+                     : 0;
+      // all sms reduce done
+      if (sub_deal_rdma_rank == 0 && thread_id == 0) {
+        while (ld_acquire_global(atomic_nvl_sender_multi_sms +
+                                 deal_rdma_rank) != sms_per_rdma) {
+        }
+        atomic_nvl_sender_multi_sms[deal_rdma_rank] = 0;
       }
       __syncthreads();
-      // issue copy to remote rdma per token
-      if (warp_id == 0) {
-        const auto src_ptr = reinterpret_cast<uint64_t>(
-            rdma_send_x_this_rdma_rank + index_source * combine_hidden_bytes);
-        const auto dst_ptr =
-            reinterpret_cast<uint64_t>(rdma_recv_x) +
-            (rdma_rank * num_max_dispatch_tokens_per_rank + index_source) *
-                combine_hidden_bytes;
-        if (rdma_rank == deal_rdma_rank) {
-          // local copy
-          const auto* src_int4_ptr = reinterpret_cast<const int4*>(src_ptr);
-          const auto* dst_int4_ptr = reinterpret_cast<int4*>(dst_ptr);
-          UNROLLED_WARP_COPY(UNROLL_FACTOR,
-                             lane_id,
-                             combine_hidden_int4_num,
-                             dst_int4_ptr,
-                             src_int4_ptr,
-                             ld_nc_global,
-                             st_na_global);
+      // set flag
+      if (sub_deal_rdma_rank == 0 && thread_id < kNumQPs) {
+        // notify remote rdma
+        auto dst_rdma_flag = reinterpret_cast<uint64_t>(
+            rdma_recv_flag + rdma_rank * kNumQPs + thread_id);
+        bool is_local_copy = deal_rdma_rank == rdma_rank;
+        if (is_local_copy) {
+          st_na_release(rdma_recv_flag + rdma_rank * kNumQPs + thread_id, 1);
         } else {
-          if constexpr (kNumQPs > 1) {
-            nvshmemi_ibgda_put_nbi_warp<true>(
-                dst_ptr,
-                src_ptr,
-                combine_hidden_bytes,
-                deal_rdma_rank * NUM_MAX_NVL_PEERS + nvl_rank,
-                qp_id,
-                lane_id,
-                0);
-          } else {
-            nvshmemi_ibgda_put_nbi_warp(
-                dst_ptr,
-                src_ptr,
-                combine_hidden_bytes,
-                deal_rdma_rank * NUM_MAX_NVL_PEERS + nvl_rank,
-                qp_id,
-                lane_id,
-                rdma_recv_token_idx);
-          }
+          nvshmemi_ibgda_amo_nonfetch_add(
+              reinterpret_cast<int*>(dst_rdma_flag),
+              1,
+              deal_rdma_rank * NUM_MAX_NVL_PEERS + nvl_rank,
+              qp_id);
         }
-        __syncwarp();
-      }
-    }
-    thread_id == 0 ? (atomic_add_release_global(
-                         atomic_nvl_sender_multi_sms + deal_rdma_rank, 1))
-                   : 0;
-    // all sms reduce done
-    if (sub_deal_rdma_rank == 0 && thread_id == 0) {
-      while (ld_acquire_global(atomic_nvl_sender_multi_sms + deal_rdma_rank) !=
-             sms_per_rdma) {
-      }
-      atomic_nvl_sender_multi_sms[deal_rdma_rank] = 0;
-    }
-    __syncthreads();
-    // set flag
-    if (sub_deal_rdma_rank == 0 && thread_id < kNumQPs) {
-      // notify remote rdma
-      auto dst_rdma_flag = reinterpret_cast<uint64_t>(
-          rdma_recv_flag + rdma_rank * kNumQPs + thread_id);
-      bool is_local_copy = deal_rdma_rank == rdma_rank;
-      if (is_local_copy) {
-        st_na_release(rdma_recv_flag + rdma_rank * kNumQPs + thread_id, 1);
-      } else {
-        nvshmemi_ibgda_amo_nonfetch_add(
-            reinterpret_cast<int*>(dst_rdma_flag),
-            1,
-            deal_rdma_rank * NUM_MAX_NVL_PEERS + nvl_rank,
-            qp_id);
       }
     }
   }
@@ -1117,7 +1125,9 @@ void combine(void* combined_x,
                                                              kTopk,
                                                              false,
                                                              kNumQPs>;
-                    SETUP_LAUNCH_CONFIG(num_sms, NUM_WARPS * 32, stream);
+                    SETUP_LAUNCH_CONFIG(num_sms,
+                                        kNumWarpGroups * kNumWarpsPerGroup * 32,
+                                        stream);
                     LAUNCH_KERNEL(&cfg,
                                   combine_func,
                                   combined_x,

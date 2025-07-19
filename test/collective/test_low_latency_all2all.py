@@ -83,20 +83,20 @@ def test_main(
             (
                 packed_recv_x,
                 packed_recv_count,
-                rdma_send_flags,
                 handle,
                 event,
                 hook,
-            ) = buffer.low_latency_dispatch_two_stage(
+            ) = buffer.low_latency_dispatch(
                 x,
                 topk_idx,
-                topk_weights,
+                None,  # expertwise_scale
                 num_max_tokens,
                 num_experts,
                 use_fp8=use_fp8,
                 async_finish=not return_recv_hook,
                 return_recv_hook=return_recv_hook,
             )
+            hook() if return_recv_hook else event.current_stream_wait()
             packed_recv_x = (
                 (packed_recv_x[0], packed_recv_x[1].contiguous())
                 if use_fp8
@@ -116,50 +116,53 @@ def test_main(
                 ).view(packed_recv_x[0].shape)
             else:
                 simulated_gemm_x = packed_recv_x.clone()
-            combined_x, event, hook = buffer.low_latency_combine_two_stage(
+            combined_x, event, hook = buffer.low_latency_combine(
                 simulated_gemm_x,
                 topk_idx,
                 topk_weights,
                 handle,
                 async_finish=not return_recv_hook,
-                dispatch_use_fp8=use_fp8,
+                zero_copy=False,
                 return_recv_hook=return_recv_hook,
                 out=out,
             )
+            hook() if return_recv_hook else event.current_stream_wait()
             print(f"rank: {rank}, combined_x: {combined_x}", flush=True)
         dist.barrier()
         paddle.device.synchronize()
+        print("warmup_done", flush=True)
 
         def test_func(return_recv_hook: bool, do_send: bool, do_recv: bool):
             if do_send:
                 (
                     packed_recv_x,
                     packed_recv_count,
-                    rdma_send_flags,
                     _,
                     event,
                     hook,
-                ) = buffer.low_latency_dispatch_two_stage(
+                ) = buffer.low_latency_dispatch(
                     x,
                     topk_idx,
-                    topk_weights,
+                    None,  # expertwise_scale
                     num_max_tokens,
                     num_experts,
                     use_fp8=use_fp8,
                     async_finish=not return_recv_hook,
                     return_recv_hook=return_recv_hook,
                 )
+                hook() if return_recv_hook else event.current_stream_wait()
             if do_recv:
-                combined_x, event, hook = buffer.low_latency_combine_two_stage(
+                combined_x, event, hook = buffer.low_latency_combine(
                     simulated_gemm_x,
                     topk_idx,
                     topk_weights,
                     handle,
                     async_finish=not return_recv_hook,
-                    dispatch_use_fp8=use_fp8,
+                    zero_copy=False,
                     return_recv_hook=return_recv_hook,
                     out=out,
                 )
+                hook() if return_recv_hook else event.current_stream_wait()
 
         # dispatch + combine
         for do_send, do_recv in [
@@ -238,19 +241,16 @@ def test_loop():
     print("rank: ", rank, flush=True)
     print("num_ranks: ", num_ranks, flush=True)
 
-    num_tokens, hidden, num_topk, num_experts = 128, 8192, 8, 64
+    num_tokens, hidden, num_topk, num_experts = 128, 7168, 8, 384
     assert (
         num_tokens <= num_max_tokens
     ), "num_tokens must be less equal to num_max_tokens"
     num_rdma_ranks = num_ranks / 8
-    num_local_experts = num_experts / num_ranks
-    num_rdma_bytes = deep_ep.Buffer.get_low_latency_rdma_size_hint_two_stage(
-        num_max_tokens, hidden, num_ranks, num_experts, num_topk
+    num_rdma_bytes = deep_ep.Buffer.get_low_latency_rdma_size_hint(
+        num_max_tokens, hidden, num_ranks, num_experts
     )
+    num_nvl_bytes = 0
     use_fp8 = True
-    num_nvl_bytes = deep_ep.Buffer.get_low_latency_nvl_size_hint_two_stage(
-        num_max_tokens, hidden, num_ranks, num_experts, num_topk, use_fp8
-    )
     print(
         f'Allocating rdma buffer size: {num_rdma_bytes / 1e6} MB, nvl buffer size: {num_nvl_bytes / 1e6} MB...',
         flush=True,

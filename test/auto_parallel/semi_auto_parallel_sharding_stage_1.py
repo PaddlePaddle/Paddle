@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import random
 
 import numpy as np
 from semi_auto_parallel_dist_to_static_api import DemoNet, create_data_loader
@@ -31,11 +32,16 @@ class TestSemiAutoParallelShardingStage1:
             [[0, 1]], dim_names=["pp", "dp"]
         )
 
+    def set_random_seed(self):
+        paddle.seed(self._seed)
+        random.seed(self._seed)
+        np.random.seed(self._seed)
+
     def check_tensor_eq(self, a, b, rtol=1e-05, atol=0, verbose=True):
         np.testing.assert_allclose(a, b, rtol=rtol, atol=atol, verbose=verbose)
 
     def get_single_card_rst(self):
-        paddle.seed(self._seed)
+        self.set_random_seed()
         linear = paddle.nn.Linear(10, 10)
         batch = paddle.rand(shape=[10, 10])
         opt = paddle.optimizer.AdamW(parameters=linear.parameters())
@@ -49,7 +55,7 @@ class TestSemiAutoParallelShardingStage1:
 
     def test_pure_sharding_stage_1(self):
         paddle.distributed.auto_parallel.set_mesh(self._mesh)
-        paddle.seed(self._seed)
+        self.set_random_seed()
         linear = paddle.nn.Linear(10, 10)
         batch = paddle.rand(shape=[10, 10])
         # shard the input by sharding degree
@@ -67,7 +73,7 @@ class TestSemiAutoParallelShardingStage1:
 
     def test_pure_sharding_multi_mesh_stage_1(self):
         paddle.distributed.auto_parallel.set_mesh(self._multi_dim_mesh)
-        paddle.seed(self._seed)
+        self.set_random_seed()
         linear = paddle.nn.Linear(10, 10)
         batch = paddle.rand(shape=[10, 10])
         # shard the input by sharding degree
@@ -139,7 +145,7 @@ class TestSemiAutoParallelShardingStage1:
                 '1' if enable_tensor_fusion else '0'
             )
             paddle.distributed.auto_parallel.set_mesh(self._multi_dim_mesh)
-            paddle.seed(self._seed)
+            self.set_random_seed()
             model = paddle.nn.Linear(10, 10)
             batch = paddle.rand(shape=[10, 10])
             batch = dist.shard_tensor(batch, self._mesh, [dist.Shard(0)])
@@ -164,6 +170,7 @@ class TestSemiAutoParallelShardingStage1:
         loss_disable = run_sharding_test(enable_tensor_fusion=False)
         loss_enable = run_sharding_test(enable_tensor_fusion=True)
         self.check_tensor_eq(loss_disable, loss_enable)
+        os.environ['FLAGS_enable_tensor_fusion'] = '0'
 
     def test_pure_sharding_multi_mesh_stage_1_with_tensor_fusion_with_chip(
         self,
@@ -171,7 +178,7 @@ class TestSemiAutoParallelShardingStage1:
         dist.init_parallel_env()
         os.environ['FLAGS_enable_tensor_fusion'] = '1'
         paddle.distributed.auto_parallel.set_mesh(self._multi_dim_mesh)
-        paddle.seed(self._seed)
+        self.set_random_seed()
         model = paddle.nn.Linear(10, 10)
         batch = paddle.rand(shape=[10, 10])
         batch = dist.shard_tensor(batch, self._mesh, [dist.Shard(0)])
@@ -192,6 +199,8 @@ class TestSemiAutoParallelShardingStage1:
                 loss.backward()
                 opt.step()
                 opt.clear_grad()
+        os.environ['FLAGS_enable_tensor_fusion'] = '0'
+        os.environ['FLAGS_enable_sharding_overlap'] = '0'
 
     def test_pure_sharding_multi_mesh_stage_1_with_sharding_overlap(self):
         def run_sharding_test(enable_sharding_overlap):
@@ -200,7 +209,7 @@ class TestSemiAutoParallelShardingStage1:
                 '1' if enable_sharding_overlap else '0'
             )
             paddle.distributed.auto_parallel.set_mesh(self._multi_dim_mesh)
-            paddle.seed(self._seed)
+            self.set_random_seed()
             model = paddle.nn.Linear(10, 10)
             batch = paddle.rand(shape=[10, 10])
             batch = dist.shard_tensor(batch, self._mesh, [dist.Shard(0)])
@@ -226,6 +235,8 @@ class TestSemiAutoParallelShardingStage1:
         loss_disable = run_sharding_test(enable_sharding_overlap=False)
         loss_enable = run_sharding_test(enable_sharding_overlap=True)
         self.check_tensor_eq(loss_disable, loss_enable)
+        os.environ['FLAGS_enable_tensor_fusion'] = '0'
+        os.environ['FLAGS_enable_sharding_overlap'] = '0'
 
     def run_test_case(self):
         if self._backend == "cpu":
