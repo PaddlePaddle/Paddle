@@ -1077,6 +1077,7 @@ def full_like(
              [2. 2. 2.]]
     """
     # Include str type check to handle string numeric values like "0.5" that occur in CI tests.
+    # The compatible method for fliud operators, may be it can be removed in the future.
     if not isinstance(
         fill_value,
         (numbers.Number, str, core.eager.Tensor, Variable, paddle.pir.Value),
@@ -1585,6 +1586,7 @@ def full(
              [2. 2.]]
     """
     # Include str type check to handle string numeric values like "0.5" that occur in CI tests.
+    # The compatible method for fliud operators, may be it can be removed in the future.
     if not isinstance(
         fill_value,
         (numbers.Number, str, core.eager.Tensor, Variable, paddle.pir.Value),
