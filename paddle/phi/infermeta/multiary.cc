@@ -935,7 +935,7 @@ void BatchNormInferMeta(const MetaTensor& x,
   const auto x_dims = x.dims();
   for (int i = 0; i < x_dims.size(); i++) {
     PADDLE_ENFORCE_EQ(
-        (x_dims[i] == -1) || (x_dims[i] > 0),
+        (x_dims[i] == -1) || (x_dims[i] >= 0),
         true,
         common::errors::InvalidArgument(
             "Each dimension of input tensor is expected to be -1 or a "
@@ -1001,7 +1001,7 @@ void BatchNormInferMeta(const MetaTensor& x,
     check = false;
   }
 
-  if (check) {
+  if (check && C != 0) {
     PADDLE_ENFORCE_EQ(scale.dims()[0],
                       C,
                       common::errors::InvalidArgument(
