@@ -3075,7 +3075,7 @@ def cross_entropy(
             def _replace_nan(out):
                 return out + paddle.nan
 
-            if input.size == 0:
+            if 0 in input.shape:
                 out = _replace_nan(out)
                 return _C_ops.mean_all(out)
             # 1. if weight==none,
