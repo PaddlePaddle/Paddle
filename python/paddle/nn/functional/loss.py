@@ -3077,7 +3077,7 @@ def cross_entropy(
                 out_nan.stop_gradient = out.stop_gradient
                 return out_nan
 
-            if input.size() == 0:
+            if input.size == 0:
                 out = _replace_nan(out)
                 return _C_ops.mean_all(out)
             # 1. if weight==none,
