@@ -104,7 +104,7 @@ def affine_grid(
         _out_shape = (
             out_shape.tolist() if isinstance(out_shape, Variable) else out_shape
         )
-        if _out_shape == []:
+        if paddle.to_tensor(_out_shape).size == 0:
             raise ValueError("The out_shape cannot be empty.")
         theta = theta._use_gpudnn(use_cudnn)
         return _C_ops.affine_grid(theta, _out_shape, align_corners)
