@@ -63,7 +63,6 @@ struct IntDivider {
   __host__ __device__ inline DivMod<Value> divmod(Value n) const {
     return DivMod<Value>(n / divisor, n % divisor);
   }
-
   Value divisor;
 };
 
