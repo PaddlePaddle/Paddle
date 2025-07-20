@@ -412,8 +412,8 @@ __global__ void ModulatedDeformableIm2colGpuKernel<float>(
     const int64_t height_col,
     const int64_t width_col,
     float* data_col) {
-  int64_t index = blockIdx.x * blockDim.x + threadIdx.x;
-  int64_t offset = blockDim.x * gridDim.x;
+  int64_t index = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  int64_t offset = blockDim.x * static_cast<int64_t>(gridDim.x);
 
   float minus_one = -1.0f, height_t = height, width_t = width;
   for (int64_t i = index; i < nthreads; i += offset) {
@@ -493,8 +493,8 @@ __global__ void ModulatedDeformableIm2colGpuKernel<half>(
     const int64_t width_col,
     half* data_col) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
-  int64_t index = blockIdx.x * blockDim.x + threadIdx.x;
-  int64_t offset = blockDim.x * gridDim.x;
+  int64_t index = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  int64_t offset = blockDim.x * static_cast<int64_t>(gridDim.x);
 
   half minus_one = -1.0f, height_t = height, width_t = width;
   for (size_t i = index; i < nthreads; i += offset) {

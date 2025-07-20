@@ -184,9 +184,9 @@ __global__ void ModulatedDeformableCol2imCoordGpuKernel(
     const int64_t width_col,
     T* grad_offset,
     T* grad_mask) {
-  int64_t index = blockIdx.x * blockDim.x + threadIdx.x;
-  int64_t offset = blockDim.x * gridDim.x;
-  for (size_t i = index; i < nthreads; i += offset) {
+  int64_t index = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  int64_t offset = blockDim.x * static_cast<int64_t>(gridDim.x);
+  for (int64_t i = index; i < nthreads; i += offset) {
     T val = 0, mval = 0;
     const int64_t w = i % width_col;
     const int64_t h = (i / width_col) % height_col;
@@ -237,9 +237,7 @@ __global__ void ModulatedDeformableCol2imCoordGpuKernel(
       const T offset_w = data_offset_ptr[data_offset_w_ptr];
       T inv_h = h_in + i * dilation_h + offset_h;
       T inv_w = w_in + j * dilation_w + offset_w;
-      if (inv_h <= -1 || inv_w <= -1 || inv_h >= height || inv_w >= width) {
-        inv_h = inv_w = -2;
-      } else {
+      if (!(inv_h <= -1 || inv_w <= -1 || inv_h >= height || inv_w >= width)) {
         mval += data_col_ptr[col_pos] *
                 funcs::DmcnIm2colBilinear(data_im_ptr + cnt * height * width,
                                           width,
@@ -334,8 +332,8 @@ __global__ void FilterGradAddupGpuKernel(const int64_t nthreads,
                                          const int64_t width,
                                          const T* dweight_3d,
                                          T* filter_grad) {
-  int64_t index = blockIdx.x * blockDim.x + threadIdx.x;
-  int64_t offset = blockDim.x * gridDim.x;
+  int64_t index = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  int64_t offset = blockDim.x * static_cast<int64_t>(gridDim.x);
   for (int64_t i = index; i < nthreads; i += offset) {
     filter_grad[i] = filter_grad[i] + dweight_3d[i];
   }

@@ -66,51 +66,56 @@ HOSTDEVICE T DmcnGetCoordinateWeight(T argmax_h,
                                      const T* im_data,
                                      const int data_width,
                                      const int bp_dir) {
-  if (argmax_h <= -1 || argmax_h >= height || argmax_w <= -1 ||
-      argmax_w >= width) {
-    return 0;
-  }
+  // if (argmax_h <= -1 || argmax_h >= height || argmax_w <= -1 ||
+  //     argmax_w >= width) {
+  //   return 0;
+  // }
 
   int argmax_h_low = floor(argmax_h);
   int argmax_w_low = floor(argmax_w);
   int argmax_h_high = argmax_h_low + 1;
   int argmax_w_high = argmax_w_low + 1;
 
+  bool valid_argmax_h_low = (argmax_h_low >= 0) && (argmax_h_low < height);
+  bool valid_argmax_h_high = (argmax_h_high >= 0) && (argmax_h_high < height);
+  bool valid_argmax_w_low = (argmax_w_low >= 0) && (argmax_w_low < width);
+  bool valid_argmax_w_high = (argmax_w_high >= 0) && (argmax_w_high < width);
+
   T weight = 0;
 
   if (bp_dir == 0) {
-    weight += (argmax_h_low >= 0 && argmax_w_low >= 0)
+    weight += (valid_argmax_h_low && valid_argmax_w_low)
                   ? -1 * (argmax_w_low + 1 - argmax_w) *
                         im_data[argmax_h_low * data_width + argmax_w_low]
                   : 0;
 
-    weight += (argmax_h_low >= 0 && argmax_w_high <= width - 1)
+    weight += (valid_argmax_h_low && valid_argmax_w_high)
                   ? -1 * (argmax_w - argmax_w_low) *
                         im_data[argmax_h_low * data_width + argmax_w_high]
                   : 0;
 
-    weight += (argmax_h_high <= height - 1 && argmax_w_low >= 0)
+    weight += (valid_argmax_h_high && valid_argmax_w_low)
                   ? (argmax_w_low + 1 - argmax_w) *
                         im_data[argmax_h_high * data_width + argmax_w_low]
                   : 0;
-    weight += (argmax_h_high <= height - 1 && argmax_w_high <= width - 1)
+    weight += (valid_argmax_h_high && valid_argmax_w_high)
                   ? (argmax_w - argmax_w_low) *
                         im_data[argmax_h_high * data_width + argmax_w_high]
                   : 0;
   } else if (bp_dir == 1) {
-    weight += (argmax_h_low >= 0 && argmax_w_low >= 0)
+    weight += (valid_argmax_h_low && valid_argmax_w_low)
                   ? -1 * (argmax_h_low + 1 - argmax_h) *
                         im_data[argmax_h_low * data_width + argmax_w_low]
                   : 0;
-    weight += (argmax_h_low >= 0 && argmax_w_high <= width - 1)
+    weight += (valid_argmax_h_low && valid_argmax_w_high)
                   ? (argmax_h_low + 1 - argmax_h) *
                         im_data[argmax_h_low * data_width + argmax_w_high]
                   : 0;
-    weight += (argmax_h_high <= height - 1 && argmax_w_low >= 0)
+    weight += (valid_argmax_h_high && valid_argmax_w_low)
                   ? -1 * (argmax_h - argmax_h_low) *
                         im_data[argmax_h_high * data_width + argmax_w_low]
                   : 0;
-    weight += (argmax_h_high <= height - 1 && argmax_w_high <= width - 1)
+    weight += (valid_argmax_h_high && valid_argmax_w_high)
                   ? (argmax_h - argmax_h_low) *
                         im_data[argmax_h_high * data_width + argmax_w_high]
                   : 0;
