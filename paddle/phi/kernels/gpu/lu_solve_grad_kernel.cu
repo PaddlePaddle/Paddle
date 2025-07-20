@@ -22,7 +22,7 @@
 // blas_impl.hip.h not support CUBlas<T>::TRSM for complex in
 // TriangularSolveKernel
 PD_REGISTER_KERNEL(
-    lu_solve_grad, GPU, ALL_LAYOUT, phi::LuSolveGradKernel, float, double)
+    lu_solve_grad, GPU, ALL_LAYOUT, phi::LuSolveGradKernel, float, double) {}
 #else  // PADDLE_WITH_CUDA
 PD_REGISTER_KERNEL(lu_solve_grad,
                    GPU,
