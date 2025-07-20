@@ -3073,9 +3073,7 @@ def cross_entropy(
         elif reduction == "mean":
             # when reduction is mean, use paddle.nan
             def _replace_nan(out):
-                out_nan = paddle.full_like(out, paddle.nan)
-                out_nan.stop_gradient = out.stop_gradient
-                return out_nan
+                return out + paddle.nan
 
             if input.size == 0:
                 out = _replace_nan(out)
