@@ -122,13 +122,12 @@ static PyObject *eager_api_run_program(PyObject *self,
                                                Params_info.second,
                                                Params_allocator);
     }
-    framework::AttributeMap attrs;
-    VLOG(6) << "Start PIR ConstructAttrMapFromPyArgs";
-    ConstructAttrMapForRunProgram("run_program", args, 3, attrs);
-
-    VLOG(6) << "Finish Pir ConstructAttrMapFromPyArgs";
+    VLOG(6) << "Start PIR GetAttributesMapPtrFromPyArgs";
+    auto attrs_ptr = GetAttributesMapPtrFromPyArgs("run_program", args, 3);
+    VLOG(6) << "Finish Pir GetAttributesMapPtrFromPyArgs";
     tstate = PyEval_SaveThread();
-    auto out = egr::to_static::run_program_ad_func(X, Params, OutScope, attrs);
+    auto out =
+        egr::to_static::run_program_ad_func(X, Params, OutScope, *attrs_ptr);
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
     return ToPyObject(out);

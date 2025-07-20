@@ -2410,6 +2410,23 @@ std::vector<paddle::framework::Scope*> GetScopePtrListFromArgs(
   }
   return result;
 }
+paddle::framework::AttributeMap* GetAttributesMapPtrFromPyArgs(
+    const std::string& op_type, PyObject* args, ssize_t arg_idx) {
+  PyObject* py_attrs_capsule = PyTuple_GET_ITEM(args, arg_idx);
+  paddle::framework::AttributeMap* attrs_ptr =
+      reinterpret_cast<paddle::framework::AttributeMap*>(PyCapsule_GetPointer(
+          py_attrs_capsule, "paddle.framework.AttributeMap"));
+  if (!attrs_ptr) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "%s(): argument '%s' (position %d) must be AttributeMap, but got "
+        "%s",
+        op_type,
+        "attrs",
+        arg_idx,
+        (reinterpret_cast<PyTypeObject*>(py_attrs_capsule->ob_type))->tp_name));
+  }
+  return attrs_ptr;
+}
 
 TensorListBufferAllocator::MapType
     TensorListBufferAllocator::s_tensor_vector_map_;

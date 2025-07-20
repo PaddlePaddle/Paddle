@@ -228,6 +228,7 @@ limitations under the License. */
 #include "paddle/fluid/prim/utils/static/static_tensor_operants.h"
 #include "paddle/fluid/primitive/base/decomp_trans.h"
 #include "paddle/fluid/pybind/eager_utils.h"
+#include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/include/tensor_operants.h"
@@ -1462,6 +1463,7 @@ PYBIND11_MODULE(libpaddle, m) {
   BindSot(&m);
   BindCustomDevicePy(&m);
   BindEagerUtils(m.ptr());
+  BindOpFunctionCommon(m.ptr());
 
   // Not used, just make sure cpu_info.cc is linked.
   phi::backends::cpu::CpuTotalPhysicalMemory();

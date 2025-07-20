@@ -1210,12 +1210,14 @@ void ConstructAttrMapForLegacyRunProgram(
   }
 }
 
-void ConstructAttrMapForRunProgram(
-    const std::string& op_type,
-    PyObject* args,
-    ssize_t arg_pos,
-    paddle::framework::AttributeMap& attrs) {  // NOLINT
-  PyObject* attrs_dict = PyTuple_GET_ITEM(args, arg_pos);
+PyObject* ConstructAttrMapForRunProgram(PyObject* self, PyObject* args) {
+  const std::string op_type = "run_program";
+  PyObject* attrs_dict = nullptr;
+
+  if (!PyArg_ParseTuple(args, "O", &attrs_dict)) {
+    return nullptr;
+  }
+
   if (!PyDict_Check(attrs_dict)) {
     PADDLE_THROW(common::errors::InvalidArgument(
         "%s(): argument must be dict, but got %s",
@@ -1252,6 +1254,12 @@ void ConstructAttrMapForRunProgram(
       {"cuda_graph_dispatch_key", CastPyArg2AttrLong},
   };
 
+  paddle::framework::AttributeMap* attrs_ptr =
+      new (std::nothrow) paddle::framework::AttributeMap();
+  if (!attrs_ptr) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "%s(): failed to allocate memory for AttributeMap.", op_type));
+  }
   PyObject *key, *value;
   Py_ssize_t pos = 0;
   while (PyDict_Next(attrs_dict, &pos, &key, &value)) {
@@ -1268,7 +1276,7 @@ void ConstructAttrMapForRunProgram(
     std::string_view key_view(key_ptr, static_cast<size_t>(key_len));
     auto it = kAttrFuncMap.find(std::string(key_view));
     if (it != kAttrFuncMap.end()) {
-      it->second(value, attrs, std::string(key_view), op_type, 0);
+      it->second(value, *attrs_ptr, std::string(key_view), op_type, 0);
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
           "Attribute key %.*s is not recognized for operator %s.",
@@ -1277,6 +1285,24 @@ void ConstructAttrMapForRunProgram(
           op_type.c_str()));
     }
   }
+
+  PyObject* py_attrs_capsule = PyCapsule_New(
+      attrs_ptr, "paddle.framework.AttributeMap", [](PyObject* capsule) {
+        paddle::framework::AttributeMap* data =
+            reinterpret_cast<paddle::framework::AttributeMap*>(
+                PyCapsule_GetPointer(capsule, "paddle.framework.AttributeMap"));
+        if (data) {
+          delete data;
+        }
+      });
+
+  if (!py_attrs_capsule) {
+    delete attrs_ptr;
+    PyErr_SetString(PyExc_RuntimeError,
+                    "Failed to create PyCapsule for AttributeMap.");
+    return nullptr;
+  }
+  return py_attrs_capsule;
 }
 
 unsigned long GetUnsignedLongFromArgs(  // NOLINT
@@ -1358,6 +1384,21 @@ ssize_t GetIdxFromCoreOpsInfoMap(
     }
   }
   return -1;
+}
+
+static PyMethodDef OpFunctionCommonMethods[] = {  // NOLINT
+    {"construct_attribute_map",
+     (PyCFunction)ConstructAttrMapForRunProgram,
+     METH_VARARGS,
+     "create attribute map for run program"},
+    {nullptr, nullptr, 0, nullptr}};
+
+void BindOpFunctionCommon(PyObject* module) {
+  if (PyModule_AddFunctions(module, OpFunctionCommonMethods) < 0) {
+    PADDLE_THROW(common::errors::Fatal(
+        "Init Paddle error in BindOpFunctionCommon(PyModule_AddFunctions)."));
+    return;
+  }
 }
 
 }  // namespace paddle::pybind

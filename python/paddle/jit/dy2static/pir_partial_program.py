@@ -745,14 +745,16 @@ class PartialProgramLayer:
         self._grad_var_names = {}
 
         self._compile_time_counter = TimeCounter()
+        self._attributes_map_cache = {}
 
     @staticmethod
     def run_impl(partial_program_layer, inputs, parameters, attrs):
+        attrs_capsule, attrs_pydict = attrs
         scope_cache_key = paddle.base.core.calc_scope_cache_key(
-            attrs["program_id"],
+            attrs_pydict["program_id"],
             inputs,
-            attrs["cuda_graph_state"] != CUDAGraphState.DISABLE,
-            attrs["cuda_graph_dispatch_key"],
+            attrs_pydict["cuda_graph_state"] != CUDAGraphState.DISABLE,
+            attrs_pydict["cuda_graph_dispatch_key"],
         )
         return _C_ops.run_program(
             PartialProgramLayer._valid_vars(inputs),
@@ -761,7 +763,7 @@ class PartialProgramLayer:
                 cache_key=scope_cache_key,
                 use_scope_cache=True,
             ),
-            attrs,
+            attrs_capsule,
         )
 
     def __call__(self, inputs):
@@ -1192,7 +1194,7 @@ class PartialProgramLayer:
         return whole_program
 
     def _prepare_attributes(self, in_sot_mode=False):
-        return {
+        attrs_pydict = {
             'forward_program': self.program.forward_program,
             'backward_program': self.program.backward_program,
             'is_test': not self.training,
@@ -1201,6 +1203,11 @@ class PartialProgramLayer:
             'cuda_graph_state': CUDAGraphState.DISABLE,  # default value for not use cuda graph
             'cuda_graph_dispatch_key': 0,  # default value for not use cuda graph
         } | self.program.program_attr
+        if self._attributes_map_cache.get(self.program_id, None) is None:
+            self._attributes_map_cache[self.program_id] = (
+                paddle.base.core.construct_attribute_map(attrs_pydict)
+            )
+        return self._attributes_map_cache[self.program_id], attrs_pydict
 
     def _prepare_inputs(self, inputs):
         """

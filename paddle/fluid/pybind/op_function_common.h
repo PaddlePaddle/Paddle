@@ -215,11 +215,7 @@ void ConstructAttrMapForLegacyRunProgram(
     ssize_t attr_end,
     paddle::framework::AttributeMap& attrs);  // NOLINT
 
-void ConstructAttrMapForRunProgram(
-    const std::string& op_type,
-    PyObject* args,
-    ssize_t arg_pos,
-    paddle::framework::AttributeMap& attrs);  // NOLINT
+PyObject* ConstructAttrMapForRunProgram(PyObject* self, PyObject* args);
 
 unsigned long GetUnsignedLongFromArgs(  // NOLINT
     const std::string& op_type,
@@ -236,5 +232,6 @@ ssize_t GetIdxFromCoreOpsInfoMap(
     const std::string& op_type,
     const std::string& name);
 
+void BindOpFunctionCommon(PyObject* module);
 }  // namespace pybind
 }  // namespace paddle
