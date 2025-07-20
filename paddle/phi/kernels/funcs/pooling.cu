@@ -540,7 +540,7 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
   } else {
     int thread_num = 1024;
 #ifdef WITH_NV_JETSON
-    // backends::gpu::ChangeThreadNum(context, &thread_num);
+    // backends::gpu::ChangeThreadNum(dev_ctx, &thread_num);
     thread_num = 512;
 #endif
     int blocks = (nthreads + thread_num - 1) / thread_num;
@@ -577,7 +577,7 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
 template <typename PoolProcess, typename T>
 class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const std::vector<int64_t>& ksize,
                   const std::vector<int64_t>& strides,
@@ -614,9 +614,9 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
     const int64_t padding_width = paddings[1];
 
     const T* input_data = input.data<T>();
-    T* output_data = context.template Alloc<T>(output);
+    T* output_data = dev_ctx.template Alloc<T>(output);
 
-    std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
+    std::array<unsigned int, 3> max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize();
     int64_t nthreads =
         batch_size * output_channels * output_height * output_width;
     if (adaptive) {
@@ -635,7 +635,7 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
         auto pool_divmods = FastDivModForPooling<int>(
             input_channels, output_width, output_height);
         AdaptiveKernelPool2D<PoolProcess, T, int>
-            <<<grid, threads, 0, context.stream()>>>(nthreads,
+            <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
                                                      input_data,
                                                      input_channels,
                                                      input_height,
@@ -658,7 +658,7 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
         auto pool_divmods = FastDivModForPooling<int64_t>(
             input_channels, output_width, output_height);
         AdaptiveKernelPool2D<PoolProcess, T, int64_t>
-            <<<grid, threads, 0, context.stream()>>>(nthreads,
+            <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
                                                      input_data,
                                                      input_channels,
                                                      input_height,
@@ -681,7 +681,7 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
     } else {
       int thread_num = 1024;
 #ifdef WITH_NV_JETSON
-      backends::gpu::ChangeThreadNum(context, &thread_num);
+      backends::gpu::ChangeThreadNum(dev_ctx, &thread_num);
 #endif
       int64_t blocks = (nthreads + thread_num - 1) / thread_num;
       dim3 threads(thread_num, 1);
@@ -690,7 +690,7 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
         auto pool_divmods = FastDivModForPooling<int>(
             input_channels, output_width, output_height);
         KernelPool2D<PoolProcess, T, int>
-            <<<grid, threads, 0, context.stream()>>>(nthreads,
+            <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
                                                      input_data,
                                                      input_channels,
                                                      input_height,
@@ -712,7 +712,7 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
         auto pool_divmods = FastDivModForPooling<int64_t>(
             input_channels, output_width, output_height);
         KernelPool2D<PoolProcess, T, int64_t>
-            <<<grid, threads, 0, context.stream()>>>(nthreads,
+            <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
                                                      input_data,
                                                      input_channels,
                                                      input_height,
@@ -744,7 +744,7 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
 template <typename PoolProcess, typename T>
 class Pool2dGradFunctor<phi::GPUContext, PoolProcess, T> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& output,
                   const DenseTensor& output_grad,
@@ -785,10 +785,10 @@ class Pool2dGradFunctor<phi::GPUContext, PoolProcess, T> {
     const T* input_data = input.data<T>();
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
-    T* input_grad_data = context.template Alloc<T>(input_grad);
+    T* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
 
     int64_t nthreads = batch_size * input_channels * input_height * input_width;
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(context, nthreads);
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, nthreads);
     if (input.numel() <= std::numeric_limits<int>::max() &&
         output.numel() <= std::numeric_limits<int>::max()) {
       auto pool_divmods = FastDivModForPoolingWithMoreStaff<int>(input_channels,
@@ -802,7 +802,7 @@ class Pool2dGradFunctor<phi::GPUContext, PoolProcess, T> {
           <<<config.block_per_grid,
              config.thread_per_block,
              0,
-             context.stream()>>>(nthreads,
+             dev_ctx.stream()>>>(nthreads,
                                  input_data,
                                  output_data,
                                  output_grad_data,
@@ -835,7 +835,7 @@ class Pool2dGradFunctor<phi::GPUContext, PoolProcess, T> {
           <<<config.block_per_grid,
              config.thread_per_block,
              0,
-             context.stream()>>>(nthreads,
+             dev_ctx.stream()>>>(nthreads,
                                  input_data,
                                  output_data,
                                  output_grad_data,
@@ -869,7 +869,7 @@ class Pool2dGradFunctor<phi::GPUContext, PoolProcess, T> {
 template <typename T>
 class MaxPool2dGradFunctor<phi::GPUContext, T> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& output,
                   const DenseTensor& output_grad,
@@ -908,7 +908,7 @@ class MaxPool2dGradFunctor<phi::GPUContext, T> {
     const T* input_data = input.data<T>();
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
-    T* input_grad_data = context.template Alloc<T>(input_grad);
+    T* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
 
     int64_t nthreads =
         batch_size * output_channels * output_height * output_width;
@@ -921,7 +921,7 @@ class MaxPool2dGradFunctor<phi::GPUContext, T> {
       auto pool_divmods = FastDivModForPooling<int>(
           input_channels, output_width, output_height);
       KernelMaxPool2DGrad<T, int>
-          <<<grid, threads, 0, context.stream()>>>(nthreads,
+          <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
                                                    input_data,
                                                    output_data,
                                                    output_grad_data,
@@ -943,7 +943,7 @@ class MaxPool2dGradFunctor<phi::GPUContext, T> {
       auto pool_divmods = FastDivModForPooling<int64_t>(
           input_channels, output_width, output_height);
       KernelMaxPool2DGrad<T, int64_t>
-          <<<grid, threads, 0, context.stream()>>>(nthreads,
+          <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
                                                    input_data,
                                                    output_data,
                                                    output_grad_data,
@@ -1425,7 +1425,7 @@ void Pool3dDirectCUDAFunctor<PoolProcess, T>::operator()(
 template <typename PoolProcess, class T>
 class Pool3dFunctor<phi::GPUContext, PoolProcess, T> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const std::vector<int64_t>& ksize,
                   const std::vector<int64_t>& strides,
@@ -1469,7 +1469,7 @@ class Pool3dFunctor<phi::GPUContext, PoolProcess, T> {
     const int64_t padding_width = paddings[2];
 
     const T* input_data = input.data<T>();
-    T* output_data = context.template Alloc<T>(output);
+    T* output_data = dev_ctx.template Alloc<T>(output);
 
     int64_t nthreads = batch_size * output_channels * output_depth *
                        output_height * output_width;
@@ -1477,13 +1477,13 @@ class Pool3dFunctor<phi::GPUContext, PoolProcess, T> {
     if (input.numel() <= std::numeric_limits<int>::max()) {
       int thread_num = 1024;
 #ifdef WITH_NV_JETSON
-      backends::gpu::ChangeThreadNum(context, &thread_num);
+      backends::gpu::ChangeThreadNum(dev_ctx, &thread_num);
 #endif
       int64_t blocks = (nthreads + thread_num - 1) / thread_num;
       dim3 threads(thread_num, 1);
       dim3 grid(blocks, 1);
       KernelPool3D<PoolProcess, T, int>
-          <<<grid, threads, 0, context.stream()>>>(nthreads,
+          <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
                                                    input_data,
                                                    input_channels,
                                                    input_depth,
@@ -1509,13 +1509,13 @@ class Pool3dFunctor<phi::GPUContext, PoolProcess, T> {
     } else {
       int thread_num = 512;
 #ifdef WITH_NV_JETSON
-      backends::gpu::ChangeThreadNum(context, &thread_num);
+      backends::gpu::ChangeThreadNum(dev_ctx, &thread_num);
 #endif
       int64_t blocks = (nthreads + thread_num - 1) / thread_num;
       dim3 threads(thread_num, 1);
       dim3 grid(blocks, 1);
       KernelPool3D<PoolProcess, T, int64_t>
-          <<<grid, threads, 0, context.stream()>>>(nthreads,
+          <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
                                                    input_data,
                                                    input_channels,
                                                    input_depth,
@@ -1553,7 +1553,7 @@ class Pool3dFunctor<phi::GPUContext, PoolProcess, T> {
 template <typename PoolProcess, class T>
 class Pool3dGradFunctor<phi::GPUContext, PoolProcess, T> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& output,
                   const DenseTensor& output_grad,
@@ -1601,7 +1601,7 @@ class Pool3dGradFunctor<phi::GPUContext, PoolProcess, T> {
     const T* input_data = input.data<T>();
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
-    T* input_grad_data = context.template Alloc<T>(input_grad);
+    T* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
 
     int64_t nthreads =
         batch_size * input_channels * input_depth * input_height * input_width;
@@ -1613,7 +1613,7 @@ class Pool3dGradFunctor<phi::GPUContext, PoolProcess, T> {
       dim3 threads(thread_num, 1);
       dim3 grid(blocks, 1);
       KernelPool3DGrad<T, PoolProcess, int>
-          <<<grid, threads, 0, context.stream()>>>(
+          <<<grid, threads, 0, dev_ctx.stream()>>>(
               nthreads,
               input_data,
               output_data,
@@ -1645,7 +1645,7 @@ class Pool3dGradFunctor<phi::GPUContext, PoolProcess, T> {
       dim3 threads(thread_num, 1);
       dim3 grid(blocks, 1);
       KernelPool3DGrad<T, PoolProcess, int64_t>
-          <<<grid, threads, 0, context.stream()>>>(
+          <<<grid, threads, 0, dev_ctx.stream()>>>(
               nthreads,
               input_data,
               output_data,
@@ -1686,7 +1686,7 @@ class Pool3dGradFunctor<phi::GPUContext, PoolProcess, T> {
 template <class T>
 class MaxPool3dGradFunctor<phi::GPUContext, T> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& output,
                   const DenseTensor& output_grad,
@@ -1731,7 +1731,7 @@ class MaxPool3dGradFunctor<phi::GPUContext, T> {
     const T* input_data = input.data<T>();
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
-    T* input_grad_data = context.template Alloc<T>(input_grad);
+    T* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
 
     int64_t nthreads = batch_size * output_channels * output_depth *
                        output_height * output_width;
@@ -1740,7 +1740,7 @@ class MaxPool3dGradFunctor<phi::GPUContext, T> {
     dim3 grid(blocks, 1);
     if (input.numel() <= std::numeric_limits<int>::max() &&
         output.numel() <= std::numeric_limits<int>::max()) {
-      KernelMaxPool3DGrad<T, int><<<grid, threads, 0, context.stream()>>>(
+      KernelMaxPool3DGrad<T, int><<<grid, threads, 0, dev_ctx.stream()>>>(
           nthreads,
           input_data,
           output_data,
@@ -1764,7 +1764,7 @@ class MaxPool3dGradFunctor<phi::GPUContext, T> {
           input_grad_data,
           channel_last);  // add channel_last
     } else {
-      KernelMaxPool3DGrad<T, int64_t><<<grid, threads, 0, context.stream()>>>(
+      KernelMaxPool3DGrad<T, int64_t><<<grid, threads, 0, dev_ctx.stream()>>>(
           nthreads,
           input_data,
           output_data,
@@ -2043,7 +2043,7 @@ __global__ void KernelMaxPool2DWithIdxGrad(
 template <typename T1, typename T2>
 class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const std::vector<int64_t>& ksize,
                   const std::vector<int64_t>& strides,
@@ -2066,8 +2066,8 @@ class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
     const int64_t padding_width = paddings[1];
 
     const T1* input_data = input.data<T1>();
-    T1* output_data = context.template Alloc<T1>(output);
-    T2* mask_data = context.template Alloc<T2>(mask);
+    T1* output_data = dev_ctx.template Alloc<T1>(output);
+    T2* mask_data = dev_ctx.template Alloc<T2>(mask);
 
     int64_t nthreads = static_cast<int64_t>(batch_size) * output_channels *
                        output_height * output_width;
@@ -2080,7 +2080,7 @@ class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
                                 static_cast<int64_t>(output_channels));
       dim3 threads(thread_num, blocks, 1);
       std::array<unsigned int, 3> max_grid_dim =
-          context.GetCUDAMaxGridDimSize();
+          dev_ctx.GetCUDAMaxGridDimSize();
       dim3 grid(std::max((output_channels + blocks - 1) / blocks,
                          static_cast<int64_t>(1)),
                 std::min(batch_size, static_cast<int64_t>(max_grid_dim[1])),
@@ -2089,7 +2089,7 @@ class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
         auto pool_divmods = FastDivModForPooling<int>(
             input_channels, output_width, output_height);
         AdaptiveKernelMaxPool2dWithIdx<T1, T2, int>
-            <<<grid, threads, 0, context.stream()>>>(nthreads,
+            <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
                                                      input_data,
                                                      input_channels,
                                                      input_height,
@@ -2110,7 +2110,7 @@ class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
         auto pool_divmods = FastDivModForPooling<int64_t>(
             input_channels, output_width, output_height);
         AdaptiveKernelMaxPool2dWithIdx<T1, T2, int64_t>
-            <<<grid, threads, 0, context.stream()>>>(nthreads,
+            <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
                                                      input_data,
                                                      input_channels,
                                                      input_height,
@@ -2131,7 +2131,7 @@ class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
     } else {
       int64_t thread_num = 1024;
 #ifdef WITH_NV_JETSON
-      backends::gpu::ChangeThreadNum(context, &thread_num);
+      backends::gpu::ChangeThreadNum(dev_ctx, &thread_num);
 #endif
       int64_t blocks = (nthreads + thread_num - 1) / thread_num;
       dim3 threads(thread_num, 1);
@@ -2140,7 +2140,7 @@ class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
         auto pool_divmods = FastDivModForPooling<int>(
             input_channels, output_width, output_height);
         KernelMaxPool2dWithIdx<T1, T2, int>
-            <<<grid, threads, 0, context.stream()>>>(nthreads,
+            <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
                                                      input_data,
                                                      input_channels,
                                                      input_height,
@@ -2161,7 +2161,7 @@ class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
         auto pool_divmods = FastDivModForPooling<int64_t>(
             input_channels, output_width, output_height);
         KernelMaxPool2dWithIdx<T1, T2, int64_t>
-            <<<grid, threads, 0, context.stream()>>>(nthreads,
+            <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
                                                      input_data,
                                                      input_channels,
                                                      input_height,
@@ -2191,7 +2191,7 @@ class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
 template <typename T1, typename T2>
 class MaxPool2dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& output_grad,
                   const DenseTensor& mask,
                   const std::vector<int64_t>& ksize,
@@ -2214,7 +2214,7 @@ class MaxPool2dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
 
     const T2* mask_data = mask.data<T2>();
     const T1* output_grad_data = output_grad.data<T1>();
-    T1* input_grad_data = context.template Alloc<T1>(input_grad);
+    T1* input_grad_data = dev_ctx.template Alloc<T1>(input_grad);
 
     int64_t nthreads = static_cast<int64_t>(batch_size) * input_channels *
                        input_height * input_width;
@@ -2226,7 +2226,7 @@ class MaxPool2dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
       auto pool_divmods =
           FastDivModForPooling<int>(input_channels, input_width, input_height);
       KernelMaxPool2DWithIdxGrad<T1, T2, int>
-          <<<grid, threads, 0, context.stream()>>>(nthreads,
+          <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
                                                    output_grad_data,
                                                    mask_data,
                                                    input_channels,
@@ -2247,7 +2247,7 @@ class MaxPool2dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
       auto pool_divmods = FastDivModForPooling<int64_t>(
           input_channels, input_width, input_height);
       KernelMaxPool2DWithIdxGrad<T1, T2, int64_t>
-          <<<grid, threads, 0, context.stream()>>>(nthreads,
+          <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
                                                    output_grad_data,
                                                    mask_data,
                                                    input_channels,
@@ -2432,7 +2432,7 @@ __global__ void KernelMaxPool3DWithIdxGrad(
 template <typename T1, typename T2>
 class MaxPool3dWithIndexFunctor<phi::GPUContext, T1, T2> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const std::vector<int64_t>& ksize,
                   const std::vector<int64_t>& strides,
@@ -2460,8 +2460,8 @@ class MaxPool3dWithIndexFunctor<phi::GPUContext, T1, T2> {
     const int64_t padding_width = paddings[2];
 
     const T1* input_data = input.data<T1>();
-    T1* output_data = context.template Alloc<T1>(output);
-    T2* mask_data = context.template Alloc<T2>(mask);
+    T1* output_data = dev_ctx.template Alloc<T1>(output);
+    T2* mask_data = dev_ctx.template Alloc<T2>(mask);
 
     int64_t ncd =
         static_cast<int64_t>(batch_size) * input_channels * output_depth;
@@ -2470,7 +2470,7 @@ class MaxPool3dWithIndexFunctor<phi::GPUContext, T1, T2> {
     int64_t thread_y = 8;
     int64_t thread_z = 1;
     dim3 threads(thread_x, thread_y, thread_z);
-    std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
+    std::array<unsigned int, 3> max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize();
     int64_t block_x = (output_width + threads.x - 1) / threads.x;
     int64_t block_y = (output_height > max_grid_dim[1] * threads.y)
                           ? max_grid_dim[1]
@@ -2484,7 +2484,7 @@ class MaxPool3dWithIndexFunctor<phi::GPUContext, T1, T2> {
       auto pool_divmods_output = FastDivModForPooling3D<int>(
           input_channels, output_width, output_height, output_depth);
       KernelMaxPool3DWithIdx<T1, T2, int>
-          <<<grid, threads, 0, context.stream()>>>(ncd,
+          <<<grid, threads, 0, dev_ctx.stream()>>>(ncd,
                                                    input_data,
                                                    input_channels,
                                                    input_depth,
@@ -2510,7 +2510,7 @@ class MaxPool3dWithIndexFunctor<phi::GPUContext, T1, T2> {
       auto pool_divmods_output = FastDivModForPooling3D<int64_t>(
           input_channels, output_width, output_height, output_depth);
       KernelMaxPool3DWithIdx<T1, T2, int64_t>
-          <<<grid, threads, 0, context.stream()>>>(ncd,
+          <<<grid, threads, 0, dev_ctx.stream()>>>(ncd,
                                                    input_data,
                                                    input_channels,
                                                    input_depth,
@@ -2544,7 +2544,7 @@ class MaxPool3dWithIndexFunctor<phi::GPUContext, T1, T2> {
 template <typename T1, typename T2>
 class MaxPool3dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& output_grad,
                   const DenseTensor& mask,
                   const std::vector<int64_t>& ksize,
@@ -2572,7 +2572,7 @@ class MaxPool3dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
 
     const T1* output_grad_data = output_grad.data<T1>();
     const T2* mask_data = mask.data<T2>();
-    T1* input_grad_data = context.template Alloc<T1>(input_grad);
+    T1* input_grad_data = dev_ctx.template Alloc<T1>(input_grad);
 
     int64_t ncd = batch_size * input_channels * output_depth;
 
@@ -2580,7 +2580,7 @@ class MaxPool3dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
     int64_t thread_y = 8;
     int64_t thread_z = 1;
     dim3 threads(thread_x, thread_y, thread_z);
-    std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
+    std::array<unsigned int, 3> max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize();
     int64_t block_x = (output_width + threads.x - 1) / threads.x;
     int64_t block_y = (output_height > max_grid_dim[1] * threads.y)
                           ? max_grid_dim[1]
@@ -2594,7 +2594,7 @@ class MaxPool3dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
       auto pool_divmods_output = FastDivModForPooling3D<int>(
           input_channels, output_width, output_height, output_depth);
       KernelMaxPool3DWithIdxGrad<T1, T2, int>
-          <<<grid, threads, 0, context.stream()>>>(ncd,
+          <<<grid, threads, 0, dev_ctx.stream()>>>(ncd,
                                                    output_grad_data,
                                                    mask_data,
                                                    input_channels,
@@ -2620,7 +2620,7 @@ class MaxPool3dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
       auto pool_divmods_output = FastDivModForPooling3D<int64_t>(
           input_channels, output_width, output_height, output_depth);
       KernelMaxPool3DWithIdxGrad<T1, T2, int64_t>
-          <<<grid, threads, 0, context.stream()>>>(ncd,
+          <<<grid, threads, 0, dev_ctx.stream()>>>(ncd,
                                                    output_grad_data,
                                                    mask_data,
                                                    input_channels,
@@ -2804,7 +2804,7 @@ __global__ void FractionalKernelMaxPool2dGrad(
 template <typename T1, typename T2>
 class FractionalMaxPool2dFunctor<phi::GPUContext, T1, T2> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const std::vector<int64_t>& output_size,
                   const std::vector<int64_t>& kernel_size,
@@ -2838,8 +2838,8 @@ class FractionalMaxPool2dFunctor<phi::GPUContext, T1, T2> {
             output_width - 1 + pool_width));
 
     const T1* input_data = input.data<T1>();
-    T1* output_data = context.template Alloc<T1>(output);
-    T2* mask_data = context.template Alloc<T2>(mask);
+    T1* output_data = dev_ctx.template Alloc<T1>(output);
+    T2* mask_data = dev_ctx.template Alloc<T2>(mask);
 
     int64_t ncd = batch_size * input_channels * output_height;
 
@@ -2847,7 +2847,7 @@ class FractionalMaxPool2dFunctor<phi::GPUContext, T1, T2> {
     int64_t thread_y = 1;
     int64_t thread_z = 1;
     dim3 threads(thread_x, thread_y, thread_z);
-    std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
+    std::array<unsigned int, 3> max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize();
     int64_t block_x = (output_width + threads.x - 1) / threads.x;
     int64_t block_y = (ncd > max_grid_dim[1] * threads.y)
                           ? max_grid_dim[1]
@@ -2858,7 +2858,7 @@ class FractionalMaxPool2dFunctor<phi::GPUContext, T1, T2> {
     uint64_t seed = 0;
     uint64_t offset = 0;
     // generate seed for fractional pool
-    auto gen_cuda = context.GetGenerator();
+    auto gen_cuda = dev_ctx.GetGenerator();
     constexpr uint64_t increment_offset = 1 * 4;  // one seed with multiple of 4
     auto seed_offset = gen_cuda->IncrementOffset(increment_offset);
     seed = seed_offset.first;
@@ -2868,7 +2868,7 @@ class FractionalMaxPool2dFunctor<phi::GPUContext, T1, T2> {
       auto pool_divmods = FastDivModForPooling<int>(
           input_channels, output_width, output_height);
       FractionalKernelMaxPool2d<T1, T2, int>
-          <<<grid, threads, 0, context.stream()>>>(ncd,
+          <<<grid, threads, 0, dev_ctx.stream()>>>(ncd,
                                                    input_data,
                                                    input_channels,
                                                    input_height,
@@ -2887,7 +2887,7 @@ class FractionalMaxPool2dFunctor<phi::GPUContext, T1, T2> {
       auto pool_divmods = FastDivModForPooling<int64_t>(
           input_channels, output_width, output_height);
       FractionalKernelMaxPool2d<T1, T2, int64_t>
-          <<<grid, threads, 0, context.stream()>>>(ncd,
+          <<<grid, threads, 0, dev_ctx.stream()>>>(ncd,
                                                    input_data,
                                                    input_channels,
                                                    input_height,
@@ -2912,7 +2912,7 @@ class FractionalMaxPool2dFunctor<phi::GPUContext, T1, T2> {
 template <typename T1, typename T2>
 class FractionalMaxPool2dGradFunctor<phi::GPUContext, T1, T2> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& output_grad,
                   const DenseTensor& mask,
                   const std::vector<int64_t>& output_size,
@@ -2931,7 +2931,7 @@ class FractionalMaxPool2dGradFunctor<phi::GPUContext, T1, T2> {
 
     const T2* mask_data = mask.data<T2>();
     const T1* output_grad_data = output_grad.data<T1>();
-    T1* input_grad_data = context.template Alloc<T1>(input_grad);
+    T1* input_grad_data = dev_ctx.template Alloc<T1>(input_grad);
 
     int64_t ncd = batch_size * input_channels * output_height;
 
@@ -2939,7 +2939,7 @@ class FractionalMaxPool2dGradFunctor<phi::GPUContext, T1, T2> {
     int64_t thread_y = 1;
     int64_t thread_z = 1;
     dim3 threads(thread_x, thread_y, thread_z);
-    std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
+    std::array<unsigned int, 3> max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize();
     int64_t block_x = (output_width + threads.x - 1) / threads.x;
     int64_t block_y = (ncd > max_grid_dim[1] * threads.y)
                           ? max_grid_dim[1]
@@ -2950,7 +2950,7 @@ class FractionalMaxPool2dGradFunctor<phi::GPUContext, T1, T2> {
     uint64_t seed = 0;
     uint64_t offset = 0;
     // generate seed for fractional pool
-    auto gen_cuda = context.GetGenerator();
+    auto gen_cuda = dev_ctx.GetGenerator();
     constexpr uint64_t increment_offset = 1 * 4;  // one seed with multiple of 4
     auto seed_offset = gen_cuda->IncrementOffset(increment_offset);
     seed = seed_offset.first;
@@ -2960,7 +2960,7 @@ class FractionalMaxPool2dGradFunctor<phi::GPUContext, T1, T2> {
       auto pool_divmods = FastDivModForPooling<int>(
           input_channels, output_width, output_height);
       FractionalKernelMaxPool2dGrad<T1, T2, int>
-          <<<grid, threads, 0, context.stream()>>>(ncd,
+          <<<grid, threads, 0, dev_ctx.stream()>>>(ncd,
                                                    output_grad_data,
                                                    mask_data,
                                                    input_channels,
@@ -2979,7 +2979,7 @@ class FractionalMaxPool2dGradFunctor<phi::GPUContext, T1, T2> {
       auto pool_divmods = FastDivModForPooling<int64_t>(
           input_channels, output_width, output_height);
       FractionalKernelMaxPool2dGrad<T1, T2, int64_t>
-          <<<grid, threads, 0, context.stream()>>>(ncd,
+          <<<grid, threads, 0, dev_ctx.stream()>>>(ncd,
                                                    output_grad_data,
                                                    mask_data,
                                                    input_channels,
@@ -3184,7 +3184,7 @@ __global__ void FractionalKernelMaxPool3dGrad(
 template <typename T1, typename T2>
 class FractionalMaxPool3dFunctor<phi::GPUContext, T1, T2> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const std::vector<int64_t>& output_size,
                   const std::vector<int64_t>& kernel_size,
@@ -3228,8 +3228,8 @@ class FractionalMaxPool3dFunctor<phi::GPUContext, T1, T2> {
             output_width - 1 + pool_width));
 
     const T1* input_data = input.data<T1>();
-    T1* output_data = context.template Alloc<T1>(output);
-    T2* mask_data = context.template Alloc<T2>(mask);
+    T1* output_data = dev_ctx.template Alloc<T1>(output);
+    T2* mask_data = dev_ctx.template Alloc<T2>(mask);
 
     int64_t ncd = batch_size * input_channels * output_depth;
 
@@ -3237,7 +3237,7 @@ class FractionalMaxPool3dFunctor<phi::GPUContext, T1, T2> {
     int64_t thread_y = 8;
     int64_t thread_z = 1;
     dim3 threads(thread_x, thread_y, thread_z);
-    std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
+    std::array<unsigned int, 3> max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize();
     int64_t block_x = (output_width + threads.x - 1) / threads.x;
     int64_t block_y = (output_height > max_grid_dim[1] * threads.y)
                           ? max_grid_dim[1]
@@ -3250,7 +3250,7 @@ class FractionalMaxPool3dFunctor<phi::GPUContext, T1, T2> {
     uint64_t seed = 0;
     uint64_t offset = 0;
     // generate seed for fractional pool
-    auto gen_cuda = context.GetGenerator();
+    auto gen_cuda = dev_ctx.GetGenerator();
     constexpr uint64_t increment_offset = 1 * 4;  // one seed with multiple of 4
     auto seed_offset = gen_cuda->IncrementOffset(increment_offset);
     seed = seed_offset.first;
@@ -3260,7 +3260,7 @@ class FractionalMaxPool3dFunctor<phi::GPUContext, T1, T2> {
       auto pool_divmods_output = FastDivModForPooling3D<int>(
           input_channels, output_width, output_height, output_depth);
       FractionalKernelMaxPool3d<T1, T2, int>
-          <<<grid, threads, 0, context.stream()>>>(ncd,
+          <<<grid, threads, 0, dev_ctx.stream()>>>(ncd,
                                                    input_data,
                                                    input_channels,
                                                    input_depth,
@@ -3282,7 +3282,7 @@ class FractionalMaxPool3dFunctor<phi::GPUContext, T1, T2> {
       auto pool_divmods_output = FastDivModForPooling3D<int64_t>(
           input_channels, output_width, output_height, output_depth);
       FractionalKernelMaxPool3d<T1, T2, int64_t>
-          <<<grid, threads, 0, context.stream()>>>(ncd,
+          <<<grid, threads, 0, dev_ctx.stream()>>>(ncd,
                                                    input_data,
                                                    input_channels,
                                                    input_depth,
@@ -3310,7 +3310,7 @@ class FractionalMaxPool3dFunctor<phi::GPUContext, T1, T2> {
 template <typename T1, typename T2>
 class FractionalMaxPool3dGradFunctor<phi::GPUContext, T1, T2> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& output_grad,
                   const DenseTensor& mask,
                   const std::vector<int64_t>& output_size,
@@ -3332,7 +3332,7 @@ class FractionalMaxPool3dGradFunctor<phi::GPUContext, T1, T2> {
 
     const T1* output_grad_data = output_grad.data<T1>();
     const T2* mask_data = mask.data<T2>();
-    T1* input_grad_data = context.template Alloc<T1>(input_grad);
+    T1* input_grad_data = dev_ctx.template Alloc<T1>(input_grad);
 
     int64_t ncd = batch_size * input_channels * output_depth;
 
@@ -3340,7 +3340,7 @@ class FractionalMaxPool3dGradFunctor<phi::GPUContext, T1, T2> {
     int64_t thread_y = 8;
     int64_t thread_z = 1;
     dim3 threads(thread_x, thread_y, thread_z);
-    std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
+    std::array<unsigned int, 3> max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize();
     int64_t block_x = (output_width + threads.x - 1) / threads.x;
     int64_t block_y = (output_height > max_grid_dim[1] * threads.y)
                           ? max_grid_dim[1]
@@ -3355,7 +3355,7 @@ class FractionalMaxPool3dGradFunctor<phi::GPUContext, T1, T2> {
           input_channels, output_width, output_height, output_depth);
 
       FractionalKernelMaxPool3dGrad<T1, T2, int>
-          <<<grid, threads, 0, context.stream()>>>(ncd,
+          <<<grid, threads, 0, dev_ctx.stream()>>>(ncd,
                                                    output_grad_data,
                                                    mask_data,
                                                    input_channels,
@@ -3376,7 +3376,7 @@ class FractionalMaxPool3dGradFunctor<phi::GPUContext, T1, T2> {
           input_channels, output_width, output_height, output_depth);
 
       FractionalKernelMaxPool3dGrad<T1, T2, int64_t>
-          <<<grid, threads, 0, context.stream()>>>(ncd,
+          <<<grid, threads, 0, dev_ctx.stream()>>>(ncd,
                                                    output_grad_data,
                                                    mask_data,
                                                    input_channels,
