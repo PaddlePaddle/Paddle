@@ -215,7 +215,18 @@ void ConstructAttrMapForLegacyRunProgram(
     ssize_t attr_end,
     paddle::framework::AttributeMap& attrs);  // NOLINT
 
-PyObject* ConstructAttrMapForRunProgram(PyObject* self, PyObject* args);
+void ConstructAttrMapForRunProgram(
+    const std::string& op_type,
+    PyObject* attrs_dict,
+    paddle::framework::AttributeMap& attrs);  // NOLINT
+
+PyObject* ConstructProgramAttrMapForRunProgram(PyObject* self, PyObject* args);
+
+void ConstructCudaGraphAttrMapForRunProgram(
+    const std::string& op_type,
+    PyObject* args,
+    ssize_t arg_pos,
+    paddle::framework::AttributeMap& attrs);  // NOLINT
 
 unsigned long GetUnsignedLongFromArgs(  // NOLINT
     const std::string& op_type,

@@ -745,16 +745,16 @@ class PartialProgramLayer:
         self._grad_var_names = {}
 
         self._compile_time_counter = TimeCounter()
-        self._attributes_map_cache = {}
+        self._prog_attrs_map_cache = {}
 
     @staticmethod
     def run_impl(partial_program_layer, inputs, parameters, attrs):
-        attrs_capsule, attrs_pydict = attrs
+        prog_attrs, cuda_graph_attrs = attrs
         scope_cache_key = paddle.base.core.calc_scope_cache_key(
-            attrs_pydict["program_id"],
+            paddle.base.core.get_program_id_from_attrs(prog_attrs),
             inputs,
-            attrs_pydict["cuda_graph_state"] != CUDAGraphState.DISABLE,
-            attrs_pydict["cuda_graph_dispatch_key"],
+            cuda_graph_attrs["cuda_graph_state"] != CUDAGraphState.DISABLE,
+            cuda_graph_attrs["cuda_graph_dispatch_key"],
         )
         return _C_ops.run_program(
             PartialProgramLayer._valid_vars(inputs),
@@ -763,7 +763,8 @@ class PartialProgramLayer:
                 cache_key=scope_cache_key,
                 use_scope_cache=True,
             ),
-            attrs_capsule,
+            prog_attrs,
+            cuda_graph_attrs,
         )
 
     def __call__(self, inputs):
@@ -1194,20 +1195,24 @@ class PartialProgramLayer:
         return whole_program
 
     def _prepare_attributes(self, in_sot_mode=False):
-        attrs_pydict = {
-            'forward_program': self.program.forward_program,
-            'backward_program': self.program.backward_program,
-            'is_test': not self.training,
-            'program_id': self.program_id,
-            'in_sot_mode': in_sot_mode,
+        prog_attr_key = (self.program_id, self.training, in_sot_mode)
+        if self._prog_attrs_map_cache.get(prog_attr_key, None) is None:
+            prog_attrs = {
+                'forward_program': self.program.forward_program,
+                'backward_program': self.program.backward_program,
+                'is_test': not self.training,
+                'program_id': self.program_id,
+                'in_sot_mode': in_sot_mode,
+            } | self.program.program_attr
+            self._prog_attrs_map_cache[prog_attr_key] = (
+                paddle.base.core.construct_program_attribute_map(prog_attrs)
+            )
+
+        cuda_graph_attrs = {
             'cuda_graph_state': CUDAGraphState.DISABLE,  # default value for not use cuda graph
             'cuda_graph_dispatch_key': 0,  # default value for not use cuda graph
-        } | self.program.program_attr
-        if self._attributes_map_cache.get(self.program_id, None) is None:
-            self._attributes_map_cache[self.program_id] = (
-                paddle.base.core.construct_attribute_map(attrs_pydict)
-            )
-        return self._attributes_map_cache[self.program_id], attrs_pydict
+        }
+        return self._prog_attrs_map_cache[prog_attr_key], cuda_graph_attrs
 
     def _prepare_inputs(self, inputs):
         """

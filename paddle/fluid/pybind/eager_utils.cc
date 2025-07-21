@@ -15,6 +15,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include <variant>
 #include "paddle/common/exception.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
@@ -2410,7 +2411,7 @@ std::vector<paddle::framework::Scope*> GetScopePtrListFromArgs(
   }
   return result;
 }
-paddle::framework::AttributeMap* GetAttributesMapPtrFromPyArgs(
+paddle::framework::AttributeMap* GetProgramAttributesMapPtrFromPyArgs(
     const std::string& op_type, PyObject* args, ssize_t arg_idx) {
   PyObject* py_attrs_capsule = PyTuple_GET_ITEM(args, arg_idx);
   paddle::framework::AttributeMap* attrs_ptr =
@@ -2984,6 +2985,18 @@ PyObject* CalcScopeCacheKey(PyObject* dummy, PyObject* args) {
   return ToPyObject(scope_cache_key);
 }
 
+PyObject* GetProgramIdFromAttrs(PyObject* dummy, PyObject* args) {
+  auto prog_attrs =
+      GetProgramAttributesMapPtrFromPyArgs("run_program", args, 0);
+  int64_t* program_id_prt =
+      paddle::get_if<int64_t>(&(prog_attrs->at("program_id")));
+  if (!program_id_prt) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "The type of attribute 'program_id' is not 'int64_t'."));
+  }
+  return ToPyObject(*program_id_prt);
+}
+
 /* ------------------ for auto parallel ----------------------- */
 
 static PyMethodDef EagerUtilMethods[] = {  // NOLINT
@@ -2999,6 +3012,10 @@ static PyMethodDef EagerUtilMethods[] = {  // NOLINT
      (PyCFunction)CalcScopeCacheKey,
      METH_VARARGS,
      "Calculate the cache key for scope."},
+    {"get_program_id_from_attrs",
+     (PyCFunction)GetProgramIdFromAttrs,
+     METH_VARARGS,
+     "Get program id from program attrs map."},
     {nullptr, nullptr, 0, nullptr}};
 
 void BindEagerUtils(PyObject* module) {
