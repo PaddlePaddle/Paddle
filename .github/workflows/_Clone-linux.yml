@@ -6,10 +6,14 @@ on:
       workflow-name:
         type: string
         required: false
-      bos_dir:
+      clone_dir:
         type: string
         required: false
         default: 'Paddle'
+      is_pr:
+        type: string
+        required: false
+        default: 'true'
     outputs:
       can-skip:
         value: ${{ jobs.clone.outputs.can-skip }}
@@ -23,19 +27,17 @@ defaults:
     shell: bash
 
 env:
-  PR_ID: ${{ github.event.pull_request.number }}
-  COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+  PR_ID: ${{ github.event.pull_request.number || '0' }}
+  COMMIT_ID: ${{ github.event.pull_request.head.sha || github.sha }}
   ci_scripts: ${{ github.workspace }}/ci
 
 jobs:
   clone:
-    # Don't run on forked repos.
     name: Clone Paddle
+    if: ${{ github.repository_owner == 'PaddlePaddle' }}
     outputs:
       can-skip: ${{ steps.check-bypass.outputs.can-skip }}
       slice-check: ${{ steps.check-execution.outputs.slice-check }}
-
-    if: github.repository_owner == 'PaddlePaddle'
     runs-on:
       group: HK-Clone
 
@@ -49,6 +51,7 @@ jobs:
 
       - name: Merge PR to test branch
         id: check-execution
+        if: ${{ inputs.is_pr == 'true' }}
         run: |
           git config --unset http.https://github.com/.extraheader
           git submodule foreach --recursive sh -c "git config --local --unset-all 'http.https://github.com/.extraheader'"
@@ -96,7 +99,7 @@ jobs:
           echo "::group::Install bce-python-sdk"
           python -m pip install bce-python-sdk==0.8.74
           echo "::endgroup::"
-          python ${bos_file} Paddle.tar.gz paddle-github-action/PR/${{ inputs.bos_dir }}/${PR_ID}/${COMMIT_ID}
+          python ${bos_file} Paddle.tar.gz paddle-github-action/PR/${{ inputs.clone_dir }}/${PR_ID}/${COMMIT_ID}
           rm Paddle.tar.gz
           cd -
           git switch ${{ github.event.pull_request.base.ref }}

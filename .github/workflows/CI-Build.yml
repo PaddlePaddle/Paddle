@@ -20,14 +20,14 @@ jobs:
     name: Clone-linux
     uses: ./.github/workflows/_Clone-linux.yml
     with:
-      bos_dir: Paddle-build
+      clone_dir: Paddle-build
 
   build-docker:
     name: build docker images
     needs: clone
     uses: ./.github/workflows/docker.yml
     with:
-      bos_dir: Paddle-build
+      clone_dir: Paddle-build
       task: build
 
   build:

@@ -6,7 +6,7 @@ on:
       docker_build_image:
         type: string
         required: true
-      bos_dir:
+      clone_dir:
         type: string
         required: false
         default: 'Paddle-build'
@@ -26,7 +26,7 @@ env:
   PADDLE_ROOT: /paddle
   TASK: paddle-CI-${{ github.event.pull_request.number }}-build
   ci_scripts: /paddle/ci
-  BRANCH: ${{ github.event.pull_request.base.ref }}
+  BRANCH: ${{ github.event.pull_request.base.ref || github.ref }}
   CI_name: ${{ inputs.CI_name }}
   CFS_DIR: /home/data/cfs
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
@@ -132,7 +132,7 @@ jobs:
           rm -rf * .[^.]*
           set -e
           echo "Downloading Paddle.tar.gz"
-          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/${{ inputs.bos_dir }}/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
+          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/${{ inputs.clone_dir }}/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
           echo "Extracting Paddle.tar.gz"
           git config --global --add safe.directory ${work_dir}
           tar xf Paddle.tar.gz --strip-components=1

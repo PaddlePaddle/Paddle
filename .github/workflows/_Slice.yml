@@ -12,15 +12,19 @@ on:
       slice-check:
         type: string
         required: false
+      SLICE_TEST_MODE:
+        type: string
+        required: false
+        default: 'test_ci'
 
 env:
-  PR_ID: ${{ github.event.pull_request.number }}
-  COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+  PR_ID: ${{ github.event.pull_request.number || '0' }}
+  COMMIT_ID: ${{ github.event.pull_request.head.sha || github.sha }}
   work_dir: /paddle
   PADDLE_ROOT: /paddle
   TASK: paddle-CI-${{ github.event.pull_request.number }}-slice
   ci_scripts: /paddle/ci
-  BRANCH: ${{ github.event.pull_request.base.ref }}
+  BRANCH: ${{ github.event.pull_request.base.ref || github.ref }}
   CI_name: slice
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 
@@ -39,6 +43,7 @@ jobs:
         env:
           wheel_link: https://paddle-github-action.bj.bcebos.com/PR/build/${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
           RUN_ID: ${{ github.run_id }}
+          SLICE_TEST_MODE: ${{ inputs.SLICE_TEST_MODE }}
         run: |
           container_name="api_benchmark_ci_${RUN_ID}"
           echo "container_name=${container_name}" >> ${{ github.env }}
@@ -58,6 +63,7 @@ jobs:
             -e ci_scripts \
             -e no_proxy \
             -e CI_name \
+            -e SLICE_TEST_MODE \
             -w /paddle --network host ${docker_image}
 
       - name: Download PaddleTest
@@ -84,8 +90,8 @@ jobs:
           python3.10 -m pip config set global.cache-dir ${{ github.workspace }}/../../../.cache/pip
           python3.10 -m pip install $wheel_link
           python3.10 -m pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu118
-          python3.10 -m pip install pymysql
           export SLICE_TEST_MODE=insert_baseline
+          python3.10 -m pip install PaddleTest/framework/e2e/api_benchmark/requirement.txt
           cd PaddleTest/framework/slice_benchmark
           cp /paddle/apibm_config.yml .
           bash run.sh
