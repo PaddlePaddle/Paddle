@@ -83,11 +83,11 @@ struct IntDivider {
   T divisor;
 };
 
-template <int NUMEL, typename INDEX_T = uint32_t, bool signed_strides = false>
+template <int NARGS, typename INDEX_T = uint32_t, bool signed_strides = false>
 struct OffsetCalculator {
   using stride_t =
       std::conditional_t<signed_strides, std::make_signed_t<INDEX_T>, INDEX_T>;
-  using offset_type = std::array<stride_t, std::max<int>(NUMEL, 1)>;
+  using offset_type = std::array<stride_t, std::max<int>(NARGS, 1)>;
 
   OffsetCalculator(int dims,
                    const int64_t* shape,
@@ -101,7 +101,7 @@ struct OffsetCalculator {
             "Tensor has too many dims. Maximum dim is d%.", MAX_DIMS));
     for (int i = 0; i < dims; i++) {
       shape_[i] = IntDivider<INDEX_T>(shape[i]);
-      for (int arg = 0; arg < NUMEL; arg++) {
+      for (int arg = 0; arg < NARGS; arg++) {
         int64_t element_size =
             (element_sizes == nullptr ? 1LL : element_sizes[arg]);
         strides_[i][arg] = strides[arg][i] / element_size;
@@ -112,7 +112,7 @@ struct OffsetCalculator {
   __host__ __device__ offset_type get(INDEX_T linear_idx) const {
     offset_type offsets;
 #pragma unroll
-    for (int arg = 0; arg < NUMEL; arg++) {
+    for (int arg = 0; arg < NARGS; arg++) {
       offsets[arg] = 0;
     }
 #pragma unroll
@@ -124,7 +124,7 @@ struct OffsetCalculator {
       linear_idx = divmod.div;
 
 #pragma unroll
-      for (int arg = 0; arg < NUMEL; arg++) {
+      for (int arg = 0; arg < NARGS; arg++) {
         offsets[arg] += divmod.mod * strides_[dim][arg];
       }
     }
@@ -133,7 +133,7 @@ struct OffsetCalculator {
 
   int dims;
   IntDivider<INDEX_T> shape_[MAX_DIMS];
-  stride_t strides_[MAX_DIMS][std::max<int>(NUMEL, 1)];
+  stride_t strides_[MAX_DIMS][std::max<int>(NARGS, 1)];
 };
 
 template <int N, bool signed_strides = false>
