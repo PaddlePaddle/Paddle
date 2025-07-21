@@ -16,8 +16,11 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/enforce.h"
+
+COMMON_DECLARE_bool(use_default_stream);
 
 namespace phi {
 
@@ -109,7 +112,7 @@ DeviceContextPool::DeviceContextPool(const std::vector<phi::Place>& places) {
       places,
       /*disable_setting_default_stream_for_allocator=*/false,
       /*stream_priority=*/0,
-      true);
+      FLAGS_use_default_stream);
 }
 
 }  // namespace phi

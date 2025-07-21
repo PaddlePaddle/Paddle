@@ -81,6 +81,10 @@ PHI_DEFINE_EXPORTED_bool(
     "Checking whether operator produce NAN/INF or not. It will be "
     "extremely slow so please use this flag wisely.");
 
+PHI_DEFINE_EXPORTED_bool(use_default_stream,
+                         false,
+                         "Whether use default stream.");
+
 /**
  * Operator related FLAG
  * Name: FLAGS_check_nan_inf_level

@@ -155,12 +155,12 @@ def get_best_configs(
 
     # Decide the number of TMA multicast
     best_num_tma_multicast = 1
-    if (
-        m >= 1024
-        and is_tma_multicast_legal(n, best_block_n, 2, num_sms)
-        and num_groups == 1
-    ):
-        best_num_tma_multicast = 2
+    # if (
+    #     m >= 1024
+    #     and is_tma_multicast_legal(n, best_block_n, 2, num_sms)
+    #     and num_groups == 1
+    # ):
+    #     best_num_tma_multicast = 2
 
     return (
         best_block_m,
