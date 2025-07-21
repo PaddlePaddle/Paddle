@@ -22,6 +22,7 @@
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/scope_guard.h"
+#include "paddle/fluid/imperative/amp_utils.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
@@ -605,26 +606,9 @@ inline static bool MaskedFillDispatching(
     const std::vector<paddle::Tensor>& indices,
     paddle::Tensor* mask_tensor,
     paddle::Tensor* value_tensor) {
-  if (indices.size() != 1 || value_tensor->numel() != 1) return false;
-
-  int64_t num_ind = 0;
-  if ((indices)[0].dtype() != phi::DataType::BOOL) {
+  if (value_tensor->initialized() && value_tensor->numel() != 1) {
     return false;
-  } else {
-    num_ind += (indices)[0].shape().size();
   }
-
-  *mask_tensor = (indices)[0];
-  for (size_t i = num_ind; i < tensor.shape().size(); i++) {
-    *mask_tensor = unsqueeze_ad_func(*mask_tensor, {-1});
-  }
-  return true;
-}
-
-inline static bool MaskedFillValueDispatching(
-    const paddle::Tensor& tensor,
-    const std::vector<paddle::Tensor>& indices,
-    paddle::Tensor* mask_tensor) {
   if (indices.size() != 1) return false;
 
   int64_t num_ind = 0;
@@ -945,6 +929,193 @@ static paddle::Tensor dealWithValues(const paddle::Tensor& tensor,
     }
   }
   return value_tensor;
+}
+
+static void DispatchSetitemKernel(const int pos_of_new_dim,
+                                  bool* out_is_view,
+                                  std::vector<paddle::Tensor>* transed_index,
+                                  paddle::Tensor* tensor,
+                                  paddle::Tensor* sub_tensor,
+                                  paddle::Tensor* transed_sub_tensor,
+                                  paddle::Tensor* value_tensor,
+                                  std::vector<phi::Scalar>* values) {
+  paddle::Tensor mask_tensor;
+  if (!out_is_view &&
+      MaskedFillDispatching(
+          *transed_sub_tensor, *transed_index, &mask_tensor, value_tensor)) {
+    if (value_tensor->initialized()) {
+      *transed_sub_tensor =
+          masked_fill__ad_func(*transed_sub_tensor, mask_tensor, *value_tensor);
+    } else {
+      paddle::Tensor value_tmp_tensor =
+          full_ad_func({1}, (*values)[0], tensor->dtype(), tensor->place());
+      *transed_sub_tensor = masked_fill__ad_func(
+          *transed_sub_tensor, mask_tensor, value_tmp_tensor);
+    }
+    return;
+  } else {
+    if (FLAGS_use_stride_kernel) {
+      if (value_tensor->initialized()) {
+        *transed_index = expandTensors(*transed_index);
+        *transed_index = expand_outplace(*transed_index);
+        for (int i = 0; i < pos_of_new_dim; ++i) {
+          transed_index->insert(transed_index->begin(), paddle::Tensor());
+        }
+        while (transed_index->size() <
+               static_cast<size_t>(transed_sub_tensor->dims().size())) {
+          transed_index->emplace_back(paddle::Tensor());
+        }
+        int64_t slice_offset =
+            static_cast<int64_t>(reinterpret_cast<char*>(sub_tensor->data()) -
+                                 reinterpret_cast<char*>(tensor->data()));
+
+        std::vector<paddle::Tensor> transed_index_int64;
+        for (auto& indice : *transed_index) {
+          if (indice.defined() && indice.dtype() == paddle::DataType::INT32) {
+            indice = indice.cast(paddle::DataType::INT64);  // int32 -> int64
+          }
+          transed_index_int64.push_back(indice);
+        }
+
+        AdvancedIndex ad =
+            AdvancedIndex(*transed_sub_tensor, transed_index_int64);
+        PADDLE_ENFORCE_EQ(
+            phi::funcs::CheckIsDimsMatchBool(common::make_ddim(ad.src_sizes),
+                                             value_tensor->dims()),
+            true,
+            common::errors::InvalidArgument(
+                "shape mismatch: value tensor of shape %s cannot be "
+                "broadcast to indexing result of shape %s.",
+                value_tensor->dims().to_str(),
+                common::make_ddim(ad.src_sizes).to_str()));
+        *transed_sub_tensor =
+            index_elementwise_put_with_tensor__ad_func(*tensor,
+                                                       ad.indices,
+                                                       *value_tensor,
+                                                       ad.src_sizes,
+                                                       ad.src_strides,
+                                                       ad.indexed_sizes,
+                                                       ad.indexed_strides,
+                                                       slice_offset);
+        // New kernel does not need to transpose back, so set out_is_view to
+        // false. Remove when all cases use this branch.
+        *out_is_view = false;
+      } else {
+        *transed_index = expandTensors(*transed_index);
+        *transed_index = expand_outplace(*transed_index);
+        for (int i = 0; i < pos_of_new_dim; ++i) {
+          transed_index->insert(transed_index->begin(), paddle::Tensor());
+        }
+        while (transed_index->size() <
+               static_cast<size_t>(transed_sub_tensor->dims().size())) {
+          transed_index->emplace_back(paddle::Tensor());
+        }
+        int64_t slice_offset =
+            static_cast<int64_t>(reinterpret_cast<char*>(sub_tensor->data()) -
+                                 reinterpret_cast<char*>(tensor->data()));
+
+        std::vector<paddle::Tensor> transed_index_int64;
+        for (auto& indice : *transed_index) {
+          if (indice.defined() && indice.dtype() == paddle::DataType::INT32) {
+            indice = indice.cast(paddle::DataType::INT64);  // int32 -> int64
+          }
+          transed_index_int64.push_back(indice);
+        }
+
+        AdvancedIndex ad =
+            AdvancedIndex(*transed_sub_tensor, transed_index_int64);
+        *transed_sub_tensor = index_elementwise_put__ad_func(*tensor,
+                                                             ad.indices,
+                                                             (*values)[0],
+                                                             ad.src_sizes,
+                                                             ad.src_strides,
+                                                             ad.indexed_sizes,
+                                                             ad.indexed_strides,
+                                                             slice_offset);
+        // New kernel does not need to transpose back, so set out_is_view to
+        // false. Remove when all cases use this branch.
+        *out_is_view = false;
+      }
+    } else {
+      // TODO(czy): remove in the future
+      if (value_tensor->initialized()) {
+        *transed_sub_tensor = index_put__ad_func(
+            *transed_sub_tensor, *transed_index, *value_tensor);
+      } else {
+        paddle::Tensor value_tmp_tensor =
+            full_ad_func({1}, (*values)[0], tensor->dtype(), tensor->place());
+        *transed_sub_tensor = index_put__ad_func(
+            *transed_sub_tensor, *transed_index, value_tmp_tensor);
+      }
+    }
+  }
+}
+
+static void ApplySetitem(const std::vector<int> trans_dim,
+                         const int pos_of_new_dim,
+                         bool* out_is_view,
+                         std::vector<paddle::Tensor>* transed_index,
+                         paddle::Tensor* tensor,
+                         paddle::Tensor* self_tensor,
+                         paddle::Tensor* sub_tensor,
+                         paddle::Tensor* transed_sub_tensor,
+                         paddle::Tensor* value_tensor,
+                         std::vector<phi::Scalar>* values) {
+  if (value_tensor->initialized()) {
+    if (self_tensor->dtype() != value_tensor->dtype()) {
+      if (egr::Controller::Instance().GetAMPLevel() !=
+          paddle::imperative::AmpLevel::O0) {
+        paddle::small_vector<std::vector<paddle::Tensor>,
+                             egr::kSlotSmallVectorSize>
+            tmps = {{*self_tensor}, {*value_tensor}};
+        auto amp_dtype = paddle::imperative::GetAmpDestDtype("index_put", tmps);
+        *self_tensor = paddle::imperative::AmpAutoCast(
+            self_tensor->name(), *self_tensor, amp_dtype, "index_put");
+        *value_tensor = paddle::imperative::AmpAutoCast(
+            value_tensor->name(), *value_tensor, amp_dtype, "index_put");
+      }
+      if (self_tensor->dtype() != value_tensor->dtype()) {
+        *value_tensor = cast_ad_func(*value_tensor, self_tensor->dtype());
+      }
+    }
+
+    if (value_tensor->dims().size() > 1 && pos_of_new_dim != 0) {
+      if (!FLAGS_use_stride_kernel) {
+        *value_tensor = transpose_ad_func(*value_tensor, trans_dim);
+      }
+    }
+
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(
+            &mesh, *self_tensor, *transed_sub_tensor, *value_tensor)) {
+      ConvertAllInputsToDistTensor(
+          mesh, *self_tensor, *transed_sub_tensor, *value_tensor);
+    }
+
+    DispatchSetitemKernel(pos_of_new_dim,
+                          out_is_view,
+                          transed_index,
+                          tensor,
+                          sub_tensor,
+                          transed_sub_tensor,
+                          value_tensor,
+                          values);
+
+  } else {
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, *self_tensor, *transed_sub_tensor)) {
+      ConvertAllInputsToDistTensor(mesh, *self_tensor, *transed_sub_tensor);
+    }
+
+    DispatchSetitemKernel(pos_of_new_dim,
+                          out_is_view,
+                          transed_index,
+                          tensor,
+                          sub_tensor,
+                          transed_sub_tensor,
+                          value_tensor,
+                          values);
+  }
 }
 
 }  // namespace pybind
