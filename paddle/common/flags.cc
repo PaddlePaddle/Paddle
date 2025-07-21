@@ -81,10 +81,6 @@ PHI_DEFINE_EXPORTED_bool(
     "Checking whether operator produce NAN/INF or not. It will be "
     "extremely slow so please use this flag wisely.");
 
-PHI_DEFINE_EXPORTED_bool(use_default_stream,
-                         false,
-                         "Whether use default stream.");
-
 /**
  * Operator related FLAG
  * Name: FLAGS_check_nan_inf_level
@@ -2162,3 +2158,15 @@ PHI_DEFINE_EXPORTED_int32(
 PHI_DEFINE_EXPORTED_bool(check_cuda_error,
                          false,
                          "Checking whether CUDA error occurred or not.");
+
+/**
+ * Stream related FLAG
+ * Name: FLAGS_use_default_stream
+ * Since Version: 3.1.1
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Whether use default stream.
+ */
+PHI_DEFINE_EXPORTED_bool(use_default_stream,
+                         false,
+                         "Whether use default stream.");
