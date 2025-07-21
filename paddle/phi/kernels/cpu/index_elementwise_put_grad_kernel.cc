@@ -290,7 +290,7 @@ void IndexElementwisePutGradKernel(
   const auto& index_type = indices[0]->dtype();
   PADDLE_ENFORCE_EQ(
       index_type == phi::DataType::INT64 ||
-          (index_type == phi::DataType::BOOL && index.size() == 1),
+          (index_type == phi::DataType::BOOL && indices.size() == 1),
       true,
       common::errors::InvalidArgument(
           "Index holds the wrong type, it holds [%s], but "
