@@ -186,6 +186,9 @@ class TestLuSolveOp5(TestLuSolveOp):
 
 
 # complex64
+@unittest.skipIf(
+    base.core.is_compiled_with_rocm(), "Skip when compiled by ROCM."
+)
 class TestLuSolveOp6(TestLuSolveOp):
     def init_value(self):
         self.A_shape = [10, 10]
@@ -195,6 +198,9 @@ class TestLuSolveOp6(TestLuSolveOp):
 
 
 # complex128
+@unittest.skipIf(
+    base.core.is_compiled_with_rocm(), "Skip when compiled by ROCM."
+)
 class TestLuSolveOp7(TestLuSolveOp):
     def init_value(self):
         self.A_shape = [10, 10]
@@ -344,6 +350,9 @@ class TestLuSolveOpAPI8(TestLuSolveOpAPI):
         self.rtol = 1e-05
 
 
+@unittest.skipIf(
+    base.core.is_compiled_with_rocm(), "Skip when compiled by ROCM."
+)
 class TestLuSolveOpAPI9(TestLuSolveOpAPI):
     def init_value(self):
         # Ax = b
@@ -354,6 +363,9 @@ class TestLuSolveOpAPI9(TestLuSolveOpAPI):
         self.rtol = 0.001
 
 
+@unittest.skipIf(
+    base.core.is_compiled_with_rocm(), "Skip when compiled by ROCM."
+)
 class TestLuSolveOpAPI10(TestLuSolveOpAPI):
     def init_value(self):
         # Ax = b
