@@ -15,7 +15,7 @@ jobs:
     name: Slice-base clone
     uses: ./.github/workflows/_Clone-linux.yml
     with:
-      clone_dir: Paddle-develop
+      clone_dir: Paddle-build
       is_pr: 'false'
 
   build-docker:
@@ -23,7 +23,7 @@ jobs:
     needs: clone
     uses: ./.github/workflows/docker.yml
     with:
-      clone_dir: Paddle-develop
+      clone_dir: Paddle-build
       task: build
 
   build:
@@ -32,7 +32,6 @@ jobs:
     uses: ./.github/workflows/_Linux-build.yml
     with:
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
-      clone_dir: Paddle-develop
       CI_name: slice-baseline
 
   slice-test:
