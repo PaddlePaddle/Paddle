@@ -66,11 +66,6 @@ HOSTDEVICE T DmcnGetCoordinateWeight(T argmax_h,
                                      const T* im_data,
                                      const int data_width,
                                      const int bp_dir) {
-  // if (argmax_h <= -1 || argmax_h >= height || argmax_w <= -1 ||
-  //     argmax_w >= width) {
-  //   return 0;
-  // }
-
   int argmax_h_low = floor(argmax_h);
   int argmax_w_low = floor(argmax_w);
   int argmax_h_high = argmax_h_low + 1;
