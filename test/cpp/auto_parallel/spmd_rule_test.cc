@@ -560,7 +560,7 @@ TEST(GroupNorm, Ctor) {
   std::vector<int64_t> x_shape = {64, 64, 64, 64};  // N,C,H,W
   std::vector<int64_t> scale_shape = {64};
   std::vector<int64_t> bias_shape = {64};
-  std::vector<int64_t> mean_and_variance_shape = {64};
+  std::vector<int64_t> mean_and_variance_shape = {64, 64};
   std::vector<int64_t> mesh_shape = {2, 3};
   std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5};
   std::vector<std::string> dim_names = {"x", "y"};
@@ -646,8 +646,8 @@ TEST(GroupNorm, Ctor) {
   check_dim_mapping(backward_info.first[1], {-1});
   check_dim_mapping(backward_info.first[2], {-1});
   check_dim_mapping(backward_info.first[3], {0, -1, -1, -1});
-  check_dim_mapping(backward_info.first[4], {0});
-  check_dim_mapping(backward_info.first[5], {0});
+  check_dim_mapping(backward_info.first[4], {0, -1});
+  check_dim_mapping(backward_info.first[5], {0, -1});
   check_dim_mapping(backward_info.first[6], {0, -1, -1, -1});
   check_dim_mapping(backward_info.second[0], {0, -1, -1, -1});
   check_dim_mapping(backward_info.second[1], {-1});
