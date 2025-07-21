@@ -559,18 +559,12 @@ struct MaximumFunctor {
                       !(std::is_same_v<T, int32_t> ||
                         std::is_same_v<T, int64_t>))) {
 #if defined(__CUDACC__) || defined(__HIPCC__)
-      if (::isnan(a)) {
-        return a;
-      }
-      if (::isnan(b)) {
-        return b;
+      if (::isnan(a) || ::isnan(b)) {
+        return CUDART_NAN_F;
       }
 #else
-      if (std::isnan(a)) {
-        return a;
-      }
-      if (std::isnan(b)) {
-        return b;
+      if (std::isnan(a) || std::isnan(b)) {
+        return std::numeric_limits<float>::quiet_NaN();
       }
 #endif
     }
@@ -584,8 +578,9 @@ struct MaximumFunctor<
     typename std::enable_if<std::is_same_v<T, phi::dtype::bfloat16> ||
                             std::is_same_v<T, phi::dtype::float16>>::type> {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
-    if (phi::dtype::isnan(a)) return a;
-    if (phi::dtype::isnan(b)) return b;
+    if (phi::dtype::isnan(a) || phi::dtype::isnan(b)) {
+      return phi::dtype::nan<T>();  // 返回对应类型的NaN
+    }
     return a > b ? a : b;
   }
 };
@@ -632,18 +627,12 @@ struct MinimumFunctor {
                   (!(std::is_same_v<T, int32_t> ||
                      std::is_same_v<T, int64_t>))) {
 #if defined(__CUDACC__) || defined(__HIPCC__)
-      if (::isnan(a)) {
-        return a;
-      }
-      if (::isnan(b)) {
-        return b;
+      if (::isnan(a) || ::isnan(b)) {
+        return CUDART_NAN_F;  // 对于float，double使用CUDART_NAN
       }
 #else
-      if (std::isnan(a)) {
-        return a;
-      }
-      if (std::isnan(b)) {
-        return b;
+      if (std::isnan(a) || std::isnan(b)) {
+        return std::numeric_limits<T>::quiet_NaN();
       }
 #endif
     }
@@ -657,8 +646,9 @@ struct MinimumFunctor<
     typename std::enable_if<std::is_same_v<T, phi::dtype::bfloat16> ||
                             std::is_same_v<T, phi::dtype::float16>>::type> {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
-    if (phi::dtype::isnan(a)) return a;
-    if (phi::dtype::isnan(b)) return b;
+    if (phi::dtype::isnan(a) || phi::dtype::isnan(b)) {
+      return phi::dtype::nan<T>();
+    }
     return a < b ? a : b;
   }
 };
