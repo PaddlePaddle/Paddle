@@ -1186,26 +1186,16 @@ static void ApplyGetitem(const int index_size,
 
       *transed_index = expand_outplace(*transed_index);
 
-      for (int i = 0; i < pos_of_new_dim; ++i) {
-        transed_index->insert(transed_index->begin(), paddle::Tensor());
-      }
-
-      while (transed_index->size() <
-             static_cast<size_t>(transed_tensor->dims().size())) {
-        transed_index->emplace_back(paddle::Tensor());
-      }
-
-      int64_t slice_offset =
-          static_cast<int64_t>(reinterpret_cast<char*>(sub_tensor->data()) -
-                               reinterpret_cast<char*>(tensor->data()));
-
       std::vector<paddle::Tensor> transed_index_int64;
-      for (auto& indice : *transed_index) {
-        if (indice.defined() && indice.dtype() == paddle::DataType::INT32) {
-          indice = indice.cast(paddle::DataType::INT64);  // int32 -> int64
-        }
-        transed_index_int64.push_back(indice);
-      }
+      int64_t slice_offset;
+
+      DealWithIndex(pos_of_new_dim,
+                    &slice_offset,
+                    transed_index,
+                    tensor,
+                    sub_tensor,
+                    transed_tensor,
+                    &transed_index_int64);
 
       AdvancedIndex ad = AdvancedIndex(*transed_tensor, transed_index_int64);
       if (index_size == 1) {
