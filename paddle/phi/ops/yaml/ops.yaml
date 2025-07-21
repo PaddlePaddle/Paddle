@@ -2988,7 +2988,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : kthvalue
-  args : (Tensor x, int k = 1, int axis = -1, bool keepdim = false)
+  args : (Tensor x, int64_t k = 1, int axis = -1, bool keepdim = false)
   output : Tensor(out), Tensor(indices)
   infer_meta :
     func : KthvalueInferMeta

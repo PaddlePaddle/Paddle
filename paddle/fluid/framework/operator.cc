@@ -3504,8 +3504,21 @@ void OperatorWithKernel::BuildPhiKernelContext(
                 PADDLE_GET_CONST(bool, attr_iter->second));
             break;
           case phi::AttributeType::INT64:
-            phi_kernel_context->EmplaceBackAttr(
-                PADDLE_GET_CONST(int64_t, attr_iter->second));
+            switch (AttrTypeID(attr_iter->second)) {
+              case proto::AttrType::LONG:
+                phi_kernel_context->EmplaceBackAttr(
+                    PADDLE_GET_CONST(int64_t, attr_iter->second));
+                break;
+              case proto::AttrType::INT: {
+                const auto val = PADDLE_GET_CONST(int, attr_iter->second);
+                phi_kernel_context->EmplaceBackAttr(static_cast<int64_t>(val));
+              } break;
+              default:
+                PADDLE_THROW(common::errors::Unimplemented(
+                    "Unsupported cast op attribute `%s` to int64_t when "
+                    "construct KernelContext.",
+                    attr_names[i]));
+            }
             break;
           case phi::AttributeType::INT32S:  // NOLINT
             phi_kernel_context->EmplaceBackAttr(

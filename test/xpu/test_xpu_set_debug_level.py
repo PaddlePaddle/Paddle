@@ -12,18 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .buffer import Buffer
-from .utils import (
-    EventOverlap,
-    get_event_from_calc_stream,
-    get_event_from_comm_stream,
-    get_event_from_custom_stream,
-)
+import unittest
 
-__all__ = [
-    "Buffer",
-    "EventOverlap",
-    "get_event_from_calc_stream",
-    "get_event_from_comm_stream",
-    "get_event_from_custom_stream",
-]
+import paddle
+
+
+class TestSetDebugLevel(unittest.TestCase):
+    def test_set_debug_level(self):
+        s = paddle.device.xpu.set_debug_level(1)
+        self.assertIsNone(s)
+
+
+if __name__ == "__main__":
+    unittest.main()

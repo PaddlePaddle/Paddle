@@ -1163,14 +1163,8 @@ class _ShardOptimizer(Optimizer):
         self._mp_group = None
         self.do_tensor_fusion_once = True
         self._strategy = Strategy()
-        self.enable_tensor_fusion = os.getenv("FLAGS_enable_tensor_fusion") in [
-            "True",
-            "true",
-            "1",
-        ]
-        self.enable_sharding_overlap = os.getenv(
-            "FLAGS_enable_sharding_overlap"
-        ) in ["True", "true", "1"]
+        self.enable_tensor_fusion = False
+        self.enable_sharding_overlap = False
 
     def _set_and_check_sharding_prop_from_param(self):
         global_mesh = fleet.auto.get_mesh()
@@ -1507,14 +1501,14 @@ class _ShardOptimizer(Optimizer):
                     self.param_storage[idx].is_sync = False
 
     def _enable_tensor_fusion(self):
-        # TODO: enable after clear FLAGS_enable_tensor_fusion
-        # self.enable_tensor_fusion = True
-        pass
+        os.environ["FLAGS_enable_tensor_fusion"] = "1"
+        self.enable_tensor_fusion = True
+        self._shard_fn._enable_tensor_fusion()
 
     def _enable_sharding_overlap(self, layers):
         if hasattr(layers, 'config') and layers.config.get("to_static", False):
             return
-        # self.enable_sharding_overlap = True
+        self.enable_sharding_overlap = True
         if not isinstance(layers, paddle.nn.Layer):
             raise RuntimeError(
                 f"`layers` must be `paddle.nn.Layer` but got {type(layers)}"
@@ -1971,15 +1965,19 @@ class _ShardingStageBase:
         self._mesh = mesh
         self._sharding_axis = 0
         self._sharding_mesh_dim = sharding_mesh_dim
+        self.enable_tensor_fusion = False
 
     def _set_sharding_axis(self, sharding_axis):
         self._sharding_axis = sharding_axis
+
+    def _enable_tensor_fusion(self):
+        self.enable_tensor_fusion = True
 
     def shard_master_weight(
         self, param: Tensor, master_weight: Tensor
     ) -> Tensor:
         if param.is_dist():
-            if os.getenv("FLAGS_enable_tensor_fusion") in ["True", "true", "1"]:
+            if self.enable_tensor_fusion:
                 placements = param.placements
             else:
                 placements = get_placement_with_sharding(
@@ -2115,10 +2113,7 @@ class ShardingStage1(_ShardingStageBase):
             return tensor
 
         # Only deal with momentum in optimizer, beta should be replicated cross param's mesh
-        if (
-            os.getenv("FLAGS_enable_tensor_fusion") not in ["True", "true", "1"]
-            and 'beta' not in key
-        ):
+        if not self.enable_tensor_fusion and 'beta' not in key:
             placements = get_placement_with_sharding(param, self._sharding_axis)
         else:
             placements = [

@@ -1861,8 +1861,8 @@
     data_type : out_grad
 
 - backward_op : kthvalue_grad
-  forward : kthvalue(Tensor x, int k, int axis, bool keepdim) -> Tensor(out), Tensor(indices)
-  args : (Tensor x, Tensor indices, Tensor out_grad, int k, int axis, bool keepdim)
+  forward : kthvalue(Tensor x, int64_t k, int axis, bool keepdim) -> Tensor(out), Tensor(indices)
+  args : (Tensor x, Tensor indices, Tensor out_grad, int64_t k, int axis, bool keepdim)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
