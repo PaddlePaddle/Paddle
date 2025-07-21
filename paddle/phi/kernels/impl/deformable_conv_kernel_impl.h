@@ -39,7 +39,7 @@ void DeformableConvKernel(const Context& dev_ctx,
                           int im2col_step,
                           DenseTensor* out) {
   const int64_t batch_size = static_cast<int64_t>(x.dims()[0]);
-  
+
   if (x.numel() == 0 || filter.numel() == 0) {
     phi::Full<T, Context>(
         dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
