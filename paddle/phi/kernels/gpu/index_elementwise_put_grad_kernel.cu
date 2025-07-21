@@ -52,7 +52,6 @@ void GPUIndexElementwisePutGradKernel(
     sizes[i] = index_dims[i];
     strides[i] = index_strides[i];
   }
-  auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
 
   std::array<int64_t*, 3> strides_array;
   std::vector<int64_t> desired_shape;
@@ -102,6 +101,7 @@ void GPUIndexElementwisePutGradKernel(
             }
           });
     } else {
+      auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
       funcs::index_elementwise_with_tensor_kernel<nt, vt>
           <<<grid, block, 0, stream>>>(N, [=] __device__(int idx) {
             const auto offsets = offset_calc.get(idx);
@@ -123,6 +123,7 @@ void GPUIndexElementwisePutGradKernel(
           });
     }
   } else if (!x_grad) {
+    auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
     const char* out_ptr = reinterpret_cast<const char*>(out_grad.data<T>());
     char* value_ptr = reinterpret_cast<char*>(value_grad->data<T>());
     funcs::index_elementwise_with_tensor_kernel<nt, vt>
@@ -145,6 +146,7 @@ void GPUIndexElementwisePutGradKernel(
               *reinterpret_cast<const dtype*>(out_data + offset);
         });
   } else {
+    auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
     char* out_ptr = reinterpret_cast<char*>(x_grad->data<T>());
     char* value_ptr = reinterpret_cast<char*>(value_grad->data<T>());
     funcs::index_elementwise_with_tensor_kernel<nt, vt>

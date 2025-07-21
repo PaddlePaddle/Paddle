@@ -131,7 +131,6 @@ void CPUIndexElementwisePutKernel(const phi::CPUContext& dev_ctx,
     sizes[i] = index_dims[i];
     strides[i] = index_strides[i];
   }
-  auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
   std::array<int64_t*, 3> strides_array;
   std::vector<int64_t> desired_shape;
   std::array<std::vector<int64_t>, 3> strides_vec;
@@ -164,6 +163,7 @@ void CPUIndexElementwisePutKernel(const phi::CPUContext& dev_ctx,
       }
     }
   } else {
+    auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
     for (int64_t idx = 0; idx < N; idx++) {
       const auto offsets = offset_calc.cpu_get(idx);
       char* const out_data = out_ptr + offsets[0] + slice_offset;

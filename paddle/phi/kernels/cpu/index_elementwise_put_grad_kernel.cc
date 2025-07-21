@@ -49,7 +49,6 @@ void CPUIndexElementwisePutGradKernel(
     sizes[i] = index_dims[i];
     strides[i] = index_strides[i];
   }
-  auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
   std::array<int64_t*, 3> strides_array;
   std::vector<int64_t> desired_shape;
   std::array<std::vector<int64_t>, 3> strides_vec;
@@ -90,6 +89,7 @@ void CPUIndexElementwisePutGradKernel(
         }
       }
     } else {
+      auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
       for (int64_t idx = 0; idx < N; idx++) {
         const auto offsets = offset_calc.cpu_get(idx);
         char* const out_data = out_ptr + offsets[0] + slice_offset;
@@ -108,6 +108,7 @@ void CPUIndexElementwisePutGradKernel(
       }
     }
   } else if (!x_grad) {
+    auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
     const char* out_ptr = reinterpret_cast<const char*>(out_grad.data<T>());
     char* value_ptr = reinterpret_cast<char*>(value_grad->data<T>());
     for (int64_t idx = 0; idx < N; idx++) {
@@ -126,6 +127,7 @@ void CPUIndexElementwisePutGradKernel(
           *reinterpret_cast<const dtype*>(out_data + offset);
     }
   } else {
+    auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
     char* out_ptr = reinterpret_cast<char*>(x_grad->data<T>());
     char* value_ptr = reinterpret_cast<char*>(value_grad->data<T>());
     for (int64_t idx = 0; idx < N; idx++) {
