@@ -41,7 +41,7 @@ jobs:
     steps:
       - name: Check docker image and run container
         env:
-          wheel_link: https://paddle-github-action.bj.bcebos.com/PR/build/${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+          wheel_link: https://paddle-github-action.bj.bcebos.com/PR/build/${{ env.PR_ID }}/${{ env.COMMIT_ID }}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
           RUN_ID: ${{ github.run_id }}
           SLICE_TEST_MODE: ${{ inputs.SLICE_TEST_MODE }}
         run: |
