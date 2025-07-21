@@ -466,7 +466,7 @@ struct CublasLtBase {
     // NOTE(limingshu): As workspace_size varies from different DL framework,
     // I wonder is there any smarter idea for workspace setting, currently I
     // just followed the settings from the NVIDIA colleague`s setting.
-    size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
+    size_t workspace_size = static_cast<size_t>(32) * 1024 * 1024;
     phi::Allocator::AllocationPtr workspace = GetWorkspace(ctx, workspace_size);
 
     if (planner != nullptr) {
@@ -657,7 +657,7 @@ struct CublasLtBase<int8_t, int32_t, MatmulDescriptor> {
         planner->UseAddTo() ? static_cast<int32_t>(1) : static_cast<int32_t>(0);
     cublasLtHandle_t cublaslt_handle = ctx.cublaslt_handle();
 
-    size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
+    size_t workspace_size = static_cast<size_t>(32) * 1024 * 1024;
     phi::Allocator::AllocationPtr workspace = nullptr;
 
     PADDLE_ENFORCE_NOT_NULL(planner,
