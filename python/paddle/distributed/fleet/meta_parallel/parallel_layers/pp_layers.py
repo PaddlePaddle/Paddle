@@ -659,6 +659,9 @@ class PipelineLayer(nn.Layer):
 
         from paddle.distributed import fleet
         from paddle.distributed.fleet.base.topology import message2nccl_config
+        from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.hybrid_parallel_optimizer import (
+            SHARED_WEIGHT_SYNC_PREFIX,
+        )
 
         hybrid_configs = fleet.fleet._user_defined_strategy.hybrid_configs
 
@@ -693,9 +696,26 @@ class PipelineLayer(nn.Layer):
                     shared_comm[comm_key] = {
                         "ranks": shared_ranks,
                         "group": group,
-                        "weight_attr": comm_key_to_shared_attrs[comm_key],
+                        "weight_attr": shared_attrs,
                         "layer": self.shared_layers[layer_name],
                     }
+
+                    if (
+                        hybrid_configs["pp_configs"].sync_moment
+                        or hybrid_configs["pp_configs"].sync_param
+                    ):
+                        # Set color for shared parameters to facilitate synchronization of parameters
+                        # and optimizer states after each step
+                        for weight_attr in shared_attrs:
+                            shared_param = getattr(
+                                self.shared_layers[layer_name], weight_attr
+                            )
+                            hcg = fleet.get_hybrid_communicate_group()
+                            shared_param.color = {
+                                "color": f"{SHARED_WEIGHT_SYNC_PREFIX}_{comm_key}",
+                                "group": hcg.get_sharding_parallel_group(),
+                                "broadcast_group": group,
+                            }
         return shared_comm
 
     def _synchronize_shared_weights(self):
