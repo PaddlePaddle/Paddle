@@ -26,7 +26,12 @@ from paddle import nn
 paddle.enable_static()
 import sys
 
-from op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_numeric_gradient,
+    get_places,
+)
 
 sys.path.append("../deprecated/legacy_test")
 from test_attribute_var import UnittestBase
@@ -181,7 +186,7 @@ class TestConv2DTransposeOp(OpTest):
         self.need_check_grad = True
         self.is_test = False
         self.use_cudnn = False
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.output_size = None
         self.output_padding = []
         self.data_format = "NCHW"
@@ -205,7 +210,7 @@ class TestConv2DTransposeOp(OpTest):
             'dilations': self.dilations,
             'use_cudnn': self.use_cudnn,
             'is_test': self.is_test,
-            'use_mkldnn': self.use_mkldnn,
+            'use_mkldnn': self.use_onednn,
             'data_format': self.data_format,
         }
         if self.output_size is not None:
@@ -236,12 +241,12 @@ class TestConv2DTransposeOp(OpTest):
             self.check_output_with_place(
                 place,
                 atol=1e-5,
-                check_dygraph=(not self.use_mkldnn),
+                check_dygraph=(not self.use_onednn),
                 check_pir=True,
             )
         else:
             self.check_output(
-                check_dygraph=(not self.use_mkldnn), check_pir=True
+                check_dygraph=(not self.use_onednn), check_pir=True
             )
 
     def test_check_grad_no_input(self):
@@ -808,12 +813,12 @@ class TestCUDNN_FP16(TestConv2DTransposeOp):
                 self.check_output_with_place(
                     place,
                     atol=0.02,
-                    check_dygraph=(not self.use_mkldnn),
+                    check_dygraph=(not self.use_onednn),
                     check_pir=True,
                 )
         else:
             self.check_output(
-                check_dygraph=(not self.use_mkldnn), check_pir=True
+                check_dygraph=(not self.use_onednn), check_pir=True
             )
 
     def test_check_grad_no_input(self):
@@ -1007,7 +1012,7 @@ class TestCUDNN_BF16(TestConv2DTransposeOp):
         self.check_output_with_place(
             place,
             atol=0.02,
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_onednn),
             check_pir=True,
         )
 
@@ -1535,15 +1540,7 @@ class TestFunctionalConv2DTranspose_ZeroSize(TestCase):
         self.dilation = 1
         self.groups = 1
         self.data_format = "NCHW"
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not base.core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if base.core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def test_dygraph(self):
         for place in self.places:

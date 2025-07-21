@@ -15,6 +15,7 @@
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
@@ -30,7 +31,7 @@ void GatherGradKernel(const Context& dev_ctx,
                       const Scalar& axis,
                       DenseTensor* x_grad) {
   // x [4, 2], index [2, 0], out [2, 0], x_grad [4, 2]
-  if (out_grad.numel() == 0) {
+  if (out_grad.numel() == 0 || (x_grad && x_grad->numel() == 0)) {
     if (x_grad) {
       phi::Full<T, Context>(
           dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
@@ -59,16 +60,33 @@ void GatherGradKernel(const Context& dev_ctx,
   if (out_grad.numel() == 0) {
     return;
   }
-  if (index_type == DataType::INT32) {
-    phi::funcs::GPUScatterAssign<T, int>(
-        dev_ctx, out_grad, index, x_grad, false);
-  } else if (index_type == DataType::INT64) {
-    phi::funcs::GPUScatterAssign<T, int64_t>(
-        dev_ctx, out_grad, index, x_grad, false);
+
+  if (index.dims().size() != 0) {
+    if (index_type == DataType::INT32) {
+      DenseTensor index_int64 =
+          phi::Cast<int32_t, Context>(dev_ctx, index, DataType::INT64);
+      phi::funcs::GPUScatterAdd<T, int64_t>(
+          dev_ctx, out_grad, index_int64, x_grad, axis_v);
+    } else if (index_type == DataType::INT64) {
+      phi::funcs::GPUScatterAdd<T, int64_t>(
+          dev_ctx, out_grad, index, x_grad, axis_v);
+    } else {
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "The data type of Input(Index) of gather_grad must be int32 or int64 "
+          "on GPU."));
+    }
   } else {
-    PADDLE_THROW(common::errors::InvalidArgument(
-        "The data type of Input(Index) of gather_grad must be int32 or int64 "
-        "on GPU."));
+    if (index_type == DataType::INT32) {
+      phi::funcs::GPUScatterAssign<T, int>(
+          dev_ctx, out_grad, index, x_grad, false);
+    } else if (index_type == DataType::INT64) {
+      phi::funcs::GPUScatterAssign<T, int64_t>(
+          dev_ctx, out_grad, index, x_grad, false);
+    } else {
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "The data type of Input(Index) of gather_grad must be int32 or int64 "
+          "on GPU."));
+    }
   }
 }
 

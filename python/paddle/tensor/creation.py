@@ -980,6 +980,60 @@ def to_tensor(
             return _to_tensor_static(data, dtype, stop_gradient)
 
 
+class MmapStorage(paddle.base.core.MmapStorage):
+    """
+    This class will use mmap to load a file.
+
+    Args:
+        filename(str): the name of .safetensors file.
+        nbytes(int): number of bytes to map into memory.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> shape = [4,5]
+            >>> dtype = paddle.float32
+            >>> a = paddle.arange(4*5).reshape(shape).astype(dtype)
+            >>> a.numpy().tofile("test.pp")
+            >>> size = a.size * a.element_size()
+            >>> t = paddle.MmapStorage("test.pp", size)
+            >>> t.get_slice(dtype = dtype, start = 0, stop = a.size).reshape(shape)
+            Tensor(shape=[4, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[0. , 1. , 2. , 3. , 4. ],
+                    [5. , 6. , 7. , 8. , 9. ],
+                    [10., 11., 12., 13., 14.],
+                    [15., 16., 17., 18., 19.]])
+
+    """
+
+    def __init__(self, filename: str, nbytes: int):
+        super().__init__(filename, nbytes)
+
+    def get_slice(
+        self,
+        dtype: DTypeLike | None = "uint8",
+        start: int = 0,
+        stop: int = -1,
+        step: int = 1,
+    ) -> paddle.Tensor:
+        """
+        Slice the tensor from the mmapped file.
+        Args:
+            dtype (DTypeLike | None): The data type of the output tensor. Default: "uint8".
+            start (int): The start index of the slice. Default: 0.
+            stop (int): The end index of the slice. Default: -1.
+            step (int): The step size of the slice. Default: 1.
+        Returns:
+            Tensor: The sliced tensor.
+        """
+        proto_dtype = paddle.base.framework.convert_to_proto_type(dtype)
+        out: paddle.base.libpaddle.DenseTensor = super().get_slice(
+            proto_dtype, start, stop, step
+        )
+        return out
+
+
 def full_like(
     x: paddle.Tensor,
     fill_value: bool | float,

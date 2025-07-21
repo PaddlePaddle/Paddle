@@ -18,5 +18,17 @@
 #include "paddle/phi/kernels/impl/lu_grad_kernel_impl.h"
 #include "paddle/phi/kernels/lu_grad_kernel.h"
 
+#ifdef PADDLE_WITH_HIP
+// HIP not support cusolver in LUKernel
 PD_REGISTER_KERNEL(lu_grad, GPU, ALL_LAYOUT, phi::LUGradKernel, float, double) {
 }
+#else
+PD_REGISTER_KERNEL(lu_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LUGradKernel,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+#endif  // PADDLE_WITH_HIP

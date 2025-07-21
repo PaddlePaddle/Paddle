@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
 from op import Operator
-from op_test import OpTest
+from op_test import OpTest, get_places
 
 import paddle
 from paddle import base
@@ -577,16 +576,7 @@ class TestSparseAdamOp(unittest.TestCase):
                 self.assertLess((actual[i] - np_array[i]), 0.00001)
 
     def test_sparse_adam(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(core.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-        for place in places:
+        for place in get_places():
             for lazy_mode in (True, False):
                 self.check_with_place(place, lazy_mode)
 
@@ -1306,16 +1296,7 @@ class TestMultiTensorAdam(unittest.TestCase):
         return out
 
     def _get_places(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            places.append('cpu')
-        if paddle.is_compiled_with_cuda():
-            places.append('gpu')
-        return places
+        return get_places(string_format=True)
 
     def _check_with_place_amp(self, place, use_amp):
         # test dygraph mode

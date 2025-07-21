@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include <vector>
+#include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
 #ifdef __NVCC__
 #include <curand_kernel.h>
 #endif
@@ -45,17 +46,18 @@ struct FastDivModForPooling {
       : channel(channels), width(output_width), height(output_height) {}
 };
 
+template <typename IndexT>
 struct FastDivModForPooling3D {
  public:
-  FastDivMod<int> channel;
-  FastDivMod<int> width;
-  FastDivMod<int> height;
-  FastDivMod<int> depth;
+  FastDivMod<IndexT> channel;
+  FastDivMod<IndexT> width;
+  FastDivMod<IndexT> height;
+  FastDivMod<IndexT> depth;
 
-  explicit HOSTDEVICE FastDivModForPooling3D(const int channels,
-                                             const int output_width,
-                                             const int output_height,
-                                             const int output_depth)
+  explicit HOSTDEVICE FastDivModForPooling3D(const IndexT channels,
+                                             const IndexT output_width,
+                                             const IndexT output_height,
+                                             const IndexT output_depth)
       : channel(channels),
         width(output_width),
         height(output_height),
@@ -121,6 +123,21 @@ __device__ void OffsetPreparationFor4Dimension(IndexT index,
     *stride = input_height_divmod.val[0] * aux_height * aux_width *
               divmods.channel.divisor;
   }
+}
+
+template <typename IndexT>
+__device__ void PreparationPoolSize(IndexT index,
+                                    IndexT input_size,
+                                    IndexT output_size,
+                                    FastDivMod<IndexT> divmods,
+                                    IndexT* tmp_size
+
+) {
+  IndexT left = (index == 0) ? 0 : divmods.Div(index * input_size);
+  IndexT right = (index == output_size - 1)
+                     ? input_size
+                     : divmods.DivCeil((index + 1) * input_size);
+  *tmp_size = right - left;
 }
 
 template <typename PoolProcess, typename T, typename IndexT>
@@ -199,51 +216,55 @@ __global__ void AdaptiveKernelPool2D(const IndexT nthreads,
                                      const IndexT stride_width,
                                      const IndexT padding_height,
                                      const IndexT padding_width,
+                                     const IndexT batch_size,
                                      FastDivModForPooling<IndexT> divmods,
                                      PoolProcess pool_process,
                                      bool exclusive,
                                      T* output_data,
                                      bool channel_last = false) {
-  const IndexT n_offset = blockIdx.y;
-  const IndexT c_offset =
-      static_cast<IndexT>(blockIdx.x) * blockDim.y + threadIdx.y;
-  if (c_offset >= channels) {
-    return;
-  }
-  IndexT hstart, hend, wstart, wend;
-  IndexT input_offset =
-      channel_last
-          ? n_offset * input_height * input_width * channels
-          : (n_offset * channels + c_offset) * input_height * input_width;
-  IndexT output_offset =
-      channel_last
-          ? n_offset * output_height * output_width * channels
-          : (n_offset * channels + c_offset) * output_height * output_width;
-  for (IndexT hw_offset = threadIdx.x; hw_offset < output_height * output_width;
-       hw_offset += blockDim.x) {
-    IndexT w_offset = hw_offset % output_width;
-    IndexT h_offset = hw_offset / output_width;
-    hstart = AdaptStartIndex(h_offset, input_height, output_height);
-    hend = AdaptEndIndex(h_offset, input_height, output_height);
-    wstart = AdaptStartIndex(w_offset, input_width, output_width);
-    wend = AdaptEndIndex(w_offset, input_width, output_width);
-
-    T ele = pool_process.initial();
-    for (IndexT h = hstart; h < hend; ++h) {
-      for (IndexT w = wstart; w < wend; ++w) {
-        auto input_idx = channel_last
-                             ? (h * input_width + w) * channels + c_offset
-                             : h * input_width + w;
-        pool_process.compute(input_data[input_offset + input_idx], &ele);
-      }
+  for (IndexT n_offset = blockIdx.y; n_offset < batch_size;
+       n_offset += gridDim.y) {
+    const IndexT c_offset =
+        static_cast<IndexT>(blockIdx.x) * blockDim.y + threadIdx.y;
+    if (c_offset >= channels) {
+      return;
     }
-    IndexT pool_size = (hend - hstart) * (wend - wstart);
-    pool_process.finalize(static_cast<T>(pool_size), &ele);
-    IndexT output_idx =
+    IndexT hstart, hend, wstart, wend;
+    IndexT input_offset =
         channel_last
-            ? (h_offset * output_width + w_offset) * channels + c_offset
-            : h_offset * output_width + w_offset;
-    output_data[output_offset + output_idx] = ele;
+            ? n_offset * input_height * input_width * channels
+            : (n_offset * channels + c_offset) * input_height * input_width;
+    IndexT output_offset =
+        channel_last
+            ? n_offset * output_height * output_width * channels
+            : (n_offset * channels + c_offset) * output_height * output_width;
+    for (IndexT hw_offset = threadIdx.x;
+         hw_offset < output_height * output_width;
+         hw_offset += blockDim.x) {
+      IndexT w_offset = hw_offset % output_width;
+      IndexT h_offset = hw_offset / output_width;
+      hstart = AdaptStartIndex(h_offset, input_height, output_height);
+      hend = AdaptEndIndex(h_offset, input_height, output_height);
+      wstart = AdaptStartIndex(w_offset, input_width, output_width);
+      wend = AdaptEndIndex(w_offset, input_width, output_width);
+
+      T ele = pool_process.initial();
+      for (IndexT h = hstart; h < hend; ++h) {
+        for (IndexT w = wstart; w < wend; ++w) {
+          auto input_idx = channel_last
+                               ? (h * input_width + w) * channels + c_offset
+                               : h * input_width + w;
+          pool_process.compute(input_data[input_offset + input_idx], &ele);
+        }
+      }
+      IndexT pool_size = (hend - hstart) * (wend - wstart);
+      pool_process.finalize(static_cast<T>(pool_size), &ele);
+      IndexT output_idx =
+          channel_last
+              ? (h_offset * output_width + w_offset) * channels + c_offset
+              : h_offset * output_width + w_offset;
+      output_data[output_offset + output_idx] = ele;
+    }
   }
 }
 
@@ -299,23 +320,24 @@ __global__ void KernelPool2DGrad(
     output_grad += output_offset;
 
     if (adaptive) {
+      auto tmp_phstart = divmods.height.Divmod(h_offset * output_height);
+      auto tmp_pwstart = divmods.width.Divmod(w_offset * output_width);
       auto tmp_phend = divmods.height.Divmod((h_offset + 1) * output_height);
       auto tmp_pwend = divmods.width.Divmod((w_offset + 1) * output_width);
-      phstart = divmods.height.Div(h_offset * output_height);
-      pwstart = divmods.width.Div(w_offset * output_width);
+      phstart = tmp_phstart.val[0];
+      pwstart = tmp_pwstart.val[0];
       phend = tmp_phend.val[1] > 0 ? tmp_phend.val[0] + 1 : tmp_phend.val[0];
       pwend = tmp_pwend.val[1] > 0 ? tmp_pwend.val[0] + 1 : tmp_pwend.val[0];
 
+      IndexT pool_height, pool_width;
       for (IndexT ph = phstart; ph < phend; ++ph) {
+        PreparationPoolSize(
+            ph, input_height, output_height, divmods.ksize_h, &pool_height);
+
         for (IndexT pw = pwstart; pw < pwend; ++pw) {
-          auto ksize_w_divmod = divmods.ksize_w.Divmod(input_width);
-          auto ksize_h_divmod = divmods.ksize_h.Divmod(input_height);
-          auto tmp_width = ksize_w_divmod.val[1] > 0 ? ksize_w_divmod.val[0] + 1
-                                                     : ksize_w_divmod.val[0];
-          auto tmp_height = ksize_h_divmod.val[1] > 0
-                                ? ksize_h_divmod.val[0] + 1
-                                : ksize_h_divmod.val[0];
-          IndexT pool_size = tmp_height * tmp_width;
+          PreparationPoolSize(
+              pw, input_width, output_width, divmods.ksize_w, &pool_width);
+          IndexT pool_size = pool_height * pool_width;
           IndexT tmp_idx = ph * output_width + pw;
           IndexT output_sub_idx =
               channel_last ? tmp_idx * divmods.channel.divisor + c_offset
@@ -489,10 +511,12 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
                  max_threads);
     int64_t blocks = std::min(max_threads / thread_num,
                               static_cast<int64_t>(output_channels));
+    auto max_grid_dim = backends::gpu::GetGpuMaxGridDimSize(
+        phi::backends::gpu::GetCurrentDeviceId());
     dim3 threads(thread_num, blocks, 1);
     dim3 grid(std::max((output_channels + blocks - 1) / blocks,
                        static_cast<int64_t>(1)),
-              batch_size,
+              std::min(batch_size, static_cast<int>(max_grid_dim[1])),
               1);
     AdaptiveKernelPool2D<PoolProcess, T, int>
         <<<grid, threads, 0, stream>>>(nthreads,
@@ -508,6 +532,7 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
                                        stride_width,
                                        padding_height,
                                        padding_width,
+                                       batch_size,
                                        pool_divmods,
                                        pool_compute,
                                        exclusive,
@@ -516,7 +541,7 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
   } else {
     int thread_num = 1024;
 #ifdef WITH_NV_JETSON
-    // backends::gpu::ChangeThreadNum(context, &thread_num);
+    // backends::gpu::ChangeThreadNum(dev_ctx, &thread_num);
     thread_num = 512;
 #endif
     int blocks = (nthreads + thread_num - 1) / thread_num;
@@ -553,7 +578,7 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
 template <typename PoolProcess, typename T>
 class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const std::vector<int64_t>& ksize,
                   const std::vector<int64_t>& strides,
@@ -590,8 +615,9 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
     const int64_t padding_width = paddings[1];
 
     const T* input_data = input.data<T>();
-    T* output_data = context.template Alloc<T>(output);
+    T* output_data = dev_ctx.template Alloc<T>(output);
 
+    std::array<unsigned int, 3> max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize();
     int64_t nthreads =
         batch_size * output_channels * output_height * output_width;
     if (adaptive) {
@@ -604,13 +630,13 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
       dim3 threads(thread_num, blocks, 1);
       dim3 grid(std::max((output_channels + blocks - 1) / blocks,
                          static_cast<int64_t>(1)),
-                batch_size,
+                std::min(batch_size, static_cast<int64_t>(max_grid_dim[1])),
                 1);
       if (input.numel() <= std::numeric_limits<int>::max()) {
         auto pool_divmods = FastDivModForPooling<int>(
             input_channels, output_width, output_height);
         AdaptiveKernelPool2D<PoolProcess, T, int>
-            <<<grid, threads, 0, context.stream()>>>(nthreads,
+            <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
                                                      input_data,
                                                      input_channels,
                                                      input_height,
@@ -623,6 +649,7 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
                                                      stride_width,
                                                      padding_height,
                                                      padding_width,
+                                                     batch_size,
                                                      pool_divmods,
                                                      pool_process,
                                                      exclusive,
@@ -632,7 +659,7 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
         auto pool_divmods = FastDivModForPooling<int64_t>(
             input_channels, output_width, output_height);
         AdaptiveKernelPool2D<PoolProcess, T, int64_t>
-            <<<grid, threads, 0, context.stream()>>>(nthreads,
+            <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
                                                      input_data,
                                                      input_channels,
                                                      input_height,
@@ -645,6 +672,7 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
                                                      stride_width,
                                                      padding_height,
                                                      padding_width,
+                                                     batch_size,
                                                      pool_divmods,
                                                      pool_process,
                                                      exclusive,
@@ -654,7 +682,7 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
     } else {
       int thread_num = 1024;
 #ifdef WITH_NV_JETSON
-      backends::gpu::ChangeThreadNum(context, &thread_num);
+      backends::gpu::ChangeThreadNum(dev_ctx, &thread_num);
 #endif
       int64_t blocks = (nthreads + thread_num - 1) / thread_num;
       dim3 threads(thread_num, 1);
@@ -663,7 +691,7 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
         auto pool_divmods = FastDivModForPooling<int>(
             input_channels, output_width, output_height);
         KernelPool2D<PoolProcess, T, int>
-            <<<grid, threads, 0, context.stream()>>>(nthreads,
+            <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
                                                      input_data,
                                                      input_channels,
                                                      input_height,
@@ -685,7 +713,7 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
         auto pool_divmods = FastDivModForPooling<int64_t>(
             input_channels, output_width, output_height);
         KernelPool2D<PoolProcess, T, int64_t>
-            <<<grid, threads, 0, context.stream()>>>(nthreads,
+            <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
                                                      input_data,
                                                      input_channels,
                                                      input_height,
@@ -717,7 +745,7 @@ class Pool2dFunctor<phi::GPUContext, PoolProcess, T> {
 template <typename PoolProcess, typename T>
 class Pool2dGradFunctor<phi::GPUContext, PoolProcess, T> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& output,
                   const DenseTensor& output_grad,
@@ -758,10 +786,10 @@ class Pool2dGradFunctor<phi::GPUContext, PoolProcess, T> {
     const T* input_data = input.data<T>();
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
-    T* input_grad_data = context.template Alloc<T>(input_grad);
+    T* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
 
     int64_t nthreads = batch_size * input_channels * input_height * input_width;
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(context, nthreads);
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, nthreads);
     if (input.numel() <= std::numeric_limits<int>::max() &&
         output.numel() <= std::numeric_limits<int>::max()) {
       auto pool_divmods = FastDivModForPoolingWithMoreStaff<int>(input_channels,
@@ -775,7 +803,7 @@ class Pool2dGradFunctor<phi::GPUContext, PoolProcess, T> {
           <<<config.block_per_grid,
              config.thread_per_block,
              0,
-             context.stream()>>>(nthreads,
+             dev_ctx.stream()>>>(nthreads,
                                  input_data,
                                  output_data,
                                  output_grad_data,
@@ -808,7 +836,7 @@ class Pool2dGradFunctor<phi::GPUContext, PoolProcess, T> {
           <<<config.block_per_grid,
              config.thread_per_block,
              0,
-             context.stream()>>>(nthreads,
+             dev_ctx.stream()>>>(nthreads,
                                  input_data,
                                  output_data,
                                  output_grad_data,
@@ -842,7 +870,7 @@ class Pool2dGradFunctor<phi::GPUContext, PoolProcess, T> {
 template <typename T>
 class MaxPool2dGradFunctor<phi::GPUContext, T> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& output,
                   const DenseTensor& output_grad,
@@ -881,7 +909,7 @@ class MaxPool2dGradFunctor<phi::GPUContext, T> {
     const T* input_data = input.data<T>();
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
-    T* input_grad_data = context.template Alloc<T>(input_grad);
+    T* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
 
     int64_t nthreads =
         batch_size * output_channels * output_height * output_width;
@@ -894,7 +922,7 @@ class MaxPool2dGradFunctor<phi::GPUContext, T> {
       auto pool_divmods = FastDivModForPooling<int>(
           input_channels, output_width, output_height);
       KernelMaxPool2DGrad<T, int>
-          <<<grid, threads, 0, context.stream()>>>(nthreads,
+          <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
                                                    input_data,
                                                    output_data,
                                                    output_grad_data,
@@ -916,7 +944,7 @@ class MaxPool2dGradFunctor<phi::GPUContext, T> {
       auto pool_divmods = FastDivModForPooling<int64_t>(
           input_channels, output_width, output_height);
       KernelMaxPool2DGrad<T, int64_t>
-          <<<grid, threads, 0, context.stream()>>>(nthreads,
+          <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
                                                    input_data,
                                                    output_data,
                                                    output_grad_data,
@@ -1151,6 +1179,9 @@ __global__ void KernelPool3DGrad(const IndexT nthreads,
     IndexT pdstart, pdend;
     IndexT phstart, phend;
     IndexT pwstart, pwend;
+
+    IndexT pool_depth, pool_height, pool_width;
+
     if (adaptive) {
       pdstart = AdaptStartIndex(d_offset, output_depth, input_depth);
       pdend = AdaptEndIndex(d_offset, output_depth, input_depth);
@@ -1181,19 +1212,28 @@ __global__ void KernelPool3DGrad(const IndexT nthreads,
     output_grad += output_stride;
     T input_grad_data = static_cast<T>(0.0);
 
+    IndexT pool_size;
     for (IndexT pd = pdstart; pd < pdend; ++pd) {
       for (IndexT ph = phstart; ph < phend; ++ph) {
         for (IndexT pw = pwstart; pw < pwend; ++pw) {
           // figure out the pooling size
-          IndexT pool_size;
           if (adaptive) {
-            pool_size =
-                static_cast<IndexT>(
-                    ceil(static_cast<double>(input_depth) / ksize_depth)) *
-                static_cast<IndexT>(
-                    ceil(static_cast<double>(input_height) / ksize_height)) *
-                static_cast<IndexT>(
-                    ceil(static_cast<double>(input_width) / ksize_width));
+            PreparationPoolSize(pd,
+                                input_depth,
+                                output_depth,
+                                FastDivMod<IndexT>(output_depth),
+                                &pool_depth);
+            PreparationPoolSize(pw,
+                                input_width,
+                                output_width,
+                                FastDivMod<IndexT>(output_width),
+                                &pool_width);
+            PreparationPoolSize(ph,
+                                input_height,
+                                output_height,
+                                FastDivMod<IndexT>(output_height),
+                                &pool_height);
+            pool_size = pool_depth * pool_height * pool_width;
           } else {
             IndexT dstart = pd * stride_depth - padding_depth;
             IndexT hstart = ph * stride_height - padding_height;
@@ -1398,7 +1438,7 @@ void Pool3dDirectCUDAFunctor<PoolProcess, T>::operator()(
 template <typename PoolProcess, class T>
 class Pool3dFunctor<phi::GPUContext, PoolProcess, T> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const std::vector<int64_t>& ksize,
                   const std::vector<int64_t>& strides,
@@ -1442,21 +1482,21 @@ class Pool3dFunctor<phi::GPUContext, PoolProcess, T> {
     const int64_t padding_width = paddings[2];
 
     const T* input_data = input.data<T>();
-    T* output_data = context.template Alloc<T>(output);
+    T* output_data = dev_ctx.template Alloc<T>(output);
 
     int64_t nthreads = batch_size * output_channels * output_depth *
                        output_height * output_width;
-    int thread_num = 1024;
-#ifdef WITH_NV_JETSON
-    backends::gpu::ChangeThreadNum(context, &thread_num);
-#endif
-    int64_t blocks = (nthreads + thread_num - 1) / thread_num;
-    dim3 threads(thread_num, 1);
-    dim3 grid(blocks, 1);
 
     if (input.numel() <= std::numeric_limits<int>::max()) {
+      int thread_num = 1024;
+#ifdef WITH_NV_JETSON
+      backends::gpu::ChangeThreadNum(dev_ctx, &thread_num);
+#endif
+      int64_t blocks = (nthreads + thread_num - 1) / thread_num;
+      dim3 threads(thread_num, 1);
+      dim3 grid(blocks, 1);
       KernelPool3D<PoolProcess, T, int>
-          <<<grid, threads, 0, context.stream()>>>(nthreads,
+          <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
                                                    input_data,
                                                    input_channels,
                                                    input_depth,
@@ -1480,8 +1520,15 @@ class Pool3dFunctor<phi::GPUContext, PoolProcess, T> {
                                                    output_data,
                                                    channel_last);
     } else {
+      int thread_num = 512;
+#ifdef WITH_NV_JETSON
+      backends::gpu::ChangeThreadNum(dev_ctx, &thread_num);
+#endif
+      int64_t blocks = (nthreads + thread_num - 1) / thread_num;
+      dim3 threads(thread_num, 1);
+      dim3 grid(blocks, 1);
       KernelPool3D<PoolProcess, T, int64_t>
-          <<<grid, threads, 0, context.stream()>>>(nthreads,
+          <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
                                                    input_data,
                                                    input_channels,
                                                    input_depth,
@@ -1519,7 +1566,7 @@ class Pool3dFunctor<phi::GPUContext, PoolProcess, T> {
 template <typename PoolProcess, class T>
 class Pool3dGradFunctor<phi::GPUContext, PoolProcess, T> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& output,
                   const DenseTensor& output_grad,
@@ -1567,18 +1614,19 @@ class Pool3dGradFunctor<phi::GPUContext, PoolProcess, T> {
     const T* input_data = input.data<T>();
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
-    T* input_grad_data = context.template Alloc<T>(input_grad);
+    T* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
 
     int64_t nthreads =
         batch_size * input_channels * input_depth * input_height * input_width;
-    int64_t blocks = (nthreads + 1024 - 1) / 1024;
-    dim3 threads(1024, 1);
-    dim3 grid(blocks, 1);
 
     if (input.numel() <= std::numeric_limits<int>::max() &&
         output.numel() <= std::numeric_limits<int>::max()) {
+      int thread_num = 1024;
+      int64_t blocks = (nthreads + thread_num - 1) / thread_num;
+      dim3 threads(thread_num, 1);
+      dim3 grid(blocks, 1);
       KernelPool3DGrad<T, PoolProcess, int>
-          <<<grid, threads, 0, context.stream()>>>(
+          <<<grid, threads, 0, dev_ctx.stream()>>>(
               nthreads,
               input_data,
               output_data,
@@ -1605,8 +1653,12 @@ class Pool3dGradFunctor<phi::GPUContext, PoolProcess, T> {
               input_grad_data,
               channel_last);  // add channel_last
     } else {
+      int thread_num = 512;
+      int64_t blocks = (nthreads + thread_num - 1) / thread_num;
+      dim3 threads(thread_num, 1);
+      dim3 grid(blocks, 1);
       KernelPool3DGrad<T, PoolProcess, int64_t>
-          <<<grid, threads, 0, context.stream()>>>(
+          <<<grid, threads, 0, dev_ctx.stream()>>>(
               nthreads,
               input_data,
               output_data,
@@ -1647,7 +1699,7 @@ class Pool3dGradFunctor<phi::GPUContext, PoolProcess, T> {
 template <class T>
 class MaxPool3dGradFunctor<phi::GPUContext, T> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& input,
                   const DenseTensor& output,
                   const DenseTensor& output_grad,
@@ -1692,7 +1744,7 @@ class MaxPool3dGradFunctor<phi::GPUContext, T> {
     const T* input_data = input.data<T>();
     const T* output_data = output.data<T>();
     const T* output_grad_data = output_grad.data<T>();
-    T* input_grad_data = context.template Alloc<T>(input_grad);
+    T* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
 
     int64_t nthreads = batch_size * output_channels * output_depth *
                        output_height * output_width;
@@ -1701,7 +1753,7 @@ class MaxPool3dGradFunctor<phi::GPUContext, T> {
     dim3 grid(blocks, 1);
     if (input.numel() <= std::numeric_limits<int>::max() &&
         output.numel() <= std::numeric_limits<int>::max()) {
-      KernelMaxPool3DGrad<T, int><<<grid, threads, 0, context.stream()>>>(
+      KernelMaxPool3DGrad<T, int><<<grid, threads, 0, dev_ctx.stream()>>>(
           nthreads,
           input_data,
           output_data,
@@ -1725,7 +1777,7 @@ class MaxPool3dGradFunctor<phi::GPUContext, T> {
           input_grad_data,
           channel_last);  // add channel_last
     } else {
-      KernelMaxPool3DGrad<T, int64_t><<<grid, threads, 0, context.stream()>>>(
+      KernelMaxPool3DGrad<T, int64_t><<<grid, threads, 0, dev_ctx.stream()>>>(
           nthreads,
           input_data,
           output_data,
@@ -1794,31 +1846,31 @@ template class Pool3dGradFunctor<phi::GPUContext,
                                  AvgPoolGrad<dtype::bfloat16>,
                                  dtype::bfloat16>;
 
-template <typename T1, typename T2>
-__global__ void KernelMaxPool2dWithIdx(const int nthreads,
+template <typename T1, typename T2, typename IndexT>
+__global__ void KernelMaxPool2dWithIdx(const IndexT nthreads,
                                        const T1* input_data,
-                                       const int channels,
-                                       const int input_height,
-                                       const int input_width,
-                                       const int output_height,
-                                       const int output_width,
-                                       const int ksize_height,
-                                       const int ksize_width,
-                                       const int stride_height,
-                                       const int stride_width,
-                                       const int padding_height,
-                                       const int padding_width,
+                                       const IndexT channels,
+                                       const IndexT input_height,
+                                       const IndexT input_width,
+                                       const IndexT output_height,
+                                       const IndexT output_width,
+                                       const IndexT ksize_height,
+                                       const IndexT ksize_width,
+                                       const IndexT stride_height,
+                                       const IndexT stride_width,
+                                       const IndexT padding_height,
+                                       const IndexT padding_width,
                                        bool adaptive,
                                        T1* output_data,
                                        T2* mask_data,
-                                       FastDivModForPooling<int> divmods) {
-  const int64_t start_index =
-      static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-  const int64_t step = static_cast<int64_t>(blockDim.x) * gridDim.x;
-  for (int64_t index = start_index; index < nthreads; index += step) {
-    int hstart, hend, wstart, wend;
-    int w_offset, h_offset, c_offset, input_offset;
-    OffsetPreparationFor4Dimension<FastDivModForPooling<int>, int>(
+                                       FastDivModForPooling<IndexT> divmods) {
+  const IndexT start_index =
+      static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
+  const IndexT step = static_cast<IndexT>(blockDim.x) * gridDim.x;
+  for (IndexT index = start_index; index < nthreads; index += step) {
+    IndexT hstart, hend, wstart, wend;
+    IndexT w_offset, h_offset, c_offset, input_offset;
+    OffsetPreparationFor4Dimension<FastDivModForPooling<IndexT>, IndexT>(
         index,
         false,
         divmods,
@@ -1841,18 +1893,18 @@ __global__ void KernelMaxPool2dWithIdx(const int nthreads,
     } else {
       hstart = h_offset * stride_height - padding_height;
       hend = min(hstart + ksize_height, input_height);
-      hstart = max(hstart, 0);
+      hstart = max(hstart, static_cast<IndexT>(0));
 
       wstart = w_offset * stride_width - padding_width;
       wend = min(wstart + ksize_width, input_width);
-      wstart = max(wstart, 0);
+      wstart = max(wstart, static_cast<IndexT>(0));
     }
 
     T1 ele = static_cast<T1>(-FLT_MAX);
-    int max_index = -1;
-    for (int h = hstart; h < hend; ++h) {
-      for (int w = wstart; w < wend; ++w) {
-        int input_index = h * input_width + w;
+    IndexT max_index = -1;
+    for (IndexT h = hstart; h < hend; ++h) {
+      for (IndexT w = wstart; w < wend; ++w) {
+        IndexT input_index = h * input_width + w;
         if (ele < input_data[input_index]) {
           max_index = input_index;
           ele = input_data[input_index];
@@ -1864,83 +1916,91 @@ __global__ void KernelMaxPool2dWithIdx(const int nthreads,
   }
 }
 
-template <typename T1, typename T2>
+template <typename T1, typename T2, typename IndexT>
 __global__ void AdaptiveKernelMaxPool2dWithIdx(
-    const int nthreads,
+    const IndexT nthreads,
     const T1* input_data,
-    const int channels,
-    const int input_height,
-    const int input_width,
-    const int output_height,
-    const int output_width,
-    const int ksize_height,
-    const int ksize_width,
-    const int stride_height,
-    const int stride_width,
-    const int padding_height,
-    const int padding_width,
+    const IndexT channels,
+    const IndexT input_height,
+    const IndexT input_width,
+    const IndexT output_height,
+    const IndexT output_width,
+    const IndexT ksize_height,
+    const IndexT ksize_width,
+    const IndexT stride_height,
+    const IndexT stride_width,
+    const IndexT padding_height,
+    const IndexT padding_width,
+    const IndexT batch_size,
     T1* output_data,
     T2* mask_data,
-    FastDivModForPooling<int> divmods) {
-  const int n_offset = blockIdx.y;
-  const int c_offset = blockIdx.x * blockDim.y + threadIdx.y;
-  if (c_offset >= channels) {
-    return;
-  }
-  int hstart, hend, wstart, wend;
-  int input_offset =
-      (n_offset * channels + c_offset) * input_height * input_width;
-  int output_offset =
-      (n_offset * channels + c_offset) * output_height * output_width;
-  for (int hw_offset = threadIdx.x; hw_offset < output_height * output_width;
-       hw_offset += blockDim.x) {
-    int w_offset = hw_offset % output_width;
-    int h_offset = hw_offset / output_width;
-    hstart = AdaptStartIndex(h_offset, input_height, output_height);
-    hend = AdaptEndIndex(h_offset, input_height, output_height);
-    wstart = AdaptStartIndex(w_offset, input_width, output_width);
-    wend = AdaptEndIndex(w_offset, input_width, output_width);
+    FastDivModForPooling<IndexT> divmods) {
+  for (IndexT n_offset = blockIdx.y; n_offset < batch_size;
+       n_offset += gridDim.y) {
+    const IndexT c_offset =
+        static_cast<IndexT>(blockIdx.x) * blockDim.y + threadIdx.y;
+    if (c_offset >= channels) {
+      return;
+    }
+    IndexT hstart, hend, wstart, wend;
+    IndexT input_offset =
+        (n_offset * channels + c_offset) * input_height * input_width;
+    IndexT output_offset =
+        (n_offset * channels + c_offset) * output_height * output_width;
+    for (IndexT hw_offset = threadIdx.x;
+         hw_offset < output_height * output_width;
+         hw_offset += blockDim.x) {
+      IndexT w_offset = hw_offset % output_width;
+      IndexT h_offset = hw_offset / output_width;
+      hstart = AdaptStartIndex(h_offset, input_height, output_height);
+      hend = AdaptEndIndex(h_offset, input_height, output_height);
+      wstart = AdaptStartIndex(w_offset, input_width, output_width);
+      wend = AdaptEndIndex(w_offset, input_width, output_width);
 
-    T1 ele = static_cast<T1>(-FLT_MAX);
-    int max_index = -1;
-    for (int h = hstart; h < hend; ++h) {
-      for (int w = wstart; w < wend; ++w) {
-        int input_index = h * input_width + w;
-        if (ele < input_data[input_offset + input_index]) {
-          max_index = input_index;
-          ele = input_data[input_offset + input_index];
+      T1 ele = static_cast<T1>(-FLT_MAX);
+      IndexT max_index = -1;
+      for (IndexT h = hstart; h < hend; ++h) {
+        for (IndexT w = wstart; w < wend; ++w) {
+          IndexT input_index = h * input_width + w;
+          if (ele < input_data[input_offset + input_index]) {
+            max_index = input_index;
+            ele = input_data[input_offset + input_index];
+          }
         }
       }
+      IndexT output_idx = output_offset + h_offset * output_width + w_offset;
+      output_data[output_idx] = ele;
+      mask_data[output_idx] = max_index;
     }
-    int output_idx = output_offset + h_offset * output_width + w_offset;
-    output_data[output_idx] = ele;
-    mask_data[output_idx] = max_index;
   }
 }
 
-template <typename T1, typename T2>
-__global__ void KernelMaxPool2DWithIdxGrad(const int nthreads,
-                                           const T1* output_grad,
-                                           const T2* mask_data,
-                                           const int channels,
-                                           const int input_height,
-                                           const int input_width,
-                                           const int output_height,
-                                           const int output_width,
-                                           const int ksize_height,
-                                           const int ksize_width,
-                                           const int stride_height,
-                                           const int stride_width,
-                                           const int padding_height,
-                                           const int padding_width,
-                                           bool adaptive,
-                                           T1* input_grad,
-                                           FastDivModForPooling<int> divmods) {
-  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
-       index += blockDim.x * gridDim.x) {
-    int phstart, phend, pwstart, pwend;
-    int w_offset, h_offset, c_offset, output_offset;
-    OffsetPreparationFor4Dimension<FastDivModForPooling<int>, int>(
+template <typename T1, typename T2, typename IndexT>
+__global__ void KernelMaxPool2DWithIdxGrad(
+    const IndexT nthreads,
+    const T1* output_grad,
+    const T2* mask_data,
+    const IndexT channels,
+    const IndexT input_height,
+    const IndexT input_width,
+    const IndexT output_height,
+    const IndexT output_width,
+    const IndexT ksize_height,
+    const IndexT ksize_width,
+    const IndexT stride_height,
+    const IndexT stride_width,
+    const IndexT padding_height,
+    const IndexT padding_width,
+    bool adaptive,
+    T1* input_grad,
+    FastDivModForPooling<IndexT> divmods) {
+  const IndexT start_index =
+      static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
+  const IndexT step = static_cast<IndexT>(blockDim.x) * gridDim.x;
+  for (IndexT index = start_index; index < nthreads; index += step) {
+    IndexT phstart, phend, pwstart, pwend;
+    IndexT w_offset, h_offset, c_offset, output_offset;
+    OffsetPreparationFor4Dimension<FastDivModForPooling<IndexT>, IndexT>(
         index,
         false,
         divmods,
@@ -1977,9 +2037,9 @@ __global__ void KernelMaxPool2DWithIdxGrad(const int nthreads,
     }
 
     T1 input_grad_data = static_cast<T1>(0);
-    int input_current_featuremap_idx = h_offset * input_width + w_offset;
-    for (int ph = phstart; ph < phend; ++ph) {
-      for (int pw = pwstart; pw < pwend; ++pw) {
+    IndexT input_current_featuremap_idx = h_offset * input_width + w_offset;
+    for (IndexT ph = phstart; ph < phend; ++ph) {
+      for (IndexT pw = pwstart; pw < pwend; ++pw) {
         if (mask_data[ph * output_width + pw] == input_current_featuremap_idx)
           input_grad_data += output_grad[ph * output_width + pw];
       }
@@ -1996,36 +2056,34 @@ __global__ void KernelMaxPool2DWithIdxGrad(const int nthreads,
 template <typename T1, typename T2>
 class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& input,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
+                  const std::vector<int64_t>& ksize,
+                  const std::vector<int64_t>& strides,
+                  const std::vector<int64_t>& paddings,
                   bool adaptive,
                   DenseTensor* output,
                   DenseTensor* mask) {
-    const int batch_size = input.dims()[0];
-    const int input_channels = input.dims()[1];
-    const int input_height = input.dims()[2];
-    const int input_width = input.dims()[3];
-    const int output_channels = output->dims()[1];
-    const int output_height = output->dims()[2];
-    const int output_width = output->dims()[3];
-    const int ksize_height = ksize[0];
-    const int ksize_width = ksize[1];
-    const int stride_height = strides[0];
-    const int stride_width = strides[1];
-    const int padding_height = paddings[0];
-    const int padding_width = paddings[1];
+    const int64_t batch_size = input.dims()[0];
+    const int64_t input_channels = input.dims()[1];
+    const int64_t input_height = input.dims()[2];
+    const int64_t input_width = input.dims()[3];
+    const int64_t output_channels = output->dims()[1];
+    const int64_t output_height = output->dims()[2];
+    const int64_t output_width = output->dims()[3];
+    const int64_t ksize_height = ksize[0];
+    const int64_t ksize_width = ksize[1];
+    const int64_t stride_height = strides[0];
+    const int64_t stride_width = strides[1];
+    const int64_t padding_height = paddings[0];
+    const int64_t padding_width = paddings[1];
 
     const T1* input_data = input.data<T1>();
-    T1* output_data = context.template Alloc<T1>(output);
-    T2* mask_data = context.template Alloc<T2>(mask);
+    T1* output_data = dev_ctx.template Alloc<T1>(output);
+    T2* mask_data = dev_ctx.template Alloc<T2>(mask);
 
     int64_t nthreads = static_cast<int64_t>(batch_size) * output_channels *
                        output_height * output_width;
-    auto pool_divmods =
-        FastDivModForPooling(input_channels, output_width, output_height);
     if (adaptive && output_height > 1 && output_width > 1) {
       int64_t max_threads = 512;
       int64_t thread_num = std::min(
@@ -2034,53 +2092,106 @@ class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
       int64_t blocks = std::min(max_threads / thread_num,
                                 static_cast<int64_t>(output_channels));
       dim3 threads(thread_num, blocks, 1);
+      std::array<unsigned int, 3> max_grid_dim =
+          dev_ctx.GetCUDAMaxGridDimSize();
       dim3 grid(std::max((output_channels + blocks - 1) / blocks,
                          static_cast<int64_t>(1)),
-                batch_size,
+                std::min(batch_size, static_cast<int64_t>(max_grid_dim[1])),
                 1);
-      AdaptiveKernelMaxPool2dWithIdx<T1, T2>
-          <<<grid, threads, 0, context.stream()>>>(nthreads,
-                                                   input_data,
-                                                   input_channels,
-                                                   input_height,
-                                                   input_width,
-                                                   output_height,
-                                                   output_width,
-                                                   ksize_height,
-                                                   ksize_width,
-                                                   stride_height,
-                                                   stride_width,
-                                                   padding_height,
-                                                   padding_width,
-                                                   output_data,
-                                                   mask_data,
-                                                   pool_divmods);
+      if (input.numel() <= std::numeric_limits<int>::max()) {
+        auto pool_divmods = FastDivModForPooling<int>(
+            input_channels, output_width, output_height);
+        AdaptiveKernelMaxPool2dWithIdx<T1, T2, int>
+            <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
+                                                     input_data,
+                                                     input_channels,
+                                                     input_height,
+                                                     input_width,
+                                                     output_height,
+                                                     output_width,
+                                                     ksize_height,
+                                                     ksize_width,
+                                                     stride_height,
+                                                     stride_width,
+                                                     padding_height,
+                                                     padding_width,
+                                                     batch_size,
+                                                     output_data,
+                                                     mask_data,
+                                                     pool_divmods);
+      } else {
+        auto pool_divmods = FastDivModForPooling<int64_t>(
+            input_channels, output_width, output_height);
+        AdaptiveKernelMaxPool2dWithIdx<T1, T2, int64_t>
+            <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
+                                                     input_data,
+                                                     input_channels,
+                                                     input_height,
+                                                     input_width,
+                                                     output_height,
+                                                     output_width,
+                                                     ksize_height,
+                                                     ksize_width,
+                                                     stride_height,
+                                                     stride_width,
+                                                     padding_height,
+                                                     padding_width,
+                                                     batch_size,
+                                                     output_data,
+                                                     mask_data,
+                                                     pool_divmods);
+      }
     } else {
-      int thread_num = 1024;
+      int64_t thread_num = 1024;
 #ifdef WITH_NV_JETSON
-      backends::gpu::ChangeThreadNum(context, &thread_num);
+      backends::gpu::ChangeThreadNum(dev_ctx, &thread_num);
 #endif
-      int blocks = (nthreads + thread_num - 1) / thread_num;
+      int64_t blocks = (nthreads + thread_num - 1) / thread_num;
       dim3 threads(thread_num, 1);
       dim3 grid(blocks, 1);
-      KernelMaxPool2dWithIdx<T1, T2>
-          <<<grid, threads, 0, context.stream()>>>(nthreads,
-                                                   input_data,
-                                                   input_channels,
-                                                   input_height,
-                                                   input_width,
-                                                   output_height,
-                                                   output_width,
-                                                   ksize_height,
-                                                   ksize_width,
-                                                   stride_height,
-                                                   stride_width,
-                                                   padding_height,
-                                                   padding_width,
-                                                   adaptive,
-                                                   output_data,
-                                                   mask_data,
-                                                   pool_divmods);
+      if (input.numel() <= std::numeric_limits<int>::max()) {
+        auto pool_divmods = FastDivModForPooling<int>(
+            input_channels, output_width, output_height);
+        KernelMaxPool2dWithIdx<T1, T2, int>
+            <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
+                                                     input_data,
+                                                     input_channels,
+                                                     input_height,
+                                                     input_width,
+                                                     output_height,
+                                                     output_width,
+                                                     ksize_height,
+                                                     ksize_width,
+                                                     stride_height,
+                                                     stride_width,
+                                                     padding_height,
+                                                     padding_width,
+                                                     adaptive,
+                                                     output_data,
+                                                     mask_data,
+                                                     pool_divmods);
+      } else {
+        auto pool_divmods = FastDivModForPooling<int64_t>(
+            input_channels, output_width, output_height);
+        KernelMaxPool2dWithIdx<T1, T2, int64_t>
+            <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
+                                                     input_data,
+                                                     input_channels,
+                                                     input_height,
+                                                     input_width,
+                                                     output_height,
+                                                     output_width,
+                                                     ksize_height,
+                                                     ksize_width,
+                                                     stride_height,
+                                                     stride_width,
+                                                     padding_height,
+                                                     padding_width,
+                                                     adaptive,
+                                                     output_data,
+                                                     mask_data,
+                                                     pool_divmods);
+      }
     }
   }
 };
@@ -2093,56 +2204,80 @@ class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
 template <typename T1, typename T2>
 class MaxPool2dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& output_grad,
                   const DenseTensor& mask,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
+                  const std::vector<int64_t>& ksize,
+                  const std::vector<int64_t>& strides,
+                  const std::vector<int64_t>& paddings,
                   bool adaptive,
                   DenseTensor* input_grad) {
-    const int batch_size = input_grad->dims()[0];
-    const int input_channels = input_grad->dims()[1];
-    const int input_height = input_grad->dims()[2];
-    const int input_width = input_grad->dims()[3];
-    const int output_height = output_grad.dims()[2];
-    const int output_width = output_grad.dims()[3];
-    const int ksize_height = ksize[0];
-    const int ksize_width = ksize[1];
-    const int stride_height = strides[0];
-    const int stride_width = strides[1];
-    const int padding_height = paddings[0];
-    const int padding_width = paddings[1];
+    const int64_t batch_size = input_grad->dims()[0];
+    const int64_t input_channels = input_grad->dims()[1];
+    const int64_t input_height = input_grad->dims()[2];
+    const int64_t input_width = input_grad->dims()[3];
+    const int64_t output_height = output_grad.dims()[2];
+    const int64_t output_width = output_grad.dims()[3];
+    const int64_t ksize_height = ksize[0];
+    const int64_t ksize_width = ksize[1];
+    const int64_t stride_height = strides[0];
+    const int64_t stride_width = strides[1];
+    const int64_t padding_height = paddings[0];
+    const int64_t padding_width = paddings[1];
 
     const T2* mask_data = mask.data<T2>();
     const T1* output_grad_data = output_grad.data<T1>();
-    T1* input_grad_data = context.template Alloc<T1>(input_grad);
+    T1* input_grad_data = dev_ctx.template Alloc<T1>(input_grad);
 
-    int nthreads = batch_size * input_channels * input_height * input_width;
-    int blocks = (nthreads + 1024 - 1) / 1024;
+    int64_t nthreads = static_cast<int64_t>(batch_size) * input_channels *
+                       input_height * input_width;
+    int64_t blocks = (nthreads + 1024 - 1) / 1024;
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
 
-    auto pool_divmods =
-        FastDivModForPooling(input_channels, input_width, input_height);
-    KernelMaxPool2DWithIdxGrad<T1, T2>
-        <<<grid, threads, 0, context.stream()>>>(nthreads,
-                                                 output_grad_data,
-                                                 mask_data,
-                                                 input_channels,
-                                                 input_height,
-                                                 input_width,
-                                                 output_height,
-                                                 output_width,
-                                                 ksize_height,
-                                                 ksize_width,
-                                                 stride_height,
-                                                 stride_width,
-                                                 padding_height,
-                                                 padding_width,
-                                                 adaptive,
-                                                 input_grad_data,
-                                                 pool_divmods);
+    if (nthreads <= std::numeric_limits<int>::max()) {
+      auto pool_divmods =
+          FastDivModForPooling<int>(input_channels, input_width, input_height);
+      KernelMaxPool2DWithIdxGrad<T1, T2, int>
+          <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
+                                                   output_grad_data,
+                                                   mask_data,
+                                                   input_channels,
+                                                   input_height,
+                                                   input_width,
+                                                   output_height,
+                                                   output_width,
+                                                   ksize_height,
+                                                   ksize_width,
+                                                   stride_height,
+                                                   stride_width,
+                                                   padding_height,
+                                                   padding_width,
+                                                   adaptive,
+                                                   input_grad_data,
+                                                   pool_divmods);
+    } else {
+      auto pool_divmods = FastDivModForPooling<int64_t>(
+          input_channels, input_width, input_height);
+      KernelMaxPool2DWithIdxGrad<T1, T2, int64_t>
+          <<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
+                                                   output_grad_data,
+                                                   mask_data,
+                                                   input_channels,
+                                                   input_height,
+                                                   input_width,
+                                                   output_height,
+                                                   output_width,
+                                                   ksize_height,
+                                                   ksize_width,
+                                                   stride_height,
+                                                   stride_width,
+                                                   padding_height,
+                                                   padding_width,
+                                                   adaptive,
+                                                   input_grad_data,
+                                                   pool_divmods);
+    }
   }
 };
 
@@ -2159,134 +2294,144 @@ template class MaxPool2dWithIndexGradFunctor<phi::GPUContext,
                                              dtype::bfloat16,
                                              int>;
 
-template <typename T1, typename T2>
-__global__ void KernelMaxPool3DWithIdx(const int ncd,
-                                       const T1* input_data,
-                                       const int channels,
-                                       const int input_depth,
-                                       const int input_height,
-                                       const int input_width,
-                                       const int output_depth,
-                                       const int output_height,
-                                       const int output_width,
-                                       const int ksize_depth,
-                                       const int ksize_height,
-                                       const int ksize_width,
-                                       const int stride_depth,
-                                       const int stride_height,
-                                       const int stride_width,
-                                       const int padding_depth,
-                                       const int padding_height,
-                                       const int padding_width,
-                                       bool adaptive,
-                                       T1* output_data,
-                                       T2* mask_data,
-                                       FastDivModForPooling3D divmods_output) {
-  int w_offset, h_offset, d_offset, nc_offset;
-  int dstart, dend, hstart, hend, wstart, wend;
+template <typename T1, typename T2, typename IndexT>
+__global__ void KernelMaxPool3DWithIdx(
+    const IndexT ncd,
+    const T1* input_data,
+    const IndexT channels,
+    const IndexT input_depth,
+    const IndexT input_height,
+    const IndexT input_width,
+    const IndexT output_depth,
+    const IndexT output_height,
+    const IndexT output_width,
+    const IndexT ksize_depth,
+    const IndexT ksize_height,
+    const IndexT ksize_width,
+    const IndexT stride_depth,
+    const IndexT stride_height,
+    const IndexT stride_width,
+    const IndexT padding_depth,
+    const IndexT padding_height,
+    const IndexT padding_width,
+    bool adaptive,
+    T1* output_data,
+    T2* mask_data,
+    FastDivModForPooling3D<IndexT> divmods_output) {
+  IndexT w_offset, h_offset, d_offset, nc_offset;
+  IndexT dstart, dend, hstart, hend, wstart, wend;
   const T1* input_data_cur;
 
-  w_offset = blockIdx.x * blockDim.x + threadIdx.x;
-  h_offset = blockIdx.y * blockDim.y + threadIdx.y;
+  w_offset = static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
+  for (IndexT by = blockIdx.y; by < output_height; by += gridDim.y) {
+    h_offset = by * blockDim.y + threadIdx.y;
 
-  if (w_offset < output_width && h_offset < output_height) {
-    for (int index_z = blockIdx.z * blockDim.z + threadIdx.z; index_z < ncd;
-         index_z += gridDim.z * blockDim.z) {
-      auto output_depth_divmod = divmods_output.depth.Divmod(index_z);
-      d_offset = output_depth_divmod.val[1];
-      nc_offset = output_depth_divmod.val[0];
-      int output_index =
-          nc_offset * output_depth * output_height * output_width +
-          d_offset * output_height * output_width + h_offset * output_width +
-          w_offset;
-      int input_offset = nc_offset * input_depth * input_height * input_width;
-      input_data_cur = input_data + input_offset;
+    IndexT start_index =
+        static_cast<IndexT>(blockIdx.z) * blockDim.z + threadIdx.z;
+    IndexT step = static_cast<IndexT>(gridDim.z) * blockDim.z;
+    if (w_offset < output_width && h_offset < output_height) {
+      for (IndexT index_z = start_index; index_z < ncd; index_z += step) {
+        auto output_depth_divmod = divmods_output.depth.Divmod(index_z);
+        d_offset = output_depth_divmod.val[1];
+        nc_offset = output_depth_divmod.val[0];
+        IndexT output_index =
+            nc_offset * output_depth * output_height * output_width +
+            d_offset * output_height * output_width + h_offset * output_width +
+            w_offset;
+        IndexT input_offset =
+            nc_offset * input_depth * input_height * input_width;
+        input_data_cur = input_data + input_offset;
 
-      if (adaptive) {
-        dstart = AdaptStartIndex(d_offset, input_depth, output_depth);
-        dend = AdaptEndIndex(d_offset, input_depth, output_depth);
+        if (adaptive) {
+          dstart = AdaptStartIndex(d_offset, input_depth, output_depth);
+          dend = AdaptEndIndex(d_offset, input_depth, output_depth);
 
-        hstart = AdaptStartIndex(h_offset, input_height, output_height);
-        hend = AdaptEndIndex(h_offset, input_height, output_height);
+          hstart = AdaptStartIndex(h_offset, input_height, output_height);
+          hend = AdaptEndIndex(h_offset, input_height, output_height);
 
-        wstart = AdaptStartIndex(w_offset, input_width, output_width);
-        wend = AdaptEndIndex(w_offset, input_width, output_width);
-      } else {
-        dstart = d_offset * stride_depth - padding_depth;
-        hstart = h_offset * stride_height - padding_height;
-        wstart = w_offset * stride_width - padding_width;
-        dend = min(dstart + ksize_depth, input_depth);
-        hend = min(hstart + ksize_height, input_height);
-        wend = min(wstart + ksize_width, input_width);
-        dstart = max(dstart, 0);
-        hstart = max(hstart, 0);
-        wstart = max(wstart, 0);
-      }
+          wstart = AdaptStartIndex(w_offset, input_width, output_width);
+          wend = AdaptEndIndex(w_offset, input_width, output_width);
+        } else {
+          dstart = d_offset * stride_depth - padding_depth;
+          hstart = h_offset * stride_height - padding_height;
+          wstart = w_offset * stride_width - padding_width;
+          dend = min(dstart + ksize_depth, input_depth);
+          hend = min(hstart + ksize_height, input_height);
+          wend = min(wstart + ksize_width, input_width);
+          dstart = max(dstart, static_cast<IndexT>(0));
+          hstart = max(hstart, static_cast<IndexT>(0));
+          wstart = max(wstart, static_cast<IndexT>(0));
+        }
 
-      T1 ele = static_cast<T1>(-FLT_MAX);
-      int max_index = -1;
-      for (int d = dstart; d < dend; ++d) {
-        for (int h = hstart; h < hend; ++h) {
-          for (int w = wstart; w < wend; ++w) {
-            if (ele <
-                input_data_cur[(d * input_height + h) * input_width + w]) {
-              max_index = (d * input_height + h) * input_width + w;
-              ele = input_data_cur[max_index];
+        T1 ele = static_cast<T1>(-FLT_MAX);
+        IndexT max_index = -1;
+        for (IndexT d = dstart; d < dend; ++d) {
+          for (IndexT h = hstart; h < hend; ++h) {
+            for (IndexT w = wstart; w < wend; ++w) {
+              if (ele <
+                  input_data_cur[(d * input_height + h) * input_width + w]) {
+                max_index = (d * input_height + h) * input_width + w;
+                ele = input_data_cur[max_index];
+              }
             }
           }
         }
+        output_data[output_index] = ele;
+        mask_data[output_index] = max_index;
       }
-      output_data[output_index] = ele;
-      mask_data[output_index] = max_index;
     }
   }
 }
 
-template <typename T1, typename T2>
+template <typename T1, typename T2, typename IndexT>
 __global__ void KernelMaxPool3DWithIdxGrad(
-    const int ncd,
+    const IndexT ncd,
     const T1* output_grad,
     const T2* mask,
-    const int channels,
-    const int input_depth,
-    const int input_height,
-    const int input_width,
-    const int output_depth,
-    const int output_height,
-    const int output_width,
-    const int ksize_depth,
-    const int ksize_height,
-    const int ksize_width,
-    const int stride_depth,
-    const int stride_height,
-    const int stride_width,
-    const int padding_depth,
-    const int padding_height,
-    const int padding_width,
+    const IndexT channels,
+    const IndexT input_depth,
+    const IndexT input_height,
+    const IndexT input_width,
+    const IndexT output_depth,
+    const IndexT output_height,
+    const IndexT output_width,
+    const IndexT ksize_depth,
+    const IndexT ksize_height,
+    const IndexT ksize_width,
+    const IndexT stride_depth,
+    const IndexT stride_height,
+    const IndexT stride_width,
+    const IndexT padding_depth,
+    const IndexT padding_height,
+    const IndexT padding_width,
     bool adaptive,
     T1* input_grad,
-    FastDivModForPooling3D divmods_output) {
-  int w_offset, h_offset, d_offset, nc_offset;
+    FastDivModForPooling3D<IndexT> divmods_output) {
+  IndexT w_offset, h_offset, d_offset, nc_offset;
 
-  w_offset = blockIdx.x * blockDim.x + threadIdx.x;
-  h_offset = blockIdx.y * blockDim.y + threadIdx.y;
+  w_offset = static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
+  for (IndexT by = blockIdx.y; by < output_height; by += gridDim.y) {
+    h_offset = by * blockDim.y + threadIdx.y;
 
-  if (w_offset < output_width && h_offset < output_height) {
-    for (int index_z = blockIdx.z * blockDim.z + threadIdx.z; index_z < ncd;
-         index_z += gridDim.z * blockDim.z) {
-      auto output_depth_divmod = divmods_output.depth.Divmod(index_z);
-      d_offset = output_depth_divmod.val[1];
-      nc_offset = output_depth_divmod.val[0];
-      int output_index =
-          nc_offset * output_depth * output_height * output_width +
-          d_offset * output_height * output_width + h_offset * output_width +
-          w_offset;
-      int max_index = mask[output_index];
-      if (max_index != -1) {
-        phi::CudaAtomicAdd(
-            &input_grad[nc_offset * input_depth * input_height * input_width +
-                        max_index],
-            output_grad[output_index]);
+    IndexT start_index =
+        static_cast<IndexT>(blockIdx.z) * blockDim.z + threadIdx.z;
+    IndexT step = static_cast<IndexT>(gridDim.z) * blockDim.z;
+    if (w_offset < output_width && h_offset < output_height) {
+      for (IndexT index_z = start_index; index_z < ncd; index_z += step) {
+        auto output_depth_divmod = divmods_output.depth.Divmod(index_z);
+        d_offset = output_depth_divmod.val[1];
+        nc_offset = output_depth_divmod.val[0];
+        IndexT output_index =
+            nc_offset * output_depth * output_height * output_width +
+            d_offset * output_height * output_width + h_offset * output_width +
+            w_offset;
+        IndexT max_index = mask[output_index];
+        if (max_index != -1) {
+          phi::CudaAtomicAdd(
+              &input_grad[nc_offset * input_depth * input_height * input_width +
+                          max_index],
+              output_grad[output_index]);
+        }
       }
     }
   }
@@ -2300,77 +2445,107 @@ __global__ void KernelMaxPool3DWithIdxGrad(
 template <typename T1, typename T2>
 class MaxPool3dWithIndexFunctor<phi::GPUContext, T1, T2> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& input,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
+                  const std::vector<int64_t>& ksize,
+                  const std::vector<int64_t>& strides,
+                  const std::vector<int64_t>& paddings,
                   bool adaptive,
                   DenseTensor* output,
                   DenseTensor* mask) {
-    const int batch_size = input.dims()[0];
-    const int input_channels = input.dims()[1];
-    const int input_depth = input.dims()[2];
-    const int input_height = input.dims()[3];
-    const int input_width = input.dims()[4];
-    const int output_channels = output->dims()[1];
-    const int output_depth = output->dims()[2];
-    const int output_height = output->dims()[3];
-    const int output_width = output->dims()[4];
-    const int ksize_depth = ksize[0];
-    const int ksize_height = ksize[1];
-    const int ksize_width = ksize[2];
-    const int stride_depth = strides[0];
-    const int stride_height = strides[1];
-    const int stride_width = strides[2];
-    const int padding_depth = paddings[0];
-    const int padding_height = paddings[1];
-    const int padding_width = paddings[2];
+    const int64_t batch_size = input.dims()[0];
+    const int64_t input_channels = input.dims()[1];
+    const int64_t input_depth = input.dims()[2];
+    const int64_t input_height = input.dims()[3];
+    const int64_t input_width = input.dims()[4];
+    const int64_t output_channels = output->dims()[1];
+    const int64_t output_depth = output->dims()[2];
+    const int64_t output_height = output->dims()[3];
+    const int64_t output_width = output->dims()[4];
+    const int64_t ksize_depth = ksize[0];
+    const int64_t ksize_height = ksize[1];
+    const int64_t ksize_width = ksize[2];
+    const int64_t stride_depth = strides[0];
+    const int64_t stride_height = strides[1];
+    const int64_t stride_width = strides[2];
+    const int64_t padding_depth = paddings[0];
+    const int64_t padding_height = paddings[1];
+    const int64_t padding_width = paddings[2];
 
     const T1* input_data = input.data<T1>();
-    T1* output_data = context.template Alloc<T1>(output);
-    T2* mask_data = context.template Alloc<T2>(mask);
+    T1* output_data = dev_ctx.template Alloc<T1>(output);
+    T2* mask_data = dev_ctx.template Alloc<T2>(mask);
 
-    int ncd = batch_size * input_channels * output_depth;
+    int64_t ncd =
+        static_cast<int64_t>(batch_size) * input_channels * output_depth;
 
-    int thread_x = 32;
-    int thread_y = 8;
-    int thread_z = 1;
+    int64_t thread_x = 32;
+    int64_t thread_y = 8;
+    int64_t thread_z = 1;
     dim3 threads(thread_x, thread_y, thread_z);
-    std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
-    int block_x = (output_width + threads.x - 1) / threads.x;
-    int block_y = (output_height + threads.y - 1) / threads.y;
-    int block_z = (ncd > max_grid_dim[2] * threads.z)
-                      ? max_grid_dim[2]
-                      : (ncd + threads.z - 1) / threads.z;
+    std::array<unsigned int, 3> max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize();
+    int64_t block_x = (output_width + threads.x - 1) / threads.x;
+    int64_t block_y = (output_height > max_grid_dim[1] * threads.y)
+                          ? max_grid_dim[1]
+                          : (output_height + threads.y - 1) / threads.y;
+    int64_t block_z = (ncd > max_grid_dim[2] * threads.z)
+                          ? max_grid_dim[2]
+                          : (ncd + threads.z - 1) / threads.z;
     dim3 grid(block_x, block_y, block_z);
 
-    auto pool_divmods_output = FastDivModForPooling3D(
-        input_channels, output_width, output_height, output_depth);
-
-    KernelMaxPool3DWithIdx<T1, T2>
-        <<<grid, threads, 0, context.stream()>>>(ncd,
-                                                 input_data,
-                                                 input_channels,
-                                                 input_depth,
-                                                 input_height,
-                                                 input_width,
-                                                 output_depth,
-                                                 output_height,
-                                                 output_width,
-                                                 ksize_depth,
-                                                 ksize_height,
-                                                 ksize_width,
-                                                 stride_depth,
-                                                 stride_height,
-                                                 stride_width,
-                                                 padding_depth,
-                                                 padding_height,
-                                                 padding_width,
-                                                 adaptive,
-                                                 output_data,
-                                                 mask_data,
-                                                 pool_divmods_output);
+    if (input.numel() <= std::numeric_limits<int>::max()) {
+      auto pool_divmods_output = FastDivModForPooling3D<int>(
+          input_channels, output_width, output_height, output_depth);
+      KernelMaxPool3DWithIdx<T1, T2, int>
+          <<<grid, threads, 0, dev_ctx.stream()>>>(ncd,
+                                                   input_data,
+                                                   input_channels,
+                                                   input_depth,
+                                                   input_height,
+                                                   input_width,
+                                                   output_depth,
+                                                   output_height,
+                                                   output_width,
+                                                   ksize_depth,
+                                                   ksize_height,
+                                                   ksize_width,
+                                                   stride_depth,
+                                                   stride_height,
+                                                   stride_width,
+                                                   padding_depth,
+                                                   padding_height,
+                                                   padding_width,
+                                                   adaptive,
+                                                   output_data,
+                                                   mask_data,
+                                                   pool_divmods_output);
+    } else {
+      auto pool_divmods_output = FastDivModForPooling3D<int64_t>(
+          input_channels, output_width, output_height, output_depth);
+      KernelMaxPool3DWithIdx<T1, T2, int64_t>
+          <<<grid, threads, 0, dev_ctx.stream()>>>(ncd,
+                                                   input_data,
+                                                   input_channels,
+                                                   input_depth,
+                                                   input_height,
+                                                   input_width,
+                                                   output_depth,
+                                                   output_height,
+                                                   output_width,
+                                                   ksize_depth,
+                                                   ksize_height,
+                                                   ksize_width,
+                                                   stride_depth,
+                                                   stride_height,
+                                                   stride_width,
+                                                   padding_depth,
+                                                   padding_height,
+                                                   padding_width,
+                                                   adaptive,
+                                                   output_data,
+                                                   mask_data,
+                                                   pool_divmods_output);
+    }
   }
 };
 
@@ -2382,76 +2557,105 @@ class MaxPool3dWithIndexFunctor<phi::GPUContext, T1, T2> {
 template <typename T1, typename T2>
 class MaxPool3dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& output_grad,
                   const DenseTensor& mask,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
+                  const std::vector<int64_t>& ksize,
+                  const std::vector<int64_t>& strides,
+                  const std::vector<int64_t>& paddings,
                   bool adaptive,
                   DenseTensor* input_grad) {
-    const int batch_size = input_grad->dims()[0];
-    const int input_channels = input_grad->dims()[1];
-    const int input_depth = input_grad->dims()[2];
-    const int input_height = input_grad->dims()[3];
-    const int input_width = input_grad->dims()[4];
-    const int output_depth = output_grad.dims()[2];
-    const int output_height = output_grad.dims()[3];
-    const int output_width = output_grad.dims()[4];
-    const int ksize_depth = ksize[0];
-    const int ksize_height = ksize[1];
-    const int ksize_width = ksize[2];
-    const int stride_depth = strides[0];
-    const int stride_height = strides[1];
-    const int stride_width = strides[2];
-    const int padding_depth = paddings[0];
-    const int padding_height = paddings[1];
-    const int padding_width = paddings[2];
+    const int64_t batch_size = input_grad->dims()[0];
+    const int64_t input_channels = input_grad->dims()[1];
+    const int64_t input_depth = input_grad->dims()[2];
+    const int64_t input_height = input_grad->dims()[3];
+    const int64_t input_width = input_grad->dims()[4];
+    const int64_t output_depth = output_grad.dims()[2];
+    const int64_t output_height = output_grad.dims()[3];
+    const int64_t output_width = output_grad.dims()[4];
+    const int64_t ksize_depth = ksize[0];
+    const int64_t ksize_height = ksize[1];
+    const int64_t ksize_width = ksize[2];
+    const int64_t stride_depth = strides[0];
+    const int64_t stride_height = strides[1];
+    const int64_t stride_width = strides[2];
+    const int64_t padding_depth = paddings[0];
+    const int64_t padding_height = paddings[1];
+    const int64_t padding_width = paddings[2];
 
     const T1* output_grad_data = output_grad.data<T1>();
     const T2* mask_data = mask.data<T2>();
-    T1* input_grad_data = context.template Alloc<T1>(input_grad);
+    T1* input_grad_data = dev_ctx.template Alloc<T1>(input_grad);
 
-    int ncd = batch_size * input_channels * output_depth;
+    int64_t ncd = batch_size * input_channels * output_depth;
 
-    int thread_x = 32;
-    int thread_y = 8;
-    int thread_z = 1;
+    int64_t thread_x = 32;
+    int64_t thread_y = 8;
+    int64_t thread_z = 1;
     dim3 threads(thread_x, thread_y, thread_z);
-    std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
-    int block_x = (output_width + threads.x - 1) / threads.x;
-    int block_y = (output_height + threads.y - 1) / threads.y;
-    int block_z = (ncd > max_grid_dim[2] * threads.z)
-                      ? max_grid_dim[2]
-                      : (ncd + threads.z - 1) / threads.z;
+    std::array<unsigned int, 3> max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize();
+    int64_t block_x = (output_width + threads.x - 1) / threads.x;
+    int64_t block_y = (output_height > max_grid_dim[1] * threads.y)
+                          ? max_grid_dim[1]
+                          : (output_height + threads.y - 1) / threads.y;
+    int64_t block_z = (ncd > max_grid_dim[2] * threads.z)
+                          ? max_grid_dim[2]
+                          : (ncd + threads.z - 1) / threads.z;
     dim3 grid(block_x, block_y, block_z);
 
-    auto pool_divmods_output = FastDivModForPooling3D(
-        input_channels, output_width, output_height, output_depth);
-
-    KernelMaxPool3DWithIdxGrad<T1, T2>
-        <<<grid, threads, 0, context.stream()>>>(ncd,
-                                                 output_grad_data,
-                                                 mask_data,
-                                                 input_channels,
-                                                 input_depth,
-                                                 input_height,
-                                                 input_width,
-                                                 output_depth,
-                                                 output_height,
-                                                 output_width,
-                                                 ksize_depth,
-                                                 ksize_height,
-                                                 ksize_width,
-                                                 stride_depth,
-                                                 stride_height,
-                                                 stride_width,
-                                                 padding_depth,
-                                                 padding_height,
-                                                 padding_width,
-                                                 adaptive,
-                                                 input_grad_data,
-                                                 pool_divmods_output);
+    if (input_grad->numel() <= std::numeric_limits<int>::max()) {
+      auto pool_divmods_output = FastDivModForPooling3D<int>(
+          input_channels, output_width, output_height, output_depth);
+      KernelMaxPool3DWithIdxGrad<T1, T2, int>
+          <<<grid, threads, 0, dev_ctx.stream()>>>(ncd,
+                                                   output_grad_data,
+                                                   mask_data,
+                                                   input_channels,
+                                                   input_depth,
+                                                   input_height,
+                                                   input_width,
+                                                   output_depth,
+                                                   output_height,
+                                                   output_width,
+                                                   ksize_depth,
+                                                   ksize_height,
+                                                   ksize_width,
+                                                   stride_depth,
+                                                   stride_height,
+                                                   stride_width,
+                                                   padding_depth,
+                                                   padding_height,
+                                                   padding_width,
+                                                   adaptive,
+                                                   input_grad_data,
+                                                   pool_divmods_output);
+    } else {
+      auto pool_divmods_output = FastDivModForPooling3D<int64_t>(
+          input_channels, output_width, output_height, output_depth);
+      KernelMaxPool3DWithIdxGrad<T1, T2, int64_t>
+          <<<grid, threads, 0, dev_ctx.stream()>>>(ncd,
+                                                   output_grad_data,
+                                                   mask_data,
+                                                   input_channels,
+                                                   input_depth,
+                                                   input_height,
+                                                   input_width,
+                                                   output_depth,
+                                                   output_height,
+                                                   output_width,
+                                                   ksize_depth,
+                                                   ksize_height,
+                                                   ksize_width,
+                                                   stride_depth,
+                                                   stride_height,
+                                                   stride_width,
+                                                   padding_depth,
+                                                   padding_height,
+                                                   padding_width,
+                                                   adaptive,
+                                                   input_grad_data,
+                                                   pool_divmods_output);
+    }
   }
 };
 
@@ -2468,28 +2672,29 @@ template class MaxPool3dWithIndexGradFunctor<phi::GPUContext,
                                              dtype::bfloat16,
                                              int>;
 // fractional max pool
-template <typename T1, typename T2>
-__global__ void FractionalKernelMaxPool2d(const int ncd,
-                                          const T1* input_data,
-                                          const int channels,
-                                          const int input_height,
-                                          const int input_width,
-                                          const int output_height,
-                                          const int output_width,
-                                          const int pool_height,
-                                          const int pool_width,
-                                          float random_u,
-                                          uint64_t seed,
-                                          uint64_t offset,
-                                          T1* output_data,
-                                          T2* mask_data,
-                                          FastDivModForPooling<int> divmods) {
+template <typename T1, typename T2, typename IndexT>
+__global__ void FractionalKernelMaxPool2d(
+    const IndexT ncd,
+    const T1* input_data,
+    const IndexT channels,
+    const IndexT input_height,
+    const IndexT input_width,
+    const IndexT output_height,
+    const IndexT output_width,
+    const IndexT pool_height,
+    const IndexT pool_width,
+    float random_u,
+    uint64_t seed,
+    uint64_t offset,
+    T1* output_data,
+    T2* mask_data,
+    FastDivModForPooling<IndexT> divmods) {
   float alpha_height = 0, alpha_width = 0;
   float u_height = 0, u_width = 0;
   float u = 0;
   if (random_u == 0) {
-    size_t thread_idx =
-        static_cast<size_t>(blockIdx.x * blockDim.x + threadIdx.x);
+    IndexT thread_idx =
+        static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
 #if defined(__NVCC__)
     curandStatePhilox4_32_10_t state;
     curand_init(seed, thread_idx, offset, &state);
@@ -2514,40 +2719,42 @@ __global__ void FractionalKernelMaxPool2d(const int ncd,
   u_width = FractionalRationalU(
       u, alpha_width, input_width, output_width, pool_width);
 
-  int w_offset, h_offset, nc_offset;
-  int hstart, hend, wstart, wend;
+  IndexT w_offset, h_offset, nc_offset;
+  IndexT hstart, hend, wstart, wend;
   const T1* input_data_cur;
 
-  w_offset = blockIdx.x * blockDim.x + threadIdx.x;
+  w_offset = static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
 
+  IndexT start_index =
+      static_cast<IndexT>(blockIdx.y) * blockDim.y + threadIdx.y;
+  IndexT step = static_cast<IndexT>(gridDim.y) * blockDim.y;
   if (w_offset < output_width) {
-    for (int index_y = blockIdx.y * blockDim.y + threadIdx.y; index_y < ncd;
-         index_y += gridDim.y * blockDim.y) {
+    for (IndexT index_y = start_index; index_y < ncd; index_y += step) {
       auto output_height_divmod = divmods.height.Divmod(index_y);
       h_offset = output_height_divmod.val[1];
       nc_offset = output_height_divmod.val[0];
 
-      int output_index = nc_offset * output_height * output_width +
-                         h_offset * output_width + w_offset;
+      IndexT output_index = nc_offset * output_height * output_width +
+                            h_offset * output_width + w_offset;
 
-      int input_offset = nc_offset * input_height * input_width;
+      IndexT input_offset = nc_offset * input_height * input_width;
       input_data_cur = input_data + input_offset;
 
       hstart =
           FractionalStartIndex(h_offset, alpha_height, u_height, pool_height);
       hend = FractionalEndIndex(h_offset, alpha_height, u_height, pool_height);
-      hstart = std::max(hstart, 0);
+      hstart = std::max(hstart, static_cast<IndexT>(0));
       hend = std::min(hend, input_height);
 
       wstart = FractionalStartIndex(w_offset, alpha_width, u_width, pool_width);
       wend = FractionalEndIndex(w_offset, alpha_width, u_width, pool_width);
-      wstart = std::max(wstart, 0);
+      wstart = std::max(wstart, static_cast<IndexT>(0));
       wend = std::min(wend, input_width);
 
       T1 ele = static_cast<T1>(-FLT_MAX);
-      int max_index = -1;
-      for (int h = hstart; h < hend; ++h) {
-        for (int w = wstart; w < wend; ++w) {
+      IndexT max_index = -1;
+      for (IndexT h = hstart; h < hend; ++h) {
+        for (IndexT w = wstart; w < wend; ++w) {
           if (ele < input_data_cur[h * input_width + w]) {
             max_index = h * input_width + w;
             ele = input_data_cur[max_index];
@@ -2561,38 +2768,40 @@ __global__ void FractionalKernelMaxPool2d(const int ncd,
   }
 }
 
-template <typename T1, typename T2>
+template <typename T1, typename T2, typename IndexT>
 __global__ void FractionalKernelMaxPool2dGrad(
-    const int ncd,
+    const IndexT ncd,
     const T1* output_grad,
     const T2* mask_data,
-    const int channels,
-    const int input_height,
-    const int input_width,
-    const int output_height,
-    const int output_width,
-    const int pool_height,
-    const int pool_width,
+    const IndexT channels,
+    const IndexT input_height,
+    const IndexT input_width,
+    const IndexT output_height,
+    const IndexT output_width,
+    const IndexT pool_height,
+    const IndexT pool_width,
     float random_u,
     uint64_t seed,
     uint64_t offset,
     T1* input_grad,
-    FastDivModForPooling<int> divmods) {
-  int w_offset, h_offset, nc_offset;
+    FastDivModForPooling<IndexT> divmods) {
+  IndexT w_offset, h_offset, nc_offset;
 
-  w_offset = blockIdx.x * blockDim.x + threadIdx.x;
+  w_offset = static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
 
+  IndexT start_index =
+      static_cast<IndexT>(blockIdx.y) * blockDim.y + threadIdx.y;
+  IndexT step = static_cast<IndexT>(gridDim.y) * blockDim.y;
   if (w_offset < output_width) {
-    for (int index_y = blockIdx.y * blockDim.y + threadIdx.y; index_y < ncd;
-         index_y += gridDim.y * blockDim.y) {
+    for (IndexT index_y = start_index; index_y < ncd; index_y += step) {
       auto output_height_divmod = divmods.height.Divmod(index_y);
       h_offset = output_height_divmod.val[1];
       nc_offset = output_height_divmod.val[0];
 
-      int output_index = nc_offset * output_height * output_width +
-                         h_offset * output_width + w_offset;
+      IndexT output_index = nc_offset * output_height * output_width +
+                            h_offset * output_width + w_offset;
 
-      int max_index = mask_data[output_index];
+      IndexT max_index = mask_data[output_index];
       if (max_index != -1) {
         phi::CudaAtomicAdd(
             &input_grad[nc_offset * input_height * input_width + max_index],
@@ -2608,23 +2817,23 @@ __global__ void FractionalKernelMaxPool2dGrad(
 template <typename T1, typename T2>
 class FractionalMaxPool2dFunctor<phi::GPUContext, T1, T2> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& input,
-                  const std::vector<int>& output_size,
-                  const std::vector<int>& kernel_size,
+                  const std::vector<int64_t>& output_size,
+                  const std::vector<int64_t>& kernel_size,
                   float random_u,
                   bool return_mask,
                   DenseTensor* output,
                   DenseTensor* mask) {
-    const int batch_size = input.dims()[0];
-    const int input_channels = input.dims()[1];
-    const int input_height = input.dims()[2];
-    const int input_width = input.dims()[3];
-    const int output_channels = output->dims()[1];
-    const int output_height = output->dims()[2];
-    const int output_width = output->dims()[3];
-    const int pool_height = kernel_size[0];
-    const int pool_width = kernel_size[1];
+    const int64_t batch_size = input.dims()[0];
+    const int64_t input_channels = input.dims()[1];
+    const int64_t input_height = input.dims()[2];
+    const int64_t input_width = input.dims()[3];
+    const int64_t output_channels = output->dims()[1];
+    const int64_t output_height = output->dims()[2];
+    const int64_t output_width = output->dims()[3];
+    const int64_t pool_height = kernel_size[0];
+    const int64_t pool_width = kernel_size[1];
 
     PADDLE_ENFORCE_GE(
         input_height,
@@ -2642,51 +2851,71 @@ class FractionalMaxPool2dFunctor<phi::GPUContext, T1, T2> {
             output_width - 1 + pool_width));
 
     const T1* input_data = input.data<T1>();
-    T1* output_data = context.template Alloc<T1>(output);
-    T2* mask_data = context.template Alloc<T2>(mask);
+    T1* output_data = dev_ctx.template Alloc<T1>(output);
+    T2* mask_data = dev_ctx.template Alloc<T2>(mask);
 
-    int ncd = batch_size * input_channels * output_height;
+    int64_t ncd = batch_size * input_channels * output_height;
 
-    int thread_x = 32;
-    int thread_y = 1;
-    int thread_z = 1;
+    int64_t thread_x = 32;
+    int64_t thread_y = 1;
+    int64_t thread_z = 1;
     dim3 threads(thread_x, thread_y, thread_z);
-    std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
-    int block_x = (output_width + threads.x - 1) / threads.x;
-    int block_y = (ncd > max_grid_dim[1] * threads.y)
-                      ? max_grid_dim[1]
-                      : (ncd + threads.y - 1) / threads.y;
-    int block_z = 1;
+    std::array<unsigned int, 3> max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize();
+    int64_t block_x = (output_width + threads.x - 1) / threads.x;
+    int64_t block_y = (ncd > max_grid_dim[1] * threads.y)
+                          ? max_grid_dim[1]
+                          : (ncd + threads.y - 1) / threads.y;
+    int64_t block_z = 1;
     dim3 grid(block_x, block_y, block_z);
-
-    auto pool_divmods =
-        FastDivModForPooling(input_channels, output_width, output_height);
 
     uint64_t seed = 0;
     uint64_t offset = 0;
     // generate seed for fractional pool
-    auto gen_cuda = context.GetGenerator();
-    constexpr int increment_offset = 1 * 4;  // one seed with multiple of 4
+    auto gen_cuda = dev_ctx.GetGenerator();
+    constexpr uint64_t increment_offset = 1 * 4;  // one seed with multiple of 4
     auto seed_offset = gen_cuda->IncrementOffset(increment_offset);
     seed = seed_offset.first;
     offset = seed_offset.second;
 
-    FractionalKernelMaxPool2d<T1, T2>
-        <<<grid, threads, 0, context.stream()>>>(ncd,
-                                                 input_data,
-                                                 input_channels,
-                                                 input_height,
-                                                 input_width,
-                                                 output_height,
-                                                 output_width,
-                                                 pool_height,
-                                                 pool_width,
-                                                 random_u,
-                                                 seed,
-                                                 offset,
-                                                 output_data,
-                                                 mask_data,
-                                                 pool_divmods);
+    if (input.numel() <= std::numeric_limits<int>::max()) {
+      auto pool_divmods = FastDivModForPooling<int>(
+          input_channels, output_width, output_height);
+      FractionalKernelMaxPool2d<T1, T2, int>
+          <<<grid, threads, 0, dev_ctx.stream()>>>(ncd,
+                                                   input_data,
+                                                   input_channels,
+                                                   input_height,
+                                                   input_width,
+                                                   output_height,
+                                                   output_width,
+                                                   pool_height,
+                                                   pool_width,
+                                                   random_u,
+                                                   seed,
+                                                   offset,
+                                                   output_data,
+                                                   mask_data,
+                                                   pool_divmods);
+    } else {
+      auto pool_divmods = FastDivModForPooling<int64_t>(
+          input_channels, output_width, output_height);
+      FractionalKernelMaxPool2d<T1, T2, int64_t>
+          <<<grid, threads, 0, dev_ctx.stream()>>>(ncd,
+                                                   input_data,
+                                                   input_channels,
+                                                   input_height,
+                                                   input_width,
+                                                   output_height,
+                                                   output_width,
+                                                   pool_height,
+                                                   pool_width,
+                                                   random_u,
+                                                   seed,
+                                                   offset,
+                                                   output_data,
+                                                   mask_data,
+                                                   pool_divmods);
+    }
   }
 };
 
@@ -2696,69 +2925,89 @@ class FractionalMaxPool2dFunctor<phi::GPUContext, T1, T2> {
 template <typename T1, typename T2>
 class FractionalMaxPool2dGradFunctor<phi::GPUContext, T1, T2> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& output_grad,
                   const DenseTensor& mask,
-                  const std::vector<int>& output_size,
-                  const std::vector<int>& kernel_size,
+                  const std::vector<int64_t>& output_size,
+                  const std::vector<int64_t>& kernel_size,
                   float random_u,
                   bool return_mask,
                   DenseTensor* input_grad) {
-    const int batch_size = input_grad->dims()[0];
-    const int input_channels = input_grad->dims()[1];
-    const int input_height = input_grad->dims()[2];
-    const int input_width = input_grad->dims()[3];
-    const int output_height = output_grad.dims()[2];
-    const int output_width = output_grad.dims()[3];
-    const int pool_height = kernel_size[0];
-    const int pool_width = kernel_size[1];
+    const int64_t batch_size = input_grad->dims()[0];
+    const int64_t input_channels = input_grad->dims()[1];
+    const int64_t input_height = input_grad->dims()[2];
+    const int64_t input_width = input_grad->dims()[3];
+    const int64_t output_height = output_grad.dims()[2];
+    const int64_t output_width = output_grad.dims()[3];
+    const int64_t pool_height = kernel_size[0];
+    const int64_t pool_width = kernel_size[1];
 
     const T2* mask_data = mask.data<T2>();
     const T1* output_grad_data = output_grad.data<T1>();
-    T1* input_grad_data = context.template Alloc<T1>(input_grad);
+    T1* input_grad_data = dev_ctx.template Alloc<T1>(input_grad);
 
-    int ncd = batch_size * input_channels * output_height;
+    int64_t ncd = batch_size * input_channels * output_height;
 
-    int thread_x = 32;
-    int thread_y = 1;
-    int thread_z = 1;
+    int64_t thread_x = 32;
+    int64_t thread_y = 1;
+    int64_t thread_z = 1;
     dim3 threads(thread_x, thread_y, thread_z);
-    std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
-    int block_x = (output_width + threads.x - 1) / threads.x;
-    int block_y = (ncd > max_grid_dim[1] * threads.y)
-                      ? max_grid_dim[1]
-                      : (ncd + threads.y - 1) / threads.y;
-    int block_z = 1;
+    std::array<unsigned int, 3> max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize();
+    int64_t block_x = (output_width + threads.x - 1) / threads.x;
+    int64_t block_y = (ncd > max_grid_dim[1] * threads.y)
+                          ? max_grid_dim[1]
+                          : (ncd + threads.y - 1) / threads.y;
+    int64_t block_z = 1;
     dim3 grid(block_x, block_y, block_z);
-
-    auto pool_divmods =
-        FastDivModForPooling(input_channels, output_width, output_height);
 
     uint64_t seed = 0;
     uint64_t offset = 0;
     // generate seed for fractional pool
-    auto gen_cuda = context.GetGenerator();
-    constexpr int increment_offset = 1 * 4;  // one seed with multiple of 4
+    auto gen_cuda = dev_ctx.GetGenerator();
+    constexpr uint64_t increment_offset = 1 * 4;  // one seed with multiple of 4
     auto seed_offset = gen_cuda->IncrementOffset(increment_offset);
     seed = seed_offset.first;
     offset = seed_offset.second;
 
-    FractionalKernelMaxPool2dGrad<T1, T2>
-        <<<grid, threads, 0, context.stream()>>>(ncd,
-                                                 output_grad_data,
-                                                 mask_data,
-                                                 input_channels,
-                                                 input_height,
-                                                 input_width,
-                                                 output_height,
-                                                 output_width,
-                                                 pool_height,
-                                                 pool_width,
-                                                 random_u,
-                                                 seed,
-                                                 offset,
-                                                 input_grad_data,
-                                                 pool_divmods);
+    if (input_grad->numel() <= std::numeric_limits<int>::max()) {
+      auto pool_divmods = FastDivModForPooling<int>(
+          input_channels, output_width, output_height);
+      FractionalKernelMaxPool2dGrad<T1, T2, int>
+          <<<grid, threads, 0, dev_ctx.stream()>>>(ncd,
+                                                   output_grad_data,
+                                                   mask_data,
+                                                   input_channels,
+                                                   input_height,
+                                                   input_width,
+                                                   output_height,
+                                                   output_width,
+                                                   pool_height,
+                                                   pool_width,
+                                                   random_u,
+                                                   seed,
+                                                   offset,
+                                                   input_grad_data,
+                                                   pool_divmods);
+    } else {
+      auto pool_divmods = FastDivModForPooling<int64_t>(
+          input_channels, output_width, output_height);
+      FractionalKernelMaxPool2dGrad<T1, T2, int64_t>
+          <<<grid, threads, 0, dev_ctx.stream()>>>(ncd,
+                                                   output_grad_data,
+                                                   mask_data,
+                                                   input_channels,
+                                                   input_height,
+                                                   input_width,
+                                                   output_height,
+                                                   output_width,
+                                                   pool_height,
+                                                   pool_width,
+                                                   random_u,
+                                                   seed,
+                                                   offset,
+                                                   input_grad_data,
+                                                   pool_divmods);
+    }
   }
 };
 
@@ -2777,32 +3026,32 @@ template class FractionalMaxPool2dGradFunctor<phi::GPUContext,
                                               dtype::bfloat16,
                                               int>;
 
-template <typename T1, typename T2>
+template <typename T1, typename T2, typename IndexT>
 __global__ void FractionalKernelMaxPool3d(
-    const int ncd,
+    const IndexT ncd,
     const T1* input_data,
-    const int channels,
-    const int input_depth,
-    const int input_height,
-    const int input_width,
-    const int output_depth,
-    const int output_height,
-    const int output_width,
-    const int pool_depth,
-    const int pool_height,
-    const int pool_width,
+    const IndexT channels,
+    const IndexT input_depth,
+    const IndexT input_height,
+    const IndexT input_width,
+    const IndexT output_depth,
+    const IndexT output_height,
+    const IndexT output_width,
+    const IndexT pool_depth,
+    const IndexT pool_height,
+    const IndexT pool_width,
     float random_u,
     uint64_t seed,
     uint64_t offset,
     T1* output_data,
     T2* mask_data,
-    FastDivModForPooling3D divmods_output) {
+    FastDivModForPooling3D<IndexT> divmods_output) {
   float alpha_height = 0, alpha_width = 0, alpha_depth = 0;
   float u_height = 0, u_width = 0, u_depth = 0;
   float u = 0;
   if (random_u == 0) {
-    size_t thread_idx =
-        static_cast<size_t>(blockIdx.x * blockDim.x + threadIdx.x);
+    IndexT thread_idx =
+        static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
 #if defined(__NVCC__)
     curandStatePhilox4_32_10_t state;
     curand_init(seed, thread_idx, offset, &state);
@@ -2831,100 +3080,112 @@ __global__ void FractionalKernelMaxPool3d(
   u_width = FractionalRationalU(
       u, alpha_width, input_width, output_width, pool_width);
 
-  int w_offset, h_offset, d_offset, nc_offset;
-  int dstart, dend, hstart, hend, wstart, wend;
+  IndexT w_offset, h_offset, d_offset, nc_offset;
+  IndexT dstart, dend, hstart, hend, wstart, wend;
   const T1* input_data_cur;
 
-  w_offset = blockIdx.x * blockDim.x + threadIdx.x;
-  h_offset = blockIdx.y * blockDim.y + threadIdx.y;
+  w_offset = static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
+  for (IndexT by = blockIdx.y; by < output_height; by += gridDim.y) {
+    h_offset = by * blockDim.y + threadIdx.y;
 
-  if (w_offset < output_width && h_offset < output_height) {
-    for (int index_z = blockIdx.z * blockDim.z + threadIdx.z; index_z < ncd;
-         index_z += gridDim.z * blockDim.z) {
-      auto output_depth_divmod = divmods_output.depth.Divmod(index_z);
-      d_offset = output_depth_divmod.val[1];
-      nc_offset = output_depth_divmod.val[0];
-      int output_index =
-          nc_offset * output_depth * output_height * output_width +
-          d_offset * output_height * output_width + h_offset * output_width +
-          w_offset;
-      int input_offset = nc_offset * input_depth * input_height * input_width;
-      input_data_cur = input_data + input_offset;
+    IndexT start_index =
+        static_cast<IndexT>(blockIdx.z) * blockDim.z + threadIdx.z;
+    IndexT step = static_cast<IndexT>(gridDim.z) * blockDim.z;
+    if (w_offset < output_width && h_offset < output_height) {
+      for (IndexT index_z = start_index; index_z < ncd; index_z += step) {
+        auto output_depth_divmod = divmods_output.depth.Divmod(index_z);
+        d_offset = output_depth_divmod.val[1];
+        nc_offset = output_depth_divmod.val[0];
+        IndexT output_index =
+            nc_offset * output_depth * output_height * output_width +
+            d_offset * output_height * output_width + h_offset * output_width +
+            w_offset;
+        IndexT input_offset =
+            nc_offset * input_depth * input_height * input_width;
+        input_data_cur = input_data + input_offset;
 
-      dstart = FractionalStartIndex(d_offset, alpha_depth, u_depth, pool_depth);
-      dend = FractionalEndIndex(d_offset, alpha_depth, u_depth, pool_depth);
-      dstart = std::max(dstart, 0);
-      dend = std::min(dend, input_depth);
+        dstart =
+            FractionalStartIndex(d_offset, alpha_depth, u_depth, pool_depth);
+        dend = FractionalEndIndex(d_offset, alpha_depth, u_depth, pool_depth);
+        dstart = std::max(dstart, static_cast<IndexT>(0));
+        dend = std::min(dend, input_depth);
 
-      hstart =
-          FractionalStartIndex(h_offset, alpha_height, u_height, pool_height);
-      hend = FractionalEndIndex(h_offset, alpha_height, u_height, pool_height);
-      hstart = std::max(hstart, 0);
-      hend = std::min(hend, input_height);
+        hstart =
+            FractionalStartIndex(h_offset, alpha_height, u_height, pool_height);
+        hend =
+            FractionalEndIndex(h_offset, alpha_height, u_height, pool_height);
+        hstart = std::max(hstart, static_cast<IndexT>(0));
+        hend = std::min(hend, input_height);
 
-      wstart = FractionalStartIndex(w_offset, alpha_width, u_width, pool_width);
-      wend = FractionalEndIndex(w_offset, alpha_width, u_width, pool_width);
-      wstart = std::max(wstart, 0);
-      wend = std::min(wend, input_width);
+        wstart =
+            FractionalStartIndex(w_offset, alpha_width, u_width, pool_width);
+        wend = FractionalEndIndex(w_offset, alpha_width, u_width, pool_width);
+        wstart = std::max(wstart, static_cast<IndexT>(0));
+        wend = std::min(wend, input_width);
 
-      T1 ele = static_cast<T1>(-FLT_MAX);
-      int max_index = -1;
-      for (int d = dstart; d < dend; ++d) {
-        for (int h = hstart; h < hend; ++h) {
-          for (int w = wstart; w < wend; ++w) {
-            if (ele <
-                input_data_cur[(d * input_height + h) * input_width + w]) {
-              max_index = (d * input_height + h) * input_width + w;
-              ele = input_data_cur[max_index];
+        T1 ele = static_cast<T1>(-FLT_MAX);
+        IndexT max_index = -1;
+        for (IndexT d = dstart; d < dend; ++d) {
+          for (IndexT h = hstart; h < hend; ++h) {
+            for (IndexT w = wstart; w < wend; ++w) {
+              if (ele <
+                  input_data_cur[(d * input_height + h) * input_width + w]) {
+                max_index = (d * input_height + h) * input_width + w;
+                ele = input_data_cur[max_index];
+              }
             }
           }
         }
+        output_data[output_index] = ele;
+        mask_data[output_index] = max_index;
       }
-      output_data[output_index] = ele;
-      mask_data[output_index] = max_index;
     }
   }
 }
 
-template <typename T1, typename T2>
+template <typename T1, typename T2, typename IndexT>
 __global__ void FractionalKernelMaxPool3dGrad(
-    const int ncd,
+    const IndexT ncd,
     const T1* output_grad,
     const T2* mask,
-    const int channels,
-    const int input_depth,
-    const int input_height,
-    const int input_width,
-    const int output_depth,
-    const int output_height,
-    const int output_width,
-    const int pool_depth,
-    const int pool_height,
-    const int pool_width,
+    const IndexT channels,
+    const IndexT input_depth,
+    const IndexT input_height,
+    const IndexT input_width,
+    const IndexT output_depth,
+    const IndexT output_height,
+    const IndexT output_width,
+    const IndexT pool_depth,
+    const IndexT pool_height,
+    const IndexT pool_width,
     float random_u,
     T1* input_grad,
-    FastDivModForPooling3D divmods_output) {
-  int w_offset, h_offset, d_offset, nc_offset;
+    FastDivModForPooling3D<IndexT> divmods_output) {
+  IndexT w_offset, h_offset, d_offset, nc_offset;
 
-  w_offset = blockIdx.x * blockDim.x + threadIdx.x;
-  h_offset = blockIdx.y * blockDim.y + threadIdx.y;
+  w_offset = static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
+  for (IndexT by = blockIdx.y; by < output_height; by += gridDim.y) {
+    h_offset = by * blockDim.y + threadIdx.y;
 
-  if (w_offset < output_width && h_offset < output_height) {
-    for (int index_z = blockIdx.z * blockDim.z + threadIdx.z; index_z < ncd;
-         index_z += gridDim.z * blockDim.z) {
-      auto output_depth_divmod = divmods_output.depth.Divmod(index_z);
-      d_offset = output_depth_divmod.val[1];
-      nc_offset = output_depth_divmod.val[0];
-      int output_index =
-          nc_offset * output_depth * output_height * output_width +
-          d_offset * output_height * output_width + h_offset * output_width +
-          w_offset;
-      int max_index = mask[output_index];
-      if (max_index != -1) {
-        phi::CudaAtomicAdd(
-            &input_grad[nc_offset * input_depth * input_height * input_width +
-                        max_index],
-            output_grad[output_index]);
+    IndexT start_index =
+        static_cast<IndexT>(blockIdx.z) * blockDim.z + threadIdx.z;
+    IndexT step = static_cast<IndexT>(gridDim.z) * blockDim.z;
+    if (w_offset < output_width && h_offset < output_height) {
+      for (IndexT index_z = start_index; index_z < ncd; index_z += step) {
+        auto output_depth_divmod = divmods_output.depth.Divmod(index_z);
+        d_offset = output_depth_divmod.val[1];
+        nc_offset = output_depth_divmod.val[0];
+        IndexT output_index =
+            nc_offset * output_depth * output_height * output_width +
+            d_offset * output_height * output_width + h_offset * output_width +
+            w_offset;
+        IndexT max_index = mask[output_index];
+        if (max_index != -1) {
+          phi::CudaAtomicAdd(
+              &input_grad[nc_offset * input_depth * input_height * input_width +
+                          max_index],
+              output_grad[output_index]);
+        }
       }
     }
   }
@@ -2936,26 +3197,26 @@ __global__ void FractionalKernelMaxPool3dGrad(
 template <typename T1, typename T2>
 class FractionalMaxPool3dFunctor<phi::GPUContext, T1, T2> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& input,
-                  const std::vector<int>& output_size,
-                  const std::vector<int>& kernel_size,
+                  const std::vector<int64_t>& output_size,
+                  const std::vector<int64_t>& kernel_size,
                   float random_u,
                   bool return_mask,
                   DenseTensor* output,
                   DenseTensor* mask) {
-    const int batch_size = input.dims()[0];
-    const int input_channels = input.dims()[1];
-    const int input_depth = input.dims()[2];
-    const int input_height = input.dims()[3];
-    const int input_width = input.dims()[4];
-    const int output_channels = output->dims()[1];
-    const int output_depth = output->dims()[2];
-    const int output_height = output->dims()[3];
-    const int output_width = output->dims()[4];
-    const int pool_depth = kernel_size[0];
-    const int pool_height = kernel_size[1];
-    const int pool_width = kernel_size[2];
+    const int64_t batch_size = input.dims()[0];
+    const int64_t input_channels = input.dims()[1];
+    const int64_t input_depth = input.dims()[2];
+    const int64_t input_height = input.dims()[3];
+    const int64_t input_width = input.dims()[4];
+    const int64_t output_channels = output->dims()[1];
+    const int64_t output_depth = output->dims()[2];
+    const int64_t output_height = output->dims()[3];
+    const int64_t output_width = output->dims()[4];
+    const int64_t pool_depth = kernel_size[0];
+    const int64_t pool_height = kernel_size[1];
+    const int64_t pool_width = kernel_size[2];
 
     PADDLE_ENFORCE_GE(
         input_depth,
@@ -2980,54 +3241,79 @@ class FractionalMaxPool3dFunctor<phi::GPUContext, T1, T2> {
             output_width - 1 + pool_width));
 
     const T1* input_data = input.data<T1>();
-    T1* output_data = context.template Alloc<T1>(output);
-    T2* mask_data = context.template Alloc<T2>(mask);
+    T1* output_data = dev_ctx.template Alloc<T1>(output);
+    T2* mask_data = dev_ctx.template Alloc<T2>(mask);
 
-    int ncd = batch_size * input_channels * output_depth;
+    int64_t ncd = batch_size * input_channels * output_depth;
 
-    int thread_x = 32;
-    int thread_y = 8;
-    int thread_z = 1;
+    int64_t thread_x = 32;
+    int64_t thread_y = 8;
+    int64_t thread_z = 1;
     dim3 threads(thread_x, thread_y, thread_z);
-    std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
-    int block_x = (output_width + threads.x - 1) / threads.x;
-    int block_y = (output_height + threads.y - 1) / threads.y;
-    int block_z = (ncd > max_grid_dim[2] * threads.z)
-                      ? max_grid_dim[2]
-                      : (ncd + threads.z - 1) / threads.z;
+    std::array<unsigned int, 3> max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize();
+    int64_t block_x = (output_width + threads.x - 1) / threads.x;
+    int64_t block_y = (output_height > max_grid_dim[1] * threads.y)
+                          ? max_grid_dim[1]
+                          : (output_height + threads.y - 1) / threads.y;
+    int64_t block_z = (ncd > max_grid_dim[2] * threads.z)
+                          ? max_grid_dim[2]
+                          : (ncd + threads.z - 1) / threads.z;
     dim3 grid(block_x, block_y, block_z);
-
-    auto pool_divmods_output = FastDivModForPooling3D(
-        input_channels, output_width, output_height, output_depth);
 
     uint64_t seed = 0;
     uint64_t offset = 0;
     // generate seed for fractional pool
-    auto gen_cuda = context.GetGenerator();
-    constexpr int increment_offset = 1 * 4;  // one seed with multiple of 4
+    auto gen_cuda = dev_ctx.GetGenerator();
+    constexpr uint64_t increment_offset = 1 * 4;  // one seed with multiple of 4
     auto seed_offset = gen_cuda->IncrementOffset(increment_offset);
     seed = seed_offset.first;
     offset = seed_offset.second;
 
-    FractionalKernelMaxPool3d<T1, T2>
-        <<<grid, threads, 0, context.stream()>>>(ncd,
-                                                 input_data,
-                                                 input_channels,
-                                                 input_depth,
-                                                 input_height,
-                                                 input_width,
-                                                 output_depth,
-                                                 output_height,
-                                                 output_width,
-                                                 pool_depth,
-                                                 pool_height,
-                                                 pool_width,
-                                                 random_u,
-                                                 seed,
-                                                 offset,
-                                                 output_data,
-                                                 mask_data,
-                                                 pool_divmods_output);
+    if (input.numel() <= std::numeric_limits<int>::max()) {
+      auto pool_divmods_output = FastDivModForPooling3D<int>(
+          input_channels, output_width, output_height, output_depth);
+      FractionalKernelMaxPool3d<T1, T2, int>
+          <<<grid, threads, 0, dev_ctx.stream()>>>(ncd,
+                                                   input_data,
+                                                   input_channels,
+                                                   input_depth,
+                                                   input_height,
+                                                   input_width,
+                                                   output_depth,
+                                                   output_height,
+                                                   output_width,
+                                                   pool_depth,
+                                                   pool_height,
+                                                   pool_width,
+                                                   random_u,
+                                                   seed,
+                                                   offset,
+                                                   output_data,
+                                                   mask_data,
+                                                   pool_divmods_output);
+    } else {
+      auto pool_divmods_output = FastDivModForPooling3D<int64_t>(
+          input_channels, output_width, output_height, output_depth);
+      FractionalKernelMaxPool3d<T1, T2, int64_t>
+          <<<grid, threads, 0, dev_ctx.stream()>>>(ncd,
+                                                   input_data,
+                                                   input_channels,
+                                                   input_depth,
+                                                   input_height,
+                                                   input_width,
+                                                   output_depth,
+                                                   output_height,
+                                                   output_width,
+                                                   pool_depth,
+                                                   pool_height,
+                                                   pool_width,
+                                                   random_u,
+                                                   seed,
+                                                   offset,
+                                                   output_data,
+                                                   mask_data,
+                                                   pool_divmods_output);
+    }
   }
 };
 
@@ -3037,64 +3323,89 @@ class FractionalMaxPool3dFunctor<phi::GPUContext, T1, T2> {
 template <typename T1, typename T2>
 class FractionalMaxPool3dGradFunctor<phi::GPUContext, T1, T2> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& output_grad,
                   const DenseTensor& mask,
-                  const std::vector<int>& output_size,
-                  const std::vector<int>& kernel_size,
+                  const std::vector<int64_t>& output_size,
+                  const std::vector<int64_t>& kernel_size,
                   float random_u,
                   bool return_mask,
                   DenseTensor* input_grad) {
-    const int batch_size = input_grad->dims()[0];
-    const int input_channels = input_grad->dims()[1];
-    const int input_depth = input_grad->dims()[2];
-    const int input_height = input_grad->dims()[3];
-    const int input_width = input_grad->dims()[4];
-    const int output_depth = output_grad.dims()[2];
-    const int output_height = output_grad.dims()[3];
-    const int output_width = output_grad.dims()[4];
-    const int pool_depth = kernel_size[0];
-    const int pool_height = kernel_size[1];
-    const int pool_width = kernel_size[2];
+    const int64_t batch_size = input_grad->dims()[0];
+    const int64_t input_channels = input_grad->dims()[1];
+    const int64_t input_depth = input_grad->dims()[2];
+    const int64_t input_height = input_grad->dims()[3];
+    const int64_t input_width = input_grad->dims()[4];
+    const int64_t output_depth = output_grad.dims()[2];
+    const int64_t output_height = output_grad.dims()[3];
+    const int64_t output_width = output_grad.dims()[4];
+    const int64_t pool_depth = kernel_size[0];
+    const int64_t pool_height = kernel_size[1];
+    const int64_t pool_width = kernel_size[2];
 
     const T1* output_grad_data = output_grad.data<T1>();
     const T2* mask_data = mask.data<T2>();
-    T1* input_grad_data = context.template Alloc<T1>(input_grad);
+    T1* input_grad_data = dev_ctx.template Alloc<T1>(input_grad);
 
-    int ncd = batch_size * input_channels * output_depth;
+    int64_t ncd = batch_size * input_channels * output_depth;
 
-    int thread_x = 32;
-    int thread_y = 8;
-    int thread_z = 1;
+    int64_t thread_x = 32;
+    int64_t thread_y = 8;
+    int64_t thread_z = 1;
     dim3 threads(thread_x, thread_y, thread_z);
-    std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
-    int block_x = (output_width + threads.x - 1) / threads.x;
-    int block_y = (output_height + threads.y - 1) / threads.y;
-    int block_z = (ncd > max_grid_dim[2] * threads.z)
-                      ? max_grid_dim[2]
-                      : (ncd + threads.z - 1) / threads.z;
+    std::array<unsigned int, 3> max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize();
+    int64_t block_x = (output_width + threads.x - 1) / threads.x;
+    int64_t block_y = (output_height > max_grid_dim[1] * threads.y)
+                          ? max_grid_dim[1]
+                          : (output_height + threads.y - 1) / threads.y;
+    int64_t block_z = (ncd > max_grid_dim[2] * threads.z)
+                          ? max_grid_dim[2]
+                          : (ncd + threads.z - 1) / threads.z;
     dim3 grid(block_x, block_y, block_z);
 
-    auto pool_divmods_output = FastDivModForPooling3D(
-        input_channels, output_width, output_height, output_depth);
+    if (input_grad->numel() <= std::numeric_limits<int>::max()) {
+      auto pool_divmods_output = FastDivModForPooling3D<int>(
+          input_channels, output_width, output_height, output_depth);
 
-    FractionalKernelMaxPool3dGrad<T1, T2>
-        <<<grid, threads, 0, context.stream()>>>(ncd,
-                                                 output_grad_data,
-                                                 mask_data,
-                                                 input_channels,
-                                                 input_depth,
-                                                 input_height,
-                                                 input_width,
-                                                 output_depth,
-                                                 output_height,
-                                                 output_width,
-                                                 pool_depth,
-                                                 pool_height,
-                                                 pool_width,
-                                                 random_u,
-                                                 input_grad_data,
-                                                 pool_divmods_output);
+      FractionalKernelMaxPool3dGrad<T1, T2, int>
+          <<<grid, threads, 0, dev_ctx.stream()>>>(ncd,
+                                                   output_grad_data,
+                                                   mask_data,
+                                                   input_channels,
+                                                   input_depth,
+                                                   input_height,
+                                                   input_width,
+                                                   output_depth,
+                                                   output_height,
+                                                   output_width,
+                                                   pool_depth,
+                                                   pool_height,
+                                                   pool_width,
+                                                   random_u,
+                                                   input_grad_data,
+                                                   pool_divmods_output);
+    } else {
+      auto pool_divmods_output = FastDivModForPooling3D<int64_t>(
+          input_channels, output_width, output_height, output_depth);
+
+      FractionalKernelMaxPool3dGrad<T1, T2, int64_t>
+          <<<grid, threads, 0, dev_ctx.stream()>>>(ncd,
+                                                   output_grad_data,
+                                                   mask_data,
+                                                   input_channels,
+                                                   input_depth,
+                                                   input_height,
+                                                   input_width,
+                                                   output_depth,
+                                                   output_height,
+                                                   output_width,
+                                                   pool_depth,
+                                                   pool_height,
+                                                   pool_width,
+                                                   random_u,
+                                                   input_grad_data,
+                                                   pool_divmods_output);
+    }
   }
 };
 

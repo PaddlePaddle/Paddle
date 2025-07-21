@@ -840,5 +840,27 @@ class TestTriangularSolveOpError(unittest.TestCase):
             )
 
 
+class TestTriangularSolveOp_ZeroSize(TestTriangularSolveOp):
+    def config(self):
+        self.__class__.exist_fp64_check_grad = True
+        self.x_shape = [0, 2, 2]
+        self.y_shape = [0, 2, 1]
+        self.upper = False
+        self.transpose = False
+        self.unitriangular = False
+        self.dtype = "float32"
+
+
+class TestTriangularSolveOp_ZeroSize2(TestTriangularSolveOp_ZeroSize):
+    def config(self):
+        self.__class__.exist_fp64_check_grad = True
+        self.x_shape = [3, 3]
+        self.y_shape = [3, 0]
+        self.upper = False
+        self.transpose = False
+        self.unitriangular = False
+        self.dtype = "float32"
+
+
 if __name__ == "__main__":
     unittest.main()

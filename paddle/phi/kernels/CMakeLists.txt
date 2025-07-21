@@ -61,6 +61,7 @@ if(((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
     "legacy/gpu/moe_ops_partial_nosoftmaxtopk_grad_kernel.cu"
     "legacy/gpu/moe_gate_dispatch_permute_grad_kernel.cu"
     "legacy/gpu/moe_gate_dispatch_permute_kernel.cu"
+    "legacy/gpu/moe_gate_dispatch_and_quant_kernel.cu"
     "legacy/gpu/expand_modality_expert_id_kernel.cu"
     "legacy/gpu/moe_combine_kernel.cu"
     "legacy/gpu/moe_combine_grad_kernel.cu"

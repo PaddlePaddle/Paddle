@@ -37,7 +37,7 @@ class TestFCONEDNNOp(OpTest):
     def setUp(self):
         self.op_type = "fc"
         self._cpu_only = True
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.create_data()
         self.inputs = {
             'Input': self.matrix.input,
@@ -45,7 +45,7 @@ class TestFCONEDNNOp(OpTest):
             'Bias': self.bias,
         }
 
-        self.attrs = {'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'use_mkldnn': self.use_onednn}
 
         self.outputs = {
             'Out': fully_connected_naive(

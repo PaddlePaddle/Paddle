@@ -21,25 +21,20 @@ limitations under the License. */
 
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
-#include "paddle/phi/common/memory_utils.h"
-#include "paddle/phi/common/place.h"
-#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/funcs/stride_utils.h"
+#include "paddle/phi/kernels/funcs/index_elementwise_utils.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 namespace phi {
 namespace funcs {
-
-constexpr int MAX_DIMS = 9;
 
 static constexpr int launch_bound2 = 4;
 
 static constexpr int launch_size_nd = 128;
 
 template <int nt, int vt, typename func_t>
-__global__ void index_elementwise_kernel(const int64_t N, const func_t f) {
+__global__ void index_elementwise_with_tensor_kernel(const int64_t N,
+                                                     const func_t f) {
   const auto tid = threadIdx.x;
   const auto nv = nt * vt;
   auto idx = nv * blockIdx.x + tid;
@@ -52,10 +47,21 @@ __global__ void index_elementwise_kernel(const int64_t N, const func_t f) {
   }
 }
 
-template <int N>
-struct alignas(N) OpaqueType {
-  char data[N];
-};
+template <int nt, int vt, typename T, typename func_t>
+__global__ void index_elementwise_kernel(const int64_t N,
+                                         T value_T,
+                                         const func_t f) {
+  const auto tid = threadIdx.x;
+  const auto nv = nt * vt;
+  auto idx = nv * blockIdx.x + tid;
+#pragma unroll
+  for (int i = 0; i < vt; i++) {
+    if (idx < N) {
+      f(idx, value_T);
+      idx += nt;
+    }
+  }
+}
 
 template <typename Value>
 struct DivMod {
@@ -74,8 +80,46 @@ struct IntDivider {
   __host__ __device__ inline DivMod<Value> divmod(Value n) const {
     return DivMod<Value>(n / divisor, n % divisor);
   }
-
   Value divisor;
+};
+
+template <>
+struct IntDivider<unsigned int> {
+  static_assert(sizeof(unsigned int) == 4, "Assumes 32-bit unsigned int.");
+
+  IntDivider() = default;
+
+  explicit IntDivider(unsigned int d) : divisor(d) {
+    for (shift = 0; shift < 32; shift++)
+      if ((1U << shift) >= divisor) break;
+
+    uint64_t one = 1;
+    uint64_t magic = ((one << 32) * ((one << shift) - divisor)) / divisor + 1;
+    m1 = magic;
+  }
+
+  __host__ __device__ inline unsigned int div(unsigned int n) const {
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+    unsigned int t = __umulhi(n, m1);
+    return (t + n) >> shift;
+#else
+    uint64_t t = ((uint64_t)n * m1) >> 32;
+    return (t + n) >> shift;
+#endif
+  }
+
+  __host__ __device__ inline unsigned int mod(unsigned int n) const {
+    return n - div(n) * divisor;
+  }
+
+  __host__ __device__ inline DivMod<unsigned int> divmod(unsigned int n) const {
+    unsigned int q = div(n);
+    return DivMod<unsigned int>(q, n - q * divisor);
+  }
+
+  unsigned int divisor;
+  unsigned int m1;
+  unsigned int shift;
 };
 
 template <int NARGS, typename index_t = uint32_t, bool signed_strides = false>
@@ -136,31 +180,6 @@ static OffsetCalculator<N, uint32_t, signed_strides> make_offset_calculator_put(
     std::vector<int64_t> desired_shape, std::array<int64_t*, N> strides_array) {
   return OffsetCalculator<N, uint32_t, signed_strides>(
       desired_shape.size(), desired_shape.data(), strides_array.data());
-}
-
-template <typename IndexT>
-std::array<char*, DDim::kMaxRank> GetIndexDataPtrs(
-    const std::vector<const DenseTensor*> index) {
-  std::array<char*, DDim::kMaxRank> index_ptrs{};
-
-  PADDLE_ENFORCE_LE(index.size(),
-                    DDim::kMaxRank,
-                    "The number of index tensors exceeds the maximum rank.");
-
-  for (size_t i = 0; i < index.size(); ++i) {
-    const IndexT* p_index = index[i]->data<IndexT>();
-
-    PADDLE_ENFORCE_NOT_NULL(
-        p_index,
-        ::common::errors::InvalidArgument(
-            "The pointer p_index is nullptr, "
-            "please check whether the index tensor is valid and "
-            "its data is correctly initialized."));
-
-    index_ptrs[i] = reinterpret_cast<char*>(const_cast<IndexT*>(p_index));
-  }
-
-  return index_ptrs;
 }
 
 template <int N, bool signed_strides = false>

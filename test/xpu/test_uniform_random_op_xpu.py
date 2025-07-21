@@ -69,7 +69,7 @@ class XPUTestUniformRandomOp(XPUOpTestWrapper):
         def setUp(self):
             self.init()
             self.inputs = {}
-            self.use_mkldnn = False
+            self.use_onednn = False
             self.set_attrs()
             paddle.seed(10)
 

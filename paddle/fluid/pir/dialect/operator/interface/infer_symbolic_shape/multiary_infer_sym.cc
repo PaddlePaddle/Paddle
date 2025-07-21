@@ -82,7 +82,6 @@ bool AddNOpInferSymbolicShape(pir::Operation *op,
           "should be larger than 0. But received X's dimensions %d.",
           inputs_shape.size()));
   symbol::TensorShapeOrDataDimExprs candidate_shape = inputs_shape.front();
-  std::vector<symbol::DimExpr> candidate_shape_vec = candidate_shape.shape();
   for (size_t i = 1; i < inputs_shape.size(); ++i) {
     // 0D tensor
     if (inputs_shape[i].shape().size() == 0) {
@@ -90,25 +89,15 @@ bool AddNOpInferSymbolicShape(pir::Operation *op,
     }
     if (candidate_shape.shape().size() == 0) {
       candidate_shape = inputs_shape[i];
-      candidate_shape_vec = candidate_shape.shape();
       continue;
     }
-    for (size_t j = 0; j < candidate_shape_vec.size(); ++j) {
-      if (candidate_shape_vec[j] != 0) {
-        if (inputs_shape[i].shape()[j] != 0) {
-          infer_context->AddEqualCstr(candidate_shape_vec[j],
-                                      inputs_shape[i].shape()[j]);
-        } else {
-          candidate_shape_vec[j] = symbol::DimExpr{0};
-        }
-      }
+    for (size_t j = 0; j < candidate_shape.shape().size(); ++j) {
+      infer_context->AddEqualCstr(candidate_shape.shape()[j],
+                                  inputs_shape[i].shape()[j]);
     }
   }
   infer_context->SetShapeOrDataForValue(
-      op->result(0),
-      symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(candidate_shape_vec)});
-
+      op->result(0), symbol::ShapeOrDataDimExprs{candidate_shape});
   return true;
 }
 
@@ -3952,7 +3941,9 @@ bool RmsNormOpInferSymbolicShape(
   const std::vector<symbol::DimExpr> &norm_weight_dims =
       norm_weight_shape.shape();
 
-  infer_context->AddEqualCstr(normalized_dims, norm_weight_dims[0]);
+  if (normalized_dims != 0) {
+    infer_context->AddEqualCstr(normalized_dims, norm_weight_dims[0]);
+  }
 
   infer_context->SetShapeOrDataForValue(
       op->result(0),
@@ -4498,6 +4489,17 @@ bool WarpctcOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &logits_shape =
       logits_shape_or_data.shape();
+  bool logits_0_size = false;
+  for (size_t i = 0; i < logits_shape.size(); ++i) {
+    if (logits_shape[i] == 0) {
+      logits_0_size = true;
+      break;
+    }
+  }
+  if (logits_0_size) {
+    PADDLE_THROW(
+        common::errors::InvalidArgument("The input size can not be zero."));
+  }
 
   symbol::DimExpr max_sequence_length, num_sequences;
   symbol::DimExpr sequence_width = symbol::DimExpr(1);

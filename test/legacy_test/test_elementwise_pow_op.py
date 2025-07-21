@@ -12,11 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_places,
+    skip_check_grad_ci,
+)
 
 import paddle
 from paddle import base
@@ -277,16 +281,7 @@ class TestElementwisePowGradOpInt(unittest.TestCase):
         ).astype("int")
 
     def test_grad(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not base.is_compiled_with_cuda()
-        ):
-            places.append(core.CPUPlace())
-        if base.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for place in places:
+        for place in get_places():
             with base.dygraph.guard(place):
                 x = paddle.to_tensor(self.x)
                 y = paddle.to_tensor(self.y)

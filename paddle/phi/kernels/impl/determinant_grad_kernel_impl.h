@@ -17,6 +17,7 @@
 #include "glog/logging.h"
 #include "paddle/phi/common/amp_type_traits.h"
 
+#include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/complex_kernel.h"
@@ -29,20 +30,45 @@
 #include "paddle/phi/kernels/funcs/matrix_inverse.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
+
 namespace phi {
 namespace detail {
 
+// epsilon_ should be smaller if linalg.det achieves higher precision
+template <typename T>
+struct FoundZeroEpsilon {
+  // default for float16
+  static constexpr T value() { return static_cast<T>(1e-3f); }
+};
+
+template <>
+struct FoundZeroEpsilon<float> {
+  static constexpr float value() { return 1e-5f; }
+};
+
+template <>
+struct FoundZeroEpsilon<double> {
+  static constexpr double value() { return 1e-12; }
+};
+
 template <typename T>
 struct FoundZeroFunctor {
+  using RealType = phi::dtype::Real<T>;
+
   FoundZeroFunctor(const T* x, int64_t numel, bool* res)
       : x_(x), numel_(numel), res_(res) {}
+
   HOSTDEVICE void operator()(size_t idx) const {
     if (*res_ || idx >= static_cast<size_t>(numel_)) {
-      // founded zero number
+      // found a singular matrix
       return;
     }
-    *res_ = (x_[idx] == static_cast<T>(0));
+    if (abs(x_[idx]) < FoundZeroEpsilon<RealType>::value()) {
+      *res_ = true;
+    }
   }
+
+ private:
   const T* x_;
   int64_t numel_;
   bool* res_;
@@ -120,9 +146,6 @@ void DeterminantGradKernel(const Context& dev_ctx,
   }
 
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  auto origin_dt = std::is_same<phi::dtype::float16, T>::value
-                       ? DataType::FLOAT16
-                       : DataType::BFLOAT16;
 
   // The matrix is invertible
   // let |A| = Determinant(A)
@@ -131,57 +154,65 @@ void DeterminantGradKernel(const Context& dev_ctx,
   // inverse(A).conj().transpose(-2, -1)
 
   // First: inverse(A)
-  DenseTensor inverse_A;
-  // A must be square matrices!
-  inverse_A.Resize(x.dims());
-  dev_ctx.template Alloc<MPType>(&inverse_A);
+  DenseTensor transpose_inverse_A;
+  {
+    DenseTensor inverse_A;
+    // A must be square matrices!
+    inverse_A.Resize(x.dims());
+    dev_ctx.template Alloc<MPType>(&inverse_A);
 
-  phi::funcs::MatrixInverseFunctor<Context, MPType> mat_inv;
-  if (!std::is_same<MPType, T>::value) {
-    mat_inv(dev_ctx,
-            phi::Cast<T, Context>(dev_ctx, x, DataType::FLOAT32),
-            &inverse_A);
-  } else {
-    mat_inv(dev_ctx, x, &inverse_A);
+    phi::funcs::MatrixInverseFunctor<Context, MPType> mat_inv;
+    if constexpr (!std::is_same_v<MPType, T>) {
+      auto x_mp = phi::Cast<T, Context>(
+          dev_ctx, x, phi::CppTypeToDataType<MPType>::Type());
+      mat_inv(dev_ctx, x_mp, &inverse_A);
+    } else {
+      mat_inv(dev_ctx, x, &inverse_A);
+    }
+
+    auto conj_inverse_A = phi::Conj<MPType>(dev_ctx, inverse_A);
+    VLOG(3) << "inverse(A).conj() dims: " << conj_inverse_A.dims();
+
+    // Second: inverse(A).conj().transpose(-2, -1)
+    transpose_inverse_A =
+        phi::TransposeLast2Dim<MPType>(dev_ctx, conj_inverse_A);
+    VLOG(3) << "(dA * |A|).transpose(-2, -1) dims: "
+            << transpose_inverse_A.dims();
   }
 
-  auto conj_inverse_A = phi::Conj<MPType>(dev_ctx, inverse_A);
-  VLOG(3) << "inverse(A).conj() dims: " << conj_inverse_A.dims();
+  DenseTensor mul_unsqueezed;
+  {
+    DenseTensor mul_dA_detA;
+    // Third: dA * |A|.conj()
+    if constexpr (!std::is_same_v<MPType, T>) {
+      auto out_mp = phi::Cast<T, Context>(
+          dev_ctx, out, phi::CppTypeToDataType<MPType>::Type());
+      auto out_grad_mp = phi::Cast<T, Context>(
+          dev_ctx, out_grad, phi::CppTypeToDataType<MPType>::Type());
 
-  // Second: inverse(A).conj().transpose(-2, -1)
-  DenseTensor transpose_inverse_A =
-      phi::TransposeLast2Dim<MPType>(dev_ctx, conj_inverse_A);
+      auto conj_out_mp = phi::Conj<MPType>(dev_ctx, out_mp);
+      mul_dA_detA = phi::Multiply<MPType>(dev_ctx, out_grad_mp, conj_out_mp);
+    } else {
+      auto conj_out = phi::Conj<T>(dev_ctx, out);
+      mul_dA_detA = phi::Multiply<T>(dev_ctx, out_grad, conj_out);
+    }
+    VLOG(3) << "dA * |A| dims: " << mul_dA_detA.dims();
 
-  VLOG(3) << "(dA * |A|).transpose(-2, -1) dims: "
-          << transpose_inverse_A.dims();
-
-  // Third: dA * |A|.conj()
-  auto conj_out = phi::Conj<MPType>(dev_ctx, out);
-  auto mul_dA_detA = phi::Multiply<T>(dev_ctx, out_grad, conj_out);
-  VLOG(3) << "dA * |A| dims: " << mul_dA_detA.dims();
-
-  // Fourth: unsqueeze(dA * |A|, [-1, -2])
-  auto unsqueeze1 = phi::funcs::Unsqueeze(mul_dA_detA, -1);
-  auto unsqueeze2 = phi::funcs::Unsqueeze(unsqueeze1, -2);
-  VLOG(3) << "unsqueezed(dA * |A|) dims: " << unsqueeze2.dims();
+    // Fourth: unsqueeze(dA * |A|, [-1, -2])
+    auto unsqueeze1 = phi::funcs::Unsqueeze(mul_dA_detA, -1);
+    mul_unsqueezed = phi::funcs::Unsqueeze(unsqueeze1, -2);
+    VLOG(3) << "unsqueezed(dA * |A|) dims: " << mul_unsqueezed.dims();
+  }
 
   // Finally: unsqueeze(dA * |A|) * inverse(A)
-  DenseTensor res;
-  if (!std::is_same<MPType, T>::value) {
-    res = phi::Multiply<T>(
-        dev_ctx,
-        unsqueeze2,
-        phi::Cast<MPType, Context>(dev_ctx, transpose_inverse_A, origin_dt));
-  } else {
-    res = phi::Multiply<T>(dev_ctx, unsqueeze2, transpose_inverse_A);
-  }
-
-  VLOG(3) << "unsqueeze(dA * |A|) * inverse(A) dims: " << res.dims();
+  auto res_mp =
+      phi::Multiply<MPType>(dev_ctx, mul_unsqueezed, transpose_inverse_A);
+  VLOG(3) << "unsqueeze(dA * |A|) * inverse(A) dims: " << res_mp.dims();
 
   x_grad->Resize(x.dims());
   VLOG(3) << "d|A| dims: " << x_grad->dims();
 
-  phi::Copy(dev_ctx, res, dev_ctx.GetPlace(), false, x_grad);
+  phi::Copy(dev_ctx, res_mp, dev_ctx.GetPlace(), false, x_grad);
 }
 
 }  // namespace phi

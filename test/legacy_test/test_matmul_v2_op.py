@@ -12,11 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_numeric_gradient,
+    get_places,
+)
 from testsuite import create_op
 
 import paddle
@@ -593,15 +597,7 @@ create_test_bf16_class(TestMatMulOp17)
 
 class TestMatMulV2API(unittest.TestCase):
     def setUp(self):
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def check_static_result(self, place):
         paddle.enable_static()

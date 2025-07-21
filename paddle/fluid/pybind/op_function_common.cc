@@ -1235,6 +1235,7 @@ void ConstructAttrMapForRunProgram(
       {"is_test", CastPyArg2AttrBoolean},
       {"in_sot_mode", CastPyArg2AttrBoolean},
       {"program_id", CastPyArg2AttrLong},
+      {"fo_values", CastPyArg2AttrValues},
       {"fx_names", CastPyArg2AttrStrings},
       {"fp_names", CastPyArg2AttrStrings},
       {"fm_names", CastPyArg2AttrStrings},

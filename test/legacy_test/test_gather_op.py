@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_places
 from utils import dygraph_guard
 
 import paddle
@@ -915,15 +914,7 @@ class TestGatherBackward(unittest.TestCase):
         self.dtype = 'float32'
         self.index = (1, 3, 5)
         self.index_dtype = 'int64'
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            self.places.append(paddle.CPUPlace())
-        if paddle.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
 
     def test_gather_backward(self):
         if len(self.places) != 2:

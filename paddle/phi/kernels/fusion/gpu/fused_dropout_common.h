@@ -52,7 +52,7 @@ namespace fusion {
  * 2D grids: gridDim.y = rows
  */
 inline phi::backends::gpu::GpuLaunchConfig Get1DBlocksAnd2DGrids(
-    const phi::GPUContext &ctx,
+    const phi::GPUContext &dev_ctx,
     const uint64_t rows,
     const uint64_t cols,
     const int vec_size) {
@@ -64,11 +64,11 @@ inline phi::backends::gpu::GpuLaunchConfig Get1DBlocksAnd2DGrids(
   // occur because it did not have appropriate resources.
   // Of course, this kernel can be optimized later to reduce the use
   // of registers.
-  const int threads = std::max(
-      static_cast<uint64_t>(32),
-      std::min(
-          tmp_cols,
-          static_cast<uint64_t>(std::min(ctx.GetMaxThreadsPerBlock(), 512))));
+  const int threads =
+      std::max(static_cast<uint64_t>(32),
+               std::min(tmp_cols,
+                        static_cast<uint64_t>(
+                            std::min(dev_ctx.GetMaxThreadsPerBlock(), 512))));
 
   const int blocks_x =
       std::max(static_cast<uint64_t>(1), (tmp_cols + threads - 1) / threads);
