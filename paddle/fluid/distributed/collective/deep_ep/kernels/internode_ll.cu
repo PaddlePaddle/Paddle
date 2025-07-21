@@ -330,7 +330,7 @@ __global__ __launch_bounds__(
     EP_DEVICE_ASSERT(num_sms > 1);
     if (sm_id == 0) {
       // The first SM is also responsible for checking QPs
-      EP_DEVICE_ASSERT(ibgda_get_state()->num_rc_per_pe == num_local_experts);
+      EP_DEVICE_ASSERT(ibgda_get_state()->num_rc_per_pe >= num_local_experts);
 
 // The first SM is also responsible for cleaning the next buffer
 #pragma unroll
@@ -573,7 +573,8 @@ void dispatch(void* packed_recv_x,
             use_fp8
                 ? dispatch<true, kNumWarpGroups, kNumWarpsPerGroup, kHidden>
                 : dispatch<false, kNumWarpGroups, kNumWarpsPerGroup, kHidden>;
-        SETUP_LAUNCH_CONFIG(num_sms, NUM_WARPS * 32, stream);
+        SETUP_LAUNCH_CONFIG(
+            num_sms, kNumWarpGroups * kNumWarpsPerGroup * 32, stream);
         LAUNCH_KERNEL(&cfg,
                       dispatch_func,
                       packed_recv_x,
@@ -892,7 +893,8 @@ void combine(void* combined_x,
         constexpr int kNumWarpsPerGroup = NUM_WARPS / kNumWarpGroups;
         auto combine_func =
             combine<kNumWarpGroups, kNumWarpsPerGroup, kHidden, kNumMaxTopk>;
-        SETUP_LAUNCH_CONFIG(num_sms, NUM_WARPS * 32, stream);
+        SETUP_LAUNCH_CONFIG(
+            num_sms, kNumWarpGroups * kNumWarpsPerGroup * 32, stream);
         LAUNCH_KERNEL(&cfg,
                       combine_func,
                       combined_x,
