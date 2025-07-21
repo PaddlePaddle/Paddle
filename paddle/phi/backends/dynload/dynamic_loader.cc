@@ -296,7 +296,9 @@ static inline void* GetDsoHandleFromSearchPath(
     std::wstring win_path_wstring =
         converter.from_bytes(FLAGS_win_cuda_bin_dir);
     search_path = win_path_wstring + L"\\" + search_path + L"\\bin";
+#ifdef PADDLE_WITH_CUDA
     AddDllDirectory(search_path.c_str());
+#endif
   }
 #endif
   std::vector<std::string> dso_names = split(dso_name, ";");

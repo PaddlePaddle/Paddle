@@ -344,6 +344,66 @@ void combine(void* combined_x,
              bool zero_copy);
 
 }  // namespace internode_ll
+
+namespace internode_ll_two_stage {
+
+void dispatch(void* packed_recv_x,
+              float* packed_recv_x_scales,
+              int* packed_recv_src_info,
+              int64_t* packed_recv_layout_range,
+              int* packed_recv_count,
+              int* packed_rdma_recv_count,
+              bool* rdma_send_flags,
+              void* rdma_recv_x,
+              int* rdma_recv_count,
+              void* rdma_x,
+              void** nvl_recv_x,
+              const void* x,
+              const int64_t* topk_idx,
+              const float* topk_weights,
+              int* next_clean,
+              int num_next_clean_int,
+              int num_tokens,
+              int hidden,
+              int num_max_dispatch_tokens_per_rank,
+              int num_topk,
+              int num_experts,
+              int rank,
+              int num_ranks,
+              bool use_fp8,
+              void* workspace,
+              cudaStream_t stream,
+              int phases);
+
+void combine(void* combined_x,
+             void* rdma_recv_x,
+             int* rdma_recv_flag,
+             void* rdma_send_x,
+             void* dispatch_rdma_recv_x,
+             const int* dispatch_rdma_recv_count,
+             void** nvl_buffer,
+             const void* x,
+             const int64_t* topk_idx,
+             const float* topk_weights,
+             const int* src_info,
+             const int64_t* layout_range,
+             const bool* rdma_send_flags,
+             int* next_clean,
+             int num_next_clean_int,
+             int num_combined_tokens,
+             int hidden,
+             int num_max_dispatch_tokens_per_rank,
+             int num_topk,
+             int num_experts,
+             int rank,
+             int num_ranks,
+             void* workspace,
+             cudaStream_t stream,
+             int phases,
+             bool dispatch_use_fp8);
+
+}  // namespace internode_ll_two_stage
+
 #endif  // PADDLE_WITH_NVSHMEM
 
 }  // namespace deep_ep

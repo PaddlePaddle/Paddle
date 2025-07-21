@@ -24,7 +24,7 @@ import paddle.nn.functional as F
 from paddle import base
 
 
-class TestMKLDNNMatmulFuseOp(InferencePassTest):
+class TestONEDNNMatmulFuseOp(InferencePassTest):
     def init_data(self):
         self.bs = 8
         self.d_type = np.float32
@@ -67,7 +67,7 @@ class TestMKLDNNMatmulFuseOp(InferencePassTest):
         self.check_output_with_option(use_gpu)
 
 
-class TestMKLDNNMatmulOtherDimsFuseOp(TestMKLDNNMatmulFuseOp):
+class TestONEDNNMatmulOtherDimsFuseOp(TestONEDNNMatmulFuseOp):
     def init_data(self):
         self.bs = 8
         self.d_type = np.float32
@@ -76,7 +76,7 @@ class TestMKLDNNMatmulOtherDimsFuseOp(TestMKLDNNMatmulFuseOp):
         self.enable_mkldnn = True
 
 
-class TestMKLDNNMatmulOpNotFusedWrongTransposeAxis(TestMKLDNNMatmulFuseOp):
+class TestONEDNNMatmulOpNotFusedWrongTransposeAxis(TestONEDNNMatmulFuseOp):
     def make_network(self):
         with (
             paddle.pir_utils.OldIrGuard(),
@@ -95,7 +95,7 @@ class TestMKLDNNMatmulOpNotFusedWrongTransposeAxis(TestMKLDNNMatmulFuseOp):
         return out
 
 
-class TestMKLDNNMatmulOpNotFusedBreakPattern(TestMKLDNNMatmulFuseOp):
+class TestONEDNNMatmulOpNotFusedBreakPattern(TestONEDNNMatmulFuseOp):
     def init_data(self):
         self.bs = 7
         self.d_type = np.float32

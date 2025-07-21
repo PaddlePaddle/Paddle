@@ -22,6 +22,7 @@ import inspect
 import random
 import sys
 import types
+from contextlib import contextmanager
 from enum import Enum
 from functools import cached_property
 from typing import TYPE_CHECKING
@@ -545,26 +546,53 @@ class PyCodeGen:
         idx = list_find_index_by_id(self._code_options["co_consts"], value)
         return self.add_instr("LOAD_CONST", arg=idx, argval=value)
 
-    def gen_print_log(self, message):
-        """print a log"""
+    @contextmanager
+    def gen_disable_eval_frame_guard(self):
+        """
+        Generates instructions to disable the evaluation frame.
+        """
         import paddle
 
         self.gen_load_object(
-            paddle.framework.core.set_eval_frame, "dbg_set_eval_frame"
+            paddle.framework.core.set_eval_frame, "___set_eval_frame"
         )
         self.gen_load_const(None)
         self.gen_call_function(1)
         self.gen_store_fast("old_eval_frame")
-        self.gen_load_global("print", push_null=True)
-        self.gen_load_const(message)
-        self.gen_call_function(1)
-        self.gen_pop_top()
+        yield
         self.gen_load_object(
-            paddle.framework.core.set_eval_frame, "dbg_set_eval_frame"
+            paddle.framework.core.set_eval_frame, "___set_eval_frame"
         )
         self.gen_load_fast("old_eval_frame")
         self.gen_call_function(1)
         self.gen_pop_top()
+
+    def gen_print_log(self, message):
+        """print a log"""
+        with self.gen_disable_eval_frame_guard():
+            self.gen_load_global("print", push_null=True)
+            self.gen_load_const(message)
+            self.gen_call_function(1)
+            self.gen_pop_top()
+
+    @contextmanager
+    def gen_nvtx_event(self, event_name):
+        import paddle
+
+        with self.gen_disable_eval_frame_guard():
+            self.gen_load_object(
+                paddle.base.core.nvprof_nvtx_push, "___nvprof_nvtx_push"
+            )
+            self.gen_load_const(event_name)
+            self.gen_call_function(1)
+            self.gen_pop_top()
+        yield
+        with self.gen_disable_eval_frame_guard():
+            self.gen_load_object(
+                paddle.base.core.nvprof_nvtx_pop, "___nvprof_nvtx_pop"
+            )
+            self.gen_call_function(0)
+            self.gen_pop_top()
 
     def gen_dbg_function(self, dbg_fun):
         """debug bytecode helper function.

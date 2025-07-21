@@ -62,6 +62,7 @@ from .masked_multihead_attention import masked_multihead_attention
 from .moe_combine import moe_combine
 from .moe_combine_no_weight import moe_combine_no_weight
 from .moe_gate_dispatch import moe_gate_dispatch
+from .moe_gate_dispatch_and_quant import moe_gate_dispatch_and_quant
 from .moe_gate_dispatch_partial_nosoftmaxtopk import (
     moe_gate_dispatch_partial_nosoftmaxtopk,
 )
@@ -106,4 +107,5 @@ __all__ = [
     "moe_gate_dispatch",
     "moe_gate_dispatch_permute",
     "moe_gate_dispatch_partial_nosoftmaxtopk",
+    "moe_gate_dispatch_and_quant",
 ]

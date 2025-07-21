@@ -19,13 +19,12 @@
 
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
-
 #define MAX_RANK_SUPPORTED 8
 
 namespace phi {
 
 template <typename Context, typename T, int Rank>
-void ExpandAs(const Context& context,
+void ExpandAs(const Context& dev_ctx,
               const DenseTensor& x,
               const std::vector<int64_t>& target_shape,
               DenseTensor* out) {
@@ -35,14 +34,14 @@ void ExpandAs(const Context& context,
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   std::vector<int64_t> repeat_times(vec_in_dims.size());
   if (Rank == 0) {
-    phi::Copy<Context>(context, x, context.GetPlace(), false, out);
+    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
   }
   for (size_t i = 0; i < vec_in_dims.size(); ++i) {
-    PADDLE_ENFORCE_NE(
-        target_shape[i],
-        0,
-        errors::InvalidArgument("The value of target shape cannot be zero."));
+    if (target_shape[i] == 0) {
+      dev_ctx.template Alloc<T>(out);
+      return;
+    }
     if (i < diff) {
       PADDLE_ENFORCE_GT(
           target_shape[i],
@@ -86,10 +85,10 @@ void ExpandAs(const Context& context,
   phi::DDim out_dims = common::make_ddim(target_shape);
 
   out->Resize(out_dims);
-  context.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   auto x0 = EigenTensor<T, Rank>::From(x, new_in_dims);
   auto y = EigenTensor<T, Rank>::From(*out, out_dims);
-  auto& place = *context.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
       place, y, x0, bcast_dims);
 }
@@ -100,6 +99,10 @@ void ExpandAsKernel(const Context& dev_ctx,
                     const paddle::optional<DenseTensor>& y,
                     const std::vector<int64_t>& target_shape,
                     DenseTensor* out) {
+  if (x.numel() == 0 || (y.get_ptr() && y.get_ptr()->numel() == 0)) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   auto rank = x.dims().size();
   auto target_rank = target_shape.size();
   PADDLE_ENFORCE_GE(target_rank,

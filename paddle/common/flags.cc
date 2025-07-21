@@ -2158,14 +2158,3 @@ PHI_DEFINE_EXPORTED_int32(
 PHI_DEFINE_EXPORTED_bool(check_cuda_error,
                          false,
                          "Checking whether CUDA error occurred or not.");
-
-/**
- * Dygraph related FLAG
- * Name: FLAGS_paddle_grad_inputs_zero_copy
- * Value Range: bool, default=false
- * Example:
- * Note: Whether zero copy paddle.grad's inputs.
- */
-PHI_DEFINE_EXPORTED_bool(paddle_grad_inputs_zero_copy,
-                         false,
-                         "Whether zero copy paddle.grad's inputs.");

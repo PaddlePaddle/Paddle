@@ -117,7 +117,7 @@ void ConvKernelImpl(const Context& dev_ctx,
   // to call the matrix multiplication interface.
   DenseTensor col_matrix;
   if (is_expand) {
-    // col = context.AllocateTmpTensor<T, DeviceContext>(col_shape, dev_ctx);
+    // col = dev_ctx.AllocateTmpTensor<T, DeviceContext>(col_shape, dev_ctx);
     col.Resize(col_shape);
     dev_ctx.template Alloc<T>(&col);
     col_matrix.ShareDataWith(col);
