@@ -94,10 +94,11 @@ inline std::unique_ptr<DeviceContext> CreateDeviceContext(
   if (p.GetType() == phi::AllocationType::GPU) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     auto* cuda_ctx = dynamic_cast<phi::GPUContext*>(dev_ctx);
+#if defined(PADDLE_WITH_CUDA)
     if (set_to_default) {
       cuda_ctx->SetStream(static_cast<phi::gpuStream_t>(cudaStreamDefault));
     }
-
+#endif
     PADDLE_ENFORCE_NOT_NULL(
         cuda_ctx,
         common::errors::InvalidArgument(
