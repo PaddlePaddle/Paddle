@@ -4186,7 +4186,7 @@ def multi_margin_loss(
                 ),
                 axis=1,
             )
-            - (margin**p / paddle.shape(input)[1]).squeeze()
+            - margin**p / paddle.shape(input)[1]
         )
 
     if reduction == 'mean':
