@@ -4733,7 +4733,9 @@ def adaptive_log_softmax_with_loss(
         x=input, weight=head_weight, bias=head_bias
     )
     head_logprob = paddle.nn.functional.log_softmax(head_output, axis=1)
-    if gather_inds.size != 0:
+    if paddle.in_dynamic_mode() and gather_inds.size == 0:
+        pass
+    else:
         output += paddle.take_along_axis(
             head_logprob, gather_inds.unsqueeze(1), axis=1
         ).squeeze()
