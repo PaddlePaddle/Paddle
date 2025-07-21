@@ -2988,13 +2988,8 @@ PyObject* CalcScopeCacheKey(PyObject* dummy, PyObject* args) {
 PyObject* GetProgramIdFromAttrs(PyObject* dummy, PyObject* args) {
   auto prog_attrs =
       GetProgramAttributesMapPtrFromPyArgs("run_program", args, 0);
-  int64_t* program_id_prt =
-      paddle::get_if<int64_t>(&(prog_attrs->at("program_id")));
-  if (!program_id_prt) {
-    PADDLE_THROW(common::errors::InvalidArgument(
-        "The type of attribute 'program_id' is not 'int64_t'."));
-  }
-  return ToPyObject(*program_id_prt);
+  int64_t program_id = PADDLE_GET(int64_t, prog_attrs->at("program_id"));
+  return ToPyObject(program_id);
 }
 
 /* ------------------ for auto parallel ----------------------- */
