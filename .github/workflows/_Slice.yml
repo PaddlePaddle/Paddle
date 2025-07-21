@@ -94,6 +94,7 @@ jobs:
           python3.10 -m pip install -r PaddleTest/framework/e2e/api_benchmark/requirement.txt
           cd PaddleTest/framework/slice_benchmark
           cp ${{ github.workspace }}/../../../apibm_config.yml .
+          nvidia-smi
           bash run.sh
           '
 
