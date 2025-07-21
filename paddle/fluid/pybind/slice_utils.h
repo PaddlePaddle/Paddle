@@ -940,7 +940,7 @@ static void DispatchSetitemKernel(const int pos_of_new_dim,
                                   paddle::Tensor* value_tensor,
                                   std::vector<phi::Scalar>* values) {
   paddle::Tensor mask_tensor;
-  if (!out_is_view &&
+  if (!(*out_is_view) &&
       MaskedFillDispatching(
           *transed_sub_tensor, *transed_index, &mask_tensor, value_tensor)) {
     if (value_tensor->initialized()) {
