@@ -595,7 +595,6 @@ class TestAdaptiveLogSoftmaxWithLossAPI_ZeroSize(unittest.TestCase):
                 input, label, head_weight, tail_weights, cutoffs
             )
             np.testing.assert_allclose(np.array([]), out[0].numpy())
-            paddle.enable_static()
 
 
 if __name__ == "__main__":
