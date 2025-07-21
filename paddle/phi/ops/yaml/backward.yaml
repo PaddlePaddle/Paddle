@@ -1388,6 +1388,12 @@
   kernel :
     func : gammaln_grad
 
+- backward_op : gather_double_grad
+  forward : gather_grad(Tensor x, Tensor index, Tensor grad_out, Scalar axis=0) -> Tensor(grad_x)
+  args : (Tensor index, Tensor grad_x_grad, Scalar axis)
+  output : Tensor(grad_out_grad)
+  invoke: gather(grad_x_grad, index, axis)
+
 - backward_op : gather_grad
   forward : gather(Tensor x, Tensor index, Scalar axis=0) -> Tensor(out)
   args : (Tensor x, Tensor index, Tensor out_grad, Scalar axis=0)
@@ -1398,8 +1404,8 @@
   kernel :
     data_type: out_grad
     func : gather_grad
-  composite : gather_grad(x, index, out_grad, axis, x_grad)
   no_need_buffer : x
+  backward : gather_double_grad
 
 - backward_op : gather_nd_double_grad
   forward : gather_nd_grad (Tensor x, Tensor index, Tensor grad_out) -> Tensor(grad_x)

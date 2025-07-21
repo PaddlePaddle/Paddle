@@ -1802,7 +1802,7 @@
     out : Out
 
 - op : gather
-  backward : gather_grad
+  backward : gather_grad, gather_double_grad
   inputs :
     {x : X, index : Index}
   outputs :
