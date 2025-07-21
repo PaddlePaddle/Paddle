@@ -2386,10 +2386,12 @@ static phi::DDim ValidateShape(const std::vector<int64_t> shape,
         for (size_t i = 0; i < in_dims_vec.size(); ++i)
           if (in_dims_vec[i] != 0 && in_dims_vec[i] != -1)
             in_dims_pdt *= in_dims_vec[i];
-        if (shape_pdt != in_dims_pdt)
-          common::errors::InvalidArgument(
-              "Provided sizes don't multiply up to the size of dim given "
-              "in the input tensor");
+        PADDLE_ENFORCE_EQ(
+            shape_pdt,
+            in_dims_pdt,
+            common::errors::InvalidArgument(
+                "Provided sizes don't multiply up to the size of dim given "
+                "in the input tensor"));
       }
     }
     PADDLE_ENFORCE_EQ(unk_dim_idx,
