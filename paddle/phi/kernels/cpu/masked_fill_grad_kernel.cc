@@ -46,12 +46,12 @@ void MaskedFillGradKernel(const Context& dev_ctx,
     return;
   }
 
-  auto x_grad_dims = x_grad->dims();
+  auto x_dims = x.dims();
   auto mask_dims = mask.dims();
   bool expand_x = false;
   bool expand_value = false;
   auto expanded_size =
-      common::vectorize(funcs::BroadcastTwoDims(x_grad_dims, mask_dims, -1));
+      common::vectorize(funcs::BroadcastTwoDims(x_dims, mask_dims, -1));
 
   DenseTensor mask_expand;
   DenseTensor x_grad_expand;
@@ -65,12 +65,13 @@ void MaskedFillGradKernel(const Context& dev_ctx,
   } else {
     mask_expand = mask;
   }
-
-  if (x_grad->dims() != expanded_dims) {
-    x_grad_expand = Empty<T, Context>(dev_ctx, IntArray(expanded_size));
-    expand_x = true;
-  } else {
-    x_grad_expand = *x_grad;
+  if (x_grad) {
+    if (x_grad->dims() != expanded_dims) {
+      x_grad_expand = Empty<T, Context>(dev_ctx, IntArray(expanded_size));
+      expand_x = true;
+    } else {
+      x_grad_expand = *x_grad;
+    }
   }
 
   if (v_grad) {
@@ -78,7 +79,7 @@ void MaskedFillGradKernel(const Context& dev_ctx,
       value_grad_expand = Empty<T, Context>(dev_ctx, IntArray(expanded_size));
       expand_value = true;
     } else {
-      value_grad_expand = *x_grad;
+      value_grad_expand = *v_grad;
     }
   }
 
