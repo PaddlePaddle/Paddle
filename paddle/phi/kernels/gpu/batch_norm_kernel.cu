@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <iostream>
 #ifdef __NVCC__
 #include "cub/cub.cuh"
 #endif
@@ -534,9 +535,8 @@ void BatchNormKernel(const Context &dev_ctx,
                      DenseTensor *saved_variance,
                      DenseTensor *reserve_space) {
   double epsilon = epsilon_f;
-  const bool trainable_stats = trainable_statistics;
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
-  bool test_mode = is_test && (!trainable_stats);
+  bool test_mode = is_test && (!trainable_statistics);
 
   // Get the size for each dimension.
   // NCHW [batch_size, in_channels, in_height, in_width]
@@ -700,7 +700,7 @@ void BatchNormKernel(const Context &dev_ctx,
   // Now, depending on whether we are running test or not, we have two paths.
   // It is training mode when it's not reference AND not using pre-trained
   // model.
-  bool training = !test_mode && !use_global_stats;
+  bool training = !is_test && !use_global_stats;
   if (!training) {
     // only when test we use input to do computation.
     const auto *est_mean = &mean;
