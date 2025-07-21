@@ -574,5 +574,29 @@ class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
         np.allclose(analytic_grads, grad_numerical, rtol=1e-5, atol=1e-5)
 
 
+class TestAdaptiveLogSoftmaxWithLossAPI_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.places = get_places()
+
+    def test_dygraph_api(self):
+        for place in self.places:
+            paddle.disable_static(place)
+            input = paddle.to_tensor(np.random.random([4, 8]))
+            label = paddle.to_tensor(np.random.random([0]))
+            head_weight = paddle.to_tensor(np.random.random([8, 3]))
+            tail_weights = [
+                [
+                    paddle.to_tensor(np.random.random([8, 4])),
+                    paddle.to_tensor(np.random.random([4, 2])),
+                ]
+            ]
+            cutoffs = [2, 4]
+            out = paddle.nn.functional.adaptive_log_softmax_with_loss(
+                input, label, head_weight, tail_weights, cutoffs
+            )
+            np.testing.assert_allclose(np.array([]), out[0].numpy())
+            paddle.enable_static()
+
+
 if __name__ == "__main__":
     unittest.main()
