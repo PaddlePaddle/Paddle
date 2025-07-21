@@ -496,8 +496,9 @@ __global__ void ModulatedDeformableIm2colGpuKernel<half>(
   int64_t index = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   int64_t offset = blockDim.x * static_cast<int64_t>(gridDim.x);
 
-  half minus_one = -1.0f, height_t = static_cast<half>(height),
-       width_t = static_cast<half>(width);
+  half minus_one = -1.0f,
+       height_t = static_cast<half>(static_cast<float>(height)),
+       width_t = static_cast<half>(static_cast<float>(width));
   for (size_t i = index; i < nthreads; i += offset) {
     const int64_t w_col = i % width_col;
     const int64_t h_col = (i / width_col) % height_col;
