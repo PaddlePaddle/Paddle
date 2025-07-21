@@ -41,7 +41,7 @@ RUN rm -rf /usr/bin/python3 && ln -s /usr/bin/python${PY_VERSION} /usr/bin/pytho
 
 # install pylint and pre-commit
 RUN pip3.10 install pre-commit==2.17.0 pylint pytest astroid isort coverage qtconsole distro
-RUN pip3.10 install attrs pyyaml pathlib2 scipy requests psutil Cython clang-format==13.0.0
+RUN pip3.10 install attrs pyyaml pathlib2 scipy requests psutil Cython clang-format==13.0.0 setuptools==76.1.0
 
 # add more libs
 RUN apt-get update && apt-get install libprotobuf-dev protobuf-compiler libprotoc-dev lsof libgeos-dev zstd \
