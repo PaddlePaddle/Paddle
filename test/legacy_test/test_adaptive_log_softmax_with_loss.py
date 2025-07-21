@@ -393,6 +393,7 @@ class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
             assert not np.any(before != after)
 
     def test_cluster(self):
+        paddle.disable_static()
         model = SimpleModel(16, 20, [5, 10, 15], div_value=2.0)
         x = paddle.randn((128, 16))
         y = paddle.randint(low=0, high=20, shape=[128])
