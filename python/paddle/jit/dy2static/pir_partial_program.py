@@ -1196,7 +1196,7 @@ class PartialProgramLayer:
 
     def _prepare_attributes(self, in_sot_mode=False):
         prog_attr_key = (self.program_id, self.training, in_sot_mode)
-        if self._prog_attrs_map_cache.get(prog_attr_key, None) is None:
+        if prog_attr_key not in self._prog_attrs_map_cache:
             prog_attrs = {
                 'forward_program': self.program.forward_program,
                 'backward_program': self.program.backward_program,
