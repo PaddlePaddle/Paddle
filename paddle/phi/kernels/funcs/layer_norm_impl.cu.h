@@ -748,10 +748,11 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_fast_kernel(
         // Note: reuse x and dout vec register to store dx and d_dropout_src.
         x[it][jt] = static_cast<T>(dx_tmp);
         if (IsFusedDropoutResidualLn) {
-          if (factor == static_cast<T>(1.0f)) { // no dropout
+          if (factor == static_cast<T>(1.0f)) {  // no dropout
             dout[it][jt] = x[it][jt] * factor;
-          }else {
-            dout[it][jt] = x[it][jt] * static_cast<T>(mask_vec[it][jt]) * factor;
+          } else {
+            dout[it][jt] =
+                x[it][jt] * static_cast<T>(mask_vec[it][jt]) * factor;
           }
         }
       }
