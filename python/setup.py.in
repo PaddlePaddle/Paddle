@@ -553,7 +553,7 @@ def is_transpiler():
 
     with open(filename, 'w') as f:
         f.write(cnt % {
-            'mode': 'PSLIB'
+            'mode': 'TRANSPILER'
         })
 
 write_distributed_training_mode_py(filename='@PADDLE_BINARY_DIR@/python/paddle/incubate/distributed/fleet/parameter_server/version.py')
