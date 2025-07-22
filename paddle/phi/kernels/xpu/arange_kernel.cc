@@ -32,10 +32,11 @@ void ArangeTensorKernel(const Context& dev_ctx,
       static_cast<MPType>(GetValue<T, Context>(dev_ctx, start));
   MPType end_value = static_cast<MPType>(GetValue<T, Context>(dev_ctx, end));
   MPType step_value = static_cast<MPType>(GetValue<T, Context>(dev_ctx, step));
-  if (std::isnan(end_value)) {
-    paddle::errors::InvalidArgument(
-        "end_value cannot be inf in arange operation.");
+  if (std::isnan(static_cast<float>(end_value))) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The end value of arange cannot be NaN. Please check your input."));
   }
+
   int64_t size = 0;
   phi::funcs::GetSize(start_value, end_value, step_value, &size);
   out->Resize(common::make_ddim({size}));
