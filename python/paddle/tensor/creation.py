@@ -1083,7 +1083,7 @@ def full_like(
         (numbers.Number, str, core.eager.Tensor, Variable, paddle.pir.Value),
     ):
         raise TypeError(
-            f"The fill_value should be scalar or Tensor, but received {type(fill_value)}."
+            f"The fill_value should be int, float, bool, complex, np.number, string numeric value or Tensor, but received {type(fill_value)}."
         )
 
     if dtype is None:
@@ -1592,7 +1592,7 @@ def full(
         (numbers.Number, str, core.eager.Tensor, Variable, paddle.pir.Value),
     ):
         raise TypeError(
-            f"The fill_value should be scalar or Tensor, but received {type(fill_value)}."
+            f"The fill_value should be int, float, bool, complex, np.number, string numeric values or Tensor, but received {type(fill_value)}."
         )
 
     if dtype is None:

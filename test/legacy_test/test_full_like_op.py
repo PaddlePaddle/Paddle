@@ -118,21 +118,29 @@ class TestFullLikeOpError(unittest.TestCase):
 
     def test_fill_value_errors(self):
         with dygraph_guard():
-            # The fill_value must be one of [int, float, bool, complex, Tensor].
+            # The fill_value must be one of [int, float, bool, complex, Tensor, np.number].
             self.assertRaises(
                 TypeError,
-                paddle.full,
-                shape=[1],
-                dtype="float32",
+                paddle.full_like,
+                x=paddle.to_tensor([1.0, 2.0]),
                 fill_value=np.array([1.0], dtype=np.float32),
+                dtype="float32",
             )
 
             self.assertRaises(
                 TypeError,
-                paddle.full,
-                shape=[1],
-                dtype="float32",
+                paddle.full_like,
+                x=paddle.to_tensor([1.0, 2.0]),
                 fill_value=[1.0],
+                dtype="float32",
+            )
+
+            self.assertRaises(
+                TypeError,
+                paddle.full_like,
+                x=paddle.to_tensor([1.0, 2.0]),
+                fill_value=np.bool_(True),
+                dtype="bool",
             )
 
 
@@ -217,6 +225,16 @@ class TestFullLikeOp4(unittest.TestCase):
             (out.numpy() == np.ones([4]).astype(np.float32)).all(), True
         )
         paddle.enable_static()
+
+
+class TestFullLikeOp5(TestFullLikeOp1):
+    def init_data(self):
+        self.fill_value = True
+        self.shape = [10, 10]
+        self.dtype = np.bool
+
+    def if_enable_cinn(self):
+        pass
 
 
 class TestFullLikeFP16Op(TestFullLikeOp1):

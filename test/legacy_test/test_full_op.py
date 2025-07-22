@@ -406,7 +406,7 @@ class TestFullOpError(unittest.TestCase):
 
     def test_fill_value_errors(self):
         with dygraph_guard():
-            # The fill_value must be one of [int, float, bool, complex, Tensor].
+            # The fill_value must be one of [int, float, bool, complex, np.number, Tensor].
             self.assertRaises(
                 TypeError,
                 paddle.full,
@@ -421,6 +421,14 @@ class TestFullOpError(unittest.TestCase):
                 shape=[1],
                 dtype="float32",
                 fill_value=[1.0],
+            )
+
+            self.assertRaises(
+                TypeError,
+                paddle.full,
+                shape=[1],
+                dtype="bool",
+                fill_value=np.bool_(True),
             )
 
 
