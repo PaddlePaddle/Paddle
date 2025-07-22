@@ -263,6 +263,15 @@ class LinalgLstsqTestCaseBatch2(LinalgLstsqTestCase):
         self._input_shape_2 = (10, 8, 10)
 
 
+class LinalgLstsqTestCaseBatch3(LinalgLstsqTestCase):
+    def init_config(self):
+        self.dtype = 'float64'
+        self.rcond = 1e-15
+        self.driver = "gelss"
+        self._input_shape_1 = (2, 10, 3)
+        self._input_shape_2 = (2, 10, 4)
+
+
 class LinalgLstsqTestCaseLarge1(LinalgLstsqTestCase):
     def init_config(self):
         self.dtype = 'float64'
