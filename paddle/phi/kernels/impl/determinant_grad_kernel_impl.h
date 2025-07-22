@@ -17,37 +17,49 @@
 #include "glog/logging.h"
 #include "paddle/phi/common/amp_type_traits.h"
 
+#include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/cast_kernel.h"
-#include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/determinant_grad_kernel.h"
-#include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
-#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/funcs/matrix_inverse.h"
-#include "paddle/phi/kernels/funcs/unsqueeze.h"
-#include "paddle/phi/kernels/transpose_kernel.h"
+#include "paddle/phi/kernels/lu_kernel.h"
+#include "paddle/phi/kernels/lu_solve_kernel.h"
 
 namespace phi {
 namespace detail {
 
-// epsilon_ should be smaller if linalg.det achieves higher precision
 template <typename T>
-struct FoundZeroEpsilon {
+struct DetZeroEpsilon {
   // default for float16
   static constexpr T value() { return static_cast<T>(1e-3f); }
 };
 
 template <>
-struct FoundZeroEpsilon<float> {
+struct DetZeroEpsilon<float> {
   static constexpr float value() { return 1e-5f; }
 };
 
 template <>
-struct FoundZeroEpsilon<double> {
+struct DetZeroEpsilon<double> {
+  static constexpr double value() { return 1e-12; }
+};
+
+template <typename T>
+struct PerturbEpsilon {
+  // default for float16
+  static constexpr T value() { return static_cast<T>(1e-3f); }
+};
+
+template <>
+struct PerturbEpsilon<float> {
+  static constexpr float value() { return 1e-5f; }
+};
+
+template <>
+struct PerturbEpsilon<double> {
   static constexpr double value() { return 1e-12; }
 };
 
@@ -63,7 +75,7 @@ struct FoundZeroFunctor {
       // found a singular matrix
       return;
     }
-    if (abs(x_[idx]) < FoundZeroEpsilon<RealType>::value()) {
+    if (abs(x_[idx]) < DetZeroEpsilon<RealType>::value()) {
       *res_ = true;
     }
   }
@@ -100,6 +112,107 @@ inline bool CheckMatrixInvertible(const Context& dev_ctx,
   return !(*res);
 }
 
+template <typename T>
+struct BatchedDiagFunctor {
+  BatchedDiagFunctor(int64_t m, const T* diag_data, T* out_data)
+      : m_(m), diag_data_(diag_data), out_data_(out_data) {}
+
+  HOSTDEVICE void operator()(size_t index) const {
+    const int64_t col = index % m_;
+    const int64_t row = (index / m_) % m_;
+    const int64_t batch_id = index / (m_ * m_);
+    if (row == col) {
+      out_data_[index] = diag_data_[batch_id];
+    } else {
+      out_data_[index] = static_cast<T>(0);
+    }
+  }
+
+  int64_t m_;
+  const T* diag_data_;
+  T* out_data_;
+};
+
+template <typename T>
+struct FusedPerturbFunctor {
+  FusedPerturbFunctor(int64_t m,
+                      const T* in_data,
+                      const T* det_data,
+                      T* out_data)
+      : m_(m), in_data_(in_data), det_data_(det_data), out_data_(out_data) {}
+
+  HOSTDEVICE void operator()(int64_t index) const {
+    using RealType = phi::dtype::Real<T>;
+    constexpr RealType decision_epsilon =
+        detail::DetZeroEpsilon<RealType>::value();
+    constexpr RealType perturb_epsilon =
+        detail::PerturbEpsilon<RealType>::value();
+
+    const int64_t col = index % m_;
+    const int64_t row = (index / m_) % m_;
+    const int64_t batch_id = index / (m_ * m_);
+
+    const bool is_singular =
+        std::abs(static_cast<RealType>(det_data_[batch_id])) < decision_epsilon;
+    const T in_val = in_data_[index];
+    if (is_singular && row == col) {
+      out_data_[index] = in_val + static_cast<T>(perturb_epsilon);
+    } else {
+      out_data_[index] = in_val;
+    }
+  }
+
+  int64_t m_;
+  const T* in_data_;
+  const T* det_data_;
+  T* out_data_;
+};
+
+template <typename T>
+struct FusedDetLUFunctor {
+  FusedDetLUFunctor(int64_t m,
+                    const T* grad_data,
+                    const T* lu_data,
+                    const int* pivots_data,
+                    T* out_data)
+      : m_(m),
+        grad_data_(grad_data),
+        lu_data_(lu_data),
+        pivots_data_(pivots_data),
+        out_data_(out_data) {}
+
+  HOSTDEVICE void operator()(int64_t batch_id) const {
+    const T* lu_batch = lu_data_ + batch_id * m_ * m_;
+    const int* pivots_batch = pivots_data_ + batch_id * m_;
+
+    T det_val = static_cast<T>(1);
+    int64_t swaps = 0;
+    for (int64_t i = 0; i < m_; ++i) {
+      det_val *= lu_batch[i * m_ + i];
+      if (pivots_batch[i] != (i + 1)) {
+        swaps++;
+      }
+    }
+    if (swaps % 2 != 0) {
+      det_val = -det_val;
+    }
+
+    if constexpr (std::is_same_v<T, phi::dtype::complex<float>> ||
+                  std::is_same_v<T, phi::dtype::complex<double>>) {
+      out_data_[batch_id] = grad_data_[batch_id] * phi::dtype::conj(det_val);
+    } else {
+      out_data_[batch_id] = grad_data_[batch_id] * det_val;
+    }
+  }
+
+  int64_t m_;
+  const T* det_data_;
+  const T* grad_data_;
+  const T* lu_data_;
+  const int* pivots_data_;
+  T* out_data_;
+};
+
 }  // namespace detail
 
 template <typename T, typename Context>
@@ -134,85 +247,67 @@ void DeterminantGradKernel(const Context& dev_ctx,
     // checked in forward, pass
   }
 
-  // Check Whether the matrix is invertible
-  // (matrix A not invertible) == (det(A)=0)
-  if (!detail::CheckMatrixInvertible<T, Context>(dev_ctx, &out)) {
-    // The matrix is not invertible
-    VLOG(3) << "The input matrix not invertible!";
-    x_grad->Resize(x.dims());
-    phi::Full<T>(
-        dev_ctx, common::vectorize(x.dims()), static_cast<T>(0.0f), x_grad);
-    return;
-  }
+  const auto& x_dims = x.dims();
+  const int64_t m = x_dims[x_dims.size() - 1];
+  const int64_t batch_count = x.numel() / (m * m);
+  const int64_t numel = x.numel();
+  funcs::ForRange<Context> for_range(dev_ctx, numel);
+  funcs::ForRange<Context> for_range_batch(dev_ctx, batch_count);
 
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  auto x_mp = x;
+  auto out_mp = out;
+  auto out_grad_mp = out_grad;
 
-  // The matrix is invertible
-  // let |A| = Determinant(A)
-  // Ref to https://people.maths.ox.ac.uk/gilesm/files/NA-08-01.pdf
-  // we set d|A| = unsqueeze(dA * |A|.conj(), [-1, -2]) *
-  // inverse(A).conj().transpose(-2, -1)
-
-  // First: inverse(A)
-  DenseTensor transpose_inverse_A;
-  {
-    DenseTensor inverse_A;
-    // A must be square matrices!
-    inverse_A.Resize(x.dims());
-    dev_ctx.template Alloc<MPType>(&inverse_A);
-
-    phi::funcs::MatrixInverseFunctor<Context, MPType> mat_inv;
-    if constexpr (!std::is_same_v<MPType, T>) {
-      auto x_mp = phi::Cast<T, Context>(
-          dev_ctx, x, phi::CppTypeToDataType<MPType>::Type());
-      mat_inv(dev_ctx, x_mp, &inverse_A);
-    } else {
-      mat_inv(dev_ctx, x, &inverse_A);
-    }
-
-    auto conj_inverse_A = phi::Conj<MPType>(dev_ctx, inverse_A);
-    VLOG(3) << "inverse(A).conj() dims: " << conj_inverse_A.dims();
-
-    // Second: inverse(A).conj().transpose(-2, -1)
-    transpose_inverse_A =
-        phi::TransposeLast2Dim<MPType>(dev_ctx, conj_inverse_A);
-    VLOG(3) << "(dA * |A|).transpose(-2, -1) dims: "
-            << transpose_inverse_A.dims();
+  if constexpr (!std::is_same_v<MPType, T>) {
+    x_mp = phi::Cast<T, Context>(
+        dev_ctx, x, phi::CppTypeToDataType<MPType>::Type());
+    out_mp = phi::Cast<T, Context>(
+        dev_ctx, out, phi::CppTypeToDataType<MPType>::Type());
+    out_grad_mp = phi::Cast<T, Context>(
+        dev_ctx, out_grad, phi::CppTypeToDataType<MPType>::Type());
   }
 
-  DenseTensor mul_unsqueezed;
-  {
-    DenseTensor mul_dA_detA;
-    // Third: dA * |A|.conj()
-    if constexpr (!std::is_same_v<MPType, T>) {
-      auto out_mp = phi::Cast<T, Context>(
-          dev_ctx, out, phi::CppTypeToDataType<MPType>::Type());
-      auto out_grad_mp = phi::Cast<T, Context>(
-          dev_ctx, out_grad, phi::CppTypeToDataType<MPType>::Type());
+  DenseTensor A_perturbed;
+  A_perturbed.Resize(x_dims);
+  dev_ctx.template Alloc<MPType>(&A_perturbed);
+  detail::FusedPerturbFunctor<MPType> perturb_functor(
+      m,
+      x_mp.data<MPType>(),
+      out_mp.data<MPType>(),
+      A_perturbed.data<MPType>());
+  for_range(perturb_functor);
 
-      auto conj_out_mp = phi::Conj<MPType>(dev_ctx, out_mp);
-      mul_dA_detA = phi::Multiply<MPType>(dev_ctx, out_grad_mp, conj_out_mp);
-    } else {
-      auto conj_out = phi::Conj<T>(dev_ctx, out);
-      mul_dA_detA = phi::Multiply<T>(dev_ctx, out_grad, conj_out);
-    }
-    VLOG(3) << "dA * |A| dims: " << mul_dA_detA.dims();
+  DenseTensor lu_data, pivots, infos;
+  lu_data.Resize(x_dims);
+  pivots.Resize(common::slice_ddim(x_dims, 0, x_dims.size() - 1));
+  infos.Resize({batch_count});
+  LUKernel<MPType, Context>(
+      dev_ctx, A_perturbed, true, &lu_data, &pivots, &infos);
 
-    // Fourth: unsqueeze(dA * |A|, [-1, -2])
-    auto unsqueeze1 = phi::funcs::Unsqueeze(mul_dA_detA, -1);
-    mul_unsqueezed = phi::funcs::Unsqueeze(unsqueeze1, -2);
-    VLOG(3) << "unsqueezed(dA * |A|) dims: " << mul_unsqueezed.dims();
-  }
+  DenseTensor A_grad;
+  A_grad.Resize({batch_count});
+  dev_ctx.template Alloc<MPType>(&A_grad);
+  detail::FusedDetLUFunctor<MPType> det_lu_functor(m,
+                                                   out_grad_mp.data<MPType>(),
+                                                   lu_data.data<MPType>(),
+                                                   pivots.data<int>(),
+                                                   A_grad.data<MPType>());
+  for_range_batch(det_lu_functor);
 
-  // Finally: unsqueeze(dA * |A|) * inverse(A)
-  auto res_mp =
-      phi::Multiply<MPType>(dev_ctx, mul_unsqueezed, transpose_inverse_A);
-  VLOG(3) << "unsqueeze(dA * |A|) * inverse(A) dims: " << res_mp.dims();
+  DenseTensor B;
+  B.Resize(x_dims);
+  dev_ctx.template Alloc<MPType>(&B);
+  detail::BatchedDiagFunctor<MPType> diag_functor(
+      m, A_grad.data<MPType>(), B.data<MPType>());
+  for_range(diag_functor);
 
-  x_grad->Resize(x.dims());
-  VLOG(3) << "d|A| dims: " << x_grad->dims();
+  DenseTensor grad_mp;
+  grad_mp.Resize(x_dims);
+  LuSolveKernel<MPType, Context>(dev_ctx, B, lu_data, pivots, "C", &grad_mp);
 
-  phi::Copy(dev_ctx, res_mp, dev_ctx.GetPlace(), false, x_grad);
+  x_grad->Resize(x_dims);
+  phi::Copy(dev_ctx, grad_mp, dev_ctx.GetPlace(), false, x_grad);
 }
 
 }  // namespace phi
