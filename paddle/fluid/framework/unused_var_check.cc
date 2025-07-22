@@ -23,24 +23,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
-PHI_DEFINE_EXPORTED_bool(
-    enable_unused_var_check,
-    false,
-    "Checking whether operator contains unused inputs, "
-    "especially for grad operator. It should be in unittest.");
 
 namespace paddle::framework {
 
 std::unordered_set<std::string> *GetThreadLocalUsedVarNameSet() {
   thread_local std::unordered_set<std::string> used_var_name_set;
   return &used_var_name_set;
-}
-
-void LogVarUsageIfUnusedVarCheckEnabled(const std::string &name) {
-  if (FLAGS_enable_unused_var_check) {
-    VLOG(6) << "Variable used:" << name;
-    GetThreadLocalUsedVarNameSet()->insert(name);
-  }
 }
 
 static const std::unordered_set<std::string> &GetOpWithUnusedVarAllowSet() {
@@ -69,9 +57,7 @@ static const std::unordered_set<std::string> &GetOpWithUnusedVarAllowSet() {
       "precision_recall",                   // 1
       "fusion_seqpool_cvm_concat",          // 2
       "fused_batch_norm_act",               // 2
-      "fused_batch_norm_act_grad",          // 2
-      "data_norm",                          // 0
-      "data_norm_grad",                     // 0
+      "fused_batch_norm_act_grad",          // 2                   // 0
       "update_loss_scaling",                // 0
       "fused_embedding_eltwise_layernorm",  // 0
       "trunc_grad",                         // 1

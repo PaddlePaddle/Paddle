@@ -137,6 +137,7 @@ DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Reciprocal, ReciprocalGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Sqrt, SqrtGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Rsqrt, RsqrtGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Relu6, Relu6GradFunctor);
+
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(Softsign, SoftsignGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(LogSigmoid, LogSigmoidGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(Log, LogGradFunctor);
@@ -149,6 +150,7 @@ DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Relu, ReluGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Tanh, TanhGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Sigmoid, SigmoidGradFunctor);
 
+DEFINE_CPU_ACTIVATION_GRAD_KERNEL_NODEP(Rint, ZeroGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_NODEP(Round, ZeroGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_NODEP(Floor, ZeroGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_NODEP(Ceil, ZeroGradFunctor);
@@ -210,6 +212,9 @@ void EluGradKernel(const Context& dev_ctx,
                    float alpha,
                    DenseTensor* dx) {
   dev_ctx.template Alloc<T>(dx);
+  if (dx->numel() == 0) {
+    return;
+  }
 
   auto x_flatten =
       EigenVector<T>::Flatten(GET_DATA_SAFELY(&x, "Input", "X", "elu_grad"));
@@ -478,12 +483,31 @@ PD_REGISTER_ACTIVATION_DOUBLE_GRAD_KERNEL_WITH_COMPLEX(log_double_grad,
 PD_REGISTER_ACTIVATION_GRAD_KERNEL_WITH_COMPLEX(hardswish_grad,
                                                 HardSwishGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(swish_grad, SwishGradKernel)
-PD_REGISTER_ACTIVATION_GRAD_KERNEL(round_grad, RoundGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(floor_grad, FloorGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(ceil_grad, CeilGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(celu_grad, CeluGradKernel)
 PD_REGISTER_ACTIVATION_DOUBLE_GRAD_KERNEL(celu_double_grad,
                                           CeluDoubleGradKernel)
+
+PD_REGISTER_KERNEL(rint_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::RintGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
+
+PD_REGISTER_KERNEL(round_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::RoundGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(pow_grad,
                    CPU,

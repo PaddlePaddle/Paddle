@@ -790,6 +790,17 @@ class ClipGradByGlobalNorm(ClipGradBase):
             global_norm_var.append(global_norm_var_fp64)
 
         global_norm_var = async_add_n(global_norm_var)
+
+        if self.should_comm_on_shard_dim and hasattr(self, 'sharding_group'):
+            paddle.distributed.all_reduce(
+                global_norm_var._local_value(), group=self.sharding_group
+            ).wait()
+
+        if self.should_comm_on_shard_dim and hasattr(self, 'mp_group'):
+            paddle.distributed.all_reduce(
+                global_norm_var._local_value(), group=self.mp_group
+            ).wait()
+
         global_norm_var = paddle.sqrt(global_norm_var)
         max_global_norm = paddle.full(
             shape=[1], dtype=sum_dtype, fill_value=self.clip_norm
@@ -1051,11 +1062,11 @@ class ClipGradByGlobalNorm(ClipGradBase):
             )
 
         if self.should_comm_on_shard_dim and self.has_dist_param:
-            global_norm_dist_var = paddle._C_ops.c_allreduce_sum(
-                global_norm_dist_var, self.sharding_group.id, True, False
+            global_norm_dist_var = paddle._C_ops.all_reduce(
+                global_norm_dist_var, self.sharding_group.id, dist.ReduceOp.SUM
             )
-            global_norm_dist_var = paddle._C_ops.c_allreduce_sum(
-                global_norm_dist_var, self.mp_group.id, True, False
+            global_norm_dist_var = paddle._C_ops.all_reduce(
+                global_norm_dist_var, self.mp_group.id, dist.ReduceOp.SUM
             )
             if global_norm_var is None:
                 global_norm_var = global_norm_dist_var
@@ -1069,8 +1080,10 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 shape=[1], dtype=sum_dtype, fill_value=0.0
             )
         if self.should_comm_on_shard_dim and self.has_not_dist_param:
-            global_norm_not_dist_var = paddle._C_ops.c_allreduce_sum(
-                global_norm_not_dist_var, self.sharding_group.id, True, False
+            global_norm_not_dist_var = paddle._C_ops.all_reduce(
+                global_norm_not_dist_var,
+                self.sharding_group.id,
+                dist.ReduceOp.SUM,
             )
             if global_norm_var is None:
                 global_norm_var = global_norm_not_dist_var
@@ -1478,8 +1491,9 @@ def append_gradient_clip_ops(param_grads):
     for p, g in param_grads:
         if g is None:
             continue
-        with p.block.program._optimized_guard([p, g]), framework.name_scope(
-            'gradient_clip'
+        with (
+            p.block.program._optimized_guard([p, g]),
+            framework.name_scope('gradient_clip'),
         ):
             clip_attr = getattr(p, 'gradient_clip_attr', None)
             if clip_attr is None:
@@ -1496,8 +1510,9 @@ def append_gradient_clip_ops(param_grads):
     for p, g in param_grads:
         if g is None:
             continue
-        with p.block.program._optimized_guard([p, g]), framework.name_scope(
-            'gradient_clip'
+        with (
+            p.block.program._optimized_guard([p, g]),
+            framework.name_scope('gradient_clip'),
         ):
             param, new_grad = clip_attr._create_operators(param=p, grad=g)
             param_new_grad_name_dict[param.name] = new_grad.name

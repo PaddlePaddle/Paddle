@@ -27,6 +27,9 @@
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 
+#include "paddle/ap/include/memory/guard.h"
+#include "paddle/ap/include/paddle/pass/ap_generic_drr_pass.h"
+#include "paddle/ap/include/paddle/pass/convert_pd_facade_to_ap_facade.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/accuracy_check_pass.h"
@@ -38,6 +41,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/dynamic_reshape_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/fold_full_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/fold_manipulation_ops_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/fold_output_data_derivable_ops_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/fuse_parallel_matmul_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/fuse_shape_ops_into_generate_shape_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/fusion_fallback_pass.h"
@@ -52,6 +56,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/pir_to_py_code_converter.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/reduce_as_to_sum_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/remove_assign_out_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/remove_redundant_full_int_array_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/remove_redundant_group_output_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/replace_dynamic_expand_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/replace_zero_scale_to_full_pass.h"
@@ -62,6 +67,7 @@
 #include "paddle/fluid/pir/transforms/general/common_subexpression_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/gpu/fused_gemm_epilogue_pass.h"
+#include "paddle/pir/include/core/ir_printer.h"
 
 COMMON_DECLARE_bool(cinn_specify_input_dynamic_dim);
 COMMON_DECLARE_string(cinn_input_dynamic_dim_spec_file);
@@ -70,7 +76,10 @@ COMMON_DECLARE_bool(disable_dyshape_in_train);
 COMMON_DECLARE_bool(enable_cinn_accuracy_check);
 COMMON_DECLARE_bool(enable_fuse_parallel_matmul_pass);
 COMMON_DECLARE_bool(enable_fusion_fallback);
+COMMON_DECLARE_bool(enable_ap);
+COMMON_DECLARE_bool(ap_enable_classic_gemm_epilogue);
 COMMON_DECLARE_bool(logging_pir_py_code_dump_symbolic_dims);
+COMMON_DECLARE_bool(cinn_debug);
 
 namespace cinn::dialect::ir {
 
@@ -126,15 +135,23 @@ void ApplyPdToCinnPass(
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   pass_manager->AddPass(cinn::dialect::ir::CreateReduceAsToSumPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateReplaceZeroScaleToFullPass());
+  if (!FLAGS_enable_ap || FLAGS_ap_enable_classic_gemm_epilogue) {
 #if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060) || \
     defined(PADDLE_WITH_HIP)
-  pass_manager->AddPass(pir::CreateFusedGemmEpiloguePass());
+
+#ifndef CINN_WITH_Z100
+    pass_manager->AddPass(pir::CreateFusedGemmEpiloguePass());
 #endif
+
+#endif
+  }
   if (FLAGS_enable_fuse_parallel_matmul_pass) {
     pass_manager->AddPass(cinn::dialect::ir::CreateFuseParallelMatmulPass());
   }
   pass_manager->AddPass(cinn::dialect::ir::CreateRemoveAssignOutPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateFoldFullOpPass());
+  pass_manager->AddPass(
+      cinn::dialect::ir::CreateFoldOutputDataDerivableOpsPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateConv2dTransposeFilterPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateConvertMEA2FAPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateConvertFA2QKVMHAPass());
@@ -207,6 +224,44 @@ void ApplyDivideGroupOpToFusionOpPass(
   pass_manager->Run(program);
 }
 
+void ApplyApGenericDrrPass(
+    ::pir::Program* program,
+    const std::function<std::shared_ptr<pir::PassManager>()>&
+        CreatePassManager) {
+  {
+    pir::IrPrinter(LOG(ERROR) << "before ConvertPdFacadeToApFacadePass:\n")
+        .PrintProgram(program);
+    std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
+    pass_manager->AddPass(ap::paddle::CreateConvertPdFacadeToApFacadePass());
+    pass_manager->Run(program);
+    pir::IrPrinter(LOG(ERROR) << "after ConvertPdFacadeToApFacadePass:\n")
+        .PrintProgram(program);
+  }
+  ap::memory::Guard guard{};
+  if (auto pass = ap::paddle::CreateApGenericClassicDrrPass(
+          guard.circlable_ref_list())) {
+    std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
+    pass_manager->AddPass(std::move(pass.value()));
+    pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
+    pir::IrPrinter(LOG(ERROR) << "before ApGenericClassicDrrPass:\n")
+        .PrintProgram(program);
+    pass_manager->Run(program);
+    pir::IrPrinter(LOG(ERROR) << "after ApGenericClassicDrrPass:\n")
+        .PrintProgram(program);
+  }
+  if (auto pass = ap::paddle::CreateApGenericAbstractDrrPass(
+          guard.circlable_ref_list())) {
+    std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
+    pass_manager->AddPass(std::move(pass.value()));
+    pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
+    pir::IrPrinter(LOG(ERROR) << "before ApGenericAbstractDrrPass:\n")
+        .PrintProgram(program);
+    pass_manager->Run(program);
+    pir::IrPrinter(LOG(ERROR) << "after ApGenericAbstractDrrPass:\n")
+        .PrintProgram(program);
+  }
+}
+
 void ApplyCinnLowerPass(
     ::pir::Program* program,
     const std::function<std::shared_ptr<pir::PassManager>()>&
@@ -228,6 +283,10 @@ void ApplyCinnLowerPass(
     VLOG(0) << "Enable CINN Accuracy Check Pass";
     pass_manager->AddPass(cinn::dialect::ir::CreateAccuracyCheckPass());
   }
+  if (FLAGS_enable_ap) {
+    VLOG(0) << "Enable AP Generic DRR Pass";
+    ApplyApGenericDrrPass(program, CreatePassManager);
+  }
   if (FLAGS_enable_fusion_fallback) {
     VLOG(0) << "Enable Fusion Fallback Pass";
     pass_manager->AddPass(cinn::dialect::ir::CreateFusionFallbackPass());
@@ -240,7 +299,8 @@ void ApplyCinnLowerPass(
   }
   pass_manager->AddPass(
       cinn::dialect::ir::CreateSplitGenerateShapeIntoShapeOpsPass());
-
+  pass_manager->AddPass(
+      cinn::dialect::ir::CreateRemoveRedundantFullIntArrayPass());
   pass_manager->Run(program);
 }
 
@@ -267,6 +327,7 @@ void ApplyCinnPass(
     ::pir::Program* program,
     const std::function<std::shared_ptr<pir::PassManager>()>& CreatePassManager,
     bool is_train_mode) {
+  LOG_FIRST_N(INFO, 1) << "Compiling subgraph with CINN backend ...";
   const uint32_t origin_num_ops = program->num_ops();
   if (origin_num_ops == 0) return;
 
@@ -290,9 +351,11 @@ void ApplyCinnPass(
   PirToPyCodeConverter(program)
       .file_name("fusion_op_programs.py")
       .SaveIfFlagEnabled();
-  LOG(INFO) << "FusionOp count before lowering : *****[ "
-            << GetOpCount<cinn::dialect::FusionOp>(program->module_op())
-            << " ]*****";
+  if (FLAGS_cinn_debug) {
+    LOG(INFO) << "FusionOp count before lowering : *****[ "
+              << GetOpCount<cinn::dialect::FusionOp>(program->module_op())
+              << " ]*****";
+  }
   if (VLOG_IS_ON(1)) {
     auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(program);
     std::cout << "Program before lowering: \n"
@@ -303,15 +366,19 @@ void ApplyCinnPass(
   auto start = std::chrono::high_resolution_clock::now();
   ApplyCinnLowerPass(program, CreatePassManager);
   auto end = std::chrono::high_resolution_clock::now();
-  auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start);
-  LOG(INFO) << "Time of lowering and compiling program: ***** [ "
-            << duration.count() << " ] ***** seconds.";
+  if (FLAGS_cinn_debug) {
+    auto duration =
+        std::chrono::duration_cast<std::chrono::seconds>(end - start);
+    LOG(INFO) << "Time of lowering and compiling program: ***** [ "
+              << duration.count() << " ] ***** seconds.";
 
-  const uint32_t new_num_ops = program->num_ops();
-  LOG(INFO) << "Number of ops in the original program is: " << origin_num_ops
-            << ", after lowering it becomes: " << new_num_ops
-            << ". (compression ratio: " << new_num_ops << "/" << origin_num_ops
-            << " = " << static_cast<float>(new_num_ops) / origin_num_ops << ")";
+    const uint32_t new_num_ops = program->num_ops();
+    LOG(INFO) << "Number of ops in the original program is: " << origin_num_ops
+              << ", after lowering it becomes: " << new_num_ops
+              << ". (compression ratio: " << new_num_ops << "/"
+              << origin_num_ops << " = "
+              << static_cast<float>(new_num_ops) / origin_num_ops << ")";
+  }
 }
 
 }  // namespace cinn::dialect::ir

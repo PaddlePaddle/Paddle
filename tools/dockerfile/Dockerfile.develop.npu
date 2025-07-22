@@ -1,106 +1,90 @@
-# Docker Image for PaddlePaddle NPU
+# Docker Image for PaddlePaddle Ascend NPU
 
-FROM ubuntu:20.04
+FROM <baseimg>
 LABEL maintainer="PaddlePaddle Authors <paddle-dev@baidu.com>"
 
-ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install -y apt-utils
-RUN ln -snf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tzdata
-RUN apt-get update && apt-get install -y software-properties-common && add-apt-repository ppa:deadsnakes/ppa && add-apt-repository ppa:ubuntu-toolchain-r/test
-RUN apt-get update && apt-get install -y curl wget vim git unzip unrar tar ntp xz-utils libssl-dev bzip2 gzip make automake \
-    coreutils language-pack-zh-hans libsm6 libxext6 libxrender-dev libgl1-mesa-glx libsqlite3-dev libopenblas-dev liblapack3 \
-    bison libjpeg-dev zlib1g zlib1g-dev swig locales net-tools libtool numactl libnuma-dev liblzma-dev libbz2-dev libblas-dev \
-    openssl openssh-server libffi-dev pciutils libblas3 liblapack-dev libzstd-dev default-jre libgcc-s1 gcc g++ gfortran gdb
 
-# workdir
-WORKDIR /opt
+# HwHiAiUser
+RUN groupadd -g 1000 HwHiAiUser && \
+    useradd -u 1000 -g 1000 -m -d /home/HwHiAiUser HwHiAiUser
 
-# GCC 8.4
-RUN apt-get install -y gcc-8 g++-8 gfortran-8
-RUN update-alternatives --install /usr/bin/g++  g++  /usr/bin/g++-8  90 && \
-    update-alternatives --install /usr/bin/gcc  gcc  /usr/bin/gcc-8  90 && \
-    update-alternatives --install /usr/bin/gfortran  gfortran  /usr/bin/gfortran-8  90
+RUN mkdir -p /usr/local/Ascend/driver
+WORKDIR /usr/local/Ascend
+ARG CANN_VERSION
+ARG SYSTEM
+ARG NPU_VERSION
 
-# cmake 3.27.7
-RUN wget -q https://cmake.org/files/v3.27/cmake-3.27.7-linux-$(uname -m).sh && \
-    chmod +x cmake-3.27.7-linux-$(uname -m).sh && mkdir -p /opt/cmake-3.27.7 && \
-    ./cmake-3.27.7-linux-$(uname -m).sh --prefix=/opt/cmake-3.27.7 --skip-license && \
-    rm -rf cmake-3.27.7-linux-$(uname -m).sh
-ENV PATH=/opt/cmake-3.27.7/bin:${PATH}
+# install CANN requirement
+# https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/700alpha003/softwareinstall/instg/instg_0026.html
+RUN apt-get update -y && apt-get install -y zlib1g zlib1g-dev libsqlite3-dev openssl libssl-dev libffi-dev libbz2-dev \
+    libxslt1-dev unzip pciutils net-tools libblas-dev gfortran libblas3 liblapack-dev liblapack3 libopenblas-dev
 
-# default python version
-ARG PY_VERSION=3.10
-RUN apt-get install -y python3-distutils python3.8 python3.8-dev python3.9 python3.9-dev python3.10 python3.10-dev
+RUN pip3.8 install --upgrade pip setuptools wheel && \
+    pip3.9 install --upgrade pip setuptools wheel && \
+    pip3.10 install --upgrade pip setuptools wheel
 
-# install pip
-RUN curl -s -q https://bootstrap.pypa.io/get-pip.py | /usr/bin/python3.8 && \
-    curl -s -q https://bootstrap.pypa.io/get-pip.py | /usr/bin/python3.9 && \
-    curl -s -q https://bootstrap.pypa.io/get-pip.py | /usr/bin/python3.10
+RUN pip3.8 install 'numpy>=1.19.2' 'decorator>=4.4.0' 'sympy>=1.5.1' 'cffi>=1.12.3' 'protobuf>=3.13.0' && \
+    pip3.9 install 'numpy>=1.19.2' 'decorator>=4.4.0' 'sympy>=1.5.1' 'cffi>=1.12.3' 'protobuf>=3.13.0' && \
+    pip3.10 install 'numpy>=1.19.2' 'decorator>=4.4.0' 'sympy>=1.5.1' 'cffi>=1.12.3' 'protobuf>=3.13.0'
 
-# set default python
-RUN rm -rf /usr/bin/python3 && ln -s /usr/bin/python${PY_VERSION} /usr/bin/python3 && \
-    rm -rf /usr/bin/python  && ln -s /usr/bin/python${PY_VERSION} /usr/bin/python
+RUN pip3.8 install attrs pyyaml pathlib2 scipy requests psutil absl-py && \
+    pip3.9 install attrs pyyaml pathlib2 scipy requests psutil absl-py && \
+    pip3.10 install attrs pyyaml pathlib2 scipy requests psutil absl-py
 
-# install pylint and pre-commit
-RUN pip3.8 install pre-commit==2.17.0 pylint pytest astroid isort coverage qtconsole distro && \
-    pip3.9 install pre-commit==2.17.0 pylint pytest astroid isort coverage qtconsole distro && \
-    pip3.10 install pre-commit==2.17.0 pylint pytest astroid isort coverage qtconsole distro
-RUN pip3.8 install attrs pyyaml pathlib2 scipy requests psutil Cython clang-format==13.0.0 && \
-    pip3.9 install attrs pyyaml pathlib2 scipy requests psutil Cython clang-format==13.0.0 && \
-    pip3.10 install attrs pyyaml pathlib2 scipy requests psutil Cython clang-format==13.0.0
+# update envs for driver
+ENV LD_LIBRARY_PATH=/usr/local/Ascend/driver/lib64:$LD_LIBRARY_PATH
+ENV LD_LIBRARY_PATH=/usr/local/Ascend/driver/lib64/common:$LD_LIBRARY_PATH
+ENV LD_LIBRARY_PATH=/usr/local/Ascend/driver/lib64/driver:$LD_LIBRARY_PATH
 
-# add more libs
-RUN apt-get update && apt-get install libprotobuf-dev protobuf-compiler libprotoc-dev lsof libgeos-dev \
-    pkg-config libhdf5-103 libhdf5-dev lrzsz libsndfile1 tree ninja-build -y
+# Install Ascend toolkit
+RUN wget -q --no-proxy https://paddle-ascend.bj.bcebos.com/cvmodel/ascend-materials/Ascend-cann-toolkit_${CANN_VERSION}_linux-${SYSTEM}.run --no-check-certificate && \
+    chmod +x Ascend-cann-toolkit_${CANN_VERSION}_linux-*.run && \
+    ./Ascend-cann-toolkit_${CANN_VERSION}_linux-*.run --install --quiet && \
+    echo "source /usr/local/Ascend/ascend-toolkit/set_env.sh" >>~/.bashrc && \
+    rm -rf Ascend-cann-toolkit_${CANN_VERSION}_linux-*.run
 
-# install Paddle requirement
-RUN wget --no-check-certificate https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/requirements.txt -O requirements.txt && \
-    pip3.8 install -r requirements.txt && \
-    pip3.9 install -r requirements.txt && \
-    pip3.10 install -r requirements.txt && rm -rf requirements.txt
+# Install Ascend Kernels
+ARG ASCEND_KLS=Ascend-cann-kernels-${NPU_VERSION}_${CANN_VERSION}_linux-${SYSTEM}.run
+RUN wget -q --no-proxy https://paddle-ascend.bj.bcebos.com/cvmodel/ascend-materials/${ASCEND_KLS} --no-check-certificate && \
+    chmod +x ${ASCEND_KLS} && ./${ASCEND_KLS} --install --quiet && rm -rf ${ASCEND_KLS}
 
-RUN wget --no-check-certificate https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/unittest_py/requirements.txt -O requirements.txt && \
-    pip3.8 install -r requirements.txt && \
-    pip3.9 install -r requirements.txt && \
-    pip3.10 install -r requirements.txt && rm -rf requirements.txt
+# Install Ascend nnal
+RUN wget -q --no-proxy https://paddle-ascend.bj.bcebos.com/cvmodel/ascend-materials/Ascend-cann-nnal_${CANN_VERSION}_linux-${SYSTEM}.run --no-check-certificate && \
+    chmod +x Ascend-cann-nnal_${CANN_VERSION}_linux-${SYSTEM}.run && \
+    . /usr/local/Ascend/ascend-toolkit/set_env.sh && \
+    ./Ascend-cann-nnal_${CANN_VERSION}_linux-${SYSTEM}.run --install --quiet &&\
+    rm -rf Ascend-cann-nnal_${CANN_VERSION}_linux-${SYSTEM}.run && \
+    echo "source /usr/local/Ascend/nnal/atb/set_env.sh" >> /root/.bashrc
 
-# git credential to skip password typing
-RUN git config --global credential.helper store
+# install post process ops
+RUN wget -q --no-proxy https://paddle-ascend.bj.bcebos.com/code-share-master.zip --no-check-certificate && \
+    . /usr/local/Ascend/ascend-toolkit/set_env.sh && \
+    unzip code-share-master.zip && \
+    cd code-share-master/build && bash build_ops.sh > /dev/null && \
+    chmod +x aie_ops.run && ./aie_ops.run --extract=/usr/local/Ascend/ && \
+    rm -rf /usr/local/Ascend/code-share-master
 
-# Fix locales to en_US.UTF-8
-RUN localedef -i en_US -f UTF-8 en_US.UTF-8
+# update env for ascendc
+ENV ASCEND_CUSTOM_OPP_PATH=/usr/local/Ascend/vendors/aie_ascendc
 
-# patchelf 0.14.5 - https://github.com/NixOS/patchelf/pull/216
-RUN wget -q --no-check-certificate https://github.com/NixOS/patchelf/archive/refs/tags/0.14.5.tar.gz && \
-    tar xzf 0.14.5.tar.gz && cd patchelf-0.14.5 && \
-    ./bootstrap.sh  > /dev/null && ./configure > /dev/null && \
-    make -j16 > /dev/null && make install > /dev/null && \
-    cd .. && rm -rf patchelf-0.14.5 && rm -rf 0.14.5.tar.gz
+# DEV image should open error level log
+# 0 debug; 1 info; 2 warning; 3 error; 4 null
+ENV ASCEND_GLOBAL_LOG_LEVEL=3
 
-# ccache 4.6.3
-RUN wget -q https://github.com/ccache/ccache/releases/download/v4.6.3/ccache-4.6.3.tar.gz && \
-    tar xf ccache-4.6.3.tar.gz && mkdir /usr/local/ccache-4.6.3 && cd ccache-4.6.3 && \
-    mkdir build && cd build && \
-    cmake -DCMAKE_BUILD_TYPE=Release -DREDIS_STORAGE_BACKEND=OFF \
-    -DCMAKE_INSTALL_PREFIX=/usr/local/ccache-4.6.3 ..  > /dev/null && \
-    make -j16 > /dev/null && make install > /dev/null && \
-    cd ../../ && rm -rf ccache-4.6.3.tar.gz && rm -rf ccache-4.6.3 && \
-    ln -s /usr/local/ccache-4.6.3/bin/ccache /usr/local/bin/ccache
+# environment for HCCL
+ENV HCCL_CONNECT_TIMEOUT=7200
+ENV HCCL_WHITELIST_DISABLE=1
+ENV HCCL_SECURITY_MODE=1
+ENV HCCL_BUFFSIZE=120
 
-ENV CCACHE_MAXSIZE=80G \
-    CCACHE_LIMIT_MULTIPLE=0.8 \
-    CCACHE_SLOPPINESS=clang_index_store,time_macros,include_file_mtime
+# environment for PaddlePaddle
+ENV FLAGS_npu_storage_format=0
+ENV FLAGS_use_stride_kernel=0
+ENV FLAGS_allocator_strategy=naive_best_fit
+ENV PADDLE_XCCL_BACKEND=npu
 
-# Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
-RUN mkdir /var/run/sshd && echo 'root:root' | chpasswd && \
-    sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config && \
-    sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
-CMD source ~/.bashrc
-
-# /proc/sys/kernel/core_pattern
-RUN mkdir -p /var/core
+RUN rm -rf /usr/local/Ascend/driver
 
 # Clean
 RUN apt-get clean -y

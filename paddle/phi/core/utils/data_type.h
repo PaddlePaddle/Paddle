@@ -20,6 +20,10 @@ limitations under the License. */
 
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/enforce.h"
+
+#ifdef PADDLE_WITH_FLAGCX
+#include <flagcx.h>
+#endif
 namespace phi {
 
 #define _PhiForEachDataTypeHelper_(callback, cpp_type, data_type) \
@@ -241,7 +245,8 @@ inline ncclDataType_t ToNCCLDataType(DataType type) {
     return ncclUint8;
   } else if (type == DataType::INT8) {
     return ncclInt8;
-  } else if (type == DataType::BOOL) {
+  } else if (type == DataType::BOOL || type == DataType::FLOAT8_E4M3FN ||
+             type == DataType::FLOAT8_E5M2) {
     return ncclUint8;
 #if (NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000) || \
     defined(PADDLE_WITH_HIP)
@@ -275,6 +280,32 @@ inline BKCLDataType ToBKCLDataType(DataType type) {
   } else {
     PADDLE_THROW(
         errors::Unimplemented("This datatype in bkcl is not supported."));
+  }
+}
+#endif
+#if defined(PADDLE_WITH_FLAGCX)
+inline flagcxDataType_t ToFlagcxDataType(DataType type) {
+  if (type == DataType::FLOAT32) {
+    return flagcxFloat;
+  } else if (type == DataType::FLOAT64) {
+    return flagcxDouble;
+  } else if (type == DataType::INT32) {
+    return flagcxInt;
+  } else if (type == DataType::INT64) {
+    return flagcxInt64;
+  } else if (type == DataType::FLOAT16) {
+    return flagcxFloat16;
+  } else if (type == DataType::UINT8) {
+    return flagcxUint8;
+  } else if (type == DataType::INT8) {
+    return flagcxInt8;
+  } else if (type == DataType::BOOL) {
+    return flagcxUint8;
+  } else if (type == DataType::BFLOAT16) {
+    return flagcxBfloat16;
+  } else {
+    PADDLE_THROW(
+        errors::Unimplemented("This datatype in flagcx is not supported."));
   }
 }
 #endif

@@ -42,7 +42,7 @@ __global__ void fill_grad_kernel(int64_t size,
 }
 
 template <typename T, typename Context>
-void FillDiagonalTensorGradKernel(const Context &ctx,
+void FillDiagonalTensorGradKernel(const Context &dev_ctx,
                                   const DenseTensor &out_grad,
                                   int64_t offset,
                                   int dim1,
@@ -52,9 +52,9 @@ void FillDiagonalTensorGradKernel(const Context &ctx,
   auto matrows = 1;
 
   if (x_grad) {
-    auto *data = ctx.template Alloc<T>(x_grad);
+    auto *data = dev_ctx.template Alloc<T>(x_grad);
     auto dx_dims = x_grad->dims();
-    phi::Copy(ctx, out_grad, ctx.GetPlace(), false, x_grad);
+    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
 
     for (int i = 0; i < dx_dims.size(); i++) {
       if (i != dim1 && i != dim2) {
@@ -71,11 +71,11 @@ void FillDiagonalTensorGradKernel(const Context &ctx,
 
     auto size = x_grad->numel();
 
-    auto stream = ctx.stream();
+    auto stream = dev_ctx.stream();
     DenseTensor tensor_tmp;
     tensor_tmp.Resize(common::make_ddim({2 + matrows}));
-    int64_t *memory_block_cu = ctx.template Alloc<int64_t>(&tensor_tmp);
-    const auto gpu_place = ctx.GetPlace();
+    int64_t *memory_block_cu = dev_ctx.template Alloc<int64_t>(&tensor_tmp);
+    const auto gpu_place = dev_ctx.GetPlace();
     memory_utils::Copy(gpu_place,
                        memory_block_cu,
                        CPUPlace(),

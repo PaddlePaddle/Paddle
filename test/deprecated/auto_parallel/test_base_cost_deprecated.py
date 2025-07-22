@@ -28,7 +28,7 @@ from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.static.cluster import Cluster
 from paddle.distributed.auto_parallel.static.completion import Completer
 from paddle.distributed.auto_parallel.static.cost import (
-    AllreduceSumOpCost,
+    AllReduceOpCost,
     _g_op_cost_factory,
 )
 from paddle.distributed.auto_parallel.static.cost.base_cost import (
@@ -91,9 +91,10 @@ class MLPLayer(nn.Layer):
 
 
 def mlp_forward(train_program, start_program):
-    with static.program_guard(
-        train_program, start_program
-    ), utils.unique_name.guard():
+    with (
+        static.program_guard(train_program, start_program),
+        utils.unique_name.guard(),
+    ):
         batch_size = 4
         hidden_size = 1024
         sequence_len = 512
@@ -190,7 +191,7 @@ class TestBaseCost(unittest.TestCase):
                 if op.input_arg_names:
                     var_names = op.input_arg_names[0]
                     comm_descs = build_comm_desc_from_dist_op(
-                        "c_allreduce_sum",
+                        "all_reduce",
                         dist_op,
                         dist_context,
                         var_names,
@@ -200,7 +201,7 @@ class TestBaseCost(unittest.TestCase):
                     )
                     self.assertTrue(isinstance(comm_descs, dict) and comm_descs)
                     comm_descs = build_comm_desc_from_dist_op(
-                        "c_allreduce_sum",
+                        "all_reduce",
                         dist_op,
                         dist_context,
                         var_names,
@@ -211,7 +212,7 @@ class TestBaseCost(unittest.TestCase):
                     self.assertTrue(isinstance(comm_descs, dict) and comm_descs)
 
                     comm_costs = build_comm_costs_from_descs(
-                        AllreduceSumOpCost,
+                        AllReduceOpCost,
                         dist_context,
                         processes,
                         comm_descs,

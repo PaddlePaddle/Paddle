@@ -1019,7 +1019,7 @@ static void Interpolate3DCPUFwd(
 
 template <typename T, typename Context>
 void InterpolateKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& x,
     const paddle::optional<DenseTensor>& out_size,
     const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
@@ -1033,9 +1033,14 @@ void InterpolateKernel(
     bool align_corners,
     int align_mode,
     DenseTensor* output) {
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(output);
+    return;
+  }
+
   auto input_dims = x.dims();
   if (input_dims.size() == 3) {  // 1D interpolation
-    Interpolate1DCPUFwd<T, Context>(ctx,
+    Interpolate1DCPUFwd<T, Context>(dev_ctx,
                                     x,
                                     out_size,
                                     size_tensor,
@@ -1049,7 +1054,7 @@ void InterpolateKernel(
                                     output);
 
   } else if (input_dims.size() == 4) {  // 2D interpolation
-    Interpolate2DCPUFwd<T>(ctx,
+    Interpolate2DCPUFwd<T>(dev_ctx,
                            x,
                            out_size,
                            size_tensor,
@@ -1063,7 +1068,7 @@ void InterpolateKernel(
                            align_mode,
                            output);
   } else if (input_dims.size() == 5) {  // 3D interpolation
-    Interpolate3DCPUFwd<T>(ctx,
+    Interpolate3DCPUFwd<T>(dev_ctx,
                            x,
                            out_size,
                            size_tensor,
@@ -1082,7 +1087,7 @@ void InterpolateKernel(
 
 template <typename T, typename Context>
 void BilinearInterpKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& x,
     const paddle::optional<DenseTensor>& out_size,
     const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
@@ -1096,7 +1101,7 @@ void BilinearInterpKernel(
     bool align_corners,
     int align_mode,
     DenseTensor* output) {
-  InterpolateKernel<T, Context>(ctx,
+  InterpolateKernel<T, Context>(dev_ctx,
                                 x,
                                 out_size,
                                 size_tensor,
@@ -1114,7 +1119,7 @@ void BilinearInterpKernel(
 
 template <typename T, typename Context>
 void LegacyBilinearInterpKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& x,
     const paddle::optional<DenseTensor>& out_size,
     const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
@@ -1135,7 +1140,7 @@ void LegacyBilinearInterpKernel(
       scale_vec.push_back(scale);
     }
   }
-  InterpolateKernel<T, Context>(ctx,
+  InterpolateKernel<T, Context>(dev_ctx,
                                 x,
                                 out_size,
                                 size_tensor,
@@ -1153,7 +1158,7 @@ void LegacyBilinearInterpKernel(
 
 template <typename T, typename Context>
 void NearestInterpKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& x,
     const paddle::optional<DenseTensor>& out_size,
     const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
@@ -1167,7 +1172,7 @@ void NearestInterpKernel(
     bool align_corners,
     int align_mode,
     DenseTensor* output) {
-  InterpolateKernel<T, Context>(ctx,
+  InterpolateKernel<T, Context>(dev_ctx,
                                 x,
                                 out_size,
                                 size_tensor,
@@ -1185,7 +1190,7 @@ void NearestInterpKernel(
 
 template <typename T, typename Context>
 void LegacyNearestInterpKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& x,
     const paddle::optional<DenseTensor>& out_size,
     const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
@@ -1206,7 +1211,7 @@ void LegacyNearestInterpKernel(
       scale_vec.push_back(scale);
     }
   }
-  InterpolateKernel<T, Context>(ctx,
+  InterpolateKernel<T, Context>(dev_ctx,
                                 x,
                                 out_size,
                                 size_tensor,
@@ -1224,7 +1229,7 @@ void LegacyNearestInterpKernel(
 
 template <typename T, typename Context>
 void TrilinearInterpKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& x,
     const paddle::optional<DenseTensor>& out_size,
     const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
@@ -1238,7 +1243,7 @@ void TrilinearInterpKernel(
     bool align_corners,
     int align_mode,
     DenseTensor* output) {
-  InterpolateKernel<T, Context>(ctx,
+  InterpolateKernel<T, Context>(dev_ctx,
                                 x,
                                 out_size,
                                 size_tensor,
@@ -1256,7 +1261,7 @@ void TrilinearInterpKernel(
 
 template <typename T, typename Context>
 void LinearInterpKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& x,
     const paddle::optional<DenseTensor>& out_size,
     const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
@@ -1270,7 +1275,7 @@ void LinearInterpKernel(
     bool align_corners,
     int align_mode,
     DenseTensor* output) {
-  InterpolateKernel<T, Context>(ctx,
+  InterpolateKernel<T, Context>(dev_ctx,
                                 x,
                                 out_size,
                                 size_tensor,
@@ -1288,7 +1293,7 @@ void LinearInterpKernel(
 
 template <typename T, typename Context>
 void BicubicInterpKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& x,
     const paddle::optional<DenseTensor>& out_size,
     const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
@@ -1302,7 +1307,7 @@ void BicubicInterpKernel(
     bool align_corners,
     int align_mode,
     DenseTensor* output) {
-  InterpolateKernel<T, Context>(ctx,
+  InterpolateKernel<T, Context>(dev_ctx,
                                 x,
                                 out_size,
                                 size_tensor,

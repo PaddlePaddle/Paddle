@@ -173,22 +173,22 @@ __global__ void BinomialSampling(const T* n,
 }
 
 template <typename T, typename Context>
-void BinomialKernel(const Context& ctx,
+void BinomialKernel(const Context& dev_ctx,
                     const DenseTensor& count,
                     const DenseTensor& prob,
                     DenseTensor* out) {
   const T* count_data = count.data<T>();
   const T* prob_data = prob.data<T>();
-  int64_t* out_data = ctx.template Alloc<int64_t>(out);
+  int64_t* out_data = dev_ctx.template Alloc<int64_t>(out);
   const int size = count.numel();
   const int kMaxBlockDim = 256;
 
-  int block_size = std::min(kMaxBlockDim, ctx.GetMaxThreadsPerBlock());
+  int block_size = std::min(kMaxBlockDim, dev_ctx.GetMaxThreadsPerBlock());
   dim3 dim_block(block_size);
   dim3 dim_grid((size + block_size - 1) / block_size);
-  phi::backends::gpu::LimitGridDim(ctx, &dim_grid);
+  phi::backends::gpu::LimitGridDim(dev_ctx, &dim_grid);
 
-  auto gen_cuda = ctx.GetGenerator();
+  auto gen_cuda = dev_ctx.GetGenerator();
   auto seed_offset = gen_cuda->IncrementOffset(20);
   uint64_t seed = seed_offset.first;
   uint64_t offset = seed_offset.second;

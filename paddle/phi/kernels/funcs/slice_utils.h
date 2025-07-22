@@ -22,7 +22,66 @@ limitations under the License. */
 namespace phi {
 
 namespace funcs {
+inline bool CheckIsLastDimsMatch(const DDim& first, const DDim& second) {
+  auto n1 = first.size();
+  auto n2 = second.size();
+  size_t min_len = std::min(n1, n2);
 
+  for (size_t i = 0; i < min_len; i++) {
+    if (first[n1 - 1 - i] != second[n2 - 1 - i]) {
+      return false;
+    }
+  }
+  return true;
+}
+// check whether the tensor with dimension of second can assign to the
+// tensor with dimension of first
+inline bool CheckIsDimsMatchBool(const DDim& first, const DDim& second) {
+  int ignore_axis1 = 0, ignore_axis2 = 0;
+  for (; ignore_axis1 < first.size(); ++ignore_axis1) {
+    if (first[ignore_axis1] != 1) {
+      break;
+    }
+  }
+  for (; ignore_axis2 < second.size(); ++ignore_axis2) {
+    if (second[ignore_axis2] != 1) {
+      break;
+    }
+  }
+
+  if (second.size() == ignore_axis2) {
+    // second tensor has only one value
+    return true;
+  }
+
+  if (first.size() - ignore_axis1 >= second.size() - ignore_axis2) {
+    auto idx1 = first.size() - 1;
+    auto idx2 = second.size() - 1;
+    bool is_match = true;
+    for (; idx2 >= ignore_axis2; idx2--) {
+      if (first[idx1--] != second[idx2] && second[idx2] != 1) {
+        is_match = false;
+        break;
+      }
+    }
+    if (is_match) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+inline void CheckIsDimsMatch(const DDim& first, const DDim& second) {
+  if (CheckIsDimsMatchBool(first, second)) {
+    return;
+  }
+  PADDLE_THROW(errors::InvalidArgument(
+      "The shape of tensor assigned value must match the shape "
+      "of target shape: %d, but now shape is %d.",
+      second.to_str(),
+      first.to_str()));
+}
 /**
  * @brief Normalizes the slice interval [st, ed) with a given step and dimension
  * size.
@@ -333,6 +392,66 @@ inline DDim GetDecreasedDims(const DDim slice_dims,
     decreased_dims = common::make_ddim(new_shape);
   }
   return decreased_dims;
+}
+
+template <typename T = int64_t>
+inline void GetDecreasedDimsAndStrides(const std::vector<T> slice_dims,
+                                       const std::vector<T> slice_strides,
+                                       const std::vector<T>& decrease_axes,
+                                       const std::vector<T>& none_axes,
+                                       std::vector<T>* new_dims,
+                                       std::vector<T>* new_strides,
+                                       std::vector<T>* infer_flags = nullptr) {
+  std::vector<uint8_t> decrease_flag(slice_dims.size(), 0);
+  if (none_axes.size() > 0) {
+    size_t none_axes_cur = 0, decrease_axes_cur = 0;
+    for (int i = 0; i < slice_dims.size(); ++i) {
+      while (none_axes_cur < none_axes.size() &&
+             none_axes[none_axes_cur] <= i) {
+        new_dims->push_back(1);
+        new_strides->push_back(slice_strides[i]);
+        none_axes_cur++;
+      }
+      if (decrease_axes_cur < decrease_axes.size() &&
+          decrease_axes[decrease_axes_cur] == i) {
+        decrease_axes_cur++;
+      } else {
+        new_dims->push_back(slice_dims[i]);
+        new_strides->push_back(slice_strides[i]);
+      }
+    }
+    while (none_axes_cur < none_axes.size()) {
+      new_dims->push_back(1);
+      new_strides->push_back(slice_strides[slice_strides.size() - 1]);
+      none_axes_cur++;
+    }
+  } else if (decrease_axes.size() > 0) {
+    for (size_t i = 0; i < decrease_axes.size(); ++i) {
+      T axis = decrease_axes[i];
+      decrease_flag[axis] = 1;
+      if (infer_flags && (*infer_flags)[i] != -1) {
+        PADDLE_ENFORCE_EQ(slice_dims[axis],
+                          1,
+                          common::errors::InvalidArgument(
+                              "Decrease dim should be 1, but now received %d",
+                              slice_dims[axis]));
+      }
+    }
+
+    for (int i = 0; i < slice_dims.size(); ++i) {
+      if (decrease_flag[i] == 0) {
+        new_dims->push_back(slice_dims[i]);
+        new_strides->push_back(slice_strides[i]);
+      }
+    }
+  } else {
+    for (int i = 0; i < slice_dims.size(); ++i) {
+      new_dims->push_back(slice_dims[i]);
+      new_strides->push_back(slice_strides[i]);
+    }
+  }
+
+  return;
 }
 
 template <typename T = int64_t>

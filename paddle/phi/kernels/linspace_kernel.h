@@ -16,7 +16,7 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void LinspaceKernel(const Context& ctx,
+void LinspaceKernel(const Context& dev_ctx,
                     const DenseTensor& start,
                     const DenseTensor& stop,
                     const DenseTensor& number,

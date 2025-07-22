@@ -24,6 +24,7 @@ import paddle
 from paddle import pir
 from paddle.autograd import backward_utils
 from paddle.base import core
+from paddle.base.framework import in_cinn_debug_mode
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -534,7 +535,7 @@ def auto_recompute(
         | required_bw_value_nodes
         | unclaimed_value_nodes
     ):
-        if value_node in outputs or not value_node.initialized():
+        if not value_node.initialized():
             continue
 
         if value_node.get_defining_op().name() == "builtin.combine":
@@ -677,11 +678,12 @@ def auto_recompute(
     )
     DebugPrint("program after recompute:", program_after_recompute)
     end_time = time.time()
-    logger = logging.getLogger("auto-recompute")
-    logger.setLevel(logging.INFO)
-    logger.info(
-        f"Time of auto recompute program: ***** [ {end_time - start_time} ] ***** seconds."
-    )
+    if in_cinn_debug_mode():
+        logger = logging.getLogger("auto-recompute")
+        logger.setLevel(logging.INFO)
+        logger.info(
+            f"Time of auto recompute program: ***** [ {end_time - start_time} ] ***** seconds."
+        )
     return program_after_recompute, fwd_op_end_idx_after_recompute
 
 

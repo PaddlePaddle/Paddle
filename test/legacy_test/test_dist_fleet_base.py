@@ -520,12 +520,14 @@ def runtime_main(test_class):
         if args.test:
             test_origin_program = paddle.static.Program()
             test_startup_program = paddle.static.Program()
-            with paddle.static.program_guard(
-                main_program=test_origin_program,
-                startup_program=test_startup_program,
+            with (
+                paddle.static.program_guard(
+                    main_program=test_origin_program,
+                    startup_program=test_startup_program,
+                ),
+                paddle.utils.unique_name.guard(),
             ):
-                with paddle.utils.unique_name.guard():
-                    avg_cost = model.net(args, is_train=False)
+                avg_cost = model.net(args, is_train=False)
             dist_infer = DistributedInfer(
                 main_program=test_origin_program,
                 startup_program=test_startup_program,

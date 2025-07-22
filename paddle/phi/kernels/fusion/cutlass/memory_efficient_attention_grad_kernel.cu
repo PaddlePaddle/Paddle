@@ -36,7 +36,7 @@ using gemm_kernel_utils::getMaximumSharedMemoryPerBlockKb;
 
 template <typename T, typename Context>
 void MemoryEfficientAttentionGradKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& query,
     const DenseTensor& key,
     const DenseTensor& value,
@@ -292,7 +292,7 @@ void MemoryEfficientAttentionGradKernel(
 
     auto use_dropout = dropout_p != 0.0;
     const auto maxK = std::max(q_dims[3], v_dims[3]);
-    int compute_capacity = ctx.GetComputeCapability();
+    int compute_capacity = dev_ctx.GetComputeCapability();
     const auto max_shmem =
         getMaximumSharedMemoryPerBlockKb(compute_capacity) * 1024;
     using KernelType = decltype(k_);
@@ -327,7 +327,7 @@ void MemoryEfficientAttentionGradKernel(
     DenseTensor delta;
     if (KernelType::kKernelComputesDelta) {
       phi::EmptyKernel<float, Context>(
-          ctx,
+          dev_ctx,
           {output.dims()[0], output.dims()[2], output.dims()[1]},
           output.dtype(),
           &delta);
@@ -335,28 +335,29 @@ void MemoryEfficientAttentionGradKernel(
       DenseTensor output_grad_tmp =
           output_grad.dtype() == DataType::FLOAT32
               ? output_grad
-              : phi::Cast<T, Context>(ctx, output_grad, DataType::FLOAT32);
+              : phi::Cast<T, Context>(dev_ctx, output_grad, DataType::FLOAT32);
       DenseTensor output_tmp =
           output.dtype() == DataType::FLOAT32
               ? output
-              : phi::Cast<T, Context>(ctx, output, DataType::FLOAT32);
+              : phi::Cast<T, Context>(dev_ctx, output, DataType::FLOAT32);
       DenseTensor delta_mul =
-          phi::Multiply<float, Context>(ctx, output_grad_tmp, output_tmp);
+          phi::Multiply<float, Context>(dev_ctx, output_grad_tmp, output_tmp);
 
       DenseTensor delta_sum;
       phi::EmptyKernel<float, Context>(
-          ctx,
+          dev_ctx,
           {delta_mul.dims()[0], delta_mul.dims()[1], delta_mul.dims()[2]},
           DataType::FLOAT32,
           &delta_sum);
       phi::SumKernel<float, Context>(
-          ctx, delta_mul, {-1}, delta_mul.dtype(), false, &delta_sum);
+          dev_ctx, delta_mul, {-1}, delta_mul.dtype(), false, &delta_sum);
       phi::EmptyKernel<float, Context>(
-          ctx,
+          dev_ctx,
           {delta_mul.dims()[0], delta_mul.dims()[2], delta_mul.dims()[1]},
           DataType::FLOAT32,
           &delta);
-      phi::TransposeKernel<float, Context>(ctx, delta_sum, {0, 2, 1}, &delta);
+      phi::TransposeKernel<float, Context>(
+          dev_ctx, delta_sum, {0, 2, 1}, &delta);
     }
     VLOG(3) << "p.output" << output.dtype();
     VLOG(3) << "p.output_grad" << output_grad.dtype();
@@ -399,7 +400,7 @@ void MemoryEfficientAttentionGradKernel(
     bool force_pad_inf = (compute_capacity == 75);
     const std::string data_format = "NCHW";
     DenseTensor padded_lse =
-        phi::funcs::get_pad_lse<float>(ctx,
+        phi::funcs::get_pad_lse<float>(dev_ctx,
                                        const_cast<DenseTensor*>(&logsumexp),
                                        static_cast<int>(output.dims()[1]),
                                        32,
@@ -412,24 +413,26 @@ void MemoryEfficientAttentionGradKernel(
 
     if (!has_query_grad) {
       dq_tmp.clear();
-      dq_tmp = EmptyLike<T, Context>(ctx, query);
+      dq_tmp = EmptyLike<T, Context>(dev_ctx, query);
       query_grad = &dq_tmp;
     }
-    p.grad_query_ptr = phi::SafeAllocTensor<scalar_t, Context>(ctx, query_grad);
+    p.grad_query_ptr =
+        phi::SafeAllocTensor<scalar_t, Context>(dev_ctx, query_grad);
 
     if (!has_key_grad) {
       dk_tmp.clear();
-      dk_tmp = EmptyLike<T, Context>(ctx, key);
+      dk_tmp = EmptyLike<T, Context>(dev_ctx, key);
       key_grad = &dk_tmp;
     }
-    p.grad_key_ptr = phi::SafeAllocTensor<scalar_t, Context>(ctx, key_grad);
+    p.grad_key_ptr = phi::SafeAllocTensor<scalar_t, Context>(dev_ctx, key_grad);
 
     if (!has_value_grad) {
       dv_tmp.clear();
-      dv_tmp = EmptyLike<T, Context>(ctx, value);
+      dv_tmp = EmptyLike<T, Context>(dev_ctx, value);
       value_grad = &dv_tmp;
     }
-    p.grad_value_ptr = phi::SafeAllocTensor<scalar_t, Context>(ctx, value_grad);
+    p.grad_value_ptr =
+        phi::SafeAllocTensor<scalar_t, Context>(dev_ctx, value_grad);
 
     p.delta_ptr = phi::SafeGetTensorPtr<float>(delta);
     PD_MEA_CHECK_OVERFLOW(p.head_dim, q_dims[3]);
@@ -522,7 +525,7 @@ void MemoryEfficientAttentionGradKernel(
       VLOG(3) << "p.bias_ptr" << p.bias_ptr;
       if (bias_grad) {
         p.grad_bias_ptr =
-            phi::SafeAllocTensor<scalar_t, Context>(ctx, bias_grad);
+            phi::SafeAllocTensor<scalar_t, Context>(dev_ctx, bias_grad);
         PD_MEA_CHECK_OVERFLOW(p.gB_strideB, q_dims[2] * q_dims[1] * k_dims[1]);
         PD_MEA_CHECK_OVERFLOW(p.gB_strideH, q_dims[1] * k_dims[1]);
         PD_MEA_CHECK_OVERFLOW(p.gB_strideM, k_dims[1]);
@@ -549,9 +552,9 @@ void MemoryEfficientAttentionGradKernel(
     phi::Allocator::AllocationPtr temp_workspace{nullptr};
     VLOG(3) << "size_bytes " << size_bytes;
     temp_workspace = phi::memory_utils::Alloc(
-        ctx.GetPlace(),
+        dev_ctx.GetPlace(),
         size_bytes,
-        phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
     if (size_bytes) {
       p.workspace = reinterpret_cast<typename KernelType::output_accum_t*>(
           temp_workspace->ptr());
@@ -574,9 +577,9 @@ void MemoryEfficientAttentionGradKernel(
     kernel_fn<<<p.getBlocksGrid(),
                 p.getThreadsGrid(),
                 smem_bytes,
-                ctx.stream()>>>(p);
+                dev_ctx.stream()>>>(p);
   };
-  dispatch_cutlass_backward<T>(ctx, launchKernel);
+  dispatch_cutlass_backward<T>(dev_ctx, launchKernel);
   PADDLE_ENFORCE_EQ(
       kernel_launched,
       true,

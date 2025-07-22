@@ -16,7 +16,7 @@ import os
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_places
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -713,61 +713,50 @@ class TestScatterBF16Op6(TestScatterOp6):
 
 class TestScatterAPI(unittest.TestCase):
     def setUp(self):
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
         self.executed_api()
 
     def executed_api(self):
         self.scatter = paddle.scatter
 
     def check_static_result(self, place):
-        with static_guard():
-            with paddle.static.program_guard(
+        with (
+            static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                input = paddle.static.data(
-                    name="input", shape=[3, 2], dtype="float64"
-                )
-                index = paddle.static.data(
-                    name="index", shape=[4], dtype="int64"
-                )
-                updates = paddle.static.data(
-                    name="updates", shape=[4, 2], dtype="float64"
-                )
-                result = self.scatter(input, index, updates, False)
+            ),
+        ):
+            input = paddle.static.data(
+                name="input", shape=[3, 2], dtype="float64"
+            )
+            index = paddle.static.data(name="index", shape=[4], dtype="int64")
+            updates = paddle.static.data(
+                name="updates", shape=[4, 2], dtype="float64"
+            )
+            result = self.scatter(input, index, updates, False)
 
-                input_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(
-                    np.float64
-                )
-                index_data = np.array([2, 1, 0, 1]).astype(np.int64)
-                updates_data = np.array(
-                    [[1, 1], [2, 2], [3, 3], [4, 4]]
-                ).astype(np.float64)
+            input_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float64)
+            index_data = np.array([2, 1, 0, 1]).astype(np.int64)
+            updates_data = np.array([[1, 1], [2, 2], [3, 3], [4, 4]]).astype(
+                np.float64
+            )
 
-                exe = paddle.static.Executor(place)
-                fetches = exe.run(
-                    paddle.static.default_main_program(),
-                    feed={
-                        "input": input_data,
-                        "index": index_data,
-                        "updates": updates_data,
-                    },
-                    fetch_list=[result],
-                )
-                self.assertEqual(
-                    (
-                        fetches[0]
-                        == np.array([[3.0, 3.0], [6.0, 6.0], [1.0, 1.0]])
-                    ).all(),
-                    True,
-                )
+            exe = paddle.static.Executor(place)
+            fetches = exe.run(
+                paddle.static.default_main_program(),
+                feed={
+                    "input": input_data,
+                    "index": index_data,
+                    "updates": updates_data,
+                },
+                fetch_list=[result],
+            )
+            self.assertEqual(
+                (
+                    fetches[0] == np.array([[3.0, 3.0], [6.0, 6.0], [1.0, 1.0]])
+                ).all(),
+                True,
+            )
 
     def test_static(self):
         for place in self.places:
@@ -921,6 +910,60 @@ class TestScatterError(unittest.TestCase):
 
         self.assertRaises(IndexError, test_too_big_index)
         paddle.enable_static()
+
+
+class TestScatterOp_ZeroSize(OpTest):
+    def setUp(self):
+        paddle.disable_static()
+        self.op_type = "scatter"
+        self.python_api = paddle.scatter
+        self.public_python_api = paddle.scatter
+        self._set_dtype()
+        ref_np = np.ones((100, 1)).astype(self.dtype)
+        updates_np = np.random.random((4, 1)).astype(self.dtype)
+        index_np = np.random.random([0]).astype("int32")
+
+        output_np = np.copy(ref_np)
+        self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
+        self.outputs = {'Out': output_np}
+
+    def _set_dtype(self):
+        self.dtype = np.float32
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ["X"],
+            "Out",
+            check_pir=True,
+            max_relative_error=0.008,
+        )
+
+
+class TestScatterOp_ZeroSize2(TestScatterOp_ZeroSize):
+    def setUp(self):
+        paddle.disable_static()
+        self.op_type = "scatter"
+        self.python_api = paddle.scatter
+        self.public_python_api = paddle.scatter
+        self._set_dtype()
+        ref_np = np.ones((0, 1)).astype(self.dtype)
+        updates_np = np.random.random((4, 1)).astype(self.dtype)
+        index_np = np.random.random([4]).astype("int32")
+
+        output_np = np.copy(ref_np)
+        self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
+        self.outputs = {'Out': output_np}
+
+    def test_check_grad(self):
+        self.check_grad(
+            ["X", "Updates"],
+            "Out",
+            check_pir=True,
+            max_relative_error=0.008,
+        )
 
 
 if __name__ == "__main__":

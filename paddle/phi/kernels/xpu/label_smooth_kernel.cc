@@ -17,18 +17,18 @@
 namespace phi {
 
 template <typename T, typename Context>
-void LabelSmoothKernel(const Context& ctx,
+void LabelSmoothKernel(const Context& dev_ctx,
                        const DenseTensor& label,
                        const paddle::optional<DenseTensor>& prior_dist,
                        float epsilon,
                        DenseTensor* out) {
   auto label_dim = label.dims()[label.dims().size() - 1];
-  auto ptr = ctx.template Alloc<T>(out);
+  auto ptr = dev_ctx.template Alloc<T>(out);
   if (prior_dist.is_initialized()) {
     PADDLE_THROW(
         common::errors::External("XPU doesn't support dist label smooth"));
   } else {
-    int r = xpu::label_smooth<T>(ctx.x_context(),
+    int r = xpu::label_smooth<T>(dev_ctx.x_context(),
                                  label.data<T>(),
                                  ptr,
                                  label.numel(),

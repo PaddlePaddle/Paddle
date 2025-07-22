@@ -25,6 +25,11 @@ from paddle.distributed.communication.batch_isend_irecv import (
     batch_isend_irecv,
 )
 
+try:
+    from paddle.distributed.communication import deep_ep
+except ImportError:
+    deep_ep = None
+
 from ..utils.log_util import logger
 from .pipeline_parallel import (
     FakeMicroDataset,
@@ -95,7 +100,8 @@ class DualPipeVParallel(PipelineParallel):
         self.current_send_b_acc_id = [0, 0]
         self.current_recv_f_acc_id = [0, 0]
         self.current_recv_b_acc_id = [0, 0]
-        self.comm_ops: list[P2POp] = []
+        self.comm_forward_ops: list[P2POp] = []
+        self.comm_backward_ops: list[P2POp] = []
         self.to_free: list[paddle.Tensor] = []
 
     def _get_forward_inputs(self, micro_datasets, phase, acc_id):
@@ -150,9 +156,7 @@ class DualPipeVParallel(PipelineParallel):
         inputs = self._get_forward_inputs(micro_datasets, phase, acc_id)
 
         if self.overlapped_forward_backward:
-            schedule_chunk = self._layers.forward(
-                inputs, chunk_id=phase, overlap_schedule_mode=True
-            )
+            schedule_chunk = self._layers.get_schedule_chunk(chunk_id=phase)
             outputs = schedule_chunk.forward(inputs)
         else:
             schedule_chunk = None
@@ -178,12 +182,13 @@ class DualPipeVParallel(PipelineParallel):
     def _store_backward_tensors(self, phase, acc_id, input_grads=None):
         if input_grads is None:
             inputs = self.input_tensors[phase][acc_id]
-            self.input_tensors[phase][acc_id] = None
             input_grads = [
                 t.grad
                 for t in inputs
                 if (t is not None and not t.stop_gradient)
             ]
+        self.input_tensors[phase][acc_id] = None
+
         if isinstance(input_grads, paddle.Tensor):
             input_grads = (input_grads,)
         if self.is_pipeline_last_stage() and phase == 1:
@@ -223,6 +228,8 @@ class DualPipeVParallel(PipelineParallel):
                     input_grads = loss_fn_node.backward(scaler=self.scaler)
                     backward_chunk = self.schedule_chunks[phase][acc_id]
                     input_grads = backward_chunk.backward(input_grads)
+                    self.loss_fn_chunks[acc_id] = None
+                    self.schedule_chunks[phase][acc_id] = None
                 else:
                     if self.scaler:
                         paddle.autograd.backward(self.scaler.scale(loss))
@@ -233,6 +240,7 @@ class DualPipeVParallel(PipelineParallel):
                 if self.overlapped_forward_backward:
                     backward_chunk = self.schedule_chunks[phase][acc_id]
                     input_grads = backward_chunk.backward(output_grads)
+                    self.schedule_chunks[phase][acc_id] = None
                 else:
                     if len(outputs) > 0:
                         outputs = [t for t in outputs if not t.stop_gradient]
@@ -251,6 +259,7 @@ class DualPipeVParallel(PipelineParallel):
         forward_phase: int,
         backward_phase: int,
         micro_datasets=None,
+        combine_backward_event_to_wait=None,
     ) -> None:
         if self.forward_only:
             self._forward_compute(forward_phase, micro_datasets)
@@ -295,10 +304,10 @@ class DualPipeVParallel(PipelineParallel):
                 backward_phase, backward_acc_id
             )
 
+        # event_to_wait = deep_ep.get_event_from_custom_stream(paddle.device.current_stream().stream_base)
+
         # forward & backward
-        forward_chunk = self._layers.forward(
-            None, chunk_id=forward_phase, overlap_schedule_mode=True
-        )
+        forward_chunk = self._layers.get_schedule_chunk(chunk_id=forward_phase)
         backward_chunk = self.schedule_chunks[backward_phase][backward_acc_id]
         forward_outputs, forward_loss, backward_input_grads = (
             self._layers.overlapped_forward_backward(
@@ -309,8 +318,13 @@ class DualPipeVParallel(PipelineParallel):
                 backward_loss_fn_node,
                 backward_grads,
                 self.scaler,
+                combine_bw_event_to_wait=combine_backward_event_to_wait,
+                pp_stream=self.pp_group.process_group.get_stream(
+                    paddle.framework._current_expected_place_()
+                ),
             )
         )
+        self.schedule_chunks[backward_phase][backward_acc_id] = None
 
         # post-forward
         self._store_forward_tensors(
@@ -326,13 +340,62 @@ class DualPipeVParallel(PipelineParallel):
         )
 
     def _commit_and_wait_comm(self) -> None:
-        if not self.comm_ops or len(self.comm_ops) == 0:
-            return
-        reqs = batch_isend_irecv(self.comm_ops)
-        for req in reqs:
-            req.wait()
-        self.comm_ops = []
+        common_forward_ops_num = (
+            len(self.comm_forward_ops)
+            if self.comm_forward_ops is not None
+            else 0
+        )
+        common_backward_ops_num = (
+            len(self.comm_backward_ops)
+            if self.comm_backward_ops is not None
+            else 0
+        )
+        if common_forward_ops_num == 0 and common_backward_ops_num == 0:
+            return deep_ep.get_event_from_custom_stream(
+                paddle.device.current_stream().stream_base
+            )
+
+        use_stream_wait_event = self._overlap_p2p_comm and deep_ep is not None
+
+        pp_raw_stream = self.pp_group.process_group.get_stream(
+            paddle.framework._current_expected_place_()
+        )
+
+        if common_forward_ops_num > 0:
+            fwd_reqs = batch_isend_irecv(self.comm_forward_ops)
+
+            if not use_stream_wait_event:
+                for req in fwd_reqs:
+                    req.wait()
+        if use_stream_wait_event:
+            forward_event_to_wait = deep_ep.get_event_from_custom_stream(
+                pp_raw_stream
+            )
+
+        if common_backward_ops_num > 0:
+            bwd_reqs = batch_isend_irecv(self.comm_backward_ops)
+
+            if not use_stream_wait_event:
+                for req in bwd_reqs:
+                    req.wait()
+
+        if use_stream_wait_event:
+            forward_event_to_wait.current_stream_wait()
+
+            combine_bw_event_to_wait = deep_ep.get_event_from_custom_stream(
+                pp_raw_stream
+            )
+        else:
+            combine_bw_event_to_wait = deep_ep.get_event_from_custom_stream(
+                paddle.device.current_stream().stream_base
+            )
+
+        self.comm_forward_ops = []
+        self.comm_backward_ops = []
+
         self._free_tensors()
+
+        return combine_bw_event_to_wait
 
     def _weight_pass(self) -> None:
         if self.forward_only:
@@ -356,9 +419,10 @@ class DualPipeVParallel(PipelineParallel):
         self.current_recv_f_acc_id[phase] += 1
 
         tensors = self._p2p_helper.append_irecv(
-            self.comm_ops,
+            self.comm_forward_ops,
             self.prev_rank if phase == 0 else self.next_rank,
             self.pp_group,
+            alloc_on_comm_stream=self._overlap_p2p_comm,
         )
         self.input_tensors[phase].append(tensors)
 
@@ -373,7 +437,7 @@ class DualPipeVParallel(PipelineParallel):
         tensors = self.output_tensors[phase][acc_id]
 
         self._p2p_helper.append_isend(
-            self.comm_ops,
+            self.comm_forward_ops,
             tensors,
             self.next_rank if phase == 0 else self.prev_rank,
             self.pp_group,
@@ -394,9 +458,10 @@ class DualPipeVParallel(PipelineParallel):
 
         self.current_recv_b_acc_id[phase] += 1
         tensors = self._p2p_helper.append_irecv(
-            self.comm_ops,
+            self.comm_backward_ops,
             self.next_rank if phase == 0 else self.prev_rank,
             self.pp_group,
+            alloc_on_comm_stream=self._overlap_p2p_comm,
         )
         self.output_grad_tensors[phase].append(tensors)
 
@@ -415,7 +480,7 @@ class DualPipeVParallel(PipelineParallel):
         self.input_grad_tensors[phase][acc_id] = None
 
         self._p2p_helper.append_isend(
-            self.comm_ops,
+            self.comm_backward_ops,
             tensors,
             self.prev_rank if phase == 0 else self.next_rank,
             self.pp_group,
@@ -463,9 +528,25 @@ class DualPipeVParallel(PipelineParallel):
         if recv0:
             self._recv_forward(forward_phase)
         self._recv_backward(backward_phase)
-        self._commit_and_wait_comm()
+
+        use_outer_wait = (
+            self._overlap_p2p_comm
+            and deep_ep is not None
+            and (len(self.comm_forward_ops) > 0)
+        )
+
+        if use_outer_wait:
+            self.pp_group.process_group.set_outer_wait(True)
+
+        combine_bw_wait_event = self._commit_and_wait_comm()
+
+        if use_outer_wait:
+            self.pp_group.process_group.set_outer_wait(False)
         self._forward_backward_compute(
-            forward_phase, backward_phase, micro_datasets
+            forward_phase,
+            backward_phase,
+            micro_datasets,
+            combine_backward_event_to_wait=combine_bw_wait_event,
         )
 
         self._send_forward(forward_phase)

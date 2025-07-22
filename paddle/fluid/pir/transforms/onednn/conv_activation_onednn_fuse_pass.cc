@@ -50,9 +50,9 @@ class ConvActivationFusePattern : public paddle::drr::DrrPatternBase {
     return "Conv" + std::to_string(fused_level_) + activation_name_ +
            "FusePattern";
   }
-
-  uint32_t benefit() const override { return activation_count_; }
-
+  uint32_t benefit() const override {
+    return static_cast<uint32_t>(activation_count_);
+  }
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     std::string conv_name = paddle::dialect::Conv2dOp::name();

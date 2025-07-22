@@ -297,5 +297,58 @@ class TestSwiglu0SizeDygraph(unittest.TestCase):
         self.assertEqual(out[1].shape, y.shape)
 
 
+class TestSwigluOp_ZeroSize(OpTest):
+    def config(self):
+        self.x_shape = (0, 128)
+        self.y_shape = (1, 128)
+        self.out_shape = (0, 128)
+
+    def setUp(self):
+        self.config()
+        self.op_type = "swiglu"
+        self.python_api = fused_swiglu_impl
+        self.public_python_api = fused_swiglu_impl
+        x = np.random.uniform(-1, 1, self.x_shape).astype("float64")
+        y = np.random.uniform(-1, 1, self.y_shape).astype("float64")
+        out_grad = np.random.uniform(-1, 1, self.out_shape).astype("float64")
+        res = swiglu(x, y, out_grad)
+        self.inputs = {'x': x, 'y': y}
+        self.outputs = {'out': res[0].numpy()}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['x', 'y'],
+            'out',
+        )
+
+
+class TestSwigluOp_ZeroSize2(TestSwigluOp_ZeroSize):
+    def config(self):
+        self.x_shape = (1, 128)
+        self.y_shape = (0, 128)
+        self.out_shape = (0, 128)
+
+
+class TestSwigluOp_ZeroSize3(TestSwigluOp_ZeroSize):
+    def config(self):
+        self.x_shape = (0, 128)
+        self.y_shape = (0, 128)
+        self.out_shape = (0, 128)
+
+
+class TestSwigluGradOp(unittest.TestCase):
+    def test_swiglu_grad(self):
+        x = paddle.randn([10, 2]).astype("float32")
+        out_grad = paddle.randn([10, 2]).astype("float32")
+        x_grad, y_grad = paddle._C_ops.swiglu_grad(x, None, out_grad)
+        self.assertFalse(
+            paddle.all(x_grad == 0).item(), "x_grad should not be all zero"
+        )
+        # y_grad is not initialized when y is none
+
+
 if __name__ == "__main__":
     unittest.main()

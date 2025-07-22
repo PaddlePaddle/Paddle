@@ -73,17 +73,17 @@ void CalMatDims(phi::DDim out_dims,
 }
 
 template <typename T, typename Context>
-void FillDiagonalTensorKernel(const Context &ctx,
+void FillDiagonalTensorKernel(const Context &dev_ctx,
                               const DenseTensor &x,
                               const DenseTensor &y,
                               int64_t offset,
                               int dim1,
                               int dim2,
                               DenseTensor *out) {
-  T *out_data = ctx.template Alloc<T>(out);
+  T *out_data = dev_ctx.template Alloc<T>(out);
   const T *fill_data = y.data<T>();
 
-  phi::Copy(ctx, x, ctx.GetPlace(), false, out);
+  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   auto out_dims = out->dims();
   const auto &matdims = y.dims();
   auto fill_dims = common::flatten_to_2d(matdims, matdims.size() - 1);

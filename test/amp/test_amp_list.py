@@ -88,30 +88,26 @@ class TestAMPList(unittest.TestCase):
         self.assertEqual(out3.dtype, paddle.float32)
 
     def test_pir(self):
-        with paddle.pir_utils.IrGuard():
-            with paddle.static.program_guard(
+        with (
+            paddle.pir_utils.IrGuard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                white_list = paddle.amp.white_list()
-                black_list = paddle.amp.black_list()
-                self.check_if_op_in_list(
-                    self.default_black_list, black_list["float16"]["O2"]
-                )
-                self.check_if_op_not_in_list(
-                    ['log', 'elementwise_add'], white_list
-                )
-                with paddle.amp.auto_cast(
-                    custom_white_list={'elementwise_add'}
-                ):
-                    out1 = paddle.rand([2, 3]) + paddle.rand([2, 3])
-                    out2 = out1.mean()
-                    out3 = paddle.log(out2)
-                self.check_if_op_not_in_list(
-                    ['log', 'elementwise_add'], white_list
-                )
-                self.assertEqual(out1.dtype, core.DataType.FLOAT16)
-                self.assertEqual(out2.dtype, core.DataType.FLOAT32)
-                self.assertEqual(out3.dtype, core.DataType.FLOAT32)
+            ),
+        ):
+            white_list = paddle.amp.white_list()
+            black_list = paddle.amp.black_list()
+            self.check_if_op_in_list(
+                self.default_black_list, black_list["float16"]["O2"]
+            )
+            self.check_if_op_not_in_list(['log', 'elementwise_add'], white_list)
+            with paddle.amp.auto_cast(custom_white_list={'elementwise_add'}):
+                out1 = paddle.rand([2, 3]) + paddle.rand([2, 3])
+                out2 = out1.mean()
+                out3 = paddle.log(out2)
+            self.check_if_op_not_in_list(['log', 'elementwise_add'], white_list)
+            self.assertEqual(out1.dtype, core.DataType.FLOAT16)
+            self.assertEqual(out2.dtype, core.DataType.FLOAT32)
+            self.assertEqual(out3.dtype, core.DataType.FLOAT32)
 
     def test_apis(self):
         def _run_check_dtype():

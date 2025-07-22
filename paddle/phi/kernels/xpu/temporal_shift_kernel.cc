@@ -28,18 +28,22 @@ void TemporalShiftKernel(const Context& dev_ctx,
                          float shift_ratio,
                          const std::string& data_format_str,
                          DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   auto* input = &x;
   auto* output = out;
-  int t = seg_num;
+  int64_t t = seg_num;
   const DataLayout data_layout = common::StringToDataLayout(data_format_str);
 
-  const int nt = input->dims()[0];
-  const int n = nt / t;
-  const int c =
+  const int64_t nt = input->dims()[0];
+  const int64_t n = nt / t;
+  const int64_t c =
       (data_layout == DataLayout::kNCHW ? input->dims()[1] : input->dims()[3]);
-  const int h =
+  const int64_t h =
       (data_layout == DataLayout::kNCHW ? input->dims()[2] : input->dims()[1]);
-  const int w =
+  const int64_t w =
       (data_layout == DataLayout::kNCHW ? input->dims()[3] : input->dims()[2]);
 
   DDim out_dims =

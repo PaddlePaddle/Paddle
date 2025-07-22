@@ -37,16 +37,9 @@ namespace paddle {
 namespace dialect {
 
 const std::unordered_set<std::string> LegacyOpList = {
-    DistributedPushSparseOp::name(),
     SendV2Op::name(),
     RecvV2Op::name(),
-    CAllreduceSumOp::name(),
-    CAllreduceSum_Op::name(),
-    PushDenseOp::name(),
-    PullBoxSparseOp::name(),
-    PushBoxSparseOp::name(),
-    PushSparseV2Op::name(),
-    SendAndRecvOp::name()};
+};
 
 enum class AttrType {
   UNDEFINED = 0,
@@ -533,6 +526,7 @@ const std::unordered_map<std::string, phi::Place>& StringToPlaceMap() {
       {"gpu", phi::GPUPlace{}},
       {"gpu_pinned", phi::GPUPinnedPlace{}},
       {"xpu", phi::XPUPlace{}},
+      {"xpu_pinned", phi::XPUPinnedPlace{}},
       {"ipu", phi::IPUPlace{}},
       {":", phi::CustomPlace{}},
       {"undefined", phi::Place{}}};

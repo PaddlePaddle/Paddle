@@ -60,23 +60,25 @@ class TestReadFileWithStatic(unittest.TestCase):
         if not paddle.is_compiled_with_cuda():
             return
         place = paddle.CUDAPlace(0)
-        with paddle_static_guard():
-            with paddle.static.program_guard(
+        with (
+            paddle_static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                img_bytes = read_file(self.img_path)
-                img = decode_jpeg(img_bytes, mode='gray')
-                img = decode_jpeg(img_bytes, mode='rgb')
-                img = decode_jpeg(img_bytes)
-                img_cv2 = cv2.imread(self.img_path)
-                exe = paddle.static.Executor(place)
-                out = exe.run(
-                    paddle.static.default_main_program(), fetch_list=[img]
-                )
+            ),
+        ):
+            img_bytes = read_file(self.img_path)
+            img = decode_jpeg(img_bytes, mode='gray')
+            img = decode_jpeg(img_bytes, mode='rgb')
+            img = decode_jpeg(img_bytes)
+            img_cv2 = cv2.imread(self.img_path)
+            exe = paddle.static.Executor(place)
+            out = exe.run(
+                paddle.static.default_main_program(), fetch_list=[img]
+            )
 
-                np.testing.assert_equal(
-                    out[0].shape, img_cv2.transpose(2, 0, 1).shape
-                )
+            np.testing.assert_equal(
+                out[0].shape, img_cv2.transpose(2, 0, 1).shape
+            )
         paddle.disable_static()
 
 

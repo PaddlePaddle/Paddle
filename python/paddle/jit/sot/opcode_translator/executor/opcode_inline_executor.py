@@ -24,11 +24,11 @@ from ...utils import (
     FallbackError,
     UnsupportedIteratorBreak,
 )
+from ...utils.exceptions import SotCapturedStopIteration
 from ..instruction_utils import Instruction
 from .dispatch_functions import generator_send
-from .guard import StringifiedExpression, union_free_vars
 from .opcode_executor import OpcodeExecutorBase, Stop
-from .tracker import DanglingTracker, DummyTracker, Tracker
+from .tracker import DanglingTracker
 from .variables import (
     BuiltinVariable,
     ConstantVariable,
@@ -41,104 +41,7 @@ from .variables import (
 
 if TYPE_CHECKING:
     from .function_graph import FunctionGraph
-    from .pycode_generator import PyCodeGen
-    from .variables import FunctionVariable
     from .virtual_frame import VirtualFrame
-
-
-class FunctionGlobalTracker(Tracker):
-    """
-    A tracker class that represents a function global variable.
-
-    Args:
-        fn: FunctionVariable object.
-        name: The name of the global variable.
-
-    """
-
-    def __init__(self, fn: FunctionVariable, name: str):
-        super().__init__([fn])
-        self.fn = fn
-        self.name = name
-
-    def gen_instructions(self, codegen: PyCodeGen):
-        """
-        Generate bytecode instructions in order to put the variables at the top of the stack.
-
-        Args:
-            codegen: The PyCodeGen object used to generate bytecode.
-
-        """
-        self.fn.tracker.gen_instructions(codegen)
-        codegen.gen_load_attr("__globals__")
-        codegen.gen_load_const(self.name)
-        codegen.gen_subscribe()
-
-    def trace_value_from_frame(self) -> StringifiedExpression:
-        """
-        Trace the value of the function global variable from the frame.
-
-        Returns:
-            StringifiedExpression: The traced value of the function global variable.
-
-        """
-        fn_tracer = self.fn.tracker.trace_value_from_frame()
-        return StringifiedExpression(
-            f"{{}}.__globals__['{self.name}']",
-            [fn_tracer],
-            union_free_vars(fn_tracer.free_vars),
-        )
-
-    def __repr__(self) -> str:
-        return f"FunctionGlobalTracker(fn={self.fn}, name={self.name})"
-
-
-class FunctionClosureTracker(Tracker):
-    """
-    A tracker class that represents a function closure variable.
-
-    Args:
-        fn: The FunctionVariable object.
-        idx: The index of the closure variable.
-
-    """
-
-    def __init__(self, fn: FunctionVariable, idx: int):
-        super().__init__([fn])
-        self.fn = fn
-        self.idx = idx
-
-    def gen_instructions(self, codegen: PyCodeGen):
-        """
-        Generate bytecode instructions to trace the value of the function closure variable.
-
-        Args:
-            codegen: The PyCodeGen object used to generate bytecode.
-
-        """
-        self.fn.tracker.gen_instructions(codegen)
-        codegen.gen_load_attr("__closure__")
-        codegen.gen_load_const(self.idx)
-        codegen.gen_subscribe()
-        codegen.gen_load_attr("cell_contents")
-
-    def trace_value_from_frame(self):
-        """
-        Trace the value of the function closure variable from the frame.
-
-        Returns:
-            The traced value of the function closure variable.
-
-        """
-        fn_tracer = self.fn.tracker.trace_value_from_frame()
-        return StringifiedExpression(
-            f"{{}}.__closure__[{self.idx}].cell_contents",
-            [fn_tracer],
-            union_free_vars(fn_tracer.free_vars),
-        )
-
-    def __repr__(self) -> str:
-        return f"FunctionClosureTracker(fn={self.fn}, idx={self.idx})"
 
 
 def inline_for_iter_impl(exe: OpcodeExecutorBase, instr: Instruction):
@@ -151,7 +54,7 @@ def inline_for_iter_impl(exe: OpcodeExecutorBase, instr: Instruction):
     if not isinstance(iterator, UserDefinedIterVariable):
         try:
             exe.stack.push(iterator.next())
-        except StopIteration:
+        except SotCapturedStopIteration:
             exe.stack.pop()
             assert isinstance(instr.jump_to, Instruction)
             exe.vframe.lasti = exe.indexof(instr.jump_to)
@@ -245,8 +148,9 @@ class OpcodeInlineGeneratorExecutor(OpcodeExecutorBase):
     def RETURN_GENERATOR(self, instr: Instruction):
         vframe = self.vframe
         code_var = self._code_var
+        # NOTE: we set the real tracker in calling function
         self.return_value = GeneratorVariable(
-            code_var, vframe, self._graph, DummyTracker([])  # TODO: Add tracker
+            code_var, vframe, self._graph, DanglingTracker()
         )
         return Stop(state="Return")
 

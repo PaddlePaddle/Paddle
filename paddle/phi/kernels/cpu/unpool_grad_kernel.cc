@@ -81,6 +81,10 @@ void UnpoolGradKernel(const Context& dev_ctx,
                       const IntArray& output_size UNUSED,
                       const std::string& data_format UNUSED,
                       DenseTensor* x_grad) {
+  if (x_grad && x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    return;
+  }
   const auto& indices_type = indices.dtype();
   if (indices_type == phi::DataType::INT32) {
     UnpoolGrad<T, int, Context>(dev_ctx, x, indices, out, out_grad, x_grad);
@@ -150,6 +154,10 @@ void Unpool3dGradKernel(const Context& dev_ctx,
                         const std::vector<int>& output_size UNUSED,
                         const std::string& data_format UNUSED,
                         DenseTensor* x_grad) {
+  if (x_grad && x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    return;
+  }
   const auto& indices_type = indices.dtype();
   if (indices_type == phi::DataType::INT32) {
     Unpool3dGrad<T, int, Context>(dev_ctx, x, indices, out, out_grad, x_grad);

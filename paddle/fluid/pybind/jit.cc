@@ -28,6 +28,8 @@ limitations under the License. */
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/utils/pybind.h"
+#include "pybind11/pybind11.h"
+#include "pybind11/pytypes.h"
 
 namespace py = pybind11;
 
@@ -99,18 +101,48 @@ void BindGuard(pybind11::module *m) {
            py::arg("attr_name"));
   py::class_<ShapeMatchGuard, GuardBase, std::shared_ptr<ShapeMatchGuard>>(
       *m, "ShapeMatchGuard", R"DOC(ShapeMatchGuard Class.)DOC")
-      .def(py::init<const std::vector<py::object> &>(), py::arg("shape"));
+      .def(py::init<const std::vector<py::object> &, int64_t>(),
+           py::arg("shape"),
+           py::arg("min_non_specialized_number"));
   py::class_<LayerMatchGuard, GuardBase, std::shared_ptr<LayerMatchGuard>>(
       *m, "LayerMatchGuard", R"DOC(LayerMatchGuard Class.)DOC")
       .def(py::init<const py::object &>(), py::arg("layer_obj"));
-  py::class_<RangeMatchGuard, GuardBase, std::shared_ptr<RangeMatchGuard>>(
-      *m, "RangeMatchGuard", R"DOC(RangeMatchGuard Class.)DOC")
-      .def(py::init<const py::object &>(), py::arg("range_obj"));
   py::class_<InstanceCheckGuard,
              GuardBase,
              std::shared_ptr<InstanceCheckGuard>>(
       *m, "InstanceCheckGuard", R"DOC(InstanceCheckGuard Class.)DOC")
       .def(py::init<const py::object &>(), py::arg("isinstance_obj"));
+  py::class_<NumPyDtypeMatchGuard,
+             GuardBase,
+             std::shared_ptr<NumPyDtypeMatchGuard>>(
+      *m, "NumPyDtypeMatchGuard", R"DOC(NumPyDtypeMatchGuard Class.)DOC")
+      .def(py::init<const py::object &>(), py::arg("dtype"));
+  py::class_<NumPyArrayValueMatchGuard,
+             GuardBase,
+             std::shared_ptr<NumPyArrayValueMatchGuard>>(
+      *m,
+      "NumPyArrayValueMatchGuard",
+      R"DOC(NumPyArrayValueMatchGuard Class.)DOC")
+      .def(py::init<const py::object &>(), py::arg("array"));
+  py::class_<NumPyArrayShapeMatchGuard,
+             GuardBase,
+             std::shared_ptr<NumPyArrayShapeMatchGuard>>(
+      *m,
+      "NumPyArrayShapeMatchGuard",
+      R"DOC(NumPyArrayShapeMatchGuard Class.)DOC")
+      .def(py::init<const std::vector<py::object> &, int64_t>(),
+           py::arg("shape"),
+           py::arg("min_non_specialized_number"));
+  py::class_<WeakRefMatchGuard, GuardBase, std::shared_ptr<WeakRefMatchGuard>>(
+      *m, "WeakRefMatchGuard", R"DOC(WeakRefMatchGuard Class.)DOC")
+      .def(py::init<const py::object &>(), py::arg("func"));
+  py::class_<IsNotDenseTensorHoldAllocationMatchGuard,
+             GuardBase,
+             std::shared_ptr<IsNotDenseTensorHoldAllocationMatchGuard>>(
+      *m,
+      "IsNotDenseTensorHoldAllocationMatchGuard",
+      R"DOC(IsNotDenseTensorHoldAllocationMatchGuard Class.)DOC")
+      .def(py::init());
 
   m->def(
       "merge_guard",
@@ -118,6 +150,179 @@ void BindGuard(pybind11::module *m) {
         return GuardGroup(py_guards);
       },
       py::arg("py_guards"));
+#endif
+}
+
+void BindGuardTree(pybind11::module *m) {
+#if SOT_IS_SUPPORTED
+  py::class_<GuardTree, std::shared_ptr<GuardTree>>(
+      *m, "GuardTree", R"DOC(GuardTree Class.)DOC")
+      .def(py::init<const std::vector<
+               std::vector<std::shared_ptr<GuardNodeBase>>> &>(),
+           py::arg("guard_chain_list"))
+      .def_property_readonly(
+          "guard_nodes", [](GuardTree &self) { return self.get_guard_nodes(); })
+      .def(
+          "lookup",
+          [](GuardTree &self, py::object frame) {
+            return self.lookup(reinterpret_cast<FrameProxy *>(frame.ptr()));
+          },
+          py::arg("frame"))
+      .def(
+          "add_guard_chain",
+          [](GuardTree &self,
+             const std::vector<std::shared_ptr<GuardNodeBase>> &guard_chain) {
+            self.add_guard_chain(guard_chain);
+          },
+          py::arg("guard_chain"))
+      .def("stringify", &GuardTree::stringify);
+
+  py::class_<GuardNodeBase, std::shared_ptr<GuardNodeBase>>(
+      *m, "GuardNodeBase", R"DOC(GuardNodeBase Class.)DOC")
+      .def_property(
+          "return_cache_index",
+          [](GuardNodeBase &self) { return self.return_cache_index; },
+          [](GuardNodeBase &self, int index) {
+            self.return_cache_index = index;
+          })
+      .def_property(
+          "next_guard_nodes",
+          [](GuardNodeBase &self) { return self.next_guard_nodes; },
+          [](GuardNodeBase &self,
+             const std::vector<std::shared_ptr<GuardNodeBase>>
+                 &next_guard_nodes) {
+            self.next_guard_nodes = next_guard_nodes;
+          })
+      .def(
+          "lookup",
+          [](GuardNodeBase &self, py::object frame) {
+            return self.lookup(reinterpret_cast<FrameProxy *>(frame.ptr()));
+          },
+          py::arg("frame"));
+
+  py::class_<CheckGuardNode<1>,
+             GuardNodeBase,
+             std::shared_ptr<CheckGuardNode<1>>>(*m, "CheckGuardNode1")
+      .def_property_readonly("exprs",
+                             [](CheckGuardNode<1> &self) { return self.exprs; })
+      .def("get_guard_name", &CheckGuardNode<1>::get_guard_name);
+
+  py::class_<CheckGuardNode<2>,
+             GuardNodeBase,
+             std::shared_ptr<CheckGuardNode<2>>>(*m, "CheckGuardNode2")
+      .def_property_readonly("exprs",
+                             [](CheckGuardNode<2> &self) { return self.exprs; })
+      .def("get_guard_name", &CheckGuardNode<2>::get_guard_name);
+
+  py::class_<LegacyGuardNode,
+             CheckGuardNode<1>,
+             std::shared_ptr<LegacyGuardNode>>(
+      *m, "GuardNode", R"DOC(GuardNode Class.)DOC")
+      .def(py::init<const std::shared_ptr<GuardBase> &,
+                    const std::array<std::shared_ptr<ExprNodeBase>, 1> &,
+                    const std::vector<std::shared_ptr<GuardNodeBase>> &,
+                    const std::optional<int> &>(),
+           py::arg("guard"),
+           py::arg("exprs"),
+           py::arg("next_guard_nodes") = py::list(),
+           py::arg("return_cache_index") = py::none())
+      .def_property_readonly("guard",
+                             [](LegacyGuardNode &self) { return self.guard; });
+
+  py::class_<TensorDistMetaMatchGuardNode,
+             CheckGuardNode<2>,
+             std::shared_ptr<TensorDistMetaMatchGuardNode>>(
+      *m,
+      "TensorDistMetaMatchGuardNode",
+      R"DOC(TensorDistMetaMatchGuardNode Class.)DOC")
+      .def(py::init<const py::object &,
+                    const std::array<std::shared_ptr<ExprNodeBase>, 2> &,
+                    const std::vector<std::shared_ptr<GuardNodeBase>> &,
+                    const std::optional<int> &>(),
+           py::arg("dist_info"),
+           py::arg("exprs"),
+           py::arg("next_guard_nodes") = py::list(),
+           py::arg("return_cache_index") = py::none());
+
+  py::class_<ExprGuardNode, GuardNodeBase, std::shared_ptr<ExprGuardNode>>(
+      *m, "ExprGuardNode", R"DOC(ExprGuardNode Class.)DOC")
+      .def(py::init<const std::shared_ptr<ExprNodeBase> &,
+                    const std::vector<std::shared_ptr<GuardNodeBase>> &,
+                    const std::optional<int> &>(),
+           py::arg("expr"),
+           py::arg("next_guard_nodes") = py::list(),
+           py::arg("return_cache_index") = py::none());
+
+  py::class_<DummyGuardNode, GuardNodeBase, std::shared_ptr<DummyGuardNode>>(
+      *m, "DummyGuardNode", R"DOC(DummyGuardNode Class.)DOC")
+      .def(py::init<bool,
+                    const std::vector<std::shared_ptr<GuardNodeBase>> &,
+                    const std::optional<int> &>(),
+           py::arg("return_true") = true,
+           py::arg("next_guard_nodes") = py::list(),
+           py::arg("return_cache_index") = py::none());
+
+  py::class_<ExprNodeBase, std::shared_ptr<ExprNodeBase>>(
+      *m, "ExprNodeBase", R"DOC(ExprNodeBase Class.)DOC")
+      .def(
+          "eval",
+          [](ExprNodeBase &self, py::object frame) {
+            return self.eval(reinterpret_cast<FrameProxy *>(frame.ptr()));
+          },
+          py::arg("frame"))
+      .def("stringify", &ExprNodeBase::stringify, py::arg("indent") = 0);
+
+  py::class_<ConstantExprNode, ExprNodeBase, std::shared_ptr<ConstantExprNode>>(
+      *m, "ConstantExprNode", R"DOC(ConstantExprNode Class.)DOC")
+      .def(py::init<const py::object &>(), py::arg("value_ptr"));
+
+  py::class_<ExternVarExprNode,
+             ExprNodeBase,
+             std::shared_ptr<ExternVarExprNode>>(
+      *m, "ExternVarExprNode", R"DOC(ExternVarExprNode Class.)DOC")
+      .def(py::init<const std::string &, const py::object &>(),
+           py::arg("var_name"),
+           py::arg("value_ptr"));
+
+  py::class_<LocalVarExprNode, ExprNodeBase, std::shared_ptr<LocalVarExprNode>>(
+      *m, "LocalVarExprNode", R"DOC(LocalVarExprNode Class.)DOC")
+      .def(py::init<const std::string &>(), py::arg("var_name"));
+
+  py::class_<GlobalVarExprNode,
+             ExprNodeBase,
+             std::shared_ptr<GlobalVarExprNode>>(
+      *m, "GlobalVarExprNode", R"DOC(GlobalVarExprNode Class.)DOC")
+      .def(py::init<const std::string &>(), py::arg("var_name"));
+
+  py::class_<AttributeExprNode,
+             ExprNodeBase,
+             std::shared_ptr<AttributeExprNode>>(
+      *m, "AttributeExprNode", R"DOC(AttributeExprNode Class.)DOC")
+      .def(py::init<std::shared_ptr<ExprNodeBase>, const std::string &>(),
+           py::arg("var_expr"),
+           py::arg("attr_name"));
+
+  py::class_<ItemExprNode, ExprNodeBase, std::shared_ptr<ItemExprNode>>(
+      *m, "ItemExprNode", R"DOC(ItemExprNode Class.)DOC")
+      .def(py::init<std::shared_ptr<ExprNodeBase>,
+                    std::shared_ptr<ExprNodeBase>>(),
+           py::arg("var_expr"),
+           py::arg("key_expr"));
+
+  py::class_<BinaryExprNode, ExprNodeBase, std::shared_ptr<BinaryExprNode>>(
+      *m, "BinaryExprNode", R"DOC(BinaryExprNode Class.)DOC")
+      .def(py::init<std::shared_ptr<ExprNodeBase>,
+                    std::shared_ptr<ExprNodeBase>,
+                    const std::string &>(),
+           py::arg("lhs"),
+           py::arg("rhs"),
+           py::arg("op"));
+
+  py::class_<UnaryExprNode, ExprNodeBase, std::shared_ptr<UnaryExprNode>>(
+      *m, "UnaryExprNode", R"DOC(UnaryExprNode Class.)DOC")
+      .def(py::init<std::shared_ptr<ExprNodeBase>, const std::string &>(),
+           py::arg("expr"),
+           py::arg("op"));
 #endif
 }
 
@@ -186,6 +391,7 @@ void BindSot(pybind11::module *m) {
       },
       py::arg("py_codes"));
   BindGuard(m);
+  BindGuardTree(m);
 #endif
 }
 

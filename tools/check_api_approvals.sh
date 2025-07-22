@@ -48,8 +48,8 @@ if [ "$api_spec_diff" != "" -o "${api_params_diff}" != "" ]; then
 fi
 
 if [ "$api_annotation_diff" != "" ]; then
-    echo_line="You must have one member of Typing group (SigureMo, megemini, zrr1999, sunzhongkai588, luotao1) approval for API annotation change.\n"
-    check_approval 1 SigureMo megemini zrr1999 sunzhongkai588 luotao1
+    echo_line="You must have one member of Typing group (SigureMo, zrr1999, megemini, sunzhongkai588) approval for API annotation change.\n"
+    check_approval 1 SigureMo zrr1999 megemini sunzhongkai588
 fi
 
 api_yaml_diff=`python ${PADDLE_ROOT}/tools/check_api_yaml_same.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec ${BRANCH} ${PADDLE_ROOT}`
@@ -130,7 +130,7 @@ if [ -n "${echo_list}" ];then
   echo "There are ${failed_num} approved errors."
   echo "**************************************************************"
 
-  # L40 L48 L62 has fetch the result out, but there are splitted.
+  # L40 L48 L62 has fetch the result out, but there are split.
   if [ "${api_spec_diff}" != "" -o "${api_annotation_diff}" != "" ] ; then
     python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec
   fi

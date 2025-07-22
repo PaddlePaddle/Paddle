@@ -42,8 +42,9 @@ class TestBuildOp(unittest.TestCase):
     def test_build_mean_op(self):
         pir_program = get_ir_program()
         tanh_out = pir_program.global_block().ops[-1].result(0)
-        with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-            pir_program
+        with (
+            paddle.pir_utils.IrGuard(),
+            paddle.pir.core.program_guard(pir_program),
         ):
             out = paddle.mean(tanh_out)
             self.assertEqual(out.get_defining_op().name(), "pd_op.mean")
@@ -63,8 +64,9 @@ class TestBuildOp2(unittest.TestCase):
     def test_build_add_n_op(self):
         pir_program = get_ir_program()
         tanh_out = pir_program.global_block().ops[-1].result(0)
-        with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-            pir_program
+        with (
+            paddle.pir_utils.IrGuard(),
+            paddle.pir.core.program_guard(pir_program),
         ):
             out1 = paddle.mean(tanh_out)
             out2 = paddle.mean(tanh_out)
@@ -109,8 +111,9 @@ class TestBuildOp4(unittest.TestCase):
     def test_build_concat_op(self):
         pir_program = get_ir_program()
         tanh_out = pir_program.global_block().ops[-1].result(0)
-        with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-            pir_program
+        with (
+            paddle.pir_utils.IrGuard(),
+            paddle.pir.core.program_guard(pir_program),
         ):
             out = paddle.concat([tanh_out, tanh_out], 0)
             self.assertEqual(out.get_defining_op().name(), "pd_op.concat")
@@ -128,8 +131,9 @@ class TestBuildOp5(unittest.TestCase):
     def test_build_split_op(self):
         pir_program = get_ir_program()
         tanh_out = pir_program.global_block().ops[-1].result(0)
-        with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-            pir_program
+        with (
+            paddle.pir_utils.IrGuard(),
+            paddle.pir.core.program_guard(pir_program),
         ):
             out = paddle.split(tanh_out, [2, 2], 0)
             self.assertEqual(out[0].get_defining_op().name(), "builtin.split")
@@ -148,8 +152,9 @@ class TestBuildOp6(unittest.TestCase):
     def test_build_tensorrt_engine_op(self):
         pir_program = get_ir_program()
         tanh_out = pir_program.global_block().ops[-1].result(0)
-        with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-            pir_program
+        with (
+            paddle.pir_utils.IrGuard(),
+            paddle.pir.core.program_guard(pir_program),
         ):
             # create fake tensorrt op
             trt_params = paddle.base.libpaddle.TRTEngineParams()

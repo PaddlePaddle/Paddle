@@ -25,7 +25,7 @@ namespace phi {
 // dX = | dOut vec^T
 // dVec = | X^T dOut
 template <typename T, typename Context>
-void MvGradKernel(const Context& ctx,
+void MvGradKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const DenseTensor& vec,
                   const DenseTensor& out_grad,

@@ -27,6 +27,7 @@ void SoftmaxGPUDNNKernel(const Context& dev_ctx,
                          int axis,
                          DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
+  if (x.numel() == 0) return;
 
   const int rank = x.dims().size();
   // For 0D Tensor

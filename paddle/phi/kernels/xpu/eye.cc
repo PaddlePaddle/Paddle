@@ -21,19 +21,19 @@
 namespace phi {
 
 template <typename T, typename Context>
-void EyeKernel(const Context& ctx,
+void EyeKernel(const Context& dev_ctx,
                const Scalar& num_rows,
                const Scalar& num_columns,
                DataType dtype,
                DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   auto out_data = reinterpret_cast<XPUType*>(out->data<T>());
   int64_t num_rows_data = num_rows.to<int64_t>();
   int64_t num_columns_data = num_columns.to<int64_t>();
 
   int r = xpu::eye<XPUType>(
-      ctx.x_context(), out_data, num_rows_data, num_columns_data);
+      dev_ctx.x_context(), out_data, num_rows_data, num_columns_data);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "eye");
 }
 

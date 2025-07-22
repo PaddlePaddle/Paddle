@@ -157,6 +157,10 @@ void InterpreterCore::Build(
 
 bool InterpreterCore::IsStaticBuild() const { return impl_->IsStaticBuild(); }
 
+void InterpreterCore::SetCUDAGraphState(uint8_t cuda_graph_state) {
+  impl_->SetCUDAGraphState(cuda_graph_state);
+}
+
 std::tuple<double, double> InterpreterCore::InterpreterRunTime() {
   return impl_->InterpreterRunTime();
 }

@@ -161,6 +161,27 @@ class ProcessGroupWithStream : public ProcessGroup {
         GetBackendName()));
   }
 
+  std::shared_ptr<ProcessGroup::Task> AllToAll(
+      std::vector<phi::DenseTensor>* out_tensors,
+      const std::vector<phi::DenseTensor>& in_tensors,
+      bool sync_op) {
+    return AllToAll(out_tensors,
+                    in_tensors,
+                    sync_op,
+                    /*use_calc_stream*/ false);
+  }
+
+  std::shared_ptr<ProcessGroup::Task> AllToAll(
+      std::vector<phi::DenseTensor>* out_tensors UNUSED,
+      const std::vector<phi::DenseTensor>& in_tensors UNUSED,
+      bool sync_op UNUSED,
+      bool use_calc_stream UNUSED) override {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "ProcessGroup%s does not support all_to_all "
+        "with sync_op and use_calc_stream flag.",
+        GetBackendName()));
+  }
+
   std::shared_ptr<ProcessGroup::Task> Broadcast(
       phi::DenseTensor* out_tensor,
       const phi::DenseTensor& in_tensor,

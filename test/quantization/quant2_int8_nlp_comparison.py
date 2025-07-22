@@ -104,35 +104,37 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
         assert labels_file, "The labels file is missing."
 
         def reader():
-            with open(data_file, 'r') as df:
-                with open(labels_file, 'r') as lf:
-                    data_lines = df.readlines()
-                    labels_lines = lf.readlines()
-                    assert len(data_lines) == len(
-                        labels_lines
-                    ), "The number of labels does not match the length of the dataset."
+            with (
+                open(data_file, 'r') as df,
+                open(labels_file, 'r') as lf,
+            ):
+                data_lines = df.readlines()
+                labels_lines = lf.readlines()
+                assert len(data_lines) == len(
+                    labels_lines
+                ), "The number of labels does not match the length of the dataset."
 
-                    for i in range(len(data_lines)):
-                        data_fields = data_lines[i].split(';')
+                for i in range(len(data_lines)):
+                    data_fields = data_lines[i].split(';')
+                    assert (
+                        len(data_fields) >= 2
+                    ), "The number of data fields in the dataset is less than 2"
+                    buffers = []
+                    shape = []
+                    for j in range(2):
+                        data = data_fields[j].split(':')
                         assert (
-                            len(data_fields) >= 2
-                        ), "The number of data fields in the dataset is less than 2"
-                        buffers = []
-                        shape = []
-                        for j in range(2):
-                            data = data_fields[j].split(':')
-                            assert (
-                                len(data) >= 2
-                            ), "Size of data in the dataset is less than 2"
-                            # Shape is stored under index 0, while data under 1
-                            shape = data[0].split()
-                            shape.pop(0)
-                            shape_np = np.array(shape).astype("int64")
-                            buffer_i = data[1].split()
-                            buffer_np = np.array(buffer_i).astype("int64")
-                            buffer_np.shape = tuple(shape_np)
-                            buffers.append(buffer_np)
-                        yield buffers[0], buffers[1], int(labels_lines[i])
+                            len(data) >= 2
+                        ), "Size of data in the dataset is less than 2"
+                        # Shape is stored under index 0, while data under 1
+                        shape = data[0].split()
+                        shape.pop(0)
+                        shape_np = np.array(shape).astype("int64")
+                        buffer_i = data[1].split()
+                        buffer_np = np.array(buffer_i).astype("int64")
+                        buffer_np.shape = tuple(shape_np)
+                        buffers.append(buffer_np)
+                    yield buffers[0], buffers[1], int(labels_lines[i])
 
         return reader
 

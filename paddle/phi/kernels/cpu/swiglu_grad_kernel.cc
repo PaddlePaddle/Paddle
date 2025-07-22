@@ -20,7 +20,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void SwiGLUGradKernelImpl(const Context &ctx,
+void SwiGLUGradKernelImpl(const Context &dev_ctx,
                           const T *x,
                           const T *y,
                           const T *dz,

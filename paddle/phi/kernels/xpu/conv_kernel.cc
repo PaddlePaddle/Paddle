@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/xpu/conv_utils_xpu.h"
 #include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
 #ifdef PADDLE_WITH_XPU_XRE5
@@ -37,6 +38,11 @@ void ConvKernel(const Context& dev_ctx,
                 int groups,
                 const std::string& data_format,
                 DenseTensor* out) {
+  if (input.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    return;
+  }
   using XPUType = typename XPUTypeTrait<T>::Type;
   std::vector<int64_t> paddings(paddings_t.begin(), paddings_t.end());
   std::vector<int64_t> dilations(dilations_t.begin(), dilations_t.end());
@@ -85,7 +91,8 @@ void ConvKernel(const Context& dev_ctx,
   if (data_format == "NHWC") {
     filter_data_tmp = RAII_GUARD.alloc<XPUType>(filter.numel());
     PADDLE_ENFORCE_XDNN_NOT_NULL(filter_data_tmp);
-    std::vector<int> filter_shape = common::vectorize<int>(filter.dims());
+    std::vector<int64_t> filter_shape =
+        common::vectorize<int64_t>(filter.dims());
     int r = xpu::transpose<XPUType>(dev_ctx.x_context(),
                                     filter_data,
                                     filter_data_tmp,
@@ -228,7 +235,8 @@ void Conv3DKernel(const Context& dev_ctx,
   if (data_format == "NDHWC") {
     filter_data_tmp = RAII_GUARD.alloc<XPUType>(filter.numel());
     PADDLE_ENFORCE_XDNN_NOT_NULL(filter_data_tmp);
-    std::vector<int> filter_shape = common::vectorize<int>(filter.dims());
+    std::vector<int64_t> filter_shape =
+        common::vectorize<int64_t>(filter.dims());
     int r = xpu::transpose<XPUType>(dev_ctx.x_context(),
                                     filter_data,
                                     filter_data_tmp,

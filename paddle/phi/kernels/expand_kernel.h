@@ -21,7 +21,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ExpandKernel(const Context& ctx,
+void ExpandKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const IntArray& shape,
                   DenseTensor* out);

@@ -378,35 +378,43 @@ class TestUpdateLossScalingLayer(unittest.TestCase):
         with paddle_static_guard():
             main = base.Program()
             startup = base.Program()
-            with base.unique_name.guard():
-                with base.program_guard(main, startup):
-                    self.loss_scaling_check(use_cuda=False)
+            with (
+                base.unique_name.guard(),
+                base.program_guard(main, startup),
+            ):
+                self.loss_scaling_check(use_cuda=False)
 
     def test_loss_scaling_cpu_inf(self):
         with paddle_static_guard():
             main = base.Program()
             startup = base.Program()
-            with base.unique_name.guard():
-                with base.program_guard(main, startup):
-                    self.loss_scaling_check_inf(use_cuda=False)
+            with (
+                base.unique_name.guard(),
+                base.program_guard(main, startup),
+            ):
+                self.loss_scaling_check_inf(use_cuda=False)
 
     def test_loss_scaling_gpu(self):
         if base.core.is_compiled_with_cuda():
             with paddle_static_guard():
                 main = base.Program()
                 startup = base.Program()
-                with base.unique_name.guard():
-                    with base.program_guard(main, startup):
-                        self.loss_scaling_check(use_cuda=True)
+                with (
+                    base.unique_name.guard(),
+                    base.program_guard(main, startup),
+                ):
+                    self.loss_scaling_check(use_cuda=True)
 
     def test_loss_scaling_gpu_inf(self):
         if base.core.is_compiled_with_cuda():
             with paddle_static_guard():
                 main = base.Program()
                 startup = base.Program()
-                with base.unique_name.guard():
-                    with base.program_guard(main, startup):
-                        self.loss_scaling_check_inf(use_cuda=True)
+                with (
+                    base.unique_name.guard(),
+                    base.program_guard(main, startup),
+                ):
+                    self.loss_scaling_check_inf(use_cuda=True)
 
 
 if __name__ == '__main__':

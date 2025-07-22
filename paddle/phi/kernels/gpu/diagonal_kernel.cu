@@ -17,8 +17,8 @@
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/diagonal.h"
-
 namespace phi {
 using phi::PADDLE_CUDA_NUM_THREADS;
 template <typename T, typename Context>
@@ -28,6 +28,11 @@ void DiagonalKernel(const Context& dev_ctx,
                     int axis1,
                     int axis2,
                     DenseTensor* out) {
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    return;
+  }
   auto* input = &x;
   const auto* input_data = input->data<T>();
   auto input_dim = input->dims().Get();

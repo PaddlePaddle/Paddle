@@ -29,6 +29,95 @@ namespace cub = hipcub;
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/gpudnn/conv_gpudnn.h"
+#include "paddle/phi/kernels/impl/conv_cudnn_impl.h"
+
+namespace phi {
+// To determine use cudnn or not.
+struct DWConvParams {
+  bool has_fuse_relu_;
+  std::string data_format_;
+  std::vector<int> strides_;
+  std::vector<int> dilations_;
+
+  DWConvParams(const bool has_fuse_relu,
+               const std::string& data_format,
+               const std::vector<int>& strides,
+               const std::vector<int>& dilations)
+      : has_fuse_relu_(has_fuse_relu),
+        data_format_(data_format),
+        strides_(strides),
+        dilations_(dilations) {}
+
+  bool is_strided() const {
+    for (const auto& stride : strides_) {
+      if (stride != 1) return true;
+    }
+    return false;
+  }
+
+  bool is_dilated() const {
+    for (const auto& dilation : dilations_) {
+      if (dilation != 1) return true;
+    }
+    return false;
+  }
+
+  // Check if use cudnn for NHWC and NCHW FP16.
+  template <typename Context>
+  bool UseCudnnDepthwise(const Context& dev_ctx,
+                         const DenseTensor& input,
+                         const DenseTensor& filter) const {
+    // No fuse supported yet.
+    if (has_fuse_relu_) {
+      return false;
+    }
+    // Tensor Core introduced from Volta GPUs.
+    if (!IsVoltaOrLater(dev_ctx)) {
+      return false;
+    }
+    // Cudnn enable
+    if (!dynload::HasCUDNN()) {
+      return false;
+    }
+    // Only support FP16.
+    if (input.type() != phi::DataType::FLOAT16 &&
+        filter.type() != phi::DataType::FLOAT16) {
+      return false;
+    }
+    // Only support depthwise 2D.
+    if (input.dims().size() != 4) {
+      return false;
+    }
+    // No dilation and stride.
+    if (is_dilated() || is_strided()) {
+      return false;
+    }
+    // Make sure square filter.
+    const int ksize_height = filter.dims()[2];
+    const int ksize_width = filter.dims()[3];
+    if (ksize_height != ksize_width) {
+      return false;
+    }
+    // For 1/3/5/7 filter。
+    if (ksize_height != 1 && ksize_height != 3 && ksize_height != 5 &&
+        ksize_height != 7) {
+      return false;
+    }
+    // Use cudnn for nhwc fp16.
+    if (data_format_ == "NHWC") {
+      return true;
+    }
+    // TODO(Dmovic): Data format here is NCHW, enable when channel
+    // greater than 32, need benchmarks.
+    if (input.dims()[1] < 32) {
+      return false;
+    }
+    return true;
+  }
+};
+
+}  // namespace phi
 
 namespace paddle {
 namespace operators {
@@ -44,7 +133,7 @@ template <typename DeviceContext,
           bool fuse_relu_before_conv = false>
 class DepthwiseConvFunctor {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& input,
                   const phi::DenseTensor& filter,
                   const std::vector<int>& strides,
@@ -59,7 +148,7 @@ template <typename DeviceContext,
           bool fuse_relu_before_conv = false>
 class DepthwiseConvInputGradFunctor {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& input,
                   const phi::DenseTensor& filter,
                   const phi::DenseTensor& output_grad,
@@ -75,7 +164,7 @@ template <typename DeviceContext,
           bool fuse_relu_before_conv = false>
 class DepthwiseConvFilterGradFunctor {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& input,
                   const phi::DenseTensor& output_grad,
                   const std::vector<int>& strides,
@@ -920,65 +1009,6 @@ __device__ __inline__ void KernelDepthwiseConvFilterGradNCHW(
   }
 }
 
-template <typename T, bool fuse_relu_before_conv>
-__device__ __inline__ void KernelDepthwiseConvFilterGradNHWC(
-    const T* output_grad_data,
-    const T* input_data,
-    const int num,
-    const int output_channels,
-    const int output_height,
-    const int output_width,
-    const int input_channels,
-    const int input_height,
-    const int input_width,
-    const int filter_multiplier,
-    const int filter_height,
-    const int filter_width,
-    const int stride_height,
-    const int stride_width,
-    const int padding_height,
-    const int padding_width,
-    const int dilate_height,
-    const int dilate_width,
-    T* filter_grad_data) {
-  int bid = blockIdx.z;
-  int image_h = blockIdx.y;
-  int kernel_iw = blockIdx.x % filter_width;
-  int kernel_ih = blockIdx.x / filter_width;
-  for (int kernel_id = threadIdx.x; kernel_id < output_channels;
-       kernel_id += blockDim.x) {
-    T s(0);
-    int gbid =
-        ((kernel_id * filter_height) + kernel_ih) * filter_width + kernel_iw;
-    for (int image_w = threadIdx.y; image_w < output_width;
-         image_w += blockDim.y) {
-      int kernel_h = kernel_ih * dilate_height - padding_height;
-      int kernel_w = kernel_iw * dilate_width - padding_width;
-
-      int image_hk = image_h * stride_height + kernel_h;
-      int image_wk = image_w * stride_width + kernel_w;
-      if (image_hk < 0 || image_hk >= input_height) continue;
-      if (image_wk < 0 || image_wk >= input_width) continue;
-#define gaid(N, H, W, C) \
-  ((((N)*output_height + (H)) * output_width + (W)) * output_channels + (C))
-      int input_id =
-          ((bid * input_height + image_hk) * input_width + image_wk) *
-              input_channels +
-          kernel_id / filter_multiplier;
-      if (fuse_relu_before_conv) {
-        s += output_grad_data[gaid(bid, image_h, image_w, kernel_id)] *
-             static_cast<T>(
-                 max(0.0f, static_cast<double>(input_data[input_id])));
-      } else {
-        s += output_grad_data[gaid(bid, image_h, image_w, kernel_id)] *
-             input_data[input_id];
-      }
-#undef gaid
-    }
-    phi::CudaAtomicAdd(&filter_grad_data[gbid], s);
-  }
-}
-
 template <typename T,
           typename index_t,
           typename std::enable_if_t<std::is_same_v<phi::dtype::float16, T>>* =
@@ -1057,6 +1087,66 @@ __device__ __forceinline__ void NoReturnAtomicAdd(T* tensor,
                                                   const index_t numel,
                                                   T value) {
   phi::CudaAtomicAdd(tensor + index, value);
+}
+
+template <typename T, bool fuse_relu_before_conv>
+__device__ __inline__ void KernelDepthwiseConvFilterGradNHWC(
+    const T* output_grad_data,
+    const T* input_data,
+    const int num,
+    const int output_channels,
+    const int output_height,
+    const int output_width,
+    const int input_channels,
+    const int input_height,
+    const int input_width,
+    const int filter_multiplier,
+    const int filter_height,
+    const int filter_width,
+    const int stride_height,
+    const int stride_width,
+    const int padding_height,
+    const int padding_width,
+    const int dilate_height,
+    const int dilate_width,
+    T* filter_grad_data) {
+  int bid = blockIdx.z;
+  int image_h = blockIdx.y;
+  int kernel_iw = blockIdx.x % filter_width;
+  int kernel_ih = blockIdx.x / filter_width;
+  for (int kernel_id = threadIdx.x; kernel_id < output_channels;
+       kernel_id += blockDim.x) {
+    T s(0);
+    int gbid =
+        ((kernel_id * filter_height) + kernel_ih) * filter_width + kernel_iw;
+    for (int image_w = threadIdx.y; image_w < output_width;
+         image_w += blockDim.y) {
+      int kernel_h = kernel_ih * dilate_height - padding_height;
+      int kernel_w = kernel_iw * dilate_width - padding_width;
+
+      int image_hk = image_h * stride_height + kernel_h;
+      int image_wk = image_w * stride_width + kernel_w;
+      if (image_hk < 0 || image_hk >= input_height) continue;
+      if (image_wk < 0 || image_wk >= input_width) continue;
+      int input_id =
+          ((bid * input_height + image_hk) * input_width + image_wk) *
+              input_channels +
+          kernel_id / filter_multiplier;
+      int output_id =
+          ((bid * output_height + image_h) * output_width + image_w) *
+              output_channels +
+          kernel_id;
+      if (fuse_relu_before_conv) {
+        s += output_grad_data[output_id] *
+             static_cast<T>(
+                 max(0.0f, static_cast<double>(input_data[input_id])));
+      } else {
+        s += output_grad_data[output_id] * input_data[input_id];
+      }
+    }
+    const int numel = output_channels * filter_width * filter_height;
+    NoReturnAtomicAdd(filter_grad_data, gbid, numel, s);
+  }
 }
 
 template <typename T, int c_filter, bool fuse_relu_before_conv>
@@ -1360,7 +1450,7 @@ __global__ void KernelDepthwiseConvFilterGradSp(const T* output_grad_data,
 template <class T, bool fuse_relu_before_conv>
 class DepthwiseConvFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const phi::DenseTensor& input,
                   const phi::DenseTensor& filter,
                   const std::vector<int>& strides,
@@ -1395,7 +1485,7 @@ class DepthwiseConvFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
 
     const T* input_data = input.data<T>();
     const T* filter_data = filter.data<T>();
-    T* output_data = context.template Alloc<T>(output);
+    T* output_data = dev_ctx.template Alloc<T>(output);
 
     phi::DenseTensor filter_hwc;
     if (data_layout == DataLayout::kNHWC) {
@@ -1404,10 +1494,10 @@ class DepthwiseConvFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
                                  filter.dims()[0],
                                  filter.dims()[1]});
       filter_hwc.Resize(filter_hwc_dims);
-      context.template Alloc<T>(&filter_hwc);
+      dev_ctx.template Alloc<T>(&filter_hwc);
       std::vector<int> perm_axis({2, 3, 0, 1});
       phi::funcs::TransposeNormal<phi::GPUContext, T> trans;
-      trans(context, filter, &filter_hwc, perm_axis);
+      trans(dev_ctx, filter, &filter_hwc, perm_axis);
       filter_data = filter_hwc.data<T>();
     }
 
@@ -1456,7 +1546,7 @@ class DepthwiseConvFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
                             c_filter,                                   \
                             DataLayout::kNCHW,                          \
                             fuse_relu_before_conv>                      \
-          <<<grid, threads, 0, context.stream()>>>(input_data,          \
+          <<<grid, threads, 0, dev_ctx.stream()>>>(input_data,          \
                                                    filter_data,         \
                                                    batch_size,          \
                                                    output_channels,     \
@@ -1482,7 +1572,7 @@ class DepthwiseConvFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
                             c_filter,                                   \
                             DataLayout::kNHWC,                          \
                             fuse_relu_before_conv>                      \
-          <<<grid, threads, 0, context.stream()>>>(input_data,          \
+          <<<grid, threads, 0, dev_ctx.stream()>>>(input_data,          \
                                                    filter_data,         \
                                                    batch_size,          \
                                                    output_channels,     \
@@ -1526,7 +1616,7 @@ class DepthwiseConvFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
 template <typename T, bool fuse_relu_before_conv>
 class DepthwiseConvInputGradFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const phi::DenseTensor& input,
                   const phi::DenseTensor& filter,
                   const phi::DenseTensor& output_grad,
@@ -1563,7 +1653,7 @@ class DepthwiseConvInputGradFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
     const T* input_data = input.data<T>();
     const T* filter_data = filter.data<T>();
     const T* output_grad_data = output_grad.data<T>();
-    T* input_grad_data = context.template Alloc<T>(input_grad);
+    T* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
 
     phi::DenseTensor filter_hwc;
     if (data_layout == DataLayout::kNHWC) {
@@ -1572,10 +1662,10 @@ class DepthwiseConvInputGradFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
                                  filter.dims()[0],
                                  filter.dims()[1]});
       filter_hwc.Resize(filter_hwc_dims);
-      context.template Alloc<T>(&filter_hwc);
+      dev_ctx.template Alloc<T>(&filter_hwc);
       std::vector<int> perm_axis({2, 3, 0, 1});
       phi::funcs::TransposeNormal<phi::GPUContext, T> trans;
-      trans(context, filter, &filter_hwc, perm_axis);
+      trans(dev_ctx, filter, &filter_hwc, perm_axis);
       filter_data = filter_hwc.data<T>();
     }
 
@@ -1625,7 +1715,7 @@ class DepthwiseConvInputGradFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
                                      c_filter,                          \
                                      DataLayout::kNCHW,                 \
                                      fuse_relu_before_conv>             \
-          <<<grid, threads, 0, context.stream()>>>(input_data,          \
+          <<<grid, threads, 0, dev_ctx.stream()>>>(input_data,          \
                                                    output_grad_data,    \
                                                    filter_data,         \
                                                    batch_size,          \
@@ -1652,7 +1742,7 @@ class DepthwiseConvInputGradFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
                                      c_filter,                          \
                                      DataLayout::kNHWC,                 \
                                      fuse_relu_before_conv>             \
-          <<<grid, threads, 0, context.stream()>>>(input_data,          \
+          <<<grid, threads, 0, dev_ctx.stream()>>>(input_data,          \
                                                    output_grad_data,    \
                                                    filter_data,         \
                                                    batch_size,          \
@@ -1699,7 +1789,7 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
                                      T,
                                      fuse_relu_before_conv> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const phi::DenseTensor& input,
                   const phi::DenseTensor& output_grad,
                   const std::vector<int>& strides,
@@ -1734,7 +1824,7 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
 
     const T* input_data = input.data<T>();
     const T* output_grad_data = output_grad.data<T>();
-    T* filter_grad_data = context.template Alloc<T>(filter_grad);
+    T* filter_grad_data = dev_ctx.template Alloc<T>(filter_grad);
 
     int block_size = 512;
     int blocks;
@@ -1785,7 +1875,7 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
                                       c_filter,                                \
                                       DataLayout::kNCHW,                       \
                                       fuse_relu_before_conv>                   \
-          <<<grid, threads, 0, context.stream()>>>(output_grad_data,           \
+          <<<grid, threads, 0, dev_ctx.stream()>>>(output_grad_data,           \
                                                    input_data,                 \
                                                    batch_size,                 \
                                                    output_channels,            \
@@ -1812,9 +1902,9 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
                                         filter_grad->dims()[0],                \
                                         filter_grad->dims()[1]});              \
         filter_grad_hwc.Resize(filter_grad_hwc_dims);                          \
-        context.template Alloc<T>(&filter_grad_hwc);                           \
+        dev_ctx.template Alloc<T>(&filter_grad_hwc);                           \
         phi::funcs::SetConstant<phi::GPUContext, T> set_zero;                  \
-        set_zero(context, &filter_grad_hwc, static_cast<T>(0));                \
+        set_zero(dev_ctx, &filter_grad_hwc, static_cast<T>(0));                \
         filter_grad_data = filter_grad_hwc.data<T>();                          \
       } else {                                                                 \
         block_size = 512;                                                      \
@@ -1834,7 +1924,7 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
                                       c_filter,                                \
                                       DataLayout::kNHWC,                       \
                                       fuse_relu_before_conv>                   \
-          <<<grid, threads, 0, context.stream()>>>(output_grad_data,           \
+          <<<grid, threads, 0, dev_ctx.stream()>>>(output_grad_data,           \
                                                    input_data,                 \
                                                    batch_size,                 \
                                                    output_channels,            \
@@ -1856,7 +1946,7 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
       if (c_filter != -1) {                                                    \
         std::vector<int> perm_axis({2, 3, 0, 1});                              \
         phi::funcs::TransposeNormal<phi::GPUContext, T> trans;                 \
-        trans(context, filter_grad_hwc, filter_grad, perm_axis);               \
+        trans(dev_ctx, filter_grad_hwc, filter_grad, perm_axis);               \
       }                                                                        \
     }                                                                          \
     return;                                                                    \

@@ -25,6 +25,10 @@ void MaxOutKernel(const Context& dev_ctx,
                   int groups,
                   int axis,
                   DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   if (axis < 0) {
     axis += x.dims().size();
   }

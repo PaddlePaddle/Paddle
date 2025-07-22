@@ -506,11 +506,6 @@ void MatmulWithFlattenKernelINT8(const Context &dev_ctx,
                                  int x_num_col_dims,
                                  int y_num_col_dims,
                                  DenseTensor *out) {
-  PADDLE_ENFORCE_EQ(dev_ctx.GetPlace().GetType() == AllocationType::CPU,
-                    true,
-                    errors::PreconditionNotMet(
-                        "oneDNN MatmulWithFlatten kernel must use CPUPlace"));
-
   OneDNNContext::tls().log_lib_version();
   auto &onednn_engine = dev_ctx.GetEngine();
 

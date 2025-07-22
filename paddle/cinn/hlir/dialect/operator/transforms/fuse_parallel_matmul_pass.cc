@@ -22,6 +22,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/sub_graph_detector.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pattern_rewrite/frozen_rewrite_pattern_set.h"
@@ -183,6 +184,166 @@ class MergeParallelMatmulPattern
   }
 };
 
+class MergeParallelLinearPattern
+    : public pir::OpRewritePattern<paddle::dialect::FusedGemmEpilogueOp> {
+ public:
+  using pir::OpRewritePattern<
+      paddle::dialect::FusedGemmEpilogueOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::FusedGemmEpilogueOp fused_gemm_op,
+                       pir::PatternRewriter& rewriter) const override {
+    auto ValidFusedGemmAttr = [](pir::Operation* op) -> bool {
+      if (!op->isa<paddle::dialect::FusedGemmEpilogueOp>()) {
+        return false;
+      }
+      bool trans_x =
+          op->attribute("trans_x").dyn_cast<pir::BoolAttribute>().data();
+      bool trans_y =
+          op->attribute("trans_y").dyn_cast<pir::BoolAttribute>().data();
+
+      // only support trans_x and trans_y are false
+      if (trans_x || trans_y) return false;
+
+      std::string activation =
+          op->attribute<pir::StrAttribute>("activation").AsString();
+      if (activation != "none") return false;
+      return true;
+    };
+    if (!ValidFusedGemmAttr(fused_gemm_op)) {
+      return false;
+    }
+
+    auto IsFirstInput = [&](pir::Operation* op, pir::Value in_x) -> bool {
+      return in_x == op->operand_source(0);
+    };
+
+    auto VectorPrefixEqual = [](const std::vector<std::int64_t>& a,
+                                const std::vector<std::int64_t>& b) {
+      return std::vector<std::int64_t>(a.begin(), a.end() - 1) ==
+             std::vector<std::int64_t>(b.begin(), b.end() - 1);
+    };
+
+    auto IsDynamicShape = [&](const std::vector<int64_t>& dims) {
+      return std::any_of(
+          dims.begin(), dims.end(), [](int64_t dim) { return dim < 0; });
+    };
+
+    auto input_x = fused_gemm_op.operand_source(0);
+    std::vector<pir::Operation*> merge_ops = [&]() {
+      std::vector<pir::Operation*> ret;
+      std::optional<std::vector<std::int64_t>> pre_w_dim;
+      std::optional<std::vector<std::int64_t>> pre_bias_dim;
+      std::vector<std::int64_t> cur_w_dim;
+      std::vector<std::int64_t> cur_bias_dim;
+      for (auto it = input_x.use_begin(); it != input_x.use_end(); ++it) {
+        if (!ValidFusedGemmAttr(it->owner())) {
+          continue;
+        }
+
+        if (!IsFirstInput(it->owner(), input_x)) {
+          continue;
+        }
+        if (!pre_w_dim.has_value()) {
+          pre_w_dim = pir::GetShapeFromValue(it->owner()->operand_source(1));
+        }
+        if (!pre_bias_dim.has_value()) {
+          pre_bias_dim = pir::GetShapeFromValue(it->owner()->operand_source(2));
+        }
+        cur_w_dim = pir::GetShapeFromValue(it->owner()->operand_source(1));
+        cur_bias_dim = pir::GetShapeFromValue(it->owner()->operand_source(2));
+
+        if (IsDynamicShape(cur_w_dim) || IsDynamicShape(cur_bias_dim)) {
+          continue;
+        }
+        if (VectorPrefixEqual(pre_w_dim.value(), cur_w_dim)) {
+          ret.push_back(it->owner());
+        }
+      }
+      return ret;
+    }();
+    if (merge_ops.size() <= 1) {
+      return false;
+    }
+    std::sort(
+        merge_ops.begin(),
+        merge_ops.end(),
+        [&](pir::Operation* a, pir::Operation* b) {
+          int a_distance = std::distance(a->GetParent()->begin(),
+                                         a->operator pir::Block::Iterator());
+          int b_distance = std::distance(b->GetParent()->begin(),
+                                         b->operator pir::Block::Iterator());
+          return a_distance < b_distance;
+        });
+
+    const auto [combine_w_ins, combine_bias_ins] = [&]() {
+      std::vector<pir::Value> weight_list, bias_list;
+      for (pir::Operation* op : merge_ops) {
+        weight_list.push_back(op->operand_source(1));
+        bias_list.push_back(op->operand_source(2));
+      }
+      return std::make_tuple(weight_list, bias_list);
+    }();
+
+    const std::vector<std::int64_t> combine_shapes = [&]() {
+      std::vector<std::int64_t> ret{0};
+      std::int64_t accumulate = 0;
+      for (pir::Value input : combine_w_ins) {
+        const auto& shape = pir::GetShapeFromValue(input);
+        accumulate += shape.back();
+        ret.push_back(accumulate);
+      }
+      return ret;
+    }();
+    const std::vector<pir::Value> outputs = [&]() {
+      std::vector<pir::Value> ret;
+      for (pir::Operation* fused_gemm_op : merge_ops) {
+        ret.push_back(fused_gemm_op->result(0));
+      }
+      return ret;
+    }();
+
+    auto* insert_point = FindInsertPoint(merge_ops, outputs);
+    MoveUpstreamOpBeforeGroup(
+        merge_ops, merge_ops.back()->GetParent(), insert_point);
+    rewriter.set_insertion_point(insert_point);
+
+    auto combine_w = rewriter.Build<pir::CombineOp>(combine_w_ins).result(0);
+    auto combine_bias =
+        rewriter.Build<pir::CombineOp>(combine_bias_ins).result(0);
+    auto concat_w =
+        rewriter.Build<paddle::dialect::ConcatOp>(combine_w, -1).result(0);
+    auto concat_b =
+        rewriter.Build<paddle::dialect::ConcatOp>(combine_bias, -1).result(0);
+    auto new_fused_gemm_out =
+        rewriter
+            .Build<paddle::dialect::FusedGemmEpilogueOp>(
+                input_x, concat_w, concat_b, fused_gemm_op.attributes())
+            .result(0);
+
+    const auto& out_rank = new_fused_gemm_out.type()
+                               .dyn_cast<paddle::dialect::DenseTensorType>()
+                               .dims()
+                               .size();
+
+    for (size_t i = 0; i < merge_ops.size(); ++i) {
+      auto split_out = rewriter
+                           .Build<paddle::dialect::SliceOp>(
+                               new_fused_gemm_out,
+                               std::vector<std::int64_t>{out_rank - 1},
+                               std::vector<std::int64_t>{combine_shapes[i]},
+                               std::vector<int64_t>{combine_shapes[i + 1]},
+                               std::vector<std::int64_t>{},
+                               std::vector<std::int64_t>{})
+                           .result(0);
+
+      rewriter.ReplaceAllUsesWith(merge_ops[i]->result(0), split_out);
+      rewriter.EraseOp(merge_ops[i]);
+    }
+
+    return true;
+  }
+};
+
 class FuseParallelMatmulPass : public pir::PatternRewritePass {
  public:
   FuseParallelMatmulPass()
@@ -191,6 +352,7 @@ class FuseParallelMatmulPass : public pir::PatternRewritePass {
   pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
     ps.Add<MergeParallelMatmulPattern>(context);
+    ps.Add<MergeParallelLinearPattern>(context);
     return ps;
   }
 };

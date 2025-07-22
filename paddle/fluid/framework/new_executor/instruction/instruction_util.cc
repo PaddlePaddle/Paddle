@@ -36,20 +36,22 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/pir/include/core/block_argument.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL)
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CUSTOM_DEVICE)
 #include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
-#include "paddle/phi/core/platform/collective_helper.h"
-COMMON_DECLARE_bool(dynamic_static_unified_comm);
-#endif
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+#include "paddle/fluid/distributed/collective/process_group_custom.h"
+#include "paddle/phi/backends/custom/custom_context.h"
+#include "paddle/phi/core/distributed/xccl_comm_context.h"
+#elif defined(PADDLE_WITH_XPU_BKCL)
+#include "paddle/fluid/distributed/collective/process_group_bkcl.h"
+#include "paddle/phi/core/distributed/bkcl_comm_context.h"
+#else
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
-#if defined(PADDLE_WITH_XPU_BKCL)
-#include "paddle/fluid/distributed/collective/process_group_bkcl.h"
-#include "paddle/phi/core/distributed/bkcl_comm_context.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 #endif
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -66,10 +68,14 @@ COMMON_DECLARE_bool(dynamic_static_unified_comm);
   phi::distributed::CommContextManager::CreateBKCLCommContext
 #define PLATFORM_COMM_CONTEXT platform::BKCLCommContext
 #define PROCESS_GROUP paddle::distributed::ProcessGroupBKCL
+#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+#define COMM_CONTEXT phi::distributed::XCCLCommContext
+#define CREATE_COMM_CONTEXT \
+  phi::distributed::CommContextManager::CreateXCCLCommContext
+#define PROCESS_GROUP paddle::distributed::ProcessGroupCustom
 #endif
 
 namespace paddle::framework {
-
 std::vector<int> GetValueIds(pir::Value value,
                              const ValueExecutionInfo& value_exec_info) {
   std::vector<int> ids;
@@ -131,7 +137,7 @@ phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
     }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL)
+    defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_XPU_BKCL)
     // NOTE(Ruibiao): Here supports multi-stream overlap for c_allreduce_sum
     // with use_cal_stream==false by returning a device context getting from the
     // global NCCLCommContext instance. Because when use_calc_stream==false, in
@@ -147,24 +153,17 @@ phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
                 .data() == false) {
       int ring_id =
           op_attributes.at("ring_id").dyn_cast<pir::Int32Attribute>().data();
-      if (FLAGS_dynamic_static_unified_comm) {
-        const auto& comm_context_manager =
-            phi::distributed::CommContextManager::GetInstance();
-        dev_ctx = static_cast<phi::DeviceContext*>(
-            static_cast<COMM_CONTEXT*>(
-                comm_context_manager.Get(std::to_string(ring_id)))
-                ->GetDevContext());
-      } else {
-        dev_ctx = PLATFORM_COMM_CONTEXT::Instance()
-                      .Get(ring_id, place)
-                      ->dev_context();
-      }
+      const auto& comm_context_manager =
+          phi::distributed::CommContextManager::GetInstance();
+      dev_ctx = static_cast<phi::DeviceContext*>(
+          static_cast<COMM_CONTEXT*>(
+              comm_context_manager.Get(std::to_string(ring_id)))
+              ->GetDevContext());
       return dev_ctx;
     }
 
     // handle comm op
-    if (op_attributes.count("ring_id") != 0 &&
-        FLAGS_dynamic_static_unified_comm) {
+    if (op_attributes.count("ring_id") != 0) {
       int ring_id =
           op_attributes.at("ring_id").dyn_cast<pir::Int32Attribute>().data();
       const auto& comm_context_manager =
@@ -174,6 +173,8 @@ phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
       if (comm_context_manager.Has(std::to_string(ring_id))) {
         comm_context = comm_context_manager.Get(std::to_string(ring_id));
       } else if (op_name.compare(paddle::dialect::MpAllreduceSum_Op::name()) ==
+                     0 ||
+                 op_name.compare(paddle::dialect::MpAllreduceSumOp::name()) ==
                      0 ||
                  op_name.compare(paddle::dialect::AllReduce_Op::name()) == 0 ||
                  op_name.compare(paddle::dialect::CIdentity_Op::name()) == 0 ||
@@ -189,21 +190,53 @@ phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
         dev_ctx = static_cast<platform::DeviceContext*>(
             static_cast<COMM_CONTEXT*>(comm_context)->GetDevContext());
         dev_ctx->SetCommContext(comm_context);
+
         if (op_name.compare(paddle::dialect::ReduceScatterOp::name()) == 0 ||
             op_name.compare(paddle::dialect::AllReduceOp::name()) == 0 ||
             op_name.compare(paddle::dialect::AllReduce_Op::name()) == 0 ||
             op_name.compare(paddle::dialect::Broadcast_Op::name()) == 0 ||
             op_name.compare(paddle::dialect::BroadcastOp::name()) == 0 ||
             op_name.compare(paddle::dialect::AllGatherOp::name()) == 0 ||
+            op_name.compare(paddle::dialect::MpAllreduceSumOp::name()) == 0 ||
             op_name.compare(paddle::dialect::MpAllreduceSum_Op::name()) == 0 ||
             op_name.compare(paddle::dialect::CIdentity_Op::name()) == 0 ||
             op_name.compare(paddle::dialect::CConcatOp::name()) == 0 ||
-            op_name.compare(paddle::dialect::CConcatOp::name()) == 0 ||
-            op_name.compare(paddle::dialect::AllGatherOp::name()) == 0 ||
             op_name.compare(paddle::dialect::AllToAllOp::name()) == 0 ||
             op_name.compare(
                 paddle::dialect::CSoftmaxWithCrossEntropyOp::name()) == 0) {
+#if defined(PADDLE_WITH_XPU_BKCL)
+          if (phi::is_xpu_place(place) && execution_stream == kDefaultStream) {
+            VLOG(3) << "set stream for " << op_name << "in XPU device";
+            if (origin_dev_ctx != nullptr) {
+              // set stream
+              auto default_stream =
+                  static_cast<DEVICE_CONTEXT*>(origin_dev_ctx)->stream();
+              static_cast<DEVICE_CONTEXT*>(dev_ctx)->SetStream(default_stream);
+              // todo set allocator
+            } else {
+              VLOG(3) << "CUSTOM DEVICE op " << op_name << " ring_id "
+                      << ring_id << " origin_dev_ctx is nullptr";
+            }
+          }
+#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+          if (phi::is_custom_place(place) &&
+              execution_stream == kDefaultStream) {
+            VLOG(3) << "set stream for " << op_name << "in Custom device";
+            if (origin_dev_ctx != nullptr) {
+              // set stream
+              auto default_stream =
+                  static_cast<phi::CustomContext*>(origin_dev_ctx)->GetStream();
+              static_cast<phi::CustomContext*>(dev_ctx)->SetStream(
+                  default_stream);
+              // todo set allocator
+            } else {
+              VLOG(3) << "CUSTOM DEVICE op " << op_name << " ring_id "
+                      << ring_id << " origin_dev_ctx is nullptr";
+            }
+          }
+#else
           if (phi::is_gpu_place(place) && execution_stream == kDefaultStream) {
+            VLOG(3) << "set stream for " << op_name << "in GPU device";
             if (origin_dev_ctx != nullptr) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
               // set stream
@@ -226,6 +259,7 @@ phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
                       << " origin_dev_ctx is nullptr";
             }
           }
+#endif
           return dev_ctx;
         }
       } else {

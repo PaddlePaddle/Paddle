@@ -17,6 +17,9 @@
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+#include "paddle/phi/backends/stream.h"
+#endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/core/cuda_stream.h"
 #else
@@ -25,13 +28,20 @@ class CUDAStream {};
 }  // namespace phi
 #endif
 
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+#define PY_STREAM_TYPE phi::stream::Stream*
+#else
+#define PY_STREAM_TYPE phi::CUDAStream*
+#endif
+
 namespace py = pybind11;
 
 namespace paddle {
 namespace platform {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-phi::CUDAStream* get_current_stream(int device_id = -1);
-phi::CUDAStream* set_current_stream(phi::CUDAStream* stream);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
+PY_STREAM_TYPE get_current_stream(int device_id = -1);
+PY_STREAM_TYPE set_current_stream(PY_STREAM_TYPE stream);
 #endif
 }  // namespace platform
 namespace pybind {

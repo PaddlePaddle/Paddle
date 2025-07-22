@@ -12,13 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_places,
+    skip_check_grad_ci,
+)
 
 import paddle
 import paddle.distributed as dist
@@ -282,6 +286,76 @@ class TestConcatOp7(TestConcatOp):
         else:
             self.x0 = np.random.random((5, 1, 4, 5)).astype(self.dtype)
             self.x1 = np.random.random((5, 2, 4, 5)).astype(self.dtype)
+            self.x2 = np.random.random((5, 3, 4, 5)).astype(self.dtype)
+        self.axis = 1
+
+
+class TestConcatOp0Size(TestConcatOp):
+    def setUp(self):
+        self.op_type = "concat"
+        self.python_api = paddle.concat
+        self.public_python_api = paddle.concat
+        self.prim_op_type = "prim"
+        self.if_enable_cinn()
+        self.dtype = self.get_dtype()
+        self.init_test_data()
+        self.inputs = {'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)]}
+        self.attrs = {'axis': self.axis}
+        if self.axis < 0:
+            self.actual_axis = self.axis + len(self.x0.shape)
+            self.actual_axis = max(0, self.actual_axis)
+        else:
+            self.actual_axis = self.axis
+
+        self.outputs = {
+            'Out': np.concatenate(
+                (self.x0, self.x1, self.x2), axis=self.actual_axis
+            )
+        }
+
+    def if_enable_cinn(self):
+        pass
+
+    def get_dtype(self):
+        return "float64"
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['x0'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
+        )
+        self.check_grad(
+            ['x1'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
+        )
+        self.check_grad(
+            ['x2'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
+        )
+
+    def init_test_data(self):
+        if self.dtype == np.uint16:
+            x0 = np.random.random((5, 1, 4, 5)).astype(np.float32)
+            self.x0 = convert_float_to_uint16(x0)
+            x1 = np.random.random((5, 0, 4, 5)).astype(np.float32)
+            self.x1 = convert_float_to_uint16(x1)
+            x2 = np.random.random((5, 3, 4, 5)).astype(np.float32)
+            self.x2 = convert_float_to_uint16(x2)
+        else:
+            self.x0 = np.random.random((5, 1, 4, 5)).astype(self.dtype)
+            self.x1 = np.random.random((5, 0, 4, 5)).astype(self.dtype)
             self.x2 = np.random.random((5, 3, 4, 5)).astype(self.dtype)
         self.axis = 1
 
@@ -829,16 +903,7 @@ class TestConcatDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func(p)
 
 
@@ -878,16 +943,7 @@ class TestConcatTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func(p)
 
 
@@ -986,11 +1042,54 @@ class TestConcatOpErrorWithPir(unittest.TestCase):
             paddle.concat([])
 
     def test_empty_inputs_static(self):
-        with IrGuard(), paddle.base.program_guard(
-            paddle.base.Program(), paddle.base.Program()
+        with (
+            IrGuard(),
+            paddle.base.program_guard(
+                paddle.base.Program(), paddle.base.Program()
+            ),
+            self.assertRaisesRegex(ValueError, "but got empty list"),
         ):
-            with self.assertRaisesRegex(ValueError, "but got empty list"):
-                paddle.concat([], axis=0)
+            paddle.concat([], axis=0)
+
+
+class TestConcatOpZeroSize1(TestConcatOp):
+    def init_test_data(self):
+        self.x0 = np.random.random((2, 0, 4, 5)).astype(self.dtype)
+        self.x1 = np.random.random((2, 3, 4, 5)).astype(self.dtype)
+        self.x2 = np.random.random((2, 3, 4, 5)).astype(self.dtype)
+        self.axis = 1
+
+
+class TestConcatOpZeroSize2(TestConcatOp):
+    def init_test_data(self):
+        self.x0 = np.random.random((2, 0, 1, 5)).astype(self.dtype)
+        self.x1 = np.random.random((2, 0, 2, 5)).astype(self.dtype)
+        self.x2 = np.random.random((2, 0, 4, 5)).astype(self.dtype)
+        self.axis = 2
+
+
+class TestConcatOpZeroSize3(TestConcatOp):
+    def init_test_data(self):
+        self.x0 = np.random.random((0, 0, 0, 0)).astype(self.dtype)
+        self.x1 = np.random.random((0, 0, 0, 0)).astype(self.dtype)
+        self.x2 = np.random.random((0, 0, 0, 0)).astype(self.dtype)
+        self.axis = 2
+
+
+class TestConcatOpZeroSize4(TestConcatOp):
+    def init_test_data(self):
+        self.x0 = np.random.random((0, 1, 2, 3)).astype(self.dtype)
+        self.x1 = np.random.random((0, 1, 2, 3)).astype(self.dtype)
+        self.x2 = np.random.random((0, 1, 2, 3)).astype(self.dtype)
+        self.axis = 2
+
+
+class TestConcatOpZeroSize5(TestConcatOp):
+    def init_test_data(self):
+        self.x0 = np.random.random((0, 1, 2, 3)).astype(self.dtype)
+        self.x1 = np.random.random((0, 1, 2, 3)).astype(self.dtype)
+        self.x2 = np.random.random((0, 1, 2, 3)).astype(self.dtype)
+        self.axis = 2
 
 
 if __name__ == '__main__':

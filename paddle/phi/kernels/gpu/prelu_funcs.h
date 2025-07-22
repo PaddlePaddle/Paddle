@@ -23,7 +23,7 @@ namespace phi {
 
 #define CUDA_NUM_THREADS 1024
 
-inline static int PADDLE_GET_BLOCKS(const int N) {
+inline static int64_t PADDLE_GET_BLOCKS(const int64_t N) {
   return (N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
 }
 
@@ -33,11 +33,11 @@ struct PReluChannelFirstWiseCUDAFunctor {
   const T* alpha_;
   size_t channel_num_;
   size_t plane_size_;
-  int numel_;
+  int64_t numel_;
 
   HOSTDEVICE inline PReluChannelFirstWiseCUDAFunctor(const T* x,
                                                      const T* alpha,
-                                                     int numel,
+                                                     int64_t numel,
                                                      size_t channel_num,
                                                      size_t plane_size)
       : x_(x),
@@ -46,7 +46,7 @@ struct PReluChannelFirstWiseCUDAFunctor {
         channel_num_(channel_num),
         plane_size_(plane_size) {}
 
-  HOSTDEVICE inline T operator()(const unsigned int n) const {
+  HOSTDEVICE inline T operator()(const int64_t n) const {
     T zero = static_cast<T>(0);
     size_t temp = n / plane_size_;
     size_t channel_index = temp % channel_num_;
@@ -67,7 +67,7 @@ struct PReluChannelLastWiseCUDAFunctor {
                                                     size_t channel_num)
       : x_(x), alpha_(alpha), channel_num_(channel_num) {}
 
-  HOSTDEVICE inline T operator()(const unsigned int n) const {
+  HOSTDEVICE inline T operator()(const int64_t n) const {
     T zero = static_cast<T>(0);
     size_t channel_index = n % channel_num_;
     T scale = alpha_[channel_index];
@@ -87,7 +87,7 @@ struct PreluElementWiseDirectCUDAFunctor {
                                                       size_t spatial_size)
       : x_(x), alpha_(alpha), spatial_size_(spatial_size) {}
 
-  HOSTDEVICE inline T operator()(const unsigned int n) const {
+  HOSTDEVICE inline T operator()(const int64_t n) const {
     T zero = static_cast<T>(0);
     size_t element_index = n % spatial_size_;
     T scale = alpha_[element_index];

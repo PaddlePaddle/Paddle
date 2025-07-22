@@ -21,7 +21,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void SendUERecvKernel(const Context& ctx,
+void SendUERecvKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& y,
                       const DenseTensor& src_index,

@@ -12,11 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+    get_places,
+)
 
 import paddle
 from paddle.base import core
@@ -94,6 +98,34 @@ class TestTopkOp_ZeroDim(TestTopkOp):
 
     def if_enable_cinn(self):
         pass
+
+
+class TestTopkOp_ZeroSize(OpTest):
+    def init_args(self):
+        self.k = 3
+        self.axis = 1
+        self.largest = True
+
+    def setUp(self):
+        paddle.disable_static()
+        self.op_type = "top_k_v2"
+        self.python_api = paddle.topk
+        self.public_python_api = paddle.topk
+        self.dtype = np.float64
+        self.input_data = np.random.random([0, 20])
+        self.init_args()
+        self.inputs = {'X': self.input_data}
+        self.attrs = {'k': self.k, 'axis': self.axis, 'largest': self.largest}
+        output, indices = numpy_topk(
+            self.input_data, axis=self.axis, k=self.k, largest=self.largest
+        )
+        self.outputs = {'Out': output, 'Indices': indices}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestTopkOp1(TestTopkOp):
@@ -472,29 +504,11 @@ class TestTopKAPI(unittest.TestCase):
             )
 
     def test_dygraph_cases(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(core.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-        for place in places:
+        for place in get_places():
             self.run_dygraph(place)
 
     def test_static_cases(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(core.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-        for place in places:
+        for place in get_places():
             self.run_static(place)
 
     def test_errors(self):

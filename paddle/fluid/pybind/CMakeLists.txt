@@ -44,7 +44,8 @@ set(PYBIND_DEPS
     prim_utils
     detail_op_handle
     type_info
-    auto_parallel)
+    auto_parallel
+    executor_cache)
 
 if(WITH_GPU)
   list(APPEND PYBIND_DEPS gpu_event_timer)
@@ -171,10 +172,6 @@ else()
   set(PYBIND_DEPS ${PYBIND_DEPS} pir)
 endif()
 
-if(WITH_CUSTOM_DEVICE)
-  set(PYBIND_DEPS ${PYBIND_DEPS} custom_device_common_op_registry)
-endif()
-
 if(WITH_PYTHON)
   set(PYBIND_DEPS ${PYBIND_DEPS} process_group eager_reducer)
   if(WITH_NCCL OR WITH_RCCL)
@@ -188,6 +185,9 @@ if(WITH_PYTHON)
   endif()
   if(WITH_MPI)
     set(PYBIND_DEPS ${PYBIND_DEPS} process_group_mpi)
+  endif()
+  if(WITH_FLAGCX)
+    set(PYBIND_DEPS ${PYBIND_DEPS} process_group_flagcx)
   endif()
   if(WITH_CUSTOM_DEVICE)
     set(PYBIND_DEPS ${PYBIND_DEPS} process_group_custom)
@@ -296,11 +296,6 @@ if(WITH_PYTHON)
     list(APPEND OP_FUNCTION_GENERATOR_DEPS ${PYTHON_LIBRARIES})
   endif()
 
-  if(WITH_CUSTOM_DEVICE)
-    set(OP_FUNCTION_GENERATOR_DEPS ${OP_FUNCTION_GENERATOR_DEPS}
-                                   custom_device_common_op_registry)
-  endif()
-
   set(GENERATOR_DEPS ${PYBIND_DEPS})
   list(REMOVE_DUPLICATES GENERATOR_DEPS)
   if(WIN32)
@@ -327,7 +322,6 @@ if(WITH_PYTHON)
       ${GLOB_OPERATOR_DEPS}
       pybind
       proto_desc
-      executor
       layer
       tracer
       engine
@@ -338,16 +332,10 @@ if(WITH_PYTHON)
     list(REMOVE_ITEM EAGER_GENERATOR_DEPS imperative_flag)
   endif()
 
-  if(WITH_CUSTOM_DEVICE)
-    set(EAGER_GENERATOR_DEPS ${EAGER_GENERATOR_DEPS}
-                             custom_device_common_op_registry)
-  endif()
-
   add_executable(
     eager_generator generator.cc eager_legacy_op_function_generator.cc
                     eager_generator.cc)
   target_link_libraries(eager_generator ${EAGER_GENERATOR_DEPS})
-  target_link_libraries(eager_generator ${GENERATOR_DEPS})
 
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(eager_generator ${os_dependency_modules})
@@ -356,10 +344,6 @@ if(WITH_PYTHON)
 
   if(WITH_ROCM)
     target_link_libraries(eager_generator ${ROCM_HIPRTC_LIB})
-  endif()
-
-  if(WITH_CINN)
-    target_link_libraries(eager_generator ${PYTHON_LIBRARIES})
   endif()
 
   if(WIN32)
@@ -670,6 +654,7 @@ if(WITH_PYTHON)
     list(APPEND PYBIND_DEPS dygraph_node)
     list(APPEND PYBIND_DEPS accumulation_node)
     list(APPEND PYBIND_DEPS py_layer_node)
+    list(APPEND PYBIND_DEPS eager_to_static)
     list(APPEND PYBIND_DEPS global_utils)
     list(APPEND PYBIND_DEPS utils)
     list(APPEND PYBIND_DEPS python)
@@ -734,5 +719,24 @@ if(WITH_PYTHON)
 
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(${SHARD_LIB_NAME} ${os_dependency_modules})
+
+  function(install_py_pybind11_stubgen)
+    # check install
+    execute_process(
+      COMMAND
+        ${PYTHON_EXECUTABLE} "-c"
+        "import re, pybind11_stubgen; print(re.compile('/__init__.py.*').sub('',pybind11_stubgen.__file__))"
+      RESULT_VARIABLE _pybind11_stubgen_status
+      ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+    if(_pybind11_stubgen_status EQUAL 0)
+      return()
+    endif()
+
+    execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install -U
+                            pybind11-stubgen)
+  endfunction()
+
+  install_py_pybind11_stubgen()
 
 endif()

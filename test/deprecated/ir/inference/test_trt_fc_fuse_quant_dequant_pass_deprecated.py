@@ -51,16 +51,18 @@ class FCQuantDequantFusePassTRTDims3Cols1Test(QuantDequantTest):
             return avg_loss, result
 
         paddle.seed(2)
-        with base.unique_name.guard():
-            with base.program_guard(self.main_program, self.startup_program):
-                self.loss, result = network()
-                opt = paddle.optimizer.Adam(learning_rate=0.0001)
-                opt.minimize(self.loss)
-        with base.unique_name.guard():
-            with base.program_guard(
-                self.test_main_program, self.startup_program
-            ):
-                network()
+        with (
+            base.unique_name.guard(),
+            base.program_guard(self.main_program, self.startup_program),
+        ):
+            self.loss, result = network()
+            opt = paddle.optimizer.Adam(learning_rate=0.0001)
+            opt.minimize(self.loss)
+        with (
+            base.unique_name.guard(),
+            base.program_guard(self.test_main_program, self.startup_program),
+        ):
+            network()
         self.feeds = {"data": np.random.random((1, 28, 28)).astype("float32")}
         self.fetch_list = [result]
         self.enable_trt = True
@@ -122,16 +124,18 @@ class FCQuantDequantFusePassTRTDims3Cols2Test(QuantDequantTest):
             return avg_loss, result
 
         paddle.seed(2)
-        with base.unique_name.guard():
-            with base.program_guard(self.main_program, self.startup_program):
-                self.loss, result = network()
-                opt = paddle.optimizer.Adam(learning_rate=0.0001)
-                opt.minimize(self.loss)
-        with base.unique_name.guard():
-            with base.program_guard(
-                self.test_main_program, self.startup_program
-            ):
-                network()
+        with (
+            base.unique_name.guard(),
+            base.program_guard(self.main_program, self.startup_program),
+        ):
+            self.loss, result = network()
+            opt = paddle.optimizer.Adam(learning_rate=0.0001)
+            opt.minimize(self.loss)
+        with (
+            base.unique_name.guard(),
+            base.program_guard(self.test_main_program, self.startup_program),
+        ):
+            network()
         self.feeds = {"data": np.random.random((1, 28, 28)).astype("float32")}
         self.fetch_list = [result]
         self.enable_trt = True
@@ -195,16 +199,18 @@ class FCQuantDequantFusePassTRTDims3Cols3Test(QuantDequantTest):
             return avg_loss, result
 
         paddle.seed(2)
-        with base.unique_name.guard():
-            with base.program_guard(self.main_program, self.startup_program):
-                self.loss, result = network()
-                opt = paddle.optimizer.Adam(learning_rate=0.0001)
-                opt.minimize(self.loss)
-        with base.unique_name.guard():
-            with base.program_guard(
-                self.test_main_program, self.startup_program
-            ):
-                network()
+        with (
+            base.unique_name.guard(),
+            base.program_guard(self.main_program, self.startup_program),
+        ):
+            self.loss, result = network()
+            opt = paddle.optimizer.Adam(learning_rate=0.0001)
+            opt.minimize(self.loss)
+        with (
+            base.unique_name.guard(),
+            base.program_guard(self.test_main_program, self.startup_program),
+        ):
+            network()
         self.feeds = {"data": np.random.random((1, 28, 28)).astype("float32")}
         self.fetch_list = [result]
         self.enable_trt = True

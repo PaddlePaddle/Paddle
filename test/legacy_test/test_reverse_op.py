@@ -91,6 +91,26 @@ class TestCase3_neg(TestReverseOp):
         self.axis = [-1, -2]
 
 
+class TestCase4(TestReverseOp):
+    def initTestCase(self):
+        self.x = np.random.random((3, 0, 10)).astype('float64')
+        self.axis = [1, 2]
+
+
+class TestCase5(TestReverseOp):
+    def initTestCase(self):
+        self.x = np.random.random((2, 0, 3)).astype('float32')
+        self.axis = [0]
+
+
+class TestCase6(TestReverseOp):
+    def initTestCase(self):
+        self.x = np.random.random((2, 0, 0)).astype('float32')
+        self.axis = [
+            0,
+        ]
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

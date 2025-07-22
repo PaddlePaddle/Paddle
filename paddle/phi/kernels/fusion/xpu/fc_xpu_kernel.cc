@@ -32,7 +32,7 @@ template <typename T_X,
           typename T_OUT,
           typename T_GEMM,
           typename Context>
-void FcXPUKernelImpl(const Context& ctx,
+void FcXPUKernelImpl(const Context& dev_ctx,
                      const DenseTensor& x,
                      const paddle::optional<DenseTensor>& x_max,
                      const DenseTensor& w,
@@ -64,7 +64,7 @@ void FcXPUKernelImpl(const Context& ctx,
   const float* bias_data =
       bias.get_ptr() == nullptr ? nullptr : bias.get_ptr()->data<float>();
   auto* out_data =
-      reinterpret_cast<XPUTypeOut*>(ctx.template Alloc<T_OUT>(out));
+      reinterpret_cast<XPUTypeOut*>(dev_ctx.template Alloc<T_OUT>(out));
   auto* scale_max_data = scale_max.get_ptr() == nullptr
                              ? nullptr
                              : scale_max.get_ptr()->data<float>();
@@ -73,7 +73,7 @@ void FcXPUKernelImpl(const Context& ctx,
   // nullptr for better performance
   if (!(std::is_same<T_OUT, float>::value &&
         std::is_same<T_GEMM, int8_t>::value)) {
-    out_max_data = ctx.template Alloc<float>(out_max);
+    out_max_data = dev_ctx.template Alloc<float>(out_max);
     out_max_data = out_max_in.get_ptr() != nullptr
                        ? const_cast<float*>(out_max_in.get_ptr()->data<float>())
                        : out_max_data;
@@ -94,8 +94,8 @@ void FcXPUKernelImpl(const Context& ctx,
     // whether to enable this feature requires a trade-off between performance
     // precision
     if (std::getenv("XPU_PADDLE_FC_BFLOAT16_XTE") != nullptr) {
-      xpu::ctx_guard RAII_GUARD(ctx.x_context());
-      const int MAXPTR_N = ctx.x_context()->max_ptr_size();
+      xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+      const int MAXPTR_N = dev_ctx.x_context()->max_ptr_size();
       int x_len = m * k;
       XPUTypeFP16* x_data_fp16 = nullptr;
       x_data_fp16 = RAII_GUARD.alloc_l3_or_gm<XPUTypeFP16>(x_len);
@@ -117,9 +117,9 @@ void FcXPUKernelImpl(const Context& ctx,
       if (x_max_data == nullptr) {
         xte_x_maxptr = RAII_GUARD.alloc_l3_or_gm<float>(MAXPTR_N);
         PADDLE_ENFORCE_XDNN_NOT_NULL(xte_x_maxptr);
-        int r = xpu::findmax(ctx.x_context(), x_data, xte_x_maxptr, x_len);
+        int r = xpu::findmax(dev_ctx.x_context(), x_data, xte_x_maxptr, x_len);
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_findmax");
-        r = xpu::cast_te(ctx.x_context(),
+        r = xpu::cast_te(dev_ctx.x_context(),
                          x_data,
                          xte_x_maxptr,
                          x_data_fp16,
@@ -127,7 +127,7 @@ void FcXPUKernelImpl(const Context& ctx,
                          x_len);
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_cast_te");
       } else {
-        int r = xpu::cast_te(ctx.x_context(),
+        int r = xpu::cast_te(dev_ctx.x_context(),
                              x_data,
                              x_max_data,
                              x_data_fp16,
@@ -138,9 +138,9 @@ void FcXPUKernelImpl(const Context& ctx,
       if (w_max_data == nullptr) {
         xte_w_maxptr = RAII_GUARD.alloc_l3_or_gm<float>(MAXPTR_N);
         PADDLE_ENFORCE_XDNN_NOT_NULL(xte_w_maxptr);
-        int r = xpu::findmax(ctx.x_context(), w_data, xte_w_maxptr, w_len);
+        int r = xpu::findmax(dev_ctx.x_context(), w_data, xte_w_maxptr, w_len);
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_findmax");
-        r = xpu::cast_te(ctx.x_context(),
+        r = xpu::cast_te(dev_ctx.x_context(),
                          w_data,
                          xte_w_maxptr,
                          w_data_fp16,
@@ -148,7 +148,7 @@ void FcXPUKernelImpl(const Context& ctx,
                          w_len);
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_cast_te");
       } else {
-        int r = xpu::cast_te(ctx.x_context(),
+        int r = xpu::cast_te(dev_ctx.x_context(),
                              w_data,
                              w_max_data,
                              w_data_fp16,
@@ -191,7 +191,7 @@ void FcXPUKernelImpl(const Context& ctx,
                                            float,
                                            float,
                                            float,
-                                           float>(ctx.x_context(),
+                                           float>(dev_ctx.x_context(),
                                                   tensor_a1,
                                                   tensor_b1,
                                                   tensor_c1,
@@ -217,7 +217,7 @@ void FcXPUKernelImpl(const Context& ctx,
                     std::is_same<T_OUT, signed char>::value))) {
       int r = xpu::
           fc_fusion<XPUTypeX, XPUTypeW, XPUTypeOut, T_GEMM>(  // TX/TW/TY/TGEMM
-              ctx.x_context(),                                // ctx
+              dev_ctx.x_context(),                            // ctx
               x_data,                                         // x
               w_data,                                         // w
               out_data,                                       // y
@@ -273,7 +273,7 @@ void FcXPUKernelImpl(const Context& ctx,
                                            float,
                                            XPUTypeOut,
                                            float,
-                                           float>(ctx.x_context(),
+                                           float>(dev_ctx.x_context(),
                                                   tensor_a1,
                                                   tensor_b1,
                                                   tensor_c1,
@@ -286,7 +286,7 @@ void FcXPUKernelImpl(const Context& ctx,
 #else
   int r =
       xpu::fc_fusion<XPUTypeX, XPUTypeW, XPUTypeOut, T_GEMM>(  // TX/TW/TY/TGEMM
-          ctx.x_context(),                                     // ctx
+          dev_ctx.x_context(),                                 // ctx
           x_data,                                              // x
           w_data,                                              // w
           out_data,                                            // y
@@ -313,7 +313,7 @@ void FcXPUKernelImpl(const Context& ctx,
 
 #define FC_XPU_KERNEL_IMPL(x_dtype_, w_dtype_, out_dtype_, gemm_dtype_) \
   FcXPUKernelImpl<x_dtype_, w_dtype_, out_dtype_, gemm_dtype_>(         \
-      ctx,                                                              \
+      dev_ctx,                                                          \
       x,                                                                \
       x_max,                                                            \
       w,                                                                \
@@ -331,7 +331,7 @@ void FcXPUKernelImpl(const Context& ctx,
       out_max);
 
 template <typename T, typename Context>
-void FcXPUKernel(const Context& ctx,
+void FcXPUKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const paddle::optional<DenseTensor>& x_max,
                  const DenseTensor& w,

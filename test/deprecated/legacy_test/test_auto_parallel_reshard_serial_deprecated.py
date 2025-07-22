@@ -81,9 +81,10 @@ class MLPLayer(nn.Layer):
 
 def mlp_forward(train_program, start_program):
     print("mlp_forward outer", flush=True)
-    with static.program_guard(
-        train_program, start_program
-    ), utils.unique_name.guard():
+    with (
+        static.program_guard(train_program, start_program),
+        utils.unique_name.guard(),
+    ):
         batch_size = 4
         hidden_size = 1024
         sequence_len = 512

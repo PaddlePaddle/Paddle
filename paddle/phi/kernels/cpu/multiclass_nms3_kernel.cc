@@ -255,11 +255,11 @@ inline std::vector<size_t> GetNmsLodFromRoisNum(const DenseTensor* rois_num) {
 }
 
 template <typename T, typename Context>
-void SliceOneClass(const Context& ctx,
+void SliceOneClass(const Context& dev_ctx,
                    const DenseTensor& items,
                    const int class_id,
                    DenseTensor* one_class_item) {
-  T* item_data = ctx.template Alloc<T>(one_class_item);
+  T* item_data = dev_ctx.template Alloc<T>(one_class_item);
   const T* items_data = items.data<T>();
   const int64_t num_item = items.dims()[0];
   const int class_num = static_cast<int>(items.dims()[1]);
@@ -337,7 +337,7 @@ void NMSFast(const DenseTensor& bbox,
 }
 
 template <typename T, typename Context>
-void MultiClassNMS(const Context& ctx,
+void MultiClassNMS(const Context& dev_ctx,
                    const DenseTensor& scores,
                    const DenseTensor& bboxes,
                    const int scores_size,
@@ -367,8 +367,8 @@ void MultiClassNMS(const Context& ctx,
     } else {
       score_slice.Resize({scores.dims()[0], 1});
       bbox_slice.Resize({scores.dims()[0], 4});
-      SliceOneClass<T, Context>(ctx, scores, c, &score_slice);
-      SliceOneClass<T, Context>(ctx, bboxes, c, &bbox_slice);
+      SliceOneClass<T, Context>(dev_ctx, scores, c, &score_slice);
+      SliceOneClass<T, Context>(dev_ctx, bboxes, c, &bbox_slice);
     }
     NMSFast<T>(bbox_slice,
                score_slice,
@@ -395,7 +395,7 @@ void MultiClassNMS(const Context& ctx,
         sdata = scores_data + label * scores.dims()[1];
       } else {
         score_slice.Resize({scores.dims()[0], 1});
-        SliceOneClass<T, Context>(ctx, scores, label, &score_slice);
+        SliceOneClass<T, Context>(dev_ctx, scores, label, &score_slice);
         sdata = score_slice.data<T>();
       }
       const std::vector<int>& label_indices = it.second;
@@ -429,7 +429,7 @@ void MultiClassNMS(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void MultiClassOutput(const Context& ctx,
+void MultiClassOutput(const Context& dev_ctx,
                       const DenseTensor& scores,
                       const DenseTensor& bboxes,
                       const std::map<int, std::vector<int>>& selected_indices,
@@ -455,7 +455,7 @@ void MultiClassOutput(const Context& ctx,
     int label = it.first;
     const std::vector<int>& indices = it.second;
     if (scores_size == 2) {
-      SliceOneClass<T, Context>(ctx, bboxes, label, &bbox);
+      SliceOneClass<T, Context>(dev_ctx, bboxes, label, &bbox);
     } else {
       sdata = scores_data + label * predict_dim;
     }
@@ -484,7 +484,7 @@ void MultiClassOutput(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void MultiClassNMSKernel(const Context& ctx,
+void MultiClassNMSKernel(const Context& dev_ctx,
                          const DenseTensor& bboxes,
                          const DenseTensor& scores,
                          const paddle::optional<DenseTensor>& rois_num,
@@ -540,7 +540,7 @@ void MultiClassNMSKernel(const Context& ctx,
       scores_slice = scores.Slice(boxes_lod[i], boxes_lod[i + 1]);  // NOLINT
       boxes_slice = bboxes.Slice(boxes_lod[i], boxes_lod[i + 1]);   // NOLINT
     }
-    MultiClassNMS<T, Context>(ctx,
+    MultiClassNMS<T, Context>(dev_ctx,
                               scores_slice,
                               boxes_slice,
                               score_size,
@@ -561,18 +561,18 @@ void MultiClassNMSKernel(const Context& ctx,
   if (num_kept == 0) {
     if (return_index) {
       out->Resize({0, out_dim});
-      ctx.template Alloc<T>(out);
+      dev_ctx.template Alloc<T>(out);
       index->Resize({0, 1});
-      ctx.template Alloc<int>(index);
+      dev_ctx.template Alloc<int>(index);
     } else {
       out->Resize({1, 1});
-      T* od = ctx.template Alloc<T>(out);
+      T* od = dev_ctx.template Alloc<T>(out);
       od[0] = -1;
       batch_starts = {0, 1};
     }
   } else {
     out->Resize({num_kept, out_dim});
-    ctx.template Alloc<T>(out);
+    dev_ctx.template Alloc<T>(out);
     int offset = 0;
     int* oindices = nullptr;
     for (int i = 0; i < n; ++i) {
@@ -605,10 +605,10 @@ void MultiClassNMSKernel(const Context& ctx,
         DenseTensor nout = out->Slice(s, e);
         if (return_index) {
           index->Resize({num_kept, 1});
-          int* output_idx = ctx.template Alloc<int>(index);
+          int* output_idx = dev_ctx.template Alloc<int>(index);
           oindices = output_idx + s;
         }
-        MultiClassOutput<T, Context>(ctx,
+        MultiClassOutput<T, Context>(dev_ctx,
                                      scores_slice,
                                      boxes_slice,
                                      all_indices[i],
@@ -621,7 +621,7 @@ void MultiClassNMSKernel(const Context& ctx,
   }
   if (nms_rois_num != nullptr) {
     nms_rois_num->Resize({n});
-    ctx.template Alloc<int>(nms_rois_num);
+    dev_ctx.template Alloc<int>(nms_rois_num);
     int* num_data = nms_rois_num->data<int>();
     for (int i = 1; i <= n; i++) {
       num_data[i - 1] = batch_starts[i] - batch_starts[i - 1];  // NOLINT

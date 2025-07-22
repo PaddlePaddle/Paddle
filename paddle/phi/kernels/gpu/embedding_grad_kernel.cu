@@ -132,14 +132,14 @@ struct EmbeddingGradCUDAFunctor {
 };
 
 template <typename T, typename Context>
-void EmbeddingGradKernel(const Context& ctx,
+void EmbeddingGradKernel(const Context& dev_ctx,
                          const DenseTensor& input,
                          const DenseTensor& weight,
                          const DenseTensor& out_grad,
                          int64_t padding_idx,
                          DenseTensor* weight_grad) {
   EmbeddingGradCUDAFunctor<T, Context> functor(
-      ctx, input, weight, out_grad, padding_idx, weight_grad);
+      dev_ctx, input, weight, out_grad, padding_idx, weight_grad);
 
   if (input.dtype() == phi::DataType::INT32) {
     functor.template apply<int>();
@@ -237,14 +237,14 @@ struct EmbeddingSparseGradCUDAFunctor {
 };
 
 template <typename T, typename Context>
-void EmbeddingSparseGradKernel(const Context& ctx,
+void EmbeddingSparseGradKernel(const Context& dev_ctx,
                                const DenseTensor& input,
                                const DenseTensor& weight,
                                const DenseTensor& out_grad,
                                int64_t padding_idx,
                                SelectedRows* weight_grad) {
   EmbeddingSparseGradCUDAFunctor<T, Context> functor(
-      ctx, input, weight, out_grad, padding_idx, weight_grad);
+      dev_ctx, input, weight, out_grad, padding_idx, weight_grad);
 
   if (input.dtype() == phi::DataType::INT32) {
     functor.template apply<int>();

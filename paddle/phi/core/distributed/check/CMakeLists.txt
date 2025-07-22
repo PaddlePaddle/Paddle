@@ -5,7 +5,7 @@ if(WITH_NCCL OR WITH_RCCL)
 endif()
 
 if(WITH_XPU_BKCL)
-  list(APPEND DISTRIBUTED_COMMON_SRCS bkcl_dynamic_check.cc)
+  list(APPEND CHECK_COMMON_SRCS bkcl_dynamic_check.cc)
 endif()
 
 collect_srcs(core_srcs SRCS ${CHECK_COMMON_SRCS})

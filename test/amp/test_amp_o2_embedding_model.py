@@ -79,29 +79,31 @@ def build_unitted_embedding_model(
         return model, optimizer, scaler
     main_program = paddle.static.Program()
     startup_program = paddle.static.Program()
-    with paddle.utils.unique_name.guard():
-        with paddle.static.program_guard(main_program, startup_program):
-            model = SimpleUnittedEmbeddingNet()
-            x = paddle.static.data(name='x', shape=[None, 32], dtype='int64')
-            out = model(x)
-            loss = paddle.mean(out)
-            if use_amp:
-                amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
-                    custom_white_list=["elementwise_mul"],
-                    custom_black_list=["reduce_mean"],
-                    dtype=amp_dtype,
-                )
-            else:
-                amp_lists = None
-            optimizer = _build_optimizer(
-                use_amp,
-                amp_dtype,
-                amp_level,
-                amp_lists,
-                True,
-                use_promote=use_promote,
+    with (
+        paddle.utils.unique_name.guard(),
+        paddle.static.program_guard(main_program, startup_program),
+    ):
+        model = SimpleUnittedEmbeddingNet()
+        x = paddle.static.data(name='x', shape=[None, 32], dtype='int64')
+        out = model(x)
+        loss = paddle.mean(out)
+        if use_amp:
+            amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
+                custom_white_list=["elementwise_mul"],
+                custom_black_list=["reduce_mean"],
+                dtype=amp_dtype,
             )
-            optimizer.minimize(loss)
+        else:
+            amp_lists = None
+        optimizer = _build_optimizer(
+            use_amp,
+            amp_dtype,
+            amp_level,
+            amp_lists,
+            True,
+            use_promote=use_promote,
+        )
+        optimizer.minimize(loss)
 
     feed_vars = [x]
     fetch_vars = [loss]

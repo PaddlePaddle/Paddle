@@ -83,37 +83,39 @@ class TestFunctionalConv3D(TestCase):
     def static_graph_case_1(self):
         main = base.Program()
         start = base.Program()
-        with base.unique_name.guard():
-            with base.program_guard(main, start):
-                if self.channel_last:
-                    x = paddle.static.data(
-                        "input",
-                        (-1, -1, -1, -1, self.in_channels),
-                        dtype=self.dtype,
-                    )
-                else:
-                    x = paddle.static.data(
-                        "input",
-                        (-1, self.in_channels, -1, -1, -1),
-                        dtype=self.dtype,
-                    )
-                y = paddle.static.nn.conv3d(
-                    x,
-                    self.out_channels,
-                    self.filter_shape,
-                    stride=self.stride,
-                    padding=self.padding,
-                    dilation=self.dilation,
-                    groups=self.groups,
-                    param_attr=paddle.nn.initializer.Assign(self.weight),
-                    bias_attr=(
-                        False
-                        if self.no_bias
-                        else paddle.nn.initializer.Assign(self.bias)
-                    ),
-                    act=self.act,
-                    data_format=self.data_format,
+        with (
+            base.unique_name.guard(),
+            base.program_guard(main, start),
+        ):
+            if self.channel_last:
+                x = paddle.static.data(
+                    "input",
+                    (-1, -1, -1, -1, self.in_channels),
+                    dtype=self.dtype,
                 )
+            else:
+                x = paddle.static.data(
+                    "input",
+                    (-1, self.in_channels, -1, -1, -1),
+                    dtype=self.dtype,
+                )
+            y = paddle.static.nn.conv3d(
+                x,
+                self.out_channels,
+                self.filter_shape,
+                stride=self.stride,
+                padding=self.padding,
+                dilation=self.dilation,
+                groups=self.groups,
+                param_attr=paddle.nn.initializer.Assign(self.weight),
+                bias_attr=(
+                    False
+                    if self.no_bias
+                    else paddle.nn.initializer.Assign(self.bias)
+                ),
+                act=self.act,
+                data_format=self.data_format,
+            )
         exe = base.Executor(self.place)
         exe.run(start)
         (out,) = exe.run(main, feed={"input": self.input}, fetch_list=[y])
@@ -122,40 +124,39 @@ class TestFunctionalConv3D(TestCase):
     def static_graph_case_2(self):
         main = base.Program()
         start = base.Program()
-        with base.unique_name.guard():
-            with base.program_guard(main, start):
-                if self.channel_last:
-                    x = x = paddle.static.data(
-                        "input",
-                        (-1, -1, -1, -1, self.in_channels),
-                        dtype=self.dtype,
-                    )
-                else:
-                    x = paddle.static.data(
-                        "input",
-                        (-1, self.in_channels, -1, -1, -1),
-                        dtype=self.dtype,
-                    )
-                weight = paddle.static.data(
-                    "weight", self.weight.shape, dtype=self.dtype
+        with base.unique_name.guard(), base.program_guard(main, start):
+            if self.channel_last:
+                x = x = paddle.static.data(
+                    "input",
+                    (-1, -1, -1, -1, self.in_channels),
+                    dtype=self.dtype,
                 )
-                if not self.no_bias:
-                    bias = paddle.static.data(
-                        "bias", self.bias.shape, dtype=self.dtype
-                    )
-                y = F.conv3d(
-                    x,
-                    weight,
-                    None if self.no_bias else bias,
-                    padding=self.padding,
-                    stride=self.stride,
-                    dilation=self.dilation,
-                    groups=self.groups,
-                    data_format=self.data_format,
+            else:
+                x = paddle.static.data(
+                    "input",
+                    (-1, self.in_channels, -1, -1, -1),
+                    dtype=self.dtype,
                 )
+            weight = paddle.static.data(
+                "weight", self.weight.shape, dtype=self.dtype
+            )
+            if not self.no_bias:
+                bias = paddle.static.data(
+                    "bias", self.bias.shape, dtype=self.dtype
+                )
+            y = F.conv3d(
+                x,
+                weight,
+                None if self.no_bias else bias,
+                padding=self.padding,
+                stride=self.stride,
+                dilation=self.dilation,
+                groups=self.groups,
+                data_format=self.data_format,
+            )
 
-                if self.act == 'sigmoid':
-                    y = F.sigmoid(y)
+            if self.act == 'sigmoid':
+                y = F.sigmoid(y)
 
         exe = base.Executor(self.place)
         exe.run(start)
@@ -322,28 +323,27 @@ class TestFunctionalConv3DErrorCase11(TestCase):
     def static_graph_case(self):
         main = base.Program()
         start = base.Program()
-        with base.unique_name.guard():
-            with base.program_guard(main, start):
-                x = paddle.static.data(
-                    "input", self.input.shape, dtype=paddle.float32
-                )
-                y = paddle.static.nn.conv3d(
-                    x,
-                    self.num_filters,
-                    self.filter_size,
-                    stride=self.stride,
-                    padding=self.padding,
-                    dilation=self.dilation,
-                    groups=self.groups,
-                    param_attr=paddle.nn.initializer.Assign(self.filter),
-                    bias_attr=(
-                        False
-                        if self.bias is None
-                        else paddle.nn.initializer.Assign(self.bias)
-                    ),
-                    act=None,
-                    data_format=self.data_format,
-                )
+        with base.unique_name.guard(), base.program_guard(main, start):
+            x = paddle.static.data(
+                "input", self.input.shape, dtype=paddle.float32
+            )
+            y = paddle.static.nn.conv3d(
+                x,
+                self.num_filters,
+                self.filter_size,
+                stride=self.stride,
+                padding=self.padding,
+                dilation=self.dilation,
+                groups=self.groups,
+                param_attr=paddle.nn.initializer.Assign(self.filter),
+                bias_attr=(
+                    False
+                    if self.bias is None
+                    else paddle.nn.initializer.Assign(self.bias)
+                ),
+                act=None,
+                data_format=self.data_format,
+            )
         exe = base.Executor()
         exe.run(start)
         (out,) = exe.run(main, feed={"input": self.input}, fetch_list=[y])

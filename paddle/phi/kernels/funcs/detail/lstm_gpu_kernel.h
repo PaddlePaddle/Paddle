@@ -218,7 +218,7 @@ __global__ void KeLstmBackward(Op op,
 }
 
 template <class T, class Op>
-void gpu_lstm_forward(const phi::DeviceContext& context,
+void gpu_lstm_forward(const phi::DeviceContext& dev_ctx,
                       Op op,
                       phi::funcs::LstmMetaValue<T> value,
                       int frame_size,
@@ -240,7 +240,7 @@ void gpu_lstm_forward(const phi::DeviceContext& context,
     grid = dim3((frame_size + 32 - 1) / 32, (batch_size + 16 - 1) / 16);
   }
 
-  auto stream = reinterpret_cast<const phi::GPUContext&>(context).stream();
+  auto stream = reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
   if (batch_size == 1) {
     KeLstmForward<T,
                   Op,
@@ -269,7 +269,7 @@ void gpu_lstm_forward(const phi::DeviceContext& context,
 }
 
 template <class T, class Op>
-void gpu_lstm_backward(const phi::DeviceContext& context,
+void gpu_lstm_backward(const phi::DeviceContext& dev_ctx,
                        Op op,
                        phi::funcs::LstmMetaValue<T> value,
                        phi::funcs::LstmMetaGrad<T> grad,
@@ -292,7 +292,7 @@ void gpu_lstm_backward(const phi::DeviceContext& context,
     grid = dim3((frame_size + 32 - 1) / 32, (batch_size + 16 - 1) / 16);
   }
 
-  auto stream = reinterpret_cast<const phi::GPUContext&>(context).stream();
+  auto stream = reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
   if (batch_size == 1) {
     KeLstmBackward<T,
                    Op,

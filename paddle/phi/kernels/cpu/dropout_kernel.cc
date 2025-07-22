@@ -23,14 +23,14 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ComputeDropoutInference(const Context& ctx,
+void ComputeDropoutInference(const Context& dev_ctx,
                              const DenseTensor& x,
                              const Scalar& dropout_prob,
                              bool upscale_in_train,
                              DenseTensor* y) {
   if (upscale_in_train) {
     const auto* X_data = x.data<T>();
-    T* Y_data = ctx.template Alloc<T>(y);
+    T* Y_data = dev_ctx.template Alloc<T>(y);
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
@@ -40,7 +40,7 @@ void ComputeDropoutInference(const Context& ctx,
   } else {
     auto X = EigenMatrix<T>::Reshape(x, 1);
     auto Y = EigenMatrix<T>::Reshape(*y, 1);
-    auto& place = *ctx.eigen_device();
+    auto& place = *dev_ctx.eigen_device();
     Y.device(place) = X * static_cast<T>(1.0f - dropout_prob.to<float>());
   }
 }

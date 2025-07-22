@@ -72,77 +72,57 @@ def Test(use_dist, file_name):
     startup_prog = paddle.static.Program()
     paddle.seed(42)
 
-    with paddle.base.scope_guard(scope):
-        with paddle.static.program_guard(main_prog, startup_prog):
-            x = paddle.static.data(name="x", shape=[3, 2, 1], dtype='int64')
+    with (
+        paddle.base.scope_guard(scope),
+        paddle.static.program_guard(main_prog, startup_prog),
+    ):
+        x = paddle.static.data(name="x", shape=[3, 2, 1], dtype='int64')
 
-            out = paddle.static.nn.embedding(x, **attrs)
-            loss = paddle.mean(out)
-            opt = paddle.optimizer.Adam(learning_rate=1e-1)
-            opt.minimize(loss)
+        out = paddle.static.nn.embedding(x, **attrs)
+        loss = paddle.mean(out)
+        opt = paddle.optimizer.Adam(learning_rate=1e-1)
+        opt.minimize(loss)
 
-            feed_list = ["x"]
-            fetch_list = [loss.name]
+        feed_list = ["x"]
+        fetch_list = [loss.name]
 
-            place = paddle.IPUPlace()
-            exe = paddle.static.Executor(place)
-            exe.run(startup_prog)
+        place = paddle.IPUPlace()
+        exe = paddle.static.Executor(place)
+        exe.run(startup_prog)
 
-            ipu_strategy = paddle.static.IpuStrategy()
-            if use_dist:
-                ipu_strategy.set_graph_config(num_ipus=2, is_training=True)
-                # Set distributed envs
-                ipu_strategy.set_options(
-                    {
-                        "enable_distribution": True,
-                        "enable_replicated_graphs": True,
-                        "replicated_graph_count": 2,
-                        "enable_distributed_replicated_graphs": True,
-                        "global_replica_offset": int(
-                            os.environ.get("PADDLE_TRAINER_ID")
-                        )
-                        * 2,
-                        "global_replication_factor": 4,
-                    }
-                )
-            else:
-                ipu_strategy.set_graph_config(num_ipus=4, is_training=True)
-                ipu_strategy.set_options(
-                    {
-                        "enable_replicated_graphs": True,
-                        "replicated_graph_count": 4,
-                    }
-                )
-
-            ipu_program = paddle.static.IpuCompiledProgram(
-                main_prog, ipu_strategy=ipu_strategy
+        ipu_strategy = paddle.static.IpuStrategy()
+        if use_dist:
+            ipu_strategy.set_graph_config(num_ipus=2, is_training=True)
+            # Set distributed envs
+            ipu_strategy.set_options(
+                {
+                    "enable_distribution": True,
+                    "enable_replicated_graphs": True,
+                    "replicated_graph_count": 2,
+                    "enable_distributed_replicated_graphs": True,
+                    "global_replica_offset": int(
+                        os.environ.get("PADDLE_TRAINER_ID")
+                    )
+                    * 2,
+                    "global_replication_factor": 4,
+                }
             )
-            program = ipu_program.compile(feed_list, fetch_list)
+        else:
+            ipu_strategy.set_graph_config(num_ipus=4, is_training=True)
+            ipu_strategy.set_options(
+                {
+                    "enable_replicated_graphs": True,
+                    "replicated_graph_count": 4,
+                }
+            )
 
-            if use_dist:
-                if os.environ.get("PADDLE_TRAINER_ID") == "0":
-                    input_data = np.concatenate(
-                        [
-                            np.array(
-                                [[[1], [3]], [[2], [4]], [[4], [127]]]
-                            ).astype(np.int32),
-                            np.array(
-                                [[[1], [3]], [[2], [4]], [[4], [127]]]
-                            ).astype(np.int32),
-                        ]
-                    )
-                else:
-                    input_data = np.concatenate(
-                        [
-                            np.array(
-                                [[[8], [60]], [[50], [77]], [[90], [13]]]
-                            ).astype(np.int32),
-                            np.array(
-                                [[[8], [60]], [[50], [77]], [[90], [13]]]
-                            ).astype(np.int32),
-                        ]
-                    )
-            else:
+        ipu_program = paddle.static.IpuCompiledProgram(
+            main_prog, ipu_strategy=ipu_strategy
+        )
+        program = ipu_program.compile(feed_list, fetch_list)
+
+        if use_dist:
+            if os.environ.get("PADDLE_TRAINER_ID") == "0":
                 input_data = np.concatenate(
                     [
                         np.array([[[1], [3]], [[2], [4]], [[4], [127]]]).astype(
@@ -151,6 +131,11 @@ def Test(use_dist, file_name):
                         np.array([[[1], [3]], [[2], [4]], [[4], [127]]]).astype(
                             np.int32
                         ),
+                    ]
+                )
+            else:
+                input_data = np.concatenate(
+                    [
                         np.array(
                             [[[8], [60]], [[50], [77]], [[90], [13]]]
                         ).astype(np.int32),
@@ -159,17 +144,34 @@ def Test(use_dist, file_name):
                         ).astype(np.int32),
                     ]
                 )
-            feed_data = {"x": input_data}
+        else:
+            input_data = np.concatenate(
+                [
+                    np.array([[[1], [3]], [[2], [4]], [[4], [127]]]).astype(
+                        np.int32
+                    ),
+                    np.array([[[1], [3]], [[2], [4]], [[4], [127]]]).astype(
+                        np.int32
+                    ),
+                    np.array([[[8], [60]], [[50], [77]], [[90], [13]]]).astype(
+                        np.int32
+                    ),
+                    np.array([[[8], [60]], [[50], [77]], [[90], [13]]]).astype(
+                        np.int32
+                    ),
+                ]
+            )
+        feed_data = {"x": input_data}
 
-            for step in range(10):
-                res = exe.run(program, feed=feed_data, fetch_list=fetch_list)
+        for step in range(10):
+            res = exe.run(program, feed=feed_data, fetch_list=fetch_list)
 
-            if use_dist:
-                res = mpi_comm.gather(res)
-                if os.getenv("PADDLE_TRAINER_ID") == "0":
-                    np.savetxt(file_name, np.array(res).flatten())
-            else:
+        if use_dist:
+            res = mpi_comm.gather(res)
+            if os.getenv("PADDLE_TRAINER_ID") == "0":
                 np.savetxt(file_name, np.array(res).flatten())
+        else:
+            np.savetxt(file_name, np.array(res).flatten())
 
 
 if __name__ == "__main__":

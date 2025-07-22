@@ -187,6 +187,9 @@ void TensorAdd(const VarType& src, VarType* dst) {
     PADDLE_TENSOR_ADD(double, phi::XPUContext);
     PADDLE_TENSOR_ADD(phi::dtype::float16, phi::XPUContext);
     PADDLE_TENSOR_ADD(phi::dtype::bfloat16, phi::XPUContext);
+#ifdef PADDLE_WITH_XPU_FFT
+    PADDLE_TENSOR_ADD(phi::dtype::complex<float>, phi::XPUContext);
+#endif
 #endif
   }
 
@@ -218,7 +221,7 @@ void TensorAdd(const VarType& src, VarType* dst) {
         phi::DeviceContextPool::Instance().Get(place));          \
     phi::stream::Stream stream(place, ctx->stream());            \
     auto device = phi::DeviceManager::GetDeviceWithPlace(place); \
-    device->BlasAXPBY<T>(stream,                                 \
+    device->BlasAXPBY<T>(stream.raw_stream(),                    \
                          static_cast<size_t>(numel),             \
                          1.,                                     \
                          src_tensor.data<T>(),                   \

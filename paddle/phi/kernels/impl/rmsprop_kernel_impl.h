@@ -26,7 +26,7 @@ namespace phi {
 
 template <typename T, typename Context>
 struct RmsFunctor {
-  RmsFunctor(const Context &ctx,
+  RmsFunctor(const Context &dev_ctx,
              const DenseTensor &param,
              const DenseTensor &mean_square,
              const DenseTensor &grad,
@@ -179,7 +179,7 @@ struct CenteredRmspropFunctor {
 };
 
 template <typename T, typename Context>
-void RmspropDenseKernel(const Context &ctx,
+void RmspropDenseKernel(const Context &dev_ctx,
                         const DenseTensor &param,
                         const DenseTensor &mean_square,
                         const DenseTensor &grad,
@@ -197,7 +197,7 @@ void RmspropDenseKernel(const Context &ctx,
                         DenseTensor *mean_square_out,
                         DenseTensor *mean_grad_out,
                         DenseTensor *master_param_outs) {
-  RmsFunctor<T, Context> functor(ctx,
+  RmsFunctor<T, Context> functor(dev_ctx,
                                  param,
                                  mean_square,
                                  grad,
@@ -218,7 +218,7 @@ void RmspropDenseKernel(const Context &ctx,
 }
 
 template <typename T, typename Context>
-void RmspropSparseKernel(const Context &ctx,
+void RmspropSparseKernel(const Context &dev_ctx,
                          const DenseTensor &param,
                          const DenseTensor &mean_square,
                          const SelectedRows &grad,
@@ -265,12 +265,12 @@ void RmspropSparseKernel(const Context &ctx,
   phi::SelectedRows tmp_merged_grad;
   phi::SelectedRows *merged_grad = &tmp_merged_grad;
   phi::funcs::scatter::MergeAdd<Context, T> merge_func;
-  merge_func(ctx, grad, merged_grad);
+  merge_func(dev_ctx, grad, merged_grad);
 
-  funcs::ForRange<Context> for_range(ctx, limit);
+  funcs::ForRange<Context> for_range(dev_ctx, limit);
   auto &grad_merge_rows = merged_grad->rows();
   phi::MixVector<int64_t> mixv_grad_merge_rows(&grad_merge_rows);
-  const int64_t *rows = mixv_grad_merge_rows.Data(ctx.GetPlace());
+  const int64_t *rows = mixv_grad_merge_rows.Data(dev_ctx.GetPlace());
 
   auto &merged_tensor = merged_grad->value();
   int64_t row_count = merged_grad->rows().size();
@@ -279,7 +279,7 @@ void RmspropSparseKernel(const Context &ctx,
       merged_tensor.data<T>(), rows, row_numel, row_count);
 
   MPDType *master_out_data =
-      multi_precision ? ctx.template Alloc<MPDType>(master_param_outs)
+      multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_outs)
                       : nullptr;
 
   if (centered) {
@@ -299,10 +299,10 @@ void RmspropSparseKernel(const Context &ctx,
     }
 
     for_range(CenteredRmspropFunctor<T, MPDType, SparseRmspropGradFunctor<T>>(
-        ctx.template Alloc<T>(param_out),
-        ctx.template Alloc<MPDType>(mean_square_out),
-        ctx.template Alloc<MPDType>(moment_out),
-        ctx.template Alloc<MPDType>(mean_grad_out),
+        dev_ctx.template Alloc<T>(param_out),
+        dev_ctx.template Alloc<MPDType>(mean_square_out),
+        dev_ctx.template Alloc<MPDType>(moment_out),
+        dev_ctx.template Alloc<MPDType>(mean_grad_out),
         lr_tensor.data<MPDType>(),
         master_out_data,
         rho,
@@ -311,9 +311,9 @@ void RmspropSparseKernel(const Context &ctx,
         grad_func));
   } else {
     for_range(UncenteredRmspropFunctor<T, MPDType, SparseRmspropGradFunctor<T>>(
-        ctx.template Alloc<T>(param_out),
-        ctx.template Alloc<MPDType>(mean_square_out),
-        ctx.template Alloc<MPDType>(moment_out),
+        dev_ctx.template Alloc<T>(param_out),
+        dev_ctx.template Alloc<MPDType>(mean_square_out),
+        dev_ctx.template Alloc<MPDType>(moment_out),
         lr_tensor.data<MPDType>(),
         master_out_data,
         rho,

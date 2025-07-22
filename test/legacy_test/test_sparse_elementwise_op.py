@@ -347,8 +347,8 @@ class TestSparseElementWiseAPIComplex(unittest.TestCase):
 
     def test_add_same_indices(self):
         indices_data = [[0, 1], [0, 3]]
-        values1_data = [[(1.0 + 0.2j)], [(2.0 + 0.3j)]]
-        values2_data = [[(1.0 + 0.2j)], [(2.0 - 0.3j)]]
+        values1_data = [[1.0 + 0.2j], [2.0 + 0.3j]]
+        values2_data = [[1.0 + 0.2j], [2.0 - 0.3j]]
         shape = [2, 4, 2]
 
         sp_a = paddle.sparse.sparse_coo_tensor(

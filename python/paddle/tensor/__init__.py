@@ -32,6 +32,7 @@ from .attribute import (  # noqa: F401
     shape,
 )
 from .creation import (  # noqa: F401
+    MmapStorage,
     arange,
     cauchy_,
     complex,
@@ -442,6 +443,7 @@ from .random import (  # noqa: F401
     randint,
     randint_like,
     randn,
+    randn_like,
     randperm,
     standard_normal,
     uniform,

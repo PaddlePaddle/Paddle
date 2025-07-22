@@ -67,7 +67,7 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
   for (size_t i = 0; i < xs.size(); ++i) {
     auto* out = outs[i];
     T* out_data = dev_ctx.template Alloc<T>(out);
-    int num = out->numel();
+    int64_t num = out->numel();
     if (cpu_found_inf_data) {
       VLOG(1) << "-- UpdateLossScaling: Find infinite grads. --";
       int r = 0;
@@ -282,7 +282,7 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
                        x->numel(),
                        false,
                        inverse_scale,
-                       0.0);
+                       0.0f);
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
 
         r = xpu::cast(dev_ctx.x_context(),
@@ -297,7 +297,7 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
                            x->numel(),
                            false,
                            inverse_scale,
-                           0.0);
+                           0.0f);
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
       }
     }

@@ -35,6 +35,7 @@ PD_DECLARE_string(cinn_nvcc_cmd_path);
 PD_DECLARE_string(nvidia_package_dir);
 PD_DECLARE_bool(nvrtc_compile_to_cubin);
 PD_DECLARE_bool(cinn_nvrtc_cubin_with_fmad);
+PD_DECLARE_string(cuda_cccl_dir);
 
 namespace cinn {
 namespace backends {
@@ -50,7 +51,8 @@ static std::vector<std::string> GetNvidiaAllIncludePath(
   std::vector<std::string> include_paths;
   const std::string delimiter = "/";
   // Expand this list if necessary.
-  const std::vector<std::string> sub_modules = {"cublas",
+  const std::vector<std::string> sub_modules = {"cuda_cccl",
+                                                "cublas",
                                                 "cudnn",
                                                 "cufft",
                                                 "cusparse",
@@ -183,7 +185,14 @@ std::string Compiler::CompileCudaSource(const std::string& code,
       nvrtcCompileProgram(prog, param_cstrings.size(), param_cstrings.data());
 
   if (compile_res != NVRTC_SUCCESS) {
-    std::string new_code = CodeGenCudaDev::GetGeneralSourceHeader() + code;
+    std::string new_code = code;
+    std::string from = CodeGenCudaDev::GetSourceHeader();
+    size_t pos = new_code.find(from);
+    if (pos != std::string::npos) {
+      new_code.replace(
+          pos, from.length(), CodeGenCudaDev::GetGeneralSourceHeader());
+    }
+
     NVRTC_CALL(nvrtcCreateProgram(&prog,
                                   new_code.c_str(),
                                   nullptr,
@@ -193,6 +202,7 @@ std::string Compiler::CompileCudaSource(const std::string& code,
     compile_res =
         nvrtcCompileProgram(prog, param_cstrings.size(), param_cstrings.data());
   }
+
   {  // get log
     size_t log_size;
     NVRTC_CALL(nvrtcGetProgramLogSize(prog, &log_size));

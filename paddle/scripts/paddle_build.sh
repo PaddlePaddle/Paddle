@@ -278,7 +278,10 @@ function cmake_base() {
         -DWITH_IPU=${WITH_IPU:-OFF}
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
         -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF}
+        -DWITH_XPU_XHPC=${WITH_XPU_XHPC:-OFF}
+        -DWITH_XPU_XFT=${WITH_XPU_XFT:-OFF}
         -DWITH_XPU_XRE5=${WITH_XPU_XRE5:-OFF}
+        -DWITH_XPU_FFT=${WITH_XPU_FFT:-OFF}
         -DWITH_ARM=${WITH_ARM:-OFF}
         -DWITH_STRIP=${WITH_STRIP:-ON}
         -DON_INFER=${ON_INFER:-OFF}
@@ -330,6 +333,9 @@ EOF
         -DWITH_IPU=${WITH_IPU:-OFF} \
         -DXPU_SDK_ROOT=${XPU_SDK_ROOT:-""} \
         -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF} \
+        -DWITH_XPU_XHPC=${WITH_XPU_XHPC:-OFF} \
+        -DWITH_XPU_XFT=${WITH_XPU_XFT:-OFF} \
+        -DWITH_XPU_FFT=${WITH_XPU_FFT:-OFF} \
         -DWITH_ARM=${WITH_ARM:-OFF} \
         -DWITH_STRIP=${WITH_STRIP:-ON} \
         -DON_INFER=${ON_INFER:-OFF} \
@@ -1511,6 +1517,20 @@ function get_quickly_disable_ut() {
     fi
 }
 
+# getting multi card uts for xpu
+function get_multi_card_ut_list_for_xpu() {
+    input_file="${PADDLE_ROOT}/tools/xpu/multi_card_ut_xpu_kl3.local"
+    if [ ! -f "$input_file" ]; then
+        echo "input file not exist: $input_file"
+        exit 102
+    fi
+    multi_card_ut_list_for_xpu=$(sed 's/^/^/; s/$/$/' "$input_file" | paste -sd'|' -)
+    echo "========================================="
+    echo "The following unittests are for xpu multi card:"
+    echo ${multi_card_ut_list_for_xpu}
+    echo "========================================="
+}
+
 function card_test() {
     set -m
     case_count $1 $2
@@ -1533,12 +1553,13 @@ function card_test() {
         run_label_mode="-LE (RUN_TYPE=INFER|RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE)"
     fi
 
-    # get the CUDA device count, XPU device count is one
-    if [ "${WITH_XPU}" == "ON" ];then
-        CUDA_DEVICE_COUNT=1
-    elif [ "${WITH_ROCM}" == "ON" ];then
+    # get the CUDA device count
+    if [[ "${WITH_XPU}" == "ON" ]]; then
+        # 2 card for P800 ci
+        CUDA_DEVICE_COUNT=2
+    elif [[ "${WITH_ROCM}" == "ON" ]]; then
         CUDA_DEVICE_COUNT=$(rocm-smi -i | grep DCU | wc -l)
-    elif [ "${WITH_IPU}" == "ON" ];then
+    elif [[ "${WITH_IPU}" == "ON" ]]; then
         CUDA_DEVICE_COUNT=1
     else
         CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
@@ -1558,6 +1579,12 @@ function card_test() {
         return 0
     fi
 
+
+    # for XPU, split XPU_VISIBLE_DEVICES
+    if [[ "$WITH_XPU" == "ON" ]]; then
+        IFS=',' read -ra XPU_DEVICE_ARRAY <<< "$XPU_VISIBLE_DEVICES"
+    fi
+
     trap 'caught_error' CHLD
     tmpfile_rand=`date +%s%N`
     NUM_PROC=$[CUDA_DEVICE_COUNT/$cardnumber]
@@ -1570,18 +1597,31 @@ function card_test() {
         cuda_list=()
         for (( j = 0; j < cardnumber; j++ )); do
             if [ $j -eq 0 ]; then
-                    cuda_list=("$[i*cardnumber]")
-                else
-                    cuda_list="$cuda_list,$[i*cardnumber+j]"
+                cuda_list=("$[i*cardnumber]")
+            else
+                cuda_list="$cuda_list,$[i*cardnumber+j]"
             fi
         done
+
+        # for XPU, split XPU_VISIBLE_DEVICES
+        if [[ "$WITH_XPU" == "ON" ]]; then
+            cuda_list=()
+            for (( j = 0; j < cardnumber; j++ )); do
+                index=$((i * cardnumber + j))
+                cuda_list+=("${XPU_DEVICE_ARRAY[index]}")
+            done
+            cuda_list_str=$(IFS=,; echo "${cuda_list[*]}")
+        fi
+
         tmpfile=$tmp_dir/$tmpfile_rand"_"$i
         if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
                 (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} -V --timeout 120 -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             else
-                if [ "$WITH_ROCM" == "ON" ];then
+                if [[ "$WITH_ROCM" == "ON" ]]; then
                     (env HIP_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 -V -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                elif [[ "$WITH_XPU" == "ON" ]]; then
+                    (env XPU_VISIBLE_DEVICES=$cuda_list_str ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 -V -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
                 else
                     (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 -V -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
                 fi
@@ -1590,8 +1630,10 @@ function card_test() {
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
                 (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 --output-on-failure  -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             else
-                if [ "$WITH_ROCM" == "ON" ];then
+                if [[ "$WITH_ROCM" == "ON" ]]; then
                     (env HIP_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 --output-on-failure  -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                elif [[ "$WITH_XPU" == "ON" ]]; then
+                    (env XPU_VISIBLE_DEVICES=$cuda_list_str ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 --output-on-failure  -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
                 else
                     (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 --output-on-failure  -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
                 fi
@@ -2427,7 +2469,12 @@ set +x
         export XPU_OP_LIST_DIR=$tmp_dir
         ut_startTime_s=`date +%s`
         get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
-        test_cases=$(ctest -N -V -E "$disable_ut_quickly" -LE "(RUN_TYPE=DIST_KUNLUN)")        # cases list which would be run exclusively
+        get_multi_card_ut_list_for_xpu
+        test_cases=$(ctest -N -V -E "$disable_ut_quickly|$multi_card_ut_list_for_xpu")        # cases list which would be run exclusively
+        echo "========================================="
+        echo "RAW test cases for XPU, already EXCLUDED disable_ut and multi_card:"
+        echo ${test_cases}
+        echo "========================================="
 
         single_card_test_num=0
         while read -r line; do
@@ -2456,8 +2503,25 @@ set +x
                 single_card_tests="$single_card_tests|^$testcase$"
             fi
         done <<< "$test_cases";
-        card_test "$single_card_tests" 1 4
-        card_test "$single_card_tests_1" 1 4
+
+        echo "========================================="
+        echo "start to run XPU ut using single card, part 1:"
+        echo ${single_card_tests}
+        echo "========================================="
+        card_test "${single_card_tests}" 1 4
+
+        echo "========================================="
+        echo "start to run XPU ut using single card, part 2:"
+        echo ${single_card_tests_1}
+        echo "========================================="
+        card_test "${single_card_tests_1}" 1 4
+
+        echo "========================================="
+        echo "start to run XPU ut using multiple cards:"
+        echo ${multi_card_ut_list_for_xpu}
+        echo "========================================="
+        card_test "${multi_card_ut_list_for_xpu}" 2 1
+
         failed_test_lists=''
         collect_failed_tests
         xputest_error=0
@@ -2520,7 +2584,7 @@ set +x
             #install paddlex
             git clone --depth 1000 https://gitee.com/paddlepaddle/PaddleX.git
             cd PaddleX
-            pip install -e .
+            pip install -e .[base]
 
             #install paddle x dependency
             paddlex --install PaddleClas
@@ -2539,15 +2603,12 @@ set +x
             echo "Training Resnet50 completed!"
 
             #inference Reset50
-            IFS=',' read -ra DEVICES <<< "$CUDA_VISIBLE_DEVICES"
-            echo ${DEVICES[0]}
-
             echo "Starting to predict ResNet50 model..."
             python main.py -c paddlex/configs/modules/image_classification/ResNet50.yaml \
                 -o Global.mode=predict \
                 -o Predict.model_dir="./resnet50_output/best_model/inference" \
                 -o Predict.input="https://paddle-model-ecology.bj.bcebos.com/paddlex/imgs/demo_image/general_image_classification_001.jpg" \
-                -o Global.device="xpu:${DEVICES[0]}"
+                -o Global.device="xpu:0"
             echo "Predicting Resnet50 completed!"
             cd ..
             export FLAGS_enable_pir_api=1
@@ -2751,7 +2812,7 @@ function hybrid_paddlex() {
     unset HIP_VISIBLE_DEVICES
     git clone --depth=1000 https://gitee.com/paddlepaddle/PaddleX.git
     cd PaddleX
-    pip install -e .
+    pip install -e .[base]
     paddlex --install PaddleClas
     paddlex --install PaddleSeg
     wget -q https://paddle-model-ecology.bj.bcebos.com/paddlex/data/cls_flowers_examples.tar -P ./dataset
@@ -3291,12 +3352,6 @@ function nv_test() {
 }
 
 
-function enable_unused_var_check() {
-    # NOTE(zhiqiu): Set FLAGS_enable_unused_var_check=1 here to enable unused_var_check,
-    # which checks if an operator has unused input variable(s).
-    # Currently, use it in coverage CI job.
-    export FLAGS_enable_unused_var_check=1
-}
 function check_coverage_added_ut() {
     # NOTE(risemeup1):The step of checking added test can be placed on the cpu machine to save gpu resources
     bash $PADDLE_ROOT/tools/check_added_ut.sh
@@ -3553,13 +3608,13 @@ EOF
     echo "if you use setup.py to compile,please export envs as following in /paddle ..."
     cat << EOF
     ========================================
-    export CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} WITH_GPU=${WITH_GPU:-OFF} WITH_SHARED_PHI=${WITH_SHARED_PHI:-ON} WITH_TENSORRT=${WITH_TENSORRT:-ON} WITH_ROCM=${WITH_ROCM:-OFF} WITH_CINN=${WITH_CINN:-OFF} WITH_DISTRIBUTE=${distributed_flag} WITH_MKL=${WITH_MKL:-ON} WITH_AVX=${WITH_AVX:-OFF} CUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} NEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF} NEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF} NEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF} WITH_PYTHON=${WITH_PYTHON:-ON} CUDNN_ROOT=/usr/ WITH_TESTING=${WITH_TESTING:-ON} WITH_COVERAGE=${WITH_COVERAGE:-OFF} WITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF} CMAKE_MODULE_PATH=/opt/rocm/hip/cmake CMAKE_EXPORT_COMPILE_COMMANDS=ON WITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} PY_VERSION=${PY_VERSION:-3.8} CMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} WITH_PSCORE=${pscore_flag} WITH_PSLIB=${pslib_flag} WITH_GLOO=${gloo_flag} WITH_XPU=${WITH_XPU:-OFF} WITH_IPU=${WITH_IPU:-OFF} XPU_SDK_ROOT=${XPU_SDK_ROOT:-""} WITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF} WITH_ARM=${WITH_ARM:-OFF} WITH_STRIP=${WITH_STRIP:-ON} ON_INFER=${ON_INFER:-OFF} WITH_HETERPS=${WITH_HETERPS:-OFF} CUDA_ARCH_BIN=${CUDA_ARCH_BIN} WITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF} WITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF} WITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF} WITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
+    export CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} WITH_GPU=${WITH_GPU:-OFF} WITH_SHARED_PHI=${WITH_SHARED_PHI:-ON} WITH_TENSORRT=${WITH_TENSORRT:-ON} WITH_ROCM=${WITH_ROCM:-OFF} WITH_CINN=${WITH_CINN:-OFF} WITH_DISTRIBUTE=${distributed_flag} WITH_MKL=${WITH_MKL:-ON} WITH_AVX=${WITH_AVX:-OFF} CUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} NEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF} NEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF} NEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF} WITH_PYTHON=${WITH_PYTHON:-ON} CUDNN_ROOT=/usr/ WITH_TESTING=${WITH_TESTING:-ON} WITH_COVERAGE=${WITH_COVERAGE:-OFF} WITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF} CMAKE_MODULE_PATH=/opt/rocm/hip/cmake CMAKE_EXPORT_COMPILE_COMMANDS=ON WITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} PY_VERSION=${PY_VERSION:-3.8} CMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} WITH_PSCORE=${pscore_flag} WITH_PSLIB=${pslib_flag} WITH_GLOO=${gloo_flag} WITH_XPU=${WITH_XPU:-OFF} WITH_IPU=${WITH_IPU:-OFF} XPU_SDK_ROOT=${XPU_SDK_ROOT:-""} WITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF} WITH_XPU_XHPC=${WITH_XPU_XHPC:-OFF} WITH_XPU_XFT=${WITH_XPU_XFT:-OFF} WITH_ARM=${WITH_ARM:-OFF} WITH_STRIP=${WITH_STRIP:-ON} ON_INFER=${ON_INFER:-OFF} WITH_HETERPS=${WITH_HETERPS:-OFF} CUDA_ARCH_BIN=${CUDA_ARCH_BIN} WITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF} WITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF} WITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF} WITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
     ========================================
 EOF
     echo "if you use cmake to compile,please Configuring cmake in /paddle/build ..."
     cat <<EOF
     ========================================
-    cmake .. -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} -DWITH_GPU=${WITH_GPU:-OFF} -DWITH_SHARED_PHI=${WITH_SHARED_PHI:-ON} -DWITH_TENSORRT=${WITH_TENSORRT:-ON} -DWITH_ROCM=${WITH_ROCM:-OFF} -DWITH_CINN=${WITH_CINN:-OFF} -DWITH_DISTRIBUTE=${distributed_flag} -DWITH_MKL=${WITH_MKL:-ON} -DWITH_AVX=${WITH_AVX:-OFF} -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} -DNEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF} -DNEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF} -DNEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF} -DWITH_PYTHON=${WITH_PYTHON:-ON} -DCUDNN_ROOT=/usr/ -DWITH_TESTING=${WITH_TESTING:-ON} -DWITH_COVERAGE=${WITH_COVERAGE:-OFF} -DWITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF} -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} -DPY_VERSION=${PY_VERSION:-3.8} -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} -DWITH_PSCORE=${pscore_flag} -DWITH_PSLIB=${pslib_flag} -DWITH_GLOO=${gloo_flag} -DWITH_XPU=${WITH_XPU:-OFF} -DWITH_IPU=${WITH_IPU:-OFF} -DXPU_SDK_ROOT=${XPU_SDK_ROOT:-""} -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF} -DWITH_ARM=${WITH_ARM:-OFF} -DWITH_STRIP=${WITH_STRIP:-ON} -DON_INFER=${ON_INFER:-OFF} -DWITH_HETERPS=${WITH_HETERPS:-OFF} -DCUDA_ARCH_BIN=${CUDA_ARCH_BIN} -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF} -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF} -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF} -DWITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
+    cmake .. -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} -DWITH_GPU=${WITH_GPU:-OFF} -DWITH_SHARED_PHI=${WITH_SHARED_PHI:-ON} -DWITH_TENSORRT=${WITH_TENSORRT:-ON} -DWITH_ROCM=${WITH_ROCM:-OFF} -DWITH_CINN=${WITH_CINN:-OFF} -DWITH_DISTRIBUTE=${distributed_flag} -DWITH_MKL=${WITH_MKL:-ON} -DWITH_AVX=${WITH_AVX:-OFF} -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} -DNEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF} -DNEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF} -DNEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF} -DWITH_PYTHON=${WITH_PYTHON:-ON} -DCUDNN_ROOT=/usr/ -DWITH_TESTING=${WITH_TESTING:-ON} -DWITH_COVERAGE=${WITH_COVERAGE:-OFF} -DWITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF} -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} -DPY_VERSION=${PY_VERSION:-3.8} -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} -DWITH_PSCORE=${pscore_flag} -DWITH_PSLIB=${pslib_flag} -DWITH_GLOO=${gloo_flag} -DWITH_XPU=${WITH_XPU:-OFF} -DWITH_IPU=${WITH_IPU:-OFF} -DXPU_SDK_ROOT=${XPU_SDK_ROOT:-""} -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF} -DWITH_XPU_XHPC=${WITH_XPU_XHPC:-OFF} -DWITH_XPU_XFT=${WITH_XPU_XFT:-OFF} -DWITH_ARM=${WITH_ARM:-OFF} -DWITH_STRIP=${WITH_STRIP:-ON} -DON_INFER=${ON_INFER:-OFF} -DWITH_HETERPS=${WITH_HETERPS:-OFF} -DCUDA_ARCH_BIN=${CUDA_ARCH_BIN} -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF} -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF} -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF} -DWITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
     ========================================
 EOF
     # reset ccache zero stats for collect PR's actual hit rate
@@ -3717,9 +3772,6 @@ function distribute_test() {
     mkdir paddlenlp && mv Bos/* ./paddlenlp/
     rm -rf ./paddlenlp/upload/*
     rm -rf ./paddlenlp/models/bigscience/*
-
-    # Already disable unittests of llama2 model in current CI pipeline
-    export FLAGS_dynamic_static_unified_comm=True
 
     echo "Start LLM Test"
     cd ${work_dir}/PaddleNLP
@@ -4266,13 +4318,13 @@ function run_setup(){
     echo "if you use setup.py to compile,please export envs as following in /paddle ..."
     cat << EOF
     ========================================
-    export CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} WITH_GPU=${WITH_GPU:-OFF} WITH_SHARED_PHI=${WITH_SHARED_PHI:-OFF} WITH_TENSORRT=${WITH_TENSORRT:-ON} WITH_OPENVINO=${WITH_OPENVINO:-OFF} WITH_ROCM=${WITH_ROCM:-OFF} WITH_CINN=${WITH_CINN:-OFF} WITH_DISTRIBUTE=${distributed_flag} WITH_MKL=${WITH_MKL:-ON} WITH_AVX=${WITH_AVX:-OFF} CUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} NEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF} NEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF} NEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF} WITH_PYTHON=${WITH_PYTHON:-ON} CUDNN_ROOT=/usr/ WITH_TESTING=${WITH_TESTING:-ON} WITH_COVERAGE=${WITH_COVERAGE:-OFF} WITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF} CMAKE_MODULE_PATH=/opt/rocm/hip/cmake CMAKE_EXPORT_COMPILE_COMMANDS=ON WITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} PY_VERSION=${PY_VERSION:-3.8} CMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} WITH_PSCORE=${pscore_flag} WITH_PSLIB=${pslib_flag} WITH_GLOO=${gloo_flag} WITH_XPU=${WITH_XPU:-OFF} WITH_IPU=${WITH_IPU:-OFF} XPU_SDK_ROOT=${XPU_SDK_ROOT:-""} WITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF} WITH_XPU_XRE5=${WITH_XPU_XRE5:-OFF} WITH_ARM=${WITH_ARM:-OFF} WITH_STRIP=${WITH_STRIP:-ON} ON_INFER=${ON_INFER:-OFF} WITH_HETERPS=${WITH_HETERPS:-OFF} CUDA_ARCH_BIN=${CUDA_ARCH_BIN} WITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF} WITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF} WITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF} WITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF} WITH_CPP_TEST=${WITH_CPP_TEST:-OFF} FA_BUILD_WITH_CACHE=${FA_BUILD_WITH_CACHE:-ON}
+    export CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} WITH_GPU=${WITH_GPU:-OFF} WITH_SHARED_PHI=${WITH_SHARED_PHI:-OFF} WITH_TENSORRT=${WITH_TENSORRT:-ON} WITH_OPENVINO=${WITH_OPENVINO:-OFF} WITH_ROCM=${WITH_ROCM:-OFF} WITH_CINN=${WITH_CINN:-OFF} WITH_DISTRIBUTE=${distributed_flag} WITH_MKL=${WITH_MKL:-ON} WITH_AVX=${WITH_AVX:-OFF} CUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} NEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF} NEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF} NEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF} WITH_PYTHON=${WITH_PYTHON:-ON} CUDNN_ROOT=/usr/ WITH_TESTING=${WITH_TESTING:-ON} WITH_COVERAGE=${WITH_COVERAGE:-OFF} WITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF} CMAKE_MODULE_PATH=/opt/rocm/hip/cmake CMAKE_EXPORT_COMPILE_COMMANDS=ON WITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} PY_VERSION=${PY_VERSION:-3.8} CMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} WITH_PSCORE=${pscore_flag} WITH_PSLIB=${pslib_flag} WITH_GLOO=${gloo_flag} WITH_XPU=${WITH_XPU:-OFF} WITH_IPU=${WITH_IPU:-OFF} XPU_SDK_ROOT=${XPU_SDK_ROOT:-""} WITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF} WITH_XPU_XHPC=${WITH_XPU_XHPC:-OFF} WITH_XPU_XFT=${WITH_XPU_XFT:-OFF} WITH_XPU_XRE5=${WITH_XPU_XRE5:-OFF} WITH_XPU_FFT=${WITH_XPU_FFT:-OFF} WITH_ARM=${WITH_ARM:-OFF} WITH_STRIP=${WITH_STRIP:-ON} ON_INFER=${ON_INFER:-OFF} WITH_HETERPS=${WITH_HETERPS:-OFF} CUDA_ARCH_BIN=${CUDA_ARCH_BIN} WITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF} WITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF} WITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF} WITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF} WITH_CPP_TEST=${WITH_CPP_TEST:-OFF} FA_BUILD_WITH_CACHE=${FA_BUILD_WITH_CACHE:-ON}
     ========================================
 EOF
     echo "if you use cmake to compile,please Configuring cmake in /paddle/build ..."
     cat <<EOF
     ========================================
-    cmake .. -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} -DWITH_GPU=${WITH_GPU:-OFF} -DWITH_SHARED_PHI=${WITH_SHARED_PHI:-OFF} -DWITH_TENSORRT=${WITH_TENSORRT:-ON} -DWITH_OPENVINO=${WITH_OPENVINO:-OFF} -DWITH_ROCM=${WITH_ROCM:-OFF} -DWITH_CINN=${WITH_CINN:-OFF} -DWITH_DISTRIBUTE=${distributed_flag} -DWITH_MKL=${WITH_MKL:-ON} -DWITH_AVX=${WITH_AVX:-OFF} -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} -DNEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF} -DNEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF} -DNEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF} -DWITH_PYTHON=${WITH_PYTHON:-ON} -DCUDNN_ROOT=/usr/ -DWITH_TESTING=${WITH_TESTING:-ON} -DWITH_COVERAGE=${WITH_COVERAGE:-OFF} -DWITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF} -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} -DPY_VERSION=${PY_VERSION:-3.8} -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} -DWITH_PSCORE=${pscore_flag} -DWITH_PSLIB=${pslib_flag} -DWITH_GLOO=${gloo_flag} -DWITH_XPU=${WITH_XPU:-OFF} -DWITH_IPU=${WITH_IPU:-OFF} -DXPU_SDK_ROOT=${XPU_SDK_ROOT:-""} -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF} -DWITH_XPU_XRE5=${WITH_XPU_XRE5:-OFF} -DWITH_ARM=${WITH_ARM:-OFF} -DWITH_STRIP=${WITH_STRIP:-ON} -DON_INFER=${ON_INFER:-OFF} -DWITH_HETERPS=${WITH_HETERPS:-OFF} -DCUDA_ARCH_BIN=${CUDA_ARCH_BIN} -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF} -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF} -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF} -DWITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF} -DWITH_CPP_TEST=${WITH_CPP_TEST:-OFF} -DFA_BUILD_WITH_CACHE=${FA_BUILD_WITH_CACHE:-ON}
+    cmake .. -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} -DWITH_GPU=${WITH_GPU:-OFF} -DWITH_SHARED_PHI=${WITH_SHARED_PHI:-OFF} -DWITH_TENSORRT=${WITH_TENSORRT:-ON} -DWITH_OPENVINO=${WITH_OPENVINO:-OFF} -DWITH_ROCM=${WITH_ROCM:-OFF} -DWITH_CINN=${WITH_CINN:-OFF} -DWITH_DISTRIBUTE=${distributed_flag} -DWITH_MKL=${WITH_MKL:-ON} -DWITH_AVX=${WITH_AVX:-OFF} -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} -DNEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF} -DNEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF} -DNEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF} -DWITH_PYTHON=${WITH_PYTHON:-ON} -DCUDNN_ROOT=/usr/ -DWITH_TESTING=${WITH_TESTING:-ON} -DWITH_COVERAGE=${WITH_COVERAGE:-OFF} -DWITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF} -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} -DPY_VERSION=${PY_VERSION:-3.8} -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} -DWITH_PSCORE=${pscore_flag} -DWITH_PSLIB=${pslib_flag} -DWITH_GLOO=${gloo_flag} -DWITH_XPU=${WITH_XPU:-OFF} -DWITH_IPU=${WITH_IPU:-OFF} -DXPU_SDK_ROOT=${XPU_SDK_ROOT:-""} -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF} -DWITH_XPU_XHPC=${WITH_XPU_XHPC:-OFF} -DWITH_XPU_XFT=${WITH_XPU_XFT:-OFF} -DWITH_XPU_XRE5=${WITH_XPU_XRE5:-OFF} -DWITH_XPU_FFT=${WITH_XPU_FFT:-OFF} -DWITH_ARM=${WITH_ARM:-OFF} -DWITH_STRIP=${WITH_STRIP:-ON} -DON_INFER=${ON_INFER:-OFF} -DWITH_HETERPS=${WITH_HETERPS:-OFF} -DCUDA_ARCH_BIN=${CUDA_ARCH_BIN} -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF} -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF} -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF} -DWITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF} -DWITH_CPP_TEST=${WITH_CPP_TEST:-OFF} -DFA_BUILD_WITH_CACHE=${FA_BUILD_WITH_CACHE:-ON}
     ========================================
 EOF
     export CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release}
@@ -4306,7 +4358,10 @@ EOF
     export WITH_IPU=${WITH_IPU:-OFF}
     export XPU_SDK_ROOT=${XPU_SDK_ROOT:-""}
     export WITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF}
+    export WITH_XPU_XHPC=${WITH_XPU_XHPC:-OFF}
+    export WITH_XPU_XFT=${WITH_XPU_XFT:-OFF}
     export WITH_XPU_XRE5=${WITH_XPU_XRE5:-OFF}
+    export WITH_XPU_FFT=${WITH_XPU_FFT:-OFF}
     export WITH_ARM=${WITH_ARM:-OFF}
     export WITH_STRIP=${WITH_STRIP:-ON}
     export ON_INFER=${ON_INFER:-OFF}
@@ -4561,13 +4616,13 @@ function run_setup_mac(){
     echo "if you use setup.py to compile,please export envs as following in /paddle ..."
     cat << EOF
     ========================================
-    export CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} WITH_GPU=${WITH_GPU:-OFF} WITH_TENSORRT=${WITH_TENSORRT:-ON} WITH_ROCM=${WITH_ROCM:-OFF} WITH_CINN=${WITH_CINN:-OFF} WITH_DISTRIBUTE=${distributed_flag} WITH_MKL=${WITH_MKL:-ON} WITH_AVX=${WITH_AVX:-OFF} CUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} NEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF} NEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF} NEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF} WITH_PYTHON=${WITH_PYTHON:-ON} CUDNN_ROOT=/usr/ WITH_TESTING=${WITH_TESTING:-ON} WITH_COVERAGE=${WITH_COVERAGE:-OFF} WITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF} CMAKE_MODULE_PATH=/opt/rocm/hip/cmake CMAKE_EXPORT_COMPILE_COMMANDS=ON WITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} PY_VERSION=${PY_VERSION:-3.8} CMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} WITH_PSCORE=${pscore_flag} WITH_PSLIB=${pslib_flag} WITH_GLOO=${gloo_flag} WITH_XPU=${WITH_XPU:-OFF} WITH_IPU=${WITH_IPU:-OFF} XPU_SDK_ROOT=${XPU_SDK_ROOT:-""} WITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF} WITH_ARM=${WITH_ARM:-OFF} WITH_STRIP=${WITH_STRIP:-ON} ON_INFER=${ON_INFER:-OFF} WITH_HETERPS=${WITH_HETERPS:-OFF} CUDA_ARCH_BIN=${CUDA_ARCH_BIN} WITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF} WITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF} WITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF} WITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF} WITH_SHARED_PHI=${WITH_SHARED_PHI:-OFF}
+    export CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} WITH_GPU=${WITH_GPU:-OFF} WITH_TENSORRT=${WITH_TENSORRT:-ON} WITH_ROCM=${WITH_ROCM:-OFF} WITH_CINN=${WITH_CINN:-OFF} WITH_DISTRIBUTE=${distributed_flag} WITH_MKL=${WITH_MKL:-ON} WITH_AVX=${WITH_AVX:-OFF} CUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} NEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF} NEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF} NEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF} WITH_PYTHON=${WITH_PYTHON:-ON} CUDNN_ROOT=/usr/ WITH_TESTING=${WITH_TESTING:-ON} WITH_COVERAGE=${WITH_COVERAGE:-OFF} WITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF} CMAKE_MODULE_PATH=/opt/rocm/hip/cmake CMAKE_EXPORT_COMPILE_COMMANDS=ON WITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} PY_VERSION=${PY_VERSION:-3.8} CMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} WITH_PSCORE=${pscore_flag} WITH_PSLIB=${pslib_flag} WITH_GLOO=${gloo_flag} WITH_XPU=${WITH_XPU:-OFF} WITH_IPU=${WITH_IPU:-OFF} XPU_SDK_ROOT=${XPU_SDK_ROOT:-""} WITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF} WITH_XPU_XHPC=${WITH_XPU_XHPC:-OFF} WITH_XPU_XFT=${WITH_XPU_XFT:-OFF} WITH_ARM=${WITH_ARM:-OFF} WITH_STRIP=${WITH_STRIP:-ON} ON_INFER=${ON_INFER:-OFF} WITH_HETERPS=${WITH_HETERPS:-OFF} CUDA_ARCH_BIN=${CUDA_ARCH_BIN} WITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF} WITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF} WITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF} WITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF} WITH_SHARED_PHI=${WITH_SHARED_PHI:-OFF}
     ========================================
 EOF
     echo "if you use cmake to compile,please Configuring cmake in /paddle/build ..."
     cat <<EOF
     ========================================
-    cmake .. -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} -DWITH_GPU=${WITH_GPU:-OFF} -DWITH_TENSORRT=${WITH_TENSORRT:-ON} -DWITH_ROCM=${WITH_ROCM:-OFF} -DWITH_CINN=${WITH_CINN:-OFF} -DWITH_DISTRIBUTE=${distributed_flag} -DWITH_MKL=${WITH_MKL:-ON} -DWITH_AVX=${WITH_AVX:-OFF} -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} -DNEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF} -DNEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF} -DNEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF} -DWITH_PYTHON=${WITH_PYTHON:-ON} -DCUDNN_ROOT=/usr/ -DWITH_TESTING=${WITH_TESTING:-ON} -DWITH_COVERAGE=${WITH_COVERAGE:-OFF} -DWITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF} -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} -DPY_VERSION=${PY_VERSION:-3.8} -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} -DWITH_PSCORE=${pscore_flag} -DWITH_PSLIB=${pslib_flag} -DWITH_GLOO=${gloo_flag} -DWITH_XPU=${WITH_XPU:-OFF} -DWITH_IPU=${WITH_IPU:-OFF} -DXPU_SDK_ROOT=${XPU_SDK_ROOT:-""} -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF} -DWITH_ARM=${WITH_ARM:-OFF} -DWITH_STRIP=${WITH_STRIP:-ON} -DON_INFER=${ON_INFER:-OFF} -DWITH_HETERPS=${WITH_HETERPS:-OFF} -DCUDA_ARCH_BIN=${CUDA_ARCH_BIN} -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF} -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF} -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF} -DWITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF} -DWITH_SHARED_PHI=${WITH_SHARED_PHI:-OFF}
+    cmake .. -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} -DWITH_GPU=${WITH_GPU:-OFF} -DWITH_TENSORRT=${WITH_TENSORRT:-ON} -DWITH_ROCM=${WITH_ROCM:-OFF} -DWITH_CINN=${WITH_CINN:-OFF} -DWITH_DISTRIBUTE=${distributed_flag} -DWITH_MKL=${WITH_MKL:-ON} -DWITH_AVX=${WITH_AVX:-OFF} -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} -DNEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF} -DNEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF} -DNEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF} -DWITH_PYTHON=${WITH_PYTHON:-ON} -DCUDNN_ROOT=/usr/ -DWITH_TESTING=${WITH_TESTING:-ON} -DWITH_COVERAGE=${WITH_COVERAGE:-OFF} -DWITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF} -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} -DPY_VERSION=${PY_VERSION:-3.8} -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} -DWITH_PSCORE=${pscore_flag} -DWITH_PSLIB=${pslib_flag} -DWITH_GLOO=${gloo_flag} -DWITH_XPU=${WITH_XPU:-OFF} -DWITH_IPU=${WITH_IPU:-OFF} -DXPU_SDK_ROOT=${XPU_SDK_ROOT:-""} -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF} -DWITH_XPU_XHPC=${WITH_XPU_XHPC:-OFF} -DWITH_XPU_XFT=${WITH_XPU_XFT:-OFF} -DWITH_ARM=${WITH_ARM:-OFF} -DWITH_STRIP=${WITH_STRIP:-ON} -DON_INFER=${ON_INFER:-OFF} -DWITH_HETERPS=${WITH_HETERPS:-OFF} -DCUDA_ARCH_BIN=${CUDA_ARCH_BIN} -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF} -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF} -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF} -DWITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF} -DWITH_SHARED_PHI=${WITH_SHARED_PHI:-OFF}
     ========================================
 EOF
     export CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release}
@@ -4600,6 +4655,8 @@ EOF
     export WITH_IPU=${WITH_IPU:-OFF}
     export XPU_SDK_ROOT=${XPU_SDK_ROOT:-""}
     export WITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF}
+    export WITH_XPU_XHPC=${WITH_XPU_XHPC:-OFF}
+    export WITH_XPU_XFT=${WITH_XPU_XFT:-OFF}
     export WITH_ARM=${WITH_ARM:-OFF}
     export WITH_STRIP=${WITH_STRIP:-ON}
     export ON_INFER=${ON_INFER:-OFF}
@@ -4763,13 +4820,11 @@ function main() {
       cicheck)
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
-        enable_unused_var_check
         parallel_test
         ;;
       cicheck_coverage)
         check_diff_file_for_coverage
         run_setup ${PYTHON_ABI:-""} install ${parallel_number}
-        enable_unused_var_check
         parallel_test
         check_coverage
         ;;
@@ -4777,7 +4832,6 @@ function main() {
         check_diff_file_for_coverage
         export ON_INFER=ON PADDLE_CUDA_INSTALL_REQUIREMENTS=ON
         run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
-        enable_unused_var_check
         check_coverage_added_ut
         check_coverage_build
         clean_build_files
@@ -4796,7 +4850,9 @@ function main() {
         ;;
       hyg_dcu_test)
         parallel_test
-        hybrid_paddlex
+        if [[ "$IF_DCU" == "ON" ]]; then
+          hybrid_paddlex
+	fi
         ;;
       nv_cicheck_coverage)
         parallel_test
@@ -4881,7 +4937,7 @@ function main() {
       cicheck_sot)
         check_run_sot_ci
         export WITH_SHARED_PHI=ON
-        PYTHON_VERSIONS=(3.13 3.8 3.9 3.10 3.11 3.12)
+        PYTHON_VERSIONS=(3.9 3.10 3.11 3.12 3.13)
         for PY_VERSION in ${PYTHON_VERSIONS[@]}; do
             ln -sf $(which python${PY_VERSION}) /usr/local/bin/python
             ln -sf $(which pip${PY_VERSION}) /usr/local/bin/pip

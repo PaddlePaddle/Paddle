@@ -159,10 +159,12 @@ class TestRegularizer(unittest.TestCase):
     @contextlib.contextmanager
     def scope_prog_guard(self, main_prog, startup_prog):
         scope = base.core.Scope()
-        with base.unique_name.guard():
-            with base.scope_guard(scope):
-                with base.program_guard(main_prog, startup_prog):
-                    yield
+        with (
+            base.unique_name.guard(),
+            base.scope_guard(scope),
+            base.program_guard(main_prog, startup_prog),
+        ):
+            yield
 
     def run_program(self, place, feed_list):
         exe = base.Executor(place)

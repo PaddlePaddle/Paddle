@@ -18,11 +18,11 @@ limitations under the License. */
 
 namespace phi {
 
-#define DECLARE_COMPARE_KERNEL(name)      \
-  template <typename T, typename Context> \
-  void name##Kernel(const Context& ctx,   \
-                    const DenseTensor& x, \
-                    const DenseTensor& y, \
+#define DECLARE_COMPARE_KERNEL(name)        \
+  template <typename T, typename Context>   \
+  void name##Kernel(const Context& dev_ctx, \
+                    const DenseTensor& x,   \
+                    const DenseTensor& y,   \
                     DenseTensor* out);
 
 DECLARE_COMPARE_KERNEL(LessThan)
@@ -33,11 +33,11 @@ DECLARE_COMPARE_KERNEL(Equal)
 DECLARE_COMPARE_KERNEL(NotEqual)
 #undef DECLARE_COMPARE_KERNEL
 
-#define DECLARE_COMPARE_ALL_KERNEL(compare_all)  \
-  template <typename T, typename Context>        \
-  void compare_all##Kernel(const Context& ctx,   \
-                           const DenseTensor& x, \
-                           const DenseTensor& y, \
+#define DECLARE_COMPARE_ALL_KERNEL(compare_all)    \
+  template <typename T, typename Context>          \
+  void compare_all##Kernel(const Context& dev_ctx, \
+                           const DenseTensor& x,   \
+                           const DenseTensor& y,   \
                            DenseTensor* out);
 
 DECLARE_COMPARE_ALL_KERNEL(EqualAll)

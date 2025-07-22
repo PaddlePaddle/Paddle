@@ -62,9 +62,10 @@ class MLPLayer(nn.Layer):
 
 
 def mlp_forward(train_program, start_program):
-    with static.program_guard(
-        train_program, start_program
-    ), utils.unique_name.guard():
+    with (
+        static.program_guard(train_program, start_program),
+        utils.unique_name.guard(),
+    ):
         batch_size = 4
         hidden_size = 1024
         sqrt_hidden_size = 32
@@ -107,9 +108,10 @@ class TestCompatible(unittest.TestCase):
         startup_program = paddle.static.Program()
         loss, program, start_program = mlp_forward(program, startup_program)
 
-        with static.program_guard(
-            program, start_program
-        ), utils.unique_name.guard():
+        with (
+            static.program_guard(program, start_program),
+            utils.unique_name.guard(),
+        ):
             matmulx3 = static.data(
                 name="matmulx3", shape=[6, 2, 6], dtype='float32'
             )
@@ -265,9 +267,10 @@ class TestCompatible(unittest.TestCase):
         program = paddle.static.Program()
         startup_program = paddle.static.Program()
         loss, program, start_program = mlp_forward(program, startup_program)
-        with static.program_guard(
-            program, start_program
-        ), utils.unique_name.guard():
+        with (
+            static.program_guard(program, start_program),
+            utils.unique_name.guard(),
+        ):
             matmulx3 = static.data(
                 name="matmulx3", shape=[6, 2, 6], dtype='float32'
             )
@@ -401,9 +404,10 @@ class TestCompatible(unittest.TestCase):
         program = paddle.static.Program()
         startup_program = paddle.static.Program()
         loss, program, start_program = mlp_forward(program, startup_program)
-        with static.program_guard(
-            program, start_program
-        ), utils.unique_name.guard():
+        with (
+            static.program_guard(program, start_program),
+            utils.unique_name.guard(),
+        ):
             matmulx3 = static.data(
                 name="matmulx3", shape=[6, 2, 6], dtype='float32'
             )

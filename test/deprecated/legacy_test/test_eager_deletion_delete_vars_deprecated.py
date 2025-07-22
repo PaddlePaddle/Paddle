@@ -82,10 +82,12 @@ class TestExecutor(unittest.TestCase):
 
         for p in places:
             self.place = p
-            with base.program_guard(base.Program(), base.Program()):
-                with base.scope_guard(base.Scope()):
-                    with base.unique_name.guard():
-                        self.executor_main()
+            with (
+                base.program_guard(base.Program(), base.Program()),
+                base.scope_guard(base.Scope()),
+                base.unique_name.guard(),
+            ):
+                self.executor_main()
 
     def prepare_feed(self, image, label, dev_cnt=1):
         batch_size = 32 * dev_cnt

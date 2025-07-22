@@ -19,6 +19,7 @@
 
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 namespace funcs {
@@ -121,6 +122,23 @@ void ElementwiseGradKernel(const OneDNNContext& dev_ctx,
   const auto& onednn_engine = dev_ctx.GetEngine();
   // oneDNN's binary is optimized for broadcasting y into x, so in other case
   // we have to swap tensors to achieve optimal performance
+  if (dout.numel() == 0) {
+    if (dx) {
+      dev_ctx.template Alloc<T>(dx);
+      if (dx->numel() != 0) {
+        phi::Full<T, OneDNNContext>(
+            dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+      }
+    }
+    if (dy) {
+      dev_ctx.template Alloc<T>(dy);
+      if (dy->numel() != 0) {
+        phi::Full<T, OneDNNContext>(
+            dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+      }
+    }
+    return;
+  }
   bool swap_x_y = false;
   auto* non_const_x = &x;
   auto* non_const_y = &y;

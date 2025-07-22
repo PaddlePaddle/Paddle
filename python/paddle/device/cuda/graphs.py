@@ -41,7 +41,7 @@ cuda_graph_id = 0
 
 
 class CUDAGraph:
-    def __init__(self, place=None, mode="thread_local"):
+    def __init__(self, place=None, mode="thread_local", pool_id=None):
         assert (
             CoreCUDAGraph is not None
         ), "CUDA Graph is only supported on PaddlePaddle compiled with NVIDIA GPU."
@@ -53,9 +53,12 @@ class CUDAGraph:
         self._place = place
         assert mode in ALL_MODES
         self._mode = ALL_MODES.index(mode)
+        self._pool_id = pool_id
 
     def capture_begin(self):
-        CoreCUDAGraph.begin_capture(self._place, self._mode)
+        CoreCUDAGraph.begin_capture_with_pool_id(
+            self._place, self._mode, self._pool_id
+        )
 
     def capture_end(self):
         self._graph = CoreCUDAGraph.end_capture()

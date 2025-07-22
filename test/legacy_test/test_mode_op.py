@@ -268,9 +268,38 @@ class TestModeZeroError(unittest.TestCase):
             def test_0_size():
                 array = np.array([], dtype=np.float32)
                 x = paddle.to_tensor(np.reshape(array, [0, 0]), dtype='float32')
-                paddle.mode(x, axis=0)
+                paddle.mode(x, axis=0, keepdim=True)
 
             self.assertRaises(ValueError, test_0_size)
+
+
+class TestModeOp_ZeroSize(OpTest):
+    def init_args(self):
+        self.axis = 1
+        self.input_shape = (0, 2, 3)
+
+    def init_input_data(self):
+        self.input_data = np.random.rand(*self.input_shape).astype(self.dtype)
+        self.inputs = {'X': self.input_data}
+
+    def init_dtype(self):
+        self.dtype = np.float64
+
+    def setUp(self):
+        self.op_type = "mode"
+        self.python_api = paddle.mode
+        self.init_dtype()
+        self.init_args()
+        self.init_input_data()
+        self.attrs = {'axis': self.axis}
+        output, indices = cal_mode(self.input_data, axis=self.axis)
+        self.outputs = {'Out': output, 'Indices': indices}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad({'X'}, 'Out', check_pir=True)
 
 
 if __name__ == '__main__':

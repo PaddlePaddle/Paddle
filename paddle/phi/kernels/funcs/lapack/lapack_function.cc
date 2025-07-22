@@ -30,6 +30,28 @@ void lapackLu<float>(int m, int n, float *a, int lda, int *ipiv, int *info) {
   dynload::sgetrf_(&m, &n, a, &lda, ipiv, info);
 }
 
+template <>
+void lapackLu<phi::dtype::complex<float>>(int m,
+                                          int n,
+                                          phi::dtype::complex<float> *a,
+                                          int lda,
+                                          int *ipiv,
+                                          int *info) {
+  dynload::cgetrf_(
+      &m, &n, reinterpret_cast<std::complex<float> *>(a), &lda, ipiv, info);
+}
+
+template <>
+void lapackLu<phi::dtype::complex<double>>(int m,
+                                           int n,
+                                           phi::dtype::complex<double> *a,
+                                           int lda,
+                                           int *ipiv,
+                                           int *info) {
+  dynload::zgetrf_(
+      &m, &n, reinterpret_cast<std::complex<double> *>(a), &lda, ipiv, info);
+}
+
 // lu_solve
 template <>
 void lapackLuSolve<double>(char trans,
@@ -55,6 +77,48 @@ void lapackLuSolve<float>(char trans,
                           int ldb,
                           int *info) {
   dynload::sgetrs_(&trans, &n, &nrhs, a, &lda, ipiv, b, &ldb, info);
+}
+
+template <>
+void lapackLuSolve<phi::dtype::complex<float>>(char trans,
+                                               int n,
+                                               int nrhs,
+                                               phi::dtype::complex<float> *a,
+                                               int lda,
+                                               int *ipiv,
+                                               phi::dtype::complex<float> *b,
+                                               int ldb,
+                                               int *info) {
+  dynload::cgetrs_(&trans,
+                   &n,
+                   &nrhs,
+                   reinterpret_cast<std::complex<float> *>(a),
+                   &lda,
+                   ipiv,
+                   reinterpret_cast<std::complex<float> *>(b),
+                   &ldb,
+                   info);
+}
+
+template <>
+void lapackLuSolve<phi::dtype::complex<double>>(char trans,
+                                                int n,
+                                                int nrhs,
+                                                phi::dtype::complex<double> *a,
+                                                int lda,
+                                                int *ipiv,
+                                                phi::dtype::complex<double> *b,
+                                                int ldb,
+                                                int *info) {
+  dynload::zgetrs_(&trans,
+                   &n,
+                   &nrhs,
+                   reinterpret_cast<std::complex<double> *>(a),
+                   &lda,
+                   ipiv,
+                   reinterpret_cast<std::complex<double> *>(b),
+                   &ldb,
+                   info);
 }
 
 // eigh
@@ -538,8 +602,10 @@ void lapackSvd<double>(char jobz,
                        int ldvt,
                        double *work,
                        int lwork,
+                       double *rwork,
                        int *iwork,
                        int *info) {
+  (void)rwork;  // unused
   dynload::dgesdd_(
       &jobz, &m, &n, a, &lda, s, u, &ldu, vt, &ldvt, work, &lwork, iwork, info);
 }
@@ -557,10 +623,80 @@ void lapackSvd<float>(char jobz,
                       int ldvt,
                       float *work,
                       int lwork,
+                      float *rwork,
                       int *iwork,
                       int *info) {
+  (void)rwork;  // unused
   dynload::sgesdd_(
       &jobz, &m, &n, a, &lda, s, u, &ldu, vt, &ldvt, work, &lwork, iwork, info);
+}
+
+template <>
+void lapackSvd<phi::dtype::complex<double>, double>(
+    char jobz,
+    int m,
+    int n,
+    phi::dtype::complex<double> *a,
+    int lda,
+    double *s,
+    phi::dtype::complex<double> *u,
+    int ldu,
+    phi::dtype::complex<double> *vt,
+    int ldvt,
+    phi::dtype::complex<double> *work,
+    int lwork,
+    double *rwork,
+    int *iwork,
+    int *info) {
+  dynload::zgesdd_(&jobz,
+                   &m,
+                   &n,
+                   reinterpret_cast<std::complex<double> *>(a),
+                   &lda,
+                   reinterpret_cast<std::complex<double> *>(s),
+                   reinterpret_cast<std::complex<double> *>(u),
+                   &ldu,
+                   reinterpret_cast<std::complex<double> *>(vt),
+                   &ldvt,
+                   reinterpret_cast<std::complex<double> *>(work),
+                   &lwork,
+                   rwork,
+                   iwork,
+                   info);
+}
+
+template <>
+void lapackSvd<phi::dtype::complex<float>, float>(
+    char jobz,
+    int m,
+    int n,
+    phi::dtype::complex<float> *a,
+    int lda,
+    float *s,
+    phi::dtype::complex<float> *u,
+    int ldu,
+    phi::dtype::complex<float> *vt,
+    int ldvt,
+    phi::dtype::complex<float> *work,
+    int lwork,
+    float *rwork,
+    int *iwork,
+    int *info) {
+  dynload::cgesdd_(&jobz,
+                   &m,
+                   &n,
+                   reinterpret_cast<std::complex<float> *>(a),
+                   &lda,
+                   reinterpret_cast<std::complex<float> *>(s),
+                   reinterpret_cast<std::complex<float> *>(u),
+                   &ldu,
+                   reinterpret_cast<std::complex<float> *>(vt),
+                   &ldvt,
+                   reinterpret_cast<std::complex<float> *>(work),
+                   &lwork,
+                   rwork,
+                   iwork,
+                   info);
 }
 
 }  // namespace phi::funcs

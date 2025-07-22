@@ -30,12 +30,12 @@ void AllRawKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   reduce_all = recompute_reduce_all(x, dims);
   using XPUType = typename XPUTypeTrait<T>::Type;
-  auto f = [](xpu::Context* ctx,
+  auto f = [](xpu::Context* xpu_ctx,
               const T* x,
               T* y,
               const std::vector<int64_t>& xdims,
               const std::vector<int64_t>& reduce_dims) {
-    return xpu::reduce_all<XPUType>(ctx,
+    return xpu::reduce_all<XPUType>(xpu_ctx,
                                     reinterpret_cast<const XPUType*>(x),
                                     reinterpret_cast<XPUType*>(y),
                                     xdims,

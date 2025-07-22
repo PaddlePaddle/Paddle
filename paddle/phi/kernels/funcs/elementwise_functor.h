@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #if defined(__xpu__)
 #include <xpu/runtime.h>
-
+#include <type_traits>
 #include "xpu/kernel/math_xpu2.h"  // pow()
 #endif
 #include "paddle/phi/common/amp_type_traits.h"
@@ -122,6 +122,91 @@ struct InverseDivideFunctor {
 
 template <typename T>
 using ComplexType = phi::dtype::complex<T>;
+
+// Reference: https://github.com/pytorch/pytorch/pull/92539
+template <typename T>
+struct DivideFunctor<ComplexType<T>> {
+  inline HOSTDEVICE ComplexType<T> operator()(const ComplexType<T> x,
+                                              const ComplexType<T> y) const {
+    T a = x.real;
+    T b = x.imag;
+    T c = y.real;
+    T d = y.imag;
+
+    // (a + bi) / (c + di) = (ac + bd)/(c^2 + d^2) + (bc - ad)/(c^2 + d^2) i
+    // the calculation below follows numpy's complex division
+#if defined(__GNUC__) && !defined(__clang__)
+    // std::abs is already constexpr by gcc
+    auto abs_c = std::abs(c);
+    auto abs_d = std::abs(d);
+#else
+    auto abs_c = c < 0 ? -c : c;
+    auto abs_d = d < 0 ? -d : d;
+#endif
+
+    T real_, imag_;
+    if (abs_c >= abs_d) {
+      if (abs_c == T(0) && abs_d == T(0)) {
+        /* divide by zeros should yield a complex inf or nan */
+        real_ = a / abs_c;
+        imag_ = b / abs_d;
+      } else {
+        auto rat = d / c;
+        auto scl = T(1.0) / (c + d * rat);
+        real_ = (a + b * rat) * scl;
+        imag_ = (b - a * rat) * scl;
+      }
+    } else {
+      auto rat = c / d;
+      auto scl = T(1.0) / (d + c * rat);
+      real_ = (a * rat + b) * scl;
+      imag_ = (b * rat - a) * scl;
+    }
+    return ComplexType<T>(real_, imag_);
+  }
+};
+
+template <typename T>
+struct InverseDivideFunctor<ComplexType<T>> {
+  inline HOSTDEVICE ComplexType<T> operator()(const ComplexType<T> x,
+                                              const ComplexType<T> y) const {
+    T a = y.real;
+    T b = y.imag;
+    T c = x.real;
+    T d = x.imag;
+
+    // (a + bi) / (c + di) = (ac + bd)/(c^2 + d^2) + (bc - ad)/(c^2 + d^2) i
+    // the calculation below follows numpy's complex division
+#if defined(__GNUC__) && !defined(__clang__)
+    // std::abs is already constexpr by gcc
+    auto abs_c = std::abs(c);
+    auto abs_d = std::abs(d);
+#else
+    auto abs_c = c < 0 ? -c : c;
+    auto abs_d = d < 0 ? -d : d;
+#endif
+
+    T real_, imag_;
+    if (abs_c >= abs_d) {
+      if (abs_c == T(0) && abs_d == T(0)) {
+        /* divide by zeros should yield a complex inf or nan */
+        real_ = a / abs_c;
+        imag_ = b / abs_d;
+      } else {
+        auto rat = d / c;
+        auto scl = T(1.0) / (c + d * rat);
+        real_ = (a + b * rat) * scl;
+        imag_ = (b - a * rat) * scl;
+      }
+    } else {
+      auto rat = c / d;
+      auto scl = T(1.0) / (d + c * rat);
+      real_ = (a * rat + b) * scl;
+      imag_ = (b * rat - a) * scl;
+    }
+    return ComplexType<T>(real_, imag_);
+  }
+};
 
 template <typename InT, typename OutT>
 struct DivGradXYFunctor {
@@ -467,9 +552,40 @@ struct MultiplyGradXYFunctor<ComplexType<InT>, ComplexType<OutT>> {
 };
 
 // Maximum
-template <typename T>
+template <typename T, typename Enable = void>
 struct MaximumFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
+    if constexpr ((std::is_floating_point_v<T>)&&(
+                      !(std::is_same_v<T, int32_t> ||
+                        std::is_same_v<T, int64_t>))) {
+#if defined(__CUDACC__) || defined(__HIPCC__)
+      if (::isnan(a)) {
+        return a;
+      }
+      if (::isnan(b)) {
+        return b;
+      }
+#else
+      if (std::isnan(a)) {
+        return a;
+      }
+      if (std::isnan(b)) {
+        return b;
+      }
+#endif
+    }
+    return a > b ? a : b;
+  }
+};
+
+template <typename T>
+struct MaximumFunctor<
+    T,
+    typename std::enable_if<std::is_same_v<T, phi::dtype::bfloat16> ||
+                            std::is_same_v<T, phi::dtype::float16>>::type> {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    if (phi::dtype::isnan(a)) return a;
+    if (phi::dtype::isnan(b)) return b;
     return a > b ? a : b;
   }
 };
@@ -477,14 +593,16 @@ struct MaximumFunctor {
 template <typename T>
 struct MaxGradXFunctor {
   inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
-    return dout * static_cast<T>(x > y);
+    return dout * static_cast<T>(x > y) +
+           (dout / static_cast<T>(2)) * static_cast<T>(x == y);
   }
 };
 
 template <typename T>
 struct MaxGradYFunctor {
   inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
-    return dout * static_cast<T>(x <= y);
+    return dout * static_cast<T>(x < y) +
+           (dout / static_cast<T>(2)) * static_cast<T>(x == y);
   }
 };
 
@@ -494,31 +612,69 @@ struct MaxGradXYFunctor {
                                                    const InT y,
                                                    const InT dout) {
     phi::Array<OutT, 2> outs;
-    // dx = dout * (x > y)
-    outs[0] = static_cast<OutT>(dout * static_cast<InT>(x > y));
-    // dy = dout * (x <= y)
-    outs[1] = static_cast<OutT>(dout * static_cast<InT>(x <= y));
+    // dx = dout * (x > y) + dout / 2 * (x == y)
+    outs[0] = static_cast<OutT>(dout * static_cast<InT>(x > y) +
+                                (dout / static_cast<InT>(2)) *
+                                    static_cast<InT>(x == y));
+    // dy = dout * (x < y) + dout / 2 * (x == y)
+    outs[1] = static_cast<OutT>(dout * static_cast<InT>(x < y) +
+                                (dout / static_cast<InT>(2)) *
+                                    static_cast<InT>(x == y));
     return outs;
   }
 };
 
 // Minimum
-template <typename T>
+template <typename T, typename Enable = void>
 struct MinimumFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
+    if constexpr (std::is_floating_point_v<T> &&
+                  (!(std::is_same_v<T, int32_t> ||
+                     std::is_same_v<T, int64_t>))) {
+#if defined(__CUDACC__) || defined(__HIPCC__)
+      if (::isnan(a)) {
+        return a;
+      }
+      if (::isnan(b)) {
+        return b;
+      }
+#else
+      if (std::isnan(a)) {
+        return a;
+      }
+      if (std::isnan(b)) {
+        return b;
+      }
+#endif
+    }
     return a < b ? a : b;
   }
 };
+
+template <typename T>
+struct MinimumFunctor<
+    T,
+    typename std::enable_if<std::is_same_v<T, phi::dtype::bfloat16> ||
+                            std::is_same_v<T, phi::dtype::float16>>::type> {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    if (phi::dtype::isnan(a)) return a;
+    if (phi::dtype::isnan(b)) return b;
+    return a < b ? a : b;
+  }
+};
+
 template <typename T>
 struct MinGradXFunctor {
   inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
-    return dout * static_cast<T>(x < y);
+    return dout * static_cast<T>(x < y) +
+           (dout / static_cast<T>(2)) * static_cast<T>(x == y);
   }
 };
 template <typename T>
 struct MinGradYFunctor {
   inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
-    return dout * static_cast<T>(x >= y);
+    return dout * static_cast<T>(x > y) +
+           (dout / static_cast<T>(2)) * static_cast<T>(x == y);
   }
 };
 
@@ -528,10 +684,14 @@ struct MinGradXYFunctor {
                                                    const InT y,
                                                    const InT dout) {
     phi::Array<OutT, 2> outs;
-    // dx = dout * (x < y)
-    outs[0] = static_cast<OutT>(dout * static_cast<InT>(x < y));
-    // dy = dout * (x >= y)
-    outs[1] = static_cast<OutT>(dout * static_cast<InT>(x >= y));
+    // dx = dout * (x < y) + dout / 2 * (x == y)
+    outs[0] = static_cast<OutT>(dout * static_cast<InT>(x < y) +
+                                (dout / static_cast<InT>(2)) *
+                                    static_cast<InT>(x == y));
+    // dy = dout * (x > y) + dout / 2 * (x == y)
+    outs[1] = static_cast<OutT>(dout * static_cast<InT>(x > y) +
+                                (dout / static_cast<InT>(2)) *
+                                    static_cast<InT>(x == y));
     return outs;
   }
 };
@@ -543,8 +703,8 @@ struct RemainderFunctor {
     PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
     T res = a % b;
 
-    // According to #PR26732: in dividen % divsor
-    // remainder shall have the same sign as divsor.
+    // According to #PR26732: in dividend % divisor
+    // remainder shall have the same sign as divisor.
     if ((res != 0) && ((b ^ res) < 0)) res += b;
     return res;
   }
@@ -557,8 +717,8 @@ struct RemainderFunctor<
   inline HOSTDEVICE T operator()(const T a, const T b) const {
     T res = fmod(a, b);
 
-    // According to #PR26732: in dividen % divsor
-    // remainder shall have the same sign as divsor.
+    // According to #PR26732: in dividend % divisor
+    // remainder shall have the same sign as divisor.
     if ((res != 0) && ((res < 0) != (b < 0))) res += b;
     return res;
   }
@@ -570,8 +730,8 @@ struct RemainderFunctor<dtype::float16> {
                                               const dtype::float16 b) const {
     float b_float = static_cast<float>(b);
     float res = fmod(static_cast<float>(a), b_float);
-    // According to #PR26732: in dividen % divsor
-    // remainder shall have the same sign as divsor.
+    // According to #PR26732: in dividend % divisor
+    // remainder shall have the same sign as divisor.
     if ((res != 0.0f) && ((res < 0.0f) != (b_float < 0.0f))) res += b_float;
     return static_cast<dtype::float16>(res);
   }
@@ -584,10 +744,74 @@ struct RemainderFunctor<dtype::bfloat16> {
     float b_float = static_cast<float>(b);
     float res = fmod(static_cast<float>(a), b_float);
 
-    // According to #PR26732: in dividen % divsor
-    // remainder shall have the same sign as divsor.
+    // According to #PR26732: in dividend % divisor
+    // remainder shall have the same sign as divisor.
     if ((res != 0.0f) && ((res < 0.0f) != (b_float < 0.0f))) res += b_float;
     return static_cast<dtype::bfloat16>(res);
+  }
+};
+
+/**
+ * Remainder for complex number rule
+ * Regarding a and b is gaussian integer, then
+ * r = mod(a, b) = a - b * round(a/b)
+ * and a, b is complex number
+ */
+template <typename T>
+struct RemainderFunctor<ComplexType<T>> {
+  inline HOSTDEVICE ComplexType<T> operator()(ComplexType<T> a,
+                                              ComplexType<T> b) const {
+    // remainder = z1 - q_rounded * z2
+    T a__ = a.real;
+    T b__ = a.imag;
+    T c__ = b.real;
+    T d__ = b.imag;
+
+    // (a + bi) / (c + di) = (ac + bd)/(c^2 + d^2) + (bc - ad)/(c^2 + d^2) i
+    // the calculation below follows numpy's complex division
+#if defined(__GNUC___) && !defined(__clang__)
+    // std::abs is already constexpr by gcc
+    auto abs_c = std::abs(c__);
+    auto abs_d = std::abs(d__);
+#else
+    auto abs_c = c__ < 0 ? -c__ : c__;
+    auto abs_d = d__ < 0 ? -d__ : d__;
+#endif
+
+    T real_, imag_;
+    if (abs_c >= abs_d) {
+      if (abs_c == T(0) && abs_d == T(0)) {
+        /* divide by zeros should yield a complex inf or nan */
+        real_ = a__ / abs_c;
+        imag_ = b__ / abs_d;
+      } else {
+        auto rat = d__ / c__;
+        auto scl = T(1.0) / (c__ + d__ * rat);
+        real_ = (a__ + b__ * rat) * scl;
+        imag_ = (b__ - a__ * rat) * scl;
+      }
+    } else {
+      auto rat = c__ / d__;
+      auto scl = T(1.0) / (d__ + c__ * rat);
+      real_ = (a__ * rat + b__) * scl;
+      imag_ = (b__ * rat - a__) * scl;
+    }
+    auto q = ComplexType<T>(real_, imag_);
+
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+    const auto& q_rounded = ComplexType<T>(round(q.real), round(q.imag));
+#else
+    const auto& q_rounded =
+        ComplexType<T>(std::round(q.real), std::round(q.imag));
+#endif
+    const auto& a_ = q_rounded.real;
+    const auto& b_ = q_rounded.imag;
+    const auto& c = b.real;
+    const auto& d = b.imag;
+    const auto& t_real_ = a_ * c - b_ * d;
+    const auto& t_imag_ = a_ * d + b_ * c;
+    auto remainder = ComplexType<T>(a.real - t_real_, a.imag - t_imag_);
+    return remainder;
   }
 };
 
@@ -719,10 +943,83 @@ struct InverseRemainderFunctor<
   }
 };
 
+/**
+ * Remainder for complex number rule
+ * Regarding a and b is gaussian integer, then
+ * r = mod(a, b) = a - b * round(a/b)
+ * and a, b is complex number
+ */
+template <typename T>
+struct InverseRemainderFunctor<
+    ComplexType<T>,
+    typename std::enable_if_t<std::is_floating_point<T>::value>> {
+  inline HOSTDEVICE ComplexType<T> operator()(ComplexType<T> b,
+                                              ComplexType<T> a) const {
+    // remainder = z1 - q_rounded * z2
+    T a__ = a.real;
+    T b__ = a.imag;
+    T c__ = b.real;
+    T d__ = b.imag;
+
+    // (a + bi) / (c + di) = (ac + bd)/(c^2 + d^2) + (bc - ad)/(c^2 + d^2) i
+    // the calculation below follows numpy's complex division
+#if defined(__GNUC___) && !defined(__clang__)
+    // std::abs is already constexpr by gcc
+    auto abs_c = std::abs(c__);
+    auto abs_d = std::abs(d__);
+#else
+    auto abs_c = c__ < 0 ? -c__ : c__;
+    auto abs_d = d__ < 0 ? -d__ : d__;
+#endif
+
+    T real_, imag_;
+    if (abs_c >= abs_d) {
+      if (abs_c == T(0) && abs_d == T(0)) {
+        /* divide by zeros should yield a complex inf or nan */
+        real_ = a__ / abs_c;
+        imag_ = b__ / abs_d;
+      } else {
+        auto rat = d__ / c__;
+        auto scl = T(1.0) / (c__ + d__ * rat);
+        real_ = (a__ + b__ * rat) * scl;
+        imag_ = (b__ - a__ * rat) * scl;
+      }
+    } else {
+      auto rat = c__ / d__;
+      auto scl = T(1.0) / (d__ + c__ * rat);
+      real_ = (a__ * rat + b__) * scl;
+      imag_ = (b__ * rat - a__) * scl;
+    }
+    auto q = ComplexType<T>(real_, imag_);
+
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+    const auto& q_rounded = ComplexType<T>(round(q.real), round(q.imag));
+#else
+    const auto& q_rounded =
+        ComplexType<T>(std::round(q.real), std::round(q.imag));
+#endif
+    const auto& a_ = q_rounded.real;
+    const auto& b_ = q_rounded.imag;
+    const auto& c = b.real;
+    const auto& d = b.imag;
+    const auto& t_real_ = a_ * c - b_ * d;
+    const auto& t_imag_ = a_ * d + b_ * c;
+    auto remainder = ComplexType<T>(a.real - t_real_, a.imag - t_imag_);
+    return remainder;
+  }
+};
+
 template <typename T>
 struct ElementwiseHeavisideFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
     return a == static_cast<T>(0) ? b : static_cast<T>(a > static_cast<T>(0));
+  }
+};
+
+template <typename T>
+struct ElementwiseInverseHeavisideFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    return b == static_cast<T>(0) ? a : static_cast<T>(b > static_cast<T>(0));
   }
 };
 
@@ -963,6 +1260,10 @@ compute_pow(const T a, const T b) {
   // it will return a float number like 2.99... , which floor to 2
   // when cast to int by default and it is wrong.
   // Use llrint to cast it to the nearest integer, which is 3.
+  T zero = static_cast<T>(0);
+  if (a == zero && b < zero) {
+    return zero;
+  }
   return llrint(pow(static_cast<double>(a), static_cast<double>(b)));
 }
 template <typename T, typename MPType>
@@ -975,6 +1276,11 @@ compute_pow(const T a, const T b) {
 #else
 template <typename T, typename MPType>
 inline HOSTDEVICE T compute_pow(const T a, const T b) {
+  if constexpr (std::is_integral<T>::value) {
+    if (a == static_cast<T>(0) && b < static_cast<T>(0)) {
+      return static_cast<T>(0);
+    }
+  }
   MPType a_val = static_cast<MPType>(a);
   MPType b_val = static_cast<MPType>(b);
 #ifdef PADDLE_WITH_XPU_KP
@@ -997,6 +1303,32 @@ struct ElementwiseInversePowFunctor {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   inline HOSTDEVICE T operator()(const T a, const T b) const {
     return compute_pow<T, MPType>(b, a);
+  }
+};
+
+template <typename T>
+struct ElementwisePowFunctor<ComplexType<T>> {
+  inline HOSTDEVICE ComplexType<T> operator()(const ComplexType<T> a,
+                                              const ComplexType<T> b) const {
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+    return pow(a, b);
+#else
+    return std::pow(static_cast<std::complex<T>>(a),
+                    static_cast<std::complex<T>>(b));
+#endif
+  }
+};
+
+template <typename T>
+struct ElementwiseInversePowFunctor<ComplexType<T>> {
+  inline HOSTDEVICE ComplexType<T> operator()(const ComplexType<T> a,
+                                              const ComplexType<T> b) const {
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+    return pow(a, b);
+#else
+    return std::pow(static_cast<std::complex<T>>(b),
+                    static_cast<std::complex<T>>(a));
+#endif
   }
 };
 
@@ -1063,6 +1395,57 @@ template <typename T>
 struct InverseCopySignFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
     return copysign_func(b, a);
+  }
+};
+
+template <typename T, typename Enable = void>
+struct NextafterFunctor {
+  inline HOSTDEVICE T operator()(const T x, const T y) const {
+    return static_cast<T>(
+        std::nextafter(static_cast<float>(x), static_cast<float>(y)));
+  }
+};
+
+template <typename T>
+struct NextafterFunctor<
+    T,
+    typename std::enable_if_t<std::is_same<T, double>::value>> {
+  inline HOSTDEVICE T operator()(const T x, const T y) const {
+    return std::nextafter(x, y);
+  }
+};
+
+template <typename T>
+struct NextafterFunctor<T,
+                        typename std::enable_if_t<std::is_integral<T>::value>> {
+  inline HOSTDEVICE double operator()(const T x, const T y) const {
+    return std::nextafter(static_cast<double>(x), static_cast<double>(y));
+  }
+};
+
+template <typename T, typename Enable = void>
+struct InverseNextafterFunctor {
+  inline HOSTDEVICE T operator()(const T x, const T y) const {
+    return static_cast<T>(
+        std::nextafter(static_cast<float>(y), static_cast<float>(x)));
+  }
+};
+
+template <typename T>
+struct InverseNextafterFunctor<
+    T,
+    typename std::enable_if_t<std::is_same<T, double>::value>> {
+  inline HOSTDEVICE T operator()(const T x, const T y) const {
+    return std::nextafter(y, x);
+  }
+};
+
+template <typename T>
+struct InverseNextafterFunctor<
+    T,
+    typename std::enable_if_t<std::is_integral<T>::value>> {
+  inline HOSTDEVICE double operator()(const T x, const T y) const {
+    return std::nextafter(static_cast<double>(y), static_cast<double>(x));
   }
 };
 

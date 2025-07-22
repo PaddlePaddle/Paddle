@@ -1378,7 +1378,7 @@ void WeightOnlyGemvKernel(const Context& dev_ctx,
                            out_data);
 }
 
-template void WeightOnlyGemvWrapper(const phi::GPUContext& ctx,
+template void WeightOnlyGemvWrapper(const phi::GPUContext& dev_ctx,
                                     const float* input,
                                     const int8_t* weight,
                                     const float* bias,
@@ -1392,7 +1392,7 @@ template void WeightOnlyGemvWrapper(const phi::GPUContext& ctx,
                                     const std::string& act_method,
                                     float* output);
 
-template void WeightOnlyGemvWrapper(const phi::GPUContext& ctx,
+template void WeightOnlyGemvWrapper(const phi::GPUContext& dev_ctx,
                                     const phi::dtype::float16* input,
                                     const int8_t* weight,
                                     const phi::dtype::float16* bias,
@@ -1406,7 +1406,7 @@ template void WeightOnlyGemvWrapper(const phi::GPUContext& ctx,
                                     const std::string& act_method,
                                     phi::dtype::float16* output);
 #ifdef PADDLE_CUDA_BF16
-template void WeightOnlyGemvWrapper(const phi::GPUContext& ctx,
+template void WeightOnlyGemvWrapper(const phi::GPUContext& dev_ctx,
                                     const phi::dtype::bfloat16* input,
                                     const int8_t* weight,
                                     const phi::dtype::bfloat16* bias,

@@ -65,49 +65,51 @@ def concat_dynamic(func, dtype, np_inputs, axis_v, with_attr=False):
 def concat_static(func, dtype, np_inputs, axis_v, with_attr=False):
     paddle.enable_static()
     paddle.set_device("cpu")
-    with static.scope_guard(static.Scope()):
-        with static.program_guard(static.Program()):
-            x1 = static.data(name="x1", shape=[2, 3], dtype=dtype)
-            x2 = static.data(name="x2", shape=[2, 3], dtype=dtype)
-            if with_attr:
-                axis = axis_v
-            else:
-                axis = paddle.full(shape=[1], dtype='int64', fill_value=axis_v)
-            x1.stop_gradient = False
-            x2.stop_gradient = False
-            out = func([x1, x2], axis)
-            # mean only support float, so here use sum
-            sum_out = paddle.sum(out)
-            static.append_backward(sum_out)
+    with (
+        static.scope_guard(static.Scope()),
+        static.program_guard(static.Program()),
+    ):
+        x1 = static.data(name="x1", shape=[2, 3], dtype=dtype)
+        x2 = static.data(name="x2", shape=[2, 3], dtype=dtype)
+        if with_attr:
+            axis = axis_v
+        else:
+            axis = paddle.full(shape=[1], dtype='int64', fill_value=axis_v)
+        x1.stop_gradient = False
+        x2.stop_gradient = False
+        out = func([x1, x2], axis)
+        # mean only support float, so here use sum
+        sum_out = paddle.sum(out)
+        static.append_backward(sum_out)
 
-            exe = static.Executor()
-            exe.run(static.default_startup_program())
+        exe = static.Executor()
+        exe.run(static.default_startup_program())
 
-            if with_attr:
-                feed_dict = {
-                    "x1": np_inputs[0].astype(dtype),
-                    "x2": np_inputs[1].astype(dtype),
-                }
-            else:
-                feed_dict = {
-                    "x1": np_inputs[0].astype(dtype),
-                    "x2": np_inputs[1].astype(dtype),
-                    "axis": axis,
-                }
-            if paddle.framework.in_pir_mode():
-                ops = static.default_main_program().global_block().ops
-                fetch_list = [
-                    out,
-                    ops[-1].result(0),  # x1_grad
-                    ops[-1].result(1),
-                ]  # x2_grad
-            else:
-                fetch_list = [out.name, x1.name + "@GRAD", x2.name + "@GRAD"]
-            out_v, x1_grad_v, x2_grad_v = exe.run(
-                static.default_main_program(),
-                feed=feed_dict,
-                fetch_list=fetch_list,
-            )
+        if with_attr:
+            feed_dict = {
+                "x1": np_inputs[0].astype(dtype),
+                "x2": np_inputs[1].astype(dtype),
+            }
+        else:
+            feed_dict = {
+                "x1": np_inputs[0].astype(dtype),
+                "x2": np_inputs[1].astype(dtype),
+                "axis": axis,
+            }
+        if paddle.framework.in_pir_mode():
+            ops = static.default_main_program().global_block().ops
+            fetch_list = [
+                out,
+                ops[-1].result(0),  # x1_grad
+                ops[-1].result(1),
+            ]  # x2_grad
+        else:
+            fetch_list = [out.name, x1.name + "@GRAD", x2.name + "@GRAD"]
+        out_v, x1_grad_v, x2_grad_v = exe.run(
+            static.default_main_program(),
+            feed=feed_dict,
+            fetch_list=fetch_list,
+        )
     paddle.disable_static()
     return out_v, x1_grad_v, x2_grad_v
 

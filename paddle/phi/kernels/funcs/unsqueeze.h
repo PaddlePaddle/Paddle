@@ -156,7 +156,7 @@ inline DDim GetUnsqueezeShape(const std::vector<int64_t> unsqz_dims,
 inline const DenseTensor Unsqueeze(const DenseTensor& x, int axis = 0) {
   // don't copy data, only change the dims
   DenseTensor out(x);
-  std::vector<int> out_shape = common::vectorize<int>(x.dims());
+  std::vector<int64_t> out_shape = common::vectorize<int64_t>(x.dims());
   if (axis >= 0) {
     auto index = (out_shape.begin() + axis);
     out_shape.insert(index, 1);

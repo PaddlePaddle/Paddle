@@ -304,7 +304,7 @@ def expand_v2_composite(x, shape):
         dim = dim_in - offset
         size_in = shape_in[dim] if dim >= 0 else 1
         size_out = shape[i]
-        if size_out == -1:
+        if size_out == -1 or size_in == 0:
             assert dim >= 0
             repeat = 1
         else:
@@ -367,7 +367,7 @@ def stack_composite(x, axis):
     x_shape = x[0].shape
     if axis < 0:
         axis += len(x_shape) + 1
-    out_shape = x_shape[:axis] + (1,) + x_shape[axis:]
+    out_shape = (*x_shape[:axis], 1, *x_shape[axis:])
     out = concat([reshape(item, out_shape) for item in x], axis)
     return out
 
@@ -646,13 +646,7 @@ def unsqueeze_composite(x, axis):
     for i in axis_list:
         if i < 0:
             i += len(x_shape) + 1
-        x_shape = (
-            x_shape[:i]
-            + [
-                1,
-            ]
-            + x_shape[i:]
-        )
+        x_shape = [*x_shape[:i], 1, *x_shape[i:]]
     out = reshape(x, x_shape)
     return [out, None]
 

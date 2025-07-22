@@ -22,6 +22,8 @@
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/value.h"
 
+COMMON_DECLARE_bool(check_cuda_error);
+
 namespace paddle::framework {
 
 void CustomKernelInstruction::BuildCustomContext(
@@ -498,6 +500,10 @@ void CustomKernelInstruction::BuildShapeDtype() {
 }
 
 void CustomKernelInstruction::Run() {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("CustomKernelInstruction " + custom_op_name_ + " begin");
+  }
+
   VLOG(3) << "Custom Operator: InferShape - calc output ddim.";
   BuildShapeDtype();
   std::vector<std::vector<int64_t>> output_shapes =
@@ -522,5 +528,8 @@ void CustomKernelInstruction::Run() {
   }
   VLOG(6) << "Run custom op " << custom_op_name_ << " kernel.";
   kernel_func_(&custom_kernel_ctx_);
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("CustomKernelInstruction " + custom_op_name_ + " finish");
+  }
 }
 }  // namespace paddle::framework

@@ -49,33 +49,31 @@ class TestFleetMetaOptimizer(unittest.TestCase):
         print(startup_prog_op_types)
 
     def net(self, main_prog, startup_prog):
-        with base.program_guard(main_prog, startup_prog):
-            with base.unique_name.guard():
-                role = role_maker.PaddleCloudRoleMaker(is_collective=True)
-                fleet.init(role)
-                input_x = paddle.static.data(
-                    name="x", shape=[-1, 32], dtype='float32'
-                )
-                input_y = paddle.static.data(
-                    name="y", shape=[-1, 1], dtype='int64'
-                )
+        with (
+            base.program_guard(main_prog, startup_prog),
+            base.unique_name.guard(),
+        ):
+            role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+            fleet.init(role)
+            input_x = paddle.static.data(
+                name="x", shape=[-1, 32], dtype='float32'
+            )
+            input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
-                fc_1 = paddle.static.nn.fc(
-                    x=input_x, size=64, activation='tanh'
-                )
-                fc_2 = paddle.static.nn.fc(x=fc_1, size=256, activation='tanh')
-                prediction = paddle.static.nn.fc(
-                    x=[fc_2], size=2, activation='softmax'
-                )
-                cost = paddle.nn.functional.cross_entropy(
-                    input=prediction,
-                    label=input_y,
-                    reduction='none',
-                    use_softmax=False,
-                )
-                avg_cost = paddle.mean(x=cost)
+            fc_1 = paddle.static.nn.fc(x=input_x, size=64, activation='tanh')
+            fc_2 = paddle.static.nn.fc(x=fc_1, size=256, activation='tanh')
+            prediction = paddle.static.nn.fc(
+                x=[fc_2], size=2, activation='softmax'
+            )
+            cost = paddle.nn.functional.cross_entropy(
+                input=prediction,
+                label=input_y,
+                reduction='none',
+                use_softmax=False,
+            )
+            avg_cost = paddle.mean(x=cost)
 
-                strategy = paddle.distributed.fleet.DistributedStrategy()
+            strategy = paddle.distributed.fleet.DistributedStrategy()
         return avg_cost, strategy
 
     def pp_net(self, main_prog, startup_prog, pp_degree=2):
@@ -85,33 +83,35 @@ class TestFleetMetaOptimizer(unittest.TestCase):
             fc_3 = paddle.static.nn.fc(x=fc_2, size=64, activation='tanh')
             return fc_3
 
-        with base.program_guard(main_prog, startup_prog):
-            with base.unique_name.guard():
-                role = role_maker.PaddleCloudRoleMaker(is_collective=True)
-                fleet.init(role)
-                with base.device_guard("gpu:0"):
-                    input_x = paddle.static.data(
-                        name="x", shape=[-1, 32], dtype='float32'
-                    )
-                    input_y = paddle.static.data(
-                        name="y", shape=[-1, 1], dtype='int64'
-                    )
+        with (
+            base.program_guard(main_prog, startup_prog),
+            base.unique_name.guard(),
+        ):
+            role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+            fleet.init(role)
+            with base.device_guard("gpu:0"):
+                input_x = paddle.static.data(
+                    name="x", shape=[-1, 32], dtype='float32'
+                )
+                input_y = paddle.static.data(
+                    name="y", shape=[-1, 1], dtype='int64'
+                )
 
-                for stage_idx in range(pp_degree):
-                    with base.device_guard("gpu:" + str(stage_idx)):
-                        input_x = fc_block(input_x)
+            for stage_idx in range(pp_degree):
+                with base.device_guard("gpu:" + str(stage_idx)):
+                    input_x = fc_block(input_x)
 
-                with base.device_guard("gpu:" + str(pp_degree - 1)):
-                    prediction = paddle.static.nn.fc(
-                        x=[input_x], size=2, activation='softmax'
-                    )
-                    cost = paddle.nn.functional.cross_entropy(
-                        input=prediction,
-                        label=input_y,
-                        reduction='none',
-                        use_softmax=False,
-                    )
-                    avg_cost = paddle.mean(x=cost)
+            with base.device_guard("gpu:" + str(pp_degree - 1)):
+                prediction = paddle.static.nn.fc(
+                    x=[input_x], size=2, activation='softmax'
+                )
+                cost = paddle.nn.functional.cross_entropy(
+                    input=prediction,
+                    label=input_y,
+                    reduction='none',
+                    use_softmax=False,
+                )
+                avg_cost = paddle.mean(x=cost)
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         return avg_cost, strategy
@@ -140,31 +140,33 @@ class TestFleetMetaOptimizer(unittest.TestCase):
         regularization=None,
         grad_clip=None,
     ):
-        with base.program_guard(train_prog, startup_prog):
-            with base.unique_name.guard():
-                if name == 'momentum':
-                    optimizer = paddle.optimizer.Momentum(
-                        learning_rate=0.01,
-                        momentum=0.9,
-                        weight_decay=regularization,
-                        grad_clip=grad_clip,
-                    )
-                elif name == 'adam':
-                    optimizer = paddle.optimizer.Adam(
-                        learning_rate=0.01,
-                        weight_decay=regularization,
-                        grad_clip=grad_clip,
-                    )
-                elif name == 'adamw':
-                    optimizer = paddle.optimizer.AdamW(
-                        learning_rate=0.01,
-                        weight_decay=0.01,
-                        grad_clip=grad_clip,
-                    )
-                optimizer = fleet.distributed_optimizer(
-                    optimizer, strategy=strategy
+        with (
+            base.program_guard(train_prog, startup_prog),
+            base.unique_name.guard(),
+        ):
+            if name == 'momentum':
+                optimizer = paddle.optimizer.Momentum(
+                    learning_rate=0.01,
+                    momentum=0.9,
+                    weight_decay=regularization,
+                    grad_clip=grad_clip,
                 )
-                optimizer.minimize(loss)
+            elif name == 'adam':
+                optimizer = paddle.optimizer.Adam(
+                    learning_rate=0.01,
+                    weight_decay=regularization,
+                    grad_clip=grad_clip,
+                )
+            elif name == 'adamw':
+                optimizer = paddle.optimizer.AdamW(
+                    learning_rate=0.01,
+                    weight_decay=0.01,
+                    grad_clip=grad_clip,
+                )
+            optimizer = fleet.distributed_optimizer(
+                optimizer, strategy=strategy
+            )
+            optimizer.minimize(loss)
 
     def set_strategy(self, strategy, name):
         if name == 'amp':

@@ -23,7 +23,7 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
-    test_default_and_pir,
+    test_default_mode_only,
 )
 from predictor_utils import PredictorTools
 
@@ -477,22 +477,22 @@ class TestSeResnet(Dy2StTestBase):
             )
 
     def predict_dygraph(self, data):
-        with enable_to_static_guard(False):
-            with base.dygraph.guard(place):
-                se_resnext = SeResNeXt()
+        with (
+            enable_to_static_guard(False),
+            base.dygraph.guard(place),
+        ):
+            se_resnext = SeResNeXt()
 
-                model_dict = paddle.load(
-                    self.dy_state_dict_save_path + '.pdparams'
-                )
-                se_resnext.set_dict(model_dict)
-                se_resnext.eval()
+            model_dict = paddle.load(self.dy_state_dict_save_path + '.pdparams')
+            se_resnext.set_dict(model_dict)
+            se_resnext.eval()
 
-                label = np.random.random([1, 1]).astype("int64")
-                img = paddle.to_tensor(data)
-                label = paddle.to_tensor(label)
-                pred_res, _, _, _ = se_resnext(img, label)
+            label = np.random.random([1, 1]).astype("int64")
+            img = paddle.to_tensor(data)
+            label = paddle.to_tensor(label)
+            pred_res, _, _, _ = se_resnext(img, label)
 
-                return pred_res.numpy()
+            return pred_res.numpy()
 
     def predict_static(self, data):
         paddle.enable_static()
@@ -575,7 +575,7 @@ class TestSeResnet(Dy2StTestBase):
                 msg=f"predictor_pre:\n {flat_predictor_pre[i]}\n, st_pre: \n{flat_st_pre[i]}.",
             )
 
-    @test_default_and_pir
+    @test_default_mode_only
     def test_check_result(self):
         with enable_to_static_guard(False):
             pred_1, loss_1, acc1_1, acc5_1 = self.train(

@@ -68,24 +68,24 @@ __global__ void bernoulli_cuda_kernel(
 }
 
 template <typename T, typename Context>
-void BernoulliKernel(const Context& ctx,
+void BernoulliKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      DenseTensor* out) {
   const T* x_data = x.data<T>();
-  T* out_data = ctx.template Alloc<T>(out);
+  T* out_data = dev_ctx.template Alloc<T>(out);
   auto numel = x.numel();
 
-  auto gen_cuda = ctx.GetGenerator();
+  auto gen_cuda = dev_ctx.GetGenerator();
 
   auto seed_offset = gen_cuda->IncrementOffset(12);
   uint64_t seed = seed_offset.first;
   uint64_t offset = seed_offset.second;
 
-  auto gpu_config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, 4);
+  auto gpu_config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, 4);
   size_t grid_size = gpu_config.GetGridSize();
   size_t block_size = gpu_config.GetBlockSize();
 
-  bernoulli_cuda_kernel<<<grid_size, block_size, 0, ctx.stream()>>>(
+  bernoulli_cuda_kernel<<<grid_size, block_size, 0, dev_ctx.stream()>>>(
       numel, seed, offset, x_data, out_data);
 }
 

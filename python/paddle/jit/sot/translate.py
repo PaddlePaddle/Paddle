@@ -88,6 +88,12 @@ def symbolic_translate(fn: Callable[P, R], **kwargs) -> Callable[P, R]:
 
     """
 
+    if not paddle.framework.use_pir_api():
+        raise RuntimeError(
+            "SOT is only supported when running in PIR mode. Please set the environment variable "
+            "FLAGS_enable_pir_api=1 to enable it."
+        )
+
     kwargs.setdefault('training', True)
 
     def callback(frame):

@@ -22,7 +22,7 @@ namespace phi::funcs {
 
 template <class T>
 struct LstmUnitFunctor<CPUContext, T> {
-  static void compute(const CPUContext& context,
+  static void compute(const CPUContext& dev_ctx,
                       LstmMetaValue<T> value,
                       int frame_size,
                       int batch_size,
@@ -32,7 +32,7 @@ struct LstmUnitFunctor<CPUContext, T> {
                       const phi::funcs::detail::ActivationType& cand_act,
                       bool old_api_version = true) {
     for (int b = 0; b < batch_size; b++) {
-      detail::cpu_lstm_forward(context,
+      detail::cpu_lstm_forward(dev_ctx,
                                phi::funcs::detail::forward::lstm<T>(),
                                value,
                                frame_size,
@@ -54,7 +54,7 @@ struct LstmUnitFunctor<CPUContext, T> {
 
 template <class T>
 struct LstmUnitGradFunctor<CPUContext, T> {
-  static void compute(const CPUContext& context,
+  static void compute(const CPUContext& dev_ctx,
                       LstmMetaValue<T> value,
                       LstmMetaGrad<T> grad,
                       int frame_size,
@@ -65,7 +65,7 @@ struct LstmUnitGradFunctor<CPUContext, T> {
                       const phi::funcs::detail::ActivationType& cand_act,
                       bool old_api_version = true) {
     for (int b = 0; b < batch_size; b++) {
-      detail::cpu_lstm_backward(context,
+      detail::cpu_lstm_backward(dev_ctx,
                                 phi::funcs::detail::backward::lstm<T>(),
                                 value,
                                 grad,

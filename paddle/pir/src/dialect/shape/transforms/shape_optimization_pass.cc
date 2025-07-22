@@ -343,9 +343,12 @@ void InferSymExprForOp(Operation* op,
 }
 static const std::set<std::string> skip_cache_check_op_set = {
     // new symbol
-    "pd_op.data",
     "pd_op.arange",
+    "pd_op.data",
     "pd_op.masked_select",
+    "pd_op.nonzero",
+    "pd_op.slice",
+    "pd_op.sync_batch_norm_",
     // unneeded to cache
     "cinn_op.generate_shape",
 };

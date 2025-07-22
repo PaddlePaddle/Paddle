@@ -651,7 +651,7 @@ void FleetWrapper::PushSparseFromTensorAsync(
   } else if (shows->dtype() == phi::DataType::INT64) {
     show_tensor = static_cast<const void*>(shows->data<int64_t>());
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "The type of show/clk must be either float32 or int64 (got %s).",
         shows->dtype()));
   }
@@ -660,7 +660,7 @@ void FleetWrapper::PushSparseFromTensorAsync(
   } else if (clks->dtype() == phi::DataType::INT64) {
     clk_tensor = static_cast<const void*>(clks->data<int64_t>());
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "The type of show/clk must be either float32 or int64 (got %s).",
         clks->dtype()));
   }

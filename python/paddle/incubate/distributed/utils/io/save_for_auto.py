@@ -321,7 +321,7 @@ def _name_mapping_dist2single(state_dict, pp_group):
 
     # analyse starting index
     for k in param_types.keys():
-        param_types[k] = np.cumsum([0] + param_types[k][:-1])
+        param_types[k] = np.cumsum([0, *param_types[k][:-1]])
 
     logger.debug(f"params type: {param_types}")
 

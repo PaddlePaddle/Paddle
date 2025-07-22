@@ -22,7 +22,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void FrobeniusNormKernel(const Context& ctx,
+void FrobeniusNormKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const IntArray& axis,
                          bool keep_dim,

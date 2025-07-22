@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
 from op import Operator
-from op_test import OpTest, convert_uint16_to_float
+from op_test import OpTest, convert_uint16_to_float, get_places
 
 import paddle
 from paddle import base
@@ -253,20 +252,8 @@ class TestUniformRandomOpWithDiagInit(TestUniformRandomOp):
 
 
 class TestUniformRandomOpSelectedRows(unittest.TestCase):
-    def get_places(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(core.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-        return places
-
     def test_check_output(self):
-        for place in self.get_places():
+        for place in get_places():
             self.check_with_place(place)
 
     def check_with_place(self, place):
@@ -438,20 +425,8 @@ class TestUniformRandomOp_API_seed(unittest.TestCase):
 
 
 class TestUniformRandomOpSelectedRowsShapeTensor(unittest.TestCase):
-    def get_places(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(core.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-        return places
-
     def test_check_output(self):
-        for place in self.get_places():
+        for place in get_places():
             self.check_with_place(place)
 
     def check_with_place(self, place):
@@ -475,20 +450,9 @@ class TestUniformRandomOpSelectedRowsShapeTensor(unittest.TestCase):
 
 
 class TestUniformRandomOpSelectedRowsShapeTensorList(unittest.TestCase):
-    def get_places(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(core.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-        return places
 
     def test_check_output(self):
-        for place in self.get_places():
+        for place in get_places():
             self.check_with_place(place)
 
     def check_with_place(self, place):

@@ -377,7 +377,7 @@ class Xdoctester(DocTester):
         self.target = target
         self.mode = mode
         self.verbose = verbose
-        self.config = {**XDOCTEST_CONFIG, **(config or {})}
+        self.config = XDOCTEST_CONFIG | (config or {})
         self._test_capacity = set()
 
         self._patch_global_state = patch_global_state

@@ -98,7 +98,6 @@ class TestTensorHook(Dy2StTestBase):
                 self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
 
             def forward(self, x):
-                # breakpoint()
                 self._linear.weight.register_hook(hook)
                 y = self._linear(x)
                 return y

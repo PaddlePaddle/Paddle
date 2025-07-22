@@ -81,7 +81,7 @@ void DropoutRawKernel(const Context& dev_ctx,
       return;
     }
     if (dev_version == phi::backends::xpu::XPUVersion::XPU3) {
-      // int dropout_v3(Context* ctx, const T* input, T* res, uint8_t* mask,
+      // int dropout_v3(Context* xpu_ctx, const T* input, T* res, uint8_t* mask,
       // unsigned int seed, int64_t n, bool is_upscale, float dropout_prob);
       int r = xpu::dropout_v3(dev_ctx.x_context(),
                               reinterpret_cast<const XPUType*>(x_data),
@@ -95,8 +95,8 @@ void DropoutRawKernel(const Context& dev_ctx,
     } else {
       XPUType* mask_tmp_data =
           RAII_GUARD.alloc_l3_or_gm<XPUType>(mask->numel());
-      // int dropout(Context* ctx, const T* input, T* res, T* mask, unsigned int
-      // seed, int64_t n, bool is_upscale, float dropout_prob);
+      // int dropout(Context* xpu_ctx, const T* input, T* res, T* mask, unsigned
+      // int seed, int64_t n, bool is_upscale, float dropout_prob);
       int r = xpu::dropout(dev_ctx.x_context(),
                            reinterpret_cast<const XPUType*>(x_data),
                            reinterpret_cast<XPUType*>(y_data),

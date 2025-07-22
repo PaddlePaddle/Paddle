@@ -20,6 +20,7 @@
 #include "paddle/cinn/ir/utils/stmt_converter.h"
 #include "paddle/cinn/optim/if_fold_pass.h"
 #include "paddle/cinn/pass/pass_manager.h"
+#include "paddle/cinn/utils/string.h"
 namespace cinn {
 namespace common {
 #define MAKE_FUNC(body)                                                        \

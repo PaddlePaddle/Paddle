@@ -19,6 +19,7 @@
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 
@@ -28,8 +29,22 @@ void TakeAlongAxisKernel(const Context& dev_ctx,
                          const DenseTensor& index,
                          int axis,
                          DenseTensor* out) {
+  if (index.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, common::vectorize(out->dims()), static_cast<T>(0), out);
+    return;
+  }
+
   out->Resize(index.dims());
   dev_ctx.template Alloc<T>(out);
+
+  if (out->numel() == 0) {
+    return;
+  }
 
   if (x.numel() == 0 || index.numel() == 0) return;
 
@@ -62,7 +77,7 @@ void TakeAlongAxisKernel(const Context& dev_ctx,
   }
 
   using XPUType = typename XPUTypeTrait<T>::Type;
-  int r = XPU_SUCCESS;
+  int r = 0;
 #ifndef PADDLE_WITH_XPU_PLUGIN
   if (index_dtype == DataType::INT32) {
     r = xpu::gather<XPUType, int>(dev_ctx.x_context(),

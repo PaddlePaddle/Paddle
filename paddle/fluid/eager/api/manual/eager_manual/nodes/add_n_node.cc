@@ -26,6 +26,7 @@
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
 
 COMMON_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_bool(check_cuda_error);
 
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
 AddNGradNodeFinal::operator()(
@@ -33,6 +34,11 @@ AddNGradNodeFinal::operator()(
         &grads,
     bool create_graph,
     bool is_new_grad) {
+  VLOG(3) << "Running AD API GRAD: "
+          << "add_n_grad";
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("AddNGradNodeFinal begin");
+  }
   // Fill Zero For GradIn Tensors
 
   // This 'Local_XXXGradNode' record event is different with
@@ -113,6 +119,9 @@ AddNGradNodeFinal::operator()(
     returns = ApplyNodePostHooks(returns, hooked_grads);
   }
 
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("AddNGradNodeFinal finish");
+  }
   if (NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);
   return returns;
 }

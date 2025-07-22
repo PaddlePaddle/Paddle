@@ -74,7 +74,7 @@ struct RReluTestCudaFunctor {
 };
 
 template <typename T, typename Context>
-void RReluKernel(const Context& ctx,
+void RReluKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const float lower,
                  const float upper,
@@ -82,12 +82,12 @@ void RReluKernel(const Context& ctx,
                  DenseTensor* out,
                  DenseTensor* noise) {
   const T* x_data = x.data<T>();
-  T* out_data = ctx.template Alloc<T>(out);
-  T* noise_data = ctx.template Alloc<T>(noise);
+  T* out_data = dev_ctx.template Alloc<T>(out);
+  T* noise_data = dev_ctx.template Alloc<T>(noise);
   auto size = x.numel();
   if (size <= 0) return;
 
-  phi::funcs::ForRange<Context> for_range(ctx, size);
+  phi::funcs::ForRange<Context> for_range(dev_ctx, size);
   if (is_test) {
     T mid_val = static_cast<T>((lower + upper) / 2.0);
     RReluTestCudaFunctor<T> functor(x_data, out_data, noise_data, mid_val);
@@ -96,7 +96,7 @@ void RReluKernel(const Context& ctx,
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     funcs::uniform_distribution<MT> dist;
     funcs::uniform_real_transform<MT> trans(lower, upper);
-    funcs::distribution_and_transform<T>(ctx, noise, dist, trans);
+    funcs::distribution_and_transform<T>(dev_ctx, noise, dist, trans);
     RReluTrainCudaFunctor<T> functor(x_data, out_data, noise_data);
     for_range(functor);
   }

@@ -70,6 +70,7 @@ DYGRAPH_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(
         'rows',
         'set_string_list',
         'set_value',
+        'set_tensor',
         'set_vocab',
         'strides',
         'to_sparse_coo',

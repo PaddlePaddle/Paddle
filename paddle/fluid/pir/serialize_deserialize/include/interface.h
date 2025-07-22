@@ -40,10 +40,10 @@ namespace pir {
  */
 void IR_API WriteModule(const pir::Program& program,
                         const std::string& file_path,
-                        uint64_t pir_version,
-                        bool overwrite,
+                        bool overwrite = true,
                         bool readable = false,
-                        bool trainable = true);
+                        bool trainable = true,
+                        int64_t pir_version = -1);
 
 /**
  * @brief Gets a PIR program from the specified file path.
@@ -51,7 +51,7 @@ void IR_API WriteModule(const pir::Program& program,
  * @param[in] file_path    The path to the file from which the PIR program
  * should be read.
  * @param[out] program     A pointer to the PIR program object where the
- * deserilize program will be stored.
+ * deserialize program will be stored.
  * @param[in] pir_version  The current version of the PIR program format.
  *
  * @return bool. The function modifies the 'program' object to contain the data

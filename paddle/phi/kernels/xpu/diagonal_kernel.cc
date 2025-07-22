@@ -16,7 +16,7 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
-
+#include "paddle/phi/kernels/full_kernel.h"
 namespace phi {
 
 template <typename T, typename Context>
@@ -26,6 +26,12 @@ void DiagonalKernel(const Context& dev_ctx,
                     int axis1,
                     int axis2,
                     DenseTensor* out) {
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    return;
+  }
+
   using XPUType = typename XPUTypeTrait<T>::Type;
   T* out_data = dev_ctx.template Alloc<T>(out);
   std::vector<int64_t> xshape = common::vectorize<int64_t>(x.dims());

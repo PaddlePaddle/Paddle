@@ -451,6 +451,16 @@ class Case4(TestGridSamplerOp):
         self.numeric_grad_delta = 0.0001
 
 
+class Case_ZeroSize(TestGridSamplerOp):
+    def initTestCase(self):
+        self.x_shape = (2, 0, 5, 6)
+        self.grid_shape = (2, 8, 9, 2)
+        self.theta_shape = (2, 2, 3)
+        self.align_corners = False
+        self.padding_mode = "zeros"
+        self.mode = "bilinear"
+
+
 @skip_check_grad_ci(
     reason="'check_grad' on large inputs is too slow, "
     + "however it is desirable to cover the forward pass"

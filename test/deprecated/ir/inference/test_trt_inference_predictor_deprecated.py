@@ -171,11 +171,10 @@ class BackendPaddle:
                     == -1
                 ):
                     input_shape = [
-                        self.args.batch_size
-                    ] + self.args.yaml_config["input_shape"][str(i)]["shape"][
-                        self.args.test_num
-                    ][
-                        1:
+                        self.args.batch_size,
+                        *self.args.yaml_config["input_shape"][str(i)]["shape"][
+                            self.args.test_num
+                        ][1:],
                     ]
                     dtype = self.args.yaml_config["input_shape"][str(i)][
                         "dtype"

@@ -120,7 +120,9 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
     std::vector<Var> new_loop_vars;
     Expr substitute_value(0);
     for (int i = 0; i < processed_factors.size(); ++i) {
-      Var temp_var(cinn::common::UniqName(for_node->loop_var->name));
+      Var temp_var(Expr(0),
+                   Expr(processed_factors[i]),
+                   cinn::common::UniqName(for_node->loop_var->name));
       substitute_value =
           Expr(temp_var) + substitute_value * Expr(processed_factors[i]);
       new_loop_vars.push_back(temp_var);
@@ -227,7 +229,9 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
   std::vector<Var> new_loop_vars;
   Expr substitute_value(0);
   for (int i = 0; i < process_factors.size(); ++i) {
-    Var temp_var(common::UniqName(for_node->loop_var->name));
+    Var temp_var(Expr(0),
+                 process_factors[i],
+                 common::UniqName(for_node->loop_var->name));
     substitute_value = Expr(temp_var) + substitute_value * process_factors[i];
     new_loop_vars.push_back(temp_var);
   }
@@ -338,7 +342,9 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
   std::vector<Var> new_loop_vars;
   Expr substitute_value(0);
   for (int i = 0; i < process_factors.size(); ++i) {
-    Var temp_var(common::UniqName(for_node->loop_var->name));
+    Var temp_var(Expr(0),
+                 process_factors[i],
+                 common::UniqName(for_node->loop_var->name));
     substitute_value = Expr(temp_var) + substitute_value * process_factors[i];
     new_loop_vars.push_back(temp_var);
   }
@@ -443,8 +449,15 @@ Expr DyScheduleImpl::Fuse(const std::vector<Expr>& loops) {
   substitute_value.resize(loops_number);
   Expr fused_expr(fused_var);
   for (int i = loops_number - 1; i > 0; i--) {
-    substitute_value[i] = Mod::Make(fused_expr, for_nodes[i]->extent);
-    fused_expr = Div::Make(fused_expr, for_nodes[i]->extent);
+    auto& extent = for_nodes[i]->extent;
+    // Note: if the loop has an extent of 0, just skip this loop, because a
+    // zero-extent loop will never be executed.
+    if (extent.is_constant() && extent.as_int64() == 0) {
+      substitute_value[i] = fused_expr;
+      continue;
+    }
+    substitute_value[i] = Mod::Make(fused_expr, extent);
+    fused_expr = Div::Make(fused_expr, extent);
   }
   substitute_value[0] = fused_expr;
 

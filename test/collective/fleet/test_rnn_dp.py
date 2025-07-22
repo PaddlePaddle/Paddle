@@ -104,9 +104,10 @@ class RNNModel(nn.Layer):
 
 
 def rnn_pretrain_forward(train_program, start_program, topo=None):
-    with static.program_guard(
-        train_program, start_program
-    ), paddle.utils.unique_name.guard():
+    with (
+        static.program_guard(train_program, start_program),
+        paddle.utils.unique_name.guard(),
+    ):
         batch_size = 1
         tokens = static.data(
             name="tokens", shape=[batch_size, -1], dtype="int64"
@@ -157,9 +158,10 @@ class TestFleetMetaOptimizer(unittest.TestCase):
             optimizer,
             data_holders,
         ) = rnn_pretrain_forward(train_program, start_program)
-        with paddle.static.program_guard(
-            train_program, start_program
-        ), paddle.utils.unique_name.guard():
+        with (
+            paddle.static.program_guard(train_program, start_program),
+            paddle.utils.unique_name.guard(),
+        ):
             strategy = fleet.DistributedStrategy()
             strategy.without_graph_optimization = True
             strategy.fuse_all_reduce_ops = True

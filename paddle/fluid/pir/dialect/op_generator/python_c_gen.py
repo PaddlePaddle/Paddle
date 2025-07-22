@@ -29,11 +29,6 @@ H_FILE_TEMPLATE = """
 
 #include <Python.h>
 
-// Avoid a problem with copysign defined in pyconfig.h on Windows.
-#ifdef copysign
-#undef copysign
-#endif
-
 {body}
 
 """

@@ -19,26 +19,34 @@ import types
 from typing import TYPE_CHECKING, Any
 
 from paddle._typing import unreached
-from paddle.jit.sot.opcode_translator.executor.variables.base import (
-    VariableBase,
-)
 
 from ....profiler import EventGuard
-from ....utils import BreakGraphError, FallbackError, UnsupportedOperationBreak
+from ....utils import do_until_stop_iteration
 from ....utils.exceptions import (
+    BreakGraphError,
     BreakGraphInlineCallBreak,
+    FallbackError,
     FallbackInlineCallBreak,
     OtherInlineCallBreak,
+    SotCapturedExceptionFactory,
+    SotCapturedStopIteration,
     SotErrorBase,
+    UnsupportedOperationBreak,
 )
-from ..tracker import ConstTracker, DummyTracker, GetAttrTracker
-from .base import VariableFactory
+from ..guard import check_faster_guard
+from ..tracker import ConstTracker, DanglingTracker, DummyTracker
+from .base import (
+    VariableBase,
+    VariableFactory,
+)
 from .basic import ConstantVariable
 from .callable import BuiltinVariable
 from .container import TupleVariable
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
+    import paddle
 
     from ..function_graph import FunctionGraph
     from ..pycode_generator import PyCodeGen
@@ -56,6 +64,11 @@ class IterVariable(VariableBase):
 
     def next(self):
         raise NotImplementedError(f"Can not simulate `next` for {type(self)}")
+
+    def to_list(self):
+        raise NotImplementedError(
+            f"Can not simulate `to_list` for {type(self)}"
+        )
 
     def send(self, value: VariableBase):
         return self.next()
@@ -80,41 +93,47 @@ class SequenceIterVariable(IterVariable):
 
     def __init__(
         self,
-        holded: VariableBase | list[VariableBase],
+        held: VariableBase | list[VariableBase],
         graph: FunctionGraph,
         tracker: Tracker,
     ):
-        if not isinstance(holded, list):
-            holded = [holded]
+        if not isinstance(held, list):
+            held = [held]
         super().__init__(graph, tracker)
-        self.holds = holded
+        self.holds = held
         self.idx = 0
         self.graph.side_effects.record_mutable_variable(self)
+
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
+        return [
+            guard for held in self.holds for guard in held.make_faster_guard()
+        ]
 
     def make_stringified_guard(self):
         return [
             guard
-            for holded in self.holds
-            for guard in holded.make_stringified_guard()
+            for held in self.holds
+            for guard in held.make_stringified_guard()
         ]
 
     def next(self):
-        holded = self.holds[0]
-        if self.idx < len(holded):
-            val = holded[self.idx]
+        held = self.holds[0]
+        if self.idx < len(held):
+            val = held[self.idx]
             self.idx += 1
             return val
         else:
-            raise StopIteration
+            raise SotCapturedExceptionFactory.create(StopIteration())
 
     def to_list(self) -> list:
         if self.has_side_effect():
             raise FallbackError("Can not convert an used iterator into list")
-        holded = self.holds[0]
-        self.idx = len(holded)
+        held = self.holds[0]
+        self.idx = len(held)
         retval = []
-        for i in range(len(holded)):
-            retval.append(holded[i])
+        for i in range(len(held)):
+            retval.append(held[i])
         return retval
 
     def has_side_effect(self) -> bool:
@@ -134,11 +153,9 @@ class SequenceIterVariable(IterVariable):
         }
 
     def flatten_inner_vars(self) -> list[VariableBase]:
-        holded = self.holds
+        held = self.holds
         return [
-            inner_var
-            for obj in holded
-            for inner_var in obj.flatten_inner_vars()
+            inner_var for obj in held for inner_var in obj.flatten_inner_vars()
         ]
 
 
@@ -182,10 +199,10 @@ class EnumerateVariable(SequenceIterVariable):
     @staticmethod
     def from_iterator(value, graph: FunctionGraph | None, tracker: Tracker):
         iter_variable = value.get_iter()
-        if isinstance(iter_variable, SequenceIterVariable):
-            return EnumerateVariable(iter_variable, graph, tracker)
-        else:
+        if isinstance(iter_variable, UserDefinedIterVariable):
             return UserDefinedIterVariable(value, graph, tracker)
+        else:
+            return EnumerateVariable(iter_variable, graph, tracker)
 
 
 class ZipVariable(SequenceIterVariable):
@@ -247,7 +264,7 @@ class ZipVariable(SequenceIterVariable):
 
         for variable in value:
             iter_variable = variable.get_iter()
-            if not isinstance(iter_variable, SequenceIterVariable):
+            if isinstance(iter_variable, UserDefinedIterVariable):
                 return UserDefinedIterVariable(value, graph, tracker)
             zip_targets.append(iter_variable)
 
@@ -260,12 +277,10 @@ class MapVariable(SequenceIterVariable):
     """
 
     def __init__(self, fn, iters: list[IterVariable], graph, tracker):
-
         super().__init__(iters, graph, tracker)
         self.fn = fn
 
     def next(self):
-
         return self.fn(*[iter_var.next() for iter_var in self.holds])
 
     def to_list(self) -> list:
@@ -300,7 +315,7 @@ class MapVariable(SequenceIterVariable):
 
         for variable in value:
             iter_variable = variable.get_iter()
-            if not isinstance(iter_variable, SequenceIterVariable):
+            if isinstance(iter_variable, UserDefinedIterVariable):
                 return UserDefinedIterVariable(value, graph, tracker)
             map_targets.append(iter_variable)
 
@@ -339,7 +354,9 @@ class GeneratorVariable(IterVariable):
             ):
                 output: VariableBase = inline_gen_executor.inline_call()
                 if inline_gen_executor.stop_state == "Return":
-                    raise StopIteration
+                    raise SotCapturedExceptionFactory.create(StopIteration())
+        except SotCapturedStopIteration:
+            raise
         except SotErrorBase as error:
             self.graph.restore_memo(checkpoint)
             self.vframe.restore_state(frame_state)
@@ -374,8 +391,8 @@ class GeneratorVariable(IterVariable):
             )
         if name == "send":
             return BuiltinVariable(
-                generator_send, self.graph, GetAttrTracker(self, "send")
-            ).bind(self, "send")
+                generator_send, self.graph, DanglingTracker()
+            ).bind_dangling_fn(self, "send")
         unreached()
 
     def get_py_value(self, allow_tensor=False):
@@ -390,6 +407,9 @@ class GeneratorVariable(IterVariable):
 
     def next(self):
         return self.send(ConstantVariable.wrap_literal(None, self.graph))
+
+    def to_list(self):
+        return do_until_stop_iteration(lambda: self.next())
 
     @property
     def main_info(self) -> dict[str, Any]:
@@ -408,14 +428,21 @@ class GeneratorVariable(IterVariable):
 class UserDefinedIterVariable(IterVariable):
     def __init__(
         self,
-        holded: VariableBase | list[VariableBase],
+        held: VariableBase | list[VariableBase],
         graph: FunctionGraph,
         tracker: Tracker,
     ):
-        if not isinstance(holded, list):
-            holded = [holded]
-        self.holds = holded
+        if not isinstance(held, list):
+            held = [held]
+        self.holds = held
         super().__init__(graph, tracker)
+
+    def to_list(self):
+        raise BreakGraphError(
+            UnsupportedOperationBreak(
+                reason_str="Break graph when iterating user defined iterator"
+            )
+        )
 
     def next(self):
         raise BreakGraphError(
@@ -424,9 +451,15 @@ class UserDefinedIterVariable(IterVariable):
             )
         )
 
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
+        return [
+            guard for held in self.holds for guard in held.make_faster_guard()
+        ]
+
     def make_stringified_guard(self):
         return [
             guard
-            for holded in self.holds
-            for guard in holded.make_stringified_guard()
+            for held in self.holds
+            for guard in held.make_stringified_guard()
         ]
