@@ -119,8 +119,8 @@ void ModulatedDeformableCol2im(const Context& dev_ctx,
                                T* grad_im) {
   int64_t channel_per_deformable_group =
       static_cast<int64_t>(im_shape[0] / deformable_group);
-  int64_t num_kernels = static_cast<int64_t>(col_shape[0] * col_shape[1] *
-                                             col_shape[2] * col_shape[3]);
+  int64_t num_kernels =
+      col_shape[0] * col_shape[1] * col_shape[2] * col_shape[3];
 
   ModulatedDeformableCol2imCPUKernel(num_kernels,
                                      data_col,

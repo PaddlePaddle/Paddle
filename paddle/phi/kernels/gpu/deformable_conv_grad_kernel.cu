@@ -54,7 +54,7 @@ __global__ void ModulatedDeformableCol2imGpuKernel(
     T* grad_im) {
   int64_t index = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   int64_t offset = static_cast<int64_t>(blockDim.x) * gridDim.x;
-  for (size_t thread = index; thread < nthreads; thread += offset) {
+  for (int64_t thread = index; thread < nthreads; thread += offset) {
     const int64_t j = (thread / width_col / height_col / batch_size) % kernel_w;
     const int64_t i =
         (thread / width_col / height_col / batch_size / kernel_w) % kernel_h;

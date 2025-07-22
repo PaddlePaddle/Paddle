@@ -537,7 +537,8 @@ __global__ void ModulatedDeformableIm2colGpuKernel<half>(
         const half offset_w = data_offset_ptr[data_offset_w_ptr];
         const half mask = data_mask_ptr[data_mask_hw_ptr];
         half val = 0;
-        half h_im_t = h_in + i * dilation_h, w_im_t = w_in + j * dilation_w;
+        half h_im_t = static_cast<float>(h_in) + i * dilation_h,
+             w_im_t = static_cast<float>(w_in) + j * dilation_w;
         const half h_im = h_im_t + offset_h;
         const half w_im = w_im_t + offset_w;
         if (h_im > minus_one && w_im > minus_one && h_im < height_t &&
