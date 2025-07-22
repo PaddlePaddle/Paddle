@@ -36,7 +36,7 @@ def backward(
     retain_graph: bool = False,
 ) -> None:
     """
-    Compute the backward gradients of given tensors.参数电池
+    Compute the backward gradients of given tensors.
 
     Args:
         tensors(list of Tensors): the tensors which the gradient to be computed. The tensors can not contain the same tensor.
