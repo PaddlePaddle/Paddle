@@ -60,33 +60,50 @@ template <typename DeviceContext, typename T>
 inline void GetResidualsTensor(const DeviceContext& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& y,
+                               const std::string& driver,
                                DenseTensor* solution,
-                               DenseTensor* residuals) {
+                               DenseTensor* residuals,
+                               DenseTensor* rank) {
   auto x_dims = x.dims();
   int dim_size = x_dims.size();
   int m = x_dims[dim_size - 2];
   int n = x_dims[dim_size - 1];
 
-  if (m > n) {
-    DenseTensor matmul_tensor =
-        phi::Matmul<T>(dev_ctx, x, *solution, false, false);
-    DenseTensor sub_tensor = phi::Subtract<T>(dev_ctx, matmul_tensor, y);
-    DenseTensor* pow_tensor = new DenseTensor();
-    pow_tensor->Resize(sub_tensor.dims());
-    dev_ctx.template Alloc<T>(pow_tensor);
-    phi::PowKernel<T>(dev_ctx, sub_tensor, Scalar(2), pow_tensor);
+  if (m > n && driver != "gelsy") {
+    bool compute_residuals = true;
+    if (driver == "gelss" || driver == "gelsd") {
+      if (dim_size == 2) {
+        compute_residuals = rank->data<int>()[0] == n;
+      } else {
+        compute_residuals = std::all_of(rank->data<int>(),
+                                        rank->data<int>() + rank->numel(),
+                                        [n](int r) { return r == n; });
+      }
+    }
+    if (compute_residuals) {
+      DenseTensor matmul_tensor =
+          phi::Matmul<T>(dev_ctx, x, *solution, false, false);
+      DenseTensor sub_tensor = phi::Subtract<T>(dev_ctx, matmul_tensor, y);
+      DenseTensor* pow_tensor = new DenseTensor();
+      pow_tensor->Resize(sub_tensor.dims());
+      dev_ctx.template Alloc<T>(pow_tensor);
+      phi::PowKernel<T>(dev_ctx, sub_tensor, Scalar(2), pow_tensor);
 
-    auto sum_tensor = phi::Sum<T>(
-        dev_ctx, *pow_tensor, phi::IntArray({-2}), pow_tensor->dtype(), false);
-    phi::Copy<DeviceContext>(
-        dev_ctx, sum_tensor, dev_ctx.GetPlace(), true, residuals);
-  } else {
-    IntArray empty_shape({0});
-    DenseTensor empty_tensor =
-        phi::Empty<T, DeviceContext>(dev_ctx, empty_shape);
-    phi::Copy<DeviceContext>(
-        dev_ctx, empty_tensor, dev_ctx.GetPlace(), true, residuals);
+      auto sum_tensor = phi::Sum<T>(dev_ctx,
+                                    *pow_tensor,
+                                    phi::IntArray({-2}),
+                                    pow_tensor->dtype(),
+                                    false);
+      phi::Copy<DeviceContext>(
+          dev_ctx, sum_tensor, dev_ctx.GetPlace(), true, residuals);
+      return;
+    }
   }
+
+  IntArray empty_shape({0});
+  DenseTensor empty_tensor = phi::Empty<T, DeviceContext>(dev_ctx, empty_shape);
+  phi::Copy<DeviceContext>(
+      dev_ctx, empty_tensor, dev_ctx.GetPlace(), true, residuals);
 }
 
 #ifdef PADDLE_WITH_HIP
