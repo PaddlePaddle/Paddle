@@ -19,6 +19,12 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
+
+#ifdef PADDLE_WITH_XPU_XRE5
+#include "xpudnn/xpudnn.h"
+namespace xpudnn = baidu::xpu::xpudnn;
+#endif
+
 namespace phi {
 template <typename T, typename Context>
 void Pool2dKernel(const Context& dev_ctx,
@@ -100,6 +106,22 @@ void Pool2dKernel(const Context& dev_ctx,
       kernel_size[1] = in_w + paddings[2] + paddings[3];
     }
     if (pooling_type == "max") {
+#ifdef PADDLE_WITH_XPU_XRE5
+      r = xpudnn::max_pool2d<XPUType>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(x.data<T>()),
+          reinterpret_cast<XPUType*>(out->data<T>()),
+          index_data,
+          n,
+          c,
+          in_h,
+          in_w,
+          kernel_size,
+          strides,
+          paddings,
+          true);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "max_pool2d");
+#else
       r = xpu::max_pool2d<XPUType>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(x.data<T>()),
@@ -113,6 +135,8 @@ void Pool2dKernel(const Context& dev_ctx,
           strides,
           paddings,
           true);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "max_pool2d");
+#endif
     } else if (pooling_type == "avg") {
       r = xpu::avg_pool2d<XPUType>(
           dev_ctx.x_context(),
@@ -127,6 +151,7 @@ void Pool2dKernel(const Context& dev_ctx,
           paddings,
           !exclusive,
           true);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "avg_pool2d");
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
           "Unsupported pooling type for kunlun ", pooling_type));
@@ -145,6 +170,7 @@ void Pool2dKernel(const Context& dev_ctx,
           out_h,
           out_w,
           true);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "adaptive_max_pool2d");
     } else if (pooling_type == "avg") {
       r = xpu::adaptive_avg_pool2d<XPUType>(
           dev_ctx.x_context(),
@@ -157,12 +183,12 @@ void Pool2dKernel(const Context& dev_ctx,
           out_h,
           out_w,
           true);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "adaptive_avg_pool2d");
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
           "Unsupported pooling type for kunlun ", pooling_type));
     }
   }
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "pool2d");
 }
 
 template <typename T, typename Context>
