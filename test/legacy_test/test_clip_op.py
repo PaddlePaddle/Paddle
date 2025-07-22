@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    check_cuda_and_custom_device,
+    convert_float_to_uint16,
+    get_current_place,
+)
 
 import paddle
 from paddle import base
@@ -201,8 +206,8 @@ class TestCase_ZeroSize(TestClipOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not check_cuda_and_custom_device()
+    or not core.is_bfloat16_supported(get_current_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestClipBF16Op(OpTest):
@@ -237,8 +242,8 @@ class TestClipBF16Op(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
-        if paddle.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if check_cuda_and_custom_device():
+            place = get_current_place()
             paddle.enable_static()
             self.check_output_with_place(
                 place,
@@ -249,8 +254,8 @@ class TestClipBF16Op(OpTest):
             paddle.disable_static()
 
     def test_check_grad_normal(self):
-        if paddle.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if check_cuda_and_custom_device():
+            place = get_current_place()
             paddle.enable_static()
             self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
             paddle.disable_static()

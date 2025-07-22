@@ -16,7 +16,13 @@ import sys
 import unittest
 
 import numpy as np
-from op_test import OpTest, _set_use_system_allocator, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    _set_use_system_allocator,
+    check_cuda_and_custom_device,
+    convert_float_to_uint16,
+    get_current_place,
+)
 
 import paddle
 import paddle.nn.functional as F
@@ -82,9 +88,9 @@ class TestBatchNormOp(OpTest):
                 only_check_prim=True,
                 check_prim_pir=self.check_prim_pir,
             )
-        if paddle.is_compiled_with_cuda():
+        if check_cuda_and_custom_device():
             self.check_output_with_place(
-                core.CUDAPlace(0),
+                get_current_place(),
                 no_check_set=None,
                 check_prim=True,
                 only_check_prim=True,
@@ -102,9 +108,9 @@ class TestBatchNormOp(OpTest):
                 only_check_prim=True,
                 check_prim_pir=self.check_cpu_prim_pir_grad,
             )
-        if paddle.is_compiled_with_cuda():
+        if check_cuda_and_custom_device():
             self.check_grad_with_place(
-                core.CUDAPlace(0),
+                get_current_place(),
                 ["X"],
                 ['Y'],
                 user_defined_grad_outputs=self.out_grad,
@@ -136,9 +142,9 @@ class TestBatchNormOp(OpTest):
                 only_check_prim=True,
                 check_prim_pir=self.check_cpu_prim_pir_grad,
             )
-        if paddle.is_compiled_with_cuda():
+        if check_cuda_and_custom_device():
             self.check_grad_with_place(
-                core.CUDAPlace(0),
+                get_current_place(),
                 ["X", "Scale", "Bias"],
                 ['Y'],
                 user_defined_grad_outputs=self.out_grad,
@@ -167,7 +173,7 @@ class TestBatchNormOp(OpTest):
     def initTestCase(self):
         if (
             self.dtype in ("uint16", "float16")
-            and not paddle.is_compiled_with_cuda()
+            and not check_cuda_and_custom_device()
         ):
             self.__class__.op_type = self.op_type
             self.__class__.no_need_check_grad = True
@@ -334,8 +340,8 @@ class TestBatchNormOpNCHWTestModeFp16(TestBatchNormOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not check_cuda_and_custom_device()
+    or not core.is_bfloat16_supported(get_current_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestBatchNormOpNCHWbf16(TestBatchNormOp):
@@ -363,8 +369,8 @@ class TestBatchNormOpNCHWbf16(TestBatchNormOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not check_cuda_and_custom_device()
+    or not core.is_bfloat16_supported(get_current_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestBatchNormOpNCHWTestModebf16(TestBatchNormOp):
