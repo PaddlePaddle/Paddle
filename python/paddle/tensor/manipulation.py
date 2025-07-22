@@ -4489,7 +4489,7 @@ def chunk(
     if chunks <= 0 or (
         isinstance(axis, int)
         and axis >= 0
-        and chunks > x.shape[axis]
+        and (x.shape[axis] != 0 and chunks > x.shape[axis])
         and x.shape[axis] != -1
     ):
         raise ValueError(
