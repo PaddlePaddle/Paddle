@@ -94,10 +94,17 @@ void ArangeKernel(const Context& dev_ctx,
   T start_value = start.to<T>();
   T end_value = end.to<T>();
   T step_value = step.to<T>();
-  if (isnan(end_value)) {
-    PADDLE_THROW(errors::InvalidArgument(
-        "end_value cannot be NaN in arange operation."));
+#if defined(__CUDACC__) || defined(__HIPCC__)
+  if (::isnan(end_value)) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The end value of arange cannot be NaN. Please check your input."));
   }
+#else
+  if (std::isnan(end_value)) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The end value of arange cannot be NaN. Please check your input."));
+  }
+#endif
   ArangeNullaryKernel<T, Context>(
       dev_ctx, start_value, end_value, step_value, out);
 }
