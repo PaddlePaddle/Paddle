@@ -4234,10 +4234,11 @@ void LstsqInferMeta(const MetaTensor& x,
   if (m > n && driver != "gelsy") {
     if (driver == "gelss" || driver == "gelsd") {
       residuals->set_dims(common::make_ddim({-1}));
+    } else {
+      batch_dims_vec.emplace_back(nrhs);
+      residuals->set_dims(common::make_ddim(batch_dims_vec));
+      batch_dims_vec.pop_back();
     }
-    batch_dims_vec.emplace_back(nrhs);
-    residuals->set_dims(common::make_ddim(batch_dims_vec));
-    batch_dims_vec.pop_back();
   } else {
     residuals->set_dims(common::make_ddim({0}));
   }
