@@ -259,18 +259,6 @@ struct GemmFpAIntBSplitK {
                           ? device_sms
                           : fast_min(args.avail_sms, device_sms);
 
-      //   // Initialize the block mapping structure
-      //   block_mapping = ThreadblockSwizzle(
-      //       typename ThreadblockSwizzle::template KernelTraits<
-      //           GemmFpAIntBSplitK>(),
-      //       args.mode,
-      //       args.problem_size,
-      //       {ThreadblockShape::kM, ThreadblockShape::kN,
-      //       ThreadblockShape::kK}, args.batch_count, sm_occupancy,
-      //       device_sms,
-      //       avail_sms);
-      // }
-
       // Initialize the block mapping structure
       block_mapping = ThreadblockSwizzle(
           args.mode,
