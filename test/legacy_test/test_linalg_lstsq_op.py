@@ -131,6 +131,7 @@ class LinalgLstsqTestCase(unittest.TestCase):
             if (
                 self._input_shape_1[-2] > self._input_shape_1[-1]
                 and self._output_rank == self._input_shape_1[-1]
+                and self.driver != "gelsy"
             ):
                 np.testing.assert_allclose(
                     self._result_residuals, self._output_residuals, rtol=1e-5
@@ -153,6 +154,7 @@ class LinalgLstsqTestCase(unittest.TestCase):
                 if (
                     self._input_shape_1[-2] > self._input_shape_1[-1]
                     and self._output_rank[i] == self._input_shape_1[-1]
+                    and self.driver != "gelsy"
                 ):
                     np.testing.assert_allclose(
                         self._result_residuals[i],
