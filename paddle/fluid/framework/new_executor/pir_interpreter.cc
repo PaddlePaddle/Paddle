@@ -317,7 +317,7 @@ PirInterpreter::~PirInterpreter() {
 #ifdef PADDLE_WITH_DNNL
   // Clear mkl-dnn cache,
   // this is needed to have mkl-dnn unit tests working
-  platform::ClearMKLDNNCache(place_, this);
+  platform::ClearONEDNNCache(place_, this);
 #endif
 }
 
@@ -1514,7 +1514,7 @@ paddle::framework::FetchList PirInterpreter::Run(
   SetDeviceId(place_);
 
 #ifdef PADDLE_WITH_DNNL
-  platform::AttachPointerHashToMKLDNNKey(this, place_);
+  platform::AttachPointerHashToONEDNNKey(this, place_);
   platform::RegisterModelLayout(ir_block_, place_);
 #endif
 
@@ -1593,7 +1593,7 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
   SetDeviceId(place_);
 
 #ifdef PADDLE_WITH_DNNL
-  platform::AttachPointerHashToMKLDNNKey(this, place_);
+  platform::AttachPointerHashToONEDNNKey(this, place_);
   platform::RegisterModelLayout(ir_block_, place_);
 #endif
 
