@@ -425,9 +425,12 @@ def get_current_place():
 
 def check_cuda_and_custom_device():
     custom_dev_types = core.get_all_custom_device_type()
-    return core.is_compiled_with_cuda() or core.is_compiled_with_custom_device(
-        custom_dev_types[0]
+    has_custom = (
+        core.is_compiled_with_custom_device(custom_dev_types[0])
+        if custom_dev_types
+        else False
     )
+    return core.is_compiled_with_cuda() or has_custom
 
 
 @contextmanager
