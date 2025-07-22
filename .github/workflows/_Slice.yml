@@ -89,8 +89,6 @@ jobs:
           source ${{ github.workspace }}/../../../proxy
           python3.10 -m pip config set global.cache-dir ${{ github.workspace }}/../../../.cache/pip
           python3.10 -m pip install $wheel_link
-          python3.10 -m pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu118
-          # export SLICE_TEST_MODE=insert_baseline
           python3.10 -m pip install -r PaddleTest/framework/e2e/api_benchmark/requirement.txt
           cd PaddleTest/framework/slice_benchmark
           cp ${{ github.workspace }}/../../../apibm_config.yml .
