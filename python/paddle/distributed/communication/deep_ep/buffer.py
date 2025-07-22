@@ -965,7 +965,6 @@ class Buffer:
             src_info,
             layout_range,
             num_max_dispatch_tokens_per_rank,
-            hidden,
             num_experts,
         ) = handle
         combined_x, event, hook = self.runtime.low_latency_combine(

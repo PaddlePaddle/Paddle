@@ -23,12 +23,12 @@
 
 namespace phi {
 template <typename T, typename Context>
-void AsComplexKernel(const Context& ctx,
+void AsComplexKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      DenseTensor* out) {
-  ctx.template Alloc<phi::dtype::complex<T>>(out);
+  dev_ctx.template Alloc<phi::dtype::complex<T>>(out);
   auto out_dims_original = out->dims();
-  Copy(ctx, x, ctx.GetPlace(), false, out);
+  Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   out->Resize(out_dims_original);  // restored the shape.
   out->set_type(
       phi::CppTypeToDataType<phi::dtype::complex<T>>::Type());  // restored the

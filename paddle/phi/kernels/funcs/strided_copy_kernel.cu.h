@@ -521,6 +521,11 @@ __global__ void Contiguous2StridedDefaultDiffDimFunc(
     const int64_t output_numel) {
   int MAX_LOAD_BYTES = VecSize * sizeof(T);
   int64_t gid = (blockIdx.x * blockDim.x + threadIdx.x) * VecSize;
+  T set_value[VecSize];
+#pragma unroll
+  for (int i = 0; i < VecSize; i++) {
+    set_value[i] = input_data[0];
+  }
 #pragma unroll
   for (int64_t i = gid; i < output_numel;
        i += blockDim.x * gridDim.x * VecSize) {
@@ -533,7 +538,7 @@ __global__ void Contiguous2StridedDefaultDiffDimFunc(
     }
     if (is_aligned(&output_data[output_offset], MAX_LOAD_BYTES)) {
       using VecType = kps::details::VectorType<T, VecSize>;
-      const VecType* src = reinterpret_cast<const VecType*>(&input_data[0]);
+      const VecType* src = reinterpret_cast<const VecType*>(&set_value[0]);
       VecType* dst = reinterpret_cast<VecType*>(&output_data[output_offset]);
       *dst = *src;
     } else {

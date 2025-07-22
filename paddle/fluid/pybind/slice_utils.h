@@ -72,6 +72,18 @@ static inline common::DDim infer_size_symdimvector(common::DDim a,
   return expandedSizes;
 }
 
+static inline paddle::Tensor expand_inplace(paddle::Tensor tensor,
+                                            paddle::Tensor to_expand) {
+  if (tensor.dims() == to_expand.dims()) {
+    return to_expand;
+  } else if (tensor.dims()[0] == to_expand.dims()[0]) {
+    return expand_ad_func(to_expand, common::vectorize<int64_t>(tensor.dims()));
+  } else {
+    to_expand = squeeze_ad_func(to_expand, {-1});
+    return expand_ad_func(to_expand, common::vectorize<int64_t>(tensor.dims()));
+  }
+}
+
 static inline std::vector<paddle::Tensor> expandTensors(
     std::vector<paddle::Tensor> indices) {
   // expands bool to int tensors;
@@ -150,16 +162,15 @@ inline static void restride_src(std::vector<int64_t>* shape,
 }
 
 // move to cuda kernel
-inline static paddle::Tensor reshape_indexer(paddle::Tensor* index,
-                                             int64_t dims_before,
-                                             int64_t dims_after) {
+inline static std::vector<int64_t> reshape_indexer(paddle::Tensor* index,
+                                                   int64_t dims_before,
+                                                   int64_t dims_after) {
   auto orig_shape = common::vectorize<int64_t>(index->dims());
   auto shape = std::vector<int64_t>{};
   shape.insert(shape.end(), dims_before, 1);
   shape.insert(shape.end(), orig_shape.begin(), orig_shape.end());
   shape.insert(shape.end(), dims_after, 1);
-  *index = reshape_ad_func(*index, shape);
-  return *index;
+  return shape;
 }
 
 inline AdvancedIndex::AdvancedIndex(paddle::Tensor src,
@@ -201,7 +212,12 @@ inline AdvancedIndex::AdvancedIndex(paddle::Tensor src,
   // use dims_before and dims_after / move to cuda kernel
   for (auto& index : indices_list) {
     if (index.defined()) {
-      this->indices.push_back(reshape_indexer(&index, dims_before, dims_after));
+      std::vector<int64_t> vec_size =
+          reshape_indexer(&index, dims_before, dims_after);
+      this->indices.push_back(index);
+      this->indexed_sizes.push_back(-1);
+      this->indexed_sizes.insert(
+          this->indexed_sizes.end(), vec_size.begin(), vec_size.end());
     }
   }
 }
@@ -240,6 +256,11 @@ static bool IsNumpyType(PyObject* obj) {
   auto type_name = std::string(Py_TYPE(obj)->tp_name);
   return type_name == "numpy.int64" || type_name == "numpy.longlong" ||
          type_name == "numpy.int32" || type_name == "numpy.int16";
+}
+
+static bool IsNumpyArray(PyObject* obj) {
+  auto type_name = std::string(Py_TYPE(obj)->tp_name);
+  return type_name == "numpy.ndarray";
 }
 
 static Py_ssize_t GetSliceIndexFromTensor(const phi::DenseTensor& tensor) {
@@ -436,8 +457,28 @@ static void ParseIndex(const paddle::Tensor& tensor,
       advanced_index->push_back(std::move(slice_tensor));
       (*advanced_index_dim)[estimated_dim] = estimated_dim;
       estimated_dim++;
-    } else if (PyCheckTensor(slice_item)) {
-      auto slice_tensor = CastPyArg2Tensor(slice_item, 0);
+    } else if (PyCheckTensor(slice_item) || IsNumpyArray(slice_item)) {
+      paddle::Tensor slice_tensor;
+
+      if (IsNumpyArray(slice_item)) {
+        paddle::Tensor index_tensor_tmp(
+            std::make_shared<phi::DenseTensor>(),
+            egr::Controller::Instance().GenerateUniqueName());
+
+        py::object index_obj_tmp =
+            py::reinterpret_borrow<py::object>(slice_item);
+        py::object index_tmp = index_obj_tmp;
+        SetTensorFromPyArray(
+            static_cast<phi::DenseTensor*>(index_tensor_tmp.impl().get()),
+            index_tmp,
+            tensor.place(),
+            false);
+        slice_tensor = index_tensor_tmp;
+
+      } else {
+        slice_tensor = CastPyArg2Tensor(slice_item, 0);
+      }
+
       if (slice_tensor.shape().size() == 0) {
         if (slice_tensor.dtype() != phi::DataType::BOOL) {
           // 0-D int tensor is same with scalar
@@ -584,6 +625,27 @@ inline static bool MaskedFillDispatching(
   } else {
     num_ind += (indices)[0].shape().size();
   }
+
+  *mask_tensor = (indices)[0];
+  for (size_t i = num_ind; i < tensor.shape().size(); i++) {
+    *mask_tensor = unsqueeze_ad_func(*mask_tensor, {-1});
+  }
+  return true;
+}
+
+inline static bool MaskedFillValueDispatching(
+    const paddle::Tensor& tensor,
+    const std::vector<paddle::Tensor>& indices,
+    paddle::Tensor* mask_tensor) {
+  if (indices.size() != 1) return false;
+
+  int64_t num_ind = 0;
+  if ((indices)[0].dtype() != phi::DataType::BOOL) {
+    return false;
+  } else {
+    num_ind += (indices)[0].shape().size();
+  }
+
   *mask_tensor = (indices)[0];
   for (size_t i = num_ind; i < tensor.shape().size(); i++) {
     *mask_tensor = unsqueeze_ad_func(*mask_tensor, {-1});
@@ -719,11 +781,6 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
     return masked_select_ad_func(tensor, bool_index);
   }
 
-  if (bool_index.shape().size() == 1) {
-    auto bool_2_idx = nonzero_ad_func(bool_index);
-    return gather_ad_func(tensor, bool_2_idx);
-  }
-
   auto bool_2_idx = nonzero_ad_func(bool_index);
 #ifdef PADDLE_WITH_CUDA
   if (tensor.is_gpu() && !is_combined_bool) {
@@ -753,9 +810,14 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
                                          slice_offset,
                                          accumulate);
   } else {
+    if (bool_index.shape().size() == 1)
+      return gather_ad_func(tensor, bool_2_idx);
+
     return gather_nd_ad_func(tensor, bool_2_idx);
   }
 #else
+  if (bool_index.shape().size() == 1) return gather_ad_func(tensor, bool_2_idx);
+
   return gather_nd_ad_func(tensor, bool_2_idx);
 #endif
 }
@@ -889,7 +951,7 @@ static paddle::Tensor dealWithValues(const paddle::Tensor& tensor,
           Py_TYPE(value_obj)));
     }
 
-    if (trans_to_tensor) {
+    if (trans_to_tensor && (*values).size() > 1) {
       value_tensor =
           full_ad_func({1}, (*values)[0], tensor.dtype(), tensor.place());
     }
