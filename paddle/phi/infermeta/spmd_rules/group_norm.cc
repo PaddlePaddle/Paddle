@@ -221,6 +221,18 @@ SpmdInfo GroupNormGradInferSpmdBase(const DistMetaTensor& x,
       common::errors::InvalidArgument(
           "The ndim of bias in group_norm should be 1, but got [%d].",
           bias_ndim));
+  PADDLE_ENFORCE_EQ(
+      mean_ndim,
+      2,
+      common::errors::InvalidArgument(
+          "The ndim of bias in group_norm should be 2, but got [%d].",
+          bias_ndim));
+  PADDLE_ENFORCE_EQ(
+      variance_ndim,
+      2,
+      common::errors::InvalidArgument(
+          "The ndim of bias in group_norm should be 2, but got [%d].",
+          bias_ndim));
 
   // Step1: Build Einsum Notation
   // Only N axis can be sharded.
