@@ -115,8 +115,8 @@ __global__ void CrossEntropySoftLabel(T* loss,
 #pragma unroll
     for (int it = 0; it < kIterations; ++it) {
       int idx_dim = it * kThreadPerBatch + threadIdx.x;
-      int idx = static_cast<int64_t>(idx_n) * dim * d +
-                static_cast<int64_t>(idx_dim) * d + idx_d;
+      int64_t idx = static_cast<int64_t>(idx_n) * dim * d +
+                    static_cast<int64_t>(idx_dim) * d + idx_d;
 
       if (idx_n < n && idx_dim < dim) {
         VecT softmaxdata;
