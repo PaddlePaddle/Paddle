@@ -72,6 +72,18 @@ static inline common::DDim infer_size_symdimvector(common::DDim a,
   return expandedSizes;
 }
 
+static inline paddle::Tensor expand_inplace(paddle::Tensor tensor,
+                                            paddle::Tensor to_expand) {
+  if (tensor.dims() == to_expand.dims()) {
+    return to_expand;
+  } else if (tensor.dims()[0] == to_expand.dims()[0]) {
+    return expand_ad_func(to_expand, common::vectorize<int64_t>(tensor.dims()));
+  } else {
+    to_expand = squeeze_ad_func(to_expand, {-1});
+    return expand_ad_func(to_expand, common::vectorize<int64_t>(tensor.dims()));
+  }
+}
+
 static inline std::vector<paddle::Tensor> expandTensors(
     std::vector<paddle::Tensor> indices) {
   // expands bool to int tensors;
@@ -769,11 +781,6 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
     return masked_select_ad_func(tensor, bool_index);
   }
 
-  if (bool_index.shape().size() == 1) {
-    auto bool_2_idx = nonzero_ad_func(bool_index);
-    return gather_ad_func(tensor, bool_2_idx);
-  }
-
   auto bool_2_idx = nonzero_ad_func(bool_index);
 #ifdef PADDLE_WITH_CUDA
   if (tensor.is_gpu() && !is_combined_bool) {
@@ -803,9 +810,14 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
                                          slice_offset,
                                          accumulate);
   } else {
+    if (bool_index.shape().size() == 1)
+      return gather_ad_func(tensor, bool_2_idx);
+
     return gather_nd_ad_func(tensor, bool_2_idx);
   }
 #else
+  if (bool_index.shape().size() == 1) return gather_ad_func(tensor, bool_2_idx);
+
   return gather_nd_ad_func(tensor, bool_2_idx);
 #endif
 }

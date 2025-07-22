@@ -6,20 +6,24 @@ on:
       docker_build_image:
         type: string
         required: true
+      CI_name:
+        type: string
+        required: false
+        default: 'build'
     outputs:
       can-skip:
         description: "Whether to skip the job"
         value: ${{ jobs.build.outputs.can-skip }}
 
 env:
-  PR_ID: ${{ github.event.pull_request.number }}
-  COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+  PR_ID: ${{ github.event.pull_request.number || '0' }}
+  COMMIT_ID: ${{ github.event.pull_request.head.sha || github.sha }}
   work_dir: /paddle
   PADDLE_ROOT: /paddle
   TASK: paddle-CI-${{ github.event.pull_request.number }}-build
   ci_scripts: /paddle/ci
-  BRANCH: ${{ github.event.pull_request.base.ref }}
-  CI_name: build
+  BRANCH: ${{ github.event.pull_request.base.ref || github.ref }}
+  CI_name: ${{ inputs.CI_name }}
   CFS_DIR: /home/data/cfs
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 

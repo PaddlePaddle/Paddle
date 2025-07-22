@@ -1,7 +1,7 @@
 on:
   workflow_call:
     inputs:
-      bos_dir:
+      clone_dir:
         required: false
         type: string
         default: "Paddle"
@@ -72,7 +72,7 @@ jobs:
             mkdir -p tools/dockerfile && cd tools/dockerfile
             wget -q --tries=5 --no-proxy ${dockerfile_script} ${dockerfile_origin} --no-check-certificate
           else
-            wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/${{ inputs.bos_dir }}/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
+            wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/${{ inputs.clone_dir }}/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
             tar xf Paddle.tar.gz --strip-components=1
             rm Paddle.tar.gz
             cd tools/dockerfile

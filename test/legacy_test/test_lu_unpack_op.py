@@ -132,6 +132,8 @@ class TestLU_UnpackOp(OpTest):
         self.python_out_sig = ["Pmat", "L", "U"]
         self.config()
         x = np.random.random(self.x_shape).astype(self.dtype)
+        if 'complex' in self.dtype:
+            x += 1j * np.random.random(self.x_shape).astype(self.dtype)
         if paddle.in_dynamic_mode():
             xt = paddle.to_tensor(x)
             lu, pivots = paddle.linalg.lu(xt)
@@ -214,6 +216,32 @@ class TestLU_UnpackOp4(TestLU_UnpackOp):
         self.dtype = "float64"
 
 
+# complex64
+class TestLU_UnpackOp5(TestLU_UnpackOp):
+    """
+    case 5
+    """
+
+    def config(self):
+        self.x_shape = [10, 12]
+        self.unpack_ludata = True
+        self.unpack_pivots = True
+        self.dtype = "complex64"
+
+
+# complex128
+class TestLU_UnpackOp6(TestLU_UnpackOp):
+    """
+    case 6
+    """
+
+    def config(self):
+        self.x_shape = [10, 12]
+        self.unpack_ludata = True
+        self.unpack_pivots = True
+        self.dtype = "complex128"
+
+
 class TestLU_UnpackAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2022)
@@ -224,7 +252,13 @@ class TestLU_UnpackAPI(unittest.TestCase):
                 np_dtype = np.float32
             elif dtype == "float64":
                 np_dtype = np.float64
+            elif dtype == "complex64":
+                np_dtype = np.complex64
+            elif dtype == "complex128":
+                np_dtype = np.complex128
             a = np.random.rand(*shape).astype(np_dtype)
+            if dtype in {"complex64", "complex128"}:
+                a += 1j * np.random.rand(*shape).astype(np_dtype)
             m = a.shape[-2]
             n = a.shape[-1]
             min_mn = min(m, n)
@@ -252,7 +286,7 @@ class TestLU_UnpackAPI(unittest.TestCase):
             (3, 5, 5, 5),
             (4, 5, 5, 3),  # 4-dim Tensors
         ]
-        dtypes = ["float32", "float64"]
+        dtypes = ["float32", "float64", "complex64", "complex128"]
         for tensor_shape, dtype in itertools.product(tensor_shapes, dtypes):
             run_lu_unpack_dygraph(tensor_shape, dtype)
 
@@ -264,7 +298,13 @@ class TestLU_UnpackAPI(unittest.TestCase):
                 np_dtype = np.float32
             elif dtype == "float64":
                 np_dtype = np.float64
+            elif dtype == "complex64":
+                np_dtype = np.complex64
+            elif dtype == "complex128":
+                np_dtype = np.complex128
             a = np.random.rand(*shape).astype(np_dtype)
+            if dtype in {"complex64", "complex128"}:
+                a += 1j * np.random.rand(*shape).astype(np_dtype)
             m = a.shape[-2]
             n = a.shape[-1]
             min_mn = min(m, n)
@@ -306,7 +346,7 @@ class TestLU_UnpackAPI(unittest.TestCase):
             (3, 5, 5, 5),
             (4, 5, 5, 3),  # 4-dim Tensors
         ]
-        dtypes = ["float32", "float64"]
+        dtypes = ["float32", "float64", "complex64", "complex128"]
         for tensor_shape, dtype in itertools.product(tensor_shapes, dtypes):
             run_lu_static(tensor_shape, dtype)
 

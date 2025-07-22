@@ -12,15 +12,19 @@ on:
       slice-check:
         type: string
         required: false
+      SLICE_TEST_MODE:
+        type: string
+        required: false
+        default: 'test_ci'
 
 env:
-  PR_ID: ${{ github.event.pull_request.number }}
-  COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+  PR_ID: ${{ github.event.pull_request.number || '0' }}
+  COMMIT_ID: ${{ github.event.pull_request.head.sha || github.sha }}
   work_dir: /paddle
   PADDLE_ROOT: /paddle
   TASK: paddle-CI-${{ github.event.pull_request.number }}-slice
   ci_scripts: /paddle/ci
-  BRANCH: ${{ github.event.pull_request.base.ref }}
+  BRANCH: ${{ github.event.pull_request.base.ref || github.ref }}
   CI_name: slice
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 
@@ -35,16 +39,11 @@ jobs:
     runs-on:
       group: slice
     steps:
-      # - name: Download test script
-      #   run: |
-      #     sudo rm -rf * .[^.]*
-      #     source ${{ github.workspace }}/../../../proxy
-      #     wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/refs/heads/develop/ci/slice/test_slice_float32.py
-
       - name: Check docker image and run container
         env:
-          wheel_link: https://paddle-github-action.bj.bcebos.com/PR/build/${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+          wheel_link: https://paddle-github-action.bj.bcebos.com/PR/build/${{ env.PR_ID }}/${{ env.COMMIT_ID }}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
           RUN_ID: ${{ github.run_id }}
+          SLICE_TEST_MODE: ${{ inputs.SLICE_TEST_MODE }}
         run: |
           container_name="api_benchmark_ci_${RUN_ID}"
           echo "container_name=${container_name}" >> ${{ github.env }}
@@ -64,22 +63,21 @@ jobs:
             -e ci_scripts \
             -e no_proxy \
             -e CI_name \
+            -e SLICE_TEST_MODE \
             -w /paddle --network host ${docker_image}
 
-      - name: Download Paddle
+      - name: Download PaddleTest
         env:
           work_dir: ${{ github.workspace }}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*
-          echo "Downloading build.tar.gz"
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
-          echo "Extracting build.tar.gz"
+          echo "Downloading PaddleTest"
+          wget -q https://xly-devops.bj.bcebos.com/PaddleTest/PaddleTest.tar.gz --no-proxy
+          echo "Extracting PaddleTest"
           git config --global --add safe.directory ${work_dir}
-          tar --use-compress-program="pzstd -1" -xpf build.tar.gz --strip-components=1
+          tar -xzf PaddleTest.tar.gz && cd PaddleTest
           git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
-          git checkout test
-          rm build.tar.gz
           '
 
       - name: Test
@@ -87,18 +85,20 @@ jobs:
           work_dir: ${{ github.workspace }}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          set -x
           mkdir -p ${{ github.workspace }}/../../../.cache/pip
           source ${{ github.workspace }}/../../../proxy
           python3.10 -m pip config set global.cache-dir ${{ github.workspace }}/../../../.cache/pip
           python3.10 -m pip install $wheel_link
-          python3.10 -m pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu118
-          export FLAGS_share_tensor_for_grad_tensor_holder=True
-          python3.10 ci/slice/test_slice_perform.py
+          python3.10 -m pip install -r PaddleTest/framework/e2e/api_benchmark/requirement.txt
+          cd PaddleTest/framework/slice_benchmark
+          cp ${{ github.workspace }}/../../../apibm_config.yml .
+          nvidia-smi
+          bash run.sh
           '
 
       - name: Terminate and delete the container
         if: always()
         run: |
+          set +e
           docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
           docker rm -f ${{ env.container_name }}

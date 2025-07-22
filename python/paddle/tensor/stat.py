@@ -211,8 +211,10 @@ def var(
     out /= n
 
     def _replace_nan(out):
-        out_nan = paddle.full_like(out, paddle.nan)
-        out_nan.stop_gradient = out.stop_gradient
+        indices = paddle.arange(out.numel(), dtype='int64')
+        out_nan = paddle.index_fill(
+            out.flatten(), indices, 0, float('nan')
+        ).reshape(out.shape)
         return out_nan
 
     if 0 in x.shape:

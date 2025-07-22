@@ -270,7 +270,7 @@ void SliceCsrCompute(const Context& dev_ctx,
   funcs::ConstructNewSliceAttrs(
       x_dims, axes, starts, ends, &new_axes, &new_starts, &new_ends);
 
-  // Setp3: Slice csr tensor according to its dimension
+  // Step3: Slice csr tensor according to its dimension
   if (x_dims.size() == 2) {
     SliceCsrTensor2D<T, Context>(
         dev_ctx, x, new_axes, new_starts, new_ends, out_dims, out);

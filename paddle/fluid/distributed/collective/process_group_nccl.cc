@@ -1000,7 +1000,7 @@ phi::CUDAStream ProcessGroupNCCL::GetStream(const Place& place) {
   const auto* comm_ctx = place_to_comm_ctx_.at(place_key).get();
 
   auto comm_stream = comm_ctx->cuda_stream();
-  return phi::CUDAStream(comm_stream->place(), comm_stream->id());
+  return phi::CUDAStream(comm_stream->place(), phi::Stream(comm_stream->id()));
 }
 
 void ProcessGroupNCCL::SetOuterEventWait(bool outer_wait) {
