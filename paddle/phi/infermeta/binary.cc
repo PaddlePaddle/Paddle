@@ -2067,7 +2067,7 @@ void GatherInferMeta(const MetaTensor& x,
     } else {
       if (axis.FromTensor() || axis_v == 0) {
         // decrease the output dimension
-        std::vector<int> out_dim_vec;
+        std::vector<int64_t> out_dim_vec;
         for (int i = 1; i < input_dim.size(); ++i) {
           out_dim_vec.emplace_back(input_dim[i]);
         }
@@ -2076,7 +2076,7 @@ void GatherInferMeta(const MetaTensor& x,
         out->set_dtype(x.dtype());
         out->share_lod(x);
       } else {
-        std::vector<int> out_dim_vec;
+        std::vector<int64_t> out_dim_vec;
         for (int i = 0; i < axis_v; i++) {
           out_dim_vec.push_back(input_dim[i]);  // NOLINT
         }
@@ -2092,7 +2092,7 @@ void GatherInferMeta(const MetaTensor& x,
   } else {
     if (axis.FromTensor() || axis_v == 0) {
       // if axis.FromTensor(), we can not obtain correct shape of output
-      int batch_size = static_cast<int>(index_dims[0]);
+      int64_t batch_size = static_cast<int64_t>(index_dims[0]);
       if (index_dims.size() == 2 && index_dims[1] == 0) {
         batch_size = 0;
       }
@@ -2102,11 +2102,11 @@ void GatherInferMeta(const MetaTensor& x,
       out->set_dtype(x.dtype());
       out->share_lod(x);
     } else {
-      int index_size = static_cast<int>(index_dims[0]);
+      int64_t index_size = static_cast<int64_t>(index_dims[0]);
       if (index_dims.size() == 2 && index_dims[1] == 0) {
         index_size = 0;
       }
-      std::vector<int> out_dim_vec;
+      std::vector<int64_t> out_dim_vec;
       for (int i = 0; i < axis_v; i++) {
         out_dim_vec.push_back(input_dim[i]);  // NOLINT
       }

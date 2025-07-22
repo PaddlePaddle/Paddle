@@ -377,7 +377,7 @@ TEST(InstanceNorm, Ctor) {
       common::make_ddim(mean_and_variance_shape), mean_and_variance_dist_attr);
   phi::distributed::SpmdInfo backward_info =
       phi::distributed::InstanceNormGradInferSpmd(
-          x, scale, saved_mean, saved_variance, y_grad, epsilon);
+          x, scale, bias, saved_mean, saved_variance, y_grad, epsilon);
   input_size = 5;
   output_size = 3;
   EXPECT_EQ(backward_info.first.size(), input_size);

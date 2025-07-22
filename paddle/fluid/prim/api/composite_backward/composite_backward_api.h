@@ -1768,6 +1768,7 @@ void batch_norm_grad(const Tensor& x,
 template <typename T>
 void instance_norm_grad(const Tensor& x,
                         const paddle::optional<Tensor>& scale,
+                        const paddle::optional<Tensor>& bias UNUSED,
                         const Tensor& saved_mean,
                         const Tensor& saved_variance,
                         const Tensor& y_grad,

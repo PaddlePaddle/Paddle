@@ -1805,7 +1805,7 @@
   no_need_buffer : x
 
 - backward_op : instance_norm_double_grad
-  forward : instance_norm_grad(Tensor x, Tensor scale, Tensor saved_mean, Tensor saved_variance, Tensor grad_y, float epsilon) -> Tensor(grad_x), Tensor(grad_scale), Tensor(grad_bias)
+  forward : instance_norm_grad(Tensor x, Tensor scale, Tensor bias, Tensor saved_mean, Tensor saved_variance, Tensor grad_y, float epsilon) -> Tensor(grad_x), Tensor(grad_scale), Tensor(grad_bias)
   args : (Tensor x, Tensor scale, Tensor saved_mean, Tensor saved_variance, Tensor grad_y, Tensor grad_x_grad, Tensor grad_scale_grad, Tensor grad_bias_grad, float epsilon)
   output : Tensor(x_grad), Tensor(scale_grad), Tensor(grad_y_grad)
   infer_meta :
@@ -1817,7 +1817,7 @@
 
 - backward_op : instance_norm_grad
   forward : instance_norm(Tensor x, Tensor scale, Tensor bias, float epsilon) -> Tensor(y), Tensor(saved_mean), Tensor(saved_variance)
-  args : (Tensor x, Tensor scale, Tensor saved_mean, Tensor saved_variance, Tensor y_grad, float epsilon=1e-5)
+  args : (Tensor x, Tensor scale, Tensor bias, Tensor saved_mean, Tensor saved_variance, Tensor y_grad, float epsilon=1e-5)
   output : Tensor(x_grad), Tensor(scale_grad), Tensor(bias_grad)
   infer_meta :
     func : InstanceNormGradInferMeta
@@ -1825,9 +1825,10 @@
   kernel :
     func : instance_norm_grad
     data_type : x
-  optional : scale
+  optional : scale, bias
+  no_need_buffer : bias
   backward : instance_norm_double_grad
-  composite: instance_norm_grad(x, scale, saved_mean, saved_variance, y_grad, epsilon, x_grad, scale_grad, bias_grad)
+  composite: instance_norm_grad(x, scale, bias, saved_mean, saved_variance, y_grad, epsilon, x_grad, scale_grad, bias_grad)
 
 - backward_op : inverse_grad
   forward : inverse(Tensor x) -> Tensor(out)

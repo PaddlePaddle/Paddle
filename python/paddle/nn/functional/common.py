@@ -642,7 +642,7 @@ def interpolate(
             if len(x.shape) == 4:
                 if len(out_shape) != 2:
                     raise ValueError(
-                        "size length should be 2 for " "input 4-D tensor."
+                        "size length should be 2 for input 4-D tensor."
                     )
                 if contain_var:
                     attrs['out_h'] = size_list[0]
@@ -667,6 +667,30 @@ def interpolate(
                     attrs['out_w'] = out_shape[2]
 
     elif scale is not None:
+        # scale in python is float64, but in kernel is float32, so we need to recalculate the scale in float32
+        # Currently it is only used when x.size is 0.
+        x_shape = x.shape
+        if data_format == 'NCW':
+            max_dim = x_shape[2]
+        elif data_format == 'NWC':
+            max_dim = x_shape[1]
+        elif data_format == 'NCHW':
+            max_dim = max(x.shape[2], x.shape[3])
+        elif data_format == 'NHWC':
+            max_dim = max(x.shape[1], x.shape[2])
+        elif data_format == 'NCDHW':
+            max_dim = max(x.shape[2], x.shape[3], x.shape[4])
+        elif data_format == 'NDHWC':
+            max_dim = max(x.shape[1], x.shape[2], x.shape[3])
+        else:
+            max_dim = 1
+
+        def _scale_to_float32(value):
+            if len(str(value)) <= 10:
+                return value
+            # round down
+            return numpy.float32(int(value * max_dim) / max_dim)
+
         if recompute_scale_factor:
             if in_dynamic_mode() and isinstance(scale, Variable):
                 if scale.shape == []:
@@ -710,11 +734,15 @@ def interpolate(
 
             scale = None
         else:
-            if in_dynamic_mode() and isinstance(scale, Variable):
+            dynamic_mode = False
+            if in_dynamic_mode():
+                dynamic_mode = True
+            if dynamic_mode and isinstance(scale, Variable):
                 if scale.shape == []:
                     scale = float(scale)
                 else:
                     scale = list(scale.numpy())
+
             if isinstance(scale, (Variable, paddle.pir.Value)):
                 scale.stop_gradient = True
                 inputs["Scale"] = scale
@@ -724,7 +752,10 @@ def interpolate(
                 scale_list = []
                 for i in range(len(x.shape) - 2):
                     scale_list.append(scale)
-                attrs['scale'] = list(map(float, scale_list))
+                if dynamic_mode and x.size == 0:
+                    attrs['scale'] = list(map(_scale_to_float32, scale_list))
+                else:
+                    attrs['scale'] = list(map(float, scale_list))
             elif isinstance(scale, (list, tuple)):
                 if len(scale) != len(x.shape) - 2:
                     raise ValueError(
@@ -736,7 +767,10 @@ def interpolate(
                         raise ValueError(
                             "Attr(scale) should be greater than zero."
                         )
-                attrs['scale'] = list(map(float, scale))
+                if dynamic_mode and x.size == 0:
+                    attrs['scale'] = list(map(_scale_to_float32, scale))
+                else:
+                    attrs['scale'] = list(map(float, scale))
             else:
                 raise TypeError(
                     "Attr(scale)'s type should be float, int, list, tuple, or Tensor."

@@ -533,6 +533,18 @@ void BatchNormKernel(const Context &dev_ctx,
                      DenseTensor *saved_mean,
                      DenseTensor *saved_variance,
                      DenseTensor *reserve_space) {
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(y);
+    if (mean_out) dev_ctx.template Alloc<T>(mean_out);
+    if (variance_out) dev_ctx.template Alloc<T>(variance_out);
+    if (saved_mean) dev_ctx.template Alloc<T>(saved_mean);
+    if (saved_variance) dev_ctx.template Alloc<T>(saved_variance);
+    if (reserve_space) {
+      reserve_space->Resize({0});
+      dev_ctx.template Alloc<T>(reserve_space);
+    }
+    return;
+  }
   double epsilon = epsilon_f;
   const bool trainable_stats = trainable_statistics;
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
