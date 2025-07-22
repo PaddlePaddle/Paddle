@@ -27,6 +27,10 @@ void ArangeFunc(const Context& dev_ctx,
                 const T& step_value,
                 DenseTensor* out) {
   int64_t size = 0;
+  if (isnan(end_value)) {
+    PADDLE_THROW(errors::InvalidArgument(
+        "end_value cannot be NaN in arange operation."));
+  }
   phi::funcs::GetSize(start_value, end_value, step_value, &size);
   out->Resize(common::make_ddim({size}));
   T* out_data = dev_ctx.template Alloc<T>(out);
