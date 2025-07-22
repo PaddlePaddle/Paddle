@@ -768,7 +768,7 @@ class OperatorWithKernel : public OperatorBase {
 
   bool SupportCustomDevice() const override;
 
-  bool SupportsMKLDNN(phi::DataType data_type) const;
+  bool SupportsONEDNN(phi::DataType data_type) const;
 
   bool SupportsCUDNN(phi::DataType data_type) const;
 
@@ -777,10 +777,10 @@ class OperatorWithKernel : public OperatorBase {
 
   bool SupportsCPUBF16() const;
 
-  bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
+  bool CanONEDNNBeUsed(const framework::ExecutionContext& ctx,
                        phi::DataType data_type) const;
 
-  bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
+  bool CanONEDNNBeUsed(const framework::ExecutionContext& ctx,
                        proto::VarType::Type data_type) const;
 
   bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
