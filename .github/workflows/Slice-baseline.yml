@@ -2,7 +2,7 @@ name: Slice-baseline
 
 on:
   schedule:
-    - cron: '0 9 * * *'
+    - cron: '30 2 * * *'
 
 permissions: read-all
 
@@ -33,6 +33,7 @@ jobs:
     with:
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
       CI_name: slice-baseline
+      is_pr: 'false'
 
   slice-test:
     name: Slice test

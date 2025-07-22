@@ -30,6 +30,7 @@ env:
   PR_ID: ${{ github.event.pull_request.number || '0' }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha || github.sha }}
   ci_scripts: ${{ github.workspace }}/ci
+  BRANCH: ${{ github.event.pull_request.base.ref || github.ref_name }}
 
 jobs:
   clone:
@@ -102,7 +103,7 @@ jobs:
           python ${bos_file} Paddle.tar.gz paddle-github-action/PR/${{ inputs.clone_dir }}/${PR_ID}/${COMMIT_ID}
           rm Paddle.tar.gz
           cd -
-          git switch ${{ github.event.pull_request.base.ref }}
+          git switch ${BRANCH}
           git branch -D test
           git gc
 

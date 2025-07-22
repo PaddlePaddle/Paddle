@@ -55,8 +55,8 @@ jobs:
       - id: build-docker-images
         name: Build docker images
         env:
-          PR_ID: ${{ github.event.pull_request.number }}
-          COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+          PR_ID: ${{ github.event.pull_request.number || '0' }}
+          COMMIT_ID: ${{ github.event.pull_request.head.sha || github.sha }}
           docker_cpu_file: Dockerfile.cuda9_cudnn7_gcc48_py35_centos6
           docker_inference_file: Dockerfile.cuda11.2_cudnn8.1_trt8.4_gcc8.2_ubuntu18
           docker_coverage_file: Dockerfile.cuda117_cudnn8_gcc82_ubuntu18_coverage

@@ -10,6 +10,10 @@ on:
         type: string
         required: false
         default: 'build'
+      is_pr:
+        type: string
+        required: false
+        default: 'true'
     outputs:
       can-skip:
         description: "Whether to skip the job"
@@ -22,7 +26,7 @@ env:
   PADDLE_ROOT: /paddle
   TASK: paddle-CI-${{ github.event.pull_request.number }}-build
   ci_scripts: /paddle/ci
-  BRANCH: ${{ github.event.pull_request.base.ref || github.ref }}
+  BRANCH: ${{ github.event.pull_request.base.ref || github.ref_name }}
   CI_name: ${{ inputs.CI_name }}
   CFS_DIR: /home/data/cfs
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
@@ -120,7 +124,7 @@ jobs:
             -e CI_name \
             -w /paddle --network host ${docker_image}
 
-      - name: Download paddle.tar.gz and merge target branch
+      - name: Download paddle.tar.gz
         env:
           work_dir: ${{ github.workspace }}
         run: |
@@ -140,6 +144,14 @@ jobs:
           set +e
           git remote add upstream https://github.com/PaddlePaddle/Paddle.git
           set -e
+          '
+
+      - name: Merge target branch
+        if: ${{ inputs.is_pr == 'true' }}
+        env:
+          work_dir: ${{ github.workspace }}
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
           cp ci/git_pull.sh ci/git_pull_copy.sh
           git checkout $BRANCH
@@ -151,6 +163,7 @@ jobs:
 
       - name: Check bypass
         id: check-bypass
+        if: ${{ inputs.is_pr == 'true' }}
         uses: ./.github/actions/check-bypass
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
