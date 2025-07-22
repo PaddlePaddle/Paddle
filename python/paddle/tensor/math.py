@@ -4695,8 +4695,8 @@ def cumprod(
 
     Args:
         x (Tensor): the input tensor need to be cumproded.
-        dim (int|None, optional): the dimension along which the input tensor will be accumulated. It need to be in the range of [-x.rank, x.rank),
-                    where x.rank means the dimensions of the input tensor x and -1 means the last dimension.
+        dim (int|None, optional): the dimension along which the input tensor will be accumulated. It need to be in the range of [-x.rank, x.rank) or None,
+                    where x.rank means the dimensions of the input tensor x and -1 means the last dimension. The default (None) is to compute the cumprod over the flattened array.
         dtype (str|paddle.dtype|np.dtype, optional): The data type of the output tensor, can be bfloat16, float16, float32, float64, int32, int64,
                     complex64, complex128. If specified, the input tensor is casted to dtype before the operation is performed.
                     This is useful for preventing data type overflows. The default value is None.
@@ -4743,6 +4743,9 @@ def cumprod(
             >>> assert y.dtype == paddle.float64
 
     """
+    if dim is None:
+        dim = -1
+        x = x.flatten(0, len(x.shape) - 1)
 
     if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
         x = cast(x, dtype)
@@ -4789,6 +4792,10 @@ def cumprod_(
     Inplace version of ``cumprod`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_cumprod`.
     """
+    if dim is None:
+        dim = -1
+        x = _C_ops.flatten_(x, 0, len(x.shape) - 1)
+
     if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
         x = cast_(x, dtype)
 

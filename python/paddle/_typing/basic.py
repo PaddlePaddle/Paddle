@@ -33,7 +33,7 @@ if TYPE_CHECKING:
     from paddle.regularizer import WeightDecayRegularizer
 
 
-Numeric: TypeAlias = Union[int, float, complex, np.number, "Tensor"]
+Numeric: TypeAlias = Union[int, float, bool, complex, np.number, "Tensor"]
 TensorLike: TypeAlias = Union[npt.NDArray[Any], "Tensor", Numeric]
 _TensorIndexItem: TypeAlias = Union[
     None, bool, int, slice, "Tensor", EllipsisType

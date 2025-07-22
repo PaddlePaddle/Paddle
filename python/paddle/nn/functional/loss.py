@@ -4167,14 +4167,17 @@ def multi_margin_loss(
                 f"but received weight's shape[0]: {weight.shape[0]} and input's shape[1]: {input.shape[1]}"
             )
         weight = paddle.gather(weight, label, axis=0).reshape((-1, 1))
-        loss = paddle.mean(
-            weight
-            * paddle.pow(
-                paddle.clip((margin - index_sample + input), min=0.0),
-                p,
-            ),
-            axis=1,
-        ) - weight * (margin**p / paddle.shape(input)[1])
+        loss = (
+            paddle.mean(
+                weight
+                * paddle.pow(
+                    paddle.clip((margin - index_sample + input), min=0.0),
+                    p,
+                ),
+                axis=1,
+            )
+            - (weight * (margin**p / paddle.shape(input)[1])).squeeze()
+        )
     else:
         loss = (
             paddle.mean(

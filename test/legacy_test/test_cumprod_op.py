@@ -1109,5 +1109,61 @@ class TestCumprodAPI_ZeroSize(unittest.TestCase):
             run(place)
 
 
+class TestCumprodAPI_WithFlatten(unittest.TestCase):
+    def init_dtype(self):
+        self.dtype = 'float64'
+        self.shape = [3, 10, 10]
+
+    def setUp(self):
+        self.init_dtype()
+        self.x = (np.random.rand(3, 10, 10) + 0.5).astype(self.dtype)
+        self.place = get_places()
+
+    # test dynamic graph api.
+    def test_dygraph_api(self):
+        def run(place):
+            paddle.disable_static(place)
+            x = paddle.to_tensor(self.x)
+            x.stop_gradient = False
+            out = paddle.cumprod(x, None)
+            out_ref = np.cumprod(self.x, None)
+            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
+
+            out_grad_ref = np.ones_like(out_ref)
+            out_grad = paddle.to_tensor(out_grad_ref)
+            x_grad_ref = np.zeros_like(self.x).flatten()
+            (x_grad,) = paddle.grad(out, [x], [out_grad])
+            cumprod_grad(
+                self.x.flatten(),
+                out_ref,
+                out_grad_ref,
+                x_grad_ref,
+                [np.prod(self.shape)],
+                -1,
+                exclusive=False,
+                reverse=False,
+            )
+            x_grad_ref = x_grad_ref.reshape(self.shape)
+            np.testing.assert_allclose(x_grad_ref, x_grad.numpy(), rtol=1e-05)
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place)
+
+    def test_static_api(self):
+        def run(place):
+            paddle.enable_static()
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data('X', self.shape, dtype=self.dtype)
+                out = paddle.cumprod(x, None)
+                exe = paddle.static.Executor(place)
+                (out,) = exe.run(feed={'X': self.x}, fetch_list=[out])
+            out_ref = np.cumprod(self.x, None)
+            np.testing.assert_allclose(out_ref, out, rtol=1e-05)
+
+        for place in self.place:
+            run(place)
+
+
 if __name__ == "__main__":
     unittest.main()

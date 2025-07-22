@@ -48,8 +48,8 @@ void HostRMSNormGradient(const Context& dev_ctx,
                          const T* dout,
                          const U* invvar,
                          const DenseTensor& input,
-                         int n1,
-                         int n2,
+                         int64_t n1,
+                         int64_t n2,
                          const V* gamma,
                          double epsilon,
                          T* grad_input,
@@ -126,10 +126,15 @@ void cuda_rms_norm_gradient(const Context& dev_ctx,
                             DenseTensor* grad_x,
                             DenseTensor* grad_scale,
                             const int begin_norm_axis) {
-  const auto x_dims = x.dims();
-  auto matrix_dim = phi::flatten_to_2d(x_dims, begin_norm_axis);
-  int rows = static_cast<int>(matrix_dim[0]);
-  int cols = static_cast<int>(matrix_dim[1]);
+  int64_t rows = 1;
+  int64_t cols = 1;
+  for (int i = 0; i < begin_norm_axis; i++) {
+    rows *= x.dims()[i];
+  }
+
+  for (int i = begin_norm_axis; i < x.dims().size(); i++) {
+    cols *= x.dims()[i];
+  }
   dev_ctx.template Alloc<T>(grad_x);
   if (x.numel() == 0) {
     if (grad_scale) {
