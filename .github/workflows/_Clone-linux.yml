@@ -69,6 +69,7 @@ jobs:
           git branch -d pr
           source ${ci_scripts}/check_execution.sh
           bash ${ci_scripts}/third_party_tag.sh
+          git submodule update --init --recursive
 
       - name: Check bypass
         id: check-bypass
