@@ -123,7 +123,7 @@ void EmplaceDeviceContexts(
     const std::vector<phi::Place>& places,
     bool disable_setting_default_stream_for_allocator,
     int stream_priority,
-    bool set_to_default = false);
+    bool set_to_default_stream = false);
 
 using DeviceContextPool = phi::DeviceContextPool;
 

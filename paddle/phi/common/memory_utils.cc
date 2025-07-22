@@ -81,13 +81,13 @@ void EmplaceDeviceContexts(
     const std::vector<phi::Place>& places,
     bool disable_setting_default_stream_for_allocator,
     int stream_priority,
-    bool set_to_default) {
+    bool set_to_default_stream) {
   MemoryUtils::Instance().EmplaceDeviceContexts(
       place_to_device_context,
       places,
       disable_setting_default_stream_for_allocator,
       stream_priority,
-      set_to_default);
+      set_to_default_stream);
 }
 
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
