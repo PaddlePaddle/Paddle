@@ -19,7 +19,7 @@ from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
-class TestInt8ScaleCalculationMkldnnPass(PassAutoScanTest):
+class TestInt8ScaleCalculationOnednnPass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_gpu=False)
         config.pass_builder().append_pass("int8_scale_calculation_onednn_pass")
