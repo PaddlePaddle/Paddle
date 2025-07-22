@@ -881,9 +881,9 @@ __global__ __launch_bounds__(
             nvl_rank_meta + rdma_rank * (kTopk * 3 + 1) + 1;
         int4* dst_ptr = reinterpret_cast<int4*>(
             rdma_send_x_this_rdma_rank + index_source * combine_hidden_bytes);
-        float combined_values[kNumElemsPerInt4] = {0.0f};
         for (int g_id = thread_id; g_id < hidden_bf16_int4;
              g_id += num_threads) {
+          float combined_values[kNumElemsPerInt4] = {0.0f};
           for (int nvl_rank_idx = 0; nvl_rank_idx < nvl_rank_nums;
                nvl_rank_idx += 1) {
             const int dst_rdma_expert_idx = nvl_rank_meta_now[nvl_rank_idx * 3];
@@ -997,9 +997,9 @@ __global__ __launch_bounds__(
   }
   cg::this_grid().sync();
 
-  for (int g_id = thread_id; g_id < hidden_bf16_int4; g_id += num_threads) {
-    for (int token_idx = sm_id; token_idx < num_combined_tokens;
-         token_idx += num_sms) {
+  for (int token_idx = sm_id; token_idx < num_combined_tokens;
+       token_idx += num_sms) {
+    for (int g_id = thread_id; g_id < hidden_bf16_int4; g_id += num_threads) {
       float combined_values[kNumElemsPerInt4] = {0.0f};
       const bool* rdma_send_flags_now =
           rdma_send_flags + token_idx * kNumRdmaRanks;
