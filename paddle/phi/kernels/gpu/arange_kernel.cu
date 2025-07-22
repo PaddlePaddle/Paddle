@@ -80,16 +80,6 @@ void ArangeNullaryKernel(const Context& dev_ctx,
       PADDLE_THROW(phi::errors::InvalidArgument(
           "The end value of arange cannot be NaN. Please check your input."));
     }
-  } else if constexpr (std::is_same_v<T, phi::dtype::float16>) {
-    if (phi::dtype::isnan(static_cast<phi::dtype::float16>(end_value))) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "The end value of arange cannot be NaN. Please check your input."));
-    }
-  } else if constexpr (std::is_same_v<T, phi::dtype::bfloat16>) {
-    if (phi::dtype::isnan(static_cast<phi::dtype::bfloat16>(end_value))) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "The end value of arange cannot be NaN. Please check your input."));
-    }
   }
   int64_t size = 0;
   phi::funcs::GetSize(start_value_mpt, end_value_mpt, step_value_mpt, &size);
@@ -122,16 +112,6 @@ void ArangeKernel(const Context& dev_ctx,
     }
   } else if constexpr (std::is_same_v<T, double>) {
     if (std::isnan(end_value)) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "The end value of arange cannot be NaN. Please check your input."));
-    }
-  } else if constexpr (std::is_same_v<T, phi::dtype::float16>) {
-    if (phi::dtype::isnan(end_value)) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "The end value of arange cannot be NaN. Please check your input."));
-    }
-  } else if constexpr (std::is_same_v<T, phi::dtype::bfloat16>) {
-    if (phi::dtype::isnan(end_value)) {
       PADDLE_THROW(phi::errors::InvalidArgument(
           "The end value of arange cannot be NaN. Please check your input."));
     }
