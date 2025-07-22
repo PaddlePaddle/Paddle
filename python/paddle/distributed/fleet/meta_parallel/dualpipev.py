@@ -260,6 +260,7 @@ class DualPipeVParallel(PipelineParallel):
         backward_phase: int,
         micro_datasets=None,
         combine_backward_event_to_wait=None,
+        use_outer_wait=False,
     ) -> None:
         if self.forward_only:
             self._forward_compute(forward_phase, micro_datasets)
@@ -319,8 +320,12 @@ class DualPipeVParallel(PipelineParallel):
                 backward_grads,
                 self.scaler,
                 combine_bw_event_to_wait=combine_backward_event_to_wait,
-                pp_stream=self.pp_group.process_group.get_stream(
-                    paddle.framework._current_expected_place_()
+                pp_stream=(
+                    self.pp_group.process_group.get_stream(
+                        paddle.framework._current_expected_place_()
+                    )
+                    if use_outer_wait
+                    else None
                 ),
             )
         )
@@ -529,10 +534,17 @@ class DualPipeVParallel(PipelineParallel):
             self._recv_forward(forward_phase)
         self._recv_backward(backward_phase)
 
+        need_send_forward = not (
+            self.is_pipeline_first_stage() and forward_phase == 1
+        ) or (self.is_pipeline_last_stage() and forward_phase == 0)
+        need_send_backward = not (
+            self.is_pipeline_first_stage() and backward_phase == 0
+        ) or (self.is_pipeline_last_stage() and backward_phase == 1)
+
         use_outer_wait = (
             self._overlap_p2p_comm
             and deep_ep is not None
-            and (len(self.comm_forward_ops) > 0)
+            and (need_send_forward and need_send_backward)
         )
 
         if use_outer_wait:
@@ -547,6 +559,7 @@ class DualPipeVParallel(PipelineParallel):
             backward_phase,
             micro_datasets,
             combine_backward_event_to_wait=combine_bw_wait_event,
+            use_outer_wait=use_outer_wait,
         )
 
         self._send_forward(forward_phase)
