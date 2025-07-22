@@ -199,7 +199,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   bool IsRuntime() const override;
 
-  bool IsRunMKLDNNKernel() const override;
+  bool IsRunONEDNNKernel() const override;
 
   // TODO(paddle-dev): Can this be template?
   paddle::small_vector<InferShapeVarPtr, phi::kInputSmallVectorSize>

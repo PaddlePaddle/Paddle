@@ -526,7 +526,7 @@ void RuntimeInferShapeContext::SetLoDLevel(const std::string& out,
 
 bool RuntimeInferShapeContext::IsRuntime() const { return true; }
 
-bool RuntimeInferShapeContext::IsRunMKLDNNKernel() const {
+bool RuntimeInferShapeContext::IsRunONEDNNKernel() const {
   try {
     auto& op_with_kernel = dynamic_cast<const OperatorWithKernel&>(op_);
     return ((op_with_kernel.kernel_type()) &&
