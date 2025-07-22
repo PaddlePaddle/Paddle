@@ -1,4 +1,4 @@
-/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -13,6 +13,7 @@ limitations under the License. */
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
+#include "paddle/phi/kernels/funcs/slice_utils.h"
 #include "paddle/phi/kernels/strided_copy_kernel.h"
 
 namespace phi {
@@ -53,6 +54,15 @@ void StridedElementwiseCopyKernel(const Context& dev_ctx,
 
     return;
   }
+
+  bool can_expand = phi::funcs::CheckIsLastDimsMatch(input.dims(), out->dims());
+  PADDLE_ENFORCE_EQ(can_expand || input.numel() == 1,
+                    true,
+                    common::errors::InvalidArgument(
+                        "Input shape(%s) must expand to out shape(%s).",
+                        input.dims(),
+                        out->dims()));
+
   std::array<int64_t*, 2> strides_array;
   std::vector<int64_t> desired_shape;
   std::array<std::vector<int64_t>, 2> strides_vec;
@@ -69,7 +79,8 @@ void StridedElementwiseCopyKernel(const Context& dev_ctx,
                        strides_vec);
 
   auto offset_calc =
-      funcs::make_offset_calculator_put<2>(desired_shape, strides_array);
+      funcs::make_offset_calculator_put<2, true>(desired_shape, strides_array);
+
   constexpr int block_size = 128;
   constexpr int loop_size = 4;
   const dim3 block(block_size);
@@ -78,7 +89,6 @@ void StridedElementwiseCopyKernel(const Context& dev_ctx,
   using dtype = funcs::OpaqueType<sizeof(T)>;
   const char* in_ptr = reinterpret_cast<const char*>(input.data<T>());
   char* out_ptr = reinterpret_cast<char*>(out->data<T>());
-
   funcs::index_elementwise_with_tensor_kernel<block_size, loop_size>
       <<<grid, block, 0, stream>>>(numel, [=] __device__(int idx) {
         const auto offsets = offset_calc.get(idx);
