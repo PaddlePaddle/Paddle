@@ -94,7 +94,14 @@ __global__ void KeLinearInterpBw(T* in,
     } else {
       in_pos = &in[out_id_h * input_w + in_img_idx * num_channels + channel_id];
     }
-    const T* out_pos = &out[out_id_w];
+    const T* out_pos;
+    if (data_layout == DataLayout::kNCHW) {
+      out_pos =
+          &out[out_id_h * output_w + channel_id * out_img_size + out_img_idx];
+    } else {
+      out_pos =
+          &out[out_id_h * output_w + out_img_idx * num_channels + channel_id];
+    }
 
     if (data_layout == DataLayout::kNCHW) {
       phi::CudaAtomicAdd(
@@ -1136,7 +1143,11 @@ static void Interpolate2DCUDABwd(
                         ? true
                         : ((in_h == 1 && in_w == 1) ? true : false);
 #endif
-
+    std::cout << in_h << " " << in_w << std::endl;
+    std::cout << out_h << " " << out_w << std::endl;
+    std::cout << n << " " << c << std::endl;
+    std::cout << ratio_h << " " << ratio_w << std::endl;
+    std::cout << optimize_flag << " " << is_nchw << std::endl;
     if (optimize_flag & is_nchw) {
       KeBilinearInterpBwShareMemory<T><<<config.block_per_grid,
                                          config.thread_per_block,
