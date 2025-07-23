@@ -2291,6 +2291,10 @@ def cholesky(x: Tensor, upper: bool = False, name: str | None = None) -> Tensor:
              [1.30602181, 0.08326444, 0.22790681]])
     """
     if in_dynamic_or_pir_mode():
+        x_shape = x.shape
+        assert (
+            len(x_shape) >= 2 and x_shape[-1] == x_shape[-2]
+        ), "Shape must have at least 2 dimensions and last two dimensions must be equal."
         return _C_ops.cholesky(x, upper)
     else:
         check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'cholesky')
@@ -4049,8 +4053,6 @@ def eigh(
              [ 0.3826833963394165j    , -0.9238795042037964j    ]])
 
     """
-    if in_dynamic_mode():
-        return _C_ops.eigh(x, UPLO)
 
     def __check_input(x, UPLO):
         x_shape = list(x.shape)
@@ -4068,7 +4070,7 @@ def eigh(
                 f"UPLO must be L or U. But received UPLO is: {UPLO}"
             )
 
-    if in_pir_mode():
+    if in_dynamic_mode() or in_pir_mode():
         __check_input(x, UPLO)
         return _C_ops.eigh(x, UPLO)
 
