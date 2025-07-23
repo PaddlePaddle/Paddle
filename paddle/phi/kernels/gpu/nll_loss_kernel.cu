@@ -44,11 +44,11 @@ void NllLossRawKernel(const Context& dev_ctx,
   auto x_dims = x->dims();
   auto batch_size = x_dims[0];
   auto n_classes = x_dims[1];
-  int64_t size_average = (int64_t)(reduction == "mean");
+  int size_average = static_cast<int>(reduction == "mean");
   using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
   if (x_dims.size() == 2) {
     int64_t blocks = NumBlocks(batch_size);
-    int64_t threads = kNumCUDAThreads;
+    int threads = kNumCUDAThreads;
     if (reduction == "none") {
       GPUNLLLossForward1D_no_reduce<T>
           <<<blocks, threads, 0, dev_ctx.stream()>>>(out_data,
@@ -76,7 +76,7 @@ void NllLossRawKernel(const Context& dev_ctx,
     const auto map_size = in_dim2 * in_dim3;
     const auto out_numel = batch_size * in_dim2 * in_dim3;
     int64_t blocks = NumBlocks(out_numel);
-    int64_t threads = kNumCUDAThreads;
+    int threads = kNumCUDAThreads;
     if (reduction == "none") {
       GPUNLLLossForward2D_no_reduce<T>
           <<<blocks, threads, 0, dev_ctx.stream()>>>(out_data,
@@ -89,7 +89,7 @@ void NllLossRawKernel(const Context& dev_ctx,
                                                      in_dim3,
                                                      ignore_index);
     } else {
-      int64_t blocks_per_sample = NumBlocks(map_size) / 128;
+      int blocks_per_sample = NumBlocks(map_size) / 128;
       blocks_per_sample = (blocks_per_sample == 0) ? 1 : blocks_per_sample;
       int64_t total_blocks = blocks_per_sample * batch_size;
       GPUNLLLossForward2D_with_reduce<T, AccT>

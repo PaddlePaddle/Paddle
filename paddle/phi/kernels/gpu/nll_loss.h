@@ -25,9 +25,9 @@
 #include "paddle/phi/kernels/funcs/math.h"
 
 namespace phi {
-static constexpr int64_t kNumCUDAThreads = 512;
-static constexpr int64_t kNumMaximumNumBlocks = 4096;
-static const int64_t NTHREADS = 32;
+static constexpr int kNumCUDAThreads = 512;
+static constexpr int kNumMaximumNumBlocks = 4096;
+static const int NTHREADS = 32;
 static inline int64_t NumBlocks(const int64_t N) {
   return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
                   static_cast<int64_t>(kNumMaximumNumBlocks));
@@ -109,7 +109,7 @@ __global__ void GPUNLLLossForward1D_with_reduce(T* out_data,
 template <typename T, typename ReduceOp, int64_t N>
 __device__ void reduceNValuesInBlock(T* smem,
                                      T threadVals[N],
-                                     const int64_t numVals,
+                                     const unsigned int numVals,
                                      ReduceOp reduceOp,
                                      T init) {
   if (numVals == 0) {
@@ -135,8 +135,7 @@ __device__ void reduceNValuesInBlock(T* smem,
   // where to put the outputs of each of the n things we are reducing. If
   // nLP = 32, then we have the 32 outputs for the first threadVal,
   // followed by the 32 outputs for the second threadVal, etc.
-  const int64_t numLanesParticipating =
-      min(numVals, static_cast<int64_t>(warpSize));
+  const unsigned int numLanesParticipating = min(numVals, warpSize);
 
   if (numVals > warpSize && ((threadIdx.x / warpSize) == 0)) {
 #pragma unroll
@@ -186,8 +185,11 @@ __device__ void reduceNValuesInBlock(T* smem,
 // then __syncthreads is needed either before or afterwards to prevent non-0
 // threads overriding smem in the next loop before num-0 thread reads from it.
 template <typename T, typename ReduceOp>
-__device__ T reduceBlock(
-    T* smem, const int64_t numVals, T threadVal, ReduceOp reduceOp, T init) {
+__device__ T reduceBlock(T* smem,
+                         const unsigned int numVals,
+                         T threadVal,
+                         ReduceOp reduceOp,
+                         T init) {
   reduceNValuesInBlock<T, ReduceOp, 1>(
       smem, &threadVal, numVals, reduceOp, init);
   return threadVal;
