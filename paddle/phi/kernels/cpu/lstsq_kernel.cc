@@ -314,7 +314,6 @@ void LstsqKernel(const Context& dev_ctx,
   } else {
     solution->Resize(common::make_ddim({n, nrhs}));
   }
-
   GetResidualsTensor<Context, T>(dev_ctx, x, y, solution, residuals);
 }
 

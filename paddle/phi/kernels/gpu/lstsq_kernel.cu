@@ -177,7 +177,6 @@ void LstsqKernel(const Context& dev_ctx,
     phi::Copy<Context>(
         dev_ctx, solu_tensor, dev_ctx.GetPlace(), true, solution);
   }
-
   if (batch_count == 1) solution->Resize(common::make_ddim({n, nrhs}));
   GetResidualsTensor<Context, T>(dev_ctx, x, y, solution, residuals);
 }
