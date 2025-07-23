@@ -378,7 +378,7 @@ bool BatchNormOpInferSymbolicShape(
                           "ShapeError: the dimension of scale must equal to 1."
                           "But received: the dimension of scale is [%d]",
                           scale_dims.size()));
-    infer_context->AddEqualCstr(scale_dims[0], C);
+    if (C != 0) infer_context->AddEqualCstr(scale_dims[0], C);
   }
 
   if (!bias_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
@@ -389,7 +389,7 @@ bool BatchNormOpInferSymbolicShape(
                           "ShapeError: the dimension of bias must equal to 1."
                           "But received: the dimension of bias is [%d]",
                           bias_dims.size()));
-    infer_context->AddEqualCstr(bias_dims[0], C);
+    if (C != 0) infer_context->AddEqualCstr(bias_dims[0], C);
   }
 
   // Set output shapes

@@ -21,7 +21,7 @@ from auto_scan_test import PassAutoScanTest
 from program_config import ProgramConfig, TensorConfig
 
 
-class TestConv3dBiasMkldnnFusePass(PassAutoScanTest):
+class TestConv3dBiasOnednnFusePass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 

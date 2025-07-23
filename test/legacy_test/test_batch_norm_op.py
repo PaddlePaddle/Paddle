@@ -625,6 +625,29 @@ class TestDygraphBatchNormOpenReserveSpace(unittest.TestCase):
             os.environ['FLAGS_cudnn_batchnorm_spatial_persistent'] = '0'
 
 
+class TestBatchNormAPI_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.places = get_places()
+
+    def test_dygraph(self):
+        for place in self.places:
+            with paddle.base.dygraph.guard(place):
+                dims = [0, 2, 3]
+                x_np = np.random.rand(*dims) * 10
+                x = paddle.to_tensor(x_np)
+                running_mean = paddle.to_tensor(np.random.random([2]))
+                running_var = paddle.to_tensor(np.random.random([2]))
+                x.stop_gradient = False
+                ret = paddle.nn.functional.batch_norm(
+                    x, running_mean, running_var
+                )
+                np.testing.assert_allclose(
+                    ret.numpy(), np.random.random(x.shape)
+                )
+                ret.sum().backward()
+                np.testing.assert_allclose(x.grad.shape, x.shape)
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
