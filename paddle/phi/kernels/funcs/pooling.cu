@@ -2142,7 +2142,7 @@ class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
                                                      pool_divmods);
       }
     } else {
-      int64_t thread_num = 1024;
+      int thread_num = 1024;
 #ifdef WITH_NV_JETSON
       backends::gpu::ChangeThreadNum(dev_ctx, &thread_num);
 #endif

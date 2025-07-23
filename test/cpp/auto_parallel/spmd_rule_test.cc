@@ -560,7 +560,7 @@ TEST(GroupNorm, Ctor) {
   std::vector<int64_t> x_shape = {64, 64, 64, 64};  // N,C,H,W
   std::vector<int64_t> scale_shape = {64};
   std::vector<int64_t> bias_shape = {64};
-  std::vector<int64_t> mean_and_variance_shape = {64};
+  std::vector<int64_t> mean_and_variance_shape = {64, 64};
   std::vector<int64_t> mesh_shape = {2, 3};
   std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5};
   std::vector<std::string> dim_names = {"x", "y"};
@@ -607,8 +607,8 @@ TEST(GroupNorm, Ctor) {
   check_dim_mapping(forward_info.first[1], {-1});
   check_dim_mapping(forward_info.first[2], {-1});
   check_dim_mapping(forward_info.second[0], {0, -1, -1, -1});
-  check_dim_mapping(forward_info.second[1], {0});
-  check_dim_mapping(forward_info.second[2], {0});
+  check_dim_mapping(forward_info.second[1], {0, -1});
+  check_dim_mapping(forward_info.second[2], {0, -1});
   VLOG(4) << "test forward done.";
 
   // Test backward.
@@ -618,7 +618,7 @@ TEST(GroupNorm, Ctor) {
   // infer output:[0, 1, -1, -1], [-1],[-1]
   TensorDistAttr mean_and_variance_dist_attr = TensorDistAttr();
   mean_and_variance_dist_attr.set_process_mesh(process_mesh);
-  mean_and_variance_dist_attr.set_dims_mapping(std::vector<int64_t>({-1}));
+  mean_and_variance_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, -1}));
   mean_and_variance_dist_attr.set_dynamic_dims(std::vector<bool>({false}));
   phi::distributed::DistMetaTensor y(common::make_ddim(x_shape), x_dist_attr);
   phi::distributed::DistMetaTensor y_grad(common::make_ddim(x_shape),
@@ -646,8 +646,8 @@ TEST(GroupNorm, Ctor) {
   check_dim_mapping(backward_info.first[1], {-1});
   check_dim_mapping(backward_info.first[2], {-1});
   check_dim_mapping(backward_info.first[3], {0, -1, -1, -1});
-  check_dim_mapping(backward_info.first[4], {0});
-  check_dim_mapping(backward_info.first[5], {0});
+  check_dim_mapping(backward_info.first[4], {0, -1});
+  check_dim_mapping(backward_info.first[5], {0, -1});
   check_dim_mapping(backward_info.first[6], {0, -1, -1, -1});
   check_dim_mapping(backward_info.second[0], {0, -1, -1, -1});
   check_dim_mapping(backward_info.second[1], {-1});

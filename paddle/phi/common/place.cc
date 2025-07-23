@@ -19,6 +19,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/common/exception.h"
+#include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
 
@@ -295,6 +296,16 @@ phi::XPUPlace DefaultXPUPlace() {
       phi::backends::xpu::GetXPUCurrentDeviceId());
 #else
       0);
+#endif
+}
+
+phi::CustomPlace DefaultCustomPlace() {
+  auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+  int device_id = phi::DeviceManager::GetDevice(dev_types[0]);
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  return phi::CustomPlace(dev_types[0], device_id);
+#else
+  PADDLE_THROW(common::errors::Unavailable("Unsupported custom device"));
 #endif
 }
 

@@ -250,7 +250,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
 
   bool IsRuntime() const override { return true; }
 
-  bool IsRunMKLDNNKernel() const override {
+  bool IsRunONEDNNKernel() const override {
     return (op_kernel_key_ &&
             (op_kernel_key_->layout() == phi::DataLayout::ONEDNN));
   }

@@ -57,7 +57,7 @@ void MatmulElementwiseAddMKLDNNFusePass::FuseMatmulElementwiseAdd(
     GET_IR_NODE_FROM_SUBGRAPH(
         elementwise_add_out, elementwise_add_out, matmul_pattern);
 
-    if (FindFuseOption(*matmul, *elementwise_add) != FUSE_MKLDNN) return;
+    if (FindFuseOption(*matmul, *elementwise_add) != FUSE_ONEDNN) return;
     if (!IsCompat(subgraph, g)) {
       LOG(WARNING)
           << "op compat for matmul_elementwise_add_onednn_fuse_pass failed.";
