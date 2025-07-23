@@ -34,6 +34,18 @@ on:
         description: "Generate images for all CI usage"
         value: ${{ jobs.build-docker-images.outputs.docker_distribute_image }}
 
+      docker_xpu_image:
+        description: "Generate images for all CI usage"
+        value: ${{ jobs.build-docker-images.outputs.docker_xpu_image }}
+
+      docker_npu_image:
+        description: "Generate images for all CI usage"
+        value: ${{ jobs.build-docker-images.outputs.docker_npu_image }}
+
+      docker_dcu_image:
+        description: "Generate images for all CI usage"
+        value: ${{ jobs.build-docker-images.outputs.docker_dcu_image }}
+
       docker_doc_image:
         description: "Generate images for all CI usage"
         value: ${{ jobs.build-docker-images.outputs.docker_doc_image }}
@@ -50,6 +62,9 @@ jobs:
       docker_coverage_image: ${{ steps.build-docker-images.outputs.docker_coverage_image }}
       docker_build_image: ${{ steps.build-docker-images.outputs.docker_build_image }}
       docker_distribute_image: ${{ steps.build-docker-images.outputs.docker_distribute_image }}
+      docker_xpu_image: ${{ steps.build-docker-images.outputs.docker_xpu_image }}
+      docker_npu_image: ${{ steps.build-docker-images.outputs.docker_npu_image }}
+      docker_dcu_image: ${{ steps.build-docker-images.outputs.docker_dcu_image }}
       docker_doc_image: ${{ steps.build-docker-images.outputs.docker_doc_image }}
     steps:
       - id: build-docker-images
@@ -62,6 +77,9 @@ jobs:
           docker_coverage_file: Dockerfile.cuda117_cudnn8_gcc82_ubuntu18_coverage
           docker_build_file: Dockerfile.cuda11.2_cudnn8_gcc82_trt8
           docker_distribute_file: Dockerfile.cuda123_cudnn9_gcc122_ubuntu20
+          docker_xpu_file: Dockerfile.develop.xre
+          docker_npu_file: Dockerfile.develop.npu
+          docker_dcu_file: Dockerfile.develop.dtk
           docker_doc_file: Dockerfile.doc
           dockerfile_script: https://raw.githubusercontent.com/PaddlePaddle/Paddle/refs/heads/develop/tools/dockerfile/ci_dockerfile.sh
           dockerfile_origin: https://raw.githubusercontent.com/PaddlePaddle/Paddle/refs/heads/develop/tools/dockerfile/Dockerfile.ubuntu20
@@ -82,7 +100,7 @@ jobs:
 
           # docker build images
           if [ "${{ inputs.task }}" == "cpu" ]; then
-            declare -A docker_files=(["docker_cpu"]="$docker_cpu_file" ["docker_inference"]="$docker_inference_file" ["docker_distribute"]="$docker_distribute_file")
+            declare -A docker_files=(["docker_cpu"]="$docker_cpu_file" ["docker_inference"]="$docker_inference_file" ["docker_distribute"]="$docker_distribute_file" ["docker_xpu"]="$docker_xpu_file" ["docker_npu"]="$docker_npu_file" ["docker_dcu"]="$docker_dcu_file")
           elif [ "${{ inputs.task }}" == "build" ]; then
             declare -A docker_files=(["docker_build"]="$docker_build_file" ["docker_doc"]="$docker_doc_file")
           else

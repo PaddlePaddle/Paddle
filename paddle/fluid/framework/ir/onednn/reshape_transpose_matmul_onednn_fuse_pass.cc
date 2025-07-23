@@ -20,7 +20,7 @@
 
 namespace paddle::framework::ir {
 
-void ReshapeTransposeMatmulMkldnnFusePass::ApplyImpl(Graph *graph) const {
+void ReshapeTransposeMatmulOnednnFusePass::ApplyImpl(Graph *graph) const {
   auto matmul_types = {"matmul", "matmul_v2", "fused_matmul"};
 
   for (const auto &matmul_type : matmul_types) {
@@ -43,7 +43,7 @@ void ReshapeTransposeMatmulMkldnnFusePass::ApplyImpl(Graph *graph) const {
   }
 }
 
-void ReshapeTransposeMatmulMkldnnFusePass::Fuse(
+void ReshapeTransposeMatmulOnednnFusePass::Fuse(
     Graph *graph,
     const std::string &matmul_type,
     bool with_reshape_xshape,
@@ -171,7 +171,7 @@ void ReshapeTransposeMatmulMkldnnFusePass::Fuse(
   }
 }
 
-ReshapeTransposeMatmulMkldnnFusePass::ReshapeTransposeMatmulMkldnnFusePass() {
+ReshapeTransposeMatmulOnednnFusePass::ReshapeTransposeMatmulOnednnFusePass() {
   AddOpCompat(OpCompat("reshape2"))
       .AddInput("X")
       .IsTensor()
@@ -265,7 +265,7 @@ ReshapeTransposeMatmulMkldnnFusePass::ReshapeTransposeMatmulMkldnnFusePass() {
 }  // namespace paddle::framework::ir
 
 REGISTER_PASS(reshape_transpose_matmul_onednn_fuse_pass,
-              paddle::framework::ir::ReshapeTransposeMatmulMkldnnFusePass);
+              paddle::framework::ir::ReshapeTransposeMatmulOnednnFusePass);
 
 REGISTER_PASS_CAPABILITY(reshape_transpose_matmul_onednn_fuse_pass)
     .AddCombination(

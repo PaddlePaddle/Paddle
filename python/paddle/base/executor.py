@@ -1339,7 +1339,7 @@ class Executor:
     def __del__(self) -> None:
         # NOTE(Ruibiao): The manually call of clear is required. Because in Python, executor_cache
         # may not immediately destructed after Executor instance deleted (so does not the _StandaloneExecutor),
-        # that brings errors to mkl-dnn unit tests (see ClearMKLDNNCache in interpretercore.cc for why).
+        # that brings errors to one-dnn unit tests (see ClearONEDNNCache in interpretercore.cc for why).
         self.close()
         self._executor_cache.clear()
 

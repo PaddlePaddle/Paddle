@@ -4652,7 +4652,7 @@ def adaptive_log_softmax_with_loss(
     target_dim = label.dim()
 
     if target_dim == 1:
-        if input.shape[0] != label.shape[0]:
+        if input.shape[0] != label.shape[0] and label.shape[0] != 0:
             raise ValueError(
                 'Input and label should have the same size '
                 'in the batch dimension.'
@@ -4749,9 +4749,10 @@ def adaptive_log_softmax_with_loss(
         x=input, weight=head_weight, bias=head_bias
     )
     head_logprob = paddle.nn.functional.log_softmax(head_output, axis=1)
-    output += paddle.take_along_axis(
-        head_logprob, gather_inds.unsqueeze(1), axis=1
-    ).squeeze()
+    if gather_inds.size != 0:
+        output += paddle.take_along_axis(
+            head_logprob, gather_inds.unsqueeze(1), axis=1
+        ).squeeze()
     loss = (-output).mean()
 
     if not is_batched:
