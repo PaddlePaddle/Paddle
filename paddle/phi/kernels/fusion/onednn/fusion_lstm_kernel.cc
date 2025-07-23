@@ -27,10 +27,10 @@ using phi::funcs::RNNReorderType;
 using OneDNNMemoryFormat = dnnl::memory::format_tag;
 
 template <typename T, typename T_out = T>
-class LSTMMKLDNNHandler
-    : public RNNMKLDNNHandler<T, dnnl::lstm_forward, T_out> {
+class LSTMONEDNNHandler
+    : public RNNONEDNNHandler<T, dnnl::lstm_forward, T_out> {
  public:
-  LSTMMKLDNNHandler(const OneDNNContext& dev_ctx,
+  LSTMONEDNNHandler(const OneDNNContext& dev_ctx,
                     const dnnl::engine onednn_engine,
                     phi::Place cpu_place,
                     const phi::DenseTensor* input,
@@ -50,7 +50,7 @@ class LSTMMKLDNNHandler
                     std::string gate_activation,
                     std::string cell_activation,
                     std::string candidate_activation)
-      : RNNMKLDNNHandler<T, dnnl::lstm_forward, T_out>(dev_ctx,
+      : RNNONEDNNHandler<T, dnnl::lstm_forward, T_out>(dev_ctx,
                                                        onednn_engine,
                                                        cpu_place,
                                                        input,
@@ -389,7 +389,7 @@ void RunKernel(const Context& dev_ctx,
 
   std::string unique_name =
       dev_ctx.GetInputsName("X")[0] + dev_ctx.GetInputsName("WeightH")[0];
-  LSTMMKLDNNHandler<T, Tout> handler(dev_ctx,
+  LSTMONEDNNHandler<T, Tout> handler(dev_ctx,
                                      onednn_engine,
                                      dev_ctx.GetPlace(),
                                      input,

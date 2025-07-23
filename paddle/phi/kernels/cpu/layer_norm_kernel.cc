@@ -45,6 +45,7 @@ void LayerNormKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(y);
   dev_ctx.template Alloc<T>(mean);
   dev_ctx.template Alloc<T>(var);
+  if (x.numel() == 0) return;
 
   auto matrix_dim = common::flatten_to_2d(x_dims, begin_norm_axis);
   int left = static_cast<int>(matrix_dim[0]);

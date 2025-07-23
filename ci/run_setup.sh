@@ -332,7 +332,7 @@ EOF
 
 run_setup "$@"
 
-if [ "$CI_name" == "build" ]; then
+if [[ "$CI_name" == "build" && "$is_pr" == "true" ]]; then
     if [ ! -d "${PADDLE_ROOT}/build/python/dist/" ]; then
         mkdir ${PADDLE_ROOT}/build/python/dist/
     fi

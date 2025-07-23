@@ -515,5 +515,33 @@ class TestAdaptiveAvgPool2DAPI_ZeroSize(unittest.TestCase):
             np.testing.assert_allclose(x.grad.shape, x.shape)
 
 
+class TestInterpolateAPI_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.x_np = np.random.random([0, 3, 7, 7]).astype("float32")
+
+    def test_functional_interpolate(self):
+        for use_cuda in (
+            [False, True] if core.is_compiled_with_cuda() else [False]
+        ):
+            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            paddle.disable_static(place=place)
+            x = paddle.to_tensor(self.x_np)
+            x.stop_gradient = False
+
+            out = paddle.nn.functional.interpolate(
+                x=x, mode="area", size=[2, 5]
+            )
+            res_np = adaptive_pool2d_forward(
+                x=self.x_np, output_size=[2, 5], pool_type="avg"
+            )
+            np.testing.assert_allclose(
+                out.numpy(), res_np, rtol=1e-5, atol=1e-8
+            )
+
+            loss = paddle.sum(out)
+            loss.backward()
+            np.testing.assert_allclose(x.grad.shape, x.shape)
+
+
 if __name__ == '__main__':
     unittest.main()

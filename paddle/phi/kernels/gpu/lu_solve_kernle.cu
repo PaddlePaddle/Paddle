@@ -65,6 +65,51 @@ void rocsolver_getrs<double>(const solverHandle_t& handle,
   PADDLE_ENFORCE_GPU_SUCCESS(
       dynload::rocsolver_dgetrs(handle, trans, n, nrhs, a, lda, ipiv, b, ldb));
 }
+
+template <>
+void rocsolver_getrs<dtype::complex<float>>(const solverHandle_t& handle,
+                                            rocblas_operation trans,
+                                            int n,
+                                            int nrhs,
+                                            dtype::complex<float>* a,
+                                            int lda,
+                                            int* ipiv,
+                                            dtype::complex<float>* b,
+                                            int ldb) {
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      dynload::rocsolver_cgetrs(handle,
+                                trans,
+                                n,
+                                nrhs,
+                                reinterpret_cast<rocblas_float_complex*>(a),
+                                lda,
+                                ipiv,
+                                reinterpret_cast<rocblas_float_complex*>(b),
+                                ldb));
+}
+
+template <>
+void rocsolver_getrs<dtype::complex<double>>(const solverHandle_t& handle,
+                                             rocblas_operation trans,
+                                             int n,
+                                             int nrhs,
+                                             dtype::complex<double>* a,
+                                             int lda,
+                                             int* ipiv,
+                                             dtype::complex<double>* b,
+                                             int ldb) {
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      dynload::rocsolver_zgetrs(handle,
+                                trans,
+                                n,
+                                nrhs,
+                                reinterpret_cast<rocblas_double_complex*>(a),
+                                lda,
+                                ipiv,
+                                reinterpret_cast<rocblas_double_complex*>(b),
+                                ldb));
+}
+
 #else
 template <typename T>
 void cusolver_getrs(const solverHandle_t& handle,
@@ -107,6 +152,55 @@ void cusolver_getrs<double>(const solverHandle_t& handle,
   PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnDgetrs(
       handle, trans, n, nrhs, a, lda, ipiv, b, ldb, info));
 }
+
+template <>
+void cusolver_getrs<dtype::complex<float>>(const solverHandle_t& handle,
+                                           cublasOperation_t trans,
+                                           int n,
+                                           int nrhs,
+                                           dtype::complex<float>* a,
+                                           int lda,
+                                           int* ipiv,
+                                           dtype::complex<float>* b,
+                                           int ldb,
+                                           int* info) {
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      dynload::cusolverDnCgetrs(handle,
+                                trans,
+                                n,
+                                nrhs,
+                                reinterpret_cast<cuComplex*>(a),
+                                lda,
+                                ipiv,
+                                reinterpret_cast<cuComplex*>(b),
+                                ldb,
+                                info));
+}
+
+template <>
+void cusolver_getrs<dtype::complex<double>>(const solverHandle_t& handle,
+                                            cublasOperation_t trans,
+                                            int n,
+                                            int nrhs,
+                                            dtype::complex<double>* a,
+                                            int lda,
+                                            int* ipiv,
+                                            dtype::complex<double>* b,
+                                            int ldb,
+                                            int* info) {
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      dynload::cusolverDnZgetrs(handle,
+                                trans,
+                                n,
+                                nrhs,
+                                reinterpret_cast<cuDoubleComplex*>(a),
+                                lda,
+                                ipiv,
+                                reinterpret_cast<cuDoubleComplex*>(b),
+                                ldb,
+                                info));
+}
+
 #endif  // PADDLE_WITH_HIP
 
 template <typename T, typename Context>
@@ -199,5 +293,11 @@ void LuSolveKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    lu_solve, GPU, ALL_LAYOUT, phi::LuSolveKernel, float, double) {}
+PD_REGISTER_KERNEL(lu_solve,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LuSolveKernel,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

@@ -1277,13 +1277,18 @@ bool LstsqOpInferSymbolicShape(pir::Operation *op,
           symbol::TensorShapeOrDataDimExprs(batch_dims_vec)});
 
   std::vector<symbol::DimExpr> residuals_shape{};
+  std::string driver = op->attribute<pir::StrAttribute>("driver").AsString();
   if (m.isa<int64_t>() && n.isa<int64_t>()) {
     int64_t m_value = m.Get<std::int64_t>();
     int64_t n_value = n.Get<std::int64_t>();
-    if (m_value > n_value) {
-      batch_dims_vec.emplace_back(nrhs);
-      residuals_shape = batch_dims_vec;
-      batch_dims_vec.pop_back();
+    if (m_value > n_value && driver != "gelsy") {
+      if (driver == "gelss" || driver == "gelsd") {
+        residuals_shape.emplace_back(infer_context->GetNextSymName());
+      } else {
+        batch_dims_vec.emplace_back(nrhs);
+        residuals_shape = batch_dims_vec;
+        batch_dims_vec.pop_back();
+      }
     } else {
       residuals_shape.emplace_back(0);
     }
