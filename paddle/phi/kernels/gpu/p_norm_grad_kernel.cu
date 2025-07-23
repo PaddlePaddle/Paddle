@@ -14,31 +14,20 @@
 
 #include "paddle/phi/kernels/p_norm_grad_kernel.h"
 
+#include <vector>
+
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/abs_kernel.h"
+#include "paddle/phi/kernels/elementwise_multiply_kernel.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/reduce_grad_functions.h"
+#include "paddle/phi/kernels/reduce_amax_grad_kernel.h"
+#include "paddle/phi/kernels/sign_kernel.h"
 
 namespace phi {
-
-template <typename T>
-struct AbsMaxAndMinGradFunctor {
-  template <typename Context,
-            typename X,
-            typename Y,
-            typename DX,
-            typename DY,
-            typename Dim>
-  void operator()(const Context& place,
-                  X* x,
-                  Y* y,
-                  DX* dx,
-                  DY* dy,
-                  const Dim& dim,
-                  int size) {
-    dx->device(place) = dy->broadcast(dim) * (*x).sign() *
-                        ((*x).abs() == y->broadcast(dim)).template cast<T>();
-  }
-};
 
 template <typename T>
 struct PNormGradFunctor {
@@ -109,17 +98,45 @@ void PNormGradKernel(const Context& dev_ctx,
 
   auto xdim = in_x->dims();
   bool reduce_all = (in_norm->numel() == 1);
-  if (axis < 0) axis = xdim.size() + axis;
+  if (axis < 0) {
+    axis = xdim.size() + axis;
+  }
   const std::vector<int> dims = {axis};
 
   if (porder == 0) {
     phi::funcs::SetConstant<Context, T> set_zero;
     set_zero(dev_ctx, out_dx, static_cast<T>(0));
   } else if (porder == INFINITY || porder == -INFINITY) {
-    AbsMaxAndMinGradFunctor<T> functor;
-    funcs::LaunchReduceGradKernel<Context, T, AbsMaxAndMinGradFunctor<T>>(
-        dev_ctx, in_x, in_norm, in_norm_dy, out_dx, functor, dims, reduce_all);
+    std::vector<int64_t> dims_for_amax;
+    if (reduce_all) {
+      dims_for_amax.resize(xdim.size());
+      for (int i = 0; i < xdim.size(); ++i) dims_for_amax[i] = i;
+    } else {
+      dims_for_amax.push_back(axis);
+    }
 
+    DenseTensor x_abs;
+    x_abs.Resize(in_x->dims());
+    dev_ctx.template Alloc<T>(&x_abs);
+    phi::AbsKernel<T, Context>(dev_ctx, *in_x, &x_abs);
+
+    DenseTensor amax_grad_out;
+    amax_grad_out.Resize(in_x->dims());
+    dev_ctx.template Alloc<T>(&amax_grad_out);
+    phi::ReduceAMaxGradKernel<T, Context>(dev_ctx,
+                                          x_abs,
+                                          *in_norm,
+                                          *in_norm_dy,
+                                          dims_for_amax,
+                                          keepdim,
+                                          reduce_all,
+                                          &amax_grad_out);
+    DenseTensor x_sign;
+    x_sign.Resize(in_x->dims());
+    dev_ctx.template Alloc<T>(&x_sign);
+    phi::SignKernel<T, Context>(dev_ctx, *in_x, &x_sign);
+
+    phi::MultiplyKernel<T, Context>(dev_ctx, amax_grad_out, x_sign, out_dx);
   } else {
     auto functor = PNormGradFunctor<T>(porder, epsilon);
     funcs::LaunchReduceGradKernel<Context, T, PNormGradFunctor<T>>(
@@ -127,6 +144,7 @@ void PNormGradKernel(const Context& dev_ctx,
   }
 }
 }  // namespace phi
+
 PD_REGISTER_KERNEL(p_norm_grad,
                    GPU,
                    ALL_LAYOUT,
