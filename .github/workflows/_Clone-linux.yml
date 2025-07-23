@@ -67,6 +67,7 @@ jobs:
           git config user.email "paddle_ci@example.com"
           git fetch origin pull/${{ github.event.pull_request.number }}/head:pr
           git merge --no-ff pr
+          git submodule update --init
           git branch -d pr
           source ${ci_scripts}/check_execution.sh
           bash ${ci_scripts}/third_party_tag.sh
