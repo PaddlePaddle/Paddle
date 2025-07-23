@@ -30,6 +30,7 @@ env:
   PR_ID: ${{ github.event.pull_request.number || '0' }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha || github.sha }}
   ci_scripts: ${{ github.workspace }}/ci
+  BRANCH: ${{ github.event.pull_request.base.ref || github.ref_name }}
 
 jobs:
   clone:
@@ -66,6 +67,7 @@ jobs:
           git config user.email "paddle_ci@example.com"
           git fetch origin pull/${{ github.event.pull_request.number }}/head:pr
           git merge --no-ff pr
+          git submodule update --init
           git branch -d pr
           source ${ci_scripts}/check_execution.sh
           bash ${ci_scripts}/third_party_tag.sh
@@ -95,14 +97,15 @@ jobs:
           bos_file: "/home/paddle/actions-runner/bos/BosClient.py"
         run: |
           cd ..
-          tar -zcf Paddle.tar.gz Paddle
+          tar -I 'zstd -T0' -cf Paddle.tar.gz Paddle
           echo "::group::Install bce-python-sdk"
           python -m pip install bce-python-sdk==0.8.74
           echo "::endgroup::"
           python ${bos_file} Paddle.tar.gz paddle-github-action/PR/${{ inputs.clone_dir }}/${PR_ID}/${COMMIT_ID}
           rm Paddle.tar.gz
           cd -
-          git switch ${{ github.event.pull_request.base.ref }}
+          git switch ${BRANCH}
+          set +e
           git branch -D test
           git gc
 

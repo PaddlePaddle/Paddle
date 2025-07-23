@@ -29,6 +29,10 @@ limitations under the License. */
 #include "xpu/runtime_ex.h"
 #endif
 
+#include "paddle/common/flags.h"
+
+COMMON_DECLARE_bool(use_default_stream);
+
 namespace paddle::memory {
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -562,7 +566,7 @@ TEST_API void Copy<phi::CPUPlace, phi::GPUPlace>(phi::CPUPlace dst_place,
   platform::SetDeviceId(src_place.device);
   VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
           << dst_place << " by stream(" << stream << ")";
-  if (stream) {
+  if (stream || FLAGS_use_default_stream) {
     phi::RecordEvent record_event(
         "GpuMemcpyAsync:GPU->CPU", phi::TracerEventType::UserDefined, 1);
 #ifdef PADDLE_WITH_HIP
@@ -605,7 +609,7 @@ TEST_API void Copy<phi::GPUPlace, phi::CPUPlace>(phi::GPUPlace dst_place,
   platform::SetDeviceId(dst_place.device);
   VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
           << dst_place << " by stream(" << stream << ")";
-  if (stream) {
+  if (stream || FLAGS_use_default_stream) {
     phi::RecordEvent record_event(
         "GpuMemcpyAsync:CPU->GPU", phi::TracerEventType::UserDefined, 1);
 #ifdef PADDLE_WITH_HIP
@@ -649,7 +653,7 @@ void Copy<phi::GPUPlace, phi::GPUPlace>(phi::GPUPlace dst_place,
           << dst_place << " by stream(" << stream << ")";
   if (dst_place == src_place) {
     platform::SetDeviceId(src_place.device);
-    if (stream) {
+    if (stream || FLAGS_use_default_stream) {
       phi::RecordEvent record_event("GpuMemcpyAsync(same_gpu):GPU->GPU",
                                     phi::TracerEventType::UserDefined,
                                     1);
@@ -744,7 +748,7 @@ void Copy<phi::GPUPinnedPlace, phi::GPUPlace>(phi::GPUPinnedPlace dst_place,
   platform::SetDeviceId(src_place.device);
   VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
           << dst_place << " by stream(" << stream << ")";
-  if (stream) {
+  if (stream || FLAGS_use_default_stream) {
     phi::RecordEvent record_event(
         "GpuMemcpyAsync:GPU->CUDAPinned", phi::TracerEventType::UserDefined, 1);
 #ifdef PADDLE_WITH_HIP
@@ -783,7 +787,7 @@ void Copy<phi::GPUPlace, phi::GPUPinnedPlace>(phi::GPUPlace dst_place,
   platform::SetDeviceId(dst_place.device);
   VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
           << dst_place << " by stream(" << stream << ")";
-  if (stream) {
+  if (stream || FLAGS_use_default_stream) {
     phi::RecordEvent record_event(
         "GpuMemcpyAsync:CUDAPinned->GPU", phi::TracerEventType::UserDefined, 1);
 #ifdef PADDLE_WITH_HIP

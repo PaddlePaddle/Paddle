@@ -1057,7 +1057,7 @@ std::string GetKernelName(const OpYamlInfoParser* op_info_parser,
 }
 
 #ifdef PADDLE_WITH_DNNL
-bool SupportsMKLDNN(const std::string& kernel_name,
+bool SupportsONEDNN(const std::string& kernel_name,
                     const phi::DataType data_type) {
   auto phi_kernels =
       phi::KernelFactory::Instance().SelectKernelMap(kernel_name);
@@ -1441,7 +1441,7 @@ phi::KernelKey GetKernelKey(
   elems.erase("");
 
   if (op->HasTrait<OneDNNTrait>() && res.backend() == phi::Backend::CPU &&
-      SupportsMKLDNN(kernel_fn_str, res.dtype()) &&
+      SupportsONEDNN(kernel_fn_str, res.dtype()) &&
       elems.count(op->name().substr(
           strlen(OneDNNOperatorDialect::name()) + 1,
           op->name().size() - strlen(OneDNNOperatorDialect::name()) - 1)) ==
@@ -3613,7 +3613,7 @@ void ProcessBlock(
     if (kernel_key.dtype() == phi::DataType::BFLOAT16 &&
         kernel_key.backend() == phi::Backend::CPU &&
         !op_item->HasTrait<OneDNNTrait>() && !SupportsCPUBF16(kernel_name) &&
-        SupportsMKLDNN(kernel_name, phi::DataType::BFLOAT16)) {
+        SupportsONEDNN(kernel_name, phi::DataType::BFLOAT16)) {
       auto op_item_inner = PdOp2OneDNNOp(op_item, block, ctx);
       if (op_item_inner != op_item) {
         op_item = op_item_inner;
@@ -3623,7 +3623,7 @@ void ProcessBlock(
       }
     } else if (FLAGS_use_mkldnn && kernel_key.backend() == phi::Backend::CPU &&
                !op_item->HasTrait<OneDNNTrait>() &&
-               SupportsMKLDNN(kernel_name, kernel_key.dtype())) {
+               SupportsONEDNN(kernel_name, kernel_key.dtype())) {
       // Support FLAGS_use_mkldnn
       auto op_item_inner = PdOp2OneDNNOp(op_item, block, ctx);
       if (op_item_inner != op_item) {

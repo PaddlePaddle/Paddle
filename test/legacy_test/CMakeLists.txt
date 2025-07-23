@@ -30,6 +30,11 @@ list(REMOVE_ITEM TEST_OPS test_allgather)
 list(REMOVE_ITEM TEST_OPS test_reducescatter)
 list(REMOVE_ITEM TEST_OPS test_flash_attention)
 
+#Note(risemeup1): Delete some unit tests related to the parameter server.
+list(REMOVE_ITEM TEST_OPS test_dist_fleet_trainer_desc_config)
+list(REMOVE_ITEM TEST_OPS test_dist_sparse_tensor_load_adam)
+list(REMOVE_ITEM TEST_OPS test_dist_tree_index)
+
 if(WITH_COVERAGE)
   list(REMOVE_ITEM TEST_OPS test_unique)
 endif()
@@ -690,9 +695,7 @@ if(WITH_DISTRIBUTE)
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_word2vec")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_gloo")
 
-  if(NOT WITH_HETERPS)
-    list(REMOVE_ITEM DIST_TEST_OPS "test_communicator_ps_gpu")
-  endif()
+  list(REMOVE_ITEM DIST_TEST_OPS "test_communicator_ps_gpu")
 
   if(NOT APPLE)
     if(WITH_GPU OR WITH_ROCM)
