@@ -34,14 +34,14 @@ jobs:
     uses: ./.github/workflows/_Clone-linux.yml
     with:
       workflow-name: 'coverage'
-      bos_dir: Paddle-coverage
+      clone_dir: Paddle-coverage
 
   build-docker:
     name: Coverage build docker
     needs: clone
     uses: ./.github/workflows/docker.yml
     with:
-      bos_dir: Paddle-coverage
+      clone_dir: Paddle-coverage
       task: coverage
 
   build:

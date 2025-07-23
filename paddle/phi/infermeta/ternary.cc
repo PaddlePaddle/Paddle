@@ -826,13 +826,6 @@ void InstanceNormInferMeta(const MetaTensor& x,
                     common::errors::InvalidArgument(
                         "The y in InstanceNormInferMeta can't be nullptr."));
   const auto x_dims = x.dims();
-  PADDLE_ENFORCE_NE(common::product(x_dims),
-                    0,
-                    common::errors::PreconditionNotMet(
-                        "The Input variable X has not "
-                        "been initialized. You may need to confirm "
-                        "if you put exe.run(startup_program) "
-                        "after optimizer.minimize function."));
   PADDLE_ENFORCE_GE(
       x_dims.size(),
       2,
@@ -867,13 +860,16 @@ void InstanceNormInferMeta(const MetaTensor& x,
             scale_dim.size()));
     bool check = config.is_runtime || contain_unknown_dim(scale_dim);
     if (check) {
-      PADDLE_ENFORCE_EQ(scale_dim[0],
-                        C,
-                        common::errors::InvalidArgument(
-                            "ShapeError: the shape of scale must equal to [%d]"
-                            "But received: the shape of scale is [%d]",
-                            C,
-                            scale_dim[0]));
+      if (C != 0) {
+        PADDLE_ENFORCE_EQ(
+            scale_dim[0],
+            C,
+            common::errors::InvalidArgument(
+                "ShapeError: the shape of scale must equal to [%d]"
+                "But received: the shape of scale is [%d]",
+                C,
+                scale_dim[0]));
+      }
     }
   }
   if (bias) {
@@ -889,13 +885,15 @@ void InstanceNormInferMeta(const MetaTensor& x,
             bias_dim.size()));
     bool check = config.is_runtime || !contain_unknown_dim(bias_dim);
     if (check) {
-      PADDLE_ENFORCE_EQ(bias_dim[0],
-                        C,
-                        common::errors::InvalidArgument(
-                            "ShapeError: the shape of bias must equal to [%d]"
-                            "But received: the shape of bias is [%d]",
-                            C,
-                            bias_dim[0]));
+      if (C != 0) {
+        PADDLE_ENFORCE_EQ(bias_dim[0],
+                          C,
+                          common::errors::InvalidArgument(
+                              "ShapeError: the shape of bias must equal to [%d]"
+                              "But received: the shape of bias is [%d]",
+                              C,
+                              bias_dim[0]));
+      }
     }
   }
   y->set_dims(x_dims);

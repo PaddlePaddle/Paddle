@@ -693,22 +693,13 @@ def amp_guard(
                                 ].append(param)
                     amp_global_state().already_classify_params_meshes = True
 
-                if os.getenv("FLAGS_enable_tensor_fusion") not in [
-                    "True",
-                    "true",
-                    "1",
-                ] and os.getenv("FLAGS_enable_main_grad") not in [
-                    "True",
-                    "true",
-                    "1",
-                ]:
-                    if len(amp_global_state().mesh2params):
-                        for _, params in amp_global_state().mesh2params.items():
-                            core.eager.set_master_grads(params)
-                    else:
-                        core.eager.set_master_grads(
-                            amp_global_state().model_parameters
-                        )
+                if len(amp_global_state().mesh2params):
+                    for _, params in amp_global_state().mesh2params.items():
+                        core.eager.set_master_grads(params)
+                else:
+                    core.eager.set_master_grads(
+                        amp_global_state().model_parameters
+                    )
 
                 amp_global_state().already_register_final_backward_hook = False
 
@@ -750,8 +741,9 @@ def amp_guard(
                     if not hasattr(param, "main_grad"):
                         param.main_grad = None
                         param._register_grad_hook(_update_main_grad_hook(param))
-
-            core.eager._add_backward_final_hook(master_grad_hook)
+                os.environ["FLAGS_enable_tensor_fusion"] = "0"
+            else:
+                core.eager._add_backward_final_hook(master_grad_hook)
             amp_global_state().already_register_final_backward_hook = True
 
         if tracer:

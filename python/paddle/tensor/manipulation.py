@@ -629,7 +629,7 @@ def transpose(
         return out
 
 
-def unstack(x: Tensor, axis: int = 0, num: int | None = None) -> Tensor:
+def unstack(x: Tensor, axis: int = 0, num: int | None = None) -> list[Tensor]:
     """
     This layer unstacks input Tensor :code:`x` into several Tensors along :code:`axis`.
 

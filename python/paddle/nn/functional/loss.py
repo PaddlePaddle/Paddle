@@ -3071,6 +3071,13 @@ def cross_entropy(
             #   so, reduce_sum all directly is ok
             return _C_ops.sum(out, [], None, False)
         elif reduction == "mean":
+            # when reduction is mean, use paddle.nan
+            def _replace_nan(out):
+                return out + paddle.nan
+
+            if 0 in input.shape:
+                out = _replace_nan(out)
+                return _C_ops.mean_all(out)
             # 1. if weight==none,
             #     numerator: reduce_sum all loss directly is ok causeof base_softmax_with_cross_entropy's inner logic
             #     denominator: count sample num with class_index!=ignore_index
@@ -3078,7 +3085,10 @@ def cross_entropy(
             #     numerator: loss's weighted sum
             #     denominator: cal the sum of weight where the sample's class_index!=ignore_index
             if ignore_index >= 0:  # ignore label
-                out_sum = _C_ops.sum(out, [], None, False)
+                if out.dtype == paddle.float16:
+                    out_sum = _C_ops.sum(out, [], paddle.float32, False)
+                else:
+                    out_sum = _C_ops.sum(out, [], None, False)
                 # for each label[i],set 1 or 0, according to ignore_index
                 # mask[i]=0, if label[i]==ignore_index
                 # mask[i]=1, otherwise
@@ -3097,7 +3107,10 @@ def cross_entropy(
                         weight_sum
                         + (weight_sum == 0.0).astype(weight_sum.dtype)
                     )
-                return ret
+                if out.dtype == paddle.float16:
+                    return paddle.cast(ret, dtype=out.dtype)
+                else:
+                    return ret
             elif weight is not None:
                 out_sum = _C_ops.sum(out, [], None, False)
                 total_weight = _C_ops.sum(
@@ -4167,14 +4180,17 @@ def multi_margin_loss(
                 f"but received weight's shape[0]: {weight.shape[0]} and input's shape[1]: {input.shape[1]}"
             )
         weight = paddle.gather(weight, label, axis=0).reshape((-1, 1))
-        loss = paddle.mean(
-            weight
-            * paddle.pow(
-                paddle.clip((margin - index_sample + input), min=0.0),
-                p,
-            ),
-            axis=1,
-        ) - weight * (margin**p / paddle.shape(input)[1])
+        loss = (
+            paddle.mean(
+                weight
+                * paddle.pow(
+                    paddle.clip((margin - index_sample + input), min=0.0),
+                    p,
+                ),
+                axis=1,
+            )
+            - (weight * (margin**p / paddle.shape(input)[1])).squeeze()
+        )
     else:
         loss = (
             paddle.mean(

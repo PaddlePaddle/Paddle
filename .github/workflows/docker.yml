@@ -1,7 +1,7 @@
 on:
   workflow_call:
     inputs:
-      bos_dir:
+      clone_dir:
         required: false
         type: string
         default: "Paddle"
@@ -55,8 +55,8 @@ jobs:
       - id: build-docker-images
         name: Build docker images
         env:
-          PR_ID: ${{ github.event.pull_request.number }}
-          COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+          PR_ID: ${{ github.event.pull_request.number || '0' }}
+          COMMIT_ID: ${{ github.event.pull_request.head.sha || github.sha }}
           docker_cpu_file: Dockerfile.cuda9_cudnn7_gcc48_py35_centos6
           docker_inference_file: Dockerfile.cuda11.2_cudnn8.1_trt8.4_gcc8.2_ubuntu18
           docker_coverage_file: Dockerfile.cuda117_cudnn8_gcc82_ubuntu18_coverage
@@ -72,7 +72,7 @@ jobs:
             mkdir -p tools/dockerfile && cd tools/dockerfile
             wget -q --tries=5 --no-proxy ${dockerfile_script} ${dockerfile_origin} --no-check-certificate
           else
-            wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/${{ inputs.bos_dir }}/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
+            wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/${{ inputs.clone_dir }}/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
             tar xf Paddle.tar.gz --strip-components=1
             rm Paddle.tar.gz
             cd tools/dockerfile

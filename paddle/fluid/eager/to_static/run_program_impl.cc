@@ -444,24 +444,25 @@ std::vector<paddle::Tensor> RunProgramImpl(
     const std::vector<paddle::Tensor> &params,
     std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
     bool require_any_grad,
-    const paddle::framework::AttributeMap &attrs,
+    const paddle::framework::AttributeMap &prog_attrs,
+    const paddle::framework::AttributeMap &cuda_graph_attrs,
     const int64_t &place_hash_key) {
   VLOG(2) << "RunProgram Impl";
   // In the original run_program OP, the default value of the is_test
   // attribute is false, we should check if there is is_test parameter
   // in attrs
   auto is_test = false;
-  if (attrs.count("is_test")) {
-    is_test = PADDLE_GET_CONST(bool, attrs.at("is_test"));
+  if (prog_attrs.count("is_test")) {
+    is_test = PADDLE_GET_CONST(bool, prog_attrs.at("is_test"));
   }
-  int64_t program_id = PADDLE_GET_CONST(int64_t, attrs.at("program_id"));
+  int64_t program_id = PADDLE_GET_CONST(int64_t, prog_attrs.at("program_id"));
   int64_t cuda_graph_state =
-      PADDLE_GET_CONST(int64_t, attrs.at("cuda_graph_state"));
+      PADDLE_GET_CONST(int64_t, cuda_graph_attrs.at("cuda_graph_state"));
   int64_t cuda_graph_dispatch_key =
-      PADDLE_GET_CONST(int64_t, attrs.at("cuda_graph_dispatch_key"));
+      PADDLE_GET_CONST(int64_t, cuda_graph_attrs.at("cuda_graph_dispatch_key"));
   bool in_sot_mode = false;
-  if (attrs.count("in_sot_mode")) {
-    in_sot_mode = PADDLE_GET_CONST(bool, attrs.at("in_sot_mode"));
+  if (prog_attrs.count("in_sot_mode")) {
+    in_sot_mode = PADDLE_GET_CONST(bool, prog_attrs.at("in_sot_mode"));
   }
   auto need_grad = !is_test && require_any_grad;
   auto place = egr::Controller::Instance().GetExpectedPlace();
@@ -489,21 +490,21 @@ std::vector<paddle::Tensor> RunProgramImpl(
 
   // Get All needed names
   const auto &input_names =
-      PADDLE_GET_CONST(std::vector<std::string>, attrs.at("fx_names"));
+      PADDLE_GET_CONST(std::vector<std::string>, prog_attrs.at("fx_names"));
   const auto &param_names =
-      PADDLE_GET_CONST(std::vector<std::string>, attrs.at("fp_names"));
+      PADDLE_GET_CONST(std::vector<std::string>, prog_attrs.at("fp_names"));
   const auto &output_names =
-      PADDLE_GET_CONST(std::vector<std::string>, attrs.at("fo_names"));
+      PADDLE_GET_CONST(std::vector<std::string>, prog_attrs.at("fo_names"));
   const auto &no_need_buffer_names = PADDLE_GET_CONST(
-      std::vector<std::string>, attrs.at("no_need_buffers_names"));
+      std::vector<std::string>, prog_attrs.at("no_need_buffers_names"));
 
   const auto &output_values =
-      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fo_values"));
+      PADDLE_GET_CONST(std::vector<::pir::Value>, prog_attrs.at("fo_values"));
 
   std::shared_ptr<::pir::Program> forward_program = PADDLE_GET_CONST(
-      std::shared_ptr<::pir::Program>, attrs.at("forward_program"));
+      std::shared_ptr<::pir::Program>, prog_attrs.at("forward_program"));
   std::shared_ptr<::pir::Program> backward_program = PADDLE_GET_CONST(
-      std::shared_ptr<::pir::Program>, attrs.at("backward_program"));
+      std::shared_ptr<::pir::Program>, prog_attrs.at("backward_program"));
 
   auto &cache = paddle::framework::InterpreterCoreInfoCache::Instance();
   std::shared_ptr<paddle::framework::InterpreterCore> interpreter_core =
@@ -680,7 +681,8 @@ std::vector<paddle::Tensor> RunProgramImpl(
 void RunProgramGradImpl(
     const std::vector<paddle::Tensor> &out_grad,
     const std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
-    const paddle::framework::AttributeMap &attrs,
+    const paddle::framework::AttributeMap &prog_attrs,
+    const paddle::framework::AttributeMap &cuda_graph_attrs,
     std::vector<paddle::Tensor> *x_grad,
     std::vector<paddle::Tensor> *params_grad,
     const int64_t &place_hash_key) {
@@ -694,15 +696,15 @@ void RunProgramGradImpl(
           "The OutScope of RunProgramGradOp should only hold one scope."));
   paddle::framework::Scope *global_inner_scope = out_scope_vec->front();
 
-  int64_t program_id = PADDLE_GET_CONST(int64_t, attrs.at("program_id"));
+  int64_t program_id = PADDLE_GET_CONST(int64_t, prog_attrs.at("program_id"));
   int64_t cuda_graph_state =
-      PADDLE_GET_CONST(int64_t, attrs.at("cuda_graph_state"));
+      PADDLE_GET_CONST(int64_t, cuda_graph_attrs.at("cuda_graph_state"));
   int64_t cuda_graph_dispatch_key =
-      PADDLE_GET_CONST(int64_t, attrs.at("cuda_graph_dispatch_key"));
+      PADDLE_GET_CONST(int64_t, cuda_graph_attrs.at("cuda_graph_dispatch_key"));
 
   bool in_sot_mode = false;
-  if (attrs.count("in_sot_mode")) {
-    in_sot_mode = PADDLE_GET_CONST(bool, attrs.at("in_sot_mode"));
+  if (prog_attrs.count("in_sot_mode")) {
+    in_sot_mode = PADDLE_GET_CONST(bool, prog_attrs.at("in_sot_mode"));
   }
 
   auto place = egr::Controller::Instance().GetExpectedPlace();
@@ -711,15 +713,15 @@ void RunProgramGradImpl(
   VLOG(4) << "global_inner_scope:" << global_inner_scope;
 
   std::shared_ptr<::pir::Program> backward_program = PADDLE_GET_CONST(
-      std::shared_ptr<::pir::Program>, attrs.at("backward_program"));
+      std::shared_ptr<::pir::Program>, prog_attrs.at("backward_program"));
 
   // Get All needed names
   const auto &output_grad_names =
-      PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bo_g_names"));
+      PADDLE_GET_CONST(std::vector<std::string>, prog_attrs.at("bo_g_names"));
   const auto &x_grad_names =
-      PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bx_g_names"));
+      PADDLE_GET_CONST(std::vector<std::string>, prog_attrs.at("bx_g_names"));
   const auto &p_grad_names =
-      PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bp_g_names"));
+      PADDLE_GET_CONST(std::vector<std::string>, prog_attrs.at("bp_g_names"));
 
   details::Trans2ContiguousTensorsInplace(out_grad);
 
