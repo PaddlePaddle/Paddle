@@ -205,7 +205,7 @@ static inline int GetLastPow2(int n) {
 }
 
 inline GpuLaunchConfig GetGpuLaunchConfig3D(const phi::GPUContext& dev_ctx,
-                                            int num_img,
+                                            int64_t num_img,
                                             int height,
                                             int width) {
   const int kThreadsPerBlock = 256;
