@@ -6,10 +6,6 @@ on:
       docker_build_image:
         type: string
         required: true
-      CI_name:
-        type: string
-        required: false
-        default: 'build'
       is_pr:
         type: string
         required: false
@@ -27,8 +23,9 @@ env:
   TASK: paddle-CI-${{ github.event.pull_request.number }}-build
   ci_scripts: /paddle/ci
   BRANCH: ${{ github.event.pull_request.base.ref || github.ref_name }}
-  CI_name: ${{ inputs.CI_name }}
+  CI_name: build
   CFS_DIR: /home/data/cfs
+  is_pr: ${{ inputs.is_pr }}
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 
 defaults:
@@ -86,6 +83,7 @@ jobs:
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/paddle \
             -e BRANCH \
+            -e is_pr \
             -e PR_ID \
             -e COMMIT_ID \
             -e work_dir \
