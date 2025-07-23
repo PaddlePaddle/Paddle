@@ -511,7 +511,7 @@ void ComputeFusedGemmEpilogueForward(const phi::GPUContext& dev_ctx,
   GPU(blasLtHandle_t) lt_handle = dev_ctx.cublaslt_handle();
   // NOTE(zengjinle): I do not know whether the 4MB workspace size is
   // "enough". I just followed the settings from the NVIDIA MLPerf BERT code.
-  size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
+  size_t workspace_size = static_cast<size_t>(32) * 1024 * 1024;
   gpuStream_t stream = dev_ctx.stream();
   auto workspace = memory_utils::Alloc(
       dev_ctx.GetPlace(),
@@ -735,7 +735,7 @@ void ComputeFusedGemmEpilogueBackwardImplDev(
   GPU(blasLtHandle_t) lt_handle = dev_ctx.cublaslt_handle();
   // NOTE(zengjinle): I do not know whether the 4MB workspace size is
   // "enough". I just followed the settings from the NVIDIA MLPerf BERT code.
-  size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
+  size_t workspace_size = static_cast<size_t>(32) * 1024 * 1024;
   gpuStream_t stream = dev_ctx.stream();
 
   MT alpha = static_cast<MT>(1.0);

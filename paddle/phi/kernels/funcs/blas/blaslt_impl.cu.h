@@ -548,38 +548,9 @@ struct CublasLtBase {
         returned_results,
         0,
         common::errors::Unavailable("No GEMM algorithm available."));
-    int best_algo_idx = -1;
-    if (returned_results == 1 || FLAGS_cublaslt_exhaustive_search_times <= 0) {
-      best_algo_idx = 0;
-    } else {
-      float min_time_cost = std::numeric_limits<float>::max();
-      for (int algo_idx = 0; algo_idx < returned_results; ++algo_idx) {
-        float cur_time_cost =
-            RunAndMeasureAlgo(ctx,
-                              lt_handle,
-                              desc,
-                              alpha,
-                              beta,
-                              y_data,
-                              x_data,
-                              out_data,
-                              workspace_ptr,
-                              workspace_size,
-                              &(heuristic_results[algo_idx].algo));
-        VLOG(6) << "[MatmulWithCublaslt] algo[" << algo_idx
-                << "] time: " << cur_time_cost << " s";
-
-        if ((best_algo_idx == 0 && (1.05 * cur_time_cost < min_time_cost)) ||
-            (cur_time_cost < min_time_cost)) {
-          best_algo_idx = algo_idx;
-          min_time_cost = cur_time_cost;
-        }
-      }
-    }
-    VLOG(6) << "[MatmulWithCublaslt] best_algo_idx: " << best_algo_idx;
 
     cublasLtMatmulAlgo_t* best_algo = desc->SetAlgo();
-    *best_algo = heuristic_results[best_algo_idx].algo;
+    *best_algo = heuristic_results[0].algo;
     PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cublasLtMatmulPreferenceDestroy(preference));
   }
@@ -830,38 +801,8 @@ struct CublasLtBase<int8_t, int32_t, MatmulDescriptor> {
         returned_results,
         0,
         common::errors::Unavailable("No GEMM algorithm available."));
-    int best_algo_idx = -1;
-    if (returned_results == 1 || FLAGS_cublaslt_exhaustive_search_times <= 0) {
-      best_algo_idx = 0;
-    } else {
-      float min_time_cost = std::numeric_limits<float>::max();
-      for (int algo_idx = 0; algo_idx < returned_results; ++algo_idx) {
-        float cur_time_cost =
-            RunAndMeasureAlgo(ctx,
-                              lt_handle,
-                              desc,
-                              alpha,
-                              beta,
-                              y_data,
-                              x_data,
-                              out_data,
-                              workspace_ptr,
-                              workspace_size,
-                              &(heuristic_results[algo_idx].algo));
-        VLOG(6) << "[MatmulWithCublaslt] algo[" << algo_idx
-                << "] time: " << cur_time_cost << " s";
-
-        if ((best_algo_idx == 0 && (1.05 * cur_time_cost < min_time_cost)) ||
-            (cur_time_cost < min_time_cost)) {
-          best_algo_idx = algo_idx;
-          min_time_cost = cur_time_cost;
-        }
-      }
-    }
-    VLOG(6) << "[MatmulWithCublaslt] best_algo_idx: " << best_algo_idx;
-
     cublasLtMatmulAlgo_t* best_algo = desc->SetAlgo();
-    *best_algo = heuristic_results[best_algo_idx].algo;
+    *best_algo = heuristic_results[0].algo;
     PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cublasLtMatmulPreferenceDestroy(preference));
   }
