@@ -214,7 +214,7 @@ jobs:
           echo "Uploading build.tar.gz to cfs"
           mkdir -p ${CFS_DIR}/build_bos/${PR_ID}/${COMMIT_ID}
           mv build.tar.gz ${CFS_DIR}/build_bos/${PR_ID}/${COMMIT_ID} && echo success
-          mv /paddle/build/pr_whl/${{ env.paddle_whl }} .
+          mv /paddle/${{ env.paddle_whl }} .
           echo "Uploading paddle_whl to bos"
           python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/build/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
           '
