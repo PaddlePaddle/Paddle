@@ -47,7 +47,8 @@ void LstsqKernel(const Context& dev_ctx,
                        0,
                        solution);
     if (residuals)
-      GetResidualsTensor<Context, T>(dev_ctx, x, y, driver_string, solution, residuals, rank);
+      GetResidualsTensor<Context, T>(
+          dev_ctx, x, y, driver_string, solution, residuals, rank);
     if (rank)
       Full<int64_t, Context>(
           dev_ctx, phi::IntArray(common::vectorize(rank->dims())), 0, rank);
