@@ -1158,7 +1158,8 @@ static void Interpolate2DCUDABwd(
       const int64_t num_kernels = static_cast<int64_t>(n) * c * out_h * out_w;
       const int num_threads = std::min(dev_ctx.GetMaxThreadsPerBlock(), 1024);
       KeBilinearInterpNCHWBw<T>
-          <<<backends::gpu::DivUp(num_kernels, num_threads),
+          <<<backends::gpu::DivUp(num_kernels,
+                                  static_cast<int64_t>(num_threads)),
              num_threads,
              0,
              dev_ctx.stream()>>>(input_grad_data,
