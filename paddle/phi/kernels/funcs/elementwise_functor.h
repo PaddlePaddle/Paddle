@@ -703,8 +703,8 @@ struct RemainderFunctor {
     PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
     T res = a % b;
 
-    // According to #PR26732: in dividen % divsor
-    // remainder shall have the same sign as divsor.
+    // According to #PR26732: in dividend % divisor
+    // remainder shall have the same sign as divisor.
     if ((res != 0) && ((b ^ res) < 0)) res += b;
     return res;
   }
@@ -717,8 +717,8 @@ struct RemainderFunctor<
   inline HOSTDEVICE T operator()(const T a, const T b) const {
     T res = fmod(a, b);
 
-    // According to #PR26732: in dividen % divsor
-    // remainder shall have the same sign as divsor.
+    // According to #PR26732: in dividend % divisor
+    // remainder shall have the same sign as divisor.
     if ((res != 0) && ((res < 0) != (b < 0))) res += b;
     return res;
   }
@@ -730,8 +730,8 @@ struct RemainderFunctor<dtype::float16> {
                                               const dtype::float16 b) const {
     float b_float = static_cast<float>(b);
     float res = fmod(static_cast<float>(a), b_float);
-    // According to #PR26732: in dividen % divsor
-    // remainder shall have the same sign as divsor.
+    // According to #PR26732: in dividend % divisor
+    // remainder shall have the same sign as divisor.
     if ((res != 0.0f) && ((res < 0.0f) != (b_float < 0.0f))) res += b_float;
     return static_cast<dtype::float16>(res);
   }
@@ -744,8 +744,8 @@ struct RemainderFunctor<dtype::bfloat16> {
     float b_float = static_cast<float>(b);
     float res = fmod(static_cast<float>(a), b_float);
 
-    // According to #PR26732: in dividen % divsor
-    // remainder shall have the same sign as divsor.
+    // According to #PR26732: in dividend % divisor
+    // remainder shall have the same sign as divisor.
     if ((res != 0.0f) && ((res < 0.0f) != (b_float < 0.0f))) res += b_float;
     return static_cast<dtype::bfloat16>(res);
   }

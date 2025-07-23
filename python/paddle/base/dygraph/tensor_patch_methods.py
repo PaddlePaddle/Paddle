@@ -1055,10 +1055,10 @@ def monkey_patch_tensor():
         # we call this function in python level.
         item = list(item) if isinstance(item, tuple) else [item]
         for i, slice_item in enumerate(item):
-            if isinstance(slice_item, (list, np.ndarray, tuple)):
-                item[i] = paddle.to_tensor(slice_item)
+            if isinstance(slice_item, (list, tuple)):
+                item[i] = np.array(slice_item)
             elif isinstance(slice_item, range):
-                item[i] = paddle.to_tensor(list(slice_item))
+                item[i] = np.array(list(slice_item))
 
         return tuple(item)
 

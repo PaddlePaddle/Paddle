@@ -294,7 +294,7 @@ def base_softmax_with_cross_entropy(
         # label = paddle.unsqueeze(label, axis)
         # ------
 
-        # notice : dim of label [-1,2,10] while logits is [-1,1] ,if use unsquezee
+        # notice : dim of label [-1,2,10] while logits is [-1,1], if use unsqueeze
         # logits [-1,1]->[-1,1,1], but input need 1 != 2 so change
         # the modified function make logits [-1,1] -> [-1,2] (uncertain)
         # another possible modify [-1,1] -> [-1,2,1]
@@ -2445,6 +2445,10 @@ def margin_cross_entropy(
             )
             nranks = parallel_env.world_size if group is None else group.nranks
 
+    if logits.shape[-1] == 0:
+        raise ValueError(
+            f'Expected logit_dims[-1] > 0 (got logit_dims {logits.shape})'
+        )
     input_dims = len(list(logits.shape))
     label_dims = len(list(label.shape))
     if input_dims - 1 != label_dims and input_dims != label_dims:
@@ -2971,8 +2975,8 @@ def cross_entropy(
 
     if input_dims - 1 != label_dims and input_dims != label_dims:
         raise ValueError(
-            f'Expected nput_dims - 1 = label_dims or input_dims == label_dims\
-             (got nput_dims{input_dims}, label_dims{label_dims})'
+            f'Expected input_dims - 1 = label_dims or input_dims == label_dims\
+             (got input_dims{input_dims}, label_dims{label_dims})'
         )
 
     if label_smoothing > 0.0:
@@ -3067,6 +3071,13 @@ def cross_entropy(
             #   so, reduce_sum all directly is ok
             return _C_ops.sum(out, [], None, False)
         elif reduction == "mean":
+            # when reduction is mean, use paddle.nan
+            def _replace_nan(out):
+                return out + paddle.nan
+
+            if 0 in input.shape:
+                out = _replace_nan(out)
+                return _C_ops.mean_all(out)
             # 1. if weight==none,
             #     numerator: reduce_sum all loss directly is ok causeof base_softmax_with_cross_entropy's inner logic
             #     denominator: count sample num with class_index!=ignore_index
@@ -3074,7 +3085,10 @@ def cross_entropy(
             #     numerator: loss's weighted sum
             #     denominator: cal the sum of weight where the sample's class_index!=ignore_index
             if ignore_index >= 0:  # ignore label
-                out_sum = _C_ops.sum(out, [], None, False)
+                if out.dtype == paddle.float16:
+                    out_sum = _C_ops.sum(out, [], paddle.float32, False)
+                else:
+                    out_sum = _C_ops.sum(out, [], None, False)
                 # for each label[i],set 1 or 0, according to ignore_index
                 # mask[i]=0, if label[i]==ignore_index
                 # mask[i]=1, otherwise
@@ -3093,7 +3107,10 @@ def cross_entropy(
                         weight_sum
                         + (weight_sum == 0.0).astype(weight_sum.dtype)
                     )
-                return ret
+                if out.dtype == paddle.float16:
+                    return paddle.cast(ret, dtype=out.dtype)
+                else:
+                    return ret
             elif weight is not None:
                 out_sum = _C_ops.sum(out, [], None, False)
                 total_weight = _C_ops.sum(
@@ -3457,7 +3474,7 @@ def multi_label_soft_margin_loss(
     Parameters:
         input (Tensor): Input tensor, the data type is float32 or float64. Shape is (N, C), where C is number of classes, and if shape is more than 2D, this is (N, C, D1, D2,..., Dk), k >= 1.
         label (Tensor): Label tensor, the data type is float32 or float64. The shape of label is the same as the shape of input.
-        weight (Tensor,optional): a manual rescaling weight given to each class.
+        weight (Tensor, optional): a manual rescaling weight given to each class.
                 If given, has to be a Tensor of size C and the data type is float32, float64.
                 Default is ``'None'`` .
         reduction (str, optional): Indicate how to average the loss by batch_size,
@@ -3472,7 +3489,7 @@ def multi_label_soft_margin_loss(
     Shape:
         input: N-D Tensor, the shape is [N, \*], N is batch size and `\*` means number of classes, available dtype is float32, float64. The sum operation operates over all the elements.
         label: N-D Tensor, same shape as the input.
-        weight:N-D Tensor, the shape is [N,1]
+        weight: N-D Tensor, the shape is [N,1]
         output: scalar. If :attr:`reduction` is ``'none'``, then same shape as the input.
 
     Returns:
@@ -3513,13 +3530,13 @@ def multi_label_soft_margin_loss(
             input,
             'input',
             ['float32', 'float64'],
-            'multilabel_soft_margin_loss',
+            'multi_label_soft_margin_loss',
         )
         check_variable_and_dtype(
             label,
             'label',
             ['float32', 'float64'],
-            'multilabel_soft_margin_loss',
+            'multi_label_soft_margin_loss',
         )
 
     loss = -(
@@ -3533,7 +3550,7 @@ def multi_label_soft_margin_loss(
                 weight,
                 'weight',
                 ['float32', 'float64'],
-                'multilabel_soft_margin_loss',
+                'multi_label_soft_margin_loss',
             )
         loss = loss * weight
 
@@ -3912,10 +3929,10 @@ def triplet_margin_with_distance_loss(
 
     if (
         not isinstance(positive_dist, paddle.pir.Value)
-        and not paddle.all(positive_dist > 0)
+        and not paddle.all(positive_dist >= 0)
     ) or (
         not isinstance(negative_dist, paddle.pir.Value)
-        and not paddle.all(negative_dist > 0)
+        and not paddle.all(negative_dist >= 0)
     ):
         raise ValueError(
             "The positive distance or negative distance should be greater than 0, "
@@ -4163,14 +4180,17 @@ def multi_margin_loss(
                 f"but received weight's shape[0]: {weight.shape[0]} and input's shape[1]: {input.shape[1]}"
             )
         weight = paddle.gather(weight, label, axis=0).reshape((-1, 1))
-        loss = paddle.mean(
-            weight
-            * paddle.pow(
-                paddle.clip((margin - index_sample + input), min=0.0),
-                p,
-            ),
-            axis=1,
-        ) - weight * (margin**p / paddle.shape(input)[1])
+        loss = (
+            paddle.mean(
+                weight
+                * paddle.pow(
+                    paddle.clip((margin - index_sample + input), min=0.0),
+                    p,
+                ),
+                axis=1,
+            )
+            - (weight * (margin**p / paddle.shape(input)[1])).squeeze()
+        )
     else:
         loss = (
             paddle.mean(

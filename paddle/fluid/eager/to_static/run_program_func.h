@@ -25,7 +25,8 @@ std::vector<paddle::Tensor> run_program_ad_func(
     const std::vector<paddle::Tensor>& x,
     const std::vector<paddle::Tensor>& params,
     std::vector<paddle::framework::Scope*>& step_scope,  // NOLINT
-    const paddle::framework::AttributeMap& attrs);
+    const paddle::framework::AttributeMap& prog_attrs,
+    const paddle::framework::AttributeMap& cuda_graph_attrs);
 
 void legacy_run_program_ad_func(
     const std::vector<paddle::Tensor>& x,

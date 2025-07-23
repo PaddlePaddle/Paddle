@@ -593,23 +593,30 @@ CALCULATE_LOCAL_SHAPE_TEMPLATE = """
       }}
 """
 
+# Note: After unify the expand, expand_as and their grad kernel for all device,
+# this logic is no practical effect. But for semantically correct and can be removed.
 CALCULATE_LOCAL_SHAPE_KERNEL_TEMPLATE = """
 
       auto out_grad_shape = out_grad.dims();
       std::vector<{dtype}> local_kernel_shape;
       const auto& out_grad_dist_attr = {out_grad_dist_attr};
+      const auto& grad_mesh_shape = out_grad_dist_attr.process_mesh().shape();
       for (int i = 0; i < out_grad_shape.size(); i++) {{
-        if (out_grad_dist_attr.dims_mapping()[i] >= 0) {{
+        const auto& dims = out_grad_dist_attr.multi_dims_mapping()[i];
+        if (dims.size() > 0) {{
           {dtype} shape_i = out_grad_shape[i];
-          int64_t dim = out_grad_dist_attr.dims_mapping()[i];
-          int64_t mesh_dim = out_grad_dist_attr.process_mesh().shape()[dim];
+          int64_t num_shard = 1;
+          for (auto dim : dims) {{
+            num_shard *= grad_mesh_shape[dim];
+          }}
           // TODO: Support aliquant condition.
-          PADDLE_ENFORCE(shape_i % mesh_dim == 0,
-                common::errors::InvalidArgument(
-                    "{op_name} only support local shape dim is divisible "
-                    "by the mesh dim, however local_kernel_shape[%lld] is %lld "
-                    "and shard mesh dims is %lld.", i, shape_i, mesh_dim));
-          local_kernel_shape.push_back(shape_i / mesh_dim);
+          PADDLE_ENFORCE_EQ(
+            shape_i % num_shard, 0,
+            common::errors::InvalidArgument(
+                "{op_name} only support local shape dim is divisible "
+                "by the mesh dim, however local_kernel_shape[%lld] is %lld "
+                "and shard mesh dims is %lld.",
+                i, shape_i, num_shard));
         }} else {{
           local_kernel_shape.push_back(out_grad_shape[i]);
         }}

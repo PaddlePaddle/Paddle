@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 
@@ -32,6 +33,11 @@ void DeformableConvKernel(const Context& dev_ctx,
                           int groups,
                           int im2col_step,
                           DenseTensor* out) {
+  if (x.numel() == 0 || filter.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    return;
+  }
   dev_ctx.template Alloc<T>(out);
 
   if (phi::backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId()) ==

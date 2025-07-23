@@ -36,11 +36,11 @@ class TestConv2DInt8Op(TestConv2DOp):
         self.use_cudnn = False
         self.exhaustive_search = False
         self.use_cuda = False
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.data_format = "NCHW"
-        self.mkldnn_data_type = "int8"
+        self.onednn_data_type = "int8"
         self.weighttype = np.float32
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.init_weight_quantization_type()
         self.init_group()
         self.init_dilation()
@@ -166,7 +166,7 @@ class TestConv2DInt8Op(TestConv2DOp):
             'groups': self.groups,
             'dilations': self.dilations,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_mkldnn,
+            'use_mkldnn': self.use_onednn,
             'data_format': self.data_format,
             'exhaustive_search': self.exhaustive_search,
             'Scale_in': self.scale_in,
@@ -177,7 +177,7 @@ class TestConv2DInt8Op(TestConv2DOp):
             'fuse_alpha': self.fuse_alpha,
             'fuse_beta': self.fuse_beta,
             'fuse_residual_connection': self.fuse_residual,
-            'mkldnn_data_type': self.mkldnn_data_type,
+            'mkldnn_data_type': self.onednn_data_type,
         }
         self.outputs = {'Output': output}
 
@@ -471,7 +471,7 @@ create_test_int8_class(TestWithInput1x1Filter1x1)
 
 class TestConv2DOp_AsyPadding_INT_ONEDNN(TestConv2DInt8Op):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
 
     def init_paddings(self):
         self.pad = [0, 0, 1, 2]

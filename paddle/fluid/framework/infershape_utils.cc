@@ -771,7 +771,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
               }
               infer_meta_context.EmplaceBackAttr(std::move(scalar_list));
             } break;
-            case proto::AttrType::SCALARS: {
+            case framework::proto::AttrType::SCALARS: {
               const auto& vec = PADDLE_GET_CONST(
                   std::vector<paddle::experimental::Scalar>, attr);
               std::vector<phi::Scalar> scalar_list{vec.begin(), vec.end()};
@@ -805,8 +805,21 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
               infer_meta_context.EmplaceBackAttr(PADDLE_GET_CONST(bool, attr));
               break;
             case phi::AttributeType::INT64:
-              infer_meta_context.EmplaceBackAttr(
-                  PADDLE_GET_CONST(int64_t, attr));
+              switch (AttrTypeID(attr)) {
+                case framework::proto::AttrType::LONG:
+                  infer_meta_context.EmplaceBackAttr(
+                      PADDLE_GET_CONST(int64_t, attr));
+                  break;
+                case framework::proto::AttrType::INT: {
+                  const auto val = PADDLE_GET_CONST(int, attr);
+                  infer_meta_context.EmplaceBackAttr(static_cast<int64_t>(val));
+                } break;
+                default:
+                  PADDLE_THROW(common::errors::Unimplemented(
+                      "Unsupported cast op attribute `%s` to int64_t when "
+                      "construct InferMetaContext.",
+                      attr_names[i]));
+              }
               break;
             case phi::AttributeType::INT32S:
               infer_meta_context.EmplaceBackAttr(

@@ -18,9 +18,9 @@ import inspect
 from typing import TYPE_CHECKING
 
 import paddle
+from paddle.jit.profiler import EventGuard, event_register
 
 from ..infer_meta import convert_meta_to_input_spec
-from ..profiler import EventGuard
 from ..utils import (
     ENV_SOT_EXPORT,
     Cache,
@@ -209,48 +209,49 @@ class FallbackWrapper:
             code
         ] += partial_program_layer._compile_time_counter.get_total_time()
 
+    @event_register(
+        lambda self, *args, **kwargs: f"FallbackWrapper: {self.SIR.name}"
+    )
     def __call__(self, *args, **kwargs):
-        with EventGuard(f"FallbackWrapper: {self.SIR.name}"):
-            if StepInfoManager().need_back_trace:
-                trace_back_frames()
+        if StepInfoManager().need_back_trace:
+            trace_back_frames()
 
-            log_do(
-                2,
-                lambda: print("[FallbackWrapper] start run SIR: \n", self.SIR),
-            )
-            log_do(
-                4,
-                lambda: print(
-                    self.compiled_fn.get_concrete_program(*args, **kwargs)[
-                        1
-                    ].train_program
-                ),
-            )
-            if self.partial_program is None:
-                with EventGuard("FallbackWrapper: get_concrete_program"):
-                    (
-                        self.concrete_program,
-                        self.partial_program,
-                    ) = self.compiled_fn.get_concrete_program(*args, **kwargs)
-                    self.partial_program.training = self.is_training
-            with EventGuard("FallbackWrapper: sot call partial_program"):
-                outputs = self.partial_program.sot_call(*args, **kwargs)
+        log_do(
+            2,
+            lambda: print("[FallbackWrapper] start run SIR: \n", self.SIR),
+        )
+        log_do(
+            4,
+            lambda: print(
+                self.compiled_fn.get_concrete_program(*args, **kwargs)[
+                    1
+                ].train_program
+            ),
+        )
+        if self.partial_program is None:
+            with EventGuard("FallbackWrapper: get_concrete_program"):
+                (
+                    self.concrete_program,
+                    self.partial_program,
+                ) = self.compiled_fn.get_concrete_program(*args, **kwargs)
+                self.partial_program.training = self.is_training
+        outputs = self.partial_program.sot_call(*args, **kwargs)
 
-            clear_eager_tensor_name(outputs)
-            log_do(
-                4,
-                lambda: print("[CompileCache] run sir forward success."),
-            )
-            self.collect_new_symbol_hit_rate(args, outputs)
-            self.collect_subgraph_relation(args, outputs, self.partial_program)
-            self.collect_subgraph_info(self.concrete_program.main_program)
-            self.update_compile_time_info(self.SIR, self.partial_program)
-            if ENV_SOT_EXPORT.get() != "" and not self.exported:
-                export(self.SIR, ENV_SOT_EXPORT.get())
-                self.exported = True
+        clear_eager_tensor_name(outputs)
+        log_do(
+            4,
+            lambda: print("[CompileCache] run sir forward success."),
+        )
+        self.collect_new_symbol_hit_rate(args, outputs)
+        self.collect_subgraph_relation(args, outputs, self.partial_program)
+        self.collect_subgraph_info(self.concrete_program.main_program)
+        self.update_compile_time_info(self.SIR, self.partial_program)
+        if ENV_SOT_EXPORT.get() != "" and not self.exported:
+            export(self.SIR, ENV_SOT_EXPORT.get())
+            self.exported = True
 
-            self.is_first_call = False
-            return outputs
+        self.is_first_call = False
+        return outputs
 
 
 class CompileSIRCache(Cache, metaclass=Singleton):

@@ -404,7 +404,7 @@ class TestPool2D_Op_Mixin:
         self.op_type = "pool2d"
         self.use_cudnn = False
         self.init_kernel_type()
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.init_data_type()
         self.init_test_case()
         self.padding_algorithm = "EXPLICIT"
@@ -451,7 +451,7 @@ class TestPool2D_Op_Mixin:
             'pooling_type': self.pool_type,
             'global_pooling': self.global_pool,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_mkldnn,
+            'use_mkldnn': self.use_onednn,
             'ceil_mode': self.ceil_mode,
             'data_format': self.data_format,
             'exclusive': self.exclusive,
@@ -476,14 +476,14 @@ class TestPool2D_Op_Mixin:
             self.check_output_with_place(
                 place,
                 atol=1e-5,
-                check_dygraph=(not self.use_mkldnn),
+                check_dygraph=(not self.use_onednn),
                 check_cinn=True,
                 check_pir=True,
                 check_pir_onednn=self.check_pir_onednn,
             )
         else:
             self.check_output(
-                check_dygraph=(not self.use_mkldnn),
+                check_dygraph=(not self.use_onednn),
                 check_pir=True,
                 check_pir_onednn=self.check_pir_onednn,
             )
@@ -498,7 +498,7 @@ class TestPool2D_Op_Mixin:
                 place,
                 {'X'},
                 'Out',
-                check_dygraph=(not self.use_mkldnn),
+                check_dygraph=(not self.use_onednn),
                 check_cinn=True,
                 check_pir=True,
                 check_pir_onednn=self.check_pir_onednn,
@@ -508,7 +508,7 @@ class TestPool2D_Op_Mixin:
                 {'X'},
                 'Out',
                 max_relative_error=0.07,
-                check_dygraph=(not self.use_mkldnn),
+                check_dygraph=(not self.use_onednn),
                 check_pir=True,
                 check_pir_onednn=self.check_pir_onednn,
             )
@@ -559,7 +559,7 @@ class TestLPPool2D_Op(TestPool2D_Op):
         self.op_type = "lp_pool2d"
         self.use_cudnn = False
         self.init_kernel_type()
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.init_data_type()
         self.init_test_case()
         self.padding_algorithm = "EXPLICIT"
@@ -627,7 +627,7 @@ class TestLPPool2D_Op(TestPool2D_Op):
             {'x'},
             'out',
             max_relative_error=0.07,
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_onednn),
             check_pir=True,
             check_pir_onednn=self.check_pir_onednn,
         )
@@ -731,7 +731,7 @@ def create_test_cudnn_fp16_class(parent, check_grad=True):
                 if core.is_float16_supported(place):
                     self.check_output_with_place(
                         place,
-                        check_dygraph=(not self.use_mkldnn),
+                        check_dygraph=(not self.use_onednn),
                         check_cinn=True,
                         check_pir_onednn=self.check_pir_onednn,
                     )
@@ -748,7 +748,7 @@ def create_test_cudnn_fp16_class(parent, check_grad=True):
                     place,
                     {'X'},
                     'Out',
-                    check_dygraph=(not self.use_mkldnn),
+                    check_dygraph=(not self.use_onednn),
                     check_cinn=True,
                     check_pir_onednn=self.check_pir_onednn,
                 )
@@ -774,7 +774,7 @@ def create_test_fp16_class(parent, check_grad=True):
                 if core.is_float16_supported(place):
                     self.check_output_with_place(
                         place,
-                        check_dygraph=(not self.use_mkldnn),
+                        check_dygraph=(not self.use_onednn),
                         check_cinn=True,
                         check_pir_onednn=self.check_pir_onednn,
                     )
@@ -791,7 +791,7 @@ def create_test_fp16_class(parent, check_grad=True):
                     place,
                     {'X'},
                     'Out',
-                    check_dygraph=(not self.use_mkldnn),
+                    check_dygraph=(not self.use_onednn),
                     check_cinn=True,
                     check_pir_onednn=self.check_pir_onednn,
                 )
@@ -815,7 +815,7 @@ def create_test_bf16_class(parent, check_grad=True):
                 place = core.CUDAPlace(0)
                 self.check_output_with_place(
                     place,
-                    check_dygraph=(not self.use_mkldnn),
+                    check_dygraph=(not self.use_onednn),
                     check_cinn=True,
                     check_pir_onednn=self.check_pir_onednn,
                 )
@@ -827,7 +827,7 @@ def create_test_bf16_class(parent, check_grad=True):
                     place,
                     {'X'},
                     'Out',
-                    check_dygraph=(not self.use_mkldnn),
+                    check_dygraph=(not self.use_onednn),
                     check_cinn=True,
                     check_pir_onednn=self.check_pir_onednn,
                 )

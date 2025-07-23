@@ -30,6 +30,28 @@ void lapackLu<float>(int m, int n, float *a, int lda, int *ipiv, int *info) {
   dynload::sgetrf_(&m, &n, a, &lda, ipiv, info);
 }
 
+template <>
+void lapackLu<phi::dtype::complex<float>>(int m,
+                                          int n,
+                                          phi::dtype::complex<float> *a,
+                                          int lda,
+                                          int *ipiv,
+                                          int *info) {
+  dynload::cgetrf_(
+      &m, &n, reinterpret_cast<std::complex<float> *>(a), &lda, ipiv, info);
+}
+
+template <>
+void lapackLu<phi::dtype::complex<double>>(int m,
+                                           int n,
+                                           phi::dtype::complex<double> *a,
+                                           int lda,
+                                           int *ipiv,
+                                           int *info) {
+  dynload::zgetrf_(
+      &m, &n, reinterpret_cast<std::complex<double> *>(a), &lda, ipiv, info);
+}
+
 // lu_solve
 template <>
 void lapackLuSolve<double>(char trans,
@@ -55,6 +77,48 @@ void lapackLuSolve<float>(char trans,
                           int ldb,
                           int *info) {
   dynload::sgetrs_(&trans, &n, &nrhs, a, &lda, ipiv, b, &ldb, info);
+}
+
+template <>
+void lapackLuSolve<phi::dtype::complex<float>>(char trans,
+                                               int n,
+                                               int nrhs,
+                                               phi::dtype::complex<float> *a,
+                                               int lda,
+                                               int *ipiv,
+                                               phi::dtype::complex<float> *b,
+                                               int ldb,
+                                               int *info) {
+  dynload::cgetrs_(&trans,
+                   &n,
+                   &nrhs,
+                   reinterpret_cast<std::complex<float> *>(a),
+                   &lda,
+                   ipiv,
+                   reinterpret_cast<std::complex<float> *>(b),
+                   &ldb,
+                   info);
+}
+
+template <>
+void lapackLuSolve<phi::dtype::complex<double>>(char trans,
+                                                int n,
+                                                int nrhs,
+                                                phi::dtype::complex<double> *a,
+                                                int lda,
+                                                int *ipiv,
+                                                phi::dtype::complex<double> *b,
+                                                int ldb,
+                                                int *info) {
+  dynload::zgetrs_(&trans,
+                   &n,
+                   &nrhs,
+                   reinterpret_cast<std::complex<double> *>(a),
+                   &lda,
+                   ipiv,
+                   reinterpret_cast<std::complex<double> *>(b),
+                   &ldb,
+                   info);
 }
 
 // eigh
