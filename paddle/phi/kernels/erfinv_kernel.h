@@ -31,6 +31,8 @@ namespace phi {
  * @param  out     the output tensor of erfinv
  */
 template <typename T, typename Context>
-void ErfinvKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out);
+void ErfinvKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  DenseTensor* out);
 
 }  // namespace phi

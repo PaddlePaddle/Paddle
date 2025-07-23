@@ -296,6 +296,10 @@ void MultiEncoderXPUInferMeta(
     MetaTensor* x_fp16,
     MetaTensor* out_fp16);
 
+void FusedActDequantInferMeta(const MetaTensor& x,
+                              const MetaTensor& x_scale,
+                              MetaTensor* out);
+
 void FusedAttentionInferMeta(const MetaTensor& x,
                              const MetaTensor& ln_scale,
                              const MetaTensor& ln_bias,
@@ -664,6 +668,18 @@ void FusedMultiTransformerInt8InferMeta(
     std::vector<MetaTensor*> cache_kv_out,
     MetaTensor* out);
 
+void FusedTransposeSplitQuantInferMeta(const MetaTensor& x,
+                                       const IntArray& tokens_per_expert,
+                                       bool pow_2_scales,
+                                       std::vector<MetaTensor*> outs,
+                                       std::vector<MetaTensor*> scales);
+
+void FusedTransposeWLCHSplitQuantInferMeta(const MetaTensor& x,
+                                           const IntArray& tokens_per_expert,
+                                           bool pow_2_scales,
+                                           std::vector<MetaTensor*> outs,
+                                           std::vector<MetaTensor*> scales);
+
 void YoloBoxXPUInferMeta(const MetaTensor& x,
                          const MetaTensor& x_max,
                          const MetaTensor& grid,
@@ -903,6 +919,14 @@ void FusionSeqExpandConcatFCInferMeta(const std::vector<const MetaTensor*>& x,
                                       const std::string& fc_activation,
                                       MetaTensor* out,
                                       MetaTensor* fc_out);
+
+void FusedStackTransposeQuantInferMeta(const std::vector<const MetaTensor*>& x,
+                                       MetaTensor* out,
+                                       MetaTensor* scale);
+
+void FusedStackQuantInferMeta(const std::vector<const MetaTensor*>& x,
+                              MetaTensor* out,
+                              MetaTensor* scale);
 
 void FusedBiasDropoutResidualLnInferMeta(
     const MetaTensor& x,
@@ -1197,6 +1221,19 @@ void FusionSeqpoolConcatInferMeta(const std::vector<const MetaTensor*>& x,
                                   int axis,
                                   MetaTensor* out,
                                   MetaConfig config = MetaConfig());
+
+void FusedSwigluWeightedBwdInferMeta(const MetaTensor& o1,
+                                     const MetaTensor& do2_s,
+                                     const MetaTensor& unzipped_probs,
+                                     MetaTensor* do1,
+                                     MetaTensor* probs_grad,
+                                     MetaTensor* o2_s);
+
+void FusedWeightedSwigluActQuantInferMeta(const MetaTensor& x,
+                                          const MetaTensor& prob,
+                                          bool using_pow2_scaling,
+                                          MetaTensor* out,
+                                          MetaTensor* scale);
 
 void ResnetUnitInferMeta(const MetaTensor& x,
                          const MetaTensor& filter_x,

@@ -18,10 +18,11 @@
 
 import unittest
 
-from test_case_base import TestCaseBase, test_with_faster_guard
+from test_case_base import TestCaseBase
 
 import paddle
 from paddle.jit.sot.psdb import check_no_breakgraph
+from paddle.jit.sot.utils import strict_mode_guard
 
 
 @check_no_breakgraph
@@ -186,6 +187,48 @@ def dict_keyword_init():
     return d["x"] + d["y"]
 
 
+@strict_mode_guard(False)
+@check_no_breakgraph
+def raise_keyerror_with_number(x):
+    x += 1
+    a = {}
+    a[8]
+    x /= 3
+
+
+@strict_mode_guard(False)
+@check_no_breakgraph
+def raise_keyerror_with_str(x):
+    x += 1
+    a = {}
+    a["8"]
+    x /= 3
+
+
+class TestDict:
+    def __init__(self, data) -> None:
+        self.data = data
+
+    def __getitem__(self, key):
+        try:
+            return self.data[key]
+        except KeyError:
+            raise
+
+
+@check_no_breakgraph
+def raise_keyerror_with_custom_obj(x):
+    x += 1
+    data = TestDict({})
+    try:
+        x *= 3
+        data['a']
+        x -= 3
+    except KeyError:
+        x /= 3
+    return x
+
+
 class TestBuildDict(TestCaseBase):
     def test_build_map(self):
         self.assert_results(build_map, 1, paddle.to_tensor(2))
@@ -253,7 +296,6 @@ class TestDictMethods(TestCaseBase):
     def test_dict_noargs(self):
         self.assert_results(dict_no_arguments)
 
-    @test_with_faster_guard
     def test_dict_fromkeys(self):
         self.assert_results(dict_test_fromkeys, (1, 2, 3, 4))
         self.assert_results(dict_test_fromkeys, [1, 2, 3, 4])
@@ -268,6 +310,15 @@ class TestDictMethods(TestCaseBase):
 
     def test_dict_keyword_init(self):
         self.assert_results(dict_keyword_init)
+
+
+class TestDictKeyError(TestCaseBase):
+    def test_dict_keyerror(self):
+        with self.assertRaisesRegex(KeyError, "^8$"):
+            self.assert_results(raise_keyerror_with_number, paddle.to_tensor(5))
+        with self.assertRaisesRegex(KeyError, "^'8'$"):
+            self.assert_results(raise_keyerror_with_str, paddle.to_tensor(5))
+        self.assert_results(raise_keyerror_with_custom_obj, paddle.ones([3]))
 
 
 if __name__ == "__main__":

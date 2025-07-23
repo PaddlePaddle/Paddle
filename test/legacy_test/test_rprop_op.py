@@ -403,7 +403,7 @@ class TestRpropOpBF16(OpTest):
     def setUp(self):
         self.op_type = "rprop"
         self.dtype = np.uint16
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.conf()
         params = np.random.random((self.h, self.w)).astype("float32")
         grads = np.random.random((self.h, self.w)).astype("float32")

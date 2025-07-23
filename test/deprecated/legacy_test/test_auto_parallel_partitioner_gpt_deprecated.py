@@ -773,9 +773,10 @@ class GPTPretrainingCriterion(nn.Layer):
 
 
 def gpt_pretrain_forward(train_program, startup_program):
-    with static.program_guard(
-        train_program, startup_program
-    ), utils.unique_name.guard():
+    with (
+        static.program_guard(train_program, startup_program),
+        utils.unique_name.guard(),
+    ):
         batch_size = 16
         sequence_len = 512
         input_ids = static.data(
@@ -962,7 +963,11 @@ class TestGPTPartitioner(unittest.TestCase):
                 op.desc.output_arg_names()[0].split("@")[0]
                 for op in auto_parallel_main_prog.global_block().ops
                 if (
-                    op.type == "c_allreduce_sum"
+                    (
+                        op.type == "all_reduce"
+                        and op.attr('reduce_type')
+                        == paddle.distributed.ReduceOp.SUM
+                    )
                     and op.attr('op_role') == 1
                     and op.desc.attr("ring_id") == mp_ring_id
                 )
@@ -973,7 +978,11 @@ class TestGPTPartitioner(unittest.TestCase):
                 op.desc.output_arg_names()[0].split("@")[0]
                 for op in auto_parallel_main_prog.global_block().ops
                 if (
-                    op.type == "c_allreduce_sum"
+                    (
+                        op.type == "all_reduce"
+                        and op.attr('reduce_type')
+                        == paddle.distributed.ReduceOp.SUM
+                    )
                     and op.desc.attr("ring_id") == dp_ring_id
                 )
             ]

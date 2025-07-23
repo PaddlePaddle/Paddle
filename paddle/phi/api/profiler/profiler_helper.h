@@ -30,6 +30,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/phi/api/profiler/device_tracer.h"
+#include "paddle/phi/api/profiler/profiler.h"
 
 namespace phi {
 

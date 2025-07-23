@@ -158,7 +158,8 @@ struct MemoryInterface {
           place_to_device_context,
       const std::vector<phi::Place>& places,
       bool disable_setting_default_stream_for_allocator,
-      int stream_priority);
+      int stream_priority,
+      bool set_to_default_stream);
 
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
     (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
@@ -174,7 +175,7 @@ struct MemoryInterface {
   phi::Allocator* (*get_host_allocator)();
   phi::Allocator* (*get_zero_allocator)(int device_id);
   phi::Allocator* (*get_host_zero_allocator)();
-  // phi::Allocator* (*get_pinned_allocator)();
+  phi::Allocator* (*get_pinned_allocator)();
   std::shared_ptr<std::remove_pointer<XPUEvent>::type> (*get_new_xpu_event)(
       int device_id);
 #endif
@@ -326,7 +327,8 @@ class MemoryUtils {
           place_to_device_context,
       const std::vector<phi::Place>& places,
       bool disable_setting_default_stream_for_allocator,
-      int stream_priority) {
+      int stream_priority,
+      bool set_to_default_stream) {
     CheckMemoryMethod();
     PADDLE_ENFORCE_NE(
         memory_method_->emplace_device_contexts,
@@ -338,7 +340,8 @@ class MemoryUtils {
         place_to_device_context,
         places,
         disable_setting_default_stream_for_allocator,
-        stream_priority);
+        stream_priority,
+        set_to_default_stream);
   }
 
   void CheckMemoryMethod() {
@@ -460,7 +463,8 @@ void EmplaceDeviceContexts(
         place_to_device_context,
     const std::vector<phi::Place>& places,
     bool disable_setting_default_stream_for_allocator,
-    int stream_priority);
+    int stream_priority,
+    bool set_to_default_stream = false);
 
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
     (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
@@ -485,8 +489,6 @@ const Allocator* GetZeroAllocator(int device_id);
 
 const Allocator* GetHostZeroAllocator();
 
-// XPUs do not have the concept of pinned memory,
-// so the get_pinned_allocator function is not set.
 std::shared_ptr<std::remove_pointer<XPUEvent>::type> GetXpuEvent(int device_id);
 #endif
 

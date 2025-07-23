@@ -79,7 +79,7 @@ def {self.fn.__name__}({jit_input_args}, target=cinn.common.DefaultHostTarget())
 
     def __getitem__(self, target):
         return cast(
-            T, functools.partial(cast(Callable, self.run), target=target)
+            "T", functools.partial(cast("Callable", self.run), target=target)
         )
 
     def _convert_arg_type(self, arg):

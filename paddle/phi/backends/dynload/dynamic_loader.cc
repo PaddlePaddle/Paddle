@@ -68,6 +68,17 @@ PHI_DEFINE_string(rccl_dir,
                   "dlopen will search rccl from LD_LIBRARY_PATH");
 #endif
 
+#ifdef PADDLE_WITH_FLAGCX
+COMMON_DECLARE_string(flagcx_dir);
+#endif
+
+PHI_DEFINE_EXPORTED_string(
+    flagcx_dir,  // NOLINT
+    "",
+    "Specify path for loading libflagcx.so. For instance, "
+    "For instance, /usr/local/flagcx/lib. If default, "
+    "dlopen will search flagcx from LD_LIBRARY_PATH");
+
 #ifdef PADDLE_WITH_XPU
 PD_DEFINE_string(xpti_dir, "", "Specify path for loading libxpti.so.");
 #endif
@@ -179,7 +190,7 @@ static inline void* GetDsoHandleFromSpecificPath(const std::string& spec_path,
                                                  const std::string& dso_name,
                                                  int dynload_flags) {
   void* dso_handle = nullptr;
-  if (!spec_path.empty()) {
+  if (!spec_path.empty() || !dso_name.empty()) {
     // search xxx.so from custom path
     VLOG(3) << "Try to find library: " << dso_name
             << " from specific path: " << spec_path;
@@ -285,7 +296,9 @@ static inline void* GetDsoHandleFromSearchPath(
     std::wstring win_path_wstring =
         converter.from_bytes(FLAGS_win_cuda_bin_dir);
     search_path = win_path_wstring + L"\\" + search_path + L"\\bin";
+#ifdef PADDLE_WITH_CUDA
     AddDllDirectory(search_path.c_str());
+#endif
   }
 #endif
   std::vector<std::string> dso_names = split(dso_name, ";");
@@ -365,7 +378,7 @@ void* GetCublasDsoHandle() {
 #endif
   } else {
     std::string warning_msg(
-        "Your CUDA_VERSION is less than 11 or greater than 12, paddle "
+        "Your CUDA_VERSION is less than 11 or greater than 13, paddle "
         "temporarily no longer supports");
     return nullptr;
   }
@@ -384,7 +397,7 @@ void* GetCublasDsoHandle() {
 #endif
   } else {
     std::string warning_msg(
-        "Your CUDA_VERSION is less than 11 or greater than 12, paddle "
+        "Your CUDA_VERSION is less than 11 or greater than 13, paddle "
         "temporarily no longer supports");
     return nullptr;
   }
@@ -412,7 +425,7 @@ void* GetCublasLtDsoHandle() {
 #endif
   } else {
     std::string warning_msg(
-        "Your CUDA_VERSION is less than 11 or greater than 12, paddle "
+        "Your CUDA_VERSION is less than 11 or greater than 13, paddle "
         "temporarily no longer supports");
     return nullptr;
   }
@@ -528,7 +541,7 @@ void* GetCUPTIDsoHandle() {
 #endif
   } else {
     std::string warning_msg(
-        "Your CUDA_VERSION is less than 11 or greater than 12, paddle "
+        "Your CUDA_VERSION is less than 11 or greater than 13, paddle "
         "temporarily no longer supports");
     return nullptr;
   }
@@ -624,7 +637,7 @@ void* GetCusparseDsoHandle() {
 #endif
   } else {
     std::string warning_msg(
-        "Your CUDA_VERSION is less than 11 or greater than 12, paddle "
+        "Your CUDA_VERSION is less than 11 or greater than 13, paddle "
         "temporarily no longer supports");
     return nullptr;
   }
@@ -777,6 +790,14 @@ void* GetNCCLDsoHandle() {
 #endif
 }
 
+void* GetFLAGCXDsoHandle() {
+#ifdef PADDLE_WITH_FLAGCX
+  return GetDsoHandleFromSearchPath(FLAGS_flagcx_dir, "libflagcx.so");
+#else
+  return nullptr;
+#endif
+}
+
 void* GetTensorRtDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_tensorrt_dir, "libnvinfer.dylib");
@@ -842,7 +863,7 @@ void* GetCUFFTDsoHandle() {
     return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcufft.so.11");
   } else {
     std::string warning_msg(
-        "Your CUDA_VERSION is less than 11 or greater than 12, paddle "
+        "Your CUDA_VERSION is less than 11 or greater than 13, paddle "
         "temporarily no longer.");
     return nullptr;
   }
@@ -863,7 +884,7 @@ void* GetCUFFTDsoHandle() {
 #endif
   } else {
     std::string warning_msg(
-        "Your CUDA_VERSION is less than 11 or greater than 12, paddle "
+        "Your CUDA_VERSION is less than 11 or greater than 13, paddle "
         "temporarily no longer supports");
     return nullptr;
   }

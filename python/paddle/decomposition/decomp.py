@@ -873,9 +873,11 @@ def decompose_dist_program(pir_program):
                 ) and _check_prim_dynamic(op):
                     skip_decomp = True
                 if not skip_decomp:
-                    with pir_op_name_guard(op.name()), pir_op_role_guard(
-                        op.op_role
-                    ), pir_chunk_id_guard(op.chunk_id):
+                    with (
+                        pir_op_name_guard(op.name()),
+                        pir_op_role_guard(op.op_role),
+                        pir_chunk_id_guard(op.chunk_id),
+                    ):
                         pir.set_insertion_point(op)
                         orig_outs = op.results()
 

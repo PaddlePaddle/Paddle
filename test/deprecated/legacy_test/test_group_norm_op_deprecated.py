@@ -85,27 +85,27 @@ def group_norm_naive(x, scale, bias, epsilon, groups, data_layout):
 
 class TestGroupNormOpError(unittest.TestCase):
     def test_errors(self):
-        with paddle_static_guard():
-            with base.program_guard(base.Program(), base.Program()):
+        with (
+            paddle_static_guard(),
+            base.program_guard(base.Program(), base.Program()),
+        ):
 
-                def test_x_type():
-                    input = np.random.random(2, 100, 3, 5).astype('float32')
-                    groups = 2
-                    paddle.nn.GroupNorm(num_channels=100, num_groups=groups)(
-                        input
-                    )
+            def test_x_type():
+                input = np.random.random(2, 100, 3, 5).astype('float32')
+                groups = 2
+                paddle.nn.GroupNorm(num_channels=100, num_groups=groups)(input)
 
-                self.assertRaises(TypeError, test_x_type)
+            self.assertRaises(TypeError, test_x_type)
 
-                def test_x_dtype():
-                    x2 = paddle.static.data(
-                        name='x2', shape=[-1, 2, 100, 3, 5], dtype='int32'
-                    )
-                    groups = 2
-                    paddle.static.nn.group_norm(x2, groups)
+            def test_x_dtype():
+                x2 = paddle.static.data(
+                    name='x2', shape=[-1, 2, 100, 3, 5], dtype='int32'
+                )
+                groups = 2
+                paddle.static.nn.group_norm(x2, groups)
 
-                with paddle.pir_utils.OldIrGuard():
-                    self.assertRaises(TypeError, test_x_dtype)
+            with paddle.pir_utils.OldIrGuard():
+                self.assertRaises(TypeError, test_x_dtype)
 
 
 def group_norm_wrapper(
@@ -586,6 +586,7 @@ class TestGroupNormBF16Op_With_NHWC(TestGroupNormBF16Op):
         self.python_out_sig = ["Y"]
         self.data_format = "NHWC"
         self.prim_op_type = "comp"
+        self.channel_last = True
 
         self.dtype = np.uint16
         self.shape = (1, 3, 5, 512)
@@ -1023,11 +1024,8 @@ class PrimNet(paddle.nn.Layer):
 
 
 def apply_to_static(net, use_cinn):
-    build_strategy = paddle.static.BuildStrategy()
-    build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(
-        net, build_strategy=build_strategy, full_graph=True
-    )
+    backend = "CINN" if use_cinn else None
+    return paddle.jit.to_static(net, backend=backend, full_graph=True)
 
 
 # The original GroupNorm cannot support NHWC format

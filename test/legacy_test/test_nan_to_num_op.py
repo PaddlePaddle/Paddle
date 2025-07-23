@@ -201,5 +201,39 @@ class TestNanToNum(unittest.TestCase):
 #             'neginf': -10
 #         }
 
+
+class TestNanToNum_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.place = (
+            paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+        self.x_np = np.random.random([2, 0, 3]).astype(np.float32)
+
+    def test_dygraph(self):
+        paddle.disable_static(place=self.place)
+
+        with paddle.base.dygraph.guard():
+            x_tensor = paddle.to_tensor(self.x_np, stop_gradient=False)
+
+            out_tensor = paddle.nan_to_num(x_tensor)
+            out_np = np_nan_to_num(self.x_np)
+            np.testing.assert_allclose(out_tensor.numpy(), out_np)
+
+        paddle.enable_static()
+
+    def test_check_grad(self):
+        paddle.disable_static(place=self.place)
+        x_tensor = paddle.to_tensor(self.x_np, stop_gradient=False)
+        x_tensor.stop_gradient = False
+        y = paddle.nan_to_num(x_tensor)
+        loss = paddle.sum(y)
+        loss.backward()
+        np.testing.assert_allclose(x_tensor.grad.shape, x_tensor.shape)
+
+        paddle.enable_static()
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -14,6 +14,7 @@
 #pragma once
 
 #include "paddle/phi/kernels/concat_grad_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
@@ -45,13 +46,17 @@ void ConcatGradKernel(const Context& dev_ctx,
   // get output tensor that the name is not kEmptyVarName
   std::vector<DenseTensor*> outputs;
   for (size_t j = 0; j < outs.size(); ++j) {
-    if (outs[j] && outs[j]->numel() != 0UL) {
+    if (outs[j]) {
       dev_ctx.template Alloc<T>(outs[j]);
-
       outputs.push_back(outs[j]);
     } else {
       outputs.push_back(nullptr);
     }
+  }
+  // if the out_grad.numel() == 0 ,the all x and x_grad must be zero size
+  // tensor, so just return
+  if (out_grad.numel() == 0) {
+    return;
   }
 
   // Sometimes direct copies will be faster, this maybe need deeply analysis.

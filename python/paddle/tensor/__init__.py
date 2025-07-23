@@ -32,6 +32,7 @@ from .attribute import (  # noqa: F401
     shape,
 )
 from .creation import (  # noqa: F401
+    MmapStorage,
     arange,
     cauchy_,
     complex,
@@ -87,6 +88,7 @@ from .linalg import (  # noqa: F401
     householder_product,
     lstsq,
     lu,
+    lu_solve,
     lu_unpack,
     matmul,
     matrix_power,
@@ -441,6 +443,7 @@ from .random import (  # noqa: F401
     randint,
     randint_like,
     randn,
+    randn_like,
     randperm,
     standard_normal,
     uniform,

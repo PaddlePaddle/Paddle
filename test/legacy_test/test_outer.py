@@ -172,5 +172,23 @@ class TestMultiplyError(unittest.TestCase):
         self.assertRaises(Exception, paddle.outer, x_data, y_data)
 
 
+class TestMultiplyApi_ZeroSize(unittest.TestCase):
+    def test_multiply_dynamic(self):
+        x_data = np.random.rand(5, 10, 0).astype(np.float64)
+        y_data = np.random.rand(0, 10).astype(np.float64)
+        paddle.disable_static()
+        x = paddle.to_tensor(x_data)
+        y = paddle.to_tensor(y_data)
+        x.stop_gradient = False
+        y.stop_gradient = False
+        res = paddle.outer(x, y)
+        np.testing.assert_allclose(
+            res.numpy(), np.outer(x_data, y_data), rtol=1e-05
+        )
+        loss = paddle.sum(res)
+        loss.backward()
+        np.testing.assert_allclose(x.grad.shape, x.shape)
+
+
 if __name__ == '__main__':
     unittest.main()

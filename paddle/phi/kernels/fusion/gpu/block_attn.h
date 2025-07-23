@@ -22,6 +22,7 @@
 #include "paddle/phi/kernels/fusion/gpu/mmha_util.cu.h"
 
 COMMON_DECLARE_bool(use_xqa_optim);
+COMMON_DECLARE_bool(blha_use_fp32_qk_sum);
 
 #ifdef PADDLE_WITH_HIP
 #define GPU(str) hip##str
@@ -98,6 +99,7 @@ struct Block_AttN_params {
 };
 
 template <typename T,
+          typename SUM_T,
           int Dh,
           int Dh_MAX,
           int THREADS_PER_KEY,
@@ -146,6 +148,7 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
 
   __shared__ float red_smem[WARPS_PER_BLOCK * 2];
   using Qk_vec = typename Qk_vec_<T, Dh_MAX>::Type;
+  using Qk_sum_type = typename Qk_vec_<SUM_T, Dh_MAX>::Type;
   using Qk_vec_RoPE = typename Qk_vec_RoPE_<T, float, Dh_MAX>::Type;
   using QK_Packed_Int8_t = typename Packed_Int8_<Qk_vec, CACHE_TYPE>::Type;
 
@@ -322,7 +325,7 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
       }
     }
 
-    qk = dot<Qk_vec, Qk_vec>(q, k);
+    qk = dot<Qk_sum_type, Qk_vec>(q, k);
 
     if (QK_VECS_PER_WARP <= WARP_SIZE) {
 #pragma unroll
@@ -1222,6 +1225,7 @@ inline size_t gqa_smem_size_in_bytes(const Block_AttN_params<T> &params,
 
 #ifdef PADDLE_WITH_HIP
 #define BLHAG_LAUNCH_KERNEL(T,                                             \
+                            SUM_T,                                         \
                             Dh,                                            \
                             Dh_MAX,                                        \
                             THDS_PER_KEY,                                  \
@@ -1235,6 +1239,7 @@ inline size_t gqa_smem_size_in_bytes(const Block_AttN_params<T> &params,
   size_t smem_sz =                                                         \
       smem_size_in_bytes<T>(params, Dh, THDS_PER_VALUE, THDS_PER_BLOCK);   \
   constexpr auto kernel_fn = block_attention_kernel<T,                     \
+                                                    SUM_T,                 \
                                                     Dh,                    \
                                                     Dh_MAX,                \
                                                     THDS_PER_KEY,          \
@@ -1245,9 +1250,16 @@ inline size_t gqa_smem_size_in_bytes(const Block_AttN_params<T> &params,
                                                     decltype(load_func),   \
                                                     decltype(store_func)>; \
   if (smem_sz > 0xc000) {                                                  \
-    hipFuncSetAttribute((const void *)kernel_fn,                           \
-                        hipFuncAttributeMaxDynamicSharedMemorySize,        \
-                        smem_sz);                                          \
+    hipError_t result =                                                    \
+        hipFuncSetAttribute((const void *)kernel_fn,                       \
+                            hipFuncAttributeMaxDynamicSharedMemorySize,    \
+                            smem_sz);                                      \
+    if (result != hipSuccess) {                                            \
+      result = hipGetLastError();                                          \
+      PADDLE_THROW(::common::errors::Unavailable(                          \
+          " hipFuncSetAttribute() returned error %s",                      \
+          hipGetErrorString(result)));                                     \
+    }                                                                      \
   }                                                                        \
   dim3 grid(params.q_num_head, params.batch_size);                         \
   kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                    \
@@ -1286,15 +1298,23 @@ inline size_t gqa_smem_size_in_bytes(const Block_AttN_params<T> &params,
                                  decltype(load_func),                       \
                                  decltype(store_func)>;                     \
   if (smem_sz > 0xc000) {                                                   \
-    hipFuncSetAttribute((const void *)kernel_fn,                            \
-                        hipFuncAttributeMaxDynamicSharedMemorySize,         \
-                        smem_sz);                                           \
+    hipError_t result =                                                     \
+        hipFuncSetAttribute((const void *)kernel_fn,                        \
+                            hipFuncAttributeMaxDynamicSharedMemorySize,     \
+                            smem_sz);                                       \
+    if (result != hipSuccess) {                                             \
+      result = hipGetLastError();                                           \
+      PADDLE_THROW(::common::errors::Unavailable(                           \
+          " hipFuncSetAttribute() returned error %s",                       \
+          hipGetErrorString(result)));                                      \
+    }                                                                       \
   }                                                                         \
   dim3 grid(params.kv_num_head *GQA_NUM_SUB_PARTITIONS, params.batch_size); \
   kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                     \
       params, load_func, store_func);
 #else
 #define BLHAG_LAUNCH_KERNEL(T,                                             \
+                            SUM_T,                                         \
                             Dh,                                            \
                             Dh_MAX,                                        \
                             THDS_PER_KEY,                                  \
@@ -1308,6 +1328,7 @@ inline size_t gqa_smem_size_in_bytes(const Block_AttN_params<T> &params,
   size_t smem_sz =                                                         \
       smem_size_in_bytes<T>(params, Dh, THDS_PER_VALUE, THDS_PER_BLOCK);   \
   constexpr auto kernel_fn = block_attention_kernel<T,                     \
+                                                    SUM_T,                 \
                                                     Dh,                    \
                                                     Dh_MAX,                \
                                                     THDS_PER_KEY,          \
@@ -1318,8 +1339,14 @@ inline size_t gqa_smem_size_in_bytes(const Block_AttN_params<T> &params,
                                                     decltype(load_func),   \
                                                     decltype(store_func)>; \
   if (smem_sz > 0xc000) {                                                  \
-    cudaFuncSetAttribute(                                                  \
+    cudaError_t result = cudaFuncSetAttribute(                             \
         kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_sz);  \
+    if (result != cudaSuccess) {                                           \
+      result = cudaGetLastError();                                         \
+      PADDLE_THROW(::common::errors::Unavailable(                          \
+          " cudaFuncSetAttribute() returned error %s",                     \
+          cudaGetErrorString(result)));                                    \
+    }                                                                      \
   }                                                                        \
   dim3 grid(params.q_num_head, params.batch_size);                         \
   kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                    \
@@ -1358,8 +1385,14 @@ inline size_t gqa_smem_size_in_bytes(const Block_AttN_params<T> &params,
                                  decltype(load_func),                       \
                                  decltype(store_func)>;                     \
   if (smem_sz > 0xc000) {                                                   \
-    cudaFuncSetAttribute(                                                   \
+    cudaError_t result = cudaFuncSetAttribute(                              \
         kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_sz);   \
+    if (result != cudaSuccess) {                                            \
+      result = cudaGetLastError();                                          \
+      PADDLE_THROW(::common::errors::Unavailable(                           \
+          " cudaFuncSetAttribute() returned error %s",                      \
+          cudaGetErrorString(result)));                                     \
+    }                                                                       \
   }                                                                         \
   dim3 grid(params.kv_num_head *GQA_NUM_SUB_PARTITIONS, params.batch_size); \
   kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                     \
@@ -1367,6 +1400,7 @@ inline size_t gqa_smem_size_in_bytes(const Block_AttN_params<T> &params,
 #endif
 
 template <typename T,
+          typename SUM_T,
           int Dh,
           int Dh_MAX,
           int BlockSize,
@@ -1382,6 +1416,7 @@ void dispatch_blha_impl_kernel(const Block_AttN_params<T> &params,
                                StoreFunc store_func) {
   VLOG(1) << "group wise";
   BLHAG_LAUNCH_KERNEL(T,
+                      SUM_T,
                       Dh,
                       Dh_MAX,
                       THREADS_PER_KEY,
@@ -1409,15 +1444,30 @@ void dispatch_blha_gqa_kernel(const Block_AttN_params<T> &params,
                               LoadFunc load_func,
                               StoreFunc store_func) {
   if (params.gqa_num_per_partitions == 1 || !FLAGS_use_xqa_optim) {
-    dispatch_blha_impl_kernel<T,
-                              Dh,
-                              Dh_MAX,
-                              BlockSize,
-                              THREADS_PER_VALUE,
-                              THREADS_PER_KEY,
-                              THREADS_PER_BLOCK,
-                              CACHE_TYPE>(
-        params, stream, load_func, store_func);
+    auto dispatch_blha_kernel = [&](auto kernel_type, auto qk_sum_type) {
+      using Kernel_T = decltype(kernel_type);
+      using SUM_T = decltype(qk_sum_type);
+      dispatch_blha_impl_kernel<Kernel_T,
+                                SUM_T,
+                                Dh,
+                                Dh_MAX,
+                                BlockSize,
+                                THREADS_PER_VALUE,
+                                THREADS_PER_KEY,
+                                THREADS_PER_BLOCK,
+                                CACHE_TYPE>(
+          params, stream, load_func, store_func);
+    };
+    if (FLAGS_blha_use_fp32_qk_sum) {
+      if constexpr (std::is_same_v<T, float16>) {
+        dispatch_blha_kernel(float16{}, float{});
+      } else {
+        dispatch_blha_kernel(T{}, T{});
+      }
+    } else {
+      dispatch_blha_kernel(T{}, T{});
+    }
+
   } else if (params.gqa_num_per_partitions == 2) {
     constexpr int THDS_PER_BLOCK = 1024;
     BLHA_LAUNCH_GQA_KERNEL(T,
@@ -4292,14 +4342,14 @@ struct MaxOp {
 template <int THREADBLOCK_SIZE>
 __global__ void GetMaxLenKernel(const int *seq_lens,
                                 int *max_len,
-                                const int batch_size) {
-  const int tid = threadIdx.x;
+                                const int64_t batch_size) {
+  const int64_t tid = threadIdx.x;
 
   typedef cub::BlockReduce<int, THREADBLOCK_SIZE> BlockReduce;
   __shared__ typename BlockReduce::TempStorage temp_storage;
 
   int max_len_this_thread = 0;
-  for (int i = tid; i < batch_size; i += blockDim.x) {
+  for (int64_t i = tid; i < batch_size; i += blockDim.x) {
     max_len_this_thread = max(seq_lens[i], max_len_this_thread);
   }
   int total =

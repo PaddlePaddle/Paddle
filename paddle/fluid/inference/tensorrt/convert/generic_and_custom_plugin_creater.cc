@@ -62,7 +62,7 @@ class CustomPluginCreater : public OpConverter {
 
     std::list<int> int_attrs;
     std::list<float> float_attrs;
-    std::list<double> bool_attrs;
+    std::list<double> double_attrs;
     std::list<std::string> string_attrs;
     std::list<std::vector<int>> ints_attrs;
     std::list<std::vector<float>> floats_attrs;
@@ -104,7 +104,7 @@ class CustomPluginCreater : public OpConverter {
         plugin_data.data = string_attrs.back().data();
         plugin_data.type = nvinfer1::PluginFieldType::kCHAR;
         plugin_data.length =
-            string_attrs.back().size() + 1;  // string ends with ‘\0’
+            string_attrs.back().size() + 1;  // string ends with '\0'
       } else if (op_desc.GetAttrType(attr_name) ==
                  framework::proto::AttrType::INTS) {
         ints_attrs.push_back(

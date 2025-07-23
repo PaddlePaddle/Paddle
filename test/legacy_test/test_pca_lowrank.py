@@ -23,7 +23,7 @@ class TestPcaLowrankAPI(unittest.TestCase):
     def transpose(self, x):
         shape = x.shape
         perm = list(range(0, len(shape)))
-        perm = perm[:-2] + [perm[-1]] + [perm[-2]]
+        perm = [*perm[:-2], perm[-1], perm[-2]]
         return paddle.transpose(x, perm)
 
     def random_matrix(self, rows, columns, *batch_dims, **kwargs):
@@ -137,7 +137,7 @@ class TestStaticPcaLowrankAPI(unittest.TestCase):
     def transpose(self, x):
         shape = x.shape
         perm = list(range(0, len(shape)))
-        perm = perm[:-2] + [perm[-1]] + [perm[-2]]
+        perm = [*perm[:-2], perm[-1], perm[-2]]
         return paddle.transpose(x, perm)
 
     def random_matrix(self, rows, columns, *batch_dims, **kwargs):

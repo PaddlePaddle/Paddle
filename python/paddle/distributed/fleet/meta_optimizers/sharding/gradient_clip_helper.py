@@ -48,10 +48,9 @@ class GradientClipHelper:
                 if input_name in deprecated_vars:
                     deprecate_op = True
                 # TODO (JZ-LIANG) revise this for uniform mixed parallelism
-                if "@MERGED" in input_name:
-                    param_name = input_name.strip("@GRAD@MERGED")
-                else:
-                    param_name = input_name.strip("@GRAD")
+                param_name = input_name.removesuffix("@MERGED").removesuffix(
+                    "@GRAD"
+                )
                 if shard.is_param(param_name) and not shard.has_param(
                     param_name
                 ):
@@ -248,13 +247,13 @@ class GradientClipHelper:
             idx = idx + 1
             block._insert_op_without_sync(
                 idx,
-                type='c_allreduce_sum',
-                inputs={'X': var},
-                outputs={'Out': var},
+                type='all_reduce',
+                inputs={'x': var},
+                outputs={'out': var},
                 attrs={
                     'ring_id': ring_id,
                     'op_namescope': "/gradient_clip_model_parallelism",
-                    'use_calc_stream': True,
+                    'reduce_type': paddle.distributed.ReduceOp.SUM,
                     OP_ROLE_KEY: OpRole.Optimize,
                 },
             )

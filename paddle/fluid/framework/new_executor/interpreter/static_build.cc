@@ -76,13 +76,13 @@ static VarMetaInfo GetVarMetaInfo(const Scope& scope, const std::string& name) {
 
   if (var->IsType<phi::DenseTensor>()) {
     const phi::DenseTensor& tensor = var->Get<phi::DenseTensor>();
-    if (!UNLIKELY(!tensor.IsInitialized())) {
+    if (!UNLIKELY(!tensor.has_allocation())) {
       dtype = tensor.dtype();
       place = tensor.place();
     }
   } else if (var->IsType<phi::SelectedRows>()) {
     auto tensor = var->Get<phi::SelectedRows>().value();
-    if (!UNLIKELY(!tensor.IsInitialized())) {
+    if (!UNLIKELY(!tensor.has_allocation())) {
       dtype = tensor.dtype();
       place = tensor.place();
     }
@@ -323,13 +323,13 @@ void FakeInitializeTensor(const phi::DeviceContext& dev_ctx,
       common::errors::InvalidArgument(
           "The tensor to fake initialize should not be null."));
 
-  if (tensor->initialized() && place == tensor->place() &&
+  if (tensor->has_allocation() && place == tensor->place() &&
       dtype == tensor->dtype() && tensor->layout() == layout) {
     return;
   }
 
   // set place
-  if (tensor->initialized()) {  // avoid overwriting valid data
+  if (tensor->has_allocation()) {  // avoid overwriting valid data
     phi::DeviceContext* dev_ctx_for_copy = nullptr;
     if (place.GetType() != AllocationType::CPU) {
       dev_ctx_for_copy = phi::DeviceContextPool::Instance().Get(place);
@@ -423,7 +423,7 @@ void RunConditionalBlockPreStaticBuild(const framework::Scope& scope,
   // Executor on being destroyed clears oneDNN cache and resets
   // registered model data layout. This is unwanted for nested
   // Executors (executors declared inside control ops)
-  platform::DontClearMKLDNNCache(dev_place);
+  platform::DontClearONEDNNCache(dev_place);
 #endif
   auto* block = op.Attr<framework::BlockDesc*>("sub_block");
   VLOG(3) << "Conditional block.idx = " << block->ID()
@@ -463,7 +463,7 @@ void RunWhileBlockPreStaticBuild(const framework::Scope& scope,
   // Executor on being destroyed clears oneDNN cache and resets
   // registered model data layout. This is unwanted for nested
   // Executors (executors declared inside control ops)
-  platform::DontClearMKLDNNCache(dev_place);
+  platform::DontClearONEDNNCache(dev_place);
 #endif
   auto* block = op.Attr<framework::BlockDesc*>("sub_block");
 

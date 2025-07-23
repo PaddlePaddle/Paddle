@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import unittest
 
-from test_case_base import TestCaseBase, test_with_faster_guard
+from test_case_base import TestCaseBase
 
 import paddle
 from paddle.jit.sot.psdb import check_no_breakgraph
@@ -55,7 +55,6 @@ def tensor_subscript_tensor(x: paddle.Tensor):
 
 
 class TestSlice(TestCaseBase):
-    @test_with_faster_guard
     def test_simple(self):
         x = list(range(10))
         y = paddle.arange(10)
@@ -84,7 +83,6 @@ def layer_list_slice(layer, x):
 
 
 class TestLayerList(TestCaseBase):
-    @test_with_faster_guard
     def test_layer_list_slice(self):
         layer = MyLayer()
         x = paddle.randn([5, 10])
@@ -129,7 +127,6 @@ class LayerListNet(paddle.nn.Layer):
 
 
 class TestLayerListSlice(TestCaseBase):
-    @test_with_faster_guard
     def test_layer_list_slice(self):
         x = paddle.randn([2, 5])
         net = LayerListNet()
@@ -145,6 +142,18 @@ class TestStringSlice(TestCaseBase):
     def test_string_slice(self):
         x = "1234567"
         self.assert_results(string_slice, x)
+
+
+@check_no_breakgraph
+def tensor_slice_as_input(x: slice):
+    tensor = paddle.to_tensor([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+    return tensor[x]
+
+
+class TestSliceAsInput(TestCaseBase):
+    def test_slice_as_input(self):
+        x = slice(2, 7, 2)
+        self.assert_results(tensor_slice_as_input, x)
 
 
 if __name__ == "__main__":

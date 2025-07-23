@@ -77,6 +77,8 @@ class TestBase(unittest.TestCase):
 
         for use_cuda in [True, False]:
             print(f'network: {self.net.__name__}, use_cuda: {use_cuda}')
-            with base.program_guard(base.Program(), base.Program()):
-                with base.scope_guard(core.Scope()):
-                    train(self.net, use_cuda)
+            with (
+                base.program_guard(base.Program(), base.Program()),
+                base.scope_guard(core.Scope()),
+            ):
+                train(self.net, use_cuda)

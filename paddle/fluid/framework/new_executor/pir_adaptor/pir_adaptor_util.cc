@@ -136,6 +136,16 @@ Variable* ValueExecutionInfo::GetVarByValue(pir::Value value) const {
   return scope_->FindVar(GetVarName(value));
 }
 
+::pir::Value ValueExecutionInfo::GetValueByVar(const Variable* var) const {
+  for (const auto& pair : value_2_var_name_) {
+    if (pair.second == GetVarName(var)) {
+      return pair.first;
+    }
+  }
+  PADDLE_THROW(::common::errors::Unimplemented("Cannot find value by var %s",
+                                               GetVarName(var)));
+}
+
 const std::unordered_map<::pir::Value, std::string>&
 ValueExecutionInfo::GetValue2VarName() const {
   return value_2_var_name_;
@@ -235,6 +245,7 @@ const std::unordered_set<std::string> SpecialOps = {
     paddle::dialect::DataOp::name(),
     pir::ShadowOutputOp::name(),
     paddle::dialect::IfOp::name(),
+    paddle::dialect::CudaGraphOp::name(),
     paddle::dialect::PyLayerOp::name(),
     paddle::dialect::WhileOp::name(),
     pir::StackCreateOp::name(),
@@ -314,13 +325,13 @@ void DeepCopyVariable(const Variable* src_var,
     // have holder. In this case we only do set_meta but not copy Tensor.
     if (src_tensor.numel() == 0) {
       tmp_dst_tensor->set_meta(src_tensor.meta());
-      if (src_tensor.IsInitialized()) {
+      if (src_tensor.has_allocation()) {
         tmp_dst_tensor->ResetHolder(
             ::phi::memory_utils::AllocShared(src_tensor.place(), 0u));
       }
       return;
     }
-    if (!src_tensor.initialized()) {
+    if (!src_tensor.has_allocation()) {
       if (is_optional) {
         (*dst_var) = nullptr;
         return;
@@ -341,7 +352,7 @@ void DeepCopyVariable(const Variable* src_var,
       dst_t->set_meta(src_t.meta());
       return;
     }
-    if (!src_slr.initialized()) {
+    if (!src_slr.has_allocation()) {
       if (is_optional) {
         (*dst_var) = nullptr;
         return;
@@ -354,7 +365,7 @@ void DeepCopyVariable(const Variable* src_var,
   } else if (src_var->IsType<phi::TensorArray>()) {
     auto src_tensor_array = src_var->Get<phi::TensorArray>();
     auto* dst_tensor_array = (*dst_var)->GetMutable<phi::TensorArray>();
-    if (!src_tensor_array.initialized()) {
+    if (!src_tensor_array.has_allocation()) {
       if (is_optional) {
         (*dst_var) = nullptr;
         return;
@@ -679,6 +690,14 @@ void HandleForSpecialOp(pir::Operation* op,
       auto while_op_out_value = while_op->result(i);
       BuildValue(while_op_out_value, var_name_prefix, value_exe_info);
     }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  } else if (op->isa<paddle::dialect::CudaGraphOp>()) {
+    auto cuda_graph_op = op->dyn_cast<paddle::dialect::CudaGraphOp>();
+    for (size_t i = 0; i < cuda_graph_op->num_results(); ++i) {
+      auto out_value = cuda_graph_op->result(i);
+      BuildValue(out_value, var_name_prefix, value_exe_info);
+    }
+#endif
   } else if (op->isa<pir::StackCreateOp>()) {
     auto stack_create_op = op->dyn_cast<pir::StackCreateOp>();
     auto stack_value = stack_create_op.stack();

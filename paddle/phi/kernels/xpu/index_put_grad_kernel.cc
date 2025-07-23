@@ -31,6 +31,18 @@ void IndexPutGradKernel(const Context& dev_ctx,
                         bool accumulate,
                         DenseTensor* x_grad,
                         DenseTensor* value_grad) {
+  if (out_grad.numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    // Fill value_grad with 0.
+    if (value_grad) {
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(value_grad->dims())),
+          0,
+          value_grad);
+    }
+    return;
+  }
   PADDLE_ENFORCE_EQ(
       x.dtype(),
       value.dtype(),
@@ -73,7 +85,7 @@ void IndexPutGradKernel(const Context& dev_ctx,
   std::copy(xshape.begin() + int_indices_v.size(),
             xshape.end(),
             value_shape_bd.begin() + index_shape.size() - 1);
-  int ret = xpu::SUCCESS;
+  int ret = 0;
   using XPUType = typename XPUTypeTrait<T>::Type;
   if (x_grad) {
     phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);

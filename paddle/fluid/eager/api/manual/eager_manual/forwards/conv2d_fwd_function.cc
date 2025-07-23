@@ -22,6 +22,7 @@
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
 
 COMMON_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_bool(check_cuda_error);
 
 paddle::Tensor conv2d_ad_func(const paddle::Tensor& input,
                               const paddle::Tensor& filter,
@@ -31,6 +32,11 @@ paddle::Tensor conv2d_ad_func(const paddle::Tensor& input,
                               std::vector<int> dilations,
                               int groups,
                               std::string data_format) {
+  VLOG(3) << "Running AD API: "
+          << "conv2d";
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("conv2d_ad_func begin");
+  }
   // Dygraph Record Event
   phi::RecordEvent dygraph_entrance_record_event(
       "conv2d dygraph", phi::TracerEventType::Operator, 1);
@@ -167,6 +173,9 @@ paddle::Tensor conv2d_ad_func(const paddle::Tensor& input,
     // Set TensorWrappers for Forward Outputs if needed
   }
 
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("conv2d_ad_func finish");
+  }
   // Returns
   return out;
 }

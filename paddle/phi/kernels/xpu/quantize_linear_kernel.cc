@@ -53,7 +53,7 @@ void DeQuantizeLinearKernel(const Context& dev_ctx,
 
   if (quant_axis == -1) {
     // step1: out = x * scale
-    // int broadcast_mul(Context* ctx, const T* x, const T* y, T* z, const
+    // int broadcast_mul(Context* xpu_ctx, const T* x, const T* y, T* z, const
     // std::vector<int64_t>& xshape, const std::vector<int64_t>& yshape);
     auto x_dims = x.dims();
     std::vector<int64_t> xshape = common::vectorize<int64_t>(x_dims);
@@ -72,7 +72,7 @@ void DeQuantizeLinearKernel(const Context& dev_ctx,
                        sizeof(float));
 
     // step3: out = out / qmax_as_float_xpu
-    // int broadcast_div(Context* ctx, const T* x, const T* y, T* z, const
+    // int broadcast_div(Context* xpu_ctx, const T* x, const T* y, T* z, const
     // std::vector<int64_t>& xshape, const std::vector<int64_t>& yshape);
     r = xpu::broadcast_div(dev_ctx.x_context(),
                            out_data,
@@ -85,8 +85,8 @@ void DeQuantizeLinearKernel(const Context& dev_ctx,
     auto x_dims = x.dims();
     const int64_t channel = x_dims[quant_axis];
     const int64_t channel_size = x.numel() / channel;
-    // int paddle_clip_dequant_channel(Context* ctx, const T* x, const T* scale,
-    // T* y, int qmax, int64_t channel, int64_t channel_size);
+    // int paddle_clip_dequant_channel(Context* xpu_ctx, const T* x, const T*
+    // scale, T* y, int qmax, int64_t channel, int64_t channel_size);
     int r = xpu::paddle_clip_dequant_channel<T>(dev_ctx.x_context(),
                                                 x_data,
                                                 scale_data,
@@ -112,8 +112,8 @@ void DeQuantizeLinearKernel(const Context& dev_ctx,
     T* buffer = RAII_GUARD.alloc_l3_or_gm<T>(x.numel());
     PADDLE_ENFORCE_XDNN_NOT_NULL(buffer);
 
-    // int transpose(Context* ctx, const T* x, T* y, const std::vector<int64_t>&
-    // xshape,    const std::vector<int64_t>& permute);
+    // int transpose(Context* xpu_ctx, const T* x, T* y, const
+    // std::vector<int64_t>& xshape,    const std::vector<int64_t>& permute);
     int r = xpu::transpose<T>(
         dev_ctx.x_context(), x_data, buffer, xshape, trans_axes);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
@@ -121,8 +121,8 @@ void DeQuantizeLinearKernel(const Context& dev_ctx,
     // 按照axis=0时候的情况进行计算
     const int64_t channel = x_dims[quant_axis];
     const int64_t channel_size = x.numel() / channel;
-    // int paddle_clip_dequant_channel(Context* ctx, const T* x, const T* scale,
-    // T* y, int qmax, int64_t channel, int64_t channel_size);
+    // int paddle_clip_dequant_channel(Context* xpu_ctx, const T* x, const T*
+    // scale, T* y, int qmax, int64_t channel, int64_t channel_size);
     r = xpu::paddle_clip_dequant_channel<T>(dev_ctx.x_context(),
                                             buffer,
                                             scale_data,
@@ -164,8 +164,8 @@ void QuantizeLinearInferKernel(const Context& dev_ctx,
   T* out_data = dev_ctx.template Alloc<T>(out);
 
   if (quant_axis == -1) {
-    // int paddle_clip_quant(Context* ctx, const T* x, const T* scale, T* y, int
-    // qmax, int64_t n);
+    // int paddle_clip_quant(Context* xpu_ctx, const T* x, const T* scale, T* y,
+    // int qmax, int64_t n);
     int r = xpu::paddle_clip_quant<T>(
         dev_ctx.x_context(), x_data, scale_data, out_data, qmax, x.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "paddle_clip_quant");
@@ -173,8 +173,8 @@ void QuantizeLinearInferKernel(const Context& dev_ctx,
     auto x_dims = x.dims();
     const int64_t channel = x_dims[quant_axis];
     const int64_t channel_size = x.numel() / channel;
-    // int paddle_clip_quant_channel(Context* ctx, const T* x, const T* scale,
-    // T* y, int qmax, int64_t channel, int64_t channel_size);
+    // int paddle_clip_quant_channel(Context* xpu_ctx, const T* x, const T*
+    // scale, T* y, int qmax, int64_t channel, int64_t channel_size);
     int r = xpu::paddle_clip_quant_channel<T>(dev_ctx.x_context(),
                                               x_data,
                                               scale_data,
@@ -200,8 +200,8 @@ void QuantizeLinearInferKernel(const Context& dev_ctx,
     T* buffer = RAII_GUARD.alloc_l3_or_gm<T>(x.numel());
     PADDLE_ENFORCE_XDNN_NOT_NULL(buffer);
 
-    // int transpose(Context* ctx, const T* x, T* y, const std::vector<int64_t>&
-    // xshape,    const std::vector<int64_t>& permute);
+    // int transpose(Context* xpu_ctx, const T* x, T* y, const
+    // std::vector<int64_t>& xshape,    const std::vector<int64_t>& permute);
     int r = xpu::transpose<T>(
         dev_ctx.x_context(), x_data, buffer, xshape, trans_axes);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
@@ -209,8 +209,8 @@ void QuantizeLinearInferKernel(const Context& dev_ctx,
     // 按照axis=0时候的情况进行计算
     const int64_t channel = x_dims[quant_axis];
     const int64_t channel_size = x.numel() / channel;
-    // int paddle_clip_quant_channel(Context* ctx, const T* x, const T* scale,
-    // T* y, int qmax, int64_t channel, int64_t channel_size);
+    // int paddle_clip_quant_channel(Context* xpu_ctx, const T* x, const T*
+    // scale, T* y, int qmax, int64_t channel, int64_t channel_size);
     r = xpu::paddle_clip_quant_channel<T>(dev_ctx.x_context(),
                                           buffer,
                                           scale_data,

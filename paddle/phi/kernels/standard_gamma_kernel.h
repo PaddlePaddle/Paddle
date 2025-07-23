@@ -27,7 +27,7 @@ namespace phi {
  * shape and dtype with input. Each element corresponds to input tensor
  */
 template <typename T, typename Context>
-void StandardGammaKernel(const Context& ctx,
+void StandardGammaKernel(const Context& dev_ctx,
                          const DenseTensor& alpha,
                          DenseTensor* out);
 

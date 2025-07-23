@@ -46,7 +46,7 @@ static void SortDescending(const XPUContext& dev_ctx,
   DenseTensor index_t;
   index_t.Resize({value.numel()});
   int* index = dev_ctx.template HostAlloc<int>(&index_t);
-  for (int i = 0; i < value.numel(); ++i) {
+  for (int64_t i = 0; i < value.numel(); ++i) {
     index[i] = i;
   }
 
@@ -104,26 +104,25 @@ std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
                                 scores_slice.data<T>(),
                                 index_sort.data<int>(),
                                 scores_sel.data<T>(),
-                                {static_cast<int>(scores_slice.numel()), 1},
+                                {scores_slice.numel(), 1},
                                 index_sort.numel(),
                                 0);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "paddle_gather");
 
-  r = xpu::paddle_gather<T>(
-      dev_ctx.x_context(),
-      bbox_deltas_slice.data<T>(),
-      index_sort.data<int>(),
-      bbox_sel.data<T>(),
-      {static_cast<int>(bbox_deltas_slice.numel()) / 4, 4},
-      index_sort.numel(),
-      0);
+  r = xpu::paddle_gather<T>(dev_ctx.x_context(),
+                            bbox_deltas_slice.data<T>(),
+                            index_sort.data<int>(),
+                            bbox_sel.data<T>(),
+                            {bbox_deltas_slice.numel() / 4, 4},
+                            index_sort.numel(),
+                            0);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "paddle_gather");
 
   r = xpu::paddle_gather<T>(dev_ctx.x_context(),
                             anchors.data<T>(),
                             index_sort.data<int>(),
                             anchor_sel.data<T>(),
-                            {static_cast<int>(anchors.numel()) / 4, 4},
+                            {anchors.numel() / 4, 4},
                             index_sort.numel(),
                             0);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "paddle_gather");
@@ -132,7 +131,7 @@ std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
                             variances.data<T>(),
                             index_sort.data<int>(),
                             var_sel.data<T>(),
-                            {static_cast<int>(variances.numel()) / 4, 4},
+                            {variances.numel() / 4, 4},
                             index_sort.numel(),
                             0);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "paddle_gather");
@@ -230,7 +229,7 @@ std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
   }
 
   // 4. nms
-  int nms_keep_num = 0;
+  int64_t nms_keep_num = 0;
   r = xpu::sorted_nms<T>(dev_ctx.x_context(),
                          proposals_filter.data<T>(),
                          keep_index.data<int>(),
@@ -314,7 +313,7 @@ void GenerateProposalsKernel(const Context& dev_ctx,
   scores_swap.Resize(common::make_ddim({num, h_score, w_score, c_score}));
   dev_ctx.template Alloc<T>(&scores_swap);
 
-  std::vector<int> axis = {0, 2, 3, 1};
+  std::vector<int64_t> axis = {0, 2, 3, 1};
   int r = xpu::transpose<T>(dev_ctx.x_context(),
                             bbox_deltas.data<T>(),
                             bbox_deltas_swap.data<T>(),

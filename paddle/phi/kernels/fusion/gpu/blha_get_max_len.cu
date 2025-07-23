@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/flash_attn_kernel.h"
@@ -34,7 +35,7 @@ void GetMaxLenTensor(const phi::GPUContext& dev_ctx,
   max_len_tensor.Resize({{1}});
   auto* max_len_tensor_data = dev_ctx.template Alloc<int>(
       &max_len_tensor, max_len_tensor.numel() * sizeof(int));
-  const int bsz = batch_size.dims()[0];
+  const int64_t bsz = batch_size.dims()[0];
   constexpr int blockSize = 128;
   int max_len_cpu = 0;
   GetMaxLenKernel<blockSize><<<1, blockSize, 0, dev_ctx.stream()>>>(
@@ -49,13 +50,33 @@ void BlhaGetMaxLenKernel(const Context& dev_ctx,
                          const phi::DenseTensor& batch_size,
                          DenseTensor* max_enc_len_this_time,
                          DenseTensor* max_dec_len_this_time) {
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+  auto& dev_ctx_cpu = *pool.Get(phi::CPUPlace());
   // decoder
   max_dec_len_this_time->Resize({{1}});
-  GetMaxLenTensor(dev_ctx, seq_lens_decoder, batch_size, max_dec_len_this_time);
+  if (seq_lens_decoder.numel() > 0) {
+    GetMaxLenTensor(
+        dev_ctx, seq_lens_decoder, batch_size, max_dec_len_this_time);
+  } else {
+    phi::Full<int, phi::CPUContext>(
+        reinterpret_cast<const phi::CPUContext&>(dev_ctx_cpu),
+        phi::IntArray(common::vectorize(max_dec_len_this_time->dims())),
+        0,
+        max_dec_len_this_time);
+  }
 
   // encoder
   max_enc_len_this_time->Resize({{1}});
-  GetMaxLenTensor(dev_ctx, seq_lens_encoder, batch_size, max_enc_len_this_time);
+  if (seq_lens_encoder.numel() > 0) {
+    GetMaxLenTensor(
+        dev_ctx, seq_lens_encoder, batch_size, max_enc_len_this_time);
+  } else {
+    phi::Full<int, phi::CPUContext>(
+        reinterpret_cast<const phi::CPUContext&>(dev_ctx_cpu),
+        phi::IntArray(common::vectorize(max_enc_len_this_time->dims())),
+        0,
+        max_enc_len_this_time);
+  }
 }
 }  // namespace fusion
 }  // namespace phi

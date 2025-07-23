@@ -98,7 +98,6 @@ bool AddNOpInferSymbolicShape(pir::Operation *op,
   }
   infer_context->SetShapeOrDataForValue(
       op->result(0), symbol::ShapeOrDataDimExprs{candidate_shape});
-
   return true;
 }
 
@@ -379,7 +378,7 @@ bool BatchNormOpInferSymbolicShape(
                           "ShapeError: the dimension of scale must equal to 1."
                           "But received: the dimension of scale is [%d]",
                           scale_dims.size()));
-    infer_context->AddEqualCstr(scale_dims[0], C);
+    if (C != 0) infer_context->AddEqualCstr(scale_dims[0], C);
   }
 
   if (!bias_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
@@ -390,7 +389,7 @@ bool BatchNormOpInferSymbolicShape(
                           "ShapeError: the dimension of bias must equal to 1."
                           "But received: the dimension of bias is [%d]",
                           bias_dims.size()));
-    infer_context->AddEqualCstr(bias_dims[0], C);
+    if (C != 0) infer_context->AddEqualCstr(bias_dims[0], C);
   }
 
   // Set output shapes
@@ -797,7 +796,7 @@ bool BoxCoderOpInferSymbolicShape(
                         prior_box_shape.size()));
   infer_context->AddEqualCstr(prior_box_shape[1], symbol::DimExpr{4});
 
-  if (!paddle::dialect::details::IsFakeValue(op->operand_source(1))) {
+  if (op->operand_source(1)) {
     const symbol::ShapeOrDataDimExprs &prior_box_var_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(1));
     const std::vector<symbol::DimExpr> &prior_box_var_shape =
@@ -1819,25 +1818,19 @@ bool FusedAttentionOpInferSymbolicShape(
     infer_context->SetSymbolForValueByStaticShape(op->result(0));
     infer_context->SetSymbolForValueByStaticShape(op->result(1));
     infer_context->SetSymbolForValueByStaticShape(op->result(2));
-    if (paddle::dialect::details::IsFakeValue(op->result(15))) {
-      infer_context->SetSymbolForValueByStaticShape(op->result(15));
-    } else {
+    if (!paddle::dialect::details::IsFakeValue(op->result(15))) {
       infer_context->SetShapeOrDataForValue(
           op->result(15),
           symbol::ShapeOrDataDimExprs{
               symbol::TensorShapeOrDataDimExprs({x_shape[0] * x_shape[1]})});
     }
-    if (paddle::dialect::details::IsFakeValue(op->result(16))) {
-      infer_context->SetSymbolForValueByStaticShape(op->result(16));
-    } else {
+    if (!paddle::dialect::details::IsFakeValue(op->result(16))) {
       infer_context->SetShapeOrDataForValue(
           op->result(16),
           symbol::ShapeOrDataDimExprs{
               symbol::TensorShapeOrDataDimExprs({x_shape[0] * x_shape[1]})});
     }
-    if (paddle::dialect::details::IsFakeValue(op->result(17))) {
-      infer_context->SetSymbolForValueByStaticShape(op->result(17));
-    } else {
+    if (!paddle::dialect::details::IsFakeValue(op->result(17))) {
       infer_context->SetShapeOrDataForValue(
           op->result(17),
           symbol::ShapeOrDataDimExprs{
@@ -1910,9 +1903,7 @@ bool FusedAttentionOpInferSymbolicShape(
     infer_context->AddEqualCstr(cache_kv_shape[4], dim_head);
     out_seq_len = out_seq_len + cache_kv_shape[3];
     // [3, batch_size, num_head, cache_seq_len + seq_len, head_size]
-    if (paddle::dialect::details::IsFakeValue(op->result(18))) {
-      infer_context->SetSymbolForValueByStaticShape(op->result(18));
-    } else {
+    if (!paddle::dialect::details::IsFakeValue(op->result(18))) {
       infer_context->SetShapeOrDataForValue(
           op->result(18),
           symbol::ShapeOrDataDimExprs{
@@ -2214,8 +2205,6 @@ bool FusedGemmEpilogueOpInferSymbolicShape(
   if (!paddle::dialect::details::IsFakeValue(op->result(1))) {
     infer_context->SetShapeOrDataForValue(op->result(1),
                                           ShapeOrData{TensorExprs(out_shape)});
-  } else {
-    infer_context->SetSymbolForValueByStaticShape(op->result(1));
   }
 
   return true;
@@ -2782,16 +2771,12 @@ bool InstanceNormOpInferSymbolicShape(
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
-  if (paddle::dialect::details::IsFakeValue(op->result(1))) {
-    infer_context->SetSymbolForValueByStaticShape(op->result(1));
-  } else {
+  if (!paddle::dialect::details::IsFakeValue(op->result(1))) {
     infer_context->SetShapeOrDataForValue(
         op->result(1),
         symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs({NxC})});
   }
-  if (paddle::dialect::details::IsFakeValue(op->result(2))) {
-    infer_context->SetSymbolForValueByStaticShape(op->result(2));
-  } else {
+  if (!paddle::dialect::details::IsFakeValue(op->result(2))) {
     infer_context->SetShapeOrDataForValue(
         op->result(2),
         symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs({NxC})});
@@ -3473,6 +3458,17 @@ bool LstmOpInferSymbolicShape(pir::Operation *op,
 
   return true;
 }
+bool LuSolveOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &b_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &b_shape = b_shape_or_data.shape();
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(b_shape)});
+
+  return true;
+}
 
 // bool MergedAdamOpInferSymbolicShape(pir::Operation *op,
 //                                     pir::InferSymbolicShapeContext
@@ -3782,7 +3778,7 @@ bool PyramidHashOpInferSymbolicShape(
   PADDLE_ENFORCE_EQ(num_emb % rand_len,
                     0,
                     common::errors::InvalidArgument(
-                        "The PyramidHashOP’s Attr(num_emb) should mod "
+                        "The PyramidHashOP's Attr(num_emb) should mod "
                         "Attr(rand_len), but num_emb is %d, rand_len is %d",
                         num_emb,
                         rand_len));
@@ -3883,9 +3879,7 @@ bool RankAttentionOpInferSymbolicShape(
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(out_shape)});
 
-  if (details::IsFakeValue(op->result(0))) {
-    infer_context->SetSymbolForValueByStaticShape(op->result(0));
-  } else {
+  if (!details::IsFakeValue(op->result(0))) {
     std::vector<symbol::DimExpr> x_help_shape = {x_shape[0],
                                                  x_shape[1] * max_rank};
     infer_context->SetShapeOrDataForValue(
@@ -3894,9 +3888,7 @@ bool RankAttentionOpInferSymbolicShape(
             symbol::TensorShapeOrDataDimExprs(x_help_shape)});
   }
 
-  if (details::IsFakeValue(op->result(2))) {
-    infer_context->SetSymbolForValueByStaticShape(op->result(2));
-  } else {
+  if (!details::IsFakeValue(op->result(2))) {
     std::vector<symbol::DimExpr> ins_rank_shape = {x_shape[0], 1};
     infer_context->SetShapeOrDataForValue(
         op->result(2),
@@ -3949,7 +3941,9 @@ bool RmsNormOpInferSymbolicShape(
   const std::vector<symbol::DimExpr> &norm_weight_dims =
       norm_weight_shape.shape();
 
-  infer_context->AddEqualCstr(normalized_dims, norm_weight_dims[0]);
+  if (normalized_dims != 0) {
+    infer_context->AddEqualCstr(normalized_dims, norm_weight_dims[0]);
+  }
 
   infer_context->SetShapeOrDataForValue(
       op->result(0),
@@ -4495,6 +4489,17 @@ bool WarpctcOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &logits_shape =
       logits_shape_or_data.shape();
+  bool logits_0_size = false;
+  for (size_t i = 0; i < logits_shape.size(); ++i) {
+    if (logits_shape[i] == 0) {
+      logits_0_size = true;
+      break;
+    }
+  }
+  if (logits_0_size) {
+    PADDLE_THROW(
+        common::errors::InvalidArgument("The input size can not be zero."));
+  }
 
   symbol::DimExpr max_sequence_length, num_sequences;
   symbol::DimExpr sequence_width = symbol::DimExpr(1);

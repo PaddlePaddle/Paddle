@@ -15,12 +15,7 @@
 from __future__ import annotations
 
 import math
-from typing import (
-    Iterable,
-    Iterator,
-    Sequence,
-    Sized,
-)
+from collections.abc import Iterable, Iterator, Sequence, Sized
 
 import numpy as np
 

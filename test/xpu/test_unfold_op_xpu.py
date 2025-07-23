@@ -170,6 +170,29 @@ class XPUTestUnfoldOp(XPUOpTestWrapper):
         def test_info(self):
             str(paddle.nn.Unfold(**self.attrs))
 
+    class TestUnfoldZeroSize(TestUnfoldOp):
+        """
+        This is for test on unfold Op with zero size input
+        """
+
+        def init_data(self):
+            self.batch_size = 3
+            self.input_channels = 0
+            self.input_height = 20
+            self.input_width = 20
+
+            self.kernel_sizes = [2, 2]
+            self.strides = [1, 1]
+            self.paddings = [1, 1, 1, 1]
+            self.dilations = [1, 1]
+            input_shape = [
+                self.batch_size,
+                self.input_channels,
+                self.input_height,
+                self.input_width,
+            ]
+            self.x = np.random.rand(*input_shape).astype(self.dtype)
+
 
 support_types = get_xpu_op_support_types('unfold')
 for stype in support_types:

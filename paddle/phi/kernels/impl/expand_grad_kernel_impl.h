@@ -15,51 +15,97 @@
 #pragma once
 
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/impl/expand_kernel_impl.h"
 
 namespace phi {
 template <typename Context, typename T, int Dims>
-void ExpandBackward(const Context& ctx,
+void ExpandBackward(const Context& dev_ctx,
                     const DenseTensor& out_grad,
                     const std::vector<int>& reshape_dims_vec,
                     const std::vector<int>& reduce_dims_vec,
                     DenseTensor* in_grad) {
   size_t reshape_size = reshape_dims_vec.size();
   size_t reduce_size = reduce_dims_vec.size();
-  ctx.template Alloc<T>(in_grad);
+  dev_ctx.template Alloc<T>(in_grad);
   in_grad->data<T>();
 
-  auto x_grad = EigenVector<T>::Flatten(*in_grad);
-  Eigen::DSizes<Eigen::DenseIndex, Dims * 2> reshape_dims;
-  for (size_t i = 0; i < reshape_size; ++i) {
-    reshape_dims[i] = reshape_dims_vec[i];
+  if constexpr (std::is_same_v<T, dtype::float16> ||
+                std::is_same_v<T, dtype::bfloat16>) {
+    const DenseTensor out_grad_fp32 =
+        phi::Cast<T, Context>(dev_ctx, out_grad, DataType::FLOAT32);
+    DenseTensor in_grad_fp32;
+    in_grad_fp32.Resize(in_grad->dims());
+    dev_ctx.template Alloc<float>(&in_grad_fp32);
+
+    auto x_grad = EigenVector<float>::Flatten(in_grad_fp32);
+    Eigen::DSizes<Eigen::DenseIndex, Dims * 2> reshape_dims;
+    for (size_t i = 0; i < reshape_size; ++i) {
+      reshape_dims[i] = reshape_dims_vec[i];
+    }
+    Eigen::DSizes<Eigen::DenseIndex, Dims> reduce_dims;
+    for (size_t i = 0; i < reduce_size; ++i) {
+      reduce_dims[i] = reduce_dims_vec[i];
+    }
+    const auto out_grad0 = EigenVector<float>::Flatten(out_grad_fp32);
+    auto& place = *dev_ctx.eigen_device();
+    phi::funcs::EigenBroadcastGrad<std::decay_t<decltype(place)>, float, Dims>::
+        Eval(place, x_grad, out_grad0, reduce_dims, reshape_dims);
+
+    if constexpr (std::is_same_v<T, dtype::float16>) {
+      phi::CastKernel<float, Context>(
+          dev_ctx, in_grad_fp32, DataType::FLOAT16, in_grad);
+    } else {
+      phi::CastKernel<float, Context>(
+          dev_ctx, in_grad_fp32, DataType::BFLOAT16, in_grad);
+    }
+  } else {
+    auto x_grad = EigenVector<T>::Flatten(*in_grad);
+    Eigen::DSizes<Eigen::DenseIndex, Dims * 2> reshape_dims;
+    for (size_t i = 0; i < reshape_size; ++i) {
+      reshape_dims[i] = reshape_dims_vec[i];
+    }
+    Eigen::DSizes<Eigen::DenseIndex, Dims> reduce_dims;
+    for (size_t i = 0; i < reduce_size; ++i) {
+      reduce_dims[i] = reduce_dims_vec[i];
+    }
+    auto out_grad0 = EigenVector<T>::Flatten(out_grad);
+    auto& place = *dev_ctx.eigen_device();
+    phi::funcs::EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::
+        Eval(place, x_grad, out_grad0, reduce_dims, reshape_dims);
   }
-  Eigen::DSizes<Eigen::DenseIndex, Dims> reduce_dims;
-  for (size_t i = 0; i < reduce_size; ++i) {
-    reduce_dims[i] = reduce_dims_vec[i];
-  }
-  auto out_grad0 = EigenVector<T>::Flatten(out_grad);
-  auto& place = *ctx.eigen_device();
-  phi::funcs::EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::Eval(
-      place, x_grad, out_grad0, reduce_dims, reshape_dims);
 }
 
 template <typename T, typename Context>
-void ExpandGradKernel(const Context& ctx,
+void ExpandGradKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& out_grad,
                       const IntArray& shape,
                       DenseTensor* in_grad) {
-  auto expand_shape = shape.GetData();
   auto x_dims = x.dims();
+  auto out_grad_dims = out_grad.dims();
+  std::vector<int64_t> expand_shape = phi::vectorize<int64_t>(out_grad_dims);
 
-  if (in_grad->dims() == out_grad.dims()) {
-    phi::Copy(ctx, out_grad, ctx.GetPlace(), false, in_grad);
+  if (x.numel() == 0 || out_grad.numel() == 0 ||
+      (in_grad && in_grad->numel() == 0)) {
+    dev_ctx.template Alloc<T>(in_grad);
+    if (in_grad->numel() != 0) {
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(in_grad->dims())),
+                            0,
+                            in_grad);
+    }
     return;
   }
-  auto vec_in_dims = common::vectorize<int>(x_dims);
+
+  if (in_grad->dims() == out_grad_dims) {
+    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, in_grad);
+    return;
+  }
+  auto vec_in_dims = common::vectorize<int64_t>(x_dims);
   auto diff = expand_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   // 1. reshape_dims_vec is the broadcast parameter.
@@ -68,11 +114,7 @@ void ExpandGradKernel(const Context& ctx,
   //    size.
   std::vector<int> repeat_times(vec_in_dims.size());
   for (size_t i = 0; i < vec_in_dims.size(); ++i) {
-    if (expand_shape[i] < 0) {
-      repeat_times[i] = 1;
-    } else {
-      repeat_times[i] = expand_shape[i] / vec_in_dims[i];
-    }
+    repeat_times[i] = expand_shape[i] / vec_in_dims[i];
   }
   std::vector<int> reshape_dims_vec;
   std::vector<int> reduce_dims_vec;
@@ -102,39 +144,39 @@ void ExpandGradKernel(const Context& ctx,
   switch (dims) {
     case 0:
       ExpandBackward<Context, T, 1>(
-          ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+          dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
       break;
     case 1:
       ExpandBackward<Context, T, 1>(
-          ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+          dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
       break;
     case 2:
       ExpandBackward<Context, T, 2>(
-          ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+          dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
       break;
     case 3:
       ExpandBackward<Context, T, 3>(
-          ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+          dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
       break;
     case 4:
       ExpandBackward<Context, T, 4>(
-          ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+          dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
       break;
     case 5:
       ExpandBackward<Context, T, 5>(
-          ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+          dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
       break;
     case 6:
       ExpandBackward<Context, T, 6>(
-          ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+          dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
       break;
     case 7:
       ExpandBackward<Context, T, 7>(
-          ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+          dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
       break;
     case 8:
       ExpandBackward<Context, T, 8>(
-          ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+          dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
       break;
     default:
       PADDLE_THROW(common::errors::InvalidArgument(

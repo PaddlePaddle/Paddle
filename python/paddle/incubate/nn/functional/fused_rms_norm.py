@@ -61,7 +61,7 @@ def fused_rms_norm(
     norm_weight,
     norm_bias,
     epsilon,
-    begin_norm_axis,
+    begin_norm_axis=1,
     bias=None,
     residual=None,
     quant_scale=-1,
@@ -102,6 +102,21 @@ def fused_rms_norm(
             >>> epsilon = 1e-6
             >>> paddle_rmsnorm = paddle.incubate.nn.functional.fused_rms_norm(paddle_x, paddle_weight, paddle_bias, epsilon, 1)
     """
+    input_rank = len(x.shape)
+    if begin_norm_axis < 0:
+        begin_norm_axis += input_rank
+
+    if begin_norm_axis < 0 or begin_norm_axis >= input_rank:
+        raise ValueError(
+            f"begin_norm_axis must be in range [0, {input_rank}), "
+            f"but got {begin_norm_axis}"
+            + (
+                f" (originally {begin_norm_axis - input_rank})"
+                if begin_norm_axis < 0
+                else ""
+            )
+        )
+
     if in_dynamic_or_pir_mode():
         return _C_ops.rms_norm(
             x,

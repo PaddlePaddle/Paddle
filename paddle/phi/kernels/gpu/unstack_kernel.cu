@@ -21,7 +21,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void UnStackKernel(const Context& ctx,
+void UnStackKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    int axis,
                    int num,
@@ -38,7 +38,7 @@ void UnStackKernel(const Context& ctx,
           split_dim,
           outs.size()));
 
-  funcs::UnStackRawKernel<T, Context>(ctx, x, axis, &outs);
+  funcs::UnStackRawKernel<T, Context>(dev_ctx, x, axis, &outs);
 }
 
 }  // namespace phi

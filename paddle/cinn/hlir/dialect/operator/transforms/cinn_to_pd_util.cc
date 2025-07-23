@@ -22,6 +22,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/core/ir_mapping.h"
@@ -122,6 +123,65 @@ const auto& handler_reduce_prod_op =
   }
   return pd_op;
 };
+
+template <typename TARGET_OP>
+::pir::Operation* ConvertArgMinMaxOp(
+    ::pir::Operation* op,
+    ::pir::IrMapping& ir_mapping,        // NOLINT
+    ::pir::PatternRewriter& rewriter) {  // NOLINT
+  VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
+
+  auto attrs = op->attributes();
+  auto* ctx = ::pir::IrContext::Instance();
+
+  ::pir::ArrayAttribute attr_axis =
+      attrs.at("axis").dyn_cast<::pir::ArrayAttribute>();
+  if (attr_axis.empty()) {
+    attrs["axis"] = ::pir::Int64Attribute::get(ctx, 0);
+    attrs["flatten"] = ::pir::BoolAttribute::get(ctx, true);
+  } else {
+    attrs["axis"] = attr_axis.at(0);
+    attrs["flatten"] = ::pir::BoolAttribute::get(ctx, false);
+  }
+
+  attrs["keepdims"] = attrs.at("keepdim");
+  attrs.erase("keepdim");
+
+  auto pd_op = rewriter.Build<TARGET_OP>(
+      ir_mapping.Lookup(op->operand_source(0)), attrs);
+  for (uint32_t i = 0; i < op->num_results(); ++i) {
+    ir_mapping.Add(op->result(i), pd_op->result(i));
+  }
+  return pd_op;
+}
+
+::pir::Operation* ConvertArangeOp(::pir::Operation* op,
+                                  ::pir::IrMapping& ir_mapping,        // NOLINT
+                                  ::pir::PatternRewriter& rewriter) {  // NOLINT
+  using paddle::dialect::FullOp;
+  VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
+
+  std::array<double, 3> input_list = {0, 0, 1};
+  for (int i = 0; i < 3; i++) {
+    const FullOp full_op = ::pir::CastDefinedTo<FullOp>(op, i);
+    // pd_op.paddle has fixed args type, so we need to convert it to double
+    input_list[i] = full_op.attribute("value")
+                        .dyn_cast<paddle::dialect::ScalarAttribute>()
+                        .data()
+                        .to<double>();
+  }
+
+  ::phi::DataType dtype = op->attributes()
+                              .at("dtype")
+                              .dyn_cast<paddle::dialect::DataTypeAttribute>()
+                              .data();
+  auto pd_op = rewriter.Build<paddle::dialect::ArangeOp>(
+      input_list[0], input_list[1], input_list[2], dtype);
+  for (uint32_t i = 0; i < op->num_results(); ++i) {
+    ir_mapping.Add(op->result(i), pd_op->result(i));
+  }
+  return pd_op;
+}
 
 ::pir::Operation* ConvertSliceOp(::pir::Operation* op,
                                  ::pir::IrMapping& ir_mapping,        // NOLINT
@@ -403,6 +463,20 @@ REGISTER_TRANSFORM_RULES(reduce_min_op,
 REGISTER_TRANSFORM_RULES(reduce_prod_op,
                          cinn::dialect::ReduceProdOp::name(),
                          cinn::dialect::details::handler_reduce_prod_op);
+
+REGISTER_TRANSFORM_RULES(
+    argmin_op,
+    cinn::dialect::ArgminOp::name(),
+    cinn::dialect::details::ConvertArgMinMaxOp<paddle::dialect::ArgminOp>);
+
+REGISTER_TRANSFORM_RULES(
+    argmax_op,
+    cinn::dialect::ArgmaxOp::name(),
+    cinn::dialect::details::ConvertArgMinMaxOp<paddle::dialect::ArgmaxOp>);
+
+REGISTER_TRANSFORM_RULES(arange_op,
+                         cinn::dialect::ArangeOp::name(),
+                         cinn::dialect::details::ConvertArangeOp);
 
 REGISTER_TRANSFORM_RULES(slice_op,
                          cinn::dialect::SliceOp::name(),

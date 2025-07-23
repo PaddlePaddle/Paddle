@@ -744,6 +744,21 @@ class Engine:
                 [dist_program], [startup_program]
             )
 
+        if self._strategy.pipeline.auto_parallel_sync_shared_params:
+            config = {}
+            config["concrete_program"] = self.concrete_program
+            config["pipeline_strategy"] = self._strategy.pipeline
+            auto_parallel_sync_shared_params_pass = new_pass(
+                "auto_parallel_sync_shared_params", config
+            )
+            shared_params = (
+                auto_parallel_sync_shared_params_pass.sync_shared_parameters(
+                    dist_program, startup_program
+                )
+            )
+            for pname in shared_params:
+                self._parameter_name_list.append(pname)
+
         # Step 1.2: pir backward
         if mode == "train" and self._loss and self._optimizer:
             loss = dist_program.get_output_value_by_name(self._loss_names[0])
@@ -872,6 +887,11 @@ class Engine:
         self.program_helper.cache_whole_graph_dist_attr(all_params)
 
         RemovePasses.apply_all(dist_program, startup_program, params_grads)
+
+        if self._strategy.pipeline.auto_parallel_sync_shared_params:
+            global_params_grads = auto_parallel_sync_shared_params_pass.sync_shared_parameter_gradient(
+                dist_program, startup_program, global_params_grads
+            )
 
         # Part 4: Optimization Pass
         # NOTE Only those Optimization Pass that related to Parallelism (need dist attr) should be placed here and all the Pass should be Optional.
@@ -1113,9 +1133,10 @@ class Engine:
             serial_main_prog = self._orig_main_prog.clone()
             serial_startup_prog = self._orig_startup_prog.clone()
             if not self._skip_build:
-                with static.program_guard(
-                    serial_main_prog, serial_startup_prog
-                ), utils.unique_name.guard():
+                with (
+                    static.program_guard(serial_main_prog, serial_startup_prog),
+                    utils.unique_name.guard(),
+                ):
                     self._inputs = [
                         s._create_feed_layer() for s in self._inputs_spec
                     ]

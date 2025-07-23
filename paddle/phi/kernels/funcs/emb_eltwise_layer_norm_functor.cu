@@ -28,7 +28,6 @@ namespace cub = hipcub;
 #include "paddle/phi/kernels/funcs/emb_eltwise_layer_norm_functor.h"
 
 #include "paddle/phi/common/float16.h"
-#include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 
 namespace phi {

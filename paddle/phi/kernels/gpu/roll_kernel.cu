@@ -30,7 +30,6 @@ void RollKernel(const Context& dev_ctx,
                 const std::vector<int64_t>& axis,
                 DenseTensor* out) {
   if (x.numel() == 0) {
-    out->Resize(out->dims());
     dev_ctx.template Alloc<T>(out);
     return;
   }

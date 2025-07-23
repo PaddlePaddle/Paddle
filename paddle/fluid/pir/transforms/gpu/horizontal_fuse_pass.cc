@@ -306,12 +306,12 @@ class HorizontalFusePattern : public pir::RewritePattern {
                                         fused_matmul_op_attrs,
                                         w_from_source_index);
 
-    pir::Value xw_splitted = InsertOpAfter<paddle::dialect::SplitOp>(
+    pir::Value xw_split = InsertOpAfter<paddle::dialect::SplitOp>(
         &prev_op, rewriter, xw_fused, w_shapes, x_last_axis);
 
     rewriter->SetInsertionPointAfter(prev_op);
 
-    auto split_builtin_op = rewriter->Build<pir::SplitOp>(xw_splitted);
+    auto split_builtin_op = rewriter->Build<pir::SplitOp>(xw_split);
 
     std::vector<pir::Value> xw = split_builtin_op.outputs();
 

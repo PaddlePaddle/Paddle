@@ -21,7 +21,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void SyncBatchNormKernel(const Context& ctx,
+void SyncBatchNormKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& mean,
                          const DenseTensor& variance,
@@ -67,14 +67,14 @@ void SyncBatchNormKernel(const Context& ctx,
   const auto* s_d = scale.template data<BatchNormParamType<T>>();
   const auto* b_d = bias.template data<BatchNormParamType<T>>();
 
-  T* y_d = ctx.template Alloc<T>(y);
+  T* y_d = dev_ctx.template Alloc<T>(y);
 
   const BatchNormParamType<T>* mean_data = nullptr;
   const BatchNormParamType<T>* var_data = nullptr;
 
-  auto stream = ctx.stream();
+  auto stream = dev_ctx.stream();
   const int block = 512;
-  int max_threads = ctx.GetMaxPhysicalThreadCount();
+  int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
 
   phi::Allocator::AllocationPtr alloc_ptr{nullptr};
 
@@ -87,7 +87,7 @@ void SyncBatchNormKernel(const Context& ctx,
     const int bytes = (C * 2 + 1) * sizeof(BatchNormParamType<T>);
     phi::DenseTensor stats_tensor;
     stats_tensor.Resize({static_cast<int64_t>(bytes)});
-    ctx.template Alloc<BatchNormParamType<T>>(&stats_tensor);
+    dev_ctx.template Alloc<BatchNormParamType<T>>(&stats_tensor);
     auto* stats_data = stats_tensor.data<BatchNormParamType<T>>();
     auto* stats = reinterpret_cast<BatchNormParamType<T>*>(stats_data);
     const int threads = 512;
@@ -102,26 +102,28 @@ void SyncBatchNormKernel(const Context& ctx,
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     auto comm_ctx =
-        static_cast<distributed::NCCLCommContext*>(ctx.GetCommContext());
+        static_cast<distributed::NCCLCommContext*>(dev_ctx.GetCommContext());
     if (comm_ctx) {
       comm_ctx->AllReduce(&stats_tensor, stats_tensor, ncclSum, stream);
     }
 #endif
 
-    auto* est_mean_data = ctx.template Alloc<BatchNormParamType<T>>(mean_out);
+    auto* est_mean_data =
+        dev_ctx.template Alloc<BatchNormParamType<T>>(mean_out);
     auto* est_var_data =
-        ctx.template Alloc<BatchNormParamType<T>>(variance_out);
+        dev_ctx.template Alloc<BatchNormParamType<T>>(variance_out);
 
-    auto* sv_mean_data = ctx.template Alloc<BatchNormParamType<T>>(saved_mean);
+    auto* sv_mean_data =
+        dev_ctx.template Alloc<BatchNormParamType<T>>(saved_mean);
     auto* sv_inv_var_data =
-        ctx.template Alloc<BatchNormParamType<T>>(saved_variance);
+        dev_ctx.template Alloc<BatchNormParamType<T>>(saved_variance);
 
     int64_t reserve_space_size = 0;
     if (reserve_space == nullptr) {
       reserve_space = new DenseTensor();
     }
     reserve_space->Resize({reserve_space_size});
-    ctx.template Alloc<T>(reserve_space);
+    dev_ctx.template Alloc<T>(reserve_space);
 
     // Note, Input('Mean')/Input('Variance') share variable with
     // Output('MeanOut')/Output('VarianceOut')

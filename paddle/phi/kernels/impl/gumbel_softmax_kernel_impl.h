@@ -27,7 +27,7 @@ namespace phi {
 
 template <typename Context, typename T, int64_t Rank>
 struct ArgMaxFunctor {
-  void operator()(const Context& ctx UNUSED,
+  void operator()(const Context& dev_ctx UNUSED,
                   const DenseTensor& in,
                   DenseTensor* index_tensor,
                   const int64_t& axis) {
@@ -44,7 +44,7 @@ template <typename Context, typename T>
 struct OneHotGenerator;
 
 template <typename T, typename Context>
-void GumbelSoftmaxKernelHelper(const Context& ctx,
+void GumbelSoftmaxKernelHelper(const Context& dev_ctx,
                                const DenseTensor& x,
                                float temperature,
                                bool hard,
@@ -62,14 +62,14 @@ void GumbelSoftmaxKernelHelper(const Context& ctx,
                         temperature));
 
   // allocate memory on device.
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   if (out->numel() == 0) {
     return;
   }
 
   // For 0D Tensor
   if (rank == 0) {
-    phi::funcs::set_constant(ctx, out, static_cast<T>(1.0));
+    phi::funcs::set_constant(dev_ctx, out, static_cast<T>(1.0));
     return;
   }
 
@@ -80,28 +80,30 @@ void GumbelSoftmaxKernelHelper(const Context& ctx,
   out_2d.Resize({size_to_axis, size_from_axis});
 
   // generate gumbel noise and add it to X
-  auto* x_noise_data = ctx.template Alloc<T>(&x_noise_2d);
-  GumbleNoiseGenerator<Context, T>::Transform(ctx,
+  auto* x_noise_data = dev_ctx.template Alloc<T>(&x_noise_2d);
+  GumbleNoiseGenerator<Context, T>::Transform(dev_ctx,
                                               x.data<T>(),
                                               x_noise_data,
                                               size_to_axis,
                                               size_from_axis,
                                               temperature);
-  phi::funcs::SoftmaxFunctor<Context, T>()(ctx, axis_dim, &x_noise_2d, &out_2d);
+  phi::funcs::SoftmaxFunctor<Context, T>()(
+      dev_ctx, axis_dim, &x_noise_2d, &out_2d);
 
   if (hard) {
-    OneHotGenerator<Context, T>::Transform(ctx, x, out, axis);
+    OneHotGenerator<Context, T>::Transform(dev_ctx, x, out, axis);
   }
 }
 
 template <typename T, typename Context>
-void GumbelSoftmaxKernel(const Context& ctx,
+void GumbelSoftmaxKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          float temperature,
                          bool hard,
                          int axis,
                          DenseTensor* out) {
-  GumbelSoftmaxKernelHelper<T, Context>(ctx, x, temperature, hard, axis, out);
+  GumbelSoftmaxKernelHelper<T, Context>(
+      dev_ctx, x, temperature, hard, axis, out);
 }
 
 }  // namespace phi

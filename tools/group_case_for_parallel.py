@@ -140,8 +140,9 @@ def group_case_for_parallel(rootPath):
         no_parallel_case_line_list.append(cases)
 
     new_f = open(f'{rootPath}/tools/no_parallel_case_file', 'w')
-    for case_line in no_parallel_case_line_list:
-        new_f.write(case_line + '\n')
+    new_f.writelines(
+        case_line + '\n' for case_line in no_parallel_case_line_list
+    )
     new_f.close()
     f.close()
 

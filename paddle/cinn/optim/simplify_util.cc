@@ -18,6 +18,7 @@
 #include <unordered_set>
 
 #include "paddle/cinn/common/const_fold.h"
+#include "paddle/cinn/common/shape_constraint.h"
 #include "paddle/cinn/common/simplify_special_pattern.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
@@ -221,22 +222,36 @@ bool IsNegatedIndexExpr(const ir::IndexExpr &candidate,
   return false;
 }
 
-IndexType VerifyIndex(const ir::Expr &expr) {
+ir::IndexExpr::IndexType VerifyIndex(const ir::Expr &expr) {
   switch (expr.node_type()) {
-    case ir::IrNodeTy::_Var_:
+    case ir::IrNodeTy::_Var_: {
+      if (expr.type().is_index_type()) {
+        return expr.as_var()->is_let_symbol ? ir::IndexExpr::IndexType::kLoad
+                                            : ir::IndexExpr::IndexType::kValid;
+      } else {
+        return ir::IndexExpr::IndexType::kInvalid;
+      }
+    }
     case ir::IrNodeTy::IntImm: {
-      return expr.type().is_index_type() ? IndexType::kValid
-                                         : IndexType::kInvalid;
+      return expr.type().is_index_type() ? ir::IndexExpr::IndexType::kValid
+                                         : ir::IndexExpr::IndexType::kInvalid;
     }
     case ir::IrNodeTy::Load: {
-      return expr.type().is_index_type() ? IndexType::kLoad
-                                         : IndexType::kInvalid;
+      if (!expr.type().is_index_type())
+        return ir::IndexExpr::IndexType::kInvalid;
+      auto load = expr.As<ir::Load>();
+      for (const auto &indices : load->indices) {
+        if (VerifyIndex(indices) == ir::IndexExpr::IndexType::kInvalid)
+          return ir::IndexExpr::IndexType::kInvalid;
+      }
+      return ir::IndexExpr::IndexType::kLoad;
     }
     case ir::IrNodeTy::Cast: {
-      IndexType result = VerifyIndex(expr->operand(0));
-      return result == IndexType::kValid && expr.type().is_index_type()
-                 ? IndexType::kCast
-                 : IndexType::kInvalid;
+      ir::IndexExpr::IndexType result = VerifyIndex(expr->operand(0));
+      return result != ir::IndexExpr::IndexType::kInvalid &&
+                     expr.type().is_index_type()
+                 ? ir::IndexExpr::IndexType::kCast
+                 : ir::IndexExpr::IndexType::kInvalid;
     }
     case ir::IrNodeTy::Add:
     case ir::IrNodeTy::Sub:
@@ -245,14 +260,15 @@ IndexType VerifyIndex(const ir::Expr &expr) {
     case ir::IrNodeTy::Mod:
     case ir::IrNodeTy::Max:
     case ir::IrNodeTy::Min: {
-      IndexType left = VerifyIndex(expr->operand(0));
-      IndexType right = VerifyIndex(expr->operand(1));
-      if (left == IndexType::kInvalid || right == IndexType::kInvalid)
-        return IndexType::kInvalid;
+      ir::IndexExpr::IndexType left = VerifyIndex(expr->operand(0));
+      ir::IndexExpr::IndexType right = VerifyIndex(expr->operand(1));
+      if (left == ir::IndexExpr::IndexType::kInvalid ||
+          right == ir::IndexExpr::IndexType::kInvalid)
+        return ir::IndexExpr::IndexType::kInvalid;
       return std::max(left, right);
     }
   }
-  return IndexType::kInvalid;
+  return ir::IndexExpr::IndexType::kInvalid;
 }
 
 ir::IndexExpr ConstructIndexExprByNodeType(const ir::IrNodeTy &ty,
@@ -438,6 +454,313 @@ bool IsPureMath(Expr expr) {
   }
 #endif
   return complex_nodes.empty();
+}
+
+/*!
+ * \brief Index Token in Tokenizer and Parser
+ */
+struct IndexToken {
+  enum class TokenType {
+    kNumber,
+    kVar,
+    kPlus,
+    kMinus,
+    kMultiply,
+    kDivide,
+    kModulo,
+    kLeftParen,
+    kRightParen,
+    kEnd
+  };
+
+  TokenType type;
+  std::string value;
+
+  explicit IndexToken(TokenType t, const std::string &v = "")
+      : type(t), value(v) {}
+};
+
+/*!
+ * \brief Tokenizer for IndexExpr, split the input string into IndexToken.
+ */
+class Tokenizer {
+ public:
+  explicit Tokenizer(const std::string &in) : input(in), pos(0) {}
+  // generate IndexToken for the next `pos`. it supports the following:
+  // 1. Number: 123, 1234...
+  // 2. Variable: a, b, a_1, aa, f1...
+  // 3. Operator: +, -, *, /, %, (, )
+  // 4. Whitespace
+  IndexToken NextToken() {
+    // skip whitespace
+    while (pos < input.size() && std::isspace(input[pos])) {
+      pos++;
+    }
+    // check if we reached the end of the input
+    if (pos >= input.size()) {
+      return IndexToken(IndexToken::TokenType::kEnd);
+    }
+
+    char c = input[pos++];
+
+    // deal with number (0, 1, 11, 123...) not support float.
+    if (std::isdigit(c)) {
+      std::string num;
+      num += c;
+      while (pos < input.size() && std::isdigit(input[pos])) {
+        num += input[pos++];
+      }
+      return IndexToken(IndexToken::TokenType::kNumber, num);
+    }
+
+    // deal with variable name (a, b, a1, a123, a_1...).
+    if (std::isalpha(c) || input[pos] == '_') {
+      std::string var;
+      var += c;
+      while (pos < input.size() &&
+             (std::isalnum(input[pos]) || input[pos] == '_')) {
+        var += input[pos++];
+      }
+      return IndexToken(IndexToken::TokenType::kVar, var);
+    }
+
+    // deal with operator {+, -, *, /, %, '(', ')'}.
+    switch (c) {
+      case '+':
+        return IndexToken(IndexToken::TokenType::kPlus);
+      case '-':
+        return IndexToken(IndexToken::TokenType::kMinus);
+      case '*':
+        return IndexToken(IndexToken::TokenType::kMultiply);
+      case '/':
+        return IndexToken(IndexToken::TokenType::kDivide);
+      case '%':
+        return IndexToken(IndexToken::TokenType::kModulo);
+      case '(':
+        return IndexToken(IndexToken::TokenType::kLeftParen);
+      case ')':
+        return IndexToken(IndexToken::TokenType::kRightParen);
+      default:
+        PADDLE_THROW(::common::errors::InvalidArgument(
+            "Tokenizer Unexpected character: %s", c));
+    }
+  }
+
+ private:
+  const std::string &input;
+  size_t pos;
+};
+
+/*!
+ * \brief Parser for IndexExpr, parse the input string into ir::Expr.
+ */
+class Parser {
+ public:
+  explicit Parser(const std::string &input)
+      : tokenizer(input), currentToken(tokenizer.NextToken()) {}
+  ir::Expr Parse() { return ParseExpression(); }
+
+ private:
+  void Advance() { currentToken = tokenizer.NextToken(); }
+
+  // Processing addition and subtraction expressions, with the lowest priority.
+  ir::Expr ParseExpression() {
+    auto left = ParseTerm();
+
+    while (currentToken.type == IndexToken::TokenType::kPlus ||
+           currentToken.type == IndexToken::TokenType::kMinus) {
+      auto op = currentToken.type;
+      Advance();
+      auto right = ParseTerm();
+
+      if (op == IndexToken::TokenType::kPlus) {
+        left = ir::Add::Make(left, right);
+      } else {
+        left = ir::Sub::Make(left, right);
+      }
+    }
+
+    return left;
+  }
+
+  // Process multiplication, division and modulo expressions, with higher
+  // priority than addition and subtraction, and the parsing result appears as
+  // one Term. e.g. a * b + c, a * b is a Term.
+  ir::Expr ParseTerm() {
+    auto left = ParseFactor();
+    while (currentToken.type == IndexToken::TokenType::kMultiply ||
+           currentToken.type == IndexToken::TokenType::kDivide ||
+           currentToken.type == IndexToken::TokenType::kModulo) {
+      auto op = currentToken.type;
+      Advance();
+      auto right = ParseFactor();
+
+      if (op == IndexToken::TokenType::kMultiply) {
+        left = ir::Mul::Make(left, right);
+      } else if (op == IndexToken::TokenType::kDivide) {
+        left = ir::Div::Make(left, right);
+      } else {
+        left = ir::Mod::Make(left, right);
+      }
+    }
+
+    return left;
+  }
+
+  // Process numeric, variables and brackets, with the highest priority, as
+  // parameters for each item.
+  ir::Expr ParseFactor() {
+    if (currentToken.type == IndexToken::TokenType::kNumber) {
+      int value = std::stoi(currentToken.value);
+      Advance();
+      return ir::Expr(value);
+    } else if (currentToken.type == IndexToken::TokenType::kVar) {
+      auto var_name = currentToken.value;
+      Advance();
+      return GetOrCreateVar(var_name);
+    } else if (currentToken.type == IndexToken::TokenType::kLeftParen) {
+      Advance();
+      auto expr = ParseExpression();
+
+      if (currentToken.type != IndexToken::TokenType::kRightParen) {
+        PADDLE_THROW(::common::errors::InvalidArgument(
+            "Parser Expected ')', because of '(' in before."));
+      }
+
+      Advance();
+      return expr;
+    } else {
+      PADDLE_THROW(
+          ::common::errors::InvalidArgument("Parser Unexpected IndexToken"));
+    }
+  }
+  ir::Expr GetOrCreateVar(const std::string &var_name) {
+    if (vars.find(var_name) == vars.end()) {
+      vars[var_name] = ir::Var(var_name);
+    }
+    return vars[var_name];
+  }
+  Tokenizer tokenizer;
+  IndexToken currentToken;
+  std::unordered_map<std::string, ir::Var> vars;
+};
+
+ir::Expr ParseExpressionFromString(const std::string &expr_str) {
+  thread_local static std::unordered_map<std::string, ir::Expr> cache;
+  auto it = cache.find(expr_str);
+  if (it != cache.end()) {
+    return it->second;
+  }
+  Parser parser(expr_str);
+  auto result = parser.Parse();
+  cache[expr_str] = result;
+
+  return result;
+}
+
+std::optional<std::unordered_map<std::string, ir::IndexExpr>> MatchPattern(
+    const ir::IndexExpr &expr,
+    const std::string &pattern_str,
+    const std::function<bool(
+        const std::unordered_map<std::string, ir::IndexExpr> &)> &condition) {
+  // Parse the pattern string into an IndexExpr
+  ir::IndexExpr pattern = ParseExpressionFromString(pattern_str);
+
+  std::unordered_map<std::string, ir::IndexExpr> map;
+
+  if (CheckPattern(expr, pattern, &map)) {
+    // Apply the condition if provided
+    if (condition && !condition(map)) return std::nullopt;
+    return map;
+  }
+
+  return std::nullopt;
+}
+
+ir::IndexExpr BoundSimplify(const ir::IndexExpr &expr) {
+  // return expr if expr is not a division or modulo
+  if (expr.node_type() != ir::IrNodeTy::Div &&
+      expr.node_type() != ir::IrNodeTy::Mod)
+    return expr;
+
+  common::cas_intervals_t var_intervals =
+      common::CollectVarIntervalsOfExprs({expr});
+  common::SymbolicExprAnalyzer ana(var_intervals);
+  // Because the SymbolicExprAnalyzer bound result is [lower, upper), `ProveLE`
+  // is used here instead of `ProveLT`.
+  auto canBeSimplified =
+      ana.ProveLE(ana.UpperBound(expr.operand(0)), expr.operand(1));
+
+  if (canBeSimplified.value_or(false)) {
+    if (expr.node_type() == ir::IrNodeTy::Div) {
+      return ir::IndexExpr(0);
+    } else if (expr.node_type() == ir::IrNodeTy::Mod) {
+      return expr.operand(0);
+    }
+  }
+  return expr;
+}
+
+ir::IndexExpr BroadcastSimplify(const ir::IndexExpr &expr) {
+  // Two consecutive modular operations.
+  auto opt_map =
+      MatchPattern(expr,
+                   "f % a % b",
+                   [](const std::unordered_map<std::string, ir::IndexExpr> &m) {
+                     return m.at("a").node_type() == ir::IrNodeTy::Max ||
+                            m.at("a").node_type() == ir::IrNodeTy::Mul;
+                   });
+  if (!opt_map) return expr;
+
+  auto &map = opt_map.value();
+  auto ll = map.at("f");
+  auto lr = map.at("a");
+  auto r = map.at("b");
+
+  auto CanSimplifyMaxMod = [](const ir::IndexExpr &lr, const ir::IndexExpr &r) {
+    auto lr_elems = GetFlattenExprs<ir::Max>(lr);
+    auto r_elems = GetFlattenExprs<ir::Max>(r);
+
+    // The second modulus is a subset of the first modulus.
+    for (auto &&r_elem : r_elems) {
+      if (std::find(lr_elems.begin(), lr_elems.end(), r_elem) == lr_elems.end())
+        return false;
+    }
+
+    // The first modulus is broadcastable.
+    auto &constraint = cinn::common::ShapeConstraintManager::Instance();
+    return constraint.IsBroadcastable(lr_elems) ? true : false;
+  };
+
+  if (lr.node_type() == ir::IrNodeTy::Max) {
+    if (CanSimplifyMaxMod(lr, r)) return ll % r;
+    return expr;
+  } else {
+    std::unordered_map<ir::IndexExpr, int> r_elems;
+    std::unordered_map<ir::IndexExpr, int> lr_elems;
+    UnpackReduction<ir::Mul>(r, [&](ir::IndexExpr val) { r_elems[val]++; });
+    UnpackReduction<ir::Mul>(lr, [&](ir::IndexExpr val) { lr_elems[val]++; });
+    bool can_simplify = false;
+    for (const auto &[r_first, r_second] : r_elems) {
+      for (auto &[lr_first, lr_second] : lr_elems) {
+        // Check equal relationship between the two operands.
+        if (lr_first == r_first && lr_second >= r_second) {
+          lr_second -= r_second;
+          can_simplify = true;
+          break;
+        }
+        // Check broadcastable relationship between the two operands.
+        if (lr_first.node_type() == ir::IrNodeTy::Max &&
+            CanSimplifyMaxMod(lr_first, r_first) && lr_second >= r_second) {
+          lr_second -= r_second;
+          can_simplify = true;
+          break;
+        }
+      }
+      if (!can_simplify) return expr;
+    }
+    return ll % r;
+  }
 }
 }  // namespace optim
 }  // namespace cinn

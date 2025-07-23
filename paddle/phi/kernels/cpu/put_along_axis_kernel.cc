@@ -32,11 +32,6 @@ void PutAlongAxisKernel(const Context& dev_ctx,
                         const std::string& reduce,
                         bool include_self,
                         DenseTensor* out) {
-  PADDLE_ENFORCE_EQ(
-      dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU,
-      true,
-      errors::PreconditionNotMet("PutAlongAxisOpKernel only runs on CPU."));
-
   phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   const auto& index_type = index.dtype();
   if (reduce == "add") {

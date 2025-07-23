@@ -106,22 +106,22 @@ class ElementwiseOp : public framework::OperatorWithKernel {
                             axis));
       axis = (axis < 0 ? (std::abs(x_dims.size() - y_dims.size()) + axis + 1)
                        : axis);
-      std::vector<int> x_dims_array(max_dim);
-      std::vector<int> y_dims_array(max_dim);
-      std::vector<int> out_dims_array(max_dim);
+      std::vector<int64_t> x_dims_array(max_dim);
+      std::vector<int64_t> y_dims_array(max_dim);
+      std::vector<int64_t> out_dims_array(max_dim);
 #ifdef PADDLE_WITH_DNNL
       // Broadcasting of dims has to be done on Paddle shapes (NHWC)
       // if model is using NHWC and any of shapes in at least 3D
       bool should_rotate =
-          ctx->IsRunMKLDNNKernel() &&
+          ctx->IsRunONEDNNKernel() &&
           (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
            phi::DataLayout::kNHWC) &&
           (x_dims.size() >= 3 || y_dims.size() >= 3);
       if (should_rotate) {
         // Pick bigger shape and rotate this one
         bool x_over_y = (x_dims.size() > y_dims.size());
-        auto vdims = x_over_y ? common::vectorize<int>(x_dims)
-                              : common::vectorize<int>(y_dims);
+        auto vdims = x_over_y ? common::vectorize<int64_t>(x_dims)
+                              : common::vectorize<int64_t>(y_dims);
         std::rotate(vdims.begin() + 1, vdims.begin() + 2, vdims.end());
         if (x_over_y) {
           x_dims = common::make_ddim(vdims);
@@ -164,7 +164,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       const phi::DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.dtype())) {
-      // only promote inputs’s types when contains complex input
+      // only promote inputs's types when contains complex input
       return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
     } else {
 #ifdef PADDLE_WITH_DNNL
@@ -310,7 +310,7 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
       const phi::DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.dtype())) {
-      // only promote inputs’s types when contains complex input
+      // only promote inputs's types when contains complex input
       return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
     } else {
       return phi::KernelKey(
@@ -351,7 +351,7 @@ class ElementwiseOpDoubleGrad : public framework::OperatorWithKernel {
       const phi::DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.dtype())) {
-      // only promote inputs’s types when contains complex input
+      // only promote inputs's types when contains complex input
       return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
     } else {
       return phi::KernelKey(
@@ -399,7 +399,7 @@ class ElementwiseOpDoubleGradWithoutDXDY
       const phi::DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.dtype())) {
-      // only promote inputs’s types when contains complex input
+      // only promote inputs's types when contains complex input
       return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
     } else {
       return phi::KernelKey(
@@ -447,7 +447,7 @@ class ElementwiseOpTripleGrad : public framework::OperatorWithKernel {
       const phi::DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.dtype())) {
-      // only promote inputs’s types when contains complex input
+      // only promote inputs's types when contains complex input
       return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
     } else {
       return phi::KernelKey(

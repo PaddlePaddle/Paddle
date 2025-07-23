@@ -28,13 +28,13 @@ void UnStackGradKernel(const Context &dev_ctx,
                        DenseTensor *x_grad) {
   if (axis < 0) axis += (x[0]->dims().size() + 1);
 
-  int n = static_cast<int>(x.size());
+  int64_t n = static_cast<int64_t>(x.size());
   auto *x_grad_data = dev_ctx.template Alloc<T>(x_grad);
   std::vector<const T *> x_datas(n);
-  for (int i = 0; i < n; i++) x_datas[i] = x[i]->data<T>();
+  for (int64_t i = 0; i < n; i++) x_datas[i] = x[i]->data<T>();
 
-  int pre = 1;
-  int post = 1;
+  int64_t pre = 1;
+  int64_t post = 1;
   auto &dim = x[0]->dims();
   for (auto i = 0; i < axis; ++i) pre *= dim[i];
   for (auto i = axis; i < dim.size(); ++i) post *= dim[i];
@@ -56,8 +56,8 @@ void UnStackGradKernel(const Context &dev_ctx,
 
   size_t x_offset = 0;
   size_t y_offset = 0;
-  for (int i = 0; i < pre; i++) {
-    for (int j = 0; j < n; j++) {
+  for (int64_t i = 0; i < pre; i++) {
+    for (int64_t j = 0; j < n; j++) {
       std::memcpy(
           x_grad_data + y_offset, x_data_arr[j] + x_offset, post * sizeof(T));
       y_offset += post;

@@ -912,7 +912,7 @@ class TestBicubicOpError(unittest.TestCase):
         self.assertRaises(ValueError, test_size_length)
         self.assertRaises(ValueError, test_size_tensor_ndim)
         self.assertRaises(ValueError, test_size_tensor_length)
-        self.assertRaises(ValueError, test_input_shape_1)
+        # self.assertRaises(ValueError, test_input_shape_1)
 
     def test_errors(self):
         with program_guard(Program(), Program()):

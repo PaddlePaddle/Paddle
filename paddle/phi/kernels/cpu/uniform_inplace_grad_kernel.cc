@@ -19,7 +19,7 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void UniformInplaceGradKernel(const Context& ctx,
+void UniformInplaceGradKernel(const Context& dev_ctx,
                               const DenseTensor& out_grad UNUSED,
                               float min UNUSED,
                               float max UNUSED,
@@ -29,7 +29,7 @@ void UniformInplaceGradKernel(const Context& ctx,
                               float diag_val UNUSED,
                               DenseTensor* x_grad) {
   if (x_grad) {
-    auto* data = ctx.template Alloc<T>(x_grad);
+    auto* data = dev_ctx.template Alloc<T>(x_grad);
     std::fill(data, data + x_grad->numel(), T(0));
   }
 }

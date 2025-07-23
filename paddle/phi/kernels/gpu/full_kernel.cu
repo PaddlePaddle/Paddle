@@ -69,7 +69,7 @@ void FullLikeKernel(const Context& dev_ctx,
   // This function has no input, so the inputs.size() == 0. Use kUnary, but the
   // data will not be loaded in the kernel because the number of parameters in
   // the operator is 0
-  int numel = out->numel();
+  int64_t numel = out->numel();
 
   if (!std::is_same<T, phi::dtype::complex<float>>::value &&
       !std::is_same<T, phi::dtype::complex<double>>::value) {
@@ -145,15 +145,16 @@ PD_REGISTER_KERNEL(full_like,
                    GPU,
                    ALL_LAYOUT,
                    phi::FullLikeKernel,
+                   bool,
                    float,
                    double,
-                   uint8_t,
-                   int16_t,
                    int,
+                   int8_t,
                    int64_t,
-                   bool,
-                   phi::dtype::bfloat16,
+                   int16_t,
+                   uint8_t,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);

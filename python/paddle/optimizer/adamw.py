@@ -181,6 +181,7 @@ class AdamW(Optimizer):
             Sequence[Tensor] | Sequence[_AdamParameterConfig] | None
         ) = None,
         weight_decay: float | Tensor = 0.01,
+        use_lowprecision_moment: bool = False,
         lr_ratio: Callable[[Tensor], float] | None = None,
         apply_decay_param_fun: Callable[[str], bool] | None = None,
         grad_clip: GradientClipBase | None = None,
@@ -280,6 +281,7 @@ class AdamW(Optimizer):
         self._params_name = set()
         self._apply_decay_param_fun = apply_decay_param_fun
         self._weight_decay = float(weight_decay)
+        self._use_lowprecision_moment = use_lowprecision_moment
         self._grad_clip = grad_clip
         self._lr_ratio = lr_ratio
         self._beta1 = beta1
@@ -315,7 +317,7 @@ class AdamW(Optimizer):
         self._create_master_grad_states()
 
         self._use_fusion_storage = False
-        self._need_refuse = True
+        self._need_refuse = False
         self.fusion_storage = None
         self._fuse_buffer_version = 0
         self.merged_model_params = None
@@ -370,7 +372,10 @@ class AdamW(Optimizer):
 
     def _add_moments_pows(self, p):
         acc_dtype = p.dtype
-        if self._is_dtype_fp16_or_bf16(acc_dtype):
+        if (
+            self._is_dtype_fp16_or_bf16(acc_dtype)
+            and not self._use_lowprecision_moment
+        ):
             acc_dtype = (
                 DataType.FLOAT32 if in_pir_mode() else core.VarDesc.VarType.FP32
             )

@@ -53,7 +53,7 @@ def check_view_value(value: Value) -> bool:
 # NOTE(GGBond8488): Simply run the original version of the API under the static graph mode has a low
 # probability that the result is inconsistent with the dynamic graph.
 def _inplace_apis_in_dygraph_only_(
-    func: Callable[_InputT, _RetT]
+    func: Callable[_InputT, _RetT],
 ) -> Callable[_InputT, _RetT]:
     def __impl__(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         if not in_dynamic_mode():

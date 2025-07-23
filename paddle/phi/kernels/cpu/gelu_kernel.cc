@@ -93,6 +93,9 @@ void GeluKernel(const Context& dev_ctx,
                 bool approximate,
                 DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) {
+    return;
+  }
   auto eigen_out = EigenVector<T>::Flatten(*out);
   auto eigen_x = EigenVector<T>::Flatten(x);
   auto& dev = *dev_ctx.eigen_device();

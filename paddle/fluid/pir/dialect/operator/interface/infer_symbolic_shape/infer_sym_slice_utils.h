@@ -143,15 +143,13 @@ inline ExprVec GetSliceDims(const ExprVec &in_dims,
   for (size_t i = 0; i < axes.size(); ++i) {
     auto out_dim = ends[i] - starts[i];
     int64_t axis = axes[i];
-    // If in_dims[axis] or ends[i] have symbol, need get Min(in_dims[axis] -
-    // start[i], ends[i] - start[i] )
+    // If in_dims[axis] or ends[i] have symbol, need get
+    // Max(Min(in_dims[axis] - start[i], ends[i] - start[i]), 0)
+    symbol::DimExprBuilder builder;
     if (!out_dim.isa<int64_t>() &&
         (!in_dims[axis].isa<int64_t>() || !ends[i].isa<int64_t>())) {
-      symbol::List<symbol::DimExpr> min_lists{in_dims[axis] - starts[i],
-                                              out_dim};
-
       slice_dims[axis] =
-          symbol::DimExpr({symbol::Min<symbol::DimExpr>({min_lists})});
+          builder.Max(builder.Min(in_dims[axis] - starts[i], out_dim), 0);
     } else {
       slice_dims[axis] = out_dim;
     }
@@ -160,9 +158,7 @@ inline ExprVec GetSliceDims(const ExprVec &in_dims,
       if (out_dim.Get<int64_t>() == 1) {
         continue;
       }
-      symbol::List<symbol::DimExpr> min_lists{out_dim, in_dims[axis]};
-      slice_dims[axis] =
-          symbol::DimExpr({symbol::Min<symbol::DimExpr>({min_lists})});
+      slice_dims[axis] = builder.Max(builder.Min(out_dim, in_dims[axis]), 0);
     }
   }
 
@@ -199,6 +195,23 @@ inline std::vector<int64_t> FormatSliceAxes(
   return axes_vec;
 }
 
+/**
+ * @brief Simple slice function like paddle.slice for a given the data vector.
+ *
+ * @param datas Input dataset of type ExprVec.
+ * @param shape The shape of datas
+ * @param axis Axis along which to perform the slicing action.
+ * @param start Starting index for the slice.
+ * @param end Ending index for the slice.
+ *
+ * @return Returns the result after slicing the input data.
+ */
+ExprVec SimpleSlice(const ExprVec &datas,
+                    const std::vector<int64_t> &shape,
+                    int64_t axis,
+                    int64_t start,
+                    int64_t end);
+
 inline ShapeOrData SliceRawInferSymbolicShape(
     const pir::Value x,
     const pir::Value out,
@@ -209,20 +222,19 @@ inline ShapeOrData SliceRawInferSymbolicShape(
     const std::vector<int64_t> &decrease_axis,
     pir::InferSymbolicShapeContext *infer_context) {
   const auto &in_shapeordata = infer_context->GetShapeOrDataForValue(x);
+  const ExprVec &in_dims = in_shapeordata.shape();
   ExprVec starts = starts_expr;
   ExprVec ends = ends_expr;
   std::vector<int64_t> infer_flags = [&infer_flags_raw, &axes_raw] {
     return infer_flags_raw.empty() ? std::vector<int64_t>(axes_raw.size(), 1)
                                    : infer_flags_raw;
   }();
+  const std::vector<int64_t> axes = FormatSliceAxes(axes_raw, in_dims.size());
+  const ExprVec slice_dims =
+      GetSliceDims(in_dims, axes, starts, ends, &infer_flags);
+  const ExprVec out_dims = GetDecreasedDims(slice_dims, decrease_axis);
 
   const auto &GetShapeDimExprs = [&]() -> symbol::ShapeOrDataDimExprs {
-    const ExprVec &in_dims = in_shapeordata.shape();
-    std::vector<int64_t> axes = FormatSliceAxes(axes_raw, in_dims.size());
-    ExprVec slice_dims =
-        GetSliceDims(in_dims, axes, starts, ends, &infer_flags);
-    ExprVec out_dims = GetDecreasedDims(slice_dims, decrease_axis);
-
     auto IsOne = [](const symbol::DimExpr &expr) {
       return expr.isa<int64_t>() && expr.dyn_cast<int64_t>() == 1;
     };
@@ -244,8 +256,6 @@ inline ShapeOrData SliceRawInferSymbolicShape(
   // When `pd.slice` is operating on a tensor which is produced by a `pd.shape`
   // op, the result should be written into data.
   const auto &GetDataDimExprs = [&]() -> symbol::ShapeOrDataDimExprs {
-    std::vector<symbol::DimExpr> out_data;
-
     // Currently, we DO NOT support the case that any element in `axes` `starts`
     // or `ends` is a Symbol.
     auto vec_int64 = details::VecExpr2Int64(starts);
@@ -267,15 +277,13 @@ inline ShapeOrData SliceRawInferSymbolicShape(
       }
       return ends_int[0];
     }();
+    const std::vector<int64_t> in_shape =
+        details::VecExpr2Int64(in_dims).value();
+    std::vector<symbol::DimExpr> out_data = SimpleSlice(
+        in_shapeordata.data().value(), in_shape, axes.at(0), start, end);
 
-    for (int64_t i = start; i < end; i++) {
-      out_data.push_back(in_shapeordata.data().value().at(i));
-    }
-
-    const ExprVec shape = GetDecreasedDims(
-        ExprVec{static_cast<int64_t>(out_data.size())}, decrease_axis);
     return symbol::ShapeOrDataDimExprs{
-        symbol::TensorShapeOrDataDimExprs(shape, out_data)};
+        symbol::TensorShapeOrDataDimExprs(out_dims, out_data)};
   };
   bool starts_ends_all_int =
       std::all_of(starts_expr.begin(),
@@ -285,10 +293,10 @@ inline ShapeOrData SliceRawInferSymbolicShape(
                   ends_expr.end(),
                   [](const symbol::DimExpr &e) { return e.isa<int64_t>(); });
 
-  const auto &out_shape =
-      in_shapeordata.data().has_value() && starts_ends_all_int
-          ? GetDataDimExprs()
-          : GetShapeDimExprs();
+  const auto &out_shape = in_shapeordata.data().has_value() &&
+                                  starts_ends_all_int && axes_raw.size() == 1
+                              ? GetDataDimExprs()
+                              : GetShapeDimExprs();
   if (out_shape.data().has_value() && out_shape.shape().empty()) {  // 0D tensor
     const paddle::dialect::DenseTensorType &tensor_type =
         out.type().dyn_cast<paddle::dialect::DenseTensorType>();
@@ -328,7 +336,7 @@ inline ExprVec GetStridedSliceDims(
 
   for (size_t i = 0; i < axes.size(); ++i) {
     int64_t axis = axes.at(i);
-    if (in_dims.at(i).isa<int64_t>() && starts.at(i).isa<int64_t>() &&
+    if (in_dims.at(axis).isa<int64_t>() && starts.at(i).isa<int64_t>() &&
         ends.at(i).isa<int64_t>() && strides.at(i).isa<int64_t>()) {
       int64_t in_dim = in_dims[axis].Get<int64_t>();
       int64_t start = starts[i].Get<int64_t>();
@@ -411,21 +419,20 @@ inline ExprVec GetStridedSliceDims(
       }
       if (!out_dim.isa<int64_t>() &&
           (!in_dims[axis].isa<int64_t>() || !ends[i].isa<int64_t>())) {
+        symbol::DimExprBuilder builder;
         if (strides[i].isa<int64_t>()) {
           if (stride_int64 > 0) {
-            symbol::List<symbol::DimExpr> min_lists{
-                (in_dims[axis] - starts[i] - 1 + stride_int64) / stride_int64,
-                out_dim};
-
-            slice_dims[axis] =
-                symbol::DimExpr({symbol::Min<symbol::DimExpr>({min_lists})});
+            slice_dims[axis] = builder.Max(
+                builder.Min((in_dims[axis] - starts[i] - 1 + stride_int64) /
+                                stride_int64,
+                            out_dim),
+                0);
           } else {
-            symbol::List<symbol::DimExpr> min_lists{
-                (in_dims[axis] - starts[i] + 1 + stride_int64) / stride_int64,
-                out_dim};
-
-            slice_dims[axis] =
-                symbol::DimExpr({symbol::Min<symbol::DimExpr>({min_lists})});
+            slice_dims[axis] = builder.Max(
+                builder.Min((in_dims[axis] - starts[i] + 1 + stride_int64) /
+                                stride_int64,
+                            out_dim),
+                0);
           }
         } else {
           slice_dims[axis] = out_dim;

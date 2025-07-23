@@ -506,14 +506,16 @@ class TestTensorRegisterHook(unittest.TestCase):
 
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
-        with paddle.static.scope_guard(paddle.static.Scope()):
-            with paddle.static.program_guard(main_program, startup_program):
-                x = paddle.static.data(
-                    name='x', shape=[None, self.in_size], dtype='float32'
-                )
+        with (
+            paddle.static.scope_guard(paddle.static.Scope()),
+            paddle.static.program_guard(main_program, startup_program),
+        ):
+            x = paddle.static.data(
+                name='x', shape=[None, self.in_size], dtype='float32'
+            )
 
-                net = SimpleNetForStatic(self.in_size, self.out_size)
-                out = net(x)
+            net = SimpleNetForStatic(self.in_size, self.out_size)
+            out = net(x)
 
         paddle.disable_static()
 

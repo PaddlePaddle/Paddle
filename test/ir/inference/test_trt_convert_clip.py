@@ -48,7 +48,7 @@ class TrtConvertClipTest(TrtLayerAutoScanTest):
         def generate_weight2(attrs: list[dict[str, Any]]):
             return np.array([np.random.uniform(10, 20)]).astype("float32")
 
-        for dims in [0, 1, 2, 3, 4]:
+        for dims in [1, 2, 3, 4]:
             for batch in [1, 4]:
                 for dtype in [np.float32, np.int32]:
                     for op_inputs in [

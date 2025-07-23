@@ -22,7 +22,6 @@ from typing import (
     Any,
     Callable,
     Generic,
-    Tuple,
     TypeVar,
 )
 
@@ -348,7 +347,7 @@ def to_list(value):
     return [value]
 
 
-class ComposeDataset(Dataset[Tuple[Unpack[_Ts]]]):
+class ComposeDataset(Dataset[tuple[Unpack[_Ts]]]):
     """
     A Dataset which composes fields of multiple datasets.
 

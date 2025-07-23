@@ -19,7 +19,6 @@
 
 #include "glog/logging.h"
 #include "paddle/common/errors.h"
-#include "paddle/common/flags.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
@@ -27,6 +26,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/kernels/sparse/gpu/conv_host_buffer.h"
 #include "paddle/utils/string/split.h"
 
 #ifdef PADDLE_WITH_TENSORRT
@@ -1516,6 +1516,14 @@ void AnalysisConfig::Exp_DisableMixedPrecisionOps(
 void AnalysisConfig::Exp_EnableMixedPrecisionOps(
     const std::unordered_set<std::string> &white_list) {
   mixed_white_list_ = white_list;
+}
+
+void AnalysisConfig::Exp_SparseConvUsingBuffer(
+    const std::vector<std::vector<int>> &kernels,
+    const std::vector<std::vector<int>> &strides) {
+  phi::sparse::ConvHostBuffer &conv_buffer_instance =
+      phi::sparse::ConvHostBuffer::getInstance();
+  conv_buffer_instance.init_from_config(kernels, strides);
 }
 
 void AnalysisConfig::EnableCINN() {

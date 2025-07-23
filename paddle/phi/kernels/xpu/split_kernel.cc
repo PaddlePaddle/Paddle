@@ -28,20 +28,18 @@ void SplitKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   int axis = axis_scalar.to<int>();
   auto in_dims = x.dims();
-  auto input_shape = common::vectorize<int>(in_dims);
+  auto input_shape = common::vectorize<int64_t>(in_dims);
   std::vector<XPUType*> out_ptrs;
-  std::vector<int> split_lists;
 
   // Vectors to keep track of zero-sized and non-zero-sized outputs
   std::vector<XPUType*> non_zero_out_ptrs;
-  std::vector<int> non_zero_split_lists;
+  std::vector<int64_t> non_zero_split_lists;
 
   for (size_t j = 0; j < outs.size(); ++j) {
     dev_ctx.template Alloc<T>(outs[j]);
     out_ptrs.push_back(reinterpret_cast<XPUType*>(outs[j]->data<T>()));
-    int section_size =
+    int64_t section_size =
         axis < outs[j]->dims().size() ? outs[j]->dims()[axis] : 1;
-    split_lists.push_back(section_size);
 
     if (section_size > 0) {
       non_zero_out_ptrs.push_back(
@@ -77,10 +75,10 @@ void SplitWithNumKernel(const Context& dev_ctx,
                         const Scalar& axis_scalar,
                         std::vector<DenseTensor*> outs) {
   int axis_value = axis_scalar.to<int>();
-  auto input_axis_dim = x.dims().at(axis_value);
+  int64_t input_axis_dim = x.dims().at(axis_value);
   std::vector<int64_t> sections_vec;
   for (int i = 0; i < num; ++i) {
-    sections_vec.push_back(input_axis_dim / num);
+    sections_vec.push_back(input_axis_dim / static_cast<int64_t>(num));
   }
   IntArray sections(sections_vec);
   SplitKernel<T, Context>(dev_ctx, x, sections, axis_scalar, outs);

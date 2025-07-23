@@ -75,11 +75,8 @@ void ReduceKernel(const phi::CustomContext& dev_ctx,
       nullptr,
       errors::Unavailable("XCCLCommContext is nullptr, collective op should "
                           "has ring_id attr."));
-  comm_ctx->Reduce(out,
-                   x,
-                   phi::ccl::ToXCCLReduceOp(reduce_type),
-                   root,
-                   *dev_ctx.GetStream());
+  comm_ctx->Reduce(
+      out, x, phi::ccl::ToXCCLReduceOp(reduce_type), root, dev_ctx.stream());
 }
 #endif
 

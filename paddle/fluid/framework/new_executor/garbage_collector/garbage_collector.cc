@@ -50,6 +50,14 @@ CreateInterpreterCoreGarbageCollector(
   } else if (phi::is_ipu_place(place)) {
     return std::unique_ptr<InterpreterCoreGarbageCollector>(
         new InterpreterCoreNoEventGarbageCollector());
+  } else if (phi::is_custom_place(place)) {
+    if (IsInterpretercoreFastGCEnabled()) {
+      return std::unique_ptr<InterpreterCoreGarbageCollector>(
+          new InterpreterCoreFastGarbageCollector());
+    } else {
+      return std::unique_ptr<InterpreterCoreGarbageCollector>(
+          new InterpreterCoreEventGarbageCollector(vec_instruction));
+    }
   } else {
     return std::unique_ptr<InterpreterCoreGarbageCollector>(
         new InterpreterCoreEventGarbageCollector(vec_instruction));
@@ -79,6 +87,16 @@ CreateInterpreterCoreGarbageCollector(
   } else if (phi::is_ipu_place(place)) {
     return std::unique_ptr<InterpreterCoreGarbageCollector>(
         new InterpreterCoreNoEventGarbageCollector());
+  } else if (phi::is_custom_place(place)) {
+    if (FLAGS_fast_eager_deletion_mode) {
+      VLOG(6) << "use fast garbage collector for " << place;
+      return std::unique_ptr<InterpreterCoreGarbageCollector>(
+          new InterpreterCoreFastGarbageCollector());
+    } else {
+      VLOG(6) << "use event garbage collector for " << place;
+      return std::unique_ptr<InterpreterCoreGarbageCollector>(
+          new InterpreterCoreEventGarbageCollector(vec_instruction));
+    }
   } else {
     return std::unique_ptr<InterpreterCoreGarbageCollector>(
         new InterpreterCoreEventGarbageCollector(vec_instruction));

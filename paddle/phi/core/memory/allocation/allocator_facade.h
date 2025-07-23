@@ -109,6 +109,8 @@ class AllocatorFacade {
   uint64_t Release(const phi::CustomPlace& place, phi::stream::stream_t stream);
   bool RecordStream(std::shared_ptr<Allocation> allocation,
                     phi::stream::stream_t stream);
+  void EraseStream(std::shared_ptr<Allocation> allocation,
+                   phi::stream::stream_t stream);
   TEST_API const std::shared_ptr<Allocator>& GetAllocator(
       const phi::Place& place, phi::stream::stream_t stream);
   phi::stream::stream_t GetStream(

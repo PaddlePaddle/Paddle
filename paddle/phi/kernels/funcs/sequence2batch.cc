@@ -19,7 +19,7 @@ namespace phi::funcs {
 template <typename T>
 class CopyMatrixRowsFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const phi::CPUContext& context UNUSED,
+  void operator()(const phi::CPUContext& dev_ctx UNUSED,
                   const phi::DenseTensor& src,
                   phi::Vector<size_t> index_lod,
                   phi::DenseTensor* dst,

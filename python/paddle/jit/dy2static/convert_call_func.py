@@ -37,12 +37,16 @@ from .convert_operators import (
 )
 from .logging_utils import TranslatorLogger
 from .program_translator import (
-    CONVERSION_OPTIONS,
     StaticFunction,
     convert_to_static,
     unwrap_decorators,
 )
-from .utils import WeakMethod, is_builtin, is_paddle_func
+from .utils import (
+    TransformOptions,
+    is_builtin,
+    is_paddle_func,
+    patch_method_guard,
+)
 
 if TYPE_CHECKING:
     from types import ModuleType
@@ -51,31 +55,6 @@ __all__ = []
 
 
 translator_logger = TranslatorLogger()
-
-
-class ConversionOptions:
-    """
-    A container for conversion flags of a function in dynamic-to-static.
-
-    Attributes:
-        not_convert(bool): An attribute indicates that the function won't be converted in dynamic-to-static.
-
-    NOTE(liym27): More attributes and methods can be added in this class.
-    """
-
-    def __init__(self, not_convert=False):
-        self.not_convert = not_convert
-
-    def attach(self, func):
-        if inspect.ismethod(func):
-            func = func.__func__
-
-        if inspect.isfunction(func):
-            setattr(func, CONVERSION_OPTIONS, self)
-        else:
-            translator_logger.warn(
-                f"Only support @not_to_static to type(function) or type(method), but received {type(func)}"
-            )
 
 
 def builtin_modules():
@@ -203,6 +182,17 @@ def is_unsupported(func):
     return False
 
 
+class StaticLayerWrapper:
+    def __init__(self, layer):
+        self.layer = layer
+
+    def __call__(self, *args, **kwargs):
+        with patch_method_guard(
+            self.layer, "forward", convert_call(self.layer.forward)
+        ):
+            return self.layer(*args, **kwargs)
+
+
 def convert_call(func):
     """
     Converts a function call which needs to be transformed to static function.
@@ -248,8 +238,9 @@ def convert_call(func):
     # in this case, unwraps it into a raw method or function.
     _, func = unwrap_decorators(func)
 
-    options = getattr(func, CONVERSION_OPTIONS, None)
-    if options is not None and options.not_convert:
+    if not TransformOptions.check_fn_need_transform(
+        func, TransformOptions.ToStaticMode.AST
+    ):
         translator_logger.log(
             2,
             "%s is not converted when it is decorated by 'paddle.jit.not_to_static'.",
@@ -355,18 +346,7 @@ def convert_call(func):
 
     elif hasattr(func, '__class__') and callable(func.__class__):
         if hasattr(func, 'forward') and isinstance(func, Layer):
-            try:
-                _, forward_func = unwrap_decorators(func.forward)
-                func._original_funcs['forward'] = forward_func.__func__
-                forward_func = convert_to_static(forward_func.__func__)
-                # Bound method will be convert into plain function after `convert_to_static`.
-                # So descriptor mechanism is used to bound `self` instance on function to
-                # keep it as bound method.
-                func.forward = WeakMethod(forward_func, func)
-            except (OSError, TypeError):
-                # NOTE: func.forward may have been decorated.
-                func_self = None if func_self else func_self
-            converted_call = func
+            return StaticLayerWrapper(func)
         else:
             try:
                 call_func = func.__class__.__call__

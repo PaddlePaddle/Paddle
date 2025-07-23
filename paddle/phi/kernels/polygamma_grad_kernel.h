@@ -20,7 +20,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void PolygammaGradKernel(const Context& ctx,
+void PolygammaGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& out_grad,
                          const int n,

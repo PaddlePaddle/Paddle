@@ -4,9 +4,25 @@ endif()
 
 if(WIN32)
   string(REPLACE "\\" "/" TENSORRT_ROOT "${TENSORRT_ROOT}")
-  set(TR_INFER_LIB nvinfer.lib)
-  set(TR_INFER_RT nvinfer.dll)
-  set(TR_INFER_PLUGIN_RT nvinfer_plugin.dll)
+  string(REGEX MATCH "([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+)"
+               TENSORRT_VERSION ${TENSORRT_ROOT})
+  if(NOT TENSORRT_VERSION)
+    set(MAJOR_VERSION "unknown")
+  else()
+    message(STATUS "TensorRT Full Version: ${TENSORRT_VERSION}")
+    string(REGEX MATCH "^[0-9]+" MAJOR_VERSION ${TENSORRT_VERSION})
+  endif()
+  if(MAJOR_VERSION STREQUAL "10")
+    message(STATUS "TensorRT version is 10, applying specific settings.")
+    set(TR_INFER_LIB nvinfer_10.lib)
+    set(TR_INFER_RT nvinfer_10.dll)
+    set(TR_INFER_PLUGIN_RT nvinfer_plugin_10.dll)
+  else()
+    message(STATUS "TensorRT version is not 10, using default settings.")
+    set(TR_INFER_LIB nvinfer.lib)
+    set(TR_INFER_RT nvinfer.dll)
+    set(TR_INFER_PLUGIN_RT nvinfer_plugin.dll)
+  endif()
 else()
   set(TENSORRT_ROOT
       "/usr"
@@ -66,6 +82,7 @@ if(TENSORRT_FOUND)
   string(REGEX MATCH "define NV_TENSORRT_BUILD +([0-9]+)"
                TENSORRT_BUILD_VERSION "${TENSORRT_VERSION_FILE_CONTENTS}")
 
+  set(TRT_ENTERPRISE "OFF")
   if("${TENSORRT_MAJOR_VERSION}" STREQUAL "")
     file(READ ${TENSORRT_INCLUDE_DIR}/NvInferVersion.h
          TENSORRT_VERSION_FILE_CONTENTS)
@@ -77,6 +94,19 @@ if(TENSORRT_FOUND)
                  TENSORRT_PATCH_VERSION "${TENSORRT_VERSION_FILE_CONTENTS}")
     string(REGEX MATCH "define NV_TENSORRT_BUILD +([0-9]+)"
                  TENSORRT_BUILD_VERSION "${TENSORRT_VERSION_FILE_CONTENTS}")
+
+    # In TensorRT 10.12.0.36, the version macros is TRT_*_ENTERPRISE.
+    if("${TENSORRT_MAJOR_VERSION}" STREQUAL "")
+      string(REGEX MATCH "define TRT_MAJOR_ENTERPRISE +([0-9]+)"
+                   TENSORRT_MAJOR_VERSION "${TENSORRT_VERSION_FILE_CONTENTS}")
+      string(REGEX MATCH "define TRT_MINOR_ENTERPRISE +([0-9]+)"
+                   TENSORRT_MINOR_VERSION "${TENSORRT_VERSION_FILE_CONTENTS}")
+      string(REGEX MATCH "define TRT_PATCH_ENTERPRISE +([0-9]+)"
+                   TENSORRT_PATCH_VERSION "${TENSORRT_VERSION_FILE_CONTENTS}")
+      string(REGEX MATCH "define TRT_BUILD_ENTERPRISE +([0-9]+)"
+                   TENSORRT_BUILD_VERSION "${TENSORRT_VERSION_FILE_CONTENTS}")
+      set(TRT_ENTERPRISE "ON")
+    endif()
   endif()
 
   if("${TENSORRT_MAJOR_VERSION}" STREQUAL "")
@@ -91,6 +121,17 @@ if(TENSORRT_FOUND)
                        TENSORRT_PATCH_VERSION "${TENSORRT_PATCH_VERSION}")
   string(REGEX REPLACE "define NV_TENSORRT_BUILD +([0-9]+)" "\\1"
                        TENSORRT_BUILD_VERSION "${TENSORRT_BUILD_VERSION}")
+
+  if("${TRT_ENTERPRISE}" STREQUAL "ON")
+    string(REGEX REPLACE "define TRT_MAJOR_ENTERPRISE +([0-9]+)" "\\1"
+                         TENSORRT_MAJOR_VERSION "${TENSORRT_MAJOR_VERSION}")
+    string(REGEX REPLACE "define TRT_MINOR_ENTERPRISE +([0-9]+)" "\\1"
+                         TENSORRT_MINOR_VERSION "${TENSORRT_MINOR_VERSION}")
+    string(REGEX REPLACE "define TRT_PATCH_ENTERPRISE +([0-9]+)" "\\1"
+                         TENSORRT_PATCH_VERSION "${TENSORRT_PATCH_VERSION}")
+    string(REGEX REPLACE "define TRT_BUILD_ENTERPRISE +([0-9]+)" "\\1"
+                         TENSORRT_BUILD_VERSION "${TENSORRT_BUILD_VERSION}")
+  endif()
 
   message(
     STATUS

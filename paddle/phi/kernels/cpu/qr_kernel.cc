@@ -28,20 +28,20 @@
 namespace phi {
 
 template <class T, class Context>
-static DenseTensor Fill(const Context& ctx,
+static DenseTensor Fill(const Context& dev_ctx,
                         std::vector<int64_t> shape,
                         T fill_value) {
   DenseTensor ret;
   ret.Resize(common::make_ddim(shape));
-  ctx.template Alloc<T>(&ret);
-  funcs::SetConstant<Context, T>()(ctx, &ret, fill_value);
+  dev_ctx.template Alloc<T>(&ret);
+  funcs::SetConstant<Context, T>()(dev_ctx, &ret, fill_value);
   return ret;
 }
 
 template <class T, class Context>
-static DenseTensor identity_matrix(const Context& ctx, common::DDim shape) {
+static DenseTensor identity_matrix(const Context& dev_ctx, common::DDim shape) {
   DenseTensor M =
-      Fill<T, Context>(ctx, common::vectorize<int64_t>(shape), T(0));
+      Fill<T, Context>(dev_ctx, common::vectorize<int64_t>(shape), T(0));
   size_t rank = M.dims().size();
   int64_t M_diag_len = std::min(M.dims()[rank - 1], M.dims()[rank - 2]);
   std::vector<int64_t> M_diag_shape;
@@ -50,14 +50,14 @@ static DenseTensor identity_matrix(const Context& ctx, common::DDim shape) {
   }
   M_diag_shape.push_back(M_diag_len);
   DenseTensor M_diag = Fill<T, Context>(
-      ctx, common::vectorize<int64_t>(make_ddim(M_diag_shape)), T(1));
-  M = FillDiagonalTensor<T, Context>(ctx, M, M_diag, 0, rank - 2, rank - 1);
+      dev_ctx, common::vectorize<int64_t>(make_ddim(M_diag_shape)), T(1));
+  M = FillDiagonalTensor<T, Context>(dev_ctx, M, M_diag, 0, rank - 2, rank - 1);
   return M;
 }
 
 template <typename T, typename Context>
 struct QrFunctor {
-  void operator()(const Context& ctx,
+  void operator()(const Context& dev_ctx,
                   const DenseTensor& x,
                   bool compute_q,
                   bool reduced_mode,
@@ -76,10 +76,10 @@ struct QrFunctor {
     auto* x_data = x.data<phi::dtype::Real<T>>();
     T* q_data = nullptr;
     if (compute_q) {
-      q_data = ctx.template Alloc<phi::dtype::Real<T>>(
+      q_data = dev_ctx.template Alloc<phi::dtype::Real<T>>(
           q, batch_size * m * k * sizeof(phi::dtype::Real<T>));
     }
-    auto* r_data = ctx.template Alloc<phi::dtype::Real<T>>(
+    auto* r_data = dev_ctx.template Alloc<phi::dtype::Real<T>>(
         r, batch_size * k * n * sizeof(phi::dtype::Real<T>));
 
     // Implement QR by calling Eigen
@@ -123,7 +123,7 @@ struct QrFunctor {
 
 template <typename T, typename Context>
 struct QrFunctor<phi::dtype::complex<T>, Context> {
-  void operator()(const Context& ctx,
+  void operator()(const Context& dev_ctx,
                   const DenseTensor& x,
                   bool compute_q,
                   bool reduced_mode,
@@ -142,10 +142,10 @@ struct QrFunctor<phi::dtype::complex<T>, Context> {
     auto* x_data = x.data<phi::dtype::complex<T>>();
     phi::dtype::complex<T>* q_data = nullptr;
     if (compute_q) {
-      q_data = ctx.template Alloc<phi::dtype::complex<T>>(
+      q_data = dev_ctx.template Alloc<phi::dtype::complex<T>>(
           q, batch_size * m * k * sizeof(phi::dtype::complex<T>));
     }
-    auto* r_data = ctx.template Alloc<phi::dtype::complex<T>>(
+    auto* r_data = dev_ctx.template Alloc<phi::dtype::complex<T>>(
         r, batch_size * k * n * sizeof(phi::dtype::complex<T>));
 
     // Implement QR by calling Eigen
@@ -199,7 +199,7 @@ struct QrFunctor<phi::dtype::complex<T>, Context> {
 };
 
 template <typename T, typename Context>
-void QrKernel(const Context& ctx,
+void QrKernel(const Context& dev_ctx,
               const DenseTensor& x,
               const std::string& mode,
               DenseTensor* q,
@@ -211,14 +211,14 @@ void QrKernel(const Context& ctx,
     if (q->numel() == 0) {
       q->Resize(q->dims());
     } else {
-      *q = identity_matrix<T, Context>(ctx, q->dims());
+      *q = identity_matrix<T, Context>(dev_ctx, q->dims());
     }
     r->Resize(r->dims());
-    ctx.template Alloc<T>(q);
-    ctx.template Alloc<T>(r);
+    dev_ctx.template Alloc<T>(q);
+    dev_ctx.template Alloc<T>(r);
     return;
   }
-  QrFunctor<T, Context>()(ctx, x, compute_q, reduced_mode, q, r);
+  QrFunctor<T, Context>()(dev_ctx, x, compute_q, reduced_mode, q, r);
 }
 
 }  // namespace phi

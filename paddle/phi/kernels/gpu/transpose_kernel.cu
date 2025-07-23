@@ -26,7 +26,7 @@
 
 namespace phi {
 template <typename T, typename Context>
-void TransposeKernel(const Context& ctx,
+void TransposeKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const std::vector<int>& axis,
                      DenseTensor* out) {
@@ -38,15 +38,15 @@ void TransposeKernel(const Context& ctx,
     }
   }
 
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   if (out->numel() == 0) {
     return;
   }
   if (formatted_axis.size() == 0) {
-    phi::Copy<Context>(ctx, x, ctx.GetPlace(), false, out);
+    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
   }
-  phi::funcs::TransposeGPUKernelDriver<T>(ctx, x, formatted_axis, out);
+  phi::funcs::TransposeGPUKernelDriver<T>(dev_ctx, x, formatted_axis, out);
 }
 
 }  // namespace phi

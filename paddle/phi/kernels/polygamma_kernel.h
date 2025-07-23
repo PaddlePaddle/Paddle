@@ -27,7 +27,7 @@ namespace phi {
  * @param  out     the output tensor of polygamma
  */
 template <typename T, typename Context>
-void PolygammaKernel(const Context& ctx,
+void PolygammaKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const int n,
                      DenseTensor* out);

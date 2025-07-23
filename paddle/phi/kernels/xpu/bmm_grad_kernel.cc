@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/bmm_grad_kernel.h"
 
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/xpu/bmm_xpu_utils.h"
 
 namespace phi {
@@ -60,6 +61,18 @@ void BmmGradKernel(const Context& dev_ctx,
                    const DenseTensor& out_grad,
                    DenseTensor* x_grad,
                    DenseTensor* y_grad) {
+  if (x_grad && x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(y.dims())), 0, y_grad);
+    return;
+  }
+  if (y_grad && y_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(y_grad);
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(x.dims())), 0, x_grad);
+    return;
+  }
   DenseTensor x_help = x;
   DenseTensor y_help = y;
   DenseTensor out_grad_help = out_grad;

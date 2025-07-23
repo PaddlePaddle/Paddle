@@ -27,10 +27,10 @@ __global__ void AddMarginToPositiveLogitsKernel(T* logit,
                                                 const int64_t D,
                                                 const int* class_interval_ptr) {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  int start_index = class_interval_ptr[rank];
-  int end_index = class_interval_ptr[rank + 1];
+  int64_t start_index = class_interval_ptr[rank];
+  int64_t end_index = class_interval_ptr[rank + 1];
   int num_classes = class_interval_ptr[nranks];
-  CUDA_KERNEL_LOOP(i, N) {
+  CUDA_KERNEL_LOOP_TYPE(i, N, int64_t) {
     auto real_label = label[i];
     PADDLE_ENFORCE((real_label < num_classes) && (real_label >= 0),
                    "The index is out of bounds, "
@@ -67,7 +67,9 @@ __global__ void ScaleLogitKernel(T* logits,
                                  const float scale,
                                  const int64_t N,
                                  const int64_t D) {
-  CUDA_KERNEL_LOOP(i, N * D) { logits[i] *= static_cast<T>(scale); }
+  CUDA_KERNEL_LOOP_TYPE(i, N * D, int64_t) {
+    logits[i] *= static_cast<T>(scale);
+  }
 }
 
 template <typename T>
@@ -75,7 +77,7 @@ __global__ void LogitsMinusMaxKernel(T* logits,
                                      const T* logits_max_per_row,
                                      const int64_t N,
                                      const int64_t D) {
-  CUDA_KERNEL_LOOP(i, N * D) {
+  CUDA_KERNEL_LOOP_TYPE(i, N * D, int64_t) {
     auto row = i / D;
     logits[i] -= logits_max_per_row[row];
   }
@@ -86,7 +88,7 @@ __global__ void LogitsMinusLogSumKernel(T* logits,
                                         const T* logits_sum_per_row,
                                         const int64_t N,
                                         const int64_t D) {
-  CUDA_KERNEL_LOOP(i, N * D) {
+  CUDA_KERNEL_LOOP_TYPE(i, N * D, int64_t) {
     auto row = i / D;
     logits[i] -= phi::kps::details::Log(logits_sum_per_row[row]);
   }
@@ -102,7 +104,7 @@ __global__ void HardLabelSoftmaxWithCrossEntropyKernel(
     const int64_t D,
     const int* class_interval_ptr) {
   int start_index = class_interval_ptr[rank];
-  CUDA_KERNEL_LOOP(i, N * D) {
+  CUDA_KERNEL_LOOP_TYPE(i, N * D, int64_t) {
     auto row = i / D;
     auto col = i % D;
     if ((col + start_index) == labels[row]) {
@@ -158,8 +160,8 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
   const auto& labels_dims = labels.dims();
 
   const int axis = logits_dims.size() - 1;
-  const int N = phi::funcs::SizeToAxis(axis, logits_dims);
-  const int D = phi::funcs::SizeFromAxis(axis, logits_dims);
+  const int64_t N = phi::funcs::SizeToAxis(axis, logits_dims);
+  const int64_t D = phi::funcs::SizeFromAxis(axis, logits_dims);
 
   int blocks = NumBlocks(N);
   int threads = kNumCUDAThreads;

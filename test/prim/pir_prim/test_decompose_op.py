@@ -114,8 +114,9 @@ class TestDecomposeOp(unittest.TestCase):
                 pir_program, param_mapping, grad_var_to_var
             )
 
-        with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-            pir_program
+        with (
+            paddle.pir_utils.IrGuard(),
+            paddle.pir.core.program_guard(pir_program),
         ):
             exe = paddle.static.Executor()
             outs = exe.run(

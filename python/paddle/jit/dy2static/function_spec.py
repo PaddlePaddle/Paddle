@@ -23,9 +23,6 @@ import paddle.pir.core as ir_static
 from paddle.base import core
 from paddle.base.data_feeder import convert_dtype
 from paddle.base.dygraph.base import switch_to_static_graph
-from paddle.distributed.auto_parallel.placement_type import (
-    to_placements,
-)
 from paddle.jit.pir_translated_layer import PirTranslatedLayer
 from paddle.jit.translated_layer import TranslatedLayer
 from paddle.nn.layer import layers
@@ -177,6 +174,10 @@ class FunctionSpec:
             input_with_spec(tuple): input arguments by replacing argument with InputSpec.
             main_program(Program): main program for inserting feed layer.
         """
+        from paddle.distributed.auto_parallel.placement_type import (
+            to_placements,
+        )
+
         flat_input_spec = paddle.utils.flatten(input_with_spec)
 
         # NOTE(zhangbo): Why do we need function_args and program_inputs: The primary function of this module is to construct the corresponding DataOp based on the inputSpec. The output of DataOp serves as the input to the Program and will also become the arguments for subsequent Static functions to construct the static graph. When the input is a DistributedInputSpec, the shard_tensor operation will be performed on the output of DataOp to obtain the corresponding distributed Value. The input to the Program will still be the output of DataOp, but in this case, the arguments for the Static functions will be the output of shard_tensor.
@@ -366,6 +367,9 @@ def get_buffers(layer_instance, include_sublayer=True):
 
 
 def _replace_value_with_input_spec(args):
+    from paddle.distributed.auto_parallel.placement_type import (
+        to_placements,
+    )
     from paddle.distributed.auto_parallel.static.dist_input_spec import (
         DistributedInputSpec,
     )

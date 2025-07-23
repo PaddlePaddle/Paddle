@@ -24,6 +24,9 @@ limitations under the License. */
 #include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/backends/custom/custom_context.h"
+#include "paddle/phi/backends/device_manager.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -199,6 +202,10 @@ bool Tensor::is_gpu_pinned() const {
 
 bool Tensor::is_xpu() const {
   return place().GetType() == phi::AllocationType::XPU;
+}
+
+bool Tensor::is_xpu_pinned() const {
+  return place().GetType() == phi::AllocationType::XPUPINNED;
 }
 
 bool Tensor::is_custom_device() const {
@@ -401,6 +408,20 @@ gpuStream_t Tensor::stream() const {
   auto *gpu_context = DeviceContextPool::Instance().Get<AllocationType::GPU>(
       GPUPlace(device_id));
   return gpu_context->stream();
+}
+#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+phi::stream::stream_t Tensor::stream() const {
+  auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+  for (const auto &dev_type : dev_types) {
+    int device_id = phi::DeviceManager::GetDevice(dev_type);
+    auto *custom_context =
+        DeviceContextPool::Instance().Get<AllocationType::CUSTOM>(
+            phi::CustomPlace(dev_type, device_id));
+    return custom_context->stream();
+  }
+  PADDLE_THROW(common::errors::Unimplemented(
+      "There is no custom device context when calling Tensor::stream()."));
+  return nullptr;
 }
 #endif
 

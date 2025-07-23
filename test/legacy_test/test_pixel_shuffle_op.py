@@ -64,8 +64,9 @@ class TestPixelShuffleOp(OpTest):
         self.op_type = "pixel_shuffle"
         self.python_api = paddle.nn.functional.pixel_shuffle
         self.init_dtype()
+        self.init_shape()
         self.init_data_format()
-        n, c, h, w = 2, 9, 4, 4
+        n, c, h, w = self.shape
 
         if self.format == "NCHW":
             shape = [n, c, h, w]
@@ -80,6 +81,9 @@ class TestPixelShuffleOp(OpTest):
         self.inputs = {'X': x}
         self.outputs = {'Out': npresult}
         self.attrs = {'upscale_factor': up_factor, "data_format": self.format}
+
+    def init_shape(self):
+        self.shape = [2, 9, 4, 4]
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -106,6 +110,11 @@ class TestChannelLast(TestPixelShuffleOp):
 class TestPixelShuffleFP16Op(TestPixelShuffleOp):
     def init_dtype(self):
         self.dtype = np.float16
+
+
+class TestPixelShuffleOp_ZeroSize(TestPixelShuffleOp):
+    def init_shape(self):
+        self.shape = [2, 0, 0, 4]
 
 
 @unittest.skipIf(

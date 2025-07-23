@@ -417,7 +417,7 @@ class PyLayer(core.eager.PyLayer, PyLayerContext, metaclass=PyLayerMeta):
 
 
 def once_differentiable(
-    backward: Callable[Concatenate[PyLayerContext, ...], _RetT]
+    backward: Callable[Concatenate[PyLayerContext, ...], _RetT],
 ) -> Callable[Concatenate[PyLayerContext, ...], _RetT]:
     def wrapper(ctx: PyLayerContext, *args: Any) -> _RetT:
         with paddle.base.dygraph.no_grad():

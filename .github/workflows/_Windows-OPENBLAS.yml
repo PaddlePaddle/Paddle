@@ -1,0 +1,96 @@
+name: Windows-GPU
+
+on:
+  workflow_call:
+
+permissions: read-all
+
+env:
+  PR_ID: ${{ github.event.pull_request.number }}
+  COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+  BRANCH: ${{ github.base_ref }}
+  ci_scripts: ${{ github.workspace }}\ci\windows
+  ACTION_DIR: ${{ github.workspace }}\..\..\..
+  WORKSPACE_DIR: ${{ github.workspace }}\..
+  cache_dir: C:\action-cache
+  SCCACHE_ROOT: C:\sccache
+  no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
+
+defaults:
+  run:
+    shell: cmd
+
+jobs:
+  check-bypass:
+    name: Check bypass
+    uses: ./.github/workflows/check-bypass.yml
+    with:
+      workflow-name: 'win-openblas'
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  build-and-test:
+    name: Build and test
+    needs: check-bypass
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
+    runs-on:
+      group: win-openblas
+    env:
+      NIGHTLY_MODE: "OFF"
+      WITH_UNITY_BUILD: "ON"
+      WITH_CACHE: "OFF"
+      WITH_TPCACHE: "ON"
+      WITH_SCCACHE: "ON"
+      WITH_SHARED_PHI: "OFF"
+      FLAGS_enable_eager_mode: 1
+      GIT_PR_ID: ${{ github.event.pull_request.number }}
+      WITH_TESTING: "ON"
+      PRECISION_TEST: "OFF"
+      PYTHON_ROOT: C:\Python310
+      CTEST_PARALLEL_LEVEL: 1
+      GENERATOR: "Ninja"
+      GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      WITH_MKL: "OFF"
+      WITH_GPU: "OFF"
+      WITH_AVX: "OFF"
+      MSVC_STATIC_CRT: "ON"
+      ON_INFER: "ON"
+      WIN_UNITTEST_LEVEL: 2
+      CUDA_ARCH_NAME: "Auto"
+    steps:
+      - name: Download Paddle and clean env
+        working-directory: ..
+        run: |
+          whoami
+          cd
+          rmdir /s/q %WORKSPACE_DIR%\Paddle
+          python -m pip install wget
+          python -c "import wget;wget.download('https://paddle-github-action.bj.bcebos.com/windows/PR/%PR_ID%/%COMMIT_ID%/Paddle.tar.zst')"
+          zstd -d Paddle.tar.zst && tar -xf Paddle.tar
+          del Paddle.tar Paddle.tar.zst
+          call %ci_scripts%\clean_env.bat
+
+      - name: Config env
+        run: |
+          call %ci_scripts%\config_env.bat
+
+      - name: Build paddle
+        run: |
+          python -m pip install bce-python-sdk==0.8.74
+          call %ci_scripts%\build.bat
+
+      - name: Test whl package
+        run: |
+          call %ci_scripts%\test_whl_package.bat
+
+      - name: Test paddle
+        run: |
+          call %ci_scripts%\test.bat
+
+      - name: Clean up dir
+        if: always()
+        run: |
+          call %ci_scripts%\clean_env.bat
+          if "%WITH_TESTING%"=="ON" (
+              for /F "tokens=1 delims= " %%# in ('tasklist ^| findstr /i test') do taskkill /f /im %%# /t
+          )  || ver >nul

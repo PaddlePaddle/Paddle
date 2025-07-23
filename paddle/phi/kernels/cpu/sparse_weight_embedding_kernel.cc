@@ -87,13 +87,13 @@ struct EmbeddingCPUSparseFunctor {
 };
 
 template <typename T, typename Context>
-void SparseWeightEmbeddingKernel(const Context& ctx,
+void SparseWeightEmbeddingKernel(const Context& dev_ctx,
                                  const DenseTensor& input,
                                  const SelectedRows& weight,
                                  int64_t padding_idx,
                                  DenseTensor* out) {
   EmbeddingCPUSparseFunctor<T, Context> functor(
-      ctx, input, weight, padding_idx, out);
+      dev_ctx, input, weight, padding_idx, out);
 
   if (input.dtype() == phi::DataType::INT32) {
     functor.template apply<int>();

@@ -218,6 +218,10 @@ template <typename T, typename Context>
 void DeterminantKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   auto input_dim = common::vectorize(x.dims());
   auto input_dim_size = input_dim.size();
 

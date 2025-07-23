@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void EmbeddingKernel(const Context& ctx,
+void EmbeddingKernel(const Context& dev_ctx,
                      const DenseTensor& inputx,
                      const DenseTensor& weight,
                      int64_t padding_idx,

@@ -24,11 +24,9 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/type_defs.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #include "paddle/phi/api/profiler/event.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/platform/profiler/mem_tracing.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -200,8 +198,9 @@ void CompleteProfilerEvents(phi::proto::Profile* tracer_profile,
 bool IsProfileEnabled();
 // Whether the trainer should send profiling state to PS.
 bool ShouldSendProfileState();
-std::string OpName(const framework::VariableNameMap& name_map,
-                   const std::string& type_name);
+std::string OpName(
+    const std::map<std::string, std::vector<std::string>>& name_map,
+    const std::string& type_name);
 void SetTracerOption(TracerOption option);
 platform::TracerOption GetTracerOption();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

@@ -19,7 +19,7 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void UniformInplaceKernel(const Context& ctx,
+void UniformInplaceKernel(const Context& dev_ctx,
                           const DenseTensor& x UNUSED,
                           float min,
                           float max,
@@ -28,7 +28,7 @@ void UniformInplaceKernel(const Context& ctx,
                           int diag_step UNUSED,
                           float diag_val UNUSED,
                           DenseTensor* out) {
-  T* data = ctx.template Alloc<T>(out);
+  T* data = dev_ctx.template Alloc<T>(out);
   int64_t size = out->numel();
   std::uniform_real_distribution<T> dist(static_cast<T>(min),
                                          static_cast<T>(max));
@@ -37,7 +37,7 @@ void UniformInplaceKernel(const Context& ctx,
     engine = std::make_shared<std::mt19937_64>();
     engine->seed(seed);
   } else {
-    engine = ctx.GetGenerator()->GetCPUEngine();
+    engine = dev_ctx.GetGenerator()->GetCPUEngine();
   }
   for (int64_t i = 0; i < size; ++i) {
     data[i] = dist(*engine);

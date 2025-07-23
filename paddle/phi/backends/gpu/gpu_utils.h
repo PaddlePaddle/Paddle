@@ -66,25 +66,18 @@ struct DeviceArray {
   T data[Size];
 };
 
-struct Dim3 : DeviceArray<int, 3, 1> {
-  typedef DeviceArray<int, 3, 1> Base;
+template <typename T>
+struct Dim3 : DeviceArray<T, 3, 1> {
+  typedef DeviceArray<T, 3, 1> Base;
   EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE Dim3() : Base() {}
-  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE Dim3(int a0, int a1, int a2)
-      : Base(a0, a1, a2) {}
-  EIGEN_STRONG_INLINE Dim3(const std::array<int, 3>& array) : Base(array) {}
-};
-
-struct Index3 : DeviceArray<int, 3, 0> {
-  typedef DeviceArray<int, 3, 0> Base;
-  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE Index3() : Base() {}
-  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE Index3(int a0, int a1, int a2)
+  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE Dim3(T a0, T a1, T a2)
       : Base(a0, a1, a2) {}
 };
 
 // Flat index with real dimension
 template <typename IndexType = int>
 EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE IndexType
-FlatTensorIndex(const Index3& index, const Dim3& dims) {
+FlatTensorIndex(const Dim3<IndexType>& index, const Dim3<IndexType>& dims) {
   IndexType flat_index = index[0];
 #pragma unroll
   for (int i = 1; i < 3; ++i) {
@@ -95,9 +88,9 @@ FlatTensorIndex(const Index3& index, const Dim3& dims) {
 
 // Convert index to tensor index with dimension.
 template <typename IndexType = int>
-EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE Index3
-ConvertTensorIndex(IndexType index, const Dim3& dims) {
-  Index3 tensor_index;
+EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE Dim3<IndexType> ConvertTensorIndex(
+    IndexType index, const Dim3<IndexType>& dims) {
+  Dim3<IndexType> tensor_index;
 #pragma unroll
   for (int i = 2; i >= 0; --i) {
     IndexType new_index = index / dims[i];
@@ -105,41 +98,6 @@ ConvertTensorIndex(IndexType index, const Dim3& dims) {
     index = new_index;
   }
   return tensor_index;
-}
-
-template <typename IntType, bool ceil>
-IntType CeilOrFloor(IntType x, IntType deviser) {
-  PADDLE_ENFORCE_GT(
-      deviser,
-      0,
-      common::errors::InvalidArgument("deviser should be greater than 0, "
-                                      "but received is:%d",
-                                      deviser));
-
-  PADDLE_ENFORCE_GT(
-      x,
-      0,
-      common::errors::InvalidArgument("input should be greater than 0, "
-                                      "but received is:%d",
-                                      x));
-
-  const IntType round_to_zero = x / deviser;
-  const IntType inte_result = round_to_zero * deviser;
-
-  if (ceil) {
-    const bool do_adjustment =
-        (round_to_zero >= 0) && (deviser > 0 && x > inte_result);
-    const IntType adjustment = static_cast<IntType>(do_adjustment);
-    const IntType ceil_val = round_to_zero + adjustment;
-    return ceil_val;
-  } else {
-    const bool do_adjustment =
-        (round_to_zero <= 0) && (deviser > 0 && x < inte_result);
-
-    const IntType adjustment = static_cast<IntType>(do_adjustment);
-    const IntType floor_val = round_to_zero - adjustment;
-    return floor_val;
-  }
 }
 
 }  // namespace funcs

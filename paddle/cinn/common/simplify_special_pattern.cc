@@ -23,10 +23,10 @@
 #include "paddle/cinn/optim/simplify_util.h"
 namespace cinn {
 namespace common {
-using cinn::optim::CheckPattern;
 using cinn::optim::GetFlattenExprs;
 using cinn::optim::IsNegatedIndexExpr;
 using cinn::optim::IsSumPartialBySymbol;
+using cinn::optim::MatchPattern;
 using cinn::optim::ProveDivisible;
 using cinn::optim::SimplifySymbolicAdd;
 
@@ -51,7 +51,7 @@ static void MergeMulModInsertElements(
       *has_mult = true;
       mult_exprs->emplace_back(ele);
     } else {
-      *no_opt_sum = no_opt_sum->get() ? *no_opt_sum + ele : ele;
+      *no_opt_sum = no_opt_sum->get() ? ir::Add::Make(*no_opt_sum, ele) : ele;
     }
   }
 }
@@ -250,13 +250,7 @@ std::optional<ir::IndexExpr> AddMulCornerCase(
 // S0 / (S1 * S2) * S2 + S0 % (S1 * S2) / S1 ===>  S0 / S1
 std::optional<ir::IndexExpr> DivMulAddModDivCase(const ir::IndexExpr& lhs,
                                                  const ir::IndexExpr& rhs) {
-  ir::Var a = ir::Var("a");
-  ir::Var b = ir::Var("b");
-  ir::Var c = ir::Var("c");
-  ir::Var f = ir::Var("f");
-  std::unordered_map<std::string, ir::IndexExpr> map;
-
-  ir::IndexExpr pattern = f / c * a + f % c / b;
+  if (!MatchPattern(rhs, "f % c / b")) return std::nullopt;
 
   auto flatten = GetFlattenExprs<ir::Add>(lhs);
   ir::IndexExpr res;
@@ -264,10 +258,16 @@ std::optional<ir::IndexExpr> DivMulAddModDivCase(const ir::IndexExpr& lhs,
   for (const auto& expr : flatten) {
     if (!find) {
       ir::IndexExpr cand = ir::Add::Make(expr, rhs);
-      map.clear();
+
       // Check if the pattern is matched
-      if (CheckPattern(cand, pattern, &map) &&
-          map.at("c") == map.at("a") * map.at("b")) {
+      auto opt_map = MatchPattern(
+          cand,
+          "f / c * a + f % c / b",
+          [](const std::unordered_map<std::string, ir::IndexExpr>& m) {
+            return m.at("c") == m.at("a") * m.at("b");
+          });
+      if (opt_map) {
+        auto map = opt_map.value();
         ir::IndexExpr simplified = map.at("f") / map.at("b");
         res = res.defined() ? res + simplified : simplified;
         find = true;

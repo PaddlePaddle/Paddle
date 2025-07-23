@@ -21,7 +21,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ExpandGradKernel(const Context& ctx,
+void ExpandGradKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& out_grad,
                       const IntArray& shape,

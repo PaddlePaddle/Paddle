@@ -232,9 +232,10 @@ class Conll05st(Dataset):
         self.sentences = []
         self.predicates = []
         self.labels = []
-        with gzip.GzipFile(fileobj=wf) as words_file, gzip.GzipFile(
-            fileobj=pf
-        ) as props_file:
+        with (
+            gzip.GzipFile(fileobj=wf) as words_file,
+            gzip.GzipFile(fileobj=pf) as props_file,
+        ):
             sentences = []
             labels = []
             one_seg = []

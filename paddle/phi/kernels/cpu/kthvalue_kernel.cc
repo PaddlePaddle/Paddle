@@ -16,9 +16,9 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-
 namespace phi {
 template <typename T, typename Type>
 static void getKthvalue(Type input_height,
@@ -27,7 +27,7 @@ static void getKthvalue(Type input_height,
                         const DenseTensor* input,
                         T* t_out,
                         Type* t_indices,
-                        const int& k) {
+                        const int64_t& k) {
   bool partial_sort_flag = (k * 64) < input_width;
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
@@ -75,11 +75,18 @@ static void getKthvalue(Type input_height,
 template <typename T, typename Context>
 void KthvalueKernel(const Context& dev_ctx,
                     const DenseTensor& x,
-                    int k,
+                    int64_t k,
                     int axis,
                     bool keepdim,
                     DenseTensor* output,
                     DenseTensor* indices) {
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(output->dims())), NAN, output);
+    phi::Full<int64_t, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(indices->dims())), 0, indices);
+    return;
+  }
   const auto& in_dims = x.dims();
   if (axis < 0) axis += in_dims.size();
 
@@ -91,7 +98,7 @@ void KthvalueKernel(const Context& dev_ctx,
                       1,
                       common::errors::InvalidArgument(
                           "the k in the kthvalue must less equal than the "
-                          "elements number of the input X, but received %d .",
+                          "elements number of the input X, but received %lld .",
                           k));
 
     phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, output);

@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# isort: skip_file
 from .parallel_layers import (  # noqa: F401
     ColumnParallelLinear,
     LayerDesc,
+    LocalSharedLayerDesc,
     ParallelCrossEntropy,
     PipelineLayer,
     RNGStatesTracker,
@@ -32,8 +34,13 @@ from .pipeline_parallel import (  # noqa: F401
     VPPFhenBInBalancedMemory,
     register_global_pipeline_parallel_hook,
 )
+from .dualpipev import DualPipeVParallel  # noqa: F401
 from .segment_parallel import SegmentParallel  # noqa: F401
 from .sharding_parallel import ShardingParallel  # noqa: F401
 from .tensor_parallel import TensorParallel  # noqa: F401
+from .pp_utils.forward_backward_overlap_utils import (  # noqa: F401
+    ScheduleNode,
+    ScheduleChunk,
+)
 
 __all__ = []

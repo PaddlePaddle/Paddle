@@ -18,5 +18,11 @@
 #include "paddle/phi/kernels/impl/lu_unpack_grad_kernel_impl.h"
 #include "paddle/phi/kernels/lu_unpack_grad_kernel.h"
 
-PD_REGISTER_KERNEL(
-    lu_unpack_grad, GPU, ALL_LAYOUT, phi::LUUnpackGradKernel, float, double) {}
+PD_REGISTER_KERNEL(lu_unpack_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LUUnpackGradKernel,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

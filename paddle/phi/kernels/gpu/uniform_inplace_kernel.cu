@@ -55,7 +55,7 @@ struct UniformGenerator {
 };
 
 template <typename T, typename Context>
-void UniformInplaceKernel(const Context& ctx,
+void UniformInplaceKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           float min,
                           float max,
@@ -64,13 +64,13 @@ void UniformInplaceKernel(const Context& ctx,
                           int diag_step,
                           float diag_val,
                           DenseTensor* out) {
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   if (seed == 0) {
     // Use global Generator seed
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     funcs::uniform_distribution<MT> dist;
     funcs::uniform_real_transform<MT> trans(min, max);
-    funcs::distribution_and_transform<T>(ctx, out, dist, trans);
+    funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);
   } else {
     // Use OP seed
     auto func = UniformGenerator<T>(static_cast<T>(min),
@@ -79,7 +79,7 @@ void UniformInplaceKernel(const Context& ctx,
                                     diag_num,
                                     diag_step,
                                     static_cast<T>(diag_val));
-    IndexKernel<T, UniformGenerator<T>>(ctx, out, func);
+    IndexKernel<T, UniformGenerator<T>>(dev_ctx, out, func);
   }
 }
 

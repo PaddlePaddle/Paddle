@@ -128,23 +128,25 @@ class Conv2DTestCase(unittest.TestCase):
         paddle.seed(2023)
         main = base.Program()
         start = base.Program()
-        with base.unique_name.guard():
-            with base.program_guard(main, start):
-                x_var = paddle.static.data(
-                    "input", self.input.shape, dtype=self.dtype
-                )
-                conv = nn.Conv2D(
-                    self.num_channels,
-                    self.num_filters,
-                    self.filter_size,
-                    padding=self.padding,
-                    padding_mode=self.padding_mode,
-                    stride=self.stride,
-                    dilation=self.dilation,
-                    groups=self.groups,
-                    data_format=self.data_format,
-                )
-                y_var = conv(x_var)
+        with (
+            base.unique_name.guard(),
+            base.program_guard(main, start),
+        ):
+            x_var = paddle.static.data(
+                "input", self.input.shape, dtype=self.dtype
+            )
+            conv = nn.Conv2D(
+                self.num_channels,
+                self.num_filters,
+                self.filter_size,
+                padding=self.padding,
+                padding_mode=self.padding_mode,
+                stride=self.stride,
+                dilation=self.dilation,
+                groups=self.groups,
+                data_format=self.data_format,
+            )
+            y_var = conv(x_var)
         feed_dict = {"input": self.input}
         exe = base.Executor(place)
         exe.run(start)
@@ -189,9 +191,11 @@ class Conv2DTestCase(unittest.TestCase):
 class Conv2DErrorTestCase(Conv2DTestCase):
     def runTest(self):
         place = base.CPUPlace()
-        with dg.guard(place):
-            with self.assertRaises(ValueError):
-                self.paddle_nn_layer()
+        with (
+            dg.guard(place),
+            self.assertRaises(ValueError),
+        ):
+            self.paddle_nn_layer()
 
 
 def add_cases(suite):

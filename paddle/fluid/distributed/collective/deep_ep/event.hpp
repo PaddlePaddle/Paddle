@@ -37,9 +37,17 @@ struct EventHandle {
     event->record(deep_ep::detail::getCurrentCUDAStream().raw_stream());
   }
 
+  void CalcStreamWait(int context_ring_id) const;
+  void CommStreamWait(int context_ring_id) const;
+
   explicit EventHandle(const cudaStream_t& stream) {
     event = std::make_shared<deep_ep::detail::Event>();
     event->record(stream);
+  }
+
+  explicit EventHandle(const phi::CUDAStream& stream) {
+    event = std::make_shared<deep_ep::detail::Event>();
+    event->record(stream.raw_stream());
   }
 
   EventHandle(const EventHandle& other) = default;
@@ -51,6 +59,10 @@ struct EventHandle {
         0));
   }
 };
+
+EventHandle GetEventHandleFromCalcStream(int context_ring_id);
+EventHandle GetEventHandleFromCommStream(int context_ring_id);
+EventHandle GetEventHandleFromCustomStream(const phi::CUDAStream& stream);
 
 inline deep_ep::detail::Event create_event(const cudaStream_t& s) {
   auto event = deep_ep::detail::Event();

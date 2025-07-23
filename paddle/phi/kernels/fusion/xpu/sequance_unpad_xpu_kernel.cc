@@ -19,7 +19,7 @@ namespace phi {
 namespace fusion {
 
 template <typename T, typename Context>
-void SequenceUnpadXPUKernel(const Context& ctx,
+void SequenceUnpadXPUKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& length,
                             DenseTensor* out) {
@@ -46,13 +46,14 @@ void SequenceUnpadXPUKernel(const Context& ctx,
   }
   out->Resize(phi::make_ddim(out_dims));
   out->set_lod(out_lod);
-  XPUType* out_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(out));
+  XPUType* out_data =
+      reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out));
   std::vector<int> lod_cpu(out_lod0.begin(), out_lod0.end());
   xpu::VectorParam<int> query_lod = {
       lod_cpu.data(), (int64_t)lod_cpu.size(), nullptr};
   int64_t dim = out->numel() / out_dim0;
   int r = xpu::sequence_unpad<XPUType, int>(
-      ctx.x_context(),                               /* ctx */
+      dev_ctx.x_context(),                           /* dev_ctx */
       reinterpret_cast<const XPUType*>(x.data<T>()), /* pad_data */
       out_data,                                      /* seq_data */
       query_lod,                                     /* sequence */

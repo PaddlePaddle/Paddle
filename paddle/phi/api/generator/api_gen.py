@@ -18,7 +18,6 @@ import yaml
 from api_base import PREFIX_TENSOR_NAME, BaseAPI
 
 backward_api_black_list = [
-    "pull_sparse_v2_grad",  # tensor = push_sparse_v2() is not implemented in api_custom_impl.cc
     "scale_grad",  # tensor = scale is not implemented in api_custom_impl.cc
 ]
 
@@ -426,6 +425,7 @@ class BackwardAPI(ForwardAPI):
         api_code = f"""
 PADDLE_API {self.get_return_type(inplace_flag)} {inplace_name}({self.get_define_args(inplace_flag)}) {{
 {self.get_grad_outputs_define(inplace_flag)}
+{self.get_optional_inputs_change(inplace_flag)}
     {api_func_name}({self.get_grad_api_call_args(inplace_flag)});
     return {self.get_grad_output(inplace_flag)};
 }}
@@ -526,6 +526,9 @@ def source_include(header_file_path):
 #elif (defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL))
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/bkcl_comm_context.h"
+#elif PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/xccl_comm_context.h"
 #endif
 
 #ifdef PADDLE_WITH_DISTRIBUTE

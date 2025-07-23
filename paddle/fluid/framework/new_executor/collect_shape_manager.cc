@@ -28,8 +28,10 @@ void CollectShapeManager::CollectShapeInfo(
     framework::ValueExecutionInfo *value_exe_info,
     framework::Scope *scope) {
   std::lock_guard<std::mutex> lock(info_mutex_);
+  VLOG(3) << "collect shape in instruction:" << instr->Name();
   is_shape_range_info_ready_ = false;
   for (auto &input : instr->Inputs()) {
+    VLOG(3) << "input id:" << input.first.impl();
     if (!op_value2instr_id_.count(input.first)) {
       // Because the input value maybe same between different ops.
       // To prevent duplicate shape collection, we only select one op for
@@ -37,14 +39,31 @@ void CollectShapeManager::CollectShapeInfo(
       op_value2instr_id_[input.first] = instr->Id();
     }
     if (op_value2instr_id_[input.first] != instr->Id()) {
+      VLOG(3) << "input shape has been collected in same instruction, jump it, "
+                 "and input id:"
+              << input.first.impl();
       continue;
     }
     auto var_name = value_exe_info->GetVarName(input.first);
     auto *var = scope->FindVar(var_name);
-    if (!var || !var->IsType<phi::DenseTensor>()) continue;
+    if (!var || !var->IsType<phi::DenseTensor>()) {
+      VLOG(3) << "input var is null : " << (var == nullptr);
+      VLOG(3) << "input var is dense_tensor : "
+              << (var->IsType<phi::DenseTensor>());
+      VLOG(3) << "input is null or not dense_tensor, jump it, and input id:"
+              << input.first.impl();
+      continue;
+    }
 
     auto tensor = var->Get<phi::DenseTensor>();
-    if (!tensor.initialized() && !instr->NoNeedBuffer().count(input.first)) {
+    if (!tensor.has_allocation() && !instr->NoNeedBuffer().count(input.first)) {
+      VLOG(3) << "input tensor is has_allocation: "
+              << (tensor.has_allocation());
+      VLOG(3) << "input tensor is no need buffer:"
+              << instr->NoNeedBuffer().count(input.first);
+      VLOG(3) << "input tensor is not initialized and not no need buffer, jump "
+                 "it, and input id:"
+              << input.first.impl();
       continue;
     }
     paddle::platform::DeviceContextPool &pool =

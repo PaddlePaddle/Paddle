@@ -241,9 +241,10 @@ def get_cost():
     )
     main_program = static.Program()
     startup_program = static.Program()
-    with static.program_guard(
-        main_program, startup_program
-    ), utils.unique_name.guard():
+    with (
+        static.program_guard(main_program, startup_program),
+        utils.unique_name.guard(),
+    ):
         input = static.data(
             name="input", shape=[batch_size, image_size], dtype='float32'
         )
@@ -295,9 +296,10 @@ def get_cost_by_default_program():
     )
     main_program = static.default_main_program()
     startup_program = static.default_startup_program()
-    with static.program_guard(
-        main_program, startup_program
-    ), utils.unique_name.guard():
+    with (
+        static.program_guard(main_program, startup_program),
+        utils.unique_name.guard(),
+    ):
         input = static.data(
             name="input", shape=[batch_size, image_size], dtype='float32'
         )

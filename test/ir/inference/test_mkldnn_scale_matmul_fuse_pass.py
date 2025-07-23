@@ -21,7 +21,7 @@ from auto_scan_test import PassAutoScanTest
 from program_config import ProgramConfig, TensorConfig
 
 
-class TestScaleMatmulMkldnnFusePass(PassAutoScanTest):
+class TestScaleMatmulOnednnFusePass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 

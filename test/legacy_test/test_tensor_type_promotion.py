@@ -3461,16 +3461,18 @@ create_test_case(TestAPIMSELossInStatic, 'float32', 'float64', 'float64')
 class TestTypePromotionRaiseError(unittest.TestCase):
     def test_static_type_error(self):
         paddle.enable_static()
-        with self.assertRaises(TypeError):
-            with paddle.pir_utils.OldIrGuard():
-                prog = paddle.static.Program()
-                exe = paddle.static.Executor()
-                with paddle.static.program_guard(prog):
-                    a = paddle.ones([3, 3], dtype='float32')
-                    b = paddle.ones([3, 3], dtype='float64')
-                    out = a.__matmul__(b)
-                    res = exe.run(prog, fetch_list=[out])
-                    return res
+        with (
+            self.assertRaises(TypeError),
+            paddle.pir_utils.OldIrGuard(),
+        ):
+            prog = paddle.static.Program()
+            exe = paddle.static.Executor()
+            with paddle.static.program_guard(prog):
+                a = paddle.ones([3, 3], dtype='float32')
+                b = paddle.ones([3, 3], dtype='float64')
+                out = a.__matmul__(b)
+                res = exe.run(prog, fetch_list=[out])
+                return res
 
     def test_dygraph_type_error(self):
         with self.assertRaises(TypeError):

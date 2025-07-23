@@ -387,7 +387,7 @@ static __global__ void KeBNBackwardData(
 
 template <typename T, typename Context>
 void SyncBatchNormGradFunctor(
-    const Context &ctx,
+    const Context &dev_ctx,
     const DenseTensor *input_x,
     const DenseTensor *input_y,
     const DenseTensor &scale,
@@ -448,8 +448,8 @@ void SyncBatchNormGradFunctor(
                         scale.dims()[0]));
 
   if (d_scale && d_bias) {
-    ctx.template Alloc<BatchNormParamType<T>>(d_scale);
-    ctx.template Alloc<BatchNormParamType<T>>(d_bias);
+    dev_ctx.template Alloc<BatchNormParamType<T>>(d_scale);
+    dev_ctx.template Alloc<BatchNormParamType<T>>(d_bias);
   }
   PADDLE_ENFORCE_EQ(scale.dims().size(),
                     1UL,
@@ -471,7 +471,7 @@ void SyncBatchNormGradFunctor(
   auto px = *x;
   const T *dy_d = d_y->data<T>();
 
-  auto stream = ctx.stream();
+  auto stream = dev_ctx.stream();
 
   const auto *saved_mean_ptr =
       saved_mean.template data<BatchNormParamType<T>>();
@@ -480,7 +480,7 @@ void SyncBatchNormGradFunctor(
   const int bytes = (C * 2 + 1) * sizeof(BatchNormParamType<T>);
   phi::DenseTensor stats_tensor;
   stats_tensor.Resize({static_cast<int64_t>(bytes)});
-  ctx.template Alloc<BatchNormParamType<T>>(&stats_tensor);
+  dev_ctx.template Alloc<BatchNormParamType<T>>(&stats_tensor);
   auto *stats_data = stats_tensor.data<BatchNormParamType<T>>();
   auto *stats = reinterpret_cast<BatchNormParamType<T> *>(stats_data);
 
@@ -488,14 +488,14 @@ void SyncBatchNormGradFunctor(
   const int threads = 256;
   int x_numel = x->numel();
   int fsize = H * W * D;
-  int max_threads = ctx.GetMaxPhysicalThreadCount();
+  int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
   int grid = std::min(C, (max_threads + threads - 1) / threads);
   int grid2 = (std::min(x_numel, max_threads) + block - 1) / block;
 
   if (is_inplace) {
     if (layout == DataLayout::kNCHW) {
       KeBNRestoreData<T, DataLayout::kNCHW><<<grid2, block, 0, stream>>>(
-          ctx.template Alloc<T>(&px),
+          dev_ctx.template Alloc<T>(&px),
           scale.template data<BatchNormParamType<T>>(),
           bias.template data<BatchNormParamType<T>>(),
           saved_mean_ptr,
@@ -507,7 +507,7 @@ void SyncBatchNormGradFunctor(
           x->data<T>());
     } else {
       KeBNRestoreData<T, DataLayout::kNHWC><<<grid2, block, 0, stream>>>(
-          ctx.template Alloc<T>(&px),
+          dev_ctx.template Alloc<T>(&px),
           scale.template data<BatchNormParamType<T>>(),
           bias.template data<BatchNormParamType<T>>(),
           saved_mean_ptr,
@@ -537,7 +537,7 @@ void SyncBatchNormGradFunctor(
       int *flag_ptr = nullptr;
 
       funcs::SetLaunchConfigInfoForChannelLast<T, BatchNormParamType<T>>(
-          ctx,
+          dev_ctx,
           &block_data_tensor,
           &flag_tensor,
           &block_data_ptr,
@@ -569,7 +569,7 @@ void SyncBatchNormGradFunctor(
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   auto comm_ctx =
-      static_cast<distributed::NCCLCommContext *>(ctx.GetCommContext());
+      static_cast<distributed::NCCLCommContext *>(dev_ctx.GetCommContext());
   // In sync_batch_norm, comm_ctx may be null.
   if (comm_ctx) {
     comm_ctx->AllReduce(&stats_tensor, stats_tensor, ncclSum, stream);
@@ -591,7 +591,7 @@ void SyncBatchNormGradFunctor(
                                          d_bias->data<BatchNormParamType<T>>());
     }
     if (d_x) {
-      ctx.template Alloc<T>(d_x);
+      dev_ctx.template Alloc<T>(d_x);
       KeBNBackwardData<T, DataLayout::kNCHW><<<grid2, block, 0, stream>>>(
           dy_d,
           x_d,
@@ -621,7 +621,7 @@ void SyncBatchNormGradFunctor(
         int *flag_ptr = nullptr;
 
         funcs::SetLaunchConfigInfoForChannelLast<T, BatchNormParamType<T>>(
-            ctx,
+            dev_ctx,
             &block_data_tensor,
             &flag_tensor,
             &block_data_ptr,
@@ -663,7 +663,7 @@ void SyncBatchNormGradFunctor(
       }
     }
     if (d_x) {
-      ctx.template Alloc<T>(d_x);
+      dev_ctx.template Alloc<T>(d_x);
       KeBNBackwardData<T, DataLayout::kNHWC><<<grid2, block, 0, stream>>>(
           dy_d,
           x_d,

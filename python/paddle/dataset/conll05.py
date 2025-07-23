@@ -81,9 +81,10 @@ def corpus_reader(data_path, words_name, props_name):
         tf = tarfile.open(data_path)
         wf = tf.extractfile(words_name)
         pf = tf.extractfile(props_name)
-        with gzip.GzipFile(fileobj=wf) as words_file, gzip.GzipFile(
-            fileobj=pf
-        ) as props_file:
+        with (
+            gzip.GzipFile(fileobj=wf) as words_file,
+            gzip.GzipFile(fileobj=pf) as props_file,
+        ):
             sentences = []
             labels = []
             one_seg = []

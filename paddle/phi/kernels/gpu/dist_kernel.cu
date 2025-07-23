@@ -19,6 +19,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/dist_kernel.h"
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
 #include "paddle/phi/kernels/legacy/reduce_max_kernel.h"
@@ -67,12 +68,8 @@ __global__ void ReduceSumWithSubtract(
     const T* x, const T* y, T* out, int64_t N, Functor func) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   MT sum_val(0.0);
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
-       i += blockDim.x * gridDim.x) {
-    sum_val += func(x[i], y[i]);
-  }
+  CUDA_KERNEL_LOOP_TYPE(i, N, int64_t) { sum_val += func(x[i], y[i]); }
 
-  __syncthreads();
   sum_val = phi::funcs::BlockReduceSum<MT>(sum_val, FULL_MASK);
   if (threadIdx.x == 0) {
     out[blockIdx.x] = static_cast<T>(sum_val);
@@ -86,12 +83,10 @@ __global__ void ReduceMaxWithSubtract(const T* x,
                                       int64_t N) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   MT max_val = std::numeric_limits<MT>::min();
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
-       i += blockDim.x * gridDim.x) {
+  CUDA_KERNEL_LOOP_TYPE(i, N, int64_t) {
     max_val = max(max_val, abs(static_cast<MT>(x[i]) - static_cast<MT>(y[i])));
   }
 
-  __syncthreads();
   max_val = phi::funcs::BlockReduceMax<MT>(max_val, FULL_MASK);
   if (threadIdx.x == 0) {
     out[blockIdx.x] = static_cast<T>(max_val);
@@ -105,12 +100,10 @@ __global__ void ReduceMinWithSubtract(const T* x,
                                       int64_t N) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   MT min_val = std::numeric_limits<MT>::max();
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
-       i += blockDim.x * gridDim.x) {
+  CUDA_KERNEL_LOOP_TYPE(i, N, int64_t) {
     min_val = min(min_val, abs(static_cast<MT>(x[i]) - static_cast<MT>(y[i])));
   }
 
-  __syncthreads();
   min_val = phi::funcs::BlockReduceMin<MT>(min_val, FULL_MASK);
   if (threadIdx.x == 0) {
     out[blockIdx.x] = static_cast<T>(min_val);
@@ -123,6 +116,12 @@ void DistKernel(const Context& dev_ctx,
                 const DenseTensor& y,
                 float p,
                 DenseTensor* out) {
+  if (x.numel() == 0 || y.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    return;
+  }
+
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   DenseTensor intermediate;
   const T* x_ptr = x.data<T>();

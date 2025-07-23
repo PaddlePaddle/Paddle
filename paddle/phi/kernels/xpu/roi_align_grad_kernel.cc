@@ -18,6 +18,7 @@
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 
@@ -39,6 +40,11 @@ void RoiAlignGradKernel(const Context& dev_ctx,
   int width = x.dims()[3];
 
   if (!dx) {
+    return;
+  }
+  if (x.numel() == 0 || boxes.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
     return;
   }
   DenseTensor roi_batch_id_list;

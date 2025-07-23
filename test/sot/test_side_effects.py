@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import unittest
 
-from test_case_base import TestCaseBase, test_with_faster_guard
+from test_case_base import TestCaseBase
 
 import paddle
 from paddle.jit import sot
@@ -181,6 +181,24 @@ def slice_list_after_change(l):
     return sum
 
 
+class ReadBufferAfterChanged(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.buffer1 = paddle.to_tensor(1)
+        self.buffer2 = paddle.to_tensor(2)
+
+    def forward(self, x):
+        self.buffer1 += 1
+        return x + self.buffer1 + self.buffer2
+
+    def __eq__(self, other):
+        if not isinstance(other, ReadBufferAfterChanged):
+            return False
+        return paddle.equal(self.buffer1, other.buffer1) and paddle.equal(
+            self.buffer2, other.buffer2
+        )
+
+
 class TestDictSideEffect(TestCaseBase):
     def test_dict_setitem(self):
         self.assert_results_with_side_effects(
@@ -190,7 +208,6 @@ class TestDictSideEffect(TestCaseBase):
             dict_setitem, {0: paddle.to_tensor(1)}
         )
 
-    @test_with_faster_guard
     def test_dict_delitem(self):
         self.assert_results_with_side_effects(
             dict_delitem, {0: paddle.to_tensor(0), 1: paddle.to_tensor(1)}
@@ -204,7 +221,6 @@ class TestDictSideEffect(TestCaseBase):
             dict_delitem_getitem, {0: {0: 1, 1: 2}}
         )
 
-    @test_with_faster_guard
     def test_dict_nested_1(self):
         self.assert_results_with_side_effects(
             dict_nested_1, {0: {0: 1, 1: 2}, 1: {0: 1, 1: 2}}
@@ -213,7 +229,6 @@ class TestDictSideEffect(TestCaseBase):
             dict_nested_1, {0: {0: 123, 1: 2}, 1: {0: 1, 1: 2}}
         )
 
-    @test_with_faster_guard
     def test_dict_nested_2(self):
         self.assert_results_with_side_effects(
             dict_nested_2, {0: {0: 1, 1: 2}, 1: {0: 1, 1: 2}}
@@ -224,7 +239,6 @@ class TestDictSideEffect(TestCaseBase):
 
 
 class TestListSideEffect(TestCaseBase):
-    @test_with_faster_guard
     def test_list_append(self):
         self.assert_results_with_side_effects(
             list_append_int, paddle.to_tensor(1), [1, 2, 3]
@@ -233,71 +247,61 @@ class TestListSideEffect(TestCaseBase):
             list_append_tensor, paddle.to_tensor(2), [1, 2, 3]
         )
 
-    @test_with_faster_guard
     def test_list_delitem(self):
         self.assert_results_with_side_effects(list_delitem, [1, 2, 3])
 
-    @test_with_faster_guard
     def test_list_extend(self):
         self.assert_results_with_side_effects(
             list_extend, [1, 2, 3, 4, 5, 6, 7, 8, 9]
         )
 
-    @test_with_faster_guard
     def test_list_insert(self):
         self.assert_results_with_side_effects(list_insert, [1, 2, 3])
         self.assert_results_with_side_effects(
             list_insert, [-1, 2, -3, 4, -5, 6, -7, 8, -9]
         )
 
-    @test_with_faster_guard
     def test_list_remove(self):
         self.assert_results_with_side_effects(list_remove, [1, 1, 1])
         self.assert_results_with_side_effects(list_remove, [0, 1, 2])
+        # TODO(DrRyanHuang): change this to ValueError
         with self.assertRaises(InnerError):
             symbolic_translate(list_remove)([0, 2, 4])
 
-    @test_with_faster_guard
     def test_list_pop(self):
         self.assert_results_with_side_effects(list_pop, [1, 2, 3, 4, 5])
         self.assert_results_with_side_effects(
             list_pop, [-1, 2, -3, 4, -5, 6, -7, 8, -9]
         )
 
-    @test_with_faster_guard
     def test_list_clear(self):
         self.assert_results_with_side_effects(list_clear, [1, 2, 3, 4, 5])
         self.assert_results_with_side_effects(
             list_clear, [-1, 2, -3, 4, -5, 6, -7, 8, -9]
         )
 
-    @test_with_faster_guard
     def test_list_sort(self):
         self.assert_results_with_side_effects(list_sort, [2, 1, 7, 3, 4, 6])
         self.assert_results_with_side_effects(
             list_sort, [-1, 2, -3, 4, -5, 6, -7, 8, -9]
         )
 
-    @test_with_faster_guard
     def test_list_reverse(self):
         self.assert_results_with_side_effects(list_reverse, [1, 2, 3, 4, 5])
         self.assert_results_with_side_effects(
             list_reverse, [-1, 2, -3, 4, -5, 6, -7, 8, -9]
         )
 
-    @test_with_faster_guard
     def test_slice_in_for_loop(self):
         x = 2
         with strict_mode_guard(False):
             self.assert_results_with_side_effects(slice_in_for_loop, x)
 
-    @test_with_faster_guard
     def test_list_nested(self):
         self.assert_results_with_side_effects(list_nested, [1, 2, 3])
 
 
 class TestSliceAfterChange(TestCaseBase):
-    @test_with_faster_guard
     def test_slice_list_after_change(self):
         self.assert_results_with_side_effects(
             slice_list_after_change, [1, 2, 3, 4]
@@ -342,6 +346,17 @@ class TestAttrSideEffect(TestCaseBase):
     def test_attr_set_breakgraph(self):
         self.attr_check(object_attr_breakgraph, ["x"], CustomObject, 100)
         self.attr_check(object_attr_breakgraph, ["x"], CustomObject, 1000)
+
+
+class TestReadBufferAfterChanged(TestCaseBase):
+    def test_read_buffer_after_change(self):
+        layer = ReadBufferAfterChanged()
+        x = paddle.randn([1, 2, 3])
+        self.assert_results_with_side_effects(
+            layer.__class__.forward,
+            layer,
+            x,
+        )
 
 
 if __name__ == "__main__":

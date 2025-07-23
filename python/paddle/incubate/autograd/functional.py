@@ -23,12 +23,11 @@ from paddle.incubate.autograd import primapi, utils
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-    from typing import Tuple
 
     from paddle import Tensor
     from paddle._typing import TensorOrTensors
 
-    _OutputT = TypeVar("_OutputT", Tensor, Tuple[Tensor, ...])
+    _OutputT = TypeVar("_OutputT", Tensor, tuple[Tensor, ...])
 
 
 @overload
@@ -441,9 +440,9 @@ class _Jacobian:
             0 if isinstance(idx, int) else slice(0, lazy_axis_size, 1)
         )
         return (
-            indexes[: self._lazy_axis]
-            + (shifted_lazy_axis_idx,)
-            + indexes[self._lazy_axis + 1 :]
+            *indexes[: self._lazy_axis],
+            shifted_lazy_axis_idx,
+            *indexes[self._lazy_axis + 1 :],
         )
 
     def __getitem__(self, indexes):

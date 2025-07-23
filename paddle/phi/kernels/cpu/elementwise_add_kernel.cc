@@ -52,7 +52,6 @@ void AddKernel(const Context& dev_ctx,
                const DenseTensor& y,
                DenseTensor* out) {
   if (x.numel() == 0 || y.numel() == 0) {
-    out->Resize(out->dims());
     dev_ctx.template Alloc<T>(out);
     return;
   }

@@ -16,6 +16,7 @@
 
 #include "glog/logging.h"
 #include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
@@ -97,7 +98,6 @@ CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
     int64_t world_size = static_cast<int64_t>(process_ids.size());
     int64_t rank = GetLocalRankInParticipate(process_ids);
     VLOG(3) << "local world size: " << world_size << " local rank: " << rank;
-
     auto store = CreateOrGetGlobalTCPStore();
     if (phi::CPUContext::classof(&dev_ctx)) {
 #if defined(PADDLE_WITH_GLOO)
@@ -110,7 +110,7 @@ CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
           "Cannot use gloo on CPU, please turn PADDLE_WITH_GLOO flag on."));
 #endif
     }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_ROCM)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     else if (phi::GPUContext::classof(&dev_ctx)) {  // NOLINT
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       CommContextManager::CreateNCCLCommContext(store,
@@ -198,9 +198,18 @@ bool NeedComputationClipForPP(
 }
 
 Place GetDefaultPlace() {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+  auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+  if (phi::DeviceManager::GetDeviceCount(dev_types[0]) >= 0) {
+    return paddle::DefaultCustomPlace();
+  }
+#elif defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (phi::backends::gpu::GetGPUDeviceCount() >= 0) {
     return paddle::DefaultGPUPlace();
+  }
+#elif defined(PADDLE_WITH_XPU)
+  if (phi::backends::xpu::GetXPUDeviceCount() >= 0) {
+    return paddle::DefaultXPUPlace();
   }
 #endif
   return paddle::CPUPlace();

@@ -59,6 +59,9 @@ class XPUTestSliceOp(XPUOpTestWrapper):
             self.infer_flags = [1, 1, 1]
             self.out = self.input[1:3, 0:3, 2:4, :]
 
+        def test_check_output(self):
+            self.check_output_with_place(self.place)
+
         def test_check_grad_normal(self):
             if self.dtype == np.float16:
                 self.check_grad_with_place(self.place, ['Input'], 'Out')
@@ -213,9 +216,130 @@ class XPUTestSliceOp_decs_dim(XPUOpTestWrapper):
 
 
 support_types = get_xpu_op_support_types('slice')
-for stype in support_types:
+real_types = [t for t in support_types if t != 'complex64']
+for stype in real_types:
     create_test_class(globals(), XPUTestSliceOp, stype)
     create_test_class(globals(), XPUTestSliceOp_decs_dim, stype)
+
+if 'complex64' in support_types:
+
+    class TestSliceOpComplex(XPUOpTest):
+        def setUp(self):
+            self.dtype = np.float32
+            self.place = paddle.XPUPlace(0)
+            self.op_type = "slice"
+            self.python_api = paddle.slice
+
+        def _test_check_output(self):
+            self.check_output_with_place(self.place)
+
+        def _test_check_grad_normal(self):
+            real_grad = np.random.random(self.out.shape).astype(self.dtype)
+            imag_grad = np.random.random(self.out.shape).astype(self.dtype)
+            user_defined_grad_outputs = real_grad + 1j * imag_grad
+            self.check_grad_with_place(
+                self.place,
+                ['Input'],
+                'Out',
+                user_defined_grad_outputs=user_defined_grad_outputs,
+            )
+
+        def test_with_all_possible_start_end(self):
+            real_part = np.random.random([3, 4, 5, 6]).astype(self.dtype)
+            imag_part = np.random.random([3, 4, 5, 6]).astype(self.dtype)
+            np_data = real_part + 1j * imag_part
+            dim_size = np_data.shape[2]
+            for st in [*list(range(-dim_size - 1, dim_size + 2)), None]:
+                for ed in [*list(range(-dim_size - 1, dim_size + 2)), None]:
+                    try:
+                        np_res = np_data[:, :, st:ed, :]
+                    except Exception as e:
+                        # skip the invalid case use try-except strategy
+                        continue
+                    self.axes = [2]
+                    self.starts = [st if st is not None else 0]
+                    self.ends = [ed if ed is not None else dim_size]
+                    self.infer_flags = [1]
+
+                    self.input = np_data
+                    self.out = np_res
+                    self.inputs = {'Input': self.input}
+                    self.outputs = {'Out': self.out}
+                    self.attrs = {
+                        'axes': self.axes,
+                        'starts': self.starts,
+                        'ends': self.ends,
+                        'infer_flags': self.infer_flags,
+                        "use_xpu": True,
+                    }
+
+                    self._test_check_output()
+                    self._test_check_grad_normal()
+
+        def test_with_all_possible_start_end_zero_size(self):
+            real_part = np.random.random([0, 4, 5, 6]).astype(self.dtype)
+            imag_part = np.random.random([0, 4, 5, 6]).astype(self.dtype)
+            np_data = real_part + 1j * imag_part
+            dim_size = np_data.shape[2]
+            for st in [*list(range(-dim_size - 1, dim_size + 2)), None]:
+                for ed in [*list(range(-dim_size - 1, dim_size + 2)), None]:
+                    try:
+                        np_res = np_data[:, :, st:ed, :]
+                    except Exception as e:
+                        # skip the invalid case use try-except strategy
+                        continue
+                    self.axes = [2]
+                    self.starts = [st if st is not None else 0]
+                    self.ends = [ed if ed is not None else dim_size]
+                    self.infer_flags = [1]
+
+                    self.input = np_data
+                    self.out = np_res
+                    self.inputs = {'Input': self.input}
+                    self.outputs = {'Out': self.out}
+                    self.attrs = {
+                        'axes': self.axes,
+                        'starts': self.starts,
+                        'ends': self.ends,
+                        'infer_flags': self.infer_flags,
+                        "use_xpu": True,
+                    }
+
+                    self._test_check_output()
+                    self._test_check_grad_normal()
+
+        def test_with_all_possible_start_end_zero_size_self(self):
+            real_part = np.random.random([3, 4, 0, 6]).astype(self.dtype)
+            imag_part = np.random.random([3, 4, 0, 6]).astype(self.dtype)
+            np_data = real_part + 1j * imag_part
+            dim_size = np_data.shape[2]
+            for st in [*list(range(-dim_size - 1, dim_size + 2)), None]:
+                for ed in [*list(range(-dim_size - 1, dim_size + 2)), None]:
+                    try:
+                        np_res = np_data[:, :, st:ed, :]
+                    except Exception as e:
+                        # skip the invalid case use try-except strategy
+                        continue
+                    self.axes = [2]
+                    self.starts = [st if st is not None else 0]
+                    self.ends = [ed if ed is not None else dim_size]
+                    self.infer_flags = [1]
+
+                    self.input = np_data
+                    self.out = np_res
+                    self.inputs = {'Input': self.input}
+                    self.outputs = {'Out': self.out}
+                    self.attrs = {
+                        'axes': self.axes,
+                        'starts': self.starts,
+                        'ends': self.ends,
+                        'infer_flags': self.infer_flags,
+                        "use_xpu": True,
+                    }
+
+                    self._test_check_output()
+                    self._test_check_grad_normal()
+
 
 if __name__ == '__main__':
     unittest.main()

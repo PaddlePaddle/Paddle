@@ -19,6 +19,7 @@
 #include "paddle/cinn/ir/group_schedule/tactic/compute_at_reduction_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/compute_inline_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/tile_broadcast_tactic.h"
+#include "paddle/cinn/ir/group_schedule/tactic/tile_discrete_reduction_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/tile_first_general_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/tile_transpose_tactic.h"
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
@@ -38,6 +39,7 @@ void DynamicShapeGroupScheduler::Init() {
   tactics_.emplace_back(CreateAlignIterSpaceTactic());
   tactics_.emplace_back(CreateTileBroadcastTactic());
   tactics_.emplace_back(CreateTileTransposeTactic());
+  tactics_.emplace_back(CreateTileDiscreteReductionTactic());
   tactics_.emplace_back(CreateTileFirstGeneralTactic());
   tactics_.emplace_back(CreateComputeInlineTactic());
   tactics_.emplace_back(CreateComputeAtReductionTactic());

@@ -270,8 +270,9 @@ class DistributedFusedLamb(Optimizer):
         flattened = []
         for p, g in params_grads:
             flattened.extend([p, g])
-        with flattened[0].block.program._optimized_guard(flattened), name_scope(
-            "optimizer"
+        with (
+            flattened[0].block.program._optimized_guard(flattened),
+            name_scope("optimizer"),
         ):
             self._apply_gradients_impl(params_grads)
 

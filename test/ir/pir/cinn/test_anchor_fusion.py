@@ -18,18 +18,11 @@ import unittest
 import numpy
 import utils
 
-os.environ['FLAGS_cinn_new_group_scheduler'] = '1'
 os.environ['FLAGS_prim_all'] = 'true'
 os.environ['FLAGS_prim_enable_dynamic'] = 'true'
-os.environ['FLAGS_print_ir'] = '1'
-os.environ['FLAGS_enable_pir_api'] = '1'
 os.environ['FLAGS_use_cinn'] = '1'
-os.environ['FLAGS_cinn_new_cluster_op_method'] = '1'
 
 import paddle
-
-build_strategy = paddle.static.BuildStrategy()
-build_strategy.build_cinn_pass = True
 
 
 def generate_input_spec(rank_dtype_list):
@@ -55,7 +48,7 @@ class TestAnchorFusion(unittest.TestCase):
         dy_out = dy_compute(*inputs)
         static_compute = paddle.jit.to_static(
             full_graph=True,
-            build_strategy=build_strategy,
+            backend="CINN",
             input_spec=input_spec,
         )(dy_compute)
         st_out = static_compute(*inputs)
@@ -284,7 +277,7 @@ class TestAnchorFusion(unittest.TestCase):
             x = paddle.rand((1, 3, 1, 16, 1, 32, 1))
             return (x,)
 
-        self.check_accuracy_and_kernel_num(init, func, kernel_num=2)
+        self.check_accuracy_and_kernel_num(init, func, kernel_num=1)
 
     def test_0d_fusion(self):
         def func(x):
@@ -299,6 +292,20 @@ class TestAnchorFusion(unittest.TestCase):
             return (x,)
 
         self.check_accuracy_and_kernel_num(init, func, kernel_num=2)
+
+    def test_broadcast_transpose(self):
+        def func(x):
+            y = x.sum(axis=0)
+            y = y.broadcast_to([128, 128])
+            y = y.transpose([1, 0])
+            y = x + y
+            return y.sum(axis=0)
+
+        def init():
+            x = paddle.rand((128, 128))
+            return (x,)
+
+        self.check_accuracy_and_kernel_num(init, func)
 
 
 if __name__ == "__main__":

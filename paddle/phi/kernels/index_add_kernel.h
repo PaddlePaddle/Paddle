@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void IndexAddKernel(const Context& ctx,
+void IndexAddKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& index,
                     const DenseTensor& add_value,

@@ -389,7 +389,6 @@ if(WITH_CINN)
          DESTINATION ${CMAKE_BINARY_DIR}/cmake/cinn)
   endif()
   include(${CMAKE_BINARY_DIR}/cmake/cinn/config.cmake)
-  include(cmake/cinn/external/absl.cmake)
   include(cmake/cinn/external/llvm.cmake)
   include(cmake/cinn/external/isl.cmake)
   include(cmake/cinn/external/ginac.cmake)
@@ -470,6 +469,11 @@ if(WITH_TESTING OR WITH_DISTRIBUTE)
   list(APPEND third_party_deps extern_gtest)
 endif()
 
+if(WITH_FLAGCX)
+  include(external/flagcx)
+  list(APPEND third_party_deps flagcx)
+endif()
+
 if(WITH_ONNXRUNTIME)
   include(external/onnxruntime
   )# download, build, install onnxruntime、paddle2onnx
@@ -478,7 +482,9 @@ if(WITH_ONNXRUNTIME)
 endif()
 
 if(WITH_GPU)
-  if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
+  if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0
+     OR (${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.7
+         AND ${CMAKE_CUDA_COMPILER_VERSION} LESS 11.9))
     include(external/cub) # download cub
     list(APPEND third_party_deps extern_cub)
   elseif(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 12.0 AND WITH_SHARED_PHI)
@@ -691,6 +697,17 @@ endif()
 if(WITH_OPENVINO)
   include(external/openvino)
   list(APPEND third_party_deps extern_openvino)
+endif()
+
+string(FIND "${CUDA_ARCH_BIN}" "90" ARCH_BIN_CONTAINS_90)
+if(NOT WITH_GPU
+   OR NOT WITH_DISTRIBUTE
+   OR (ARCH_BIN_CONTAINS_90 EQUAL -1))
+  set(WITH_NVSHMEM OFF)
+endif()
+if(WITH_NVSHMEM)
+  include(external/nvshmem)
+  list(APPEND third_party_deps extern_nvshmem)
 endif()
 
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})

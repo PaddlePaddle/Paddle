@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
+from op_test import get_places
 
 import paddle
 
@@ -145,15 +145,7 @@ class TestMultiLabelMarginLoss(unittest.TestCase):
         input = np.random.uniform(0.1, 0.8, size=(5, 5)).astype(np.float64)
         label = np.random.randint(0, 2, size=(5, 5)).astype(np.float64)
 
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.device.is_compiled_with_cuda()
-        ):
-            places.append('cpu')
-        if paddle.device.is_compiled_with_cuda():
-            places.append('gpu')
+        places = get_places(string_format=True)
         reductions = ['sum', 'mean', 'none']
         for place in places:
             for reduction in reductions:

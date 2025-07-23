@@ -21,7 +21,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void FlashAttnUnpaddedGradKernel(const Context& ctx,
+void FlashAttnUnpaddedGradKernel(const Context& dev_ctx,
                                  const DenseTensor& q,
                                  const DenseTensor& k,
                                  const DenseTensor& v,
@@ -42,7 +42,7 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
                                  DenseTensor* dv);
 
 template <typename T, typename Context>
-void FlashAttnGradKernel(const Context& ctx,
+void FlashAttnGradKernel(const Context& dev_ctx,
                          const DenseTensor& q,
                          const DenseTensor& k,
                          const DenseTensor& v,
@@ -59,7 +59,7 @@ void FlashAttnGradKernel(const Context& ctx,
 
 template <typename T, typename Context>
 void FlashAttnWithSparseMaskGradKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& q,
     const DenseTensor& k,
     const DenseTensor& v,

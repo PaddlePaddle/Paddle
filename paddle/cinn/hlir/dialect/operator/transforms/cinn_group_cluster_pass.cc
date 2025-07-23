@@ -252,7 +252,7 @@ std::vector<GroupClusterNode> GroupSplit(cinn::dialect::GroupOp group_op) {
   std::function<cinn::fusion::PatternContent(pir::Operation*)> func =
       [](pir::Operation* op) { return cinn::fusion::PatternContent(op); };
   const auto& contents = cinn::fusion::MapVector(group_op.GetOperators(), func);
-  auto cluster_result = cinn::fusion::ClusterOps(contents, {});
+  auto cluster_result = cinn::fusion::ClusterOps(contents);
   std::vector<std::vector<pir::Operation*>> op_sets;
   std::vector<cinn::fusion::FusionTrackerPtr> trackers;
   std::transform(cluster_result.begin(),

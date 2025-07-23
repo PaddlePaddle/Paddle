@@ -70,6 +70,7 @@ from .core import (  # noqa: F401
     DenseTensorArray,
     IPUPlace,
     Scope,
+    XPUPinnedPlace,
     XPUPlace,
     _cuda_synchronize,
     _Scope,

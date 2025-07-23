@@ -352,7 +352,7 @@ class CudnnConvDescManager {
 }  // namespace
 
 template <typename T, typename Context>
-void FusedConv2dAddActKernel(const Context& ctx,
+void FusedConv2dAddActKernel(const Context& dev_ctx,
                              const DenseTensor& input,
                              const DenseTensor& filter,
                              const DenseTensor& bias,
@@ -370,9 +370,9 @@ void FusedConv2dAddActKernel(const Context& ctx,
                              float fuse_alpha,
                              DenseTensor* output,
                              std::vector<DenseTensor*> outputs) {
-  auto handle = ctx.cudnn_handle();
-  ctx.template Alloc<T>(output);
-  auto workspace_handle = ctx.cudnn_workspace_handle();
+  auto handle = dev_ctx.cudnn_handle();
+  dev_ctx.template Alloc<T>(output);
+  auto workspace_handle = dev_ctx.cudnn_workspace_handle();
 
   exhaustive_search = FLAGS_cudnn_exhaustive_search || exhaustive_search;
   bool deterministic = FLAGS_cudnn_deterministic;
@@ -412,17 +412,17 @@ void FusedConv2dAddActKernel(const Context& ctx,
                                const std::vector<int>& input_pad) {
     DDim new_input_shape(common::make_ddim(new_input_shape_vec));
     transformed_input.Resize(new_input_shape);
-    ctx.template Alloc<T>(&transformed_input);
+    dev_ctx.template Alloc<T>(&transformed_input);
 
     T pad_value(0.0);
     switch (input_rank) {
       case 4: {
         funcs::PadFunction<Context, T, 4>(
-            ctx, input_pad, input, pad_value, &transformed_input);
+            dev_ctx, input_pad, input, pad_value, &transformed_input);
       } break;
       case 5: {
         funcs::PadFunction<Context, T, 5>(
-            ctx, input_pad, input, pad_value, &transformed_input);
+            dev_ctx, input_pad, input, pad_value, &transformed_input);
       } break;
       default:
         PADDLE_THROW(common::errors::InvalidArgument(

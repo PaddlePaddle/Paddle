@@ -14,7 +14,6 @@
 
 #include "paddle/cinn/hlir/pe/ir_schedule_pe.h"
 
-#include <absl/container/flat_hash_map.h>
 #include <isl/cpp.h>
 
 #include <algorithm>
@@ -33,9 +32,9 @@
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
-#include "paddle/cinn/poly/isl_utils.h"
 #include "paddle/cinn/utils/string.h"
 #include "paddle/common/enforce.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 namespace hlir {

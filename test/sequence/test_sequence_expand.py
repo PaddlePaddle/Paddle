@@ -36,7 +36,7 @@ class TestSequenceExpand(OpTest):
         else:
             ref_level = len(y_lod) - 1
 
-        out = np.zeros(shape=((0,) + x_data.shape[1:]), dtype=x_data.dtype)
+        out = np.zeros(shape=((0, *x_data.shape[1:])), dtype=x_data.dtype)
 
         if x_lod is None:
             # x_idx = [i for i in xrange(x_data.shape[0] + 1)]

@@ -26,6 +26,7 @@
 #include "paddle/cinn/ir/utils/ir_compare.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/optim/ir_simplify.h"
+#include "paddle/cinn/utils/string.h"
 #include "paddle/common/enforce.h"
 namespace cinn {
 namespace common {
@@ -203,11 +204,12 @@ Expr IndiceToAbsOffset(const std::vector<Expr> &shape,
     optim::SimplifyCast(&indice_cast);
     res = RampRelatedAdd(RampRelatedMul(res, shape[i]), indice_cast);
     if (res.is_index()) {
-      res = res.as_index().Normalize(ir::IndexExpr::OptLevel::Level2);
+      res = res.as_index().Normalize(ir::IndexExpr::OptLevel::kLevel2);
     } else {
       VLOG(8) << "**** expr is not index ****: " << res;
     }
   }
+  VLOG(3) << "End IndiceToAbsOffset";
 
   return res;
 }
@@ -310,7 +312,7 @@ Expr or_all(const std::vector<Expr> &conds) {
 void CheckTensorUniqueInExpr(Expr expr) {
   auto tensor_uniq = ir::ir_utils::CollectIRNodes(
       expr, [](const Expr *x) { return x->as_tensor(); });
-  absl::flat_hash_map<std::string, const ir::_Tensor_ *> tensor_names;
+  paddle::flat_hash_map<std::string, const ir::_Tensor_ *> tensor_names;
   for (auto &t : tensor_uniq) {
     auto *tp = t.as_tensor();
     if (!tensor_names.count(tp->name)) {
@@ -464,6 +466,89 @@ Expr min(Expr a, Expr b) {
                     ::common::errors::InvalidArgument(
                         "The type of a and b should be equal."));
   return ir::Min::Make(a, b);
+}
+
+void OpDataTypePromote(Expr *expr) {
+  struct TypePromote : public ir::IRMutator<> {
+    void operator()(Expr *expr) { ir::IRMutator<>::Visit(expr, expr); }
+    // type promote for operand of binary op
+#define __(op__)                                            \
+  void Visit(const ir::op__ *op, ir::Expr *expr) override { \
+    ir::TryElevateInt32ToInt64_((*expr)->operands);         \
+    IRMutator::Visit(op, expr);                             \
+  };
+    __(Sum)
+    __(Product)
+    NODETY_BINARY_OP_FOR_EACH(__)
+#undef __
+
+    void Visit(const ir::Select *op, ir::Expr *expr) override {
+      auto node = expr->As<ir::Select>();
+
+      auto promote_args = std::move(
+          ir::TryElevateInt32ToInt64({node->true_value, node->false_value}));
+      node->true_value = promote_args.at(0);
+      node->false_value = promote_args.at(1);
+
+      IRMutator::Visit(op, expr);
+    }
+
+    void Visit(const ir::Load *op, ir::Expr *expr) {
+      auto node = expr->As<ir::Load>();
+      ir::TryElevateInt32ToInt64_(node->indices);
+      IRMutator::Visit(op, expr);
+    }
+
+    void Visit(const ir::Store *op, ir::Expr *expr) {
+      auto node = expr->As<ir::Store>();
+      ir::TryElevateInt32ToInt64_(node->indices);
+      IRMutator::Visit(op, expr);
+    }
+
+    void Visit(const ir::Let *op, ir::Expr *expr) {
+      auto node = expr->As<ir::Let>();
+      // For Symbol of LetOp, we need to insert a cast to convert its type, but
+      // inside LetOp, we should directly convert the Symbol type instead of
+      // inserting a cast.so we set the flag to false before the conversion and
+      // set it to true after the conversion, e.g.
+      // inside LetOp: type of v, v1 are int32.
+      //   int32 v = v1 * 2   ==TypePromote==>  int64 v = v1 * 2ll
+      // outside LetOp: type of v, v2 are int32 and v is defined by LetOp.
+      //   v2 = v * 2         ==TypePromote==>  v2 = (int64)v * 2ll
+      if (node->symbol.is_var()) {
+        node->symbol.as_var()->is_let_symbol = false;
+      }
+      auto promote_args =
+          std::move(ir::TryElevateInt32ToInt64({node->symbol, node->body}));
+      node->symbol = promote_args.at(0);
+      node->body = promote_args.at(1);
+      if (node->symbol.is_var()) {
+        node->symbol.as_var()->is_let_symbol = true;
+      }
+      IRMutator::Visit(op, expr);
+    }
+  };
+
+  TypePromote visitor;
+  visitor(expr);
+}
+
+void OpDataTypePromote(ir::Module *module) {
+  auto node = module->As<ir::_Module_>();
+  for (auto &func : node->functions) {
+    OpDataTypePromote(&func->body);
+  }
+  for (auto &buffer : node->buffers) {
+    OpDataTypePromote(&buffer);
+  }
+  for (auto &submodule : node->submodules) {
+    OpDataTypePromote(&submodule);
+  }
+}
+
+void OpDataTypePromote(ir::LoweredFunc *func) {
+  auto node = func->As<ir::_LoweredFunc_>();
+  OpDataTypePromote(&node->body);
 }
 }  // namespace common
 }  // namespace cinn

@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import unittest
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from utils import dygraph_guard
 
 import paddle
 import paddle.static
@@ -780,6 +782,63 @@ class TestDivApiZeroSize4(TestDivApiZeroSize):
     def init_data(self):
         self.x_numpy = np.random.rand(1, 0, 2).astype('float32')
         self.y_numpy = np.random.rand(3, 0, 1).astype('float32')
+
+
+class TestDivComplexDtype(unittest.TestCase):
+    def test(self):
+        with dygraph_guard():
+            places = ['cpu']
+            if core.is_compiled_with_cuda():
+                places.append('gpu')
+            shapes = [[], [1], [1, 1]]
+            values = [
+                -paddle.inf,
+                paddle.inf,
+                paddle.nan,
+                -np.zeros([]),
+                +np.zeros([]),
+                paddle.nan,
+                -paddle.nan,
+                1e-23,
+                -1e-23,
+            ]
+            dtypes = ["float32", "float64", "complex64", "complex128"]
+
+            for place in places:
+                with base.device_guard(place):
+                    for (
+                        shape_x,
+                        shape_y,
+                        x,
+                        y,
+                        dtype_x,
+                        dtype_y,
+                    ) in itertools.product(
+                        shapes, shapes, values, values, dtypes, dtypes
+                    ):
+                        pd_x = paddle.to_tensor(x, dtype=dtype_x).reshape(
+                            shape_x
+                        )
+                        pd_y = paddle.to_tensor(y, dtype=dtype_y).reshape(
+                            shape_y
+                        )
+                        pd_z = paddle.divide(pd_x, pd_y)
+
+                        np_x = np.asarray(x, dtype=dtype_x).reshape(shape_x)
+                        np_y = np.asarray(y, dtype=dtype_y).reshape(shape_y)
+                        np_z = np.divide(np_x, np_y)
+
+                        err_msg = (
+                            f"\n❌ Mismatch detected!\n"
+                            f"Place: {place}\n"
+                            f"x={x}, y={y}, dtype_x={dtype_x}, dtype_y={dtype_y}\n"
+                            f"Shape_x: {shape_x}, Shape_y: {shape_y}\n"
+                            f"np_x={np_x.item()}, np_y={np_y.item()}, np_z={np_z.item()}\n"
+                            f"pd_x={pd_x.item()}, pd_y={pd_y.item()}, pd_z={pd_z.item()}"
+                        )
+                        np.testing.assert_allclose(
+                            pd_z.item(), np_z, 0.0, 0.0, err_msg=err_msg
+                        )
 
 
 if __name__ == '__main__':

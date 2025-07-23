@@ -49,48 +49,48 @@ def simple_fc_net_static():
     main_prog = base.Program()
     paddle.seed(1)
 
-    with base.unique_name.guard():
-        with base.program_guard(main_prog, startup_prog):
-            image = paddle.static.data(
-                name='image', shape=[None, IMAGE_SIZE], dtype='float32'
-            )
-            label = paddle.static.data(
-                name='label', shape=[None, 1], dtype='int64'
-            )
-            hidden = image
-            param_attr = base.ParamAttr(
-                initializer=paddle.nn.initializer.Constant(value=0.8)
-            )
-            bias_attr = base.ParamAttr(
-                initializer=paddle.nn.initializer.Constant(value=0.5)
-            )
-            for hidden_size in [10, 20, 30]:
-                hidden = paddle.static.nn.fc(
-                    hidden,
-                    size=hidden_size,
-                    activation='tanh',
-                    weight_attr=param_attr,
-                    bias_attr=bias_attr,
-                )
-
-            predict_label = paddle.static.nn.fc(
+    with (
+        base.unique_name.guard(),
+        base.program_guard(main_prog, startup_prog),
+    ):
+        image = paddle.static.data(
+            name='image', shape=[None, IMAGE_SIZE], dtype='float32'
+        )
+        label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
+        hidden = image
+        param_attr = base.ParamAttr(
+            initializer=paddle.nn.initializer.Constant(value=0.8)
+        )
+        bias_attr = base.ParamAttr(
+            initializer=paddle.nn.initializer.Constant(value=0.5)
+        )
+        for hidden_size in [10, 20, 30]:
+            hidden = paddle.static.nn.fc(
                 hidden,
-                size=CLASS_NUM,
-                activation='softmax',
+                size=hidden_size,
+                activation='tanh',
                 weight_attr=param_attr,
                 bias_attr=bias_attr,
             )
-            loss = paddle.mean(
-                paddle.nn.functional.cross_entropy(
-                    input=predict_label,
-                    label=label,
-                    reduction='none',
-                    use_softmax=False,
-                )
-            )
 
-            optimizer = paddle.optimizer.Adam()
-            optimizer.minimize(loss)
+        predict_label = paddle.static.nn.fc(
+            hidden,
+            size=CLASS_NUM,
+            activation='softmax',
+            weight_attr=param_attr,
+            bias_attr=bias_attr,
+        )
+        loss = paddle.mean(
+            paddle.nn.functional.cross_entropy(
+                input=predict_label,
+                label=label,
+                reduction='none',
+                use_softmax=False,
+            )
+        )
+
+        optimizer = paddle.optimizer.Adam()
+        optimizer.minimize(loss)
     return startup_prog, main_prog, image, label, loss
 
 

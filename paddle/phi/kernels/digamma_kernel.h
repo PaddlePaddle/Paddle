@@ -26,6 +26,8 @@ namespace phi {
  * @param  out     the output tensor of digamma
  */
 template <typename T, typename Context>
-void DigammaKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out);
+void DigammaKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   DenseTensor* out);
 
 }  // namespace phi

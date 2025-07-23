@@ -21,6 +21,18 @@ namespace funcs {
 template <typename T>
 void lapackLu(int m, int n, T *a, int lda, int *ipiv, int *info);
 
+// Lu_solve
+template <typename T>
+void lapackLuSolve(char trans,
+                   int n,
+                   int nrhs,
+                   T *a,
+                   int lda,
+                   int *ipiv,
+                   T *b,
+                   int ldb,
+                   int *info);
+
 // Eigh
 template <typename T, typename ValueType = T>
 void lapackEigh(char jobz,
@@ -120,19 +132,20 @@ void lapackGelss(int m,
                  T2 *rwork,
                  int *info);
 
-template <typename T>
+template <typename T1, typename T2 = T1>
 void lapackSvd(char jobz,
                int m,
                int n,
-               T *a,
+               T1 *a,
                int lda,
-               T *s,
-               T *u,
+               T2 *s,
+               T1 *u,
                int ldu,
-               T *vt,
+               T1 *vt,
                int ldvt,
-               T *work,
+               T1 *work,
                int lwork,
+               T2 *rwork,
                int *iwork,
                int *info);
 

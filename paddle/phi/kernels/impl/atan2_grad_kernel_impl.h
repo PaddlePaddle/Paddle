@@ -16,6 +16,7 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/atan2_grad_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 
 namespace phi {
@@ -77,7 +78,7 @@ struct Atan2GradFunctor<double> {
 };
 
 template <typename T, typename Context>
-void Atan2GradKernel(const Context& ctx,
+void Atan2GradKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y,
                      const DenseTensor& out_grad,
@@ -88,14 +89,28 @@ void Atan2GradKernel(const Context& ctx,
   auto y_data = y.data<T>();
   auto out_grad_data = out_grad.data<T>();
 
+  if (out_grad.numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    dev_ctx.template Alloc<T>(y_grad);
+    if (x_grad && x_grad->numel() != 0) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    }
+    if (y_grad && y_grad->numel() != 0) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(y_grad->dims())), 0, y_grad);
+    }
+    return;
+  }
+
   auto* x_grad_data =
-      x_grad ? ctx.template Alloc<T>(x_grad, size_t(x.numel() * sizeof(T)))
+      x_grad ? dev_ctx.template Alloc<T>(x_grad, size_t(x.numel() * sizeof(T)))
              : nullptr;
   auto* y_grad_data =
-      y_grad ? ctx.template Alloc<T>(y_grad, size_t(y.numel() * sizeof(T)))
+      y_grad ? dev_ctx.template Alloc<T>(y_grad, size_t(y.numel() * sizeof(T)))
              : nullptr;
 
-  phi::funcs::ForRange<Context> for_range(ctx, numel);
+  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
   phi::Atan2GradFunctor<T> functor(
       x_data, y_data, out_grad_data, x_grad_data, y_grad_data, numel);
   for_range(functor);

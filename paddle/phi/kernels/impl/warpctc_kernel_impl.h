@@ -108,7 +108,7 @@ class WarpCTCFunctor {
    * If gradient is nullptr, it only computes the ctc loss,
    * or computes both ctc loss and gradient.
    *
-   * \param ctx               execution context of this functor
+   * \param dev_ctx           execution context of this functor
    * \param input             batch matrix of input probabilities, in
    *                          max_sequence_length x num_sequences x
    *                          sequence_width, (row-major) format

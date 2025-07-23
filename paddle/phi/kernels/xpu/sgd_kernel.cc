@@ -114,7 +114,7 @@ void SGDDenseParamSparseGradKernel(
   auto& in_rows = grad.rows();
   int64_t* in_rows_data = nullptr;
   xpu::VectorParam<int64_t> in_rows_vec{
-      in_rows.data(), static_cast<int>(in_rows.size()), in_rows_data};
+      in_rows.data(), static_cast<int64_t>(in_rows.size()), in_rows_data};
 
   int64_t in_row_numel = in_value.numel() / in_rows.size();
   PADDLE_ENFORCE_EQ(in_row_numel,

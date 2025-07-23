@@ -20,7 +20,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void FillDiagonalTensorKernel(const Context &ctx,
+void FillDiagonalTensorKernel(const Context &dev_ctx,
                               const DenseTensor &x,
                               const DenseTensor &y,
                               int64_t offset,
@@ -28,8 +28,8 @@ void FillDiagonalTensorKernel(const Context &ctx,
                               int dim2,
                               DenseTensor *out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  T *out_data = ctx.template Alloc<T>(out);
-  int r = xpu::copy(ctx.x_context(),
+  T *out_data = dev_ctx.template Alloc<T>(out);
+  int r = xpu::copy(dev_ctx.x_context(),
                     reinterpret_cast<const XPUType *>(x.data<T>()),
                     reinterpret_cast<XPUType *>(out_data),
                     x.numel());
@@ -38,7 +38,7 @@ void FillDiagonalTensorKernel(const Context &ctx,
   std::vector<int64_t> xshape = common::vectorize<int64_t>(x.dims());
   std::vector<int64_t> yshape = common::vectorize<int64_t>(y.dims());
 
-  r = xpu::fill_diagonal_tensor(ctx.x_context(),
+  r = xpu::fill_diagonal_tensor(dev_ctx.x_context(),
                                 reinterpret_cast<const XPUType *>(x.data<T>()),
                                 reinterpret_cast<const XPUType *>(y.data<T>()),
                                 reinterpret_cast<XPUType *>(out_data),

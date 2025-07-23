@@ -208,6 +208,14 @@ void SplitDenseTensorWithType(const DeviceContext &dev_ctx,
     case phi::DataType::INT8:
       SplitDenseTensor<DeviceContext, int8_t>()(dev_ctx, t_in, p_list);
       break;
+    case phi::DataType::FLOAT8_E4M3FN:
+      SplitDenseTensor<DeviceContext, phi::dtype::float8_e4m3fn>()(
+          dev_ctx, t_in, p_list);
+      break;
+    case phi::DataType::FLOAT8_E5M2:
+      SplitDenseTensor<DeviceContext, phi::dtype::float8_e5m2>()(
+          dev_ctx, t_in, p_list);
+      break;
     case phi::DataType::INT32:
       SplitDenseTensor<DeviceContext, int32_t>()(dev_ctx, t_in, p_list);
       break;
@@ -378,6 +386,15 @@ void SplitTensor(const phi::DeviceContext &dev_ctx,
 inline std::vector<int64_t> GetDefaultSplitSizes(const phi::DenseTensor &tensor,
                                                  int world_size) {
   return std::vector<int64_t>(world_size, tensor.dims()[0] / world_size);
+}
+
+inline std::vector<phi::DenseTensor> ToDenseTensors(
+    const std::vector<Tensor> &tensors) {
+  std::vector<phi::DenseTensor> ret;
+  for (auto &t : tensors) {
+    ret.emplace_back(*std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
+  }
+  return ret;
 }
 
 }  //  namespace pybind

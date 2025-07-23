@@ -12,18 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import sys
 import unittest
 
 import numpy as np
 
 sys.path.append("../deprecated/legacy_test")
+from op_test import get_places
 from test_imperative_lod_tensor_to_selected_rows_deprecated import SimpleNet
 
 import paddle
 from paddle import base
-from paddle.base import core
 
 call_forward_post_hook = False
 call_forward_pre_hook = False
@@ -53,17 +52,7 @@ class Test_Forward_Hook(unittest.TestCase):
     def test_forward_hook_return_value(self):
         seed = 90
 
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-
-        for place in places:
+        for place in get_places():
             with base.dygraph.guard(place):
                 paddle.seed(seed)
                 base.set_flags({'FLAGS_sort_sum_gradient': True})
@@ -140,17 +129,7 @@ class Test_Forward_Hook(unittest.TestCase):
     def test_forward_hook(self):
         seed = 90
 
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-
-        for place in places:
+        for place in get_places():
             with base.dygraph.guard(place):
                 paddle.seed(seed)
                 base.set_flags({'FLAGS_sort_sum_gradient': True})

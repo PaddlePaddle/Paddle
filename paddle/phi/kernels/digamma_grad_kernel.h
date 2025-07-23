@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void DigammaGradKernel(const Context& ctx,
+void DigammaGradKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& out_grad,
                        DenseTensor* x_grad);

@@ -29,6 +29,9 @@ void PReluKernel(const Context& dev_ctx,
   const T* x_ptr = x.data<T>();
   const T* alpha_ptr = alpha.data<T>();
   T* o_ptr = dev_ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) {
+    return;
+  }
 
   int numel = static_cast<int>(x.numel());
   auto dim = x.dims();

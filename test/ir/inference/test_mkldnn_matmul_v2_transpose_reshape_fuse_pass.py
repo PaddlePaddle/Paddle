@@ -21,7 +21,7 @@ from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
-class TestMatmulv2TransposeReshapeMkldnnFusePass(PassAutoScanTest):
+class TestMatmulv2TransposeReshapeOnednnFusePass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         if (
             program_config.inputs["input_data1"].shape[-4] != 1

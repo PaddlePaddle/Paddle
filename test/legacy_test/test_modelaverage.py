@@ -39,25 +39,27 @@ class TestModelAverage(unittest.TestCase):
         train_program = paddle.static.Program()
         startup = paddle.static.Program()
         test_program = paddle.static.Program()
-        with paddle.static.program_guard(train_program, startup):
-            with base.unique_name.guard():
-                data = paddle.static.data(
-                    name='X', shape=[None, 1], dtype='float32'
-                )
-                hidden = paddle.nn.Linear(
-                    in_features=data.shape[1], out_features=10
-                )(data)
-                loss = paddle.mean(hidden)
-                test_program = train_program.clone()
-                optimizer = paddle.optimizer.Momentum(
-                    learning_rate=0.2, momentum=0.1
-                )
+        with (
+            paddle.static.program_guard(train_program, startup),
+            base.unique_name.guard(),
+        ):
+            data = paddle.static.data(
+                name='X', shape=[None, 1], dtype='float32'
+            )
+            hidden = paddle.nn.Linear(
+                in_features=data.shape[1], out_features=10
+            )(data)
+            loss = paddle.mean(hidden)
+            test_program = train_program.clone()
+            optimizer = paddle.optimizer.Momentum(
+                learning_rate=0.2, momentum=0.1
+            )
 
-                optimizer.minimize(loss)
-                # build ModelAverage optimizer
-                model_average = paddle.incubate.optimizer.ModelAverage(
-                    0.15, min_average_window=2, max_average_window=10
-                )
+            optimizer.minimize(loss)
+            # build ModelAverage optimizer
+            model_average = paddle.incubate.optimizer.ModelAverage(
+                0.15, min_average_window=2, max_average_window=10
+            )
 
         exe.run(startup)
         params_list = [

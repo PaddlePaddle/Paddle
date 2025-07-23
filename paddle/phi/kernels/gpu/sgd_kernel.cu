@@ -76,7 +76,8 @@ void SGDDenseKernel(const Context& dev_ctx,
   // do check here
   // if (multi_precision) {
   //   bool has_master =
-  //       ctx.HasInput("MasterParam") && ctx.HasOutput("MasterParamOut");
+  //       dev_ctx.HasInput("MasterParam") &&
+  //       dev_ctx.HasOutput("MasterParamOut");
 
   // }
   const MPDType* master_in_data =
@@ -112,7 +113,8 @@ void SGDDenseParamSparseGradKernel(
   // do some check here
   // if (multi_precision) {
   //   bool has_master =
-  //       ctx.HasInput("MasterParam") && ctx.HasOutput("MasterParamOut");
+  //       dev_ctx.HasInput("MasterParam") &&
+  //       dev_ctx.HasOutput("MasterParamOut");
 
   // }
   const MPDType* master_in_data =

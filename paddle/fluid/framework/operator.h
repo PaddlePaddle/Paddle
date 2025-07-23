@@ -199,7 +199,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   bool IsRuntime() const override;
 
-  bool IsRunMKLDNNKernel() const override;
+  bool IsRunONEDNNKernel() const override;
 
   // TODO(paddle-dev): Can this be template?
   paddle::small_vector<InferShapeVarPtr, phi::kInputSmallVectorSize>
@@ -494,8 +494,6 @@ class ExecutionContext : public phi::KernelContext {
 
   virtual const std::vector<Variable*> MultiInputVar(
       const std::string& name) const {
-    LogVarUsageIfUnusedVarCheckEnabled(name);
-
     auto it = ctx_.inputs.find(name);
     if (it == ctx_.inputs.end()) {
       return {};
@@ -536,8 +534,6 @@ class ExecutionContext : public phi::KernelContext {
 
   template <typename T>
   const std::vector<const T*> MultiInput(const std::string& name) const {
-    LogVarUsageIfUnusedVarCheckEnabled(name);
-
     auto vars = MultiInputVar(name);
     if (vars.size() == 0) {
       return {};
@@ -772,7 +768,7 @@ class OperatorWithKernel : public OperatorBase {
 
   bool SupportCustomDevice() const override;
 
-  bool SupportsMKLDNN(phi::DataType data_type) const;
+  bool SupportsONEDNN(phi::DataType data_type) const;
 
   bool SupportsCUDNN(phi::DataType data_type) const;
 
@@ -781,10 +777,10 @@ class OperatorWithKernel : public OperatorBase {
 
   bool SupportsCPUBF16() const;
 
-  bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
+  bool CanONEDNNBeUsed(const framework::ExecutionContext& ctx,
                        phi::DataType data_type) const;
 
-  bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
+  bool CanONEDNNBeUsed(const framework::ExecutionContext& ctx,
                        proto::VarType::Type data_type) const;
 
   bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx,

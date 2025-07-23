@@ -71,7 +71,7 @@ __global__ void NumberCount(const T* numbers,
 }
 
 template <typename T, typename Context>
-void NumberCountKernel(const Context& ctx,
+void NumberCountKernel(const Context& dev_ctx,
                        const DenseTensor& numbers,
                        int upper_range,
                        DenseTensor* out) {
@@ -79,15 +79,15 @@ void NumberCountKernel(const Context& ctx,
 
   DDim out_dims = common::make_ddim({upper_range});
   out->Resize(out_dims);
-  auto out_data = ctx.template Alloc<T>(out);
+  auto out_data = dev_ctx.template Alloc<T>(out);
   const T* gate_data = numbers.data<T>();
 
   initialize_zero_kernel<T>
-      <<<GET_BLOCKS(upper_range), CUDA_NUM_THREADS, 0, ctx.stream()>>>(
+      <<<GET_BLOCKS(upper_range), CUDA_NUM_THREADS, 0, dev_ctx.stream()>>>(
           out_data, upper_range);
 
   NumberCount<T>
-      <<<CEIL(upper_range, PERTHREAD_EXPERTS), 256, 0, ctx.stream()>>>(
+      <<<CEIL(upper_range, PERTHREAD_EXPERTS), 256, 0, dev_ctx.stream()>>>(
           gate_data, out_data, batch_size, upper_range);
 }
 
