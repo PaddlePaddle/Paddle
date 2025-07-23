@@ -253,8 +253,8 @@ static void GatherOutputGradToInputGrad(const DenseTensor& output_grad,
           for (int j = 0; j < c; j++) {
             input_grad_t(i,
                          j,
-                         static_cast<int>(round(y_t(i, k, l))),
-                         static_cast<int>(round(x_t(i, k, l)))) +=
+                         static_cast<int>(nearbyint(y_t(i, k, l))),
+                         static_cast<int>(nearbyint(x_t(i, k, l)))) +=
                 output_grad_t(i, j, k, l) * d1_t(i, k, l) * d2_t(i, k, l);
           }
         }
@@ -302,9 +302,9 @@ static void Gather3DOutputGradToInputGrad(const DenseTensor& output_grad,
             for (int j = 0; j < c; j++) {
               input_grad_t(i,
                            j,
-                           static_cast<int>(round(z_t(i, m, k, l))),
-                           static_cast<int>(round(y_t(i, m, k, l))),
-                           static_cast<int>(round(x_t(i, m, k, l)))) +=
+                           static_cast<int>(nearbyint(z_t(i, m, k, l))),
+                           static_cast<int>(nearbyint(y_t(i, m, k, l))),
+                           static_cast<int>(nearbyint(x_t(i, m, k, l)))) +=
                   output_grad_t(i, j, m, k, l) * d1_t(i, m, k, l) *
                   d2_t(i, m, k, l) * d3_t(i, m, k, l);
             }
@@ -595,8 +595,8 @@ static void GatherOutputGradToInputGrad(const DenseTensor& output_grad,
           for (int j = 0; j < c; j++) {
             input_grad_t(i,
                          j,
-                         static_cast<int>(round(y_t(i, k, l))),
-                         static_cast<int>(round(x_t(i, k, l)))) +=
+                         static_cast<int>(nearbyint(y_t(i, k, l))),
+                         static_cast<int>(nearbyint(x_t(i, k, l)))) +=
                 output_grad_t(i, j, k, l);
           }
         }
@@ -637,9 +637,9 @@ static void Gather3DOutputGradToInputGrad(const DenseTensor& output_grad,
             for (int j = 0; j < c; j++) {
               input_grad_t(i,
                            j,
-                           static_cast<int>(round(z_t(i, m, k, l))),
-                           static_cast<int>(round(y_t(i, m, k, l))),
-                           static_cast<int>(round(x_t(i, m, k, l)))) +=
+                           static_cast<int>(nearbyint(z_t(i, m, k, l))),
+                           static_cast<int>(nearbyint(y_t(i, m, k, l))),
+                           static_cast<int>(nearbyint(x_t(i, m, k, l)))) +=
                   output_grad_t(i, j, m, k, l);
             }
           }
@@ -717,8 +717,6 @@ void GridSampleGradKernel(const Context& dev_ctx,
     } else {
       auto grid_x_t = EigenTensor<T, 3>::From(grid_x);
       auto grid_y_t = EigenTensor<T, 3>::From(grid_y);
-      grid_x_t = grid_x_t.round();
-      grid_y_t = grid_y_t.round();
       GatherOutputGradToInputGrad<T>(out_grad, x_grad, grid_x, grid_y);
     }
   } else {

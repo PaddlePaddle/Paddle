@@ -540,9 +540,9 @@ __global__ void GridSampler3DCudaBackwardKernel(const IndexT nthreads,
         gGrid_ptr_NDHW[2] = giz_mult * giz;
       }
     } else if (mode == Mode::nearest) {
-      IndexT ix_nearest = static_cast<IndexT>(std::round(ix));
-      IndexT iy_nearest = static_cast<IndexT>(std::round(iy));
-      IndexT iz_nearest = static_cast<IndexT>(std::round(iz));
+      IndexT ix_nearest = static_cast<IndexT>(std::nearbyint(ix));
+      IndexT iy_nearest = static_cast<IndexT>(std::nearbyint(iy));
+      IndexT iz_nearest = static_cast<IndexT>(std::nearbyint(iz));
 
       // assign nearest neighbor pixel value to output pixel
       IndexT gOut_offset =

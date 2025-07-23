@@ -95,8 +95,8 @@ void GetGridPointValue(const DenseTensor& input,
             output_t(i, j, k, l) =
                 input_t(i,
                         j,
-                        static_cast<int>(round(y_t(i, k, l))),
-                        static_cast<int>(round(x_t(i, k, l))));
+                        static_cast<int>(nearbyint(y_t(i, k, l))),
+                        static_cast<int>(nearbyint(x_t(i, k, l))));
           }
         }
       }
@@ -217,9 +217,9 @@ void Get3DGridPointValue(const DenseTensor& input,
               output_t(i, j, m, k, l) =
                   input_t(i,
                           j,
-                          static_cast<int>(round(z_t(i, m, k, l))),
-                          static_cast<int>(round(y_t(i, m, k, l))),
-                          static_cast<int>(round(x_t(i, m, k, l))));
+                          static_cast<int>(nearbyint(z_t(i, m, k, l))),
+                          static_cast<int>(nearbyint(y_t(i, m, k, l))),
+                          static_cast<int>(nearbyint(x_t(i, m, k, l))));
             }
           }
         }

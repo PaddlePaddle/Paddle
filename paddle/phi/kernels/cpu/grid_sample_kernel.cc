@@ -343,8 +343,6 @@ void GridSampleKernel(const Context& dev_ctx,
     } else if (mode == "nearest") {
       auto grid_x_t = EigenTensor<T, 3>::From(grid_x);
       auto grid_y_t = EigenTensor<T, 3>::From(grid_y);
-      grid_x_t = grid_x_t.round();
-      grid_y_t = grid_y_t.round();
       GetGridPointValue<T>(x, out, grid_x, grid_y);
     }
   } else {
