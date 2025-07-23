@@ -16,7 +16,12 @@ import math
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    check_cuda_and_custom_device,
+    convert_float_to_uint16,
+    get_current_place,
+)
 
 import paddle
 from paddle.base import core
@@ -116,7 +121,7 @@ class TestRandomValue(unittest.TestCase):
             return
 
         paddle.disable_static()
-        paddle.set_device('gpu')
+        paddle.set_device(get_current_place(True))
         paddle.seed(2023)
         count = paddle.full([32, 3, 1024, 768], 100.0, dtype="float32")
         probability = paddle.to_tensor(0.4)
@@ -221,8 +226,8 @@ class TestRandomValue(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_float16_supported(core.CUDAPlace(0)),
+    not check_cuda_and_custom_device()
+    or not core.is_float16_supported(get_current_place()),
     "core is not compiled with CUDA and not support the float16",
 )
 class TestBinomialFP16Op(TestBinomialOp):
@@ -232,7 +237,7 @@ class TestBinomialFP16Op(TestBinomialOp):
         self.outputs_dtype = np.int64
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_current_place()
         self.check_output_with_place_customized(self.verify_output, place)
 
     def verify_output(self, outs):
@@ -243,8 +248,8 @@ class TestBinomialFP16Op(TestBinomialOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not check_cuda_and_custom_device()
+    or not core.is_bfloat16_supported(get_current_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestBinomialBF16Op(TestBinomialOp):
@@ -254,7 +259,7 @@ class TestBinomialBF16Op(TestBinomialOp):
         self.outputs_dtype = np.int64
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_current_place()
         self.check_output_with_place_customized(self.verify_output, place)
 
     def init_test_case(self):

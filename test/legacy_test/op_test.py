@@ -412,15 +412,25 @@ def get_places(string_format=False):
     return places
 
 
-def get_current_place():
-    if core.is_compiled_with_cuda():
-        return base.CUDAPlace(0)
-    custom_dev_types = paddle.device.get_all_custom_device_type()
-    if custom_dev_types and core.is_compiled_with_custom_device(
-        custom_dev_types[0]
-    ):
-        return base.CustomPlace(custom_dev_types[0], 0)
-    return base.CPUPlace()
+def get_current_place(string_format=False):
+    if not string_format:
+        if core.is_compiled_with_cuda():
+            return base.CUDAPlace(0)
+        custom_dev_types = paddle.device.get_all_custom_device_type()
+        if custom_dev_types and core.is_compiled_with_custom_device(
+            custom_dev_types[0]
+        ):
+            return base.CustomPlace(custom_dev_types[0], 0)
+        return base.CPUPlace()
+    else:
+        if paddle.device.is_compiled_with_cuda():
+            return 'gpu'
+        custom_dev_types = paddle.device.get_all_custom_device_type()
+        if custom_dev_types and paddle.device.is_compiled_with_custom_device(
+            custom_dev_types[0]
+        ):
+            return f'{custom_dev_types[0]}:0'
+        return 'cpu'
 
 
 def check_cuda_and_custom_device():

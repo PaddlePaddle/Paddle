@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, get_places
+from op_test import OpTest, get_current_place, get_places
 
 import paddle
 
@@ -288,7 +288,7 @@ class TestAdamaxMultiPrecision2_0(unittest.TestCase):
     def dygraph_adamax_mp(self, mp, use_amp):
         paddle.disable_static()
         paddle.seed(100)
-        paddle.set_device('gpu')
+        paddle.set_device(get_current_place(True))
         input = paddle.randn((2, 2))
         model = paddle.nn.Linear(2, 2)
         optimizer = paddle.optimizer.Adamax(0.5, parameters=model.parameters())
@@ -319,7 +319,7 @@ class TestAdamaxMultiPrecision2_0(unittest.TestCase):
         paddle.enable_static()
         paddle.seed(100)
         np.random.seed(100)
-        exe = paddle.static.Executor('gpu')
+        exe = paddle.static.Executor(get_current_place(True))
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         optimizer = paddle.optimizer.Adamax(0.1)
