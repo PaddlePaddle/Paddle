@@ -104,6 +104,7 @@ jobs:
           rm Paddle.tar.gz
           cd -
           git switch ${BRANCH}
+          set +e
           git branch -D test
           git gc
 

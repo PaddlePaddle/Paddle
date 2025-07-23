@@ -2,7 +2,7 @@ name: Slice-baseline
 
 on:
   schedule:
-    - cron: '30 2 * * *'
+    - cron: '0 8 * * *'
 
 permissions: read-all
 
