@@ -35,7 +35,7 @@ defaults:
 jobs:
   slice:
     name: Slice test
-    if: ${{ inputs.can-skip != 'true' && inputs.slice-check == 'true' }}
+    if: ${{ inputs.can-skip != 'true' }}
     runs-on:
       group: slice
     steps:
