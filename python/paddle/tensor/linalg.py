@@ -4183,7 +4183,7 @@ def pinv(
             out_2 = _C_ops.matmul(out_1, u, False, True)
             return out_2
         else:
-            if x.size == 0:
+            if in_dynamic_mode() and x.size == 0:
                 dims = list(range(len(x.shape)))
                 perm = [*dims[:-2], dims[-1], dims[-2]]
                 return _C_ops.transpose(x, perm)
