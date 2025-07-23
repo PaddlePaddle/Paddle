@@ -222,7 +222,9 @@ void ModulatedDeformableCol2imCoordCPUKernel(
       const T offset_w = data_offset_ptr[data_offset_w_ptr];
       T inv_h = h_in + i * dilation_h + offset_h;
       T inv_w = w_in + j * dilation_w + offset_w;
-      if (!(inv_h <= -1 || inv_w <= -1 || inv_h >= height || inv_w >= width)) {
+      if (inv_h <= -1 || inv_w <= -1 || inv_h >= height || inv_w >= width) {
+        inv_h = inv_w = -2;
+      } else {
         mval += data_col_ptr[col_pos] *
                 funcs::DmcnIm2colBilinear(data_im_ptr + cnt * height * width,
                                           width,
