@@ -669,27 +669,27 @@ void FlashAttnV3GradKernel(const Context &dev_ctx,
   // dimension
   PADDLE_ENFORCE_EQ(
       dq->dims()[dq->dims().size() - 1],
-      out_grad.dims()[out_grad.dims().size() - 1],
+      q.dims()[q.dims().size() - 1],
       common::errors::InvalidArgument(
-          "head dimension of dq != head dimension of out_grad (%d != %d)",
+          "head dimension of dq != head dimension of q (%d != %d)",
           dq->dims()[dq->dims().size() - 1],
-          out_grad.dims()[out_grad.dims().size() - 1]));
+          q.dims()[q.dims().size() - 1]));
 
   PADDLE_ENFORCE_EQ(
       dk->dims()[dk->dims().size() - 1],
-      out_grad.dims()[out_grad.dims().size() - 1],
+      k.dims()[k.dims().size() - 1],
       common::errors::InvalidArgument(
-          "head dimension of dk != head dimension of out_grad (%d != %d)",
+          "head dimension of dk != head dimension of k (%d != %d)",
           dk->dims()[dk->dims().size() - 1],
-          out_grad.dims()[out_grad.dims().size() - 1]));
+          k.dims()[k.dims().size() - 1]));
 
   PADDLE_ENFORCE_EQ(
       dv->dims()[dv->dims().size() - 1],
-      out_grad.dims()[out_grad.dims().size() - 1],
+      v.dims()[v.dims().size() - 1],
       common::errors::InvalidArgument(
-          "head dimension of dv != head dimension of out_grad (%d != %d)",
+          "head dimension of dv != head dimension of v (%d != %d)",
           dv->dims()[dv->dims().size() - 1],
-          out_grad.dims()[out_grad.dims().size() - 1]));
+          v.dims()[v.dims().size() - 1]));
 #else
   RaiseNotSupportedError();
 #endif
@@ -792,27 +792,27 @@ void FlashAttnV3VarlenGradKernel(const Context &dev_ctx,
   // umiswing: some branch in upstream fa3 could have padded the head dimension
   PADDLE_ENFORCE_EQ(
       dq->dims()[dq->dims().size() - 1],
-      out_grad.dims()[out_grad.dims().size() - 1],
+      q.dims()[q.dims().size() - 1],
       common::errors::InvalidArgument(
-          "head dimension of dq != head dimension of out_grad (%d != %d)",
+          "head dimension of dq != head dimension of q (%d != %d)",
           dq->dims()[dq->dims().size() - 1],
-          out_grad.dims()[out_grad.dims().size() - 1]));
+          q.dims()[q.dims().size() - 1]));
 
   PADDLE_ENFORCE_EQ(
       dk->dims()[dk->dims().size() - 1],
-      out_grad.dims()[out_grad.dims().size() - 1],
+      k.dims()[k.dims().size() - 1],
       common::errors::InvalidArgument(
-          "head dimension of dk != head dimension of out_grad (%d != %d)",
+          "head dimension of dk != head dimension of k (%d != %d)",
           dk->dims()[dk->dims().size() - 1],
-          out_grad.dims()[out_grad.dims().size() - 1]));
+          k.dims()[k.dims().size() - 1]));
 
   PADDLE_ENFORCE_EQ(
       dv->dims()[dv->dims().size() - 1],
-      out_grad.dims()[out_grad.dims().size() - 1],
+      v.dims()[v.dims().size() - 1],
       common::errors::InvalidArgument(
-          "head dimension of dv != head dimension of out_grad (%d != %d)",
+          "head dimension of dv != head dimension of v (%d != %d)",
           dv->dims()[dv->dims().size() - 1],
-          out_grad.dims()[out_grad.dims().size() - 1]));
+          v.dims()[v.dims().size() - 1]));
 
 #else
   RaiseNotSupportedError();
