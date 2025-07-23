@@ -170,6 +170,9 @@ cinn_type_t cinn_float64_t(int num_asterisks) {
   return cinn_type_t(cinn_type_float, 64, num_asterisks);
 }
 
+int cinn_host_abs_int32(int v) { return abs(v); }
+int64_t cinn_host_abs_int64(int64_t v) { return abs(v); }
+
 #define ARGIDX_FUNC_MACRO_DEF_IMPL(TYPENAME, DTYPE, ITYPE)                    \
   void min_##TYPENAME(TYPENAME* sret, const TYPENAME* a, const TYPENAME* b) { \
     *sret = a->value == b->value ? (a->index < b->index ? *a : *b)            \

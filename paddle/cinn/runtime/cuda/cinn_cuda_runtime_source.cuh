@@ -359,6 +359,7 @@ __device__ inline int FN_INT32(trunc)(int a) { return a; }
 
 __device__ inline int FN_INT32(max)(int a, int b) { return max(a, b); }
 __device__ inline int FN_INT32(min)(int a, int b) { return min(a, b); }
+__device__ inline int FN_INT32(abs)(int x) { return abs(x); }
 
 __device__ inline int FN_INT32(mod)(int a, int b) {
   int res = a % b;
@@ -395,6 +396,9 @@ __device__ inline long long int FN_INT64(clz)(long long int a) {
 }
 __device__ inline long long int FN_INT64(popc)(long long int a) {
   return __popcll(a);
+}
+__device__ inline long long int FN_INT64(abs)(long long int x) {
+  return llabs(x);
 }
 __device__ inline long long int FN_INT64(logical_right_shift)(long long int a,
                                                               long long int b) {

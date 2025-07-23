@@ -128,6 +128,39 @@ static DimUsageRelation CreateOpRelativenessForReduce(pir::Operation* op) {
   return res;
 }
 
+static std::optional<DimUsageRelation>
+CreateOpRelativenessForDynamicShapeArange(pir::Operation* op) {
+  DimUsageRelation res;
+  std::vector<ValueUsage> input_value_dims = {};
+  for (int i = 0; i < 3; i++) {
+    auto op_src = op->operand_source(i);
+    // fake a 1D result vector for cinn_op.generate_shape (0-size tensor output)
+    if (op_src.defining_op()->name() == "cinn_op.generate_shape") {
+      ValueUsage v_usage = {{op_src, 0, 0}};
+      input_value_dims.emplace_back(std::move(v_usage));
+    } else {
+      input_value_dims.emplace_back(
+          GetValueUsage(op_src, GetUsageIdx(op_src, op)));
+    }
+  }
+  const std::vector<ValueUsage>& output_value_dims =
+      ConcatAll(GetOutputValueUsage(op));
+
+  for (auto in_value_dim : input_value_dims) {
+    for (auto out_value_dim : output_value_dims) {
+      PADDLE_ENFORCE_EQ(
+          in_value_dim.size(),
+          out_value_dim.size(),
+          ::common::errors::PreconditionNotMet(
+              "Required in_value_dim and out_value_dim have same size."));
+      for (int i = 0; i < in_value_dim.size(); ++i) {
+        res[in_value_dim[i]][out_value_dim[i]] = true;
+      }
+    }
+  }
+  return res;
+}
+
 static std::optional<DimUsageRelation> CreateOpRelativenessForSpecialOps(
     pir::Operation* op) {
   if (op->num_results() != 1) {
@@ -145,6 +178,21 @@ static std::optional<DimUsageRelation> CreateOpRelativenessForSpecialOps(
   }
   if (op->name() == "cinn_op.generate_shape") {
     return CreateOpRelativenessForDefault(op);
+  }
+  if (op->name() == "cinn_op.arange") {
+    // dynamic shape cinn_op.arange should get rid of the 0-size tensor of
+    // cinn_op.generate_shape
+    bool has_dynamic_shape = false;
+    for (int i = 0; i < 3; i++) {
+      if (op->operand_source(i).defining_op()->name() ==
+          "cinn_op.generate_shape") {
+        has_dynamic_shape = true;
+        break;
+      }
+    }
+    if (has_dynamic_shape) {
+      return CreateOpRelativenessForDynamicShapeArange(op);
+    }
   }
   return {};
 }
