@@ -519,21 +519,31 @@ static void ParseIndex(const paddle::Tensor& tensor,
           estimated_dim++;
         }
       } else {
-        if (slice_tensor.dtype() == phi::DataType::BOOL) {
-          PADDLE_ENFORCE_EQ(slice_tensor.shape()[0],
-                            dim_len,
-                            common::errors::OutOfRange(
-                                "The shape of boolean index %d did not match"
-                                "indexed tensor %d along axis %d.",
-                                slice_tensor.shape()[0],
-                                dim_len,
-                                current_dim));
-        }
         *has_advanced_index = true;
+        if (slice_tensor.dtype() == phi::DataType::BOOL) {
+          // bool tensor consumes (rank of index tensor) dimensions of input
+          // tensor
+          for (int i = 0; i < slice_tensor.shape().size(); i++) {
+            PADDLE_ENFORCE_EQ(slice_tensor.shape()[i],
+                              dim_len,
+                              common::errors::OutOfRange(
+                                  "The shape of boolean index %d did not match"
+                                  "indexed tensor %d along axis %d.",
+                                  slice_tensor.shape()[0],
+                                  dim_len,
+                                  current_dim));
+            (*advanced_index_dim)[estimated_dim] = estimated_dim;
+            estimated_dim++;
+            current_dim++;
+            dim_len = shape[current_dim];
+          }
+        } else {
+          // int tensor consumes only one dimension of input tensor
+          (*advanced_index_dim)[estimated_dim] = estimated_dim;
+          estimated_dim++;
+          current_dim++;
+        }
         advanced_index->push_back(std::move(slice_tensor));
-        (*advanced_index_dim)[estimated_dim] = estimated_dim;
-        estimated_dim++;
-        current_dim++;
       }
 
     } else {
@@ -648,13 +658,15 @@ static paddle::Tensor dealWithAdvancedIndex(
     int* rank_of_new_dim,
     std::vector<int>* trans_dim,
     bool* out_is_view) {
+  *rank_of_new_dim = 0;
   int p = 0;
   bool int_tensor_only = true;
+
   for (size_t i = 0; i < advanced_index_dim->size(); ++i) {
     auto index_dim = (*advanced_index_dim)[i];
     if (index_dim != -1) {
-      // size of advanced_index is same to number of non -1 element in
-      // advanced_index_dim
+      // sum of each advanced_index_tensor's rank equals to number of non -1
+      // element in advanced_index_dim
       auto index = (*advanced_index)[p++];
       if (index.dtype() == phi::DataType::BOOL) {
         int_tensor_only = false;
@@ -671,11 +683,23 @@ static paddle::Tensor dealWithAdvancedIndex(
       } else {
         *pos_of_new_dim = std::min(index_dim, *pos_of_new_dim);
       }
-      *rank_of_new_dim =
-          std::max(*rank_of_new_dim, static_cast<int>(index.shape().size()));
 
-      trans_dim->push_back(index_dim);
-      transed_index->push_back(std::move(index));
+      if (index.dtype() == phi::DataType::BOOL) {
+        *rank_of_new_dim = std::max(*rank_of_new_dim, 1);
+        i--;
+        for (int j = 0; j < index.shape().size(); j++) {
+          i++;
+          index_dim = (*advanced_index_dim)[i];
+          trans_dim->push_back(index_dim);
+        }
+        transed_index->push_back(std::move(index));
+      } else {
+        *rank_of_new_dim =
+            std::max(*rank_of_new_dim, static_cast<int>(index.shape().size()));
+
+        trans_dim->push_back(index_dim);
+        transed_index->push_back(std::move(index));
+      }
     }
   }
 
