@@ -8,6 +8,10 @@ if(WITH_CUSTOM_DEVICE AND NOT WITH_GPU)
     "test_*.py")
   string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
+  list(REMOVE_ITEM TEST_OPS test_custom_cpu_profiler_plugin)
+  list(REMOVE_ITEM TEST_OPS test_custom_cpu_to_static)
+  list(REMOVE_ITEM TEST_OPS test_collective_process_group_xccl)
+
   foreach(TEST_OP ${TEST_OPS})
     py_test(
       ${TEST_OP}
