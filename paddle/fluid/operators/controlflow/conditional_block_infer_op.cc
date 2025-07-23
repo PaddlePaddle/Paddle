@@ -93,7 +93,7 @@ class ConditionalBlockInferOp : public ConditionalOp {
             pdesc, block->ID(), std::vector<std::string>(), false);
 #ifdef PADDLE_WITH_DNNL
         if (FLAGS_use_mkldnn) {
-          platform::AttachPointerHashToMKLDNNKey(exec_.get(), dev_place);
+          platform::AttachPointerHashToONEDNNKey(exec_.get(), dev_place);
           platform::RegisterModelLayout(ctx_->ops_, dev_place);
         }
 #endif

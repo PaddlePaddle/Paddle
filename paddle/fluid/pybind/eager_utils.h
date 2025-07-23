@@ -434,6 +434,9 @@ std::vector<paddle::framework::Scope*> GetScopePtrListFromArgs(
     ssize_t arg_idx,
     bool dispensable);
 
+paddle::framework::AttributeMap* GetProgramAttributesMapPtrFromPyArgs(
+    const std::string& op_type, PyObject* args, ssize_t arg_idx);
+
 class eager_gil_scoped_release {
  public:
   eager_gil_scoped_release() { tstate = PyEval_SaveThread(); }

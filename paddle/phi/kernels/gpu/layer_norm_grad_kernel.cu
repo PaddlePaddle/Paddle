@@ -16,6 +16,8 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
 #include "paddle/phi/kernels/funcs/layer_norm_util.h"
 
@@ -34,6 +36,31 @@ void LayerNormGradKernel(const Context &dev_ctx,
                          DenseTensor *x_grad,
                          DenseTensor *scale_grad,
                          DenseTensor *bias_grad) {
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    if (scale_grad) {
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(scale_grad->dims())),
+          0,
+          scale_grad);
+      if (scale_opt.get_ptr() && x.dtype() != scale_opt.get().dtype()) {
+        phi::CastKernel<T, Context>(
+            dev_ctx, *scale_grad, scale_opt.get().dtype(), scale_grad);
+      }
+    }
+    if (bias_grad) {
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(bias_grad->dims())),
+                            0,
+                            bias_grad);
+      if (bias_opt.get_ptr() && x.dtype() != bias_opt.get().dtype()) {
+        phi::CastKernel<T, Context>(
+            dev_ctx, *bias_grad, bias_opt.get().dtype(), bias_grad);
+      }
+    }
+    return;
+  }
   using U = phi::funcs::LayerNormParamType<T>;
   // d_x, d_scale, d_bias may be nullptr
   auto *d_x = x_grad;

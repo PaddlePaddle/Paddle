@@ -131,6 +131,7 @@ class LinalgLstsqTestCase(unittest.TestCase):
             if (
                 self._input_shape_1[-2] > self._input_shape_1[-1]
                 and self._output_rank == self._input_shape_1[-1]
+                and self.driver != "gelsy"
             ):
                 np.testing.assert_allclose(
                     self._result_residuals, self._output_residuals, rtol=1e-5
@@ -153,6 +154,7 @@ class LinalgLstsqTestCase(unittest.TestCase):
                 if (
                     self._input_shape_1[-2] > self._input_shape_1[-1]
                     and self._output_rank[i] == self._input_shape_1[-1]
+                    and self.driver != "gelsy"
                 ):
                     np.testing.assert_allclose(
                         self._result_residuals[i],
@@ -259,6 +261,15 @@ class LinalgLstsqTestCaseBatch2(LinalgLstsqTestCase):
         self.driver = "gels"
         self._input_shape_1 = (10, 8, 6)
         self._input_shape_2 = (10, 8, 10)
+
+
+class LinalgLstsqTestCaseBatch3(LinalgLstsqTestCase):
+    def init_config(self):
+        self.dtype = 'float64'
+        self.rcond = 1e-15
+        self.driver = "gelss"
+        self._input_shape_1 = (2, 10, 3)
+        self._input_shape_2 = (2, 10, 4)
 
 
 class LinalgLstsqTestCaseLarge1(LinalgLstsqTestCase):

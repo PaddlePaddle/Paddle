@@ -147,7 +147,7 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseConv(
     GET_IR_NODE_FROM_SUBGRAPH(
         elementwise_out, elementwise_out, elementwise_pattern);
 
-    if (FindFuseOption(*conv_op, *elementwise_op) != FUSE_MKLDNN) return;
+    if (FindFuseOption(*conv_op, *elementwise_op) != FUSE_ONEDNN) return;
     if (!IsReachable(g, residual_data, conv_output)) return;
     if (HasFusedActivation(conv_op)) return;
     if (HasFusedElementwiseAdd(conv_op)) return;
@@ -237,8 +237,8 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseProjectionConv(
       return;
     }
 
-    if (FindFuseOption(*conv_x_op, *elementwise_op) != FUSE_MKLDNN) return;
-    if (FindFuseOption(*conv_y_op, *elementwise_op) != FUSE_MKLDNN) return;
+    if (FindFuseOption(*conv_x_op, *elementwise_op) != FUSE_ONEDNN) return;
+    if (FindFuseOption(*conv_y_op, *elementwise_op) != FUSE_ONEDNN) return;
 
     Node* projection_node;
     Node* residual_conv_op;

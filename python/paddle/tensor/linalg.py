@@ -3610,10 +3610,16 @@ def lu_solve(
     given LU decomposition :math:`A` and column vector :math:`b`.
 
     Args:
-        b (Tensor): Column vector `b` in the above equation. It has shape :math:`(*, m, k)`, where :math:`*` is batch dimensions, with data type float32, float64.
-        lu (Tensor): LU decomposition. It has shape :math:`(*, m, m)`, where :math:`*` is batch dimensions, that can be decomposed into an upper triangular matrix U and a lower triangular matrix L, with data type float32, float64.
+        b (Tensor): Column vector `b` in the above equation. It has shape :math:`(*, m, k)`, where :math:`*` is batch dimensions,
+            with data type float32, float64, complex64, or complex128.
+
+        lu (Tensor): LU decomposition. It has shape :math:`(*, m, m)`, where :math:`*` is batch dimensions, that can be decomposed into an upper triangular matrix U and a lower triangular matrix L,
+            with data type float32, float64, complex64, or complex128.
+
         pivots (Tensor): Permutation matrix P of LU decomposition. It has shape :math:`(*, m)`, where :math:`*` is batch dimensions, that can be converted to a permutation matrix P, with data type int32.
+
         trans (str, optional): The transpose of the matrix A. It can be "N" , "T" or "C", "N" means :math:`Ax=b`, "T" means :math:`A^Tx=b`, "C" means :math:`A^Hx=b`, default is "N".
+
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -3704,8 +3710,9 @@ def lu_unpack(
 
     Args:
         x (Tensor): The LU tensor get from paddle.linalg.lu, which is combined by L and U.
+            Its data type should be float32, float64, complex64, or complex128.
 
-        y (Tensor): Pivots get from paddle.linalg.lu.
+        y (Tensor): Pivots get from paddle.linalg.lu. Its data type should be int32.
 
         unpack_ludata (bool, optional): whether to unpack L and U from x. Default: True.
 
@@ -3774,7 +3781,10 @@ def lu_unpack(
         return P, L, U
     else:
         check_variable_and_dtype(
-            x, 'dtype', ['float32', 'float64'], 'lu_unpack'
+            x,
+            'dtype',
+            ['float32', 'float64', 'complex64', 'complex128'],
+            'lu_unpack',
         )
         helper = LayerHelper('lu_unpack', **locals())
         p = helper.create_variable_for_type_inference(dtype=x.dtype)
