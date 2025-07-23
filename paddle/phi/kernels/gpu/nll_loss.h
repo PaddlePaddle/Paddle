@@ -25,12 +25,12 @@
 #include "paddle/phi/kernels/funcs/math.h"
 
 namespace phi {
-static constexpr int kNumCUDAThreads = 512;
-static constexpr int kNumMaximumNumBlocks = 4096;
-static const int NTHREADS = 32;
-static inline int NumBlocks(const int N) {
+static constexpr int64_t kNumCUDAThreads = 512;
+static constexpr int64_t kNumMaximumNumBlocks = 4096;
+static const int64_t NTHREADS = 32;
+static inline int64_t NumBlocks(const int64_t N) {
   return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
-                  kNumMaximumNumBlocks);
+                  static_cast<int64_t>(kNumMaximumNumBlocks));
 }
 
 template <typename T>
@@ -54,7 +54,7 @@ __global__ void GPUNLLLossForward1D_no_reduce(T* out_data,
   }
 }
 
-template <typename T>
+template <typename T, typename AccT>
 __global__ void GPUNLLLossForward1D_with_reduce(T* out_data,
                                                 T* total_weight_data,
                                                 const T* x_data,
@@ -67,7 +67,7 @@ __global__ void GPUNLLLossForward1D_with_reduce(T* out_data,
   __shared__ T sharedInputs[NTHREADS], sharedWeights[NTHREADS];
   sharedInputs[threadIdx.x] = 0;
   sharedWeights[threadIdx.x] = 0;
-  int i;
+  int64_t i;
   for (i = threadIdx.x; i < batch_size; i += NTHREADS) {
     const auto cur_label = label_data[i];
     if (cur_label != ignore_index) {
@@ -83,8 +83,8 @@ __global__ void GPUNLLLossForward1D_with_reduce(T* out_data,
 
   if (threadIdx.x == 0) {
     *out_data = *total_weight_data = 0;
-    T output_val = 0;
-    T total_weight_val = 0;
+    AccT output_val = 0;
+    AccT total_weight_val = 0;
     for (i = 0; i < NTHREADS; ++i) {
       output_val += sharedInputs[i];
       total_weight_val += sharedWeights[i];
@@ -106,15 +106,15 @@ __global__ void GPUNLLLossForward1D_with_reduce(T* out_data,
 // call. However, if smem will be used, e.g., this function is called in a loop,
 // then __syncthreads is needed either before or afterwards to prevent non-0
 // threads overriding smem in the next loop before num-0 thread reads from it.
-template <typename T, typename ReduceOp, int N>
+template <typename T, typename ReduceOp, int64_t N>
 __device__ void reduceNValuesInBlock(T* smem,
                                      T threadVals[N],
-                                     const unsigned int numVals,
+                                     const int64_t numVals,
                                      ReduceOp reduceOp,
                                      T init) {
   if (numVals == 0) {
 #pragma unroll
-    for (int i = 0; i < N; ++i) {
+    for (int64_t i = 0; i < N; ++i) {
       threadVals[i] = init;
     }
     return;
@@ -125,7 +125,7 @@ __device__ void reduceNValuesInBlock(T* smem,
   // all of the values for the second threadVal for each thread in the block
   if (threadIdx.x < numVals) {
 #pragma unroll
-    for (int i = 0; i < N; ++i) {
+    for (int64_t i = 0; i < N; ++i) {
       smem[i * numVals + threadIdx.x] = threadVals[i];
     }
   }
@@ -135,23 +135,24 @@ __device__ void reduceNValuesInBlock(T* smem,
   // where to put the outputs of each of the n things we are reducing. If
   // nLP = 32, then we have the 32 outputs for the first threadVal,
   // followed by the 32 outputs for the second threadVal, etc.
-  const unsigned int numLanesParticipating = min(numVals, warpSize);
+  const int64_t numLanesParticipating =
+      min(numVals, static_cast<int64_t>(warpSize));
 
   if (numVals > warpSize && ((threadIdx.x / warpSize) == 0)) {
 #pragma unroll
-    for (int i = 0; i < N; ++i) {
+    for (int64_t i = 0; i < N; ++i) {
       threadVals[i] = threadIdx.x < numVals ? threadVals[i] : init;
     }
 
-    for (int i = warpSize + threadIdx.x; i < numVals; i += warpSize) {
+    for (int64_t i = warpSize + threadIdx.x; i < numVals; i += warpSize) {
 #pragma unroll
-      for (int j = 0; j < N; ++j) {
+      for (int64_t j = 0; j < N; ++j) {
         threadVals[j] = reduceOp(threadVals[j], smem[j * numVals + i]);
       }
     }
 
 #pragma unroll
-    for (int i = 0; i < N; ++i) {
+    for (int64_t i = 0; i < N; ++i) {
       smem[i * numLanesParticipating + threadIdx.x] = threadVals[i];
     }
   }
@@ -160,16 +161,16 @@ __device__ void reduceNValuesInBlock(T* smem,
   if (threadIdx.x == 0) {
     if (numLanesParticipating == 32) {
 #pragma unroll
-      for (int i = 0; i < N; ++i) {
+      for (int64_t i = 0; i < N; ++i) {
 #pragma unroll
-        for (int j = 1; j < 32; ++j) {
+        for (int64_t j = 1; j < 32; ++j) {
           threadVals[i] = reduceOp(threadVals[i], smem[i * 32 + j]);
         }
       }
     } else {
 #pragma unroll
-      for (int i = 0; i < N; ++i) {
-        for (int j = 1; j < numLanesParticipating; ++j) {
+      for (int64_t i = 0; i < N; ++i) {
+        for (int64_t j = 1; j < numLanesParticipating; ++j) {
           threadVals[i] = reduceOp(threadVals[i], smem[i * numVals + j]);
         }
       }
@@ -185,11 +186,8 @@ __device__ void reduceNValuesInBlock(T* smem,
 // then __syncthreads is needed either before or afterwards to prevent non-0
 // threads overriding smem in the next loop before num-0 thread reads from it.
 template <typename T, typename ReduceOp>
-__device__ T reduceBlock(T* smem,
-                         const unsigned int numVals,
-                         T threadVal,
-                         ReduceOp reduceOp,
-                         T init) {
+__device__ T reduceBlock(
+    T* smem, const int64_t numVals, T threadVal, ReduceOp reduceOp, T init) {
   reduceNValuesInBlock<T, ReduceOp, 1>(
       smem, &threadVal, numVals, reduceOp, init);
   return threadVal;
@@ -228,7 +226,7 @@ __global__ void GPUNLLLossForward2D_no_reduce(T* out_data,
   }
 }
 
-template <typename T>
+template <typename T, typename AccT>
 __global__ void GPUNLLLossForward2D_with_reduce(T* out_data,
                                                 T* total_weight_data,
                                                 const T* x_data,
@@ -239,10 +237,10 @@ __global__ void GPUNLLLossForward2D_with_reduce(T* out_data,
                                                 const int64_t map_nelem,
                                                 const int64_t blocks_per_sample,
                                                 const int64_t ignore_index) {
-  __shared__ T partial_sums[kNumCUDAThreads];
+  __shared__ AccT partial_sums[kNumCUDAThreads];
   int64_t i;
-  T input_sum = 0;
-  T acc_weight = 0;
+  AccT input_sum = 0;
+  AccT acc_weight = 0;
   *out_data = 0;
   *total_weight_data = 0;
 
@@ -257,17 +255,17 @@ __global__ void GPUNLLLossForward2D_with_reduce(T* out_data,
     if (cur_label != ignore_index) {
       PADDLE_ENFORCE(cur_label >= 0 && cur_label < n_classes,
                      "label should not be out of bounds.");
-      const T cur_weight = weight_data ? weight_data[cur_label] : (T)1;
+      const AccT cur_weight = weight_data ? weight_data[cur_label] : (T)1;
       input_sum -= x_data[ioffset + i + map_nelem * cur_label] * cur_weight;
       acc_weight += cur_weight;
     }
   }
 
-  input_sum =
-      reduceBlock(partial_sums, blockDim.x, input_sum, thrust::plus<T>(), (T)0);
+  input_sum = reduceBlock(
+      partial_sums, blockDim.x, input_sum, thrust::plus<AccT>(), (AccT)0);
   __syncthreads();
   acc_weight = reduceBlock(
-      partial_sums, blockDim.x, acc_weight, thrust::plus<T>(), (T)0);
+      partial_sums, blockDim.x, acc_weight, thrust::plus<AccT>(), (AccT)0);
 
   if (threadIdx.x == 0) {
     phi::CudaAtomicAdd(total_weight_data, acc_weight);
@@ -313,7 +311,7 @@ __global__ void GPUNLLLossBackward1D_with_reduce(T* dx_data,
   if (*total_weight_data <= 0) {
     return;
   }
-  int i;
+  int64_t i;
   const T norm = size_average ? (T)(1 / *total_weight_data) : (T)1;
   for (i = threadIdx.x; i < batch_size; i += NTHREADS) {
     const int64_t cur_label = label_data[i];
@@ -370,10 +368,10 @@ __global__ void GPUNLLLossBackward2D_with_reduce(
   }
   int64_t i;
   const T norm = size_average ? (T)(1 / *total_weight_data) : (T)1;
-  int sample = blockIdx.x / blocks_per_sample;
-  int step = blockDim.x * blocks_per_sample;
-  int toffset = sample * map_nelem;
-  int ioffset = sample * map_nelem * n_classes;
+  int64_t sample = blockIdx.x / blocks_per_sample;
+  int64_t step = blockDim.x * blocks_per_sample;
+  int64_t toffset = sample * map_nelem;
+  int64_t ioffset = sample * map_nelem * n_classes;
   for (i = (blockIdx.x % blocks_per_sample) * blockDim.x + threadIdx.x;
        i < map_nelem;
        i += step) {
