@@ -113,8 +113,8 @@ SpmdInfo GroupNormInferSpmdBase(const DistMetaTensor& x,
       CopyTensorDistAttrForOutput(bias.dist_attr());
   x_dist_attr_dst.set_dims_mapping(x_dims_mapping);
 
-  scale_dist_attr_dst.set_dims_mapping({-1});
-  bias_dist_attr_dst.set_dims_mapping({-1});
+  scale_dist_attr_dst.set_dims_mapping(std::vector<int64_t>{-1});
+  bias_dist_attr_dst.set_dims_mapping(std::vector<int64_t>{-1});
 
   // Step2.4.  handle input and out tensor partial
   // GroupNorm not support
@@ -266,8 +266,8 @@ SpmdInfo GroupNormGradInferSpmdBase(const DistMetaTensor& x,
       CopyTensorDistAttrForOutput(bias.dist_attr());
   x_grad_dist_attr.set_dims_mapping(
       GetDimsMappingForAxes(x_grad_axes, axis_to_dim_map));
-  scale_grad_dist_attr.set_dims_mapping({-1});
-  bias_grad_dist_attr.set_dims_mapping({-1});
+  scale_grad_dist_attr.set_dims_mapping(std::vector<int64_t>{-1});
+  bias_grad_dist_attr.set_dims_mapping(std::vector<int64_t>{-1});
 
   // Step2.3: update input dims mapping
   TensorDistAttr x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
@@ -289,8 +289,8 @@ SpmdInfo GroupNormGradInferSpmdBase(const DistMetaTensor& x,
       GetDimsMappingForAxes(mean_axes, axis_to_dim_map));
   variance_dist_attr_dst.set_dims_mapping(
       GetDimsMappingForAxes(variance_axes, axis_to_dim_map));
-  scale_dist_attr_dst.set_dims_mapping({-1});
-  bias_dist_attr_dst.set_dims_mapping({-1});
+  scale_dist_attr_dst.set_dims_mapping(std::vector<int64_t>{-1});
+  bias_dist_attr_dst.set_dims_mapping(std::vector<int64_t>{-1});
 
   std::vector<int64_t> partial_on_dims;
   const auto& dim_mapping = x_dims_mapping;

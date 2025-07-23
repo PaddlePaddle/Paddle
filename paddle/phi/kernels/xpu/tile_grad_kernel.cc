@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 
@@ -25,6 +26,12 @@ void TileGradKernel(const Context& dev_ctx,
                     const DenseTensor& out_grad,
                     const IntArray& repeat_times,
                     DenseTensor* x_grad) {
+  // x_grad->numel() may be not 0.
+  if (out_grad.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    return;
+  }
   auto x_dims = x.dims();
   auto vec_x_dims = common::vectorize<int64_t>(x_dims);
   auto repeat_times_data = repeat_times.GetData();
@@ -81,7 +88,7 @@ void TileGradKernel(const Context& dev_ctx,
                           dims));
 
     using XPUType = typename XPUTypeTrait<T>::Type;
-    // int reduce_sum(Context* ctx, const T* x, T* y, const
+    // int reduce_sum(Context* xpu_ctx, const T* x, T* y, const
     // std::vector<int64_t>& xshape, const std::vector<int64_t>& rdims)
     const auto* out_data = reinterpret_cast<const XPUType*>(out_grad.data<T>());
     auto* x_grad_data = reinterpret_cast<XPUType*>(x_grad->data<T>());

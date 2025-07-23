@@ -58,6 +58,10 @@ void LogsumexpGradKernel(const Context& dev_ctx,
                          bool keepdim UNUSED,
                          bool reduce_all,
                          DenseTensor* in_grad) {
+  if (in_grad && in_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(in_grad);
+    return;
+  }
   std::vector<int64_t> axis;
   axis.reserve(axis_in.size());
   std::for_each(axis_in.begin(), axis_in.end(), [&axis](const int& t) {

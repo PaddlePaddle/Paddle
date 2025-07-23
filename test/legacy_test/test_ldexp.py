@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
+from op_test import get_places
 
 import paddle
-from paddle.base import core
 
 
 def _run_ldexp_dynamic(x, y, device='cpu'):
@@ -87,15 +86,7 @@ def check_dtype(input, desired_dtype):
 
 class TestLdexpAPIWithDynamic(unittest.TestCase):
     def setUp(self):
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append('cpu')
-        if core.is_compiled_with_cuda():
-            self.places.append('gpu')
+        self.places = get_places(string_format=True)
 
     def test_ldexp_dynamic(self):
         np.random.seed(7)
@@ -145,15 +136,7 @@ class TestLdexpAPIWithDynamic(unittest.TestCase):
 
 class TestLdexpAPIWithStatic(unittest.TestCase):
     def setUp(self):
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append('cpu')
-        if core.is_compiled_with_cuda():
-            self.places.append('gpu')
+        self.places = get_places(string_format=True)
 
     def test_ldexp_static(self):
         np.random.seed(7)
@@ -222,15 +205,7 @@ class TestLdexpError(unittest.TestCase):
 
 class TestLdexpAPI_ZeroSize(unittest.TestCase):
     def setUp(self):
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
 
     def test_ldexp_dynamic(self):
         for place in self.places:

@@ -15,7 +15,7 @@
 #include "paddle/phi/kernels/swiglu_kernel.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
-
+#include "paddle/phi/kernels/full_kernel.h"
 namespace phi {
 template <typename T, typename Context>
 void SwiGluKernel(const Context& dev_ctx,
@@ -26,6 +26,7 @@ void SwiGluKernel(const Context& dev_ctx,
   using XPUTypefp32 = typename XPUTypeTrait<float>::Type;
   const auto* x_data = x.data<T>();
   auto* z_data = dev_ctx.template Alloc<T>(z);
+  if (z->numel() == 0) return;
   const auto& dims = x.dims();
   int64_t axis = dims.size() - 1;
   auto dims_vec = common::vectorize<int64_t>(dims);

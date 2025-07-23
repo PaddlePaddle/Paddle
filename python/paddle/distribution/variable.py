@@ -93,7 +93,7 @@ class Independent(Variable):
                 f"Input dimensions must be equal or grater than  {self._reinterpreted_batch_rank}"
             )
         return ret.reshape(
-            ret.shape[: ret.dim() - self.reinterpreted_batch_rank] + (-1,)
+            (*ret.shape[: ret.dim() - self.reinterpreted_batch_rank], -1)
         ).all(-1)
 
 

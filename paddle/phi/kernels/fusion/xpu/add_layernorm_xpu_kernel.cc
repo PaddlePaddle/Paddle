@@ -66,7 +66,7 @@ static phi::DDim BroadCastInferShape(const DDim x_dims,
 }
 
 template <typename T, typename Context>
-void AddLayernormXPUKernel(const Context& ctx,
+void AddLayernormXPUKernel(const Context& dev_ctx,
                            const DenseTensor& x,
                            const DenseTensor& y,
                            const DenseTensor& scale,
@@ -88,10 +88,10 @@ void AddLayernormXPUKernel(const Context& ctx,
   int64_t m = layer_norm_x_mat_dims[0];
   int64_t n = layer_norm_x_mat_dims[1];
 
-  auto* out_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(out));
+  auto* out_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out));
 
   int r = xpu::add_layer_norm_fusion<XPUType>(  // T
-      /* baidu::xpu::api::Context* ctx */ ctx.x_context(),
+      /* baidu::xpu::api::Context* ctx */ dev_ctx.x_context(),
       /* const T* x */ x_data,
       /* const T* y */ y_data,
       /* T* z */ out_data,

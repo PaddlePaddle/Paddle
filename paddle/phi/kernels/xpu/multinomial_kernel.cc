@@ -58,7 +58,7 @@ void MultinomialKernel(const Context& dev_ctx,
     in_data = reinterpret_cast<const float*>(x.data<T>());
   }
 
-  // int multinomial(Context* ctx, const T* x, TID* y, int64_t num_samples,
+  // int multinomial(Context* xpu_ctx, const T* x, TID* y, int64_t num_samples,
   // int64_t num_categories, int64_t num_distributions, bool replacement,
   // int64_t seed);
   int r = xpu::multinomial<float, int64_t>(dev_ctx.x_context(),

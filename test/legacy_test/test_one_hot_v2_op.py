@@ -254,6 +254,36 @@ class BadInputTestOnehotV2(unittest.TestCase):
             self.assertRaises(TypeError, test_bad_x)
 
 
+class TestOneHotOp_ZeroSize(OpTest):
+    def setUp(self):
+        self.op_type = 'one_hot_v2'
+        self.python_api = one_hot_wrapper
+        self.public_python_api = one_hot_wrapper
+        self.python_out_sig = ['Out']
+        depth = 10
+        depth_np = np.array(10).astype('int32')
+        x_shape = [0, 10, 7, 3]
+        x = [np.random.randint(0, depth - 1) for i in range(np.prod(x_shape))]
+        x = np.array(x).astype('int32').reshape(x_shape)
+
+        out = np.zeros(shape=(np.prod(x.shape), depth)).astype('float32')
+
+        r_x = np.reshape(x, np.prod(x.shape))
+        for i in range(np.prod(x.shape)):
+            out[i, r_x[i]] = 1.0
+
+        shape_np = list(x.shape)
+        shape_np.append(depth)
+        out = np.reshape(out, shape_np)
+
+        self.inputs = {'X': x, 'depth_tensor': depth_np}
+        self.attrs = {'dtype': int(core.VarDesc.VarType.FP32)}
+        self.outputs = {'Out': out}
+
+    def test_check_output(self):
+        self.check_output()
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

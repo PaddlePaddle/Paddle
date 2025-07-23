@@ -212,6 +212,35 @@ class API_NormTest(unittest.TestCase):
             self.assertRaises(TypeError, test_norm_x_type)
 
 
+class TestNormOp_ZeroSize(OpTest):
+    def setUp(self):
+        paddle.disable_static()
+        self.op_type = "norm"
+        self.python_api = norm_wrapper
+        self.init_test_case()
+        self.init_dtype()
+        x = np.random.random(self.shape).astype(self.dtype)
+        y, norm = l2_norm(x, self.axis, self.epsilon)
+        self.inputs = {'X': x}
+        self.attrs = {'epsilon': self.epsilon, 'axis': self.axis}
+        self.outputs = {'Out': y, 'Norm': norm}
+        self.python_out_sig = ['Out']
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+    def init_test_case(self):
+        self.shape = [0, 3, 2, 7]
+        self.axis = 1
+        self.epsilon = 1e-8
+
+    def init_dtype(self):
+        self.dtype = "float64"
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

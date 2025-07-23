@@ -22,6 +22,7 @@
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 
@@ -36,6 +37,18 @@ void GroupNormKernel(const Context& dev_ctx,
                      DenseTensor* y,
                      DenseTensor* mean,
                      DenseTensor* var) {
+  if (y && y->numel() == 0) {
+    dev_ctx.template Alloc<T>(y);
+    if (mean) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(mean->dims())), 0, mean);
+    }
+    if (var) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(var->dims())), 0, var);
+    }
+    return;
+  }
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);

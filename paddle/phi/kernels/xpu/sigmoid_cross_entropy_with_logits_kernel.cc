@@ -38,6 +38,7 @@ void SigmoidCrossEntropyWithLogitsKernel(
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   dev_ctx.template Alloc<T>(out);
+  if (x.numel() == 0) return;
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   int* hit = RAII_GUARD.alloc_l3_or_gm<int>(x.numel());
   PADDLE_ENFORCE_NOT_NULL(
@@ -45,7 +46,7 @@ void SigmoidCrossEntropyWithLogitsKernel(
   auto pos_weight_data =
       (pos_weight.get_ptr() == nullptr ? nullptr
                                        : pos_weight.get_ptr()->data<T>());
-  // int paddle_sigmoid_cross_entropy_with_logits(Context* ctx, const T* x,
+  // int paddle_sigmoid_cross_entropy_with_logits(Context* xpu_ctx, const T* x,
   // const T* label, const T* pos_weight, T* y, int* hit, int ignore_index,
   // int64_t n);
   int r = xpu::paddle_sigmoid_cross_entropy_with_logits(

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import enum
 import itertools
 import os
 import weakref
@@ -284,8 +284,8 @@ class ShardingGradView:
         slice_begin = self._param_begin
         slice_end = self._param_end
         slice_buffer = self._param_buffer._slice(slice_begin, slice_end)
-        slice_param.get_tensor()._set_dims([slice_end - slice_begin])
         slice_buffer._share_buffer_to(slice_param)
+        slice_param.get_tensor()._set_dims([slice_end - slice_begin])
 
     def assign_slice_grad(self, slice_param):
         assert self._param_buffer._is_shared_buffer_with(self._param)
@@ -303,6 +303,16 @@ class ShardingGradView:
                 slice_param._copy_gradient_from(slice_grad)
             else:
                 assert slice_param.grad._is_shared_buffer_with(slice_grad)
+
+    def _clear_param_buffer(self):
+        self._param._clear_to_zero_allocation()
+        self._param_buffer._clear_to_zero_allocation()
+
+    def _reset_param_buffer(self, new_param_storage):
+        new_param = paddle.empty_like(self._param)
+        new_param._share_buffer_to(self._param)
+        new_param_storage._share_buffer_to(self._param_buffer)
+        self._share_param_buffer()
 
     def _clear_grad_buffer(self):
         if self._slice_grad is not None:
@@ -406,6 +416,17 @@ def get_grad_address(param, use_main_grad):
 
 
 class FusedCommBuffer:
+
+    class Status(enum.Enum):
+        """Status of this bucket, Only useful when param allgather overlap is enabled"""
+
+        # Parameters are sharded between processes
+        SHARDED = enum.auto()
+        # Asynchronous communication is in progress
+        SYNCING = enum.auto()
+        # Parameters are ready to use
+        READY = enum.auto()
+
     def __init__(
         self,
         id,
@@ -433,6 +454,9 @@ class FusedCommBuffer:
         self._use_reduce_avg = use_reduce_avg
         self._free_grads_in_comm = free_grads_in_comm
         self._log_message_printed = False
+
+        self.status = FusedCommBuffer.Status.READY
+        self.sync_param_task = None
 
         if self._free_grads_in_comm:
             assert (
@@ -538,6 +562,18 @@ class FusedCommBuffer:
             self._grads_to_addr[param.name] = get_grad_address(
                 param, self.use_main_grad
             )
+
+    def _clear_param_storage(self):
+        self.param_storage._clear_to_zero_allocation()
+        for param in self._params:
+            self._sharding_param_grad_view[param.name]._clear_param_buffer()
+
+    def _reset_param_storage(self):
+        new_param_storage = paddle.empty_like(self.param_storage)
+        new_param_storage._share_buffer_to(self.param_storage)
+        for param in self._params:
+            grad_view = self._sharding_param_grad_view[param.name]
+            grad_view._reset_param_buffer(new_param_storage)
 
     def _clear_grad_storage(self):
         self.grad_storage._clear_dataptr()
@@ -672,6 +708,8 @@ class FusedCommBuffer:
         else:
             # default sync_op is False, so we don't need to to set sync_op = false here.
             task = group.process_group.all_gather(slice_buffer, full_buffer)
+
+            self.sync_param_task = task
             for param in self.params:
                 assert param.name not in param2task
                 param2task[param.name] = task
@@ -759,6 +797,7 @@ class FusedCommBuffer:
                 group=self._comm_group,
                 sync_op=False,
             )
+
             if self._free_grads_in_comm:
                 self._reset_grad_storage(reduce_scattered)
 

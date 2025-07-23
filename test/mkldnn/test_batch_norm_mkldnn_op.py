@@ -16,7 +16,7 @@ import sys
 import unittest
 
 import numpy as np
-from mkldnn_op_test import check_if_mkldnn_batchnorm_primitives_exist_in_bwd
+from onednn_op_test import check_if_onednn_batchnorm_primitives_exist_in_bwd
 from op_test import _set_use_system_allocator, pir_executor_guard
 
 sys.path.append("../deprecated/legacy_test")
@@ -32,9 +32,9 @@ from paddle.base import core
 _set_use_system_allocator(True)
 
 
-class TestMKLDNNBatchNormOpTraining(TestBatchNormOpTraining):
+class TestONEDNNBatchNormOpTraining(TestBatchNormOpTraining):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.data_formats = ["NCHW"]
 
     def ref_forward_backward(
@@ -81,15 +81,15 @@ class TestMKLDNNBatchNormOpTraining(TestBatchNormOpTraining):
             super().test_forward_backward()
 
 
-class TestMKLDNNBatchNormOpTraining_NHWC(TestMKLDNNBatchNormOpTraining):
+class TestONEDNNBatchNormOpTraining_NHWC(TestONEDNNBatchNormOpTraining):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.data_formats = ["NHWC"]
 
 
-class TestMKLDNNBatchNormOpExistedPrimitives(TestMKLDNNBatchNormOpTraining):
+class TestONEDNNBatchNormOpExistedPrimitives(TestONEDNNBatchNormOpTraining):
     def init_test_case(self):
-        TestMKLDNNBatchNormOpTraining.init_test_case(self)
+        TestONEDNNBatchNormOpTraining.init_test_case(self)
         self.fetch_list = ['y', 'x@GRAD']
 
     def test_forward_backward(self):
@@ -131,14 +131,14 @@ class TestMKLDNNBatchNormOpExistedPrimitives(TestMKLDNNBatchNormOpTraining):
         var_dict['x@GRAD'] = x_grad
         var_dict['scale@GRAD'] = scale_grad
         var_dict['bias@GRAD'] = bias_grad
-        check_if_mkldnn_batchnorm_primitives_exist_in_bwd(
+        check_if_onednn_batchnorm_primitives_exist_in_bwd(
             self, var_dict, place, shape, data_layout
         )
 
 
-class TestMKLDNNBatchNormOpInference(TestBatchNormOpInference):
+class TestONEDNNBatchNormOpInference(TestBatchNormOpInference):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
 
     def test_check_output(self):
         place = core.CPUPlace()
@@ -154,7 +154,7 @@ class TestMKLDNNBatchNormOpInference(TestBatchNormOpInference):
             )
 
 
-class TestMKLDNNBatchNormOpInference_NHWC(TestMKLDNNBatchNormOpInference):
+class TestONEDNNBatchNormOpInference_NHWC(TestONEDNNBatchNormOpInference):
     def test_check_output(self):
         place = core.CPUPlace()
         data_format = "NHWC"
@@ -164,9 +164,9 @@ class TestMKLDNNBatchNormOpInference_NHWC(TestMKLDNNBatchNormOpInference):
         )
 
 
-class TestMKLDNNBatchNormOpWithReluInference(TestBatchNormOpInference):
+class TestONEDNNBatchNormOpWithReluInference(TestBatchNormOpInference):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.fuse_with_relu = True
 
     def test_check_output(self):

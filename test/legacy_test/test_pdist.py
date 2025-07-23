@@ -117,6 +117,41 @@ class TestPdistShapeError(unittest.TestCase):
             )
 
 
+class TestPdistAPI_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.init_shape()
+        self.x = np.random.rand(*self.shape).astype('float32')
+        self.p = 2.0
+        self.place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+
+    def init_shape(self):
+        self.shape = (0, 20)
+
+    def test_dygraph_api(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x)
+        x.stop_gradient = False
+        out = paddle.pdist(
+            x,
+            self.p,
+        )
+        out_ref = ref_pdist(self.x, self.p)
+        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-5, atol=1e-5)
+        loss = paddle.sum(out)
+        loss.backward()
+        np.testing.assert_allclose(x.grad.shape, x.shape)
+        paddle.enable_static()
+
+
+class TestPdistAPI_ZeroSize2(TestPdistAPI_ZeroSize):
+    def init_shape(self):
+        self.shape = (0, 0)
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

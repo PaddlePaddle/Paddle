@@ -170,6 +170,32 @@ class TestMultiplyError(unittest.TestCase):
         self.assertRaises(Exception, paddle.inner, x_data, y_data)
 
 
+class TestMultiplyApi_ZeroSize(unittest.TestCase):
+    def _test_case(self, x_shape, y_shape):
+        paddle.disable_static()
+        x_data = np.random.rand(*x_shape).astype(np.float64)
+        y_data = np.random.rand(*y_shape).astype(np.float64)
+        x = paddle.to_tensor(x_data)
+        y = paddle.to_tensor(y_data)
+        x.stop_gradient = False
+        y.stop_gradient = False
+        res = paddle.inner(x, y)
+        np.testing.assert_allclose(
+            res.numpy(), np.inner(x_data, y_data), rtol=1e-05
+        )
+        loss = paddle.sum(res)
+        loss.backward()
+        np.testing.assert_allclose(x.grad.shape, x.shape)
+
+    def test_case(self):
+        self._test_case([5, 10, 0], [2, 0])
+        self._test_case([0], [0])
+        self._test_case([0, 0], [1, 0])
+        self._test_case([0, 0], [0, 0])
+        self._test_case([0], [1, 0])
+        self._test_case([5, 1, 1], [1, 0, 1])
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

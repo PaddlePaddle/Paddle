@@ -201,6 +201,44 @@ class TestClassL1Loss(unittest.TestCase):
         self.assertRaises(ValueError, test_value_error)
 
 
+class TestClassL1Loss_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.input_np = np.random.random(size=(0, 10, 5)).astype(np.float32)
+        self.label_np = np.random.random(size=(0, 10, 5)).astype(np.float32)
+
+    def run_imperative(self):
+        input = paddle.to_tensor(self.input_np)
+        label = paddle.to_tensor(self.label_np)
+        input.stop_gradient = False
+        l1_loss = paddle.nn.loss.L1Loss()
+        dy_result = l1_loss(input, label)
+        expected = np.mean(np.abs(self.input_np - self.label_np))
+        np.testing.assert_allclose(dy_result.numpy(), expected, rtol=1e-05)
+        self.assertEqual(dy_result.shape, [])
+
+        l1_loss = paddle.nn.loss.L1Loss(reduction='sum')
+        dy_result = l1_loss(input, label)
+        expected = np.sum(np.abs(self.input_np - self.label_np))
+        np.testing.assert_allclose(dy_result.numpy(), expected, rtol=1e-05)
+        self.assertEqual(dy_result.shape, [])
+
+        loss = paddle.sum(dy_result)
+        loss.backward()
+        np.testing.assert_allclose(input.grad.shape, input.shape)
+
+    def test_cpu(self):
+        paddle.disable_static(place=paddle.base.CPUPlace())
+        self.run_imperative()
+        paddle.enable_static()
+
+    def test_gpu(self):
+        if not base.core.is_compiled_with_cuda():
+            return
+        paddle.disable_static(place=paddle.base.CUDAPlace(0))
+        self.run_imperative()
+        paddle.enable_static()
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

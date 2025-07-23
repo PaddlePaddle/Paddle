@@ -40,6 +40,7 @@ from paddle.common_ops_import import (
     check_variable_and_dtype,
 )
 from paddle.nn.initializer import Constant, Normal
+from paddle.utils import deprecated
 
 __all__ = []
 
@@ -221,8 +222,9 @@ def fc(
             )
             if in_pir_mode():
                 if len(input_var.shape) > 2:
-                    new_shape = input_var.shape[:num_flatten_dims] + [
-                        np.prod(input_var.shape[num_flatten_dims:])
+                    new_shape = [
+                        *input_var.shape[:num_flatten_dims],
+                        np.prod(input_var.shape[num_flatten_dims:]),
                     ]
                     input_var = paddle.reshape(input_var, new_shape)
                 tmp = paddle.matmul(input_var, w)
@@ -569,6 +571,12 @@ def group_norm(
     return helper.append_activation(group_norm_out)
 
 
+@deprecated(
+    since="3.0.0",
+    update_to="paddle.nn.Conv2D",
+    level=1,
+    reason="This API will be deprecated in the future, because it's just for old statics mode, please use paddle.nn.Conv2D instead.",
+)
 def conv2d(
     input,
     num_filters,
@@ -696,6 +704,10 @@ def conv2d(
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +SKIP("env set will not work in ci check because import paddle in global_exec")
+            >>> # set env var before import paddle to disable pir mode, following example code use os module.
+            >>> import os
+            >>> os.environ['FLAGS_enable_pir_api'] = '0'
             >>> import paddle
             >>> paddle.enable_static()
 
@@ -704,6 +716,9 @@ def conv2d(
             >>> print(conv2d.shape)
             (-1, 2, 30, 30)
     """
+    assert (
+        not in_pir_mode()
+    ), "paddle.static.nn.conv2d is not supported in pir mode, please set the environment variable FLAGS_enable_pir_api=0 to switch old static mode."
 
     check_variable_and_dtype(
         input, 'input', ['uint16', 'float16', 'float32', 'float64'], 'conv2d'
@@ -2807,7 +2822,7 @@ def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
         assert (
             len(x.shape) >= 1
         ), "The size of input shape should be equal or larger than 1 in prelu() when mode is 'element'"
-        alpha_shape = [1] + list(x.shape)[1:]
+        alpha_shape = [1, *list(x.shape)[1:]]
     dtype = helper.input_dtype(input_param_name='x')
     alpha = helper.create_parameter(
         attr=helper.param_attr,

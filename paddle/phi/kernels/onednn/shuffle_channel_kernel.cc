@@ -18,10 +18,10 @@
 namespace phi {
 
 template <typename T>
-class ShuffleChannelMKLDNNHandler
+class ShuffleChannelONEDNNHandler
     : public phi::funcs::OneDNNHandlerNoCachingT<T, dnnl::shuffle_forward> {
  public:
-  ShuffleChannelMKLDNNHandler(const phi::DenseTensor* x,
+  ShuffleChannelONEDNNHandler(const phi::DenseTensor* x,
                               const int group,
                               const dnnl::engine engine,
                               phi::Place cpu_place)
@@ -46,7 +46,7 @@ void ShuffleChannelMKLDNNKernel(const Context& dev_ctx,
   // oneDNN handles group using C/g instead of g
   const int tmp_group = x.dims()[1] / group;
 
-  ShuffleChannelMKLDNNHandler<T> handler(
+  ShuffleChannelONEDNNHandler<T> handler(
       &x, tmp_group, onednn_engine, dev_ctx.GetPlace());
 
   auto src_memory_p = handler.AcquireSrcMemory(&x);

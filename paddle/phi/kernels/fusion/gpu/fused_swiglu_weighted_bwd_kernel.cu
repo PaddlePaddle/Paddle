@@ -188,19 +188,20 @@ __global__ void SwigluProbsGradKernelVec4(
     int moe_intermediate_size) {
   constexpr int numel_per_thread = 4;
   constexpr int k_warp_size = 32;
-  const int row_idx = blockIdx.x;
-  const int tid = threadIdx.x;
+  const int64_t row_idx = blockIdx.x;
+  const int64_t tid = threadIdx.x;
 
-  const BFloat16* o1_row = o1 + row_idx * moe_intermediate_size * 2;
-  const BFloat16* do2_s_row = do2_s + row_idx * moe_intermediate_size;
+  const BFloat16* o1_row = o1 + row_idx * (int64_t)moe_intermediate_size * 2;
+  const BFloat16* do2_s_row = do2_s + row_idx * (int64_t)moe_intermediate_size;
   const bfloat16x4_t* o1_row_left_half_vec4 =
       reinterpret_cast<const bfloat16x4_t*>(o1_row);
   const bfloat16x4_t* do2_s_row_vec4 =
       reinterpret_cast<const bfloat16x4_t*>(do2_s_row);
   const bfloat16x4_t* o1_row_right_half_vec4 =
-      reinterpret_cast<const bfloat16x4_t*>(o1_row + moe_intermediate_size);
-  BFloat16* do1_row = do1 + row_idx * moe_intermediate_size * 2;
-  BFloat16* o2s_row = o2_s + row_idx * moe_intermediate_size;
+      reinterpret_cast<const bfloat16x4_t*>(o1_row +
+                                            (int64_t)moe_intermediate_size);
+  BFloat16* do1_row = do1 + row_idx * (int64_t)moe_intermediate_size * 2;
+  BFloat16* o2s_row = o2_s + row_idx * (int64_t)moe_intermediate_size;
   bfloat16x4_t* do1_row_vec4 = reinterpret_cast<bfloat16x4_t*>(do1_row);
   bfloat16x4_t* o2s_row_vec4 = reinterpret_cast<bfloat16x4_t*>(o2s_row);
 
@@ -209,8 +210,8 @@ __global__ void SwigluProbsGradKernelVec4(
 
   float local_probs_grad = 0.0f;
 
-  const int vec_numel = moe_intermediate_size / numel_per_thread;
-  for (int i = tid; i < vec_numel; i += blockDim.x) {
+  const int vec_numel = (int64_t)moe_intermediate_size / numel_per_thread;
+  for (int64_t i = tid; i < vec_numel; i += blockDim.x) {
     float4 lhs_vec4 = load_and_cast_float4(o1_row_left_half_vec4 + i);
     float4 rhs_vec4 = load_and_cast_float4(o1_row_right_half_vec4 + i);
     float4 do2_s_val_vec4 = load_and_cast_float4(do2_s_row_vec4 + i);

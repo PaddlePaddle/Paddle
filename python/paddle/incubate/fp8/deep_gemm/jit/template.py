@@ -85,7 +85,6 @@ def generate(
 ) -> str:
     # Common prefix
     code = "// DeepGEMM auto-generated JIT CUDA source file\n\n"
-
     # Includes
     preload_sys_includes = [
         "<cuda.h>",
@@ -93,6 +92,8 @@ def generate(
         "<cuda_runtime.h>",
         "<iostream>",
     ]
+    # preload_package_includes = ['"cutlass/cutlass.h"']
+
     paddle_source_dir = os.path.dirname(paddle.__file__)
     include_dirs = (
         paddle_source_dir

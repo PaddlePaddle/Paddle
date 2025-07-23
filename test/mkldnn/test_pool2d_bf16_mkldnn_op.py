@@ -174,7 +174,7 @@ def pool2d_backward_naive(
 @OpTestTool.skip_if_not_cpu_bf16()
 class TestPoolBf16MklDNNOpGrad(TestPool2D_Op_Mixin, OpTest):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
 
     def init_data_type(self):
         self.dtype = np.uint16
@@ -229,7 +229,7 @@ class TestPoolBf16MklDNNOpGrad(TestPool2D_Op_Mixin, OpTest):
 @OpTestTool.skip_if_not_cpu_bf16()
 class TestPoolBf16MklDNNOp(TestPool2D_Op_Mixin, OpTest):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
 
     def setUp(self):
         TestPool2D_Op_Mixin.setUp(self)

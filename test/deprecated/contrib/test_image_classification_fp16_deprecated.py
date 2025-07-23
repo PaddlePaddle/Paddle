@@ -62,36 +62,36 @@ class TestAmpWithNonIterableDataLoader(unittest.TestCase):
     def decorate_with_data_loader(self):
         main_prog = paddle.static.Program()
         start_prog = paddle.static.Program()
-        with paddle.static.program_guard(main_prog, start_prog):
-            with paddle.base.unique_name.guard():
-                image = paddle.static.data(
-                    name='image', shape=[-1, 3, 224, 224], dtype='float32'
-                )
-                label = paddle.static.data(
-                    name='label', shape=[-1, 1], dtype='int64'
-                )
+        with (
+            paddle.static.program_guard(main_prog, start_prog),
+            paddle.base.unique_name.guard(),
+        ):
+            image = paddle.static.data(
+                name='image', shape=[-1, 3, 224, 224], dtype='float32'
+            )
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
 
-                net = vgg16_bn_drop(image)
-                logits = paddle.static.nn.fc(
-                    x=net, size=10, activation="softmax"
-                )
-                cost, predict = paddle.nn.functional.softmax_with_cross_entropy(
-                    logits, label, return_softmax=True
-                )
-                avg_cost = paddle.mean(cost)
+            net = vgg16_bn_drop(image)
+            logits = paddle.static.nn.fc(x=net, size=10, activation="softmax")
+            cost, predict = paddle.nn.functional.softmax_with_cross_entropy(
+                logits, label, return_softmax=True
+            )
+            avg_cost = paddle.mean(cost)
 
-                optimizer = paddle.optimizer.Lamb(learning_rate=0.001)
-                amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
-                    custom_black_varnames={"loss", "conv2d_0.w_0"}
-                )
-                mp_optimizer = decorate(
-                    optimizer=optimizer,
-                    amp_lists=amp_lists,
-                    init_loss_scaling=8.0,
-                    use_dynamic_loss_scaling=True,
-                )
+            optimizer = paddle.optimizer.Lamb(learning_rate=0.001)
+            amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
+                custom_black_varnames={"loss", "conv2d_0.w_0"}
+            )
+            mp_optimizer = decorate(
+                optimizer=optimizer,
+                amp_lists=amp_lists,
+                init_loss_scaling=8.0,
+                use_dynamic_loss_scaling=True,
+            )
 
-                mp_optimizer.minimize(avg_cost)
+            mp_optimizer.minimize(avg_cost)
 
     def test_non_iterable_dataloader(self):
         self.decorate_with_data_loader()

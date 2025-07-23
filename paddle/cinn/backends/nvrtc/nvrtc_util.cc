@@ -35,6 +35,7 @@ PD_DECLARE_string(cinn_nvcc_cmd_path);
 PD_DECLARE_string(nvidia_package_dir);
 PD_DECLARE_bool(nvrtc_compile_to_cubin);
 PD_DECLARE_bool(cinn_nvrtc_cubin_with_fmad);
+PD_DECLARE_string(cuda_cccl_dir);
 
 namespace cinn {
 namespace backends {
@@ -50,7 +51,8 @@ static std::vector<std::string> GetNvidiaAllIncludePath(
   std::vector<std::string> include_paths;
   const std::string delimiter = "/";
   // Expand this list if necessary.
-  const std::vector<std::string> sub_modules = {"cublas",
+  const std::vector<std::string> sub_modules = {"cuda_cccl",
+                                                "cublas",
                                                 "cudnn",
                                                 "cufft",
                                                 "cusparse",

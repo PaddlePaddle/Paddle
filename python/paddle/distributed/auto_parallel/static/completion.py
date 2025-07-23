@@ -166,7 +166,6 @@ def _can_apply_infer_spmd_rule(dist_op):
         "fused_rotary_position_embedding",
         "matmul_v2",
         "elementwise_div",
-        "gelu",
         "fused_softmax_mask_upper_triangle",
         "elementwise_add",
         "elementwise_mul",

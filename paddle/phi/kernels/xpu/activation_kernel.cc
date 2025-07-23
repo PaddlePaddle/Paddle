@@ -442,8 +442,9 @@ void EluKernel(const Context& dev_ctx,
   if (out->numel() == 0) {
     return;
   }
-  // template<typename T> int elu(Context* ctx, const T* x, T* y, int64_t len,
-  // float alpha = 1.0f, const float* max_x = nullptr, float* max_y = nullptr)
+  // template<typename T> int elu(Context* xpu_ctx, const T* x, T* y, int64_t
+  // len, float alpha = 1.0f, const float* max_x = nullptr, float* max_y =
+  // nullptr)
   int r = xpu::elu(dev_ctx.x_context(),
                    reinterpret_cast<const XPUType*>(x.data<T>()),
                    reinterpret_cast<XPUType*>(out->data<T>()),

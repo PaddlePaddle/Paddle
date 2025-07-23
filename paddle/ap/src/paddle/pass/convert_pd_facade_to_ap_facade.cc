@@ -46,7 +46,7 @@ class ConvertPdFacadeToApFacadePattern
     PADDLE_ENFORCE_EQ(
         ret.HasError(),
         false,
-        phi::errors::Fatal(
+        common::errors::Fatal(
             "ConvertPdFacadeToApFacadePattern::MatchAndRewrite failed. "
             "\nTraceback (most recent call "
             "last):\n%s\n%s: %s. ",

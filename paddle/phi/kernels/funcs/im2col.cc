@@ -29,7 +29,7 @@ namespace phi::funcs {
 template <class T, typename DeviceContext>
 class Im2ColFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
  public:
-  void operator()(const DeviceContext& context UNUSED,
+  void operator()(const DeviceContext& dev_ctx UNUSED,
                   const phi::DenseTensor& im,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
@@ -74,7 +74,7 @@ class Im2ColFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
 template <class T, typename DeviceContext>
 class Col2ImFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
  public:
-  void operator()(const DeviceContext& context UNUSED,
+  void operator()(const DeviceContext& dev_ctx UNUSED,
                   const phi::DenseTensor& col,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
@@ -186,7 +186,7 @@ template class Col2ImFunctor<phi::funcs::ColFormat::kCFO,
 template <class T, typename DeviceContext>
 class Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
  public:
-  void operator()(const DeviceContext& context UNUSED,
+  void operator()(const DeviceContext& dev_ctx UNUSED,
                   const phi::DenseTensor& im,
                   const std::vector<int>& dilation UNUSED,
                   const std::vector<int>& stride,
@@ -259,7 +259,7 @@ class Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
 template <class T, typename DeviceContext>
 class Col2ImFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
  public:
-  void operator()(const DeviceContext& context UNUSED,
+  void operator()(const DeviceContext& dev_ctx UNUSED,
                   const phi::DenseTensor& col,
                   const std::vector<int>& dilation UNUSED,
                   const std::vector<int>& stride,

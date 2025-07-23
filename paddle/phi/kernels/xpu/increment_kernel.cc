@@ -25,6 +25,10 @@ void IncrementKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      float value,
                      DenseTensor* out) {
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   // check input
   PADDLE_ENFORCE_EQ(x.numel(),
                     1,
@@ -44,7 +48,7 @@ void IncrementKernel(const Context& dev_ctx,
                      reinterpret_cast<void*>(&value_as_t),
                      sizeof(T));
 
-  // int add(Context* ctx, const T* x, const T* y, T* z, int64_t len);
+  // int add(Context* xpu_ctx, const T* x, const T* y, T* z, int64_t len);
   int ret = xpu::add(dev_ctx.x_context(), x_data, value_xpu, out_data, 1);
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "add");
 }

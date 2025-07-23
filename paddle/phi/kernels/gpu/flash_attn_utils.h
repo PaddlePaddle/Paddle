@@ -32,7 +32,7 @@ namespace phi {
 
 #ifdef PADDLE_WITH_FLASHATTN
 static std::pair<uint64_t, uint64_t> GenerateRNGState(
-    const GPUContext& ctx,
+    const GPUContext& dev_ctx,
     const paddle::optional<DenseTensor>& fixed_seed_offset,
     const std::string& rng_name,
     const int64_t batch_size,
@@ -50,7 +50,7 @@ static std::pair<uint64_t, uint64_t> GenerateRNGState(
       auto gen = phi::GetRandomSeedGenerator(rng_name);
       seed_offset_pair = gen->IncrementOffset(inc);
     } else {
-      auto* gen = ctx.GetGenerator();
+      auto* gen = dev_ctx.GetGenerator();
       seed_offset_pair = gen->IncrementOffset(inc);
     }
     return seed_offset_pair;
@@ -240,7 +240,7 @@ struct FlashAttnFwdParamsV2 : public FlashAttnParamsBase {
   DenseTensor tile_count_semaphore;
 
   FlashAttnFwdParamsV2(
-      const GPUContext& ctx,
+      const GPUContext& dev_ctx,
       const int _version,
       const int _batch_size,
       const int64_t _max_seqlen_q,
@@ -283,11 +283,11 @@ struct FlashAttnFwdParamsV2 : public FlashAttnParamsBase {
 
     // (umiswing): There is no suitable kernel for uint64_t, allocate in int64_t
     // with the same size.
-    rng_state = Empty<int64_t>(ctx, {2});
+    rng_state = Empty<int64_t>(dev_ctx, {2});
 
     if (_dropout > 0.0f) {
       auto seed_offset_pair = GenerateRNGState(
-          ctx, fixed_seed_offset, rng_name, batch_size, num_heads);
+          dev_ctx, fixed_seed_offset, rng_name, batch_size, num_heads);
       seed = seed_offset_pair.first;
       offset = seed_offset_pair.second;
     } else {
@@ -296,15 +296,16 @@ struct FlashAttnFwdParamsV2 : public FlashAttnParamsBase {
     }
 
     seed_offset->Resize({2});
-    int64_t* seed_offset_data = ctx.template HostAlloc<int64_t>(seed_offset);
+    int64_t* seed_offset_data =
+        dev_ctx.template HostAlloc<int64_t>(seed_offset);
     seed_offset_data[0] = static_cast<int64_t>(seed);
     seed_offset_data[1] = static_cast<int64_t>(offset);
 
     softmax_lse->Resize(phi::make_ddim(softmax_lse_dims));
-    ctx.template Alloc<float>(softmax_lse);
+    dev_ctx.template Alloc<float>(softmax_lse);
 
     if (_version == 3) {
-      tile_count_semaphore = Full<int>(ctx, {1}, static_cast<int>(0));
+      tile_count_semaphore = Full<int>(dev_ctx, {1}, static_cast<int>(0));
     }
 
     if (return_softmax) {
@@ -316,7 +317,7 @@ struct FlashAttnFwdParamsV2 : public FlashAttnParamsBase {
 
       softmax->Resize(
           {batch_size, num_heads, seqlen_q_rounded, seqlen_k_rounded});
-      ctx.template Alloc<T>(softmax);
+      dev_ctx.template Alloc<T>(softmax);
     }
   }
 };
@@ -333,7 +334,7 @@ struct FlashAttnBwdParamsV2 : public FlashAttnParamsBase {
   DenseTensor dq_semaphore;
 
   FlashAttnBwdParamsV2(
-      const GPUContext& ctx,
+      const GPUContext& dev_ctx,
       const int _version,
       const int _batch_size,
       const int64_t _max_seqlen_q,
@@ -367,20 +368,21 @@ struct FlashAttnBwdParamsV2 : public FlashAttnParamsBase {
 
     // (umiswing): There is no suitable kernel for uint64_t, allocate in int64_t
     // with the same size.
-    rng_state = Empty<int64_t>(ctx, {2});
+    rng_state = Empty<int64_t>(dev_ctx, {2});
 
     // gradient of softmax_lse
-    softmax_d = Empty<float>(ctx, softmax_lse_dims);
+    softmax_d = Empty<float>(dev_ctx, softmax_lse_dims);
 
     if (_version == 3) {
-      softmax_lse_log2 = Empty<float>(ctx, softmax_lse_dims);
+      softmax_lse_log2 = Empty<float>(dev_ctx, softmax_lse_dims);
       dq_semaphore = Empty<int>(
-          ctx, {(max_seqlen_q + kBlockM - 1) / kBlockM, batch_size, num_heads});
+          dev_ctx,
+          {(max_seqlen_q + kBlockM - 1) / kBlockM, batch_size, num_heads});
     }
 
     // an internal gradient of q, which will be further accumulated.
     dq_accum = Empty<float>(
-        ctx, {batch_size, num_heads, seqlen_q_rounded, head_size_rounded});
+        dev_ctx, {batch_size, num_heads, seqlen_q_rounded, head_size_rounded});
   }
 };
 

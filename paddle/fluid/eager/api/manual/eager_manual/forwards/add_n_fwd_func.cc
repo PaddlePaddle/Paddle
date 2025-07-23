@@ -21,8 +21,14 @@
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
 
 COMMON_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_bool(check_cuda_error);
 
 paddle::Tensor add_n_ad_func(const std::vector<paddle::Tensor>& x) {
+  VLOG(3) << "Running AD API: "
+          << "add_n";
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("add_n_ad_func begin");
+  }
   // Dygraph Record Event
   phi::RecordEvent dygraph_entrance_record_event(
       "add_n dygraph", phi::TracerEventType::Operator, 1);
@@ -105,6 +111,10 @@ paddle::Tensor add_n_ad_func(const std::vector<paddle::Tensor>& x) {
     }
     grad_node->SetGradInMeta(out, 0);
     // Set TensorWrappers for Forward Outputs if needed
+  }
+
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("add_n_ad_func finish");
   }
 
   // Returns

@@ -12,7 +12,7 @@ op_patches:
       - action : xxxx  # 可能会对一个op进行多次操作
         object : xxxx
         type : xxxx
-        default : xxx
+        data : xxx
 
   - op_name : builtin.xxx # 对另一个op进行操作
     actions :
@@ -34,19 +34,19 @@ op_patches:
       - action : modify_output_attr # 修改OpresultAttribute
         object : stop_gradient      # 修改的具体属性名为stop_gradient
         type : pir::ArrayAttribute  # 修改属性类型为ArrayAttribute
-        default :                   # 修改属性为具体值
+        data :                   # 修改属性为具体值
           - type: pir::BoolAttribute  # ArrayAttribute类型需要对每一个字元素标识类型和值
-            default: "false"
+            data: "false"
       - action : modify_attr        # 修改Attribute，与修改OpresultAttribute类似
         object : name
         type : pir::StrAttribute
-        default : "B"
+        data : "B"
   - op_name : pd_op.pool
     actions :
       - action : modify_attr  # 修改Attribute
         object : kernel_size
         type : pir::ArrayAttribute
-        default :
+        data :
           - type: pir::Int64Attribute # 对于修改ArrayAttribute内部类型的情况，依然归属在modify_attr中，但是default值置为空即可
           - type: pir::Int64Attribute
   - op_name : builtin.parameter
@@ -54,11 +54,11 @@ op_patches:
       - action : add_attr           # 新增Attribute
         object : new_attribute      # 新增属性名为new_attribute
         type : pir::StrAttribute    # 新增属性类型为StrAttribute
-        default : "new.attribute"   # 新增属性值为"new.attribute"
+        data : "new.attribute"   # 新增属性值为"new.attribute"
       - action : add_output_attr    # 新增OpresultAttribute
         object : new_Attribute      # 新增属性名为new_output
         type : pir::Int64Attribute  # 新增属性类型为ArrayAttribute
-        default : 1                 # 新增属性为具体值
+        data : 1                 # 新增属性为具体值
 ```
 
 - 删：Attribute与OpresultAttribute的删除格式类似，只需要指定需要删除的具体对象object即可
@@ -84,7 +84,7 @@ op_patches:
       - action : modify_output_type # 修改Opresult Type
         object : 0                  # 修改第几个输出的Type
         type : pir::DenseTensorType  # 修改属性类型为DenseTensorType
-        default : [pir::Float32Type,[-1,30],"NCHW",[],0]   # 修改属性为具体值
+        data : [pir::Float32Type,[-1,30],"NCHW",[],0]   # 修改属性为具体值
 
   ```
 - OpOperand / OpResult 增删改：需要提到block层进行处理。
@@ -100,7 +100,7 @@ op_patches:
         - action : add_output      # 增加输出
           object : 1               # 增加为第几个输出
           type : pir::DenseTensorType  # 修改属性类型为DenseTensorType
-          default : [pir::Float32Type,[-1,30],"NCHW",[],0]   # 修改属性为具体值
+          data : [pir::Float32Type,[-1,30],"NCHW",[],0]   # 修改属性为具体值
     - op_name : pd_op.add
       actions :
         - action : delete_input      # 删除输入
@@ -112,7 +112,7 @@ op_patches:
         - action : add_value         # 增加输入和输出
           object : [1,2]             # 增加为第1个op的第几个输入，第2个op的第几个输出
           type : pir::DenseTensorType
-          default : [pir::Float32Type,[1],"NCHW",[],0]
+          data : [pir::Float32Type,[1],"NCHW",[],0]
         - action : delete_value      # 删除输入和输出
           object : [1, 2]            # 删除第1个op的第几个输入，第2个op的第几个输出
   ```
@@ -144,7 +144,7 @@ type_patches:
       - action : add_type_attr           # 新增Type属性
       - object : 5                       # 新增属性为第几个属性
       - type : pir::Int64Attribute       # 新增属性类型为Int64Attribute
-      - default : 0                      # 新增属性默认值
+      - data : 0                      # 新增属性默认值
 ```
 
 ## pir_version 配置说明

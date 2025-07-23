@@ -154,6 +154,9 @@ void FusedSoftmaxMaskFuseUpperTriangleGradKernel(const Context& dev_ctx,
   auto* softmax_rst = &out;
 
   auto* x_grad_data = dev_ctx.template Alloc<T>(x_grad);
+  if (x_grad && x_grad->numel() == 0) {
+    return;
+  }
 
   auto* grad_y_data = grad_y->data<T>();
   auto* softmax_rst_data = softmax_rst->data<T>();

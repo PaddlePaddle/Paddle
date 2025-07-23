@@ -3119,9 +3119,7 @@ uint64_t AnalysisPredictor::TryShrinkMemory() {
 
 void AnalysisPredictor::ClearIntermediateTensor() {
   if (config_.new_ir_enabled()) {
-    PADDLE_THROW(common::errors::PreconditionNotMet(
-        "Don't need to use this API [ClearIntermediateTensor] when PIR is "
-        "enabled."));
+    return;
   }
   PADDLE_ENFORCE_NOT_NULL(inference_program_.get(),
                           common::errors::PreconditionNotMet(

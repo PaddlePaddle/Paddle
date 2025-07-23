@@ -23,11 +23,11 @@ namespace phi {
 
 template <typename T>
 __global__ void MVGradDxCUDAKernel(
-    const int m, const int n, const T *dout, const T *vec, T *dx) {
-  int idx = blockDim.x * blockIdx.x + threadIdx.x;
-  for (; idx < m * n; idx += blockDim.x * gridDim.x) {
-    int i = idx / n;
-    int j = idx % n;
+    const int64_t m, const int64_t n, const T *dout, const T *vec, T *dx) {
+  int64_t idx = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  for (; idx < m * n; idx += static_cast<int64_t>(blockDim.x) * gridDim.x) {
+    int64_t i = idx / n;
+    int64_t j = idx % n;
     dx[idx] = dout[i] * vec[j];
   }
 }
@@ -59,8 +59,8 @@ void MvGradKernel(const Context &dev_ctx,
   }
 
   auto dim_x = x.dims();
-  int m = dim_x[0];
-  int n = dim_x[1];
+  int64_t m = dim_x[0];
+  int64_t n = dim_x[1];
 
   // get data ptr
   const T *x_data = x.data<T>();

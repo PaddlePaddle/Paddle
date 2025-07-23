@@ -29,6 +29,10 @@ void ExpandAsKernel(const Context& dev_ctx,
                     const paddle::optional<DenseTensor>& y,
                     const std::vector<int64_t>& target_shape_t,
                     DenseTensor* out) {
+  if (x.numel() == 0 || (y.get_ptr() && y.get_ptr()->numel() == 0)) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   std::vector<int64_t> target_shape = target_shape_t;
 
   if (y.get_ptr()) {
@@ -43,10 +47,10 @@ void ExpandAsKernel(const Context& dev_ctx,
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
 
   for (unsigned int i = 0; i < vec_in_dims.size(); ++i) {
-    PADDLE_ENFORCE_NE(
-        target_shape[i],
-        0,
-        errors::InvalidArgument("The value of target shape cannot be zero."));
+    if (target_shape[i] == 0) {
+      dev_ctx.template Alloc<T>(out);
+      return;
+    }
     if (i < diff) {
       PADDLE_ENFORCE_GT(
           target_shape[i],

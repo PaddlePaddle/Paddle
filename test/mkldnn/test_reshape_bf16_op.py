@@ -27,16 +27,16 @@ from paddle.base import core
 class TestReshapeBf16Op(OpTest):
     def setUp(self):
         self.op_type = "reshape2"
-        self.use_mkldnn = False
-        self.mkldnn_data_type = "bfloat16"
+        self.use_onednn = False
+        self.onednn_data_type = "bfloat16"
         self.init_data()
         self.init_input_data()
 
         self.inputs = {'X': self.input_data}
         self.attrs = {
             'shape': self.new_shape,
-            'use_mkldnn': self.use_mkldnn,
-            'mkldnn_data_type': self.mkldnn_data_type,
+            'use_mkldnn': self.use_onednn,
+            'mkldnn_data_type': self.onednn_data_type,
         }
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.inferred_shape),

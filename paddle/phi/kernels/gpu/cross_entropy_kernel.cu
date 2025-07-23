@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/cross_entropy_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 #include "glog/logging.h"
 
@@ -100,19 +101,22 @@ __global__ void CrossEntropySoftLabel(T* loss,
   const int kIterations = (dim + kThreadPerBatch - 1) / kThreadPerBatch;
   const int kIterationsV = (kIterations >= kVSize) ? (kIterations / kVSize) : 1;
 
-  const int first_batch = (blockDim.y * blockIdx.x + threadIdx.y) * kBatchSize;
+  const int64_t first_batch =
+      (static_cast<int64_t>(blockDim.y) * blockIdx.x + threadIdx.y) *
+      kBatchSize;
 
   T sum[kBatchSize]{static_cast<T>(0.0)};
 #pragma unroll
   for (int i = 0; i < kBatchSize; ++i) {
-    int ids = first_batch + i;
-    if (ids >= n * d) break;
+    int64_t ids = first_batch + i;
+    if (ids >= static_cast<int64_t>(n) * d) break;
     int idx_n = ids / d;
     int idx_d = ids % d;
 #pragma unroll
     for (int it = 0; it < kIterations; ++it) {
       int idx_dim = it * kThreadPerBatch + threadIdx.x;
-      int idx = idx_n * dim * d + idx_dim * d + idx_d;
+      int64_t idx = static_cast<int64_t>(idx_n) * dim * d +
+                    static_cast<int64_t>(idx_dim) * d + idx_d;
 
       if (idx_n < n && idx_dim < dim) {
         VecT softmaxdata;
@@ -155,7 +159,7 @@ __global__ void CrossEntropySoftLabel(T* loss,
   if (threadIdx.x == 0) {
     for (int i = 0; i < kBatchSize; i++) {
       int ids = first_batch + i;
-      if (ids < n * d) {
+      if (ids < static_cast<int64_t>(n) * d) {
         loss[ids] = sumshare[0][threadIdx.y][i];
         for (int s = 1; s < kWarpPerBatch; s++) {
           loss[ids] += sumshare[s][threadIdx.y][i];
@@ -176,12 +180,12 @@ __global__ void CrossEntropyHardLabel(T* loss,
                                       const int dim,
                                       const int d,
                                       const int ignore_idx) {
-  int64_t ids = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t ids = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   int64_t idx_n = ids / d;
   int64_t idx_d = ids % d;
 
   // thread ids compute loss[ids] using softmax[idx]
-  if (ids < n * d) {
+  if (ids < static_cast<int64_t>(n) * d) {
     auto lbl = static_cast<int64_t>(labels[ids]);
     PADDLE_ENFORCE(lbl >= 0 && lbl < dim || lbl == ignore_idx,
                    "The value of label expected >= 0 and < %d, or == %d, "
@@ -192,7 +196,7 @@ __global__ void CrossEntropyHardLabel(T* loss,
     if (lbl == ignore_idx) {
       loss[ids] = static_cast<T>(0.0);
     } else {
-      int64_t idx = idx_n * dim * d + lbl * d + idx_d;
+      int64_t idx = static_cast<int64_t>(idx_n) * dim * d + lbl * d + idx_d;
       loss[ids] = -Log(softmax[idx]);
     }
   }
@@ -207,9 +211,9 @@ template <typename T, typename LabelT>
 __global__ void CrossEntropyExpHardLabel(T* loss,
                                          T* softmax,
                                          const LabelT* labels,
-                                         const int n,
-                                         const int dim,
-                                         const int d,
+                                         const int64_t n,
+                                         const int64_t dim,
+                                         const int64_t d,
                                          const int ignore_idx) {
   int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
   int64_t idx_n = idx / (d * dim);
@@ -285,9 +289,9 @@ __device__ __forceinline__ void ComputeLoss(T* loss,
                                             const int64_t label_value,
                                             const int tid,
                                             const int vec_size,
-                                            const int offset,
+                                            const int64_t offset,
                                             const int ignore_index) {
-  int loss_id = vec_size * tid + offset;
+  int64_t loss_id = static_cast<int64_t>(vec_size) * tid + offset;
   if (label_value == ignore_index) {
     loss[label_id] = static_cast<T>(0.0f);
   } else {
@@ -536,10 +540,12 @@ __global__ void WarpSoftmaxForwardSoftLabel(T* loss,
   constexpr int kIterations = kDimCeil / kWarpSize;
   constexpr int kIterationsV =
       (kIterations >= kVSize) ? (kIterations / kVSize) : 1;
-  constexpr int kBatchSize = (kDimCeil <= 128) ? 2 : 1;
+  constexpr int64_t kBatchSize = (kDimCeil <= 128) ? 2 : 1;
 
-  int first_batch = (blockDim.y * blockIdx.x + threadIdx.y) * kBatchSize;
-  int local_batches = batch_size - first_batch;
+  int64_t first_batch =
+      (static_cast<int64_t>(blockDim.y) * blockIdx.x + threadIdx.y) *
+      kBatchSize;
+  int64_t local_batches = batch_size - first_batch;
   if (local_batches > kBatchSize) {
     local_batches = kBatchSize;
   }
@@ -549,10 +555,10 @@ __global__ void WarpSoftmaxForwardSoftLabel(T* loss,
   VecT labeldata[kBatchSize][kIterationsV];
 
   for (int i = 0; i < kBatchSize; ++i) {
-    const VecT* src_v =
-        reinterpret_cast<const VecT*>(&src[(first_batch + i) * stride]);
-    const VecT* label_v =
-        reinterpret_cast<const VecT*>(&label[(first_batch + i) * stride]);
+    const VecT* src_v = reinterpret_cast<const VecT*>(
+        &src[(static_cast<int64_t>(first_batch) + i) * stride]);
+    const VecT* label_v = reinterpret_cast<const VecT*>(
+        &label[(static_cast<int64_t>(first_batch) + i) * stride]);
 
     // max index to read
     int idx_max = (i < local_batches) ? element_count : 0;
@@ -621,8 +627,8 @@ __global__ void WarpSoftmaxForwardSoftLabel(T* loss,
   for (int i = 0; i < kBatchSize; ++i) {
     if (i >= local_batches) break;
 
-    VecT* softmax_v =
-        reinterpret_cast<VecT*>(&softmax[(first_batch + i) * stride]);
+    VecT* softmax_v = reinterpret_cast<VecT*>(
+        &softmax[(static_cast<int64_t>(first_batch) + i) * stride]);
 
     // max index to write
     int idx_max = (i < local_batches) ? element_count : 0;
@@ -719,7 +725,7 @@ static void SoftmaxWithCrossEntropySoftLabel(const GPUContext& dev_ctx,
                           ? kMaxBlockDim
                           : (1 << static_cast<int>(std::log2(dim)));
 
-  int64_t grid_dim = N * D;
+  int64_t grid_dim = static_cast<int64_t>(N) * D;
   constexpr int max_dim = 320;
 
   const int kDimLog2 = static_cast<int>(Log2Ceil(dim));
@@ -734,7 +740,8 @@ static void SoftmaxWithCrossEntropySoftLabel(const GPUContext& dev_ctx,
     constexpr int threads_per_block = 128;
     int warps_per_block = (threads_per_block / kWarpSize);
     int batches_per_block = warps_per_block * batches_per_warp;
-    int blocks = (N + batches_per_block - 1) / batches_per_block;
+    int64_t blocks =
+        (static_cast<int64_t>(N) + batches_per_block - 1) / batches_per_block;
     dim3 threads(kWarpSize, warps_per_block, 1);
 
     SwitchWarpSoftmaxForwardSoftLabel<T>(blocks,
@@ -794,7 +801,8 @@ static void SoftmaxWithCrossEntropySoftLabel(const GPUContext& dev_ctx,
     int kThreadPerBlock = 512;
 
     int kBatchPerBlock = 1;
-    int blocks = (N * D + kBatchPerBlock - 1) / kBatchPerBlock;
+    int64_t blocks =
+        (static_cast<int64_t>(N) * D + kBatchPerBlock - 1) / kBatchPerBlock;
     dim3 threads(kThreadPerBlock / kBatchPerBlock, kBatchPerBlock, 1);
 
     CrossEntropySoftLabel<T, T, true><<<blocks, threads, 0, stream>>>(
@@ -846,7 +854,9 @@ __global__ void WarpSoftmaxForward(T* loss,
       (kIterations >= kVSize) ? (kIterations / kVSize) : 1;
   constexpr int kBatchSize = (kDimCeil <= 128) ? 2 : 1;
 
-  int first_batch = (blockDim.y * blockIdx.x + threadIdx.y) * kBatchSize;
+  int64_t first_batch =
+      (static_cast<int64_t>(blockDim.y) * blockIdx.x + threadIdx.y) *
+      kBatchSize;
 
   // max index to read
   int idx_max_v[kBatchSize];
@@ -867,14 +877,14 @@ __global__ void WarpSoftmaxForward(T* loss,
       int src_idx = threadIdx.x + it * kWarpSize;
       if (kVSize == 1) {
         if (src_idx < idx_max_v[i]) {
-          srcdata[i][it][0] =
-              static_cast<AccT>(src[(first_batch + i) * stride + src_idx]);
+          srcdata[i][it][0] = static_cast<AccT>(
+              src[(static_cast<int64_t>(first_batch) + i) * stride + src_idx]);
         } else {
           srcdata[i][it][0] = -std::numeric_limits<AccT>::infinity();
         }
       } else {
-        const VecT* src_v =
-            reinterpret_cast<const VecT*>(&src[(first_batch + i) * stride]);
+        const VecT* src_v = reinterpret_cast<const VecT*>(
+            &src[(static_cast<int64_t>(first_batch) + i) * stride]);
         if (src_idx < idx_max_v[i]) {
           VecT srctmp = src_v[src_idx];
           const T* srcinptr = reinterpret_cast<const T*>(&srctmp);
@@ -971,13 +981,14 @@ __global__ void WarpSoftmaxForward(T* loss,
       if (kVSize == 1) {  // kVSize==1
         if (idx < idx_max_v[i]) {
           if (mode == SoftmaxMode::kLogSoftmax) {  // log softmax
-            softmax[(first_batch + i) * stride + idx] =
+            softmax[(static_cast<int64_t>(first_batch) + i) * stride + idx] =
                 srcdata[i][it][0] - max_value[i] - sum[i];
             // softmax with cross entropy hard label
           } else if (mode == SoftmaxMode::kCrossEntropy) {
             AccT logsoftmax = srcdata[i][it][0] - max_value[i] - sum[i];
             // softmax
-            softmax[(first_batch + i) * stride + idx] = std::exp(logsoftmax);
+            softmax[(static_cast<int64_t>(first_batch) + i) * stride + idx] =
+                std::exp(logsoftmax);
             // label
             int loss_idx = (threadIdx.x + it * kWarpSize) * kVSize;
             auto lbl = static_cast<int64_t>(label[first_batch + i]);
@@ -999,15 +1010,15 @@ __global__ void WarpSoftmaxForward(T* loss,
               }
             }
           } else {  // softmax
-            softmax[(first_batch + i) * stride + idx] =
+            softmax[(static_cast<int64_t>(first_batch) + i) * stride + idx] =
                 srcdata[i][it][0] / sum[i];
           }
         } else {
           break;
         }
       } else {  // KVSize>1
-        VecT* softmax_v =
-            reinterpret_cast<VecT*>(&softmax[(first_batch + i) * stride]);
+        VecT* softmax_v = reinterpret_cast<VecT*>(
+            &softmax[(static_cast<int64_t>(first_batch) + i) * stride]);
         VecT tmpdata;
         T* tmpptr = reinterpret_cast<T*>(&tmpdata);
 #pragma unroll
@@ -1076,7 +1087,7 @@ void SwitchWarpSoftmaxForward(T* loss,
                               const LabelT* label,
                               const int batch_size,
                               const int stride,
-                              const int element_count,
+                              const int64_t element_count,
                               const int ignore_index,
                               gpuStream_t stream) {
   using AccT = typename dtype::MPTypeTrait<T>::Type;
@@ -1089,7 +1100,8 @@ void SwitchWarpSoftmaxForward(T* loss,
   constexpr int threads_per_block = 128;
   int warps_per_block = (threads_per_block / kWarpSize);
   int batches_per_block = warps_per_block * batches_per_warp;
-  int blocks = (batch_size + batches_per_block - 1) / batches_per_block;
+  int64_t blocks = (static_cast<int64_t>(batch_size) + batches_per_block - 1) /
+                   batches_per_block;
   dim3 threads(kWarpSize, warps_per_block, 1);
 
   switch (log2_elements) {
@@ -1147,16 +1159,18 @@ template <typename T, typename LabelT>
 static void SoftmaxWithCrossEntropyHardLabel(const GPUContext& dev_ctx,
                                              int rank,
                                              int axis,
-                                             const T* logits_data,
+                                             const DenseTensor& logits,
                                              const LabelT* labels_data,
                                              T* loss_data,
-                                             T* softmax_data,
+                                             DenseTensor* softmax,
                                              int N,
                                              int dim,
                                              int D,
                                              const int ignore_index) {
   VLOG(7) << "rank=" << rank << ", axis = " << axis << ", N = " << N
           << ", dim = " << dim << ", D = " << D;
+  auto* logits_data = logits.data<T>();
+  auto* softmax_data = dev_ctx.template Alloc<T>(softmax);
   auto stream = dev_ctx.stream();
   constexpr int max_dim = 320;
   if (D == 1) {
@@ -1185,15 +1199,10 @@ static void SoftmaxWithCrossEntropyHardLabel(const GPUContext& dev_ctx,
     ScopedTensorDescriptor desc;
     std::vector<int> tensor_dims = {N, dim, D, 1};
     GPUDNNDataLayout layout = GPUDNNDataLayout::kNCHW;
+
 #ifdef PADDLE_WITH_HIP
     miopenTensorDescriptor_t descp = desc.descriptor<T>(layout, tensor_dims);
-#else
-    cudnnTensorDescriptor_t descp = desc.descriptor<T>(layout, tensor_dims);
-#endif
-
     auto handle = dev_ctx.cudnn_handle();
-
-#ifdef PADDLE_WITH_HIP
     auto mode = axis == rank - 1 ? MIOPEN_SOFTMAX_MODE_INSTANCE
                                  : MIOPEN_SOFTMAX_MODE_CHANNEL;
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSoftmaxForward_V2(
@@ -1209,19 +1218,11 @@ static void SoftmaxWithCrossEntropyHardLabel(const GPUContext& dev_ctx,
 #else
     auto mode = axis == rank - 1 ? CUDNN_SOFTMAX_MODE_INSTANCE
                                  : CUDNN_SOFTMAX_MODE_CHANNEL;
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSoftmaxForward(
-        handle,
-        CUDNN_SOFTMAX_LOG,
-        mode,
-        phi::backends::gpu::CudnnDataType<T>::kOne(),
-        descp,
-        logits_data,
-        phi::backends::gpu::CudnnDataType<T>::kZero(),
-        descp,
-        softmax_data));
+    SoftmaxForwardCUDAKernelDriver<T, true>(dev_ctx, logits, axis, softmax);
+    softmax_data = softmax->data<T>();
 #endif
     int threads = 128;
-    int blocks = (N * dim * D + threads - 1) / threads;
+    int blocks = (static_cast<int64_t>(N) * dim * D + threads - 1) / threads;
     // compute cross entropy, input is log softmax
     CrossEntropyExpHardLabel<T, LabelT><<<blocks, threads, 0, stream>>>(
         loss_data, softmax_data, labels_data, N, dim, D, ignore_index);
@@ -1253,10 +1254,10 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
 
     const int rank = softmax->dims().size();
     const int axis_v = phi::funcs::CanonicalAxis(axis, rank);
-    const int axis_dim = softmax->dims()[axis_v];
+    const int64_t axis_dim = softmax->dims()[axis_v];
 
-    const int n = phi::funcs::SizeToAxis(axis_v, softmax->dims());
-    const int d = phi::funcs::SizeFromAxis(axis_v, softmax->dims());
+    const int64_t n = phi::funcs::SizeToAxis(axis_v, softmax->dims());
+    const int64_t d = phi::funcs::SizeFromAxis(axis_v, softmax->dims());
 
     auto* softmax_out_data = dev_ctx.template Alloc<T>(softmax_out);
     auto* loss_data = dev_ctx.template Alloc<T>(loss);
@@ -1298,7 +1299,7 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
       const int kDimCeil = 1 << kDimLog2;
       int kThreadPerBlock = 512;
       int kBatchPerBlock = 1;
-      int blocks = (n * d + kBatchPerBlock - 1) / kBatchPerBlock;
+      int64_t blocks = (n * d + kBatchPerBlock - 1) / kBatchPerBlock;
       dim3 threads(kThreadPerBlock / kBatchPerBlock, kBatchPerBlock, 1);
 
       CrossEntropySoftLabel<T, T, false>
@@ -1314,7 +1315,7 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
       auto* logits_data = softmax->data<T>();
       auto* labels_data = labels.data<LabelT>();
       int threads = 128;
-      int blocks = (n * d / axis_dim + threads - 1) / threads;
+      int64_t blocks = (n * d / axis_dim + threads - 1) / threads;
       CrossEntropyHardLabel<T, LabelT>
           <<<blocks, threads, 0, dev_ctx.stream()>>>(loss_data,
                                                      logits_data,
@@ -1335,7 +1336,7 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
 
   const int rank = logits.dims().size();
   const int axis_v = phi::funcs::CanonicalAxis(axis, rank);
-  int axis_dim = logits.dims()[axis_v];
+  int64_t axis_dim = logits.dims()[axis_v];
 
   const int64_t n = phi::funcs::SizeToAxis(axis_v, logits.dims());
   const int64_t d = phi::funcs::SizeFromAxis(axis_v, logits.dims());
@@ -1384,15 +1385,14 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
                                                        ignore_index,
                                                        axis_dim);
     } else {
-      auto* logits_data = logits.data<T>();
       auto* labels_data = label.data<LabelT>();
       SoftmaxWithCrossEntropyHardLabel<T, LabelT>(dev_ctx,
                                                   rank,
                                                   axis_v,
-                                                  logits_data,
+                                                  logits,
                                                   labels_data,
                                                   loss_data,
-                                                  softmax_data,
+                                                  softmax,
                                                   n,
                                                   axis_dim,
                                                   d / axis_dim,
@@ -1412,6 +1412,20 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
                                    int axis,
                                    DenseTensor* softmax,
                                    DenseTensor* loss) {
+  if (softmax->numel() == 0) {
+    // When soft_label is False, the axis column cannot be 0. Other dimensions
+    // are the same, so the numel of softmax and loss are both 0.
+    dev_ctx.template Alloc<T>(softmax);
+    dev_ctx.template Alloc<T>(loss);
+
+    // When soft_label is True, the axis column is 1.
+    if (soft_label) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(loss->dims())), 0, loss);
+    }
+    return;
+  }
+
   auto dtype = label.dtype();
   if (soft_label) {
     PADDLE_ENFORCE_EQ(

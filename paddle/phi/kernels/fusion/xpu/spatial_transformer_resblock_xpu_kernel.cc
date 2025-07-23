@@ -43,7 +43,7 @@ static std::vector<std::vector<int>> IntVec1DTo2D(const std::vector<int>& vec,
 
 template <typename T, typename Context>
 void SpatialTransformerResblockXPUKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& x,
     const std::vector<const DenseTensor*>& x_max,
     const std::vector<const DenseTensor*>& conv_bias,
@@ -68,7 +68,7 @@ void SpatialTransformerResblockXPUKernel(
 
   auto* in1 = reinterpret_cast<const XPUType*>(x.data<T>());
   const XPUType* in2 = nullptr;
-  auto* out_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(out));
+  auto* out_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out));
   int batch = static_cast<int>(x.dims()[0]);
   int channel = static_cast<int>(x.dims()[1]);
   int nh = static_cast<int>(x.dims()[2]);
@@ -159,7 +159,7 @@ void SpatialTransformerResblockXPUKernel(
   // output
   xft::xftTensor<XPUType, 4> output_tensor(out_data, {batch, channel, nh, nw});
   int r = xft::st_resblock_fusion<XPUType, int16_t, int16_t>(
-      ctx.x_context(),
+      dev_ctx.x_context(),
       in_tensor,
       in_silu_tensor,
       xft_gn_weight_,

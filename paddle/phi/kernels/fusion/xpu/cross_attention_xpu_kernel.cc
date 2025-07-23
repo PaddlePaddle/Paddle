@@ -27,7 +27,7 @@ template <typename T_X,
           typename T_GEMM,
           typename Context>
 void CrossAttentionXPUKernelImpl(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& input_q,
     const DenseTensor& input_kv,
     const std::vector<const DenseTensor*>& fc_weight,
@@ -47,7 +47,7 @@ void CrossAttentionXPUKernelImpl(
   auto* input_q_data = reinterpret_cast<const XPUTypeX*>(input_q.data<T_X>());
   auto* input_kv_data = reinterpret_cast<const XPUTypeX*>(input_kv.data<T_X>());
 
-  xpu::ctx_guard RAII_GUARD(ctx.x_context());
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
 
   XPUTypeFP16* q_data = RAII_GUARD.alloc_l3_or_gm<XPUTypeFP16>(input_q.numel());
   XPUTypeFP16* k_data =
@@ -85,7 +85,7 @@ void CrossAttentionXPUKernelImpl(
   for (int i = 0; i < 3; ++i) {
     int r = xpu::
         fc_fusion<XPUTypeX, XPUTypeW, XPUTypeFP16, T_GEMM>(  // TX/TW/TY/TGEMM
-            ctx.x_context(),                                 // ctx
+            dev_ctx.x_context(),                             // ctx
             loop_x[i],                                       // x
             fc_weight_data_int16_t[i],                       // w
             loop_y[i],                                       // y
@@ -111,8 +111,8 @@ void CrossAttentionXPUKernelImpl(
   int mask_dim_size = mask_dim.size();
   const float* mask_data = mask.data<float>();
   auto* qkv_data =
-      reinterpret_cast<XPUTypeOut*>(ctx.template Alloc<T_QKV>(qkv));
-  auto* qkv_max_data = ctx.template Alloc<float>(qkv_max);
+      reinterpret_cast<XPUTypeOut*>(dev_ctx.template Alloc<T_QKV>(qkv));
+  auto* qkv_max_data = dev_ctx.template Alloc<float>(qkv_max);
   std::vector<int64_t> z_shape(4, 1);
   if (mask_dim_size < 4) {
     int index = 4 - mask_dim_size;
@@ -145,7 +145,7 @@ void CrossAttentionXPUKernelImpl(
                              XPUTypeFP16,
                              XPUTypeFP16,
                              XPUTypeFP16,
-                             XPUTypeGEMM>(ctx.x_context(),
+                             XPUTypeGEMM>(dev_ctx.x_context(),
                                           q_data,
                                           k_data,
                                           v_data,
@@ -160,13 +160,13 @@ void CrossAttentionXPUKernelImpl(
 
   if (input_q.dtype() == DataType::FLOAT32) {
     int r_cast_out = xpu::cast<XPUTypeFP16, XPUTypeOut>(
-        ctx.x_context(), qkv_temp_data, qkv_data, qkv->numel());
+        dev_ctx.x_context(), qkv_temp_data, qkv_data, qkv->numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(
         r_cast_out, "cross_attention_xpu(cast out from fp16 to fp32)");
   }
   if (input_q.dtype() == DataType::FLOAT16) {
     int r_copy =
-        xpu::copy(ctx.x_context(), qkv_temp_data, qkv_data, qkv->numel());
+        xpu::copy(dev_ctx.x_context(), qkv_temp_data, qkv_data, qkv->numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r_copy, "cross_attention_xpu(copy out)");
   }
 }
@@ -177,7 +177,7 @@ void CrossAttentionXPUKernelImpl(
                               w_dtype_,               \
                               qkv_dtype_,             \
                               gemm_dtype_,            \
-                              Context>(ctx,           \
+                              Context>(dev_ctx,       \
                                        input_q,       \
                                        input_kv,      \
                                        fc_weight,     \
@@ -193,7 +193,7 @@ void CrossAttentionXPUKernelImpl(
 
 template <typename T, typename Context>
 void CrossAttentionXPUKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& input_q,
     const DenseTensor& input_kv,
     const std::vector<const DenseTensor*>& fc_weight,

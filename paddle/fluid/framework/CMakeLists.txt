@@ -284,7 +284,8 @@ set(OPERETER_DEPS
     phi
     common
     op_compat_infos
-    type_info)
+    type_info
+    supplement_tracing)
 
 if(WITH_NCCL OR WITH_RCCL)
   set(OPERETER_DEPS ${OPERETER_DEPS} process_group_nccl)

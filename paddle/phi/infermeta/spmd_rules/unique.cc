@@ -44,13 +44,13 @@ SpmdInfo UniqueInferSpmd(const DistMetaTensor& x,
   TensorDistAttr indices_dist_attr_dst = TensorDistAttr();
   if (return_index) {
     indices_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
-    indices_dist_attr_dst.set_dims_mapping({-1});
+    indices_dist_attr_dst.set_dims_mapping(std::vector<int64_t>{-1});
   }
 
   TensorDistAttr inverse_dist_attr_dst = TensorDistAttr();
   if (return_inverse) {
     inverse_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
-    inverse_dist_attr_dst.set_dims_mapping({-1});
+    inverse_dist_attr_dst.set_dims_mapping(std::vector<int64_t>{-1});
     // TODO(dev): https://github.com/PaddlePaddle/Paddle/issues/72822
     // if (axis.empty()) {
     //   inverse_dist_attr_dst.set_dims_mapping(x_dims_mapping_dst);
@@ -60,7 +60,7 @@ SpmdInfo UniqueInferSpmd(const DistMetaTensor& x,
   TensorDistAttr counts_dist_attr_dst = TensorDistAttr();
   if (return_counts) {
     counts_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
-    counts_dist_attr_dst.set_dims_mapping({-1});
+    counts_dist_attr_dst.set_dims_mapping(std::vector<int64_t>{-1});
   }
 
   VLOG(4) << "UniqueInferSpmd: All input and output TensorDistAttr are set to "

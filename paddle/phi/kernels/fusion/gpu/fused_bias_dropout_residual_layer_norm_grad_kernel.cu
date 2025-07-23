@@ -25,6 +25,7 @@ namespace cub = hipcub;
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_dropout_helper.h"
 
@@ -84,6 +85,12 @@ void FusedBiasDropoutResidualLnGradKernel(
            ? nullptr
            : dev_ctx.template Alloc<U>(ln_bias_grad,
                                        ln_bias_grad->numel() * sizeof(U)));
+
+  if (y_grad.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    return;
+  }
 
   const auto input_x_dims = y_grad.dims();
   int bsz_seq = 1;

@@ -72,6 +72,16 @@ void RMSLnBwd(const Context &dev_ctx,
     } else if (scale.dtype() == phi::DataType::FLOAT32) {
       dev_ctx.template Alloc<float>(scale_grad);
     }
+    cuda_rms_norm_gradient<T, Context>(dev_ctx,
+                                       x,
+                                       scale,
+                                       invvar,
+                                       y_grad,
+                                       rows,
+                                       cols,
+                                       epsilon,
+                                       x_grad,
+                                       scale_grad);
   } else {
     // lora specific
     if (scale.dtype() == phi::DataType::BFLOAT16) {

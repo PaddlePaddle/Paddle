@@ -127,12 +127,12 @@ static inline std::vector<std::pair<T, int>> GetSortedScoreIndex(
 }
 
 template <typename T>
-static inline DenseTensor VectorToTensor(const DeviceContext& ctx,
+static inline DenseTensor VectorToTensor(const DeviceContext& dev_ctx,
                                          const std::vector<T>& selected_indices,
                                          int selected_num) {
   DenseTensor keep_nms;
   keep_nms.Resize({selected_num});
-  auto* keep_data = ctx.template Alloc<T>(&keep_nms);
+  auto* keep_data = dev_ctx.template Alloc<T>(&keep_nms);
   for (int i = 0; i < selected_num; ++i) {
     keep_data[i] = selected_indices[i];
   }
@@ -140,7 +140,7 @@ static inline DenseTensor VectorToTensor(const DeviceContext& ctx,
 }
 
 template <class T>
-DenseTensor NMS(const DeviceContext& ctx,
+DenseTensor NMS(const DeviceContext& dev_ctx,
                 DenseTensor* bbox,
                 DenseTensor* scores,
                 T nms_threshold,
@@ -182,7 +182,7 @@ DenseTensor NMS(const DeviceContext& ctx,
       adaptive_threshold *= eta;
     }
   }
-  return VectorToTensor(ctx, selected_indices, selected_num);
+  return VectorToTensor(dev_ctx, selected_indices, selected_num);
 }
 
 }  // namespace funcs

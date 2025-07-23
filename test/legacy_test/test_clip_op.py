@@ -525,5 +525,33 @@ class TestInplaceClipAPI(TestClipAPI):
         return x.clip_(min, max)
 
 
+class TestClipOp_FP64(OpTest):
+    def setUp(self):
+        self.python_api = paddle.clip
+        self.public_python_api = paddle.clip
+
+        self.inputs = {}
+        self.dtype = np.float64
+        self.shape = (8, 16, 8)
+        self.max = float(np.finfo(np.float64).max)
+        self.min = float(np.finfo(np.float64).min)
+
+        self.op_type = "clip"
+        self.attrs = {}
+        self.attrs['min'] = self.min
+        self.attrs['max'] = self.max
+
+        self.inputs['X'] = np.random.random(self.shape).astype(self.dtype)
+        self.outputs = {'Out': np.clip(self.inputs['X'], self.min, self.max)}
+
+    def test_check_output(self):
+        self.check_output(
+            check_pir=True,
+        )
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X'], 'Out', check_pir=True)
+
+
 if __name__ == '__main__':
     unittest.main()

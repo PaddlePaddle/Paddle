@@ -105,24 +105,24 @@ class TestGammainccOpApi(unittest.TestCase):
         self.assertRaises(ValueError, paddle.gammaincc, x, y)
 
     def test_dtype_error(self):
-        with static_guard():
+        with (
+            static_guard(),
             # in static graph mode
-            with self.assertRaises(TypeError):
-                with paddle.static.program_guard(paddle.static.Program()):
-                    x = paddle.static.data(
-                        name="x", shape=self.shape, dtype="int32"
-                    )
-                    y = paddle.static.data(
-                        name="y", shape=self.shape, dtype="int32"
-                    )
-                    out = paddle.gammaincc(x, y)
+            self.assertRaises(TypeError),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            x = paddle.static.data(name="x", shape=self.shape, dtype="int32")
+            y = paddle.static.data(name="y", shape=self.shape, dtype="int32")
+            out = paddle.gammaincc(x, y)
 
         # in dynamic mode
-        with self.assertRaises(RuntimeError):
-            with paddle.base.dygraph.guard():
-                x = paddle.to_tensor(self.x_np, dtype="int32")
-                y = paddle.to_tensor(self.y_np, dtype="int32")
-                res = paddle.gammaincc(x, y)
+        with (
+            self.assertRaises(RuntimeError),
+            paddle.base.dygraph.guard(),
+        ):
+            x = paddle.to_tensor(self.x_np, dtype="int32")
+            y = paddle.to_tensor(self.y_np, dtype="int32")
+            res = paddle.gammaincc(x, y)
 
 
 class TestGammainccOpFp32Api(TestGammainccOpApi):

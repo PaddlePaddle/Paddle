@@ -118,8 +118,8 @@ struct TensorSetConstantXPU {
       : tensor_(tensor), value_(value), place_(place) {}
   template <typename T>
   void apply() const {
-    auto* ctx = phi::DeviceContextPool::Instance().Get(place_);
-    auto begin = ctx->Alloc<T>(tensor_);
+    auto* dev_ctx = phi::DeviceContextPool::Instance().Get(place_);
+    auto begin = dev_ctx->Alloc<T>(tensor_);
     int numel = tensor_->numel();
     if (std::is_same<T, phi::dtype::complex<float>>::value ||
         std::is_same<T, phi::dtype::complex<double>>::value) {
@@ -134,10 +134,10 @@ struct TensorSetConstantXPU {
                std::is_same<T, phi::dtype::float8_e5m2>::value) {
       PADDLE_THROW(common::errors::Fatal("XPU does not support fp8"));
     } else {
-      auto* dev_ctx = static_cast<phi::XPUContext*>(ctx);
+      auto* dev_ctx2 = static_cast<phi::XPUContext*>(dev_ctx);
       using XPUType = typename XPUTypeTrait<T>::Type;
       T val = static_cast<T>(value_);
-      int r = xpu::constant<XPUType>(dev_ctx->x_context(),
+      int r = xpu::constant<XPUType>(dev_ctx2->x_context(),
                                      reinterpret_cast<XPUType*>(begin),
                                      numel,
                                      static_cast<XPUType>(val));

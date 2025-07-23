@@ -20,8 +20,8 @@
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/same_status_reshard_function.h"
 #include "paddle/phi/core/distributed/store/store_utils.h"
+#include "paddle/phi/kernels/concat_kernel.h"
 #include "paddle/phi/kernels/slice_kernel.h"
-#include "paddle/phi/kernels/split_kernel.h"
 
 namespace phi::distributed {
 
@@ -42,12 +42,25 @@ bool RToSReshardFunction::IsSuitable(const DistTensor& in,
   return true;
 }
 
+namespace {
+std::map<int, int64_t> GetSplitAxisWithDimsMapping(
+    const std::vector<std::vector<int64_t>>& dims_mapping) {
+  std::map<int, int64_t> split_axis_to_mesh_axis;
+  for (size_t i = 0; i < dims_mapping.size(); ++i) {
+    if (dims_mapping[i].size() > 0) {
+      split_axis_to_mesh_axis.emplace(i, dims_mapping[i][0]);
+    }
+  }
+  return split_axis_to_mesh_axis;
+}
+}  // namespace
+
 void RToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                                const DistTensor& in,
                                const TensorDistAttr& out_dist_attr,
                                DistTensor* out) {
   VLOG(3) << "Call " << Name();
-  const auto& out_dims_mapping = out_dist_attr.dims_mapping();
+  const auto& out_dims_mapping = out_dist_attr.multi_dims_mapping();
   const auto& out_process_mesh = out_dist_attr.process_mesh();
   const DenseTensor& in_physical_tensor_cur_rank = in.value();
 
@@ -58,6 +71,9 @@ void RToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   int split_axis = split_axis_to_mesh_axis.begin()->first;
   int64_t mesh_axis = split_axis_to_mesh_axis.begin()->second;
 
+  VLOG(3) << "split axis is " << split_axis << ", mesh axis is " << mesh_axis;
+  VLOG(3) << "shape size is " << out_process_mesh.shape().size();
+
   int64_t num_of_process = out_process_mesh.shape()[mesh_axis];
   if (num_of_process == 1) {
     SetValue(out, in.value());
@@ -65,33 +81,61 @@ void RToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
     return;
   }
   VLOG(3) << "RToSReshard: Tensor will be split on axis " << split_axis
-          << ". Split will use axis " << mesh_axis << " of process_mesh."
+          << ". Slice will use axis " << mesh_axis << " of process_mesh."
           << " There will have " << num_of_process
           << " process participate in.";
+
+  int64_t num_group = out_dist_attr.get_split_factor(mesh_axis);
+  VLOG(3) << "num group = " << num_group;
+
   std::vector<int64_t> split_num_vec =
-      BalancedSplit(in.dims()[split_axis], num_of_process);
+      BalancedSplit(in.value().dims()[split_axis], num_of_process * num_group);
+
   auto dtype = in_physical_tensor_cur_rank.dtype();
 
-  DenseTensor dense_out;
-  int64_t start = split_num_vec[0] * coord_in_mesh[mesh_axis];
-  int64_t end = std::min(start + split_num_vec[0],
-                         in_physical_tensor_cur_rank.dims()[split_axis]);
-  PADDLE_ENFORCE_LE(start,
-                    end,
-                    ::common::errors::InvalidArgument(
-                        "Slice Args 'start' should be less or qual to 'end', "
-                        "but got 'start' is %d, 'end' is %d.",
-                        start,
-                        end));
-  RESHARD_FUNCTOR(dev_ctx,
-                  Slice,
-                  dtype,
-                  in_physical_tensor_cur_rank,
-                  {split_axis},
-                  {start},
-                  {end},
-                  &dense_out);
-  SetValue(out, dense_out);
+  int64_t slice_stride = num_of_process;
+  std::vector<DenseTensor> dense_out_vec(num_group);
+  for (int64_t i = 0; i < num_group; i++) {
+    int64_t start =
+        split_num_vec[0] * (coord_in_mesh[mesh_axis] + i * slice_stride);
+    int64_t end = std::min(start + split_num_vec[0],
+                           in_physical_tensor_cur_rank.dims()[split_axis]);
+    VLOG(4) << "start is " << start << ", end is " << end;
+
+    PADDLE_ENFORCE_LE(start,
+                      end,
+                      common::errors::InvalidArgument(
+                          "Slice Args 'start' should be less or qual to 'end', "
+                          "but got 'start' is %d, 'end' is %d.",
+                          start,
+                          end));
+    RESHARD_FUNCTOR(dev_ctx,
+                    Slice,
+                    dtype,
+                    in_physical_tensor_cur_rank,
+                    {split_axis},
+                    {start},
+                    {end},
+                    &(dense_out_vec[i]));
+  }
+
+  if (num_group == 1) {
+    SetValue(out, dense_out_vec[0]);
+  } else {
+    std::vector<const DenseTensor*> d_tensor_ptr_vec;
+    for (auto& d_tensor : dense_out_vec) {
+      d_tensor_ptr_vec.push_back(&d_tensor);
+    }
+
+    DenseTensor dense_out;
+    RESHARD_FUNCTOR(dev_ctx,
+                    Concat,
+                    dtype,
+                    d_tensor_ptr_vec,
+                    Scalar(split_axis),
+                    &dense_out);
+    SetValue(out, dense_out);
+  }
   SetDistProps(out, in.dims(), out_dist_attr);
 }
 
