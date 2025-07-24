@@ -32,7 +32,7 @@ SpmdInfo MoEGateDispatchInferSpmd(const DistMetaTensor& x,
   inputs:
     x: [S, H], S = b*s
     gate_logits: [S, E]
-    corr_bias: [E] (could be nullptr)
+    corr_bias: [E] (optional)
   outputs:
     y: [E, C, H] is use_pad is true, else [S, K, H], currently only support
   use_pad=true combine_weights: [S, K] scatter_index: [K, S] expert_offset: [E]
