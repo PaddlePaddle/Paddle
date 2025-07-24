@@ -28,9 +28,9 @@ namespace ir {
  */
 class Graph;
 
-class FCMKLDNNPass : public FusePassBase {
+class FCONEDNNPass : public FusePassBase {
  public:
-  virtual ~FCMKLDNNPass() {}
+  virtual ~FCONEDNNPass() {}
 
  protected:
   void ApplyImpl(ir::Graph* graph) const;

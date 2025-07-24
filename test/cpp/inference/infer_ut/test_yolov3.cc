@@ -120,7 +120,7 @@ TEST(test_yolov3, multi_thread4_mkl_bz2) {
   config.SetModel(FLAGS_modeldir + "/model.pdmodel",
                   FLAGS_modeldir + "/model.pdiparams");
   config.DisableGpu();
-  config.EnableMKLDNN();
+  config.EnableONEDNN();
   config.SetMkldnnCacheCapacity(10);
   config.SetCpuMathLibraryNumThreads(10);
   LOG(INFO) << config.Summary();

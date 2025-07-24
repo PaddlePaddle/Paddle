@@ -375,5 +375,13 @@ class TestEighBatchAPIZeroSize1(TestEighAPIZeroSize):
         self.x_shape = [5, 0, 0]
 
 
+class TestEighAPIError_ZeroSize(unittest.TestCase):
+    def _test_case(self):
+        paddle.linalg.eigh(paddle.randn([0, 5]))
+
+    def test_error(self):
+        self.assertRaises(ValueError, self._test_case)
+
+
 if __name__ == "__main__":
     unittest.main()

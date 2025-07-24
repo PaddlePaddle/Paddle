@@ -21,7 +21,7 @@ from auto_scan_test import PassAutoScanTest
 from program_config import ProgramConfig, TensorConfig
 
 
-class TestConvMishMkldnnFusePass(PassAutoScanTest):
+class TestConvMishOnednnFusePass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         attrs = [op.attrs for op in program_config.ops]
         # If the problem has been fixed, the judgment

@@ -556,7 +556,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
 
   // 2. build infermeta context
   CompatInferMetaContext infer_meta_context(
-      {ctx->IsRuntime(), ctx->IsRunMKLDNNKernel()});
+      {ctx->IsRuntime(), ctx->IsRunONEDNNKernel()});
 
   const auto& input_names = signature.input_names;
   const auto& attr_names = signature.attr_names;

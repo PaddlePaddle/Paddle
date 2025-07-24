@@ -118,7 +118,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
         strategy_.enable_inference_pass_ && strategy_.delete_dropout_,
         "delete_dropout_op_x_pass");
     AppendPassWithCheck(
-        strategy_.enable_inference_pass_ && strategy_.use_mkldnn_,
+        strategy_.enable_inference_pass_ && strategy_.use_onednn_,
         "onednn_placement_pass");
 
     // 2. training pass

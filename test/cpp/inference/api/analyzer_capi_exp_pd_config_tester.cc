@@ -66,7 +66,7 @@ TEST(PD_Config, interface) {
   PD_ConfigSwitchIrDebug(config, TRUE);
 #ifdef PADDLE_WITH_DNNL
   const char* ops_name = "conv_2d";
-  PD_ConfigEnableMKLDNN(config);
+  PD_ConfigEnableONEDNN(config);
   PD_ConfigSetMkldnnOp(config, 1, &ops_name);
   PD_ConfigSetMkldnnCacheCapacity(config, 100);
   bool mkldnn_enabled = PD_ConfigMkldnnEnabled(config);
