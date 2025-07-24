@@ -1273,7 +1273,6 @@ std::shared_ptr<framework::OpStrategy> StrategyForArangeSymbolic(
       cinn::common::Str2Type(std::get<std::string>(attr_store.at("dtype")));
 
   Expr start, step, arange_size;
-  VLOG(4) << "Are all the operations of arange static: " << all_static;
   if (all_static) {
     PADDLE_ENFORCE_GT(attr_store.count("start"),
                       0U,

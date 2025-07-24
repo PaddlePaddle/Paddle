@@ -691,9 +691,10 @@ ir::PlaceholderOp* TensorOperationRecording(const ::pir::Value& value) {
                            .dyn_cast<paddle::dialect::ScalarAttribute>()
                            .data();
     ir::Expr value;
-#define DEFINE_CASE(TypeFlag, Type) \
-  case phi::DataType::TypeFlag:     \
-    value = ir::Expr(data.to<Type>());
+#define DEFINE_CASE(TypeFlag, Type)    \
+  case phi::DataType::TypeFlag:        \
+    value = ir::Expr(data.to<Type>()); \
+    break;
     switch (dtype) {
       DEFINE_CASE(FLOAT32, float)
       DEFINE_CASE(FLOAT64, double)

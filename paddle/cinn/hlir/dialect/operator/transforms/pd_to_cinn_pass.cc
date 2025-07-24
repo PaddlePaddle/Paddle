@@ -527,7 +527,8 @@ class SliceOpPattern : public pir::OpRewritePattern<paddle::dialect::SliceOp> {
  *    stop,       // symbolic stop (from cinn_op.generate_shape)
  *    2           // static end (from pd_op.full)
  * )
- * ``` Note that step is not allowed to be symbolic
+ * ``` Note that step is not allowed to be symbolic, and when
+ * the inputs are symbolic, the start and end must be of integer type
  */
 class ArangeOpPattern
     : public pir::OpRewritePattern<paddle::dialect::ArangeOp> {
@@ -536,6 +537,7 @@ class ArangeOpPattern
 
   bool Match(paddle::dialect::ArangeOp op) const override {
     bool is_denied = CompatibleInfo::IsDeniedForCinn(*op.operation());
+    if (is_denied) return false;
     // step is not allowed to be symbolic
     if (IsDefinedBy<FullOp>(op, 2)) {
       const FullOp full_op = CastDefinedTo<FullOp>(op, 2);
@@ -543,9 +545,9 @@ class ArangeOpPattern
                              .dyn_cast<paddle::dialect::ScalarAttribute>()
                              .data();
       bool positive_step = true;
-#define MATCH_TYPE_TEST(TypeEnum, Dtype)   \
-  case phi::DataType::TypeEnum:            \
-    positive_step = input.to<Dtype>() > 0; \
+#define MATCH_TYPE_TEST(TypeEnum, Dtype)  \
+  case phi::DataType::TypeEnum:           \
+    positive_step = step.to<Dtype>() > 0; \
     break;
 
       switch (step.dtype()) {
@@ -560,10 +562,15 @@ class ArangeOpPattern
           positive_step = false;
       }
       if (positive_step) {
+        const auto &dtype = op.attributes()
+                                .at("dtype")
+                                .dyn_cast<paddle::dialect::DataTypeAttribute>()
+                                .data();
         return (IsDefinedBy<FullOp>(op, 0) ||
                 IsDefinedBy<GenerateShapeOp>(op, 0)) &&
                (IsDefinedBy<FullOp>(op, 1) ||
-                IsDefinedBy<GenerateShapeOp>(op, 1));
+                IsDefinedBy<GenerateShapeOp>(op, 1)) &&
+               (dtype == phi::DataType::INT32 || dtype == phi::DataType::INT64);
       } else {
         return IsDefinedBy<FullOp>(op, 0) && IsDefinedBy<FullOp>(op, 1);
       }
@@ -1487,6 +1494,8 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add<
       ArgMinMaxOpPattern<paddle::dialect::ArgmaxOp, cinn::dialect::ArgmaxOp>>(
       context);
+  // Arange in this pass only handles static inputs
+  ps.Add<ArangeOpPattern>(context);
   ps.Add<ProdOpPattern>(context);
   ps.Add<ReshapeOpPattern>(context);
   ps.Add<PowOpPattern>(context);

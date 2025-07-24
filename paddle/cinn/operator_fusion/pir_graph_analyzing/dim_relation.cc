@@ -135,13 +135,9 @@ CreateOpRelativenessForDynamicShapeArange(pir::Operation* op) {
   for (int i = 0; i < 3; i++) {
     auto op_src = op->operand_source(i);
     // fake a 1D result vector for cinn_op.generate_shape (0-size tensor output)
-    if (op_src.defining_op()->name() == "cinn_op.generate_shape") {
-      ValueUsage v_usage = {{op_src, 0, 0}};
-      input_value_dims.emplace_back(std::move(v_usage));
-    } else {
-      input_value_dims.emplace_back(
-          GetValueUsage(op_src, GetUsageIdx(op_src, op)));
-    }
+    ValueUsage v_usage = GetValueUsage(op_src, GetUsageIdx(op_src, op));
+    if (v_usage.size() < 1) v_usage.emplace_back(op_src, 0, 0);
+    input_value_dims.emplace_back(std::move(v_usage));
   }
   const std::vector<ValueUsage>& output_value_dims =
       ConcatAll(GetOutputValueUsage(op));
@@ -180,19 +176,8 @@ static std::optional<DimUsageRelation> CreateOpRelativenessForSpecialOps(
     return CreateOpRelativenessForDefault(op);
   }
   if (op->name() == "cinn_op.arange") {
-    // dynamic shape cinn_op.arange should get rid of the 0-size tensor of
-    // cinn_op.generate_shape
-    bool has_dynamic_shape = false;
-    for (int i = 0; i < 3; i++) {
-      if (op->operand_source(i).defining_op()->name() ==
-          "cinn_op.generate_shape") {
-        has_dynamic_shape = true;
-        break;
-      }
-    }
-    if (has_dynamic_shape) {
-      return CreateOpRelativenessForDynamicShapeArange(op);
-    }
+    // cinn_op.arange should get rid of the 0-size tensor input
+    return CreateOpRelativenessForDynamicShapeArange(op);
   }
   return {};
 }
