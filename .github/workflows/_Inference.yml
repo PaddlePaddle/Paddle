@@ -309,6 +309,5 @@ jobs:
         if: always()
         run: |
           # docker exec -t ${container_name} /bin/bash -c 'rm -rf * .[^.]*'
-          sleep 3d
           docker stop ${container_name}
           docker rm ${container_name}
