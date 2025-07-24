@@ -673,7 +673,7 @@ std::vector<paddle::Tensor> RunProgramImpl(
   }
 
 #ifdef PADDLE_WITH_DNNL
-  if (FLAGS_use_mkldnn) paddle::platform::DontClearMKLDNNCache(place);
+  if (FLAGS_use_mkldnn) paddle::platform::DontClearONEDNNCache(place);
 #endif
   return out;
 }
@@ -1014,7 +1014,7 @@ void LegacyRunProgramImpl(
   }
 
 #ifdef PADDLE_WITH_DNNL
-  if (FLAGS_use_mkldnn) paddle::platform::DontClearMKLDNNCache(place);
+  if (FLAGS_use_mkldnn) paddle::platform::DontClearONEDNNCache(place);
 #endif
 }
 

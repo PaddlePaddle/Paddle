@@ -40,12 +40,16 @@ jobs:
   xpu:
     name: Linux-XPU
     uses: ./.github/workflows/_Linux-XPU.yml
-    needs: clone
+    needs: build-docker
+    with:
+      docker_xpu_image: ${{ needs.build-docker.outputs.docker_xpu_image }}
 
   dcu:
     name: Linux-DCU
     uses: ./.github/workflows/_Linux-DCU.yml
-    needs: clone
+    needs: build-docker
+    with:
+      docker_dcu_image: ${{ needs.build-docker.outputs.docker_dcu_image }}
 
   inference:
     name: PR-CI-Inference
@@ -64,9 +68,10 @@ jobs:
   npu:
     name: Linux-NPU
     uses: ./.github/workflows/_Linux-NPU.yml
-    needs: cpu
+    needs: [cpu, build-docker]
     with:
       can-skip: ${{ needs.cpu.outputs.can-skip }}
+      docker_npu_image: ${{ needs.build-docker.outputs.docker_npu_image }}
 
   distribute:
     name: Distribute-stable
