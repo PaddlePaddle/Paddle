@@ -1137,8 +1137,6 @@ void LaunchLayernormResidualDropoutGrad(
     LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *d_layernorm_bias,
     T *d_residual,
     T *d_dropout_src) {
-  std::cout << "rows: " << rows << std::endl;
-  std::cout << "cols: " << cols << std::endl;
   const T zero = static_cast<T>(0.0f);
   auto factor = dropout_prob == static_cast<float>(1.0f)
                     ? zero
