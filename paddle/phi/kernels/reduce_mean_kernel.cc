@@ -31,11 +31,6 @@ void MeanKernel(const Context& dev_ctx,
   bool reduce_all = recompute_reduce_all(x, dims);
   if (std::is_same<T, int>::value || std::is_same<T, int64_t>::value ||
       std::is_same<T, bool>::value) {
-    if (x.numel() == 0 && std::is_same<T, int>::value) {
-      phi::Full<T, Context>(
-          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
-      return;
-    }
     using Type =
         typename std::conditional<std::is_same<T, int>::value ||
                                       std::is_same<T, int64_t>::value ||
