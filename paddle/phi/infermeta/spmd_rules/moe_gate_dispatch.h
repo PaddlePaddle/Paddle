@@ -21,6 +21,7 @@ namespace distributed {
 
 SpmdInfo MoEGateDispatchInferSpmd(const DistMetaTensor& x,
                                   const DistMetaTensor& gate_logits,
+                                  const DistMetaTensor& corr_bias,
                                   int64_t k,
                                   int64_t capacity,
                                   bool use_pad);

@@ -24,6 +24,7 @@ namespace distributed {
 
 SpmdInfo MoEGateDispatchInferSpmd(const DistMetaTensor& x,
                                   const DistMetaTensor& gate_logits,
+                                  const DistMetaTensor& corr_bias,
                                   int64_t k,
                                   int64_t capacity,
                                   bool use_pad) {
@@ -31,6 +32,7 @@ SpmdInfo MoEGateDispatchInferSpmd(const DistMetaTensor& x,
   inputs:
     x: [S, H], S = b*s
     gate_logits: [S, E]
+    corr_bias: [E] (could be nullptr)
   outputs:
     y: [E, C, H] is use_pad is true, else [S, K, H], currently only support
   use_pad=true combine_weights: [S, K] scatter_index: [K, S] expert_offset: [E]
@@ -52,6 +54,15 @@ SpmdInfo MoEGateDispatchInferSpmd(const DistMetaTensor& x,
       errors::InvalidArgument("gate_logits should be a 2-D tensor, but "
                               "got gate_logits_shape.size() == %d",
                               gate_logits_shape.size()));
+  if (corr_bias.initialized()) {
+    EXTRACT_SHAPE_AND_DIST_ATTR_WITH_DIM_CK(corr_bias);
+    PADDLE_ENFORCE_EQ(
+        corr_bias_shape.size(),
+        1,
+        errors::InvalidArgument("corr_bias should be a 1-D tensor, but "
+                                "got corr_bias_shape.size() == %d",
+                                corr_bias_shape.size()));
+  }
   // infer axes dims_mapping
   std::string x_axes = "sh";
   std::string gate_logits_axes = "se";
@@ -73,6 +84,7 @@ SpmdInfo MoEGateDispatchInferSpmd(const DistMetaTensor& x,
   TensorDistAttr gate_logits_dist_attr_dst =
       CopyTensorDistAttrForOutput(gate_logits_dist_attr_src);
   gate_logits_dist_attr_dst.set_dims_mapping(gate_logits_dims_mapping_dst);
+  TensorDistAttr corr_bias_dist_attr_dst;
 
   // output axes
   std::string y_axes = "esh";
@@ -107,7 +119,16 @@ SpmdInfo MoEGateDispatchInferSpmd(const DistMetaTensor& x,
   TensorDistAttr expert_id_dist_attr =
       CopyTensorDistAttrForOutput(x_dist_attr_src);
   expert_id_dist_attr.set_dims_mapping(expert_id_dims_mapping);
-  return {{x_dist_attr_dst, gate_logits_dist_attr_dst},
+  if (corr_bias.initialized()) {
+    EXTRACT_SHAPE_AND_DIST_ATTR(corr_bias);
+    corr_bias_dist_attr_dst =
+        CopyTensorDistAttrForOutput(corr_bias_dist_attr_src);
+    corr_bias_dist_attr_dst.set_dims_mapping(
+        std::vector<int64_t>{gate_logits_dist_attr_dst.dims_mapping().back()});
+  } else {
+    corr_bias_dist_attr_dst = TensorDistAttr();
+  }
+  return {{x_dist_attr_dst, gate_logits_dist_attr_dst, corr_bias_dist_attr_dst},
           {y_dist_attr_dst,
            combine_weights_dist_attr,
            scatter_index_dist_attr,
