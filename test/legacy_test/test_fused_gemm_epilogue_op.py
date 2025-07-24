@@ -654,6 +654,45 @@ class TestEagerFusedGemmEpilogue(unittest.TestCase):
         paddle.enable_static()
 
 
+@unittest.skipIf(
+    not is_fused_gemm_epilogue_supported(),
+    "fused_gemm_epilogue is only supported when CUDA version >= 11.6",
+)
+class TestEagerFusedGemmEpilogue_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        paddle.set_device('gpu')
+
+    def test_case_act(self):
+        paddle.disable_static()
+        x_np = np.random.random((0, 4)).astype(np.float64) - 0.5
+        y_np = np.random.random((4, 128)).astype(np.float64) - 0.5
+        bias_np = np.random.random((128,)).astype(np.float64) - 0.5
+        x = paddle.to_tensor(x_np)
+        y = paddle.to_tensor(y_np)
+        bias = paddle.to_tensor(bias_np)
+        x.stop_gradient = False
+        y.stop_gradient = False
+
+        out1 = fused_linear_activation(x, y, bias, False, False, 'none')
+        out_np1 = get_output(x_np, y_np, bias_np, 'none')
+        np.testing.assert_allclose(out1, out_np1, rtol=1e-05)
+        out_grad_np1 = np.random.randint(
+            low=-20, high=20, size=out_np1.shape
+        ).astype(np.float64)
+        paddle.autograd.backward(
+            out1, grad_tensors=[paddle.to_tensor(out_grad_np1)]
+        )
+
+        x_grad_np, y_grad_np, bias_grad_np = matmul_grad(
+            x_np, y_np, bias_np, out_grad_np1, False, False
+        )
+        np.testing.assert_allclose(x.grad.numpy(), x_grad_np, rtol=1e-05)
+        self.assertEqual(y_grad_np.shape, y_np.shape)
+        np.testing.assert_allclose(y.grad.numpy(), y_grad_np, rtol=1e-05)
+
+        paddle.enable_static()
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     np.random.seed(0)

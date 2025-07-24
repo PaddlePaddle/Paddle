@@ -98,5 +98,38 @@ class TestTensorUnfold2(unittest.TestCase):
                 self.assertEqual((b.grad.numpy() == 1).all().item(), True)
 
 
+class TestTensorUnfold_ZeroSize(TestTensorUnfold):
+    def test_tensor_unfold_forward(self):
+        self.shape = [5, 0]
+        for idx, p in enumerate(self.places):
+            if idx == 0:
+                paddle.set_device('cpu')
+            else:
+                paddle.set_device('gpu')
+            for dtype in self.typelist:
+                x_np = np.random.random(self.shape).astype(dtype)
+                x = paddle.to_tensor(x_np, place=p)
+                a = paddle.unfold(x, 0, 5, 1)
+                np.testing.assert_allclose(a.numpy()[0], x_np.T)
+
+    def test_tensor_unfold_backward(self):
+        self.shape = [5, 0]
+        for idx, p in enumerate(self.places):
+            if idx == 0:
+                paddle.set_device('cpu')
+            else:
+                paddle.set_device('gpu')
+            for dtype in self.typelist:
+                x_np = np.random.random(self.shape).astype(dtype)
+                x = paddle.to_tensor(x_np, place=p)
+                x.stop_gradient = False
+                a = paddle.unfold(x, 0, 5, 1)
+                b = a * 2
+                b.retain_grads()
+                loss = b.sum()
+                loss.backward()
+                self.assertEqual((b.grad.numpy() == 1).all().item(), True)
+
+
 if __name__ == '__main__':
     unittest.main()

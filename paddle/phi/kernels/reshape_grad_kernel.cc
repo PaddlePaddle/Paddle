@@ -46,6 +46,10 @@ void ReshapeGradKernel<phi::XPUContext>(const XPUContext& dev_ctx,
                                         const DenseTensor& x,
                                         const DenseTensor& out_grad,
                                         DenseTensor* x_grad) {
+  if (x_grad->numel() == 0) {
+    dev_ctx.Alloc(x_grad, x_grad->dtype());
+    return;
+  }
   auto x_dims = x_grad->dims();
   dev_ctx.Alloc(x_grad, out_grad.dtype());
   auto* src_ptr = out_grad.data();

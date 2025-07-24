@@ -141,7 +141,7 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
 }  // namespace phi
 
 #if (NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000) || \
-    defined(PADDLE_WITH_HIP)
+    defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUSTOM_DEVICE)
 PD_REGISTER_KERNEL(c_embedding_grad,
                    GPU,
                    ALL_LAYOUT,

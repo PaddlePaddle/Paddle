@@ -16,6 +16,7 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
 namespace phi {
 
@@ -29,6 +30,18 @@ void MatmulGradKernel(const Context& dev_ctx,
                       DenseTensor* dx,
                       DenseTensor* dy) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(dx);
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(y.dims())), 0, dy);
+    return;
+  }
+  if (y.numel() == 0) {
+    dev_ctx.template Alloc<T>(dy);
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(x.dims())), 0, dx);
+    return;
+  }
 
   if (dx) {
     dev_ctx.template Alloc<T>(dx);

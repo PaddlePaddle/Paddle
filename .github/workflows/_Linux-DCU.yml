@@ -2,10 +2,13 @@ name: Linux-DCU
 
 on:
   workflow_call:
+    inputs:
+      docker_dcu_image:
+        type: string
+        required: true
 
 env:
-  dockerfile: dockerfile
-  docker_image: ca63b072ea88
+  docker_image: ${{ inputs.docker_dcu_image }}
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   ci_scripts: /paddle/ci
@@ -120,10 +123,10 @@ jobs:
           rm -rf * .[^.]*
           set -e
           echo "Downloading Paddle.tar.gz"
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
+          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
           echo "Extracting Paddle.tar.gz"
           git config --global --add safe.directory ${work_dir}
-          tar xf Paddle.tar.gz  --strip-components=1
+          tar -xf Paddle.tar.gz  --strip-components=1
           git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
           rm Paddle.tar.gz
           git config --global user.name "PaddleCI"
@@ -194,7 +197,7 @@ jobs:
         run: |
           set -x
           runner_name=`(echo $PWD|awk -F '/' '{print $3}')`
-          wget -q https://xly-devops.bj.bcebos.com/PR/utils.sh
+          wget -q https://xly-devops.bj.bcebos.com/utils.sh
           source utils.sh
           determine_dcu_runner ${runner_name}
 
@@ -269,7 +272,7 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf ./*
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/dcu/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/dcu/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
           tar --use-compress-program="pzstd" -xf build.tar.gz --strip-components=1
           rm build.tar.gz
           '

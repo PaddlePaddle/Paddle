@@ -147,9 +147,9 @@ struct BuildStrategy {
   bool enable_inference_pass_{false};  // switch for infernce pass
   bool delete_dropout_{true};          // delete dropout op
 #ifdef PADDLE_WITH_DNNL
-  bool use_mkldnn_{true};  // use mkdnn to do inference
+  bool use_onednn_{true};  // use mkdnn to do inference
 #else
-  bool use_mkldnn_{false};  // use mkdnn to do inference
+  bool use_onednn_{false};  // use mkdnn to do inference
 #endif
 
   // FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
@@ -262,7 +262,7 @@ inline std::ostream &operator<<(std::ostream &os,
   os << "enable_inference_pass_: " << strategy.enable_inference_pass_
      << std::endl;
   os << "delete_dropout_: " << strategy.delete_dropout_ << std::endl;
-  os << "use_mkldnn_: " << strategy.use_mkldnn_ << std::endl;
+  os << "use_onednn_: " << strategy.use_onednn_ << std::endl;
   os << "is_distribution_: " << strategy.is_distribution_ << std::endl;
   os << "async_mode_: " << strategy.async_mode_ << std::endl;
   os << "num_trainers_: " << strategy.num_trainers_ << std::endl;

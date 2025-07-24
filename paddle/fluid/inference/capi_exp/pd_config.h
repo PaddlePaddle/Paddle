@@ -504,7 +504,7 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigSwitchIrDebug(
 ///
 /// \param[in] pd_config config
 ///
-PADDLE_CAPI_EXPORT extern void PD_ConfigEnableMKLDNN(
+PADDLE_CAPI_EXPORT extern void PD_ConfigEnableONEDNN(
     __pd_keep PD_Config* pd_config);
 ///
 /// \brief Set the cache capacity of different input shapes for OneDNN.

@@ -133,29 +133,10 @@ function make_ubuntu20_cu123_dockerfile(){
 }
 
 
-function make_ubuntu20_cu112_dockerfile(){
-  dockerfile_name="Dockerfile.cuda11.2_cudnn8.1_trt8.4_gcc8.2_ubuntu18"
-  sed "s#<baseimg>#nvidia/cuda:11.2.2-cudnn8-devel-ubuntu20.04#g" ./Dockerfile.ubuntu20 >${dockerfile_name}
-  sed -i "s#<setcuda>#ENV LD_LIBRARY_PATH=/usr/local/cuda-11.2/targets/x86_64-linux/lib:\$LD_LIBRARY_PATH #g" ${dockerfile_name}
-  dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
-  sed -i 's#RUN bash /build_scripts/install_trt.sh#RUN bash /build_scripts/install_trt.sh trt8431#g' ${dockerfile_name}
-  sed -i "${dockerfile_line}i RUN wget --no-check-certificate -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz \&\& \
-     tar -xzf     hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/" ${dockerfile_name}
-  sed -i "${dockerfile_line}i RUN apt remove git -y \&\& apt install -y libsndfile1 zstd pigz libcurl4-openssl-dev gettext zstd ninja-build \&\& wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz \&\& \
-    tar -xvf git-2.17.1.tar.gz \&\& \
-    cd git-2.17.1 \&\& \
-    ./configure --with-openssl --with-curl --prefix=/usr/local \&\& \
-    make -j8 \&\& make install " ${dockerfile_name}
-  sed -i "${dockerfile_line}i RUN pip install wheel \&\& pip3 install PyGithub wheel \&\& pip3.8 install PyGithub distro" ${dockerfile_name}
-  sed -i 's#<install_cpu_package>##g' ${dockerfile_name}
-  sed -i 's#RUN bash /build_scripts/install_trt.sh#RUN bash /build_scripts/install_trt.sh trt8531#g' ${dockerfile_name}
-}
-
 function main() {
   make_cpu_dockerfile
   make_ce_framework_dockerfile
   make_ubuntu20_cu12_dockerfile
-  make_ubuntu20_cu112_dockerfile
   make_ubuntu20_cu123_dockerfile
 }
 

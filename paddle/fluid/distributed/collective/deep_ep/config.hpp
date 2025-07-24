@@ -304,8 +304,8 @@ struct LowLatencyTwoStageLayout {
     size_t combine_recv_buffer_bytes = num_rdma_ranks *
                                        num_max_dispatch_tokens_per_rank *
                                        num_bytes_per_combine_msg;
-    size_t recv_buffer_bytes = std::max(dispatch_recv_data_buffer_bytes * 2,
-                                        combine_recv_buffer_bytes);
+    size_t recv_buffer_bytes =
+        std::max(dispatch_recv_data_buffer_bytes, combine_recv_buffer_bytes);
     EP_HOST_ASSERT(recv_buffer_bytes % sizeof(int4) == 0);
     total_bytes += recv_buffer_bytes * 2;
 

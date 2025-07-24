@@ -47,8 +47,8 @@ static const char kScaleAndZeroPointParamAttr[] =
 
 enum FuseOptions {
   DO_NOT_FUSE,  // fusing will not be done
-  FUSE_NATIVE,  // fusing will be done without MKL-DNN
-  FUSE_MKLDNN   // fusing will be done with MKL-DNN
+  FUSE_NATIVE,  // fusing will be done without ONE-DNN
+  FUSE_ONEDNN   // fusing will be done with ONE-DNN
 };
 
 class FusePassBase : public OpCompatSensiblePass {

@@ -45,9 +45,7 @@ class TestGatherOp(OpTest):
         self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
-        )
+        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
 
     def config(self):
         """
@@ -131,7 +129,6 @@ class TestGatherOpBFP16(TestGatherOp):
             paddle.CUDAPlace(0),
             ['X'],
             'Out',
-            check_prim=True,
             check_pir=True,
             check_prim_pir=True,
         )
@@ -703,7 +700,6 @@ class TestGatherOp5(TestGatherOp):
             ['X'],
             'Out',
             check_pir=True,
-            check_prim=True,
             check_prim_pir=True,
         )
 

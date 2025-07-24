@@ -40,7 +40,7 @@ std::unique_ptr<PaddlePredictor> InitializePredictor(
   AnalysisConfig cfg;
   SetConfig(&cfg, infer_model);
   if (use_mkldnn) {
-    cfg.EnableMKLDNN();
+    cfg.EnableONEDNN();
   }
 
   auto predictor = ::paddle::CreatePaddlePredictor<AnalysisConfig>(cfg);

@@ -83,7 +83,7 @@ TEST(PD_AnalysisConfig, profile_mkldnn) {
   PD_SetCpuMathLibraryNumThreads(config, 10);
   PD_SwitchSpecifyInputNames(config, true);
   PD_SwitchIrDebug(config, true);
-  PD_EnableMKLDNN(config);
+  PD_EnableONEDNN(config);
   bool mkldnn_enable = PD_MkldnnEnabled(config);
   EXPECT_TRUE(mkldnn_enable);
   PD_EnableMkldnnBfloat16(config);
