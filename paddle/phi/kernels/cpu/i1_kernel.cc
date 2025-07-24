@@ -22,16 +22,16 @@
 namespace phi {
 
 template <typename T, typename Context>
-void I1Kernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
+void I1Kernel(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) {
   if (out && out->numel() == 0) {
-    ctx.template Alloc<T>(out);
+    dev_ctx.template Alloc<T>(out);
     return;
   }
   const int64_t size = x.numel();
   const T* x_data = x.data<T>();
-  T* out_data = ctx.template Alloc<T>(out);
+  T* out_data = dev_ctx.template Alloc<T>(out);
 
-  phi::funcs::ForRange<Context> for_range(ctx, size);
+  phi::funcs::ForRange<Context> for_range(dev_ctx, size);
   I1Functor<T> functor(x_data, out_data, size);
   for_range(functor);
 }

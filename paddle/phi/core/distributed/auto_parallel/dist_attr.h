@@ -18,6 +18,7 @@ limitations under the License. */
 #include <cstdint>
 #include <iostream>
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -64,7 +65,9 @@ class PartialStatus final : public PlacementStatus {
 
 class ShardStatus final : public PlacementStatus {
  public:
-  ShardStatus(int64_t axis) : axis_(axis) {}
+  explicit ShardStatus(int64_t axis) : axis_(axis) {}
+  ShardStatus(int64_t axis, int64_t co_shard_order)
+      : axis_(axis), co_shard_order_(co_shard_order) {}
   bool is_shard(int64_t axis = -1) const override {
     if (axis == -1) {
       return true;
@@ -76,6 +79,7 @@ class ShardStatus final : public PlacementStatus {
 
  private:
   int64_t axis_{-1};
+  int64_t co_shard_order_{0};
 };
 
 class TEST_API TensorDistAttr {
@@ -94,9 +98,27 @@ class TEST_API TensorDistAttr {
 
   void set_process_mesh(const ProcessMesh& process_mesh);
 
-  const std::vector<int64_t>& dims_mapping() const { return dims_mapping_; }
+  const std::vector<int64_t>& dims_mapping() const {
+    return dims_mapping_proxy;
+  }
+
+  const std::vector<std::vector<int64_t>>& multi_dims_mapping() const {
+    return dims_mapping_proxy;
+  }
 
   void set_dims_mapping(const std::vector<int64_t>& dims_mapping);
+
+  void set_dims_mapping(const std::vector<std::vector<int64_t>>& dims_mapping);
+
+  const auto_parallel::SplitFactor& split_factor() const {
+    return split_factor_map_;
+  }
+
+  int64_t get_split_factor(int64_t mesh_dim) const;
+
+  void set_split_factor(int64_t mesh_dim, int64_t split_factor);
+
+  void clear_split_factor(int64_t mesh_dim);
 
   // return vector of mesh dims on which the this tensor is partial on
   const std::set<int64_t> partial_dims() const;
@@ -148,8 +170,9 @@ class TEST_API TensorDistAttr {
 
   bool verify_process_mesh(const ProcessMesh& process_mesh) const;
 
-  bool verify_dims_mapping(const std::vector<int64_t>& dims_mapping,
-                           const std::vector<int64_t>& tensor_shape) const;
+  bool verify_dims_mapping(
+      const std::vector<std::vector<int64_t>>& dims_mapping,
+      const std::vector<int64_t>& tensor_shape) const;
 
   bool verify_batch_dim(int64_t dim,
                         const std::vector<int64_t>& tensor_shape) const;
@@ -191,7 +214,8 @@ class TEST_API TensorDistAttr {
   // if mesh_axis is not -1, check only on specific axis
   // if tensor_axis is not -1, return true only if the shard axis equal to
   // tensor_axis.
-  bool is_shard(int64_t mesh_axis = -1, int64_t tensor_axis = -1) const;
+  bool is_shard(int64_t mesh_axis = -1,
+                std::optional<int64_t> dim = std::nullopt) const;
 
   // if mesh_axis is -1, check if tensor is partial on whole process_mesh
   // if mesh_axis is not -1, check only on specific axis.
@@ -201,20 +225,48 @@ class TEST_API TensorDistAttr {
 
   bool skip_check_mesh() const { return skip_check_mesh_; }
 
+  bool is_co_shard() const;
+
  private:
+  // delete it after all 1d vector dims_mapping_ have been upgraded to 2d.
+  class DimMapProxy final {
+   public:
+    DimMapProxy(std::vector<std::vector<int64_t>>* dims_mapping_2d)
+        : dims_mapping_2d(dims_mapping_2d) {}
+
+    DimMapProxy& operator=(
+        const std::vector<std::vector<int64_t>>& dims_mapping);
+    DimMapProxy& operator=(const std::vector<int64_t>& dims_mapping);
+    DimMapProxy& operator=(const DimMapProxy& other);
+    bool operator==(const DimMapProxy& other);
+    bool operator!=(const DimMapProxy& other);
+    operator const std::vector<std::vector<int64_t>>&() const;
+    operator const std::vector<int64_t>&() const;
+
+   private:
+    void sync_1d_map() const;
+    void sync_2d_map();
+    mutable std::vector<int64_t> dims_mapping_1d;
+    std::vector<std::vector<int64_t>>* dims_mapping_2d;
+  };
+
   static std::vector<std::string> fields_;
   ProcessMesh process_mesh_;
-  std::vector<int64_t> dims_mapping_;
-  int64_t batch_dim_{0};
   std::vector<bool> dynamic_dims_;
   std::map<std::string, bool> annotated_;
+  int64_t batch_dim_{0};
   int64_t chunk_id_{0};
   // partial map would be small (less than mesh.size)
   // iterate operation (copy and comparison) would more frequency than random
   // element access. <key: dim on mesh, value: reduce type>
   paddle::flat_hash_map<int64_t, ReduceType> partial_status_;
+  auto_parallel::SplitFactor split_factor_map_;
   // The flag indicates whether to skip checking the process mesh.
   bool skip_check_mesh_ = false;
+
+  std::vector<std::vector<int64_t>> dims_mapping_;
+  // for short time, backward compatible for existing spmd relus.
+  DimMapProxy dims_mapping_proxy{&dims_mapping_};
 };
 
 inline std::ostream& operator<<(std::ostream& os, const TensorDistAttr& obj) {

@@ -172,8 +172,8 @@ def bernoulli_(
              [0., 0., 0., 0.]])
     """
     x.uniform_(0.0, 1.0)
-    ones_mask = x > p
-    zeros_mask = x < p
+    ones_mask = x < p
+    zeros_mask = x > p
     x.masked_fill_(ones_mask, 1.0)
     x.masked_fill_(zeros_mask, 0.0)
     return x
@@ -449,7 +449,7 @@ def multinomial(
     name: str | None = None,
 ) -> Tensor:
     """
-    Returns a Tensor filled with random values sampled from a Multinomical
+    Returns a Tensor filled with random values sampled from a Multinomial
     distribution. The input ``x`` is a tensor with probabilities for generating the
     random number. Each element in ``x`` should be larger or equal to 0, but not all
     0. ``replacement`` indicates whether it is a replaceable sample. If ``replacement``

@@ -20,24 +20,24 @@
 namespace phi {
 
 template <typename T, typename Context>
-void TrilTriuKernel(const Context& ctx,
+void TrilTriuKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     int diagonal,
                     bool lower,
                     DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   auto xshape = common::vectorize<int64_t>(x.dims());
   int r = 0;
   if (lower) {
-    r = xpu::tril(ctx.x_context(),
+    r = xpu::tril(dev_ctx.x_context(),
                   reinterpret_cast<const XPUType*>(x.data<T>()),
                   reinterpret_cast<XPUType*>(out->data<T>()),
                   xshape,
                   static_cast<int64_t>(diagonal));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "tril_op");
   } else {
-    r = xpu::triu(ctx.x_context(),
+    r = xpu::triu(dev_ctx.x_context(),
                   reinterpret_cast<const XPUType*>(x.data<T>()),
                   reinterpret_cast<XPUType*>(out->data<T>()),
                   xshape,
@@ -47,29 +47,29 @@ void TrilTriuKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void TrilKernel(const Context& ctx,
+void TrilKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 int diagonal,
                 DenseTensor* out) {
   if (out && out->numel() == 0) {
-    ctx.template Alloc<T>(out);
+    dev_ctx.template Alloc<T>(out);
     return;
   }
 
-  TrilTriuKernel<T, Context>(ctx, x, diagonal, true, out);
+  TrilTriuKernel<T, Context>(dev_ctx, x, diagonal, true, out);
 }
 
 template <typename T, typename Context>
-void TriuKernel(const Context& ctx,
+void TriuKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 int diagonal,
                 DenseTensor* out) {
   if (out && out->numel() == 0) {
-    ctx.template Alloc<T>(out);
+    dev_ctx.template Alloc<T>(out);
     return;
   }
 
-  TrilTriuKernel<T, Context>(ctx, x, diagonal, false, out);
+  TrilTriuKernel<T, Context>(dev_ctx, x, diagonal, false, out);
 }
 
 }  // namespace phi

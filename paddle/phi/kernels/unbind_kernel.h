@@ -23,13 +23,13 @@ namespace phi {
  * each dimension must be the same, except the axis dimension.
  */
 template <typename T, typename Context>
-void UnbindKernel(const Context& ctx,
+void UnbindKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   int axis,
                   std::vector<DenseTensor*> outs);
 
 template <typename Context>
-void UnbindStridedKernel(const Context& ctx,
+void UnbindStridedKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          int axis,
                          std::vector<DenseTensor*> outs);

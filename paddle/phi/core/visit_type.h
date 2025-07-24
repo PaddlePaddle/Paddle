@@ -336,6 +336,15 @@ namespace phi {
                  "`");                                                        \
     }                                                                         \
   }()
+
+#ifdef PADDLE_WITH_XPU_FFT
+#define PD_XPU_COMPLEX64_CASE(NAME, ...) \
+  PD_PRIVATE_CASE_TYPE(                  \
+      NAME, ::phi::DataType::COMPLEX64, phi::complex64, __VA_ARGS__)
+#else
+#define PD_XPU_COMPLEX64_CASE(NAME, ...)
+#endif
+
 #if defined(PADDLE_WITH_XPU)
 #define PD_VISIT_ALL_TYPES(TYPE, NAME, ...)                                    \
   [&] {                                                                        \
@@ -354,6 +363,7 @@ namespace phi {
       PD_PRIVATE_CASE_TYPE(NAME, ::phi::DataType::FLOAT32, float, __VA_ARGS__) \
       PD_PRIVATE_CASE_TYPE(                                                    \
           NAME, ::phi::DataType::FLOAT64, double, __VA_ARGS__)                 \
+      PD_XPU_COMPLEX64_CASE(NAME, __VA_ARGS__)                                 \
       default:                                                                 \
         PADDLE_THROW(common::errors::InvalidArgument(                          \
             "Invalid enum data type `%d`.", static_cast<int>(__dtype__)));     \

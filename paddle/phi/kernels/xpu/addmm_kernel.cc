@@ -60,13 +60,16 @@ void AddmmKernel(const Context& dev_ctx,
                         input_dims));
 
   dev_ctx.template Alloc<T>(out);
+  if (out->numel() == 0) return;
+
   const XPUType* x_ptr = reinterpret_cast<const XPUType*>(x.data<T>());
   const XPUType* y_ptr = reinterpret_cast<const XPUType*>(y.data<T>());
   const XPUType* input_ptr = reinterpret_cast<const XPUType*>(input.data<T>());
   XPUType* out_ptr = reinterpret_cast<XPUType*>(out->data<T>());
 
   int r;
-  if (alpha == 0.f) {
+  // If x.numel or y.numel is 0, we just need to do a broadcast mul.
+  if (alpha == 0.f || x.numel() == 0 || y.numel() == 0) {
     if (beta == 0.f) {
       r = xpu::constant(dev_ctx.x_context(),
                         out_ptr,

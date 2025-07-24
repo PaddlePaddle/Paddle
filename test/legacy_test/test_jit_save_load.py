@@ -698,6 +698,15 @@ class TestUtilsMapAndPack(unittest.TestCase):
 
         dfs(nested_list_copy, nested_list_copy_pack_back)
 
+        dict_x = {
+            "a": paddle.to_tensor([1.0]),
+            "b": paddle.to_tensor([2.0]),
+            "c": paddle.to_tensor([3.0]),
+        }
+        dict_y = copy.deepcopy(dict_x)
+        dict_z = paddle.utils.pack_sequence_as(dict_x, dict_y)
+        dfs(dict_x, dict_z)
+
 
 class TestSaveLoadWithDictInput(unittest.TestCase):
 

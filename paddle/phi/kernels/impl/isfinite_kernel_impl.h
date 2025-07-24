@@ -63,7 +63,7 @@ and other special float),
 /* IsfiniteFunctor */
 template <typename DeviceContext, typename T, typename Enable = void>
 struct IsfiniteFunctor {
-  void operator()(const DeviceContext& ctx,
+  void operator()(const DeviceContext& dev_ctx,
                   const DenseTensor& in,
                   DenseTensor* output);
 };
@@ -74,10 +74,10 @@ struct IsfiniteFunctor<
     T,
     typename std::enable_if<!std::is_floating_point<T>::value &&
                             !is_complex64_or_complex128<T>::value>::type> {
-  void operator()(const phi::CPUContext& ctx,
+  void operator()(const phi::CPUContext& dev_ctx,
                   const DenseTensor& in,
                   DenseTensor* output) {
-    auto* out_data = ctx.template Alloc<bool>(output);
+    auto* out_data = dev_ctx.template Alloc<bool>(output);
     int64_t num = in.numel();
     for (int64_t i = 0; i < num; i++) {
       out_data[i] = true;
@@ -90,11 +90,11 @@ struct IsfiniteFunctor<
     phi::CPUContext,
     T,
     typename std::enable_if<is_float_or_double<T>::value>::type> {
-  void operator()(const phi::CPUContext& ctx,
+  void operator()(const phi::CPUContext& dev_ctx,
                   const DenseTensor& in,
                   DenseTensor* output) {
     auto* in_a = in.data<T>();
-    auto* out_data = ctx.template Alloc<bool>(output);
+    auto* out_data = dev_ctx.template Alloc<bool>(output);
     int64_t num = in.numel();
     for (int64_t i = 0; i < num; i++) {
       const T& a = in_a[i];
@@ -108,11 +108,11 @@ struct IsfiniteFunctor<
     phi::CPUContext,
     T,
     typename std::enable_if<is_other_float<T>::value>::type> {
-  void operator()(const phi::CPUContext& ctx,
+  void operator()(const phi::CPUContext& dev_ctx,
                   const DenseTensor& in,
                   DenseTensor* output) {
     auto* in_a = in.data<T>();
-    auto* out_data = ctx.template Alloc<bool>(output);
+    auto* out_data = dev_ctx.template Alloc<bool>(output);
     int64_t num = in.numel();
     for (int64_t i = 0; i < num; i++) {
       const T& a = in_a[i];
@@ -126,11 +126,11 @@ struct IsfiniteFunctor<
     phi::CPUContext,
     T,
     typename std::enable_if<is_complex64_or_complex128<T>::value>::type> {
-  void operator()(const phi::CPUContext& ctx,
+  void operator()(const phi::CPUContext& dev_ctx,
                   const DenseTensor& in,
                   DenseTensor* output) {
     auto* in_a = in.data<T>();
-    auto* out_data = ctx.template Alloc<bool>(output);
+    auto* out_data = dev_ctx.template Alloc<bool>(output);
     int64_t num = in.numel();
     for (int64_t i = 0; i < num; i++) {
       const T& a = in_a[i];
@@ -142,7 +142,7 @@ struct IsfiniteFunctor<
 /* IsnanFunctor */
 template <typename DeviceContext, typename T, typename Enable = void>
 struct IsnanFunctor {
-  void operator()(const DeviceContext& ctx,
+  void operator()(const DeviceContext& dev_ctx,
                   const DenseTensor& in,
                   DenseTensor* output);
 };
@@ -153,10 +153,10 @@ struct IsnanFunctor<
     T,
     typename std::enable_if<!std::is_floating_point<T>::value &&
                             !is_complex64_or_complex128<T>::value>::type> {
-  void operator()(const phi::CPUContext& ctx,
+  void operator()(const phi::CPUContext& dev_ctx,
                   const DenseTensor& in,
                   DenseTensor* output) {
-    auto* out_data = ctx.template Alloc<bool>(output);
+    auto* out_data = dev_ctx.template Alloc<bool>(output);
     int64_t num = in.numel();
     for (int64_t i = 0; i < num; i++) {
       out_data[i] = false;
@@ -169,11 +169,11 @@ struct IsnanFunctor<
     phi::CPUContext,
     T,
     typename std::enable_if<is_float_or_double<T>::value>::type> {
-  void operator()(const phi::CPUContext& ctx,
+  void operator()(const phi::CPUContext& dev_ctx,
                   const DenseTensor& in,
                   DenseTensor* output) {
     auto* in_a = in.data<T>();
-    auto* out_data = ctx.template Alloc<bool>(output);
+    auto* out_data = dev_ctx.template Alloc<bool>(output);
     int64_t num = in.numel();
     for (int64_t i = 0; i < num; i++) {
       const T& a = in_a[i];
@@ -186,11 +186,11 @@ template <typename T>
 struct IsnanFunctor<phi::CPUContext,
                     T,
                     typename std::enable_if<is_other_float<T>::value>::type> {
-  void operator()(const phi::CPUContext& ctx,
+  void operator()(const phi::CPUContext& dev_ctx,
                   const DenseTensor& in,
                   DenseTensor* output) {
     auto* in_a = in.data<T>();
-    auto* out_data = ctx.template Alloc<bool>(output);
+    auto* out_data = dev_ctx.template Alloc<bool>(output);
     int64_t num = in.numel();
     for (int64_t i = 0; i < num; i++) {
       const T& a = in_a[i];
@@ -204,11 +204,11 @@ struct IsnanFunctor<
     phi::CPUContext,
     T,
     typename std::enable_if<is_complex64_or_complex128<T>::value>::type> {
-  void operator()(const phi::CPUContext& ctx,
+  void operator()(const phi::CPUContext& dev_ctx,
                   const DenseTensor& in,
                   DenseTensor* output) {
     auto* in_a = in.data<T>();
-    auto* out_data = ctx.template Alloc<bool>(output);
+    auto* out_data = dev_ctx.template Alloc<bool>(output);
     int64_t num = in.numel();
     for (int64_t i = 0; i < num; i++) {
       const T& a = in_a[i];
@@ -220,7 +220,7 @@ struct IsnanFunctor<
 /* IsinfFunctor */
 template <typename DeviceContext, typename T, typename Enable = void>
 struct IsinfFunctor {
-  void operator()(const DeviceContext& ctx,
+  void operator()(const DeviceContext& dev_ctx,
                   const DenseTensor& in,
                   DenseTensor* output);
 };
@@ -231,10 +231,10 @@ struct IsinfFunctor<
     T,
     typename std::enable_if<!std::is_floating_point<T>::value &&
                             !is_complex64_or_complex128<T>::value>::type> {
-  void operator()(const phi::CPUContext& ctx,
+  void operator()(const phi::CPUContext& dev_ctx,
                   const DenseTensor& in,
                   DenseTensor* output) {
-    auto* out_data = ctx.template Alloc<bool>(output);
+    auto* out_data = dev_ctx.template Alloc<bool>(output);
     auto num = in.numel();
     for (int64_t i = 0; i < num; i++) {
       out_data[i] = false;
@@ -247,11 +247,11 @@ struct IsinfFunctor<
     phi::CPUContext,
     T,
     typename std::enable_if<is_float_or_double<T>::value>::type> {
-  void operator()(const phi::CPUContext& ctx,
+  void operator()(const phi::CPUContext& dev_ctx,
                   const DenseTensor& in,
                   DenseTensor* output) {
     auto* in_a = in.data<T>();
-    auto* out_data = ctx.template Alloc<bool>(output);
+    auto* out_data = dev_ctx.template Alloc<bool>(output);
     int64_t num = in.numel();
     for (int64_t i = 0; i < num; i++) {
       const T& a = in_a[i];
@@ -264,11 +264,11 @@ template <typename T>
 struct IsinfFunctor<phi::CPUContext,
                     T,
                     typename std::enable_if<is_other_float<T>::value>::type> {
-  void operator()(const phi::CPUContext& ctx,
+  void operator()(const phi::CPUContext& dev_ctx,
                   const DenseTensor& in,
                   DenseTensor* output) {
     auto* in_a = in.data<T>();
-    auto* out_data = ctx.template Alloc<bool>(output);
+    auto* out_data = dev_ctx.template Alloc<bool>(output);
     int64_t num = in.numel();
     for (int64_t i = 0; i < num; i++) {
       const T& a = in_a[i];
@@ -282,11 +282,11 @@ struct IsinfFunctor<
     phi::CPUContext,
     T,
     typename std::enable_if<is_complex64_or_complex128<T>::value>::type> {
-  void operator()(const phi::CPUContext& ctx,
+  void operator()(const phi::CPUContext& dev_ctx,
                   const DenseTensor& in,
                   DenseTensor* output) {
     auto* in_a = in.data<T>();
-    auto* out_data = ctx.template Alloc<bool>(output);
+    auto* out_data = dev_ctx.template Alloc<bool>(output);
     int64_t num = in.numel();
     for (int64_t i = 0; i < num; i++) {
       const T& a = in_a[i];

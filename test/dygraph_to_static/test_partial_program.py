@@ -207,7 +207,6 @@ class TestWithNoGrad(Dy2StTestBase):
         with paddle.no_grad():
             linear_net.train()
             linear_net(x)
-            # BUG: 我们希望这里 是 ASTStaticFunction(StaticFunction):
             _, partial_layer = linear_net.forward.program_cache.last()[-1]
             self.assertEqual(
                 partial_layer.program, partial_layer._train_program
@@ -224,7 +223,6 @@ class TestWithNoGrad(Dy2StTestBase):
         with paddle.no_grad():
             linear_net.train()
             linear_net(x)
-            # BUG: 我们希望这里 是 ASTStaticFunction(StaticFunction):
             _, partial_layer = linear_net.forward.program_cache.last()[-1]
             self.assertEqual(partial_layer.program, partial_layer.train_program)
 

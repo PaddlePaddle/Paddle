@@ -71,12 +71,12 @@ struct Atan2Functor<double> {
 };
 
 template <typename T, typename Context>
-void Atan2Kernel(const Context& ctx,
+void Atan2Kernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const DenseTensor& y,
                  DenseTensor* out) {
   if (x.numel() == 0 || y.numel() == 0) {
-    ctx.template Alloc<typename Atan2Out<T>::type>(out);
+    dev_ctx.template Alloc<typename Atan2Out<T>::type>(out);
     return;
   }
 
@@ -84,8 +84,8 @@ void Atan2Kernel(const Context& ctx,
   const auto* x_data = x.data<T>();
   const auto* y_data = y.data<T>();
 
-  auto* out_data = ctx.template Alloc<typename Atan2Out<T>::type>(out);
-  phi::funcs::ForRange<Context> for_range(ctx, numel);
+  auto* out_data = dev_ctx.template Alloc<typename Atan2Out<T>::type>(out);
+  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
   phi::Atan2Functor<T> functor(x_data, y_data, out_data, numel);
   for_range(functor);
 }

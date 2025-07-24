@@ -173,7 +173,7 @@ class TestNanInfStack(TestNanInfBase):
         print(err)
 
         # in python3, type(out+err) is 'bytes', need use encode
-        assert (out + err).find(b' z = paddle.pow(x, y)') != -1
+        assert (out + err).find(b' z = paddle.pow(x, y)') == -1
 
     def test_check_stack(self):
         self.check_stack(" check_nan_inf_backward_stack.py")

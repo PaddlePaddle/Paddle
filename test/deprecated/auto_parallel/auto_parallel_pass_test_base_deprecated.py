@@ -83,20 +83,22 @@ class AutoParallelPassTestBase(DistPassTestBase):
             self.apply_passes()
         else:
             self.apply_no_passes()
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
+        with (
+            paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ),
+            paddle.static.scope_guard(scope),
+            paddle.base.unique_name.guard(),
         ):
-            with paddle.static.scope_guard(scope):
-                with paddle.base.unique_name.guard():
-                    (
-                        main_prog,
-                        startup_prog,
-                        inputs,
-                        outputs,
-                        data_loader,
-                    ) = self.get_model(place, **kwargs)
-                    inputs = self._to_var_names(inputs)
-                    outputs = self._to_var_names(outputs)
+            (
+                main_prog,
+                startup_prog,
+                inputs,
+                outputs,
+                data_loader,
+            ) = self.get_model(place, **kwargs)
+            inputs = self._to_var_names(inputs)
+            outputs = self._to_var_names(outputs)
 
         all_fetch_values = []
         exe = paddle.static.Executor(place)

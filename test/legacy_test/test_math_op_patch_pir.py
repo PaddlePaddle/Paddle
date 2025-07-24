@@ -246,41 +246,41 @@ class TestMathOpPatchesPir(unittest.TestCase):
                 with self.assertRaises(TypeError):
                     x_np ^ y_tensor
 
-        with static_guard():
-            with paddle.pir_utils.IrGuard():
-                main_program, exe, program_guard = new_program()
-                with program_guard:
-                    x_int = 5
-                    y_np = np.random.randint(-100, 100, [2, 3, 5]).astype(
-                        "int32"
-                    )
-                    y = paddle.static.data("y", y_np.shape, dtype=y_np.dtype)
-                    z = x_int ^ y
-                    out = exe.run(
-                        main_program,
-                        feed={'y': y_np},
-                        fetch_list=[z],
-                    )
-                    out_ref = x_int ^ y_np
-                    np.testing.assert_array_equal(out[0], out_ref)
-                    x_bool = True
-                    res_rxor_bool = x_bool ^ y
-                    out_bool = exe.run(
-                        main_program,
-                        feed={'y': y_np},
-                        fetch_list=[res_rxor_bool],
-                    )
-                    res_py_bool = x_bool ^ y_np
-                    np.testing.assert_array_equal(out_bool[0], res_py_bool)
+        with (
+            static_guard(),
+            paddle.pir_utils.IrGuard(),
+        ):
+            main_program, exe, program_guard = new_program()
+            with program_guard:
+                x_int = 5
+                y_np = np.random.randint(-100, 100, [2, 3, 5]).astype("int32")
+                y = paddle.static.data("y", y_np.shape, dtype=y_np.dtype)
+                z = x_int ^ y
+                out = exe.run(
+                    main_program,
+                    feed={'y': y_np},
+                    fetch_list=[z],
+                )
+                out_ref = x_int ^ y_np
+                np.testing.assert_array_equal(out[0], out_ref)
+                x_bool = True
+                res_rxor_bool = x_bool ^ y
+                out_bool = exe.run(
+                    main_program,
+                    feed={'y': y_np},
+                    fetch_list=[res_rxor_bool],
+                )
+                res_py_bool = x_bool ^ y_np
+                np.testing.assert_array_equal(out_bool[0], res_py_bool)
 
-                    for x_invalid in (
-                        np.float32(5.0),
-                        np.float64(5.0),
-                        np.complex64(5),
-                        np.complex128(5.0 + 2j),
-                    ):
-                        with self.assertRaises(TypeError):
-                            x_invalid ^ y
+                for x_invalid in (
+                    np.float32(5.0),
+                    np.float64(5.0),
+                    np.complex64(5),
+                    np.complex128(5.0 + 2j),
+                ):
+                    with self.assertRaises(TypeError):
+                        x_invalid ^ y
 
     def test_bitwise_or(self):
         paddle.disable_static()
@@ -330,41 +330,41 @@ class TestMathOpPatchesPir(unittest.TestCase):
                 with self.assertRaises(TypeError):
                     x_np | y_tensor
 
-        with static_guard():
-            with paddle.pir_utils.IrGuard():
-                main_program, exe, program_guard = new_program()
-                with program_guard:
-                    x_int = 5
-                    y_np = np.random.randint(-100, 100, [2, 3, 5]).astype(
-                        "int32"
-                    )
-                    y = paddle.static.data("y", y_np.shape, dtype=y_np.dtype)
-                    z = x_int | y
-                    out = exe.run(
-                        main_program,
-                        feed={'y': y_np},
-                        fetch_list=[z],
-                    )
-                    out_ref = x_int | y_np
-                    np.testing.assert_array_equal(out[0], out_ref)
-                    x_bool = True
-                    res_ror_bool = x_bool | y
-                    out_bool = exe.run(
-                        main_program,
-                        feed={'y': y_np},
-                        fetch_list=[res_ror_bool],
-                    )
-                    res_py_bool = x_bool | y_np
-                    np.testing.assert_array_equal(out_bool[0], res_py_bool)
+        with (
+            static_guard(),
+            paddle.pir_utils.IrGuard(),
+        ):
+            main_program, exe, program_guard = new_program()
+            with program_guard:
+                x_int = 5
+                y_np = np.random.randint(-100, 100, [2, 3, 5]).astype("int32")
+                y = paddle.static.data("y", y_np.shape, dtype=y_np.dtype)
+                z = x_int | y
+                out = exe.run(
+                    main_program,
+                    feed={'y': y_np},
+                    fetch_list=[z],
+                )
+                out_ref = x_int | y_np
+                np.testing.assert_array_equal(out[0], out_ref)
+                x_bool = True
+                res_ror_bool = x_bool | y
+                out_bool = exe.run(
+                    main_program,
+                    feed={'y': y_np},
+                    fetch_list=[res_ror_bool],
+                )
+                res_py_bool = x_bool | y_np
+                np.testing.assert_array_equal(out_bool[0], res_py_bool)
 
-                    for x_invalid in (
-                        np.float32(5.0),
-                        np.float64(5.0),
-                        np.complex64(5),
-                        np.complex128(5.0 + 2j),
-                    ):
-                        with self.assertRaises(TypeError):
-                            x_invalid | y
+                for x_invalid in (
+                    np.float32(5.0),
+                    np.float64(5.0),
+                    np.complex64(5),
+                    np.complex128(5.0 + 2j),
+                ):
+                    with self.assertRaises(TypeError):
+                        x_invalid | y
 
     def test_bitwise_and(self):
         paddle.disable_static()

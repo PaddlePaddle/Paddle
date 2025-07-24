@@ -26,7 +26,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void HSigmoidLossKernel(const Context& ctx,
+void HSigmoidLossKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& label,
                         const DenseTensor& w,
@@ -52,14 +52,14 @@ void HSigmoidLossKernel(const Context& ctx,
   int64_t batch_size = x.dims()[0];
   DenseTensor sum;
   pre_out->Resize(common::make_ddim({batch_size, code_length}));
-  ctx.template Alloc<T>(pre_out);
+  dev_ctx.template Alloc<T>(pre_out);
   auto* pre_out_data = pre_out->data<T>();
   auto pre_out_mat = EigenMatrix<T>::From(*pre_out);
   // Not all class(leaf) nodes' path lengths equal code_length, thus init as
   // 0s can avoid out of path's loss.
   funcs::SetConstant<Context, T> zero;
-  zero(ctx, pre_out, static_cast<T>(0.0));
-  auto& place = *ctx.eigen_device();
+  zero(dev_ctx, pre_out, static_cast<T>(0.0));
+  auto& place = *dev_ctx.eigen_device();
   funcs::RowwiseSum<Context, T> row_sum;
 
   std::unique_ptr<phi::funcs::MatrixBitCodeFunctor<T>> bit_code;
@@ -73,9 +73,9 @@ void HSigmoidLossKernel(const Context& ctx,
 
   std::vector<int64_t> sum_dims({batch_size, 1UL});
   sum.Resize(common::make_ddim(sum_dims));
-  ctx.template Alloc<T>(&sum);
+  dev_ctx.template Alloc<T>(&sum);
   auto sum_mat = EigenMatrix<T>::From(sum);
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   auto out_mat = EigenMatrix<T>::From(*out);
   if (bias.get_ptr()) {
     bit_code->Add(*(bias.get_ptr()), pre_out);
@@ -83,7 +83,7 @@ void HSigmoidLossKernel(const Context& ctx,
   bit_code->Mul(pre_out, w, x);
   // clip to [-40, 40]
   phi::Transform<Context> trans;
-  trans(ctx,
+  trans(dev_ctx,
         pre_out_data,
         pre_out_data + pre_out->numel(),
         pre_out_data,
@@ -91,7 +91,7 @@ void HSigmoidLossKernel(const Context& ctx,
   bit_code->Sum(*pre_out, out, static_cast<T>(-1));
   // use softrelu to calculate cross entropy
   pre_out_mat.device(place) = (static_cast<T>(1.0) + pre_out_mat.exp()).log();
-  row_sum(ctx, *pre_out, &sum);
+  row_sum(dev_ctx, *pre_out, &sum);
   // TODO(guosheng): Subtract the out of path's loss, since not all
   // class(leaf) nodes' path lengths equal code_length. But it won't break the
   // gradient check since both have the out of path's loss and will cancel out

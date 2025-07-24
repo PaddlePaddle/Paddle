@@ -19,7 +19,7 @@
 
 namespace phi {
 template <typename T, typename Context>
-void PixelShuffleKernel(const Context& ctx,
+void PixelShuffleKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         int upscale_factor,
                         const std::string& data_format,
@@ -27,7 +27,7 @@ void PixelShuffleKernel(const Context& ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   const T* x_ptr = x.data<T>();
-  T* y_ptr = ctx.template Alloc<T>(out);
+  T* y_ptr = dev_ctx.template Alloc<T>(out);
   if (out && out->numel() == 0) {
     return;
   }
@@ -39,7 +39,7 @@ void PixelShuffleKernel(const Context& ctx,
   int64_t xh = x.dims()[is_nchw ? 2 : 1];
   int64_t xw = x.dims()[is_nchw ? 3 : 2];
 
-  int r = pixel_shuffle(ctx.x_context(),
+  int r = pixel_shuffle(dev_ctx.x_context(),
                         reinterpret_cast<const XPUType*>(x_ptr),
                         reinterpret_cast<XPUType*>(y_ptr),
                         n,

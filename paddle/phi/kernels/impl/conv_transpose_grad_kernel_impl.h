@@ -18,6 +18,7 @@
 #include "paddle/common/layout.h"
 #include "paddle/phi/kernels/conv_transpose_grad_kernel.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/im2col.h"
@@ -27,7 +28,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ConvTransposeGradRawKernel(const Context& ctx,
+void ConvTransposeGradRawKernel(const Context& dev_ctx,
                                 const DenseTensor& x,
                                 const DenseTensor& filter,
                                 const DenseTensor& dout,
@@ -45,6 +46,26 @@ void ConvTransposeGradRawKernel(const Context& ctx,
   DenseTensor filter_ = filter;
 
   if ((!dx) && (!dfilter)) {
+    return;
+  }
+
+  // 0-size
+  if (x.numel() == 0) {
+    if (dx) dev_ctx.template Alloc<T>(dx);
+    if (dfilter) {
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(dfilter->dims())),
+                            0,
+                            dfilter);
+    }
+    return;
+  }
+  if (filter.numel() == 0) {
+    if (dfilter) dev_ctx.template Alloc<T>(dfilter);
+    if (dx) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+    }
     return;
   }
 
@@ -128,11 +149,11 @@ void ConvTransposeGradRawKernel(const Context& ctx,
   // convolution transpose grad on x:
   // im2col + gemm (similar to conv-forward)
   // x need to compute gradient
-  auto blas = funcs::GetBlas<Context, T>(ctx);
+  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
   if (dx || dfilter) {
     DenseTensor col;
     col.Resize(col_shape);
-    ctx.template Alloc<T>(&col);
+    dev_ctx.template Alloc<T>(&col);
     // col_matrix shares the same piece of data with col,
     // but will be reshaped into a two-dimensional matrix shape
     // to call the matrix multiplication interface.
@@ -148,12 +169,12 @@ void ConvTransposeGradRawKernel(const Context& ctx,
     funcs::ConcatFunctor<Context, T> concat_functor;
 
     if (dx) {
-      ctx.template Alloc<T>(dx);
-      set_zero(ctx, dx, static_cast<T>(0));
+      dev_ctx.template Alloc<T>(dx);
+      set_zero(dev_ctx, dx, static_cast<T>(0));
     }
     if (dfilter) {  // dfilter_ size (i_c, o_c/g, k_h, k_w)
-      ctx.template Alloc<T>(dfilter);
-      set_zero(ctx, dfilter, static_cast<T>(0));
+      dev_ctx.template Alloc<T>(dfilter);
+      set_zero(dev_ctx, dfilter, static_cast<T>(0));
       dfilter_ = *dfilter;
       dfilter_.Resize(filter_matrix_shape);
     }
@@ -172,7 +193,7 @@ void ConvTransposeGradRawKernel(const Context& ctx,
         // channel_first
         // from (o_h, o_w, o_c) to (o_c * k_h * k_w, i_h * i_w) for
         // channel_last
-        im2col(ctx,
+        im2col(dev_ctx,
                dout_batch,
                dilations_,
                strides,
@@ -186,8 +207,13 @@ void ConvTransposeGradRawKernel(const Context& ctx,
         // i_w) for channel_first
         // from (o_d, o_h, o_w, o_c) to (i_d * i_h * i_w, o_c * k_d * k_h *
         // k_w) for channel_last
-        vol2col(
-            ctx, dout_batch, dilations_, strides, paddings_, &col, data_layout);
+        vol2col(dev_ctx,
+                dout_batch,
+                dilations_,
+                strides,
+                paddings_,
+                &col,
+                data_layout);
       }
       if (dx) {
         // batch with size (i_c, i_h, i_w) or (i_h, i_w, i_c)
@@ -227,8 +253,12 @@ void ConvTransposeGradRawKernel(const Context& ctx,
                         static_cast<T>(0.0));
           } else {
             DenseTensor dx_slice;
-            funcs::Slice<Context, T, 2>(
-                ctx, &dx_batch, &dx_slice, g * in_step, (g + 1) * in_step, 1);
+            funcs::Slice<Context, T, 2>(dev_ctx,
+                                        &dx_batch,
+                                        &dx_slice,
+                                        g * in_step,
+                                        (g + 1) * in_step,
+                                        1);
             blas.MatMul(col_matrix_slice,
                         true,
                         filter_slice,
@@ -247,7 +277,8 @@ void ConvTransposeGradRawKernel(const Context& ctx,
           }
         }
         if (data_layout == DataLayout::kNHWC) {
-          concat_functor(ctx, dx_batch_vec, static_cast<int>(D - 2), &dx_batch);
+          concat_functor(
+              dev_ctx, dx_batch_vec, static_cast<int>(D - 2), &dx_batch);
         }
       }
       if (dfilter) {
@@ -279,7 +310,7 @@ void ConvTransposeGradRawKernel(const Context& ctx,
                         static_cast<T>(1.0));
           } else {
             DenseTensor in_batch_slice;
-            funcs::Slice<Context, T, 2>(ctx,
+            funcs::Slice<Context, T, 2>(dev_ctx,
                                         &in_batch,
                                         &in_batch_slice,
                                         g * in_step,
@@ -300,7 +331,7 @@ void ConvTransposeGradRawKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void Conv2dTransposeGradKernel(const Context& ctx,
+void Conv2dTransposeGradKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& filter,
                                const DenseTensor& dout,
@@ -314,7 +345,7 @@ void Conv2dTransposeGradKernel(const Context& ctx,
                                const std::string& data_format,
                                DenseTensor* dx,
                                DenseTensor* dfilter) {
-  ConvTransposeGradRawKernel<T, Context>(ctx,
+  ConvTransposeGradRawKernel<T, Context>(dev_ctx,
                                          x,
                                          filter,
                                          dout,
@@ -329,7 +360,7 @@ void Conv2dTransposeGradKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void Conv3dTransposeGradKernel(const Context& ctx,
+void Conv3dTransposeGradKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& filter,
                                const DenseTensor& dout,
@@ -343,7 +374,7 @@ void Conv3dTransposeGradKernel(const Context& ctx,
                                const std::string& data_format,
                                DenseTensor* dx,
                                DenseTensor* dfilter) {
-  ConvTransposeGradRawKernel<T, Context>(ctx,
+  ConvTransposeGradRawKernel<T, Context>(dev_ctx,
                                          x,
                                          filter,
                                          dout,

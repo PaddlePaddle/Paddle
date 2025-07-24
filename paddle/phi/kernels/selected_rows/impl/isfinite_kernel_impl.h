@@ -19,16 +19,16 @@
 
 namespace phi {
 
-#define DEFINE_ISFINITE_SR(isfinite)                                  \
-  template <typename T, typename Context>                             \
-  void isfinite##SR(                                                  \
-      const Context& ctx, const SelectedRows& x, SelectedRows* out) { \
-    if (out && out->numel() == 0) {                                   \
-      ctx.template Alloc<bool>(out);                                  \
-      return;                                                         \
-    }                                                                 \
-    ctx.template Alloc<bool>(out);                                    \
-    Isinf##Kernel<T, Context>(ctx, x.value(), out->mutable_value());  \
+#define DEFINE_ISFINITE_SR(isfinite)                                      \
+  template <typename T, typename Context>                                 \
+  void isfinite##SR(                                                      \
+      const Context& dev_ctx, const SelectedRows& x, SelectedRows* out) { \
+    if (out && out->numel() == 0) {                                       \
+      dev_ctx.template Alloc<bool>(out);                                  \
+      return;                                                             \
+    }                                                                     \
+    dev_ctx.template Alloc<bool>(out);                                    \
+    Isinf##Kernel<T, Context>(dev_ctx, x.value(), out->mutable_value());  \
   }
 
 DEFINE_ISFINITE_SR(Isinf)

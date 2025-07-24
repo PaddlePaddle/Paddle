@@ -65,26 +65,26 @@ class EntryAttrChecks(unittest.TestCase):
         prog = base.Program()
         scope = base.core.Scope()
 
-        with base.scope_guard(scope):
-            with base.program_guard(prog):
-                input = paddle.static.data(
-                    name="dnn_data", shape=[-1, 1], dtype="int64"
-                )
-                prob = ProbabilityEntry(0.5)
-                emb = paddle.static.nn.sparse_embedding(
-                    input=input,
-                    size=[100, 10],
-                    is_test=False,
-                    entry=prob,
-                    param_attr=base.ParamAttr(name="deep_embedding"),
-                )
+        with (
+            base.scope_guard(scope),
+            base.program_guard(prog),
+        ):
+            input = paddle.static.data(
+                name="dnn_data", shape=[-1, 1], dtype="int64"
+            )
+            prob = ProbabilityEntry(0.5)
+            emb = paddle.static.nn.sparse_embedding(
+                input=input,
+                size=[100, 10],
+                is_test=False,
+                entry=prob,
+                param_attr=base.ParamAttr(name="deep_embedding"),
+            )
 
-                pool = paddle.static.nn.sequence_lod.sequence_pool(
-                    input=emb, pool_type="sum"
-                )
-                predict = paddle.static.nn.fc(
-                    x=pool, size=2, activation='softmax'
-                )
+            pool = paddle.static.nn.sequence_lod.sequence_pool(
+                input=emb, pool_type="sum"
+            )
+            predict = paddle.static.nn.fc(x=pool, size=2, activation='softmax')
 
         block = prog.global_block()
         for op in block.ops:

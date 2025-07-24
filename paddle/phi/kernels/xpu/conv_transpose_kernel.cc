@@ -19,6 +19,7 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/xpu/conv_utils_xpu.h"
 #include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
 #ifdef PADDLE_WITH_XPU_XRE5
@@ -28,7 +29,7 @@ namespace xpudnn = baidu::xpu::xpudnn;
 namespace phi {
 
 template <typename T, typename Context>
-void Conv2dTransposeKernel(const Context& ctx,
+void Conv2dTransposeKernel(const Context& dev_ctx,
                            const DenseTensor& x,
                            const DenseTensor& filter,
                            const std::vector<int>& strides,
@@ -41,8 +42,12 @@ void Conv2dTransposeKernel(const Context& ctx,
                            const std::string& data_format,
                            DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-
-  ctx.template Alloc<T>(out);
+  if (x.numel() == 0 || filter.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    return;
+  }
+  dev_ctx.template Alloc<T>(out);
 
   PADDLE_ENFORCE_EQ(
       data_format == "NHWC" || data_format == "NDHWC",
@@ -77,7 +82,7 @@ void Conv2dTransposeKernel(const Context& ctx,
   int fc_calc_type = FCCalcType<XPUType>();
   if (fc_calc_type == XPUFCCalcType::FC_INT32) {
     int r = xpudnn::conv2d_transpose_fusion_v2<float, float, float, int32_t>(
-        ctx.x_context(),
+        dev_ctx.x_context(),
         x.data<float>(),
         filter.data<float>(),
         out->data<float>(),
@@ -101,7 +106,7 @@ void Conv2dTransposeKernel(const Context& ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_fusion_v2");
   } else if (fc_calc_type == XPUFCCalcType::FC_FLOAT) {
     int r = xpudnn::conv2d_transpose_fusion_v2<float, float, float, float>(
-        ctx.x_context(),
+        dev_ctx.x_context(),
         x.data<float>(),
         filter.data<float>(),
         out->data<float>(),
@@ -129,7 +134,7 @@ void Conv2dTransposeKernel(const Context& ctx,
                  "is specified, "
               << "use int31 instead";
       int r = xpudnn::conv2d_transpose_fusion_v2<float, float, float, int32_t>(
-          ctx.x_context(),
+          dev_ctx.x_context(),
           x.data<float>(),
           filter.data<float>(),
           out->data<float>(),
@@ -158,7 +163,7 @@ void Conv2dTransposeKernel(const Context& ctx,
       int64_t img_yw = static_cast<int64_t>(x.dims()[3]);
       int r = xpudnn::
           conv2d_transpose_fusion_v2<float, float, float, int_with_ll_t>(
-              ctx.x_context(),
+              dev_ctx.x_context(),
               x.data<float>(),
               filter.data<float>(),
               out->data<float>(),
@@ -184,7 +189,7 @@ void Conv2dTransposeKernel(const Context& ctx,
   } else {
     int r =
         xpudnn::conv2d_transpose_fusion_v2<XPUType, XPUType, XPUType, int16_t>(
-            ctx.x_context(),
+            dev_ctx.x_context(),
             reinterpret_cast<const XPUType*>(x.data<T>()),
             reinterpret_cast<const XPUType*>(filter.data<T>()),
             reinterpret_cast<XPUType*>(out->data<T>()),
@@ -231,7 +236,7 @@ void Conv2dTransposeKernel(const Context& ctx,
   int fc_calc_type = FCCalcType<XPUType>();
   if (fc_calc_type == XPUFCCalcType::FC_INT32) {
     int r = xpu::conv2d_transpose_v2<float, float, float, int32_t>(
-        ctx.x_context(),
+        dev_ctx.x_context(),
         x.data<float>(),
         filter.data<float>(),
         out->data<float>(),
@@ -252,7 +257,7 @@ void Conv2dTransposeKernel(const Context& ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_v2");
   } else if (fc_calc_type == XPUFCCalcType::FC_FLOAT) {
     int r = xpu::conv2d_transpose_v2<float, float, float, float>(
-        ctx.x_context(),
+        dev_ctx.x_context(),
         x.data<float>(),
         filter.data<float>(),
         out->data<float>(),
@@ -277,7 +282,7 @@ void Conv2dTransposeKernel(const Context& ctx,
                  "is specified, "
               << "use int31 instead";
       int r = xpu::conv2d_transpose_v2<float, float, float, int32_t>(
-          ctx.x_context(),
+          dev_ctx.x_context(),
           x.data<float>(),
           filter.data<float>(),
           out->data<float>(),
@@ -302,7 +307,7 @@ void Conv2dTransposeKernel(const Context& ctx,
       int64_t img_yh = x.dims()[2];
       int64_t img_yw = x.dims()[3];
       int r = xpu::conv2d_transpose<float, float, float, int_with_ll_t>(
-          ctx.x_context(),
+          dev_ctx.x_context(),
           x.data<float>(),
           filter.data<float>(),
           out->data<float>(),
@@ -324,7 +329,7 @@ void Conv2dTransposeKernel(const Context& ctx,
     }
   } else {
     int r = xpu::conv2d_transpose_v2<XPUType, XPUType, XPUType, int16_t>(
-        ctx.x_context(),
+        dev_ctx.x_context(),
         reinterpret_cast<const XPUType*>(x.data<T>()),
         reinterpret_cast<const XPUType*>(filter.data<T>()),
         reinterpret_cast<XPUType*>(out->data<T>()),
@@ -477,7 +482,7 @@ void Conv3dTransposeKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void DepthwiseConv2dTransposeKernel(const Context& ctx,
+void DepthwiseConv2dTransposeKernel(const Context& dev_ctx,
                                     const DenseTensor& x,
                                     const DenseTensor& filter,
                                     const std::vector<int>& strides,
@@ -489,7 +494,7 @@ void DepthwiseConv2dTransposeKernel(const Context& ctx,
                                     const std::vector<int>& dilations,
                                     const std::string& data_format,
                                     DenseTensor* out) {
-  Conv2dTransposeKernel<T, Context>(ctx,
+  Conv2dTransposeKernel<T, Context>(dev_ctx,
                                     x,
                                     filter,
                                     strides,

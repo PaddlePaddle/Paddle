@@ -191,16 +191,16 @@ void SetValueImpl(const Context& dev_ctx,
   // If do broadcasting on Tensor with shape [3] and [3], the result's shape
   // is [3], which is right.
 
-  CheckIsDimsMatch(slice_dims_for_assign, new_value_dims);
+  phi::funcs::CheckIsDimsMatch(slice_dims_for_assign, new_value_dims);
 
   // do broadcasting
-  auto f = [](xpu::Context* ctx,
+  auto f = [](xpu::Context* xpu_ctx,
               const XPUType* x,
               const XPUType* y, /*unused*/
               XPUType* z,
               const std::vector<int64_t>& xshape,
               const std::vector<int64_t>& zshape) {
-    return xpu::broadcast<XPUType>(ctx, x, z, xshape, zshape);
+    return xpu::broadcast<XPUType>(xpu_ctx, x, z, xshape, zshape);
   };
 
   XPUElementwise<T, XPUType>(dev_ctx,
@@ -367,6 +367,10 @@ void SetTensorValueKernel(const Context& dev_ctx,
                           const std::vector<int64_t>& decrease_axes,
                           const std::vector<int64_t>& none_axes,
                           DenseTensor* out) {
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   SetValueKernelImpl<T, Context>(dev_ctx,
                                  x,
                                  value.data<T>(),

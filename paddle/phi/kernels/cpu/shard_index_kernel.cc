@@ -37,7 +37,7 @@ void ShardIndexKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_GT(
       nshards,
       0,
-      errors::InvalidArgument("The value 'nshard' for Op(shard_index) must be "
+      errors::InvalidArgument("The value 'nshards' for Op(shard_index) must be "
                               "greater than 0, but the value given is %d.",
                               nshards));
   PADDLE_ENFORCE_GE(

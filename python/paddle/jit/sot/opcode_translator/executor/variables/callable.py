@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import dis
 import functools
 import inspect
@@ -22,6 +23,7 @@ import operator
 import random
 import sys
 import types
+from dataclasses import fields
 from functools import partial, reduce
 from typing import (
     TYPE_CHECKING,
@@ -30,7 +32,14 @@ from typing import (
 )
 
 import paddle
-from paddle.base.dygraph.base import _DecoratorContextManager
+from paddle.base.dygraph.base import (
+    _DecoratorContextManager,
+    in_sot_simulation_mode,
+)
+from paddle.jit.dy2static.utils import (
+    TransformOptions,
+    is_plain_dataclass_type,
+)
 
 from .... import psdb
 from ....profiler import EventGuard
@@ -44,7 +53,6 @@ from ....utils import (
     get_obj_stable_repr,
     get_static_function,
     hashable,
-    is_break_graph_api,
     is_break_graph_tensor_methods,
     is_builtin_fn,
     is_directly_run_api,
@@ -59,19 +67,25 @@ from ....utils.exceptions import (
     BreakGraphError,
     BreakGraphInlineCallBreak,
     BuiltinFunctionBreak,
+    ConditionalFallbackError,
     DataDependencyOperationBreak,
     FallbackError,
     FallbackInlineCallBreak,
+    ForceBreak,
     InnerError,
     OtherInlineCallBreak,
     PsdbBreakReason,
     SotCapturedException,
     SotCapturedExceptionFactory,
+    SotCapturedStopIteration,
     SotErrorBase,
     UnsupportedNumPyAPIBreak,
     UnsupportedOperationBreak,
-    UnsupportedPaddleAPIBreak,
     UnsupportedRandomAPIBreak,
+)
+from ....utils.paddle_api_config import (
+    break_graph_functions,
+    break_graph_layer_classes,
 )
 from ..dispatcher import Dispatcher
 from ..guard import (
@@ -101,6 +115,7 @@ from .base import (
 )
 from .basic import (
     ConstantVariable,
+    DataClassInstanceVariable,
     NumPyNumberVariable,
     ObjectVariable,
     PrintStmtVariable,
@@ -144,6 +159,33 @@ class CallableVariable(VariableBase):
 
     def call_function(self, /, *args, **kwargs):
         raise NotImplementedError("call_function is not implemented.")
+
+
+class ForceBreakCallableVariable(CallableVariable):
+    def __init__(self, name: str, graph: FunctionGraph, tracker: Tracker):
+        super().__init__(graph, tracker)
+        self.name = name
+
+    def call_function(self, /, *args, **kwargs) -> VariableBase:
+        raise BreakGraphError(ForceBreak(reason_str=f"Force run {self.name}"))
+
+    def get_py_value(self, allow_tensor=False):
+        return self.value
+
+    @VariableFactory.register_from_value()
+    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        if (
+            isinstance(value, paddle.nn.Layer)
+            and value.__class__ in break_graph_layer_classes
+        ):
+            return ForceBreakCallableVariable(
+                f"Layer({value.__class__.__name__})", graph, tracker
+            )
+        elif hashable(value) and value in break_graph_functions:
+            return ForceBreakCallableVariable(
+                get_obj_stable_repr(value), graph, tracker
+            )
+        return None
 
 
 class FunctionVariable(CallableVariable):
@@ -247,7 +289,7 @@ class UserDefinedFunctionVariable(FunctionVariable):
                 f"Fallback by psdb.fallback (recursive={recursive_var.get_py_value()})",
                 disable_eval_frame=recursive_var.get_py_value(),
             )
-        elif self.value is psdb.in_sot:
+        elif self.value in {psdb.in_sot, in_sot_simulation_mode}:
             return ConstantVariable.wrap_literal(True, self.graph)
         return None
 
@@ -284,7 +326,11 @@ class UserDefinedFunctionVariable(FunctionVariable):
                 f"Inline Call: {inline_executor.vframe.code.co_name}, file {inline_executor.vframe.code.co_filename}, line {int(inline_executor.vframe.code.co_firstlineno)}"
             ):
                 output = inline_executor.inline_call()
-        except (SotCapturedException, InnerError) as e:
+        except (
+            SotCapturedException,
+            InnerError,
+            ConditionalFallbackError,
+        ) as e:
             raise e
         except SotErrorBase as error:
             self.graph.restore_memo(checkpoint)
@@ -364,10 +410,6 @@ class PaddleApiVariable(FunctionVariable):
         super().__init__(fn, graph, tracker)
 
     def call_function(self, /, *args, **kwargs):
-        if is_break_graph_api(self.value):
-            raise BreakGraphError(
-                UnsupportedPaddleAPIBreak(fn_name=self.value.__name__)
-            )
         return self.graph.call_paddle_api(self.value, *args, **kwargs)
 
     @VariableFactory.register_from_value(
@@ -478,14 +520,7 @@ class TensorFunctionVariable(FunctionVariable):
     def __init__(
         self, method_name: str, graph: FunctionGraph, tracker: Tracker
     ):
-        fn = getattr(
-            (
-                paddle.pir.Value
-                if paddle.framework.use_pir_api()
-                else paddle.static.Variable
-            ),
-            method_name,
-        )
+        fn = getattr(paddle.pir.Value, method_name)
         super().__init__(fn, graph, tracker)
         self.method_name = method_name
 
@@ -625,6 +660,47 @@ class LayerVariable(CallableVariable):
     ):
         super().__init__(graph, tracker)
         self.value = layer
+
+    def getattr(self, name: str, default=None):
+        # TODO(SigureMo): Use more common logic to handle this case,
+        # e.g. call Layer's __getattr__
+        layer = self.value
+        if (
+            '_parameters' in layer.__dict__
+            and name in layer.__dict__["_parameters"]
+        ):
+            return self.getattr("_parameters").getitem(
+                ConstantVariable.wrap_literal(name, self.graph)
+            )
+        if (
+            '_sub_layers' in layer.__dict__
+            and name in layer.__dict__["_sub_layers"]
+        ):
+            out = self.getattr("_sub_layers").getitem(
+                ConstantVariable.wrap_literal(name, self.graph)
+            )
+            return out
+        if '_buffers' in layer.__dict__ and name in layer.__dict__["_buffers"]:
+            return self.getattr("_buffers").getitem(
+                ConstantVariable.wrap_literal(name, self.graph)
+            )
+        return super().getattr(name, default)
+
+    def setattr(self, name: str, value):
+        layer = self.value
+        if (
+            '_parameters' in layer.__dict__
+            and name in layer.__dict__["_parameters"]
+        ):
+            return self.getattr("_parameters").setitem(name, value)
+        if (
+            '_sub_layers' in layer.__dict__
+            and name in layer.__dict__["_sub_layers"]
+        ):
+            return self.getattr("_sub_layers").setitem(name, value)
+        if '_buffers' in layer.__dict__ and name in layer.__dict__["_buffers"]:
+            return self.getattr("_buffers").setitem(name, value)
+        return super().setattr(name, value)
 
     def get_py_value(self, allow_tensor=False):
         return self.value
@@ -829,7 +905,11 @@ class PaddleLayerVariable(LayerVariable):
                 or is_not_supported_paddle_layer(type(value))
             ):
                 return None
-            if value.__module__.startswith("paddle.nn."):
+            if value.__module__.startswith("paddle.nn.") or (
+                not TransformOptions.check_fn_need_transform(
+                    value.__class__, TransformOptions.ToStaticMode.SOT
+                )
+            ):
                 return PaddleLayerVariable(value, graph, tracker)
         return None
 
@@ -886,6 +966,11 @@ class BuiltinVariable(FunctionVariable):
         if handler is not None:
             try:
                 return handler(*args, **kwargs)
+            except SotCapturedStopIteration:
+                # Although SotCapturedStopIteration is a subclass of SotErrorBase,
+                # this exception is handled separately because StopIteration is essential for generator operation.
+                # Explicitly separating this branch clarifies its role and makes debugging easier.
+                raise
             except SotErrorBase as e:
                 # NOTE: BuiltinVariable.call_function cat not raise SotCapturedException,
                 # so we can directly raise SotErrorBase.
@@ -1218,6 +1303,61 @@ class PureClassVariable(ClassVariable):
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if inspect.isclass(value) and value in PD_PURE_CLASSES:
             return PureClassVariable(value, graph, tracker)
+        return None
+
+
+class DataClassVariable(ClassVariable):
+    def __init__(
+        self, class_: type[Any], graph: FunctionGraph, tracker: Tracker
+    ):
+        super().__init__(class_, graph, tracker)
+
+    def call_function(self, /, *args, **kwargs):
+        signature = DataClassVariable.create_dataclass_init_signature(
+            self.value
+        )
+        bound_args = signature.bind(*args, **kwargs)
+        bound_args.apply_defaults()
+
+        instance = DataClassInstanceVariable(
+            bound_args.arguments,
+            self,
+            None,
+            self.graph,
+            DummyTracker([*args, *kwargs.values()]),
+        )
+        if hasattr(self.value, "__post_init__"):
+            post_init = instance.getattr("__post_init__")
+            post_init()
+        return instance
+
+    @staticmethod
+    def create_dataclass_init_signature(
+        data_class: type[Any],
+    ) -> inspect.Signature:
+        parameters = []
+        for fd in fields(data_class):
+            if not isinstance(fd.default, dataclasses._MISSING_TYPE):
+                default = fd.default
+            elif not isinstance(fd.default_factory, dataclasses._MISSING_TYPE):
+                default = fd.default_factory()
+            else:
+                default = inspect.Parameter.empty
+            parameters.append(
+                inspect.Parameter(
+                    fd.name,
+                    inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                    default=default,
+                    annotation=fd.type,
+                )
+            )
+        return inspect.Signature(parameters=parameters, return_annotation=None)
+
+    @VariableFactory.register_from_value(successor="ClassVariable")
+    def from_value(value: object, graph: FunctionGraph, tracker: Tracker):
+        if is_plain_dataclass_type(value):
+            var = DataClassVariable(value, graph=graph, tracker=tracker)
+            return var
         return None
 
 

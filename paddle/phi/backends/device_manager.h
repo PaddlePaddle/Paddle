@@ -171,6 +171,9 @@ class DeviceManager {
 
   static size_t GetComputeCapability(const Place& place);
 
+  static phi::DeviceProp& GetDeviceProperties(const std::string& device_type,
+                                              size_t device_id);
+
   static size_t GetRuntimeVersion(const Place& place);
 
   static size_t GetDriverVersion(const Place& place);

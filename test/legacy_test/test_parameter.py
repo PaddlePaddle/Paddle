@@ -136,6 +136,19 @@ class ParameterChecks(unittest.TestCase):
             self.assertTrue(linear2.weight.is_leaf, True)
             self.assertTrue(linear2.bias.is_leaf, True)
 
+    def test_parambase_to_vector_zero(self):
+        with guard():
+            initializer = paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(3.0)
+            )
+            linear1 = paddle.nn.Linear(0, 15, initializer)
+
+            vec = paddle.nn.utils.parameters_to_vector(linear1.parameters())
+            self.assertEqual(linear1.weight.shape, [0, 15])
+            self.assertEqual(linear1.bias.shape, [15])
+            self.assertTrue(isinstance(vec, Variable))
+            self.assertEqual(vec.shape, [15])
+
 
 if __name__ == '__main__':
     unittest.main()

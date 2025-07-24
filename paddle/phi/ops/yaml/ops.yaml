@@ -273,6 +273,7 @@
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
+    spmd_rule : ReductionAnyInferSpmdDynamic
   kernel :
     func : any
   traits : paddle::dialect::ForwardOnlyTrait
@@ -588,7 +589,7 @@
 
 - op : bce_loss
   args : (Tensor input, Tensor label)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : BCELossInferMeta
   kernel :
@@ -1121,6 +1122,7 @@
   output : Tensor(out)
   infer_meta :
     func : Conv2dTransposeInferMeta
+    spmd_rule : Conv2dTransposeInferSpmd
   kernel :
     func : conv2d_transpose
     data_type : x
@@ -1144,6 +1146,7 @@
   output : Tensor
   infer_meta :
     func : Conv3DInferMeta
+    spmd_rule : Conv3dInferSpmd
   kernel :
     func : conv3d
     data_type : input
@@ -1417,6 +1420,7 @@
   output : Tensor(out)
   infer_meta :
     func : DepthwiseConvInferMeta
+    spmd_rule : DepthwiseConv2dInferSpmd
   kernel :
     func : depthwise_conv2d
     data_type : input
@@ -1719,6 +1723,7 @@
   infer_meta :
     func : CreateLikeInferMeta
     param : [x, dtype]
+    spmd_rule : EmptyLikeInferSpmd
   kernel :
     func : empty_like
     param : [x, dtype]
@@ -1806,6 +1811,7 @@
   infer_meta :
     func : ExpandAsInferMeta
     local_shape: out
+    spmd_rule : ExpandAsInferSpmd
   kernel :
     func : expand_as
     data_type : x
@@ -2473,6 +2479,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
+    spmd_rule : GeluInferSpmd
   kernel :
     func : gelu
   backward : gelu_grad
@@ -2555,6 +2562,7 @@
   output : Tensor(y), Tensor(mean), Tensor(variance)
   infer_meta :
     func : GroupNormInferMeta
+    spmd_rule : GroupNormInferSpmd
   kernel :
     func : group_norm
   optional : scale, bias
@@ -2793,8 +2801,18 @@
   backward : index_add_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
+- op : index_elementwise_get
+  args : (Tensor x, Tensor[] index, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_stride, int64_t slice_offset = 0, bool accumulate = true)
+  output : Tensor (out)
+  infer_meta :
+    func : IndexElementwiseGetInferMeta
+  kernel :
+    func : index_elementwise_get
+    data_type : x
+  backward : index_elementwise_get_grad
+
 - op : index_elementwise_put
-  args : (Tensor x, Tensor[] index, Tensor value, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides)
+  args : (Tensor x, Tensor[] index, Scalar value, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset)
   output : Tensor (out)
   infer_meta :
     func : IndexElementwisePutInferMeta
@@ -2805,11 +2823,24 @@
   backward : index_elementwise_put_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : index_elementwise_put_with_tensor
+  args : (Tensor x, Tensor[] index, Tensor value, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset)
+  output : Tensor (out)
+  infer_meta :
+    func : IndexElementwisePutWithTensorInferMeta
+  kernel :
+    func : index_elementwise_put_with_tensor
+    data_type : x
+  inplace : (x -> out)
+  backward : index_elementwise_put_with_tensor_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : index_put
   args : (Tensor x, Tensor[] indices, Tensor value, bool accumulate=false)
   output : Tensor(out)
   infer_meta :
     func : IndexPutInferMeta
+    spmd_rule : IndexPutInferSpmd
   kernel :
     func : index_put
     data_type : x
@@ -2835,6 +2866,7 @@
   output : Tensor(out)
   infer_meta :
     func : IndexSelectInferMeta
+    spmd_rule : IndexSelectInferSpmd
   kernel :
     func : index_select
     data_type : x
@@ -2859,6 +2891,7 @@
   output : Tensor(y), Tensor(saved_mean), Tensor(saved_variance)
   infer_meta :
     func : InstanceNormInferMeta
+    spmd_rule : InstanceNormInferSpmd
   kernel :
     func : instance_norm
     data_type : x
@@ -2955,7 +2988,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : kthvalue
-  args : (Tensor x, int k = 1, int axis = -1, bool keepdim = false)
+  args : (Tensor x, int64_t k = 1, int axis = -1, bool keepdim = false)
   output : Tensor(out), Tensor(indices)
   infer_meta :
     func : KthvalueInferMeta
@@ -2982,6 +3015,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [label]
+    spmd_rule : LabelSmoothInferSpmd
   kernel :
     func : label_smooth
     data_type : label
@@ -3660,6 +3694,16 @@
     data_type : x
   backward : moe_combine_grad
 
+- op : moe_combine_no_weight
+  args : (Tensor x, Tensor combine_weight, Tensor scatter_index, float epsilon = 1.0e-15)
+  output : Tensor(y)
+  infer_meta :
+    func : MoeCombineNoWeightInferMeta
+  kernel :
+    func : moe_combine_no_weight
+    data_type : x
+  backward : moe_combine_no_weight_grad
+
 - op : moe_gate_dispatch
   args : (Tensor x, Tensor gate_logits, Tensor corr_bias, int64_t k, int64_t capacity, bool use_pad)
   output : Tensor(y), Tensor(combine_weights), Tensor(scatter_index), Tensor(expert_offset), Tensor(expert_id)
@@ -3670,6 +3714,16 @@
     data_type : x
   optional : corr_bias
   backward : moe_gate_dispatch_grad
+
+- op : moe_gate_dispatch_and_quant
+  args : (Tensor x, Tensor gate_logits, Tensor corr_bias, int64_t k, int64_t capacity, bool use_pad, bool use_pow2_scale)
+  output : Tensor(out_fp8), Tensor(scale), Tensor(combine_weights), Tensor(scatter_index), Tensor(expert_offset), Tensor(expert_id)
+  infer_meta :
+    func : MoeGateDispatchAndQuantInferMeta
+  kernel :
+    func : moe_gate_dispatch_and_quant
+    data_type : x
+  optional : corr_bias
 
 - op : moe_gate_dispatch_partial_nosoftmaxtopk
   args : (Tensor x, Tensor combine_weights, Tensor expert_id, int64_t k, int64_t capacity, int64_t num_experts, bool use_pad, int64_t expert_start_index, int64_t expert_end_index, bool reverse_token_drop)
@@ -3692,6 +3746,25 @@
     data_type : x
   optional : corr_bias
   backward : moe_gate_dispatch_permute_grad
+
+- op : moe_permute
+  args : (Tensor hidden_states, Tensor scale, Tensor expert_routemap_topk, Tensor expert_prob_topk, int num_experts, int[] tokens_per_expert, int padding_alignment)
+  output : Tensor(hidden_states_unzipped), Tensor(zipped_expertwise_rowmap), Tensor(token_prob_unzipped), Tensor(scale_unzipped)
+  infer_meta:
+    func : MoePermuteInferMeta
+  kernel :
+    func : moe_permute
+    data_type : hidden_states
+  optional : scale
+
+- op : moe_unpermute
+  args : (Tensor hidden_states_unzipped, Tensor zipped_expertwise_rowmap, Tensor expert_routemap_topk, Tensor token_prob_unzipped, int total_zipped_tokens_num, int num_experts, bool use_mix_precision)
+  output : Tensor(hidden_states), Tensor(expert_prob_topk)
+  infer_meta :
+    func : MoeUnpermuteInferMeta
+  kernel :
+    func : moe_unpermute
+    data_type : hidden_states_unzipped
 
 - op : momentum_
   args : (Tensor param, Tensor grad, Tensor velocity, Tensor learning_rate, Tensor master_param, float mu, bool use_nesterov = false, str regularization_method = "", float regularization_coeff = 0.0f, bool multi_precision = false, float rescale_grad = 1.0f)
@@ -4408,6 +4481,18 @@
   backward : reverse_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
+- op : rint
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : rint
+  inplace : (x -> out)
+  backward : rint_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : rms_norm
   args : (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, float epsilon, int begin_norm_axis, float quant_scale, int quant_round_type, float quant_max_bound, float quant_min_bound)
   output : Tensor(out), Tensor(residual_out), Tensor(inv_var)
@@ -4455,6 +4540,7 @@
   output : Tensor
   infer_meta :
     func : RoiAlignInferMeta
+    spmd_rule : RoiAlignInferSpmd
   kernel :
     func : roi_align
     data_type : x
@@ -4480,6 +4566,7 @@
   output : Tensor(out)
   infer_meta :
     func : RollInferMeta
+    spmd_rule : RollInferSpmdDynamic
   kernel :
     func : roll
     data_type : x
@@ -5180,6 +5267,7 @@
   infer_meta :
     func : TakeAlongAxisInferMeta
     param : [arr, indices, axis]
+    spmd_rule : TakeAlongAxisInferSpmd
   kernel :
     func : take_along_axis
     data_type : arr
@@ -5762,6 +5850,24 @@
   optional: seq_length
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : paddle::dialect::ForwardOnlyTrait
+
+- op: fp8_gemm_blockwise_
+  args: (Tensor A, Tensor A_scale, Tensor B, Tensor B_scale, Tensor input_result, Tensor bias, Tensor pre_gelu, Tensor workspace, bool transa, bool transb, bool grad, bool accumulate, bool use_split_accumulator, int math_sm_count, bool is_A_1d_scaled, bool is_B_1d_scaled)
+  output: Tensor (output), Tensor (pre_gelu_out), Tensor (workspace_out)
+  inplace: (input_result -> output), (pre_gelu -> pre_gelu_out), (workspace -> workspace_out)
+  infer_meta:
+    func: Fp8GemmBlockwiseInferMeta
+  kernel:
+    func: fp8_gemm_blockwise
+
+- op: fp8_quant_blockwise
+  args: (Tensor x, float epsilon, bool using_1x128_vec_quant, bool input_transpose, bool output_scale_transpose, bool return_transpose_only, bool using_e5m2, bool using_pow2_scale)
+  output: Tensor(out), Tensor(scale), Tensor(out_transposed), Tensor(scale_transposed)
+  infer_meta:
+    func: Fp8QuantBlockwiseInferMeta
+  kernel:
+    func: fp8_quant_blockwise
+    data_type: x
 
 - op: fused_rms_norm_ext
   args: (Tensor x, Tensor scale, float epsilon)

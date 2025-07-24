@@ -1798,17 +1798,11 @@ AllocationPtr AllocatorFacade::Alloc(const phi::Place& place,
 bool AllocatorFacade::InSameStream(
     const std::shared_ptr<phi::Allocation>& allocation,
     const phi::Stream& stream) {
-#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
-    !defined(PADDLE_WITH_CUSTOM_DEVICE)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   gpuStream_t s = reinterpret_cast<gpuStream_t>(stream.id());  // NOLINT
   return s == GetStream(allocation);
-#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
-  phi::stream::stream_t s =
-      reinterpret_cast<phi::stream::stream_t>(stream.id());  // NOLINT
-  return s == GetStream(allocation);
 #else
-  PADDLE_THROW(common::errors::PreconditionNotMet(
-      "Not compiled with GPU or CUDA backend."));
+  PADDLE_THROW(common::errors::PreconditionNotMet("Not compiled with GPU."));
 #endif
 }
 

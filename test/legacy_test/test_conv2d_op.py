@@ -420,7 +420,7 @@ class TestConv2DOp(OpTest):
         self.use_cudnn = False
         self.exhaustive_search = False
         self.use_cuda = False
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.fuse_relu_before_depthwise_conv = False
         self.data_format = "AnyLayout"
         self.dtype = np.float64
@@ -483,7 +483,7 @@ class TestConv2DOp(OpTest):
             'groups': self.groups,
             'dilations': self.dilations,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_mkldnn,
+            'use_mkldnn': self.use_onednn,
             'data_format': self.data_format,
             'fuse_relu_before_depthwise_conv': self.fuse_relu_before_depthwise_conv,
             'exhaustive_search': self.exhaustive_search,
@@ -501,7 +501,7 @@ class TestConv2DOp(OpTest):
         self.check_output_with_place(
             place,
             atol=1e-5,
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
         )
 
@@ -517,7 +517,7 @@ class TestConv2DOp(OpTest):
             {'Input', 'Filter'},
             'Output',
             max_relative_error=0.02,
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
         )
 
@@ -534,7 +534,7 @@ class TestConv2DOp(OpTest):
             'Output',
             max_relative_error=0.02,
             no_grad_set={'Filter'},
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
         )
 
@@ -550,7 +550,7 @@ class TestConv2DOp(OpTest):
             ['Filter'],
             'Output',
             no_grad_set={'Input'},
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
         )
 
@@ -768,7 +768,7 @@ class TestConv2DOp_v2(OpTest):
         self.use_cudnn = False
         self.exhaustive_search = False
         self.use_cuda = False
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.fuse_relu_before_depthwise_conv = False
         self.dtype = np.float64
         self.init_kernel_type()
@@ -817,7 +817,7 @@ class TestConv2DOp_v2(OpTest):
             'groups': self.groups,
             'dilations': self.dilations,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_mkldnn,
+            'use_mkldnn': self.use_onednn,
             'data_format': self.data_format,
             'fuse_relu_before_depthwise_conv': self.fuse_relu_before_depthwise_conv,
             'exhaustive_search': self.exhaustive_search,
@@ -835,7 +835,7 @@ class TestConv2DOp_v2(OpTest):
         self.check_output_with_place(
             place,
             atol=1e-5,
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
         )
 
@@ -849,7 +849,7 @@ class TestConv2DOp_v2(OpTest):
             {'Input', 'Filter'},
             'Output',
             max_relative_error=0.02,
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
         )
 
@@ -864,7 +864,7 @@ class TestConv2DOp_v2(OpTest):
             'Output',
             max_relative_error=0.02,
             no_grad_set={'Filter'},
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
         )
 
@@ -878,7 +878,7 @@ class TestConv2DOp_v2(OpTest):
             ['Filter'],
             'Output',
             no_grad_set={'Input'},
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
         )
 

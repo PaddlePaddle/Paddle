@@ -22,20 +22,20 @@
 namespace phi {
 
 template <typename T, typename Context>
-void I0GradKernel(const Context& ctx,
+void I0GradKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const DenseTensor& out_grad,
                   DenseTensor* x_grad) {
   if (x_grad && x_grad->numel() == 0) {
-    ctx.template Alloc<T>(x_grad);
+    dev_ctx.template Alloc<T>(x_grad);
     return;
   }
   auto size = x.numel();
   auto* x_data = x.data<T>();
   auto* out_grad_data = out_grad.data<T>();
-  auto* x_grad_data = ctx.template Alloc<T>(x_grad);
+  auto* x_grad_data = dev_ctx.template Alloc<T>(x_grad);
 
-  phi::funcs::ForRange<Context> for_range(ctx, size);
+  phi::funcs::ForRange<Context> for_range(dev_ctx, size);
   I0GradFunctor<T> functor(x_data, out_grad_data, x_grad_data, size);
   for_range(functor);
 }

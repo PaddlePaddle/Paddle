@@ -21,49 +21,49 @@
 namespace phi {
 
 template <typename T, typename Context>
-void TrilTriuGradKernel(const Context& ctx,
+void TrilTriuGradKernel(const Context& dev_ctx,
                         const DenseTensor& out_grad,
                         int diagonal,
                         bool lower,
                         DenseTensor* x_grad) {
   const auto* dout_data = out_grad.data<T>();
-  auto* dx_data = ctx.template Alloc<T>(x_grad);
+  auto* dx_data = dev_ctx.template Alloc<T>(x_grad);
 
   const auto& dims = out_grad.dims();
   const auto H = dims[dims.size() - 2];
   const auto W = dims[dims.size() - 1];
 
   phi::funcs::ForRange<Context> for_range(
-      ctx, static_cast<size_t>(out_grad.numel()));
+      dev_ctx, static_cast<size_t>(out_grad.numel()));
   phi::funcs::TrilTriuCompute<T> tril_triu_grad_computer(
       dout_data, diagonal, lower, H, W, dx_data);
   for_range(tril_triu_grad_computer);
 }
 
 template <typename T, typename Context>
-void TrilGradKernel(const Context& ctx,
+void TrilGradKernel(const Context& dev_ctx,
                     const DenseTensor& out_grad,
                     int diagonal,
                     DenseTensor* x_grad) {
   if (x_grad && x_grad->numel() == 0) {
-    ctx.template Alloc<T>(x_grad);
+    dev_ctx.template Alloc<T>(x_grad);
     return;
   }
 
-  TrilTriuGradKernel<T, Context>(ctx, out_grad, diagonal, true, x_grad);
+  TrilTriuGradKernel<T, Context>(dev_ctx, out_grad, diagonal, true, x_grad);
 }
 
 template <typename T, typename Context>
-void TriuGradKernel(const Context& ctx,
+void TriuGradKernel(const Context& dev_ctx,
                     const DenseTensor& out_grad,
                     int diagonal,
                     DenseTensor* x_grad) {
   if (x_grad && x_grad->numel() == 0) {
-    ctx.template Alloc<T>(x_grad);
+    dev_ctx.template Alloc<T>(x_grad);
     return;
   }
 
-  TrilTriuGradKernel<T, Context>(ctx, out_grad, diagonal, false, x_grad);
+  TrilTriuGradKernel<T, Context>(dev_ctx, out_grad, diagonal, false, x_grad);
 }
 
 }  // namespace phi

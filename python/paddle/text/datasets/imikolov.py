@@ -193,7 +193,7 @@ class Imikolov(Dataset):
                         continue
                     self.data.append((src_seq, trg_seq))
                 else:
-                    raise AssertionError('Unknow data type')
+                    raise AssertionError('Unknown data type')
 
     def __getitem__(
         self, idx: int

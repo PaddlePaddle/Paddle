@@ -118,7 +118,7 @@ class SplitOp : public framework::OperatorWithKernel {
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
 #ifdef PADDLE_WITH_DNNL
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+    if (this->CanONEDNNBeUsed(ctx, input_data_type)) {
       // OneDNN uses blocking format, which cannot be always supported with
       // reorders, because if blocked dimension is not divisible by 8 or
       // 16(depending on which blocking format is used) submemory cannot be

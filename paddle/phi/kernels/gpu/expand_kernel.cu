@@ -23,7 +23,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ExpandKernel(const Context& ctx,
+void ExpandKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const IntArray& shape,
                   DenseTensor* out) {
@@ -74,13 +74,14 @@ void ExpandKernel(const Context& ctx,
   }
 
   out->Resize(common::make_ddim(out_shape));
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   if (has_zero_dim) {
     return;
   }
   std::vector<const DenseTensor*> ins = {&x};
   std::vector<DenseTensor*> outs = {out};
-  phi::funcs::BroadcastKernel<T>(ctx, ins, &outs, kps::IdentityFunctor<T>());
+  phi::funcs::BroadcastKernel<T>(
+      dev_ctx, ins, &outs, kps::IdentityFunctor<T>());
 }
 
 }  // namespace phi

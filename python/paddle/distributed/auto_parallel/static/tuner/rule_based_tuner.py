@@ -1163,11 +1163,13 @@ class RuleBasedTuner:
                     distop_context=self.full_main_program_dist_context.dist_op_context,
                 )
 
-            with program_guard(
-                self.full_main_program, self.full_startup_program
+            with (
+                program_guard(
+                    self.full_main_program, self.full_startup_program
+                ),
+                self.full_main_program.switch_name_generator_guard("opt_"),
             ):
-                with self.full_main_program.switch_name_generator_guard("opt_"):
-                    optimizer_ops = optimizer.apply_gradients(params_grads)
+                optimizer_ops = optimizer.apply_gradients(params_grads)
 
             # op original id to grad op id
             for idx, op in enumerate(self.full_main_program.global_block().ops):

@@ -27,6 +27,10 @@ void LogsumexpGradKernel(const Context& dev_ctx,
                          bool keepdim,
                          bool reduce_all,
                          DenseTensor* dx) {
+  if (dx && dx->numel() == 0) {
+    dev_ctx.template Alloc<T>(dx);
+    return;
+  }
   using XPUType = typename XPUTypeTrait<T>::Type;
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   reduce_all = recompute_reduce_all(x, axis_in, reduce_all);

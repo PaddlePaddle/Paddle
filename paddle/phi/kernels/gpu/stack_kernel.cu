@@ -21,11 +21,11 @@
 namespace phi {
 
 template <typename T, typename Context>
-void StackKernel(const Context& ctx,
+void StackKernel(const Context& dev_ctx,
                  const std::vector<const DenseTensor*>& x,
                  int axis,
                  DenseTensor* out) {
-  funcs::StackRawKernel<T, Context>(ctx, x, axis, out);
+  funcs::StackRawKernel<T, Context>(dev_ctx, x, axis, out);
 }
 
 }  // namespace phi

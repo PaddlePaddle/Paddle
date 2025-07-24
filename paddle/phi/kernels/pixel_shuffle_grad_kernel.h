@@ -21,7 +21,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void PixelShuffleGradKernel(const Context& ctx,
+void PixelShuffleGradKernel(const Context& dev_ctx,
                             const DenseTensor& out_grad,
                             int upscale_factor,
                             const std::string& data_format,

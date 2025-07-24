@@ -551,6 +551,21 @@ class CustomDevice : public DeviceInterface {
     return compute_capability;
   }
 
+  DeviceProp& GetDeviceProperties(size_t dev_id) override {
+    const auto device = &devices_pool[dev_id];
+    static DeviceProp prop;
+    if (pimpl_->get_device_properties) {
+      pimpl_->get_device_properties(device, &prop);
+    }
+    VLOG(10) << Type() << " get device properties"
+             << "DeviceProperties(name='" << prop.name
+             << "', major=" << prop.deviceMajor
+             << ", minor=" << prop.deviceMajor
+             << ", total_memory=" << prop.totalGlobalMem / (1024 * 1024)
+             << "MB, multi_processor_count=" << prop.multiProcessorCount << ")";
+    return prop;
+  }
+
   size_t GetRuntimeVersion(size_t dev_id) override {
     const auto device = &devices_pool[dev_id];
     size_t version = 0;

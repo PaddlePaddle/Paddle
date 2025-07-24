@@ -16,6 +16,7 @@ import unittest
 from unittest import TestCase
 
 import numpy as np
+from op_test import get_places
 
 import paddle
 import paddle.base.dygraph as dg
@@ -60,38 +61,40 @@ class TestFunctionalConv2DError(TestCase):
     def static_graph_case(self):
         main = base.Program()
         start = base.Program()
-        with base.unique_name.guard():
-            with base.program_guard(main, start):
-                self.channel_last = self.data_format == "NHWC"
-                if self.channel_last:
-                    x = x = paddle.static.data(
-                        "input",
-                        (-1, -1, -1, self.in_channels),
-                        dtype=self.dtype,
-                    )
-                else:
-                    x = paddle.static.data(
-                        "input",
-                        (-1, self.in_channels, -1, -1),
-                        dtype=self.dtype,
-                    )
-                weight = paddle.static.data(
-                    "weight", self.weight_shape, dtype=self.dtype
+        with (
+            base.unique_name.guard(),
+            base.program_guard(main, start),
+        ):
+            self.channel_last = self.data_format == "NHWC"
+            if self.channel_last:
+                x = x = paddle.static.data(
+                    "input",
+                    (-1, -1, -1, self.in_channels),
+                    dtype=self.dtype,
                 )
-                if not self.no_bias:
-                    bias = paddle.static.data(
-                        "bias", self.bias_shape, dtype=self.dtype
-                    )
-                y = F.conv2d(
-                    x,
-                    weight,
-                    None if self.no_bias else bias,
-                    padding=self.padding,
-                    stride=self.stride,
-                    dilation=self.dilation,
-                    groups=self.groups,
-                    data_format=self.data_format,
+            else:
+                x = paddle.static.data(
+                    "input",
+                    (-1, self.in_channels, -1, -1),
+                    dtype=self.dtype,
                 )
+            weight = paddle.static.data(
+                "weight", self.weight_shape, dtype=self.dtype
+            )
+            if not self.no_bias:
+                bias = paddle.static.data(
+                    "bias", self.bias_shape, dtype=self.dtype
+                )
+            y = F.conv2d(
+                x,
+                weight,
+                None if self.no_bias else bias,
+                padding=self.padding,
+                stride=self.stride,
+                dilation=self.dilation,
+                groups=self.groups,
+                data_format=self.data_format,
+            )
 
 
 class TestFunctionalConv2DErrorCase2(TestFunctionalConv2DError):
@@ -216,15 +219,15 @@ class TestFunctionalConv2DErrorCase11(TestFunctionalConv2DError):
 
 class TestFunctionalConv2DErrorCase12(TestCase):
     def setUp(self):
-        self.input = np.array([])
-        self.filter = np.array([])
-        self.num_filters = 0
-        self.filter_size = 0
+        self.input = np.random.randn(1, 3, 3, 3)
+        self.filter = np.random.randn(3, 3, 1, 1)
+        self.num_filters = 3
+        self.filter_size = 1
         self.bias = None
         self.padding = 0
         self.stride = 1
         self.dilation = 1
-        self.groups = 1
+        self.groups = 0
         self.data_format = "NCHW"
 
     def dygraph_case(self):
@@ -252,32 +255,49 @@ class TestFunctionalConv2DErrorCase12(TestCase):
             self.dygraph_case()
 
 
-class TestFunctionalConv2DErrorCase13(TestFunctionalConv2DErrorCase12):
-    def setUp(self):
-        self.input = np.random.randn(1, 3, 3, 3)
-        self.filter = np.random.randn(3, 3, 1, 1)
-        self.num_filters = 3
-        self.filter_size = 1
-        self.bias = None
-        self.padding = 0
-        self.stride = 1
-        self.dilation = 1
-        self.groups = 0
-        self.data_format = "NCHW"
+class TestFunctionalConv2D_ZeroSize(TestCase):
+    def init_data(self):
+        self.input = np.random.random([0, 3, 4, 4])
+        self.filter = np.random.random([2, 3, 3, 3])
+        self.np_out = np.zeros([0, 2, 2, 2])
 
-
-class TestFunctionalConv2DErrorCase14(TestFunctionalConv2DErrorCase12):
     def setUp(self):
-        self.input = np.random.randn(0, 0, 0, 0)
-        self.filter = np.random.randn(1, 0, 0, 0)
-        self.num_filters = 0
-        self.filter_size = 0
+        self.init_data()
         self.bias = None
         self.padding = 0
         self.stride = 1
         self.dilation = 1
         self.groups = 1
         self.data_format = "NCHW"
+        self.places = get_places()
+
+    def test_dygraph(self):
+        for place in self.places:
+            with dg.guard(place):
+                input = paddle.to_tensor(self.input)
+                input.stop_gradient = False
+                filter = paddle.to_tensor(self.filter)
+                y = F.conv2d(
+                    input,
+                    filter,
+                    self.bias,
+                    padding=self.padding,
+                    stride=self.stride,
+                    dilation=self.dilation,
+                    groups=self.groups,
+                    data_format=self.data_format,
+                )
+                np.testing.assert_allclose(y.numpy(), self.np_out)
+                loss = y.sum()
+                loss.backward()
+                np.testing.assert_allclose(input.grad.shape, input.shape)
+
+
+class TestFunctionalConv2D_ZeroSize2(TestFunctionalConv2D_ZeroSize):
+    def init_data(self):
+        self.input = np.random.random([0, 0, 4, 4])
+        self.filter = np.random.random([2, 0, 3, 3])
+        self.np_out = np.zeros([0, 0, 2, 2])
 
 
 if __name__ == "__main__":

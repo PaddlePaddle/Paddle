@@ -1,17 +1,17 @@
-From 9d784943e1032f15dd7cdd2599192937ba9d9343 Mon Sep 17 00:00:00 2001
+From 9e6cc27cceb3130784e4ea7b61ea3171156365fd Mon Sep 17 00:00:00 2001
 From: Shangyan Zhou <sy.zhou@deepseek.com>
 Date: Fri, 20 Dec 2024 10:57:12 +0800
-Subject: [PATCH 1/5] Change QP creating order.
+Subject: [PATCH 1/4] Change QP creating order.
 
 ---
  src/modules/transport/ibgda/ibgda.cpp | 13 ++++++++-----
  1 file changed, 8 insertions(+), 5 deletions(-)
 
 diff --git a/src/modules/transport/ibgda/ibgda.cpp b/src/modules/transport/ibgda/ibgda.cpp
-index 31bc56a..ff02f50 100644
+index ef325cd..286132e 100644
 --- a/src/modules/transport/ibgda/ibgda.cpp
 +++ b/src/modules/transport/ibgda/ibgda.cpp
-@@ -2921,17 +2921,20 @@ int nvshmemt_ibgda_connect_endpoints(nvshmem_transport_t t, int *selected_dev_id
+@@ -2936,17 +2936,20 @@ int nvshmemt_ibgda_connect_endpoints(nvshmem_transport_t t, int *selected_dev_id
          INFO(ibgda_state->log_level, "Creating %d RC QPs", device->rc.num_eps_per_pe);
          for (int i = 0; i < num_rc_eps; ++i) {
              // Do not create loopback to self
@@ -41,44 +41,10 @@ index 31bc56a..ff02f50 100644
 2.25.1
 
 
-From 3cd3938bcbbabed7fb7675032afb02647ea9c2fe Mon Sep 17 00:00:00 2001
-From: Shangyan Zhou <sy.zhou@deepseek.com>
-Date: Mon, 23 Dec 2024 09:55:27 +0800
-Subject: [PATCH 2/5] Disable timeout check
-
----
- CMakeLists.txt | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
-
-diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 771ff98..9246d29 100644
---- a/CMakeLists.txt
-+++ b/CMakeLists.txt
-@@ -140,7 +140,7 @@ option(NVSHMEM_NVTX "Enable NVSHMEM NVTX support" ${NVSHMEM_NVTX_DEFAULT})
- option(NVSHMEM_PMIX_SUPPORT "Enable Compilation of the PMIX bootstrap and PMIX specific code" $ENV{NVSHMEM_PMIX_SUPPORT})
- option(NVSHMEM_SHMEM_SUPPORT "Enable Compilation of the SHMEM bootstrap and SHMEM specific code" $ENV{NVSHMEM_SHMEM_SUPPORT})
- option(NVSHMEM_TEST_STATIC_LIB "Force tests to link only against the combined nvshmem.a binary" $ENV{NVSHMEM_TEST_STATIC_LIB})
--option(NVSHMEM_TIMEOUT_DEVICE_POLLING "Enable timeouts for NVSHMEM device-side polling functions (e.g. wait_until)" $ENV{NVSHMEM_TIMEOUT_DEVICE_POLLING})
-+option(NVSHMEM_TIMEOUT_DEVICE_POLLING "Enable timeouts for NVSHMEM device-side polling functions (e.g. wait_until)" OFF)
- option(NVSHMEM_TRACE "Enable NVSHMEM trace print events" $ENV{NVSHMEM_TRACE})
- option(NVSHMEM_UCX_SUPPORT "Enable compilation of the UCX remote transport" $ENV{NVSHMEM_UCX_SUPPORT})
- option(NVSHMEM_USE_DLMALLOC "Set dlmalloc as the NVSHMEM heap allocation method" $ENV{NVSHMEM_USE_DLMALLOC})
-@@ -165,6 +165,7 @@ set(NVSHMEM_PREFIX ${NVSHMEM_PREFIX_DEFAULT} CACHE PATH "path to NVSHMEM install
- set(PMIX_HOME ${PMIX_HOME_DEFAULT} CACHE PATH "path to PMIX installation")
- set(SHMEM_HOME ${MPI_HOME} CACHE PATH "path to SHMEM installation")
- set(UCX_HOME ${UCX_HOME_DEFAULT} CACHE PATH "path to UCX installation")
-+set(NVSHMEM_TIMEOUT_DEVICE_POLLING OFF)
-
- message(STATUS "NVSHMEM_PREFIX: ${NVSHMEM_PREFIX}")
- message(STATUS "NVSHMEM_DEVEL: ${NVSHMEM_DEVEL}")
---
-2.25.1
-
-
-From 4e0eaff589d38f448715e43a935479451a41c0fe Mon Sep 17 00:00:00 2001
+From b11d41e4f3727f2f6ccc00a8c852e59e2ee33c8a Mon Sep 17 00:00:00 2001
 From: Shangyan Zhou <sy.zhou@deepseek.com>
 Date: Fri, 10 Jan 2025 11:53:38 +0800
-Subject: [PATCH 3/5] Add recv queue and recv cq for rc qps.
+Subject: [PATCH 2/4] Add recv queue and recv cq for rc qps.
 
 Let the ibgda rc qps use regular recv queue.
 
@@ -99,7 +65,7 @@ Longer recv queue.
  2 files changed, 71 insertions(+), 13 deletions(-)
 
 diff --git a/src/include/device_host_transport/nvshmem_common_ibgda.h b/src/include/device_host_transport/nvshmem_common_ibgda.h
-index 32f6d02..7d4e250 100644
+index 8b8a263..1be3dec 100644
 --- a/src/include/device_host_transport/nvshmem_common_ibgda.h
 +++ b/src/include/device_host_transport/nvshmem_common_ibgda.h
 @@ -168,14 +168,17 @@ typedef struct {
@@ -144,10 +110,10 @@ index 32f6d02..7d4e250 100644
  typedef nvshmemi_ibgda_device_qp_v1 nvshmemi_ibgda_device_qp_t;
 
 diff --git a/src/modules/transport/ibgda/ibgda.cpp b/src/modules/transport/ibgda/ibgda.cpp
-index ff02f50..b8d6bc7 100644
+index 286132e..e0b2d5c 100644
 --- a/src/modules/transport/ibgda/ibgda.cpp
 +++ b/src/modules/transport/ibgda/ibgda.cpp
-@@ -194,6 +194,7 @@ struct ibgda_ep {
+@@ -198,6 +198,7 @@ struct ibgda_ep {
      off_t dbr_offset;
 
      struct ibgda_cq *send_cq;
@@ -155,7 +121,7 @@ index ff02f50..b8d6bc7 100644
      struct ibv_ah *ah;
 
      uint32_t user_index;
-@@ -1520,7 +1521,8 @@ static int ibgda_create_cq_shared_objects(nvshmemt_ibgda_state_t *ibgda_state,
+@@ -1538,7 +1539,8 @@ static int ibgda_create_cq_shared_objects(nvshmemt_ibgda_state_t *ibgda_state,
 
      struct ibv_context *context = device->context;
 
@@ -165,7 +131,7 @@ index ff02f50..b8d6bc7 100644
 
      assert(ibgda_qp_depth > 0);
      size_t num_cqe = IBGDA_ROUND_UP_POW2_OR_0(ibgda_qp_depth);
-@@ -1683,7 +1685,8 @@ static int ibgda_create_qp_shared_objects(nvshmemt_ibgda_state_t *ibgda_state,
+@@ -1701,7 +1703,8 @@ static int ibgda_create_qp_shared_objects(nvshmemt_ibgda_state_t *ibgda_state,
      }
 
      // Allocate and map WQ buffer for all QPs.
@@ -175,7 +141,7 @@ index ff02f50..b8d6bc7 100644
      wq_buf_size = wq_buf_size_per_qp * num_eps;
      status = ibgda_nic_control_alloc(&wq_mobject, wq_buf_size, IBGDA_GPAGE_SIZE);
      NVSHMEMI_NZ_ERROR_JMP(status, NVSHMEMX_ERROR_INTERNAL, out, "cannot allocate wq buf.\n");
-@@ -1864,8 +1867,11 @@ static int ibgda_create_qp(struct ibgda_ep **ep_ptr, struct ibgda_device *device
+@@ -1882,8 +1885,11 @@ static int ibgda_create_qp(struct ibgda_ep **ep_ptr, struct ibgda_device *device
      int cqe_version = 0;
 
      struct ibgda_cq *send_cq = NULL;
@@ -187,7 +153,7 @@ index ff02f50..b8d6bc7 100644
 
      int status = 0;
 
-@@ -1893,6 +1899,11 @@ static int ibgda_create_qp(struct ibgda_ep **ep_ptr, struct ibgda_device *device
+@@ -1911,6 +1917,11 @@ static int ibgda_create_qp(struct ibgda_ep **ep_ptr, struct ibgda_device *device
      status = ibgda_create_cq(&send_cq, device);
      NVSHMEMI_NZ_ERROR_JMP(status, NVSHMEMX_ERROR_INTERNAL, out, "ibgda_create_cq failed.\n");
 
@@ -199,7 +165,7 @@ index ff02f50..b8d6bc7 100644
      ep = (struct ibgda_ep *)calloc(1, sizeof(struct ibgda_ep));
      NVSHMEMI_NULL_ERROR_JMP(ep, status, NVSHMEMX_ERROR_OUT_OF_MEMORY, out,
                              "Unable to allocate mem for ep.\n");
-@@ -1921,12 +1932,9 @@ static int ibgda_create_qp(struct ibgda_ep **ep_ptr, struct ibgda_device *device
+@@ -1939,12 +1950,9 @@ static int ibgda_create_qp(struct ibgda_ep **ep_ptr, struct ibgda_device *device
      DEVX_SET(qpc, qp_context, pm_state, MLX5_QPC_PM_STATE_MIGRATED);
      DEVX_SET(qpc, qp_context, pd, device->qp_shared_object.pdn);
      DEVX_SET(qpc, qp_context, uar_page, uar_mobject->uar->page_id);  // BF register
@@ -213,7 +179,7 @@ index ff02f50..b8d6bc7 100644
      DEVX_SET(qpc, qp_context, cs_req, 0);                                     // Disable CS Request
      DEVX_SET(qpc, qp_context, cs_res, 0);                                     // Disable CS Response
      DEVX_SET(qpc, qp_context, dbr_umem_valid, IBGDA_MLX5_UMEM_VALID_ENABLE);  // Enable dbr_umem_id
-@@ -1935,6 +1943,15 @@ static int ibgda_create_qp(struct ibgda_ep **ep_ptr, struct ibgda_device *device
+@@ -1953,6 +1961,15 @@ static int ibgda_create_qp(struct ibgda_ep **ep_ptr, struct ibgda_device *device
      DEVX_SET(qpc, qp_context, dbr_umem_id, dbr_umem->umem_id);  // DBR buffer
      DEVX_SET(qpc, qp_context, user_index, qp_idx);
      DEVX_SET(qpc, qp_context, page_offset, 0);
@@ -229,7 +195,7 @@ index ff02f50..b8d6bc7 100644
 
      ep->devx_qp = mlx5dv_devx_obj_create(context, cmd_in, sizeof(cmd_in), cmd_out, sizeof(cmd_out));
      NVSHMEMI_NULL_ERROR_JMP(ep->devx_qp, status, NVSHMEMX_ERROR_INTERNAL, out,
-@@ -1944,9 +1961,9 @@ static int ibgda_create_qp(struct ibgda_ep **ep_ptr, struct ibgda_device *device
+@@ -1962,9 +1979,9 @@ static int ibgda_create_qp(struct ibgda_ep **ep_ptr, struct ibgda_device *device
      ep->portid = portid;
 
      ep->sq_cnt = num_wqebb;
@@ -241,7 +207,7 @@ index ff02f50..b8d6bc7 100644
      ep->rq_buf_offset = 0;
 
      ep->wq_mobject = device->qp_shared_object.wq_mobject;
-@@ -1960,6 +1977,7 @@ static int ibgda_create_qp(struct ibgda_ep **ep_ptr, struct ibgda_device *device
+@@ -1978,6 +1995,7 @@ static int ibgda_create_qp(struct ibgda_ep **ep_ptr, struct ibgda_device *device
      ep->uar_mobject = uar_mobject;
 
      ep->send_cq = send_cq;
@@ -249,7 +215,7 @@ index ff02f50..b8d6bc7 100644
 
      ep->qp_type = qp_type;
 
-@@ -1971,6 +1989,7 @@ out:
+@@ -1989,6 +2007,7 @@ out:
      if (status) {
          if (uar_mobject) ibgda_unmap_and_free_qp_uar(uar_mobject);
          if (send_cq) ibgda_destroy_cq(send_cq);
@@ -257,7 +223,7 @@ index ff02f50..b8d6bc7 100644
          if (ep) free(ep);
      }
 
-@@ -2269,6 +2288,10 @@ static int ibgda_destroy_ep(struct ibgda_ep *ep) {
+@@ -2287,6 +2306,10 @@ static int ibgda_destroy_ep(struct ibgda_ep *ep) {
          ibgda_destroy_cq(ep->send_cq);
      }
 
@@ -268,7 +234,7 @@ index ff02f50..b8d6bc7 100644
      if (ep->ah) {
          ftable.destroy_ah(ep->ah);
      }
-@@ -2300,7 +2323,7 @@ static void ibgda_get_device_qp(nvshmemi_ibgda_device_qp_t *dev_qp, struct ibgda
+@@ -2318,7 +2341,7 @@ static void ibgda_get_device_qp(nvshmemi_ibgda_device_qp_t *dev_qp, struct ibgda
      dev_qp->qpn = ep->qpn;
 
      assert(ep->wq_mobject->has_gpu_mapping);
@@ -277,7 +243,7 @@ index ff02f50..b8d6bc7 100644
 
      if (ibgda_nic_handler == IBGDA_NIC_HANDLER_GPU) {
          assert(ep->dbr_mobject->has_gpu_mapping);
-@@ -2312,6 +2335,12 @@ static void ibgda_get_device_qp(nvshmemi_ibgda_device_qp_t *dev_qp, struct ibgda
+@@ -2330,6 +2353,12 @@ static void ibgda_get_device_qp(nvshmemi_ibgda_device_qp_t *dev_qp, struct ibgda
      }
 
      dev_qp->tx_wq.nwqes = ep->sq_cnt;
@@ -290,7 +256,7 @@ index ff02f50..b8d6bc7 100644
 
      ibuf_dci_start = (uintptr_t)device->qp_shared_object.internal_buf.mem_object->aligned.gpu_ptr;
      ibuf_rc_start = ibuf_dci_start + (size_per_dci * device->dci.num_eps);
-@@ -2361,6 +2390,9 @@ static int ibgda_setup_gpu_state(nvshmem_transport_t t) {
+@@ -2379,6 +2408,9 @@ static int ibgda_setup_gpu_state(nvshmem_transport_t t) {
      nvshmemi_ibgda_device_cq_t *cq_d = NULL;
      nvshmemi_ibgda_device_cq_t *cq_h = NULL;
 
@@ -300,7 +266,7 @@ index ff02f50..b8d6bc7 100644
      uint8_t *qp_group_switches_d = NULL;
 
      const size_t mvars_offset = offsetof(nvshmemi_ibgda_device_qp_t, mvars);
-@@ -2368,6 +2400,7 @@ static int ibgda_setup_gpu_state(nvshmem_transport_t t) {
+@@ -2386,6 +2418,7 @@ static int ibgda_setup_gpu_state(nvshmem_transport_t t) {
      const size_t cons_t_offset = offsetof(nvshmemi_ibgda_device_qp_management_t, tx_wq.cons_idx);
      const size_t wqe_h_offset = offsetof(nvshmemi_ibgda_device_qp_management_t, tx_wq.resv_head);
      const size_t wqe_t_offset = offsetof(nvshmemi_ibgda_device_qp_management_t, tx_wq.ready_head);
@@ -308,7 +274,7 @@ index ff02f50..b8d6bc7 100644
 
      nvshmemi_ibgda_device_qp_map_type_t rc_map_type = NVSHMEMI_IBGDA_DEVICE_QP_MAP_TYPE_INVALID;
      nvshmemi_ibgda_device_qp_map_type_t dc_map_type = NVSHMEMI_IBGDA_DEVICE_QP_MAP_TYPE_INVALID;
-@@ -2405,7 +2438,7 @@ static int ibgda_setup_gpu_state(nvshmem_transport_t t) {
+@@ -2421,7 +2454,7 @@ static int ibgda_setup_gpu_state(nvshmem_transport_t t) {
          num_dct_handles += device->dct.num_eps * n_pes;
          num_dci_handles += device->dci.num_eps;
          num_rc_handles += device->rc.num_eps_per_pe * n_pes;
@@ -316,8 +282,8 @@ index ff02f50..b8d6bc7 100644
 +        num_cq_handles += device->dci.num_eps + (device->rc.num_eps_per_pe * (n_pes - 1) * 2);
          num_shared_dci_handles += device->dci.num_shared_eps;
      }
-     num_elements = num_dct_handles - NVSHMEMI_IBGDA_MAX_CONST_DCTS;
-@@ -2441,6 +2474,10 @@ static int ibgda_setup_gpu_state(nvshmem_transport_t t) {
+     assert(num_dci_handles - num_shared_dci_handles >= 0);
+@@ -2456,6 +2489,10 @@ static int ibgda_setup_gpu_state(nvshmem_transport_t t) {
      for (int i = 0; i < num_cq_handles; i++) {
          nvshmemi_init_ibgda_device_cq(cq_h[i]);
      }
@@ -328,7 +294,7 @@ index ff02f50..b8d6bc7 100644
      /* allocate host memory for dct, rc, cq, dci end */
 
      /* allocate device memory for dct, rc, cq, dci start */
-@@ -2544,6 +2581,14 @@ static int ibgda_setup_gpu_state(nvshmem_transport_t t) {
+@@ -2559,6 +2596,14 @@ static int ibgda_setup_gpu_state(nvshmem_transport_t t) {
                  }
 
                  ++cq_idx;
@@ -347,10 +313,10 @@ index ff02f50..b8d6bc7 100644
 2.25.1
 
 
-From 0cc285269f154049f1c9775e07e306e03228eedc Mon Sep 17 00:00:00 2001
+From af479f9f23103d4a1579fae38676d6b3022df887 Mon Sep 17 00:00:00 2001
 From: Shangyan Zhou <sy.zhou@deepseek.com>
 Date: Sat, 8 Feb 2025 18:02:39 +0800
-Subject: [PATCH 4/5] Maintain recv queue's cons_idx.
+Subject: [PATCH 3/4] Maintain recv queue's cons_idx.
 
 ---
  src/include/device_host_transport/nvshmem_common_ibgda.h | 5 +++--
@@ -358,7 +324,7 @@ Subject: [PATCH 4/5] Maintain recv queue's cons_idx.
  2 files changed, 7 insertions(+), 4 deletions(-)
 
 diff --git a/src/include/device_host_transport/nvshmem_common_ibgda.h b/src/include/device_host_transport/nvshmem_common_ibgda.h
-index 7d4e250..502645d 100644
+index 1be3dec..ea1e284 100644
 --- a/src/include/device_host_transport/nvshmem_common_ibgda.h
 +++ b/src/include/device_host_transport/nvshmem_common_ibgda.h
 @@ -170,6 +170,7 @@ typedef struct {
@@ -374,8 +340,9 @@ index 7d4e250..502645d 100644
      char padding[NVSHMEMI_IBGDA_QP_MANAGEMENT_PADDING];
  } __attribute__((__aligned__(8))) nvshmemi_ibgda_device_qp_management_v1;
 -static_assert(sizeof(nvshmemi_ibgda_device_qp_management_v1) == 104,
+-              "ibgda_device_qp_management_v1 must be 104 bytes.");
 +static_assert(sizeof(nvshmemi_ibgda_device_qp_management_v1) == 112,
-               "ibgda_device_qp_management_v1 must be 104 bytes.");
++              "ibgda_device_qp_management_v1 must be 112 bytes.");
 
  typedef nvshmemi_ibgda_device_qp_management_v1 nvshmemi_ibgda_device_qp_management_t;
 @@ -214,7 +215,7 @@ typedef struct nvshmemi_ibgda_device_qp {
@@ -383,15 +350,15 @@ index 7d4e250..502645d 100644
      nvshmemi_ibgda_device_qp_management_v1 mvars;  // management variables
  } nvshmemi_ibgda_device_qp_v1;
 -static_assert(sizeof(nvshmemi_ibgda_device_qp_v1) == 248, "ibgda_device_qp_v1 must be 248 bytes.");
-+static_assert(sizeof(nvshmemi_ibgda_device_qp_v1) == 256, "ibgda_device_qp_v1 must be 248 bytes.");
++static_assert(sizeof(nvshmemi_ibgda_device_qp_v1) == 256, "ibgda_device_qp_v1 must be 256 bytes.");
 
  typedef nvshmemi_ibgda_device_qp_v1 nvshmemi_ibgda_device_qp_t;
 
 diff --git a/src/modules/transport/ibgda/ibgda.cpp b/src/modules/transport/ibgda/ibgda.cpp
-index b8d6bc7..a1cfe2e 100644
+index e0b2d5c..bc339c5 100644
 --- a/src/modules/transport/ibgda/ibgda.cpp
 +++ b/src/modules/transport/ibgda/ibgda.cpp
-@@ -1063,7 +1063,7 @@ static inline void ibgda_nic_control_free(struct ibgda_mem_object *mobject) {
+@@ -1067,7 +1067,7 @@ static inline void ibgda_nic_control_free(struct ibgda_mem_object *mobject) {
          ibgda_host_mem_free(mobject);
  }
 
@@ -400,7 +367,7 @@ index b8d6bc7..a1cfe2e 100644
      int status = 0;
 
      struct ibgda_cq *gcq = NULL;
-@@ -1114,7 +1114,7 @@ static int ibgda_create_cq(struct ibgda_cq **pgcq, struct ibgda_device *device)
+@@ -1118,7 +1118,7 @@ static int ibgda_create_cq(struct ibgda_cq **pgcq, struct ibgda_device *device)
      cq_context = DEVX_ADDR_OF(create_cq_in, cmd_in, cq_context);
      DEVX_SET(cqc, cq_context, dbr_umem_valid, IBGDA_MLX5_UMEM_VALID_ENABLE);
      DEVX_SET(cqc, cq_context, cqe_sz, MLX5_CQE_SIZE_64B);
@@ -409,7 +376,7 @@ index b8d6bc7..a1cfe2e 100644
      DEVX_SET(cqc, cq_context, oi, 0x1);  // Allow overrun
      DEVX_SET(cqc, cq_context, dbr_umem_id, dbr_umem->umem_id);
      DEVX_SET(cqc, cq_context, log_cq_size, IBGDA_ILOG2_OR0(num_cqe));
-@@ -2401,6 +2401,7 @@ static int ibgda_setup_gpu_state(nvshmem_transport_t t) {
+@@ -2419,6 +2419,7 @@ static int ibgda_setup_gpu_state(nvshmem_transport_t t) {
      const size_t wqe_h_offset = offsetof(nvshmemi_ibgda_device_qp_management_t, tx_wq.resv_head);
      const size_t wqe_t_offset = offsetof(nvshmemi_ibgda_device_qp_management_t, tx_wq.ready_head);
      const size_t rx_resv_head_offset = offsetof(nvshmemi_ibgda_device_qp_management_t, rx_wq.resv_head);
@@ -417,7 +384,7 @@ index b8d6bc7..a1cfe2e 100644
 
      nvshmemi_ibgda_device_qp_map_type_t rc_map_type = NVSHMEMI_IBGDA_DEVICE_QP_MAP_TYPE_INVALID;
      nvshmemi_ibgda_device_qp_map_type_t dc_map_type = NVSHMEMI_IBGDA_DEVICE_QP_MAP_TYPE_INVALID;
-@@ -2586,6 +2587,7 @@ static int ibgda_setup_gpu_state(nvshmem_transport_t t) {
+@@ -2601,6 +2602,7 @@ static int ibgda_setup_gpu_state(nvshmem_transport_t t) {
 
                  ibgda_get_device_cq(&cq_h[cq_idx], device->rc.eps[i]->recv_cq);
                  cq_h[cq_idx].resv_head = (uint64_t *)(base_mvars_d_addr + rx_resv_head_offset);
@@ -429,17 +396,17 @@ index b8d6bc7..a1cfe2e 100644
 2.25.1
 
 
-From f91eb8510f8c9aa4f5769bd88434db5ab000e65a Mon Sep 17 00:00:00 2001
+From e0ba3fa21b4b633b481c6684c3ad04f2670c8df4 Mon Sep 17 00:00:00 2001
 From: Shangyan Zhou <sy.zhou@deepseek.com>
 Date: Tue, 11 Feb 2025 11:00:57 +0800
-Subject: [PATCH 5/5] Init rx_wq counters.
+Subject: [PATCH 4/4] Init rx_wq counters.
 
 ---
  src/include/device_host_transport/nvshmem_common_ibgda.h | 2 ++
  1 file changed, 2 insertions(+)
 
 diff --git a/src/include/device_host_transport/nvshmem_common_ibgda.h b/src/include/device_host_transport/nvshmem_common_ibgda.h
-index 502645d..f0bc328 100644
+index ea1e284..e6640d6 100644
 --- a/src/include/device_host_transport/nvshmem_common_ibgda.h
 +++ b/src/include/device_host_transport/nvshmem_common_ibgda.h
 @@ -46,6 +46,8 @@
@@ -454,3 +421,17 @@ index 502645d..f0bc328 100644
 --
 2.25.1
 
+diff --git a/src/modules/transport/common/transport_ib_common.cpp b/src/modules/transport/common/transport_ib_common.cpp
+index c89f408..f99018a 100644
+--- a/src/modules/transport/common/transport_ib_common.cpp
++++ b/src/modules/transport/common/transport_ib_common.cpp
+@@ -26,6 +26,9 @@ int nvshmemt_ib_common_nv_peer_mem_available() {
+     if (access("/sys/kernel/mm/memory_peers/nvidia-peermem/version", F_OK) == 0) {
+         return NVSHMEMX_SUCCESS;
+     }
++    if (access("/sys/module/nvidia_peermem/version", F_OK) == 0) {
++        return NVSHMEMX_SUCCESS;
++    }
+ 
+     return NVSHMEMX_ERROR_INTERNAL;
+ }

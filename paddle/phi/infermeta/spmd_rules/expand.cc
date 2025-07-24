@@ -41,23 +41,27 @@ SpmdInfo ExpandGradInferSpmd(const DistMetaTensor& x,
                              const IntArray& shape) {
   EXTRACT_SHAPE_AND_DIST_ATTR(x);
   EXTRACT_SHAPE_AND_DIST_ATTR(out_grad);
-  if (x_shape.size() == out_grad_shape.size()) {
-    return {{x_dist_attr_src, out_grad_dist_attr_src}, {x_dist_attr_src}};
-  }
   size_t axis =
       std::abs(static_cast<int>(out_grad.dims().size() - x.dims().size()));
-  std::vector<int64_t> x_grad_dims_mapping;
+  std::vector<int64_t> x_grad_dims_mapping(x_ndim, -1);
+  std::vector<int64_t> partial_dims;
   for (size_t i = 0; i < out_grad_dims_mapping_src.size(); ++i) {
     if (i < axis || i >= axis + x.dims().size() ||
         out_grad.dims()[i] != x.dims()[i - axis]) {
+      if (out_grad_dims_mapping_src[i] >= 0) {
+        partial_dims.push_back(out_grad_dims_mapping_src[i]);
+      }
       continue;
     }
-    x_grad_dims_mapping.push_back(out_grad_dims_mapping_src[i]);
+    x_grad_dims_mapping[i - axis] = out_grad_dims_mapping_src[i];
   }
   TensorDistAttr x_grad_dist_attr =
       CopyTensorDistAttrForOutput(x_dist_attr_src);
+  TensorDistAttr x_dist_attr = x_grad_dist_attr;
+  x_dist_attr.set_dims_mapping(x_grad_dims_mapping);
   x_grad_dist_attr.set_dims_mapping(x_grad_dims_mapping);
-  return {{x_dist_attr_src, out_grad_dist_attr_src}, {x_grad_dist_attr}};
+  x_grad_dist_attr.set_partial_status(partial_dims);
+  return {{x_dist_attr, out_grad_dist_attr_src}, {x_grad_dist_attr}};
 }
 
 }  // namespace phi::distributed

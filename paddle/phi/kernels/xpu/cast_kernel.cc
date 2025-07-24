@@ -23,13 +23,13 @@ namespace phi {
 
 #ifdef PADDLE_WITH_XPU_FFT
 template <class T, class Context>
-static DenseTensor Fill(const Context& ctx,
+static DenseTensor Fill(const Context& dev_ctx,
                         std::vector<int> shape,
                         T fill_value) {
   DenseTensor ret;
   ret.Resize(common::make_ddim(shape));
-  ctx.template Alloc<T>(&ret);
-  funcs::SetConstant<Context, T>()(ctx, &ret, fill_value);
+  dev_ctx.template Alloc<T>(&ret);
+  funcs::SetConstant<Context, T>()(dev_ctx, &ret, fill_value);
   return ret;
 }
 #endif

@@ -190,14 +190,11 @@ void BKCLCommContext::AllToAllUnequalSplit(
     const phi::DenseTensor& in_size_tensor,
     const phi::DenseTensor& in_offset_tensor,
     XPUStream stream) {
-  auto in_size_ptr = const_cast<size_t*>(
-      reinterpret_cast<const size_t*>(in_size_tensor.data()));
-  auto in_offset_ptr = const_cast<size_t*>(
-      reinterpret_cast<const size_t*>(in_offset_tensor.data()));
-  auto out_size_ptr = const_cast<size_t*>(
-      reinterpret_cast<const size_t*>(out_size_tensor.data()));
-  auto out_offset_ptr = const_cast<size_t*>(
-      reinterpret_cast<const size_t*>(out_offset_tensor.data()));
+  auto in_size_ptr = reinterpret_cast<const size_t*>(in_size_tensor.data());
+  auto in_offset_ptr = reinterpret_cast<const size_t*>(in_offset_tensor.data());
+  auto out_size_ptr = reinterpret_cast<const size_t*>(out_size_tensor.data());
+  auto out_offset_ptr =
+      reinterpret_cast<const size_t*>(out_offset_tensor.data());
 
   PADDLE_ENFORCE_BKCL_SUCCESS(
       bkcl_all_to_all_v(bkcl_comm_,

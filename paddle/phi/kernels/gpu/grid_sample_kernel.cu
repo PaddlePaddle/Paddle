@@ -152,45 +152,45 @@ __global__ void GridSampleCudaKernel(IndexT n,
   }
 }
 
-template <typename T>
-__global__ void GridSample3DCudaKernel(const int nthreads,
-                                       int out_c,
-                                       int out_d,
-                                       int out_h,
-                                       int out_w,
-                                       int in_d,
-                                       int in_h,
-                                       int in_w,
+template <typename T, typename IndexT>
+__global__ void GridSample3DCudaKernel(const IndexT nthreads,
+                                       IndexT out_c,
+                                       IndexT out_d,
+                                       IndexT out_h,
+                                       IndexT out_w,
+                                       IndexT in_d,
+                                       IndexT in_h,
+                                       IndexT in_w,
                                        const T* input,
                                        const T* grid,
                                        T* output,
                                        const Mode interpolation_mode,
                                        const PaddingMode padding_mode,
                                        bool align_corners) {
-  int inp_sW = 1;
-  int inp_sH = in_w;
-  int inp_sD = in_h * in_w;
-  int inp_sC = in_d * inp_sD;
-  int inp_sN = out_c * inp_sC;
+  IndexT inp_sW = 1;
+  IndexT inp_sH = in_w;
+  IndexT inp_sD = in_h * in_w;
+  IndexT inp_sC = in_d * inp_sD;
+  IndexT inp_sN = out_c * inp_sC;
 
-  int grid_sCoor = 1;
-  int grid_sW = 3;
-  int grid_sH = out_w * grid_sW;
-  int grid_sD = out_h * grid_sH;
-  int grid_sN = out_d * grid_sD;
+  IndexT grid_sCoor = 1;
+  IndexT grid_sW = 3;
+  IndexT grid_sH = out_w * grid_sW;
+  IndexT grid_sD = out_h * grid_sH;
+  IndexT grid_sN = out_d * grid_sD;
 
-  int out_sW = 1;
-  int out_sH = out_w;
-  int out_sD = out_h * out_w;
-  int out_sC = out_d * out_sD;
-  int out_sN = out_c * out_sC;
+  IndexT out_sW = 1;
+  IndexT out_sH = out_w;
+  IndexT out_sD = out_h * out_w;
+  IndexT out_sC = out_d * out_sD;
+  IndexT out_sN = out_c * out_sC;
 
-  CUDA_KERNEL_LOOP_TYPE(index, nthreads, int) {
-    const int w = index % out_w;
-    const int h = (index / out_w) % out_h;
-    const int d = (index / (out_h * out_w)) % out_d;
-    const int n = index / (out_d * out_h * out_w);
-    const int grid_offset =
+  CUDA_KERNEL_LOOP_TYPE(index, nthreads, IndexT) {
+    const IndexT w = index % out_w;
+    const IndexT h = (index / out_w) % out_h;
+    const IndexT d = (index / (out_h * out_w)) % out_d;
+    const IndexT n = index / (out_d * out_h * out_w);
+    const IndexT grid_offset =
         n * grid_sN + d * grid_sD + h * grid_sH + w * grid_sW;
     // get the corresponding input x, y, z coordinates from grid
     T ix = grid[grid_offset];
@@ -203,37 +203,37 @@ __global__ void GridSample3DCudaKernel(const int nthreads,
       // get corner pixel values from (x, y, z)
       // for 4d, we used north-east-south-west
       // for 5d, we add top-bottom
-      int ix_tnw = static_cast<int>(std::floor(ix));
-      int iy_tnw = static_cast<int>(std::floor(iy));
-      int iz_tnw = static_cast<int>(std::floor(iz));
+      IndexT ix_tnw = static_cast<IndexT>(std::floor(ix));
+      IndexT iy_tnw = static_cast<IndexT>(std::floor(iy));
+      IndexT iz_tnw = static_cast<IndexT>(std::floor(iz));
 
-      int ix_tne = ix_tnw + 1;
-      int iy_tne = iy_tnw;
-      int iz_tne = iz_tnw;
+      IndexT ix_tne = ix_tnw + 1;
+      IndexT iy_tne = iy_tnw;
+      IndexT iz_tne = iz_tnw;
 
-      int ix_tsw = ix_tnw;
-      int iy_tsw = iy_tnw + 1;
-      int iz_tsw = iz_tnw;
+      IndexT ix_tsw = ix_tnw;
+      IndexT iy_tsw = iy_tnw + 1;
+      IndexT iz_tsw = iz_tnw;
 
-      int ix_tse = ix_tnw + 1;
-      int iy_tse = iy_tnw + 1;
-      int iz_tse = iz_tnw;
+      IndexT ix_tse = ix_tnw + 1;
+      IndexT iy_tse = iy_tnw + 1;
+      IndexT iz_tse = iz_tnw;
 
-      int ix_bnw = ix_tnw;
-      int iy_bnw = iy_tnw;
-      int iz_bnw = iz_tnw + 1;
+      IndexT ix_bnw = ix_tnw;
+      IndexT iy_bnw = iy_tnw;
+      IndexT iz_bnw = iz_tnw + 1;
 
-      int ix_bne = ix_tnw + 1;
-      int iy_bne = iy_tnw;
-      int iz_bne = iz_tnw + 1;
+      IndexT ix_bne = ix_tnw + 1;
+      IndexT iy_bne = iy_tnw;
+      IndexT iz_bne = iz_tnw + 1;
 
-      int ix_bsw = ix_tnw;
-      int iy_bsw = iy_tnw + 1;
-      int iz_bsw = iz_tnw + 1;
+      IndexT ix_bsw = ix_tnw;
+      IndexT iy_bsw = iy_tnw + 1;
+      IndexT iz_bsw = iz_tnw + 1;
 
-      int ix_bse = ix_tnw + 1;
-      int iy_bse = iy_tnw + 1;
-      int iz_bse = iz_tnw + 1;
+      IndexT ix_bse = ix_tnw + 1;
+      IndexT iy_bse = iy_tnw + 1;
+      IndexT iz_bse = iz_tnw + 1;
 
       // get surfaces to each neighbor:
       T tnw = (ix_bse - ix) * (iy_bse - iy) * (iz_bse - iz);
@@ -245,10 +245,10 @@ __global__ void GridSample3DCudaKernel(const int nthreads,
       T bsw = (ix_tne - ix) * (iy - iy_tne) * (iz - iz_tne);
       T bse = (ix - ix_tnw) * (iy - iy_tnw) * (iz - iz_tnw);
 
-      auto inp_ptr_NC = input + n * inp_sN;
-      auto out_ptr_NCDHW =
-          output + n * out_sN + d * out_sD + h * out_sH + w * out_sW;
-      for (int c = 0; c < out_c;
+      const T* inp_ptr_NC = input + n * inp_sN;
+      T* out_ptr_NCDHW =
+          output + (n * out_sN + d * out_sD + h * out_sH + w * out_sW);
+      for (IndexT c = 0; c < out_c;
            ++c, inp_ptr_NC += inp_sC, out_ptr_NCDHW += out_sC) {
         *out_ptr_NCDHW = static_cast<T>(0);
         if (InBounds3D(iz_tnw, iy_tnw, ix_tnw, in_d, in_h, in_w)) {
@@ -293,15 +293,15 @@ __global__ void GridSample3DCudaKernel(const int nthreads,
         }
       }
     } else if (interpolation_mode == Mode::nearest) {
-      int ix_nearest = static_cast<int>(std::round(ix));
-      int iy_nearest = static_cast<int>(std::round(iy));
-      int iz_nearest = static_cast<int>(std::round(iz));
+      IndexT ix_nearest = static_cast<IndexT>(std::round(ix));
+      IndexT iy_nearest = static_cast<IndexT>(std::round(iy));
+      IndexT iz_nearest = static_cast<IndexT>(std::round(iz));
 
       // assign nearest neighbor pixel value to output pixel
-      auto inp_ptr_NC = input + n * inp_sN;
-      auto out_ptr_NCDHW =
-          output + n * out_sN + d * out_sD + h * out_sH + w * out_sW;
-      for (int c = 0; c < out_c;
+      const T* inp_ptr_NC = input + n * inp_sN;
+      T* out_ptr_NCDHW =
+          output + (n * out_sN + d * out_sD + h * out_sH + w * out_sW);
+      for (IndexT c = 0; c < out_c;
            ++c, inp_ptr_NC += inp_sC, out_ptr_NCDHW += out_sC) {
         if (InBounds3D(iz_nearest, iy_nearest, ix_nearest, in_d, in_h, in_w)) {
           *out_ptr_NCDHW =
@@ -343,6 +343,10 @@ void GridSampleKernel(const Context& dev_ctx,
     enum_mode = Mode::bilinear;
   }
 
+  bool use_int32_index = x.numel() <= std::numeric_limits<int>::max() &&
+                         grid.numel() <= std::numeric_limits<int>::max() &&
+                         out->numel() <= std::numeric_limits<int>::max();
+
   if (x.dims().size() == 4) {
     const int64_t n = grid.dims()[0];
     const int64_t out_h = grid.dims()[1];
@@ -361,46 +365,36 @@ void GridSampleKernel(const Context& dev_ctx,
     auto cu_stream = dev_ctx.stream();
     backends::gpu::GpuLaunchConfig config =
         backends::gpu::GetGpuLaunchConfig1D(dev_ctx, count);
-    if (x.numel() <= std::numeric_limits<int>::max() &&
-        grid.numel() <= std::numeric_limits<int>::max() &&
-        out->numel() <= std::numeric_limits<int>::max()) {
-      GridSampleCudaKernel<T, int>
-          <<<config.block_per_grid, config.thread_per_block, 0, cu_stream>>>(
-              n,
-              c,
-              out_h * out_w,
-              in_h,
-              in_w,
-              x.data<T>(),
-              grid.data<T>(),
-              output_data,
-              enum_mode,
-              enum_padding_mode,
-              align_corners);
+
+#define LAUNCH_KERNEL(INDEX_TYPE)                                         \
+  GridSampleCudaKernel<T, INDEX_TYPE>                                     \
+      <<<config.block_per_grid, config.thread_per_block, 0, cu_stream>>>( \
+          n,                                                              \
+          c,                                                              \
+          out_h * out_w,                                                  \
+          in_h,                                                           \
+          in_w,                                                           \
+          x.data<T>(),                                                    \
+          grid.data<T>(),                                                 \
+          output_data,                                                    \
+          enum_mode,                                                      \
+          enum_padding_mode,                                              \
+          align_corners)
+    if (use_int32_index) {
+      LAUNCH_KERNEL(int);
     } else {
-      GridSampleCudaKernel<T, int64_t>
-          <<<config.block_per_grid, config.thread_per_block, 0, cu_stream>>>(
-              n,
-              c,
-              out_h * out_w,
-              in_h,
-              in_w,
-              x.data<T>(),
-              grid.data<T>(),
-              output_data,
-              enum_mode,
-              enum_padding_mode,
-              align_corners);
+      LAUNCH_KERNEL(int64_t);
     }
+#undef LAUNCH_KERNEL
   } else {
-    const int n = grid.dims()[0];
-    const int out_d = grid.dims()[1];
-    const int out_h = grid.dims()[2];
-    const int out_w = grid.dims()[3];
-    const int c = x.dims()[1];
-    const int in_d = x.dims()[2];
-    const int in_h = x.dims()[3];
-    const int in_w = x.dims()[4];
+    const int64_t n = grid.dims()[0];
+    const int64_t out_d = grid.dims()[1];
+    const int64_t out_h = grid.dims()[2];
+    const int64_t out_w = grid.dims()[3];
+    const int64_t c = x.dims()[1];
+    const int64_t in_d = x.dims()[2];
+    const int64_t in_h = x.dims()[3];
+    const int64_t in_w = x.dims()[4];
 
     VLOG(3) << "n: " << n << "; c: " << c << "; out_d: " << out_d
             << "; out_h: " << out_h << "; out_w: " << out_w;
@@ -410,26 +404,34 @@ void GridSampleKernel(const Context& dev_ctx,
             << out->dims()[2] << "; " << out->dims()[3] << "; "
             << out->dims()[4];
 
-    int count = static_cast<int>(n * out_d * out_h * out_w);
+    int64_t count = n * out_d * out_h * out_w;
     auto cu_stream = dev_ctx.stream();
     backends::gpu::GpuLaunchConfig config =
         backends::gpu::GetGpuLaunchConfig1D(dev_ctx, count);
-    GridSample3DCudaKernel<T>
-        <<<config.block_per_grid, config.thread_per_block, 0, cu_stream>>>(
-            count,
-            c,
-            out_d,
-            out_h,
-            out_w,
-            in_d,
-            in_h,
-            in_w,
-            x.data<T>(),
-            grid.data<T>(),
-            output_data,
-            enum_mode,
-            enum_padding_mode,
-            align_corners);
+
+#define LAUNCH_KERNEL(INDEX_TYPE)                                         \
+  GridSample3DCudaKernel<T, INDEX_TYPE>                                   \
+      <<<config.block_per_grid, config.thread_per_block, 0, cu_stream>>>( \
+          count,                                                          \
+          c,                                                              \
+          out_d,                                                          \
+          out_h,                                                          \
+          out_w,                                                          \
+          in_d,                                                           \
+          in_h,                                                           \
+          in_w,                                                           \
+          x.data<T>(),                                                    \
+          grid.data<T>(),                                                 \
+          output_data,                                                    \
+          enum_mode,                                                      \
+          enum_padding_mode,                                              \
+          align_corners)
+    if (use_int32_index) {
+      LAUNCH_KERNEL(int);
+    } else {
+      LAUNCH_KERNEL(int64_t);
+    }
+#undef LAUNCH_KERNEL
   }
 }
 

@@ -27,7 +27,7 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void PoolGradRawGPUDNNKernel(const Context& ctx,
+void PoolGradRawGPUDNNKernel(const Context& dev_ctx,
                              const DenseTensor& x,
                              const DenseTensor& out,
                              const DenseTensor& dout,
@@ -42,17 +42,17 @@ void PoolGradRawGPUDNNKernel(const Context& ctx,
                              const std::string& padding_algorithm,
                              DenseTensor* dx) {
   PADDLE_ENFORCE_EQ(
-      ctx.GetPlace().GetType() == phi::AllocationType::GPU,
+      dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU,
       true,
       errors::InvalidArgument("Pool operator CUDA kernel must use CUDAPlace "
                               "rather than CPUPlace."));
 
   if (dx && dx->numel() == 0) {
-    ctx.template Alloc<T>(dx);
+    dev_ctx.template Alloc<T>(dx);
     return;
   }
   auto run_cuda_kernel = [&]() {
-    PoolGradRawKernel<T, GPUContext>(ctx,
+    PoolGradRawKernel<T, GPUContext>(dev_ctx,
                                      x,
                                      out,
                                      dout,
@@ -121,7 +121,7 @@ void PoolGradRawGPUDNNKernel(const Context& ctx,
   DenseTensor transformed_output(output->type());
   DenseTensor transformed_output_grad(output_grad->type());
 
-  ctx.template Alloc<T>(input_grad);
+  dev_ctx.template Alloc<T>(input_grad);
   DenseTensor transformed_input_grad(input_grad->type());
   GPUDNNDataLayout layout;
   const std::string str_NCHW = "NCHW", str_NHWC = "NHWC";
@@ -138,10 +138,10 @@ void PoolGradRawGPUDNNKernel(const Context& ctx,
     in_dims_vec[3] = input->dims()[2];
     in_dims_vec[4] = input->dims()[3];
     transformed_input.Resize(common::make_ddim(in_dims_vec));
-    ctx.Alloc(&transformed_input, input->type());
+    dev_ctx.Alloc(&transformed_input, input->type());
 
     funcs::Transpose<Context, T, 5> trans5;
-    trans5(ctx, *input, &transformed_input, axis);
+    trans5(dev_ctx, *input, &transformed_input, axis);
 
     // output
     transformed_output.Resize(output->dims());
@@ -152,17 +152,17 @@ void PoolGradRawGPUDNNKernel(const Context& ctx,
     out_dims_vec[4] = output->dims()[3];
     transformed_output.Resize(common::make_ddim(out_dims_vec));
 
-    ctx.Alloc(&transformed_output, output->type());
+    dev_ctx.Alloc(&transformed_output, output->type());
 
     funcs::Transpose<Context, T, 5> trans5_v2;
-    trans5_v2(ctx, *output, &transformed_output, axis);
+    trans5_v2(dev_ctx, *output, &transformed_output, axis);
 
     // output grad
     transformed_output_grad.Resize(common::make_ddim(out_dims_vec));
-    ctx.Alloc(&transformed_output_grad, output_grad->type());
+    dev_ctx.Alloc(&transformed_output_grad, output_grad->type());
 
     funcs::Transpose<Context, T, 5> trans5_v3;
-    trans5_v3(ctx, *output_grad, &transformed_output_grad, axis);
+    trans5_v3(dev_ctx, *output_grad, &transformed_output_grad, axis);
 
     // input grad
     transformed_input_grad.Resize(common::make_ddim(in_dims_vec));
@@ -181,10 +181,10 @@ void PoolGradRawGPUDNNKernel(const Context& ctx,
     in_dims_vec[2] = input->dims()[1];
     in_dims_vec[3] = input->dims()[2];
     transformed_input.Resize(common::make_ddim(in_dims_vec));
-    ctx.Alloc(&transformed_input, input->type());
+    dev_ctx.Alloc(&transformed_input, input->type());
 
     funcs::Transpose<Context, T, 4> trans4;
-    trans4(ctx, *input, &transformed_input, axis);
+    trans4(dev_ctx, *input, &transformed_input, axis);
 
     // output
     transformed_output.Resize(output->dims());
@@ -193,17 +193,17 @@ void PoolGradRawGPUDNNKernel(const Context& ctx,
     out_dims_vec[2] = output->dims()[1];
     out_dims_vec[3] = output->dims()[2];
     transformed_output.Resize(common::make_ddim(out_dims_vec));
-    ctx.Alloc(&transformed_output, output->type());
+    dev_ctx.Alloc(&transformed_output, output->type());
 
     funcs::Transpose<Context, T, 4> trans4_v2;
-    trans4_v2(ctx, *output, &transformed_output, axis);
+    trans4_v2(dev_ctx, *output, &transformed_output, axis);
 
     // output grad
     transformed_output_grad.Resize(common::make_ddim(out_dims_vec));
-    ctx.Alloc(&transformed_output_grad, output_grad->type());
+    dev_ctx.Alloc(&transformed_output_grad, output_grad->type());
 
     funcs::Transpose<Context, T, 4> trans4_v3;
-    trans4_v3(ctx, *output_grad, &transformed_output_grad, axis);
+    trans4_v3(dev_ctx, *output_grad, &transformed_output_grad, axis);
 
     // input grad
     transformed_input_grad.Resize(common::make_ddim(in_dims_vec));
@@ -257,10 +257,10 @@ void PoolGradRawGPUDNNKernel(const Context& ctx,
 #endif
 
   // ------------------- cudnn pool algorithm ---------------------
-  auto handle = ctx.cudnn_handle();
+  auto handle = dev_ctx.cudnn_handle();
   ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
   if (input_grad) {
-    T* input_grad_data = ctx.template Alloc<T>(&transformed_input_grad);
+    T* input_grad_data = dev_ctx.template Alloc<T>(&transformed_input_grad);
 // Because beta is zero, it is unnecessary to reset input_grad.
 #ifdef PADDLE_WITH_HIP
     char* pool_workspace;
@@ -300,21 +300,21 @@ void PoolGradRawGPUDNNKernel(const Context& ctx,
     if (data_format == str_NDHWC) {
       std::vector<int> axis{0, 2, 3, 4, 1};
       funcs::Transpose<Context, T, 5> trans5_v4;
-      trans5_v4(ctx, transformed_input_grad, input_grad, axis);
+      trans5_v4(dev_ctx, transformed_input_grad, input_grad, axis);
     }
 #ifdef PADDLE_WITH_HIP
     // MIOPEN not support NHWC data layout
     if (data_format == str_NHWC) {
       std::vector<int> axis{0, 2, 3, 1};
       funcs::Transpose<Context, T, 4> trans4_v4;
-      trans4_v4(ctx, transformed_input_grad, input_grad, axis);
+      trans4_v4(dev_ctx, transformed_input_grad, input_grad, axis);
     }
 #endif
   }
 }
 
 template <typename T, typename Context>
-void Pool2dGradGPUDNNKernel(const Context& ctx,
+void Pool2dGradGPUDNNKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& out,
                             const DenseTensor& dout,
@@ -329,7 +329,7 @@ void Pool2dGradGPUDNNKernel(const Context& ctx,
                             bool adaptive,
                             const std::string& padding_algorithm,
                             DenseTensor* dx) {
-  PoolGradRawGPUDNNKernel<T, Context>(ctx,
+  PoolGradRawGPUDNNKernel<T, Context>(dev_ctx,
                                       x,
                                       out,
                                       dout,
@@ -346,7 +346,7 @@ void Pool2dGradGPUDNNKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void Pool2dDoubleGradGPUDNNKernel(const Context& ctx,
+void Pool2dDoubleGradGPUDNNKernel(const Context& dev_ctx,
                                   const DenseTensor& x,
                                   const IntArray& kernel_size,
                                   const std::vector<int64_t>& strides,
@@ -363,7 +363,7 @@ void Pool2dDoubleGradGPUDNNKernel(const Context& ctx,
     PADDLE_THROW(
         errors::InvalidArgument("Pool op grad grad only supports avgpool."));
   } else {
-    Pool2dGPUDNNKernel<T, Context>(ctx,
+    Pool2dGPUDNNKernel<T, Context>(dev_ctx,
                                    x,
                                    kernel_size,
                                    strides,
@@ -380,7 +380,7 @@ void Pool2dDoubleGradGPUDNNKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void Pool3dGradGPUDNNKernel(const Context& ctx,
+void Pool3dGradGPUDNNKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& out,
                             const DenseTensor& dout,
@@ -395,7 +395,7 @@ void Pool3dGradGPUDNNKernel(const Context& ctx,
                             bool adaptive,
                             const std::string& padding_algorithm,
                             DenseTensor* dx) {
-  PoolGradRawGPUDNNKernel<T, Context>(ctx,
+  PoolGradRawGPUDNNKernel<T, Context>(dev_ctx,
                                       x,
                                       out,
                                       dout,

@@ -102,7 +102,7 @@ void StridedSliceRawGradKernel(const Context& dev_ctx,
 
     // step 1: set all value to 0
 
-    // int constant(Context* ctx, T* x, int64_t len, T val)
+    // int constant(Context* xpu_ctx, T* x, int64_t len, T val)
     int r = xpu::constant(
         dev_ctx.x_context(), x_transpose, x.numel(), static_cast<XPUType>(0));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
@@ -116,7 +116,7 @@ void StridedSliceRawGradKernel(const Context& dev_ctx,
     if (starts_in.back() == 1) {
       offset = x.numel() / 2;
     }
-    // int copy(Context* ctx, const T* x, T* y, int64_t len)
+    // int copy(Context* xpu_ctx, const T* x, T* y, int64_t len)
     r = xpu::copy<XPUType>(dev_ctx.x_context(),
                            reinterpret_cast<const XPUType*>(out_grad.data<T>()),
                            x_transpose + offset,

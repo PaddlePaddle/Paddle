@@ -23,17 +23,17 @@
 namespace phi {
 
 template <typename T, typename Context>
-void TraceKernel(const Context& ctx,
+void TraceKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  int offset,
                  int axis1,
                  int axis2,
                  DenseTensor* out) {
-  T* out_data = ctx.template Alloc<T>(out);
+  T* out_data = dev_ctx.template Alloc<T>(out);
   if (out && out->numel() == 0) {
     return;
   }
-  auto diag = funcs::Diagonal<T, Context>(ctx, &x, offset, axis1, axis2);
+  auto diag = funcs::Diagonal<T, Context>(dev_ctx, &x, offset, axis1, axis2);
   if (diag.numel() > 0) {
     std::vector<int> reduce_dims;
     // Adapt to 0D output
@@ -41,10 +41,10 @@ void TraceKernel(const Context& ctx,
     if (out_dim_size == 0) out_dim_size = 1;
     reduce_dims.push_back(out_dim_size);
     phi::SumKernel<T, Context>(
-        ctx, diag, reduce_dims, diag.dtype(), false, out);
+        dev_ctx, diag, reduce_dims, diag.dtype(), false, out);
   } else {
     phi::funcs::SetConstant<Context, T> functor;
-    functor(ctx, out, static_cast<T>(0));
+    functor(dev_ctx, out, static_cast<T>(0));
   }
 }
 

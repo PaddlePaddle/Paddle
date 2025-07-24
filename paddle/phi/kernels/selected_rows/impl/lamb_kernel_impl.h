@@ -174,7 +174,7 @@ void ComputeRowImpl(const Context& dev_ctx,
   DenseTensor trust_ratio_div;
   trust_ratio_div.Resize(param.dims());
   /*auto trust_ratio_div =
-      ctx.AllocateTmpTensor<MT, DeviceContext>(param.dims(), dev_ctx);*/
+      dev_ctx.AllocateTmpTensor<MT, DeviceContext>(param.dims(), dev_ctx);*/
   auto* trust_ratio_div_ptr = dev_ctx.template Alloc<MT>(&trust_ratio_div);
 
   const void* param_ptr = param.data();

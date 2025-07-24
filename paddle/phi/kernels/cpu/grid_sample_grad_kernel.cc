@@ -22,15 +22,15 @@
 namespace phi {
 
 template <typename T>
-static inline void ClipWithMask(const CPUContext& ctx,
+static inline void ClipWithMask(const CPUContext& dev_ctx,
                                 const int max_val,  // height-1 or width-1
                                 bool align_corners,
                                 std::string padding_mode,
                                 DenseTensor* grid_slice,
                                 DenseTensor* grid_scale) {
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   grid_scale->Resize(grid_slice->dims());
-  ctx.Alloc<T>(grid_scale);
+  dev_ctx.Alloc<T>(grid_scale);
 
   auto grid_slice_t = EigenTensor<T, 3>::From(*grid_slice);
   auto factor = static_cast<T>(max_val * 0.5);
@@ -83,15 +83,15 @@ static inline void ClipWithMask(const CPUContext& ctx,
 }
 
 template <typename T>
-static inline void ClipWithMask3D(const CPUContext& ctx,
+static inline void ClipWithMask3D(const CPUContext& dev_ctx,
                                   const int max_val,  // height-1 or width-1
                                   bool align_corners,
                                   std::string padding_mode,
                                   DenseTensor* grid_slice,
                                   DenseTensor* grid_scale) {
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   grid_scale->Resize(grid_slice->dims());
-  ctx.Alloc<T>(grid_scale);
+  dev_ctx.Alloc<T>(grid_scale);
 
   auto grid_slice_t = EigenTensor<T, 4>::From(*grid_slice);
   auto factor = static_cast<T>(max_val * 0.5);
@@ -144,7 +144,7 @@ static inline void ClipWithMask3D(const CPUContext& ctx,
 }
 
 template <typename T>
-static void CalcGridLocationsWithGrad(const CPUContext& ctx,
+static void CalcGridLocationsWithGrad(const CPUContext& dev_ctx,
                                       const DenseTensor& grid,
                                       const int in_h,
                                       const int in_w,
@@ -161,8 +161,8 @@ static void CalcGridLocationsWithGrad(const CPUContext& ctx,
   // split grid with shape (n, h, w, 2) into (x, y) by the 3rd Dim
   grid_x->Resize({n, out_h, out_w});
   grid_y->Resize({n, out_h, out_w});
-  T* grid_x_data = ctx.Alloc<T>(grid_x);
-  T* grid_y_data = ctx.Alloc<T>(grid_y);
+  T* grid_x_data = dev_ctx.Alloc<T>(grid_x);
+  T* grid_y_data = dev_ctx.Alloc<T>(grid_y);
 
   const T* grid_data = grid.data<T>();
   for (int i = 0; i < n * out_h * out_w; i++) {
@@ -170,17 +170,17 @@ static void CalcGridLocationsWithGrad(const CPUContext& ctx,
     grid_y_data[i] = grid_data[(2 * i) + 1];
   }
 
-  Unnormalize<T>(ctx, grid_x, in_w - 1, align_corners);
-  Unnormalize<T>(ctx, grid_y, in_h - 1, align_corners);
+  Unnormalize<T>(dev_ctx, grid_x, in_w - 1, align_corners);
+  Unnormalize<T>(dev_ctx, grid_y, in_h - 1, align_corners);
 
   ClipWithMask<T>(
-      ctx, in_w - 1, align_corners, padding_mode, grid_x, grid_x_scale);
+      dev_ctx, in_w - 1, align_corners, padding_mode, grid_x, grid_x_scale);
   ClipWithMask<T>(
-      ctx, in_h - 1, align_corners, padding_mode, grid_y, grid_y_scale);
+      dev_ctx, in_h - 1, align_corners, padding_mode, grid_y, grid_y_scale);
 }
 
 template <typename T>
-static void Calc3DGridLocationsWithGrad(const CPUContext& ctx,
+static void Calc3DGridLocationsWithGrad(const CPUContext& dev_ctx,
                                         const DenseTensor& grid,
                                         const int in_d,
                                         const int in_h,
@@ -202,9 +202,9 @@ static void Calc3DGridLocationsWithGrad(const CPUContext& ctx,
   grid_x->Resize({n, out_d, out_h, out_w});
   grid_y->Resize({n, out_d, out_h, out_w});
   grid_z->Resize({n, out_d, out_h, out_w});
-  T* grid_x_data = ctx.Alloc<T>(grid_x);
-  T* grid_y_data = ctx.Alloc<T>(grid_y);
-  T* grid_z_data = ctx.Alloc<T>(grid_z);
+  T* grid_x_data = dev_ctx.Alloc<T>(grid_x);
+  T* grid_y_data = dev_ctx.Alloc<T>(grid_y);
+  T* grid_z_data = dev_ctx.Alloc<T>(grid_z);
 
   const T* grid_data = grid.data<T>();
   for (int i = 0; i < n * out_d * out_h * out_w; i++) {
@@ -213,16 +213,16 @@ static void Calc3DGridLocationsWithGrad(const CPUContext& ctx,
     grid_z_data[i] = grid_data[(3 * i) + 2];
   }
 
-  Unnormalize3D<T>(ctx, grid_x, in_w - 1, align_corners);
-  Unnormalize3D<T>(ctx, grid_y, in_h - 1, align_corners);
-  Unnormalize3D<T>(ctx, grid_z, in_d - 1, align_corners);
+  Unnormalize3D<T>(dev_ctx, grid_x, in_w - 1, align_corners);
+  Unnormalize3D<T>(dev_ctx, grid_y, in_h - 1, align_corners);
+  Unnormalize3D<T>(dev_ctx, grid_z, in_d - 1, align_corners);
 
   ClipWithMask3D<T>(
-      ctx, in_w - 1, align_corners, padding_mode, grid_x, grid_x_scale);
+      dev_ctx, in_w - 1, align_corners, padding_mode, grid_x, grid_x_scale);
   ClipWithMask3D<T>(
-      ctx, in_h - 1, align_corners, padding_mode, grid_y, grid_y_scale);
+      dev_ctx, in_h - 1, align_corners, padding_mode, grid_y, grid_y_scale);
   ClipWithMask3D<T>(
-      ctx, in_d - 1, align_corners, padding_mode, grid_z, grid_z_scale);
+      dev_ctx, in_d - 1, align_corners, padding_mode, grid_z, grid_z_scale);
 }
 
 template <typename T>
@@ -316,7 +316,7 @@ static void Gather3DOutputGradToInputGrad(const DenseTensor& output_grad,
 }
 
 template <typename T>
-static void GatherBilinearGrad(const CPUContext& ctx,
+static void GatherBilinearGrad(const CPUContext& dev_ctx,
                                const DenseTensor& input,
                                const DenseTensor& output_grad,
                                DenseTensor* grid_x,
@@ -334,7 +334,7 @@ static void GatherBilinearGrad(const CPUContext& ctx,
   DenseTensor d_w, d_e, d_n, d_s;
   DenseTensor v_wn, v_en, v_ws, v_es;
 
-  AllNeighbors<T>(ctx,
+  AllNeighbors<T>(dev_ctx,
                   input,
                   grid_x,  // grid_x
                   grid_y,  // grid_y
@@ -373,8 +373,8 @@ static void GatherBilinearGrad(const CPUContext& ctx,
     DenseTensor grid_grad_x, grid_grad_y;
     grid_grad_x.Resize({n, out_h, out_w});
     grid_grad_y.Resize({n, out_h, out_w});
-    ctx.Alloc<T>(&grid_grad_x);
-    ctx.Alloc<T>(&grid_grad_y);
+    dev_ctx.Alloc<T>(&grid_grad_x);
+    dev_ctx.Alloc<T>(&grid_grad_y);
     auto grid_grad_x_t =
         EigenTensor<T, 3>::From(grid_grad_x).setConstant(static_cast<T>(0.0));
     auto grid_grad_y_t =
@@ -416,7 +416,7 @@ static void GatherBilinearGrad(const CPUContext& ctx,
 }
 
 template <typename T>
-static void Gather3DBilinearGrad(const CPUContext& ctx,
+static void Gather3DBilinearGrad(const CPUContext& dev_ctx,
                                  const DenseTensor& input,
                                  const DenseTensor& output_grad,
                                  DenseTensor* grid_x,
@@ -437,7 +437,7 @@ static void Gather3DBilinearGrad(const CPUContext& ctx,
   DenseTensor d_w, d_e, d_n, d_s, d_t, d_b;
   DenseTensor v_twn, v_ten, v_tws, v_tes, v_bwn, v_ben, v_bws, v_bes;
 
-  All3DNeighbors<T>(ctx,
+  All3DNeighbors<T>(dev_ctx,
                     input,
                     grid_x,
                     grid_y,
@@ -502,9 +502,9 @@ static void Gather3DBilinearGrad(const CPUContext& ctx,
     grid_grad_x.Resize({n, out_d, out_h, out_w});
     grid_grad_y.Resize({n, out_d, out_h, out_w});
     grid_grad_z.Resize({n, out_d, out_h, out_w});
-    ctx.Alloc<T>(&grid_grad_x);
-    ctx.Alloc<T>(&grid_grad_y);
-    ctx.Alloc<T>(&grid_grad_z);
+    dev_ctx.Alloc<T>(&grid_grad_x);
+    dev_ctx.Alloc<T>(&grid_grad_y);
+    dev_ctx.Alloc<T>(&grid_grad_z);
     auto grid_grad_x_t =
         EigenTensor<T, 4>::From(grid_grad_x).setConstant(static_cast<T>(0.0));
     auto grid_grad_y_t =

@@ -69,13 +69,13 @@ class TestMemoryReuseExcludeFeedVar(unittest.TestCase):
             places.append(base.CUDAPlace(0))
 
         for p in places:
-            with base.program_guard(base.Program(), base.Program()):
-                with base.unique_name.guard():
-                    with base.scope_guard(base.Scope()):
-                        with (
-                            paddle.pir_utils.OldIrGuard()
-                        ):  # if you need to test in pir mode ,delete this line
-                            self.main_impl(p)
+            with (
+                base.program_guard(base.Program(), base.Program()),
+                base.unique_name.guard(),
+                base.scope_guard(base.Scope()),
+                paddle.pir_utils.OldIrGuard(),  # if you need to test in pir mode ,delete this line
+            ):
+                self.main_impl(p)
 
 
 if __name__ == '__main__':

@@ -43,5 +43,11 @@ void FrobeniusNormKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    frobenius_norm, GPU, ALL_LAYOUT, phi::FrobeniusNormKernel, float, double) {}
+PD_REGISTER_KERNEL(frobenius_norm,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::FrobeniusNormKernel,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

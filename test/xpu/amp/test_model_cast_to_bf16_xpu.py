@@ -58,9 +58,11 @@ class TestModelCastBF16(unittest.TestCase):
         prog = base.Program()
         startup_prog = base.Program()
         scope = base.core.Scope()
-        with base.scope_guard(scope):
-            with base.program_guard(prog, startup_prog):
-                yield
+        with (
+            base.scope_guard(scope),
+            base.program_guard(prog, startup_prog),
+        ):
+            yield
 
     def get_static_graph_result(
         self, feed, fetch_list, amp_fun, with_lod=False, startup_prog=None

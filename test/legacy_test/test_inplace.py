@@ -1698,6 +1698,48 @@ class TestDygraphInplaceCumprod(TestDygraphInplace):
             self.assertEqual(var.inplace_version, 3)
 
 
+class TestDygraphInplaceCumprodWithFlatten(TestDygraphInplace):
+    def inplace_api_processing(self, var):
+        return paddle.cumprod_(var, None, dtype="float32")
+
+    def non_inplace_api_processing(self, var):
+        return paddle.cumprod(var, None, dtype="float32")
+
+    def test_backward_error(self):
+        # It raises an error because the inplace operator will result
+        # in incorrect gradient computation.
+        with paddle.base.dygraph.guard():
+            var_a = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+            var_a.stop_gradient = False
+
+            var_b = var_a**2
+
+            # Here, the gradient computation will use the value of var_b
+            var_c = var_b**2
+            paddle.cumprod_(var_b, None, dtype="float64")
+
+            loss = paddle.nn.functional.relu(var_c)
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "received tensor_version:3 != wrapper_version_snapshot:0",
+            ):
+                loss.backward()
+
+    def test_forward_version(self):
+        with paddle.base.dygraph.guard():
+            var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+            self.assertEqual(var.inplace_version, 0)
+
+            inplace_var = self.inplace_api_processing(var)
+            self.assertEqual(var.inplace_version, 2)
+
+            inplace_var[0] = 2
+            self.assertEqual(var.inplace_version, 3)
+
+            inplace_var = self.inplace_api_processing(inplace_var)
+            self.assertEqual(var.inplace_version, 5)
+
+
 class TestDygrapInplaceRenorm(TestDygraphInplaceWithContinuous):
     def inplace_api_processing(self, var):
         return paddle.renorm_(var, 1.0, -1, 2.05)

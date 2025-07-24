@@ -23,7 +23,7 @@ from program_config import ProgramConfig, TensorConfig
 import paddle
 
 
-class TestConvGeluMkldnnFusePass(PassAutoScanTest):
+class TestConvGeluOnednnFusePass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 

@@ -43,11 +43,11 @@ struct DigammaGradFunctor {
 };
 
 template <typename T, typename Context>
-void DigammaGradKernel(const Context& ctx,
+void DigammaGradKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& out_grad,
                        DenseTensor* x_grad) {
-  ctx.template Alloc<T>(x_grad);
+  dev_ctx.template Alloc<T>(x_grad);
   if (x_grad && x_grad->numel() == 0) {
     return;
   }
@@ -56,7 +56,7 @@ void DigammaGradKernel(const Context& ctx,
   auto* x_data = x.data<T>();
   auto* dx_data = x_grad->data<T>();
   auto numel = out_grad.numel();
-  phi::funcs::ForRange<Context> for_range(ctx, numel);
+  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
   DigammaGradFunctor<T> functor(dout_data, x_data, dx_data, numel);
   for_range(functor);
 }

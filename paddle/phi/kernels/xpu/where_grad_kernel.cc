@@ -20,7 +20,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void WhereGradKernel(const Context& ctx,
+void WhereGradKernel(const Context& dev_ctx,
                      const DenseTensor& condition,
                      const DenseTensor& x,
                      const DenseTensor& y,
@@ -30,13 +30,13 @@ void WhereGradKernel(const Context& ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   if (out_grad.numel() == 0) {
     if (x_grad) {
-      phi::Full<T, Context>(ctx,
+      phi::Full<T, Context>(dev_ctx,
                             phi::IntArray(common::vectorize(x_grad->dims())),
                             static_cast<T>(0),
                             x_grad);
     }
     if (y_grad) {
-      phi::Full<T, Context>(ctx,
+      phi::Full<T, Context>(dev_ctx,
                             phi::IntArray(common::vectorize(y_grad->dims())),
                             static_cast<T>(0),
                             y_grad);
@@ -61,13 +61,13 @@ void WhereGradKernel(const Context& ctx,
   T* dy = nullptr;
 
   if (x_grad != nullptr) {
-    dx = ctx.template Alloc<T>(x_grad);
+    dx = dev_ctx.template Alloc<T>(x_grad);
   }
 
   if (y_grad != nullptr) {
-    dy = ctx.template Alloc<T>(y_grad);
+    dy = dev_ctx.template Alloc<T>(y_grad);
   }
-  int r = xpu::select_grad(ctx.x_context(),
+  int r = xpu::select_grad(dev_ctx.x_context(),
                            cond_data,
                            reinterpret_cast<const XPUType*>(dout),
                            reinterpret_cast<XPUType*>(dx),

@@ -229,8 +229,8 @@ Examples:
 )DOC");
 PyObject* tensor_properties_get_data(TensorObject* self, void* closure) {
   EAGER_TRY
-  Py_INCREF(self);
-  return reinterpret_cast<PyObject*>(self);
+  paddle::Tensor new_tensor(self->tensor.impl());
+  return ToPyObject(new_tensor);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 

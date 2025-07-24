@@ -37,13 +37,13 @@ void MultiplyKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(out);
     return;
   }
-  auto f = [](xpu::Context* ctx,
+  auto f = [](xpu::Context* xpu_ctx,
               const XPUType* x,
               const XPUType* y,
               XPUType* z,
               const std::vector<int64_t>& xshape,
               const std::vector<int64_t>& yshape) {
-    return xpu::broadcast_mul<XPUType>(ctx, x, y, z, xshape, yshape);
+    return xpu::broadcast_mul<XPUType>(xpu_ctx, x, y, z, xshape, yshape);
   };
 
   XPUElementwise<T, XPUType>(dev_ctx, x, y, -1, out, f);

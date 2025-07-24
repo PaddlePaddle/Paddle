@@ -26,7 +26,6 @@
 #include "paddle/cinn/hlir/pe/schedule.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/layout.h"
-#include "paddle/cinn/poly/stage.h"
 
 namespace cinn {
 namespace hlir {

@@ -33,7 +33,7 @@ from pathlib import Path
 from typing import TypeVar
 
 DEFAULT_ARCH = [50, 70, 75, 80]
-MAX_ARCH = 90
+MAX_ARCH = 100
 ENABLE_MACRO = "PADDLE_WITH_MEMORY_EFFICIENT_ATTENTION"
 
 assert sorted(DEFAULT_ARCH) == DEFAULT_ARCH
@@ -213,7 +213,7 @@ class FwdKernel:
     def get_all(cls) -> list[FwdKernel]:
         kernels: list[FwdKernel] = []
         for aligned, dtype, (sm, sm_max) in itertools.product(
-            [True, False], DTYPES.keys(), zip(SM, SM[1:] + [args.max_arch])
+            [True, False], DTYPES.keys(), zip(SM, [*SM[1:], args.max_arch])
         ):
             # Remove some kernels we don't use
             if dtype == "bf16" and sm < 80:
@@ -323,7 +323,7 @@ class BwdKernel:
         ) in itertools.product(
             [True, False],
             DTYPES.keys(),
-            zip(SM, SM[1:] + [args.max_arch]),
+            zip(SM, [*SM[1:], args.max_arch]),
             [True, False],
             [32, 64, 128, 2**16],
         ):

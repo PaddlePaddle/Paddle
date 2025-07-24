@@ -12,11 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_places,
+    skip_check_grad_ci,
+)
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -2047,16 +2051,18 @@ class TestReduceWithDtype2(TestReduceWithDtype):
 
 class TestReduceSumOpError(unittest.TestCase):
     def test_errors1(self):
-        with static_guard():
-            with paddle.static.program_guard(
+        with (
+            static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                # The input type of reduce_sum_op must be Variable.
-                x1 = base.create_lod_tensor(
-                    np.array([[-1]]), [[1]], base.CPUPlace()
-                )
-                self.assertRaises(TypeError, paddle.sum, x1)
-                # The input dtype of reduce_sum_op  must be float32 or float64 or int32 or int64.
+            ),
+        ):
+            # The input type of reduce_sum_op must be Variable.
+            x1 = base.create_lod_tensor(
+                np.array([[-1]]), [[1]], base.CPUPlace()
+            )
+            self.assertRaises(TypeError, paddle.sum, x1)
+            # The input dtype of reduce_sum_op  must be float32 or float64 or int32 or int64.
 
 
 class API_TestSumOp(unittest.TestCase):
@@ -2066,15 +2072,7 @@ class API_TestSumOp(unittest.TestCase):
         if np_axis is None:
             np_axis = attr_axis
 
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        places = get_places()
         for place in places:
             with base.program_guard(base.Program(), base.Program()):
                 data = paddle.static.data("data", shape=shape, dtype=x_dtype)
@@ -2146,15 +2144,7 @@ class TestAllAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         paddle.enable_static()
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def check_static_result(self, place):
         main = paddle.static.Program()
@@ -2259,15 +2249,7 @@ class TestAnyAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         paddle.enable_static()
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def check_static_result(self, place):
         main = paddle.static.Program()
@@ -2400,27 +2382,27 @@ class TestAllZero(unittest.TestCase):
         )
 
     def _test_static(self, place, axis, keepdim, dtype):
-        with static_guard():
-            with base.program_guard(
+        with (
+            static_guard(),
+            base.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                input = paddle.static.data(
-                    name="x", shape=self.shape, dtype=dtype
-                )
-                result = paddle.all(x=input, axis=axis, keepdim=keepdim)
-                x_np = np.zeros(self.shape, dtype=dtype)
+            ),
+        ):
+            input = paddle.static.data(name="x", shape=self.shape, dtype=dtype)
+            result = paddle.all(x=input, axis=axis, keepdim=keepdim)
+            x_np = np.zeros(self.shape, dtype=dtype)
 
-                exe = base.Executor(place)
-                fetches = exe.run(
-                    feed={"x": x_np},
-                    fetch_list=[result],
-                )
-                expected_result = self.calculate_expected_result(
-                    x_np, axis, keepdim
-                )
-                self.check_result(
-                    fetches[0], expected_result, axis, keepdim, dtype, place
-                )
+            exe = base.Executor(place)
+            fetches = exe.run(
+                feed={"x": x_np},
+                fetch_list=[result],
+            )
+            expected_result = self.calculate_expected_result(
+                x_np, axis, keepdim
+            )
+            self.check_result(
+                fetches[0], expected_result, axis, keepdim, dtype, place
+            )
 
     def _test_dygraph(self, place, axis, keepdim, dtype):
         with dygraph_guard():
@@ -2489,27 +2471,27 @@ class TestAnyZero(unittest.TestCase):
         )
 
     def _test_static(self, place, axis, keepdim, dtype):
-        with static_guard():
-            with base.program_guard(
+        with (
+            static_guard(),
+            base.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                input = paddle.static.data(
-                    name="x", shape=self.shape, dtype=dtype
-                )
-                result = paddle.any(x=input, axis=axis, keepdim=keepdim)
-                x_np = np.zeros(self.shape, dtype=dtype)
+            ),
+        ):
+            input = paddle.static.data(name="x", shape=self.shape, dtype=dtype)
+            result = paddle.any(x=input, axis=axis, keepdim=keepdim)
+            x_np = np.zeros(self.shape, dtype=dtype)
 
-                exe = base.Executor(place)
-                fetches = exe.run(
-                    feed={"x": x_np},
-                    fetch_list=[result],
-                )
-                expected_result = self.calculate_expected_result(
-                    x_np, axis, keepdim
-                )
-                self.check_result(
-                    fetches[0], expected_result, axis, keepdim, dtype, place
-                )
+            exe = base.Executor(place)
+            fetches = exe.run(
+                feed={"x": x_np},
+                fetch_list=[result],
+            )
+            expected_result = self.calculate_expected_result(
+                x_np, axis, keepdim
+            )
+            self.check_result(
+                fetches[0], expected_result, axis, keepdim, dtype, place
+            )
 
     def _test_dygraph(self, place, axis, keepdim, dtype):
         with dygraph_guard():

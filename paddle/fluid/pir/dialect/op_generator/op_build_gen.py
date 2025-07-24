@@ -96,6 +96,7 @@ _INFERMETA_NEED_META_CONFIG = {
     'PyramidHashInferMeta',
     'SigmoidCrossEntropyWithLogitsInferMeta',
     'StackInferMeta',
+    'WeightOnlyLinearInferMeta',
     'YoloBoxPostInferMeta',
     'FusedConvInferMeta',
     # nullary.h

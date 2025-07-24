@@ -488,11 +488,6 @@ void Conv2dTransposeKernel(const Context& dev_ctx,
                            const std::vector<int>& dilations,
                            const std::string& data_format UNUSED,
                            DenseTensor* out) {
-  PADDLE_ENFORCE_EQ(dev_ctx.GetPlace().GetType(),
-                    AllocationType::CPU,
-                    common::errors::PreconditionNotMet(
-                        "Operator oneDNN Conv must use CPUPlace"));
-
   const bool is_BFLOAT16 =
       dev_ctx.HasDnnAttr("mkldnn_data_type")
           ? PADDLE_GET_CONST(std::string,
@@ -544,11 +539,6 @@ void Conv2dTransposeBiasKernel(const Context& dev_ctx,
                                const std::vector<int>& dilations,
                                const std::string& data_format UNUSED,
                                DenseTensor* out) {
-  PADDLE_ENFORCE_EQ(dev_ctx.GetPlace().GetType(),
-                    AllocationType::CPU,
-                    common::errors::PreconditionNotMet(
-                        "Operator oneDNN Conv must use CPUPlace"));
-
   const bool is_BFLOAT16 =
       dev_ctx.HasDnnAttr("mkldnn_data_type")
           ? PADDLE_GET_CONST(std::string,

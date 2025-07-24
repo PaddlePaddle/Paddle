@@ -30,7 +30,6 @@ skipped_forward_api_names = {
     "scale_grad",
     "push_gpups_sparse",
     "multiply_grad",
-    "conv2d_grad",
     "pull_sparse_v2_grad",
 }
 

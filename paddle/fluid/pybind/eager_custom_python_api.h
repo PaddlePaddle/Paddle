@@ -15,7 +15,7 @@
 
 #include <iostream>
 
-#include "paddle/fluid/eager/to_static/run_program_op_func.h"
+#include "paddle/fluid/eager/to_static/run_program_func.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/phi/core/enforce.h"
 
@@ -82,29 +82,62 @@ static PyObject *eager_api_run_program(PyObject *self,
                                        PyObject *kwargs) {
   PyThreadState *tstate = nullptr;
   try {
-    auto X = GetTensorListFromArgs("run_program", "X", args, 0, true);
-    auto Params = GetTensorListFromArgs("run_program", "Params", args, 1, true);
-    auto Out = GetTensorPtrListFromArgs("run_program", "Out", args, 2, true);
-    auto OutScope =
-        GetScopePtrListFromArgs("run_program", "OutScope", args, 3, false);
-    const phi::distributed::ProcessMesh *mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, X, Params, Out)) {
-      X = GetTensorListFromArgs("run_program", "X", args, 0, true, mesh);
-      Params =
-          GetTensorListFromArgs("run_program", "Params", args, 1, true, mesh);
-      Out = GetTensorPtrListFromArgs("run_program", "Out", args, 2, true, mesh);
-    }
-    framework::AttributeMap attrs;
-    VLOG(6) << "Start PIR ConstructAttrMapFromPyArgs";
-    ConstructAttrMapForRunProgram(
-        "run_program", args, 4, PyTuple_GET_SIZE(args), attrs);
+    auto X_info = GetPyArgumentInfo("run_program", "X", args, 0, true);
+    TensorListBufferAllocator X_allocator(X_info.second);
+    auto &X = GetTensorListFromArgsWithBuffer("run_program",
+                                              "X",
+                                              0,
+                                              nullptr,
+                                              X_info.first,
+                                              X_info.second,
+                                              X_allocator);
 
-    VLOG(6) << "Finish Pir ConstructAttrMapFromPyArgs";
+    auto Params_info =
+        GetPyArgumentInfo("run_program", "Params", args, 1, true);
+    TensorListBufferAllocator Params_allocator(Params_info.second);
+    auto &Params = GetTensorListFromArgsWithBuffer("run_program",
+                                                   "Params",
+                                                   0,
+                                                   nullptr,
+                                                   Params_info.first,
+                                                   Params_info.second,
+                                                   Params_allocator);
+
+    auto OutScope =
+        GetScopePtrListFromArgs("run_program", "OutScope", args, 2, false);
+    const phi::distributed::ProcessMesh *mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, X, Params)) {
+      X = GetTensorListFromArgsWithBuffer("run_program",
+                                          "X",
+                                          0,
+                                          nullptr,
+                                          X_info.first,
+                                          X_info.second,
+                                          X_allocator);
+      Params = GetTensorListFromArgsWithBuffer("run_program",
+                                               "Params",
+                                               0,
+                                               nullptr,
+                                               Params_info.first,
+                                               Params_info.second,
+                                               Params_allocator);
+    }
+    VLOG(6) << "Start PIR GetProgramAttributesMapPtrFromPyArgs";
+    auto prog_attrs_ptr =
+        GetProgramAttributesMapPtrFromPyArgs("run_program", args, 3);
+    VLOG(6) << "Finish PIR GetProgramAttributesMapPtrFromPyArgs";
+
+    VLOG(6) << "Start PIR ConstructCudaGraphAttrMapForRunProgram";
+    paddle::framework::AttributeMap cuda_graph_attrs;
+    ConstructCudaGraphAttrMapForRunProgram(
+        "run_program", args, 4, cuda_graph_attrs);
+    VLOG(6) << "Finish PIR ConstructCudaGraphAttrMapForRunProgram";
     tstate = PyEval_SaveThread();
-    pir_run_program_ad_func(X, Params, Out, OutScope, attrs);
+    auto out = egr::to_static::run_program_ad_func(
+        X, Params, OutScope, *prog_attrs_ptr, cuda_graph_attrs);
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
-    Py_RETURN_NONE;
+    return ToPyObject(out);
   } catch (paddle::platform::EnforceNotMet &exception) {
     if (tstate) {
       PyEval_RestoreThread(tstate);

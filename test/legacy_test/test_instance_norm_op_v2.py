@@ -16,7 +16,7 @@ import os
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_places
 from utils import static_guard
 
 import paddle
@@ -88,21 +88,7 @@ def _reference_instance_norm_grad(x, scale, mean, var):
 
 class TestInstanceNorm(unittest.TestCase):
     def test_error(self):
-        places = []
-        if os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower() in [
-            '1',
-            'true',
-            'on',
-        ] or not (
-            core.is_compiled_with_cuda()
-            and core.op_support_gpu("instance_norm")
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda() and core.op_support_gpu(
-            "instance_norm"
-        ):
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
 
             def error1d():
                 x_data_4 = np.random.random(size=(2, 1, 3, 3)).astype('float32')
@@ -132,21 +118,7 @@ class TestInstanceNorm(unittest.TestCase):
                 self.assertRaises(ValueError, error3d)
 
     def test_dygraph(self):
-        places = []
-        if os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower() in [
-            '1',
-            'true',
-            'on',
-        ] or not (
-            core.is_compiled_with_cuda()
-            and core.op_support_gpu("instance_norm")
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda() and core.op_support_gpu(
-            "instance_norm"
-        ):
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             shape = [4, 10, 4, 4]
 
             def compute_v1(x):
@@ -168,21 +140,7 @@ class TestInstanceNorm(unittest.TestCase):
 
     def test_static(self):
         with static_guard():
-            places = []
-            if os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower() in [
-                '1',
-                'true',
-                'on',
-            ] or not (
-                core.is_compiled_with_cuda()
-                and core.op_support_gpu("instance_norm")
-            ):
-                places.append(base.CPUPlace())
-            if core.is_compiled_with_cuda() and core.op_support_gpu(
-                "instance_norm"
-            ):
-                places.append(base.CUDAPlace(0))
-            for p in places:
+            for p in get_places():
                 exe = base.Executor(p)
                 shape = [4, 10, 16, 16]
 
@@ -528,6 +486,61 @@ class TestPrimForwardAndBackward(unittest.TestCase):
                 rtol=1e-3,
                 atol=1e-3,
             )
+
+
+class TestInstanceNormOp_ZeroSize(OpTest):
+    def setUp(self):
+        paddle.disable_static()
+        self.op_type = "instance_norm"
+        self.__class__.op_type = self.op_type
+        self.data_format = "NCHW"
+        self.eps = 1e-5
+        self.init_dtype()
+        self.init_shape()
+        self.init_value()
+        self.inputs = {'X': self.value, 'Scale': self.scale, 'Bias': self.bias}
+        self.attrs = {
+            'epsilon': self.eps,
+            'momentum': 0.9,
+            'data_format': self.data_format,
+        }
+        self.python_out_sig = ['Y']
+        self.python_api = instance_norm_wrapper
+        self.public_python_api = instance_norm_wrapper
+
+    def test_check_output(self):
+        self.check_output(
+            atol=1e-3,
+            check_pir=True,
+        )
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X', 'Scale', 'Bias'],
+            'Y',
+            check_pir=True,
+        )
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+    def init_shape(self):
+        self.shape = [2, 0, 4, 5]
+        self.scale_shape = [100]
+        y = np.random.random([2, 0, 4, 5]).astype(self.dtype)
+        mean = np.random.random(0).astype(self.dtype)
+        variance_1 = np.random.random(0).astype(self.dtype)
+        self.outputs = {
+            'Y': y,
+            'SavedMean': mean,
+            'SavedVariance': variance_1,
+        }
+
+    def init_value(self):
+        np.random.seed(0)
+        self.value = np.random.random(self.shape).astype(self.dtype)
+        self.scale = np.random.random(self.scale_shape).astype(np.float32)
+        self.bias = np.random.random(self.scale_shape).astype(np.float32)
 
 
 if __name__ == '__main__':

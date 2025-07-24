@@ -94,6 +94,13 @@ struct kernel_dtype_is_same : public false_type {};
 template <typename _Tp>
 struct kernel_dtype_is_same<_Tp, _Tp> : public true_type {};
 
+namespace phi {
+template <>
+class PDDataTypeTraits<phi::dtype::bfloat16> {
+ public:
+  using DataType = __hip_bfloat16;
+};
+}  // namespace phi
 #endif
 
 namespace phi {
@@ -188,7 +195,7 @@ struct Packed_Int8_<uint4, CacheType::INT8> {
   using Type = uint64_t;
 };
 
-#ifdef ENABLE_BF16
+#if defined(ENABLE_BF16) || defined(PADDLE_WITH_HIP)
 template <>
 struct Packed_Int8_<__nv_bfloat162, CacheType::NORMAL> {
   using Type = uint16_t;
@@ -324,7 +331,7 @@ template <>
 struct Qk_vec_<float16, 256> {
   using Type = uint4;
 };
-#ifdef ENABLE_BF16
+#if defined(ENABLE_BF16) || defined(PADDLE_WITH_HIP)
 template <>
 struct Qk_vec_<bfloat16, 32> {
   using Type = __nv_bfloat162;
@@ -378,7 +385,7 @@ template <>
 struct Qk_vec_RoPE_<float, float, 256> {
   using Type = float4;
 };
-#ifdef ENABLE_BF16
+#if defined(ENABLE_BF16) || defined(PADDLE_WITH_HIP)
 template <>
 struct Qk_vec_RoPE_<bfloat16, float, 32> {
   using Type = float2;
@@ -459,7 +466,7 @@ template <>
 struct K_vec_<float16, 1> {
   using Type = uint4;
 };
-#ifdef ENABLE_BF16
+#if defined(ENABLE_BF16) || defined(PADDLE_WITH_HIP)
 template <>
 struct K_vec_<bfloat16, 4> {
   using Type = __nv_bfloat162;
@@ -534,7 +541,7 @@ template <>
 struct V_vec_<float16, 8> {
   using Type = uint4;
 };
-#ifdef ENABLE_BF16
+#if defined(ENABLE_BF16) || defined(PADDLE_WITH_HIP)
 template <>
 struct V_vec_<bfloat16, 2> {
   using Type = __nv_bfloat162;
@@ -549,7 +556,7 @@ struct V_vec_<bfloat16, 8> {
 };
 #endif  // ENABLE_BF16
 
-#ifdef ENABLE_BF16
+#if defined(ENABLE_BF16) || defined(PADDLE_WITH_HIP)
 inline __device__ __nv_bfloat162 bf16hmul2(const __nv_bfloat162 x,
                                            const __nv_bfloat162 y) {
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 800
@@ -613,6 +620,36 @@ inline __device__ uint32_t float2_to_half2(float2 f) {
 #endif
   return tmp.u32;
 }
+
+#ifdef PADDLE_WITH_HIP
+inline __device__ float2 bf1622float2(const __nv_bfloat162 val) {
+  return __bfloat1622float2(val);
+}
+
+inline __device__ __nv_bfloat162 bf16hadd2(const __nv_bfloat162 x,
+                                           const __nv_bfloat162 y) {
+  return __hadd2(x, y);
+}
+
+inline __device__ __nv_bfloat162 bf16hfma2(const __nv_bfloat162 x,
+                                           const __nv_bfloat162 y,
+                                           const __nv_bfloat162 z) {
+  return __hfma2(x, y, z);
+}
+
+inline __device__ __nv_bfloat162 bf162bf162(const __nv_bfloat16 val) {
+  __nv_bfloat162 val2;
+  val2 = __bfloat162bfloat162(val);
+  return val2;
+}
+
+inline __device__ __nv_bfloat162 float22bf162(const float2 val) {
+  __nv_bfloat162 val_;
+  val_ = __float22bfloat162_rn(val);
+  return val_;
+}
+
+#endif
 
 #ifdef ENABLE_BF16
 inline __device__ __nv_bfloat162 bf16hadd2(const __nv_bfloat162 x,
@@ -748,7 +785,8 @@ inline __device__ Float8_ add(uint4 a, Float8_ fb) {
   return fc;
 }
 
-#ifdef ENABLE_BF16
+#if defined(ENABLE_BF16) || \
+    (defined(PADDLE_WITH_HIP) && HIP_VERSION >= 60100000)
 inline __device__ __nv_bfloat16 add(__nv_bfloat16 a, __nv_bfloat16 b) {
   return a + b;
 }
@@ -1737,7 +1775,8 @@ inline __device__ float mul<float, float>(float a, float b) {
   return a * b;
 }
 
-#ifdef ENABLE_BF16
+#if defined(ENABLE_BF16) || \
+    (defined(PADDLE_WITH_HIP) && HIP_VERSION >= 60100000)
 template <>
 inline __device__ __nv_bfloat162 mul(float a, __nv_bfloat162 b) {
   __nv_bfloat162 ret;
@@ -2052,7 +2091,8 @@ inline __device__ float4 mul(uint4 a, uint4 b) {
   return c;
 }
 
-#ifdef ENABLE_BF16
+#if defined(ENABLE_BF16) || \
+    (defined(PADDLE_WITH_HIP) && HIP_VERSION >= 60100000)
 template <>
 inline __device__ __nv_bfloat16 mul(__nv_bfloat16 a, __nv_bfloat16 b) {
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
@@ -2125,7 +2165,13 @@ inline __device__ float mul(__nv_bfloat16 a, float b) {
 template <>
 inline __device__ __nv_bfloat162 mul(__nv_bfloat162 a, float b) {
   __nv_bfloat162 res;
+#ifdef PADDLE_WITH_HIP
+  __nv_bfloat16 t;
+  t = __float2bfloat16(b);
+  __nv_bfloat162 _bf16 = bf162bf162(t);
+#else
   __nv_bfloat162 _bf16 = __float2bfloat162_rn(b);
+#endif
   res = bf16hmul2(a, _bf16);
   return res;
 }
@@ -2147,7 +2193,13 @@ inline __device__ __nv_bfloat162 mul(__nv_bfloat162 a, float2 b) {
 
 template <>
 inline __device__ bf16_4_t mul(bf16_4_t a, float b) {
+#ifdef PADDLE_WITH_HIP
+  __nv_bfloat16 t;
+  t = __float2bfloat16(b);
+  __nv_bfloat162 s = bf162bf162(t);
+#else
   __nv_bfloat162 s = __float2bfloat162_rn(b);
+#endif
   bf16_4_t c;
   c.x = mul<__nv_bfloat162, __nv_bfloat162, __nv_bfloat162>(a.x, s);
   c.y = mul<__nv_bfloat162, __nv_bfloat162, __nv_bfloat162>(a.y, s);
@@ -2168,7 +2220,13 @@ inline __device__ bf16_4_t mul(bf16_4_t a, float4 b) {
 
 template <>
 inline __device__ bf16_8_t mul(bf16_8_t a, float b) {
+#ifdef PADDLE_WITH_HIP
+  __nv_bfloat16 t;
+  t = __float2bfloat16(b);
+  __nv_bfloat162 s = bf162bf162(t);
+#else
   __nv_bfloat162 s = __float2bfloat162_rn(b);
+#endif
   bf16_8_t c;
   c.x = mul<__nv_bfloat162, __nv_bfloat162, __nv_bfloat162>(a.x, s);
   c.y = mul<__nv_bfloat162, __nv_bfloat162, __nv_bfloat162>(a.y, s);
@@ -2276,7 +2334,7 @@ inline __device__ float sum(uint4 v) {
   return sum(c);
 }
 
-#ifdef ENABLE_BF16
+#if defined(ENABLE_BF16) || defined(PADDLE_WITH_HIP)
 inline __device__ float sum(__nv_bfloat162 v) {
   float2 vf = bf1622float2(v);
   return vf.x + vf.y;
@@ -2439,7 +2497,7 @@ inline __device__ uint4 fma(uint16_t a, uint4 b, uint4 c) {
   return d;
 }
 
-#ifdef ENABLE_BF16
+#if defined(ENABLE_BF16) || defined(PADDLE_WITH_HIP)
 
 inline __device__ __nv_bfloat162 fma(__nv_bfloat162 a,
                                      __nv_bfloat162 b,
@@ -2566,7 +2624,7 @@ inline __device__ Float4_ cast_to_float(Float4_ u) { return u; }
 
 inline __device__ Float8_ cast_to_float(Float8_ u) { return u; }
 
-#ifdef ENABLE_BF16
+#if defined(ENABLE_BF16) || defined(PADDLE_WITH_HIP)
 inline __device__ float cast_to_float(__nv_bfloat16 u) {
   return __bfloat162float(u);
 }
@@ -2823,6 +2881,33 @@ inline __device__ uint32_t rotary_embedding_transform(const uint32_t v,
   float2 rot_fv = rotary_embedding_transform(fv, cos, sin);
   return float2_to_half2(rot_fv);
 }
+
+#ifdef PADDLE_WITH_HIP
+inline __device__ __nv_bfloat162
+rotary_embedding_transform(const __nv_bfloat162 v, const float2 coef) {
+  float2 fv = bf1622float2(v);
+  float2 rot_fv = rotary_embedding_transform(fv, coef);
+  return __float22bfloat162_rn(rot_fv);
+}
+
+inline __device__ __nv_bfloat162
+rotary_embedding_transform(const __nv_bfloat162 v,
+                           const __nv_bfloat162 cos,
+                           const __nv_bfloat162 sin) {
+  float2 fv = bf1622float2(v);
+  float2 fcos = bf1622float2(cos);
+  float2 fsin = bf1622float2(sin);
+  float2 rot_fv = rotary_embedding_transform(fv, fcos, fsin);
+  return __float22bfloat162_rn(rot_fv);
+}
+
+inline __device__ __nv_bfloat162 rotary_embedding_transform(
+    const __nv_bfloat162 v, const float2 cos, const float2 sin) {
+  float2 fv = bf1622float2(v);
+  float2 rot_fv = rotary_embedding_transform(fv, cos, sin);
+  return __float22bfloat162_rn(rot_fv);
+}
+#endif
 
 #ifdef ENABLE_BF16
 inline __device__ __nv_bfloat162
@@ -3174,6 +3259,48 @@ inline __device__ void apply_rotary_embedding(uint4& q,  // NOLINT
   k.w = rotary_embedding_transform(k.w, coef3);
 }
 
+#ifdef PADDLE_WITH_HIP
+inline __device__ void apply_rotary_embedding(__nv_bfloat162& q,  // NOLINT
+                                              __nv_bfloat162& k,  // NOLINT
+                                              int tid,
+                                              int rot_embed_dim,
+                                              int t_step,
+                                              float inv_compression_ratio,
+                                              float rope_theta) {
+  if (2 * tid >= rot_embed_dim) {
+    return;
+  }
+  float float_t_step = static_cast<float>(t_step);
+  float_t_step *= inv_compression_ratio;
+  const auto coef = rotary_embedding_coefficient(
+      2 * tid, rot_embed_dim, float_t_step, rope_theta);
+  q = rotary_embedding_transform(q, coef);
+  k = rotary_embedding_transform(k, coef);
+}
+
+inline __device__ void apply_rotary_embedding(bf16_4_t& q,  // NOLINT
+                                              bf16_4_t& k,  // NOLINT
+                                              int tid,
+                                              int rot_embed_dim,
+                                              int t_step,
+                                              float inv_compression_ratio,
+                                              float rope_theta) {
+  if (4 * tid >= rot_embed_dim) {
+    return;
+  }
+  float float_t_step = static_cast<float>(t_step);
+  float_t_step *= inv_compression_ratio;
+  const auto coef0 = rotary_embedding_coefficient(
+      4 * tid, rot_embed_dim, float_t_step, rope_theta);
+  q.x = rotary_embedding_transform(q.x, coef0);
+  k.x = rotary_embedding_transform(k.x, coef0);
+  const auto coef1 = rotary_embedding_coefficient(
+      4 * tid + 2, rot_embed_dim, float_t_step, rope_theta);
+  q.y = rotary_embedding_transform(q.y, coef1);
+  k.y = rotary_embedding_transform(k.y, coef1);
+}
+#endif  // PADDLE_WITH_HIP
+
 #ifdef ENABLE_BF16
 inline __device__ void apply_rotary_embedding(__nv_bfloat162& q,      // NOLINT
                                               __nv_bfloat162& k,      // NOLINT
@@ -3398,7 +3525,7 @@ struct V_vec_acum_fp32_<uint4> {
   using Type = Float8_;
 };
 
-#ifdef ENABLE_BF16
+#if defined(ENABLE_BF16) || defined(PADDLE_WITH_HIP)
 template <>
 struct V_vec_acum_fp32_<__nv_bfloat162> {
   using Type = float2;
@@ -3440,6 +3567,20 @@ inline __device__ void convert_from_float(uint4& dst, Float8_ src) {  // NOLINT
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+#ifdef PADDLE_WITH_HIP
+inline __device__ void convert_from_float(__nv_bfloat16& dst,  // NOLINT
+                                          float src) {         // NOLINT
+  dst = __float2bfloat16(src);
+}
+inline __device__ void convert_from_float(bf16_8_t& dst,  // NOLINT
+                                          Float8_ src) {  // NOLINT
+  dst.x = __float22bfloat162_rn(src.x);
+  dst.y = __float22bfloat162_rn(src.y);
+  dst.z = __float22bfloat162_rn(src.z);
+  dst.w = __float22bfloat162_rn(src.w);
+}
+#endif
+
 #ifdef ENABLE_BF16
 inline __device__ void convert_from_float(__nv_bfloat16& dst,  // NOLINT
                                           float src) {         // NOLINT
@@ -3847,6 +3988,15 @@ struct MaxFunc<half> {
   }
 };
 
+#if (defined(PADDLE_WITH_HIP) && HIP_VERSION >= 60100000)
+template <>
+struct MaxFunc<__nv_bfloat16> {
+  __device__ __nv_bfloat16 operator()(__nv_bfloat16 a, __nv_bfloat16 b) {
+    return max(static_cast<float>(a), static_cast<float>(b));
+  }
+};
+#endif
+
 #if CUDA_VERSION >= 11000 && defined(ENABLE_BF16)
 template <>
 struct MaxFunc<__nv_bfloat16> {
@@ -3889,6 +4039,15 @@ struct AbsFunc<__nv_bfloat16> {
 };
 #endif
 
+#if (defined(PADDLE_WITH_HIP) && HIP_VERSION >= 60100000)
+template <>
+struct AbsFunc<__nv_bfloat16> {
+  __device__ __nv_bfloat16 operator()(__nv_bfloat16 x) {
+    return abs(static_cast<float>(x));
+  }
+};
+#endif
+
 template <typename T, typename Vec, int VecSize>
 __inline__ __device__ T LocalReduceMax(Vec& vec) {  // NOLINT
 #ifdef PADDLE_WITH_HIP
@@ -3913,7 +4072,12 @@ __inline__ __device__ T WarpReduceAbsMax(T val, unsigned lane_mask) {
 #pragma unroll
   for (int mask = HALF_WARP_TMP; mask > 0; mask >>= 1) {
 #ifdef PADDLE_WITH_HIP
-    val = MaxFunc<T>()(val, __shfl_xor(val, mask, WARP_SIZE_TMP));
+    if constexpr (kernel_dtype_is_same<T, __hip_bfloat16>::value) {
+      val = MaxFunc<T>()(
+          val, __shfl_xor(static_cast<float>(val), mask, WARP_SIZE_TMP));
+    } else {
+      val = MaxFunc<T>()(val, __shfl_xor(val, mask, WARP_SIZE_TMP));
+    }
 #else
     val =
         MaxFunc<T>()(val, __shfl_xor_sync(lane_mask, val, mask, WARP_SIZE_TMP));

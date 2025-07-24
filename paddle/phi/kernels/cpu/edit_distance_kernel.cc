@@ -23,7 +23,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void EditDistanceKernel(const Context& ctx,
+void EditDistanceKernel(const Context& dev_ctx,
                         const DenseTensor& hyps,
                         const DenseTensor& refs,
                         const paddle::optional<DenseTensor>& hypslength,
@@ -31,7 +31,7 @@ void EditDistanceKernel(const Context& ctx,
                         bool normalized,
                         DenseTensor* sequencenum,
                         DenseTensor* out) {
-  int64_t* seq_num_data = ctx.template Alloc<int64_t>(sequencenum);
+  int64_t* seq_num_data = dev_ctx.template Alloc<int64_t>(sequencenum);
   auto batch_size = hyps.dims()[0];
 
   phi::Vector<size_t> hyp_lod(batch_size + 1);
@@ -66,7 +66,7 @@ void EditDistanceKernel(const Context& ctx,
   *seq_num_data = static_cast<int64_t>(num_strs);
 
   out->Resize({static_cast<int64_t>(num_strs), 1});
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   auto outdata = out->data<T>();
 
   T distance = 0.0;
@@ -81,7 +81,7 @@ void EditDistanceKernel(const Context& ctx,
     } else {
       DenseTensor dist_t;
       dist_t.Resize({m + 1, n + 1});
-      ctx.template Alloc<T>(&dist_t);
+      dev_ctx.template Alloc<T>(&dist_t);
       auto dist = dist_t.data<T>();
       auto hyp_offset = use_length ? num * hyps.dims()[1] : hyp_lod[num];
       auto ref_offset = use_length ? num * refs.dims()[1] : ref_lod[num];

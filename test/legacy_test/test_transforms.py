@@ -19,6 +19,7 @@ import unittest
 
 import cv2
 import numpy as np
+from op_test import get_places
 from PIL import Image
 
 import paddle
@@ -818,15 +819,7 @@ class TestFunctional(unittest.TestCase):
         np_img_gray = (np.random.rand(28, 28, 1) * 255).astype('uint8')
         tensor_img_gray = F.to_tensor(np_img_gray)
 
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.device.is_compiled_with_cuda()
-        ):
-            places.append('cpu')
-        if paddle.device.is_compiled_with_cuda():
-            places.append('gpu')
+        places = get_places(string_format=True)
 
         def test_adjust_brightness(np_img, tensor_img):
             result_cv2 = np.array(F.adjust_brightness(np_img, 1.2))
@@ -963,16 +956,7 @@ class TestFunctional(unittest.TestCase):
         np.testing.assert_equal(np.array(pil_result), expected)
 
         np_data = np.random.rand(3, 28, 28).astype('float32')
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.device.is_compiled_with_cuda()
-        ):
-            places.append('cpu')
-        if paddle.device.is_compiled_with_cuda():
-            places.append('gpu')
-        for place in places:
+        for place in get_places(string_format=True):
             paddle.set_device(place)
             tensor_img = paddle.to_tensor(np_data)
             expected_tensor = tensor_img.clone()

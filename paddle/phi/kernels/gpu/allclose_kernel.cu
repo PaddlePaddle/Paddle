@@ -17,20 +17,22 @@
 #include <type_traits>
 #include "glog/logging.h"
 
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
+
 namespace phi {
 
-template <typename T>
+template <typename T, typename IndexType>
 __global__ void AllcloseCUDAKernel(const T* in_data,
                                    const T* other_data,
                                    const double rtol,
                                    const double atol,
                                    bool equal_nan,
-                                   int num,
+                                   IndexType num,
                                    bool* out_data) {
   unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
   bool val;
@@ -43,7 +45,7 @@ __global__ void AllcloseCUDAKernel(const T* in_data,
                                 double,
                                 BaseMPType>::type;
 
-  for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
+  for (IndexType i = idx; i < num; i += blockDim.x * gridDim.x) {
     const MPType a = static_cast<MPType>(in_data[i]);
     const MPType b = static_cast<MPType>(other_data[i]);
     if (isnan(a) || isnan(b)) {
@@ -95,17 +97,25 @@ void AllCloseKernel(const Context& dev_ctx,
   const T* other_data = y.data<T>();
   bool* out_data = dev_ctx.template Alloc<bool>(out);
 
-  int num = x.numel();
-  int block = 1024;
-  int grid = (block - 1 + num) / block;
-  grid = (grid > block) ? block : grid;
+  int64_t num = x.numel();
+  const int vec_size = 4;
+  auto config =
+      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, num, vec_size);
+  uint32_t grid = config.block_per_grid.x;
+  uint32_t block = config.thread_per_block.x;
+
 #ifdef PADDLE_WITH_HIP
   hipMemset(out_data, true, sizeof(bool));
 #else
   cudaMemset(out_data, true, sizeof(bool));
 #endif
-  AllcloseCUDAKernel<T><<<grid, block, 0, dev_ctx.stream()>>>(
-      in_data, other_data, rtol_v, atol_v, equal_nan, num, out_data);
+  if (num > std::numeric_limits<int32_t>::max()) {
+    AllcloseCUDAKernel<T, int64_t><<<grid, block, 0, dev_ctx.stream()>>>(
+        in_data, other_data, rtol_v, atol_v, equal_nan, num, out_data);
+  } else {
+    AllcloseCUDAKernel<T, int32_t><<<grid, block, 0, dev_ctx.stream()>>>(
+        in_data, other_data, rtol_v, atol_v, equal_nan, num, out_data);
+  }
 }
 
 }  // namespace phi

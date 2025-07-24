@@ -171,6 +171,12 @@ SpmdInfo ReductionAllInferSpmdDynamic(const DistMetaTensor& x,
   return ReductionInferSpmdBase(
       x, axis.GetData(), keep_dim, static_cast<int>(ReduceType::kRedAll));
 }
+SpmdInfo ReductionAnyInferSpmdDynamic(const DistMetaTensor& x,
+                                      const IntArray& axis,
+                                      bool keep_dim) {
+  return ReductionInferSpmdBase(
+      x, axis.GetData(), keep_dim, static_cast<int>(ReduceType::kRedAny));
+}
 
 SpmdInfo ReductionInferSpmdReverse(const DistMetaTensor& x,
                                    const DistMetaTensor& out,

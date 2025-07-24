@@ -617,21 +617,26 @@ class TestNanmedianFP16Op(OpTest):
         self.check_grad(['X'], 'Out', check_pir=True)
 
 
-class TestNanmedianOp_ZeroSize(TestNanmedianFP16Op):
-    def setUp(self):
-        self.op_type = "nanmedian"
-        self.python_api = paddle.nanmedian
-        self.public_python_api = paddle.nanmedian
-        self.dtype = np.float64
-        self.python_out_sig = ["Out"]
-        X = np.random.random((100, 0)).astype('float64')
-        Out = np.nanmedian(X)
-        indices = np.zeros_like(Out, dtype='int64')
-        self.inputs = {'X': X}
-        self.outputs = {'Out': Out, 'MedianIndex': indices}
+class TestNanmedianZeroSize(unittest.TestCase):
+    def init_data(self):
+        self.x_shape = [100, 0]
+        self.expect_out = np.array(np.nan, dtype='float32')
+        self.axis = None
 
-    def test_check_output(self):
-        self.check_output(check_pir=True, equal_nan=True)
+    def test_zero(self):
+        self.init_data()
+        x = paddle.randn(self.x_shape)
+        out = paddle.nanmedian(x, axis=self.axis)
+        np.testing.assert_allclose(
+            out.numpy(), self.expect_out, rtol=1e-05, equal_nan=True
+        )
+
+
+class TestNanmedianZeroSize1(TestNanmedianZeroSize):
+    def init_data(self):
+        self.x_shape = [100, 0, 100]
+        self.expect_out = np.zeros(self.x_shape[:-1], dtype='float32')
+        self.axis = -1
 
 
 @unittest.skipIf(

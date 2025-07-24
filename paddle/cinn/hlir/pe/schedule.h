@@ -21,7 +21,6 @@
 #include "paddle/cinn/hlir/pe/schedule_param.pb.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/lang/compute.h"
-#include "paddle/cinn/poly/stage.h"
 #include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
@@ -80,16 +79,6 @@ int GetArrayPackingFactor(int shape,
                           const Type &type,
                           const cinn::common::Target &target);
 
-void ScheduleInjectiveCPU(poly::Stage *stage,
-                          const std::vector<int> &output_shape,
-                          const cinn::common::Target &target,
-                          bool vectorizable = true);
-// to deprecate
-void ScheduleInjectiveCPU1(poly::Stage *stage,
-                           const std::vector<int> &output_shape,
-                           const cinn::common::Target &target,
-                           bool vectorizable = true);
-
 void GetConv2dFactors(paddle::flat_hash_map<std::string, int> *factors,
                       int oc,
                       int ic,
@@ -108,10 +97,6 @@ void GetConv2d1x1Factors(paddle::flat_hash_map<std::string, int> *factors,
                          int ow,
                          const Type &type,
                          const cinn::common::Target &target);
-
-void CudaScheduleInjective(poly::Stage *stage,
-                           const std::vector<int> &output_shape,
-                           const cinn::common::Target &target);
 
 void CudaSplitSchedule(cinn::common::CINNValuePack *arg_pack,
                        const std::vector<std::vector<int>> &output_shapes,

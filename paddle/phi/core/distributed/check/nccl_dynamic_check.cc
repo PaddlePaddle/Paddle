@@ -135,7 +135,8 @@ void NCCLDynamicCheck::CheckShape(const phi::DenseTensor& out_tensor,
   CheckDataType(in_tensor, /*root_rank*/ 0, cur_rank, comm);
 
   constexpr int kSize = sizeof(int64_t);
-  int64_t in_row_size = in_tensor.numel() / in_tensor.dims()[0];
+  int64_t in_row_size =
+      in_tensor.dims()[0] == 0 ? 0 : in_tensor.numel() / in_tensor.dims()[0];
 
   for (int rank = 0; rank < world_size; ++rank) {
     int64_t in_shape_host = in_size_each_rank[rank] * in_row_size;

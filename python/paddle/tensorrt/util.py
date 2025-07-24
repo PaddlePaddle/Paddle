@@ -174,40 +174,41 @@ def enforce_op_lower_trt(program, op_name):
 
 
 def predict_program(program, feed_data, fetch_var_list, scope=None):
-    with paddle.pir_utils.IrGuard():
-        with paddle.static.program_guard(program):
-            place = paddle.CUDAPlace(0)
-            executor = paddle.static.Executor(place)
-            output = executor.run(
-                program,
-                feed=feed_data,
-                fetch_list=fetch_var_list,
-                scope=scope,
-            )
-            return output
+    with (
+        paddle.pir_utils.IrGuard(),
+        paddle.static.program_guard(program),
+    ):
+        place = paddle.CUDAPlace(0)
+        executor = paddle.static.Executor(place)
+        output = executor.run(
+            program,
+            feed=feed_data,
+            fetch_list=fetch_var_list,
+            scope=scope,
+        )
+        return output
 
 
 def warmup_shape_infer(program, feeds, scope=None):
     paddle.framework.set_flags({"FLAGS_enable_collect_shape": True})
-    with paddle.pir_utils.IrGuard():
-        with paddle.static.program_guard(program):
-            executor = paddle.static.Executor()
-            # Run the program with input_data
-            for i in range(len(feeds)):
-                executor.run(program, feed=feeds[i], scope=scope)
+    with paddle.pir_utils.IrGuard(), paddle.static.program_guard(program):
+        executor = paddle.static.Executor()
+        # Run the program with input_data
+        for i in range(len(feeds)):
+            executor.run(program, feed=feeds[i], scope=scope)
 
-            exe_program, _, _ = (
-                executor._executor_cache.get_pir_program_and_executor(
-                    program,
-                    feed=feeds[-1],
-                    fetch_list=None,
-                    feed_var_name='feed',
-                    fetch_var_name='fetch',
-                    place=paddle.framework._current_expected_place_(),
-                    scope=scope,
-                    plan=None,
-                )
+        exe_program, _, _ = (
+            executor._executor_cache.get_pir_program_and_executor(
+                program,
+                feed=feeds[-1],
+                fetch_list=None,
+                feed_var_name='feed',
+                fetch_var_name='fetch',
+                place=paddle.framework._current_expected_place_(),
+                scope=scope,
+                plan=None,
             )
+        )
     paddle.framework.set_flags({"FLAGS_enable_collect_shape": False})
 
     return exe_program

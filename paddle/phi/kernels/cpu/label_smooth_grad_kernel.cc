@@ -21,17 +21,17 @@
 namespace phi {
 
 template <typename T, typename Context>
-void LabelSmoothGradKernel(const Context& ctx,
+void LabelSmoothGradKernel(const Context& dev_ctx,
                            const DenseTensor& out_grad,
                            float epsilon,
                            DenseTensor* label_grad) {
-  ctx.template Alloc<T>(label_grad);
+  dev_ctx.template Alloc<T>(label_grad);
   auto d_out_dim = out_grad.dims()[out_grad.dims().size() - 1];
   if (d_out_dim != 0) {
     auto d_out = EigenVector<T>::Flatten(out_grad);
     auto d_in = EigenVector<T>::Flatten(*label_grad);
 
-    auto& dev = *ctx.eigen_device();
+    auto& dev = *dev_ctx.eigen_device();
     d_in.device(dev) = static_cast<T>(1 - epsilon) * d_out;
   }
 }

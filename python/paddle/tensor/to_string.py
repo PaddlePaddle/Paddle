@@ -183,24 +183,24 @@ def _format_tensor(var, summary, indent=0, max_width=0, signed=False):
         return _format_item(var, max_width, signed)
     elif len(var.shape) == 1:
         item_length = max_width + 2
-        items_per_line = (linewidth - indent) // item_length
-        items_per_line = max(1, items_per_line)
+        items_per_line = max(1, (linewidth - indent) // item_length)
 
         if summary and var.shape[0] > 2 * edgeitems:
             items = (
                 [
-                    _format_item(item, max_width, signed)
-                    for item in list(var)[:edgeitems]
+                    _format_item(var[i], max_width, signed)
+                    for i in range(edgeitems)
                 ]
                 + ['...']
                 + [
-                    _format_item(item, max_width, signed)
-                    for item in list(var)[(-1 * edgeitems) :]
+                    _format_item(var[i], max_width, signed)
+                    for i in range(var.shape[0] - edgeitems, var.shape[0])
                 ]
             )
         else:
             items = [
-                _format_item(item, max_width, signed) for item in list(var)
+                _format_item(var[i], max_width, signed)
+                for i in range(var.shape[0])
             ]
         lines = [
             items[i : i + items_per_line]
@@ -215,28 +215,27 @@ def _format_tensor(var, summary, indent=0, max_width=0, signed=False):
         if summary and var.shape[0] > 2 * edgeitems:
             vars = (
                 [
-                    _format_tensor(x, summary, indent + 1, max_width, signed)
-                    for x in var[:edgeitems]
+                    _format_tensor(
+                        var[i], summary, indent + 1, max_width, signed
+                    )
+                    for i in range(edgeitems)
                 ]
                 + ['...']
                 + [
-                    _format_tensor(x, summary, indent + 1, max_width, signed)
-                    for x in var[(-1 * edgeitems) :]
+                    _format_tensor(
+                        var[i], summary, indent + 1, max_width, signed
+                    )
+                    for i in range(var.shape[0] - edgeitems, var.shape[0])
                 ]
             )
         else:
             vars = [
-                _format_tensor(x, summary, indent + 1, max_width, signed)
-                for x in var
+                _format_tensor(var[i], summary, indent + 1, max_width, signed)
+                for i in range(var.shape[0])
             ]
 
-        return (
-            '['
-            + (',' + '\n' * (len(var.shape) - 1) + ' ' * (indent + 1)).join(
-                vars
-            )
-            + ']'
-        )
+        s = (',' + '\n' * (len(var.shape) - 1) + ' ' * (indent + 1)).join(vars)
+        return '[' + s + ']'
 
 
 def to_string(var, prefix='Tensor'):
@@ -309,16 +308,7 @@ def _format_dense_tensor(tensor, indent):
     ):
         np_tensor = mask_xpu_bf16_tensor(np_tensor)
 
-    if len(tensor.shape) == 0:
-        size = 0
-    else:
-        size = 1
-        for dim in tensor.shape:
-            size *= dim
-
-    summary = False
-    if size > DEFAULT_PRINT_OPTIONS.threshold:
-        summary = True
+    summary = tensor.numel() > DEFAULT_PRINT_OPTIONS.threshold
 
     max_width, signed = _get_max_width(_to_summary(np_tensor))
 

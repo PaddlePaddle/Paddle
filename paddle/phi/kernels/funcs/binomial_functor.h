@@ -40,11 +40,11 @@ inline T stirling_approx_tail(int64_t k) {
 }
 
 template <typename T, typename Context>
-inline int64_t btrs(const Context& ctx, const T n, const T p) {
+inline int64_t btrs(const Context& dev_ctx, const T n, const T p) {
   int64_t k;
   T U, V, us;
   std::uniform_real_distribution<T> dist(0.0, 1.0);
-  auto gen_ptr = ctx.GetGenerator();
+  auto gen_ptr = dev_ctx.GetGenerator();
   auto engine = gen_ptr->GetCPUEngine();
 
   const T stddev = std::sqrt(n * p * (1 - p));
@@ -87,13 +87,15 @@ inline int64_t btrs(const Context& ctx, const T n, const T p) {
 }
 
 template <typename T, typename Context>
-inline int64_t binomial_inversion(const Context& ctx, const T n, const T p) {
+inline int64_t binomial_inversion(const Context& dev_ctx,
+                                  const T n,
+                                  const T p) {
   T unif;
   T geom_sum = 0.0;
   int64_t num_geom = 0;
   T logprob = std::log1p(-p);
   std::uniform_real_distribution<T> dist(0.0, 1.0);
-  auto gen_ptr = ctx.GetGenerator();
+  auto gen_ptr = dev_ctx.GetGenerator();
   auto engine = gen_ptr->GetCPUEngine();
 
   while (1) {
@@ -109,23 +111,23 @@ inline int64_t binomial_inversion(const Context& ctx, const T n, const T p) {
 }
 
 template <typename T, typename Context>
-inline int64_t BinomialFunctor(const Context& ctx, const T n, const T p) {
+inline int64_t BinomialFunctor(const Context& dev_ctx, const T n, const T p) {
   if (n <= 0.0 || p <= 0.0) {
     return 0;
   } else if (p >= 1.0) {
     return static_cast<int64_t>(n);
   } else if (p <= 0.5) {
     if (n * p >= 10.0) {
-      return btrs<T>(ctx, n, p);
+      return btrs<T>(dev_ctx, n, p);
     } else {
-      return binomial_inversion<T>(ctx, n, p);
+      return binomial_inversion<T>(dev_ctx, n, p);
     }
   } else {
     T qprob = 1.0 - p;
     if (n * qprob >= 10.0) {
-      return static_cast<int64_t>(n) - btrs<T>(ctx, n, qprob);
+      return static_cast<int64_t>(n) - btrs<T>(dev_ctx, n, qprob);
     } else {
-      return static_cast<int64_t>(n) - binomial_inversion<T>(ctx, n, qprob);
+      return static_cast<int64_t>(n) - binomial_inversion<T>(dev_ctx, n, qprob);
     }
   }
 }

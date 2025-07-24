@@ -13,13 +13,12 @@
 # limitations under the License.
 
 import copy
-import os
 import unittest
 
 import numpy as np
+from op_test import get_places
 
 import paddle
-from paddle.framework import core
 
 paddle.enable_static()
 
@@ -30,20 +29,12 @@ class TestSelectScatterAPI(unittest.TestCase):
         self.shape = [2, 3, 4]
         self.type = np.float32
         self.x_np = np.random.random(self.shape).astype(self.type)
-        self.place = []
+        self.place = get_places()
         self.axis = 1
         self.index = 1
         self.value_shape = [2, 4]
         self.value_np = np.random.random(self.value_shape).astype(self.type)
         self.x_feed = copy.deepcopy(self.x_np)
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
 
     def get_out_ref(self, out_ref, index, value_np):
         for i in range(2):
@@ -101,20 +92,12 @@ class TestSelectScatterAPICase2(TestSelectScatterAPI):
         self.shape = [2, 3, 4, 5]
         self.type = np.float64
         self.x_np = np.random.random(self.shape).astype(self.type)
-        self.place = []
+        self.place = get_places()
         self.axis = 2
         self.index = 1
         self.value_shape = [2, 3, 5]
         self.value_np = np.random.random(self.value_shape).astype(self.type)
         self.x_feed = copy.deepcopy(self.x_np)
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
 
     def get_out_ref(self, out_ref, index, value_np):
         for i in range(2):
@@ -129,20 +112,12 @@ class TestSelectScatterAPICase3(TestSelectScatterAPI):
         self.shape = [2, 3, 4, 5, 6]
         self.type = np.int32
         self.x_np = np.random.random(self.shape).astype(self.type)
-        self.place = []
+        self.place = get_places()
         self.axis = 2
         self.index = 1
         self.value_shape = [2, 3, 5, 6]
         self.value_np = np.random.random(self.value_shape).astype(self.type)
         self.x_feed = copy.deepcopy(self.x_np)
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
 
     def get_out_ref(self, out_ref, index, value_np):
         for i in range(2):
@@ -157,20 +132,12 @@ class TestSelectScatterAPIError(unittest.TestCase):
         np.random.seed(0)
         self.shape = [2, 3, 4]
         self.x_np = np.random.random(self.shape).astype(np.float32)
-        self.place = []
+        self.place = get_places()
         self.axis = 1
         self.index = 1
         self.value_shape = [2, 4]
         self.value_np = np.random.random(self.value_shape).astype(np.float32)
         self.x_feed = copy.deepcopy(self.x_np)
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
 
     def test_len_of_shape_not_equal_error(self):
         with self.assertRaises(RuntimeError):

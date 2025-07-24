@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void IndexSelectGradKernel(const Context& ctx,
+void IndexSelectGradKernel(const Context& dev_ctx,
                            const DenseTensor& x,
                            const DenseTensor& index,
                            const DenseTensor& out_grad,
@@ -27,7 +27,7 @@ void IndexSelectGradKernel(const Context& ctx,
                            DenseTensor* x_grad);
 
 template <typename Context>
-void IndexSelectGradStridedKernel(const Context& ctx,
+void IndexSelectGradStridedKernel(const Context& dev_ctx,
                                   const DenseTensor& x,
                                   const DenseTensor& out_grad,
                                   int64_t index,

@@ -60,12 +60,6 @@ void FusedBatchNormAddActKernel(const Context &dev_ctx,
                                 DenseTensor *saved_variance,
                                 DenseTensor *reserve_space) {
 #if defined(PADDLE_WITH_CUDA) and CUDNN_VERSION >= 7401
-  bool is_gpu_place = dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU;
-  PADDLE_ENFORCE_EQ(
-      is_gpu_place,
-      true,
-      common::errors::PreconditionNotMet("It must use CUDAPlace."));
-
   double epsilon1 = static_cast<double>(epsilon);
   if (epsilon1 <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
     LOG(ERROR) << "Provided epsilon is smaller than "

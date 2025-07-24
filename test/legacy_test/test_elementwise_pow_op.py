@@ -12,11 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_places,
+    skip_check_grad_ci,
+)
 
 import paddle
 from paddle import base
@@ -60,6 +64,57 @@ class TestElementwisePowOp(OpTest):
                 check_prim_pir=True,
                 check_pir=True,
             )
+
+
+class TestElementwisePowOp_ZeroBaseNumber1(TestElementwisePowOp):
+    def setUp(self):
+        self.op_type = "elementwise_pow"
+        self.python_api = paddle.pow
+        self.public_python_api = paddle.pow
+        self.prim_op_type = "prim"
+
+        self.inputs = {
+            'X': np.random.randint(-100, -1, size=[20, 5]).astype("int32"),
+            'Y': np.random.randint(-200, 0, size=[20, 5], dtype="int32"),
+        }
+        self.outputs = {'Out': np.zeros([20, 5]).astype("int32")}
+
+    def test_check_grad_normal(self):
+        pass
+
+
+class TestElementwisePowOp_ZeroBaseNumber2(TestElementwisePowOp):
+    def setUp(self):
+        self.op_type = "elementwise_pow"
+        self.python_api = paddle.pow
+        self.public_python_api = paddle.pow
+        self.prim_op_type = "prim"
+
+        self.inputs = {
+            'X': np.random.randint(2, 100, size=[20, 5]).astype("int32"),
+            'Y': np.random.randint(-200, 0, size=[20, 5], dtype="int32"),
+        }
+        self.outputs = {'Out': np.zeros([20, 5]).astype("int32")}
+
+    def test_check_grad_normal(self):
+        pass
+
+
+class TestElementwisePowOp_ZeroBaseNumber3(TestElementwisePowOp):
+    def setUp(self):
+        self.op_type = "elementwise_pow"
+        self.python_api = paddle.pow
+        self.public_python_api = paddle.pow
+        self.prim_op_type = "prim"
+
+        self.inputs = {
+            'X': np.asarray([-1, 0, 1]),
+            'Y': np.asarray([-1, -1, -1]),
+        }
+        self.outputs = {'Out': np.asarray([-1, 0, 1])}
+
+    def test_check_grad_normal(self):
+        pass
 
 
 class TestElementwisePowOp_ZeroDim1(TestElementwisePowOp):
@@ -226,16 +281,7 @@ class TestElementwisePowGradOpInt(unittest.TestCase):
         ).astype("int")
 
     def test_grad(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not base.is_compiled_with_cuda()
-        ):
-            places.append(core.CPUPlace())
-        if base.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for place in places:
+        for place in get_places():
             with base.dygraph.guard(place):
                 x = paddle.to_tensor(self.x)
                 y = paddle.to_tensor(self.y)

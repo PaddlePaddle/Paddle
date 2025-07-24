@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import os
+import site
+import sys
 
 from utils import extra_compile_args, paddle_includes
 
@@ -43,6 +45,10 @@ if core.is_compiled_with_nccl():
 macros.append(("THRUST_IGNORE_CUB_VERSION_CHECK", None))
 
 include_dirs = [*paddle_includes, cwd]
+
+site_dir = site.getsitepackages()[0]
+sys.argv.extend(["egg_info", f"--egg-base={site_dir}"])
+
 setup(
     name=os.getenv("MODULE_NAME", "custom_raw_op_kernel_op_setup"),
     ext_modules=extension(

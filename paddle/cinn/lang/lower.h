@@ -26,7 +26,6 @@
 #include "paddle/cinn/ir/module.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/lang/packed_func.h"
-#include "paddle/cinn/poly/schedule.h"
 
 namespace cinn {
 namespace lang {

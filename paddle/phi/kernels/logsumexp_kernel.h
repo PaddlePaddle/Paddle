@@ -20,7 +20,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void LogsumexpKernel(const Context& ctx,
+void LogsumexpKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const std::vector<int>& axis,
                      bool keepdim,

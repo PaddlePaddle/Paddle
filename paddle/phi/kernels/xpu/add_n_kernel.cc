@@ -28,6 +28,7 @@ void AddNKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   size_t in_num = x.size();
   dev_ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) return;
 
   bool in_place = false;
   if (x.size() > 0 && x[0]->initialized() && DenseTensor::classof(x[0])) {
@@ -146,7 +147,7 @@ void AddNArrayKernel(const Context& dev_ctx,
           ptrs.push_back(
               reinterpret_cast<const XPUType*>(out->at(j).data<T>()));
 
-          // int sum(Context* ctx, const std::vector<const T*>& x_list, T*
+          // int sum(Context* xpu_ctx, const std::vector<const T*>& x_list, T*
           // y, int64_t len);
           int r = xpu::sum(dev_ctx.x_context(),
                            ptrs,

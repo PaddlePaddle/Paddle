@@ -96,12 +96,13 @@ struct EmbeddingCPUFunctor {
 };
 
 template <typename T, typename Context>
-void EmbeddingKernel(const Context& ctx,
+void EmbeddingKernel(const Context& dev_ctx,
                      const DenseTensor& input,
                      const DenseTensor& weight,
                      int64_t padding_idx,
                      DenseTensor* out) {
-  EmbeddingCPUFunctor<T, Context> functor(ctx, input, weight, padding_idx, out);
+  EmbeddingCPUFunctor<T, Context> functor(
+      dev_ctx, input, weight, padding_idx, out);
 
   if (input.dtype() == phi::DataType::INT32) {
     functor.template apply<int>();

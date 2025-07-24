@@ -288,7 +288,7 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
 
         return output_creation_code
 
-    def generate_bw_infer_local_shape_code(self) -> str:
+    def generate_bw_infer_local_shape_code(self, need_kernel=False):
         arg_name = self.infer_meta['local_shape']
         assert arg_name in self.outputs['names'], (
             f"Auto Parallel will calculate local_shape for {arg_name} "
@@ -304,7 +304,7 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
             self.outputs['names'].index(arg_name)
         ]
         shape_type = self.get_shape_type(fw_attrs['attr_info'])
-        return dist_api_gen.CALCULATE_LOCAL_SHAPE_TEMPLATE.format(
+        return_code = dist_api_gen.CALCULATE_LOCAL_SHAPE_TEMPLATE.format(
             out_name=dist_out_name,
             out_dist_attr=(
                 "PADDLE_GET_CONST(phi::distributed::TensorDistAttr, spmd_info.second[0]);"
@@ -314,6 +314,20 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
             dtype=shape_type,
             op_name=self.kernel['func'][0],
         )
+        if need_kernel:
+            return (
+                dist_api_gen.CALCULATE_LOCAL_SHAPE_KERNEL_TEMPLATE.format(
+                    out_grad_dist_attr=(
+                        "PADDLE_GET_CONST(phi::distributed::TensorDistAttr, spmd_info.first[1]);"
+                        if self.infer_meta['spmd_rule']
+                        else "phi::distributed::TensorDistAttr(common::vectorize(out_grad.dims()))"
+                    ),
+                    dtype=shape_type,
+                    op_name=self.kernel['func'][0],
+                )
+                + return_code
+            )
+        return return_code
 
     def generate_infer_meta_code(self) -> str:
         (
@@ -347,7 +361,15 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
         )
         # TODO(GhostScreaming): kernel like reshape need calculate local_shape
         if self.infer_meta['local_shape'] is not None:
-            infer_meta_code += self.generate_bw_infer_local_shape_code()
+            if (
+                self.kernel['param'] is not None
+                and self.infer_meta['local_shape'] not in self.kernel['param']
+            ):
+                infer_meta_code += self.generate_bw_infer_local_shape_code()
+            else:
+                infer_meta_code += self.generate_bw_infer_local_shape_code(
+                    need_kernel=True
+                )
             infer_meta_code += SET_LOCAL_SHAPE_TEMPLATE.format(
                 meta_tensor="meta_" + self.dense_output_args[0]
             )
@@ -462,7 +484,7 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
             )
         )
         infer_meta_code = self.generate_infer_meta_code()
-        kernel_call_code = self.generate_kernel_call_code()
+        kernel_call_code = self.generate_kernel_call_code(is_forward=False)
         fallback_code = self.generate_fallback_code()
         reshard_output_code = self.generate_reshard_output_code()
         return_code = self.generate_return_code()

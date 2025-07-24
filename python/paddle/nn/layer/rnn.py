@@ -1685,38 +1685,40 @@ class RNNBase(LayerList):
                     )
                     return
             # for static-graph, append coalesce_tensor into startup program
-            with program_guard(
-                default_startup_program(), default_startup_program()
+            with (
+                program_guard(
+                    default_startup_program(), default_startup_program()
+                ),
+                paddle.no_grad(),
             ):
-                with paddle.no_grad():
-                    if in_pir_mode():
-                        _C_ops.coalesce_tensor(
-                            self._all_weights,
-                            params[0].dtype,
-                            True,
-                            False,
-                            False,
-                            0.0,
-                            False,
-                            -1,
-                            -1,
-                            [],
-                            [],
-                        )
-                    else:
-                        self._helper.append_op(
-                            type="coalesce_tensor",
-                            inputs={"Input": self._all_weights},
-                            outputs={
-                                "Output": self._all_weights,
-                                "FusedOutput": self._flat_weight,
-                            },
-                            attrs={
-                                "copy_data": True,
-                                "use_align": False,
-                                "dtype": params[0].dtype,
-                            },
-                        )
+                if in_pir_mode():
+                    _C_ops.coalesce_tensor(
+                        self._all_weights,
+                        params[0].dtype,
+                        True,
+                        False,
+                        False,
+                        0.0,
+                        False,
+                        -1,
+                        -1,
+                        [],
+                        [],
+                    )
+                else:
+                    self._helper.append_op(
+                        type="coalesce_tensor",
+                        inputs={"Input": self._all_weights},
+                        outputs={
+                            "Output": self._all_weights,
+                            "FusedOutput": self._flat_weight,
+                        },
+                        attrs={
+                            "copy_data": True,
+                            "use_align": False,
+                            "dtype": params[0].dtype,
+                        },
+                    )
 
     def _cudnn_impl(
         self,

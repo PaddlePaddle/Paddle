@@ -22,7 +22,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void SliceKernel(const Context& ctx,
+void SliceKernel(const Context& dev_ctx,
                  const DenseTensor& input,
                  const std::vector<int64_t>& axes,
                  const IntArray& starts_t,
@@ -32,7 +32,7 @@ void SliceKernel(const Context& ctx,
                  DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   if (out->numel() == 0) {
-    ctx.template Alloc<T>(out);
+    dev_ctx.template Alloc<T>(out);
     return;
   }
   // Step 1: Get the accurate attribute value of starts and ends
@@ -63,7 +63,7 @@ void SliceKernel(const Context& ctx,
       }
     }
     if (is_same) {
-      phi::Copy<Context>(ctx, input, ctx.GetPlace(), false, out);
+      phi::Copy<Context>(dev_ctx, input, dev_ctx.GetPlace(), false, out);
       return;
     }
   }
@@ -115,14 +115,14 @@ void SliceKernel(const Context& ctx,
     shape[i] = in_dims[i];
   }
 
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   for (size_t i = 0; i < shape_size; ++i) {
     if (starts_extension[i] == ends_extension[i] || shape[i] == 0) {
       return;
     }
   }
 
-  int r = xpu::slice<XPUType>(ctx.x_context(),
+  int r = xpu::slice<XPUType>(dev_ctx.x_context(),
                               reinterpret_cast<const XPUType*>(input.data<T>()),
                               reinterpret_cast<XPUType*>(out->data<T>()),
                               shape,
@@ -134,7 +134,7 @@ void SliceKernel(const Context& ctx,
 #ifdef PADDLE_WITH_XPU_FFT
 template <>
 void SliceKernel<phi::dtype::complex<float>, XPUContext>(
-    const XPUContext& ctx,
+    const XPUContext& dev_ctx,
     const DenseTensor& input,
     const std::vector<int64_t>& axes,
     const IntArray& starts_t,
@@ -144,7 +144,7 @@ void SliceKernel<phi::dtype::complex<float>, XPUContext>(
     DenseTensor* out) {
   using T = phi::dtype::complex<float>;
   if (out->numel() == 0) {
-    ctx.template Alloc<T>(out);
+    dev_ctx.template Alloc<T>(out);
     return;
   }
   // Step 1: Get the accurate attribute value of starts and ends
@@ -175,7 +175,7 @@ void SliceKernel<phi::dtype::complex<float>, XPUContext>(
       }
     }
     if (is_same) {
-      phi::Copy<XPUContext>(ctx, input, ctx.GetPlace(), false, out);
+      phi::Copy<XPUContext>(dev_ctx, input, dev_ctx.GetPlace(), false, out);
       return;
     }
   }
@@ -227,7 +227,7 @@ void SliceKernel<phi::dtype::complex<float>, XPUContext>(
     shape[i] = in_dims[i];
   }
 
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   for (size_t i = 0; i < shape_size; ++i) {
     if (starts_extension[i] == ends_extension[i] || shape[i] == 0) {
       return;
@@ -237,28 +237,28 @@ void SliceKernel<phi::dtype::complex<float>, XPUContext>(
   // The current complex number implementation uses separate real/imaginary
   // parts,resulting in redundant operations and performance
   // penalties.Optimization should address this in future iterations.
-  const DenseTensor real = Real<T, XPUContext>(ctx, input);
-  const DenseTensor imag = Imag<T, XPUContext>(ctx, input);
+  const DenseTensor real = Real<T, XPUContext>(dev_ctx, input);
+  const DenseTensor imag = Imag<T, XPUContext>(dev_ctx, input);
   DenseTensor real_out, imag_out;
   real_out.Resize(out->dims());
   imag_out.Resize(out->dims());
-  ctx.template Alloc<float>(&real_out);
-  ctx.template Alloc<float>(&imag_out);
-  int r = xpu::slice<float>(ctx.x_context(),
+  dev_ctx.template Alloc<float>(&real_out);
+  dev_ctx.template Alloc<float>(&imag_out);
+  int r = xpu::slice<float>(dev_ctx.x_context(),
                             real.data<float>(),
                             real_out.data<float>(),
                             shape,
                             starts_extension,
                             ends_extension);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "slice");
-  r = xpu::slice<float>(ctx.x_context(),
+  r = xpu::slice<float>(dev_ctx.x_context(),
                         imag.data<float>(),
                         imag_out.data<float>(),
                         shape,
                         starts_extension,
                         ends_extension);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "slice");
-  phi::ComplexKernel<float>(ctx, real_out, imag_out, out);
+  phi::ComplexKernel<float>(dev_ctx, real_out, imag_out, out);
 }
 #endif
 }  // namespace phi

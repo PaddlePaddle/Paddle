@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void GatherNdGradKernel(const Context &ctx,
+void GatherNdGradKernel(const Context &dev_ctx,
                         const DenseTensor &x,
                         const DenseTensor &index,
                         const DenseTensor &out_grad,

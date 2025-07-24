@@ -22,7 +22,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void NormKernel(const Context& ctx,
+void NormKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 int axis,
                 float epsilon,
@@ -30,8 +30,8 @@ void NormKernel(const Context& ctx,
                 DenseTensor* out,
                 DenseTensor* norm) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  ctx.template Alloc<T>(out);
-  ctx.template Alloc<T>(norm);
+  dev_ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(norm);
 
   std::vector<int64_t> xshape;
   auto x_dims = x.dims();
@@ -60,7 +60,7 @@ void NormKernel(const Context& ctx,
     xshape[i] = x_dims[i];
   }
 
-  int r = xpu::l2_norm(ctx.x_context(),
+  int r = xpu::l2_norm(dev_ctx.x_context(),
                        reinterpret_cast<const XPUType*>(x.data<T>()),
                        reinterpret_cast<XPUType*>(out->data<T>()),
                        reinterpret_cast<XPUType*>(norm->data<T>()),

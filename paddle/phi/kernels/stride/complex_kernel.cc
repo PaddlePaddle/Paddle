@@ -26,7 +26,7 @@ void RealStridedKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        DenseTensor* out) {
   if (out->numel() == 0) {
-    dev_ctx.template Alloc<T>(out);
+    dev_ctx.template Alloc<phi::dtype::Real<T>>(out);
     return;
   }
   if (!FLAGS_use_stride_kernel) {
@@ -55,7 +55,7 @@ void ImagStridedKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        DenseTensor* out) {
   if (out->numel() == 0) {
-    dev_ctx.template Alloc<T>(out);
+    dev_ctx.template Alloc<phi::dtype::Real<T>>(out);
     return;
   }
   if (!FLAGS_use_stride_kernel) {

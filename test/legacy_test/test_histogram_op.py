@@ -312,6 +312,54 @@ class TestHistogramOpAPIWithFloatminMax(TestHistogram):
         self.is_weight = False
 
 
+class TestHistogram_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.init_test_case()
+        self.input_np = np.random.uniform(
+            low=0.0, high=20.0, size=self.in_shape
+        ).astype(np.float32)
+        self.weight_np = np.random.uniform(
+            low=0.0, high=1.0, size=self.in_shape
+        ).astype(np.float32)
+
+    def init_test_case(self):
+        self.in_shape = (0, 12)
+        self.bins = 5
+        self.min = 1
+        self.max = 5
+        self.density = False
+        self.is_weight = True
+
+    def test_dygraph(self):
+        with base.dygraph.guard():
+            inputs_np = np.random.uniform(
+                low=0.0, high=20.0, size=self.in_shape
+            ).astype(np.float32)
+            inputs = paddle.to_tensor(inputs_np)
+            weight_np = np.random.uniform(
+                low=0.0, high=1.0, size=self.in_shape
+            ).astype(np.float32)
+            weight = paddle.to_tensor(weight_np)
+            actual = paddle.histogram(
+                inputs,
+                bins=5,
+                min=1,
+                max=5,
+                weight=weight if self.is_weight else None,
+                density=self.density,
+            )
+            Out, _ = np.histogram(
+                inputs_np,
+                bins=5,
+                range=(1, 5),
+                weights=weight_np if self.is_weight else None,
+                density=self.density,
+            )
+            np.testing.assert_allclose(
+                actual.numpy(), Out, rtol=1e-58, atol=1e-5
+            )
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

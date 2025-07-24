@@ -42,13 +42,13 @@ struct LerpScalarDirectCUDAFunctor {
 };
 
 template <typename T, typename Context>
-void LerpKernel(const Context &ctx,
+void LerpKernel(const Context &dev_ctx,
                 const DenseTensor &x,
                 const DenseTensor &y,
                 const DenseTensor &weight,
                 DenseTensor *out) {
   if (out && out->numel() == 0) {
-    ctx.template Alloc<T>(out);
+    dev_ctx.template Alloc<T>(out);
     return;
   }
 
@@ -61,7 +61,7 @@ void LerpKernel(const Context &ctx,
           "greater than or equal to 0, but the value received is %d.",
           rank));
 
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   std::vector<DenseTensor *> outputs = {out};
 
   std::vector<const DenseTensor *> inputs;
@@ -71,32 +71,32 @@ void LerpKernel(const Context &ctx,
     inputs.emplace_back(&x);
     inputs.emplace_back(&y);
     auto functor = LerpScalarDirectCUDAFunctor<T>(weight_ptr);
-    phi::funcs::BroadcastKernel<T>(ctx, inputs, &outputs, functor);
+    phi::funcs::BroadcastKernel<T>(dev_ctx, inputs, &outputs, functor);
   } else {
     inputs.reserve(3);
     auto functor = LerpElementWiseDirectCUDAFunctor<T>();
-    DenseTensor b_min = phi::EmptyLike<T>(ctx, *out);
+    DenseTensor b_min = phi::EmptyLike<T>(dev_ctx, *out);
     if (x.dims().size() != y.dims().size() &&
         weight.dims().size() != y.dims().size()) {
       if (x.dims().size() < y.dims().size() &&
           x.dims().size() < weight.dims().size()) {
         // x broadcast to b_min
         ExpandKernel<T, Context>(
-            ctx, x, common::vectorize(b_min.dims()), &b_min);
+            dev_ctx, x, common::vectorize(b_min.dims()), &b_min);
         inputs.emplace_back(&b_min);
         inputs.emplace_back(&y);
         inputs.emplace_back(&weight);
       } else if (y.dims().size() < weight.dims().size()) {
         // y broadcast to b_min
         ExpandKernel<T, Context>(
-            ctx, y, common::vectorize(b_min.dims()), &b_min);
+            dev_ctx, y, common::vectorize(b_min.dims()), &b_min);
         inputs.emplace_back(&x);
         inputs.emplace_back(&b_min);
         inputs.emplace_back(&weight);
       } else {
         // weight broadcast to b_min
         ExpandKernel<T, Context>(
-            ctx, weight, common::vectorize(b_min.dims()), &b_min);
+            dev_ctx, weight, common::vectorize(b_min.dims()), &b_min);
         inputs.emplace_back(&x);
         inputs.emplace_back(&y);
         inputs.emplace_back(&b_min);
@@ -106,7 +106,7 @@ void LerpKernel(const Context &ctx,
       inputs.emplace_back(&y);
       inputs.emplace_back(&weight);
     }
-    phi::funcs::BroadcastKernel<T>(ctx, inputs, &outputs, functor);
+    phi::funcs::BroadcastKernel<T>(dev_ctx, inputs, &outputs, functor);
   }
 }
 

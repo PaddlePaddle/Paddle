@@ -1,4 +1,3 @@
-# ruff: noqa: FA100
 # !/usr/bin/env python3
 
 # Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.

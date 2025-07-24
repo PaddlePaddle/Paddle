@@ -105,7 +105,7 @@ __global__ void GPUPSROIPoolForward(const int nthreads,
 }
 
 template <typename T, typename Context>
-void PsroiPoolKernel(const Context& ctx,
+void PsroiPoolKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& rois,
                      const paddle::optional<DenseTensor>& rois_num,
@@ -136,7 +136,8 @@ void PsroiPoolKernel(const Context& ctx,
   int rois_batch_size;
   DenseTensor rois_batch_id_list;
   rois_batch_id_list.Resize({rois_num_t});
-  int* rois_batch_id_data = ctx.template HostAlloc<int>(&rois_batch_id_list);
+  int* rois_batch_id_data =
+      dev_ctx.template HostAlloc<int>(&rois_batch_id_list);
 
   if (rois_num.get_ptr()) {
     rois_batch_size = rois_num->numel();
@@ -152,7 +153,7 @@ void PsroiPoolKernel(const Context& ctx,
     std::vector<int> rois_num_list(rois_batch_size);
     memory_utils::Copy(CPUPlace(),
                        rois_num_list.data(),
-                       ctx.GetPlace(),
+                       dev_ctx.GetPlace(),
                        rois_num_data,
                        sizeof(int) * rois_batch_size,
                        0);
@@ -201,26 +202,30 @@ void PsroiPoolKernel(const Context& ctx,
     }
   }
   DenseTensor rois_batch_id_list_gpu;
-  Copy(ctx, rois_batch_id_list, ctx.GetPlace(), false, &rois_batch_id_list_gpu);
+  Copy(dev_ctx,
+       rois_batch_id_list,
+       dev_ctx.GetPlace(),
+       false,
+       &rois_batch_id_list_gpu);
 
   int output_size = out->numel();
   int blocks = NumBlocks(output_size);
   int threads = kNumCUDAThreads;
 
   // call cuda kernel function
-  GPUPSROIPoolForward<T>
-      <<<blocks, threads, 0, ctx.stream()>>>(output_size,
-                                             x.data<T>(),
-                                             rois.data<T>(),
-                                             spatial_scale,
-                                             input_channels,
-                                             height,
-                                             width,
-                                             output_channels,
-                                             pooled_height,
-                                             pooled_width,
-                                             rois_batch_id_list_gpu.data<int>(),
-                                             ctx.template Alloc<T>(out));
+  GPUPSROIPoolForward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
+      output_size,
+      x.data<T>(),
+      rois.data<T>(),
+      spatial_scale,
+      input_channels,
+      height,
+      width,
+      output_channels,
+      pooled_height,
+      pooled_width,
+      rois_batch_id_list_gpu.data<int>(),
+      dev_ctx.template Alloc<T>(out));
 }
 
 }  // namespace phi

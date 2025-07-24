@@ -57,6 +57,7 @@ void DiagGradKernel(const Context& dev_ctx,
                     int offset,
                     DenseTensor* x_grad) {
   T* dx_data = dev_ctx.template Alloc<T>(x_grad);
+  if (x_grad && x_grad->numel() == 0) return;
   auto* dout_data = out_grad.data<T>();
   auto dx_dims = x_grad->dims();
   auto dout_dims = out_grad.dims();
@@ -73,14 +74,14 @@ void DiagGradKernel(const Context& dev_ctx,
   };
 
   if (dx_dims.size() <= 1) {
-    int64_t dx_length = (dx_dims.size() == 1ULL ? dx_dims[0] : 1ULL);
-    int64_t size = (offset > 0ULL) ? dx_length + offset : dx_length - offset;
+    int64_t dx_length = (dx_dims.size() == 1 ? dx_dims[0] : 1);
+    int64_t size = (offset > 0) ? dx_length + offset : dx_length - offset;
     int64_t dx_stride = 1;
     if (size > 0) {
       int64_t dout_stride_0 = phi::funcs::ComputeStride(0, dout_dims);
       int64_t dout_stride_1 = phi::funcs::ComputeStride(1, dout_dims);
       int64_t start =
-          (offset >= 0ULL ? offset * dout_stride_1 : -offset * dout_stride_0);
+          (offset >= 0 ? offset * dout_stride_1 : -offset * dout_stride_0);
 
       std::tuple<int64_t, int64_t> block_grid_size = GetBlockGridSize(size);
       ExtractDiagonalKernel<T>

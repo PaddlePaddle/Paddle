@@ -22,6 +22,7 @@
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -41,6 +42,29 @@ void GroupNormGradKernel(const Context& dev_ctx,
                          DenseTensor* d_x,
                          DenseTensor* d_scale,
                          DenseTensor* d_bias) {
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(d_x);
+    if (d_scale) {
+      // If batch dim is 0, we should set d_scale to zero, or else NAN
+      if (x.dims().size() > 0 && x.dims()[0] == 0) {
+        phi::Full<T, Context>(dev_ctx,
+                              phi::IntArray(common::vectorize(d_scale->dims())),
+                              0,
+                              d_scale);
+
+      } else {
+        phi::Full<T, Context>(dev_ctx,
+                              phi::IntArray(common::vectorize(d_scale->dims())),
+                              NAN,
+                              d_scale);
+      }
+    }
+    if (d_bias) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(d_bias->dims())), 0, d_bias);
+    }
+    return;
+  }
   using XPUType = typename XPUTypeTrait<T>::Type;
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   int ret = 0;

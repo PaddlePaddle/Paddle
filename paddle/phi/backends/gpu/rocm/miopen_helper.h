@@ -391,7 +391,7 @@ class ScopedFilterDescriptor {
       // NOTE: input filter(C) of the filter is already asserted to be C/groups.
     }
     std::vector<int> stride_dim(kernel_with_group.size());
-    stride_dim.push_back(1);
+    stride_dim[kernel_with_group.size() - 1] = 1;
     for (int k = kernel_with_group.size() - 2; k >= 0; k--) {
       stride_dim[k] = stride_dim[k + 1] * kernel_with_group[k + 1];
     }

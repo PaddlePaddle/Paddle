@@ -92,24 +92,23 @@ class TestOpRole(unittest.TestCase):
 
         with paddle.pir_utils.IrGuard():
             main_program = paddle.base.Program()
-            with paddle.base.program_guard(main_program):
+            with (
+                paddle.base.program_guard(main_program),
+                auto_complete_op_role(main_program, 0),
+            ):
+                x0 = paddle.static.data(name='x0', shape=[1, 128, 512])
+                x0 = dist.shard_tensor(
+                    x0, mesh, [Shard(1), Replicate()], stop_gradient=False
+                )
+                x1 = x0 / 2.0
 
-                with auto_complete_op_role(main_program, 0):
-                    x0 = paddle.static.data(name='x0', shape=[1, 128, 512])
-                    x0 = dist.shard_tensor(
-                        x0, mesh, [Shard(1), Replicate()], stop_gradient=False
-                    )
-                    x1 = x0 / 2.0
+                with pir_op_role_guard(3):
+                    x2 = dist.reshard(x1, mesh, [Shard(2), Replicate()])
+                    with pir_op_role_guard(1):
+                        x3 = dist.reshard(x2, mesh, [Replicate(), Replicate()])
+                    x4 = dist.reshard(x3, mesh, [Shard(1), Replicate()])
 
-                    with pir_op_role_guard(3):
-                        x2 = dist.reshard(x1, mesh, [Shard(2), Replicate()])
-                        with pir_op_role_guard(1):
-                            x3 = dist.reshard(
-                                x2, mesh, [Replicate(), Replicate()]
-                            )
-                        x4 = dist.reshard(x3, mesh, [Shard(1), Replicate()])
-
-                    x5 = dist.reshard(x4, mesh, [Replicate(), Replicate()])
+                x5 = dist.reshard(x4, mesh, [Replicate(), Replicate()])
 
         apply_mix2dist_pass(main_program)
         apply_partition_pass(main_program)

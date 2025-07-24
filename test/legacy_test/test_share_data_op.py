@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
 from op import Operator
-from op_test import OpTest
+from op_test import OpTest, get_places
 
 import paddle
 from paddle.base import core
@@ -40,18 +39,6 @@ class TestShareDataOp(OpTest):
 
 
 class TestShareDataOpOnDifferentPlaces(unittest.TestCase):
-    def get_places(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(core.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-        return places
-
     def check_with_tensor(self, place):
         scope = core.Scope()
         np_array = np.random.rand(2, 3, 5).astype("float32")
@@ -93,7 +80,7 @@ class TestShareDataOpOnDifferentPlaces(unittest.TestCase):
         self.assertEqual(x_rows, out_rows)
 
     def test_check_output(self):
-        for place in self.get_places():
+        for place in get_places():
             self.check_with_selected_rows(place)
             self.check_with_tensor(place)
 

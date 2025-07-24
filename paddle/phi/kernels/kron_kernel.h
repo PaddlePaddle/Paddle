@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void KronKernel(const Context& ctx,
+void KronKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 const DenseTensor& y,
                 DenseTensor* out);

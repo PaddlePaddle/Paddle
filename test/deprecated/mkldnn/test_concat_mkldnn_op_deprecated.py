@@ -24,7 +24,7 @@ from paddle.base import core
 class TestConcatAxis0OneDNNOp(OpTest):
     def setUp(self):
         self.op_type = "concat"
-        self.mkldnn_data_type = "float32"
+        self.onednn_data_type = "float32"
         self.init_axis()
         self.init_shape()
         self.init_test_data()
@@ -33,7 +33,7 @@ class TestConcatAxis0OneDNNOp(OpTest):
         self.attrs = {
             'axis': self.axis,
             'use_mkldnn': True,
-            'mkldnn_data_type': self.mkldnn_data_type,
+            'mkldnn_data_type': self.onednn_data_type,
         }
 
         self.output = np.concatenate(
@@ -43,7 +43,7 @@ class TestConcatAxis0OneDNNOp(OpTest):
         self.outputs = {'Out': self.output}
 
     def configure_datatype(self):
-        self.mkldnn_data_type = "float32"
+        self.onednn_data_type = "float32"
         self.dtype = np.float32
 
     def test_check_output(self):
@@ -109,7 +109,7 @@ class TestConcatAxis3OneDNNOp(TestConcatAxis0OneDNNOp):
 class TestConcatLargeInputNum(OpTest):
     def setUp(self):
         self.op_type = "concat"
-        self.mkldnn_data_type = "float32"
+        self.onednn_data_type = "float32"
         self.init_axis()
         self.init_shape()
         self.init_test_data()
@@ -118,7 +118,7 @@ class TestConcatLargeInputNum(OpTest):
         self.attrs = {
             'axis': self.axis,
             'use_mkldnn': True,
-            'mkldnn_data_type': self.mkldnn_data_type,
+            'mkldnn_data_type': self.onednn_data_type,
         }
 
         self.output = np.concatenate(
@@ -128,7 +128,7 @@ class TestConcatLargeInputNum(OpTest):
         self.outputs = {'Out': self.output}
 
     def configure_datatype(self):
-        self.mkldnn_data_type = "float32"
+        self.onednn_data_type = "float32"
         self.dtype = np.float32
 
     def test_check_output(self):

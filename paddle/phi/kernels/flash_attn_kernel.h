@@ -22,7 +22,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void FlashAttnUnpaddedKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& q,
     const DenseTensor& k,
     const DenseTensor& v,
@@ -44,7 +44,7 @@ void FlashAttnUnpaddedKernel(
     DenseTensor* seed_offset);
 
 template <typename T, typename Context>
-void FlashAttnKernel(const Context& ctx,
+void FlashAttnKernel(const Context& dev_ctx,
                      const DenseTensor& q,
                      const DenseTensor& k,
                      const DenseTensor& v,
@@ -61,7 +61,7 @@ void FlashAttnKernel(const Context& ctx,
                      DenseTensor* seed_offset);
 
 template <typename T, typename Context>
-void FlashMaskKernel(const Context& ctx,
+void FlashMaskKernel(const Context& dev_ctx,
                      const DenseTensor& q,
                      const DenseTensor& k,
                      const DenseTensor& v,

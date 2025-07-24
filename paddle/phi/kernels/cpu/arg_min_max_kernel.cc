@@ -89,7 +89,7 @@ struct VisitDataArgMinMaxFunctor {
   template <typename Tout>
   void apply() const {
     dev_ctx.template Alloc<Tout>(out);
-
+    if (x.numel() == 0) return;
     // if flatten, will construct the new dims for the calculation
     phi::DDim x_dims;
     phi::DDim out_dims;
@@ -153,7 +153,7 @@ void ArgMinMaxKernel(const Context& dev_ctx,
                      bool flatten,
                      DataType dtype,
                      DenseTensor* out) {
-  PADDLE_ENFORCE_GT(
+  PADDLE_ENFORCE_GE(
       x.numel(),
       0,
       common::errors::InvalidArgument(

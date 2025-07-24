@@ -23,6 +23,7 @@
 #include "paddle/cinn/ir/stmt_visitors.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/ir/utils/stmt_converter.h"
+#include "paddle/cinn/utils/string.h"
 #include "paddle/phi/core/enforce.h"
 
 PD_DECLARE_bool(cinn_enable_rearrange_load);

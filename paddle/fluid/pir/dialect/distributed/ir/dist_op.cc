@@ -43,9 +43,9 @@ void VerifyOpArgNum(const pir::OpBase* op,
                     size_t num_outputs,
                     size_t op_dist_attr_ninputs,
                     size_t op_dist_attr_noutputs) {
-  VLOG(4) << "Start Verifying inputs, outputs and attributes for: "
+  VLOG(6) << "Start Verifying inputs, outputs and attributes for: "
           << T::name();
-  VLOG(4) << "Verifying inputs num:";
+  VLOG(6) << "Verifying inputs num:";
   {
     auto input_size = op->num_operands();
     PADDLE_ENFORCE_EQ(input_size,
@@ -57,7 +57,7 @@ void VerifyOpArgNum(const pir::OpBase* op,
                           input_size));
   }
 
-  VLOG(4) << "Verifying outputs num:";
+  VLOG(6) << "Verifying outputs num:";
   {
     auto output_size = op->num_results();
     PADDLE_ENFORCE_EQ(output_size,
@@ -69,7 +69,7 @@ void VerifyOpArgNum(const pir::OpBase* op,
                           output_size));
   }
 
-  VLOG(4) << "Verifying attributes:";
+  VLOG(6) << "Verifying attributes:";
   {
     auto& attributes = op->attributes();
     PADDLE_ENFORCE_EQ(
@@ -87,7 +87,7 @@ void VerifyOpArgNum(const pir::OpBase* op,
                           "Type of attribute: op_dist_attr is not right."));
   }
 
-  VLOG(4) << "Verifying op dist attrs:";
+  VLOG(6) << "Verifying op dist attrs:";
   {
     auto op_dist_attr =
         op->attribute<paddle::dialect::OperationDistAttribute>("op_dist_attr");
@@ -103,7 +103,7 @@ void VerifyOpArgNum(const pir::OpBase* op,
                           "The op_dist_attr output size must be equal to %u.",
                           op_dist_attr_noutputs));
   }
-  VLOG(4) << "End Verifying inputs, outputs and attributes num for: "
+  VLOG(6) << "End Verifying inputs, outputs and attributes num for: "
           << T::name();
 }
 
@@ -124,7 +124,7 @@ void ShardTensorOp::VerifySig() {
           "Mismatched output type. ShardTensorOp requires "
           "'DistDenseTensorType' for output."));
 
-  VLOG(4) << "End Verifying for: ShardTensorOp.";
+  VLOG(6) << "End Verifying for: ShardTensorOp.";
 }
 
 void ShardTensorOp::Build(pir::Builder& builder,

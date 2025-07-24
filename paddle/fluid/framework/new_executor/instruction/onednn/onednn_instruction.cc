@@ -40,6 +40,8 @@
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/kernels/funcs/data_layout_transform.h"
 
+COMMON_DECLARE_bool(check_cuda_error);
+
 namespace paddle::framework {
 
 static phi::Attribute ConvertPirAttribute2RuntimeAttribute(
@@ -404,6 +406,10 @@ OneDNNPhiKernelInstruction::~OneDNNPhiKernelInstruction() {
 }
 
 void OneDNNPhiKernelInstruction::Run() {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("OneDNNPhiKernelInstruction " + phi_op_name_ + " begin");
+  }
+
   std::vector<std::shared_ptr<phi::DenseTensor>> tmp_holders;
   auto tmp_kernel_context = kernel_context_;
   auto tmp_infer_meta_context_ = infer_meta_context_;
@@ -513,6 +519,10 @@ void OneDNNPhiKernelInstruction::Run() {
 
   // Step5. ClearDnnAttr
   one_dnn_ctx->ClearDnnAttr();
+
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("OneDNNPhiKernelInstruction " + phi_op_name_ + " finish");
+  }
 }
 
 }  // namespace paddle::framework

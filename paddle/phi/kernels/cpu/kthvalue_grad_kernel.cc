@@ -49,13 +49,16 @@ void KthvalueGradKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& indices,
                         const DenseTensor& d_out,
-                        int k UNUSED,
+                        int64_t k UNUSED,
                         int axis,
                         bool keepdim,
                         DenseTensor* d_x) {
   auto in_dims = x.dims();
   auto out_dims = indices.dims();
   T* x_grad_data = dev_ctx.template Alloc<T>(d_x);
+  if (d_x && d_x->numel() == 0) {
+    return;
+  }
 
   // For 0D Tensor
   if (in_dims.size() == 0) {

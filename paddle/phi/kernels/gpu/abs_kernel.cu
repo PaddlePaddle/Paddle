@@ -54,13 +54,13 @@ struct CudaAbsFunctor<
 };
 
 template <typename T, typename Context>
-void AbsKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
-  ctx.template Alloc<phi::dtype::Real<T>>(out);
+void AbsKernel(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) {
+  dev_ctx.template Alloc<phi::dtype::Real<T>>(out);
   std::vector<const DenseTensor*> ins = {&x};
   std::vector<DenseTensor*> outs = {out};
   auto functor = CudaAbsFunctor<T>();
 
-  funcs::ElementwiseKernel<phi::dtype::Real<T>>(ctx, ins, &outs, functor);
+  funcs::ElementwiseKernel<phi::dtype::Real<T>>(dev_ctx, ins, &outs, functor);
 }
 
 }  // namespace phi

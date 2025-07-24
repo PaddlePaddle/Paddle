@@ -14,20 +14,23 @@
 
 from __future__ import annotations
 
-from typing import (
-    Callable,
-    Protocol,
-    TypeVar,
-    overload,
-)
+import inspect
+from typing import TYPE_CHECKING, Callable, Protocol, TypeVar, overload
 
 from typing_extensions import (
     ParamSpec,
 )
 
+import paddle
+from paddle.jit.dy2static.utils import DYNAMIC_DIMS_ATTR_NAME
+
 from .dy2static.utils import (
     TransformOptions,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
 
 _RetT = TypeVar("_RetT")
 _InputT = ParamSpec("_InputT")
@@ -93,7 +96,7 @@ def not_to_static(func=None):
 
 
 def unified(
-    fn: Callable[_InputT, _RetT] | None = None,
+    fn: Callable[_InputT, _RetT] | type[paddle.nn.Layer] | None = None,
     *,
     for_sot: bool = True,
     for_ast: bool = True,
@@ -123,3 +126,53 @@ def unified(
     if fn is None:
         return lambda fn: _mark_as_unified(fn, for_sot=for_sot, for_ast=for_ast)
     return _mark_as_unified(fn, for_sot=for_sot, for_ast=for_ast)
+
+
+def force_dynamic(
+    fn: Callable[_InputT, _RetT] | type[paddle.nn.Layer] | None = None,
+) -> Callable[_InputT, _RetT]:
+    """
+    Mark a function or paddle.nn.Layer to be executed in dynamic mode, it will
+    break the graph and prevent it from being converted to static mode.
+    """
+    from paddle.jit import sot
+
+    if inspect.isclass(fn) and issubclass(fn, paddle.nn.Layer):
+        sot.utils.paddle_api_config.add_break_graph_layer_class(fn)
+        return fn
+    if inspect.isfunction(fn):
+        sot.utils.paddle_api_config.add_break_graph_function(fn)
+        return fn
+
+    raise TypeError(
+        f"Expected a callable or paddle.nn.Layer, but got {type(fn).__name__}."
+    )
+
+
+def dynamic_dims(
+    tensor: paddle.Tensor,
+    dims: int | Sequence[int],
+) -> None:
+    """
+    Mark a tensor as having dynamic dimensions.
+    This is used to indicate that the tensor's shape may change dynamically
+    during execution, which is particularly useful in dynamic-to-static
+    conversion scenarios.
+    Args:
+        tensor (paddle.Tensor): The tensor to mark as dynamic.
+        dims (int | Sequence[int]): The dimensions to mark as dynamic.
+    """
+    if not isinstance(tensor, paddle.Tensor):
+        raise TypeError(
+            f"Expected a paddle.Tensor, but got {type(tensor).__name__}."
+        )
+
+    if isinstance(dims, int):
+        dims = (dims,)
+
+    if not isinstance(dims, (list, tuple)):
+        raise TypeError("Dimensions must be a list or tuple.")
+    if not all(isinstance(dim, int) for dim in dims):
+        raise TypeError("All dimensions must be integers.")
+
+    setattr(tensor, DYNAMIC_DIMS_ATTR_NAME, tuple(dims))

@@ -30,6 +30,7 @@ from ..meta_optimizers.dygraph_optimizer import HybridParallelOptimizer
 from ..utils import timer_helper as timer
 from ..utils.hybrid_parallel_util import (
     broadcast_dp_parameters,
+    broadcast_moe_sharding_parameters,
     broadcast_mp_parameters,
     broadcast_sep_parameters,
     broadcast_sharding_parameters,
@@ -259,6 +260,9 @@ class PipelineParallel(MetaParallelBase):
         self.use_sharding_parallel = (
             self._hcg.get_sharding_parallel_world_size() > 1
         )
+        self.use_moe_sharding_parallel = (
+            self._hcg.get_moe_sharding_parallel_world_size() > 1
+        )
 
         self.total_loss = None
 
@@ -430,6 +434,10 @@ class PipelineParallel(MetaParallelBase):
         if self.use_data_parallel:
             logger.info("start broadcast dp parameters")
             broadcast_dp_parameters(self._layers, self._hcg)
+
+        if self.use_moe_sharding_parallel:
+            logger.info("start broadcast moe_sharding parameters")
+            broadcast_moe_sharding_parameters(self._layers, self._hcg)
 
         if self._dp_comm_overlap:
             self.register_allreduce_overlap_hook(
@@ -694,8 +702,7 @@ class PipelineParallel(MetaParallelBase):
                 f'./profile_record_tmp_file_for_rank_{self.global_rank}',
                 'a+',
             ) as f:
-                for record in self._records:
-                    f.write(record + '\n')
+                f.writelines(record + '\n' for record in self._records)
             self._records = []
 
     def forward_backward_pipeline(
@@ -1558,8 +1565,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                 f'./profile_record_tmp_file_for_rank_{self.global_rank}',
                 'a+',
             ) as f:
-                for record in self._records:
-                    f.write(record + '\n')
+                f.writelines(record + '\n' for record in self._records)
             self._records = []
             self._reset_counter()
 
@@ -1672,9 +1678,16 @@ class PipelineParallelWithInterleave(PipelineParallel):
             self.output_tensors[virtual_pp_rank].pop()
 
     def _forward_step_helper(
-        self, micro_dataset, micro_step, overlap_schedule_mode=False
+        self,
+        micro_dataset,
+        micro_step,
+        overlap_schedule_mode=False,
+        check_is_last_chunk=False,
     ):
         virtual_pp_rank = self._get_virtual_pp_rank(micro_step, forward=True)
+        if check_is_last_chunk and virtual_pp_rank == self.num_model_chunks - 1:
+            os.environ["FLAGS_last_vpp_chunk_forward"] = "1"
+
         self.set_virtual_pipeline_rank(virtual_pp_rank)
 
         input_tensor = self._get_forward_input(virtual_pp_rank)
@@ -3240,7 +3253,9 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
 
             self._record_stamp("F", forward_micro_step_id, '"B"', forward=True)
             output_tensor = self._forward_step_helper(
-                micro_dataset, forward_micro_step_id
+                micro_dataset,
+                forward_micro_step_id,
+                check_is_last_chunk=True,
             )
             self._record_stamp("F", forward_micro_step_id, '"E"', forward=True)
 

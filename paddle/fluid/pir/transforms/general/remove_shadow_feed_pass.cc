@@ -78,11 +78,24 @@ class RemoveShadowFeedPattern
   bool IsSamePlaceShadowFeed(paddle::dialect::PhiKernelOp op) const {
     if (op.op_name() == "pd_op.shadow_feed") {
       auto in = op.operand_source(0);
-      if (!kwargs_map_.count(in)) {
-        return false;
-      }
-      auto in_name = kwargs_map_.at(in);
-      auto *var = scope_->FindVar(in_name);
+      auto *var = [&]() -> paddle::framework::Variable * {
+        auto *defined_op = in.defining_op();
+        if (defined_op && defined_op->isa<paddle::dialect::PhiKernelOp>()) {
+          if (defined_op->dyn_cast<paddle::dialect::PhiKernelOp>()
+                  .kernel_name() != "data")
+            return nullptr;
+          const auto &name = defined_op->attributes()
+                                 .at("name")
+                                 .dyn_cast<pir::StrAttribute>()
+                                 .AsString();
+          return scope_->FindVar(name);
+        }
+        if (kwargs_map_.count(in)) {
+          const auto &name = kwargs_map_.at(in);
+          return scope_->FindVar(name);
+        }
+        return nullptr;
+      }();
       if (!var) {
         return false;
       }

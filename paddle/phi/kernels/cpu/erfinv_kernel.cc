@@ -24,14 +24,16 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ErfinvKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
-  ctx.template Alloc<T>(out);
+void ErfinvKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  DenseTensor* out) {
+  dev_ctx.template Alloc<T>(out);
   if (out && out->numel() == 0) {
     return;
   }
   auto eigen_in = EigenVector<T>::Flatten(x);
   auto eigen_out = EigenVector<T>::Flatten(*out);
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   constexpr T half = static_cast<T>(0.5);
   constexpr T half_sqrt = static_cast<T>(M_SQRT1_2);
   eigen_out.device(place) = (eigen_in * half + half).ndtri() * half_sqrt;

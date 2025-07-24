@@ -26,17 +26,17 @@ template <typename T>
 HOSTDEVICE inline void GetYoloBox(T* box,
                                   const T* x,
                                   const int* anchors,
-                                  int i,
-                                  int j,
-                                  int an_idx,
-                                  int grid_size_h,
-                                  int grid_size_w,
-                                  int input_size_h,
-                                  int input_size_w,
-                                  int index,
-                                  int stride,
-                                  int img_height,
-                                  int img_width,
+                                  int64_t i,
+                                  int64_t j,
+                                  int64_t an_idx,
+                                  int64_t grid_size_h,
+                                  int64_t grid_size_w,
+                                  int64_t input_size_h,
+                                  int64_t input_size_w,
+                                  int64_t index,
+                                  int64_t stride,
+                                  int64_t img_height,
+                                  int64_t img_width,
                                   float scale,
                                   float bias) {
   box[0] = (i + sigmoid<T>(x[index]) * scale + bias) * img_width / grid_size_w;
@@ -48,14 +48,14 @@ HOSTDEVICE inline void GetYoloBox(T* box,
            img_height / input_size_h;
 }
 
-HOSTDEVICE inline int GetEntryIndex(int batch,
-                                    int an_idx,
-                                    int hw_idx,
-                                    int an_num,
-                                    int an_stride,
-                                    int stride,
-                                    int entry,
-                                    bool iou_aware) {
+HOSTDEVICE inline int64_t GetEntryIndex(int64_t batch,
+                                        int64_t an_idx,
+                                        int64_t hw_idx,
+                                        int an_num,
+                                        int64_t an_stride,
+                                        int64_t stride,
+                                        int64_t entry,
+                                        bool iou_aware) {
   if (iou_aware) {
     return (batch * an_num + an_idx) * an_stride +
            (batch * an_num + an_num + entry) * stride + hw_idx;
@@ -64,8 +64,12 @@ HOSTDEVICE inline int GetEntryIndex(int batch,
   }
 }
 
-HOSTDEVICE inline int GetIoUIndex(
-    int batch, int an_idx, int hw_idx, int an_num, int an_stride, int stride) {
+HOSTDEVICE inline int GetIoUIndex(int64_t batch,
+                                  int64_t an_idx,
+                                  int64_t hw_idx,
+                                  int an_num,
+                                  int64_t an_stride,
+                                  int64_t stride) {
   return batch * an_num * an_stride + (batch * an_num + an_idx) * stride +
          hw_idx;
 }
@@ -73,9 +77,9 @@ HOSTDEVICE inline int GetIoUIndex(
 template <typename T>
 HOSTDEVICE inline void CalcDetectionBox(T* boxes,
                                         T* box,
-                                        const int box_idx,
-                                        const int img_height,
-                                        const int img_width,
+                                        const int64_t box_idx,
+                                        const int64_t img_height,
+                                        const int64_t img_width,
                                         bool clip_bbox) {
   boxes[box_idx] = box[0] - box[2] / 2;
   boxes[box_idx + 1] = box[1] - box[3] / 2;
@@ -98,11 +102,11 @@ HOSTDEVICE inline void CalcDetectionBox(T* boxes,
 template <typename T>
 HOSTDEVICE inline void CalcLabelScore(T* scores,
                                       const T* input,
-                                      const int label_idx,
-                                      const int score_idx,
+                                      const int64_t label_idx,
+                                      const int64_t score_idx,
                                       const int class_num,
                                       const T conf,
-                                      const int stride) {
+                                      const int64_t stride) {
   for (int i = 0; i < class_num; i++) {
     scores[score_idx + i] = conf * sigmoid<T>(input[label_idx + i * stride]);
   }

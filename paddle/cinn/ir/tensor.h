@@ -31,7 +31,6 @@
 #include "paddle/cinn/ir/dim.h"
 #include "paddle/cinn/ir/function_base.h"
 #include "paddle/cinn/lang/buffer.h"
-#include "paddle/cinn/poly/stage.h"
 #include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
@@ -321,11 +320,7 @@ class _Tensor_ : public ExprNode<_Tensor_> {
   // The flatten compute value of tensor, such as Tensor[[1, 2], [3, 4]] ->
   // Tensor[1, 2, 3, 4]
   std::optional<std::vector<Expr>> value_;
-
-  friend Shared<poly::Stage> CreateStage(Tensor tensor);
 };
-
-Shared<poly::Stage> CreateStage(Tensor tensor);
 
 class _Operation_;
 class Operation : public FunctionRef {

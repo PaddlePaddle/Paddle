@@ -36,6 +36,12 @@ size_t DeviceInterface::GetComputeCapability(size_t dev_id) {
   return 0;
 }
 
+DeviceProp& DeviceInterface::GetDeviceProperties(size_t dev_id) {
+  DeviceProp prop;
+  VLOG(10) << Type() << " get device properties " << 0;
+  return prop;
+}
+
 size_t DeviceInterface::GetRuntimeVersion(size_t dev_id) {
   VLOG(10) << Type() << " get runtime version " << 0;
   return 0;

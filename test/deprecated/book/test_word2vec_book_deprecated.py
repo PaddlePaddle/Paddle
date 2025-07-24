@@ -350,9 +350,11 @@ def inject_test_method(
         prog = base.Program()
         startup_prog = base.Program()
         scope = base.core.Scope()
-        with base.scope_guard(scope):
-            with base.program_guard(prog, startup_prog):
-                main(target, is_sparse, is_parallel, use_bf16, pure_bf16)
+        with (
+            base.scope_guard(scope),
+            base.program_guard(prog, startup_prog),
+        ):
+            main(target, is_sparse, is_parallel, use_bf16, pure_bf16)
 
     if (
         not base.core.is_compiled_with_cuda() or target == "cuda"

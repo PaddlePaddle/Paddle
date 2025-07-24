@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_places
 
 import paddle
 from paddle import base, static
@@ -186,15 +185,7 @@ class TestRealAPI(unittest.TestCase):
         # prepare test attrs
         self.api = "real"
         self.dtypes = ["complex64", "complex128"]
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            self.places.append(paddle.CPUPlace())
-        if paddle.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
         self._shape = [2, 20, 2, 3]
 
     def test_in_static_mode(self):
@@ -235,28 +226,32 @@ class TestRealAPI(unittest.TestCase):
                     np.testing.assert_array_equal(np_res, res_t)
 
     def test_name_argument(self):
-        with paddle.pir_utils.OldIrGuard():
-            with static.program_guard(static.Program()):
-                x = static.data(
-                    name="x", shape=self._shape, dtype=self.dtypes[0]
-                )
-                out = paddle_apis[self.api](x, name="real_res")
-                self.assertTrue("real_res" in out.name)
+        with (
+            paddle.pir_utils.OldIrGuard(),
+            static.program_guard(static.Program()),
+        ):
+            x = static.data(name="x", shape=self._shape, dtype=self.dtypes[0])
+            out = paddle_apis[self.api](x, name="real_res")
+            self.assertTrue("real_res" in out.name)
 
     def test_dtype_static_error(self):
         # in static graph mode
-        with self.assertRaises(TypeError):
-            with static.program_guard(static.Program()):
-                x = static.data(name="x", shape=self._shape, dtype="float32")
-                out = paddle_apis[self.api](x, name="real_res")
+        with (
+            self.assertRaises(TypeError),
+            static.program_guard(static.Program()),
+        ):
+            x = static.data(name="x", shape=self._shape, dtype="float32")
+            out = paddle_apis[self.api](x, name="real_res")
 
     def test_dtype_dygraph_error(self):
         # in dynamic mode
-        with self.assertRaises(RuntimeError):
-            with base.dygraph.guard():
-                input = np.random.random(self._shape).astype("float32")
-                input_t = paddle.to_tensor(input)
-                res = paddle_apis[self.api](input_t)
+        with (
+            self.assertRaises(RuntimeError),
+            base.dygraph.guard(),
+        ):
+            input = np.random.random(self._shape).astype("float32")
+            input_t = paddle.to_tensor(input)
+            res = paddle_apis[self.api](input_t)
 
 
 class TestImagAPI(TestRealAPI):
@@ -266,15 +261,7 @@ class TestImagAPI(TestRealAPI):
         # prepare test attrs
         self.api = "imag"
         self.dtypes = ["complex64", "complex128"]
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            self.places.append(paddle.CPUPlace())
-        if paddle.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
         self.init_shape()
 
     def init_shape(self):
@@ -294,6 +281,45 @@ class TestImagAPIZeroSize1(TestImagAPI):
 class TestImagAPIZeroSize2(TestImagAPI):
     def init_shape(self):
         self._shape = [0, 0, 0, 0]
+
+
+class TestImagAPIZeroDtype(unittest.TestCase):
+    def init_data(self):
+        self.shape = [8, 0, 8]
+        self.dtype = 'float32'
+        self.expact_dtype = paddle.float32
+
+    def test_dtype(self):
+        with paddle.base.dygraph.guard():
+            self.init_data()
+            real_part = paddle.rand(self.shape, dtype=self.dtype)
+            imag_part = paddle.rand(self.shape, dtype=self.dtype)
+            complex_matrix = paddle.complex(real_part, imag_part)
+            imag = paddle.imag(complex_matrix)
+            self.assertTrue(imag.dtype == self.expact_dtype)
+
+
+class TestImagAPIZeroDtype1(TestImagAPIZeroDtype):
+    def init_shape(self):
+        self.shape = [8, 0, 8]
+        self.dtype = 'float64'
+        self.expact_dtype = paddle.float64
+
+
+class TestRealAPIZeroDtype(unittest.TestCase):
+    def init_data(self):
+        self.shape = [8, 0, 8]
+        self.dtype = 'float32'
+        self.expact_dtype = paddle.float32
+
+    def test_dtype(self):
+        with paddle.base.dygraph.guard():
+            self.init_data()
+            real_part = paddle.rand(self.shape, dtype=self.dtype)
+            imag_part = paddle.rand(self.shape, dtype=self.dtype)
+            complex_matrix = paddle.complex(real_part, imag_part)
+            real = paddle.real(complex_matrix)
+            self.assertTrue(real.dtype == self.expact_dtype)
 
 
 if __name__ == "__main__":
