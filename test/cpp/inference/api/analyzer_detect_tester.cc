@@ -77,7 +77,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
 void profile(int cache_capacity = 1) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-  cfg.EnableMKLDNN();
+  cfg.EnableONEDNN();
   cfg.SetMkldnnCacheCapacity(cache_capacity);
 
   std::vector<std::vector<PaddleTensor>> outputs;

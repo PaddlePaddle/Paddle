@@ -233,7 +233,7 @@ typedef struct PD_MaxInputShape {
 PADDLE_CAPI_EXPORT extern void PD_SwitchIrDebug(PD_AnalysisConfig* config,
                                                 bool x);
 
-PADDLE_CAPI_EXPORT extern void PD_EnableMKLDNN(PD_AnalysisConfig* config);
+PADDLE_CAPI_EXPORT extern void PD_EnableONEDNN(PD_AnalysisConfig* config);
 
 PADDLE_CAPI_EXPORT extern void PD_SetMkldnnCacheCapacity(
     PD_AnalysisConfig* config, int capacity);

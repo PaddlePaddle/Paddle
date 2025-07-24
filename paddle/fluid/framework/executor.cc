@@ -184,7 +184,7 @@ void Executor::Run(const ProgramDesc& pdesc,
   phi::RecordEvent record_run(
       "Executor::Run", phi::TracerEventType::UserDefined, 1);
   platform::RecordBlock b(block_id);
-  if (FLAGS_use_mkldnn) EnableMKLDNN(pdesc);
+  if (FLAGS_use_mkldnn) EnableONEDNN(pdesc);
   auto ctx = Prepare(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
 #ifdef PADDLE_WITH_DNNL
   platform::AttachPointerHashToONEDNNKey(this, place_);
@@ -330,7 +330,7 @@ void Executor::Run(const ProgramDesc& program,
   phi::RecordEvent record_run(
       "Executor::Run", phi::TracerEventType::UserDefined, 1);
   platform::RecordBlock b(kProgramId);
-  if (FLAGS_use_mkldnn) EnableMKLDNN(program);
+  if (FLAGS_use_mkldnn) EnableONEDNN(program);
 #ifdef PADDLE_WITH_DNNL
   platform::AttachPointerHashToONEDNNKey(this, place_);
 #endif
@@ -592,7 +592,7 @@ void Executor::RunPreparedContext(
   }
 }
 
-void Executor::EnableMKLDNN(const ProgramDesc& program) {
+void Executor::EnableONEDNN(const ProgramDesc& program) {
 #ifdef PADDLE_WITH_DNNL
   VLOG(3) << "use_mkldnn=True";
   for (size_t bid = 0; bid < program.Size(); ++bid) {
