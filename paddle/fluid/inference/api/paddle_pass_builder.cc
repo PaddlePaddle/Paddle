@@ -317,7 +317,7 @@ void GpuPassStrategy::EnableCUDNN() {
   use_cudnn_ = true;
 }
 
-void GpuPassStrategy::EnableMKLDNN() {
+void GpuPassStrategy::EnableONEDNN() {
   LOG(ERROR) << "GPU not support MKLDNN yet";
 }
 
@@ -343,7 +343,7 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
 
 void CpuPassStrategy::EnableCUDNN() { LOG(ERROR) << "CPU not support cuDNN"; }
 
-void CpuPassStrategy::EnableMKLDNN() {
+void CpuPassStrategy::EnableONEDNN() {
 // TODO(Superjomn) Consider the way to mix CPU with GPU.
 #ifdef PADDLE_WITH_DNNL
   if (!use_onednn_) {

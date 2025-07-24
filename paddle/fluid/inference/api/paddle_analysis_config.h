@@ -869,7 +869,7 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \brief Turn on OneDNN.
   ///
   ///
-  void EnableMKLDNN();
+  void EnableONEDNN();
 
   ///
   /// \brief Turn down OneDNN.

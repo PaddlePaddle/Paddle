@@ -150,7 +150,7 @@ TEST(mkldnn_tester_det_mv3_db, multi_thread2_mkl_fp32_bz2) {
   config.SetModel(FLAGS_modeldir + "/inference.pdmodel",
                   FLAGS_modeldir + "/inference.pdiparams");
   config.DisableGpu();
-  config.EnableMKLDNN();
+  config.EnableONEDNN();
   config.SetMkldnnCacheCapacity(10);
   config.SetCpuMathLibraryNumThreads(10);
   // get ground truth by disable ir

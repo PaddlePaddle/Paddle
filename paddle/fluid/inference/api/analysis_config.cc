@@ -665,7 +665,7 @@ void AnalysisConfig::EnableCUDNN() {
   Update();
 }
 
-void AnalysisConfig::EnableMKLDNN() {
+void AnalysisConfig::EnableONEDNN() {
 #ifdef PADDLE_WITH_DNNL
   use_onednn_ = true;
 #else
@@ -967,7 +967,7 @@ void AnalysisConfig::Update() {
   }
 
 #ifdef PADDLE_WITH_DNNL
-  // Since EnableMKLDNN is default, the pass_builder has created in the first
+  // Since EnableONEDNN is default, the pass_builder has created in the first
   // time.
   // Case1: User manually disable onednn after pass_builder
   // create.(config.disable_mkldnn())
@@ -1033,7 +1033,7 @@ void AnalysisConfig::Update() {
     if (use_onednn_ && enable_ir_optim_) {
 #ifdef PADDLE_WITH_DNNL
       // default enable onednn when device is cpu and enable_ir_optim
-      pass_builder()->EnableMKLDNN();
+      pass_builder()->EnableONEDNN();
 #endif
     }
   }

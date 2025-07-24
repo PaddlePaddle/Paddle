@@ -226,7 +226,7 @@ void profile(bool use_mkldnn = false) {
   SetConfig(&cfg);
 
   if (use_mkldnn) {
-    cfg.EnableMKLDNN();
+    cfg.EnableONEDNN();
     // Enable all the onednn supported ops except conv3d in dam
     std::unordered_set<std::string> op_list = {
         "softmax", "elementwise_add", "relu", "fc"};
@@ -276,7 +276,7 @@ void compare(bool use_mkldnn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
   if (use_mkldnn) {
-    cfg.EnableMKLDNN();
+    cfg.EnableONEDNN();
     // Enable all the onednn supported ops except conv3d in dam
     std::unordered_set<std::string> op_list = {
         "softmax", "elementwise_add", "relu"};

@@ -42,7 +42,7 @@ void profile(bool use_mkldnn = false) {
   SetConfig(&cfg);
 
   if (use_mkldnn) {
-    cfg.EnableMKLDNN();
+    cfg.EnableONEDNN();
     if (FLAGS_disable_mkldnn_fc) {
       cfg.DisableMkldnnFcPasses();
     }
@@ -67,7 +67,7 @@ void compare(bool use_mkldnn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
   if (use_mkldnn) {
-    cfg.EnableMKLDNN();
+    cfg.EnableONEDNN();
     if (FLAGS_disable_mkldnn_fc) {
       cfg.DisableMkldnnFcPasses();
     }
