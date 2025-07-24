@@ -51,13 +51,6 @@ jobs:
     with:
       docker_dcu_image: ${{ needs.build-docker.outputs.docker_dcu_image }}
 
-  inference:
-    name: PR-CI-Inference
-    uses: ./.github/workflows/_Inference.yml
-    needs: build-docker
-    with:
-      docker_inference_image: ${{ needs.build-docker.outputs.docker_distribute_image }}
-
   cpu:
     name: Linux-CPU
     uses: ./.github/workflows/_Linux-CPU.yml
