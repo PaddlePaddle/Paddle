@@ -56,7 +56,7 @@ jobs:
     uses: ./.github/workflows/_Inference.yml
     needs: build-docker
     with:
-      docker_inference_image: ${{ needs.build-docker.outputs.docker_inference_image }}
+      docker_inference_image: ${{ needs.build-docker.outputs.docker_distribute_image }}
 
   cpu:
     name: Linux-CPU
