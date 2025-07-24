@@ -170,7 +170,7 @@ class TestCSoftmaxWithCrossEntropy(unittest.TestCase):
                 ignore_index=ignore_index,
                 return_softmax=True,
             )
-        paddle.device.cuda.synchronize()
+        paddle.device.synchronize()
         softmax_list = []
         paddle.distributed.all_gather(softmax_list, softmax)
         softmax = np.concatenate(
@@ -231,7 +231,7 @@ class TestCSoftmaxWithCrossEntropy(unittest.TestCase):
                 return_softmax=True,
                 sum_multi_label_loss=False,
             )
-        paddle.device.cuda.synchronize()
+        paddle.device.synchronize()
         loss = paddle.sum(loss_tmp, axis=-1, keepdim=True)
         softmax_list = []
         paddle.distributed.all_gather(softmax_list, softmax)

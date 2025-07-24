@@ -29,7 +29,7 @@ class TestPinnedAllocator(unittest.TestCase):
         x_pd_gpu = paddle.to_tensor(x_np)
 
         x_pd_pin = x_pd_gpu.pin_memory(False)
-        paddle.device.cuda.synchronize()
+        paddle.device.synchronize()
         np.testing.assert_equal(x_np, x_pd_pin.numpy())
 
         x_pd_pin = x_pd_gpu.pin_memory()

@@ -115,7 +115,7 @@ class TestCSoftmaxWithCrossEntropy(unittest.TestCase):
                 ignore_index=ignore_index,
                 return_softmax=True,
             )
-        paddle.device.cuda.synchronize()
+        paddle.device.synchronize()
         softmax_list = []
         paddle.distributed.all_gather(softmax_list, softmax)
 
@@ -182,7 +182,7 @@ class TestCSoftmaxWithCrossEntropy(unittest.TestCase):
                 ignore_index=ignore_index,
                 return_softmax=True,
             )
-        paddle.device.cuda.synchronize()
+        paddle.device.synchronize()
         softmax_list = []
         paddle.distributed.all_gather(softmax_list, softmax)
 

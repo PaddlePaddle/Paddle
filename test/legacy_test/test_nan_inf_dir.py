@@ -51,7 +51,7 @@ class TestNanInfDirCheckResult(unittest.TestCase):
         x = x * 0.5
         out = paddle.log(x)
         if use_cuda:
-            paddle.device.cuda.synchronize()
+            paddle.device.synchronize()
 
         self.assertEqual(
             os.path.exists(output_dir) and os.path.isdir(output_dir), True

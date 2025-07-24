@@ -176,9 +176,9 @@ class TestFusedAttention(unittest.TestCase):
         if not paddle.is_compiled_with_cuda():
             return
         values1 = self.run_fwd_bwd(True)
-        paddle.device.cuda.synchronize()
+        paddle.device.synchronize()
         values2 = self.run_fwd_bwd(False)
-        paddle.device.cuda.synchronize()
+        paddle.device.synchronize()
         self.assertEqual(len(values1), len(values2))
         for i, (v1, v2) in enumerate(zip(values1, values2)):
             if not self.normalize_before:
