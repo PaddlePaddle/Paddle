@@ -201,11 +201,11 @@ void LUKernel(const Context& dev_ctx,
   if (x.numel() == 0) {
     phi::Full<int, Context>(dev_ctx,
                             phi::IntArray(common::vectorize(infos->dims())),
-                            static_cast<T>(0),
+                            static_cast<int>(0),
                             infos);
     phi::Full<int, Context>(dev_ctx,
                             phi::IntArray(common::vectorize(pivots->dims())),
-                            static_cast<T>(0),
+                            static_cast<int>(0),
                             pivots);
     phi::Full<T, Context>(dev_ctx,
                           phi::IntArray(common::vectorize(out->dims())),
