@@ -121,7 +121,7 @@ jobs:
           rm Paddle.tar.gz
           git config --global user.name "PaddleCI"
           git config --global user.email "paddle_ci@example.com"
-          git config --global --add safe.directory /paddle
+          git config --global --add safe.directory "*"
           git remote -v
           set +e
           git remote add upstream https://github.com/PaddlePaddle/Paddle.git
