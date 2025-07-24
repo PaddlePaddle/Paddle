@@ -57,17 +57,6 @@ if(WITH_CINN)
   list(REMOVE_ITEM PYBIND_DEPS imperative_flag)
 endif()
 
-if(WITH_PSCORE)
-  set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
-  if(WITH_HETERPS)
-    set(PYBIND_DEPS ${PYBIND_DEPS} graph_gpu_wrapper)
-  endif()
-endif()
-if(WITH_RPC)
-  set(PYBIND_DEPS ${PYBIND_DEPS} paddle_rpc ${EXTERNAL_BRPC_DEPS} zlib phi
-                  common)
-endif()
-
 if(WITH_IPU)
   set(PYBIND_DEPS ${PYBIND_DEPS} ipu_info)
 endif()
@@ -213,56 +202,8 @@ if(WITH_CRYPTO)
   set(PYBIND_SRCS ${PYBIND_SRCS} crypto.cc)
 endif()
 
-if(WITH_PSLIB)
-  set(DISTRIBUTE_COMPILE_FLAGS
-      "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=type-limits -Wno-error=parentheses -Wno-error=unused-result"
-  )
-  if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
-    set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
-  endif()
-  set_source_files_properties(
-    heter_wrapper_py.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-endif()
-if(WITH_PSCORE)
-  if(WITH_ARM_BRPC)
-    set(DISTRIBUTE_COMPILE_FLAGS
-        "-faligned-new -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=parentheses -Wno-error=unused-result"
-    )
-  else()
-    set(DISTRIBUTE_COMPILE_FLAGS
-        "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=parentheses -Wno-error=unused-result"
-    )
-    if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
-      set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
-    endif()
-  endif()
-  set_source_files_properties(
-    fleet_py.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-  list(APPEND PYBIND_DEPS fleet index_wrapper index_sampler)
-  list(APPEND PYBIND_SRCS)
-  set(PYBIND_SRCS fleet_py.cc ${PYBIND_SRCS})
-endif()
-
 if(WITH_CINN)
   set(PYBIND_SRCS ${PYBIND_SRCS} test.cc)
-endif()
-
-if(WITH_RPC)
-  if(WITH_ARM_BRPC)
-    set(DISTRIBUTE_COMPILE_FLAGS
-        "-faligned-new -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=parentheses -Wno-error=unused-result"
-    )
-  else()
-    set(DISTRIBUTE_COMPILE_FLAGS
-        "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=parentheses -Wno-error=unused-result"
-    )
-    if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
-      set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
-    endif()
-  endif()
-  set_source_files_properties(rpc.cc PROPERTIES COMPILE_FLAGS
-                                                ${DISTRIBUTE_COMPILE_FLAGS})
-  set(PYBIND_SRCS rpc.cc ${PYBIND_SRCS})
 endif()
 
 if(WITH_NCCL OR WITH_RCCL)

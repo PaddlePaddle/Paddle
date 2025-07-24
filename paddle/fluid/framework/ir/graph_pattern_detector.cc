@@ -1154,7 +1154,7 @@ PDNode *patterns::FC::operator()(paddle::framework::ir::PDNode *x,
   }
 }
 
-PDNode *patterns::FCMKLDNN::operator()(bool with_residual_data) {
+PDNode *patterns::FCONEDNN::operator()(bool with_residual_data) {
   auto *fc_op = pattern->NewNode(fc_repr())->assert_is_op("fc");
   // Create variables
   // Input

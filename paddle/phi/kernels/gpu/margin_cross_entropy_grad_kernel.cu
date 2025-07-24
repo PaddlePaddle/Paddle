@@ -80,7 +80,7 @@ void MarginCrossEntropyGradKernel(const Context& dev_ctx,
     logits_grad->ShareDataWith(softmax);
   }
 
-  int blocks = NumBlocks(N * D);
+  int64_t blocks = NumBlocks(N * D);
   int threads = kNumCUDAThreads;
   const auto& label_type = label.dtype();
 

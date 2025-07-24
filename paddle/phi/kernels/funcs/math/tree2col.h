@@ -72,7 +72,7 @@ class Tree2ColUtil {
 template <typename DeviceContext, typename T>
 class Tree2ColFunctor {
  public:
-  void operator()(const DeviceContext &context,
+  void operator()(const DeviceContext &dev_ctx,
                   const phi::DenseTensor &EdgeSet,
                   const phi::DenseTensor &node_features,
                   phi::DenseTensor *patch,
@@ -81,7 +81,7 @@ class Tree2ColFunctor {
 template <typename DeviceContext, typename T>
 class Col2TreeFunctor {
  public:
-  void operator()(const DeviceContext &context,
+  void operator()(const DeviceContext &dev_ctx,
                   const phi::DenseTensor &EdgeSet,
                   const phi::DenseTensor &out_grad,
                   phi::DenseTensor *in_grad,

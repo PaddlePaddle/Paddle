@@ -15,10 +15,17 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import (
+    OpTest,
+    OpTestTool,
+    convert_float_to_uint16,
+    skip_check_grad_ci,
+)
 
 import paddle
 from paddle import base
+from paddle.base import core
+from paddle.base.framework import _current_expected_place
 from paddle.static import Program, program_guard
 
 
@@ -86,6 +93,20 @@ class TestReshapeOp_ZeroDim2(TestReshapeOp_ZeroDim1):
 
 
 class TestReshapeOp_ZeroDim3(OpTest):
+    def init_data(self):
+        self.ori_shape = (1,)
+        self.new_shape = ()
+        self.inferred_shape = ()
+
+
+@OpTestTool.skip_if(
+    not (isinstance(_current_expected_place(), core.CPUPlace)),
+    "GPU is not supported",
+)
+class TestReshapeOp_ZeroDim4(OpTest):
+    def init_kernel_type(self):
+        self.use_onednn = True
+
     def init_data(self):
         self.ori_shape = (1,)
         self.new_shape = ()
@@ -376,7 +397,7 @@ class TestReshapeInt8Op(OpTest):
     def setUp(self):
         self.init_dtype()
         self.init_data()
-        self.use_mkldnn = True
+        self.use_onednn = True
         self._cpu_only = True
         self.op_type = "reshape2"
         self.python_api = paddle.tensor.reshape
@@ -385,7 +406,7 @@ class TestReshapeInt8Op(OpTest):
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(input)}
         self.attrs = {
             'shape': self.new_shape,
-            'use_mkldnn': self.use_mkldnn,
+            'use_mkldnn': self.use_onednn,
         }
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.inferred_shape),

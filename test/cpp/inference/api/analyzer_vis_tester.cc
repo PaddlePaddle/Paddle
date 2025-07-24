@@ -89,7 +89,7 @@ void profile(bool use_mkldnn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
   if (use_mkldnn) {
-    cfg.EnableMKLDNN();
+    cfg.EnableONEDNN();
   }
   // cfg.pass_builder()->TurnOnDebug();
   std::vector<std::vector<PaddleTensor>> outputs;
@@ -138,7 +138,7 @@ void compare(bool use_mkldnn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
   if (use_mkldnn) {
-    cfg.EnableMKLDNN();
+    cfg.EnableONEDNN();
   }
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;

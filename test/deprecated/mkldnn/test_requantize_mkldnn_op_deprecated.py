@@ -17,7 +17,7 @@ import unittest
 
 sys.path.append("../../mkldnn")
 import numpy as np
-from mkldnn_op_test import format_reorder
+from onednn_op_test import format_reorder
 from op_test import OpTest
 
 import paddle

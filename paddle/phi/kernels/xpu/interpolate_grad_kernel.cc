@@ -39,6 +39,10 @@ void InterpolateGradKernel(
     bool align_corners,
     int align_mode,
     DenseTensor* x_grad) {
+  if (x_grad && x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    return;
+  }
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(x.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);

@@ -1410,6 +1410,24 @@ class TestPutAlongAxisDynamicShape3(TestPutAlongAxisDynamicShape):
         self.arr = np.random.random([32, 32, 32, 32]).astype(self.dtype)
 
 
+class TestPutAlongAxisDynamicShape_ZeroSize(TestPutAlongAxisDynamicShape):
+    def setUp(self):
+        np.random.seed(2024)
+        self.net = put_along_axis_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+        self.dtype = "float32"
+        self.axis = -2
+        self.input_specs = [
+            InputSpec(
+                shape=(-1, -1, -1, -1),
+                dtype=self.dtype,
+                stop_gradient=False,
+            )
+        ]
+        self.arr = np.random.random([0, 10, 10, 10]).astype(self.dtype)
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

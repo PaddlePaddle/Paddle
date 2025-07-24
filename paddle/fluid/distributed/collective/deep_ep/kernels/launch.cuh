@@ -147,6 +147,12 @@
   } else if (num_rdma_ranks == 4) {                             \
     constexpr int kNumRdmaRanks = 4;                            \
     __VA_ARGS__                                                 \
+  } else if (num_rdma_ranks == 8) {                             \
+    constexpr int kNumRdmaRanks = 8;                            \
+    __VA_ARGS__                                                 \
+  } else if (num_rdma_ranks == 16) {                            \
+    constexpr int kNumRdmaRanks = 16;                           \
+    __VA_ARGS__                                                 \
   } else {                                                      \
     EP_HOST_ASSERT(false && "Unsupported num_rdma_ranks");      \
   }
@@ -163,6 +169,9 @@
     __VA_ARGS__                                             \
   } else if (num_experts == 192) {                          \
     constexpr int kNumExperts = 192;                        \
+    __VA_ARGS__                                             \
+  } else if (num_experts == 384) {                          \
+    constexpr int kNumExperts = 384;                        \
     __VA_ARGS__                                             \
   } else {                                                  \
     EP_HOST_ASSERT(false && "Unsupported num_experts");     \
