@@ -2632,7 +2632,9 @@ void FusedLayerNormInferMeta(const MetaTensor& x,
   if (residual) {
     std::vector<int64_t> residual_dims_vec = common::vectorize(residual.dims());
     for (size_t i = 0; i < x_dims_vec.size(); ++i) {
-      if (x_dims_vec[i] == -1 || residual_dims_vec[i] == -1) continue;
+      if (x_dims_vec[i] == -1 || residual_dims_vec[i] == -1 ||
+          x_dims_vec[i] == 0)
+        continue;
 
       PADDLE_ENFORCE_EQ(x_dims_vec[i],
                         residual_dims_vec[i],
