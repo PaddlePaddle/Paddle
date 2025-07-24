@@ -68,16 +68,16 @@ void test_moe_gate_dispatch_spmd(
   phi::distributed::SpmdInfo spmd_info;
   if (test_bwd_spmd) {
     spmd_info =
-        phi::distributed::MoEGateDispatchBwdInferSpmd(dist_meta_tensors[0],
-                                                      dist_meta_tensors[1],
-                                                      dist_meta_tensors[2],
-                                                      dist_meta_tensors[3],
-                                                      dist_meta_tensors[4],
-                                                      k,
-                                                      capacity,
-                                                      use_pad);
+        phi::distributed::MoEGateDispatchGradInferSpmd(dist_meta_tensors[0],
+                                                       dist_meta_tensors[1],
+                                                       dist_meta_tensors[2],
+                                                       dist_meta_tensors[3],
+                                                       dist_meta_tensors[4],
+                                                       k,
+                                                       capacity,
+                                                       use_pad);
   } else {
-    spmd_info = phi::distributed::MoEGateDispatchFwdInferSpmd(
+    spmd_info = phi::distributed::MoEGateDispatchInferSpmd(
         dist_meta_tensors[0], dist_meta_tensors[1], k, capacity, use_pad);
   }
 

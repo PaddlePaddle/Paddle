@@ -22,11 +22,11 @@ limitations under the License. */
 namespace phi {
 namespace distributed {
 
-SpmdInfo MoEGateDispatchFwdInferSpmd(const DistMetaTensor& x,
-                                     const DistMetaTensor& gate_logits,
-                                     int64_t k,
-                                     int64_t capacity,
-                                     bool use_pad) {
+SpmdInfo MoEGateDispatchInferSpmd(const DistMetaTensor& x,
+                                  const DistMetaTensor& gate_logits,
+                                  int64_t k,
+                                  int64_t capacity,
+                                  bool use_pad) {
   /*
   inputs:
     x: [S, H], S = b*s
@@ -115,14 +115,15 @@ SpmdInfo MoEGateDispatchFwdInferSpmd(const DistMetaTensor& x,
            expert_id_dist_attr}};
 }
 
-SpmdInfo MoEGateDispatchBwdInferSpmd(const DistMetaTensor& combine_weights,
-                                     const DistMetaTensor& scatter_index,
-                                     const DistMetaTensor& expert_id,
-                                     const DistMetaTensor& grad_y,
-                                     const DistMetaTensor& grad_combine_weights,
-                                     int64_t k,
-                                     int64_t capacity,
-                                     bool use_pad) {
+SpmdInfo MoEGateDispatchGradInferSpmd(
+    const DistMetaTensor& combine_weights,
+    const DistMetaTensor& scatter_index,
+    const DistMetaTensor& expert_id,
+    const DistMetaTensor& grad_y,
+    const DistMetaTensor& grad_combine_weights,
+    int64_t k,
+    int64_t capacity,
+    bool use_pad) {
   /*
     inputs:
       combine_weights: [S, K]
