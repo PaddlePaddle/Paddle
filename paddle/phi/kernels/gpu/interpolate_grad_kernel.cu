@@ -1143,11 +1143,6 @@ static void Interpolate2DCUDABwd(
                         ? true
                         : ((in_h == 1 && in_w == 1) ? true : false);
 #endif
-    std::cout << in_h << " " << in_w << std::endl;
-    std::cout << out_h << " " << out_w << std::endl;
-    std::cout << n << " " << c << std::endl;
-    std::cout << ratio_h << " " << ratio_w << std::endl;
-    std::cout << optimize_flag << " " << is_nchw << std::endl;
     if (optimize_flag & is_nchw) {
       KeBilinearInterpBwShareMemory<T><<<config.block_per_grid,
                                          config.thread_per_block,
