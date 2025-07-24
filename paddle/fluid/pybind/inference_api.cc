@@ -1050,7 +1050,7 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::SwitchIrDebug,
            py::arg("x") = true,
            py::arg("passes") = std::vector<std::string>())
-      .def("enable_mkldnn", &AnalysisConfig::EnableMKLDNN)
+      .def("enable_mkldnn", &AnalysisConfig::EnableONEDNN)
       .def("disable_mkldnn", &AnalysisConfig::DisableMKLDNN)
       .def("mkldnn_enabled", &AnalysisConfig::mkldnn_enabled)
       .def("enable_cinn", &AnalysisConfig::EnableCINN)
@@ -1329,7 +1329,7 @@ void BindPaddlePassBuilder(py::module *m) {
   py::class_<PassStrategy, PaddlePassBuilder>(*m, "PassStrategy")
       .def(py::init<const std::vector<std::string> &>())
       .def("enable_cudnn", &PassStrategy::EnableCUDNN)
-      .def("enable_mkldnn", &PassStrategy::EnableMKLDNN)
+      .def("enable_mkldnn", &PassStrategy::EnableONEDNN)
       .def("enable_mkldnn_bfloat16", &PassStrategy::EnableMkldnnBfloat16)
       .def("use_gpu", &PassStrategy::use_gpu);
 
@@ -1337,14 +1337,14 @@ void BindPaddlePassBuilder(py::module *m) {
       .def(py::init<>())
       .def(py::init<const CpuPassStrategy &>())
       .def("enable_cudnn", &CpuPassStrategy::EnableCUDNN)
-      .def("enable_mkldnn", &CpuPassStrategy::EnableMKLDNN)
+      .def("enable_mkldnn", &CpuPassStrategy::EnableONEDNN)
       .def("enable_mkldnn_bfloat16", &CpuPassStrategy::EnableMkldnnBfloat16);
 
   py::class_<GpuPassStrategy, PassStrategy>(*m, "GpuPassStrategy")
       .def(py::init<>())
       .def(py::init<const GpuPassStrategy &>())
       .def("enable_cudnn", &GpuPassStrategy::EnableCUDNN)
-      .def("enable_mkldnn", &GpuPassStrategy::EnableMKLDNN)
+      .def("enable_mkldnn", &GpuPassStrategy::EnableONEDNN)
       .def("enable_mkldnn_bfloat16", &GpuPassStrategy::EnableMkldnnBfloat16);
 }
 

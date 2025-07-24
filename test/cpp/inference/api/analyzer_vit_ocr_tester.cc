@@ -73,7 +73,7 @@ void SetConfig(AnalysisConfig *cfg, bool use_mkldnn = false) {
                 FLAGS_infer_model + "/inference.pdiparams");
 
   if (use_mkldnn) {
-    cfg->EnableMKLDNN();
+    cfg->EnableONEDNN();
     cfg->SwitchIrOptim();
   }
 }

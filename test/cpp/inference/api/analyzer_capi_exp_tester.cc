@@ -75,7 +75,7 @@ TEST(PD_Config, profile_mkldnn) {
   PD_ConfigDisableGpu(config);
   PD_ConfigSetCpuMathLibraryNumThreads(config, 10);
   PD_ConfigSwitchIrDebug(config, TRUE);
-  PD_ConfigEnableMKLDNN(config);
+  PD_ConfigEnableONEDNN(config);
   bool mkldnn_enable = PD_ConfigMkldnnEnabled(config);
   EXPECT_TRUE(mkldnn_enable);
   PD_ConfigEnableMkldnnBfloat16(config);

@@ -67,7 +67,7 @@ func TestNewConfig(t *testing.T) {
 
 	config.SwitchIrDebug(false)
 
-	config.EnableMKLDNN()
+	config.EnableONEDNN()
 
 	config.EnableMemoryOptim(true)
 	t.Logf("MemoryOptimEnabled:%+v", config.MemoryOptimEnabled())
@@ -94,7 +94,7 @@ func TestMkldnn(t *testing.T) {
 	config.SetModelDir("modelDir")
 	t.Log(config.ModelDir())
 
-	config.EnableMKLDNN()
+	config.EnableONEDNN()
 	t.Logf("MkldnnEnabled:%+v", config.MkldnnEnabled())
 
 	config.SetMkldnnCacheCapacity(4)

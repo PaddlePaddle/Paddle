@@ -87,7 +87,7 @@ class ConditionalBlockInferOp : public ConditionalOp {
         auto &pdesc = *block->Program();
         exec_.reset(new framework::Executor(dev_place));
 #ifdef PADDLE_WITH_DNNL
-        if (FLAGS_use_mkldnn) exec_->EnableMKLDNN(pdesc);
+        if (FLAGS_use_mkldnn) exec_->EnableONEDNN(pdesc);
 #endif
         ctx_ = exec_->Prepare(
             pdesc, block->ID(), std::vector<std::string>(), false);

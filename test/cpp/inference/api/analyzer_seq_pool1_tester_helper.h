@@ -165,7 +165,7 @@ void SetConfig(AnalysisConfig *cfg, bool use_mkldnn = false) {
   cfg->SwitchIrDebug();
   cfg->SetCpuMathLibraryNumThreads(FLAGS_cpu_num_threads);
   if (use_mkldnn) {
-    cfg->EnableMKLDNN();
+    cfg->EnableONEDNN();
   }
   // Enable seqpool_concat_fuse_pass, disabled by default since it takes much
   // time
