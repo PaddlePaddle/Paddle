@@ -136,6 +136,52 @@ class TestArangeOpError(unittest.TestCase):
             paddle.enable_static()
             self.assertRaises(TypeError, paddle.arange, 10, dtype='int8')
 
+    def test_unisfinite_start_errors(self):
+        start = paddle.to_tensor(np.array([np.nan], 'float32'))
+        end = paddle.to_tensor(np.array([100], 'float32'))
+
+        self.assertRaises(
+            ValueError,
+            paddle.arange,
+            start=start,
+            end=end,
+            step=1,
+            dtype='int32',
+        )
+
+        start = paddle.to_tensor(np.array([np.inf], 'float32'))
+        self.assertRaises(
+            ValueError,
+            paddle.arange,
+            start=start,
+            end=end,
+            step=1,
+            dtype='int32',
+        )
+
+    def test_unisfinite_end_errors(self):
+        start = paddle.to_tensor(np.array([0], 'float32'))
+        end = paddle.to_tensor(np.array([np.nan], 'float32'))
+
+        self.assertRaises(
+            ValueError,
+            paddle.arange,
+            start=start,
+            end=end,
+            step=1,
+            dtype='int32',
+        )
+
+        end = paddle.to_tensor(np.array([np.inf], 'float32'))
+        self.assertRaises(
+            ValueError,
+            paddle.arange,
+            start=start,
+            end=end,
+            step=1,
+            dtype='int32',
+        )
+
 
 class TestArangeAPI(unittest.TestCase):
 
