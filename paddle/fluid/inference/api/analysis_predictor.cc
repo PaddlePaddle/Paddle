@@ -1637,7 +1637,7 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
                             int batch_size) {
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 #ifdef PADDLE_WITH_DNNL
-  if (config_.use_mkldnn_) MkldnnPreSet(inputs);
+  if (config_.use_onednn_) MkldnnPreSet(inputs);
 #endif
   VLOG(3) << "Predictor::predict";
   // set feed variable
@@ -1693,7 +1693,7 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   // conflict when integrating it into deployment service.
   paddle::platform::SetNumThreads(1);
 #ifdef PADDLE_WITH_DNNL
-  if (config_.use_mkldnn_) MkldnnPostReset();
+  if (config_.use_onednn_) MkldnnPostReset();
 #endif
 #if defined(PADDLE_WITH_MKLML)
   // Frees unused memory allocated by the Intel® MKL Memory Allocator to
@@ -1714,7 +1714,7 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
   }
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 #ifdef PADDLE_WITH_DNNL
-  if (config_.use_mkldnn_) MkldnnPreSet(inputs);
+  if (config_.use_onednn_) MkldnnPreSet(inputs);
 #endif
   VLOG(3) << "predict start";
   // set feed variable
@@ -1799,7 +1799,7 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
     phi::DeviceContextPool::SetDeviceContexts(nullptr);
   }
 #ifdef PADDLE_WITH_DNNL
-  if (config_.use_mkldnn_) MkldnnPostReset();
+  if (config_.use_onednn_) MkldnnPostReset();
 #endif
 #if defined(PADDLE_WITH_MKLML)
   // Frees unused memory allocated by the Intel® MKL Memory Allocator to
@@ -2674,7 +2674,7 @@ bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
   }
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 #ifdef PADDLE_WITH_DNNL
-  if (config_.use_mkldnn_) {
+  if (config_.use_onednn_) {
     std::vector<std::vector<int>> shape_vector;
     auto names = GetInputNames();
     for (auto &name : names) {
@@ -2765,7 +2765,7 @@ bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
     phi::DeviceContextPool::SetDeviceContexts(nullptr);
   }
 #ifdef PADDLE_WITH_DNNL
-  if (config_.use_mkldnn_) MkldnnPostReset();
+  if (config_.use_onednn_) MkldnnPostReset();
 #endif
 #if defined(PADDLE_WITH_MKLML)
   // Frees unused memory allocated by the Intel® MKL Memory Allocator to
