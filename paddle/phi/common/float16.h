@@ -369,6 +369,7 @@ struct PADDLE_ALIGN(2) float16 {
   static constexpr uint32_t minC = minN >> shift;
   static constexpr uint32_t sigC = sigN >> shiftSign;
 
+  static const uint32_t mulC = 0x33800000;   // minN / (1 << (23 - shift))
   static constexpr uint32_t subC = 0x003FF;  // max flt32 subnormal downshifted
   static constexpr uint32_t norC = 0x00400;  // min flt32 normal downshifted
   static constexpr uint32_t maxD = infC - maxC - 1;
