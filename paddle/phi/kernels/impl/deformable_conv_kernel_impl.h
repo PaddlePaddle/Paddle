@@ -17,6 +17,7 @@
 #include "paddle/common/hostdevice.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/deformable_conv_functor.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
@@ -37,6 +38,11 @@ void DeformableConvKernel(const Context& dev_ctx,
                           int groups,
                           int im2col_step,
                           DenseTensor* out) {
+  if (x.numel() == 0 || filter.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    return;
+  }
   const int batch_size = static_cast<int>(x.dims()[0]);
 
   int temp_step = std::min(64, batch_size);

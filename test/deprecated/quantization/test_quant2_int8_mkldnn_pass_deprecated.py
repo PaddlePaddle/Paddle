@@ -32,7 +32,7 @@ class TestQuant2Int8MkldnnPassMul(unittest.TestCase):
         self.scope = paddle.static.global_scope()
         self.place = paddle.CPUPlace()
         self.dtype = np.float32
-        self.use_mkldnn = True
+        self.use_onednn = True
 
         self.quantized_ops = self.op_name()
         self.mul_input_size = [1, 3]
@@ -64,7 +64,7 @@ class TestQuant2Int8MkldnnPassMul(unittest.TestCase):
             type=self.op_name(),
             inputs={"X": block.var('mul_input'), "Y": block.var('mul_weights')},
             outputs={"Out": block.var('mul_output')},
-            attrs={'use_mkldnn': self.use_mkldnn},
+            attrs={'use_mkldnn': self.use_onednn},
         )
 
     def test_dequantize_op_weights(self):
@@ -136,7 +136,7 @@ class TestQuant2Int8MkldnnPassConv2D(unittest.TestCase):
         self.place = paddle.CPUPlace()
         self.dtype = np.float32
         self.use_cudnn = False
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.data_format = "ANYLAYOUT"
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -179,7 +179,7 @@ class TestQuant2Int8MkldnnPassConv2D(unittest.TestCase):
                 'groups': self.groups,
                 'dilations': self.dilations,
                 'use_cudnn': self.use_cudnn,
-                'use_mkldnn': self.use_mkldnn,
+                'use_mkldnn': self.use_onednn,
                 'data_format': self.data_format,
                 'fuse_relu': True,
             },
@@ -197,7 +197,7 @@ class TestQuant2Int8MkldnnPassConv2D(unittest.TestCase):
                 'groups': self.groups,
                 'dilations': self.dilations,
                 'use_cudnn': self.use_cudnn,
-                'use_mkldnn': self.use_mkldnn,
+                'use_mkldnn': self.use_onednn,
                 'data_format': self.data_format,
             },
         )
@@ -244,7 +244,7 @@ class TestQuant2Int8MkldnnPassConv2D(unittest.TestCase):
             self.place = paddle.CPUPlace()
             self.dtype = np.float32
             self.use_cudnn = False
-            self.use_mkldnn = True
+            self.use_onednn = True
 
             # conv2d
             self.data_format = "ANYLAYOUT"
@@ -312,7 +312,7 @@ class TestQuant2Int8MkldnnPassConv2D(unittest.TestCase):
                     'groups': self.groups,
                     'dilations': self.dilations,
                     'use_cudnn': self.use_cudnn,
-                    'use_mkldnn': self.use_mkldnn,
+                    'use_mkldnn': self.use_onednn,
                     'data_format': self.data_format,
                     'fuse_relu': True,
                 },
@@ -329,7 +329,7 @@ class TestQuant2Int8MkldnnPassConv2D(unittest.TestCase):
                     'out_w': self.out_w,
                     'scale': self.scale,
                     'data_layout': self.data_layout,
-                    'use_mkldnn': self.use_mkldnn,
+                    'use_mkldnn': self.use_onednn,
                 },
             )
             block.append_op(

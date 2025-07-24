@@ -96,10 +96,6 @@ if(WITH_FLASHATTN_V3)
   list(APPEND DYNLOAD_COMMON_SRCS flashattnv3.cc)
 endif()
 
-if(WITH_PSCORE)
-  list(APPEND DYNLOAD_COMMON_SRCS afs_api.cc)
-endif()
-
 if(MKL_FOUND AND WITH_ONEMKL)
   message("ONEMKL INCLUDE directory is ${MKL_INCLUDE}")
   list(APPEND DYNLOAD_COMMON_SRCS mklrt.cc)

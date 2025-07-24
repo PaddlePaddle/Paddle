@@ -228,7 +228,7 @@ void VarBase::ClearGradient(bool set_to_zero) {
       auto* grad_t = grad_var_->MutableVar()->GetMutable<phi::SelectedRows>();
       if (grad_t->mutable_value()->IsInitialized()) {
 #ifdef PADDLE_WITH_DNNL
-        if (FLAGS_use_mkldnn) platform::ClearMKLDNNCache(grad_t->place());
+        if (FLAGS_use_mkldnn) platform::ClearONEDNNCache(grad_t->place());
 #endif
         grad_t->mutable_rows()->clear();
         grad_t->mutable_value()->clear();
@@ -246,7 +246,7 @@ void VarBase::ClearGradient(bool set_to_zero) {
           grad_t->clear();
         }
 #ifdef PADDLE_WITH_DNNL
-        if (FLAGS_use_mkldnn) platform::ClearMKLDNNCache(grad_t->place());
+        if (FLAGS_use_mkldnn) platform::ClearONEDNNCache(grad_t->place());
 #endif
       }
     }

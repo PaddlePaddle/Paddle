@@ -179,6 +179,12 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& dev_ctx,
   out_vec = common::vectorize<int>(transformed_dout.dims());
 
   // ------------------- cudnn descriptors ---------------------
+#ifndef PADDLE_WITH_HIP
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(transformed_dout);
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(filter);
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(x_transpose);
+#endif
+
   GPUDNNDataLayout layout;
 
   if (strides.size() == 2U) {
@@ -223,9 +229,6 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& dev_ctx,
   SearchResult<miopenConvFwdAlgorithm_t> fwd_result;
   SearchResult<miopenConvBwdWeightsAlgorithm_t> filter_result;
 #else
-  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(transformed_dout);
-  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(filter);
-  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(x_transpose);
   SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result;
   SearchResult<cudnnConvolutionBwdFilterAlgo_t> filter_result;
 #endif

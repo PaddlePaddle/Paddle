@@ -67,7 +67,9 @@ __global__ void ScaleLogitKernel(T* logits,
                                  const float scale,
                                  const int64_t N,
                                  const int64_t D) {
-  CUDA_KERNEL_LOOP(i, N * D) { logits[i] *= static_cast<T>(scale); }
+  CUDA_KERNEL_LOOP_TYPE(i, N * D, int64_t) {
+    logits[i] *= static_cast<T>(scale);
+  }
 }
 
 template <typename T>
@@ -75,7 +77,7 @@ __global__ void LogitsMinusMaxKernel(T* logits,
                                      const T* logits_max_per_row,
                                      const int64_t N,
                                      const int64_t D) {
-  CUDA_KERNEL_LOOP(i, N * D) {
+  CUDA_KERNEL_LOOP_TYPE(i, N * D, int64_t) {
     auto row = i / D;
     logits[i] -= logits_max_per_row[row];
   }
@@ -86,7 +88,7 @@ __global__ void LogitsMinusLogSumKernel(T* logits,
                                         const T* logits_sum_per_row,
                                         const int64_t N,
                                         const int64_t D) {
-  CUDA_KERNEL_LOOP(i, N * D) {
+  CUDA_KERNEL_LOOP_TYPE(i, N * D, int64_t) {
     auto row = i / D;
     logits[i] -= phi::kps::details::Log(logits_sum_per_row[row]);
   }
@@ -102,7 +104,7 @@ __global__ void HardLabelSoftmaxWithCrossEntropyKernel(
     const int64_t D,
     const int* class_interval_ptr) {
   int start_index = class_interval_ptr[rank];
-  CUDA_KERNEL_LOOP(i, N * D) {
+  CUDA_KERNEL_LOOP_TYPE(i, N * D, int64_t) {
     auto row = i / D;
     auto col = i % D;
     if ((col + start_index) == labels[row]) {

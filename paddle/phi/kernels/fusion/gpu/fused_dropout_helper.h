@@ -72,7 +72,8 @@ struct DropoutParam {
     seed_val = seed_val_;
   }
 
-  int UpdateSeedAndIncrement(const phi::GPUContext& dev_ctx, const int offset) {
+  uint64_t UpdateSeedAndIncrement(const phi::GPUContext& dev_ctx,
+                                  const uint64_t offset) {
     uint64_t tmp_increment;
     phi::funcs::GetSeedDataAndIncrement(dev_ctx,
                                         tensor_seed,
@@ -81,7 +82,7 @@ struct DropoutParam {
                                         offset,
                                         &seed,
                                         &tmp_increment);
-    increment = static_cast<int>(tmp_increment);
+    increment = tmp_increment;
     return increment;
   }
 };
@@ -104,17 +105,20 @@ template <typename T,
           typename OutType = T>
 class FusedDropoutHelper {
  private:
-  int GetIncrement(const phi::GPUContext& dev_ctx) {
+  uint64_t GetIncrement(const phi::GPUContext& dev_ctx) {
     const int VecSize = MAX_CACHE_BYTES / sizeof(T);
     const int real_vec_size = cols_ % VecSize == 0 ? VecSize : 1;
     auto config = Get1DBlocksAnd2DGrids(dev_ctx,
                                         static_cast<uint64_t>(rows_),
                                         static_cast<uint64_t>(cols_),
                                         real_vec_size);
-    int increment = ((cols_ - 1) / (config.thread_per_block.x *
-                                    config.block_per_grid.x * real_vec_size) +
-                     1) *
-                    real_vec_size;
+    uint64_t increment =
+        ((cols_ - static_cast<uint64_t>(1)) /
+             (static_cast<uint64_t>(config.thread_per_block.x) *
+              static_cast<uint64_t>(config.block_per_grid.x) *
+              static_cast<uint64_t>(real_vec_size)) +
+         static_cast<uint64_t>(1)) *
+        static_cast<uint64_t>(real_vec_size);
     increment = dropout_param_.UpdateSeedAndIncrement(dev_ctx, increment);
     return increment;
   }
@@ -122,8 +126,8 @@ class FusedDropoutHelper {
  public:
   FusedDropoutHelper() {}
   FusedDropoutHelper(const phi::GPUContext& dev_ctx,
-                     const int rows,
-                     const int cols,
+                     const int64_t rows,
+                     const int64_t cols,
                      const DropoutParam& dropout_param,
                      const float residual_alpha = 1.0) {
     rows_ = rows;

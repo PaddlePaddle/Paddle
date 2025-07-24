@@ -937,6 +937,11 @@ void DiagInferMeta(const MetaTensor& x,
     out->set_dims({size_, size_});
     out->set_dtype(x.dtype());
   } else if (x_dims.size() == 2ULL) {
+    if (common::contain_unknown_dim(x_dims)) {
+      out->set_dims({-1});
+      out->set_dtype(x.dtype());
+      return;
+    }
     int64_t size_ = 0;
     if (offset >= 0) {
       // Note(LutaoChu): Do not use std::min here, otherwise the calculation
@@ -1251,7 +1256,7 @@ void EinsumInferMeta(const std::vector<const MetaTensor*>& inputs,
                      const std::string& equation,
                      MetaTensor* out) {
   // collect the following information to prepare einsum.
-  LabelMap labelshape(0);
+  LabelMap labelshape(-1);
   LabelMap labeltype(LabelType::Reduction);
   std::vector<LabelMap> label2perms(inputs.size(), LabelMap(-1));
   std::vector<char> all_labels;
@@ -2481,7 +2486,7 @@ void IsfiniteInferMeta(const MetaTensor& x, MetaTensor* out) {
 }
 
 void KthvalueInferMeta(const MetaTensor& x,
-                       int k,
+                       int64_t k,
                        int axis,
                        bool keepdim,
                        MetaTensor* out,
@@ -2518,7 +2523,7 @@ void KthvalueInferMeta(const MetaTensor& x,
       k,
       1,
       common::errors::InvalidArgument(
-          "the k in the kthvalue must >= 1, but received %d .", k));
+          "the k in the kthvalue must >= 1, but received %lld .", k));
   PADDLE_ENFORCE_GE(input_dims.size(),
                     0,
                     common::errors::InvalidArgument(
@@ -2528,7 +2533,7 @@ void KthvalueInferMeta(const MetaTensor& x,
         input_dims[axis],
         k,
         common::errors::InvalidArgument(
-            "input of kthvalue must have >= %d columns in axis of %d",
+            "input of kthvalue must have >= %lld columns in axis of %d",
             k,
             axis));
   }
@@ -4806,7 +4811,7 @@ void SplitWithNumInferMeta(const MetaTensor& x,
     for (int i = 0; i < num; ++i) {
       sections_vec.push_back(input_axis_dim / num);
     }
-    // setp2: fill out dims
+    // step2: fill out dims
     FillSplitOutDims(x, axis_value, sections_vec, &out);
   }
 }
@@ -5349,7 +5354,7 @@ void TileInferMeta(const MetaTensor& x,
                    const IntArray& repeat_times,
                    MetaTensor* out,
                    MetaConfig config) {
-#define TILE_MAX_RANK_SUPPORTED 6
+#define TILE_MAX_RANK_SUPPORTED 7
 
   auto repeat_times_data = repeat_times.GetData();
   auto x_dims = x.dims();
@@ -5396,12 +5401,12 @@ void TileInferMeta(const MetaTensor& x,
     if (x_dim_vec[i] == -1 || repeat_times_data[i] == -1) {
       out_shape[i] = -1;
     } else {
-      PADDLE_ENFORCE_GT(
+      PADDLE_ENFORCE_GE(
           repeat_times_data[i],
           0,
           errors::InvalidArgument(
               "Every element of the input 'repeat_times' for tile op must be "
-              "greater than 0, but the value given is %d.",
+              "greater than or equal to 0, but the value given is %d.",
               repeat_times_data[i]));
       out_shape[i] = x_dim_vec[i] * repeat_times_data[i];
     }
@@ -6289,12 +6294,14 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
                                         "must be divisible by 32, but got[%d]",
                                         x_dims[0]));
   } else {
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
     PADDLE_ENFORCE_EQ(
         x_dims[0] % 64,
         0,
         common::errors::InvalidArgument(
             "The first dimension of input must be divisible by 64, but got[%d]",
             x_dims[0]));
+#endif  // Temporarily skip this check for iluvatar device
   }
 
   PADDLE_ENFORCE_EQ(

@@ -22,6 +22,7 @@
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/scope_guard.h"
+#include "paddle/fluid/imperative/amp_utils.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
@@ -70,6 +71,18 @@ static inline common::DDim infer_size_symdimvector(common::DDim a,
   }
 
   return expandedSizes;
+}
+
+static inline paddle::Tensor expand_inplace(paddle::Tensor tensor,
+                                            paddle::Tensor to_expand) {
+  if (tensor.dims() == to_expand.dims()) {
+    return to_expand;
+  } else if (tensor.dims()[0] == to_expand.dims()[0]) {
+    return expand_ad_func(to_expand, common::vectorize<int64_t>(tensor.dims()));
+  } else {
+    to_expand = squeeze_ad_func(to_expand, {-1});
+    return expand_ad_func(to_expand, common::vectorize<int64_t>(tensor.dims()));
+  }
 }
 
 static inline std::vector<paddle::Tensor> expandTensors(
@@ -150,16 +163,15 @@ inline static void restride_src(std::vector<int64_t>* shape,
 }
 
 // move to cuda kernel
-inline static paddle::Tensor reshape_indexer(paddle::Tensor* index,
-                                             int64_t dims_before,
-                                             int64_t dims_after) {
+inline static std::vector<int64_t> reshape_indexer(paddle::Tensor* index,
+                                                   int64_t dims_before,
+                                                   int64_t dims_after) {
   auto orig_shape = common::vectorize<int64_t>(index->dims());
   auto shape = std::vector<int64_t>{};
   shape.insert(shape.end(), dims_before, 1);
   shape.insert(shape.end(), orig_shape.begin(), orig_shape.end());
   shape.insert(shape.end(), dims_after, 1);
-  *index = reshape_ad_func(*index, shape);
-  return *index;
+  return shape;
 }
 
 inline AdvancedIndex::AdvancedIndex(paddle::Tensor src,
@@ -201,7 +213,12 @@ inline AdvancedIndex::AdvancedIndex(paddle::Tensor src,
   // use dims_before and dims_after / move to cuda kernel
   for (auto& index : indices_list) {
     if (index.defined()) {
-      this->indices.push_back(reshape_indexer(&index, dims_before, dims_after));
+      std::vector<int64_t> vec_size =
+          reshape_indexer(&index, dims_before, dims_after);
+      this->indices.push_back(index);
+      this->indexed_sizes.push_back(-1);
+      this->indexed_sizes.insert(
+          this->indexed_sizes.end(), vec_size.begin(), vec_size.end());
     }
   }
 }
@@ -240,6 +257,11 @@ static bool IsNumpyType(PyObject* obj) {
   auto type_name = std::string(Py_TYPE(obj)->tp_name);
   return type_name == "numpy.int64" || type_name == "numpy.longlong" ||
          type_name == "numpy.int32" || type_name == "numpy.int16";
+}
+
+static bool IsNumpyArray(PyObject* obj) {
+  auto type_name = std::string(Py_TYPE(obj)->tp_name);
+  return type_name == "numpy.ndarray";
 }
 
 static Py_ssize_t GetSliceIndexFromTensor(const phi::DenseTensor& tensor) {
@@ -436,8 +458,28 @@ static void ParseIndex(const paddle::Tensor& tensor,
       advanced_index->push_back(std::move(slice_tensor));
       (*advanced_index_dim)[estimated_dim] = estimated_dim;
       estimated_dim++;
-    } else if (PyCheckTensor(slice_item)) {
-      auto slice_tensor = CastPyArg2Tensor(slice_item, 0);
+    } else if (PyCheckTensor(slice_item) || IsNumpyArray(slice_item)) {
+      paddle::Tensor slice_tensor;
+
+      if (IsNumpyArray(slice_item)) {
+        paddle::Tensor index_tensor_tmp(
+            std::make_shared<phi::DenseTensor>(),
+            egr::Controller::Instance().GenerateUniqueName());
+
+        py::object index_obj_tmp =
+            py::reinterpret_borrow<py::object>(slice_item);
+        py::object index_tmp = index_obj_tmp;
+        SetTensorFromPyArray(
+            static_cast<phi::DenseTensor*>(index_tensor_tmp.impl().get()),
+            index_tmp,
+            tensor.place(),
+            false);
+        slice_tensor = index_tensor_tmp;
+
+      } else {
+        slice_tensor = CastPyArg2Tensor(slice_item, 0);
+      }
+
       if (slice_tensor.shape().size() == 0) {
         if (slice_tensor.dtype() != phi::DataType::BOOL) {
           // 0-D int tensor is same with scalar
@@ -576,7 +618,10 @@ inline static bool MaskedFillDispatching(
     const std::vector<paddle::Tensor>& indices,
     paddle::Tensor* mask_tensor,
     paddle::Tensor* value_tensor) {
-  if (indices.size() != 1 || value_tensor->numel() != 1) return false;
+  if (value_tensor->initialized() && value_tensor->numel() != 1) {
+    return false;
+  }
+  if (indices.size() != 1) return false;
 
   int64_t num_ind = 0;
   if ((indices)[0].dtype() != phi::DataType::BOOL) {
@@ -584,6 +629,7 @@ inline static bool MaskedFillDispatching(
   } else {
     num_ind += (indices)[0].shape().size();
   }
+
   *mask_tensor = (indices)[0];
   for (size_t i = num_ind; i < tensor.shape().size(); i++) {
     *mask_tensor = unsqueeze_ad_func(*mask_tensor, {-1});
@@ -719,14 +765,8 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
     return masked_select_ad_func(tensor, bool_index);
   }
 
-  if (bool_index.shape().size() == 1) {
-    auto bool_2_idx = nonzero_ad_func(bool_index);
-    return gather_ad_func(tensor, bool_2_idx);
-  }
-
   auto bool_2_idx = nonzero_ad_func(bool_index);
-#ifdef PADDLE_WITH_CUDA
-  if (tensor.is_gpu() && !is_combined_bool) {
+  if (FLAGS_use_stride_kernel && !is_combined_bool) {
     std::vector<paddle::Tensor> indices =
         PrepareIndices(tensor, bool_2_idx, bool_index);
     while (indices.size() < static_cast<size_t>(tensor.dims().size())) {
@@ -753,11 +793,11 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
                                          slice_offset,
                                          accumulate);
   } else {
+    if (bool_index.shape().size() == 1)
+      return gather_ad_func(tensor, bool_2_idx);
+
     return gather_nd_ad_func(tensor, bool_2_idx);
   }
-#else
-  return gather_nd_ad_func(tensor, bool_2_idx);
-#endif
 }
 
 static void ParseBoolAndBroadcastIndices(
@@ -889,12 +929,356 @@ static paddle::Tensor dealWithValues(const paddle::Tensor& tensor,
           Py_TYPE(value_obj)));
     }
 
-    if (trans_to_tensor) {
+    if (trans_to_tensor && (*values).size() > 1) {
       value_tensor =
           full_ad_func({1}, (*values)[0], tensor.dtype(), tensor.place());
     }
   }
   return value_tensor;
+}
+
+static void DealWithIndex(const int pos_of_new_dim,
+                          int64_t* slice_offset,
+                          std::vector<paddle::Tensor>* transed_index,
+                          paddle::Tensor* tensor,
+                          paddle::Tensor* sub_tensor,
+                          paddle::Tensor* transed_sub_tensor,
+                          std::vector<paddle::Tensor>* transed_index_int64) {
+  for (int i = 0; i < pos_of_new_dim; ++i) {
+    transed_index->insert(transed_index->begin(), paddle::Tensor());
+  }
+  while (transed_index->size() <
+         static_cast<size_t>(transed_sub_tensor->dims().size())) {
+    transed_index->emplace_back(paddle::Tensor());
+  }
+  *slice_offset =
+      static_cast<int64_t>(reinterpret_cast<char*>(sub_tensor->data()) -
+                           reinterpret_cast<char*>(tensor->data()));
+
+  for (auto& indice : *transed_index) {
+    if (indice.defined() && indice.dtype() == paddle::DataType::INT32) {
+      indice = indice.cast(paddle::DataType::INT64);  // int32 -> int64
+    }
+    transed_index_int64->push_back(indice);
+  }
+}
+
+static inline paddle::Tensor expand_inplace(paddle::Tensor* tensor,
+                                            paddle::Tensor* to_expand) {
+  if (tensor->dims() == to_expand->dims()) {
+    return *to_expand;
+  } else if (tensor->dims()[0] == to_expand->dims()[0]) {
+    return expand_ad_func(*to_expand,
+                          common::vectorize<int64_t>(tensor->dims()));
+  } else {
+    *to_expand = squeeze_ad_func(*to_expand, {-1});
+    return expand_ad_func(*to_expand,
+                          common::vectorize<int64_t>(tensor->dims()));
+  }
+}
+
+static void DispatchSetitemKernel(const int pos_of_new_dim,
+                                  bool* out_is_view,
+                                  std::vector<paddle::Tensor>* transed_index,
+                                  paddle::Tensor* tensor,
+                                  paddle::Tensor* sub_tensor,
+                                  paddle::Tensor* transed_sub_tensor,
+                                  paddle::Tensor* value_tensor,
+                                  std::vector<phi::Scalar>* values) {
+  paddle::Tensor mask_tensor;
+  if (MaskedFillDispatching(
+          *transed_sub_tensor, *transed_index, &mask_tensor, value_tensor)) {
+    if (value_tensor->initialized()) {
+      if (!*out_is_view) {
+        *transed_sub_tensor = masked_fill__ad_func(
+            *transed_sub_tensor, mask_tensor, *value_tensor);
+        return;
+      }
+    } else {
+      if (*out_is_view) {
+        mask_tensor = expand_inplace(transed_sub_tensor, &mask_tensor);
+        int64_t slice_offset = static_cast<int64_t>(
+            reinterpret_cast<char*>(transed_sub_tensor->data()) -
+            reinterpret_cast<char*>(tensor->data()));
+        *transed_sub_tensor = index_elementwise_put__ad_func(
+            *tensor,
+            {mask_tensor},
+            (*values)[0],
+            common::vectorize<int64_t>(transed_sub_tensor->dims()),
+            common::vectorize<int64_t>(transed_sub_tensor->strides()),
+            common::vectorize<int64_t>(mask_tensor.dims()),
+            common::vectorize<int64_t>(mask_tensor.strides()),
+            slice_offset);
+        *out_is_view = false;
+        return;
+      } else {
+        paddle::Tensor value_tmp_tensor =
+            full_ad_func({1}, (*values)[0], tensor->dtype(), tensor->place());
+        *transed_sub_tensor = masked_fill__ad_func(
+            *transed_sub_tensor, mask_tensor, value_tmp_tensor);
+        return;
+      }
+    }
+  }
+  if (FLAGS_use_stride_kernel) {
+    if (value_tensor->initialized()) {
+      *transed_index = expandTensors(*transed_index);
+      *transed_index = expand_outplace(*transed_index);
+
+      std::vector<paddle::Tensor> transed_index_int64;
+      int64_t slice_offset;
+
+      DealWithIndex(pos_of_new_dim,
+                    &slice_offset,
+                    transed_index,
+                    tensor,
+                    sub_tensor,
+                    transed_sub_tensor,
+                    &transed_index_int64);
+
+      AdvancedIndex ad =
+          AdvancedIndex(*transed_sub_tensor, transed_index_int64);
+      PADDLE_ENFORCE_EQ(
+          phi::funcs::CheckIsDimsMatchBool(common::make_ddim(ad.src_sizes),
+                                           value_tensor->dims()),
+          true,
+          common::errors::InvalidArgument(
+              "shape mismatch: value tensor of shape %s cannot be "
+              "broadcast to indexing result of shape %s.",
+              value_tensor->dims().to_str(),
+              common::make_ddim(ad.src_sizes).to_str()));
+      *transed_sub_tensor =
+          index_elementwise_put_with_tensor__ad_func(*tensor,
+                                                     ad.indices,
+                                                     *value_tensor,
+                                                     ad.src_sizes,
+                                                     ad.src_strides,
+                                                     ad.indexed_sizes,
+                                                     ad.indexed_strides,
+                                                     slice_offset);
+      // New kernel does not need to transpose back, so set out_is_view to
+      // false. Remove when all cases use this branch.
+      *out_is_view = false;
+    } else {
+      *transed_index = expandTensors(*transed_index);
+      *transed_index = expand_outplace(*transed_index);
+
+      std::vector<paddle::Tensor> transed_index_int64;
+      int64_t slice_offset;
+
+      DealWithIndex(pos_of_new_dim,
+                    &slice_offset,
+                    transed_index,
+                    tensor,
+                    sub_tensor,
+                    transed_sub_tensor,
+                    &transed_index_int64);
+
+      AdvancedIndex ad =
+          AdvancedIndex(*transed_sub_tensor, transed_index_int64);
+      *transed_sub_tensor = index_elementwise_put__ad_func(*tensor,
+                                                           ad.indices,
+                                                           (*values)[0],
+                                                           ad.src_sizes,
+                                                           ad.src_strides,
+                                                           ad.indexed_sizes,
+                                                           ad.indexed_strides,
+                                                           slice_offset);
+      // New kernel does not need to transpose back, so set out_is_view to
+      // false. Remove when all cases use this branch.
+      *out_is_view = false;
+    }
+  } else {
+    // TODO(czy): remove in the future
+    if (value_tensor->initialized()) {
+      *transed_sub_tensor = index_put__ad_func(
+          *transed_sub_tensor, *transed_index, *value_tensor);
+    } else {
+      paddle::Tensor value_tmp_tensor =
+          full_ad_func({1}, (*values)[0], tensor->dtype(), tensor->place());
+      *transed_sub_tensor = index_put__ad_func(
+          *transed_sub_tensor, *transed_index, value_tmp_tensor);
+    }
+  }
+}
+
+static void ApplySetitem(const std::vector<int> trans_dim,
+                         const int pos_of_new_dim,
+                         bool* out_is_view,
+                         std::vector<paddle::Tensor>* transed_index,
+                         paddle::Tensor* tensor,
+                         paddle::Tensor* self_tensor,
+                         paddle::Tensor* sub_tensor,
+                         paddle::Tensor* transed_sub_tensor,
+                         paddle::Tensor* value_tensor,
+                         std::vector<phi::Scalar>* values) {
+  if (value_tensor->initialized()) {
+    if (self_tensor->dtype() != value_tensor->dtype()) {
+      if (egr::Controller::Instance().GetAMPLevel() !=
+          paddle::imperative::AmpLevel::O0) {
+        paddle::small_vector<std::vector<paddle::Tensor>,
+                             egr::kSlotSmallVectorSize>
+            tmps = {{*self_tensor}, {*value_tensor}};
+        auto amp_dtype = paddle::imperative::GetAmpDestDtype("index_put", tmps);
+        *self_tensor = paddle::imperative::AmpAutoCast(
+            self_tensor->name(), *self_tensor, amp_dtype, "index_put");
+        *value_tensor = paddle::imperative::AmpAutoCast(
+            value_tensor->name(), *value_tensor, amp_dtype, "index_put");
+      }
+      if (self_tensor->dtype() != value_tensor->dtype()) {
+        *value_tensor = cast_ad_func(*value_tensor, self_tensor->dtype());
+      }
+    }
+
+    if (value_tensor->dims().size() > 1 && pos_of_new_dim != 0) {
+      if (!FLAGS_use_stride_kernel) {
+        *value_tensor = transpose_ad_func(*value_tensor, trans_dim);
+      }
+    }
+
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(
+            &mesh, *self_tensor, *transed_sub_tensor, *value_tensor)) {
+      ConvertAllInputsToDistTensor(
+          mesh, *self_tensor, *transed_sub_tensor, *value_tensor);
+    }
+
+    DispatchSetitemKernel(pos_of_new_dim,
+                          out_is_view,
+                          transed_index,
+                          tensor,
+                          sub_tensor,
+                          transed_sub_tensor,
+                          value_tensor,
+                          values);
+
+  } else {
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(&mesh, *self_tensor, *transed_sub_tensor)) {
+      ConvertAllInputsToDistTensor(mesh, *self_tensor, *transed_sub_tensor);
+    }
+
+    DispatchSetitemKernel(pos_of_new_dim,
+                          out_is_view,
+                          transed_index,
+                          tensor,
+                          sub_tensor,
+                          transed_sub_tensor,
+                          value_tensor,
+                          values);
+  }
+}
+
+static void ApplyGetitem(const int index_size,
+                         const int pos_of_new_dim,
+                         const int rank_of_new_dim,
+                         const bool is_combined_bool,
+                         std::vector<paddle::Tensor>* transed_index,
+                         paddle::Tensor* tensor,
+                         paddle::Tensor* self_tensor,
+                         paddle::Tensor* sub_tensor,
+                         paddle::Tensor* transed_tensor,
+                         paddle::Tensor* out) {
+  auto handle_transpose = [&](Tensor& out) {
+    if (pos_of_new_dim != 0) {
+      std::vector<int> perm(out.shape().size(), 0);
+      int tmp1 = rank_of_new_dim, tmp2 = 0,
+          tmp3 = pos_of_new_dim + rank_of_new_dim;
+      for (int i = 0; i < static_cast<int>(out.shape().size()); ++i) {
+        if (i < pos_of_new_dim) {
+          perm[i] = tmp1++;
+        } else if (i >= pos_of_new_dim &&
+                   i < pos_of_new_dim + rank_of_new_dim) {
+          perm[i] = tmp2++;
+        } else {
+          perm[i] = tmp3++;
+        }
+      }
+      out = transpose_ad_func(out, perm);
+    }
+  };
+
+  if (transed_index->size() == 1 &&
+      (*transed_index)[0].dtype() == phi::DataType::BOOL) {
+    // get value for bool tensor
+    int64_t slice_offset = 0;
+    *out = getValueForBoolTensor(
+        *transed_tensor, (*transed_index)[0], slice_offset, is_combined_bool);
+  } else {
+    // get value for int tensor
+    ParseBoolAndBroadcastIndices(transed_index);
+    bool has_empty_index = false;
+    for (const auto& tmp_tensor : *transed_index) {
+      if (!tmp_tensor.initialized()) {
+        has_empty_index = true;
+        break;
+      }
+    }
+
+    if (FLAGS_use_stride_kernel && !is_combined_bool && !has_empty_index) {
+      const phi::distributed::ProcessMesh* mesh = nullptr;
+      if (InputsContainDistTensor(
+              &mesh, *self_tensor, *transed_tensor, *transed_index)) {
+        ConvertAllInputsToDistTensor(
+            mesh, *self_tensor, *transed_tensor, *transed_index);
+      }
+
+      *transed_index = expand_outplace(*transed_index);
+
+      std::vector<paddle::Tensor> transed_index_int64;
+      int64_t slice_offset;
+
+      DealWithIndex(pos_of_new_dim,
+                    &slice_offset,
+                    transed_index,
+                    tensor,
+                    sub_tensor,
+                    transed_tensor,
+                    &transed_index_int64);
+
+      AdvancedIndex ad = AdvancedIndex(*transed_tensor, transed_index_int64);
+      if (index_size == 1) {
+        paddle::Tensor flattened_tensor =
+            flatten_ad_func((*transed_index)[0], 0, -1);
+        *out = gather_ad_func(*transed_tensor, flattened_tensor);
+        *out = reshape_ad_func(*out, ad.src_sizes);
+      } else {
+        const bool accumulate = true;
+        *out = index_elementwise_get_ad_func(*self_tensor,
+                                             ad.indices,
+                                             ad.src_sizes,
+                                             ad.src_strides,
+                                             ad.indexed_sizes,
+                                             ad.indexed_strides,
+                                             slice_offset,
+                                             accumulate);
+      }
+
+      return;
+    } else {
+      paddle::Tensor transed_advanced_index_tensor;
+      if (transed_index->size() > 1) {
+        transed_advanced_index_tensor = stack_ad_func(*transed_index, -1);
+      } else {
+        // fast path for single index tensor, since stack is much slower than
+        // unsqueeze
+        transed_advanced_index_tensor =
+            unsqueeze_ad_func((*transed_index)[0], {-1});
+      }
+
+      const phi::distributed::ProcessMesh* mesh = nullptr;
+      if (InputsContainDistTensor(
+              &mesh, *transed_tensor, transed_advanced_index_tensor)) {
+        ConvertAllInputsToDistTensor(
+            mesh, *transed_tensor, transed_advanced_index_tensor);
+      }
+      *out = gather_nd_ad_func(*transed_tensor, transed_advanced_index_tensor);
+      handle_transpose(*out);
+      return;
+    }
+  }
+
+  handle_transpose(*out);
 }
 
 }  // namespace pybind

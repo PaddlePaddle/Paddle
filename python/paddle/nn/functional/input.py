@@ -202,7 +202,7 @@ def embedding(
 
     Args:
         x(Tensor): A Tensor with type int32/int64, which contains the id information. The value of the input id should
-            satisfy :math:`0<= id < weight.shape[0]` .
+            satisfy :math:`0 <= id < weight.shape[0]` .
         weight (Tensor): The weight. A Tensor with shape of lookup table parameter. It should have two elements which
             indicates the size of the dictionary of embeddings and the size of each embedding vector respectively.
         sparse(bool, optional): The flag indicating whether to use sparse update. This parameter only

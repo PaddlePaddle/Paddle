@@ -125,21 +125,21 @@ void MainTest(bool convWithExistingBias,
   EXPECT_EQ(original_nodes_num - removed_nodes_count, current_nodes_num);
 }
 
-TEST(Int8ScaleCalculationMkldnnPass, int8_scale_calculation_with_no_bias) {
+TEST(Int8ScaleCalculationOnednnPass, int8_scale_calculation_with_no_bias) {
   auto scale = 1.0f;
   int removed_nodes_count = 0;
   auto scale_weights = {1.5f};
   MainTest(false, removed_nodes_count, scale, scale_weights);
 }
 
-TEST(Int8ScaleCalculationMkldnnPass, int8_scale_calculation_with_bias) {
+TEST(Int8ScaleCalculationOnednnPass, int8_scale_calculation_with_bias) {
   auto scale = 1.0f;
   int removed_nodes_count = 0;
   auto scale_weights = {1.5f};
   MainTest(true, removed_nodes_count, scale, scale_weights);
 }
 
-TEST(Int8ScaleCalculationMkldnnPass,
+TEST(Int8ScaleCalculationOnednnPass,
      int8_scale_calculation_with_bias_scale_weights) {
   auto scale = 1.0f;
   int removed_nodes_count = 0;

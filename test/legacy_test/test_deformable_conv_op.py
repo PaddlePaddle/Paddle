@@ -465,5 +465,72 @@ class TestDeformConv2DAPI(unittest.TestCase):
         test_deform_conv2d_v2()
 
 
+class TestModulatedDeformableConvOp_ZeroSize(TestModulatedDeformableConvOp):
+    def init_test_case(self):
+        self.pad = [1, 1]
+        self.stride = [1, 1]
+        self.dilations = [1, 1]
+        # 0-size
+        self.input_size = [0, 8, 4, 4]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [4, f_c, 3, 3]
+        self.im2col_step = 1
+        self.deformable_groups = 1
+        offset_c = (
+            2
+            * self.deformable_groups
+            * self.filter_size[2]
+            * self.filter_size[3]
+        )
+        mask_c = (
+            self.deformable_groups * self.filter_size[2] * self.filter_size[3]
+        )
+        self.offset_size = [
+            self.input_size[0],
+            offset_c,
+            self.input_size[2],
+            self.input_size[3],
+        ]
+        self.mask_size = [
+            self.input_size[0],
+            mask_c,
+            self.input_size[2],
+            self.input_size[3],
+        ]
+
+
+class TestDeformConv2DAPI_CPU_FP16(unittest.TestCase):
+    def setUp(self):
+        self.padding = [1, 1]
+        self.stride = [1, 1]
+        self.dilation = [1, 1]
+        self.groups = 1
+        self.data_format = "NCL"
+
+    def test_cpu_fp16(self):
+        with paddle.base.dygraph.guard(paddle.CPUPlace()):
+            x = paddle.ones([4, 5, 5, 5])
+            offset = paddle.ones([4, 90, 5, 5]).astype(paddle.float16)
+            weight = paddle.ones([5, 5, 3, 3]).astype(paddle.float16)
+            bias = paddle.ones([5]).astype(paddle.float16)
+            mask = paddle.ones([4, 45, 5, 5]).astype(paddle.float16)
+
+            # If there is an error, an error will be thrown.
+            out = paddle.vision.ops.deform_conv2d(
+                x,
+                offset,
+                weight,
+                bias,
+                stride=self.stride,
+                padding=self.padding,
+                dilation=self.dilation,
+                groups=self.groups,
+                deformable_groups=5,
+                mask=mask,
+            )
+            np.testing.assert_allclose(out.shape, [4, 5, 5, 5])
+
+
 if __name__ == '__main__':
     unittest.main()

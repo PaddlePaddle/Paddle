@@ -37,7 +37,7 @@ GradNodeRunProgram::~GradNodeRunProgram() {
 void GradNodeRunProgram::ConstructXGradTensors(
     const std::vector<paddle::Tensor> &x, std::vector<paddle::Tensor> *x_grad) {
   auto x_grad_names =
-      PADDLE_GET_CONST(std::vector<std::string>, attrs_.at("bx_g_names"));
+      PADDLE_GET_CONST(std::vector<std::string>, prog_attrs_.at("bx_g_names"));
   PADDLE_ENFORCE_EQ(x.size(),
                     x_grad_names.size(),
                     common::errors::InvalidArgument(
@@ -68,7 +68,7 @@ void GradNodeRunProgram::ConstructParamGradTensors(
     const std::vector<paddle::Tensor> &params,
     std::vector<paddle::Tensor> *param_grads) {
   auto p_grad_names =
-      PADDLE_GET_CONST(std::vector<std::string>, attrs_.at("bp_g_names"));
+      PADDLE_GET_CONST(std::vector<std::string>, prog_attrs_.at("bp_g_names"));
   PADDLE_ENFORCE_EQ(params.size(),
                     p_grad_names.size(),
                     common::errors::InvalidArgument(
@@ -120,7 +120,7 @@ GradNodeRunProgram::operator()(
   }
 
   const auto &out_grad_names =
-      PADDLE_GET_CONST(std::vector<std::string>, attrs_.at("bo_g_names"));
+      PADDLE_GET_CONST(std::vector<std::string>, prog_attrs_.at("bo_g_names"));
   PADDLE_ENFORCE_EQ(hooked_grads[0].size(),
                     out_grad_names.size(),
                     common::errors::InvalidArgument(
@@ -129,7 +129,8 @@ GradNodeRunProgram::operator()(
 
   egr::to_static::RunProgramGradImpl(hooked_grads[0],
                                      step_scope_,
-                                     attrs_,
+                                     prog_attrs_,
+                                     cuda_graph_attrs_,
                                      &x_grad,
                                      &params_grad,
                                      place_hash_key_);

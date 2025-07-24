@@ -157,8 +157,12 @@ def query_xpu_smi(query=None, index=None, dtype=None):
 
     for dev_id in range(core.get_xpu_device_count()):
         utilization_xpu = core.get_xpu_device_utilization_rate(dev_id)
-        mem_total = core.get_xpu_device_total_memory(dev_id)
-        mem_used = core.get_xpu_device_used_memory(dev_id)
+        mem_total = (
+            core.get_xpu_device_total_memory(dev_id) / 1024 / 1024
+        )  # with MB
+        mem_used = (
+            core.get_xpu_device_used_memory(dev_id) / 1024 / 1024
+        )  # with MB
         result = [
             dev_id,
             utilization_xpu,

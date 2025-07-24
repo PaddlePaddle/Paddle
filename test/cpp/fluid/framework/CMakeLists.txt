@@ -149,26 +149,10 @@ elseif(WITH_ROCM)
     DEPS op_registry)
 endif()
 
-if(WITH_PSCORE)
-  get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
-  if(WITH_HETERPS)
-    cc_test(
-      dist_multi_trainer_test
-      SRCS dist_multi_trainer_test.cc
-      DEPS conditional_block_op executor gloo_wrapper ${RPC_DEPS}
-           graph_gpu_wrapper)
-  else()
-    cc_test(
-      dist_multi_trainer_test
-      SRCS dist_multi_trainer_test.cc
-      DEPS conditional_block_op executor gloo_wrapper ${RPC_DEPS})
-  endif()
-else()
-  cc_test(
-    dist_multi_trainer_test
-    SRCS dist_multi_trainer_test.cc
-    DEPS conditional_block_op executor gloo_wrapper)
-endif()
+cc_test(
+  dist_multi_trainer_test
+  SRCS dist_multi_trainer_test.cc
+  DEPS conditional_block_op executor gloo_wrapper)
 
 cc_test(
   prune_test
