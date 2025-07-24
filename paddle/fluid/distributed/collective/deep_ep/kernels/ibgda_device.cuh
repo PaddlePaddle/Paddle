@@ -565,4 +565,56 @@ __device__ __forceinline__ void nvshmemi_ibgda_amo_nonfetch_add(
   }
 }
 
+__device__ __forceinline__ uint64_t nvshmemi_get_p2p_ptr(const uint64_t &ptr,
+                                                         const int &rank,
+                                                         const int &dst_rank) {
+  // Local rank, no need for mapping
+  if (rank == dst_rank) return ptr;
+  auto peer_base = __ldg(
+      reinterpret_cast<uint64_t *>(nvshmemi_device_state_d.peer_heap_base_p2p) +
+      dst_rank);
+
+  // RDMA connected
+  if (peer_base == 0) return 0;
+
+  // NVLink P2P is enabled
+  return peer_base +
+         (ptr - reinterpret_cast<uint64_t>(nvshmemi_device_state_d.heap_base));
+}
+
+// This is a simplified version of NVSHMEM's `ibgda_poll_cq`.
+// Note that this implementation does not guarantee thread safety,
+// so we must ensure that no other threads are concurrently using the same QP.
+__device__ static __forceinline__ void ibgda_poll_cq(
+    nvshmemi_ibgda_device_cq_t *cq, uint64_t idx) {
+  const auto cqe64 = static_cast<mlx5_cqe64 *>(cq->cqe);
+  const uint32_t ncqes = cq->ncqes;
+  memory_fence_cta();
+
+  // NOTES: this while loop is part of do-while below.
+  // `wqe_counter` is the HW consumer index. However, we always maintain `index
+  // + 1`. To be able to compare with the index, we need to use `wqe_counter +
+  // 1`. Because `wqe_counter` is `uint16_t`, it may be overflow. Still, we know
+  // for sure that if `idx - wqe_counter - 1 < ncqes`, `wqe_counter + 1 is less
+  // than idx, and thus we need to wait. We don't need to wait when `idx ==
+  // wqe_counter + 1` That's why we use `- 2` here to make this case overflow.
+  uint16_t wqe_counter;
+  do {
+    wqe_counter = HtoBE16(ld_na_relaxed(&cqe64->wqe_counter));
+  } while ((static_cast<uint16_t>(static_cast<uint16_t>(idx) - wqe_counter -
+                                  static_cast<uint16_t>(2)) < ncqes));
+  *cq->cons_idx = idx;
+
+  // Prevent reordering of this function and later instructions
+  memory_fence_cta();
+}
+
+// Wait until wqe `idx - 1` is completed.
+__device__ static __forceinline__ void nvshmemi_ibgda_quiet(int dst_pe,
+                                                            int qp_id) {
+  auto qp = ibgda_get_rc(dst_pe, qp_id);
+  uint64_t prod_idx = ld_na_relaxed(qp->tx_wq.prod_idx);
+  ibgda_poll_cq(qp->tx_wq.cq, prod_idx);
+}
+
 }  // namespace deep_ep

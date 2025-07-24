@@ -74,6 +74,9 @@ Buffer::Buffer(int rank,
   int64_t buffer_ptr_bytes = sizeof(void*) * NUM_MAX_NVL_PEERS;
   int64_t task_ptr_bytes = sizeof(int*) * NUM_MAX_NVL_PEERS;
 
+  int64_t barrier_signal_bytes = NUM_MAX_NVL_PEERS * sizeof(int);
+  int64_t barrier_signal_ptr_bytes = NUM_MAX_NVL_PEERS * sizeof(int*);
+
   // Common checks
   EP_HOST_ASSERT(num_nvl_bytes % NUM_BUFFER_ALIGNMENT_BYTES == 0 &&
                  (num_nvl_bytes <= std::numeric_limits<int64_t>::max() ||
@@ -101,9 +104,10 @@ Buffer::Buffer(int rank,
 
   if (num_nvl_bytes > 0) {
     // Local IPC: alloc local memory and set local IPC handle
-    CUDA_CHECK(cudaMalloc(
-        &buffer_ptrs[nvl_rank],
-        num_nvl_bytes + fifo_bytes + buffer_ptr_bytes + task_ptr_bytes));
+    CUDA_CHECK(cudaMalloc(&buffer_ptrs[nvl_rank],
+                          num_nvl_bytes + fifo_bytes + buffer_ptr_bytes +
+                              task_ptr_bytes + barrier_signal_bytes +
+                              barrier_signal_ptr_bytes));
     CUDA_CHECK(
         cudaIpcGetMemHandle(&ipc_handles[nvl_rank], buffer_ptrs[nvl_rank]));
     buffer_ptrs_gpu = reinterpret_cast<void**>(
@@ -118,12 +122,22 @@ Buffer::Buffer(int rank,
         reinterpret_cast<uint8_t*>(buffer_ptrs[nvl_rank]) + num_nvl_bytes +
         fifo_bytes + buffer_ptr_bytes);
 
+    barrier_signal_ptrs[nvl_rank] = reinterpret_cast<int*>(
+        static_cast<uint8_t*>(buffer_ptrs[nvl_rank]) + num_nvl_bytes +
+        fifo_bytes + buffer_ptr_bytes + task_ptr_bytes);
+    barrier_signal_ptrs_gpu = reinterpret_cast<int**>(
+        static_cast<uint8_t*>(buffer_ptrs[nvl_rank]) + num_nvl_bytes +
+        fifo_bytes + buffer_ptr_bytes + task_ptr_bytes + barrier_signal_bytes);
+
     // No need to synchronize, will do a full device sync during `sync`
     CUDA_CHECK(cudaMemsetAsync(
         buffer_ptrs[nvl_rank],
         0,
         num_nvl_bytes + fifo_bytes + buffer_ptr_bytes + task_ptr_bytes,
         comm_stream));
+
+    CUDA_CHECK(cudaMemsetAsync(
+        barrier_signal_ptrs[nvl_rank], 0, barrier_signal_bytes, comm_stream));
   }
 
   // Create 32 MiB workspace
@@ -247,6 +261,10 @@ void Buffer::sync(
     const std::optional<pybind11::bytearray>& root_unique_id_opt) {
   EP_HOST_ASSERT(!is_available());
 
+  int64_t fifo_bytes = sizeof(int) * NUM_MAX_FIFO_SLOTS;
+  int64_t buffer_ptr_bytes = sizeof(void*) * NUM_MAX_NVL_PEERS;
+  int64_t task_ptr_bytes = sizeof(int*) * NUM_MAX_NVL_PEERS;
+
   // Sync IPC handles
   if (num_nvl_bytes > 0) {
     EP_HOST_ASSERT(num_ranks == static_cast<int64_t>(device_ids.size()));
@@ -263,6 +281,9 @@ void Buffer::sync(
             &buffer_ptrs[i], ipc_handles[i], cudaIpcMemLazyEnablePeerAccess));
         task_fifo_ptrs[i] = reinterpret_cast<int*>(
             reinterpret_cast<uint8_t*>(buffer_ptrs[i]) + num_nvl_bytes);
+        barrier_signal_ptrs[i] = reinterpret_cast<int*>(
+            static_cast<uint8_t*>(buffer_ptrs[i]) + num_nvl_bytes + fifo_bytes +
+            buffer_ptr_bytes + task_ptr_bytes);
       } else {
         EP_HOST_ASSERT(std::memcmp(ipc_handles[i].reserved,
                                    handle_str.c_str(),
@@ -277,6 +298,10 @@ void Buffer::sync(
                           cudaMemcpyHostToDevice));
     CUDA_CHECK(cudaMemcpy(task_fifo_ptrs_gpu,
                           task_fifo_ptrs,
+                          sizeof(int*) * NUM_MAX_NVL_PEERS,
+                          cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(barrier_signal_ptrs_gpu,
+                          barrier_signal_ptrs,
                           sizeof(int*) * NUM_MAX_NVL_PEERS,
                           cudaMemcpyHostToDevice));
     CUDA_CHECK(cudaDeviceSynchronize());
@@ -520,7 +545,7 @@ Buffer::intranode_dispatch(
 
   // FP8 scales checks
   float* x_scales_ptr = nullptr;
-  int num_scales = 0;
+  int num_scales = 0, scale_token_stride = 0, scale_hidden_stride = 0;
   if (x_scales.has_value()) {
     EP_HOST_ASSERT(x.element_size() == 1);
     EP_HOST_ASSERT(x_scales->scalar_type() == deep_ep::detail::kFloat32);
@@ -529,6 +554,8 @@ Buffer::intranode_dispatch(
     EP_HOST_ASSERT(x_scales->size(0) == num_tokens);
     num_scales = x_scales->dim() == 1 ? 1 : static_cast<int>(x_scales->size(1));
     x_scales_ptr = x_scales->data_ptr<float>();
+    scale_token_stride = static_cast<int>(x_scales->stride(0));
+    scale_hidden_stride = static_cast<int>(x_scales->stride(1));
   }
 
   // Allocate all tensors on comm stream if set
@@ -564,12 +591,11 @@ Buffer::intranode_dispatch(
     intranode::cached_notify_dispatch(rank_prefix_matrix.data_ptr<int>(),
                                       num_memset_int,
                                       buffer_ptrs_gpu,
-                                      task_fifo_ptrs_gpu,
-                                      head,
+                                      barrier_signal_ptrs_gpu,
                                       rank,
                                       num_ranks,
                                       comm_stream);
-    move_fifo_slots(2);
+    // move_fifo_slots(2);
   } else {
     rank_prefix_matrix = ConvertPaddleTensorToDetailTensor(
         paddle::experimental::empty({num_ranks, num_ranks},
@@ -604,12 +630,11 @@ Buffer::intranode_dispatch(
                                num_memset_int,
                                expert_alignment,
                                buffer_ptrs_gpu,
-                               task_fifo_ptrs_gpu,
-                               head,
+                               barrier_signal_ptrs_gpu,
                                rank,
                                comm_stream,
                                num_channels);
-    move_fifo_slots(3);
+    // move_fifo_slots(3);
 
     // Synchronize total received tokens and tokens per expert
     auto start_time = std::chrono::high_resolution_clock::now();
@@ -704,6 +729,9 @@ Buffer::intranode_dispatch(
               static_cast<int64_t>(sizeof(float)) *
               num_scales  // FP8 scale buffer
       <= num_nvl_bytes);
+
+  int num_worst_tokens = 0;
+
   intranode::dispatch(
       recv_x.data_ptr(),
       recv_x_scales_ptr,
@@ -719,10 +747,13 @@ Buffer::intranode_dispatch(
       is_token_in_rank.data_ptr<bool>(),
       channel_prefix_matrix.data_ptr<int>(),
       num_tokens,
+      num_worst_tokens,
       static_cast<int>(hidden * recv_x.element_size() / sizeof(int4)),
       num_topk,
       num_experts,
       num_scales,
+      scale_token_stride,
+      scale_hidden_stride,
       buffer_ptrs_gpu,
       rank,
       num_ranks,
@@ -867,14 +898,13 @@ Buffer::intranode_combine(
                                    num_channels,
                                    num_recv_tokens,
                                    num_channels * num_ranks * 2,
-                                   task_fifo_ptrs_gpu,
-                                   head,
+                                   barrier_signal_ptrs_gpu,
                                    rank,
                                    num_ranks,
                                    comm_stream);
 
   // NOTES: this function uses two FIFO slots (barrier before and after)
-  move_fifo_slots(2);
+  // move_fifo_slots(2);
 
   // Combine data
   auto recv_x = ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
@@ -890,11 +920,16 @@ Buffer::intranode_combine(
               num_topk *
               static_cast<int64_t>(sizeof(float))  // Top-k weight buffer
       <= num_nvl_bytes);
+
+  void* bias_ptrs[2] = {nullptr, nullptr};
+
   intranode::combine(deep_ep::detail::ScalarTypeToCudaDataType(x.scalar_type()),
                      recv_x.data_ptr(),
                      recv_topk_weights_ptr,
                      x.data_ptr(),
                      topk_weights_ptr,
+                     bias_ptrs[0],
+                     bias_ptrs[1],
                      src_idx.data_ptr<int>(),
                      rank_prefix_matrix.data_ptr<int>(),
                      channel_prefix_matrix.data_ptr<int>(),
@@ -1084,7 +1119,7 @@ Buffer::internode_dispatch(
 
   // FP8 scales checks
   float* x_scales_ptr = nullptr;
-  int num_scales = 0;
+  int num_scales = 0, scale_token_stride = 0, scale_hidden_stride = 0;
   if (x_scales.has_value()) {
     EP_HOST_ASSERT(x.element_size() == 1);
     EP_HOST_ASSERT(x_scales->scalar_type() == deep_ep::detail::kFloat32);
@@ -1093,6 +1128,8 @@ Buffer::internode_dispatch(
     EP_HOST_ASSERT(x_scales->size(0) == num_tokens);
     num_scales = x_scales->dim() == 1 ? 1 : static_cast<int>(x_scales->size(1));
     x_scales_ptr = x_scales->data_ptr<float>();
+    scale_token_stride = static_cast<int>(x_scales->stride(0));
+    scale_hidden_stride = static_cast<int>(x_scales->stride(1));
   }
 
   // Allocate all tensors on comm stream if set
@@ -1144,15 +1181,14 @@ Buffer::internode_dispatch(
         config.num_max_rdma_chunked_recv_tokens,
         buffer_ptrs_gpu,
         config.num_max_nvl_chunked_recv_tokens,
-        task_fifo_ptrs_gpu,
-        head,
+        barrier_signal_ptrs_gpu,
         rank,
         comm_stream,
         config.get_rdma_buffer_size_hint(hidden_int4 * sizeof(int4), num_ranks),
         num_nvl_bytes,
         true,
         low_latency_mode);
-    move_fifo_slots(2);
+    // move_fifo_slots(2);
   } else {
     rdma_channel_prefix_matrix = ConvertPaddleTensorToDetailTensor(
         paddle::experimental::empty({num_rdma_ranks, num_channels},
@@ -1196,14 +1232,13 @@ Buffer::internode_dispatch(
         config.num_max_rdma_chunked_recv_tokens,
         buffer_ptrs_gpu,
         config.num_max_nvl_chunked_recv_tokens,
-        task_fifo_ptrs_gpu,
-        head,
+        barrier_signal_ptrs_gpu,
         rank,
         comm_stream,
         config.get_rdma_buffer_size_hint(hidden_int4 * sizeof(int4), num_ranks),
         num_nvl_bytes,
         low_latency_mode);
-    move_fifo_slots(3);
+    // move_fifo_slots(3);
 
     // Synchronize total received tokens and tokens per expert
     auto start_time = std::chrono::high_resolution_clock::now();
@@ -1320,12 +1355,14 @@ Buffer::internode_dispatch(
       recv_rdma_rank_prefix_sum.data_ptr<int>(),
       gbl_channel_prefix_matrix.data_ptr<int>(),
       recv_gbl_rank_prefix_sum.data_ptr<int>(),
+      is_token_in_rank.data_ptr<bool>(),
       num_tokens,
       hidden_int4,
       num_scales,
       num_topk,
       num_experts,
-      is_token_in_rank.data_ptr<bool>(),
+      scale_token_stride,
+      scale_hidden_stride,
       rdma_buffer_ptr,
       config.num_max_rdma_chunked_send_tokens,
       config.num_max_rdma_chunked_recv_tokens,
@@ -1523,26 +1560,30 @@ Buffer::internode_combine(
       config.num_max_rdma_chunked_recv_tokens,
       buffer_ptrs_gpu,
       config.num_max_nvl_chunked_recv_tokens,
-      task_fifo_ptrs_gpu,
-      head,
+      barrier_signal_ptrs_gpu,
       rank,
       comm_stream,
       config.get_rdma_buffer_size_hint(hidden_int4 * sizeof(int4), num_ranks),
       num_nvl_bytes,
       false,
       low_latency_mode);
-  move_fifo_slots(2);
+  // move_fifo_slots(2);
 
   // Launch data combine
   auto combined_x =
       ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
           {num_combined_tokens, hidden}, x.dtype(), x.place()));
+
+  void* bias_ptrs[2] = {nullptr, nullptr};
+
   internode::combine(deep_ep::detail::ScalarTypeToCudaDataType(x.scalar_type()),
                      combined_x.data_ptr(),
                      combined_topk_weights_ptr,
                      is_combined_token_in_rank.data_ptr<bool>(),
                      x.data_ptr(),
                      topk_weights_ptr,
+                     bias_ptrs[0],
+                     bias_ptrs[1],
                      combined_rdma_head.data_ptr<int>(),
                      combined_nvl_head.data_ptr<int>(),
                      src_meta.data_ptr(),

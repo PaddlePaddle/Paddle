@@ -31,6 +31,19 @@
   cfg.numAttrs = 1
 #endif
 
+#ifndef SET_SHARED_MEMORY_FOR_TMA
+#ifndef DISABLE_SM90_FEATURES
+#define SET_SHARED_MEMORY_FOR_TMA(kernel)                               \
+  EP_HOST_ASSERT(                                                       \
+      cudaFuncSetAttribute(kernel,                                      \
+                           cudaFuncAttributeMaxDynamicSharedMemorySize, \
+                           smem_size) == cudaSuccess);                  \
+  cfg.dynamicSmemBytes = smem_size;
+#else
+#define SET_SHARED_MEMORY_FOR_TMA(kernel) void()
+#endif
+#endif
+
 #ifndef LAUNCH_KERNEL
 #define LAUNCH_KERNEL(config, kernel, ...) \
   CUDA_CHECK(cudaLaunchKernelEx(config, kernel, ##__VA_ARGS__))
