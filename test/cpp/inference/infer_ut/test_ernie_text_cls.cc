@@ -102,7 +102,7 @@ TEST(mkldnn_tester_ernie_text_cls, multi_thread4_mkl_fp32_bz2) {
                   FLAGS_modeldir + "/inference.pdiparams");
   config.DisableGpu();
   config.EnableONEDNN();
-  config.SetMkldnnCacheCapacity(10);
+  config.SetOnednnCacheCapacity(10);
   config.SetCpuMathLibraryNumThreads(10);
   // get ground truth by disable ir
   paddle_infer::services::PredictorPool pred_pool_no_ir(config_no_ir, 1);

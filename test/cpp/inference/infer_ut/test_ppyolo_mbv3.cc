@@ -122,7 +122,7 @@ TEST(DISABLED_mkldnn_tester_ppyolo_mbv3, multi_thread4_mkl_bz2) {
                   FLAGS_modeldir + "/model.pdiparams");
   config.DisableGpu();
   config.EnableONEDNN();
-  config.SetMkldnnCacheCapacity(10);
+  config.SetOnednnCacheCapacity(10);
   config.SetCpuMathLibraryNumThreads(10);
   LOG(INFO) << config.Summary();
   // get ground truth by disable ir

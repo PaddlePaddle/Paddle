@@ -17,7 +17,7 @@ limitations under the License. */
 
 #include "test/cpp/inference/api/tester_helper.h"
 
-PD_DEFINE_bool(disable_mkldnn_fc, false, "Disable usage of MKL-DNN's FC op");
+PD_DEFINE_bool(disable_onednn_fc, false, "Disable usage of ONE-DNN's FC op");
 
 namespace paddle {
 namespace inference {
@@ -43,8 +43,8 @@ void profile(bool use_mkldnn = false) {
 
   if (use_mkldnn) {
     cfg.EnableONEDNN();
-    if (FLAGS_disable_mkldnn_fc) {
-      cfg.DisableMkldnnFcPasses();
+    if (FLAGS_disable_onednn_fc) {
+      cfg.DisableOnednnFcPasses();
     }
   }
   std::vector<std::vector<PaddleTensor>> outputs;
@@ -68,8 +68,8 @@ void compare(bool use_mkldnn = false) {
   SetConfig(&cfg);
   if (use_mkldnn) {
     cfg.EnableONEDNN();
-    if (FLAGS_disable_mkldnn_fc) {
-      cfg.DisableMkldnnFcPasses();
+    if (FLAGS_disable_onednn_fc) {
+      cfg.DisableOnednnFcPasses();
     }
   }
 
