@@ -2357,6 +2357,8 @@ static phi::DDim ValidateShape(const std::vector<int64_t> shape,
       size_t in_dims_zero_cnt = 0;
       for (size_t i = 0; i < in_dims_vec.size(); ++i)
         if (in_dims_vec[i] == 0) in_dims_zero_cnt++;
+      // When the number of 0 is equal, it means that non-zero dimensions
+      // are not affected by 0
       if (shape_zero_cnt == in_dims_zero_cnt) {
         int64_t in_dims_pdt = 1;
         int64_t shape_pdt = 1;
@@ -2379,6 +2381,8 @@ static phi::DDim ValidateShape(const std::vector<int64_t> shape,
                 common::make_ddim(shape)));
         return common::make_ddim(output_shape);
       } else if (shape_zero_cnt > in_dims_zero_cnt) {
+        // more 0s after replacement, determine whether non-zero dimensions
+        // are affected by 0s
         int64_t in_dims_pdt = 1;
         int64_t shape_pdt = 1;
         for (size_t i = 0; i < shape.size(); ++i)
