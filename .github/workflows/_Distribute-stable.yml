@@ -42,9 +42,6 @@ jobs:
           WITH_MKL: "OFF"
           WITH_PYTHON: "ON"
           WITH_DISTRIBUTE: "ON"
-          WITH_PSCORE: "ON"
-          WITH_PSLIB: "OFF"
-          WITH_HETERPS: "ON"
           WITH_TESTING: "ON"
           WITH_INFERENCE_API_TEST: "OFF"
           COVERALLS_UPLOAD: "ON"
@@ -105,9 +102,6 @@ jobs:
             -e CTEST_OUTPUT_ON_FAILURE \
             -e CTEST_PARALLEL_LEVEL \
             -e WITH_GPU \
-            -e WITH_PSCORE \
-            -e WITH_PSLIB \
-            -e WITH_HETERPS \
             -e WITH_INFERENCE_API_TEST \
             -e CUDA_VISIBLE_DEVICES \
             -e GPUBOX_DEMO_INSTALL_DIR \
@@ -244,7 +238,6 @@ jobs:
           WITH_GPU: "ON"
           WITH_AVX: "ON"
           WITH_DISTRIBUTE: "ON"
-          WITH_HETERPS: "ON"
           WITH_TESTING: "ON"
           WITH_COVERAGE: "OFF"
           CMAKE_BUILD_TYPE: Release
@@ -291,7 +284,6 @@ jobs:
           -e WITH_GPU \
           -e WITH_AVX \
           -e WITH_DISTRIBUTE \
-          -e WITH_HETERPS \
           -e WITH_TESTING \
           -e WITH_COVERAGE \
           -e CMAKE_BUILD_TYPE \

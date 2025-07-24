@@ -766,8 +766,7 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
   }
 
   auto bool_2_idx = nonzero_ad_func(bool_index);
-#ifdef PADDLE_WITH_CUDA
-  if (tensor.is_gpu() && !is_combined_bool) {
+  if (FLAGS_use_stride_kernel && !is_combined_bool) {
     std::vector<paddle::Tensor> indices =
         PrepareIndices(tensor, bool_2_idx, bool_index);
     while (indices.size() < static_cast<size_t>(tensor.dims().size())) {
@@ -799,11 +798,6 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
 
     return gather_nd_ad_func(tensor, bool_2_idx);
   }
-#else
-  if (bool_index.shape().size() == 1) return gather_ad_func(tensor, bool_2_idx);
-
-  return gather_nd_ad_func(tensor, bool_2_idx);
-#endif
 }
 
 static void ParseBoolAndBroadcastIndices(

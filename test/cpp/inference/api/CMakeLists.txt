@@ -847,22 +847,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     paddle_inference_shared
     ARGS
     --infer_model=${OCR_INSTALL_DIR}/model)
-
-  if(WITH_DISTRIBUTE
-     AND WITH_PSCORE
-     AND WITH_XPU
-     AND WITH_XPU_BKCL)
-    inference_analysis_test(
-      test_analyzer_dist_model_xpu
-      SRCS
-      analyzer_dist_model_xpu_tester.cc
-      EXTRA_DEPS
-      common
-      paddle_inference_shared
-      ARGS
-      --infer_model=${OCR_INSTALL_DIR}/model)
-  endif()
-
   # chinese_ner
   set(CHINESE_NER_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/chinese_ner")
   download_model_and_data_without_verify(
