@@ -717,6 +717,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
         sum_square_list = []
         sum_square_list_fp16 = []
         sum_square_list_fp32 = []
+        flag_new_pp = True
         if len(params_grads) > 0 and len(params_grads[0]) > 0:
             src_mesh = params_grads[0][0].process_mesh
         else:
@@ -742,6 +743,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
             # if the gradient mesh is not equal to src mesh
             # do reshard to get the result of squared_l2 from other pp stage mesh
             if src_mesh is not None and g.process_mesh != src_mesh:
+                flag_new_pp = False
                 pp_mesh = get_complete_pp_mesh(g.process_mesh)
                 if set(g.process_mesh.process_ids) < set(pp_mesh.process_ids):
                     sum_square = dist.reshard(
@@ -790,6 +792,44 @@ class ClipGradByGlobalNorm(ClipGradBase):
             global_norm_var.append(global_norm_var_fp64)
 
         global_norm_var = async_add_n(global_norm_var)
+        global_mesh = dist.get_mesh()
+        is_pp_enable = False
+        if global_mesh is not None:
+            is_pp_enable = (
+                "pp" in global_mesh.dim_names
+                and global_mesh.get_dim_size("pp") > 1
+            )
+        if (
+            flag_new_pp and src_mesh is not None and is_pp_enable
+        ):  # Use new pp_flask,At this point global_norm_var it's sub_norm_var_sum,we need to sum it between different pp_stage
+            global_pp_mesh = global_mesh.get_mesh_with_dim("pp")
+            reorder_mesh = global_pp_mesh._mesh.reshape(
+                global_mesh.get_dim_size("pp"), -1
+            )
+            curr_rank = dist.get_rank()
+            assert (
+                curr_rank in global_pp_mesh.process_ids
+            ), "current rank is not in pp process mesh"
+            curr_rank_sub_group = None
+            for col in range(
+                reorder_mesh.shape[-1]
+            ):  # every_sub_mesh need to create a new group,otherwise,the group id of sub_mesh will be the same,which will cause the all_gather error
+                sub_mesh = dist.ProcessMesh(reorder_mesh[:, col], ["pp"])
+                sub_group = dist.new_group(sub_mesh.process_ids)
+                if curr_rank in reorder_mesh[:, col]:
+                    curr_rank_sub_group = sub_group
+            global_norm_var_list = []
+            dist.all_gather(
+                global_norm_var_list,
+                global_norm_var._local_value(),
+                group=curr_rank_sub_group,
+            )
+            real_global_norm_var = async_add_n(global_norm_var_list)
+            global_norm_var = dist.shard_tensor(
+                real_global_norm_var,
+                global_norm_var.process_mesh,
+                global_norm_var.placements,
+            )
 
         if self.should_comm_on_shard_dim and hasattr(self, 'sharding_group'):
             paddle.distributed.all_reduce(

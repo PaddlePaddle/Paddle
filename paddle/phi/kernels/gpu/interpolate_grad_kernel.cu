@@ -58,8 +58,8 @@ __global__ void KeLinearInterpBw(T* in,
                                  const int align_mode,
                                  const DataLayout data_layout) {
   int nthreads = output_h * output_w;
-  int tid = blockIdx.x * blockDim.x + threadIdx.x;
-  int stride = blockDim.x * gridDim.x;
+  int64_t tid = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  int64_t stride = static_cast<int64_t>(blockDim.x) * gridDim.x;
   bool align_flag = (align_mode == 0 && !align_corners);
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   for (; tid < nthreads; tid += stride) {
@@ -174,8 +174,8 @@ __global__ void KeNearestNeighborInterpBw(
     const bool align_corners,
     funcs::FastDivModForInterpolate divmods) {
   int nthreads = output_h * output_w;
-  int tid = blockIdx.x * blockDim.x + threadIdx.x;
-  int stride = blockDim.x * gridDim.x;
+  int64_t tid = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  int64_t stride = static_cast<int64_t>(blockDim.x) * gridDim.x;
   int in_img_size = in_img_h * in_img_w;
   int out_img_size = out_img_h * out_img_w;
 
@@ -259,11 +259,11 @@ __global__ void KeBilinearInterpBwShareMemory(T* in,
                                               bool is_nchw) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   __shared__ MT s_data[2][1024];
-  int tid = blockIdx.x * blockDim.x + threadIdx.x;
-  int stride = blockDim.x * gridDim.x;
+  int64_t tid = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  int64_t stride = static_cast<int64_t>(blockDim.x) * gridDim.x;
   int in_chw = in_h * in_w * num_channels;
   int out_chw = num_channels * out_h * out_w;
-  int nthreads = n * out_chw;
+  int64_t nthreads = static_cast<int64_t>(n) * out_chw;
 
   for (; tid < nthreads; tid += stride) {
     int out_id_h = tid / out_chw;
@@ -361,10 +361,11 @@ __global__ void KeBilinearInterpNCHWBw(T* in,
                                        float ratio_w,
                                        const T* __restrict__ out,
                                        const float align_type_value) {
-  int index = threadIdx.x + blockDim.x * blockIdx.x;
-  const int stride = blockDim.x * gridDim.x;
-  const int num_out = n * num_channels * out_h * out_w;
-  const int num_in = n * num_channels * in_h * in_w;
+  int64_t index = threadIdx.x + static_cast<int64_t>(blockDim.x) * blockIdx.x;
+  const int64_t stride = static_cast<int64_t>(blockDim.x) * gridDim.x;
+  const int64_t num_out =
+      static_cast<int64_t>(n) * num_channels * out_h * out_w;
+  const int64_t num_in = static_cast<int64_t>(n) * num_channels * in_h * in_w;
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   // Restricted parallelism if ratio_w is over threshold
@@ -373,7 +374,7 @@ __global__ void KeBilinearInterpNCHWBw(T* in,
   // corresponding to 2x or larger scale factor in W axis.
   if (ratio_w < 0.5f) [[likely]] {  // NOLINT
     if (index < num_in) {
-      int index_tmp = index;
+      int64_t index_tmp = index;
       const int w1 = index_tmp % in_w;
       index_tmp /= in_w;
       const int h1 = index_tmp % in_h;
@@ -490,10 +491,10 @@ __global__ void KeBilinearInterpBw(T* in,
                                    float ratio_w,
                                    const float align_type_value,
                                    funcs::FastDivModForInterpolate divmods) {
-  int tid = blockIdx.x * blockDim.x + threadIdx.x;
-  int stride = blockDim.x * gridDim.x;
+  int64_t tid = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  int64_t stride = static_cast<int64_t>(blockDim.x) * gridDim.x;
   int in_chw = in_h * in_w * num_channels;
-  int nthreads = n * out_chw;
+  int64_t nthreads = static_cast<int64_t>(n) * out_chw;
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   for (; tid < nthreads; tid += stride) {
@@ -550,8 +551,8 @@ __global__ void KeBicubicInterpBw(T* in,
                                   const bool align_corners,
                                   const DataLayout data_layout) {
   int nthreads = output_h * output_w;
-  int tid = blockIdx.x * blockDim.x + threadIdx.x;
-  int stride = blockDim.x * gridDim.x;
+  int64_t tid = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  int64_t stride = static_cast<int64_t>(blockDim.x) * gridDim.x;
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   for (; tid < nthreads; tid += stride) {
@@ -634,8 +635,8 @@ __global__ void KeTrilinearInterpBw(T* in,
                                     const int align_mode,
                                     const DataLayout data_layout) {
   int nthreads = output_h * output_w;
-  int tid = blockIdx.x * blockDim.x + threadIdx.x;
-  int stride = blockDim.x * gridDim.x;
+  int64_t tid = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  int64_t stride = static_cast<int64_t>(blockDim.x) * gridDim.x;
   bool align_flag = (align_mode == 0 && !align_corners);
   for (; tid < nthreads; tid += stride) {
     int out_id_h = tid / output_w;
@@ -775,8 +776,8 @@ __global__ void KeNearestNeighbor3DInterpBw(T* in,
                                             const bool align_corners,
                                             const DataLayout data_layout) {
   int nthreads = output_h * output_w;
-  int tid = blockIdx.x * blockDim.x + threadIdx.x;
-  int stride = blockDim.x * gridDim.x;
+  int64_t tid = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  int64_t stride = static_cast<int64_t>(blockDim.x) * gridDim.x;
   for (; tid < nthreads; tid += stride) {
     int out_id_h = tid / output_w;
     int out_id_w = tid % output_w;
@@ -1069,7 +1070,7 @@ static void Interpolate2DCUDABwd(
   if ("nearest" == interp_method) {
     if (data_layout == DataLayout::kNCHW) {
       // get launch 3D config
-      int nc = n * c;
+      int64_t nc = n * c;
       int64_t total_size = static_cast<int64_t>(n) * c * in_h * in_w;
       backends::gpu::GpuLaunchConfig config_3d =
           backends::gpu::GetGpuLaunchConfig3D(dev_ctx, nc, out_h, out_w);
@@ -1154,10 +1155,11 @@ static void Interpolate2DCUDABwd(
                                                              align_type_value,
                                                              is_nchw);
     } else if (!optimize_flag & is_nchw) {
-      const int num_kernels = n * c * out_h * out_w;
+      const int64_t num_kernels = static_cast<int64_t>(n) * c * out_h * out_w;
       const int num_threads = std::min(dev_ctx.GetMaxThreadsPerBlock(), 1024);
       KeBilinearInterpNCHWBw<T>
-          <<<backends::gpu::DivUp(num_kernels, num_threads),
+          <<<backends::gpu::DivUp(num_kernels,
+                                  static_cast<int64_t>(num_threads)),
              num_threads,
              0,
              dev_ctx.stream()>>>(input_grad_data,

@@ -518,8 +518,8 @@ func (config *Config) SwitchIrDebug(x bool) {
 ///
 /// \brief Turn on OneDNN.
 ///
-func (config *Config) EnableMKLDNN() {
-	C.PD_ConfigEnableMKLDNN(config.c)
+func (config *Config) EnableONEDNN() {
+	C.PD_ConfigEnableONEDNN(config.c)
 }
 
 ///

@@ -300,9 +300,9 @@ phi::XPUPlace DefaultXPUPlace() {
 }
 
 phi::CustomPlace DefaultCustomPlace() {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
   auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
   int device_id = phi::DeviceManager::GetDevice(dev_types[0]);
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
   return phi::CustomPlace(dev_types[0], device_id);
 #else
   PADDLE_THROW(common::errors::Unavailable("Unsupported custom device"));
