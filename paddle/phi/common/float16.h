@@ -119,40 +119,53 @@ struct PADDLE_ALIGN(2) float16 {
     x = _cvtss_sh(val, 0);
 
 #else
-    // Conversion routine adapted from
-    // http://stackoverflow.com/questions/1659440/32-bit-to-16-bit-floating-point-conversion
-    Bits v, s;
+    Bits v;
     v.f = val;
-    // Extract sign bit and clear from value
-    uint32_t sign = v.si & sigN;
-    v.si ^= sign;
-    sign >>= shiftSign;
 
-    // Handle subnormals: normalize using multiplication
-    const uint32_t subnormal_mask = -(minN > v.si);
-    s.si = mulN;
-    s.si = s.f * v.f;  // Extract the fraction of the subnormal number through
-                       // multiplication and conversion from float to int
-    v.si ^= (s.si ^ v.si) & subnormal_mask;
+    // 1. Extract sign bit and clear from value
+    const uint32_t sign = (v.ui & sigN) >> shiftSign;
+    v.ui &= ~sigN;
 
-    // Handle special values: infinity and NaN
-    v.si ^= (infN ^ v.si) & -((infN > v.si) & (v.si > maxN));
-    v.si ^= (nanN ^ v.si) & -((nanN > v.si) & (v.si > infN));
+    // 2. Handle special values: infinity and NaN
+    const int32_t inf_cond = -((infN >= v.si) & (v.si >= minINF));
+    const int32_t nan_cond = -((nanN > v.si) & (v.si > infN));
+    v.si ^= (infN ^ v.si) & inf_cond;
+    v.si ^= (nanN ^ v.si) & nan_cond;
 
-    // Rounding: round to nearest, ties to even
-    // https://en.wikipedia.org/wiki/Rounding#Rounding_half_to_even
-    const uint32_t lsb =
-        (v.ui >> shift) & 0x1;               // Least significant retained bit
-    v.ui += (0xFFF + lsb) & -(v.ui < infN);  // Round with overflow protection
-
-    v.ui >>= shift;  // logical shift
-
-    // Exponent adjustment for overflow (max values)
-    v.si ^= ((v.si - maxD) ^ v.si) & -(v.si > maxC);
-    // Exponent adjustment for normal numbers
-    const uint32_t normal_mask = ~subnormal_mask;
-    v.si ^= ((v.si - minD) ^ v.si) & normal_mask;
-
+    const bool is_subnormal = (v.ui < minN);
+    if (is_subnormal) {
+      // 3. Handle subnormal numbers
+      // 3.1 Extract FP32 exponent and mantissa
+      const uint32_t exp = (v.ui >> 23) & exp_mask;
+      const uint32_t mantissa = (v.ui & mantissa_mask) | implicit_bit;
+      // 3.2 Compute required shift
+      const uint32_t shift_amount = exp_bias_diff - exp;
+      // 3.3 64-bit mantissa
+      uint64_t normalized_mantissa = static_cast<uint64_t>(mantissa)
+                                     << precision_shift;
+      normalized_mantissa >>= shift_amount;
+      // 3.4 Round to nearest even
+      // https://en.wikipedia.org/wiki/Rounding#Rounding_half_to_even
+      const uint32_t lsb = (normalized_mantissa >> mantissa_shift) & 0x1;
+      normalized_mantissa += rounding_bias + lsb;
+      v.ui = static_cast<uint32_t>(normalized_mantissa >> mantissa_shift);
+    } else {
+      // 4. Handle normal numbers
+      // Round to nearest even
+      const uint32_t lsb =
+          (v.ui >> shift) & 0x1;  // Least significant retained bit
+      const uint32_t rounding =
+          (0xFFF + lsb) & -(v.ui < infN);  // Round with overflow protection
+      v.ui += rounding;
+      // inf and nan
+      const int32_t max_cond = -(v.ui >= infN);
+      // Align bits
+      v.ui >>= shift;
+      // Exponent adjustment for overflow
+      v.si ^= ((v.si - maxD) ^ v.si) & max_cond;
+      // Exponent adjustment for normal numbers
+      v.si ^= ((v.si - minD) ^ v.si);
+    }
     // Combine sign and value bits
     x = v.ui | sign;
 
@@ -340,28 +353,34 @@ struct PADDLE_ALIGN(2) float16 {
     uint32_t ui;
   };
 
-  static const int shift = 13;
-  static const int shiftSign = 16;
+  static constexpr int shift = 13;
+  static constexpr int shiftSign = 16;
 
-  static const int32_t infN = 0x7F800000;
-  static const int32_t maxN = 0x477FE000;  // max flt16 as flt32
-  static const int32_t minN = 0x38800000;  // min flt16 normal as flt32
-  static const int32_t sigN = 0x80000000;  // sign bit
+  static constexpr uint32_t infN = 0x7F800000;
+  static constexpr uint32_t maxN = 0x477FE000;    // max flt16 as flt32
+  static constexpr uint32_t minINF = 0x47800000;  // min flt16 inf as flt32
+  static constexpr uint32_t minN = 0x38800000;    // min flt16 normal as flt32
+  static constexpr uint32_t sigN = 0x80000000;    // sign bit
 
-  static constexpr int32_t infC = infN >> shift;
-  static constexpr int32_t nanN = (infC + 1)
-                                  << shift;  // minimum flt16 nan as float32
-  static constexpr int32_t maxC = maxN >> shift;
-  static constexpr int32_t minC = minN >> shift;
-  static constexpr int32_t sigC = sigN >> shiftSign;
+  static constexpr uint32_t infC = infN >> shift;
+  static constexpr uint32_t nanN = (infC + 1)
+                                   << shift;  // minimum flt16 nan as float32
+  static constexpr uint32_t maxC = maxN >> shift;
+  static constexpr uint32_t minC = minN >> shift;
+  static constexpr uint32_t sigC = sigN >> shiftSign;
 
-  static const int32_t mulN = 0x52000000;  // (1 << 23) / minN
-  static const int32_t mulC = 0x33800000;  // minN / (1 << (23 - shift))
-  static const int32_t subC = 0x003FF;     // max flt32 subnormal downshifted
-  static const int32_t norC = 0x00400;     // min flt32 normal downshifted
+  static constexpr uint32_t subC = 0x003FF;  // max flt32 subnormal downshifted
+  static constexpr uint32_t norC = 0x00400;  // min flt32 normal downshifted
+  static constexpr uint32_t maxD = infC - maxC - 1;
+  static constexpr uint32_t minD = minC - subC - 1;
 
-  static constexpr int32_t maxD = infC - maxC - 1;
-  static constexpr int32_t minD = minC - subC - 1;
+  static constexpr uint32_t exp_mask = 0xFF;
+  static constexpr uint32_t mantissa_mask = 0x7FFFFF;
+  static constexpr uint32_t implicit_bit = 0x800000;
+  static constexpr uint32_t exp_bias_diff = 113;  // 127 - 14
+  static constexpr uint64_t precision_shift = 40;
+  static constexpr uint64_t rounding_bias = 0xFFFFFFFFFFFFF;
+  static constexpr int mantissa_shift = 53;
 };
 
 // Arithmetic operators on GPU
