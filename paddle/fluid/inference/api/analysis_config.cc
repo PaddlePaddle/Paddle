@@ -541,14 +541,14 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(trt_ops_run_float_);
   CP_MEMBER(trt_exclude_var_names_);
   // OneDNN related.
-  CP_MEMBER(use_mkldnn_);
+  CP_MEMBER(use_onednn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
   CP_MEMBER(mkldnn_cache_capacity_);
   // Bfloat16 related.
-  CP_MEMBER(use_mkldnn_bfloat16_);
+  CP_MEMBER(use_onednn_bfloat16_);
   CP_MEMBER(bfloat16_enabled_op_types_);
   // Quantization related.
-  CP_MEMBER(use_mkldnn_int8_);
+  CP_MEMBER(use_onednn_int8_);
   CP_MEMBER(quantize_enabled_op_types_);
   CP_MEMBER(quantize_excluded_op_ids_);
   CP_MEMBER(min_input_shape_);
@@ -667,17 +667,17 @@ void AnalysisConfig::EnableCUDNN() {
 
 void AnalysisConfig::EnableMKLDNN() {
 #ifdef PADDLE_WITH_DNNL
-  use_mkldnn_ = true;
+  use_onednn_ = true;
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use MKLDNN";
-  use_mkldnn_ = false;
+  use_onednn_ = false;
 #endif
 
   Update();
 }
 
 void AnalysisConfig::DisableMKLDNN() {
-  use_mkldnn_ = false;
+  use_onednn_ = false;
   Update();
 }
 
@@ -693,7 +693,7 @@ void AnalysisConfig::SetMkldnnCacheCapacity(int capacity) {
 void AnalysisConfig::EnableMkldnnBfloat16() {
 #ifdef PADDLE_WITH_DNNL
   if (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512_core)) {
-    use_mkldnn_bfloat16_ = true;
+    use_onednn_bfloat16_ = true;
     LOG(INFO) << "Hardware support for BFLOAT16"
               << (phi::backends::cpu::MayIUse(
                       phi::backends::cpu::cpu_isa_t::avx512_bf16)
@@ -701,11 +701,11 @@ void AnalysisConfig::EnableMkldnnBfloat16() {
                       : " is disabled. Simulation will be used");
   } else {
     LOG(INFO) << "CPU does not support BFLOAT16 calculations";
-    use_mkldnn_bfloat16_ = false;
+    use_onednn_bfloat16_ = false;
   }
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnBfloat16";
-  use_mkldnn_bfloat16_ = false;
+  use_onednn_bfloat16_ = false;
 #endif
 
   Update();
@@ -724,13 +724,13 @@ void AnalysisConfig::DisableMkldnnFcPasses() {
 void AnalysisConfig::EnableMkldnnInt8(
     const std::unordered_set<std::string> &op_list) {
 #ifdef PADDLE_WITH_DNNL
-  use_mkldnn_int8_ = true;
+  use_onednn_int8_ = true;
   use_fc_padding_ = false;
   if (!op_list.empty())
     quantize_enabled_op_types_.insert(op_list.begin(), op_list.end());
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnInt8";
-  use_mkldnn_int8_ = false;
+  use_onednn_int8_ = false;
 #endif
 
   Update();
@@ -977,11 +977,11 @@ void AnalysisConfig::Update() {
   //  Case3: pass_builder_ has been created and belongs to
   // GpuPassStrategy(or IpuPassStrategy), neither enable onednn and
   // disable onednn will be executed
-  if ((!use_gpu() && !use_xpu() && !use_ipu() && !use_mkldnn_) ||
-      (use_mkldnn_ &&
+  if ((!use_gpu() && !use_xpu() && !use_ipu() && !use_onednn_) ||
+      (use_onednn_ &&
        !phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx2))) {
     // User manually disable onednn or disable when not support AVX2
-    use_mkldnn_ = false;
+    use_onednn_ = false;
     pass_builder()->DisableMKLDNN();
   }
 #endif
@@ -1030,7 +1030,7 @@ void AnalysisConfig::Update() {
   }
 
   if (!use_gpu() && !use_xpu() && !use_ipu()) {
-    if (use_mkldnn_ && enable_ir_optim_) {
+    if (use_onednn_ && enable_ir_optim_) {
 #ifdef PADDLE_WITH_DNNL
       // default enable onednn when device is cpu and enable_ir_optim
       pass_builder()->EnableMKLDNN();
@@ -1038,18 +1038,18 @@ void AnalysisConfig::Update() {
     }
   }
 
-  if (use_mkldnn_bfloat16_) {
+  if (use_onednn_bfloat16_) {
 #ifdef PADDLE_WITH_DNNL
     pass_builder()->EnableMkldnnBfloat16();
 #endif
   }
 
-  if (use_mkldnn_int8_) {
+  if (use_onednn_int8_) {
 #ifdef PADDLE_WITH_DNNL
     if (!enable_ir_optim_) {
       LOG(ERROR) << "EnableMkldnnInt8() only works when IR optimization "
                     "is enabled.";
-    } else if (!use_mkldnn_) {
+    } else if (!use_onednn_) {
       LOG(ERROR) << "EnableMkldnnInt8() only works when MKLDNN "
                     "is enabled.";
     } else {
@@ -1140,14 +1140,14 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << enable_memory_optim_;
   ss << trt_engine_memory_sharing_;
 
-  ss << use_mkldnn_;
+  ss << use_onednn_;
   ss << mkldnn_cache_capacity_;
   for (auto &item : mkldnn_enabled_op_types_) ss << item;
   ss << ";";
 
-  ss << use_mkldnn_bfloat16_;
+  ss << use_onednn_bfloat16_;
   for (auto &item : bfloat16_enabled_op_types_) ss << item;
-  ss << use_mkldnn_int8_;
+  ss << use_onednn_int8_;
   for (auto &item : quantize_enabled_op_types_) ss << item;
   for (auto &item : quantize_excluded_op_ids_) ss << item;
   ss << ";";
@@ -1311,7 +1311,7 @@ std::string AnalysisConfig::Summary() {
   // cpu info
   os.InsertRow(
       {"cpu_math_thread", std::to_string(cpu_math_library_num_threads_)});
-  os.InsertRow({"enable_mkldnn", use_mkldnn_ ? "true" : "false"});
+  os.InsertRow({"enable_mkldnn", use_onednn_ ? "true" : "false"});
   os.InsertRow(
       {"mkldnn_cache_capacity", std::to_string(mkldnn_cache_capacity_)});
 #ifdef PADDLE_WITH_OPENVINO

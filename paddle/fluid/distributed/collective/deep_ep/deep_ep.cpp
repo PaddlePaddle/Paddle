@@ -76,7 +76,7 @@ Buffer::Buffer(int rank,
 
   // Common checks
   EP_HOST_ASSERT(num_nvl_bytes % NUM_BUFFER_ALIGNMENT_BYTES == 0 &&
-                 (num_nvl_bytes <= std::numeric_limits<int>::max() ||
+                 (num_nvl_bytes <= std::numeric_limits<int64_t>::max() ||
                   num_rdma_bytes == 0));
   EP_HOST_ASSERT(
       num_rdma_bytes % NUM_BUFFER_ALIGNMENT_BYTES == 0 &&

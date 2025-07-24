@@ -33,8 +33,8 @@ using phi::OneDNNContext;
 #endif
 namespace platform {
 
-inline void ClearMKLDNNCache(const phi::Place& place, void* ptr = nullptr) {
-  // Clear mkl-dnn cache,
+inline void ClearONEDNNCache(const phi::Place& place, void* ptr = nullptr) {
+  // Clear one-dnn cache,
   if (phi::is_cpu_place(place)) {
     phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     OneDNNContext* dev_ctx = reinterpret_cast<OneDNNContext*>(pool.Get(place));
@@ -42,8 +42,8 @@ inline void ClearMKLDNNCache(const phi::Place& place, void* ptr = nullptr) {
   }
 }
 
-inline void DontClearMKLDNNCache(const phi::Place& place) {
-  // Clear mkl-dnn cache,
+inline void DontClearONEDNNCache(const phi::Place& place) {
+  // Clear one-dnn cache,
   if (phi::is_cpu_place(place)) {
     phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     OneDNNContext* dev_ctx = reinterpret_cast<OneDNNContext*>(pool.Get(place));
@@ -52,7 +52,7 @@ inline void DontClearMKLDNNCache(const phi::Place& place) {
 }
 
 // If OneDNN build and CPU place then register suffix in DeviceContext
-inline void AttachPointerHashToMKLDNNKey(void* ptr, const phi::Place& place) {
+inline void AttachPointerHashToONEDNNKey(void* ptr, const phi::Place& place) {
   if (phi::is_cpu_place(place)) {
     // Static vars will remember first executor and its thread
     // so both of them need to be processed by the same thread within

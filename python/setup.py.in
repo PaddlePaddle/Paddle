@@ -553,7 +553,7 @@ def is_transpiler():
 
     with open(filename, 'w') as f:
         f.write(cnt % {
-            'mode': 'PSLIB' if '${WITH_PSLIB}' == 'ON' else 'TRANSPILER'
+            'mode': 'TRANSPILER'
         })
 
 write_distributed_training_mode_py(filename='@PADDLE_BINARY_DIR@/python/paddle/incubate/distributed/fleet/parameter_server/version.py')
@@ -1180,13 +1180,6 @@ if '${WITH_CINN}' == 'ON':
         if os.system(command) != 0:
             raise Exception("patch %s/${CINN_LIB_NAME} failed, command: %s" % (libs_path, command))
 
-if '${WITH_PSLIB}' == 'ON':
-    shutil.copy('${PSLIB_LIB}', libs_path)
-    shutil.copy('${JVM_LIB}', libs_path)
-    if os.path.exists('${PSLIB_VERSION_PY}'):
-        shutil.copy('${PSLIB_VERSION_PY}', '${PADDLE_BINARY_DIR}/python/paddle/incubate/distributed/fleet/parameter_server/pslib/')
-    package_data['paddle.libs'] += ['libps' + ext_name]
-    package_data['paddle.libs'] += ['libjvm' + ext_name]
 
 if '${WITH_ONEDNN}' == 'ON':
     if '${CMAKE_BUILD_TYPE}' == 'Release' and os.name != 'nt':

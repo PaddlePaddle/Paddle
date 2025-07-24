@@ -180,7 +180,7 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   bool use_xpu_{false};
   bool use_gpu_{false};
   bool use_ipu_{false};
-  bool use_mkldnn_{false};
+  bool use_onednn_{false};
   bool use_custom_device_{false};
   /// \endcond
 };
@@ -198,9 +198,9 @@ class PD_INFER_DECL CpuPassStrategy : public PassStrategy {
   explicit CpuPassStrategy(const CpuPassStrategy &other)
       : PassStrategy(other.AllPasses()) {
     use_gpu_ = other.use_gpu_;
-    use_mkldnn_ = other.use_mkldnn_;
-    use_mkldnn_bfloat16_ = other.use_mkldnn_bfloat16_;
-    use_mkldnn_int8_ = other.use_mkldnn_int8_;
+    use_onednn_ = other.use_onednn_;
+    use_onednn_bfloat16_ = other.use_onednn_bfloat16_;
+    use_onednn_int8_ = other.use_onednn_int8_;
     disable_mkldnn_fc_passes_ = other.disable_mkldnn_fc_passes_;
     deleted_passes_ = other.deleted_passes_;
   }
@@ -230,8 +230,8 @@ class PD_INFER_DECL CpuPassStrategy : public PassStrategy {
   void EraseFcMkldnnPasses();
 
   /// \cond Protected
-  bool use_mkldnn_bfloat16_{false};
-  bool use_mkldnn_int8_{false};
+  bool use_onednn_bfloat16_{false};
+  bool use_onednn_int8_{false};
   bool disable_mkldnn_fc_passes_{false};
   /// \endcond
 };

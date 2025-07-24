@@ -35,6 +35,10 @@ void TakeAlongAxisGradKernel(const Context& dev_ctx,
   x_grad->Resize(x.dims());
   dev_ctx.template Alloc<T>(x_grad);
 
+  if (x_grad->numel() == 0) {
+    return;
+  }
+
   // Set to zero tensor.
   phi::funcs::SetConstant<Context, T> functor;
   functor(dev_ctx, x_grad, static_cast<T>(0));

@@ -428,6 +428,41 @@ class TestTakeAlongAxisAPICase4(unittest.TestCase):
             _ = static_f(x, ind, axis=0, broadcast=False)
 
 
+class TestTakeAlongAxis_ZeroSize(OpTest):
+    def setUp(self):
+        self.python_api = paddle.take_along_axis
+        self.op_type = "take_along_axis"
+        self.dtype = "float64"
+        self.check_pir = True
+
+        x = np.zeros((2, 0, 5)).astype(self.dtype)
+        indices = np.zeros((2, 3, 5)).astype("int64")
+
+        self.inputs = {'Input': x, 'Index': indices}
+        self.attrs = {'Axis': 1}
+
+        output = np.zeros((2, 3, 5)).astype(self.dtype)
+        self.outputs = {'Result': output}
+
+    def test_check_output(self):
+        self.check_output_with_place(
+            paddle.CPUPlace(), check_pir=self.check_pir
+        )
+        if core.is_compiled_with_cuda():
+            self.check_output_with_place(
+                core.CUDAPlace(0), check_pir=self.check_pir
+            )
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            paddle.CPUPlace(), ['Input'], 'Result', check_pir=self.check_pir
+        )
+        if core.is_compiled_with_cuda():
+            self.check_grad_with_place(
+                core.CUDAPlace(0), ['Input'], 'Result', check_pir=self.check_pir
+            )
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

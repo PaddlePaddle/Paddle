@@ -18,14 +18,14 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
-bool Pool2dCheckIfOneDNNSupport(const KernelContext* ctx) {
-  if (ctx->AttrAt<bool>(8) == false) {
+bool Pool2dCheckIfOneDNNSupport(const KernelContext* dev_ctx) {
+  if (dev_ctx->AttrAt<bool>(8) == false) {
     // adaptive
     return true;
   }
   // oneDNN is supporting only unchangeable in size pool window
-  auto src_tz = common::vectorize(ctx->InputAt<phi::DenseTensor>(0).dims());
-  const TensorRef& kernel_size_tmp = ctx->AttrAt<TensorRef>(0);
+  auto src_tz = common::vectorize(dev_ctx->InputAt<phi::DenseTensor>(0).dims());
+  const TensorRef& kernel_size_tmp = dev_ctx->AttrAt<TensorRef>(0);
   IntArray kernel_size_array = IntArray(*kernel_size_tmp.Get());
   std::vector<int64_t> kernel_size = kernel_size_array.GetData();
   // Fast but not exhaustive check
@@ -87,13 +87,13 @@ void Pool2dKernel(const Context& dev_ctx,
 }
 
 phi::KernelKey PoolOpGetKernelTypeForVar(
-    const GetKernelTypeForVarContext* ctx) {
-  const phi::DenseTensor& tensor = ctx->GetTensor();
-  const phi::KernelKey& expected_kernel_type = ctx->GetKernelKey();
+    const GetKernelTypeForVarContext* dev_ctx) {
+  const phi::DenseTensor& tensor = dev_ctx->GetTensor();
+  const phi::KernelKey& expected_kernel_type = dev_ctx->GetKernelKey();
 #ifdef PADDLE_WITH_DNNL
   if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
       (tensor.layout() != phi::DataLayout::ONEDNN)) {
-    const AttributeMap& attrs = ctx->GetAttrs();
+    const AttributeMap& attrs = dev_ctx->GetAttrs();
     auto it = attrs.find("data_format");
     const std::string data_format = PADDLE_GET_CONST(std::string, it->second);
     auto dl = common::StringToDataLayout(data_format);

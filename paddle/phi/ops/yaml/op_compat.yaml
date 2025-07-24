@@ -1802,7 +1802,7 @@
     out : Out
 
 - op : gather
-  backward : gather_grad
+  backward : gather_grad, gather_double_grad
   inputs :
     {x : X, index : Index}
   outputs :
@@ -3205,13 +3205,6 @@
       data_type : int
       support_tensor : true
   manual_signature : [reverse]
-
-- op : rint
-  backward : rint_grad
-  inputs :
-    x : X
-  outputs :
-    out : Out
 
 - op : rmsprop_ (rmsprop)
   inputs :

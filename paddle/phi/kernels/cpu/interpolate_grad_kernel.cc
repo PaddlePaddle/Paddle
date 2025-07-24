@@ -861,6 +861,10 @@ void InterpolateGradKernel(
     bool align_corners,
     int align_mode,
     DenseTensor* x_grad) {
+  if (x_grad && x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    return;
+  }
   auto output_grad_dims = output_grad.dims();
   if (output_grad_dims.size() == 3) {  // 1D interpolation grad
     Interpolate1DCPUBwd<T, Context>(dev_ctx,
