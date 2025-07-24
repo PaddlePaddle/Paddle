@@ -180,8 +180,13 @@ void Pool3dKernel(const Context& dev_ctx,
                   const std::string& padding_algorithm,
                   DenseTensor* out) {
   if (x.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    if (pooling_type == "max" || pooling_type == "avg") {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    } else {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    }
     return;
   }
   using XPUType = typename XPUTypeTrait<T>::Type;
