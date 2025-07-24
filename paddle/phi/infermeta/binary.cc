@@ -2978,6 +2978,12 @@ void MatmulInferMeta(const MetaTensor& x,
                     common::errors::InvalidArgument(
                         "The Input(y) dims size must be greater than 0,"
                         " but received dims size is 0. "));
+  PADDLE_ENFORCE_EQ(
+      x.dtype(),
+      y.dtype(),
+      common::errors::InvalidArgument(
+          "The Input(x) dtype must be the same as Input(y),"
+          " but received Input(x) dtype is %s, Input(y) dtype is %s."));
 
   bool x_broadcasted = false, y_broadcasted = false;
   if (ndims_x == 1) {
