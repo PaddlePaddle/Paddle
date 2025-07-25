@@ -57,7 +57,7 @@ class GroupNormDirectCUDAFunctor {
 };
 #endif
 
-template <typename T>
+template <typename T, typename IndexT>
 struct GroupNormNDHWCParams {
   // The output buffer. Layout NDHWC.
   T* dst;
@@ -95,13 +95,13 @@ struct GroupNormNDHWCParams {
 
   // The number of activations per instance (d * h * w) and the number of
   // activations per block.
-  int32_t dhw, dhwPerBlock;
+  IndexT dhw, dhwPerBlock;
   // The number of channels per group and blocks per activation in the C
   // dimension.
   int32_t cPerBlock, cPerGroup;
 
   // The precomputed stride between instances.
-  int32_t dhwc;
+  IndexT dhwc;
   // The inverse of dhwc in floats (to compute mean/var).
   float invDHWC;
   // The precomputed number of groups per block.
@@ -116,13 +116,14 @@ struct GroupNormNDHWCParams {
 template <typename T>
 class groupNormNDHWCSum {
  public:
-  void operator()(GroupNormNDHWCParams<T>* params, const gpuStream_t stream);
+  void operator()(GroupNormNDHWCParams<T, int64_t>* params,
+                  const gpuStream_t stream);
 };
 
 template <typename T>
 class groupNormNDHWCScale {
  public:
-  void operator()(const GroupNormNDHWCParams<T>& params,
+  void operator()(const GroupNormNDHWCParams<T, int64_t>& params,
                   const gpuStream_t stream);
 };
 
