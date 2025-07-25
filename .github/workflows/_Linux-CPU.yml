@@ -37,6 +37,7 @@ jobs:
     steps:
       - name: Check docker image  and run container
         env:
+          WITH_GPU: "OFF"
           WITH_SHARED_PHI: "ON"
           WITH_MKL: "OFF"
           WITH_TESTING: "ON"
@@ -67,6 +68,7 @@ jobs:
             -v "/dev/shm:/dev/shm"  \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/paddle \
+            -e WITH_GPU \
             -e BRANCH \
             -e PR_ID \
             -e COMMIT_ID \

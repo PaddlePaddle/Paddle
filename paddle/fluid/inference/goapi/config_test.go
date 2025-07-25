@@ -97,12 +97,12 @@ func TestMkldnn(t *testing.T) {
 	config.EnableONEDNN()
 	t.Logf("MkldnnEnabled:%+v", config.MkldnnEnabled())
 
-	config.SetMkldnnCacheCapacity(4)
+	config.SetOnednnCacheCapacity(4)
 
 	config.SetCpuMathLibraryNumThreads(4)
 	t.Logf("CpuMathLibraryNumThreads:%+v", config.CpuMathLibraryNumThreads())
 
-	config.SetMKLDNNOp([]string{"fc", "conv"})
+	config.SetONEDNNOp([]string{"fc", "conv"})
 
 	config.EnableMkldnnBfloat16()
 	t.Logf("MkldnnBfloat16Enabled:%+v", config.MkldnnBfloat16Enabled())

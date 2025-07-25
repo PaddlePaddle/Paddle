@@ -2356,6 +2356,7 @@
   output : Tensor(x_grad), Tensor(combine_weights_grad)
   infer_meta :
     func : MoeCombineGradInferMeta
+    spmd_rule : MoECombineGradInferSpmd
   kernel :
     func : moe_combine_grad
 
@@ -2376,6 +2377,7 @@
   output : Tensor(x_grad), Tensor(gate_logits_grad)
   infer_meta :
     func : MoeGateDispatchGradInferMeta
+    spmd_rule : MoEGateDispatchGradInferSpmd
   kernel :
     func : moe_gate_dispatch_grad
     data_type : y_grad

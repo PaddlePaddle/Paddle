@@ -33,7 +33,7 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->SwitchIrOptim();
   cfg->SwitchSpecifyInputNames();
   cfg->SetCpuMathLibraryNumThreads(FLAGS_num_threads);
-  if (!FLAGS_enable_mkldnn) cfg->DisableMKLDNN();
+  if (!FLAGS_enable_mkldnn) cfg->DisableONEDNN();
 }
 
 TEST(Analyzer_bfloat16_image_classification, bfloat16) {

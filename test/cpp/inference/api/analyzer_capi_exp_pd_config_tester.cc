@@ -68,9 +68,9 @@ TEST(PD_Config, interface) {
   const char* ops_name = "conv_2d";
   PD_ConfigEnableONEDNN(config);
   PD_ConfigSetMkldnnOp(config, 1, &ops_name);
-  PD_ConfigSetMkldnnCacheCapacity(config, 100);
-  bool mkldnn_enabled = PD_ConfigMkldnnEnabled(config);
-  EXPECT_TRUE(mkldnn_enabled);
+  PD_ConfigSetOnednnCacheCapacity(config, 100);
+  bool onednn_enabled = PD_ConfigMkldnnEnabled(config);
+  EXPECT_TRUE(onednn_enabled);
 
   PD_ConfigSetCpuMathLibraryNumThreads(config, 10);
   int32_t cpu_threads = PD_ConfigGetCpuMathLibraryNumThreads(config);
@@ -80,8 +80,8 @@ TEST(PD_Config, interface) {
   PD_ConfigSetBfloat16Op(config, 1, &ops_name);
 
   PD_ConfigEnableMkldnnInt8(config);
-  bool mkldnn_int8_enabled = PD_ConfigMkldnnInt8Enabled(config);
-  EXPECT_TRUE(mkldnn_int8_enabled);
+  bool onednn_int8_enabled = PD_ConfigMkldnnInt8Enabled(config);
+  EXPECT_TRUE(onednn_int8_enabled);
 #endif
 
   PD_ConfigEnableONNXRuntime(config);

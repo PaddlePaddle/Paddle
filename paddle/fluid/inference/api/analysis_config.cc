@@ -542,8 +542,8 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(trt_exclude_var_names_);
   // OneDNN related.
   CP_MEMBER(use_onednn_);
-  CP_MEMBER(mkldnn_enabled_op_types_);
-  CP_MEMBER(mkldnn_cache_capacity_);
+  CP_MEMBER(onednn_enabled_op_types_);
+  CP_MEMBER(onednn_cache_capacity_);
   // Bfloat16 related.
   CP_MEMBER(use_onednn_bfloat16_);
   CP_MEMBER(bfloat16_enabled_op_types_);
@@ -676,17 +676,17 @@ void AnalysisConfig::EnableONEDNN() {
   Update();
 }
 
-void AnalysisConfig::DisableMKLDNN() {
+void AnalysisConfig::DisableONEDNN() {
   use_onednn_ = false;
   Update();
 }
 
-void AnalysisConfig::SetMkldnnCacheCapacity(int capacity) {
+void AnalysisConfig::SetOnednnCacheCapacity(int capacity) {
 #ifdef PADDLE_WITH_DNNL
-  mkldnn_cache_capacity_ = capacity;
+  onednn_cache_capacity_ = capacity;
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to set MKLDNN Thread Id";
-  mkldnn_cache_capacity_ = 0;
+  onednn_cache_capacity_ = 0;
 #endif
 }
 
@@ -711,12 +711,12 @@ void AnalysisConfig::EnableMkldnnBfloat16() {
   Update();
 }
 
-void AnalysisConfig::DisableMkldnnFcPasses() {
+void AnalysisConfig::DisableOnednnFcPasses() {
 #ifdef PADDLE_WITH_DNNL
-  disable_mkldnn_fc_passes_ = true;
+  disable_onednn_fc_passes_ = true;
 #else
-  LOG(ERROR) << "Please compile with MKLDNN first to use DisableMkldnnFcPasses";
-  disable_mkldnn_fc_passes_ = false;
+  LOG(ERROR) << "Please compile with MKLDNN first to use DisableOnednnFcPasses";
+  disable_onednn_fc_passes_ = false;
 #endif
   Update();
 }
@@ -982,7 +982,7 @@ void AnalysisConfig::Update() {
        !phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx2))) {
     // User manually disable onednn or disable when not support AVX2
     use_onednn_ = false;
-    pass_builder()->DisableMKLDNN();
+    pass_builder()->DisableONEDNN();
   }
 #endif
 #ifdef PADDLE_WITH_OPENVINO
@@ -1058,9 +1058,9 @@ void AnalysisConfig::Update() {
 #endif
   }
 
-  if (disable_mkldnn_fc_passes_) {
+  if (disable_onednn_fc_passes_) {
 #ifdef PADDLE_WITH_DNNL
-    pass_builder()->DisableMkldnnFcPasses();
+    pass_builder()->DisableOnednnFcPasses();
 #endif
   }
 
@@ -1141,8 +1141,8 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << trt_engine_memory_sharing_;
 
   ss << use_onednn_;
-  ss << mkldnn_cache_capacity_;
-  for (auto &item : mkldnn_enabled_op_types_) ss << item;
+  ss << onednn_cache_capacity_;
+  for (auto &item : onednn_enabled_op_types_) ss << item;
   ss << ";";
 
   ss << use_onednn_bfloat16_;
@@ -1313,7 +1313,7 @@ std::string AnalysisConfig::Summary() {
       {"cpu_math_thread", std::to_string(cpu_math_library_num_threads_)});
   os.InsertRow({"enable_mkldnn", use_onednn_ ? "true" : "false"});
   os.InsertRow(
-      {"mkldnn_cache_capacity", std::to_string(mkldnn_cache_capacity_)});
+      {"mkldnn_cache_capacity", std::to_string(onednn_cache_capacity_)});
 #ifdef PADDLE_WITH_OPENVINO
   os.InsertRow({"use_openvino", use_openvino_ ? "true" : "false"});
   os.InsertRow({"openvino_inference_precision",
