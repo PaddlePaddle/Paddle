@@ -550,5 +550,90 @@ void OpDataTypePromote(ir::LoweredFunc *func) {
   auto node = func->As<ir::_LoweredFunc_>();
   OpDataTypePromote(&node->body);
 }
+struct DynamicSymbolExprBitTracker : public ir::IRVisitor {
+  DynamicSymbolExprBitTracker() = default;
+
+#define TRAVERSE_EXPR_FIELDS(NodeType)         \
+  void Visit(const ir::NodeType *x) override { \
+    if (dyn_symbol_bit == 64) return;          \
+    for (auto expr : x->expr_fields()) {       \
+      IRVisitor::Visit(expr);                  \
+    }                                          \
+  }
+
+  NODETY_BINARY_OP_FOR_EACH(TRAVERSE_EXPR_FIELDS)
+  NODETY_UNARY_OP_FOR_EACH(TRAVERSE_EXPR_FIELDS)
+  NODETY_CONTROL_OP_FOR_INTRINSIC(TRAVERSE_EXPR_FIELDS)
+  TRAVERSE_EXPR_FIELDS(Cast)
+  TRAVERSE_EXPR_FIELDS(For)
+  TRAVERSE_EXPR_FIELDS(PolyFor)
+  TRAVERSE_EXPR_FIELDS(Select)
+  TRAVERSE_EXPR_FIELDS(IfThenElse)
+  TRAVERSE_EXPR_FIELDS(Block)
+  TRAVERSE_EXPR_FIELDS(Call)
+  TRAVERSE_EXPR_FIELDS(Load)
+  TRAVERSE_EXPR_FIELDS(Store)
+  TRAVERSE_EXPR_FIELDS(Alloc)
+  TRAVERSE_EXPR_FIELDS(Free)
+  TRAVERSE_EXPR_FIELDS(_Buffer_)
+  TRAVERSE_EXPR_FIELDS(_Tensor_)
+  TRAVERSE_EXPR_FIELDS(Let)
+  TRAVERSE_EXPR_FIELDS(Reduce)
+  TRAVERSE_EXPR_FIELDS(Ramp)
+  TRAVERSE_EXPR_FIELDS(Broadcast)
+  TRAVERSE_EXPR_FIELDS(FracOp)
+  TRAVERSE_EXPR_FIELDS(Product)
+  TRAVERSE_EXPR_FIELDS(Sum)
+  TRAVERSE_EXPR_FIELDS(PrimitiveNode)
+  TRAVERSE_EXPR_FIELDS(_BufferRange_)
+  TRAVERSE_EXPR_FIELDS(ScheduleBlock)
+  TRAVERSE_EXPR_FIELDS(ScheduleBlockRealize)
+  TRAVERSE_EXPR_FIELDS(_Dim_)
+#undef TRAVERSE_EXPR_FIELDS
+
+  void Visit(const ir::_Var_ *x) override {
+    auto it = search_map->find(x->name);
+    if (it != search_map->cend()) {
+      int num_bits = it->second.bits();
+      if (num_bits == 32 || num_bits == 64) {
+        dyn_symbol_bit = std::max(dyn_symbol_bit, num_bits);
+      }
+    }
+  }
+
+  int operator()(const std::unordered_map<std::string, common::Type> *map_,
+                 const Expr *e) {
+    // no need to continue if the result is already 64
+    if (dyn_symbol_bit == 64) return 64;
+    search_map = map_;
+    IRVisitor::Visit(e);
+    return dyn_symbol_bit;
+  }
+
+  const std::unordered_map<std::string, common::Type> *search_map;
+  int dyn_symbol_bit = 0;
+};
+
+#define VISIT_OP(NodeType)                                                  \
+  int UnifiedOperandTypeBits(                                               \
+      const std::unordered_map<std::string, common::Type> *search_map,      \
+      const ir::NodeType *node) {                                           \
+    if (search_map->empty()) return 0;                                      \
+    if (!node->a().type().is_int() || !node->b().type().is_int()) return 0; \
+    int node_a_bits = node->a().type().bits();                              \
+    int node_b_bits = node->b().type().bits();                              \
+    if (node_a_bits < 32 || node_b_bits < 32) return 0;                     \
+    DynamicSymbolExprBitTracker tracker;                                    \
+    tracker(search_map, &node->a());                                        \
+    int target_bit = tracker(search_map, &node->b());                       \
+    if (target_bit > 0) {                                                   \
+    }                                                                       \
+    return target_bit;                                                      \
+  }
+
+VISIT_OP(Min)
+VISIT_OP(Max)
+#undef VISIT_OP
+
 }  // namespace common
 }  // namespace cinn
