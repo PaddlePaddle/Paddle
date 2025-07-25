@@ -367,10 +367,10 @@ void PD_ConfigEnableONEDNN(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   config->EnableONEDNN();
 }
-void PD_ConfigSetMkldnnCacheCapacity(__pd_keep PD_Config* pd_config,
+void PD_ConfigSetOnednnCacheCapacity(__pd_keep PD_Config* pd_config,
                                      int32_t capacity) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  config->SetMkldnnCacheCapacity(capacity);
+  config->SetOnednnCacheCapacity(capacity);
 }
 PD_Bool PD_ConfigMkldnnEnabled(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
@@ -394,7 +394,7 @@ void PD_ConfigSetMkldnnOp(__pd_keep PD_Config* pd_config,
   for (size_t index = 0; index < ops_num; ++index) {
     op_names.emplace(op_list[index]);
   }
-  config->SetMKLDNNOp(std::move(op_names));
+  config->SetONEDNNOp(std::move(op_names));
 }
 
 void PD_ConfigEnableMkldnnBfloat16(__pd_keep PD_Config* pd_config) {

@@ -78,7 +78,7 @@ void profile(int cache_capacity = 1) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
   cfg.EnableONEDNN();
-  cfg.SetMkldnnCacheCapacity(cache_capacity);
+  cfg.SetOnednnCacheCapacity(cache_capacity);
 
   std::vector<std::vector<PaddleTensor>> outputs;
   std::vector<std::vector<PaddleTensor>> input_slots_all;
@@ -126,7 +126,7 @@ void profile(int cache_capacity = 1) {
 }
 
 #ifdef PADDLE_WITH_DNNL
-TEST(Analyzer_detect, profile_mkldnn) {
+TEST(Analyzer_detect, profile_onednn) {
   profile(5 /* cache_capacity */);
   profile(10 /* cache_capacity */);
 }
