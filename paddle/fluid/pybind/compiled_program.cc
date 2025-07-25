@@ -387,7 +387,7 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
             self.fuse_gemm_epilogue_ = b;
           },
           R"DOC((bool, optional): fuse_gemm_epilogue indicate whether
-                to fuse matmul_op, elemenewist_add_op and activation_op,
+                to fuse matmul_op, elementwise_add_op and activation_op,
                 it may make the execution faster. Default is False.
 
                 Examples:
@@ -410,7 +410,7 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               common::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, cannot be "
+                                  "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.fuse_dot_product_attention_ = b;
           },

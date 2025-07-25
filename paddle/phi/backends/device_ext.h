@@ -395,7 +395,7 @@ struct C_DeviceInterface {
                               size_t size);
 
   /**
-   * @brief Asynchonrize memory copy from host to device
+   * @brief Asynchronize memory copy from host to device
    *
    * @param[C_Device]   device     Core fill it with a physical id
    * @param[C_Stream]   stream
@@ -410,7 +410,7 @@ struct C_DeviceInterface {
                                     size_t size);
 
   /**
-   * @brief Asynchonrize memory copy from device to host
+   * @brief Asynchronize memory copy from device to host
    *
    * @param[C_Device]   device     Core fill it with a physical id
    * @param[C_Stream]   stream
@@ -425,7 +425,7 @@ struct C_DeviceInterface {
                                     size_t size);
 
   /**
-   * @brief Asynchonrize memory copy from device to device
+   * @brief Asynchronize memory copy from device to device
    *
    * @param[C_Device]   device     Core fill it with a physical id
    * @param[C_Stream]   stream
@@ -440,7 +440,7 @@ struct C_DeviceInterface {
                                     size_t size);
 
   /**
-   * @brief Peer asynchonrize memory copy from host to device
+   * @brief Peer asynchronize memory copy from host to device
    *
    * @param[C_Device]   device     Core fill it with a physical id
    * @param[C_Stream]   stream
