@@ -144,7 +144,7 @@ class TestUnflattenInputZeroSize(TestUnflattenAPI):
 
 class TestUnflattenInputZeroSizeError(unittest.TestCase):
     def test_errors(self):
-        paddle.enable_static()
+        paddle.disable_static()
         x = np.random.rand(4, 0, 16).astype('float32')
         x = paddle.to_tensor(x)
         with self.assertRaises(Exception) as context:
@@ -152,7 +152,6 @@ class TestUnflattenInputZeroSizeError(unittest.TestCase):
         self.assertTrue(
             "Provided sizes don't multiply up" in str(context.exception)
         )
-        paddle.disable_static()
 
 
 # check the data type of the input x
