@@ -18,6 +18,7 @@
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/impl/lu_kernel_impl.h"
@@ -198,9 +199,18 @@ void LUKernel(const Context& dev_ctx,
       ::common::errors::PreconditionNotMet(
           "Invalid input x dimensionality: %d (expected ≥2)", x.dims().size()));
   if (x.numel() == 0) {
-    dev_ctx.template Alloc<int>(infos);
-    dev_ctx.template Alloc<int>(pivots);
-    dev_ctx.template Alloc<T>(out);
+    phi::Full<int, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(infos->dims())),
+                            static_cast<int>(0),
+                            infos);
+    phi::Full<int, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(pivots->dims())),
+                            static_cast<int>(0),
+                            pivots);
+    phi::Full<T, Context>(dev_ctx,
+                          phi::IntArray(common::vectorize(out->dims())),
+                          static_cast<T>(0),
+                          out);
     return;
   }
   int64_t largest_matrix = (1LL << 31) - 1;

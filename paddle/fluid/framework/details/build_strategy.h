@@ -128,7 +128,7 @@ struct BuildStrategy {
   // that all the operators supported by OneDNN will be
   // accelerated. And it should not be set when
   // FLAGS_use_mkldnn=false
-  std::unordered_set<std::string> mkldnn_enabled_op_types_;
+  std::unordered_set<std::string> onednn_enabled_op_types_;
 
   // By default, memory_optimize would be opened if gc is disabled, and
   // be closed if gc is enabled.
@@ -147,9 +147,9 @@ struct BuildStrategy {
   bool enable_inference_pass_{false};  // switch for infernce pass
   bool delete_dropout_{true};          // delete dropout op
 #ifdef PADDLE_WITH_DNNL
-  bool use_onednn_{true};  // use mkdnn to do inference
+  bool use_onednn_{true};  // use onednn to do inference
 #else
-  bool use_onednn_{false};  // use mkdnn to do inference
+  bool use_onednn_{false};  // use onednn to do inference
 #endif
 
   // FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
@@ -250,8 +250,8 @@ inline std::ostream &operator<<(std::ostream &os,
   os << "fused_attention_: " << strategy.fused_attention_ << std::endl;
   os << "fused_feedforward_: " << strategy.fused_feedforward_ << std::endl;
   os << "sequential_run_: " << strategy.sequential_run_ << std::endl;
-  os << "mkldnn_enabled_op_types_: ";
-  for (auto str : strategy.mkldnn_enabled_op_types_) {
+  os << "onednn_enabled_op_types_: ";
+  for (auto str : strategy.onednn_enabled_op_types_) {
     os << str << ", ";
   }
   os << std::endl;

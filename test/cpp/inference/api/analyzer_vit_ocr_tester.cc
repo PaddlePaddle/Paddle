@@ -68,20 +68,20 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
   (*inputs).emplace_back(input_slots);
 }
 
-void SetConfig(AnalysisConfig *cfg, bool use_mkldnn = false) {
+void SetConfig(AnalysisConfig *cfg, bool use_onednn = false) {
   cfg->SetModel(FLAGS_infer_model + "/inference.pdmodel",
                 FLAGS_infer_model + "/inference.pdiparams");
 
-  if (use_mkldnn) {
+  if (use_onednn) {
     cfg->EnableONEDNN();
     cfg->SwitchIrOptim();
   }
 }
 
 // Compare results of NativeConfig and AnalysisConfig
-void compare(bool use_mkldnn = false) {
+void compare(bool use_onednn = false) {
   AnalysisConfig cfg;
-  SetConfig(&cfg, use_mkldnn);
+  SetConfig(&cfg, use_onednn);
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
@@ -92,7 +92,7 @@ void compare(bool use_mkldnn = false) {
 TEST(Analyzer_vit_ocr, compare) { compare(); }
 
 #ifdef PADDLE_WITH_DNNL
-TEST(Analyzer_vit_ocr, compare_mkldnn) { compare(true /* use_mkldnn */); }
+TEST(Analyzer_vit_ocr, compare_onednn) { compare(true /* use_onednn */); }
 #endif
 
 }  // namespace analysis
