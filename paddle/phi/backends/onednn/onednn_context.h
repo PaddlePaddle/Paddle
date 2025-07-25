@@ -33,7 +33,7 @@ class OneDNNContextThreadLocals {
   typedef OneDNNContextThreadLocals self;
   struct Body {
     bool said_once = false;
-    size_t cur_mkldnn_session_id;
+    size_t cur_onednn_session_id;
     // Current data input shape string.
     // - For fixed-shape, it's a null string in default.
     // - For dynamic-shape, it's user specific.
@@ -53,8 +53,8 @@ class OneDNNContextThreadLocals {
 
     Body();
     ~Body();
-    void set_cur_mkldnn_session_id(size_t sid);
-    size_t get_cur_mkldnn_session_id(void);
+    void set_cur_onednn_session_id(size_t sid);
+    size_t get_cur_onednn_session_id(void);
     void set_cur_input_shape_str(std::string input_shape_str);
     void set_cur_input_shape_cache_capacity(int input_shape_cache_capacity);
     TEST_API void set_cur_paddle_data_layout(DataLayout dl);
@@ -74,9 +74,9 @@ class OneDNNContextThreadLocals {
 
  public:
   // default onednn session id
-  static constexpr size_t kMKLDNNSessionID_Default = 0;
+  static constexpr size_t kONEDNNSessionID_Default = 0;
   // onednn session id for cache clearing mode
-  static constexpr size_t kMKLDNNSessionID_CacheClearing = -1;
+  static constexpr size_t kONEDNNSessionID_CacheClearing = -1;
   TEST_API static Body& fetch();
 };
 
@@ -119,7 +119,7 @@ class OneDNNContext : public CPUContext {
   // Prevent next ResetBlobMap()
   void BlockNextCacheClearing();
 
-  // Get the ShapeBlob size in cur_mkldnn_session_id.
+  // Get the ShapeBlob size in cur_onednn_session_id.
   size_t GetShapeBlobSize() const;
 
   // Set data to blob (i.e. name/data pair). Create blob if not existing
