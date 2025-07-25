@@ -94,7 +94,6 @@ class TestArange(unittest.TestCase):
         x = paddle.zeros([2, 2, 3], dtype="int64")
         y = paddle.zeros([2, 11, 3], dtype="int64")
         self.eval(func, [x, y], [x_spec, y_spec])
-        print("HQY test case 8")
         self.eval(func, [x, y], None)
 
     def test_arange_dynamic_nested_broadcast(self):
@@ -115,7 +114,6 @@ class TestArange(unittest.TestCase):
         x = paddle.zeros([2, 16], dtype="int32")
         y = paddle.zeros([16, 32], dtype="int32")
         self.eval(func, [x, y], [x_spec, y_spec])
-        print("HQY test case 9")
         self.eval(func, [x, y], None)
 
 
