@@ -220,3 +220,4 @@ test_collective_allgather_xpu
 test_collective_allreduce_xpu
 test_collective_broadcast_xpu
 test_collective_identity_xpu
+test_xpu_multi_encoder_xpu_fuse_pass

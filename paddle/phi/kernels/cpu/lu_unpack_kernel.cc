@@ -18,5 +18,11 @@
 #include "paddle/phi/kernels/impl/lu_unpack_kernel_impl.h"
 #include "paddle/phi/kernels/lu_unpack_kernel.h"
 
-PD_REGISTER_KERNEL(
-    lu_unpack, CPU, ALL_LAYOUT, phi::LUUnpackKernel, float, double) {}
+PD_REGISTER_KERNEL(lu_unpack,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::LUUnpackKernel,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

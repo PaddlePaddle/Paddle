@@ -568,7 +568,7 @@ EOF
         -DWITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF};build_error=$?
 
     if [ "$build_error" != 0 ];then
-        exit 7;
+        return 7;
     fi
 }
 

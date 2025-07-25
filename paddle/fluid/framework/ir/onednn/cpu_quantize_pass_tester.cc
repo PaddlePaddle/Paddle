@@ -34,14 +34,14 @@ void SetOp(ProgramDesc* prog,
            const std::string& name,
            const std::vector<std::string>& inputs,
            const std::vector<std::string>& outputs,
-           bool use_mkldnn,
-           const std::string& mkldnn_data_type = "float32") {
+           bool use_onednn,
+           const std::string& onednn_data_type = "float32") {
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
-  op->SetAttr("use_mkldnn", use_mkldnn);
+  op->SetAttr("use_mkldnn", use_onednn);
   op->SetAttr("name", name);
   if (type != "dropout" && type != "quantize" && type != "dequantize") {
-    op->SetAttr("mkldnn_data_type", mkldnn_data_type);
+    op->SetAttr("mkldnn_data_type", onednn_data_type);
   }
 
   if (type == "conv2d") {
@@ -258,8 +258,8 @@ static const std::initializer_list<std::string> variable_names{"a",
 // d->Dropout1->g and (g, w5, b3)->Fc1->h and (h,w3,b1,i)->Conv3->j
 //
 // (d,w4, b2)->Conv4->i
-ProgramDesc BuildProgramDesc(bool use_mkldnn,
-                             const std::string& mkldnn_data_type) {
+ProgramDesc BuildProgramDesc(bool use_onednn,
+                             const std::string& onednn_data_type) {
   ProgramDesc prog;
   for (auto& v : variable_names) {
     auto* var = prog.MutableBlock(0)->Var(v);
@@ -273,49 +273,49 @@ ProgramDesc BuildProgramDesc(bool use_mkldnn,
         "Conv1",
         {"a", "w1"},
         {"c"},
-        use_mkldnn,
-        mkldnn_data_type);
-  SetOp(&prog, "pool2d", "Pool1", {"c"}, {"d"}, use_mkldnn, mkldnn_data_type);
+        use_onednn,
+        onednn_data_type);
+  SetOp(&prog, "pool2d", "Pool1", {"c"}, {"d"}, use_onednn, onednn_data_type);
 
   SetOp(&prog,
         "conv2d",
         "Conv2",
         {"d", "w2"},
         {"e"},
-        use_mkldnn,
-        mkldnn_data_type);
-  SetOp(&prog, "pool2d", "Pool2", {"e"}, {"f"}, use_mkldnn, mkldnn_data_type);
+        use_onednn,
+        onednn_data_type);
+  SetOp(&prog, "pool2d", "Pool2", {"e"}, {"f"}, use_onednn, onednn_data_type);
 
-  SetOp(&prog, "dropout", "Dropout1", {"d"}, {"g"}, use_mkldnn);
+  SetOp(&prog, "dropout", "Dropout1", {"d"}, {"g"}, use_onednn);
   SetOp(&prog,
         "fc",
         "Fc1",
         {"g", "w5", "b3"},
         {"h"},
-        use_mkldnn,
-        mkldnn_data_type);
+        use_onednn,
+        onednn_data_type);
   SetOp(&prog,
         "conv2d",
         "Conv3",
         {"h", "w3", "b1", "i"},
         {"j"},
-        use_mkldnn,
-        mkldnn_data_type);
+        use_onednn,
+        onednn_data_type);
 
   SetOp(&prog,
         "conv2d",
         "Conv4",
         {"c", "w4", "b2"},
         {"i"},
-        use_mkldnn,
-        mkldnn_data_type);
+        use_onednn,
+        onednn_data_type);
 
   return prog;
 }
 
 TEST(CpuQuantizePass, quantize) {
-  bool use_mkldnn = true;
-  std::string mkldnn_data_type = "int8";
+  bool use_onednn = true;
+  std::string onednn_data_type = "int8";
   // (a->QUANT1->IN1,w1)->Conv1->OUT1->DEQUANT1->c and
   // c->QUANT2->IN2->Pool1->OUT2->DEQUANT2->d
   //
@@ -330,7 +330,7 @@ TEST(CpuQuantizePass, quantize) {
   int added_nodes = 8 + 8 + 7 + 7;
   std::unordered_map<std::string, int> expected_operators = {
       {"fused_conv2d", 4}, {"pool2d", 2}, {"quantize", 8}, {"dequantize", 7}};
-  MainTest(BuildProgramDesc(use_mkldnn, mkldnn_data_type),
+  MainTest(BuildProgramDesc(use_onednn, onednn_data_type),
            variable_names,
            expected_operators,
            added_nodes,
@@ -338,12 +338,12 @@ TEST(CpuQuantizePass, quantize) {
 }
 
 TEST(CpuQuantizePass, do_not_quantize) {
-  bool use_mkldnn = true;
-  std::string mkldnn_data_type = "float32";
+  bool use_onednn = true;
+  std::string onednn_data_type = "float32";
   int added_nodes = 0;
   std::unordered_map<std::string, int> expected_operators = {
       {"fused_conv2d", 4}, {"pool2d", 2}, {"quantize", 0}, {"dequantize", 0}};
-  MainTest(BuildProgramDesc(use_mkldnn, mkldnn_data_type),
+  MainTest(BuildProgramDesc(use_onednn, onednn_data_type),
            variable_names,
            expected_operators,
            added_nodes,

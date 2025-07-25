@@ -197,6 +197,8 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
 
   void Shutdown();
   void Restart();
+  phi::CUDAStream GetStream(const Place& place);
+  void SetOuterEventWait(bool outer_wait);
 
   void EagerConnectRingExchange(
       std::shared_ptr<phi::distributed::NCCLConfig> nccl_config);
@@ -305,6 +307,8 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
       place_to_p2p_opts_;
   int64_t create_count_;
   std::shared_ptr<phi::distributed::NCCLConfig> nccl_config_ptr_;
+
+  bool outer_wait_{false};
 };
 
 }  //  namespace distributed

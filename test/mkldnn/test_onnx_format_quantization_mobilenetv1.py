@@ -356,7 +356,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         self.assertLess(delta_value, diff_threshold)
 
 
-class TestMKLDNNInt8ForResnet50AvgONNXFormat(TestPostTrainingQuantization):
+class TestONEDNNInt8ForResnet50AvgONNXFormat(TestPostTrainingQuantization):
     def test_onnx_format_avg_resnet50(self):
         model = "resnet50"
         algo = "avg"

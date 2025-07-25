@@ -35,8 +35,8 @@ class TestFusionGRUINT8ONEDNNOp(OpTest):
         self.act_state = 'tanh'
         self.act_gate = 'sigmoid'
         self.origin_mode = True
-        self.use_mkldnn = True
-        self.mkldnn_data_type = "int8"
+        self.use_onednn = True
+        self.onednn_data_type = "int8"
         self.force_fp32_output = True
         self.error_margin = 1e-5
         self.set_confs()
@@ -141,8 +141,8 @@ class TestFusionGRUINT8ONEDNNOp(OpTest):
             'gate_activation': self.act_gate,
             'is_reverse': self.is_reverse,
             'origin_mode': self.origin_mode,
-            'use_mkldnn': self.use_mkldnn,
-            'mkldnn_data_type': self.mkldnn_data_type,
+            'use_mkldnn': self.use_onednn,
+            'mkldnn_data_type': self.onednn_data_type,
             'force_fp32_output': self.force_fp32_output,
             'Scale_data': scale_data,
             'Shift_data': shift_data,

@@ -403,6 +403,16 @@
     data_type: x
   traits : paddle::dialect::ForwardOnlyTrait
 
+- op : kthvalue
+  args : (Tensor x, int k = 1, int axis = -1, bool keepdim = false)
+  output : Tensor(out), Tensor(indices)
+  infer_meta :
+    func : KthvalueInferMeta
+  kernel :
+    func : kthvalue
+  backward : kthvalue_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
+
 - op : legacy_bilinear_interp
   args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float scale=0.0, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
   output : Tensor(output)

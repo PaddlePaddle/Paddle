@@ -805,6 +805,29 @@ class TestFastMathLayerNormBF16Op(TestFastMathLayerNormOp):
         self.dtype = 'bfloat16'
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+    "core is not compiled with CUDA",
+)
+class TestLayerNormBF16OpByOpTest_ZeroSize(TestLayerNormOpByOpTest):
+    def initConfig(self):
+        self.__class__.exist_fp64_check_grad = True
+        self.ori_atol = 1e-2
+        self.ori_rtol = 1e-2
+
+        self.max_relative_error = 1e-5
+
+        self.dtype = np.float32
+        self.x_shape = [2, 0, 6, 3]
+        self.epsilon = 0.00001
+        self.begin_norm_axis = 1
+        self.has_scale = True
+        self.has_bias = False
+        self.check_prim = False
+        self.check_prim_pir = False
+        self.check_pir = True
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

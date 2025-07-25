@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import random
 
 import numpy as np
 from semi_auto_parallel_dist_to_static_api import DemoNet, create_data_loader
@@ -31,11 +32,16 @@ class TestSemiAutoParallelShardingStage1:
             [[0, 1]], dim_names=["pp", "dp"]
         )
 
+    def set_random_seed(self):
+        paddle.seed(self._seed)
+        random.seed(self._seed)
+        np.random.seed(self._seed)
+
     def check_tensor_eq(self, a, b, rtol=1e-05, atol=0, verbose=True):
         np.testing.assert_allclose(a, b, rtol=rtol, atol=atol, verbose=verbose)
 
     def get_single_card_rst(self):
-        paddle.seed(self._seed)
+        self.set_random_seed()
         linear = paddle.nn.Linear(10, 10)
         batch = paddle.rand(shape=[10, 10])
         opt = paddle.optimizer.AdamW(parameters=linear.parameters())
@@ -49,7 +55,7 @@ class TestSemiAutoParallelShardingStage1:
 
     def test_pure_sharding_stage_1(self):
         paddle.distributed.auto_parallel.set_mesh(self._mesh)
-        paddle.seed(self._seed)
+        self.set_random_seed()
         linear = paddle.nn.Linear(10, 10)
         batch = paddle.rand(shape=[10, 10])
         # shard the input by sharding degree
@@ -64,50 +70,10 @@ class TestSemiAutoParallelShardingStage1:
             opt.clear_grad()
         self.check_tensor_eq(self.weight, linear.weight.numpy())
         self.check_tensor_eq(self.bias, linear.bias.numpy())
-
-    def test_sharding_fuse_allreduce_in_opt(self):
-        os.environ['FLAGS_fuse_allreduce_in_opt'] = 'true'
-        paddle.distributed.auto_parallel.set_mesh(self._mesh)
-        paddle.seed(self._seed)
-        linear = paddle.nn.Linear(10, 10)
-        batch = paddle.rand(shape=[10, 10])
-        # shard the input by sharding degree
-        batch = dist.shard_tensor(batch, self._mesh, [dist.Shard(0)])
-        # shard optimizer with stage 1 fn
-        opt = paddle.optimizer.AdamW(parameters=linear.parameters())
-        opt = dist.shard_optimizer(opt, dist.ShardingStage1("dp", self._mesh))
-        for _ in range(5):
-            loss = linear(batch)
-            loss.backward()
-            opt.step()
-            opt.clear_grad()
-        self.check_tensor_eq(self.weight, linear.weight.numpy())
-        self.check_tensor_eq(self.bias, linear.bias.numpy())
-        os.environ['FLAGS_fuse_allreduce_in_opt'] = 'false'
-
-    def test_sharding_fuse_reducescatter_in_opt(self):
-        os.environ['FLAGS_fuse_reducescatter_in_opt'] = 'true'
-        paddle.distributed.auto_parallel.set_mesh(self._mesh)
-        paddle.seed(self._seed)
-        linear = paddle.nn.Linear(10, 10)
-        batch = paddle.rand(shape=[10, 10])
-        # shard the input by sharding degree
-        batch = dist.shard_tensor(batch, self._mesh, [dist.Shard(0)])
-        # shard optimizer with stage 1 fn
-        opt = paddle.optimizer.AdamW(parameters=linear.parameters())
-        opt = dist.shard_optimizer(opt, dist.ShardingStage1("dp", self._mesh))
-        for _ in range(5):
-            loss = linear(batch)
-            loss.backward()
-            opt.step()
-            opt.clear_grad()
-        self.check_tensor_eq(self.weight, linear.weight.numpy())
-        self.check_tensor_eq(self.bias, linear.bias.numpy())
-        os.environ['FLAGS_fuse_reducescatter_in_opt'] = 'false'
 
     def test_pure_sharding_multi_mesh_stage_1(self):
         paddle.distributed.auto_parallel.set_mesh(self._multi_dim_mesh)
-        paddle.seed(self._seed)
+        self.set_random_seed()
         linear = paddle.nn.Linear(10, 10)
         batch = paddle.rand(shape=[10, 10])
         # shard the input by sharding degree
@@ -175,11 +141,8 @@ class TestSemiAutoParallelShardingStage1:
 
     def test_pure_sharding_multi_mesh_stage_1_with_tensor_fusion(self):
         def run_sharding_test(enable_tensor_fusion):
-            os.environ['FLAGS_enable_tensor_fusion'] = (
-                '1' if enable_tensor_fusion else '0'
-            )
             paddle.distributed.auto_parallel.set_mesh(self._multi_dim_mesh)
-            paddle.seed(self._seed)
+            self.set_random_seed()
             model = paddle.nn.Linear(10, 10)
             batch = paddle.rand(shape=[10, 10])
             batch = dist.shard_tensor(batch, self._mesh, [dist.Shard(0)])
@@ -187,6 +150,8 @@ class TestSemiAutoParallelShardingStage1:
             opt = dist.shard_optimizer(
                 opt, dist.ShardingStage1(sharding_mesh_dim="dp")
             )
+            if enable_tensor_fusion:
+                opt._enable_tensor_fusion()
             model, opt = paddle.amp.decorate(
                 model, optimizers=opt, level='O2', master_grad=True
             )
@@ -202,14 +167,14 @@ class TestSemiAutoParallelShardingStage1:
         loss_disable = run_sharding_test(enable_tensor_fusion=False)
         loss_enable = run_sharding_test(enable_tensor_fusion=True)
         self.check_tensor_eq(loss_disable, loss_enable)
+        os.environ['FLAGS_enable_tensor_fusion'] = '0'
 
     def test_pure_sharding_multi_mesh_stage_1_with_tensor_fusion_with_chip(
         self,
     ):
         dist.init_parallel_env()
-        os.environ['FLAGS_enable_tensor_fusion'] = '1'
         paddle.distributed.auto_parallel.set_mesh(self._multi_dim_mesh)
-        paddle.seed(self._seed)
+        self.set_random_seed()
         model = paddle.nn.Linear(10, 10)
         batch = paddle.rand(shape=[10, 10])
         batch = dist.shard_tensor(batch, self._mesh, [dist.Shard(0)])
@@ -220,6 +185,7 @@ class TestSemiAutoParallelShardingStage1:
         opt = dist.shard_optimizer(
             opt, dist.ShardingStage1(sharding_mesh_dim="dp")
         )
+        opt._enable_tensor_fusion()
         model, opt = paddle.amp.decorate(
             model, optimizers=opt, level='O2', master_grad=True
         )
@@ -229,15 +195,13 @@ class TestSemiAutoParallelShardingStage1:
                 loss.backward()
                 opt.step()
                 opt.clear_grad()
+        os.environ['FLAGS_enable_tensor_fusion'] = '0'
+        os.environ['FLAGS_enable_sharding_overlap'] = '0'
 
     def test_pure_sharding_multi_mesh_stage_1_with_sharding_overlap(self):
         def run_sharding_test(enable_sharding_overlap):
-            os.environ['FLAGS_enable_tensor_fusion'] = '1'
-            os.environ['FLAGS_enable_sharding_overlap'] = (
-                '1' if enable_sharding_overlap else '0'
-            )
             paddle.distributed.auto_parallel.set_mesh(self._multi_dim_mesh)
-            paddle.seed(self._seed)
+            self.set_random_seed()
             model = paddle.nn.Linear(10, 10)
             batch = paddle.rand(shape=[10, 10])
             batch = dist.shard_tensor(batch, self._mesh, [dist.Shard(0)])
@@ -245,6 +209,9 @@ class TestSemiAutoParallelShardingStage1:
             opt = dist.shard_optimizer(
                 opt, dist.ShardingStage1(sharding_mesh_dim="dp")
             )
+            opt._enable_tensor_fusion()
+            if enable_sharding_overlap:
+                opt._enable_sharding_overlap(model)
             model, opt = paddle.amp.decorate(
                 model, optimizers=opt, level='O2', master_grad=True
             )
@@ -260,6 +227,8 @@ class TestSemiAutoParallelShardingStage1:
         loss_disable = run_sharding_test(enable_sharding_overlap=False)
         loss_enable = run_sharding_test(enable_sharding_overlap=True)
         self.check_tensor_eq(loss_disable, loss_enable)
+        os.environ['FLAGS_enable_tensor_fusion'] = '0'
+        os.environ['FLAGS_enable_sharding_overlap'] = '0'
 
     def run_test_case(self):
         if self._backend == "cpu":
@@ -271,8 +240,6 @@ class TestSemiAutoParallelShardingStage1:
 
         self.get_single_card_rst()
         self.test_pure_sharding_stage_1()
-        self.test_sharding_fuse_allreduce_in_opt()
-        self.test_sharding_fuse_reducescatter_in_opt()
         self.test_sharding_stage_1_to_static()
         self.test_pure_sharding_multi_mesh_stage_1()
         self.test_sharding_stage_1_overlap_to_static()

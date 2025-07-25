@@ -17,7 +17,7 @@ import unittest
 
 sys.path.append("../../mkldnn")
 import numpy as np
-from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
+from onednn_op_test import check_if_onednn_primitives_exist_in_bwd
 from op_test import OpTest
 from test_softmax_op import (
     TestSoftmaxOp,
@@ -43,7 +43,7 @@ def stable_softmax(x):
     return exps / np.sum(exps)
 
 
-class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
+class TestSoftmaxONEDNNOp(TestSoftmaxOp):
     def get_x_shape(self):
         return [10, 10]
 
@@ -53,7 +53,7 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
     def setUp(self):
         self.op_type = "softmax"
         self.use_cudnn = False
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.dtype = np.float32
         self.init_kernel_type()
         self.shape = self.get_x_shape()
@@ -67,7 +67,7 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
         self.attrs = {
             'axis': self.axis,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_mkldnn,
+            'use_mkldnn': self.use_onednn,
         }
 
     def test_check_output(self):
@@ -103,54 +103,54 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
             )
 
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
 
 
-class TestSoftmaxMKLDNNOp2(TestSoftmaxOp2):
+class TestSoftmaxONEDNNOp2(TestSoftmaxOp2):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
         # oneDNN doesn't support float64 dtype
         self.dtype = np.float32
         self.check_pir_onednn = False
 
 
-class TestSoftmaxMKLDNNOp3(TestSoftmaxOp3):
+class TestSoftmaxONEDNNOp3(TestSoftmaxOp3):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.dtype = np.float32
         self.check_pir_onednn = False
 
 
-class TestSoftmaxMKLDNNOp4(TestSoftmaxOp4):
+class TestSoftmaxONEDNNOp4(TestSoftmaxOp4):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.dtype = np.float32
         self.check_pir_onednn = False
 
 
-class TestSoftmaxMKLDNNOp5(TestSoftmaxOp5):
+class TestSoftmaxONEDNNOp5(TestSoftmaxOp5):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.dtype = np.float32
         self.check_pir_onednn = False
 
 
-class TestSoftmaxMKLDNNOp6(TestSoftmaxOp6):
+class TestSoftmaxONEDNNOp6(TestSoftmaxOp6):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.dtype = np.float32
         self.check_pir_onednn = False
 
 
-class TestSoftmaxMKLDNNOp_ZeroDim(TestSoftmaxOp_ZeroDim1):
+class TestSoftmaxONEDNNOp_ZeroDim(TestSoftmaxOp_ZeroDim1):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.dtype = np.float32
         self.check_pir_onednn = False
 
 
 # Check if primitives already exist in backward
-class TestSoftmaxMKLDNNPrimitivesAlreadyExist(unittest.TestCase):
+class TestSoftmaxONEDNNPrimitivesAlreadyExist(unittest.TestCase):
     def setUp(self):
         super().setUp()
 
@@ -167,7 +167,7 @@ class TestSoftmaxMKLDNNPrimitivesAlreadyExist(unittest.TestCase):
 
     @compare_legacy_with_pt
     def test_check(self):
-        check_if_mkldnn_primitives_exist_in_bwd(
+        check_if_onednn_primitives_exist_in_bwd(
             self, self.op_type, self.x, self.out, self.out_grad, self.x_grad
         )
 

@@ -7905,6 +7905,18 @@ class EagerParamBase(core.eager.Tensor):
         core.eager.tensor_copy(self, new_param, device, blocking)
         return new_param
 
+    def __setattr__(self, name, value):
+        if (
+            name == 'color'
+            and hasattr(self, 'color')
+            and self.color is not None
+        ):
+            raise AttributeError(
+                f"Parameter '{self.name}' already has a 'color' attribute (used for distributed sharding parallel grouping) "
+                f"and cannot be reassigned."
+            )
+        super().__setattr__(name, value)
+
     __repr__ = __str__
 
 

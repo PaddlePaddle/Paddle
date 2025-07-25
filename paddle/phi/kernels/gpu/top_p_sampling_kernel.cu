@@ -670,8 +670,10 @@ __global__ void topp_sampling(T* sorted_probs,
                               int64_t* out_id,
                               const T* top_ps,
                               const T* threshold,
+                              const int64_t* infer_seed,
                               GPU(randState_t) * states,
                               const int p_num,
+                              const uint64_t seed,
                               const int vocab_size,
                               const bool need_batch_random,
                               int* count_iter,
@@ -685,6 +687,16 @@ __global__ void topp_sampling(T* sorted_probs,
   const float p_t = static_cast<float>(top_ps[bid]);
   const float threshold_now =
       threshold ? static_cast<float>(threshold[bid]) : 0.f;
+  uint64_t seed_now;
+  GPU(randState_t) rand_state;
+  const int global_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (infer_seed) {
+    seed_now = static_cast<uint64_t>(infer_seed[bid]);
+    GPU(rand_init)(seed_now, tid, 0, &rand_state);
+  } else {
+    seed_now = seed;
+    GPU(rand_init)(seed_now, global_idx, 0, &rand_state);
+  }
   if (tid == 0) {
     stop_shared = 0;
   }
@@ -726,7 +738,7 @@ __global__ void topp_sampling(T* sorted_probs,
     if (thread_offset < p_t ||
         (thread_offset >= p_t && thread_offset - thread_count < p_t)) {
       float random_ratio =
-          exponential_transform(GPU(rand_uniform)(states + bid), 1.0f);
+          exponential_transform(GPU(rand_uniform)(&rand_state), 1.0f);
       float tmp_val =
           (thread_count >= threshold_now ? thread_count : 0.f) / random_ratio;
       if (static_cast<float>(max_thread_pair.v) < tmp_val) {
@@ -771,13 +783,6 @@ __global__ void topp_sampling(T* sorted_probs,
     }
   }
   __syncthreads();
-  if (stop_shared == 0) {
-    if (tid == 0) {
-      out_id[bid] = sorted_id[offset];
-      out_val[bid] = sorted_probs[offset];
-    }
-    return;
-  }
 
   Pair<T> max_pair = BlockReduce(temp_storage_reduce)
                          .Reduce(max_thread_pair, MaxOp<Pair<T>>());
@@ -973,10 +978,12 @@ void DispatchTopPSampling(const Context& dev_ctx,
                           int64_t* out_id,
                           const T* top_ps,
                           const T* threshold,
+                          const int64_t* infer_seed,
                           GPU(randState_t) * states,
                           const int p_num,
                           const int vocab_size,
                           const int bs,
+                          const uint64_t seed,
                           const bool need_batch_random,
                           int* count_iter,
                           int* count_iter_begin,
@@ -1011,8 +1018,10 @@ void DispatchTopPSampling(const Context& dev_ctx,
                                                    out_id,
                                                    top_ps,
                                                    threshold,
+                                                   infer_seed,
                                                    states,
                                                    p_num,
+                                                   seed,
                                                    vocab_size,
                                                    need_batch_random,
                                                    count_iter,
@@ -1138,7 +1147,7 @@ void TopPSamplingKernel(const Context& dev_ctx,
     if (seed_now == -1) {
       need_batch_random = true;
       auto gen_cuda = dev_ctx.GetGenerator();
-      uint64_t increment = ps.numel() * 4;
+      uint64_t increment = bs * BlockSize;
       auto seed_offset = gen_cuda->IncrementOffset(increment);
       seed_now = seed_offset.first;
       offset = seed_offset.second;
@@ -1234,10 +1243,12 @@ void TopPSamplingKernel(const Context& dev_ctx,
                           ids_ptr,
                           ps_now.data<T>(),
                           threshold_data,
+                          infer_seed,
                           states,
                           p_num,
                           vocab_size,
                           bs,
+                          seed_now + offset,
                           need_batch_random,
                           count_iter.data<int>(),
                           count_iter_begin.data<int>(),

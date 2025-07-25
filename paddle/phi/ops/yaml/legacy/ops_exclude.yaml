@@ -47,6 +47,7 @@
 - gaussian
 - hsigmoid_loss
 - increment
+- kthvalue
 - linspace
 - logspace
 - lp_pool2d
