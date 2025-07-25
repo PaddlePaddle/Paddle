@@ -28,10 +28,10 @@ template <typename T>
 static void LinearInterpolationGrad(const DenseTensor& output_grad,
                                     DenseTensor* input_grad,
                                     const float ratio_w,
-                                    const int in_w,
-                                    const int n,
-                                    const int c,
-                                    const int out_w,
+                                    const int64_t in_w,
+                                    const int64_t n,
+                                    const int64_t c,
+                                    const int64_t out_w,
                                     const bool align_corners,
                                     const int align_mode,
                                     const DataLayout data_layout) {
@@ -407,7 +407,7 @@ static void Interpolate1DCPUBwd(
     int align_mode,
     DenseTensor* input_grad) {
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
-  int n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
+  int64_t n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
   float scale_w = -1.0;
@@ -508,7 +508,7 @@ static void Interpolate2DCPUBwd(
     int align_mode,
     DenseTensor* input_grad) {
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
-  int n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
+  int64_t n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
   float scale_h = -1;
@@ -674,7 +674,7 @@ static void Interpolate3DCPUBwd(
     int align_mode,
     DenseTensor* input_grad) {
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
-  int n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
+  int64_t n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
   float scale_d = -1;
