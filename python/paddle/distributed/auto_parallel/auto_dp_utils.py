@@ -17,6 +17,7 @@ import paddle
 import paddle.distributed as dist
 
 _enable_auto_dp_mode = False
+_need_convert_grad = True
 
 
 def _fake_replicate_grad_to_partial(grad, partial_axis):
@@ -93,3 +94,13 @@ def in_auto_dp_mode():
 def _enable_auto_dp():
     global _enable_auto_dp_mode
     _enable_auto_dp_mode = True
+
+
+def need_convert_grad_for_auto_dp():
+    global _need_convert_grad
+    return _need_convert_grad and _enable_auto_dp_mode
+
+
+def disable_convert_grad_for_auto_dp():
+    global _need_convert_grad
+    _need_convert_grad = False

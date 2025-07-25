@@ -1930,6 +1930,15 @@ class _ShardOptimizer(Optimizer):
     def _apply_optimize(
         self, loss, startup_program, params_grads, param_group_idx=0
     ):
+        if paddle.in_dynamic_mode():
+            if (
+                paddle.distributed.auto_parallel.auto_dp_utils.need_convert_grad_for_auto_dp()
+            ):
+                paddle.distributed.auto_parallel.auto_dp_utils._convert_fake_replicate_grad_to_partial(
+                    params_grads
+                )
+                paddle.distributed.auto_parallel.auto_dp_utils.disable_convert_grad_for_auto_dp()
+
         if paddle.in_dynamic_mode() and isinstance(
             self._shard_fn, ShardingStage1
         ):

@@ -1669,10 +1669,9 @@ class Optimizer:
                 paddle.static.default_main_program(),
                 paddle.static.default_startup_program(),
             ):
-                auto_dp = (
-                    paddle.distributed.auto_parallel.auto_dp_utils.in_auto_dp_mode()
-                )
-                if auto_dp:
+                if (
+                    paddle.distributed.auto_parallel.auto_dp_utils.need_convert_grad_for_auto_dp()
+                ):
                     paddle.distributed.auto_parallel.auto_dp_utils._convert_fake_replicate_grad_to_partial(
                         params_grads
                     )
