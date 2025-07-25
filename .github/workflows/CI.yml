@@ -56,7 +56,7 @@ jobs:
     uses: ./.github/workflows/_Linux-CPU.yml
     needs: build-docker
     with:
-      docker_cpu_image: ${{ needs.build-docker.outputs.docker_distribute_image }}
+      docker_cpu_image: ${{ needs.build-docker.outputs.docker_cpu_image }}
 
   npu:
     name: Linux-NPU
