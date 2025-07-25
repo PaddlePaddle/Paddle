@@ -44,6 +44,14 @@ DenseTensor Matmul(const Context& dev_ctx,
                    const DenseTensor& y,
                    bool transpose_x = false,
                    bool transpose_y = false) {
+  if (x.place() == phi::CPUPlace()) {
+    PADDLE_ENFORCE_EQ(
+        x.dtype(),
+        y.dtype(),
+        common::errors::InvalidArgument(
+            "The Input(x) dtype must be the same as Input(y),"
+            " but received Input(x) dtype is %s, Input(y) dtype is %s."));
+  }
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   MatmulInferMeta(x, y, transpose_x, transpose_y, &meta_out);
