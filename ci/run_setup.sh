@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+echo "--------------------------------------------------------------------"
+echo $WITH_GPU
 source $(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/utils.sh
 init
 
@@ -20,9 +21,16 @@ if [ "${WITH_ROCM}" != "ON" ]; then
     ln -sf $(which python${PY_VERSION}) /usr/local/bin/python
     ln -sf $(which pip${PY_VERSION}) /usr/local/bin/pip
 fi
+
+echo "--------------------------------------------------------------------"
+echo $WITH_GPU
+
 echo "::group::Installing zstd"
 apt install zstd -y
 echo "::endgroup::"
+
+echo "--------------------------------------------------------------------"
+echo $WITH_GPU
 
 if [ "$CI_name" == "cpu" ] || [ "$CI_name" == "coverage" ] || [ "$CI_name" == "xpu" ] || [ "$CI_name" == "distribute" ] || [ "$CI_name" == "build" ]; then
     if [ "$CI_name" == "xpu" ]; then
@@ -42,6 +50,10 @@ if [ "$CI_name" == "cpu" ] || [ "$CI_name" == "coverage" ] || [ "$CI_name" == "x
     fi
     echo "::endgroup::"
 fi
+
+echo "--------------------------------------------------------------------"
+echo $WITH_GPU
+
 
 function run_setup(){
     startTime_s=`date +%s`
@@ -179,7 +191,8 @@ function run_setup(){
             echo "::endgroup::"
         fi
     fi
-
+echo "--------------------------------------------------------------------"
+echo $WITH_GPU
     if [ "$SYSTEM" == "Darwin" ]; then
         WITH_DISTRIBUTE="OFF"
         WITH_AVX=${WITH_AVX:-ON}
@@ -188,7 +201,8 @@ function run_setup(){
     else
         INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-/root/.cache/inference_demo}
     fi
-
+echo "--------------------------------------------------------------------"
+echo $WITH_GPU
     if [ -z "${WITH_CPP_TEST}" ] && [ "${WITH_TESTING}" == "ON" ];then
       echo "::group::Installing PyGithub"
       pip install PyGithub
@@ -202,6 +216,8 @@ function run_setup(){
           export WITH_CPP_TEST=ON
       fi
     fi
+echo "--------------------------------------------------------------------"
+echo $WITH_GPU
     distributed_flag=${WITH_DISTRIBUTE:-OFF}
     gloo_flag=${distributed_flag}
     pscore_flag=${distributed_flag}
@@ -213,6 +229,8 @@ function run_setup(){
       python ${PADDLE_ROOT}/tools/summary_env.py
       bash ${PADDLE_ROOT}/tools/get_cpu_info.sh
     fi
+echo "--------------------------------------------------------------------"
+echo $WITH_GPU
     echo "if you use cmake to compile,please Configuring cmake in /paddle/build ..."
     cat <<EOF
     ========================================

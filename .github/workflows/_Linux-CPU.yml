@@ -37,7 +37,6 @@ jobs:
     steps:
       - name: Check docker image  and run container
         env:
-          WITH_GPU: "OFF"
           WITH_SHARED_PHI: "ON"
           WITH_MKL: "OFF"
           WITH_TESTING: "ON"
@@ -68,7 +67,6 @@ jobs:
             -v "/dev/shm:/dev/shm"  \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/paddle \
-            -e WITH_GPU \
             -e BRANCH \
             -e PR_ID \
             -e COMMIT_ID \
@@ -104,6 +102,8 @@ jobs:
           work_dir: ${{ github.workspace }}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          echo "--------------------------------------------------------------------"
+          echo $WITH_GPU
           rm -rf  * .[^.]*
           set -e
           echo "Downloading Paddle.tar.gz"
@@ -115,6 +115,8 @@ jobs:
           git config --global user.email "paddle_ci@example.com"
           git remote -v
           set +e
+          echo "--------------------------------------------------------------------"
+          echo $WITH_GPU
           git remote add upstream https://github.com/PaddlePaddle/Paddle.git
           set -e
           source ${{ github.workspace }}/../../../proxy
@@ -124,6 +126,8 @@ jobs:
           git fetch upstream $BRANCH
           git checkout test
           git merge --no-edit $BRANCH
+          echo "--------------------------------------------------------------------"
+          echo $WITH_GPU
           '
 
       - name: Check bypass
@@ -137,8 +141,14 @@ jobs:
         if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          echo "--------------------------------------------------------------------"
+          echo $WITH_GPU
           source ${{ github.workspace }}/../../../proxy
+          echo "--------------------------------------------------------------------"
+          echo $WITH_GPU
           bash ${ci_scripts}/cmake-predownload.sh
+          echo "--------------------------------------------------------------------"
+          echo $WITH_GPU
           bash ${ci_scripts}/run_setup.sh bdist_wheel
           EXCODE=$?
           exit $EXCODE
