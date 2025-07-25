@@ -254,7 +254,7 @@ __launch_bounds__(BLOCK_SIZE) __global__
     RandomNumGen rng(gidx, random_seed);
     float weight_keys[ITEMS_PER_THREAD];
     int neighbor_idxs[ITEMS_PER_THREAD];
-    using BlockRadixTopKT = paddle::framework::
+    using BlockRadixTopKT = phi::funcs::
         BlockRadixTopKRegister<float, BLOCK_SIZE, ITEMS_PER_THREAD, true, int>;
     __shared__ typename BlockRadixTopKT::TempStorage sort_tmp_storage;
 
