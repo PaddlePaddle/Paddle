@@ -14,6 +14,7 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 
 #include "paddle/phi/kernels/impl/lu_kernel_impl.h"
@@ -35,9 +36,18 @@ void LUKernel(const Context& dev_ctx,
                         "but got pivots=False"));
 
   if (x.numel() == 0) {
-    dev_ctx.template Alloc<int>(infos);
-    dev_ctx.template Alloc<int>(pivots);
-    dev_ctx.template Alloc<T>(out);
+    phi::Full<int, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(infos->dims())),
+                            static_cast<int>(0),
+                            infos);
+    phi::Full<int, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(pivots->dims())),
+                            static_cast<int>(0),
+                            pivots);
+    phi::Full<T, Context>(dev_ctx,
+                          phi::IntArray(common::vectorize(out->dims())),
+                          static_cast<T>(0),
+                          out);
     return;
   }
   *out = Transpose2DTo6D<Context, T>(dev_ctx, x);

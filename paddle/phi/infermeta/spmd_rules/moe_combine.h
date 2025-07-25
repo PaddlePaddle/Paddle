@@ -22,14 +22,14 @@ limitations under the License. */
 namespace phi {
 namespace distributed {
 
-SpmdInfo MoECombineFwdInferSpmd(const DistMetaTensor& x,
-                                const DistMetaTensor& combine_weights,
-                                const DistMetaTensor& scatter_index);
+SpmdInfo MoECombineInferSpmd(const DistMetaTensor& x,
+                             const DistMetaTensor& combine_weights,
+                             const DistMetaTensor& scatter_index);
 
-SpmdInfo MoECombineBwdInferSpmd(const DistMetaTensor& x,
-                                const DistMetaTensor& combine_weights,
-                                const DistMetaTensor& scatter_index,
-                                const DistMetaTensor& grad_y);
+SpmdInfo MoECombineGradInferSpmd(const DistMetaTensor& x,
+                                 const DistMetaTensor& combine_weights,
+                                 const DistMetaTensor& scatter_index,
+                                 const DistMetaTensor& grad_y);
 
 }  // namespace distributed
 }  // namespace phi
