@@ -125,7 +125,7 @@ __launch_bounds__(BLOCK_SIZE) __global__
     bool topk_is_unique;
 
     using BlockRadixSelectT =
-        paddle::framework::BlockRadixTopKGlobalMemory<float, BLOCK_SIZE, true>;
+        phi::funcs::BlockRadixTopKGlobalMemory<float, BLOCK_SIZE, true>;
     __shared__ typename BlockRadixSelectT::TempStorage share_storage;
 
     BlockRadixSelectT{share_storage}.radixTopKGetThreshold(
