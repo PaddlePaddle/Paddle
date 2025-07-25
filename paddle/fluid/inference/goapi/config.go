@@ -530,8 +530,8 @@ func (config *Config) EnableONEDNN() {
 ///
 /// \param capacity The cache capacity.
 ///
-func (config *Config) SetMkldnnCacheCapacity(capacity int32) {
-	C.PD_ConfigSetMkldnnCacheCapacity(config.c, C.int32_t(capacity))
+func (config *Config) SetOnednnCacheCapacity(capacity int32) {
+	C.PD_ConfigSetOnednnCacheCapacity(config.c, C.int32_t(capacity))
 }
 
 ///
@@ -575,7 +575,7 @@ func (config *Config) CpuMathLibraryNumThreads() int32 {
 ///
 /// \param opList The operator type list.
 ///
-func (config *Config) SetMKLDNNOp(opList []string) {
+func (config *Config) SetONEDNNOp(opList []string) {
 	num := uint(len(opList))
 	// Add one in case num is zero.
 	var buf = make([]*C.char, num+1)

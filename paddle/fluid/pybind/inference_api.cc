@@ -1051,7 +1051,7 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("x") = true,
            py::arg("passes") = std::vector<std::string>())
       .def("enable_mkldnn", &AnalysisConfig::EnableONEDNN)
-      .def("disable_mkldnn", &AnalysisConfig::DisableMKLDNN)
+      .def("disable_mkldnn", &AnalysisConfig::DisableONEDNN)
       .def("mkldnn_enabled", &AnalysisConfig::mkldnn_enabled)
       .def("enable_cinn", &AnalysisConfig::EnableCINN)
       .def("set_cpu_math_library_num_threads",
@@ -1062,7 +1062,7 @@ void BindAnalysisConfig(py::module *m) {
       .def("enable_mkldnn_bfloat16", &AnalysisConfig::EnableMkldnnBfloat16)
 #ifdef PADDLE_WITH_DNNL
       .def("set_mkldnn_cache_capacity",
-           &AnalysisConfig::SetMkldnnCacheCapacity,
+           &AnalysisConfig::SetOnednnCacheCapacity,
            py::arg("capacity") = 0)
       .def("set_bfloat16_op", &AnalysisConfig::SetBfloat16Op)
       .def("enable_mkldnn_int8",
@@ -1071,7 +1071,7 @@ void BindAnalysisConfig(py::module *m) {
                std::unordered_set<std::string>({}))
       .def("mkldnn_int8_enabled", &AnalysisConfig::mkldnn_int8_enabled)
       .def("disable_mkldnn_fc_passes",
-           &AnalysisConfig::DisableMkldnnFcPasses,
+           &AnalysisConfig::DisableOnednnFcPasses,
            R"DOC(
             Disable Mkldnn FC
             Returns:
@@ -1087,7 +1087,7 @@ void BindAnalysisConfig(py::module *m) {
                     >>> config.disable_mkldnn_fc_passes()
             )DOC")
 #endif
-      .def("set_mkldnn_op", &AnalysisConfig::SetMKLDNNOp)
+      .def("set_mkldnn_op", &AnalysisConfig::SetONEDNNOp)
       .def("set_model_buffer", &AnalysisConfig::SetModelBuffer)
       .def("model_from_memory", &AnalysisConfig::model_from_memory)
       .def("delete_pass", &AnalysisConfig::DeletePass)

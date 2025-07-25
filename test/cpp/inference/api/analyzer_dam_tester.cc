@@ -221,18 +221,18 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 }
 
 // Easy for profiling independently.
-void profile(bool use_mkldnn = false) {
+void profile(bool use_onednn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
 
-  if (use_mkldnn) {
+  if (use_onednn) {
     cfg.EnableONEDNN();
     // Enable all the onednn supported ops except conv3d in dam
     std::unordered_set<std::string> op_list = {
         "softmax", "elementwise_add", "relu", "fc"};
-    cfg.SetMKLDNNOp(op_list);
+    cfg.SetONEDNNOp(op_list);
   } else {
-    cfg.DisableMKLDNN();
+    cfg.DisableONEDNN();
   }
 
   std::vector<std::vector<PaddleTensor>> outputs;
@@ -268,21 +268,21 @@ void profile(bool use_mkldnn = false) {
 
 TEST(Analyzer_dam, profile) { profile(); }
 #ifdef PADDLE_WITH_DNNL
-TEST(Analyzer_dam, profile_mkldnn) { profile(true /* use_mkldnn */); }
+TEST(Analyzer_dam, profile_onednn) { profile(true /* use_onednn */); }
 #endif
 
 // Compare result of NativeConfig and AnalysisConfig
-void compare(bool use_mkldnn = false) {
+void compare(bool use_onednn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-  if (use_mkldnn) {
+  if (use_onednn) {
     cfg.EnableONEDNN();
     // Enable all the onednn supported ops except conv3d in dam
     std::unordered_set<std::string> op_list = {
         "softmax", "elementwise_add", "relu"};
-    cfg.SetMKLDNNOp(op_list);
+    cfg.SetONEDNNOp(op_list);
   } else {
-    cfg.DisableMKLDNN();
+    cfg.DisableONEDNN();
   }
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
@@ -313,14 +313,14 @@ TEST(Analyzer_dam, compare_with_dynamic_memory_optim) {
 TEST(Analyzer_dam, compare) { compare(); }
 
 #ifdef PADDLE_WITH_DNNL
-TEST(Analyzer_dam, compare_mkldnn) { compare(true /* use_mkldnn */); }
+TEST(Analyzer_dam, compare_onednn) { compare(true /* use_onednn */); }
 #endif
 
 // Compare Deterministic result
 TEST(Analyzer_dam, compare_determine) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-  cfg.DisableMKLDNN();
+  cfg.DisableONEDNN();
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
