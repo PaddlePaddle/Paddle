@@ -205,7 +205,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 #ifdef PADDLE_WITH_DNNL
     if (FLAGS_use_mkldnn) {
       AppendPass(pass_name);
-    } else if (!strategy_.mkldnn_enabled_op_types_.empty()) {
+    } else if (!strategy_.onednn_enabled_op_types_.empty()) {
       VLOG(1) << "mkldnn_enabled_op_types specify the operator type list to "
                  "use MKLDNN acceleration. It is null in default, means "
                  "that all the operators supported by MKLDNN will be "
@@ -320,7 +320,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       }
     } else if (pass->Type() == "onednn_placement_pass") {
       pass->Set("mkldnn_enabled_op_types",
-                new std::unordered_set<std::string>(mkldnn_enabled_op_types_));
+                new std::unordered_set<std::string>(onednn_enabled_op_types_));
     }
     VLOG(1) << "Start Apply Pass " << pass->Type();
     if (FLAGS_convert_all_blocks) {
