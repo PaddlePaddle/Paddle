@@ -21,7 +21,7 @@ from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
-class TestConvTransposeMkldnnFusePass(PassAutoScanTest):
+class TestConvTransposeOnednnFusePass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))

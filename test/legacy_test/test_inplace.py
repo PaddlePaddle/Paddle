@@ -16,6 +16,7 @@ import functools
 import unittest
 
 import numpy as np
+from op_test import get_places
 
 import paddle
 
@@ -2489,6 +2490,17 @@ class TestDygraphInplaceResizeBF16(TestDygraphInplaceResize):
                 x = paddle.to_tensor(self.x_np).astype(self.dtype)
                 inplace_x2 = self.inplace_api_processing(x, self.new_shape2)
                 self.assertTrue(id(x) == id(inplace_x2))
+
+
+class TestSet_API_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.places = get_places()
+
+    def test_set_api(self):
+        for place in self.places:
+            with paddle.base.dygraph.guard(place):
+                out = paddle.randn([20]).set_(paddle.randn([0, 3]), [20], [2])
+                np.testing.assert_allclose(out.shape, [20])
 
 
 if __name__ == '__main__':

@@ -40,6 +40,18 @@ void BatchNormKernel(const Context& dev_ctx,
                      DenseTensor* saved_mean,
                      DenseTensor* saved_variance,
                      DenseTensor* reserve_space) {
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(y);
+    if (mean_out) dev_ctx.template Alloc<T>(mean_out);
+    if (variance_out) dev_ctx.template Alloc<T>(variance_out);
+    if (saved_mean) dev_ctx.template Alloc<T>(saved_mean);
+    if (saved_variance) dev_ctx.template Alloc<T>(saved_variance);
+    if (reserve_space) {
+      reserve_space->Resize({0});
+      dev_ctx.template Alloc<T>(reserve_space);
+    }
+    return;
+  }
   using XPUType = typename XPUTypeTrait<T>::Type;
   bool test_mode = is_test && (!trainable_statistics);
   bool global_stats = test_mode || use_global_stats;

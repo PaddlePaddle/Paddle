@@ -935,7 +935,7 @@ void BatchNormInferMeta(const MetaTensor& x,
   const auto x_dims = x.dims();
   for (int i = 0; i < x_dims.size(); i++) {
     PADDLE_ENFORCE_EQ(
-        (x_dims[i] == -1) || (x_dims[i] > 0),
+        (x_dims[i] == -1) || (x_dims[i] >= 0),
         true,
         common::errors::InvalidArgument(
             "Each dimension of input tensor is expected to be -1 or a "
@@ -1001,7 +1001,7 @@ void BatchNormInferMeta(const MetaTensor& x,
     check = false;
   }
 
-  if (check) {
+  if (check && C != 0) {
     PADDLE_ENFORCE_EQ(scale.dims()[0],
                       C,
                       common::errors::InvalidArgument(
@@ -3247,7 +3247,7 @@ static void Interpolate1DInferShapeCheck(
                         "Input(X) dimension is 3, but got method = %s .",
                         interp_method));
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
-  for (int i = 0; i < dim_x.size(); ++i) {
+  for (int i = 2; i < dim_x.size(); ++i) {
     PADDLE_ENFORCE_NE(dim_x[i],
                       0,
                       common::errors::InvalidArgument(
@@ -3379,7 +3379,7 @@ static void Interpolate2DInferShapeCheck(
           interp_method));
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
 
-  for (int i = 0; i < dim_x.size(); ++i) {
+  for (int i = 2; i < dim_x.size(); ++i) {
     PADDLE_ENFORCE_NE(dim_x[i],
                       0,
                       common::errors::InvalidArgument(
@@ -3532,7 +3532,7 @@ static void Interpolate3DInferShapeCheck(
           interp_method));
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
 
-  for (int i = 0; i < dim_x.size(); ++i) {
+  for (int i = 2; i < dim_x.size(); ++i) {
     PADDLE_ENFORCE_NE(dim_x[i],
                       0,
                       common::errors::InvalidArgument(
@@ -5335,7 +5335,7 @@ void SendUERecvInferMeta(const MetaTensor& x,
                                         dst_index_dims.size()));
   }
 
-  if (src_index_dims[0] != 0) {
+  if (src_index_dims[0] != 0 && dst_index_dims[0] != 0) {
     PADDLE_ENFORCE_EQ(
         src_index_dims[0],
         dst_index_dims[0],
@@ -5423,7 +5423,7 @@ void SendUVInferMeta(const MetaTensor& x,
                                         dst_index_dims.size()));
   }
 
-  if (src_index_dims[0] != 0) {
+  if (src_index_dims[0] != 0 && dst_index_dims[0] != 0) {
     PADDLE_ENFORCE_EQ(
         src_index_dims[0],
         dst_index_dims[0],

@@ -1587,7 +1587,7 @@ void AnalysisPredictor::MkldnnPreSet(
   VLOG(2) << "AnalysisPredictor::ZeroCopyRun get_cur_mkldnn_session_id="
           << phi::OneDNNContext::tls().get_cur_mkldnn_session_id();
   // In cache clearing mode.
-  if (config_.mkldnn_cache_capacity_ > 0) {
+  if (config_.onednn_cache_capacity_ > 0) {
     VLOG(2) << "In mkldnn cache clear mode.";
     phi::OneDNNContext::tls().set_cur_mkldnn_session_id(
         phi::OneDNNContextThreadLocals::kMKLDNNSessionID_CacheClearing);
@@ -1602,7 +1602,7 @@ void AnalysisPredictor::MkldnnPreSet(
     phi::OneDNNContext::tls().set_cur_input_shape_str(ss.str());
   }
   phi::OneDNNContext::tls().set_cur_input_shape_cache_capacity(
-      config_.mkldnn_cache_capacity_);
+      config_.onednn_cache_capacity_);
 
 #endif
 }
@@ -1610,7 +1610,7 @@ void AnalysisPredictor::MkldnnPreSet(
 void AnalysisPredictor::MkldnnPostReset() {
 #ifdef PADDLE_WITH_DNNL
   // In cache clearing mode.
-  if (config_.mkldnn_cache_capacity_ > 0 &&
+  if (config_.onednn_cache_capacity_ > 0 &&
       static_cast<phi::OneDNNContext *>(
           (&phi::DeviceContextPool::Instance())->Get(phi::CPUPlace()))
               ->GetCachedObjectsNumber() > 0) {
@@ -1620,10 +1620,10 @@ void AnalysisPredictor::MkldnnPostReset() {
               (&phi::DeviceContextPool::Instance())->Get(phi::CPUPlace()))
               ->GetShapeBlobSize();
       PADDLE_ENFORCE_LE(shape_blob_size,
-                        static_cast<size_t>(config_.mkldnn_cache_capacity_),
+                        static_cast<size_t>(config_.onednn_cache_capacity_),
                         common::errors::InvalidArgument(
                             "Required shape_blob_size should be less than or "
-                            "equal to config_.mkldnn_cache_capacity_. "));
+                            "equal to config_.onednn_cache_capacity_. "));
     }
     // We cannot reset to the default cache settings
     // as there maybe CopyToCPU method used and oneDNN
@@ -1637,7 +1637,7 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
                             int batch_size) {
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 #ifdef PADDLE_WITH_DNNL
-  if (config_.use_mkldnn_) MkldnnPreSet(inputs);
+  if (config_.use_onednn_) MkldnnPreSet(inputs);
 #endif
   VLOG(3) << "Predictor::predict";
   // set feed variable
@@ -1693,7 +1693,7 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   // conflict when integrating it into deployment service.
   paddle::platform::SetNumThreads(1);
 #ifdef PADDLE_WITH_DNNL
-  if (config_.use_mkldnn_) MkldnnPostReset();
+  if (config_.use_onednn_) MkldnnPostReset();
 #endif
 #if defined(PADDLE_WITH_MKLML)
   // Frees unused memory allocated by the Intel® MKL Memory Allocator to
@@ -1714,7 +1714,7 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
   }
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 #ifdef PADDLE_WITH_DNNL
-  if (config_.use_mkldnn_) MkldnnPreSet(inputs);
+  if (config_.use_onednn_) MkldnnPreSet(inputs);
 #endif
   VLOG(3) << "predict start";
   // set feed variable
@@ -1799,7 +1799,7 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
     phi::DeviceContextPool::SetDeviceContexts(nullptr);
   }
 #ifdef PADDLE_WITH_DNNL
-  if (config_.use_mkldnn_) MkldnnPostReset();
+  if (config_.use_onednn_) MkldnnPostReset();
 #endif
 #if defined(PADDLE_WITH_MKLML)
   // Frees unused memory allocated by the Intel® MKL Memory Allocator to
@@ -2102,7 +2102,7 @@ void AnalysisPredictor::PrepareArgument() {
 
   if (config_.mkldnn_enabled() && !config_.use_gpu()) {
     LOG(INFO) << "MKLDNN is enabled";
-    argument_->SetMKLDNNEnabledOpTypes(config_.mkldnn_enabled_op_types_);
+    argument_->SetMKLDNNEnabledOpTypes(config_.onednn_enabled_op_types_);
   }
 
   if (config_.cinn_enabled()) {
@@ -2674,7 +2674,7 @@ bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
   }
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 #ifdef PADDLE_WITH_DNNL
-  if (config_.use_mkldnn_) {
+  if (config_.use_onednn_) {
     std::vector<std::vector<int>> shape_vector;
     auto names = GetInputNames();
     for (auto &name : names) {
@@ -2765,7 +2765,7 @@ bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
     phi::DeviceContextPool::SetDeviceContexts(nullptr);
   }
 #ifdef PADDLE_WITH_DNNL
-  if (config_.use_mkldnn_) MkldnnPostReset();
+  if (config_.use_onednn_) MkldnnPostReset();
 #endif
 #if defined(PADDLE_WITH_MKLML)
   // Frees unused memory allocated by the Intel® MKL Memory Allocator to

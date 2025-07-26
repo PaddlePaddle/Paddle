@@ -457,7 +457,6 @@ HIGH_PARALLEL_JOB_NEW = [
     'test_dist_fleet_ps2',
     'test_collective_scatter_api',
     'test_dist_oneps',
-    'test_dist_tree_index',
     'test_dist_fleet_ps',
     'test_dist_fleet_a_sync_optimizer_sync',
     'test_dist_fleet_decay',
