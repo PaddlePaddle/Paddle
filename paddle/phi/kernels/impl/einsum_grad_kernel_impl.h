@@ -43,16 +43,29 @@ DenseTensor PerformTileAndReduction(const Context& dev_ctx,
   std::vector<int64_t> repeat_times;
   std::vector<int64_t> resize_dims;
   std::vector<int64_t> recover_shape;
+  std::vector<int64_t> t_shape = common::vectorize(t.dims());
+  int i = 0;
   for (int c : op_label) {
     if (label2type[c] == LabelType::Reduction) {
       repeat_times.push_back(label2shape[c]);
       resize_dims.push_back(1);
       recover_shape.push_back(label2shape[c]);
+      t_shape.insert(t_shape.begin() + i, 1);
     } else {
       resize_dims.push_back(label2shape[c]);
       repeat_times.push_back(1);
       recover_shape.push_back(label2shape[c]);
     }
+    ++i;
+  }
+  i = 0;
+  for (int c : op_label) {
+    if (label2type[c] == LabelType::Contraction &&
+        label2shape[c] > t_shape[i]) {
+      resize_dims[i] = 1;
+      repeat_times[i] = label2shape[c];
+    }
+    ++i;
   }
   t.Resize(common::make_ddim(resize_dims));
   DenseTensor after_tile;
