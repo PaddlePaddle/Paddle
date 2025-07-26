@@ -144,7 +144,6 @@ class TestUnflattenInputZeroSize(TestUnflattenAPI):
 
 class TestUnflattenInputZeroSizeError(unittest.TestCase):
     def test_errors(self):
-        paddle.disable_static()
         x = np.random.rand(4, 0, 16).astype('float32')
         x = paddle.to_tensor(x)
         with self.assertRaises(Exception) as context:
