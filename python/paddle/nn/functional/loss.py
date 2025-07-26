@@ -2999,10 +2999,16 @@ def cross_entropy(
             valid_label = (
                 paddle.cast(label != ignore_index, dtype=label.dtype) * label
             )
+        out_type = input.dtype
+        if out_type == paddle.float16:
+            input = paddle.cast(input, paddle.float32)
+
         _, out = _C_ops.cross_entropy_with_softmax(
             input, label, soft_label, use_softmax, True, ignore_index, axis
         )
 
+        if out_type == paddle.float16:
+            out = paddle.cast(out, out_type)
         if weight is not None:
             # trans weight from class to sample, shape:N or [N,H,W] for 1d and 2d cases.
             if soft_label:
