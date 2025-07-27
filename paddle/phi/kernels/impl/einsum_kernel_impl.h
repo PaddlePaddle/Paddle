@@ -205,6 +205,7 @@ inline static void InferLabelShape(
     const std::vector<DDim>& inputs,
     LabelMap* labelshape,
     std::vector<std::vector<int64_t>>* broadcast_shapes) {
+  LabelMap labelshape_copy = *labelshape;
   VLOG(5) << "Start InferLabelShape";
   for (size_t i = 0; i < op_labels.size(); ++i) {
     auto& op_str = op_labels[i];
@@ -233,6 +234,9 @@ inline static void InferLabelShape(
   }
   for (size_t i = 0; i < op_labels.size(); ++i) {
     for (auto& c : op_labels[i]) {
+      if (labelshape_copy.exist(c) && labelshape_copy[c] > (*labelshape)[c]) {
+        (*labelshape)[c] = labelshape_copy[c];
+      }
       (*broadcast_shapes)[i].push_back((*labelshape)[c]);
     }
   }
@@ -603,6 +607,7 @@ DenseTensor TransposeToOutput(const Context& dev_ctx,
 template <typename T, typename Context>
 void EinsumKernelImpl(const Context& dev_ctx,
                       const std::vector<char>& forward_all_labels,
+                      const LabelMap& forward_label_shape,
                       const std::vector<const DenseTensor*>& inputs,
                       const std::string& equation,
                       DenseTensor* out,
@@ -629,6 +634,7 @@ void EinsumKernelImpl(const Context& dev_ctx,
   std::string right;
   if (!is_forward) {
     all_labels = forward_all_labels;
+    labelshape = forward_label_shape;
   }
   ParseEinsumEquation(equation,
                       input_dims,
@@ -680,6 +686,7 @@ void EinsumKernel(const Context& dev_ctx,
     }
   }
   std::vector<char> tmp;
+  LabelMap labelshape_holder;
   // for the sake of compatibility, we may load and run v2.3 EinsumOp. Output
   // may have nullptr and the cache.size() is not equal to inputs.size(). refer
   // to BuildPhiKernelContext for details.
@@ -687,8 +694,14 @@ void EinsumKernel(const Context& dev_ctx,
   for (int i = 0; i < diff; ++i) {
     cache.push_back(nullptr);
   }
-  EinsumKernelImpl<T, Context>(
-      dev_ctx, tmp, inputs, equation, out, cache, /*forward=*/true);
+  EinsumKernelImpl<T, Context>(dev_ctx,
+                               tmp,
+                               labelshape_holder,
+                               inputs,
+                               equation,
+                               out,
+                               cache,
+                               /*forward=*/true);
 }
 
 template <typename T, typename Context>
@@ -697,13 +710,20 @@ void EinsumInferKernel(const Context& dev_ctx,
                        const std::string& equation,
                        DenseTensor* out) {
   std::vector<char> place_holder;
+  LabelMap labelshape_holder;
   std::vector<DenseTensor*> cache_tensor(
       inputs.size());  // set empty; TA, TB, TdC
   for (size_t i = 0; i < inputs.size(); ++i) {
     cache_tensor[i] = nullptr;
   }
-  EinsumKernelImpl<T, Context>(
-      dev_ctx, place_holder, inputs, equation, out, cache_tensor, true);
+  EinsumKernelImpl<T, Context>(dev_ctx,
+                               place_holder,
+                               labelshape_holder,
+                               inputs,
+                               equation,
+                               out,
+                               cache_tensor,
+                               true);
 }
 
 }  // namespace phi
