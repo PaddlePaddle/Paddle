@@ -557,7 +557,11 @@ void FusedBiasActKernel(const Context &dev_ctx,
                         float quant_min_bound,
                         DenseTensor *out) {
   if (out && out->numel() == 0) {
-    dev_ctx.template Alloc<T>(out);
+    if (quant_scale > 0) {
+      dev_ctx.template Alloc<int8_t>(out);
+    } else {
+      dev_ctx.template Alloc<T>(out);
+    }
     return;
   }
   int64_t cols = x.dims()[x.dims().size() - 1];
