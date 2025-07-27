@@ -2476,13 +2476,11 @@ void FusedBiasActInferMeta(const MetaTensor& x,
     x_shapes.push_back(x_dims[i]);
   }
 
-  if (config.is_runtime) {
-    if (x.numel() != 0) {
-      PADDLE_ENFORCE_GT(
-          x.numel() / dim,
-          0,
-          common::errors::InvalidArgument("The size of Attr(rows) must > 0"));
-    }
+  if (config.is_runtime && x.numel() != 0) {
+    PADDLE_ENFORCE_GT(
+        x.numel() / dim,
+        0,
+        common::errors::InvalidArgument("The size of Attr(rows) must > 0"));
 
     PADDLE_ENFORCE_GT(
         dim,

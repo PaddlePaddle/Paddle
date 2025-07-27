@@ -559,6 +559,12 @@ void FusedBiasActKernel(const Context &dev_ctx,
   if (out && out->numel() == 0) {
     if (quant_scale > 0) {
       dev_ctx.template Alloc<int8_t>(out);
+    } else if (compute_dtype == "fp16") {
+      dev_ctx.template Alloc<phi::dtype::float16>(out);
+    } else if (compute_dtype == "bf16") {
+      dev_ctx.template Alloc<phi::dtype::bfloat16>(out);
+    } else if (compute_dtype == "fp32") {
+      dev_ctx.template Alloc<float>(out);
     } else {
       dev_ctx.template Alloc<T>(out);
     }
