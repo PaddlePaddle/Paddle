@@ -19,6 +19,7 @@
 #endif
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 #include "paddle/phi/common/memory_utils.h"
@@ -28,7 +29,6 @@
 namespace phi {
 
 #ifdef PADDLE_WITH_HIP
-
 template <typename T>
 void rocsolver_getrf(const rocblas_handle& handle,
                      int m,
