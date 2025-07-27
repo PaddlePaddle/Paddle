@@ -38,14 +38,15 @@ void DeformableConvKernel(const Context& dev_ctx,
                           int groups,
                           int im2col_step,
                           DenseTensor* out) {
+  const int64_t batch_size = static_cast<int64_t>(x.dims()[0]);
+
   if (x.numel() == 0 || filter.numel() == 0) {
     phi::Full<T, Context>(
         dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
     return;
   }
-  const int batch_size = static_cast<int>(x.dims()[0]);
 
-  int temp_step = std::min(64, batch_size);
+  int64_t temp_step = std::min<int64_t>(64, batch_size);
   if (batch_size % temp_step == 0) {
     im2col_step = temp_step;
   }
@@ -86,9 +87,9 @@ void DeformableConvKernel(const Context& dev_ctx,
   DDim input_shape = common::slice_ddim(x.dims(), 1, x.dims().size());
   std::vector<int64_t> input_shape_vec = common::vectorize(input_shape);
 
-  int input_dim = x.numel() / x.dims()[0];
-  int input_offset_dim = offset.numel() / offset.dims()[0];
-  int input_mask_dim = mask ? mask->numel() / mask->dims()[0] : 0;
+  int64_t input_dim = x.numel() / x.dims()[0];
+  int64_t input_offset_dim = offset.numel() / offset.dims()[0];
+  int64_t input_mask_dim = mask ? mask->numel() / mask->dims()[0] : 0;
 
   const T* input_ptr = x.data<T>();
   const T* offset_ptr = offset.data<T>();
@@ -97,7 +98,7 @@ void DeformableConvKernel(const Context& dev_ctx,
 
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
 
-  for (int i = 0; i < batch_size / im2col_step; ++i) {
+  for (int64_t i = 0; i < batch_size / im2col_step; ++i) {
     const T* temp_mask_ptr =
         mask_ptr ? mask_ptr + i * im2col_step * input_mask_dim : nullptr;
     funcs::ModulatedDeformableIm2col(
@@ -139,7 +140,6 @@ void DeformableConvKernel(const Context& dev_ctx,
                   T(0.0));
     }
   }
-
   //  swap axis to get the right result when im2col_step is greater than 1
   if (im2col_step > 1) {
     std::vector<int> axis(4);

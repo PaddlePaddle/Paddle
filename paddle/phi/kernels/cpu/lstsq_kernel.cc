@@ -18,13 +18,13 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/impl/lstsq_kernel_impl.h"
 #include "paddle/phi/kernels/lstsq_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
-
 namespace phi {
 
 enum class LapackDriverType : int { Gels, Gelsd, Gelsy, Gelss };
@@ -40,6 +40,26 @@ void LstsqKernel(const Context& dev_ctx,
                  DenseTensor* rank,
                  DenseTensor* singular_values) {
   using ValueType = phi::dtype::Real<T>;
+  if (x.numel() == 0 || y.numel() == 0) {
+    if (solution)
+      Full<T, Context>(dev_ctx,
+                       phi::IntArray(common::vectorize(solution->dims())),
+                       0,
+                       solution);
+    if (rank)
+      Full<int64_t, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(rank->dims())), 0, rank);
+    if (residuals)
+      GetResidualsTensor<Context, T>(
+          dev_ctx, x, y, driver_string, solution, residuals, rank);
+    if (singular_values)
+      Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(singular_values->dims())),
+          0,
+          singular_values);
+    return;
+  }
 
   static auto driver_type = std::unordered_map<std::string, LapackDriverType>(
       {{"gels", LapackDriverType::Gels},

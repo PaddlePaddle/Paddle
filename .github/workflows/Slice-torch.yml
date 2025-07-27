@@ -3,7 +3,7 @@ name: Slice-baseline
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 20 * * *'
+    - cron: '0 0 1 * *'
 
 permissions: read-all
 
@@ -27,19 +27,12 @@ jobs:
       clone_dir: Paddle-build
       task: build
 
-  build:
-    name: Slice build
-    needs: [clone, build-docker]
-    uses: ./.github/workflows/_Linux-build.yml
-    with:
-      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
-      is_pr: 'false'
-
   slice-test:
     name: Slice test
     uses: ./.github/workflows/_Slice.yml
-    needs: [clone, build-docker, build]
+    needs: [clone, build-docker]
     with:
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
       slice-check: 'true'
       SLICE_TEST_MODE: insert_baseline
+      SLICE_BENCHMARK_FRAMEWORKS: torch

@@ -3689,6 +3689,7 @@
   output : Tensor(y)
   infer_meta :
     func : MoeCombineInferMeta
+    spmd_rule : MoECombineInferSpmd
   kernel :
     func : moe_combine
     data_type : x
@@ -3709,6 +3710,7 @@
   output : Tensor(y), Tensor(combine_weights), Tensor(scatter_index), Tensor(expert_offset), Tensor(expert_id)
   infer_meta :
     func : MoeGateDispatchInferMeta
+    spmd_rule : MoEGateDispatchInferSpmd
   kernel :
     func : moe_gate_dispatch
     data_type : x

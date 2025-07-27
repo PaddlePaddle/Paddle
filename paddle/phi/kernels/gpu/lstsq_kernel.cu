@@ -18,6 +18,7 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/slice.h"
 #include "paddle/phi/kernels/impl/lstsq_kernel_impl.h"
 #include "paddle/phi/kernels/impl/qr_kernel_impl.h"
@@ -26,7 +27,6 @@
 #include "paddle/phi/kernels/matmul_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 #include "paddle/phi/kernels/triangular_solve_kernel.h"
-
 namespace phi {
 
 enum class LapackDriverType : int { Gels, Gelsd, Gelsy, Gelss };
@@ -41,6 +41,26 @@ void LstsqKernel(const Context& dev_ctx,
                  DenseTensor* residuals,
                  DenseTensor* rank,
                  DenseTensor* singular_values) {
+  if (x.numel() == 0 || y.numel() == 0) {
+    if (solution)
+      Full<T, Context>(dev_ctx,
+                       phi::IntArray(common::vectorize(solution->dims())),
+                       0,
+                       solution);
+    if (rank)
+      Full<int64_t, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(rank->dims())), 0, rank);
+    if (residuals)
+      GetResidualsTensor<Context, T>(
+          dev_ctx, x, y, driver_string, solution, residuals, rank);
+    if (singular_values)
+      Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(singular_values->dims())),
+          0,
+          singular_values);
+    return;
+  }
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   int dim_size = x_dims.size();
@@ -158,7 +178,6 @@ void LstsqKernel(const Context& dev_ctx,
     phi::Copy<Context>(
         dev_ctx, solu_tensor, dev_ctx.GetPlace(), true, solution);
   }
-
   if (batch_count == 1) solution->Resize(common::make_ddim({n, nrhs}));
   GetResidualsTensor<Context, T>(
       dev_ctx, x, y, driver_string, solution, residuals, rank);

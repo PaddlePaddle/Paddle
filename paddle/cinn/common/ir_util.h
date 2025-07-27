@@ -178,5 +178,15 @@ inline bool IsZero(const Expr &expr) {
 void OpDataTypePromote(ir::Expr *expr);
 void OpDataTypePromote(ir::Module *module);
 void OpDataTypePromote(ir::LoweredFunc *func);
+
+// only process ir::Min and ir::Max where the operands 1. contains dynamic shape
+// symbols. 2. the operands are both int types and both are 32/64 bits. Returns
+// the number of bits for unifying operands (by casting)
+int UnifiedOperandTypeBits(
+    const std::unordered_map<std::string, common::Type> *search_map,
+    const ir::Min *op);
+int UnifiedOperandTypeBits(
+    const std::unordered_map<std::string, common::Type> *search_map,
+    const ir::Max *op);
 }  // namespace common
 }  // namespace cinn

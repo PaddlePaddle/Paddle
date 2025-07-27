@@ -1678,9 +1678,16 @@ class PipelineParallelWithInterleave(PipelineParallel):
             self.output_tensors[virtual_pp_rank].pop()
 
     def _forward_step_helper(
-        self, micro_dataset, micro_step, overlap_schedule_mode=False
+        self,
+        micro_dataset,
+        micro_step,
+        overlap_schedule_mode=False,
+        check_is_last_chunk=False,
     ):
         virtual_pp_rank = self._get_virtual_pp_rank(micro_step, forward=True)
+        if check_is_last_chunk and virtual_pp_rank == self.num_model_chunks - 1:
+            os.environ["FLAGS_last_vpp_chunk_forward"] = "1"
+
         self.set_virtual_pipeline_rank(virtual_pp_rank)
 
         input_tensor = self._get_forward_input(virtual_pp_rank)
@@ -3246,7 +3253,9 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
 
             self._record_stamp("F", forward_micro_step_id, '"B"', forward=True)
             output_tensor = self._forward_step_helper(
-                micro_dataset, forward_micro_step_id
+                micro_dataset,
+                forward_micro_step_id,
+                check_is_last_chunk=True,
             )
             self._record_stamp("F", forward_micro_step_id, '"E"', forward=True)
 
