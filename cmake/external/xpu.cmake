@@ -42,7 +42,7 @@ endif()
 
 if(NOT DEFINED XPU_XRE_BASE_VERSION)
   if(WITH_XPU_XRE5)
-    set(XPU_XRE_BASE_VERSION "5.0.21.19")
+    set(XPU_XRE_BASE_VERSION "5.0.21.26")
   else()
     set(XPU_XRE_BASE_VERSION "4.32.0.1")
   endif()
