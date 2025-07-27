@@ -134,6 +134,7 @@ struct PredicatePrinter : public ir::IrPrinter {
   void Visit(const ir::Or *x) { PrintBinaryOp("OR", x); }
   void Visit(const ir::Max *x) { PrintBinaryOp("MAX", x); }
   void Visit(const ir::Min *x) { PrintBinaryOp("MIN", x); }
+  void Visit(const ir::Call *x) { PrintCallOp(x); }
 
   template <typename IRN>
   void PrintBinaryOp(const std::string &op, const ir::BinaryOpNode<IRN> *x) {
@@ -142,6 +143,27 @@ struct PredicatePrinter : public ir::IrPrinter {
     str_ += op;
     ir::IrPrinter::Visit(x->b());
     str_ += "_BPA_";
+  }
+
+  void PrintCallOp(const ir::Call *x) {
+    str_ += "_BCALL_";
+    str_ += [&]() {
+      std::string temp = x->name;
+      std::transform(
+          temp.begin(), temp.end(), temp.begin(), [](unsigned char c) {
+            return std::toupper(c);
+          });
+      return temp;
+    }();
+    if (!x->read_args.empty()) {
+      str_ += "_R_";
+      for (const auto &v : x->read_args) ir::IrPrinter::Visit(v);
+    }
+    if (!x->write_args.empty()) {
+      str_ += "_W_";
+      for (const auto &v : x->write_args) ir::IrPrinter::Visit(v);
+    }
+    str_ += "_ECALL_";
   }
 };
 

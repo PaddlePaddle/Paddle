@@ -4181,7 +4181,10 @@ def pinv(
         if not hermitian:
             # combine svd and matmul op
             u, s, vt = _C_ops.svd(x, False)
-            max_singular_val = _C_ops.max(s, [-1], True)
+            if s.shape[-1] == 0:
+                max_singular_val = s
+            else:
+                max_singular_val = _C_ops.max(s, [-1], True)
             rcond = paddle.to_tensor(rcond, dtype=x.dtype)
             cutoff = rcond * max_singular_val
             y = float('inf')
@@ -4198,6 +4201,11 @@ def pinv(
             out_2 = _C_ops.matmul(out_1, u, False, True)
             return out_2
         else:
+            if in_dynamic_mode() and x.size == 0:
+                dims = list(range(len(x.shape)))
+                perm = [*dims[:-2], dims[-1], dims[-2]]
+                return _C_ops.transpose(x, perm)
+
             # combine eigh and matmul op
             s, u = _C_ops.eigh(x, 'L')
             s_abs = paddle.abs(s)

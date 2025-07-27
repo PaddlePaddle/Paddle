@@ -18,10 +18,6 @@ on:
         description: "Generate images for all CI usage"
         value: ${{ jobs.build-docker-images.outputs.docker_cpu_image }}
 
-      docker_inference_image:
-        description: "Generate images for all CI usage"
-        value: ${{ jobs.build-docker-images.outputs.docker_inference_image }}
-
       docker_coverage_image:
         description: "Generate images for all CI usage"
         value: ${{ jobs.build-docker-images.outputs.docker_coverage_image }}
@@ -58,7 +54,6 @@ jobs:
       group: Docker-build
     outputs:
       docker_cpu_image: ${{ steps.build-docker-images.outputs.docker_cpu_image }}
-      docker_inference_image: ${{ steps.build-docker-images.outputs.docker_inference_image }}
       docker_coverage_image: ${{ steps.build-docker-images.outputs.docker_coverage_image }}
       docker_build_image: ${{ steps.build-docker-images.outputs.docker_build_image }}
       docker_distribute_image: ${{ steps.build-docker-images.outputs.docker_distribute_image }}
@@ -73,7 +68,6 @@ jobs:
           PR_ID: ${{ github.event.pull_request.number || '0' }}
           COMMIT_ID: ${{ github.event.pull_request.head.sha || github.sha }}
           docker_cpu_file: Dockerfile.cuda9_cudnn7_gcc48_py35_centos6
-          docker_inference_file: Dockerfile.cuda11.2_cudnn8.1_trt8.4_gcc8.2_ubuntu18
           docker_coverage_file: Dockerfile.cuda117_cudnn8_gcc82_ubuntu18_coverage
           docker_build_file: Dockerfile.cuda11.2_cudnn8_gcc82_trt8
           docker_distribute_file: Dockerfile.cuda123_cudnn9_gcc122_ubuntu20
@@ -100,7 +94,7 @@ jobs:
 
           # docker build images
           if [ "${{ inputs.task }}" == "cpu" ]; then
-            declare -A docker_files=(["docker_cpu"]="$docker_cpu_file" ["docker_inference"]="$docker_inference_file" ["docker_distribute"]="$docker_distribute_file" ["docker_xpu"]="$docker_xpu_file" ["docker_npu"]="$docker_npu_file" ["docker_dcu"]="$docker_dcu_file")
+            declare -A docker_files=(["docker_cpu"]="$docker_cpu_file" ["docker_distribute"]="$docker_distribute_file" ["docker_xpu"]="$docker_xpu_file" ["docker_npu"]="$docker_npu_file" ["docker_dcu"]="$docker_dcu_file")
           elif [ "${{ inputs.task }}" == "build" ]; then
             declare -A docker_files=(["docker_build"]="$docker_build_file" ["docker_doc"]="$docker_doc_file")
           else

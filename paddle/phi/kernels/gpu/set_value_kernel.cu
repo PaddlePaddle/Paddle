@@ -132,12 +132,12 @@ void SetTensorValueKernel(const Context& dev_ctx,
       Copy<Context>(dev_ctx, expand_tensor, dev_ctx.GetPlace(), false, out);
     }
   } else {
-    StridedElementwiseCopyKernel<T, Context>(dev_ctx,
-                                             expand_tensor,
-                                             new_out_shape,
-                                             new_out_stride,
-                                             output_offset,
-                                             out);
+    StridedCopyKernel<T, Context>(dev_ctx,
+                                  expand_tensor,
+                                  new_out_shape,
+                                  new_out_stride,
+                                  output_offset,
+                                  out);
   }
   out->set_meta(meta);
 }
