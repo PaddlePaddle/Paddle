@@ -204,7 +204,8 @@ inline static void InferLabelShape(
     const std::vector<std::string>& op_labels,
     const std::vector<DDim>& inputs,
     LabelMap* labelshape,
-    std::vector<std::vector<int64_t>>* broadcast_shapes) {
+    std::vector<std::vector<int64_t>>* broadcast_shapes,
+    LabelMap* labeltype) {
   LabelMap labelshape_copy = *labelshape;
   VLOG(5) << "Start InferLabelShape";
   for (size_t i = 0; i < op_labels.size(); ++i) {
@@ -234,7 +235,18 @@ inline static void InferLabelShape(
   }
   for (size_t i = 0; i < op_labels.size(); ++i) {
     for (auto& c : op_labels[i]) {
+      // Note: When broadcasting is involved, ensure the gradient is calculated
+      // with respect to the broadcasted shape. For example, in
+      // einsum("ij,ij->j", x(2,2), y(1,2)), y is broadcast to (2,2). The
+      // gradient calculation for x must use this broadcasted shape of y.
       if (labelshape_copy.exist(c) && labelshape_copy[c] > (*labelshape)[c]) {
+        // Strict check for the situation.
+        PADDLE_ENFORCE_EQ(
+            (*labelshape)[c] == 1 && ((*labeltype)[c] == LabelType::AO ||
+                                      (*labeltype)[c] == LabelType::BO),
+            true,
+            common::errors::InvalidArgument(
+                "Broadcast dims must be 1 for label: `%c`", c));
         (*labelshape)[c] = labelshape_copy[c];
       }
       (*broadcast_shapes)[i].push_back((*labelshape)[c]);
@@ -286,7 +298,7 @@ inline static void ParseEinsumEquation(
   // split_string("->") -> [], we push back a "".
   if (op_labels.empty()) op_labels.emplace_back("");
   GlobalInfo(op_labels, *right, labeltype, all_labels);
-  InferLabelShape(op_labels, inputs, labelshape, broadcast_shapes);
+  InferLabelShape(op_labels, inputs, labelshape, broadcast_shapes, labeltype);
   VLOG(5) << "Einsum Infershape: right:" << *right;
   VLOG(5) << "Einsum Infershape: left :"
           << paddle::string::join_strings(op_labels, '\n');
