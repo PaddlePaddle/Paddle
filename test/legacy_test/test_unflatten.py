@@ -142,6 +142,14 @@ class TestUnflattenInputZeroSize(TestUnflattenAPI):
         self.shape_is_tensor = False
 
 
+class TestUnflattenInputZeroSize2(TestUnflattenAPI):
+    def set_args(self):
+        self.x = np.random.rand(4, 0, 16).astype('int16')
+        self.axis = 0
+        self.shape = (-1, 2)
+        self.shape_is_tensor = False
+
+
 class TestUnflattenInputZeroSizeError(unittest.TestCase):
     def test_errors(self):
         paddle.disable_static()
@@ -151,6 +159,18 @@ class TestUnflattenInputZeroSizeError(unittest.TestCase):
             paddle.unflatten(x, axis=0, shape=[-1, 0, 1])
         self.assertTrue(
             "Provided sizes don't multiply up" in str(context.exception)
+        )
+
+
+class TestUnflattenInputZeroSizeError2(unittest.TestCase):
+    def test_errors(self):
+        paddle.disable_static()
+        x = np.random.rand(4, 0, 16).astype('float32')
+        x = paddle.to_tensor(x)
+        with self.assertRaises(Exception) as context:
+            paddle.unflatten(x, axis=0, shape=[-1, 3])
+        self.assertTrue(
+            "The 'shape' attribute in ReshapeOp" in str(context.exception)
         )
 
 
