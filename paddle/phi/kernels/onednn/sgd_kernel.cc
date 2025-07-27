@@ -20,17 +20,17 @@
 
 namespace phi {
 
-bool SgdCheckIfOneDNNSupport(const KernelContext* ctx) {
-  if (DenseTensor::classof(ctx->MutableIutputAt(0)) &&
-      DenseTensor::classof(ctx->MutableIutputAt(2))) {
+bool SgdCheckIfOneDNNSupport(const KernelContext* dev_ctx) {
+  if (DenseTensor::classof(dev_ctx->MutableIutputAt(0)) &&
+      DenseTensor::classof(dev_ctx->MutableIutputAt(2))) {
     return true;
   }
   return false;
 }
 
-bool SgdSparseCheckIfOneDNNSupport(const KernelContext* ctx) {
-  if (DenseTensor::classof(ctx->MutableIutputAt(0)) &&
-      SelectedRows::classof(ctx->MutableIutputAt(2))) {
+bool SgdSparseCheckIfOneDNNSupport(const KernelContext* dev_ctx) {
+  if (DenseTensor::classof(dev_ctx->MutableIutputAt(0)) &&
+      SelectedRows::classof(dev_ctx->MutableIutputAt(2))) {
     return true;
   }
   return false;

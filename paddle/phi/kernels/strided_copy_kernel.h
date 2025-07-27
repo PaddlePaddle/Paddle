@@ -43,4 +43,13 @@ DenseTensor StridedCopy(const Context& dev_ctx,
       dev_ctx, input, dims, out_stride, offset, &dense_out);
   return dense_out;
 }
+
+template <typename T, typename Context>
+void StridedElementwiseCopyKernel(const Context& dev_ctx,
+                                  const DenseTensor& input,
+                                  const std::vector<int64_t>& out_dims,
+                                  const std::vector<int64_t>& out_strides,
+                                  int64_t out_offset,
+                                  DenseTensor* out);
+
 }  // namespace phi

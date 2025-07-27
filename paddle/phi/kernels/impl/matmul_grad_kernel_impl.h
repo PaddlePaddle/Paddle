@@ -1952,8 +1952,8 @@ void MatmulWithFlattenDoubleGradKernel(
   auto y_mat =
       y.dims().size() > 2 ? phi::ReshapeToMatrix(y, y_num_col_dims) : y;
 
-  const int m = common::flatten_to_2d(x.dims(), x_num_col_dims)[0];
-  const int n = common::flatten_to_2d(y.dims(), y_num_col_dims)[1];
+  const int64_t m = common::flatten_to_2d(x.dims(), x_num_col_dims)[0];
+  const int64_t n = common::flatten_to_2d(y.dims(), y_num_col_dims)[1];
 
   auto* dout = &out_grad;
   DenseTensor dout_mat(*dout);

@@ -120,6 +120,29 @@ class API_TestChunk1(unittest.TestCase):
             np.testing.assert_allclose(ex_x2, r2, rtol=1e-05)
 
 
+class API_TestChunkZeroSize1(unittest.TestCase):
+    def test_out(self):
+        with base.program_guard(base.Program(), base.Program()):
+            data1 = paddle.static.data(
+                'data1', shape=[0, 1, 1, 4], dtype='float32'
+            )
+            x0, x1, x2, x3 = paddle.chunk(data1, chunks=4, axis=-1)
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            input1 = np.random.random([0, 1, 1, 4]).astype('float32')
+            (
+                r0,
+                r1,
+                r2,
+                r3,
+            ) = exe.run(feed={"data1": input1}, fetch_list=[x0, x1, x2, x3])
+            ex_x0, ex_x1, ex_x2, ex_x3 = np.array_split(input1, 4, axis=-1)
+            np.testing.assert_allclose(ex_x0, r0, rtol=1e-05)
+            np.testing.assert_allclose(ex_x1, r1, rtol=1e-05)
+            np.testing.assert_allclose(ex_x2, r2, rtol=1e-05)
+            np.testing.assert_allclose(ex_x3, r3, rtol=1e-05)
+
+
 class API_TestDygraphChunk(unittest.TestCase):
     def test_out1(self):
         with base.dygraph.guard():

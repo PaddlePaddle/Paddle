@@ -2197,6 +2197,92 @@ class MultiMarginLoss(Layer):
         )
 
 
+class MultiLabelMarginLoss(Layer):
+    r"""Creates a criterion that optimizes a multi-class multi-classification hinge loss (margin-based loss)
+    between input :math:`input` and label :math:`label`:
+
+    For i-th mini-batch sample, the loss in terms of the 2D input :math:`input_i` and 2D label :math:`label_i` is:
+
+    .. math::
+        \text{loss}(input_i, label_i) = \frac{\sum_{j \in \text{valid_labels}} \sum_{k \neq \text{valid_labels}} \max(0, 1 - (input_i[\text{valid_labels}[j]] - input_i[k]))}{C}
+
+    where :math:`C` is the number of classes, :math:`\text{valid_labels}` contains all non-negative label indices
+    for sample :math:`i` (stopping at the first -1 encountered), and :math:`k` ranges over all class indices
+    except those in :math:`\text{valid_labels}`.
+
+    The criterion only considers the first non-negative label values, allowing different samples to have variable numbers of target classes.
+
+    Parameters:
+
+        reduction (str, optional): Indicate how to calculate the loss by batch_size,
+                the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
+                If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
+                If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+                If :attr:`reduction` is ``'sum'``, the summed loss is returned.
+                Default: ``'mean'``
+
+        name (str|None, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Call parameters:
+        input (Tensor): Input tensor, the data type is float32 or float64.
+
+        label (Tensor): Label tensor, the data type is int32 or int64.
+            Label values should be class indices (non-negative values) and -1 values.
+            The -1 values are ignored and stop processing for each sample.
+
+    Shape:
+        input: 2-D Tensor, the shape is :math:`[N, C]`, where :math:`N` is batch size and :math:`C` is number of classes.
+
+        label: 2-D Tensor, the shape is :math:`[N, C]`, same shape as input.
+
+        output: scalar. If :attr:`reduction` is ``'none'``, then same shape as :math:`[N]`.
+
+    Returns:
+        A callable object of MultiLabelMarginLoss.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn as nn
+
+            >>> input = paddle.to_tensor([[0.1, 0.2, 0.4, 0.8], [0.2, 0.5, 0.3, 0.1]], dtype='float32')
+            >>> label = paddle.to_tensor([[3, 0, -1, -1], [0, 2, -1, -1]], dtype='int64')
+
+            >>> multi_label_margin_loss = nn.MultiLabelMarginLoss(reduction='mean')
+            >>> loss = multi_label_margin_loss(input, label)
+            >>> print(loss)
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   0.94999999)
+    """
+
+    reduction: _ReduceMode
+    name: str | None
+
+    def __init__(
+        self,
+        reduction: _ReduceMode = 'mean',
+        name: str | None = None,
+    ) -> None:
+        super().__init__()
+        if reduction not in ['sum', 'mean', 'none']:
+            raise ValueError(
+                "'reduction' in 'MultiLabelMarginLoss' should be 'sum', 'mean' or 'none', "
+                f"but received {reduction}."
+            )
+        self.reduction = reduction
+        self.name = name
+
+    def forward(self, input: Tensor, label: Tensor) -> Tensor:
+        return F.multi_label_margin_loss(
+            input,
+            label,
+            reduction=self.reduction,
+            name=self.name,
+        )
+
+
 class SoftMarginLoss(Layer):
     r"""
 

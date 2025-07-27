@@ -26,7 +26,7 @@ class TestLookupTableV2BF16Op(test_lookup_table_bf16_op.TestLookupTableBF16Op):
         self.op_type = "lookup_table_v2"
         self.python_api = paddle.nn.functional.embedding
         self.ids_shape = 4
-        self.mkldnn_data_type = "bfloat16"
+        self.onednn_data_type = "bfloat16"
 
 
 class TestLookupTableV2BF16OpIds4D(
@@ -36,7 +36,7 @@ class TestLookupTableV2BF16OpIds4D(
         self.op_type = "lookup_table_v2"
         self.python_api = paddle.nn.functional.embedding
         self.ids_shape = (2, 4, 5)
-        self.mkldnn_data_type = "bfloat16"
+        self.onednn_data_type = "bfloat16"
 
 
 class TestLookupTableV2BF16OpWIsSelectedRows(

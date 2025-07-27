@@ -151,10 +151,10 @@ void ModulatedDeformableCol2im(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void FilterGradAddup(const Context& dev_ctx,
-                     const int nthreads,
-                     const int n,
-                     const int height,
-                     const int width,
+                     const int64_t nthreads,
+                     const int64_t n,
+                     const int64_t height,
+                     const int64_t width,
                      const T* dweight_3d,
                      T* filter_grad);
 
@@ -175,6 +175,30 @@ void DeformableConvGradKernel(const Context& dev_ctx,
                               DenseTensor* offset_grad,
                               DenseTensor* filter_grad,
                               DenseTensor* mask_grad) {
+  if (x.numel() == 0 || filter.numel() == 0) {
+    if (dx)
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+    if (offset_grad)
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(offset_grad->dims())),
+          0,
+          offset_grad);
+    if (filter_grad)
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(filter_grad->dims())),
+          0,
+          filter_grad);
+    if (mask_grad)
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(mask_grad->dims())),
+                            0,
+                            mask_grad);
+    return;
+  }
+
   const int batch_size = static_cast<int>(x.dims()[0]);
 
   DDim input_shape = common::slice_ddim(x.dims(), 1, x.dims().size());
@@ -217,9 +241,9 @@ void DeformableConvGradKernel(const Context& dev_ctx,
   phi::funcs::SetConstant<Context, T> set_zero;
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
 
-  int input_dim = x.numel() / x.dims()[0];
-  int input_offset_dim = offset.numel() / offset.dims()[0];
-  int input_mask_dim = mask ? mask->numel() / mask->dims()[0] : 0;
+  int64_t input_dim = x.numel() / x.dims()[0];
+  int64_t input_offset_dim = offset.numel() / offset.dims()[0];
+  int64_t input_mask_dim = mask ? mask->numel() / mask->dims()[0] : 0;
 
   if (filter_grad) {
     Full<T>(dev_ctx,

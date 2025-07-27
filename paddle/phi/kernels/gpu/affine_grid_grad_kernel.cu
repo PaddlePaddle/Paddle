@@ -251,6 +251,12 @@ void AffineGridGradCUDAKernel(const Context& dev_ctx,
                               DenseTensor* output) {
   auto* theta = &input;
   auto theta_size = theta->dims().size();
+  if (output->numel() == 0 || input.numel() == 0) {
+    dev_ctx.template Alloc<T>(output);
+    phi::funcs::SetConstant<phi::GPUContext, T>()(
+        dev_ctx, output, static_cast<T>(0));
+    return;
+  }
   if (theta_size == 4) {
     AffineGridGrad4DCUDAKernel<T, Context>(
         dev_ctx, input, outputShape, align_corners, output);

@@ -142,6 +142,22 @@ class TestMeanOp_float64ZeroSize3D(TestMeanOp_float64ZeroSize):
         self.outputs = {'Out': out_np}
 
 
+class TestMeanOp_Int32ZeroSize(OpTest):
+    def setUp(self):
+        self.op_type = "mean"
+        self.python_api = paddle.mean
+        self.dtype = np.int32
+        self.public_python_api = paddle.mean
+        self.inputs = {'X': np.array([]).astype(self.dtype)}
+        self.outputs = {'Out': np.nan}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_checkout_grad(self):
+        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
+
+
 class TestMeanOp_Int64ZeroSize(OpTest):
     def setUp(self):
         self.op_type = "mean"

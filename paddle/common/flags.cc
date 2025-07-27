@@ -2160,12 +2160,13 @@ PHI_DEFINE_EXPORTED_bool(check_cuda_error,
                          "Checking whether CUDA error occurred or not.");
 
 /**
- * Dygraph related FLAG
- * Name: FLAGS_paddle_grad_inputs_zero_copy
+ * Stream related FLAG
+ * Name: FLAGS_use_default_stream
+ * Since Version: 3.1.1
  * Value Range: bool, default=false
  * Example:
- * Note: Whether zero copy paddle.grad's inputs.
+ * Note: Whether use default stream.
  */
-PHI_DEFINE_EXPORTED_bool(paddle_grad_inputs_zero_copy,
+PHI_DEFINE_EXPORTED_bool(use_default_stream,
                          false,
-                         "Whether zero copy paddle.grad's inputs.");
+                         "Whether use default stream.");

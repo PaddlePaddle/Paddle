@@ -629,7 +629,7 @@ def transpose(
         return out
 
 
-def unstack(x: Tensor, axis: int = 0, num: int | None = None) -> Tensor:
+def unstack(x: Tensor, axis: int = 0, num: int | None = None) -> list[Tensor]:
     """
     This layer unstacks input Tensor :code:`x` into several Tensors along :code:`axis`.
 
@@ -4374,6 +4374,9 @@ def scatter_nd_add(
             f"x and updates must have same data type but x.dtype={convert_dtype(x.dtype)}, updates.dtype={convert_dtype(updates.dtype)}"
         )
 
+    if in_dynamic_mode():
+        if index.size == 0:
+            return x.clone() + updates
     if in_dynamic_or_pir_mode():
         return _C_ops.scatter_nd_add(x, index, updates)
     else:
@@ -4484,7 +4487,10 @@ def chunk(
     check_type(chunks, 'chunks', (int), 'chunk')
     # check the chunks value to avoid the meanless split operation, such as <=0 or > x.shape[axis]
     if chunks <= 0 or (
-        isinstance(axis, int) and axis >= 0 and chunks > x.shape[axis]
+        isinstance(axis, int)
+        and axis >= 0
+        and (x.shape[axis] != 0 and chunks > x.shape[axis])
+        and x.shape[axis] != -1
     ):
         raise ValueError(
             f"The value of 'chunks' must be greater than 0 and less than or equal to the size of the dimension specified by 'axis', but received chunks={chunks} and x.shape[axis]={x.shape[axis]}."

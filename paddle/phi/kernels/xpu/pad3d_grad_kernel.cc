@@ -37,6 +37,7 @@ void Pad3dGradKernel(const Context& dev_ctx,
   auto d_in_dims = common::vectorize<int64_t>(d_in->dims());
   const T* d_out_data = d_out->data<T>();
   T* d_in_data = dev_ctx.template Alloc<T>(d_in);
+  if (x.numel() == 0) return;
 
   bool is_ncdhw = true;
   if (data_format == "NDHWC") {

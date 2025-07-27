@@ -117,6 +117,8 @@ extern cinn_type_t cinn_bfloat16_t(int num_asterisks = 0);
 extern cinn_type_t cinn_float16_t(int num_asterisks = 0);
 extern cinn_type_t cinn_float32_t(int num_asterisks = 0);
 extern cinn_type_t cinn_float64_t(int num_asterisks = 0);
+extern int cinn_host_abs_int32(int v);
+extern int64_t cinn_host_abs_int64(int64_t v);
 // @}
 
 //! Help to define the size of a dimension, due to polyhedral representation, we

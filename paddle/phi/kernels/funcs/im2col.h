@@ -86,7 +86,7 @@ enum class ColFormat { kCFO = 0, kOCF = 1 };
 template <ColFormat Format, typename DeviceContext, typename T>
 class Im2ColFunctor {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& im,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
@@ -98,7 +98,7 @@ class Im2ColFunctor {
 template <ColFormat Format, typename DeviceContext, typename T>
 class Col2ImFunctor {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& col,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,

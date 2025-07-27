@@ -1033,6 +1033,11 @@ void InterpolateKernel(
     bool align_corners,
     int align_mode,
     DenseTensor* output) {
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(output);
+    return;
+  }
+
   auto input_dims = x.dims();
   if (input_dims.size() == 3) {  // 1D interpolation
     Interpolate1DCPUFwd<T, Context>(dev_ctx,

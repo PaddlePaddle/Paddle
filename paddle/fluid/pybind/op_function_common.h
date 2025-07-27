@@ -217,6 +217,13 @@ void ConstructAttrMapForLegacyRunProgram(
 
 void ConstructAttrMapForRunProgram(
     const std::string& op_type,
+    PyObject* attrs_dict,
+    paddle::framework::AttributeMap& attrs);  // NOLINT
+
+PyObject* ConstructProgramAttrMapForRunProgram(PyObject* self, PyObject* args);
+
+void ConstructCudaGraphAttrMapForRunProgram(
+    const std::string& op_type,
     PyObject* args,
     ssize_t arg_pos,
     paddle::framework::AttributeMap& attrs);  // NOLINT
@@ -236,5 +243,6 @@ ssize_t GetIdxFromCoreOpsInfoMap(
     const std::string& op_type,
     const std::string& name);
 
+void BindOpFunctionCommon(PyObject* module);
 }  // namespace pybind
 }  // namespace paddle
