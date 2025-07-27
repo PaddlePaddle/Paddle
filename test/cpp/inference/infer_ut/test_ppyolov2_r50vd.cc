@@ -128,7 +128,7 @@ TEST(mkldnn_tester_ppyolov2_r50vd, multi_thread2_mkl_bz2) {
                   FLAGS_modeldir + "/model.pdiparams");
   config.DisableGpu();
   config.EnableONEDNN();
-  config.SetMkldnnCacheCapacity(10);
+  config.SetOnednnCacheCapacity(10);
   config.SetCpuMathLibraryNumThreads(10);
   LOG(INFO) << config.Summary();
   // get ground truth by disable ir

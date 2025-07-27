@@ -42,7 +42,7 @@ PredictorEngine::PredictorEngine(
     config.DisableGpu();
     config.EnableONEDNN();
     config.EnableMkldnnInt8();
-    config.SetMkldnnCacheCapacity(0);
+    config.SetOnednnCacheCapacity(0);
   }
   config.SetSkipLoadParams(true);
   config.SetApplyOptim(true);

@@ -85,10 +85,10 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 
 // Easy for profiling independently.
 //  ocr, mobilenet and se_resnext50
-void profile(bool use_mkldnn = false) {
+void profile(bool use_onednn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-  if (use_mkldnn) {
+  if (use_onednn) {
     cfg.EnableONEDNN();
   }
   // cfg.pass_builder()->TurnOnDebug();
@@ -130,14 +130,14 @@ void profile(bool use_mkldnn = false) {
 TEST(Analyzer_vis, profile) { profile(); }
 
 #ifdef PADDLE_WITH_DNNL
-TEST(Analyzer_vis, profile_mkldnn) { profile(true /* use_mkldnn */); }
+TEST(Analyzer_vis, profile_onednn) { profile(true /* use_onednn */); }
 #endif
 
 // Compare result of NativeConfig and AnalysisConfig
-void compare(bool use_mkldnn = false) {
+void compare(bool use_onednn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-  if (use_mkldnn) {
+  if (use_onednn) {
     cfg.EnableONEDNN();
   }
 
@@ -149,7 +149,7 @@ void compare(bool use_mkldnn = false) {
 
 TEST(Analyzer_vis, compare) { compare(); }
 #ifdef PADDLE_WITH_DNNL
-TEST(Analyzer_vis, compare_mkldnn) { compare(true /* use_mkldnn */); }
+TEST(Analyzer_vis, compare_onednn) { compare(true /* use_onednn */); }
 #endif
 
 // Compare Deterministic result

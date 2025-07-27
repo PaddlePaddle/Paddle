@@ -875,7 +875,7 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \brief Turn down OneDNN.
   ///
   ///
-  void DisableMKLDNN();
+  void DisableONEDNN();
 
   ///
   /// \brief Set the cache capacity of different input shapes for OneDNN.
@@ -885,7 +885,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \param capacity The cache capacity.
   ///
-  void SetMkldnnCacheCapacity(int capacity);
+  void SetOnednnCacheCapacity(int capacity);
   ///
   /// \brief A boolean state telling whether to use the OneDNN.
   ///
@@ -921,8 +921,8 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \param op_list The operator type list.
   ///
-  void SetMKLDNNOp(std::unordered_set<std::string> op_list) {
-    mkldnn_enabled_op_types_ = op_list;
+  void SetONEDNNOp(std::unordered_set<std::string> op_list) {
+    onednn_enabled_op_types_ = op_list;
   }
 
   ///
@@ -948,14 +948,14 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \brief Turn off OneDNN fc passes.
   ///
-  void DisableMkldnnFcPasses();
+  void DisableOnednnFcPasses();
 
   ///
   /// \brief A boolean state telling whether to disable the OneDNN Fc passes.
   ///
   /// \return bool Whether to disable the OneDNN Fc passes.
   ///
-  bool mkldnn_fc_passes_disabled() const { return disable_mkldnn_fc_passes_; }
+  bool mkldnn_fc_passes_disabled() const { return disable_onednn_fc_passes_; }
 
   ///
   /// \brief A boolean state telling whether to use the OneDNN Bfloat16.
@@ -1255,7 +1255,7 @@ struct PD_INFER_DECL AnalysisConfig {
 #else
   bool use_onednn_{false};
 #endif
-  std::unordered_set<std::string> mkldnn_enabled_op_types_;
+  std::unordered_set<std::string> onednn_enabled_op_types_;
 
   bool model_from_memory_{false};
 
@@ -1287,14 +1287,14 @@ struct PD_INFER_DECL AnalysisConfig {
   XpuConfig xpu_config_;
 
   // onednn related.
-  int mkldnn_cache_capacity_{10};
+  int onednn_cache_capacity_{10};
   bool use_onednn_bfloat16_{false};
   std::unordered_set<std::string> bfloat16_enabled_op_types_;
   bool use_onednn_int8_{false};
   std::unordered_set<int> quantize_excluded_op_ids_{};
   std::unordered_set<std::string> quantize_enabled_op_types_{};
 
-  bool disable_mkldnn_fc_passes_{false};
+  bool disable_onednn_fc_passes_{false};
 
   // ipu related.
   bool use_ipu_{false};
