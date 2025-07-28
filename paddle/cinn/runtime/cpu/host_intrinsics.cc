@@ -280,6 +280,12 @@ inline int64_t FN_INT64(logical_right_shift)(int64_t x, int64_t y) {
 }
 
 #undef FN_INT64
+
+int64_t cinn_get_value_in_kernel_args(void* v_args, int idx) {
+  cinn_pod_value_t* args = static_cast<cinn_pod_value_t*>(v_args);
+  return args[idx].operator int64_t();
+}
+
 }  // extern "C"
 
 CINN_REGISTER_HELPER(host_intrinsics) {
@@ -467,6 +473,12 @@ CINN_REGISTER_HELPER(host_intrinsics) {
       .AddInputType<int>()
       .AddInputType<int>()
       .AddInputType<int>()
+      .End();
+
+  REGISTER_EXTERN_FUNC_HELPER(cinn_get_value_in_kernel_args, host_target)
+      .SetRetType<int64_t>()
+      .AddInputType<void*>()  // args
+      .AddInputType<int>()    // index
       .End();
 
   return true;
