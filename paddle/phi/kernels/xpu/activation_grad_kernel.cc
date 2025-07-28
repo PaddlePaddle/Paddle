@@ -368,21 +368,21 @@ struct XPUSiluGradFunctor : public funcs::BaseActivationFunctor<T> {
 
     if (std::getenv("XPU_PADDLE_ACT_LUT") != nullptr) {
       if (!std::is_same<T, ::phi::dtype::bfloat16>::value) {
-        // use fast_swish_grad if NOT bf16
-        int r = xpu::fast_swish_grad(
+        // use fast_silu_grad if NOT bf16
+        int r = xpu::fast_silu_grad(
             dev_ctx.x_context(), x_data, y_grad, x_grad, dx->numel());
-        PADDLE_ENFORCE_XDNN_SUCCESS(r, "fast_swish_grad");
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "fast_silu_grad");
       } else {
-        // use plain swish_grad
-        int r = xpu::swish_grad(
+        // use plain silu_grad
+        int r = xpu::silu_grad(
             dev_ctx.x_context(), x_data, y_grad, x_grad, dx->numel());
-        PADDLE_ENFORCE_XDNN_SUCCESS(r, "swish_grad");
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "silu_grad");
       }
     } else {
-      // use plain swish_grad
-      int r = xpu::swish_grad(
+      // use plain silu_grad
+      int r = xpu::silu_grad(
           dev_ctx.x_context(), x_data, y_grad, x_grad, dx->numel());
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "swish_grad");
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "silu_grad");
     }
   }
 };
