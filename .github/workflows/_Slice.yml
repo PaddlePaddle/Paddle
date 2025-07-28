@@ -16,6 +16,10 @@ on:
         type: string
         required: false
         default: 'test_ci'
+      SLICE_BENCHMARK_FRAMEWORKS:
+        type: string
+        required: false
+        default: 'paddle'
 
 env:
   PR_ID: ${{ github.event.pull_request.number || '0' }}
@@ -44,6 +48,7 @@ jobs:
           wheel_link: https://paddle-github-action.bj.bcebos.com/PR/build/${{ env.PR_ID }}/${{ env.COMMIT_ID }}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
           RUN_ID: ${{ github.run_id }}
           SLICE_TEST_MODE: ${{ inputs.SLICE_TEST_MODE }}
+          SLICE_BENCHMARK_FRAMEWORKS: ${{ inputs.SLICE_BENCHMARK_FRAMEWORKS }}
         run: |
           container_name="api_benchmark_ci_${RUN_ID}"
           echo "container_name=${container_name}" >> ${{ github.env }}
@@ -64,6 +69,7 @@ jobs:
             -e no_proxy \
             -e CI_name \
             -e SLICE_TEST_MODE \
+            -e SLICE_BENCHMARK_FRAMEWORKS \
             -w /paddle --network host ${docker_image}
 
       - name: Download PaddleTest
@@ -88,11 +94,14 @@ jobs:
           mkdir -p ${{ github.workspace }}/../../../.cache/pip
           source ${{ github.workspace }}/../../../proxy
           python3.10 -m pip config set global.cache-dir ${{ github.workspace }}/../../../.cache/pip
-          python3.10 -m pip install $wheel_link
+          if [[ "${{ inputs.SLICE_BENCHMARK_FRAMEWORKS }}" == "torch" ]];then
+            python3.10 -m pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu118
+          else
+            python3.10 -m pip install $wheel_link
+          fi
           python3.10 -m pip install -r PaddleTest/framework/e2e/api_benchmark/requirement.txt
           cd PaddleTest/framework/slice_benchmark
           cp ${{ github.workspace }}/../../../apibm_config.yml .
-          nvidia-smi
           bash run.sh
           '
 

@@ -338,7 +338,7 @@ TEST(AnalysisPredictor, bf16_pass_strategy) {
 TEST(AnalysisPredictor, mkldnn_fc_pass_strategy) {
   std::vector<std::string> passes;
   PassStrategy passStrategy(passes);
-  passStrategy.DisableMkldnnFcPasses();
+  passStrategy.DisableOnednnFcPasses();
   ASSERT_EQ(passes.size(), (size_t)0);
 }
 
@@ -351,7 +351,7 @@ TEST(AnalysisPredictor, mkldnn_fc_passes_cpu_pass_strategy) {
   for (const auto& pass : fc_passes_to_erase) {
     ASSERT_NE(cpuPassStrategy.GetPassIndex(pass), (size_t)-1);
   }
-  cpuPassStrategy.DisableMkldnnFcPasses();
+  cpuPassStrategy.DisableOnednnFcPasses();
   for (const auto& pass : fc_passes_to_erase) {
     ASSERT_EQ(cpuPassStrategy.GetPassIndex(pass), (size_t)-1);
   }
@@ -363,7 +363,7 @@ TEST(AnalysisPredictor, mkldnn_fc_passes_gpu_pass_strategy) {
   AnalysisConfig config;
   config.EnableUseGpu(100, 0);
   config.EnableONEDNN();
-  config.DisableMkldnnFcPasses();
+  config.DisableOnednnFcPasses();
 #ifdef PADDLE_WITH_DNNL
   ASSERT_TRUE(config.mkldnn_fc_passes_disabled());
 #else

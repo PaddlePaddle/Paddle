@@ -285,12 +285,12 @@ void PD_EnableONEDNN(PD_AnalysisConfig* config) {
   config->config.EnableONEDNN();
 }
 
-void PD_SetMkldnnCacheCapacity(PD_AnalysisConfig* config, int capacity) {
+void PD_SetOnednnCacheCapacity(PD_AnalysisConfig* config, int capacity) {
   PADDLE_ENFORCE_NOT_NULL(
       config,
       common::errors::InvalidArgument(
           "The pointer of analysis configuration shouldn't be nullptr"));
-  config->config.SetMkldnnCacheCapacity(capacity);
+  config->config.SetOnednnCacheCapacity(capacity);
 }
 
 bool PD_MkldnnEnabled(const PD_AnalysisConfig* config) {

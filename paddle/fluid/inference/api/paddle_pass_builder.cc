@@ -329,7 +329,7 @@ void GpuPassStrategy::EnableMkldnnInt8() {
   LOG(ERROR) << "GPU not support MKL-DNN int8";
 }
 
-void GpuPassStrategy::DisableMkldnnFcPasses() {
+void GpuPassStrategy::DisableOnednnFcPasses() {
   LOG(ERROR) << "GPU not support MKL-DNN fc";
 }
 
@@ -389,7 +389,7 @@ void CpuPassStrategy::EnableONEDNN() {
 #endif
 }
 
-void CpuPassStrategy::DisableMKLDNN() {
+void CpuPassStrategy::DisableONEDNN() {
   ClearPasses();
   passes_.assign(CpuBasicPasses.begin(), CpuBasicPasses.end());
 }
@@ -475,14 +475,14 @@ void CpuPassStrategy::EnableMkldnnInt8() {
 #endif
 }
 
-void CpuPassStrategy::DisableMkldnnFcPasses() {
+void CpuPassStrategy::DisableOnednnFcPasses() {
 #ifdef PADDLE_WITH_DNNL
-  if (!disable_mkldnn_fc_passes_) {
+  if (!disable_onednn_fc_passes_) {
     EraseFcMkldnnPasses();
   }
-  disable_mkldnn_fc_passes_ = true;
+  disable_onednn_fc_passes_ = true;
 #else
-  disable_mkldnn_fc_passes_ = false;
+  disable_onednn_fc_passes_ = false;
 #endif
 }
 

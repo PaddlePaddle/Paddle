@@ -515,7 +515,7 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigEnableONEDNN(
 /// \param[in] pd_config config
 /// \param[in] capacity The cache capacity.
 ///
-PADDLE_CAPI_EXPORT extern void PD_ConfigSetMkldnnCacheCapacity(
+PADDLE_CAPI_EXPORT extern void PD_ConfigSetOnednnCacheCapacity(
     __pd_keep PD_Config* pd_config, int32_t capacity);
 ///
 /// \brief A boolean state telling whether to use the OneDNN.

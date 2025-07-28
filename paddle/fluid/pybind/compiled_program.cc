@@ -817,11 +817,11 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
       .def_property(
           "mkldnn_enabled_op_types",
           [](const BuildStrategy &self) {
-            return self.mkldnn_enabled_op_types_;
+            return self.onednn_enabled_op_types_;
           },
           [](BuildStrategy &self,
-             const std::unordered_set<std::string> &mkldnn_enabled_op_types) {
-            self.mkldnn_enabled_op_types_ = mkldnn_enabled_op_types;
+             const std::unordered_set<std::string> &onednn_enabled_op_types) {
+            self.onednn_enabled_op_types_ = onednn_enabled_op_types;
           })
       .def_property(
           "allow_cuda_graph_capture",
