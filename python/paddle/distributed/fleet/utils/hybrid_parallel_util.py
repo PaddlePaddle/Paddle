@@ -317,6 +317,7 @@ def broadcast_sep_parameters(model, hcg, fuse_params=True):
         fuse_params=fuse_params,
     )
 
+
 def broadcast_moe_sharding_parameters(model, hcg, fuse_params=True):
     # TODO TO save memory, use un-fused broadcast to avoid potential OOM
     logger.debug("moe sharding start init parameters sync")

@@ -144,20 +144,15 @@ class CommunicateTopology:
     ) -> None:
         self._parallel_names = hybrid_group_names
         self._dims = dims
-
         self.coordinate = collections.namedtuple(
             'Coordinate', self._parallel_names
         )
-
-
         self._world_size = reduce(lambda x, y: x * y, self._dims, 1)
 
         ranges = [range(d) for d in self._dims]
-
         all_coordinate = [self.coordinate(*x) for x in product(*ranges)]
 
         self._coord2rank = dict(zip(all_coordinate, range(len(all_coordinate))))
-
         self._rank2coord = dict(
             zip(self._coord2rank.values(), self._coord2rank.keys())
         )
@@ -195,7 +190,6 @@ class CommunicateTopology:
     def get_dim_size(self, axis_name: str) -> int:
         assert axis_name in self._parallel_names
         return self._dims[self._parallel_names.index(axis_name)]
-
 
     def get_fused_ranks(self, fused_axis: list[int]) -> list[list[int]]:
         non_fused_axis = list(set(self._parallel_names).difference(fused_axis))
@@ -268,20 +262,16 @@ class HybridCommunicateGroup:
         self._pp_degree = self._topo.get_dim('pipe')
         self._sharding_degree = self._topo.get_dim('sharding')
         self._sep_degree = self._topo.get_dim('sep')
-        self._cp_degree = self._topo.get_dim('context')
-        self._cp_sharding_degree = self._topo.get_dim("cp_sharding")
 
         self._data_parallel_id = self._get_data_parallel_id()
         self._model_parallel_id = self._get_model_parallel_id()
         self._sharding_parallel_id = self._get_sharding_parallel_id()
         self._sep_parallel_id = self._get_sep_parallel_id()
-        self._cp_parallel_id = self._get_context_parallel_id()
-        self._cp_sharding_id = self._get_cp_sharding_parallel_id()
         self.stage_id = self._get_pipe_parallel_id()
 
         assert (
             self._check_valid_topo()
-        ), f"nranks: {self.nranks}, mp_num: {self._mp_degree}, sharding_num: {self._sharding_degree}, pp_num: {self._pp_degree}, dp_num: {self._dp_degree}, sep_num: {self._sep_degree}, cp_num: {self._cp_degree} cp_sharding_num: {self._cp_sharding_degree}"
+        ), f"nranks: {self.nranks}, mp_num: {self._mp_degree}, sharding_num: {self._sharding_degree}, pp_num: {self._pp_degree}, dp_num: {self._dp_degree}, sep_num: {self._sep_degree}"
 
         # create comm group for pipe parallel
         self._pp_group, self._pp_comm_group = self._set_comm_group(
@@ -436,9 +426,9 @@ class HybridCommunicateGroup:
 
         debug_str = (
             f"HybridParallelInfo: rank_id: {self.global_rank}, mp_degree: {self._mp_degree}, "
-            f"sharding_degree: {self._sharding_degree}, pp_degree: {self._pp_degree}, dp_degree: {self._dp_degree}, sep_degree: {self._sep_degree}, cp_degree: {self._cp_degree}"
+            f"sharding_degree: {self._sharding_degree}, pp_degree: {self._pp_degree}, dp_degree: {self._dp_degree}, sep_degree: {self._sep_degree}"
         )
-        debug_str += f", mp_group: {self._mp_group},  sharding_group: {self._sharding_group}, pp_group: {self._pp_group}, dp_group: {self._dp_group}, sep:group: {self._sep_group}, cp_group: {self._cp_group}, check/clip group: {self._check_group}"
+        debug_str += f", mp_group: {self._mp_group},  sharding_group: {self._sharding_group}, pp_group: {self._pp_group}, dp_group: {self._dp_group}, sep:group: {self._sep_group}, check/clip group: {self._check_group}"
         logger.info(debug_str)
 
         global _HYBRID_PARALLEL_GROUP
@@ -490,13 +480,10 @@ class HybridCommunicateGroup:
             * self._sharding_degree
             * self._sep_degree
             == self.nranks
-        ) and (self._cp_degree == 1 or self._sep_degree == 1)
+        )
 
     def _check_sep_exist(self) -> None:
         assert self._sep_degree > 1, "sep not exist"
-
-    def _check_cp_exist(self) -> None:
-        assert self._cp_degree > 1, "cp not exist"
 
     def _set_comm_group(
         self,
@@ -682,28 +669,6 @@ class HybridCommunicateGroup:
         self._check_sep_exist()
         return self._sep_comm_group.ranks[0]
 
-    def get_context_parallel_rank(self) -> int:
-        return self._cp_parallel_id
-
-    def get_context_parallel_world_size(self) -> int:
-        return self._cp_degree
-
-    def get_context_parallel_group(self) -> Group:
-        self._check_cp_exist()
-        return self._cp_comm_group
-
-    def get_context_parallel_group_src_rank(self) -> int:
-        self._check_cp_exist()
-        return self._cp_comm_group.ranks[0]
-
-    def get_cp_sharding_parallel_group(self) -> Group:
-        self._check_cp_exist()
-        return self._cp_sharding_comm_group
-
-    def get_cp_sharding_parallel_group_src_rank(self) -> int:
-        self._check_cp_exist()
-        return self._cp_sharding_comm_group.ranks[0]
-
     def get_pipe_parallel_group(self) -> Group:
         return self._pp_comm_group
 
@@ -751,14 +716,6 @@ class HybridCommunicateGroup:
     def get_dp_sep_parallel_group(self) -> Group:
         self._check_sep_exist()
         return self._dp_sep_comm_group
-
-    def get_cp_mp_parallel_group(self) -> Group:
-        self._check_cp_exist()
-        return self._cp_mp_comm_group
-
-    def get_cp_mp_parallel_group_src_rank(self) -> int:
-        self._check_cp_exist()
-        return self._cp_mp_comm_group.ranks[0]
 
     def get_pp_mp_parallel_group(self) -> Group:
         self._check_sep_exist()
@@ -851,9 +808,7 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
         dense_dims = [dim_dict[name] for name in dense_group_names]
         self._dense_topo = CommunicateTopology(dense_group_names, dense_dims)
 
-        dim_dict["cp_sharding"] = (
-            dim_dict["sharding"] // dim_dict["context"]
-        )
+        dim_dict["cp_sharding"] = dim_dict["sharding"] // dim_dict["context"]
         cp_group_names = [
             "cp_sharding",
             "pipe",
@@ -981,7 +936,6 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
             ),
         )
 
-
         # create comm group for model parallel
         self._mp_group, self._mp_comm_group = self._set_comm_group(
             "model",
@@ -1010,7 +964,7 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
             )
         )
 
-        #create comm group for context parallel
+        # create comm group for context parallel
         self._cp_group, self._cp_comm_group = self.build_context_group(
             self._dense_topo,
             nccl_config=(
@@ -1026,26 +980,31 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
         self._cp_mp_comm_group = None
 
         if self._cp_degree > 1:
-            self._cp_mp_group, self._cp_mp_comm_group = self.build_cp_mp_fuse_group(
+            self._cp_mp_group, self._cp_mp_comm_group = (
+                self.build_cp_mp_fuse_group(
+                    self._dense_topo,
+                    nccl_config=(
+                        message2nccl_config(
+                            hybrid_configs["cp_mp_configs"].nccl_config, "cp_mp"
+                        )
+                        if hybrid_configs is not None
+                        else None
+                    ),
+                )
+            )
+
+        self._cp_sharding_group, self._cp_sharding_comm_group = (
+            self.build_context_sharding_group(
                 self._dense_topo,
                 nccl_config=(
                     message2nccl_config(
-                        hybrid_configs["cp_mp_configs"].nccl_config, "cp_mp"
+                        hybrid_configs["cp_sharding_configs"].nccl_config,
+                        "cp_sharding",
                     )
                     if hybrid_configs is not None
                     else None
                 ),
             )
-
-        self._cp_sharding_group, self._cp_sharding_comm_group = self.build_context_sharding_group(
-            self._dense_topo,
-            nccl_config=(
-                message2nccl_config(
-                    hybrid_configs["cp_sharding_configs"].nccl_config, "cp_sharding"
-                )
-                if hybrid_configs is not None
-                else None
-            ),
         )
 
         self._cp_sharding_parallel_id = self._get_cp_sharding_parallel_id()
@@ -1103,6 +1062,19 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
         global _HYBRID_PARALLEL_GROUP
         _HYBRID_PARALLEL_GROUP = self
 
+    def _check_valid_topo(self) -> bool:
+        return (
+            self._dp_degree
+            * self._mp_degree
+            * self._pp_degree
+            * self._sharding_degree
+            * self._sep_degree
+            == self.nranks
+        ) and (self._cp_degree == 1 or self._sep_degree == 1)
+
+    def _check_cp_exist(self) -> None:
+        assert self._cp_degree > 1, "cp not exist"
+
     def build_sharding_group(self, topo, nccl_config=None):
         parallel_group = []
         parallel_comm_group = None
@@ -1137,9 +1109,13 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
         )
         context_comm_list = []
         for ranks in sharding_comm_list:
-            assert len(ranks) // self._cp_sharding_degree == self._cp_degree, f'sharding comm list {len(ranks)} size must divided by cp_sharding_degree {self._cp_sharding_degree}'
+            assert (
+                len(ranks) // self._cp_sharding_degree == self._cp_degree
+            ), f'sharding comm list {len(ranks)} size must divided by cp_sharding_degree {self._cp_sharding_degree}'
             for i in range(self._cp_sharding_degree):
-                sub_ranks = ranks[i*self._cp_degree : (i+1)*self._cp_degree] 
+                sub_ranks = ranks[
+                    i * self._cp_degree : (i + 1) * self._cp_degree
+                ]
                 context_comm_list.append(sub_ranks)
         return context_comm_list
 
@@ -1149,9 +1125,11 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
         )
         context_comm_list = []
         for ranks in sharding_comm_list:
-            assert len(ranks) // self._cp_sharding_degree == self._cp_degree, f'sharding comm list {len(ranks)} size must divided by cp_sharding_degree {self._cp_sharding_degree}'
+            assert (
+                len(ranks) // self._cp_sharding_degree == self._cp_degree
+            ), f'sharding comm list {len(ranks)} size must divided by cp_sharding_degree {self._cp_sharding_degree}'
             for i in range(self._cp_degree):
-                sub_ranks = ranks[i::self._cp_degree]
+                sub_ranks = ranks[i :: self._cp_degree]
                 context_comm_list.append(sub_ranks)
         return context_comm_list
 
@@ -1163,29 +1141,29 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
             def __init__(self):
                 self.parent = {}
                 self.rank = {}
-            
+
             def find(self, x):
                 if x not in self.parent:
                     self.parent[x] = x
                     self.rank[x] = 0
                     return x
-                
+
                 if self.parent[x] != x:
                     self.parent[x] = self.find(self.parent[x])
                 return self.parent[x]
-            
+
             def union(self, x, y):
                 px, py = self.find(x), self.find(y)
                 if px == py:
                     return
-                
+
                 if self.rank[px] < self.rank[py]:
                     px, py = py, px
-                
+
                 self.parent[py] = px
                 if self.rank[px] == self.rank[py]:
                     self.rank[px] += 1
-            
+
             def get_components(self):
                 components = {}
                 for node in self.parent:
@@ -1194,22 +1172,22 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
                         components[root] = []
                     components[root].append(node)
                 return list(components.values())
-        
+
         uf = UnionFind()
-        
+
         # 处理所有通信组 - 每组只需将后续元素与第一个元素union
         for group in cp_comm_list + mp_comm_list:
             if len(group) > 1:
                 first = group[0]
                 for i in range(1, len(group)):
                     uf.union(first, group[i])
-        
+
         # 获取连通分量并排序
         cp_tp_comm_list = uf.get_components()
         for component in cp_tp_comm_list:
             component.sort()
         cp_tp_comm_list.sort(key=lambda x: x[0])
-        
+
         return cp_tp_comm_list
 
     def build_context_group(self, topo, nccl_config=None):
@@ -1270,9 +1248,7 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
                 parallel_group = group
                 parallel_comm_group = comm_group
 
-        logger.info(
-            f"Fused context & model parallel group create successfully!"
-        )
+        logger.info("Fused context & model parallel group create successfully!")
         return parallel_group, parallel_comm_group
 
     def merge_inner_comm_list(self, topo, outer_name, inner_name):
@@ -1342,6 +1318,36 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
     def _get_cp_sharding_parallel_id(self):
         return self._cp_sharding_group.index(self.global_rank)
 
+    def get_context_parallel_rank(self) -> int:
+        return self._cp_parallel_id
+
+    def get_context_parallel_world_size(self) -> int:
+        return self._cp_degree
+
+    def get_context_parallel_group(self) -> Group:
+        self._check_cp_exist()
+        return self._cp_comm_group
+
+    def get_context_parallel_group_src_rank(self) -> int:
+        self._check_cp_exist()
+        return self._cp_comm_group.ranks[0]
+
+    def get_cp_sharding_parallel_group(self) -> Group:
+        self._check_cp_exist()
+        return self._cp_sharding_comm_group
+
+    def get_cp_sharding_parallel_group_src_rank(self) -> int:
+        self._check_cp_exist()
+        return self._cp_sharding_comm_group.ranks[0]
+
+    def get_cp_mp_parallel_group(self) -> Group:
+        self._check_cp_exist()
+        return self._cp_mp_comm_group
+
+    def get_cp_mp_parallel_group_src_rank(self) -> int:
+        self._check_cp_exist()
+        return self._cp_mp_comm_group.ranks[0]
+
     def get_expert_parallel_rank(self) -> int:
         return self._expert_parallel_id
 
@@ -1366,7 +1372,9 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
     def get_moe_sharding_parallel_group_src_rank(self) -> int:
         return self._moe_sharding_comm_group.ranks[0]
 
-    def get_sharding_parallel_world_size(self, with_context_parallel=False) -> int:
+    def get_sharding_parallel_world_size(
+        self, with_context_parallel=False
+    ) -> int:
         if with_context_parallel:
             return self._cp_sharding_degree
         else:
