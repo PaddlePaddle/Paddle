@@ -27,7 +27,7 @@ cudaStream_t GetCalcStreamFromGroup(int context_ring_id) {
   const auto& place = phi::GPUPlace(device_id);
   const auto& calc_ctx = reinterpret_cast<phi::GPUContext*>(
       reinterpret_cast<paddle::distributed::ProcessGroupNCCL*>(pg)
-          ->GetDeviceContext(place, true));
+          ->GetOrCreateCalcContext(place, true));
   return calc_ctx->stream();
 }
 
