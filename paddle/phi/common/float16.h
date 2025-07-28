@@ -127,10 +127,11 @@ struct PADDLE_ALIGN(2) float16 {
     v.ui &= ~sigN;
 
     // 2. Handle special values: infinity and NaN
-    const int32_t inf_cond = -((infN >= v.si) & (v.si >= minINF));
-    const int32_t nan_cond = -((nanN > v.si) & (v.si > infN));
-    v.si ^= (infN ^ v.si) & inf_cond;
-    v.si ^= (nanN ^ v.si) & nan_cond;
+    const uint32_t inf_cond =
+        (infN >= v.ui) && (v.ui >= minINF) ? 0xFFFFFFFF : 0;
+    const uint32_t nan_cond = (nanN > v.ui) && (v.ui > infN) ? 0xFFFFFFFF : 0;
+    v.ui ^= (infN ^ v.ui) & inf_cond;
+    v.ui ^= (nanN ^ v.ui) & nan_cond;
 
     const bool is_subnormal = (v.ui < minN);
     if (is_subnormal) {
@@ -155,16 +156,16 @@ struct PADDLE_ALIGN(2) float16 {
       const uint32_t lsb =
           (v.ui >> shift) & 0x1;  // Least significant retained bit
       const uint32_t rounding =
-          (0xFFF + lsb) & -(v.ui < infN);  // Round with overflow protection
+          (v.ui < infN) ? (0xFFF + lsb) : 0;  // Round with overflow protection
       v.ui += rounding;
       // inf and nan
-      const int32_t max_cond = -(v.ui >= infN);
+      const uint32_t max_cond = (v.ui >= infN) ? 0xFFFFFFFF : 0;
       // Align bits
       v.ui >>= shift;
       // Exponent adjustment for overflow
-      v.si ^= ((v.si - maxD) ^ v.si) & max_cond;
+      v.ui ^= ((v.ui - maxD) ^ v.ui) & max_cond;
       // Exponent adjustment for normal numbers
-      v.si ^= ((v.si - minD) ^ v.si);
+      v.ui ^= ((v.ui - minD) ^ v.ui);
     }
     // Combine sign and value bits
     x = v.ui | sign;
@@ -291,18 +292,18 @@ struct PADDLE_ALIGN(2) float16 {
     // http://stackoverflow.com/questions/1659440/32-bit-to-16-bit-floating-point-conversion
     Bits v;
     v.ui = this->x;
-    int32_t sign = v.si & sigC;
-    v.si ^= sign;
+    uint32_t sign = v.ui & sigC;
+    v.ui ^= sign;
     sign <<= shiftSign;
-    v.si ^= ((v.si + minD) ^ v.si) & -(v.si > subC);
-    v.si ^= ((v.si + maxD) ^ v.si) & -(v.si > maxC);
+    v.ui ^= ((v.ui + minD) ^ v.ui) & -(int32_t)(v.ui > subC);
+    v.ui ^= ((v.ui + maxD) ^ v.ui) & -(int32_t)(v.ui > maxC);
     Bits s;
-    s.si = mulC;
+    s.ui = mulC;
     s.f *= v.si;
-    int32_t mask = -(norC > v.si);
-    v.si <<= shift;
-    v.si ^= (s.si ^ v.si) & mask;
-    v.si |= sign;
+    int32_t mask = -(int32_t)(norC > v.ui);
+    v.ui <<= shift;
+    v.ui ^= (s.ui ^ v.ui) & mask;
+    v.ui |= sign;
     return v.f;
 
 #endif
@@ -369,7 +370,7 @@ struct PADDLE_ALIGN(2) float16 {
   static constexpr uint32_t minC = minN >> shift;
   static constexpr uint32_t sigC = sigN >> shiftSign;
 
-  static const uint32_t mulC = 0x33800000;   // minN / (1 << (23 - shift))
+  static constexpr uint32_t mulC = 0x33800000;  // minN / (1 << (23 - shift))
   static constexpr uint32_t subC = 0x003FF;  // max flt32 subnormal downshifted
   static constexpr uint32_t norC = 0x00400;  // min flt32 normal downshifted
   static constexpr uint32_t maxD = infC - maxC - 1;
