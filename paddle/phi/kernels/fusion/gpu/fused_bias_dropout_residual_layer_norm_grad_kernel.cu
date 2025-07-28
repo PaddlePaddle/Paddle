@@ -89,6 +89,29 @@ void FusedBiasDropoutResidualLnGradKernel(
   if (y_grad.numel() == 0) {
     phi::Full<T, Context>(
         dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    if (ln_scale_grad)
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(ln_scale_grad->dims())),
+          0,
+          ln_scale_grad);
+    if (ln_bias_grad)
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(ln_bias_grad->dims())),
+          0,
+          ln_bias_grad);
+    if (residual_grad)
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(residual_grad->dims())),
+          0,
+          residual_grad);
+    if (bias_grad)
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(bias_grad->dims())),
+                            0,
+                            bias_grad);
     return;
   }
 

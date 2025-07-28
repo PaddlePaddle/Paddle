@@ -304,6 +304,16 @@ void Pool3dGPUDNNKernel(const Context& dev_ctx,
                         bool adaptive,
                         const std::string& padding_algorithm,
                         DenseTensor* out) {
+  if (x.numel() == 0) {
+    if (pooling_type == "max" || pooling_type == "avg") {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    } else {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    }
+    return;
+  }
   PoolRawGPUDNNKernel<T, Context>(dev_ctx,
                                   x,
                                   kernel_size,

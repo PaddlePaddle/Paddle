@@ -417,7 +417,7 @@ void ConvCudnnGradKernel(const Context& dev_ctx,
                          DenseTensor* input_grad,
                          DenseTensor* filter_grad) {
   // 0-size
-  if (input.numel() == 0) {
+  if (input.numel() == 0 || filter.numel() == 0) {
     if (input_grad) dev_ctx.template Alloc<T>(input_grad);
     if (filter_grad) {
       phi::Full<T, Context>(
