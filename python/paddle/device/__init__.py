@@ -366,6 +366,76 @@ def get_device() -> str:
     return device
 
 
+def device_count(dev_type: str | None = None) -> int:
+    '''
+    Return the number of devices available.
+
+    Args:
+        dev_type (str, optional): Device type string, e.g., 'gpu', 'npu', etc.
+        If None, will return the number of CUDA devices if available,
+        otherwise the first available custom device count.
+
+    Returns:
+        int: the number of devices available.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> paddle.device.cuda.device_count()
+            >>> paddle.device.cuda.device_count('gpu')
+            >>> paddle.device.cuda.device_count('npu')
+
+    '''
+    if dev_type is None:
+        if paddle.is_compiled_with_cuda():
+            num = (
+                core.get_cuda_device_count()
+                if hasattr(core, 'get_cuda_device_count')
+                else 0
+            )
+        elif hasattr(core, 'get_all_custom_device_type'):
+            custom_types = core.get_all_custom_device_type()
+            if custom_types:
+                num = (
+                    core.get_custom_device_count(custom_types[0])
+                    if hasattr(core, 'get_custom_device_count')
+                    else 0
+                )
+            else:
+                num = 0
+        else:
+            raise ValueError(
+                "Paddle is not compiled with GPU or Custom Device."
+            )
+        return num
+
+    if dev_type == 'gpu':
+        if paddle.is_compiled_with_cuda():
+            num = (
+                core.get_cuda_device_count()
+                if hasattr(core, 'get_cuda_device_count')
+                else 0
+            )
+        else:
+            raise ValueError("Paddle is not compiled with GPU.")
+    else:
+        if hasattr(
+            core, 'is_compiled_with_custom_device'
+        ) and core.is_compiled_with_custom_device(dev_type):
+            num = (
+                core.get_custom_device_count(dev_type)
+                if hasattr(core, 'get_custom_device_count')
+                else 0
+            )
+        else:
+            raise ValueError(
+                f"Unsupported or unavailable device type: {dev_type}"
+            )
+    return num
+
+
 def get_all_device_type() -> list[str]:
     """
 
