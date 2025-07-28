@@ -248,10 +248,10 @@ template PADDLE_API phi::dtype::float16 *
 Tensor::mutable_data<phi::dtype::float16>();
 template PADDLE_API float *Tensor::mutable_data<float>();
 template PADDLE_API double *Tensor::mutable_data<double>();
-template PADDLE_API phi::dtype::complex<float> *
-Tensor::mutable_data<phi::dtype::complex<float>>();
-template PADDLE_API phi::dtype::complex<double> *
-Tensor::mutable_data<phi::dtype::complex<double>>();
+template PADDLE_API phi::dtype::complex<float>
+    *Tensor::mutable_data<phi::dtype::complex<float>>();
+template PADDLE_API phi::dtype::complex<double>
+    *Tensor::mutable_data<phi::dtype::complex<double>>();
 template PADDLE_API phi::dtype::float8_e4m3fn *
 Tensor::mutable_data<phi::dtype::float8_e4m3fn>();
 template PADDLE_API phi::dtype::float8_e5m2 *
@@ -285,10 +285,10 @@ template PADDLE_API phi::dtype::float16 *
 Tensor::mutable_data<phi::dtype::float16>(const Place &place);
 template PADDLE_API float *Tensor::mutable_data<float>(const Place &place);
 template PADDLE_API double *Tensor::mutable_data<double>(const Place &place);
-template PADDLE_API phi::dtype::complex<float> *
-Tensor::mutable_data<phi::dtype::complex<float>>(const Place &place);
-template PADDLE_API phi::dtype::complex<double> *
-Tensor::mutable_data<phi::dtype::complex<double>>(const Place &place);
+template PADDLE_API phi::dtype::complex<float>
+    *Tensor::mutable_data<phi::dtype::complex<float>>(const Place &place);
+template PADDLE_API phi::dtype::complex<double>
+    *Tensor::mutable_data<phi::dtype::complex<double>>(const Place &place);
 
 template <typename T>
 const T *Tensor::data() const {
@@ -315,10 +315,10 @@ template PADDLE_API const phi::dtype::float16 *
 Tensor::data<phi::dtype::float16>() const;
 template PADDLE_API const float *Tensor::data<float>() const;
 template PADDLE_API const double *Tensor::data<double>() const;
-template PADDLE_API const phi::dtype::complex<float> *
-Tensor::data<phi::dtype::complex<float>>() const;
-template PADDLE_API const phi::dtype::complex<double> *
-Tensor::data<phi::dtype::complex<double>>() const;
+template PADDLE_API const phi::dtype::complex<float>
+    *Tensor::data<phi::dtype::complex<float>>() const;
+template PADDLE_API const phi::dtype::complex<double>
+    *Tensor::data<phi::dtype::complex<double>>() const;
 template PADDLE_API const phi::dtype::float8_e4m3fn *
 Tensor::data<phi::dtype::float8_e4m3fn>() const;
 template PADDLE_API const phi::dtype::float8_e5m2 *
@@ -349,10 +349,10 @@ template PADDLE_API phi::dtype::bfloat16 *Tensor::data<phi::dtype::bfloat16>();
 template PADDLE_API phi::dtype::float16 *Tensor::data<phi::dtype::float16>();
 template PADDLE_API float *Tensor::data<float>();
 template PADDLE_API double *Tensor::data<double>();
-template PADDLE_API phi::dtype::complex<float> *
-Tensor::data<phi::dtype::complex<float>>();
-template PADDLE_API phi::dtype::complex<double> *
-Tensor::data<phi::dtype::complex<double>>();
+template PADDLE_API phi::dtype::complex<float>
+    *Tensor::data<phi::dtype::complex<float>>();
+template PADDLE_API phi::dtype::complex<double>
+    *Tensor::data<phi::dtype::complex<double>>();
 template PADDLE_API phi::dtype::float8_e4m3fn *
 Tensor::data<phi::dtype::float8_e4m3fn>();
 template PADDLE_API phi::dtype::float8_e5m2 *
@@ -457,7 +457,7 @@ void Tensor::reset() {
 
 Tensor &Tensor::operator=(const Tensor &x) & = default;
 
-Tensor &Tensor::operator=(Tensor &&x) & noexcept {
+Tensor &Tensor::operator=(Tensor &&x) &noexcept {
   impl_ = std::move(x.impl_);
   autograd_meta_ = std::move(x.autograd_meta_);
   name_ = std::move(x.name_);
