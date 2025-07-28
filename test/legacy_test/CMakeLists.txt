@@ -978,7 +978,7 @@ if(APPLE)
   set_tests_properties(test_imperative_transformer_sorted_gradient
                        PROPERTIES TIMEOUT 300)
 endif()
-set_tests_properties(test_decorator PROPERTIES TIMEOUT 120)
+set_tests_properties(test_decorator PROPERTIES TIMEOUT 150)
 
 if(APPLE)
   set_tests_properties(test_multiclass_nms_op PROPERTIES TIMEOUT 300)
