@@ -181,8 +181,8 @@ static void BicubicInterpolationGrad(const DenseTensor& output_grad,
                                      const float ratio_w,
                                      const int64_t in_h,
                                      const int64_t in_w,
-                                     const int n,
-                                     const int c,
+                                     const int64_t n,
+                                     const int64_t c,
                                      const int out_h,
                                      const int out_w,
                                      const bool align_corners,
@@ -194,13 +194,13 @@ static void BicubicInterpolationGrad(const DenseTensor& output_grad,
   for (int k = 0; k < out_h; k++) {  // loop for images
     MT y_n = align_corners ? ratio_h * static_cast<float>(k)
                            : ratio_h * (static_cast<float>(k) + 0.5f) - 0.5f;
-    int input_y = floorf(y_n);
+    int64_t input_y = floorf(y_n);
     MT y_t = y_n - input_y;
 
     for (int l = 0; l < out_w; l++) {
       MT x_n = align_corners ? ratio_w * static_cast<float>(l)
                              : ratio_w * (static_cast<float>(l) + 0.5f) - 0.5f;
-      int input_x = floorf(x_n);
+      int64_t input_x = floorf(x_n);
       MT x_t = x_n - input_x;
 
       std::array<MT, 4> x_coeffs;
@@ -215,9 +215,9 @@ static void BicubicInterpolationGrad(const DenseTensor& output_grad,
           for (int ii = 0; ii < 4; ii++) {
             for (int jj = 0; jj < 4; jj++) {
               int access_x = std::max(std::min(input_x - 1 + ii, in_w - 1),
-                                      static_cast<int>(0));
+                                      static_cast<int64_t>(0));
               int access_y = std::max(std::min(input_y - 1 + jj, in_h - 1),
-                                      static_cast<int>(0));
+                                      static_cast<int64_t>(0));
               if (data_layout == DataLayout::kNCHW) {
                 MT grad = static_cast<MT>(output_grad_t(i, j, k, l));
                 input_grad_t(i, j, access_y, access_x) +=
