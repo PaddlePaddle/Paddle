@@ -42,9 +42,11 @@ struct AbsMaxAndMinGradFunctor {
 
 template <typename T>
 struct PNormGradFunctor {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+
   HOSTDEVICE explicit inline PNormGradFunctor(float porder, float eps) {
-    this->porder = static_cast<T>(porder - 1.);
-    this->eps = static_cast<T>(eps);
+    this->porder = static_cast<MT>(porder - 1.);
+    this->eps = static_cast<MT>(eps);
   }
   template <typename Context,
             typename X,
@@ -59,9 +61,20 @@ struct PNormGradFunctor {
                   DY* dy,
                   const Dim& dim,
                   int size) {
+    // dx->device(place) =
+    //     (*x).abs().pow(this->porder) * (*x).sign() * dy->broadcast(dim) *
+    //     (*y + y->constant(eps)).pow(-this->porder).broadcast(dim);
+    auto x_mt  = x->template cast<MT>();
+    auto y_mt  = y->template cast<MT>();
+    auto dy_mt = dy->template cast<MT>();
+
     dx->device(place) =
-        (*x).abs().pow(this->porder) * (*x).sign() * dy->broadcast(dim) *
-        (*y + y->constant(eps)).pow(-this->porder).broadcast(dim);
+        (
+          x_mt.abs().pow(this->porder) *
+          x_mt.sign() *
+          dy_mt.broadcast(dim) *
+          (y_mt + y_mt.constant(eps)).pow(-this->porder).broadcast(dim)
+        ).template cast<T>();
   }
   T porder;
   T eps;
