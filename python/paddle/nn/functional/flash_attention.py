@@ -2039,6 +2039,9 @@ def flashmask_attention(
             startend_row_indices.shape[0] == key.shape[0]
         ), f"startend_row_indices.shape[0] must be equal to batch_size, but got {startend_row_indices.shape[0]} and {key.shape[0]}"
 
+        assert (
+            startend_row_indices.shape[2] == key.shape[1]
+        ), f"startend_row_indices.shape[2] must be equal to seqlen_k, but got {startend_row_indices.shape[2]} and {key.shape[2]}"
         assert startend_row_indices.shape[1] in [
             1,
             key.shape[2],
