@@ -75,5 +75,7 @@ PD_REGISTER_KERNEL(min,
                    phi::MinKernel,
                    float,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   int,
+                   int64_t) {}
 #endif
