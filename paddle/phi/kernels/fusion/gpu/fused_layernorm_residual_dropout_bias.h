@@ -121,8 +121,8 @@ template <typename T,
           bool ScaleBiasWithSameTypeX = false,
           bool HasDropout = true>
 __global__ void FusedLayernormResidualDropoutBias(
-    const size_t rows,
-    const size_t cols,
+    const int64_t rows,
+    const int64_t cols,
     uint64_t seed,
     const float dropout_prob,
     const bool is_upscale_in_train,
@@ -141,7 +141,8 @@ __global__ void FusedLayernormResidualDropoutBias(
     LayerNormParamType<T> *var,
     const float residual_alpha = 1.0) {
   int64_t col_id = threadIdx.x;
-  int64_t row_id = blockIdx.x;
+  int64_t row_id = blockIdx.x * gridDim.y + blockIdx.y;
+  if (row_id >= rows) return;
   int64_t idx = row_id * cols + col_id;
   GPURAND(StatePhilox4_32_10_t) state;
   if (HasDropout) {
@@ -164,7 +165,7 @@ __global__ void FusedLayernormResidualDropoutBias(
   phi::funcs::ReluFunctor<T> relu;
   U mean_val = 0;
   U var_val = 0;
-  for (int i = col_id * VecSize; i < cols; i += blockDim.x * VecSize) {
+  for (int64_t i = col_id * VecSize; i < cols; i += blockDim.x * VecSize) {
     FusedResidualDropoutBiasOneThread<T,
                                       MaskType,
                                       VecSize,
@@ -226,11 +227,11 @@ template <typename T,
           typename U,
           bool ScaleBiasWithSameTypeX = false>
 void LaunchFusedLayernormResidualDropoutBiasCUDAKernel(
-    int grid_dim,
+    int64_t grid_dim,
     int block_dim,
     gpuStream_t stream,
-    const size_t rows,
-    const size_t cols,
+    const int64_t rows,
+    const int64_t cols,
     uint64_t seed,
     const float dropout_prob,
     const bool is_upscale_in_train,
@@ -248,6 +249,7 @@ void LaunchFusedLayernormResidualDropoutBiasCUDAKernel(
     LayerNormParamType<T> *mean,
     LayerNormParamType<T> *var,
     const float residual_alpha = 1.0) {
+  auto kGridDim = phi::funcs::GetDesiredGridDim(grid_dim);
   if (dropout_prob != 0.0f) {
     FusedLayernormResidualDropoutBias<T,
                                       MaskType,
@@ -255,7 +257,7 @@ void LaunchFusedLayernormResidualDropoutBiasCUDAKernel(
                                       U,
                                       ScaleBiasWithSameTypeX,
                                       true>
-        <<<grid_dim, block_dim, 0, stream>>>(rows,
+        <<<kGridDim, block_dim, 0, stream>>>(rows,
                                              cols,
                                              seed,
                                              dropout_prob,
@@ -281,7 +283,7 @@ void LaunchFusedLayernormResidualDropoutBiasCUDAKernel(
                                       U,
                                       ScaleBiasWithSameTypeX,
                                       false>
-        <<<grid_dim, block_dim, 0, stream>>>(rows,
+        <<<kGridDim, block_dim, 0, stream>>>(rows,
                                              cols,
                                              seed,
                                              dropout_prob,
@@ -893,11 +895,12 @@ void LaunchLayernormResidualDropoutBias(
       PADDLE_ENFORCE_GPU_SUCCESS(GPU(MemsetAsync)(
           mask_data, 0, rows * cols * sizeof(MaskType), dev_ctx.stream()));
     }
+    auto kGridDim = phi::funcs::GetDesiredGridDim(rows);
     // call layernorm forward
     switch (phi::funcs::GetDesiredBlockDim(cols)) {
       FIXED_BLOCK_DIM_CASE(
           phi::funcs::LayerNormForward<T, U, kBlockDim, ScaleBiasWithSameTypeX>
-          <<<rows, kBlockDim, 0, dev_ctx.stream()>>>(
+          <<<kGridDim, kBlockDim, 0, dev_ctx.stream()>>>(
               dst,
               scale,
               layernorm_bias,
@@ -1035,7 +1038,7 @@ void LaunchLayernormResidualDropoutBias(
   bool can_call_fast_ln_kernel = false;
   if (((cols >= 768 && cols <= 2048 && cols % 256 == 0) || cols == 3072 ||
        cols == 4096) &&
-      scale != nullptr && layernorm_bias != nullptr) {
+      scale != nullptr && layernorm_bias != nullptr && rows < 2147483648LL) {
     can_call_fast_ln_kernel = true;
   }
   VLOG(6) << "can_call_fast_ln_kernel = " << can_call_fast_ln_kernel;

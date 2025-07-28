@@ -476,6 +476,8 @@ PyObject* pylayer_method_apply(PyObject* cls,
         std::make_shared<egr::GradNodePyLayer>(reinterpret_cast<PyObject*>(ctx),
                                                outputs_autograd_meta.size(),
                                                inputs_autograd_meta.size());
+    VLOG(3) << "Create grad node " << grad_node->name() << " addr "
+            << grad_node;
     ctx->grad_node = grad_node;
 
     if (ctx->materialize_grads) {

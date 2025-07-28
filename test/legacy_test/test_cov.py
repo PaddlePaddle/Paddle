@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
+from op_test import get_places
 
 import paddle
-from paddle import base
 
 
 def numpy_cov(np_arr, rowvar=True, ddof=1, fweights=None, aweights=None):
@@ -38,17 +37,8 @@ class Cov_Test(unittest.TestCase):
 
     def test_tensor_cov_default(self):
         typelist = ['float64']
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not base.core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if base.core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
 
-        for idx, p in enumerate(places):
+        for idx, p in enumerate(get_places()):
             if idx == 0:
                 paddle.set_device('cpu')
             else:
@@ -67,17 +57,8 @@ class Cov_Test(unittest.TestCase):
 
     def test_tensor_cov_rowvar(self):
         typelist = ['float64']
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not base.core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if base.core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
 
-        for idx, p in enumerate(places):
+        for idx, p in enumerate(get_places()):
             if idx == 0:
                 paddle.set_device('cpu')
             else:
@@ -100,17 +81,8 @@ class Cov_Test(unittest.TestCase):
 
     def test_tensor_cov_ddof(self):
         typelist = ['float64']
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not base.core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if base.core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
 
-        for idx, p in enumerate(places):
+        for idx, p in enumerate(get_places()):
             if idx == 0:
                 paddle.set_device('cpu')
             else:
@@ -133,17 +105,8 @@ class Cov_Test(unittest.TestCase):
 
     def test_tensor_cov_fweights(self):
         typelist = ['float64']
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not base.core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if base.core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
 
-        for idx, p in enumerate(places):
+        for idx, p in enumerate(get_places()):
             if idx == 0:
                 paddle.set_device('cpu')
             else:
@@ -170,17 +133,8 @@ class Cov_Test(unittest.TestCase):
 
     def test_tensor_cov_aweights(self):
         typelist = ['float64']
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not base.core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if base.core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
 
-        for idx, p in enumerate(places):
+        for idx, p in enumerate(get_places()):
             if idx == 0:
                 paddle.set_device('cpu')
             else:
@@ -207,17 +161,8 @@ class Cov_Test(unittest.TestCase):
 
     def test_tensor_cov_weights(self):
         typelist = ['float64']
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not base.core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if base.core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
 
-        for idx, p in enumerate(places):
+        for idx, p in enumerate(get_places()):
             if idx == 0:
                 paddle.set_device('cpu')
             else:
@@ -349,17 +294,8 @@ class Cov_Test_ZeroSize(unittest.TestCase):
 
     def test_tensor_cov_default(self):
         typelist = ['float64']
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not base.core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if base.core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
 
-        for idx, p in enumerate(places):
+        for idx, p in enumerate(get_places()):
             if idx == 0:
                 paddle.set_device('cpu')
             else:

@@ -37,7 +37,7 @@ GradNodeRunProgram::~GradNodeRunProgram() {
 void GradNodeRunProgram::ConstructXGradTensors(
     const std::vector<paddle::Tensor> &x, std::vector<paddle::Tensor> *x_grad) {
   auto x_grad_names =
-      PADDLE_GET_CONST(std::vector<std::string>, attrs_.at("bx_g_names"));
+      PADDLE_GET_CONST(std::vector<std::string>, prog_attrs_.at("bx_g_names"));
   PADDLE_ENFORCE_EQ(x.size(),
                     x_grad_names.size(),
                     common::errors::InvalidArgument(
@@ -68,7 +68,7 @@ void GradNodeRunProgram::ConstructParamGradTensors(
     const std::vector<paddle::Tensor> &params,
     std::vector<paddle::Tensor> *param_grads) {
   auto p_grad_names =
-      PADDLE_GET_CONST(std::vector<std::string>, attrs_.at("bp_g_names"));
+      PADDLE_GET_CONST(std::vector<std::string>, prog_attrs_.at("bp_g_names"));
   PADDLE_ENFORCE_EQ(params.size(),
                     p_grad_names.size(),
                     common::errors::InvalidArgument(
@@ -108,8 +108,6 @@ GradNodeRunProgram::operator()(
 
   std::vector<paddle::Tensor> x_grad;
   std::vector<paddle::Tensor> params_grad;
-  std::vector<paddle::Tensor *> x_grad_ptr;
-  std::vector<paddle::Tensor *> params_grad_ptr;
   {
     phi::RecordEvent record_event(
         "construct_grad_tensor", phi::TracerEventType::UserDefined, 1);
@@ -119,16 +117,10 @@ GradNodeRunProgram::operator()(
     VLOG(3) << "hooked_grads[0].size() : " << hooked_grads[0].size();
     ConstructXGradTensors(x_, &x_grad);
     ConstructParamGradTensors(params_, &params_grad);
-    for (auto &i : x_grad) {
-      x_grad_ptr.emplace_back(&i);
-    }
-    for (auto &i : params_grad) {
-      params_grad_ptr.emplace_back(&i);
-    }
   }
 
   const auto &out_grad_names =
-      PADDLE_GET_CONST(std::vector<std::string>, attrs_.at("bo_g_names"));
+      PADDLE_GET_CONST(std::vector<std::string>, prog_attrs_.at("bo_g_names"));
   PADDLE_ENFORCE_EQ(hooked_grads[0].size(),
                     out_grad_names.size(),
                     common::errors::InvalidArgument(
@@ -137,9 +129,10 @@ GradNodeRunProgram::operator()(
 
   egr::to_static::RunProgramGradImpl(hooked_grads[0],
                                      step_scope_,
-                                     attrs_,
-                                     x_grad_ptr,
-                                     params_grad_ptr,
+                                     prog_attrs_,
+                                     cuda_graph_attrs_,
+                                     &x_grad,
+                                     &params_grad,
                                      place_hash_key_);
   VLOG(3) << "End Eager Backward Node: GradNodeRunProgram";
 

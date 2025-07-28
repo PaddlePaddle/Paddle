@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 from decorator_helper import prog_scope
+from utils import dygraph_guard
 
 import paddle
 from paddle import base
@@ -504,17 +505,37 @@ class TestMathOpPatches(unittest.TestCase):
 
 
 class CustomTensor:
-
     def __init__(self, value):
         assert isinstance(value, paddle.Tensor)
 
         self._value = value
 
     def __radd__(self, other):
-        return self._value + other
+        return other + self._value
+
+    def __rsub__(self, other):
+        return other - self._value
 
     def __rmul__(self, other):
-        return self._value * other
+        return other * self._value
+
+    def __rdiv__(self, other):
+        return other / self._value
+
+    def __rfloordiv__(self, other):
+        return other.__floordiv__(self._value)
+
+    def __rtruediv__(self, other):
+        return other.__truediv__(self._value)
+
+    def __rpow__(self, other):
+        return other.__pow__(self._value)
+
+    def __rmatmul__(self, other):
+        return other.__matmul__(self._value)
+
+    def __rmod__(self, other):
+        return other.__mod__(self._value)
 
 
 class TestDygraphMathOpPatches(unittest.TestCase):
@@ -528,155 +549,353 @@ class TestDygraphMathOpPatches(unittest.TestCase):
         self.tensor_b = paddle.to_tensor(self.np_b, dtype="float32")
 
     def test_dygraph_greater_than(self):
-        paddle.disable_static()
-        self.init_data()
-        # normal case: tenor > nparray
-        expect_out = self.np_a > self.np_b
-        actual_out = self.tensor_a > self.np_b
-        np.testing.assert_equal(actual_out, expect_out)
-        paddle.enable_static()
+        with dygraph_guard():
+            self.init_data()
+            # normal case: tenor > nparray
+            expect_out = self.np_a > self.np_b
+            actual_out = self.tensor_a > self.np_b
+            np.testing.assert_equal(actual_out, expect_out)
 
     def test_dygraph_greater_equal(self):
-        paddle.disable_static()
-        self.init_data()
-        # normal case: tenor >= nparray
-        expect_out = self.np_a >= self.np_b
-        actual_out = self.tensor_a >= self.np_b
-        np.testing.assert_equal(actual_out, expect_out)
-        paddle.enable_static()
+        with dygraph_guard():
+            self.init_data()
+            # normal case: tenor >= nparray
+            expect_out = self.np_a >= self.np_b
+            actual_out = self.tensor_a >= self.np_b
+            np.testing.assert_equal(actual_out, expect_out)
 
-    def test_dygraph_reminder(self):
-        paddle.disable_static()
-        self.init_data()
-        # normal case: tenor % nparray
-        expect_out = self.np_a % self.np_b
-        actual_out = self.tensor_a % self.np_b
-        np.testing.assert_allclose(actual_out, expect_out, rtol=1e-7, atol=1e-7)
-        paddle.enable_static()
+    def test_dygraph_remainder(self):
+        with dygraph_guard():
+            self.init_data()
+            # normal case: tenor % nparray
+            expect_out = self.np_a % self.np_b
+            actual_out = self.tensor_a % self.np_b
+            np.testing.assert_allclose(
+                actual_out, expect_out, rtol=1e-7, atol=1e-7
+            )
 
     def test_dygraph_rmod(self):
-        paddle.disable_static()
-        self.init_data()
-        # normal case: tenor % nparray
-        expect_out = self.np_a % self.np_b
-        actual_out = self.tensor_b.__rmod__(self.tensor_a)
-        np.testing.assert_allclose(actual_out, expect_out, rtol=1e-7, atol=1e-7)
-        paddle.enable_static()
+        with dygraph_guard():
+            self.init_data()
+            # normal case: tenor % nparray
+            expect_out = self.np_a % self.np_b
+            actual_out = self.tensor_b.__rmod__(self.tensor_a)
+            np.testing.assert_allclose(
+                actual_out, expect_out, rtol=1e-7, atol=1e-7
+            )
 
     def test_dygraph_less_than(self):
-        paddle.disable_static()
-        self.init_data()
-        # normal case: tenor < nparray
-        expect_out = self.np_a < self.np_b
-        actual_out = self.tensor_a < self.np_b
-        np.testing.assert_equal(actual_out, expect_out)
-        paddle.enable_static()
+        with dygraph_guard():
+            self.init_data()
+            # normal case: tenor < nparray
+            expect_out = self.np_a < self.np_b
+            actual_out = self.tensor_a < self.np_b
+            np.testing.assert_equal(actual_out, expect_out)
 
     def test_dygraph_less_equal(self):
-        paddle.disable_static()
-        self.init_data()
-        # normal case: tenor <= nparray
-        expect_out = self.np_a <= self.np_b
-        actual_out = self.tensor_a <= self.np_b
-        np.testing.assert_equal(actual_out, expect_out)
-        paddle.enable_static()
+        with dygraph_guard():
+            self.init_data()
+            # normal case: tenor <= nparray
+            expect_out = self.np_a <= self.np_b
+            actual_out = self.tensor_a <= self.np_b
+            np.testing.assert_equal(actual_out, expect_out)
 
     def test_dygraph_floor_divide(self):
-        paddle.disable_static()
-        np_a = np.random.random((2, 3, 4)).astype(np.int32)
-        np_b = np.random.random((2, 3, 4)).astype(np.int32)
-        np_b[np.abs(np_b) < 1] = 2
-        # normal case: tenor // nparray
-        tensor_a = paddle.to_tensor(np_a, dtype="int32")
-        tensor_b = paddle.to_tensor(np_b, dtype="int32")
-        expect_out = np_a // np_b
-        actual_out = tensor_a // np_b
-        np.testing.assert_equal(actual_out, expect_out)
-        paddle.enable_static()
+        with dygraph_guard():
+            np_a = np.random.random((2, 3, 4)).astype(np.int32)
+            np_b = np.random.random((2, 3, 4)).astype(np.int32)
+            np_b[np.abs(np_b) < 1] = 2
+            # normal case: tenor // nparray
+            tensor_a = paddle.to_tensor(np_a, dtype="int32")
+            tensor_b = paddle.to_tensor(np_b, dtype="int32")
+            expect_out = np_a // np_b
+            actual_out = tensor_a // np_b
+            np.testing.assert_equal(actual_out, expect_out)
 
     def test_dygraph_rfloordiv(self):
-        paddle.disable_static()
-        np_a = np.random.random((2, 3, 4)).astype(np.int32)
-        np_b = np.random.random((2, 3, 4)).astype(np.int32)
-        np_b[np.abs(np_b) < 1] = 2
-        # normal case: nparray // tensor
-        tensor_a = paddle.to_tensor(np_a, dtype="int32")
-        tensor_b = paddle.to_tensor(np_b, dtype="int32")
-        expect_out = np_b // np_a
-        actual_out = tensor_b.__rfloordiv__(np_a)
-        np.testing.assert_equal(actual_out, expect_out)
-        paddle.enable_static()
+        with dygraph_guard():
+            np_a = np.random.random((2, 3, 4)).astype(np.int32)
+            np_b = np.random.random((2, 3, 4)).astype(np.int32)
+            np_b[np.abs(np_b) < 1] = 2
+            # normal case: nparray // tensor
+            tensor_a = paddle.to_tensor(np_a, dtype="int32")
+            tensor_b = paddle.to_tensor(np_b, dtype="int32")
+            expect_out = np_b // np_a
+            actual_out = tensor_b.__rfloordiv__(np_a)
+            np.testing.assert_equal(actual_out, expect_out)
 
     def test_dygraph_elementwise_pow(self):
-        paddle.disable_static()
-        self.init_data()
-        # normal case: tenor ** nparray
-        expect_out = self.np_a**self.np_b
-        actual_out = self.tensor_a**self.np_b
-        np.testing.assert_allclose(actual_out, expect_out, rtol=1e-7, atol=1e-7)
+        with dygraph_guard():
+            self.init_data()
+            # normal case: tenor ** nparray
+            expect_out = self.np_a**self.np_b
+            actual_out = self.tensor_a**self.np_b
+            np.testing.assert_allclose(
+                actual_out, expect_out, rtol=1e-7, atol=1e-7
+            )
 
-        # normal case: nparray ** tensor
-        expect_out = self.np_a**self.np_b
-        actual_out = self.np_a**self.tensor_b
-        np.testing.assert_allclose(actual_out, expect_out, rtol=1e-7, atol=1e-7)
-
-        paddle.enable_static()
+            # normal case: nparray ** tensor
+            expect_out = self.np_a**self.np_b
+            actual_out = self.np_a**self.tensor_b
+            np.testing.assert_allclose(
+                actual_out, expect_out, rtol=1e-7, atol=1e-7
+            )
 
     def test_dygraph_not_equal(self):
-        paddle.disable_static()
-        self.init_data()
-        # normal case: tenor != nparray
-        expect_out = self.np_a != self.np_b
-        actual_out = self.tensor_a != self.np_b
-        np.testing.assert_equal(actual_out, expect_out)
-        paddle.enable_static()
+        with dygraph_guard():
+            self.init_data()
+            # normal case: tenor != nparray
+            expect_out = self.np_a != self.np_b
+            actual_out = self.tensor_a != self.np_b
+            np.testing.assert_equal(actual_out, expect_out)
 
     def test_dygraph_equal(self):
-        paddle.disable_static()
-        self.init_data()
-        # normal case: tenor == nparray
-        expect_out = self.np_a == self.np_b
-        actual_out = self.tensor_a == self.np_b
-        np.testing.assert_equal(actual_out, expect_out)
-        paddle.enable_static()
+        with dygraph_guard():
+            self.init_data()
+            # normal case: tenor == nparray
+            expect_out = self.np_a == self.np_b
+            actual_out = self.tensor_a == self.np_b
+            np.testing.assert_equal(actual_out, expect_out)
 
     def test_dygraph_rmatmul(self):
-        paddle.disable_static()
-        a_np = np.random.random((2, 3)).astype(np.float32) * 100
-        b_np = np.random.random((3, 5)).astype(np.float32) * 100
-        a = paddle.to_tensor(a_np)
-        b = paddle.to_tensor(b_np)
-        c = b.__rmatmul__(a)
-        np.testing.assert_allclose(a @ b, c.numpy(), rtol=1e-5, atol=1e-5)
-        paddle.enable_static()
+        with dygraph_guard():
+            a_np = np.random.random((2, 3)).astype(np.float32) * 100
+            b_np = np.random.random((3, 5)).astype(np.float32) * 100
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
+            c = b.__rmatmul__(a)
+            np.testing.assert_allclose(a @ b, c.numpy(), rtol=1e-5, atol=1e-5)
 
-    @unittest.skipIf(
-        paddle.device.is_compiled_with_xpu(),
-        reason="XPU not support custom tensor.",
-    )
+    # @unittest.skipIf(
+    #     paddle.device.is_compiled_with_xpu(),
+    #     reason="XPU not support custom tensor.",
+    # )
     def test_dygraph_custom_add(self):
-        paddle.disable_static()
-        a_np = np.random.random((2, 3)).astype(np.float32) * 100
-        b_np = np.random.random((2, 3)).astype(np.float32) * 100
-        a = paddle.to_tensor(a_np)
-        b = paddle.to_tensor(b_np)
-        c = a + CustomTensor(b)
-        np.testing.assert_allclose(a + b, c, atol=0)
-        paddle.enable_static()
+        with dygraph_guard():
+            a_np = np.random.random((2, 3)).astype(np.float32) * 100
+            b_np = np.random.random((2, 3)).astype(np.float32) * 100
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
+            c = a + CustomTensor(b)
+            np.testing.assert_allclose((a + b).numpy(), c.numpy(), atol=0)
 
-    @unittest.skipIf(
-        paddle.device.is_compiled_with_xpu(),
-        reason="XPU not support custom tensor.",
-    )
+    def test_dygraph_vanilla_add(self):
+        with dygraph_guard():
+            a_np = np.random.random((2, 3)).astype(np.float32) * 100
+            b_f = lambda y: y + 1
+            a = paddle.to_tensor(a_np)
+            with self.assertRaisesRegex(
+                TypeError,
+                r"__add__\(\): argument \(position 1\) must be int, float, bool or Tensor, but got ",
+            ):
+                _ = a + b_f
+
+            with self.assertRaisesRegex(
+                ValueError, "Broadcast dimension mismatch"
+            ):
+                _ = a + a.T
+
+    # @unittest.skipIf(
+    #     paddle.device.is_compiled_with_xpu(),
+    #     reason="XPU not support custom tensor.",
+    # )
     def test_dygraph_custom_mul(self):
-        paddle.disable_static()
-        a_np = np.random.random((2, 3)).astype(np.float32) * 100
-        b_np = np.random.random((2, 3)).astype(np.float32) * 100
-        a = paddle.to_tensor(a_np)
-        b = paddle.to_tensor(b_np)
-        c = a * CustomTensor(b)
-        np.testing.assert_allclose(a * b, c, atol=0)
-        paddle.enable_static()
+        with dygraph_guard():
+            a_np = np.random.random((2, 3)).astype(np.float32) * 100
+            b_np = np.random.random((2, 3)).astype(np.float32) * 100
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
+            c = a * CustomTensor(b)
+            np.testing.assert_allclose((a * b).numpy(), c.numpy(), atol=0)
+
+    def test_dygraph_vanilla_mul(self):
+        with dygraph_guard():
+            a_np = np.random.random((2, 3)).astype(np.float32) * 100
+            b_f = lambda y: y + 1
+            a = paddle.to_tensor(a_np)
+            with self.assertRaisesRegex(
+                TypeError,
+                r"__mul__\(\): argument \(position 1\) must be int, float, bool or Tensor, but got ",
+            ):
+                _ = a * b_f
+
+            with self.assertRaisesRegex(
+                ValueError, "Broadcast dimension mismatch"
+            ):
+                _ = a * a.T
+
+    def test_dygraph_custom_sub(self):
+        with dygraph_guard():
+            a_np = np.random.random((2, 3)).astype(np.float32) * 100
+            b_np = np.random.random((2, 3)).astype(np.float32) * 100
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
+            c = a - CustomTensor(b)
+            np.testing.assert_allclose((a - b).numpy(), c.numpy(), atol=0)
+
+    def test_dygraph_vanilla_sub(self):
+        with dygraph_guard():
+            a_np = np.random.random((2, 3)).astype(np.float32) * 100
+            b_f = lambda y: y + 1
+            a = paddle.to_tensor(a_np)
+            with self.assertRaisesRegex(
+                TypeError,
+                r"__sub__\(\): argument \(position 1\) must be int, float, bool or Tensor, but got ",
+            ):
+                _ = a - b_f
+
+            with self.assertRaisesRegex(
+                ValueError, "Broadcast dimension mismatch"
+            ):
+                _ = a - a.T
+
+    def test_dygraph_custom_pow(self):
+        with dygraph_guard():
+            a_np = np.random.random((2, 3)).astype(np.float32) * 100
+            b_np = np.random.random((2, 3)).astype(np.float32) * 100
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
+            c = a ** CustomTensor(b)
+            np.testing.assert_allclose((a**b).numpy(), c.numpy(), atol=0)
+
+    def test_dygraph_vanilla_pow(self):
+        with dygraph_guard():
+            a_np = np.random.random((2, 3)).astype(np.float32) * 100
+            b_f = lambda y: y + 1
+            a = paddle.to_tensor(a_np)
+            with self.assertRaisesRegex(
+                TypeError,
+                r"__pow__\(\): argument \(position 1\) must be int, float, bool or Tensor, but got ",
+            ):
+                _ = a**b_f
+
+            with self.assertRaisesRegex(
+                ValueError, "Broadcast dimension mismatch"
+            ):
+                _ = a**a.T
+
+    def test_dygraph_custom_mod(self):
+        with dygraph_guard():
+            a_np = np.random.random((2, 3)).astype(np.float32) * 100
+            b_np = np.random.random((2, 3)).astype(np.float32) * 100
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
+            c = a % CustomTensor(b)
+            np.testing.assert_allclose((a % b).numpy(), c.numpy(), atol=0)
+
+    def test_dygraph_vanilla_mod(self):
+        with dygraph_guard():
+            a_np = np.random.random((2, 3)).astype(np.float32) * 100
+            b_f = lambda y: y + 1
+            a = paddle.to_tensor(a_np)
+            with self.assertRaisesRegex(
+                TypeError,
+                r"__mod__\(\): argument \(position 1\) must be int, float, bool or Tensor, but got ",
+            ):
+                _ = a % b_f
+
+            with self.assertRaisesRegex(
+                ValueError, "Broadcast dimension mismatch"
+            ):
+                _ = a % a.T
+
+    def test_dygraph_custom_matmul(self):
+        with dygraph_guard():
+            a_np = np.random.random((2, 3)).astype(np.float32) * 100
+            b_np = np.random.random((3, 2)).astype(np.float32) * 100
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
+            c = a @ CustomTensor(b)
+            np.testing.assert_allclose((a @ b).numpy(), c.numpy(), atol=0)
+
+    def test_dygraph_vanilla_matmul(self):
+        with dygraph_guard():
+            a_np = np.random.random((2, 3)).astype(np.float32) * 100
+            b_f = lambda y: y + 1
+            a = paddle.to_tensor(a_np)
+            with self.assertRaisesRegex(
+                TypeError,
+                r"__matmul__\(\): argument \(position 1\) must be int, float, bool or Tensor, but got ",
+            ):
+                _ = a @ b_f
+
+            with self.assertRaises(ValueError):
+                _ = a @ a
+
+    def test_dygraph_custom_div(self):
+        with dygraph_guard():
+            a_np = np.random.random((2, 3)).astype(np.float32) * 100
+            b_np = np.random.random((2, 3)).astype(np.float32) * 100
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
+            c = a / CustomTensor(b)
+            np.testing.assert_allclose((a / b).numpy(), c.numpy(), atol=0)
+
+    def test_dygraph_vanilla_div(self):
+        with dygraph_guard():
+            a_np = np.random.random((2, 3)).astype(np.float32) * 100
+            b_f = lambda y: y + 1
+            a = paddle.to_tensor(a_np)
+            with self.assertRaisesRegex(
+                TypeError,
+                r"__div__\(\): argument \(position 1\) must be int, float, bool or Tensor, but got ",
+            ):
+                _ = a / b_f
+
+            with self.assertRaisesRegex(
+                ValueError, "Broadcast dimension mismatch"
+            ):
+                _ = a / a.T
+
+    def test_dygraph_custom_truediv(self):
+        with dygraph_guard():
+            a_np = np.random.random((2, 3)).astype(np.float32) * 100
+            b_np = np.random.random((2, 3)).astype(np.float32) * 100
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
+            c = a / CustomTensor(b)
+            np.testing.assert_allclose((a / b).numpy(), c.numpy(), atol=0)
+
+    def test_dygraph_vanilla_truediv(self):
+        with dygraph_guard():
+            a_np = np.random.random((2, 3)).astype(np.float32) * 100
+            b_f = lambda y: y + 1
+            a = paddle.to_tensor(a_np)
+            with self.assertRaisesRegex(
+                TypeError,
+                r"__div__\(\): argument \(position 1\) must be int, float, bool or Tensor, but got ",
+            ):
+                _ = a / b_f
+
+            with self.assertRaisesRegex(
+                ValueError, "Broadcast dimension mismatch"
+            ):
+                _ = a / a.T
+
+    def test_dygraph_custom_floordiv(self):
+        with dygraph_guard():
+            a_np = np.random.random((2, 3)).astype(np.float32) * 100
+            b_np = np.random.random((2, 3)).astype(np.float32) * 100
+            a = paddle.to_tensor(a_np)
+            b = paddle.to_tensor(b_np)
+            c = a // CustomTensor(b)
+            np.testing.assert_allclose((a // b).numpy(), c.numpy(), atol=0)
+
+    def test_dygraph_vanilla_floordiv(self):
+        with dygraph_guard():
+            a_np = np.random.random((2, 3)).astype(np.float32) * 100
+            b_f = lambda y: y + 1
+            a = paddle.to_tensor(a_np)
+            with self.assertRaisesRegex(
+                TypeError,
+                r"__floordiv__\(\): argument \(position 1\) must be int, float, bool or Tensor, but got ",
+            ):
+                _ = a // b_f
+
+            with self.assertRaisesRegex(
+                ValueError, "Broadcast dimension mismatch"
+            ):
+                _ = a // a.T
 
 
 if __name__ == '__main__':

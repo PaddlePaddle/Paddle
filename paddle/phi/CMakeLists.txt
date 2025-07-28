@@ -295,7 +295,6 @@ endif()
 
 add_dependencies(phi extern_lapack)
 if(WITH_CUTLASS)
-  add_dependencies(phi cutlass_codegen)
   add_definitions("-DPADDLE_WITH_MEMORY_EFFICIENT_ATTENTION"
   )# for memory_efficient_attention.h
 endif()

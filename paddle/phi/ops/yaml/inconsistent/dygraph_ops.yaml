@@ -99,6 +99,7 @@
   infer_meta :
     func : EinsumRawInferMeta
     param : [x, equation]
+    spmd_rule : EinsumInferSpmd
   kernel :
     func : einsum
   backward : einsum_grad

@@ -282,7 +282,9 @@ bool BincountOpInferSymbolicShape(
                           "The 'shape' of Input(Weights) must be 1-D tensor. "
                           "But the dimension of Input(Weights) is [%d]",
                           weights_dims.size()));
-    infer_context->AddEqualCstr(weights_dims[0], x_dims[0]);
+    if (x_dims[0] != 0) {
+      infer_context->AddEqualCstr(weights_dims[0], x_dims[0]);
+    }
   }
 
   symbol::DimExpr out_unknown = infer_context->GetNextSymName();
@@ -414,7 +416,11 @@ bool Conv2dOpInferSymbolicShape(pir::Operation *op,
   const symbol::ShapeOrDataDimExprs &shape_data = [&] {
     std::vector<symbol::DimExpr> out_s_or_d({in_s_or_d.shape()[0]});
     if (!channel_last) {
-      out_s_or_d.push_back(filter_s_or_d.shape()[0]);
+      if (filter_s_or_d.shape()[1] == 0) {
+        out_s_or_d.push_back(symbol::DimExpr{0});
+      } else {
+        out_s_or_d.push_back(filter_s_or_d.shape()[0]);
+      }
     }
 
     for (size_t i = 0; i < in_data_dims.size(); ++i) {
@@ -427,7 +433,11 @@ bool Conv2dOpInferSymbolicShape(pir::Operation *op,
       out_s_or_d.push_back(output_size);
     }
     if (channel_last) {
-      out_s_or_d.push_back(filter_s_or_d.shape()[0]);
+      if (filter_s_or_d.shape()[1] == 0) {
+        out_s_or_d.push_back(symbol::DimExpr{0});
+      } else {
+        out_s_or_d.push_back(filter_s_or_d.shape()[0]);
+      }
     }
 
     return symbol::ShapeOrDataDimExprs{
@@ -1267,13 +1277,18 @@ bool LstsqOpInferSymbolicShape(pir::Operation *op,
           symbol::TensorShapeOrDataDimExprs(batch_dims_vec)});
 
   std::vector<symbol::DimExpr> residuals_shape{};
+  std::string driver = op->attribute<pir::StrAttribute>("driver").AsString();
   if (m.isa<int64_t>() && n.isa<int64_t>()) {
     int64_t m_value = m.Get<std::int64_t>();
     int64_t n_value = n.Get<std::int64_t>();
-    if (m_value > n_value) {
-      batch_dims_vec.emplace_back(nrhs);
-      residuals_shape = batch_dims_vec;
-      batch_dims_vec.pop_back();
+    if (m_value > n_value && driver != "gelsy") {
+      if (driver == "gelss" || driver == "gelsd") {
+        residuals_shape.emplace_back(infer_context->GetNextSymName());
+      } else {
+        batch_dims_vec.emplace_back(nrhs);
+        residuals_shape = batch_dims_vec;
+        batch_dims_vec.pop_back();
+      }
     } else {
       residuals_shape.emplace_back(0);
     }

@@ -13,7 +13,7 @@
 // limitations under the License.
 #include "paddle/phi/kernels/set_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
-
+#include "paddle/phi/kernels/full_kernel.h"
 namespace phi {
 
 template <typename T, typename Context>
@@ -28,6 +28,17 @@ void SetKernel(const Context& dev_ctx,
   meta.dims = DDim(dims.data(), static_cast<int>(dims.size()));
   meta.strides = DDim(stride.data(), static_cast<int>(stride.size()));
   meta.offset = offset;
+  if (x.numel() == 0 || source.numel() == 0) {
+    if (source.numel() != 0) {
+      out->clear();
+      *out = DenseTensor{source.Holder(), meta};
+    } else if (x.numel() == 0) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    }
+    out->ShareInplaceVersionCounterWith(x);
+    return;
+  }
   if (x.IsSharedWith(source)) {
     out->set_meta(meta);
   } else {

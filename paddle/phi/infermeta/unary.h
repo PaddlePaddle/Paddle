@@ -361,6 +361,7 @@ void Fp8QuantBlockwiseInferMeta(const MetaTensor& X,
                                 bool using_1x128_vec_quant,
                                 bool input_transpose,
                                 bool output_scale_transpose,
+                                bool return_transpose_only,
                                 bool using_e5m2,
                                 bool using_pow2_scale,
                                 MetaTensor* out,
@@ -402,7 +403,7 @@ void IsEmptyInferMeta(const MetaTensor& x, MetaTensor* out);
 void IsfiniteInferMeta(const MetaTensor& input, MetaTensor* out);
 
 void KthvalueInferMeta(const MetaTensor& x,
-                       int k,
+                       int64_t k,
                        int axis,
                        bool keepdim,
                        MetaTensor* out,

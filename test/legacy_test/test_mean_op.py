@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, OpTestTool, convert_float_to_uint16
+from op_test import OpTest, OpTestTool, convert_float_to_uint16, get_places
 from test_sum_op import TestReduceOPTensorAxisBase
 
 import paddle
@@ -141,6 +140,22 @@ class TestMeanOp_float64ZeroSize3D(TestMeanOp_float64ZeroSize):
         out_np = np.nan
         self.inputs = {'X': x_np}
         self.outputs = {'Out': out_np}
+
+
+class TestMeanOp_Int32ZeroSize(OpTest):
+    def setUp(self):
+        self.op_type = "mean"
+        self.python_api = paddle.mean
+        self.dtype = np.int32
+        self.public_python_api = paddle.mean
+        self.inputs = {'X': np.array([]).astype(self.dtype)}
+        self.outputs = {'Out': np.nan}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_checkout_grad(self):
+        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
 
 
 class TestMeanOp_Int64ZeroSize(OpTest):
@@ -910,16 +925,7 @@ class TestMeanDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func(p)
 
 
@@ -947,16 +953,7 @@ class TestMeanTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func(p)
 
 

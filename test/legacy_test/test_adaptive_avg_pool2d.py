@@ -217,6 +217,28 @@ class TestAdaptiveAvgPool2DAPI(unittest.TestCase):
                 out_6.numpy(), self.res_3_np, rtol=1e-5, atol=1e-8
             )
 
+    def test_grad(self):
+        for use_cuda in (
+            [False, True] if core.is_compiled_with_cuda() else [False]
+        ):
+            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            paddle.disable_static(place=place)
+            x = paddle.to_tensor(self.x_np)
+            x.stop_gradient = False
+            for output_size in [[3, 3], [2, 5], [8, 8]]:
+                out = paddle.nn.functional.adaptive_avg_pool2d(
+                    x=x, output_size=output_size
+                )
+                x_grad = paddle.grad(
+                    [out],
+                    [x],
+                    grad_outputs=paddle.ones_like(out),
+                    allow_unused=True,
+                )
+                np.testing.assert_allclose(
+                    paddle.sum(x_grad[0]), out.numel(), rtol=1e-6
+                )
+
 
 class TestAdaptiveAvgPool2DClassAPI(unittest.TestCase):
     def setUp(self):
@@ -489,6 +511,34 @@ class TestAdaptiveAvgPool2DAPI_ZeroSize(unittest.TestCase):
                 x=x, output_size=[3, 3]
             )
             loss = paddle.sum(out_1)
+            loss.backward()
+            np.testing.assert_allclose(x.grad.shape, x.shape)
+
+
+class TestInterpolateAPI_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.x_np = np.random.random([0, 3, 7, 7]).astype("float32")
+
+    def test_functional_interpolate(self):
+        for use_cuda in (
+            [False, True] if core.is_compiled_with_cuda() else [False]
+        ):
+            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            paddle.disable_static(place=place)
+            x = paddle.to_tensor(self.x_np)
+            x.stop_gradient = False
+
+            out = paddle.nn.functional.interpolate(
+                x=x, mode="area", size=[2, 5]
+            )
+            res_np = adaptive_pool2d_forward(
+                x=self.x_np, output_size=[2, 5], pool_type="avg"
+            )
+            np.testing.assert_allclose(
+                out.numpy(), res_np, rtol=1e-5, atol=1e-8
+            )
+
+            loss = paddle.sum(out)
             loss.backward()
             np.testing.assert_allclose(x.grad.shape, x.shape)
 

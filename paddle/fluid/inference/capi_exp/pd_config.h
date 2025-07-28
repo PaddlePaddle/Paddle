@@ -504,7 +504,7 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigSwitchIrDebug(
 ///
 /// \param[in] pd_config config
 ///
-PADDLE_CAPI_EXPORT extern void PD_ConfigEnableMKLDNN(
+PADDLE_CAPI_EXPORT extern void PD_ConfigEnableONEDNN(
     __pd_keep PD_Config* pd_config);
 ///
 /// \brief Set the cache capacity of different input shapes for OneDNN.
@@ -515,7 +515,7 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigEnableMKLDNN(
 /// \param[in] pd_config config
 /// \param[in] capacity The cache capacity.
 ///
-PADDLE_CAPI_EXPORT extern void PD_ConfigSetMkldnnCacheCapacity(
+PADDLE_CAPI_EXPORT extern void PD_ConfigSetOnednnCacheCapacity(
     __pd_keep PD_Config* pd_config, int32_t capacity);
 ///
 /// \brief A boolean state telling whether to use the OneDNN.
@@ -742,6 +742,36 @@ PADDLE_CAPI_EXPORT extern __pd_give PD_OneDimArrayCstr* PD_ConfigAllPasses(
 ///
 PADDLE_CAPI_EXPORT extern __pd_give PD_Cstr* PD_ConfigSummary(
     __pd_keep PD_Config* pd_config);
+
+/// \brief A boolean state telling whether to use new executor.
+/// \param[in] pd_config config
+/// \param[in] x enable new executor or not
+PADDLE_CAPI_EXPORT extern void PD_ConfigEnableNewExecutor(
+    __pd_keep PD_Config* pd_config, PD_Bool x);
+
+/// \brief A boolean state telling whether the new executor is enabled.
+/// \param[in] pd_config config
+/// \return Whether new executor is enabled
+PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigNewExecutorEnabled(
+    __pd_keep PD_Config* pd_config);
+
+/// \brief A boolean state telling whether to use new IR.
+/// \param[in] pd_config config
+/// \param[in] x enable new IR or not
+PADDLE_CAPI_EXPORT extern void PD_ConfigEnableNewIR(
+    __pd_keep PD_Config* pd_config, PD_Bool x);
+
+/// \brief A boolean state telling whether the new IR is enabled.
+/// \param[in] pd_config config
+/// \return Whether new IR is enabled
+PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigNewIREnabled(
+    __pd_keep PD_Config* pd_config);
+
+/// \brief Control whether to use optimized model to inference.
+/// \param[in] pd_config config
+/// \param[in] x whether to use optimized model
+PADDLE_CAPI_EXPORT extern void PD_ConfigUseOptimizedModel(
+    __pd_keep PD_Config* pd_config, PD_Bool x);
 
 #ifdef __cplusplus
 }  // extern "C"

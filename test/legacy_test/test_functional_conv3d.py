@@ -16,6 +16,7 @@ import unittest
 from unittest import TestCase
 
 import numpy as np
+from op_test import get_places
 
 import paddle
 import paddle.base.dygraph as dg
@@ -199,15 +200,15 @@ class TestFunctionalConv3DErrorCase10(TestFunctionalConv3DError):
 
 class TestFunctionalConv3DErrorCase11(TestCase):
     def setUp(self):
-        self.input = np.array([])
-        self.filter = np.array([])
-        self.num_filters = 0
-        self.filter_size = 0
+        self.input = np.random.randn(1, 3, 3, 3, 3)
+        self.filter = np.random.randn(3, 3, 1, 1, 1)
+        self.num_filters = 3
+        self.filter_size = 1
         self.bias = None
         self.padding = 0
         self.stride = 1
         self.dilation = 1
-        self.groups = 1
+        self.groups = 0
         self.data_format = "NCDHW"
 
     def dygraph_case(self):
@@ -235,32 +236,49 @@ class TestFunctionalConv3DErrorCase11(TestCase):
             self.dygraph_case()
 
 
-class TestFunctionalConv3DErrorCase12(TestFunctionalConv3DErrorCase11):
-    def setUp(self):
-        self.input = np.random.randn(1, 3, 3, 3, 3)
-        self.filter = np.random.randn(3, 3, 1, 1, 1)
-        self.num_filters = 3
-        self.filter_size = 1
-        self.bias = None
-        self.padding = 0
-        self.stride = 1
-        self.dilation = 1
-        self.groups = 0
-        self.data_format = "NCDHW"
+class TestFunctionalConv3D_ZeroSize(TestCase):
+    def init_data(self):
+        self.input = np.random.random([4, 3, 0, 8, 8])
+        self.filter = np.random.random([5, 3, 3, 3, 3])
+        self.np_out = np.zeros([4, 5, 0, 8, 8])
 
-
-class TestFunctionalConv3DErrorCase13(TestFunctionalConv3DErrorCase11):
     def setUp(self):
-        self.input = np.random.randn(0, 0, 0, 0, 0)
-        self.filter = np.random.randn(1, 0, 0, 0, 0)
-        self.num_filters = 1
-        self.filter_size = 1
+        self.init_data()
         self.bias = None
-        self.padding = 0
+        self.padding = 1
         self.stride = 1
         self.dilation = 1
         self.groups = 1
         self.data_format = "NCDHW"
+        self.places = get_places()
+
+    def test_dygraph(self):
+        for place in self.places:
+            with dg.guard(place):
+                input = paddle.to_tensor(self.input)
+                input.stop_gradient = False
+                filter = paddle.to_tensor(self.filter)
+                y = F.conv3d(
+                    input,
+                    filter,
+                    self.bias,
+                    padding=self.padding,
+                    stride=self.stride,
+                    dilation=self.dilation,
+                    groups=self.groups,
+                    data_format=self.data_format,
+                )
+                np.testing.assert_allclose(y.numpy(), self.np_out)
+                loss = y.sum()
+                loss.backward()
+                np.testing.assert_allclose(input.grad.shape, input.shape)
+
+
+class TestFunctionalConv3D_ZeroSize2(TestFunctionalConv3D_ZeroSize):
+    def init_data(self):
+        self.input = np.random.random([4, 0, 0, 8, 8])
+        self.filter = np.random.random([5, 0, 3, 3, 3])
+        self.np_out = np.zeros([4, 0, 0, 8, 8])
 
 
 if __name__ == "__main__":

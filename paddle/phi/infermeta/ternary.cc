@@ -826,13 +826,6 @@ void InstanceNormInferMeta(const MetaTensor& x,
                     common::errors::InvalidArgument(
                         "The y in InstanceNormInferMeta can't be nullptr."));
   const auto x_dims = x.dims();
-  PADDLE_ENFORCE_NE(common::product(x_dims),
-                    0,
-                    common::errors::PreconditionNotMet(
-                        "The Input variable X has not "
-                        "been initialized. You may need to confirm "
-                        "if you put exe.run(startup_program) "
-                        "after optimizer.minimize function."));
   PADDLE_ENFORCE_GE(
       x_dims.size(),
       2,
@@ -867,13 +860,16 @@ void InstanceNormInferMeta(const MetaTensor& x,
             scale_dim.size()));
     bool check = config.is_runtime || contain_unknown_dim(scale_dim);
     if (check) {
-      PADDLE_ENFORCE_EQ(scale_dim[0],
-                        C,
-                        common::errors::InvalidArgument(
-                            "ShapeError: the shape of scale must equal to [%d]"
-                            "But received: the shape of scale is [%d]",
-                            C,
-                            scale_dim[0]));
+      if (C != 0) {
+        PADDLE_ENFORCE_EQ(
+            scale_dim[0],
+            C,
+            common::errors::InvalidArgument(
+                "ShapeError: the shape of scale must equal to [%d]"
+                "But received: the shape of scale is [%d]",
+                C,
+                scale_dim[0]));
+      }
     }
   }
   if (bias) {
@@ -889,13 +885,15 @@ void InstanceNormInferMeta(const MetaTensor& x,
             bias_dim.size()));
     bool check = config.is_runtime || !contain_unknown_dim(bias_dim);
     if (check) {
-      PADDLE_ENFORCE_EQ(bias_dim[0],
-                        C,
-                        common::errors::InvalidArgument(
-                            "ShapeError: the shape of bias must equal to [%d]"
-                            "But received: the shape of bias is [%d]",
-                            C,
-                            bias_dim[0]));
+      if (C != 0) {
+        PADDLE_ENFORCE_EQ(bias_dim[0],
+                          C,
+                          common::errors::InvalidArgument(
+                              "ShapeError: the shape of bias must equal to [%d]"
+                              "But received: the shape of bias is [%d]",
+                              C,
+                              bias_dim[0]));
+      }
     }
   }
   y->set_dims(x_dims);
@@ -1878,6 +1876,112 @@ void MoeGateDispatchPermuteInferMeta(const MetaTensor& x,
   expert_id->set_dtype(phi::DataType::INT32);
 }
 
+void MoeGateDispatchAndQuantInferMeta(const MetaTensor& x,
+                                      const MetaTensor& gate_logits,
+                                      const MetaTensor& corr_bias,
+                                      const int64_t k,
+                                      const int64_t capacity,
+                                      const bool use_pad,
+                                      const bool use_pow2_scale,
+                                      MetaTensor* fp8_out,
+                                      MetaTensor* scale,
+                                      MetaTensor* combine_weights,
+                                      MetaTensor* scatter_index,
+                                      MetaTensor* expert_offset,
+                                      MetaTensor* expert_id) {
+  auto x_dims = x.dims();
+  auto gate_logits_dims = gate_logits.dims();
+
+  const int64_t num_rows = x_dims[0];
+  const int64_t num_experts = gate_logits_dims[1];
+
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      2,
+      errors::InvalidArgument("Input x should have 2 dimensions"));
+
+  PADDLE_ENFORCE_EQ(
+      gate_logits_dims.size(),
+      2,
+      errors::InvalidArgument("Input gate_logits should have 2 dimensions"));
+
+  PADDLE_ENFORCE_EQ(
+      x_dims[0],
+      gate_logits_dims[0],
+      errors::InvalidArgument(
+          "The 0-th dimension of x [%d] "
+          "must match that of the 0-th dimension gate_logits [%d].",
+          x_dims[0],
+          gate_logits_dims[0]));
+
+  PADDLE_ENFORCE_EQ(gate_logits_dims[1] >= k,
+                    true,
+                    errors::InvalidArgument(
+                        "The 1-th dimension of gate_logits [%d] "
+                        "must be greater than or equal to that of k [%d].",
+                        gate_logits_dims[1],
+                        k));
+
+  PADDLE_ENFORCE_EQ(
+      x_dims[1] % 128,
+      0,
+      common::errors::InvalidArgument("The last dimensions of Input(x) must be "
+                                      "divided to tile size, but received "
+                                      "Input(x) shape is [%d]",
+                                      x_dims[0]));
+
+  PADDLE_ENFORCE_EQ(
+      x.dtype(),
+      phi::DataType::BFLOAT16,
+      common::errors::InvalidArgument(
+          "The dtype of Input(x) must be BFLOAT16, but received %s",
+          x.dtype()));
+
+  if (corr_bias) {
+    auto corr_bias_dims = corr_bias.dims();
+    PADDLE_ENFORCE_EQ(
+        corr_bias_dims.size(),
+        1,
+        common::errors::InvalidArgument(
+            "The dimensions of Input(corr_bias) must be 1, but received "
+            "dimensions of Input(corr_bias) is [%d]",
+            corr_bias_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        corr_bias.dtype(),
+        paddle::DataType::FLOAT32,
+        common::errors::InvalidArgument(
+            "The dtype of Input(corr_bias) must be FLOAT32, but received %s",
+            corr_bias.dtype()));
+  }
+  std::vector<int64_t> fp8_out_dims;
+  std::vector<int64_t> scale_dims;
+  if (use_pad) {
+    fp8_out_dims = {num_experts * capacity, x_dims[1]};
+    scale_dims = {num_experts * capacity, x_dims[1] / 128};
+  } else {
+    fp8_out_dims = {num_rows * k, x_dims[1]};
+    scale_dims = {num_rows * k, x_dims[1] / 128};
+  }
+
+  fp8_out->set_dims(common::make_ddim(fp8_out_dims));
+  fp8_out->set_dtype(paddle::DataType::FLOAT8_E4M3FN);
+
+  scale->set_dims(common::make_ddim(scale_dims));
+  scale->set_dtype(paddle::DataType::FLOAT32);
+
+  combine_weights->set_dims(common::make_ddim({num_rows, k}));
+  combine_weights->set_dtype(phi::DataType::FLOAT32);
+
+  scatter_index->set_dims(common::make_ddim({k, num_rows}));
+  scatter_index->set_dtype(phi::DataType::INT32);
+
+  expert_offset->set_dims(common::make_ddim({num_experts}));
+  expert_offset->set_dtype(phi::DataType::INT64);
+
+  expert_id->set_dims(common::make_ddim({num_rows, k}));
+  expert_id->set_dtype(phi::DataType::INT32);
+}
+
 void MovingAverageAbsMaxScaleInferMeta(const MetaTensor& x,
                                        const MetaTensor& in_accum,
                                        const MetaTensor& in_state,
@@ -2226,12 +2330,14 @@ void ScatterInferMeta(const MetaTensor& x,
   const auto& index_dims = index.dims();
 
   if (index_dims.size() == 2) {
-    PADDLE_ENFORCE_EQ(index_dims[1],
-                      1,
-                      common::errors::InvalidArgument(
-                          "The last dim of the index should be 1 when the "
-                          "index is a 2D tensor, but we get %d.",
-                          index_dims[1]));
+    if (index_dims[1] != 0) {
+      PADDLE_ENFORCE_EQ(index_dims[1],
+                        1,
+                        common::errors::InvalidArgument(
+                            "The last dim of the index should be 1 when the "
+                            "index is a 2D tensor, but we get %d.",
+                            index_dims[1]));
+    }
   } else {
     PADDLE_ENFORCE_EQ(index_dims.size() == 1 || index_dims.size() == 0,
                       true,
@@ -2411,10 +2517,13 @@ void SendURecvInferMeta(const MetaTensor& x,
                                         dst_index_dims.size()));
   }
 
-  PADDLE_ENFORCE_EQ(src_index_dims[0],
-                    dst_index_dims[0],
-                    common::errors::InvalidArgument(
-                        "Src_index and Dst_index should have the same shape."));
+  if (src_index_dims[0] != 0 && dst_index_dims[0] != 0) {
+    PADDLE_ENFORCE_EQ(
+        src_index_dims[0],
+        dst_index_dims[0],
+        common::errors::InvalidArgument(
+            "Src_index and Dst_index should have the same shape."));
+  }
 
   auto dims = x.dims();
   std::vector<int64_t> dims_ = common::vectorize(dims);

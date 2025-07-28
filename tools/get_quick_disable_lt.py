@@ -14,6 +14,7 @@
 
 import ssl
 import sys
+import time
 
 import httpx
 
@@ -24,7 +25,20 @@ from paddle.device import cuda
 
 def get_disable_ut_by_url(url):
     ssl._create_default_https_context = ssl._create_unverified_context
-    f = httpx.get(url, timeout=None, follow_redirects=True)
+    max_retries = 5
+    delay = 5
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            f = httpx.get(url, timeout=20.0, follow_redirects=True)
+            break
+        except httpx.RequestError as e:
+            print(
+                f"Failed to get the disabled unit test list (attempt {attempt}): {e}"
+            )
+            if attempt == max_retries:
+                raise
+            time.sleep(delay)
     data = f.text
     status_code = f.status_code
     if len(data.strip()) == 0 or status_code != 200:

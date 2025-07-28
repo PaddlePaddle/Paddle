@@ -30,6 +30,11 @@ list(REMOVE_ITEM TEST_OPS test_allgather)
 list(REMOVE_ITEM TEST_OPS test_reducescatter)
 list(REMOVE_ITEM TEST_OPS test_flash_attention)
 
+#Note(risemeup1): Delete some unit tests related to the parameter server.
+list(REMOVE_ITEM TEST_OPS test_dist_fleet_trainer_desc_config)
+list(REMOVE_ITEM TEST_OPS test_dist_sparse_tensor_load_adam)
+list(REMOVE_ITEM TEST_OPS test_dist_tree_index)
+
 if(WITH_COVERAGE)
   list(REMOVE_ITEM TEST_OPS test_unique)
 endif()
@@ -86,6 +91,7 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_async_read_write)
   list(REMOVE_ITEM TEST_OPS test_fp8_gemm)
   list(REMOVE_ITEM TEST_OPS test_fp8_quant)
+  list(REMOVE_ITEM TEST_OPS test_incubate_moe_gate_dispatch_and_quant)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_audio_logmel_feature test_audio_mel_feature)
@@ -178,6 +184,7 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_fp8_quant)
   list(REMOVE_ITEM TEST_OPS test_fused_transpose_spilt_quant_op)
   list(REMOVE_ITEM TEST_OPS test_fused_transpose_wlch_split_quant_op)
+  list(REMOVE_ITEM TEST_OPS test_incubate_moe_gate_dispatch_and_quant)
 endif()
 list(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
 
@@ -518,6 +525,7 @@ if(NOT WITH_GPU
     test_incubate_moe_gate_dispatch_partial_nosoftmaxtopk
     test_incubate_moe_gate_dispatch_w_permute_bwd
     test_incubate_moe_gate_dispatch_w_permute
+    test_incubate_moe_gate_dispatch_and_quant
     test_fp8_gemm
     test_fp8_quant
     test_fused_act_dequant_op
@@ -687,9 +695,7 @@ if(WITH_DISTRIBUTE)
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_word2vec")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_gloo")
 
-  if(NOT WITH_HETERPS)
-    list(REMOVE_ITEM DIST_TEST_OPS "test_communicator_ps_gpu")
-  endif()
+  list(REMOVE_ITEM DIST_TEST_OPS "test_communicator_ps_gpu")
 
   if(NOT APPLE)
     if(WITH_GPU OR WITH_ROCM)
@@ -972,7 +978,7 @@ if(APPLE)
   set_tests_properties(test_imperative_transformer_sorted_gradient
                        PROPERTIES TIMEOUT 300)
 endif()
-set_tests_properties(test_decorator PROPERTIES TIMEOUT 120)
+set_tests_properties(test_decorator PROPERTIES TIMEOUT 150)
 
 if(APPLE)
   set_tests_properties(test_multiclass_nms_op PROPERTIES TIMEOUT 300)

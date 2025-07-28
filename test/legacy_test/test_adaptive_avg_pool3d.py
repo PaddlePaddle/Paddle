@@ -241,6 +241,28 @@ class TestAdaptiveAvgPool3DAPI(unittest.TestCase):
                 out_6.numpy(), self.res_3_np, rtol=1e-5, atol=1e-8
             )
 
+    def test_grad(self):
+        for use_cuda in (
+            [False, True] if core.is_compiled_with_cuda() else [False]
+        ):
+            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            paddle.disable_static(place=place)
+            x = paddle.to_tensor(self.x_np)
+            x.stop_gradient = False
+            for output_size in [[2, 3, 5], [3, 3, 3], [6, 8, 8]]:
+                out = paddle.nn.functional.adaptive_avg_pool3d(
+                    x=x, output_size=output_size
+                )
+                x_grad = paddle.grad(
+                    [out],
+                    [x],
+                    grad_outputs=paddle.ones_like(out),
+                    allow_unused=True,
+                )
+                np.testing.assert_allclose(
+                    paddle.sum(x_grad[0]), out.numel(), rtol=1e-5
+                )
+
 
 class TestAdaptiveAvgPool3DClassAPI(unittest.TestCase):
     def setUp(self):

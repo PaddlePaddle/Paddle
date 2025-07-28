@@ -12,21 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import random
 import unittest
 from contextlib import contextmanager
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_places
 
 import paddle
-from paddle import base, static
+from paddle import static
 
 
 class TestElementwiseModOp(OpTest):
     def init_kernel_type(self):
-        self.use_mkldnn = False
+        self.use_onednn = False
 
     def setUp(self):
         self.op_type = "elementwise_floordiv"
@@ -44,7 +43,7 @@ class TestElementwiseModOp(OpTest):
             'X': OpTest.np_dtype_to_base_dtype(self.x),
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_onednn}
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
@@ -117,16 +116,7 @@ class TestFloorDivideOp(unittest.TestCase):
 
     def test_static(self):
         paddle.enable_static()
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not base.core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if base.core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             for dtype in (
                 'int32',
                 'int64',
@@ -164,16 +154,7 @@ class TestFloorDivideOp(unittest.TestCase):
 
     def test_dygraph(self):
         paddle.disable_static()
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not base.core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if base.core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             for dtype in (
                 'uint8',
                 'int8',

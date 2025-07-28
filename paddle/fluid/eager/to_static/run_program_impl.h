@@ -29,20 +29,21 @@ void GcScope(paddle::framework::Scope *scope,
 
 }  // namespace details
 
-void RunProgramImpl(
+std::vector<paddle::Tensor> RunProgramImpl(
     const std::vector<paddle::Tensor> &x,
     const std::vector<paddle::Tensor> &params,
-    std::vector<paddle::Tensor *> &out,                   // NOLINT
     std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
     bool require_any_grad,
-    const paddle::framework::AttributeMap &attrs,
+    const paddle::framework::AttributeMap &prog_attrs,
+    const paddle::framework::AttributeMap &cuda_graph_attrs,
     const int64_t &place_hash_key);
 void RunProgramGradImpl(
     const std::vector<paddle::Tensor> &out_grad,
     const std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
-    const paddle::framework::AttributeMap &attrs,
-    std::vector<paddle::Tensor *> &x_grad,       // NOLINT
-    std::vector<paddle::Tensor *> &params_grad,  // NOLINT
+    const paddle::framework::AttributeMap &prog_attrs,
+    const paddle::framework::AttributeMap &cuda_graph_attrs,
+    std::vector<paddle::Tensor> *x_grad,
+    std::vector<paddle::Tensor> *params_grad,
     const int64_t &place_hash_key);
 void LegacyRunProgramImpl(
     const std::vector<paddle::Tensor> &x,

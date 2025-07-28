@@ -39,6 +39,9 @@ void TensorUnfoldGradKernel(const Context& dev_ctx,
     axis += input.dims().size();
   }
   dev_ctx.Alloc(input_grad, input_grad->dtype());
+  if (input_grad->numel() == 0) {
+    return;
+  }
   input_grad->set_strides(DenseTensorMeta::calc_strides(input_grad->dims()));
   if (out_grad.numel() < input.numel()) {
     PD_VISIT_ALL_TYPES(input_grad->dtype(), "TensorUnfoldGradKernel", ([&] {

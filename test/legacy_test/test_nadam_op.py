@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 from copy import deepcopy
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_places
 
 import paddle
 from paddle import base
@@ -460,20 +459,8 @@ class TestNAdamMultiPrecision(unittest.TestCase):
                 optimizer.step()
                 optimizer.clear_grad()
 
-    def _get_places(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            places.append('cpu')
-        if paddle.is_compiled_with_cuda():
-            places.append('gpu')
-        return places
-
     def test_main(self):
-        for place in self._get_places():
+        for place in get_places(string_format=True):
             use_amp_list = [True, False]
             for use_amp in use_amp_list:
                 self._test_nadam_dygraph_place_amp(place, use_amp)
@@ -733,19 +720,6 @@ class TestNAdamGroupWithLR(TestNAdamAPI):
             out.backward()
             nadam.step()
             nadam.clear_gradients()
-
-
-def get_places():
-    places = []
-    if (
-        os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-        in ['1', 'true', 'on']
-        or not base.is_compiled_with_cuda()
-    ):
-        places.append(base.CPUPlace())
-    if base.is_compiled_with_cuda():
-        places.append(base.CUDAPlace(0))
-    return places
 
 
 def main_test_func(place, dtype):

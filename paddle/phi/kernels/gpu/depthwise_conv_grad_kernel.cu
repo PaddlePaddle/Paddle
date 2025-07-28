@@ -18,6 +18,7 @@
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpu/depthwise_conv.h"
@@ -40,6 +41,18 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
   const DenseTensor* output_grad = &out_grad;
 
   if (!input_grad && !filter_grad) return;
+  // 0-size
+  if (input.numel() == 0) {
+    if (input_grad) dev_ctx.template Alloc<T>(input_grad);
+    if (filter_grad) {
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(filter_grad->dims())),
+          0,
+          filter_grad);
+    }
+    return;
+  }
 
   bool has_fuse_relu = dev_ctx.HasDnnAttr("fuse_relu_before_depthwise_conv");
   bool fuse_relu =

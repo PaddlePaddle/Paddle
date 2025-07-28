@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
-from op_test import convert_float_to_uint16, convert_uint16_to_float
+from op_test import convert_float_to_uint16, convert_uint16_to_float, get_places
 
 import paddle
 from paddle import base
@@ -42,15 +41,7 @@ class TestSincAPI(unittest.TestCase):
             'float32',
             'float64',
         ]
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
+        self.place = get_places()
         self.shapes = [[6], [16, 64]]
 
     def test_dtype(self):
@@ -173,15 +164,7 @@ class TestSincInplaceAPI(unittest.TestCase):
             'float32',
             'float64',
         ]
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
+        self.place = get_places()
         self.shapes = [[6], [16, 64]]
 
     def test_inplace(self):
@@ -370,15 +353,7 @@ class TestSincAPI_ZeroSize(unittest.TestCase):
             'float32',
             'float64',
         ]
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
+        self.place = get_places()
         self.shapes = [[0], [16, 0]]
 
     def test_dygraph(self):

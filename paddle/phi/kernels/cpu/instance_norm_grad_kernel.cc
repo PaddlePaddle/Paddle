@@ -44,6 +44,7 @@ template <typename T, typename Context>
 void InstanceNormGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const paddle::optional<DenseTensor>& scale,
+                            const paddle::optional<DenseTensor>& bias UNUSED,
                             const DenseTensor& saved_mean,
                             const DenseTensor& saved_variance,
                             const DenseTensor& d_y,
@@ -51,6 +52,19 @@ void InstanceNormGradKernel(const Context& dev_ctx,
                             DenseTensor* d_x,
                             DenseTensor* d_scale,
                             DenseTensor* d_bias) {
+  phi::funcs::SetConstant<CPUContext, T> set_constant;
+  dev_ctx.template Alloc<T>(d_x);
+  if (x.numel() == 0) {
+    if (d_scale) {
+      dev_ctx.template Alloc<T>(d_scale);
+      set_constant(dev_ctx, d_scale, static_cast<T>(0));
+    }
+    if (d_bias) {
+      dev_ctx.template Alloc<T>(d_bias);
+      set_constant(dev_ctx, d_bias, static_cast<T>(0));
+    }
+    return;
+  }
   const auto* scale_ptr = scale.get_ptr();
 
   const auto& x_dims = x.dims();
@@ -60,7 +74,6 @@ void InstanceNormGradKernel(const Context& dev_ctx,
   const int NxC = N * C;
   const int sample_size = static_cast<int>(x.numel() / N / C);
 
-  dev_ctx.template Alloc<T>(d_x);
   auto* place = dev_ctx.eigen_device();
 
   Eigen::DSizes<int, 2> rshape(NxC, sample_size);
@@ -82,8 +95,6 @@ void InstanceNormGradKernel(const Context& dev_ctx,
   Eigen::IndexList<int, Eigen::type2index<1>> NxC_shape;
   NxC_shape.set(0, NxC);
 #endif
-
-  phi::funcs::SetConstant<CPUContext, T> set_constant;
 
   DenseTensor scale_data;
   if (!scale_ptr) {

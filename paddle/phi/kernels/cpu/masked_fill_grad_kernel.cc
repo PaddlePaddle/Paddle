@@ -20,9 +20,9 @@
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/expand_grad_kernel.h"
 #include "paddle/phi/kernels/expand_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -33,12 +33,25 @@ void MaskedFillGradKernel(const Context& dev_ctx,
                           const DenseTensor& out_grad,
                           DenseTensor* x_grad,
                           DenseTensor* v_grad) {
-  auto x_grad_dims = x_grad->dims();
+  if (out_grad.numel() == 0 || mask.numel() == 0) {
+    // x shape [2, 1, 3], mask shape [2, 0, 3], x_grad shape [2, 1, 3]
+    if (x_grad) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    }
+    if (v_grad) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(v_grad->dims())), 0, v_grad);
+    }
+    return;
+  }
+
+  auto x_dims = x.dims();
   auto mask_dims = mask.dims();
   bool expand_x = false;
   bool expand_value = false;
   auto expanded_size =
-      common::vectorize(funcs::BroadcastTwoDims(x_grad_dims, mask_dims, -1));
+      common::vectorize(funcs::BroadcastTwoDims(x_dims, mask_dims, -1));
 
   DenseTensor mask_expand;
   DenseTensor x_grad_expand;
@@ -52,12 +65,13 @@ void MaskedFillGradKernel(const Context& dev_ctx,
   } else {
     mask_expand = mask;
   }
-
-  if (x_grad->dims() != expanded_dims) {
-    x_grad_expand = Empty<T, Context>(dev_ctx, IntArray(expanded_size));
-    expand_x = true;
-  } else {
-    x_grad_expand = *x_grad;
+  if (x_grad) {
+    if (x_grad->dims() != expanded_dims) {
+      x_grad_expand = Empty<T, Context>(dev_ctx, IntArray(expanded_size));
+      expand_x = true;
+    } else {
+      x_grad_expand = *x_grad;
+    }
   }
 
   if (v_grad) {
@@ -65,7 +79,7 @@ void MaskedFillGradKernel(const Context& dev_ctx,
       value_grad_expand = Empty<T, Context>(dev_ctx, IntArray(expanded_size));
       expand_value = true;
     } else {
-      value_grad_expand = *x_grad;
+      value_grad_expand = *v_grad;
     }
   }
 

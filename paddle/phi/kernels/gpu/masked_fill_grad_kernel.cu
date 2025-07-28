@@ -307,18 +307,19 @@ void MaskedFillGradKernel(const Context& dev_ctx,
                           DenseTensor* x_grad,
                           DenseTensor* v_grad) {
   if (out_grad.numel() == 0 || mask.numel() == 0) {
-    if (x_grad != nullptr) {
-      x_grad->Resize({0});
-      dev_ctx.template Alloc<T>(x_grad);
+    // x shape [2, 1, 3], mask shape [2, 0, 3], x_grad shape [2, 1, 3]
+    if (x_grad) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
     }
-    if (v_grad != nullptr) {
-      v_grad->Resize({0});
-      dev_ctx.template Alloc<T>(v_grad);
+    if (v_grad) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(v_grad->dims())), 0, v_grad);
     }
     return;
   }
   auto out_grad_dims = out_grad.dims();
-  auto x_grad_dims = x_grad->dims();
+  auto x_dims = x.dims();
   auto mask_dims = mask.dims();
   DenseTensor mask_expand;
   DenseTensor x_grad_expand;
@@ -326,10 +327,10 @@ void MaskedFillGradKernel(const Context& dev_ctx,
   bool expand_x = false;
   bool expand_v = false;
   auto expanded_size =
-      common::vectorize(funcs::BroadcastTwoDims(x_grad_dims, mask_dims, -1));
+      common::vectorize(funcs::BroadcastTwoDims(x_dims, mask_dims, -1));
   auto expanded_dims = common::make_ddim(expanded_size);
   bool flag = funcs::CanDispatchMaskFillShortcut(out_grad_dims, mask_dims);
-  if (expanded_dims != x_grad_dims) flag = false;
+  if (expanded_dims != x_dims) flag = false;
   if (v_grad && v_grad->dims() != expanded_dims && v_grad->numel() != 1)
     flag = false;
 

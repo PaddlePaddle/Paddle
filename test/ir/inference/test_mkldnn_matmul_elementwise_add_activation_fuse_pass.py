@@ -21,7 +21,7 @@ from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
-class TestMatmulElementwiseAddActivationMkldnnFusePass(PassAutoScanTest):
+class TestMatmulElementwiseAddActivationOnednnFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
         axis = draw(st.sampled_from([-1, 0, 1]))
         matmul_as_x = draw(st.booleans())
