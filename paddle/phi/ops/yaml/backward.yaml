@@ -1388,6 +1388,12 @@
   kernel :
     func : gammaln_grad
 
+- backward_op : gather_double_grad
+  forward : gather_grad(Tensor x, Tensor index, Tensor grad_out, Scalar axis=0) -> Tensor(grad_x)
+  args : (Tensor index, Tensor grad_x_grad, Scalar axis)
+  output : Tensor(grad_out_grad)
+  invoke: gather(grad_x_grad, index, axis)
+
 - backward_op : gather_grad
   forward : gather(Tensor x, Tensor index, Scalar axis=0) -> Tensor(out)
   args : (Tensor x, Tensor index, Tensor out_grad, Scalar axis=0)
@@ -1398,8 +1404,8 @@
   kernel :
     data_type: out_grad
     func : gather_grad
-  composite : gather_grad(x, index, out_grad, axis, x_grad)
   no_need_buffer : x
+  backward : gather_double_grad
 
 - backward_op : gather_nd_double_grad
   forward : gather_nd_grad (Tensor x, Tensor index, Tensor grad_out) -> Tensor(grad_x)
@@ -1706,13 +1712,25 @@
   backward: index_elementwise_get_double_grad
 
 - backward_op : index_elementwise_put_grad
-  forward : index_elementwise_put (Tensor x, Tensor[] index, Tensor value, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset) -> Tensor(out)
-  args : (Tensor x, Tensor[] index, Tensor value, Tensor out_grad, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset)
-  output : Tensor(x_grad), Tensor(value_grad)
+  forward : index_elementwise_put (Tensor x, Tensor[] index, Scalar value, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset) -> Tensor(out)
+  args : (Tensor x, Tensor[] index, Tensor out_grad, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset)
+  output : Tensor(x_grad)
   infer_meta :
     func : IndexElementwisePutGradInferMeta
   kernel :
     func : index_elementwise_put_grad
+    data_type : out_grad
+  data_transform :
+    skip_transform : index
+
+- backward_op : index_elementwise_put_with_tensor_grad
+  forward : index_elementwise_put_with_tensor (Tensor x, Tensor[] index, Tensor value, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset) -> Tensor(out)
+  args : (Tensor x, Tensor[] index, Tensor value, Tensor out_grad, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset)
+  output : Tensor(x_grad), Tensor(value_grad)
+  infer_meta :
+    func : IndexElementwisePutWithTensorGradInferMeta
+  kernel :
+    func : index_elementwise_put_with_tensor_grad
     data_type : out_grad
   data_transform :
     skip_transform : index
@@ -1793,7 +1811,7 @@
   no_need_buffer : x
 
 - backward_op : instance_norm_double_grad
-  forward : instance_norm_grad(Tensor x, Tensor scale, Tensor saved_mean, Tensor saved_variance, Tensor grad_y, float epsilon) -> Tensor(grad_x), Tensor(grad_scale), Tensor(grad_bias)
+  forward : instance_norm_grad(Tensor x, Tensor scale, Tensor bias, Tensor saved_mean, Tensor saved_variance, Tensor grad_y, float epsilon) -> Tensor(grad_x), Tensor(grad_scale), Tensor(grad_bias)
   args : (Tensor x, Tensor scale, Tensor saved_mean, Tensor saved_variance, Tensor grad_y, Tensor grad_x_grad, Tensor grad_scale_grad, Tensor grad_bias_grad, float epsilon)
   output : Tensor(x_grad), Tensor(scale_grad), Tensor(grad_y_grad)
   infer_meta :
@@ -1805,7 +1823,7 @@
 
 - backward_op : instance_norm_grad
   forward : instance_norm(Tensor x, Tensor scale, Tensor bias, float epsilon) -> Tensor(y), Tensor(saved_mean), Tensor(saved_variance)
-  args : (Tensor x, Tensor scale, Tensor saved_mean, Tensor saved_variance, Tensor y_grad, float epsilon=1e-5)
+  args : (Tensor x, Tensor scale, Tensor bias, Tensor saved_mean, Tensor saved_variance, Tensor y_grad, float epsilon=1e-5)
   output : Tensor(x_grad), Tensor(scale_grad), Tensor(bias_grad)
   infer_meta :
     func : InstanceNormGradInferMeta
@@ -1813,9 +1831,10 @@
   kernel :
     func : instance_norm_grad
     data_type : x
-  optional : scale
+  optional : scale, bias
+  no_need_buffer : bias
   backward : instance_norm_double_grad
-  composite: instance_norm_grad(x, scale, saved_mean, saved_variance, y_grad, epsilon, x_grad, scale_grad, bias_grad)
+  composite: instance_norm_grad(x, scale, bias, saved_mean, saved_variance, y_grad, epsilon, x_grad, scale_grad, bias_grad)
 
 - backward_op : inverse_grad
   forward : inverse(Tensor x) -> Tensor(out)
@@ -1849,8 +1868,8 @@
     data_type : out_grad
 
 - backward_op : kthvalue_grad
-  forward : kthvalue(Tensor x, int k, int axis, bool keepdim) -> Tensor(out), Tensor(indices)
-  args : (Tensor x, Tensor indices, Tensor out_grad, int k, int axis, bool keepdim)
+  forward : kthvalue(Tensor x, int64_t k, int axis, bool keepdim) -> Tensor(out), Tensor(indices)
+  args : (Tensor x, Tensor indices, Tensor out_grad, int64_t k, int axis, bool keepdim)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -2337,6 +2356,7 @@
   output : Tensor(x_grad), Tensor(combine_weights_grad)
   infer_meta :
     func : MoeCombineGradInferMeta
+    spmd_rule : MoECombineGradInferSpmd
   kernel :
     func : moe_combine_grad
 
@@ -2357,6 +2377,7 @@
   output : Tensor(x_grad), Tensor(gate_logits_grad)
   infer_meta :
     func : MoeGateDispatchGradInferMeta
+    spmd_rule : MoEGateDispatchGradInferSpmd
   kernel :
     func : moe_gate_dispatch_grad
     data_type : y_grad

@@ -15,6 +15,7 @@
 #include <algorithm>
 
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_softmax_mask_utils.h"
 
 namespace phi {
@@ -123,6 +124,11 @@ void FusedSoftmaxMaskGradKernel(const Context& dev_ctx,
                                 const DenseTensor& out_grad,
                                 DenseTensor* x_grad) {
   auto* grad_x_data = dev_ctx.template Alloc<T>(x_grad);
+  if (out.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    return;
+  }
   auto* grad_y_data = out_grad.data<T>();
   auto* softmax_rst_data = out.data<T>();
 

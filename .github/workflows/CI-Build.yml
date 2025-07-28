@@ -20,15 +20,22 @@ jobs:
     name: Clone-linux
     uses: ./.github/workflows/_Clone-linux.yml
     with:
-      bos_dir: Paddle-build
+      clone_dir: Paddle-build
 
   build-docker:
     name: build docker images
     needs: clone
     uses: ./.github/workflows/docker.yml
     with:
-      bos_dir: Paddle-build
+      clone_dir: Paddle-build
       task: build
+
+  inference:
+    name: PR-CI-Inference
+    uses: ./.github/workflows/_Inference.yml
+    needs: build-docker
+    with:
+      docker_inference_image: ${{ needs.build-docker.outputs.docker_build_image }}
 
   build:
     name: Linux-build

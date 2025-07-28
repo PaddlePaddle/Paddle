@@ -85,7 +85,7 @@ class ConditionalBlockOp : public ConditionalOp {
       // Executor on being destroyed clears oneDNN cache and resets
       // registered model data layout. This is unwanted for nested
       // Executors (executors declared inside control ops)
-      platform::DontClearMKLDNNCache(dev_place);
+      platform::DontClearONEDNNCache(dev_place);
 #endif
       auto *block = Attr<framework::BlockDesc *>("sub_block");
       VLOG(3) << "Conditional block.idx = " << block->ID()

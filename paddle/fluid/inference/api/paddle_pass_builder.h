@@ -142,10 +142,10 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   /// \brief Enable the use of OneDNN.
   /// The OneDNN control exists in both CPU and GPU mode, because there can
   /// still be some CPU kernels running in GPU mode.
-  virtual void EnableMKLDNN() {}
+  virtual void EnableONEDNN() {}
 
   /// \brief Disable the use of OneDNN.
-  virtual void DisableMKLDNN() {}
+  virtual void DisableONEDNN() {}
 
   /// \brief Enable OneDNN bfloat16.
   virtual void EnableMkldnnBfloat16() {}
@@ -154,7 +154,7 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   virtual void EnableMkldnnInt8() {}
 
   /// \brief Disable OneDNN fc passes.
-  virtual void DisableMkldnnFcPasses() {}
+  virtual void DisableOnednnFcPasses() {}
 
   /// \brief Check if we are using gpu.
   /// \return A bool variable implying whether we are in gpu mode.
@@ -180,7 +180,7 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   bool use_xpu_{false};
   bool use_gpu_{false};
   bool use_ipu_{false};
-  bool use_mkldnn_{false};
+  bool use_onednn_{false};
   bool use_custom_device_{false};
   /// \endcond
 };
@@ -198,10 +198,10 @@ class PD_INFER_DECL CpuPassStrategy : public PassStrategy {
   explicit CpuPassStrategy(const CpuPassStrategy &other)
       : PassStrategy(other.AllPasses()) {
     use_gpu_ = other.use_gpu_;
-    use_mkldnn_ = other.use_mkldnn_;
-    use_mkldnn_bfloat16_ = other.use_mkldnn_bfloat16_;
-    use_mkldnn_int8_ = other.use_mkldnn_int8_;
-    disable_mkldnn_fc_passes_ = other.disable_mkldnn_fc_passes_;
+    use_onednn_ = other.use_onednn_;
+    use_onednn_bfloat16_ = other.use_onednn_bfloat16_;
+    use_onednn_int8_ = other.use_onednn_int8_;
+    disable_onednn_fc_passes_ = other.disable_onednn_fc_passes_;
     deleted_passes_ = other.deleted_passes_;
   }
   /// \brief Default destructor.
@@ -211,10 +211,10 @@ class PD_INFER_DECL CpuPassStrategy : public PassStrategy {
   void EnableCUDNN() override;
 
   /// \brief Enable the use of OneDNN.
-  void EnableMKLDNN() override;
+  void EnableONEDNN() override;
 
   /// \brief Disable the use of OneDNN.
-  void DisableMKLDNN() override;
+  void DisableONEDNN() override;
 
   /// \brief Enable OneDNN bfloat16.
   void EnableMkldnnBfloat16() override;
@@ -223,16 +223,16 @@ class PD_INFER_DECL CpuPassStrategy : public PassStrategy {
   void EnableMkldnnInt8() override;
 
   /// \brief Disable OneDNN fc passes.
-  void DisableMkldnnFcPasses() override;
+  void DisableOnednnFcPasses() override;
 
  protected:
   /// \brief Erase OneDNN fc passes.
   void EraseFcMkldnnPasses();
 
   /// \cond Protected
-  bool use_mkldnn_bfloat16_{false};
-  bool use_mkldnn_int8_{false};
-  bool disable_mkldnn_fc_passes_{false};
+  bool use_onednn_bfloat16_{false};
+  bool use_onednn_int8_{false};
+  bool disable_onednn_fc_passes_{false};
   /// \endcond
 };
 
@@ -257,7 +257,7 @@ class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
   void EnableCUDNN() override;
 
   /// \brief Not supported in GPU mode yet.
-  void EnableMKLDNN() override;
+  void EnableONEDNN() override;
 
   /// \brief Not supported in GPU mode yet.
   void EnableMkldnnBfloat16() override;
@@ -266,7 +266,7 @@ class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
   void EnableMkldnnInt8() override;
 
   /// \brief Disable OneDNN fc passes.
-  void DisableMkldnnFcPasses() override;
+  void DisableOnednnFcPasses() override;
 
   /// \brief Default destructor.
   virtual ~GpuPassStrategy() = default;

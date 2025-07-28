@@ -31,6 +31,8 @@ void MultiHeadAttentionVariableForwardKernel(
     const int pre_cache_length,
     DenseTensor* output) {
   dev_ctx.template Alloc<T>(output);
+  if (output->numel() == 0) return;
+
   Params params{};
   // [B, N, S, H]
   params.seq_lens = seq_lens.data<int>();
@@ -106,6 +108,9 @@ void MultiHeadAttentionVariableForwardKernel(
       return;
     }
     if (params.head_size % KernelType::MM0::kAlignmentA) {
+      return;
+    }
+    if (params.value_head_size % KernelType::MM0::kAlignmentB) {
       return;
     }
     kernel_launched = true;

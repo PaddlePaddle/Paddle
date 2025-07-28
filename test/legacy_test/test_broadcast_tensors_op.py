@@ -111,8 +111,8 @@ class TestCPUBroadcastTensorsOp(OpTest):
 
     def setUp(self):
         self.op_type = "broadcast_tensors"
-        self.use_mkldnn = False
-        self.attrs = {'use_mkldnn': self.use_mkldnn}
+        self.use_onednn = False
+        self.attrs = {'use_mkldnn': self.use_onednn}
         self.test_gen_func_list = [
             gen_rank_diff_test,
             gen_no_broadcast_test,
@@ -197,8 +197,8 @@ class TestBroadcastTensorsBF16Op(OpTest):
         self.op_type = "broadcast_tensors"
         self.dtype = np.uint16
         self.np_dtype = "float32"
-        self.use_mkldnn = False
-        self.attrs = {'use_mkldnn': self.use_mkldnn}
+        self.use_onednn = False
+        self.attrs = {'use_mkldnn': self.use_onednn}
         self.test_gen_func_list = [
             gen_rank_diff_test,
             gen_no_broadcast_test,

@@ -15,6 +15,10 @@ jobs:
       BRANCH: develop
 
     steps:
+      - name: Cleanup
+        run: |
+          rm -rf * .[^.]*
+
       - name: Checkout base repo
         uses: actions/checkout@v4
         with:

@@ -222,7 +222,7 @@ void WhileInstruction::Run() {
   // Executor on being destroyed clears oneDNN cache and resets
   // registered model data layout. This is unwanted for nested
   // Executors (executors declared inside control ops)
-  paddle::platform::DontClearMKLDNNCache(body_inter_->GetPlace());
+  paddle::platform::DontClearONEDNNCache(body_inter_->GetPlace());
 #endif
   ShareInputsToOutputs();
 

@@ -339,7 +339,7 @@ template <typename T,
           typename OutType = T>
 void LaunchResidualDropoutBias(const uint64_t rows,
                                const uint64_t cols,
-                               const int increment,
+                               const uint64_t increment,
                                uint64_t seed,
                                const float dropout_prob,
                                const bool is_test,

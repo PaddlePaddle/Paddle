@@ -67,12 +67,12 @@ void test_moe_combine_spmd(
 
   phi::distributed::SpmdInfo spmd_info;
   if (test_bwd_spmd) {
-    spmd_info = phi::distributed::MoECombineBwdInferSpmd(dist_meta_tensors[0],
-                                                         dist_meta_tensors[1],
-                                                         dist_meta_tensors[2],
-                                                         dist_meta_tensors[3]);
+    spmd_info = phi::distributed::MoECombineGradInferSpmd(dist_meta_tensors[0],
+                                                          dist_meta_tensors[1],
+                                                          dist_meta_tensors[2],
+                                                          dist_meta_tensors[3]);
   } else {
-    spmd_info = phi::distributed::MoECombineFwdInferSpmd(
+    spmd_info = phi::distributed::MoECombineInferSpmd(
         dist_meta_tensors[0], dist_meta_tensors[1], dist_meta_tensors[2]);
   }
 

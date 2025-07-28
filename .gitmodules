@@ -54,10 +54,6 @@
 	path = third_party/eigen3
 	url = https://gitlab.com/libeigen/eigen.git
 	ignore = dirty
-[submodule "third_party/snappy"]
-	path = third_party/snappy
-	url = https://github.com/google/snappy.git
-	ignore = dirty
 [submodule "third_party/cub"]
 	path = third_party/cub
 	url = https://github.com/NVIDIA/cub.git
@@ -85,14 +81,6 @@
 [submodule "third_party/openblas"]
 	path = third_party/openblas
 	url = https://github.com/xianyi/OpenBLAS.git
-	ignore = dirty
-[submodule "third_party/leveldb"]
-	path = third_party/leveldb
-	url = https://github.com/google/leveldb.git
-	ignore = dirty
-[submodule "third_party/brpc"]
-	path = third_party/brpc
-	url = https://github.com/apache/brpc.git
 	ignore = dirty
 [submodule "third_party/rocksdb"]
 	path = third_party/rocksdb

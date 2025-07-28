@@ -589,7 +589,7 @@
 
 - op : bce_loss
   args : (Tensor input, Tensor label)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : BCELossInferMeta
   kernel :
@@ -2812,7 +2812,7 @@
   backward : index_elementwise_get_grad
 
 - op : index_elementwise_put
-  args : (Tensor x, Tensor[] index, Tensor value, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset)
+  args : (Tensor x, Tensor[] index, Scalar value, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset)
   output : Tensor (out)
   infer_meta :
     func : IndexElementwisePutInferMeta
@@ -2821,6 +2821,18 @@
     data_type : x
   inplace : (x -> out)
   backward : index_elementwise_put_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : index_elementwise_put_with_tensor
+  args : (Tensor x, Tensor[] index, Tensor value, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset)
+  output : Tensor (out)
+  infer_meta :
+    func : IndexElementwisePutWithTensorInferMeta
+  kernel :
+    func : index_elementwise_put_with_tensor
+    data_type : x
+  inplace : (x -> out)
+  backward : index_elementwise_put_with_tensor_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : index_put
@@ -2976,7 +2988,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : kthvalue
-  args : (Tensor x, int k = 1, int axis = -1, bool keepdim = false)
+  args : (Tensor x, int64_t k = 1, int axis = -1, bool keepdim = false)
   output : Tensor(out), Tensor(indices)
   infer_meta :
     func : KthvalueInferMeta
@@ -3677,6 +3689,7 @@
   output : Tensor(y)
   infer_meta :
     func : MoeCombineInferMeta
+    spmd_rule : MoECombineInferSpmd
   kernel :
     func : moe_combine
     data_type : x
@@ -3697,6 +3710,7 @@
   output : Tensor(y), Tensor(combine_weights), Tensor(scatter_index), Tensor(expert_offset), Tensor(expert_id)
   infer_meta :
     func : MoeGateDispatchInferMeta
+    spmd_rule : MoEGateDispatchInferSpmd
   kernel :
     func : moe_gate_dispatch
     data_type : x

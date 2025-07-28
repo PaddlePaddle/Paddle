@@ -45,18 +45,18 @@ struct BitwiseAdd {
   }
 };
 
-#define DEFINE_CUDA_COMPARE_KERNEL(name)                      \
-  template <typename T, typename Context>                     \
-  void name##Kernel(const Context& ctx,                       \
-                    const DenseTensor& x,                     \
-                    const DenseTensor& y,                     \
-                    DenseTensor* out) {                       \
-    if (out->IsSharedWith(x)) {                               \
-      auto x_origin = x;                                      \
-      name##RawKernel<T, Context>(ctx, x_origin, y, -1, out); \
-    } else {                                                  \
-      name##RawKernel<T, Context>(ctx, x, y, -1, out);        \
-    }                                                         \
+#define DEFINE_CUDA_COMPARE_KERNEL(name)                          \
+  template <typename T, typename Context>                         \
+  void name##Kernel(const Context& dev_ctx,                       \
+                    const DenseTensor& x,                         \
+                    const DenseTensor& y,                         \
+                    DenseTensor* out) {                           \
+    if (out->IsSharedWith(x)) {                                   \
+      auto x_origin = x;                                          \
+      name##RawKernel<T, Context>(dev_ctx, x_origin, y, -1, out); \
+    } else {                                                      \
+      name##RawKernel<T, Context>(dev_ctx, x, y, -1, out);        \
+    }                                                             \
   }
 
 DEFINE_CUDA_COMPARE_KERNEL(LessThan)
@@ -69,11 +69,11 @@ DEFINE_CUDA_COMPARE_KERNEL(NotEqual)
 
 #ifndef PADDLE_WITH_XPU_KP
 template <typename T, typename Context, typename Functor>
-inline void CompareAllKernelImpl(const Context& ctx,
+inline void CompareAllKernelImpl(const Context& dev_ctx,
                                  const DenseTensor& x,
                                  const DenseTensor& y,
                                  DenseTensor* out) {
-  bool* out_data = ctx.template Alloc<bool>(out);
+  bool* out_data = dev_ctx.template Alloc<bool>(out);
 
   if (x.dims() != y.dims()) {
     thrust::device_ptr<bool> out_dev_ptr(out_data);
@@ -89,11 +89,11 @@ inline void CompareAllKernelImpl(const Context& ctx,
 
   DenseTensor tmp;
   tmp.Resize(x.dims());
-  ctx.template Alloc<bool>(&tmp);
+  dev_ctx.template Alloc<bool>(&tmp);
 
   std::vector<const DenseTensor*> ins{&x, &y};
   std::vector<DenseTensor*> outs{&tmp};
-  funcs::ElementwiseKernel<bool>(ctx, ins, &outs, Functor());
+  funcs::ElementwiseKernel<bool>(dev_ctx, ins, &outs, Functor());
 
   // Reduce by 'bitwise and' operator
   std::vector<int> reduce_dims;
@@ -102,15 +102,15 @@ inline void CompareAllKernelImpl(const Context& ctx,
     reduce_dims[i] = i;
   }
   funcs::ReduceKernel<bool, bool, BitwiseAdd, kps::IdentityFunctor<bool>>(
-      ctx, tmp, out, kps::IdentityFunctor<bool>(), reduce_dims);
+      dev_ctx, tmp, out, kps::IdentityFunctor<bool>(), reduce_dims);
 }
 
 template <typename T, typename Context>
-void EqualAllKernel(const Context& ctx,
+void EqualAllKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     DenseTensor* out) {
-  CompareAllKernelImpl<T, Context, funcs::EqualFunctor<T>>(ctx, x, y, out);
+  CompareAllKernelImpl<T, Context, funcs::EqualFunctor<T>>(dev_ctx, x, y, out);
 }
 #endif
 

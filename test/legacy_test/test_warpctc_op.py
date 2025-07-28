@@ -613,8 +613,24 @@ class TestWarpCTCOpError(unittest.TestCase):
                 reduction='none',
             )
 
+        def test_dygraph_zero_size():
+            logits = np.random.uniform(0.1, 1.0, [0, 15]).astype("float32")
+            # labels should not be blank
+            labels = np.random.randint(0, 15 - 1, [15, 1], dtype="int32")
+            softmax = paddle.to_tensor(logits)
+            labels = paddle.to_tensor(labels)
+
+            paddle.nn.functional.ctc_loss(
+                log_probs=softmax,
+                labels=labels,
+                input_lengths=None,
+                label_lengths=None,
+                reduction='none',
+            )
+
         paddle.disable_static()
         self.assertRaises(ValueError, test_dygraph_with_lod)
+        self.assertRaises(ValueError, test_dygraph_zero_size)
         paddle.enable_static()
 
 
