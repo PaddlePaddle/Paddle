@@ -86,7 +86,6 @@ void PNormKernel(const Context& dev_ctx,
                  bool keepdim,
                  bool asvector,
                  DenseTensor* out) {
-  // std::cout<< "PNormKernel kernel！！！！"<<std::endl;
   auto* in_x = &x;
   auto* out_norm = out;
   T* norm = dev_ctx.template Alloc<T>(out);
@@ -148,8 +147,6 @@ void PNormKernel(const Context& dev_ctx,
     }
     
     if (porder != 1.0) {
-      
-
       std::vector<const DenseTensor*> ins = {&out_temp};
       std::vector<DenseTensor*> outs = {out_norm};
       MT p_order_ = static_cast<MT>(1.f / porder);
