@@ -982,8 +982,8 @@ template <typename T,
           typename ScaleT = U,
           typename MaskType = uint8_t>
 void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx,
-                               const int rows,
-                               const int cols,
+                               const int64_t rows,
+                               const int64_t cols,
                                float epsilon,
                                const T *x_ptr,
                                const ScaleT *scale_ptr,
@@ -1261,7 +1261,7 @@ __global__ void LayerNormBackwardPartGradGammaBeta(const T *__restrict__ dout,
     }
     __syncthreads();
   }
-  int64_t i2 = blockIdx.x * BDIMX + threadIdx.x;
+  int64_t i2 = static_cast<int64_t>(blockIdx.x) * BDIMX + threadIdx.x;
   if (threadIdx.y == 0 && i2 < n2) {
     int row1 = threadIdx.y;
     int row2 = threadIdx.y + 1;
@@ -1276,13 +1276,13 @@ template <typename T, typename U, int BDIMX, int BDIMY, typename ScaleT>
 __global__ void LayerNormBackwardSumGradGammaBeta(const U *part_grad_gamma,
                                                   const U *part_grad_beta,
                                                   const int part_size,
-                                                  const int n1,
-                                                  const int n2,
+                                                  const int64_t n1,
+                                                  const int64_t n2,
                                                   ScaleT *grad_gamma,
                                                   ScaleT *grad_beta) {
   // sum partial gradients for gamma and beta
   __shared__ U buf[BDIMX * BDIMY];
-  int64_t i2 = blockIdx.x * BDIMX + threadIdx.x;
+  int64_t i2 = static_cast<int64_t>(blockIdx.x) * BDIMX + threadIdx.x;
   if (i2 < n2) {
     // each warp does sequential reductions until reduced part_size is num_warps
     int num_warp_reductions = part_size / BDIMY;

@@ -141,7 +141,7 @@ __global__ void FusedLayernormResidualDropoutBias(
     LayerNormParamType<T> *var,
     const float residual_alpha = 1.0) {
   int64_t col_id = threadIdx.x;
-  int64_t row_id = blockIdx.x * gridDim.y + blockIdx.y;
+  int64_t row_id = static_cast<int64_t>(blockIdx.x) * gridDim.y + blockIdx.y;
   if (row_id >= rows) return;
   int64_t idx = row_id * cols + col_id;
   GPURAND(StatePhilox4_32_10_t) state;
@@ -611,7 +611,8 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
   }
 
   constexpr U rn = 1.f / U(ELTS_PER_ROW);
-  for (int64_t row = r; row < rows; row += gridDim.x * ROWS_PER_CTA) {
+  for (int64_t row = r; row < rows;
+       row += static_cast<int64_t>(gridDim.x) * ROWS_PER_CTA) {
     Vec x[LDGS];
     Vec_in_type x_input[LDGS];
     Vec residual[LDGS];
@@ -1122,8 +1123,8 @@ template <typename T,
           bool ScaleBiasWithSameTypeX = false>
 void LaunchLayernormResidualDropoutGrad(
     const phi::GPUContext &dev_ctx,
-    const uint32_t rows,
-    const uint32_t cols,
+    const int64_t rows,
+    const int64_t cols,
     const float epsilon,
     const float dropout_prob,
     const bool is_upscale_in_train,
