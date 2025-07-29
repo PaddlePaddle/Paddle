@@ -252,6 +252,7 @@ def to_string(var, prefix='Tensor'):
         return "Tensor(Not initialized)"
 
     if var.dtype == paddle.bfloat16:
+        paddle.device.synchronize()
         var = var.astype('float32')
     np_var = var.numpy(False)
 
