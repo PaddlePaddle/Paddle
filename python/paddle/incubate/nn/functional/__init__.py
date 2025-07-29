@@ -68,6 +68,9 @@ from .moe_gate_dispatch_partial_nosoftmaxtopk import (
 )
 from .moe_gate_dispatch_permute import moe_gate_dispatch_permute
 from .swiglu import swiglu
+from .tokens_unzip_gather import tokens_unzip_gather
+from .tokens_zip_prob import tokens_zip_prob
+from .tokens_zip_unique_add import tokens_zip_unique_add
 from .variable_length_memory_efficient_attention import (
     variable_length_memory_efficient_attention,
 )
@@ -108,4 +111,7 @@ __all__ = [
     "moe_gate_dispatch_permute",
     "moe_gate_dispatch_partial_nosoftmaxtopk",
     "moe_gate_dispatch_and_quant",
+    "tokens_unzip_gather",
+    "tokens_zip_prob",
+    "tokens_zip_unique_add",
 ]

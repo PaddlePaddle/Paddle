@@ -23,17 +23,15 @@ if TYPE_CHECKING:
     from paddle import Tensor
 
 
-def moe_permute(
+def tokens_unzip_gather(
     hidden_states: Tensor,
     scale: Tensor | None,
-    expert_routemap_topk: Tensor,
-    expert_prob_topk: Tensor,
-    num_experts: int,
+    zipped_expertwise_rowmap: Tensor,
+    expert_id: int,
     tokens_per_expert: list,
     padding_alignment: int,
-    do_gather: bool = True,
     name: str | None = None,
-) -> tuple[Tensor, Tensor, Tensor, Tensor]:
+) -> tuple[Tensor, Tensor, Tensor]:
     r"""
     Permute tokens for Mixture of Experts (MoE) computation in distributed training scenarios.
 
@@ -107,7 +105,7 @@ def moe_permute(
             >>> num_experts = 3
             >>> tokens_per_expert = [1, 2, 1]
             >>> padding_alignment = 2
-            >>> hidden_states_unzipped, zipped_expertwise_rowmap, token_prob_unzipped, scale_unzipped = F.moe_permute(
+            >>> hidden_states_unzipped, zipped_expertwise_rowmap, token_prob_unzipped, scale_unzipped = F.tokens_unzip_gather(
             ...     hidden_states,
             ...     None,
             ...     expert_routemap_topk,
@@ -122,24 +120,11 @@ def moe_permute(
             >>> np.testing.assert_allclose(zipped_tokens.numpy(), hidden_states.numpy(), rtol=1e-05, atol=1e-06)
     """
     if in_dynamic_or_pir_mode():
-        (
-            hidden_states_unzipped,
-            zipped_expertwise_rowmap,
-            token_prob_unzipped,
-            scale_unzipped,
-        ) = _C_ops.moe_permute(
-            hidden_states,
-            scale,
-            expert_routemap_topk,
-            expert_prob_topk,
-            num_experts,
-            tokens_per_expert,
-            padding_alignment,
-            do_gather,
+        (hidden_states_unzipped, scale_unzipped, idx_unzipped) = (
+            _C_ops.tokens_unzip_gather(
+                hidden_states,
+                scale,
+                zipped_expertwise_rowmap,
+            )
         )
-        return (
-            hidden_states_unzipped,
-            zipped_expertwise_rowmap,
-            token_prob_unzipped,
-            scale_unzipped,
-        )
+        return (hidden_states_unzipped, scale_unzipped, idx_unzipped)

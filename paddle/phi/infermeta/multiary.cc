@@ -6121,7 +6121,8 @@ void MoePermuteInferMeta(const MetaTensor& X,
                          const MetaTensor& expert_prob_topk,
                          const int num_experts,
                          const std::vector<int>& tokens_per_expert,
-                         const int padding_multiplex,
+                         const int padding_alignment,
+                         const bool do_gather,
                          MetaTensor* X_unzipped,
                          MetaTensor* zipped_expertwise_rowmap,
                          MetaTensor* token_prob_unzipped,
@@ -6144,7 +6145,7 @@ void MoePermuteInferMeta(const MetaTensor& X,
                     true,
                     common::errors::InvalidArgument(
                         "Input expert_prob_topk's dtype should be FLOAT32"));
-  if (XScale) {
+  if (XScale && do_gather) {
     PADDLE_ENFORCE_EQ(XScale.dtype(),
                       phi::DataType::FLOAT32,
                       common::errors::InvalidArgument(
@@ -6158,8 +6159,16 @@ void MoePermuteInferMeta(const MetaTensor& X,
   }
   const int rows = X.dims()[0];
   const int cols = X.dims()[1];
-  X_unzipped->set_dims({-1, cols});
-  X_unzipped->set_dtype(X.dtype());
+
+  if (do_gather) {
+    X_unzipped->set_dims({-1, cols});
+    X_unzipped->set_dtype(X.dtype());
+  } else {
+    // Meta only, not
+    X_unzipped->set_dims({0, cols});
+    X_unzipped->set_dtype(X.dtype());
+  }
+
   zipped_expertwise_rowmap->set_dims({rows, num_experts});
   zipped_expertwise_rowmap->set_dtype(phi::DataType::INT32);
   token_prob_unzipped->set_dims({-1});
