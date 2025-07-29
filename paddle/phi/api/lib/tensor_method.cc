@@ -91,6 +91,7 @@ Tensor::copy_to<phi::dtype::float16>(const Place &target_place) const;
 void Tensor::copy_(const Tensor &src,
                    const phi::Place &target_place,
                    bool blocking) {
+  std::cout << "target_place : " << target_place << std::endl;
   if (!src.has_allocation()) {
     VLOG(8) << "Src is empty, skip copy";
     return;
@@ -198,10 +199,9 @@ void Tensor::copy_(const Tensor &src,
     return;
   }
 #endif
-    if(is_dense_tensor() && src.is_dense_tensor()) {
+    if(is_dense_tensor() && has_allocation() && src.is_dense_tensor()) {
       auto dst_tensor = static_cast<phi::DenseTensor*>(impl_.get());
       auto src_tensor = std::static_pointer_cast<phi::DenseTensor>(src.impl_);
-
       if(!dst_tensor->meta().is_contiguous() ||
         !src_tensor->meta().is_contiguous()) {
         VLOG(8) << "Tensor::copy_ , src or dst tesnor is not contiguous";
