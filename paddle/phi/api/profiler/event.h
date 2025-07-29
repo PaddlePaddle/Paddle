@@ -19,7 +19,6 @@ limitations under the License. */
 #include <string>
 #include <utility>
 
-#include "glog/logging.h"
 #include "paddle/phi/common/place.h"
 
 #ifdef PADDLE_WITH_CUDA
@@ -30,6 +29,7 @@ limitations under the License. */
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "glog/logging.h"
 #include "paddle/phi/core/cuda_stream.h"
 #endif
 
