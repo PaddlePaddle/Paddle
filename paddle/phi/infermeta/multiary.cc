@@ -6705,6 +6705,27 @@ void MoeGateDispatchInferMeta(const MetaTensor& x,
   expert_id->set_dims(common::make_ddim({num_rows, k}));
   expert_id->set_dtype(phi::DataType::INT32);
 }
+void TokensUnzipGatherInferMeta(const MetaTensor& hidden_states,
+                                const MetaTensor& scale,
+                                const MetaTensor& zipped_expertwise_rowmap,
+                                const int expert_id,
+                                const std::vector<int>& tokens_per_expert,
+                                const int padding_alignment,
+                                MetaTensor* hidden_states_unzipped,
+                                MetaTensor* scale_unzipped,
+                                MetaTensor* idx_unzipped) {}
+
+void TokensZipProbInferMeta(
+    const std::vector<const MetaTensor*>& unzipped_probs,
+    const MetaTensor& zipped_expertwise_rowmap,
+    const MetaTensor& dispatched_indices,
+    MetaTensor* zipped_prob) {}
+
+void TokensZipUniqueAddInferMeta(const MetaTensor& hidden_states_zipped,
+                                 const MetaTensor& hidden_states_unzipped,
+                                 const MetaTensor& idx_unzipped,
+                                 const int zipped_rows,
+                                 MetaTensor* y_zipped) {}
 
 }  // namespace phi
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);

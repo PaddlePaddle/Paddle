@@ -1352,4 +1352,26 @@ void MoeGateDispatchInferMeta(const MetaTensor& x,
                               MetaTensor* expert_offset,
                               MetaTensor* expert_id);
 
+void TokensUnzipGatherInferMeta(const MetaTensor& hidden_states,
+                                const MetaTensor& scale,
+                                const MetaTensor& zipped_expertwise_rowmap,
+                                const int expert_id,
+                                const std::vector<int>& tokens_per_expert,
+                                const int padding_alignment,
+                                MetaTensor* hidden_states_unzipped,
+                                MetaTensor* scale_unzipped,
+                                MetaTensor* idx_unzipped);
+
+void TokensZipProbInferMeta(
+    const std::vector<const MetaTensor*>& unzipped_probs,
+    const MetaTensor& zipped_expertwise_rowmap,
+    const MetaTensor& dispatched_indices,
+    MetaTensor* zipped_prob);
+
+void TokensZipUniqueAddInferMeta(const MetaTensor& hidden_states_zipped,
+                                 const MetaTensor& hidden_states_unzipped,
+                                 const MetaTensor& idx_unzipped,
+                                 const int zipped_rows,
+                                 MetaTensor* y_zipped);
+
 }  // namespace phi

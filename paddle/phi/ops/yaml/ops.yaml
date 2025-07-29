@@ -5362,6 +5362,34 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
   traits: pir::UnaryElementWiseTrait
 
+- op : tokens_unzip_gather
+  args : (Tensor hidden_states, Tensor scale, Tensor zipped_expertwise_rowmap, int expert_id, int[] tokens_per_expert, int padding_alignment)
+  output : Tensor(hidden_states_unzipped), Tensor(scale_unzipped), Tensor(idx_unzipped)
+  infer_meta:
+    func : TokensUnzipGatherInferMeta
+  kernel :
+    func : tokens_unzip_gather
+    data_type : hidden_states
+  optional : scale
+
+- op : tokens_zip_prob
+  args : (Tensor [] unzipped_prob, Tensor zipped_expertwise_rowmap, Tensor dispatched_indices)
+  output : Tensor(zipped_prob)
+  infer_meta :
+    func : TokensZipProbInferMeta
+  kernel :
+    func : tokens_zip_prob
+    data_type : unzipped_prob
+
+- op : tokens_zip_unique_add
+  args : (Tensor hidden_states_zipped, Tensor hidden_states_unzipped, Tensor idx_unzipped, int zipped_rows)
+  output : Tensor(y_zipped)
+  infer_meta:
+    func : TokensZipUniqueAddInferMeta
+  kernel :
+    func : tokens_zip_unique_add
+    data_type : hidden_states_zipped
+
 - op : top_p_sampling
   args : (Tensor x, Tensor ps, Tensor threshold, Tensor topp_seed, int seed=-1, int k=0, str mode="truncate")
   output : Tensor (out), Tensor(ids), Tensor(topk_scores), Tensor(topk_ids)
