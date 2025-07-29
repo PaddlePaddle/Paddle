@@ -61,6 +61,25 @@ void LstsqKernel(const Context& dev_ctx,
           singular_values);
     return;
   }
+
+  int64_t largest_matrix = (1LL << 31) - 1;
+  int64_t matrix_size_x = 1;
+  int64_t matrix_size_y = 1;
+  for (int i = 0; i < x.dims().size(); ++i) {
+    matrix_size_x *= x.dims()[i];
+  }
+  for (int i = 0; i < y.dims().size(); ++i) {
+    matrix_size_y *= y.dims()[i];
+  }
+  int64_t matrix_size = std::max(matrix_size_x, matrix_size_y);
+  PADDLE_ENFORCE_LE(
+      matrix_size,
+      largest_matrix,
+      ::common::errors::PreconditionNotMet(
+          "Matrix size too large for LeaST SQuares solution. Maximum "
+          "allowed size is 2 ^ 31 - 1 elements, but got %lld",
+          matrix_size));
+
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   int dim_size = x_dims.size();
