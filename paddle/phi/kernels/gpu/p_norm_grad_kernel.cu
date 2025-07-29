@@ -40,6 +40,7 @@ struct AbsMaxAndMinGradFunctor {
   }
 };
 
+
 template <typename T>
 struct PNormGradFunctor {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
