@@ -63,6 +63,22 @@ __global__ void index_elementwise_kernel(const int64_t N,
   }
 }
 
+template <int nt, int vt, typename T, typename func_t>
+__global__ void index_put_kernel(const int64_t N,
+                                 const bool accumulate,
+                                 const func_t f) {
+  const auto tid = threadIdx.x;
+  const auto nv = nt * vt;
+  auto idx = nv * blockIdx.x + tid;
+#pragma unroll
+  for (int i = 0; i < vt; i++) {
+    if (idx < N) {
+      f(idx, accumulate);
+      idx += nt;
+    }
+  }
+}
+
 template <typename T>
 struct DivMod {
   T div, mod;
@@ -178,6 +194,14 @@ struct OffsetCalculator {
 template <int N, bool signed_strides = false>
 static OffsetCalculator<N, uint32_t, signed_strides> make_offset_calculator_put(
     std::vector<int64_t> desired_shape, std::array<int64_t*, N> strides_array) {
+  return OffsetCalculator<N, uint32_t, signed_strides>(
+      desired_shape.size(), desired_shape.data(), strides_array.data());
+}
+
+template <int N, bool signed_strides = false>
+static OffsetCalculator<N, uint32_t, signed_strides>
+make_offset_calculator_put_v2(std::vector<int64_t> desired_shape,
+                              std::vector<int64_t*> strides_array) {
   return OffsetCalculator<N, uint32_t, signed_strides>(
       desired_shape.size(), desired_shape.data(), strides_array.data());
 }
