@@ -6211,6 +6211,21 @@ void UniqueRawInferMeta(const MetaTensor& x,
     counts->set_dims(common::make_ddim({-1}));
     counts->set_dtype(dtype);
   }
+  if (x.numel() == 0) {
+    if (!axis.empty()) {
+      auto out_dims = x.dims();
+      out_dims[axis[0]] = 0;
+      out->set_dims(out_dims);
+    } else {
+      out->set_dims(common::make_ddim({0}));
+    }
+    if (return_index) {
+      indices->set_dims(common::make_ddim({0}));
+    }
+    if (return_counts) {
+      counts->set_dims(common::make_ddim({0}));
+    }
+  }
 }
 
 void UnsqueezeInferMeta(const MetaTensor& x,

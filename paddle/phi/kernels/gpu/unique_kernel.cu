@@ -690,6 +690,13 @@ void UniqueKernel(const Context& dev_ctx,
                   DenseTensor* index,
                   DenseTensor* counts) {
   bool is_sorted = true;
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    dev_ctx.template Alloc<int64_t>(indices);
+    dev_ctx.template Alloc<int64_t>(index);
+    dev_ctx.template Alloc<int64_t>(counts);
+    return;
+  }
   UniqueRawKernel<T, Context>(dev_ctx,
                               x,
                               return_index,

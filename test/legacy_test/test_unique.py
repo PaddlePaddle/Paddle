@@ -482,5 +482,22 @@ class TestUniqueError(unittest.TestCase):
             self.assertRaises(TypeError, test_axis)
 
 
+class Test_ZeroSize(TestUniqueOp):
+    def init_config(self):
+        self.inputs = {
+            'X': np.array([2, 0], dtype=self.dtype),
+        }
+        self.attrs = {'dtype': int(core.VarDesc.VarType.INT32)}
+        self.outputs = {
+            'Out': np.array([2, 0], dtype=self.dtype),
+            'Index': np.array([0, 1], dtype='int32'),
+        }
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CPUPlace(), check_dygraph=False)
+        if core.is_compiled_with_cuda():
+            self.check_output_with_place(core.CUDAPlace(0), check_dygraph=False)
+
+
 if __name__ == "__main__":
     unittest.main()
