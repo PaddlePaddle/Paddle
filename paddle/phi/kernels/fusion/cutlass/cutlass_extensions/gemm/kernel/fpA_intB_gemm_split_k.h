@@ -261,15 +261,17 @@ struct GemmFpAIntBSplitK {
 
       // Initialize the block mapping structure
       block_mapping = ThreadblockSwizzle(
-          typename ThreadblockSwizzle::template KernelTraits<
-              GemmFpAIntBSplitK>(),
           args.mode,
           args.problem_size,
           {ThreadblockShape::kM, ThreadblockShape::kN, ThreadblockShape::kK},
           args.batch_count,
           sm_occupancy,
           device_sms,
-          avail_sms);
+          avail_sms,
+          cutlass::sizeof_bits<ElementA>::value,
+          cutlass::sizeof_bits<ElementB>::value,
+          cutlass::sizeof_bits<ElementC>::value,
+          ThreadblockShape::kK / (WarpCount::kK * InstructionShape::kK));
     }
 
     /// Returns the workspace size (in bytes) needed for these parameters

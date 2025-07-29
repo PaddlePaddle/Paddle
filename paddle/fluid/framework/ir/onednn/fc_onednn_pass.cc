@@ -29,14 +29,14 @@ namespace ir {
 
 class Graph;
 
-void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
+void FCONEDNNPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
                           common::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));
   Init("fc_onednn_pass", graph);
 
   GraphPatternDetector gpd;
-  patterns::FCMKLDNN fc_pattern(gpd.mutable_pattern(), "fc_onednn_pass");
+  patterns::FCONEDNN fc_pattern(gpd.mutable_pattern(), "fc_onednn_pass");
   // searching for fc+residual  doesn't make sense at this stage
   fc_pattern(false /*with_residual*/);
 
@@ -89,4 +89,4 @@ void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(fc_onednn_pass, paddle::framework::ir::FCMKLDNNPass);
+REGISTER_PASS(fc_onednn_pass, paddle::framework::ir::FCONEDNNPass);

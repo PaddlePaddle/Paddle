@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import get_places
 
 import paddle
 import paddle.nn.functional as F
@@ -96,6 +97,35 @@ class LinearTestCase(unittest.TestCase):
             [0.85075015, -1.04724526, 0.64371765],
         ]
         np.testing.assert_allclose(linear.weight.numpy(), expect, rtol=1e-05)
+
+
+class TestLinearAPI_ZeroSize(unittest.TestCase):
+    def init_dtype(self):
+        self.dtype = 'float32'
+
+    def setUp(self):
+        self.init_dtype()
+        self.input = np.random.random((3, 2)).astype(self.dtype)
+        self.weight = np.random.random((2, 0)).astype(self.dtype)
+        self.place = get_places()
+
+    # test dynamic graph api.
+    def test_dygraph_api(self):
+        def run(place):
+            paddle.disable_static(place)
+            input = paddle.to_tensor(self.input)
+            input.stop_gradient = False
+            weight = paddle.to_tensor(self.weight)
+            weight.stop_gradient = False
+            out = paddle.nn.functional.linear(input, weight)
+            out_ref = np.random.random((3, 0)).astype(self.dtype)
+            np.testing.assert_allclose(out_ref, out.numpy())
+            paddle.sum(out).backward()
+            np.testing.assert_allclose(input.grad.shape, input.shape)
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place)
 
 
 if __name__ == "__main__":

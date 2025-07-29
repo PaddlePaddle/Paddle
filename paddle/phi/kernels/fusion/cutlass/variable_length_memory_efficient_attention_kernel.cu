@@ -31,6 +31,8 @@ void MultiHeadAttentionVariableForwardKernel(
     const int pre_cache_length,
     DenseTensor* output) {
   dev_ctx.template Alloc<T>(output);
+  if (output->numel() == 0) return;
+
   Params params{};
   // [B, N, S, H]
   params.seq_lens = seq_lens.data<int>();

@@ -338,10 +338,6 @@ __global__ __launch_bounds__(
       const auto rdma_recv_x_uint8 =
           reinterpret_cast<uint8_t*>(rdma_recv_x) +
           src_rdma_rank * num_max_dispatch_tokens_per_rank * num_bytes_per_msg;
-      const auto rdma_recv_x_uint8_bak =
-          reinterpret_cast<uint8_t*>(rdma_recv_x) +
-          kNumRdmaRanks * num_max_dispatch_tokens_per_rank * num_bytes_per_msg +
-          src_rdma_rank * num_max_dispatch_tokens_per_rank * num_bytes_per_msg;
 
       __shared__ int shared_num_recv_tokens[1];
       int num_recv_tokens_per_rdma;
@@ -365,8 +361,6 @@ __global__ __launch_bounds__(
            rdma_recv_token_idx += sms_per_rdma) {
         const auto rdma_recv_x_uint8_now =
             rdma_recv_x_uint8 + rdma_recv_token_idx * num_bytes_per_msg;
-        const auto rdma_recv_x_uint8_bak_now =
-            rdma_recv_x_uint8_bak + rdma_recv_token_idx * num_bytes_per_msg;
         const auto src_data = reinterpret_cast<int4*>(rdma_recv_x_uint8_now);
         const auto rdma_recv_x_scales = reinterpret_cast<float*>(
             reinterpret_cast<uint8_t*>(src_data) + sizeof(int4) + hidden_bytes);
@@ -376,19 +370,6 @@ __global__ __launch_bounds__(
             *(rdma_recv_nvl_rank_meta + rdma_rank * (kTopk * 3 + 1));
         const auto rdma_recv_nvl_rank_meta_now =
             rdma_recv_nvl_rank_meta + rdma_rank * (kTopk * 3 + 1) + 1;
-
-        // Used in combine
-        // The buffer in the dispatch phase can be reused, we won’t use it this
-        // way for now.
-        if (warp_id == num_warps - 1) {
-          UNROLLED_WARP_COPY(UNROLL_FACTOR,
-                             lane_id,
-                             num_int4_per_msg,
-                             reinterpret_cast<int4*>(rdma_recv_x_uint8_bak_now),
-                             reinterpret_cast<int4*>(rdma_recv_x_uint8_now),
-                             ld_nc_global,
-                             st_na_global);
-        }
 
         // nvl sender
         for (int loop_nvl_expert_i = warp_id;
@@ -770,7 +751,6 @@ __global__ __launch_bounds__(
   const size_t hidden_bf16_int4 = kHidden / kNumElemsPerInt4;
   if (sm_id == 0 && thread_id == 0) {
     EP_DEVICE_ASSERT(ibgda_get_state()->num_rc_per_pe >= kNumQPs);
-    EP_DEVICE_ASSERT(num_threads >= hidden_bf16_int4);
   }
 
   constexpr size_t num_bytes_per_slot = kHidden * sizeof(nv_bfloat16);
@@ -877,8 +857,6 @@ __global__ __launch_bounds__(
           (-dispatch_rdma_recv_count[deal_rdma_rank] - 1);
       const auto dispatch_rdma_recv_x_this_rdma_rank =
           reinterpret_cast<uint8_t*>(dispatch_rdma_recv_x) +
-          kNumRdmaRanks * num_max_dispatch_tokens_per_rank *
-              num_bytes_per_msg_dispatch +
           deal_rdma_rank * num_max_dispatch_tokens_per_rank *
               num_bytes_per_msg_dispatch;
       auto rdma_send_x_this_rdma_rank =
@@ -903,8 +881,9 @@ __global__ __launch_bounds__(
             nvl_rank_meta + rdma_rank * (kTopk * 3 + 1) + 1;
         int4* dst_ptr = reinterpret_cast<int4*>(
             rdma_send_x_this_rdma_rank + index_source * combine_hidden_bytes);
-        float combined_values[kNumElemsPerInt4] = {0.0f};
-        if (thread_id < hidden_bf16_int4) {
+        for (int g_id = thread_id; g_id < hidden_bf16_int4;
+             g_id += num_threads) {
+          float combined_values[kNumElemsPerInt4] = {0.0f};
           for (int nvl_rank_idx = 0; nvl_rank_idx < nvl_rank_nums;
                nvl_rank_idx += 1) {
             const int dst_rdma_expert_idx = nvl_rank_meta_now[nvl_rank_idx * 3];
@@ -918,7 +897,7 @@ __global__ __launch_bounds__(
                      num_max_dispatch_tokens_per_rank +
                  dst_cum_index) *
                     num_bytes_per_slot);
-            auto x_vec = ld_nc_global(src_ptr + thread_id);
+            auto x_vec = ld_nc_global(src_ptr + g_id);
             const auto x_bf16 = reinterpret_cast<nv_bfloat16*>(&x_vec);
 #pragma unroll
             for (int j = 0; j < kNumElemsPerInt4; ++j)
@@ -929,7 +908,7 @@ __global__ __launch_bounds__(
 #pragma unroll
           for (int j = 0; j < kNumElemsPerInt4; ++j)
             combined_bf16[j] = static_cast<nv_bfloat16>(combined_values[j]);
-          dst_ptr[thread_id] = combined_int4;
+          dst_ptr[g_id] = combined_int4;
         }
         __syncthreads();
         // issue copy to remote rdma per token
@@ -1018,9 +997,9 @@ __global__ __launch_bounds__(
   }
   cg::this_grid().sync();
 
-  if (thread_id < hidden_bf16_int4) {
-    for (int token_idx = sm_id; token_idx < num_combined_tokens;
-         token_idx += num_sms) {
+  for (int token_idx = sm_id; token_idx < num_combined_tokens;
+       token_idx += num_sms) {
+    for (int g_id = thread_id; g_id < hidden_bf16_int4; g_id += num_threads) {
       float combined_values[kNumElemsPerInt4] = {0.0f};
       const bool* rdma_send_flags_now =
           rdma_send_flags + token_idx * kNumRdmaRanks;
@@ -1031,7 +1010,7 @@ __global__ __launch_bounds__(
               reinterpret_cast<uint8_t*>(rdma_recv_x) +
               (rdma_rank_idx * num_max_dispatch_tokens_per_rank + token_idx) *
                   combine_hidden_bytes);
-          auto x_vec = ld_nc_global(src_ptr + thread_id);
+          auto x_vec = ld_nc_global(src_ptr + g_id);
           const auto x_bf16 = reinterpret_cast<nv_bfloat16*>(&x_vec);
 #pragma unroll
           for (int j = 0; j < kNumElemsPerInt4; ++j)
@@ -1045,7 +1024,7 @@ __global__ __launch_bounds__(
       for (int j = 0; j < kNumElemsPerInt4; ++j)
         combined_bf16[j] = static_cast<nv_bfloat16>(combined_values[j]);
       (reinterpret_cast<int4*>(combined_x) +
-       token_idx * hidden_bf16_int4)[thread_id] = combined_int4;
+       token_idx * hidden_bf16_int4)[g_id] = combined_int4;
     }
   }
 }

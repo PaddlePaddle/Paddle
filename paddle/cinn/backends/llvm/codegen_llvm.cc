@@ -838,6 +838,14 @@ llvm::Value *CodeGenLLVM::Visit(const ir::_Dim_ *) {
   CINN_NOT_IMPLEMENTED return nullptr;
 }
 
+llvm::Function *CallHostFallBack(const llvm::Module *m, const ir::Call *op) {
+  std::string fallback_func_name =
+      "cinn_host_" + op->name + "_" + common::Type2Str(op->type());
+  VLOG(6) << "Warn: host side has no func named '" << op->name
+          << "', trying a fallback version '" << fallback_func_name << "'";
+  return m->getFunction(fallback_func_name);
+}
+
 llvm::Value *CodeGenLLVM::Visit(const ir::Call *op) {
   if (op->name == runtime::intrinsic::debug_log_repr) {
     return EmitCall_debug_info(op);
@@ -854,6 +862,9 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Call *op) {
   }
 
   llvm::Function *callee = m_->getFunction(op->name);
+  if (!callee) {
+    callee = CallHostFallBack(m_, op);
+  }
   CHECK(callee) << "Unknown function referenced. [" << op->name << "]";
 
   std::vector<llvm::Value *> args;

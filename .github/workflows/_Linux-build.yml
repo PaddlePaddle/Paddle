@@ -6,21 +6,26 @@ on:
       docker_build_image:
         type: string
         required: true
+      is_pr:
+        type: string
+        required: false
+        default: 'true'
     outputs:
       can-skip:
         description: "Whether to skip the job"
         value: ${{ jobs.build.outputs.can-skip }}
 
 env:
-  PR_ID: ${{ github.event.pull_request.number }}
-  COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+  PR_ID: ${{ github.event.pull_request.number || '0' }}
+  COMMIT_ID: ${{ github.event.pull_request.head.sha || github.sha }}
   work_dir: /paddle
   PADDLE_ROOT: /paddle
   TASK: paddle-CI-${{ github.event.pull_request.number }}-build
   ci_scripts: /paddle/ci
-  BRANCH: ${{ github.event.pull_request.base.ref }}
+  BRANCH: ${{ github.event.pull_request.base.ref || github.ref_name }}
   CI_name: build
   CFS_DIR: /home/data/cfs
+  is_pr: ${{ inputs.is_pr }}
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 
 defaults:
@@ -78,6 +83,7 @@ jobs:
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/paddle \
             -e BRANCH \
+            -e is_pr \
             -e PR_ID \
             -e COMMIT_ID \
             -e work_dir \
@@ -116,7 +122,7 @@ jobs:
             -e CI_name \
             -w /paddle --network host ${docker_image}
 
-      - name: Download paddle.tar.gz and merge target branch
+      - name: Download paddle.tar.gz
         env:
           work_dir: ${{ github.workspace }}
         run: |
@@ -127,7 +133,7 @@ jobs:
           wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle-build/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
           echo "Extracting Paddle.tar.gz"
           git config --global --add safe.directory ${work_dir}
-          tar xf Paddle.tar.gz --strip-components=1
+          tar -xf Paddle.tar.gz --strip-components=1
           git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
           rm Paddle.tar.gz
           git config --global user.name "PaddleCI"
@@ -136,6 +142,14 @@ jobs:
           set +e
           git remote add upstream https://github.com/PaddlePaddle/Paddle.git
           set -e
+          '
+
+      - name: Merge target branch
+        if: ${{ inputs.is_pr == 'true' }}
+        env:
+          work_dir: ${{ github.workspace }}
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
           cp ci/git_pull.sh ci/git_pull_copy.sh
           git checkout $BRANCH
@@ -147,6 +161,7 @@ jobs:
 
       - name: Check bypass
         id: check-bypass
+        if: ${{ inputs.is_pr == 'true' }}
         uses: ./.github/actions/check-bypass
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -199,7 +214,7 @@ jobs:
           echo "Uploading build.tar.gz to cfs"
           mkdir -p ${CFS_DIR}/build_bos/${PR_ID}/${COMMIT_ID}
           mv build.tar.gz ${CFS_DIR}/build_bos/${PR_ID}/${COMMIT_ID} && echo success
-          mv /paddle/build/pr_whl/${{ env.paddle_whl }} .
+          mv /paddle/${{ env.paddle_whl }} .
           echo "Uploading paddle_whl to bos"
           python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/build/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
           '

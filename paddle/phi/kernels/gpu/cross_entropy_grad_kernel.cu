@@ -43,8 +43,8 @@ __global__ void SoftLabelCrossEntropyGradientKernel(T* logit_grad,
                                                     const int n,
                                                     const int d,
                                                     const int remain) {
-  int ids = blockIdx.x * blockDim.x + threadIdx.x;
-  if (ids < n * d) {
+  int64_t ids = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (ids < static_cast<int64_t>(n) * d) {
     int idx_n = ids / d;
     int idx_remain = ids % remain;
     int idx_loss = idx_n * remain + idx_remain;
@@ -59,7 +59,7 @@ __global__ void HardLabelCrossEntropyGradientKernel(T* logit_grad,
                                                     const int d,
                                                     const int remain,
                                                     const int ignore_index) {
-  CUDA_KERNEL_LOOP(index, n * remain) {
+  CUDA_KERNEL_LOOP(index, static_cast<int64_t>(n) * remain) {
     int idx_n = index / remain;
     int idx_remain = index % remain;
     int tmp = static_cast<int>(labels[index]);
@@ -180,19 +180,19 @@ void CrossEntropyWithSoftmaxGradGPUKernel(const GPUContext& dev_ctx,
   // do not with softmax op, and input is softmax
   if (!use_softmax) {
     if (soft_label) {
-      int grid = (n * d + block - 1) / block;
+      int64_t grid = (n * d + block - 1) / block;
       const T* label_data = label.data<T>();
       SoftLabelCrossEntropyGradientKernel<T><<<grid, block, 0, stream>>>(
           logit_grad_data, loss_grad_data, label_data, n, d, remain);
     } else {
       DenseTensor logits_grad_2d(*logit_grad);
       logits_grad_2d.Resize({n, d});
-      int grid = (n * remain + block - 1) / block;
+      int64_t grid = (n * remain + block - 1) / block;
       const auto* label_data = label.data<LabelT>();
       HardLabelCrossEntropyGradientKernel<T, LabelT>
           <<<grid, block, 0, stream>>>(
               logit_grad_data, label_data, n, d, remain, ignore_index);
-      int num = n * d;
+      int64_t num = n * d;
       grid = (num + block - 1) / block;
       ScaleCrossEntropyGradient<T, LabelT>
           <<<grid, block, 0, stream>>>(logit_grad_data,
@@ -217,7 +217,7 @@ void CrossEntropyWithSoftmaxGradGPUKernel(const GPUContext& dev_ctx,
   } else {
     const T* softmax_data = softmax.data<T>();
     const auto* label_data = label.data<LabelT>();
-    int grid = (n * d + block - 1) / block;
+    int64_t grid = (n * d + block - 1) / block;
     SoftmaxWithCrossEntropyGradHardLabel<T>
         <<<grid, block, 0, stream>>>(logit_grad_data,
                                      loss_grad_data,

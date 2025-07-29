@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
@@ -1744,6 +1745,21 @@ def cond(
                 raise ValueError(
                     "only support x is nonempty tensor in static graph mode"
                 )
+            # reshape([]) is invalid,
+            # so use reshae([0]) and sum to get a scalar when shape is []
+            old_size = input.numel()
+            if len(shape) == 0 and old_size == 0:
+                return input.reshape([0]).sum()
+            new_size = math.prod(shape)
+            # 0-size Tensor cannot be reshaped to non 0-size Tensor
+            if new_size > 0 and old_size == 0:
+                tmp = paddle.concat(
+                    [
+                        input.flatten(),
+                        paddle.zeros([new_size], dtype=input.dtype),
+                    ]
+                )
+                return tmp.reshape(shape)
             return input.reshape(shape)
         raise ValueError(
             "only support x is nonempty tensor in static graph mode"
@@ -2291,6 +2307,10 @@ def cholesky(x: Tensor, upper: bool = False, name: str | None = None) -> Tensor:
              [1.30602181, 0.08326444, 0.22790681]])
     """
     if in_dynamic_or_pir_mode():
+        x_shape = x.shape
+        assert (
+            len(x_shape) >= 2 and x_shape[-1] == x_shape[-2]
+        ), "Shape must have at least 2 dimensions and last two dimensions must be equal."
         return _C_ops.cholesky(x, upper)
     else:
         check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'cholesky')
@@ -3610,10 +3630,16 @@ def lu_solve(
     given LU decomposition :math:`A` and column vector :math:`b`.
 
     Args:
-        b (Tensor): Column vector `b` in the above equation. It has shape :math:`(*, m, k)`, where :math:`*` is batch dimensions, with data type float32, float64.
-        lu (Tensor): LU decomposition. It has shape :math:`(*, m, m)`, where :math:`*` is batch dimensions, that can be decomposed into an upper triangular matrix U and a lower triangular matrix L, with data type float32, float64.
+        b (Tensor): Column vector `b` in the above equation. It has shape :math:`(*, m, k)`, where :math:`*` is batch dimensions,
+            with data type float32, float64, complex64, or complex128.
+
+        lu (Tensor): LU decomposition. It has shape :math:`(*, m, m)`, where :math:`*` is batch dimensions, that can be decomposed into an upper triangular matrix U and a lower triangular matrix L,
+            with data type float32, float64, complex64, or complex128.
+
         pivots (Tensor): Permutation matrix P of LU decomposition. It has shape :math:`(*, m)`, where :math:`*` is batch dimensions, that can be converted to a permutation matrix P, with data type int32.
+
         trans (str, optional): The transpose of the matrix A. It can be "N" , "T" or "C", "N" means :math:`Ax=b`, "T" means :math:`A^Tx=b`, "C" means :math:`A^Hx=b`, default is "N".
+
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -3704,8 +3730,9 @@ def lu_unpack(
 
     Args:
         x (Tensor): The LU tensor get from paddle.linalg.lu, which is combined by L and U.
+            Its data type should be float32, float64, complex64, or complex128.
 
-        y (Tensor): Pivots get from paddle.linalg.lu.
+        y (Tensor): Pivots get from paddle.linalg.lu. Its data type should be int32.
 
         unpack_ludata (bool, optional): whether to unpack L and U from x. Default: True.
 
@@ -3774,7 +3801,10 @@ def lu_unpack(
         return P, L, U
     else:
         check_variable_and_dtype(
-            x, 'dtype', ['float32', 'float64'], 'lu_unpack'
+            x,
+            'dtype',
+            ['float32', 'float64', 'complex64', 'complex128'],
+            'lu_unpack',
         )
         helper = LayerHelper('lu_unpack', **locals())
         p = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -4039,8 +4069,6 @@ def eigh(
              [ 0.3826833963394165j    , -0.9238795042037964j    ]])
 
     """
-    if in_dynamic_mode():
-        return _C_ops.eigh(x, UPLO)
 
     def __check_input(x, UPLO):
         x_shape = list(x.shape)
@@ -4058,7 +4086,7 @@ def eigh(
                 f"UPLO must be L or U. But received UPLO is: {UPLO}"
             )
 
-    if in_pir_mode():
+    if in_dynamic_mode() or in_pir_mode():
         __check_input(x, UPLO)
         return _C_ops.eigh(x, UPLO)
 
@@ -4153,7 +4181,10 @@ def pinv(
         if not hermitian:
             # combine svd and matmul op
             u, s, vt = _C_ops.svd(x, False)
-            max_singular_val = _C_ops.max(s, [-1], True)
+            if s.shape[-1] == 0:
+                max_singular_val = s
+            else:
+                max_singular_val = _C_ops.max(s, [-1], True)
             rcond = paddle.to_tensor(rcond, dtype=x.dtype)
             cutoff = rcond * max_singular_val
             y = float('inf')
@@ -4170,6 +4201,11 @@ def pinv(
             out_2 = _C_ops.matmul(out_1, u, False, True)
             return out_2
         else:
+            if in_dynamic_mode() and x.size == 0:
+                dims = list(range(len(x.shape)))
+                perm = [*dims[:-2], dims[-1], dims[-2]]
+                return _C_ops.transpose(x, perm)
+
             # combine eigh and matmul op
             s, u = _C_ops.eigh(x, 'L')
             s_abs = paddle.abs(s)
