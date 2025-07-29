@@ -19,6 +19,7 @@ limitations under the License. */
 #include <string>
 #include <utility>
 
+#include "glog/logging.h"
 #include "paddle/phi/common/place.h"
 
 #ifdef PADDLE_WITH_CUDA
