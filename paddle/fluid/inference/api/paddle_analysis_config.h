@@ -869,13 +869,13 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \brief Turn on OneDNN.
   ///
   ///
-  void EnableMKLDNN();
+  void EnableONEDNN();
 
   ///
   /// \brief Turn down OneDNN.
   ///
   ///
-  void DisableMKLDNN();
+  void DisableONEDNN();
 
   ///
   /// \brief Set the cache capacity of different input shapes for OneDNN.
@@ -885,13 +885,13 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \param capacity The cache capacity.
   ///
-  void SetMkldnnCacheCapacity(int capacity);
+  void SetOnednnCacheCapacity(int capacity);
   ///
   /// \brief A boolean state telling whether to use the OneDNN.
   ///
   /// \return bool Whether to use the OneDNN.
   ///
-  bool mkldnn_enabled() const { return use_mkldnn_; }
+  bool mkldnn_enabled() const { return use_onednn_; }
 
   ///
   /// \brief Set the number of cpu math library threads.
@@ -921,8 +921,8 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \param op_list The operator type list.
   ///
-  void SetMKLDNNOp(std::unordered_set<std::string> op_list) {
-    mkldnn_enabled_op_types_ = op_list;
+  void SetONEDNNOp(std::unordered_set<std::string> op_list) {
+    onednn_enabled_op_types_ = op_list;
   }
 
   ///
@@ -937,7 +937,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \return bool Whether to use the OneDNN Int8.
   ///
-  bool mkldnn_int8_enabled() const { return use_mkldnn_int8_; }
+  bool mkldnn_int8_enabled() const { return use_onednn_int8_; }
 
   ///
   /// \brief Turn on OneDNN bfloat16.
@@ -948,21 +948,21 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \brief Turn off OneDNN fc passes.
   ///
-  void DisableMkldnnFcPasses();
+  void DisableOnednnFcPasses();
 
   ///
   /// \brief A boolean state telling whether to disable the OneDNN Fc passes.
   ///
   /// \return bool Whether to disable the OneDNN Fc passes.
   ///
-  bool mkldnn_fc_passes_disabled() const { return disable_mkldnn_fc_passes_; }
+  bool mkldnn_fc_passes_disabled() const { return disable_onednn_fc_passes_; }
 
   ///
   /// \brief A boolean state telling whether to use the OneDNN Bfloat16.
   ///
   /// \return bool Whether to use the OneDNN Bfloat16.
   ///
-  bool mkldnn_bfloat16_enabled() const { return use_mkldnn_bfloat16_; }
+  bool mkldnn_bfloat16_enabled() const { return use_onednn_bfloat16_; }
 
   /// \brief Specify the operator type list to use Bfloat16 acceleration.
   ///
@@ -1251,11 +1251,11 @@ struct PD_INFER_DECL AnalysisConfig {
   std::unordered_set<std::string> trt_ops_run_float_;
 
 #ifdef PADDLE_WITH_DNNL
-  bool use_mkldnn_{true};
+  bool use_onednn_{true};
 #else
-  bool use_mkldnn_{false};
+  bool use_onednn_{false};
 #endif
-  std::unordered_set<std::string> mkldnn_enabled_op_types_;
+  std::unordered_set<std::string> onednn_enabled_op_types_;
 
   bool model_from_memory_{false};
 
@@ -1287,14 +1287,14 @@ struct PD_INFER_DECL AnalysisConfig {
   XpuConfig xpu_config_;
 
   // onednn related.
-  int mkldnn_cache_capacity_{10};
-  bool use_mkldnn_bfloat16_{false};
+  int onednn_cache_capacity_{10};
+  bool use_onednn_bfloat16_{false};
   std::unordered_set<std::string> bfloat16_enabled_op_types_;
-  bool use_mkldnn_int8_{false};
+  bool use_onednn_int8_{false};
   std::unordered_set<int> quantize_excluded_op_ids_{};
   std::unordered_set<std::string> quantize_enabled_op_types_{};
 
-  bool disable_mkldnn_fc_passes_{false};
+  bool disable_onednn_fc_passes_{false};
 
   // ipu related.
   bool use_ipu_{false};

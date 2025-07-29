@@ -89,15 +89,38 @@ void FusedBiasDropoutResidualLnGradKernel(
   if (y_grad.numel() == 0) {
     phi::Full<T, Context>(
         dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    if (ln_scale_grad)
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(ln_scale_grad->dims())),
+          0,
+          ln_scale_grad);
+    if (ln_bias_grad)
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(ln_bias_grad->dims())),
+          0,
+          ln_bias_grad);
+    if (residual_grad)
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(residual_grad->dims())),
+          0,
+          residual_grad);
+    if (bias_grad)
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(bias_grad->dims())),
+                            0,
+                            bias_grad);
     return;
   }
 
   const auto input_x_dims = y_grad.dims();
-  int bsz_seq = 1;
+  int64_t bsz_seq = 1;
   for (int i = 0; i < input_x_dims.size() - 1; i++) {
     bsz_seq *= input_x_dims[i];
   }
-  int dim_embed = input_x_dims[input_x_dims.size() - 1];
+  int64_t dim_embed = input_x_dims[input_x_dims.size() - 1];
   phi::fusion::DropoutParam dropout_param(
       dropout_fix_seed,
       0,

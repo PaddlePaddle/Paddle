@@ -280,4 +280,6 @@ PADDLE_API GPUPlace DefaultGPUPlace();
 
 PADDLE_API phi::XPUPlace DefaultXPUPlace();
 
+PADDLE_API phi::CustomPlace DefaultCustomPlace();
+
 }  // namespace paddle

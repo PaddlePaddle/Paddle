@@ -2825,8 +2825,8 @@ void LUUnpackInferMeta(const MetaTensor& x,
                     common::errors::InvalidArgument(
                         "The rank of input must greater than 2."));
 
-  int m = static_cast<int>(x_dims[x_rank - 1]);
-  int n = static_cast<int>(x_dims[x_rank - 2]);
+  int m = static_cast<int>(x_dims[x_rank - 2]);
+  int n = static_cast<int>(x_dims[x_rank - 1]);
   int min_mn = std::min(m, n);
   if (unpack_ludata) {
     auto ldims = x_dims;
@@ -4229,19 +4229,31 @@ void LstsqInferMeta(const MetaTensor& x,
           m,
           y_dims[y_rank - 2]));
 
-  rank->set_dims(common::make_ddim(batch_dims_vec));
+  if (x.numel() == 0 || y.numel() == 0) {
+    rank->set_dims(common::make_ddim({0}));
+  } else {
+    rank->set_dims(common::make_ddim(batch_dims_vec));
+  }
 
-  if (m > n) {
-    batch_dims_vec.emplace_back(nrhs);
-    residuals->set_dims(common::make_ddim(batch_dims_vec));
-    batch_dims_vec.pop_back();
+  if (m > n && driver != "gelsy") {
+    if (driver == "gelss" || driver == "gelsd") {
+      residuals->set_dims(common::make_ddim({-1}));
+    } else {
+      batch_dims_vec.emplace_back(nrhs);
+      residuals->set_dims(common::make_ddim(batch_dims_vec));
+      batch_dims_vec.pop_back();
+    }
   } else {
     residuals->set_dims(common::make_ddim({0}));
   }
   residuals->set_dtype(y.dtype());
 
   batch_dims_vec.emplace_back(std::min(m, n));
-  singular_values->set_dims(common::make_ddim(batch_dims_vec));
+  if (x.numel() == 0 || y.numel() == 0) {
+    singular_values->set_dims(common::make_ddim({0}));
+  } else {
+    singular_values->set_dims(common::make_ddim(batch_dims_vec));
+  }
   singular_values->set_dtype(y.dtype());
 
   batch_dims_vec[x_rank - 2] = n;
