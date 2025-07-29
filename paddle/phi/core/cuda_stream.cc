@@ -18,6 +18,8 @@ limitations under the License. */
 
 namespace phi {
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
 CUDAStream::CUDAStream(const Place& place,
                        const int priority,
                        const StreamFlag& flag) {
@@ -97,5 +99,7 @@ CUDAStream::~CUDAStream() {
 #endif
   }
 }
+
+#endif
 
 }  // namespace phi
