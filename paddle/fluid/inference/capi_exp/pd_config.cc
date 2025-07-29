@@ -363,9 +363,18 @@ void PD_ConfigSwitchIrDebug(__pd_keep PD_Config* pd_config, PD_Bool x) {
   CHECK_AND_CONVERT_PD_CONFIG;
   config->SwitchIrDebug(x);
 }
+
+void PD_ConfigEnableMKLDNN(__pd_keep PD_Config* pd_config) {
+  PD_ConfigEnableONEDNN(pd_config);
+}
 void PD_ConfigEnableONEDNN(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   config->EnableONEDNN();
+}
+
+void PD_ConfigSetMkldnnCacheCapacity(__pd_keep PD_Config* pd_config,
+                                     int32_t capacity) {
+  PD_ConfigSetOnednnCacheCapacity(pd_config, capacity);
 }
 void PD_ConfigSetOnednnCacheCapacity(__pd_keep PD_Config* pd_config,
                                      int32_t capacity) {
