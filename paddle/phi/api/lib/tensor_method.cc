@@ -198,25 +198,39 @@ void Tensor::copy_(const Tensor &src,
     return;
   }
 #endif
+    if(is_dense_tensor() && src.is_dense_tensor()) {
+      auto dst_tensor = static_cast<phi::DenseTensor*>(impl_.get());
+      auto src_tensor = std::static_pointer_cast<phi::DenseTensor>(src.impl_);
 
-    auto dst_tensor = static_cast<phi::DenseTensor*>(impl_.get());
-    auto src_tensor = std::static_pointer_cast<phi::DenseTensor>(src.impl_);
-    if(!dst_tensor->meta().is_contiguous() ||
-       !src_tensor->meta().is_contiguous()) {
-      VLOG(8) << "Tensor::copy_ , src or dst tesnor is not contiguous";
-      if (!FLAGS_use_stride_kernel) {
-        PADDLE_THROW(common::errors::Fatal(
-            "FLAGS_use_stride_kernel is closed. Strided kernel "
-            "be called, something wrong has happened!"));
+      if(!dst_tensor->meta().is_contiguous() ||
+        !src_tensor->meta().is_contiguous()) {
+        VLOG(8) << "Tensor::copy_ , src or dst tesnor is not contiguous";
+        if (!FLAGS_use_stride_kernel) {
+          PADDLE_THROW(common::errors::Fatal(
+              "FLAGS_use_stride_kernel is closed. Strided kernel "
+              "be called, something wrong has happened!"));
+        }
+        PD_VISIT_ALL_TYPES(src_tensor->dtype(), "StridedTensorCopy", ([&] {
+                          phi::StridedTensorCopy<data_t>(
+                              *src_tensor,
+                              common::vectorize<int64_t>(dst_tensor->dims()),
+                              common::vectorize<int64_t>(dst_tensor->strides()),
+                              dst_tensor->offset(),
+                              dst_tensor);
+                        }));
+      } else {
+        SetKernelOutput(this);
+        phi::MetaTensor meta_out(impl_.get());
+        phi::UnchangedInferMeta(
+          MakeMetaTensor(
+              *(std::static_pointer_cast<phi::DenseTensor>(src.impl_))),
+          &meta_out);
+        phi::Copy(*dev_ctx,
+                  (*(std::static_pointer_cast<phi::DenseTensor>(src.impl_))),
+                  target_place,
+                  blocking,
+                  static_cast<phi::DenseTensor *>(impl_.get()));
       }
-      PD_VISIT_ALL_TYPES(src_tensor->dtype(), "StridedTensorCopy", ([&] {
-                         phi::StridedTensorCopy<data_t>(
-                             *src_tensor,
-                             common::vectorize<int64_t>(dst_tensor->dims()),
-                             common::vectorize<int64_t>(dst_tensor->strides()),
-                             dst_tensor->offset(),
-                             dst_tensor);
-                       }));
     } else {
       SetKernelOutput(this);
       phi::MetaTensor meta_out(impl_.get());
@@ -230,7 +244,6 @@ void Tensor::copy_(const Tensor &src,
                 blocking,
                 static_cast<phi::DenseTensor *>(impl_.get()));
     }
-
 
   } else if (kernel_type == KernelType::SELECTED_ROWS_KERNEL) {
     SetSelectedRowsKernelOutput(this);

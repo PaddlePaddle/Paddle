@@ -157,6 +157,9 @@ DataType Tensor::type() const { return impl_->dtype(); }
 phi::DataLayout Tensor::layout() const { return impl_->layout(); }
 
 bool Tensor::is_dense_tensor() const {
+  if (impl_ == nullptr) {
+    return false;
+  }
   return phi::DenseTensor::classof(impl_.get());
 }
 bool Tensor::is_dist_tensor() const {
