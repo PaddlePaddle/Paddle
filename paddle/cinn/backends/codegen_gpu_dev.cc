@@ -153,6 +153,12 @@ std::vector<ir::stmt::StmtRef> CodeGenGpuDev::FilterDeallocTempBuffers(
 void CodeGenGpuDev::Visit(const ir::_LoweredFunc_ *op) {
   // clear names valid within scope when enter a new function
   vectorized_tensor_names_.clear();
+  dynamic_shape_map_.clear();
+  for (const auto &arg : op->args) {
+    if (arg.is_var()) {
+      dynamic_shape_map_.emplace(arg.name(), arg.type());
+    }
+  }
   str_ += "__global__\n";
 
   PrintFunctionDeclaration(op);
@@ -213,17 +219,29 @@ void CodeGenGpuDev::VisitStmt(const ir::stmt::Alloc &stmt) {
 
 void CodeGenGpuDev::Visit(const ir::Min *op) {
   str_ += "min(";
-  IrPrinter::Visit(op->a());
+  ir::Expr a = op->a(), b = op->b();
+  int unify_bit = common::UnifiedOperandTypeBits(&dynamic_shape_map_, op);
+  if (unify_bit > 0) {
+    a = ir::Cast::Make(common::Int(unify_bit), a);
+    b = ir::Cast::Make(common::Int(unify_bit), b);
+  }
+  IrPrinter::Visit(a);
   str_ += ", ";
-  IrPrinter::Visit(op->b());
+  IrPrinter::Visit(b);
   str_ += ")";
 }
 
 void CodeGenGpuDev::Visit(const ir::Max *op) {
   str_ += "max(";
-  IrPrinter::Visit(op->a());
+  ir::Expr a = op->a(), b = op->b();
+  int unify_bit = common::UnifiedOperandTypeBits(&dynamic_shape_map_, op);
+  if (unify_bit > 0) {
+    a = ir::Cast::Make(common::Int(unify_bit), a);
+    b = ir::Cast::Make(common::Int(unify_bit), b);
+  }
+  IrPrinter::Visit(a);
   str_ += ", ";
-  IrPrinter::Visit(op->b());
+  IrPrinter::Visit(b);
   str_ += ")";
 }
 

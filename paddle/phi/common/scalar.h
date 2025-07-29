@@ -279,6 +279,9 @@ class ScalarBase {
       case DataType::BFLOAT16:
         ss << data_.bf16;
         break;
+      case DataType::FLOAT8_E4M3FN:
+        ss << data_.f8e4m3;
+        break;
       case DataType::INT32:
         ss << data_.i32;
         break;
@@ -382,6 +385,7 @@ class ScalarBase {
     float16 f16;
     float f32;
     double f64;
+    float8_e4m3fn f8e4m3;
     complex64 c64;
     complex128 c128;
   } data_;

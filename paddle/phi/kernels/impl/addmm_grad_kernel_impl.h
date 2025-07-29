@@ -97,7 +97,7 @@ void AddmmGradKernel(const Context& dev_ctx,
     in_dims = {1, input.dims()[0]};
     input_grad->Resize(in_dims);
   }
-  int total_elems = 0;
+  int64_t total_elems = 0;
 
   VLOG(3) << "alpha: " << alpha << " beta: " << beta;
 

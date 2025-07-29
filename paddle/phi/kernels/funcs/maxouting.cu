@@ -111,7 +111,7 @@ __global__ void KernelMaxoutGrad(const int64_t nthreads,
 }
 
 template <typename DeviceContext, typename T>
-void MaxOutFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
+void MaxOutFunctor<DeviceContext, T>::operator()(const DeviceContext& dev_ctx,
                                                  const phi::DenseTensor& input,
                                                  phi::DenseTensor* output,
                                                  const int groups,
@@ -122,13 +122,13 @@ void MaxOutFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
   const int64_t input_width = (axis == 1 ? input.dims()[3] : input.dims()[2]);
 
   const T* input_data = input.data<T>();
-  T* output_data = context.template Alloc<T>(output);
+  T* output_data = dev_ctx.template Alloc<T>(output);
   int64_t nthreads = static_cast<int64_t>(output->numel());
   int64_t blocks = static_cast<int64_t>((nthreads + 1024 - 1) / 1024);
   dim3 threads(1024, 1);
   dim3 grid(blocks, 1);
 
-  KernelMaxOut<T><<<grid, threads, 0, context.stream()>>>(nthreads,
+  KernelMaxOut<T><<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
                                                           input_data,
                                                           input_channels,
                                                           input_height,
@@ -140,7 +140,7 @@ void MaxOutFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
 
 template <typename DeviceContext, typename T>
 void MaxOutGradFunctor<DeviceContext, T>::operator()(
-    const DeviceContext& context,
+    const DeviceContext& dev_ctx,
     const phi::DenseTensor& input,
     phi::DenseTensor* input_grad,
     const phi::DenseTensor& output,
@@ -154,13 +154,13 @@ void MaxOutGradFunctor<DeviceContext, T>::operator()(
   const T* input_data = input.data<T>();
   const T* output_data = output.data<T>();
   const T* output_grad_data = output_grad.data<T>();
-  T* input_grad_data = context.template Alloc<T>(input_grad);
+  T* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
   int64_t nthreads = static_cast<int64_t>(output.numel());
   int64_t blocks = static_cast<int64_t>((nthreads + 1024 - 1) / 1024);
   dim3 threads(1024, 1);
   dim3 grid(blocks, 1);
 
-  KernelMaxoutGrad<T><<<grid, threads, 0, context.stream()>>>(nthreads,
+  KernelMaxoutGrad<T><<<grid, threads, 0, dev_ctx.stream()>>>(nthreads,
                                                               input_data,
                                                               output_data,
                                                               output_grad_data,
