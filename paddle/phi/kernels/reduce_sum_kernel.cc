@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
+#include "glog/logging.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/reduce_kernel_impl.h"

@@ -2573,8 +2573,12 @@ void IndexElementwisePutInferMeta(const MetaTensor& x,
                                   const std::vector<int64_t>& index_strides,
                                   const int64_t slice_offset,
                                   MetaTensor* out) {
-  out->set_dims(x.dims());
-  out->set_dtype(x.dtype());
+  if(index[0]->dtype() == phi::DataType::INT64){
+    out->set_dims(x.dims());
+    out->set_dtype(x.dtype());
+  } else {
+    
+  }
 }
 
 void IndexElementwisePutWithTensorInferMeta(

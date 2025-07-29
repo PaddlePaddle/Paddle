@@ -361,6 +361,7 @@ void IndexElementwisePutWithTensorGradKernel(
     const int64_t slice_offset,
     DenseTensor* x_grad,
     DenseTensor* value_grad) {
+      
   const auto& index_type = indices[0]->dtype();
   PADDLE_ENFORCE_EQ(index_type == phi::DataType::INT64,
                     true,

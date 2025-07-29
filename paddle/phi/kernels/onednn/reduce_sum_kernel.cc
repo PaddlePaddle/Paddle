@@ -37,6 +37,9 @@ void SumRawKernel(const Context& dev_ctx,
                            out);
     return;
   }
+  VLOG(0) << "Hit SumRawKernel with dev_ctx: " << dev_ctx.GetPlace()
+          << ", x shape: " << x.dims() << ", out_dtype: " << out_dtype
+          << ", keep_dim: " << keep_dim;
   ReduceKernel<T, Context>(dev_ctx,
                            x,
                            dims,

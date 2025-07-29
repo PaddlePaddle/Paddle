@@ -831,6 +831,9 @@ def main():
             (slice(0, 4, 2), 3, [0, 2]),
         ],
     }
+    first_index_dict = {
+        "combined": [(np.ones((108), dtype=bool), slice(None, None, None), -1),]
+    }
 
     second_index_dict = {
         "combined": [
@@ -852,7 +855,7 @@ def main():
             ),  # set_item_grad OOM
         ]
     }
-
+    second_index_dict = {}
     n_repeat = 50
     n_warmup = 5
 
