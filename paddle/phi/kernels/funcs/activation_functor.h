@@ -3660,8 +3660,11 @@ struct CudaReciprocalFunctor<ComplexType<T>>
     };
     if (either_nan(x.real, x.imag) || both_inf(x.real, x.imag)) {
       // If either is Nan or both are infinite, return {nan, nan}
-      return ComplexType<T>(std::numeric_limits<T>::quiet_NaN(),
-                            std::numeric_limits<T>::quiet_NaN());
+      if constexpr (std::is_same<T, float>::value) {
+        return ComplexType<T>(nanf(""), nanf(""));
+      } else if constexpr (std::is_same<T, double>::value) {
+        return ComplexType<T>(nan(""), nan(""));
+      }
     } else if (either_inf(x.real, x.imag)) {
       // If either is Inf, return {0, 0}
       return ComplexType<T>(static_cast<T>(0), static_cast<T>(0));
