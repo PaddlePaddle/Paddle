@@ -91,7 +91,6 @@ Tensor::copy_to<phi::dtype::float16>(const Place &target_place) const;
 void Tensor::copy_(const Tensor &src,
                    const phi::Place &target_place,
                    bool blocking) {
-  std::cout << "target_place : " << target_place << std::endl;
   if (!src.has_allocation()) {
     VLOG(8) << "Src is empty, skip copy";
     return;
