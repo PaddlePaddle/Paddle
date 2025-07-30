@@ -462,13 +462,10 @@ class ProcessMesh(core.ProcessMesh):
                             )
 
                         return parallel_group_map[dim_name]()
-                existing_group = None
                 group_map = _get_group_map()
                 for group in group_map.values():
                     if set(group.ranks) == set(self._process_ids):
-                        existing_group = group
-                if existing_group is not None:
-                    return existing_group
+                        return group
                 return paddle.distributed.new_group(self._process_ids)
         else:
             if dim_name not in self._dim_names:
