@@ -207,9 +207,9 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     if (FLAGS_use_mkldnn || FLAGS_use_onednn) {
       AppendPass(pass_name);
     } else if (!strategy_.onednn_enabled_op_types_.empty()) {
-      VLOG(1) << "mkldnn_enabled_op_types specify the operator type list to "
-                 "use MKLDNN acceleration. It is null in default, means "
-                 "that all the operators supported by MKLDNN will be "
+      VLOG(1) << "onednn_enabled_op_types specify the operator type list to "
+                 "use ONEDNN acceleration. It is null in default, means "
+                 "that all the operators supported by ONEDNN will be "
                  "accelerated. And it should not be set when "
                  "FLAGS_use_onednn=false.";
     }
