@@ -72,14 +72,14 @@ void FusedRopeGradKernel(const Context& dev_ctx,
   outs_data[0] = dq->data<T>();
   int num_inputs = 1;
 
-  if (dk->numel() > 0) {
+  if (dk && dk->numel() > 0) {
     outs_data[num_inputs] = dk->data<T>();
     ins_data[num_inputs] = dout_k->data<T>();
     inputs_num_heads[num_inputs] = dk->dims()[2];
     num_inputs++;
   }
 
-  if (dv->numel() > 0) {
+  if (dv && dv->numel() > 0) {
     outs_data[num_inputs] = dv->data<T>();
     ins_data[num_inputs] = dout_v->data<T>();
     inputs_num_heads[num_inputs] = dv->dims()[2];

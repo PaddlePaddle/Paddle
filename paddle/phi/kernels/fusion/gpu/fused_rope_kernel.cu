@@ -75,13 +75,13 @@ void FusedRopeKernel(const Context& dev_ctx,
   outs_data[0] = out_q->data<T>();
   int num_inputs = 1;
 
-  if (out_k->numel() > 0) {
+  if (out_k && out_k->numel() > 0) {
     ins_data[num_inputs] = k->data<T>();
     outs_data[num_inputs] = out_k->data<T>();
     inputs_num_heads[num_inputs] = k->dims()[2];
     num_inputs++;
   }
-  if (out_v->numel() > 0) {
+  if (out_v && out_v->numel() > 0) {
     ins_data[num_inputs] = v->data<T>();
     outs_data[num_inputs] = out_v->data<T>();
     inputs_num_heads[num_inputs] = v->dims()[2];
