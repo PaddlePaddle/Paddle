@@ -17,6 +17,7 @@
 #include "paddle/common/array.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 
+namespace phi {
 template <int MAX_NUM_EXPERTS>
 struct __align__(16) expert_base_offset {
   int data[MAX_NUM_EXPERTS];
@@ -48,7 +49,7 @@ __global__ void tokens_zip_unique_add_kernel(
   }
 }
 
-std::vector<paddle::Tensor> tokens_zip_unique_add(
+std::vector<paddle::Tensor> TokensZipUniqueAddKernel(
     const paddle::Tensor &zipped_origin,
     const paddle::Tensor &unzipped,
     const paddle::Tensor &index_unzipped,
@@ -114,8 +115,12 @@ std::vector<paddle::Tensor> tokens_zip_unique_add(
   return {zipped};
 }
 
-PD_BUILD_OP(tokens_zip_unique_add)
-    .Inputs({"x_zipped", "x_unzipped", "idx_unzipped"})
-    .Outputs({"y_zipped"})
-    .Attrs({"zipped_rows: int64_t"})
-    .SetKernelFn(PD_KERNEL(tokens_zip_unique_add));
+}  // namespace phi
+
+PD_REGISTER_KERNEL(tokens_zip_unique_add,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::TokensZipUniqueAddKernel,
+                   phi::bfloat16,
+                   float,
+                   double) {}

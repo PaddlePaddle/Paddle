@@ -5364,7 +5364,7 @@
 
 - op : tokens_unzip_gather
   args : (Tensor hidden_states, Tensor scale, Tensor zipped_expertwise_rowmap, int expert_id, int[] tokens_per_expert, int padding_alignment)
-  output : Tensor(hidden_states_unzipped), Tensor(scale_unzipped), Tensor(idx_unzipped)
+  output : Tensor(hidden_states_unzipped), Tensor(scale_unzipped), Tensor(index_unzipped)
   infer_meta:
     func : TokensUnzipGatherInferMeta
   kernel :
@@ -5382,7 +5382,7 @@
     data_type : unzipped_prob
 
 - op : tokens_zip_unique_add
-  args : (Tensor hidden_states_zipped, Tensor hidden_states_unzipped, Tensor idx_unzipped, int zipped_rows)
+  args : (Tensor hidden_states_zipped, Tensor hidden_states_unzipped, Tensor index_unzipped, int zipped_rows)
   output : Tensor(y_zipped)
   infer_meta:
     func : TokensZipUniqueAddInferMeta

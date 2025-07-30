@@ -6713,19 +6713,195 @@ void TokensUnzipGatherInferMeta(const MetaTensor& hidden_states,
                                 const int padding_alignment,
                                 MetaTensor* hidden_states_unzipped,
                                 MetaTensor* scale_unzipped,
-                                MetaTensor* idx_unzipped) {}
+                                MetaTensor* index_unzipped) {
+  const int num_experts = tokens_per_expert.size();
+  auto x_shape = hidden_states.shape();
+  int64_t zipped_rows = x_shape[0];
+  /*
+  PADDLE_ENFORCE_GE(expertid, 0,errors::InvalidArgument(
+          "The [%d] "
+          "must [%d].",
+          ,
+          ));
+          */
+  PADDLE_ENFORCE_GE(
+      expert_id,
+      0,
+      errors::InvalidArgument(
+          "The expert_id must greater or equal than 0, but got [%d].",
+          expert_id));
+  PADDLE_ENFORCE_LT(expert_id,
+                    num_experts,
+                    errors::InvalidArgument(
+                        "The expert_id must less than [%d], but got [%d].",
+                        num_experts,
+                        expert_id));
+  PADDLE_ENFORCE_EQ(
+      hidden_states.dims().size(),
+      2,
+      errors::InvalidArgument("Expected 2D hidden states, but got [%d].",
+                              hidden_states.dims().size()));
+  std::vector<int64_t> cumsum_tokens(num_experts + 1);
+  cumsum_tokens[0] = 0;
+  for (int i = 0; i < num_experts; ++i) {
+    auto padded = (tokens_per_expert[i] + padding_multiplex - 1) /
+                  padding_multiplex * padding_multiplex;
+    cumsum_tokens[i + 1] = cumsum_tokens[i] + padded;
+  }
+
+  const int64_t padded_num_tokens =
+      cumsum_tokens[expert_id + 1] - cumsum_tokens[expert_id];
+  const int hidden_size = x_shape[1];
+
+  // Output0: hidden_states_unzipped
+  hidden_states_unzipped->set_dims(
+      common::make_ddim({padded_num_tokens, hidden_size}));
+  hidden_states_unzipped->set_dtype(hidden_states.dtype())
+      const int64_t offset = cumsum_tokens[expert_id];
+
+  std::vector<int64_t> x_scale_shape;
+  int quanted_hidden_size = 0;
+  // Output1: scale_unzipped
+  if (scale) {
+    PADDLE_ENFORCE_EQ(
+        scale.dims().size(),
+        2,
+        errors::InvalidArgument("Expected 2D hidden states, but got [%d].",
+                                hidden_states.dims().size()));
+    PADDLE_ENFORCE_EQ(
+        scale.dims()[0],
+        hidden_states.dims()[0],
+        errors::InvalidArgument(
+            "Expected scale's dim0 equal to hidden_states'[%d], but got [%d].",
+            hidden_states.dims()[0],
+            scale.dims()[0]));
+    scale_shape = scale.shape();
+    quanted_hidden_size = scale_shape[1];
+    scale_unzipped
+        ->set_dims(common::make_ddim({padded_num_tokens, quanted_hidden_size}))
+            scale_unzipped->set_dtype(scale.dtype());
+  } else {
+    PADDLE_ENFORCE_EQ(
+        hidden_size % 128,
+        0,
+        errors::InvalidArgument(
+            "Expected hidden_states' dim1 be multiplier of 128, but got [%d].",
+            hidden_states.dims()[1]));
+    quanted_hidden_size = hidden_size / 128;
+    scale_unzipped->set_dims(common::make_ddim({0, quanted_hidden_size}));
+    scale_unzipped->set_dtype(phi::DataType::FLOAT32);
+  }
+  // Output2: index_unzipped
+  index_unzipped->set_dims(common::make_ddim({tokens_per_expert[expert_id]}));
+  index_unzipped->set_dtype(phi::DataType::INT64);
+}
 
 void TokensZipProbInferMeta(
     const std::vector<const MetaTensor*>& unzipped_probs,
     const MetaTensor& zipped_expertwise_rowmap,
     const MetaTensor& dispatched_indices,
-    MetaTensor* zipped_prob) {}
+    MetaTensor* zipped_prob) {
+  const int64_t zipped_rows = zipped_expertwise_rowmap.shape()[0];
+  const int num_expert = zipped_expertwise_rowmap.shape()[1];
+  const int topk = dispatched_indices.shape()[1];
+  PADDLE_ENFORCE_EQ(
+      zipped_expertwise_rowmap.dtype(),
+      phi::DataType::INT32,
+      errors::InvalidArgument("zipped_expertwise_rowmap dtype must be INT32"));
+  PADDLE_ENFORCE_EQ(
+      dispatched_indices.dtype(),
+      phi::DataType::INT32,
+      errors::InvalidArgument("dispatched_indices dtype must be INT32"));
+  PADDLE_ENFORCE_EQ(
+      zipped_expertwise_rowmap.shape().size(),
+      2,
+      errors::InvalidArgument("zipped_expertwise_rowmap shape must be 2D"));
+  PADDLE_ENFORCE_EQ(
+      dispatched_indices.shape().size(),
+      2,
+      errors::InvalidArgument("dispatched_indices shape must be 2D"));
+  PADDLE_ENFORCE_EQ(
+      zipped_expertwise_rowmap.shape()[0],
+      dispatched_indices.shape()[0],
+      errors::InvalidArgument("zipped_expertwise_rowmap shape[0] must be equal "
+                              "to dispatched_indices shape[0]"));
+  PADDLE_ENFORCE_EQ(
+      unzipped_probs.size(),
+      num_expert,
+      errors::InvalidArgument(
+          "unzipped_probs' tensor num must be equal to num_expert"));
+
+  // Output0
+  zipped_prob->set_dims(common::make_ddim({zipped_rows, topk}));
+  zipped_prob->set_dtype(unzipped_probs.dtype());
+}
 
 void TokensZipUniqueAddInferMeta(const MetaTensor& hidden_states_zipped,
                                  const MetaTensor& hidden_states_unzipped,
-                                 const MetaTensor& idx_unzipped,
+                                 const MetaTensor& index_unzipped,
                                  const int zipped_rows,
-                                 MetaTensor* y_zipped) {}
+                                 MetaTensor* y_zipped) {
+  constexpr int kVecSize = 4;
+  auto zipped_shape = hidden_states_zipped.shape();
+  auto unzipped_shape = hidden_states_unzipped.shape();
+  auto index_shape = index_unzipped.shape();
+  auto unzipped_rows = index_shape[0];
+  auto hidden_size = zipped_shape[1];
+  PADDLE_ENFORCE_EQ(
+      zipped_shape.size(),
+      2,
+      errors::InvalidArgument("Expected 2D hidden_states_zipped, but got [%d].",
+                              zipped_shape.size()));
+  PADDLE_ENFORCE_EQ(unzipped_shape.size(),
+                    2,
+                    errors::InvalidArgument(
+                        "Expected 2D hidden_states_unzipped, but got [%d].",
+                        unzipped_shape.size()));
+  PADDLE_ENFORCE_EQ(zipped_shape[1],
+                    unzipped_shape[1],
+                    errors::InvalidArgument(
+                        "Expected hidden_states_zipped's dim1 equal to "
+                        "hidden_states_unzipped's dim1, but got [%d] and [%d].",
+                        zipped_shape[1],
+                        unzipped_shape[1]));
+  PADDLE_ENFORCE_EQ(
+      index_shape.size(),
+      1,
+      errors::InvalidArgument("Expected 1D index_unzipped, but got [%d].",
+                              index_shape.size()));
+  PADDLE_ENFORCE_LE(
+      unzipped_rows,
+      zipped_rows,
+      errors::InvalidArgument(
+          "Expected unzipped_rows [%d] less than or equal to zipped_rows [%d].",
+          unzipped_rows,
+          zipped_rows));
+  PADDLE_ENFORCE_LE(
+      unzipped_rows,
+      unzipped_shape[0],
+      errors::InvalidArgument("Expected unzipped_rows [%d] less than or equal "
+                              "to unzipped_shape[0] [%d].",
+                              unzipped_rows,
+                              unzipped_shape[0]));
+  PADDLE_ENFORCE_EQ(
+      hidden_size % kVecSize,
+      0,
+      errors::InvalidArgument("Expected hidden_size [%d] be multiplier of 4.",
+                              hidden_size));
+
+  auto out_dtype = hidden_states_zipped.dtype();
+  auto in_dtype = hidden_states_unzipped.dtype();
+  auto place = hidden_states_zipped.place();
+
+  paddle::Tensor zipped;
+  if (zipped_shape[0] == 0) {
+    zipped = paddle::zeros({zipped_rows, hidden_size}, out_dtype, place);
+  } else {
+    PADDLE_ENFORCE_EQ(zipped_shape[0] == zipped_rows);
+    // Inplace
+    zipped = hidden_states_zipped;
+  }
+}
 
 }  // namespace phi
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);

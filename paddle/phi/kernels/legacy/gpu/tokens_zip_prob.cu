@@ -17,8 +17,7 @@
 #include "paddle/common/array.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 
-#define CUMSUM_BLOCK_SIZE 48  // cumsum开销和并行度之间的tradeoff的结果，勿动
-#define CUMSUM_INVALID_TAG -1  // 用于标记无效的cumsum，尝试过-114514但失败了
+namespace phi {
 
 template <int MAX_NUM_EXPERTS>
 struct __align__(16) expert_base_offset {
@@ -111,7 +110,7 @@ std::vector<paddle::Tensor> tokens_zip_prob_impl(
   return {zipped_probs};
 }
 
-std::vector<paddle::Tensor> tokens_zip_prob(
+std::vector<paddle::Tensor> TokensZipProbKernel(
     const std::vector<paddle::Tensor> &unzipped_probs,
     const paddle::Tensor &zipped_expertwise_rowmap,
     const paddle::Tensor &dispatched_indices) {
@@ -129,3 +128,13 @@ std::vector<paddle::Tensor> tokens_zip_prob(
     PD_THROW("Unsupported data type: %s", dtype);
   }
 }
+
+}  // namespace phi
+
+PD_REGISTER_KERNEL(tokens_zip_prob,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::TokensZipProbKernel,
+                   phi::bfloat16,
+                   float,
+                   double) {}

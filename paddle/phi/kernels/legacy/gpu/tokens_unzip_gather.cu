@@ -17,6 +17,7 @@
 #include "paddle/common/array.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 
+namespace phi {
 template <int MAX_NUM_EXPERTS>
 struct __align__(16) expert_base_offset {
   int data[MAX_NUM_EXPERTS];
@@ -59,20 +60,20 @@ __global__ void tokens_unzip_gather_kernel(
   }
 }
 
-std::vector<paddle::Tensor> tokens_unzip_gather(
+std::vector<paddle::Tensor> TokensUnzipGatherKernel(
     const paddle::Tensor &x,
     const paddle::optional<paddle::Tensor> &x_scale,
     const paddle::Tensor &zipped_expertwise_rowmap,
     const int expert_id,
     const std::vector<int64_t> &tokens_per_expert,
-    const int padding_multiplex) {
+    const int padding_alignment) {
   int num_experts = tokens_per_expert.size();
   PD_CHECK(expert_id >= 0 && expert_id < num_experts);
   std::vector<int64_t> cumsum_tokens(num_experts + 1);
   cumsum_tokens[0] = 0;
   for (int i = 0; i < num_experts; ++i) {
-    auto padded = (tokens_per_expert[i] + padding_multiplex - 1) /
-                  padding_multiplex * padding_multiplex;
+    auto padded = (tokens_per_expert[i] + padding_alignment - 1) /
+                  padding_alignment * padding_alignment;
     cumsum_tokens[i + 1] = cumsum_tokens[i] + padded;
   }
 
@@ -154,3 +155,13 @@ std::vector<paddle::Tensor> tokens_unzip_gather(
   }
   return {x_unzipped, x_scale_unzipped, index_unzipped};
 }
+
+}  // namespace phi
+
+PD_REGISTER_KERNEL(tokens_unzip_gather,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::TokensUnzipGatherKernel,
+                   phi::bfloat16,
+                   float,
+                   double) {}
