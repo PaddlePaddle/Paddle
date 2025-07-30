@@ -252,7 +252,8 @@ def to_string(var, prefix='Tensor'):
         return "Tensor(Not initialized)"
 
     if var.dtype == paddle.bfloat16:
-        paddle.device.synchronize()
+        if paddle.is_compiled_with_cuda() or paddle.is_compiled_with_xpu():
+            paddle.device.synchronize()
         var = var.astype('float32')
     np_var = var.numpy(False)
 
@@ -298,7 +299,8 @@ def _format_dense_tensor(tensor, indent):
         or dtype == core.VarDesc.VarType.FP8_E4M3FN
         or dtype == core.VarDesc.VarType.FP8_E5M2
     ):
-        paddle.device.synchronize()
+        if paddle.is_compiled_with_cuda() or paddle.is_compiled_with_xpu():
+            paddle.device.synchronize()
         tensor = tensor.astype('float32')
 
     # TODO(zhouwei): will remove 0-D Tensor.numpy() hack
