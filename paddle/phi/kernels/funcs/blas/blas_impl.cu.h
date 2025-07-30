@@ -1264,7 +1264,7 @@ inline void CheckGEMMNSize(int64_t N) {
   constexpr int64_t kMaxN = 1073741823;
   if (N > kMaxN) {
     PADDLE_THROW(common::errors::Unimplemented(
-        "cublas GEMM does not support N >= %ld. Got N = %ld. ", kMaxN, N));
+        "cublas GEMM does not support N > %ld. Got N = %ld. ", kMaxN, N));
   }
 }
 
