@@ -1431,6 +1431,9 @@ def scaled_dot_product_attention(
     if value.ndim == 3:
         value = paddle.unsqueeze(value, axis=0)
 
+    if attn_mask is not None and attn_mask.ndim == 3:
+        attn_mask = paddle.unsqueeze(attn_mask, axis=0)
+
     if (
         backend == 'p2p'
         and query.is_dist()

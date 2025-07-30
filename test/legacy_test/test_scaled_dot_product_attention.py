@@ -219,6 +219,41 @@ class TestAttentionWith3DInput(unittest.TestCase):
 
         np.testing.assert_allclose(out.numpy(), out_ref, rtol=5e-03, atol=1e-03)
 
+    def test_3d_input_mask(self):
+        """Test scaled_dot_product_attention with 3D input tensors and mask."""
+        # test dynamic
+        paddle.disable_static()
+
+        shape_3d = (8, 1, 8)
+
+        query = np.random.random(shape_3d).astype(np.float32)
+        key = np.random.random(shape_3d).astype(np.float32)
+        value = np.random.random(shape_3d).astype(np.float32)
+
+        q = paddle.to_tensor(query, dtype=self.dtype, stop_gradient=False)
+        k = paddle.to_tensor(key, dtype=self.dtype, stop_gradient=False)
+        v = paddle.to_tensor(value, dtype=self.dtype, stop_gradient=False)
+
+        # Create a 3D mask
+        mask_shape = (1, shape_3d[0], shape_3d[0])
+        mask = np.random.random(mask_shape).astype(np.float32)
+        m = paddle.to_tensor(mask, dtype=self.dtype, stop_gradient=False)
+
+        q_ref = paddle.unsqueeze(q, axis=0)
+        k_ref = paddle.unsqueeze(k, axis=0)
+        v_ref = paddle.unsqueeze(v, axis=0)
+        m_ref = paddle.unsqueeze(m, axis=0)
+
+        with sdp_kernel(
+            enable_math=True, enable_flash=False, enable_mem_efficient=False
+        ):
+            out = scaled_dot_product_attention(q, k, v, m, self.dropout)
+
+        out_ref = attention_naive_with_mask(q_ref, k_ref, v_ref, m_ref)
+        out_ref = paddle.squeeze(out_ref, axis=0)
+
+        np.testing.assert_allclose(out.numpy(), out_ref, rtol=5e-03, atol=1e-03)
+
 
 if __name__ == '__main__':
     unittest.main()
