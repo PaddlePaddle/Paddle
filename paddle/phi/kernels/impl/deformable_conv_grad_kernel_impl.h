@@ -151,10 +151,10 @@ void ModulatedDeformableCol2im(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void FilterGradAddup(const Context& dev_ctx,
-                     const int64_t nthreads,
-                     const int64_t n,
-                     const int64_t height,
-                     const int64_t width,
+                     const int nthreads,
+                     const int n,
+                     const int height,
+                     const int width,
                      const T* dweight_3d,
                      T* filter_grad);
 
@@ -241,9 +241,9 @@ void DeformableConvGradKernel(const Context& dev_ctx,
   phi::funcs::SetConstant<Context, T> set_zero;
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
 
-  int64_t input_dim = x.numel() / x.dims()[0];
-  int64_t input_offset_dim = offset.numel() / offset.dims()[0];
-  int64_t input_mask_dim = mask ? mask->numel() / mask->dims()[0] : 0;
+  int input_dim = x.numel() / x.dims()[0];
+  int input_offset_dim = offset.numel() / offset.dims()[0];
+  int input_mask_dim = mask ? mask->numel() / mask->dims()[0] : 0;
 
   if (filter_grad) {
     Full<T>(dev_ctx,

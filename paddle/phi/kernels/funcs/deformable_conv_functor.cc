@@ -20,38 +20,38 @@ namespace phi::funcs {
 
 template <typename T>
 inline void ModulatedDeformableIm2colCPUKernel(
-    const int64_t num_kernels,
+    const int num_kernels,
     const T* data_im,
     const T* data_offset,
     const T* data_mask,
-    const int64_t height,
-    const int64_t width,
-    const int64_t kernel_h,
-    const int64_t kernel_w,
-    const int64_t pad_h,
-    const int64_t pad_w,
-    const int64_t stride_h,
-    const int64_t stride_w,
-    const int64_t dilation_h,
-    const int64_t dilation_w,
-    const int64_t channel_per_deformable_group,
-    const int64_t batch_size,
-    const int64_t num_channels,
-    const int64_t deformable_group,
-    const int64_t height_col,
-    const int64_t width_col,
+    const int height,
+    const int width,
+    const int kernel_h,
+    const int kernel_w,
+    const int pad_h,
+    const int pad_w,
+    const int stride_h,
+    const int stride_w,
+    const int dilation_h,
+    const int dilation_w,
+    const int channel_per_deformable_group,
+    const int batch_size,
+    const int num_channels,
+    const int deformable_group,
+    const int height_col,
+    const int width_col,
     T* data_col) {
-  for (int64_t i = 0; i < num_kernels; i++) {
-    const int64_t w_col = i % width_col;
-    const int64_t h_col = (i / width_col) % height_col;
-    const int64_t b_col = (i / width_col) / height_col % batch_size;
-    const int64_t c_im = (i / width_col / height_col) / batch_size;
-    const int64_t c_col = c_im * kernel_h * kernel_w;
+  for (int i = 0; i < num_kernels; i++) {
+    const int w_col = i % width_col;
+    const int h_col = (i / width_col) % height_col;
+    const int b_col = (i / width_col) / height_col % batch_size;
+    const int c_im = (i / width_col / height_col) / batch_size;
+    const int c_col = c_im * kernel_h * kernel_w;
 
-    const int64_t deformable_group_index = c_im / channel_per_deformable_group;
+    const int deformable_group_index = c_im / channel_per_deformable_group;
 
-    const int64_t h_in = h_col * stride_h - pad_h;
-    const int64_t w_in = w_col * stride_w - pad_w;
+    const int h_in = h_col * stride_h - pad_h;
+    const int w_in = w_col * stride_w - pad_w;
 
     T* data_col_ptr =
         data_col +
@@ -67,11 +67,11 @@ inline void ModulatedDeformableIm2colCPUKernel(
                               kernel_h * kernel_w * height_col * width_col
             : nullptr;
 
-    for (int64_t i = 0; i < kernel_h; ++i) {
-      for (int64_t j = 0; j < kernel_w; ++j) {
-        const int64_t data_offset_h_ptr =
+    for (int i = 0; i < kernel_h; ++i) {
+      for (int j = 0; j < kernel_w; ++j) {
+        const int data_offset_h_ptr =
             ((2 * (i * kernel_w + j)) * height_col + h_col) * width_col + w_col;
-        const int64_t data_offset_w_ptr =
+        const int data_offset_w_ptr =
             ((2 * (i * kernel_w + j) + 1) * height_col + h_col) * width_col +
             w_col;
 
@@ -86,7 +86,7 @@ inline void ModulatedDeformableIm2colCPUKernel(
         }
         *data_col_ptr = val;
         if (data_mask_ptr) {
-          const int64_t data_mask_hw_ptr =
+          const int data_mask_hw_ptr =
               ((i * kernel_w + j) * height_col + h_col) * width_col + w_col;
           const T mask = data_mask_ptr[data_mask_hw_ptr];
           *data_col_ptr *= mask;
@@ -110,9 +110,10 @@ void ModulatedDeformableIm2col(const Context& dev_ctx UNUSED,
                                const std::vector<int>& dilations,
                                const int deformable_groups,
                                T* data_col) {
-  int64_t channel_per_deformable_group = im_shape[0] / deformable_groups;
-  int64_t num_kernels =
-      im_shape[0] * col_shape[1] * col_shape[2] * col_shape[3];
+  int channel_per_deformable_group =
+      static_cast<int>(im_shape[0] / deformable_groups);
+  int num_kernels = static_cast<int>(im_shape[0] * col_shape[1] * col_shape[2] *
+                                     col_shape[3]);
 
   // get outputs of im2col with offset by bilinear interpolation
   ModulatedDeformableIm2colCPUKernel(num_kernels,
