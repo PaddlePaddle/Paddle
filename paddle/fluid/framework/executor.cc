@@ -32,6 +32,7 @@ limitations under the License. */
 
 COMMON_DECLARE_bool(benchmark);
 COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_onednn);
 
 namespace paddle::framework {
 namespace {
@@ -184,7 +185,7 @@ void Executor::Run(const ProgramDesc& pdesc,
   phi::RecordEvent record_run(
       "Executor::Run", phi::TracerEventType::UserDefined, 1);
   platform::RecordBlock b(block_id);
-  if (FLAGS_use_mkldnn) EnableONEDNN(pdesc);
+  if (FLAGS_use_mkldnn || FLAGS_use_onednn) EnableONEDNN(pdesc);
   auto ctx = Prepare(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
 #ifdef PADDLE_WITH_DNNL
   platform::AttachPointerHashToONEDNNKey(this, place_);
@@ -330,7 +331,7 @@ void Executor::Run(const ProgramDesc& program,
   phi::RecordEvent record_run(
       "Executor::Run", phi::TracerEventType::UserDefined, 1);
   platform::RecordBlock b(kProgramId);
-  if (FLAGS_use_mkldnn) EnableONEDNN(program);
+  if (FLAGS_use_mkldnn || FLAGS_use_onednn) EnableONEDNN(program);
 #ifdef PADDLE_WITH_DNNL
   platform::AttachPointerHashToONEDNNKey(this, place_);
 #endif

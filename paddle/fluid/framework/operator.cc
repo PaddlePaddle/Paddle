@@ -2329,7 +2329,8 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
   auto kernel_iter = kernels.find(expected_kernel_key);
 
 #ifdef PADDLE_WITH_DNNL
-  // workaround for missing MKLDNN kernel when FLAGS_use_mkldnn env var is set
+  // workaround for missing MKLDNN kernel when FLAGS_use_mkldnn or
+  // FLAGS_use_onednn env var is set
   if (kernel_iter == kernels.end() &&
       expected_kernel_key.library_type_ == LibraryType::kMKLDNN) {
     VLOG(3) << "missing MKLDNN kernel: fallbacking to PLAIN one";

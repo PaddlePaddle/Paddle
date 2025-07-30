@@ -123,11 +123,11 @@ struct BuildStrategy {
   bool fuse_dot_product_attention_{false};
   // Fuse ResUnit
   bool fuse_resunit_{false};
-  // mkldnn_enabled_op_types specify the operator type list to
+  // onednn_enabled_op_types specify the operator type list to
   // use OneDNN acceleration. It is null in default, means
   // that all the operators supported by OneDNN will be
   // accelerated. And it should not be set when
-  // FLAGS_use_mkldnn=false
+  // FLAGS_use_onednn=false
   std::unordered_set<std::string> onednn_enabled_op_types_;
 
   // By default, memory_optimize would be opened if gc is disabled, and

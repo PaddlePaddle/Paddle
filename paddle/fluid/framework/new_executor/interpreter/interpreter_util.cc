@@ -59,6 +59,7 @@
 #endif
 
 COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_onednn);
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_string(static_runtime_data_save_path);
 COMMON_DECLARE_bool(save_static_runtime_data);
@@ -344,7 +345,7 @@ void CreateAllOps(const framework::BlockDesc& block,
     op_base->SetRuntimeAttributeMap(op_runtime_attr_map);
 
 #ifdef PADDLE_WITH_DNNL
-    if (FLAGS_use_mkldnn) {
+    if (FLAGS_use_mkldnn || FLAGS_use_onednn) {
       if (op->HasAttr("use_mkldnn")) {
         VLOG(4) << "Set use_mkldnn=True for " << op_base->Type();
         op_base->SetAttr("use_mkldnn", true);

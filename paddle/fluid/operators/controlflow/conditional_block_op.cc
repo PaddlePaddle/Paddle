@@ -24,6 +24,7 @@ limitations under the License. */
 #endif
 
 COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_onednn);
 
 namespace paddle::operators {
 

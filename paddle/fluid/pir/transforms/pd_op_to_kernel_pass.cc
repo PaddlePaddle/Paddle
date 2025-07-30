@@ -69,6 +69,7 @@
 #include "paddle/fluid/pir/dialect/operator/trait/onednn.h"
 #include "paddle/phi/core/framework/framework.pb.h"
 COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_onednn);
 #endif
 
 COMMON_DECLARE_bool(print_ir);
@@ -3621,10 +3622,11 @@ void ProcessBlock(
         kernel_key.set_backend(phi::Backend::ONEDNN);
         kernel_key.set_layout(phi::DataLayout::ONEDNN);
       }
-    } else if (FLAGS_use_mkldnn && kernel_key.backend() == phi::Backend::CPU &&
+    } else if ((FLAGS_use_mkldnn || FLAGS_use_onednn) &&
+               kernel_key.backend() == phi::Backend::CPU &&
                !op_item->HasTrait<OneDNNTrait>() &&
                SupportsONEDNN(kernel_name, kernel_key.dtype())) {
-      // Support FLAGS_use_mkldnn
+      // Support FLAGS_use_mkldnn || FLAGS_use_onednn
       auto op_item_inner = PdOp2OneDNNOp(op_item, block, ctx);
       if (op_item_inner != op_item) {
         op_item = op_item_inner;

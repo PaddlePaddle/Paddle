@@ -697,6 +697,16 @@ PHI_DEFINE_EXPORTED_bool(
 PHI_DEFINE_EXPORTED_bool(use_mkldnn, false, "Use MKLDNN to run");
 
 /**
+ * ONEDNN related FLAG
+ * Name: use_onednn
+ * Since Version:
+ * Value Range: bool, default=false
+ * Example:
+ * Note:
+ */
+PHI_DEFINE_EXPORTED_bool(use_onednn, false, "Use ONEDNN to run");
+
+/**
  * Debug related FLAG
  * Name: FLAGS_call_stack_level
  * Since Version: 2.0.0

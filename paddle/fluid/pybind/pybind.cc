@@ -246,6 +246,7 @@ limitations under the License. */
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 
 COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_onednn);
 COMMON_DECLARE_string(prim_backward_blacklist);
 
 // disable auto conversion to list in Python

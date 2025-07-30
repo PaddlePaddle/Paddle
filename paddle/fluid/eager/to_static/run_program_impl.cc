@@ -46,6 +46,7 @@
 COMMON_DECLARE_bool(enable_pir_with_pt_in_dy2st);
 COMMON_DECLARE_bool(enable_pir_in_executor);
 COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_onednn);
 COMMON_DECLARE_bool(specialize_device_in_dy2st);
 COMMON_DECLARE_bool(parameters_persistent_mode_in_dy2st);
 
@@ -673,7 +674,8 @@ std::vector<paddle::Tensor> RunProgramImpl(
   }
 
 #ifdef PADDLE_WITH_DNNL
-  if (FLAGS_use_mkldnn) paddle::platform::DontClearONEDNNCache(place);
+  if (FLAGS_use_mkldnn || FLAGS_use_onednn)
+    paddle::platform::DontClearONEDNNCache(place);
 #endif
   return out;
 }
@@ -1014,7 +1016,8 @@ void LegacyRunProgramImpl(
   }
 
 #ifdef PADDLE_WITH_DNNL
-  if (FLAGS_use_mkldnn) paddle::platform::DontClearONEDNNCache(place);
+  if (FLAGS_use_mkldnn || FLAGS_use_onednn)
+    paddle::platform::DontClearONEDNNCache(place);
 #endif
 }
 
