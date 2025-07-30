@@ -118,6 +118,26 @@ struct PADDLE_ALIGN(2) float16 {
 #elif defined(__F16C__) and defined(__PADDLE_x86__)
     x = _cvtss_sh(val, 0);
 
+#elif defined(PADDLE_WITH_ARM)
+    // Conversion routine adapted from
+    // http://stackoverflow.com/questions/1659440/32-bit-to-16-bit-floating-point-conversion
+    Bits v, s;
+    v.f = val;
+    uint32_t sign = v.si & (int32_t)sigN;
+    v.si ^= sign;
+    sign >>= shiftSign;  // logical shift
+    s.si = 0x52000000;
+    s.si = s.f * v.f;  // correct subnormals
+    v.si ^= (s.si ^ v.si) & -((int32_t)minN > v.si);
+    v.si ^= ((int32_t)infN ^ v.si) &
+            -(((int32_t)infN > v.si) & (v.si > (int32_t)maxN));
+    v.si ^= ((int32_t)nanN ^ v.si) &
+            -(((int32_t)nanN > v.si) & (v.si > (int32_t)infN));
+    v.ui >>= shift;  // logical shift
+    v.si ^= ((v.si - (int32_t)maxD) ^ v.si) & -(v.si > (int32_t)maxC);
+    v.si ^= ((v.si - (int32_t)minD) ^ v.si) & -(v.si > (int32_t)subC);
+    x = v.ui | sign;
+
 #else
     Bits v;
     v.f = val;
