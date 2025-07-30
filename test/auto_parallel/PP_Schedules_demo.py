@@ -380,6 +380,7 @@ class Test_Schedules:
         loader = DataLoader(dataset, batch_size=8)
         losses_by_step = []
         num_iterations = 20
+        all_losses_in_one_step_md5sum = []
         for iter_idx in range(num_iterations):
             losses_by_micro_batch = []
             for i, (data, label) in enumerate(loader):
@@ -399,6 +400,8 @@ class Test_Schedules:
                             local_loss, op=dist.ReduceOp.AVG, group=dp_group
                         )
                         reduced_losses.append(local_loss)
+                        if iter_idx==0:
+                            all_losses_in_one_step_md5sum.append(local_loss._md5sum())
 
                 if self.rank == 3:
                     # Calculate mean using reduced losses
@@ -407,7 +410,7 @@ class Test_Schedules:
                     )
             opt.step()
             opt.clear_grad()
-        return losses_by_step
+        return losses_by_step,all_losses_in_one_step_md5sum
 
     def test_pp_model_with_ClipGradByGlobalNorm(self):
         """Test pipeline parallel model with ClipGradByGlobalNorm using PPMyModel as the baseline"""
@@ -504,6 +507,7 @@ class Test_Schedules:
         dataset = RandomDataset(image_size=8, output_size=8, num_samples=8)
         loader = DataLoader(dataset, batch_size=8)
         losses_by_step = []
+        all_losses_in_one_step_md5sum = []
         num_iterations = 20
         for iter_idx in range(num_iterations):
             losses_by_micro_batch = []
@@ -524,6 +528,8 @@ class Test_Schedules:
                             local_loss, op=dist.ReduceOp.AVG, group=dp_group
                         )
                         reduced_losses.append(local_loss)
+                        if iter_idx==0:
+                            all_losses_in_one_step_md5sum.append(local_loss._md5sum())
 
                 if self.rank == 3:
                     # Calculate mean using reduced losses
@@ -532,7 +538,7 @@ class Test_Schedules:
                     )
             opt.step()
             opt.clear_grad()
-        return losses_by_step
+        return losses_by_step,all_losses_in_one_step_md5sum
 
     def run_test(self):
         """Compare losses between three training methods"""
@@ -547,8 +553,8 @@ class Test_Schedules:
         scheduleFThenB_with_ClipGradByGlobalNorm_losses = (
             self.test_ScheduleFThenB_with_ClipGradByGlobalNorm()
         )
-        dp_pp_losses = self.test_dp_pp()
-        dp_pp_align_mode_losses = self.test_dp_pp_align_mode()
+        dp_pp_losses,dp_pp_losses_md5sum = self.test_dp_pp()
+        dp_pp_align_mode_losses,dp_pp_align_mode_losses_md5sum = self.test_dp_pp_align_mode()
 
         if self.rank == 3:
             np.testing.assert_allclose(
@@ -587,6 +593,7 @@ class Test_Schedules:
                 rtol=1e-5,
             )
 
+            assert dp_pp_losses_md5sum == dp_pp_align_mode_losses_md5sum
 
 if __name__ == '__main__':
     Test_Schedules().run_test()
