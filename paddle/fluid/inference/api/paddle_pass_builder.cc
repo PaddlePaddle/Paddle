@@ -27,7 +27,7 @@
 
 #include <algorithm>
 #include <sstream>
-
+#include "paddle/fluid/inference/api/paddle_api.h"
 namespace paddle {
 
 void PaddlePassBuilder::AppendPass(const std::string &pass_type) {
@@ -317,7 +317,10 @@ void GpuPassStrategy::EnableCUDNN() {
   use_cudnn_ = true;
 }
 
-void GpuPassStrategy::EnableMKLDNN() { EnableONEDNN(); }
+void GpuPassStrategy::EnableMKLDNN() {
+  LOG(WARNING) << ONEDNN_UPDATE_WARNING(EnableONEDNN);
+  EnableONEDNN();
+}
 void GpuPassStrategy::EnableONEDNN() {
   LOG(ERROR) << "GPU not support MKLDNN yet";
 }
@@ -330,7 +333,10 @@ void GpuPassStrategy::EnableMkldnnInt8() {
   LOG(ERROR) << "GPU not support MKL-DNN int8";
 }
 
-void GpuPassStrategy::DisableMkldnnFcPasses() { DisableOnednnFcPasses(); }
+void GpuPassStrategy::DisableMkldnnFcPasses() {
+  LOG(WARNING) << ONEDNN_UPDATE_WARNING(DisableOnednnFcPasses);
+  DisableOnednnFcPasses();
+}
 void GpuPassStrategy::DisableOnednnFcPasses() {
   LOG(ERROR) << "GPU not support MKL-DNN fc";
 }
@@ -345,7 +351,10 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
 
 void CpuPassStrategy::EnableCUDNN() { LOG(ERROR) << "CPU not support cuDNN"; }
 
-void CpuPassStrategy::EnableMKLDNN() { EnableONEDNN(); }
+void CpuPassStrategy::EnableMKLDNN() {
+  LOG(WARNING) << ONEDNN_UPDATE_WARNING(EnableONEDNN);
+  EnableONEDNN();
+}
 void CpuPassStrategy::EnableONEDNN() {
 // TODO(Superjomn) Consider the way to mix CPU with GPU.
 #ifdef PADDLE_WITH_DNNL
@@ -392,7 +401,10 @@ void CpuPassStrategy::EnableONEDNN() {
 #endif
 }
 
-void CpuPassStrategy::DisableMKLDNN() { DisableONEDNN(); }
+void CpuPassStrategy::DisableMKLDNN() {
+  LOG(WARNING) << ONEDNN_UPDATE_WARNING(DisableONEDNN);
+  DisableONEDNN();
+}
 void CpuPassStrategy::DisableONEDNN() {
   ClearPasses();
   passes_.assign(CpuBasicPasses.begin(), CpuBasicPasses.end());
@@ -479,7 +491,10 @@ void CpuPassStrategy::EnableMkldnnInt8() {
 #endif
 }
 
-void CpuPassStrategy::DisableMkldnnFcPasses() { DisableOnednnFcPasses(); }
+void CpuPassStrategy::DisableMkldnnFcPasses() {
+  LOG(WARNING) << ONEDNN_UPDATE_WARNING(DisableOnednnFcPasses);
+  DisableOnednnFcPasses();
+}
 void CpuPassStrategy::DisableOnednnFcPasses() {
 #ifdef PADDLE_WITH_DNNL
   if (!disable_onednn_fc_passes_) {

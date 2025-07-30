@@ -365,6 +365,7 @@ void PD_ConfigSwitchIrDebug(__pd_keep PD_Config* pd_config, PD_Bool x) {
 }
 
 void PD_ConfigEnableMKLDNN(__pd_keep PD_Config* pd_config) {
+  LOG(WARNING) << ONEDNN_UPDATE_WARNING(PD_ConfigEnableONEDNN);
   PD_ConfigEnableONEDNN(pd_config);
 }
 void PD_ConfigEnableONEDNN(__pd_keep PD_Config* pd_config) {
@@ -374,6 +375,7 @@ void PD_ConfigEnableONEDNN(__pd_keep PD_Config* pd_config) {
 
 void PD_ConfigSetMkldnnCacheCapacity(__pd_keep PD_Config* pd_config,
                                      int32_t capacity) {
+  LOG(WARNING) << ONEDNN_UPDATE_WARNING(PD_ConfigSetOnednnCacheCapacity);
   PD_ConfigSetOnednnCacheCapacity(pd_config, capacity);
 }
 void PD_ConfigSetOnednnCacheCapacity(__pd_keep PD_Config* pd_config,
