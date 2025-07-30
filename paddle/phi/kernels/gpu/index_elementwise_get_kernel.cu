@@ -16,11 +16,17 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/cum_kernel.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
 #include "paddle/phi/kernels/funcs/stride_utils.h"
 
 namespace phi {
+
 template <typename T, typename IndexT = int>
 void GPUIndexElementwiseGetKernel(const phi::GPUContext& dev_ctx,
                                   const DenseTensor& input,
@@ -31,80 +37,138 @@ void GPUIndexElementwiseGetKernel(const phi::GPUContext& dev_ctx,
                                   const std::vector<int64_t>& index_stride,
                                   const int64_t slice_offset,
                                   DenseTensor* output) {
-  int64_t numel = 0;
-  int64_t num_indices = 0;
-  std::vector<int64_t> shape_tmp;
-  std::vector<int64_t> stride_tmp;
-  funcs::cal_shape_stride(index_dims, &num_indices, &shape_tmp, &stride_tmp);
+  if (index.size() == 1 && index[0]->dtype() == phi::DataType::BOOL) {
+    PADDLE_ENFORCE_EQ(
+        index[0]->strides(),
+        ::common::make_ddim(index_stride),
+        common::errors::InvalidArgument("Index tensor should be contiguous."));
+    const bool* index_data = index[0]->data<bool>();
+    const T* input_data =
+        input.data<T>() + slice_offset / phi::SizeOf(input.dtype());
+    DenseTensor index_int64 =
+        Cast<bool>(dev_ctx, *index[0], phi::DataType::INT64);
+    DenseTensor prefix_sum_tensor =
+        Cumsum<int64_t>(dev_ctx, index_int64, {}, true, false, false);
+    const int64_t* prefix_sum_data = prefix_sum_tensor.data<int64_t>();
 
-  auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
+    int64_t numel = index[0]->numel();
+    int64_t true_count = 0;
+    memory_utils::Copy(phi::CPUPlace(),
+                       &true_count,
+                       phi::GPUPlace(),
+                       &prefix_sum_tensor.data<int64_t>()[numel - 1],
+                       sizeof(int64_t),
+                       dev_ctx.stream());
+    dev_ctx.Wait();
 
-  auto sizes = std::array<int64_t, DDim::kMaxRank>{};
-  auto strides = std::array<int64_t, DDim::kMaxRank>{};
+    output->Resize(common::make_ddim({true_count}));
+    dev_ctx.template Alloc<T>(output);
+    T* output_data = output->data<T>();
 
-  for (int64_t i = 0; i < num_indices; i++) {
-    sizes[i] = index_dims[i];
-    strides[i] = index_stride[i];
-  }
+    if (true_count == 0) {
+      return;
+    }
 
-  std::array<int64_t*, 3> strides_array;
-  std::vector<int64_t> desired_shape;
-  std::array<std::vector<int64_t>, 3> strides_vec;
+    auto reverse_shape = std::vector(input_dims.rbegin(), input_dims.rend());
 
-  funcs::IndexGetStride<3>(input_dims,
-                           input_strides,
-                           phi::SizeOf(input.dtype()),
-                           std::vector<int64_t>(),
-                           std::vector<int64_t>(),
-                           phi::SizeOf(input.dtype()),
-                           shape_tmp,
-                           stride_tmp,
-                           phi::SizeOf(index[0]->dtype()),
-                           &desired_shape,
-                           &strides_array,
-                           &numel,
-                           strides_vec);
-  auto offset_calc =
-      funcs::make_offset_calculator_put<3>(desired_shape, strides_array);
+    auto offset_calc = funcs::make_offset_calculator<1>(
+        static_cast<int32_t>(input_dims.size()),
+        reverse_shape.data(),
+        {
+            {input_strides.rbegin(), input_strides.rend()},
+        });
 
-  const int64_t N = output->numel();
-  PADDLE_ENFORCE_GE(
-      N, 0, common::errors::InvalidArgument("Output numel must >= 0"));
-  PADDLE_ENFORCE_LE(
-      N,
-      std::numeric_limits<int32_t>::max(),
-      common::errors::InvalidArgument("Output numel must <= INT32_MAX"));
-  constexpr int nt = 128;
-  constexpr int vt = 4;
-  const dim3 block(nt);
-  const dim3 grid((N + block.x * vt - 1) / (block.x * vt));
-  auto stream = dev_ctx.stream();
-
-  using dtype = funcs::OpaqueType<sizeof(T)>;
-
-  const char* in_ptr =
-      reinterpret_cast<const char*>(input.data<T>()) + slice_offset;
-  char* out_ptr = reinterpret_cast<char*>(output->data<T>());
-  funcs::index_elementwise_with_tensor_kernel<nt, vt>
-      <<<grid, block, 0, stream>>>(N, [=] __device__(int idx) {
-        const auto offsets = offset_calc.get(idx);
-        char* const out_data = out_ptr + offsets[0];
-        const char* const in_data = in_ptr + offsets[1];
-
-        int64_t offset = 0;
-#pragma unroll
-        for (int64_t i = 0; i < num_indices; i++) {
-          int64_t index =
-              *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
-          if (index < 0) {
-            index += sizes[i];
+    constexpr int nt = 128;
+    constexpr int vt = 4;
+    const dim3 block(nt);
+    auto stream = dev_ctx.stream();
+    const dim3 grid((numel + block.x * vt - 1) / (block.x * vt));
+    funcs::index_elementwise_with_tensor_kernel<nt, vt>
+        <<<grid, block, 0, stream>>>(numel, [=] __device__(int idx) {
+          const auto offset = offset_calc.get(idx)[0];
+          if (index_data[idx]) {
+            int64_t index = prefix_sum_data[idx] - 1;  // 0-based index
+            output_data[index] = input_data[offset];
           }
-          offset += index * strides[i];
-        }
+        });
+    return;
 
-        *reinterpret_cast<dtype*>(out_data) =
-            *reinterpret_cast<const dtype*>(in_data + offset);
-      });
+  } else {
+    int64_t numel = 0;
+    int64_t num_indices = 0;
+    std::vector<int64_t> shape_tmp;
+    std::vector<int64_t> stride_tmp;
+    funcs::cal_shape_stride(index_dims, &num_indices, &shape_tmp, &stride_tmp);
+
+    auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
+
+    auto sizes = std::array<int64_t, DDim::kMaxRank>{};
+    auto strides = std::array<int64_t, DDim::kMaxRank>{};
+
+    for (int64_t i = 0; i < num_indices; i++) {
+      sizes[i] = index_dims[i];
+      strides[i] = index_stride[i];
+    }
+
+    std::array<int64_t*, 3> strides_array;
+    std::vector<int64_t> desired_shape;
+    std::array<std::vector<int64_t>, 3> strides_vec;
+
+    funcs::IndexGetStride<3>(input_dims,
+                             input_strides,
+                             phi::SizeOf(input.dtype()),
+                             std::vector<int64_t>(),
+                             std::vector<int64_t>(),
+                             phi::SizeOf(input.dtype()),
+                             shape_tmp,
+                             stride_tmp,
+                             phi::SizeOf(index[0]->dtype()),
+                             &desired_shape,
+                             &strides_array,
+                             &numel,
+                             strides_vec);
+    auto offset_calc =
+        funcs::make_offset_calculator_put<3>(desired_shape, strides_array);
+
+    const int64_t N = output->numel();
+    PADDLE_ENFORCE_GE(
+        N, 0, common::errors::InvalidArgument("Output numel must >= 0"));
+    PADDLE_ENFORCE_LE(
+        N,
+        std::numeric_limits<int32_t>::max(),
+        common::errors::InvalidArgument("Output numel must <= INT32_MAX"));
+    constexpr int nt = 128;
+    constexpr int vt = 4;
+    const dim3 block(nt);
+    const dim3 grid((N + block.x * vt - 1) / (block.x * vt));
+    auto stream = dev_ctx.stream();
+
+    using dtype = funcs::OpaqueType<sizeof(T)>;
+
+    const char* in_ptr =
+        reinterpret_cast<const char*>(input.data<T>()) + slice_offset;
+    char* out_ptr = reinterpret_cast<char*>(output->data<T>());
+    funcs::index_elementwise_with_tensor_kernel<nt, vt>
+        <<<grid, block, 0, stream>>>(N, [=] __device__(int idx) {
+          const auto offsets = offset_calc.get(idx);
+          char* const out_data = out_ptr + offsets[0];
+          const char* const in_data = in_ptr + offsets[1];
+
+          int64_t offset = 0;
+#pragma unroll
+          for (int64_t i = 0; i < num_indices; i++) {
+            int64_t index =
+                *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
+            if (index < 0) {
+              index += sizes[i];
+            }
+            offset += index * strides[i];
+          }
+
+          *reinterpret_cast<dtype*>(out_data) =
+              *reinterpret_cast<const dtype*>(in_data + offset);
+        });
+  }
 }
 
 template <typename T, typename Context>
@@ -119,13 +183,15 @@ void IndexElementwiseGetKernel(const Context& dev_ctx,
                                const bool accumulate,
                                DenseTensor* out) {
   const auto& index_type = index[0]->dtype();
-  PADDLE_ENFORCE_EQ(index_type == phi::DataType::INT64,
-                    true,
-                    common::errors::InvalidArgument(
-                        "Index holds the wrong type, it holds [%s], but "
-                        "desires to be [%s].",
-                        index_type,
-                        phi::DataType::INT64));
+  PADDLE_ENFORCE_EQ(
+      index_type == phi::DataType::INT64 ||
+          (index_type == phi::DataType::BOOL && index.size() == 1),
+      true,
+      common::errors::InvalidArgument(
+          "Index holds the wrong type, it holds [%s], but "
+          "desires to be [%s] or bool.",
+          index_type,
+          phi::DataType::INT64));
 
   auto out_dims = out->dims();
   if (out_dims.size() > 0) {

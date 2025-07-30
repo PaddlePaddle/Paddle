@@ -16,6 +16,8 @@
 
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/meta_tensor.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace phi {
 
@@ -36,5 +38,21 @@ void LogcumsumexpKernel(const Context& dev_ctx,
                         bool exclusive,
                         bool reverse,
                         DenseTensor* out);
+
+template <typename T, typename Context>
+DenseTensor Cumsum(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const Scalar& axis,
+                   bool flatten,
+                   bool exclusive,
+                   bool reverse) {
+  DenseTensor dense_out;
+  MetaTensor meta_out(&dense_out);
+  CumInferMeta(
+      MetaTensor(x), axis.to<int>(), flatten, exclusive, reverse, &meta_out);
+  CumsumKernel<T, Context>(
+      dev_ctx, x, axis, flatten, exclusive, reverse, &dense_out);
+  return dense_out;
+}
 
 }  // namespace phi
