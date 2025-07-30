@@ -12,16 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 from unittest import TestCase
 
 import numpy as np
+from op_test import get_places
 
 import paddle
 import paddle.base.dygraph as dg
 import paddle.nn.functional as F
-from paddle import base
 
 
 class TestFunctionalConv1DError(TestCase):
@@ -112,15 +111,7 @@ class TestFunctionalConv1D_ZeroSize(TestCase):
         self.dilation = 1
         self.groups = 1
         self.data_format = "NCL"
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not base.core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if base.core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def test_dygraph(self):
         for place in self.places:

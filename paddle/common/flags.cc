@@ -2158,3 +2158,15 @@ PHI_DEFINE_EXPORTED_int32(
 PHI_DEFINE_EXPORTED_bool(check_cuda_error,
                          false,
                          "Checking whether CUDA error occurred or not.");
+
+/**
+ * Stream related FLAG
+ * Name: FLAGS_use_default_stream
+ * Since Version: 3.1.1
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Whether use default stream.
+ */
+PHI_DEFINE_EXPORTED_bool(use_default_stream,
+                         false,
+                         "Whether use default stream.");

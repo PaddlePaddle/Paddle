@@ -142,13 +142,15 @@ def _split_args_helper(
     for idx in range(num_chunks):
         chunk_args = {}
         for key, arg in shared_args_dict_flat.items():
+            last_arg = None if not arg else arg[0][idx]
             arg_of_curr_chunk = (
-                [v[idx] for v in arg] if len(arg) > 1 else arg[0][idx]
+                [v[idx] for v in arg] if len(arg) > 1 else last_arg
             )
             chunk_args[key] = arg_of_curr_chunk
 
         # flatten chunk_args first, and then pack chunk_args as the origin args_dict
-        chunk_args = pack_sequence_as(args_dict, flatten(chunk_args))
+        flatten_chunk_args = [x for x in flatten(chunk_args) if x is not None]
+        chunk_args = pack_sequence_as(args_dict, flatten_chunk_args)
         args_split.append(chunk_args)
     return args_split
 

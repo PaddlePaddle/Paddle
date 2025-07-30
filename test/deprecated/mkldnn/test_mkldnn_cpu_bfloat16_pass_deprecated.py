@@ -25,7 +25,7 @@ from paddle import base
 from paddle.base.core import PassVersionChecker
 
 
-class TestMKLDNNCpuBfloat16Pass(InferencePassTest):
+class TestONEDNNCpuBfloat16Pass(InferencePassTest):
     def setUp(self):
         self.init_data()
         with (

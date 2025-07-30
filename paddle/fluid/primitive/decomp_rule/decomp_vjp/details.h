@@ -441,6 +441,67 @@ void roll_grad(const Tensor& x,
 }
 
 template <typename T>
+void index_put_grad(const Tensor& x,
+                    const std::vector<Tensor>& indices,
+                    const Tensor& value,
+                    const Tensor& out_grad,
+                    const bool accumulate,
+                    Tensor* x_grad,
+                    Tensor* value_grad) {
+  if (x_grad) {
+    if (accumulate) {
+      by_pass<T>(out_grad, x_grad);
+    } else {
+      Tensor x_grad_tmp;
+      if (has_dynamic_shape(x.shape()) ||
+          std::any_of(
+              indices.cbegin(),
+              indices.cend(),
+              [](const Tensor& t) { return has_dynamic_shape(t.shape()); }) ||
+          has_dynamic_shape(out_grad.shape())) {
+        x_grad_tmp = index_put<T>(
+            out_grad,
+            indices,
+            backend::full_with_tensor<T>(
+                shape64<T>(value), 0, out_grad.dtype(), out_grad.place()));
+      } else {
+        x_grad_tmp = index_put<T>(out_grad,
+                                  indices,
+                                  full<T>(common::vectorize(value.dims()),
+                                          0,
+                                          out_grad.dtype(),
+                                          out_grad.place()));
+      }
+      set_output<T>(x_grad_tmp, x_grad);
+    }
+  }
+
+  if (value_grad) {
+    std::vector<Tensor> indices_vec;
+
+    if (has_dynamic_shape(x.shape()) ||
+        std::any_of(
+            indices.cbegin(),
+            indices.cend(),
+            [](const Tensor& t) { return has_dynamic_shape(t.shape()); }) ||
+        has_dynamic_shape(out_grad.shape())) {
+      for (size_t i = 0; i < indices.size(); ++i) {
+        indices_vec.push_back(backend::unsqueeze<T>(
+            indices[i], full<T>({1}, -1, DataType::INT64, indices[i].place())));
+      }
+    } else {
+      for (size_t i = 0; i < indices.size(); ++i) {
+        indices_vec.push_back(unsqueeze<T>(indices[i], {-1}));
+      }
+    }
+
+    Tensor stacked_indices = concat<T>(indices_vec, -1);
+    Tensor value_grad_tmp = gather_nd<T>(out_grad, stacked_indices);
+    set_output<T>(value_grad_tmp, value_grad);
+  }
+}
+
+template <typename T>
 void transpose_grad(const Tensor& grad_out,
                     const std::vector<int>& perm,
                     Tensor* grad_x) {
@@ -556,7 +617,7 @@ void index_add_grad(const Tensor& index,
       auto index_expand_shape = std::vector<int64_t>(out_grad_shape.size(), 1);
       auto index_unsqueeze_shape =
           std::vector<int64_t>(out_grad_shape.size(), 1);
-      for (int i = 0; i < out_grad_shape.size(); ++i) {
+      for (int i = 0; i < static_cast<int>(out_grad_shape.size()); ++i) {
         if (i != axis) {
           index_expand_shape.at(i) = out_grad_shape.at(i);
         } else {
@@ -1667,6 +1728,7 @@ void gather_nd_grad(const Tensor& x,
 template <typename T>
 void instance_norm_grad(const Tensor& x,
                         const paddle::optional<Tensor>& scale,
+                        const paddle::optional<Tensor>& bias,
                         const Tensor& saved_mean,
                         const Tensor& saved_variance,
                         const Tensor& y_grad,
@@ -3093,7 +3155,7 @@ template <typename T>
 void kthvalue_grad(const Tensor& x,
                    const Tensor& indices,
                    const Tensor& out_grad,
-                   int k,
+                   int64_t k UNUSED,
                    int axis,
                    bool keepdim,
                    Tensor* x_grad) {

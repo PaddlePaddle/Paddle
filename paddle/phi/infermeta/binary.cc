@@ -295,16 +295,18 @@ void BincountInferMeta(const MetaTensor& x,
                           "But the dimension of Input(Weights) is [%d]",
                           weights_dim.size()));
 
-    PADDLE_ENFORCE_EQ(
-        weights_dim[0],
-        input_dim[0],
-        common::errors::InvalidArgument(
-            "The 'shape' of Input(Weights) must be equal to the 'shape' of "
-            "Input(X)."
-            "But received: the 'shape' of Input(Weights) is [%s],"
-            "the 'shape' of Input(X) is [%s]",
-            weights_dim,
-            input_dim));
+    if (input_dim[0] != 0) {
+      PADDLE_ENFORCE_EQ(
+          weights_dim[0],
+          input_dim[0],
+          common::errors::InvalidArgument(
+              "The 'shape' of Input(Weights) must be equal to the 'shape' of "
+              "Input(X)."
+              "But received: the 'shape' of Input(Weights) is [%s],"
+              "the 'shape' of Input(X) is [%s]",
+              weights_dim,
+              input_dim));
+    }
   }
   out->set_dims(common::make_ddim({-1}));
   if (weights) {
@@ -2015,12 +2017,14 @@ void GatherInferMeta(const MetaTensor& x,
   auto index_dims = index.dims();
 
   if (index_dims.size() == 2) {
-    PADDLE_ENFORCE_EQ(
-        index_dims[1],
-        1,
-        common::errors::InvalidArgument(
-            "The last dim of index should be 1 when it is 2D, but we get %d",
-            index_dims[1]));
+    if (index_dims[1] != 0) {
+      PADDLE_ENFORCE_EQ(
+          index_dims[1],
+          1,
+          common::errors::InvalidArgument("The last dim of index should be 0 "
+                                          "or 1 when it is 2D, but we get %d",
+                                          index_dims[1]));
+    }
   } else {
     PADDLE_ENFORCE_EQ(
         index_dims.size() == 1 || index_dims.size() == 0,
@@ -2063,7 +2067,7 @@ void GatherInferMeta(const MetaTensor& x,
     } else {
       if (axis.FromTensor() || axis_v == 0) {
         // decrease the output dimension
-        std::vector<int> out_dim_vec;
+        std::vector<int64_t> out_dim_vec;
         for (int i = 1; i < input_dim.size(); ++i) {
           out_dim_vec.emplace_back(input_dim[i]);
         }
@@ -2072,7 +2076,7 @@ void GatherInferMeta(const MetaTensor& x,
         out->set_dtype(x.dtype());
         out->share_lod(x);
       } else {
-        std::vector<int> out_dim_vec;
+        std::vector<int64_t> out_dim_vec;
         for (int i = 0; i < axis_v; i++) {
           out_dim_vec.push_back(input_dim[i]);  // NOLINT
         }
@@ -2088,15 +2092,21 @@ void GatherInferMeta(const MetaTensor& x,
   } else {
     if (axis.FromTensor() || axis_v == 0) {
       // if axis.FromTensor(), we can not obtain correct shape of output
-      int batch_size = static_cast<int>(index_dims[0]);
+      int64_t batch_size = static_cast<int64_t>(index_dims[0]);
+      if (index_dims.size() == 2 && index_dims[1] == 0) {
+        batch_size = 0;
+      }
       phi::DDim output_dims(input_dim);
       output_dims[0] = batch_size;
       out->set_dims(output_dims);
       out->set_dtype(x.dtype());
       out->share_lod(x);
     } else {
-      int index_size = static_cast<int>(index_dims[0]);
-      std::vector<int> out_dim_vec;
+      int64_t index_size = static_cast<int64_t>(index_dims[0]);
+      if (index_dims.size() == 2 && index_dims[1] == 0) {
+        index_size = 0;
+      }
+      std::vector<int64_t> out_dim_vec;
       for (int i = 0; i < axis_v; i++) {
         out_dim_vec.push_back(input_dim[i]);  // NOLINT
       }
@@ -2556,13 +2566,27 @@ void IndexAddInferMeta(const MetaTensor& x,
 
 void IndexElementwisePutInferMeta(const MetaTensor& x,
                                   const std::vector<const MetaTensor*>& index,
-                                  const MetaTensor& value,
+                                  const Scalar& value,
                                   const std::vector<int64_t>& input_dims,
                                   const std::vector<int64_t>& input_strides,
                                   const std::vector<int64_t>& index_dims,
                                   const std::vector<int64_t>& index_strides,
                                   const int64_t slice_offset,
                                   MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+}
+
+void IndexElementwisePutWithTensorInferMeta(
+    const MetaTensor& x,
+    const std::vector<const MetaTensor*>& index,
+    const MetaTensor& value,
+    const std::vector<int64_t>& input_dims,
+    const std::vector<int64_t>& input_strides,
+    const std::vector<int64_t>& index_dims,
+    const std::vector<int64_t>& index_strides,
+    const int64_t slice_offset,
+    MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(x.dtype());
 }
@@ -4207,10 +4231,14 @@ void LstsqInferMeta(const MetaTensor& x,
 
   rank->set_dims(common::make_ddim(batch_dims_vec));
 
-  if (m > n) {
-    batch_dims_vec.emplace_back(nrhs);
-    residuals->set_dims(common::make_ddim(batch_dims_vec));
-    batch_dims_vec.pop_back();
+  if (m > n && driver != "gelsy") {
+    if (driver == "gelss" || driver == "gelsd") {
+      residuals->set_dims(common::make_ddim({-1}));
+    } else {
+      batch_dims_vec.emplace_back(nrhs);
+      residuals->set_dims(common::make_ddim(batch_dims_vec));
+      batch_dims_vec.pop_back();
+    }
   } else {
     residuals->set_dims(common::make_ddim({0}));
   }

@@ -47,7 +47,7 @@ using Scope = paddle::framework::Scope;
 
 /**
  * @brief Copy a DenseTensor to another.
- * default dst_plaxce is CPU.
+ * default dst_place is CPU.
  *
  * @param const phi::DenseTensor& src
  * @param phi::DenseTensor* dst

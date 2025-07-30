@@ -296,7 +296,8 @@ void LstsqKernel(const Context& dev_ctx,
     solution->Resize(common::make_ddim({n, nrhs}));
   }
 
-  GetResidualsTensor<Context, T>(dev_ctx, x, y, solution, residuals);
+  GetResidualsTensor<Context, T>(
+      dev_ctx, x, y, driver_string, solution, residuals, rank);
 }
 
 }  // namespace phi

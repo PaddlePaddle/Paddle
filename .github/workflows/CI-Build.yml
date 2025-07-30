@@ -20,14 +20,14 @@ jobs:
     name: Clone-linux
     uses: ./.github/workflows/_Clone-linux.yml
     with:
-      bos_dir: Paddle-build
+      clone_dir: Paddle-build
 
   build-docker:
     name: build docker images
     needs: clone
     uses: ./.github/workflows/docker.yml
     with:
-      bos_dir: Paddle-build
+      clone_dir: Paddle-build
       task: build
 
   build:
@@ -84,6 +84,15 @@ jobs:
     with:
       can-skip: ${{ needs.build.outputs.can-skip }}
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
+
+  doc-preview:
+    name: Doc-Preview
+    uses: ./.github/workflows/_Doc-Preview.yml
+    needs: [build-docker, build]
+    with:
+      can-skip: ${{ needs.build.outputs.can-skip }}
+      docker_doc_image: ${{ needs.build-docker.outputs.docker_doc_image }}
+
 
   slice:
     name: Slice

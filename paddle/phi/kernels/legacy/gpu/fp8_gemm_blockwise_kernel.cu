@@ -229,6 +229,11 @@ void cublas_gemm_blockwise_impl(const Context& dev_ctx,
       CUBLASLT_MATMUL_DESC_B_SCALE_POINTER,
       &B_decode_scale_ptr,
       sizeof(B_decode_scale_ptr)));
+  PADDLE_CUDABLAS_CHECK(phi::dynload::cublasLtMatmulDescSetAttribute(
+      operationDesc,
+      CUBLASLT_MATMUL_DESC_SM_COUNT_TARGET,
+      &math_sm_count,
+      sizeof(math_sm_count)));
 
   // Setup mat layout descriptors
   cublasLtMatrixLayout_t Adesc = nullptr, Bdesc = nullptr, Cdesc = nullptr,

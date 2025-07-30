@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_places
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -436,15 +435,7 @@ class TestMatrixPowerOpFP32Minus(TestMatrixPowerOpFP32):
 class TestMatrixPowerAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def check_static_result(self, place):
         with static.program_guard(static.Program(), static.Program()):
@@ -526,15 +517,7 @@ class TestMatrixPowerAPIError(unittest.TestCase):
 
 class TestMatrixPowerSingularAPI(unittest.TestCase):
     def setUp(self):
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def check_static_result(self, place):
         with static.program_guard(static.Program(), static.Program()):
@@ -577,16 +560,7 @@ class TestMatrixPowerSingularAPI(unittest.TestCase):
 
 class TestMatrixPowerEmptyTensor(unittest.TestCase):
     def _get_places(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if paddle.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        return places
+        return get_places()
 
     def _test_matrix_power_empty_static(self, place):
         with (

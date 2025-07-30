@@ -16,10 +16,9 @@ import sys
 import unittest
 
 sys.path.append("../../legacy_test")
-import os
 
 import numpy as np
-from op_test import OpTest, check_out_dtype
+from op_test import OpTest, check_out_dtype, get_places
 from test_sum_op import TestReduceOPTensorAxisBase
 from utils import dygraph_guard, static_guard
 
@@ -256,16 +255,7 @@ class TestMinAPIWithEmptyTensor(unittest.TestCase):
 
 class TestMinWithNan(unittest.TestCase):
     def _get_places(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if paddle.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        return places
+        return get_places()
 
     def _test_with_nan_static(
         self, func, shape, dtype=np.float32, place=paddle.CPUPlace()

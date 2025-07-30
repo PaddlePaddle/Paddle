@@ -154,12 +154,12 @@ class GpuAndCpuSearchSortedCompute {
 template <typename Context, typename T1, typename OutType>
 class SearchSortedFunctor {
  public:
-  SearchSortedFunctor(const Context& context,
+  SearchSortedFunctor(const Context& dev_ctx,
                       const DenseTensor* sorted_sequence,
                       const DenseTensor* value,
                       bool right,
                       OutType* out_data)
-      : context_(context),
+      : dev_ctx_(dev_ctx),
         sorted_sequence_(sorted_sequence),
         value_(value),
         right_(right),
@@ -186,7 +186,7 @@ class SearchSortedFunctor {
       seq_size = 1;
     }
 
-    funcs::ForRange<Context> for_range(context_, value_->numel());
+    funcs::ForRange<Context> for_range(dev_ctx_, value_->numel());
     GpuAndCpuSearchSortedCompute<T1, T2, OutType>
         gpu_and_cpu_search_sorted_compute(sequence_data,
                                           value_data,
@@ -199,7 +199,7 @@ class SearchSortedFunctor {
   }
 
  private:
-  const Context& context_;
+  const Context& dev_ctx_;
   const DenseTensor* sorted_sequence_;
   const DenseTensor* value_;
   bool right_;

@@ -90,6 +90,21 @@ void BatchNormGradKernel(const Context &dev_ctx,
                          DenseTensor *x_grad,
                          DenseTensor *scale_grad,
                          DenseTensor *bias_grad) {
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    if (scale_grad)
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(scale_grad->dims())),
+          0,
+          scale_grad);
+    if (bias_grad)
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(bias_grad->dims())),
+                            0,
+                            bias_grad);
+    return;
+  }
   using XPUType = typename XPUTypeTrait<T>::Type;
   const auto *d_y = &y_grad;
   PADDLE_ENFORCE_EQ(data_layout == "NCHW" || data_layout == "NHWC",

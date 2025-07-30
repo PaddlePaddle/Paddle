@@ -44,7 +44,7 @@ int FFTFillConjGrad(int N,
 namespace phi {
 namespace funcs {
 template <typename DeviceContext, typename C>
-void FFTFillConj(const DeviceContext& ctx,
+void FFTFillConj(const DeviceContext& dev_ctx,
                  DenseTensor* src,
                  DenseTensor* dst,
                  const std::vector<int64_t>& axes) {
@@ -62,36 +62,37 @@ void FFTFillConj(const DeviceContext& ctx,
   for (const auto i : axes) {
     _is_fft_axis[i] = true;
   }
-  xpu::ctx_guard RAII_GUARD(ctx.x_context());
+
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   int64_t* src_strides_ptr =
       RAII_GUARD.alloc_l3_or_gm<int64_t>(src_strides_v.size());
   PADDLE_ENFORCE_NOT_NULL(src_strides_ptr,
                           common::errors::External("XPU has no enough memory"));
-  xpu_memcpy(reinterpret_cast<void*>(src_strides_ptr),
-             reinterpret_cast<void*>(src_strides_v.data()),
+  xpu_memcpy(src_strides_ptr,
+             src_strides_v.data(),
              src_strides_v.size() * sizeof(int64_t),
              XPUMemcpyKind::XPU_HOST_TO_DEVICE);
   int64_t* dst_strides_ptr =
       RAII_GUARD.alloc_l3_or_gm<int64_t>(dst_strides_v.size());
   PADDLE_ENFORCE_NOT_NULL(dst_strides_ptr,
                           common::errors::External("XPU has no enough memory"));
-  xpu_memcpy(reinterpret_cast<void*>(dst_strides_ptr),
-             reinterpret_cast<void*>(dst_strides_v.data()),
+  xpu_memcpy(dst_strides_ptr,
+             dst_strides_v.data(),
              dst_strides_v.size() * sizeof(int64_t),
              XPUMemcpyKind::XPU_HOST_TO_DEVICE);
   int64_t* dst_shape_ptr =
       RAII_GUARD.alloc_l3_or_gm<int64_t>(dst_shape_v.size());
   PADDLE_ENFORCE_NOT_NULL(dst_shape_ptr,
                           common::errors::External("XPU has no enough memory"));
-  xpu_memcpy(reinterpret_cast<void*>(dst_shape_ptr),
-             reinterpret_cast<void*>(dst_shape_v.data()),
+  xpu_memcpy(dst_shape_ptr,
+             dst_shape_v.data(),
              dst_shape_v.size() * sizeof(int64_t),
              XPUMemcpyKind::XPU_HOST_TO_DEVICE);
   bool* _is_fft_axis_ptr = RAII_GUARD.alloc_l3_or_gm<bool>(rank);
   PADDLE_ENFORCE_NOT_NULL(_is_fft_axis_ptr,
                           common::errors::External("XPU has no enough memory"));
-  xpu_memcpy(reinterpret_cast<void*>(_is_fft_axis_ptr),
-             reinterpret_cast<void*>(_is_fft_axis.get()),
+  xpu_memcpy(_is_fft_axis_ptr,
+             _is_fft_axis.get(),
              rank * sizeof(bool),
              XPUMemcpyKind::XPU_HOST_TO_DEVICE);
 
@@ -110,7 +111,7 @@ void FFTFillConj(const DeviceContext& ctx,
 }
 
 template <typename DeviceContext, typename C>
-void FFTFillConjGrad(const DeviceContext& ctx,
+void FFTFillConjGrad(const DeviceContext& dev_ctx,
                      const DenseTensor& out_grad,
                      const std::vector<int64_t>& axes,
                      DenseTensor* x_grad) {

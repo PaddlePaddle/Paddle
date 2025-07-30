@@ -29,8 +29,8 @@ __global__ void IndexEleGetGradAccKernel(
     const char* in_ptr,
     char* out_ptr,
     const std::array<char*, DDim::kMaxRank> index_ptrs,
-    const std::array<int64_t, 25> sizes,
-    const std::array<int64_t, 25> strides,
+    const std::array<int64_t, phi::DDim::kMaxRank + 1> sizes,
+    const std::array<int64_t, phi::DDim::kMaxRank + 1> strides,
     int num_indices,
     offset_calc_t offset_calc) {
   const int tid = threadIdx.x;
@@ -59,7 +59,7 @@ __global__ void IndexEleGetGradAccKernel(
 }
 
 template <typename T, typename IndexT = int>
-void GPUIndexElementwiseGetGrad(const phi::GPUContext& ctx,
+void GPUIndexElementwiseGetGrad(const phi::GPUContext& dev_ctx,
                                 const DenseTensor& input,
                                 const DenseTensor& value,
                                 const std::vector<const DenseTensor*>& index,
@@ -72,11 +72,14 @@ void GPUIndexElementwiseGetGrad(const phi::GPUContext& ctx,
                                 DenseTensor* output) {
   int64_t numel = 0;
 
-  auto num_indices = index_dims.size();
+  int64_t num_indices = 0;
+  std::vector<int64_t> shape_tmp;
+  std::vector<int64_t> stride_tmp;
+  funcs::cal_shape_stride(index_dims, &num_indices, &shape_tmp, &stride_tmp);
 
-  auto sizes = std::array<int64_t, 25>{};
-  auto strides = std::array<int64_t, 25>{};
-  for (unsigned i = 0; i < num_indices; i++) {
+  auto sizes = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
+  auto strides = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
+  for (int64_t i = 0; i < num_indices; i++) {
     sizes[i] = index_dims[i];
     strides[i] = index_strides[i];
   }
@@ -92,8 +95,8 @@ void GPUIndexElementwiseGetGrad(const phi::GPUContext& ctx,
                            std::vector<int64_t>(),
                            std::vector<int64_t>(),
                            phi::SizeOf(value.dtype()),
-                           common::vectorize<int64_t>(index[0]->dims()),
-                           common::vectorize<int64_t>(index[0]->strides()),
+                           shape_tmp,
+                           stride_tmp,
                            phi::SizeOf(index[0]->dtype()),
                            &desired_shape,
                            &strides_array,
@@ -107,7 +110,7 @@ void GPUIndexElementwiseGetGrad(const phi::GPUContext& ctx,
   constexpr int vt = 4;
   const dim3 block(nt);
   const dim3 grid((N + block.x * vt - 1) / (block.x * vt));
-  auto stream = ctx.stream();
+  auto stream = dev_ctx.stream();
 
   using dtype = funcs::OpaqueType<sizeof(T)>;
 
@@ -125,7 +128,7 @@ void GPUIndexElementwiseGetGrad(const phi::GPUContext& ctx,
                                      num_indices,
                                      offset_calc);
   } else {
-    funcs::index_elementwise_kernel<nt, vt>
+    funcs::index_elementwise_with_tensor_kernel<nt, vt>
         <<<grid, block, 0, stream>>>(N, [=] __device__(int idx) {
           const auto offsets = offset_calc.get(idx);
           char* const out_data = out_ptr + offsets[0];
@@ -133,7 +136,7 @@ void GPUIndexElementwiseGetGrad(const phi::GPUContext& ctx,
 
           int64_t offset = 0;
 #pragma unroll
-          for (int i = 0; i < num_indices; i++) {
+          for (int64_t i = 0; i < num_indices; i++) {
             int64_t index =
                 *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
             if (index < 0) {
@@ -148,7 +151,7 @@ void GPUIndexElementwiseGetGrad(const phi::GPUContext& ctx,
 }
 
 template <typename T, typename Context>
-void IndexElementwiseGetGradKernel(const Context& ctx,
+void IndexElementwiseGetGradKernel(const Context& dev_ctx,
                                    const DenseTensor& x,
                                    const std::vector<const DenseTensor*>& index,
                                    const DenseTensor& out_grad,
@@ -159,10 +162,8 @@ void IndexElementwiseGetGradKernel(const Context& ctx,
                                    const int64_t slice_offset,
                                    const bool accumulate,
                                    DenseTensor* x_grad) {
-  ctx.template Alloc<T>(x_grad);
-  auto dxt = phi::EigenVector<T>::Flatten(*x_grad);
-  auto& place = *ctx.eigen_device();
-  dxt.device(place) = dxt.constant(static_cast<T>(0));
+  dev_ctx.template Alloc<T>(x_grad);
+  phi::funcs::set_constant(dev_ctx, x_grad, static_cast<float>(0));
   if (out_grad.numel() == 0) return;
 
   const auto& index_type = index[0]->dtype();
@@ -175,7 +176,7 @@ void IndexElementwiseGetGradKernel(const Context& ctx,
                         phi::DataType::INT32,
                         phi::DataType::INT64));
 
-  GPUIndexElementwiseGetGrad<T, int64_t>(ctx,
+  GPUIndexElementwiseGetGrad<T, int64_t>(dev_ctx,
                                          x,
                                          out_grad,
                                          index,

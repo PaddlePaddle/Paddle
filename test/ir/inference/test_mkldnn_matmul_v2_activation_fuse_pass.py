@@ -21,7 +21,7 @@ from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
-class TestMatmulv2ActivationMkldnnFusePass(PassAutoScanTest):
+class TestMatmulv2ActivationOnednnFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
         transpose_X = draw(st.booleans())
         transpose_Y = draw(st.booleans())

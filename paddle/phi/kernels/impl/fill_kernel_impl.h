@@ -36,6 +36,9 @@ void FillKernel(const Context& dev_ctx,
                                       " but received NaN"));
 
   dev_ctx.template Alloc<T>(out);
+  if (out->numel() == 0) {
+    return;
+  }
 
   phi::funcs::SetConstant<Context, T> functor;
   functor(dev_ctx, out, value.to<T>());

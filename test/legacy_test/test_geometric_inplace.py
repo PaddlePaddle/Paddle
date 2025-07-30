@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
 import scipy.stats
+from op_test import get_places
 
 import paddle
-from paddle import base
 
 
 class TestGeometricInplaceDtype(unittest.TestCase):
@@ -37,16 +36,7 @@ class TestGeometricInplaceDtype(unittest.TestCase):
             tensor_fp64.geometric_(probs=0.3)
             self.assertEqual(tensor_fp64.dtype, paddle.float64)
 
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not base.core.is_compiled_with_cuda()
-        ):
-            places.append('cpu')
-        if base.core.is_compiled_with_cuda():
-            places.append('gpu')
-        for place in places:
+        for place in get_places(string_format=True):
             paddle.set_device(place)
             test_fp32()
             test_fp64()
@@ -105,17 +95,8 @@ class TestGeometricInplaceDistribution(unittest.TestCase):
 
 class TestGeometricInplaceEmptyTensor(unittest.TestCase):
     def test_geometric_inplace_op_empty_tensor(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not base.core.is_compiled_with_cuda()
-        ):
-            places.append('cpu')
-        if base.core.is_compiled_with_cuda():
-            places.append('gpu')
         test_shapes = [(200, 1), (1, 200)]
-        for place in places:
+        for place in get_places(string_format=True):
             paddle.set_device(place)
             for test_shape in test_shapes:
                 tensor = paddle.empty(shape=test_shape)
@@ -141,16 +122,7 @@ class TestGeometricInplaceGrad(unittest.TestCase):
             geometric_grad = tensor_b.grad.numpy()
             self.assertTrue((geometric_grad == 0).all())
 
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not base.core.is_compiled_with_cuda()
-        ):
-            places.append('cpu')
-        if base.core.is_compiled_with_cuda():
-            places.append('gpu')
-        for place in places:
+        for place in get_places(string_format=True):
             paddle.set_device(place)
             test_grad()
 

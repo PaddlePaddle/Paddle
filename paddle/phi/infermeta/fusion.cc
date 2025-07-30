@@ -1351,6 +1351,9 @@ void FusedBiasDropoutResidualLnInferMeta(
   ln_mean->set_dims({left});
   ln_variance->set_dims({left});
   y->set_dims(x.dims());
+  if (common::product(x_dim) != 0 && common::product(residual.dims()) == 0) {
+    y->set_dims(residual.dims());
+  }
 }
 
 void FusedBiasDropoutResidualLnGradInferMeta(

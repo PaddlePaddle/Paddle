@@ -27,8 +27,8 @@ from paddle.base import core
 class TestConcatBf16Op(OpTest):
     def setUp(self):
         self.op_type = "concat"
-        self.use_mkldnn = True
-        self.mkldnn_data_type = "bfloat16"
+        self.use_onednn = True
+        self.onednn_data_type = "bfloat16"
         self.init_axis()
         self.init_shape()
         self.init_test_data()
@@ -36,7 +36,7 @@ class TestConcatBf16Op(OpTest):
         self.attrs = {
             'axis': self.axis,
             'use_mkldnn': True,
-            'mkldnn_data_type': self.mkldnn_data_type,
+            'mkldnn_data_type': self.onednn_data_type,
         }
 
         self.sections = [self.x0.shape[self.axis]] * 2

@@ -3170,7 +3170,7 @@ def svd_lowrank(
     m, n = x.shape[-2:]
     if q is None:
         q = min(6, m, n)
-    elif not (q >= 0 and q <= min(m, n)):
+    elif min(m, n) != 0 and not (q >= 0 and q <= min(m, n)):
         raise ValueError(
             f'q(={q}) must be non-negative integer'
             f' and not greater than min(m, n)={min(m, n)}'
@@ -3194,7 +3194,8 @@ def svd_lowrank(
         else:
             B_t = paddle.matmul(x, Q_c) - paddle.matmul(M, Q_c)
         assert B_t.shape[-2] == m, (B_t.shape, m)
-        assert B_t.shape[-1] == q, (B_t.shape, q)
+        if B_t.shape[-1] != 0:
+            assert B_t.shape[-1] == q, (B_t.shape, q)
         assert B_t.shape[-1] <= B_t.shape[-2], B_t.shape
         U, S, Vh = paddle.linalg.svd(B_t, full_matrices=False)
         V = _transjugate(Vh)
@@ -3207,7 +3208,8 @@ def svd_lowrank(
         else:
             B = paddle.matmul(A_t, Q_c) - paddle.matmul(M_t, Q_c)
         B_t = _transpose(B)
-        assert B_t.shape[-2] == q, (B_t.shape, q)
+        if B_t.shape[-2] != 0:
+            assert B_t.shape[-2] == q, (B_t.shape, q)
         assert B_t.shape[-1] == n, (B_t.shape, n)
         assert B_t.shape[-1] <= B_t.shape[-2], B_t.shape
         U, S, Vh = paddle.linalg.svd(B_t, full_matrices=False)
@@ -3511,7 +3513,7 @@ def lu(
 
     Args:
 
-        X (Tensor): the tensor to factor of N-dimensions(N>=2).
+        X (Tensor): the tensor to factor of N-dimensions(N>=2). Its data type should be float32, float64, complex64, or complex128.
 
         pivot (bool, optional): controls whether pivoting is done. Default: True.
 
@@ -3575,7 +3577,9 @@ def lu(
     if in_dynamic_or_pir_mode():
         lu, p, info = _C_ops.lu(x, pivot)
     else:
-        check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'lu')
+        check_variable_and_dtype(
+            x, 'dtype', ['float32', 'float64', 'complex64', 'complex128'], 'lu'
+        )
         helper = LayerHelper('lu', **locals())
         lu = helper.create_variable_for_type_inference(dtype=x.dtype)
         p = helper.create_variable_for_type_inference(dtype='int')
@@ -3606,10 +3610,16 @@ def lu_solve(
     given LU decomposition :math:`A` and column vector :math:`b`.
 
     Args:
-        b (Tensor): Column vector `b` in the above equation. It has shape :math:`(*, m, k)`, where :math:`*` is batch dimensions, with data type float32, float64.
-        lu (Tensor): LU decomposition. It has shape :math:`(*, m, m)`, where :math:`*` is batch dimensions, that can be decomposed into an upper triangular matrix U and a lower triangular matrix L, with data type float32, float64.
+        b (Tensor): Column vector `b` in the above equation. It has shape :math:`(*, m, k)`, where :math:`*` is batch dimensions,
+            with data type float32, float64, complex64, or complex128.
+
+        lu (Tensor): LU decomposition. It has shape :math:`(*, m, m)`, where :math:`*` is batch dimensions, that can be decomposed into an upper triangular matrix U and a lower triangular matrix L,
+            with data type float32, float64, complex64, or complex128.
+
         pivots (Tensor): Permutation matrix P of LU decomposition. It has shape :math:`(*, m)`, where :math:`*` is batch dimensions, that can be converted to a permutation matrix P, with data type int32.
+
         trans (str, optional): The transpose of the matrix A. It can be "N" , "T" or "C", "N" means :math:`Ax=b`, "T" means :math:`A^Tx=b`, "C" means :math:`A^Hx=b`, default is "N".
+
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -3687,7 +3697,7 @@ def lu_unpack(
 ) -> tuple[Tensor, Tensor, Tensor]:
     r"""
     Unpack L U and P to single matrix tensor .
-    unpack L and U matrix from LU, unpack permutation matrix P from Pivtos .
+    unpack L and U matrix from LU, unpack permutation matrix P from Pivots .
 
     P mat can be get by pivots:
 
@@ -3700,12 +3710,13 @@ def lu_unpack(
 
     Args:
         x (Tensor): The LU tensor get from paddle.linalg.lu, which is combined by L and U.
+            Its data type should be float32, float64, complex64, or complex128.
 
-        y (Tensor): Pivots get from paddle.linalg.lu.
+        y (Tensor): Pivots get from paddle.linalg.lu. Its data type should be int32.
 
         unpack_ludata (bool, optional): whether to unpack L and U from x. Default: True.
 
-        unpack_pivots (bool, optional): whether to unpack permutation matrix P from Pivtos. Default: True.
+        unpack_pivots (bool, optional): whether to unpack permutation matrix P from Pivots. Default: True.
 
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
@@ -3735,8 +3746,8 @@ def lu_unpack(
             Tensor(shape=[2], dtype=int32, place=Place(cpu), stop_gradient=True,
             [3, 3])
             >>> print(info)
-            Tensor(shape=[1], dtype=int32, place=Place(cpu), stop_gradient=True,
-            [0])
+            Tensor(shape=[], dtype=int32, place=Place(cpu), stop_gradient=True,
+            0)
 
             >>> P,L,U = paddle.linalg.lu_unpack(lu,p)
 
@@ -3770,7 +3781,10 @@ def lu_unpack(
         return P, L, U
     else:
         check_variable_and_dtype(
-            x, 'dtype', ['float32', 'float64'], 'lu_unpack'
+            x,
+            'dtype',
+            ['float32', 'float64', 'complex64', 'complex128'],
+            'lu_unpack',
         )
         helper = LayerHelper('lu_unpack', **locals())
         p = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -3802,7 +3816,7 @@ def eig(x: Tensor, name: str | None = None) -> tuple[Tensor, Tensor]:
 
     Args:
         x (Tensor): A tensor with shape math:`[*, N, N]`, The data type of the x should be one of ``float32``,
-            ``float64``, ``compplex64`` or ``complex128``.
+            ``float64``, ``complex64`` or ``complex128``.
         name (str|None, optional): The default value is `None`. Normally there is no need for user to set
             this property. For more information, please refer to :ref:`api_guide_Name`.
 
@@ -4167,7 +4181,7 @@ def pinv(
             return out_2
         else:
             # combine eigh and matmul op
-            s, u = _C_ops.eigh(x, 'UPLO')
+            s, u = _C_ops.eigh(x, 'L')
             s_abs = paddle.abs(s)
             max_singular_val = _C_ops.max(s_abs, [-1], True)
             rcond = paddle.to_tensor(rcond, dtype=s.dtype)
@@ -5676,6 +5690,17 @@ def histogramdd(
             ranges
         ), f"The length of ranges list must be {D * 2}\n"
 
+    def __compute_flattened_index(index_list, hist_shape):
+        strides = paddle.to_tensor(hist_shape[::-1]).cumprod(dim=0).flip(0)[1:]
+        strides = paddle.concat(
+            [strides, paddle.to_tensor([1], dtype=strides.dtype)]
+        )
+
+        stacked_indices = paddle.stack(index_list, axis=-1)
+        flattened_index = (stacked_indices * strides).sum(axis=-1)
+
+        return flattened_index
+
     check_type(density, 'density', bool, 'histogramdd')
 
     __check_x(x)
@@ -5755,10 +5780,7 @@ def histogramdd(
             )
             index_list = paddle.static.setitem(index_list, i, index_list_i)
     index_list = tuple(index_list)
-    lut = paddle.arange(
-        paddle.to_tensor(hist_shape).prod(),
-    ).reshape(hist_shape)
-    flattened_index = lut[index_list]
+    flattened_index = __compute_flattened_index(index_list, hist_shape)
     hist = paddle.bincount(
         flattened_index,
         reshaped_weights,
