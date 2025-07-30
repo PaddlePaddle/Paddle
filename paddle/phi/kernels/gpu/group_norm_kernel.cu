@@ -828,7 +828,6 @@ void GroupNormNDHWCKernel(const Context& dev_ctx,
   params_.eps = epsilon;
   auto stream = dev_ctx.stream();
   DenseTensor redBuffer;
-  // groups最大为c，c最大为65535*params_.cPerBlock，因此buffer_sizes最大为int
   int buffer_sizes = 2 * params_.n * groups;
   redBuffer.Resize({1, buffer_sizes});
   params_.redBuffer = dev_ctx.template Alloc<float>(&redBuffer);
