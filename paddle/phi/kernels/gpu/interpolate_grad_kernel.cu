@@ -374,6 +374,25 @@ __global__ void KeBilinearInterpNCHWBw(T* in,
       static_cast<int64_t>(n) * num_channels * out_h * out_w;
   const int64_t num_in = static_cast<int64_t>(n) * num_channels * in_h * in_w;
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  if (index >= num_out) {
+    printf("Thread index out of bounds: index=%ld >= num_out=%ld\n",
+           index,
+           num_out);
+    return;
+  }
+
+  if (index == 0) {  // 防止太多线程同时打印，限制一个线程输出
+    printf("index: %ld\n", index);
+    printf("stride: %ld\n", stride);
+    printf("n: %d, num_channels: %d, out_h: %d, out_w: %d\n",
+           n,
+           num_channels,
+           out_h,
+           out_w);
+    printf("in_h: %d, in_w: %d\n", in_h, in_w);
+    printf("num_out: %ld, num_in: %ld\n", num_out, num_in);
+    printf("MPTypeTrait<T>::Type is being used as MT\n");
+  }
 
   // Restricted parallelism if ratio_w is over threshold
   // to avoid atomic contention overhead.
@@ -963,6 +982,8 @@ static void Interpolate2DCUDABwd(
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
   int64_t n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
+  std::cout << "n:" << n << "  c:" << c << "  in_d:" << in_d
+            << ", in_h:" << in_h << ", in_w:" << in_w << std::endl;
 
   float scale_h = -1;
   float scale_w = -1;
@@ -1070,11 +1091,25 @@ static void Interpolate2DCUDABwd(
   int64_t in_chw = c * in_hw;
   int64_t out_chw = c * out_hw;
   auto pixelNum = n * out_chw;
+  std::cout << "in_h: " << in_h << ", in_w: " << in_w << ", in_hw: " << in_hw
+            << std::endl;
+  std::cout << "out_h: " << out_h << ", out_w: " << out_w
+            << ", out_hw: " << out_hw << std::endl;
+  std::cout << "c: " << c << ", in_chw: " << in_chw << ", out_chw: " << out_chw
+            << std::endl;
+  std::cout << "n: " << n << ", pixelNum: " << pixelNum << std::endl;
 
   backends::gpu::GpuLaunchConfig config =
       backends::gpu::GetGpuLaunchConfig1D(dev_ctx, pixelNum);
+  std::cout << "block_per_grid: (" << config.block_per_grid.x << ", "
+            << config.block_per_grid.y << ", " << config.block_per_grid.z
+            << "), "
+            << "thread_per_block: (" << config.thread_per_block.x << ", "
+            << config.thread_per_block.y << ", " << config.thread_per_block.z
+            << ")" << std::endl;
 
   if ("nearest" == interp_method) {
+    std::cout << "nearest!!!" << std::endl;
     if (data_layout == DataLayout::kNCHW) {
       // get launch 3D config
       int64_t nc = n * c;
@@ -1135,16 +1170,19 @@ static void Interpolate2DCUDABwd(
                                                          interp_divmods);
     }
   } else if ("bilinear" == interp_method) {
+    std::cout << "bilinear!" << std::endl;
     const float align_type_value =
         (align_mode == 0 && !align_corners) ? 0.5f : 0.f;
     bool is_nchw = (data_layout == DataLayout::kNCHW) ? true : false;
     bool optimize_flag = false;
 #ifndef __HIPCC__
+    std::cout << "111" << std::endl;
     optimize_flag = (in_h < (out_h >> 6) && in_w < (out_w >> 6))
                         ? true
                         : ((in_h == 1 && in_w == 1) ? true : false);
 #endif
     if (optimize_flag & is_nchw) {
+      std::cout << "222" << std::endl;
       KeBilinearInterpBwShareMemory<T><<<config.block_per_grid,
                                          config.thread_per_block,
                                          0,
@@ -1161,7 +1199,9 @@ static void Interpolate2DCUDABwd(
                                                              align_type_value,
                                                              is_nchw);
     } else if (!optimize_flag & is_nchw) {
+      std::cout << "333" << std::endl;
       const int64_t num_kernels = static_cast<int64_t>(n) * c * out_h * out_w;
+      std::cout << "num_kernels: " << num_kernels << std::endl;
       const int num_threads = std::min(dev_ctx.GetMaxThreadsPerBlock(), 1024);
       KeBilinearInterpNCHWBw<T>
           <<<backends::gpu::DivUp(num_kernels,
@@ -1179,7 +1219,15 @@ static void Interpolate2DCUDABwd(
                                  ratio_w,
                                  output_grad_data,
                                  align_type_value);
+      cudaError_t err = cudaGetLastError();
+      if (err != cudaSuccess) {
+        std::cerr << "CUDA Kernel launch failed: " << cudaGetErrorString(err)
+                  << std::endl;
+      }
+      cudaDeviceSynchronize();  // 等待 GPU 执行完成
+      std::cout << "KeBilinearInterpNCHWBw over" << std::endl;
     } else {
+      std::cout << "444" << std::endl;
       int64_t cw = c * out_w;
       auto interp_divmods = funcs::FastDivModForInterpolate(c, out_chw, cw);
       KeBilinearInterpBw<T><<<config.block_per_grid,
@@ -1200,6 +1248,7 @@ static void Interpolate2DCUDABwd(
                                                   interp_divmods);
     }
   } else if ("bicubic" == interp_method) {
+    std::cout << "Bicubic backward not implemented yet" << std::endl;
     constexpr int thread_per_block = 512;
     KeBicubicInterpBw<T>
         <<<config.block_per_grid, thread_per_block, 0, dev_ctx.stream()>>>(
@@ -1517,6 +1566,7 @@ void BilinearInterpGradKernel(
     bool align_corners,
     int align_mode,
     DenseTensor* x_grad) {
+  std::cout << "BilinearInterpGradKernel" << std::endl;
   InterpolateGradKernel<T, Context>(dev_ctx,
                                     x,
                                     out_size,
@@ -1532,6 +1582,7 @@ void BilinearInterpGradKernel(
                                     align_corners,
                                     align_mode,
                                     x_grad);
+  std::cout << "BilinearInterpGradKernel over" << std::endl;
 }
 
 template <typename T, typename Context>
