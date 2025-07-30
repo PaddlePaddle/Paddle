@@ -173,9 +173,9 @@ void groupNormNCHW32SumQDQ(const GroupNormNDHWCParams<__half, int64_t> &params,
   dim3 grid;
 
   // The number of blocks to compute all the channels.
-  grid.x = divUp<int32_t>(params.c, params.cPerBlock);
+  grid.x = divUp(params.c, params.cPerBlock);
   // The number of blocks to compute all the activations in a given instance.
-  grid.y = divUp<int64_t>(params.dhw, params.dhwPerBlock);
+  grid.y = divUp(params.dhw, params.dhwPerBlock);
   // The number of instances.
   grid.z = params.n;
 
@@ -297,9 +297,9 @@ void groupNormNCHW32ScaleQDQ(
   dim3 grid;
 
   // The number of blocks to compute all the channels.
-  grid.x = divUp<int32_t>(params.c, params.cPerBlock);
+  grid.x = divUp(params.c, params.cPerBlock);
   // The number of blocks to compute all the activations in a given instance.
-  grid.y = divUp<int64_t>(params.dhw, params.dhwPerBlock);
+  grid.y = divUp(params.dhw, params.dhwPerBlock);
   // The number of instances.
   grid.z = params.n;
 
@@ -698,7 +698,7 @@ int GroupNormPluginDynamic::enqueue(
       params_.dhw = static_cast<int64_t>(params_.d) * params_.h * params_.w;
       const int64_t blocksPerDHW =
           findMaxDivisor(params_.dhw, static_cast<int64_t>(maxBlocksPerDHW));
-      params_.dhwPerBlock = divUp<int64_t>(params_.dhw, blocksPerDHW);
+      params_.dhwPerBlock = divUp(params_.dhw, blocksPerDHW);
       params_.cPerBlock = cPerBlock;
       params_.cPerGroup = params_.c / params_.groups;
       params_.dhwc = params_.dhw * params_.c;
@@ -780,7 +780,7 @@ int GroupNormPluginDynamic::enqueue(
       params_.dhw = static_cast<int64_t>(params_.d) * params_.h * params_.w;
       const int64_t blocksPerDHW =
           findMaxDivisor(params_.dhw, static_cast<int64_t>(maxBlocksPerDHW));
-      params_.dhwPerBlock = divUp<int64_t>(params_.dhw, blocksPerDHW);
+      params_.dhwPerBlock = divUp(params_.dhw, blocksPerDHW);
       params_.cPerBlock = cPerBlock;
       params_.cPerGroup = params_.c / params_.groups;
       params_.dhwc = params_.dhw * params_.c;

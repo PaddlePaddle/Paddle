@@ -326,8 +326,8 @@ template <typename T>
 void groupNormNDHWCSum<T>::operator()(GroupNormNDHWCParams<T, int64_t>* params,
                                       gpuStream_t stream) {
   dim3 grid;
-  grid.x = divUp<int32_t>(params->c, params->cPerBlock);
-  grid.y = divUp<int64_t>(params->dhw, params->dhwPerBlock);
+  grid.x = divUp(params->c, params->cPerBlock);
+  grid.y = divUp(params->dhw, params->dhwPerBlock);
   grid.z = params->n;
   if (params->cPerGroup % 2 == 0) {
     switch (params->cPerBlock) {
@@ -345,7 +345,7 @@ void groupNormNDHWCSum<T>::operator()(GroupNormNDHWCParams<T, int64_t>* params,
         groupNormNDHWCSumKernel<T, 64, 2><<<grid, 64, 0, stream>>>(*params);
         break;
       default:
-        grid.x = divUp<int32_t>(params->c, 128);
+        grid.x = divUp(params->c, 128);
         params->cPerBlock = 128;
         groupNormNDHWCSumKernel<T, 64, 2><<<grid, 64, 0, stream>>>(*params);
     }
@@ -368,7 +368,7 @@ void groupNormNDHWCSum<T>::operator()(GroupNormNDHWCParams<T, int64_t>* params,
           groupNormNDHWCSumKernel<T, 128, 1><<<grid, 128, 0, stream>>>(*params);
           break;
         default:
-          grid.x = divUp<int32_t>(params->c, 128);
+          grid.x = divUp(params->c, 128);
           params->cPerBlock = 128;
           groupNormNDHWCSumKernel<T, 128, 1><<<grid, 128, 0, stream>>>(*params);
       }
@@ -395,7 +395,7 @@ void groupNormNDHWCSum<T>::operator()(GroupNormNDHWCParams<T, int64_t>* params,
               <<<grid, 128, 0, stream>>>(*params);
           break;
         default:
-          grid.x = divUp<int32_t>(params->c, 128);
+          grid.x = divUp(params->c, 128);
           params->cPerBlock = 128;
           groupNormNDHWCSumSingerChannelKernel<T, 128>
               <<<grid, 128, 0, stream>>>(*params);
@@ -658,9 +658,9 @@ void groupNormNDHWCScale<T>::operator()(
   dim3 grid;
 
   // The number of blocks to compute all the channels.
-  grid.x = divUp<int32_t>(params.c, params.cPerBlock);
+  grid.x = divUp(params.c, params.cPerBlock);
   // The number of blocks to compute all the activations in a given instance.
-  grid.y = divUp<int64_t>(params.dhw, params.dhwPerBlock);
+  grid.y = divUp(params.dhw, params.dhwPerBlock);
   // The number of instances.
   grid.z = params.n;
 
@@ -680,7 +680,7 @@ void groupNormNDHWCScale<T>::operator()(
         groupNormNDHWCScaleKernel<T, 2><<<grid, 64, 0, stream>>>(params);
         break;
       default:
-        grid.x = divUp<int32_t>(params.c, 128);
+        grid.x = divUp(params.c, 128);
         groupNormNDHWCScaleKernel<T, 2><<<grid, 64, 0, stream>>>(params);
     }
   } else {
@@ -701,7 +701,7 @@ void groupNormNDHWCScale<T>::operator()(
         groupNormNDHWCScaleKernel<T, 1><<<grid, 128, 0, stream>>>(params);
         break;
       default:
-        grid.x = divUp<int32_t>(params.c, 128);
+        grid.x = divUp(params.c, 128);
         groupNormNDHWCScaleKernel<T, 1><<<grid, 128, 0, stream>>>(params);
     }
   }
@@ -821,7 +821,7 @@ void GroupNormNDHWCKernel(const Context& dev_ctx,
   params_.dhw = static_cast<int64_t>(params_.d) * params_.h * params_.w;
   const int64_t blocksPerDHW =
       findMaxDivisor(params_.dhw, static_cast<int64_t>(maxBlocksPerDHW));
-  params_.dhwPerBlock = divUp<int64_t>(params_.dhw, blocksPerDHW);
+  params_.dhwPerBlock = divUp(params_.dhw, blocksPerDHW);
   params_.cPerBlock = cPerBlock;
   params_.dhwc = params_.dhw * params_.c;
   params_.invDHWC = 1.F / static_cast<float>(params_.dhw * params_.cPerGroup);
@@ -844,27 +844,26 @@ void GroupNormNDHWCKernel(const Context& dev_ctx,
         max_grid_z));
   }
 
-  if (divUp<int64_t>(params_.dhw, params_.dhwPerBlock) > max_grid_y) {
+  if (divUp(params_.dhw, params_.dhwPerBlock) > max_grid_y) {
     PADDLE_THROW(common::errors::Unimplemented(
         "GroupNorm kernel launch failed: computed gridDim.y (%ld) exceeds the "
         "hardware limit (%ld). "
         "This may be due to excessively large 'dhw' (%ld). Consider reducing "
         "input spatial dimensions "
         "or adjusting 'dhwPerBlock'.",
-        divUp<int64_t>(params_.dhw, params_.dhwPerBlock),
+        divUp(params_.dhw, params_.dhwPerBlock),
         max_grid_y,
         params_.dhw));
   }
 
-  if (divUp<int64_t>(params_.c, std::max(params_.cPerBlock, 128)) >
-      max_grid_x) {
+  if (divUp(params_.c, std::max(params_.cPerBlock, 128)) > max_grid_x) {
     PADDLE_THROW(common::errors::Unimplemented(
         "GroupNorm kernel launch failed: computed gridDim.x (%ld) exceeds the "
         "hardware limit (%ld). "
         "This may be due to excessively large channel count 'c' (%ld). "
         "Consider reducing the number of channels "
         "or adjusting 'cPerBlock'.",
-        divUp<int64_t>(params_.c, std::max(params_.cPerBlock, 128)),
+        divUp(params_.c, std::max(params_.cPerBlock, 128)),
         max_grid_x,
         params_.c));
   }
