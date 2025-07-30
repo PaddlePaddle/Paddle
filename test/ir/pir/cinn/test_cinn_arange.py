@@ -26,7 +26,7 @@ class TestArange(unittest.TestCase):
         dy_out = dy_compute(*inputs)
 
         static_compute = utils.apply_to_static(
-            dy_compute, use_cinn=True, input_spec=None
+            dy_compute, use_cinn=True, input_spec=input_spec
         )
         st_out = static_compute(*inputs)
 
@@ -77,9 +77,44 @@ class TestArange(unittest.TestCase):
             indices = paddle.arange(2048, dtype="int64")[:1024]
             return x[indices, :1].reshape([1, -1])
 
-        x_spec = InputSpec(shape=[1024, None])
+        x_spec = InputSpec(shape=[1024, 64])
         x = paddle.randn([1024, 64])
         self.eval(func, [x], [x_spec])
+
+    def test_arange_dynamic(self):
+        # cinn_op.generate_shape symbolic input (abs needed)
+        def func(x, y):
+            stop = paddle.shape(y)[1] - 3
+            start = paddle.shape(x)[0] * 2
+            return paddle.arange(start, stop, 2, dtype="int64")
+
+        x_spec = InputSpec(shape=[-1, 2, 3], dtype="int64")
+        y_spec = InputSpec(shape=[2, -1, 3], dtype="int64")
+
+        x = paddle.zeros([2, 2, 3], dtype="int64")
+        y = paddle.zeros([2, 11, 3], dtype="int64")
+        self.eval(func, [x, y], [x_spec, y_spec])
+        self.eval(func, [x, y], None)
+
+    def test_arange_dynamic_nested_broadcast(self):
+        # nested cinn_op.arange and generate_shape with broadcast
+        def func(x, y):
+            start = paddle.shape(x)[0]
+            stop = paddle.shape(y)[1]
+            res = paddle.arange(start, stop, 2, dtype="int32")
+            return (
+                paddle.arange(0, res.shape[0], 1, dtype="int32") * 2
+                + res
+                + paddle.ones([res.shape[0], 1], dtype="int32")
+            )
+
+        x_spec = InputSpec(shape=[-1, 16], dtype="int32")
+        y_spec = InputSpec(shape=[16, -1], dtype="int32")
+
+        x = paddle.zeros([2, 16], dtype="int32")
+        y = paddle.zeros([16, 32], dtype="int32")
+        self.eval(func, [x, y], [x_spec, y_spec])
+        self.eval(func, [x, y], None)
 
 
 if __name__ == "__main__":

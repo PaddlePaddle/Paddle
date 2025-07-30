@@ -672,7 +672,7 @@ class PADDLE_API Tensor final {
    *
    * @return Tensor
    */
-  Tensor contiguous();
+  Tensor contiguous() const;
 
  private:
   /**

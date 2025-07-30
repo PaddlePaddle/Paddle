@@ -2119,17 +2119,20 @@ void FusedRMSNormGradInferMeta(const MetaTensor& x,
                                MetaTensor* x_grad,
                                MetaTensor* scale_grad) {
   PADDLE_ENFORCE_EQ(
-      x.dtype() == DataType::FLOAT32 || x.dtype() == DataType::BFLOAT16,
+      x.dtype() == DataType::FLOAT32 || x.dtype() == DataType::FLOAT16 ||
+          x.dtype() == DataType::BFLOAT16,
       true,
       common::errors::InvalidArgument(
-          "The dtype of x must be FLOAT32 or BFLOAT16, but got [%s]",
+          "The dtype of x must be FLOAT32, FLOAT16 or BFLOAT16, but got [%s]",
           x.dtype()));
   PADDLE_ENFORCE_EQ(
-      scale.dtype() == DataType::FLOAT32 || scale.dtype() == DataType::BFLOAT16,
+      scale.dtype() == DataType::FLOAT32 ||
+          scale.dtype() == DataType::FLOAT16 ||
+          scale.dtype() == DataType::BFLOAT16,
       true,
-      common::errors::InvalidArgument(
-          "The dtype of scale must be FLOAT32 or BFLOAT16, but got [%s]",
-          scale.dtype()));
+      common::errors::InvalidArgument("The dtype of scale must be FLOAT32, "
+                                      "FLOAT16 or BFLOAT16, but got [%s]",
+                                      scale.dtype()));
   if (x_grad && x) {
     x_grad->share_meta(x);
   }

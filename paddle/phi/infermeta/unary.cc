@@ -2311,6 +2311,7 @@ static phi::DDim ValidateShape(const std::vector<int64_t> shape,
   auto in_dims_vec = common::vectorize(in_dims);
   std::vector<int64_t> output_shape(shape.size(), 0);
   int64_t capacity = 1;
+  size_t shape_zero_cnt = 0;
   int unk_dim_idx = -1;
 
   for (size_t i = 0; i < shape.size(); ++i) {
@@ -2327,6 +2328,7 @@ static phi::DDim ValidateShape(const std::vector<int64_t> shape,
       unk_dim_idx = static_cast<int>(i);
       output_shape[i] = shape[i];
     } else if (shape[i] == 0) {
+      ++shape_zero_cnt;
       if (static_cast<int>(i) < in_dims.size()) {
         if (in_size == 0) {
           // such as [3, 2, 0] -> [0, 0] is [0, 0]; [3, 2, 0] -> [10, 0] is [10,
@@ -2367,6 +2369,51 @@ static phi::DDim ValidateShape(const std::vector<int64_t> shape,
                       0,
                       common::errors::InvalidArgument(
                           "Only Zero-Size Tensor'shape can contain 0"));
+    if (unk_dim_idx != -1) {
+      size_t in_dims_zero_cnt = 0;
+      for (size_t i = 0; i < in_dims_vec.size(); ++i)
+        if (in_dims_vec[i] == 0) in_dims_zero_cnt++;
+      // When the number of 0 is equal, it means that non-zero dimensions
+      // are not affected by 0
+      if (shape_zero_cnt == in_dims_zero_cnt) {
+        int64_t in_dims_pdt = 1;
+        int64_t shape_pdt = 1;
+        for (size_t i = 0; i < shape.size(); ++i)
+          if (shape[i] != 0 && shape[i] != -1) shape_pdt *= shape[i];
+        for (size_t i = 0; i < in_dims_vec.size(); ++i)
+          if (in_dims_vec[i] != 0 && in_dims_vec[i] != -1)
+            in_dims_pdt *= in_dims_vec[i];
+        output_shape[unk_dim_idx] = in_dims_pdt / shape_pdt;
+        PADDLE_ENFORCE_EQ(
+            output_shape[unk_dim_idx] * shape_pdt,
+            in_dims_pdt,
+            common::errors::InvalidArgument(
+                "The 'shape' attribute in ReshapeOp is invalid. "
+                "The input tensor X'size must be divisible by known "
+                "capacity of 'shape'. "
+                "But received X's shape = [%s], "
+                "'shape' is [%s].",
+                in_dims,
+                common::make_ddim(shape)));
+        return common::make_ddim(output_shape);
+      } else if (shape_zero_cnt > in_dims_zero_cnt) {
+        // more 0s after replacement, determine whether non-zero dimensions
+        // are affected by 0s
+        int64_t in_dims_pdt = 1;
+        int64_t shape_pdt = 1;
+        for (size_t i = 0; i < shape.size(); ++i)
+          if (shape[i] != 0 && shape[i] != -1) shape_pdt *= shape[i];
+        for (size_t i = 0; i < in_dims_vec.size(); ++i)
+          if (in_dims_vec[i] != 0 && in_dims_vec[i] != -1)
+            in_dims_pdt *= in_dims_vec[i];
+        PADDLE_ENFORCE_EQ(
+            shape_pdt,
+            in_dims_pdt,
+            common::errors::InvalidArgument(
+                "Provided sizes don't multiply up to the size of dim given "
+                "in the input tensor"));
+      }
+    }
     PADDLE_ENFORCE_EQ(unk_dim_idx,
                       -1,
                       common::errors::InvalidArgument(

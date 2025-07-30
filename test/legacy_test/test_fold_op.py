@@ -229,7 +229,7 @@ class TestFoldOpError(unittest.TestCase):
                 )
 
             def test_dilations_shape():
-                # dialtions_size must be 2
+                # dilations_size must be 2
                 x = paddle.randn(shape=[2, 6, 6], dtype="float32")
                 out = fold(
                     x,
@@ -239,7 +239,7 @@ class TestFoldOpError(unittest.TestCase):
                 )
 
             def test_strides_shape():
-                # strids_size must be 2
+                # strides_size must be 2
                 x = paddle.randn(shape=[2, 6, 6], dtype="float32")
                 out = fold(
                     x,
@@ -283,6 +283,17 @@ class TestFoldOpError(unittest.TestCase):
                     strides=0,
                 )
 
+            def test_zero_size():
+                x = paddle.randn(shape=[0, 1, 1], dtype="float32")
+                out = fold(
+                    x,
+                    output_sizes=[0, 0],
+                    kernel_sizes=[0, 0],
+                    dilations=0,
+                    paddings=[0, 0],
+                    strides=0,
+                )
+
             self.assertRaises(AssertionError, test_input_shape)
             self.assertRaises(AssertionError, test_kernel_shape)
             self.assertRaises(ValueError, test_padding_shape)
@@ -292,6 +303,7 @@ class TestFoldOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_output_size_2)
             self.assertRaises(ValueError, test_block_h_w)
             self.assertRaises(ValueError, test_GT_0)
+            self.assertRaises(AssertionError, test_zero_size)
 
 
 if __name__ == '__main__':

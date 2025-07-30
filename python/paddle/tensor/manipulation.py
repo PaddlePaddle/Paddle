@@ -5029,6 +5029,7 @@ def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
             x,
             'x',
             [
+                'float8_e4m3fn',
                 'float16',
                 'float32',
                 'float64',

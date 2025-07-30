@@ -549,7 +549,7 @@ bool Tensor::is_contiguous() const {
   }
 }
 
-Tensor Tensor::contiguous() {
+Tensor Tensor::contiguous() const {
   if (is_dense_tensor() || is_dist_tensor()) {
     phi::DenseTensor *dense_tensor = nullptr;
     if (is_dist_tensor()) {

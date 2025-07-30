@@ -3,7 +3,7 @@ name: Slice-baseline
 on:
   workflow_dispatch:
   schedule:
-    - cron: '30 2 * * *'
+    - cron: '0 20 * * *'
 
 permissions: read-all
 
