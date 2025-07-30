@@ -17,6 +17,7 @@
 #include <Python.h>
 
 #include <algorithm>
+#include <cstdint>
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/eager/utils.h"
@@ -30,6 +31,7 @@
 #include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 #include "paddle/phi/kernels/funcs/strided_slice.h"
+#include "paddle/utils/pybind.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
@@ -746,12 +748,12 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
   while (i < bool_index.shape().size()) {
     PADDLE_ENFORCE_EQ(
         bool_index.shape()[i],
-        tensor_shape[i],
+        tensor_shape[i + pos_of_new_dim],
         common::errors::OutOfRange(
             "The dimension of bool index doesn't match indexed array along "
             "dimension %d, the target dimension is %d, but received %d",
             i,
-            tensor_shape[i],
+            tensor_shape[i + pos_of_new_dim],
             bool_index.shape()[i]));
     i++;
   }
@@ -786,6 +788,9 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
 
     AdvancedIndex ad = AdvancedIndex(tensor, indices_int64);
     const bool accumulate = false;
+    const int64_t input_offset_bytes =
+        reinterpret_cast<const char*>(tensor.data()) -
+        reinterpret_cast<const char*>(self_tensor.data());
 
     return index_elementwise_get_ad_func(self_tensor,
                                          ad.indices,
@@ -793,7 +798,7 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
                                          ad.src_strides,
                                          ad.indexed_sizes,
                                          ad.indexed_strides,
-                                         slice_offset,
+                                         input_offset_bytes,
                                          accumulate);
   } else {
     if (bool_index.shape().size() == 1)
@@ -1209,6 +1214,7 @@ static void ApplyGetitem(const int index_size,
                                  (*transed_index)[0],
                                  slice_offset,
                                  pos_of_new_dim);
+    return;
   } else {
     // get value for int tensor
     ParseBoolAndBroadcastIndices(transed_index);
@@ -1283,7 +1289,6 @@ static void ApplyGetitem(const int index_size,
       return;
     }
   }
-
   handle_transpose(*out);
 }
 
