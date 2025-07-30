@@ -165,8 +165,6 @@ void IndexElementwiseGetKernel(const Context& dev_ctx,
     return;
   }
 
-  // x.dims differs with input_dims when x is a non-contiguous tensor, but is
-  // transformed to contiguous one for this kernel is not registered as strided.
   CPUIndexElementwiseGetKernel<T, int64_t>(dev_ctx,
                                            x,
                                            index,

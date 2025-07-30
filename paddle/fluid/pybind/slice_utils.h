@@ -72,10 +72,7 @@ static inline paddle::Tensor expand_inplace(paddle::Tensor tensor,
                                             paddle::Tensor to_expand) {
   if (tensor.dims() == to_expand.dims()) {
     return to_expand;
-  } else if (tensor.dims()[0] == to_expand.dims()[0]) {
-    return expand_ad_func(to_expand, common::vectorize<int64_t>(tensor.dims()));
   } else {
-    // to_expand = squeeze_ad_func(to_expand, {-1});
     return expand_ad_func(to_expand, common::vectorize<int64_t>(tensor.dims()));
   }
 }
@@ -982,8 +979,7 @@ static void DealWithIndex(const int pos_of_new_dim,
 }
 
 static inline paddle::Tensor expand_inplace(paddle::Tensor* tensor,
-                                            paddle::Tensor* to_expand,
-                                            int axis = 0) {
+                                            paddle::Tensor* to_expand) {
   if (tensor->dims() == to_expand->dims()) {
     return *to_expand;
   } else if (tensor->dims()[0] == to_expand->dims()[0]) {
@@ -1228,6 +1224,7 @@ static void ApplyGetitem(const int index_size,
                                  (*transed_index)[0],
                                  slice_offset,
                                  pos_of_new_dim);
+    return;
   } else {
     // get value for int tensor
     ParseBoolAndBroadcastIndices(transed_index);
@@ -1302,12 +1299,7 @@ static void ApplyGetitem(const int index_size,
       return;
     }
   }
-  if (!(transed_index[0][0].dtype() == phi::DataType::BOOL &&
-        FLAGS_use_stride_kernel)) {
-    // Case for bool tensor with stride kernel is handled in
-    // getValueForBoolTensor, so needn't to transpose out again.
-    handle_transpose(*out);
-  }
+  handle_transpose(*out);
 }
 
 }  // namespace pybind
