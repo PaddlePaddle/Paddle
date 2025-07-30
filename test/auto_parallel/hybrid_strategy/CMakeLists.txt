@@ -178,8 +178,9 @@ if((WITH_GPU) AND (LINUX))
 endif()
 if((WITH_GPU) AND (LINUX))
   py_test_modules(
-    test_get_group_in_different_hybrid_configs MODULES test_get_group_in_different_hybrid_configs ENVS
+    test_get_group_in_different_hybrid_configs MODULES
+    test_get_group_in_different_hybrid_configs ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
-  set_tests_properties(test_get_group_in_different_hybrid_configs PROPERTIES TIMEOUT "150" LABELS
-                                                    "RUN_TYPE=HYBRID")
+  set_tests_properties(test_get_group_in_different_hybrid_configs
+                       PROPERTIES TIMEOUT "150" LABELS "RUN_TYPE=HYBRID")
 endif()

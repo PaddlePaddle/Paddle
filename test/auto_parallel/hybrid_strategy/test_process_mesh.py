@@ -21,7 +21,7 @@ class TestProcessMeshPass(test_base.CommunicationTestDistBase):
     def setUp(self):
         super().setUp(
             num_of_devices=2,
-            timeout=150,
+            timeout=50,
         )
         self._default_envs = {
             "FLAGS_cudnn_deterministic": "1",
