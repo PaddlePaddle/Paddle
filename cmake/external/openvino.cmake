@@ -104,8 +104,7 @@ file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/openvino/convert.patch
 
 set(OPENVINO_PATCH_COMMAND
     git checkout -- . && git fetch --depth=1 origin ${OPENVINO_COMMIT} && git
-    checkout ${OPENVINO_COMMIT} && patch -Np1 -d ${SOURCE_DIR} <
-    ${native_convert} || true)
+    checkout ${OPENVINO_COMMIT} && git fetch origin pull/31512/head:pr31512 && git checkout pr31512)
 
 ExternalProject_Add(
   ${OPENVINO_PROJECT}
