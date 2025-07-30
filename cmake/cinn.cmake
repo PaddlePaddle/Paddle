@@ -87,9 +87,10 @@ if(WITH_GPU)
 
   message(
     STATUS
-      "copy paddle/cinn/common/float16.h paddle/cinn/common/bfloat16.h to $ENV{runtime_include_dir}"
+      "copy paddle/cinn/common/float16.h paddle/cinn/common/bfloat16.h paddle/cinn/common/float8e4m3.h to $ENV{runtime_include_dir}"
   )
   file(COPY paddle/cinn/common/float16.h paddle/cinn/common/bfloat16.h
+            paddle/cinn/common/float8e4m3.h
        DESTINATION $ENV{runtime_include_dir})
 
   find_library(CUDASTUB libcuda.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64/stubs/

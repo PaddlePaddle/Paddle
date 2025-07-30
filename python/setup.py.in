@@ -1175,6 +1175,11 @@ if '${WITH_CINN}' == 'ON':
         shutil.copy(cinn_bf16_file, libs_path)
         package_data['paddle.libs']+=['bfloat16.h']
 
+    cinn_fp8_file = '${CINN_INCLUDE_DIR}/paddle/cinn/runtime/cuda/float8e4m3.h'
+    if os.path.exists(cinn_fp8_file):
+        shutil.copy(cinn_fp8_file, libs_path)
+        package_data['paddle.libs']+=['float8e4m3.h']
+
     if '${CMAKE_BUILD_TYPE}' == 'Release' and os.name != 'nt':
         command = "patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_nvrtc/lib/:$ORIGIN/../../nvidia/cuda_runtime/lib/:$ORIGIN/../../nvidia/cublas/lib/:$ORIGIN/../../nvidia/cudnn/lib/:$ORIGIN/../../nvidia/curand/lib/:$ORIGIN/../../nvidia/cusolver/lib/:$ORIGIN/../../nvidia/nvtx/lib/:$ORIGIN/' %s/${CINN_LIB_NAME}" % libs_path
         if os.system(command) != 0:

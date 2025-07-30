@@ -56,6 +56,7 @@ namespace backends {
 using BinaryInstruction = llvm::Instruction::BinaryOps;
 using cinn::common::bfloat16;
 using cinn::common::float16;
+using cinn::common::float8e4m3;
 
 namespace {
 
@@ -263,6 +264,9 @@ llvm::Value *CodeGenLLVM::Visit(const ir::FloatImm *op) {
     return llvm::ConstantFP::get(b_->getBFloatTy(), op->value);
   } else if (op->type().is_float16()) {
     return llvm::ConstantFP::get(b_->getHalfTy(), op->value);
+  } else if (op->type().is_float8e4m3()) {
+    PADDLE_THROW(::common::errors::InvalidArgument(
+        "llvm not support float8 yet."));  // TODO(YuhanXu)
   } else {
     PADDLE_THROW(::common::errors::InvalidArgument("illegal float type."));
   }
@@ -566,6 +570,8 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Cast *op) {
       callee = m_->getFunction(runtime::intrinsic::pod_value_to_bfloat16);
     } else if (op->type().is_float16()) {
       callee = m_->getFunction(runtime::intrinsic::pod_value_to_float16);
+    } else if (op->type().is_float8e4m3()) {
+      callee = m_->getFunction(runtime::intrinsic::pod_value_to_float8e4m3);
     } else if (op->type() == type_of<void *>()) {
       callee = m_->getFunction(runtime::intrinsic::pod_value_to_void_p);
     } else if (op->type() == type_of<cinn_buffer_t *>() ||
@@ -1794,6 +1800,8 @@ llvm::Value *CodeGenLLVM::Visit(const ir::intrinsics::PodValueToX *op) {
     callee = m_->getFunction(runtime::intrinsic::pod_value_to_double);
   } else if (to_type == type_of<bfloat16>()) {
     callee = m_->getFunction(runtime::intrinsic::pod_value_to_bfloat16);
+  } else if (to_type == type_of<float8e4m3>()) {
+    callee = m_->getFunction(runtime::intrinsic::pod_value_to_float8e4m3);
   } else if (to_type == type_of<float16>()) {
     callee = m_->getFunction(runtime::intrinsic::pod_value_to_float16);
   } else if (to_type == type_of<bool>()) {
