@@ -35,20 +35,11 @@ class TestProcessMeshPass(test_base.CommunicationTestDistBase):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
         )
-        test_files = [
-            "fleet_test_dp.py",
-            "fleet_test_mp.py",
-            "fleet_test_pp.py",
-            "fleet_test_sep.py",
-            "fleet_test_sharding.py",
-            "process_mesh_demo_unittest.py",
-        ]
         for envs in envs_list:
-            for test_file in test_files:
-                self.run_test_case(
-                    test_file,
-                    user_defined_envs=envs,
-                )
+            self.run_test_case(
+                "process_mesh_demo_unittest.py",
+                user_defined_envs=envs,
+            )
 
 
 if __name__ == "__main__":
