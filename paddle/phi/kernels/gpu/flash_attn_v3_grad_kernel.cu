@@ -242,7 +242,7 @@ void FlashAttnV3GradBaseKernel(
   bool const is_flashmask = startend_row_indices_.is_initialized();
   int const kBlockM_sm90 =
       head_size_rounded <= 64
-          ? (is_flashmask && !is_causal)? 64 :(is_causal && softcap > 0.0 ? 96 : 128)
+          ? (is_flashmask && !is_causal)? 64 :(is_causal && softcap || is_flashmask > 0.0 ? 96 : 128)
           : (head_size_rounded <= 96
                  ? 64
                  : (head_size_rounded <= 128
@@ -257,7 +257,7 @@ void FlashAttnV3GradBaseKernel(
       arch >= 90 ? kBlockM_sm90
                  : (arch == 86 || arch == 89 ? kBlockM_sm86 : kBlockM_sm80);
   int const kBlockN_sm90 =
-      head_size_rounded <= 128 ? (is_flashmask && !is_causal)? 64: 128 : (head_size_rounded <= 192 ? 96 : 80);
+      head_size_rounded <= 64 && (is_flashmask && !is_causal) ? 96 : head_size_rounded <= 128 ? (is_flashmask && !is_causal)? 64: 128 : (head_size_rounded <= 192 ? 96 : 80);
   int const kBlockN_sm80 =
       head_size_rounded <= 128 ? 128 : (head_size_rounded <= 192 ? 80 : 64);
   int const kBlockN_sm86 =
@@ -271,6 +271,7 @@ void FlashAttnV3GradBaseKernel(
   int const kBlockN =
       arch >= 90 ? kBlockN_sm90
                  : (arch == 86 || arch == 89 ? kBlockN_sm86 : kBlockN_sm80);
+  // std::cout << "kBlockM: " << kBlockM << ", kBlockN: " << kBlockN << std::endl;
   auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
   int const seqlen_q_rounded = round_multiple(seqlen_q, kBlockM);
   int const seqlen_k_rounded = round_multiple(seqlen_k, kBlockN);
