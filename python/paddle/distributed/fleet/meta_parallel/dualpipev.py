@@ -344,7 +344,9 @@ class DualPipeVParallel(PipelineParallel):
             backward_phase, backward_acc_id, input_grads=backward_input_grads
         )
 
-    def _commit_and_wait_comm(self, p2p_overlap=False) -> None:
+    def _commit_and_wait_comm(
+        self, p2p_overlap=False, use_outer_event_wait=False
+    ) -> None:
         common_forward_ops_num = (
             len(self.comm_forward_ops)
             if self.comm_forward_ops is not None
@@ -367,6 +369,8 @@ class DualPipeVParallel(PipelineParallel):
         pp_raw_stream = self.pp_group.process_group.get_stream(
             paddle.framework._current_expected_place_()
         )
+        if use_outer_event_wait:
+            self.pp_group.process_group.set_outer_wait(True)
 
         if common_forward_ops_num > 0:
             fwd_reqs = batch_isend_irecv(self.comm_forward_ops)
@@ -374,6 +378,10 @@ class DualPipeVParallel(PipelineParallel):
             if not use_stream_wait_event:
                 for req in fwd_reqs:
                     req.wait()
+
+        if use_outer_event_wait:
+            self.pp_group.process_group.set_outer_wait(False)
+
         if use_stream_wait_event:
             forward_event_to_wait = deep_ep.get_event_from_custom_stream(
                 pp_raw_stream
@@ -534,6 +542,7 @@ class DualPipeVParallel(PipelineParallel):
         first_chunk=False,
         last_chunk=False,
         main_stage=False,
+        last_stage_and_first_chunk=False,
     ) -> None:
         if recv0:
             self._recv_forward(forward_phase)
@@ -560,15 +569,13 @@ class DualPipeVParallel(PipelineParallel):
             and self._overlap_p2p_comm
             and deep_ep is not None
             and (need_send_forward and need_send_backward)
+            and (not last_stage_and_first_chunk)
         )
 
-        if use_outer_event_wait:
-            self.pp_group.process_group.set_outer_wait(True)
+        combine_bw_wait_event = self._commit_and_wait_comm(
+            not last_chunk, use_outer_event_wait
+        )
 
-        combine_bw_wait_event = self._commit_and_wait_comm(True)
-
-        if use_outer_event_wait:
-            self.pp_group.process_group.set_outer_wait(False)
         self._forward_backward_compute(
             forward_phase,
             backward_phase,
@@ -735,7 +742,11 @@ class DualPipeVParallel(PipelineParallel):
             else:
 
                 self._forward_backward_pass(
-                    0, 1, micro_datasets, main_stage=True
+                    0,
+                    1,
+                    micro_datasets,
+                    main_stage=True,
+                    last_stage_and_first_chunk=self.is_pipeline_last_stage(),
                 )
                 self._forward_backward_pass(
                     1,
