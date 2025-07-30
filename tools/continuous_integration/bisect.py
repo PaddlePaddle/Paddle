@@ -113,7 +113,7 @@ while True:
     # Clean builds and compile.
     # We assume mainline commits should always compile.
     os.chdir(args.build_dir)
-    sys.stdout.write('eval commit %d/%d: %s\n' % (pick_idx, len(commits), pick))
+    sys.stdout.write(f'eval commit {pick_idx}/{len(commits)}: {pick}\n')
     # Link error can happen without complete clean up.
     cmd = (
         'rm -rf * && '

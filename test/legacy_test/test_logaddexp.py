@@ -79,5 +79,37 @@ class TestLogsumexpAPI(unittest.TestCase):
         self.api_case()
 
 
+class TestLogsumexpAPI_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.place = (
+            paddle.CUDAPlace(0)
+            if paddle.base.core.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+
+    def api_case(self):
+        self.x = np.random.uniform(-1, 1, self.xshape).astype(self.dtype)
+        self.y = np.random.uniform(-1, 1, self.yshape).astype(self.dtype)
+        out_ref = ref_logaddexp(self.x, self.y)
+
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x)
+        y = paddle.to_tensor(self.y)
+        x.stop_gradient = False
+        y.stop_gradient = False
+        out = paddle.logaddexp(x, y)
+        np.testing.assert_allclose(out.numpy(), out_ref, atol=1e-06)
+
+        loss = paddle.sum(out)
+        loss.backward()
+        np.testing.assert_allclose(x.grad.shape, x.shape)
+
+    def test_api(self):
+        self.xshape = [1, 2, 3, 0]
+        self.yshape = [1, 2, 3, 1]
+        self.dtype = np.float32
+        self.api_case()
+
+
 if __name__ == '__main__':
     unittest.main()

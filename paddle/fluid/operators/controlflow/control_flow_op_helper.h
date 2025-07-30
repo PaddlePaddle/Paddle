@@ -121,7 +121,7 @@ static void AssignZeroToParentScope(
       PADDLE_ENFORCE_EQ(input_tensors.size(),
                         outside_tensors->size(),
                         common::errors::InvalidArgument(
-                            "DenseTensorArray outside_var %s doen't have same "
+                            "DenseTensorArray outside_var %s doesn't have same "
                             "size as input_var %s.",
                             outside_grad_name,
                             input_name));

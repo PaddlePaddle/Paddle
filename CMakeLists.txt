@@ -50,11 +50,13 @@ option(WITH_ONEMKL "Compile PaddlePaddle with oneMKL" OFF)
 option(WITH_GPU "Compile PaddlePaddle with NVIDIA GPU" ${CUDA_FOUND})
 option(WITH_MPI "Compile PaddlePaddle with MPI" OFF)
 option(WITH_TENSORRT "Compile PaddlePaddle with NVIDIA TensorRT" OFF)
+option(WITH_OPENVINO "Compile PaddlePaddle with Intel OpenVINO" OFF)
 option(WITH_XPU "Compile PaddlePaddle with BAIDU KUNLUN XPU" OFF)
 option(WITH_XPU_KP "Compile PaddlePaddle with BAIDU XPU compiler " OFF)
 option(WITH_XPU_XFT "Compile PaddlePaddle with BAIDU XPU-XFT" OFF)
 option(WITH_XPU_PLUGIN "Compile PaddlePaddle with BAIDU XPU plugin" OFF)
 option(WITH_XPU_XRE5 "Compile PaddlePaddle with BAIDU XPU XRE 5" OFF)
+option(WITH_XPU_FFT "Compile PaddlePaddle with BAIDU XPU FFT" OFF)
 option(WITH_WIN_DUMP_DBG "Compile with windows core dump debug mode" OFF)
 option(WITH_ROCM "Compile PaddlePaddle with ROCM platform" OFF)
 option(WITH_IPU "Compile PaddlePaddle with Graphcore IPU" OFF)
@@ -64,7 +66,7 @@ option(WITH_SETUP_INSTALL "Compile PaddlePaddle with setup.py" OFF)
 option(WITH_SHARED_PHI "Compile PaddlePaddle with SHARED LIB of PHI" ON)
 option(CINN_WITH_CUDNN "Compile CINN with CUDNN support" ON)
 option(WITH_PIP_CUDA_LIBRARIES
-       "Paddle uses the CUDA library provided by NVIDIA" OFF)
+       "Paddle uses the CUDA library provided by NVIDIA" ON)
 option(WITH_PIP_TENSORRT "Paddle uses the tensorrt provided by NVIDIA" OFF)
 option(WITH_NIGHTLY_BUILD
        "Compile nightly paddle whl package of the develop branch" OFF)
@@ -93,6 +95,9 @@ if(WITH_GPU AND WITH_XPU_XFT)
 endif()
 if(WITH_GPU AND WITH_XPU_XRE5)
   message(FATAL_ERROR "Error when compile GPU and XPU-XRE5 at the same time")
+endif()
+if(WITH_GPU AND WITH_XPU_FFT)
+  message(FATAL_ERROR "Error when compile GPU and XPU-FFT at the same time")
 endif()
 if(WITH_GPU AND WITH_ROCM)
   message(FATAL_ERROR "Error when compile CUDA and ROCM at the same time")
@@ -282,7 +287,7 @@ option(WITH_MULTINODE_TESTING "Test multinode apis and ops" OFF)
 option(WITH_MKL "Compile PaddlePaddle with MKL support." ${AVX_FOUND})
 option(WITH_SYSTEM_BLAS "Use system blas library" OFF)
 option(WITH_DISTRIBUTE "Compile with distributed support" OFF)
-option(WITH_BRPC_RDMA "Use brpc rdma as the rpc protocal" OFF)
+option(WITH_BRPC_RDMA "Use brpc rdma as the rpc protocol" OFF)
 option(ON_INFER "Turn on inference optimization and inference-lib generation"
        ON)
 option(WITH_CPP_DIST "Install PaddlePaddle C++ distribution" OFF)
@@ -312,6 +317,7 @@ option(
   OFF)
 option(WITH_CINN "Compile PaddlePaddle with CINN" OFF)
 option(WITH_NCCL "Compile PaddlePaddle with NCCL support" ON)
+option(WITH_FLAGCX "Compile PaddlePaddle with FLAGCX support" OFF)
 option(WITH_RCCL "Compile PaddlePaddle with RCCL support" ON)
 option(WITH_XPU_BKCL "Compile PaddlePaddle with BAIDU KUNLUN XPU BKCL" OFF)
 option(WITH_CRYPTO "Compile PaddlePaddle with crypto support" ON)
@@ -333,7 +339,7 @@ option(WITH_POCKETFFT "Compile with pocketfft support" ON)
 option(WITH_RECORD_BUILDTIME
        "Compile PaddlePaddle with record all targets build time" OFF)
 option(WITH_CUSTOM_DEVICE "Compile with custom device support" OFF)
-option(WITH_ARM_BRPC "Supprot Brpc in Arm" OFF)
+option(WITH_ARM_BRPC "Support Brpc in Arm" OFF)
 option(WITH_FLPS "FL PS mode" OFF)
 option(WITH_RPC "Compile with rpc support" ${WITH_DISTRIBUTE})
 option(WITH_CUDNN_FRONTEND
@@ -476,6 +482,14 @@ if(NOT WITH_XPU AND WITH_XPU_XRE5)
       CACHE STRING "Disable XRE5 when compiling without XPU" FORCE)
 endif()
 
+if(NOT WITH_XPU AND WITH_XPU_FFT)
+  message((WARNING
+           "Disable FFT when compiling without XPU. Force WITH_XPU_FFT=OFF"))
+  set(WITH_XPU_FFT
+      OFF
+      CACHE STRING "Disable FFT when compiling without XPU" FORCE)
+endif()
+
 if(WITH_NCCL)
   add_definitions("-DPADDLE_WITH_NCCL")
   include(nccl)
@@ -535,6 +549,10 @@ else()
         "If the environment is multi-card, the WITH_RCCL option needs to be turned on, otherwise only a single card can be used."
     )
   endif()
+endif()
+
+if(WITH_FLAGCX)
+  add_definitions("-DPADDLE_WITH_FLAGCX")
 endif()
 
 if(WITH_HETERPS AND WITH_PSLIB)
@@ -710,7 +728,7 @@ set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
 add_definitions(-DPADDLE_DLL_EXPORT)
 
 if(ON_INFER)
-  # you can trun off the paddle fluid and inference lib by set ON_INFER=OFF
+  # you can turn off the paddle fluid and inference lib by set ON_INFER=OFF
   message(
     STATUS "On inference mode, will take place some specific optimization.")
   include(inference_lib)

@@ -28,7 +28,7 @@ class TestQuantileAndNanquantile(unittest.TestCase):
     """
     This class is used for numerical precision testing. If there is
     a corresponding numpy API, the precision comparison can be performed directly.
-    Otherwise, it needs to be verified by numpy implementated function.
+    Otherwise, it needs to be verified by numpy implemented function.
     """
 
     def setUp(self):
@@ -131,7 +131,7 @@ class TestQuantileAndNanquantile(unittest.TestCase):
                 )
 
     def test_backward(self):
-        def check_grad(x, q, axis, target_gard, apis=None):
+        def check_grad(x, q, axis, target_grad, apis=None):
             x = np.array(x, dtype="float32")
             paddle.disable_static()
             for op, _ in apis or API_list:
@@ -139,7 +139,7 @@ class TestQuantileAndNanquantile(unittest.TestCase):
                 op(x_p, q, axis).sum().backward()
                 np.testing.assert_allclose(
                     x_p.grad.numpy(),
-                    np.array(target_gard, dtype="float32"),
+                    np.array(target_grad, dtype="float32"),
                     rtol=1e-05,
                     equal_nan=True,
                 )
@@ -178,7 +178,7 @@ class TestQuantileAndNanquantile(unittest.TestCase):
                         )[0]
                         np.testing.assert_allclose(
                             o,
-                            np.array(target_gard, dtype="float32"),
+                            np.array(target_grad, dtype="float32"),
                             rtol=1e-05,
                             equal_nan=True,
                         )
@@ -206,6 +206,34 @@ class TestQuantileAndNanquantile(unittest.TestCase):
             [0.5, 0, 0.5],
             [(paddle.nanquantile, None)],
         )
+
+    def test_nanquantile_ZeroSize(self):
+        input_data = np.full(shape=[2, 0, 3], fill_value=np.nan)
+        x = paddle.to_tensor(input_data)
+        x.stop_gradient = False
+        paddle_res = paddle.nanquantile(x, q=0.35, axis=0)
+        np_res = np.nanquantile(input_data, q=0.35, axis=0)
+        np.testing.assert_allclose(
+            paddle_res.numpy(), np_res, rtol=1e-05, equal_nan=True
+        )
+
+        loss = paddle.sum(paddle_res)
+        loss.backward()
+        np.testing.assert_allclose(x.grad.shape, x.shape)
+
+    def test_quantile_ZeroSize(self):
+        input_data = np.full(shape=[2, 0, 3], fill_value=np.nan)
+        x = paddle.to_tensor(input_data)
+        x.stop_gradient = False
+        paddle_res = paddle.quantile(x, q=0.35, axis=0)
+        np_res = np.quantile(input_data, q=0.35, axis=0)
+        np.testing.assert_allclose(
+            paddle_res.numpy(), np_res, rtol=1e-05, equal_nan=True
+        )
+
+        loss = paddle.sum(paddle_res)
+        loss.backward()
+        np.testing.assert_allclose(x.grad.shape, x.shape)
 
 
 class TestMuitlpleQ(unittest.TestCase):

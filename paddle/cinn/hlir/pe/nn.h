@@ -19,7 +19,6 @@
 
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/lang/compute.h"
-#include "paddle/cinn/poly/stage.h"
 
 namespace cinn {
 namespace hlir {
@@ -464,7 +463,7 @@ ir::Tensor DropoutInfer(
  *     out = true_value
  * 2. condition expr = false
  *     out = false_value
- * @param ouput_name : the name of the output tensor.
+ * @param output_name : the name of the output tensor.
  */
 ir::Tensor Select(const ir::Tensor &condition,
                   const ir::Tensor &true_value,

@@ -114,7 +114,7 @@ class DqMmaBase {
                               Shape::kN / WarpGemm::kN,
                               Shape::kK / WarpGemm::kK>;
 
-  /// Number of warp-level GEMM oeprations
+  /// Number of warp-level GEMM operations
   static int const kWarpGemmIterations =
       (WarpGemm::kK / Operator::Policy::MmaShape::kK);
 
@@ -169,7 +169,8 @@ class DqMmaBase {
     AlignedBuffer<typename Operator::ElementB, ShapeB::kCount> operand_B;
 
     /// Buffer to hold scales for threadblock
-    AlignedBuffer<ElementScale, Shape::kN> operand_scale;
+    /// Note(zkk): allocate more used in group wise weight-only.
+    AlignedBuffer<ElementScale, Shape::kN * kStages> operand_scale;
 
    public:
     //

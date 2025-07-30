@@ -562,7 +562,7 @@ function(cc_test_old TARGET_NAME)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
     cc_test_build(${TARGET_NAME} SRCS ${cc_test_SRCS} DEPS ${cc_test_DEPS})
-    # we donot test hcom op, because it need complex configuration
+    # we do not test hcom op, because it need complex configuration
     # with more than one machine
     cc_test_run(${TARGET_NAME} COMMAND ${TARGET_NAME} ARGS ${cc_test_ARGS})
   elseif(WITH_TESTING AND NOT TEST ${TARGET_NAME})
@@ -589,6 +589,10 @@ function(paddle_test_build TARGET_NAME)
     endif()
     if(WITH_SHARED_PHI)
       target_link_libraries(${TARGET_NAME} phi)
+      if(WITH_GPU)
+        target_link_libraries(${TARGET_NAME} -Wl,--as-needed phi_core phi_gpu
+                              -Wl,--no-as-needed)
+      endif()
       add_dependencies(${TARGET_NAME} phi)
     endif()
     if(WITH_SHARED_IR)
@@ -599,8 +603,9 @@ function(paddle_test_build TARGET_NAME)
       target_link_libraries(${TARGET_NAME} ${PYTHON_LIBRARIES})
     endif()
     if(WITH_CINN)
-      target_link_libraries(${TARGET_NAME} $<TARGET_LINKER_FILE:cinnapi>
-                            cinn_transforms)
+      target_link_libraries(${TARGET_NAME} -Wl,--as-needed cinnapi
+                            -Wl,--no-as-needed)
+      target_link_libraries(${TARGET_NAME} cinn_transforms)
       add_dependencies(${TARGET_NAME} cinnapi)
     endif()
     if(WITH_XPU)
@@ -726,6 +731,10 @@ function(nv_test TARGET_NAME)
       target_link_libraries(${TARGET_NAME} ${PYTHON_LIBRARIES})
     else()
       target_link_libraries(${TARGET_NAME} python)
+      if(WITH_SHARED_PHI)
+        target_link_libraries(${TARGET_NAME} -Wl,--as-needed phi_core phi_gpu
+                              -Wl,--no-as-needed)
+      endif()
     endif()
     add_dependencies(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main)
     common_link(${TARGET_NAME})

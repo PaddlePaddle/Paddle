@@ -19,9 +19,7 @@
 #include "paddle/fluid/primitive/base/lazy_tensor.h"
 #include "paddle/fluid/primitive/primitive/primitive.h"
 
-namespace paddle {
-namespace primitive {
-namespace backend {
+namespace paddle::primitive::backend {
 
 using LazyTensor = paddle::primitive::LazyTensor;
 template <>
@@ -98,6 +96,4 @@ std::tuple<Tensor, Tensor, Tensor> fused_gemm_epilogue_grad<LazyTensor>(
   return std::make_tuple(x_grad, y_grad, bias_grad);
 }
 
-}  // namespace backend
-}  // namespace primitive
-}  // namespace paddle
+}  // namespace paddle::primitive::backend

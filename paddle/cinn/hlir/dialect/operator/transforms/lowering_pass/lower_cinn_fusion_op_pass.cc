@@ -24,6 +24,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/refresh_combine_pattern.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
@@ -39,8 +40,6 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     ::pir::IrContext* ctx = ::pir::IrContext::Instance();
     auto* program = fusion_op->GetParentProgram();
     auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(program);
-    VLOG(4) << "Program before lowering: \n"
-            << pir::CustomPrintHelper(*program, shape_analysis.PrintHook());
 
     // TODO(zhangyuqin1998): Replace pir::Group with a new structure
     OpLoweringGroupPtr group = GetGroup(fusion_op);
@@ -64,15 +63,25 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
   virtual pir::Operation* ProcessGroup(
       const OpLoweringGroupPtr& group,
       pir::PatternRewriter& rewriter) const {  // NOLINT
-    auto group_inputs = GetBlockOutsideInput(group->ops());
+    ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+    auto group_inputs =
+        cinn::hlir::framework::pir::GetBlockOutsideInput(group->ops());
     // compile group to jit_kernel_op
     std::vector<pir::Type> output_types;
     const auto& group_output_values = group->output_values();
+    std::vector<pir::Attribute> stop_gradients;
     for (size_t i = 0; i < group_output_values.size(); ++i) {
-      output_types.push_back(group_output_values[i].type());
+      const auto& output_value = group_output_values[i];
+      output_types.push_back(output_value.type());
+      auto stop_gradient_attr =
+          output_value.attribute<pir::BoolAttribute>(kAttrStopGradients);
+      auto stop_gradient = !stop_gradient_attr || stop_gradient_attr.data();
+      stop_gradients.push_back(pir::BoolAttribute::get(ctx, stop_gradient));
     }
     auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(
         group_inputs, GetJitKernelAttr(group), output_types);
+    jit_kernel_op->set_attribute(kAttrStopGradients,
+                                 pir::ArrayAttribute::get(ctx, stop_gradients));
     return jit_kernel_op;
   }
 

@@ -48,7 +48,7 @@ namespace paddle::framework::ir::patterns {
 //
 // -> fused to
 //
-//   input_qk intput_v
+//   input_qk input_v
 //           |
 //     qk_multihead_matmul
 //           |
@@ -259,7 +259,7 @@ int TrtQkMultiHeadMatmulFusePass::BuildQkFusion(Graph* graph,
   patterns::TrtQKMultiHeadMatmulPattern multihead_pattern(pattern, name_scope);
 
   multihead_pattern();
-  auto fuse_creater = [&](Node* input0,
+  auto fuse_creator = [&](Node* input0,
                           Node* input1,
                           Node* mul0,
                           Node* mul1,
@@ -481,7 +481,7 @@ int TrtQkMultiHeadMatmulFusePass::BuildQkFusion(Graph* graph,
     GET_IR_NODE_FROM_SUBGRAPH(
         transpose2_qkv_out, transpose2_qkv_out, multihead_pattern);
 
-    fuse_creater(input0,
+    fuse_creator(input0,
                  input1,
                  mul0,
                  mul1,

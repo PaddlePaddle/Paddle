@@ -244,9 +244,9 @@ class SingleNodeTopology:
         dev_dp_gflops = []  # GB/s
 
         # Get device info
-        rank_fisrt = paddle.paddle.distributed.get_rank()
+        rank_first = paddle.paddle.distributed.get_rank()
         for i in range(self.nb_devices):
-            dev_global_ids.append(i + rank_fisrt)
+            dev_global_ids.append(i + rank_first)
             dev_local_ids.append(i)
             dev_types.append("GPU")
 
@@ -303,7 +303,7 @@ class SingleNodeTopology:
         default_value = ""
         call_cmd(cmd, err_msg, default_value)
 
-        rank_fisrt = paddle.paddle.distributed.get_rank()
+        rank_first = paddle.paddle.distributed.get_rank()
         # Get link info between devices
         for i in range(self.nb_devices):
             for j in range(self.nb_devices):
@@ -311,8 +311,8 @@ class SingleNodeTopology:
                     link_types.append("X")
                     link_bandwidths.append(-1.0)
                 else:
-                    link_source_global_ids.append(i + rank_fisrt)
-                    link_target_global_ids.append(j + rank_fisrt)
+                    link_source_global_ids.append(i + rank_first)
+                    link_target_global_ids.append(j + rank_first)
                     link_latencies.append(0.0)
                     if i > j:
                         index = j * self.nb_devices + i

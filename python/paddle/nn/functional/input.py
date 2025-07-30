@@ -168,6 +168,7 @@ def embedding(
     max_norm: float | None = None,
     norm_type: float = 2.0,
     sparse: bool = False,
+    scale_grad_by_freq: bool = False,
     name: str | None = None,
 ) -> Tensor:
     r"""
@@ -177,7 +178,7 @@ def embedding(
     with embedding size.
 
     Note:
-        The id in :attr:`x` must satisfy :math:`0 =< id < weight.shape[0]` ,
+        The id in :attr:`x` must satisfy :math:`0 <= id < weight.shape[0]` ,
         otherwise the program will throw an exception and exit.
 
     .. code-block:: text
@@ -201,7 +202,7 @@ def embedding(
 
     Args:
         x(Tensor): A Tensor with type int32/int64, which contains the id information. The value of the input id should
-            satisfy :math:`0<= id < weight.shape[0]` .
+            satisfy :math:`0 <= id < weight.shape[0]` .
         weight (Tensor): The weight. A Tensor with shape of lookup table parameter. It should have two elements which
             indicates the size of the dictionary of embeddings and the size of each embedding vector respectively.
         sparse(bool, optional): The flag indicating whether to use sparse update. This parameter only
@@ -217,12 +218,14 @@ def embedding(
         max_norm(float, optional): If provided, will renormalize the embedding vectors to have a norm larger than
             :attr:`max\_norm` . It will inplace update the input embedding weight in dynamic graph mode. Default: None.
         norm_type(float, optional): The p of the p-norm to compute for the max_norm option. Default: 2.0.
+        scale_grad_by_freq(bool, optional): Indicating whether to scale the gradients by the inverse frequency of the
+            word ids in input `x`. Default: False.
         name(str|None, optional): For detailed information, please refer
            to :ref:`api_guide_Name`. Usually name is no need to set and
            None by default.
 
     Returns:
-        Tensor, Embedding Tensor  mapped by x. The data type is the same as :attr:`weight`.
+        Tensor, Embedding Tensor mapped by x. The data type is the same as :attr:`weight`.
 
     Examples:
 
@@ -275,43 +278,72 @@ def embedding(
         )
     )
 
-    if padding_idx >= weight.shape[0] or padding_idx < -weight.shape[0]:
+    if weight.shape[0] != 0 and (
+        padding_idx >= weight.shape[0] or padding_idx < -weight.shape[0]
+    ):
         raise ValueError(
             f"padding_idx must be within [-{weight.shape[0]}, {weight.shape[0]})"
         )
 
-    if max_norm:
+    if max_norm and weight.size != 0:
         weight = embedding_renorm_(
             x, weight, max_norm=max_norm, norm_type=norm_type
         )
 
-    if in_dynamic_or_pir_mode():
-        return _C_ops.embedding(x, weight, padding_idx, sparse)
+    if scale_grad_by_freq:
+        if sparse:
+            raise AttributeError(
+                "scale_grad_by_freq = True is not supported with sparse update."
+            )
+        if in_dynamic_or_pir_mode():
+            return _C_ops.embedding_with_scaled_gradient(x, weight, padding_idx)
+        else:
+            helper = LayerHelper('embedding_with_scaled_gradient', **locals())
+            dtype = helper.input_dtype(input_param_name='weight')
+
+            check_variable_and_dtype(
+                x,
+                'input',
+                ['uint8', 'int8', 'int16', 'int32', 'int64'],
+                'embedding_with_scaled_gradient',
+            )
+            tmp = helper.create_variable_for_type_inference(dtype)
+
+            helper.append_op(
+                type='embedding_with_scaled_gradient',
+                inputs={'x': x, 'weight': weight},
+                outputs={'out': tmp},
+                attrs={'padding_idx': padding_idx},
+            )
+            return tmp
     else:
-        helper = LayerHelper('embedding', **locals())
-        dtype = helper.input_dtype(input_param_name='weight')
+        if in_dynamic_or_pir_mode():
+            return _C_ops.embedding(x, weight, padding_idx, sparse)
+        else:
+            helper = LayerHelper('embedding', **locals())
+            dtype = helper.input_dtype(input_param_name='weight')
 
-        check_variable_and_dtype(
-            x,
-            'input',
-            ['uint8', 'int8', 'int16', 'int32', 'int64'],
-            'embedding',
-        )
+            check_variable_and_dtype(
+                x,
+                'input',
+                ['uint8', 'int8', 'int16', 'int32', 'int64'],
+                'embedding',
+            )
 
-        is_distributed = False
-        remote_prefetch = sparse and (not is_distributed)
+            is_distributed = False
+            remote_prefetch = sparse and (not is_distributed)
 
-        tmp = helper.create_variable_for_type_inference(dtype)
+            tmp = helper.create_variable_for_type_inference(dtype)
 
-        helper.append_op(
-            type='lookup_table_v2',
-            inputs={'Ids': x, 'W': weight},
-            outputs={'Out': tmp},
-            attrs={
-                'is_sparse': sparse,
-                'is_distributed': is_distributed,
-                'remote_prefetch': remote_prefetch,
-                'padding_idx': padding_idx,
-            },
-        )
-        return tmp
+            helper.append_op(
+                type='lookup_table_v2',
+                inputs={'Ids': x, 'W': weight},
+                outputs={'Out': tmp},
+                attrs={
+                    'is_sparse': sparse,
+                    'is_distributed': is_distributed,
+                    'remote_prefetch': remote_prefetch,
+                    'padding_idx': padding_idx,
+                },
+            )
+            return tmp

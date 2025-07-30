@@ -16,8 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 phi::DDim DistMetaTensor::dims() const {
   // member values in tensor_ have higher priority than those in DistMetaTensor
@@ -51,5 +50,4 @@ bool DistMetaTensor::initialized() const {
   return tensor_ != nullptr || dist_attr_ != TensorDistAttr();
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

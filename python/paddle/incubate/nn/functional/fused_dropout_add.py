@@ -18,11 +18,20 @@ from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     from paddle import Tensor
+import warnings
 
+import paddle
 from paddle import _C_ops
 from paddle.base import core
 from paddle.common_ops_import import default_main_program
 from paddle.framework import LayerHelper, in_dynamic_or_pir_mode
+
+flag = [False]
+
+
+def paddle_dropout_add(x, y, p=0.5, training=True, mode="upscale_in_train"):
+    tmp = paddle.nn.functional.dropout(x, p, training=training, mode=mode)
+    return tmp + y
 
 
 def fused_dropout_add(
@@ -86,6 +95,13 @@ def fused_dropout_add(
              [ 1.29453969,  0.07568165,  0.71947742, -0.71768606, -2.57172823,
                1.89179027,  3.26482797,  1.10493207, -1.04569530, -1.04862499]])
     """
+    if not flag[0]:
+        flag[0] = True
+        warnings.warn(
+            "Currently, fused_dropout_add maybe has precision problem, so it falls back to dropout + add. "
+        )
+    return paddle_dropout_add(x, y, p, training=training, mode=mode)
+
     if isinstance(p, (int, float)):
         # fast return for p == 0
         if p == 0:

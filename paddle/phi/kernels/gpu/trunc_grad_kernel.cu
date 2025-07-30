@@ -25,7 +25,7 @@ using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T>
 __global__ void TruncGrad(T* dx, int64_t N) {
-  CUDA_KERNEL_LOOP(index, N) { dx[index] = static_cast<T>(0.0); }
+  CUDA_KERNEL_LOOP_TYPE(index, N, int64_t) { dx[index] = static_cast<T>(0.0); }
 }
 
 template <typename T, typename Context>
@@ -34,13 +34,16 @@ void TruncGradKernel(const Context& dev_ctx,
                      DenseTensor* in_grad) {
   const auto* out_grad_data = out_grad.data<T>();
   T* in_grad_data = dev_ctx.template Alloc<T>(in_grad);
+  if (out_grad.numel() == 0) {
+    return;
+  }
 
   int64_t numel = out_grad.numel();
 
-  int theads = PADDLE_CUDA_NUM_THREADS;
-  int blocks = (numel + theads - 1) / theads;
+  int threads = PADDLE_CUDA_NUM_THREADS;
+  int blocks = (numel + threads - 1) / threads;
 
-  TruncGrad<<<blocks, theads>>>(in_grad_data, numel);
+  TruncGrad<<<blocks, threads>>>(in_grad_data, numel);
 }
 
 }  // namespace phi

@@ -118,26 +118,6 @@ void OneDNNOperatorDialect::PrintAttribute(pir::Attribute attr,
   }
 }
 
-pir::Attribute OneDNNOperatorDialect::ParseAttribute(
-    pir::IrParser &parser) {  // NOLINT
-  std::string type_name = parser.ConsumeToken().val_;
-  std::string attribute_name =
-      type_name.substr(type_name.find('.') + 1, std::string::npos);
-  parser.ConsumeAToken(")");
-  if (attribute_name == "IntArray") {
-    return IntArrayAttribute::Parse(parser);
-  } else if (attribute_name == "DataType") {
-    return DataTypeAttribute::Parse(parser);
-  } else if (attribute_name == "Place") {
-    return PlaceAttribute::Parse(parser);
-  } else if (attribute_name == "DataLayout") {
-    return DataLayoutAttribute::Parse(parser);
-  } else {
-    IR_THROW("No function to parse " + attribute_name + " exists!" +
-             parser.GetErrorLocationInfo());
-  }
-}
-
 pir::OpPrintFn OneDNNOperatorDialect::PrintOperation(
     const pir::Operation &op) const {
   if (auto if_op = op.dyn_cast<IfOp>()) {

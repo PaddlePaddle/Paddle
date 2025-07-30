@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
+from utils import dygraph_guard, static_guard
 
 import paddle
 from paddle import base
@@ -272,6 +273,67 @@ class TestUnstackZeroInputOp(unittest.TestCase):
         self.assertRaises(ValueError, self.unstack_zero_input_static)
 
         paddle.disable_static()
+
+
+class TestUnstackEmptyTensorInput(unittest.TestCase):
+    def _get_places(self):
+        places = [paddle.base.CPUPlace()]
+        if paddle.is_compiled_with_cuda():
+            places.append(paddle.base.CUDAPlace(0))
+        return places
+
+    def _generate_empty_tensor(self, shape):
+        return np.empty(shape)
+
+    def _test_unstack_with_shapes(self, shape, axis, place=None):
+        empty_tensor = self._generate_empty_tensor(shape)
+
+        # NOTE: Use `numpy.unstack` if you are using NumPy version 2.1.0 or later.
+        # out_ref = np.unstack(empty_tensor, axis)
+        out_ref = tuple(np.moveaxis(empty_tensor, axis, 0))
+
+        if place is None:  # Dygraph mode
+            tensor = paddle.to_tensor(empty_tensor)
+            result = paddle.unstack(tensor, axis=axis)
+        else:  # Static mode
+            with paddle.static.program_guard(paddle.static.Program()):
+                data_tensor = paddle.static.data(
+                    shape=shape, dtype='float64', name='x'
+                )
+                result = paddle.unstack(data_tensor, axis=axis)
+                exe = paddle.base.Executor(place=place)
+                feed_dict = {'x': empty_tensor}
+                result = exe.run(
+                    paddle.static.default_main_program(),
+                    feed=feed_dict,
+                    fetch_list=result,
+                )
+
+        # Assert the number of unstacked tensors
+        self.assertEqual(len(out_ref), len(result))
+        # Assert the shape of each unstacked tensor
+        for ref, res in zip(out_ref, result):
+            np.testing.assert_array_equal(ref.shape, res.shape)
+
+    def test_unstack_with_dygraph_empty_tensor_input(self):
+        with dygraph_guard():
+            self._test_unstack_with_shapes((0,), axis=0)
+            self._test_unstack_with_shapes((5, 0), axis=1)
+            self._test_unstack_with_shapes((5, 0, 10), axis=2)
+            self._test_unstack_with_shapes((7, 11, 0), axis=1)
+            self._test_unstack_with_shapes((0, 11, 22), axis=-2)
+
+    def _test_unstack_with_static_empty_tensor_input(self, place):
+        with static_guard():
+            self._test_unstack_with_shapes((0,), axis=0, place=place)
+            self._test_unstack_with_shapes((5, 0), axis=1, place=place)
+            self._test_unstack_with_shapes((5, 0, 10), axis=2, place=place)
+            self._test_unstack_with_shapes((7, 11, 0), axis=1, place=place)
+            self._test_unstack_with_shapes((0, 11, 22), axis=-2, place=place)
+
+    def test_unstack_with_static_empty_tensor_input(self):
+        for place in self._get_places():
+            self._test_unstack_with_static_empty_tensor_input(place)
 
 
 if __name__ == '__main__':

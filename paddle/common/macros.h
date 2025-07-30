@@ -25,6 +25,26 @@ limitations under the License. */
 #else
 #define PADDLE_API
 #endif  // _WIN32
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#define COMM_CONTEXT phi::distributed::NCCLCommContext
+#elif (defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL))
+#define COMM_CONTEXT phi::distributed::BKCLCommContext
+#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+#define COMM_CONTEXT phi::distributed::XCCLCommContext
+#endif
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#define CREATE_COMM_CONTEXT \
+  phi::distributed::CommContextManager::CreateNCCLCommContext
+#elif defined(PADDLE_WITH_XPU_BKCL)
+#define CREATE_COMM_CONTEXT \
+  phi::distributed::CommContextManager::CreateBKCLCommContext
+#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+#define CREATE_COMM_CONTEXT \
+  phi::distributed::CommContextManager::CreateXCCLCommContext
+#endif
+
 namespace common {
 
 // Disable the copy and assignment operator for a class.

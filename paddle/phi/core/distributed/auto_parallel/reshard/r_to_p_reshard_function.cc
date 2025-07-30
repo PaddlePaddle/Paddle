@@ -24,8 +24,7 @@
 #include "paddle/phi/kernels/assign_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 bool RToPReshardFunction::IsSuitable(const DistTensor& in,
                                      const TensorDistAttr& out_dist_attr) {
@@ -49,6 +48,12 @@ void RToPReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                                const TensorDistAttr& out_dist_attr,
                                DistTensor* out) {
   VLOG(3) << "Call " << Name();
+  const auto& in_process_ids = in.dist_attr().process_mesh().process_ids();
+  if (in_process_ids.size() == 1) {
+    SetValue(out, in.value());
+    SetDistProps(out, in.dims(), out_dist_attr);
+    return;
+  }
   const auto& out_process_mesh = out_dist_attr.process_mesh();
   int64_t local_rank = GetCurRankCoordInMesh(out_process_mesh)[0];
   const auto& in_reduce_type = out_dist_attr.partial_status().at(0);
@@ -121,5 +126,4 @@ void RToPReshardFunctionCrossMesh::Eval(phi::DeviceContext* dev_ctx,
   }
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

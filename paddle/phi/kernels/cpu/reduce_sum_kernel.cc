@@ -14,9 +14,12 @@
 
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
+#include <set>
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/reduce.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/reduce_functor.h"
 
 namespace phi {
@@ -32,8 +35,62 @@ void SumRawKernel(const Context& dev_ctx,
   if (out_dtype == DataType::UNDEFINED && out->dtype() != x.dtype()) {
     out_dtype = out->dtype();
   }
-  phi::Reduce<CPUContext, T, phi::funcs::SumFunctor>(
-      dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    // When out_dtype is DataType::UNDEFINED and input is int32 or bool,
+    // result is int64, but FullKernel out_dtype parameter is not used, we need
+    // to set int64 explicitly.
+    if (out_dtype == DataType::INT64) {
+      FullKernel<int64_t, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(out->dims())),
+          0,
+          out_dtype,  // not used
+          out);
+    } else {
+      FullKernel<T, Context>(dev_ctx,
+                             phi::IntArray(common::vectorize(out->dims())),
+                             0,
+                             out_dtype,  // not used
+                             out);
+    }
+    return;
+  }
+  if constexpr (std::is_same_v<T, phi::dtype::float16> ||
+                std::is_same_v<T, phi::dtype::bfloat16>) {
+    DenseTensor x_fp32 = phi::Cast<T, Context>(dev_ctx, x, DataType::FLOAT32);
+    DataType final_out_dtype = out_dtype;
+    if (final_out_dtype == DataType::UNDEFINED) {
+      final_out_dtype = x.dtype();
+    }
+    if (final_out_dtype == DataType::FLOAT32) {
+      phi::Reduce<CPUContext, float, phi::funcs::SumFunctor>(
+          dev_ctx,
+          x_fp32,
+          reduce_all,
+          dims.GetData(),
+          keep_dim,
+          phi::DataType::UNDEFINED,
+          out);
+    } else {
+      DenseTensor intermediate_result;
+      intermediate_result.set_meta(out->meta());
+      phi::Reduce<CPUContext, float, phi::funcs::SumFunctor>(
+          dev_ctx,
+          x_fp32,
+          reduce_all,
+          dims.GetData(),
+          keep_dim,
+          phi::DataType::UNDEFINED,
+          &intermediate_result);
+
+      phi::CastKernel<float, Context>(
+          dev_ctx, intermediate_result, final_out_dtype, out);
+    }
+  } else {
+    phi::Reduce<CPUContext, T, phi::funcs::SumFunctor>(
+        dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
+  }
 }
 
 }  // namespace phi

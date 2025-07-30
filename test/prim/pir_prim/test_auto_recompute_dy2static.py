@@ -94,7 +94,7 @@ class TestDy2StaticAutoRecomputeRmsNorm(unittest.TestCase):
     def cal_rms_norm_res(self, place):
         weight, hidden = self.product_rms_norm_inputs(place)
         net = PrimNet()
-        net = paddle.jit.to_static(net, full_graph=True)
+        net = paddle.jit.to_static(net, full_graph=True, backend=None)
         program = net.forward.get_concrete_program(weight, hidden)[
             -1
         ].program.program
@@ -126,9 +126,9 @@ class TestDy2StaticAutoRecomputeRmsNorm(unittest.TestCase):
                     rtol=TOLERANCE[self.dtype]["rtol"],
                 )
             actual_program = res_actual[0]
-            forward_ops = actual_program.global_block().ops[:15]
-            mid_ops = actual_program.global_block().ops[15:18]
-            backward_ops = actual_program.global_block().ops[18:]
+            forward_ops = actual_program.global_block().ops[:14]
+            mid_ops = actual_program.global_block().ops[14:17]
+            backward_ops = actual_program.global_block().ops[17:]
             saved_values = forward_ops[10].results()[0]
             define_op = saved_values.get_defining_op()
             self.assertTrue(define_op.name() == "pd_op.rsqrt")

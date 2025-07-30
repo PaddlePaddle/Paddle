@@ -514,7 +514,7 @@ __global__ void softmax_kernel_with_mask(T *qk_buf_,
   } while (0)
 
 template <typename T>
-inline void MatmulWithHeadQK(const phi::GPUContext &context,
+inline void MatmulWithHeadQK(const phi::GPUContext &dev_ctx,
                              int head_num,
                              int seq_len,
                              int size_per_head,
@@ -532,8 +532,8 @@ inline void MatmulWithHeadQK(const phi::GPUContext &context,
   CBLAS_TRANSPOSE transB = !k_trans ? CblasNoTrans : CblasTrans;
 
   typedef typename CUDATypeTraits<T>::TYPE run_type;
-  auto blas = phi::funcs::GetBlas<phi::GPUContext, run_type>(context);
-  auto stream = context.stream();
+  auto blas = phi::funcs::GetBlas<phi::GPUContext, run_type>(dev_ctx);
+  auto stream = dev_ctx.stream();
 
   blas.BatchedGEMM(transA,
                    transB,
@@ -649,7 +649,7 @@ inline void MatmulWithHeadQK(const phi::GPUContext &context,
 }
 
 template <typename T>
-inline void MatmulWithHeadQKV(const phi::GPUContext &context,
+inline void MatmulWithHeadQKV(const phi::GPUContext &dev_ctx,
                               int head_num,
                               int seq_len,
                               int size_per_head,
@@ -665,8 +665,8 @@ inline void MatmulWithHeadQKV(const phi::GPUContext &context,
   int k = head_num * size_per_head;
 
   typedef typename CUDATypeTraits<T>::TYPE run_type;
-  auto blas = phi::funcs::GetBlas<phi::GPUContext, run_type>(context);
-  auto stream = context.stream();
+  auto blas = phi::funcs::GetBlas<phi::GPUContext, run_type>(dev_ctx);
+  auto stream = dev_ctx.stream();
   CBLAS_TRANSPOSE transA = !qk_trans ? CblasNoTrans : CblasTrans;
   CBLAS_TRANSPOSE transB = !v_trans ? CblasNoTrans : CblasTrans;
 
@@ -735,7 +735,7 @@ void MultiheadGPUComputeFunctor<T>::operator()(const phi::GPUContext &dev_ctx,
 
 template class MultiheadGPUComputeFunctor<float>;
 
-// device function 'operator()' is not supportted until cuda 10.0
+// device function 'operator()' is not supported until cuda 10.0
 // HIP defined __HIP_NO_HALF_CONVERSIONS__ in hip.cmake
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10000
 template class MultiheadGPUComputeFunctor<half>;

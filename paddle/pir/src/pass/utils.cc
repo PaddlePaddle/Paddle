@@ -19,7 +19,9 @@
 
 namespace pir {
 
-void SetNewLayoutForValue(pir::Value value, common::DataLayout new_layout) {
+void SetNewLayoutForValue(pir::Value value,
+                          common::DataLayout new_layout,
+                          TransLayoutCallbackFn callback) {
   if (!value || !value.type()) {
     return;
   }
@@ -34,6 +36,9 @@ void SetNewLayoutForValue(pir::Value value, common::DataLayout new_layout) {
                                                    tensor_type.lod(),
                                                    tensor_type.offset());
   value.set_type(new_tensor_type);
+  if (callback) {
+    callback(value, new_layout);
+  }
 }
 
 }  // namespace pir

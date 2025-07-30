@@ -22,12 +22,52 @@ void ArangeInferMeta(const Scalar& start,
                      DataType dtype,
                      MetaTensor* out) {
   if (!start.FromTensor() && !end.FromTensor() && !step.FromTensor()) {
-    double start_value = start.to<double>();
-    double end_value = end.to<double>();
-    double step_value = step.to<double>();
-    int numel =
-        static_cast<int>(std::ceil((end_value - start_value) / step_value));
-    out->set_dims(common::make_ddim(std::vector<int64_t>(1, numel)));
+    auto GetArangeSize = [](auto start, auto end, auto step) -> int64_t {
+      using ElementType = std::decay_t<decltype(start)>;
+      PADDLE_ENFORCE_NE(step,
+                        0,
+                        ::common::errors::InvalidArgument(
+                            "The step of range op should not be 0."));
+
+      if ((start < end && step < 0) || (start > end && step > 0)) {
+        return 0;
+      } else {
+        return std::is_integral_v<ElementType>
+                   ? ((std::abs(end - start) + std::abs(step) - 1) /
+                      std::abs(step))
+                   : std::ceil(std::abs((end - start) / step));
+      }
+    };
+
+#define GET_SIZE_GIVEN_TYPE(type)                     \
+  {                                                   \
+    type start_ = start.to<type>();                   \
+    type end_ = end.to<type>();                       \
+    type step_ = step.to<type>();                     \
+    arange_size = GetArangeSize(start_, end_, step_); \
+    break;                                            \
+  }
+
+    int64_t arange_size = 0;
+
+    switch (dtype) {
+      case DataType::FLOAT32:
+        GET_SIZE_GIVEN_TYPE(float)
+      case DataType::FLOAT64:
+        GET_SIZE_GIVEN_TYPE(double)
+      case DataType::INT32:
+        GET_SIZE_GIVEN_TYPE(int)
+      case DataType::FLOAT16:
+        GET_SIZE_GIVEN_TYPE(float)
+      case DataType::BFLOAT16:
+        GET_SIZE_GIVEN_TYPE(float)
+      default:
+        GET_SIZE_GIVEN_TYPE(int64_t)
+    }
+
+#undef GET_SIZE_GIVEN_TYPE
+
+    out->set_dims(common::make_ddim(std::vector<int64_t>(1, arange_size)));
   } else {
     out->set_dims({-1});
   }
@@ -216,13 +256,37 @@ void RandintInferMeta(
   out->set_dtype(dtype);
 }
 
-void PRecvInferMeta(int peer, DataType dtype, MetaTensor* out) {
+void PRecvInferMeta(const int peer,
+                    DataType dtype,
+                    const std::vector<int>& out_shape,
+                    const bool dynamic_shape,
+                    MetaTensor* out) {
   PADDLE_ENFORCE_GE(
       peer,
       0,
       errors::InvalidArgument(
           "The peer (%d) for p_recv op must be non-negative.", peer));
-  // auto data_type = phi::TransToPhiDataType(dtype);
+
+  if (!dynamic_shape) {
+    PADDLE_ENFORCE_GE(out_shape.size(),
+                      1,
+                      errors::InvalidArgument(
+                          "The size of the output shape must be greater than 0 "
+                          "but the value given is %d.",
+                          out_shape.size()));
+    for (size_t i = 0; i < out_shape.size(); ++i) {
+      PADDLE_ENFORCE_GE(out_shape[i],
+                        1,
+                        errors::InvalidArgument(
+                            "The shape attribute for p_recv must be set "
+                            "explicitly, but the %dth element is %d which "
+                            "is less than 1. Or dynamic_shape should be "
+                            "set to True for both p_send and p_recv.",
+                            i,
+                            out_shape[i]));
+    }
+    out->set_dims(common::make_ddim(out_shape));
+  }
   out->set_dtype(dtype);
 }
 

@@ -21,19 +21,16 @@ namespace phi {
 class DenseTensor;
 }  // namespace phi
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Variable;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
 #if defined _WIN32 || defined __APPLE__
 #else
 #define _LINUX
 #endif
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 void DownpourWorker::Initialize(const TrainerDesc& desc) {
   param_ = desc.downpour_param();
   for (int i = 0; i < param_.sparse_table_size(); ++i) {
@@ -232,7 +229,7 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
                                                  phi::CPUPlace());
     memset(ptr, 0, sizeof(float) * len * table.emb_dim());
     auto& tensor_lod = tensor->lod()[0];
-    LoD data_lod{tensor_lod};
+    LegacyLoD data_lod{tensor_lod};
     tensor_emb->set_lod(data_lod);
 
     bool is_nid = (adjust_ins_weight_config_.need_adjust() &&
@@ -1108,5 +1105,4 @@ void DownpourWorker::TrainFiles() {
   }
 }
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace paddle::framework

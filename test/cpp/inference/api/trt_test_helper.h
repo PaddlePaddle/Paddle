@@ -170,6 +170,7 @@ void delete_cache_files(std::string path) {
       remove(file_rm.c_str());
     }
   }
+  closedir(dir);
   remove(path.c_str());
 }
 

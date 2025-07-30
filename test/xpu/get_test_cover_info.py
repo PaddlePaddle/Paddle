@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import fcntl
 import inspect
 import os
@@ -360,6 +361,23 @@ def check_run_big_shape_test():
         )(cls)
 
     return wrapper
+
+
+@contextlib.contextmanager
+def xpu_matmul_quant_type_guard(dtype):
+    # only fp32 is supported now
+    assert dtype in ["float", "int16"]
+    if dtype == "float":
+        env_name = "XPU_PADDLE_FC_FLOAT"
+    elif dtype == "int16":
+        env_name = "XPU_PADDLE_FC_INT16"
+    origin_env = os.getenv(env_name)
+    os.environ[env_name] = "1"
+    yield
+    if origin_env is not None:
+        os.environ[env_name] = origin_env
+    else:
+        del os.environ[env_name]
 
 
 def get_test_cover_info():

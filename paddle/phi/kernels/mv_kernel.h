@@ -27,7 +27,7 @@ namespace phi {
  * @param  out   The output of mv
  */
 template <typename T, typename Context>
-void MvKernel(const Context& ctx,
+void MvKernel(const Context& dev_ctx,
               const DenseTensor& x,
               const DenseTensor& vec,
               DenseTensor* out);

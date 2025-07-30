@@ -74,7 +74,7 @@ paddlecloud environment."
         ports = list(range(started_port, started_port + len(devices_per_proc)))
         trainer_endpoints = []
         for ip in node_ips:
-            trainer_endpoints.append(["%s:%d" % (ip, port) for port in ports])
+            trainer_endpoints.append([f"{ip}:{port}" for port in ports])
     else:
         trainer_endpoints_ori = trainer_endpoints.split(",")
         trainer_endpoints = []

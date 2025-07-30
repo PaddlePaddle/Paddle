@@ -38,7 +38,10 @@ from ..base.framework import (
 )
 from ..framework import core, in_dynamic_mode
 from .dataloader import BatchSampler, IterableDataset, Subset
-from .dataloader.batch_sampler import _InfiniteIterableSampler
+from .dataloader.batch_sampler import (
+    DistributedBatchSampler,
+    _InfiniteIterableSampler,
+)
 from .dataloader.dataloader_iter import (
     _DataLoaderIterMultiProcess,
     _DataLoaderIterSingleProcess,
@@ -546,6 +549,42 @@ class DataLoader:
                     shuffle=shuffle,
                     drop_last=drop_last,
                 )
+
+        # Note(luchang): In auto DP mode, we use a distributed batch sampler to
+        # ensure that each DP rank receives different data.
+        if paddle.distributed.auto_parallel.auto_dp_utils.in_auto_dp_mode():
+            mesh = paddle.distributed.fleet.auto.get_mesh()
+            if mesh is None:
+                word_size = paddle.distributed.get_world_size()
+                mesh = paddle.distributed.ProcessMesh(
+                    list(range(0, word_size)), dim_names=["dp"]
+                )
+
+            if "dp" not in mesh.dim_names:
+                raise ValueError(
+                    "Auto-DP mode requires the mesh to include a 'dp' dimension."
+                )
+
+            dp_rank = mesh.get_rank_by_dim_and_process_id(
+                "dp", paddle.distributed.get_rank()
+            )
+            dp_world_size = mesh.get_dim_size("dp")
+
+            self.batch_size = int(self.batch_sampler.batch_size / dp_world_size)
+            if isinstance(self.batch_sampler, _InfiniteIterableSampler):
+                shuffle = False
+                drop_last = False
+            else:
+                shuffle = self.batch_sampler.shuffle
+                drop_last = self.batch_sampler.drop_last
+            self.batch_sampler = DistributedBatchSampler(
+                dataset=dataset,
+                batch_size=self.batch_size,
+                num_replicas=dp_world_size,
+                rank=dp_rank,
+                shuffle=shuffle,
+                drop_last=drop_last,
+            )
 
         self.drop_last = drop_last
         self.auto_collate_batch = self.batch_sampler is not None

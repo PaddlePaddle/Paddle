@@ -26,9 +26,7 @@
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimization_var_info.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 // op -> variables which can be deleted after op runs
 using OpToVarNameSetMap = std::unordered_map<details::ComputationOpHandle *,
@@ -48,7 +46,7 @@ static std::map<size_t, std::unordered_set<std::string>> VarsGroupByScopeIdx(
 }
 
 // Check whether the variable is phi::DenseTensor based on static VarDesc info
-static bool IsLoDTensor(VarDesc *var) {
+static bool IsDenseTensor(VarDesc *var) {
   return var->Proto()->type().type() == proto::VarType::DENSE_TENSOR;
 }
 
@@ -61,7 +59,7 @@ static int64_t GetMemorySize(
   PADDLE_ENFORCE_NOT_NULL(
       var_desc,
       common::errors::NotFound("Var(%s) can not find VarDesc.", var_name));
-  PADDLE_ENFORCE_EQ(IsLoDTensor(var_desc),
+  PADDLE_ENFORCE_EQ(IsDenseTensor(var_desc),
                     true,
                     common::errors::InvalidArgument(
                         "Var(%s) must be phi::DenseTensor.", var_name));
@@ -78,7 +76,7 @@ static int64_t GetMemorySize(
 // Non-phi::DenseTensor (e.g. SelectedRows, phi::TensorArray) Since partial GC
 // is based on static analysis of memory size of each variable So we should skip
 // SelectedRows and phi::TensorArray here
-static void SplitIntoLoDTensorAndNonLoDTensorVars(
+static void SplitIntoDenseTensorAndNonDenseTensorVars(
     const OpToVarNameSetMap &m,
     const details::GraphVars &vars,
     OpToVarNameSetMap *lod_tensors,
@@ -90,7 +88,7 @@ static void SplitIntoLoDTensorAndNonLoDTensorVars(
     for (auto var_name : op_vars_pair.second) {
       auto *var_desc = TryGetLatestVarDesc(
           vars[op_vars_pair.first->GetScopeIdx()].at(var_name));
-      if (IsLoDTensor(var_desc)) {
+      if (IsDenseTensor(var_desc)) {
         (*lod_tensors)[op_vars_pair.first].insert(var_name);
       } else {
         (*other_vars)[op_vars_pair.first].insert(var_name);
@@ -132,7 +130,7 @@ static OpToVarNameSetMap ShrinkGCVars(const OpToVarNameSetMap &m,
    * We can only calculate memory size of DenseTensors
    */
   OpToVarNameSetMap lod_tensors, other_vars;
-  SplitIntoLoDTensorAndNonLoDTensorVars(m, vars, &lod_tensors, &other_vars);
+  SplitIntoDenseTensorAndNonDenseTensorVars(m, vars, &lod_tensors, &other_vars);
 
   // Perform complete gc when fraction_of_memory_size >= 1
   if (fraction_of_memory_size >= 1.0) {
@@ -302,9 +300,7 @@ void EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
   while_op_eager_deletion_pass->Apply(graph);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(eager_deletion_pass, paddle::framework::ir::EagerDeletionPass)
     .RequirePassAttr(paddle::framework::ir::kMemOptVarInfoMapList)

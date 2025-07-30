@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_map.h>
 #include <glog/logging.h>
 #include <llvm/IR/Intrinsics.h>
 
@@ -27,6 +26,7 @@
 #include "paddle/cinn/ir/registry.h"
 #include "paddle/cinn/lang/packed_func.h"
 #include "paddle/common/enforce.h"
+#include "paddle/utils/flat_hash_map.h"
 namespace cinn {
 namespace codegen {
 
@@ -72,7 +72,6 @@ void RegisterCpuIntrinRule() {
 #define __(intrin_name__, id)                                         \
   ir::Registry::Register("lower_cpu_intrinsic_" #intrin_name__, true) \
       .SetBody(MakeFloatIntrinOp<id, 1>);
-  __(exp, ::llvm::Intrinsic::exp)
   __(exp2, ::llvm::Intrinsic::exp2)
   __(sqrt, ::llvm::Intrinsic::sqrt)
   __(log, ::llvm::Intrinsic::log)
@@ -91,12 +90,64 @@ void RegisterCpuIntrinRule() {
 #define RegisterBitwise(intrin_name__)                                \
   ir::Registry::Register("lower_cpu_intrinsic_" #intrin_name__, true) \
       .SetBody(MakeFloatIntrinOp<-1, 2, false>);
-  RegisterBitwise(bitwise_or) RegisterBitwise(bitwise_xor) RegisterBitwise(
-      bitwise_and) RegisterBitwise(left_shift) RegisterBitwise(right_shift)
+  RegisterBitwise(bitwise_or);
+  RegisterBitwise(bitwise_xor);
+  RegisterBitwise(bitwise_and);
+  RegisterBitwise(left_shift);
+  RegisterBitwise(right_shift);
 #undef RegisterBitwise
 
-      ir::Registry::Register("lower_cpu_intrinsic_fma", true)
-          .SetBody(MakeFloatIntrinOp<::llvm::Intrinsic::fmuladd, 3, false>);
+  ir::Registry::Register("lower_cpu_intrinsic_fma", true)
+      .SetBody(MakeFloatIntrinOp<::llvm::Intrinsic::fmuladd, 3, false>);
+
+  ir::Registry::Register("lower_cpu_intrinsic_pow", true)
+      .SetBody([](lang::Args args, lang::RetValue *rv) {
+        PADDLE_ENFORCE_GE(args.size(),
+                          1U,
+                          ::common::errors::InvalidArgument(
+                              "The number of args should be greater than 1."));
+        Expr arg0 = args[0];
+        ir::Call *node = arg0->as<ir::Call>();
+        PADDLE_ENFORCE_NOT_NULL(
+            node,
+            ::common::errors::InvalidArgument(
+                "The argument must be a valid call expression."));
+        PADDLE_ENFORCE_EQ(
+            node->read_args.size(),
+            2U,
+            ::common::errors::InvalidArgument(
+                "The number of read arguments of 'pow' should be 2."));
+        Type type = common::Float(64);
+        Expr casted_arg0 = ir::Cast::Make(type, node->read_args[0]);
+        Expr casted_arg1 = ir::Cast::Make(type, node->read_args[1]);
+        Expr log_base = lang::Log(casted_arg0);
+        Expr product = log_base * casted_arg1;
+        *rv = ir::Cast::Make(node->type(), lang::Exp(product));
+      });
+
+  ir::Registry::Register("lower_cpu_intrinsic_exp", true)
+      .SetBody([](lang::Args args, lang::RetValue *rv) {
+        PADDLE_ENFORCE_GE(args.size(),
+                          1U,
+                          ::common::errors::InvalidArgument(
+                              "The number of args should be greater than 1."));
+        Expr arg0 = args[0];
+        ir::Call *node = arg0->as<ir::Call>();
+        PADDLE_ENFORCE_NOT_NULL(
+            node,
+            ::common::errors::InvalidArgument(
+                "The argument must be a valid call expression."));
+        PADDLE_ENFORCE_EQ(
+            node->read_args.size(),
+            1,
+            ::common::errors::InvalidArgument(
+                "The number of read arguments of 'exp' should be 1."));
+        Type type = common::Float(64);
+        Expr casted_arg0 = ir::Cast::Make(type, node->read_args[0]);
+        Expr exp = ir::intrinsics::BuiltinIntrin::Make(
+            node->name, casted_arg0, ::llvm::Intrinsic::exp, 1, type);
+        *rv = ir::Cast::Make(node->type(), exp);
+      });
 
   ir::Registry::Register("lower_cpu_intrinsic_bitwise_not", true)
       .SetBody(MakeFloatIntrinOp<-1, 1, false>);
@@ -297,6 +348,28 @@ void RegisterCpuIntrinRule() {
         Expr arg = node->read_args[0];
         *rv = (lang::Exp(arg) - lang::Exp(arg * make_const(arg->type(), -1))) /
               make_const(arg->type(), 2);
+      });
+
+  ir::Registry::Register("lower_cpu_intrinsic_mod", true)
+      .SetBody([](lang::Args args, lang::RetValue *rv) {
+        PADDLE_ENFORCE_GE(args.size(),
+                          1U,
+                          ::common::errors::InvalidArgument(
+                              "The number of args should be greater than 1."));
+        Expr arg0 = args[0];
+        ir::Call *node = arg0->as<ir::Call>();
+        PADDLE_ENFORCE_NOT_NULL(node,
+                                ::common::errors::InvalidArgument(
+                                    "The argument must be a valid call "
+                                    "expression. Received null."));
+        PADDLE_ENFORCE_EQ(node->read_args.size(),
+                          2UL,
+                          ::common::errors::InvalidArgument(
+                              "The 'mod' op must have exactly 2 read_args."));
+
+        Expr lhs = node->read_args[0];
+        Expr rhs = node->read_args[1];
+        *rv = lhs % rhs;
       });
 }
 }  // namespace codegen

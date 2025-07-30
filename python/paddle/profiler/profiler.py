@@ -675,7 +675,7 @@ class Profiler:
             self.record_event = None
         if self.current_state == ProfilerState.READY:
             warn(
-                "Inproper Profiler state transform: READY->CLOSED, profiler will start and stop without saving data"
+                "Improper Profiler state transform: READY->CLOSED, profiler will start and stop without saving data"
             )
             self.profiler.start()
             self.profiler.stop()

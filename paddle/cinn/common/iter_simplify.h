@@ -86,7 +86,7 @@ class IterMapRewriter : public ir::IRMutator<> {
   void Visit(const ir::Mod* op, Expr* expr) override;
 
  private:
-  static ir::IndexExpr ToIterSum(const ir::IndexExpr& expr);
+  static Expr ToIterSum(const Expr& expr);
 
   static void AddToLhs(ir::IterSum* lhs, const ir::IterSplit& rhs, int sign);
 
@@ -94,15 +94,11 @@ class IterMapRewriter : public ir::IRMutator<> {
 
   static void MulToLhs(ir::IterSum* lhs, const ir::IndexExpr& rhs);
 
-  ir::IndexExpr PreprocessDividend(const ir::IndexExpr& dividend);
+  Expr PreprocessDividend(const Expr& dividend);
 
-  ir::IndexExpr SplitDivConst(ir::IndexExpr lhs,
-                              ir::IndexExpr base,
-                              ir::IndexExpr rhs);
+  Expr SplitDivConst(Expr lhs, ir::IndexExpr base, ir::IndexExpr rhs);
 
-  ir::IndexExpr SplitModConst(ir::IndexExpr lhs,
-                              ir::IndexExpr base,
-                              ir::IndexExpr rhs);
+  Expr SplitModConst(Expr lhs, ir::IndexExpr base, ir::IndexExpr rhs);
 
   /*!
    * \brief This function will find the iter which has the expected scale.
@@ -126,7 +122,7 @@ class IterMapRewriter : public ir::IRMutator<> {
   int32_t FindSplitWithExactScale(const ir::IterSum& expr,
                                   const std::vector<bool>& skip_flag,
                                   const ir::IndexExpr& expected_scale,
-                                  const ir::IndexExpr& match_source,
+                                  const Expr& match_source,
                                   int32_t rbegin = -1,
                                   int32_t first_possible_unit_extent_pos = 0);
 
@@ -158,7 +154,7 @@ class IterMapRewriter : public ir::IRMutator<> {
    */
   int32_t FindBaseSplit(const ir::IterSum& expr,
                         const std::vector<bool>& skip_flag,
-                        const ir::IndexExpr& match_source,
+                        const Expr& match_source,
                         int32_t rbegin = -1);
 
   /*!
@@ -177,7 +173,7 @@ class IterMapRewriter : public ir::IRMutator<> {
    * \param expr the input IterSum.
    * \return the IterSum after fused.
    */
-  std::optional<ir::IndexExpr> TryFuse(const ir::IndexExpr& expr);
+  std::optional<Expr> TryFuse(const Expr& expr);
 
   /*!
    * \brief TryFuseSameSource will simplify the IterSum by fusing IterSplits
@@ -195,11 +191,11 @@ class IterMapRewriter : public ir::IRMutator<> {
    * \param expr the input IterSum
    * \return the IterSum after fused.
    */
-  std::optional<ir::IndexExpr> TryFuseSameSource(const ir::IndexExpr& expr);
+  std::optional<Expr> TryFuseSameSource(const Expr& expr);
 
-  std::unordered_map<std::string, ir::IndexExpr> var_map_;
+  std::unordered_map<std::string, Expr> var_map_;
   std::vector<ir::IterMark> input_marks_;
-  std::unordered_map<ir::IndexExpr, ir::IndexExpr> sum_fuse_map_;
+  std::unordered_map<Expr, Expr> sum_fuse_map_;
   common::SymbolicExprAnalyzer analyzer_;
 };
 

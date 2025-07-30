@@ -45,7 +45,7 @@ phi::DataLayout IrMetaTensor::layout() const {
   return tensor_->layout();
 }
 
-const phi::LoD& IrMetaTensor::lod() const {
+const phi::LegacyLoD& IrMetaTensor::lod() const {
   ValidCheck(*this);
   return static_cast<paddle::dialect::IrTensor*>(tensor_)->lod();
 }

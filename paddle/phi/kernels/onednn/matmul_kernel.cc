@@ -31,7 +31,7 @@ KernelKey MatmulGetkernelTypeForVar(const GetKernelTypeForVarContext *ctx) {
   const DenseTensor &tensor = ctx->GetTensor();
   const KernelKey &expected_kernel_type = ctx->GetKernelKey();
   if (phi::IsComplexType(expected_kernel_type.dtype())) {
-    // only promote inputs’s types when contains complex input
+    // only promote inputs's types when contains complex input
     return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
   } else {
 #ifdef PADDLE_WITH_DNNL
@@ -506,11 +506,6 @@ void MatmulWithFlattenKernelINT8(const Context &dev_ctx,
                                  int x_num_col_dims,
                                  int y_num_col_dims,
                                  DenseTensor *out) {
-  PADDLE_ENFORCE_EQ(dev_ctx.GetPlace().GetType() == AllocationType::CPU,
-                    true,
-                    errors::PreconditionNotMet(
-                        "oneDNN MatmulWithFlatten kernel must use CPUPlace"));
-
   OneDNNContext::tls().log_lib_version();
   auto &onednn_engine = dev_ctx.GetEngine();
 

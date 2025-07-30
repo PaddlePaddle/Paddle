@@ -173,7 +173,7 @@ phi::GetKernelTypeForVarContext BuildGetKernelTypeForVarContext(
   if (has_infer_varkernel_fn) {
     for (auto &attr : fluid_attrs) {
       switch (attr.second.index()) {
-        case 3:  // string type in framwork::Attribute
+        case 3:  // string type in framework::Attribute
           (*phi_attrs)[attr.first] = PADDLE_GET_CONST(std::string, attr.second);
           break;
         default:

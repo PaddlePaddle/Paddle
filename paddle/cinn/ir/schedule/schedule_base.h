@@ -108,6 +108,7 @@ class ScheduleBase {
   virtual std::vector<Expr> GetLoops(const Expr& block) const = 0;
   virtual std::vector<Expr> GetLoops(const std::string& block_name) const = 0;
   virtual std::vector<Expr> GetAllBlocks() const = 0;
+  virtual std::vector<stmt::StmtRef> GetAllSchedules() const = 0;
   virtual std::vector<Expr> GetChildBlocks(const Expr& expr) const = 0;
   virtual Expr GetBlock(const std::string& block_name) const = 0;
 
@@ -157,7 +158,6 @@ class ScheduleBase {
   virtual void ComputeInline(const Expr& schedule_block) = 0;
   virtual void ReverseComputeInline(const Expr& schedule_block) = 0;
   virtual void Bind(const Expr& loop, const std::string& thread_axis) = 0;
-  virtual Expr Rfactor(const Expr& rf_loop, int rf_axis) = 0;
   virtual Expr FactorizeReduction(const Expr& rf_loop,
                                   int rf_axis,
                                   bool with_write_back_block_init = true) = 0;

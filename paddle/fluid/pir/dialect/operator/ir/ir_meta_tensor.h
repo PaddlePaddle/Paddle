@@ -31,7 +31,7 @@ class IrMetaTensor : public phi::MetaTensor {
 
   phi::DataLayout layout() const override;
 
-  const phi::LoD& lod() const;
+  const phi::LegacyLoD& lod() const;
 
   void set_dims(const phi::DDim& dims) override;
 

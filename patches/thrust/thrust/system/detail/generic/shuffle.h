@@ -64,10 +64,10 @@ __host__ __device__ void shuffle_copy(
     OutputIterator result,
     URBG&& g);
 
-}  // end namespace generic
-}  // end namespace detail
-}  // end namespace system
-}  // end namespace thrust
+}  // namespace generic
+}  // namespace detail
+}  // namespace system
+}  // namespace thrust
 
 #include <thrust/system/detail/generic/shuffle.inl>
 

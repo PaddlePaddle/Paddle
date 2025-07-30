@@ -120,7 +120,7 @@ struct ConvArgsBase {
   // groups
   int group;
 
-  // data foramt
+  // data format
   GPUDNNDataLayout data_layout;
 
   ConvArgsBase(const HandleT& h,

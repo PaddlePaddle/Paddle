@@ -24,6 +24,12 @@ function case_list_unit() {
         echo "文件 testslist.csv 不存在"
         exit -1
     fi
+    if [ ! -f "${log_path}/blacklist.csv" ]; then
+        wget -P ${log_path}/ https://paddle-qa.bj.bcebos.com/Auto-Parallel/blacklist.csv --no-proxy || exit 101
+        echo "\033 ---- wget blacklist.csv \033"
+    fi
+    blacklist_file=${log_path}/blacklist.csv
+    mapfile -t blacklist < "$blacklist_file"
 
     target_key=${1:-"all"}
     for ((i=2; i<=`awk -F, 'END {print NR}' testslist.csv`; i++)); do
@@ -31,6 +37,9 @@ function case_list_unit() {
         case_name=`awk -F, 'NR=='$i' {print $1}' testslist.csv`
         if [[ ${target_key} != "all" ]] && [[ ! ${case_name} =~ ${target_key} ]]; then
             echo "=========== skip $case_name run  ==========="
+            continue
+        elif [[ " ${blacklist[@]} " == *" ${case_name} "* ]]; then
+            echo "======= skip blacklist case: $case_name run  ======="
             continue
         else
             echo "=========== $case_name run  begin ==========="

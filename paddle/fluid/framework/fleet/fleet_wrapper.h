@@ -420,7 +420,7 @@ class FleetWrapper {
   size_t GetAbsoluteSum(size_t start,
                         size_t end,
                         size_t level,
-                        const phi::LoD& lod);
+                        const phi::LegacyLoD& lod);
 
  protected:
   static bool is_initialized_;
@@ -436,5 +436,5 @@ class FleetWrapper {
   DISABLE_COPY_AND_ASSIGN(FleetWrapper);
 };
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace framework
+}  // namespace paddle

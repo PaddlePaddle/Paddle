@@ -43,6 +43,7 @@ class DemoNet(nn.Layer):
         recompute_use_reentrant=True,
         is_pp=False,
         pp_reshard_dist_attr=None,
+        offload_recompute_inputs=False,
     ):
         super().__init__()
         weight_attr_0 = create_numpy_like_random(param_prefix + "_0")
@@ -53,6 +54,7 @@ class DemoNet(nn.Layer):
         self.is_recompute = is_recompute
         self.recompute_use_reentrant = recompute_use_reentrant
         self.pp_reshard_dist_attr = pp_reshard_dist_attr
+        self.offload_recompute_inputs = offload_recompute_inputs
         self.linear_0 = nn.Linear(
             IMAGE_SIZE, IMAGE_SIZE, weight_attr_0, bias_attr=False
         )
@@ -73,7 +75,12 @@ class DemoNet(nn.Layer):
     def forward(self, x):
         if self.is_recompute:
             if self.recompute_use_reentrant:
-                return recompute(self._inner_forward_fn, x)
+                if self.offload_recompute_inputs:
+                    return recompute(
+                        self._inner_forward_fn, x, offload_indices=[0]
+                    )
+                else:
+                    return recompute(self._inner_forward_fn, x)
             else:
                 return recompute(self._inner_forward_fn, x, use_reentrant=False)
         else:

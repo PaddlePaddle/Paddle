@@ -21,7 +21,7 @@
 namespace phi {
 template <typename T>
 struct RmsFunctor<T, phi::GPUContext> {
-  RmsFunctor(const phi::GPUContext &ctx,
+  RmsFunctor(const phi::GPUContext &dev_ctx,
              const DenseTensor &param,
              const DenseTensor &mean_square,
              const DenseTensor &grad,
@@ -46,10 +46,10 @@ struct RmsFunctor<T, phi::GPUContext> {
     auto &grad_tensor = grad;
     size_t limit = static_cast<size_t>(ms_tensor.numel());
     DenseRmspropGradFunctor<T> grad_func(grad_tensor.data<T>());
-    funcs::ForRange<phi::GPUContext> for_range(ctx, limit);
+    funcs::ForRange<phi::GPUContext> for_range(dev_ctx, limit);
     using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
     MPDType *master_out_data =
-        multi_precision ? ctx.template Alloc<MPDType>(master_param_outs)
+        multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_outs)
                         : nullptr;
 
     if (centered) {
@@ -69,10 +69,10 @@ struct RmsFunctor<T, phi::GPUContext> {
       }
 
       for_range(CenteredRmspropFunctor<T, MPDType, DenseRmspropGradFunctor<T>>(
-          ctx.template Alloc<T>(param_out),
-          ctx.template Alloc<MPDType>(mean_square_out),
-          ctx.template Alloc<MPDType>(moment_out),
-          ctx.template Alloc<MPDType>(mean_grad_out),
+          dev_ctx.template Alloc<T>(param_out),
+          dev_ctx.template Alloc<MPDType>(mean_square_out),
+          dev_ctx.template Alloc<MPDType>(moment_out),
+          dev_ctx.template Alloc<MPDType>(mean_grad_out),
           lr_tensor.data<MPDType>(),
           master_out_data,
           static_cast<MPDType>(decay_t),
@@ -82,9 +82,9 @@ struct RmsFunctor<T, phi::GPUContext> {
     } else {
       for_range(
           UncenteredRmspropFunctor<T, MPDType, DenseRmspropGradFunctor<T>>(
-              ctx.template Alloc<T>(param_out),
-              ctx.template Alloc<MPDType>(mean_square_out),
-              ctx.template Alloc<MPDType>(moment_out),
+              dev_ctx.template Alloc<T>(param_out),
+              dev_ctx.template Alloc<MPDType>(mean_square_out),
+              dev_ctx.template Alloc<MPDType>(moment_out),
               lr_tensor.data<MPDType>(),
               master_out_data,
               static_cast<MPDType>(decay_t),

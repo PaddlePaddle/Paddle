@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+import os
 import sys
 import typing
 import unittest
@@ -490,6 +491,8 @@ class TestJacobianBatchFirst(unittest.TestCase):
 class TestHessianNoBatch(unittest.TestCase):
     @classmethod
     def setUpClass(self):
+        if paddle.base.core.is_compiled_with_xpu():
+            os.environ['XPU_PADDLE_FC_LOCAL_INT16'] = '1'
         self.shape = (2, 2)
         self.dtype = 'float32'
         self.np_dtype = np.float32
@@ -591,6 +594,8 @@ class TestHessianNoBatch(unittest.TestCase):
 class TestHessianBatchFirst(unittest.TestCase):
     @classmethod
     def setUpClass(self):
+        if paddle.base.core.is_compiled_with_xpu():
+            os.environ['XPU_PADDLE_FC_LOCAL_INT16'] = '1'
         self.x_shape = (5, 2)
         self.weight_shape = (2, 4)
         self.y_shape = (5, 2)

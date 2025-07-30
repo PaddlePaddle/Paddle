@@ -55,9 +55,69 @@ def ref_batch_norm_infer(
     return y
 
 
-def ref_batch_norm_train(
+def ref_batch_norm_grad(x, y_grad, scale, x_mean, x_var, data_layout, epsilon):
+    if data_layout == "NCHW":
+        x = np.transpose(x, (0, 2, 3, 1))
+        y_grad = np.transpose(y_grad, (0, 2, 3, 1))
+    x_grad = (
+        scale
+        * (
+            y_grad
+            - np.mean(y_grad, axis=(0, 1, 2))
+            - (x - x_mean)
+            * np.mean(y_grad * (x - x_mean), axis=(0, 1, 2))
+            / (x_var + epsilon)
+        )
+        / np.sqrt(x_var + epsilon)
+    )
+    scale_grad = np.sum(
+        y_grad * (x - x_mean) / np.sqrt(x_var + epsilon),
+        axis=(0, 1, 2),
+    )
+    bias_grad = np.sum(y_grad, axis=(0, 1, 2))
+    # Transfer back to N, C, H, W
+    if data_layout == "NCHW":
+        x_grad = np.transpose(x_grad, (0, 3, 1, 2))
+        x = np.transpose(x, (0, 3, 1, 2))
+    return x_grad, bias_grad, scale_grad
+
+
+def ref_batch_norm_global(
     x, y_grad, scale, bias, mean, variance, momentum, epsilon, data_layout
 ):
+    y = ref_batch_norm_infer(
+        x, scale, bias, mean, variance, momentum, epsilon, data_layout
+    )
+    x_grad, bias_grad, scale_grad = ref_batch_norm_grad(
+        x, y_grad, scale, mean, variance, data_layout, epsilon
+    )
+    return y, mean, variance, mean, variance, x_grad, scale_grad, bias_grad
+
+
+def ref_batch_norm_train(
+    x,
+    y_grad,
+    scale,
+    bias,
+    mean,
+    variance,
+    momentum,
+    epsilon,
+    data_layout,
+    use_global,
+):
+    if use_global:
+        return ref_batch_norm_global(
+            x,
+            y_grad,
+            scale,
+            bias,
+            mean,
+            variance,
+            momentum,
+            epsilon,
+            data_layout,
+        )
     # Forward
     if data_layout == "NCHW":
         n, c, h, w = x.shape
@@ -107,30 +167,9 @@ def ref_batch_norm_train(
     #   1/N * scale * rsqrt(variance + epsilon) * (N * grad_y - sum(grad_y) -
     #   (x - mean) * sum(grad_y * (x - mean)) / (variance + epsilon))
     # Transfer from (N, C, H, W) to (N, H, W, C) to simplify computation
-    if data_layout == "NCHW":
-        x = np.transpose(x, (0, 2, 3, 1))
-        y_grad = np.transpose(y_grad, (0, 2, 3, 1))
-    x_grad = (
-        scale
-        * (
-            y_grad
-            - np.mean(y_grad, axis=(0, 1, 2))
-            - (x - saved_mean)
-            * np.mean(y_grad * (x - saved_mean), axis=(0, 1, 2))
-            / (saved_variance + epsilon)
-        )
-        / np.sqrt(saved_variance + epsilon)
+    x_grad, bias_grad, scale_grad = ref_batch_norm_grad(
+        x, y_grad, scale, saved_mean, saved_variance, data_layout, epsilon
     )
-    scale_grad = np.sum(
-        y_grad * (x - saved_mean) / np.sqrt(saved_variance + epsilon),
-        axis=(0, 1, 2),
-    )
-    bias_grad = np.sum(y_grad, axis=(0, 1, 2))
-    # Transfer back to N, C, H, W
-    if data_layout == "NCHW":
-        x_grad = np.transpose(x_grad, (0, 3, 1, 2))
-        x = np.transpose(x, (0, 3, 1, 2))
-        y_grad = np.transpose(y_grad, (0, 3, 1, 2))
     return (
         y,
         mean_out,
@@ -145,7 +184,7 @@ def ref_batch_norm_train(
 
 class XPUTestBatchNormOp(XPUOpTestWrapper):
     def __init__(self):
-        self.op_name = 'batch_norm'
+        self.op_name = "batch_norm"
         self.use_dynamic_create_class = False
 
     @unittest.skipIf(
@@ -201,18 +240,18 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
         def test_infer(self):
             paddle.enable_static()
             with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
+                x = paddle.static.data("X", self.x_np.shape, self.x_np.dtype)
                 scale = paddle.static.data(
-                    'Scale', self.scale_np.shape, self.scale_np.dtype
+                    "Scale", self.scale_np.shape, self.scale_np.dtype
                 )
                 bias = paddle.static.data(
-                    'Bias', self.bias_np.shape, self.bias_np.dtype
+                    "Bias", self.bias_np.shape, self.bias_np.dtype
                 )
                 mean = paddle.static.data(
-                    'Mean', self.mean_np.shape, self.mean_np.dtype
+                    "Mean", self.mean_np.shape, self.mean_np.dtype
                 )
                 variance = paddle.static.data(
-                    'Variance', self.variance_np.shape, self.variance_np.dtype
+                    "Variance", self.variance_np.shape, self.variance_np.dtype
                 )
                 y = F.batch_norm(
                     x,
@@ -228,11 +267,11 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
                 exe = paddle.static.Executor(self.place)
                 [y_np] = exe.run(
                     feed={
-                        'X': self.x_np,
-                        'Scale': self.scale_np,
-                        'Bias': self.bias_np,
-                        'Mean': self.mean_np,
-                        'Variance': self.variance_np,
+                        "X": self.x_np,
+                        "Scale": self.scale_np,
+                        "Bias": self.bias_np,
+                        "Mean": self.mean_np,
+                        "Variance": self.variance_np,
                     },
                     fetch_list=[y],
                 )
@@ -297,14 +336,14 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
             self.trainable_statistics = False
 
 
-support_types = get_xpu_op_support_types('batch_norm')
+support_types = get_xpu_op_support_types("batch_norm")
 for stype in support_types:
     create_test_class(globals(), XPUTestBatchNormOp, stype)
 
 
 class XPUTestBatchNormGradOp(XPUOpTestWrapper):
     def __init__(self):
-        self.op_name = 'batch_norm'
+        self.op_name = "batch_norm"
         self.use_dynamic_create_class = False
 
     class TestBatchNormGradOp(unittest.TestCase):
@@ -344,9 +383,13 @@ class XPUTestBatchNormGradOp(XPUOpTestWrapper):
             self.variance_np = np.ones([channel_size]).astype(np.float32)
             self.saved_mean_np = np.zeros([channel_size]).astype(np.float32)
             self.saved_variance_np = np.ones([channel_size]).astype(np.float32)
+            self.init_test()
 
         def set_attrs(self):
             pass
+
+        def init_test(self):
+            self.use_global_stats = False
 
         def init_dtype(self):
             self.dtype = self.in_type
@@ -380,33 +423,34 @@ class XPUTestBatchNormGradOp(XPUOpTestWrapper):
                     self.momentum,
                     self.epsilon,
                     self.data_layout,
+                    self.use_global_stats,
                 )
                 inputs = {
-                    'X': self.x_np,
-                    'Scale': self.scale_np,
-                    'Bias': self.bias_np,
-                    'Mean': self.mean_np,
-                    'Variance': self.variance_np,
-                    'Y@GRAD': y_grad_np,
+                    "X": self.x_np,
+                    "Scale": self.scale_np,
+                    "Bias": self.bias_np,
+                    "Mean": self.mean_np,
+                    "Variance": self.variance_np,
+                    "Y@GRAD": y_grad_np,
                 }
                 outputs = {
-                    'Y': y_np,
-                    'Mean': mean_out_np,
-                    'Variance': variance_out_np,
-                    'SavedMean': saved_mean_np,
-                    'SavedVariance': saved_variance_np,
-                    'X@GRAD': x_grad_np,
-                    'Scale@GRAD': scale_grad_np,
-                    'Bias@GRAD': bias_grad_np,
+                    "Y": y_np,
+                    "Mean": mean_out_np,
+                    "Variance": variance_out_np,
+                    "SavedMean": saved_mean_np,
+                    "SavedVariance": saved_variance_np,
+                    "X@GRAD": x_grad_np,
+                    "Scale@GRAD": scale_grad_np,
+                    "Bias@GRAD": bias_grad_np,
                 }
                 attrs = {
-                    'momentum': self.momentum,
-                    'epsilon': self.epsilon,
-                    'is_test': False,
-                    'data_layout': self.data_layout,
-                    'use_mkldnn': False,
-                    'fuse_with_relu': False,
-                    'use_global_stats': False,
+                    "momentum": self.momentum,
+                    "epsilon": self.epsilon,
+                    "is_test": False,
+                    "data_layout": self.data_layout,
+                    "use_mkldnn": False,
+                    "fuse_with_relu": False,
+                    "use_global_stats": self.use_global_stats,
                 }
                 paddle.enable_static()
                 program = paddle.static.Program()
@@ -435,10 +479,10 @@ class XPUTestBatchNormGradOp(XPUOpTestWrapper):
                                 shape=np_value.shape,
                                 dtype=np_value.dtype,
                             )
-                        if var_name == 'Mean':
-                            arg_name = 'MeanOut'  # Share memory
-                        if var_name == 'Variance':
-                            arg_name = 'VarianceOut'  # Share memory
+                        if var_name == "Mean":
+                            arg_name = "MeanOut"  # Share memory
+                        if var_name == "Variance":
+                            arg_name = "VarianceOut"  # Share memory
                         output_vars[arg_name] = block.var(var_name)
                         fetch_list.append(var_name)
                     batch_norm_op = block.append_op(
@@ -457,18 +501,40 @@ class XPUTestBatchNormGradOp(XPUOpTestWrapper):
                     program._sync_with_cpp()
                     exe = paddle.static.Executor(self.place)
                     outs = exe.run(program, feed=inputs, fetch_list=fetch_list)
+                    if self.use_global_stats:
+                        test_name = ["Y", "X@GRAD", "Scale@GRAD", "Bias@GRAD"]
+                    else:
+                        test_name = [
+                            "Y",
+                            "Mean",
+                            "Variance",
+                            "SavedMean",
+                            "SavedVariance",
+                            "X@GRAD",
+                            "Scale@GRAD",
+                            "Bias@GRAD",
+                        ]
                     for id, name in enumerate(fetch_list):
-                        np.testing.assert_allclose(
-                            outputs[name],
-                            outs[id],
-                            rtol=self.rtol,
-                            atol=self.atol,
-                        )
+                        if name in test_name:
+                            np.testing.assert_allclose(
+                                outputs[name],
+                                outs[id],
+                                rtol=self.rtol,
+                                atol=self.atol,
+                            )
+
+    class TestBatchNormGradOpGlobal(TestBatchNormGradOp):
+        def init_test(self):
+            self.use_global_stats = True
+
+    class TestBatchNormGradOpWithoutGlobal(TestBatchNormGradOp):
+        def init_test(self):
+            self.use_global_stats = False
 
 
-support_types_grad = get_xpu_op_support_types('batch_norm_grad')
+support_types_grad = get_xpu_op_support_types("batch_norm_grad")
 for stype_grad in support_types_grad:
     create_test_class(globals(), XPUTestBatchNormGradOp, stype_grad)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

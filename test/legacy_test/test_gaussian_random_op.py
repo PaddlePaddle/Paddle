@@ -29,13 +29,13 @@ class TestGaussianRandomOp(OpTest):
         self.python_api = paddle.tensor.random.gaussian
         self.set_attrs()
         self.inputs = {}
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.attrs = {
             "shape": [123, 92],
             "mean": self.mean,
             "std": self.std,
             "seed": 10,
-            "use_mkldnn": self.use_mkldnn,
+            "use_mkldnn": self.use_onednn,
         }
         paddle.seed(10)
 
@@ -69,14 +69,14 @@ class TestGaussianRandomFP16Op(OpTest):
         self.python_api = paddle.tensor.random.gaussian
         self.set_attrs()
         self.inputs = {}
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.attrs = {
             "shape": [123, 92],
             "mean": self.mean,
             "std": self.std,
             "seed": 10,
             "dtype": paddle.float16,
-            "use_mkldnn": self.use_mkldnn,
+            "use_mkldnn": self.use_onednn,
         }
         paddle.seed(10)
 
@@ -120,14 +120,14 @@ class TestGaussianRandomBF16Op(OpTest):
         self.__class__.op_type = self.op_type
         self.set_attrs()
         self.inputs = {}
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.attrs = {
             "shape": [123, 92],
             "mean": self.mean,
             "std": self.std,
             "seed": 10,
             "dtype": paddle.bfloat16,
-            "use_mkldnn": self.use_mkldnn,
+            "use_mkldnn": self.use_onednn,
         }
         paddle.seed(10)
 
@@ -177,7 +177,7 @@ class TestGaussianRandomOp_ShapeTensorList(TestGaussianRandomOp):
             'mean': self.mean,
             'std': self.std,
             'seed': self.seed,
-            'use_mkldnn': self.use_mkldnn,
+            'use_mkldnn': self.use_onednn,
         }
 
         self.inputs = {"ShapeTensorList": shape_tensor_list}
@@ -186,7 +186,7 @@ class TestGaussianRandomOp_ShapeTensorList(TestGaussianRandomOp):
     def init_data(self):
         self.shape = [123, 92]
         self.infer_shape = [-1, 92]
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.mean = 1.0
         self.std = 2.0
         self.seed = 10
@@ -201,7 +201,7 @@ class TestGaussianRandomOp2_ShapeTensorList(
     def init_data(self):
         self.shape = [123, 92]
         self.infer_shape = [-1, -1]
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.mean = 1.0
         self.std = 2.0
         self.seed = 10
@@ -213,7 +213,7 @@ class TestGaussianRandomOp3_ShapeTensorList(
     def init_data(self):
         self.shape = [123, 92]
         self.infer_shape = [123, -1]
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.mean = 1.0
         self.std = 2.0
         self.seed = 10
@@ -225,7 +225,7 @@ class TestGaussianRandomOp4_ShapeTensorList(
     def init_data(self):
         self.shape = [123, 92]
         self.infer_shape = [123, -1]
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.mean = 1.0
         self.std = 2.0
         self.seed = 10
@@ -237,20 +237,20 @@ class TestGaussianRandomOp1_ShapeTensor(TestGaussianRandomOp):
         '''Test gaussian_random op with specified value'''
         self.op_type = "gaussian_random"
         self.init_data()
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.python_api = paddle.tensor.random.gaussian
         self.inputs = {"ShapeTensor": np.array(self.shape).astype("int32")}
         self.attrs = {
             'mean': self.mean,
             'std': self.std,
             'seed': self.seed,
-            'use_mkldnn': self.use_mkldnn,
+            'use_mkldnn': self.use_onednn,
         }
         self.outputs = {'Out': np.zeros((123, 92), dtype='float32')}
 
     def init_data(self):
         self.shape = [123, 92]
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.mean = 1.0
         self.std = 2.0
         self.seed = 10
@@ -458,8 +458,8 @@ class TestRandomValue(unittest.TestCase):
         if "V100" not in paddle.device.cuda.get_device_name():
             return
 
-        def _check_random_value(dtype, expect, expect_mean, expect_std):
-            x = paddle.randn([32, 3, 1024, 1024], dtype=dtype)
+        def _check_random_value(shape, dtype, expect, expect_mean, expect_std):
+            x = paddle.randn(shape, dtype=dtype)
             actual = x.numpy()
             np.testing.assert_allclose(
                 actual[2, 1, 512, 1000:1010], expect, rtol=1e-05
@@ -487,7 +487,9 @@ class TestRandomValue(unittest.TestCase):
             -0.0000053026194133403266873214888799115129813799285329878330230713
         )
         expect_std = 0.99999191058126390974081232343451119959354400634765625
-        _check_random_value(paddle.float64, expect, expect_mean, expect_std)
+        _check_random_value(
+            [32, 3, 1024, 1024], paddle.float64, expect, expect_mean, expect_std
+        )
 
         expect = [
             -0.7988942,
@@ -503,7 +505,57 @@ class TestRandomValue(unittest.TestCase):
         ]
         expect_mean = -0.00004762359094456769526004791259765625
         expect_std = 0.999975681304931640625
-        _check_random_value(paddle.float32, expect, expect_mean, expect_std)
+        _check_random_value(
+            [32, 3, 1024, 1024], paddle.float32, expect, expect_mean, expect_std
+        )
+
+        # test randn in large shape
+        expect = [
+            -1.4770278,
+            -0.637431,
+            -0.41728288,
+            0.31339037,
+            -1.7627009,
+            0.4061812,
+            1.0679497,
+            0.03405872,
+            -0.7271235,
+            -0.42642546,
+        ]
+
+        expect_mean = 0.0000010386128224126878194510936737060547
+        expect_std = 1.00000822544097900390625
+        _check_random_value(
+            [4, 2, 60000, 12000],
+            paddle.float32,
+            expect,
+            expect_mean,
+            expect_std,
+        )
+
+        # test randn with seed 0 in large shape
+        paddle.seed(0)
+        expect = [
+            -1.7653463,
+            0.5957617,
+            0.45865676,
+            -0.3061651,
+            0.17204928,
+            -1.7802757,
+            -0.10731091,
+            1.042362,
+            0.70476884,
+            0.2720365,
+        ]
+        expect_mean = -0.0000002320642948916429304517805576324463
+        expect_std = 1.00001156330108642578125
+        _check_random_value(
+            [4, 2, 60000, 12000],
+            paddle.float32,
+            expect,
+            expect_mean,
+            expect_std,
+        )
 
 
 if __name__ == "__main__":

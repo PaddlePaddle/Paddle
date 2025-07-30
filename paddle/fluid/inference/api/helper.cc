@@ -381,7 +381,7 @@ void RegisterAllCustomOperator(bool use_pir) {
                   auto ddims = phi::make_ddim(output_shapes[value_index]);
                   auto dtype = output_dtypes[value_index];
                   phi::DataLayout layout{DataLayout::NCHW};
-                  phi::LoD lod;
+                  phi::LegacyLoD lod;
                   out_types.push_back(paddle::dialect::DenseTensorType::get(
                       pir::IrContext::Instance(),
                       paddle::dialect::TransToIrDataType(dtype),
@@ -398,7 +398,7 @@ void RegisterAllCustomOperator(bool use_pir) {
                 auto ddims = phi::make_ddim(output_shapes[value_index]);
                 auto dtype = output_dtypes[value_index];
                 phi::DataLayout layout{DataLayout::NCHW};
-                phi::LoD lod;
+                phi::LegacyLoD lod;
                 auto out_type = paddle::dialect::DenseTensorType::get(
                     pir::IrContext::Instance(),
                     paddle::dialect::TransToIrDataType(dtype),

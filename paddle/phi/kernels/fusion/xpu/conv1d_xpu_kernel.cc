@@ -23,7 +23,7 @@ namespace phi {
 namespace fusion {
 
 template <typename T, typename Context>
-void Conv1dXPUKernel(const Context& ctx,
+void Conv1dXPUKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const paddle::optional<DenseTensor>& x_max,
                      const DenseTensor& filter,
@@ -65,8 +65,8 @@ void Conv1dXPUKernel(const Context& ctx,
                                      : branch_max.get_ptr()->data<float>();
   const float* bias_data =
       bias.get_ptr() == nullptr ? nullptr : bias.get_ptr()->data<float>();
-  auto* out_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(out));
-  auto* out_max_data = ctx.template Alloc<float>(out_max);
+  auto* out_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out));
+  auto* out_max_data = dev_ctx.template Alloc<float>(out_max);
 
   xpu::Activation_t act(static_cast<xpu::Activation_t::act_enum>(act_type));
   if (act_type == xpu::Activation_t::LEAKY_RELU) {
@@ -76,7 +76,7 @@ void Conv1dXPUKernel(const Context& ctx,
   }
   int r =
       xpu::conv1d_fusion<XPUType, int16_t, XPUType, int16_t>(  // TX/TW/TY/TGEMM
-          /* baidu::xpu::api::Context* ctx */ ctx.x_context(),
+          /* baidu::xpu::api::Context* ctx */ dev_ctx.x_context(),
           /* const TX* x */ input_data,
           /* const TW* weight */ filter_data,
           /* TY* y */ out_data,

@@ -127,6 +127,7 @@ from . import (
     linalg as linalg,
     signal as signal,
     tensor as tensor,
+    utils as utils,
 )
 from .autograd import (
     enable_grad,
@@ -136,6 +137,7 @@ from .autograd import (
     set_grad_enabled,
 )
 from .device import (  # noqa: F401
+    device_guard,
     get_cudnn_version,
     get_device,
     is_compiled_with_cinn,
@@ -155,6 +157,7 @@ from .framework import (  # noqa: F401
     CustomPlace,
     IPUPlace,
     ParamAttr,
+    XPUPinnedPlace,
     XPUPlace,
     async_save,
     clear_async_save_task_queue,
@@ -189,6 +192,7 @@ from .tensor.attribute import (
     shape,
 )
 from .tensor.creation import (
+    MmapStorage,
     arange,
     assign,
     cauchy_,
@@ -227,6 +231,7 @@ from .tensor.linalg import (  # noqa: F401
     cdist,
     cholesky,
     cross,
+    diagonal,
     dist,
     dot,
     eigvalsh,
@@ -385,6 +390,8 @@ from .tensor.math import (  # noqa: F401
     atan_,
     atanh,
     atanh_,
+    baddbmm,
+    baddbmm_,
     bitwise_left_shift,
     bitwise_left_shift_,
     bitwise_right_shift,
@@ -410,7 +417,6 @@ from .tensor.math import (  # noqa: F401
     cumsum_,
     cumulative_trapezoid,
     deg2rad,
-    diagonal,
     diff,
     digamma,
     digamma_,
@@ -497,6 +503,7 @@ from .tensor.math import (  # noqa: F401
     nansum,
     neg,
     neg_,
+    negative,
     nextafter,
     outer,
     polygamma,
@@ -556,6 +563,7 @@ from .tensor.random import (
     randint,
     randint_like,
     randn,
+    randn_like,
     randperm,
     standard_gamma,
     standard_normal,
@@ -606,17 +614,8 @@ if is_compiled_with_cinn():
     if os.path.exists(cuh_file):
         os.environ.setdefault('runtime_include_dir', runtime_include_dir)
 
-    if sys.version_info >= (3, 9):
-
-        data_file_path = resources.files('paddle.cinn_config')
-        os.environ['CINN_CONFIG_PATH'] = str(data_file_path)
-    else:
-        import pkg_resources
-
-        data_file_path = pkg_resources.resource_filename(
-            'paddle.cinn_config', ''
-        )
-        os.environ['CINN_CONFIG_PATH'] = data_file_path
+    data_file_path = resources.files('paddle.cinn_config')
+    os.environ['CINN_CONFIG_PATH'] = str(data_file_path)
 
 if __is_metainfo_generated and is_compiled_with_cuda():
     import os
@@ -651,6 +650,10 @@ if __is_metainfo_generated and is_compiled_with_cuda():
 
         cupti_dir_lib_path = package_dir + "/.." + "/nvidia/cuda_cupti/lib"
         set_flags({"FLAGS_cupti_dir": cupti_dir_lib_path})
+
+        if is_compiled_with_cinn():
+            cuda_cccl_path = package_dir + "/.." + "/nvidia/cuda_cccl/include/"
+            set_flags({"FLAGS_cuda_cccl_dir": cuda_cccl_path})
 
     elif (
         platform.system() == 'Windows'
@@ -804,6 +807,8 @@ __all__ = [
     'raw',
     'addmm',
     'addmm_',
+    'baddbmm',
+    'baddbmm_',
     'allclose',
     'isclose',
     't',
@@ -883,6 +888,7 @@ __all__ = [
     'vsplit',
     'logical_and',
     'logical_and_',
+    'MmapStorage',
     'full_like',
     'less_than',
     'less_than_',
@@ -1010,6 +1016,7 @@ __all__ = [
     'conj',
     'neg',
     'neg_',
+    'negative',
     'lgamma',
     'lgamma_',
     'gammaincc',
@@ -1075,6 +1082,7 @@ __all__ = [
     'cauchy_',
     'geometric_',
     'randn',
+    'randn_like',
     'strided_slice',
     'unique',
     'unique_consecutive',
@@ -1114,6 +1122,7 @@ __all__ = [
     'reverse',
     'nonzero',
     'CUDAPinnedPlace',
+    'XPUPinnedPlace',
     'logical_not',
     'logical_not_',
     'add_n',
@@ -1221,3 +1230,13 @@ __all__ = [
     'pi',
     'e',
 ]
+
+import os
+
+FLAGS_trace_api = os.environ.get("FLAGS_trace_api", None)
+if FLAGS_trace_api is not None and FLAGS_trace_api != "":
+    from .api_tracer import start_api_tracer
+
+    api_path = FLAGS_trace_api.split(",")[0]
+    save_config_path = FLAGS_trace_api.split(",")[1]
+    start_api_tracer(api_path, save_config_path)

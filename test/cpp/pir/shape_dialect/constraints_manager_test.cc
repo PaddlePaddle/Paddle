@@ -61,4 +61,18 @@ TEST(ConstraintsManager, BroadcastableCstr) {
   ASSERT_TRUE(cstr_mgr.IsBroadcastable(sym_expr_0, int_expr));
 }
 
+TEST(ConstraintsManager, Case1) {
+  // BC(S0, S1) == S2 => BC(S0, S2) == S2
+  ConstraintsManager cstr_mgr;
+  DimExpr s0 = DimExpr("S0");
+  DimExpr s1 = DimExpr("S1");
+  DimExpr s2 = DimExpr("S2");
+  DimExpr bc_s0_s1 = Broadcast<DimExpr>{{s0, s1}};
+  cstr_mgr.AddEqCstr(bc_s0_s1, s2);
+  cstr_mgr.AddBroadcastableCstr(s0, s1);
+  DimExpr bc_s0_s2 = Broadcast<DimExpr>{{s0, s2}};
+  cstr_mgr.AddBroadcastableCstr(s0, s2);
+  ASSERT_TRUE(cstr_mgr.IsEqual(bc_s0_s2, s2));
+}
+
 }  // namespace symbol::test

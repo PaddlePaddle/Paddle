@@ -48,9 +48,9 @@ Tensor CreateRFTensor(const Tensor& original_tensor,
 
 // Base class to create a new reduce block,
 // only used for FactorizeReduction schedule primitive.
-class ReduceBlockCreater {
+class ReduceBlockCreator {
  public:
-  ReduceBlockCreater(const Expr& original_block,
+  ReduceBlockCreator(const Expr& original_block,
                      const std::vector<Expr>& original_loops,
                      const Expr& rf_loop,
                      const Expr& original_update_stmt,
@@ -140,7 +140,7 @@ class ReduceBlockCreater {
               original_loops_[i].As<For>()->loop_var->name) > 0;
       bool is_rf_loop = rf_loop_.As<For>()->loop_var->name ==
                         original_loops_[i].As<For>()->loop_var->name;
-      // Outter loop should not skip.
+      // Outer loop should not skip.
       if (is_rf_loop) {
         is_inside_rf_loop = false;
       }
@@ -245,9 +245,9 @@ class LoadReplacer : public ir::IRMutator<> {
 
 // Implement class for building Reduction-Factorized block,
 // only used for FactorizeReduction schedule primitive.
-class RFBlockCreater : public ReduceBlockCreater {
+class RFBlockCreator : public ReduceBlockCreator {
  public:
-  RFBlockCreater(const Expr& original_block,
+  RFBlockCreator(const Expr& original_block,
                  const std::vector<Expr>& original_loops,
                  const Expr& rf_loop,
                  const Expr& original_update_stmt,
@@ -255,7 +255,7 @@ class RFBlockCreater : public ReduceBlockCreater {
                  const std::map<Var, Expr, CompVar>& var2loops,
                  const Expr& bound_check,
                  int rf_axis)
-      : ReduceBlockCreater(original_block,
+      : ReduceBlockCreator(original_block,
                            original_loops,
                            rf_loop,
                            original_update_stmt,
@@ -391,16 +391,16 @@ class RFBlockCreater : public ReduceBlockCreater {
 
 // Implement class for building Writing-Back block,
 // only used for FactorizeReduction schedule primitive.
-class RBBlockCreater : public ReduceBlockCreater {
+class RBBlockCreator : public ReduceBlockCreator {
  public:
-  RBBlockCreater(const Expr& original_block,
+  RBBlockCreator(const Expr& original_block,
                  const std::vector<Expr>& original_loops,
                  const Expr& rf_loop,
                  const Expr& original_update_stmt,
                  const ir::Tensor& rf_tensor,
                  const std::vector<Expr>& rf_tensor_access_indices,
                  const Var& rf_block_rf_iter_var)
-      : ReduceBlockCreater(original_block,
+      : ReduceBlockCreator(original_block,
                            original_loops,
                            rf_loop,
                            original_update_stmt,
@@ -451,18 +451,12 @@ class RBBlockCreater : public ReduceBlockCreater {
   void CreateUpdateStmt() override {
     Expr original_store_body = original_update_stmt_.As<ir::Store>()->value;
     Expr new_store_body = ir_utils::IRCopy(original_store_body);
-    std::string original_store_name =
-        original_update_stmt_.As<ir::Store>()->tensor.as_tensor()->name;
 
-#define REPLACE_RF_TENSOR(Op)                                          \
-  if (new_store_body.As<Op>()) {                                       \
-    auto* node = new_store_body.As<Op>();                              \
-    PADDLE_ENFORCE_NOT_NULL(node,                                      \
-                            ::common::errors::InvalidArgument(         \
-                                "The conversion of new_store_body to " \
-                                "Op* failed, node is nullptr."));      \
-    auto& operand = node->b();                                         \
-    operand = Load::Make(rf_tensor_, rf_tensor_access_indices_);       \
+#define REPLACE_RF_TENSOR(Op)                                    \
+  if (new_store_body.As<Op>()) {                                 \
+    auto* node = new_store_body.As<Op>();                        \
+    auto& operand = node->b();                                   \
+    operand = Load::Make(rf_tensor_, rf_tensor_access_indices_); \
   }
 
     REPLACE_RF_TENSOR(Add)
@@ -471,11 +465,17 @@ class RBBlockCreater : public ReduceBlockCreater {
     REPLACE_RF_TENSOR(Min)
     REPLACE_RF_TENSOR(And)
     REPLACE_RF_TENSOR(Or)
-    REPLACE_RF_TENSOR(LT)
-    REPLACE_RF_TENSOR(LE)
-    REPLACE_RF_TENSOR(GT)
-    REPLACE_RF_TENSOR(GE)
 #undef REPLACE_RF_TENSOR
+
+    if (new_store_body.As<ir::Call>()) {
+      auto* node = new_store_body.As<ir::Call>();
+      PADDLE_ENFORCE_EQ(node->read_args.size(),
+                        2UL,
+                        ::common::errors::InvalidArgument(
+                            "The reduction Call op must have exactly two "
+                            "arguments."));
+      node->read_args[1] = Load::Make(rf_tensor_, rf_tensor_access_indices_);
+    }
 
     Expr original_store_tensor = original_update_stmt_.As<ir::Store>()->tensor;
     std::vector<Expr> original_store_indices =

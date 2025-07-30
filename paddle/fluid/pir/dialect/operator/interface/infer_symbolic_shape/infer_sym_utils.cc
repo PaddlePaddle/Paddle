@@ -76,6 +76,23 @@ bool ReduceInferDim(pir::Operation *op,
     input_shapes = *x_shape_or_data.data();
   }
 
+  const bool is_processable_scalar = [&]() -> bool {
+    // is 0 dim
+    if (x_shape_or_data.data().has_value() && x_shape_or_data.shape().empty() &&
+        x_shape_or_data.data().value().size() == 1) {
+      if (!op->isa<paddle::dialect::AnyOp>() &&
+          !op->isa<paddle::dialect::AllOp>()) {
+        return true;
+      }
+    }
+    return false;
+  }();
+
+  if (is_processable_scalar) {
+    infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
+    return true;
+  }
+
   const std::vector<symbol::DimExpr> shapes = [&] {
     std::vector<symbol::DimExpr> shapes;
     for (int i = 0; i < x_rank; ++i) {
@@ -322,4 +339,35 @@ bool GetAxisFromOpInput(pir::Value in_value,
     return true;
   }
 }
+
+std::vector<symbol::DimExpr> GetDataFromTensorOrTensorList(
+    const symbol::ShapeOrDataDimExprs &shape_or_data) {
+  if (shape_or_data.isa<TensorListExprs>()) {
+    std::vector<symbol::DimExpr> expr_vec;
+    TensorListExprs list =
+        shape_or_data.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+    for (size_t i = 0; i < list.size(); i++) {
+      PADDLE_ENFORCE_EQ(list.at(i).data().has_value(),
+                        true,
+                        common::errors::InvalidArgument(
+                            "i-th element of list has no value, please check"));
+      for (auto expr : list.at(i).data().value()) {
+        expr_vec.emplace_back(expr);
+      }
+    }
+    return expr_vec;
+  } else if (shape_or_data.isa<symbol::TensorShapeOrDataDimExprs>()) {
+    PADDLE_ENFORCE_EQ(
+        shape_or_data.data().has_value(),
+        true,
+        common::errors::InvalidArgument(
+            "TensorShapeOrDataDimExprs has no value, please check"));
+    return shape_or_data.data().value();
+  }
+  PADDLE_THROW(::common::errors::InvalidArgument(
+      "This parameters currently only support "
+      "two types: TensorListShapeOrDataDimExprs and "
+      "TensorShapeOrDataDimExprs"));
+}
+
 }  // namespace paddle::dialect::details

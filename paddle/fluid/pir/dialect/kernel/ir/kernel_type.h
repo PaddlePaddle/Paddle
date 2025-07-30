@@ -41,7 +41,7 @@ class AllocatedDenseTensorType
                                       const pir::Type &dtype,
                                       const phi::DDim &dims,
                                       const phi::DataLayout &layout,
-                                      const phi::LoD &lod,
+                                      const phi::LegacyLoD &lod,
                                       size_t offset) {
     dialect::DenseTensorType dense_tensor_type =
         dialect::DenseTensorType::get(ctx, dtype, dims, layout, lod, offset);
@@ -60,7 +60,7 @@ class AllocatedDenseTensorType
 
   phi::DataLayout data_layout() const;
 
-  const phi::LoD &lod() const;
+  const phi::LegacyLoD &lod() const;
 
   size_t offset() const;
 };
@@ -85,7 +85,7 @@ class AllocatedSelectedRowsType
                                        const pir::Type &dtype,
                                        const phi::DDim &dims,
                                        const phi::DataLayout &layout,
-                                       const phi::LoD &lod,
+                                       const phi::LegacyLoD &lod,
                                        size_t offset) {
     dialect::SelectedRowsType type =
         dialect::SelectedRowsType::get(ctx, dtype, dims, layout, lod, offset);
@@ -104,7 +104,7 @@ class AllocatedSelectedRowsType
 
   phi::DataLayout data_layout() const;
 
-  const phi::LoD &lod() const;
+  const phi::LegacyLoD &lod() const;
 
   size_t offset() const;
 };

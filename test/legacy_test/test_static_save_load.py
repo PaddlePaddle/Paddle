@@ -68,7 +68,7 @@ class SimpleLSTMRNN(paddle.nn.Layer):
                     low=-self._init_scale, high=self._init_scale
                 ),
             )
-            self.weight_1_arr.append(self.add_parameter('w_%d' % i, weight_1))
+            self.weight_1_arr.append(self.add_parameter(f'w_{i}', weight_1))
             bias_1 = self.create_parameter(
                 attr=base.ParamAttr(
                     initializer=paddle.nn.initializer.Uniform(
@@ -79,7 +79,7 @@ class SimpleLSTMRNN(paddle.nn.Layer):
                 dtype="float32",
                 default_initializer=paddle.nn.initializer.Constant(0.0),
             )
-            self.bias_arr.append(self.add_parameter('b_%d' % i, bias_1))
+            self.bias_arr.append(self.add_parameter(f'b_{i}', bias_1))
 
     def forward(self, input_embedding, init_hidden=None, init_cell=None):
         self.cell_array = []

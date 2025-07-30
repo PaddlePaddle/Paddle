@@ -48,7 +48,7 @@ std::string GetBroadcastAxes(const int64_t& tensor_ndim,
   return alphabet.substr(broadcast_ndim - tensor_ndim, tensor_ndim);
 }
 
-// Rule1: A repicated dimension could be merged by any sharded dimension.
+// Rule1: A replicated dimension could be merged by any sharded dimension.
 // Rule2: A tensor axis could at most be sharded by one mesh dimension.
 // (TODO trigger heuristics cost model and reshard to handle axis sharded by
 // multiple dimension case.)
@@ -215,6 +215,22 @@ bool PlacementEqual(const std::shared_ptr<PlacementStatus>& a,
   return a_shard->get_axis() == b_shard->get_axis();
 }
 
+bool IsPartialLegal(const TensorDistAttr& dist_attr) {
+  if (dist_attr.is_partial()) {
+    const std::vector<int64_t> dims_mapping = dist_attr.dims_mapping();
+    const std::set<int64_t> partial_on_dims = dist_attr.partial_dims();
+    for (const int64_t& dim : dims_mapping) {
+      if (dim != -1 && partial_on_dims.count(dim) != 0) {
+        VLOG(4) << "Partial on dim [" << dim << "] but this dim is sharded";
+        return false;
+      }
+    }
+    return true;
+  } else {
+    return true;
+  }
+}
+
 void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
                        const std::vector<std::vector<int64_t>>& tensor_shapes,
                        const std::vector<std::string>& axis_names,
@@ -299,7 +315,7 @@ void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
     return false;
   };
 
-  // a dim can not be sharded twice along diffrent mesh_dim
+  // a dim can not be sharded twice along different mesh_dim
   std::set<char> sharded_axis;
   std::map<int32_t, ReduceType> partial_dim_to_type;
   std::map<int32_t, char> mesh_dim_to_axis;
@@ -560,7 +576,7 @@ TensorDistAttr ReduceGradBroadCastDims(const TensorDistAttr& input,
 
 TensorDistAttr ReduceGradBroadCastDims(int64_t input_dims,
                                        const TensorDistAttr& grad) {
-  TensorDistAttr input;
+  TensorDistAttr input = CopyTensorDistAttrForOutput(grad);
   std::vector<int64_t> dim_mapping(input_dims, -1);
   input.set_dims_mapping(dim_mapping);
   return ReduceGradBroadCastDims(input, grad);

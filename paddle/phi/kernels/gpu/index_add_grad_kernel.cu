@@ -19,6 +19,7 @@
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpu/index_select_impl.h"
 
@@ -27,20 +28,28 @@ namespace phi {
 using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T, typename Context>
-void IndexAddGradKernel(const Context& ctx,
+void IndexAddGradKernel(const Context& dev_ctx,
                         const DenseTensor& index,
                         const DenseTensor& add_value,
                         const DenseTensor& out_grad,
                         int dim,
                         DenseTensor* x_grad,
                         DenseTensor* add_value_grad) {
-  auto* output_grad_data = out_grad.data<T>();
-  auto* in_grad_data = ctx.template Alloc<T>(x_grad);
-  auto* add_value_grad_data = ctx.template Alloc<T>(add_value_grad);
+  if (out_grad.numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    if (add_value_grad) {
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(add_value_grad->dims())),
+          0,
+          add_value_grad);
+    }
+    return;
+  }
 
-  auto input_dim = x_grad->dims();
-  auto output_dim = out_grad.dims();
-  auto add_value_dim = add_value_grad->dims();
+  // x.shape == out.shape in index_grad op
+  auto input_dim = out_grad.dims();
+  auto add_value_dim = add_value.dims();
   dim = dim >= 0 ? dim : dim + input_dim.size();
   auto stride_dim = common::stride(input_dim);
   int64_t stride = stride_dim[dim];
@@ -59,42 +68,48 @@ void IndexAddGradKernel(const Context& ctx,
                         phi::DataType::INT32,
                         phi::DataType::INT64));
 
-  int64_t numel = add_value_grad->numel();
+  int64_t numel = add_value.numel();
   if (numel == 0) {
     return;
   }
-  auto stream = ctx.stream();
+  auto stream = dev_ctx.stream();
 
   // get x_grad: copy out_grad to x_grad.
-  phi::Copy(ctx, out_grad, ctx.GetPlace(), false, x_grad);
+  if (x_grad) {
+    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+  }
 
   // get add_value_grad: index_select(out_grad, index, axis)
-  unsigned int block_dim = PADDLE_CUDA_NUM_THREADS;
-  dim3 grid_dim = dim3((numel + block_dim - 1) / block_dim);
-  phi::backends::gpu::LimitGridDim(ctx, &grid_dim);
+  if (add_value_grad) {
+    auto* output_grad_data = out_grad.data<T>();
+    auto* add_value_grad_data = dev_ctx.template Alloc<T>(add_value_grad);
+    unsigned int block_dim = PADDLE_CUDA_NUM_THREADS;
+    dim3 grid_dim = dim3((numel + block_dim - 1) / block_dim);
+    phi::backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
 
-  if (index_type == phi::DataType::INT64) {
-    const int64_t* index_data = index.data<int64_t>();
-    index_select_cuda_kernel<T, int64_t>
-        <<<grid_dim, block_dim, 0, stream>>>(output_grad_data,
-                                             add_value_grad_data,
-                                             index_data,
-                                             numel,
-                                             stride,
-                                             size,
-                                             delta,
-                                             input_dim[dim]);
-  } else {
-    const int* index_data = index.data<int>();
-    index_select_cuda_kernel<T, int>
-        <<<grid_dim, block_dim, 0, stream>>>(output_grad_data,
-                                             add_value_grad_data,
-                                             index_data,
-                                             numel,
-                                             stride,
-                                             size,
-                                             delta,
-                                             input_dim[dim]);
+    if (index_type == phi::DataType::INT64) {
+      const int64_t* index_data = index.data<int64_t>();
+      index_select_cuda_kernel<T, int64_t>
+          <<<grid_dim, block_dim, 0, stream>>>(output_grad_data,
+                                               add_value_grad_data,
+                                               index_data,
+                                               numel,
+                                               stride,
+                                               size,
+                                               delta,
+                                               input_dim[dim]);
+    } else {
+      const int* index_data = index.data<int>();
+      index_select_cuda_kernel<T, int>
+          <<<grid_dim, block_dim, 0, stream>>>(output_grad_data,
+                                               add_value_grad_data,
+                                               index_data,
+                                               numel,
+                                               stride,
+                                               size,
+                                               delta,
+                                               input_dim[dim]);
+    }
   }
 }
 

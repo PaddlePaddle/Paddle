@@ -39,8 +39,7 @@ COMMON_DECLARE_bool(reader_queue_speed_test_mode);
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(phi::TensorArray);
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 namespace py = pybind11;
 namespace reader = operators::reader;
@@ -426,11 +425,11 @@ void BindReader(py::module *module) {
         });
 
   m.def(
-      "init_lod_tensor_blocking_queue",
+      "init_dense_tensor_blocking_queue",
       [](framework::Variable &var,
          size_t capacity,
          bool is_ordered) -> py::object {
-        VLOG(1) << "init_lod_tensor_blocking_queue";
+        VLOG(1) << "init_dense_tensor_blocking_queue";
         if (is_ordered) {
           auto *holder = var.GetMutable<
               reader::OrderedMultiDeviceDenseTensorBlockingQueueHolder>();
@@ -544,5 +543,4 @@ void BindReader(py::module *module) {
       py::return_value_policy::take_ownership);
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

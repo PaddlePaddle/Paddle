@@ -112,6 +112,25 @@ static void RaiseNonOutOfMemoryError(int status) {
   PADDLE_ENFORCE_XRE_SUCCESS(status);
 }
 
+void EmptyCache() {
+  std::vector<int> devices = GetXPUSelectedDevices();
+  for (auto device : devices) {
+    memory::Release(phi::XPUPlace(device));
+  }
+}
+
+int GetXPUDeviceUtilizationRate(int dev_id) {
+  return phi::backends::xpu::GetXPUDeviceUtilizationRate(dev_id);
+}
+
+int64_t GetXPUDeviceTotalMemory(int dev_id) {
+  return phi::backends::xpu::GetXPUDeviceTotalMemory(dev_id);
+}
+
+int64_t GetXPUDeviceUsedMemory(int dev_id) {
+  return phi::backends::xpu::GetXPUDeviceUsedMemory(dev_id);
+}
+
 class RecordedXPUMallocHelper {
  private:
   explicit RecordedXPUMallocHelper(int dev_id, uint64_t limit_size = 0)

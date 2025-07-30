@@ -144,7 +144,7 @@ class TestHapiWithAmp(unittest.TestCase):
             "O3",
         ]
         if not base.is_compiled_with_cuda():
-            self.skipTest('module not tested when ONLY_CPU compling')
+            self.skipTest('module not tested when ONLY_CPU compiling')
         paddle.set_device('gpu')
         net = LeNet()
         model = Model(net)
@@ -171,7 +171,7 @@ class TestHapiWithAmp(unittest.TestCase):
         paddle.enable_static()
         amp_configs = {"level": "O2", "use_pure_fp16": True}
         if not base.is_compiled_with_cuda():
-            self.skipTest('module not tested when ONLY_CPU compling')
+            self.skipTest('module not tested when ONLY_CPU compiling')
         paddle.set_device('gpu')
 
         net = LeNet()

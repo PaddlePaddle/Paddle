@@ -26,11 +26,13 @@
 #include "paddle/pir/include/core/value.h"
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_manager.h"
+#include "paddle/pir/include/pass/pass_registry.h"
 
 DECLARE_FILE_SYMBOLS(print_statistics);
 
 COMMON_DECLARE_bool(pir_apply_inplace_pass);
 COMMON_DECLARE_bool(print_ir);
+COMMON_DECLARE_string(enable_custom_engine);
 
 namespace paddle::framework {
 class ProgramDesc;
@@ -112,10 +114,8 @@ InterpreterCoreInfoCache &InterpreterCoreInfoCache::Instance() {
 std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
     const ProgramDesc &program_desc,
     const phi::Place &place,
-    bool is_grad,
-    int64_t program_id,
     framework::Scope *scope,
-    const int64_t &place_hash_key) {
+    const InterpreterCoreInfoCacheKey &key) {
   auto &cache = framework::InterpreterCoreInfoCache::Instance();
   if (cache.Size() > 256000u /* max_cached_size*/) {
     PADDLE_THROW(common::errors::Fatal(
@@ -131,8 +131,7 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
   core.reset(new InterpreterCore(
       place, program_desc.Block(0), scope, execution_config));
 
-  auto &cached_value = cache.GetMutable(
-      program_id, scope, place_hash_key, is_grad, /*in_pir_mode=*/false);
+  auto &cached_value = cache.GetMutable(key.with_pir_mode(false));
   cached_value.core_ = core;
   return core;
 }
@@ -140,10 +139,8 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
 std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
     std::unique_ptr<::pir::Program> ir_program,
     const phi::Place &place,
-    bool is_grad,
-    int64_t program_id,
     framework::Scope *scope,
-    const int64_t &place_hash_key,
+    const InterpreterCoreInfoCacheKey &key,
     bool used_for_sot) {
   auto &cache = framework::InterpreterCoreInfoCache::Instance();
   if (cache.Size() > 256000u /* max_cached_size*/) {
@@ -161,8 +158,7 @@ std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
   core.reset(new InterpreterCore(
       place, {}, ir_program->block(), scope, execution_config));
 
-  auto &cached_value = cache.GetMutable(
-      program_id, scope, place_hash_key, is_grad, /*in_pir_mode=*/true);
+  auto &cached_value = cache.GetMutable(key.with_pir_mode(true));
   cached_value.core_ = core;
   cached_value.ir_prog_ = std::move(ir_program);
   return core;
@@ -176,6 +172,25 @@ std::unique_ptr<::pir::Program> ApplyIrPass(
     ::pir::Program *program,
     phi::Place place,
     const std::set<std::string> &no_need_buffer_names) {
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+  if (!FLAGS_enable_custom_engine.empty()) {
+    std::string custom_engine_translate_pass = FLAGS_enable_custom_engine;
+    std::istringstream ss(custom_engine_translate_pass);
+    std::string pass;
+    std::vector<std::string> passes;
+
+    while (std::getline(ss, pass, ',')) {
+      passes.push_back(pass);
+      VLOG(4) << "Add CustomEngine pass : " << pass;
+    }
+
+    ::pir::PassManager pass_pm(::pir::IrContext::Instance(), 3);
+    for (std::string custom_pass : passes) {
+      pass_pm.AddPass(pir::PassRegistry::Instance().Get(custom_pass));
+      pass_pm.Run(program);
+    }
+  }
+#endif
   auto ir_res = paddle::dialect::PdOpLowerToKernelPass(program, place);
 
   if (FLAGS_pir_apply_inplace_pass) {
@@ -344,7 +359,7 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
     if (scope->FindVar(var_name)) {
       auto tensor = scope->FindVar(var_name)->Get<phi::DenseTensor>();
       phi::AllocationType p = place.GetType();
-      if (tensor.initialized()) {
+      if (tensor.has_allocation()) {
         p = tensor.place().GetType();
       }
 

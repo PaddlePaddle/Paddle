@@ -56,9 +56,7 @@ def create_tdm_tree():
 
 
 def api_wrapper(x, tree_info, child_nums, dtype=paddle.int32):
-    return paddle._legacy_C_ops.tdm_child(
-        x, tree_info, "child_nums", child_nums, "dtype", dtype
-    )
+    return paddle._C_ops.tdm_child(x, tree_info, child_nums, dtype)
 
 
 class TestTDMChildOp(OpTest):
@@ -149,9 +147,7 @@ class TestCase4(TestTDMChildOp):
 class TestTDMChildShape(unittest.TestCase):
     def test_shape(self):
         with paddle_static_guard():
-            x = paddle.static.data(
-                name='x', shape=[-1, 1], dtype='int32', lod_level=1
-            )
+            x = paddle.static.data(name='x', shape=[-1, 1], dtype='int32')
             tdm_tree_info = create_tdm_tree()
             tree_info_np = np.array(tdm_tree_info).astype('int32')
 

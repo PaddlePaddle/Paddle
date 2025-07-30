@@ -59,7 +59,7 @@ SpmdInfo SoftmaxInferSpmd(const DistMetaTensor& x, int axis) {
   // Step2: Sharding Propagation
   // naive support for sharding on softmax_axis
   // softmax_axis should be resharded as replicated (TODO: support sharding on
-  // softmax_axis effeciently)
+  // softmax_axis efficiently)
   if (x_dims_mapping[axis] >= 0) {
     x_dims_mapping[axis] = -1;
     VLOG(6) << "SoftmaxSPMDRule InferForward: softmax axis is reshard to be "

@@ -81,7 +81,7 @@ class TestBuildFakeProgram(unittest.TestCase):
         self.assertTrue(dist_input.shape == [BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE])
         self.assertTrue(w0.shape == [HIDDEN_SIZE, HIDDEN_SIZE])
         self.assertTrue(dist_input.shape == dist_input._local_shape)
-        self.assertTrue(w0.shape == w0._local_shape)
+        self.assertTrue(w0.shape == dist_w0._local_shape)
         self.assertTrue(dist_input.dist_attr().dims_mapping == [-1, -1, -1])
         self.assertTrue(
             isinstance(
@@ -147,10 +147,10 @@ class TestBuildFakeProgram(unittest.TestCase):
 
         # check detail
         self.assertTrue(dist_input.shape == [BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE])
-        self.assertTrue(w0.shape == [HIDDEN_SIZE, HIDDEN_SIZE])
+        self.assertTrue(dist_w0.shape == [HIDDEN_SIZE, HIDDEN_SIZE])
         self.assertTrue(dist_input.shape == dist_input._local_shape)
         self.assertTrue(
-            w0._local_shape == [HIDDEN_SIZE, HIDDEN_SIZE // MP_SIZE]
+            dist_w0._local_shape == [HIDDEN_SIZE, HIDDEN_SIZE // MP_SIZE]
         )
         self.assertTrue(dist_input.dist_attr().dims_mapping == [-1, -1, -1])
         self.assertTrue(dist_w0.dist_attr().dims_mapping == [-1, 0])
@@ -198,13 +198,13 @@ class TestBuildFakeProgram(unittest.TestCase):
 
         # check detail
         self.assertTrue(dist_input.shape == [BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE])
-        self.assertTrue(w0.shape == [HIDDEN_SIZE, HIDDEN_SIZE])
+        self.assertTrue(dist_w0.shape == [HIDDEN_SIZE, HIDDEN_SIZE])
         self.assertTrue(
             dist_input._local_shape
             == [BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE // MP_SIZE]
         )
         self.assertTrue(
-            w0._local_shape == [HIDDEN_SIZE // MP_SIZE, HIDDEN_SIZE]
+            dist_w0._local_shape == [HIDDEN_SIZE // MP_SIZE, HIDDEN_SIZE]
         )
         self.assertTrue(dist_input.dist_attr().dims_mapping == [-1, -1, 0])
         self.assertTrue(dist_w0.dist_attr().dims_mapping == [0, -1])

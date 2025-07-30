@@ -366,7 +366,7 @@ void MulticlassNMSv1Kernel(const Context& dev_ctx,
     }
   }
 
-  phi::LoD lod;
+  phi::LegacyLoD lod;
   lod.emplace_back(batch_starts);
   outs->set_lod(lod);
 }

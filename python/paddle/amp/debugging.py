@@ -76,7 +76,7 @@ class DebugMode(Enum):
 
 
 def check_layer_numerics(
-    func: Callable[_InputT, _RetT]
+    func: Callable[_InputT, _RetT],
 ) -> Callable[_InputT, _RetT]:
     """
     This decorator is used to check the numerical values of the layer's input and output data.
@@ -471,8 +471,7 @@ def _print_operator_stats(op_count_dict: dict[str, str | list[int]]) -> None:
                     f"Input {value} is expected to be a list of str, but received {type(value)}."
                 )
             print(
-                "  %-40s|  %-17s|  %-17s|  %-17s|  %-17s"
-                % (op_type, called[0], called[1], called[2], called[3])
+                f"  {op_type:<40}|  {called[0]:<17}|  {called[1]:<17}|  {called[2]:<17}|  {called[3]:<17}"
             )
             total_ops += 1
     print("<{:-^120}>\n".format(" op count: " + str(total_ops) + " "))
@@ -497,17 +496,17 @@ def enable_operator_stats_collection() -> None:
             >>> x = paddle.rand([10, 3, 32, 32])
 
             >>> paddle.amp.debugging.enable_operator_stats_collection()
-            >>> # AMP list including conv2d, elementwise_add, reshape2, cast (transfer_dtype)
+            >>> # AMP list including cast, conv2d, elementwise_add, reshape
             >>> with paddle.amp.auto_cast(enable=True, level='O2'):
             ...     out = conv(x)
             >>> # Print to the standard output.
             >>> paddle.amp.debugging.disable_operator_stats_collection()
             >>> # <------------------------------------------------------- op list -------------------------------------------------------->
             >>> # <--------------- Op Name ---------------- | -- FP16 Calls --- | -- BF16 Calls --- | --- FP32 Calls--- | -- Other Calls -->
+            >>> #   cast                                    |  1                |  0                |  2                |  0
             >>> #   conv2d                                  |  1                |  0                |  0                |  0
             >>> #   elementwise_add                         |  0                |  0                |  1                |  0
-            >>> #   reshape2                                |  0                |  0                |  1                |  0
-            >>> #   transfer_dtype                          |  1                |  0                |  2                |  0
+            >>> #   reshape                                 |  0                |  0                |  1                |  0
             >>> # <----------------------------------------------------- op count: 4 ------------------------------------------------------>
 
     """
@@ -534,17 +533,17 @@ def disable_operator_stats_collection() -> None:
             >>> x = paddle.rand([10, 3, 32, 32])
 
             >>> paddle.amp.debugging.enable_operator_stats_collection()
-            >>> # AMP list including conv2d, elementwise_add, reshape2, cast (transfer_dtype)
+            >>> # AMP list including cast, conv2d, elementwise_add, reshape
             >>> with paddle.amp.auto_cast(enable=True, level='O2'):
             ...     out = conv(x)
             >>> # Print to the standard output.
             >>> paddle.amp.debugging.disable_operator_stats_collection()
             >>> # <------------------------------------------------------- op list -------------------------------------------------------->
             >>> # <--------------- Op Name ---------------- | -- FP16 Calls --- | -- BF16 Calls --- | --- FP32 Calls--- | -- Other Calls -->
+            >>> #   cast                                    |  1                |  0                |  2                |  0
             >>> #   conv2d                                  |  1                |  0                |  0                |  0
             >>> #   elementwise_add                         |  0                |  0                |  1                |  0
-            >>> #   reshape2                                |  0                |  0                |  1                |  0
-            >>> #   transfer_dtype                          |  1                |  0                |  2                |  0
+            >>> #   reshape                                 |  0                |  0                |  1                |  0
             >>> # <----------------------------------------------------- op count: 4 ------------------------------------------------------>
 
     """
@@ -574,16 +573,16 @@ def collect_operator_stats() -> Generator[None, None, None]:
             >>> x = paddle.rand([10, 3, 32, 32])
 
             >>> with paddle.amp.debugging.collect_operator_stats():
-            ...     # AMP list including conv2d, elementwise_add, reshape2, cast (transfer_dtype)
+            ...     # AMP list including cast, conv2d, elementwise_add, reshape
             ...     with paddle.amp.auto_cast(enable=True, level='O2'):
             ...         out = conv(x)
             >>> # Print to the standard output.
             >>> # <------------------------------------------------------- op list -------------------------------------------------------->
             >>> # <--------------- Op Name ---------------- | -- FP16 Calls --- | -- BF16 Calls --- | --- FP32 Calls--- | -- Other Calls -->
+            >>> #   cast                                    |  1                |  0                |  2                |  0
             >>> #   conv2d                                  |  1                |  0                |  0                |  0
             >>> #   elementwise_add                         |  0                |  0                |  1                |  0
-            >>> #   reshape2                                |  0                |  0                |  1                |  0
-            >>> #   transfer_dtype                          |  1                |  0                |  2                |  0
+            >>> #   reshape                                 |  0                |  0                |  1                |  0
             >>> # <----------------------------------------------------- op count: 4 ------------------------------------------------------>
 
     """

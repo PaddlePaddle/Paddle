@@ -21,6 +21,7 @@
 #include "paddle/phi/kernels/activation_kernel.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/transpose_function.cu.h"
@@ -73,10 +74,13 @@ void LogsumexpFallbackKernel(const Context& dev_ctx,
   phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::ExpFunctor<T>>(
       dev_ctx, temp_x, out_y, kps::ExpFunctor<T>(), axis_vec);
 
-  phi::LogKernel<T, Context>(dev_ctx, *out_y, &temp_x);
-  temp_x.Resize(outdim);
+  DenseTensor log_out;
+  log_out.Resize(outdim);
+  dev_ctx.template Alloc<T>(&log_out);
+  phi::LogKernel<T, Context>(dev_ctx, *out_y, &log_out);
+  log_out.Resize(outdim);
   out->Resize(outdim);
-  phi::AddKernel<T, Context>(dev_ctx, temp_x, max_x, out);
+  phi::AddKernel<T, Context>(dev_ctx, log_out, max_x, out);
 }
 
 template <typename T, typename Context>
@@ -86,6 +90,11 @@ void LogsumexpKernel(const Context& dev_ctx,
                      bool keepdim,
                      bool reduce_all,
                      DenseTensor* out) {
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), -INFINITY, out);
+    return;
+  }
   std::vector<int64_t> axis;
   axis.reserve(axis_in.size());
   std::for_each(axis_in.begin(), axis_in.end(), [&axis](const int& t) {

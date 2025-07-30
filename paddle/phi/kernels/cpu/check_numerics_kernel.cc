@@ -21,7 +21,7 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void CheckNumericsKernel(const Context& ctx,
+void CheckNumericsKernel(const Context& dev_ctx,
                          const DenseTensor& tensor,
                          const std::string& op_type,
                          const std::string& var_name,
@@ -32,11 +32,11 @@ void CheckNumericsKernel(const Context& ctx,
                          DenseTensor* values) {
   // stats stores the checking result of num_nan, num_inf and num_zero.
   stats->Resize({static_cast<int64_t>(3)});
-  int64_t* stats_ptr = ctx.template Alloc<int64_t>(stats);
+  int64_t* stats_ptr = dev_ctx.template Alloc<int64_t>(stats);
 
   // values stores the max_value, min_value and mean_value.
   values->Resize({static_cast<int64_t>(3)});
-  float* values_ptr = ctx.template Alloc<float>(values);
+  float* values_ptr = dev_ctx.template Alloc<float>(values);
 
   if (tensor.numel() == 0) {
     stats_ptr[0] = 0;

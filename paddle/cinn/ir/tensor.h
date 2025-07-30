@@ -14,8 +14,6 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_map.h>
-#include <absl/strings/string_view.h>
 #include <isl/cpp.h>
 
 #include <map>
@@ -23,6 +21,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -32,7 +31,7 @@
 #include "paddle/cinn/ir/dim.h"
 #include "paddle/cinn/ir/function_base.h"
 #include "paddle/cinn/lang/buffer.h"
-#include "paddle/cinn/poly/stage.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 
@@ -112,6 +111,8 @@ class Tensor : public ir::IrNodeRef {
 std::string GenReduceInitTensorNameOf(const std::string& tensor_name);
 
 bool IsReduceInitTensorName(const std::string& tensor_name);
+
+bool IsSplitTransformTensorName(const std::string& tensor_name);
 
 std::string GetOriginalReduceTensorName(const std::string& tensor_name);
 
@@ -205,10 +206,10 @@ class _Tensor_ : public ExprNode<_Tensor_> {
    * @param statement The name of a statement(equivalent to the id of tensor).
    * @return A boolean.
    */
-  bool IsDependOnStatement(absl::string_view statement);
+  bool IsDependOnStatement(std::string_view statement);
 
   /**
-   * Get the names of the tensors thouse this tensor depends on.
+   * Get the names of the tensors those this tensor depends on.
    */
   std::set<std::string> DependingTensorNames();
 
@@ -272,7 +273,7 @@ class _Tensor_ : public ExprNode<_Tensor_> {
   std::vector<Var> axis_with_reduce() const;
 
   /**
-   * Get the tensors thouse depend on the same buffer belong to this tensor.
+   * Get the tensors those depend on the same buffer belong to this tensor.
    */
   const std::set<std::string>& buffer_depended_tensor_names() const {
     return buffer_depended_tensor_names_;
@@ -319,11 +320,7 @@ class _Tensor_ : public ExprNode<_Tensor_> {
   // The flatten compute value of tensor, such as Tensor[[1, 2], [3, 4]] ->
   // Tensor[1, 2, 3, 4]
   std::optional<std::vector<Expr>> value_;
-
-  friend Shared<poly::Stage> CreateStage(Tensor tensor);
 };
-
-Shared<poly::Stage> CreateStage(Tensor tensor);
 
 class _Operation_;
 class Operation : public FunctionRef {

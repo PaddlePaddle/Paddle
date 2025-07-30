@@ -27,8 +27,7 @@ limitations under the License. */
 #include "paddle/phi/core/type_defs.h"
 #include "paddle/utils/string/string_helper.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 class KernelArgsNameMakerByOpProto : public KernelArgsNameMaker {
  public:
@@ -285,7 +284,7 @@ phi::Scalar MakePhiScalarFromVar(const framework::Variable& variable) {
     }
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
-        "Unsupport casting input `%s` type to Scalar when call pt "
+        "Unsupported casting input `%s` type to Scalar when call pt "
         "kernel.",
         framework::ToTypeName(variable.Type())));
   }
@@ -297,7 +296,7 @@ phi::IntArray MakePhiIntArrayFromVar(const framework::Variable& variable) {
     return phi::IntArray(tensor);
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
-        "Unsupport casting input `%s` type to IntArray when call pt "
+        "Unsupported casting input `%s` type to IntArray when call pt "
         "kernel.",
         framework::ToTypeName(variable.Type())));
   }
@@ -348,7 +347,7 @@ phi::IntArray MakePhiIntArrayFromVarList(
       }
     } else {
       PADDLE_THROW(common::errors::Unimplemented(
-          "Unsupport casting input `%s` type to VectorTensor when call pt "
+          "Unsupported casting input `%s` type to VectorTensor when call pt "
           "kernel.",
           framework::ToTypeName(var->Type())));
     }
@@ -360,5 +359,4 @@ phi::IntArray MakePhiIntArrayFromVarList(
   return result;
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

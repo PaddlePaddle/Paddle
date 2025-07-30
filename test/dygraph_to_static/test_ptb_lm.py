@@ -61,7 +61,7 @@ class SimpleLSTMRNN(paddle.nn.Layer):
                     low=-self._init_scale, high=self._init_scale
                 ),
             )
-            self.weight_1_arr.append(self.add_parameter('w_%d' % i, weight_1))
+            self.weight_1_arr.append(self.add_parameter(f'w_{i}', weight_1))
             bias_1 = self.create_parameter(
                 attr=paddle.ParamAttr(
                     initializer=paddle.nn.initializer.Uniform(
@@ -72,7 +72,7 @@ class SimpleLSTMRNN(paddle.nn.Layer):
                 dtype="float32",
                 default_initializer=paddle.nn.initializer.Constant(0.0),
             )
-            self.bias_arr.append(self.add_parameter('b_%d' % i, bias_1))
+            self.bias_arr.append(self.add_parameter(f'b_{i}', bias_1))
 
     def forward(self, input_embedding, init_hidden=None, init_cell=None):
         cell_array = []
@@ -292,20 +292,13 @@ def train():
                 if step_id % PRINT_STEP == 0:
                     if step_id == 0:
                         logging.info(
-                            "epoch %d | step %d, loss %0.3f"
-                            % (epoch_id, step_id, total_loss / total_sample)
+                            f"epoch {epoch_id} | step {step_id}, loss {total_loss / total_sample:0.3f}"
                         )
                         avg_batch_time = time.time()
                     else:
                         speed = PRINT_STEP / (time.time() - avg_batch_time)
                         logging.info(
-                            "epoch %d | step %d, loss %0.3f, speed %.3f steps/s"
-                            % (
-                                epoch_id,
-                                step_id,
-                                total_loss / total_sample,
-                                speed,
-                            )
+                            f"epoch {epoch_id} | step {step_id}, loss {total_loss / total_sample:0.3f}, speed {speed:.3f} steps/s"
                         )
                         avg_batch_time = time.time()
 

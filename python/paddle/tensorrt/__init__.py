@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .export import Input, TensorRTConfig, convert, convert_loaded_model
+from .export import Input, PrecisionMode, TensorRTConfig, convert
 
 __all__ = [
     'Input',
     'TensorRTConfig',
     'convert',
-    'convert_loaded_model',
+    'PrecisionMode',
 ]

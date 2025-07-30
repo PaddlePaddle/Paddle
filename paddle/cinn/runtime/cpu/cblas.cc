@@ -17,7 +17,7 @@
 #include <vector>
 
 #include "paddle/cinn/backends/extern_func_jit_register.h"
-#include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/common/enforce.h"
 
 namespace {
@@ -151,8 +151,8 @@ CINN_REGISTER_HELPER(cinn_cpu_mkl) {
                           12UL,
                           ::common::errors::InvalidArgument(
                               "Wrong number of arguments passed in."));
-        auto M = cinn::common::AutoSimplify(args[1]);
-        auto N = cinn::common::AutoSimplify(args[2]);
+        auto M = cinn::optim::ArithSimplify(args[1]);
+        auto N = cinn::optim::ArithSimplify(args[2]);
         std::vector<Expr> shape;
         shape.push_back(M);
         shape.push_back(N);
@@ -173,16 +173,16 @@ CINN_REGISTER_HELPER(cinn_cpu_mkl) {
             A_tensor,
             ::common::errors::InvalidArgument("expected type is tensor."));
 
-        auto batch_size = cinn::common::AutoSimplify(args[1]);
+        auto batch_size = cinn::optim::ArithSimplify(args[1]);
         int32_t batch_size_val = batch_size.as_int32();
 
-        auto M = cinn::common::AutoSimplify(args[2]);
-        auto N = cinn::common::AutoSimplify(args[3]);
+        auto M = cinn::optim::ArithSimplify(args[2]);
+        auto N = cinn::optim::ArithSimplify(args[3]);
 
         std::vector<Expr> shape;
         int total = 1;
         for (auto& v : A_tensor->shape) {
-          auto val = cinn::common::AutoSimplify(v);
+          auto val = cinn::optim::ArithSimplify(v);
           PADDLE_ENFORCE_EQ(
               val.is_constant(),
               true,

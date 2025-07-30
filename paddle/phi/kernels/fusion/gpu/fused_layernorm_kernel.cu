@@ -1044,12 +1044,19 @@ void FusedLayerNormKernel(const Context& dev_ctx,
   }
 
   using U = phi::funcs::LayerNormParamType<T>;
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    if (residual_out) dev_ctx.template Alloc<T>(residual_out);
+    if (mean) dev_ctx.template Alloc<U>(mean);
+    if (variance) dev_ctx.template Alloc<U>(variance);
+    return;
+  }
   const T* x_data = x.data<T>();
   const U* norm_weight_data =
       norm_weight ? norm_weight.get().data<U>() : nullptr;
   const U* norm_bias_data = norm_bias ? norm_bias.get().data<U>() : nullptr;
-  int32_t rows = 1;
-  int32_t cols = 1;
+  int64_t rows = 1;
+  int64_t cols = 1;
   for (int i = 0; i < begin_norm_axis; i++) {
     rows *= x.dims()[i];
   }
@@ -1252,7 +1259,8 @@ PD_REGISTER_KERNEL(fused_bias_residual_layernorm,
                    ALL_LAYOUT,
                    phi::fusion::FusedLayerNormKernel,
                    float,
-                   phi::dtype::float16) {
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   kernel->InputAt(3).SetDataType(phi::DataType::FLOAT32);
   kernel->InputAt(4).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);

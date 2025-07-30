@@ -102,7 +102,7 @@ class ScheduleBlockContextNode : public IRContextNode {
   // BufferRange(s) which is written in this schedule block, it is used to
   // analyze, not a real computation expression. Must be AST DFS order.
   std::vector<Expr> write_buffers;
-  // Additional attributes about this schedulable block,
+  // Additional attributes about this schedule block,
   // which take some auxiliary hints for future transformations.
   std::map<std::string, ir::attr_t> attrs;
   // values of the iter_vars

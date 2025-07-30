@@ -88,12 +88,13 @@ void DeserializePDTensorToStream(std::istream &is, PaddleTensor *tensor) {
   std::vector<char> bytes(name_bytes);
   is.read(bytes.data(), name_bytes);  // NOLINT
   tensor->name = std::string(bytes.data(), name_bytes);
-  // 3. LoD
-  uint64_t lod_level = 0;
-  is.read(reinterpret_cast<char *>(&lod_level), sizeof(lod_level));
+  // 3. LegacyLoD
+  uint64_t legacy_lod_level = 0;
+  is.read(reinterpret_cast<char *>(&legacy_lod_level),
+          sizeof(legacy_lod_level));
   auto *lod = &(tensor->lod);
-  lod->resize(lod_level);
-  for (uint64_t i = 0; i < lod_level; ++i) {
+  lod->resize(legacy_lod_level);
+  for (uint64_t i = 0; i < legacy_lod_level; ++i) {
     uint64_t size = 0;
     is.read(reinterpret_cast<char *>(&size), sizeof(size));
     std::vector<size_t> tmp(size / sizeof(size_t));
@@ -173,6 +174,9 @@ void SerializeShapeRangeInfo(
     const std::string &path,
     const paddle::inference::proto::ShapeRangeInfos &info) {
   int out_fd = open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+  if (out_fd == -1) {
+    PADDLE_THROW(common::errors::NotFound("File [%s] is not found.", path));
+  }
   google::protobuf::io::FileOutputStream *os =
       new google::protobuf::io::FileOutputStream(out_fd);
   google::protobuf::TextFormat::Print(info, os);

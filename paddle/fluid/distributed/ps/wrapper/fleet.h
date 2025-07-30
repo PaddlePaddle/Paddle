@@ -241,7 +241,9 @@ class FleetWrapper {
   // barrier with barrier table
   void BarrierWithTable(uint32_t barrier_type);
 
-  void PrintTableStat(const uint64_t table_id);
+  void PrintTableStat(const uint64_t table_id,
+                      uint32_t pass_id,
+                      size_t threshold);
   void SaveCacheTable(const uint64_t table_id,
                       uint16_t pass_id,
                       size_t threshold);
@@ -335,7 +337,7 @@ class FleetWrapper {
   size_t GetAbsoluteSum(size_t start,
                         size_t end,
                         size_t level,
-                        const phi::LoD& lod);
+                        const phi::LegacyLoD& lod);
 
  protected:
   static bool is_initialized_;
@@ -348,5 +350,5 @@ class FleetWrapper {
   DISABLE_COPY_AND_ASSIGN(FleetWrapper);
 };
 
-}  // end namespace distributed
-}  // end namespace paddle
+}  // namespace distributed
+}  // namespace paddle

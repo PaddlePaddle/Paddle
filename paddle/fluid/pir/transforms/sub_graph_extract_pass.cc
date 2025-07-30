@@ -53,7 +53,7 @@ class SubGraphExtractPass : public pir::Pass {
     auto& block = module_op.block();
 
     std::vector<GroupOpsVec> groups =
-        ::pir::SubgraphDetector(&block, IsMatmulOp)();
+        ::pir::DetectSubGraphs(&block, IsMatmulOp);
     AddStatistics(groups.size());
     for (auto& group_ops : groups) {
       VLOG(4) << "current group_ops.size(): " << group_ops.size();

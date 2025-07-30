@@ -21,7 +21,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void SyncBatchNormGradKernel(const Context& ctx,
+void SyncBatchNormGradKernel(const Context& dev_ctx,
                              const DenseTensor& x,
                              const DenseTensor& scale,
                              const DenseTensor& bias,
@@ -38,7 +38,7 @@ void SyncBatchNormGradKernel(const Context& ctx,
                              DenseTensor* x_grad,
                              DenseTensor* scale_grad,
                              DenseTensor* bias_grad) {
-  SyncBatchNormGradFunctor<T, Context>(ctx,
+  SyncBatchNormGradFunctor<T, Context>(dev_ctx,
                                        &x,
                                        nullptr,
                                        scale,

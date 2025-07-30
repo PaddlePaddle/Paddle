@@ -34,9 +34,7 @@ def train(network, use_cuda, batch_size=32, pass_num=2):
     reader = fake_imdb_reader(word_dict_size, batch_size * 40)
     train_reader = paddle.batch(reader, batch_size=batch_size)
 
-    data = paddle.static.data(
-        name="words", shape=[-1, 1], dtype="int64", lod_level=1
-    )
+    data = paddle.static.data(name="words", shape=[-1, 1], dtype="int64")
 
     label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
 
@@ -79,6 +77,8 @@ class TestBase(unittest.TestCase):
 
         for use_cuda in [True, False]:
             print(f'network: {self.net.__name__}, use_cuda: {use_cuda}')
-            with base.program_guard(base.Program(), base.Program()):
-                with base.scope_guard(core.Scope()):
-                    train(self.net, use_cuda)
+            with (
+                base.program_guard(base.Program(), base.Program()),
+                base.scope_guard(core.Scope()),
+            ):
+                train(self.net, use_cuda)

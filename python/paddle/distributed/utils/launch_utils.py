@@ -58,7 +58,7 @@ def get_cluster_from_args(args, selected_gpus):
 
     trainer_endpoints = []
     for ip in node_ips:
-        trainer_endpoints.append(["%s:%d" % (ip, port) for port in free_ports])
+        trainer_endpoints.append([f"{ip}:{port}" for port in free_ports])
     return get_cluster(node_ips, node_ip, trainer_endpoints, selected_gpus)
 
 
@@ -395,9 +395,9 @@ def _prepare_trainer_env(cluster, trainer, backend=None):
             "FLAGS_selected_xpus": "{}".format(
                 ",".join([str(g) for g in trainer.gpus])
             ),
-            "PADDLE_TRAINER_ID": "%d" % trainer.rank,
-            "PADDLE_CURRENT_ENDPOINT": f"{trainer.endpoint}",
-            "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
+            "PADDLE_TRAINER_ID": str(trainer.rank),
+            "PADDLE_CURRENT_ENDPOINT": str(trainer.endpoint),
+            "PADDLE_TRAINERS_NUM": str(cluster.trainers_nranks()),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
         }
     elif backend == 'nccl':
@@ -405,17 +405,17 @@ def _prepare_trainer_env(cluster, trainer, backend=None):
             "FLAGS_selected_gpus": "{}".format(
                 ",".join([str(g) for g in trainer.gpus])
             ),
-            "PADDLE_TRAINER_ID": "%d" % trainer.rank,
-            "PADDLE_CURRENT_ENDPOINT": f"{trainer.endpoint}",
-            "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
+            "PADDLE_TRAINER_ID": str(trainer.rank),
+            "PADDLE_CURRENT_ENDPOINT": str(trainer.endpoint),
+            "PADDLE_TRAINERS_NUM": str(cluster.trainers_nranks()),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
         }
     elif backend == 'gloo':
         # NOTE (xiongkun) default fall back into cpu only
         proc_env = {
-            "PADDLE_TRAINER_ID": "%d" % trainer.rank,
-            "PADDLE_CURRENT_ENDPOINT": f"{trainer.endpoint}",
-            "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
+            "PADDLE_TRAINER_ID": str(trainer.rank),
+            "PADDLE_CURRENT_ENDPOINT": str(trainer.endpoint),
+            "PADDLE_TRAINERS_NUM": str(cluster.trainers_nranks()),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
             "PADDLE_DISTRI_BACKEND": backend,  # only add here, other will be auto
         }
@@ -427,9 +427,9 @@ def _prepare_trainer_env(cluster, trainer, backend=None):
             f"FLAGS_selected_{custom_device_name}s": "{}".format(
                 ",".join([str(g) for g in trainer.gpus])
             ),
-            "PADDLE_TRAINER_ID": "%d" % trainer.rank,
-            "PADDLE_CURRENT_ENDPOINT": f"{trainer.endpoint}",
-            "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
+            "PADDLE_TRAINER_ID": str(trainer.rank),
+            "PADDLE_CURRENT_ENDPOINT": str(trainer.endpoint),
+            "PADDLE_TRAINERS_NUM": str(cluster.trainers_nranks()),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
         }
     else:
@@ -473,7 +473,7 @@ def start_local_trainers(
         fn = None
         if log_dir is not None:
             os.makedirs(log_dir, exist_ok=True)
-            fn = open("%s/workerlog.%d" % (log_dir, idx), "a")
+            fn = open(f"{log_dir}/workerlog.{idx}", "a")
             proc = subprocess.Popen(cmd, env=current_env, stdout=fn, stderr=fn)
         else:
             proc = subprocess.Popen(cmd, env=current_env)

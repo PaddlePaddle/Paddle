@@ -39,17 +39,18 @@ void AffineChannelXPUKernel(const Context& dev_ctx,
   const phi::DataLayout layout = common::StringToDataLayout(data_layout);
 
   auto dims = x->dims();
-  int N = dims[0];
-  int C = layout == phi::DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
-  int HxW = x->numel() / N / C;
+  int64_t N = dims[0];
+  int64_t C =
+      layout == phi::DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
+  int64_t HxW = x->numel() / N / C;
 
   auto* scale_d = scale->data<T>();
   auto* bias_d = bias->data<T>();
 
   auto* x_d = x->data<T>();
   auto* y_d = y->data<T>();
-  std::vector<int> x_shape;
-  std::vector<int> b_shape;
+  std::vector<int64_t> x_shape;
+  std::vector<int64_t> b_shape;
   if (layout == phi::DataLayout::kNCHW) {
     x_shape.push_back(N);
     x_shape.push_back(C);
@@ -66,20 +67,10 @@ void AffineChannelXPUKernel(const Context& dev_ctx,
   int r = 0;
   r = xpu::broadcast_mul(
       dev_ctx.x_context(), x_d, scale_d, y_d, x_shape, b_shape);
-  PADDLE_ENFORCE_EQ(r,
-                    xpu::Error_t::SUCCESS,
-                    common::errors::External(
-                        "The broadcast_mul XPU OP return wrong value[%d %s]",
-                        r,
-                        XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_mul");
   r = xpu::broadcast_add(
       dev_ctx.x_context(), y_d, bias_d, y_d, x_shape, b_shape);
-  PADDLE_ENFORCE_EQ(r,
-                    xpu::Error_t::SUCCESS,
-                    common::errors::External(
-                        "The broadcast_add XPU OP return wrong value[%d %s]",
-                        r,
-                        XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
 }
 
 }  // namespace phi

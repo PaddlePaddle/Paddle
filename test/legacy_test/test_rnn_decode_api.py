@@ -423,7 +423,7 @@ class EncoderCell(SimpleRNNCell):
         for i in range(num_layers):
             self.lstm_cells.append(
                 self.add_sublayer(
-                    "lstm_%d" % i,
+                    f"lstm_{i}",
                     LSTMCell(
                         input_size=input_size if i == 0 else hidden_size,
                         hidden_size=hidden_size,

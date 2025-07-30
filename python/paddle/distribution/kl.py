@@ -264,7 +264,7 @@ def _kl_expfamily_expfamily(p, q):
             p_grads = paddle.static.gradients(p_log_norm, p_natural_params)
     except RuntimeError as e:
         raise TypeError(
-            "Cann't compute kl_divergence({cls_p}, {cls_q}) use bregman divergence. Please register_kl({cls_p}, {cls_q}).".format(
+            "Can't compute kl_divergence({cls_p}, {cls_q}) use bregman divergence. Please register_kl({cls_p}, {cls_q}).".format(
                 cls_p=type(p).__name__, cls_q=type(q).__name__
             )
         ) from e

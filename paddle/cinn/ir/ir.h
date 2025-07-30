@@ -17,12 +17,12 @@
  */
 #pragma once
 
-#include <absl/types/variant.h>
 #include <algorithm>
 #include <map>
 #include <memory>
 #include <set>
 #include <string>
+#include <variant>
 #include <vector>
 #include "paddle/common/enforce.h"
 
@@ -35,10 +35,6 @@
 
 namespace cinn {
 
-namespace poly {
-class Stage;
-}  // namespace poly
-
 namespace ir {
 class Buffer;
 class BufferRange;
@@ -49,7 +45,7 @@ using cinn::common::Object;
 using cinn::common::Shared;
 // NOTE attr_t only support POD, can not contain Expr or other IR nodes, or the
 // IRVisitor or IRCopy on PrimitiveNode will result in undefined behavior.
-using attr_t = absl::variant<int, float, bool, std::string>;
+using attr_t = std::variant<int, float, bool, std::string>;
 
 /**
  * Cast a node to another type, can't change the width.
@@ -83,9 +79,10 @@ struct Cast : public ExprNode<Cast> {
  * The sum of two expressions.
  */
 struct Add : public BinaryOpNode<Add> {
-  Add(Expr a, Expr b);
+  Add(Expr a, Expr b) : BinaryOpNode<Add>(a, b) { Verify(); }
 
   static Expr Make(Expr a, Expr b);
+  static IndexExpr Make(IndexExpr a, IndexExpr b);
 
   void Verify() const override;
 
@@ -96,9 +93,10 @@ struct Add : public BinaryOpNode<Add> {
  * The difference of two expressions.
  */
 struct Sub : public BinaryOpNode<Sub> {
-  Sub(Expr a, Expr b) : BinaryOpNode<Sub>(a.type(), a, b) {}
+  Sub(Expr a, Expr b) : BinaryOpNode<Sub>(a, b) { Verify(); }
 
   static Expr Make(Expr a, Expr b);
+  static IndexExpr Make(IndexExpr a, IndexExpr b);
 
   void Verify() const override;
 
@@ -109,9 +107,10 @@ struct Sub : public BinaryOpNode<Sub> {
  * The product of two expressions.
  */
 struct Mul : public BinaryOpNode<Mul> {
-  Mul(Expr a, Expr b) : BinaryOpNode<Mul>(a.type(), a, b) {}
+  Mul(Expr a, Expr b) : BinaryOpNode<Mul>(a, b) { Verify(); }
 
   static Expr Make(Expr a, Expr b);
+  static IndexExpr Make(IndexExpr a, IndexExpr b);
 
   void Verify() const override;
 
@@ -122,9 +121,10 @@ struct Mul : public BinaryOpNode<Mul> {
  * The ratio of two expressions.
  */
 struct Div : public BinaryOpNode<Div> {
-  Div(Expr a, Expr b) : BinaryOpNode<Div>(a.type(), a, b) {}
+  Div(Expr a, Expr b) : BinaryOpNode<Div>(a, b) { Verify(); }
 
   static Expr Make(Expr a, Expr b);
+  static IndexExpr Make(IndexExpr a, IndexExpr b);
   void Verify() const override;
 
   static const IrNodeTy _node_type_ = IrNodeTy::Div;
@@ -134,9 +134,10 @@ struct Div : public BinaryOpNode<Div> {
  * The mod of two expressions.
  */
 struct Mod : public BinaryOpNode<Mod> {
-  Mod(Expr a, Expr b) : BinaryOpNode<Mod>(a.type(), a, b) {}
+  Mod(Expr a, Expr b) : BinaryOpNode<Mod>(a, b) { Verify(); }
 
   static Expr Make(Expr a, Expr b);
+  static IndexExpr Make(IndexExpr a, IndexExpr b);
   void Verify() const override;
   static const IrNodeTy _node_type_ = IrNodeTy::Mod;
 };
@@ -145,9 +146,12 @@ struct Mod : public BinaryOpNode<Mod> {
  * The lesser of two expressions.
  */
 struct Min : public BinaryOpNode<Min> {
-  Min(Expr a, Expr b) : BinaryOpNode<Min>(a.type(), a, b) {}
+  Min(Expr a, Expr b) : BinaryOpNode<Min>(a, b) { Verify(); }
 
   static Expr Make(Expr a, Expr b);
+  // TODO(liiujinnan): simplify Min and Max.
+  static IndexExpr Make(IndexExpr a, IndexExpr b);
+
   void Verify() const override;
   static const IrNodeTy _node_type_ = IrNodeTy::Min;
 };
@@ -156,9 +160,11 @@ struct Min : public BinaryOpNode<Min> {
  * The larger of two expressions.
  */
 struct Max : public BinaryOpNode<Max> {
-  Max(Expr a, Expr b) : BinaryOpNode<Max>(a.type(), a, b) {}
+  Max(Expr a, Expr b) : BinaryOpNode<Max>(a, b) { Verify(); }
 
   static Expr Make(Expr a, Expr b);
+  // TODO(liiujinnan): simplify Min and Max.
+  static IndexExpr Make(IndexExpr a, IndexExpr b);
 
   void Verify() const override;
 
@@ -169,9 +175,9 @@ struct Max : public BinaryOpNode<Max> {
  * Tell whether the first expression equals to the second expression.
  */
 struct EQ : public BinaryOpNode<EQ> {
-  EQ(Expr a, Expr b) : BinaryOpNode<EQ>(a.type(), a, b) {}
+  EQ(Expr a, Expr b) : BinaryOpNode<EQ>(a, b) { Verify(); }
 
-  Type type() const { return Bool(a()->type().lanes()); }
+  Type type() const { return Bool(this->a()->type().lanes()); }
 
   static Expr Make(Expr a, Expr b);
   void Verify() const override;
@@ -182,9 +188,9 @@ struct EQ : public BinaryOpNode<EQ> {
  * Tell whether the first expression not equals to the second expression.
  */
 struct NE : public BinaryOpNode<NE> {
-  NE(Expr a, Expr b) : BinaryOpNode<NE>(a.type(), a, b) {}
+  NE(Expr a, Expr b) : BinaryOpNode<NE>(a, b) { Verify(); }
 
-  Type type() const { return Bool(a()->type().lanes()); }
+  Type type() const { return Bool(this->a()->type().lanes()); }
 
   static Expr Make(Expr a, Expr b);
   void Verify() const override;
@@ -195,9 +201,9 @@ struct NE : public BinaryOpNode<NE> {
  * Tell whether the first expression is lower than the second expression.
  */
 struct LT : public BinaryOpNode<LT> {
-  LT(Expr a, Expr b) : BinaryOpNode<LT>(a.type(), a, b) {}
+  LT(Expr a, Expr b) : BinaryOpNode<LT>(a, b) { Verify(); }
 
-  Type type() const { return Bool(a()->type().lanes()); }
+  Type type() const { return Bool(this->a()->type().lanes()); }
 
   static Expr Make(Expr a, Expr b);
   void Verify() const override;
@@ -208,9 +214,9 @@ struct LT : public BinaryOpNode<LT> {
  * Tell whether the first expression is no larger than the second expression.
  */
 struct LE : public BinaryOpNode<LE> {
-  LE(Expr a, Expr b) : BinaryOpNode<LE>(a.type(), a, b) {}
+  LE(Expr a, Expr b) : BinaryOpNode<LE>(a, b) { Verify(); }
 
-  Type type() const { return Bool(a()->type().lanes()); }
+  Type type() const { return Bool(this->a()->type().lanes()); }
 
   static Expr Make(Expr a, Expr b);
   void Verify() const override;
@@ -221,9 +227,9 @@ struct LE : public BinaryOpNode<LE> {
  * Tell whether the first expression is larger than the second expression.
  */
 struct GT : public BinaryOpNode<GT> {
-  GT(Expr a, Expr b) : BinaryOpNode<GT>(a.type(), a, b) {}
+  GT(Expr a, Expr b) : BinaryOpNode<GT>(a, b) { Verify(); }
 
-  Type type() const { return Bool(a()->type().lanes()); }
+  Type type() const { return Bool(this->a()->type().lanes()); }
 
   static Expr Make(Expr a, Expr b);
   void Verify() const override;
@@ -234,9 +240,9 @@ struct GT : public BinaryOpNode<GT> {
  * Tell whether the first expression is not less than the second expression.
  */
 struct GE : public BinaryOpNode<GE> {
-  GE(Expr a, Expr b) : BinaryOpNode<GE>(a.type(), a, b) {}
+  GE(Expr a, Expr b) : BinaryOpNode<GE>(a, b) { Verify(); }
 
-  Type type() const { return Bool(a()->type().lanes()); }
+  Type type() const { return Bool(this->a()->type().lanes()); }
 
   static Expr Make(Expr a, Expr b);
   void Verify() const override;
@@ -247,18 +253,9 @@ struct GE : public BinaryOpNode<GE> {
  * Logical and.
  */
 struct And : public BinaryOpNode<And> {
-  And(Expr a, Expr b) : BinaryOpNode<And>(a.type(), a, b) {
-    PADDLE_ENFORCE_EQ(
-        a->type().is_bool(),
-        true,
-        ::common::errors::PreconditionNotMet("The type of 'a' must be bool."));
-    PADDLE_ENFORCE_EQ(
-        b->type().is_bool(),
-        true,
-        ::common::errors::PreconditionNotMet("The type of 'b' must be bool."));
-  }
+  And(Expr a, Expr b) : BinaryOpNode<And>(a, b) { Verify(); }
 
-  Type type() const { return Bool(a()->type().lanes()); }
+  Type type() const { return Bool(this->a()->type().lanes()); }
 
   static Expr Make(Expr a, Expr b);
   void Verify() const override;
@@ -280,20 +277,11 @@ struct Minus : public UnaryOpNode<Minus> {
  * Logical or.
  */
 struct Or : public BinaryOpNode<Or> {
-  Or(Expr a, Expr b) : BinaryOpNode<Or>(Bool(), a, b) {
-    PADDLE_ENFORCE_EQ(
-        a->type().is_bool(),
-        true,
-        ::common::errors::PreconditionNotMet("The type of 'a' must be bool."));
-    PADDLE_ENFORCE_EQ(
-        b->type().is_bool(),
-        true,
-        ::common::errors::PreconditionNotMet("The type of 'b' must be bool."));
-  }
+  Or(Expr a, Expr b) : BinaryOpNode<Or>(a, b) { Verify(); }
 
   static Expr Make(Expr a, Expr b);
 
-  Type type() const override;
+  Type type() const { return Bool(this->a()->type().lanes()); }
   void Verify() const override;
 
   static const IrNodeTy _node_type_ = IrNodeTy::Or;
@@ -307,7 +295,7 @@ struct Not : public UnaryOpNode<Not> {
 
   static Expr Make(Expr v);
 
-  Type type() const override;
+  Type type() const { return Bool(this->v()->type().lanes()); }
   void Verify() const override;
 
   static const IrNodeTy _node_type_ = IrNodeTy::Not;
@@ -401,6 +389,7 @@ struct _Var_ : public ExprNode<_Var_> {
   bool is_reduce_axis{false};
   bool is_keepdim{false};
   bool is_symbolic_constant{false};
+  bool is_let_symbol{false};
   //! Lower bound and upper bound of a axis.
   // @{
   Expr lower_bound;
@@ -421,7 +410,8 @@ struct _Var_ : public ExprNode<_Var_> {
                    const std::string& name,
                    bool is_reduce,
                    bool is_symbolic_constant = false,
-                   bool is_keepdim = false);
+                   bool is_keepdim = false,
+                   bool is_let_symbol = false);
 
   void Verify() const override;
 
@@ -460,6 +450,14 @@ struct Var : public IrNodeRef {
   Var& operator=(_Var_* x);
   Var& operator=(const _Var_* x);
 
+  bool is_index() const { return get()->get_index(); }
+  Var& set_index(bool flag) {
+    get()->set_index(flag);
+    return *this;
+  }
+  IndexExpr as_index();
+  const IndexExpr as_index() const;
+
   const _Var_* operator->() const { return get(); }
   _Var_* operator->() { return get(); }
   const _Var_* get() const { return static_cast<const _Var_*>(ptr()); }
@@ -476,6 +474,10 @@ struct Reduce : public ExprNode<Reduce> {
     kMin,
     kAll,
     kAny,
+    kVariance,
+    kArgmax,
+    kArgmin,
+    kNone
   };
 
   //! The initial value.
@@ -513,22 +515,7 @@ struct Select : public ExprNode<Select> {
   Expr true_value;
   Expr false_value;
 
-  Select(Expr condition, Expr true_value, Expr false_value)
-      : ExprNode<Select>(true_value.type()),
-        condition(condition),
-        true_value(true_value),
-        false_value(false_value) {
-    PADDLE_ENFORCE_EQ(
-        true_value.type(),
-        false_value.type(),
-        ::common::errors::InvalidArgument(
-            "The type of true_value and false_value should be the same."));
-    PADDLE_ENFORCE_EQ(condition.type().is_bool(),
-                      true,
-                      ::common::errors::PreconditionNotMet(
-                          "The condition must be of boolean type."));
-    type_ = true_value.type();
-  }
+  Select(Expr condition, Expr true_value, Expr false_value);
 
   static Expr Make(Expr condition, Expr true_value, Expr false_value) {
     auto node = make_shared<Select>(condition, true_value, false_value);
@@ -845,7 +832,7 @@ struct ForBase {
   BindInfo bind_info_;
 };
 
-/// LLVM loop unroll metadata infomation
+/// LLVM loop unroll metadata information
 struct LLVMForLoopMeta {
   enum UnrollMode { DefaultUnroll, FullyUnroll, NoUnroll };
 
@@ -955,7 +942,9 @@ struct FracOp : public BinaryOpNode<FracOp> {
 
   static Expr Make(Expr n, Expr d);
 
-  bool is_constant() const { return a().is_constant() && b().is_constant(); }
+  bool is_constant() const {
+    return this->a().is_constant() && this->b().is_constant();
+  }
 
   double get_constant() const {
     PADDLE_ENFORCE_EQ(is_constant(),
@@ -1015,53 +1004,13 @@ struct Block : public ExprNode<Block> {
   static const IrNodeTy _node_type_ = IrNodeTy::Block;
 };
 
-struct IndexExpr : public Expr {
- public:
-  IndexExpr() = default;
-  IndexExpr(const IndexExpr& other) : Expr(other.ptr()) {}
-  IndexExpr(IrNode* p) : Expr(p) {}            // NOLINT
-  IndexExpr(const Expr& expr) : Expr(expr) {}  // NOLINT
-
-  explicit IndexExpr(int32_t x) : Expr(x) {}
-  explicit IndexExpr(int64_t x) : Expr(x) {}
-
-  int64_t GetLargestMutiplyPart() const;
-
-  IndexExpr Normalize() const;
-
-  bool IsDynamic() const;
-
-  // count the `IndeExpr` length, each node has weight 1, e.g.
-  // S0,          length = 1
-  // S0 + S1,     length = 3
-  // S0 + S1 * 2, length = 5
-  int32_t length() const;
-
-  IndexExpr& operator=(const IndexExpr& other);
-
-  IndexExpr operator-() const;
-
-#define DEFINE_OPERATOR(op)               \
-  IndexExpr operator op(int64_t v) const; \
-  IndexExpr operator op(int32_t v) const; \
-  IndexExpr operator op(const IndexExpr& other) const;
-
-  DEFINE_OPERATOR(+)
-  DEFINE_OPERATOR(-)
-  DEFINE_OPERATOR(*)
-  DEFINE_OPERATOR(/)
-  DEFINE_OPERATOR(%)
-
-#undef DEFINE_OPERATOR
-};
-
 // TODO(liujinnan): Essentially IterExpr is not IndexExpr, so it does not
 // satisfy the `is_index` and `as_index` method. IterExpr is temporarily held by
 // IndexExpr, it will be separated later.
 
 /**
- * \brief IterMark is a special ExprNode, which can be used to mark ther entire
- * ierator. source is a IterSum or iterator. extent is the extent of the
+ * \brief IterMark is a special ExprNode, which can be used to mark the entire
+ * iterator. source is a IterSum or iterator. extent is the extent of the
  * iterator or IterSum.
  */
 struct IterMark : public ExprNode<IterMark> {
@@ -1071,9 +1020,9 @@ struct IterMark : public ExprNode<IterMark> {
   }
   IterMark& operator=(const IterMark& other);
 
-  static IndexExpr Make(const IndexExpr& source, const IndexExpr& extent);
+  static Expr Make(const Expr& source, const IndexExpr& extent);
   Type type() const { return source.type(); }
-  IndexExpr source;
+  Expr source;
   IndexExpr extent;
   static const IrNodeTy _node_type_ = IrNodeTy::IterMark;
 };
@@ -1095,15 +1044,15 @@ struct IterSplit : public ExprNode<IterSplit> {
 
   IterSplit& operator=(const IterSplit& other);
 
-  static IndexExpr Make(const IndexExpr& source,
-                        const IndexExpr& lower_factor,
-                        const IndexExpr& extent,
-                        const IndexExpr& scale);
-  static IndexExpr Make(const IndexExpr& source, const IndexExpr& scale);
-  static IndexExpr Make(const IndexExpr& source);
+  static Expr Make(const Expr& source,
+                   const IndexExpr& lower_factor,
+                   const IndexExpr& extent,
+                   const IndexExpr& scale);
+  static Expr Make(const Expr& source, const IndexExpr& scale);
+  static Expr Make(const Expr& source);
 
   Type type() const { return source.type(); }
-  IndexExpr source;
+  Expr source;
   IndexExpr lower_factor;
   IndexExpr extent;
   IndexExpr scale;
@@ -1117,10 +1066,9 @@ struct IterSplit : public ExprNode<IterSplit> {
 struct IterSum : public ExprNode<IterSum> {
  public:
   IterSum() = default;
-  static IndexExpr Make(const std::vector<IndexExpr>& args,
-                        const IndexExpr& base);
+  static Expr Make(const std::vector<Expr>& args, const IndexExpr& base);
   Type type() const { return base.type(); }
-  std::vector<IndexExpr> args;
+  std::vector<Expr> args;
   IndexExpr base;
   static const IrNodeTy _node_type_ = IrNodeTy::IterSum;
 };
@@ -1205,7 +1153,7 @@ struct PrimitiveNode : public ExprNode<PrimitiveNode> {
   static const IrNodeTy _node_type_ = IrNodeTy::PrimitiveNode;
 };
 
-// possiable keys of attributes in ir nodes with are listed in the following
+// possible keys of attributes in ir nodes with are listed in the following
 // namespace
 namespace attr {
 
@@ -1255,19 +1203,51 @@ struct hash<cinn::ir::IndexExpr> {
         return std::hash<std::string>()(x.as_var()->name);
       case cinn::ir::IrNodeTy::IntImm:
         return std::hash<int>()(x.as_int64());
+      case cinn::ir::IrNodeTy::Add:
+      case cinn::ir::IrNodeTy::Sub:
+      case cinn::ir::IrNodeTy::Mul:
+      case cinn::ir::IrNodeTy::Div:
+      case cinn::ir::IrNodeTy::Mod:
+      case cinn::ir::IrNodeTy::Min:
+      case cinn::ir::IrNodeTy::Max: {
+        auto hash_lhs = std::hash<cinn::ir::IndexExpr>()(x.operand(0));
+        auto hash_rhs = std::hash<cinn::ir::IndexExpr>()(x.operand(1));
+        return cinn::adt::hash_combine(hash_lhs, hash_rhs);
+      }
+      case cinn::ir::IrNodeTy::Load:
+      case cinn::ir::IrNodeTy::Cast: {
+        return reinterpret_cast<size_t>(x.get());
+      }
+    }
+    PADDLE_THROW(
+        ::common::errors::InvalidArgument("Unsupported index expr type."));
+  }
+};
+
+template <>
+struct hash<cinn::ir::Expr> {
+  size_t operator()(const cinn::ir::Expr& x) const {
+    if (x.is_index()) {
+      return std::hash<cinn::ir::IndexExpr>()(x.as_index());
+    }
+    switch (x.node_type()) {
+      case cinn::ir::IrNodeTy::_Var_:
+        return std::hash<std::string>()(x.as_var()->name);
+      case cinn::ir::IrNodeTy::IntImm:
+        return std::hash<int>()(x.as_int64());
       case cinn::ir::IrNodeTy::IterMark: {
         auto iter_mark = x.As<cinn::ir::IterMark>();
-        auto hash_source = std::hash<cinn::ir::IndexExpr>()(iter_mark->source);
-        auto hash_extent = std::hash<cinn::ir::IndexExpr>()(iter_mark->extent);
+        auto hash_source = std::hash<cinn::ir::Expr>()(iter_mark->source);
+        auto hash_extent = std::hash<cinn::ir::Expr>()(iter_mark->extent);
         return cinn::adt::hash_combine(hash_source, hash_extent);
       }
       case cinn::ir::IrNodeTy::IterSplit: {
         auto iter_split = x.As<cinn::ir::IterSplit>();
-        auto hash_source = std::hash<cinn::ir::IndexExpr>()(iter_split->source);
+        auto hash_source = std::hash<cinn::ir::Expr>()(iter_split->source);
         auto hash_lower_facort =
-            std::hash<cinn::ir::IndexExpr>()(iter_split->lower_factor);
-        auto hash_extent = std::hash<cinn::ir::IndexExpr>()(iter_split->extent);
-        auto hash_scale = std::hash<cinn::ir::IndexExpr>()(iter_split->scale);
+            std::hash<cinn::ir::Expr>()(iter_split->lower_factor);
+        auto hash_extent = std::hash<cinn::ir::Expr>()(iter_split->extent);
+        auto hash_scale = std::hash<cinn::ir::Expr>()(iter_split->scale);
         auto hash_res = cinn::adt::hash_combine(hash_source, hash_lower_facort);
         hash_res = cinn::adt::hash_combine(hash_res, hash_extent);
         hash_res = cinn::adt::hash_combine(hash_res, hash_scale);
@@ -1275,30 +1255,16 @@ struct hash<cinn::ir::IndexExpr> {
       }
       case cinn::ir::IrNodeTy::IterSum: {
         auto iter_sum = x.As<cinn::ir::IterSum>();
-        auto hash_res = std::hash<cinn::ir::IndexExpr>()(iter_sum->base);
+        auto hash_res = std::hash<cinn::ir::Expr>()(iter_sum->base);
         for (auto&& iter_mark : iter_sum->args) {
           hash_res = cinn::adt::hash_combine(
-              hash_res, std::hash<cinn::ir::IndexExpr>()(iter_mark));
+              hash_res, std::hash<cinn::ir::Expr>()(iter_mark));
         }
         return hash_res;
       }
-      case cinn::ir::IrNodeTy::Add:
-        [[fallthrough]];
-      case cinn::ir::IrNodeTy::Sub:
-        [[fallthrough]];
-      case cinn::ir::IrNodeTy::Mul:
-        [[fallthrough]];
-      case cinn::ir::IrNodeTy::Div:
-        [[fallthrough]];
-      case cinn::ir::IrNodeTy::Mod: {
-        auto hash_lhs =
-            std::hash<cinn::ir::IndexExpr>()(x.get()->operand(0).as_index());
-        auto hash_rhs =
-            std::hash<cinn::ir::IndexExpr>()(x.get()->operand(1).as_index());
-        return cinn::adt::hash_combine(hash_lhs, hash_rhs);
-      }
+      default:
+        return reinterpret_cast<size_t>(x.get());
     }
-    ::common::errors::InvalidArgument("Unsupported index expr type.");
   }
 };
 }  // namespace std

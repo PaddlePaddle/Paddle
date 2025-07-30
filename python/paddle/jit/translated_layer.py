@@ -51,7 +51,7 @@ def _load_program_desc(model_file_path):
     program_desc = core.ProgramDesc(program_desc_str)
     if not core._is_program_version_supported(program_desc._version()):
         raise ValueError(
-            "Unsupported program version: %d\n" % program_desc._version()
+            f"Unsupported program version: {program_desc._version()}\n"
         )
     return program_desc
 

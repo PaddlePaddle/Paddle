@@ -29,6 +29,7 @@
 COMMON_DECLARE_bool(prim_check_ops);
 COMMON_DECLARE_bool(prim_enable_dynamic);
 COMMON_DECLARE_string(prim_forward_blacklist);
+COMMON_DECLARE_bool(comp_skip_default_ops);
 
 using paddle::dialect::DenseTensorType;
 using paddle::dialect::SelectedRowsType;
@@ -47,11 +48,15 @@ std::unordered_set<std::string> decomp_op_contain_none = {
     "pd_op.batch_norm_",
     "pd_op.dropout",
     "pd_op.instance_norm",
+    "pd_op.rms_norm",
 };
 //
 
-std::unordered_set<std::string> dynamic_shape_blacklist = {
-    "pd_op.squeeze", "pd_op.unsqueeze", "pd_op.flatten"};
+std::unordered_set<std::string> dynamic_shape_blacklist = {"pd_op.squeeze",
+                                                           "pd_op.unsqueeze",
+                                                           "pd_op.flatten",
+                                                           "pd_op.eye",
+                                                           "pd_op.diag"};
 
 namespace {
 std::set<std::string> StringSplit(const std::string& str) {
@@ -223,6 +228,11 @@ void DecompProgram::check_decomp_outputs(
   bool skip_invalid_op_check =
       decomp_op_contain_none.find(op_name) != decomp_op_contain_none.end();
   for (size_t i = 0; i < orig_outs.size(); i++) {
+    if (orig_outs[i].use_empty()) {
+      VLOG(3) << "[Prim] Decomp op skip check of " << op_name << " output "
+              << i;
+      continue;
+    }
     if (skip_invalid_op_check &&
         (paddle::dialect::IsEmptyValue(orig_outs[i]) ||
          paddle::dialect::IsEmptyValue(decomp_outs[i]))) {
@@ -365,9 +375,18 @@ bool DecompProgram::enable_decomp_by_filter(const std::string& op_name) {
       flag = false;
     }
   }
+  std::set<std::string> default_comp_blacklist = {"pd_op.embedding",
+                                                  "pd_op.dropout"};
+
   auto from_flag_blacklist = StringSplit(FLAGS_prim_forward_blacklist);
   if (!from_flag_blacklist.empty())
     blacklist_.insert(from_flag_blacklist.begin(), from_flag_blacklist.end());
+
+  if (FLAGS_comp_skip_default_ops) {
+    blacklist_.insert(default_comp_blacklist.begin(),
+                      default_comp_blacklist.end());
+  }
+
   if (!blacklist_.empty() && blacklist_.find(op_name) != blacklist_.end())
     flag = false;
   return flag;
@@ -420,7 +439,7 @@ std::vector<pir::Operation*> DecompProgram::parse_block_ops(pir::Block* block) {
       end_idx,
       ops_list.size(),
       common::errors::PreconditionNotMet(
-          "Requred end_idx <= block.ops().size() in DecompProgram."));
+          "Required end_idx <= block.ops().size() in DecompProgram."));
   return std::vector<pir::Operation*>(ops_list.begin() + start_idx,
                                       ops_list.begin() + end_idx);
 }
@@ -501,7 +520,8 @@ void DecompProgram::decomp_block(
       int chunk_id = (op->attribute<pir::Int32Attribute>("chunk_id"))
                          ? op->attribute<pir::Int32Attribute>("chunk_id").data()
                          : -1;
-      pir::BuilderAttrGuard guard(builder, op_role, chunk_id);
+      std::string comp_op_name = op->name();
+      pir::BuilderAttrGuard guard(builder, op_role, chunk_id, comp_op_name);
 
       std::vector<std::vector<pir::Value>> decomp_res = call_decomp_rule(op);
       if (decomp_res.size() == 0) {

@@ -26,12 +26,12 @@ class TestInferNoNeedBufferSlots(unittest.TestCase):
         x1 = (
             base.default_main_program()
             .global_block()
-            .create_var(dtype="float32", shape=[1], lod_level=0, name="x1")
+            .create_var(dtype="float32", shape=[1], name="x1")
         )
         x2 = (
             base.default_main_program()
             .global_block()
-            .create_var(dtype="float32", shape=[1], lod_level=0, name="x2")
+            .create_var(dtype="float32", shape=[1], name="x2")
         )
         x = paddle.add(x1, x2)
         return x

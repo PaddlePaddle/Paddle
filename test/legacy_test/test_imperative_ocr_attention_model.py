@@ -577,12 +577,12 @@ class TestDygraphOCRAttention(unittest.TestCase):
             if not paddle.framework.use_pir_api():
                 images.desc.set_need_check_feed(False)
             static_label_in = paddle.static.data(
-                name='label_in', shape=[-1, 1], dtype='int64', lod_level=0
+                name='label_in', shape=[-1, 1], dtype='int64'
             )
             if not paddle.framework.use_pir_api():
                 static_label_in.desc.set_need_check_feed(False)
             static_label_out = paddle.static.data(
-                name='label_out', shape=[-1, 1], dtype='int64', lod_level=0
+                name='label_out', shape=[-1, 1], dtype='int64'
             )
             if not paddle.framework.use_pir_api():
                 static_label_out.desc.set_need_check_feed(False)

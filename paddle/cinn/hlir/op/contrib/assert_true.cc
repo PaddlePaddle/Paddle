@@ -68,10 +68,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForAssertTrue(
     *ret = CINNValuePack{res};
   });
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(assert_true_compute,
-                    GetElementwiseScheduleFunc(output_shapes, target),
-                    "strategy.assert_true.x86",
-                    1);
+  strategy->AddImpl(assert_true_compute, "strategy.assert_true.x86", 1);
   return strategy;
 }
 

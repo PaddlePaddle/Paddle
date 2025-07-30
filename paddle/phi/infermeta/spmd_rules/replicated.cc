@@ -46,8 +46,8 @@ SpmdInfo ReplicatedInferSpmd(const std::vector<const DistMetaTensor*>& ins,
     int ndim = outs[i]->dims().size();
     TensorDistAttr dist_attr_dst =
         CopyTensorDistAttrForOutput(ins[0]->dist_attr());
-    std::vector<int64_t> dst_dims_maping = GetReplicatedDimsMapping(ndim);
-    dist_attr_dst.set_dims_mapping(dst_dims_maping);
+    std::vector<int64_t> dst_dims_mapping = GetReplicatedDimsMapping(ndim);
+    dist_attr_dst.set_dims_mapping(dst_dims_mapping);
     output_dist_attrs.emplace_back(dist_attr_dst);
   }
 
@@ -61,8 +61,8 @@ SpmdInfo ReplicatedInferSpmd(const std::vector<const DistMetaTensor*>& ins,
     }
     TensorDistAttr dist_attr_dst =
         CopyTensorDistAttrForOutput(ins[i]->dist_attr());
-    std::vector<int64_t> dst_dims_maping = GetReplicatedDimsMapping(ndim);
-    dist_attr_dst.set_dims_mapping(dst_dims_maping);
+    std::vector<int64_t> dst_dims_mapping = GetReplicatedDimsMapping(ndim);
+    dist_attr_dst.set_dims_mapping(dst_dims_mapping);
     dst_input_dist_attrs.emplace_back(dist_attr_dst);
   }
 
@@ -103,8 +103,8 @@ SpmdInfo ReplicatedInferSpmdReverse(
     int ndim = outs[i]->dims().size();
     TensorDistAttr dist_attr_dst =
         CopyTensorDistAttrForOutput(outs[i]->dist_attr());
-    std::vector<int64_t> dst_dims_maping = GetReplicatedDimsMapping(ndim);
-    dist_attr_dst.set_dims_mapping(dst_dims_maping);
+    std::vector<int64_t> dst_dims_mapping = GetReplicatedDimsMapping(ndim);
+    dist_attr_dst.set_dims_mapping(dst_dims_mapping);
     output_dist_attrs.emplace_back(dist_attr_dst);
   }
 
@@ -114,8 +114,8 @@ SpmdInfo ReplicatedInferSpmdReverse(
     int ndim = ins[i]->dims().size();
     TensorDistAttr dist_attr_dst =
         CopyTensorDistAttrForOutput(ins[i]->dist_attr());
-    std::vector<int64_t> dst_dims_maping = GetReplicatedDimsMapping(ndim);
-    dist_attr_dst.set_dims_mapping(dst_dims_maping);
+    std::vector<int64_t> dst_dims_mapping = GetReplicatedDimsMapping(ndim);
+    dist_attr_dst.set_dims_mapping(dst_dims_mapping);
     dst_input_dist_attrs.emplace_back(dist_attr_dst);
   }
 
@@ -148,19 +148,19 @@ SpmdInfo ReplicatedInferDynamic(
   int64_t ninputs = static_cast<int64_t>(inputs.size());
   SpmdInfo spmd_info;
 
-  auto build_tensor_dist_attr =
-      [&nonnull_inputs](const DistMetaTensor& dist_meta_tensor) {
-        int ndim = dist_meta_tensor.dims().size();
-        TensorDistAttr dist_attr_dst =
-            CopyTensorDistAttrForOutput(dist_meta_tensor.dist_attr());
-        // `ndim == -1` means input is nullptr
-        if (ndim >= 0) {
-          std::vector<int64_t> dst_dims_maping = GetReplicatedDimsMapping(ndim);
-          dist_attr_dst.set_dims_mapping(dst_dims_maping);
-          nonnull_inputs.push_back(&dist_meta_tensor);
-        }
-        return dist_attr_dst;
-      };
+  auto build_tensor_dist_attr = [&nonnull_inputs](
+                                    const DistMetaTensor& dist_meta_tensor) {
+    int ndim = dist_meta_tensor.dims().size();
+    TensorDistAttr dist_attr_dst =
+        CopyTensorDistAttrForOutput(dist_meta_tensor.dist_attr());
+    // `ndim == -1` means input is nullptr
+    if (ndim >= 0) {
+      std::vector<int64_t> dst_dims_mapping = GetReplicatedDimsMapping(ndim);
+      dist_attr_dst.set_dims_mapping(dst_dims_mapping);
+      nonnull_inputs.push_back(&dist_meta_tensor);
+    }
+    return dist_attr_dst;
+  };
 
   for (int64_t i = 0; i < ninputs; i++) {
     if (paddle::holds_alternative<const DistMetaTensor*>(inputs[i])) {

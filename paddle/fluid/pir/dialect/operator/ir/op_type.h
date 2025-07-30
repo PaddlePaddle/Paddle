@@ -17,6 +17,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/type_storage.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/builtin_type_interfaces.h"
+#include "paddle/pir/include/core/dll_decl.h"
 #include "paddle/pir/include/core/type.h"
 #include "paddle/utils/test_macros.h"
 
@@ -41,7 +42,7 @@ class TEST_API SelectedRowsType
 
   const phi::DataLayout &data_layout() const;
 
-  const phi::LoD &lod() const;
+  const phi::LegacyLoD &lod() const;
 
   const size_t &offset() const;
 
@@ -57,13 +58,13 @@ class TEST_API SelectedRowsType
                               Type dtype,
                               const phi::DDim &dims,
                               DataLayout layout = DataLayout::kNCHW,
-                              const phi::LoD &lod = {},
+                              const phi::LegacyLoD &lod = {},
                               size_t offset = 0u) {
     return Base::get(ctx, dtype, dims, layout, lod, offset);
   }
 };
 
-class DenseTensorArrayType
+class IR_API DenseTensorArrayType
     : public pir::Type::TypeBase<DenseTensorArrayType,
                                  pir::Type,
                                  DenseTensorArrayTypeStorage> {

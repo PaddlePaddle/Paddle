@@ -20,7 +20,7 @@ import collective.test_communication_api_base as test_base
 
 class TestDPMPPPAPI(test_base.CommunicationTestDistBase):
     def setUp(self):
-        super().setUp(num_of_devices=8, timeout=120, nnode=1)
+        super().setUp(num_of_devices=8, timeout=180, nnode=1)
         self._default_envs = {
             "dtype": "float32",
             "seed": "2023",

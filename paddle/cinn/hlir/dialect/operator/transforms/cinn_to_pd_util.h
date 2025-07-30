@@ -71,19 +71,19 @@ class TransformRegistrar {
   }
 };
 
-#define REGISTER_TRANSFORM_RULES(registrar_name, op_name, rule_hadler_name)  \
-  STATIC_ASSERT_GLOBAL_NAMESPACE(                                            \
-      __reg_op_transform_rules__##registrar_name,                            \
-      "REGISTER_TRANSFORM_RULES must be called in global namespace");        \
-  static cinn::dialect::details::TransformRegistrar                          \
-      __op_transform_rules_registrar_##registrar_name##__(op_name,           \
-                                                          rule_hadler_name); \
-  int TouchOpTransformerRulesRegistrar_##registrar_name() {                  \
-    __op_transform_rules_registrar_##registrar_name##__.Touch();             \
-    return 0;                                                                \
-  }                                                                          \
-  static cinn::dialect::details::TransformRegistrar&                         \
-      __op_transform_rules_tmp_registrar_##registrar_name##__ UNUSED =       \
+#define REGISTER_TRANSFORM_RULES(registrar_name, op_name, rule_handler_name)  \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                                             \
+      __reg_op_transform_rules__##registrar_name,                             \
+      "REGISTER_TRANSFORM_RULES must be called in global namespace");         \
+  static cinn::dialect::details::TransformRegistrar                           \
+      __op_transform_rules_registrar_##registrar_name##__(op_name,            \
+                                                          rule_handler_name); \
+  int TouchOpTransformerRulesRegistrar_##registrar_name() {                   \
+    __op_transform_rules_registrar_##registrar_name##__.Touch();              \
+    return 0;                                                                 \
+  }                                                                           \
+  static cinn::dialect::details::TransformRegistrar&                          \
+      __op_transform_rules_tmp_registrar_##registrar_name##__ UNUSED =        \
           __op_transform_rules_registrar_##registrar_name##__
 
 void RewriteCinnOpToPdOp(const ::pir::Block& src_block,

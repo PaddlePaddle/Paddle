@@ -86,7 +86,20 @@ void Op::operator()(const Tensor& arg, const Tensor* out) const {
 
 void Op::operator()(const std::vector<const Tensor*>& args,
                     const std::vector<const Tensor*>& outputs) const {
-  pattern_graph_->AddOpCall(std::make_shared<OpCall>(this, args, outputs));
+  std::vector<const Tensor*> inputs_ptr;
+  std::vector<const Tensor*> outputs_ptr;
+  for (auto arg : args) {
+    const Tensor* lower_input_ptr =
+        (pattern_graph_->id2owned_tensor().at(arg->name())).get();
+    inputs_ptr.emplace_back(lower_input_ptr);
+  }
+  for (auto output : outputs) {
+    const Tensor* lower_output_ptr =
+        (pattern_graph_->id2owned_tensor().at(output->name())).get();
+    outputs_ptr.emplace_back(lower_output_ptr);
+  }
+  pattern_graph_->AddOpCall(
+      std::make_shared<OpCall>(this, inputs_ptr, outputs_ptr));
 }
 
 Tensor& Op::operator()(const Tensor& arg) const {
@@ -129,15 +142,6 @@ Tensor& Op::operator()() const {
 
 thread_local int64_t Op::count = 0;
 const char* Op::prefix = "@drr_temp@_";
-
-const char Tensor::SOURCE_INPUT_NONE_TENSOR_NAME[] =  // NOLINT
-    "__@source_input_none_tensor@__";
-const char Tensor::SOURCE_OUTPUT_NONE_TENSOR_NAME[] =  // NOLINT
-    "__@source_output_none_tensor@__";
-const char Tensor::RESULT_INPUT_NONE_TENSOR_NAME[] =  // NOLINT
-    "__@result_input_none_tensor@__";
-const char Tensor::RESULT_OUTPUT_NONE_TENSOR_NAME[] =  // NOLINT
-    "__@result_output_none_tensor@__";
 
 void Tensor::Assign(const Tensor& other) {
   dynamic_cast<ResultPatternGraph*>(pattern_graph_)->AssignTensor(*this, other);

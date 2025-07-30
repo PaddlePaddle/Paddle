@@ -188,11 +188,12 @@ class TestDygraphMultiForward(unittest.TestCase):
                 paddle.framework.random._manual_program_seed(SEED)
             else:
                 paddle.framework.random._manual_program_seed(SEED)
-            exe = base.Executor(
-                base.CPUPlace()
-                if not core.is_compiled_with_cuda()
-                else base.CUDAPlace(0)
-            )
+            if core.is_compiled_with_cuda():
+                exe = base.Executor(base.CUDAPlace(0))
+            elif core.is_compiled_with_xpu():
+                exe = base.Executor(base.XPUPlace(0))
+            else:
+                exe = base.Executor(base.CPUPlace())
 
             mnist = MNIST()
             sgd = paddle.optimizer.SGD(learning_rate=1e-3)

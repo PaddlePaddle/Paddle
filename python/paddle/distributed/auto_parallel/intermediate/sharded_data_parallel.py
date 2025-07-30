@@ -20,7 +20,7 @@ from .parallel_base import ParallelModel, ParallelOptimizer
 
 class ShardedDataParallel(ParallelModel):
     """
-    ShardedDataParallel converts a single card model to a distrubuted data parallel model
+    ShardedDataParallel converts a single card model to a distributed data parallel model
 
     Args:
         model (paddle.nn.Layer): A single card model to be distributed.

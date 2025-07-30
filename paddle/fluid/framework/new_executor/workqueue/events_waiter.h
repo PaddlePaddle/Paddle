@@ -29,7 +29,7 @@ namespace framework {
 
 // A multiplexing waiter, be able to wait multiple kinds of events
 // simultaneously.
-// Muti-Producer single-consumer single-slot message-queue.
+// Multi-Producer single-consumer single-slot message-queue.
 class EventsWaiter {
  public:
   using EventId = std::size_t;

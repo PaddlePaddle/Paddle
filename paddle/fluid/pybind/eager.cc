@@ -12,10 +12,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager.h"
 
 #include <Python.h>
-// Avoid a problem with copysign defined in pyconfig.h on Windows.
-#ifdef copysign
-#undef copysign
-#endif
 
 #include <string>
 #include <vector>
@@ -54,8 +50,7 @@ using phi::distributed::ProcessMesh;
 using phi::distributed::TensorDistAttr;
 using phi::distributed::auto_parallel::str_join;
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 namespace py = ::pybind11;
 
@@ -107,7 +102,7 @@ void EmptyTensorInitializer(TensorObject* self,
   } else {
     VLOG(6) << "in EmptyTensorInitializer, create DenseTensor";
     if (var_type == paddle::framework::proto::VarType::DENSE_TENSOR) {
-      // TODO(jiabin): Maybe support LOD later
+      // TODO(jiabin): Maybe support LegacyLoD later
       std::shared_ptr<phi::DenseTensor> dense_tensor = nullptr;
       if (dims.size() == 1 && dims[0] == 0) {
         std::shared_ptr<phi::Allocation> allocation_ptr = nullptr;
@@ -196,6 +191,9 @@ void InitTensorWithNumpyValue(TensorObject* self,
   } else if (phi::is_cuda_pinned_place(place)) {
     SetTensorFromPyArray<phi::GPUPinnedPlace>(
         impl_ptr, array, place, zero_copy);
+  } else if (phi::is_xpu_pinned_place(place)) {
+    SetTensorFromPyArray<phi::XPUPinnedPlace>(
+        impl_ptr, array, place, zero_copy);
   } else if (phi::is_custom_place(place)) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
     phi::DeviceManager::SetDevice(place);
@@ -210,7 +208,8 @@ void InitTensorWithNumpyValue(TensorObject* self,
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "Place should be one of "
-        "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/CustomPlace"));
+        "CPUPlace/XPUPlace/CUDAPlace/"
+        "CUDAPinnedPlace/XPUPinnedPlace/CustomPlace"));
   }
 }
 
@@ -828,6 +827,7 @@ Tensor is the basic data structure in PaddlePaddle. There are some ways to creat
  *  **/
 int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
   EAGER_TRY
+  SetPythonStack();
   // set a flag to record use kwargs or not
   bool flag_kwargs = false;
   if (kwargs) flag_kwargs = true;
@@ -1461,6 +1461,7 @@ static void TensorDealloc(TensorObject* self) {
   if (self->weakrefs != nullptr)
     PyObject_ClearWeakRefs(reinterpret_cast<PyObject*>(self));
   self->tensor.~Tensor();
+  Py_XDECREF(self->dict);
   Py_TYPE(self)->tp_free(reinterpret_cast<PyObject*>(self));
 }
 
@@ -1503,6 +1504,7 @@ void BindEager(pybind11::module* module) {
   type->tp_base = reinterpret_cast<PyTypeObject*>(&PyBaseObject_Type);
   type->tp_flags |=
       Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HEAPTYPE;  // NOLINT
+  type->tp_dictoffset = offsetof(TensorObject, dict);
 #if PY_VERSION_HEX >= 0x03050000
   type->tp_as_async = &heap_type->as_async;
 #endif
@@ -1551,6 +1553,7 @@ void BindEagerStringTensor(pybind11::module* module) {
   type->tp_base = reinterpret_cast<PyTypeObject*>(&PyBaseObject_Type);
   type->tp_flags |=
       Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HEAPTYPE;  // NOLINT
+  type->tp_dictoffset = offsetof(TensorObject, dict);
 #if PY_VERSION_HEX >= 0x03050000
   type->tp_as_async = &heap_type->as_async;
 #endif
@@ -1573,5 +1576,4 @@ void BindEagerStringTensor(pybind11::module* module) {
   }
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

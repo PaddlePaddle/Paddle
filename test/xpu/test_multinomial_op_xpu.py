@@ -21,6 +21,7 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import convert_float_to_uint16
 from op_test_xpu import XPUOpTest
 
 import paddle
@@ -61,11 +62,14 @@ class XPUTestMultinomialOp(XPUOpTestWrapper):
             self.op_type = "multinomial"
             self.python_api = paddle.multinomial
             self.init_data()
-            self.inputs = {"X": self.input_np}
+            if self.in_type == np.uint16:
+                self.inputs = {"X": convert_float_to_uint16(self.input_np)}
+            else:
+                self.inputs = {"X": self.input_np.astype(self.dtype)}
 
         def init_data(self):
             # input probability is a vector, and replacement is True
-            self.input_np = np.random.rand(4).astype(self.dtype)
+            self.input_np = np.random.rand(4).astype(np.float32)
             self.outputs = {"Out": np.zeros(100000).astype("int64")}
             self.attrs = {"num_samples": 100000, "replacement": True}
 
@@ -95,7 +99,7 @@ class XPUTestMultinomialOp(XPUOpTestWrapper):
     class TestMultinomialOp2(TestMultinomialOp):
         def init_data(self):
             # input probability is a matrix
-            self.input_np = np.random.rand(3, 4).astype(self.dtype)
+            self.input_np = np.random.rand(3, 4).astype(np.float32)
             self.outputs = {"Out": np.zeros((3, 100000)).astype("int64")}
             self.attrs = {"num_samples": 100000, "replacement": True}
 
@@ -105,7 +109,7 @@ class XPUTestMultinomialOp(XPUOpTestWrapper):
     class TestMultinomialOp3(TestMultinomialOp):
         def init_data(self):
             # replacement is False. number of samples must be less than number of categories.
-            self.input_np = np.random.rand(1000).astype(self.dtype)
+            self.input_np = np.random.rand(1000).astype(np.float32)
             self.outputs = {"Out": np.zeros(100).astype("int64")}
             self.attrs = {"num_samples": 100, "replacement": False}
 

@@ -1024,7 +1024,7 @@ void GpuPsGraphTable::display_sample_res(
            *reinterpret_cast<int64_t*>(val_buffer + i * sizeof(uint64_t)));
     int ac_size = *reinterpret_cast<int*>(val_buffer + i * sizeof(int) +
                                           len * sizeof(int64_t));
-    printf("sampled %d neigbhors\n", ac_size);
+    printf("sampled %d neighbors\n", ac_size);
     for (int j = 0; j < ac_size; j++) {
       printf("%llu ", sample_val[i * sample_len + j]);
     }

@@ -21,8 +21,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
@@ -160,12 +159,23 @@ SpmdInfo ReductionMaxInferSpmdDynamic(const DistMetaTensor& x,
   return ReductionInferSpmdBase(
       x, axis.GetData(), keep_dim, static_cast<int>(ReduceType::kRedMax));
 }
-
+SpmdInfo ReductionMinInferSpmdDynamic(const DistMetaTensor& x,
+                                      const IntArray& axis,
+                                      bool keep_dim) {
+  return ReductionInferSpmdBase(
+      x, axis.GetData(), keep_dim, static_cast<int>(ReduceType::kRedMin));
+}
 SpmdInfo ReductionAllInferSpmdDynamic(const DistMetaTensor& x,
                                       const IntArray& axis,
                                       bool keep_dim) {
   return ReductionInferSpmdBase(
       x, axis.GetData(), keep_dim, static_cast<int>(ReduceType::kRedAll));
+}
+SpmdInfo ReductionAnyInferSpmdDynamic(const DistMetaTensor& x,
+                                      const IntArray& axis,
+                                      bool keep_dim) {
+  return ReductionInferSpmdBase(
+      x, axis.GetData(), keep_dim, static_cast<int>(ReduceType::kRedAny));
 }
 
 SpmdInfo ReductionInferSpmdReverse(const DistMetaTensor& x,
@@ -284,5 +294,4 @@ SpmdInfo ReductionGradInferSpmd(const DistMetaTensor& x,
   return spmd_info;
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

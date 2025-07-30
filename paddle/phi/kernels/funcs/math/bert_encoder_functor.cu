@@ -18,7 +18,6 @@
 
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/tensor_utils.h"
-#include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 
 namespace phi {
@@ -414,7 +413,7 @@ void SkipLayerNormFunctor<T>::operator()(const int num,
 
 template class SkipLayerNormFunctor<float>;
 
-// device function 'operator()' is not supportted until cuda 10.0
+// device function 'operator()' is not supported until cuda 10.0
 // HIP defined __HIP_NO_HALF_CONVERSIONS__ in hip.cmake
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10000
 template class SkipLayerNormFunctor<half>;

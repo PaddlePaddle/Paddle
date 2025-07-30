@@ -25,15 +25,14 @@
 #include "paddle/phi/kernels/reshape_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 bool SToSReshardFunction::IsSuitable(const DistTensor& in,
                                      const TensorDistAttr& out_dist_attr) {
   const auto& in_dist_attr = in.dist_attr();
 
-  RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.dims_mapping() !=
-                            out_dist_attr.dims_mapping());
+  RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.multi_dims_mapping() !=
+                            out_dist_attr.multi_dims_mapping());
 
   RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.is_shard());
   RESHARD_SHORTCUT_IF_FALSE(out_dist_attr.is_shard());
@@ -55,6 +54,11 @@ void SToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   VLOG(3) << "Call " << Name();
   const auto& in_process_mesh = in.dist_attr().process_mesh();
   const auto& in_process_ids = in_process_mesh.process_ids();
+  if (in_process_ids.size() == 1) {
+    SetValue(out, in.value());
+    SetDistProps(out, in.dims(), out_dist_attr);
+    return;
+  }
   auto dtype = in.dtype();
   const auto& logical_ddim = in.dims();
   int64_t nranks = static_cast<int64_t>(in_process_ids.size());
@@ -145,8 +149,8 @@ bool SToSReshardFunctionCrossMesh::IsSuitable(
     const DistTensor& in, const TensorDistAttr& out_dist_attr) {
   const auto& in_dist_attr = in.dist_attr();
 
-  RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.dims_mapping() !=
-                            out_dist_attr.dims_mapping());
+  RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.multi_dims_mapping() !=
+                            out_dist_attr.multi_dims_mapping());
 
   RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.is_shard());
   RESHARD_SHORTCUT_IF_FALSE(out_dist_attr.is_shard());
@@ -191,5 +195,4 @@ void SToSReshardFunctionCrossMesh::Eval(DeviceContext* dev_ctx,
   }
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

@@ -47,15 +47,15 @@ class TestFlattenSPMDRule(unittest.TestCase):
             self.attrs['start_axis'],
             self.attrs['stop_axis'],
         )
-        infered_input_dist_attrs = result_dist_attrs[0]
-        infered_output_dist_attrs = result_dist_attrs[1]
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
 
-        self.assertEqual(len(infered_input_dist_attrs), 1)
-        self.assertEqual(len(infered_output_dist_attrs), 1)
+        self.assertEqual(len(inferred_input_dist_attrs), 1)
+        self.assertEqual(len(inferred_output_dist_attrs), 1)
         self.assertEqual(
-            infered_input_dist_attrs[0].dims_mapping, [0, -1, -1, 1]
+            inferred_input_dist_attrs[0].dims_mapping, [0, -1, -1, 1]
         )
-        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, -1, 1])
+        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [0, -1, 1])
 
         # shape: [8, 16, 8, 24] --> [8, 16 * 8, 24]
         # dims_mapping: [-1, 0, -1, 1] --> [-1, 0, -1, 1] ([ -1, 0, 1])
@@ -67,13 +67,13 @@ class TestFlattenSPMDRule(unittest.TestCase):
             self.attrs['start_axis'],
             self.attrs['stop_axis'],
         )
-        infered_input_dist_attrs = result_dist_attrs[0]
-        infered_output_dist_attrs = result_dist_attrs[1]
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
 
         self.assertEqual(
-            infered_input_dist_attrs[0].dims_mapping, [-1, 0, -1, 1]
+            inferred_input_dist_attrs[0].dims_mapping, [-1, 0, -1, 1]
         )
-        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [-1, 0, 1])
+        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [-1, 0, 1])
 
         # shape: [8, 16, 8, 24] --> [8, 16 * 8, 24]
         # dims_mapping: [-1, -1, 1, 0] --> [-1, -1, -1, 0] ([ -1, -1, 0])
@@ -85,13 +85,15 @@ class TestFlattenSPMDRule(unittest.TestCase):
             self.attrs['start_axis'],
             self.attrs['stop_axis'],
         )
-        infered_input_dist_attrs = result_dist_attrs[0]
-        infered_output_dist_attrs = result_dist_attrs[1]
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
 
         self.assertEqual(
-            infered_input_dist_attrs[0].dims_mapping, [-1, -1, -1, 0]
+            inferred_input_dist_attrs[0].dims_mapping, [-1, -1, -1, 0]
         )
-        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [-1, -1, 0])
+        self.assertEqual(
+            inferred_output_dist_attrs[0].dims_mapping, [-1, -1, 0]
+        )
 
         # shape: [8, 16, 8, 24] --> [8 * 16 * 8 * 24]
         # dims_mapping: [-1, 0, 1, -1] --> [-1, -1, -1, -1] ([ -1])
@@ -103,13 +105,13 @@ class TestFlattenSPMDRule(unittest.TestCase):
             self.attrs['start_axis'],
             self.attrs['stop_axis'],
         )
-        infered_input_dist_attrs = result_dist_attrs[0]
-        infered_output_dist_attrs = result_dist_attrs[1]
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
 
         self.assertEqual(
-            infered_input_dist_attrs[0].dims_mapping, [-1, -1, -1, -1]
+            inferred_input_dist_attrs[0].dims_mapping, [-1, -1, -1, -1]
         )
-        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [-1])
+        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [-1])
 
         # shape: [8, 16, 8, 24] --> [8 * 16 * 8 * 24]
         # dims_mapping: [0, -1, -1, 1] --> [0, -1, -1, -1] ([0])
@@ -121,13 +123,13 @@ class TestFlattenSPMDRule(unittest.TestCase):
             self.attrs['start_axis'],
             self.attrs['stop_axis'],
         )
-        infered_input_dist_attrs = result_dist_attrs[0]
-        infered_output_dist_attrs = result_dist_attrs[1]
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
 
         self.assertEqual(
-            infered_input_dist_attrs[0].dims_mapping, [0, -1, -1, -1]
+            inferred_input_dist_attrs[0].dims_mapping, [0, -1, -1, -1]
         )
-        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0])
+        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [0])
 
         # shape: [8, 16, 8, 24] --> [8 * 16 * 8 * 24]
         # dims_mapping: [1, 0, -1, -1] --> [1, -1, -1, -1] ([1])
@@ -139,13 +141,16 @@ class TestFlattenSPMDRule(unittest.TestCase):
             self.attrs['start_axis'],
             self.attrs['stop_axis'],
         )
-        infered_input_dist_attrs = result_dist_attrs[0]
-        infered_output_dist_attrs = result_dist_attrs[1]
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
 
         self.assertEqual(
-            infered_input_dist_attrs[0].dims_mapping, [1, -1, -1, -1]
+            inferred_input_dist_attrs[0].multi_dims_mapping,
+            [[1, 0], [], [], []],
         )
-        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [1])
+        self.assertEqual(
+            inferred_output_dist_attrs[0].multi_dims_mapping, [[1, 0]]
+        )
 
         # shape: [8, 16, 8, 24] --> [8, 16 * 8 * 24]
         # dims_mapping: [-1, -1, 0, 1] --> [-1, -1, -1, -1] ([-1, -1])
@@ -157,13 +162,13 @@ class TestFlattenSPMDRule(unittest.TestCase):
             self.attrs['start_axis'],
             self.attrs['stop_axis'],
         )
-        infered_input_dist_attrs = result_dist_attrs[0]
-        infered_output_dist_attrs = result_dist_attrs[1]
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
 
         self.assertEqual(
-            infered_input_dist_attrs[0].dims_mapping, [-1, -1, -1, -1]
+            inferred_input_dist_attrs[0].dims_mapping, [-1, -1, -1, -1]
         )
-        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [-1, -1])
+        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [-1, -1])
 
         # shape: [8, 16, 8, 24] --> [8, 16 * 8 * 24]
         # dims_mapping: [-1, 0, -1, 1] --> [-1, 0, -1, -1] ([-1, 0])
@@ -175,13 +180,13 @@ class TestFlattenSPMDRule(unittest.TestCase):
             self.attrs['start_axis'],
             self.attrs['stop_axis'],
         )
-        infered_input_dist_attrs = result_dist_attrs[0]
-        infered_output_dist_attrs = result_dist_attrs[1]
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
 
         self.assertEqual(
-            infered_input_dist_attrs[0].dims_mapping, [-1, 0, -1, -1]
+            inferred_input_dist_attrs[0].dims_mapping, [-1, 0, -1, -1]
         )
-        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [-1, 0])
+        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [-1, 0])
 
         # shape: [8, 16, 8, 24] --> [8, 16 * 8 * 24]
         # dims_mapping: [0, 1, -1, -1] --> [0, 1, -1, -1] ([0, 1])
@@ -193,13 +198,13 @@ class TestFlattenSPMDRule(unittest.TestCase):
             self.attrs['start_axis'],
             self.attrs['stop_axis'],
         )
-        infered_input_dist_attrs = result_dist_attrs[0]
-        infered_output_dist_attrs = result_dist_attrs[1]
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
 
         self.assertEqual(
-            infered_input_dist_attrs[0].dims_mapping, [0, 1, -1, -1]
+            inferred_input_dist_attrs[0].dims_mapping, [0, 1, -1, -1]
         )
-        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, 1])
+        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [0, 1])
 
     def test_flatten_infer_backward(self):
         process_mesh = auto.ProcessMesh(mesh=[[0, 1, 2, 3], [4, 5, 6, 7]])
@@ -223,15 +228,15 @@ class TestFlattenSPMDRule(unittest.TestCase):
             self.attrs['start_axis'],
             self.attrs['stop_axis'],
         )
-        infered_input_dist_attrs = result_dist_attrs[0]
-        infered_output_dist_attrs = result_dist_attrs[1]
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
 
-        self.assertEqual(len(infered_input_dist_attrs), 1)
-        self.assertEqual(len(infered_output_dist_attrs), 1)
+        self.assertEqual(len(inferred_input_dist_attrs), 1)
+        self.assertEqual(len(inferred_output_dist_attrs), 1)
         self.assertEqual(
-            infered_input_dist_attrs[0].dims_mapping, [0, -1, -1, 1]
+            inferred_input_dist_attrs[0].dims_mapping, [0, -1, -1, 1]
         )
-        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, -1, 1])
+        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [0, -1, 1])
 
         # shape: [8, 16, 8, 24] --> [8, 16 * 8, 24] (input --> output)
         # dims_mapping: [0, 1, -1] --> [0, 1, -1, -1], [0, 1, -1] (output --> input, output)
@@ -245,13 +250,13 @@ class TestFlattenSPMDRule(unittest.TestCase):
             self.attrs['start_axis'],
             self.attrs['stop_axis'],
         )
-        infered_input_dist_attrs = result_dist_attrs[0]
-        infered_output_dist_attrs = result_dist_attrs[1]
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
 
         self.assertEqual(
-            infered_input_dist_attrs[0].dims_mapping, [0, 1, -1, -1]
+            inferred_input_dist_attrs[0].dims_mapping, [0, 1, -1, -1]
         )
-        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, 1, -1])
+        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [0, 1, -1])
 
         # shape: [8, 16, 8, 24] --> [8, 16 * 8, 24] (input --> output)
         # dims_mapping: [-1, 0, 1] --> [-1, 0, -1, 1], [-1, 0, 1] (output --> input, output)
@@ -265,13 +270,13 @@ class TestFlattenSPMDRule(unittest.TestCase):
             self.attrs['start_axis'],
             self.attrs['stop_axis'],
         )
-        infered_input_dist_attrs = result_dist_attrs[0]
-        infered_output_dist_attrs = result_dist_attrs[1]
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
 
         self.assertEqual(
-            infered_input_dist_attrs[0].dims_mapping, [-1, 0, -1, 1]
+            inferred_input_dist_attrs[0].dims_mapping, [-1, 0, -1, 1]
         )
-        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [-1, 0, 1])
+        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [-1, 0, 1])
 
         # shape: [8, 16, 8, 24] --> [8 * 16 * 8 * 24] (input --> output)
         # dims_mapping: [-1] --> [-1, -1, -1, -1], [-1] (output --> input, output)
@@ -285,13 +290,13 @@ class TestFlattenSPMDRule(unittest.TestCase):
             self.attrs['start_axis'],
             self.attrs['stop_axis'],
         )
-        infered_input_dist_attrs = result_dist_attrs[0]
-        infered_output_dist_attrs = result_dist_attrs[1]
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
 
         self.assertEqual(
-            infered_input_dist_attrs[0].dims_mapping, [-1, -1, -1, -1]
+            inferred_input_dist_attrs[0].dims_mapping, [-1, -1, -1, -1]
         )
-        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [-1])
+        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [-1])
 
         # shape: [8, 16, 8, 24] --> [8 * 16 * 8 * 24] (input --> output)
         # dims_mapping: [0] --> [0, -1, -1, -1], [0] (output --> input, output)
@@ -305,13 +310,13 @@ class TestFlattenSPMDRule(unittest.TestCase):
             self.attrs['start_axis'],
             self.attrs['stop_axis'],
         )
-        infered_input_dist_attrs = result_dist_attrs[0]
-        infered_output_dist_attrs = result_dist_attrs[1]
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
 
         self.assertEqual(
-            infered_input_dist_attrs[0].dims_mapping, [0, -1, -1, -1]
+            inferred_input_dist_attrs[0].dims_mapping, [0, -1, -1, -1]
         )
-        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0])
+        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [0])
 
         # shape: [8, 16, 8, 24] --> [8 * 16 * 8 * 24] (input --> output)
         # dims_mapping: [1] --> [1, -1, -1, -1], [1] (output --> input, output)
@@ -325,13 +330,13 @@ class TestFlattenSPMDRule(unittest.TestCase):
             self.attrs['start_axis'],
             self.attrs['stop_axis'],
         )
-        infered_input_dist_attrs = result_dist_attrs[0]
-        infered_output_dist_attrs = result_dist_attrs[1]
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
 
         self.assertEqual(
-            infered_input_dist_attrs[0].dims_mapping, [1, -1, -1, -1]
+            inferred_input_dist_attrs[0].dims_mapping, [1, -1, -1, -1]
         )
-        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [1])
+        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [1])
 
         # shape: [8, 16, 8, 24] --> [8, 16 * 8 * 24] (input --> output)
         # dims_mapping: [-1, -1] --> [-1, -1, -1, -1], [-1, -1] (output --> input, output)
@@ -345,13 +350,13 @@ class TestFlattenSPMDRule(unittest.TestCase):
             self.attrs['start_axis'],
             self.attrs['stop_axis'],
         )
-        infered_input_dist_attrs = result_dist_attrs[0]
-        infered_output_dist_attrs = result_dist_attrs[1]
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
 
         self.assertEqual(
-            infered_input_dist_attrs[0].dims_mapping, [-1, -1, -1, -1]
+            inferred_input_dist_attrs[0].dims_mapping, [-1, -1, -1, -1]
         )
-        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [-1, -1])
+        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [-1, -1])
 
         # shape: [8, 16, 8, 24] --> [8, 16 * 8 * 24] (input --> output)
         # dims_mapping: [0, -1] --> [0, -1, -1, -1], [0, -1] (output --> input, output)
@@ -365,13 +370,13 @@ class TestFlattenSPMDRule(unittest.TestCase):
             self.attrs['start_axis'],
             self.attrs['stop_axis'],
         )
-        infered_input_dist_attrs = result_dist_attrs[0]
-        infered_output_dist_attrs = result_dist_attrs[1]
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
 
         self.assertEqual(
-            infered_input_dist_attrs[0].dims_mapping, [0, -1, -1, -1]
+            inferred_input_dist_attrs[0].dims_mapping, [0, -1, -1, -1]
         )
-        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, -1])
+        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [0, -1])
 
         # shape: [8, 16, 8, 24] --> [8, 16 * 8 * 24] (input --> output)
         # dims_mapping: [0, 1] --> [0, 1, -1, -1], [0, 1] (output --> input, output)
@@ -385,13 +390,13 @@ class TestFlattenSPMDRule(unittest.TestCase):
             self.attrs['start_axis'],
             self.attrs['stop_axis'],
         )
-        infered_input_dist_attrs = result_dist_attrs[0]
-        infered_output_dist_attrs = result_dist_attrs[1]
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
 
         self.assertEqual(
-            infered_input_dist_attrs[0].dims_mapping, [0, 1, -1, -1]
+            inferred_input_dist_attrs[0].dims_mapping, [0, 1, -1, -1]
         )
-        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, 1])
+        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [0, 1])
 
 
 if __name__ == "__main__":

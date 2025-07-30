@@ -31,6 +31,11 @@ void InsertCallStackInfo(const std::string &type,
                          const std::vector<std::string> &callstack_attr_str,
                          platform::EnforceNotMet *exception);
 
+void InsertCallStackInfoDygraph(
+    const std::string &type,
+    const std::vector<std::string> &callstack_attr_str,
+    platform::EnforceNotMet *exception);
+
 // only append error op for exception message
 void AppendErrorOpHint(const std::string &type,
                        platform::EnforceNotMet *exception);

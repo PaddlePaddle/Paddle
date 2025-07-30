@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
@@ -64,6 +63,8 @@ class TestIndexAddOp(OpTest):
     def setUp(self):
         self.python_api = raw_index_add
         self.op_type = "index_add"
+        self.prim_op_type = "prim"
+        self.public_python_api = raw_index_add
         self.init_dtype_type()
         index_np = np.random.randint(
             low=-self.x_shape[self.axis],
@@ -97,10 +98,12 @@ class TestIndexAddOp(OpTest):
         self.add_value_shape = (3, 3)
 
     def test_check_output(self):
-        self.check_output(atol=1e-2, check_pir=True)
+        self.check_output(atol=1e-2, check_pir=True, check_prim_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'AddValue'], 'Out', check_pir=True)
+        self.check_grad(
+            ['X', 'AddValue'], 'Out', check_pir=True, check_prim_pir=True
+        )
 
 
 class TestIndexAddFP16Op(TestIndexAddOp):
@@ -123,6 +126,8 @@ class TestIndexAddBF16Op(OpTest):
     def setUp(self):
         self.python_api = raw_index_add
         self.op_type = "index_add"
+        self.prim_op_type = "prim"
+        self.public_python_api = raw_index_add
         self.init_dtype_type()
         index_np = np.random.randint(
             low=-self.x_shape[self.axis],
@@ -166,7 +171,11 @@ class TestIndexAddBF16Op(OpTest):
 
     def test_check_grad_normal(self):
         self.check_grad_with_place(
-            self.place, ['X', 'AddValue'], 'Out', check_pir=True
+            self.place,
+            ['X', 'AddValue'],
+            'Out',
+            check_pir=True,
+            check_prim_pir=True,
         )
 
 
@@ -191,12 +200,7 @@ class TestIndexAddAPI(unittest.TestCase):
 
     def setPlace(self):
         self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            self.place.append('cpu')
+        self.place.append('cpu')
         if paddle.is_compiled_with_cuda():
             self.place.append('gpu')
 
@@ -237,10 +241,13 @@ class TestIndexAddAPI(unittest.TestCase):
         return x_grad, add_value_grad.numpy()
 
     def run_imperative(self, device):
-        paddle.device.set_device(device)
-        input_tensor = paddle.to_tensor(self.x_np, stop_gradient=False)
-        index = paddle.to_tensor(self.index_np)
-        add_value = paddle.to_tensor(self.add_value_np, stop_gradient=False)
+        input_tensor = paddle.to_tensor(
+            self.x_np, stop_gradient=False, place=device
+        )
+        index = paddle.to_tensor(self.index_np, place=device)
+        add_value = paddle.to_tensor(
+            self.add_value_np, stop_gradient=False, place=device
+        )
 
         out = paddle.index_add(input_tensor, index, self.axis, add_value)
         ref_out = compute_index_add_ref(
@@ -258,20 +265,26 @@ class TestIndexAddAPI(unittest.TestCase):
 
         if self.check_backward:
             dout_tensor = paddle.to_tensor(self.dout_np)
-            paddle.autograd.backward([out], [dout_tensor], retain_graph=True)
+            (input_tensor_grad,) = paddle.autograd.grad(
+                [out], [input_tensor], dout_tensor
+            )
+            (add_value_grad,) = paddle.autograd.grad(
+                [out], [add_value], dout_tensor
+            )
+
             (
                 ref_x_grad,
                 ref_add_value_grad,
             ) = self.compute_index_add_backward_ref()
             np.testing.assert_allclose(
                 ref_x_grad,
-                input_tensor.grad.numpy(),
+                input_tensor_grad.numpy(),
                 rtol=self.rtol,
                 atol=self.atol,
             )
             np.testing.assert_allclose(
                 ref_add_value_grad,
-                add_value.grad.numpy(),
+                add_value_grad.numpy(),
                 rtol=self.rtol,
                 atol=self.atol,
             )
@@ -454,6 +467,54 @@ class TestIndexAddAPICase5(TestIndexAddAPI):
 #                 out = paddle.index_add(x, index, axis, add_value)
 
 #             self.assertRaises(ValueError, test_add_value_broadcast)
+
+
+class TestIndexAddOp_ZeroSize(OpTest):
+    def setUp(self):
+        self.python_api = raw_index_add
+        self.op_type = "index_add"
+        self.prim_op_type = "prim"
+        self.public_python_api = raw_index_add
+        self.init_dtype_type()
+        index_np = np.random.randint(
+            low=-self.x_shape[self.axis],
+            high=self.x_shape[self.axis],
+            size=self.index_size,
+        )
+        x_np = np.random.random(self.x_shape).astype(self.x_type)
+        add_value_np = np.random.random(self.add_value_shape).astype(
+            self.x_type
+        )
+
+        self.inputs = {'X': x_np, 'Index': index_np, 'AddValue': add_value_np}
+        self.attrs = {'axis': self.axis}
+        out = compute_index_add_ref(
+            self.axis,
+            self.x_shape,
+            x_np,
+            self.add_value_shape,
+            add_value_np,
+            self.index_size,
+            index_np,
+        )
+        self.outputs = {'Out': out}
+
+    def init_dtype_type(self):
+        self.axis = 0
+        self.x_type = np.float64
+        self.index_type = np.int64
+        self.x_shape = (101, 0)
+        self.index_size = 3
+        self.add_value_shape = (3, 0)
+
+    def test_check_output(self):
+        self.check_output(atol=1e-2, check_pir=True)
+
+    def test_check_grad_normal(self):
+        self.check_grad(
+            ['X', 'AddValue'], 'Out', check_pir=True, check_prim_pir=True
+        )
+
 
 if __name__ == '__main__':
     unittest.main()

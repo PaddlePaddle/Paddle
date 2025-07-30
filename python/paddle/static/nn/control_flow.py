@@ -743,7 +743,7 @@ class LoopVar:
             return create_loop_var_like(while_op, next_var)
         if is_sequence(next_var):
             return map_structure(
-                lambda var: create_loop_var_like(while_op, var),
+                lambda var: self.infer_type_with_next_var(var, while_op),
                 next_var,
             )
         return LoopVar(self.curr_var, next_var, self.block_arg)
@@ -910,6 +910,23 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             loop_vars = infer_loop_vars_type_with_next_vars(
                 loop_vars, next_vars
             )
+
+            from paddle.jit.dy2static.convert_operators import (
+                to_static_variable,
+            )
+
+            def check_next_var(loop_var):
+                if not loop_var.is_variable_curr_var:
+                    return
+                if not isinstance(
+                    loop_var.next_var, paddle.pir.Value
+                ) and not isinstance(loop_var.next_var, (bool, float, int)):
+                    raise ValueError(
+                        "The loop var in the while op is variable, but the corresponding yielded var is not variable, and it is not a constant of type bool, int, or float."
+                    )
+                loop_var.next_var = to_static_variable(loop_var.next_var)
+
+            paddle.utils.map_structure(check_next_var, loop_vars)
 
             next_cond = cond(
                 *map_structure(lambda var: var.next_var, loop_vars)
@@ -1512,7 +1529,10 @@ class OutputSelector:
                     return out.dtype
             return None
 
-        if all(arg is None for arg in outs):
+        if all(isinstance(out, paddle.pir.Value) for out in outs):
+            return outs
+
+        if all(out is None for out in outs):
             return outs
 
         if all(

@@ -20,8 +20,7 @@ limitations under the License. */
 #include "paddle/phi/core/platform/cpu_helper.h"
 #include "paddle/phi/core/platform/device_context.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 void SetMicroId(paddle::framework::Scope* scope,
                 phi::DeviceContext* dev_ctx,
@@ -554,6 +553,5 @@ void HeterSectionWorker::TrainFilesWithProfiler() {
   }
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 #endif

@@ -28,6 +28,10 @@ void IndexPutKernel(const Context& dev_ctx,
                     const DenseTensor& value,
                     bool accumulate,
                     DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   PADDLE_ENFORCE_EQ(
       x.dtype(),
       value.dtype(),
@@ -100,5 +104,12 @@ void IndexPutKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    index_put, XPU, ALL_LAYOUT, phi::IndexPutKernel, float, int, int64_t) {}
+PD_REGISTER_KERNEL(index_put,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::IndexPutKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   int,
+                   int64_t) {}

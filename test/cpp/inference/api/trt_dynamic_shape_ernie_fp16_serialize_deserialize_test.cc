@@ -19,7 +19,7 @@ limitations under the License. */
 #include <io.h>
 #include <process.h>
 #endif
-#define GLOG_NO_ABBREVIATED_SEVERITIES
+
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 

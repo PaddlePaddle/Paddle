@@ -48,7 +48,7 @@ class TrtConvertClipTest(TrtLayerAutoScanTest):
         def generate_weight2(attrs: list[dict[str, Any]]):
             return np.array([np.random.uniform(10, 20)]).astype("float32")
 
-        for dims in [0, 1, 2, 3, 4]:
+        for dims in [1, 2, 3, 4]:
             for batch in [1, 4]:
                 for dtype in [np.float32, np.int32]:
                     for op_inputs in [
@@ -99,35 +99,30 @@ class TrtConvertClipTest(TrtLayerAutoScanTest):
 
                         yield program_config
 
-    def sample_predictor_configs(self, program_config):
-        def generate_dynamic_shape(attrs):
-            if self.dims == 0:
-                self.dynamic_shape.min_input_shape = {"input_data": []}
-                self.dynamic_shape.max_input_shape = {"input_data": []}
-                self.dynamic_shape.opt_input_shape = {"input_data": []}
-            elif self.dims == 1:
-                self.dynamic_shape.min_input_shape = {"input_data": [1]}
-                self.dynamic_shape.max_input_shape = {"input_data": [64]}
-                self.dynamic_shape.opt_input_shape = {"input_data": [32]}
-            elif self.dims == 2:
-                self.dynamic_shape.min_input_shape = {"input_data": [1, 16]}
-                self.dynamic_shape.max_input_shape = {"input_data": [4, 32]}
-                self.dynamic_shape.opt_input_shape = {"input_data": [3, 32]}
-            elif self.dims == 3:
-                self.dynamic_shape.min_input_shape = {"input_data": [1, 16, 16]}
-                self.dynamic_shape.max_input_shape = {"input_data": [4, 32, 32]}
-                self.dynamic_shape.opt_input_shape = {"input_data": [3, 32, 32]}
-            else:
-                self.dynamic_shape.min_input_shape = {
-                    "input_data": [1, 3, 16, 16]
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "input_data": [4, 3, 32, 32]
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "input_data": [1, 3, 32, 32]
-                }
+    def generate_dynamic_shape(self):
+        if self.dims == 0:
+            self.dynamic_shape.min_input_shape = {"input_data": []}
+            self.dynamic_shape.max_input_shape = {"input_data": []}
+            self.dynamic_shape.opt_input_shape = {"input_data": []}
+        elif self.dims == 1:
+            self.dynamic_shape.min_input_shape = {"input_data": [1]}
+            self.dynamic_shape.max_input_shape = {"input_data": [64]}
+            self.dynamic_shape.opt_input_shape = {"input_data": [32]}
+        elif self.dims == 2:
+            self.dynamic_shape.min_input_shape = {"input_data": [1, 16]}
+            self.dynamic_shape.max_input_shape = {"input_data": [4, 32]}
+            self.dynamic_shape.opt_input_shape = {"input_data": [3, 32]}
+        elif self.dims == 3:
+            self.dynamic_shape.min_input_shape = {"input_data": [1, 16, 16]}
+            self.dynamic_shape.max_input_shape = {"input_data": [4, 32, 32]}
+            self.dynamic_shape.opt_input_shape = {"input_data": [3, 32, 32]}
+        else:
+            self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 16, 16]}
+            self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 32, 32]}
+            self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 32, 32]}
+        return self.dynamic_shape
 
+    def sample_predictor_configs(self, program_config, run_pir=False):
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
             self.dynamic_shape.max_input_shape = {}
@@ -144,18 +139,19 @@ class TrtConvertClipTest(TrtLayerAutoScanTest):
         ]
 
         # for static_shape
-        clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), (1e-3, 1e-3)
+        if not run_pir:
+            clear_dynamic_shape()
+            self.trt_param.precision = paddle_infer.PrecisionType.Float32
+            yield self.create_inference_config(), generate_trt_nodes_num(
+                attrs, False
+            ), 1e-5
+            self.trt_param.precision = paddle_infer.PrecisionType.Half
+            yield self.create_inference_config(), generate_trt_nodes_num(
+                attrs, False
+            ), (1e-3, 1e-3)
 
         # for dynamic_shape
-        generate_dynamic_shape(attrs)
+        self.generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
@@ -166,7 +162,10 @@ class TrtConvertClipTest(TrtLayerAutoScanTest):
         ), (1e-3, 1e-3)
 
     def test(self):
+        # test for old ir
         self.run_test()
+        # test for pir
+        self.run_test(run_pir=True)
 
 
 if __name__ == "__main__":

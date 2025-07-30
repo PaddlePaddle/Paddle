@@ -21,8 +21,7 @@ namespace phi {
 class DenseTensor;
 }  // namespace phi
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 class Scope;
 
@@ -292,11 +291,12 @@ void DeviceWorker::InitRandomDumpConfig(const TrainerDesc& desc) {
   dump_interval_ = desc.dump_interval();
 }
 
-void DeviceWorker::DumpField(const Scope& scope,
-                             int dump_mode,
-                             int dump_interval) {  // dump_mode: 0: no random,
-                                                   // 1: random with insid hash,
-                                                   // 2: random with random
+void DeviceWorker::DumpField(
+    const Scope& scope,
+    int dump_mode,
+    int dump_interval) {  // dump_mode: 0: no random,
+                          // 1: random with ins id hash,
+                          // 2: random with random
   // 3: simple mode using multi-threads, for gpugraphps-mode
   auto start1 = std::chrono::steady_clock::now();
 
@@ -496,5 +496,4 @@ void DeviceWorker::DumpField(const Scope& scope,
   writer_.Flush();
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

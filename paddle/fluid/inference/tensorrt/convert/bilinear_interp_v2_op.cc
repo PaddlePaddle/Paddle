@@ -99,13 +99,27 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
       out_w = static_cast<int>(in_dim.d[w_axis] * scale_w);
     }
 
-    // Priority: Input(OutSize) > attr(out_h/out_w) > attr(scale)
+    // Priority: Input(OutSize) > Input(SizeTensor)> attr(out_h/out_w) >
+    // attr(scale)
     nvinfer1::ITensor* outsize_tensor = nullptr;
     if (resize_inputs.find("OutSize") != resize_inputs.end()) {
       if (!op_desc.Input("OutSize").empty()) {
         outsize_tensor = engine_->GetITensor(op_desc.Input("OutSize")[0]);
       }
     }
+
+#if IS_TRT_VERSION_GE(8200)
+    if (outsize_tensor == nullptr) {
+      if (resize_inputs.find("SizeTensor") != resize_inputs.end()) {
+        if (op_desc.Input("SizeTensor").size() >= 2) {
+          auto* outsize_h = engine_->GetITensor(op_desc.Input("SizeTensor")[0]);
+          auto* outsize_w = engine_->GetITensor(op_desc.Input("SizeTensor")[1]);
+          outsize_tensor =
+              Concat(std::vector<nvinfer1::ITensor*>{outsize_h, outsize_w});
+        }
+      }
+    }
+#endif
 
     if (out_h > 0 && out_w > 0 && !(scale_w > 0. && scale_h > 0.)) {
       scale_h =

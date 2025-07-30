@@ -342,7 +342,7 @@ class TestSetitemInDygraph(unittest.TestCase):
         np.testing.assert_allclose(x.numpy(), np_data)
 
     def test_inplace_with_stride_bwd_1(self):
-        # combined-setitem case for X with stop_graident=False
+        # combined-setitem case for X with stop_gradient=False
         np_v = np.random.randn(3, 1).astype(self.ndtype)
         if self.dtype == 'bfloat16':
             np_v = convert_uint16_to_float(convert_float_to_uint16(np_v))
@@ -374,7 +374,7 @@ class TestSetitemInDygraph(unittest.TestCase):
             np.testing.assert_equal(v.grad.numpy(), expected_v_grad)
 
     def test_inplace_with_stride_bwd_2(self):
-        # combined-setitem case for X with stop_graident=True
+        # combined-setitem case for X with stop_gradient=True
         np_v = np.random.randn(3, 1).astype(self.ndtype)
         if self.dtype == 'bfloat16':
             np_v = convert_uint16_to_float(convert_float_to_uint16(np_v))
@@ -406,7 +406,7 @@ class TestSetitemInDygraph(unittest.TestCase):
             np.testing.assert_equal(v.grad.numpy(), expected_v_grad)
 
     def test_inplace_with_stride_bwd_3(self):
-        # advanced-setitem case for X with stop_graident=False
+        # advanced-setitem case for X with stop_gradient=False
         np_v = np.random.randn(3, 3, 1).astype(self.ndtype)
         if self.dtype == 'bfloat16':
             np_v = convert_uint16_to_float(convert_float_to_uint16(np_v))
@@ -438,7 +438,7 @@ class TestSetitemInDygraph(unittest.TestCase):
             np.testing.assert_equal(v.grad.numpy(), expected_v_grad)
 
     def test_inplace_with_stride_bwd_4(self):
-        # advanced-setitem case for X with stop_graident=True
+        # advanced-setitem case for X with stop_gradient=True
         np_v = np.random.randn(3, 3, 1).astype(self.ndtype)
         if self.dtype == 'bfloat16':
             np_v = convert_uint16_to_float(convert_float_to_uint16(np_v))
@@ -470,7 +470,7 @@ class TestSetitemInDygraph(unittest.TestCase):
             np.testing.assert_equal(v.grad.numpy(), expected_v_grad)
 
     def test_basic_setitem_bwd_1(self):
-        # basic-setitem case for X with stop_graident=False
+        # basic-setitem case for X with stop_gradient=False
         np_v = np.random.randn(5).astype(self.ndtype)
         if self.dtype == 'bfloat16':
             np_v = convert_uint16_to_float(convert_float_to_uint16(np_v))
@@ -502,7 +502,7 @@ class TestSetitemInDygraph(unittest.TestCase):
             np.testing.assert_equal(v.grad.numpy(), expected_v_grad)
 
     def test_basic_setitem_bwd_2(self):
-        # basic-setitem case for X with stop_graident=True
+        # basic-setitem case for X with stop_gradient=True
         np_v = np.random.randn(5).astype(self.ndtype)
         if self.dtype == 'bfloat16':
             np_v = convert_uint16_to_float(convert_float_to_uint16(np_v))

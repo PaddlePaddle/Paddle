@@ -14,9 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class StridedSliceOpConverter : public OpConverter {
  public:
@@ -39,7 +37,7 @@ class StridedSliceOpConverter : public OpConverter {
         PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("ends"));
     std::vector<int> strides =
         PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
-    std::vector<int> decrease_axises =
+    std::vector<int> decrease_axes =
         PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("decrease_axis"));
 
     nvinfer1::ILayer* layer = nullptr;
@@ -96,15 +94,15 @@ class StridedSliceOpConverter : public OpConverter {
     layer->setInput(2, *size_tensor);
     layer->setInput(3, *step_tensor);
 
-    if (!decrease_axises.empty()) {
+    if (!decrease_axes.empty()) {
       std::vector<int32_t> gather_indices;
       for (int i = 0; i < trt_size_dims.nbDims; i++) {
-        if (decrease_axises.end() !=
-            std::find(decrease_axises.begin(), decrease_axises.end(), i))
+        if (decrease_axes.end() !=
+            std::find(decrease_axes.begin(), decrease_axes.end(), i))
           continue;
         gather_indices.push_back(i);
       }
-      if (gather_indices.empty()) gather_indices.push_back(decrease_axises[0]);
+      if (gather_indices.empty()) gather_indices.push_back(decrease_axes[0]);
       auto real_size_tensor = Gather(size_tensor, gather_indices);
       layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *layer->getOutput(0));
       layer->setInput(1, *real_size_tensor);
@@ -113,8 +111,6 @@ class StridedSliceOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(strided_slice, StridedSliceOpConverter);

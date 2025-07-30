@@ -28,8 +28,10 @@ from paddle.distributed.fleet.utils.log_util import logger
 
 from .metadata import LocalTensorIndex, LocalTensorMetadata
 from .utils import (
+    check_unique_id,
     compute_local_shape_and_global_offset,
     flatten_state_dict,
+    get_max_id,
 )
 
 if TYPE_CHECKING:
@@ -50,30 +52,42 @@ class ReadItem:
 PATH_TO_CHECKPOINT_FILES: dict[str, tuple[list, list]] = {}
 
 
-def get_checkpoint_files(path, use_cache=True):
+def get_checkpoint_files(path, use_cache=True, unique_id=None):
+    # if unique_id is None, all file ends with .metadata and .distcp is returned
+    if unique_id is None:
+        unique_id = ''
     global PATH_TO_CHECKPOINT_FILES
     if use_cache and path in PATH_TO_CHECKPOINT_FILES:
         return PATH_TO_CHECKPOINT_FILES[path]
     accessible_files = os.listdir(path)
     metadata_files = [
-        file for file in accessible_files if file.endswith(".metadata")
+        file
+        for file in accessible_files
+        if file.endswith(f"{unique_id}.metadata")
     ]
     assert (
         len(metadata_files) > 0
-    ), f"No metadata file found in the checkpoint directory:{path}."
+    ), f"No metadata file ends with '{unique_id}.metadata' found in the checkpoint directory: {path}."
     local_data_files = [
-        file for file in accessible_files if file.endswith(".distcp")
+        file
+        for file in accessible_files
+        if file.endswith(f"{unique_id}.distcp")
     ]
     assert (
         len(local_data_files) > 0
-    ), f"No data file found in the checkpoint directory:{path}."
+    ), f"No data file ends with '{unique_id}.distcp' found in the checkpoint directory:{path}."
     if use_cache:
         PATH_TO_CHECKPOINT_FILES[path] = (metadata_files, local_data_files)
     return (metadata_files, local_data_files)
 
 
 def get_rank_to_files(
-    metadata_list, local_data_files, state_dict, process_group, use_dist
+    metadata_list,
+    local_data_files,
+    state_dict,
+    process_group,
+    use_dist,
+    mw_name_compatibility=True,
 ):
     """
     Get the mapping of rank to its accessible files.
@@ -82,6 +96,7 @@ def get_rank_to_files(
     # The necessary files to be read
     tensor_key_list = []
     necessary_files = []
+    mw_name_compatibility_mapping = {}
 
     for metadata in metadata_list:
         for local_tensor_index, file_name in metadata.storage_metadata.items():
@@ -110,7 +125,7 @@ def get_rank_to_files(
             "No necessary data files found in the checkpoint directory. Please check the metadata."
         )
         missing_keys = set(state_dict.keys())
-        return {}, missing_keys
+        return {}, missing_keys, mw_name_compatibility_mapping
 
     # allgather all accessible files
     global_data_files = []
@@ -134,9 +149,18 @@ def get_rank_to_files(
     ), f"The checkpoint files are not complete. Please check the checkpoint directory. global_data_files_set:{global_data_files_set}, necessary_data_files_set:{global_necessary_files_set}"
     missing_keys = set(state_dict.keys()) - set(tensor_key_list)
     if len(missing_keys) > 0:
-        logger.warning(
-            f"Missing keys:{missing_keys}, check whether the checkpoint is complete."
-        )
+        if mw_name_compatibility:
+            mw_name_compatibility_mapping = _modify_mw_name_for_compatibility(
+                state_dict, missing_keys, tensor_key_list
+            )
+            if len(missing_keys) > 0:
+                logger.warning(
+                    f"Missing keys:{missing_keys}, check whether the checkpoint is complete."
+                )
+        else:
+            logger.warning(
+                f"Missing keys:{missing_keys}, check whether the checkpoint is complete."
+            )
 
     rank_to_files = {}
     for rank, need_files in enumerate(all_necessary_files):
@@ -146,7 +170,42 @@ def get_rank_to_files(
         ]
         rank_to_files[rank] = unique_need_files
     logger.debug(f"mapping rank_to_files:{rank_to_files}")
-    return rank_to_files, missing_keys
+    return rank_to_files, missing_keys, mw_name_compatibility_mapping
+
+
+def _modify_mw_name_for_compatibility(
+    state_dict, missing_keys, tensor_key_list
+):
+    """
+    Adjust the master weight name within the optimizer's state_dict to ensure compatibility between semi-automatic parallel execution in both dynamic and static graph modes.
+    Args:
+        state_dict(Dict[str, paddle.Tensor]): The state_dict to load. It will be modified inplace after loading.
+        missing_keys(Set[str]): A set of keys that are expected to be loaded but are missing.
+        tensor_key_list(List[str]): A list of tensor keys from the source checkpoint (ckpt).
+    """
+    compatibility_set = set()
+    mw_name_compatibility_mapping = {}
+    compatibility_key = None
+    for missing_key in missing_keys:
+        parts = missing_key.split(".")
+        # Determine compatibility key based on naming style
+        if "master_weights" in parts:
+            parts.remove("master_weights")
+            compatibility_key = ".".join(parts) + "_fp32_master_0"
+        elif parts[-1].endswith("_fp32_master_0"):
+            parts[-1] = parts[-1].replace("_fp32_master_0", "")
+            parts.insert(1, "master_weights")
+            compatibility_key = ".".join(parts)
+        if compatibility_key in tensor_key_list:
+            logger.info(
+                f"Modify master weights {missing_key} -> {compatibility_key}"
+            )
+            compatibility_set.add(missing_key)
+            mw_name_compatibility_mapping[missing_key] = compatibility_key
+            state_dict[compatibility_key] = state_dict.pop(missing_key)
+    # update missing_keys
+    missing_keys -= compatibility_set
+    return mw_name_compatibility_mapping
 
 
 def get_rank_to_read_files(rank_to_files, rank_to_local_data_files):
@@ -469,7 +528,9 @@ def load_state_dict(
     path: str,
     process_group: Group | None = None,
     coordinator_rank: int = 0,
-    offload=False,
+    unique_id: int | None = None,
+    offload: bool = False,
+    mw_name_compatibility: bool = True,
 ) -> None:
     """
     Load the state_dict inplace from a checkpoint path.
@@ -479,7 +540,9 @@ def load_state_dict(
         path(str): The directory to load checkpoint files.
         process_group(paddle.distributed.collective.Group): ProcessGroup to be used for cross-rank synchronization. Use the default process group which contains all cards.
         coordinator_rank(int): The rank used to coordinate the checkpoint. Rank0 is used by default.
+        unique_id(int): The unique id of checkpoint, used to distinguish between different checkpoint versions. Default is None, in which case the id the max id of given path, and the newest version checkpoint is loaded.
         offload(bool): Whether to offload the checkpoint data from GPU to CPU.
+        mw_name_compatibility(bool): Enable name compatibility between dynamic and static graph semi-automatic parallel. Default is True.
     Example:
         .. code-block:: python
 
@@ -524,19 +587,32 @@ def load_state_dict(
         if use_dist:
             # sync to avoid some ranks not write path yet
             paddle.distributed.barrier(process_group)
+        if unique_id is None:
+            unique_id = get_max_id(path)
+        else:
+            assert unique_id >= 0, f'{unique_id} should be >= 0'
+        logger.info(f"The unique_id:{unique_id} is used.")
 
-        metadata_files, local_data_files = get_checkpoint_files(path)
+        if use_dist:
+            check_unique_id(unique_id, process_group)
+
+        metadata_files, local_data_files = get_checkpoint_files(
+            path, unique_id=unique_id
+        )
 
         metadata_list = []
         for file in metadata_files:
             metadata_list.append(paddle.load(os.path.join(path, file)))
 
-        rank_to_files, missing_keys = get_rank_to_files(
-            metadata_list,
-            local_data_files,
-            flat_state_dict,
-            process_group,
-            use_dist,
+        rank_to_files, missing_keys, mw_name_compatibility_mapping = (
+            get_rank_to_files(
+                metadata_list,
+                local_data_files,
+                flat_state_dict,
+                process_group,
+                use_dist,
+                mw_name_compatibility,
+            )
         )
 
         if len(missing_keys) > 0:
@@ -587,6 +663,17 @@ def load_state_dict(
             offload,
         )
 
+        for flat_key, keys in mapping.items():
+            if (
+                mw_name_compatibility
+                and flat_key in mw_name_compatibility_mapping
+            ):
+                flat_key = mw_name_compatibility_mapping[flat_key]
+            tmp = state_dict
+            for key in keys[:-1]:
+                tmp = tmp[key]
+            tmp[keys[-1]] = flat_state_dict[flat_key]
+
 
 def _load_state_dict(
     target_state_dict,
@@ -597,13 +684,6 @@ def _load_state_dict(
     offload=False,
 ) -> None:
     with paddle.base.dygraph.guard():
-
-        state_dict_in_cpu = {}
-        for k, v in target_state_dict.items():
-            if v.place.is_cpu_place():
-                state_dict_in_cpu[k] = v
-                target_state_dict[k] = v.cuda()
-
         use_dist = True if paddle.distributed.get_world_size() > 1 else False
 
         local_load_files = list(source_state_dict.keys())
@@ -616,7 +696,14 @@ def _load_state_dict(
         read_items = get_read_items(
             metadata_list, target_state_dict, process_group, use_dist
         )
+        state_dict_in_cpu = []
+        idx = 0
         for item in read_items:
+            key = item.local_tensor_index.tensor_key
+            if key in target_state_dict:
+                if target_state_dict[key].place.is_cpu_place():
+                    state_dict_in_cpu.append(key)
+                    target_state_dict[key] = target_state_dict[key].cuda()
             assert (
                 item.local_tensor_index in load_infos
             ), f"read item:{item}, load_infos:{load_infos}"
@@ -716,11 +803,109 @@ def _load_state_dict(
                         tmp_tensor, src=src_rank, group=process_group
                     )
                     paddle.assign(tmp_tensor, cur_chunk_tensor)
-
-        for k, v in target_state_dict.items():
-            if k in state_dict_in_cpu:
-                value = state_dict_in_cpu[k]
-                paddle.assign(v.cpu(), value)
+            if (
+                key in state_dict_in_cpu
+                and idx + 1 < len(read_items)
+                and read_items[idx + 1].local_tensor_index.tensor_key != key
+            ):
+                target_state_dict[key] = target_state_dict[key].cpu()
+            idx = idx + 1
 
         if use_dist:
             paddle.distributed.barrier(process_group)
+
+
+def compute_global_shape(local_tensor_indices):
+    rank = len(local_tensor_indices[0].local_shape)
+    global_shape = []
+    for dim in range(rank):
+        max_size = max(
+            m.global_offset[dim] + m.local_shape[dim]
+            for m in local_tensor_indices
+        )
+        global_shape.append(max_size)
+    return global_shape
+
+
+def load_merged_state_dict(
+    path: str, prefix=None, unique_id=None, offload=False
+):
+    """
+    Load the distributed checkpoint and merge it to unsharded state_dict.
+
+    Args:
+        path(str): The directory to load checkpoint files.
+        prefix(str): The flat_mapping prefix of state_dict key. e.g., 'model', Default None.
+        unique_id(int): The unique id of checkpoint, used to distinguish between different checkpoint versions. Default is None, in which case the id the max id of given path, and the newest version checkpoint is loaded.
+        offload(bool): Whether to offload the checkpoint data from GPU to CPU, set to True if GPU memory is not enough.
+
+    Returns:
+        dict: Merged state_dict.
+
+    Example:
+        .. code-block:: python
+
+            >>> # doctest: +SKIP('run in distributed mode.')
+            >>> import paddle
+            >>> import paddle.distributed as dist
+            >>> ckpt_path = "./checkpoint"
+            >>> w1 = paddle.arange(32).reshape([4, 8])
+            >>> mesh = dist.ProcessMesh([0, 1])
+            >>> sharded_w1 = dist.shard_tensor(w1, mesh, [dist.Shard(0)])
+            >>> state_dict = {"w1": sharded_w1}
+            >>> dist.save_state_dict(state_dict, ckpt_path) # save sharded checkpoint
+
+            >>> # doctest: +SKIP('run in single-card mode.')
+            >>> import paddle
+            >>> import paddle.distributed as dist
+            >>> ckpt_path = "./checkpoint"
+            >>> unsharded_state_dict = dist.checkpoint.utils.merge_state_dict(ckpt_path) # load unsharded checkpoint
+            >>> print(f"unsharded_state_dict:{unsharded_state_dict}")
+            unsharded_state_dict:{'w1':
+            [[0 , 1 , 2 , 3 , 4 , 5 , 6 , 7 ],
+             [8 , 9 , 10, 11, 12, 13, 14, 15],
+             [16, 17, 18, 19, 20, 21, 22, 23],
+             [24, 25, 26, 27, 28, 29, 30, 31]])}
+            >>> # doctest: -SKIP
+    """
+    if unique_id is None:
+        unique_id = get_max_id(path)
+    else:
+        assert unique_id >= 0, f'{unique_id} should be >= 0'
+
+    metadata_files, local_data_files = get_checkpoint_files(
+        path, unique_id=unique_id
+    )
+
+    metadata_list = []
+    for file in metadata_files:
+        metadata_list.append(paddle.load(os.path.join(path, file)))
+
+    # create target state_dict by local_tensor_meta
+    state_dict_to_save = {}
+    for metadata in metadata_list:
+        for (
+            tensor_key,
+            local_tensor_meta,
+        ) in metadata.state_dict_metadata.items():
+            if prefix is None or tensor_key.startswith(prefix):
+                global_shape = compute_global_shape(local_tensor_meta)
+                t = paddle.zeros(global_shape, dtype=local_tensor_meta[0].dtype)
+                if offload:
+                    t = t.cpu()
+                state_dict_to_save[tensor_key] = t.cpu()
+            else:
+                continue
+
+    load_state_dict(state_dict_to_save, path, offload=offload)
+
+    # Update dictionary keys in place
+    for key in list(
+        state_dict_to_save.keys()
+    ):  # Use list(data.keys()) to avoid runtime error
+        if prefix and key.startswith(prefix):
+            new_key = key[len(prefix) + 1 :]  # Remove the "str" prefix
+            state_dict_to_save[new_key] = state_dict_to_save.pop(
+                key
+            )  # Add new key and remove the old one
+    return state_dict_to_save

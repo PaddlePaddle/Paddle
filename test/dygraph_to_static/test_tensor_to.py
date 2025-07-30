@@ -15,6 +15,7 @@
 import unittest
 
 from dygraph_to_static_utils import (
+    BackendMode,
     Dy2StTestBase,
     IrMode,
     ToStaticMode,
@@ -25,6 +26,7 @@ from dygraph_to_static_utils import (
 )
 
 import paddle
+from paddle import base
 
 # NOTE: only test in PIR mode
 
@@ -38,19 +40,20 @@ _valid_dtypes = [
     "int32",
     "int64",
     "uint8",
-    "complex64",
-    "complex128",
     "bool",
-]
+] + ([] if base.core.is_compiled_with_xpu() else ["complex64", "complex128"])
 
 _cpu_place = "Place(cpu)"
 _gpu_place = "Place(gpu:0)"
+_xpu_place = "Place(xpu:0)"
 
 
 def place_res():
     def res():
         if paddle.is_compiled_with_cuda():
             return _gpu_place
+        elif paddle.is_compiled_with_xpu():
+            return _xpu_place
         else:
             return _cpu_place
 
@@ -125,6 +128,8 @@ class TensorToTest(Dy2StTestBase):
     def test_tensor_to_device(self):
         if paddle.is_compiled_with_cuda():
             x = paddle.to_tensor([1, 2, 3], place="gpu")
+        elif paddle.is_compiled_with_xpu():
+            x = paddle.to_tensor([1, 2, 3], place="xpu")
         else:
             x = paddle.to_tensor([1, 2, 3])
 
@@ -136,6 +141,8 @@ class TensorToTest(Dy2StTestBase):
     def test_tensor_to_device2(self):
         if paddle.is_compiled_with_cuda():
             x = paddle.to_tensor([1, 2, 3], place="gpu")
+        elif paddle.is_compiled_with_xpu():
+            x = paddle.to_tensor([1, 2, 3], place="xpu")
         else:
             x = paddle.to_tensor([1, 2, 3])
 
@@ -150,6 +157,8 @@ class TensorToTest(Dy2StTestBase):
         places = ["cpu"]
         if paddle.is_compiled_with_cuda():
             places.append("gpu")
+        if paddle.is_compiled_with_xpu():
+            places.append("xpu")
         for dtype in _valid_dtypes:
             for place in places:
                 tensor_x = paddle.jit.to_static(to_device_dtype)(
@@ -158,6 +167,8 @@ class TensorToTest(Dy2StTestBase):
                 place_x_str = str(tensor_x.place)
                 if "gpu" == place:
                     self.assertEqual(place_x_str, _gpu_place)
+                elif "xpu" == place:
+                    self.assertEqual(place_x_str, _xpu_place)
                 else:
                     self.assertEqual(place_x_str, _cpu_place)
                 type_x_str = str(tensor_x.dtype)
@@ -165,7 +176,9 @@ class TensorToTest(Dy2StTestBase):
 
     # TODO(gouzil): Fix MIN_GRAPH_SIZE=10 case
     @test_pir_only
-    @disable_test_case((ToStaticMode.SOT_MGS10, IrMode.PIR))
+    @disable_test_case(
+        (ToStaticMode.SOT_MGS10, IrMode.PIR, BackendMode.PHI | BackendMode.CINN)
+    )
     def test_tensor_to_blocking(self):
         tensor_x = paddle.to_tensor([1, 2, 3])
         tensor_x = paddle.jit.to_static(to_device_dtype_blocking)(
@@ -186,7 +199,9 @@ class TensorToTest(Dy2StTestBase):
         self.assertEqual(tensor2.dtype, paddle.float16)
 
     @test_pir_only
-    @disable_test_case((ToStaticMode.SOT_MGS10, IrMode.PIR))
+    @disable_test_case(
+        (ToStaticMode.SOT_MGS10, IrMode.PIR, BackendMode.PHI | BackendMode.CINN)
+    )
     def test_tensor_to_other(self):
         tensor1 = paddle.to_tensor([1, 2, 3], dtype="int8", place="cpu")
         tensor2 = paddle.to_tensor([1, 2, 3])
@@ -197,7 +212,9 @@ class TensorToTest(Dy2StTestBase):
         self.assertEqual(str(tensor2.place), get_place())
 
     @test_pir_only
-    @disable_test_case((ToStaticMode.SOT_MGS10, IrMode.PIR))
+    @disable_test_case(
+        (ToStaticMode.SOT_MGS10, IrMode.PIR, BackendMode.PHI | BackendMode.CINN)
+    )
     def test_kwargs(self):
         tensor_x = paddle.to_tensor([1, 2, 3])
         tensor_x = paddle.jit.to_static(to_kwargs_device_dtype_blocking)(

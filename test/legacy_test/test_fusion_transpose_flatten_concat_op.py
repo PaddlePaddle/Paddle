@@ -33,7 +33,7 @@ class TestFusionTransposeFlattenConcationOp(OpTest):
         for i in range(len(self.shapes)):
             in_shape = self.shapes[i]
             a = np.random.random(in_shape).astype("float32")
-            ins.append(("x%d" % i, a))
+            ins.append((f"x{i}", a))
 
             b = a.transpose(self.trans_axis)
             flat_shape = (

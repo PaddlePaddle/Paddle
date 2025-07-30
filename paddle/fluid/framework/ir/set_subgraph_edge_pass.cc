@@ -20,9 +20,7 @@
 #include <unordered_set>
 #include <vector>
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 #define GET_IR_NODE(node__) GET_IR_NODE_FROM_SUBGRAPH(node__, node__, pattern);
 #define GET_NODES GET_IR_NODE(ops);
@@ -132,8 +130,6 @@ void SetSubgraphEdge::ApplyImpl(Graph *graph) const {
   AddStatis(found_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(set_subgraph_edge_pass, paddle::framework::ir::SetSubgraphEdge);

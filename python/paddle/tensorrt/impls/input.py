@@ -16,7 +16,11 @@
 import numpy as np
 import tensorrt as trt
 
-from paddle.tensorrt.converter_utils import add_1D_constant_layer, cast_tensor
+from paddle.tensorrt.converter_utils import (
+    add_1D_constant_layer,
+    cast_tensor,
+    set_layer_name,
+)
 from paddle.tensorrt.register import converter_registry
 
 
@@ -45,17 +49,36 @@ def one_hot_converter(network, paddle_op, inputs):
     else:
         raise ValueError(f"Unsupported trt_dtype for one_hot: {trt_dtype}")
 
-    values_tensor = add_1D_constant_layer(network, values_data, dtype=np_dtype)
+    values_tensor = add_1D_constant_layer(
+        network,
+        values_data,
+        dtype=np_dtype,
+        name=[paddle_op.name(), 'values_tensor'],
+    )
+
+    if isinstance(num_classes_tensor, trt.Weights):
+        num_classes_tensor = network.add_constant(
+            paddle_op.operands()[1].source().shape, num_classes_tensor
+        )
+        set_layer_name(num_classes_tensor, paddle_op)
+        num_classes_tensor = num_classes_tensor.get_output(0)
 
     reshape_layer = network.add_shuffle(num_classes_tensor)
+    set_layer_name(reshape_layer, paddle_op)
     reshape_layer.reshape_dims = ()
     depth_tensor = reshape_layer.get_output(0)
 
-    depth_tensor = cast_tensor(network, depth_tensor, trt.int32)
+    depth_tensor = cast_tensor(
+        network,
+        depth_tensor,
+        trt.int32,
+        name=[paddle_op.name(), 'depth_tensor'],
+    )
 
     one_hot_layer = network.add_one_hot(
         input_tensor, values_tensor, depth_tensor, axis=-1
     )
+    set_layer_name(one_hot_layer, paddle_op)
     one_hot_layer.set_output_type(0, trt_dtype)
     output_tensor = one_hot_layer.get_output(0)
 

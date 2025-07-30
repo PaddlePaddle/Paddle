@@ -48,24 +48,6 @@ Tensor full_with_tensor<LazyTensor>(const Tensor& shape,
   return out;
 }
 
-template <>
-Tensor arange_with_tensor<LazyTensor>(const Tensor& start,
-                                      const Tensor& end,
-                                      const Tensor& step,
-                                      DataType dtype,
-                                      Place place) {
-  pir::Value start_val =
-      std::static_pointer_cast<LazyTensor>(start.impl())->value();
-  pir::Value end_val =
-      std::static_pointer_cast<LazyTensor>(end.impl())->value();
-  pir::Value step_val =
-      std::static_pointer_cast<LazyTensor>(step.impl())->value();
-  auto op_res =
-      paddle::dialect::arange(start_val, end_val, step_val, dtype, place);
-  Tensor out(std::make_shared<LazyTensor>(op_res));
-  return out;
-}
-
 }  // namespace backend
 }  // namespace primitive
 }  // namespace paddle

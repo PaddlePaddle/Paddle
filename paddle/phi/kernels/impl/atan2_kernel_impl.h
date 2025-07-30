@@ -17,6 +17,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/kernels/atan2_kernel.h"
+#include "paddle/phi/kernels/broadcast_tensors_kernel.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 
 namespace phi {
@@ -70,26 +71,21 @@ struct Atan2Functor<double> {
 };
 
 template <typename T, typename Context>
-void Atan2Kernel(const Context& ctx,
+void Atan2Kernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const DenseTensor& y,
                  DenseTensor* out) {
-  auto numel = x.numel();
-  auto x_data = x.data<T>();
-  auto y_data = y.data<T>();
+  if (x.numel() == 0 || y.numel() == 0) {
+    dev_ctx.template Alloc<typename Atan2Out<T>::type>(out);
+    return;
+  }
 
-  PADDLE_ENFORCE_LE(numel,
-                    y.numel(),
-                    common::errors::InvalidArgument(
-                        "The count (%d) of elements of X shall not "
-                        "greater than count (%d) of elements of Y.",
-                        numel,
-                        y.numel()));
+  const auto numel = out->numel();
+  const auto* x_data = x.data<T>();
+  const auto* y_data = y.data<T>();
 
-  auto* out_data = ctx.template Alloc<typename Atan2Out<T>::type>(
-      out, size_t(x.numel() * sizeof(typename Atan2Out<T>::type)));
-
-  phi::funcs::ForRange<Context> for_range(ctx, numel);
+  auto* out_data = dev_ctx.template Alloc<typename Atan2Out<T>::type>(out);
+  phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
   phi::Atan2Functor<T> functor(x_data, y_data, out_data, numel);
   for_range(functor);
 }

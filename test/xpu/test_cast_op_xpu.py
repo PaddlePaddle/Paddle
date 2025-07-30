@@ -29,6 +29,7 @@ from paddle import base
 from paddle.base import Program, core, program_guard
 
 typeid_dict = {
+    'int16': int(core.VarDesc.VarType.INT16),
     'int32': int(core.VarDesc.VarType.INT32),
     'int64': int(core.VarDesc.VarType.INT64),
     'float32': int(core.VarDesc.VarType.FP32),
@@ -38,6 +39,8 @@ typeid_dict = {
     'int8': int(core.VarDesc.VarType.INT8),
     'uint8': int(core.VarDesc.VarType.UINT8),
     'float64': int(core.VarDesc.VarType.FP64),
+    'complex64': int(core.VarDesc.VarType.COMPLEX64),
+    'complex128': int(core.VarDesc.VarType.COMPLEX128),
 }
 
 
@@ -218,8 +221,66 @@ class XPUTestCastOp(XPUOpTestWrapper):
 
 
 support_types = get_xpu_op_support_types('cast')
-for stype in support_types:
+real_types = [t for t in support_types if t != 'complex64']
+for stype in real_types:
     create_test_class(globals(), XPUTestCastOp, stype)
+
+if 'complex64' in support_types:
+
+    class TestCastOpComplex1(XPUOpTest):
+        def setUp(self):
+            self.init_shape()
+            ipt = np.random.random(size=self.shape)
+
+            in_typename = 'float32'
+            out_typename = 'complex64'
+
+            ipt_x = ipt.astype(in_typename)
+            opt = ipt_x.astype(out_typename)
+
+            self.inputs = {'X': ipt_x}
+            self.outputs = {'Out': opt}
+            self.attrs = {
+                'in_dtype': typeid_dict[in_typename],
+                'out_dtype': typeid_dict[out_typename],
+            }
+            self.op_type = 'cast'
+            self.__class__.no_need_check_grad = True
+
+        def init_shape(self):
+            self.shape = [10, 10]
+
+        def test_check_output(self):
+            self.check_output()
+
+    class TestCastOpComplex2(XPUOpTest):
+        def setUp(self):
+            self.init_shape()
+
+            real_part = np.random.random(size=self.shape)
+            imag_part = np.random.random(size=self.shape)
+            ipt = real_part + 1j * imag_part
+
+            in_typename = 'complex64'
+            out_typename = 'float32'
+
+            ipt_x = ipt.astype(in_typename)
+            opt = ipt_x.real.astype(out_typename)
+
+            self.inputs = {'X': ipt_x}
+            self.outputs = {'Out': opt}
+            self.attrs = {
+                'in_dtype': typeid_dict[in_typename],
+                'out_dtype': typeid_dict[out_typename],
+            }
+            self.op_type = 'cast'
+            self.__class__.no_need_check_grad = True
+
+        def init_shape(self):
+            self.shape = [10, 10]
+
+        def test_check_output(self):
+            self.check_output()
 
 
 class TestCastOpError(unittest.TestCase):

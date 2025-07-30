@@ -49,7 +49,8 @@ void SliceStridedKernel(const Context& ctx,
       item = std::max(int64_t(0), item + int64_t(in_dims.size()));
     }
   }
-
+  // axis = 0, dim_value = 3, st[0]=0, ed[0]=4
+  // The step seems to be regarded as 1 here
   phi::funcs::CheckAndUpdateSliceAttrs<int64_t>(
       in_dims, new_axes, &starts, &ends, nullptr, nullptr);
 
@@ -62,7 +63,7 @@ void SliceStridedKernel(const Context& ctx,
     output_offset = static_cast<int64_t>(
         output_offset +
         starts[i] * output_stride[new_axes[i]] * SizeOf(out->dtype()));
-    output_dims[new_axes[i]] = ends[i] - starts[i];
+    output_dims[new_axes[i]] = std::abs(ends[i] - starts[i]);
   }
 
   std::vector<uint8_t> decrease_flag(output_dims.size(), 0);

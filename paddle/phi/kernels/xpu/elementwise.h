@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
-#ifdef PADDLE_WITH_XPU
 #include <algorithm>
 #include <string>
 #include <tuple>
@@ -23,8 +22,8 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "xpu/refactor/math.h"
-
 namespace phi {
 
 template <typename T, typename XPUType>
@@ -39,8 +38,8 @@ void XPUElementwise(const XPUContext& dev_ctx,
                                       const XPUType*,
                                       const XPUType*,
                                       XPUType*,
-                                      const std::vector<int>&,
-                                      const std::vector<int>&)> func) {
+                                      const std::vector<int64_t>&,
+                                      const std::vector<int64_t>&)> func) {
   int max_dim = std::max(x_dims.size(), y_dims.size());
   axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
 
@@ -57,8 +56,8 @@ void XPUElementwise(const XPUContext& dev_ctx,
           "Axis should be less than or equal to %d, but received axis is %d.",
           max_dim,
           axis));
-  std::vector<int> x_dims_vec(max_dim, 1);
-  std::vector<int> y_dims_vec(max_dim, 1);
+  std::vector<int64_t> x_dims_vec(max_dim, 1);
+  std::vector<int64_t> y_dims_vec(max_dim, 1);
   if (x_dims.size() == max_dim) {
     for (int i = 0; i < max_dim; i++) {
       x_dims_vec[i] = x_dims[i];
@@ -78,17 +77,17 @@ void XPUElementwise(const XPUContext& dev_ctx,
     }
   }
 
-  int ret = xpu::SUCCESS;
+  int ret = 0;
 
   // For [2, 3] + [] --> [2, 3] + [1, 1]
   // For [] + [2, 3] --> [1, 1] + [2, 3]
   // For [] + [], Use [1] + [1] to replace [], because xpu not support []
   if (x_dims_vec.size() == 0) {
-    x_dims_vec = std::vector<int>({1});
+    x_dims_vec = std::vector<int64_t>({1});
   }
 
   if (y_dims_vec.size() == 0) {
-    y_dims_vec = std::vector<int>({1});
+    y_dims_vec = std::vector<int64_t>({1});
   }
 
   ret = func(dev_ctx.x_context(),
@@ -110,9 +109,12 @@ void XPUElementwise(const XPUContext& dev_ctx,
                                       const XPUType*,
                                       const XPUType*,
                                       XPUType*,
-                                      const std::vector<int>&,
-                                      const std::vector<int>&)> func) {
+                                      const std::vector<int64_t>&,
+                                      const std::vector<int64_t>&)> func) {
   dev_ctx.template Alloc<T>(z);
+  if (z->numel() == 0) {
+    return;
+  }
   const DDim& x_dims = x.dims();
   const DDim& y_dims = y.dims();
 
@@ -139,8 +141,8 @@ void XPUElementwiseGrad(const XPUContext& dev_ctx,
                                           const XPUType*,
                                           XPUType*,
                                           XPUType*,
-                                          const std::vector<int>&,
-                                          const std::vector<int>&)> func,
+                                          const std::vector<int64_t>&,
+                                          const std::vector<int64_t>&)> func,
                         bool use_x_y_data) {
   auto* z = &dz;
   const DDim& x_dims = x.dims();
@@ -160,8 +162,8 @@ void XPUElementwiseGrad(const XPUContext& dev_ctx,
           "Axis should be less than or equal to %d, but received axis is %d.",
           max_dim,
           axis));
-  std::vector<int> x_dims_vec(max_dim, 1);
-  std::vector<int> y_dims_vec(max_dim, 1);
+  std::vector<int64_t> x_dims_vec(max_dim, 1);
+  std::vector<int64_t> y_dims_vec(max_dim, 1);
   if (x_dims.size() == max_dim) {
     for (int i = 0; i < max_dim; i++) {
       x_dims_vec[i] = x_dims[i];
@@ -195,14 +197,21 @@ void XPUElementwiseGrad(const XPUContext& dev_ctx,
   if (dy) {
     dy_data = dev_ctx.template Alloc<T>(dy);
   }
+  if (dz.numel() == 0) {
+    phi::Full<T, XPUContext>(
+        dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+    phi::Full<T, XPUContext>(
+        dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+    return;
+  }
 
   // use [1] to replace [], because xpu not support []
   if (x_dims_vec.size() == 0) {
-    x_dims_vec = std::vector<int>({1});
+    x_dims_vec = std::vector<int64_t>({1});
   }
 
   if (y_dims_vec.size() == 0) {
-    y_dims_vec = std::vector<int>({1});
+    y_dims_vec = std::vector<int64_t>({1});
   }
 
   int ret = func(dev_ctx.x_context(),
@@ -218,4 +227,3 @@ void XPUElementwiseGrad(const XPUContext& dev_ctx,
 }
 
 }  // namespace phi
-#endif

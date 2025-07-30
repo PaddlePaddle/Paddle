@@ -45,8 +45,9 @@ class TesBackward_1(unittest.TestCase):
         pir_program = get_ir_program_0()
         input = pir_program.global_block().ops[-1].operand(0).source()
         tanh_out = pir_program.global_block().ops[-1].result(0)
-        with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-            pir_program
+        with (
+            paddle.pir_utils.IrGuard(),
+            paddle.pir.core.program_guard(pir_program),
         ):
             out = paddle.mean(tanh_out)
             out2 = paddle.mean(tanh_out)
@@ -70,8 +71,9 @@ class TesBackward_1(unittest.TestCase):
         pir_program = get_ir_program_0()
         input = pir_program.global_block().ops[-1].operand(0).source()
         tanh_out = pir_program.global_block().ops[-1].result(0)
-        with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-            pir_program
+        with (
+            paddle.pir_utils.IrGuard(),
+            paddle.pir.core.program_guard(pir_program),
         ):
             out = paddle.mean(tanh_out)
             input_grad = grad(out, input)
@@ -96,8 +98,9 @@ class TesBackward_1(unittest.TestCase):
         pir_program = get_ir_program_0()
         input = pir_program.global_block().ops[-1].operand(0).source()
         tanh_out = pir_program.global_block().ops[-1].result(0)
-        with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-            pir_program
+        with (
+            paddle.pir_utils.IrGuard(),
+            paddle.pir.core.program_guard(pir_program),
         ):
             out = paddle.mean(tanh_out)
             input_grad = grad(out, input, no_grad_vars=[input])
@@ -110,8 +113,9 @@ class TesBackward_1(unittest.TestCase):
         pir_program = get_ir_program_0()
         input = pir_program.global_block().ops[-1].operand(0).source()
         tanh_out = pir_program.global_block().ops[-1].result(0)
-        with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-            pir_program
+        with (
+            paddle.pir_utils.IrGuard(),
+            paddle.pir.core.program_guard(pir_program),
         ):
             out = paddle.split(tanh_out, [2, 2], 0)
             input_grad = grad(out, input)
@@ -159,8 +163,9 @@ class TesBackward_2(unittest.TestCase):
         input_x = pir_program.global_block().ops[-3].operand(0).source()
 
         add_out = pir_program.global_block().ops[-1].result(0)
-        with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-            pir_program
+        with (
+            paddle.pir_utils.IrGuard(),
+            paddle.pir.core.program_guard(pir_program),
         ):
             out = paddle.mean(add_out)
             input_grad = grad(out, input_x)
@@ -180,8 +185,9 @@ class TesBackward_2(unittest.TestCase):
         input_x = pir_program.global_block().ops[-3].operand(0).source()
 
         add_out = pir_program.global_block().ops[-1].result(0)
-        with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-            pir_program
+        with (
+            paddle.pir_utils.IrGuard(),
+            paddle.pir.core.program_guard(pir_program),
         ):
             out = paddle.concat([add_out, add_out])
             input_grad = grad(out, input_x)
@@ -231,8 +237,9 @@ class TestBackward_3(unittest.TestCase):
         pir_program = get_ir_program_2()
         x = pir_program.global_block().ops[-1].operand(0).source()
         sum_x = pir_program.global_block().ops[-1].result(0)
-        with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-            pir_program
+        with (
+            paddle.pir_utils.IrGuard(),
+            paddle.pir.core.program_guard(pir_program),
         ):
             norm = paddle.tensor.fill_constant(
                 shape=[],
@@ -259,15 +266,15 @@ class TestBackward_4(unittest.TestCase):
             def true_func():
                 y = double_x * 3
                 out = grad(y, x)
-                filted_dx = [dxi for dxi in out if dxi is not None]
-                grad_x = filted_dx
+                filtered_dx = [dxi for dxi in out if dxi is not None]
+                grad_x = filtered_dx
                 return grad_x
 
             def false_func():
                 y = double_x * 4
                 out = grad(y, x)
-                filted_dx = [dxi for dxi in out if dxi is not None]
-                grad_x = filted_dx
+                filtered_dx = [dxi for dxi in out if dxi is not None]
+                grad_x = filtered_dx
                 return grad_x
 
             out = paddle.static.nn.cond(pred, true_func, false_func)
@@ -296,7 +303,7 @@ class TestBackward_5(unittest.TestCase):
             z = paddle.nn.functional.relu(y)
             loss = paddle.mean(z)
 
-        paddle.autograd.ir_backward.append_backward(loss)
+            paddle.autograd.ir_backward.append_backward(loss)
         relu_grad_number = 0
         for op in program.global_block().ops:
             if op.name() == "pd_op.relu_grad":

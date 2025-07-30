@@ -179,11 +179,11 @@ class TestUnbindOp(OpTest):
         self.attrs = {'axis': self.axis}
         self.setAxis()
         self.outputs = {
-            'Out': [('out%d' % i, self.out[i]) for i in range(len(self.out))]
+            'Out': [(f'out{i}', self.out[i]) for i in range(len(self.out))]
         }
         self.python_api = paddle.unbind
         self.public_python_api = paddle.unbind
-        self.python_out_sig = ['out%d' % i for i in range(len(self.out))]
+        self.python_out_sig = [f'out{i}' for i in range(len(self.out))]
 
     def get_dtype(self):
         return "float64"
@@ -338,9 +338,9 @@ class TestUnbindFP16Op(OpTest):
         self.inputs = {'X': x}
         self.attrs = {'axis': self.axis}
         self.outputs = {
-            'Out': [('out%d' % i, self.out[i]) for i in range(len(self.out))]
+            'Out': [(f'out{i}', self.out[i]) for i in range(len(self.out))]
         }
-        self.python_out_sig = ['out%d' % i for i in range(len(self.out))]
+        self.python_out_sig = [f'out{i}' for i in range(len(self.out))]
 
     def outReshape(self):
         self.out[0] = self.out[0].reshape((2, 2))
@@ -371,11 +371,11 @@ class TestUnbindBF16Op(OpTest):
         self.attrs = {'axis': self.axis}
         self.outputs = {
             'Out': [
-                ('out%d' % i, convert_float_to_uint16(self.out[i]))
+                (f'out{i}', convert_float_to_uint16(self.out[i]))
                 for i in range(len(self.out))
             ]
         }
-        self.python_out_sig = ['out%d' % i for i in range(len(self.out))]
+        self.python_out_sig = [f'out{i}' for i in range(len(self.out))]
 
     def outReshape(self):
         self.out[0] = self.out[0].reshape((2, 2))

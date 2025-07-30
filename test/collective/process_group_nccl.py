@@ -43,7 +43,7 @@ class TestProcessGroupFp32(unittest.TestCase):
 
     def test_create_process_group_nccl(self):
         device_id = paddle.distributed.ParallelEnv().dev_id
-        paddle.set_device('gpu:%d' % device_id)
+        paddle.set_device(f'gpu:{device_id}')
 
         assert paddle.distributed.is_available()
 

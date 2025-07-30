@@ -32,7 +32,7 @@ std::vector<pir::Type> CreateDenseTensorTypes(const phi::DDim &dims) {
   pir::IrContext *ctx = ::pir::IrContext::Instance();
   pir::Type fp32_dtype = ::pir::Float32Type::get(ctx);
   phi::DataLayout data_layout = phi::DataLayout::NCHW;
-  phi::LoD lod = {};
+  phi::LegacyLoD lod = {};
   size_t offset = 0;
   std::vector<::pir::Type> op_output_types = {::pir::DenseTensorType::get(
       ctx, fp32_dtype, dims, data_layout, lod, offset)};

@@ -208,7 +208,7 @@ def create_test_cudnn_bf16_class(parent):
             place = core.CUDAPlace(0)
             self.check_output_with_place(
                 place,
-                check_dygraph=(not self.use_mkldnn),
+                check_dygraph=(not self.use_onednn),
                 check_pir=True,
                 check_pir_onednn=self.check_pir_onednn,
             )
@@ -222,7 +222,7 @@ def create_test_cudnn_bf16_class(parent):
                 ['Input'],
                 'Output',
                 no_grad_set={'Filter'},
-                check_dygraph=(not self.use_mkldnn),
+                check_dygraph=(not self.use_onednn),
                 user_defined_grads=[numeric_grads],
                 check_pir=True,
                 check_pir_onednn=self.check_pir_onednn,
@@ -237,7 +237,7 @@ def create_test_cudnn_bf16_class(parent):
                 ['Filter'],
                 'Output',
                 no_grad_set={'Input'},
-                check_dygraph=(not self.use_mkldnn),
+                check_dygraph=(not self.use_onednn),
                 user_defined_grads=[numeric_grads],
                 check_pir=True,
                 check_pir_onednn=self.check_pir_onednn,
@@ -246,14 +246,14 @@ def create_test_cudnn_bf16_class(parent):
         def test_check_grad(self):
             place = core.CUDAPlace(0)
             numeric_input_grads = self.get_numeric_grad(place, 'Input')
-            numeric_fliter_grads = self.get_numeric_grad(place, 'Filter')
+            numeric_filter_grads = self.get_numeric_grad(place, 'Filter')
 
             self.check_grad_with_place(
                 place,
                 ['Input', 'Filter'],
                 'Output',
-                user_defined_grads=[numeric_input_grads, numeric_fliter_grads],
-                check_dygraph=(not self.use_mkldnn),
+                user_defined_grads=[numeric_input_grads, numeric_filter_grads],
+                check_dygraph=(not self.use_onednn),
                 check_pir=True,
                 check_pir_onednn=self.check_pir_onednn,
             )
@@ -264,14 +264,14 @@ def create_test_cudnn_bf16_class(parent):
 
 
 def create_test_padding_SAME_class(parent):
-    class TestPaddingSMAECase(parent):
+    class TestPaddingSAMECase(parent):
         def init_paddings(self):
             self.pad = [0, 0, 0]
             self.padding_algorithm = "SAME"
 
     cls_name = "{}_{}".format(parent.__name__, "PaddingSAMEOp")
-    TestPaddingSMAECase.__name__ = cls_name
-    globals()[cls_name] = TestPaddingSMAECase
+    TestPaddingSAMECase.__name__ = cls_name
+    globals()[cls_name] = TestPaddingSAMECase
 
 
 def create_test_padding_VALID_class(parent):
@@ -289,7 +289,7 @@ def create_test_cudnn_padding_SAME_class(parent):
     @unittest.skipIf(
         not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
     )
-    class TestCUDNNPaddingSMAECase(parent):
+    class TestCUDNNPaddingSAMECase(parent):
         def init_kernel_type(self):
             self.use_cudnn = True
             self.dtype = (
@@ -301,8 +301,8 @@ def create_test_cudnn_padding_SAME_class(parent):
             self.padding_algorithm = "SAME"
 
     cls_name = "{}_{}".format(parent.__name__, "CudnnPaddingSAMEOp")
-    TestCUDNNPaddingSMAECase.__name__ = cls_name
-    globals()[cls_name] = TestCUDNNPaddingSMAECase
+    TestCUDNNPaddingSAMECase.__name__ = cls_name
+    globals()[cls_name] = TestCUDNNPaddingSAMECase
 
 
 def create_test_cudnn_padding_VALID_class(parent):
@@ -393,7 +393,7 @@ class TestConv3DOp(OpTest):
         self.op_type = "conv3d"
         self.python_api = conv3d_wrapper
         self.use_cudnn = False
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.data_format = "AnyLayout"
         self.dtype = np.float64
         self.init_kernel_type()
@@ -444,7 +444,7 @@ class TestConv3DOp(OpTest):
             'groups': self.groups,
             'dilations': self.dilations,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_mkldnn,
+            'use_mkldnn': self.use_onednn,
             'data_format': self.data_format,
         }
         self.outputs = {'Output': output}
@@ -458,7 +458,7 @@ class TestConv3DOp(OpTest):
         self.check_output_with_place(
             place,
             atol=1e-5,
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_onednn),
             check_pir=True,
             check_pir_onednn=self.check_pir_onednn,
         )
@@ -471,7 +471,7 @@ class TestConv3DOp(OpTest):
             {'Input', 'Filter'},
             'Output',
             max_relative_error=0.03,
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_onednn),
             check_pir=True,
             check_pir_onednn=self.check_pir_onednn,
         )
@@ -485,7 +485,7 @@ class TestConv3DOp(OpTest):
             'Output',
             max_relative_error=0.03,
             no_grad_set={'Filter'},
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_onednn),
             check_pir=True,
             check_pir_onednn=self.check_pir_onednn,
         )
@@ -499,7 +499,7 @@ class TestConv3DOp(OpTest):
             'Output',
             max_relative_error=0.03,
             no_grad_set={'Input'},
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_onednn),
             check_pir=True,
             check_pir_onednn=self.check_pir_onednn,
         )
@@ -764,7 +764,7 @@ class TestConv3DOp_2(OpTest):
         self.op_type = "conv3d"
         self.python_api = conv3d_wrapper
         self.use_cudnn = False
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.data_format = "NCDHW"
         self.dtype = np.float64
         self.init_kernel_type()
@@ -804,7 +804,7 @@ class TestConv3DOp_2(OpTest):
             'groups': self.groups,
             'dilations': self.dilations,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_mkldnn,
+            'use_mkldnn': self.use_onednn,
             'data_format': self.data_format,
         }
         self.outputs = {'Output': output}

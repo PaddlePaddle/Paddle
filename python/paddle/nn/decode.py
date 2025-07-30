@@ -141,14 +141,14 @@ class Decoder:
         Describes whether the Decoder keeps track of finished states by itself.
 
         `decoder.step()` would emit a bool `finished` value at each decoding
-        step. The emited `finished` can be used to determine whether every
+        step. The emitted `finished` can be used to determine whether every
         batch entries is finished directly, or it can be combined with the
         finished tracker keeped in `dynamic_decode` by performing a logical OR
         to take the already finished into account.
 
         If `False`, the latter would be took when performing `dynamic_decode`,
         which is the default. Otherwise, the former would be took, which uses
-        the finished value emited by the decoder as all batch entry finished
+        the finished value emitted by the decoder as all batch entry finished
         status directly, and it is the case when batch entries might be
         reordered such as beams in BeamSearchDecoder.
 

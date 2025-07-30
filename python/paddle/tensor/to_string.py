@@ -183,24 +183,24 @@ def _format_tensor(var, summary, indent=0, max_width=0, signed=False):
         return _format_item(var, max_width, signed)
     elif len(var.shape) == 1:
         item_length = max_width + 2
-        items_per_line = (linewidth - indent) // item_length
-        items_per_line = max(1, items_per_line)
+        items_per_line = max(1, (linewidth - indent) // item_length)
 
         if summary and var.shape[0] > 2 * edgeitems:
             items = (
                 [
-                    _format_item(item, max_width, signed)
-                    for item in list(var)[:edgeitems]
+                    _format_item(var[i], max_width, signed)
+                    for i in range(edgeitems)
                 ]
                 + ['...']
                 + [
-                    _format_item(item, max_width, signed)
-                    for item in list(var)[(-1 * edgeitems) :]
+                    _format_item(var[i], max_width, signed)
+                    for i in range(var.shape[0] - edgeitems, var.shape[0])
                 ]
             )
         else:
             items = [
-                _format_item(item, max_width, signed) for item in list(var)
+                _format_item(var[i], max_width, signed)
+                for i in range(var.shape[0])
             ]
         lines = [
             items[i : i + items_per_line]
@@ -215,28 +215,27 @@ def _format_tensor(var, summary, indent=0, max_width=0, signed=False):
         if summary and var.shape[0] > 2 * edgeitems:
             vars = (
                 [
-                    _format_tensor(x, summary, indent + 1, max_width, signed)
-                    for x in var[:edgeitems]
+                    _format_tensor(
+                        var[i], summary, indent + 1, max_width, signed
+                    )
+                    for i in range(edgeitems)
                 ]
                 + ['...']
                 + [
-                    _format_tensor(x, summary, indent + 1, max_width, signed)
-                    for x in var[(-1 * edgeitems) :]
+                    _format_tensor(
+                        var[i], summary, indent + 1, max_width, signed
+                    )
+                    for i in range(var.shape[0] - edgeitems, var.shape[0])
                 ]
             )
         else:
             vars = [
-                _format_tensor(x, summary, indent + 1, max_width, signed)
-                for x in var
+                _format_tensor(var[i], summary, indent + 1, max_width, signed)
+                for i in range(var.shape[0])
             ]
 
-        return (
-            '['
-            + (',' + '\n' * (len(var.shape) - 1) + ' ' * (indent + 1)).join(
-                vars
-            )
-            + ']'
-        )
+        s = (',' + '\n' * (len(var.shape) - 1) + ' ' * (indent + 1)).join(vars)
+        return '[' + s + ']'
 
 
 def to_string(var, prefix='Tensor'):
@@ -309,16 +308,7 @@ def _format_dense_tensor(tensor, indent):
     ):
         np_tensor = mask_xpu_bf16_tensor(np_tensor)
 
-    if len(tensor.shape) == 0:
-        size = 0
-    else:
-        size = 1
-        for dim in tensor.shape:
-            size *= dim
-
-    summary = False
-    if size > DEFAULT_PRINT_OPTIONS.threshold:
-        summary = True
+    summary = tensor.numel() > DEFAULT_PRINT_OPTIONS.threshold
 
     max_width, signed = _get_max_width(_to_summary(np_tensor))
 
@@ -326,6 +316,23 @@ def _format_dense_tensor(tensor, indent):
         np_tensor, summary, indent=indent, max_width=max_width, signed=signed
     )
     return data
+
+
+def selected_rows_tensor_to_string(tensor, dtype, prefix='Tensor'):
+    indent = len(prefix) + 1
+    if tensor.is_selected_rows():
+        _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient}, rows={rows},\n{indent}{data})"
+        data = _format_dense_tensor(tensor, indent)
+        return _template.format(
+            prefix=prefix,
+            shape=tensor.shape,
+            dtype=dtype,
+            place=tensor._place_str,
+            stop_gradient=tensor.stop_gradient,
+            indent=' ' * indent,
+            data=data,
+            rows=tensor.rows(),
+        )
 
 
 def sparse_tensor_to_string(tensor, prefix='Tensor'):
@@ -433,6 +440,9 @@ def tensor_to_string(tensor, prefix='Tensor'):
 
     if tensor.is_sparse():
         return sparse_tensor_to_string(tensor, prefix)
+
+    if tensor.is_selected_rows():
+        return selected_rows_tensor_to_string(tensor, dtype, prefix)
 
     if tensor.is_dist():
         return dist_tensor_to_string(tensor, prefix)

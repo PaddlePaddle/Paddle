@@ -1,4 +1,4 @@
-#   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -69,13 +69,10 @@ class TestSvdvalsBatched(TestSvdvalsOp):
         self.outputs = {"s": self._output_data}
 
 
-@skip_check_grad_ci(
-    reason="'check_grad' on singular values is not required for svdvals."
-)
 class TestSvdvalsBigMatrix(TestSvdvalsOp):
     def init_data(self):
         """Generate large input matrix."""
-        self._input_shape = (200, 300)
+        self._input_shape = (40, 40)
         self._input_data = np.random.random(self._input_shape).astype("float64")
         self._output_data = np.linalg.svd(
             self._input_data, compute_uv=False, hermitian=False
@@ -84,7 +81,13 @@ class TestSvdvalsBigMatrix(TestSvdvalsOp):
         self.outputs = {'s': self._output_data}
 
     def test_check_grad(self):
-        pass
+        self.check_grad(
+            ['x'],
+            ['s'],
+            numeric_grad_delta=0.001,
+            max_relative_error=1e-5,
+            check_pir=True,
+        )
 
 
 class TestSvdvalsAPI(unittest.TestCase):
@@ -103,8 +106,7 @@ class TestSvdvalsAPI(unittest.TestCase):
             # Test dynamic graph for svdvals
             s = paddle.linalg.svdvals(x)
             np_s = np.linalg.svd(self.x_np, compute_uv=False, hermitian=False)
-            self.assertTrue(np.allclose(np_s, s.numpy(), rtol=1e-6))
-
+            np.testing.assert_allclose(np_s, s.numpy(), rtol=1e-6)
             # Test with reshaped input
             x_reshaped = x.reshape([-1, 12, 10])
             s_reshaped = paddle.linalg.svdvals(x_reshaped)
@@ -114,23 +116,25 @@ class TestSvdvalsAPI(unittest.TestCase):
                     for matrix in self.x_np.reshape([-1, 12, 10])
                 ]
             )
-            self.assertTrue(
-                np.allclose(np_s_reshaped, s_reshaped.numpy(), rtol=1e-6)
+            np.testing.assert_allclose(
+                np_s_reshaped, s_reshaped.numpy(), rtol=1e-6
             )
 
     def test_static_api(self):
-        with static_guard():
-            with paddle.static.program_guard(
+        with (
+            static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                x = paddle.static.data('x', [10, 12], dtype='float32')
-                s = paddle.linalg.svdvals(x)
-                exe = paddle.static.Executor(self.place)
-                res = exe.run(feed={'x': self.x_np}, fetch_list=[s])
+            ),
+        ):
+            x = paddle.static.data('x', [10, 12], dtype='float32')
+            s = paddle.linalg.svdvals(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'x': self.x_np}, fetch_list=[s])
 
         np_s = np.linalg.svd(self.x_np, compute_uv=False, hermitian=False)
         for r in res:
-            self.assertTrue(np.allclose(np_s, r, rtol=1e-6))
+            np.testing.assert_allclose(np_s, r, rtol=1e-6)
 
     def test_error(self):
         """Test invalid inputs for svdvals"""
@@ -144,14 +148,32 @@ class TestSvdvalsAPI(unittest.TestCase):
                 x_invalid_shape = paddle.to_tensor(x_np_invalid_shape)
                 paddle.linalg.svdvals(x_invalid_shape)
 
-            def test_empty_tensor():
-                """Test empty tensor"""
-                x_np_empty = np.empty([0, 10], dtype='float32')
-                x_empty = paddle.to_tensor(x_np_empty)
-                paddle.linalg.svdvals(x_empty)
-
             self.assertRaises(ValueError, test_invalid_shape)
-            self.assertRaises(ValueError, test_empty_tensor)
+
+
+class TestSvdvalsOp_ZeroSize(OpTest):
+    def setUp(self):
+        self.op_type = "svdvals"
+        self.python_api = paddle.linalg.svdvals
+        self.init_data()
+
+    def init_shape(self):
+        self._input_shape = (1, 0)
+
+    def init_data(self):
+        self.init_shape()
+        self._input_data = np.random.random(self._input_shape).astype("float64")
+        self._output_data = np.linalg.svd(
+            self._input_data, compute_uv=False, hermitian=False
+        )
+        self.inputs = {'x': self._input_data}
+        self.outputs = {'s': self._output_data}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(['x'], ['s'], numeric_grad_delta=0.001, check_pir=True)
 
 
 if __name__ == "__main__":

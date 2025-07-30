@@ -13,8 +13,7 @@
 // limitations under the License.
 #include "paddle/fluid/framework/scope_pool.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 ScopePool &ScopePool::Instance() {  // NOLINT
   static ScopePool pool;
@@ -53,5 +52,4 @@ void ScopePool::Clear() {
   scopes_.clear();
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

@@ -39,7 +39,7 @@ class XPUTestSplitOp(XPUOpTestWrapper):
             self.init_dtype()
             self.__class__.use_xpu = True
             self.__class__.op_type = 'split'
-            self.use_mkldnn = False
+            self.use_onednn = False
             self.initParameters()
             self.inputs = {'X': self.x}
             self.attrs = {
@@ -50,7 +50,7 @@ class XPUTestSplitOp(XPUOpTestWrapper):
 
             out = np.split(self.x, self.indices_or_sections, self.axis)
             self.outputs = {
-                'Out': [('out%d' % i, out[i]) for i in range(len(out))]
+                'Out': [(f'out{i}', out[i]) for i in range(len(out))]
             }
 
         def init_dtype(self):

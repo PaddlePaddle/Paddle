@@ -61,6 +61,8 @@ __device__ __forceinline__ double inline_pow(double base, double exponent) {
   return pow(base, exponent);
 }
 
+#ifndef _WIN32
+// To avoid large .so size in Windows cuda11.8
 __device__ __forceinline__ dtype::float16 inline_fabs(dtype::float16 x) {
   return static_cast<dtype::float16>(fabs(static_cast<float>(x)));
 }
@@ -96,4 +98,5 @@ __device__ __forceinline__ float inline_fabs_cubic(float x) {
 __device__ __forceinline__ double inline_fabs_cubic(double x) {
   return fabs(x * x * x);
 }
+#endif
 }  // namespace phi

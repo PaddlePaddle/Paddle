@@ -21,7 +21,7 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
-    test_default_and_pir,
+    test_default_mode_only,
 )
 from seq2seq_dygraph_model import AttentionModel, BaseModel
 from seq2seq_utils import Seq2SeqModelHyperParams, get_data_iter
@@ -75,11 +75,11 @@ def train(args, attn_model=False):
                 )
             )
 
-        gloabl_norm_clip = ClipGradByGlobalNorm(args.max_grad_norm)
+        global_norm_clip = ClipGradByGlobalNorm(args.max_grad_norm)
         optimizer = paddle.optimizer.SGD(
             args.learning_rate,
             parameters=model.parameters(),
-            grad_clip=gloabl_norm_clip,
+            grad_clip=global_norm_clip,
         )
 
         model.train()
@@ -105,15 +105,11 @@ def train(args, attn_model=False):
             batch_times.append(batch_time)
             if batch_id % PRINT_STEP == 0:
                 print(
-                    "Batch:[%d]; Time: %.5f s; loss: %.5f; total_loss: %.5f; word num: %.5f; ppl: %.5f"
-                    % (
-                        batch_id,
-                        batch_time,
-                        loss.numpy(),
-                        total_loss.numpy(),
-                        word_count,
-                        np.exp(total_loss.numpy() / word_count),
-                    )
+                    f"Batch:[{batch_id}]; Time: {batch_time:.5f}s; "
+                    f"loss: {loss.numpy():.5f}; "
+                    f"total_loss: {total_loss.numpy():.5f}; "
+                    f"word num: {word_count:.5f}; "
+                    f"ppl: {np.exp(total_loss.numpy() / word_count):.5f}"
                 )
 
             if attn_model:
@@ -230,12 +226,12 @@ class TestSeq2seq(Dy2StTestBase):
             msg=f"\npred_dygraph = {pred_dygraph} \npred_static = {pred_static}",
         )
 
-    @test_default_and_pir
+    @test_default_mode_only
     def test_base_model(self):
         self._test_train(attn_model=False)
         self._test_predict(attn_model=False)
 
-    @test_default_and_pir
+    @test_default_mode_only
     def test_attn_model(self):
         self._test_train(attn_model=True)
         # TODO(liym27): add predict

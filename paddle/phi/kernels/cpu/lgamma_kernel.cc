@@ -43,6 +43,9 @@ void LgammaKernel(const Context& dev_ctx,
   auto numel = x.numel();
   auto* x_data = x.data<T>();
   auto* out_data = dev_ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) {
+    return;
+  }
   phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
   LgammaFunctor<T> functor(x_data, out_data, numel);
   for_range(functor);

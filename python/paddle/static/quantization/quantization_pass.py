@@ -923,24 +923,26 @@ class QuantizationTransformPass:
         """
         tmp_program = Program()
         startup_program = Program()
-        with program_guard(tmp_program, startup_program):
-            with tmp_program.switch_name_generator_guard(var_node.name() + "_"):
-                in_node = data(
-                    var_node.name() + '_tmp_input',
-                    shape=var_node.shape(),
-                    dtype='float32',
-                )
-                out_node = func(in_node)
-                graph.out_node_mapping_table[out_node.name] = var_node.name()
-                # loss shape must be 1 when minimize
-                loss = paddle.mean(out_node)
-                if not graph._for_test:
-                    assert (
-                        self._optimizer
-                    ), "optimizer_func must be set when graph is test graph"
-                    in_node.stop_gradient = False
-                    optimizer = self._optimizer()
-                    optimizer.minimize(loss)
+        with (
+            program_guard(tmp_program, startup_program),
+            tmp_program.switch_name_generator_guard(var_node.name() + "_"),
+        ):
+            in_node = data(
+                var_node.name() + '_tmp_input',
+                shape=var_node.shape(),
+                dtype='float32',
+            )
+            out_node = func(in_node)
+            graph.out_node_mapping_table[out_node.name] = var_node.name()
+            # loss shape must be 1 when minimize
+            loss = paddle.mean(out_node)
+            if not graph._for_test:
+                assert (
+                    self._optimizer
+                ), "optimizer_func must be set when graph is test graph"
+                in_node.stop_gradient = False
+                optimizer = self._optimizer()
+                optimizer.minimize(loss)
         with scope_guard(self._scope):
             self._exe.run(startup_program)
 
@@ -1953,7 +1955,7 @@ class AddQuantDequantPass:
                             (
                                 quant_var_node,
                                 _,
-                            ) = self._inser_quant_dequant_moving_average_abs_max_op(
+                            ) = self._insert_quant_dequant_moving_average_abs_max_op(
                                 graph,
                                 in_node,
                                 self._quant_bits,
@@ -1981,7 +1983,7 @@ class AddQuantDequantPass:
         graph.resolve_hazard()
         return graph
 
-    def _inser_quant_dequant_moving_average_abs_max_op(
+    def _insert_quant_dequant_moving_average_abs_max_op(
         self, graph, var_node, quant_bits, op_role
     ):
         """Insert fake_quantize_dequantize_moving_average_abs_max op."""

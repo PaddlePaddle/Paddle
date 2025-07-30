@@ -72,9 +72,7 @@ def train(
     dict_dim = len(word_dict)
     class_dim = 2
 
-    data = paddle.static.data(
-        name="words", shape=[-1, 1], dtype="int64", lod_level=1
-    )
+    data = paddle.static.data(name="words", shape=[-1, 1], dtype="int64")
     label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
 
     if not parallel:
@@ -220,9 +218,11 @@ class TestUnderstandSentiment(unittest.TestCase):
         prog = base.Program()
         startup_prog = base.Program()
         scope = base.core.Scope()
-        with base.scope_guard(scope):
-            with base.program_guard(prog, startup_prog):
-                yield
+        with (
+            base.scope_guard(scope),
+            base.program_guard(prog, startup_prog),
+        ):
+            yield
 
     def test_conv_cpu(self):
         with self.new_program_scope():

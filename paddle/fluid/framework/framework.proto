@@ -197,13 +197,13 @@ message VarType {
 
   message DenseTensorDesc {
     required TensorDesc tensor = 1;
-    optional int32 lod_level = 2 [ default = 0 ];
+    optional int32 legacy_lod_level = 2 [ default = 0 ];
   }
   optional DenseTensorDesc dense_tensor = 3;
 
   message DenseTensorArrayDesc {
     required TensorDesc tensor = 1;
-    optional int32 lod_level = 2 [ default = 0 ];
+    optional int32 legacy_lod_level = 2 [ default = 0 ];
   }
   optional DenseTensorArrayDesc tensor_array = 4;
 

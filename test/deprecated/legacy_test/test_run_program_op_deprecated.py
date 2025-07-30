@@ -31,10 +31,12 @@ def program_scope_guard():
     prog = base.Program()
     startup_prog = base.Program()
     scope = base.core.Scope()
-    with base.scope_guard(scope):
-        with base.program_guard(prog, startup_prog):
-            with base.unique_name.guard():
-                yield
+    with (
+        base.scope_guard(scope),
+        base.program_guard(prog, startup_prog),
+        base.unique_name.guard(),
+    ):
+        yield
 
 
 @switch_to_static_graph
@@ -47,8 +49,8 @@ def _add_build_strategy_for(input_program, start_op_index, end_op_index):
         core.Scope(), paddle.framework._current_expected_place()
     )
     ir_graph = paddle.base.framework.IrGraph(compiled_program._graph)
-    builded_program = ir_graph.to_program()
-    return builded_program
+    built_program = ir_graph.to_program()
+    return built_program
 
 
 @switch_to_static_graph

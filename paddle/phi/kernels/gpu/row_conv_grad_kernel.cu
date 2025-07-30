@@ -289,12 +289,11 @@ void RowConvGradKernel(const Context &dev_ctx,
   phi::MixVector<size_t> mixv_batch_indices(&batch_indices);
   size_t *idx = mixv_batch_indices.CUDAMutableData(dev_ctx.GetPlace());
 
-  auto &device_ctx = dev_ctx;
   phi::funcs::SetConstant<phi::GPUContext, T> zero;
 
   if (dFilter) {
     T *dfilter = dev_ctx.template Alloc<T>(dFilter);
-    zero(device_ctx, dFilter, static_cast<T>(0.0));
+    zero(dev_ctx, dFilter, static_cast<T>(0.0));
 
     if (future_context <= 32) {
       dim3 block_dim = dim3(32, 32);
@@ -306,7 +305,7 @@ void RowConvGradKernel(const Context &dev_ctx,
            future_context * block_y) *
           sizeof(T);
       RowConvGradFilterImproved<T>
-          <<<grid_dim, block_dim, mem_per_block, device_ctx.stream()>>>(
+          <<<grid_dim, block_dim, mem_per_block, dev_ctx.stream()>>>(
               in,
               dout,
               num_sequence,
@@ -324,7 +323,7 @@ void RowConvGradKernel(const Context &dev_ctx,
       int mem_per_block =
           (block_x * block_y * 2) * sizeof(T);  // For 2 arrays of size 32x32
       RowConvGradFilter<T>
-          <<<grid_dim, block_dim, mem_per_block, device_ctx.stream()>>>(
+          <<<grid_dim, block_dim, mem_per_block, dev_ctx.stream()>>>(
               in,
               dout,
               num_sequence,
@@ -344,12 +343,12 @@ void RowConvGradKernel(const Context &dev_ctx,
       dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
       int mem_per_block = (future_context * block_dim.x) * sizeof(T);
       RowConvGradInputSharedMemory<T>
-          <<<grid_dim, block_dim, mem_per_block, device_ctx.stream()>>>(
+          <<<grid_dim, block_dim, mem_per_block, dev_ctx.stream()>>>(
               dout, weights, num_sequence, input_dim, future_context, idx, din);
     } else {
       dim3 block_dim = dim3(32, 32);
       dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
-      RowConvGradInput<T><<<grid_dim, block_dim, 0, device_ctx.stream()>>>(
+      RowConvGradInput<T><<<grid_dim, block_dim, 0, dev_ctx.stream()>>>(
           dout, weights, num_sequence, input_dim, future_context, idx, din);
     }
   }

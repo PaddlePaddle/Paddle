@@ -32,13 +32,16 @@ class TestElementwiseOp(OpTest):
         self.public_python_api = paddle.subtract
         self.prim_op_type = "prim"
         self.init_dtype()
+        self.init_inputs()
+        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+        self.if_check_prim()
+        self.if_enable_cinn()
+
+    def init_inputs(self):
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype),
             'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype),
         }
-        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
-        self.if_check_prim()
-        self.if_enable_cinn()
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -88,6 +91,36 @@ class TestElementwiseOp(OpTest):
 class TestElementwiseFP16OP(TestElementwiseOp):
     def init_dtype(self):
         self.dtype = np.float16
+
+
+class TestElementwiseSubOp_ZeroSize1(TestElementwiseOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [3]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [0, 3]).astype(self.dtype)
+        self.out = np.subtract(self.x, self.y)
+
+    def test_check_grad_normal(self):
+        pass
+
+    def test_check_grad_ignore_x(self):
+        pass
+
+    def test_check_grad_ignore_y(self):
+        pass
+
+
+class TestElementwiseSubOp_ZeroSize2(TestElementwiseSubOp_ZeroSize1):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [1, 3, 4]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [0, 3, 4]).astype(self.dtype)
+        self.out = np.subtract(self.x, self.y)
+
+
+class TestElementwiseSubOp_ZeroSize3(TestElementwiseSubOp_ZeroSize1):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [1, 0, 2]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [3, 0, 1]).astype(self.dtype)
+        self.out = np.subtract(self.x, self.y)
 
 
 @unittest.skipIf(
@@ -896,13 +929,15 @@ class TestSubtractApi(unittest.TestCase):
         return paddle.subtract(x, y, name)
 
     def test_name(self):
-        with paddle.pir_utils.OldIrGuard():
-            with base.program_guard(base.Program()):
-                x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
-                y = paddle.static.data(name='y', shape=[2, 3], dtype=np.float32)
+        with (
+            paddle.pir_utils.OldIrGuard(),
+            base.program_guard(base.Program()),
+        ):
+            x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
+            y = paddle.static.data(name='y', shape=[2, 3], dtype=np.float32)
 
-                y_1 = self._executed_api(x, y, name='subtract_res')
-                self.assertEqual(('subtract_res' in y_1.name), True)
+            y_1 = self._executed_api(x, y, name='subtract_res')
+            self.assertEqual(('subtract_res' in y_1.name), True)
 
     def test_declarative(self):
         with paddle.static.program_guard(paddle.static.Program()):
@@ -935,6 +970,67 @@ class TestSubtractApi(unittest.TestCase):
             np_z = z.numpy(False)
             z_expected = np.array([1.0, -2.0, 2.0])
             self.assertEqual((np_z == z_expected).all(), True)
+
+
+class TestSubtractApiZeroSize(unittest.TestCase):
+    def init_data(self):
+        self.x_numpy = np.random.rand(1, 3, 4).astype('float32')
+        self.y_numpy = np.random.rand(0, 3, 4).astype('float32')
+
+    def _executed_api(self, x, y, name=None):
+        return paddle.subtract(x, y, name)
+
+    def test_declarative(self):
+        self.init_data()
+        with base.program_guard(base.Program()):
+            x = paddle.static.data(
+                name="x", shape=self.x_numpy.shape, dtype=self.x_numpy.dtype
+            )
+            y = paddle.static.data(
+                name="y", shape=self.y_numpy.shape, dtype=self.y_numpy.dtype
+            )
+            z = self._executed_api(x, y)
+
+            place = base.CPUPlace()
+            exe = base.Executor(place)
+            z_value = exe.run(
+                feed={"x": self.x_numpy, "y": self.y_numpy}, fetch_list=[z]
+            )
+            np_z = np.subtract(self.x_numpy, self.y_numpy)
+            np.testing.assert_allclose(z_value[0], np_z, rtol=1e-05, atol=1e-05)
+
+    def test_dygraph(self):
+        self.init_data()
+        places = (
+            [paddle.CPUPlace(), paddle.CUDAPlace(0)]
+            if core.is_compiled_with_cuda()
+            else [paddle.CPUPlace()]
+        )
+        for place in places:
+            with base.dygraph.guard(place):
+                x = paddle.to_tensor(self.x_numpy)
+                y = paddle.to_tensor(self.y_numpy)
+                z = self._executed_api(x, y)
+                np_z = np.subtract(self.x_numpy, self.y_numpy)
+                np.testing.assert_allclose(z, np_z, rtol=1e-05, atol=1e-05)
+
+
+class TestSubtractApiZeroSize2(TestSubtractApiZeroSize):
+    def init_data(self):
+        self.x_numpy = np.random.rand(3).astype('float32')
+        self.y_numpy = np.random.rand(0, 3).astype('float32')
+
+
+class TestSubtractApiZeroSize3(TestSubtractApiZeroSize):
+    def init_data(self):
+        self.x_numpy = np.random.rand(2, 0).astype('float32')
+        self.y_numpy = np.random.rand(1, 0).astype('float32')
+
+
+class TestSubtractApiZeroSize4(TestSubtractApiZeroSize):
+    def init_data(self):
+        self.x_numpy = np.random.rand(1, 0, 2).astype('float32')
+        self.y_numpy = np.random.rand(3, 0, 1).astype('float32')
 
 
 class TestSubtractInplaceApi(TestSubtractApi):
@@ -1060,32 +1156,64 @@ class TestFloatElementwiseSubop1(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestElementwiseOpZeroSize(TestElementwiseOp):
+    def init_inputs(self):
+        self.attrs = {'enable_check_eager_comp': False}
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [2, 0, 4, 5]).astype(self.dtype),
+            'Y': np.random.uniform(0.1, 1, [2, 0, 4, 5]).astype(self.dtype),
+        }
+
+    def if_check_prim(self):
+        self.check_prim = False
+        self.check_prim_pir = False
+
+    def test_check_grad_normal(self):
+        pass
+
+
+class TestElementwiseOpZeroSize2(TestElementwiseOpZeroSize):
+    def init_inputs(self):
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [2, 1, 4, 5]).astype(self.dtype),
+            'Y': np.random.uniform(0.1, 1, [2, 0, 4, 5]).astype(self.dtype),
+        }
+
+
+class TestElementwiseOpZeroSize3(TestElementwiseOpZeroSize):
+    def init_inputs(self):
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [2, 1, 0, 5]).astype(self.dtype),
+            'Y': np.random.uniform(0.1, 1, [2, 1, 1, 5]).astype(self.dtype),
+        }
+
+
 class TestTensorSubAPIWarnings(unittest.TestCase):
     def test_warnings(self):
-        with paddle.pir_utils.OldIrGuard():
-            with warnings.catch_warnings(record=True) as context:
-                warnings.simplefilter("always")
+        with (
+            paddle.pir_utils.OldIrGuard(),
+            warnings.catch_warnings(record=True) as context,
+        ):
+            warnings.simplefilter("always")
 
-                paddle.enable_static()
-                helper = LayerHelper("elementwise_sub")
-                data = paddle.static.data(
-                    name='data', shape=[None, 3, 32, 32], dtype=np.float32
-                )
-                out = helper.create_variable_for_type_inference(
-                    dtype=data.dtype
-                )
-                os.environ['FLAGS_print_extra_attrs'] = "1"
-                helper.append_op(
-                    type="elementwise_sub",
-                    inputs={'X': data, 'Y': data},
-                    outputs={'Out': out},
-                    attrs={'axis': 1, 'use_mkldnn': False},
-                )
-                self.assertTrue(
-                    "op elementwise_sub's attr axis = 1 is not the default value: -1"
-                    in str(context[-1].message)
-                )
-                os.environ['FLAGS_print_extra_attrs'] = "0"
+            paddle.enable_static()
+            helper = LayerHelper("elementwise_sub")
+            data = paddle.static.data(
+                name='data', shape=[None, 3, 32, 32], dtype=np.float32
+            )
+            out = helper.create_variable_for_type_inference(dtype=data.dtype)
+            os.environ['FLAGS_print_extra_attrs'] = "1"
+            helper.append_op(
+                type="elementwise_sub",
+                inputs={'X': data, 'Y': data},
+                outputs={'Out': out},
+                attrs={'axis': 1, 'use_mkldnn': False},
+            )
+            self.assertTrue(
+                "op elementwise_sub's attr axis = 1 is not the default value: -1"
+                in str(context[-1].message)
+            )
+            os.environ['FLAGS_print_extra_attrs'] = "0"
 
 
 if __name__ == '__main__':

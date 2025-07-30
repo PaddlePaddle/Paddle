@@ -381,7 +381,9 @@ std::unique_ptr<PaddlePredictor> CreateTestPredictor(
   return CreatePaddlePredictor<NativeConfig>(native_config);
 }
 
-size_t GetSize(const PaddleTensor &out) { return VecReduceToInt(out.shape); }
+size_t GetSize(const PaddleTensor &out) {
+  return static_cast<size_t>(VecReduceToInt(out.shape));
+}
 
 void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
                        const std::string &dirname,
@@ -389,7 +391,7 @@ void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
                        std::string model_filename = "model",
                        std::string params_filename = "params",
                        const std::vector<std::string> *feed_names = nullptr,
-                       const int continuous_inuput_index = 0) {
+                       const int continuous_input_index = 0) {
   // Set fake_image_data
   PADDLE_ENFORCE_EQ(FLAGS_test_all_data,
                     0,
@@ -442,7 +444,7 @@ void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
     // fill input data, for profile easily, do not use random data here.
     for (size_t j = 0; j < len; ++j) {
       *(input_data + j) =
-          static_cast<float>((j + continuous_inuput_index) % len) / len;
+          static_cast<float>((j + continuous_input_index) % len) / len;
     }
   }
   (*inputs).emplace_back(input_slots);
@@ -1034,7 +1036,7 @@ void CompareAnalysisAndZeroCopy(
 }
 
 template <typename T>
-std::string LoDTensorSummary(const phi::DenseTensor &tensor) {
+std::string DenseTensorSummary(const phi::DenseTensor &tensor) {
   std::stringstream ss;
   ss << "\n---- tensor ---" << '\n';
   ss << "lod: [";
@@ -1065,7 +1067,7 @@ std::string LoDTensorSummary(const phi::DenseTensor &tensor) {
   return ss.str();
 }
 
-static bool CompareLoD(const phi::LoD &a, const phi::LoD &b) {
+static bool CompareLoD(const phi::LegacyLoD &a, const phi::LegacyLoD &b) {
   if (a.size() != b.size()) {
     LOG(ERROR) << string::Sprintf(
         "lod size not match %d != %d", a.size(), b.size());

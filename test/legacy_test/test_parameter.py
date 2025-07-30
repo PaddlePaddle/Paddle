@@ -75,6 +75,22 @@ class ParameterChecks(unittest.TestCase):
             pram_copy2 = copy.deepcopy(param, memo)
             self.assertEqual(id(param_copy), id(pram_copy2))
 
+    def test_create_0_size_param(self):
+        with guard():
+            shape = [0, 4]
+            for dtype in [
+                paddle.float32,
+                paddle.float64,
+            ]:
+                zero_size_param = paddle.create_parameter(
+                    shape,
+                    dtype,
+                )
+                self.assertEqual(zero_size_param.shape, shape)
+                self.assertEqual(zero_size_param.data_ptr(), 0)
+                # strides will be same with shape for 0-size tensor in paddle
+                self.assertEqual(zero_size_param.strides, shape)
+
     def func_exception(self):
         b = main_program.global_block()
         with self.assertRaises(ValueError):
@@ -119,6 +135,19 @@ class ParameterChecks(unittest.TestCase):
             )
             self.assertTrue(linear2.weight.is_leaf, True)
             self.assertTrue(linear2.bias.is_leaf, True)
+
+    def test_parambase_to_vector_zero(self):
+        with guard():
+            initializer = paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(3.0)
+            )
+            linear1 = paddle.nn.Linear(0, 15, initializer)
+
+            vec = paddle.nn.utils.parameters_to_vector(linear1.parameters())
+            self.assertEqual(linear1.weight.shape, [0, 15])
+            self.assertEqual(linear1.bias.shape, [15])
+            self.assertTrue(isinstance(vec, Variable))
+            self.assertEqual(vec.shape, [15])
 
 
 if __name__ == '__main__':

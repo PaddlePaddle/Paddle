@@ -12,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import inspect
-import textwrap
 import unittest
 
-import astor
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
@@ -31,7 +28,6 @@ from ifelse_simple_func import (
 import paddle
 import paddle.jit.dy2static as _jst
 from paddle.jit.dy2static.utils import func_to_source_code
-from paddle.utils import gast
 
 np.random.seed(0)
 
@@ -56,14 +52,6 @@ def decorated_simple_func(x, weight_numpy):
     return z
 
 
-def get_source_code(func):
-    raw_code = inspect.getsource(func)
-    code = textwrap.dedent(raw_code)
-    root = gast.parse(code)
-    source_code = astor.to_source(gast.gast_to_ast(root))
-    return source_code
-
-
 class StaticCode1:
     def dyfunc_with_if_else(x_v, label=None):
         loss = _jst.UndefinedVar('loss')
@@ -75,7 +63,7 @@ class StaticCode1:
             nonlocal x_v
             return (x_v,)
 
-        def set_args_0(__args):
+        def set_args_0(__args):  # noqa: PYI063
             nonlocal x_v
             (x_v,) = __args
 
@@ -103,7 +91,7 @@ class StaticCode1:
             nonlocal __return_0, __return_1, __return_value_0, loss
             return __return_0, __return_1, __return_value_0, loss
 
-        def set_args_1(__args):
+        def set_args_1(__args):  # noqa: PYI063
             nonlocal __return_0, __return_1, __return_value_0, loss
             __return_0, __return_1, __return_value_0, loss = __args
 
@@ -146,7 +134,7 @@ class StaticCode2:
             nonlocal x_v
             return (x_v,)
 
-        def set_args_2(__args):
+        def set_args_2(__args):  # noqa: PYI063
             nonlocal x_v
             (x_v,) = __args
 
@@ -174,7 +162,7 @@ class StaticCode2:
             nonlocal __return_2, __return_3, __return_value_1, loss
             return __return_2, __return_3, __return_value_1, loss
 
-        def set_args_3(__args):
+        def set_args_3(__args):  # noqa: PYI063
             nonlocal __return_2, __return_3, __return_value_1, loss
             __return_2, __return_3, __return_value_1, loss = __args
 

@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include <absl/container/flat_hash_map.h>
 
 #include <string>
 #include <vector>
@@ -21,7 +20,7 @@
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/layout.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/poly/stage.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 namespace hlir {
@@ -133,7 +132,7 @@ std::vector<ir::Expr> InferShapeLayoutTransform(
     const std::vector<Expr>& input_shapes,
     const ir::Layout& old_layout,
     const ir::Layout& new_layout,
-    absl::flat_hash_map<int, std::vector<int>>* split_index_map);
+    paddle::flat_hash_map<int, std::vector<int>>* split_index_map);
 
 /**
  * @brief Perform meta op Reverse
@@ -233,7 +232,7 @@ ir::Tensor Gather(const ir::Tensor& x,
  * @brief Perform meta op ScatterAssign
  * @param input The input tensor
  * @param assign The assign tensor
- * @param indexs The indexs tensor
+ * @param index The index tensor
  * @param output_name the name of the output tensor
  */
 ir::Tensor ScatterAssign(
@@ -248,7 +247,7 @@ ir::Tensor ScatterAssign(
  * @brief Perform meta op ScatterAdd
  * @param input The input tensor
  * @param updates The updates tensor
- * @param indexs The indexs tensor
+ * @param index The index tensor
  * @param output_name the name of the output tensor
  */
 ir::Tensor ScatterAdd(const ir::Tensor& input,

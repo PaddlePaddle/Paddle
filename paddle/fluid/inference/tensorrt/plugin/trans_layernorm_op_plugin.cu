@@ -206,7 +206,7 @@ bool TransLayerNormPluginDynamic::supportsFormatCombination(
   PADDLE_ENFORCE_NOT_NULL(
       in_out,
       common::errors::InvalidArgument(
-          "The input of layernorm plugin shoule not be nullptr."));
+          "The input of layernorm plugin should not be nullptr."));
   PADDLE_ENFORCE_LT(
       pos,
       nb_inputs + nb_outputs,
@@ -299,7 +299,7 @@ int TransLayerNormPluginDynamic::enqueue(
   int begin_norm_axis = begin_norm_axis_;
   float eps = eps_;
 
-  std::vector<int> input_shape;
+  std::vector<int64_t> input_shape;
   for (int i = 0; i < input_dims.nbDims; i++) {
     input_shape.push_back(input_dims.d[i]);
   }
@@ -334,7 +334,7 @@ int TransLayerNormPluginDynamic::enqueue(
 
   // transpose do not change numel
   int trans_result_numel = input_numel;
-  std::vector<int> trans_result_shape{
+  std::vector<int64_t> trans_result_shape{
       input_shape[0], input_shape[2], input_shape[3], input_shape[1]};
 
   const auto input_ddim = common::make_ddim(input_shape);
@@ -481,7 +481,7 @@ int TransLayerNormPluginDynamic::enqueue(
       int sm = getSMVersion();
       // sm >= 60 to support __ldg
       if (sm >= 60) {
-        int hidden = input_shape[1];
+        int64_t hidden = input_shape[1];
         if (hidden % 2 == 0) {
           const size_t rows =
               static_cast<size_t>(input_shape[0] * input_shape[2] *

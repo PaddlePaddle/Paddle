@@ -16,8 +16,9 @@
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 
-namespace paddle {
-namespace framework {
+COMMON_DECLARE_bool(check_cuda_error);
+
+namespace paddle::framework {
 
 BuiltinCombineInstruction::BuiltinCombineInstruction(
     size_t id,
@@ -36,5 +37,4 @@ BuiltinCombineInstruction::BuiltinCombineInstruction(
 
 void BuiltinCombineInstruction::Run() {}
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

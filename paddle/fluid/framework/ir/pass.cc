@@ -20,21 +20,17 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/program_utils.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Scope;
-namespace ir {
+}  // namespace paddle::framework
+namespace paddle::framework::ir {
 class Graph;
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/onednn_helper.h"
 #endif
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 static const char kParamScopeAttr[] = "__param_scope__";  // NOLINT
 
@@ -182,7 +178,7 @@ Graph *Pass::Apply(Graph *graph) const {
 #ifdef PADDLE_WITH_DNNL
   // Clear mkl-dnn cache,
   // Passes can change params, tensors, so caching need to be discarded
-  platform::ClearMKLDNNCache(phi::CPUPlace());
+  platform::ClearONEDNNCache(phi::CPUPlace());
 #endif
   VLOG(10) << "finish to apply pass " << Type() << " to graph";
   return graph;
@@ -300,6 +296,4 @@ PassRegistry &PassRegistry::Instance() {
   static PassRegistry g_pass_info_map;
   return g_pass_info_map;
 }
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir

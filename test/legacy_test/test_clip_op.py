@@ -46,7 +46,7 @@ class TestClipOp(OpTest):
         else:
             max_v = self.attrs['max']
 
-        input = np.random.random(self.shape).astype(self.dtype)
+        input = self.generate_input()
         input[np.abs(input - min_v) < self.max_relative_error] = 0.5
         input[np.abs(input - max_v) < self.max_relative_error] = 0.5
         self.inputs['X'] = input
@@ -67,7 +67,7 @@ class TestClipOp(OpTest):
 
     def test_check_grad_normal(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out', check_pir=True)
+        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
         paddle.disable_static()
 
     def initTestCase(self):
@@ -77,6 +77,9 @@ class TestClipOp(OpTest):
         self.min = 0.3
         self.inputs['Max'] = np.array([0.8]).astype(self.dtype)
         self.inputs['Min'] = np.array([0.1]).astype(self.dtype)
+
+    def generate_input(self):
+        return np.random.random(self.shape).astype(self.dtype)
 
 
 class TestCase1(TestClipOp):
@@ -121,6 +124,19 @@ class TestCase5(TestClipOp):
         self.min = 0.5
 
 
+class TestCase6(TestClipOp):
+    def initTestCase(self):
+        self.dtype = np.float32
+        self.shape = (4, 8, 16)
+        self.max = 1.0
+        self.min = 0.5
+
+    def generate_input(self):
+        return np.random.choice([self.min, self.max], self.shape).astype(
+            self.dtype
+        )
+
+
 class TestFP16Case1(TestClipOp):
     def initTestCase(self):
         self.dtype = np.float16
@@ -159,6 +175,27 @@ class TestFP16Case5(TestClipOp):
     def initTestCase(self):
         self.dtype = np.float16
         self.shape = (4, 8, 16)
+        self.max = 0.5
+        self.min = 0.5
+
+
+class TestFP16Case6(TestClipOp):
+    def initTestCase(self):
+        self.dtype = np.float16
+        self.shape = (4, 8, 16)
+        self.max = 1.0
+        self.min = 0.5
+
+    def generate_input(self):
+        return np.random.choice([self.min, self.max], self.shape).astype(
+            self.dtype
+        )
+
+
+class TestCase_ZeroSize(TestClipOp):
+    def initTestCase(self):
+        self.dtype = np.float32
+        self.shape = (4, 0, 16)
         self.max = 0.5
         self.min = 0.5
 
@@ -486,6 +523,34 @@ class TestClipOpFp16(unittest.TestCase):
 class TestInplaceClipAPI(TestClipAPI):
     def _executed_api(self, x, min=None, max=None):
         return x.clip_(min, max)
+
+
+class TestClipOp_FP64(OpTest):
+    def setUp(self):
+        self.python_api = paddle.clip
+        self.public_python_api = paddle.clip
+
+        self.inputs = {}
+        self.dtype = np.float64
+        self.shape = (8, 16, 8)
+        self.max = float(np.finfo(np.float64).max)
+        self.min = float(np.finfo(np.float64).min)
+
+        self.op_type = "clip"
+        self.attrs = {}
+        self.attrs['min'] = self.min
+        self.attrs['max'] = self.max
+
+        self.inputs['X'] = np.random.random(self.shape).astype(self.dtype)
+        self.outputs = {'Out': np.clip(self.inputs['X'], self.min, self.max)}
+
+    def test_check_output(self):
+        self.check_output(
+            check_pir=True,
+        )
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 if __name__ == '__main__':

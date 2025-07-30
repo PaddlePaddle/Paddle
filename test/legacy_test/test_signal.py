@@ -242,11 +242,11 @@ def frame(x, frame_length, hop_length, axis=-1):
     new_stride = np.prod(strides[strides > 0] // x.itemsize) * x.itemsize
 
     if axis == -1:
-        shape = list(x.shape)[:-1] + [frame_length, n_frames]
+        shape = [*list(x.shape)[:-1], frame_length, n_frames]
         strides = [*list(strides), hop_length * new_stride]
 
     elif axis == 0:
-        shape = [n_frames, frame_length] + list(x.shape)[1:]
+        shape = [n_frames, frame_length, *list(x.shape)[1:]]
         strides = [hop_length * new_stride, *list(strides)]
 
     else:
@@ -488,11 +488,11 @@ def frame_for_api_test(x, frame_length, hop_length, axis=-1):
     strides = np.asarray(x.strides)
 
     if axis == -1:
-        shape = list(x.shape)[:-1] + [frame_length, n_frames]
+        shape = [*list(x.shape)[:-1], frame_length, n_frames]
         strides = [*list(strides), hop_length * x.itemsize]
 
     elif axis == 0:
-        shape = [n_frames, frame_length] + list(x.shape)[1:]
+        shape = [n_frames, frame_length, *list(x.shape)[1:]]
         strides = [hop_length * x.itemsize, *list(strides)]
 
     else:
@@ -1043,6 +1043,13 @@ class TestIstftException(unittest.TestCase):
                 self.length,
                 self.return_complex,
             ),
+
+
+class TestIstftException_ZeroSize(unittest.TestCase):
+    def test_istft(self):
+        self.x = np.random.random([5, 0])
+        with self.assertRaises(AssertionError):
+            paddle.signal.istft(paddle.to_tensor(self.x), 512)
 
 
 if __name__ == '__main__':

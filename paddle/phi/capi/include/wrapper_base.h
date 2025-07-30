@@ -43,7 +43,8 @@ namespace phi {
 
 namespace capi {
 
-using LoD = std::vector<std::vector<size_t>>;
+using LegacyLoD = std::vector<std::vector<size_t>>;
+using LoD = LegacyLoD;
 
 template <typename T>
 static inline PD_List PDListFromVector(std::vector<T>* vec) {
@@ -209,12 +210,12 @@ class DenseTensor : public WrapperBase<PD_Tensor> {
     return byte_size;
   }
 
-  LoD lod() const {
+  LegacyLoD lod() const {
     PD_List data, offset;
     C_Status status;
     PD_TensorGetLoD(raw_data(), &data, &offset, &status);
     PD_CHECK_STATUS(status);
-    LoD lod_;
+    LegacyLoD lod_;
     auto ptr = static_cast<size_t*>(data.data);
     auto offset_ptr = static_cast<size_t*>(offset.data);
     for (size_t i = 0; i < offset.size - 1; ++i) {
@@ -225,7 +226,7 @@ class DenseTensor : public WrapperBase<PD_Tensor> {
     return lod_;
   }
 
-  void ResetLoD(const LoD& lod) {
+  void ResetLoD(const LegacyLoD& lod) {
     std::vector<size_t> data, offset;
     offset.push_back(0);
     for (const auto& item : lod) {

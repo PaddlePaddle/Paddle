@@ -1,0 +1,60 @@
+name: Codestyle-Check
+
+on:
+  pull_request:
+    branches: ["develop"]
+
+jobs:
+  pre-commit:
+    name: Pre Commit
+    if: ${{ github.repository_owner == 'PaddlePaddle' }}
+    runs-on:
+      group: APPROVAL
+    env:
+      PR_ID: ${{ github.event.pull_request.number }}
+      BRANCH: develop
+
+    steps:
+      - name: Cleanup
+        run: |
+          rm -rf * .[^.]*
+
+      - name: Checkout base repo
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+          fetch-depth: 1000
+
+      - name: Check bypass
+        id: check-bypass
+        uses: ./.github/actions/check-bypass
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          workflow-name: codestyle
+
+      - name: Merge PR to test branch
+        if: steps.check-bypass.outputs.can-skip != 'true'
+        run: |
+          git fetch origin pull/${PR_ID}/merge
+          git checkout -b test FETCH_HEAD
+
+      - name: Setup python3.12
+        if: steps.check-bypass.outputs.can-skip != 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        if: steps.check-bypass.outputs.can-skip != 'true'
+        run: |
+          pip install pre-commit==2.17.0 cpplint==1.6.0  clang-format==13.0.0
+
+      - name: Check pre-commit
+        if: steps.check-bypass.outputs.can-skip != 'true'
+        env:
+          SKIP_CLANG_TIDY_CHECK: "ON"
+        run: |
+          set +e
+          bash -x tools/codestyle/pre_commit.sh;EXCODE=$?
+          exit $EXCODE

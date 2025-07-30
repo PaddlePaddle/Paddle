@@ -22,14 +22,14 @@ namespace phi {
 //////// Sum Functor ///////
 struct SumFunctor {
   template <typename DeviceContext, typename X, typename Y>
-  void operator()(const DeviceContext& ctx,
+  void operator()(const DeviceContext& xpu_ctx,
                   const X* x,
                   Y* y,
-                  const std::vector<int>& xdims,
-                  const std::vector<int>& reduce_dims) {
+                  const std::vector<int64_t>& xdims,
+                  const std::vector<int64_t>& reduce_dims) {
     using XPUType = typename XPUTypeTrait<X>::Type;
 #ifndef PADDLE_WITH_XPU_PLUGIN
-    int r = xpu::reduce_sum<XPUType>(ctx,
+    int r = xpu::reduce_sum<XPUType>(xpu_ctx,
                                      reinterpret_cast<const XPUType*>(x),
                                      reinterpret_cast<XPUType*>(y),
                                      xdims,
@@ -37,11 +37,11 @@ struct SumFunctor {
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
 #else
     int r = xpu::plugin::fast_reduce_sum<XPUType>(
-        ctx,
+        xpu_ctx,
         reinterpret_cast<const XPUType*>(x),
         reinterpret_cast<XPUType*>(y),
-        xdims,
-        reduce_dims);
+        std::vector<int>(xdims.begin(), xdims.end()),
+        std::vector<int>(reduce_dims.begin(), reduce_dims.end()));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "fast_reduce_sum");
 #endif
   }

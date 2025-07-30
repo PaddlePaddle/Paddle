@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void MultiplexGradKernel(const Context& ctx,
+void MultiplexGradKernel(const Context& dev_ctx,
                          const DenseTensor& ids,
                          const DenseTensor& out_grad,
                          std::vector<DenseTensor*> ins_grad);

@@ -104,7 +104,9 @@ void GroupOp::Print(pir::IrPrinter& printer) {
   auto& os = printer.os;
   auto op = operation();
   printer.PrintOpResult(*op);
-  os << " = \"" << name() << "\" [id:" << op->id() << "]";
+  os << " = ";
+  printer.PrintOpName(*op);
+  printer.PrintOpId(*op);
   printer.PrintOpOperands(*op);
   os << " -> ";
   printer.PrintOpReturnType(*op);
@@ -188,7 +190,9 @@ void FusionOp::Print(pir::IrPrinter& printer) {
   auto& os = printer.os;
   auto op = operation();
   printer.PrintOpResult(*op);
-  os << " = \"" << name() << "\" [id:" << op->id() << "]";
+  os << " = ";
+  printer.PrintOpName(*op);
+  printer.PrintOpId(*op);
   printer.PrintOpOperands(*op);
   os << " -> ";
   printer.PrintOpReturnType(*op);
@@ -346,7 +350,7 @@ void GenerateShapeOp::Build(pir::Builder& builder,
     for (const auto& attr : output_dim_exprs) {
       PADDLE_ENFORCE(attr.isa<pir::Int64Attribute>(),
                      ::common::errors::PreconditionNotMet(
-                         "Reqiured attr must be Int64Attribute."));
+                         "Required attr must be Int64Attribute."));
     }
   }
   argument.AddInputs(inputs);

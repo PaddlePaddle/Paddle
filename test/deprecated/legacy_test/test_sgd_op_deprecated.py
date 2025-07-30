@@ -67,18 +67,17 @@ class TestSGDV2(unittest.TestCase):
             mul_x = block.create_parameter(
                 dtype="float32",
                 shape=[5, 10],
-                lod_level=0,
                 name="mul.x",
                 optimize_attr=optimizer_attr,
             )
             mul_y = block.create_var(
-                dtype="float32", shape=[10, 8], lod_level=0, name="mul.y"
+                dtype="float32", shape=[10, 8], name="mul.y"
             )
             mul_out = block.create_var(
-                dtype="float32", shape=[5, 8], lod_level=0, name="mul.out"
+                dtype="float32", shape=[5, 8], name="mul.out"
             )
             mean_out = block.create_var(
-                dtype="float32", shape=[1], lod_level=0, name="mean.out"
+                dtype="float32", shape=[1], name="mean.out"
             )
             block.append_op(
                 type="mul",

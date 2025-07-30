@@ -182,13 +182,13 @@ std::set<std::pair<int, std::string>> GetForceSyncOps(
       tokens.push_back(token);
     }
 
-    PADDLE_ENFORCE_EQ(
-        tokens.size(),
-        4,
-        phi::errors::InvalidArgument("Invalid force_sync_ops format: \"%s\", "
-                                     "FLAGS_force_sync_ops=\"%s\"",
-                                     item,
-                                     FLAGS_force_sync_ops));
+    PADDLE_ENFORCE_EQ(tokens.size(),
+                      4,
+                      common::errors::InvalidArgument(
+                          "Invalid force_sync_ops format: \"%s\", "
+                          "FLAGS_force_sync_ops=\"%s\"",
+                          item,
+                          FLAGS_force_sync_ops));
 
     int micro_batch_id_;
     if (tokens[0] == "") {

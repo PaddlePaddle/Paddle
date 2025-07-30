@@ -28,11 +28,11 @@ COMMON_DECLARE_int64(embedding_deterministic);
 namespace phi {
 
 static constexpr int kNumCUDAThreads = 512;
-static constexpr int kNumMaxinumNumBlocks = 4096;
+static constexpr int kNumMaximumNumBlocks = 4096;
 
 static inline int NumBlocks(const int N) {
   return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
-                  kNumMaxinumNumBlocks);
+                  kNumMaximumNumBlocks);
 }
 
 template <typename T, typename IndexT>
@@ -141,7 +141,7 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
 }  // namespace phi
 
 #if (NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000) || \
-    defined(PADDLE_WITH_HIP)
+    defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUSTOM_DEVICE)
 PD_REGISTER_KERNEL(c_embedding_grad,
                    GPU,
                    ALL_LAYOUT,

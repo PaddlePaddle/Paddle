@@ -22,8 +22,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/spmd_rule_macro_define.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
@@ -314,7 +313,7 @@ SpmdInfo CrossEntropyWithSoftmaxInferSpmdReverse(
           << (numeric_stable_mode ? "true" : "false") << "], use_softmax: ["
           << (use_softmax ? "true" : "false") << "], soft_label: ["
           << (soft_label ? "true" : "false") << "].";
-  VLOG(2) << "x_dims_mapping infered:[" << str_join(x_dims_mapping) << "]";
+  VLOG(2) << "x_dims_mapping inferred:[" << str_join(x_dims_mapping) << "]";
   // in some cases, the softmax_norm axis cannot be sharded
   if (x_dims_mapping[axis] > -1) {
     if (!use_softmax) {
@@ -471,5 +470,4 @@ SpmdInfo CrossEntropyWithSoftmaxGradInferSpmd(const DistMetaTensor& label,
           {x_grad}};
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

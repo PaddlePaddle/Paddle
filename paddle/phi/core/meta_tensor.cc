@@ -152,7 +152,7 @@ void MetaTensor::set_dtype(DataType dtype) {
         ->dtype = dtype;
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
-        "Unsupported settting dtype for `%s`.", tensor_->type_info().name()));
+        "Unsupported setting dtype for `%s`.", tensor_->type_info().name()));
   }
 }
 
@@ -190,7 +190,7 @@ void MetaTensor::set_layout(DataLayout layout) {
         ->layout = layout;
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
-        "Unsupported settting layout for `%s`.", tensor_->type_info().name()));
+        "Unsupported setting layout for `%s`.", tensor_->type_info().name()));
   }
 }
 
@@ -220,7 +220,7 @@ void MetaTensor::share_lod(const MetaTensor& meta_tensor) {
   }
 }
 
-void MetaTensor::share_lod(const LoD& legacy_lod) {
+void MetaTensor::share_lod(const LegacyLoD& legacy_lod) {
   ValidCheck(*this);
   if (phi::SparseCooTensor::classof(tensor_) ||
       phi::SparseCsrTensor::classof(tensor_) ||
@@ -339,7 +339,7 @@ bool MetaTensor::initialized() const { return tensor_ != nullptr; }
 
 // Private Member Methods
 
-const LoD& MetaTensor::lod() const {
+const LegacyLoD& MetaTensor::lod() const {
   if (phi::DenseTensor::classof(tensor_)) {
     return static_cast<DenseTensor*>(tensor_)->lod();
   } else if (phi::SelectedRows::classof(tensor_)) {
@@ -354,7 +354,7 @@ const LoD& MetaTensor::lod() const {
   }
 }
 
-const LoD& MetaTensor::lod(int64_t index) const {
+const LegacyLoD& MetaTensor::lod(int64_t index) const {
   ValidCheck(*this);
   PADDLE_ENFORCE_EQ(
       is_tensor_array(),

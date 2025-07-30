@@ -26,8 +26,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 #include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
 
-namespace phi {
-namespace sparse {
+namespace phi::sparse {
 
 template <typename T, typename Functor>
 struct BinaryOPWithZeroCompareFunctor {
@@ -169,8 +168,8 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
     max_len *= x.dims()[j];
   }
 
-  std::vector<IntT> sparse_offsets(sparse_dim), x_indexs(x.nnz()),
-      y_indexs(y.nnz());
+  std::vector<IntT> sparse_offsets(sparse_dim), x_indices(x.nnz()),
+      y_indices(y.nnz());
 
   phi::funcs::sparse::CalcOffsetsPerDim<IntT>(
       x.dims(), sparse_dim, sparse_offsets.data());
@@ -181,7 +180,7 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
                                      sparse_dim,
                                      0,
                                      1,
-                                     x_indexs.data());
+                                     x_indices.data());
 
   phi::funcs::sparse::FlattenIndices(y.indices().data<IntT>(),
                                      sparse_offsets.data(),
@@ -189,27 +188,27 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
                                      sparse_dim,
                                      0,
                                      1,
-                                     y_indexs.data());
+                                     y_indices.data());
 
-  std::vector<IntT> out_indexs;
+  std::vector<IntT> out_indices;
   std::vector<T> out_values_vec;
   if (is_divide) {
-    out_indexs.reserve(max_len);
+    out_indices.reserve(max_len);
   } else {
-    out_indexs.reserve(x.nnz() + y.nnz());
+    out_indices.reserve(x.nnz() + y.nnz());
   }
   out_values_vec.reserve(max_len * element_size);
 
   //  merge x and y
   Merge<T, IntT, Functor>(element_size,
-                          x_indexs.data(),
+                          x_indices.data(),
                           x_values,
-                          x_indexs.size(),
-                          y_indexs.data(),
+                          x_indices.size(),
+                          y_indices.data(),
                           y_values,
-                          y_indexs.size(),
+                          y_indices.size(),
                           max_len,
-                          out_indexs.data(),
+                          out_indices.data(),
                           out_values_vec.data(),
                           &nnz,
                           functor,
@@ -223,7 +222,7 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
     const_dims[i] = x.dims()[i];
   }
 
-  funcs::sparse::IndexToCoordinate<IntT>(out_indexs.data(),
+  funcs::sparse::IndexToCoordinate<IntT>(out_indices.data(),
                                          const_dims,
                                          nnz,
                                          sparse_dim,
@@ -241,11 +240,11 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
         common::make_ddim(
             {static_cast<int64_t>(sparse_dim), static_cast<int64_t>(nnz)}),
         DataLayout::NCHW);
-    auto indeces_dim = common::vectorize(
+    auto indices_dim = common::vectorize(
         slice_ddim(x.values().dims(), 1, x.values().dims().size()));
-    indeces_dim.insert(indeces_dim.begin(), nnz);
+    indices_dim.insert(indices_dim.begin(), nnz);
     DenseTensorMeta values_meta(
-        x.dtype(), common::make_ddim(indeces_dim), DataLayout::NCHW);
+        x.dtype(), common::make_ddim(indices_dim), DataLayout::NCHW);
     phi::DenseTensor out_indices = phi::Empty(dev_ctx, std::move(indices_meta));
     phi::DenseTensor out_values = phi::Empty(dev_ctx, std::move(values_meta));
 
@@ -327,8 +326,7 @@ DEFINE_COO_ELEMENTWISE_KERNEL(Subtract)
 DEFINE_COO_ELEMENTWISE_KERNEL(Multiply)
 DEFINE_COO_ELEMENTWISE_KERNEL(Divide)
 
-}  // namespace sparse
-}  // namespace phi
+}  // namespace phi::sparse
 
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;

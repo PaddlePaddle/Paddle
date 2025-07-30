@@ -16,6 +16,7 @@
 
 #include <memory>
 
+#include <climits>
 #include <iterator>
 #include <queue>
 #include <regex>
@@ -31,26 +32,31 @@
 #endif
 
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/pir/include/core/builder.h"
 #include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/op_trait.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
 #include "paddle/common/flags.h"
+#include "paddle/common/macros.h"
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_onednn_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/trait/onednn.h"
 #endif
-namespace pir {
 
+COMMON_DECLARE_bool(merge_all_horizontal_groups);
+REGISTER_FILE_SYMBOLS(sub_graph_detector);
+namespace pir {
 std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
   std::vector<pir::Operation*> sort_ops;
-  std::unordered_map<pir::Operation*, int> pending_count;
+  std::unordered_map<pir::Operation*, size_t> pending_count;
   // step 1: initialize pending_cout for defined op
   for (auto& op : *block) {
     if (pending_count.find(&op) == pending_count.end()) {
@@ -71,7 +77,6 @@ std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
 
   std::queue<pir::Operation*> queue;
   for (auto& op : *block) {
-    VLOG(4) << op.name() << " pending_count: " << pending_count[&op];
     if (pending_count[&op] == 0) {
       queue.push(&op);
     }
@@ -80,7 +85,6 @@ std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
   while (!queue.empty()) {
     auto* op = queue.front();
     queue.pop();
-    VLOG(4) << "Pop Op: " << op->name();
     sort_ops.push_back(op);
     for (auto operand : GetUsedExternalValue(*op)) {
       if (!operand || !operand.defining_op()) {
@@ -108,7 +112,7 @@ std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
 
 std::vector<pir::Operation*> GetProducerOpsReverseSort(
     pir::Operation* op,
-    const std::unordered_map<pir::Operation*, size_t>& op2id) {
+    const std::unordered_map<pir::Operation*, int>& op2index) {
   std::unordered_set<pir::Operation*> producers;
 
   std::vector<pir::Operation*> vec_res;
@@ -121,23 +125,23 @@ std::vector<pir::Operation*> GetProducerOpsReverseSort(
         source_op->GetParent() == op->GetParent()) {
       producers.insert(source_op);
       PADDLE_ENFORCE(
-          op2id.count(source_op),
-          common::errors::PreconditionNotMet("source op MUST in op2id map"));
+          op2index.count(source_op),
+          common::errors::PreconditionNotMet("source op MUST in op2index map"));
       vec_res.emplace_back(source_op);
     }
   }
 
   std::sort(vec_res.begin(),
             vec_res.end(),
-            [&op2id](pir::Operation* a, pir::Operation* b) {
-              return op2id.at(a) > op2id.at(b);
+            [&op2index](pir::Operation* a, pir::Operation* b) {
+              return op2index.at(a) > op2index.at(b);
             });
 
   return vec_res;
 }
 
-std::unordered_set<pir::Operation*> GetProducerOps(pir::Operation* op) {
-  std::unordered_set<pir::Operation*> producers;
+std::vector<pir::Operation*> GetProducerOps(pir::Operation* op) {
+  std::vector<pir::Operation*> producers;
 
   for (auto operand : GetUsedExternalValue(*op)) {
     if (!operand || !operand.defining_op()) {
@@ -145,44 +149,23 @@ std::unordered_set<pir::Operation*> GetProducerOps(pir::Operation* op) {
     }
     auto* source_op = operand.defining_op();
     if (source_op && source_op->GetParent() == op->GetParent()) {
-      producers.insert(source_op);
+      producers.push_back(source_op);
     }
   }
   return producers;
 }
 
-std::vector<pir::Operation*> GetProducerOpsRecursive(
-    pir::Operation* root,
-    const std::unordered_map<pir::Operation*, size_t>& op2id) {
-  std::unordered_set<pir::Operation*> visited;
-  std::deque<pir::Operation*> queue;
-  std::vector<pir::Operation*> result;
-  queue.push_back(root);
-  visited.insert(root);
-  while (!queue.empty()) {
-    pir::Operation* cur = queue.front();
-    queue.pop_front();
-    result.push_back(cur);
-    for (const auto& new_op : GetProducerOps(cur)) {
-      if (visited.count(new_op)) continue;
-      visited.insert(new_op);
-      queue.push_back(new_op);
-    }
-  }
-  return result;
-}
-
-std::unordered_set<pir::Operation*> GetConsumerOps(
+std::vector<pir::Operation*> GetConsumerOps(
     pir::Operation* op,
-    const std::unordered_map<pir::Operation*, size_t>& op2id) {
-  std::unordered_set<pir::Operation*> consumers;
+    const std::unordered_map<pir::Operation*, int>& op2index) {
+  std::vector<pir::Operation*> consumers;
 
   for (auto& result : op->results()) {
     for (auto it = result.use_begin(); it != result.use_end(); ++it) {
       auto parent_op = it->owner();
       while (parent_op) {
-        if (op2id.count(parent_op)) {
-          consumers.insert(parent_op);
+        if (op2index.count(parent_op)) {
+          consumers.push_back(parent_op);
           break;
         }
         parent_op = parent_op->GetParentOp();
@@ -192,25 +175,32 @@ std::unordered_set<pir::Operation*> GetConsumerOps(
   return consumers;
 }
 
-std::vector<pir::Operation*> GetConsumerOpsRecursive(
-    pir::Operation* root,
-    const std::unordered_map<pir::Operation*, size_t>& op2id) {
-  std::unordered_set<pir::Operation*> visited;
-  std::deque<pir::Operation*> queue;
-  std::vector<pir::Operation*> result;
-  queue.push_back(root);
-  visited.insert(root);
-  while (!queue.empty()) {
-    pir::Operation* cur = queue.front();
-    queue.pop_front();
-    result.push_back(cur);
-    for (const auto& new_op : GetConsumerOps(cur, op2id)) {
-      if (visited.count(new_op)) continue;
-      visited.insert(new_op);
-      queue.push_back(new_op);
-    }
+std::vector<std::pair<pir::Value, pir::Value>> GetInplaceValues(
+    pir::Operation* op) {
+  if (!op->HasInterface<paddle::dialect::OpYamlInfoInterface>()) return {};
+  auto op_info =
+      op->dyn_cast<paddle::dialect::OpYamlInfoInterface>().GetOpInfo();
+  auto input_info_list = std::get<0>(op_info);
+  auto output_info_list = std::get<2>(op_info);
+  auto inplace_info_map = std::get<3>(op_info).inplace;
+  std::unordered_map<std::string, pir::Value> input_name_value;
+  std::unordered_map<std::string, pir::Value> output_name_value;
+  for (size_t i = 0; i < input_info_list.size(); ++i) {
+    input_name_value[input_info_list[i].name] = op->operand_source(i);
   }
-  return result;
+  for (size_t i = 0; i < output_info_list.size(); ++i) {
+    output_name_value[output_info_list[i].name] = op->result(i);
+  }
+  std::vector<std::pair<pir::Value, pir::Value>> inplace_values;
+  for (const auto& [out, in] : inplace_info_map) {
+    inplace_values.emplace_back(output_name_value[out], input_name_value[in]);
+  }
+  return inplace_values;
+}
+
+bool IsSideEffectButNotInplaceOp(pir::Operation* op) {
+  return op->HasTrait<pir::SideEffectTrait>() &&
+         !op->HasTrait<paddle::dialect::InplaceTrait>();
 }
 
 static std::string OpsDebugStr(std::vector<pir::Operation*> ops) {
@@ -223,356 +213,641 @@ static std::string OpsDebugStr(std::vector<pir::Operation*> ops) {
   return ss.str();
 }
 
-struct SubGraph {
-  // construct function
-  SubGraph() = default;
-  // construct function
-  SubGraph(pir::Operation* op, bool subst) : substitute(subst) { Insert(op); }
-  SubGraph(const std::unordered_set<pir::Operation*>& op, bool subst) {
-    substitute = subst;
-    for (auto& item : op) {
-      Insert(item);
-    }
-  }
-  void Insert(pir::Operation* op) {
+struct SubGraph : public std::enable_shared_from_this<SubGraph> {
+  using SubGraphPtr = std::shared_ptr<SubGraph>;
+  SubGraph() = delete;
+  SubGraph(pir::Operation* op, int index, bool subst)
+      : substitute(subst), topo_index(index), id(UniqueId()) {
     ops.push_back(op);
-    op_set.insert(op);
+  }
 
-    auto producers = GetProducerOps(op);
-    for (auto producer : producers) {
-      input_ops.insert(producer);
+  void Merge(const SubGraphPtr& other);
+
+  static size_t UniqueId() {
+    static std::atomic<size_t> counter{0};
+    return counter++;
+  }
+
+  template <typename V>
+  static std::string JointName(const V& subgraphs) {
+    std::stringstream ss;
+    for (const auto& subgraph : subgraphs) {
+      ss << subgraph->name() << ", ";
     }
-    input_ops.erase(op);
+    auto str = ss.str();
+    return str.empty() ? str : str.substr(0, str.size() - 2);
   }
 
-  void Print() const {
-    VLOG(4) << "SubGraph is: " << this;
-    VLOG(4) << "=============" << this;
-    VLOG(4) << OpsDebugStr(ops);
+  std::string DebugStr(bool print_ops = false) const {
+    std::stringstream ss;
+    ss << "=========================================\n";
+    ss << name() << " (substitute=" << substitute << ", "
+       << "index=" << topo_index << ", "
+       << "size=" << ops.size() << ")\n";
+    if (print_ops) ss << OpsDebugStr(ops);
+    ss << "upstream: " << JointName(upstreams);
+    ss << "\ndownstream: " << JointName(downstreams);
+    return ss.str();
   }
 
-  int depth{0};
-  int max_depth{0};
-  int min_depth{INT_MAX};
-  bool substitute{true};
+  std::string name() const {
+    return std::string("Subgraph_") + std::to_string(id);
+  }
+
+  struct CompareById {
+    bool operator()(const SubGraphPtr& lhs, const SubGraphPtr& rhs) const {
+      // sort by reverse order of topo id
+      return lhs->id > rhs->id;
+    }
+  };
+
+  struct CompareByTopo {
+    bool operator()(const SubGraphPtr& lhs, const SubGraphPtr& rhs) const {
+      // sort by topo index
+      return lhs->topo_index > rhs->topo_index;
+    }
+  };
+
   std::vector<pir::Operation*> ops;
-  std::unordered_set<pir::Operation*> op_set;
-  std::unordered_set<pir::Operation*> input_ops;
+  std::set<SubGraphPtr, CompareById> upstreams;
+  std::set<SubGraphPtr, CompareById> downstreams;
 
-  std::unordered_set<SubGraphPtr> producers;
-  std::unordered_set<SubGraphPtr> consumers;
+  bool substitute;  // whether this subgraph can be merged
+  int topo_index;
+  size_t id;
 };
+using SubGraphPtr = std::shared_ptr<SubGraph>;
 
-using OpClassifier = std::function<bool(const pir::Operation&)>;
-
-SubgraphDetector::SubgraphDetector(pir::Block* block,
-                                   const OpClassifier& classifier)
-    : block_(block), op_classifier_(classifier) {
-  sort_ops_ = InverselyTopologicalSort(block_);
-  size_t index = 0;
-  for (auto& op : *block) {
-    op2id_[&op] = index++;
+void SubGraph::Merge(const SubGraphPtr& other) {
+  // Merge other subgraph into this subgraph:
+  // Inherit its upstreams/downstreams and ops
+  SubGraphPtr self = shared_from_this();
+  for (const auto& upstream : other->upstreams) {
+    if (upstream == self) continue;
+    upstream->downstreams.erase(other);
+    upstream->downstreams.insert(self);
+    upstreams.insert(upstream);
   }
+  for (const auto& downstream : other->downstreams) {
+    if (downstream == self) continue;
+    downstream->upstreams.erase(other);
+    downstream->upstreams.insert(self);
+    downstreams.insert(downstream);
+  }
+  upstreams.erase(other);
+  downstreams.erase(other);
+  ops.insert(ops.begin(), other->ops.begin(), other->ops.end());
 }
 
-std::vector<GroupOpsVec> SubgraphDetector::operator()() {
-  DoOpFusion();
-  VLOG(4) << "Subgraph list size: " << subgraph_list_.size();
-  BuildSubGraph();
-  VLOG(4) << "Subgraph list size: " << subgraph_list_.size();
-
-  std::vector<GroupOpsVec> groups;
-  for (auto& subgraph : subgraph_list_) {
-    if (!subgraph->substitute) {
-      continue;
+bool HasSinkRoute(const SubGraphPtr& source, const SubGraphPtr& target) {
+  if (source == target) return true;
+  std::unordered_set<SubGraphPtr> visited;
+  std::queue<SubGraphPtr> queue;
+  queue.push(source);
+  visited.insert(source);
+  while (!queue.empty()) {
+    SubGraphPtr cur = queue.front();
+    queue.pop();
+    if (cur == target) return true;
+    if (cur->topo_index > target->topo_index) continue;
+    for (const auto& subgraph : cur->downstreams) {
+      if (visited.count(subgraph)) continue;
+      queue.push(subgraph);
+      visited.insert(subgraph);
     }
-
-    // sort group ops by natural increasing index.
-    std::vector<pir::Operation*> tmp_ops(subgraph->ops.begin(),
-                                         subgraph->ops.end());
-    auto& op2id = op2id_;
-    std::sort(tmp_ops.begin(),
-              tmp_ops.end(),
-              [&op2id](pir::Operation* a, pir::Operation* b) {
-                return op2id.at(a) < op2id.at(b);
-              });
-
-    groups.push_back(tmp_ops);
   }
-
-  return groups;
+  return false;
 }
 
-using GraphSet = std::unordered_set<SubGraphPtr>;
-static GraphSet Union(const GraphSet& upstream, const GraphSet& downstream) {
-  GraphSet unioned_set = upstream;
-  unioned_set.insert(downstream.begin(), downstream.end());
-  return unioned_set;
+bool HasLiftRoute(const SubGraphPtr& source, const SubGraphPtr& target) {
+  if (source == target) return true;
+  std::unordered_set<SubGraphPtr> visited;
+  std::queue<SubGraphPtr> queue;
+  queue.push(source);
+  visited.insert(source);
+  while (!queue.empty()) {
+    SubGraphPtr cur = queue.front();
+    queue.pop();
+    if (cur == target) return true;
+    if (source->topo_index < target->topo_index) continue;
+    for (const auto& subgraph : cur->upstreams) {
+      if (visited.count(subgraph)) continue;
+      queue.push(subgraph);
+      visited.insert(subgraph);
+    }
+  }
+  return false;
 }
 
-struct UnionFindSet {
-  std::unordered_map<pir::Operation*, pir::Operation*> parent;
-  std::unordered_map<pir::Operation*, SubGraphPtr> root2subgraph;
-  OpClassifier op_classifier_;
-  SubGraphPtr GetSetFromGraph(SubGraphPtr x) { return GetSetFromOp(x->ops[0]); }
-
-  pir::Operation* Find(pir::Operation* x) {
-    if (parent.find(x) == parent.end()) {
-      parent[x] = x;
-      return x;
-    }
-    if (parent[x] != x) {
-      parent[x] = Find(parent[x]);
-    }
-    return parent[x];
-  }
-
-  SubGraphPtr Union(pir::Operation* x, pir::Operation* y) {
-    auto root_x = Find(x);
-    auto root_y = Find(y);
-    if (root_x == root_y) {
-      return GetSetFromOp(root_y);
-    }
-    auto subgraph_x = GetSetFromOp(root_x);
-    auto subgraph_y = GetSetFromOp(root_y);
-    parent[root_x] = root_y;
-    // union root_x and root_y;
-    for (auto& op : subgraph_x->ops) {
-      subgraph_y->Insert(op);
-    }
-    return subgraph_y;
-  }
-
-  SubGraphPtr GetSetFromOp(pir::Operation* op) {
-    const auto& root = Find(op);
-    if (!root2subgraph.count(root)) {
-      root2subgraph[root] = std::make_shared<SubGraph>(op, op_classifier_(*op));
-    }
-    return root2subgraph[root];
-  }
-};
-
-static GraphSet Intersect(const GraphSet& upstream,
-                          const GraphSet& downstream) {
-  GraphSet intersected_set;
-  for (auto& item : upstream) {
-    if (downstream.count(item)) {
-      intersected_set.insert(item);
-    }
-  }
-  return intersected_set;
+bool HasRoute(const SubGraphPtr& up, const SubGraphPtr& down) {
+  return HasSinkRoute(up, down) || HasLiftRoute(down, up);
 }
 
-struct LoopDetectionMapping {
-  std::unordered_map<SubGraphPtr, std::unordered_set<SubGraphPtr>> upstreams_;
-  std::unordered_map<SubGraphPtr, std::unordered_set<SubGraphPtr>> downstreams_;
-  std::unordered_set<SubGraphPtr> all_nodes_;
-  UnionFindSet* uf_set_;
-  LoopDetectionMapping(const std::vector<pir::Operation*> sort_ops,
-                       const std::unordered_map<pir::Operation*, size_t>& op2id,
-                       UnionFindSet* uf_set) {
-    for (auto* op : sort_ops) {
-      auto producers = GetProducerOpsRecursive(op, op2id);
-      auto consumers = GetConsumerOpsRecursive(op, op2id);
-      auto op_set = uf_set->GetSetFromOp(op);
-      all_nodes_.insert(op_set);
-      for (auto producer : producers) {
-        auto producer_set = uf_set->GetSetFromOp(producer);
-        upstreams_[op_set].insert(producer_set);
-      }
-      for (auto consumer : consumers) {
-        auto consumer_set = uf_set->GetSetFromOp(consumer);
-        downstreams_[op_set].insert(consumer_set);
-      }
-    }
-    uf_set_ = uf_set;
+bool CanFuseUpstream2Downstream(const SubGraphPtr& upstream,
+                                const SubGraphPtr& downstream) {
+  PADDLE_ENFORCE(upstream->downstreams.count(downstream) &&
+                     downstream->upstreams.count(upstream),
+                 ::common::errors::InvalidArgument(
+                     "Subgraphs to be fused must have direct relationship."));
+  auto up_downstreams = upstream->downstreams;
+  up_downstreams.erase(downstream);
+  auto down_upstreams = downstream->upstreams;
+  down_upstreams.erase(upstream);
+  if (up_downstreams.empty() || down_upstreams.empty()) return true;
+  for (const auto& subgraph : up_downstreams) {
+    if (HasSinkRoute(subgraph, downstream)) return false;
   }
-
-  void MergeNodes(const SubGraphPtr& first,
-                  const SubGraphPtr& second,
-                  const SubGraphPtr& merged) {
-    std::unordered_set<SubGraphPtr> merged_upstreams;
-    std::unordered_set<SubGraphPtr> merged_downstreams;
-    for (auto& item : GetUpstreamSet(first)) merged_upstreams.insert(item);
-    for (auto& item : GetUpstreamSet(second)) merged_upstreams.insert(item);
-    for (auto& item : GetDownstreamSet(first)) merged_downstreams.insert(item);
-    for (auto& item : GetDownstreamSet(second)) merged_downstreams.insert(item);
-    upstreams_[merged] = merged_upstreams;
-    downstreams_[merged] = merged_downstreams;
-    if (first != merged) {
-      upstreams_.erase(first);
-      downstreams_.erase(first);
-      all_nodes_.erase(first);
-    }
-    if (second != merged) {
-      upstreams_.erase(second);
-      downstreams_.erase(second);
-      all_nodes_.erase(second);
-    }
-    all_nodes_.insert(merged);
+  for (const auto& subgraph : down_upstreams) {
+    if (HasLiftRoute(subgraph, upstream)) return false;
   }
-  bool CanFuse(const SubGraphPtr& up, const SubGraphPtr& down) {
-    if (up == down) return false;
-    GraphSet after_fuse_upstreams =
-        Union(GetUpstreamSet(up), GetUpstreamSet(down));
-    GraphSet after_fuse_downstreams =
-        Union(GetDownstreamSet(up), GetDownstreamSet(down));
-    auto intersection = Intersect(after_fuse_upstreams, after_fuse_downstreams);
-    intersection.erase(up);
-    intersection.erase(down);
-    return intersection.size() == 0;
-  }
-
-  GraphSet GetUpstreamSet(const SubGraphPtr& cur) {
-    GraphSet res;
-    for (auto& raw_node : upstreams_[cur]) {
-      auto node = uf_set_->GetSetFromGraph(raw_node);
-      if (all_nodes_.count(node) && node != cur) res.insert(node);
-    }
-    upstreams_[cur] = res;
-    return res;
-  }
-
-  GraphSet GetDownstreamSet(const SubGraphPtr& cur) {
-    GraphSet res;
-    for (auto& raw_node : downstreams_[cur]) {
-      auto node = uf_set_->GetSetFromGraph(raw_node);
-      if (all_nodes_.count(node) && node != cur) res.insert(node);
-    }
-    downstreams_[cur] = res;
-    return res;
-  }
-};
-
-static void VLOG_LINES(const std::string& str) {
-  if (!VLOG_IS_ON(4)) return;
-#ifdef PADDLE_WITH_CINN
-  const auto& lines = cinn::utils::Split(str, "\n");
-  for (const auto& line : lines) {
-    VLOG(4) << line;
-  }
-#endif
-  return;
+  return true;
 }
 
-void MergeSubGraphs(Operation* op,
-                    Operation* producer,
-                    UnionFindSet& union_find,            // NOT NOLINT
-                    LoopDetectionMapping& loop_detector  // NOT NOLINT
-) {
-  if (union_find.GetSetFromOp(op) == union_find.GetSetFromOp(producer)) {
-    return;
+std::optional<std::string> DetectCirclesInSubgraphs(
+    const std::vector<SubGraphPtr>& subgraph_list) {
+  std::set<SubGraphPtr, SubGraph::CompareById> subgraph_set(
+      subgraph_list.begin(), subgraph_list.end());
+  std::unordered_map<SubGraphPtr, size_t> in_degree;
+  std::unordered_map<SubGraphPtr, size_t> out_degree;
+  for (const auto& subgraph : subgraph_set) {
+    in_degree[subgraph] = subgraph->upstreams.size();
+    out_degree[subgraph] = subgraph->downstreams.size();
   }
-  if (!loop_detector.CanFuse(union_find.GetSetFromOp(producer),
-                             union_find.GetSetFromOp(op))) {
-    return;
-  }
-  // try fuse producer to sub-graph
-  auto op_graph_ptr = union_find.GetSetFromOp(op);
-  auto producer_graph_ptr = union_find.GetSetFromOp(producer);
-  union_find.Union(op, producer);
-  loop_detector.MergeNodes(
-      op_graph_ptr, producer_graph_ptr, union_find.GetSetFromOp(op));
-}
-
-void SubgraphDetector::DoOpFusion() {
-  // do fusion
-  VLOG(4) << "DoOpFusion";
-  UnionFindSet union_find;
-  union_find.op_classifier_ = op_classifier_;
-  VLOG(4) << "Do Op Fusion with sorted_ops: " << sort_ops_.size();
-  VLOG_LINES(OpsDebugStr(sort_ops_));
-  LoopDetectionMapping loop_detector(sort_ops_, op2id_, &union_find);
-
-  for (auto* op : sort_ops_) {
-    auto producers = GetProducerOpsReverseSort(op, op2id_);
-    for (auto* producer : producers) {
-      if (!op_classifier_(*op) || !op_classifier_(*producer)) {
+  // Recursively remove nodes with in_degree or out_degree = 0
+  bool erase_flag = true;
+  while (erase_flag) {
+    erase_flag = false;
+    for (const auto& subgraph : subgraph_list) {
+      if (subgraph_set.count(subgraph) == 0) continue;
+      if (in_degree[subgraph] == 0) {
+        for (const auto& downstream : subgraph->downstreams) {
+          in_degree[downstream]--;
+        }
+        subgraph_set.erase(subgraph);
+        erase_flag = true;
         continue;
       }
-      VLOG(4) << "Start Judge: " << op->id() << " vs " << producer->id();
-
-      MergeSubGraphs(producer, op, union_find, loop_detector);
+      if (out_degree[subgraph] == 0) {
+        for (const auto& upstream : subgraph->upstreams) {
+          out_degree[upstream]--;
+        }
+        subgraph_set.erase(subgraph);
+        erase_flag = true;
+        continue;
+      }
     }
   }
-  for (auto* op : sort_ops_) {
-    auto producers = GetProducerOpsReverseSort(op, op2id_);
-    for (auto* producer : producers) {
-      if (op_classifier_(*op) && !op_classifier_(*producer)) {
-        for (auto* consumer : GetConsumerOps(producer, op2id_)) {
-          if (op_classifier_(*consumer) &&
-              consumer->GetParent() == op->GetParent()) {
-            VLOG(4) << "Start Judge sibling nodes: " << op->id() << " vs "
-                    << consumer->id();
-            MergeSubGraphs(op, consumer, union_find, loop_detector);
-          }
+  if (subgraph_set.empty()) return std::nullopt;
+  // If subgraph_set is not empty, there are circles in the subgraphs.
+  auto circle_size = subgraph_set.size();
+  std::stringstream ss;
+  ss << "Circles detected in subgraphs (size=" << circle_size << "): \n";
+  for (const auto& subgraph : subgraph_set) {
+    ss << subgraph->DebugStr() << "\n";
+  }
+  return std::make_optional(ss.str());
+}
+
+class SubgraphDetector {
+ public:
+  SubgraphDetector(pir::Block* block, const OpClassifier& classifier);
+
+  void SubgraphFusion();
+
+  std::vector<GroupOpsVec> BuildGroups();
+
+ private:
+  void ReorderIndexOfSubgraphs();
+
+  bool MergeSource2Target(const SubGraphPtr& source, const SubGraphPtr& target);
+
+  void FallbackSubGraphFusion(const SubGraphPtr& source,
+                              const SubGraphPtr& target,
+                              const SubGraph& source_back,
+                              const SubGraph& target_back);
+
+  void InitInplaceOpsOrder(const std::vector<pir::Operation*>& inplace_ops);
+
+  bool CheckSideEffectOpsOrder() {
+    int last_index = INT_MIN;
+    for (const auto& op : side_effect_ops_) {
+      auto subgraph = GetOpSubgraph(op);
+      if (subgraph->topo_index < last_index) return false;
+      last_index = subgraph->topo_index;
+    }
+    for (const auto& ops : inplace_ops_order_) {
+      last_index = INT_MIN;
+      for (const auto& op : ops) {
+        auto subgraph = GetOpSubgraph(op);
+        if (subgraph->topo_index < last_index) return false;
+        last_index = subgraph->topo_index;
+      }
+    }
+    return true;
+  }
+
+  SubGraphPtr GetOpSubgraph(pir::Operation* op) {
+    PADDLE_ENFORCE(
+        op2subgraph_.count(op),
+        ::common::errors::InvalidArgument(
+            "Can not find op in op2subgraph_: \n%s", OpsDebugStr({op})));
+    return op2subgraph_.at(op);
+  }
+
+  std::vector<SubGraphPtr> GetSubgraphList() {
+    std::unordered_set<SubGraphPtr> subgraph_set;
+    std::vector<SubGraphPtr> subgraph_list;
+    for (const auto& op : sort_ops_) {
+      SubGraphPtr subgraph = GetOpSubgraph(op);
+      if (subgraph_set.count(subgraph)) continue;
+      subgraph_set.insert(subgraph);
+      subgraph_list.push_back(subgraph);
+    }
+    return subgraph_list;
+  }
+
+  std::unordered_map<pir::Operation*, int> op2index_;
+  std::vector<pir::Operation*> sort_ops_;
+  std::vector<pir::Operation*> side_effect_ops_;
+  std::vector<std::vector<pir::Operation*>> inplace_ops_order_;
+  std::unordered_map<pir::Operation*, SubGraphPtr> op2subgraph_;
+  std::unordered_set<int> subgraph_index_set_;
+};
+
+void SubgraphDetector::ReorderIndexOfSubgraphs() {
+  // After merging subgraphs with direct relation, brother subgraphs with
+  // indirect relation may not be detected by index order. So we need to
+  // reorder the index of subgraphs.
+  using SubGraphQueue = std::priority_queue<SubGraphPtr,
+                                            std::vector<SubGraphPtr>,
+                                            SubGraph::CompareByTopo>;
+  SubGraphQueue queue;  // min heap
+  std::unordered_map<SubGraphPtr, int> in_degree;
+  for (auto it = sort_ops_.rbegin(); it != sort_ops_.rend(); ++it) {
+    auto subgraph = GetOpSubgraph(*it);
+    if (in_degree.count(subgraph)) continue;
+    in_degree[subgraph] = subgraph->upstreams.size();
+    if (in_degree[subgraph] == 0) queue.push(subgraph);
+  }
+  subgraph_index_set_.clear();
+  int index = 0;
+  while (!queue.empty()) {
+    auto subgraph = queue.top();
+    queue.pop();
+    subgraph->topo_index = index++;
+    subgraph_index_set_.insert(subgraph->topo_index);
+    for (const auto& downstream : subgraph->downstreams) {
+      in_degree[downstream]--;
+      if (in_degree[downstream] == 0) queue.push(downstream);
+    }
+  }
+}
+
+bool SubgraphDetector::MergeSource2Target(const SubGraphPtr& source,
+                                          const SubGraphPtr& target) {
+  VLOG(6) << "Merge source: " << source->DebugStr();
+  VLOG(6) << "Merge target: " << target->DebugStr();
+  SubGraph source_back = *source;
+  SubGraph target_back = *target;
+  target->Merge(source);
+  for (const auto& op : source->ops) {
+    op2subgraph_[op] = target;
+  }
+  const auto& update_topo_index = [&]() -> void {
+    int max_index = std::max(source->topo_index, target->topo_index);
+    int min_index = std::min(source->topo_index, target->topo_index);
+    auto merged = target;
+    // Check if merged subgraph and its related subgraphs
+    // satisfy the topological order condition.
+    int upstream_max_index = -1, downstream_min_index = INT_MAX;
+    for (const auto& upstream : merged->upstreams) {
+      upstream_max_index = std::max(upstream->topo_index, upstream_max_index);
+    }
+    for (const auto& downstream : merged->downstreams) {
+      downstream_min_index =
+          std::min(downstream->topo_index, downstream_min_index);
+    }
+    // 1. If satisfy the topological order after merging, just set max_index
+    VLOG(6) << "Check if satisfy the topological order after merging";
+    if (min_index > upstream_max_index && max_index < downstream_min_index) {
+      merged->topo_index = max_index;
+      subgraph_index_set_.erase(min_index);
+      return;
+    }
+    // 2. If not satisfy the order, find a index between upstream_max_index
+    // and downstream_min_index while not in subgraph_index_set_.
+    VLOG(6) << "Try to find a valid index not in subgraph_index_set_";
+    for (int i = upstream_max_index + 1; i < downstream_min_index; ++i) {
+      if (!subgraph_index_set_.count(i)) {
+        merged->topo_index = i;
+        subgraph_index_set_.erase(min_index);
+        subgraph_index_set_.erase(max_index);
+        subgraph_index_set_.insert(i);
+        return;
+      }
+    }
+    // 3. If can not find a valid index, reorder topo index of all subgraphs.
+    VLOG(6) << "Reorder topo index of all subgraphs";
+    merged->topo_index = max_index;
+    ReorderIndexOfSubgraphs();
+  };
+  update_topo_index();
+  if (CheckSideEffectOpsOrder()) {
+    VLOG(6) << "Merged subgraph: " << target->DebugStr();
+    return true;
+  } else {
+    FallbackSubGraphFusion(source, target, source_back, target_back);
+    return false;
+  }
+}
+
+void SubgraphDetector::FallbackSubGraphFusion(const SubGraphPtr& source,
+                                              const SubGraphPtr& target,
+                                              const SubGraph& source_back,
+                                              const SubGraph& target_back) {
+  const auto fall_back_subgraph = [](const SubGraphPtr& subgraph,
+                                     const SubGraph& back) {
+    subgraph->ops = back.ops;
+    subgraph->upstreams = back.upstreams;
+    subgraph->downstreams = back.downstreams;
+    subgraph->topo_index = back.topo_index;
+  };
+  // 1. Update source and target subgraph
+  subgraph_index_set_.erase(target->topo_index);
+  subgraph_index_set_.insert(source_back.topo_index);
+  subgraph_index_set_.insert(target_back.topo_index);
+  fall_back_subgraph(source, source_back);
+  fall_back_subgraph(target, target_back);
+  for (const auto& op : source->ops) {
+    op2subgraph_[op] = source;
+  }
+  // 2. Update source's upstreams and downstreams
+  for (const auto& upstream : source->upstreams) {
+    if (upstream == target) continue;
+    upstream->downstreams.insert(source);
+    if (target->upstreams.count(upstream)) continue;
+    upstream->downstreams.erase(target);
+  }
+  for (const auto& downstream : source->downstreams) {
+    if (downstream == target) continue;
+    downstream->upstreams.insert(source);
+    if (target->downstreams.count(downstream)) continue;
+    downstream->upstreams.erase(target);
+  }
+  // 3. Check topo index and update
+  const auto need_reorder_topo_index = [&]() {
+    for (const auto& up : source->upstreams)
+      if (up->topo_index >= source->topo_index) return true;
+    for (const auto& down : source->downstreams)
+      if (down->topo_index <= source->topo_index) return true;
+    for (const auto& up : target->upstreams)
+      if (up->topo_index >= target->topo_index) return true;
+    for (const auto& down : target->downstreams)
+      if (down->topo_index <= target->topo_index) return true;
+    return false;
+  };
+  if (need_reorder_topo_index()) ReorderIndexOfSubgraphs();
+  VLOG(6) << "After fallback subgraph fusion: "
+          << "\n source: " << source->DebugStr()
+          << "\n target: " << target->DebugStr();
+}
+
+void SubgraphDetector::InitInplaceOpsOrder(
+    const std::vector<pir::Operation*>& inplace_ops) {
+  std::unordered_map<pir::Value, pir::Value> inplace_map;
+  const auto& get_inplace_root_value = [&inplace_map](const pir::Value& value) {
+    pir::Value root = value;
+    std::unordered_set<pir::Value> visited;
+    while (inplace_map.count(root)) {
+      if (visited.count(root)) break;
+      visited.insert(root);
+      root = inplace_map.at(root);
+    }
+    return root;
+  };
+  std::vector<std::set<pir::Value>> inplace_values_sets;
+  for (const auto& op : inplace_ops) {
+    auto output_input_values = GetInplaceValues(op);
+    std::set<pir::Value> inplace_input_values;
+    for (const auto& output_input_value : output_input_values) {
+      inplace_input_values.insert(
+          get_inplace_root_value(output_input_value.second));
+      inplace_map[output_input_value.first] = output_input_value.second;
+    }
+    inplace_values_sets.push_back(inplace_input_values);
+  }
+  std::set<pir::Value> shared_inplace_values_set;
+  for (size_t i = 0; i < inplace_values_sets.size(); ++i) {
+    for (size_t j = i + 1; j < inplace_values_sets.size(); ++j) {
+      std::set_intersection(inplace_values_sets[i].begin(),
+                            inplace_values_sets[i].end(),
+                            inplace_values_sets[j].begin(),
+                            inplace_values_sets[j].end(),
+                            std::inserter(shared_inplace_values_set,
+                                          shared_inplace_values_set.begin()));
+    }
+  }
+  std::vector<std::vector<pir::Operation*>> inplace_ops_order;
+  std::vector<pir::Value> shared_inplace_values;
+  for (const auto& shared_value : shared_inplace_values_set) {
+    inplace_ops_order.emplace_back();
+    shared_inplace_values.push_back(shared_value);
+    for (size_t i = 0; i < inplace_values_sets.size(); ++i) {
+      if (inplace_values_sets[i].count(shared_value)) {
+        inplace_ops_order.back().push_back(inplace_ops[i]);
+      }
+    }
+  }
+  // If a value is inplaced by multiple ops, the order of ops which use this
+  // value after different inplace op also needs to be considered together.
+  for (size_t i = 0; i < inplace_ops_order.size(); ++i) {
+    auto only_inplace_ops = inplace_ops_order[i];
+    auto inplace_root_value = shared_inplace_values[i];
+    std::unordered_set<pir::Operation*> ordered_ops_set(
+        only_inplace_ops.begin(), only_inplace_ops.end());
+    for (const auto& inplace_op : only_inplace_ops) {
+      pir::Value output_inplace_value;
+      auto output_input_values = GetInplaceValues(inplace_op);
+      for (const auto& [output_value, _unused] : output_input_values) {
+        if (get_inplace_root_value(output_value) == inplace_root_value) {
+          output_inplace_value = output_value;
+          break;
+        }
+      }
+      if (output_inplace_value.use_empty()) continue;
+      for (auto use_iter = output_inplace_value.use_begin();
+           use_iter != output_inplace_value.use_end();
+           ++use_iter) {
+        auto user_op = use_iter.owner();
+        if (ordered_ops_set.count(user_op)) continue;
+        ordered_ops_set.insert(user_op);
+      }
+    }
+    // Sort by origin order in blocks
+    std::vector<pir::Operation*> ordered_ops(ordered_ops_set.begin(),
+                                             ordered_ops_set.end());
+    std::sort(ordered_ops.begin(),
+              ordered_ops.end(),
+              [this](const auto& lhs, const auto& rhs) {
+                return this->op2index_.at(lhs) < this->op2index_.at(rhs);
+              });
+    this->inplace_ops_order_.push_back(ordered_ops);
+  }
+}
+
+SubgraphDetector::SubgraphDetector(pir::Block* block,
+                                   const OpClassifier& classifier) {
+  // init sort_ops_ in reverse topo order and op2index_ in topo order
+  std::vector<pir::Operation*> inplace_ops;
+  int index = 0;
+  for (auto& op : *block) {
+    sort_ops_.push_back(&op);
+    op2index_[&op] = index++;
+    if (IsSideEffectButNotInplaceOp(&op)) {
+      side_effect_ops_.push_back(&op);
+    }
+    if (op.HasTrait<paddle::dialect::InplaceTrait>()) {
+      inplace_ops.push_back(&op);
+    }
+  }
+  std::reverse(sort_ops_.begin(), sort_ops_.end());
+  InitInplaceOpsOrder(inplace_ops);
+
+  // construct subgraphs and upstream/downstream relation
+  std::vector<SubGraphPtr> subgraph_list;
+  for (const auto& op : sort_ops_) {
+    bool substitute = classifier(*op);
+    auto subgraph = std::make_shared<SubGraph>(op, op2index_[op], substitute);
+    op2subgraph_[op] = subgraph;
+    subgraph_index_set_.insert(op2index_[op]);
+    subgraph_list.push_back(subgraph);
+  }
+  for (const auto& op : sort_ops_) {
+    auto subgraph = op2subgraph_[op];
+    for (const auto& producer : GetProducerOps(op)) {
+      if (!op2subgraph_.count(producer)) continue;
+      subgraph->upstreams.insert(op2subgraph_[producer]);
+      op2subgraph_[producer]->downstreams.insert(subgraph);
+    }
+    for (const auto& consumer : GetConsumerOps(op, op2index_)) {
+      if (!op2subgraph_.count(consumer)) continue;
+      subgraph->downstreams.insert(op2subgraph_[consumer]);
+      op2subgraph_[consumer]->upstreams.insert(subgraph);
+    }
+  }
+
+  VLOG(6) << "Subgraphs before building groups: ";
+  for (const auto& subgraph : subgraph_list) {
+    VLOG(6) << subgraph->DebugStr();
+  }
+  auto circle_info = DetectCirclesInSubgraphs(subgraph_list);
+  if (circle_info) {
+    PADDLE_THROW(::common::errors::PreconditionNotMet(
+        "Before building groups: %s", circle_info.value()));
+  }
+}
+
+void SubgraphDetector::SubgraphFusion() {
+  // Two subgraphs can be merged only if they have no route except direct
+  // connection between them (brother subgraphs should have no any route),
+  // otherwise a circle will be formed after merging them.
+  VLOG(4) << "Merge subgraphs with direct relation";
+  for (const auto& op : sort_ops_) {
+    auto downstream = GetOpSubgraph(op);
+    if (!downstream->substitute) continue;
+    for (const auto& producer : GetProducerOpsReverseSort(op, op2index_)) {
+      auto upstream = GetOpSubgraph(producer);
+      if (upstream == downstream || !upstream->substitute) continue;
+      if (CanFuseUpstream2Downstream(upstream, downstream)) {
+        MergeSource2Target(upstream, downstream);
+      }
+    }
+  }
+
+  VLOG(4) << "Merge brother subgraphs with same upstream";
+  for (const auto& op : sort_ops_) {
+    auto subgraph = GetOpSubgraph(op);
+    if (!subgraph->substitute) continue;
+    for (auto producer : GetProducerOpsReverseSort(op, op2index_)) {
+      if (GetOpSubgraph(producer) == subgraph) continue;
+      for (auto consumer : GetConsumerOps(producer, op2index_)) {
+        auto brother = GetOpSubgraph(consumer);
+        if (brother == subgraph || !brother->substitute) continue;
+        if (!HasRoute(subgraph, brother) && !HasRoute(brother, subgraph)) {
+          MergeSource2Target(brother, subgraph);
         }
       }
     }
   }
 
-  for (const auto& op : sort_ops_) {
-    subgraph_map_[op] = union_find.GetSetFromOp(op);
-  }
-
-  for (auto& subgraph : subgraph_map_) {
-    auto* op = subgraph.first;
-    auto* subgraph_ptr = subgraph.second.get();
-    if (union_find.Find(op) == op) {
-      VLOG(4) << "Subgraph: " << subgraph_ptr;
-      VLOG(4) << "   substitute: " << subgraph_ptr->substitute;
-      for (auto& op : subgraph_ptr->ops) {
-        VLOG(4) << "ops: " << op->name() << ", " << op->id();
+  auto subgraph_list = GetSubgraphList();
+  VLOG(4) << "Merge non-related subgraphs (size=" << subgraph_list.size()
+          << ")";
+  if (subgraph_list.size() > 2048 && !FLAGS_merge_all_horizontal_groups) return;
+  for (size_t i = 0; i < subgraph_list.size(); ++i) {
+    auto lhs = subgraph_list[i];
+    if (!lhs->substitute) continue;
+    for (size_t j = i + 1; j < subgraph_list.size();) {
+      auto rhs = subgraph_list[j];
+      if (lhs == rhs || !rhs->substitute || HasRoute(lhs, rhs) ||
+          HasRoute(rhs, lhs)) {
+        ++j;
+        continue;
+      }
+      SubGraph lhs_back = *lhs;
+      SubGraph rhs_back = *rhs;
+      if (MergeSource2Target(rhs, lhs)) {
+        subgraph_list.erase(subgraph_list.begin() + j);
+      } else {
+        ++j;
       }
     }
   }
 }
 
-void SubgraphDetector::BuildSubGraph() {
-  std::unordered_set<SubGraph*> subgraph_set;
-  for (auto* op : sort_ops_) {
-    PADDLE_ENFORCE_EQ(
-        subgraph_map_.count(op),
-        true,
-        common::errors::InvalidArgument("subgraph_map_ MUST contain op"));
-    auto& subgraph = subgraph_map_[op];
-    if (subgraph_set.count(subgraph.get())) {
+std::vector<GroupOpsVec> SubgraphDetector::BuildGroups() {
+  // 1. Get subgraph list in topo order
+  auto subgraph_list = GetSubgraphList();
+  std::reverse(subgraph_list.begin(), subgraph_list.end());
+  VLOG(6) << "Subgraphs after building groups: ";
+  for (const auto& subgraph : subgraph_list) {
+    VLOG(6) << subgraph->DebugStr();
+  }
+  auto circle_info = DetectCirclesInSubgraphs(subgraph_list);
+  if (circle_info) {
+    PADDLE_THROW(::common::errors::PreconditionNotMet(
+        "After building groups: %s", circle_info.value()));
+  }
+
+  // 2. Build group ops in subgraph which can be substituted
+  std::vector<GroupOpsVec> groups;
+  for (const auto& subgraph : subgraph_list) {
+    if (!subgraph->substitute) {
       continue;
     }
-
-    subgraph_set.insert(subgraph.get());
-    subgraph_list_.push_back(subgraph);
+    // sort group ops by natural increasing index.
+    std::vector<pir::Operation*> group_ops(subgraph->ops.begin(),
+                                           subgraph->ops.end());
+    std::sort(group_ops.begin(),
+              group_ops.end(),
+              [this](pir::Operation* a, pir::Operation* b) {
+                return this->op2index_.at(a) < this->op2index_.at(b);
+              });
+    groups.push_back(group_ops);
   }
-
-  for (auto& subgraph : subgraph_list_) {
-    for (auto& input_op : subgraph->input_ops) {
-      PADDLE_ENFORCE_EQ(
-          subgraph_map_.count(input_op),
-          true,
-          common::errors::InvalidArgument("subgraph_map_ MUST contain op"));
-      auto& producer = subgraph_map_[input_op];
-      subgraph->producers.insert(producer);
-      producer->consumers.insert(subgraph);
-    }
-  }
-
-  // init group depth.
-  for (auto& subgraph : subgraph_list_) {
-    for (auto& consumer : subgraph->consumers) {
-      // update depth.
-      subgraph->depth = std::max(subgraph->depth, consumer->depth + 1);
-    }
-    subgraph->max_depth = subgraph->depth;
-    subgraph->min_depth = subgraph->depth;
-  }
-
-  // reverse to keep fusion group in order.
-  std::reverse(subgraph_list_.begin(), subgraph_list_.end());
+  return groups;
 }
-std::vector<pir::Value> AnalysisOutputs(
-    const GroupOpsVec& group_ops) {  // NOLINT
+
+std::vector<GroupOpsVec> DetectSubGraphs(pir::Block* block,
+                                         const OpClassifier& classifier) {
+  auto subgraph_detector = SubgraphDetector(block, classifier);
+  subgraph_detector.SubgraphFusion();
+  return subgraph_detector.BuildGroups();
+}
+
+std::vector<pir::Value> AnalysisOutputs(const GroupOpsVec& group_ops,
+                                        bool at_least_one_output) {
   // Get output by ud chain
-  std::unordered_set<pir::Value> used_by_outside;
   std::unordered_set<pir::Operation*> op_set(group_ops.begin(),
                                              group_ops.end());
 
@@ -593,7 +868,7 @@ std::vector<pir::Value> AnalysisOutputs(
 
   // NOTE: If all value are not used outside, we mark last op's results
   // as outputs. But keep in mind that is risky.
-  if (outputs.size() == 0) {
+  if (at_least_one_output && outputs.size() == 0) {
     for (size_t i = 0; i < group_ops.back()->num_results(); ++i) {
       outputs.push_back(group_ops.back()->result(i));
     }
@@ -733,7 +1008,8 @@ pir::Operation* FindInsertPoint(const GroupOpsVec& group_ops,
 }
 
 void ReplaceWithGroupOp(pir::Block* block,
-                        const GroupOpsVec& group_ops) {  // NOLINT
+                        const GroupOpsVec& group_ops,
+                        bool at_least_one_output) {  // NOLINT
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
 #ifdef PADDLE_WITH_CINN
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
@@ -742,7 +1018,8 @@ void ReplaceWithGroupOp(pir::Block* block,
   ctx->GetOrRegisterDialect<paddle::dialect::OneDNNOperatorDialect>();
 #endif
   ::pir::Builder builder = ::pir::Builder(ctx, block);
-  const std::vector<pir::Value> outputs = AnalysisOutputs(group_ops);
+  const std::vector<pir::Value> outputs =
+      AnalysisOutputs(group_ops, at_least_one_output);
 
   // step 1: Analysis and insert group op before insert_point.
   auto* insert_point = FindInsertPoint(group_ops, outputs);

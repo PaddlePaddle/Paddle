@@ -13,7 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, Type, Union
+from typing import TYPE_CHECKING, Literal, Union
 
 import numpy as np
 from typing_extensions import TypeAlias
@@ -37,7 +37,7 @@ _DTypeLiteral: TypeAlias = Literal[
 ]
 
 _DTypeNumpy: TypeAlias = Union[
-    Type[
+    type[
         Union[
             np.uint8,
             np.int8,

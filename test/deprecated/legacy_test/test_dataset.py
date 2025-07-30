@@ -105,7 +105,7 @@ class TestDataset(unittest.TestCase):
             slots_vars = []
             for slot in slots:
                 var = paddle.static.data(
-                    name=slot, shape=[-1, 1], dtype="int64", lod_level=1
+                    name=slot, shape=[-1, 1], dtype="int64"
                 )
                 slots_vars.append(var)
 
@@ -201,7 +201,7 @@ class TestDataset(unittest.TestCase):
             slots_vars = []
             for slot in slots:
                 var = paddle.static.data(
-                    name=slot, shape=[-1, 1], dtype="int64", lod_level=1
+                    name=slot, shape=[-1, 1], dtype="int64"
                 )
                 slots_vars.append(var)
 
@@ -267,7 +267,7 @@ class TestDataset(unittest.TestCase):
             slots_vars = []
             for slot in slots:
                 var = paddle.static.data(
-                    name=slot, shape=[-1, 1], dtype="int64", lod_level=1
+                    name=slot, shape=[-1, 1], dtype="int64"
                 )
                 slots_vars.append(var)
 
@@ -365,12 +365,12 @@ class TestDataset(unittest.TestCase):
             with base.program_guard(train_program, startup_program):
                 for slot in slots[:2]:
                     var = paddle.static.data(
-                        name=slot, shape=[-1, 1], dtype="int64", lod_level=1
+                        name=slot, shape=[-1, 1], dtype="int64"
                     )
                     slots_vars.append(var)
                 for slot in slots[2:]:
                     var = paddle.static.data(
-                        name=slot, shape=[-1, 1], dtype="float32", lod_level=1
+                        name=slot, shape=[-1, 1], dtype="float32"
                     )
                     slots_vars.append(var)
 
@@ -444,16 +444,16 @@ class TestDataset(unittest.TestCase):
             startup_program = base.Program()
             with base.program_guard(train_program, startup_program):
                 var1 = paddle.static.data(
-                    name="slot1", shape=[-1, 1], dtype="int64", lod_level=0
+                    name="slot1", shape=[-1, 1], dtype="int64"
                 )
                 var2 = paddle.static.data(
-                    name="slot2", shape=[-1, 1], dtype="int64", lod_level=0
+                    name="slot2", shape=[-1, 1], dtype="int64"
                 )
                 var3 = paddle.static.data(
-                    name="slot3", shape=[-1, 1], dtype="float32", lod_level=0
+                    name="slot3", shape=[-1, 1], dtype="float32"
                 )
                 var4 = paddle.static.data(
-                    name="slot4", shape=[-1, 1], dtype="float32", lod_level=0
+                    name="slot4", shape=[-1, 1], dtype="float32"
                 )
                 slots_vars = [var1, var2, var3, var4]
 
@@ -521,7 +521,7 @@ class TestDataset(unittest.TestCase):
             slots_vars = []
             for slot in slots:
                 var = paddle.static.data(
-                    name=slot, shape=[-1, 1], dtype="float32", lod_level=1
+                    name=slot, shape=[-1, 1], dtype="float32"
                 )
                 slots_vars.append(var)
 
@@ -645,7 +645,7 @@ class TestDataset(unittest.TestCase):
             slots_vars = []
             for slot in slots:
                 var = paddle.static.data(
-                    name=slot, shape=[-1, 1], dtype="int64", lod_level=1
+                    name=slot, shape=[-1, 1], dtype="int64"
                 )
                 slots_vars.append(var)
 
@@ -724,7 +724,7 @@ class TestDataset(unittest.TestCase):
             slots_vars = []
             for slot in slots:
                 var = paddle.static.data(
-                    name=slot, shape=[-1, 1], dtype="float32", lod_level=1
+                    name=slot, shape=[-1, 1], dtype="float32"
                 )
                 slots_vars.append(var)
 
@@ -793,7 +793,7 @@ class TestDataset(unittest.TestCase):
             slots_vars = []
             for slot in slots:
                 var = paddle.static.data(
-                    name=slot, shape=[None, 1], dtype="int64", lod_level=1
+                    name=slot, shape=[None, 1], dtype="int64"
                 )
                 slots_vars.append(var)
 
@@ -861,7 +861,7 @@ class TestDataset(unittest.TestCase):
             slots_vars = []
             for slot in slots:
                 var = paddle.static.data(
-                    name=slot, shape=[-1, 1], dtype="int64", lod_level=1
+                    name=slot, shape=[-1, 1], dtype="int64"
                 )
                 slots_vars.append(var)
 
@@ -927,7 +927,7 @@ class TestDataset(unittest.TestCase):
             slots_vars = []
             for slot in slots:
                 var = paddle.static.data(
-                    name=slot, shape=[-1, 1], dtype="int64", lod_level=1
+                    name=slot, shape=[-1, 1], dtype="int64"
                 )
                 slots_vars.append(var)
 
@@ -1021,7 +1021,7 @@ class TestDataset2(unittest.TestCase):
             slots_vars = []
             for slot in slots:
                 var = paddle.static.data(
-                    name=slot, shape=[-1, 1], dtype="float32", lod_level=1
+                    name=slot, shape=[-1, 1], dtype="float32"
                 )
                 slots_vars.append(var)
             fake_cost = paddle.subtract(slots_vars[0], slots_vars[-1])
@@ -1093,7 +1093,7 @@ class TestDataset2(unittest.TestCase):
             slots_vars = []
             for slot in slots:
                 var = paddle.static.data(
-                    name=slot, shape=[-1, 1], dtype="float32", lod_level=1
+                    name=slot, shape=[-1, 1], dtype="float32"
                 )
                 slots_vars.append(var)
             fake_cost = paddle.subtract(slots_vars[0], slots_vars[-1])
@@ -1226,7 +1226,7 @@ class TestDataset2(unittest.TestCase):
             slots_vars = []
             for slot in slots:
                 var = paddle.static.data(
-                    name=slot, shape=[-1, 1], dtype="float32", lod_level=1
+                    name=slot, shape=[-1, 1], dtype="float32"
                 )
                 slots_vars.append(var)
             fake_cost = paddle.subtract(slots_vars[0], slots_vars[-1])

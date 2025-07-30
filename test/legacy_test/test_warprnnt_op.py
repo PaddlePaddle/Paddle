@@ -278,61 +278,63 @@ class TestWarpRNNTOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_logits_Variable)
 
     def test_errors2(self):
-        with paddle.pir_utils.OldIrGuard():
-            with paddle.static.program_guard(
+        with (
+            paddle.pir_utils.OldIrGuard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                logits = paddle.static.data(
-                    name='input', shape=[5, 16, 6], dtype='float32'
+            ),
+        ):
+            logits = paddle.static.data(
+                name='input', shape=[5, 16, 6], dtype='float32'
+            )
+            logits_length = paddle.static.data(
+                name='logit_lengths', shape=[None], dtype='int32'
+            )
+            label = paddle.static.data(
+                name='labels', shape=[16, 3], dtype='int32'
+            )
+            label_length = paddle.static.data(
+                name='label_lengths', shape=[None], dtype='int32'
+            )
+
+            def test_label_Variable():
+                label_data = paddle.static.data(
+                    name='label_data', shape=[16, 3], dtype='int64'
                 )
-                logits_length = paddle.static.data(
-                    name='logit_lengths', shape=[None], dtype='int32'
-                )
-                label = paddle.static.data(
-                    name='labels', shape=[16, 3], dtype='int32'
-                )
-                label_length = paddle.static.data(
-                    name='label_lengths', shape=[None], dtype='int32'
+                paddle.nn.functional.rnnt_loss(
+                    input=logits,
+                    label=label_data,
+                    input_lengths=logits_length,
+                    label_lengths=label_length,
                 )
 
-                def test_label_Variable():
-                    label_data = paddle.static.data(
-                        name='label_data', shape=[16, 3], dtype='int64'
-                    )
-                    paddle.nn.functional.rnnt_loss(
-                        input=logits,
-                        label=label_data,
-                        input_lengths=logits_length,
-                        label_lengths=label_length,
-                    )
+            self.assertRaises(TypeError, test_label_Variable)
 
-                self.assertRaises(TypeError, test_label_Variable)
+            def test_logits_len_Variable():
+                logits_length_data = paddle.static.data(
+                    name='logits_length_data', shape=[None], dtype='int64'
+                )
+                paddle.nn.functional.rnnt_loss(
+                    input=logits,
+                    label=label,
+                    input_lengths=logits_length_data,
+                    label_lengths=label_length,
+                )
 
-                def test_logits_len_Variable():
-                    logits_length_data = paddle.static.data(
-                        name='logits_length_data', shape=[None], dtype='int64'
-                    )
-                    paddle.nn.functional.rnnt_loss(
-                        input=logits,
-                        label=label,
-                        input_lengths=logits_length_data,
-                        label_lengths=label_length,
-                    )
+            self.assertRaises(TypeError, test_logits_len_Variable)
 
-                self.assertRaises(TypeError, test_logits_len_Variable)
+            def test_label_len_Variable():
+                label_length_data = paddle.static.data(
+                    name='label_length_data', shape=[None], dtype='int64'
+                )
+                paddle.nn.functional.rnnt_loss(
+                    input=logits,
+                    label=label,
+                    input_lengths=logits_length,
+                    label_lengths=label_length_data,
+                )
 
-                def test_label_len_Variable():
-                    label_length_data = paddle.static.data(
-                        name='label_length_data', shape=[None], dtype='int64'
-                    )
-                    paddle.nn.functional.rnnt_loss(
-                        input=logits,
-                        label=label,
-                        input_lengths=logits_length,
-                        label_lengths=label_length_data,
-                    )
-
-                self.assertRaises(TypeError, test_label_len_Variable)
+            self.assertRaises(TypeError, test_label_len_Variable)
 
     def test_dygraph_errors(self):
         def test_dygraph_with_lod():

@@ -20,8 +20,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
@@ -60,9 +59,9 @@ SpmdInfo DefaultDataParallelInferSpmd(
     int ndim = outs[i]->dims().size();
     TensorDistAttr dist_attr_dst =
         CopyTensorDistAttrForOutput(ins[0]->dist_attr());
-    std::vector<int64_t> dst_dims_maping =
+    std::vector<int64_t> dst_dims_mapping =
         GetDefaultDataParallelDimsMapping(batch_axis_dim, ndim);
-    dist_attr_dst.set_dims_mapping(dst_dims_maping);
+    dist_attr_dst.set_dims_mapping(dst_dims_mapping);
     output_dist_attrs.emplace_back(dist_attr_dst);
   }
 
@@ -72,9 +71,9 @@ SpmdInfo DefaultDataParallelInferSpmd(
     int ndim = ins[i]->dims().size();
     TensorDistAttr dist_attr_dst =
         CopyTensorDistAttrForOutput(ins[i]->dist_attr());
-    std::vector<int64_t> dst_dims_maping =
+    std::vector<int64_t> dst_dims_mapping =
         GetDefaultDataParallelDimsMapping(batch_axis_dim, ndim);
-    dist_attr_dst.set_dims_mapping(dst_dims_maping);
+    dist_attr_dst.set_dims_mapping(dst_dims_mapping);
     dst_input_dist_attrs.emplace_back(dist_attr_dst);
   }
 
@@ -123,9 +122,9 @@ SpmdInfo DefaultDataParallelInferSpmdReverse(
     int ndim = outs[i]->dims().size();
     TensorDistAttr dist_attr_dst =
         CopyTensorDistAttrForOutput(outs[i]->dist_attr());
-    std::vector<int64_t> dst_dims_maping =
+    std::vector<int64_t> dst_dims_mapping =
         GetDefaultDataParallelDimsMapping(batch_axis_dim, ndim);
-    dist_attr_dst.set_dims_mapping(dst_dims_maping);
+    dist_attr_dst.set_dims_mapping(dst_dims_mapping);
     output_dist_attrs.emplace_back(dist_attr_dst);
   }
 
@@ -135,9 +134,9 @@ SpmdInfo DefaultDataParallelInferSpmdReverse(
     int ndim = ins[i]->dims().size();
     TensorDistAttr dist_attr_dst =
         CopyTensorDistAttrForOutput(ins[i]->dist_attr());
-    std::vector<int64_t> dst_dims_maping =
+    std::vector<int64_t> dst_dims_mapping =
         GetDefaultDataParallelDimsMapping(batch_axis_dim, ndim);
-    dist_attr_dst.set_dims_mapping(dst_dims_maping);
+    dist_attr_dst.set_dims_mapping(dst_dims_mapping);
     dst_input_dist_attrs.emplace_back(dist_attr_dst);
   }
 
@@ -162,5 +161,4 @@ SpmdInfo DefaultDataParallelInferSpmdReverse(
           ToArgDistAttr(output_dist_attrs)};
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

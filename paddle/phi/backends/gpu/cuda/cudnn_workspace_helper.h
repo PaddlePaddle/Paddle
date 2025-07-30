@@ -18,6 +18,18 @@ namespace phi {
 namespace backends {
 namespace gpu {
 
+#define CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(tensor)                            \
+  do {                                                                         \
+    int64_t largest = (1LL << 31) - 1;                                         \
+    PADDLE_ENFORCE_LE(                                                         \
+        tensor.numel(),                                                        \
+        largest,                                                               \
+        ::common::errors::PreconditionNotMet(                                  \
+            "The element size of " #tensor " should be <= INT_MAX(2147483647)" \
+            ", but got %lld",                                                  \
+            tensor.numel()));                                                  \
+  } while (0)
+
 static constexpr int kDefaultConvWorkspaceSizeLimitMB = 512;
 
 int GetDefaultConvWorkspaceSizeLimitMB();

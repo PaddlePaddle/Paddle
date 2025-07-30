@@ -14,16 +14,31 @@
 
 import ssl
 import sys
+import time
 
 import httpx
 
 import paddle
 from paddle.base import core
+from paddle.device import cuda
 
 
 def get_disable_ut_by_url(url):
     ssl._create_default_https_context = ssl._create_unverified_context
-    f = httpx.get(url, timeout=None, follow_redirects=True)
+    max_retries = 5
+    delay = 5
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            f = httpx.get(url, timeout=20.0, follow_redirects=True)
+            break
+        except httpx.RequestError as e:
+            print(
+                f"Failed to get the disabled unit test list (attempt {attempt}): {e}"
+            )
+            if attempt == max_retries:
+                raise
+            time.sleep(delay)
     data = f.text
     status_code = f.status_code
     if len(data.strip()) == 0 or status_code != 200:
@@ -40,10 +55,25 @@ def download_file():
     if sysstr == 'win32':
         url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut_win')
     else:
-        url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut')
+        import os
+
+        branch = os.getenv('BRANCH')
+        if branch.startswith('release/'):
+            url = "https://sys-p0.bj.bcebos.com/prec/{}".format(
+                'disable_ut_release'
+            )
+        else:
+            url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut')
 
     if paddle.is_compiled_with_rocm():
-        url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut_rocm')
+        if cuda.get_device_name() == 'K100_AI':
+            url = "https://sys-p0.bj.bcebos.com/prec/{}".format(
+                'disable_ut_rocm_k100'
+            )
+        else:
+            url = "https://sys-p0.bj.bcebos.com/prec/{}".format(
+                'disable_ut_rocm'
+            )
 
     disabled_ut_list = get_disable_ut_by_url(url)
 
@@ -53,11 +83,24 @@ def download_file():
             url = "https://sys-p0.bj.bcebos.com/prec/{}".format(
                 'disable_ut_xpu_kl2'
             )
+            external_xpu = get_disable_ut_by_url(url)
         else:
+            # part 1: "quick" list on bos
             url = "https://sys-p0.bj.bcebos.com/prec/{}".format(
-                'disable_ut_xpu_kl3'
+                'quick_disable_ut_xpu_kl3'
             )
-        external_xpu = get_disable_ut_by_url(url)
+            external_xpu = get_disable_ut_by_url(url)
+
+            # part 2: local list
+            import os
+
+            paddle_root = os.getenv('PADDLE_ROOT')
+            file_path = paddle_root + "/tools/xpu/disable_ut_xpu_kl3.local"
+            with open(file_path, 'r') as file:
+                data = file.read()
+            local_list = data.strip().split('\n')
+            local_list = '^' + '$|^'.join(local_list) + '$'
+            external_xpu = external_xpu + "|" + local_list
         disabled_ut_list = disabled_ut_list + "|" + external_xpu
 
     print(disabled_ut_list)

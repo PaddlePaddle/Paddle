@@ -16,6 +16,7 @@
 
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/p_norm_utils.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
@@ -49,6 +50,8 @@ struct UnsignedPowFunctor {
   float porder;
 };
 
+#ifndef _WIN32
+// To avoid large .so size in Windows cuda11.8
 template <typename T>
 struct FabsFunctor {
   HOSTDEVICE explicit inline FabsFunctor() = default;
@@ -72,6 +75,7 @@ struct FabsCubicFunctor {
     return static_cast<T>(inline_fabs_cubic(x));
   }
 };
+#endif
 
 template <typename T, typename Context>
 void PNormKernel(const Context& dev_ctx,
@@ -90,11 +94,13 @@ void PNormKernel(const Context& dev_ctx,
   std::vector<int> reduce_axis =
       funcs::details::GetReduceDim(axis_dims, xdim.size(), asvector);
 
-  for (int i = 0; i < xdim.size(); i++) {
-    PADDLE_ENFORCE_LT(0,
-                      xdim[i],
-                      errors::InvalidArgument(
-                          "The dims of Input(X) should be greater than 0."));
+  if (x.numel() == 0) {
+    if (out->numel() > 0) {
+      std::vector<int64_t> vec_dims = common::vectorize(out->dims());
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(vec_dims), static_cast<T>(0), out);
+    }
+    return;
   }
 
   using MT = typename dtype::MPTypeTrait<T>::Type;
@@ -108,6 +114,16 @@ void PNormKernel(const Context& dev_ctx,
     phi::funcs::ReduceKernel<T, T, kps::MinFunctor, AbsFunctor<T>>(
         dev_ctx, *in_x, out_norm, AbsFunctor<T>(), reduce_axis);
   } else {
+#ifdef _WIN32
+    phi::funcs::ReduceKernel<T, T, kps::AddFunctor, UnsignedPowFunctor<T>>(
+        dev_ctx, *in_x, out_norm, UnsignedPowFunctor<T>(porder), reduce_axis);
+
+    const DenseTensor* tmp_norm = out_norm;
+    std::vector<const DenseTensor*> ins = {tmp_norm};
+    std::vector<DenseTensor*> outs = {out_norm};
+    phi::funcs::ElementwiseKernel<T>(
+        dev_ctx, ins, &outs, UnsignedPowFunctor<T>(1. / porder));
+#else
     if (porder == 1.0) {
       // fast 1-norm
       phi::funcs::ReduceKernel<T, T, kps::AddFunctor, FabsFunctor<T>>(
@@ -134,6 +150,7 @@ void PNormKernel(const Context& dev_ctx,
       phi::funcs::ElementwiseKernel<T>(
           dev_ctx, ins, &outs, UnsignedPowFunctor<T>(1. / porder));
     }
+#endif
   }
 }
 }  // namespace phi

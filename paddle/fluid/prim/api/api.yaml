@@ -52,6 +52,9 @@
 - sign
 - sigmoid
 - index_put
+- index_add
 - isnan
 - isfinite
 - take_along_axis
+- variance
+- masked_fill

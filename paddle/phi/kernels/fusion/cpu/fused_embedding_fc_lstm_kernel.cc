@@ -288,7 +288,7 @@ class FusedEmbeddingFCLSTMKernel {
     dev_ctx.template Alloc<T>(hidden_out);
     dev_ctx.template Alloc<T>(cell_out);
 
-    phi::funcs::LoDTensor2BatchFunctor<Context, T> to_batch;
+    phi::funcs::DenseTensor2BatchFunctor<Context, T> to_batch;
     auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
 
     for (int64_t i = 0; i < ids_numel; ++i) {
@@ -410,7 +410,7 @@ class FusedEmbeddingFCLSTMKernel {
 #undef MOVE_ONE_BATCH
 #undef DEFINE_CUR
 
-    phi::funcs::Batch2LoDTensorFunctor<Context, T> to_seq;
+    phi::funcs::Batch2DenseTensorFunctor<Context, T> to_seq;
     batched_h_out->set_lod(batched_lod);
     to_seq(dev_ctx, *batched_h_out, hidden_out);
     batched_c_out->set_lod(batched_lod);

@@ -48,7 +48,7 @@ class HasElementsInstruction : public InstructionBase {
 
   VariableRefArray* stack_element_var_array_;  // not owned
 
-  bool* has_elements_;  // not owned
+  phi::DenseTensor* bool_tensor_;  // not owned
 };
 
 }  // namespace framework

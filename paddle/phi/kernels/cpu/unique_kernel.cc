@@ -24,7 +24,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void UniqueKernel(const Context& context,
+void UniqueKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   bool return_index,
                   bool return_inverse,
@@ -36,7 +36,7 @@ void UniqueKernel(const Context& context,
                   DenseTensor* index,
                   DenseTensor* counts) {
   bool is_sorted = true;
-  UniqueRawKernel<T, Context>(context,
+  UniqueRawKernel<T, Context>(dev_ctx,
                               x,
                               return_index,
                               return_inverse,
@@ -51,7 +51,7 @@ void UniqueKernel(const Context& context,
 }
 
 template <typename T, typename Context>
-void UniqueRawKernel(const Context& context,
+void UniqueRawKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      bool return_index,
                      bool return_inverse,
@@ -76,28 +76,28 @@ void UniqueRawKernel(const Context& context,
   if (!is_sorted) {
     phi::VisitDataType(
         dtype,
-        phi::funcs::UniqueOpFunctor<Context, T>(context, out, index, &x));
+        phi::funcs::UniqueOpFunctor<Context, T>(dev_ctx, out, index, &x));
     return;
   }
 
   if (axis.empty()) {
     phi::VisitDataTypeTiny(
         dtype,
-        phi::funcs::UniqueFlattendTensorFunctor<Context, T>(context,
-                                                            x,
-                                                            out,
-                                                            indices,
-                                                            index,
-                                                            counts,
-                                                            return_index,
-                                                            return_inverse,
-                                                            return_counts));
+        phi::funcs::UniqueFlattenedTensorFunctor<Context, T>(dev_ctx,
+                                                             x,
+                                                             out,
+                                                             indices,
+                                                             index,
+                                                             counts,
+                                                             return_index,
+                                                             return_inverse,
+                                                             return_counts));
   } else {
     int axis_value = axis[0];
     axis_value = (axis_value == -1) ? (x.dims().size() - 1) : axis_value;
     phi::VisitDataTypeTiny(
         dtype,
-        phi::funcs::UniqueDimFunctor<Context, T>(context,
+        phi::funcs::UniqueDimFunctor<Context, T>(dev_ctx,
                                                  x,
                                                  out,
                                                  indices,

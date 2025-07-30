@@ -292,7 +292,7 @@ def CppExtension(
     # be replaced as `setup.name` to keep consistent with package. Because we allow
     # users can not specific name in Extension.
     # See `paddle.utils.cpp_extension.setup` for details.
-    name = kwargs.get('name', None)
+    name = kwargs.pop('name', None)
     if name is None:
         name = _generate_extension_name(sources)
 
@@ -346,7 +346,7 @@ def CUDAExtension(
     # be replaced as `setup.name` to keep consistent with package. Because we allow
     # users can not specific name in Extension.
     # See `paddle.utils.cpp_extension.setup` for details.
-    name = kwargs.get('name', None)
+    name = kwargs.pop('name', None)
     if name is None:
         name = _generate_extension_name(sources)
 
@@ -467,6 +467,20 @@ class BuildExtension(build_ext):
                         # {'nvcc': {}, 'cxx: {}}
                         if isinstance(cflags, dict):
                             cflags = cflags['hipcc']
+                    elif core.is_compiled_with_custom_device("iluvatar_gpu"):
+                        ixcc_cmd = os.path.join(
+                            os.getenv("COREX_HOME", "/usr/local/corex/"),
+                            'bin',
+                            'clang++',
+                        )
+                        if not os.path.isfile(ixcc_cmd):
+                            raise ValueError(
+                                "Corex compiler is unavailable, please set `COREX_HOME` to specify it."
+                            )
+                        self.set_executable('compiler_so', ixcc_cmd)
+                        # {'nvcc': {}, 'cxx: {}}
+                        if isinstance(cflags, dict):
+                            cflags = cflags['nvcc']
                     else:
                         assert (
                             CUDA_HOME is not None
@@ -552,8 +566,8 @@ class BuildExtension(build_ext):
             )
             cc_args = self._get_cc_args(pp_opts, debug, extra_preargs)
             # Create a thread pool
-            worke_number = min(os.cpu_count(), len(objects))
-            with ThreadPoolExecutor(max_workers=worke_number) as executor:
+            worker_number = min(os.cpu_count(), len(objects))
+            with ThreadPoolExecutor(max_workers=worker_number) as executor:
                 # Submit all compilation tasks to the thread pool.
                 futures = {
                     executor.submit(
@@ -659,7 +673,7 @@ class BuildExtension(build_ext):
                 elif isinstance(self.cflags, list):
                     cflags = MSVC_COMPILE_FLAGS + self.cflags
                     cmd += cflags
-                # Append this macor only when jointly compiling .cc with .cu
+                # Append this macro only when jointly compiling .cc with .cu
                 if not is_cuda_file(src) and self.contain_cuda_file:
                     cmd.append('-DPADDLE_WITH_CUDA')
 
@@ -818,6 +832,19 @@ class BuildExtension(build_ext):
                 CustomOpInfo.instance().add(
                     op_name, so_name=so_name, so_path=so_path
                 )
+
+    def _clean_intermediate_files(self):
+        for ext in self.extensions:
+            build_dir = os.path.dirname(self.get_ext_fullpath(ext.name))
+            for root, _, files in os.walk(build_dir):
+                for file in files:
+                    if file.endswith(".cu.o") or file.endswith('.o'):
+                        os.remove(os.path.join(root, file))
+                        print(f"Removed: {os.path.join(root, file)}")
+
+    def run(self):
+        super().run()
+        self._clean_intermediate_files()
 
 
 class EasyInstallCommand(easy_install):

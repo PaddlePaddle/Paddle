@@ -52,8 +52,8 @@ def _all_to_all_tensor_in_dygraph(
 
 
 def _all_to_all_in_dygraph(
-    out_tensor_list: Tensor,
-    in_tensor_list: Tensor,
+    out_tensor_list: Sequence[Tensor],
+    in_tensor_list: Sequence[Tensor],
     group: Group,
     sync_op: bool,
     use_calc_stream: bool,
@@ -176,6 +176,8 @@ def alltoall(
             >>> import paddle.distributed as dist
 
             >>> dist.init_parallel_env()
+
+            >>> # all_to_all with equal split sizes
             >>> out_tensor_list = [] # type: ignore[var-annotated]
             >>> if dist.get_rank() == 0:
             ...     data1 = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
@@ -188,6 +190,22 @@ def alltoall(
             >>> print(out_tensor_list)
             >>> # [[[1, 2, 3], [4, 5, 6]], [[13, 14, 15], [16, 17, 18]]]    (2 GPUs, out for rank 0)
             >>> # [[[7, 8, 9], [10, 11, 12]], [[19, 20, 21], [22, 23, 24]]] (2 GPUs, out for rank 1)
+
+            >>> # all_to_all with unequal split sizes
+            >>> if dist.get_rank() == 0:
+            ...     data1 = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])       # shape: (2, 3)
+            ...     data2 = paddle.to_tensor([7])                          # shape: (1, )
+            ...     out_data1 = paddle.empty((2, 3), dtype=data1.dtype)
+            ...     out_data2 = paddle.empty((3, 2), dtype=data1.dtype)
+            >>> else:
+            ...     data1 = paddle.to_tensor([[8, 9], [10, 11], [12, 13]]) # shape: (3, 2)
+            ...     data2 = paddle.to_tensor([[14, 15, 16, 17]])           # shape: (1, 4)
+            ...     out_data1 = paddle.empty((1,), dtype=data1.dtype)
+            ...     out_data2 = paddle.empty((1, 4), dtype=data1.dtype)
+            >>> dist.alltoall([out_data1, out_data2], [data1, data2])
+            >>> print([out_data1, out_data2])
+            >>> # [[[1, 2, 3], [4, 5, 6]], [[8, 9], [10, 11], [12, 13]]]  (2 GPUs, out for rank 0)
+            >>> # [[7], [[14, 15, 16, 17]]]                               (2 GPUs, out for rank 1)
     """
     if _warn_cur_rank_not_in_group(group):
         return
@@ -248,15 +266,10 @@ def _alltoall_single_in_dygraph(
     sync_op: bool,
     use_calc_stream: bool,
 ) -> task:
-    world_size = dist.get_world_size(group)
     if out_split_sizes is None:
-        out_split_sizes = [
-            out_tensor.shape[0] // world_size for _ in range(world_size)
-        ]
+        out_split_sizes = []
     if in_split_sizes is None:
-        in_split_sizes = [
-            in_tensor.shape[0] // world_size for _ in range(world_size)
-        ]
+        in_split_sizes = []
 
     if use_calc_stream:
         return group.process_group.all_to_all_single_on_calc_stream(
@@ -283,7 +296,7 @@ def alltoall_single(
 ) -> task:
     """
 
-    Split and Scatter the splitted input tensor to the out tensor across devices.
+    Split and Scatter the split input tensor to the out tensor across devices.
 
     Args:
         out_tensor(Tensor): The output tensor. Its data type should be the same as the input.

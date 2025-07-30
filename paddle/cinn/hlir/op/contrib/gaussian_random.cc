@@ -17,9 +17,8 @@
 #include <utility>
 #include <vector>
 
-#include "absl/types/variant.h"
+#include <variant>
 #include "glog/logging.h"
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/cinn_value.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/context.h"
@@ -39,7 +38,7 @@
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/lang/packed_func.h"
-#include "paddle/cinn/poly/stage.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 
 namespace cinn {
 namespace hlir {
@@ -68,10 +67,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForGaussianRandom(
         *ret = CINNValuePack{res};
       });
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(gaussian_random_compute,
-                    GetElementwiseScheduleFunc(output_shapes, target),
-                    "strategy.gaussian_random.x86",
-                    1);
+  strategy->AddImpl(gaussian_random_compute, "strategy.gaussian_random.x86", 1);
   return strategy;
 }
 

@@ -192,7 +192,7 @@ void CollectFpnProposalsOpKernel(
     }
   }
   lod0.emplace_back(post_nms_topn);
-  phi::LoD lod;
+  phi::LegacyLoD lod;
   lod.emplace_back(lod0);
   fpn_rois->set_lod(lod);
 }

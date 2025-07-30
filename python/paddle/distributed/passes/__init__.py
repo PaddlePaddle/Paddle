@@ -43,17 +43,18 @@ from .auto_parallel_grad_clip import (  # noqa: F401
 )
 from .auto_parallel_gradient_merge import (  # noqa: F401
     GradientMergePass,
-    parse_program,
 )
 from .auto_parallel_master_grad import (  # noqa: F401
     MasterGradPass,
     get_output_in_varlist,
 )
-from .auto_parallel_pipeline import PipelinePass, is_reshard_op  # noqa: F401
 from .auto_parallel_quantization import QuantizationPass  # noqa: F401
 from .auto_parallel_recompute import (  # noqa: F401
     RecomputePass,
     RecomputeState,
+)
+from .auto_parallel_recompute_pir import (  # noqa: F401
+    AutoParallelRecomputePIRPass,
 )
 from .auto_parallel_replace_with_parallel_cross_entropy import (  # noqa: F401
     AutoParallelReplaceWithParallelCrossEntropyPass,
@@ -74,6 +75,9 @@ from .auto_parallel_sharding import (  # noqa: F401
 )
 from .auto_parallel_supplement_explicit_dependencies import (  # noqa: F401
     AutoParalSupplementDepPass,
+)
+from .auto_parallel_sync_shared_params import (  # noqa: F401
+    AutoParallelSyncSharedParamsPass,
 )
 from .cpp_pass import (  # noqa: F401
     BuildCINNPass,

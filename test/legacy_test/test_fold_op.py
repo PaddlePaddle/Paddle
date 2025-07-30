@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_places
 
 import paddle
 from paddle import base
-from paddle.base import core
 
 paddle.enable_static()
 
@@ -164,6 +162,20 @@ class TestFoldshape(TestFoldOp):
         self.x = np.random.rand(*input_shape).astype(np.float64)
 
 
+class TestFoldshape1d(TestFoldOp):
+    def init_data(self):
+        self.batch_size = 8
+        self.input_channels = 3 * 3 * 3
+        self.length = 3
+        self.kernel_sizes = [1, 3]
+        self.strides = [1, 1]
+        self.paddings = [0, 0, 0, 0]
+        self.dilations = [1, 1]
+        self.output_sizes = [1, 5]
+        input_shape = [self.batch_size, self.input_channels, self.length]
+        self.x = np.random.rand(*input_shape).astype(np.float64)
+
+
 class TestFoldAPI(TestFoldOp):
     # This is for test on paddle.nn.Fold
 
@@ -171,15 +183,7 @@ class TestFoldAPI(TestFoldOp):
         self.op_type = 'fold'
         self.python_api = paddle.nn.functional.fold
         self.set_data()
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def test_api(self):
         for place in self.places:

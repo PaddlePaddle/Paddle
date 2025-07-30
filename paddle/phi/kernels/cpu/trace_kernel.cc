@@ -29,7 +29,9 @@ void TraceKernel(const Context& dev_ctx,
                  int axis2,
                  DenseTensor* out) {
   auto* out_data = dev_ctx.template Alloc<T>(out);
-
+  if (out && out->numel() == 0) {
+    return;
+  }
   const DenseTensor diag =
       funcs::Diagonal<T, Context>(dev_ctx, &x, offset, axis1, axis2);
   if (diag.numel() > 0) {

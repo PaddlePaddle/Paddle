@@ -156,7 +156,7 @@ struct BroadcastDimsSimplifier {
     auto VectorReorganise = [](DimVector *vec, int l_idx, int m_idx) {
       (*vec)[m_idx - 1] = std::accumulate(vec->begin() + l_idx,
                                           vec->begin() + m_idx,
-                                          1,
+                                          int64_t{1},
                                           std::multiplies<int64_t>());
       vec->erase(vec->begin() + l_idx, vec->begin() + m_idx - 1);
     };

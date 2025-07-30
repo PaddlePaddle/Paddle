@@ -78,8 +78,8 @@ def _add_build_strategy_for(input_program, start_op_index, end_op_index):
         core.Scope(), paddle.framework._current_expected_place()
     )
     ir_graph = paddle.base.framework.IrGraph(compiled_program._graph)
-    builded_program = ir_graph.to_program()
-    return builded_program
+    built_program = ir_graph.to_program()
+    return built_program
 
 
 class TestRunProgram(unittest.TestCase):

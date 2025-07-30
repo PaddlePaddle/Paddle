@@ -287,7 +287,7 @@ class Link:
         self._bandwidth = None
         # latency is stored by millisecond
         self._latency = None
-        # linke between mesh, machine, device
+        # linked between mesh, machine, device
         self._link_level = None
         self._hop = None
         self._topo = topo
@@ -1338,7 +1338,7 @@ def get_default_cluster(json_config=None, auto_config=None):
                         retry = False
                         logger.info("server stopped success")
                     else:
-                        logger.info("server stoped failed! retry later")
+                        logger.info("server stopped failed! retry later")
                         time.sleep(1)
             logger.info(
                 f'cluster_topo_info: {json.dumps(cluster.mesh_group.to_json(), indent=3)}'

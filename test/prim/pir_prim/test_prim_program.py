@@ -99,5 +99,60 @@ class TestPrimMode(unittest.TestCase):
             np.testing.assert_allclose(ref, actual, rtol=1e-6)
 
 
+class TestCompOpName(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [8, 16, 32, 64]
+        self.shape_y = [8, 16, 32, 64]
+        self.x = np.random.random(self.shape_x).astype("float32")
+        self.y = np.random.random(self.shape_y).astype("float32")
+
+    def base_net(self, flag=None):
+        if flag == "all":
+            core._set_prim_all_enabled(True)
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
+            x = paddle.static.data('x', self.shape_x, dtype='float32')
+            y = paddle.static.data('y', self.shape_y, dtype='float32')
+            x.stop_gradient = False
+            y.stop_gradient = False
+            divide_out = paddle.divide(x, y)
+            sum_out = paddle.mean(divide_out, axis=0)
+            [new_out] = decomp.decompose(main_program, [sum_out])
+            gradients = grad(new_out, (x, y))
+
+            exe = paddle.static.Executor()
+            [fwd, dx, dy] = exe.run(
+                feed={'x': self.x, 'y': self.y}, fetch_list=[new_out, gradients]
+            )
+
+        whole_ops = [op.name() for op in main_program.global_block().ops]
+        if flag == "all":
+            core._set_prim_all_enabled(False)
+            assert (
+                'pd_op.mean' not in whole_ops
+                and 'pd_op.divide_grad' not in whole_ops
+            )
+        else:
+            assert (
+                'pd_op.mean' in whole_ops and 'pd_op.divide_grad' in whole_ops
+            )
+        return main_program
+
+    def test_set_comp_op_name(self):
+        decomp_program = self.base_net("all")
+        for op in decomp_program.global_block().ops:
+            if op.name() == 'pd_op.sum':
+                assert op.attrs()['comp_op_name'] == 'pd_op.mean'
+            if op.name() == 'pd_op.expand':
+                assert op.attrs()['comp_op_name'] == 'pd_op.sum_grad'
+        origin_program = self.base_net()
+        for op in decomp_program.global_block().ops:
+            if op.name() == 'pd_op.mean':
+                assert not op.has_attr('comp_op_name')
+            if op.name() == 'pd_op.sum_grad':
+                assert not op.has_attr('comp_op_name')
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -238,7 +238,7 @@ void DataTransferHelper::RunAndConstructOpFuncNode(
 bool IsTensorOfVarInitialized(Variable* var) {
   if (var->IsInitialized()) {
     if (var->IsType<phi::DenseTensor>() || var->IsType<phi::SelectedRows>()) {
-      return GetLoDTensorOrSelectedRowsValueFromVar(*var)->IsInitialized();
+      return GetDenseTensorOrSelectedRowsValueFromVar(*var)->IsInitialized();
     } else if (var->IsType<phi::TensorArray>()) {
       return static_cast<const phi::DenseTensor*>(
                  &(var->Get<phi::TensorArray>()[0]))
@@ -476,7 +476,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
     }
   }
 
-  bool transfered = false;
+  bool transferred = false;
   DataTransferHelper data_transfer_helper(place, var_scope, local_scope);
   phi::Kernel* phi_kernel = op_func_node->phi_kernel_;
   auto has_infer_varkernel_fn =
@@ -509,7 +509,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
           const phi::DenseTensor* tensor_in = nullptr;
           if (var->IsType<phi::DenseTensor>() ||
               var->IsType<phi::SelectedRows>()) {
-            tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
+            tensor_in = GetDenseTensorOrSelectedRowsValueFromVar(*var);
           } else if (var->IsType<phi::TensorArray>()) {
             if (var->Get<phi::TensorArray>().empty()) {
               continue;
@@ -622,7 +622,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
           }
 
           if (is_transferred) {
-            transfered = true;
+            transferred = true;
             // update RuntimeContext.inputs and original op_func_node inputs
             op_func_node->input_index[parameter_name][i] =
                 var_scope->VarId(new_var_name);
@@ -733,7 +733,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
     }
   }
 
-  if (transfered) {
+  if (transferred) {
     // NOTE(zhiqiu): UPDATE the corresponding OperatorBase to make it consistent
     // with instruction.
     op_base->Inputs() = new_ins;
@@ -775,7 +775,7 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
         continue;
       }
       auto* grad_tensor =
-          framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(grad_var);
+          framework::GetMutableDenseTensorOrSelectedRowsValueFromVar(grad_var);
       // skip nullptr tensor
       if (grad_tensor == nullptr || !grad_tensor->IsInitialized()) {
         VLOG(3) << "skip with grad_tensor not IsInitialized";
@@ -800,7 +800,7 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
         continue;
       }
       const auto* tensor =
-          framework::GetLoDTensorOrSelectedRowsValueFromVar(*var);
+          framework::GetDenseTensorOrSelectedRowsValueFromVar(*var);
       PADDLE_ENFORCE_NOT_NULL(
           tensor,
           common::errors::Unavailable(

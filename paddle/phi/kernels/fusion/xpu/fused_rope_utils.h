@@ -274,67 +274,55 @@ void XPUFusedRotaryEveryTwo(const Context& dev_ctx,
                             DenseTensor* out_q,
                             DenseTensor* out_k,
                             DenseTensor* out_v) {
-  auto single_func = &xpu::rotary_embedding_v3_single<XPUType, XPUSCType>;
-  auto fusion_func = &xpu::rotary_embedding_v3<XPUType, XPUSCType>;
-  const char* single_func_name = "rotary_embedding_v3_single";
-  const char* fusion_func_name = "rotary_embedding_v3";
+  auto everytwo_func = &xpu::rotary_embedding_everytwo<XPUType, XPUSCType>;
+  const char* single_func_name = "rotary_embedding_everytwo_unary_freqs";
+  const char* fusion_func_name = "rotary_embedding_everytwo_binary_freqs";
   if (is_bwd) {
-    single_func = &xpu::rotary_embedding_v3_single_grad<XPUType, XPUSCType>;
-    fusion_func = &xpu::rotary_embedding_v3_grad<XPUType, XPUSCType>;
-    single_func_name = "rotary_embedding_v3_single_grad";
-    fusion_func_name = "rotary_embedding_v3_grad";
+    everytwo_func = &xpu::rotary_embedding_everytwo_grad<XPUType, XPUSCType>;
+    single_func_name = "rotary_embedding_everytwo_unary_freqs_grad";
+    fusion_func_name = "rotary_embedding_everytwo_binary_freqs_grad";
   }
   if (!in_k) {
-    int ret = single_func(
-        dev_ctx.x_context(),
-        reinterpret_cast<const XPUType*>(in_q.data()),
-        cos_data,
-        sin_data,
-        reinterpret_cast<XPUType*>(out_q->data()),
-        batch_size,
-        seq_len,
-        num_heads,
-        head_dim,
-        {seq_len * num_heads * head_dim, num_heads * head_dim, head_dim, 1},
-        "BLHD",
-        true);
+    int ret = everytwo_func(dev_ctx.x_context(),
+                            reinterpret_cast<const XPUType*>(in_q.data()),
+                            nullptr,
+                            sin_data,
+                            cos_data,
+                            reinterpret_cast<XPUType*>(out_q->data()),
+                            nullptr,
+                            {batch_size, seq_len, num_heads, head_dim},
+                            {batch_size, seq_len, 1, head_dim},
+                            -1,
+                            10000.0f);
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, single_func_name);
   } else {
     int64_t num_heads_k = in_k->dims()[2];
-    int ret = fusion_func(
-        dev_ctx.x_context(),
-        reinterpret_cast<const XPUType*>(in_q.data()),
-        reinterpret_cast<const XPUType*>(in_k->data()),
-        cos_data,
-        sin_data,
-        reinterpret_cast<XPUType*>(out_q->data()),
-        reinterpret_cast<XPUType*>(out_k->data()),
-        batch_size,
-        seq_len,
-        num_heads,
-        head_dim,
-        {seq_len * num_heads * head_dim, num_heads * head_dim, head_dim, 1},
-        {seq_len * num_heads_k * head_dim, num_heads_k * head_dim, head_dim, 1},
-        num_heads_k,
-        "BLHD",
-        true);
+    int ret = everytwo_func(dev_ctx.x_context(),
+                            reinterpret_cast<const XPUType*>(in_q.data()),
+                            reinterpret_cast<const XPUType*>(in_k->data()),
+                            sin_data,
+                            cos_data,
+                            reinterpret_cast<XPUType*>(out_q->data()),
+                            reinterpret_cast<XPUType*>(out_k->data()),
+                            {batch_size, seq_len, num_heads, head_dim},
+                            {batch_size, seq_len, 1, head_dim},
+                            num_heads_k,
+                            10000.0f);
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, fusion_func_name);
   }
   if (in_v) {
     int64_t num_heads_v = in_v->dims()[2];
-    int ret = single_func(
-        dev_ctx.x_context(),
-        reinterpret_cast<const XPUType*>(in_v->data()),
-        cos_data,
-        sin_data,
-        reinterpret_cast<XPUType*>(out_v->data()),
-        batch_size,
-        seq_len,
-        num_heads_v,
-        head_dim,
-        {seq_len * num_heads_v * head_dim, num_heads_v * head_dim, head_dim, 1},
-        "BLHD",
-        true);
+    int ret = everytwo_func(dev_ctx.x_context(),
+                            reinterpret_cast<const XPUType*>(in_v->data()),
+                            nullptr,
+                            sin_data,
+                            cos_data,
+                            reinterpret_cast<XPUType*>(out_v->data()),
+                            nullptr,
+                            {batch_size, seq_len, num_heads_v, head_dim},
+                            {batch_size, seq_len, 1, head_dim},
+                            -1,
+                            10000.0f);
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, single_func_name);
   }
 }
@@ -355,41 +343,69 @@ void XPUFusedRotaryHalf(const Context& dev_ctx,
                         DenseTensor* out_q,
                         DenseTensor* out_k,
                         DenseTensor* out_v) {
-  auto single_func =
-      &xpu::rotary_embedding_half_unary_freqs<XPUType, XPUSCType>;
-  auto fusion_func =
-      &xpu::rotary_embedding_half_binary_freqs<XPUType, XPUSCType>;
+  auto half_func = &xpu::rotary_embedding_half<XPUType, XPUSCType>;
   const char* single_func_name = "rotary_embedding_half_unary_freqs";
   const char* fusion_func_name = "xpu::rotary_embedding_half_binary_freqs";
   if (is_bwd) {
-    single_func =
-        &xpu::rotary_embedding_half_unary_freqs_grad<XPUType, XPUSCType>;
-    fusion_func =
-        &xpu::rotary_embedding_half_binary_freqs_grad<XPUType, XPUSCType>;
+    half_func = &xpu::rotary_embedding_half_grad<XPUType, XPUSCType>;
     single_func_name = "rotary_embedding_half_unary_freqs_grad";
     fusion_func_name = "xpu::rotary_embedding_half_binary_freqs_grad";
   }
 
-  int64_t num_heads_k = in_k->dims()[2];
-  int ret = fusion_func(dev_ctx.x_context(),
+  if (!in_k) {
+    int ret = half_func(dev_ctx.x_context(),
+                        reinterpret_cast<const XPUType*>(in_q.data()),
+                        nullptr,
+                        reinterpret_cast<const XPUSCType*>(sin_data),
+                        reinterpret_cast<const XPUSCType*>(cos_data),
+                        nullptr,
+                        reinterpret_cast<XPUType*>(out_q->data()),
+                        nullptr,
+                        {batch_size, seq_len, num_heads, head_dim},
+                        {batch_size, seq_len, 1, head_dim},
+                        {},
+                        0,
+                        "BLHD",
+                        -1,
+                        10000.0f);
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, single_func_name);
+  } else {
+    int64_t num_heads_k = in_k->dims()[2];
+    int ret = half_func(dev_ctx.x_context(),
                         reinterpret_cast<const XPUType*>(in_q.data()),
                         reinterpret_cast<const XPUType*>(in_k->data()),
                         reinterpret_cast<const XPUSCType*>(sin_data),
                         reinterpret_cast<const XPUSCType*>(cos_data),
+                        nullptr,
                         reinterpret_cast<XPUType*>(out_q->data()),
                         reinterpret_cast<XPUType*>(out_k->data()),
                         {batch_size, seq_len, num_heads, head_dim},
-                        num_heads_k);
-  PADDLE_ENFORCE_XDNN_SUCCESS(ret, fusion_func_name);
+                        {batch_size, seq_len, 1, head_dim},
+                        {},
+                        0,
+                        "BLHD",
+                        num_heads_k,
+                        10000.0f);
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, fusion_func_name);
+  }
 
   if (in_v) {
     int64_t num_heads_v = in_v->dims()[2];
-    int ret = single_func(dev_ctx.x_context(),
-                          reinterpret_cast<const XPUType*>(in_v->data()),
-                          reinterpret_cast<const XPUSCType*>(sin_data),
-                          reinterpret_cast<const XPUSCType*>(cos_data),
-                          reinterpret_cast<XPUType*>(out_v->data()),
-                          {batch_size, seq_len, num_heads_v, head_dim});
+    int ret = half_func(dev_ctx.x_context(),
+                        reinterpret_cast<const XPUType*>(in_v->data()),
+                        nullptr,
+                        reinterpret_cast<const XPUSCType*>(sin_data),
+                        reinterpret_cast<const XPUSCType*>(cos_data),
+                        nullptr,
+                        reinterpret_cast<XPUType*>(out_v->data()),
+                        nullptr,
+                        {batch_size, seq_len, num_heads_v, head_dim},
+                        {batch_size, seq_len, 1, head_dim},
+                        {},
+                        0,
+                        "BLHD",
+                        -1,
+                        10000.0f);
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, single_func_name);
   }
 }

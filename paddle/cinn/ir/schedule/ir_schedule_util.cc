@@ -23,7 +23,6 @@
 #include <string>
 #include <vector>
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir.h"
@@ -110,6 +109,18 @@ int GetLoopExtent(const Expr& loop) {
   return static_cast<int>(loop.As<ir::For>()->extent.get_constant());
 }
 
+int GetLoopExtent(const ir::stmt::For loop) {
+  PADDLE_ENFORCE_EQ(
+      cinn::common::is_zero(loop->min()),
+      true,
+      ::common::errors::InvalidArgument("For node's min should be zero."));
+  PADDLE_ENFORCE_EQ(loop->extent().is_constant(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "For node's extent should be constant."));
+  return static_cast<int>(loop->extent().get_constant());
+}
+
 void SetCudaAxisInfo(ir::LoweredFunc lowered_func) {
   auto CannotProveLT = [](const ir::Expr& lhs, const ir::Expr& rhs) -> bool {
     std::vector<ir::Expr> exprs{rhs, lhs};
@@ -149,6 +160,31 @@ void SetCudaAxisInfo(ir::LoweredFunc lowered_func) {
     }
     return (x->As<ir::For>() && x->As<ir::For>()->bind_info().valid());
   });
+
+  // Calculate max_threads_per_block
+  int max_threads_per_block = 1;
+  bool has_symbol_in_thread_num = false;
+  for (int i = 0; i < 3; i++) {
+    ir::Expr block_dim = info.block_dim(i);
+    if (block_dim.is_constant()) {
+      max_threads_per_block *= block_dim.get_constant();
+    } else {
+      has_symbol_in_thread_num = true;
+      break;
+    }
+  }
+
+  if (!has_symbol_in_thread_num) {
+    int min_blocks_per_sm = -1;
+    info.set_max_threads_per_block(max_threads_per_block);
+    if (!lowered_func->temp_spaces.empty()) {
+      min_blocks_per_sm = 1024 / max_threads_per_block;
+      if (min_blocks_per_sm > 1) {
+        info.set_min_blocks_per_sm(min_blocks_per_sm);
+      }
+    }
+  }
+
   lowered_func->cuda_axis_info = info;
 }
 
@@ -362,74 +398,6 @@ std::vector<int> ValidateFactors(const std::vector<int>& factors,
   }
 }
 
-void CHECKRfactorValidation(const Expr& rf_loop, int rf_axis) {
-  auto* rf_for = rf_loop.As<ir::For>();
-  PADDLE_ENFORCE_NOT_NULL(
-      rf_for,
-      ::common::errors::NotFound(
-          "Expr param of Rfactor must be For node! Please check."));
-  // check the rf_loop only has one schedule block
-  auto block_nodes = ir::ir_utils::CollectIRNodesWithoutTensor(
-      rf_loop,
-      [&](const Expr* x) { return x->As<ScheduleBlockRealize>(); },
-      true);
-  PADDLE_ENFORCE_EQ(block_nodes.size(),
-                    1U,
-                    ::common::errors::InvalidArgument(
-                        "Rfactor Loop should only have one schedule block!"));
-  auto find_store = ir::ir_utils::CollectIRNodesWithoutTensor(
-      rf_loop, [&](const Expr* x) { return x->As<Store>(); }, true);
-  PADDLE_ENFORCE_EQ(find_store.size(),
-                    1U,
-                    ::common::errors::InvalidArgument(
-                        "Rfactor Loop should only have one Store node!"));
-  auto indice = find_store.begin()->As<Store>()->indices;
-  // check rf_axis
-  PADDLE_ENFORCE_LE(
-      rf_axis,
-      indice.size(),
-      ::common::errors::InvalidArgument(
-          "rf_axis should not be greater than store's domain size"));
-  // check rfactor loop is reduce
-  auto* sch_block_realize = block_nodes.begin()->As<ScheduleBlockRealize>();
-  auto* sch_block = sch_block_realize->schedule_block.As<ScheduleBlock>();
-  PADDLE_ENFORCE_NOT_NULL(
-      sch_block,
-      ::common::errors::NotFound("ScheduleBlockRealize node's schedule_block "
-                                 "should be ScheduleBlock."));
-  auto& iter_values = sch_block_realize->iter_values;
-  auto& iter_vars = sch_block->iter_vars;
-  PADDLE_ENFORCE_EQ(iter_values.size(),
-                    iter_vars.size(),
-                    ::common::errors::InvalidArgument(
-                        "iter_values size should be equal to iter_vars size"));
-  auto rf_loop_var = rf_for->loop_var;
-  Var rf_block_var;
-  for (int i = 0; i < iter_values.size(); ++i) {
-    if (ContainVar({iter_values[i]}, rf_loop_var->name)) {
-      PADDLE_ENFORCE_EQ(
-          !rf_block_var.defined(),
-          true,
-          ::common::errors::InvalidArgument(
-              "The rfactor loop var can only be binded to one block var."));
-      auto iter_value = iter_values[i].As<_Var_>();
-      PADDLE_ENFORCE_NOT_NULL(
-          iter_value,
-          ::common::errors::NotFound(
-              "The iter value don't support complex reduce bindings."));
-      rf_block_var = iter_vars[i];
-      auto it = std::find_if(indice.begin(), indice.end(), [&](const Expr& x) {
-        return x.As<_Var_>() && x.As<_Var_>()->name == rf_block_var->name;
-      });
-      PADDLE_ENFORCE_EQ(
-          it == indice.end(),
-          true,
-          ::common::errors::InvalidArgument(
-              "Param rfactor loop var is not reduce, please check!"));
-    }
-  }
-}
-
 std::vector<Expr> GetLoopsOfExpr(const Expr& expr, const Expr& root) {
   auto loop_nodes = ir::ir_utils::CollectIRNodesWithoutTensor(
       root,
@@ -466,8 +434,8 @@ IterRange GetAccessedRange(const Expr& index,
   ReplaceExpr(&indice_min, iter_vars, var_mins);
   ReplaceExpr(&indice_max, iter_vars, var_maxs);
   // simplify expression
-  indice_min = cinn::common::AutoSimplify(indice_min);
-  indice_max = cinn::common::AutoSimplify(indice_max);
+  indice_min = optim::ArithSimplify(indice_min);
+  indice_max = optim::ArithSimplify(indice_max);
 
   Expr indice_extent;
   Expr mod_extent(0);
@@ -475,7 +443,7 @@ IterRange GetAccessedRange(const Expr& index,
     Expr mod_right_min = indice_min.As<Mod>()->a();
     Expr mod_right_max = indice_max.As<Mod>()->a();
     Expr mod_right_extent =
-        cinn::common::AutoSimplify(mod_right_max - mod_right_min + 1);
+        optim::ArithSimplify(mod_right_max - mod_right_min + 1);
     mod_extent = indice_min.As<Mod>()->b();
     if (mod_right_extent.get_constant() < mod_extent.get_constant()) {
       mod_extent = mod_right_extent;
@@ -490,9 +458,8 @@ IterRange GetAccessedRange(const Expr& index,
       indice_extent = mod_extent;
     }
   } else {
-    indice_extent =
-        cinn::common::AutoSimplify(cinn::common::AutoSimplify(indice_max) -
-                                   cinn::common::AutoSimplify(indice_min) + 1);
+    indice_extent = optim::ArithSimplify(optim::ArithSimplify(indice_max) -
+                                         optim::ArithSimplify(indice_min) + 1);
   }
 
   if (indice_extent.is_constant() && indice_extent.get_constant() < 0) {
@@ -539,7 +506,7 @@ std::vector<IterRange> CalculateTensorRegions(
     auto range = GetAccessedRange(binded_index, loop_vars, loop_ranges);
 
     // in generally, the range should be constant, but in some cases our
-    // AutoSimplify (algebraic simplification function) can't simplify
+    // Simplify (algebraic simplification function) can't simplify
     // completely where we use the whole shape in this indice as the accessed
     // range conservatively
     if (!range.min.is_constant() || !range.extent.is_constant()) {
@@ -615,15 +582,6 @@ Expr GetNthAccessExpr(const Expr& block, int index, bool is_write) {
   }
 }
 
-Tensor MakeCacheTensor(const Tensor& tensor, const std::string& memory_type) {
-  auto cache_tensor = lang::Compute(
-      tensor->shape,
-      [=](const std::vector<Expr>& dims) { return tensor(dims); },
-      tensor->name + "_" + memory_type + "_temp_buffer");
-  cache_tensor->WithBuffer(memory_type);
-  return cache_tensor;
-}
-
 Expr MakeCacheBlock(const std::vector<IterRange>& buffer_ranges,
                     CacheBlockInfo* info,
                     const std::string& memory_type,
@@ -638,7 +596,7 @@ Expr MakeCacheBlock(const std::vector<IterRange>& buffer_ranges,
         cinn::common::UniqName("cache_ax" + std::to_string(loop_vars.size())));
     // Var loop_var("ax" + std::to_string(loop_vars.size()));
     loop_vars.push_back(loop_var);
-    iter_values.push_back(cinn::common::AutoSimplify(range.min + loop_var));
+    iter_values.push_back(optim::ArithSimplify(range.min + loop_var));
   }
   // block variables
   std::vector<Var> block_vars;
@@ -669,7 +627,7 @@ Expr MakeCacheBlock(const std::vector<IterRange>& buffer_ranges,
   for (int i = static_cast<int>(loop_vars.size()) - 1; i >= 0; i--) {
     new_body = For::Make(loop_vars[i],
                          Expr(0),
-                         cinn::common::AutoSimplify(buffer_ranges[i].extent),
+                         optim::ArithSimplify(buffer_ranges[i].extent),
                          ir::ForType::Serial,
                          device_api,
                          ir::Block::Make({new_body}));
@@ -1102,7 +1060,7 @@ std::vector<Expr> GetProducers(const Expr& block, const Expr& root) {
         }
         const ir::Store* store = x->As<ir::Store>();
         if (store) {
-          std::set<ir::Expr> call_nodes =
+          std::vector<ir::Expr> call_nodes =
               ir::ir_utils::CollectIRNodesWithoutTensor(
                   store->value,
                   [](const ir::Expr* x) { return x->As<ir::Call>(); });
@@ -1272,9 +1230,9 @@ void InsertBlock(Expr& for_loop, const Expr& insertion, int index) {  // NOLINT
 }
 
 IterRange RangeUnion(const IterRange& range1, const IterRange& range2) {
-  Expr new_min = cinn::common::AutoSimplify(Min::Make(range1.min, range2.min));
-  Expr new_extent = cinn::common::AutoSimplify(
-      cinn::common::AutoSimplify(
+  Expr new_min = optim::ArithSimplify(Min::Make(range1.min, range2.min));
+  Expr new_extent = optim::ArithSimplify(
+      optim::ArithSimplify(
           Max::Make(range1.min + range1.extent, range2.min + range2.extent)) -
       new_min);
   return IterRange(new_min, new_extent);
@@ -1294,7 +1252,7 @@ std::vector<IterRange> CalculateRequiredRegions(
       loop.As<ir::For>(),
       ::common::errors::NotFound("Param loop should be a ir::For node."));
 
-  std::set<Expr> provided_nodes;
+  std::vector<Expr> provided_nodes;
   if (is_store_provided) {
     provided_nodes = ir::ir_utils::CollectIRNodesWithoutTensor(
         block, [&](const Expr* x) { return x->As<ir::Store>(); });
@@ -1344,7 +1302,7 @@ std::vector<IterRange> CalculateRequiredRegions(
                                  for_loop.As<ir::For>()->extent);
       }
 
-      std::set<Expr> required_nodes;
+      std::vector<Expr> required_nodes;
       if (is_store_provided) {
         required_nodes = ir::ir_utils::CollectIRNodesWithoutTensor(
             block_body, [&](const Expr* x) {

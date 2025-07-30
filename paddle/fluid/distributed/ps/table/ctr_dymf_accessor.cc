@@ -232,7 +232,7 @@ void CtrDymfAccessor::UpdateStatAfterSave(float* value, int param) {
 int32_t CtrDymfAccessor::Create(float** values, size_t num) {
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* value = values[value_item];
-#ifdef PADDLE_WITH_PSLIB
+#if defined(PADDLE_WITH_PSLIB) || defined(PADDLE_WITH_HETERPS)
     common_feature_value.UnseenDays(value) = 0;
     common_feature_value.PassId(value) = 0;
 #else
@@ -385,7 +385,7 @@ std::string CtrDymfAccessor::ParseToString(const float* v, int param) {
 
 int CtrDymfAccessor::ParseFromString(const std::string& str, float* value) {
   auto ret = paddle::string::str_to_float(str.data(), value);
-#ifdef PADDLE_WITH_PSLIB
+#if defined(PADDLE_WITH_PSLIB) || defined(PADDLE_WITH_HETERPS)
   float unseen_day = value[common_feature_value.UnseenDaysIndex()];
   common_feature_value.UnseenDays(value) = (uint16_t)(unseen_day);
   common_feature_value.PassId(value) = 0;
@@ -394,7 +394,7 @@ int CtrDymfAccessor::ParseFromString(const std::string& str, float* value) {
       ret,
       7UL,
       common::errors::InvalidArgument(
-          "Invalid return value. Expect more than 7. But recieved %d.", ret));
+          "Invalid return value. Expect more than 7. But received %d.", ret));
   return ret;
 }
 
@@ -437,7 +437,7 @@ void CtrDymfAccessor::UpdateTimeDecay(float* value, bool is_update_seen_day) {
   }
 }
 
-#ifdef PADDLE_WITH_PSLIB
+#if defined(PADDLE_WITH_PSLIB) || defined(PADDLE_WITH_HETERPS)
 bool CtrDymfAccessor::SaveMemCache(float* value,
                                    int param,
                                    double global_cache_threshold,

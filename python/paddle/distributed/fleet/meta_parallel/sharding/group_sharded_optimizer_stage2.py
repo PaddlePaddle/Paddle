@@ -289,9 +289,9 @@ class GroupShardedOptimizerStage2(Optimizer):
                 "must be called manually before calling `paddle.save()` and before and inference."
             )
             if self._broadcast_order_params is None:
-                # Params' names should be like column_linear_32.w_0 patter to get the best performance.
+                # Params' names should be like column_linear_32.w_0 pattern to get the best performance.
                 warnings.warn(
-                    r"The param name passed to the optimizer doesn't follow .+_[0-9]+\..+ patter, "
+                    r"The param name passed to the optimizer doesn't follow .+_[0-9]+\..+ pattern, "
                     "overlap broadcast may harm the performance."
                 )
                 self._broadcast_order_params = self._local_params
@@ -517,7 +517,7 @@ class GroupShardedOptimizerStage2(Optimizer):
                         dtype=Type.fp32.value,
                         device=self.offload_device,
                         destination=self._rank,
-                        parm2align=self.offload_param2align,
+                        param2align=self.offload_param2align,
                         convert_cpu=True,
                     )
                     for p in cpu_master_params:

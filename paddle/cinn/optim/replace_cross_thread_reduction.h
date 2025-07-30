@@ -16,13 +16,20 @@
  * This file implements the strategy to remove the unnecessary nested block.
  */
 #pragma once
-#include <vector>
 
-#include "paddle/cinn/common/common.h"
 #include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/pass/pass.h"
 
 namespace cinn {
 namespace optim {
+
+class ReplaceCrossThreadReductionPass : public FuncPass {
+ public:
+  ReplaceCrossThreadReductionPass()
+      : FuncPass("replace_cross_thread_reduction") {}
+
+  LogicalResult Run(ir::LoweredFunc func) override;
+};
 
 /**
  * Replace cross thread reduction to external call.

@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/fluid/framework/dense_tensor_array.h"
-#include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/var_type_traits.h"
@@ -50,9 +49,6 @@ inline void VisitVarType(const framework::Variable& var, Visitor visitor) {
   switch (var.Type()) {
     case proto::VarType::DENSE_TENSOR:
       visitor(var.Get<phi::DenseTensor>());
-      return;
-    case proto::VarType::LOD_RANK_TABLE:
-      visitor(var.Get<LoDRankTable>());
       return;
     case proto::VarType::DENSE_TENSOR_ARRAY:
       visitor(var.Get<phi::TensorArray>());

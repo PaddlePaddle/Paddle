@@ -147,7 +147,7 @@ class TestNanmedianModeMin(unittest.TestCase):
             if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
-        self.axis_candiate_list = [
+        self.axis_candidate_list = [
             None,
             0,
             2,
@@ -231,7 +231,7 @@ class TestNanmedianModeMin(unittest.TestCase):
         for name, data in self.fake_data.items():
             test_data_case(data, name)
 
-        for axis in self.axis_candiate_list:
+        for axis in self.axis_candidate_list:
             test_axis_case(self.fake_data["row_nan_even"], axis)
             test_axis_case(self.fake_data["col_nan_odd"], axis)
 
@@ -402,7 +402,7 @@ class TestNanmedianModeMean(unittest.TestCase):
             if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
-        self.axis_candiate_list = [
+        self.axis_candidate_list = [
             None,
             0,
             2,
@@ -480,7 +480,7 @@ class TestNanmedianModeMean(unittest.TestCase):
         for name, data in self.fake_data.items():
             test_data_case(data, name)
 
-        for axis in self.axis_candiate_list:
+        for axis in self.axis_candidate_list:
             test_axis_case(self.fake_data["row_nan_even"], axis)
             test_axis_case(self.fake_data["col_nan_odd"], axis)
 
@@ -615,6 +615,28 @@ class TestNanmedianFP16Op(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_pir=True)
+
+
+class TestNanmedianZeroSize(unittest.TestCase):
+    def init_data(self):
+        self.x_shape = [100, 0]
+        self.expect_out = np.array(np.nan, dtype='float32')
+        self.axis = None
+
+    def test_zero(self):
+        self.init_data()
+        x = paddle.randn(self.x_shape)
+        out = paddle.nanmedian(x, axis=self.axis)
+        np.testing.assert_allclose(
+            out.numpy(), self.expect_out, rtol=1e-05, equal_nan=True
+        )
+
+
+class TestNanmedianZeroSize1(TestNanmedianZeroSize):
+    def init_data(self):
+        self.x_shape = [100, 0, 100]
+        self.expect_out = np.zeros(self.x_shape[:-1], dtype='float32')
+        self.axis = -1
 
 
 @unittest.skipIf(

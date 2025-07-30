@@ -22,8 +22,10 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/tensorrt_op.h"
+#include "paddle/phi/common/complex.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/parameter.h"
+
 namespace paddle::dialect {
 
 pir::Value builtin_combine(const std::vector<pir::Value>& x) {
@@ -52,6 +54,22 @@ std::vector<pir::Value> add_n_grad(const std::vector<pir::Value>& inputs,
     inputs_grad.push_back(scale_op.result(0));
   }
   return inputs_grad;
+}
+
+pir::Value full(const std::vector<int64_t>& shape,
+                double real,
+                double imag,
+                phi::DataType dtype,
+                const phi::Place& place) {
+  CheckDataType(dtype, "dtype", "full");
+  if (dtype == phi::DataType::COMPLEX64) {
+    dtype = phi::DataType::FLOAT32;
+  } else {
+    dtype = phi::DataType::FLOAT64;
+  }
+  pir::Value real_tmp = full(shape, real, dtype, place);
+  pir::Value imag_tmp = full(shape, imag, dtype, place);
+  return paddle::dialect::complex(real_tmp, imag_tmp);
 }
 
 pir::Value zeros_like(const pir::Value& x,

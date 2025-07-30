@@ -43,16 +43,16 @@ class TestGradClipByGlobalNorm(unittest.TestCase):
             )
 
     def get_numpy_global_norm_result(self):
-        gloabl_norm = 0.0
+        global_norm = 0.0
         for p, g in self.para_and_grad:
-            gloabl_norm += np.sum(np.square(g))
+            global_norm += np.sum(np.square(g))
 
-        gloabl_norm_np = np.sqrt(gloabl_norm)
+        global_norm_np = np.sqrt(global_norm)
 
         new_np_p_g = []
         scale = 1.0
-        if gloabl_norm_np > self.max_global_norm:
-            scale = self.max_global_norm / gloabl_norm_np
+        if global_norm_np > self.max_global_norm:
+            scale = self.max_global_norm / global_norm_np
 
         for p, g in self.para_and_grad:
             new_np_p_g.append((p, g * scale))
@@ -61,14 +61,14 @@ class TestGradClipByGlobalNorm(unittest.TestCase):
 
     def get_dygrap_global_norm_result(self):
         with base.dygraph.guard():
-            gloabl_norm_clip = ClipGradByGlobalNorm(self.max_global_norm)
+            global_norm_clip = ClipGradByGlobalNorm(self.max_global_norm)
             p_g_var = []
             for p, g in self.para_and_grad:
                 new_p = paddle.to_tensor(p)
                 new_g = paddle.to_tensor(g)
                 p_g_var.append((new_p, new_g))
 
-            new_p_g_var = gloabl_norm_clip(p_g_var)
+            new_p_g_var = global_norm_clip(p_g_var)
 
             p_g_dy_out = []
             for p, g in new_p_g_var:

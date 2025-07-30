@@ -17,7 +17,6 @@
 #include <numeric>
 #include <unordered_set>
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/dev_info_manager.h"
 #include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/common/ir_util.h"
@@ -25,6 +24,7 @@
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_compare.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/runtime/backend_api.h"
 #include "paddle/cinn/utils/string.h"
 
@@ -35,11 +35,16 @@ namespace {
 common::cas_intervals_t var_intervals = {};
 cinn::common::SymbolicExprAnalyzer analyzer(var_intervals);
 
-struct Mutator : public ir::IRMutator<> {
+struct Mutator : public ir::IRMutator<>, public ir::stmt::StmtMutator<> {
   using ir::IRMutator<>::Visit;
 
   Mutator() : shared_mem_size_used_(0) {}
 
+  void operator()(ir::stmt::BlockRef block) { VisitBlock(block); }
+
+  size_t shared_mem_size_used() const { return shared_mem_size_used_; }
+
+ private:
   void Visit(const ir::_Tensor_* tensor, Expr* expr) override {
     if (!tensor->buffer.defined()) return;
     auto buf = tensor->buffer.As<ir::_Buffer_>();
@@ -47,15 +52,15 @@ struct Mutator : public ir::IRMutator<> {
       visited_buf_.insert(buf->name);
       auto buf_size = ir::Expr(1);
 
-      size_t max_size = std::max(buf->shape.size(), tensor->shape.size());
-      size_t min_size = std::min(buf->shape.size(), tensor->shape.size());
+      size_t max_dim = std::max(buf->shape.size(), tensor->shape.size());
+      size_t min_dim = std::min(buf->shape.size(), tensor->shape.size());
       size_t i = 0;
-      for (; i < min_size; ++i) {
-        auto e = expr->as_tensor()->shape[i];
-        auto buf_e = buf->shape[i];
+      for (; i < min_dim; ++i) {
+        Expr e = expr->as_tensor()->shape[i];
+        Expr buf_e = buf->shape[i];
         if (buf->memory_type == ir::MemoryType::GPULocal) {
-          e = cinn::common::AutoSimplify(e);
-          buf_e = cinn::common::AutoSimplify(buf_e);
+          e = cinn::optim::ArithSimplify(e);
+          buf_e = cinn::optim::ArithSimplify(buf_e);
           if (!e.is_constant()) {
             auto new_shape = ir::ir_utils::IRCopy(e);
             new_shape = analyzer.UpperBound(new_shape);
@@ -77,11 +82,11 @@ struct Mutator : public ir::IRMutator<> {
         }
         buf_size = buf_size * buf_e;
       }
-      for (; i < max_size; i++) {
+      for (; i < max_dim; i++) {
         auto e = buf->shape.size() > tensor->shape.size() ? buf->shape[i]
                                                           : tensor->shape[i];
         if (buf->memory_type == ir::MemoryType::GPULocal) {
-          e = cinn::common::AutoSimplify(e);
+          e = cinn::optim::ArithSimplify(e);
           if (!e.is_constant()) {
             auto new_shape = ir::ir_utils::IRCopy(e);
             new_shape = analyzer.UpperBound(new_shape);
@@ -110,15 +115,60 @@ struct Mutator : public ir::IRMutator<> {
     }
   }
 
+  void VisitStmt(ir::stmt::Let stmt) override {
+    Expr body = stmt->body();
+    Visit(&body, &body);
+  }
+
+  void VisitStmt(ir::stmt::Store stmt) override {
+    Expr tensor = stmt->tensor();
+    Visit(&tensor, &tensor);
+  }
+
+  void VisitStmt(ir::stmt::For stmt) override {
+    Expr min = stmt->min();
+    Expr extent = stmt->extent();
+    Visit(&min, &min);
+    Visit(&extent, &extent);
+    VisitBlock(stmt->body());
+  }
+
+  void VisitStmt(ir::stmt::IfThenElse stmt) override {
+    Expr condition = stmt->condition();
+    Visit(&condition, &condition);
+    VisitBlock(stmt->true_case());
+    if (stmt->false_case().defined()) {
+      VisitBlock(stmt->false_case());
+    }
+  }
+
+  void VisitStmt(ir::stmt::Schedule stmt) override {
+    for (Expr read_buffer : stmt->read_buffers()) {
+      Visit(&read_buffer, &read_buffer);
+    }
+    for (Expr write_buffer : stmt->write_buffers()) {
+      Visit(&write_buffer, &write_buffer);
+    }
+    VisitBlock(stmt->body());
+  }
+
+  void VisitStmt(ir::stmt::Evaluate stmt) override {
+    Expr value = stmt->value();
+    Visit(&value, &value);
+  }
+
+  void VisitStmt(ir::stmt::Alloc stmt) override { return; }
+
+  void VisitStmt(ir::stmt::Free stmt) override { return; }
+
   size_t shared_mem_size_used_;
   std::unordered_set<std::string> visited_buf_;
 };
-
 }  // namespace
 
-void CudaTransBufferWithDynamicShape(ir::Expr* e) {
+LogicalResult TransBufferWithDynamicShapePass::Run(ir::LoweredFunc func) {
   Mutator mutator;
-  mutator.Visit(e, e);
+  mutator(func->body_block);
   cinn::common::DefaultDeviceTarget().arch.Match(
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
       },
@@ -129,7 +179,7 @@ void CudaTransBufferWithDynamicShape(ir::Expr* e) {
         if (cur_dev_info->IsValid()) {
           size_t max_shm_per_block = cur_dev_info->GetMaxSharedMemPerBlock();
           PADDLE_ENFORCE_EQ(
-              (mutator.shared_mem_size_used_ <= max_shm_per_block),
+              (mutator.shared_mem_size_used() <= max_shm_per_block),
               true,
               ::common::errors::InvalidArgument(
                   "The shared memory size used by current kernel is greater "
@@ -144,11 +194,29 @@ void CudaTransBufferWithDynamicShape(ir::Expr* e) {
                 ->get_device_property(
                     BackendAPI::DeviceProperty::MaxSharedMemoryPerBlock);
         PADDLE_ENFORCE_LE(
-            mutator.shared_mem_size_used_,
+            mutator.shared_mem_size_used(),
+            max_shm_per_block,
+            ::common::errors::InvalidArgument(
+                "The shared memory size used by current kernel is greater "
+                "than the max shared memory per block"));
+      },
+      [&](common::HygonDCUArchSYCL) {
+        using cinn::runtime::BackendAPI;
+        size_t max_shm_per_block =
+            BackendAPI::get_backend(common::HygonDCUArchSYCL{})
+                ->get_device_property(
+                    BackendAPI::DeviceProperty::MaxSharedMemoryPerBlock);
+        PADDLE_ENFORCE_LE(
+            mutator.shared_mem_size_used(),
             max_shm_per_block,
             ::common::errors::InvalidArgument(
                 "The shared memory size used by current kernel is greater "
                 "than the max shared memory per block"));
       });
+  return LogicalResult::success();
+}
+
+std::unique_ptr<FuncPass> CreateTransBufferWithDynamicShapePass() {
+  return std::make_unique<TransBufferWithDynamicShapePass>();
 }
 }  // namespace cinn::optim

@@ -18,9 +18,6 @@
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/ir/operation.h"
 #include "paddle/cinn/optim/ir_simplify.h"
-#include "paddle/cinn/poly/dim.h"
-#include "paddle/cinn/poly/domain.h"
-#include "paddle/cinn/poly/stage.h"
 #include "paddle/cinn/runtime/use_extern_funcs.h"
 
 namespace cinn {
@@ -155,9 +152,9 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
                    std::function<Expr(const std::vector<Expr> &)> fn,
                    const std::string &name,
                    const std::vector<Expr> &shape) {
-  auto axises = cinn::common::GenDefaultAxis(domain.size());
+  auto axes = cinn::common::GenDefaultAxis(domain.size());
   std::vector<Expr> _axis;
-  for (auto &x : axises) _axis.push_back(x);
+  for (auto &x : axes) _axis.push_back(x);
   Expr fn_body = fn(_axis);
 
   std::vector<Var> reduce_axis;
@@ -178,14 +175,12 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
 
   // construct the shape.
   for (auto dim : domain) {
-    auto copied = dim;
-    optim::Simplify(&copied);
+    auto copied = optim::ArithSimplify(dim);
     domain_without_reduce_axis.push_back(copied);
   }
 
   for (auto dim : shape) {
-    auto copied = dim;
-    optim::Simplify(&copied);
+    auto copied = optim::ArithSimplify(dim);
     shape_simplified.push_back(copied);
   }
 

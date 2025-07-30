@@ -91,6 +91,6 @@ class HeterPsBase {
   virtual void set_mode(bool infer_mode) = 0;
 };
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace framework
+}  // namespace paddle
 #endif

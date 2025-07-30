@@ -111,12 +111,8 @@ class TestCollectiveRunnerBase:
         rank = args["trainerid"]
         current_endpoint = args["currentendpoint"]
         nranks = 2
-        if args["dynamic_static_unified_comm"]:
-            _init_parallel_env("nccl")
-        else:
-            self.initCommunicator(
-                startup_prog, rank, nranks, True, current_endpoint, endpoints
-            )
+
+        _init_parallel_env("nccl")
 
         self.rank = rank
         result = self.get_model(train_prog, startup_prog)
@@ -146,9 +142,6 @@ def runtime_main(test_class, col_type, sub_type):
     args["currentendpoint"] = os.getenv("PADDLE_CURRENT_ENDPOINT")
     args["col_type"] = col_type
     args["dtype"] = os.getenv("DTYPE")
-    args["dynamic_static_unified_comm"] = bool(
-        int(os.getenv("FLAGS_dynamic_static_unified_comm", "1"))
-    )
     model.run_trainer(args)
 
 

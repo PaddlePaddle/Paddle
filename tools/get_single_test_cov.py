@@ -86,7 +86,7 @@ def analysisFNDAFile(rootPath, test):
     fn_filename = f'{rootPath}/build/ut_map/{test}/fnda.tmp'
     try:
         f = open(fn_filename)
-        print(f"oepn {fn_filename} successfully")
+        print(f"open {fn_filename} successfully")
     except FileNotFoundError:
         print(f"{fn_filename} is not found.")
         return
@@ -102,18 +102,18 @@ def analysisFNDAFile(rootPath, test):
         if '.pb.cc' in clazz_filename:
             clazz_filename = clazz_filename.replace('.pb.cc', '.proto')
         if 'FNDA:' in message:
-            OP_REGIST = True
+            OP_REGISTER = True
             for i in range(1, len(message_list) - 1):
                 fn = message_list[i]
                 matchObj = re.match(
-                    r'(.*)Maker(.*)|(.*)Touch(.*)Regist(.*)|(.*)Touch(.*)JitKernel(.*)|(.*)converterC2Ev(.*)',
+                    r'(.*)Maker(.*)|(.*)Touch(.*)Regist(.*)|(.*)Touch(.*)JitKernel(.*)|(.*)converterC2Ev(.*)',  # typos: disable-line
                     fn,
                     re.IGNORECASE,
                 )
                 if matchObj is None:
-                    OP_REGIST = False
+                    OP_REGISTER = False
                     break
-            if not OP_REGIST:
+            if not OP_REGISTER:
                 related_file_list.append(clazz_filename)
                 os.system(f'echo {clazz_filename} >> {related_ut_map_file}')
             else:
@@ -133,7 +133,7 @@ def getBaseFnda(rootPath, test):
     filename = f'{rootPath}/build/ut_map/{test}/coverage.info.tmp'
     try:
         f = open(filename)
-        print(f"oepn {filename} successfully")
+        print(f"open {filename} successfully")
     except FileNotFoundError:
         print(f"{filename} is not found.")
     symbol_fnda = {}

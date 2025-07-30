@@ -27,10 +27,10 @@ __global__ void AddMarginToPositiveLogitsKernel(T* logit,
                                                 const int64_t D,
                                                 const int* class_interval_ptr) {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  int start_index = class_interval_ptr[rank];
-  int end_index = class_interval_ptr[rank + 1];
+  int64_t start_index = class_interval_ptr[rank];
+  int64_t end_index = class_interval_ptr[rank + 1];
   int num_classes = class_interval_ptr[nranks];
-  CUDA_KERNEL_LOOP(i, N) {
+  CUDA_KERNEL_LOOP_TYPE(i, N, int64_t) {
     auto real_label = label[i];
     PADDLE_ENFORCE((real_label < num_classes) && (real_label >= 0),
                    "The index is out of bounds, "
@@ -67,7 +67,9 @@ __global__ void ScaleLogitKernel(T* logits,
                                  const float scale,
                                  const int64_t N,
                                  const int64_t D) {
-  CUDA_KERNEL_LOOP(i, N * D) { logits[i] *= static_cast<T>(scale); }
+  CUDA_KERNEL_LOOP_TYPE(i, N * D, int64_t) {
+    logits[i] *= static_cast<T>(scale);
+  }
 }
 
 template <typename T>
@@ -75,7 +77,7 @@ __global__ void LogitsMinusMaxKernel(T* logits,
                                      const T* logits_max_per_row,
                                      const int64_t N,
                                      const int64_t D) {
-  CUDA_KERNEL_LOOP(i, N * D) {
+  CUDA_KERNEL_LOOP_TYPE(i, N * D, int64_t) {
     auto row = i / D;
     logits[i] -= logits_max_per_row[row];
   }
@@ -86,7 +88,7 @@ __global__ void LogitsMinusLogSumKernel(T* logits,
                                         const T* logits_sum_per_row,
                                         const int64_t N,
                                         const int64_t D) {
-  CUDA_KERNEL_LOOP(i, N * D) {
+  CUDA_KERNEL_LOOP_TYPE(i, N * D, int64_t) {
     auto row = i / D;
     logits[i] -= phi::kps::details::Log(logits_sum_per_row[row]);
   }
@@ -102,7 +104,7 @@ __global__ void HardLabelSoftmaxWithCrossEntropyKernel(
     const int64_t D,
     const int* class_interval_ptr) {
   int start_index = class_interval_ptr[rank];
-  CUDA_KERNEL_LOOP(i, N * D) {
+  CUDA_KERNEL_LOOP_TYPE(i, N * D, int64_t) {
     auto row = i / D;
     auto col = i % D;
     if ((col + start_index) == labels[row]) {
@@ -132,39 +134,21 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
   const auto& place = dev_ctx.GetPlace();  // old code
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  const auto& comm_context_manager =
-      phi::distributed::CommContextManager::GetInstance();
   phi::distributed::NCCLCommContext* comm_ctx = nullptr;
-  distributed::ProcessGroup* pg = nullptr;
   gpuStream_t stream;
   if (nranks > 1) {
-    auto map = distributed::ProcessGroupMapFromGid::getInstance();
-    if (map->has(ring_id)) {
-      // Use ProcessGroup
-      pg = map->get(ring_id);
-    } else {
-      PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
-                        true,
-                        common::errors::InvalidArgument(
-                            "You choose to use new communication library by "
-                            "setting environment "
-                            "variable FLAGS_dynamic_static_unified_comm True. "
-                            "But ring_id(%d) is "
-                            "not found in comm_context_manager.",
-                            std::to_string(ring_id)));
-      comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
-          comm_context_manager.Get(std::to_string(ring_id)));
-      PADDLE_ENFORCE_NE(comm_ctx,
-                        nullptr,
-                        common::errors::Unavailable(
-                            "NCCLCommContext is nullptr, collective op should "
-                            "has ring_id attr."));
+    comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
+        dev_ctx.GetCommContext());
+    PADDLE_ENFORCE_NE(comm_ctx,
+                      nullptr,
+                      common::errors::Unavailable(
+                          "NCCLCommContext is nullptr, collective op should "
+                          "has ring_id attr."));
 
-      // use global calculate stream
-      stream = static_cast<GPUContext*>(
-                   phi::DeviceContextPool::Instance().Get(place))
-                   ->stream();
-    }
+    // use global calculate stream
+    stream =
+        static_cast<GPUContext*>(phi::DeviceContextPool::Instance().Get(place))
+            ->stream();
   }
 #endif
 
@@ -176,8 +160,8 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
   const auto& labels_dims = labels.dims();
 
   const int axis = logits_dims.size() - 1;
-  const int N = phi::funcs::SizeToAxis(axis, logits_dims);
-  const int D = phi::funcs::SizeFromAxis(axis, logits_dims);
+  const int64_t N = phi::funcs::SizeToAxis(axis, logits_dims);
+  const int64_t D = phi::funcs::SizeFromAxis(axis, logits_dims);
 
   int blocks = NumBlocks(N);
   int threads = kNumCUDAThreads;
@@ -261,19 +245,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   if (nranks > 1) {
-    if (pg) {
-      std::vector<phi::DenseTensor> in_tensor;
-      std::vector<phi::DenseTensor> out_tensor;
-      in_tensor.push_back(logits_max);
-      out_tensor.push_back(logits_max);
-
-      distributed::AllreduceOptions opts;
-      opts.reduce_op = distributed::ReduceOp::MAX;
-      auto task = pg->AllReduce(in_tensor, out_tensor, opts);
-      task->Wait();
-    } else {
-      comm_ctx->AllReduce(&logits_max, logits_max, ncclMax, stream);
-    }
+    comm_ctx->AllReduce(&logits_max, logits_max, ncclMax, stream);
   }
 #endif
 
@@ -295,19 +267,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   if (nranks > 1) {
-    if (pg) {
-      std::vector<phi::DenseTensor> in_tensor;
-      std::vector<phi::DenseTensor> out_tensor;
-      in_tensor.push_back(sum_exp_logits);
-      out_tensor.push_back(sum_exp_logits);
-
-      distributed::AllreduceOptions opts;
-      opts.reduce_op = distributed::ReduceOp::SUM;
-      auto task = pg->AllReduce(in_tensor, out_tensor, opts);
-      task->Wait();
-    } else {
-      comm_ctx->AllReduce(&sum_exp_logits, sum_exp_logits, ncclSum, stream);
-    }
+    comm_ctx->AllReduce(&sum_exp_logits, sum_exp_logits, ncclSum, stream);
   }
 #endif
 
@@ -346,19 +306,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   if (nranks > 1) {
-    if (pg) {
-      std::vector<phi::DenseTensor> in_tensor;
-      std::vector<phi::DenseTensor> out_tensor;
-      in_tensor.push_back(*loss);
-      out_tensor.push_back(*loss);
-
-      distributed::AllreduceOptions opts;
-      opts.reduce_op = distributed::ReduceOp::SUM;
-      auto task = pg->AllReduce(in_tensor, out_tensor, opts);
-      task->Wait();
-    } else {
-      comm_ctx->AllReduce(loss, *loss, ncclSum, stream);
-    }
+    comm_ctx->AllReduce(loss, *loss, ncclSum, stream);
   }
 #endif
 }

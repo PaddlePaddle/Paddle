@@ -29,17 +29,6 @@ limitations under the License. */
 #include "paddle/phi/core/platform/collective_helper.h"
 #endif
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/phi/core/distributed/nccl_comm_context.h"
-COMMON_DECLARE_bool(dynamic_static_unified_comm);
-#elif defined(PADDLE_WITH_XPU_BKCL)
-#include "paddle/phi/core/distributed/bkcl_comm_context.h"
-COMMON_DECLARE_bool(dynamic_static_unified_comm);
-#endif
-#if defined(PADDLE_WITH_CUSTOM_DEVICE)
-COMMON_DECLARE_bool(dynamic_static_unified_comm);
-#endif
-
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/store/store_utils.h"
@@ -75,46 +64,26 @@ class CCommInitOp : public framework::OperatorBase {
         device_id = Attr<int>("device_id");
       }
       int rank_id = Attr<int>("rank");
-      if (FLAGS_dynamic_static_unified_comm) {
-        VLOG(3) << "#### use new comm lab ####";
-        auto store = phi::distributed::CreateOrGetGlobalTCPStore();
-        if (!phi::distributed::CommContextManager::GetInstance().Has(
-                std::to_string(rid))) {
-          phi::distributed::CommContextManager::CreateXCCLCommContext(
-              store,
-              std::to_string(rid),
-              phi::CustomPlace(place.GetDeviceType(), device_id),
-              rank_id,
-              nranks,
-              "c_comm_init_op");
-        }
-        return;
+
+      VLOG(3) << "#### use new comm lab ####";
+      auto store = phi::distributed::CreateOrGetGlobalTCPStore();
+      if (!phi::distributed::CommContextManager::GetInstance().Has(
+              std::to_string(rid))) {
+        phi::distributed::CommContextManager::CreateXCCLCommContext(
+            store,
+            std::to_string(rid),
+            phi::CustomPlace(place.GetDeviceType(), device_id),
+            rank_id,
+            nranks,
+            "c_comm_init_op");
       }
+      return;
 
-      using UniqueId = phi::ccl::CCLRootId;
-      using CommContext = platform::XCCLCommContext;
-
-      VLOG(3) << "#### use old comm lab ####";
-      UniqueId* comm_id = var->GetMutable<UniqueId>();
-      CommContext::Instance(place.GetDeviceType())
-          .CreateComm(comm_id, nranks, rank_id, device_id, rid);
 #else
       PADDLE_THROW(common::errors::PreconditionNotMet(
           "PaddlePaddle should compile with custom device."));
 #endif
     } else {
-// TODO(wangxi): Put this in the unified header file
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-      using UniqueId = ncclUniqueId;
-      using CommContext = platform::NCCLCommContext;
-#elif defined(PADDLE_WITH_XPU_BKCL)
-      using UniqueId = BKCLUniqueId;
-      using CommContext = platform::BKCLCommContext;
-#else
-      PADDLE_THROW(common::errors::PreconditionNotMet(
-          "PaddlePaddle should be compiled with GPU or XPU."));
-#endif
-
       PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::GPU ||
                             place.GetType() == phi::AllocationType::XPU,
                         true,
@@ -137,33 +106,20 @@ class CCommInitOp : public framework::OperatorBase {
       }
       int rank_id = Attr<int>("rank");
 #endif
-#if defined(PADDLE_WITH_NCCL)
-      if (FLAGS_dynamic_static_unified_comm) {
-        VLOG(3) << "#### use new comm lab ####";
-        auto store = phi::distributed::CreateOrGetGlobalTCPStore();
-        phi::distributed::CommContextManager::SetDeviceId(device_id);
-        std::string endpoints = Attr<std::string>("endpoints");
-        phi::distributed::CommContextManager::CreateNCCLCommContext(
-            store, std::to_string(rid), rank_id, nranks, endpoints);
-        return;
-      }
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+      VLOG(3) << "#### use new comm lab ####";
+      auto store = phi::distributed::CreateOrGetGlobalTCPStore();
+      phi::distributed::CommContextManager::SetDeviceId(device_id);
+      std::string endpoints = Attr<std::string>("endpoints");
+      phi::distributed::CommContextManager::CreateNCCLCommContext(
+          store, std::to_string(rid), rank_id, nranks, endpoints);
 #elif defined(PADDLE_WITH_XPU_BKCL)
-      if (FLAGS_dynamic_static_unified_comm) {
-        VLOG(3) << "#### use new comm lab ####";
-        auto store = phi::distributed::CreateOrGetGlobalTCPStore();
-        phi::distributed::CommContextManager::SetDeviceId(device_id);
-        std::string endpoints = Attr<std::string>("endpoints");
-        phi::distributed::CommContextManager::CreateBKCLCommContext(
-            store, std::to_string(rid), rank_id, nranks, endpoints);
-        return;
-      }
-#endif
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL)
-      VLOG(3) << "#### use old comm lab ####";
-      UniqueId* comm_id = var->GetMutable<UniqueId>();
-      CommContext::Instance().CreateComm(
-          comm_id, nranks, rank_id, device_id, rid);
+      VLOG(3) << "#### use new comm lab ####";
+      auto store = phi::distributed::CreateOrGetGlobalTCPStore();
+      phi::distributed::CommContextManager::SetDeviceId(device_id);
+      std::string endpoints = Attr<std::string>("endpoints");
+      phi::distributed::CommContextManager::CreateBKCLCommContext(
+          store, std::to_string(rid), rank_id, nranks, endpoints);
 #endif
     }
   }

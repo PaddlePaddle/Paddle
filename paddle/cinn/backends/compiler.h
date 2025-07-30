@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <absl/strings/string_view.h>
+#include <string_view>
 
 #include <fstream>
 #include <memory>
@@ -31,6 +31,9 @@
 #endif
 #ifdef CINN_WITH_HIP
 #include "paddle/cinn/runtime/hip/hip_module.h"
+#endif
+#ifdef CINN_WITH_SYCL
+#include "paddle/cinn/runtime/sycl/sycl_module.h"
 #endif
 
 namespace cinn {
@@ -124,22 +127,27 @@ class Compiler final {
    * Retrieve a function by \p fn_name.
    * @return function address or null if not exists.
    */
-  void* Lookup(absl::string_view fn_name);
+  void* Lookup(std::string_view fn_name);
 
   std::vector<void*> GetFnPtr() const { return fn_ptr_; }
 
  private:
-  // do not register device symbol until end=true for build fucntion
+  // do not register device symbol until end=true for build function
   void RegisterDeviceModuleSymbol();
 
   void RegisterCudaModuleSymbol();
 
   void RegisterHipModuleSymbol();
 
+  void RegisterSyclModuleSymbol();
+
   void CompileCudaModule(const ir::Module& module,
                          const std::string& code = "");
 
   void CompileHipModule(const ir::Module& module, const std::string& code = "");
+
+  void CompileSyclModule(const ir::Module& module,
+                         const std::string& code = "");
 
   void CompileX86Module(const ir::Module& module);
 
@@ -161,6 +169,9 @@ class Compiler final {
 #endif
 #ifdef CINN_WITH_HIP
   std::unique_ptr<runtime::hip::HIPModule> hip_module_;
+#endif
+#ifdef CINN_WITH_SYCL
+  std::unique_ptr<runtime::sycl::SYCLModule> sycl_module_;
 #endif
 };
 

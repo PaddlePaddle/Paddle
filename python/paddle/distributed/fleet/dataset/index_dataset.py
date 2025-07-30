@@ -50,8 +50,8 @@ class TreeIndex(Index):
     def emb_size(self) -> int:
         return self._emb_size
 
-    def get_all_leafs(self) -> list[Any]:
-        return self._tree.get_all_leafs()
+    def get_all_leaves(self) -> list[Any]:
+        return self._tree.get_all_leaves()
 
     def get_nodes(self, codes: list[int]) -> list[Any]:
         return self._tree.get_nodes(codes)

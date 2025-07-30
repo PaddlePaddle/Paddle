@@ -214,7 +214,7 @@ bool MergeLayernormPluginDynamic::supportsFormatCombination(
   PADDLE_ENFORCE_NOT_NULL(
       in_out,
       common::errors::InvalidArgument("The input of MergeLayernorm "
-                                      "plugin shoule not be nullptr."));
+                                      "plugin should not be nullptr."));
   PADDLE_ENFORCE_LT(
       pos,
       nb_inputs + nb_outputs,

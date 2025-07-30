@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include <absl/container/flat_hash_map.h>
 
 #include <iostream>
 #include <map>
@@ -36,7 +35,7 @@
 #include "paddle/cinn/optim/replace_call_with_expr.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/cinn/optim/transform_polyfor_to_for.h"
-#include "paddle/cinn/poly/ast_gen.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 namespace lang {
@@ -53,10 +52,11 @@ class LowerTensorGroup {
 
   std::vector<ir::LoweredFunc> operator()();
 
-  std::vector<ir::Expr> GenerateFunctionBody(
+  std::vector<ir::stmt::BlockRef> GenerateFunctionBody(
       ast_gen_ius::TensorGroup* tensor_group);
 
-  std::vector<ir::Argument> GenerateFunctionArgumentList(ir::Expr fn_body);
+  std::vector<ir::Argument> GenerateFunctionArgumentList(
+      const ir::stmt::BlockRef& fn_body);
 
  private:
   const std::string& fn_name_;

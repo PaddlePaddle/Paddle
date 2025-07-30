@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 from functools import reduce
 
 import numpy as np
+from op_test import get_places
 
 import paddle
 from paddle import base
@@ -48,9 +48,7 @@ class TestVariable(unittest.TestCase):
 
     def test_var(self):
         b = default_main_program().current_block()
-        w = b.create_var(
-            dtype="float64", shape=[784, 100], lod_level=0, name="fc.w"
-        )
+        w = b.create_var(dtype="float64", shape=[784, 100], name="fc.w")
         w_dtype = w.dtype
         if paddle.framework.use_pir_api() and isinstance(
             w_dtype, paddle.base.libpaddle.VarDesc.VarType
@@ -274,15 +272,7 @@ class TestVariable(unittest.TestCase):
         self.assertTrue((result[0] == expected[0]).all())
 
     def test_slice(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
+        places = get_places()
 
         for place in places:
             self._test_slice_index_tensor(place)
@@ -293,11 +283,11 @@ class TestVariable(unittest.TestCase):
 
     def _tostring(self):
         b = default_main_program().current_block()
-        w = b.create_var(dtype="float64", lod_level=0)
+        w = b.create_var(dtype="float64")
         self.assertTrue(isinstance(str(w), str))
 
         if core.is_compiled_with_cuda():
-            wc = b.create_var(dtype="int", lod_level=0)
+            wc = b.create_var(dtype="int")
             self.assertTrue(isinstance(str(wc), str))
 
     def test_tostring(self):
@@ -308,7 +298,7 @@ class TestVariable(unittest.TestCase):
 
     def test_fake_interface_only_api(self):
         b = default_main_program().current_block()
-        var = b.create_var(dtype="float64", lod_level=0)
+        var = b.create_var(dtype="float64")
         with base.dygraph.guard():
             self.assertRaises(AssertionError, var.numpy)
             self.assertRaises(AssertionError, var.backward)
@@ -369,7 +359,7 @@ class TestVariable(unittest.TestCase):
 
     def test_detach(self):
         b = default_main_program().current_block()
-        x = b.create_var(shape=[2, 3, 5], dtype="float64", lod_level=0)
+        x = b.create_var(shape=[2, 3, 5], dtype="float64")
         detach_x = x.detach()
         self.assertEqual(x.persistable, detach_x.persistable)
         self.assertEqual(x.shape, detach_x.shape)
@@ -384,35 +374,37 @@ class TestVariable(unittest.TestCase):
             startup = paddle.static.Program()
             main = paddle.static.Program()
             scope = base.core.Scope()
-            with paddle.static.scope_guard(scope):
-                with paddle.static.program_guard(main, startup):
-                    x = paddle.static.data(
-                        name='x', shape=[3, 2, 1], dtype='float32'
-                    )
-                    x.persistable = True
-                    feed_data = np.ones(shape=[3, 2, 1], dtype=np.float32)
-                    detach_x = x.detach()
-                    exe = paddle.static.Executor(paddle.CPUPlace())
-                    exe.run(startup)
-                    result = exe.run(
-                        main, feed={'x': feed_data}, fetch_list=[x, detach_x]
-                    )
-                    self.assertTrue((result[1] == feed_data).all())
-                    self.assertTrue((result[0] == result[1]).all())
+            with (
+                paddle.static.scope_guard(scope),
+                paddle.static.program_guard(main, startup),
+            ):
+                x = paddle.static.data(
+                    name='x', shape=[3, 2, 1], dtype='float32'
+                )
+                x.persistable = True
+                feed_data = np.ones(shape=[3, 2, 1], dtype=np.float32)
+                detach_x = x.detach()
+                exe = paddle.static.Executor(paddle.CPUPlace())
+                exe.run(startup)
+                result = exe.run(
+                    main, feed={'x': feed_data}, fetch_list=[x, detach_x]
+                )
+                self.assertTrue((result[1] == feed_data).all())
+                self.assertTrue((result[0] == result[1]).all())
 
-                    modified_value = np.zeros(shape=[3, 2, 1], dtype=np.float32)
-                    detach_x.set_value(modified_value, scope)
-                    result = exe.run(main, fetch_list=[x, detach_x])
-                    self.assertTrue((result[1] == modified_value).all())
-                    self.assertTrue((result[0] == result[1]).all())
+                modified_value = np.zeros(shape=[3, 2, 1], dtype=np.float32)
+                detach_x.set_value(modified_value, scope)
+                result = exe.run(main, fetch_list=[x, detach_x])
+                self.assertTrue((result[1] == modified_value).all())
+                self.assertTrue((result[0] == result[1]).all())
 
-                    modified_value = np.random.uniform(
-                        -1, 1, size=[3, 2, 1]
-                    ).astype('float32')
-                    x.set_value(modified_value, scope)
-                    result = exe.run(main, fetch_list=[x, detach_x])
-                    self.assertTrue((result[1] == modified_value).all())
-                    self.assertTrue((result[0] == result[1]).all())
+                modified_value = np.random.uniform(
+                    -1, 1, size=[3, 2, 1]
+                ).astype('float32')
+                x.set_value(modified_value, scope)
+                result = exe.run(main, fetch_list=[x, detach_x])
+                self.assertTrue((result[1] == modified_value).all())
+                self.assertTrue((result[0] == result[1]).all())
 
 
 class TestVariableSlice(unittest.TestCase):
@@ -488,17 +480,7 @@ class TestVariableSlice(unittest.TestCase):
             self.assertTrue((result[i] == expected[i]).all())
 
     def test_slice(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-
-        for place in places:
+        for place in get_places():
             self._test_item_none(place)
             self._test_item_none_and_decrease(place)
 
@@ -580,7 +562,7 @@ class TestListIndex(unittest.TestCase):
             array = array[0]
             index = index[0]
 
-    def test_static_graph_list_index_muti_dim(self):
+    def test_static_graph_list_index_multi_dim(self):
         paddle.enable_static()
         inps_shape = [3, 4, 5]
         array = np.arange(self.numel(inps_shape), dtype='float32').reshape(
@@ -645,7 +627,7 @@ class TestListIndex(unittest.TestCase):
                 err_msg=f'\n numpy:{y2},\n paddle:{getitem_pp[0]}',
             )
 
-    def test_dygraph_list_index_muti_dim(self):
+    def test_dygraph_list_index_multi_dim(self):
         paddle.disable_static()
         inps_shape = [3, 4, 5]
         array = np.arange(self.numel(inps_shape), dtype='float32').reshape(
@@ -880,7 +862,7 @@ class TestListIndex(unittest.TestCase):
         with paddle.static.program_guard(program):
             self.run_setitem_list_index(array, index, value_np)
 
-    def test_static_graph_tensor_index_setitem_muti_dim(self):
+    def test_static_graph_tensor_index_setitem_multi_dim(self):
         paddle.enable_static()
         inps_shape = [3, 4, 5, 4]
         array = np.arange(self.numel(inps_shape), dtype='float32').reshape(
@@ -972,7 +954,7 @@ class TestListIndex(unittest.TestCase):
             index1 = index1[0]
             index2 = index2[0]
 
-    def test_static_graph_array_index_muti_dim(self):
+    def test_static_graph_array_index_multi_dim(self):
         paddle.enable_static()
         inps_shape = [3, 4, 5, 4]
         array = np.arange(self.numel(inps_shape), dtype='float32').reshape(
@@ -1055,7 +1037,7 @@ class TestListIndex(unittest.TestCase):
             index1 = index1[0]
             index2 = index2[0]
 
-    def test_dygraph_array_index_muti_dim(self):
+    def test_dygraph_array_index_multi_dim(self):
         paddle.disable_static()
         inps_shape = [3, 4, 5, 4]
         array = np.arange(self.numel(inps_shape), dtype='float32').reshape(

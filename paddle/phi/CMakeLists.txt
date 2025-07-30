@@ -51,6 +51,9 @@ set(PHI_DEPS
     cblas
     utf8proc
     common)
+if(WITH_CINN)
+  list(APPEND PHI_DEPS ap_phi)
+endif()
 
 list(
   APPEND
@@ -85,6 +88,10 @@ endif()
 
 if(WITH_GLOO)
   list(APPEND PHI_DEPS gloo)
+endif()
+
+if(WITH_FLAGCX)
+  list(APPEND PHI_DEPS flagcx)
 endif()
 
 if(WITH_CUDNN_FRONTEND)
@@ -139,8 +146,12 @@ if(WITH_AVX
    AND WITH_MKL)
   set_source_files_properties(
     kernels/fusion/cpu/fused_layer_norm_avx_kernel.cc
-    kernels/fusion/cpu/self_dp_attention_kernel.cc
     kernels/fusion/cpu/rms_norm_avx_kernel.cc
+    PROPERTIES
+      COMPILE_FLAGS
+      "${Wno_Maybe_Uninitialized} ${FMA_FLAG} ${AVX512F_FLAG} ${NO_INLINE}")
+  set_source_files_properties(
+    kernels/fusion/cpu/self_dp_attention_kernel.cc
     PROPERTIES COMPILE_FLAGS
                "${Wno_Maybe_Uninitialized} ${FMA_FLAG} ${AVX512F_FLAG}")
 endif()
@@ -177,6 +188,13 @@ else()
     phi_core ${PHI_BUILD_TYPE}
     SRCS ${PHI_CORE_SRCS}
     DEPS ${PHI_DEPS})
+endif()
+
+set(NVTX3_PATH "${CUDA_INCLUDE_DIRS}/../targets/x86_64-linux/include/nvtx3/")
+get_filename_component(NVTX3_PATH "${NVTX3_PATH}" ABSOLUTE)
+
+if(EXISTS "${NVTX3_PATH}")
+  target_include_directories(phi_core PUBLIC "${NVTX3_PATH}")
 endif()
 
 # core/memory/allocation uses shm_unlink and requires the rt library
@@ -277,7 +295,6 @@ endif()
 
 add_dependencies(phi extern_lapack)
 if(WITH_CUTLASS)
-  add_dependencies(phi cutlass_codegen)
   add_definitions("-DPADDLE_WITH_MEMORY_EFFICIENT_ATTENTION"
   )# for memory_efficient_attention.h
 endif()

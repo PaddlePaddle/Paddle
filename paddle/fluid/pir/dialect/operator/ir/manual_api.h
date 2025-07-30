@@ -59,6 +59,12 @@ pir::Value ones(const std::vector<int64_t>& shape,
                 phi::DataType dtype = phi::DataType::FLOAT32,
                 const Place& place = phi::CPUPlace());
 
+pir::Value full(const std::vector<int64_t>& shape,
+                double real,
+                double imag,
+                phi::DataType dtype = phi::DataType::FLOAT32,
+                const Place& place = phi::CPUPlace());
+
 pir::Value ones_like(pir::Value x_,
                      phi::DataType dtype = phi::DataType::UNDEFINED,
                      const Place& place = {});

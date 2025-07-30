@@ -18,9 +18,7 @@
 
 REGISTER_FILE_SYMBOLS(buffered_allocator);
 
-namespace paddle {
-namespace memory {
-namespace allocation {
+namespace paddle::memory::allocation {
 
 BufferedAllocator::BufferedAllocator(std::shared_ptr<Allocator> allocator)
     : underlying_allocator_(std::move(allocator)) {
@@ -75,6 +73,4 @@ phi::Allocation *BufferedAllocator::AllocateImpl(size_t size) {
   }
 }
 
-}  // namespace allocation
-}  // namespace memory
-}  // namespace paddle
+}  // namespace paddle::memory::allocation

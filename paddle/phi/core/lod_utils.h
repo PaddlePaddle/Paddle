@@ -19,25 +19,25 @@
 #include "paddle/utils/test_macros.h"
 
 namespace phi {
-using LoD = std::vector<std::vector<std::size_t>>;
+using LegacyLoD = std::vector<std::vector<std::size_t>>;
 
 /*
- * Transform an LoD from relative offsets to absolute offsets.
+ * Transform an LegacyLoD from relative offsets to absolute offsets.
  */
-LoD ToAbsOffset(const LoD& in);
+LegacyLoD ToAbsOffset(const LegacyLoD& in);
 
-TEST_API void AppendLoD(LoD* lod, const LoD& lod_length);
+TEST_API void AppendLegacyLoD(LegacyLoD* lod, const LegacyLoD& lod_length);
 
 /*
- * Convert between length-based LoD and offset-based LoD.
- * The implementation of DenseTensor class use offset-based LoD.
+ * Convert between length-based LegacyLoD and offset-based LegacyLoD.
+ * The implementation of DenseTensor class use offset-based LegacyLoD.
  * However, we want to expose the more user-friendly length-based
- * LoD to the Python side instead.
+ * LegacyLoD to the Python side instead.
  *
  * Example:
  * If offset_lod = [[0, 2, 3],[0, 3, 5, 9]]
  * then length_lod = [[2, 1], [3, 2, 4]]
  */
-TEST_API LoD ConvertToLengthBasedLoD(const LoD& offset_lod);
+TEST_API LegacyLoD ConvertToLengthBasedLegacyLoD(const LegacyLoD& offset_lod);
 
 }  // namespace  phi

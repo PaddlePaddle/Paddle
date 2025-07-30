@@ -14,14 +14,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/utils/string/string_helper.h"
 
-namespace gloo {
-namespace transport {
+namespace gloo::transport {
 class Device;
-}  // namespace transport
-}  // namespace gloo
+}  // namespace gloo::transport
 
-namespace gloo {
-namespace rendezvous {
+namespace gloo::rendezvous {
 
 class HTTPStore;
 class Store;
@@ -300,11 +297,9 @@ void ParallelConnectContext::connectFullMesh(
   VLOG(0) << "ParallelConnectContext::connectFullMesh() is over";
 }
 #endif
-}  // namespace rendezvous
-}  // namespace gloo
+}  // namespace gloo::rendezvous
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 void GlooWrapper::Init() {
   if (is_initialized_) {
@@ -377,5 +372,4 @@ template std::vector<float> GlooWrapper::AllGather<float>(
 template std::vector<double> GlooWrapper::AllGather<double>(
     double& input);  // NOLINT
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

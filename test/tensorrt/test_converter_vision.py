@@ -40,6 +40,7 @@ class TestGridSampleTRTPatternBase(TensorRTBaseTest):
         }
         self.program_config = {"feed_list": ["x", "grid"]}
         self.min_shape = {"x": [1, 1, 3, 3], "grid": [1, 3, 4, 2]}
+        self.opt_shape = {"x": [1, 1, 3, 3], "grid": [1, 3, 4, 2]}
         self.max_shape = {"x": [5, 1, 3, 3], "grid": [5, 3, 4, 2]}
 
 

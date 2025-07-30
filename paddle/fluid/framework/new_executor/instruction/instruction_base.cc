@@ -63,13 +63,13 @@ static std::string GetDtype(const Scope& scope, const std::string& name) {
 
   if (var->IsType<phi::DenseTensor>()) {
     const phi::DenseTensor& tensor = var->Get<phi::DenseTensor>();
-    if (UNLIKELY(!tensor.IsInitialized())) {
+    if (UNLIKELY(!tensor.has_allocation())) {
       return "";
     }
     return DataTypeToString(framework::TransToProtoVarType(tensor.dtype()));
   } else if (var->IsType<phi::SelectedRows>()) {
     auto tensor = var->Get<phi::SelectedRows>().value();
-    if (UNLIKELY(!tensor.IsInitialized())) {
+    if (UNLIKELY(!tensor.has_allocation())) {
       return "uninited";
     } else {
       return DataTypeToString(framework::TransToProtoVarType(tensor.dtype()));
@@ -94,13 +94,13 @@ static std::string GetPlace(const Scope& scope, const std::string& name) {
 
   if (var->IsType<phi::DenseTensor>()) {
     const phi::DenseTensor& tensor = var->Get<phi::DenseTensor>();
-    if (UNLIKELY(!tensor.IsInitialized())) {
+    if (UNLIKELY(!tensor.has_allocation())) {
       return "";
     }
     return to_string(tensor.place());
   } else if (var->IsType<phi::SelectedRows>()) {
     auto tensor = var->Get<phi::SelectedRows>().value();
-    if (UNLIKELY(!tensor.IsInitialized())) {
+    if (UNLIKELY(!tensor.has_allocation())) {
       return "uninited";
     } else {
       return to_string(tensor.place());
@@ -127,9 +127,9 @@ static int GetRowSize(const Scope& scope, const std::string& name) {
   return -1;
 }
 
-static LoD GetLoDDebug(const Scope& scope, const std::string& name) {
+static LegacyLoD GetLoDDebug(const Scope& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
-  auto default_lod = LoD({{}});
+  auto default_lod = LegacyLoD({{}});
 
   if (var == nullptr) {
     return default_lod;

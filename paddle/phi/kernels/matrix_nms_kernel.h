@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void MatrixNMSKernel(const Context& ctx,
+void MatrixNMSKernel(const Context& dev_ctx,
                      const DenseTensor& bboxes,
                      const DenseTensor& scores,
                      float score_threshold,

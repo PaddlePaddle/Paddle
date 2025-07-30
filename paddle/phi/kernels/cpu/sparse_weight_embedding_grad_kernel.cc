@@ -166,14 +166,14 @@ struct SparseWeightEmbeddingSparseGradCPUFunctor {
 };
 
 template <typename T, typename Context>
-void SparseWeightEmbeddingGradKernel(const Context& ctx,
+void SparseWeightEmbeddingGradKernel(const Context& dev_ctx,
                                      const DenseTensor& input,
                                      const SelectedRows& weight,
                                      const DenseTensor& out_grad,
                                      int64_t padding_idx,
                                      DenseTensor* weight_grad) {
   SparseWeightEmbeddingGradCPUFunctor<T, Context> functor(
-      ctx, input, weight, out_grad, padding_idx, weight_grad);
+      dev_ctx, input, weight, out_grad, padding_idx, weight_grad);
 
   if (input.dtype() == phi::DataType::INT32) {
     functor.template apply<int>();
@@ -186,14 +186,14 @@ void SparseWeightEmbeddingGradKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void SparseWeightEmbeddingSparseGradKernel(const Context& ctx,
+void SparseWeightEmbeddingSparseGradKernel(const Context& dev_ctx,
                                            const DenseTensor& input,
                                            const SelectedRows& weight,
                                            const DenseTensor& out_grad,
                                            int64_t padding_idx,
                                            SelectedRows* weight_grad) {
   SparseWeightEmbeddingSparseGradCPUFunctor<T, Context> functor(
-      ctx, input, weight, out_grad, padding_idx, weight_grad);
+      dev_ctx, input, weight, out_grad, padding_idx, weight_grad);
 
   if (input.dtype() == phi::DataType::INT32) {
     functor.template apply<int>();

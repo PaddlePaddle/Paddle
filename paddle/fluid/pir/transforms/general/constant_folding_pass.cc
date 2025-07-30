@@ -47,6 +47,7 @@
 #include "paddle/pir/include/core/region.h"
 #include "paddle/pir/include/core/value.h"
 #include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_registry.h"
 #include "paddle/pir/include/pattern_rewrite/frozen_rewrite_pattern_set.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
@@ -186,7 +187,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
       if (use_parameter_op) {
         if (output_var->IsType<phi::DenseTensor>()) {
           auto* output_tensor = output_var->GetMutable<phi::DenseTensor>();
-          if (output_tensor->IsInitialized() &&
+          if (output_tensor->has_allocation() &&
               output_tensor->place().GetType() != place_.GetType()) {
             phi::DenseTensor temp_tensor;
             temp_tensor.Resize(output_tensor->dims());
@@ -300,7 +301,6 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     }
     paddle::framework::InterpreterCore core(
         place_, {}, kernel_program->block(), scope_, *exe_config_);
-
     core.Run({});
     return output_var_names;
   }
@@ -557,3 +557,5 @@ std::unique_ptr<Pass> CreateConstantFoldingPass() {
 }
 
 }  // namespace pir
+
+REGISTER_IR_PASS(constant_folding_pass, ConstantFoldingPass);

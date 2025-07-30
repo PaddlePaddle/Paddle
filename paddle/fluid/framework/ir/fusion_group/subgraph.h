@@ -148,7 +148,7 @@ class SubGraph {
     for (auto* n : SortedNodes()) {
       if (IsOutputOfInternalOp(n) && IsInputOfInternalOp(n) &&
           !IsInputOfExternalOp(n)) {
-        // When the outputs size is 0, it is also considered a intermidiate
+        // When the outputs size is 0, it is also considered a intermediate
         // output. It maybe an unused output or the fetching vars, so that we
         // cannot eliminate it directly here.
         intermediate_out_vars.push_back(n);

@@ -13,7 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" usage: gcda_clean.py pull_id. """
+"""usage: gcda_clean.py pull_id."""
 
 import os
 import sys
@@ -85,7 +85,7 @@ def clean(pull_id):
 
                 # convert paddle/fluid/imperative/CMakeFiles/layer.dir/layer.cc.gcda
                 # to paddle/fluid/imperative/layer.cc.gcda
-                # modifed to make it more robust
+                # modified to make it more robust
                 # covert /paddle/build/paddle/phi/backends/CMakeFiles/phi_backends.dir/gpu/cuda/cuda_info.cc.gcda
                 # to /paddle/build/paddle/phi/backends/gpu/cuda/cuda_info.cc.gcda
                 trimmed_tmp = []

@@ -84,7 +84,7 @@ TEST(DenseTensor, PrintDenseTensor) {
 }
 
 TEST(DenseTensor, GetTensorBound) {
-  LoD lod{{0, 2}};
+  LegacyLoD lod{{0, 2}};
   phi::DenseTensor tensor;
   tensor.set_lod(lod);
   tensor.Resize({2, 1});
@@ -97,7 +97,7 @@ TEST(DenseTensor, GetTensorBound) {
 }
 
 TEST(DenseTensor, CheckValidOutput) {
-  LoD lod{{0, 1, 2}};
+  LegacyLoD lod{{0, 1, 2}};
   phi::DenseTensor tensor;
   tensor.set_lod(lod);
   tensor.Resize({2, 1});

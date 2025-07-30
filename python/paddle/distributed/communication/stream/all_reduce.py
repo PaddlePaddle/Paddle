@@ -43,7 +43,7 @@ def _all_reduce_in_dygraph(
     sync_op: bool,
     use_calc_stream: bool,
 ) -> task:
-    op_type = _get_reduce_op(op, "allreduce")
+    op_type = _get_reduce_op(op)
 
     if use_calc_stream:
         return group.process_group.all_reduce_on_calc_stream(tensor, op_type)
@@ -79,19 +79,19 @@ def _all_reduce_in_static_mode(
         'all_reduce',
     )
 
-    op_type = _get_reduce_op(op, "allreduce")
     ring_id = 0 if group is None else group.id
 
     if not isinstance(ring_id, int):
         raise ValueError("The type of 'ring_id' for all_reduce should be int.")
 
     if in_pir_mode():
-        op_type: str = _to_inplace_op(op_type)
-        getattr(_C_ops, op_type)(tensor, ring_id, sync_op, False)
+        op_type: str = _to_inplace_op(op)
+        _C_ops.all_reduce_(tensor, ring_id, op)
         return
 
     # TODO: Support task and use task.wait in static graph mode
     #       Use use_calc_stream rather than sync_op
+    op_type = _get_reduce_op(op)
     helper = framework.LayerHelper(op_type, **locals())
     helper.append_op(
         type=op_type,

@@ -35,32 +35,27 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
 
   bool MatchAndRewrite(cinn::dialect::FusionOp fusion_op,
                        pir::PatternRewriter& rewriter) const override {
-    // Fallback only when FusionOp has two operators inside: AnySingleOp + yiled
-    // store cf.yield
-
-    if (fusion_op.GetOperators().size() != 3) {
+    // Fallback only when FusionOp has two operators inside: AnySingleOp +
+    // cf.yield
+    if (fusion_op.GetOperators().size() != 2) {
       return false;
     }
 
-    if (!fusion_op.GetOperators()[1]->isa<cinn::dialect::YieldStoreOp>()) {
+    if (!fusion_op.GetOperators()[1]->isa<pir::YieldOp>()) {
       return false;
     }
 
     PADDLE_ENFORCE_EQ(
         fusion_op.GetOperators().size(),
-        3,
+        2,
         ::common::errors::InvalidArgument(
             "fusion_op should have two operators inside, but got %d",
             fusion_op.GetOperators().size()));
-    PADDLE_ENFORCE(
-        fusion_op.GetOperators()[2]->isa<::pir::YieldOp>(),
-        ::common::errors::InvalidArgument(
-            "The last operator of fusion_op must be YieldOp, but got %s",
-            fusion_op.GetOperators()[2]->name()));
 
-    auto* program = fusion_op->GetParentProgram();
-    auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
-        fusion_op->GetParentProgram());
+    if (fusion_op.GetOperators()[0]->isa<paddle::dialect::VarianceOp>()) {
+      return false;
+    }
+
     std::optional<pir::Operation*> paddle_op =
         FallBackOp(fusion_op.GetOperators()[0], rewriter);
     if (!paddle_op.has_value()) {
@@ -171,6 +166,85 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
   }
 };
 
+// Fallback reshape pattern like this:
+// (%1) = cinn_op.generate_shape (%0)
+// (%2) = pd_op.reshape (%0, %1)
+// () = cf.yield (%2)
+class FusionOpSingleReshapePattern
+    : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
+ public:
+  explicit FusionOpSingleReshapePattern(::pir::IrContext* context)
+      : pir::OpRewritePattern<cinn::dialect::FusionOp>(context) {}
+
+  bool MatchAndRewrite(cinn::dialect::FusionOp fusion_op,
+                       pir::PatternRewriter& rewriter) const override {
+    const auto& ops = fusion_op.GetOperators();
+    if (ops.size() != 3) return false;
+    if (!ops[0]->isa<cinn::dialect::GenerateShapeOp>() ||
+        !ops[1]->isa<paddle::dialect::ReshapeOp>() ||
+        !ops[2]->isa<pir::YieldOp>()) {
+      return false;
+    }
+
+    // Input of generate_shape op and reshape op should be same, so
+    // generate_shape has no new symbol dim
+    if (ops[0]->num_operands() == 1 &&
+        ops[0]->operand_source(0) != ops[1]->operand_source(0)) {
+      return false;
+    }
+
+    // generate_shape op should only be used by reshape op
+    // reshape op should only be used by yield op
+    if (ops[0]->result(0).use_count() != 1 ||
+        ops[1]->result(0).use_count() != 1) {
+      return false;
+    }
+    if (ops[0]->result(0).first_use().owner() != ops[1] ||
+        ops[1]->result(0).first_use().owner() != ops[2]) {
+      return false;
+    }
+
+    const std::vector<int64_t> shape = [&] {
+      auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
+          fusion_op->GetParentProgram());
+      const auto& reshape_x_shape =
+          shape_analysis.GetShapeOrDataForValue(ops[1]->operand_source(0))
+              .shape();
+      const auto& reshape_out_shape =
+          shape_analysis.GetShapeOrDataForValue(ops[1]->result(0)).shape();
+      std::vector<int64_t> shape(reshape_out_shape.size(), -1);
+      for (size_t i = 0; i < reshape_out_shape.size(); ++i) {
+        if (reshape_out_shape[i].isa<int64_t>()) {
+          shape[i] = reshape_out_shape[i].dyn_cast<int64_t>();
+          continue;
+        }
+        if (reshape_out_shape[i].isa<std::string>()) {
+          if (i < reshape_x_shape.size() &&
+              reshape_x_shape[i] == reshape_out_shape[i]) {
+            shape[i] = 0;
+            continue;
+          }
+        }
+        shape[i] = -1;
+      }
+      return shape;
+    }();
+
+    const int dynamic_dim_cnt = std::count(shape.begin(), shape.end(), -1);
+    if (dynamic_dim_cnt > 1) {
+      return false;
+    }
+
+    // create new reshape out of fusion op
+    auto new_reshape = rewriter.Build<paddle::dialect::ReshapeOp>(
+        ops[1]->operand_source(0), shape);
+
+    rewriter.ReplaceAllUsesWith(fusion_op.result(0), new_reshape.result(0));
+    rewriter.EraseOp(fusion_op);
+    return true;
+  }
+};
+
 class SingleOpFallbackToPhiPass : public pir::PatternRewritePass {
  public:
   SingleOpFallbackToPhiPass()
@@ -183,6 +257,7 @@ class SingleOpFallbackToPhiPass : public pir::PatternRewritePass {
 
     pir::RewritePatternSet ps(context);
     ps.Add<FusionOpPattern>(context);
+    ps.Add<FusionOpSingleReshapePattern>(context);
 
     return ps;
   }

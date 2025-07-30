@@ -53,7 +53,7 @@ class SumOp : public framework::OperatorWithKernel {
             common::errors::NotFound("Input var[%s] should not be nullptr",
                                      x_vars_name[idx]));
         auto tensor =
-            framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_vars[idx]);
+            framework::GetDenseTensorOrSelectedRowsValueFromVar(*x_vars[idx]);
         if (!tensor->IsInitialized()) {
           continue;
         }
@@ -117,7 +117,7 @@ class SumOp : public framework::OperatorWithKernel {
     PADDLE_THROW(common::errors::InvalidArgument(
         "Expected type of Input(X) must be Tensor,  SelectedRows or "
         "DenseTensorArray. But got "
-        "unsupport type: %s.",
+        "unsupported type: %s.",
         framework::ToTypeName(x_vars[0]->Type())));
   }
 };

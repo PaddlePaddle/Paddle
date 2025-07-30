@@ -96,9 +96,7 @@ def conv_net(
 
 
 def inference_network(dict_dim):
-    data = paddle.static.data(
-        name="words", shape=[-1, 1], dtype="int64", lod_level=1
-    )
+    data = paddle.static.data(name="words", shape=[-1, 1], dtype="int64")
     out = conv_net(data, dict_dim)
     return out
 
@@ -126,9 +124,7 @@ class TestDistTextClassification2x2(TestDistRunnerBase):
         word_dict, dict_dim = get_worddict(vocab)
 
         # Input data
-        data = paddle.static.data(
-            name="words", shape=[-1, 1], dtype="int64", lod_level=1
-        )
+        data = paddle.static.data(name="words", shape=[-1, 1], dtype="int64")
         label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
 
         # Train program

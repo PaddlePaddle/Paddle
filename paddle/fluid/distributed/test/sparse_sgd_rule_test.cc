@@ -20,8 +20,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/the_one_ps.pb.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 TEST(sparse_value_naive_sgd_test, init_and_update) {
   SparseNaiveSGDRule rule;
@@ -205,5 +204,4 @@ TEST(downpour_sparse_adam_test, test_init_and_update) {
     ASSERT_FLOAT_EQ(value[i], label[i]) << "i is " << i;
   }
 }
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

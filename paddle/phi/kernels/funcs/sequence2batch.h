@@ -36,7 +36,7 @@ class CopyMatrixRowsFunctor {
   // If is_src_index is false,
   // copy the input src to the indexed rows of output dst.
   // The indexed rows are based on the input index.
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& src,
                   phi::Vector<size_t> index_lod,
                   phi::DenseTensor* dst,
@@ -44,7 +44,7 @@ class CopyMatrixRowsFunctor {
 };
 
 template <typename DeviceContext, typename T>
-class LoDTensor2BatchFunctor {
+class DenseTensor2BatchFunctor {
   // Calculate the length of each sequence and
   // sort sequence index by the length.
   // example:  sequences = {s0, s1, s2}
@@ -60,7 +60,7 @@ class LoDTensor2BatchFunctor {
   };
 
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& lod_tensor,
                   phi::DenseTensor* batch,
                   bool is_cal_batch_lod,
@@ -84,7 +84,7 @@ class LoDTensor2BatchFunctor {
               lods[1].size(),
               static_cast<size_t>(lod_tensor.dims()[0])));
       CopyMatrixRowsFunctor<DeviceContext, T> to_batch;
-      to_batch(context, lod_tensor, lods[1], batch, true);
+      to_batch(dev_ctx, lod_tensor, lods[1], batch, true);
       return;
     }
 
@@ -131,7 +131,7 @@ class LoDTensor2BatchFunctor {
     // The max_seqlen represents batch size after rearranging the
     // input DenseTensor. It is also the maximum length of input sequence.
 
-    phi::LoD batch_lods;
+    phi::LegacyLoD batch_lods;
     batch_lods.emplace_back(std::vector<size_t>{0});
     batch_lods.emplace_back(std::vector<size_t>{0});
     batch_lods.emplace_back(std::vector<size_t>{0});
@@ -169,14 +169,14 @@ class LoDTensor2BatchFunctor {
     batch->set_lod(batch_lods);
 
     CopyMatrixRowsFunctor<DeviceContext, T> to_batch;
-    to_batch(context, lod_tensor, batch_lods[1], batch, true);
+    to_batch(dev_ctx, lod_tensor, batch_lods[1], batch, true);
   }
 };
 
 template <typename DeviceContext, typename T>
-class Batch2LoDTensorFunctor {
+class Batch2DenseTensorFunctor {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& batch,
                   phi::DenseTensor* lod_tensor) const {
     auto in_lod = batch.lod();
@@ -197,7 +197,7 @@ class Batch2LoDTensorFunctor {
             in_lod[1].size(),
             static_cast<size_t>(lod_tensor->dims()[0])));
     CopyMatrixRowsFunctor<DeviceContext, T> to_seq;
-    to_seq(context, batch, in_lod[1], lod_tensor, false);
+    to_seq(dev_ctx, batch, in_lod[1], lod_tensor, false);
   }
 };
 

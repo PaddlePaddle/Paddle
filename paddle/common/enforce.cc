@@ -54,8 +54,7 @@ std::atomic_bool paddle_fatal_skip{false};
 
 }  // namespace
 
-namespace common {
-namespace enforce {
+namespace common::enforce {
 void SkipPaddleFatal(bool skip) { paddle_fatal_skip.store(skip); }
 bool IsPaddleFatalSkip() { return paddle_fatal_skip.load(); }
 
@@ -123,5 +122,4 @@ std::string GetCurrentTraceBackString(bool for_signal) {
   return sout.str();
 }
 
-}  // namespace enforce
-}  // namespace common
+}  // namespace common::enforce

@@ -18,14 +18,11 @@
 
 #include "paddle/utils/string/string_helper.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class BlockDesc;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 // Set skip variables of while_op and while_grad_op
 // These variables should be skipped when eager deletion enables.
@@ -283,5 +280,4 @@ void TransferVariablePlace(const framework::Scope *scope,
           << " place: " << new_t->place();
 }
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators

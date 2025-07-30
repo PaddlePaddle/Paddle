@@ -33,8 +33,7 @@ limitations under the License. */
 #include "dnnl_debug.h"  // NOLINT
 #endif
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 template <typename TENSOR>
 void TensorCopyImpl(const TENSOR& src,
@@ -865,6 +864,32 @@ void DeleterBridge(phi::Allocation* alloc) {
   }
 }
 
+phi::DataType ConvertToPDDataType(const std::string& typestr) {
+  static const std::unordered_map<std::string, phi::DataType> type_map = {
+      {"<c8", phi::DataType::COMPLEX64},
+      {"<c16", phi::DataType::COMPLEX128},
+      {"<f2", phi::DataType::BFLOAT16},
+      {"<f4", phi::DataType::FLOAT32},
+      {"<f8", phi::DataType::FLOAT64},
+      {"|u1", phi::DataType::UINT8},
+      {"|i1", phi::DataType::INT8},
+      {"<i2", phi::DataType::INT16},
+      {"<i4", phi::DataType::INT32},
+      {"<i8", phi::DataType::INT64},
+      {"|b1", phi::DataType::BOOL},
+      // NOTE: Paddle not support uint32, uint64, uint16 yet.
+      // {"<u2", phi::DataType::UINT16},
+      // {"<u4", phi::DataType::UINT32},
+      // {"<u8", phi::DataType::UINT64},
+  };
+  auto it = type_map.find(typestr);
+  PADDLE_ENFORCE_NE(
+      it,
+      type_map.end(),
+      common::errors::InvalidArgument("Unsupported typestr: " + typestr));
+  return it->second;
+}
+
 phi::DenseTensor from_blob(void* data,
                            DLManagedTensor* src,
                            const phi::DDim& shape,
@@ -1067,7 +1092,7 @@ std::ostream& print_tensor<phi::dtype::complex<double>>(
   return os;
 }
 
-std::ostream& operator<<(std::ostream& os, const LoD& lod) {
+std::ostream& operator<<(std::ostream& os, const LegacyLoD& lod) {
   // NOTE(xiongkun):
   // https://stackoverflow.com/questions/5195512/namespaces-and-operator-resolution
   // if we don't redefine, the operator << of phi / framework LoD is not found.
@@ -1075,12 +1100,11 @@ std::ostream& operator<<(std::ostream& os, const LoD& lod) {
   return os;
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
 namespace phi {
 
-std::ostream& operator<<(std::ostream& os, const LoD& lod) {
+std::ostream& operator<<(std::ostream& os, const LegacyLoD& lod) {
   paddle::string::operator<<(os, lod);
   return os;
 }
@@ -1097,7 +1121,7 @@ TEST_API std::ostream& operator<<(std::ostream& os, const phi::DenseTensor& t) {
   os << "  - shape: [" << t.dims() << "]\n";
   os << "  - layout: " << common::DataLayoutToString(t.layout()) << "\n";
 
-  if (!t.initialized()) {
+  if (!t.has_allocation()) {
     os << "uninited\n";
     return os;
   }

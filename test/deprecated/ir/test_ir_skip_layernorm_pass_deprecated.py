@@ -27,12 +27,8 @@ class SkipLayerNormFusePassTest(PassTest):
     def setUp(self):
         paddle.enable_static()
         with base.program_guard(self.main_program, self.startup_program):
-            x = paddle.static.data(
-                name="x", shape=[128, 768], dtype="float32", lod_level=0
-            )
-            y = paddle.static.data(
-                name="y", shape=[128, 768], dtype="float32", lod_level=0
-            )
+            x = paddle.static.data(name="x", shape=[128, 768], dtype="float32")
+            y = paddle.static.data(name="y", shape=[128, 768], dtype="float32")
             elementwise_out = paddle.add(x=x, y=y)
             out = paddle.static.nn.layer_norm(input=elementwise_out)
 

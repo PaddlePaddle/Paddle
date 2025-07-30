@@ -232,9 +232,10 @@ class Conll05st(Dataset):
         self.sentences = []
         self.predicates = []
         self.labels = []
-        with gzip.GzipFile(fileobj=wf) as words_file, gzip.GzipFile(
-            fileobj=pf
-        ) as props_file:
+        with (
+            gzip.GzipFile(fileobj=wf) as words_file,
+            gzip.GzipFile(fileobj=pf) as props_file,
+        ):
             sentences = []
             labels = []
             one_seg = []
@@ -244,8 +245,8 @@ class Conll05st(Dataset):
 
                 if len(label) == 0:  # end of sentence
                     for i in range(len(one_seg[0])):
-                        a_kind_lable = [x[i] for x in one_seg]
-                        labels.append(a_kind_lable)
+                        a_kind_label = [x[i] for x in one_seg]
+                        labels.append(a_kind_label)
 
                     if len(labels) >= 1:
                         verb_list = []

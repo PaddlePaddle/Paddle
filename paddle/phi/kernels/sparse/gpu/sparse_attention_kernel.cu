@@ -206,7 +206,7 @@ input: sparse C in CSR format (num_rows,num_rows)
 output: sparse C after softmax operation
 */
 template <typename DeviceContext, typename T>
-void SparseSoftmaxForward(const phi::GPUContext& ctx,
+void SparseSoftmaxForward(const phi::GPUContext& dev_ctx,
                           const phi::DenseTensor* offset,
                           const phi::DenseTensor* columns,
                           phi::DenseTensor* input,
@@ -319,7 +319,7 @@ void SparseSoftmaxForward(const phi::GPUContext& ctx,
 }
 
 template <typename DeviceContext, typename T>
-void SparseSoftmaxBackward(const phi::GPUContext& ctx,
+void SparseSoftmaxBackward(const phi::GPUContext& dev_ctx,
                            const phi::DenseTensor* offset,
                            const phi::DenseTensor* columns,
                            phi::DenseTensor* dx,
@@ -450,7 +450,7 @@ input: dense A (num_rows,num_cols), dense B (num_rows,num_cols)
 output: sparse C in CSR format (num_rows,num_rows)
 */
 template <typename DeviceContext, typename T>
-void DotSdd(const phi::GPUContext& ctx,
+void DotSdd(const phi::GPUContext& dev_ctx,
             const phi::DenseTensor* a,
             const phi::DenseTensor* b,
             const phi::DenseTensor* c_offset,
@@ -519,9 +519,9 @@ void DotSdd(const phi::GPUContext& ctx,
                                          CUSPARSE_SDDMM_ALG_DEFAULT,
                                          &buffer_size);
   auto d_buffer_ptr = phi::memory_utils::Alloc(
-      ctx.GetPlace(),
+      dev_ctx.GetPlace(),
       buffer_size,
-      phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   void* d_buffer = static_cast<void*>(d_buffer_ptr->ptr());
 
   phi::dynload::cusparseSDDMM(handle,
@@ -550,7 +550,7 @@ input: sparse A in CSR format (num_rows,num_rows), dense B (num_rows,num_cols)
 output: dense C (num_rows,num_cols)
 */
 template <typename DeviceContext, typename T>
-void DotDsd(const phi::GPUContext& ctx,
+void DotDsd(const phi::GPUContext& dev_ctx,
             const phi::DenseTensor* a_offset,
             const phi::DenseTensor* a_columns,
             const phi::DenseTensor* a_value,
@@ -621,9 +621,9 @@ void DotDsd(const phi::GPUContext& ctx,
                                         CUSPARSE_SPMM_ALG_DEFAULT,
                                         &buffer_size);
   auto d_buffer_ptr = phi::memory_utils::Alloc(
-      ctx.GetPlace(),
+      dev_ctx.GetPlace(),
       buffer_size,
-      phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   void* d_buffer = static_cast<void*>(d_buffer_ptr->ptr());
 
   phi::dynload::cusparseSpMM(handle,

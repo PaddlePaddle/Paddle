@@ -102,7 +102,7 @@ __device__ __forceinline__ float exp_func<float>(float a) {
 
 template <>
 __device__ __forceinline__ half exp_func<half>(half a) {
-#if defined(__HIPCC__) || CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+#if defined(__HIPCC__) || (__CUDA_ARCH__ > 600)
   return hexp(a);
 #else
   return FromFloat<half>(expf(ToFloat<half>(a)));
@@ -144,7 +144,7 @@ struct KeyValuePair<half> {
     const half2 a2 = __halves2half2(key, value);
     const half2 b2 = __halves2half2(a.key, a.value);
 #ifdef PADDLE_WITH_CUDA
-#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+#if (__CUDA_ARCH__ > 600)
     const half2 res = __hadd2(a2, b2);
 #else
     float a2_1 = __low2float(a2);
@@ -298,7 +298,7 @@ __inline__ __device__ T PartialWarpReduceMin(T val, warp_mask_t lane_mask) {
   T warp_val = __shfl_sync(lane_mask, val, 0, warpSize);
 #else
   T warp_val = __shfl(
-      val, 0, warpSize);  // To fullfill the data in each thread of this warp.
+      val, 0, warpSize);  // To fulfill the data in each thread of this warp.
 #endif
   warp_val = val;
 

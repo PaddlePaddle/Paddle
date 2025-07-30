@@ -213,12 +213,6 @@ void LoadCombineKernel(const Context& dev_ctx,
   auto filename = file_path;
   auto out_var_names = out;
 
-  PADDLE_ENFORCE_GT(out_var_names.size(),
-                    0UL,
-                    common::errors::InvalidArgument(
-                        "The number of variables to be loaded is %d, expect "
-                        "it to be greater than 0.",
-                        out_var_names.size()));
   if (!model_from_memory) {
     std::ifstream fin(filename, std::ios::binary);
     PADDLE_ENFORCE_EQ(

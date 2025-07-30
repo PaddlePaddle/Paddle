@@ -21,13 +21,13 @@ limitations under the License. */
 
 namespace paddle::framework {
 
-std::string LoDToString(const LoD &lod) {
+std::string LegacyLoDToString(const LegacyLoD &lod) {
   std::ostringstream stream;
   stream << lod;
   return stream.str();
 }
 
-bool operator==(const LoD &a, const LoD &b) {
+bool operator==(const LegacyLoD &a, const LegacyLoD &b) {
   if (a.size() != b.size()) {
     return false;
   }
@@ -47,7 +47,7 @@ bool operator==(const LoD &a, const LoD &b) {
   return true;
 }
 
-bool CheckLoD(const LoD &in, int tensor_height) {
+bool CheckLegacyLoD(const LegacyLoD &in, int tensor_height) {
   if (in.empty()) return true;
   for (const auto &level : in) {
     // check: there should be more than 2 offsets existing in each level.
@@ -67,16 +67,16 @@ bool CheckLoD(const LoD &in, int tensor_height) {
 
   // check: the higher level's last offset should equals the lower level's
   // size-1.
-  // NOTE LoD store the levels from top to bottom, so the higher level goes
-  // first.
+  // NOTE LegacyLoD store the levels from top to bottom, so the higher level
+  // goes first.
   for (size_t level = 0; level < in.size() - 1; level++) {
     if (in[level].back() != in[level + 1].size() - 1) return false;
   }
   return true;
 }
 
-LoD ConvertToOffsetBasedLoD(const LoD &length_lod) {
-  LoD offset_lod;
+LegacyLoD ConvertToOffsetBasedLegacyLoD(const LegacyLoD &length_lod) {
+  LegacyLoD offset_lod;
   offset_lod.reserve(length_lod.size());
   for (const auto &item : length_lod) {
     std::vector<size_t> level;

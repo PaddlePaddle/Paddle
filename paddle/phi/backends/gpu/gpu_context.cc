@@ -32,7 +32,7 @@ limitations under the License. */
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/cuda_stream.h"
-
+#include "paddle/phi/core/memory/allocation/allocator_facade.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/cublas.h"
 #include "paddle/phi/backends/dynload/cudnn.h"
@@ -55,8 +55,10 @@ limitations under the License. */
 // without eigen.
 #include "unsupported/Eigen/CXX11/Tensor"
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/core/enforce.h"
 
+COMMON_DECLARE_bool(use_default_stream);
 namespace phi {
 
 namespace internal {
@@ -331,10 +333,12 @@ struct GPUContext::Impl {
 
   gpuStream_t stream() const {
     auto s = stream_->raw_stream();
-    PADDLE_ENFORCE_NOT_NULL(
-        s,
-        common::errors::InvalidArgument(
-            "The GPU stream is nullptr. It must not be null."));
+    if (!FLAGS_use_default_stream) {
+      PADDLE_ENFORCE_NOT_NULL(
+          s,
+          common::errors::InvalidArgument(
+              "The GPU stream is nullptr. It must not be null."));
+    }
     return s;
   }
 
@@ -839,7 +843,7 @@ struct GPUContext::Impl {
   mutable std::future<void> last_future_;
 
   Allocator* allocator_{nullptr};  // external resource.
-  // A internal resouce to initinalize eigen_device.
+  // A internal resource to initinalize eigen_device.
   std::unique_ptr<internal::EigenGpuStreamDevice> eigen_stream_{nullptr};
 
   // Holds some attributes only used by the gpudnn kernel calculation
@@ -960,11 +964,21 @@ void GPUContext::Init() {
 }
 
 void GPUContext::SetStream(gpuStream_t stream) {
+#if !defined(_WIN32)
+  this->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                         .GetAllocator(impl_->GetPlace(), stream)
+                         .get());
+#endif
   impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());  // NOLINT
   impl_->SetStream(stream);
 }
 
 void GPUContext::SetCUDAStream(CUDAStream* stream, bool clear) {
+#if !defined(_WIN32)
+  this->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                         .GetAllocator(stream->place(), stream->raw_stream())
+                         .get());
+#endif
   impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());  // NOLINT
   impl_->SetCUDAStream(stream, clear);
 }

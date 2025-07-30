@@ -14,8 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/dynload/mklml.h"
 
-namespace phi {
-namespace dynload {
+namespace phi::dynload {
 
 std::once_flag mklml_dso_flag;
 void* mklml_dso_handle = nullptr;
@@ -29,5 +28,4 @@ DEFINE_WRAP(mkl_scsrmm);
 DEFINE_WRAP(mkl_dcsrmm);
 #endif
 
-}  // namespace dynload
-}  // namespace phi
+}  // namespace phi::dynload

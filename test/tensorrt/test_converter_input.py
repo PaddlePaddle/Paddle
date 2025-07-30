@@ -35,6 +35,7 @@ class TestOneHotCase1TRTPattern(TensorRTBaseTest):
         }
         self.program_config = {"feed_list": ["x", "num_classes"]}
         self.min_shape = {"x": [1, 1]}
+        self.opt_shape = {"x": [3, 1]}
         self.max_shape = {"x": [6, 1]}
 
     def test_trt_result(self):
@@ -58,6 +59,7 @@ class TestOneHotCase2TRTPattern(TensorRTBaseTest):
         }
         self.program_config = {"feed_list": ["x"]}
         self.min_shape = {"x": [1, 1]}
+        self.opt_shape = {"x": [3, 1]}
         self.max_shape = {"x": [6, 1]}
 
     def test_trt_result(self):

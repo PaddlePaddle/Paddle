@@ -33,6 +33,7 @@
 #include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#
 
 namespace cinn {
 namespace hlir {
@@ -129,8 +130,6 @@ DownStreamOp TrivalxOther_Fusion(TrivialOp upstream, DownStreamOp downstream) {
   return DownStreamOp(modified_body);
 }
 
-std::pair<TrivialOp, ReduceOp> SplitReduceOp(const ReduceOp& reduce_op);
-
 std::vector<FusibleOp> TransformReduceLoopRange(
     const ReduceOp& upstream,
     FusibleOp* downstream,
@@ -160,26 +159,64 @@ std::vector<ir::Var> GetAllForIters(const ir::Expr& expr);
 
 }  // namespace trivial_fusion_detail
 
+/*
+example:
+for i in range(1024):
+  for j in range(1024):
+    A[i, j] = B[i, 0]
+
+for i in range(1024):
+  for j in range(1024)
+    if j == 0:
+      C[i, 0] = A[i, j]
+In this example, A tensor is continuous Tensor,
+  B and C tensor are broadcast situation and are continuous.
+
+if A, B and C tensor are arguments in group,
+vetorize_args will contain A, B and C tensor names and tensor expr.
+eg : vetorize_args["A"] = A // A is tensor Expr
+
+args_broadcast_axis_info will contain B, C broadcast tensor name and broadcast
+axis info. eg : args_broadcast_axis_info["B"] = {{false, true}}
+*/
+struct GroupVectorizeInfo {
+  bool meet_vectorization_condition{false};
+  bool has_if_else_op{false};
+  bool has_select_op{false};
+  // The collected group arguments can be vectorized.
+  std::unordered_map<std::string, ir::Expr> vetorize_args;
+  // Collect the broadcasted group arguments and its broadcasting axis
+  // information.
+  std::unordered_map<std::string, std::vector<std::vector<bool>>>
+      args_broadcast_axis_info;
+};
+
 struct FusionGroupInfo {
   std::vector<int64_t> loop_ranges;
+  std::vector<ir::Expr> loop_ranges_expr;
   std::vector<int64_t> loop_strides;
   std::vector<int64_t> reduce_axis;
   std::vector<std::string> reduce_var_name;
   bool can_apply_grid_reduce;
+  GroupVectorizeInfo vectorize_info;
 
   std::string DebugPrint() {
     std::stringstream ss;
     ss << "GroupInfo\nloop_ranges: " << cinn::utils::Join(loop_ranges, " ")
+       << "\nloop_ranges_expr: " << cinn::utils::Join(loop_ranges_expr, ", ")
        << "\nloop_strides: " << cinn::utils::Join(loop_strides, ", ")
        << "\nreduce_axis: " << cinn::utils::Join(reduce_axis, " ")
        << "\nreduce_var_name: " << cinn::utils::Join(reduce_var_name, " ")
-       << "\ncan_apply_grid_reduce: " << can_apply_grid_reduce;
+       << "\ncan_apply_grid_reduce: " << can_apply_grid_reduce
+       << "\nmeet_vectorization_condition: "
+       << vectorize_info.meet_vectorization_condition;
     return ss.str();
   }
 };
 
 std::shared_ptr<FusionGroupInfo> GetFusionGroupInfo(
-    const std::vector<ir::Expr>& op_compute_bodies);
+    const std::vector<ir::Expr>& op_compute_bodies,
+    const std::unordered_set<std::string>& group_args);
 
 }  // namespace pir
 }  // namespace framework

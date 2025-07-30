@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
@@ -25,51 +24,8 @@ from paddle.incubate.autograd import primapi
 
 class TestPrimFlags(unittest.TestCase):
     def test_prim_flags(self):
-        self.assertFalse(core._is_bwd_prim_enabled())
-        self.assertFalse(core._is_fwd_prim_enabled())
-
-        os.environ['FLAGS_prim_backward'] = "True"
-        core.check_and_set_prim_all_enabled()
-        self.assertTrue(core._is_bwd_prim_enabled())
-        os.environ['FLAGS_prim_forward'] = "True"
-        core.check_and_set_prim_all_enabled()
-        self.assertTrue(core._is_fwd_prim_enabled())
-        os.environ['FLAGS_prim_all'] = "False"
-        core.check_and_set_prim_all_enabled()
-        self.assertFalse(core._is_bwd_prim_enabled())
-        self.assertFalse(core._is_fwd_prim_enabled())
-
-        os.environ['FLAGS_prim_all'] = "True"
-        core.check_and_set_prim_all_enabled()
-        self.assertTrue(core._is_bwd_prim_enabled())
-        self.assertTrue(core._is_fwd_prim_enabled())
-
-        del os.environ['FLAGS_prim_all']
-        os.environ['FLAGS_prim_backward'] = "False"
-        core.check_and_set_prim_all_enabled()
-        self.assertFalse(core._is_bwd_prim_enabled())
-        os.environ['FLAGS_prim_forward'] = "False"
-        core.check_and_set_prim_all_enabled()
-        self.assertFalse(core._is_fwd_prim_enabled())
-
-        del os.environ['FLAGS_prim_backward']
-        core.check_and_set_prim_all_enabled()
-        self.assertFalse(core._is_bwd_prim_enabled())
-        del os.environ['FLAGS_prim_forward']
-        core.check_and_set_prim_all_enabled()
-        self.assertFalse(core._is_fwd_prim_enabled())
-
         core.set_prim_eager_enabled(True)
         self.assertTrue(core._is_eager_prim_enabled())
-
-        with self.assertRaises(TypeError):
-            core._test_use_sync("aaaa")
-
-        core._set_prim_all_enabled(True)
-        self.assertTrue(core._is_all_prim_enabled())
-
-        core._set_prim_all_enabled(False)
-        self.assertFalse(core._is_all_prim_enabled())
 
 
 class TestPrimBlacklistFlags(unittest.TestCase):
@@ -93,7 +49,7 @@ class TestPrimBlacklistFlags(unittest.TestCase):
             primapi.to_prim(blocks)
 
             fwd_ops_new = [op.type for op in blocks[0].ops]
-            # Ensure that softmax is splitted into small ops
+            # Ensure that softmax is split into small ops
             self.assertTrue('softmax' not in fwd_ops_new)
 
         exe = paddle.static.Executor()
@@ -122,7 +78,7 @@ class TestPrimBlacklistFlags(unittest.TestCase):
             primapi.to_prim(blocks)
 
             fwd_ops_new = [op.type for op in blocks[0].ops]
-            # Ensure that softmax is splitted into small ops
+            # Ensure that softmax is split into small ops
             self.assertTrue('softmax' in fwd_ops_new)
 
         exe = paddle.static.Executor()

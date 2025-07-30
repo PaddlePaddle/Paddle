@@ -43,7 +43,7 @@ void RnnGradKernel(const Context& dev_ctx,
                    DenseTensor* x_grad,
                    std::vector<DenseTensor*> pre_state_grad,
                    std::vector<DenseTensor*> weight_grad_list) {
-  using XPUTyp = typename XPUTypeTrait<T>::Type;
+  using XPUType = typename XPUTypeTrait<T>::Type;
 
   PADDLE_ENFORCE_EQ(
       mode,
@@ -163,9 +163,17 @@ void RnnGradKernel(const Context& dev_ctx,
   int state_offset = pre_state[0]->dims()[1] * pre_state[0]->dims()[2];
 
   bool has_seq_length = sequence_length.is_initialized();
-  std::vector<int> seq_len_tensor(batch_size, seq_len);
+  std::vector<int64_t> seq_len_tensor(batch_size, seq_len);
   if (has_seq_length) {
-    seq_len_tensor = phi::GetVectorFromTensor<int>(sequence_length.get_ptr());
+    if (sequence_length->dtype() == phi::DataType::INT32) {
+      std::vector<int> tensor_int32 =
+          phi::GetVectorFromTensor<int>(sequence_length.get_ptr());
+      seq_len_tensor =
+          std::vector<int64_t>(tensor_int32.begin(), tensor_int32.end());
+    } else {  // phi::DataType::INT64
+      seq_len_tensor =
+          phi::GetVectorFromTensor<int64_t>(sequence_length.get_ptr());
+    }
   }
 
   for (int i = num_layers - 1; i >= 0; --i) {
@@ -178,23 +186,22 @@ void RnnGradKernel(const Context& dev_ctx,
     auto i_f_g_o = i_f_g_o_ptr + i * block_size * 4;
     auto c = c_ptr + i * block_size;
 
-    DenseTensor layer_input_t;
+    DenseTensor temp_tensor;
     auto layer_input = x_data;
     if (i > 0) {
-      layer_input_t.Resize(out.dims());
-      layer_input = dev_ctx.template Alloc<T>(&layer_input_t);
+      temp_tensor.Resize(out.dims());
+      auto temp_tensor_ptr = dev_ctx.template Alloc<T>(&temp_tensor);
       float scale = static_cast<float>(1.0f - dropout_prob);
       auto hidden_data = hidden_data_ptr + (i - 1) * block_size;
       int r = xpu::scale(dev_ctx.x_context(),
-                         reinterpret_cast<const XPUTyp*>(hidden_data),
-                         const_cast<XPUTyp*>(layer_input),
+                         reinterpret_cast<const XPUType*>(hidden_data),
+                         reinterpret_cast<XPUType*>(temp_tensor_ptr),
                          out.numel(),
                          false,
                          scale,
                          0.0f);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
-    } else {
-      layer_input = x_data;
+      layer_input = temp_tensor_ptr;
     }
 
     auto layer_output = y;
@@ -274,6 +281,7 @@ void RnnGradKernel(const Context& dev_ctx,
                                           hidden_size,
                                           seq_len,
                                           seq_len_tensor,
+                                          1,
                                           nullptr,
                                           nullptr,
                                           nullptr,
@@ -281,7 +289,9 @@ void RnnGradKernel(const Context& dev_ctx,
                                           nullptr,
                                           nullptr,
                                           i_f_g_o,
-                                          c);
+                                          c,
+                                          xpu::Activation_t::TANH,
+                                          xpu::Activation_t::SIGMOID);
 
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "bilstm_grad");
     } else {

@@ -53,7 +53,7 @@ if [[ $exit_code -eq 0 ]]; then
     exit 0
 fi
 
-echo "${name} faild with ${exit_code}"
+echo "${name} failed with ${exit_code}"
 
 echo "after run ${name}"
 ps -aux
@@ -79,7 +79,7 @@ fi
 which ${GPU_SYS_INFO_CMD}
 exit_code=$?
 if [[ $exit_code -ne 0 ]]; then
-    echo "nvidia-smi or rocm-smi faild with ${exit_code}"
+    echo "nvidia-smi or rocm-smi failed with ${exit_code}"
     exit ${exit_code}
 fi
 

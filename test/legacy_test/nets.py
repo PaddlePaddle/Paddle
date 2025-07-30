@@ -326,7 +326,7 @@ def sequence_conv_pool(
             input_dim = 100 #len(word_dict)
             emb_dim = 128
             hid_dim = 512
-            data = paddle.static.data(name="words", shape=[None, 1], dtype="int64", lod_level=1)
+            data = paddle.static.data(name="words", shape=[None, 1], dtype="int64")
             emb = paddle.static.nn.embedding(input=data, size=[input_dim, emb_dim], is_sparse=True)
             seq_conv = base.nets.sequence_conv_pool(input=emb,
                                                      num_filters=hid_dim,
@@ -496,34 +496,30 @@ def scaled_dot_product_attention(
     if not (len(queries.shape) == len(keys.shape) == len(values.shape) == 3):
         raise ValueError(
             "Inputs queries, keys and values should all be 3-D tensors."
-            "But received len(queries.shape) = %d, "
-            "len(keys.shape) = %d, len(values.shape) = %d."
-            % (len(queries.shape), len(keys.shape), len(values.shape))
+            f"But received len(queries.shape) = {len(queries.shape)}, "
+            f"len(keys.shape) = {len(keys.shape)}, len(values.shape) = {len(values.shape)}."
         )
 
     if queries.shape[-1] != keys.shape[-1]:
         raise ValueError(
             "The hidden size of queries and keys should be the same."
-            "But received queries' hidden size = %d and keys' hidden size = %d."
-            % (queries.shape[-1], keys.shape[-1])
+            f"But received queries' hidden size = {queries.shape[-1]} and keys' hidden size = {keys.shape[-1]}."
         )
     if keys.shape[-2] != values.shape[-2]:
         raise ValueError(
             "The max sequence length in value batch and in key batch "
             "should be the same. But received max sequence length in value batch "
-            "= %d, in key batch = %d." % (values.shape[-2], keys.shape[-2])
+            f"= {values.shape[-2]}, in key batch = {keys.shape[-2]}."
         )
     if keys.shape[-1] % num_heads != 0:
         raise ValueError(
-            "The hidden size of keys (%d) must be divisible "
-            "by the number of attention heads (%d)."
-            % (keys.shape[-1], num_heads)
+            f"The hidden size of keys ({keys.shape[-1]}) must be divisible "
+            f"by the number of attention heads ({num_heads})."
         )
     if values.shape[-1] % num_heads != 0:
         raise ValueError(
-            "The hidden size of values (%d) must be divisible "
-            "by the number of attention heads (%d)."
-            % (values.shape[-1], num_heads)
+            f"The hidden size of values ({values.shape[-1]}) must be divisible "
+            f"by the number of attention heads ({num_heads})."
         )
 
     def __compute_qkv(queries, keys, values, num_heads):

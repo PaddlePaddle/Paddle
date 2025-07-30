@@ -611,154 +611,156 @@ class TestQuantLinearOp_NumFlattenDims_NegOne(unittest.TestCase):
 )
 class TestQuantLinearOpError(unittest.TestCase):
     def test_errors(self):
-        with paddle.pir_utils.OldIrGuard():
-            with program_guard(Program(), Program()):
-                quant_round_type = 0
-                quant_max_bound = 127.0
-                quant_min_bound = -127.0
+        with (
+            paddle.pir_utils.OldIrGuard(),
+            program_guard(Program(), Program()),
+        ):
+            quant_round_type = 0
+            quant_max_bound = 127.0
+            quant_min_bound = -127.0
 
-                input_data = np.random.random((2, 4)).astype("float32")
-                scale_in = get_scale_in(input_data)
+            input_data = np.random.random((2, 4)).astype("float32")
+            scale_in = get_scale_in(input_data)
 
-                weight = np.random.random([25, 1]).astype("float32")
-                scale_weight = get_scale_weights(weight)
-                weight = quant_weights(
-                    weight,
-                    scale_weight,
-                    quant_round_type,
-                    quant_max_bound,
-                    quant_min_bound,
-                )
+            weight = np.random.random([25, 1]).astype("float32")
+            scale_weight = get_scale_weights(weight)
+            weight = quant_weights(
+                weight,
+                scale_weight,
+                quant_round_type,
+                quant_max_bound,
+                quant_min_bound,
+            )
 
-                def test_Variable():
-                    with paddle_static_guard():
-                        w2 = paddle.static.data(
-                            name='w2', shape=[25, 1], dtype='int8'
-                        )
-                        quant_linear(
-                            x=input_data,
-                            size=1,
-                            num_flatten_dims=1,
-                            w=w2,
-                            scale_in=scale_in,
-                            scale_weight=scale_weight.tolist(),
-                            quant_round_type=quant_round_type,
-                            quant_max_bound=quant_max_bound,
-                            quant_min_bound=quant_min_bound,
-                        )
+            def test_Variable():
+                with paddle_static_guard():
+                    w2 = paddle.static.data(
+                        name='w2', shape=[25, 1], dtype='int8'
+                    )
+                    quant_linear(
+                        x=input_data,
+                        size=1,
+                        num_flatten_dims=1,
+                        w=w2,
+                        scale_in=scale_in,
+                        scale_weight=scale_weight.tolist(),
+                        quant_round_type=quant_round_type,
+                        quant_max_bound=quant_max_bound,
+                        quant_min_bound=quant_min_bound,
+                    )
 
-                self.assertRaises(TypeError, test_Variable)
+            self.assertRaises(TypeError, test_Variable)
 
-                def test_type():
-                    with paddle_static_guard():
-                        x2 = paddle.static.data(
-                            name='x2', shape=[-1, 4], dtype='int32'
-                        )
-                        w2 = paddle.static.data(
-                            name='w2', shape=[25, 1], dtype='int8'
-                        )
-                        paddle.static.nn.fc(
-                            x=x2,
-                            size=1,
-                            num_flatten_dims=1,
-                            w=w2,
-                            scale_in=scale_in,
-                            scale_weight=scale_weight.tolist(),
-                            quant_round_type=quant_round_type,
-                            quant_max_bound=quant_max_bound,
-                            quant_min_bound=quant_min_bound,
-                        )
+            def test_type():
+                with paddle_static_guard():
+                    x2 = paddle.static.data(
+                        name='x2', shape=[-1, 4], dtype='int32'
+                    )
+                    w2 = paddle.static.data(
+                        name='w2', shape=[25, 1], dtype='int8'
+                    )
+                    paddle.static.nn.fc(
+                        x=x2,
+                        size=1,
+                        num_flatten_dims=1,
+                        w=w2,
+                        scale_in=scale_in,
+                        scale_weight=scale_weight.tolist(),
+                        quant_round_type=quant_round_type,
+                        quant_max_bound=quant_max_bound,
+                        quant_min_bound=quant_min_bound,
+                    )
 
-                self.assertRaises(TypeError, test_type)
+            self.assertRaises(TypeError, test_type)
 
-                def test_Variable():
-                    with paddle_static_guard():
-                        x3 = paddle.static.data(
-                            name='x3', shape=[-1, 4], dtype='float32'
-                        )
-                        quant_linear(
-                            x=x3,
-                            size=1,
-                            num_flatten_dims=1,
-                            w=weight,
-                            scale_in=scale_in,
-                            scale_weight=scale_weight.tolist(),
-                            quant_round_type=quant_round_type,
-                            quant_max_bound=quant_max_bound,
-                            quant_min_bound=quant_min_bound,
-                        )
+            def test_Variable():
+                with paddle_static_guard():
+                    x3 = paddle.static.data(
+                        name='x3', shape=[-1, 4], dtype='float32'
+                    )
+                    quant_linear(
+                        x=x3,
+                        size=1,
+                        num_flatten_dims=1,
+                        w=weight,
+                        scale_in=scale_in,
+                        scale_weight=scale_weight.tolist(),
+                        quant_round_type=quant_round_type,
+                        quant_max_bound=quant_max_bound,
+                        quant_min_bound=quant_min_bound,
+                    )
 
-                self.assertRaises(TypeError, test_Variable)
+            self.assertRaises(TypeError, test_Variable)
 
-                def test_type():
-                    with paddle_static_guard():
-                        x3 = paddle.static.data(
-                            name='x3', shape=[-1, 4], dtype='float32'
-                        )
-                        w3 = paddle.static.data(
-                            name='w3', shape=[25, 1], dtype='int32'
-                        )
-                        paddle.static.nn.fc(
-                            x=x3,
-                            size=1,
-                            num_flatten_dims=1,
-                            w=w3,
-                            scale_in=scale_in,
-                            scale_weight=scale_weight.tolist(),
-                            quant_round_type=quant_round_type,
-                            quant_max_bound=quant_max_bound,
-                            quant_min_bound=quant_min_bound,
-                        )
+            def test_type():
+                with paddle_static_guard():
+                    x3 = paddle.static.data(
+                        name='x3', shape=[-1, 4], dtype='float32'
+                    )
+                    w3 = paddle.static.data(
+                        name='w3', shape=[25, 1], dtype='int32'
+                    )
+                    paddle.static.nn.fc(
+                        x=x3,
+                        size=1,
+                        num_flatten_dims=1,
+                        w=w3,
+                        scale_in=scale_in,
+                        scale_weight=scale_weight.tolist(),
+                        quant_round_type=quant_round_type,
+                        quant_max_bound=quant_max_bound,
+                        quant_min_bound=quant_min_bound,
+                    )
 
-                self.assertRaises(TypeError, test_type)
+            self.assertRaises(TypeError, test_type)
 
-                scale_weight = 1.0
+            scale_weight = 1.0
 
-                def test_type():
-                    with paddle_static_guard():
-                        x4 = paddle.static.data(
-                            name='x4', shape=[-1, 4], dtype='float32'
-                        )
-                        w4 = paddle.static.data(
-                            name='w4', shape=[25, 1], dtype='int8'
-                        )
-                        paddle.static.nn.fc(
-                            x=x4,
-                            size=1,
-                            num_flatten_dims=1,
-                            w=w4,
-                            scale_in=scale_in,
-                            scale_weight=scale_weight,
-                            quant_round_type=quant_round_type,
-                            quant_max_bound=quant_max_bound,
-                            quant_min_bound=quant_min_bound,
-                        )
+            def test_type():
+                with paddle_static_guard():
+                    x4 = paddle.static.data(
+                        name='x4', shape=[-1, 4], dtype='float32'
+                    )
+                    w4 = paddle.static.data(
+                        name='w4', shape=[25, 1], dtype='int8'
+                    )
+                    paddle.static.nn.fc(
+                        x=x4,
+                        size=1,
+                        num_flatten_dims=1,
+                        w=w4,
+                        scale_in=scale_in,
+                        scale_weight=scale_weight,
+                        quant_round_type=quant_round_type,
+                        quant_max_bound=quant_max_bound,
+                        quant_min_bound=quant_min_bound,
+                    )
 
-                self.assertRaises(TypeError, test_type)
+            self.assertRaises(TypeError, test_type)
 
-                scale_weight = []
+            scale_weight = []
 
-                def test_param_length():
-                    with paddle_static_guard():
-                        x4 = paddle.static.data(
-                            name='x4', shape=[-1, 4], dtype='float32'
-                        )
-                        w4 = paddle.static.data(
-                            name='w4', shape=[25, 1], dtype='int8'
-                        )
-                        paddle.static.nn.fc(
-                            x=x4,
-                            size=1,
-                            num_flatten_dims=1,
-                            w=w4,
-                            scale_in=scale_in,
-                            scal=scale_weight,
-                            quant_round_type=quant_round_type,
-                            quant_max_bound=quant_max_bound,
-                            quant_min_bound=quant_min_bound,
-                        )
+            def test_param_length():
+                with paddle_static_guard():
+                    x4 = paddle.static.data(
+                        name='x4', shape=[-1, 4], dtype='float32'
+                    )
+                    w4 = paddle.static.data(
+                        name='w4', shape=[25, 1], dtype='int8'
+                    )
+                    paddle.static.nn.fc(
+                        x=x4,
+                        size=1,
+                        num_flatten_dims=1,
+                        w=w4,
+                        scale_in=scale_in,
+                        scal=scale_weight,
+                        quant_round_type=quant_round_type,
+                        quant_max_bound=quant_max_bound,
+                        quant_min_bound=quant_min_bound,
+                    )
 
-                self.assertRaises(TypeError, test_param_length)
+            self.assertRaises(TypeError, test_param_length)
 
 
 if __name__ == "__main__":

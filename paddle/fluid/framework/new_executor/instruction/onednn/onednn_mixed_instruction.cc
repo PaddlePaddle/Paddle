@@ -40,8 +40,9 @@
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/kernels/funcs/data_layout_transform.h"
 
-namespace paddle {
-namespace framework {
+COMMON_DECLARE_bool(check_cuda_error);
+
+namespace paddle::framework {
 
 OneDNNMixedPhiKernelInstruction::OneDNNMixedPhiKernelInstruction(
     size_t id,
@@ -58,6 +59,11 @@ OneDNNMixedPhiKernelInstruction::OneDNNMixedPhiKernelInstruction(
 }
 
 void OneDNNMixedPhiKernelInstruction::Run() {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("OneDNNMixedPhiKernelInstruction " + phi_op_name_ +
+                   " begin");
+  }
+
   std::vector<std::shared_ptr<phi::DenseTensor>> tmp_holders;
   // Step1. Mixed Dynamic Choose Kernel
   if (!has_choose_kernel_) {
@@ -154,7 +160,11 @@ void OneDNNMixedPhiKernelInstruction::Run() {
     (*(phi_kernel_))(&(tmp_kernel_context));
     VLOG(6) << "End run op " << phi_op_name_ << " kernel.";
   }
+
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("OneDNNMixedPhiKernelInstruction " + phi_op_name_ +
+                   " finish");
+  }
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

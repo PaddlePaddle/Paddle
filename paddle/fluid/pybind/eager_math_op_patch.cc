@@ -16,10 +16,6 @@ typedef SSIZE_T ssize_t;
 #endif
 
 #include <Python.h>
-// Avoid a problem with copysign defined in pyconfig.h on Windows.
-#ifdef copysign
-#undef copysign
-#endif
 
 #include <string>
 #include <unordered_map>
@@ -99,6 +95,9 @@ void InitTensorWithNumpyValue(const py::object& array,
     SetTensorFromPyArray<phi::CPUPlace>(impl_ptr, array, place, zero_copy);
   } else if (phi::is_xpu_place(place)) {
     SetTensorFromPyArray<phi::XPUPlace>(impl_ptr, array, place, zero_copy);
+  } else if (phi::is_xpu_pinned_place(place)) {
+    SetTensorFromPyArray<phi::XPUPinnedPlace>(
+        impl_ptr, array, place, zero_copy);
   } else if (phi::is_gpu_place(place)) {
     SetTensorFromPyArray<phi::GPUPlace>(impl_ptr, array, place, zero_copy);
   } else if (phi::is_cuda_pinned_place(place)) {
@@ -176,11 +175,12 @@ void SetDevice(phi::Place place) {
 
 // scalar func only support add, radd, sub, rsub, mul, rmul, div, truediv.
 // this function will update gradually.
-paddle::Tensor CallScalarFuction(const paddle::Tensor& self_tensor,
-                                 double other,
-                                 std::string op_type) {
+paddle::Tensor CallScalarFunction(const paddle::Tensor& self_tensor,
+                                  double other,
+                                  std::string op_type) {
   paddle::Tensor ret;
-  // scale_ad_func need sclar and bias with float type.
+  SetPythonStack();
+  // scale_ad_func need scalar and bias with float type.
   if (op_type == "add" || op_type == "radd") {
     ret = scale_ad_func(self_tensor, phi::Scalar(1.0), other, true);
   } else if (op_type == "sub") {
@@ -223,6 +223,7 @@ void TypePromotionForZeroDimTensor(std::string func,
         promote_type = self_tensor.dtype();
       }
     }
+    SetPythonStack();
     if (self_tensor.dtype() != promote_type) {
       eager_gil_scoped_release guard;
       self_tensor = cast_ad_func(self_tensor, promote_type);
@@ -243,6 +244,9 @@ static PyObject* tensor__add__method(TensorObject* self,
 
   EAGER_TRY
   VLOG(6) << "Running Eager tensor__add__method";
+
+  SetPythonStack();
+
   // Set Device ID
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
@@ -269,7 +273,7 @@ static PyObject* tensor__add__method(TensorObject* self,
     double other = CastPyArg2Double(other_obj, "__add__", 0);
     {
       eager_gil_scoped_release guard;
-      ret = CallScalarFuction(self_tensor, other, "add");
+      ret = CallScalarFunction(self_tensor, other, "add");
     }
     return ToPyObject(ret);
   } else if (PyComplex_Check(other_obj)) {
@@ -301,8 +305,23 @@ static PyObject* tensor__add__method(TensorObject* self,
       other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
-      paddle::experimental::Scalar value =
-          CastPyArg2Scalar(other_obj, "__add__", 0);
+      paddle::experimental::Scalar value;
+      // NOTE: call reflected method of other_obj if cast failed
+      try {
+        value = CastPyArg2Scalar(other_obj, "__add__", 0);
+      } catch (...) {
+        PyObject* radd = PyObject_GetAttrString(other_obj, "__radd__");
+        if (radd) {
+          bool has_callable_radd = PyCallable_Check(radd);
+          Py_DECREF(radd);
+          if (has_callable_radd) {
+            Py_INCREF(Py_NotImplemented);
+            return Py_NotImplemented;
+          }
+        }
+        throw;
+      }
+
       {
         eager_gil_scoped_release guard;
         other_tensor = full_ad_func(self_tensor.shape(),
@@ -326,6 +345,7 @@ static PyObject* tensor__add__method(TensorObject* self,
   }
 
   return ToPyObject(ret);
+
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -337,6 +357,8 @@ static PyObject* tensor__sub__method(TensorObject* self,
 
   EAGER_TRY
   VLOG(6) << "Running Eager tensor__sub__method";
+
+  SetPythonStack();
 
   // Set Device ID
   auto place = egr::Controller::Instance().GetExpectedPlace();
@@ -364,7 +386,7 @@ static PyObject* tensor__sub__method(TensorObject* self,
     double other = CastPyArg2Double(other_obj, "__sub__", 0);
     {
       eager_gil_scoped_release guard;
-      ret = CallScalarFuction(self_tensor, other, "sub");
+      ret = CallScalarFunction(self_tensor, other, "sub");
     }
 
     return ToPyObject(ret);
@@ -396,8 +418,23 @@ static PyObject* tensor__sub__method(TensorObject* self,
       other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
-      paddle::experimental::Scalar value =
-          CastPyArg2Scalar(other_obj, "__sub__", 0);
+      paddle::experimental::Scalar value;
+      // NOTE: call reflected method of other_obj if cast failed
+      try {
+        value = CastPyArg2Scalar(other_obj, "__sub__", 0);
+      } catch (...) {
+        PyObject* rsub = PyObject_GetAttrString(other_obj, "__rsub__");
+        if (rsub) {
+          bool has_callable_rsub = PyCallable_Check(rsub);
+          Py_DECREF(rsub);
+          if (has_callable_rsub) {
+            Py_INCREF(Py_NotImplemented);
+            return Py_NotImplemented;
+          }
+        }
+        throw;
+      }
+
       {
         eager_gil_scoped_release guard;
         other_tensor = full_ad_func(self_tensor.shape(),
@@ -432,6 +469,8 @@ static PyObject* tensor__rsub__method(TensorObject* self,
   EAGER_TRY
   VLOG(4) << "Running Eager tensor__rsub__method";
 
+  SetPythonStack();
+
   // Set Device ID
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
@@ -458,7 +497,7 @@ static PyObject* tensor__rsub__method(TensorObject* self,
     double other = CastPyArg2Double(other_obj, "__rsub__", 0);
     {
       eager_gil_scoped_release guard;
-      ret = CallScalarFuction(self_tensor, other, "rsub");
+      ret = CallScalarFunction(self_tensor, other, "rsub");
     }
     return ToPyObject(ret);
   } else if (PyComplex_Check(other_obj)) {
@@ -525,6 +564,8 @@ static PyObject* tensor__mul__method(TensorObject* self,
   EAGER_TRY
   VLOG(6) << "Running Eager tensor__mul__method";
 
+  SetPythonStack();
+
   // Set Device ID
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
@@ -552,7 +593,7 @@ static PyObject* tensor__mul__method(TensorObject* self,
     double other = CastPyArg2Double(other_obj, "__mul__", 0);
     {
       eager_gil_scoped_release guard;
-      ret = CallScalarFuction(self_tensor, other, "mul");
+      ret = CallScalarFunction(self_tensor, other, "mul");
     }
     return ToPyObject(ret);
   } else if (PyComplex_Check(other_obj)) {
@@ -585,8 +626,24 @@ static PyObject* tensor__mul__method(TensorObject* self,
       other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
-      paddle::experimental::Scalar value =
-          CastPyArg2Scalar(other_obj, "__mul__", 0);
+      paddle::experimental::Scalar value;
+
+      // NOTE: call reflected method of other_obj if cast failed
+      try {
+        value = CastPyArg2Scalar(other_obj, "__mul__", 0);
+      } catch (...) {
+        PyObject* rmul = PyObject_GetAttrString(other_obj, "__rmul__");
+        if (rmul) {
+          bool has_callable_rmul = PyCallable_Check(rmul);
+          Py_DECREF(rmul);
+          if (has_callable_rmul) {
+            Py_INCREF(Py_NotImplemented);
+            return Py_NotImplemented;
+          }
+        }
+        throw;
+      }
+
       if (PyComplex_Check(other_obj)) {
         eager_gil_scoped_release guard;
         other_tensor = full_ad_func(self_tensor.shape(),
@@ -615,6 +672,7 @@ static PyObject* tensor__mul__method(TensorObject* self,
   }
 
   return ToPyObject(ret);
+
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -627,6 +685,8 @@ static PyObject* tensor__div__method(TensorObject* self,
   EAGER_TRY
 
   VLOG(6) << "Running Eager tensor__div__method";
+
+  SetPythonStack();
 
   // Set Device ID
   auto place = egr::Controller::Instance().GetExpectedPlace();
@@ -649,7 +709,7 @@ static PyObject* tensor__div__method(TensorObject* self,
     double other = CastPyArg2Double(other_obj, "__div__", 0);
     {
       eager_gil_scoped_release guard;
-      ret = CallScalarFuction(self_tensor, other, "div");
+      ret = CallScalarFunction(self_tensor, other, "div");
     }
     return ToPyObject(ret);
   } else if (PyComplex_Check(other_obj)) {
@@ -680,8 +740,24 @@ static PyObject* tensor__div__method(TensorObject* self,
       other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
-      paddle::experimental::Scalar value =
-          CastPyArg2Scalar(other_obj, "__div__", 0);
+      paddle::experimental::Scalar value;
+
+      // NOTE: call reflected method of other_obj if cast failed
+      try {
+        value = CastPyArg2Scalar(other_obj, "__div__", 0);
+      } catch (...) {
+        PyObject* rdiv = PyObject_GetAttrString(other_obj, "__rdiv__");
+        if (rdiv) {
+          bool has_callable_rdiv = PyCallable_Check(rdiv);
+          Py_DECREF(rdiv);
+          if (has_callable_rdiv) {
+            Py_INCREF(Py_NotImplemented);
+            return Py_NotImplemented;
+          }
+        }
+        throw;
+      }
+
       if (PyComplex_Check(other_obj)) {
         eager_gil_scoped_release guard;
         other_tensor =
@@ -719,6 +795,8 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
   EAGER_TRY
 
   VLOG(6) << "Running Eager tensor__rdiv__method";
+
+  SetPythonStack();
 
   // Set Device ID
   auto place = egr::Controller::Instance().GetExpectedPlace();
@@ -805,6 +883,8 @@ static PyObject* tensor__gt__method(TensorObject* self,
 
   EAGER_TRY
   VLOG(4) << "Running Eager tensor__gt__method";
+
+  SetPythonStack();
 
   // Set Device ID
   auto place = egr::Controller::Instance().GetExpectedPlace();
@@ -897,6 +977,8 @@ static PyObject* tensor__ge__method(TensorObject* self,
   EAGER_TRY
   VLOG(4) << "Running Eager tensor__ge__method";
 
+  SetPythonStack();
+
   // Set Device ID
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
@@ -988,6 +1070,8 @@ static PyObject* tensor__mod__method(TensorObject* self,
 
   VLOG(6) << "Running Eager tensor__mod__method";
 
+  SetPythonStack();
+
   // Set Device ID
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
@@ -1040,8 +1124,24 @@ static PyObject* tensor__mod__method(TensorObject* self,
       other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
-      paddle::experimental::Scalar value =
-          CastPyArg2Scalar(other_obj, "__mod__", 0);
+      paddle::experimental::Scalar value;
+
+      // NOTE: call reflected method of other_obj if cast failed
+      try {
+        value = CastPyArg2Scalar(other_obj, "__mod__", 0);
+      } catch (...) {
+        PyObject* rmod = PyObject_GetAttrString(other_obj, "__rmod__");
+        if (rmod) {
+          bool has_callable_rmod = PyCallable_Check(rmod);
+          Py_DECREF(rmod);
+          if (has_callable_rmod) {
+            Py_INCREF(Py_NotImplemented);
+            return Py_NotImplemented;
+          }
+        }
+        throw;
+      }
+
       if (PyComplex_Check(other_obj)) {
         eager_gil_scoped_release guard;
         other_tensor =
@@ -1078,6 +1178,8 @@ static PyObject* tensor__rmod__method(TensorObject* self,
   EAGER_TRY
 
   VLOG(6) << "Running Eager tensor__rmod__method";
+
+  SetPythonStack();
 
   // Set Device ID
   auto place = egr::Controller::Instance().GetExpectedPlace();
@@ -1170,6 +1272,8 @@ static PyObject* tensor__matmul__method(TensorObject* self,
 
   VLOG(6) << "Running Eager tensor__matmul__method";
 
+  SetPythonStack();
+
   // Set Device ID
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
@@ -1227,8 +1331,24 @@ static PyObject* tensor__matmul__method(TensorObject* self,
       other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
-      paddle::experimental::Scalar value =
-          CastPyArg2Scalar(other_obj, "__matmul__", 0);
+      paddle::experimental::Scalar value;
+
+      // NOTE: call reflected method of other_obj if cast failed
+      try {
+        value = CastPyArg2Scalar(other_obj, "__matmul__", 0);
+      } catch (...) {
+        PyObject* rmatmul = PyObject_GetAttrString(other_obj, "__rmatmul__");
+        if (rmatmul) {
+          bool has_callable_rmatmul = PyCallable_Check(rmatmul);
+          Py_DECREF(rmatmul);
+          if (has_callable_rmatmul) {
+            Py_INCREF(Py_NotImplemented);
+            return Py_NotImplemented;
+          }
+        }
+        throw;
+      }
+
       if (PyComplex_Check(other_obj)) {
         eager_gil_scoped_release guard;
         other_tensor =
@@ -1294,6 +1414,8 @@ static PyObject* tensor__rmatmul__method(TensorObject* self,
   EAGER_TRY
 
   VLOG(6) << "Running Eager tensor__rmatmul__method";
+
+  SetPythonStack();
 
   // Set Device ID
   auto place = egr::Controller::Instance().GetExpectedPlace();
@@ -1420,6 +1542,8 @@ static PyObject* tensor__lt__method(TensorObject* self,
   EAGER_TRY
   VLOG(4) << "Running Eager tensor__lt__method";
 
+  SetPythonStack();
+
   // Set Device ID
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
@@ -1511,6 +1635,8 @@ static PyObject* tensor__le__method(TensorObject* self,
   EAGER_TRY
   VLOG(4) << "Running Eager tensor__le__method";
 
+  SetPythonStack();
+
   // Set Device ID
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
@@ -1601,6 +1727,8 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
   EAGER_TRY
   VLOG(6) << "Running Eager tensor__floordiv__method";
 
+  SetPythonStack();
+
   // Set Device ID
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
@@ -1611,7 +1739,7 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases or not
-  // there is no scalar case for floordiv, but alse need to cast self_tensor
+  // there is no scalar case for floordiv, but also need to cast self_tensor
   // in need.
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
@@ -1654,8 +1782,25 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
       other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
-      paddle::experimental::Scalar value =
-          CastPyArg2Scalar(other_obj, "__floordiv__", 0);
+      paddle::experimental::Scalar value;
+
+      // NOTE: call reflected method of other_obj if cast failed
+      try {
+        value = CastPyArg2Scalar(other_obj, "__floordiv__", 0);
+      } catch (...) {
+        PyObject* rfloordiv =
+            PyObject_GetAttrString(other_obj, "__rfloordiv__");
+        if (rfloordiv) {
+          bool has_callable_rfloordiv = PyCallable_Check(rfloordiv);
+          Py_DECREF(rfloordiv);
+          if (has_callable_rfloordiv) {
+            Py_INCREF(Py_NotImplemented);
+            return Py_NotImplemented;
+          }
+        }
+        throw;
+      }
+
       if (PyComplex_Check(other_obj)) {
         eager_gil_scoped_release guard;
         other_tensor =
@@ -1691,6 +1836,8 @@ static PyObject* tensor__rfloordiv__method(TensorObject* self,
   EAGER_TRY
   VLOG(6) << "Running Eager tensor__rfloordiv__method";
 
+  SetPythonStack();
+
   // Set Device ID
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
@@ -1701,7 +1848,7 @@ static PyObject* tensor__rfloordiv__method(TensorObject* self,
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
   // 1. scalar exists cases or not
-  // there is no scalar case for rfloordiv, but alse need to cast self_tensor
+  // there is no scalar case for rfloordiv, but also need to cast self_tensor
   // in need.
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
@@ -1782,6 +1929,8 @@ static PyObject* tensor__pow__method(TensorObject* self,
   EAGER_TRY
   VLOG(6) << "Running Eager tensor__pow__method";
 
+  SetPythonStack();
+
   // Set Device ID
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
@@ -1808,7 +1957,7 @@ static PyObject* tensor__pow__method(TensorObject* self,
     double other = CastPyArg2Double(other_obj, "__pow__", 0);
     {
       eager_gil_scoped_release guard;
-      ret = CallScalarFuction(self_tensor, other, "pow");
+      ret = CallScalarFunction(self_tensor, other, "pow");
     }
     return ToPyObject(ret);
   } else if (PyComplex_Check(other_obj)) {
@@ -1839,8 +1988,24 @@ static PyObject* tensor__pow__method(TensorObject* self,
       other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
-      paddle::experimental::Scalar value =
-          CastPyArg2Scalar(other_obj, "__pow__", 0);
+      paddle::experimental::Scalar value;
+
+      // NOTE: call reflected method of other_obj if cast failed
+      try {
+        value = CastPyArg2Scalar(other_obj, "__pow__", 0);
+      } catch (...) {
+        PyObject* rpow = PyObject_GetAttrString(other_obj, "__rpow__");
+        if (rpow) {
+          bool has_callable_rpow = PyCallable_Check(rpow);
+          Py_DECREF(rpow);
+          if (has_callable_rpow) {
+            Py_INCREF(Py_NotImplemented);
+            return Py_NotImplemented;
+          }
+        }
+        throw;
+      }
+
       if (PyComplex_Check(other_obj)) {
         eager_gil_scoped_release guard;
         other_tensor =
@@ -1876,6 +2041,8 @@ static PyObject* tensor__rpow__method(TensorObject* self,
 
   EAGER_TRY
   VLOG(6) << "Running Eager tensor__rpow__method";
+
+  SetPythonStack();
 
   // Set Device ID
   auto place = egr::Controller::Instance().GetExpectedPlace();
@@ -1970,6 +2137,8 @@ static PyObject* tensor__ne__method(TensorObject* self,
   EAGER_TRY
   VLOG(6) << "Running Eager tensor__ne__method";
 
+  SetPythonStack();
+
   // Set Device ID
   auto place = egr::Controller::Instance().GetExpectedPlace();
   SetDevice(place);
@@ -2026,7 +2195,7 @@ static PyObject* tensor__ne__method(TensorObject* self,
       if (PyComplex_Check(other_obj)) {
         eager_gil_scoped_release guard;
         other_tensor =
-            full_ad_func({1}, value, DataType::COMPLEX64, self_tensor.place());
+            full_ad_func({}, value, DataType::COMPLEX64, self_tensor.place());
       } else {
         eager_gil_scoped_release guard;
         other_tensor = full_ad_func(self_tensor.shape(),
@@ -2060,6 +2229,8 @@ static PyObject* tensor__eq__method(TensorObject* self,
 
   EAGER_TRY
   VLOG(6) << "Running Eager tensor__eq__method";
+
+  SetPythonStack();
 
   // Set Device ID
   auto place = egr::Controller::Instance().GetExpectedPlace();
@@ -2117,7 +2288,7 @@ static PyObject* tensor__eq__method(TensorObject* self,
       if (PyComplex_Check(other_obj)) {
         eager_gil_scoped_release guard;
         other_tensor =
-            full_ad_func({1}, value, DataType::COMPLEX64, self_tensor.place());
+            full_ad_func({}, value, DataType::COMPLEX64, self_tensor.place());
       } else {
         eager_gil_scoped_release guard;
         other_tensor = full_ad_func(self_tensor.shape(),

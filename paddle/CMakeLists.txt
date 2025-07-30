@@ -5,6 +5,9 @@ set(PYTHON_TESTS_DIR
 add_subdirectory(utils)
 add_subdirectory(common)
 add_subdirectory(pir)
+if(WITH_CINN)
+  add_subdirectory(ap)
+endif()
 add_subdirectory(scripts)
 add_subdirectory(testing)
 add_subdirectory(phi)
@@ -20,7 +23,7 @@ add_subdirectory(fluid)
 # Now, we want to make all cc tests dynamically linked to the main paddle library,
 # i.e., `libpaddle.so`, so we changes the logic of (2), (3), (4):
 # (2) calling `cc_test()` in each `CMakeLists.txt` will not `exactly` add test, but
-# record all tests and its source files, the action of add tests is defered to HERE.
+# record all tests and its source files, the action of add tests is deferred to HERE.
 # Why doing so? since the target of `libpaddle.so` is mostly the last target, and
 # the tests should be added after that according to dependency.
 # (3) the tests links dynamic libraries, `libpaddle.so`

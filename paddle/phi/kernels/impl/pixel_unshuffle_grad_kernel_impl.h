@@ -31,6 +31,9 @@ void PixelUnshuffleGradKernel(const Context& dev_ctx,
   auto* dout = &out_grad;
   auto* dx = x_grad;
   dev_ctx.template Alloc<T>(dx);
+  if (dx && dx->numel() == 0) {
+    return;
+  }
   int factor = downscale_factor;
   bool channel_last = (data_format == "NHWC");
   const auto& do_dims = dout->dims();

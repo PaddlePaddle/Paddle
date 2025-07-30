@@ -118,11 +118,11 @@ void set_mem_desc(const dnnl::memory::desc& mem_desc);
     Will be adjusted/removed/moved in the near future
 */
 public:
-explicit DenseTensor(const LoD& lod);
+explicit DenseTensor(const LegacyLoD& lod);
 
 void set_lod(const LoD& lod);
 
-LoD* mutable_lod();
+LegacyLoD* mutable_lod();
 
 /*
  * Get the start offset and end offset of an  element from LoD.

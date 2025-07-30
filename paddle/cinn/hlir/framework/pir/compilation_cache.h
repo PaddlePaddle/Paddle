@@ -55,7 +55,7 @@ class BackendResource final {
   const std::shared_ptr<backends::Compiler>& GetBackendCompiler() const {
     return backend_compiler_;
   }
-  pir::CINNKernelInfo GenerateKernelInfo() const;
+  pir::CINNKernelInfo GenerateKernelInfo(bool need_x86_kernel = false) const;
   const std::string& GetHostFuncName() const { return host_fn_name_; }
 
  private:
@@ -69,7 +69,8 @@ class BackendResource final {
 
 class CompilationResult final {
  public:
-  explicit CompilationResult(const Target& target) : target_(target) {}
+  explicit CompilationResult(const Target& target, bool need_x86_kernel = false)
+      : target_(target), have_cx86_kernel_(need_x86_kernel) {}
   const std::shared_ptr<BackendResource>& GetBackendResource() const {
     return backend_resource_;
   }
@@ -91,12 +92,13 @@ class CompilationResult final {
                             ::common::errors::PreconditionNotMet(
                                 "Found backend_resource_ is nullptr, please "
                                 "call SetBackendResource first."));
-    return backend_resource_->GenerateKernelInfo();
+    return backend_resource_->GenerateKernelInfo(have_cx86_kernel_);
   }
 
  private:
   Target target_;
   std::shared_ptr<BackendResource> backend_resource_{nullptr};
+  bool have_cx86_kernel_{false};
 };
 
 }  // namespace pir

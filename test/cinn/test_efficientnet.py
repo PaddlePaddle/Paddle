@@ -76,8 +76,7 @@ class TestLoadEfficientNetModel(unittest.TestCase):
         end5 = time.perf_counter()
 
         print(
-            "Repeat %d times, average Executor.run() time is: %.3f ms"
-            % (repeat, (end5 - end4) * 1000 / repeat)
+            f"Repeat {repeat} times, average Executor.run() time is: {(end5 - end4) * 1000 / repeat:.3f} ms"
         )
         a_t.from_numpy(x_data, self.target)
         out.from_numpy(np.zeros(out.shape(), dtype='float32'), self.target)

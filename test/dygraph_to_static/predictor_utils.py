@@ -74,7 +74,7 @@ class PredictorTools:
         Args:
             config (AnalysisConfig): predictor configs
         Returns:
-            outs (numpy array): forward netwrok prediction outputs
+            outs (numpy array): forward network prediction outputs
         '''
         predictor = create_paddle_predictor(config)
         names = predictor.get_input_names()

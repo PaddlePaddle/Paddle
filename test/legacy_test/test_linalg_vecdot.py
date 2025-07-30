@@ -114,6 +114,34 @@ class VecDotTestCaseAxis(VecDotTestCase):
         self.axis = 1
 
 
+class VecDotTestCaseZeroSize2D(VecDotTestCase):
+    def init_config(self):
+        self.dtype = 'float32'
+        self.input_shape = (0, 4)
+        self.axis = -1
+
+
+class VecDotTestCaseZeroSize3D(VecDotTestCase):
+    def init_config(self):
+        self.dtype = 'float32'
+        self.input_shape = (2, 0, 4)
+        self.axis = -1
+
+
+class VecDotTestCaseZeroSize3DAxis1(VecDotTestCase):
+    def init_config(self):
+        self.dtype = 'float32'
+        self.input_shape = (2, 0, 0)
+        self.axis = 0
+
+
+class VecDotTestCaseZeroSize3DAxis2(VecDotTestCase):
+    def init_config(self):
+        self.dtype = 'float32'
+        self.input_shape = (2, 0, 0)
+        self.axis = 1
+
+
 class VecDotTestCaseError(unittest.TestCase):
     def test_axis_mismatch(self):
         with self.assertRaises(ValueError):

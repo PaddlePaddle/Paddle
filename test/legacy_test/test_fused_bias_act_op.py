@@ -625,6 +625,46 @@ class TestQuantSwigluBF16(TestQuantBF16):
 
 
 @unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and not support the bfloat16",
+)
+class TestQuantSwigluFP8(TestQuantBF16):
+    def init_test_case(self):
+        self.atol = 1
+
+        self.compute_dtype = 'bf16'
+        self.act_method = 'swiglu'
+        self.quant_scale = 0.5
+        self.quant_round_type = 1
+        self.quant_max_bound = 448.0
+        self.quant_min_bound = -448.0
+
+        self.use_glu = True
+
+    def compute_baseline_output(self):
+        input_dequanted = fake_dequant(
+            self.x.astype('float32'), self.dequant_scales
+        )
+        tmp = (input_dequanted + self.bias).astype('float32')
+        tmp_head = tmp[:, :, : self.cols // 2]
+        tmp_tail = tmp[:, :, self.cols // 2 :]
+        out_tmp = swish(tmp_head).astype('float32') * tmp_tail
+
+        out = fake_quant(
+            out_tmp,
+            self.shift,
+            self.smooth,
+            self.quant_scale,
+            self.quant_max_bound,
+            self.quant_min_bound,
+            self.quant_round_type,
+        )
+
+        return out
+
+
+@unittest.skipIf(
     not core.is_compiled_with_cuda() and not core.is_compiled_with_rocm(),
     "core is not compiled with CUDA or ROCm",
 )

@@ -35,9 +35,17 @@ std::vector<Expr> GetLoops(const std::vector<Expr>& exprs, const Expr& block);
 
 std::vector<Expr> GetAllBlocks(const std::vector<Expr>& exprs);
 
+std::vector<stmt::StmtRef> GetAllSchedules(const std::vector<Expr>& exprs);
+
 std::vector<Expr> GetChildBlocks(const Expr& expr);
 
 Expr GetBlock(const std::vector<Expr>& exprs, const std::string& block_name);
+
+/**
+ * Get the root schedule block (i.e. ScheduleBlock(root)) from `expr`.
+ * The `expr` must be the root block of ModuleExpr.
+ */
+Expr GetRootSBlock(const Expr& expr);
 
 Expr GetRootBlock(const std::vector<Expr>& exprs, const Expr& expr);
 
@@ -63,6 +71,19 @@ std::unordered_map<ir::Var, ir::Expr> GetIterVarToValueOfSBlock(ir::Expr block);
 ir::Expr ReplaceVarWithExpr(const ir::Expr& source,
                             const std::vector<ir::Var>& candidates,
                             const std::vector<ir::Expr>& targets);
+
+/**
+ * Expand the iter_vars in `expr` to the iter_values of `block`.
+ */
+Expr ExpandIterVar(const Expr& expr, const Expr& block);
+
+constexpr char* kLoopVar = "loop_var_";
+
+/**
+ * Replace the loop_vars in `expr` to the canonicalized form such that the
+ * loop_var of loop[i] has name `loop_var_i`.
+ */
+Expr CanonicalizeLoopVar(const Expr& expr, const std::vector<Expr>& loops);
 
 std::vector<ir::Expr> GetIterValuesOfAccess(ir::Expr load_or_store,
                                             ir::Expr block);

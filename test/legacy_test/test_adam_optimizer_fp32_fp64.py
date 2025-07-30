@@ -12,31 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
+
+from op_test import get_places
+from utils import static_guard
 
 import paddle
 from paddle import base
 
 
-def get_places():
-    places = []
-    if (
-        os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-        in ['1', 'true', 'on']
-        or not base.is_compiled_with_cuda()
-    ):
-        places.append(base.CPUPlace())
-    if base.is_compiled_with_cuda():
-        places.append(base.CUDAPlace(0))
-    return places
-
-
 def main_test_func(place, dtype):
-    main = base.Program()
-    startup = base.Program()
-    with base.program_guard(main, startup):
-        with base.scope_guard(base.Scope()):
+    with static_guard():
+        main = base.Program()
+        startup = base.Program()
+        with (
+            base.program_guard(main, startup),
+            base.scope_guard(base.Scope()),
+        ):
             x = paddle.static.data(name='x', shape=[None, 13], dtype=dtype)
             y = paddle.static.data(name='y', shape=[None, 1], dtype=dtype)
             y_predict = paddle.static.nn.fc(x, size=1)

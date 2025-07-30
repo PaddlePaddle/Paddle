@@ -21,7 +21,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void StackGradKernel(const Context& ctx,
+void StackGradKernel(const Context& dev_ctx,
                      const DenseTensor& out_grad,
                      int axis,
                      std::vector<DenseTensor*> x_grad) {
@@ -37,7 +37,7 @@ void StackGradKernel(const Context& ctx,
           split_dim,
           x_grad.size()));
 
-  funcs::UnStackRawKernel<T, Context>(ctx, out_grad, axis, &x_grad);
+  funcs::UnStackRawKernel<T, Context>(dev_ctx, out_grad, axis, &x_grad);
 }
 
 }  // namespace phi
@@ -56,5 +56,7 @@ PD_REGISTER_KERNEL(stack_grad,
                    int16_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
+                   phi::dtype::float8_e4m3fn,
+                   phi::dtype::float8_e5m2,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}

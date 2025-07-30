@@ -394,7 +394,7 @@ struct WeightLayoutDetails<WeightOnlyQuantType::Int4b> {
   // 20 21 28 29 6 7 14 15 22 23 30 31
   static constexpr int kShuffleSize = 32;
   static constexpr int kShuffleBasicTile = 2;
-  static constexpr int kShuffleContinous = 4;
+  static constexpr int kShuffleContinuous = 4;
   static constexpr int kShuffleStrided = 4;
 
   // The rearrangement here counteracts the effect of
@@ -456,7 +456,7 @@ struct WeightLayoutDetails<WeightOnlyQuantType::Int8b> {
   // 13 14 15 weight 0 1 8 9 2 3 10 11 4 5 12 13 6 7 14 15
   static constexpr int kShuffleSize = 16;
   static constexpr int kShuffleBasicTile = 2;
-  static constexpr int kShuffleContinous = 2;
+  static constexpr int kShuffleContinuous = 2;
   static constexpr int kShuffleStrided = 4;
 
   // The rearrangement here counteracts the effect of
@@ -504,7 +504,7 @@ struct WeightOnlyKernelDetails {
 
   static constexpr int kShuffleSize = Layout::kShuffleSize;
   static constexpr int kShuffleBasicTile = Layout::kShuffleBasicTile;
-  static constexpr int kShuffleContinous = Layout::kShuffleContinous;
+  static constexpr int kShuffleContinuous = Layout::kShuffleContinuous;
   static constexpr int kShuffleStrided = Layout::kShuffleStrided;
 
   // using Converter = typename Layout::Converter;
@@ -848,14 +848,14 @@ struct WeightPostProcessor<T, WeightOnlyQuantType::Int4b, Details> {
                                              int idx) {
     using HALF_2_TYPE = typename CUDA_HALF_2_TYPE_TARIS<T>::type;
 #pragma unroll
-    for (int i = 0; i < Details::kShuffleContinous; ++i) {
+    for (int i = 0; i < Details::kShuffleContinuous; ++i) {
 #pragma unroll
       for (int j = 0; j < Details::kShuffleStrided; ++j) {
         // Dequantize the weights and arrange the shuffled elements back to
         // the correct order in the register array
         HALF_2_TYPE v = *reinterpret_cast<HALF_2_TYPE*>(
             weights_vec + i * Details::kShuffleBasicTile +
-            j * Details::kShuffleContinous * Details::kShuffleBasicTile);
+            j * Details::kShuffleContinuous * Details::kShuffleBasicTile);
         v = HalfMulAdd<HALF_2_TYPE>::apply(
             v,
             ConvertDstFunc_2<HALF_2_TYPE>::apply(scale[idx]),
@@ -1378,7 +1378,7 @@ void WeightOnlyGemvKernel(const Context& dev_ctx,
                            out_data);
 }
 
-template void WeightOnlyGemvWrapper(const phi::GPUContext& ctx,
+template void WeightOnlyGemvWrapper(const phi::GPUContext& dev_ctx,
                                     const float* input,
                                     const int8_t* weight,
                                     const float* bias,
@@ -1392,7 +1392,7 @@ template void WeightOnlyGemvWrapper(const phi::GPUContext& ctx,
                                     const std::string& act_method,
                                     float* output);
 
-template void WeightOnlyGemvWrapper(const phi::GPUContext& ctx,
+template void WeightOnlyGemvWrapper(const phi::GPUContext& dev_ctx,
                                     const phi::dtype::float16* input,
                                     const int8_t* weight,
                                     const phi::dtype::float16* bias,
@@ -1406,7 +1406,7 @@ template void WeightOnlyGemvWrapper(const phi::GPUContext& ctx,
                                     const std::string& act_method,
                                     phi::dtype::float16* output);
 #ifdef PADDLE_CUDA_BF16
-template void WeightOnlyGemvWrapper(const phi::GPUContext& ctx,
+template void WeightOnlyGemvWrapper(const phi::GPUContext& dev_ctx,
                                     const phi::dtype::bfloat16* input,
                                     const int8_t* weight,
                                     const phi::dtype::bfloat16* bias,

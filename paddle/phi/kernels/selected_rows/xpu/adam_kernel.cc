@@ -20,7 +20,6 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/adam_functors.h"
-// See Note [ Why still include the fluid headers? ]
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
 namespace phi {
@@ -34,6 +33,7 @@ void AdamDenseParamSparseGradKernel(
     const DenseTensor& learning_rate,
     const DenseTensor& moment1,
     const DenseTensor& moment2,
+    const paddle::optional<DenseTensor>& moment2_max,  // UNUSED
     const DenseTensor& beta1_pow,
     const DenseTensor& beta2_pow,
     const paddle::optional<DenseTensor>& master_param,
@@ -45,12 +45,19 @@ void AdamDenseParamSparseGradKernel(
     int64_t min_row_size_to_use_multithread,
     bool multi_precision,
     bool use_global_beta_pow,
+    bool amsgrad,  // UNUSED
     DenseTensor* param_out,
     DenseTensor* moment1_out,
     DenseTensor* moment2_out,
+    DenseTensor* moment2_max_out,  // UNUSED
     DenseTensor* beta1_pow_out,
     DenseTensor* beta2_pow_out,
     DenseTensor* master_param_outs) {
+  PADDLE_ENFORCE_NE(
+      amsgrad,
+      true,
+      common::errors::Unimplemented("Operation amsgrad is not supported yet."));
+
   using XPUType = typename XPUTypeTrait<T>::Type;
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   float* param_ptr = nullptr;
@@ -347,9 +354,9 @@ PD_REGISTER_KERNEL(adam_dense_param_sparse_grad,
                    float,
                    phi::dtype::float16) {
   // Skip beta1_pow, beta2_pow, skip_update data transform
-  kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
-  kernel->InputAt(8).SetBackend(phi::Backend::ALL_BACKEND);
-  kernel->OutputAt(3).SetBackend(phi::Backend::UNDEFINED);
+  kernel->InputAt(7).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(9).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->OutputAt(4).SetBackend(phi::Backend::UNDEFINED);
+  kernel->OutputAt(5).SetBackend(phi::Backend::UNDEFINED);
 }

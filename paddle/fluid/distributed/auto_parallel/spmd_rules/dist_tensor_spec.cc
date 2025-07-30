@@ -16,9 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 
-namespace paddle {
-namespace distributed {
-namespace auto_parallel {
+namespace paddle::distributed::auto_parallel {
 
 DistTensorSpec::DistTensorSpec(const std::vector<int64_t>& shape,
                                const TensorDistAttr& dist_attr) {
@@ -82,6 +80,4 @@ std::string DistTensorSpec::to_string() const {
   return spec_str;
 }
 
-}  // namespace auto_parallel
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed::auto_parallel

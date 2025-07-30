@@ -19,7 +19,7 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
-    test_default_and_pir,
+    test_default_mode_only,
 )
 from test_resnet import SEED, ResNet, optimizer_setting
 
@@ -95,15 +95,11 @@ def train(build_strategy=None):
             end_time = time.time()
             if batch_id % 2 == 0:
                 print(
-                    "epoch %d | batch step %d, loss %0.3f, acc1 %0.3f, acc5 %0.3f, time %f"
-                    % (
-                        epoch,
-                        batch_id,
-                        total_loss.numpy() / total_sample,
-                        total_acc1.numpy() / total_sample,
-                        total_acc5.numpy() / total_sample,
-                        end_time - start_time,
-                    )
+                    f"epoch {epoch} | batch step {batch_id}, "
+                    f"loss {total_loss.numpy() / total_sample:0.3f}, "
+                    f"acc1 {total_acc1.numpy() / total_sample:0.3f}, "
+                    f"acc5 {total_acc5.numpy() / total_sample:0.3f}, "
+                    f"time {end_time - start_time:f}"
                 )
             if batch_id == 10:
                 break
@@ -116,7 +112,7 @@ class TestResnet(Dy2StTestBase):
         with enable_to_static_guard(to_static):
             return train()
 
-    @test_default_and_pir
+    @test_default_mode_only
     def test_resnet(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)
@@ -127,7 +123,7 @@ class TestResnet(Dy2StTestBase):
             err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
         )
 
-    @test_default_and_pir
+    @test_default_mode_only
     def test_resnet_composite(self):
         core._set_prim_backward_enabled(True)
         static_loss = self.train(to_static=True)

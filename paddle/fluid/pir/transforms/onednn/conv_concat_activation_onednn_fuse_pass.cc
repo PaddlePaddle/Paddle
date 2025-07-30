@@ -52,8 +52,7 @@ class NConvConcatActivationFusePattern : public paddle::drr::DrrPatternBase {
     return "Conv" + std::to_string(concat_count_) + "Concat" + "Level" +
            std::to_string(fused_level_) + activation_name_ + "Pattern";
   }
-
-  uint32_t benefit() const override { return benefit_; }
+  uint32_t benefit() const override { return static_cast<uint32_t>(benefit_); }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -305,8 +304,9 @@ class NConvConcatHardSigmoidFusePattern : public paddle::drr::DrrPatternBase {
     return "Conv" + std::to_string(concat_count_) + "Concat" + "Level" +
            std::to_string(fused_level_) + "HardSigmoidPattern";
   }
-
-  uint32_t benefit() const override { return concat_count_; }
+  uint32_t benefit() const override {
+    return static_cast<uint32_t>(concat_count_);
+  }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -524,8 +524,9 @@ class NConvConcatGeluFusePattern : public paddle::drr::DrrPatternBase {
     return "Conv" + std::to_string(concat_count_) + "Concat" + "Level" +
            std::to_string(fused_level_) + "GeluPattern";
   }
-
-  uint32_t benefit() const override { return concat_count_; }
+  uint32_t benefit() const override {
+    return static_cast<uint32_t>(concat_count_);
+  }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -749,8 +750,9 @@ class NConvConcatClipFusePattern : public paddle::drr::DrrPatternBase {
     return "Conv" + std::to_string(concat_count_) + "Concat" + "Level" +
            std::to_string(fused_level_) + "ClipPattern";
   }
-
-  uint32_t benefit() const override { return concat_count_; }
+  uint32_t benefit() const override {
+    return static_cast<uint32_t>(concat_count_);
+  }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();

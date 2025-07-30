@@ -15,7 +15,6 @@
 #pragma once
 #include <vector>
 
-#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/pir/dialect/operator/interface/decomp.h"
 #include "paddle/fluid/pir/dialect/operator/interface/get_kernel_type_for_var.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_symbolic_shape.h"
@@ -61,9 +60,11 @@ class TEST_API AddN_Op
   bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
-class AddNArrayOp : public pir::Op<AddNArrayOp,
-                                   paddle::dialect::OpYamlInfoInterface,
-                                   paddle::dialect::InferMetaInterface> {
+class AddNArrayOp
+    : public pir::Op<AddNArrayOp,
+                     paddle::dialect::OpYamlInfoInterface,
+                     paddle::dialect::InferMetaInterface,
+                     paddle::dialect::InferSymbolicShapeInterface> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.add_n_array"; }
@@ -82,6 +83,7 @@ class AddNArrayOp : public pir::Op<AddNArrayOp,
   static std::vector<pir::Type> InferMeta(
       const std::vector<pir::Value> &input_values,
       pir::AttributeMap *p_attributes);
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 };
 
 class FusedGemmEpilogueOp : public pir::Op<FusedGemmEpilogueOp,
@@ -880,6 +882,24 @@ class ShareVarOp : public pir::Op<ShareVarOp, pir::SideEffectTrait> {
   void VerifySig() {}
 };
 
+class IR_API CudaGraphOp : public pir::Op<CudaGraphOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.cuda_graph"; }
+  static constexpr uint32_t attributes_num = 0;
+  static constexpr const char **attributes_name = nullptr;
+
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    const std::vector<pir::Type> &output_types);
+
+  pir::Block *block();
+  pir::Block *block() const;
+
+  void VerifySig();
+  void Print(pir::IrPrinter &printer);  // NOLINT
+};
+
 }  // namespace dialect
 }  // namespace paddle
 
@@ -908,3 +928,4 @@ IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ShapeBroadcastOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::MemcpyD2hMultiIoOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayPopOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ShareVarOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::CudaGraphOp)

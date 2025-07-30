@@ -11,12 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import argparse
 import re
 
 import yaml
 from api_base import PREFIX_TENSOR_NAME, BaseAPI
+
+backward_api_black_list = [
+    "scale_grad",  # tensor = scale is not implemented in api_custom_impl.cc
+]
 
 inplace_out_type_map = {
     "Tensor": "Tensor&",
@@ -26,6 +29,11 @@ inplace_out_type_map = {
 inplace_optional_out_type_map = {
     "Tensor": "paddle::optional<Tensor>&",
     "std::vector<Tensor>": "paddle::optional<std::vector<Tensor>>&",
+}
+
+optional_out_type_map = {
+    "Tensor": "paddle::optional<Tensor>",
+    "std::vector<Tensor>": "paddle::optional<std::vector<Tensor>>",
 }
 
 
@@ -112,6 +120,7 @@ class ForwardAPI(BaseAPI):
         return inplace_map, view_map
 
     def get_return_type_with_intermediate(self, inplace_flag=False):
+
         out_type_list = []
         for i, out_type in enumerate(self.outputs['types']):
             out_name = self.outputs['names'][i].split('@')[0]
@@ -216,7 +225,11 @@ class ForwardAPI(BaseAPI):
                 or out_tensor_type_list[0] == 'dense'
                 else 'SetSelectedRowsKernelOutput'
             )
-            if return_type == 'std::vector<Tensor>':
+
+            if (
+                return_type == 'std::vector<Tensor>'
+                or return_type == 'std::vector<Tensor>&'
+            ):
                 assert (
                     self.outputs['out_size_expr'][0] is not None
                 ), f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
@@ -225,8 +238,28 @@ class ForwardAPI(BaseAPI):
                     + f"""
 {code_indent}  auto kernel_out = {set_out_func}({self.outputs['out_size_expr'][0]}, &api_output);"""
                 )
-
-            else:
+            elif (
+                return_type == 'paddle::optional<std::vector<Tensor>>'
+                or return_type == 'paddle::optional<std::vector<Tensor>>&'
+            ):
+                assert (
+                    self.outputs['out_size_expr'][0] is not None
+                ), f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                output_create = (
+                    output_create
+                    + f"""
+{code_indent}  auto kernel_out = {set_out_func}({self.outputs['out_size_expr'][0]}, api_output.get_ptr());"""
+                )
+            elif (
+                return_type == 'paddle::optional<Tensor>'
+                or return_type == 'paddle::optional<Tensor>&'
+            ):
+                output_create = (
+                    output_create
+                    + f"""
+{code_indent}  auto kernel_out = {set_out_func}(api_output.get_ptr());"""
+                )
+            elif return_type == 'Tensor' or return_type == 'Tensor&':
                 output_create = (
                     output_create
                     + f"""
@@ -273,7 +306,8 @@ class ForwardAPI(BaseAPI):
 
                 get_out_code = f"&std::get<{i}>(api_output)"
                 if (
-                    self.outputs['names'][i] in self.inplace_map
+                    inplace_flag
+                    and self.outputs['names'][i] in self.inplace_map
                     and self.inplace_map[self.outputs['names'][i]]
                     in self.optional_vars
                 ):
@@ -380,6 +414,73 @@ class ForwardAPI(BaseAPI):
         return remap_code
 
 
+class BackwardAPI(ForwardAPI):
+
+    def gene_base_api_code(self, inplace_flag=False):
+        api_func_name = self.get_api_func_name()
+        if inplace_flag and api_func_name[-1] != '_':
+            inplace_name = api_func_name + '_'
+        else:
+            inplace_name = api_func_name
+        api_code = f"""
+PADDLE_API {self.get_return_type(inplace_flag)} {inplace_name}({self.get_define_args(inplace_flag)}) {{
+{self.get_grad_outputs_define(inplace_flag)}
+{self.get_optional_inputs_change(inplace_flag)}
+    {api_func_name}({self.get_grad_api_call_args(inplace_flag)});
+    return {self.get_grad_output(inplace_flag)};
+}}
+"""
+        return api_code
+
+    def gene_api_code(self):
+        if not self.is_base_api and not self.is_only_composite_api:
+            invoke_func_name = self.invoke.split('(')[0]
+            if (not invoke_func_name.endswith("_grad")) and (
+                not invoke_func_name.endswith('_impl')
+            ):
+                return ""
+
+        if self.is_only_composite_api:
+            return ""
+
+        api_code = self.gene_base_api_code()
+        if self.is_base_api and len(self.inplace_map) > 0:
+            if self.api[-1] == '_':
+                api_code = ""
+            api_code = api_code + self.gene_base_api_code_for_inplace()
+        return api_code
+
+    def gene_api_declaration(self):
+        if not self.is_base_api and not self.is_only_composite_api:
+            invoke_func_name = self.invoke.split('(')[0]
+            if (not invoke_func_name.endswith("_grad")) and (
+                not invoke_func_name.endswith('_impl')
+            ):
+                return ""
+
+        if self.is_only_composite_api:
+            return ""
+
+        api_declaration = ""
+        api_func_name = self.get_api_func_name()
+        if api_func_name[-1] != '_':
+            api_declaration = f"""
+PADDLE_API {self.get_return_type()} {api_func_name}({self.get_declare_args()});
+"""
+
+        if self.is_base_api and len(self.inplace_map) > 0:
+            if api_func_name[-1] != '_':
+                api_func_name += '_'
+            api_declaration = (
+                api_declaration
+                + f"""
+PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_declare_args(inplace_flag=True)});
+"""
+            )
+
+        return api_declaration
+
+
 def header_include():
     return """
 #include <tuple>
@@ -393,12 +494,13 @@ def header_include():
 
 def source_include(header_file_path):
     return f"""
-#include "{header_file_path}"
+
 #include <memory>
 
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
 
+{header_file_path}
 #include "paddle/phi/api/lib/api_custom_impl.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/api_registry.h"
@@ -413,11 +515,24 @@ def source_include(header_file_path):
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/infermeta/ternary.h"
 #include "paddle/phi/infermeta/fusion.h"
+#include "paddle/phi/infermeta/backward.h"
 
 #include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/api/profiler/supplement_tracing.h"
 
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
+#elif (defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL))
+#include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/bkcl_comm_context.h"
+#elif PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/xccl_comm_context.h"
+#endif
+
 #ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/phi/core/distributed/store/store_utils.h"
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #endif
@@ -455,7 +570,11 @@ PD_DECLARE_API(reshard);
 
 
 def generate_api(
-    api_yaml_path, is_fused_ops_yaml, header_file_path, source_file_path
+    api_yaml_path,
+    is_fused_ops_yaml,
+    header_file_path,
+    source_file_path,
+    grad_flag,
 ):
     apis = []
 
@@ -474,12 +593,21 @@ def generate_api(
     header_file.write(header_include())
     header_file.write(namespace[0])
 
-    include_header_file = (
-        "paddle/phi/api/include/fused_api.h"
-        if is_fused_ops_yaml is True
-        else "paddle/phi/api/include/api.h"
-    )
-    # not all fused ops supoort dygraph
+    if not grad_flag:
+        include_header_file = (
+            '#include "paddle/phi/api/include/fused_api.h"'
+            if is_fused_ops_yaml is True
+            else '#include "paddle/phi/api/include/api.h"'
+        )
+    else:
+        include_header_file = (
+            '#include "paddle/phi/api/backward/fused_backward_api.h" \n'
+            '#include "paddle/phi/api/backward/fused_backward_api_base.h" '
+            if is_fused_ops_yaml is True
+            else '#include "paddle/phi/api/backward/backward_api.h" \n'
+            '#include "paddle/phi/api/backward/backward_api_base.h" '
+        )
+    # not all fused ops support dygraph
     if is_fused_ops_yaml is True:
         new_apis = [
             api
@@ -493,7 +621,13 @@ def generate_api(
     source_file.write(namespace[0])
 
     for api in apis:
-        forward_api = ForwardAPI(api)
+        if not grad_flag:
+            forward_api = ForwardAPI(api)
+        else:
+            forward_api = BackwardAPI(api)
+
+        if forward_api.api in backward_api_black_list:
+            continue
         if forward_api.is_dygraph_api and not is_fused_ops_yaml:
             forward_api.is_dygraph_api = False
 
@@ -527,6 +661,13 @@ def main():
     )
 
     parser.add_argument(
+        '--backward_api_yaml_path',
+        help='path to api yaml file',
+        nargs='+',
+        default=['paddle/phi/ops/yaml/backward.yaml'],
+    )
+
+    parser.add_argument(
         '--is_fused_ops_yaml',
         help='flag of fused ops yaml',
         action='store_true',
@@ -544,15 +685,42 @@ def main():
         default='paddle/phi/api/lib/api.cc',
     )
 
+    parser.add_argument(
+        '--backward_api_header_path',
+        help='output of generated api header code file',
+        default='paddle/phi/api/backward/backward_api.h',
+    )
+
+    parser.add_argument(
+        '--backward_api_source_path',
+        help='output of generated api source code file',
+        default='paddle/phi/api/lib/backward_api.cc',
+    )
+
     options = parser.parse_args()
 
     api_yaml_path = options.api_yaml_path
+    backward_api_yaml_path = options.backward_api_yaml_path
     is_fused_ops_yaml = options.is_fused_ops_yaml
     header_file_path = options.api_header_path
     source_file_path = options.api_source_path
+    backward_header_file_path = options.backward_api_header_path
+    backward_source_file_path = options.backward_api_source_path
 
     generate_api(
-        api_yaml_path, is_fused_ops_yaml, header_file_path, source_file_path
+        api_yaml_path,
+        is_fused_ops_yaml,
+        header_file_path,
+        source_file_path,
+        False,
+    )
+
+    generate_api(
+        backward_api_yaml_path,
+        is_fused_ops_yaml,
+        backward_header_file_path,
+        backward_source_file_path,
+        True,
     )
 
 

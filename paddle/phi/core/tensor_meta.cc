@@ -148,7 +148,7 @@ DenseTensorMeta::DenseTensorMeta(DataType dtype,
 DenseTensorMeta::DenseTensorMeta(DataType dtype,
                                  const DDim& dims,
                                  DataLayout layout,
-                                 const LoD& legacy_lod,
+                                 const LegacyLoD& legacy_lod,
                                  size_t offset)
     : dims(dims),
       dtype(dtype),

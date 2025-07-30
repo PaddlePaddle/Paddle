@@ -18,20 +18,11 @@ import unittest
 import numpy
 import utils
 
-os.environ['FLAGS_cinn_new_group_scheduler'] = '1'
-os.environ['FLAGS_group_schedule_tiling_first'] = '1'
 os.environ['FLAGS_prim_all'] = 'true'
 os.environ['FLAGS_prim_enable_dynamic'] = 'true'
-os.environ['FLAGS_print_ir'] = '1'
-os.environ['FLAGS_enable_pir_api'] = '1'
 os.environ['FLAGS_use_cinn'] = '1'
-os.environ['FLAGS_cinn_bucket_compile'] = '1'
-os.environ['FLAGS_cinn_new_cluster_op_method'] = '1'
 
 import paddle
-
-build_strategy = paddle.static.BuildStrategy()
-build_strategy.build_cinn_pass = True
 
 
 def generate_input_spec(rank_dtype_list):
@@ -57,7 +48,7 @@ class TestReduceFusion(unittest.TestCase):
         dy_out = dy_compute(*inputs)
         static_compute = paddle.jit.to_static(
             full_graph=True,
-            build_strategy=build_strategy,
+            backend="CINN",
             input_spec=input_spec,
         )(dy_compute)
         st_out = static_compute(*inputs)
@@ -184,6 +175,20 @@ class TestReduceFusion(unittest.TestCase):
             return (x,)
 
         self.check_accuracy_and_kernel_num(init, func, kernel_num=1)
+
+    def test_horizontal_fusion_with_reduce_dim_equals_one(self):
+        def func(x):
+            a = x + 1
+            a = paddle.max(a, axis=[0])
+            b = x * 2
+            b = paddle.max(b, axis=[2])
+            return a, b
+
+        def init():
+            x = paddle.rand((1, 32, 8), dtype='float32')
+            return (x,)
+
+        self.check_accuracy_and_kernel_num(init, func)
 
 
 if __name__ == "__main__":

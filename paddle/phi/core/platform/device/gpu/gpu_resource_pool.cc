@@ -17,8 +17,7 @@
 
 #include "paddle/phi/backends/gpu/gpu_info.h"
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 CudaStreamResourcePool::CudaStreamResourcePool() {
   int dev_cnt = phi::backends::gpu::GetGPUDeviceCount();
@@ -123,7 +122,6 @@ std::shared_ptr<CudaEventObject> CudaEventResourcePool::New(int dev_idx) {
   return pool_[dev_idx]->New();
 }
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform
 
 #endif

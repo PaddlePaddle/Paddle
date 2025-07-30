@@ -27,8 +27,7 @@
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/utils/variant.h"
 
-namespace paddle {
-namespace translator {
+namespace paddle::translator {
 
 class AttributeVisitor {
  public:
@@ -297,5 +296,4 @@ pir::Attribute AttributeTranslator::operator()(
   return paddle::visit(*(special_visitors.at(target_type)), attr);
 }
 
-}  // namespace translator
-}  // namespace paddle
+}  // namespace paddle::translator

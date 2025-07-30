@@ -25,7 +25,7 @@ TEST(dense_tensor, meta) {
   const DataType dtype{DataType::INT8};
   const DataLayout layout{DataLayout::NHWC};
   // TODO(Shixiaowei02): need to check the lod is valid.
-  const LoD lod{};
+  const LegacyLoD lod{};
 
   DenseTensorMeta meta_0;
   PADDLE_ENFORCE_EQ(meta_0.valid(),
@@ -209,7 +209,7 @@ TEST(dense_tensor, ctor) {
   const DDim dims({1, 2});
   const DataType dtype{DataType::INT8};
   const DataLayout layout{DataLayout::NHWC};
-  const LoD lod{};
+  const LegacyLoD lod{};
   DenseTensorMeta meta(dtype, dims, layout, lod);
 
   auto fancy_allocator = std::unique_ptr<Allocator>(new FancyAllocator);
@@ -239,7 +239,7 @@ TEST(dense_tensor, resize) {
   const DDim dims({1, 2});
   const DataType dtype{DataType::INT8};
   const DataLayout layout{DataLayout::NHWC};
-  const LoD lod{};
+  const LegacyLoD lod{};
   DenseTensorMeta meta(dtype, dims, layout, lod);
 
   auto fancy_allocator = std::unique_ptr<Allocator>(new FancyAllocator);
@@ -265,7 +265,7 @@ TEST(dense_tensor, shallow_copy) {
   const DDim dims({1, 2});
   const DataType dtype{DataType::INT8};
   const DataLayout layout{DataLayout::NHWC};
-  const LoD lod{};
+  const LegacyLoD lod{};
   DenseTensorMeta meta(dtype, dims, layout, lod);
 
   auto fancy_allocator = std::unique_ptr<Allocator>(new FancyAllocator);

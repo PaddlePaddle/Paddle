@@ -624,23 +624,44 @@ void DispatchWithDtype(
           pre_cache_length,
           &qktv_out);
 #elif defined(PADDLE_WITH_HIP)
+      phi::DenseTensor q, k, v, out;
+      q.Resize({{bsz, max_enc_len_this_time_data, q_num_head, dim_head}});
+      k.Resize({{bsz,
+                 max_enc_len_this_time_data + pre_cache_length,
+                 kv_num_head,
+                 dim_head}});
+      v.Resize({{bsz,
+                 max_enc_len_this_time_data + pre_cache_length,
+                 kv_num_head,
+                 dim_head}});
+      out.Resize({{bsz, max_enc_len_this_time_data, q_num_head, dim_head}});
+      dev_ctx.template Alloc<T>(&q, q.numel() * sizeof(T));
+      dev_ctx.template Alloc<T>(&k, k.numel() * sizeof(T));
+      dev_ctx.template Alloc<T>(&v, v.numel() * sizeof(T));
+      dev_ctx.template Alloc<T>(&out, out.numel() * sizeof(T));
+      std::vector<int> axis = {0, 2, 1, 3};
+      funcs::Transpose<Context, T, 4> trans;
+      trans(dev_ctx, q_trans, &q, axis);
+      trans(dev_ctx, k_trans, &k, axis);
+      trans(dev_ctx, v_trans, &v, axis);
       const bool is_precache_infer = true;
       phi::FlashAttnKernel<T>(
           dev_ctx,
-          q_trans,
-          k_trans,
-          v_trans,
+          q,
+          k,
+          v,
           paddle::none /*fixed_seed_offset*/,
           paddle::none /*mask*/,
           0.0,
-          is_precache_infer ? true : causual /*precache_infer_casual*/,
+          is_precache_infer ? false : causual /*precache_infer_casual*/,
           false,
           is_precache_infer /*is_test*/,
           "" /*rng_name*/,
-          &qktv_out,
+          &out,
           &softmax_out,
           &softmax_lse,
           &seed_offset);
+      trans(dev_ctx, out, &qktv_out, axis);
 #else
       PADDLE_THROW(common::errors::Unimplemented(
           "Not supports MultiHeadAttentionVariableForwardKernel."));
@@ -912,7 +933,8 @@ void BlockMultiheadAttentionKernel(
                                                       key_cache_out,
                                                       value_cache_out);
     } else if (compute_dtype == "bf16") {
-#ifdef CUDA_BFLOAT16_AVAILABLE
+#if defined(CUDA_BFLOAT16_AVAILABLE) || \
+    (defined(PADDLE_WITH_HIP) && HIP_VERSION >= 60100000)
       DispatchWithDtype<phi::dtype::bfloat16, Context>(dev_ctx,
                                                        qkv,
                                                        key_cache,
@@ -1001,7 +1023,8 @@ void BlockMultiheadAttentionKernel(
                                                       key_cache_out,
                                                       value_cache_out);
     } else if (std::is_same<T, phi::dtype::bfloat16>::value) {
-#ifdef CUDA_BFLOAT16_AVAILABLE
+#if defined(CUDA_BFLOAT16_AVAILABLE) || \
+    (defined(PADDLE_WITH_HIP) && HIP_VERSION >= 60100000)
       DispatchWithDtype<phi::dtype::bfloat16, Context>(dev_ctx,
                                                        qkv,
                                                        key_cache,
@@ -1051,7 +1074,8 @@ void BlockMultiheadAttentionKernel(
 }  // namespace fusion
 }  // namespace phi
 
-#ifdef CUDA_BFLOAT16_AVAILABLE
+#if defined(CUDA_BFLOAT16_AVAILABLE) || \
+    (defined(PADDLE_WITH_HIP) && HIP_VERSION >= 60100000)
 PD_REGISTER_KERNEL(block_multihead_attention,
                    GPU,
                    ALL_LAYOUT,

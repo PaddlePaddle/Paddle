@@ -46,6 +46,11 @@ std::optional<int> GetArchDevice(const common::Target& target) {
         int device_id =
             BackendAPI::get_backend(common::HygonDCUArchHIP{})->get_device();
         return std::optional<int>{device_id};
+      },
+      [&](common::HygonDCUArchSYCL) -> std::optional<int> {
+        int device_id =
+            BackendAPI::get_backend(common::HygonDCUArchSYCL{})->get_device();
+        return std::optional<int>{device_id};
       });
 }
 
@@ -72,6 +77,15 @@ void SetArchDevice(const common::Target& target,
                               "Required device_id should have value, but "
                               "received std::nullopt."));
         BackendAPI::get_backend(common::HygonDCUArchHIP{})
+            ->set_device(device_id.value());
+      },
+      [&](common::HygonDCUArchSYCL) -> void {
+        PADDLE_ENFORCE_EQ(device_id.has_value(),
+                          true,
+                          ::common::errors::InvalidArgument(
+                              "Required device_id should have value, but "
+                              "received std::nullopt."));
+        BackendAPI::get_backend(common::HygonDCUArchSYCL{})
             ->set_device(device_id.value());
       });
 }

@@ -26,8 +26,7 @@ PHI_DECLARE_bool(use_stride_kernel);
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/kernel_factory.h"
 
-namespace paddle {
-namespace experimental {
+namespace paddle::experimental {
 
 /* ------------------ for input ----------------------- */
 
@@ -805,6 +804,13 @@ void SetReplicatedDistAttrForOutput(
     phi::distributed::DistTensor* out,
     const phi::distributed::ProcessMesh& process_mesh) {
   if (out) {
+    if (out->dims().size() == -1 || out->dims().size() == 0) {
+      if (out->local_dims().size() != -1 && out->local_dims().size() != 0) {
+        out->unsafe_set_dims(out->local_dims());
+        VLOG(3)
+            << "DistTensor out has empty shape, use its local value's shape";
+      }
+    }
     // For inplace output, we also need to set replicated dist attr
     auto dist_attr =
         phi::distributed::TensorDistAttr(common::vectorize(out->dims()));
@@ -813,5 +819,4 @@ void SetReplicatedDistAttrForOutput(
   }
 }
 
-}  // namespace experimental
-}  // namespace paddle
+}  // namespace paddle::experimental

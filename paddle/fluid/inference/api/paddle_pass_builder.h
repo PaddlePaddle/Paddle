@@ -24,7 +24,7 @@
 ///
 /// \file paddle_pass_builder.h
 ///
-/// \brief Class Paddle Passs Builder and its subclasses(pass strategies).
+/// \brief Class Paddle Pass Builder and its subclasses(pass strategies).
 /// \section sec_intro Introduction
 /// This class aims to build passes for paddle and define passes' strategies.
 ///
@@ -102,7 +102,7 @@ class PD_INFER_DECL PaddlePassBuilder {
   std::vector<std::string> AnalysisPasses() const {
     auto passes = analysis_passes_;
     // To make sure the ir_graph_to_program should be the last pass so any
-    // modication of IR will persist to the program.
+    // modification of IR will persist to the program.
     passes.push_back("ir_graph_to_program_pass");
     return passes;
   }
@@ -324,6 +324,11 @@ class PD_INFER_DECL IpuPassStrategy final : public PassStrategy {
   }
 };
 
+#ifdef PADDLE_WITH_OPENVINO
+/// \brief List of OpenVINO subgraph passes.
+PD_INFER_DECL extern const std::vector<std::string> kOVSubgraphPasses;
+#endif
+
 /// \brief List of tensorRT subgraph passes.
 PD_INFER_DECL extern const std::vector<std::string> kTRTSubgraphPasses;
 
@@ -336,6 +341,7 @@ PD_INFER_DECL extern const std::vector<std::string> kCINNCompilerPasses;
 PD_INFER_DECL extern const std::vector<std::string> kGpuLowerPrecisionPasses;
 PD_INFER_DECL extern const std::vector<std::string> kTrtLowerPrecisionPasses;
 
+PD_INFER_DECL extern const std::vector<std::string> kPirCustomDevicePasses;
 PD_INFER_DECL extern const std::vector<std::string> kPirGpuPasses;
 PD_INFER_DECL extern const std::vector<std::string> kPirCpuPasses;
 PD_INFER_DECL extern const std::vector<std::string> kPirXpuPasses;

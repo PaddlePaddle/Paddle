@@ -14,9 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 /*
  * Cumsum Op
@@ -132,7 +130,7 @@ class CumsumOpConverter : public OpConverter {
                   newDims,
                   ("cumsum: reshape: (Output(" + output_name + ")").c_str());
 
-      // creat ZeroTensor
+      // create ZeroTensor
       std::vector<float> zero_vec{0.f};
       auto zero = Add1DConstantLayer(zero_vec);
       auto cast = TRT_ENGINE_ADD_LAYER(engine_, Identity, *zero);
@@ -169,8 +167,6 @@ class CumsumOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(cumsum, CumsumOpConverter);

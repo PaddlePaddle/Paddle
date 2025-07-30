@@ -73,7 +73,7 @@ void DenseTensorArrayCreateFromDenseTensorArray(
   }
 }
 
-class LoDTensorArray2TensorOp : public framework::OperatorBase {
+class DenseTensorArray2TensorOp : public framework::OperatorBase {
  public:
   using OperatorBase::OperatorBase;
 
@@ -128,7 +128,8 @@ class LoDTensorArray2TensorOp : public framework::OperatorBase {
   }
 };
 
-class LoDTensorArray2TensorOpMaker : public framework::OpProtoAndCheckerMaker {
+class DenseTensorArray2TensorOpMaker
+    : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "Input phi::TensorArray of tensor_array_to_tensor operator.");
@@ -170,7 +171,7 @@ Examples:
   }
 };
 
-class LoDTensorArray2TensorOpInferShape : public framework::InferShapeBase {
+class DenseTensorArray2TensorOpInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
     // in runtime, shape is determined by RunImpl
@@ -195,14 +196,14 @@ class LoDTensorArray2TensorOpInferShape : public framework::InferShapeBase {
   }
 };
 
-class LoDTensorArray2TensorGradInferShape : public framework::InferShapeBase {
+class DenseTensorArray2TensorGradInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };
 
-class LoDTensorArray2TensorGradInferVarType
+class DenseTensorArray2TensorGradInferVarType
     : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
@@ -212,7 +213,7 @@ class LoDTensorArray2TensorGradInferVarType
   }
 };
 
-class LoDTensorArray2TensorGradOp : public framework::OperatorBase {
+class DenseTensorArray2TensorGradOp : public framework::OperatorBase {
  public:
   using OperatorBase::OperatorBase;
 
@@ -298,12 +299,12 @@ USE_OP_ITSELF(concat);
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
     tensor_array_to_tensor,
-    ops::LoDTensorArray2TensorOp,
-    ops::LoDTensorArray2TensorOpMaker,
-    ops::LoDTensorArray2TensorOpInferShape,
+    ops::DenseTensorArray2TensorOp,
+    ops::DenseTensorArray2TensorOpMaker,
+    ops::DenseTensorArray2TensorOpInferShape,
     ops::TensorArrayToTensorGradOpMaker<paddle::framework::OpDesc>,
     ops::TensorArrayToTensorGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(tensor_array_to_tensor_grad,
-                  ops::LoDTensorArray2TensorGradOp,
-                  ops::LoDTensorArray2TensorGradInferShape,
-                  ops::LoDTensorArray2TensorGradInferVarType);
+                  ops::DenseTensorArray2TensorGradOp,
+                  ops::DenseTensorArray2TensorGradInferShape,
+                  ops::DenseTensorArray2TensorGradInferVarType);

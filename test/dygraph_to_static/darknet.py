@@ -124,7 +124,7 @@ class LayerWarp(paddle.nn.Layer):
         self.res_out_list = []
         for i in range(1, count):
             res_out = self.add_sublayer(
-                "basic_block_%d" % (i),
+                f"basic_block_{i}",
                 BasicBlock(ch_out * 2, ch_out, is_test=is_test),
             )
             self.res_out_list.append(res_out)
@@ -161,13 +161,13 @@ class DarkNet53_conv_body(paddle.nn.Layer):
         ch_in = [64, 128, 256, 512, 1024]
         for i, stage in enumerate(self.stages):
             conv_block = self.add_sublayer(
-                "stage_%d" % (i),
+                f"stage_{i}",
                 LayerWarp(int(ch_in[i]), 32 * (2**i), stage, is_test=is_test),
             )
             self.darknet53_conv_block_list.append(conv_block)
         for i in range(len(self.stages) - 1):
             downsample = self.add_sublayer(
-                "stage_%d_downsample" % i,
+                f"stage_{i}_downsample",
                 DownSample(
                     ch_in=32 * (2 ** (i + 1)),
                     ch_out=32 * (2 ** (i + 2)),

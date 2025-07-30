@@ -1,4 +1,4 @@
-// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -51,14 +51,17 @@ class OneDNNBf16PlacementPattern : public pir::RewritePattern {
  public:
   explicit OneDNNBf16PlacementPattern(pir::IrContext* context)
       : pir::RewritePattern(MatchAnyOpTypeTag(),
-                            1 /*benefit*/,
+                            5 /*benefit*/,
                             context,
                             {} /*generated_names*/) {}
 
   bool Match(pir::Operation* op) const override {  // NOLINT
     if (!op->isa<paddle::onednn::dialect::BilinearInterpOp>() &&
+        !op->isa<paddle::onednn::dialect::CastOp>() &&
+        !op->isa<paddle::onednn::dialect::Cast_Op>() &&
         !op->isa<paddle::onednn::dialect::ClipOp>() &&
         !op->isa<paddle::onednn::dialect::Clip_Op>() &&
+        !op->isa<paddle::onednn::dialect::ConcatOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dTransposeOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dTransposeBiasOp>() &&
@@ -88,6 +91,7 @@ class OneDNNBf16PlacementPattern : public pir::RewritePattern {
         !op->isa<paddle::onednn::dialect::Squeeze_Op>() &&
         !op->isa<paddle::onednn::dialect::SumOp>() &&
         !op->isa<paddle::onednn::dialect::TransposeOp>() &&
+        !op->isa<paddle::onednn::dialect::SplitOp>() &&
         !op->isa<paddle::onednn::dialect::Transpose_Op>() &&
         !op->isa<paddle::onednn::dialect::FusedConv2dOp>() &&
         !op->isa<paddle::onednn::dialect::FusedMatmulOp>()) {
@@ -100,7 +104,8 @@ class OneDNNBf16PlacementPattern : public pir::RewritePattern {
       auto mkldnn_data_type = op_attr.at("mkldnn_data_type")
                                   .dyn_cast<pir::StrAttribute>()
                                   .AsString();
-      if (mkldnn_data_type == "int8") {
+      // Reduce repetitive match
+      if (mkldnn_data_type != "float32") {
         return false;
       }
     }
@@ -114,7 +119,7 @@ class OneDNNBf16PlacementPattern : public pir::RewritePattern {
       bool bias_after_scale =
           op_attr.at("bias_after_scale").dyn_cast<pir::BoolAttribute>().data();
       if (bias_after_scale) {
-        // If bias after scale, add quant/dequant for sacle will cause some
+        // If bias after scale, add quant/dequant for scale will cause some
         // error
         return false;
       }
@@ -143,14 +148,28 @@ class OneDNNBf16PlacementPattern : public pir::RewritePattern {
       }
       pir::Type type = op->operand_type(i);
       if (!type) continue;
-      if (!type.isa<paddle::dialect::DenseTensorType>()) {
-        // We skip pir::VectorType
-        // TODO(Lirong, Xinyi): Support pir::VectorType in bf16
-        return false;
-      }
-      pir::Type op_dtype = pir::GetDataTypeFromValue(value);
-      // Only float input can be converted to bfloat16
-      if (!op_dtype.isa<pir::Float32Type>()) {
+      if (type.isa<pir::VectorType>()) {
+        // Support pir::VectorType in bf16
+        // Special op will do detailed check in its pattern
+        pir::VectorType vector_type = value.type().dyn_cast<pir::VectorType>();
+        for (size_t idx = 0; idx < static_cast<size_t>(vector_type.size());
+             idx++) {
+          auto input_type =
+              vector_type[idx].isa<paddle::dialect::DenseTensorType>();
+          // We don't process nested VectorType
+          if (!input_type) return false;
+          pir::Type input_dtype =
+              vector_type[idx]
+                  .dyn_cast<paddle::dialect::DenseTensorType>()
+                  .dtype();
+          // Only float input can be converted to bfloat16
+          if (!input_dtype.isa<pir::Float32Type>()) return false;
+        }
+      } else if (type.isa<paddle::dialect::DenseTensorType>()) {
+        pir::Type op_dtype = pir::GetDataTypeFromValue(value);
+        // Only float input can be converted to bfloat16
+        if (!op_dtype.isa<pir::Float32Type>()) return false;
+      } else {
         return false;
       }
     }
@@ -209,8 +228,11 @@ class RemoveOrphanedPattern : public pir::RewritePattern {
   // revert mkldnn_data_type attr to float32
   bool Match(pir::Operation* op) const override {  // NOLINT
     if (!op->isa<paddle::onednn::dialect::BilinearInterpOp>() &&
+        !op->isa<paddle::onednn::dialect::CastOp>() &&
+        !op->isa<paddle::onednn::dialect::Cast_Op>() &&
         !op->isa<paddle::onednn::dialect::ClipOp>() &&
         !op->isa<paddle::onednn::dialect::Clip_Op>() &&
+        !op->isa<paddle::onednn::dialect::ConcatOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dTransposeOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dTransposeBiasOp>() &&
@@ -240,6 +262,7 @@ class RemoveOrphanedPattern : public pir::RewritePattern {
         !op->isa<paddle::onednn::dialect::Squeeze_Op>() &&
         !op->isa<paddle::onednn::dialect::SumOp>() &&
         !op->isa<paddle::onednn::dialect::TransposeOp>() &&
+        !op->isa<paddle::onednn::dialect::SplitOp>() &&
         !op->isa<paddle::onednn::dialect::Transpose_Op>() &&
         !op->isa<paddle::onednn::dialect::FusedConv2dOp>() &&
         !op->isa<paddle::onednn::dialect::FusedMatmulOp>()) {
@@ -263,13 +286,31 @@ class RemoveOrphanedPattern : public pir::RewritePattern {
                                              "pd_op.fetch",
                                              "pd_op.assign"});
 
+    const std::vector<std::string> permitted_input_names = {
+        "x", "y", "input", "residual_param", "residual_data"};
+    auto op_name = op->name();
+    auto op_info = pir::IrContext::Instance()->GetRegisteredOpInfo(op_name);
+    if (!op_info) return false;
+    paddle::dialect::OpYamlInfoParser yaml_parser(
+        op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
+            ->get_op_info_(op_name),
+        paddle::dialect::IsLegacyOp(op_name));
+    auto input_names = yaml_parser.InputNames();
+
     if (op->num_operands()) {
       for (uint32_t i = 0; i < op->num_operands(); i++) {
         if (!op->operand_source(i) || !op->operand_source(i).type()) {
           continue;
         }
+        std::string input_name = input_names[i];
+        auto iter = std::find(permitted_input_names.begin(),
+                              permitted_input_names.end(),
+                              input_name);
+        if (iter == permitted_input_names.end()) {
+          // The input in permitted_input, it must be bf16, others can be fp32
+          continue;
+        }
         auto* prev_op = pir::GetDefiningOpForInput(op, i);
-        // if (!prev_op) continue;
         // Some ops do not need to be processed
         std::string prev_name = prev_op->name();
         if (constant_op.count(prev_name)) {
@@ -292,15 +333,17 @@ class RemoveOrphanedPattern : public pir::RewritePattern {
         }
       }
     } else {
-      // The first op in graph
-      return false;
+      // The first op in graph should be treated as prev_fp32 = true
+      prev_fp32 = true;
     }
 
+    size_t num_useops = 0;
     for (uint32_t i = 0; i < op->num_results(); i++) {
       if (!op->result(i) || !op->result(i).type()) {
         continue;
       }
       auto next_op_list = pir::GetUseOpsForOutput(op, i);
+      num_useops += next_op_list.size();
       for (auto const& [next_op, op_index] : next_op_list) {
         // Some ops do not need to be processed
         std::string next_op_name = next_op->name();
@@ -324,6 +367,10 @@ class RemoveOrphanedPattern : public pir::RewritePattern {
         }
       }
     }
+
+    // Check if it's the last op on graph. If it is, this op can be seen as a
+    // fp32 op down here
+    if (num_useops == 0) next_fp32 = true;
 
     return prev_fp32 && next_fp32;
   }
@@ -354,97 +401,6 @@ class RemoveOrphanedPattern : public pir::RewritePattern {
   }
 };
 
-class RemoveUnsupportedOpPattern : public pir::RewritePattern {
- public:
-  explicit RemoveUnsupportedOpPattern(pir::IrContext* context)
-      : pir::RewritePattern(MatchAnyOpTypeTag(),
-                            1 /*benefit*/,
-                            context,
-                            {} /*generated_names*/) {}
-
-  bool Match(pir::Operation* op) const override {  // NOLINT
-    if (!op->isa<paddle::onednn::dialect::BilinearInterpOp>() &&
-        !op->isa<paddle::onednn::dialect::ClipOp>() &&
-        !op->isa<paddle::onednn::dialect::Clip_Op>() &&
-        !op->isa<paddle::onednn::dialect::Conv2dOp>() &&
-        !op->isa<paddle::onednn::dialect::Conv2dTransposeOp>() &&
-        !op->isa<paddle::onednn::dialect::Conv2dTransposeBiasOp>() &&
-        !op->isa<paddle::onednn::dialect::AddOp>() &&
-        !op->isa<paddle::onednn::dialect::Add_Op>() &&
-        !op->isa<paddle::onednn::dialect::MultiplyOp>() &&
-        !op->isa<paddle::onednn::dialect::Multiply_Op>() &&
-        !op->isa<paddle::onednn::dialect::FcOp>() &&
-        !op->isa<paddle::onednn::dialect::FusionGruOp>() &&
-        !op->isa<paddle::onednn::dialect::GeluOp>() &&
-        !op->isa<paddle::onednn::dialect::LayerNormOp>() &&
-        !op->isa<paddle::onednn::dialect::MatmulOp>() &&
-        !op->isa<paddle::onednn::dialect::Pool2dOp>() &&
-        !op->isa<paddle::onednn::dialect::PreluOp>() &&
-        !op->isa<paddle::onednn::dialect::ReluOp>() &&
-        !op->isa<paddle::onednn::dialect::Relu_Op>() &&
-        !op->isa<paddle::onednn::dialect::Reshape_Op>() &&
-        !op->isa<paddle::onednn::dialect::ReshapeOp>() &&
-        !op->isa<paddle::onednn::dialect::ScaleOp>() &&
-        !op->isa<paddle::onednn::dialect::Scale_Op>() &&
-        !op->isa<paddle::onednn::dialect::SigmoidOp>() &&
-        !op->isa<paddle::onednn::dialect::Sigmoid_Op>() &&
-        !op->isa<paddle::onednn::dialect::SliceOp>() &&
-        !op->isa<paddle::onednn::dialect::SoftmaxOp>() &&
-        !op->isa<paddle::onednn::dialect::Softmax_Op>() &&
-        !op->isa<paddle::onednn::dialect::SqueezeOp>() &&
-        !op->isa<paddle::onednn::dialect::Squeeze_Op>() &&
-        !op->isa<paddle::onednn::dialect::SumOp>() &&
-        !op->isa<paddle::onednn::dialect::TransposeOp>() &&
-        !op->isa<paddle::onednn::dialect::Transpose_Op>() &&
-        !op->isa<paddle::onednn::dialect::FusedConv2dOp>() &&
-        !op->isa<paddle::onednn::dialect::FusedMatmulOp>()) {
-      return false;
-    }
-    auto op_attr = op->attributes();
-    if (op_attr.find("mkldnn_data_type") != op_attr.end()) {
-      auto mkldnn_data_type = op_attr.at("mkldnn_data_type")
-                                  .dyn_cast<pir::StrAttribute>()
-                                  .AsString();
-      if (mkldnn_data_type != "bfloat16") {
-        return false;
-      }
-    }
-
-    uint32_t num_operands = op->num_operands();
-    for (uint32_t i = 0; i < num_operands; i++) {
-      auto* pre_op = pir::GetDefiningOpForInput(op, i);
-      if (pre_op->HasAttribute("mkldnn_data_type")) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  void Rewrite(pir::Operation* op,
-               pir::PatternRewriter& rewriter) const override {  // NOLINT
-    std::string target_op_name = op->name();
-    auto op_info =
-        pir::IrContext::Instance()->GetRegisteredOpInfo(target_op_name);
-    if (op_info) {
-      std::vector<pir::Type> op_item_inner_output_types;
-      for (size_t i = 0; i < op->num_results(); ++i) {
-        op_item_inner_output_types.push_back(op->result_type(i));
-      }
-      auto attributes = op->attributes();
-      if (attributes.find("mkldnn_data_type") != attributes.end()) {
-        attributes["mkldnn_data_type"] =
-            pir::StrAttribute::get(pir::IrContext::Instance(), "float32");
-      }
-      pir::Operation* op_item_inner = rewriter.Build(op->operands_source(),
-                                                     attributes,
-                                                     op_item_inner_output_types,
-                                                     op_info);
-      rewriter.ReplaceOp(op, op_item_inner->results());
-    }
-  }
-};
-
 class OneDNNPlacementBf16Pass : public pir::PatternRewritePass {
  public:
   OneDNNPlacementBf16Pass()
@@ -454,7 +410,6 @@ class OneDNNPlacementBf16Pass : public pir::PatternRewritePass {
     pir::RewritePatternSet ps(context);
     ps.Add<OneDNNBf16PlacementPattern>(context);
     ps.Add<RemoveOrphanedPattern>(context);
-    ps.Add<RemoveUnsupportedOpPattern>(context);
 
     return ps;
   }

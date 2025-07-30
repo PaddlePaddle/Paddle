@@ -101,8 +101,8 @@ TEST(PD_Config, interface) {
   EXPECT_TRUE(profile_enabled);
 
   PD_ConfigDisableGlogInfo(config);
-  bool glog_diabled = PD_ConfigGlogInfoDisabled(config);
-  EXPECT_TRUE(glog_diabled);
+  bool glog_disabled = PD_ConfigGlogInfoDisabled(config);
+  EXPECT_TRUE(glog_disabled);
 
   PD_ConfigSetInvalid(config);
   bool is_valid = PD_ConfigIsValid(config);

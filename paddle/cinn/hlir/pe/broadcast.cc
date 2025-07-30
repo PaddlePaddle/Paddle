@@ -25,7 +25,6 @@
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/common/enforce.h"
 #include "paddle/common/errors.h"
-PD_DECLARE_bool(cinn_bucket_compile);
 
 namespace cinn {
 namespace hlir {

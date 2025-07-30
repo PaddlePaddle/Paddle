@@ -13,15 +13,14 @@
 // limitations under the License.
 
 #include <array>
-#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
+
 #include "paddle/fluid/framework/io/shell.h"
 
 #include "paddle/common/enforce.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/core/platform/timer.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 std::shared_ptr<FILE> shell_fopen(const std::string& path,
                                   const std::string& mode) {
@@ -455,5 +454,4 @@ std::vector<std::string> shell_execute_cmd(const std::string& cmd,
   return std::vector<std::string>({string::Sprintf("%d", ret), output});
 }
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace paddle::framework

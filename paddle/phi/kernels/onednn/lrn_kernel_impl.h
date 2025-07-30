@@ -39,7 +39,7 @@ class LRNOneDNNHandler
     // http://caffe.berkeleyvision.org/tutorial/layers/lrn.html
     // Where sum of squares is divided by size of normalization window
     // this is not the case for PaddlePaddle LRN.
-    // Hence we need to compensate for this diffrence by
+    // Hence we need to compensate for this difference by
     // multipliing alpha by size of window(n)
     const float alpha = static_cast<float>(alpha_in) * static_cast<float>(n);
     const float beta = static_cast<float>(beta_in);
@@ -136,11 +136,6 @@ void LRNMKLDNNOpKernel(const Context& dev_ctx,
       is_float_type,
       true,
       common::errors::PreconditionNotMet("DNNL LRN must use float data."));
-  bool eq_place = dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU;
-  PADDLE_ENFORCE_EQ(eq_place,
-                    true,
-                    common::errors::PreconditionNotMet(
-                        "Operator DNNL LRN must use CPUPlace"));
   const auto& onednn_engine = dev_ctx.GetEngine();
 
   auto x = &x_in;
@@ -193,10 +188,6 @@ void LRNMKLDNNGradOpKernel(const Context& dev_ctx,
                     true,
                     common::errors::PreconditionNotMet(
                         "DNNL LRN GradOpKernel must use float data."));
-  PADDLE_ENFORCE_EQ(dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU,
-                    true,
-                    common::errors::PreconditionNotMet(
-                        "Operator DNNL LRNGrad must use CPUPlace"));
 
   auto in_x = &x;
   auto mid = &mid_out;

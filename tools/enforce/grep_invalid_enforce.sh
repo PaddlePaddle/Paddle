@@ -17,14 +17,14 @@
 # This script is used to grep invalid PADDLE checks by directory or file in the paddle/fluid/,
 #   the result show all invalid PADDLE checks in specified directory or file.
 
-# Usage: 
+# Usage:
 #   - bash grep_invalid_enforce.sh [target directory or file] (run in tools directory)
 #       - The default check path is paddle/fluid/operators
 
 # Result Examples:
 # 1. grep invalid PADDLE checks in directory
 
-#     - Command: /work/paddle/tools {develop} bash grep_invalid_enforce.sh ../paddle/fluid/imperative 
+#     - Command: /work/paddle/tools {develop} bash grep_invalid_enforce.sh ../paddle/fluid/imperative
 #     - Results:
 #         - paddle/fluid/imperative/gradient_accumulator.cc
 #         PADDLE_ENFORCE_EQ(dst_tensor->numel() == numel, true,
@@ -43,7 +43,7 @@
 #         PADDLE_ENFORCE_EQ(addr.size(), 2UL,
 #                             "The endpoint should contain host and port: %s", ep);
 #         PADDLE_THROW("create socket failed");
-#         PADDLE_THROW("invalied address: %s", ep);
+#         PADDLE_THROW("invalid address: %s", ep);
 
 #         - paddle/fluid/imperative/jit/program_desc_tracer.cc
 #         PADDLE_ENFORCE_NOT_NULL(new_var);
@@ -60,7 +60,7 @@
 #                     "Place cannot be CUDAPlace when use_double_buffer is False");
 #         PADDLE_ENFORCE_NOT_NULL(exceptions_[i]);
 #         PADDLE_ENFORCE_EQ(status, Status::kException);
-#         PADDLE_ENFORCE_EQ(status, Status::kSuccess);    
+#         PADDLE_ENFORCE_EQ(status, Status::kSuccess);
 
 . ./count_enforce_by_file.sh --source-only
 

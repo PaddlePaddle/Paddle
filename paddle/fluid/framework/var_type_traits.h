@@ -76,7 +76,6 @@ class BKCLCommunicator;
 }  // namespace platform
 
 namespace framework {
-class LoDRankTable;
 class Scope;
 class ReaderHolder;
 class Scope;
@@ -180,7 +179,6 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
     phi::SparseCooTensor,
     phi::SparseCsrTensor,
     std::vector<Scope *>,
-    LoDRankTable,
     Strings,
     phi::TensorArray,
     phi::PlaceList,
@@ -240,7 +238,6 @@ struct VarTypeTrait {
 REG_PROTO_VAR_TYPE_TRAIT(phi::DenseTensor, proto::VarType::DENSE_TENSOR);
 REG_PROTO_VAR_TYPE_TRAIT(phi::SelectedRows, proto::VarType::SELECTED_ROWS);
 REG_PROTO_VAR_TYPE_TRAIT(std::vector<Scope *>, proto::VarType::STEP_SCOPES);
-REG_PROTO_VAR_TYPE_TRAIT(LoDRankTable, proto::VarType::LOD_RANK_TABLE);
 REG_PROTO_VAR_TYPE_TRAIT(phi::TensorArray, proto::VarType::DENSE_TENSOR_ARRAY);
 REG_PROTO_VAR_TYPE_TRAIT(phi::PlaceList, proto::VarType::PLACE_LIST);
 REG_PROTO_VAR_TYPE_TRAIT(ReaderHolder, proto::VarType::READER);

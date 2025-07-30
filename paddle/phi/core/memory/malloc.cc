@@ -18,8 +18,7 @@ limitations under the License. */
 #include "paddle/phi/core/memory/allocation/allocator_facade.h"
 #include "paddle/phi/core/stream.h"
 
-namespace paddle {
-namespace memory {
+namespace paddle::memory {
 
 std::shared_ptr<Allocation> AllocShared(const phi::Place& place, size_t size) {
   return allocation::AllocatorFacade::Instance().AllocShared(place, size);
@@ -78,11 +77,24 @@ gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation) {
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
+uint64_t Release(const phi::CustomPlace& place, phi::stream::stream_t stream) {
+  return allocation::AllocatorFacade::Instance().Release(place, stream);
+}
+
 bool RecordStream(std::shared_ptr<Allocation> allocation,
                   phi::stream::stream_t stream) {
   return allocation::AllocatorFacade::Instance().RecordStream(allocation,
                                                               stream);
 }
+
+void EraseStream(std::shared_ptr<Allocation> allocation,
+                 phi::stream::stream_t stream) {
+  return allocation::AllocatorFacade::Instance().EraseStream(allocation,
+                                                             stream);
+}
+
+phi::stream::stream_t GetStream(const std::shared_ptr<Allocation>& allocation) {
+  return allocation::AllocatorFacade::Instance().GetStream(allocation);
+}
 #endif
-}  // namespace memory
-}  // namespace paddle
+}  // namespace paddle::memory

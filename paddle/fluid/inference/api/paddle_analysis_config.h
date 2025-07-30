@@ -570,6 +570,21 @@ struct PD_INFER_DECL AnalysisConfig {
   bool specify_input_name() const { return specify_input_name_; }
 
   ///
+  /// \brief Turn on the OpenVINO engine.
+  /// The OpenVINO engine will accelerate some subgraphs in the original Fluid
+  /// computation graph. In some models such as resnet50, GoogleNet and so on,
+  /// it gains significant performance acceleration.
+  ///
+  void EnableOpenVINOEngine(Precision inference_precision);
+
+  ///
+  /// \brief A boolean state telling whether the OpenVINO engine is used.
+  ///
+  /// \return bool Whether the OpenVINO engine is used.
+  ///
+  bool openvino_engine_enabled() const;
+
+  ///
   /// \brief Turn on the TensorRT engine.
   /// The TensorRT engine will accelerate some subgraphs in the original Fluid
   /// computation graph. In some models such as resnet50, GoogleNet and so on,
@@ -1074,6 +1089,12 @@ struct PD_INFER_DECL AnalysisConfig {
   void Exp_EnableMixedPrecisionOps(
       const std::unordered_set<std::string>& white_list);
 
+  /// \brief SparseConv(not subm) will use host buffer when true. This
+  /// may decrease the time of memory copy but increase the latency and GPU
+  /// memory cost slightly.
+  void Exp_SparseConvUsingBuffer(const std::vector<std::vector<int>>& kernels,
+                                 const std::vector<std::vector<int>>& strides);
+
   void SetApplyOptim(bool value) { apply_optim_ = value; }
 
   void SetSkipLoadParams(bool value) { skip_load_params_ = value; }
@@ -1164,6 +1185,10 @@ struct PD_INFER_DECL AnalysisConfig {
 
   // Padding related
   bool use_fc_padding_{true};
+
+  // OpenVINO related.
+  bool use_openvino_{false};
+  Precision openvino_inference_precision_{Precision::kFloat32};
 
   // TensorRT related.
   bool use_tensorrt_{false};

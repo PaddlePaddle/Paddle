@@ -292,11 +292,6 @@ void ConvOnednn(const Context& dev_ctx,
                 bool fuse_residual_connection,
                 bool force_fp32_output,
                 DenseTensor* out) {
-  PADDLE_ENFORCE_EQ(dev_ctx.GetPlace().GetType(),
-                    AllocationType::CPU,
-                    common::errors::PreconditionNotMet(
-                        "Operator DNNL Conv must use CPUPlace"));
-
   bool is_INT8 = funcs::is_int8<T>();
 
   auto dst_dt = GetDstType(is_INT8,

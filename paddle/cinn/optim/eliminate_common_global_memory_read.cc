@@ -14,12 +14,12 @@
 
 #include "paddle/cinn/optim/eliminate_common_global_memory_read.h"
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/utils/ir_compare.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/common/enforce.h"
 
@@ -46,7 +46,7 @@ std::unordered_map<ir::Var, ir::Var> ConstructForVarReplaceMap(
   for (const auto& [lhs_var, lhs_extent] : lhs_extents) {
     for (std::size_t i = 0; i < rhs_extents.size(); ++i) {
       const auto& [rhs_var, rhs_extent] = rhs_extents[i];
-      if (cinn::common::AutoSimplify(ir::Sub::Make(lhs_extent, rhs_extent)) ==
+      if (optim::ArithSimplify(ir::Sub::Make(lhs_extent, rhs_extent)) ==
               ir::Expr(0) &&
           visited_rhs_index.count(i) == 0) {
         ret[lhs_var] = rhs_var;
@@ -88,8 +88,7 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
       for (size_t i = 0; i < indice1.size(); ++i) {
         ir::Expr lhs = IndiceToExprWithForVar(indice1.at(i), for_var_map);
         ir::Expr rhs = IndiceToExprWithForVar(indice2.at(i), for_var_map);
-        if (cinn::common::AutoSimplify(ir::Sub::Make(lhs, rhs)) !=
-            ir::Expr(0)) {
+        if (optim::ArithSimplify(ir::Sub::Make(lhs, rhs)) != ir::Expr(0)) {
           return false;
         }
       }
@@ -166,7 +165,7 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
         }
         VLOG(6) << "Iter var name: " << iter_var_name << " with extent: "
                 << iter_var_name_to_extent_.at(iter_var_name);
-        buffer_size = cinn::common::AutoSimplify(ir::Mul::Make(
+        buffer_size = optim::ArithSimplify(ir::Mul::Make(
             buffer_size, iter_var_name_to_extent_.at(iter_var_name)));
       }
       return buffer_size;
@@ -182,7 +181,7 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
             CalculateBufferSize(indices_and_extent[0].indices);
         VLOG(6) << "Global buffer name: " << name
                 << " with size: " << buffer_size;
-        size = cinn::common::AutoSimplify(ir::Add::Make(size, buffer_size));
+        size = optim::ArithSimplify(ir::Add::Make(size, buffer_size));
       }
       if (BufferSizeContainsSymbolic(size)) {
         VLOG(6) << "Local buffer size contains symbolic: " << size;

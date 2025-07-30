@@ -40,6 +40,51 @@ void Mutate(StmtRef stmt,
             const std::function<void(StmtRef)> &pre_callback,
             const std::function<void(StmtRef)> &post_callback);
 
+/**
+ * A utility result that is used to signal how to proceed with an ongoing visit:
+ * - Interrupt: the visit will be interrupted and no more statements or blocks
+ * will be visited.
+ * - Advance: the visit will continue.
+ * - Skip: the visit of the current statement or block and their nested elements
+ * that haven't been visited already will be skipped and will continue with the
+ * next statement or block.
+ */
+class VisitResult {
+  enum ResultEnum { Interrupt, Advance, Skip } result;
+
+ public:
+  bool operator==(const VisitResult &rhs) const { return result == rhs.result; }
+  bool operator!=(const VisitResult &rhs) const { return result != rhs.result; }
+  static VisitResult interrupt() { return VisitResult{Interrupt}; }
+  static VisitResult advance() { return VisitResult{Advance}; }
+  static VisitResult skip() { return VisitResult{Skip}; }
+  /// Returns true if the visit was interrupted.
+  bool WasInterrupted() const { return result == Interrupt; }
+  /// Returns true if the visit was skipped.
+  bool WasSkipped() const { return result == Skip; }
+
+ private:
+  explicit VisitResult(ResultEnum result = Advance) : result(result) {}
+};
+
+VisitResult Visit(
+    const BlockRef &block,
+    const std::function<VisitResult(const StmtRef &)> &pre_callback,
+    const std::function<VisitResult(const StmtRef &)> &post_callback);
+
+VisitResult Visit(
+    const StmtRef &stmt,
+    const std::function<VisitResult(const StmtRef &)> &pre_callback,
+    const std::function<VisitResult(const StmtRef &)> &post_callback);
+
+VisitResult Mutate(BlockRef block,
+                   const std::function<VisitResult(StmtRef)> &pre_callback,
+                   const std::function<VisitResult(StmtRef)> &post_callback);
+
+VisitResult Mutate(StmtRef stmt,
+                   const std::function<VisitResult(StmtRef)> &pre_callback,
+                   const std::function<VisitResult(StmtRef)> &post_callback);
+
 #define CINN_CHECK_STMT_DEFINED(stmt)                                       \
   PADDLE_ENFORCE_EQ(                                                        \
       stmt.defined(),                                                       \

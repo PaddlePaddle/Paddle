@@ -15,7 +15,7 @@
 import numpy as np
 
 from . import core
-from .data_feeder import DataToLoDTensorConverter
+from .data_feeder import DataToDenseTensorConverter
 
 __all__ = []
 
@@ -71,8 +71,8 @@ def create_lod_tensor(data, recursive_seq_lens, place):
         return create_lod_tensor(np.array(data), recursive_seq_lens, place)
     elif isinstance(data, list):
         # dtype and shape are not important here,
-        # we only want to reuse code of DataToLoDTensorConverter
-        converter = DataToLoDTensorConverter(
+        # we only want to reuse code of DataToDenseTensorConverter
+        converter = DataToDenseTensorConverter(
             place=place,
             lod_level=len(recursive_seq_lens),
             shape=[],

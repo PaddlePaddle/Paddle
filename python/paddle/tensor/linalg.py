@@ -22,6 +22,7 @@ import paddle
 from paddle import _C_ops
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc
+from paddle.tensor.math import broadcast_shape
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
@@ -162,8 +163,8 @@ def transpose(
             if dim >= len(x.shape):
                 raise ValueError(
                     "Each element in Input(perm) should be less than Input(x)'s dimension, "
-                    "but %d-th element in Input(perm) is %d which exceeds Input(x)'s "
-                    "dimension %d." % (idx, perm[idx], len(x.shape))
+                    f"but {idx}-th element in Input(perm) is {perm[idx]} which exceeds Input(x)'s "
+                    f"dimension {len(x.shape)}."
                 )
 
         helper = LayerHelper('transpose', **locals())
@@ -672,10 +673,15 @@ def vector_norm(
     if isinstance(axis, list) and len(axis) == 1:
         axis = axis[0]
 
+    if paddle.is_complex(x):
+        abs_x = paddle.abs(x)
+    else:
+        abs_x = x
+
     # when len(axis) == 1, use the original op to calculate
     if isinstance(axis, int):
         return vector_norm_axis_int(
-            x,
+            abs_x,
             axis=axis,
             porder=p,
             keepdim=keepdim,
@@ -686,12 +692,16 @@ def vector_norm(
     # when len(axis) >= 1, calculate by combining other Python apis
     elif isinstance(axis, list):
         if p == np.inf or p == -np.inf:
-            return inf_norm(x, porder=p, axis=axis, keepdim=keepdim, name=name)
+            return inf_norm(
+                abs_x, porder=p, axis=axis, keepdim=keepdim, name=name
+            )
         elif p == 0:
-            return zero_norm(x, porder=p, axis=axis, keepdim=keepdim, name=name)
+            return zero_norm(
+                abs_x, porder=p, axis=axis, keepdim=keepdim, name=name
+            )
         else:
             return vector_norm_axis_tuple(
-                x, porder=p, axis=axis, keepdim=keepdim, name=name
+                abs_x, porder=p, axis=axis, keepdim=keepdim, name=name
             )
 
 
@@ -763,8 +773,10 @@ def matrix_norm(
         Auxiliary function for matrix_norm
         Computes the permutation that moves the two given dimensions to the back
         """
-        ret = [i for i in range(dimn) if i != dim0 and i != dim1]
-        ret.extend((dim0, dim1))
+        pos_dim0 = dim0 % dimn
+        pos_dim1 = dim1 % dimn
+        ret = [i for i in range(dimn) if i != pos_dim0 and i != pos_dim1]
+        ret.extend((pos_dim0, pos_dim1))
         return ret
 
     def _inverse_permutation(perm):
@@ -782,7 +794,7 @@ def matrix_norm(
         """
         The frobenius norm OP is to calculate the frobenius norm of certain two dimensions of Tensor `input`.
         Args:
-          input (Variable): Tensor, data type float32, float64.
+          input (Variable): Tensor, data type float32, float64, complex64, complex128.
           dim (list, optional): None for last two dimensions. Default None.
           keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
           name (str, optional): The default value is None. Normally there is no need for
@@ -951,7 +963,8 @@ def matrix_norm(
                     )
                 return result
             else:  # 1,-1,inf,-inf
-                dim0, dim1 = axis
+                rank = len(x.shape)
+                dim0, dim1 = (d % rank for d in axis)
                 if abs_ord == np.float64("inf"):
                     dim0, dim1 = dim1, dim0
                 if not keepdim and (dim0 < dim1):
@@ -1046,7 +1059,8 @@ def matrix_norm(
             return reduce_out
 
         else:
-            dim0, dim1 = axis
+            rank = len(x.shape)
+            dim0, dim1 = (d % rank for d in axis)
             if abs_ord == np.float64("inf"):
                 dim0, dim1 = dim1, dim0
             if not keepdim and (dim0 < dim1):
@@ -2319,7 +2333,7 @@ def matrix_rank(
 
     Args:
         x (Tensor): The input tensor. Its shape should be `[..., m, n]`, where `...` is zero or more batch dimensions. If `x` is a batch
-            of matrices then the output has the same batch dimensions. The data type of `x` should be float32 or float64.
+            of matrices then the output has the same batch dimensions. The data type of `x` should be float32, float64, complex64 or complex128.
         tol (float|Tensor, optional): The tolerance value. If `tol` is not specified, and `sigma` is the largest singular value
             (or eigenvalues in absolute value), and `eps` is the epsilon value for the dtype of `x`, then `tol` is computed with formula
             `tol=sigma * max(m,n) * eps`. Note that if `x` is a batch of matrices, `tol` is computed this way for every batch. Default: None.
@@ -2353,6 +2367,12 @@ def matrix_rank(
              [1, 1, 1, 1]])
 
     """
+    target_dtype = (
+        paddle.float32
+        if x.dtype == paddle.complex64
+        else (paddle.float64 if x.dtype == paddle.complex128 else x.dtype)
+    )
+
     use_atol_rtol = False
     if (atol is not None) or (rtol is not None):
         if tol is not None:
@@ -2363,17 +2383,17 @@ def matrix_rank(
 
     if use_atol_rtol:
         if atol is None:
-            atol = full([], 0.0, x.dtype)
+            atol = full([], 0.0, target_dtype)
         if isinstance(atol, (float, int)):
-            atol = full([], atol, x.dtype)
-        if atol.dtype != x.dtype:
-            atol = cast(atol, x.dtype)
+            atol = full([], atol, target_dtype)
+        if atol.dtype != target_dtype:
+            atol = cast(atol, target_dtype)
 
         if rtol is not None:
             if isinstance(rtol, (float, int)):
-                rtol = full([], rtol, x.dtype)
-            if rtol.dtype != x.dtype:
-                rtol = cast(rtol, x.dtype)
+                rtol = full([], rtol, target_dtype)
+            if rtol.dtype != target_dtype:
+                rtol = cast(rtol, target_dtype)
 
             atol, rtol = paddle.broadcast_tensors([atol, rtol])
 
@@ -2383,7 +2403,10 @@ def matrix_rank(
             inputs = {}
             attrs = {}
             check_variable_and_dtype(
-                x, 'x', ['float32', 'float64'], 'matrix_rank_atol_rtol'
+                x,
+                'x',
+                ['float32', 'float64', 'complex64', 'complex128'],
+                'matrix_rank_atol_rtol',
             )
             inputs['x'] = x
             inputs['atol'] = atol
@@ -2403,8 +2426,8 @@ def matrix_rank(
     else:
         if in_dynamic_or_pir_mode():
             if isinstance(tol, (Variable, paddle.pir.Value)):
-                if tol.dtype != x.dtype:
-                    tol_tensor = cast(tol, x.dtype)
+                if tol.dtype != target_dtype:
+                    tol_tensor = cast(tol, target_dtype)
                 else:
                     tol_tensor = tol
                 use_default_tol = False
@@ -2423,15 +2446,18 @@ def matrix_rank(
             inputs = {}
             attrs = {}
             check_variable_and_dtype(
-                x, 'x', ['float32', 'float64'], 'matrix_rank'
+                x,
+                'x',
+                ['float32', 'float64', 'complex64', 'complex128'],
+                'matrix_rank',
             )
             inputs['X'] = x
             if tol is None:
                 attrs['use_default_tol'] = True
             elif isinstance(tol, Variable):
                 attrs['use_default_tol'] = False
-                if tol.dtype != x.dtype:
-                    inputs['TolTensor'] = cast(tol, x.dtype)
+                if tol.dtype != target_dtype:
+                    inputs['TolTensor'] = cast(tol, target_dtype)
                 else:
                     inputs['TolTensor'] = tol
             else:
@@ -2738,7 +2764,7 @@ def mv(x: Tensor, vec: Tensor, name: str | None = None) -> Tensor:
             For more information, please refer to :ref:`api_guide_Name`. Default is None.
 
     Returns:
-        Tensor: The tensor which is producted by x and vec.
+        Tensor: The tensor which is produced by x and vec.
 
     Examples:
         .. code-block:: python
@@ -2921,13 +2947,13 @@ def svd(
     Let :math:`X` be the input matrix or a batch of input matrices, the output should satisfies:
 
     .. math::
-        X = U * diag(S) * VT
+        X = U * diag(S) * V^{H}
 
     Args:
         x (Tensor): The input tensor. Its shape should be `[..., N, M]`,
             where `...` is zero or more batch dimensions. N and M can be arbitrary
             positive number. Note that if x is singular matrices, the grad is numerical
-            instable. The data type of x should be float32 or float64.
+            instable. The data type of x should be float32, float64, complex64 or complex128.
         full_matrices (bool, optional): A flag to control the behavior of svd.
             If full_matrices = True, svd op will compute full U and V matrices,
             which means shape of U is `[..., N, N]`, shape of V is `[..., M, M]`. K = min(M, N).
@@ -2975,7 +3001,9 @@ def svd(
     if in_dynamic_or_pir_mode():
         return _C_ops.svd(x, full_matrices)
     else:
-        check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'svd')
+        check_variable_and_dtype(
+            x, 'dtype', ['float32', 'float64', 'complex64', 'complex128'], 'svd'
+        )
         check_type(full_matrices, 'full_matrices', bool, 'svd')
         helper = LayerHelper('svd', **locals())
         u = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -3001,7 +3029,7 @@ def svdvals(x: Tensor, name: str | None = None) -> Tensor:
     produced by singular value decomposition:
 
     .. math::
-        X = U * diag(S) * VH
+        X = U * diag(S) * V^{H}
 
     Args:
         x (Tensor): The input tensor. Its shape should be `[..., M, N]`, where
@@ -3025,20 +3053,7 @@ def svdvals(x: Tensor, name: str | None = None) -> Tensor:
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [8.14753819, 0.78589684])
     """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.svdvals(x)
-    else:
-        check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'svdvals')
-        helper = LayerHelper('svdvals', **locals())
-        s = helper.create_variable_for_type_inference(dtype=x.dtype)
-        attrs = {}
-        helper.append_op(
-            type='svdvals',
-            inputs={'X': [x]},
-            outputs={'S': s},
-            attrs=attrs,
-        )
-        return s
+    return _C_ops.svdvals(x)
 
 
 def _conjugate(x):
@@ -3050,7 +3065,7 @@ def _conjugate(x):
 def _transpose(x):
     shape = x.shape
     perm = list(range(0, len(shape)))
-    perm = perm[:-2] + [perm[-1]] + [perm[-2]]
+    perm = [*perm[:-2], perm[-1], perm[-2]]
     return paddle.transpose(x, perm)
 
 
@@ -3095,12 +3110,12 @@ def svd_lowrank(
     If :math:`X` is the input matrix or a batch of input matrices, the output should satisfies:
 
     .. math::
-        X \approx U * diag(S) * V^{T}
+        X \approx U * diag(S) * V^{H}
 
     When :math:`M` is given, the output should satisfies:
 
     .. math::
-        X - M \approx U * diag(S) * V^{T}
+        X - M \approx U * diag(S) * V^{H}
 
     Args:
         x (Tensor): The input tensor. Its shape should be `[..., N, M]`, where `...` is
@@ -3155,7 +3170,7 @@ def svd_lowrank(
     m, n = x.shape[-2:]
     if q is None:
         q = min(6, m, n)
-    elif not (q >= 0 and q <= min(m, n)):
+    elif min(m, n) != 0 and not (q >= 0 and q <= min(m, n)):
         raise ValueError(
             f'q(={q}) must be non-negative integer'
             f' and not greater than min(m, n)={min(m, n)}'
@@ -3179,7 +3194,8 @@ def svd_lowrank(
         else:
             B_t = paddle.matmul(x, Q_c) - paddle.matmul(M, Q_c)
         assert B_t.shape[-2] == m, (B_t.shape, m)
-        assert B_t.shape[-1] == q, (B_t.shape, q)
+        if B_t.shape[-1] != 0:
+            assert B_t.shape[-1] == q, (B_t.shape, q)
         assert B_t.shape[-1] <= B_t.shape[-2], B_t.shape
         U, S, Vh = paddle.linalg.svd(B_t, full_matrices=False)
         V = _transjugate(Vh)
@@ -3192,7 +3208,8 @@ def svd_lowrank(
         else:
             B = paddle.matmul(A_t, Q_c) - paddle.matmul(M_t, Q_c)
         B_t = _transpose(B)
-        assert B_t.shape[-2] == q, (B_t.shape, q)
+        if B_t.shape[-2] != 0:
+            assert B_t.shape[-2] == q, (B_t.shape, q)
         assert B_t.shape[-1] == n, (B_t.shape, n)
         assert B_t.shape[-1] <= B_t.shape[-2], B_t.shape
         U, S, Vh = paddle.linalg.svd(B_t, full_matrices=False)
@@ -3391,7 +3408,7 @@ def qr(
     Args:
         x (Tensor): The input tensor. Its shape should be `[..., M, N]`,
             where ... is zero or more batch dimensions. M and N can be arbitrary
-            positive number. The data type of x should be float32 or float64.
+            positive number. The data type of x supports float, double, complex64, complex128.
         mode (str, optional): A flag to control the behavior of qr.
             Suppose x's shape is `[..., M, N]` and denoting `K = min(M, N)`:
             If mode = "reduced", qr op will return reduced Q and R matrices,
@@ -3433,7 +3450,9 @@ def qr(
         else:
             return q, r
     else:
-        check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'qr')
+        check_variable_and_dtype(
+            x, 'dtype', ['float32', 'float64', 'complex64', 'complex128'], 'qr'
+        )
         check_type(mode, 'mode', str, 'qr')
         helper = LayerHelper('qr', **locals())
         q = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -3494,7 +3513,7 @@ def lu(
 
     Args:
 
-        X (Tensor): the tensor to factor of N-dimensions(N>=2).
+        X (Tensor): the tensor to factor of N-dimensions(N>=2). Its data type should be float32, float64, complex64, or complex128.
 
         pivot (bool, optional): controls whether pivoting is done. Default: True.
 
@@ -3558,7 +3577,9 @@ def lu(
     if in_dynamic_or_pir_mode():
         lu, p, info = _C_ops.lu(x, pivot)
     else:
-        check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'lu')
+        check_variable_and_dtype(
+            x, 'dtype', ['float32', 'float64', 'complex64', 'complex128'], 'lu'
+        )
         helper = LayerHelper('lu', **locals())
         lu = helper.create_variable_for_type_inference(dtype=x.dtype)
         p = helper.create_variable_for_type_inference(dtype='int')
@@ -3577,6 +3598,96 @@ def lu(
         return lu, p
 
 
+def lu_solve(
+    b: Tensor,
+    lu: Tensor,
+    pivots: Tensor,
+    trans: Literal['N', 'T', 'C'] = 'N',
+    name: str | None = None,
+):
+    r"""
+    Computes the solution x to the system of linear equations :math:`Ax = b` ,
+    given LU decomposition :math:`A` and column vector :math:`b`.
+
+    Args:
+        b (Tensor): Column vector `b` in the above equation. It has shape :math:`(*, m, k)`, where :math:`*` is batch dimensions,
+            with data type float32, float64, complex64, or complex128.
+
+        lu (Tensor): LU decomposition. It has shape :math:`(*, m, m)`, where :math:`*` is batch dimensions, that can be decomposed into an upper triangular matrix U and a lower triangular matrix L,
+            with data type float32, float64, complex64, or complex128.
+
+        pivots (Tensor): Permutation matrix P of LU decomposition. It has shape :math:`(*, m)`, where :math:`*` is batch dimensions, that can be converted to a permutation matrix P, with data type int32.
+
+        trans (str, optional): The transpose of the matrix A. It can be "N" , "T" or "C", "N" means :math:`Ax=b`, "T" means :math:`A^Tx=b`, "C" means :math:`A^Hx=b`, default is "N".
+
+        name (str|None, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, the same data type as the `b` and `lu`.
+
+    Examples:
+        >>> import paddle
+        >>> import numpy as np
+
+        >>> A = paddle.to_tensor([[3, 1], [1, 2]], dtype="float64")
+        >>> b = paddle.to_tensor([[9, 8], [9, 8]], dtype="float64")
+        >>> lu, p = paddle.linalg.lu(A)
+        >>> x = paddle.lu_solve(b, lu, p)
+        >>> paddle.allclose(A @ x, b)
+
+        >>> print(x)
+        Tensor(shape=[2, 2], dtype=float64, place=Place(cpu), stop_gradient=True,
+        [[1.80000000, 1.60000000],
+        [3.60000000, 3.20000000]])
+    """
+    if b.ndim < 2:
+        raise ValueError(
+            f'`b` dimension must be gather than 2, but got {len(b.shape)}'
+        )
+    if lu.ndim < 2:
+        raise ValueError(
+            f'`lu` dimension must be gather than 2, but got {len(lu.shape)}'
+        )
+    if pivots.ndim < 1:
+        raise ValueError(
+            f'`pivots` dimension must be gather than 1, but got {len(pivots.shape)}'
+        )
+    if b.shape[-2] != lu.shape[-2]:
+        raise ValueError(
+            f'the rows of `b` must be equal to the rows of `lu`, but got {b.shape[-2]} and {lu.shape[-2]}'
+        )
+    if lu.shape[-1] != lu.shape[-2]:
+        raise ValueError(
+            f'`lu` shape[-1] must be equal to `lu` shape[-2], but got {lu.shape[-1]} and {lu.shape[-2]}'
+        )
+    if pivots.shape[-1] != lu.shape[-1]:
+        raise ValueError(
+            f'`pivots` shape[-1] must be equal to `lu` shape[-1], but got {pivots.shape[-1]} and {lu.shape[-1]}'
+        )
+    temp_shape = broadcast_shape(b.shape[:-2], lu.shape[:-2])
+    batch_shape = broadcast_shape(temp_shape, pivots.shape[:-1])
+    b = (
+        b
+        if b.shape[:-2] == batch_shape
+        else paddle.broadcast_to(b, batch_shape + list(b.shape[-2:]))
+    )
+    trans = trans if trans == "N" else "T"
+    pivots = (
+        pivots
+        if pivots.shape[:-1] == batch_shape
+        else paddle.broadcast_to(pivots, batch_shape + list(pivots.shape[-1:]))
+    )
+    lu = (
+        lu
+        if lu.shape[:-2] == batch_shape
+        else paddle.broadcast_to(lu, batch_shape + list(lu.shape[-2:]))
+    )
+    pivots.stop_gradient = True
+    out = _C_ops.lu_solve(b, lu, pivots, trans)
+    return out
+
+
 def lu_unpack(
     x: Tensor,
     y: Tensor,
@@ -3586,7 +3697,7 @@ def lu_unpack(
 ) -> tuple[Tensor, Tensor, Tensor]:
     r"""
     Unpack L U and P to single matrix tensor .
-    unpack L and U matrix from LU, unpack permutation matrix P from Pivtos .
+    unpack L and U matrix from LU, unpack permutation matrix P from Pivots .
 
     P mat can be get by pivots:
 
@@ -3599,12 +3710,13 @@ def lu_unpack(
 
     Args:
         x (Tensor): The LU tensor get from paddle.linalg.lu, which is combined by L and U.
+            Its data type should be float32, float64, complex64, or complex128.
 
-        y (Tensor): Pivots get from paddle.linalg.lu.
+        y (Tensor): Pivots get from paddle.linalg.lu. Its data type should be int32.
 
         unpack_ludata (bool, optional): whether to unpack L and U from x. Default: True.
 
-        unpack_pivots (bool, optional): whether to unpack permutation matrix P from Pivtos. Default: True.
+        unpack_pivots (bool, optional): whether to unpack permutation matrix P from Pivots. Default: True.
 
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
@@ -3634,8 +3746,8 @@ def lu_unpack(
             Tensor(shape=[2], dtype=int32, place=Place(cpu), stop_gradient=True,
             [3, 3])
             >>> print(info)
-            Tensor(shape=[1], dtype=int32, place=Place(cpu), stop_gradient=True,
-            [0])
+            Tensor(shape=[], dtype=int32, place=Place(cpu), stop_gradient=True,
+            0)
 
             >>> P,L,U = paddle.linalg.lu_unpack(lu,p)
 
@@ -3669,7 +3781,10 @@ def lu_unpack(
         return P, L, U
     else:
         check_variable_and_dtype(
-            x, 'dtype', ['float32', 'float64'], 'lu_unpack'
+            x,
+            'dtype',
+            ['float32', 'float64', 'complex64', 'complex128'],
+            'lu_unpack',
         )
         helper = LayerHelper('lu_unpack', **locals())
         p = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -3701,7 +3816,7 @@ def eig(x: Tensor, name: str | None = None) -> tuple[Tensor, Tensor]:
 
     Args:
         x (Tensor): A tensor with shape math:`[*, N, N]`, The data type of the x should be one of ``float32``,
-            ``float64``, ``compplex64`` or ``complex128``.
+            ``float64``, ``complex64`` or ``complex128``.
         name (str|None, optional): The default value is `None`. Normally there is no need for user to set
             this property. For more information, please refer to :ref:`api_guide_Name`.
 
@@ -4058,7 +4173,7 @@ def pinv(
             st = _C_ops.unsqueeze(singular, [-2])
 
             dims = list(range(len(vt.shape)))
-            perm = dims[:-2] + [dims[-1]] + [dims[-2]]
+            perm = [*dims[:-2], dims[-1], dims[-2]]
             v = _C_ops.transpose(vt, perm)
 
             out_1 = v * st
@@ -4066,7 +4181,7 @@ def pinv(
             return out_2
         else:
             # combine eigh and matmul op
-            s, u = _C_ops.eigh(x, 'UPLO')
+            s, u = _C_ops.eigh(x, 'L')
             s_abs = paddle.abs(s)
             max_singular_val = _C_ops.max(s_abs, [-1], True)
             rcond = paddle.to_tensor(rcond, dtype=s.dtype)
@@ -4122,7 +4237,7 @@ def pinv(
             )
 
             dims = list(range(len(vt.shape)))
-            perm = dims[:-2] + [dims[-1]] + [dims[-2]]
+            perm = [*dims[:-2], dims[-1], dims[-2]]
             v = helper.create_variable_for_type_inference(dtype)
             v_shape = helper.create_variable_for_type_inference(dtype)
             helper.append_op(
@@ -5479,7 +5594,7 @@ def histogramdd(
 
     Examples:
         .. code-block:: python
-            :name: exampl
+            :name: example
 
             >>> import paddle
             >>> x = paddle.to_tensor([[0., 1.], [1., 0.], [2.,0.], [2., 2.]])
@@ -5573,7 +5688,18 @@ def histogramdd(
         check_type(ranges, 'ranges', (list, tuple), 'histogramdd')
         assert D * 2 == len(
             ranges
-        ), "The length of ranges list must be %d\n" % (D * 2)
+        ), f"The length of ranges list must be {D * 2}\n"
+
+    def __compute_flattened_index(index_list, hist_shape):
+        strides = paddle.to_tensor(hist_shape[::-1]).cumprod(dim=0).flip(0)[1:]
+        strides = paddle.concat(
+            [strides, paddle.to_tensor([1], dtype=strides.dtype)]
+        )
+
+        stacked_indices = paddle.stack(index_list, axis=-1)
+        flattened_index = (stacked_indices * strides).sum(axis=-1)
+
+        return flattened_index
 
     check_type(density, 'density', bool, 'histogramdd')
 
@@ -5587,9 +5713,7 @@ def histogramdd(
     if weights is not None:
         weights = weights.astype(x.dtype)
         reshaped_weights = weights.reshape([N])
-        assert reshaped_weights.shape[0] == N, (
-            "The size of weight must be %d" % N
-        )
+        assert reshaped_weights.shape[0] == N, f"The size of weight must be {N}"
     # ranges
     __check_ranges(D, ranges)
     if ranges is None:
@@ -5612,13 +5736,13 @@ def histogramdd(
     if isinstance(bins, (int, list)):  # int or int[]
         if isinstance(bins, int):
             bins = [bins] * D
-        assert len(bins) == D, (
-            "The length of bins must be %d when bins is a list.\n" % D
-        )
+        assert (
+            len(bins) == D
+        ), f"The length of bins must be {D} when bins is a list.\n"
         for idx, r in enumerate(ranges):
             if not isinstance(bins[idx], int):
                 raise ValueError(
-                    "The type of %d-th element in bins list must be int." % idx
+                    f"The type of {idx}-th element in bins list must be int."
                 )
             e = paddle.linspace(r[0], r[1], bins[idx] + 1, x.dtype)
             edges.append(e)
@@ -5656,10 +5780,7 @@ def histogramdd(
             )
             index_list = paddle.static.setitem(index_list, i, index_list_i)
     index_list = tuple(index_list)
-    lut = paddle.arange(
-        paddle.to_tensor(hist_shape).prod(),
-    ).reshape(hist_shape)
-    flattened_index = lut[index_list]
+    flattened_index = __compute_flattened_index(index_list, hist_shape)
     hist = paddle.bincount(
         flattened_index,
         reshaped_weights,
@@ -5841,3 +5962,131 @@ def cholesky_inverse(
     else:
         A = x @ x.T
     return paddle.linalg.inv(A)
+
+
+def diagonal(
+    x: Tensor,
+    offset: int = 0,
+    axis1: int = 0,
+    axis2: int = 1,
+    name: str | None = None,
+) -> Tensor:
+    """
+    Computes the diagonals of the input tensor x.
+
+    If ``x`` is 2D, returns the diagonal.
+    If ``x`` has larger dimensions, diagonals be taken from the 2D planes specified by axis1 and axis2.
+    By default, the 2D planes formed by the first and second axis of the input tensor x.
+
+    The argument ``offset`` determines where diagonals are taken from input tensor x:
+
+    - If offset = 0, it is the main diagonal.
+    - If offset > 0, it is above the main diagonal.
+    - If offset < 0, it is below the main diagonal.
+
+    Args:
+        x (Tensor): The input tensor x. Must be at least 2-dimensional. The input data type should be bool, int32,
+            int64, bfloat16, float16, float32, float64.
+        offset (int, optional): Which diagonals in input tensor x will be taken. Default: 0 (main diagonals).
+        axis1 (int, optional): The first axis with respect to take diagonal. Default: 0.
+        axis2 (int, optional): The second axis with respect to take diagonal. Default: 1.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: a partial view of input tensor in specify two dimensions, the output data type is the same as input data type.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> paddle.seed(2023)
+            >>> x = paddle.rand([2, 2, 3],'float32')
+            >>> print(x)
+            Tensor(shape=[2, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[0.86583614, 0.52014720, 0.25960937],
+              [0.90525323, 0.42400089, 0.40641287]],
+             [[0.97020894, 0.74437362, 0.51785129],
+              [0.73292869, 0.97786582, 0.04315904]]])
+
+            >>> out1 = paddle.diagonal(x)
+            >>> print(out1)
+            Tensor(shape=[3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.86583614, 0.73292869],
+             [0.52014720, 0.97786582],
+             [0.25960937, 0.04315904]])
+
+            >>> out2 = paddle.diagonal(x, offset=0, axis1=2, axis2=1)
+            >>> print(out2)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.86583614, 0.42400089],
+             [0.97020894, 0.97786582]])
+
+            >>> out3 = paddle.diagonal(x, offset=1, axis1=0, axis2=1)
+            >>> print(out3)
+            Tensor(shape=[3, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.90525323],
+             [0.42400089],
+             [0.40641287]])
+
+            >>> out4 = paddle.diagonal(x, offset=0, axis1=1, axis2=2)
+            >>> print(out4)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.86583614, 0.42400089],
+             [0.97020894, 0.97786582]])
+
+    """
+    if in_dynamic_or_pir_mode():
+        return _C_ops.diagonal(x, offset, axis1, axis2)
+    else:
+
+        def __check_input(x, offset, axis1, axis2):
+            check_dtype(
+                x.dtype,
+                'Input',
+                [
+                    'bool',
+                    'int32',
+                    'int64',
+                    'float16',
+                    'uint16',
+                    'float32',
+                    'float64',
+                ],
+                'diagonal',
+            )
+
+            input_shape = list(x.shape)
+            assert len(input_shape) >= 2, (
+                "The x must be at least 2-dimensional, "
+                f"But received Input x's dimensional: {len(input_shape)}.\n"
+            )
+
+            axis1_ = axis1 if axis1 >= 0 else len(input_shape) + axis1
+            axis2_ = axis2 if axis2 >= 0 else len(input_shape) + axis2
+
+            assert axis1_ < len(
+                input_shape
+            ), f"The argument axis1 is out of range (expected to be in range of [{-(len(input_shape))}, {len(input_shape) - 1}], but got {axis1}).\n"
+
+            assert axis2_ < len(
+                input_shape
+            ), f"The argument axis2 is out of range (expected to be in range of [{-(len(input_shape))}, {len(input_shape) - 1}], but got {axis2}).\n"
+
+            assert axis1_ != axis2_, (
+                "axis1 and axis2 cannot be the same axis."
+                f"But received axis1 = {axis1}, axis2 = {axis2}\n"
+            )
+
+        __check_input(x, offset, axis1, axis2)
+        helper = LayerHelper('diagonal', **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+        helper.append_op(
+            type='diagonal',
+            inputs={'Input': [x]},
+            attrs={'offset': offset, 'axis1': axis1, 'axis2': axis2},
+            outputs={'Out': [out]},
+        )
+
+        return out

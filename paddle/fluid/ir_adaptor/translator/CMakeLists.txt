@@ -8,7 +8,7 @@ set(sparse_op_yaml
     ${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/sparse_ops.yaml,${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/sparse_backward.yaml
 )
 set(op_compat_source_file ${PD_PROGRAM_TRANSLATOR_SOURCE_DIR}/op_compat_info.cc)
-set(op_compat_templat_file
+set(op_compat_template_file
     ${PD_PROGRAM_TRANSLATOR_SOURCE_DIR}/op_compat_info.cc.j2)
 
 add_custom_command(
@@ -17,7 +17,7 @@ add_custom_command(
     ${PYTHON_EXECUTABLE} ${op_gen_file} --op_compat_yaml_file
     ${op_compat_yaml_file} --sparse_op_yaml ${sparse_op_yaml}
     --output_source_file ${op_compat_source_file}
-  DEPENDS ${op_gen_file} ${op_compat_yaml_file} ${op_compat_templat_file}
+  DEPENDS ${op_gen_file} ${op_compat_yaml_file} ${op_compat_template_file}
   VERBATIM)
 file(GLOB PD_PROGRAM_TRANSLATOR_SRCS "*.cc")
 

@@ -11,65 +11,73 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import unittest
 
 import numpy as np
 import utils
 
 import paddle
-from paddle.base import core
 
 
-class ComputeAtSubGraph(paddle.nn.Layer):
-    def __init__(self):
-        super().__init__()
-
-    def forward(self, x, y):
-        x0 = x[:, :256] * (
-            1.0 / (1.0 + paddle.exp(-1.0 * (x[:, :256] + y[256, 256])))
-        )
-        x1 = x[:, 256:] * (
-            1.0 / (1.0 + paddle.exp(-1.0 * (x[:, 256:] + y[256, 256])))
-        )
-        x2 = x[:, :256] * (
-            1.0 / (1.0 + paddle.exp(-1.0 * (x[:, :256] + y[128, 128])))
-        )
-        x3 = x[:, 256:] * (
-            1.0 / (1.0 + paddle.exp(-1.0 * (x[:, 256:] + y[128, 128])))
-        )
-        return x0, x1, x2, x3
-
-
-class TestComputeAtSubGraph(unittest.TestCase):
-    def setUp(self):
+class TestComputeAtTactic(unittest.TestCase):
+    def eval(self, dy_compute, init_inputs):
         paddle.seed(2024)
-        self.shape = [512, 512]
-        self.dtype = "float32"
-        self.prepare_data()
+        inputs = init_inputs()
+        dy_out = dy_compute(*inputs)
 
-    def prepare_data(self):
-        self.x = paddle.randn(self.shape, dtype=self.dtype)
-        self.y = paddle.randn(self.shape, dtype=self.dtype)
+        static_compute = utils.apply_to_static(dy_compute, use_cinn=True)
+        st_out = static_compute(*inputs)
 
-    def eval(self, use_cinn, use_prim=False):
-        if use_prim:
-            core._set_prim_all_enabled(True)
-        net = ComputeAtSubGraph()
-        net = utils.apply_to_static(net, use_cinn=use_cinn)
-        net.eval()
-        out = net(self.x, self.y)
+        for a, b in zip(
+            paddle.utils.flatten(dy_out), paddle.utils.flatten(st_out)
+        ):
+            np.testing.assert_allclose(a, b, atol=1e-3, rtol=1e-4)
 
-        core._set_prim_all_enabled(False)
-        return out
+    def test_multiple_reduce(self):
+        def func(x, y):
+            x0 = paddle.sum(
+                x[:, :256]
+                * (1.0 / (1.0 + paddle.exp(-1.0 * (x[:, :256] + y[256, 256]))))
+            )
+            x1 = paddle.sum(
+                x[:, 256:]
+                * (1.0 / (1.0 + paddle.exp(-1.0 * (x[:, 256:] + y[256, 256]))))
+            )
+            x2 = paddle.sum(
+                x[:, :256]
+                * (1.0 / (1.0 + paddle.exp(-1.0 * (x[:, :256] + y[128, 128]))))
+            )
+            x3 = paddle.sum(
+                x[:, 256:]
+                * (1.0 / (1.0 + paddle.exp(-1.0 * (x[:, 256:] + y[128, 128]))))
+            )
+            return x0, x1, x2, x3
 
-    def test_cinn(self):
-        cinn_out = self.eval(use_cinn=True, use_prim=True)
-        dy_out = self.eval(use_cinn=False, use_prim=True)
-        np.testing.assert_allclose(
-            paddle.utils.flatten(cinn_out),
-            paddle.utils.flatten(dy_out),
-            atol=1e-3,
-        )
+        def init():
+            x = paddle.randn([512, 512])
+            y = paddle.randn([512, 512])
+            return (x, y)
+
+        self.eval(func, init)
+
+    def test_reduce_with_condition(self):
+        def func(a, b, c):
+            a = paddle.sum(a)
+            a = a / paddle.full([], 1.0)
+            b = paddle.sum(b)
+            b = b / paddle.full([], 1.0)
+            c = paddle.sum(c)
+            c = c / paddle.full([], 1.0)
+            return a, b, c, a + b + c
+
+        def init():
+            a = paddle.randn([1])
+            b = paddle.randn([1])
+            c = paddle.randn([1])
+            return (a, b, c)
+
+        self.eval(func, init)
 
 
 if __name__ == '__main__':

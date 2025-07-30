@@ -10,10 +10,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 // disable numpy compile error
 #include <Python.h>
-// Avoid a problem with copysign defined in pyconfig.h on Windows.
-#ifdef copysign
-#undef copysign
-#endif
 
 #include <set>
 #include <string>
@@ -39,11 +35,11 @@ limitations under the License. */
 #include "pybind11/pytypes.h"
 #pragma GCC diagnostic ignored "-Wwrite-strings"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+COMMON_DECLARE_bool(check_cuda_error);
 
 using egr::ConvertToDistTensor;
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 PyTypeObject* p_pylayer_type;
 extern PyTypeObject* p_tensor_type;
@@ -135,6 +131,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
                                PyObject* args,
                                PyObject* kwargs) {
   EAGER_TRY
+  SetPythonStack();
   VLOG(6) << "Begin run PyLayer apply...";
   PyObject* backward_function =
       PyObject_GetAttrString(cls, "_backward_function");
@@ -150,6 +147,10 @@ PyObject* pylayer_method_apply(PyObject* cls,
     return nullptr;
   }
   VLOG(6) << "PyLayer construct PyLayerContext finish...";
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("pylayer_method_apply " +
+                        std::string(Py_TYPE(ctx)->tp_name) + " begin");
+  }
 
   bool require_any_grad = false;
 
@@ -475,6 +476,8 @@ PyObject* pylayer_method_apply(PyObject* cls,
         std::make_shared<egr::GradNodePyLayer>(reinterpret_cast<PyObject*>(ctx),
                                                outputs_autograd_meta.size(),
                                                inputs_autograd_meta.size());
+    VLOG(3) << "Create grad node " << grad_node->name() << " addr "
+            << grad_node;
     ctx->grad_node = grad_node;
 
     if (ctx->materialize_grads) {
@@ -525,6 +528,11 @@ PyObject* pylayer_method_apply(PyObject* cls,
   Py_XDECREF(backward_function);
   Py_XDECREF(forward_fn);
   Py_XDECREF(ctx);
+
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("pylayer_method_apply " +
+                        std::string(Py_TYPE(ctx)->tp_name) + " finish");
+  }
 
   return outputs;
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -818,5 +826,4 @@ void BindEagerPyLayer(PyObject* module) {
   }
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

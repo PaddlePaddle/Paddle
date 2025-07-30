@@ -1,5 +1,4 @@
-// REGISTER_IR_PASS(onednn_placement_pass, OneDNNPlacementPass);
-// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

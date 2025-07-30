@@ -32,6 +32,23 @@ class TestBroadcastShape(unittest.TestCase):
             ValueError, paddle.broadcast_shape, [2, 1, 3], [3, 3, 1]
         )
 
+    def test_zero_size_dim(self):
+        test_cases = [
+            ([0], [], [0]),
+            ([1], [0], [0]),
+            ([2, -1], [0], [2, 0]),
+            ([0, 3], [3], [0, 3]),
+            ([0, 1, 3], [0, 1, 0, 3], [0, 0, 0, 3]),
+            ([0, 1, 3], [0, 1, 1, 5, 3], [0, 1, 0, 5, 3]),
+        ]
+
+        for shape1, shape2, expected in test_cases:
+            result = paddle.broadcast_shape(shape1, shape2)
+            self.assertEqual(result, expected)
+
+    def test_zero_size_error(self):
+        self.assertRaises(ValueError, paddle.broadcast_shape, [0], [0, 2])
+
 
 if __name__ == "__main__":
     unittest.main()

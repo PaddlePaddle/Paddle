@@ -56,6 +56,11 @@ class TestBroadcastToAPI(unittest.TestCase):
             input = np.random.random([12, 14]).astype("float32")
             x = paddle.static.data(name='x', shape=[12, 14], dtype="float32")
 
+            zero_size_input = np.random.random([0, 14]).astype("float32")
+            x_zero = paddle.static.data(
+                name='x_zero', shape=[0, 14], dtype="float32"
+            )
+
             positive_2 = paddle.tensor.fill_constant([1], "int32", 12)
             expand_shape = paddle.static.data(
                 name="expand_shape",
@@ -66,20 +71,23 @@ class TestBroadcastToAPI(unittest.TestCase):
             out_1 = paddle.broadcast_to(x, shape=[12, 14])
             out_2 = paddle.broadcast_to(x, shape=[positive_2, 14])
             out_3 = paddle.broadcast_to(x, shape=expand_shape)
+            out_4 = paddle.broadcast_to(x_zero, shape=[0, 14])
 
             g0 = base.backward.gradients(out_2, x)
 
             exe = base.Executor(place=base.CPUPlace())
-            res_1, res_2, res_3 = exe.run(
+            res_1, res_2, res_3, res_4 = exe.run(
                 feed={
                     "x": input,
+                    "x_zero": zero_size_input,
                     "expand_shape": np.array([12, 14]).astype("int32"),
                 },
-                fetch_list=[out_1, out_2, out_3],
+                fetch_list=[out_1, out_2, out_3, out_4],
             )
             np.testing.assert_array_equal(res_1, np.tile(input, (1, 1)))
             np.testing.assert_array_equal(res_2, np.tile(input, (1, 1)))
             np.testing.assert_array_equal(res_3, np.tile(input, (1, 1)))
+            np.testing.assert_array_equal(res_4, zero_size_input)
 
     def test_api_fp16_gpu(self):
         if paddle.base.core.is_compiled_with_cuda():
@@ -92,6 +100,11 @@ class TestBroadcastToAPI(unittest.TestCase):
                     name="x", shape=[12, 14], dtype="float16"
                 )
 
+                zero_size_input = np.random.random([0, 14]).astype("float32")
+                x_zero = paddle.static.data(
+                    name='x_zero', shape=[0, 14], dtype="float32"
+                )
+
                 positive_2 = paddle.tensor.fill_constant([1], "int32", 12)
                 expand_shape = paddle.static.data(
                     name="expand_shape",
@@ -102,19 +115,66 @@ class TestBroadcastToAPI(unittest.TestCase):
                 out_1 = paddle.broadcast_to(x, shape=[12, 14])
                 out_2 = paddle.broadcast_to(x, shape=[positive_2, 14])
                 out_3 = paddle.broadcast_to(x, shape=expand_shape)
+                out_4 = paddle.broadcast_to(x_zero, shape=[0, 14])
 
                 exe = paddle.static.Executor(place)
-                res_1, res_2, res_3 = exe.run(
+                res_1, res_2, res_3, res_4 = exe.run(
                     paddle.static.default_main_program(),
                     feed={
                         "x": input,
+                        "x_zero": zero_size_input,
                         "expand_shape": np.array([12, 14]).astype("int32"),
                     },
-                    fetch_list=[out_1, out_2, out_3],
+                    fetch_list=[out_1, out_2, out_3, out_4],
                 )
                 np.testing.assert_array_equal(res_1, np.tile(input, (1, 1)))
                 np.testing.assert_array_equal(res_2, np.tile(input, (1, 1)))
                 np.testing.assert_array_equal(res_3, np.tile(input, (1, 1)))
+                np.testing.assert_array_equal(res_4, zero_size_input)
+
+    def test_expand_zero_size_tensor_valid(self):
+        # 测试 0-size Tensor expand 到合法形状的情况
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            zero_input = np.random.random([0, 14]).astype("float32")
+            x = paddle.static.data(name="x", shape=[0, 14], dtype="float32")
+
+            # 合法 expand: 形状不变
+            out_1 = paddle.broadcast_to(x, shape=[0, 14])
+
+            exe = paddle.static.Executor(base.CPUPlace())
+            res_1 = exe.run(
+                feed={"x": zero_input},
+                fetch_list=[out_1],
+            )
+
+            # 验证结果
+            np.testing.assert_array_equal(res_1[0], zero_input)
+            self.assertEqual(res_1[0].shape, (0, 14))
+
+    def test_expand_non_zero_size_tensor(self):
+        # 测试非 0-size Tensor expand 到合法形状
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            input_data = np.random.random([2, 1]).astype("float32")
+            x = paddle.static.data(name="x", shape=[2, 1], dtype="float32")
+
+            # expand 到 [2, 3]
+            out_1 = paddle.broadcast_to(x, shape=[2, 3])
+            # expand 到 [-1, 3] (-1 表示保持输入对应维度)
+            out_2 = paddle.broadcast_to(x, shape=[-1, 3])
+
+            exe = paddle.static.Executor(base.CPUPlace())
+            res_1, res_2 = exe.run(
+                feed={"x": input_data},
+                fetch_list=[out_1, out_2],
+            )
+
+            expected_output = np.tile(input_data, (1, 3))
+            np.testing.assert_array_equal(res_1, expected_output)
+            np.testing.assert_array_equal(res_2, expected_output)
 
 
 if __name__ == "__main__":

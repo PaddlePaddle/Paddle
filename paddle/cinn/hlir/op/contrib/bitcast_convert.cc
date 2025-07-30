@@ -17,7 +17,6 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/common/macros.h"
@@ -32,6 +31,7 @@
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/lang/compute.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 
 namespace cinn {
 namespace hlir {
@@ -85,7 +85,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForBitcastConvert(
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(bitcast_convert_compute,
-                    GetInjectiveScheduleFunc(output_shapes, target),
+
                     "strategy.bitcast_convert.x86",
                     1);
   return strategy;

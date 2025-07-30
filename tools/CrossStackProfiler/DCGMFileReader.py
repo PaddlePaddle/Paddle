@@ -39,9 +39,7 @@ class dcgmFileReader(FileReader):
             return self._parseTask(fileFist)
 
         else:
-            self._logger.info(
-                "using [%d] process to do this work!" % processNum
-            )
+            self._logger.info(f"using [{processNum}] process to do this work!")
             processPool = []
             pidList = []
 
@@ -61,16 +59,14 @@ class dcgmFileReader(FileReader):
                 subproc.start()
                 pidList.append(subproc.pid)
                 self._logger.info(
-                    "[DCGM reader]: process [%d] has been started, total task num is %d ..."
-                    % (subproc.pid, len(processPool))
+                    f"[DCGM reader]: process [{subproc.pid}] has been started, total task num is {len(processPool)} ..."
                 )
 
             for t in processPool:
                 t.join()
                 pidList.remove(t.pid)
                 self._logger.info(
-                    "[DCGM reader]: process [%d] has exited! remained %d process!"
-                    % (t.pid, len(pidList))
+                    f"[DCGM reader]: process [{t.pid}] has exited! remained {len(pidList)} process!"
                 )
 
             isFistProcess = True
@@ -169,8 +165,7 @@ class dcgmFileReader(FileReader):
         self, groupId, gpuId, dcgm_data, pid_map, q=None
     ):
         self._logger.info(
-            "Begin to generate dcgm info, groupId = %d, gpuID = %d ..."
-            % (groupId, gpuId)
+            f"Begin to generate dcgm info, groupId = {groupId}, gpuID = {gpuId} ..."
         )
 
         gpuDcgmData = dcgm_data[dcgm_data['Entity'].isin([gpuId])]
@@ -198,7 +193,7 @@ class dcgmFileReader(FileReader):
                 di['ts'] = self._align_ts(int(row['ts']))
                 # di['ts'] = int(row['ts'])
                 di['cat'] = metric
-                di['tid'] = "%d_%d" % (groupId, trainerId)
+                di['tid'] = f"{groupId}_{trainerId}"
                 di['ph'] = "C"
                 di['id'] = trainerId
 
@@ -244,16 +239,14 @@ class dcgmFileReader(FileReader):
             subproc.start()
             pidList.append(subproc.pid)
             self._logger.info(
-                "[DCGM info]: process [%d] has been started, total task num is %d ..."
-                % (subproc.pid, 1)
+                f"[DCGM info]: process [{subproc.pid}] has been started, total task num is {1} ..."
             )
 
         for t in processPool:
             t.join()
             pidList.remove(t.pid)
             self._logger.info(
-                "[DCGM info]: process [%d] has exited! remained %d process!"
-                % (t.pid, len(pidList))
+                f"[DCGM info]: process [{t.pid}] has exited! remained {len(pidList)} process!"
             )
 
         dcgmInfo = {}

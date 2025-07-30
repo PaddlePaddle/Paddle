@@ -29,6 +29,10 @@
 #ifdef PADDLE_WITH_TENSORRT
 #include "paddle/fluid/operators/tensorrt/tensorrt_engine_op.h"
 #endif
+#ifdef PADDLE_WITH_OPENVINO
+#include "paddle/fluid/operators/openvino/openvino_engine_op.h"
+#endif
+
 #ifdef PADDLE_WITH_NVTX
 #include "paddle/phi/core/platform/device/gpu/cuda/cuda_profiler.h"
 #endif
@@ -91,7 +95,7 @@ void NaiveExecutor::RunInterpreterCore(
 
 void NaiveExecutor::Run() {
 #ifdef PADDLE_WITH_DNNL
-  platform::AttachPointerHashToMKLDNNKey(this, place_);
+  platform::AttachPointerHashToONEDNNKey(this, place_);
   platform::RegisterModelLayout(ops_, place_);
 #endif
   platform::ScopedFlushDenormal flush;
@@ -295,7 +299,7 @@ NaiveExecutor::~NaiveExecutor() {
 #ifdef PADDLE_WITH_DNNL
   // Clear mkl-dnn cache,
   // this is needed to have mkl-dnn unit tests working
-  platform::ClearMKLDNNCache(place_, this);
+  platform::ClearONEDNNCache(place_, this);
 #endif
 }
 

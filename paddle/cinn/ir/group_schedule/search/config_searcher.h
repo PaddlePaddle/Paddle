@@ -87,7 +87,7 @@ class ScheduleConfigSearcher {
       const std::vector<std::pair<int, int>>& candidate_range,
       const std::vector<ConstraintFunc>& constraints = {});
 
-  std::pair<ScoreType, CandidateType> Search(bool is_search_minimun = true);
+  std::pair<ScoreType, CandidateType> Search(bool is_search_minimum = true);
 
  private:
   std::vector<std::unique_ptr<BaseObjectiveFunc>> objective_funcs_;

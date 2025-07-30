@@ -30,10 +30,12 @@ def new_program_scope(main=None, startup=None, scope=None):
     prog = main if main else base.Program()
     startup_prog = startup if startup else base.Program()
     scope = scope if scope else base.core.Scope()
-    with base.scope_guard(scope):
-        with base.program_guard(prog, startup_prog):
-            with base.unique_name.guard():
-                yield
+    with (
+        base.scope_guard(scope),
+        base.program_guard(prog, startup_prog),
+        base.unique_name.guard(),
+    ):
+        yield
 
 
 class LayerTest(unittest.TestCase):
@@ -235,7 +237,7 @@ class TestDistributeFpnProposals(LayerTest):
         program = Program()
         with program_guard(program):
             fpn_rois = paddle.static.data(
-                name='data_error', shape=[10, 4], dtype='int32', lod_level=1
+                name='data_error', shape=[10, 4], dtype='int32'
             )
             rois_num = paddle.static.data(
                 name='rois_num', shape=[None], dtype='int32'
@@ -258,7 +260,6 @@ class TestDistributeFpnProposals(LayerTest):
                 name='min_max_level_error1',
                 shape=[10, 4],
                 dtype='float32',
-                lod_level=1,
             )
             self.assertRaises(
                 AssertionError,
@@ -277,7 +278,6 @@ class TestDistributeFpnProposals(LayerTest):
                 name='min_max_level_error2',
                 shape=[10, 4],
                 dtype='float32',
-                lod_level=1,
             )
             self.assertRaises(
                 AssertionError,
@@ -296,7 +296,6 @@ class TestDistributeFpnProposals(LayerTest):
                 name='min_max_level_error3',
                 shape=[10, 4],
                 dtype='float32',
-                lod_level=1,
             )
             self.assertRaises(
                 AssertionError,

@@ -31,8 +31,7 @@ limitations under the License. */
 
 COMMON_DECLARE_bool(use_mkldnn);
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 template <typename GradFunctor>
 static constexpr bool CanInplaceAct() {
@@ -290,8 +289,7 @@ DECLARE_INPLACE_OP_INFERER(ActivationTripleGradOpInplaceInferer,
 
 DECLARE_INPLACE_OP_INFERER(ActFwdInplaceInferer, {"X", "Out"});
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 
@@ -311,8 +309,6 @@ namespace ops = paddle::operators;
   REGISTER_OPERATOR(KERNEL_TYPE##_grad,                                     \
                     ops::ActivationOpGrad,                                  \
                     ops::ActivationGradOpInplaceInferer);
-
-FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_OP);
 
 REGISTER_ACTIVATION_OP(mish, Mish, MishFunctor, MishGradFunctor);
 

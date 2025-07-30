@@ -294,9 +294,6 @@ TEST(InferVarType, test_enforce_check) {
   ASSERT_ANY_THROW(ctx.GetInputShape("X"));
   ASSERT_ANY_THROW(ctx.SetOutputShape("Out", {}));
 
-  ASSERT_ANY_THROW(ctx.GetInputLoDLevel("X"));
-  ASSERT_ANY_THROW(ctx.SetOutputLoDLevel("Out", 1));
-
   ASSERT_ANY_THROW(ctx.InsertVar("var", proto::VarType::DENSE_TENSOR));
 }
 

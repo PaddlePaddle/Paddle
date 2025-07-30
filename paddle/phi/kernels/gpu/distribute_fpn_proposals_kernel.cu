@@ -31,18 +31,19 @@ namespace cub = hipcub;
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/common/memory_utils.h"
 
 namespace phi {
 
 static constexpr int kNumCUDAThreads = 64;
-static constexpr int kNumMaxinumNumBlocks = 4096;
+static constexpr int kNumMaximumNumBlocks = 4096;
 
 int const BBoxSize = 4;
 
 static inline int NumBlocks(const int N) {
   return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
-                  kNumMaxinumNumBlocks);
+                  kNumMaximumNumBlocks);
 }
 
 template <class T>
@@ -106,7 +107,23 @@ void DistributeFpnProposalsKernel(
         1UL,
         errors::InvalidArgument("DistributeFpnProposalsOp needs LoD"
                                 "with one level"));
+  } else {
+    int64_t rois_num_numel = rois_num.get_ptr()->numel();
+    PADDLE_ENFORCE_LE(rois_num_numel,
+                      std::numeric_limits<int>::max(),
+                      ::common::errors::PreconditionNotMet(
+                          "The number of images should be less than "
+                          "2^31, but got %lld. Please check the input tensor. ",
+                          rois_num_numel));
   }
+
+  int64_t fpn_rois_numel = fpn_rois.numel();
+  PADDLE_ENFORCE_LE(fpn_rois_numel,
+                    std::numeric_limits<int>::max(),
+                    ::common::errors::PreconditionNotMet(
+                        "The number of proposals in FPN should be less than "
+                        "2^31, but got %lld. Please check the input tensor. ",
+                        fpn_rois_numel));
 
   std::vector<size_t> fpn_rois_lod;
   if (rois_num.get_ptr()) {
@@ -253,7 +270,7 @@ void DistributeFpnProposalsKernel(
       Copy(dev_ctx, sub_lod, dev_ctx.GetPlace(), true, rois_num_t);
       rois_num_t->Resize({lod_size});
     }
-    LoD lod;
+    LegacyLoD lod;
     lod.emplace_back(offset);
     multi_fpn_rois[i]->set_lod(lod);
   }

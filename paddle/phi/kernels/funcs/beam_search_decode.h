@@ -136,7 +136,7 @@ void BeamSearchDecoder<T>::ConvertSentenceVectorToDenseTensor(
                                sentence_vector_list[src_idx].size());
   }
 
-  phi::LoD lod;
+  phi::LegacyLoD lod;
   lod.push_back(source_level_lod);
   lod.push_back(sentence_level_lod);
 

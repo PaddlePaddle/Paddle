@@ -22,11 +22,11 @@
 namespace phi {
 
 template <typename T, typename Context>
-void MultiplexKernel(const Context& ctx,
+void MultiplexKernel(const Context& dev_ctx,
                      const std::vector<const DenseTensor*>& ins,
                      const DenseTensor& ids,
                      DenseTensor* out) {
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   for (size_t i = 0; i < ins.size(); ++i) {
     PADDLE_ENFORCE_GT(
         ins[i]->numel(),
@@ -39,9 +39,9 @@ void MultiplexKernel(const Context& ctx,
   auto rows = ins[0]->dims()[0];
   auto cols = ins[0]->numel() / rows;
   DenseTensor index_t_cpu;
-  phi::Copy(ctx, ids, phi::CPUPlace(), true, &index_t_cpu);
+  phi::Copy(dev_ctx, ids, phi::CPUPlace(), true, &index_t_cpu);
   auto* index = index_t_cpu.data<int32_t>();
-  auto stream = ctx.stream();
+  auto stream = dev_ctx.stream();
   for (auto i = 0; i < ids.dims()[0]; i++) {
     int32_t k = index[i];
     PADDLE_ENFORCE_GE(
@@ -50,9 +50,9 @@ void MultiplexKernel(const Context& ctx,
                       ins.size(),
                       errors::PreconditionNotMet(
                           "index exceeds the number of candidate tensors."));
-    memory_utils::Copy(ctx.GetPlace(),
+    memory_utils::Copy(dev_ctx.GetPlace(),
                        out->data<T>() + i * cols,
-                       ctx.GetPlace(),
+                       dev_ctx.GetPlace(),
                        ins[k]->data<T>() + i * cols,
                        cols * sizeof(T),
                        stream);

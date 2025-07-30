@@ -36,7 +36,7 @@ phi::DataLayout AllocatedDenseTensorType::data_layout() const {
   return storage()->dense_tensor_type_.data_layout();
 }
 
-const phi::LoD& AllocatedDenseTensorType::lod() const {
+const phi::LegacyLoD& AllocatedDenseTensorType::lod() const {
   return storage()->dense_tensor_type_.lod();
 }
 
@@ -64,7 +64,7 @@ phi::DataLayout AllocatedSelectedRowsType::data_layout() const {
   return storage()->selected_rows_type_.data_layout();
 }
 
-const phi::LoD& AllocatedSelectedRowsType::lod() const {
+const phi::LegacyLoD& AllocatedSelectedRowsType::lod() const {
   return storage()->selected_rows_type_.lod();
 }
 

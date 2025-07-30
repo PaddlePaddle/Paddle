@@ -351,7 +351,7 @@ class HeterComm {
                         len,
                         common::errors::InvalidArgument(
                             "Invalid size of all keys memory. Expect to be "
-                            "equal to length %d. But recieved %d.",
+                            "equal to length %d. But received %d.",
                             len,
                             all_keys_mem->size()));
       PADDLE_ENFORCE_GE(
@@ -359,7 +359,7 @@ class HeterComm {
           len * value_bytes,
           common::errors::InvalidArgument(
               "Invalid size of all gradients memory. Expect to be equal to "
-              "length * value bytes %d. But recieved %d.",
+              "length * value bytes %d. But received %d.",
               len * value_bytes,
               all_grads_mem->size()));
     }
@@ -814,8 +814,8 @@ class HeterComm {
   bool is_infer_mode_ = false;
 };
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace framework
+}  // namespace paddle
 
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm_inl.h"
 

@@ -20,7 +20,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void LayerNormKernel(const Context& ctx,
+void LayerNormKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const paddle::optional<DenseTensor>& scale,
                      const paddle::optional<DenseTensor>& bias,
@@ -36,7 +36,7 @@ class LayerNormDirectCUDAFunctor {
  public:
   void operator()(gpuStream_t stream,
                   const T* input,
-                  std::vector<int> input_shape,
+                  std::vector<int64_t> input_shape,
                   const U* bias,
                   const U* scale,
                   T* output,

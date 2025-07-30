@@ -31,8 +31,7 @@ limitations under the License. */
 #define _LINUX
 #endif
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 std::atomic<int> PSGPUWorker::shape_check_count_(16);
 std::atomic<bool> PSGPUWorker::shape_check_flag_(true);
@@ -235,7 +234,7 @@ int PSGPUWorker::OpRunAndShapeCheck(OperatorBase& op,
       after_lods.push_back(infer_shape_ctx.GetOutputsLod(var_name_item.first));
     }
 
-    std::string op_name = "unknow_op";
+    std::string op_name = "unknown_op";
     if (op.Info().HasOpProtoAndChecker()) {
       op_name = op.Info().Proto().type();
     }
@@ -580,6 +579,5 @@ void PSGPUWorker::ResetStat() {
 
 void PSGPUWorker::ProduceTasks() { return; }
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace paddle::framework
 #endif

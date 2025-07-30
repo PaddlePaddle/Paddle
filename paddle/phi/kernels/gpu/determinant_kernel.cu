@@ -137,7 +137,7 @@ struct DeterminantCudaFunctor<phi::dtype::complex<T>, Context> {
     phi::Allocator::AllocationPtr tmp_gpu_mat_data;
     const phi::dtype::complex<T>* gpu_mat = a.data<phi::dtype::complex<T>>();
     // Copy all elements of input matrix A to a temporary memory space to
-    // avoid being overriden by getrf.
+    // avoid being overridden by getrf.
     tmp_gpu_mat_data = phi::memory_utils::Alloc(
         dev_ctx.GetPlace(),
         a.numel() * sizeof(phi::dtype::complex<T>),
@@ -218,6 +218,10 @@ template <typename T, typename Context>
 void DeterminantKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   auto input_dim = common::vectorize(x.dims());
   auto input_dim_size = input_dim.size();
 

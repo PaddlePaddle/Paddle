@@ -19,9 +19,6 @@
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
-#ifdef PADDLE_WITH_XPU
-#include "paddle/phi/backends/xpu/enforce_xpu.h"
-#endif
 
 namespace phi {
 
@@ -33,11 +30,13 @@ void ReshapeKernel(const Context& dev_ctx,
   MetaTensor meta_out(out);
   InferMetaFromVecValue(x, shape.GetData(), &meta_out);
 
-  if (x.initialized() && x.Holder() == out->Holder()) {
+  if (x.has_allocation() && x.Holder() == out->Holder()) {
     dev_ctx.Alloc(out, x.dtype());
     return;
   }
   dev_ctx.Alloc(out, x.dtype());
+  if (out->numel() == 0) return;
+
   // TODO(chenweihang): the output dims are overwrite after copying,
   // here we need to use copy method that only copy data
   auto dims = out->dims();
@@ -45,34 +44,6 @@ void ReshapeKernel(const Context& dev_ctx,
   out->Resize(dims);
   out->ResetLoD(x.lod());
 }
-
-#ifdef PADDLE_WITH_XPU
-template <>
-void ReshapeKernel<phi::XPUContext>(const XPUContext& dev_ctx,
-                                    const DenseTensor& x,
-                                    const IntArray& shape,
-                                    DenseTensor* out) {
-  MetaTensor meta_out(out);
-  InferMetaFromVecValue(x, shape.GetData(), &meta_out);
-
-  if (x.initialized() && x.Holder() == out->Holder()) {
-    dev_ctx.Alloc(out, x.dtype());
-    return;
-  }
-  dev_ctx.Alloc(out, x.dtype());
-  auto dims = out->dims();
-  auto* src_ptr = x.data();
-  auto* dst_ptr = out->data();
-  auto size = x.numel() * phi::SizeOf(x.dtype());
-  int ret = xpu::copy(dev_ctx.x_context(),
-                      reinterpret_cast<const int8_t*>(src_ptr),
-                      reinterpret_cast<int8_t*>(dst_ptr),
-                      size);
-  PADDLE_ENFORCE_XDNN_SUCCESS(ret, "copy");
-  out->Resize(dims);
-  out->ResetLoD(x.lod());
-}
-#endif
 
 template <typename Context>
 void ReshapeWithXShapeKernel(const Context& dev_ctx,

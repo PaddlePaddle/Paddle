@@ -20,16 +20,11 @@ namespace phi {
 // oneDNN's reduction kernel is optimized only for reducing throughout the
 // most outer dims, so in case of another type of reduction, it would be
 // better to fallback to native implementation
-inline bool HasOptimizedOneDNNKernel(const KernelContext* ctx,
-                                     const bool mean_op) {
-  const DenseTensor& x = ctx->InputAt<phi::DenseTensor>(0);
+inline bool HasOptimizedOneDNNKernel(const KernelContext* dev_ctx) {
+  const DenseTensor& x = dev_ctx->InputAt<phi::DenseTensor>(0);
   IntArray dims_array;
-  if (mean_op) {
-    dims_array = ctx->AttrAt<IntArray>(0);
-  } else {
-    const TensorRef& dims_tmp = ctx->AttrAt<TensorRef>(0);
-    dims_array = IntArray(*dims_tmp.Get());
-  }
+  const TensorRef& dims_tmp = dev_ctx->AttrAt<TensorRef>(0);
+  dims_array = IntArray(*dims_tmp.Get());
   int ndims = x.dims().size();
   const bool reduce_all = recompute_reduce_all(x, dims_array);
   auto dims = dims_array.GetData();
@@ -59,24 +54,25 @@ inline bool HasOptimizedOneDNNKernel(const KernelContext* ctx,
   return true;
 }
 
-bool ReduceCheckIfOneDNNSupport(const KernelContext* ctx) {
-  if (ctx->InputAt<phi::DenseTensor>(0).dims().size() > 5 ||
-      !HasOptimizedOneDNNKernel(ctx, false)) {
+bool ReduceCheckIfOneDNNSupport(const KernelContext* dev_ctx) {
+  if (dev_ctx->InputAt<phi::DenseTensor>(0).dims().size() > 5 ||
+      !HasOptimizedOneDNNKernel(dev_ctx)) {
     return false;
   }
   return true;
 }
 
-bool ReduceMeanCheckIfOneDNNSupport(const KernelContext* ctx) {
-  if (ctx->InputAt<phi::DenseTensor>(0).dims().size() > 5 ||
-      !HasOptimizedOneDNNKernel(ctx, true)) {
+bool ReduceMeanCheckIfOneDNNSupport(const KernelContext* dev_ctx) {
+  std::cout << "ReduceMeanCheckIfOneDNNSupport" << std::endl;
+  if (dev_ctx->InputAt<phi::DenseTensor>(0).dims().size() > 5 ||
+      !HasOptimizedOneDNNKernel(dev_ctx)) {
     return false;
   }
   return true;
 }
 
-bool ReduceGradCheckIfOneDNNSupport(const KernelContext* ctx) {
-  if (ctx->InputAt<phi::DenseTensor>(0).dims().size() > 5) {
+bool ReduceGradCheckIfOneDNNSupport(const KernelContext* dev_ctx) {
+  if (dev_ctx->InputAt<phi::DenseTensor>(0).dims().size() > 5) {
     return false;
   }
   return true;

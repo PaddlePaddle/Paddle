@@ -12,17 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_places
 
 import paddle
 from paddle import base
 from paddle.base import core
+
+
+def complex_sign(x):
+    magnitude = np.abs(x)
+    result = np.zeros_like(x, dtype=x.dtype)
+    nonzero = magnitude != 0
+    result[nonzero] = x[nonzero] / magnitude[nonzero]
+    return result
 
 
 class TestSignOp(OpTest):
@@ -49,6 +56,32 @@ class TestSignFP16Op(TestSignOp):
             'X': np.random.uniform(-10, 10, (10, 10)).astype("float16")
         }
         self.outputs = {'Out': np.sign(self.inputs['X'])}
+
+
+class TestSignComplex64Op(OpTest):
+    def setUp(self):
+        self.op_type = "sign"
+        self.python_api = paddle.sign
+        real_part = np.random.uniform(-10, 10, (10, 10))
+        imag_part = np.random.uniform(-10, 10, (10, 10))
+        self.inputs = {'X': (real_part + 1j * imag_part).astype("complex64")}
+        self.outputs = {'Out': complex_sign(self.inputs['X'])}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True, check_symbol_infer=False)
+
+
+class TestSignComplex128Op(OpTest):
+    def setUp(self):
+        self.op_type = "sign"
+        self.python_api = paddle.sign
+        real_part = np.random.uniform(-10, 10, (10, 10))
+        imag_part = np.random.uniform(-10, 10, (10, 10))
+        self.inputs = {'X': (real_part + 1j * imag_part).astype("complex128")}
+        self.outputs = {'Out': complex_sign(self.inputs['X'])}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
 
 @unittest.skipIf(
@@ -81,15 +114,7 @@ class TestSignBF16Op(OpTest):
 
 class TestSignAPI(unittest.TestCase):
     def setUp(self):
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(base.CUDAPlace(0))
+        self.place = get_places()
 
     def test_dygraph(self):
         with base.dygraph.guard():
@@ -167,6 +192,65 @@ class TestSignAPI(unittest.TestCase):
             run(place)
 
 
+class TestSignComplexAPI(TestSignAPI):
+    def setUp(self):
+        self.place = []
+        self.place.append(base.CPUPlace())
+        if core.is_compiled_with_cuda():
+            self.place.append(base.CUDAPlace(0))
+
+    def test_dygraph(self):
+        with base.dygraph.guard():
+            np_x = np.array(
+                [-1.0 + 1.0j, 0.0 + 0.0j, 3.0 - 0.0j, 1.2 + 0.0j, 1.5 + 3.0j],
+                dtype='complex64',
+            )
+            x = paddle.to_tensor(np_x)
+            z = paddle.sign(x)
+            np_z = z.numpy()
+            z_expected = complex_sign(np_x)
+            np.testing.assert_allclose(np_z, z_expected, atol=1e-5, rtol=1e-5)
+
+    def test_static(self):
+        real_part = np.random.uniform(-10, 10, (10, 10))
+        imag_part = np.random.uniform(-10, 10, (10, 10))
+        np_input1 = (real_part + 1j * imag_part).astype("complex64")
+        np_input2 = (real_part + 1j * imag_part).astype("complex128")
+        np_out1 = complex_sign(np_input1)
+        np_out2 = complex_sign(np_input2)
+
+        def run(place):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                # The input type of sign_op must be Variable or numpy.ndarray.
+                input1 = 12
+                self.assertRaises(TypeError, paddle.tensor.math.sign, input1)
+                # The result of sign_op must correct.
+                input1 = paddle.static.data(
+                    name='input1', shape=[12, 10], dtype="complex64"
+                )
+                input2 = paddle.static.data(
+                    name='input2', shape=[12, 10], dtype="complex128"
+                )
+                out1 = paddle.sign(input1)
+                out2 = paddle.sign(input2)
+                exe = paddle.static.Executor(place)
+                res1, res2 = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={
+                        "input1": np_input1,
+                        "input2": np_input2,
+                    },
+                    fetch_list=[out1, out2],
+                )
+                np.testing.assert_allclose(res1, np_out1, atol=1e-5, rtol=1e-5)
+                np.testing.assert_allclose(res2, np_out2, atol=1e-5, rtol=1e-5)
+
+        for place in self.place:
+            run(place)
+
+
 class TestSignDoubleGradCheck(unittest.TestCase):
     def sign_wrapper(self, x):
         return paddle.sign(x[0])
@@ -191,16 +275,7 @@ class TestSignDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func(p)
 
 
@@ -228,16 +303,7 @@ class TestSignTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func(p)
 
 

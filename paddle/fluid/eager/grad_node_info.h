@@ -77,7 +77,7 @@ class Edge {
   }
 
   void SetGradNode(const std::shared_ptr<GradNodeBase>& node) {
-    VLOG(7) << "Reseting Edge's Grad Node";
+    VLOG(7) << "Resetting Edge's Grad Node";
     grad_node_ = node;
   }
 
@@ -260,6 +260,10 @@ class GradNodeBase {
   void SetGradOutMeta(const paddle::Tensor& fwd_in,
                       const AutogradMeta* fwd_in_other,
                       size_t slot_rank);
+  void SetGradOutMeta(const paddle::Tensor& fwd_in,
+                      size_t slot_rank,
+                      const phi::distributed::TensorDistAttr& fwd_in_dist_attr,
+                      const phi::DDim& fwd_in_dims);
   /**
    * Default setters for Grad in/out meta this should be used for same special
    * Node which will not create by user
@@ -340,6 +344,16 @@ class GradNodeBase {
     is_run_auto_parallel_ = is_run_auto_parallel;
   }
 
+  int64_t RegisterNodePostHook(std::shared_ptr<NodePostHookBase>&& hook);
+  bool RemoveNodePostHook(int64_t hook_id);
+  bool HasNodePostHook();
+  paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
+  ApplyNodePostHooks(
+      const paddle::small_vector<std::vector<paddle::Tensor>,
+                                 egr::kSlotSmallVectorSize>& grad_outputs,
+      const paddle::small_vector<std::vector<paddle::Tensor>,
+                                 egr::kSlotSmallVectorSize>& grad_inputs);
+
  private:
   // bwd_out_meta_ is used to record Grad output info for backward
   paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>
@@ -360,6 +374,9 @@ class GradNodeBase {
                /* hook */ std::shared_ptr<TensorHook>>>
       gradient_hooks_;
   int64_t next_hook_id_{0};
+
+  std::map<int64_t, std::shared_ptr<NodePostHookBase>> post_hooks_;
+  int64_t next_post_hook_id_{0};
 
   // We handle complex to real conversion only if any complex GradIn is involved
   bool need_complex_to_real_ = false;

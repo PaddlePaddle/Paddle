@@ -193,7 +193,7 @@ void testFeatureNodeSerializeFloat64() {
 //     ASSERT_EQ(id_set_check.find(x) != id_set_check.end(), true);
 //   }
 // }
-// void testBatchSampleNeighboor(
+// void testBatchSampleNeighbor(
 //     std::shared_ptr<paddle::distributed::GraphBrpcClient>& worker_ptr_) {
 //   std::vector<std::vector<int64_t>> vs;
 //   std::vector<std::vector<float>> vs1;
@@ -438,8 +438,8 @@ void RunBrpcPushSparse() {
   // std::vector<std::vector<float>> vs;
   // testSampleNodes(worker_ptr_);
   // sleep(5);
-  // testSingleSampleNeighboor(worker_ptr_);
-  // testBatchSampleNeighboor(worker_ptr_);
+  // testSingleSampleNeighbor(worker_ptr_);
+  // testBatchSampleNeighbor(worker_ptr_);
   // pull_status = worker_ptr_->batch_sample_neighbors(
   //     0, std::vector<int64_t>(1, 10240001024), 4, _vs, vs, true);
   // pull_status.wait();

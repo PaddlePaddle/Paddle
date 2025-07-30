@@ -13,15 +13,27 @@
 # limitations under the License.
 
 
-from paddle.tensorrt.converter_utils import convert_conv2d
+from paddle.tensorrt.converter_utils import (
+    convert_conv2d,
+    convert_conv3d,
+)
 from paddle.tensorrt.register import converter_registry
 
 
 @converter_registry.register("pd_op.depthwise_conv2d", trt_version="8.x")
-@converter_registry.register("pd_op.conv2d", trt_version="8.x")
+@converter_registry.register("pd_op.conv2d", trt_version="trt_version_ge=8.0")
+@converter_registry.register(
+    "pd_op.fused_conv2d_add_act", trt_version="trt_version_ge=8.0"
+)
 @converter_registry.register("pd_op.conv2d_transpose", trt_version="8.x")
 @converter_registry.register(
     "pd_op.depthwise_conv2d_transpose", trt_version="8.x"
 )
 def conv2d_converter(network, paddle_op, inputs):
     return convert_conv2d(network, paddle_op, inputs)
+
+
+@converter_registry.register("pd_op.conv3d_transpose", trt_version="8.x")
+@converter_registry.register("pd_op.conv3d", trt_version="8.x")
+def conv3d_converter(network, paddle_op, inputs):
+    return convert_conv3d(network, paddle_op, inputs)

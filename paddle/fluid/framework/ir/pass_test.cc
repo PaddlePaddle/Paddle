@@ -18,9 +18,7 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 class Graph;
 class Node;
 
@@ -279,9 +277,7 @@ TEST(PassTest, TestPassRegistrarDeconstructor) {
   pass_registrary->~PassRegistrar();
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(test_pass, paddle::framework::ir::TestPass)
     .RequirePassAttr("test_pass_attr")

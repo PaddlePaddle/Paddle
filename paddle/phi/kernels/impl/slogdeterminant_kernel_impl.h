@@ -127,6 +127,25 @@ void SlogDeterminantKernel(const Context& dev_ctx,
   auto input_dim = common::vectorize(x.dims());
   auto input_dim_size = input_dim.size();
 
+  // shape [*, M, M], check whether it contains 0 in '*'.
+  if (input_dim.size() > 2) {
+    bool size_0 = false;
+    std::vector<int> tmp_dim_vec(input_dim.begin(), input_dim.end() - 2);
+    for (size_t i = 0; i < tmp_dim_vec.size(); ++i) {
+      if (tmp_dim_vec[i] == 0) {
+        size_0 = true;
+        break;
+      }
+    }
+    if (size_0) {
+      tmp_dim_vec.insert(tmp_dim_vec.begin(),
+                         2);  // make the output dims as same as numpy
+      out->Resize(common::make_ddim(tmp_dim_vec));
+      dev_ctx.template Alloc<T>(out);
+      return;
+    }
+  }
+
   auto batch_count = detail::GetBatchCount(x.dims());
   VLOG(2) << "input dim:" << x.dims();
   PADDLE_ENFORCE_GE(

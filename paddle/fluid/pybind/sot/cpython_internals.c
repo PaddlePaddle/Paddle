@@ -14,9 +14,11 @@ limitations under the License. */
 
 #include "paddle/fluid/pybind/sot/cpython_internals.h"
 
-#include <frameobject.h>
-
 #if SOT_IS_SUPPORTED
+
+#if !PY_3_11_PLUS
+#include <frameobject.h>
+#endif
 
 #if PY_3_11_PLUS
 #include <internal/pycore_code.h>
@@ -682,7 +684,7 @@ static void Internal_take_ownership(PyFrameObject *f,
     } else {
       f->f_back = (PyFrameObject *)Py_NewRef(back);
     }
-#if PY_VERSION_HEX < PY_3_12_0_HEX
+#if !PY_3_12_PLUS
     frame->previous = NULL;
 #endif
   }

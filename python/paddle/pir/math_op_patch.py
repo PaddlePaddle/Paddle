@@ -16,6 +16,7 @@
 import inspect
 import textwrap
 import warnings
+from functools import reduce
 
 import numpy as np
 
@@ -270,16 +271,62 @@ def monkey_patch_value():
         """
         return len(self.shape)
 
-    def _item(self):
+    def _item(self, *args: int):
         """
         In order to be compatible with the item interface introduced by the dynamic graph, it does nothing but returns self.
         It will check that the shape must be a 1-D tensor
         """
-        if len(self.shape) > 1:
-            raise TypeError(
-                f"Required input var should be 1-D Value, but received {self.shape}"
-            )
-        return self
+
+        if self.is_dist() and not self._is_initialized():
+            return None
+
+        from paddle.jit.dy2static import Shape
+
+        # Python implementation of the input validation logic for the C++ function `tensor__getitem_from_offset`.
+        dims = Shape(self)
+        numel = reduce(lambda x, y: int(x * y), dims) if len(dims) != 0 else 1
+        offset = 0
+
+        if len(args) == 0:
+            if not isinstance(numel, paddle.pir.Value) and numel != 1:
+                raise ValueError(
+                    "only one element tensors can be converted to Python "
+                    "scalars when no input coordinates"
+                )
+            # NOTE: This is to maintain consistency with the original code.
+            return self
+        elif len(args) == 1:
+            (offset,) = args
+            if not isinstance(numel, paddle.pir.Value) and offset >= numel:
+                raise ValueError(
+                    f"index {offset} is out of bounds for size {numel}"
+                )
+        else:
+            if len(args) != len(dims):
+                raise ValueError("incorrect number of indices for Tensor")
+
+            # TODO(dev): In certain cases, the stride calculation of the tensor may be modified by as_strided.
+            # This scenario needs to be considered in the future.
+            strides = [1] * len(dims)
+            for i in range(1, len(strides)):
+                strides[-i - 1] = strides[-i] * dims[-i]
+
+            for i in range(len(args)):
+                index = args[i]
+                if not isinstance(index, int):
+                    raise TypeError(
+                        f"argument (position {i}) must be long, but got {type(index)}",
+                    )
+                if (
+                    not isinstance(dims[i], paddle.pir.Value)
+                    and index >= dims[i]
+                ):
+                    raise ValueError(
+                        f"index {index} is out of bounds for axis {i} with size {dims[i]}"
+                    )
+                offset += index * strides[i]
+
+        return self.flatten()[offset]
 
     def astype(self, dtype):
         """
@@ -834,29 +881,29 @@ def monkey_patch_value():
             .. code-block:: python
 
                 >>> import paddle
-                >>> tensorx = paddle.to_tensor([1,2,3])
-                >>> print(tensorx)
+                >>> x = paddle.to_tensor([1,2,3])
+                >>> print(x)
                 Tensor(shape=[3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
                     [1, 2, 3])
 
-                >>> tensorx = tensorx.to("cpu")
-                >>> print(tensorx.place)
+                >>> x = x.to("cpu")
+                >>> print(x.place)
                 Place(cpu)
 
-                >>> tensorx = tensorx.to("float32")
-                >>> print(tensorx.dtype)
+                >>> x = x.to("float32")
+                >>> print(x.dtype)
                 paddle.float32
 
-                >>> tensorx = tensorx.to("gpu", "int16")
-                >>> print(tensorx)
+                >>> x = x.to("gpu", "int16")
+                >>> print(x)
                 Tensor(shape=[3], dtype=int16, place=Place(gpu:0), stop_gradient=True,
                     [1, 2, 3])
-                >>> tensor2 = paddle.to_tensor([4,5,6])
-                >>> tensor2
+                >>> y = paddle.to_tensor([4,5,6])
+                >>> y
                 Tensor(shape=[3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
                     [4, 5, 6])
-                >>> tensor2 = tensor2.to(tensorx)
-                >>> print(tensor2)
+                >>> y = y.to(x)
+                >>> print(y)
                 Tensor(shape=[3], dtype=int16, place=Place(gpu:0), stop_gradient=True,
                     [4, 5, 6])
         """
@@ -1000,6 +1047,7 @@ def monkey_patch_value():
             ndarray: dtype is same as current Variable
         Examples:
             .. code-block:: python
+
                 >>> import paddle
                 >>> import paddle.base as base
                 >>> from paddle.nn import Linear
@@ -1010,6 +1058,32 @@ def monkey_patch_value():
                 ...     data_tensor = paddle.to_tensor(data)
                 ...     x = linear(data_tensor)
                 ...     print(x.numpy())
+        """
+        pass
+
+    @fake_interface_only
+    def tolist(self):
+        """
+        **Notes**:
+            **This API is ONLY available in Dygraph mode**
+        Returns a Python list that contains the elements of current :ref:`api_guide_Variable_en`
+
+        Returns:
+            list: The Python list containing the elements of current Variable.
+
+        Returns type:
+            list: Elements have the same dtype as current Variable
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> import paddle.base as base
+                >>> import numpy as np
+                >>> data = np.random.uniform(-1, 1, [2, 3]).astype('float32')
+                >>> with base.dygraph.guard():
+                ...     x = paddle.to_tensor(data)
+                ...     print(x.tolist())  # Convert tensor to Python list
         """
         pass
 
@@ -1049,6 +1123,7 @@ def monkey_patch_value():
         ('values', values),
         ("_to", _to),
         ("to", to),
+        ("tolist", tolist),
         ("numpy", numpy),
         ("register_hook", register_hook),
         # For basic operators

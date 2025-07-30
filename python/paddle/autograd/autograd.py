@@ -107,7 +107,7 @@ class Jacobian:
     def __getitem__(self, indexes):
         return self._jacobian[indexes]
 
-    def __getattr__(self, __name: str):
+    def __getattr__(self, __name: str):  # noqa: PYI063
         if __name == "shape":
             return getattr(self._jacobian, __name)
         if __name == "_evaluate_all":
@@ -255,9 +255,9 @@ class _Jacobian:
             0 if isinstance(idx, int) else slice(0, lazy_axis_size, 1)
         )
         return (
-            indexes[: self._lazy_axis]
-            + (shifted_lazy_axis_idx,)
-            + indexes[self._lazy_axis + 1 :]
+            *indexes[: self._lazy_axis],
+            shifted_lazy_axis_idx,
+            *indexes[self._lazy_axis + 1 :],
         )
 
     def __getitem__(self, indexes):

@@ -33,7 +33,7 @@ void MaskedSelectGradKernel(const Context& dev_ctx,
   // x_grad.size() == x.size()
   // x.size() == mask.size(), no broadcast, expand_mask = false, expand_x =
   // false x.size() < mask.size(), x broadcast to mask, expand_mask = false,
-  // expand_x = true x.size() > mask.size(), mask broadcast to x, epxand_mask =
+  // expand_x = true x.size() > mask.size(), mask broadcast to x, expand_mask =
   // true, expand_x = false
   DenseTensor mask_expand;
   DenseTensor x_grad_expand;
@@ -41,16 +41,16 @@ void MaskedSelectGradKernel(const Context& dev_ctx,
 
   auto expanded_size = funcs::MatrixGetBroadcastBatchPortion(
       common::vectorize(x_grad->dims()), common::vectorize(mask.dims()));
-  auto expaned_dims = common::make_ddim(expanded_size);
+  auto expanded_dims = common::make_ddim(expanded_size);
 
-  if (mask.dims() != expaned_dims) {
+  if (mask.dims() != expanded_dims) {
     ExpandKernel<bool, Context>(
         dev_ctx, mask, IntArray(expanded_size), &mask_expand);
   } else {
     mask_expand = mask;
   }
 
-  if (x_grad->dims() != expaned_dims) {
+  if (x_grad->dims() != expanded_dims) {
     x_grad_expand = Empty<T, Context>(dev_ctx, IntArray(expanded_size));
     expand_x = true;
   } else {

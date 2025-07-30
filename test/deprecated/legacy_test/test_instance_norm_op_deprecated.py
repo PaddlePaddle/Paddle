@@ -291,9 +291,7 @@ class PrimGroupNorm(paddle.nn.Layer):
 
 
 def apply_to_static(net, use_cinn):
-    build_strategy = paddle.static.BuildStrategy()
-    build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(net, build_strategy=False, full_graph=True)
+    return paddle.jit.to_static(net, backend=None, full_graph=True)
 
 
 places = [paddle.CPUPlace()]
@@ -502,7 +500,7 @@ class TestCompositeInstanceNormNorm(unittest.TestCase):
             if core._is_fwd_prim_enabled():
                 paddle.incubate.autograd.primapi.to_prim(mp.blocks)
                 fwd_ops_new = [op.type for op in blocks[0].ops]
-                # Ensure that instance_norm is splitted into small ops
+                # Ensure that instance_norm is split into small ops
                 assert 'instance_norm' not in fwd_ops_new
 
             grads = paddle.static.gradients([output], [input_, scale_, bias_])
@@ -586,7 +584,7 @@ class TestCompositeInstanceNormNorm(unittest.TestCase):
                     if core._is_fwd_prim_enabled():
                         paddle.incubate.autograd.primapi.to_prim(mp.blocks)
                         fwd_ops_new = [op.type for op in blocks[0].ops]
-                        # Ensure that instance_norm is splitted into small ops
+                        # Ensure that instance_norm is split into small ops
                         assert 'instance_norm' not in fwd_ops_new
 
                     grads = paddle.static.gradients(

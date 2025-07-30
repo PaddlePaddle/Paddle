@@ -91,7 +91,7 @@ void SerializeDenseTensor(framework::Variable* var,
                           butil::IOBuf* iobuf) {
   auto* tensor = var->GetMutable<phi::DenseTensor>();
   var_msg->set_type(::paddle::distributed::DENSE_TENSOR);
-  const phi::LoD lod = tensor->lod();
+  const phi::LegacyLoD lod = tensor->lod();
   if (!lod.empty()) {
     var_msg->set_lod_level(lod.size());
     for (auto& each : lod) {
@@ -231,7 +231,7 @@ void DeserializeDenseTensor(framework::Variable* var,
   }
   tensor->Resize(common::make_ddim(vec_dim));
 
-  phi::LoD lod;
+  phi::LegacyLoD lod;
   for (int i = 0; i < msg.lod_level(); ++i) {
     phi::Vector<size_t> v;
     for (int j = 0; j < msg.lod(i).lod_data_size(); ++j) {
@@ -321,7 +321,7 @@ std::string GetIntTypeEndpoint(const std::string& ip, const uint32_t& port) {
 
   if (nullptr == hp) {
     LOG(ERROR) << "Brpc Start failed, ip_port= " << ip_port
-               << " , Error infomation: " << hstrerror(h_errno);
+               << " , Error information: " << hstrerror(h_errno);
   }
 
   int i = 0;

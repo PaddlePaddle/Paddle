@@ -33,6 +33,7 @@ using cinn::common::bfloat16;
 using cinn::common::CINNValue;
 using cinn::common::float16;
 using cinn::common::HygonDCUArchHIP;
+using cinn::common::HygonDCUArchSYCL;
 using cinn::common::NVGPUArch;
 using cinn::common::Target;
 using cinn::common::Type;
@@ -221,7 +222,7 @@ void BindType(py::module *m) {
           py::arg("type"),
           py::arg("val"));
 
-  m->def("type_of", [](absl::string_view dtype) {
+  m->def("type_of", [](std::string_view dtype) {
     return cinn::common::Str2Type(dtype.data());
   });
 }
@@ -358,7 +359,7 @@ void BindCinnValue(py::module *m) {
     auto visitor = [&](auto x, auto y) {                                      \
       return binary_op_visitor(self, x, y, __op##_fn);                        \
     };                                                                        \
-    absl::visit(visitor, ConvertToVar(self), ConvertToVar(other));            \
+    std::visit(visitor, ConvertToVar(self), ConvertToVar(other));             \
     return self;                                                              \
   })
 

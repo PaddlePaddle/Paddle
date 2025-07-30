@@ -62,13 +62,6 @@ void SerializeCombineTensor(const Context& dev_ctx,
                             const std::vector<const phi::DenseTensor*>& x,
                             bool save_as_fp16,
                             std::ostream& ss) {
-  PADDLE_ENFORCE_GT(x.size(),
-                    0UL,
-                    common::errors::InvalidArgument(
-                        "The number of variables to be saved is %d, expect "
-                        "it to be greater than 0.",
-                        x.size()));
-
   for (size_t i = 0; i < x.size(); i++) {
     auto& tensor = *(x[i]);
     PADDLE_ENFORCE_EQ(

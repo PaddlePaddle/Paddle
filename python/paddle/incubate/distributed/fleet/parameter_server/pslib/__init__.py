@@ -423,7 +423,7 @@ class PSLib(Fleet):
 
     def save_persistables(self, executor, dirname, main_program=None, **kwargs):
         """
-        Save presistable parameters,
+        Save persistable parameters,
         when using fleet, it will save sparse and dense feature.
 
         Args:
@@ -1263,7 +1263,7 @@ class DownpourOptimizer(DistributedOptimizer):
         table_name = [name + "@GRAD" for name in table_name]
         need_remove_op_index = []
         block = loss.block.program.global_block()
-        collective_ops = ["c_sync_calc_stream", "c_allreduce_sum"]
+        collective_ops = ["c_sync_calc_stream", "c_allreduce_sum", "all_reduce"]
         for ids, op in list(enumerate(block.ops)):
             if op.type in collective_ops:
                 if op.input("X")[0] in table_name:

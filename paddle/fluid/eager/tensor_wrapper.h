@@ -43,12 +43,12 @@ class TensorWrapper {
                          bool no_need_buffer = false) {
     // set inplace_version_snapshot_ according to tensor's current inplace
     // version.
-    if (tensor.initialized() && tensor.is_dense_tensor()) {
+    if (tensor.has_allocation() && tensor.is_dense_tensor()) {
       phi::DenseTensor* dense_tensor =
           static_cast<phi::DenseTensor*>(tensor.impl().get());
       auto& inplace_version_counter = dense_tensor->InplaceVersionCounter();
       inplace_version_snapshot_ = inplace_version_counter.CurrentVersion();
-    } else if (tensor.initialized() && tensor.is_dist_tensor()) {
+    } else if (tensor.has_allocation() && tensor.is_dist_tensor()) {
       phi::DenseTensor* dense_tensor =
           static_cast<phi::distributed::DistTensor*>(tensor.impl().get())
               ->unsafe_mutable_value();
@@ -71,7 +71,7 @@ class TensorWrapper {
             static_cast<phi::DenseTensor*>(tensor.impl().get());
         // TODO(jiabin): It's not a good idea to set memory size to zero, find
         // another way and change this.
-        intermidiate_tensor_.set_impl(std::make_shared<phi::DenseTensor>(
+        intermediate_tensor_.set_impl(std::make_shared<phi::DenseTensor>(
             std::make_shared<phi::Allocation>(nullptr, 0, tensor.place()),
             dense_tensor->meta()));
       } else if (phi::distributed::DistTensor::classof(tensor.impl().get())) {
@@ -84,7 +84,7 @@ class TensorWrapper {
         *no_buffer_dist_tensor->unsafe_mutable_value() = phi::DenseTensor(
             std::make_shared<phi::Allocation>(nullptr, 0, tensor.place()),
             dist_tensor->value().meta());
-        intermidiate_tensor_.set_impl(no_buffer_dist_tensor);
+        intermediate_tensor_.set_impl(no_buffer_dist_tensor);
       } else {
         PADDLE_THROW(common::errors::Fatal(
             "Unrecognized tensor type for no_need_buffer feature"));
@@ -92,18 +92,18 @@ class TensorWrapper {
     } else {
 #ifndef PADDLE_NO_PYTHON
       if (egr::SavedTensorsHooks::GetInstance().IsEnable() &&
-          tensor.is_dense_tensor() && tensor.initialized()) {
+          tensor.has_allocation() && tensor.is_dense_tensor()) {
         phi::DenseTensor* dense_tensor =
             static_cast<phi::DenseTensor*>(tensor.impl().get());
-        intermidiate_tensor_.set_impl(std::make_shared<phi::DenseTensor>(
+        intermediate_tensor_.set_impl(std::make_shared<phi::DenseTensor>(
             std::make_shared<phi::Allocation>(nullptr, 0, tensor.place()),
             dense_tensor->meta()));
         auto pack_hook = egr::SavedTensorsHooks::GetInstance().GetPackHook();
         unpack_hook_ = egr::SavedTensorsHooks::GetInstance().GetUnPackHook();
         packed_value_ = (*pack_hook)(tensor);
       } else if (egr::SavedTensorsHooks::GetInstance().IsEnable() &&
-                 tensor.is_dist_tensor() && tensor.initialized()) {
-        intermidiate_tensor_.set_impl(
+                 tensor.has_allocation() && tensor.is_dist_tensor()) {
+        intermediate_tensor_.set_impl(
             std::make_shared<phi::distributed::DistTensor>(
                 tensor.dims(),
                 static_cast<phi::distributed::DistTensor*>(tensor.impl().get())
@@ -115,14 +115,14 @@ class TensorWrapper {
             std::make_shared<phi::Allocation>(nullptr, 0, tensor.place()),
             dense_tensor.meta());
         *(static_cast<phi::distributed::DistTensor*>(
-              intermidiate_tensor_.impl().get())
+              intermediate_tensor_.impl().get())
               ->unsafe_mutable_value()) = tmp;
         auto pack_hook = egr::SavedTensorsHooks::GetInstance().GetPackHook();
         unpack_hook_ = egr::SavedTensorsHooks::GetInstance().GetUnPackHook();
         packed_value_ = (*pack_hook)(tensor);
       } else {
 #endif
-        intermidiate_tensor_.set_impl(tensor.impl());
+        intermediate_tensor_.set_impl(tensor.impl());
 #ifndef PADDLE_NO_PYTHON
       }
 #endif
@@ -130,22 +130,22 @@ class TensorWrapper {
 
     if (VLOG_IS_ON(7)) {
       // TODO(jiabin): This may has server performance issue
-      intermidiate_tensor_.set_name(tensor.name() + "@Saved");
+      intermediate_tensor_.set_name(tensor.name() + "@Saved");
     }
 
     if (tensor_autograd_meta) {
       auto autograd_meta =
           std::make_shared<AutogradMeta>(*tensor_autograd_meta);
       autograd_meta->ResetGradNode();
-      intermidiate_tensor_.set_autograd_meta(autograd_meta);
+      intermediate_tensor_.set_autograd_meta(autograd_meta);
       weak_grad_node_ = tensor_autograd_meta->GetMutableGradNode();
     }
   }
 
   paddle::Tensor recover() {
-    VLOG(6) << "Recover tensor: " << intermidiate_tensor_.name()
+    VLOG(6) << "Recover tensor: " << intermediate_tensor_.name()
             << " for wrapper";
-    if (!intermidiate_tensor_.defined()) {
+    if (!intermediate_tensor_.defined()) {
       VLOG(6) << "Return NULL tensor Here. ";
       return paddle::Tensor();
     }
@@ -168,19 +168,19 @@ class TensorWrapper {
                                   "for egr::TensorWrapper::recover"));
       }
 
-      if (intermidiate_tensor_.is_dense_tensor()) {
-        VLOG(6) << "intermidiate_tensor_ is DenseTensor";
-        static_cast<phi::DenseTensor*>(intermidiate_tensor_.impl().get())
+      if (intermediate_tensor_.is_dense_tensor()) {
+        VLOG(6) << "intermediate_tensor_ is DenseTensor";
+        static_cast<phi::DenseTensor*>(intermediate_tensor_.impl().get())
             ->ResetHolder(src_dense_tensor->Holder());
-      } else if (intermidiate_tensor_.is_dist_tensor()) {
-        VLOG(6) << "intermidiate_tensor_ is DistTensor";
+      } else if (intermediate_tensor_.is_dist_tensor()) {
+        VLOG(6) << "intermediate_tensor_ is DistTensor";
         static_cast<phi::distributed::DistTensor*>(
-            intermidiate_tensor_.impl().get())
+            intermediate_tensor_.impl().get())
             ->unsafe_mutable_value()
             ->ResetHolder(src_dense_tensor->Holder());
       } else {
         PADDLE_THROW(
-            common::errors::Fatal("Unrecognized intermidiate_tensor_ type for "
+            common::errors::Fatal("Unrecognized intermediate_tensor_ type for "
                                   "egr::TensorWrapper::recover"));
       }
     } else {
@@ -190,7 +190,7 @@ class TensorWrapper {
     }
 #endif
 
-    paddle::Tensor recovered_tensor = intermidiate_tensor_;
+    paddle::Tensor recovered_tensor = intermediate_tensor_;
 
     std::shared_ptr<GradNodeBase> new_grad_node = weak_grad_node_.lock();
     if (new_grad_node) {
@@ -200,7 +200,7 @@ class TensorWrapper {
       VLOG(7) << "Recovered TensorWrapper with Empty GradNode";
     }
     auto* intermediate_autograd_meta =
-        EagerUtils::nullable_autograd_meta(intermidiate_tensor_);
+        EagerUtils::nullable_autograd_meta(intermediate_tensor_);
 
     if (intermediate_autograd_meta) {
       auto p_ab_autograd_meta =
@@ -214,9 +214,9 @@ class TensorWrapper {
     return recovered_tensor;
   }
 
-  paddle::Tensor get_intermidiate_tensor() { return intermidiate_tensor_; }
+  paddle::Tensor get_intermediate_tensor() { return intermediate_tensor_; }
 
-  void clear() { intermidiate_tensor_.reset(); }
+  void clear() { intermediate_tensor_.reset(); }
 
  private:
   void check_inplace_version() {
@@ -225,15 +225,15 @@ class TensorWrapper {
                  "no_need_buffer_ is true.";
       return;
     }
-    if (intermidiate_tensor_.impl()) {
+    if (intermediate_tensor_.impl()) {
       phi::DenseTensor* dense_tensor = nullptr;
-      if (phi::DenseTensor::classof(intermidiate_tensor_.impl().get())) {
+      if (phi::DenseTensor::classof(intermediate_tensor_.impl().get())) {
         dense_tensor =
-            static_cast<phi::DenseTensor*>(intermidiate_tensor_.impl().get());
+            static_cast<phi::DenseTensor*>(intermediate_tensor_.impl().get());
       } else if (phi::distributed::DistTensor::classof(
-                     intermidiate_tensor_.impl().get())) {
+                     intermediate_tensor_.impl().get())) {
         dense_tensor = static_cast<phi::distributed::DistTensor*>(
-                           intermidiate_tensor_.impl().get())
+                           intermediate_tensor_.impl().get())
                            ->unsafe_mutable_value();
       } else {
         return;
@@ -253,21 +253,21 @@ class TensorWrapper {
               "Please fix your code to void calling an inplace operator "
               "after using the Tensor which will used in gradient "
               "computation.",
-              intermidiate_tensor_.name(),
+              intermediate_tensor_.name(),
               tensor_version,
               wrapper_version_snapshot));
       VLOG(7) << " The wrapper_version_snapshot of Tensor '"
-              << intermidiate_tensor_.name() << "' is [ "
+              << intermediate_tensor_.name() << "' is [ "
               << wrapper_version_snapshot << " ]";
       VLOG(7) << " The tensor_version of Tensor '"
-              << intermidiate_tensor_.name() << "' is [ " << tensor_version
+              << intermediate_tensor_.name() << "' is [ " << tensor_version
               << " ]";
     }
   }
 
  private:
   bool no_need_buffer_ = false;
-  paddle::Tensor intermidiate_tensor_;
+  paddle::Tensor intermediate_tensor_;
   std::weak_ptr<egr::GradNodeBase> weak_grad_node_;
   uint32_t inplace_version_snapshot_ = 0;
 #ifndef PADDLE_NO_PYTHON

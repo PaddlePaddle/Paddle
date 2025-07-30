@@ -14,10 +14,16 @@ if(WITH_GLOO)
 endif()
 
 # separate init from device_context to avoid cycle dependencies
+if(WITH_CUSTOM_DEVICE AND NOT WIN32)
+  set(INIT_DEPS phi common custom_device_load)
+else()
+  set(INIT_DEPS phi common)
+endif()
+
 cc_library(
   init
   SRCS init.cc
-  DEPS phi common)
+  DEPS ${INIT_DEPS})
 
 #fluid_memory depends on device_context, here add deps individually for
 # avoiding cycle dependencies

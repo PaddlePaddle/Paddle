@@ -24,10 +24,10 @@
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/expand_grad_kernel.h"
 #include "paddle/phi/kernels/expand_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/funcs/select_impl.cu.h"
-
 namespace phi {
 
 template <typename MT, typename InT, typename OutT>
@@ -55,10 +55,16 @@ void MaskedSelectGradKernel(const Context& dev_ctx,
                             const DenseTensor& mask,
                             const DenseTensor& out_grad,
                             DenseTensor* x_grad) {
+  if (out_grad.numel() == 0 && x_grad) {
+    // x = [1, 2], mask = [False, False], out = [], x_grad = [0, 0]
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    return;
+  }
   // x_grad.size() == x.size()
   // x.size() == mask.size(), no broadcast, expand_mask = false, expand_x =
   // false x.size() < mask.size(), x broadcast to mask, expand_mask = false,
-  // expand_x = true x.size() > mask.size(), mask broadcast to x, epxand_mask =
+  // expand_x = true x.size() > mask.size(), mask broadcast to x, expand_mask =
   // true, expand_x = false
   DenseTensor mask_expand;
   DenseTensor x_grad_expand;
@@ -66,16 +72,16 @@ void MaskedSelectGradKernel(const Context& dev_ctx,
 
   auto expanded_size = funcs::MatrixGetBroadcastBatchPortion(
       common::vectorize(x_grad->dims()), common::vectorize(mask.dims()));
-  auto expaned_dims = common::make_ddim(expanded_size);
+  auto expanded_dims = common::make_ddim(expanded_size);
 
-  if (mask.dims() != expaned_dims) {
+  if (mask.dims() != expanded_dims) {
     ExpandKernel<bool, Context>(
         dev_ctx, mask, IntArray(expanded_size), &mask_expand);
   } else {
     mask_expand = mask;
   }
 
-  if (x_grad->dims() != expaned_dims) {
+  if (x_grad->dims() != expanded_dims) {
     x_grad_expand = Empty<T, Context>(dev_ctx, IntArray(expanded_size));
     expand_x = true;
   } else {

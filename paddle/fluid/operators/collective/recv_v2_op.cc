@@ -16,8 +16,7 @@ limitations under the License. */
 
 #include <string>
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class RecvOpV2 : public framework::OperatorWithKernel {
  public:
@@ -106,8 +105,7 @@ Reference: https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/p2p.h
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

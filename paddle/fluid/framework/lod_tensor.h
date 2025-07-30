@@ -34,7 +34,7 @@ namespace paddle {
 namespace framework {
 
 /*
- * LoD is short for Level of Details.
+ * LegacyLoD is short for Level of Details.
  *
  * - in a level, each element indicates relative offset of the lower level
  * - the first element should be 0 and that indicates that this sequence start
@@ -42,17 +42,17 @@ namespace framework {
  * - each sequence's begin and end(no-inclusive) is level[id, id+1]
  *
  * For example:
- *    3-level LoD stores
+ *    3-level LegacyLoD stores
  *
  *    0 2 3
  *    0 2 4 7
  *    0 2 5 7 10 12 15 20
  */
-using LoD = std::vector<phi::Vector<size_t>>;
+using LegacyLoD = std::vector<phi::Vector<size_t>>;
 
-std::string LoDToString(const LoD& lod);
+std::string LegacyLoDToString(const LegacyLoD& lod);
 
-TEST_API bool operator==(const LoD& a, const LoD& b);
+TEST_API bool operator==(const LegacyLoD& a, const LegacyLoD& b);
 
 /*
  * Check whether this lod's format is valid.
@@ -70,9 +70,9 @@ TEST_API bool operator==(const LoD& a, const LoD& b);
  * tensor_height>0.
  */
 
-TEST_API bool CheckLoD(const LoD& in, int tensor_height = -1);
+TEST_API bool CheckLegacyLoD(const LegacyLoD& in, int tensor_height = -1);
 
-TEST_API LoD ConvertToOffsetBasedLoD(const LoD& length_lod);
+TEST_API LegacyLoD ConvertToOffsetBasedLegacyLoD(const LegacyLoD& length_lod);
 
 }  // namespace framework
 }  // namespace paddle

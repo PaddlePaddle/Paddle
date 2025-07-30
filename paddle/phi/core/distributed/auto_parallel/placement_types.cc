@@ -14,8 +14,7 @@
 
 #include "paddle/phi/core/distributed/auto_parallel/placement_types.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 int64_t DistTensorMeta::num_shard() const {
   int64_t num_shard = 1;
@@ -57,5 +56,50 @@ bool DistTensorMeta::is_replicated() const {
                      [](const auto& p) { return p->is_replicated(); });
 }
 
-}  // namespace distributed
-}  // namespace phi
+bool equal_placements(const Placements& a, const Placements& b) {
+  if (a.size() != b.size()) {
+    return false;
+  }
+  for (size_t i = 0; i < a.size(); ++i) {
+    if (*a[i] != *b[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+phi::distributed::Placements cvt_dim_map_to_placements(
+    const ProcessMesh& process_mesh,
+    const std::vector<int64_t>& dim_mapping,
+    const paddle::flat_hash_map<int64_t, phi::ReduceType>& partial_status) {
+  phi::distributed::Placements placements;
+  placements.resize(process_mesh.ndim(),
+                    std::make_shared<phi::distributed::Replicate>());
+
+  for (const auto& pair : partial_status) {
+    placements[pair.first] =
+        std::make_shared<phi::distributed::Partial>(pair.second);
+  }
+
+  for (size_t i = 0; i < dim_mapping.size(); ++i) {
+    auto& mesh_id = dim_mapping[i];
+    if (mesh_id >= 0) {
+      auto& p = placements[mesh_id];
+      if (p->is_shard()) {
+        PADDLE_THROW(common::errors::PreconditionNotMet(
+            "ProcessMesh dimension can't be mapped to two  dimension of the "
+            "same tensor: {%d} and {%d}",
+            i,
+            dynamic_cast<phi::distributed::Shard&>(*p).get_dim()));
+      } else if (p->is_partial()) {
+        PADDLE_THROW(common::errors::PreconditionNotMet(
+            "ProcessMesh dimension {%d} cannot be both shard and partial!",
+            mesh_id));
+      }
+      placements[mesh_id] = std::make_shared<phi::distributed::Shard>(i);
+    }
+  }
+  return placements;
+}
+
+}  // namespace phi::distributed

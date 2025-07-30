@@ -17,7 +17,7 @@
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
-#include "paddle/phi/kernels/funcs/blas/blas.h"
+// #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace phi {
 
@@ -31,6 +31,9 @@ void ActivationImpl(const Context& dev_ctx,
   PADDLE_ENFORCE_NOT_NULL(Out,
                           errors::NotFound("Output Out should not be nullptr"));
   dev_ctx.template Alloc<U>(Out);
+  if (Out->numel() == 0) {
+    return;
+  }
   auto x = phi::EigenVector<T>::Flatten(
       GET_DATA_SAFELY(&X, "Input", "X", "Activation"));
   auto out = phi::EigenVector<U>::Flatten(
@@ -60,25 +63,6 @@ void LogitKernel(const Context& dev_ctx,
 
   funcs::LogitFunctor<T> functor;
   functor(place, eigen_in, eigen_out, eigen_p, eps);
-}
-
-template <typename T, typename Context>
-void PowKernel(const Context& dev_ctx,
-               const DenseTensor& x,
-               const Scalar& factor,
-               DenseTensor* out) {
-  PADDLE_ENFORCE_NOT_NULL(out,
-                          errors::NotFound("Output Out should not be nullptr"));
-  dev_ctx.template Alloc<T>(out);
-  auto x_flatten = phi::EigenVector<T>::Flatten(
-      GET_DATA_SAFELY(&x, "Input", "X", "Activation"));
-  auto out_flatten = phi::EigenVector<T>::Flatten(
-      GET_DATA_SAFELY(out, "Output", "Out", "Activation"));
-  auto* place = dev_ctx.eigen_device();
-  phi::funcs::PowFunctor<T> functor;
-  auto attrs = functor.GetAttrs();
-  *(attrs[0].second) = factor.to<float>();
-  functor(*place, x_flatten, out_flatten);
 }
 
 }  // namespace phi

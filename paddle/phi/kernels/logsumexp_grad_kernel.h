@@ -20,7 +20,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void LogsumexpGradKernel(const Context& ctx,
+void LogsumexpGradKernel(const Context& dev_ctx,
                          const DenseTensor& in,
                          const DenseTensor& out,
                          const DenseTensor& out_grad,

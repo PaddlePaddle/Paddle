@@ -14,7 +14,7 @@
 
 
 import paddle
-from paddle import _legacy_C_ops
+from paddle import _C_ops
 
 __all__ = []
 
@@ -101,12 +101,8 @@ def _all_gather(tensor, group=None, use_calc_stream=True):
         if group is None
         else group.nranks
     )
-    return _legacy_C_ops.c_allgather(
+    return _C_ops.all_gather(
         tensor,
-        'use_calc_stream',
-        use_calc_stream,
-        'ring_id',
         ring_id,
-        'nranks',
         nranks,
     )

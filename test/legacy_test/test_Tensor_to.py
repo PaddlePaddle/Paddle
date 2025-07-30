@@ -31,10 +31,12 @@ class TensorToTest(unittest.TestCase):
             "int32",
             "int64",
             "uint8",
-            "complex64",
-            "complex128",
             "bool",
-        ]
+        ] + (
+            []
+            if base.core.is_compiled_with_xpu()
+            else ["complex64", "complex128"]
+        )
         for dtype in valid_dtypes:
             tensorx = tensorx.to(dtype)
             typex_str = str(tensorx.dtype)
@@ -46,11 +48,14 @@ class TensorToTest(unittest.TestCase):
         if base.core.is_compiled_with_cuda():
             places.append("gpu:0")
             places.append("gpu")
+        if base.core.is_compiled_with_xpu():
+            places.append("xpu:0")
+            places.append("xpu")
 
         for place in places:
             tensorx = tensorx.to(place)
             placex_str = str(tensorx.place)
-            if place == "gpu":
+            if place == "gpu" or place == "xpu":
                 self.assertTrue(placex_str, "Place(" + place + ":0)")
             else:
                 self.assertTrue(placex_str, "Place(" + place + ")")
@@ -68,6 +73,9 @@ class TensorToTest(unittest.TestCase):
         if base.core.is_compiled_with_cuda():
             places.append("gpu:0")
             places.append("gpu")
+        if base.core.is_compiled_with_xpu():
+            places.append("xpu:0")
+            places.append("xpu")
         valid_dtypes = [
             "bfloat16",
             "float16",
@@ -78,15 +86,17 @@ class TensorToTest(unittest.TestCase):
             "int32",
             "int64",
             "uint8",
-            "complex64",
-            "complex128",
             "bool",
-        ]
+        ] + (
+            []
+            if base.core.is_compiled_with_xpu()
+            else ["complex64", "complex128"]
+        )
         for dtype in valid_dtypes:
             for place in places:
                 tensorx = tensorx.to(place, dtype)
                 placex_str = str(tensorx.place)
-                if place == "gpu":
+                if place == "gpu" or place == "xpu":
                     self.assertTrue(placex_str, "Place(" + place + ":0)")
                 else:
                     self.assertTrue(placex_str, "Place(" + place + ")")

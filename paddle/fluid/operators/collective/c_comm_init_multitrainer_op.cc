@@ -33,8 +33,7 @@ limitations under the License. */
 #include "paddle/phi/core/platform/collective_helper.h"
 #endif
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class CCommInitMultiTrainerInferShape : public framework::InferShapeBase {
  public:
@@ -98,8 +97,7 @@ Initialize collective communication context within this trainer
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

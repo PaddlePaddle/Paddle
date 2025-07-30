@@ -138,7 +138,7 @@ class PassTest(unittest.TestCase):
             outs, lods = self._run_program(executor, self.main_program)
         self.assertTrue(
             len(self.fetch_list) == len(outs),
-            f"Checking the number of fetchs failed. Expected: {len(self.fetch_list)}, Received: {len(outs)}",
+            f"Checking the number of fetches failed. Expected: {len(self.fetch_list)}, Received: {len(outs)}",
         )
 
         # Parameters may be changed in ir passes.
@@ -154,7 +154,7 @@ class PassTest(unittest.TestCase):
         outs_opt, lods_opt = self._run_program(executor, opt_program)
         self.assertTrue(
             len(self.fetch_list) == len(outs_opt),
-            f"Checking the number of fetchs failed. Expected: {len(self.fetch_list)}, Received: {len(outs_opt)}",
+            f"Checking the number of fetches failed. Expected: {len(self.fetch_list)}, Received: {len(outs_opt)}",
         )
         for i in range(len(self.fetch_list)):
             is_allclose = np.allclose(outs_opt[i], outs[i], atol=atol)
@@ -166,17 +166,9 @@ class PassTest(unittest.TestCase):
                 offset = np.argmax(diff_mat > atol)
                 self.assertTrue(
                     is_allclose,
-                    "Output (name: %s, shape: %s, dtype: %s) has diff at %s. The maximum diff is %e, first error element is %d, expected %e, but got %e"
-                    % (
-                        self.fetch_list[i].name,
-                        str(self.fetch_list[i].shape),
-                        self.fetch_list[i].dtype,
-                        str(place),
-                        max_diff,
-                        offset,
-                        a.flatten()[offset],
-                        b.flatten()[offset],
-                    ),
+                    f"Output (name: {self.fetch_list[i].name}, shape: {self.fetch_list[i].shape!s}, dtype: {self.fetch_list[i].dtype}) "
+                    f"has diff at {place!s}. The maximum diff is {max_diff:e}, first error element is {offset}, "
+                    f"expected {a.flatten()[offset].item():e}, but got {b.flatten()[offset].item():e}",
                 )
 
     def _check_fused_ops(self, program):

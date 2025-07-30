@@ -81,6 +81,11 @@ class ApiBuilder {
   void SetChunkId(int chunk_id) { builder_->set_chunk_id(chunk_id); }
   int GetChunkId() const { return builder_->chunk_id(); }
 
+  void SetCompOpName(std::string op_name) {
+    builder_->set_comp_op_name(op_name);
+  }
+  std::string GetCompOpName() const { return builder_->comp_op_name(); }
+
  private:
   ApiBuilder();
 

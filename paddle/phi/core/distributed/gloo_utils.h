@@ -149,9 +149,16 @@ void SetReduceFunc(P* opts, int reduce_type) {
           static_cast<void (*)(void*, const void*, const void*, size_t)>(
               &gloo::min<T>));
       break;
+    case ReduceType::kRedAny:
+      // NOTE(ooooo): There is no reduce_any math function for gloo, just use
+      // max to replace
+      opts->setReduceFunction(
+          static_cast<void (*)(void*, const void*, const void*, size_t)>(
+              &gloo::max<T>));
+      break;
     default:
       PADDLE_THROW(
-          errors::InvalidArgument("Unsupport reduce type: %d.", reduce_type));
+          errors::InvalidArgument("Unsupported reduce type: %d.", reduce_type));
   }
 }
 

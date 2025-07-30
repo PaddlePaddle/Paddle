@@ -26,8 +26,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/softmax_grad_kernel.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 
-namespace phi {
-namespace sparse {
+namespace phi::sparse {
 
 template <typename T, typename Context>
 void SoftmaxCsrGradKernel(const Context& dev_ctx,
@@ -203,8 +202,7 @@ void SoftmaxCooGradKernel(const Context& dev_ctx,
       }));
 }
 
-}  // namespace sparse
-}  // namespace phi
+}  // namespace phi::sparse
 
 PD_REGISTER_KERNEL(softmax_csr_grad,
                    CPU,

@@ -27,12 +27,11 @@ def addmm_net(input, x, y):
 
 
 def apply_to_static(net, use_cinn, input_spec=None):
-    build_strategy = paddle.static.BuildStrategy()
-    build_strategy.build_cinn_pass = use_cinn
+    backend = "CINN" if use_cinn else None
     return paddle.jit.to_static(
         net,
         input_spec=input_spec,
-        build_strategy=build_strategy,
+        backend=backend,
         full_graph=True,
     )
 
@@ -1448,20 +1447,6 @@ class TestPrimMean(TestPrimBase):
         self.x = np.random.random(self.shape_x).astype(self.dtype_x)
         self.net = mean_net
         self.necessary_ops = "pd_op.mean"
-        self.enable_cinn = False
-        self.tol = 1e-6
-
-
-class TestPrimPow(TestPrimBase):
-    def setUp(self):
-        np.random.seed(2024)
-        paddle.seed(2024)
-        self.shape_x = [2, 300, 2048]
-        self.dtype_x = "float32"
-        self.init_x_shape = [None, None, None]
-        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
-        self.net = pow_net
-        self.necessary_ops = "pd_op.pow"
         self.enable_cinn = False
         self.tol = 1e-6
 

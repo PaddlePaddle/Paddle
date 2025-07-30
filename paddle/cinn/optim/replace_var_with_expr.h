@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/stmt.h"
 
 namespace cinn {
 namespace optim {
@@ -54,7 +55,8 @@ namespace optim {
  *   for(j, 0, 10)
  *      B[k,j] = A[k,j]
  */
-void ReplaceVarWithExpr(Expr *source,
+template <typename SourceType>
+void ReplaceVarWithExpr(SourceType source,
                         const Var &var,
                         const Expr &expr,
                         const std::string &tensor_name = "");

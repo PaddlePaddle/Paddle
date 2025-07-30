@@ -18,8 +18,9 @@
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/phi/kernels/funcs/tensor_formatter.h"
 
-namespace paddle {
-namespace framework {
+COMMON_DECLARE_bool(check_cuda_error);
+
+namespace paddle::framework {
 AssertInstruction::AssertInstruction(size_t id,
                                      const phi::Place& place,
                                      ::pir::Operation* op,
@@ -54,6 +55,10 @@ AssertInstruction::AssertInstruction(size_t id,
 }
 
 void AssertInstruction::Run() {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("AssertInstruction begin");
+  }
+
   DeviceContext().Wait();
   const phi::DenseTensor& cond = cond_var_->Get<phi::DenseTensor>();
 
@@ -99,7 +104,10 @@ void AssertInstruction::Run() {
       "true, but received false. %s",
       value_exe_info_->GetVarName(cond_var_),
       error_msg));
+
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("AssertInstruction finish");
+  }
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

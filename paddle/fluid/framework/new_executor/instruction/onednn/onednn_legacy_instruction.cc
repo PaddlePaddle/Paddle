@@ -37,8 +37,9 @@
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/kernels/funcs/data_layout_transform.h"
 
-namespace paddle {
-namespace framework {
+COMMON_DECLARE_bool(check_cuda_error);
+
+namespace paddle::framework {
 
 static paddle::framework::Attribute ConvertPirAttribute2FrameworkAttribute(
     pir::Attribute attr,
@@ -259,6 +260,11 @@ OneDNNLegacyKernelInstruction::~OneDNNLegacyKernelInstruction() {
 }
 
 void OneDNNLegacyKernelInstruction::Run() {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("OneDNNLegacyKernelInstruction " + legacy_op_name_ +
+                   " begin");
+  }
+
   // Step1. TransLayout
   auto inputs = kernel_context_->InNameList();
   for (auto& input_name : inputs) {
@@ -312,6 +318,10 @@ void OneDNNLegacyKernelInstruction::Run() {
   // Step3. Run kernel
   VLOG(6) << "Run op " << legacy_op_name_ << " kernel.";
   (*(phi_kernel_))((kernel_context_));
+
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("OneDNNLegacyKernelInstruction " + legacy_op_name_ +
+                   " finish");
+  }
 }
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

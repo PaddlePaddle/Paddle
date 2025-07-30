@@ -643,7 +643,7 @@ class BoxWrapper {
                         pred_v.size(),
                         common::errors::PreconditionNotMet(
                             "cmatch_rank's size [%lu] should be equal to pred "
-                            "list's size [%lu], but ther are not equal",
+                            "list's size [%lu], but they are not equal",
                             cmatch_rank_v.size(),
                             pred_v.size()));
     }
@@ -1154,7 +1154,7 @@ class BoxHelper {
   bool get_random_replace_done_ = false;
 };
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace framework
+}  // namespace paddle
 
 #include "paddle/fluid/framework/fleet/box_wrapper_impl.h"

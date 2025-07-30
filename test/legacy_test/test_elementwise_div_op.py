@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import unittest
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from utils import dygraph_guard
 
 import paddle
 import paddle.static
@@ -188,6 +190,30 @@ class TestElementwiseDivOp_ZeroDim3(ElementwiseDivOp):
         return -1 * grad_out * out / y
 
 
+class TestElementwiseDivOp_ZeroSize1(ElementwiseDivOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [3]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [0, 3]).astype(self.dtype)
+        self.out = np.divide(self.x, self.y)
+
+    def test_check_gradient(self):
+        pass
+
+
+class TestElementwiseDivOp_ZeroSize2(TestElementwiseDivOp_ZeroSize1):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [1, 3, 4]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [0, 3, 4]).astype(self.dtype)
+        self.out = np.divide(self.x, self.y)
+
+
+class TestElementwiseDivOp_ZeroSize3(TestElementwiseDivOp_ZeroSize1):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [1, 0, 2]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [3, 0, 1]).astype(self.dtype)
+        self.out = np.divide(self.x, self.y)
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
@@ -195,7 +221,7 @@ class TestElementwiseDivOp_ZeroDim3(ElementwiseDivOp):
 )
 class TestElementwiseDivOpBF16(ElementwiseDivOp):
     def init_args(self):
-        # In due to output data type inconsistence of bfloat16 paddle op, we disable the dygraph check.
+        # In due to output data type inconsistency of bfloat16 paddle op, we disable the dygraph check.
         self.check_dygraph = False
         self.place = core.CUDAPlace(0)
 
@@ -695,6 +721,124 @@ class TestElementwiseDivopInt(unittest.TestCase):
                 np.testing.assert_allclose(actual_res[0], expect_res)
                 np.testing.assert_allclose(actual_res[1], expect_a_grad)
                 np.testing.assert_allclose(actual_res[2], expect_b_grad)
+
+
+class TestDivApiZeroSize(unittest.TestCase):
+    def init_data(self):
+        self.x_numpy = np.random.rand(1, 3, 4).astype('float32')
+        self.y_numpy = np.random.rand(0, 3, 4).astype('float32')
+
+    def _executed_api(self, x, y, name=None):
+        return paddle.divide(x, y, name)
+
+    def test_declarative(self):
+        self.init_data()
+        with base.program_guard(base.Program()):
+            x = paddle.static.data(
+                name="x", shape=self.x_numpy.shape, dtype=self.x_numpy.dtype
+            )
+            y = paddle.static.data(
+                name="y", shape=self.y_numpy.shape, dtype=self.y_numpy.dtype
+            )
+            z = self._executed_api(x, y)
+
+            place = base.CPUPlace()
+            exe = base.Executor(place)
+            z_value = exe.run(
+                feed={"x": self.x_numpy, "y": self.y_numpy}, fetch_list=[z]
+            )
+            np_z = np.divide(self.x_numpy, self.y_numpy)
+            np.testing.assert_allclose(z_value[0], np_z, rtol=1e-05, atol=1e-05)
+
+    def test_dygraph(self):
+        self.init_data()
+        places = (
+            [paddle.CPUPlace(), paddle.CUDAPlace(0)]
+            if core.is_compiled_with_cuda()
+            else [paddle.CPUPlace()]
+        )
+        for place in places:
+            with base.dygraph.guard(place):
+                x = paddle.to_tensor(self.x_numpy)
+                y = paddle.to_tensor(self.y_numpy)
+                z = self._executed_api(x, y)
+                np_z = np.divide(self.x_numpy, self.y_numpy)
+                np.testing.assert_allclose(z, np_z, rtol=1e-05, atol=1e-05)
+
+
+class TestDivApiZeroSize2(TestDivApiZeroSize):
+    def init_data(self):
+        self.x_numpy = np.random.rand(3).astype('float32')
+        self.y_numpy = np.random.rand(0, 3).astype('float32')
+
+
+class TestDivApiZeroSize3(TestDivApiZeroSize):
+    def init_data(self):
+        self.x_numpy = np.random.rand(2, 0).astype('float32')
+        self.y_numpy = np.random.rand(1, 0).astype('float32')
+
+
+class TestDivApiZeroSize4(TestDivApiZeroSize):
+    def init_data(self):
+        self.x_numpy = np.random.rand(1, 0, 2).astype('float32')
+        self.y_numpy = np.random.rand(3, 0, 1).astype('float32')
+
+
+class TestDivComplexDtype(unittest.TestCase):
+    def test(self):
+        with dygraph_guard():
+            places = ['cpu']
+            if core.is_compiled_with_cuda():
+                places.append('gpu')
+            shapes = [[], [1], [1, 1]]
+            values = [
+                -paddle.inf,
+                paddle.inf,
+                paddle.nan,
+                -np.zeros([]),
+                +np.zeros([]),
+                paddle.nan,
+                -paddle.nan,
+                1e-23,
+                -1e-23,
+            ]
+            dtypes = ["float32", "float64", "complex64", "complex128"]
+
+            for place in places:
+                with base.device_guard(place):
+                    for (
+                        shape_x,
+                        shape_y,
+                        x,
+                        y,
+                        dtype_x,
+                        dtype_y,
+                    ) in itertools.product(
+                        shapes, shapes, values, values, dtypes, dtypes
+                    ):
+                        pd_x = paddle.to_tensor(x, dtype=dtype_x).reshape(
+                            shape_x
+                        )
+                        pd_y = paddle.to_tensor(y, dtype=dtype_y).reshape(
+                            shape_y
+                        )
+                        pd_z = paddle.divide(pd_x, pd_y)
+
+                        np_x = np.asarray(x, dtype=dtype_x).reshape(shape_x)
+                        np_y = np.asarray(y, dtype=dtype_y).reshape(shape_y)
+                        np_z = np.divide(np_x, np_y)
+
+                        err_msg = (
+                            f"\n❌ Mismatch detected!\n"
+                            f"Place: {place}\n"
+                            f"x={x}, y={y}, dtype_x={dtype_x}, dtype_y={dtype_y}\n"
+                            f"Shape_x: {shape_x}, Shape_y: {shape_y}\n"
+                            f"np_x={np_x.item()}, np_y={np_y.item()}, np_z={np_z.item()}\n"
+                            f"pd_x={pd_x.item()}, pd_y={pd_y.item()}, pd_z={pd_z.item()}"
+                        )
+                        np.testing.assert_allclose(
+                            pd_z.item(), np_z, 0.0, 0.0, err_msg=err_msg
+                        )
 
 
 if __name__ == '__main__':

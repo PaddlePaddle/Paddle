@@ -347,7 +347,7 @@ int CtrDoubleAccessor::ParseFromString(const std::string& str, float* value) {
       str_len,
       6UL,
       common::errors::InvalidArgument(
-          "Invalid string length. Expect more than 6. But recieved %d.",
+          "Invalid string length. Expect more than 6. But received %d.",
           str_len));
   int show_index = CtrDoubleFeatureValue::ShowIndex();
   int click_index = CtrDoubleFeatureValue::ClickIndex();

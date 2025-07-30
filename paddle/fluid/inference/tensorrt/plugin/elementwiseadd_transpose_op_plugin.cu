@@ -62,7 +62,7 @@ bool ElementwiseAddTransposePluginDynamic::supportsFormatCombination(
   PADDLE_ENFORCE_NOT_NULL(
       in_out,
       common::errors::InvalidArgument("The input of elementwiseadd_transpose "
-                                      "plugin shoule not be nullptr."));
+                                      "plugin should not be nullptr."));
 
   PADDLE_ENFORCE_LT(
       pos,

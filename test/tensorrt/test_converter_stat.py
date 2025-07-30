@@ -24,12 +24,13 @@ class TestMean0TRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = paddle.mean
         self.api_args = {
-            "x": np.random.randn(2, 3).astype(np.float32),
+            "x": np.random.randn(2, 3).astype("float32"),
             "axis": [1],
             "keepdim": False,
         }
         self.program_config = {"feed_list": ["x"]}
         self.min_shape = {"x": [1, 3]}
+        self.opt_shape = {"x": [2, 3]}
         self.max_shape = {"x": [5, 3]}
 
     def test_trt_result(self):
@@ -40,12 +41,13 @@ class TestMean1TRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = paddle.mean
         self.api_args = {
-            "x": np.random.randn(2, 3, 2).astype(np.float32),
+            "x": np.random.randn(2, 3, 2).astype("float32"),
             "axis": [1, 1],
             "keepdim": True,
         }
         self.program_config = {"feed_list": ["x"]}
         self.min_shape = {"x": [1, 3, 2]}
+        self.opt_shape = {"x": [2, 3, 2]}
         self.max_shape = {"x": [5, 3, 2]}
 
     def test_trt_result(self):

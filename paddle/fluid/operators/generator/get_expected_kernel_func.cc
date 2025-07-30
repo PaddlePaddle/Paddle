@@ -63,7 +63,7 @@ static bool ReduceOpHasOptimizedOneDNNKernel(
 // only poolop
 bool CanMKLDNNSupportPool(const framework::ExecutionContext& ctx) {
   if (ctx.Attr<bool>("adaptive") == false) return true;
-  // oneDNN is supporting only unchangable in size pool window
+  // oneDNN is supporting only unchangeable in size pool window
   auto src_tz = common::vectorize(ctx.Input<phi::DenseTensor>("X")->dims());
   if (!ctx.HasAttr("ksize")) {
     return false;
@@ -275,7 +275,7 @@ phi::KernelKey GetStridedSliceExpectedKernelType(
             true,
             common::errors::InvalidArgument(
                 "Place of context is %s. Place of input tensor is %s. They "
-                "are should be same, but reveived different place.",
+                "are should be same, but received different place.",
                 string::to_string(ctx.device_context().GetPlace()),
                 string::to_string(tensor.place())));
       }
@@ -324,7 +324,7 @@ phi::KernelKey GetPad3dExpectedKernelType(
   auto input_data_type = op_ptr->IndicateVarDataType(ctx, "X");
 #ifdef PADDLE_WITH_DNNL
   // only constant mode and non-blocked layouts are supported for oneDNN
-  if (op_ptr->CanMKLDNNBeUsed(ctx, input_data_type) &&
+  if (op_ptr->CanONEDNNBeUsed(ctx, input_data_type) &&
       ctx.Attr<std::string>("mode") == "constant" &&
       ctx.Input<phi::DenseTensor>("X")->mem_desc().get_inner_nblks() == 0) {
     return phi::KernelKey(phi::Backend::ONEDNN,

@@ -20,6 +20,8 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
+#define INT_MAX_VALUE 2147483647
+
 COMMON_DECLARE_bool(enable_cublas_tensor_op_math);
 COMMON_DECLARE_bool(gemm_use_half_precision_compute_type);
 
@@ -62,7 +64,7 @@ struct CUBlas<float> {
         phi::dynload::rocblas_sgemm_strided_batched(args...));
   }
 
-  // HIP not supportted, refer to the doc here:
+  // HIP not supported, refer to the doc here:
   // https://github.com/ROCm-Developer-Tools/HIP/blob/roc-3.5.x/docs/markdown/CUBLAS_API_supported_by_HIP.md
   template <typename... ARGS>
   static void GEMM_EX(ARGS... args) {
@@ -95,8 +97,12 @@ struct CUBlas<float> {
 
   template <typename... ARGS>
   static void TRSM_BATCH(ARGS... args) {
+#if HIP_VERSION >= 30000000
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_strsm_batched(args...));
+#else
     PADDLE_THROW(common::errors::Unimplemented(
         "cublasStrsmBatched is not supported on HIP platform."));
+#endif
   }
 };
 
@@ -164,8 +170,12 @@ struct CUBlas<double> {
 
   template <typename... ARGS>
   static void TRSM_BATCH(ARGS... args) {
+#if HIP_VERSION >= 30000000
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_dtrsm_batched(args...));
+#else
     PADDLE_THROW(common::errors::Unimplemented(
         "cublasDtrsmBatched is not supported on HIP platform."));
+#endif
   }
 };
 
@@ -633,39 +643,91 @@ template <>
 template <typename T>
 void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                  CBLAS_TRANSPOSE transB,
-                                 int M,
-                                 int N,
-                                 int K,
+                                 int64_t M,
+                                 int64_t N,
+                                 int64_t K,
                                  T alpha,
                                  const T *A,
                                  const T *B,
                                  T beta,
                                  T *C) const {
+  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Hip GEMM not supported for large tensor size"));
+  }
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
-  int lda = (transA == CblasNoTrans) ? K : M;
-  int ldb = (transB == CblasNoTrans) ? N : K;
+  int64_t lda = (transA == CblasNoTrans) ? K : M;
+  int64_t ldb = (transB == CblasNoTrans) ? N : K;
   rocblas_operation cuTransA = (transA == CblasNoTrans)
                                    ? rocblas_operation_none
                                    : rocblas_operation_transpose;
   rocblas_operation cuTransB = (transB == CblasNoTrans)
                                    ? rocblas_operation_none
                                    : rocblas_operation_transpose;
-  context_.CublasCall([&](rocblas_handle handle) {
+  dev_ctx_.CublasCall([&](rocblas_handle handle) {
     CUBlas<T>::GEMM(handle,
                     cuTransB,
                     cuTransA,
-                    N,
-                    M,
-                    K,
+                    static_cast<int>(N),
+                    static_cast<int>(M),
+                    static_cast<int>(K),
                     &alpha,
                     B,
-                    ldb,
+                    static_cast<int>(ldb),
                     A,
-                    lda,
+                    static_cast<int>(lda),
                     &beta,
                     C,
-                    N);
+                    static_cast<int>(N));
+  });
+}
+
+template <>
+template <typename T, typename U>
+void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
+                                 CBLAS_TRANSPOSE transB,
+                                 int64_t M,
+                                 int64_t N,
+                                 int64_t K,
+                                 U alpha,
+                                 const T *A,
+                                 const T *B,
+                                 U beta,
+                                 T *C) const {
+  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Hip GEMM not supported for large tensor size"));
+  }
+  // Note that cublas follows fortran order, so the order is different from
+  // the cblas convention.
+  int64_t lda = (transA == CblasNoTrans) ? K : M;
+  int64_t ldb = (transB == CblasNoTrans) ? N : K;
+  rocblas_operation cuTransA = (transA == CblasNoTrans)
+                                   ? rocblas_operation_none
+                                   : rocblas_operation_transpose;
+  rocblas_operation cuTransB = (transB == CblasNoTrans)
+                                   ? rocblas_operation_none
+                                   : rocblas_operation_transpose;
+
+  T t_alpha = static_cast<T>(alpha);
+  T t_beta = static_cast<T>(beta);
+
+  dev_ctx_.CublasCall([&](rocblas_handle handle) {
+    CUBlas<T>::GEMM(handle,
+                    cuTransB,
+                    cuTransA,
+                    static_cast<int>(N),
+                    static_cast<int>(M),
+                    static_cast<int>(K),
+                    &t_alpha,
+                    B,
+                    static_cast<int>(ldb),
+                    A,
+                    static_cast<int>(lda),
+                    &t_beta,
+                    C,
+                    static_cast<int>(N));
   });
 }
 
@@ -673,18 +735,23 @@ template <>
 template <>
 inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                         CBLAS_TRANSPOSE transB,
-                                        int M,
-                                        int N,
-                                        int K,
+                                        int64_t M,
+                                        int64_t N,
+                                        int64_t K,
                                         phi::dtype::float16 alpha,
                                         const phi::dtype::float16 *A,
                                         const phi::dtype::float16 *B,
                                         phi::dtype::float16 beta,
                                         phi::dtype::float16 *C) const {
+  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Hip GEMM not supported for large tensor size"));
+  }
+
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
-  int lda = (transA == CblasNoTrans) ? K : M;
-  int ldb = (transB == CblasNoTrans) ? N : K;
+  int64_t lda = (transA == CblasNoTrans) ? K : M;
+  int64_t ldb = (transB == CblasNoTrans) ? N : K;
   rocblas_operation cuTransA = (transA == CblasNoTrans)
                                    ? rocblas_operation_none
                                    : rocblas_operation_transpose;
@@ -694,12 +761,12 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
 
   // TODO(kexinzhao): add processing code for compute capability < 53 case
   PADDLE_ENFORCE_GE(
-      context_.GetComputeCapability(),
+      dev_ctx_.GetComputeCapability(),
       53,
       common::errors::InvalidArgument(
           "cublas fp16 gemm requires GPU compute capability >= 53,"
           "but received %d",
-          context_.GetComputeCapability()));
+          dev_ctx_.GetComputeCapability()));
 
   float h_alpha = static_cast<float>(alpha);
   float h_beta = static_cast<float>(beta);
@@ -711,24 +778,24 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   VLOG(4) << "gemm_use_half_precision_compute_type: "
           << FLAGS_gemm_use_half_precision_compute_type;
 
-  auto &cuda_ctx = const_cast<phi::GPUContext &>(context_);
+  auto &cuda_ctx = const_cast<phi::GPUContext &>(dev_ctx_);
   CUBlas<phi::dtype::float16>::GEMM_EX(&cuda_ctx,
                                        cuTransB,
                                        cuTransA,
-                                       N,
-                                       M,
-                                       K,
+                                       static_cast<int>(N),
+                                       static_cast<int>(M),
+                                       static_cast<int>(K),
                                        &h_alpha,
                                        B,
                                        rocblas_datatype_f16_r,
-                                       ldb,
+                                       static_cast<int>(ldb),
                                        A,
                                        rocblas_datatype_f16_r,
-                                       lda,
+                                       static_cast<int>(lda),
                                        &h_beta,
                                        C,
                                        rocblas_datatype_f16_r,
-                                       N,
+                                       static_cast<int>(N),
                                        compute_type);
 }
 
@@ -736,18 +803,90 @@ template <>
 template <>
 inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                         CBLAS_TRANSPOSE transB,
-                                        int M,
-                                        int N,
-                                        int K,
+                                        int64_t M,
+                                        int64_t N,
+                                        int64_t K,
+                                        float alpha,
+                                        const phi::dtype::float16 *A,
+                                        const phi::dtype::float16 *B,
+                                        float beta,
+                                        phi::dtype::float16 *C) const {
+  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Hip GEMM not supported for large tensor size"));
+  }
+
+  // Note that cublas follows fortran order, so the order is different from
+  // the cblas convention.
+  int64_t lda = (transA == CblasNoTrans) ? K : M;
+  int64_t ldb = (transB == CblasNoTrans) ? N : K;
+  rocblas_operation cuTransA = (transA == CblasNoTrans)
+                                   ? rocblas_operation_none
+                                   : rocblas_operation_transpose;
+  rocblas_operation cuTransB = (transB == CblasNoTrans)
+                                   ? rocblas_operation_none
+                                   : rocblas_operation_transpose;
+
+  // TODO(kexinzhao): add processing code for compute capability < 53 case
+  PADDLE_ENFORCE_GE(
+      dev_ctx_.GetComputeCapability(),
+      53,
+      common::errors::InvalidArgument(
+          "cublas fp16 gemm requires GPU compute capability >= 53,"
+          "but received %d",
+          dev_ctx_.GetComputeCapability()));
+
+  float h_alpha = alpha;
+  float h_beta = beta;
+
+  rocblas_datatype compute_type = rocblas_datatype_f32_r;
+  if (FLAGS_gemm_use_half_precision_compute_type == true) {
+    compute_type = rocblas_datatype_f16_r;
+  }
+  VLOG(4) << "gemm_use_half_precision_compute_type: "
+          << FLAGS_gemm_use_half_precision_compute_type;
+
+  auto &cuda_ctx = const_cast<phi::GPUContext &>(dev_ctx_);
+  CUBlas<phi::dtype::float16>::GEMM_EX(&cuda_ctx,
+                                       cuTransB,
+                                       cuTransA,
+                                       static_cast<int>(N),
+                                       static_cast<int>(M),
+                                       static_cast<int>(K),
+                                       &h_alpha,
+                                       B,
+                                       rocblas_datatype_f16_r,
+                                       static_cast<int>(ldb),
+                                       A,
+                                       rocblas_datatype_f16_r,
+                                       static_cast<int>(lda),
+                                       &h_beta,
+                                       C,
+                                       rocblas_datatype_f16_r,
+                                       static_cast<int>(N),
+                                       compute_type);
+}
+
+template <>
+template <>
+inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
+                                        CBLAS_TRANSPOSE transB,
+                                        int64_t M,
+                                        int64_t N,
+                                        int64_t K,
                                         phi::dtype::bfloat16 alpha,
                                         const phi::dtype::bfloat16 *A,
                                         const phi::dtype::bfloat16 *B,
                                         phi::dtype::bfloat16 beta,
                                         phi::dtype::bfloat16 *C) const {
+  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Hip GEMM not supported for large tensor size"));
+  }
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
-  int lda = (transA == CblasNoTrans) ? K : M;
-  int ldb = (transB == CblasNoTrans) ? N : K;
+  int64_t lda = (transA == CblasNoTrans) ? K : M;
+  int64_t ldb = (transB == CblasNoTrans) ? N : K;
   rocblas_operation cuTransA = (transA == CblasNoTrans)
                                    ? rocblas_operation_none
                                    : rocblas_operation_transpose;
@@ -756,39 +895,39 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                    : rocblas_operation_transpose;
   // TODO(zhiqiu): 80 has the same meaning for rocm and cuda?
   PADDLE_ENFORCE_GE(
-      context_.GetComputeCapability(),
+      dev_ctx_.GetComputeCapability(),
       53,
       common::errors::InvalidArgument(
           "rocblas bf16 gemm requires GPU compute capability >= 53,"
           "but received %d",
-          context_.GetComputeCapability()));
+          dev_ctx_.GetComputeCapability()));
 
   float h_alpha = static_cast<float>(alpha);
   float h_beta = static_cast<float>(beta);
   rocblas_gemm_algo algo = rocblas_gemm_algo_standard;
 
-  context_.TensorCoreCublasCallIfAvailable([&](rocblas_handle handle) {
+  dev_ctx_.TensorCoreCublasCallIfAvailable([&](rocblas_handle handle) {
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::rocblas_gemm_ex(handle,
                                       cuTransB,
                                       cuTransA,
-                                      N,
-                                      M,
-                                      K,
+                                      static_cast<int>(N),
+                                      static_cast<int>(M),
+                                      static_cast<int>(K),
                                       &h_alpha,
                                       B,
                                       rocblas_datatype_bf16_r,
-                                      ldb,
+                                      static_cast<int>(ldb),
                                       A,
                                       rocblas_datatype_bf16_r,
-                                      lda,
+                                      static_cast<int>(lda),
                                       &h_beta,
                                       C,
                                       rocblas_datatype_bf16_r,
-                                      N,
+                                      static_cast<int>(N),
                                       C,
                                       rocblas_datatype_bf16_r,
-                                      N,
+                                      static_cast<int>(N),
                                       rocblas_datatype_f32_r,
                                       algo,
                                       0,
@@ -800,18 +939,90 @@ template <>
 template <>
 inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                         CBLAS_TRANSPOSE transB,
-                                        int M,
-                                        int N,
-                                        int K,
+                                        int64_t M,
+                                        int64_t N,
+                                        int64_t K,
+                                        float alpha,
+                                        const phi::dtype::bfloat16 *A,
+                                        const phi::dtype::bfloat16 *B,
+                                        float beta,
+                                        phi::dtype::bfloat16 *C) const {
+  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Hip GEMM not supported for large tensor size"));
+  }
+  // Note that cublas follows fortran order, so the order is different from
+  // the cblas convention.
+  int64_t lda = (transA == CblasNoTrans) ? K : M;
+  int64_t ldb = (transB == CblasNoTrans) ? N : K;
+  rocblas_operation cuTransA = (transA == CblasNoTrans)
+                                   ? rocblas_operation_none
+                                   : rocblas_operation_transpose;
+  rocblas_operation cuTransB = (transB == CblasNoTrans)
+                                   ? rocblas_operation_none
+                                   : rocblas_operation_transpose;
+  // TODO(zhiqiu): 80 has the same meaning for rocm and cuda?
+  PADDLE_ENFORCE_GE(
+      dev_ctx_.GetComputeCapability(),
+      53,
+      common::errors::InvalidArgument(
+          "rocblas bf16 gemm requires GPU compute capability >= 53,"
+          "but received %d",
+          dev_ctx_.GetComputeCapability()));
+
+  float h_alpha = alpha;
+  float h_beta = beta;
+  rocblas_gemm_algo algo = rocblas_gemm_algo_standard;
+
+  dev_ctx_.TensorCoreCublasCallIfAvailable([&](rocblas_handle handle) {
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::rocblas_gemm_ex(handle,
+                                      cuTransB,
+                                      cuTransA,
+                                      static_cast<int>(N),
+                                      static_cast<int>(M),
+                                      static_cast<int>(K),
+                                      &h_alpha,
+                                      B,
+                                      rocblas_datatype_bf16_r,
+                                      static_cast<int>(ldb),
+                                      A,
+                                      rocblas_datatype_bf16_r,
+                                      static_cast<int>(lda),
+                                      &h_beta,
+                                      C,
+                                      rocblas_datatype_bf16_r,
+                                      static_cast<int>(N),
+                                      C,
+                                      rocblas_datatype_bf16_r,
+                                      static_cast<int>(N),
+                                      rocblas_datatype_f32_r,
+                                      algo,
+                                      0,
+                                      0));
+  });
+}
+
+template <>
+template <>
+inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
+                                        CBLAS_TRANSPOSE transB,
+                                        int64_t M,
+                                        int64_t N,
+                                        int64_t K,
                                         phi::dtype::complex<float> alpha,
                                         const phi::dtype::complex<float> *A,
                                         const phi::dtype::complex<float> *B,
                                         phi::dtype::complex<float> beta,
                                         phi::dtype::complex<float> *C) const {
+  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Hip GEMM not supported for large tensor size"));
+  }
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
-  int lda = (transA == CblasNoTrans) ? K : M;
-  int ldb = (transB == CblasNoTrans) ? N : K;
+  int64_t lda = (transA == CblasNoTrans) ? K : M;
+  int64_t ldb = (transB == CblasNoTrans) ? N : K;
   rocblas_operation cuTransA = (transA == CblasNoTrans)
                                    ? rocblas_operation_none
                                    : rocblas_operation_transpose;
@@ -821,35 +1032,35 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
 
   // TODO(kexinzhao): add processing code for compute capability < 53 case
   PADDLE_ENFORCE_GE(
-      context_.GetComputeCapability(),
+      dev_ctx_.GetComputeCapability(),
       53,
       common::errors::InvalidArgument(
           "cublas complex64 gemm requires GPU compute capability >= 53,"
           "but received %d",
-          context_.GetComputeCapability()));
+          dev_ctx_.GetComputeCapability()));
 
   thrust::complex<float> c_alpha =
       thrust::complex<float>(alpha.real, alpha.imag);
   thrust::complex<float> c_beta = thrust::complex<float>(beta.real, beta.imag);
 
-  auto &cuda_ctx = const_cast<phi::GPUContext &>(context_);
+  auto &cuda_ctx = const_cast<phi::GPUContext &>(dev_ctx_);
   CUBlas<phi::dtype::complex<float>>::GEMM_EX(&cuda_ctx,
                                               cuTransB,
                                               cuTransA,
-                                              N,
-                                              M,
-                                              K,
+                                              static_cast<int>(N),
+                                              static_cast<int>(M),
+                                              static_cast<int>(K),
                                               &c_alpha,
                                               B,
                                               rocblas_datatype_f32_c,
-                                              ldb,
+                                              static_cast<int>(ldb),
                                               A,
                                               rocblas_datatype_f32_c,
-                                              lda,
+                                              static_cast<int>(lda),
                                               &c_beta,
                                               C,
                                               rocblas_datatype_f32_c,
-                                              N,
+                                              static_cast<int>(N),
                                               rocblas_datatype_f32_c);
 }
 
@@ -857,18 +1068,22 @@ template <>
 template <>
 inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                         CBLAS_TRANSPOSE transB,
-                                        int M,
-                                        int N,
-                                        int K,
+                                        int64_t M,
+                                        int64_t N,
+                                        int64_t K,
                                         phi::dtype::complex<double> alpha,
                                         const phi::dtype::complex<double> *A,
                                         const phi::dtype::complex<double> *B,
                                         phi::dtype::complex<double> beta,
                                         phi::dtype::complex<double> *C) const {
+  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Hip GEMM not supported for large tensor size"));
+  }
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
-  int lda = (transA == CblasNoTrans) ? K : M;
-  int ldb = (transB == CblasNoTrans) ? N : K;
+  int64_t lda = (transA == CblasNoTrans) ? K : M;
+  int64_t ldb = (transB == CblasNoTrans) ? N : K;
   rocblas_operation cuTransA = (transA == CblasNoTrans)
                                    ? rocblas_operation_none
                                    : rocblas_operation_transpose;
@@ -878,32 +1093,32 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
 
   // TODO(kexinzhao): add processing code for compute capability < 53 case
   PADDLE_ENFORCE_GE(
-      context_.GetComputeCapability(),
+      dev_ctx_.GetComputeCapability(),
       53,
       common::errors::InvalidArgument(
           "cublas complex128 gemm requires GPU compute capability >= 53,"
           "but received %d",
-          context_.GetComputeCapability()));
+          dev_ctx_.GetComputeCapability()));
 
   thrust::complex<double> c_alpha =
       thrust::complex<double>(alpha.real, alpha.imag);
   thrust::complex<double> c_beta =
       thrust::complex<double>(beta.real, beta.imag);
 
-  auto &cuda_ctx = const_cast<phi::GPUContext &>(context_);
+  auto &cuda_ctx = const_cast<phi::GPUContext &>(dev_ctx_);
   CUBlas<phi::dtype::complex<double>>::GEMM_EX(&cuda_ctx,
                                                cuTransB,
                                                cuTransA,
-                                               N,
-                                               M,
-                                               K,
+                                               static_cast<int>(N),
+                                               static_cast<int>(M),
+                                               static_cast<int>(K),
                                                &c_alpha,
                                                B,
                                                rocblas_datatype_f64_c,
-                                               ldb,
+                                               static_cast<int>(ldb),
                                                A,
                                                rocblas_datatype_f64_c,
-                                               lda,
+                                               static_cast<int>(lda),
                                                &c_beta,
                                                C,
                                                rocblas_datatype_f64_c,
@@ -932,7 +1147,7 @@ void Blas<phi::GPUContext>::GEMM(bool transA,
       transA ? rocblas_operation_transpose : rocblas_operation_none;
   rocblas_operation cuTransB =
       transB ? rocblas_operation_transpose : rocblas_operation_none;
-  context_.CublasCall([&](rocblas_handle handle) {
+  dev_ctx_.CublasCall([&](rocblas_handle handle) {
     CUBlas<T>::GEMM(handle,
                     cuTransB,
                     cuTransA,
@@ -972,7 +1187,7 @@ inline void Blas<phi::GPUContext>::GEMM(bool transA,
   rocblas_operation cuTransB =
       transB ? rocblas_operation_transpose : rocblas_operation_none;
 
-  context_.CublasCall([&](rocblas_handle handle) {
+  dev_ctx_.CublasCall([&](rocblas_handle handle) {
     CUBlas<phi::dtype::float16>::GEMM(handle,
                                       cuTransB,
                                       cuTransA,
@@ -1012,18 +1227,18 @@ inline void Blas<phi::GPUContext>::GEMM(bool transA,
   rocblas_operation cuTransB =
       transB ? rocblas_operation_none : rocblas_operation_transpose;
   PADDLE_ENFORCE_GE(
-      context_.GetComputeCapability(),
+      dev_ctx_.GetComputeCapability(),
       53,
       common::errors::InvalidArgument(
           "rocblas bf16 gemm requires GPU compute capability >= 53,"
           "but received %d",
-          context_.GetComputeCapability()));
+          dev_ctx_.GetComputeCapability()));
 
   float h_alpha = static_cast<float>(alpha);
   float h_beta = static_cast<float>(beta);
   rocblas_gemm_algo algo = rocblas_gemm_algo_standard;
 
-  context_.TensorCoreCublasCallIfAvailable([&](rocblas_handle handle) {
+  dev_ctx_.TensorCoreCublasCallIfAvailable([&](rocblas_handle handle) {
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::rocblas_gemm_ex(handle,
                                       cuTransB,
@@ -1055,7 +1270,7 @@ inline void Blas<phi::GPUContext>::GEMM(bool transA,
 template <>
 template <typename T>
 void Blas<phi::GPUContext>::AXPY(int n, T alpha, const T *x, T *y) const {
-  context_.CublasCall([&](rocblas_handle handle) {
+  dev_ctx_.CublasCall([&](rocblas_handle handle) {
     CUBlas<T>::AXPY(handle, n, &alpha, x, 1, y, 1);
   });
 }
@@ -1063,14 +1278,14 @@ void Blas<phi::GPUContext>::AXPY(int n, T alpha, const T *x, T *y) const {
 template <>
 template <typename T>
 void Blas<phi::GPUContext>::SCAL(int n, const T alpha, T *x) const {
-  context_.CublasCall(
+  dev_ctx_.CublasCall(
       [&](rocblas_handle handle) { CUBlas<T>::SCAL(handle, n, &alpha, x, 1); });
 }
 
 template <>
 template <typename T>
 void Blas<phi::GPUContext>::VCOPY(int n, const T *x, T *y) const {
-  context_.CublasCall(
+  dev_ctx_.CublasCall(
       [&](rocblas_handle handle) { CUBlas<T>::VCOPY(handle, n, x, 1, y, 1); });
 }
 
@@ -1087,7 +1302,7 @@ void Blas<phi::GPUContext>::GEMV(bool trans_a,
   rocblas_operation cuTransA =
       !trans_a ? rocblas_operation_transpose : rocblas_operation_none;
 
-  context_.CublasCall([&](rocblas_handle handle) {
+  dev_ctx_.CublasCall([&](rocblas_handle handle) {
     CUBlas<T>::GEMV(handle, cuTransA, N, M, &alpha, A, N, B, 1, &beta, C, 1);
   });
 }
@@ -1136,22 +1351,27 @@ template <>
 template <typename T>
 void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                         CBLAS_TRANSPOSE transB,
-                                        int M,
-                                        int N,
-                                        int K,
+                                        int64_t M,
+                                        int64_t N,
+                                        int64_t K,
                                         T alpha,
                                         const T *A,
                                         const T *B,
                                         T beta,
                                         T *C,
-                                        int batchCount,
+                                        int64_t batchCount,
                                         int64_t strideA,
                                         int64_t strideB) const {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
-  int lda = (transA == CblasNoTrans) ? K : M;
-  int ldb = (transB == CblasNoTrans) ? N : K;
-  int ldc = N;
+  int64_t lda = (transA == CblasNoTrans) ? K : M;
+  int64_t ldb = (transB == CblasNoTrans) ? N : K;
+  int64_t ldc = N;
+  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE ||
+      batchCount > INT_MAX_VALUE) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Hip BatchedGEMM not supported for large tensor size"));
+  }
   rocblas_operation cuTransA = (transA == CblasNoTrans)
                                    ? rocblas_operation_none
                                    : rocblas_operation_transpose;
@@ -1159,25 +1379,83 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                    ? rocblas_operation_none
                                    : rocblas_operation_transpose;
   const int64_t strideC = M * N;
-  context_.CublasCall([&](rocblas_handle handle) {
+  dev_ctx_.CublasCall([&](rocblas_handle handle) {
     CUBlas<T>::GEMM_STRIDED_BATCH(handle,
                                   cuTransB,
                                   cuTransA,
-                                  N,
-                                  M,
-                                  K,
+                                  static_cast<int>(N),
+                                  static_cast<int>(M),
+                                  static_cast<int>(K),
                                   &alpha,
                                   B,
-                                  ldb,
+                                  static_cast<int>(ldb),
                                   strideB,
                                   A,
-                                  lda,
+                                  static_cast<int>(lda),
                                   strideA,
                                   &beta,
                                   C,
-                                  ldc,
+                                  static_cast<int>(ldc),
                                   strideC,
-                                  batchCount);
+                                  static_cast<int>(batchCount));
+  });
+}
+
+template <>
+template <typename T, typename U>
+void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
+                                        CBLAS_TRANSPOSE transB,
+                                        int64_t M,
+                                        int64_t N,
+                                        int64_t K,
+                                        U alpha,
+                                        const T *A,
+                                        const T *B,
+                                        U beta,
+                                        T *C,
+                                        int64_t batchCount,
+                                        int64_t strideA,
+                                        int64_t strideB) const {
+  // Note that cublas follows fortran order, so the order is different from
+  // the cblas convention.
+  int64_t lda = (transA == CblasNoTrans) ? K : M;
+  int64_t ldb = (transB == CblasNoTrans) ? N : K;
+  int64_t ldc = N;
+  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE ||
+      batchCount > INT_MAX_VALUE) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Hip BatchedGEMM not supported for large tensor size"));
+  }
+  rocblas_operation cuTransA = (transA == CblasNoTrans)
+                                   ? rocblas_operation_none
+                                   : rocblas_operation_transpose;
+  rocblas_operation cuTransB = (transB == CblasNoTrans)
+                                   ? rocblas_operation_none
+                                   : rocblas_operation_transpose;
+  const int64_t strideC = M * N;
+
+  T h_alpha = static_cast<T>(alpha);
+  T h_beta = static_cast<T>(beta);
+
+  dev_ctx_.CublasCall([&](rocblas_handle handle) {
+    CUBlas<T>::GEMM_STRIDED_BATCH(handle,
+                                  cuTransB,
+                                  cuTransA,
+                                  static_cast<int>(N),
+                                  static_cast<int>(M),
+                                  static_cast<int>(K),
+                                  &h_alpha,
+                                  B,
+                                  static_cast<int>(ldb),
+                                  strideB,
+                                  A,
+                                  static_cast<int>(lda),
+                                  strideA,
+                                  &h_beta,
+                                  C,
+                                  static_cast<int>(ldc),
+                                  strideC,
+                                  static_cast<int>(batchCount));
   });
 }
 
@@ -1185,22 +1463,27 @@ template <>
 template <>
 inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                                CBLAS_TRANSPOSE transB,
-                                               int M,
-                                               int N,
-                                               int K,
+                                               int64_t M,
+                                               int64_t N,
+                                               int64_t K,
                                                float16 alpha,
                                                const float16 *A,
                                                const float16 *B,
                                                float16 beta,
                                                float16 *C,
-                                               int batchCount,
+                                               int64_t batchCount,
                                                int64_t strideA,
                                                int64_t strideB) const {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
-  int lda = (transA == CblasNoTrans) ? K : M;
-  int ldb = (transB == CblasNoTrans) ? N : K;
-  int ldc = N;
+  int64_t lda = (transA == CblasNoTrans) ? K : M;
+  int64_t ldb = (transB == CblasNoTrans) ? N : K;
+  int64_t ldc = N;
+  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE ||
+      batchCount > INT_MAX_VALUE) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Hip BatchedGEMM not supported for large tensor size"));
+  }
   rocblas_operation cuTransA = (transA == CblasNoTrans)
                                    ? rocblas_operation_none
                                    : rocblas_operation_transpose;
@@ -1208,26 +1491,85 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                    ? rocblas_operation_none
                                    : rocblas_operation_transpose;
   const int64_t strideC = M * N;
-  context_.CublasCall([&](rocblas_handle handle) {
+  dev_ctx_.CublasCall([&](rocblas_handle handle) {
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_hgemm_strided_batched(
         handle,
         cuTransB,
         cuTransA,
-        N,
-        M,
-        K,
+        static_cast<int>(N),
+        static_cast<int>(M),
+        static_cast<int>(K),
         reinterpret_cast<const rocblas_half *>(&alpha),
         reinterpret_cast<const rocblas_half *>(B),
-        ldb,
+        static_cast<int>(ldb),
         strideB,
         reinterpret_cast<const rocblas_half *>(A),
-        lda,
+        static_cast<int>(lda),
         strideA,
         reinterpret_cast<const rocblas_half *>(&beta),
         reinterpret_cast<rocblas_half *>(C),
-        ldc,
+        static_cast<int>(ldc),
         strideC,
-        batchCount));
+        static_cast<int>(batchCount)));
+  });
+}
+
+template <>
+template <>
+inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
+                                               CBLAS_TRANSPOSE transB,
+                                               int64_t M,
+                                               int64_t N,
+                                               int64_t K,
+                                               float alpha,
+                                               const float16 *A,
+                                               const float16 *B,
+                                               float beta,
+                                               float16 *C,
+                                               int64_t batchCount,
+                                               int64_t strideA,
+                                               int64_t strideB) const {
+  // Note that cublas follows fortran order, so the order is different from
+  // the cblas convention.
+  int64_t lda = (transA == CblasNoTrans) ? K : M;
+  int64_t ldb = (transB == CblasNoTrans) ? N : K;
+  int64_t ldc = N;
+  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE ||
+      batchCount > INT_MAX_VALUE) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Hip BatchedGEMM not supported for large tensor size"));
+  }
+  rocblas_operation cuTransA = (transA == CblasNoTrans)
+                                   ? rocblas_operation_none
+                                   : rocblas_operation_transpose;
+  rocblas_operation cuTransB = (transB == CblasNoTrans)
+                                   ? rocblas_operation_none
+                                   : rocblas_operation_transpose;
+  const int64_t strideC = M * N;
+
+  float16 h_alpha = static_cast<float16>(alpha);
+  float16 h_beta = static_cast<float16>(beta);
+
+  dev_ctx_.CublasCall([&](rocblas_handle handle) {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_hgemm_strided_batched(
+        handle,
+        cuTransB,
+        cuTransA,
+        static_cast<int>(N),
+        static_cast<int>(M),
+        static_cast<int>(K),
+        reinterpret_cast<const rocblas_half *>(&h_alpha),
+        reinterpret_cast<const rocblas_half *>(B),
+        static_cast<int>(ldb),
+        strideB,
+        reinterpret_cast<const rocblas_half *>(A),
+        static_cast<int>(lda),
+        strideA,
+        reinterpret_cast<const rocblas_half *>(&h_beta),
+        reinterpret_cast<rocblas_half *>(C),
+        static_cast<int>(ldc),
+        strideC,
+        static_cast<int>(batchCount)));
   });
 }
 
@@ -1237,22 +1579,27 @@ template <>
 template <>
 inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                                CBLAS_TRANSPOSE transB,
-                                               int M,
-                                               int N,
-                                               int K,
+                                               int64_t M,
+                                               int64_t N,
+                                               int64_t K,
                                                float alpha,
                                                const float *A,
                                                const float *B,
                                                float beta,
                                                float *C,
-                                               int batchCount,
+                                               int64_t batchCount,
                                                int64_t strideA,
                                                int64_t strideB) const {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
-  int lda = (transA == CblasNoTrans) ? K : M;
-  int ldb = (transB == CblasNoTrans) ? N : K;
-  int ldc = N;
+  int64_t lda = (transA == CblasNoTrans) ? K : M;
+  int64_t ldb = (transB == CblasNoTrans) ? N : K;
+  int64_t ldc = N;
+  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE ||
+      batchCount > INT_MAX_VALUE) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Hip BatchedGEMM not supported for large tensor size"));
+  }
   rocblas_operation cuTransA = (transA == CblasNoTrans)
                                    ? rocblas_operation_none
                                    : rocblas_operation_transpose;
@@ -1260,26 +1607,26 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                    ? rocblas_operation_none
                                    : rocblas_operation_transpose;
   const int64_t strideC = M * N;
-  context_.CublasCall([&](rocblas_handle handle) {
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::rocblas_sgemm_strided_batched(handle,
-                                                    cuTransB,
-                                                    cuTransA,
-                                                    N,
-                                                    M,
-                                                    K,
-                                                    &alpha,
-                                                    B,
-                                                    ldb,
-                                                    strideB,
-                                                    A,
-                                                    lda,
-                                                    strideA,
-                                                    &beta,
-                                                    C,
-                                                    ldc,
-                                                    strideC,
-                                                    batchCount));
+  dev_ctx_.CublasCall([&](rocblas_handle handle) {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_sgemm_strided_batched(
+        handle,
+        cuTransB,
+        cuTransA,
+        static_cast<int>(N),
+        static_cast<int>(M),
+        static_cast<int>(K),
+        &alpha,
+        B,
+        static_cast<int>(ldb),
+        strideB,
+        A,
+        static_cast<int>(lda),
+        strideA,
+        &beta,
+        C,
+        static_cast<int>(ldc),
+        strideC,
+        static_cast<int>(batchCount)));
   });
 }
 
@@ -1287,22 +1634,27 @@ template <>
 template <>
 inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                                CBLAS_TRANSPOSE transB,
-                                               int M,
-                                               int N,
-                                               int K,
+                                               int64_t M,
+                                               int64_t N,
+                                               int64_t K,
                                                double alpha,
                                                const double *A,
                                                const double *B,
                                                double beta,
                                                double *C,
-                                               int batchCount,
+                                               int64_t batchCount,
                                                int64_t strideA,
                                                int64_t strideB) const {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
-  int lda = (transA == CblasNoTrans) ? K : M;
-  int ldb = (transB == CblasNoTrans) ? N : K;
-  int ldc = N;
+  int64_t lda = (transA == CblasNoTrans) ? K : M;
+  int64_t ldb = (transB == CblasNoTrans) ? N : K;
+  int64_t ldc = N;
+  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE ||
+      batchCount > INT_MAX_VALUE) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Hip BatchedGEMM not supported for large tensor size"));
+  }
   rocblas_operation cuTransA = (transA == CblasNoTrans)
                                    ? rocblas_operation_none
                                    : rocblas_operation_transpose;
@@ -1310,26 +1662,26 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                    ? rocblas_operation_none
                                    : rocblas_operation_transpose;
   const int64_t strideC = M * N;
-  context_.CublasCall([&](rocblas_handle handle) {
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::rocblas_dgemm_strided_batched(handle,
-                                                    cuTransB,
-                                                    cuTransA,
-                                                    N,
-                                                    M,
-                                                    K,
-                                                    &alpha,
-                                                    B,
-                                                    ldb,
-                                                    strideB,
-                                                    A,
-                                                    lda,
-                                                    strideA,
-                                                    &beta,
-                                                    C,
-                                                    ldc,
-                                                    strideC,
-                                                    batchCount));
+  dev_ctx_.CublasCall([&](rocblas_handle handle) {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_dgemm_strided_batched(
+        handle,
+        cuTransB,
+        cuTransA,
+        static_cast<int>(N),
+        static_cast<int>(M),
+        static_cast<int>(K),
+        &alpha,
+        B,
+        static_cast<int>(ldb),
+        strideB,
+        A,
+        static_cast<int>(lda),
+        strideA,
+        &beta,
+        C,
+        static_cast<int>(ldc),
+        strideC,
+        static_cast<int>(batchCount)));
   });
 }
 
@@ -1337,20 +1689,25 @@ template <>
 template <>
 inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                                CBLAS_TRANSPOSE transB,
-                                               int M,
-                                               int N,
-                                               int K,
+                                               int64_t M,
+                                               int64_t N,
+                                               int64_t K,
                                                phi::dtype::bfloat16 alpha,
                                                const phi::dtype::bfloat16 *A,
                                                const phi::dtype::bfloat16 *B,
                                                phi::dtype::bfloat16 beta,
                                                phi::dtype::bfloat16 *C,
-                                               int batchCount,
+                                               int64_t batchCount,
                                                int64_t strideA,
                                                int64_t strideB) const {
-  int lda = (transA == CblasNoTrans) ? K : M;
-  int ldb = (transB == CblasNoTrans) ? N : K;
-  int ldc = N;
+  int64_t lda = (transA == CblasNoTrans) ? K : M;
+  int64_t ldb = (transB == CblasNoTrans) ? N : K;
+  int64_t ldc = N;
+  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE ||
+      batchCount > INT_MAX_VALUE) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Hip BatchedGEMM not supported for large tensor size"));
+  }
   const int64_t strideC = M * N;
   rocblas_operation cuTransA = (transA == CblasNoTrans)
                                    ? rocblas_operation_none
@@ -1362,37 +1719,105 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
   float h_beta = static_cast<float>(beta);
   rocblas_gemm_algo algo = rocblas_gemm_algo_standard;
 
-  context_.TensorCoreCublasCallIfAvailable([&](rocblas_handle handle) {
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::rocblas_gemm_strided_batched_ex(handle,
-                                                      cuTransB,
-                                                      cuTransA,
-                                                      N,
-                                                      M,
-                                                      K,
-                                                      &h_alpha,
-                                                      B,
-                                                      rocblas_datatype_bf16_r,
-                                                      ldb,
-                                                      strideB,
-                                                      A,
-                                                      rocblas_datatype_bf16_r,
-                                                      lda,
-                                                      strideA,
-                                                      &h_beta,
-                                                      C,
-                                                      rocblas_datatype_bf16_r,
-                                                      ldc,
-                                                      strideC,
-                                                      C,
-                                                      rocblas_datatype_bf16_r,
-                                                      ldc,
-                                                      strideC,
-                                                      batchCount,
-                                                      rocblas_datatype_f32_r,
-                                                      algo,
-                                                      0,
-                                                      0));
+  dev_ctx_.TensorCoreCublasCallIfAvailable([&](rocblas_handle handle) {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_gemm_strided_batched_ex(
+        handle,
+        cuTransB,
+        cuTransA,
+        static_cast<int>(N),
+        static_cast<int>(M),
+        static_cast<int>(K),
+        &h_alpha,
+        B,
+        rocblas_datatype_bf16_r,
+        static_cast<int>(ldb),
+        strideB,
+        A,
+        rocblas_datatype_bf16_r,
+        static_cast<int>(lda),
+        strideA,
+        &h_beta,
+        C,
+        rocblas_datatype_bf16_r,
+        static_cast<int>(ldc),
+        strideC,
+        C,
+        rocblas_datatype_bf16_r,
+        static_cast<int>(ldc),
+        strideC,
+        static_cast<int>(batchCount),
+        rocblas_datatype_f32_r,
+        algo,
+        0,
+        0));
+  });
+}
+
+template <>
+template <>
+inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
+                                               CBLAS_TRANSPOSE transB,
+                                               int64_t M,
+                                               int64_t N,
+                                               int64_t K,
+                                               float alpha,
+                                               const phi::dtype::bfloat16 *A,
+                                               const phi::dtype::bfloat16 *B,
+                                               float beta,
+                                               phi::dtype::bfloat16 *C,
+                                               int64_t batchCount,
+                                               int64_t strideA,
+                                               int64_t strideB) const {
+  int64_t lda = (transA == CblasNoTrans) ? K : M;
+  int64_t ldb = (transB == CblasNoTrans) ? N : K;
+  int64_t ldc = N;
+  const int64_t strideC = M * N;
+  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE ||
+      batchCount > INT_MAX_VALUE) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Hip BatchedGEMM not supported for large tensor size"));
+  }
+  rocblas_operation cuTransA = (transA == CblasNoTrans)
+                                   ? rocblas_operation_none
+                                   : rocblas_operation_transpose;
+  rocblas_operation cuTransB = (transB == CblasNoTrans)
+                                   ? rocblas_operation_none
+                                   : rocblas_operation_transpose;
+  float h_alpha = alpha;
+  float h_beta = beta;
+  rocblas_gemm_algo algo = rocblas_gemm_algo_standard;
+
+  dev_ctx_.TensorCoreCublasCallIfAvailable([&](rocblas_handle handle) {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_gemm_strided_batched_ex(
+        handle,
+        cuTransB,
+        cuTransA,
+        static_cast<int>(N),
+        static_cast<int>(M),
+        static_cast<int>(K),
+        &h_alpha,
+        B,
+        rocblas_datatype_bf16_r,
+        static_cast<int>(ldb),
+        strideB,
+        A,
+        rocblas_datatype_bf16_r,
+        static_cast<int>(lda),
+        strideA,
+        &h_beta,
+        C,
+        rocblas_datatype_bf16_r,
+        static_cast<int>(ldc),
+        strideC,
+        C,
+        rocblas_datatype_bf16_r,
+        static_cast<int>(ldc),
+        strideC,
+        static_cast<int>(batchCount),
+        rocblas_datatype_f32_r,
+        algo,
+        0,
+        0));
   });
 }
 
@@ -1479,7 +1904,7 @@ void Blas<phi::GPUContext>::TRSM(CBLAS_SIDE side,
   rocblas_diagonal cuDiag =
       (diag == CblasUnit) ? rocblas_diagonal_unit : rocblas_diagonal_non_unit;
 
-  context_.CublasCall([&](rocblas_handle handle) {
+  dev_ctx_.CublasCall([&](rocblas_handle handle) {
     CUBlas<T>::TRSM(
         handle, cuSide, cuUplo, cuTransA, cuDiag, N, M, &alpha, A, lda, B, ldb);
   });
@@ -1489,7 +1914,7 @@ template <>
 template <typename T>
 void Blas<phi::GPUContext>::BatchedGETRF(
     int n, T **a, int *ipiv, int *info, int batch_size) const {
-  context_.CublasCall([&](rocblas_handle handle) {
+  dev_ctx_.CublasCall([&](rocblas_handle handle) {
     CUBlas<T>::GETRF_BATCH(handle, n, a, n, ipiv, info, batch_size);
   });
 }
@@ -1506,12 +1931,12 @@ void Blas<phi::GPUContext>::BatchedGETRI(int n,
       a_inv,
       a,
       common::errors::InvalidArgument(
-          "cuBLAS fuction 'cublas<S/D>getrfBatched' cannot be executed "
+          "cuBLAS function 'cublas<S/D>getrfBatched' cannot be executed "
           "in-place. The memory space of output matrix (address: %p) cannot "
           "overlap memory space of input matrix (address: %p).",
           a_inv,
           a));
-  context_.CublasCall([&](rocblas_handle handle) {
+  dev_ctx_.CublasCall([&](rocblas_handle handle) {
     CUBlas<T>::GETRI_BATCH(handle, n, a, n, ipiv, a_inv, n, info, batch_size);
   });
 }
@@ -1520,7 +1945,7 @@ template <>
 template <typename T>
 void Blas<phi::GPUContext>::BatchedMatInv(
     int n, const T **a, T **a_inv, int *info, int batch_size) const {
-  context_.CublasCall([&](rocblas_handle handle) {
+  dev_ctx_.CublasCall([&](rocblas_handle handle) {
     CUBlas<T>::MATINV_BATCH(handle, n, a, n, a_inv, n, info, batch_size);
   });
 }
@@ -1540,7 +1965,7 @@ void Blas<phi::GPUContext>::BatchedGETRS(CBLAS_TRANSPOSE trans,
   rocblas_operation cuTrans = (trans == CblasNoTrans)
                                   ? rocblas_operation_none
                                   : rocblas_operation_transpose;
-  context_.CublasCall([&](rocblas_handle handle) {
+  dev_ctx_.CublasCall([&](rocblas_handle handle) {
     CUBlas<T>::GETRS_BATCH(
         handle, cuTrans, n, nrhs, a, lda, ipiv, b, ldb, info, batch_size);
   });
@@ -1573,7 +1998,7 @@ void Blas<phi::GPUContext>::BatchedTRSM(CBLAS_SIDE side,
   rocblas_diagonal cuDiag =
       (diag == CblasUnit) ? rocblas_diagonal_unit : rocblas_diagonal_non_unit;
 
-  context_.CublasCall([&](rocblas_handle handle) {
+  dev_ctx_.CublasCall([&](rocblas_handle handle) {
     CUBlas<T>::TRSM_BATCH(handle,
                           cuSide,
                           cuUplo,
@@ -1637,7 +2062,7 @@ static void Int8GEMM_EX(phi::GPUContext *dev_ctx,
   });
 }
 
-inline void Int8GEMM(const GPUContext &context_,
+inline void Int8GEMM(const GPUContext &dev_ctx_,
                      CBLAS_TRANSPOSE transA,
                      CBLAS_TRANSPOSE transB,
                      int M,
@@ -1657,7 +2082,7 @@ inline void Int8GEMM(const GPUContext &context_,
                                    ? rocblas_operation_none
                                    : rocblas_operation_transpose;
 
-  auto &cuda_ctx = const_cast<phi::GPUContext &>(context_);
+  auto &cuda_ctx = const_cast<phi::GPUContext &>(dev_ctx_);
   Int8GEMM_EX(&cuda_ctx,
               cuTransB,
               cuTransA,
@@ -1678,7 +2103,7 @@ inline void Int8GEMM(const GPUContext &context_,
               rocblas_datatype_i32_r);
 }
 
-inline void Int8BatchedGEMM(const GPUContext &context_,
+inline void Int8BatchedGEMM(const GPUContext &dev_ctx_,
                             CBLAS_TRANSPOSE transA,
                             CBLAS_TRANSPOSE transB,
                             int M,
@@ -1705,7 +2130,7 @@ inline void Int8BatchedGEMM(const GPUContext &context_,
 
   rocblas_gemm_algo algo = rocblas_gemm_algo_standard;
 
-  context_.CublasCall([&](rocblas_handle handle) {
+  dev_ctx_.CublasCall([&](rocblas_handle handle) {
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::rocblas_gemm_strided_batched_ex(handle,
                                                       cuTransB,
@@ -1739,7 +2164,7 @@ inline void Int8BatchedGEMM(const GPUContext &context_,
   });
 }
 
-inline void Int8BatchedGEMM(const GPUContext &context_,
+inline void Int8BatchedGEMM(const GPUContext &dev_ctx_,
                             CBLAS_TRANSPOSE transA,
                             CBLAS_TRANSPOSE transB,
                             int M,
@@ -1752,11 +2177,11 @@ inline void Int8BatchedGEMM(const GPUContext &context_,
                             int32_t **C,
                             int batchCount) {
   for (int k = 0; k < batchCount; ++k) {
-    Int8GEMM(context_, transA, transB, M, N, K, alpha, A[k], B[k], beta, C[k]);
+    Int8GEMM(dev_ctx_, transA, transB, M, N, K, alpha, A[k], B[k], beta, C[k]);
   }
 }
 
-inline void Int8GEMV(const GPUContext &context_,
+inline void Int8GEMV(const GPUContext &dev_ctx_,
                      bool trans_a,
                      int M,
                      int N,
@@ -1767,10 +2192,10 @@ inline void Int8GEMV(const GPUContext &context_,
                      int32_t *C) {
   if (trans_a) {
     Int8GEMM(
-        context_, CblasNoTrans, CblasNoTrans, 1, N, M, alpha, B, A, beta, C);
+        dev_ctx_, CblasNoTrans, CblasNoTrans, 1, N, M, alpha, B, A, beta, C);
   } else {
     Int8GEMM(
-        context_, CblasNoTrans, CblasNoTrans, M, 1, N, alpha, A, B, beta, C);
+        dev_ctx_, CblasNoTrans, CblasNoTrans, M, 1, N, alpha, A, B, beta, C);
   }
 }
 

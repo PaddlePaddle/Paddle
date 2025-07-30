@@ -32,11 +32,12 @@ inline void SetXShape(const DenseTensor &x, DenseTensor *xshape) {
   xshape->ResetLoD(x.meta().legacy_lod);
 }
 
+template <typename T>
 inline void GetBroadcastDimsArrays(const DDim &x_dims,
                                    const DDim &y_dims,
-                                   int *x_dims_array,
-                                   int *y_dims_array,
-                                   int *out_dims_array,
+                                   T *x_dims_array,
+                                   T *y_dims_array,
+                                   T *out_dims_array,
                                    const int max_dim,
                                    const int axis) {
   PADDLE_ENFORCE_GE(
@@ -69,8 +70,9 @@ inline void GetBroadcastDimsArrays(const DDim &x_dims,
   }
   for (int i = 0; i < max_dim; ++i) {
     PADDLE_ENFORCE_EQ(
-        x_dims_array[i] == y_dims_array[i] || x_dims_array[i] <= 1 ||
-            y_dims_array[i] <= 1,
+        x_dims_array[i] == y_dims_array[i] ||
+            (x_dims_array[i] <= 1 && x_dims_array[i] != 0) ||
+            (y_dims_array[i] <= 1 && y_dims_array[i] != 0),
         true,
         common::errors::InvalidArgument(
             "Broadcast dimension mismatch. Operands could "
@@ -87,6 +89,9 @@ inline void GetBroadcastDimsArrays(const DDim &x_dims,
       out_dims_array[i] = (std::max)(x_dims_array[i], y_dims_array[i]);
     } else {
       out_dims_array[i] = -1;
+      if (y_dims_array[i] == 0 || x_dims_array[i] == 0) {
+        out_dims_array[i] = 0;
+      }
     }
   }
 }

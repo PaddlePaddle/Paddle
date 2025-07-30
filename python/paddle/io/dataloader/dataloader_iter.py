@@ -52,7 +52,7 @@ from .worker import (
 # layers processing) after iterate **the first few data** in
 # distributed launch mode, distributed launch will call
 # terminate() to kill main process on each devices, but thread
-# is still iterating to fullfill blocking queue caches, which
+# is still iterating to fulfill blocking queue caches, which
 # may cause thread error `terminate called without an active
 # exception` for terminate is a strong signal and `__del__`
 # of DataLoader may not be called, so we add a global link to
@@ -183,8 +183,12 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
             self._places
         )
 
-        self._init_thread()
         self._shutdown = False
+        try:
+            self._init_thread()
+        except Exception:
+            self._try_shutdown_all()
+            raise
 
         global _loader
         _loader = self
@@ -203,7 +207,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
             ]
             self._dtypes = [v.dtype for v in self._feed_list]
         # if only 1 place, do not need to keep order
-        self._blocking_queue = core.init_lod_tensor_blocking_queue(
+        self._blocking_queue = core.init_dense_tensor_blocking_queue(
             core.Variable(),
             self._blocking_queue_capacity,
             len(self._places) > 1,
@@ -427,13 +431,17 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             (self._worker_shm_buffer_size) * 2 * self._num_workers
         )
 
+        self._shutdown = False
         # init workers and indices queues and put 2 indices in each indices queue
         self._init_workers()
         for _ in range(self._outstanding_capacity):
             self._try_put_indices()
 
-        self._init_thread()
-        self._shutdown = False
+        try:
+            self._init_thread()
+        except Exception:
+            self._try_shutdown_all()
+            raise
 
     def _init_workers(self):
         from paddle.incubate import multiprocessing
@@ -507,7 +515,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             ]
             self._dtypes = [v.dtype for v in self._feed_list]
         # if only 1 place, do not need to keep order
-        self._blocking_queue = core.init_lod_tensor_blocking_queue(
+        self._blocking_queue = core.init_dense_tensor_blocking_queue(
             core.Variable(), self._outstanding_capacity, len(self._places) > 1
         )
         core._set_max_memory_map_allocation_pool_size(
@@ -577,8 +585,10 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             self._try_put_indices()
 
     def _shutdown_worker(self, worker_id, shutdown=False):
-        if self._worker_status[worker_id] or (
-            self._persistent_workers and shutdown
+        if worker_id < len(self._worker_status) and (
+            self._worker_status[worker_id]
+            or self._persistent_workers
+            and shutdown
         ):
             self._indices_queues[worker_id].put(None)
             self._worker_status[worker_id] = False
@@ -590,7 +600,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                 self._clear_and_remove_data_queue()
 
                 # set _workers_done_event should be set before put None
-                # to indices_queue, workers wll exit on reading None from
+                # to indices_queue, workers will exit on reading None from
                 # indices_queue
                 self._workers_done_event.set()
                 for i in range(self._num_workers):
@@ -739,7 +749,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                 if self._dataset_kind == _DatasetKind.ITER and isinstance(
                     data, _IterableDatasetStopIteration
                 ):
-                    # if a worker get StopIteraion, we shutdown this worker,
+                    # if a worker get StopIteration, we shutdown this worker,
                     # note that this batch indices to trigger StopIteration
                     # is discard, outstanding batch number should be decrease
                     # and another indices should be put for other workers

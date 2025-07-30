@@ -89,7 +89,7 @@ class NormalInitializer(Initializer):
                 "complex64",
                 "complex128",
             ],
-            "guassian_random",
+            "gaussian_random",
         )
 
         if self._seed == 0:

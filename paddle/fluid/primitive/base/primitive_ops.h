@@ -60,6 +60,7 @@ const std::set<std::string>& GetPrimitiveOpNames() {
       "pd_op.minimum",
       "pd_op.argmax",
       "pd_op.argmin",
+      "pd_op.pow",
       "pd_op.prod",
       "pd_op.roll",
       "pd_op.scatter",
@@ -106,6 +107,7 @@ const std::set<std::string>& GetPrimitiveOpNames() {
       "pd_op.sigmoid",
       "pd_op.reduce_as",
       /* skip some special ops */
+      "pd_op.variance",
       "pd_op.conv2d",
       "pd_op.pad3d",
       "pd_op.nearest_interp",

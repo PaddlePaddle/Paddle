@@ -25,6 +25,10 @@ limitations under the License. */
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
 
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/core/xpu_cuda_stream.h"
+#endif
+
 namespace Eigen {
 struct DefaultDevice;
 }  // namespace Eigen
@@ -32,6 +36,10 @@ struct DefaultDevice;
 namespace xpu = baidu::xpu::api;
 
 namespace phi {
+
+#ifdef PADDLE_WITH_XPU
+class XPUCUDAStream;
+#endif
 
 class DenseTensor;
 class XPUContext : public DeviceContext,
@@ -43,6 +51,16 @@ class XPUContext : public DeviceContext,
   explicit XPUContext(const XPUPlace&, bool is_comm_context = 0);
 
   virtual ~XPUContext();
+
+#ifdef PADDLE_WITH_XPU
+  /*! \brief  Return XPUCUDAStream in the device context. */
+  XPUCUDAStream* xpu_cuda_stream() const;
+
+  // Note that this function is a trick implementation since all 'set' methods
+  // are protected by default.
+  // clear: whether clear the original CUDAStream or not
+  void SetXPUCUDAStream(XPUCUDAStream*, bool clear = true);
+#endif
 
   const Place& GetPlace() const override;
 
@@ -59,6 +77,9 @@ class XPUContext : public DeviceContext,
   void StreamWaitStream(int wait_stream, int record_stream) const;
   int64_t GetStreamNum() const;
   void AddStashedMemory(int stream, const phi::DenseTensor& tensor);
+
+  void SetEigenDevice(Eigen::DefaultDevice*);
+  void SetEigenDevice(std::function<Eigen::DefaultDevice*()>&&);
 
   // For share external stream.
   void SetStream(void* stream, int i = 0);
@@ -107,6 +128,29 @@ class XPUContext : public DeviceContext,
 using KPSContext = XPUContext;
 #endif
 
+}  // namespace phi
+
+namespace phi {
+#if defined(PADDLE_WITH_XPU)
+// Currently, XPUPinnedContext is only used to data copying.
+class XPUPinnedContext
+    : public DeviceContext,
+      public phi::TypeInfoTraits<DeviceContext, XPUPinnedContext> {
+ public:
+  XPUPinnedContext();
+  explicit XPUPinnedContext(XPUPinnedPlace place);
+
+  const Place& GetPlace() const override;
+
+  Eigen::DefaultDevice* eigen_device() const;
+
+  static const char* name() { return "XPUPinnedContext"; }
+
+ private:
+  XPUPinnedPlace place_;
+  std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
+};
+#endif
 }  // namespace phi
 
 #endif

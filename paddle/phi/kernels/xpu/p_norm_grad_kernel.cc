@@ -47,14 +47,15 @@ void PNormGradKernel(const Context& dev_ctx,
                      DenseTensor* x_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(x_grad);
+  if (x.numel() == 0) return;
   auto xdim = x.dims();
   axis = axis < 0 ? xdim.size() + axis : axis;
   int m, t, n;
   GetDims(xdim, axis, &m, &t, &n, asvector);
 
-  std::vector<int> r_dim;
-  std::vector<int> x_dim;
-  std::vector<int> y_dim;
+  std::vector<int64_t> r_dim;
+  std::vector<int64_t> x_dim;
+  std::vector<int64_t> y_dim;
 
   x_dim.push_back(m);
   x_dim.push_back(t);
@@ -140,7 +141,7 @@ void PNormGradKernel(const Context& dev_ctx,
     r = xpu::constant(
         dev_ctx.x_context(), porder_tensor.data<float>(), 1, porder - 1.0f);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
-    std::vector<int> p_dim(1, 1);
+    std::vector<int64_t> p_dim(1, 1);
 
     XPUType* x_pow = RAII_GUARD.alloc_l3_or_gm<XPUType>(m * t * n);
     PADDLE_ENFORCE_XDNN_NOT_NULL(x_pow);

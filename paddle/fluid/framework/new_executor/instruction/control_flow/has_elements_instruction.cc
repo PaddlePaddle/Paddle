@@ -17,6 +17,8 @@
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 
+COMMON_DECLARE_bool(check_cuda_error);
+
 namespace paddle {
 namespace framework {
 HasElementsInstruction::HasElementsInstruction(
@@ -42,11 +44,9 @@ HasElementsInstruction::HasElementsInstruction(
 
   type_ = OpFuncType::kCpuSync;
 
-  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-  auto* bool_tensor = value_exe_info_->GetVarByValue(op_->result(0))
-                          ->GetMutable<phi::DenseTensor>();
-  bool_tensor->Resize(phi::make_ddim({1}));
-  has_elements_ = pool.Get(phi::CPUPlace())->Alloc<bool>(bool_tensor);
+  bool_tensor_ = value_exe_info_->GetVarByValue(op_->result(0))
+                     ->GetMutable<phi::DenseTensor>();
+  bool_tensor_->Resize(phi::make_ddim({1}));
 
   auto stack_value =
       op_->dyn_cast<paddle::dialect::HasElementsOp>().operand_source(0);
@@ -56,7 +56,17 @@ HasElementsInstruction::HasElementsInstruction(
 
 void HasElementsInstruction::Run() {
   VLOG(6) << "run has_elements instruction";
-  *has_elements_ = !stack_element_var_array_->empty();
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("HasElementsInstruction begin");
+  }
+
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+  bool* has_elements = pool.Get(phi::CPUPlace())->Alloc<bool>(bool_tensor_);
+  *has_elements = !stack_element_var_array_->empty();
+
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("HasElementsInstruction finish");
+  }
 }
 }  // namespace framework
 }  // namespace paddle

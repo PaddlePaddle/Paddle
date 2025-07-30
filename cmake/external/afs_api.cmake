@@ -52,8 +52,10 @@ ExternalProject_Add(
   ${EXTERNAL_PROJECT_LOG_ARGS}
   PREFIX ${AFSAPI_PREFIX_DIR}
   DOWNLOAD_DIR ${AFSAPI_DOWNLOAD_DIR}
-  DOWNLOAD_COMMAND wget --no-check-certificate ${AFSAPI_URL} -c -q -O
-                   ${AFSAPI_NAME}.tar.gz && tar zxvf ${AFSAPI_NAME}.tar.gz
+  DOWNLOAD_COMMAND
+    /bin/sh -c
+    "[ -f '${AFSAPI_NAME}.tar.gz' ] && echo 'skip download' || wget --no-check-certificate -q -O '${AFSAPI_NAME}.tar.gz' '${AFSAPI_URL}'"
+    && ${CMAKE_COMMAND} -E tar xzf ${AFSAPI_NAME}.tar.gz
   DOWNLOAD_NO_PROGRESS 1
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${AFSAPI_INSTALL_ROOT}

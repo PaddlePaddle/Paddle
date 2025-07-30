@@ -21,6 +21,7 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
+from paddle.base import core
 
 
 def _round(x):
@@ -197,6 +198,91 @@ class TestROIPoolInLodOp(TestROIPoolOp):
         }
 
         self.outputs = {'Out': self.outs, 'Argmax': self.argmaxes}
+
+
+class TestROIPoolInLodOp_ZeroSize(TestROIPoolOp):
+    def init_test_case(self):
+        self.batch_size = 3
+        self.channels = 0
+        self.height = 6
+        self.width = 4
+
+        # n, c, h, w
+        self.x_dim = (self.batch_size, self.channels, self.height, self.width)
+
+        self.spatial_scale = 1.0 / 4.0
+        self.pooled_height = 2
+        self.pooled_width = 2
+
+        self.x = np.random.random(self.x_dim).astype('float64')
+
+    def make_rois(self):
+        rois = []
+        self.rois_lod = [[]]
+        for bno in range(self.batch_size):
+            self.rois_lod[0].append(bno + 1)
+            for i in range(bno + 1):
+                x1 = np.random.randint(
+                    0, self.width // self.spatial_scale - self.pooled_width
+                )
+                x2 = np.random.randint(
+                    x1 + self.pooled_width, self.width // self.spatial_scale
+                )
+                if self.height == 0:
+                    y1 = 0
+                    y2 = 0
+                else:
+                    y1 = np.random.random_integers(
+                        0,
+                        self.height // self.spatial_scale - self.pooled_height,
+                    )
+                    y2 = np.random.random_integers(
+                        y1 + self.pooled_height,
+                        self.height // self.spatial_scale,
+                    )
+
+                roi = [bno, x1, y1, x2, y2]
+                rois.append(roi)
+        self.rois_num = len(rois)
+        self.rois = np.array(rois).astype("float64")
+        self.boxes_num = np.array(
+            [bno + 1 for bno in range(self.batch_size)]
+        ).astype('int32')
+
+    def set_data(self):
+        self.init_test_case()
+        self.make_rois()
+        self.calc_roi_pool()
+
+        seq_len = self.rois_lod[0]
+
+        self.inputs = {
+            'X': self.x,
+            'ROIs': (self.rois[:, 1:5], self.rois_lod),
+            'RoisNum': np.asarray(seq_len).astype('int32'),
+        }
+
+        self.attrs = {
+            'spatial_scale': self.spatial_scale,
+            'pooled_height': self.pooled_height,
+            'pooled_width': self.pooled_width,
+        }
+
+        self.outputs = {'Out': self.outs, 'Argmax': self.argmaxes}
+
+    def test_check_output(self):
+        self.check_output_with_place(
+            core.CPUPlace(),
+        )
+        if paddle.is_compiled_with_cuda():
+            self.check_output_with_place(
+                core.CUDAPlace(0),
+            )
+
+    def test_check_grad(self):
+        self.check_grad_with_place(core.CPUPlace(), ['X'], 'Out')
+        if paddle.is_compiled_with_cuda():
+            self.check_grad_with_place(core.CUDAPlace(0), ['X'], 'Out')
 
 
 if __name__ == '__main__':

@@ -176,38 +176,36 @@ def test_main(use_cuda, use_py_func_op):
     if use_cuda and not base.core.is_compiled_with_cuda():
         return None
 
-    with base.program_guard(base.Program(), base.Program()):
-        with base.scope_guard(base.core.Scope()):
-            gen = paddle.seed(1)
-            np.random.seed(1)
-            img = paddle.static.data(
-                name='image', shape=[-1, 784], dtype='float32'
-            )
-            label = paddle.static.data(
-                name='label', shape=[-1, 1], dtype='int64'
-            )
-            loss = simple_fc_net(img, label, use_py_func_op)
-            optimizer = paddle.optimizer.SGD(learning_rate=1e-3)
-            optimizer.minimize(loss)
+    with (
+        base.program_guard(base.Program(), base.Program()),
+        base.scope_guard(base.core.Scope()),
+    ):
+        gen = paddle.seed(1)
+        np.random.seed(1)
+        img = paddle.static.data(name='image', shape=[-1, 784], dtype='float32')
+        label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
+        loss = simple_fc_net(img, label, use_py_func_op)
+        optimizer = paddle.optimizer.SGD(learning_rate=1e-3)
+        optimizer.minimize(loss)
 
-            place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
-            feeder = base.DataFeeder(feed_list=[img, label], place=place)
-            r = paddle.batch(reader, batch_size=10)
+        place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+        feeder = base.DataFeeder(feed_list=[img, label], place=place)
+        r = paddle.batch(reader, batch_size=10)
 
-            exe = base.Executor(place)
-            exe.run(base.default_startup_program())
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
 
-            train_cp = base.default_main_program()
-            fetch_list = [loss]
+        train_cp = base.default_main_program()
+        fetch_list = [loss]
 
-            ret = []
-            for epoch_id in range(2):
-                for d in r():
-                    (L,) = exe.run(
-                        train_cp, feed=feeder.feed(d), fetch_list=fetch_list
-                    )
-                    ret.append(L)
-            return np.array(ret)
+        ret = []
+        for epoch_id in range(2):
+            for d in r():
+                (L,) = exe.run(
+                    train_cp, feed=feeder.feed(d), fetch_list=fetch_list
+                )
+                ret.append(L)
+        return np.array(ret)
 
 
 class TestPyFuncOpUseExecutor(unittest.TestCase):

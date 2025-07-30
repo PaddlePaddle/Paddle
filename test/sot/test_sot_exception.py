@@ -22,7 +22,7 @@ from paddle.jit.sot import symbolic_translate
 
 
 def case1(x):
-    return n  # noqa: F821
+    return undefined_var  # noqa: F821
 
 
 def case2(x):
@@ -31,7 +31,7 @@ def case2(x):
 
 
 def case3(x):
-    y = x.undefined_attr
+    y = undefined_var  # noqa: F821
     return y
 
 
@@ -39,7 +39,7 @@ def case4_inner(x):
     y = x * 2
     print()
     y = y + 1
-    return y.undefined_attr
+    return undefined_var  # noqa: F821
 
 
 def case4(x):
@@ -55,7 +55,7 @@ def case5_inner3(x):
 
 def case5_inner2(x):
     x += 1
-    z = case5_inner3(1 / 0)
+    z = case5_inner3(y)  # noqa: F821
     return z + 1
 
 

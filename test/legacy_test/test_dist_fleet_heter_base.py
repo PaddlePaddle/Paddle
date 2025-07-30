@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-    high level unit test for distribute fleet.
+high level unit test for distribute fleet.
 """
 
 import argparse
@@ -40,7 +40,7 @@ DIST_UT_PORT = 0
 class FleetDistHeterRunnerBase:
     """
     run_pserver,run_trainer : after init role, using transpiler split program
-    net : implment by child class, the network of model
+    net : implement by child class, the network of model
     do training : exe run program
     """
 

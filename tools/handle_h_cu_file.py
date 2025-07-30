@@ -116,7 +116,7 @@ def get_h_cu_file(file_path):
             f"cat {dir_path}/{filename} | grep 'precise test map fileeee:'| uniq >> {rootPath}/build/ut_map/{ut}/related_{ut}.txt"
         )
     else:
-        print(f"{ut} has failed,no has direcotory")
+        print(f"{ut} has failed,no has directory")
 
 
 def doFun(file_path):

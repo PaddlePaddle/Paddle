@@ -256,7 +256,7 @@ TEST(type_test, sparse_coo) {
   common::DDim dims = {4, 4};
   common::DDim non_zero_dims = {4, 1};
   common::DataLayout data_layout = common::DataLayout::NCHW;
-  pir::LoD lod = {{0, 1, 2}};
+  pir::LegacyLoD lod = {{0, 1, 2}};
   size_t offset = 0;
   pir::DenseTensorType none_zero_indices = pir::DenseTensorType::get(
       ctx, fp32_dtype, dims, data_layout, lod, offset);
@@ -304,7 +304,7 @@ TEST(type_test, pd_op_dialect) {
   pir::Type fp32_dtype = pir::Float32Type::get(ctx);
   phi::DDim dims = {2, 2};
   phi::DataLayout data_layout = phi::DataLayout::NCHW;
-  phi::LoD lod = {{0, 1, 2}};
+  phi::LegacyLoD lod = {{0, 1, 2}};
   size_t offset = 0;
   paddle::dialect::SelectedRowsType select_rows_dtype =
       paddle::dialect::SelectedRowsType::get(
@@ -322,7 +322,7 @@ TEST(type_test, sparse_csr) {
   pir::Type fp32_dtype = pir::Float32Type::get(ctx);
   common::DDim dims = {4, 4};
   common::DataLayout data_layout = common::DataLayout::NCHW;
-  pir::LoD lod = {{0, 1, 2}};
+  pir::LegacyLoD lod = {{0, 1, 2}};
   size_t offset = 0;
   pir::DenseTensorType non_zero_crows = pir::DenseTensorType::get(
       ctx, fp32_dtype, dims, data_layout, lod, offset);
@@ -369,7 +369,7 @@ TEST(type_test, type_util) {
   phi::DDim dims1 = {2, 2};
   phi::DDim dims2 = {2, 2, 3};
   phi::DataLayout data_layout = phi::DataLayout::NCHW;
-  phi::LoD lod = {{0, 1, 2}};
+  phi::LegacyLoD lod = {{0, 1, 2}};
   size_t offset = 0;
 
   paddle::dialect::SelectedRowsType select_rows_dtype1 =

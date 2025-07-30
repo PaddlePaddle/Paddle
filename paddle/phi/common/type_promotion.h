@@ -13,8 +13,6 @@
 // limitations under the License.
 #pragma once
 
-#include "paddle/fluid/imperative/amp_utils.h"
-#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/phi/common/data_type.h"
 namespace phi {
 
@@ -92,6 +90,7 @@ static std::unordered_set<std::string> support_promotion_ops = {
     "divide",    "elementwise_div", "truediv",         "floor_divide",
     "pow",       "elementwise_pow", "equal",           "not_equal",
     "less_than", "less_equal",      "greater_than",    "greater_equal",
+    "copysign",  "cross",
 };
 
 static std::unordered_set<std::string> support_autocast_ops = {
@@ -205,7 +204,7 @@ inline bool NeedTypePromotion(
   // Tensor + Tensor type promotion only support calculations between
   // floating-point numbers and between complex and real numbers.
   if (x_dtype != y_dtype) {
-// TODO(Xi Zhao): we got special case for add now, should remove it in furture.
+// TODO(Xi Zhao): we got special case for add now, should remove it in future.
 #ifdef PADDLE_WITH_CUDA
     if ((op_name == "add" || op_name == "add_") &&
         x_dtype == DataType::FLOAT32 &&
@@ -244,7 +243,7 @@ inline bool NeedTypePromotionOldIr(const std::string& op_name,
   // Tensor + Tensor type promotion only support calculations between
   // floating-point numbers and between complex and real numbers.
   if (x != y) {
-// TODO(Xi Zhao): we got special case for add now, should remove it in furture.
+// TODO(Xi Zhao): we got special case for add now, should remove it in future.
 #ifdef PADDLE_WITH_CUDA
     if ((op_name == "add" || op_name == "add_") && x == DataType::FLOAT32 &&
         (y == phi::DataType::BFLOAT16 || y == phi::DataType::FLOAT16)) {

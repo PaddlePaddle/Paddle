@@ -17,9 +17,8 @@
 #include <utility>
 #include <vector>
 
-#include "absl/types/variant.h"
+#include <variant>
 #include "glog/logging.h"
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/cinn_value.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/context.h"
@@ -39,7 +38,7 @@
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/lang/packed_func.h"
-#include "paddle/cinn/poly/stage.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 
 #include "paddle/common/errors.h"
 
@@ -71,10 +70,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForCholesky(
     *ret = CINNValuePack{res};
   });
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(cholesky_compute,
-                    GetElementwiseScheduleFunc(output_shapes, target),
-                    "strategy.cholesky.x86",
-                    1);
+  strategy->AddImpl(cholesky_compute, "strategy.cholesky.x86", 1);
   return strategy;
 }
 

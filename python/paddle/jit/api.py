@@ -65,18 +65,22 @@ from paddle.framework import use_pir_api
 from paddle.nn import Layer
 from paddle.static.io import save_inference_model
 from paddle.utils.environments import (
-    BooleanEnvironmentVariable,
     EnvironmentVariableGuard,
 )
 
 from .dy2static import logging_utils
-from .dy2static.convert_call_func import ConversionOptions, add_ignore_module
+from .dy2static.convert_call_func import add_ignore_module
 from .dy2static.program_translator import (
     ASTStaticFunction,
     ProgramTranslator,
     StaticFunction,
     SymbolicStaticFunction,
     unwrap_decorators,
+)
+from .dy2static.utils import (
+    ENV_ENABLE_SOT,
+    Backend,
+    infer_use_cinn_backend,
 )
 from .pir_translated_layer import PIR_INFER_MODEL_SUFFIX, PirTranslatedLayer
 from .translated_layer import (
@@ -105,9 +109,6 @@ if TYPE_CHECKING:
     class _LoadOptions(TypedDict):
         model_filename: NotRequired[str]
         params_filename: NotRequired[str]
-
-
-ENV_ENABLE_SOT = BooleanEnvironmentVariable("ENABLE_FALL_BACK", True)
 
 
 _LayerT = TypeVar("_LayerT", bound=Layer)
@@ -155,27 +156,18 @@ def ignore_module(modules: list[ModuleType]) -> None:
         .. code-block:: python
 
             >>> import scipy
-            >>> import astor
+            >>> import networkx
 
             >>> import paddle
             >>> from paddle.jit import ignore_module
             >>> modules = [
             ...     scipy,
-            ...     astor,
+            ...     networkx,
             ... ]
             >>> ignore_module(modules)
 
     """
     add_ignore_module(modules)
-
-
-def _check_and_set_backend(backend, build_strategy):
-    if backend not in ['CINN', None]:
-        raise ValueError(
-            f"The backend of to_static should be 'CINN' or None, but received {backend}."
-        )
-    if backend == 'CINN':
-        build_strategy.build_cinn_pass = True
 
 
 class _ToStaticOptions(TypedDict):
@@ -227,7 +219,7 @@ def to_static(
     function=None,
     input_spec=None,
     build_strategy=None,
-    backend=None,
+    backend="CINN",
     **kwargs,
 ):
     """
@@ -246,13 +238,18 @@ def to_static(
         build_strategy (BuildStrategy|None): This argument is used to compile the
             converted program with the specified options, such as operators' fusion
             in the computational graph and memory optimization during the execution
-            of the computational graph. For more information about build_strategy,
-            please refer to :code:`paddle.static.BuildStrategy`. The default is None.
-        backend(str, Optional): Specifies compilation backend, which can be `CINN` or
-            None. When backend is `CINN`, CINN compiler will be used to speed up
-            training and inference.
-        kwargs: Support keys including `property`, set `property` to True if the function
-            is python property.
+            of the computational graph. For more information about :attr:`build_strategy`,
+            please refer to :ref:`paddle.static.BuildStrategy <cn_api_paddle_static_BuildStrategy>`.
+            The default is ``None``.
+        backend(str, Optional): Specifies compilation backend, which can be ``"CINN"`` or
+            ``None``. When backend is ``"CINN"``, CINN compiler will be used to speed up
+            training and inference. default value is ``"CINN"``.
+        kwargs: Support keys including :attr:`property` and :attr:`full_graph`.
+
+          - property (bool): If True, the function will be treated as a property
+            function. The default is False.
+          - full_graph (bool): If True, the function will be converted into a
+            full static graph. The default is False.
 
     Returns:
         Tensor(s): containing the numerical result.
@@ -281,10 +278,22 @@ def to_static(
     """
     property = kwargs.get("property", False)
     full_graph = kwargs.get("full_graph", None)
+    build_strategy = build_strategy or BuildStrategy()
+    if not isinstance(build_strategy, BuildStrategy):
+        raise TypeError(
+            f"Required type(build_strategy) shall be `paddle.static.BuildStrategy`, but received {type(build_strategy).__name__}"
+        )
+    backend = Backend.from_arg(backend)
+    if infer_use_cinn_backend(backend, build_strategy):
+        backend = Backend.CINN
+    elif backend.is_pcc():
+        pass
+    else:
+        backend = Backend.PHI
 
     def decorated(python_func):
         """
-        Decorates a python function into a ASTStaticFunction object.
+        Decorates a python function into a ASTStaticFunction or SymbolicStaticFunction object.
         """
 
         nonlocal full_graph
@@ -298,10 +307,9 @@ def to_static(
             )
             full_graph = True
 
-        StaticClass = {
-            False: SymbolicStaticFunction,
-            True: ASTStaticFunction,
-        }[full_graph]
+        StaticClass = (
+            ASTStaticFunction if full_graph else SymbolicStaticFunction
+        )
 
         # Step 1. unwrap the function if it is already decorated.
         _, python_func = unwrap_decorators(python_func)
@@ -320,13 +328,6 @@ def to_static(
 
         return static_layer
 
-    build_strategy = build_strategy or BuildStrategy()
-    if not isinstance(build_strategy, BuildStrategy):
-        raise TypeError(
-            f"Required type(build_strategy) shall be `paddle.static.BuildStrategy`, but received {type(build_strategy).__name__}"
-        )
-    _check_and_set_backend(backend, build_strategy)
-
     # for usage: `to_static(foo, ...)`
     if function is not None:
         if isinstance(function, Layer):
@@ -335,6 +336,7 @@ def to_static(
                 logging_utils.warn(
                     f"`{class_name}.forward` has already been decorated somewhere. It will be redecorated to replace previous one."
                 )
+            function._original_funcs["forward"] = function.forward
             function.forward = decorated(function.forward)
             return function
         else:
@@ -342,69 +344,6 @@ def to_static(
 
     # for usage: `@to_static`
     return decorated
-
-
-class _NotToStaticDecorator(Protocol):
-    @overload
-    def __call__(
-        self, func: Callable[_InputT, _RetT]
-    ) -> Callable[_InputT, _RetT]: ...
-
-    @overload
-    def __call__(self, func: None = ...) -> _NotToStaticDecorator: ...
-
-
-@overload
-def not_to_static(
-    func: Callable[_InputT, _RetT]
-) -> Callable[_InputT, _RetT]: ...
-
-
-@overload
-def not_to_static(func: None = ...) -> _NotToStaticDecorator: ...
-
-
-def not_to_static(func=None):
-    """
-    A Decorator to suppresses the convention of a function.
-
-    Args:
-        func(callable): The function to decorate.
-
-    Returns:
-        callable: A function which won't be converted in Dynamic-to-Static.
-
-    Examples:
-        .. code-block:: python
-
-            >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
-            >>> import paddle
-
-            >>> @paddle.jit.not_to_static
-            ... def func_not_to_static(x):
-            ...     res = x - 1
-            ...     return res
-
-            >>> @paddle.jit.to_static
-            ... def func(x):
-            ...     if paddle.mean(x) < 0:
-            ...         out = func_not_to_static(x)
-            ...     else:
-            ...         out = x + 1
-            ...     return out
-            ...
-            >>> x = paddle.ones([1, 2], dtype='float32')
-            >>> out = func(x)
-            >>> print(out)
-            Tensor(shape=[1, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[2., 2.]])
-    """
-    if func is None:
-        return not_to_static
-
-    options = ConversionOptions(not_convert=True)
-    options.attach(func)
-    return func
 
 
 class _SaveLoadConfig:
@@ -614,7 +553,6 @@ def _get_input_var_and_names(inputs, input_spec, input_names_after_prune):
             elif spec.name not in input_var_names:
                 warnings.warn(name_no_exists_error % spec.name)
             else:
-                # do nothing
                 pass
     else:
         # prune
@@ -649,7 +587,7 @@ def _get_output_vars(outputs, output_spec, with_hook=False):
     )
     output_spec_is_not_value_error = (
         "tensor `%s` is not support in pir mode, "
-        "because pir value has no name sometimes, especially as ouptut,"
+        "because pir value has no name sometimes, especially as output,"
         "so we can't check tensor's name with output var name, please"
         "change as pir.value(to_static layer's output)"
         "or int(the position of to_static layer's output)"
@@ -752,14 +690,14 @@ def _build_load_path_and_config(path, config):
     directory_format_exist = os.path.isdir(path)
     if prefix_format_exist and directory_format_exist:
         raise ValueError(
-            f"The {path}.pdmodel and {path} directory exist at the same time, "
+            f"The {path}.pdmodel(json) and {path} directory exist at the same time, "
             "don't know which one to load, please make sure that the specified target "
             "of ``path`` is unique."
         )
     elif not prefix_format_exist and not directory_format_exist:
         raise ValueError(
             f"The ``path`` ({path}) to load model not exists. "
-            "Please make sure that *.pdmodel exists or "
+            "Please make sure that *.pdmodel(json) exists or "
             "don't using ``skip_forward=True`` to jit.save."
         )
     else:
@@ -1236,6 +1174,7 @@ def save(
                     inner_layer.forward,
                     input_spec=inner_input_spec,
                     full_graph=True,
+                    backend=None,
                 )
 
                 concrete_program = (
@@ -1275,6 +1214,7 @@ def save(
                     static_func,
                     input_spec=inner_input_spec,
                     full_graph=True,
+                    backend=None,
                 )
                 concrete_program = static_function.concrete_program
 
@@ -1434,7 +1374,7 @@ def save(
         if combine_params:
             if use_pir_api():
                 # NOTE(Ruting): concrete_program has been pruned when init partialProgramLayer,
-                # so we do not neet to prune again.
+                # so we do not need to prune again.
 
                 for var in concrete_program.main_program.list_vars():
                     if var.persistable:

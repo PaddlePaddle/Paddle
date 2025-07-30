@@ -17,28 +17,43 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/gather.h"
-
 namespace phi {
 
 template <typename T, typename Context>
-void ScatterNdAddGradKernel(const Context &ctx,
+void ScatterNdAddGradKernel(const Context &dev_ctx,
                             const DenseTensor &index,
                             const DenseTensor &updates UNUSED,
                             const DenseTensor &out_grad,
                             DenseTensor *x_grad,
                             DenseTensor *updates_grad) {
+  if (out_grad.numel() == 0) {
+    if (x_grad) {
+      dev_ctx.template Alloc<T>(x_grad);
+    }
+    if (updates_grad) {
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(updates_grad->dims())),
+          0,
+          updates_grad);
+    }
+    return;
+  }
   if (x_grad) {
-    Copy(ctx, out_grad, ctx.GetPlace(), false, x_grad);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
   }
   if (updates_grad) {
-    ctx.template Alloc<T>(updates_grad);
+    dev_ctx.template Alloc<T>(updates_grad);
     // Gradient by Gather: dUpdates = dO[Ids]
     const auto &index_type = index.dtype();
     if (index_type == phi::DataType::INT32) {
-      phi::funcs::CPUGatherNd<T, int32_t>(ctx, out_grad, index, updates_grad);
+      phi::funcs::CPUGatherNd<T, int32_t>(
+          dev_ctx, out_grad, index, updates_grad);
     } else {
-      phi::funcs::CPUGatherNd<T, int64_t>(ctx, out_grad, index, updates_grad);
+      phi::funcs::CPUGatherNd<T, int64_t>(
+          dev_ctx, out_grad, index, updates_grad);
     }
   }
 }

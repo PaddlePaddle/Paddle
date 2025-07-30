@@ -200,7 +200,8 @@ void AutoGrowthBestFitAllocator::FreeImpl(phi::Allocation *allocation) {
   auto next_it = block_it;
   ++next_it;
 
-  if (next_it != blocks.end() && next_it->is_free_) {
+  // It's weird that using `next_it == blocks.end()` will cause a judgment fail.
+  if (block_it != (--blocks.end()) && next_it->is_free_) {
     free_blocks_.erase(std::make_pair(next_it->size_, next_it->ptr_));
     block_it->size_ += next_it->size_;
     blocks.erase(next_it);

@@ -48,19 +48,19 @@ class GridSampleTestCase(unittest.TestCase):
     def static_functional(self, place):
         main = base.Program()
         start = base.Program()
-        with base.unique_name.guard():
-            with base.program_guard(main, start):
-                x = paddle.static.data("x", self.x_shape, dtype=self.dtype)
-                grid = paddle.static.data(
-                    "grid", self.grid_shape, dtype=self.dtype
-                )
-                y_var = F.grid_sample(
-                    x,
-                    grid,
-                    mode=self.mode,
-                    padding_mode=self.padding_mode,
-                    align_corners=self.align_corners,
-                )
+        with (
+            base.unique_name.guard(),
+            base.program_guard(main, start),
+        ):
+            x = paddle.static.data("x", self.x_shape, dtype=self.dtype)
+            grid = paddle.static.data("grid", self.grid_shape, dtype=self.dtype)
+            y_var = F.grid_sample(
+                x,
+                grid,
+                mode=self.mode,
+                padding_mode=self.padding_mode,
+                align_corners=self.align_corners,
+            )
         feed_dict = {"x": self.x, "grid": self.grid}
         exe = base.Executor(place)
         exe.run(start)

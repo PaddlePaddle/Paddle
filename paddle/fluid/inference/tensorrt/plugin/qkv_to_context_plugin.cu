@@ -236,7 +236,7 @@ bool QkvToContextPluginDynamic::supportsFormatCombination(
   PADDLE_ENFORCE_NOT_NULL(
       in_out,
       common::errors::InvalidArgument(
-          "The input of swish plugin shoule not be nullptr."));
+          "The input of swish plugin should not be nullptr."));
 
   PADDLE_ENFORCE_LT(
       pos,
@@ -533,7 +533,7 @@ int QkvToContextPluginDynamic::enqueue(
     PADDLE_THROW(common::errors::Fatal(
         "The Ernie(Bert) TensorRT Plugin should be "
         "complied with CUDA version >= 10.0 when running with fp16. "
-        "Please recomplie it or try to use fp32 by set "
+        "Please recompile it or try to use fp32 by set "
         "config.SetTRTDynamicShapeInfo(min_input_shape, "
         "max_input_shape, opt_input_shape, true"));
 #endif

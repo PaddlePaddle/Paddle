@@ -36,7 +36,7 @@ class CinnLowerLevelIrJit(Generic[T]):
         self.src = self.src[self.src.find("def") :]
         self.scope = inspect_function_scope(fn)
 
-        # docs of warpped function
+        # docs of wrapped function
         self.__doc__ = fn.__doc__
         self.__name__ = fn.__name__
         self.__globals__ = fn.__globals__
@@ -79,7 +79,7 @@ def {self.fn.__name__}({jit_input_args}, target=cinn.common.DefaultHostTarget())
 
     def __getitem__(self, target):
         return cast(
-            T, functools.partial(cast(Callable, self.run), target=target)
+            "T", functools.partial(cast("Callable", self.run), target=target)
         )
 
     def _convert_arg_type(self, arg):

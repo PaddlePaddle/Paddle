@@ -56,7 +56,7 @@ void GPUBoxClipKernel(const Context &dev_ctx,
   const int64_t num = input_p->dims()[0];
   const int64_t bbox_width = input_p->numel() / num;
   auto lod = input_p->lod();
-  phi::LoD abs_offset_lod = phi::ToAbsOffset(lod);
+  phi::LegacyLoD abs_offset_lod = phi::ToAbsOffset(lod);
 
   auto stream = dev_ctx.stream();
   const size_t batch_size = lod.back().size() - 1;

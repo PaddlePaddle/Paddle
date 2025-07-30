@@ -892,6 +892,17 @@ def deform_conv2d(
 
     use_deform_conv2d_v1 = True if mask is None else False
 
+    # cpu not support float16, need to convert dtype.
+    if paddle.device.get_device() == "cpu":
+        if offset.dtype == paddle.float16:
+            offset = offset.astype(x.dtype)
+        if weight.dtype == paddle.float16:
+            weight = weight.astype(x.dtype)
+        if bias is not None and bias.dtype == paddle.float16:
+            bias = bias.astype(x.dtype)
+        if mask is not None and mask.dtype == paddle.float16:
+            mask = mask.astype(x.dtype)
+
     if in_dynamic_or_pir_mode():
         pre_bias = _C_ops.deformable_conv(
             x,
@@ -1888,9 +1899,9 @@ class ConvNormActivation(Sequential):
             in which case it will calculated as ``padding = (kernel_size - 1) // 2 * dilation``
         groups (int, optional): Number of blocked connections from input channels to output channels. Default: 1
         norm_layer (Callable[..., paddle.nn.Layer], optional): Norm layer that will be stacked on top of the convolution layer.
-            If ``None`` this layer wont be used. Default: ``paddle.nn.BatchNorm2D``
+            If ``None`` this layer won't be used. Default: ``paddle.nn.BatchNorm2D``
         activation_layer (Callable[..., paddle.nn.Layer], optional): Activation function which will be stacked on top of the normalization
-            layer (if not ``None``), otherwise on top of the conv layer. If ``None`` this layer wont be used. Default: ``paddle.nn.ReLU``
+            layer (if not ``None``), otherwise on top of the conv layer. If ``None`` this layer won't be used. Default: ``paddle.nn.ReLU``
         dilation (int): Spacing between kernel elements. Default: 1
         bias (bool|None, optional): Whether to use bias in the convolution layer. By default, biases are included if ``norm_layer is None``.
     """

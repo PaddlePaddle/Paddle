@@ -44,7 +44,7 @@ class TestProcessGroupFp32(unittest.TestCase):
 
     def test_create_process_group_bkcl(self):
         device_id = paddle.distributed.ParallelEnv().dev_id
-        paddle.set_device('xpu:%d' % device_id)
+        paddle.set_device(f'xpu:{device_id}')
 
         pg = init_process_group()
         sys.stdout.write(

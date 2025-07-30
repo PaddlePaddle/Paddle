@@ -32,13 +32,13 @@ namespace funcs {
  */
 template <typename T, typename IndexT = int>
 typename std::enable_if<std::is_floating_point<T>::value>::type
-elementwise_inner_add(const phi::CPUContext& ctx,
+elementwise_inner_add(const phi::CPUContext& dev_ctx,
                       const T* src_pointer,
                       T* dst_pointer,
                       size_t src_index,
                       IndexT dst_index,
                       size_t slice_size) {
-  auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(ctx);
+  auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
   blas.VADD(slice_size,
             src_pointer + src_index * slice_size,
             dst_pointer + dst_index * slice_size,
@@ -47,7 +47,7 @@ elementwise_inner_add(const phi::CPUContext& ctx,
 
 template <typename T, typename IndexT = int>
 typename std::enable_if<!std::is_floating_point<T>::value>::type
-elementwise_inner_add(const phi::CPUContext& ctx UNUSED,
+elementwise_inner_add(const phi::CPUContext& dev_ctx UNUSED,
                       const T* src_pointer,
                       T* dst_pointer,
                       size_t src_index,
@@ -72,7 +72,7 @@ elementwise_inner_add(const phi::CPUContext& ctx UNUSED,
  * return: output tensor
  */
 template <typename T, typename IndexT = int>
-void ScatterAssign(const phi::CPUContext& ctx UNUSED,
+void ScatterAssign(const phi::CPUContext& dev_ctx UNUSED,
                    const DenseTensor& src,
                    const DenseTensor& index,
                    DenseTensor* output) {
@@ -160,7 +160,7 @@ void ScatterAssign(const phi::CPUContext& ctx UNUSED,
 }
 
 template <typename T, typename IndexT = int>
-void ScatterAssignAdd(const phi::CPUContext& ctx,
+void ScatterAssignAdd(const phi::CPUContext& dev_ctx,
                       const DenseTensor& src,
                       const DenseTensor& index,
                       DenseTensor* output) {
@@ -240,14 +240,14 @@ void ScatterAssignAdd(const phi::CPUContext& ctx,
     const IndexT& index_val =
         (p_index[i] < 0 ? p_index[i] + max_index : p_index[i]);
     elementwise_inner_add<T, IndexT>(
-        ctx, p_src, p_output, i, index_val, slice_size);
+        dev_ctx, p_src, p_output, i, index_val, slice_size);
   }
 }
 
 // The function is only for scatter grad x,
 // however update grad use gather
 template <typename T, typename IndexT = int>
-void CPUScatterGradForX(const phi::CPUContext& ctx UNUSED,
+void CPUScatterGradForX(const phi::CPUContext& dev_ctx UNUSED,
                         const DenseTensor& index,
                         DenseTensor* output) {
   int64_t index_size = index.dims().size() == 0 ? 1 : index.dims()[0];
@@ -266,7 +266,7 @@ void CPUScatterGradForX(const phi::CPUContext& ctx UNUSED,
 }
 
 template <typename T, typename IndexT = int>
-void ScatterNdAdd(const phi::CPUContext& ctx,
+void ScatterNdAdd(const phi::CPUContext& dev_ctx,
                   const DenseTensor& update,
                   const DenseTensor& index,
                   DenseTensor* output) {
@@ -317,7 +317,7 @@ void ScatterNdAdd(const phi::CPUContext& ctx,
       temp *= output_dims[j];
     }
     elementwise_inner_add<T, IndexT>(
-        ctx, p_update, p_output, i, index_val, slice_size);
+        dev_ctx, p_update, p_output, i, index_val, slice_size);
   }
 }
 

@@ -28,19 +28,13 @@ paddle.enable_static()
 
 def create_feeds():
     user_input = paddle.static.data(
-        name="item_id", shape=[-1, 1], dtype="int64", lod_level=1
+        name="item_id", shape=[-1, 1], dtype="int64"
     )
 
-    item = paddle.static.data(
-        name="unit_id", shape=[-1, 1], dtype="int64", lod_level=1
-    )
+    item = paddle.static.data(name="unit_id", shape=[-1, 1], dtype="int64")
 
-    label = paddle.static.data(
-        name="label", shape=[-1, 1], dtype="int64", lod_level=1
-    )
-    labels = paddle.static.data(
-        name="labels", shape=[-1, 1], dtype="int64", lod_level=1
-    )
+    label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
+    labels = paddle.static.data(name="labels", shape=[-1, 1], dtype="int64")
 
     feed_list = [user_input, item, label, labels]
     return feed_list
@@ -75,7 +69,7 @@ class TestTreeIndex(unittest.TestCase):
                 [node.id() for node in tree.get_nodes(layer_node_codes[-1])]
             )
 
-        all_leaf_ids = [node.id() for node in tree.get_all_leafs()]
+        all_leaf_ids = [node.id() for node in tree.get_all_leaves()]
         self.assertEqual(sum(all_leaf_ids), sum(layer_node_ids[-1]))
 
         # get_travel

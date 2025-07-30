@@ -18,7 +18,9 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+import paddle
 from paddle import get_flags
+from paddle.base.framework import in_dygraph_mode
 
 from ...device import (
     get_cudnn_version,
@@ -281,7 +283,7 @@ class Conv1D(_ConvNd):
 
         .. math::
 
-            L_{out}&= \frac{(L_{in} + 2 * padding - (dilation * (L_f - 1) + 1))}{stride} + 1
+            L_{out} = \frac{(L_{in} + 2 * padding - (dilation * (K - 1) + 1))}{stride} + 1
 
     Parameters:
         in_channels(int): The number of channels in the input image.
@@ -630,7 +632,7 @@ class Conv2D(_ConvNd):
         stride(int|list|tuple, optional): The stride size. If stride is a list/tuple, it must
             contain two integers, (stride_H, stride_W). Otherwise, the
             stride_H = stride_W = stride. The default value is 1.
-        padding(int|str|tuple|list, optional): The padding size. Padding coule be in one of the following forms.
+        padding(int|str|tuple|list, optional): The padding size. Padding could be in one of the following forms.
             1. a string in ['valid', 'same'].
             2. an int, which means each spartial dimension(depth, height, width) is zero paded by size of `padding`
             3. a list[int] or tuple[int] whose length is the number of spartial dimensions, which contains the amount of padding on each side for each spartial dimension. It has the form [pad_d1, pad_d2, ...].
@@ -739,6 +741,33 @@ class Conv2D(_ConvNd):
                 data_format=self._data_format,
             )
 
+        # Note(luchang): If the input tensor is sharded along the spatial width
+        # dimension (W), this indicates spatially parallel convolution is being used.
+        if (
+            in_dygraph_mode()
+            and x.is_dist()
+            and self._data_format in ["NCHW", "NHWC"]
+        ):
+            if self._data_format == "NCHW":
+                shard_axis = 3
+            elif self._data_format == "NHWC":
+                shard_axis = 2
+
+            for placement in x.placements:
+                if placement == paddle.distributed.Shard(shard_axis):
+                    return paddle.distributed.auto_parallel.ring_conv.RingConv2d.apply(
+                        x,
+                        self.weight,
+                        bias=self.bias,
+                        stride=self._stride,
+                        padding=self._updated_padding,
+                        padding_algorithm=self._padding_algorithm,
+                        dilation=self._dilation,
+                        groups=self._groups,
+                        data_format=self._data_format,
+                        channel_dim=self._channel_dim,
+                    )
+
         out = F.conv._conv_nd(
             x,
             self.weight,
@@ -800,7 +829,7 @@ class Conv2DTranspose(_ConvNd):
         stride(int|list|tuple, optional): The stride size. If stride is a list/tuple, it must
             contain two integers, (stride_H, stride_W). Otherwise, the
             stride_H = stride_W = stride. Default: 1.
-        padding(int|str|tuple|list, optional): The padding size. Padding coule be in one of the following forms.
+        padding(int|str|tuple|list, optional): The padding size. Padding could be in one of the following forms.
             1. a string in ['valid', 'same'].
             2. an int, which means each spartial dimension(depth, height, width) is zero paded by size of `padding` on both sides
             3. a list[int] or tuple[int] whose length is the number of spartial dimensions, which contains the amount of padding on each side for each spartial dimension. It has the form [pad_d1, pad_d2, ...].
@@ -960,7 +989,7 @@ class Conv3D(_ConvNd):
         stride(int|list|tuple, optional): The stride size. If stride is a list/tuple, it must
             contain three integers, (stride_D, stride_H, stride_W). Otherwise, the
             stride_D = stride_H = stride_W = stride. The default value is 1.
-        padding(int|str|tuple|list, optional): The padding size. Padding coule be in one of the following forms.
+        padding(int|str|tuple|list, optional): The padding size. Padding could be in one of the following forms.
             1. a string in ['valid', 'same'].
             2. an int, which means each spartial dimension(depth, height, width) is zero paded by size of `padding`
             3. a list[int] or tuple[int] whose length is the number of spartial dimensions, which contains the amount of padding on each side for each spartial dimension. It has the form [pad_d1, pad_d2, ...].
@@ -1138,7 +1167,7 @@ class Conv3DTranspose(_ConvNd):
             If stride is a list/tuple, it must contain three integers, (stride_depth, stride_height,
             stride_width). Otherwise, stride_depth = stride_height = stride_width = stride.
             Default: 1.
-        padding(int|str|tuple|list, optional): The padding size. Padding coule be in one of the following forms.
+        padding(int|str|tuple|list, optional): The padding size. Padding could be in one of the following forms.
             1. a string in ['valid', 'same'].
             2. an int, which means each spartial dimension(depth, height, width) is zero paded by size of `padding`
             3. a list[int] or tuple[int] whose length is the number of spartial dimensions, which contains the amount of padding on each side for each spartial dimension. It has the form [pad_d1, pad_d2, ...].

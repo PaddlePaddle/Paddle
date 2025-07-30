@@ -553,7 +553,7 @@ CPP_TYPE_TO_PD_ARG_TYPE_REGISTER(PD_ARG_TYPE_TO_CPP_TYPE)
 
 }  // namespace capi
 
-using LoD = capi::LoD;
+using LegacyLoD = capi::LegacyLoD;
 using Context = capi::DeviceContext;
 using DenseTensor = capi::DenseTensor;
 using Scalar = capi::Scalar;

@@ -17,8 +17,7 @@ limitations under the License. */
 #include "paddle/phi/common/scalar.h"
 #include "paddle/utils/blank.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 paddle::any GetAttrValue(const Attribute& attr) {
   switch (AttrTypeID(attr)) {
@@ -319,5 +318,4 @@ void CanonicalizeScalarAttrs(const proto::OpProto& op_proto,
     }
   }
 }
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

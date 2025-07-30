@@ -28,7 +28,7 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 
-// MIOPEN do not have epslion definition
+// MIOPEN do not have epsilon definition
 #define CUDNN_BN_MIN_EPSILON 1e-05
 
 COMMON_DECLARE_bool(cudnn_deterministic);
@@ -45,8 +45,8 @@ inline const char* miopenGetErrorString(miopenStatus_t status) {
       return "miopenStatusNotInitialized";
     case miopenStatusAllocFailed:
       return "miopenStatusAllocFailed";
-    case miopenStatusBadParm:
-      return "miopenStatusBadParm";
+    case miopenStatusBadParm:        // typos: disable-line
+      return "miopenStatusBadParm";  // typos: disable-line
     case miopenStatusInternalError:
       return "miopenStatusInternalError";
     case miopenStatusInvalidValue:
@@ -391,7 +391,7 @@ class ScopedFilterDescriptor {
       // NOTE: input filter(C) of the filter is already asserted to be C/groups.
     }
     std::vector<int> stride_dim(kernel_with_group.size());
-    stride_dim.push_back(1);
+    stride_dim[kernel_with_group.size() - 1] = 1;
     for (int k = kernel_with_group.size() - 2; k >= 0; k--) {
       stride_dim[k] = stride_dim[k + 1] * kernel_with_group[k + 1];
     }

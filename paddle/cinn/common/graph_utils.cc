@@ -176,9 +176,9 @@ std::string Graph::Visualize() const {
 }
 
 void Graph::ClearUnlinkedNodes(
-    absl::flat_hash_map<std::string, std::vector<int>> *shape_dict,
-    absl::flat_hash_map<std::string, Type> *type_dict,
-    absl::flat_hash_map<std::string, std::string> *layout_dict) {
+    paddle::flat_hash_map<std::string, std::vector<int>> *shape_dict,
+    paddle::flat_hash_map<std::string, Type> *type_dict,
+    paddle::flat_hash_map<std::string, std::string> *layout_dict) {
   PADDLE_ENFORCE_NOT_NULL(
       shape_dict,
       ::common::errors::InvalidArgument(

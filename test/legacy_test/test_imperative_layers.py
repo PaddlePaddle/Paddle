@@ -179,8 +179,11 @@ class TestLayerPrint(unittest.TestCase):
         module = nn.CosineSimilarity(axis=0)
         self.assertEqual(str(module), 'CosineSimilarity(axis=0, eps=1e-08)')
 
-        module = nn.Embedding(10, 3, sparse=True)
-        self.assertEqual(str(module), 'Embedding(10, 3, sparse=True)')
+        module = nn.Embedding(10, 3, sparse=True, scale_grad_by_freq=False)
+        self.assertEqual(
+            str(module),
+            'Embedding(10, 3, sparse=True, scale_grad_by_freq=False)',
+        )
 
         module = nn.Conv1D(3, 2, 3)
         self.assertEqual(

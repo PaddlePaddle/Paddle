@@ -23,7 +23,6 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/operators/custom_device_common_op_registry.h"
 #include "paddle/fluid/pybind/eager_generator.h"
 #include "paddle/fluid/pybind/pybind.h"
 #include "paddle/utils/string/string_helper.h"
@@ -1600,7 +1599,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
                                     LegalizeVarName(input_name));
       } else {
         const char* FWD_INS_CONTENT_TEMPLATE =
-            "  if(%s.initialized()) "
+            "  if(%s.has_allocation()) "
             "ins[\"%s\"] = egr::EagerUtils::TrySyncToVars(%s);\n";
         dispensable_ins_contents_str +=
             paddle::string::Sprintf(FWD_INS_CONTENT_TEMPLATE,
@@ -1608,14 +1607,15 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
                                     input_name,
                                     LegalizeVarName(input_name));
         const char* FWD_AMP_TENSORS_VECTOR_TEMPLATE =
-            "    if(%s.initialized()) "
+            "    if(%s.has_allocation()) "
             "amp_tensors_vector.push_back({ %s });\n";
         dispensable_amp_tensors_vector_str +=
             paddle::string::Sprintf(FWD_AMP_TENSORS_VECTOR_TEMPLATE,
                                     LegalizeVarName(input_name),
                                     LegalizeVarName(input_name));
         const char* DISPENSABLE_AMP_AUTO_CAST_TEMPLATE =
-            "    auto NEW_%s = ((%s.initialized()) ? egr::AmpAutoCast(\"%s\", "
+            "    auto NEW_%s = ((%s.has_allocation()) ? "
+            "egr::AmpAutoCast(\"%s\", "
             "%s, amp_dst_dtype, \"%s\") : %s);\n";
         dispensable_amp_auto_cast_str +=
             paddle::string::Sprintf(DISPENSABLE_AMP_AUTO_CAST_TEMPLATE,
@@ -2189,7 +2189,7 @@ static std::string GenerateSingleOpBase(
       "  // Check backward inplace info\n"
       "  bool %s = false;\n"
       "  %s\n"
-      "  if (%s.initialized()) {\n"
+      "  if (%s.has_allocation()) {\n"
       "    VLOG(10) << %s.name() << \"(%s) use_count: \" << "
       "%s.impl().use_count();\n"
       "    if (%s.impl().use_count() == 1 || (%s.impl().use_count() == 2 && "
@@ -2234,8 +2234,8 @@ static std::string GenerateSingleOpBase(
                                     bwd_inplace_input_name,
                                     struct_fwd_input_name);
         const char* GRAD_INS_FWD_TENSOR_TEMPLATE =
-            "(&this->%s)->get_intermidiate_tensor()";
-        std::string tensor_wrapper_intermidiate_tensor_str =
+            "(&this->%s)->get_intermediate_tensor()";
+        std::string tensor_wrapper_intermediate_tensor_str =
             paddle::string::Sprintf(GRAD_INS_FWD_TENSOR_TEMPLATE,
                                     struct_fwd_input_name);
         generated_grad_function_body +=
@@ -2249,7 +2249,7 @@ static std::string GenerateSingleOpBase(
                                     bwd_inplace_input_name,
                                     bwd_inplace_input_name,
                                     bwd_inplace_input_name,
-                                    tensor_wrapper_intermidiate_tensor_str,
+                                    tensor_wrapper_intermediate_tensor_str,
                                     can_be_inplaced_name);
       }
     } else if (grad_ins_grad_slotname_map.count(grad_input_name)) {
@@ -3344,6 +3344,7 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
      {"ParamOut",
       "Moment1Out",
       "Moment2Out",
+      "Moment2MaxOut",
       "Beta1PowOut",
       "Beta2PowOut",
       "MasterParamOut"}},
@@ -3351,6 +3352,7 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
      {"ParamOut",
       "Moment1Out",
       "Moment2Out",
+      "Moment2MaxOut",
       "Beta1PowOut",
       "Beta2PowOut",
       "MasterParamOut"}},
@@ -3358,6 +3360,7 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
      {"ParamsOut",
       "Moments1Out",
       "Moments2Out",
+      "Moments2MaxOut",
       "Beta1PowsOut",
       "Beta2PowsOut",
       "MasterParamsOut"}},
@@ -3365,6 +3368,7 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
      {"ParamOut",
       "Moment1Out",
       "Moment2Out",
+      "Moment2MaxOut",
       "Beta1PowOut",
       "Beta2PowOut",
       "MasterParamOut"}},
@@ -3395,10 +3399,6 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"c_broadcast", {"Out"}},
     {"c_sync_calc_stream", {"Out"}},
     {"c_sync_comm_stream", {"Out"}},
-    {"c_reduce_sum", {"Out"}},
-    {"c_reduce_max", {"Out"}},
-    {"c_reduce_min", {"Out"}},
-    {"c_reduce_prod", {"Out"}},
     {"c_reduce", {"Out"}},
     {"c_scatter", {"Out"}},
     {"barrier", {"Out"}},
@@ -3544,6 +3544,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
       "LearningRate",
       "Moment1",
       "Moment2",
+      "Moment2Max",
       "Beta1Pow",
       "Beta2Pow",
       "MasterParam"}},
@@ -3553,6 +3554,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
       "LearningRate",
       "Moment1",
       "Moment2",
+      "Moment2Max",
       "Beta1Pow",
       "Beta2Pow",
       "MasterParam"}},
@@ -3562,6 +3564,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
       "LearningRate",
       "Moments1",
       "Moments2",
+      "Moments2Max",
       "Beta1Pows",
       "Beta2Pows",
       "MasterParams",
@@ -3572,6 +3575,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
       "LearningRate",
       "Moment1",
       "Moment2",
+      "Moment2Max",
       "Beta1Pow",
       "Beta2Pow",
       "MasterParam"}},
@@ -3723,6 +3727,7 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
      {"ParamOut",
       "Moment1Out",
       "Moment2Out",
+      "Moment2MaxOut",
       "Beta1PowOut",
       "Beta2PowOut",
       "MasterParamOut"}},
@@ -3730,6 +3735,7 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
      {"ParamOut",
       "Moment1Out",
       "Moment2Out",
+      "Moment2MaxOut",
       "Beta1PowOut",
       "Beta2PowOut",
       "MasterParamOut"}},
@@ -3737,6 +3743,7 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
      {"ParamsOut",
       "Moments1Out",
       "Moments2Out",
+      "Moments2MaxOut",
       "Beta1PowsOut",
       "Beta2PowsOut",
       "MasterParamsOut"}},
@@ -3744,6 +3751,7 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
      {"ParamOut",
       "Moment1Out",
       "Moment2Out",
+      "Moment2MaxOut",
       "Beta1PowOut",
       "Beta2PowOut",
       "MasterParamOut"}},
@@ -3777,12 +3785,6 @@ std::set<std::string> special_no_need_buffer_op_set = {
 };
 
 int run_generator(int argc, char* argv[]) {
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-  // We need a fake device to trigger the registration of the common kernel and
-  // generate api
-  paddle::operators::RegisterCustomDeviceCommonKernel("fake_device");
-#endif
-
   std::string eager_root = argv[1];
   int split_count = atoi(argv[2]);
 

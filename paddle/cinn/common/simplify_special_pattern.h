@@ -17,12 +17,19 @@
 #include <unordered_map>
 #include <vector>
 #include "paddle/cinn/common/integer_set.h"
-#include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 namespace cinn {
 namespace common {
+
+// `MergeMulMod` is used to simplify the expression for Max Level of
+// `IndexExpr::OptLevel` When it simplifies addition, because of the commutative
+// law, it collects all the operands of addition and then tries to simplify each
+// element. It has a time complexity of O3 and cannot be enabled by default for
+// performance reasons.
+ir::IndexExpr MergeMulMod(const ir::IndexExpr& expr);
+
 std::optional<ir::IndexExpr> SimplifyCornerCase(const ir::IndexExpr& expr);
 std::optional<ir::IndexExpr> SimplifyAddCornerCase(const ir::IndexExpr& lhs,
                                                    const ir::IndexExpr& rhs);

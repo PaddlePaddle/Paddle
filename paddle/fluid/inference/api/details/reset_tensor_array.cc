@@ -16,14 +16,11 @@
 
 #include "glog/logging.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Scope;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace details {
+namespace paddle::details {
 
 // Should be called after the parameters are loaded.
 void TensorArrayBatchCleaner::CollectTensorArrays(framework::Scope *scope) {
@@ -77,5 +74,4 @@ void TensorArrayBatchCleaner::ResetNoTensorVars() {
   }
 }
 
-}  // namespace details
-}  // namespace paddle
+}  // namespace paddle::details

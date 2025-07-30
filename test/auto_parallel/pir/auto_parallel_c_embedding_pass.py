@@ -193,8 +193,36 @@ class TestSimpleNetForSemiAutoParallel:
         np.testing.assert_equal(md5_pass, md5_st)
         np.testing.assert_equal(md5_pass, md5_dy)
 
+    def test_c_embedding_with_pir_fp16(self):
+        paddle.disable_static()
+        data_loader = self.create_data_loader()
+        dist_loader = dist.shard_dataloader(
+            dataloader=data_loader,
+            meshes=[self.mesh],
+        )
+        paddle.set_default_dtype('float16')
+        layer = EmbeddingNet(self.mesh)
+        paddle.set_default_dtype('float32')
+        opt = paddle.optimizer.AdamW(
+            learning_rate=0.1, parameters=layer.parameters()
+        )
+        loss_fn = nn.MSELoss()
+        strategy = dist.Strategy()
+        strategy._mp_optimization.replace_with_c_embedding = True
+        dist_model = dist.to_static(
+            layer, dist_loader, loss_fn, opt, strategy=strategy
+        )
+        dist_model._engine._mode = "train"
+        dist_model.train()
+        dist_program = dist_model._engine._pir_dist_main_progs["train"]
+        # check the dtype of c_embedding_grad is float16, consistent with c_embedding.
+        op_check = dist_program.global_block().ops[-5]
+        np.testing.assert_equal(op_check.name(), "pd_op.c_embedding_grad")
+        np.testing.assert_equal(op_check.result(0).dtype.name, "FLOAT16")
+
     def run_test_case(self):
         self.test_mp_demo_net()
+        self.test_c_embedding_with_pir_fp16()
 
 
 if __name__ == '__main__':

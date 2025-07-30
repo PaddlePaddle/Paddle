@@ -26,6 +26,7 @@
 #include "paddle/cinn/ir/dim.h"
 #include "paddle/cinn/ir/group_schedule/base_group_scheduler.h"
 #include "paddle/cinn/ir/group_schedule/config/group_tile_util.h"
+#include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 #include "paddle/cinn/lang/placeholder.h"
@@ -37,6 +38,7 @@
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 PD_DECLARE_bool(cinn_enable_grid_reduce);
+PD_DECLARE_bool(cinn_enable_vectorize);
 
 namespace cinn {
 namespace hlir {
@@ -92,7 +94,7 @@ ir::Expr GetComputeBody(const FusibleOp& op) {
       const auto& compute_body =
           (ExprSetFinderUtils::ChildStores * ExprSetFinderUtils::Store2Value)
               .GetSingle(compute_realize);
-      return ExprTransformerUtils::SubstitudeByScheduleBlockRealize(
+      return ExprTransformerUtils::SubstituteByScheduleBlockRealize(
           compute_realize)(compute_body);
     }
     ir::Expr operator()(const TrivialOp& op) {
@@ -102,7 +104,7 @@ ir::Expr GetComputeBody(const FusibleOp& op) {
       const auto& compute_body =
           (ExprSetFinderUtils::ChildStores * ExprSetFinderUtils::Store2Value)
               .GetSingle(compute_realize);
-      return ExprTransformerUtils::SubstitudeByScheduleBlockRealize(
+      return ExprTransformerUtils::SubstituteByScheduleBlockRealize(
           compute_realize)(compute_body);
     }
   };
@@ -323,7 +325,7 @@ ir::Expr CreateExprWithNewComputeBody(const FusibleOp& fusible_op,
 }
 
 int GetTensorCounter() {
-  static int counter = 1;
+  static thread_local std::atomic<int> counter = 1;
   return counter++;
 }
 
@@ -376,7 +378,7 @@ std::vector<FusibleOp> TransformReduceLoopRange(
             : GetOutputIters(*downstream),
         GetReduceIters(upstream),
         GetInitExpr(upstream),
-        ComposeUtils::CopyedReplaceExpr(GetComputeBody(upstream),
+        ComposeUtils::CopiedReplaceExpr(GetComputeBody(upstream),
                                         GetOutputIters(upstream),
                                         load_tensor.As<ir::Load>()->indices),
         new_tensor,
@@ -513,109 +515,6 @@ ir::Expr GetBaseVariableExpr(const ir::Expr& expr) {
   return expr;
 }
 
-std::pair<TrivialOp, ReduceOp> SplitReduceOp(const ReduceOp& reduce_op) {
-  VLOG(4) << "Start SplitReduceOp";
-  VLOG(4) << "DebugPrint Op Origin: " << _GetRootExpr(reduce_op);
-  ir::Tensor reduce_out_tensor = GetOutputTensor(reduce_op);
-  // substitude compute_body with a new init value.
-  ir::Expr trivial_compute_body =
-      ExprTransformerUtils::ChangeTensorLoadTransformer(
-          GetOutputTensor(reduce_op),
-          GetInitExpr(reduce_op))(GetComputeBody(reduce_op));
-
-  const std::vector<ir::Var>& all_iters = ComposeUtils::ConcatVector(
-      GetOutputIters(reduce_op), GetReduceIters(reduce_op));
-
-  // TODO(phlrain): trivial_compute_body contain cinn_max(-inf, var[i])
-  // only need keep var[i].
-  // Need to remove split transform
-  trivial_compute_body = GetBaseVariableExpr(trivial_compute_body);
-  VLOG(4) << "Trivial Compute Body is " << trivial_compute_body;
-  ir::Tensor new_trivial_tensor =
-      ir::Tensor(reduce_out_tensor->name + "_split_transform",
-                 reduce_out_tensor->type(),
-                 GetShapeFromVars(all_iters),
-                 GetShapeFromVars(all_iters),
-                 ir::ComputeOp::Make(
-                     reduce_out_tensor->name + "_split_transform",
-                     [body = trivial_compute_body](
-                         const std::vector<Expr>& indices) { return body; },
-                     GetShapeFromVars(all_iters),
-                     GetShapeFromVars(all_iters),
-                     {}),
-                 {});
-  new_trivial_tensor->WithBuffer();
-  VLOG(4) << "Created Tensor is: " << new_trivial_tensor;
-  VLOG(4) << "Load Expr is: "
-          << new_trivial_tensor(ComposeUtils::VarVec2ExprVec(all_iters));
-
-  // push trivial op
-  VLOG(4) << "Splited TrivialOp is "
-          << CreateTrivialExpr(
-                 all_iters, trivial_compute_body, new_trivial_tensor);
-
-  const auto& result_trivial = TrivialOp(
-      CreateTrivialExpr(all_iters, trivial_compute_body, new_trivial_tensor));
-
-  // push reduce op, change compute_body to
-  const ir::Expr& reduce_block_realize =
-      (ExprSetFinderUtils::ChildScheduleBlockRealizes *
-       ExprSetFinderUtils::ScheduleBlockRealizeIsNotInit)
-          .GetSingle(_GetRootExpr(reduce_op));
-  const auto all_iter_vars =
-      reduce_block_realize.As<ir::ScheduleBlockRealize>()
-          ->schedule_block.As<ir::ScheduleBlock>()
-          ->iter_vars;
-  const ir::Expr reduce_rhs =
-      new_trivial_tensor(ComposeUtils::VarVec2ExprVec(all_iter_vars));
-  ir::Expr reduce_store =
-      (ExprSetFinderUtils::ChildStores).GetSingle(reduce_block_realize);
-  const auto& wrap_reduce_compute =
-      [](const ir::Reduce::ReduceType& reduce_type,
-         const ir::Expr& lhs,
-         const ir::Expr& rhs) -> ir::Expr {
-    switch (reduce_type) {
-      case ir::Reduce::kSum:
-        if (ExprTransformerUtils::IsReduceBool(lhs, rhs)) {
-          return lhs || rhs;
-        }
-        return lhs + rhs;
-      case ir::Reduce::kMul:
-        if (ExprTransformerUtils::IsReduceBool(lhs, rhs)) {
-          return lhs && rhs;
-        }
-        return lhs * rhs;
-      case ir::Reduce::kMax:
-        return ir::Max::Make(lhs, rhs);
-      case ir::Reduce::kMin:
-        return ir::Min::Make(lhs, rhs);
-      case ir::Reduce::kAll:
-        return lhs && rhs;
-      case ir::Reduce::kAny:
-        return lhs || rhs;
-      default:
-        CINN_NOT_IMPLEMENTED
-    }
-  };
-  const auto reduce_type =
-      GetOutputTensor(reduce_op)->body().As<ir::Reduce>()->reduce_type;
-  const auto reduce_lhs =
-      GetOutputTensor(reduce_op)(reduce_store.As<ir::Store>()->indices);
-  ir::Expr new_reduce_compute =
-      wrap_reduce_compute(reduce_type, reduce_lhs, reduce_rhs);
-  reduce_store.As<ir::Store>()->value = new_reduce_compute;
-  VLOG(4) << "Splited ReduceOp is: " << _GetRootExpr(reduce_op);
-
-  auto expand_pos = GetExpandVarPos(reduce_op);
-  if (!expand_pos.empty()) {
-    auto pad_result_trivial = std::get<TrivialOp>(
-        cinn::fusion::DoPadding(result_trivial, expand_pos).back());
-    return std::make_pair(pad_result_trivial, reduce_op);
-  }
-  VLOG(4) << "SplitReduceTransform End~";
-  return std::make_pair(result_trivial, reduce_op);
-}
-
 std::vector<ir::Var> GetAllForIters(const ir::Expr& expr) {
   using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
       ChildFors;
@@ -641,157 +540,18 @@ std::vector<ir::Var> GetAllForIters(const ir::Expr& expr) {
 
 }  // namespace trivial_fusion_detail
 
-struct VarReplacer : public ir::IRMutator<ir::Expr*> {
-  std::unordered_set<ir::Var> iter_vars;
-  ir::Var inspecting_var;
-
-  explicit VarReplacer(const std::vector<ir::Var>& _iter_vars)
-      : iter_vars(_iter_vars.begin(), _iter_vars.end()) {}
-
-  virtual void Visit(const ir::_Var_* op, ir::Expr* expr) {
-    ir::Var var = op->Copy().as_var_ref();
-    if (inspecting_var.defined() && var == inspecting_var) {
-      *expr = ir::Expr(1);
-    } else if (iter_vars.find(var) != iter_vars.end()) {
-      *expr = ir::Expr(0);
-    } else {
-      // We can replace shape variables (e.g. S0) with any constant, and here
-      // we just choose to replace them with 32.
-      *expr = ir::Expr(32);
-    }
-  }
-};
-
-std::vector<int64_t> GetVarStrides(ir::Expr load_offset,
-                                   const std::vector<ir::Var>& iter_vars) {
-  VarReplacer replacer(iter_vars);
-
-  const auto Evaluate = [&](const ir::Var var) {
-    ir::Expr expr = ir::ir_utils::IRCopy(load_offset);
-    replacer.inspecting_var = var;
-    replacer.IRMutator::Visit(&expr, &expr);
-    ir::Expr res = common::AutoSimplify(expr);
-    if (res.is_constant()) {
-      return res.as_int64();
-    }
-    return int64_t(0);
-  };
-
-  const int64_t base = Evaluate(ir::Var());
-
-  std::vector<int64_t> strides;
-  for (const auto& var : iter_vars) {
-    int64_t stride = Evaluate(var) - base;
-    strides.push_back(stride);
-  }
-  return strides;
-}
-
-ir::Expr GetLargestLoad(const std::vector<ir::Expr>& exprs) {
-  common::cas_intervals_t var_intervals =
-      common::CollectVarIntervalsOfExprs(exprs);
-  common::SymbolicExprAnalyzer symbolic_expr_analyzer(var_intervals);
-
-  const auto GetLoadSize = [](const ir::Expr& expr) {
-    auto* load = expr.As<ir::Load>();
-    auto* tensor = load->tensor.As<ir::_Tensor_>();
-    if (tensor->shape.size() == 0) {
-      return ir::Expr(1);
-    }
-    ir::Expr size = tensor->shape[0];
-    for (size_t i = 1; i < tensor->shape.size(); i++) {
-      size = size * tensor->shape[i];
-    }
-    return common::AutoSimplify(size);
-  };
-
-  ir::Expr res = exprs[0];
-  ir::Expr res_size = GetLoadSize(res);
-  for (size_t i = 1; i < exprs.size(); i++) {
-    ir::Expr cur_size = GetLoadSize(exprs[i]);
-    std::optional<bool> gt = symbolic_expr_analyzer.ProveGT(cur_size, res_size);
-    if (gt.has_value() && gt.value()) {
-      res = exprs[i];
-      res_size = cur_size;
-    }
-  }
-  return res;
-}
-
-std::vector<int64_t> GetLoopStrides(const ir::Expr& body,
-                                    const ir::Expr& expr_block) {
-  using trivial_fusion_detail::ExprSetFinderUtils::ChildTensorLoads;
-
-  auto* block = expr_block.As<ir::ScheduleBlockRealize>();
-  auto& iter_values = block->iter_values;
-  auto& iter_vars = block->schedule_block.As<ir::ScheduleBlock>()->iter_vars;
-  PADDLE_ENFORCE_EQ(
-      iter_values.size(),
-      iter_vars.size(),
-      ::common::errors::InvalidArgument(
-          "The size of iter_values should be equal to iter_vars.\n"
-          "But now received: \n"
-          "iter_values: %d, and iter_vars: %d.",
-          iter_values.size(),
-          iter_vars.size()));
-  const std::vector<ir::Var> for_iters =
-      trivial_fusion_detail::GetAllForIters(body);
-
-  const auto GetLoopIndex = [&](size_t var_index) {
-    auto iter = std::find(for_iters.begin(),
-                          for_iters.end(),
-                          iter_values[var_index].as_var_ref());
-    CHECK(iter != for_iters.end());
-    return std::distance(for_iters.begin(), iter);
-  };
-
-  const auto& all_loads = ChildTensorLoads(expr_block);
-  std::vector<int64_t> loop_strides(for_iters.size());
-  if (all_loads.empty()) {
-    return loop_strides;
-  }
-  const ir::Expr largest_load = GetLargestLoad(all_loads);
-  ir::Expr load_offset = largest_load.As<ir::Load>()->index();
-  std::vector<int64_t> var_strides = GetVarStrides(load_offset, iter_vars);
-  for (size_t i = 0; i < iter_vars.size(); i++) {
-    loop_strides[GetLoopIndex(i)] = var_strides[i];
-  }
-  return loop_strides;
-}
-
 std::shared_ptr<FusionGroupInfo> GetFusionGroupInfo(
-    const std::vector<ir::Expr>& op_compute_bodies) {
+    const std::vector<ir::Expr>& op_compute_bodies,
+    const std::unordered_set<std::string>& group_args) {
   using trivial_fusion_detail::AppendBound;
   using trivial_fusion_detail::GetAllForIters;
   using trivial_fusion_detail::IsReduceBody;
   using trivial_fusion_detail::ReduceOp;
-  using trivial_fusion_detail::ComposeUtils::ConcatVector;
-  using trivial_fusion_detail::ExprSetFinderUtils::ChildScheduleBlockRealizes;
-  using trivial_fusion_detail::ExprSetFinderUtils::ScheduleBlockRealizeIsInit;
-  using trivial_fusion_detail::ExprSetFinderUtils::
-      ScheduleBlockRealizeIsSplitTransform;
 
   std::shared_ptr<FusionGroupInfo> group_info =
       std::make_shared<FusionGroupInfo>();
 
-  const auto GetSplitTransformBlock = [](const ir::Expr& expr_body) {
-    return (ChildScheduleBlockRealizes *
-            ScheduleBlockRealizeIsSplitTransform)(expr_body);
-  };
-
   for (const auto& body : op_compute_bodies) {
-    std::vector<ir::Expr> split_transform_block = GetSplitTransformBlock(body);
-    if (!split_transform_block.empty()) {
-      PADDLE_ENFORCE_EQ(split_transform_block.size(),
-                        1,
-                        ::common::errors::InvalidArgument(
-                            "The size of split_transform_block should be 1.\n"
-                            "But received: \n"
-                            "split_transform_block: %d.",
-                            split_transform_block.size()));
-      group_info->loop_strides = GetLoopStrides(body, split_transform_block[0]);
-    }
-
     if (IsReduceBody(body)) {
       ReduceOp op = ReduceOp(body);
       if (group_info->reduce_var_name.empty()) {
@@ -800,7 +560,7 @@ std::shared_ptr<FusionGroupInfo> GetFusionGroupInfo(
         std::transform(all_iters.begin(),
                        all_iters.end(),
                        std::back_inserter(group_info->loop_ranges),
-                       [](const ir::Var var) {
+                       [&](const ir::Var var) {
                          VLOG(4) << "Var is : : " << var;
                          VLOG(4) << "Var->upper_bound: " << var->upper_bound;
                          if (var->upper_bound.is_constant()) {
@@ -809,6 +569,15 @@ std::shared_ptr<FusionGroupInfo> GetFusionGroupInfo(
                            return (int64_t)-1;
                          }
                        });
+        std::transform(all_iters.begin(),
+                       all_iters.end(),
+                       std::back_inserter(group_info->loop_ranges_expr),
+                       [](const ir::Var var) {
+                         VLOG(4) << "Var is : : " << var;
+                         VLOG(4)
+                             << "Var->upper_bound_sym: " << var->upper_bound;
+                         return var->upper_bound;
+                       });
         std::vector<ir::Var> reduce_iters = fusion::FilterVector(
             all_iters, [](const ir::Var& var) { return var->is_reduce_axis; });
         for (int64_t i = all_iters.size() - reduce_iters.size();
@@ -816,6 +585,7 @@ std::shared_ptr<FusionGroupInfo> GetFusionGroupInfo(
              i++) {
           group_info->reduce_axis.emplace_back(i);
         }
+        group_info->loop_strides = GetLoopStrides(body);
       }
       group_info->reduce_var_name.emplace_back(GetOutputTensor(op)->name);
     }
@@ -837,8 +607,12 @@ std::shared_ptr<FusionGroupInfo> GetFusionGroupInfo(
   }
 
   if (FLAGS_cinn_enable_grid_reduce) {
-    group_info->can_apply_grid_reduce =
-        GetCanApplyGridReduce(op_compute_bodies, group_info->reduce_axis);
+    group_info->can_apply_grid_reduce = true;
+  }
+
+  if (FLAGS_cinn_enable_vectorize) {
+    group_info->vectorize_info =
+        GetGroupVectorizeInfo(op_compute_bodies, group_args);
   }
 
   VLOG(4) << group_info->DebugPrint();

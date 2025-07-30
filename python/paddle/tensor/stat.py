@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING, Literal
 
 from typing_extensions import TypeAlias, overload
@@ -29,7 +30,6 @@ from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..common_ops_import import Variable
 from ..framework import LayerHelper, core
 from .math import _get_reduce_axis_with_tensor
-from .search import where
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -193,18 +193,36 @@ def var(
         )
 
     u = mean(x, axis, True, name)
-    out = paddle.sum(paddle.pow((x - u), 2), axis, keepdim=keepdim, name=name)
+    dtype = paddle.float32 if x.dtype == paddle.float16 else x.dtype
+    out = paddle.sum(
+        paddle.pow((x - u), 2), axis, keepdim=keepdim, name=name, dtype=dtype
+    )
 
-    dtype = x.dtype
     n = paddle.cast(paddle.numel(x), "int64") / paddle.cast(
         paddle.numel(out), "int64"
     )
     n = n.astype(dtype)
     if unbiased:
         one_const = paddle.ones([], x.dtype)
-        n = where(n > one_const, n - 1.0, one_const)
+        if paddle.in_dynamic_mode() and n <= one_const:
+            warnings.warn("Degrees of freedom is <= 0.", stacklevel=2)
+        n = n - 1.0
     n.stop_gradient = True
     out /= n
+
+    def _replace_nan(out):
+        indices = paddle.arange(out.numel(), dtype='int64')
+        out_nan = paddle.index_fill(
+            out.flatten(), indices, 0, float('nan')
+        ).reshape(out.shape)
+        return out_nan
+
+    if 0 in x.shape:
+        out = _replace_nan(out)
+    if len(x.shape) == 0 and not unbiased:
+        out = paddle.to_tensor(0, stop_gradient=out.stop_gradient)
+    if out.dtype != x.dtype:
+        return out.astype(x.dtype)
     return out
 
 
@@ -582,10 +600,6 @@ def median(
     if not isinstance(x, (Variable, paddle.pir.Value)):
         raise TypeError("In median, the input x should be a Tensor.")
 
-    if in_dynamic_mode() and x.size == 0:
-        # TODO: Currently, `__eq__` don't support arguments (`pir.Value` & `int`)
-        raise ValueError("In median, the size of input x should not be 0.")
-
     is_flatten = False
     dims = len(x.shape)
     if dims == 0:
@@ -642,7 +656,7 @@ def median(
             keepdim=True,
         )
     else:  # mode == 'min'
-        if sz & 1 == 0:
+        if sz & 1 == 0 and kth != 0:
             out_tensor = paddle.slice(
                 tensor_topk, axes=[axis], starts=[kth - 1], ends=[kth]
             )
@@ -721,7 +735,7 @@ def _compute_quantile(
         axis (int|list, optional): The axis along which to calculate quantile. ``axis`` should be int or list of int.
             ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
             If ``axis`` is less than 0, it works the same way as :math:`axis + D`.
-            If ``axis`` is a list, quantile is calculated over all elements of given axises.
+            If ``axis`` is a list, quantile is calculated over all elements of given axes.
             If ``axis`` is None, quantile is calculated over all elements of ``x``. Default is None.
         keepdim (bool, optional): Whether to reserve the reduced dimension(s)
             in the output Tensor. If ``keepdim`` is True, the dimensions of
@@ -905,7 +919,7 @@ def quantile(
         axis (int|list, optional): The axis along which to calculate quantile. ``axis`` should be int or list of int.
             ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
             If ``axis`` is less than 0, it works the same way as :math:`axis + D`.
-            If ``axis`` is a list, quantile is calculated over all elements of given axises.
+            If ``axis`` is a list, quantile is calculated over all elements of given axes.
             If ``axis`` is None, quantile is calculated over all elements of ``x``. Default is None.
         keepdim (bool, optional): Whether to reserve the reduced dimension(s)
             in the output Tensor. If ``keepdim`` is True, the dimensions of
@@ -989,7 +1003,7 @@ def nanquantile(
         axis (int|list, optional): The axis along which to calculate quantile. ``axis`` should be int or list of int.
             ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
             If ``axis`` is less than 0, it works the same way as :math:`axis + D`.
-            If ``axis`` is a list, quantile is calculated over all elements of given axises.
+            If ``axis`` is a list, quantile is calculated over all elements of given axes.
             If ``axis`` is None, quantile is calculated over all elements of ``x``. Default is None.
         keepdim (bool, optional): Whether to reserve the reduced dimension(s)
             in the output Tensor. If ``keepdim`` is True, the dimensions of

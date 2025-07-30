@@ -59,11 +59,7 @@ class MovieInfo:
         ]
 
     def __str__(self) -> str:
-        return "<MovieInfo id(%d), title(%s), categories(%s)>" % (
-            self.index,
-            self.title,
-            self.categories,
-        )
+        return f"<MovieInfo id({self.index}), title({self.title}), categories({self.categories})>"
 
     def __repr__(self) -> str:
         return self.__str__()
@@ -97,12 +93,8 @@ class UserInfo:
         ]
 
     def __str__(self) -> str:
-        return "<UserInfo id(%d), gender(%s), age(%d), job(%d)>" % (
-            self.index,
-            "M" if self.is_male else "F",
-            age_table[self.age],
-            self.job_id,
-        )
+        gender = "M" if self.is_male else "F"
+        return f"<UserInfo id({self.index}), gender({gender}), age({age_table[self.age]}), job({self.job_id})>"
 
     def __repr__(self) -> str:
         return str(self)
@@ -246,25 +238,25 @@ class Movielens(Dataset):
     def _load_data(self) -> None:
         self.data = []
         is_test = self.mode == 'test'
-        with zipfile.ZipFile(self.data_file) as package:
-            with package.open('ml-1m/ratings.dat') as rating:
-                for line in rating:
-                    line = line.decode(encoding='latin')
-                    if (np.random.random() < self.test_ratio) == is_test:
-                        uid, mov_id, rating, _ = line.strip().split("::")
-                        uid = int(uid)
-                        mov_id = int(mov_id)
-                        rating = float(rating) * 2 - 5.0
+        with (
+            zipfile.ZipFile(self.data_file) as package,
+            package.open('ml-1m/ratings.dat') as rating,
+        ):
+            for line in rating:
+                line = line.decode(encoding='latin')
+                if (np.random.random() < self.test_ratio) == is_test:
+                    uid, mov_id, rating, _ = line.strip().split("::")
+                    uid = int(uid)
+                    mov_id = int(mov_id)
+                    rating = float(rating) * 2 - 5.0
 
-                        mov = self.movie_info[mov_id]
-                        usr = self.user_info[uid]
-                        self.data.append(
-                            usr.value()
-                            + mov.value(
-                                self.categories_dict, self.movie_title_dict
-                            )
-                            + [[rating]]
-                        )
+                    mov = self.movie_info[mov_id]
+                    usr = self.user_info[uid]
+                    self.data.append(
+                        usr.value()
+                        + mov.value(self.categories_dict, self.movie_title_dict)
+                        + [[rating]]
+                    )
 
     def __getitem__(self, idx: int) -> tuple[npt.NDArray[Any], ...]:
         data = self.data[idx]

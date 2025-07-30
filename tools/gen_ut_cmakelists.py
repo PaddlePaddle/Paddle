@@ -64,7 +64,7 @@ However the var's format is '{p}'."""
 def _process_conditions(conditions):
     """
     Desc:
-        Input condition expression in cmake grammer and return a string warpped by 'AND ()'.
+        Input condition expression in cmake grammar and return a string wrapped by 'AND ()'.
         If the conditions string is empty, return an empty string.
     Example 1:
         Input: "LINUX"
@@ -80,10 +80,10 @@ def _process_conditions(conditions):
     return [c.strip() for c in conditions]
 
 
-def _proccess_archs(arch):
+def _process_archs(arch):
     """
     desc:
-        Input archs options and warp it with 'WITH_', 'OR' and '()' in cmakelist grammer.
+        Input archs options and warp it with 'WITH_', 'OR' and '()' in cmakelist grammar.
         The case is ignored.
         If the input is empty, return "LOCAL_ALL_ARCH".
     Example 1:
@@ -114,7 +114,7 @@ def _proccess_archs(arch):
 def _process_os(os_):
     """
     Desc:
-        Input os options and output warpped options with 'OR' and '()'
+        Input os options and output wrapped options with 'OR' and '()'
         If the input is empty, return "LOCAL_ALL_PLAT"
     Example 1:
         Input: "WIN32"
@@ -166,7 +166,7 @@ def _file_with_extension(prefix, suffixes):
 def _process_name(name, curdir):
     """
     Desc:
-        check whether name is with a legal format and check whther the test file exists.
+        check whether name is with a legal format and check whether the test file exists.
     """
     name = name.strip()
     assert re.compile("^test_[0-9a-zA-Z_]+").search(name), (
@@ -218,7 +218,7 @@ class DistUTPortManager:
     def reset_current_port(self, port=None):
         self.dist_ut_port = 21200 if port is None else port
 
-    def get_currnt_port(self):
+    def get_current_port(self):
         return self.dist_ut_port
 
     def gset_port(self, test_name, port):
@@ -238,7 +238,7 @@ class DistUTPortManager:
             re.compile("^[0-9]+$").search(port_num)
             and int(port_num) > 0
             or port_num.strip() == ""
-        ), f"""port_num must be foramt as a positive integer or empty, but this port_num is '{port_num}'"""
+        ), f"""port_num must be format as a positive integer or empty, but this port_num is '{port_num}'"""
         port_num = port_num.strip()
         if len(port_num) == 0:
             return 0
@@ -270,7 +270,7 @@ class DistUTPortManager:
                         break
                 name = lines[k - 1].strip()
 
-                # matcg right tets name format, the name must start with 'test_' follwed bu at least one char of
+                # matcg right tets name format, the name must start with 'test_' followed bu at least one char of
                 # '0-9'. 'a-z'. 'A-Z' or '_'
                 assert re.compile("^test_[0-9a-zA-Z_]+").search(
                     name
@@ -366,7 +366,7 @@ class DistUTPortManager:
         If the directories are newly created or there is no CMakeLists.txt before, or ignore this error, you
         must specify the directories using the args option --ignore-cmake-dirs/-i.
         If you want to keep the dist ports of old tests unchanged, please ensure the old
-        verson CMakeLists.txt file existing before using the gen_ut_cmakelists tool to
+        version CMakeLists.txt file existing before using the gen_ut_cmakelists tool to
         generate new CmakeLists.txt files.
     ====================================================================================
     """
@@ -387,7 +387,7 @@ class CMakeGenerator:
 
     def parse_csvs(self):
         '''
-        parse csv files, return the lists of craeted or modified files
+        parse csv files, return the lists of created or modified files
         '''
         self.modified_or_created_files = []
         for c in self.current_dirs:
@@ -415,7 +415,7 @@ class CMakeGenerator:
     def _parse_line(self, line, curdir):
         """
         Desc:
-            Input a line in csv file and output a string in cmake grammer, adding the specified test and setting its properties.
+            Input a line in csv file and output a string in cmake grammar, adding the specified test and setting its properties.
         Example:
             Input: "test_allreduce,linux,gpu;rocm,120,DIST,test_runner.py,20071,1,PYTHONPATH=..;http_proxy=;https_proxy=,"
             Output:
@@ -451,7 +451,7 @@ class CMakeGenerator:
 
         envs = _process_envs(envs)
         conditions = _process_conditions(conditions)
-        archs = _proccess_archs(archs)
+        archs = _process_archs(archs)
         os_ = _process_os(os_)
         run_serial = _process_run_serial(run_serial)
 
@@ -565,8 +565,8 @@ class CMakeGenerator:
         for sub in sub_dirs:
             cmds += f"add_subdirectory({sub})\n"
 
-        # check whether the generated file are thge same with the existing file, ignoring the blank chars
-        # if the are same, skip the weiting process
+        # check whether the generated file are the same with the existing file, ignoring the blank chars
+        # if they are same, skip the waiting process
         if os.path.isfile(f"{current_work_dir}/CMakeLists.txt"):
             with open(
                 f"{current_work_dir}/CMakeLists.txt", "r"
@@ -626,13 +626,13 @@ if __name__ == "__main__":
         type=lambda x: x.lower() not in ["false", "0", "off"],
         required=False,
         default=False,
-        help="Only check wheather the CMake files should be rewriten, do not write it enven if it should be write",
+        help="Only check whether the CMake files should be rewritten, do not write it even if it should be write",
     )
     args = parser.parse_args()
 
     assert not (
         len(args.files) == 0 and len(args.dirpaths) == 0
-    ), "You must provide at leate one file or dirpath"
+    ), "You must provide at least one file or dirpath"
     current_work_dirs = []
     if len(args.files) >= 1:
         for p in args.files:

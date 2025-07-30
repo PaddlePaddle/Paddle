@@ -14,9 +14,7 @@
 
 #include "paddle/phi/common/memory_utils.h"
 
-namespace phi {
-
-namespace memory_utils {
+namespace phi::memory_utils {
 
 Allocator::AllocationPtr Alloc(const phi::Place& place,
                                size_t size,
@@ -82,12 +80,14 @@ void EmplaceDeviceContexts(
         place_to_device_context,
     const std::vector<phi::Place>& places,
     bool disable_setting_default_stream_for_allocator,
-    int stream_priority) {
+    int stream_priority,
+    bool set_to_default_stream) {
   MemoryUtils::Instance().EmplaceDeviceContexts(
       place_to_device_context,
       places,
       disable_setting_default_stream_for_allocator,
-      stream_priority);
+      stream_priority,
+      set_to_default_stream);
 }
 
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
@@ -133,14 +133,10 @@ const phi::Allocator* GetHostZeroAllocator() {
   return MemoryUtils::Instance().GetHostZeroAllocator();
 }
 
-// XPUs do not have the concept of pinned memory,
-// so the get_pinned_allocator function is not set.
 std::shared_ptr<std::remove_pointer<XPUEvent>::type> GetXpuEvent(
     int device_id) {
   return MemoryUtils::Instance().GetXpuEvent(device_id);
 }
 #endif
 
-}  // namespace memory_utils
-
-}  // namespace phi
+}  // namespace phi::memory_utils

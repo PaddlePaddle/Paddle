@@ -19,6 +19,8 @@
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/utils/test_macros.h"
 
+COMMON_DECLARE_int32(call_stack_level);
+
 namespace egr {
 
 class TEST_API GradNodeAccumulation : public GradNodeBase {
@@ -28,6 +30,10 @@ class TEST_API GradNodeAccumulation : public GradNodeBase {
     VLOG(5) << "Construct GradNodeAccumulation";
     if (meta) {
       weak_grad_ = meta->WeakGrad();
+    }
+
+    if (FLAGS_call_stack_level == 3) {
+      this->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
     }
 
     SetDefaultGradInOutMeta();

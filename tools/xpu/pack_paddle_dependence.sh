@@ -142,6 +142,8 @@ function local_assemble() {
 
       cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xpudnn/include/* xpu/include/xhpc/xpudnn
       cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xpudnn/so/libxpu_dnn.so xpu/lib/
+      # FIXME(yangjianbang): 待bkcl增加RPATH后, 删除以下代码
+      patchelf --set-rpath '$ORIGIN/' xpu/lib/libbkcl.so
     fi
 }
 

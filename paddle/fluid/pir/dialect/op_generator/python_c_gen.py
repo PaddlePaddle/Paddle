@@ -29,11 +29,6 @@ H_FILE_TEMPLATE = """
 
 #include <Python.h>
 
-// Avoid a problem with copysign defined in pyconfig.h on Windows.
-#ifdef copysign
-#undef copysign
-#endif
-
 {body}
 
 """
@@ -467,7 +462,7 @@ class PythonCCodeGen(CodeGen):
     def _need_skip(self, op_info, op_name):
         return (
             super()._need_skip(op_info, op_name)
-            or op_name.endswith(('_grad', '_grad_', 'xpu'))
+            or op_name.endswith('xpu')
             or op_name in MANUAL_STATIC_OP_FUNCTION_LIST
         )
 

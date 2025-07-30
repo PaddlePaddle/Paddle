@@ -120,7 +120,7 @@ class TestBase(IPUOpTest):
             return np.array(result)
 
     def test(self):
-        # cpu and ipu dimenstion mismatch, cpu:(100, 1, 1), ipu:(100, 1)
+        # cpu and ipu dimension mismatch, cpu:(100, 1, 1), ipu:(100, 1)
         ipu_loss = self._test_optimizer(True).flatten()
         cpu_loss = self._test_optimizer(False).flatten()
         self.assertTrue(ipu_loss[0] == ipu_loss[99])

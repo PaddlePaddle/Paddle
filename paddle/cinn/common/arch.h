@@ -24,8 +24,9 @@ namespace common {
 
 struct UnknownArch {};
 
-#define CINN_ARCH_CLASS_NAMES(_macro) \
-  _macro(X86Arch) _macro(ARMArch) _macro(NVGPUArch) _macro(HygonDCUArchHIP)
+#define CINN_ARCH_CLASS_NAMES(_macro)                                       \
+  _macro(X86Arch) _macro(ARMArch) _macro(NVGPUArch) _macro(HygonDCUArchHIP) \
+      _macro(HygonDCUArchSYCL)
 
 #define DEFINE_CINN_ARCH(class_name) \
   struct class_name {};

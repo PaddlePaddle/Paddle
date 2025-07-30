@@ -39,6 +39,16 @@ class IRMutator : public IRVisitorRequireReImpl<void, T> {
 #undef __
 };
 
+template <typename T = Expr *>
+class ExprMutator : public IRMutator<T> {
+ public:
+  void Visit(const Expr *expr, T op) override {
+    if (expr->is_index()) return;
+    IRMutator<T>::Visit(expr, op);
+  }
+  void Visit(const IndexExpr *expr, T op) override { return; }
+};
+
 template <typename T>
 void IRMutator<T>::Visit(const Expr *expr, T op) {
   IRVisitorRequireReImpl<void, T>::Visit(expr, op);
@@ -302,6 +312,10 @@ void IRMutator<T>::Visit(const IntrinsicOp *expr, T op) {
       for (auto &expr : n->args) {
         Visit(&expr, &expr);
       }
+    } break;
+    case ir::IntrinsicKind::kGetAddr: {
+      auto *n = llvm::dyn_cast<intrinsics::GetAddr>(node);
+      Visit(&n->data, &n->data);
     } break;
   }
 }

@@ -14,12 +14,13 @@
 
 from __future__ import annotations
 
+import builtins
 import math
 import re
-from typing import TYPE_CHECKING, Any, overload
+import warnings
+from typing import TYPE_CHECKING, overload
 
 import numpy as np
-import numpy.typing as npt
 
 import paddle
 from paddle import _C_ops
@@ -30,7 +31,6 @@ from ..base.data_feeder import (
     check_type,
     check_variable_and_dtype,
     convert_dtype,
-    convert_float_to_uint16,
 )
 from ..base.framework import Variable, device_guard
 from ..base.param_attr import ParamAttr
@@ -61,6 +61,8 @@ if TYPE_CHECKING:
     )
 
 __all__ = []
+
+_warned_in_to_tensor = False
 
 
 def _complex_to_real_dtype(dtype: DTypeLike) -> DTypeLike:
@@ -495,7 +497,7 @@ def logspace(
     name: str | None = None,
 ) -> paddle.Tensor:
     r"""
-    Return fixed number of logarithmical-evenly spaced values within the interval \
+    Return fixed number of logarithmically-evenly spaced values within the interval \
     :math:`[base^{start}, base^{stop}]`.
 
     Notes:
@@ -519,7 +521,7 @@ def logspace(
 
     Returns:
         Tensor: The output data type will be float32, float64. The 1-D tensor with \
-        fixed number of logarithmical-evenly spaced values, the data shape of this \
+        fixed number of logarithmically-evenly spaced values, the data shape of this \
         tensor is :math:`[num]`. If the :attr:`num` is set 1, the output tensor \
         just has the value with exponential of :attr:`start` with base :attr:`base`.
 
@@ -695,19 +697,6 @@ def _to_tensor_non_static(
                 return tensor.astype(convert_dtype(dtype))
         return tensor
 
-    def _handle_np_dtype(
-        ndarray: npt.NDArray[Any], dtype: DTypeLike
-    ) -> npt.NDArray[Any]:
-        if dtype:
-            if convert_dtype(dtype) != convert_dtype(ndarray.dtype):
-                # should not ndarray.astype('uint16') directly, data bits is wrong
-                if convert_dtype(dtype) in ['uint16']:
-                    return convert_float_to_uint16(ndarray.astype('float32'))
-                else:
-                    return ndarray.astype(convert_dtype(dtype))
-
-        return ndarray
-
     if isinstance(data, np.number):  # Special case for numpy scalars
         data = np.array(data)
 
@@ -727,7 +716,7 @@ def _to_tensor_non_static(
             data.stop_gradient = stop_gradient
             return data
         elif isinstance(data, core.DenseTensor):
-            # should't expose it to users, just for internal use.
+            # shouldn't expose it to users, just for internal use.
             # convert core.DenseTensor to Tensor first
             # Currently, there is no copy when places are same
             data = paddle.Tensor(data, place=place)
@@ -753,23 +742,57 @@ def _to_tensor_non_static(
                         if default_type in ['float16', 'float32']
                         else 'complex128'
                     )
-                data = _handle_np_dtype(data, default_type)
+                if convert_dtype(default_type) != convert_dtype(data.dtype):
+                    dtype = default_type
             # Windows default type is 'int32', while Linux/Mac is 'int64'. Unify they.
             if data.dtype in ['int32']:
                 data = data.astype("int64")
 
-    if dtype:
-        data = _handle_np_dtype(data, dtype)
+    if dtype and convert_dtype(dtype) != convert_dtype(data.dtype):
+        if convert_dtype(dtype) == 'uint16':
+            tensor = core.eager.Tensor(
+                value=data,
+                place=place,
+                persistable=False,
+                zero_copy=False,
+                name=None,
+                stop_gradient=True,
+            )
+            tensor = tensor.astype(dtype)
+            tensor.stop_gradient = stop_gradient
+            return tensor
+        else:
+            data = data.astype(convert_dtype(dtype))
 
     if isinstance(data, np.ndarray):
-        return core.eager.Tensor(
-            value=data,
-            place=place,
-            persistable=False,
-            zero_copy=False,
-            name=None,
-            stop_gradient=stop_gradient,
-        )
+        if (
+            data.dtype
+            in [
+                np.float32,
+                np.float64,
+                np.int32,
+                np.int64,
+                np.complex64,
+                np.complex128,
+            ]
+            and data.size == 1
+            and (
+                isinstance(place, core.CUDAPlace)
+                or (isinstance(place, core.Place) and place.is_gpu_place())
+            )
+        ):
+            ret = paddle.full(data.shape, data.reshape([1])[0], data.dtype)
+            ret.stop_gradient = stop_gradient
+            return ret
+        else:
+            return core.eager.Tensor(
+                value=data,
+                place=place,
+                persistable=False,
+                zero_copy=False,
+                name=None,
+                stop_gradient=stop_gradient,
+            )
     else:
         return paddle.Tensor(
             value=data,
@@ -931,6 +954,22 @@ def to_tensor(
     if place is None:
         place = _current_expected_place_()
     if in_dynamic_mode():
+        is_tensor = paddle.is_tensor(data)
+        if not is_tensor and hasattr(data, "__cuda_array_interface__"):
+            if not core.is_compiled_with_cuda():
+                raise RuntimeError(
+                    "PaddlePaddle is not compiled with CUDA, but trying to create a Tensor from a CUDA array."
+                )
+            return core.tensor_from_cuda_array_interface(data)
+        if is_tensor:
+            global _warned_in_to_tensor
+            if not _warned_in_to_tensor:
+                warnings.warn(
+                    "To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach(), "
+                    "rather than paddle.to_tensor(sourceTensor).",
+                    stacklevel=2,
+                )
+                _warned_in_to_tensor = True
         return _to_tensor_non_static(data, dtype, place, stop_gradient)
 
     # call assign for static graph
@@ -939,6 +978,60 @@ def to_tensor(
         place_str = re.findall(re_exp, str(place))[0]
         with paddle.static.device_guard(place_str):
             return _to_tensor_static(data, dtype, stop_gradient)
+
+
+class MmapStorage(paddle.base.core.MmapStorage):
+    """
+    This class will use mmap to load a file.
+
+    Args:
+        filename(str): the name of .safetensors file.
+        nbytes(int): number of bytes to map into memory.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> shape = [4,5]
+            >>> dtype = paddle.float32
+            >>> a = paddle.arange(4*5).reshape(shape).astype(dtype)
+            >>> a.numpy().tofile("test.pp")
+            >>> size = a.size * a.element_size()
+            >>> t = paddle.MmapStorage("test.pp", size)
+            >>> t.get_slice(dtype = dtype, start = 0, stop = a.size).reshape(shape)
+            Tensor(shape=[4, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[0. , 1. , 2. , 3. , 4. ],
+                    [5. , 6. , 7. , 8. , 9. ],
+                    [10., 11., 12., 13., 14.],
+                    [15., 16., 17., 18., 19.]])
+
+    """
+
+    def __init__(self, filename: str, nbytes: int):
+        super().__init__(filename, nbytes)
+
+    def get_slice(
+        self,
+        dtype: DTypeLike | None = "uint8",
+        start: int = 0,
+        stop: int = -1,
+        step: int = 1,
+    ) -> paddle.Tensor:
+        """
+        Slice the tensor from the mmapped file.
+        Args:
+            dtype (DTypeLike | None): The data type of the output tensor. Default: "uint8".
+            start (int): The start index of the slice. Default: 0.
+            stop (int): The end index of the slice. Default: -1.
+            step (int): The step size of the slice. Default: 1.
+        Returns:
+            Tensor: The sliced tensor.
+        """
+        proto_dtype = paddle.base.framework.convert_to_proto_type(dtype)
+        out: paddle.base.libpaddle.DenseTensor = super().get_slice(
+            proto_dtype, start, stop, step
+        )
+        return out
 
 
 def full_like(
@@ -1050,7 +1143,6 @@ def fill_constant(
             dtype = paddle.pir.core.vartype_to_datatype[dtype]
 
         if in_dynamic_mode():
-            value = float(value)
             if isinstance(shape, (list, tuple)):
                 shape = paddle.utils.convert_shape_to_list(shape)
         else:
@@ -1070,7 +1162,7 @@ def fill_constant(
 
         if out.dtype != dtype:
             raise TypeError(
-                "Required out.dtype == dtype if specifying out, but recevied f{out.dtype} != f{dtype}"
+                "Required out.dtype == dtype if specifying out, but received f{out.dtype} != f{dtype}"
             )
         out = _C_ops.full_(out, shape, value, dtype, place)
         out.stop_gradient = True
@@ -1394,7 +1486,7 @@ def eye(
                 'int32',
                 'int64',
                 'complex64',
-                'comple128',
+                'complex128',
             ],
             'eye',
         )
@@ -1477,7 +1569,12 @@ def full(
     """
 
     if dtype is None:
-        dtype = paddle.get_default_dtype()
+        if isinstance(fill_value, (bool)):
+            dtype = "bool"
+        elif isinstance(fill_value, (builtins.complex)):
+            dtype = "complex128"
+        else:
+            dtype = paddle.get_default_dtype()
 
     return fill_constant(shape=shape, dtype=dtype, value=fill_value, name=name)
 
@@ -2053,21 +2150,19 @@ def diag_embed(
             f"But received Input's dimensional: {len(input_shape)}.\n"
         )
 
-        assert np.abs(dim1) <= len(input_shape), (
-            "Dim1 is out of range (expected to be in range of [%d, %d], but got %d).\n"
-            % (-(len(input_shape) + 1), len(input_shape), dim1)
-        )
+        assert np.abs(dim1) <= len(
+            input_shape
+        ), f"Dim1 is out of range (expected to be in range of [{-(len(input_shape) + 1)}, {len(input_shape)}], but got {dim1}).\n"
 
-        assert np.abs(dim2) <= len(input_shape), (
-            "Dim2 is out of range (expected to be in range of [%d, %d], but got %d).\n"
-            % (-(len(input_shape) + 1), len(input_shape), dim2)
-        )
+        assert np.abs(dim2) <= len(
+            input_shape
+        ), f"Dim2 is out of range (expected to be in range of [{-(len(input_shape) + 1)}, {len(input_shape)}], but got {dim2}).\n"
 
         dim1_ = dim1 if dim1 >= 0 else len(input_shape) + dim1 + 1
         dim2_ = dim2 if dim2 >= 0 else len(input_shape) + dim2 + 1
         assert dim1_ != dim2_, (
             "dim1 and dim2 cannot be the same dimension."
-            "But received dim1 = %d, dim2 = %d\n" % (dim1, dim2)
+            f"But received dim1 = {dim1}, dim2 = {dim2}\n"
         )
 
     __check_input(input, offset, dim1, dim2)
@@ -2418,6 +2513,7 @@ def empty(
                     'int64',
                     'complex64',
                     'complex128',
+                    'float8_e4m3fn',
                 ],
                 'empty',
             )
@@ -2457,6 +2553,7 @@ def empty(
                 'int64',
                 'complex64',
                 'complex128',
+                'float8_e4m3fn',
             ],
             'empty',
         )
@@ -2621,7 +2718,7 @@ def assign(x: TensorLike, output: paddle.Tensor | None = None) -> paddle.Tensor:
              [2.5 2.5]]
             >>> array = np.array([[1, 1], [3, 4], [1, 3]]).astype(
             ...     np.int64
-            ... )  # type: ignore[var-annotated]
+            ... )
             >>> result1 = paddle.zeros(shape=[3, 3], dtype='float32')
             >>> paddle.assign(array, result1)
             >>> print(result1.numpy())
@@ -2718,7 +2815,7 @@ def assign(x: TensorLike, output: paddle.Tensor | None = None) -> paddle.Tensor:
                 )
             ):
                 raise TypeError(
-                    "Unsupport paddle.assign([Variable, Variable...]) with non-scalar variable."
+                    "Unsupported paddle.assign([Variable, Variable...]) with non-scalar variable."
                 )
 
             def convert_scalar(x):
@@ -2757,11 +2854,17 @@ def assign(x: TensorLike, output: paddle.Tensor | None = None) -> paddle.Tensor:
         )
         value_name = "values"
         values = input.ravel().tolist()
-        if input.size > 1024 * 1024:
-            raise ValueError(
+        max_element_num = 17179869184  # 17179869184 = 2**34
+        if input.size > max_element_num:
+            from paddle.jit.sot.utils.exceptions import SotExtraInfo
+
+            sot_extra_info = SotExtraInfo(need_breakgraph=True)
+            err = ValueError(
                 "The size of input is too big. Please consider "
                 "saving it to file and 'load_op' to load it"
             )
+            sot_extra_info.attach(err)
+            raise err
         if in_dynamic_or_pir_mode():
             if output is None:
                 output = zeros(list(input.shape), dtype)
@@ -3379,3 +3482,82 @@ def set_(
             shape = source.shape
 
         return _C_ops.set_(x, source, shape, stride, offset)
+
+
+@inplace_apis_in_dygraph_only
+def resize_(
+    x: paddle.Tensor,
+    shape: Sequence[int],
+    fill_zero: bool = False,
+    name: str | None = None,
+) -> paddle.Tensor:
+    """
+    Resize ``x`` with specified ``shape``.
+
+    Args:
+        x (Tensor): An arbitrary Tensor. The data type supports ``bfloat16``, ``float16``, ``float32``, ``float64``,
+            ``bool``, ``int8``, ``int16``, ``int32``, ``int64``, ``uint8``, ``complex64`` or ``complex128``.
+        shape (list|tuple): Define the target shape. Each element of it should be integer.
+        fill_zero (bool, optional): If the size of specified ``shape`` is greater than the original Tensor size, the
+            new Tensor will be filled with zero if ``fill_zero`` is True. Default: False, which means the filled value
+            will be undetermined.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, the resized Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([1., 2., 3.])
+            >>> x.resize_([2, 1])
+            >>> print(x)
+            Tensor(shape=[2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1.],
+             [2.]])
+
+            >>> x = paddle.to_tensor([1., 2., 3.])
+            >>> x.resize_([2, 3], fill_zero=True)
+            >>> print(x)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1., 2., 3.],
+             [0., 0., 0.]])
+
+    """
+    if in_dynamic_mode():
+        check_dtype(
+            x.dtype,
+            'x',
+            [
+                'bool',
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'int8',
+                'int16',
+                'int32',
+                'int64',
+                'uint8',
+                'complex64',
+                'complex128',
+            ],
+            'resize',
+        )
+        if not isinstance(shape, (list, tuple)):
+            raise ValueError(
+                f"Input (shape) should be list or tuple but received {type(shape)}"
+            )
+        new_size = math.prod(shape)
+        old_size = math.prod(x.shape)
+        if (new_size > old_size) and fill_zero:
+            repeats = -(-new_size // old_size)  # ceil division
+            flatten_x = x.flatten()
+            tmp = paddle.concat(
+                (flatten_x,) + (paddle.zeros_like(flatten_x),) * (repeats - 1)
+            )[:new_size]
+            return x.set_(tmp, shape)
+
+        return x.set_(x, shape)

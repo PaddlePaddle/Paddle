@@ -76,8 +76,7 @@ class TensorHookRemoveHelper:
                 return True
             else:
                 warnings.warn(
-                    "The backward hook (ID: %d) of Tensor `%s` you want to remove does not exist or has been removed."
-                    % (self._hook_id, tensor.name),
+                    f"The backward hook (ID: {self._hook_id}) of Tensor `{tensor.name}` you want to remove does not exist or has been removed.",
                     RuntimeWarning,
                 )
         return False
@@ -129,7 +128,6 @@ def monkey_patch_tensor():
             'strides',
             'offset',
             '__cuda_array_interface__',
-            '__dlpack_device__',
         ]
         param_keys = ['stop_gradient', 'trainable']
         if isinstance(self, EagerParamBase):
@@ -260,11 +258,25 @@ def monkey_patch_tensor():
                         self.value().process_mesh,
                         self.value().placements,
                     )
-                self.value().get_tensor().set(value.get_tensor())
+                if (
+                    isinstance(value, paddle.Tensor)
+                    and value.is_contiguous()
+                    and self.value().is_contiguous()
+                ):
+                    self.value().set_tensor(value)
+                else:
+                    self.value().get_tensor().set(value.get_tensor())
                 return
-            self.value().get_tensor().set(
-                value, framework._current_expected_place()
-            )
+            if (
+                isinstance(value, paddle.Tensor)
+                and value.is_contiguous()
+                and self.value().is_contiguous()
+            ):
+                self.value().set_tensor(value)
+            else:
+                self.value().get_tensor().set(
+                    value, framework._current_expected_place()
+                )
 
     @framework.dygraph_only
     def backward(
@@ -585,6 +597,36 @@ def monkey_patch_tensor():
         if device is None and dtype is None and blocking is None:
             return self
 
+        def is_cuda_place(place: PlaceLike):
+            return isinstance(place, core.CUDAPlace) or (
+                isinstance(place, Place) and place.is_gpu_place()
+            )
+
+        def get_device_id(place: PlaceLike):
+            if isinstance(
+                place,
+                (
+                    core.CUDAPlace,
+                    core.XPUPlace,
+                    core.IPUPlace,
+                    core.CustomPlace,
+                ),
+            ):
+                return place.get_device_id()
+            elif isinstance(place, Place):
+                if place.is_gpu_place():
+                    return place.gpu_device_id()
+                elif place.is_xpu_place():
+                    return place.xpu_device_id()
+                elif place.is_ipu_place():
+                    return place.ipu_device_id()
+                elif place.is_custom_place():
+                    return place.custom_device_id()
+            else:
+                raise ValueError(
+                    f"Invalid place: {place}, only support getting device id from CUDAPlace/XPUPlace/IPUPlace/CustomPlace"
+                )
+
         if device is not None:
             if isinstance(device, str):
                 device = paddle.device._convert_to_place(device)
@@ -619,7 +661,13 @@ def monkey_patch_tensor():
             if dtype is None:
                 dtype = t.dtype
             # 1. gpu place need to determine whether the memory is sufficient for allocation.
-            if t.place.is_gpu_place():
+            if t.place.is_gpu_place() and (
+                # NOTE: Only copy memory when place or device id is different,
+                # otherwise, it may frequently call GpuMemGetInfo in
+                # core.gpu_memory_available, leading to abnormal overhead.
+                not is_cuda_place(device)
+                or t.place.gpu_device_id() != get_device_id(device)
+            ):
                 proto_dtype = framework.convert_to_proto_type(dtype)
                 size_dtype = core.size_of_dtype(proto_dtype)
                 # Note(weilong wu): Paddle GPU minimum memory allocation unit is 256 bytes,
@@ -654,7 +702,7 @@ def monkey_patch_tensor():
                 new_t = t_casted._copy_to(device, blocking)
             else:
                 new_t = t_casted
-
+            new_t.stop_gradient = t.stop_gradient
             return new_t
 
         with warnings.catch_warnings():
@@ -702,29 +750,29 @@ def monkey_patch_tensor():
             .. code-block:: python
 
                 >>> import paddle
-                >>> tensorx = paddle.to_tensor([1,2,3])
-                >>> print(tensorx)
+                >>> x = paddle.to_tensor([1,2,3])
+                >>> print(x)
                 Tensor(shape=[3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
                     [1, 2, 3])
 
-                >>> tensorx = tensorx.to("cpu")
-                >>> print(tensorx.place)
+                >>> x = x.to("cpu")
+                >>> print(x.place)
                 Place(cpu)
 
-                >>> tensorx = tensorx.to("float32")
-                >>> print(tensorx.dtype)
+                >>> x = x.to("float32")
+                >>> print(x.dtype)
                 paddle.float32
 
-                >>> tensorx = tensorx.to("gpu", "int16")
-                >>> print(tensorx)
+                >>> x = x.to("gpu", "int16")
+                >>> print(x)
                 Tensor(shape=[3], dtype=int16, place=Place(gpu:0), stop_gradient=True,
                     [1, 2, 3])
-                >>> tensor2 = paddle.to_tensor([4,5,6])
-                >>> tensor2
+                >>> y = paddle.to_tensor([4,5,6])
+                >>> y
                 Tensor(shape=[3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
                     [4, 5, 6])
-                >>> tensor2 = tensor2.to(tensorx)
-                >>> print(tensor2)
+                >>> y = y.to(x)
+                >>> print(y)
                 Tensor(shape=[3], dtype=int16, place=Place(gpu:0), stop_gradient=True,
                     [4, 5, 6])
         """
@@ -1007,10 +1055,10 @@ def monkey_patch_tensor():
         # we call this function in python level.
         item = list(item) if isinstance(item, tuple) else [item]
         for i, slice_item in enumerate(item):
-            if isinstance(slice_item, (list, np.ndarray, tuple)):
-                item[i] = paddle.to_tensor(slice_item)
+            if isinstance(slice_item, (list, tuple)):
+                item[i] = np.array(slice_item)
             elif isinstance(slice_item, range):
-                item[i] = paddle.to_tensor(list(slice_item))
+                item[i] = np.array(list(slice_item))
 
         return tuple(item)
 
@@ -1366,6 +1414,39 @@ def monkey_patch_tensor():
             "version": 2,
         }
 
+    def __dlpack__(self, stream=None):
+        """
+        Creates a DLPack capsule of the current tensor to be exported to other libraries.
+        Args:
+            stream (int | None): An optional Python integer representing a pointer
+                                to a CUDA stream. Synchronizes the tensor with this
+                                stream before exporting.
+                                If None or -1, no synchronization is performed.
+                                If 0, the default stream is used.
+        """
+
+        if self.is_sparse():
+            raise AttributeError(
+                "Can't get __dlpack__ from a Tensor that requires gradients, "
+                "use tensor.detach() if gradients are not required."
+            )
+
+        if not self.stop_gradient:
+            raise RuntimeError(
+                "Can't get __dlpack__ from Tensor that requires gradients. "
+                "If gradients aren't required, use tensor.detach() to get a tensor without gradient."
+            )
+
+        if stream is not None:
+            if self.place.is_gpu_place():
+                current_stream = paddle.device.cuda.current_stream()
+                if stream != current_stream:
+                    event = paddle.device.cuda.Event()
+                    event.record(current_stream)
+                    current_stream.synchronize()
+
+        return paddle.to_dlpack(self)
+
     if not hasattr(core, "eager"):
         return
 
@@ -1410,6 +1491,7 @@ def monkey_patch_tensor():
         ("_use_gpudnn", _use_gpudnn),
         ("_md5sum", _md5sum),
         ("__cuda_array_interface__", __cuda_array_interface__),
+        ("__dlpack__", __dlpack__),
         ("__dlpack_device__", __dlpack_device__),
     ):
         setattr(core.eager.Tensor, method_name, method)

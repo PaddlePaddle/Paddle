@@ -590,7 +590,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
         self._shapes = []
         self._dtypes = []
         self._need_check_feed = []
-        self._blocking_queue = core.init_lod_tensor_blocking_queue(
+        self._blocking_queue = core.init_dense_tensor_blocking_queue(
             core.Variable(), self._capacity, False
         )
         self._reader = None
@@ -854,7 +854,7 @@ class GeneratorLoader(DataLoaderBase):
             self._need_check_feed = [
                 v.desc.need_check_feed() for v in self._feed_list
             ]
-        self._queue = core.init_lod_tensor_blocking_queue(
+        self._queue = core.init_dense_tensor_blocking_queue(
             core.Variable(), self._capacity, self._keep_order
         )
         self._reader = None
@@ -898,7 +898,7 @@ class GeneratorLoader(DataLoaderBase):
         double_buffer_name = data_loader_unique_name_generator('double_buffer')
 
         var = global_scope().var(queue_name)
-        self._queue = core.init_lod_tensor_blocking_queue(
+        self._queue = core.init_dense_tensor_blocking_queue(
             var, self._capacity, self._keep_order
         )
 
@@ -1638,7 +1638,7 @@ class DatasetLoader(DataLoaderBase):
         ), f"Filelist number of dataset {len(dataset.filelist)} must be not less than place number {thread_num}"
 
         if dataset.thread_num != 0 and dataset.thread_num != thread_num:
-            logging.warn(
+            logging.warning(
                 f'thread_num {dataset.thread_num} which is set in Dataset is ignored'
             )
 
@@ -1650,7 +1650,7 @@ class DatasetLoader(DataLoaderBase):
             )
             and dataset.queue_num > thread_num
         ):
-            logging.warn(
+            logging.warning(
                 f"queue_num {dataset.queue_num} which is set in Dataset is ignored"
             )
             dataset._set_queue_num(thread_num)

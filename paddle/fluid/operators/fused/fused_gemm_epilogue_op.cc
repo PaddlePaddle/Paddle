@@ -19,8 +19,7 @@ limitations under the License. */
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/fusion.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
  public:
@@ -176,8 +175,7 @@ class FusedGemmEpilogueOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 DECLARE_INFER_SHAPE_FUNCTOR(fused_gemm_epilogue,

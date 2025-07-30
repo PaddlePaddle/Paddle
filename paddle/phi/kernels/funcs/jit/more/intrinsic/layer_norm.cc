@@ -19,10 +19,7 @@
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/kernels/funcs/jit/registry.h"
 
-namespace phi {
-namespace jit {
-namespace more {
-namespace intrinsic {
+namespace phi::jit::more::intrinsic {
 
 void LayerNorm(float* x,
                float* out,
@@ -183,10 +180,7 @@ bool LayerNormKernel::CanBeUsed(const int& d) const {
          d >= YMM_FLOAT_BLOCK;
 }
 
-}  // namespace intrinsic
-}  // namespace more
-}  // namespace jit
-}  // namespace phi
+}  // namespace phi::jit::more::intrinsic
 
 namespace intrinsic = phi::jit::more::intrinsic;
 

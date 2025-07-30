@@ -446,7 +446,7 @@ class ProgBarLogger(Callback):
         self.epoch = epoch
         self.train_step = 0
         if self.epochs and self._is_print():
-            print('Epoch %d/%d' % (epoch + 1, self.epochs))
+            print(f'Epoch {epoch + 1}/{self.epochs}')
         self.train_progbar = ProgressBar(num=self.steps, verbose=self.verbose)
 
         self._train_timer['batch_start_time'] = time.time()
@@ -624,14 +624,14 @@ class ProgBarLogger(Callback):
         logs = logs or {}
         if self._is_print() and (self.eval_steps is not None):
             self._updates(logs, 'eval')
-            print('Eval samples: %d' % (self.evaled_samples))
+            print(f'Eval samples: {self.evaled_samples}')
 
     def on_predict_end(self, logs: _CallbackLogs | None = None) -> None:
         logs = logs or {}
         if self._is_print():
             if self.test_step % self.log_freq != 0 or self.verbose == 1:
                 self._updates(logs, 'test')
-            print('Predict samples: %d' % (self.tested_samples))
+            print(f'Predict samples: {self.tested_samples}')
 
 
 class ModelCheckpoint(Callback):
@@ -962,7 +962,7 @@ class EarlyStopping(Callback):
         if self.wait_epoch >= self.patience:
             self.model.stop_training = True
             if self.verbose > 0:
-                print('Epoch %d: Early stopping.' % (self.stopped_epoch + 1))
+                print(f'Epoch {self.stopped_epoch + 1}: Early stopping.')
                 if self.save_best_model and self.save_dir is not None:
                     print(
                         'Best checkpoint has been saved at {}'.format(
@@ -1448,8 +1448,8 @@ class ReduceLROnPlateau(Callback):
                         and paddle.distributed.ParallelEnv().local_rank == 0
                     ):
                         print(
-                            '\nEpoch %d: ReduceLROnPlateau reducing learning '
-                            'rate to %s.' % (self.epoch + 1, new_lr)
+                            f'\nEpoch {self.epoch + 1}: ReduceLROnPlateau reducing learning '
+                            f'rate to {new_lr}.'
                         )
                     self.cooldown_counter = self.cooldown
                     self.wait = 0

@@ -41,7 +41,8 @@ namespace phi {
  *    0 2 4 7
  *    0 2 5 7 10 12 15 20
  */
-using LoD = std::vector<std::vector<size_t>>;
+using LegacyLoD = std::vector<std::vector<size_t>>;
+using LoD = LegacyLoD;
 
 /// \brief The meta data of dense tensor. Take the structure type
 /// and use all default operations.
@@ -57,7 +58,7 @@ struct TEST_API DenseTensorMeta {
   DenseTensorMeta(DataType dtype,
                   const DDim& dims,
                   DataLayout layout,
-                  const LoD& legacy_lod,
+                  const LegacyLoD& legacy_lod,
                   size_t offset = 0);
 
   DenseTensorMeta(const DenseTensorMeta& other);
@@ -80,7 +81,7 @@ struct TEST_API DenseTensorMeta {
   DDim dims;
   DataType dtype{DataType::UNDEFINED};
   DataLayout layout{DataLayout::NCHW};
-  LoD legacy_lod;
+  LegacyLoD legacy_lod;
   size_t offset{0};
   DDim strides;
 };

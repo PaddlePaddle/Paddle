@@ -28,10 +28,6 @@ if(WITH_DISTRIBUTE)
     add_subdirectory(collective)
 endif()
 
-if (WITH_PSCORE)
-    add_subdirectory(pscore)
-endif()
-
 add_subdirectory(reader)
 
 if (NOT WIN32)
@@ -42,11 +38,15 @@ if (WITH_GPU AND TENSORRT_FOUND)
     add_subdirectory(tensorrt)
 endif()
 
+if (WITH_OPENVINO)
+    add_subdirectory(openvino)
+endif()
+
 if(WITH_IPU)
     add_subdirectory(ipu)
 endif()
 
-SET(OP_HEADER_DEPS xxhash executor)
+SET(OP_HEADER_DEPS xxhash)
 
 if (WITH_GPU)
     if (${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
@@ -100,7 +100,7 @@ cc_library(ops_extra_info SRCS ops_extra_info.cc DEPS attribute phi common)
 
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} phi common)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} selected_rows_utils
-lod_tensor lod_rank_table executor static_prim_api)
+lod_tensor executor static_prim_api)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} static_prim_api static_utils static_global_utils prim_utils)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} box_wrapper ps_gpu_wrapper)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} processgroup_comm_utils)
@@ -138,10 +138,6 @@ if(WITH_UNITY_BUILD)
 endif()
 
 copy_if_different(${pybind_file} ${pybind_file_final})
-
-if (WITH_CUSTOM_DEVICE)
-cc_library(custom_device_common_op_registry SRCS custom_device_common_op_registry.cc DEPS operator phi common type_info)
-endif()
 
 if(NOT "${OP_LIST}" STREQUAL "")
 prune_pybind_h()

@@ -32,7 +32,7 @@ void FusionSeqPoolConcatKernel(const Context& dev_ctx,
   const auto& y_dims = out->dims();
   size_t bs = x0_lod[0].size() - 1;
   out->Resize({static_cast<int64_t>(bs), y_dims[1]});
-  phi::LoD y_lod(1);
+  phi::LegacyLoD y_lod(1);
   y_lod[0].resize(bs + 1);
   for (size_t i = 0; i <= bs; ++i) {
     y_lod[0][i] = i;

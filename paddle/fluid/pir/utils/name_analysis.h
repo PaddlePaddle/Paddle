@@ -42,11 +42,14 @@ std::optional<std::string> GetValueInputName(pir::Value value);
 std::vector<std::string> GetValueOutputNames(pir::Value value);
 pir::Value GetOutputValueByName(const pir::Program &program,
                                 const std::string &name);
-
+pir::Value GetValueByNameInPhiKernelProgram(const pir::Program &program,
+                                            const std::string &name);
 inline bool HasOnlyOneValueName(pir::Value value) {
   std::vector<std::string> names = GetValueAllNames(value);
   return std::set<std::string>(names.begin(), names.end()).size() <= 1;
 }
+std::unordered_map<std::string, pir::Value> GetAllNamedValues(
+    const pir::Program &program);
 
 }  // namespace name_analysis
 }  // namespace utils

@@ -25,7 +25,7 @@
 namespace phi {
 namespace math {
 
-static inline std::string LoDToString(const LoD& lod) {
+static inline std::string LoDToString(const LegacyLoD& lod) {
   std::ostringstream stream;
   for (const auto& row : lod) {
     for (const auto& element : row) {
@@ -36,7 +36,7 @@ static inline std::string LoDToString(const LoD& lod) {
   return stream.str();
 }
 
-static inline bool CheckLoD(const LoD& in, int tensor_height = -1) {
+static inline bool CheckLegacyLoD(const LoD& in, int tensor_height = -1) {
   if (in.empty()) return true;
   for (const auto& level : in) {
     // check: there should be more than 2 offsets existing in each level.
@@ -145,7 +145,7 @@ class BeamSearchFunctor {
    * Return false if all the input tensor is empty, in machine translation task
    * that means no candidates is provided, and the task will stop running.
    */
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor* pre_ids,
                   const phi::DenseTensor* pre_scores,
                   const phi::DenseTensor* ids,

@@ -307,6 +307,7 @@ class TestDygraphAPIForDistTensorBranch(unittest.TestCase):
         lrs = [np.random.random(s).astype(mp_dtype) for s in lr_shape]
         moment1s = [np.random.random(s).astype(mp_dtype) for s in shapes]
         moment2s = [np.random.random(s).astype(mp_dtype) for s in shapes]
+        moment2s_max = [np.zeros(s).astype(mp_dtype) for s in shapes]
         beta1_pows = [np.random.random(s).astype(mp_dtype) for s in lr_shape]
         beta2_pows = [np.random.random(s).astype(mp_dtype) for s in lr_shape]
         master_params = [p.astype(mp_dtype) for p in params]
@@ -327,6 +328,10 @@ class TestDygraphAPIForDistTensorBranch(unittest.TestCase):
             dist_moment2s,
         ) = self.create_local_and_dist_tensor_list_pair(moment2s)
         (
+            local_moment2s_max,
+            dist_moment2s_max,
+        ) = self.create_local_and_dist_tensor_list_pair(moment2s_max)
+        (
             local_beta1_pows,
             dist_beta1_pows,
         ) = self.create_local_and_dist_tensor_list_pair(beta1_pows)
@@ -343,6 +348,7 @@ class TestDygraphAPIForDistTensorBranch(unittest.TestCase):
             local_param_out,
             local_moment1s_out,
             local_moment2s_out,
+            local_moment2s_max_out,
             local_beta1_pow_out,
             local_beta2_pow_out,
             local_master_param_out,
@@ -352,6 +358,7 @@ class TestDygraphAPIForDistTensorBranch(unittest.TestCase):
             local_lrs,
             local_moment1s,
             local_moment2s,
+            local_moment2s_max,
             local_beta1_pows,
             local_beta2_pows,
             local_master_params,
@@ -360,12 +367,14 @@ class TestDygraphAPIForDistTensorBranch(unittest.TestCase):
             epsilon,
             True,
             False,
+            False,
         )
 
         (
             dist_param_out,
             dist_moment1s_out,
             dist_moment2s_out,
+            dist_moment2s_max_out,
             dist_beta1_pow_out,
             dist_beta2_pow_out,
             dist_master_param_out,
@@ -375,6 +384,7 @@ class TestDygraphAPIForDistTensorBranch(unittest.TestCase):
             dist_lrs,
             dist_moment1s,
             dist_moment2s,
+            dist_moment2s_max,
             dist_beta1_pows,
             dist_beta2_pows,
             dist_master_params,
@@ -382,6 +392,7 @@ class TestDygraphAPIForDistTensorBranch(unittest.TestCase):
             beta2,
             epsilon,
             True,
+            False,
             False,
         )
         for i in range(len(local_param_out)):

@@ -43,6 +43,7 @@ struct type_caster<paddle::flat_hash_map<Key, Value, Hash, Equal, Alloc>>
 
 using paddle::dialect::DistTypeInterface;
 using paddle::dialect::OperationDistAttribute;
+using paddle::dialect::PlacementsAttribute;
 using paddle::dialect::ProcessMeshAttribute;
 using paddle::dialect::TensorDistAttribute;
 using pir::ArrayAttribute;
@@ -99,8 +100,18 @@ void BindTensorDistAttribute(py::module *m) {
       .def_property_readonly(
           "partial_dims",
           [](TensorDistAttribute &self) { return self.partial_dims(); })
-      .def_property_readonly("placements", [](TensorDistAttribute &self) {
-        return self.placements();
+      .def_property_readonly(
+          "placements",
+          [](TensorDistAttribute &self) { return self.placements(); })
+      .def_property_readonly("placements_attr", [](TensorDistAttribute &self) {
+        std::optional<PlacementsAttribute> placements_attr =
+            self.placements_attr();
+        if (placements_attr.has_value()) {
+          PyObject *py_obj = ToPyObject(placements_attr->placements());
+          return py::reinterpret_borrow<py::object>(py_obj);
+        } else {
+          return py::none().cast<py::object>();
+        }
       });
 }
 

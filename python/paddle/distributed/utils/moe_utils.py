@@ -14,6 +14,7 @@
 
 from paddle import _legacy_C_ops
 from paddle.common_ops_import import check_variable_and_dtype
+from paddle.distributed import fleet
 from paddle.framework import LayerHelper, in_dynamic_mode
 
 
@@ -61,7 +62,7 @@ def global_scatter(
         global_count (Tensor): Tensor which have n_expert * world_size elements that indicates
             how many data needed to be received. The tensor data type should be int64.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
-        use_calc_stream (bool, optional): Wether to use calculation stream (True) or communication stream. Default: True.
+        use_calc_stream (bool, optional): Whether to use calculation stream (True) or communication stream. Default: True.
 
     Returns:
         out (Tensor): The data received from all experts.
@@ -186,7 +187,7 @@ def global_gather(
         global_count (Tensor): Tensor which have n_expert * world_size elements that indicates
             how many data needed to be sent. Tensor data type should be int64.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
-        use_calc_stream (bool, optional): Wether to use calculation stream (True) or communication stream. Default: True.
+        use_calc_stream (bool, optional): Whether to use calculation stream (True) or communication stream. Default: True.
 
     Returns:
         out (Tensor): The data received from all experts.
@@ -277,3 +278,30 @@ def global_gather(
             },
         )
         return out
+
+
+def get_complete_pp_mesh(mesh):
+    """
+    Get complete pp mesh with given mesh.
+
+    Args:
+        mesh (Mesh): Mesh object.
+
+    Returns:
+        Mesh: Complete mesh.
+
+    """
+    process_id = mesh.process_ids[0]
+    global_mesh = fleet.auto.get_mesh()
+
+    if global_mesh and "pp" in global_mesh.dim_names:
+        pp_degree = global_mesh.get_dim_size("pp")
+        for i in range(pp_degree):
+            pp_mesh = global_mesh.get_mesh_with_dim("pp", i)
+            if process_id in pp_mesh.process_ids:
+                return pp_mesh
+        AssertionError(
+            f"Current mesh: {mesh} not found in global mesh {global_mesh}"
+        )
+    else:
+        return mesh

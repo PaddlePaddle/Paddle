@@ -1163,11 +1163,13 @@ class RuleBasedTuner:
                     distop_context=self.full_main_program_dist_context.dist_op_context,
                 )
 
-            with program_guard(
-                self.full_main_program, self.full_startup_program
+            with (
+                program_guard(
+                    self.full_main_program, self.full_startup_program
+                ),
+                self.full_main_program.switch_name_generator_guard("opt_"),
             ):
-                with self.full_main_program.switch_name_generator_guard("opt_"):
-                    optimizer_ops = optimizer.apply_gradients(params_grads)
+                optimizer_ops = optimizer.apply_gradients(params_grads)
 
             # op original id to grad op id
             for idx, op in enumerate(self.full_main_program.global_block().ops):
@@ -1411,7 +1413,7 @@ class RuleBasedTuner:
                 ] = dist_context
             else:
                 self._logger.info(
-                    f"No pattern has be matched under {parallelism} parallelism whe sub program is {sub_fwd_program}."
+                    f"No pattern has be matched under {parallelism} parallelism when sub program is {sub_fwd_program}."
                 )
 
     def complete_sub_fwd_programs(self, process_mesh):
@@ -2695,7 +2697,7 @@ class RuleBasedTuner:
         # Quit if just tune
         if not self._is_run:
             self._logger.info(
-                "The process will be quitted when just tune not run."
+                "The process will be quit when just tune not run."
             )
             sys.exit()
 

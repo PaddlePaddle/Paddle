@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include <absl/container/flat_hash_map.h>
 
 #include <string>
 #include <vector>
@@ -23,6 +22,7 @@
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/lang/packed_func.h"
 #include "paddle/cinn/utils/type_defs.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 namespace hlir {
@@ -36,11 +36,11 @@ T GetAttr(const cinn::utils::AttributeMap &attr_map,
                         "Sorry, cannot found attribute %s", attr_name));
   const auto &attr = attr_map.at(attr_name);
   PADDLE_ENFORCE_EQ(
-      absl::holds_alternative<T>(attr),
+      std::holds_alternative<T>(attr),
       true,
       ::common::errors::InvalidArgument(
           "The type of attribute %s isn't %s", attr_name, typeid(T).name()));
-  return absl::get<T>(attr_map.at(attr_name));
+  return std::get<T>(attr_map.at(attr_name));
 }
 
 template <class T>
@@ -139,18 +139,6 @@ std::vector<T> ToPodVector(const std::vector<Expr> &args) {
   }
   return shape_v;
 }
-
-using CINNSchedule = lang::PackedFunc;
-
-CINNSchedule GetElementwiseScheduleFunc(
-    const std::vector<std::vector<int>> &output_shapes,
-    const Target &target,
-    bool vectorizable = true);
-
-CINNSchedule GetInjectiveScheduleFunc(
-    const std::vector<std::vector<int>> &output_shapes,
-    const Target &target,
-    bool vectorizable = true);
 
 std::string GetExternFuncName(const cinn::common::Target &target,
                               const cinn::common::Type &type,

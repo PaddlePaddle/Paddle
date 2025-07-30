@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# repo: diffusers_sub_grpah
+# repo: diffusers_sub_graph
 # model: stable_diffusion
 # api:paddle.nn.functional.common.interpolate||api:paddle.nn.functional.conv.conv2d
 import unittest
@@ -33,14 +33,14 @@ class LayerCase(paddle.nn.Layer):
             shape=[640],
             dtype=paddle.float32,
         )
+        self.size = [3, 8]
 
     def forward(
         self,
         var_0,  # (shape: [1, 640, 1, 1], dtype: paddle.float32, stop_gradient: False)
-        var_1,  # (shape: [2], dtype: paddle.int32, stop_gradient: True)
     ):
         var_2 = paddle.nn.functional.common.interpolate(
-            var_0, size=var_1, mode='nearest'
+            var_0, size=self.size, mode='nearest'
         )
         var_3 = paddle.nn.functional.conv.conv2d(
             var_2, self.parameter_0, self.parameter_1, [1, 1], 1, [1, 1], 1
@@ -49,10 +49,7 @@ class LayerCase(paddle.nn.Layer):
 
 
 def create_paddle_inputs():
-    inputs = (
-        paddle.rand(shape=[1, 640, 1, 1], dtype=paddle.float32),
-        paddle.randint(low=0, high=10, shape=[2], dtype=paddle.int32),
-    )
+    inputs = (paddle.rand(shape=[1, 640, 1, 1], dtype=paddle.float32),)
     return inputs
 
 
@@ -63,15 +60,14 @@ class TestLayer(unittest.TestCase):
 
     def train(self, net, to_static, with_prim=False, with_cinn=False):
         if to_static:
-            paddle.set_flags({'FLAGS_prim_all': with_prim})
+            paddle.base.core._set_prim_all_enabled(with_prim)
             if with_cinn:
-                build_strategy = paddle.static.BuildStrategy()
-                build_strategy.build_cinn_pass = True
-                net = paddle.jit.to_static(
-                    net, build_strategy=build_strategy, full_graph=True
-                )
+                assert (
+                    with_prim
+                ), "with_cinn=True but with_prim=False is unsupported"
+                net = paddle.jit.to_static(net, backend="CINN", full_graph=True)
             else:
-                net = paddle.jit.to_static(net, full_graph=True)
+                net = paddle.jit.to_static(net, backend=None, full_graph=True)
         paddle.seed(123)
         outs = net(*self.inputs)
         return outs

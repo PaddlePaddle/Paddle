@@ -64,7 +64,7 @@ DRR PASS 包含以下三个部分：
 		<td> <pre> virtual void operator()(
         paddle::drr::DrrPatternContext* ctx) const </pre></td>
 		<td> 实现 DRR PASS 的入口函数 </td>
-		<td> ctx: 创建 Patten 所需要的 Context 参数</td>
+		<td> ctx: 创建 Pattern 所需要的 Context 参数</td>
 	</tr>
 	<tr>
 		<td rowspan="6"> SourcePattern</td>
@@ -92,7 +92,7 @@ DRR PASS 包含以下三个部分：
 	<tr>
 		<td> <pre>void AddConstraint(
         const std::function&lt;bool(const MatchContext&)&gt;& constraint_fn)</pre></td>
-		<td> 在 SourcePattern 中定义一个约束，可以利用此接口和 lamda 表达式实现对 SourcePattern 的自定义约束</td>
+		<td> 在 SourcePattern 中定义一个约束，可以利用此接口和 lambda 表达式实现对 SourcePattern 的自定义约束</td>
 		<td> constraint_fn: 自定义的约束函数</td>
 	</tr>
 	<tr>

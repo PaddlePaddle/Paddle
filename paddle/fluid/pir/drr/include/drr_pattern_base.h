@@ -20,6 +20,7 @@
 #include "paddle/fluid/pir/drr/include/drr_match_context.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_context.h"
 #include "paddle/fluid/pir/drr/include/drr_rewrite_pattern.h"
+#include "paddle/pir/include/pass/pass.h"
 
 namespace pir {
 class IrContext;
@@ -54,6 +55,47 @@ template <typename T, typename... Args>
 auto Create(pir::IrContext* ir_context, Args&&... args) {
   return T::Build(ir_context, std::make_shared<T>(std::forward<Args>(args)...));
 }
+
+class AutoDrrPattern : public DrrPatternBase {
+ private:
+  const std::string name_;
+  const DrrPatternContext pattern_context_;
+
+ public:
+  AutoDrrPattern(const std::string& name,
+                 const DrrPatternContext pattern_context)
+      : name_(name), pattern_context_(pattern_context) {}
+
+  std::string name() const override { return name_; }
+
+  void operator()(drr::DrrPatternContext* ctx) const override {
+    *ctx = pattern_context_;
+    return;
+  }
+};
+
+template <typename AutoDrrPattern>
+class AutoDrrPass : public pir::PatternRewritePass {
+ public:
+  const std::string name_;
+  std::shared_ptr<DrrPatternContext> pattern_context_;
+
+  AutoDrrPass(const std::string& name,
+              std::shared_ptr<DrrPatternContext> pattern_context)
+      : pir::PatternRewritePass(name, 2),
+        name_(name),
+        pattern_context_(pattern_context) {}
+
+  pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
+    pir::RewritePatternSet ps(context);
+    DrrPatternContext ctx = *pattern_context_;
+    ps.Add(paddle::drr::Create<AutoDrrPattern,
+                               const std::string&,
+                               const DrrPatternContext>(
+        context, name_, std::move(ctx)));
+    return ps;
+  }
+};
 
 }  // namespace drr
 }  // namespace paddle

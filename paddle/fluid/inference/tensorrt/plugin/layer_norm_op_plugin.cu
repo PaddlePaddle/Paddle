@@ -102,7 +102,7 @@ int LayerNormPlugin::enqueue(int batch_size,
   int64_t batched_mean_shape = mean_shape_[0] * input_dims.d[0];
   int64_t batched_variance_shape = variance_shape_[0] * input_dims.d[0];
 
-  std::vector<int> input_shape;
+  std::vector<int64_t> input_shape;
   input_shape.push_back(batch_size);
   for (int i = 0; i < input_dims.nbDims; i++) {
     input_shape.push_back(input_dims.d[i]);
@@ -210,7 +210,7 @@ bool LayerNormPluginDynamic::supportsFormatCombination(
   PADDLE_ENFORCE_NOT_NULL(
       in_out,
       common::errors::InvalidArgument(
-          "The input of layernorm plugin shoule not be nullptr."));
+          "The input of layernorm plugin should not be nullptr."));
   PADDLE_ENFORCE_LT(
       pos,
       nb_inputs + nb_outputs,
@@ -277,7 +277,7 @@ int LayerNormPluginDynamic::enqueue(
   int begin_norm_axis = begin_norm_axis_;
   float eps = eps_;
 
-  std::vector<int> input_shape;
+  std::vector<int64_t> input_shape;
   for (int i = 0; i < input_dims.nbDims; i++) {
     input_shape.push_back(input_dims.d[i]);
   }

@@ -27,14 +27,25 @@ void MatrixInverseFunctor<Context, T>::operator()(const Context& dev_ctx,
 #ifndef PADDLE_WITH_HIP
   const auto& mat_dims = a.dims();
   const int rank = mat_dims.size();
+  if (mat_dims[rank - 1] > std::numeric_limits<int>::max()) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Matrix dimension n is too large: %d, must be <= INT_MAX.",
+        mat_dims[rank - 1]));
+  }
   int n = mat_dims[rank - 1];
-  int batch_size = rank > 2 ? a.numel() / (n * n) : 1;
+  int64_t computed_batch_size = rank > 2 ? a.numel() / (n * n) : 1;
+  if (computed_batch_size > 65536) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "cublasMatInv does not support batch_size > 65536. Got %ld.",
+        computed_batch_size));
+  }
+  int batch_size = static_cast<int>(computed_batch_size);
 
   phi::Allocator::AllocationPtr tmp_gpu_mat_data;
   const T* gpu_mat = a.data<T>();
   if (n >= 32) {
     // Copy all elements of input matrix A to a temporary memory space to
-    // avoid being overriden by getrf.
+    // avoid being overridden by getrf.
     tmp_gpu_mat_data = phi::memory_utils::Alloc(
         dev_ctx.GetPlace(),
         a.numel() * sizeof(T),

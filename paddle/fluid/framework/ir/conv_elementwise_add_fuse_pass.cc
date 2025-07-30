@@ -19,9 +19,7 @@
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #endif
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 #define GET_IR_NODE(node__) GET_IR_NODE_FROM_SUBGRAPH(node__, node__, pattern);
 #define GET_NODES                    \
@@ -74,7 +72,10 @@ ConvElementwiseAddFusePass::ConvElementwiseAddFusePass() {
       .IsTensor()
       .End()
       .AddAttr("axis")
+#ifdef PADDLE_WITH_TENSORRT
+#else
       .IsNumEQ(1)
+#endif
       .End();
 }
 
@@ -88,7 +89,7 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
                 ->assert_is_op_input("conv2d", "Input")
                 ->AsInput();
 
-  patterns::ConvElementwiseadd pattern(gpd.mutable_pattern(), pattern_name);
+  patterns::ConvElementwiseAdd pattern(gpd.mutable_pattern(), pattern_name);
   pattern(x);
   int found_conv_eltwise_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -171,9 +172,7 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
   AddStatis(found_conv_eltwise_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(conv_elementwise_add_fuse_pass,
               paddle::framework::ir::ConvElementwiseAddFusePass);

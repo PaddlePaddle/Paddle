@@ -23,14 +23,14 @@
 namespace phi {
 
 template <typename T, typename Context>
-void GatherNdGradKernel(const Context &ctx,
+void GatherNdGradKernel(const Context &dev_ctx,
                         const DenseTensor &x,
                         const DenseTensor &index,
                         const DenseTensor &out_grad,
                         DenseTensor *x_grad) {
-  ctx.template Alloc<T>(x_grad);
+  dev_ctx.template Alloc<T>(x_grad);
   auto dxt = phi::EigenVector<T>::Flatten(*x_grad);
-  auto &place = *ctx.eigen_device();
+  auto &place = *dev_ctx.eigen_device();
   dxt.device(place) = dxt.constant(static_cast<T>(0));
   if (out_grad.numel() == 0) return;
 
@@ -48,9 +48,9 @@ void GatherNdGradKernel(const Context &ctx,
                         phi::DataType::INT64));
 
   if (index_type == phi::DataType::INT32) {
-    phi::funcs::GPUScatterNdAdd<T, int>(ctx, out_grad, index, x_grad);
+    phi::funcs::GPUScatterNdAdd<T, int>(dev_ctx, out_grad, index, x_grad);
   } else if (index_type == phi::DataType::INT64) {
-    phi::funcs::GPUScatterNdAdd<T, int64_t>(ctx, out_grad, index, x_grad);
+    phi::funcs::GPUScatterNdAdd<T, int64_t>(dev_ctx, out_grad, index, x_grad);
   }
 }
 

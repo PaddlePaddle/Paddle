@@ -14,10 +14,11 @@
 
 #pragma once
 
-#include <absl/types/optional.h>
+#include <optional>
 
 #include <algorithm>
 #include <functional>
+#include <set>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -78,14 +79,14 @@ struct IsString : std::integral_constant<
                       std::is_same<std::string, std::decay_t<T>>::value> {};
 
 template <typename T>
-auto Flatten(const absl::optional<std::reference_wrapper<const T>> &c)
+auto Flatten(const std::optional<std::reference_wrapper<const T>> &c)
     -> std::enable_if_t<std::is_scalar<T>::value || IsString<T>::value,
                         std::vector<T>> {
   return c ? std::vector<T>{c->get()} : std::vector<T>{};
 }
 
 template <template <typename...> class C, typename E>
-auto Flatten(const absl::optional<std::reference_wrapper<const C<E>>> &c)
+auto Flatten(const std::optional<std::reference_wrapper<const C<E>>> &c)
     -> std::enable_if_t<std::is_scalar<E>::value &&
                             !IsString<decltype(c->get())>::value,
                         std::vector<E>> {
@@ -97,8 +98,8 @@ template <typename T,
           typename E = std::enable_if_t<
               !IsString<T>::value,
               std::decay_t<decltype(*std::declval<const T>().begin())>>>
-auto Flatten(const absl::optional<std::reference_wrapper<const T>> &c) {
-  absl::optional<std::reference_wrapper<const E>> val;
+auto Flatten(const std::optional<std::reference_wrapper<const T>> &c) {
+  std::optional<std::reference_wrapper<const E>> val;
   if (c && !c->get().empty()) {
     val = *(c->get().begin());
   }
@@ -119,7 +120,7 @@ auto Flatten(const absl::optional<std::reference_wrapper<const T>> &c) {
 
 template <typename T>
 auto Flatten(const T &v) {
-  absl::optional<std::reference_wrapper<const T>> w = v;
+  std::optional<std::reference_wrapper<const T>> w = v;
   return Flatten(w);
 }
 
@@ -138,6 +139,11 @@ inline uint64_t HashCombine(uint64_t seed, const T &value) {
 std::vector<int> GetPositiveAxes(const std::vector<int> &axes, int rank);
 
 int GetPositiveAxes(int axes, int rank);
+
+template <typename T>
+std::set<T> VectorToSet(const std::vector<T> &vec) {
+  return std::set<T>(vec.begin(), vec.end());
+}
 
 }  // namespace utils
 }  // namespace cinn

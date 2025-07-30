@@ -54,7 +54,7 @@
 //                  weekday, month, day, hour, min);
 //
 // 2. High-performance -- most printed strings are not too long and
-//    doens't need dynamic memory allocation.  Many StringPrintf
+//    doesn't need dynamic memory allocation.  Many StringPrintf
 //    implementations doesn't enforce type-safe, but are
 //    high-performance, including
 //

@@ -17,9 +17,7 @@
 #include <list>
 #include <map>
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 //
 // NodesDFSIterator
@@ -204,6 +202,4 @@ Node *NodesTSIterator::operator->() {
   return sorted_[cursor_];
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir

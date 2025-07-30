@@ -18,7 +18,6 @@
  */
 
 #pragma once
-#include <absl/container/flat_hash_map.h>
 
 #include <memory>
 #include <string>
@@ -26,6 +25,7 @@
 
 #include "paddle/cinn/backends/extern_func_protos.h"
 #include "paddle/cinn/ir/ir.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 namespace backends {
@@ -49,6 +49,7 @@ static const char* backend_llvm_host = "llvm_host";
 static const char* backend_llvm_x86 = "llvm_x86";
 static const char* backend_nvgpu = "nvgpu";
 static const char* backend_hygondcu_hip = "hygonDCU_hip";
+static const char* backend_hygondcu_sycl = "hygonDCU_sycl";
 
 /**
  * \brief Base class of the emitter of all the extern functions able to trigger
@@ -126,7 +127,7 @@ class ExternFunctionEmitterRegistry {
   const std::string& Lookup(const ExternFuncID& name) const;
 
  private:
-  absl::flat_hash_map<ExternFuncID, std::string> data_;
+  paddle::flat_hash_map<ExternFuncID, std::string> data_;
 
   ExternFunctionEmitterRegistry();
   CINN_DISALLOW_COPY_AND_ASSIGN(ExternFunctionEmitterRegistry);

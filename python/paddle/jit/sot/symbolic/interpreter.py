@@ -17,14 +17,25 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import paddle
+from paddle.jit.dy2static.utils import compose_guards
 from paddle.utils import to_sequence
 
-from ..utils import InnerError, log_do, map_if, map_if_extend
-from .statement_ir import SIRRuntimeCache, Symbol
+from ..utils import (
+    InnerError,
+    log_do,
+    map_if,
+    map_if_extend,
+)
+from .statement_ir import (
+    ParametersHolder,
+    StatementContext,
+    StatementContextRegistry,
+    Symbol,
+)
 
 if TYPE_CHECKING:
+    from .builder import StatementIRBuilder
     from .statement_ir import Statement, StatementIR
-    from .symbolic_context import SymbolicTraceContext
 
 
 def replace_symbol(
@@ -52,20 +63,11 @@ def replace_symbol(
 
 def _append_opstack_between(start, end, stack):
     # The range is [start, end)
-    from paddle.framework import core
-
-    op_maker = core.op_proto_and_checker_maker
-    callstack_attr_name = op_maker.kOpCreationCallstackAttrName()
     for op in for_each_ops_between(start, end):
-        if paddle.framework.use_pir_api():
-            op.callstack = stack
-        else:
-            # NOTE(xiongkun): we don't sync for speed. careful!!
-            op._set_attr(callstack_attr_name, stack)
+        op.callstack = stack
 
 
 def for_each_ops_between(start, end):
-    # NOTE(xiongkun): we don't sync for speed. careful!!
     # [start, end)
     program = paddle.static.default_main_program()
     ops = program.global_block().ops[start:end]
@@ -73,7 +75,6 @@ def for_each_ops_between(start, end):
 
 
 def opnum_in_program():
-    # NOTE(xiongkun): we don't sync for speed. careful!!
     program = paddle.static.default_main_program()
     return len(program.global_block().ops)
 
@@ -83,8 +84,8 @@ class Interpreter:
     Interpreter is used to interpret and execute SIR.
     """
 
-    def __init__(self, symbolic_context: SymbolicTraceContext):
-        self._context = symbolic_context
+    def __init__(self, builder: StatementIRBuilder):
+        self._builder = builder
 
     def get_sir(self, name: str) -> StatementIR:
         """
@@ -96,7 +97,7 @@ class Interpreter:
         Returns:
             The StatementIR object with the given name.
         """
-        return self._context.get_sir(name)
+        return self._builder.get_sir(name)
 
     def run_sir(self, name: str, state: dict[str, Symbol]):
         """
@@ -109,15 +110,18 @@ class Interpreter:
         Returns:
             A list of the Symbol of the StatementIR after execution.
         """
+
+        def _set(v, s):
+            state[s.name] = v
+
         SIR = self.get_sir(name)
         for stmt in SIR.statements:
             stmt: Statement
             before_stmt_opnum = opnum_in_program()
             inputs = replace_symbol(stmt.inputs, state)
-            outs = getattr(self, stmt.type)(stmt, inputs)
 
-            def _set(v, s):
-                state[s.name] = v
+            with create_context_guard(stmt.contexts)():
+                outs = getattr(self, stmt.type)(stmt, inputs)
 
             if len(to_sequence(outs)) != len(to_sequence(stmt.outputs)):
                 raise InnerError("Number output mismatch, some error happen.")
@@ -139,11 +143,6 @@ class Interpreter:
         # fetch outputs
         return replace_symbol(SIR.outputs, state)
 
-    def call(self, stmt: Statement, inputs):
-        SIR = self.get_sir(stmt.sir_name)
-        state = prepare_state(SIR, inputs)
-        return self.run_sir(stmt.sir_name, state)
-
     def api(self, stmt, inputs):
         args, kwargs = inputs
         return stmt.api(*args, **kwargs)
@@ -164,7 +163,9 @@ class Interpreter:
         return stmt.converted_func(*args, **kwargs)
 
 
-def compile_sir(context: SymbolicTraceContext, name: str):
+def compile_sir(
+    builder: StatementIRBuilder, name: str, parameters_holder: ParametersHolder
+):
     """
     Compile a SIR to a new function
 
@@ -180,25 +181,40 @@ def compile_sir(context: SymbolicTraceContext, name: str):
         This function will be decorated by paddle.to_static.
         so the args is variables, not eager tensors.
         """
-        interpreter = Interpreter(context)
+        interpreter = Interpreter(builder)
         SIR = interpreter.get_sir(name)
-        state = prepare_state(SIR, args)
+        state = prepare_state(SIR, args, parameters_holder)
         return interpreter.run_sir(name, state)
 
     return wrapper
 
 
-def prepare_state(SIR, inputs):
+def prepare_state(
+    SIR: StatementIR, inputs, parameters_holder: ParametersHolder
+):
     state = {}
-
-    # update free vars if exists
-    if SIRRuntimeCache().has_key(SIR.name):
-        free_var_seeker = SIRRuntimeCache().get_free_vars(SIR.name)
-        if free_var_seeker:
-            state = free_var_seeker()
-
     # bind inputs
+    assert len(SIR.inputs) == len(inputs), "Inputs length mismatch."
     for sir_inp, inp in zip(SIR.inputs, inputs):
         state[sir_inp.name] = inp
 
+    for sir_param in SIR.params:
+        state[sir_param.name] = paddle.base.dygraph.base._convert_into_variable(
+            parameters_holder.get(sir_param.name)
+        )
+
     return state
+
+
+def create_context_guard(contexts: list[StatementContext]):
+    guards = list(
+        map(
+            lambda ctx: (
+                lambda: StatementContextRegistry.get_context_guard(type(ctx))(
+                    ctx
+                )
+            ),
+            contexts,
+        )
+    )
+    return compose_guards(*guards)

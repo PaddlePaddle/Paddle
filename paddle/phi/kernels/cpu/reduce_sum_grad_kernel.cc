@@ -31,6 +31,10 @@ void ReduceSumGradKernel(const Context& dev_ctx,
                          bool reduce_all,
                          DenseTensor* x_grad) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
+  if (x_grad && x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    return;
+  }
   ReduceGradKernel<Context, T, funcs::SumGradFunctor, true>(dev_ctx,
                                                             x,
                                                             paddle::none,

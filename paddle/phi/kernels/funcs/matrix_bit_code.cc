@@ -20,8 +20,7 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
-namespace phi {
-namespace funcs {
+namespace phi::funcs {
 
 template <typename T>
 struct MatrixBitCodeFunctorAdd {
@@ -359,5 +358,4 @@ void MatrixBitCodeFunctor<T>::Sub(phi::DenseTensor *tmat) {
 template class MatrixBitCodeFunctor<float>;
 template class MatrixBitCodeFunctor<double>;
 
-}  // namespace funcs
-}  // namespace phi
+}  // namespace phi::funcs

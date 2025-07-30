@@ -127,9 +127,7 @@ class XPUTestUnbindOP(XPUOpTestWrapper):
             self.attrs = {'axis': self.axis}
             self.setAxis()
             self.outputs = {
-                'Out': [
-                    ('out%d' % i, self.out[i]) for i in range(len(self.out))
-                ]
+                'Out': [(f'out{i}', self.out[i]) for i in range(len(self.out))]
             }
 
         def _set_op_type(self):

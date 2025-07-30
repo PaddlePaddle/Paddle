@@ -72,6 +72,11 @@ def convert_to_list(value, n, name, dtype=int):
     if isinstance(value, dtype):
         return [value] * n
     else:
+        if isinstance(value, (Variable, paddle.pir.Value)):
+            raise NotSupportedTensorArgumentError(
+                f"`{name}` required numerical type with `{dtype}`, but received Tensor.",
+                name,
+            )
         try:
             value_list = list(value)
         except TypeError:
@@ -214,7 +219,12 @@ def _packed_nest_with_indices(structure, flat, index):
             packed.append(_sequence_like(s, child))
             index = new_index
         else:
-            packed.append(flat[index])
+            # Paddle requires python version > 3.7, so dict is always OrderedDict
+            packed.append(
+                flat[index]
+                if not isinstance(flat, dict)
+                else list(flat.values())[index]
+            )
             index += 1
     return index, packed
 
@@ -228,8 +238,7 @@ def pack_sequence_as(structure, flat_sequence):
     if not is_sequence(structure):
         if len(flat_sequence) != 1:
             raise ValueError(
-                "Structure is a scalar but len(flat_sequence) == %d > 1"
-                % len(flat_sequence)
+                f"Structure is a scalar but len(flat_sequence) == {len(flat_sequence)} > 1"
             )
         return flat_sequence[0]
     flat_structure = flatten(structure)
@@ -474,7 +483,15 @@ def convert_shape_to_list(shape):
     Convert shape(list, tuple, variable) to list in imperative mode
     """
     if isinstance(shape, (list, tuple)):
-        shape = [x.item(0) if isinstance(x, Variable) else x for x in shape]
+        shape_out = []
+        for x in shape:
+            if isinstance(x, Variable):
+                # skip item if size = 0
+                if x.size > 0:
+                    shape_out.append(x.item(0))
+            else:
+                shape_out.append(x)
+        shape = shape_out
     else:
         if in_dygraph_mode():
             shape = shape.astype(int).tolist()

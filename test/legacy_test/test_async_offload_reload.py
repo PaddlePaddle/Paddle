@@ -20,6 +20,7 @@ import numpy as np
 import paddle
 from paddle.incubate.tensor.manipulation import (
     async_offload,
+    async_offload_with_offset,
     async_reload,
     create_async_load,
 )
@@ -55,6 +56,41 @@ class TestSaveLoadLargeParameters(unittest.TestCase):
         model = paddle.nn.Linear(10, 5)
         data0 = model.weight
         self.offload_and_reload(data0)
+
+    def test_offload_with_offset(self):
+        loader = create_async_load()
+        data1 = paddle.randn(
+            [
+                100,
+            ]
+        )
+        data2 = paddle.randn(
+            [
+                100,
+            ]
+        ).cpu()
+        task1 = async_offload_with_offset(
+            src_tensor=data1,
+            dst_tensor=data2,
+            src_offset=0,
+            dst_offset=0,
+            offload_size=50,
+            async_loader=loader,
+        )
+        task2 = async_offload_with_offset(
+            src_tensor=data1,
+            dst_tensor=data2,
+            src_offset=50,
+            dst_offset=50,
+            offload_size=50,
+            async_loader=loader,
+        )
+        task1.cuda_wait()
+        task2.cpu_wait()
+        np.testing.assert_array_equal(
+            data1.numpy(),
+            data2.numpy(),
+        )
 
 
 if __name__ == '__main__':

@@ -116,7 +116,7 @@ class LoDResetKernel : public framework::OpKernel<T> {
       auto* out_lod = out->mutable_lod();
       out_lod->push_back(ulevel0);
     } else {
-      phi::LoD target_lod;
+      phi::LegacyLoD target_lod;
       target_lod.push_back(ulevel0);
       out->set_lod(target_lod);
     }

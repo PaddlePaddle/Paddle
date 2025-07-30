@@ -51,6 +51,24 @@ void TestGradNodeBase(bool is_remove_gradient_hook) {
   dt_ptr[0] = 5.0f;
   paddle::Tensor et1(dt);
   grads = {{et1}};
+
+  std::vector<int64_t> mesh_shape = {2, 2};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3};
+  std::vector<std::string> dim_names = {"dp", "mp"};
+  phi::distributed::ProcessMesh process_mesh(
+      mesh_shape, process_ids, dim_names);
+  std::vector<int64_t> dim_mapping = {-1, 1};
+  phi::distributed::TensorDistAttr dist_attr =
+      phi::distributed::TensorDistAttr();
+  dist_attr.set_process_mesh(process_mesh);
+  dist_attr.set_dims_mapping(dim_mapping);
+  dist_attr.set_dynamic_dims(std::vector<bool>(mesh_shape.size(), false));
+
+  std::shared_ptr<phi::distributed::DistTensor> dist_dt1 =
+      std::make_shared<phi::distributed::DistTensor>(
+          phi::distributed::DistTensor(dt, dist_attr));
+  paddle::Tensor dist_et1(dist_dt1);
+
   VLOG(6) << "Test Grad Node Call";
   auto res = (*grad_test_node0)(grads);
   PADDLE_ENFORCE_EQ(
@@ -68,6 +86,7 @@ void TestGradNodeBase(bool is_remove_gradient_hook) {
   grad_test_node0->SetGradInMeta({et1}, 1);
   grad_test_node0->SetGradOutMeta(et1, 0);
   grad_test_node0->SetGradOutMeta({et1}, 1);
+  grad_test_node0->SetGradOutMeta(dist_et1, 0, dist_attr, dist_et1.dims());
   PADDLE_ENFORCE_EQ(
       grad_test_node0->InputMeta()[0].size(),
       1UL,
@@ -102,6 +121,14 @@ void TestGradNodeBase(bool is_remove_gradient_hook) {
       grad_test_node0->OutputMeta()[1][0].GetTensorMeta().dtype,
       meta.dtype,
       common::errors::InvalidArgument("Dtype of output tensor mismatch."));
+  PADDLE_ENFORCE_EQ(
+      grad_test_node0->OutputMeta()[0][0].DistAttr(),
+      dist_attr,
+      common::errors::InvalidArgument("DistAttr of output tensor mismatch."));
+  PADDLE_ENFORCE_EQ(
+      grad_test_node0->OutputMeta()[0][0].DistTensorGlobalDims(),
+      dist_et1.dims(),
+      common::errors::InvalidArgument("DDims of output tensor mismatch."));
 
   VLOG(6) << "Test Default Set Meta and Get Meta";
   auto grad_test_node2 = std::make_shared<eager_test::GradTestNode>(

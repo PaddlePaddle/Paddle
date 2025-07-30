@@ -22,6 +22,7 @@ from test_case_base import TestCaseBase
 
 import paddle
 from paddle.jit.sot.psdb import check_no_breakgraph
+from paddle.jit.sot.utils import strict_mode_guard
 
 
 @check_no_breakgraph
@@ -175,7 +176,7 @@ def dict_test_fromkeys(x):
 
 
 @check_no_breakgraph
-def dict_test_fromkeys_defalut(x, y):
+def dict_test_fromkeys_default(x, y):
     d = dict.fromkeys(x, y)
     return d
 
@@ -184,6 +185,48 @@ def dict_test_fromkeys_defalut(x, y):
 def dict_keyword_init():
     d = dict(x=1, y=2)  # noqa: C408
     return d["x"] + d["y"]
+
+
+@strict_mode_guard(False)
+@check_no_breakgraph
+def raise_keyerror_with_number(x):
+    x += 1
+    a = {}
+    a[8]
+    x /= 3
+
+
+@strict_mode_guard(False)
+@check_no_breakgraph
+def raise_keyerror_with_str(x):
+    x += 1
+    a = {}
+    a["8"]
+    x /= 3
+
+
+class TestDict:
+    def __init__(self, data) -> None:
+        self.data = data
+
+    def __getitem__(self, key):
+        try:
+            return self.data[key]
+        except KeyError:
+            raise
+
+
+@check_no_breakgraph
+def raise_keyerror_with_custom_obj(x):
+    x += 1
+    data = TestDict({})
+    try:
+        x *= 3
+        data['a']
+        x -= 3
+    except KeyError:
+        x /= 3
+    return x
 
 
 class TestBuildDict(TestCaseBase):
@@ -256,17 +299,26 @@ class TestDictMethods(TestCaseBase):
     def test_dict_fromkeys(self):
         self.assert_results(dict_test_fromkeys, (1, 2, 3, 4))
         self.assert_results(dict_test_fromkeys, [1, 2, 3, 4])
-        self.assert_results(dict_test_fromkeys_defalut, (1, 2, 3, 4), 1)
+        self.assert_results(dict_test_fromkeys_default, (1, 2, 3, 4), 1)
         self.assert_results(
-            dict_test_fromkeys_defalut, (1, 2, 3, 4), paddle.to_tensor(1)
+            dict_test_fromkeys_default, (1, 2, 3, 4), paddle.to_tensor(1)
         )
-        self.assert_results(dict_test_fromkeys_defalut, [1, 2, 3, 4], 1)
+        self.assert_results(dict_test_fromkeys_default, [1, 2, 3, 4], 1)
         self.assert_results(
-            dict_test_fromkeys_defalut, [1, 2, 3, 4], paddle.to_tensor(1)
+            dict_test_fromkeys_default, [1, 2, 3, 4], paddle.to_tensor(1)
         )
 
     def test_dict_keyword_init(self):
         self.assert_results(dict_keyword_init)
+
+
+class TestDictKeyError(TestCaseBase):
+    def test_dict_keyerror(self):
+        with self.assertRaisesRegex(KeyError, "^8$"):
+            self.assert_results(raise_keyerror_with_number, paddle.to_tensor(5))
+        with self.assertRaisesRegex(KeyError, "^'8'$"):
+            self.assert_results(raise_keyerror_with_str, paddle.to_tensor(5))
+        self.assert_results(raise_keyerror_with_custom_obj, paddle.ones([3]))
 
 
 if __name__ == "__main__":

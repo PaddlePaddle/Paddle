@@ -33,6 +33,7 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.add",
     "pd_op.amax",
     "pd_op.amin",
+    "pd_op.angle",
     "pd_op.argsort",
     "pd_op.assign",
     "pd_op.batch_norm_",
@@ -55,6 +56,8 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.gather",
     "pd_op.gather_nd",
     "pd_op.gelu",
+    "pd_op.group_norm",
+    "pd_op.hardsigmoid",
     "pd_op.hardswish",
     "pd_op.kron",
     "pd_op.kthvalue",
@@ -74,6 +77,7 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.prod",
     "pd_op.reduce_as",
     "pd_op.relu",
+    "pd_op.relu6",
     "pd_op.reshape",
     "pd_op.roll",
     "pd_op.rsqrt",
@@ -102,6 +106,12 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.trunc",
     "pd_op.unsqueeze",
     "pd_op.where",
+    "pd_op.p_norm",
+    "pd_op.index_put",
+    "pd_op.index_add",
+    "pd_op.elu",
+    "pd_op.masked_fill",
+    "pd_op.masked_select",
 ]
 
 
@@ -112,7 +122,7 @@ class ValueWrapper:
         else:
             if not isinstance(value, (type(None), pir.Value)):
                 raise TypeError(
-                    "Value Wrapper is onlys support None and pir.Value"
+                    "Value Wrapper is only support None and pir.Value"
                 )
         self._value = value._value if isinstance(value, ValueWrapper) else value
 
@@ -236,8 +246,17 @@ class ValueSet:
     def pop(self):
         return self._set.pop()._value
 
+    def remove(self, val):
+        self._set.remove(ValueWrapper(val))
+
+    def discard(self, val):
+        self._set.discard(ValueWrapper(val))
+
     def __and__(self, other: ValueSet):
         return ValueSet(self._set & other._set)
+
+    def __sub__(self, other: ValueSet):
+        return ValueSet(self._set - other._set)
 
     def __or__(self, other: ValueSet):
         return ValueSet(self._set | other._set)
@@ -328,7 +347,11 @@ class State:
 def _check_vjp_dynamic_shape(op, inputs):
     for items in inputs:
         for item in items:
-            if item.initialized() and -1 in item.shape:
+            if (
+                item.is_dense_tensor_type()
+                and item.initialized()
+                and -1 in item.shape
+            ):
                 return True
 
 
@@ -654,6 +677,7 @@ def get_grad_semantic_info(op):
         "cf.tuple_push",
         "dist_op.moe_global_mesh_tensor",
         "dist_op.moe_sub_mesh_tensors",
+        "dist_op.dist_reshape",
     ]:
         grad_semantic_info = [True for _ in range(len(get_real_op_inputs(op)))]
         if op.name() == "pd_op.if":
@@ -673,3 +697,110 @@ def get_split_op(value):
 @lru_cache
 def warning_once(message: str):
     logging.warning(message)
+
+
+def update_if_output_stopgradient(if_op, true_yield_op, false_yield_op):
+    """
+    Update if_op's stop_gradient based on true_yield_op and false_yield_op.
+
+    Args:
+    true_yield_op: true block of if_op's last op.
+    false_yield_op: false block of if_op's last op.
+    if_op: update it's op_results()'s stop_gradient.
+    """
+    if (
+        true_yield_op.name() != 'cf.yield'
+        or false_yield_op.name() != 'cf.yield'
+    ):
+        raise ValueError("param is not yield op")
+
+    # Check if operands_source sizes match
+    if len(true_yield_op.operands_source()) != len(
+        false_yield_op.operands_source()
+    ):
+        raise ValueError("Mismatched yield operands_source sizes")
+
+    # Check if op_results size matches operands_source
+    if len(if_op.results()) != len(true_yield_op.operands_source()):
+        raise ValueError(
+            "Mismatched if op_results size with yield operands_source"
+        )
+
+    # Update if_op's stop_gradient
+    for i in range(len(true_yield_op.operands_source())):
+        stop_grad1 = true_yield_op.operand_source(i).stop_gradient
+        stop_grad2 = false_yield_op.operand_source(i).stop_gradient
+
+        # Set to False if either stop_gradient is False
+        if not stop_grad1 or not stop_grad2:
+            if_op.result(i).stop_gradient = False
+
+
+def update_while_output_stopgradient(while_op, yield_op):
+    """
+    Update while_op's stop_gradient based on yield_op.
+
+    Args:
+    yield_op: The yield operation associated with the while loop.
+    while_op: The while operation whose op_results()'s stop_gradient needs to be updated.
+    """
+    # Check if yield_op is indeed a yield operation
+    if yield_op.name() != 'cf.yield':
+        raise ValueError("yield_op is not a yield operation")
+
+    # Check if operands_source size of yield_op matches op_results size of while_op
+    if len(while_op.results()) + 1 != len(yield_op.operands_source()):
+        raise ValueError(
+            f"Mismatched while op_results  size %d with yield operands_source %d. {len(while_op.results()) + 1, len(yield_op.operands_source())}"
+        )
+
+    # Update while_op's stop_gradient
+    for i in range(1, len(yield_op.operands_source())):
+        stop_grad = yield_op.operand_source(i).stop_gradient
+
+        # Set to False if stop_gradient is False
+        if not stop_grad:
+            while_op.result(i - 1).stop_gradient = False
+
+
+def find_index_of_yiled(value, yield_op):
+    for i, v in enumerate(yield_op.operands_source()):
+        if v.is_same(value):
+            return i
+    return -1
+
+
+def update_tuple_pop_origin_inputs(tuple_pop_outputs):
+    if tuple_pop_outputs == []:
+        return tuple_pop_outputs
+    op = tuple_pop_outputs[0][0].get_defining_op()
+    assert op.name() == "cf.tuple_pop"
+    stack_op = op.operand_source(0).get_defining_op()
+    tuple_push_inputs = stack_op.result(1).first_use().owner().operands_source()
+    tuple_push_inputs_with_if = []
+    for input in tuple_push_inputs:
+        if input.first_use().owner().name() == "cf.yield":
+            yield_op = input.first_use().owner()
+            index = find_index_of_yiled(input, yield_op)
+            assert index != -1
+            tuple_push_inputs_with_if.append(
+                yield_op.get_parent_block().parent_op.result(index)
+            )
+        else:
+            tuple_push_inputs_with_if.append(input)
+
+    # pass inlets
+    return tuple_push_inputs_with_if[1:]
+
+
+def value_in_block(value, block):
+    value_block = value.get_defining_op().get_parent_block()
+    while block.parent_op.name() != "builtin.module":
+        if block == value_block:
+            return True
+        block = block.parent_block
+    # now block is module op's block
+    if block == value_block:
+        return True
+
+    return False

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import types
 import unittest
 
 import numpy as np
@@ -96,26 +97,36 @@ class TestRollBackNet(Dy2StTestBase):
 
         # forward function is inplacly converted.
         self.assertTrue(isinstance(net.forward, StaticFunction))
-        self.assertTrue("true_fn" in func_to_source_code(net.sub.forward))
-        # other non-forward function is not inplacly converted.
-        self.assertFalse("true_fn" in func_to_source_code(net.sub.bar))
+        # inner forward function is not inplacly converted any more.
+        self.assertIs(net.sub.forward.__func__, SubNet.forward)
+        self.assertIsInstance(net.sub.forward, types.MethodType)
+        self.assertNotIn("true_fn", func_to_source_code(net.sub.forward))
+        self.assertIs(net.sub.bar.__func__, SubNet.bar)
+        self.assertIsInstance(net.sub.bar, types.MethodType)
+        self.assertNotIn("true_fn", func_to_source_code(net.sub.bar))
 
         net.infer = paddle.jit.to_static(net.infer)
         st_infer_out = net.infer(x)
         self.assertTrue(isinstance(net.infer, StaticFunction))
-        self.assertFalse("true_fn" in func_to_source_code(net.sub.bar))
+        self.assertNotIn("true_fn", func_to_source_code(net.sub.bar))
+        self.assertIsInstance(net.sub.bar, types.MethodType)
+        self.assertIs(net.sub.bar.__func__, SubNet.bar)
 
         # rollback forward into original dygraph method
         net.forward = net.forward.rollback()
         self.assertFalse(isinstance(net.forward, StaticFunction))
-        self.assertFalse("true_fn" in func_to_source_code(net.sub.forward))
+        self.assertNotIn("true_fn", func_to_source_code(net.sub.bar))
+        self.assertIsInstance(net.sub.forward, types.MethodType)
+        self.assertIs(net.sub.bar.__func__, SubNet.bar)
         dy_fwd_out = net(x)
         np.testing.assert_array_equal(st_fwd_out.numpy(), dy_fwd_out.numpy())
 
         # rollback infer into original dygraph method
         net.infer.rollback()
         self.assertFalse(isinstance(net.infer, StaticFunction))
-        self.assertFalse("true_fn" in func_to_source_code(net.sub.forward))
+        self.assertNotIn("true_fn", func_to_source_code(net.sub.forward))
+        self.assertIsInstance(net.sub.forward, types.MethodType)
+        self.assertIs(net.sub.forward.__func__, SubNet.forward)
         dy_infer_out = net.infer(x)
         np.testing.assert_array_equal(
             st_infer_out.numpy(), dy_infer_out.numpy()
@@ -142,6 +153,38 @@ class TestRollBackNotForward(Dy2StTestBase):
         out = net.func(x)
         net.func.rollback()
         self.assertTrue(not isinstance(net.func, StaticFunction))
+
+
+class FuncRollbackWithPatchedFunction(paddle.nn.Layer):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def forward(self, x):
+        return x + 1
+
+
+def patched_fn(self, x):
+    return x + 2
+
+
+FuncRollbackWithPatchedFunction.forward = patched_fn
+
+
+class TestRollBackWithPatchedFunction(Dy2StTestBase):
+    @test_ast_only
+    def test_rollback(self):
+        x = paddle.zeros([2, 2])
+        net = FuncRollbackWithPatchedFunction()
+        dy_out = net(x)
+        static_net = paddle.jit.to_static(net, full_graph=True)
+        st_out = static_net(x)
+        static_net.forward.rollback()
+        dy_out_rollback = net(x)
+
+        self.assertTrue(not isinstance(net.forward, StaticFunction))
+
+        np.testing.assert_array_equal(dy_out.numpy(), st_out.numpy())
+        np.testing.assert_array_equal(dy_out.numpy(), dy_out_rollback.numpy())
 
 
 if __name__ == "__main__":

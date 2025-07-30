@@ -20,6 +20,7 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/pir/include/core/type.h"
+#include "paddle/pir/include/core/value.h"
 #include "paddle/pir/include/pass/pass.h"
 
 namespace paddle {
@@ -46,7 +47,7 @@ using Scope = paddle::framework::Scope;
 
 /**
  * @brief Copy a DenseTensor to another.
- * default dst_plaxce is CPU.
+ * default dst_place is CPU.
  *
  * @param const phi::DenseTensor& src
  * @param phi::DenseTensor* dst
@@ -95,10 +96,18 @@ pir::Type TranslateToIrDataType(phi::DataType dtype);
  *
  * @return pir::Operation*
  */
-pir::Operation* CreateOpeartionByName(const std::string& op_name,
+pir::Operation* CreateOperationByName(const std::string& op_name,
                                       const std::vector<pir::Value>& inputs,
                                       const pir::AttributeMap& attrs,
                                       const pir::PatternRewriter& rewriter);
+
+/**
+ * @brief Create a DataType attribute.
+ *
+ * @param pir::IrContext * ctx
+ * @param phi::DataType dtype
+ **/
+pir::Attribute CreateDataTypeAttr(pir::IrContext* ctx, phi::DataType dtype);
 
 /**
  * @brief Get the mutable data of a Variable.
@@ -246,5 +255,37 @@ std::vector<Value> GetUsedExternalValue(const Block& block);
  * @return bool
  */
 bool ValueIsPersistable(const pir::Value& value);
+
+phi::DataType GetTensorDtype(pir::Type type);
+phi::DataType GetValueDtype(const pir::Value& val);
+
+/**
+ * @brief Check whether the specific input of the operation is defined by
+ * the given target operation type.
+ *
+ * SourceOpT and TargetOpT should be the derived class of pir::Op
+ */
+template <typename TargetOpT, typename SourceOpT>
+bool IsDefinedBy(const SourceOpT& op, const size_t input_index) {
+  const pir::Operation* defined_op =
+      op->operand_source(input_index).defining_op();
+  return defined_op && defined_op->isa<TargetOpT>();
+}
+
+/**
+ * @brief Cast the specific input of the operation to the given target
+ *
+ * SourceOpT and TargetOpT should be the derived class of pir::Op
+ */
+template <typename TargetOpT, typename SourceOpT>
+TargetOpT CastDefinedTo(const SourceOpT& op, const size_t idx) {
+  PADDLE_ENFORCE_EQ(IsDefinedBy<TargetOpT>(op, idx),
+                    true,
+                    ::common::errors::PreconditionNotMet(
+                        "Required defined op shall not be nullptr and can cast "
+                        "to target type."));
+  pir::Operation* defined_op = op->operand_source(idx).defining_op();
+  return defined_op->dyn_cast<TargetOpT>();
+}
 
 }  // namespace pir

@@ -19,9 +19,7 @@
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/utils/string/pretty_log.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 using string::PrettyLogDetail;
 
@@ -59,7 +57,7 @@ void MatmulElementwiseAddMKLDNNFusePass::FuseMatmulElementwiseAdd(
     GET_IR_NODE_FROM_SUBGRAPH(
         elementwise_add_out, elementwise_add_out, matmul_pattern);
 
-    if (FindFuseOption(*matmul, *elementwise_add) != FUSE_MKLDNN) return;
+    if (FindFuseOption(*matmul, *elementwise_add) != FUSE_ONEDNN) return;
     if (!IsCompat(subgraph, g)) {
       LOG(WARNING)
           << "op compat for matmul_elementwise_add_onednn_fuse_pass failed.";
@@ -163,9 +161,7 @@ MatmulElementwiseAddMKLDNNFusePass::MatmulElementwiseAddMKLDNNFusePass() {
       .End();
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(matmul_elementwise_add_onednn_fuse_pass,
               paddle::framework::ir::MatmulElementwiseAddMKLDNNFusePass);

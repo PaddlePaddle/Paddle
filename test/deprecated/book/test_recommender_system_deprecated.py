@@ -320,7 +320,7 @@ def infer(use_cuda, save_dirname=None):
         # Use the first data from paddle.dataset.movielens.test() as input
         assert feed_target_names[0] == "user_id"
         # Use create_lod_tensor(data, recursive_sequence_lengths, place) API
-        # to generate LoD Tensor where `data` is a list of sequences of index
+        # to generate LegacyLoD Tensor where `data` is a list of sequences of index
         # numbers, `recursive_sequence_lengths` is the length-based level of detail
         # (lod) info associated with `data`.
         # For example, data = [[10, 2, 3], [2, 3]] means that it contains

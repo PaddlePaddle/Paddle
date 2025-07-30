@@ -17,12 +17,12 @@
 #include <algorithm>
 #include <string>
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/dim_expr_converter.h"
 #include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/hlir/framework/pir/trivial_op_util.h"
 #include "paddle/cinn/hlir/op/op_util.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/utils/functional.h"
 #include "paddle/common/enforce.h"
 namespace cinn {
@@ -71,6 +71,7 @@ HLIR_MKL_IMP_UNARY_PE(Log2, log2);
 HLIR_MKL_IMP_UNARY_PE(Log10, log10);
 HLIR_MKL_IMP_UNARY_PE(Floor, floor);
 HLIR_MKL_IMP_UNARY_PE(Ceil, ceil);
+HLIR_MKL_IMP_UNARY_PE(Rint, rint);
 HLIR_MKL_IMP_UNARY_PE(Round, round);
 HLIR_MKL_IMP_UNARY_PE(Tanh, tanh);
 HLIR_MKL_IMP_UNARY_PE(Trunc, trunc);
@@ -94,6 +95,7 @@ HLIR_IMP_UNARY_PE(Log2);
 HLIR_IMP_UNARY_PE(Log10);
 HLIR_IMP_UNARY_PE(Floor);
 HLIR_IMP_UNARY_PE(Ceil);
+HLIR_IMP_UNARY_PE(Rint);
 HLIR_IMP_UNARY_PE(Round);
 HLIR_IMP_UNARY_PE(Trunc);
 HLIR_IMP_UNARY_PE(Cos);
@@ -163,11 +165,11 @@ ir::Tensor Squeeze(const ir::Tensor& A,
   auto res = Compute(
       output_shape,
       [=](const std::vector<Expr>& indices) {
-        std::vector<Expr> indexs(A->shape.size(), Expr(0));
+        std::vector<Expr> out_indices(A->shape.size(), Expr(0));
         for (int idx = 0; idx < indices.size(); ++idx) {
-          indexs[position[idx]] = indices[idx];
+          out_indices[position[idx]] = indices[idx];
         }
-        return A(indexs);
+        return A(out_indices);
       },
       output_name);
   return res;
@@ -222,7 +224,7 @@ Expr ReshapeHandler(const ir::Tensor& A,
       if (i > A_s) {
         temp = temp % A->shape[i];
       }
-      A_indice[i] = common::AutoSimplify(temp);
+      A_indice[i] = optim::ArithSimplify(temp);
     }
   };
 
@@ -307,19 +309,16 @@ ir::Tensor Store(const ir::Tensor& A, const std::string& name) {
   return res;
 }
 
-ir::Tensor Arange(const float start,
-                  const float stop,
-                  const float step,
+ir::Tensor Arange(Expr start,
+                  Expr step,
                   const Type& dtype,
+                  const int64_t size,
                   const std::string& output_name) {
-  int num = static_cast<int>(std::ceil((stop - start) / step));
   ir::Tensor res = lang::Compute(
-      {Expr(num)},
+      {Expr(size)},
       [=](const std::vector<ir::Expr>& indices) {
-        return ir::Cast::Make(
-            dtype,
-            Expr(start) +
-                Expr(step) * ir::Cast::Make(cinn::common::F32(), indices[0]));
+        return ir::Cast::Make(dtype,
+                              start + step * ir::Cast::Make(dtype, indices[0]));
       },
       output_name);
   return res;
@@ -338,7 +337,6 @@ ir::Tensor Tril(const ir::Tensor& A,
                               "The Tril op input tensor must have a rank "
                               "greater than or equal to 2."));
         std::vector<Expr> new_indice(indice.end() - 2, indice.end());
-        Expr col_indice = indice.back();
         return ir::Select::Make(new_indice[0] >= new_indice[1] - diagonal,
                                 A(indice),
                                 ir::Zero(A->type()));
@@ -351,6 +349,7 @@ ir::Tensor GenerateShape(const std::vector<ir::Tensor>& inputs,
                          const cinn::dialect::SymbolBindings& symbol_bindings,
                          const std::vector<symbol::DimExpr>& output_dim_exprs,
                          const std::vector<ir::Dim>& out_shape,
+                         const std::vector<Type>& out_type,
                          const std::string& name) {
   if (output_dim_exprs.size() != 1) {
     VLOG(4) << "pe::GenerateShape will return a meaningless tensor when "
@@ -365,7 +364,13 @@ ir::Tensor GenerateShape(const std::vector<ir::Tensor>& inputs,
   auto res = Compute(
       ToCinnExprs(out_shape),
       [=, &converter](const std::vector<Expr>& indice) {
-        return converter.ConvertToIrExpr(output_dim_exprs[0]);
+        auto dim_expr = converter.ConvertToIrExpr(output_dim_exprs[0]);
+
+        if (out_type[0] == type_of<int32_t>()) {
+          dim_expr = ir::Cast::Make(type_of<int32_t>(), dim_expr);
+        }
+
+        return dim_expr;
       },
       name);
   return res;

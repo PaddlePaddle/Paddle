@@ -13,11 +13,10 @@
 # limitations under the License.
 
 import copy
-import os
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_places
 from utils import dygraph_guard
 
 import paddle
@@ -27,10 +26,10 @@ from paddle.static import InputSpec
 paddle.enable_static()
 
 
-def put_along_axis_net(arr):
+def put_along_axis_net(arr, axis=-1):
     indices = paddle.to_tensor([[[[2]]]], dtype='int32', stop_gradient=False)
-    return paddle.tensor.put_along_axis(
-        arr, indices=indices, values=-4.0, axis=-2, reduce='add'
+    return paddle.put_along_axis(
+        arr, indices=indices, values=-4.0, axis=axis, reduce='add'
     )
 
 
@@ -680,19 +679,11 @@ class TestPutAlongAxisAPI(unittest.TestCase):
         self.index_shape = [1, 1]
         self.index_np = np.array([[0]]).astype('int64')
         self.x_np = np.random.random(self.shape).astype(np.float32)
-        self.place = []
+        self.place = get_places()
         self.axis = 0
         self.value_np = 99.0
         self.value_shape = []
         self.x_feed = copy.deepcopy(self.x_np)
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
 
     def test_api_static(self):
         paddle.enable_static()
@@ -824,19 +815,11 @@ class TestPutAlongAxisAPICase2(TestPutAlongAxisAPI):
         self.index_shape = [2, 2]
         self.index_np = np.array([[0, 0], [1, 0]]).astype('int64')
         self.x_np = np.random.random(self.shape).astype(np.float32)
-        self.place = []
+        self.place = get_places()
         self.axis = 0
         self.value_np = 99.0
         self.value_shape = []
         self.x_feed = copy.deepcopy(self.x_np)
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
 
 
 class TestPutAlongAxisAPICase3(TestPutAlongAxisAPI):
@@ -848,19 +831,11 @@ class TestPutAlongAxisAPICase3(TestPutAlongAxisAPI):
             'int64'
         )
         self.x_np = np.random.random(self.shape).astype(np.float32)
-        self.place = []
+        self.place = get_places()
         self.axis = 0
         self.value_np = 99.0
         self.value_shape = []
         self.x_feed = copy.deepcopy(self.x_np)
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
 
     def test_inplace_dygraph(self):
         pass
@@ -879,15 +854,7 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
         self.value = (
             np.arange(1, 11).reshape(self.value_shape).astype(np.float32)
         )
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
+        self.place = get_places()
 
     def test_api_dygraph(self):
         def run(place):
@@ -1346,6 +1313,7 @@ class TestPutAlongAxisDynamicShape(unittest.TestCase):
         self.enable_cinn = False
         self.tol = 1e-6
         self.dtype = "float32"
+        self.axis = -2
         self.input_specs = [
             InputSpec(
                 shape=(-1, -1, -1, -1),
@@ -1358,19 +1326,18 @@ class TestPutAlongAxisDynamicShape(unittest.TestCase):
     def train(self, to_static):
         arr = paddle.to_tensor(self.arr, stop_gradient=False)
         if to_static:
-            build_strategy = paddle.static.BuildStrategy()
-            build_strategy.build_cinn_pass = self.enable_cinn
+            backend = "CINN" if self.enable_cinn else None
             net = paddle.jit.to_static(
                 self.net,
                 input_spec=self.input_specs,
-                build_strategy=build_strategy,
+                backend=backend,
                 full_graph=True,
             )
             net.train()
         else:
             net = self.net
 
-        res = net(arr)
+        res = net(arr, self.axis)
         res.backward()
         arr_grad = arr.gradient()
         return res, arr_grad
@@ -1387,6 +1354,78 @@ class TestPutAlongAxisDynamicShape(unittest.TestCase):
 
             for dr, d in zip(dy_grads, st_grads):
                 np.testing.assert_allclose(dr, d, rtol=self.tol, atol=self.tol)
+
+
+class TestPutAlongAxisDynamicShape1(TestPutAlongAxisDynamicShape):
+    def setUp(self):
+        np.random.seed(2024)
+        self.net = put_along_axis_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+        self.dtype = "float32"
+        self.axis = 0
+        self.input_specs = [
+            InputSpec(
+                shape=(-1, -1, -1, -1),
+                dtype=self.dtype,
+                stop_gradient=False,
+            )
+        ]
+        self.arr = np.random.random([16, 16, 16, 16]).astype(self.dtype)
+
+
+class TestPutAlongAxisDynamicShape2(TestPutAlongAxisDynamicShape):
+    def setUp(self):
+        np.random.seed(2024)
+        self.net = put_along_axis_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+        self.dtype = "float32"
+        self.axis = -1
+        self.input_specs = [
+            InputSpec(
+                shape=(-1, -1, -1, -1),
+                dtype=self.dtype,
+                stop_gradient=False,
+            )
+        ]
+        self.arr = np.random.random([20, 20, 20, 20]).astype(self.dtype)
+
+
+class TestPutAlongAxisDynamicShape3(TestPutAlongAxisDynamicShape):
+    def setUp(self):
+        np.random.seed(2024)
+        self.net = put_along_axis_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+        self.dtype = "float32"
+        self.axis = 3
+        self.input_specs = [
+            InputSpec(
+                shape=(-1, -1, -1, -1),
+                dtype=self.dtype,
+                stop_gradient=False,
+            )
+        ]
+        self.arr = np.random.random([32, 32, 32, 32]).astype(self.dtype)
+
+
+class TestPutAlongAxisDynamicShape_ZeroSize(TestPutAlongAxisDynamicShape):
+    def setUp(self):
+        np.random.seed(2024)
+        self.net = put_along_axis_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+        self.dtype = "float32"
+        self.axis = -2
+        self.input_specs = [
+            InputSpec(
+                shape=(-1, -1, -1, -1),
+                dtype=self.dtype,
+                stop_gradient=False,
+            )
+        ]
+        self.arr = np.random.random([0, 10, 10, 10]).astype(self.dtype)
 
 
 if __name__ == "__main__":

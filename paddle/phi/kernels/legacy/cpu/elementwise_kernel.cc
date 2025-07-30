@@ -27,6 +27,10 @@ void MaximumRawKernel(const Context& dev_ctx,
                       const DenseTensor& y,
                       int axis,
                       DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   // allocate memory for out
   dev_ctx.template Alloc<T>(out);
   funcs::ElementwiseCompute<funcs::MaximumFunctor<T>, T>(
@@ -39,6 +43,10 @@ void MinimumRawKernel(const Context& dev_ctx,
                       const DenseTensor& y,
                       int axis,
                       DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   // allocate memory for out
   dev_ctx.template Alloc<T>(out);
   funcs::ElementwiseCompute<funcs::MinimumFunctor<T>, T>(
@@ -51,10 +59,14 @@ void RemainderRawKernel(const Context& dev_ctx,
                         const DenseTensor& y,
                         int axis,
                         DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   // allocate memory for out
   dev_ctx.template Alloc<T>(out);
-  auto x_dims = x.dims();
-  auto y_dims = y.dims();
+  const auto& x_dims = x.dims();
+  const auto& y_dims = y.dims();
   if (x_dims.size() >= y_dims.size()) {  // NOLINT
     funcs::ElementwiseCompute<funcs::RemainderFunctor<T>, T>(
         dev_ctx, x, y, funcs::RemainderFunctor<T>(), out, axis);
@@ -128,6 +140,8 @@ PD_REGISTER_KERNEL(remainder_raw,
                    phi::RemainderRawKernel,
                    float,
                    double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>,
                    int,
                    int64_t) {}
 PD_REGISTER_KERNEL(floor_divide_raw,
@@ -151,4 +165,6 @@ PD_REGISTER_KERNEL(elementwise_pow_raw,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

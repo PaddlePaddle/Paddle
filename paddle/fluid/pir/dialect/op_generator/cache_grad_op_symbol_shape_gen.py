@@ -20,6 +20,7 @@ import yaml
 from op_gen import (
     OpCompatParser,
     OpInfoParser,
+    cache_grad_op_shape_black_list,
     to_pascal_case,
 )
 
@@ -37,11 +38,23 @@ namespace dialect {{
 }}  // namespace paddle
 """
 
+GET_ORIGINAL_ATTR_MAP_FUNC_CODE_TEMPLATE = """
+std::unordered_map<std::string, std::set<std::string>> GetAllOpOriginalAttributes() {{
+  return {{{original_attr_map_items}
+  }};
+}}
+"""
+
+ORIGINAL_ATTR_MAP_ITEM_CODE_TEMPLATE = """
+    {{"{op_name}", {{{original_attr_name_list}}}}},"""
+
 CACHE_GRAD_OP_SYMBOL_SHAPE_FUNC_CODE_TEMPLATE = """
 void {op_name}Op::CacheGradOpSymbolicShape(pir::InferSymbolicShapeContext* infer_context) {{
 {create_grad_op_shape_info_code}
   pir::InferSymbolicShapeCacheKey op_shape_info(
-      "{grad_op_name}", {{{input_shape_list}}}, this->operation()->attributes());
+      "{grad_op_name}",
+      {{{input_shape_list}}},
+      pir::GetOrderedOriginalAttributes("{grad_op_name}", this->operation()->attributes()));
 {create_grad_op_output_shape_code}
   std::vector<symbol::ShapeOrDataDimExprs> output_shape_or_data{{{output_shape_list}}};
 
@@ -69,9 +82,6 @@ GET_OUT_GRAD_SHAPE_CODE_TEMPLATE = """
 
 GET_INPUT_GRAD_SHAPE_CODE_TEMPLATE = """
   const auto& {input_grad_name}{name_suffix} = GetGradVarShapeFromInput(infer_context, this->operation(), {index});"""
-
-
-cache_grad_op_shape_black_list = {"fused_attention"}
 
 
 class CacheGradOpSymbolShapeCodeGen:
@@ -105,7 +115,11 @@ class CacheGradOpSymbolShapeCodeGen:
         return op_info_maps
 
     def gen_cpp_file_code(self, cpp_file_path):
-        body_code = ""
+        cache_func_code = ""
+        original_attr_map_items_code = ""
+        get_op_name_with_dialect = (
+            lambda op_name: self.dialect_name + "." + op_name
+        )
         for op_info_item in self.op_info_maps.values():
             if op_info_item.backward_name is None:
                 continue
@@ -119,7 +133,28 @@ class CacheGradOpSymbolShapeCodeGen:
             ):
                 continue
 
+            original_attr_name = set(op_info_item.attribute_name_list) & set(
+                grad_op_item.attribute_name_list
+            )
+            convert_to_cpp_str = lambda str: '"' + str + '"'
+            original_attr_name_list_str = f"{', '.join(convert_to_cpp_str(item) for item in original_attr_name)}"
+            original_attr_map_items_code += (
+                ORIGINAL_ATTR_MAP_ITEM_CODE_TEMPLATE.format(
+                    op_name=get_op_name_with_dialect(
+                        op_info_item.backward_name
+                    ),
+                    original_attr_name_list=original_attr_name_list_str,
+                )
+            )
             for op_phi_name in op_info_item.op_phi_name:
+                if op_phi_name in cache_grad_op_shape_black_list:
+                    continue
+                original_attr_map_items_code += (
+                    ORIGINAL_ATTR_MAP_ITEM_CODE_TEMPLATE.format(
+                        op_name=get_op_name_with_dialect(op_phi_name),
+                        original_attr_name_list=original_attr_name_list_str,
+                    )
+                )
                 create_grad_op_shape_info_code = ""
                 for input_name in grad_op_item.input_name_list:
                     if input_name in grad_op_item.forward_input_name_list:
@@ -205,25 +240,21 @@ class CacheGradOpSymbolShapeCodeGen:
                             index=index,
                         )
                     )
-
-                if (
-                    len(create_grad_op_output_shape_code) == 0
-                    or op_phi_name in cache_grad_op_shape_black_list
-                ):
+                if len(create_grad_op_output_shape_code) == 0:
                     logging.warning(
                         f"{op_phi_name}'s grad op has some exception, please check it in yaml file."
                     )
-                    body_code += UNIMPLEMENTED_CODE_TEMPLATE.format(
+                    cache_func_code += UNIMPLEMENTED_CODE_TEMPLATE.format(
                         op_name=to_pascal_case(op_phi_name),
                     )
                     continue
 
-                body_code += CACHE_GRAD_OP_SYMBOL_SHAPE_FUNC_CODE_TEMPLATE.format(
+                cache_func_code += CACHE_GRAD_OP_SYMBOL_SHAPE_FUNC_CODE_TEMPLATE.format(
                     op_name=to_pascal_case(op_phi_name),
                     create_grad_op_shape_info_code=create_grad_op_shape_info_code,
-                    grad_op_name=self.dialect_name
-                    + "."
-                    + grad_op_item.op_phi_name[0],
+                    grad_op_name=get_op_name_with_dialect(
+                        grad_op_item.op_phi_name[0]
+                    ),
                     input_shape_list=", ".join(
                         [
                             input_name + SHAPE_VAR_NAME_SUFFIX
@@ -252,10 +283,15 @@ class CacheGradOpSymbolShapeCodeGen:
                     if kernel_func_name == op_origin_name:
                         continue
                     inplace_suffix = '_' if is_inplace_version else ''
-                    body_code += UNIMPLEMENTED_CODE_TEMPLATE.format(
+                    cache_func_code += UNIMPLEMENTED_CODE_TEMPLATE.format(
                         op_name=to_pascal_case(kernel_func_name)
                         + inplace_suffix
                     )
+        get_original_attr_map_func_code = (
+            GET_ORIGINAL_ATTR_MAP_FUNC_CODE_TEMPLATE.format(
+                original_attr_map_items=original_attr_map_items_code
+            )
+        )
 
         directory_path = os.path.dirname(cpp_file_path)
         if not os.path.exists(directory_path):
@@ -264,7 +300,7 @@ class CacheGradOpSymbolShapeCodeGen:
         with open(cpp_file_path, 'w') as f:
             f.write(
                 CPP_FILE_TEMPLATE.format(
-                    body=body_code,
+                    body=get_original_attr_map_func_code + cache_func_code,
                 )
             )
 

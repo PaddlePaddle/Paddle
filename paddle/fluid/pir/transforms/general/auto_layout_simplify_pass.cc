@@ -47,6 +47,10 @@ class RedundantTransposePattern
     if (!before_transpose->isa<paddle::dialect::TransposeOp>()) {
       return false;
     }
+    if (!(before_transpose->HasAttribute("source"))) return false;
+    auto source =
+        before_transpose->attribute<pir::StrAttribute>("source").AsString();
+    if (source != "auto_layout_pass") return false;
     const auto before_perm_attr =
         before_transpose->attribute<pir::ArrayAttribute>("perm");
 

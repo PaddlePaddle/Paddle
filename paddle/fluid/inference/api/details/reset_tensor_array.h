@@ -40,14 +40,14 @@ namespace details {
 struct TensorArrayBatchCleaner {
   TensorArrayBatchCleaner() {
     constexpr auto kTensorId = framework::VarTypeTrait<phi::DenseTensor>::kId;
-    constexpr auto kLoDTensorId =
+    constexpr auto kDenseTensorId =
         framework::VarTypeTrait<phi::DenseTensor>::kId;
     constexpr auto kSelectedRowsId =
         framework::VarTypeTrait<phi::SelectedRows>::kId;
     constexpr auto kFetchListId =
         framework::VarTypeTrait<framework::FetchList>::kId;
     valid_types_.insert(kTensorId);
-    valid_types_.insert(kLoDTensorId);
+    valid_types_.insert(kDenseTensorId);
     valid_types_.insert(kSelectedRowsId);
     valid_types_.insert(kFetchListId);
   }

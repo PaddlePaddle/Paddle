@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 sys.path.append("../../mkldnn")
-from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
+from onednn_op_test import check_if_onednn_primitives_exist_in_bwd
 from op_test import OpTest, convert_float_to_uint16
 from test_activation_op import (
     TestAbs,
@@ -52,7 +52,7 @@ import paddle.nn.functional as F
 from paddle.base import core
 
 
-class TestMKLDNNReluDim2(TestRelu):
+class TestONEDNNReluDim2(TestRelu):
     def setUp(self):
         super().setUp()
 
@@ -62,7 +62,7 @@ class TestMKLDNNReluDim2(TestRelu):
         self.dtype = np.float32
 
 
-class TestMKLDNNRelu_ZeroDim(TestRelu_ZeroDim):
+class TestONEDNNRelu_ZeroDim(TestRelu_ZeroDim):
     def setUp(self):
         super().setUp()
 
@@ -72,7 +72,7 @@ class TestMKLDNNRelu_ZeroDim(TestRelu_ZeroDim):
         self.dtype = np.float32
 
 
-class TestMKLDNNRelu6Dim2(TestRelu6):
+class TestONEDNNRelu6Dim2(TestRelu6):
     def setUp(self):
         super().setUp()
         self.attrs.update({"use_mkldnn": True})
@@ -82,7 +82,7 @@ class TestMKLDNNRelu6Dim2(TestRelu6):
         self.dtype = np.float32
 
 
-class TestMKLDNNRelu6_ZeroDim(TestRelu6_ZeroDim):
+class TestONEDNNRelu6_ZeroDim(TestRelu6_ZeroDim):
     def setUp(self):
         super().setUp()
         self.attrs.update({"use_mkldnn": True})
@@ -92,7 +92,7 @@ class TestMKLDNNRelu6_ZeroDim(TestRelu6_ZeroDim):
         self.dtype = np.float32
 
 
-class TestMKLDNNLeakyReluDim2(TestLeakyRelu):
+class TestONEDNNLeakyReluDim2(TestLeakyRelu):
     def setUp(self):
         super().setUp()
 
@@ -113,7 +113,7 @@ class TestMKLDNNLeakyReluDim2(TestLeakyRelu):
         )
 
 
-class TestMKLDNNLeakyRelu_ZeroDim(TestLeakyRelu_ZeroDim):
+class TestONEDNNLeakyRelu_ZeroDim(TestLeakyRelu_ZeroDim):
     def setUp(self):
         super().setUp()
 
@@ -124,7 +124,7 @@ class TestMKLDNNLeakyRelu_ZeroDim(TestLeakyRelu_ZeroDim):
         self.dtype = np.float32
 
 
-class TestMKLDNNGeluDim2(TestActivation):
+class TestONEDNNGeluDim2(TestActivation):
     def setUp(self):
         self.op_type = "gelu"
         self.python_api = F.gelu
@@ -139,7 +139,7 @@ class TestMKLDNNGeluDim2(TestActivation):
         self.check_pir_onednn = False
 
 
-class TestMKLDNNGelu_ZeroDim(TestActivation_ZeroDim):
+class TestONEDNNGelu_ZeroDim(TestActivation_ZeroDim):
     def setUp(self):
         self.op_type = "gelu"
         self.python_api = F.gelu
@@ -154,7 +154,7 @@ class TestMKLDNNGelu_ZeroDim(TestActivation_ZeroDim):
         self.check_pir_onednn = False
 
 
-class TestMKLDNNGeluDim2Approx(TestActivation):
+class TestONEDNNGeluDim2Approx(TestActivation):
     def setUp(self):
         self.op_type = "gelu"
         self.python_api = F.gelu
@@ -169,7 +169,7 @@ class TestMKLDNNGeluDim2Approx(TestActivation):
         self.check_pir_onednn = False
 
 
-class TestMKLDNNTanhDim2(TestTanh):
+class TestONEDNNTanhDim2(TestTanh):
     def setUp(self):
         super().setUp()
 
@@ -180,7 +180,7 @@ class TestMKLDNNTanhDim2(TestTanh):
         self.dtype = np.float32
 
 
-class TestMKLDNNTanh_ZeroDim(TestTanh_ZeroDim):
+class TestONEDNNTanh_ZeroDim(TestTanh_ZeroDim):
     def setUp(self):
         super().setUp()
 
@@ -191,7 +191,7 @@ class TestMKLDNNTanh_ZeroDim(TestTanh_ZeroDim):
         self.dtype = np.float32
 
 
-class TestMKLDNNSqrtDim2(TestSqrt):
+class TestONEDNNSqrtDim2(TestSqrt):
     def setUp(self):
         super().setUp()
 
@@ -202,7 +202,7 @@ class TestMKLDNNSqrtDim2(TestSqrt):
         self.dtype = np.float32
 
 
-class TestMKLDNNSqrt_ZeroDim(TestSqrt_ZeroDim):
+class TestONEDNNSqrt_ZeroDim(TestSqrt_ZeroDim):
     def setUp(self):
         super().setUp()
 
@@ -213,7 +213,7 @@ class TestMKLDNNSqrt_ZeroDim(TestSqrt_ZeroDim):
         self.dtype = np.float32
 
 
-class TestMKLDNNAbsDim2(TestAbs):
+class TestONEDNNAbsDim2(TestAbs):
     def setUp(self):
         super().setUp()
         self.attrs = {"use_mkldnn": True}
@@ -222,7 +222,27 @@ class TestMKLDNNAbsDim2(TestAbs):
         self.dtype = np.float32
 
 
-class TestMKLDNNAbs_ZeroDim(TestAbs_ZeroDim):
+class TestONEDNNAbsZeroSize(TestAbs):
+    def setUp(self):
+        super().setUp()
+        self.check_pir_onednn = True
+        self.attrs = {"use_mkldnn": True}
+
+    def init_shape(self):
+        self.shape = [0, 12, 0]
+
+
+class TestONEDNNAbsZeroSize1(TestONEDNNAbsZeroSize):
+    def setUp(self):
+        super().setUp()
+        self.check_pir_onednn = True
+        self.attrs = {"use_mkldnn": True}
+
+    def init_shape(self):
+        self.shape = [0, 12, 0]
+
+
+class TestONEDNNAbs_ZeroDim(TestAbs_ZeroDim):
     def setUp(self):
         super().setUp()
         self.attrs = {"use_mkldnn": True}
@@ -231,7 +251,7 @@ class TestMKLDNNAbs_ZeroDim(TestAbs_ZeroDim):
         self.dtype = np.float32
 
 
-class TestMKLDNNSwishDim2(TestSwish):
+class TestONEDNNSwishDim2(TestSwish):
     def setUp(self):
         super().setUp()
 
@@ -242,7 +262,7 @@ class TestMKLDNNSwishDim2(TestSwish):
         self.dtype = np.float32
 
 
-class TestMKLDNNSwish_ZeroDim(TestSwish_ZeroDim):
+class TestONEDNNSwish_ZeroDim(TestSwish_ZeroDim):
     def setUp(self):
         super().setUp()
 
@@ -254,33 +274,33 @@ class TestMKLDNNSwish_ZeroDim(TestSwish_ZeroDim):
         self.dtype = np.float32
 
 
-class TestMKLDNNHardSwishDim2(TestHardSwish):
+class TestONEDNNHardSwishDim2(TestHardSwish):
     def setUp(self):
         super().setUp()
         self.attrs = {"use_mkldnn": True}
         self.check_pir_onednn = False
 
 
-class TestMKLDNNHardSwish_ZeroDim(TestHardSwish_ZeroDim):
+class TestONEDNNHardSwish_ZeroDim(TestHardSwish_ZeroDim):
     def setUp(self):
         super().setUp()
         self.attrs = {"use_mkldnn": True}
         self.check_pir_onednn = False
 
 
-class TestMKLDNNSigmoidDim2(TestSigmoid):
+class TestONEDNNSigmoidDim2(TestSigmoid):
     def setUp(self):
         super().setUp()
         self.attrs = {"use_mkldnn": True}
 
 
-class TestMKLDNNSigmoid_ZeroDim(TestSigmoid_ZeroDim):
+class TestONEDNNSigmoid_ZeroDim(TestSigmoid_ZeroDim):
     def setUp(self):
         super().setUp()
         self.attrs = {"use_mkldnn": True}
 
 
-class TestMKLDNNReluDim4(TestRelu):
+class TestONEDNNReluDim4(TestRelu):
     def setUp(self):
         super().setUp()
 
@@ -297,7 +317,7 @@ class TestMKLDNNReluDim4(TestRelu):
         self.dtype = np.float32
 
 
-class TestMKLDNNLeakyReluDim4(TestLeakyRelu):
+class TestONEDNNLeakyReluDim4(TestLeakyRelu):
     def setUp(self):
         super().setUp()
 
@@ -325,7 +345,7 @@ class TestMKLDNNLeakyReluDim4(TestLeakyRelu):
         )
 
 
-class TestMKLDNNGeluDim4(TestActivation):
+class TestONEDNNGeluDim4(TestActivation):
     def setUp(self):
         self.op_type = "gelu"
         self.python_api = F.gelu
@@ -340,7 +360,7 @@ class TestMKLDNNGeluDim4(TestActivation):
         self.check_pir_onednn = False
 
 
-class TestMKLDNNGeluDim4Approx(TestActivation):
+class TestONEDNNGeluDim4Approx(TestActivation):
     def setUp(self):
         self.op_type = "gelu"
         self.python_api = F.gelu
@@ -358,7 +378,7 @@ class TestMKLDNNGeluDim4Approx(TestActivation):
 @unittest.skipIf(
     not core.supports_bfloat16(), "place does not support BF16 evaluation"
 )
-class TestMKLDNNGeluBf16Dim4(TestActivation):
+class TestONEDNNGeluBf16Dim4(TestActivation):
     def setUp(self):
         self.op_type = "gelu"
         self.python_api = F.gelu
@@ -382,7 +402,7 @@ class TestMKLDNNGeluBf16Dim4(TestActivation):
 @unittest.skipIf(
     not core.supports_bfloat16(), "place does not support BF16 evaluation"
 )
-class TestMKLDNNGeluBf16Dim4Approx(TestActivation):
+class TestONEDNNGeluBf16Dim4Approx(TestActivation):
     def setUp(self):
         self.op_type = "gelu"
         self.python_api = F.gelu
@@ -403,7 +423,7 @@ class TestMKLDNNGeluBf16Dim4Approx(TestActivation):
         pass
 
 
-class TestMKLDNNTanhDim4(TestTanh):
+class TestONEDNNTanhDim4(TestTanh):
     def setUp(self):
         super().setUp()
 
@@ -415,7 +435,7 @@ class TestMKLDNNTanhDim4(TestTanh):
         self.check_pir_onednn = False
 
 
-class TestMKLDNNSqrtDim4(TestSqrt):
+class TestONEDNNSqrtDim4(TestSqrt):
     def setUp(self):
         super().setUp()
 
@@ -427,7 +447,7 @@ class TestMKLDNNSqrtDim4(TestSqrt):
         self.check_pir_onednn = False
 
 
-class TestMKLDNNAbsDim4(TestAbs):
+class TestONEDNNAbsDim4(TestAbs):
     def setUp(self):
         super().setUp()
 
@@ -452,7 +472,7 @@ def ref_hardswish(x, threshold=6.0, scale=6.0, offset=3.0):
     ).astype(x_dtype)
 
 
-class TestMKLDNNHardSwishDim4(TestHardSwish):
+class TestONEDNNHardSwishDim4(TestHardSwish):
     def setUp(self):
         super().setUp()
 
@@ -474,7 +494,7 @@ class TestMKLDNNHardSwishDim4(TestHardSwish):
         self.dtype = np.float32
 
 
-class TestMKLDNNMish(TestActivation):
+class TestONEDNNMish(TestActivation):
     def setUp(self):
         self.op_type = "mish"
         self.python_api = F.mish
@@ -489,7 +509,7 @@ class TestMKLDNNMish(TestActivation):
         self.check_pir_onednn = False
 
 
-class TestMKLDNNMish_ZeroDim(TestActivation_ZeroDim):
+class TestONEDNNMish_ZeroDim(TestActivation_ZeroDim):
     def setUp(self):
         self.op_type = "mish"
         self.python_api = F.mish
@@ -504,7 +524,7 @@ class TestMKLDNNMish_ZeroDim(TestActivation_ZeroDim):
         self.check_pir_onednn = False
 
 
-class TestMKLDNNRound(TestActivation):
+class TestONEDNNRound(TestActivation):
     def setUp(self):
         self.op_type = "round"
         self.python_api = paddle.round
@@ -525,7 +545,7 @@ class TestMKLDNNRound(TestActivation):
         self.check_grad(['X'], 'Out', check_pir=True, check_pir_onednn=False)
 
 
-class TestMKLDNNRound_ZeroDim(TestActivation_ZeroDim):
+class TestONEDNNRound_ZeroDim(TestActivation_ZeroDim):
     def setUp(self):
         self.op_type = "round"
         self.python_api = paddle.round
@@ -546,7 +566,7 @@ class TestMKLDNNRound_ZeroDim(TestActivation_ZeroDim):
         self.check_grad(['X'], 'Out', check_pir=True, check_pir_onednn=False)
 
 
-class TestMKLDNNSigmoidDim4(TestSigmoid):
+class TestONEDNNSigmoidDim4(TestSigmoid):
     def setUp(self):
         super().setUp()
 
@@ -557,7 +577,7 @@ class TestMKLDNNSigmoidDim4(TestSigmoid):
         self.attrs = {"use_mkldnn": True}
 
 
-class TestMKLDNNEluDefaultAlpha(TestActivation):
+class TestONEDNNEluDefaultAlpha(TestActivation):
     def setUp(self):
         self.op_type = "elu"
         self.python_api = F.elu
@@ -577,7 +597,7 @@ class TestMKLDNNEluDefaultAlpha(TestActivation):
         self.alpha = 1.0
 
 
-class TestMKLDNNEluDefaultAlpha_ZeroDim(TestActivation_ZeroDim):
+class TestONEDNNEluDefaultAlpha_ZeroDim(TestActivation_ZeroDim):
     def setUp(self):
         self.op_type = "elu"
         self.python_api = F.elu
@@ -597,12 +617,12 @@ class TestMKLDNNEluDefaultAlpha_ZeroDim(TestActivation_ZeroDim):
         self.alpha = 1.0
 
 
-class TestMKLDNNEluCustomAlpha(TestMKLDNNEluDefaultAlpha):
+class TestONEDNNEluCustomAlpha(TestONEDNNEluDefaultAlpha):
     def set_alpha(self):
         self.alpha = 2.5
 
 
-class TestMKLDNNExpOp(TestActivation):
+class TestONEDNNExpOp(TestActivation):
     def setUp(self):
         self.op_type = "exp"
         self.python_api = paddle.exp
@@ -614,7 +634,7 @@ class TestMKLDNNExpOp(TestActivation):
         self.check_pir_onednn = False
 
 
-class TestMKLDNNExpOp_ZeroDim(TestActivation_ZeroDim):
+class TestONEDNNExpOp_ZeroDim(TestActivation_ZeroDim):
     def setUp(self):
         self.op_type = "exp"
         self.python_api = paddle.exp
@@ -627,7 +647,7 @@ class TestMKLDNNExpOp_ZeroDim(TestActivation_ZeroDim):
 
 
 # Check if primitives already exist in backward
-class TestMKLDNNAbsPrimitivesAlreadyExist(unittest.TestCase):
+class TestONEDNNAbsPrimitivesAlreadyExist(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
         super().setUp()
@@ -646,12 +666,12 @@ class TestMKLDNNAbsPrimitivesAlreadyExist(unittest.TestCase):
 
     @compare_legacy_with_pt
     def test_check(self):
-        check_if_mkldnn_primitives_exist_in_bwd(
+        check_if_onednn_primitives_exist_in_bwd(
             self, self.op_type, self.x, self.out, self.out_grad, self.x_grad
         )
 
 
-class TestMKLDNNSoftplusDim2(TestSoftplus):
+class TestONEDNNSoftplusDim2(TestSoftplus):
     def setUp(self):
         super().setUp()
         self.attrs.update({"use_mkldnn": True})
@@ -661,7 +681,7 @@ class TestMKLDNNSoftplusDim2(TestSoftplus):
         self.dtype = np.float32
 
 
-class TestMKLDNNSoftplus_ZeroDim(TestSoftplus_ZeroDim):
+class TestONEDNNSoftplus_ZeroDim(TestSoftplus_ZeroDim):
     def setUp(self):
         super().setUp()
         self.attrs.update({"use_mkldnn": True})

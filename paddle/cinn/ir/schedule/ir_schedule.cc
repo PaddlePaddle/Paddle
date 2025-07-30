@@ -25,7 +25,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/dev_info_manager.h"
 #include "paddle/cinn/common/ir_util.h"
@@ -354,6 +353,12 @@ std::vector<Expr> IRSchedule::GetAllBlocks() const {
   return results;
 }
 
+std::vector<stmt::StmtRef> IRSchedule::GetAllSchedules() const {
+  auto results = impl_->GetAllSchedules();
+  trace_.Append(ScheduleDesc::Step("GetAllSchedules", {}, {}, {}, results));
+  return results;
+}
+
 std::vector<Expr> IRSchedule::GetChildBlocks(const Expr& expr) const {
   auto results = impl_->GetChildBlocks(expr);
   trace_.Append(ScheduleDesc::Step(
@@ -604,15 +609,6 @@ void IRSchedule::Bind(const Expr& loop, const std::string& thread_axis) {
                                    {}));
 }
 
-Expr IRSchedule::Rfactor(const Expr& rf_loop, int rf_axis) {
-  auto result = impl_->Rfactor(rf_loop, rf_axis);
-  trace_.Append(ScheduleDesc::Step("Rfactor",
-                                   {{"rf_loop", std::vector<Expr>({rf_loop})}},
-                                   {{"rf_axis", rf_axis}},
-                                   {result}));
-  return result;
-}
-
 Expr IRSchedule::FactorizeReduction(const Expr& rf_loop,
                                     int rf_axis,
                                     bool with_write_back_block_init) {
@@ -632,14 +628,14 @@ void IRSchedule::Annotate(const Expr& block,
                           const attr_t& value) {
   impl_->Annotate(block, key, value);
 
-#define TRACE_ANNOTATE_ITEM(data_type, step_name)               \
-  if (absl::holds_alternative<data_type>(value)) {              \
-    trace_.Append(ScheduleDesc::Step(                           \
-        #step_name,                                             \
-        {{"block", std::vector<Expr>({block})}},                \
-        {{"key", key}, {"value", absl::get<data_type>(value)}}, \
-        {}));                                                   \
-    return;                                                     \
+#define TRACE_ANNOTATE_ITEM(data_type, step_name)              \
+  if (std::holds_alternative<data_type>(value)) {              \
+    trace_.Append(ScheduleDesc::Step(                          \
+        #step_name,                                            \
+        {{"block", std::vector<Expr>({block})}},               \
+        {{"key", key}, {"value", std::get<data_type>(value)}}, \
+        {}));                                                  \
+    return;                                                    \
   }
   TRACE_ANNOTATE_ITEM(int, AnnotateIntAttr)
   TRACE_ANNOTATE_ITEM(bool, AnnotateBoolAttr)

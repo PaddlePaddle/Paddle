@@ -39,9 +39,11 @@ class TestDy2staticException(Dy2StTestBase):
     @test_ast_only
     def test_error(self):
         if self.dyfunc:
-            with self.assertRaisesRegex(Dygraph2StaticException, self.error):
-                with enable_to_static_guard(True):
-                    self.assertTrue(paddle.jit.to_static(self.dyfunc)(self.x))
+            with (
+                self.assertRaisesRegex(Dygraph2StaticException, self.error),
+                enable_to_static_guard(True),
+            ):
+                self.assertTrue(paddle.jit.to_static(self.dyfunc)(self.x))
 
 
 def test_continue_in_for(x):
@@ -351,7 +353,7 @@ class TestOptimBreakInWhile(TestContinueInWhile):
     def test_transformed_static_result(self):
         self.init_dygraph_func()
         dygraph_res = self.run_dygraph_mode()
-        # NOTE(SigureMo): Temperary run the test in sequential run mode to avoid dependency
+        # NOTE(SigureMo): Temporarily run the test in sequential run mode to avoid dependency
         # on the execution order of the test cases.
         if use_pir_api():
             with exe_sequential_run_guard(True):

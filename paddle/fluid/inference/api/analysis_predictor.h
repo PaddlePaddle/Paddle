@@ -162,6 +162,12 @@ class AnalysisPredictor : public PaddlePredictor {
   std::vector<std::string> GetOutputNames() override;
 
   ///
+  /// \brief Get the value really need place, only for pir
+  ///
+  /// \return phi::place
+  ///
+  phi::Place GetTensorPlace(const pir::Value &value);
+  ///
   /// \brief Get the Input Tensor object
   ///
   /// \param[in] name input name
@@ -434,7 +440,7 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \param[out] output_data output tensor
   ///
   template <typename T>
-  void GetFetchOne(const phi::DenseTensor &fetchs, PaddleTensor *output_data);
+  void GetFetchOne(const phi::DenseTensor &fetches, PaddleTensor *output_data);
   ///
   /// \brief PreSet for Mkldnn multi-thread and dynamic shape input.
   ///

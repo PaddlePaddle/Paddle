@@ -25,7 +25,7 @@ paddle::dialect::AddN_Op, paddle::dialect::AddNArrayOp,
     paddle::dialect::TensorToArrayOp, paddle::dialect::IncrementOp,
     paddle::dialect::Increment_Op, paddle::dialect::ShapeBroadcastOp,
     paddle::dialect::MemcpyD2hMultiIoOp, paddle::dialect::ArrayPopOp,
-    paddle::dialect::ShareVarOp
+    paddle::dialect::ShareVarOp, paddle::dialect::CudaGraphOp
 #else
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
@@ -590,6 +590,27 @@ std::vector<pir::Type> AddNArrayOp::InferMeta(
 
   argument_outputs.push_back(out_dense_tensor_type);
   return argument_outputs;
+}
+
+bool AddNArrayOp::InferSymbolicShape(
+    pir::InferSymbolicShapeContext *infer_context) {
+  // The inputs for add_n_array op is defined by builtin.combine.
+  // We use the combine op's inputs to infer the output shape.
+  pir::CombineOp combine_op =
+      inputs().defining_op()->dyn_cast<pir::CombineOp>();
+  // Try to get the infer result as much as possible.
+  for (size_t i = 0; i < combine_op.num_operands(); i++) {
+    if (infer_context->HasShapeOrDataForValue(combine_op.operand_source(i))) {
+      auto out_shape_or_data =
+          infer_context->GetShapeOrDataForValue(combine_op.operand_source(i))
+              .dyn_cast<symbol::RankedTensorArrayShapeOrDataDimExprs>();
+      infer_context->SetShapeOrDataForValue(
+          out(), symbol::ShapeOrDataDimExprs{out_shape_or_data});
+      return true;
+    }
+  }
+  PADDLE_THROW(common::errors::InvalidArgument(
+      "At least one operand of CombineOp should have shape or data."));
 }
 
 const char *FusedGemmEpilogueOp::attributes_name[3] = {  // NOLINT
@@ -1495,6 +1516,7 @@ std::vector<pir::Type> CreateArrayOp::InferMeta(
 
 bool CreateArrayOp::InferSymbolicShape(
     pir::InferSymbolicShapeContext *infer_context) {
+  // TODO(ooooo): Try to use output type's dims to decide.
   infer_context->SetShapeOrDataForValue(
       out(),
       symbol::ShapeOrDataDimExprs{symbol::RankedTensorArrayShapeOrDataDimExprs(
@@ -2140,7 +2162,7 @@ std::vector<pir::Type> ArrayWrite_Op::InferMeta(
       x_type.dims(),
       dense_array_out.layout());
   // update array's dims as x's dims.
-  // TOOD(chenxi67) Do not change if dim is set by custom
+  // TODO(chenxi67) Do not change if dim is set by custom
   if (array_.type().isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
     array_.set_type(paddle::dialect::AllocatedDenseTensorArrayType::get(
         pir::IrContext::Instance(),
@@ -2165,6 +2187,12 @@ bool ArrayWrite_Op::InferSymbolicShape(
   const auto &x_shape = infer_context->GetShapeOrDataForValue(x()).shape();
   infer_context->SetShapeOrDataForValue(
       out(),
+      symbol::ShapeOrDataDimExprs{
+          symbol::RankedTensorArrayShapeOrDataDimExprs(x_shape)});
+  // update array's shape as x's shape.
+  // TODO(ooooo) Do not change if shape is set by custom, similar to infer_meta
+  infer_context->SetShapeOrDataForValue(
+      array(),
       symbol::ShapeOrDataDimExprs{
           symbol::RankedTensorArrayShapeOrDataDimExprs(x_shape)});
 
@@ -2431,7 +2459,7 @@ OpInfoTuple TensorToArrayOp::GetOpInfo() {
 
   paddle::dialect::OpRunTimeInfo run_time_info =
       paddle::dialect::OpRunTimeInfo("TensorToArrayInferMeta",
-                                     {"x", "axis", "use_stack"},
+                                     {"x", "out_grad", "axis", "use_stack"},
                                      "tensor_to_array",
                                      {"x", "out_grad", "axis", "use_stack"},
                                      {"x"},
@@ -3352,6 +3380,7 @@ void ExpandOp::Build(pir::Builder &builder,
       ExpandOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  argument.AddAttributes(argument_attributes);
   ::pir::PassStopGradientsDefaultly(argument);
 }
 
@@ -3387,6 +3416,7 @@ void ExpandOp::Build(pir::Builder &builder,
       ExpandOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  argument.AddAttributes(argument_attributes);
   ::pir::PassStopGradientsDefaultly(argument);
 }
 
@@ -3406,6 +3436,7 @@ void ExpandOp::Build(pir::Builder &builder,
       ExpandOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  argument.AddAttributes(argument_attributes);
   ::pir::PassStopGradientsDefaultly(argument);
 }
 
@@ -3551,7 +3582,19 @@ std::vector<pir::Type> ExpandOp::InferMeta(
                             .dyn_cast<paddle::dialect::ScalarAttribute>()
                             .data()
                             .to<double>();
-      vec_shape = {static_cast<int64_t>(shape_item)};
+      auto shape_vec = shape.defining_op()
+                           ->dyn_cast<paddle::dialect::FullOp>()
+                           .attribute("shape")
+                           .dyn_cast<paddle::dialect::IntArrayAttribute>()
+                           .data()
+                           .GetData();
+      // TODO(ooooo): If can make sure shape_value's size is less than or equal
+      // to 1, can add a check here rather than product.
+      int64_t items = 1;
+      for (const auto &item : shape_vec) {
+        items *= item;
+      }
+      vec_shape = std::vector<int64_t>(items, shape_item);
     } else if (shape.isa<pir::OpResult>() &&
                shape.defining_op()->isa<paddle::dialect::StackOp>()) {
       std::vector<pir::Value> inputs = shape.defining_op()
@@ -3667,6 +3710,45 @@ std::vector<pir::Type> ExpandOp::InferMeta(
       dense_out.layout(),
       dense_out.lod(),
       dense_out.offset());
+
+  // Auto Parallel condition
+#ifdef PADDLE_WITH_DISTRIBUTE
+  ProcessMeshAttribute op_mesh;
+  if (HasDistInput(input_values, &op_mesh)) {
+    CvtAllInputsToDist(input_values, op_mesh);
+    auto ctx = pir::IrContext::Instance();
+    std::vector<pir::Attribute> dist_operand_attrs, dist_result_attrs;
+    auto dist_meta_x =
+        CvtToDistMetaTensor(x_.type().dyn_cast<DistDenseTensorType>());
+    // Todo(jeff41404): When expand adds spmd rules, synchronous modifications
+    // are required here.
+    auto spmd_info =
+        phi::distributed::VariadicReplicatedInferSpmdDynamic(dist_meta_x);
+    PADDLE_ENFORCE_EQ(
+        spmd_info.first.size(),
+        1u,
+        common::errors::Unavailable(
+            "Size of spmd_info.first for op[ExpandOp]is unexpected."));
+    for (auto &arg_dist : spmd_info.first) {
+      dist_operand_attrs.push_back(CvtToPirAttr(arg_dist));
+    }
+
+    for (int i = 1; i < 2; ++i) {
+      dist_operand_attrs.push_back(GetTensorDistAttr(input_values[i].type()));
+    }
+
+    auto dist_attr_out =
+        CreateReplicatedDistAttr(out_dense_tensor_type, op_mesh);
+
+    dist_result_attrs.push_back(dist_attr_out);
+    argument_outputs.push_back(
+        CvtToPirDistType(out_dense_tensor_type, dist_attr_out));
+
+    (*p_attributes)[kAttrOpDistAttr] = OperationDistAttribute::get(
+        ctx, op_mesh, dist_operand_attrs, dist_result_attrs);
+    return argument_outputs;
+  }
+#endif
   argument_outputs.push_back(out_dense_tensor_type);
   return argument_outputs;
 }
@@ -4825,6 +4907,50 @@ bool ArrayPopOp::InferSymbolicShape(
   return true;
 }
 
+void CudaGraphOp::Build(pir::Builder &builder,
+                        pir::OperationArgument &argument,
+                        const std::vector<pir::Type> &output_types) {
+  argument.AddRegion(nullptr);
+  argument.output_types = output_types;
+}
+
+pir::Block *CudaGraphOp::block() {
+  pir::Region &region = (*this)->region(0);
+  if (region.empty()) region.emplace_back();
+  return &region.front();
+}
+
+pir::Block *CudaGraphOp::block() const {
+  pir::Region &region = (*this)->region(0);
+  PADDLE_ENFORCE_EQ(region.empty(),
+                    false,
+                    ::common::errors::Unavailable(
+                        "Required GroupOp's region must not be emptpy."));
+  return &region.front();
+}
+
+void CudaGraphOp::VerifySig() {}
+
+void CudaGraphOp::Print(pir::IrPrinter &printer) {
+  auto &os = printer.os;
+  auto op = operation();
+  printer.PrintOpResult(*op);
+  os << " = ";
+  printer.PrintOpName(*op);
+  printer.PrintOpId(*op);
+  printer.PrintOpOperands(*op);
+  os << " -> ";
+  printer.PrintOpReturnType(*op);
+  os << " {\n";
+  printer.AddIndentation();
+  for (auto &sub_op : *block()) {
+    printer.PrintOperation(sub_op);
+    os << "\n";
+  }
+  printer.DecreaseIndentation();
+  os << printer.indentation() << "}";
+}
+
 }  // namespace paddle::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SplitGradOp)
@@ -4852,4 +4978,5 @@ IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::MemcpyD2hMultiIoOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ShapeBroadcastOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayPopOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ShareVarOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CudaGraphOp)
 #endif

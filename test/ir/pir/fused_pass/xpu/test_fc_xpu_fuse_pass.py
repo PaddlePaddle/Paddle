@@ -23,7 +23,7 @@ from paddle.base import core
 paddle.enable_static()
 
 
-class TestFCXpuFusePattern(PassTest):
+class TestFcXpuFuseAddPattern(PassTest):
     r"""
     x        w
      \      /

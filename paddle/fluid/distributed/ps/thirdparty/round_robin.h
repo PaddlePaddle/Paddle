@@ -113,7 +113,7 @@ static Counts &counts() {
 #error Unsupported bitness
 #endif
 
-// endianess
+// endianness
 #ifdef _MSC_VER
 #define ROBIN_HOOD_PRIVATE_DEFINITION_LITTLE_ENDIAN() 1
 #define ROBIN_HOOD_PRIVATE_DEFINITION_BIG_ENDIAN() 0
@@ -1579,7 +1579,7 @@ class Table
   // first insert.
   // This tremendously speeds up ctor & dtor of a map that never receives an
   // element. The
-  // penalty is payed at the first insert, and not before. Lookup of this empty
+  // penalty is paid at the first insert, and not before. Lookup of this empty
   // map works
   // because everybody points to DummyInfoByte::b. parameter bucket_count is
   // dictated by the

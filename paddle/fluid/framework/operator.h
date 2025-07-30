@@ -131,9 +131,10 @@ inline bool VarIsTensor(const Variable& var) {
   return var.IsType<phi::DenseTensor>() || var.IsType<phi::SelectedRows>();
 }
 
-const phi::DenseTensor* GetLoDTensorOrSelectedRowsValueFromVar(
+const phi::DenseTensor* GetDenseTensorOrSelectedRowsValueFromVar(
     const Variable& var);
-phi::DenseTensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var);
+phi::DenseTensor* GetMutableDenseTensorOrSelectedRowsValueFromVar(
+    Variable* var);
 
 class ExecutionContext;
 class OperatorBase;
@@ -198,7 +199,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   bool IsRuntime() const override;
 
-  bool IsRunMKLDNNKernel() const override;
+  bool IsRunONEDNNKernel() const override;
 
   // TODO(paddle-dev): Can this be template?
   paddle::small_vector<InferShapeVarPtr, phi::kInputSmallVectorSize>
@@ -230,7 +231,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   void SetSkipLoD(bool skip);
 
-  std::vector<LoD> GetOutputsLod(const std::string& out) const;
+  std::vector<LegacyLoD> GetOutputsLod(const std::string& out) const;
 
   std::vector<DDim> GetOutputsDim(const std::string& name) const;
 
@@ -399,7 +400,7 @@ class TEST_API OperatorBase {
   // NOTE: runtime_attrs_ contains the attributes which used for dispatching
   // kernel (use_mkldnn, use_cudnn, ...) or passing additional configuration
   // for special heterogeneous kernel (workspace_size_MB, ...).
-  // The attributes in runtime_attrs_ are setted by framework (such as PASS),
+  // The attributes in runtime_attrs_ are set by framework (such as PASS),
   // and not in the python api.
   AttributeMap runtime_attrs_;
 
@@ -493,8 +494,6 @@ class ExecutionContext : public phi::KernelContext {
 
   virtual const std::vector<Variable*> MultiInputVar(
       const std::string& name) const {
-    LogVarUsageIfUnusedVarCheckEnabled(name);
-
     auto it = ctx_.inputs.find(name);
     if (it == ctx_.inputs.end()) {
       return {};
@@ -535,8 +534,6 @@ class ExecutionContext : public phi::KernelContext {
 
   template <typename T>
   const std::vector<const T*> MultiInput(const std::string& name) const {
-    LogVarUsageIfUnusedVarCheckEnabled(name);
-
     auto vars = MultiInputVar(name);
     if (vars.size() == 0) {
       return {};
@@ -771,7 +768,7 @@ class OperatorWithKernel : public OperatorBase {
 
   bool SupportCustomDevice() const override;
 
-  bool SupportsMKLDNN(phi::DataType data_type) const;
+  bool SupportsONEDNN(phi::DataType data_type) const;
 
   bool SupportsCUDNN(phi::DataType data_type) const;
 
@@ -780,10 +777,10 @@ class OperatorWithKernel : public OperatorBase {
 
   bool SupportsCPUBF16() const;
 
-  bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
+  bool CanONEDNNBeUsed(const framework::ExecutionContext& ctx,
                        phi::DataType data_type) const;
 
-  bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
+  bool CanONEDNNBeUsed(const framework::ExecutionContext& ctx,
                        proto::VarType::Type data_type) const;
 
   bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
@@ -877,11 +874,11 @@ class OperatorWithKernel : public OperatorBase {
    * Transfer data from scope to a transferred scope. If there is no data need
    * to be transferred, it returns nullptr.
    *
-   * transfered_inplace_vars is a output vector.
+   * transferred_inplace_vars is a output vector.
    */
   Scope* PrepareData(const Scope& scope,
                      const phi::KernelKey& expected_kernel_key,
-                     std::vector<std::string>* transfered_inplace_vars,
+                     std::vector<std::string>* transferred_inplace_vars,
                      RuntimeContext* ctx,
                      const phi::Place& place) const;
 

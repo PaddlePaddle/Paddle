@@ -51,7 +51,7 @@ def check_fp8_support() -> bool:
 
 def _to_fp8_saturated(x: paddle.Tensor, float8_dtype) -> paddle.Tensor:
     # The default behavior in Paddle for casting to `float8_e4m3fn`
-    # and `e5m2` is to not saturate. So we saturate here manualy.
+    # and `e5m2` is to not saturate. So we saturate here manually.
     if float8_dtype == paddle.float8_e4m3fn:
         x = x.clip(min=-1 * E4M3_MAX_POS, max=E4M3_MAX_POS)
     else:

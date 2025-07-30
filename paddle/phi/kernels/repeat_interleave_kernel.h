@@ -26,7 +26,7 @@ void RepeatInterleaveKernel(const Context& dev_ctx,
                             DenseTensor* out);
 
 template <typename T, typename Context>
-void RepeatInterleaveWithTensorIndexKernel(const Context& ctx,
+void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
                                            const DenseTensor& x,
                                            const DenseTensor& repeat_tensor,
                                            int dim,

@@ -13,7 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, Tuple
+from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
     import numpy.typing as npt
@@ -38,7 +38,7 @@ from paddle.io import Dataset
 __all__ = []
 
 
-class MNIST(Dataset[Tuple["_ImageDataType", "npt.NDArray[np.int64]"]]):
+class MNIST(Dataset[tuple["_ImageDataType", "npt.NDArray[np.int64]"]]):
     """
     Implementation of `MNIST <http://yann.lecun.com/exdb/mnist/>`_ dataset.
 

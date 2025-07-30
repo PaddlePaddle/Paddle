@@ -21,8 +21,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
@@ -112,8 +111,8 @@ SpmdInfo LayerNormInferSpmd(const DistMetaTensor& x,
   x_dist_attr_dst.set_dims_mapping(x_dims_mapping);
   // TODO(zhiqiu): support sharding on scale and bias
   // Now, apply replicating.
-  scale_dist_attr_dst.set_dims_mapping({-1});
-  bias_dist_attr_dst.set_dims_mapping({-1});
+  scale_dist_attr_dst.set_dims_mapping(std::vector<int64_t>{-1});
+  bias_dist_attr_dst.set_dims_mapping(std::vector<int64_t>{-1});
 
   // Step2.4.  handle input and out tensor partial
   // LayerNorm not support
@@ -237,8 +236,8 @@ SpmdInfo LayerNormInferSpmdReverse(const DistMetaTensor& x,
 
   input_dist_attrs[0].set_dims_mapping(x_dims_mapping);
   // set bias and scale to be replicated
-  input_dist_attrs[1].set_dims_mapping({-1});
-  input_dist_attrs[2].set_dims_mapping({-1});
+  input_dist_attrs[1].set_dims_mapping(std::vector<int64_t>{-1});
+  input_dist_attrs[2].set_dims_mapping(std::vector<int64_t>{-1});
 
   // Step2.3 Update output dims mappings with merged one
   std::vector<TensorDistAttr> output_dist_attrs;
@@ -417,8 +416,12 @@ SpmdInfo LayerNormGradInferSpmd(const DistMetaTensor& x,
       partial_on_dims.push_back(mapping);
     }
   }
-  scale_grad_dist_attr.set_partial_status(partial_on_dims);
-  bias_grad_dist_attr.set_partial_status(partial_on_dims);
+  if (!scale_grad_dist_attr.empty()) {
+    scale_grad_dist_attr.set_partial_status(partial_on_dims);
+  }
+  if (!bias_grad_dist_attr.empty()) {
+    bias_grad_dist_attr.set_partial_status(partial_on_dims);
+  }
 
   VLOG(4) << "LayerNormGradInferSpmd:";
   VLOG(4) << "begin_norm_axis: " << begin_norm_axis;
@@ -472,5 +475,4 @@ SpmdInfo FastLnGradInferSpmd(const DistMetaTensor& x,
   return spmd_info;
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

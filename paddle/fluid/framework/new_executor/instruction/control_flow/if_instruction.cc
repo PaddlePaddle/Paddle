@@ -41,8 +41,9 @@
 #include "paddle/fluid/platform/onednn_helper.h"
 #endif
 
-namespace paddle {
-namespace framework {
+COMMON_DECLARE_bool(check_cuda_error);
+
+namespace paddle::framework {
 
 IfInstruction::IfInstruction(size_t id,
                              const phi::Place& place,
@@ -122,8 +123,9 @@ IfInstruction::IfInstruction(size_t id,
       is_last_op = false;
     }
   }
-  InsertTuplePushContinerToOuts(&true_branch_block, *value_exec_info, &outputs);
-  InsertTuplePushContinerToOuts(
+  InsertTuplePushContainerToOuts(
+      &true_branch_block, *value_exec_info, &outputs);
+  InsertTuplePushContainerToOuts(
       &if_op.false_block(), *value_exec_info, &outputs);
 
   InsertInplacedExternalInputsToOuts(
@@ -216,6 +218,10 @@ void IfInstruction::SetInputHooks(const std::vector<PirHookFunc>& hookfuncs) {
 }
 
 void IfInstruction::Run() {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("IfInstruction begin");
+  }
+
   bool cond = true;
   if (cond_var_->IsType<phi::DenseTensor>()) {
     auto& cond_tensor = cond_var_->Get<phi::DenseTensor>();
@@ -226,7 +232,6 @@ void IfInstruction::Run() {
       // phi::is_xpu_place(cond.place()) is true
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
-      DeviceContext().Wait();
       phi::DenseTensor cpu_cond;
       paddle::framework::TensorCopySync(
           cond_tensor, phi::CPUPlace(), &cpu_cond);
@@ -250,7 +255,7 @@ void IfInstruction::Run() {
     // Executor on being destroyed clears oneDNN cache and resets
     // registered model data layout. This is unwanted for nested
     // Executors (executors declared inside control ops)
-    paddle::platform::DontClearMKLDNNCache(true_branch_inter_->GetPlace());
+    paddle::platform::DontClearONEDNNCache(true_branch_inter_->GetPlace());
 #endif
     true_branch_inter_->Run({}, false);
   } else {
@@ -259,12 +264,15 @@ void IfInstruction::Run() {
     // Executor on being destroyed clears oneDNN cache and resets
     // registered model data layout. This is unwanted for nested
     // Executors (executors declared inside control ops)
-    paddle::platform::DontClearMKLDNNCache(false_branch_inter_->GetPlace());
+    paddle::platform::DontClearONEDNNCache(false_branch_inter_->GetPlace());
 #endif
     false_branch_inter_->Run({}, false);
   }
   // copy output
+
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("IfInstruction finish");
+  }
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

@@ -23,7 +23,7 @@ namespace phi {
 
 template <typename T>
 struct GumbleNoiseGenerator<CPUContext, T> {
-  static void Transform(const CPUContext& ctx,
+  static void Transform(const CPUContext& dev_ctx,
                         const T* input_data,
                         T* output_data,
                         int size_to_axis,
@@ -32,10 +32,10 @@ struct GumbleNoiseGenerator<CPUContext, T> {
     // generate uniform random number
     const int size = size_to_axis * size_from_axis;
     std::uniform_real_distribution<T> dist(0.00001, 1);
-    auto engine = ctx.GetGenerator()->GetCPUEngine();
+    auto engine = dev_ctx.GetGenerator()->GetCPUEngine();
     DenseTensor random_tensor;
     random_tensor.Resize(common::make_ddim({size}));
-    auto* random_data = ctx.template Alloc<T>(&random_tensor);
+    auto* random_data = dev_ctx.template Alloc<T>(&random_tensor);
     for (int64_t i = 0; i < size; ++i) {
       random_data[i] = dist(*engine);
     }
@@ -54,7 +54,7 @@ struct GumbleNoiseGenerator<CPUContext, T> {
 
 template <typename T>
 struct OneHotGenerator<CPUContext, T> {
-  static void Transform(const CPUContext& ctx,
+  static void Transform(const CPUContext& dev_ctx,
                         const DenseTensor& x,
                         DenseTensor* out,
                         int axis) {
@@ -70,11 +70,11 @@ struct OneHotGenerator<CPUContext, T> {
     }
     DDim index_ddim(index_dim.data(), rank - 1);
     index.Resize(index_ddim);
-    auto* index_data = ctx.template Alloc<int>(&index);
+    auto* index_data = dev_ctx.template Alloc<int>(&index);
 
 #define CALL_ARG_MINMAX_FUNCTOR(rank)               \
   ArgMaxFunctor<CPUContext, T, rank> functor##rank; \
-  functor##rank(ctx, *out, &index, axis);
+  functor##rank(dev_ctx, *out, &index, axis);
     switch (out->dims().size()) {
       case 1:
         CALL_ARG_MINMAX_FUNCTOR(1);
@@ -105,7 +105,7 @@ struct OneHotGenerator<CPUContext, T> {
 #undef CALL_ARG_MINMAX_FUNCTOR
     }
 
-    funcs::set_constant(ctx, out, static_cast<T>(0.0));
+    funcs::set_constant(dev_ctx, out, static_cast<T>(0.0));
     for (int i = 0; i < size_to_axis; i++) {
       for (int j = 0; j < size_out_axis; j++) {
         *(out->data<T>() + i * size_from_axis + j +

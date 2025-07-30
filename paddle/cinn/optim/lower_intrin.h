@@ -28,7 +28,7 @@ static const std::set<std::string> kIntrinsicCalls{
      "cos",         "cosh",        "tan",        "tanh",        "sin",
      "sinh",        "fabs",        "isnan",      "isfinite",    "isinf",
      "left_shift",  "right_shift", "bitwise_or", "bitwise_and", "bitwise_xor",
-     "bitwise_not", "fma",         "rsqrt"}};
+     "bitwise_not", "fma",         "rsqrt",      "mod",         "pow"}};
 
 /**
  * Map the Call nodes to llvm intrinsic.

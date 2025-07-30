@@ -145,16 +145,11 @@ def run(model, data_loader, optimizer, mode):
 
             end_time = time.time()
             print(
-                "[%s]epoch %d | batch step %d, loss %0.8f, acc1 %0.3f, acc5 %0.3f, time %f"
-                % (
-                    mode,
-                    epoch,
-                    batch_id,
-                    avg_loss,
-                    total_acc1.numpy() / total_sample,
-                    total_acc5.numpy() / total_sample,
-                    end_time - start_time,
-                )
+                f"[{mode}]epoch {epoch} | batch step {batch_id}, "
+                f"loss {avg_loss:0.8f}, "
+                f"acc1 {total_acc1.numpy() / total_sample:0.3f}, "
+                f"acc5 {total_acc5.numpy() / total_sample:0.3f}, "
+                f"time {end_time - start_time:f}"
             )
             if batch_id >= end_step:
                 break
@@ -182,12 +177,8 @@ def train(to_static, enable_prim, enable_cinn):
 
     resnet = resnet50(False)
     if to_static:
-        build_strategy = paddle.static.BuildStrategy()
-        if enable_cinn:
-            build_strategy.build_cinn_pass = True
-        resnet = paddle.jit.to_static(
-            resnet, build_strategy=build_strategy, full_graph=True
-        )
+        backend = "CINN" if enable_cinn else None
+        resnet = paddle.jit.to_static(resnet, backend=backend, full_graph=True)
     optimizer = optimizer_setting(parameter_list=resnet.parameters())
 
     train_losses = run(resnet, data_loader, optimizer, 'train')

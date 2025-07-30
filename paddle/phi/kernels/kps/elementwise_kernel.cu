@@ -22,7 +22,7 @@
 #include "paddle/phi/kernels/legacy/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/legacy/elementwise_divide_kernel.h"
 #include "paddle/phi/kernels/legacy/elementwise_kernel.h"
-#include "paddle/phi/kernels/legacy/elementwise_multipy_kernel.h"
+#include "paddle/phi/kernels/legacy/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/legacy/elementwise_subtract_kernel.h"
 
 namespace phi {
@@ -32,6 +32,10 @@ void SubtractKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     DenseTensor* out) {
+  if (out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   phi::SubtractRawKernel<T, Context>(dev_ctx, x, y, -1, out);
 }
 
@@ -40,6 +44,10 @@ void MultiplyKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     DenseTensor* out) {
+  if (x.numel() == 0 || y.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   phi::MultiplyRawKernel<T, Context>(dev_ctx, x, y, -1, out);
 }
 
@@ -48,6 +56,10 @@ void DivideKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const DenseTensor& y,
                   DenseTensor* out) {
+  if (x.numel() == 0 || y.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   phi::DivideRawKernel<T, Context>(dev_ctx, x, y, -1, out);
 }
 
@@ -74,7 +86,7 @@ void MultiPrecisionAddKernelImpl(const Context& dev_ctx,
         -1);
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "Unsupport x dtype:%s, y dtype:%s for add(x, y) operation",
+        "Unsupported x dtype:%s, y dtype:%s for add(x, y) operation",
         phi::DataTypeToString(x.type()),
         phi::DataTypeToString(y.type())));
   }
@@ -85,6 +97,10 @@ void AddKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const DenseTensor& y,
                DenseTensor* out) {
+  if (x.numel() == 0 || y.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
 #ifdef PADDLE_WITH_CUDA
   if (x.dtype() == phi::DataType::FLOAT32 &&
       (y.dtype() == phi::DataType::BFLOAT16 ||
@@ -169,11 +185,31 @@ void CopySignKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     DenseTensor* out) {
+  if (out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   std::vector<const DenseTensor*> inputs = {&x, &y};
   std::vector<DenseTensor*> outputs = {out};
   dev_ctx.template Alloc<T>(out);
   funcs::BroadcastKernel<T>(
       dev_ctx, inputs, &outputs, funcs::CopySignFunctor<T>());
+}
+
+template <typename T, typename Context>
+void NextafterKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     DenseTensor* out) {
+  if (x.numel() == 0 || y.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
+  std::vector<const DenseTensor*> inputs = {&x, &y};
+  std::vector<DenseTensor*> outputs = {out};
+  dev_ctx.template Alloc<T>(out);
+  funcs::BroadcastKernel<T>(
+      dev_ctx, inputs, &outputs, funcs::NextafterFunctor<T>());
 }
 
 }  // namespace phi
@@ -209,6 +245,8 @@ PD_REGISTER_KERNEL(remainder,
                    int,
                    int64_t,
                    phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>,
                    phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(floor_divide,
                    KPS,
@@ -232,7 +270,9 @@ PD_REGISTER_KERNEL(elementwise_pow,
                    int,
                    int64_t,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 PD_REGISTER_KERNEL(copysign,
                    GPU,
                    ALL_LAYOUT,
@@ -247,6 +287,8 @@ PD_REGISTER_KERNEL(copysign,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    nextafter, GPU, ALL_LAYOUT, phi::NextafterKernel, float, double) {}
 
 #endif
 

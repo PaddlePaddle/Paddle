@@ -22,11 +22,15 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
+COMMON_DECLARE_bool(cinn_debug);
+
 namespace {
 using GroupOpsVec = std::vector<pir::Operation*>;
 using CompatibleInfo = cinn::hlir::framework::pir::CompatibleInfo;
 
 void VerifyOperationOrder(const pir::Block& block);
+
+std::string FormatDuration(std::chrono::milliseconds ms);
 
 class BuildCinnPass : public pir::Pass {
  public:
@@ -48,15 +52,24 @@ class BuildCinnPass : public pir::Pass {
 
  private:
   void ProcessBlock(pir::Block* block) {
+    auto start_t = std::chrono::high_resolution_clock::now();
+    auto num_ops = block->size();
     std::vector<GroupOpsVec> groups =
-        ::pir::SubgraphDetector(block, CompatibleInfo::IsSupportForCinn)();
+        ::pir::DetectSubGraphs(block, CompatibleInfo::IsSupportForCinn);
     AddStatistics(groups.size());
     for (auto& group_ops : groups) {
       if (group_ops.size() == 1 && group_ops[0]->name() == "pd_op.full") {
         continue;
       }
       VLOG(4) << "current group_ops.size(): " << group_ops.size();
-      ::pir::ReplaceWithGroupOp(block, group_ops);
+      ::pir::ReplaceWithGroupOp(block, group_ops, false);
+    }
+    auto end_t = std::chrono::high_resolution_clock::now();
+    if (FLAGS_cinn_debug) {
+      auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+          end_t - start_t);
+      LOG(INFO) << "Time of building group ops (size=" << num_ops
+                << "): " << FormatDuration(duration);
     }
   }
 };
@@ -130,6 +143,17 @@ void VerifyOperationOrder(const pir::Block& block) {
       CheckOpOrder(&op);
     }
   }
+}
+
+std::string FormatDuration(std::chrono::milliseconds ms) {
+  auto minutes = std::chrono::duration_cast<std::chrono::minutes>(ms);
+  ms -= std::chrono::duration_cast<std::chrono::milliseconds>(minutes);
+  auto seconds = std::chrono::duration_cast<std::chrono::seconds>(ms);
+  ms -= std::chrono::duration_cast<std::chrono::milliseconds>(seconds);
+  std::stringstream ss;
+  ss << minutes.count() << " min " << seconds.count() << " s " << ms.count()
+     << " ms";
+  return ss.str();
 }
 
 }  // namespace

@@ -20,7 +20,6 @@ import sys
 import jinja2
 import yaml
 
-# fmt: off
 # import from paddle/fluid/operators/generator
 sys.path.append(
     str(pathlib.Path(__file__).parents[3].joinpath('operators/generator'))

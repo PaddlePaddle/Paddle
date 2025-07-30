@@ -129,6 +129,23 @@ class IR_API ImmutableLayoutTrait : public OpTraitBase<ImmutableLayoutTrait> {
   using Base::Base;
 };
 
+///
+/// \brief This trait marks the op is elementwise and achieved
+/// ElementwiseInferMeta.
+///
+class IR_API BinaryElementWiseTrait
+    : public OpTraitBase<BinaryElementWiseTrait> {
+ public:
+  using Base::Base;
+};
+
+///
+/// \brief This trait marks the op is unary elementwised
+///
+class IR_API UnaryElementWiseTrait : public OpTraitBase<UnaryElementWiseTrait> {
+ public:
+  using Base::Base;
+};
 }  // namespace pir
 
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::SameOperandsShapeTrait)
@@ -140,3 +157,5 @@ IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::SameTypeOperandsTrait)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::OneResultTrait)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::SideEffectTrait)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::ImmutableLayoutTrait)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::UnaryElementWiseTrait)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::BinaryElementWiseTrait)

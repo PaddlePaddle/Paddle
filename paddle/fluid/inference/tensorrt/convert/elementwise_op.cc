@@ -15,9 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/elementwise_op_plugin.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class ElementwiseTensorOpConverter : public OpConverter {
  public:
@@ -82,8 +80,8 @@ class ElementwiseTensorOpConverter : public OpConverter {
       reshape_layer->setInput(1, *new_y_shape_tensor);
       reshape_y_tensor = reshape_layer->getOutput(0);
     } else {
-      // In fact , we can remove this `else`, but -> rt_resnet50_test CI in trt
-      // 6015 faling, how ridiculous！
+      // In fact, we can remove this `else`, but -> rt_resnet50_test CI in trt
+      // 6015 failing, how ridiculous！
       reshape_y_tensor = Y;
     }
 
@@ -304,9 +302,7 @@ class PowOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(elementwise_add_weight,
                           ElementwiseTensorAddOpConverter);

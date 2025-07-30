@@ -24,8 +24,7 @@
 // TODO(wanghao107)
 // this file will be generated in pd_op.cc
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 using IntArray = paddle::experimental::IntArray;
 
 std::vector<std::vector<pir::Value>> ExpandOp::Vjp(
@@ -373,5 +372,4 @@ std::vector<std::vector<pir::Value>> FusedGemmEpilogueOp::Vjp(
   return res;
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect

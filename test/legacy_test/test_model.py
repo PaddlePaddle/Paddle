@@ -188,7 +188,7 @@ class TestModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         if not base.is_compiled_with_cuda():
-            cls().skipTest('module not tested when ONLY_CPU compling')
+            cls().skipTest('module not tested when ONLY_CPU compiling')
         cls.device = paddle.set_device('gpu')
         base.enable_dygraph(cls.device)
 
@@ -722,7 +722,7 @@ class TestModelFunction(unittest.TestCase):
             print(params_info)
 
             model.summary(input_size=(20))
-            model.summary(input_size=[(20)])
+            model.summary(input_size=[20])
             model.summary(input_size=(20), dtype='float32')
 
     def test_summary_non_tensor(self):

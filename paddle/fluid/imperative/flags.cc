@@ -21,12 +21,10 @@ PHI_DEFINE_EXPORTED_uint64(dygraph_debug,
                            "Debug level of dygraph. This flag is not "
                            "open to users");
 
-namespace paddle {
-namespace imperative {
+namespace paddle::imperative {
 
 bool IsDebugEnabled() { return FLAGS_dygraph_debug != 0; }
 
 uint64_t GetDebugLevel() { return FLAGS_dygraph_debug; }
 
-}  // namespace imperative
-}  // namespace paddle
+}  // namespace paddle::imperative

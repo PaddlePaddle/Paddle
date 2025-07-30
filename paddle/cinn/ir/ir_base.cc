@@ -16,12 +16,18 @@
 #include <sstream>
 #include "paddle/cinn/common/cinn_value.h"
 #include "paddle/cinn/common/common.h"
+#include "paddle/cinn/common/const_fold.h"
+#include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/common/simplify_special_pattern.h"
 #include "paddle/cinn/ir/buffer.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/module.h"
+#include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/ir/utils/ir_copy.h"
+#include "paddle/cinn/optim/simplify_util.h"
 #include "paddle/common/enforce.h"
 namespace cinn {
 namespace ir {
@@ -126,6 +132,11 @@ Expr One(const Type &type) {
 Expr::Expr(const Var &var) {
   *static_cast<IrNodeRef *>(this) = *static_cast<const IrNodeRef *>(&var);
 }
+
+Expr::Expr(const IndexExpr &e) {
+  *static_cast<IrNodeRef *>(this) = *static_cast<const IrNodeRef *>(&e);
+}
+
 bool Expr::as_bool() const {
   PADDLE_ENFORCE_EQ(
       type().is_uint(1),
@@ -237,6 +248,16 @@ Expr &Expr::operator=(const Expr &other) {
   return *this;
 }
 
+Expr &Expr::operator=(const IndexExpr &other) {
+  *static_cast<IrNodeRef *>(this) = *static_cast<const IrNodeRef *>(&other);
+  return *this;
+}
+
+Expr &Expr::operator=(const Var &other) {
+  *static_cast<IrNodeRef *>(this) = *static_cast<const IrNodeRef *>(&other);
+  return *this;
+}
+
 Expr::operator Var() {
   auto *x = As<ir::_Var_>();
   PADDLE_ENFORCE_NOT_NULL(
@@ -256,45 +277,63 @@ double Expr::get_constant() const {
                         "%s is not constant! Please check.", *this));
   auto *vi = As<IntImm>();
   auto *vf = As<FloatImm>();
+  auto *vu = As<UIntImm>();
   if (vi) return vi->value;
+  if (vu) return vu->value;
   return vf->value;
 }
 
 bool Expr::is_var() const { return As<_Var_>(); }
 
 bool Expr::is_index() const {
-  switch (node_type()) {
-    case ir::IrNodeTy::_Var_:
-      [[fallthrough]];
-    case ir::IrNodeTy::IntImm: {
-      if (type().is_index_type()) return true;
-    }
-    case ir::IrNodeTy::Add:
-      [[fallthrough]];
-    case ir::IrNodeTy::Sub:
-      [[fallthrough]];
-    case ir::IrNodeTy::Mul:
-      [[fallthrough]];
-    case ir::IrNodeTy::Div:
-      [[fallthrough]];
-    case ir::IrNodeTy::Mod:
-      return p_->operand(0).is_index() && p_->operand(1).is_index();
+  // Temporarily use `VerifyIndex`. because `get_index` depends on marking
+  // `indexExpr` in For::make and sch
+  return optim::VerifyIndex(*this) != ir::IndexExpr::IndexType::kInvalid;
+  // return get()->get_index();
+}
+
+Expr &Expr::set_index(bool flag) {
+  if (flag && optim::VerifyIndex(*this) == ir::IndexExpr::IndexType::kInvalid) {
+    PADDLE_THROW(::common::errors::InvalidType(
+        "Expr: %s is not IndexExpr! cannot be set as IndexExpr.", *this));
   }
-  return false;
+  get()->set_index(flag);
+  return *this;
+}
+
+const Expr &Expr::set_index(bool flag) const {
+  if (flag && optim::VerifyIndex(*this) == ir::IndexExpr::IndexType::kInvalid) {
+    PADDLE_THROW(::common::errors::InvalidType(
+        "Expr: %s is not IndexExpr! cannot be set as IndexExpr.", *this));
+  }
+  get()->set_index(flag);
+  return *this;
 }
 
 const IndexExpr Expr::as_index() const {
   if (is_index()) {
+    std::vector<ir::Expr> collection =
+        ir::ir_utils::CollectIRNodesWithoutTensor(*this, [&](const Expr *x) {
+          return x->node_type() == ir::IrNodeTy::Sub;
+        });
+    if (!collection.empty()) return IndexExpr(*this).Normalize();
     return IndexExpr(*this);
   }
-  PADDLE_THROW(::common::errors::InvalidType("Expr is not IndexExpr!"));
+  PADDLE_THROW(
+      ::common::errors::InvalidType("Expr: %s is not IndexExpr!", *this));
 }
 
 IndexExpr Expr::as_index() {
   if (is_index()) {
+    std::vector<ir::Expr> collection =
+        ir::ir_utils::CollectIRNodesWithoutTensor(*this, [&](const Expr *x) {
+          return x->node_type() == ir::IrNodeTy::Sub;
+        });
+    if (!collection.empty()) return IndexExpr(*this).Normalize();
     return IndexExpr(*this);
   }
-  PADDLE_THROW(::common::errors::InvalidType("Expr is not IndexExpr!"));
+  PADDLE_THROW(
+      ::common::errors::InvalidType("Expr: %s is not IndexExpr!", *this));
 }
 
 _Buffer_ *Expr::as_buffer() { return As<_Buffer_>(); }
@@ -333,6 +372,228 @@ const Expr &IrNode::operand(int i) {
   return operands[i];
 }
 
+IndexExpr::IndexExpr(const Expr &e) {
+  if (!e.is_index())
+    PADDLE_THROW(
+        ::common::errors::InvalidType("Expr: %s is not IndexExpr!", e));
+  *static_cast<IrNodeRef *>(this) = *static_cast<const IrNodeRef *>(&e);
+}
+
+IndexExpr &IndexExpr::operator=(const IndexExpr &other) {
+  *static_cast<IrNodeRef *>(this) = *static_cast<const IrNodeRef *>(&other);
+  return *this;
+}
+
+IndexExpr &IndexExpr::operator=(const Expr &other) {
+  if (!other.is_index()) {
+    PADDLE_THROW(::common::errors::InvalidArgument(
+        "The Expr is not IndexExpr, which is: %s", other));
+  }
+  *static_cast<IrNodeRef *>(this) = *static_cast<const IrNodeRef *>(&other);
+  return *this;
+}
+
+IndexExpr &IndexExpr::operator=(const Var &other) {
+  if (!other.is_index()) {
+    PADDLE_THROW(::common::errors::InvalidArgument(
+        "The Expr is not IndexExpr, which is: %s", other));
+  }
+  *static_cast<IrNodeRef *>(this) = *static_cast<const IrNodeRef *>(&other);
+  return *this;
+}
+
+const IndexExpr IndexExpr::operand(int32_t i) const {
+  return get()->operand(i).as_index();
+}
+
+int64_t IndexExpr::GetLargestMultiplyPart() const {
+  switch (node_type()) {
+    case cinn::ir::IrNodeTy::_Var_:
+    case ir::IrNodeTy::Min:
+    case ir::IrNodeTy::Max:
+    case ir::IrNodeTy::Load:
+    case ir::IrNodeTy::Cast:
+      return 1;
+    case cinn::ir::IrNodeTy::Div: {
+      if (operand(1).type().is_index_type()) {
+        int64_t lhsDiv = operand(0).GetLargestMultiplyPart();
+        int64_t rhsDiv = operand(1).GetLargestMultiplyPart();
+        if (lhsDiv % rhsDiv == 0) return std::abs(lhsDiv / rhsDiv);
+      }
+      return 1;
+    }
+    case cinn::ir::IrNodeTy::IntImm: {
+      auto int_imm = As<ir::IntImm>();
+      return std::abs(int_imm->value);
+    }
+    case cinn::ir::IrNodeTy::Mul: {
+      return operand(0).GetLargestMultiplyPart() *
+             operand(1).GetLargestMultiplyPart();
+    }
+    case cinn::ir::IrNodeTy::Add:
+    case cinn::ir::IrNodeTy::Mod: {
+      return std::gcd(operand(0).GetLargestMultiplyPart(),
+                      operand(1).GetLargestMultiplyPart());
+    }
+  }
+  PADDLE_THROW(::common::errors::Unimplemented("Unsupported type of expr: %s",
+                                               node_type()));
+}
+
+int32_t IndexExpr::length() const {
+  switch (node_type()) {
+    case ir::IrNodeTy::_Var_:
+    case ir::IrNodeTy::IntImm:
+    case ir::IrNodeTy::Load:
+      return 1;
+    case ir::IrNodeTy::Add:
+    case ir::IrNodeTy::Mul:
+    case ir::IrNodeTy::Div:
+    case ir::IrNodeTy::Mod:
+    case ir::IrNodeTy::Min:
+    case ir::IrNodeTy::Max: {
+      int lhs_count = operand(0).length();
+      int rhs_count = operand(1).length();
+      return lhs_count + rhs_count + 1;
+    }
+    case ir::IrNodeTy::Cast: {
+      return operand(0).length() + 1;
+    }
+    default:
+      PADDLE_THROW(::common::errors::InvalidArgument(
+          "Unsupported type in length, which is: %s", node_type()));
+  }
+}
+
+bool IndexExpr::IsDynamic() const {
+  switch (node_type()) {
+    case ir::IrNodeTy::_Var_:
+      return as_var()->name.at(0) == 'S';
+    case ir::IrNodeTy::Load:
+      return true;
+    case ir::IrNodeTy::IntImm:
+      return false;
+    case ir::IrNodeTy::Cast:
+      return operand(0).IsDynamic();
+    case ir::IrNodeTy::Add:
+    case ir::IrNodeTy::Mul:
+    case ir::IrNodeTy::Div:
+    case ir::IrNodeTy::Mod:
+    case ir::IrNodeTy::Min:
+    case ir::IrNodeTy::Max: {
+      auto lFlag = operand(0).IsDynamic();
+      auto rFlag = operand(1).IsDynamic();
+      return lFlag || rFlag;
+    }
+    default:
+      PADDLE_THROW(::common::errors::InvalidArgument(
+          "Unsupported type in IsDynamic, which is: %s", node_type()));
+  }
+}
+
+IndexExpr Simplify(const IndexExpr &expr, IndexExpr::OptLevel level) {
+  switch (expr.node_type()) {
+    case ir::IrNodeTy::IntImm:
+      return expr;
+    case ir::IrNodeTy::_Var_: {
+      auto op = expr.As<ir::_Var_>();
+      if (op->lower_bound.defined() && op->upper_bound.defined()) {
+        if (!(op->lower_bound.is_constant() && op->upper_bound.is_constant()))
+          return expr;
+        auto l = op->lower_bound.as_int64();
+        auto u = op->upper_bound.as_int64();
+        if (l && u && l + 1 == u) return op->lower_bound;
+        return expr;
+      }
+      return expr;
+    }
+    case ir::IrNodeTy::Load: {
+      auto load = expr.As<ir::Load>();
+      auto indices = std::vector<Expr>(load->indices.size());
+      for (size_t i = 0; i < load->indices.size(); ++i) {
+        indices.at(i) = Simplify(load->indices.at(i), level);
+      }
+      return Load::Make(load->tensor, indices).set_index(true);
+    }
+    case ir::IrNodeTy::Cast: {
+      auto v = Simplify(expr.operand(0), level);
+      return Cast::Make(expr.type(), v);
+    }
+    case ir::IrNodeTy::Add:
+    case ir::IrNodeTy::Sub:
+    case ir::IrNodeTy::Mul:
+    case ir::IrNodeTy::Div:
+    case ir::IrNodeTy::Mod:
+    case ir::IrNodeTy::Min:
+    case ir::IrNodeTy::Max: {
+      auto lhs = Simplify(expr.operand(0), level);
+      auto rhs = Simplify(expr.operand(1), level);
+      auto res =
+          optim::ConstructIndexExprByNodeType(expr.node_type(), lhs, rhs);
+      if (level >= IndexExpr::OptLevel::kLevel2 &&
+          expr.node_type() == ir::IrNodeTy::Add) {
+        res = common::MergeMulMod(res);
+      }
+      if (level == IndexExpr::OptLevel::kLevel3 &&
+          (expr.node_type() == ir::IrNodeTy::Div ||
+           expr.node_type() == ir::IrNodeTy::Mod)) {
+        res = optim::BoundSimplify(res);
+      }
+      if (level == IndexExpr::OptLevel::kLevel4 ||
+          expr.node_type() == ir::IrNodeTy::Mod) {
+        res = optim::BroadcastSimplify(res);
+      }
+      return res;
+    }
+    default:
+      PADDLE_THROW(::common::errors::InvalidArgument(
+          "Unsupported type of expr in Simplify which is: %s", expr));
+  }
+}
+
+IndexExpr IndexExpr::Normalize(OptLevel level) const {
+  auto res = Simplify(*this, level);
+  // check if there is a Div and Mod, if so, change the sequence of Div and Mod,
+  // and re-simplify.
+  if (!ir::ir_utils::CollectIRNodesWithoutTensor(*this, [&](const Expr *x) {
+         return x->node_type() == ir::IrNodeTy::Div;
+       }).empty()) {
+    if (!ir::ir_utils::CollectIRNodesWithoutTensor(*this, [&](const Expr *x) {
+           return x->node_type() == ir::IrNodeTy::Mod;
+         }).empty()) {
+      res = optim::ChangeSeqOfDivMod(res);
+      return Simplify(res, level);
+    }
+  }
+  return res;
+}
+
+int32_t IndexExpr::as_int32() const {
+  PADDLE_ENFORCE_EQ(
+      type().is_int(32),
+      true,
+      ::common::errors::InvalidArgument(
+          "Invalid type. The type must be an 32-bit integer type. %s",
+          ::common::GetCurrentTraceBackString()));
+  return As<IntImm>()->value;
+}
+int64_t IndexExpr::as_int64() const {
+  if (!type().is_int(64))
+    PADDLE_ENFORCE_EQ(type().is_int(32),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "Invalid type. The type must be an 32-bit "
+                          "integer or 64-bit integer type."));
+  return As<IntImm>()->value;
+}
+
+bool IndexExpr::is_constant() const { return As<IntImm>(); }
+int64_t IndexExpr::get_constant() const { return As<IntImm>()->value; }
+
+bool IndexExpr::is_var() const { return As<_Var_>(); }
+_Var_ *IndexExpr::as_var() { return As<_Var_>(); }
+const _Var_ *IndexExpr::as_var() const { return As<_Var_>(); }
+Var IndexExpr::as_var_ref() const { return Var(&Reference(as_var())); }
 void IrNode::set_type(Type type) { type_ = type; }
 
 void IrNode::replace(Expr old_op, Expr new_op) {
@@ -344,33 +605,59 @@ void IrNode::replace(Expr old_op, Expr new_op) {
   PADDLE_THROW(::common::errors::Unimplemented(ss.str()));
 }
 
+bool IrNode::get_index() const { return is_index_; }
+void IrNode::set_index(bool flag) {
+  if (is_index_ == flag) return;
+  is_index_ = flag;
+  if (flag) {
+    for (Expr &operand : operands) {
+      operand->set_index(flag);
+    }
+  }
+}
+
 void IrNode::convert_int32_to_int64() {
-  if (type_ != Int(64) && type_ != UInt(64))
-    if (type_ != Int(32) && type_ != UInt(32))
-      PADDLE_ENFORCE_EQ(type_.is_unk(),
+  if (type() != Int(64) && type() != UInt(64))
+    if (type() != Int(32) && type() != UInt(32))
+      PADDLE_ENFORCE_EQ(type().is_unk(),
                         true,
                         ::common::errors::InvalidArgument(
                             "Current only support convert int32_t "
-                            "to int64_t, but get type is: %s",
-                            type_));
+                            "to int64_t, but get type is: %s, node type is: %s",
+                            type(),
+                            node_type()));
 
-  if (type_ == Int(32)) type_ = Int(64);
-  if (type_ == UInt(32)) type_ = UInt(64);
+  if (type() == Int(32)) set_type(Int(64));
+  if (type() == UInt(32)) set_type(UInt(64));
 
   for (Expr &operand : operands) {
     operand->convert_int32_to_int64();
+    if (operand->node_type() == IrNodeTy::Cast) {
+      auto cast = operand.As<ir::Cast>();
+      if (cast->v()->type() == Int(64)) {
+        operand = cast->v();
+      } else {
+        operand->set_type(Int(64));
+      }
+    } else if (operand->node_type() == IrNodeTy::Load) {
+      operand = ir::Cast::Make(type(), operand);
+    } else if (operand->node_type() == IrNodeTy::_Var_ &&
+               operand.as_var()->is_let_symbol) {
+      operand = ir::Cast::Make(type(), operand);
+    }
   }
 }
 
 void IrNode::convert_int64_to_int32() {
-  if (type_ != Int(64) && type_ != UInt(64))
-    if (type_ != Int(32) && type_ != UInt(32))
-      PADDLE_ENFORCE_EQ(type_.is_unk(),
+  if (type() != Int(64) && type() != UInt(64))
+    if (type() != Int(32) && type() != UInt(32))
+      PADDLE_ENFORCE_EQ(type().is_unk(),
                         true,
                         ::common::errors::InvalidArgument(
                             "Current only support convert int64_t "
-                            "to int32_t, but get type is: %s",
-                            type_));
+                            "to int32_t, but get type is: %s, node type is: %s",
+                            type(),
+                            node_type()));
 
   if (node_type() == IrNodeTy::IntImm) {
     auto *int_imm = static_cast<IntImm *>(this);
@@ -378,15 +665,28 @@ void IrNode::convert_int64_to_int32() {
     int_imm->value = int32_t(int_imm->value);
   }
 
-  if (type_ == Int(64)) type_ = Int(32);
-  if (type_ == UInt(64)) type_ = UInt(32);
+  if (type() == Int(64)) set_type(Int(32));
+  if (type() == UInt(64)) set_type(UInt(32));
 
   for (Expr &operand : operands) {
     operand->convert_int64_to_int32();
+    if (operand->node_type() == IrNodeTy::Cast) {
+      auto cast = operand.As<ir::Cast>();
+      if (cast->v()->type() == Int(32)) {
+        operand = cast->v();
+      } else {
+        operand->set_type(Int(32));
+      }
+    } else if (operand->node_type() == IrNodeTy::Load) {
+      operand = ir::Cast::Make(type(), operand);
+    } else if (operand->node_type() == IrNodeTy::_Var_ &&
+               operand.as_var()->is_let_symbol) {
+      operand = ir::Cast::Make(type(), operand);
+    }
   }
 }
 
-void TryElevateInt32ToInt64(const std::vector<Expr> &expr_vec) {
+void TryElevateInt32ToInt64_(std::vector<Expr> &expr_vec) {  // NOLINT
   Type type = expr_vec.front()->type();
   for (const Expr &expr : expr_vec) {
     if (expr->type() == Int(64)) {
@@ -399,7 +699,7 @@ void TryElevateInt32ToInt64(const std::vector<Expr> &expr_vec) {
   if (type != Int(64)) {
     return;
   }
-  for (const Expr &expr : expr_vec) {
+  for (Expr &expr : expr_vec) {
     if (expr->type() != Int(64))
       if (expr->type() != Int(32))
         PADDLE_ENFORCE_EQ(expr->type().is_unk(),
@@ -410,8 +710,77 @@ void TryElevateInt32ToInt64(const std::vector<Expr> &expr_vec) {
                               expr->type()));
     if (expr->type() == Int(32)) {
       expr->convert_int32_to_int64();
+      if (expr->node_type() == IrNodeTy::Cast) {
+        auto cast = expr.As<ir::Cast>();
+        if (cast->v()->type() == Int(64)) {
+          expr = cast->v();
+        } else {
+          expr->set_type(Int(64));
+        }
+      } else if (expr->node_type() == IrNodeTy::Load) {
+        expr = ir::Cast::Make(Int(64), expr);
+      } else if (expr->node_type() == IrNodeTy::_Var_ &&
+                 expr.as_var()->is_let_symbol) {
+        expr = ir::Cast::Make(Int(64), expr);
+      }
     }
   }
+}
+
+std::vector<Expr> TryElevateInt32ToInt64(const std::vector<Expr> &expr_vec) {
+  std::vector<Expr> result = expr_vec;
+  TryElevateInt32ToInt64_(result);
+  return result;
+}
+
+void ElevateInt64ToInt32_(Expr &expr) {  // NOLINT
+  if (!expr.is_index()) return;
+  if (expr->type() != Int(64))
+    if (expr->type() != Int(32))
+      PADDLE_ENFORCE_EQ(expr->type().is_unk(),
+                        true,
+                        ::common::errors::InvalidArgument(
+                            "Current only support convert int64_t "
+                            "to int32_t, but get type is: %s",
+                            expr->type()));
+
+  // althoughtype is Int(32), we also need to convert it indices to Int(32).
+  if (expr->node_type() == IrNodeTy::Load) expr->convert_int64_to_int32();
+  if (expr->type() == Int(64)) {
+    expr->convert_int64_to_int32();
+    if (expr->node_type() == IrNodeTy::Cast) {
+      auto cast = expr.As<ir::Cast>();
+      if (cast->v()->type() == Int(32)) {
+        expr = cast->v();
+      } else {
+        expr->set_type(Int(32));
+      }
+    } else if (expr->node_type() == IrNodeTy::Load) {
+      expr = ir::Cast::Make(Int(32), expr);
+    } else if (expr->node_type() == IrNodeTy::_Var_ &&
+               expr.as_var()->is_let_symbol) {
+      // symbol of `let` op should be use cast to convert to int32.
+      expr = ir::Cast::Make(Int(32), expr);
+    }
+  }
+}
+
+Expr ElevateInt64ToInt32(const Expr &expr) {
+  ir::Expr result = expr;
+  ElevateInt64ToInt32_(result);
+  return result;
+}
+
+void ElevateInt64ToInt32_(std::vector<Expr> &expr_vec) {  // NOLINT
+  for (Expr &expr : expr_vec) {
+    ElevateInt64ToInt32_(expr);
+  }
+}
+
+std::vector<Expr> ElevateInt64ToInt32(const std::vector<Expr> &expr_vec) {
+  std::vector<Expr> result = expr_vec;
+  ElevateInt64ToInt32_(result);
+  return result;
 }
 
 }  // namespace ir

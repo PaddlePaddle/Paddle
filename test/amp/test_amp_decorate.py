@@ -231,15 +231,17 @@ class TestAMPDecorate(unittest.TestCase):
         )
 
     def test_pir(self):
-        with paddle.pir_utils.IrGuard():
-            with paddle.static.program_guard(
+        with (
+            paddle.pir_utils.IrGuard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                self.test_excluded_layers()
-                self.test_excluded_layers_attr_list()
-                self.test_excluded_layers_attr_types()
-                self.test_excluded_layers_attr_none()
-                self.test_excluded_layers_custom_layer()
+            ),
+        ):
+            self.test_excluded_layers()
+            self.test_excluded_layers_attr_list()
+            self.test_excluded_layers_attr_types()
+            self.test_excluded_layers_attr_none()
+            self.test_excluded_layers_custom_layer()
 
 
 if __name__ == '__main__':

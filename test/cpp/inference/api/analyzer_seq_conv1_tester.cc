@@ -68,7 +68,7 @@ struct DataRecord {
       split(line, '\t', &data);
       PADDLE_ENFORCE_GT(data.size(),
                         4,
-                        common::errors::Fatal("The size of data is invaild."));
+                        common::errors::Fatal("The size of data is invalid."));
       // load title1 data
       std::vector<int64_t> title1_data;
       split_to_int64(data[0], ' ', &title1_data);

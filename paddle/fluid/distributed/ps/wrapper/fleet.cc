@@ -19,8 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #include "paddle/fluid/distributed/ps/table/table.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 using framework::ProgramDesc;
 using framework::VarDesc;
@@ -652,7 +651,7 @@ void FleetWrapper::PushSparseFromTensorAsync(
   } else if (shows->dtype() == phi::DataType::INT64) {
     show_tensor = static_cast<const void*>(shows->data<int64_t>());
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "The type of show/clk must be either float32 or int64 (got %s).",
         shows->dtype()));
   }
@@ -661,7 +660,7 @@ void FleetWrapper::PushSparseFromTensorAsync(
   } else if (clks->dtype() == phi::DataType::INT64) {
     clk_tensor = static_cast<const void*>(clks->data<int64_t>());
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "The type of show/clk must be either float32 or int64 (got %s).",
         clks->dtype()));
   }
@@ -816,8 +815,10 @@ void FleetWrapper::RecvAndSaveTable(const uint64_t table_id,
   }
 }
 
-void FleetWrapper::PrintTableStat(const uint64_t table_id) {
-  auto ret = worker_ptr_->PrintTableStat(table_id);
+void FleetWrapper::PrintTableStat(const uint64_t table_id,
+                                  uint32_t pass_id,
+                                  size_t threshold) {
+  auto ret = worker_ptr_->PrintTableStat(table_id, pass_id, threshold);
   ret.wait();
   int32_t err_code = ret.get();
   if (err_code == -1) {
@@ -1016,7 +1017,7 @@ std::default_random_engine& FleetWrapper::LocalRandomEngine() {
 size_t FleetWrapper::GetAbsoluteSum(size_t start,
                                     size_t end,
                                     size_t level,
-                                    const phi::LoD& lod) {
+                                    const phi::LegacyLoD& lod) {
   if (level >= lod.size() - 1) {
     return end - start;
   }
@@ -1055,5 +1056,4 @@ void FleetWrapper::SetDate(const uint64_t table_id, const std::string& date) {
 #endif
 }
 
-}  // end namespace distributed
-}  // end namespace paddle
+}  // namespace paddle::distributed

@@ -30,17 +30,17 @@ using DenseTensorTypeStorage = pir::DenseTensorTypeStorage;
 struct SelectedRowsTypeStorage : public pir::TypeStorage {
   using DataLayout = phi::DataLayout;
   using Dim = phi::DDim;
-  using LoD = std::vector<std::vector<size_t>>;
+  using LegacyLoD = std::vector<std::vector<size_t>>;
   ///
   /// \brief Declare ParamKey according to parameter type.
   ///
   using ParamKey =
-      std::tuple<pir::Type, phi::DDim, phi::DataLayout, phi::LoD, size_t>;
+      std::tuple<pir::Type, phi::DDim, phi::DataLayout, phi::LegacyLoD, size_t>;
 
   SelectedRowsTypeStorage(const pir::Type& dtype,
                           const phi::DDim& dims,
                           const phi::DataLayout& layout,
-                          const phi::LoD& lod,
+                          const phi::LegacyLoD& lod,
                           size_t offset)
       : dtype_(dtype),
         dims_(dims),
@@ -79,7 +79,7 @@ struct SelectedRowsTypeStorage : public pir::TypeStorage {
                 std::get<2>(key))));
     // hash lod
     hash_value = pir::detail::hash_combine(
-        hash_value, std::hash<phi::LoD>()(std::get<3>(key)));
+        hash_value, std::hash<phi::LegacyLoD>()(std::get<3>(key)));
     // hash offset
     hash_value = pir::detail::hash_combine(
         hash_value, std::hash<size_t>()(std::get<4>(key)));
@@ -104,7 +104,7 @@ struct SelectedRowsTypeStorage : public pir::TypeStorage {
   pir::Type dtype_;
   phi::DDim dims_;
   phi::DataLayout layout_;
-  phi::LoD lod_;
+  phi::LegacyLoD lod_;
   size_t offset_;
 };
 

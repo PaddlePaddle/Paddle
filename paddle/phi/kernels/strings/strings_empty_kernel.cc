@@ -17,8 +17,7 @@
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-namespace phi {
-namespace strings {
+namespace phi::strings {
 
 template <typename Context>
 void EmptyKernel(const Context& dev_ctx,
@@ -33,8 +32,7 @@ void EmptyLikeKernel(const Context& dev_ctx, StringTensor* out) {
   dev_ctx.template Alloc<dtype::pstring>(out);
 }
 
-}  // namespace strings
-}  // namespace phi
+}  // namespace phi::strings
 
 using pstring = ::phi::dtype::pstring;
 

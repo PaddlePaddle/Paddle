@@ -29,6 +29,9 @@ void ActivationXPUImpl(const Context& dev_ctx,
   PADDLE_ENFORCE_NOT_NULL(out,
                           errors::NotFound("Output Out should not be nullptr"));
   dev_ctx.template Alloc<T>(out);
+  if (out->numel() == 0) {
+    return;
+  }
   functor(dev_ctx, x, out);
 }
 
@@ -72,7 +75,7 @@ int xpu_activation_func(
     const Context& dev_ctx,
     const DenseTensor& x,
     DenseTensor* out,
-    std::function<int(xpu::Context*, const XPUType*, XPUType*, int)> func) {
+    std::function<int(xpu::Context*, const XPUType*, XPUType*, int64_t)> func) {
   int r = func(dev_ctx.x_context(),
                reinterpret_cast<const XPUType*>(x.data<T>()),
                reinterpret_cast<XPUType*>(out->data<T>()),
@@ -85,8 +88,8 @@ int xpu_activation_func_with_max_x_y(
     const Context& dev_ctx,
     const DenseTensor& x,
     DenseTensor* out,
-    std::function<
-        int(xpu::Context*, const XPUType*, XPUType*, int, const float*, float*)>
+    std::function<int(
+        xpu::Context*, const XPUType*, XPUType*, int64_t, const float*, float*)>
         func) {
   // does not support "const float* max_x, float* max_y" now
   int r = func(dev_ctx.x_context(),
@@ -106,7 +109,7 @@ int xpu_activation_1attr_func(const Context& dev_ctx,
                               std::function<int(xpu::Context*,
                                                 const XPUType*,
                                                 XPUType*,
-                                                int,
+                                                int64_t,
                                                 float,
                                                 const float*,
                                                 float*)> func) {
@@ -130,7 +133,7 @@ int xpu_activation_2attr_func(const Context& dev_ctx,
                               std::function<int(xpu::Context*,
                                                 const XPUType*,
                                                 XPUType*,
-                                                int,
+                                                int64_t,
                                                 float,
                                                 float,
                                                 const float*,
@@ -190,6 +193,27 @@ struct XPULeakyReluFunctor : public funcs::BaseActivationFunctor<T> {
   }
 };
 
+template <typename T>
+struct XPURoundFunctor : public funcs::BaseActivationFunctor<T> {
+  int decimals;
+  std::vector<std::pair<const char*, int*>> GetAttrs() {
+    return {{"decimals", &decimals}};
+  }
+
+  template <typename Context>
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  DenseTensor* out) const {
+    using XPUType = typename XPUTypeTrait<T>::Type;
+    int r = xpu::round<XPUType>(dev_ctx.x_context(),
+                                reinterpret_cast<const XPUType*>(x.data<T>()),
+                                reinterpret_cast<XPUType*>(out->data<T>()),
+                                x.numel(),
+                                decimals);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "round");
+  }
+};
+
 template <typename T, typename Context>
 void PowKernel(const Context& dev_ctx,
                const DenseTensor& x,
@@ -197,33 +221,16 @@ void PowKernel(const Context& dev_ctx,
                DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(out);
-  T pow_factor = factor.to<T>();
+
   const XPUType* x_data = reinterpret_cast<const XPUType*>(x.data<T>());
   XPUType* y_data = reinterpret_cast<XPUType*>(out->data<T>());
+  XPUType pow_factor = static_cast<XPUType>(factor.to<T>());
 
   auto xpu_context = dev_ctx.x_context();
-  // allocate temp memory for factor on xpu
-  xpu::ctx_guard RAII_GUARD(xpu_context);
-  XPUType* factor_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(1);
-  PADDLE_ENFORCE_NOT_NULL(
-      factor_data, errors::External("XPU alloc_l3_or_gm returns nullptr"));
-  memory_utils::Copy(dev_ctx.GetPlace(),
-                     static_cast<void*>(factor_data),
-                     phi::CPUPlace(),
-                     static_cast<void*>(&pow_factor),
-                     sizeof(T));
 
-  auto x_dims = common::vectorize<int>(x.dims());
-  // use [1] to replace [], because xpu not support []
-  if (x_dims.size() == 0) {
-    x_dims = std::vector<int>({1});
-  }
-
-  // broadcast_pow(Context* ctx, const T* x, const T* y, T* z, const
-  //    std::vector<int>& xshape, const std::vector<int>& yshape);
-  int r =
-      xpu::broadcast_pow(xpu_context, x_data, factor_data, y_data, x_dims, {1});
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_pow");
+  int r = xpu::pow_tensor_scalar(
+      xpu_context, x_data, pow_factor, y_data, x.numel());
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "pow_tensor_scalar");
 }
 
 template <typename T>
@@ -432,8 +439,12 @@ void EluKernel(const Context& dev_ctx,
                DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(out);
-  // template<typename T> int elu(Context* ctx, const T* x, T* y, int64_t len,
-  // float alpha = 1.0f, const float* max_x = nullptr, float* max_y = nullptr)
+  if (out->numel() == 0) {
+    return;
+  }
+  // template<typename T> int elu(Context* xpu_ctx, const T* x, T* y, int64_t
+  // len, float alpha = 1.0f, const float* max_x = nullptr, float* max_y =
+  // nullptr)
   int r = xpu::elu(dev_ctx.x_context(),
                    reinterpret_cast<const XPUType*>(x.data<T>()),
                    reinterpret_cast<XPUType*>(out->data<T>()),
@@ -537,6 +548,32 @@ struct XPURsqrtFunctor : public funcs::BaseActivationFunctor<T> {
   }
 };
 
+template <typename T>
+struct XPUTanFunctor : public funcs::BaseActivationFunctor<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  template <typename Context>
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  DenseTensor* out) const {
+    int ret = xpu_activation_func<Context, T, XPUType>(
+        dev_ctx, x, out, xpu::tan<XPUType>);
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "tan");
+  }
+};
+
+template <typename T>
+struct XPUAcosFunctor : public funcs::BaseActivationFunctor<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  template <typename Context>
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  DenseTensor* out) const {
+    int ret = xpu_activation_func<Context, T, XPUType>(
+        dev_ctx, x, out, xpu::arccos<XPUType>);
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "arccos");
+  }
+};
+
 DEFINE_XPU_ACTIVATION_KERNEL(Exp, XPUExpFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Floor, XPUFloorFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Log, XPULogFunctor)
@@ -550,6 +587,8 @@ DEFINE_XPU_ACTIVATION_KERNEL(Silu, XPUSiluFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Sin, XPUSinFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Cos, XPUCosFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Rsqrt, XPURsqrtFunctor)
+DEFINE_XPU_ACTIVATION_KERNEL(Tan, XPUTanFunctor)
+DEFINE_XPU_ACTIVATION_KERNEL(Acos, XPUAcosFunctor)
 
 DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_ATTRS(Mish, XPUMishFunctor, threshold)
 DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_ATTRS(LeakyRelu,
@@ -580,6 +619,17 @@ void HardSwishKernel(const Context& dev_ctx,
       dev_ctx, x, out, functor);
 }
 
+template <typename T, typename Context>
+void RoundKernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 const int decimals,
+                 DenseTensor* out) {
+  XPURoundFunctor<T> functor;
+  auto attrs = functor.GetAttrs();
+  *(attrs[0].second) = decimals;
+  ActivationXPUImpl<T, Context, XPURoundFunctor<T>>(dev_ctx, x, out, functor);
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(relu,
@@ -598,8 +648,13 @@ PD_REGISTER_KERNEL(silu,
                    phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(
     elu, XPU, ALL_LAYOUT, phi::EluKernel, float, phi::dtype::float16) {}
-PD_REGISTER_KERNEL(
-    sigmoid, XPU, ALL_LAYOUT, phi::SigmoidKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(sigmoid,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::SigmoidKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(swish,
                    XPU,
                    ALL_LAYOUT,
@@ -633,8 +688,13 @@ PD_REGISTER_KERNEL(sqrt,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 
-PD_REGISTER_KERNEL(
-    tanh, XPU, ALL_LAYOUT, phi::TanhKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(tanh,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::TanhKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(square,
                    XPU,
@@ -690,6 +750,25 @@ PD_REGISTER_KERNEL(exp,
                    XPU,
                    ALL_LAYOUT,
                    phi::ExpKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(round,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::RoundKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(
+    tan, XPU, ALL_LAYOUT, phi::TanKernel, float, phi::dtype::float16) {}
+
+PD_REGISTER_KERNEL(acos,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::AcosKernel,
                    float,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}

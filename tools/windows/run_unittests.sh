@@ -41,6 +41,7 @@ disable_wingpu_test="^test_model$|\
 ^test_fuse_bn_add_act_pass$|\
 ^test_gather_op$|\
 ^test_activation_op$|\
+^test_activation_op_zero_size$|\
 ^test_norm_nn_grad$|\
 ^test_bilinear_interp_op$|\
 ^disable_wingpu_test$"
@@ -441,7 +442,7 @@ disable_wincpu_test="^jit_kernel_test$|\
 ^test_se_resnet$|\
 ^disable_wincpu_test$"
 
-# these unittest that cost long time, diabled temporarily, Maybe moved to the night
+# these unittest that cost long time, disabled temporarily, Maybe moved to the night
 long_time_test="^test_gru_op$|\
 ^decorator_test$|\
 ^test_dataset_imdb$|\
@@ -452,6 +453,7 @@ long_time_test="^test_gru_op$|\
 ^test_sequence_conv$|\
 ^test_activation_nn_grad$|\
 ^test_activation_op$|\
+^test_activation_op_zero_size$|\
 ^test_bicubic_interp_v2_op$|\
 ^test_bilinear_interp_v2_op$|\
 ^test_crop_tensor_op$|\
@@ -601,7 +603,7 @@ function run_unittest_gpu() {
 }
 
 function unittests_retry(){
-    is_retry_execuate=0
+    is_retry_execute=0
     wintest_error=1
     retry_time=3
     exec_times=0
@@ -644,13 +646,13 @@ function unittests_retry(){
                 done
     else
         # There are more than 30 failed unit tests, so no unit test retry
-        is_retry_execuate=1
+        is_retry_execute=1
     fi
     rm -f $tmp_dir/*
 }
 
 function show_ut_retry_result() {
-    if [[ "$is_retry_execuate" != "0" ]];then
+    if [[ "$is_retry_execute" != "0" ]];then
         failed_test_lists_ult=`echo "${failed_test_lists}"`
         echo "========================================="
         echo "There are more than 30 failed unit tests, so no unit test retry!!!"

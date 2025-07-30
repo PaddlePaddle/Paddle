@@ -60,12 +60,12 @@ class IR_API DenseTensorType : public Type::TypeBase<DenseTensorType,
  public:
   using Base::Base;
   using Dim = DenseTensorTypeStorage::Dim;
-  using LoD = DenseTensorTypeStorage::LoD;
+  using LegacyLoD = DenseTensorTypeStorage::LegacyLoD;
 
   Type dtype() const;
   const Dim &dims() const;
   DataLayout data_layout() const;
-  const LoD &lod() const;
+  const LegacyLoD &lod() const;
   size_t offset() const;
   static std::string name() { return "t_dtensor"; }
   ///
@@ -80,7 +80,7 @@ class IR_API DenseTensorType : public Type::TypeBase<DenseTensorType,
                              Type dtype,
                              const Dim &dims,
                              DataLayout layout = DataLayout::kNCHW,
-                             const LoD &lod = {},
+                             const LegacyLoD &lod = {},
                              size_t offset = 0u) {
     return Base::get(ctx, dtype, dims, layout, lod, offset);
   }

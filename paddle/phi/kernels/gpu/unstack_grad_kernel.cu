@@ -21,11 +21,11 @@
 namespace phi {
 
 template <typename T, typename Context>
-void UnStackGradKernel(const Context& ctx,
+void UnStackGradKernel(const Context& dev_ctx,
                        const std::vector<const DenseTensor*>& out_grad,
                        int axis,
                        DenseTensor* x_grad) {
-  funcs::StackRawKernel<T, Context>(ctx, out_grad, axis, x_grad);
+  funcs::StackRawKernel<T, Context>(dev_ctx, out_grad, axis, x_grad);
 }
 
 }  // namespace phi

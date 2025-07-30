@@ -115,7 +115,7 @@ TEST(dist_dense_tensor_type_test, base) {
   pir::Type fp32_dtype = pir::Float32Type::get(ctx);
   common::DDim dims = {2, 2};
   common::DataLayout data_layout = common::DataLayout::NCHW;
-  pir::LoD lod = {{0, 1, 2}};
+  pir::LegacyLoD lod = {{0, 1, 2}};
   size_t offset = 0;
   pir::DenseTensorType dense_tensor_type = pir::DenseTensorType::get(
       ctx, fp32_dtype, dims, data_layout, lod, offset);
@@ -154,7 +154,7 @@ TEST(dist_dense_tensor_type_test, warp_type_interface) {
   pir::Type fp32_dtype = pir::Float32Type::get(ctx);
   common::DDim dims = {2, 2};
   common::DataLayout data_layout = common::DataLayout::NCHW;
-  pir::LoD lod = {{0, 1, 2}};
+  pir::LegacyLoD lod = {{0, 1, 2}};
   size_t offset = 0;
   pir::DenseTensorType dense_tensor_type = pir::DenseTensorType::get(
       ctx, fp32_dtype, dims, data_layout, lod, offset);
@@ -189,7 +189,7 @@ TEST(dist_dense_tensor_type_test, dist_interface) {
   common::DDim dims = {4, 8};
   common::DDim local_dims = {2, 8};
   common::DataLayout data_layout = common::DataLayout::NCHW;
-  pir::LoD lod = {{0, 1, 2}};
+  pir::LegacyLoD lod = {{0, 1, 2}};
   size_t offset = 0;
   pir::DenseTensorType dense_tensor_type = pir::DenseTensorType::get(
       ctx, fp32_dtype, dims, data_layout, lod, offset);

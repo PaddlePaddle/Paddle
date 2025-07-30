@@ -38,7 +38,13 @@ void UnStackKernel(const Context &dev_ctx,
     dx_datas[i] = dev_ctx.template Alloc<T>(dx[i]);
   }
   auto dy_data = dy->data<T>();
-  if (dy->numel() == 0) return;
+  if (dy->numel() == 0) {
+    for (int i = 0; i < n; i++) {
+      dev_ctx.template Alloc<T>((outs)[i]);
+      (outs)[i]->Resize((outs)[i]->dims());
+    }
+    return;
+  }
   int pre = 1;
   for (int i = 0; i < axis; ++i) pre *= dy->dims()[i];
   int total_num = dy->numel();

@@ -1,4 +1,4 @@
-# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,12 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import enum
 import itertools
 import os
 import weakref
 from collections import OrderedDict
-from distutils.util import strtobool
 
 import numpy as np
 
@@ -27,6 +26,7 @@ from paddle.framework import (
     core,
 )
 from paddle.framework.recall_error import check_naninf
+from paddle.utils import strtobool
 
 from .log_util import logger
 
@@ -143,7 +143,7 @@ def flatten_dense_tensors(
         dtype=grad_dtype,
         device=get_current_device_type(),
         destination="0",
-        parm2align=_param2align,
+        param2align=_param2align,
     )
 
     for param in parameters:
@@ -201,7 +201,7 @@ class ShardingGradView:
         self._use_main_grad = use_main_grad
         self._release_grad = release_grad
         shard_size = param_buffer._numel() // sharding_degree
-        rank_begin = rank * shard_size
+        rank_begin = max(rank, 0) * shard_size
         rank_end = rank_begin + shard_size
 
         param_begin = max(self._index, rank_begin)
@@ -284,8 +284,8 @@ class ShardingGradView:
         slice_begin = self._param_begin
         slice_end = self._param_end
         slice_buffer = self._param_buffer._slice(slice_begin, slice_end)
-        slice_param.get_tensor()._set_dims([slice_end - slice_begin])
         slice_buffer._share_buffer_to(slice_param)
+        slice_param.get_tensor()._set_dims([slice_end - slice_begin])
 
     def assign_slice_grad(self, slice_param):
         assert self._param_buffer._is_shared_buffer_with(self._param)
@@ -303,6 +303,16 @@ class ShardingGradView:
                 slice_param._copy_gradient_from(slice_grad)
             else:
                 assert slice_param.grad._is_shared_buffer_with(slice_grad)
+
+    def _clear_param_buffer(self):
+        self._param._clear_to_zero_allocation()
+        self._param_buffer._clear_to_zero_allocation()
+
+    def _reset_param_buffer(self, new_param_storage):
+        new_param = paddle.empty_like(self._param)
+        new_param._share_buffer_to(self._param)
+        new_param_storage._share_buffer_to(self._param_buffer)
+        self._share_param_buffer()
 
     def _clear_grad_buffer(self):
         if self._slice_grad is not None:
@@ -322,9 +332,19 @@ class ShardingGradView:
                 self._param_end - self._rank_begin,
             )
 
+    @property
+    def has_effective_slice_param(self):
+        return self._param_begin < self._param_end
+
 
 def build_reduce_scatter_buffer(
-    parameters, sharding_degree, rank, use_main_grad=False, release_grad=False
+    parameters,
+    sharding_degree,
+    rank,
+    use_main_grad=False,
+    release_grad=False,
+    init_slice_param=False,
+    slice_params={},
 ):
     total_buffer_size = 0
     param2index = {}
@@ -345,6 +365,11 @@ def build_reduce_scatter_buffer(
     grad_dtype = paddle.float32 if use_main_grad else dtype
 
     param_buffer = paddle.zeros(shape=[total_buffer_size], dtype=dtype)
+    # TODO(@gexiao): Currently only support gpus
+    if core.is_compiled_with_cuda() and not core.is_compiled_with_rocm():
+        param_buffer_ipc_meta = param_buffer.value().get_tensor()._share_cuda()
+    else:
+        param_buffer_ipc_meta = None
     grad_buffer = (
         paddle.zeros(shape=[total_buffer_size], dtype=grad_dtype)
         if not release_grad
@@ -365,9 +390,18 @@ def build_reduce_scatter_buffer(
             use_main_grad,
             release_grad,
         )
+        if init_slice_param and grad_view.has_effective_slice_param:
+            assert param.name in slice_params
+            grad_view.fill_slice_param(slice_params[param.name])
         # hack main_grad
         sharding_grad_view[param.name] = grad_view
-    return sharding_grad_view, total_buffer_size, param_buffer, grad_buffer
+    return (
+        sharding_grad_view,
+        total_buffer_size,
+        param_buffer,
+        grad_buffer,
+        param_buffer_ipc_meta,
+    )
 
 
 def get_grad_address(param, use_main_grad):
@@ -382,6 +416,17 @@ def get_grad_address(param, use_main_grad):
 
 
 class FusedCommBuffer:
+
+    class Status(enum.Enum):
+        """Status of this bucket, Only useful when param allgather overlap is enabled"""
+
+        # Parameters are sharded between processes
+        SHARDED = enum.auto()
+        # Asynchronous communication is in progress
+        SYNCING = enum.auto()
+        # Parameters are ready to use
+        READY = enum.auto()
+
     def __init__(
         self,
         id,
@@ -396,6 +441,8 @@ class FusedCommBuffer:
         release_grads=False,
         use_reduce_avg=False,
         free_grads_in_comm=False,
+        init_slice_param=False,
+        slice_params={},
     ):
         self._id = id
         self._params = params
@@ -407,6 +454,9 @@ class FusedCommBuffer:
         self._use_reduce_avg = use_reduce_avg
         self._free_grads_in_comm = free_grads_in_comm
         self._log_message_printed = False
+
+        self.status = FusedCommBuffer.Status.READY
+        self.sync_param_task = None
 
         if self._free_grads_in_comm:
             assert (
@@ -434,6 +484,8 @@ class FusedCommBuffer:
         self._params_step_dict = {}
         self._params_checked_in = 0
         self._grads_to_addr = {}
+
+        self.param_buffer_ipc_meta = None
 
         self._act = act
         if self._act == HOOK_ACTION.ALL_REDUCE:
@@ -490,12 +542,15 @@ class FusedCommBuffer:
                 self.buffer_size,
                 self.param_storage,
                 self.grad_storage,
+                self.param_buffer_ipc_meta,
             ) = build_reduce_scatter_buffer(
                 self._params,
                 self._comm_group.nranks,
                 self._comm_group.rank,
                 use_main_grad=self.use_main_grad,
                 release_grad=self._release_grads,
+                init_slice_param=init_slice_param,
+                slice_params=slice_params,
             )
             # hack, for parameter sync in dygraph sharding optimizer after step
             self._params[0].comm_buffer_ref = weakref.ref(self)
@@ -507,6 +562,18 @@ class FusedCommBuffer:
             self._grads_to_addr[param.name] = get_grad_address(
                 param, self.use_main_grad
             )
+
+    def _clear_param_storage(self):
+        self.param_storage._clear_to_zero_allocation()
+        for param in self._params:
+            self._sharding_param_grad_view[param.name]._clear_param_buffer()
+
+    def _reset_param_storage(self):
+        new_param_storage = paddle.empty_like(self.param_storage)
+        new_param_storage._share_buffer_to(self.param_storage)
+        for param in self._params:
+            grad_view = self._sharding_param_grad_view[param.name]
+            grad_view._reset_param_buffer(new_param_storage)
 
     def _clear_grad_storage(self):
         self.grad_storage._clear_dataptr()
@@ -629,10 +696,11 @@ class FusedCommBuffer:
         group = self._comm_group
         shard_size = full_buffer._numel() // group.nranks
 
-        begin = shard_size * group.rank
+        begin = shard_size * max(group.rank, 0)
         end = begin + shard_size
         slice_buffer = full_buffer._slice(begin, end)
-
+        if group.nranks == 1:
+            return
         if sync:
             # default sync_op is False, so we need to wait here.
             # this will call distributed_py.cc in paddle. In distributed_py.cc, there defines two all gather function, their parameters are different.
@@ -640,6 +708,8 @@ class FusedCommBuffer:
         else:
             # default sync_op is False, so we don't need to to set sync_op = false here.
             task = group.process_group.all_gather(slice_buffer, full_buffer)
+
+            self.sync_param_task = task
             for param in self.params:
                 assert param.name not in param2task
                 param2task[param.name] = task
@@ -678,7 +748,7 @@ class FusedCommBuffer:
             if self._use_reduce_avg
             else paddle.distributed.ReduceOp.SUM
         )
-        # scale will be skiped when reduce_avg comm operation is enabled.
+        # scale will be skipped when reduce_avg comm operation is enabled.
         if not self._scale_after_comm and not self._use_reduce_avg:
             scale_factor = 1.0 / self._comm_group.nranks
             self.grad_storage.scale_(scale_factor)
@@ -713,7 +783,7 @@ class FusedCommBuffer:
             if paddle.distributed.in_auto_parallel_align_mode():
                 reduce_op = paddle.distributed.ReduceOp.SUM
             shard_size = self.grad_storage._numel() // self._comm_group.nranks
-            begin = shard_size * self._comm_group.rank
+            begin = shard_size * max(self._comm_group.rank, 0)
             end = begin + shard_size
             reduce_scattered = (
                 paddle.empty_like(self.grad_storage._slice(begin, end))
@@ -727,6 +797,7 @@ class FusedCommBuffer:
                 group=self._comm_group,
                 sync_op=False,
             )
+
             if self._free_grads_in_comm:
                 self._reset_grad_storage(reduce_scattered)
 
@@ -735,10 +806,12 @@ class FusedCommBuffer:
     @imperative_base.no_grad
     def scale_grads(self):
         if self.need_reduce_scale_sync():
+            if self._comm_group.nranks == 1 and self._task is None:
+                return
             assert self._task is not None, "Task is not initialized."
             self._task.wait()
 
-            # scale will be skiped when use reduce_avg comm operation
+            # scale will be skipped when use reduce_avg comm operation
             if self._scale_after_comm and not self._use_reduce_avg:
                 scale_factor = 1.0 / self._comm_group.nranks
                 self.grad_storage.scale_(scale_factor)

@@ -45,6 +45,10 @@ void ConcatKernel(const Context& dev_ctx,
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
 
+  if (out->numel() == 0) {
+    return;
+  }
+
   // If axis is 0, the lod of the output is not the same as inputs.
   if (axis == 0 && x[0]->lod().size() > 0) {
     size_t lod_size_0 = x[0]->lod().size();
@@ -70,8 +74,8 @@ void ConcatKernel(const Context& dev_ctx,
     if (lod_size) {
       auto* out_lod = out->mutable_lod();
       for (size_t i = 1; i < x.size(); ++i) {
-        auto in_lod = phi::ConvertToLengthBasedLoD(x[i]->lod());
-        phi::AppendLoD(out_lod, in_lod);
+        auto in_lod = phi::ConvertToLengthBasedLegacyLoD(x[i]->lod());
+        phi::AppendLegacyLoD(out_lod, in_lod);
       }
     }
   }
@@ -125,5 +129,7 @@ PD_REGISTER_KERNEL(concat,
                    int16_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
+                   phi::dtype::float8_e4m3fn,
+                   phi::dtype::float8_e5m2,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}

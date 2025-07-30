@@ -64,34 +64,70 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
             "params_sync_among_devices_pass should run on module op."));
     auto& block = module_op.block();
     int64_t num_rewrites_{0};
+
+    std::vector<phi::DenseTensor*> dense_tensors;
     for (auto& inner_op : block) {
-      if (inner_op.isa<pir::ParameterOp>() && inner_op.num_results() > 0) {
+      if (inner_op.template isa<pir::ParameterOp>() &&
+          inner_op.num_results() > 0) {
         auto var = inner_op.result(0);
         auto bool_attr =
-            var.attribute<::pir::BoolAttribute>(kAttrIsPersistable);
+            var.template attribute<::pir::BoolAttribute>(kAttrIsPersistable);
         if (!bool_attr || !bool_attr.data()) {
           continue;
         }
         std::string param_name = inner_op.attributes()
                                      .at("parameter_name")
-                                     .dyn_cast<pir::StrAttribute>()
+                                     .template dyn_cast<pir::StrAttribute>()
                                      .AsString();
         auto* param_var = scope_->FindVar(param_name);
         PADDLE_ENFORCE_NOT_NULL(
             param_var,
             common::errors::InvalidArgument("Parameter var [%s] not in scope.",
                                             param_name));
+
         if (param_var->IsType<phi::DenseTensor>()) {
-          auto* param_tensor = param_var->GetMutable<phi::DenseTensor>();
-          paddle::framework::TensorCopySync(
-              *param_tensor, place_, param_tensor);
-          num_rewrites_++;
+          dense_tensors.push_back(param_var->GetMutable<phi::DenseTensor>());
         } else {
           PADDLE_THROW(common::errors::Unimplemented(
               "params_sync_among_devices_pass only support DenseTensor type of "
               "parameter var."));
         }
       }
+    }
+    num_rewrites_ = dense_tensors.size();
+
+    size_t num_threads = 8;
+    const size_t chunk_size =
+        std::max(static_cast<size_t>(1), dense_tensors.size() / num_threads);
+    num_threads = std::min(num_threads, dense_tensors.size() / chunk_size);
+    size_t remain_size = dense_tensors.size() % num_threads;
+
+    auto sync_handler = [&](const std::vector<phi::DenseTensor*>& tensors) {
+      for (auto* tensor : tensors) {
+        paddle::framework::TensorCopySync(*tensor, place_, tensor);
+      }
+    };
+
+    std::vector<std::future<void>> futures;
+    for (size_t i = 0; i < num_threads; ++i) {
+      auto start_it = dense_tensors.begin() + i * chunk_size;
+      auto end_it = start_it + chunk_size;
+
+      futures.push_back(
+          std::async(std::launch::async,
+                     sync_handler,
+                     std::vector<phi::DenseTensor*>(start_it, end_it)));
+    }
+    if (remain_size > 0) {
+      futures.push_back(std::async(
+          std::launch::async,
+          sync_handler,
+          std::vector<phi::DenseTensor*>(
+              dense_tensors.rbegin(), dense_tensors.rbegin() + remain_size)));
+    }
+
+    for (auto& future : futures) {
+      future.wait();
     }
     AddStatistics(num_rewrites_);
   }

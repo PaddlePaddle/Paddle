@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/nanmedian_utils.h"
 #include "paddle/phi/kernels/top_k_kernel.h"
 
@@ -218,6 +219,16 @@ void NanmedianKernel(const Context& dev_ctx,
                      const std::string& mode,
                      DenseTensor* out,
                      DenseTensor* median_index) {
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    phi::Full<int64_t, Context>(
+        dev_ctx,
+        phi::IntArray(common::vectorize(median_index->dims())),
+        0,
+        median_index);
+    return;
+  }
   DenseTensor tmp_x;
   auto rank = x.dims().size();
   if ((axes.size() == 0) || rank <= 1) {

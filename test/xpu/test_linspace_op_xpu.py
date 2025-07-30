@@ -79,6 +79,15 @@ class XPUTestLinspaceOp(XPUOpTestWrapper):
             }
             self.outputs = {'Out': np.array(10, dtype=self.dtype)}
 
+    class TestXPULinespace4(TestXPULinespaceOp):
+        def set_attrs(self):
+            self.inputs = {
+                'Start': np.array([0]).astype(self.dtype),
+                'Stop': np.array([10]).astype(self.dtype),
+                'Num': np.array([0]).astype('int32'),
+            }
+            self.outputs = {'Out': np.array([], dtype=self.dtype)}
+
 
 support_types = get_xpu_op_support_types('linspace')
 for stype in support_types:

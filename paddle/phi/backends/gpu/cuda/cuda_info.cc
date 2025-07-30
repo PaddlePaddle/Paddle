@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include <mutex>
 
 #include "paddle/phi/backends/gpu/gpu_info.h"
 
@@ -22,14 +23,14 @@ static std::once_flag g_device_props_size_init_flag;
 static std::vector<std::unique_ptr<std::once_flag>> g_device_props_init_flags;
 static std::vector<phi::gpuDeviceProp> g_device_props;
 
-namespace phi {
-namespace backends {
-namespace gpu {
+namespace phi::backends::gpu {
 
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
 int DnnVersion() {
   if (!dynload::HasCUDNN()) return -1;
   return dynload::cudnnGetVersion();  // NOLINT
 }
+#endif
 
 static int GetGPUDeviceCountImpl() {
   int driverVersion = 0;
@@ -361,6 +362,4 @@ bool IsGPUManagedMemoryOversubscriptionSupported(int dev_id) {
 #endif
 }
 
-}  // namespace gpu
-}  // namespace backends
-}  // namespace phi
+}  // namespace phi::backends::gpu

@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, overload
 
 import paddle
 from paddle import _C_ops
-from paddle.framework import LayerHelper, in_dynamic_mode, in_pir_mode
+from paddle.framework import LayerHelper, in_dynamic_or_pir_mode
 
 if TYPE_CHECKING:
     from paddle import Tensor
@@ -108,8 +108,7 @@ def fused_layer_norm(
             >>> epsilon = 1e-6
             >>> paddle_layernorm = paddle.incubate.nn.functional.fused_layer_norm(paddle_x, paddle_weight, paddle_bias, epsilon, 1)
     """
-
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.fused_bias_residual_layernorm(
             x,
             bias,
@@ -124,23 +123,7 @@ def fused_layer_norm(
             quant_max_bound,
             quant_min_bound,
         )
-    elif in_pir_mode():
-        out, residual_out, _, _ = _C_ops.fused_bias_residual_layernorm(
-            x,
-            bias,
-            residual,
-            norm_weight,
-            norm_bias,
-            epsilon,
-            residual_alpha,
-            begin_norm_axis,
-            quant_scale,
-            quant_round_type,
-            quant_max_bound,
-            quant_min_bound,
-        )
-        return (out, residual_out) if residual is not None else out
-
+    # static mode
     helper = LayerHelper('fused_layernorm', **locals())
     out = None
     if quant_scale <= 0:
@@ -183,4 +166,4 @@ def fused_layer_norm(
         },
         outputs=outputs_dict,
     )
-    return (out, residual_out) if residual is not None else out
+    return (out, residual_out, outputs_dict['mean'], outputs_dict['variance'])

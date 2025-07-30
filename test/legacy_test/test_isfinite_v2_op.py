@@ -15,24 +15,25 @@
 import unittest
 
 import numpy as np
+from utils import static_guard
 
 import paddle
 from paddle import base, static
 
 
 def run_static(x_np, dtype, op_str, use_gpu=False):
-    paddle.enable_static()
-    startup_program = paddle.static.Program()
-    main_program = paddle.static.Program()
-    place = paddle.CPUPlace()
-    if use_gpu and base.core.is_compiled_with_cuda():
-        place = paddle.CUDAPlace(0)
-    exe = base.Executor(place)
-    with static.program_guard(main_program, startup_program):
-        x = paddle.static.data(name='x', shape=x_np.shape, dtype=dtype)
-        res = getattr(paddle, op_str)(x)
-        static_result = exe.run(feed={'x': x_np}, fetch_list=[res])
-    return static_result
+    with static_guard():
+        startup_program = paddle.static.Program()
+        main_program = paddle.static.Program()
+        place = paddle.CPUPlace()
+        if use_gpu and base.core.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+        exe = base.Executor(place)
+        with static.program_guard(main_program, startup_program):
+            x = paddle.static.data(name='x', shape=x_np.shape, dtype=dtype)
+            res = getattr(paddle, op_str)(x)
+            static_result = exe.run(feed={'x': x_np}, fetch_list=[res])
+        return static_result
 
 
 def run_dygraph(x_np, op_str, use_gpu=True):
@@ -64,6 +65,10 @@ def np_data_generator(
     if type in ['float16', 'float32', 'float64']:
         for i, v in enumerate(sv_list):
             x_np[i] = v
+    if type in ['complex64', 'complex128']:
+        for i, v in enumerate(sv_list):
+            x_np[i].real = v
+            x_np[i].imag = v
     ori_shape = x_np.shape
     x_np = x_np.reshape((np.prod(ori_shape),))
     np.random.shuffle(x_np)
@@ -106,6 +111,20 @@ TEST_META_DATA = [
         'high': 999,
         'np_shape': [132],
         'type': 'int64',
+        'sv_list': [np.inf, np.nan],
+    },
+    {
+        'low': 0.1,
+        'high': 1,
+        'np_shape': [11, 17],
+        'type': 'complex64',
+        'sv_list': [np.inf, np.nan],
+    },
+    {
+        'low': 0.1,
+        'high': 1,
+        'np_shape': [2, 3, 4, 5],
+        'type': 'complex128',
         'sv_list': [np.inf, np.nan],
     },
 ]
@@ -332,6 +351,42 @@ class TestError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_isneginf_bad_x)
 
+
+def create_test_class(op_type, dtype, shape):
+    class Cls(unittest.TestCase):
+        def test_zero_size(self):
+            paddle.disable_static()
+            numpy_tensor_1 = np.random.rand(*shape).astype(dtype)
+            paddle_x = paddle.to_tensor(numpy_tensor_1)
+            paddle_x.stop_gradient = False
+
+            paddle_api = eval(f"paddle.{op_type}")
+            paddle_out = paddle_api(paddle_x)
+            numpy_api = eval(f"np.{op_type}")
+            numpy_out = numpy_api(numpy_tensor_1)
+
+            np.testing.assert_allclose(
+                paddle_out.numpy(),
+                numpy_out,
+                1e-2,
+                1e-2,
+            )
+            np.testing.assert_allclose(
+                paddle_out.shape,
+                numpy_out.shape,
+            )
+
+    cls_name = f"{op_type}{dtype}_0SizeTest"
+    Cls.__name__ = cls_name
+    globals()[cls_name] = Cls
+
+
+op_list = ["isfinite", "isinf", "isnan"]
+for op in op_list:
+    create_test_class(op, "float32", [3, 4, 0])
+    create_test_class(op, "float64", [3, 4, 0, 3, 4])
+    create_test_class(op, "int32", [3, 4, 0])
+    create_test_class(op, "int64", [3, 4, 0, 3, 4])
 
 if __name__ == '__main__':
     paddle.enable_static()

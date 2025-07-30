@@ -22,6 +22,223 @@ limitations under the License. */
 namespace phi {
 
 namespace funcs {
+inline bool CheckIsLastDimsMatch(const DDim& first, const DDim& second) {
+  auto n1 = first.size();
+  auto n2 = second.size();
+  size_t min_len = std::min(n1, n2);
+
+  for (size_t i = 0; i < min_len; i++) {
+    if (first[n1 - 1 - i] != second[n2 - 1 - i]) {
+      return false;
+    }
+  }
+  return true;
+}
+// check whether the tensor with dimension of second can assign to the
+// tensor with dimension of first
+inline bool CheckIsDimsMatchBool(const DDim& first, const DDim& second) {
+  int ignore_axis1 = 0, ignore_axis2 = 0;
+  for (; ignore_axis1 < first.size(); ++ignore_axis1) {
+    if (first[ignore_axis1] != 1) {
+      break;
+    }
+  }
+  for (; ignore_axis2 < second.size(); ++ignore_axis2) {
+    if (second[ignore_axis2] != 1) {
+      break;
+    }
+  }
+
+  if (second.size() == ignore_axis2) {
+    // second tensor has only one value
+    return true;
+  }
+
+  if (first.size() - ignore_axis1 >= second.size() - ignore_axis2) {
+    auto idx1 = first.size() - 1;
+    auto idx2 = second.size() - 1;
+    bool is_match = true;
+    for (; idx2 >= ignore_axis2; idx2--) {
+      if (first[idx1--] != second[idx2] && second[idx2] != 1) {
+        is_match = false;
+        break;
+      }
+    }
+    if (is_match) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+inline void CheckIsDimsMatch(const DDim& first, const DDim& second) {
+  if (CheckIsDimsMatchBool(first, second)) {
+    return;
+  }
+  PADDLE_THROW(errors::InvalidArgument(
+      "The shape of tensor assigned value must match the shape "
+      "of target shape: %d, but now shape is %d.",
+      second.to_str(),
+      first.to_str()));
+}
+/**
+ * @brief Normalizes the slice interval [st, ed) with a given step and dimension
+ * size.
+ *
+ * This function adjusts the interval [st, ed) to fit within the bounds defined
+ * by the dimension size, taking into account the specified step. It handles
+ * both positive and negative steps and accounts for negative indices by
+ * converting them to equivalent positive indices within the dimension size.
+ *
+ * @tparam T The data type of the input parameters, which can be an integer or
+ * floating-point type.
+ * @param st The starting index of the interval.
+ * @param ed The ending index of the interval (exclusive).
+ * @param step The step size for iterating through the interval, which can be
+ * positive or negative.
+ * @param dim_size The size of the dimension, serving as the upper bound for
+ * valid indices.
+ * @param st_out Pointer to store the normalized starting index.
+ * @param ed_out Pointer to store the normalized ending index.
+ * @param zero_dim_out Pointer to a boolean flag that is set to true if the
+ * resulting interval is empty.
+ *
+ * @details
+ * - If `step > 0`, the function ensures that `st` and `ed` are adjusted to be
+ * within the range [0, dim_size).
+ * - If `step < 0`, the function adjusts `st` and `ed` to accommodate the
+ * reverse traversal of the interval.
+ * - Handles special cases where `st` and `ed` may be out of bounds or where
+ * `dim_size` is zero.
+ * - Uses pointer parameters for output to modify the values directly.
+ * - The function also handles scenarios involving negative indices, converting
+ * them appropriately.
+ *
+ * @example
+ * T st_out, ed_out;
+ * bool zero_dim;
+ * normalize_interval(-3, -2, 1, 4, &st_out, &ed_out, &zero_dim);
+ * // Results in: st_out = 1, ed_out = 2, zero_dim = false
+ *
+ * @note The function assumes that the pointers provided for output parameters
+ * are valid and non-null.
+ */
+template <typename T>
+void normalize_interval(
+    T st, T ed, T step, T dim_size, T* st_out, T* ed_out, bool* zero_dim_out) {
+  /* Normalize slice interval [st, ed) with given step and dim_size.
+  e.g. if given st = -3, ed = -2, step = 1, dim_size = 4,
+  then normalized st_out = 1(-3+4), st_ed = 2(-2+4).
+
+  This function is general enough and applicable
+  for both step > 0 and step < 0 scenarios.
+
+  Indicices dipicted as below:
+
+  ===============================================================
+                |  0   1     2     3    ...  D-1 | D D+1 ...
+  ... -D-2 -D-1 | -D  -D+1  -D+2  -D+3  ... -1   |
+  ===============================================================
+  */
+  // 0 dim size, just return
+  if (dim_size <= 0) {
+    *st_out = *ed_out = 0;
+    *zero_dim_out = true;
+    return;
+  }
+
+  if (step > 0) {
+    /* positive step */
+    // 0 dim size case 1
+    if (st >= dim_size) {
+      *st_out = *ed_out = 0;
+      *zero_dim_out = true;
+      return;
+    }
+
+    // 0 dim size case 2
+    if (ed <= -dim_size) {
+      *st_out = *ed_out = 0;
+      *zero_dim_out = true;
+      return;
+    }
+
+    // make st belongs: (-inf, -D-1)∪[0, D)
+    if (-dim_size <= st && st < 0) {
+      st += dim_size;
+    }
+    // make st belongs: [0, D)
+    st = std::max(st, static_cast<T>(0));
+
+    // make ed belongs: [0, +inf)
+    if (-dim_size <= ed && ed < 0) {
+      ed += dim_size;
+    }
+    // make ed belongs: [0, D]
+    ed = std::min(ed, dim_size);
+
+    // 0 dim size case 3
+    if (st >= ed) {
+      *st_out = *ed_out = 0;
+      *zero_dim_out = true;
+      return;
+    }
+    *st_out = st;
+    *ed_out = ed;
+    return;
+
+  } else {
+    /* negative step */
+    // 0 dim size case 1
+    if (st <= -dim_size - 1) {
+      *st_out = *ed_out = 0;
+      *zero_dim_out = true;
+      return;
+    }
+
+    // 0 dim size case 2
+    if (ed >= dim_size - 1) {
+      *st_out = *ed_out = 0;
+      *zero_dim_out = true;
+      return;
+    }
+
+    // make st belongs: [0, D)∪[0, +inf)
+    if (-dim_size <= st && st < 0) {
+      st += dim_size;
+    }
+    // make st belongs: [0, D)
+    st = std::min(st, dim_size - 1);
+
+    // make ed belongs: [-inf, -D)∪[0, D)
+    if (-dim_size <= ed && ed < 0) {
+      ed += dim_size;
+    }
+    // make ed belongs: [-D-1, -D)∪[0, D) ==> {-D-1}∪[0, D)
+    ed = std::max(ed, -dim_size - 1);
+
+    if (ed == -dim_size - 1) {
+      // When ed=-D-1, it is symmetrical to when step is greater than 0 and
+      // ed=D.
+      *st_out = st;
+      *ed_out = ed;
+      return;
+    }
+
+    // now only remain the case that ed belongs to: [0, D)
+    // 0 dim size case 3
+    if (ed >= st) {
+      *st_out = *ed_out = 0;
+      *zero_dim_out = true;
+      return;
+    }
+
+    *st_out = st;
+    *ed_out = ed;
+    return;
+  }
+}
 
 template <typename T = int64_t>
 inline void CheckAndUpdateSliceAttrs(const DDim in_dims,
@@ -56,41 +273,17 @@ inline void CheckAndUpdateSliceAttrs(const DDim in_dims,
           common::errors::InvalidArgument(
               "Step should not be 0, but received step = %d.", step));
 
-      T start = (*starts)[i] < 0 ? ((*starts)[i] + dim_value) : (*starts)[i];
-      start = std::max(start, static_cast<T>(0));
-
-      T end =
-          0 < step && (*ends)[i] < 0 ? ((*ends)[i] + dim_value) : (*ends)[i];
-      end = std::min(end, dim_value);
-
-      if (step > 0) {
-        start = std::min(start, dim_value);
-        end = std::max(end, static_cast<T>(0));
-        PADDLE_ENFORCE_GE(
-            end,
-            start,
-            common::errors::InvalidArgument(
-                "When step > 0, end should be greater than start, but "
-                "received end = %d, start = %d.",
-                end,
-                start));
-      } else {
-        // NOTE(liym27): When step < 0, start should less and equal to
-        // dim_value-1
-        // "end is -1" means contain the 0-th element of this axis.
-        start = std::min(start, dim_value - 1);
-        if (end < -1) {
-          end += dim_value;
-        }
-        end = std::max(end, static_cast<T>(-1));
-        PADDLE_ENFORCE_GE(
-            start,
-            end,
-            common::errors::InvalidArgument(
-                "When step < 0, start should be greater than end, but "
-                "received start = %d, end = %d.",
-                start,
-                end));
+      T start, end;
+      bool dummy_zero_out_dim = false;
+      normalize_interval((*starts)[i],
+                         (*ends)[i],
+                         step,
+                         dim_value,
+                         &start,
+                         &end,
+                         &dummy_zero_out_dim);
+      if (end == -dim_value - 1) {
+        end = -1;
       }
 
       (*starts)[i] = start;
@@ -117,24 +310,17 @@ inline void UpdateSliceAttrs(const DDim in_dims,
     T dim_value = in_dims[axis];
     if (dim_value > 0) {
       T step = steps == nullptr ? 1 : (*steps)[i];
-      T start = (*starts)[i] < 0 ? ((*starts)[i] + dim_value) : (*starts)[i];
-      start = std::max(start, static_cast<T>(0));
-      T end =
-          0 < step && (*ends)[i] < 0 ? ((*ends)[i] + dim_value) : (*ends)[i];
-      end = std::min(end, dim_value);
+      T start = (*starts)[i];
+      T end = (*ends)[i];
 
-      if (step > 0) {
-        start = std::min(start, dim_value);
-        end = std::max(end, static_cast<T>(0));
-      } else {
-        // NOTE: When step < 0, start should less and equal to
-        // dim_value-1
-        // "end is -1" means contain the 0-th element of this axis.
-        start = std::min(start, dim_value - 1);
-        if (end < -1) {
-          end += dim_value;
-        }
-        end = std::max(end, static_cast<T>(-1));
+      bool dummy_zero_out_dim = false;
+      normalize_interval(
+          start, end, step, dim_value, &start, &end, &dummy_zero_out_dim);
+
+      // manually set the end to -1 when step < 0,
+      // which indicates that it can extend to the left endpoint.
+      if (end == -dim_value - 1 && step < 0) {
+        end = -1;
       }
       (*starts)[i] = start;
       (*ends)[i] = end;
@@ -206,6 +392,66 @@ inline DDim GetDecreasedDims(const DDim slice_dims,
     decreased_dims = common::make_ddim(new_shape);
   }
   return decreased_dims;
+}
+
+template <typename T = int64_t>
+inline void GetDecreasedDimsAndStrides(const std::vector<T> slice_dims,
+                                       const std::vector<T> slice_strides,
+                                       const std::vector<T>& decrease_axes,
+                                       const std::vector<T>& none_axes,
+                                       std::vector<T>* new_dims,
+                                       std::vector<T>* new_strides,
+                                       std::vector<T>* infer_flags = nullptr) {
+  std::vector<uint8_t> decrease_flag(slice_dims.size(), 0);
+  if (none_axes.size() > 0) {
+    size_t none_axes_cur = 0, decrease_axes_cur = 0;
+    for (int i = 0; i < slice_dims.size(); ++i) {
+      while (none_axes_cur < none_axes.size() &&
+             none_axes[none_axes_cur] <= i) {
+        new_dims->push_back(1);
+        new_strides->push_back(slice_strides[i]);
+        none_axes_cur++;
+      }
+      if (decrease_axes_cur < decrease_axes.size() &&
+          decrease_axes[decrease_axes_cur] == i) {
+        decrease_axes_cur++;
+      } else {
+        new_dims->push_back(slice_dims[i]);
+        new_strides->push_back(slice_strides[i]);
+      }
+    }
+    while (none_axes_cur < none_axes.size()) {
+      new_dims->push_back(1);
+      new_strides->push_back(slice_strides[slice_strides.size() - 1]);
+      none_axes_cur++;
+    }
+  } else if (decrease_axes.size() > 0) {
+    for (size_t i = 0; i < decrease_axes.size(); ++i) {
+      T axis = decrease_axes[i];
+      decrease_flag[axis] = 1;
+      if (infer_flags && (*infer_flags)[i] != -1) {
+        PADDLE_ENFORCE_EQ(slice_dims[axis],
+                          1,
+                          common::errors::InvalidArgument(
+                              "Decrease dim should be 1, but now received %d",
+                              slice_dims[axis]));
+      }
+    }
+
+    for (int i = 0; i < slice_dims.size(); ++i) {
+      if (decrease_flag[i] == 0) {
+        new_dims->push_back(slice_dims[i]);
+        new_strides->push_back(slice_strides[i]);
+      }
+    }
+  } else {
+    for (int i = 0; i < slice_dims.size(); ++i) {
+      new_dims->push_back(slice_dims[i]);
+      new_strides->push_back(slice_strides[i]);
+    }
+  }
+
+  return;
 }
 
 template <typename T = int64_t>

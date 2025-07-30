@@ -204,6 +204,8 @@ void SetStopGradient(T value, Args... args) {
 }
 
 std::vector<std::vector<bool>> ConstructStopGradient(pir::Operation* op);
+bool CanGroupOpRunCpuKernel(const std::vector<::pir::Value>& vec_inputs,
+                            const std::vector<::pir::Value>& vec_output);
 
 }  // namespace dialect
 }  // namespace paddle

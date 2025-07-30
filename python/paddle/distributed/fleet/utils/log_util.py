@@ -15,7 +15,6 @@
 import logging
 import os
 import subprocess
-from distutils.util import strtobool
 from logging.handlers import RotatingFileHandler
 
 import paddle
@@ -82,9 +81,8 @@ class DistributedLogger(logging.Logger):
         super().__init__(name, level)
 
     def info(self, msg, *args, **kwargs):
-        if strtobool(os.getenv('FLAGS_distributed_debug_logger', '0')):
-            paddle.device.synchronize()
-            super().info(f"Distributed Debug: {msg}", *args, **kwargs)
+        paddle.device.synchronize()
+        super().info(f"Distributed Debug: {msg}", *args, **kwargs)
 
 
 def get_rotate_file_logger(log_level, name='root'):
@@ -109,6 +107,12 @@ def get_rotate_file_logger(log_level, name='root'):
 
 
 g_sync_rotate_logger = None
+
+
+def get_sync_logger():
+    global logger
+    paddle.device.synchronize()
+    return logger
 
 
 def sync_rotate_logger():
@@ -153,7 +157,7 @@ def check_memory_usage(msg=""):
         mem_msg = f"checking pinned memory usage {msg}:"
         for key in mem_dict:
             mem_msg += f"\n{key}: {mem_dict[key]}GB"
-        logger.infor(mem_msg)
+        logger.info(mem_msg)
 
     if hasattr(paddle.device, 'cpu') and hasattr(
         paddle.device.cpu, 'max_memory_allocated'

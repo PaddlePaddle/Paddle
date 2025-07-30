@@ -123,8 +123,8 @@ void DyScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
               GetLoopExtent(loops[0]) != 1) &&
              block_loops[0].As<ir::For>()->extent.is_constant() &&
              GetLoopExtent(block_loops[0]) == 1) {
-    auto splited = this->Split(loops[0], {1, -1});
-    this_loop = splited[1];
+    auto split = this->Split(loops[0], {1, -1});
+    this_loop = split[1];
   }
 
   block_loops = this->GetLoops(this_block);
@@ -196,8 +196,9 @@ void DyScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
     if (Contains(result, if_expr)) continue;
     if (ir::ir_utils::CollectIRNodesWithoutTensor(if_expr, checker, true)
             .size() > 0) {
-      result =
-          IfThenElse::Make(if_expr.As<ir::IfThenElse>()->condition, result);
+      result = IfThenElse::Make(
+          ir::ir_utils::IRCopy(if_expr.As<ir::IfThenElse>()->condition),
+          result);
       break;
     }
   }

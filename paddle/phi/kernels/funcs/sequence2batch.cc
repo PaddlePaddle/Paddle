@@ -19,7 +19,7 @@ namespace phi::funcs {
 template <typename T>
 class CopyMatrixRowsFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const phi::CPUContext& context UNUSED,
+  void operator()(const phi::CPUContext& dev_ctx UNUSED,
                   const phi::DenseTensor& src,
                   phi::Vector<size_t> index_lod,
                   phi::DenseTensor* dst,
@@ -70,9 +70,9 @@ class CopyMatrixRowsFunctor<phi::CPUContext, T> {
 template class CopyMatrixRowsFunctor<phi::CPUContext, float>;
 template class CopyMatrixRowsFunctor<phi::CPUContext, double>;
 
-template class LoDTensor2BatchFunctor<phi::CPUContext, float>;
-template class LoDTensor2BatchFunctor<phi::CPUContext, double>;
-template class Batch2LoDTensorFunctor<phi::CPUContext, float>;
-template class Batch2LoDTensorFunctor<phi::CPUContext, double>;
+template class DenseTensor2BatchFunctor<phi::CPUContext, float>;
+template class DenseTensor2BatchFunctor<phi::CPUContext, double>;
+template class Batch2DenseTensorFunctor<phi::CPUContext, float>;
+template class Batch2DenseTensorFunctor<phi::CPUContext, double>;
 
 }  // namespace phi::funcs

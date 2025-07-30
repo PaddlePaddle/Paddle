@@ -204,7 +204,9 @@ void GroupOp::Print(IrPrinter &printer) {
   auto &os = printer.os;
   auto op = operation();
   printer.PrintOpResult(*op);
-  os << " = \"" << name() << "\" [id:" << op->id() << "]";
+  os << " = ";
+  printer.PrintOpName(*op);
+  printer.PrintOpId(*op);
   printer.PrintOpOperands(*op);
   os << " -> ";
   printer.PrintOpReturnType(*op);

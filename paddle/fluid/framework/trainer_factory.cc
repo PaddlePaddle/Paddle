@@ -21,8 +21,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 class TrainerBase;
 
@@ -85,5 +84,4 @@ REGISTER_TRAINER_CLASS(PSGPUTrainer);
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 REGISTER_TRAINER_CLASS(PipelineTrainer);
 #endif
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

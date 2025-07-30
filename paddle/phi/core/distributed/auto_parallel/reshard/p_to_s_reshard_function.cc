@@ -95,10 +95,10 @@ void ReshardPToSWithPadding(DeviceContext* dev_ctx,
                     tmp_sections,
                     split_axis,
                     &tmp_out_vec);
-    // TODO(liyurui): Since we can not seperate local tensor with [0, 10] shape
+    // TODO(liyurui): Since we can not separate local tensor with [0, 10] shape
     // and uninitialized tensor, here we use a tricky solution.
     // Give local tensor which has, for example [0, 10] shape, a little
-    // allocation, to make it difference from uninitialized tensor in pipelline
+    // allocation, to make it difference from uninitialized tensor in pipeline
     // strategy.
     if (tmp_out_vec[0].dims()[split_axis] == 0) {
       tmp_out_vec[0].mutable_data(tmp_out_vec[0].place(), 4);
@@ -121,6 +121,11 @@ void PToSReshardFunction::Eval(DeviceContext* dev_ctx,
   int out_split_axis =
       GetSplitAxisWithDimsMapping(out_dist_attr.dims_mapping()).begin()->first;
   int64_t num_of_process = in_process_mesh.size();
+  if (num_of_process == 1) {
+    SetValue(out, in.value());
+    SetDistProps(out, in.dims(), out_dist_attr);
+    return;
+  }
   int64_t num_of_padding = in.dims()[out_split_axis] % num_of_process;
   bool is_balanced_split = (num_of_padding == 0);
 

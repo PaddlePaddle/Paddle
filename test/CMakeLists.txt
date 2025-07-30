@@ -139,6 +139,7 @@ endfunction()
 
 if(WITH_TESTING)
   if(WITH_CINN)
+    add_subdirectory(ap)
     add_subdirectory(cinn)
   endif()
   # The following unittests only run in PR-CI-CINN
@@ -180,6 +181,12 @@ if(WITH_TESTING)
   add_subdirectory(sequence)
   add_subdirectory(tensorrt)
   # add_subdirectory(white_list)
+  if(WITH_OPENVINO
+     AND NOT WIN32
+     AND NOT WITH_XPU
+     AND NOT WITH_ROCM)
+    add_subdirectory(openvino)
+  endif()
 
   if(WITH_DISTRIBUTE)
     add_subdirectory(collective)

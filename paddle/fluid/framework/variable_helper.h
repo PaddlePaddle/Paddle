@@ -25,5 +25,5 @@ class Variable;
 TEST_API void InitializeVariable(Variable* var, proto::VarType::Type var_type);
 void CopyVariable(const Variable& src_var, Variable* dst_var);
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace framework
+}  // namespace paddle

@@ -183,7 +183,7 @@ void CPUMatchMatrixTensorOPKernel(const Context& dev_ctx,
     }
   }
 
-  phi::LoD out_lod;
+  phi::LegacyLoD out_lod;
   out_lod.push_back(top_offset);
 
   out->set_lod(out_lod);

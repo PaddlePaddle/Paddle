@@ -19,8 +19,10 @@ import re
 import yaml
 from api_base import PREFIX_TENSOR_NAME
 from api_gen import (
+    BackwardAPI,
     ForwardAPI,
     api_namespace,
+    backward_api_black_list,
     declare_extension_api,
     header_include,
     source_include,
@@ -79,6 +81,70 @@ AUTO_PARALLEL_COND_TEMPLATE = """
   }}
   if (rank_is_in_current_mesh) {{{kernel_code}
   }}
+"""
+
+NCCL_COMMCONTEXT_INIT = """
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_XPU_BKCL)
+  const auto & comm_context_manager_ = phi::distributed::CommContextManager::GetInstance();
+  if (nranks > 1 && !comm_context_manager_.Has(std::to_string(ring_id))) {{
+    std::string store_key;
+    store_key = "nccl_ids/" + std::to_string(ring_id) + "/0";
+    if (!comm_context_manager_.Has(store_key)) {{
+        auto store = phi::distributed::CreateOrGetGlobalTCPStore();
+        CREATE_COMM_CONTEXT(store, std::to_string(ring_id), rank, nranks);
+    }}
+  }}
+#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+  const auto & comm_context_manager_ = phi::distributed::CommContextManager::GetInstance();
+  if (nranks > 1 && !comm_context_manager_.Has(std::to_string(ring_id))) {{
+    auto store = phi::distributed::CreateOrGetGlobalTCPStore();
+    CREATE_COMM_CONTEXT(store, std::to_string(ring_id), phi::distributed::GetDefaultPlace(), rank, nranks);
+  }}
+#endif
+"""
+
+SET_NCCL_COMMCONTEXT = """
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CUSTOM_DEVICE)
+  const auto & comm_context_manager = phi::distributed::CommContextManager::GetInstance();
+  COMM_CONTEXT* comm_context = nullptr;
+  std::string store_key;
+  store_key = "nccl_ids/" + std::to_string(ring_id) + "/0";
+  if (comm_context_manager.Has(std::to_string(ring_id))||comm_context_manager.Has(store_key)) {{
+    if (comm_context_manager.Has(std::to_string(ring_id))) {{
+        comm_context = static_cast<COMM_CONTEXT*>(
+          comm_context_manager.Get(std::to_string(ring_id)));
+    }} else {{
+        comm_context = static_cast<COMM_CONTEXT*>(
+          comm_context_manager.Get(store_key));
+    }}
+    PADDLE_ENFORCE_NE(
+        comm_context,
+        nullptr,
+        common::errors::Unavailable(
+            "NCCLCommContext is nullptr, collective op should "
+            "has ring_id(%d) attr.",
+            std::to_string(ring_id)));
+    #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_XPU_BKCL)
+        auto kernel_res = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+        "{}", {{kernel_backend, kernel_layout, kernel_data_type}}, true);
+        if (FLAGS_low_precision_op_list) {{
+        phi::KernelFactory::Instance().AddToLowPrecisionKernelList("{}", kernel_data_type);
+        }}
+        Backend act_kernel_backend = kernel_res.has_fallback_cpu ? Backend::CPU : kernel_backend;
+        auto* dev_context = GetDeviceContextByBackend(act_kernel_backend);
+        dev_context->SetCommContext(comm_context);
+    #elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+        auto kernel_res = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+            "{}", {{kernel_backend, kernel_layout, kernel_data_type}}, true);
+        if (FLAGS_low_precision_op_list) {{
+        phi::KernelFactory::Instance().AddToLowPrecisionKernelList("{}", kernel_data_type);
+        }}
+        Backend act_kernel_backend = kernel_res.has_fallback_cpu ? Backend::CPU : kernel_backend;
+        auto* dev_context = GetDeviceContextByBackend(act_kernel_backend);
+        dev_context->SetCommContext(comm_context);
+    #endif
+  }}
+#endif
 """
 
 # 1. InferSPMD
@@ -290,7 +356,7 @@ SINGLE_GLOBAL_META_OUT_DECL_TEMPLATE = """
     phi::MetaTensor meta_{}({});"""
 VECTOR_GLOBAL_META_OUT_DECL_TEMPLATE = """
     std::vector<phi::MetaTensor> {name}_meta_vec;
-    for (auto tmp : {name}) {{
+    for (phi::distributed::DistTensor* tmp : {name}) {{
       {name}_meta_vec.emplace_back(phi::MetaTensor(tmp));
     }}
     std::vector<phi::MetaTensor*> {name}_meta_ptr_vec({name}.size());
@@ -433,7 +499,7 @@ KERNEL_CALL_TEMPLATE = """
 """
 
 # TODO(GhostScreaming): Some operators generate shape info in runtime,
-# bincount. As a result, dist_output's global shape is set uncorrectly,
+# bincount. As a result, dist_output's global shape is set incorrectly,
 # because it's generated in InferMeta function. A temporally solution is
 # use black op list to set DistTensor shape extra.
 SINGLE_SET_DIST_OUT_DIMS = """
@@ -505,20 +571,54 @@ CALCULATE_LOCAL_SHAPE_TEMPLATE = """
       auto out_shape = {out_name}->dims();
       std::vector<{dtype}> local_shape;
       const auto& out_dist_attr = {out_dist_attr};
+      const auto& mesh_shape = out_dist_attr.process_mesh().shape();
       for (int i = 0; i < out_shape.size(); i++) {{
-        if (out_dist_attr.dims_mapping()[i] >= 0) {{
+        const auto& dims = out_dist_attr.multi_dims_mapping()[i];
+        if (dims.size() > 0) {{
           {dtype} shape_i = out_shape[i];
-          int64_t dim = out_dist_attr.dims_mapping()[i];
-          int64_t mesh_dim = out_dist_attr.process_mesh().shape()[dim];
+          int64_t num_shard = 1;
+          for (auto dim : dims) {{
+            num_shard *= mesh_shape[dim];
+          }}
           // TODO: Support aliquant condition.
-          PADDLE_ENFORCE(shape_i % mesh_dim == 0,
+          PADDLE_ENFORCE_EQ(shape_i % num_shard, 0,
                 common::errors::InvalidArgument(
                     "{op_name} only support local shape dim is divisible "
                     "by the mesh dim, however local_shape[%lld] is %lld "
-                    "and shard mesh dims is %lld.", i, shape_i, mesh_dim));
-          local_shape.push_back(shape_i / mesh_dim);
+                    "and shard mesh dims is %lld.", i, shape_i, num_shard));
+          local_shape.push_back(shape_i / num_shard);
         }} else {{
           local_shape.push_back(out_shape[i]);
+        }}
+      }}
+"""
+
+# Note: After unify the expand, expand_as and their grad kernel for all device,
+# this logic is no practical effect. But for semantically correct and can be removed.
+CALCULATE_LOCAL_SHAPE_KERNEL_TEMPLATE = """
+
+      auto out_grad_shape = out_grad.dims();
+      std::vector<{dtype}> local_kernel_shape;
+      const auto& out_grad_dist_attr = {out_grad_dist_attr};
+      const auto& grad_mesh_shape = out_grad_dist_attr.process_mesh().shape();
+      for (int i = 0; i < out_grad_shape.size(); i++) {{
+        const auto& dims = out_grad_dist_attr.multi_dims_mapping()[i];
+        if (dims.size() > 0) {{
+          {dtype} shape_i = out_grad_shape[i];
+          int64_t num_shard = 1;
+          for (auto dim : dims) {{
+            num_shard *= grad_mesh_shape[dim];
+          }}
+          // TODO: Support aliquant condition.
+          PADDLE_ENFORCE_EQ(
+            shape_i % num_shard, 0,
+            common::errors::InvalidArgument(
+                "{op_name} only support local shape dim is divisible "
+                "by the mesh dim, however local_kernel_shape[%lld] is %lld "
+                "and shard mesh dims is %lld.",
+                i, shape_i, num_shard));
+        }} else {{
+          local_kernel_shape.push_back(out_grad_shape[i]);
         }}
       }}
 """
@@ -590,7 +690,7 @@ class DistForwardAPI(ForwardAPI):
             infer_meta['local_shape'] = None
         # Inplace op that changes shape should not change its global shape
         # in inferMeta, otherwise, it may fails in reshard pass because of
-        # the inconsistence of dist_atttr and shape.
+        # the inconsistency of dist_atttr and shape.
         if 'global_shape' not in infer_meta_config:
             infer_meta['global_shape'] = None
         return infer_meta
@@ -860,6 +960,24 @@ class DistForwardAPI(ForwardAPI):
             input_args=input_args, mesh=mesh, kernel_code=kernel_select_code
         )
 
+        # Current initialization only consider the case where the parameters of op contain ring_id, nranks and rank.
+        # Other cases will be addressed in the future.
+        if 'ring_id' in self.attrs['names']:
+            if (
+                'rank' in self.attrs['names']
+                and 'nranks' in self.attrs['names']
+            ):
+                if_condition_code = (
+                    if_condition_code
+                    + '\n'
+                    + self.generate_nccl_commcontext_init_code()
+                )
+            if_condition_code = (
+                if_condition_code
+                + '\n'
+                + self.generate_set_nccl_commcontext_code()
+            )
+
         return kernel_key_item_init + if_condition_code
 
     def generate_specialized_infer_spmd_code(self) -> str:
@@ -1075,6 +1193,11 @@ class DistForwardAPI(ForwardAPI):
                     output_creation_code += VECTOR_OUT_CREATION_TEMPLATE.format(
                         dist_output_arg
                     )
+            else:
+                raise ValueError(
+                    f"{self.api} : Output of infer_spmd error : {self.outputs['types'][0]} type is not supported."
+                )
+
         elif output_num > 1:
             # api output generate
             if self.inplace_flag:
@@ -1099,6 +1222,7 @@ class DistForwardAPI(ForwardAPI):
             for i, out_type in enumerate(self.outputs['types']):
                 self.dist_output_args.append(f'dist_out_{i}')
                 self.dense_output_args.append(f'dense_out_{i}')
+
                 get_out_code = f"std::get<{i}>(api_output)"
                 if out_type == 'Tensor':
                     if self.is_inplace_and_optional_output(i):
@@ -1184,6 +1308,11 @@ class DistForwardAPI(ForwardAPI):
                                     in_name=get_out_code,
                                 )
                             )
+                else:
+                    raise ValueError(
+                        f"{self.api} : Output error: {out_type}"
+                        + " is not supported yet."
+                    )
         else:
             raise ValueError(
                 f"{self.api} : Output error: the output should not be empty."
@@ -1308,6 +1437,14 @@ class DistForwardAPI(ForwardAPI):
     def generate_kernel_selection_code(self) -> str:
         return KERNEL_SELECTION_TEMPLATE.format(
             self.api, self.kernel['func'][0], self.kernel['func'][0]
+        )
+
+    def generate_nccl_commcontext_init_code(self) -> str:
+        return NCCL_COMMCONTEXT_INIT.format(self.kernel['func'][0])
+
+    def generate_set_nccl_commcontext_code(self) -> str:
+        return SET_NCCL_COMMCONTEXT.format(
+            self.kernel['func'][0], self.api, self.kernel['func'][0], self.api
         )
 
     def generate_reshard_input_code(self) -> str:
@@ -1517,7 +1654,7 @@ class DistForwardAPI(ForwardAPI):
     def get_shape_type(self, attr_info):
         shape_type = "int"
         for name, info in attr_info.items():
-            if "IntArray" in info[0]:
+            if "IntArray" in info[0] or "int64_t" in info[0]:
                 shape_type = "int64_t"
         return shape_type
 
@@ -1660,7 +1797,7 @@ class DistForwardAPI(ForwardAPI):
 
         return output_decl_code + infer_meta_code
 
-    def generate_kernel_call_code(self) -> str:
+    def generate_kernel_call_code(self, is_forward=True) -> str:
         dense_input_trans_map = {
             'const Tensor&': 'const phi::DenseTensor&',
             'const std::vector<Tensor>&': 'const std::vector<const phi::DenseTensor*>&',
@@ -1678,6 +1815,7 @@ class DistForwardAPI(ForwardAPI):
         kernel_args_type_list = ['const phi::DeviceContext&']
 
         attr_names = self.attrs['names']
+        pure_kernel_args = self.kernel['param']
         kernel_args = self.kernel['param']
         if kernel_args is None:
             kernel_args = input_names + attr_names
@@ -1708,7 +1846,14 @@ class DistForwardAPI(ForwardAPI):
                     kernel_args_type_list.append('const phi::IntArray&')
                     # TODO(GhostScreaming): kernel like reshape need calculate local_shape
                     if self.infer_meta['local_shape'] is not None:
-                        arg = 'phi::IntArray(local_shape)'
+                        if is_forward or (
+                            pure_kernel_args is not None
+                            and self.infer_meta['local_shape']
+                            not in pure_kernel_args
+                        ):
+                            arg = 'phi::IntArray(local_shape)'
+                        else:
+                            arg = 'phi::IntArray(local_kernel_shape)'
                     else:
                         arg = 'phi::IntArray(' + arg + ')'
                 elif 'vector<phi::Scalar>' in self.attrs['attr_info'][arg][0]:
@@ -1722,6 +1867,16 @@ class DistForwardAPI(ForwardAPI):
                     kernel_args_type_list.append(
                         self.attrs['attr_info'][arg][0]
                     )
+                    # calculate local_shape for expand_as
+                    if self.infer_meta['local_shape'] is not None:
+                        if is_forward or (
+                            pure_kernel_args is not None
+                            and self.infer_meta['local_shape']
+                            not in pure_kernel_args
+                        ):
+                            arg = 'local_shape'
+                        else:
+                            arg = 'local_kernel_shape'
                 input_args.append(arg)
             elif isinstance(arg, bool):
                 input_args.append(str(arg).lower())
@@ -1817,6 +1972,11 @@ class DistForwardAPI(ForwardAPI):
                         )
                     )
                 else:
+                    if (
+                        self.kernel['func'][0] == 'fused_linear_param_grad_add'
+                        and i == 1
+                    ):
+                        set_out_dist_attr_code += "\n    if (has_bias)"
                     set_out_dist_attr_code += (
                         SET_SINGLE_OUT_REPLICATED_DIST_ATTR_TEMPLATE.format(
                             out_name
@@ -1997,8 +2157,24 @@ class DistForwardAPI(ForwardAPI):
             )
 
 
+class DistBackwardAPI(DistForwardAPI):
+
+    def gene_base_api_code(self, inplace_flag=False):
+        return BackwardAPI.gene_base_api_code(self, inplace_flag)
+
+    def gene_api_code(self):
+        return BackwardAPI.gene_api_code(self)
+
+    def gene_api_declaration(self):
+        return BackwardAPI.gene_api_declaration(self)
+
+
 def generate_api(
-    api_yaml_path, is_fused_ops_yaml, header_file_path, source_file_path
+    api_yaml_path,
+    is_fused_ops_yaml,
+    header_file_path,
+    source_file_path,
+    grad_flag,
 ):
     apis = []
 
@@ -2017,11 +2193,20 @@ def generate_api(
     header_file.write(header_include())
     header_file.write(namespace[0])
 
-    include_header_file = (
-        "paddle/phi/api/include/fused_api.h"
-        if is_fused_ops_yaml is True
-        else "paddle/phi/api/include/api.h"
-    )
+    if not grad_flag:
+        include_header_file = (
+            '#include "paddle/phi/api/include/fused_api.h"'
+            if is_fused_ops_yaml is True
+            else '#include "paddle/phi/api/include/api.h"'
+        )
+    else:
+        include_header_file = (
+            '#include "paddle/phi/api/backward/fused_backward_api.h" \n'
+            '#include "paddle/phi/api/backward/fused_backward_api_base.h" '
+            if is_fused_ops_yaml is True
+            else '#include "paddle/phi/api/backward/backward_api.h" \n'
+            '#include "paddle/phi/api/backward/backward_api_base.h" '
+        )
     # not all fused ops support dygraph
     if is_fused_ops_yaml is True:
         new_apis = [
@@ -2036,7 +2221,13 @@ def generate_api(
     source_file.write(namespace[0])
 
     for api in apis:
-        dist_forward_api = DistForwardAPI(api)
+        if not grad_flag:
+            dist_forward_api = DistForwardAPI(api)
+        else:
+            dist_forward_api = DistBackwardAPI(api)
+
+        if dist_forward_api.api in backward_api_black_list:
+            continue
         if dist_forward_api.is_dygraph_api and not is_fused_ops_yaml:
             dist_forward_api.is_dygraph_api = False
 
@@ -2070,6 +2261,13 @@ def main():
     )
 
     parser.add_argument(
+        '--backward_api_yaml_path',
+        help='path to api yaml file',
+        nargs='+',
+        default=['paddle/phi/ops/yaml/backward.yaml'],
+    )
+
+    parser.add_argument(
         '--is_fused_ops_yaml',
         help='flag of fused ops yaml',
         action='store_true',
@@ -2087,15 +2285,41 @@ def main():
         default='paddle/phi/api/lib/api.cc',
     )
 
-    options = parser.parse_args()
+    parser.add_argument(
+        '--backward_api_header_path',
+        help='output of generated api header code file',
+        default='paddle/phi/api/backward/backward_api.h',
+    )
 
+    parser.add_argument(
+        '--backward_api_source_path',
+        help='output of generated api source code file',
+        default='paddle/phi/api/lib/backward_api.cc',
+    )
+
+    options = parser.parse_args()
     api_yaml_path = options.api_yaml_path
+    backward_api_yaml_path = options.backward_api_yaml_path
     is_fused_ops_yaml = options.is_fused_ops_yaml
     header_file_path = options.api_header_path
     source_file_path = options.api_source_path
+    backward_header_file_path = options.backward_api_header_path
+    backward_source_file_path = options.backward_api_source_path
 
     generate_api(
-        api_yaml_path, is_fused_ops_yaml, header_file_path, source_file_path
+        api_yaml_path,
+        is_fused_ops_yaml,
+        header_file_path,
+        source_file_path,
+        False,
+    )
+
+    generate_api(
+        backward_api_yaml_path,
+        is_fused_ops_yaml,
+        backward_header_file_path,
+        backward_source_file_path,
+        True,
     )
 
 

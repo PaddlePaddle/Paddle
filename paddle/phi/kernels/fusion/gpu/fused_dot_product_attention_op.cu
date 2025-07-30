@@ -23,6 +23,8 @@
 #include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/gpudnn/mha_cudnn_frontend.h"
 
+PHI_DECLARE_bool(cudnn_deterministic);
+
 namespace phi {
 namespace fusion {
 
@@ -411,6 +413,7 @@ void FusedDotProductAttentionGradKernel(
   }
 
   size_t workspace_size = 0;
+  bool deterministic = FLAGS_cudnn_deterministic;
   // call the first time to get the workspace size
   fused_attn_arbitrary_seqlen_bwd_impl(batch_size,
                                        num_heads,
@@ -425,6 +428,7 @@ void FusedDotProductAttentionGradKernel(
                                        mha_layout,
                                        bias_type,
                                        mask_type,
+                                       deterministic,
                                        q_dev_ptr,
                                        k_dev_ptr,
                                        v_dev_ptr,
@@ -464,6 +468,7 @@ void FusedDotProductAttentionGradKernel(
       mha_layout,
       bias_type,
       mask_type,
+      deterministic,
       q_dev_ptr,
       k_dev_ptr,
       v_dev_ptr,

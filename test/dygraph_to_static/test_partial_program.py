@@ -18,8 +18,8 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
-    test_legacy_and_pt,
     test_pir_only,
+    test_pt_only,
 )
 from test_fetch_feed import Linear
 
@@ -132,7 +132,7 @@ class TestWithNestedOutput(Dy2StTestBase):
 
 class TestWithTrainAndEval(Dy2StTestBase):
     @test_ast_only
-    @test_legacy_and_pt
+    @test_pt_only
     def test_legacy_ir_switch_eval_and_train(self):
         # TODO(cleanup-legacy-ir): Remove this test case
         linear_net = Linear()
@@ -196,7 +196,7 @@ class TestWithTrainAndEval(Dy2StTestBase):
 
 class TestWithNoGrad(Dy2StTestBase):
     @test_ast_only
-    @test_legacy_and_pt
+    @test_pt_only
     def test_legacy_ir_with_no_grad(self):
         # TODO(cleanup-legacy-ir): Remove this test case
         linear_net = Linear()
@@ -207,7 +207,6 @@ class TestWithNoGrad(Dy2StTestBase):
         with paddle.no_grad():
             linear_net.train()
             linear_net(x)
-            # BUG: 我们希望这里 是 ASTStaticFunction(StaticFunction):
             _, partial_layer = linear_net.forward.program_cache.last()[-1]
             self.assertEqual(
                 partial_layer.program, partial_layer._train_program
@@ -224,7 +223,6 @@ class TestWithNoGrad(Dy2StTestBase):
         with paddle.no_grad():
             linear_net.train()
             linear_net(x)
-            # BUG: 我们希望这里 是 ASTStaticFunction(StaticFunction):
             _, partial_layer = linear_net.forward.program_cache.last()[-1]
             self.assertEqual(partial_layer.program, partial_layer.train_program)
 

@@ -27,6 +27,10 @@ void SubtractKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   dev_ctx.template Alloc<T>(out);
   if (x.dims() == y.dims()) {
     SameDimsElementwiseCompute<SameDimsSubtractFunctor<CPUContext, T>>()(

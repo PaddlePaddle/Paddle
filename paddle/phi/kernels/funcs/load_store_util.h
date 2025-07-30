@@ -44,12 +44,23 @@ __forceinline__ __device__ OutType QuantHelperFunc(const InType input,
       ClipFunc<float>(quant_value, min_bound, max_bound));
 }
 
+template <typename InType, typename OutType>
+__forceinline__ __device__ OutType FP8QuantHelperFunc(const InType input,
+                                                      const float scale,
+                                                      const int round_type,
+                                                      const float max_bound,
+                                                      const float min_bound) {
+  float quant_value = max_bound * scale * input;
+  return static_cast<OutType>(
+      ClipFunc<float>(quant_value, min_bound, max_bound));
+}
+
 template <typename T>
 struct Load {
   explicit Load(const T *src) : src_(src) {}
 
   template <int VecSize>
-  __device__ void load(phi::AlignedVector<T, VecSize> *dst, int idx) {
+  __device__ void load(phi::AlignedVector<T, VecSize> *dst, int64_t idx) {
     phi::Load<T, VecSize>(src_ + idx, dst);
   }
 
@@ -61,7 +72,7 @@ struct Store {
   explicit Store(T *dst) : dst_(dst) {}
 
   template <int VecSize>
-  __device__ void store(phi::AlignedVector<T, VecSize> &src, int idx) {
+  __device__ void store(phi::AlignedVector<T, VecSize> &src, int64_t idx) {
     phi::Store<T, VecSize>(src, dst_ + idx);
   }
 
@@ -70,11 +81,11 @@ struct Store {
 
 template <typename T>
 struct Store<T, true> {
-  Store(T *dst, const T *shift, const T *smooth, const int cols)
+  Store(T *dst, const T *shift, const T *smooth, const int64_t cols)
       : dst_(dst), shift_(shift), smooth_(smooth), cols_(cols) {}
 
   template <int VecSize>
-  __device__ void store(phi::AlignedVector<T, VecSize> &src, int idx) {
+  __device__ void store(phi::AlignedVector<T, VecSize> &src, int64_t idx) {
     using Vec = phi::AlignedVector<T, VecSize>;
     Vec shift_vec;
     Vec smooth_vec;
@@ -91,16 +102,18 @@ struct Store<T, true> {
   T *dst_;
   const T *shift_;
   const T *smooth_;
-  const int cols_;
+  const int64_t cols_;
 };
 
 template <typename T>
 struct DequantLoad {
-  DequantLoad(const int32_t *src, const float *dequant_scales, const int cols)
+  DequantLoad(const int32_t *src,
+              const float *dequant_scales,
+              const int64_t cols)
       : src_(src), dequant_scales_(dequant_scales), cols_(cols) {}
 
   template <int VecSize>
-  __device__ void load(phi::AlignedVector<T, VecSize> *dst, int idx) {
+  __device__ void load(phi::AlignedVector<T, VecSize> *dst, int64_t idx) {
     using SrcVec = phi::AlignedVector<int32_t, VecSize>;
     using DstVec = phi::AlignedVector<T, VecSize>;
     using ScaleVec = phi::AlignedVector<float, VecSize>;
@@ -121,12 +134,12 @@ struct DequantLoad {
 
   const int32_t *src_;
   const float *dequant_scales_;
-  const int cols_;
+  const int64_t cols_;
 };
 
-template <typename T, bool Smooth = false>
+template <typename T, typename OutT, bool Smooth = false>
 struct QuantStore {
-  QuantStore(int8_t *dst,
+  QuantStore(OutT *dst,
              const int quant_round_type,
              const float quant_scale,
              const float quant_max_bound,
@@ -139,23 +152,31 @@ struct QuantStore {
 
   template <int VecSize>
   __device__ void store(phi::AlignedVector<T, VecSize> &src,  // NOLINT
-                        int idx) {                            // NOLINT
-    using DstVec = phi::AlignedVector<int8_t, VecSize>;
+                        int64_t idx) {                        // NOLINT
+    using DstVec = phi::AlignedVector<OutT, VecSize>;
 
     DstVec dst_vec;
 #pragma unroll
     for (int i = 0; i < VecSize; i++) {
-      dst_vec[i] = QuantHelperFunc<float, int8_t>(static_cast<float>(src[i]),
+      if constexpr (std::is_same_v<OutT, phi::dtype::float8_e4m3fn>) {
+        dst_vec[i] = FP8QuantHelperFunc<float, OutT>(static_cast<float>(src[i]),
+                                                     quant_scale_,
+                                                     quant_round_type_,
+                                                     quant_max_bound_,
+                                                     quant_min_bound_);
+      } else {
+        dst_vec[i] = QuantHelperFunc<float, OutT>(static_cast<float>(src[i]),
                                                   quant_scale_,
                                                   quant_round_type_,
                                                   quant_max_bound_,
                                                   quant_min_bound_);
+      }
     }
 
-    phi::Store<int8_t, VecSize>(dst_vec, dst_ + idx);
+    phi::Store<OutT, VecSize>(dst_vec, dst_ + idx);
   }
 
-  int8_t *dst_;
+  OutT *dst_;
   const int quant_round_type_;
   const float quant_scale_;
   const float quant_max_bound_;
@@ -163,11 +184,11 @@ struct QuantStore {
 };
 
 template <typename T>
-struct QuantStore<T, true> {
+struct QuantStore<T, int8_t, true> {
   QuantStore(int8_t *dst,
              const T *shift,
              const T *smooth,
-             const int cols,
+             const int64_t cols,
              const int quant_round_type,
              const float quant_scale,
              const float quant_max_bound,
@@ -183,7 +204,7 @@ struct QuantStore<T, true> {
 
   template <int VecSize>
   __device__ void store(phi::AlignedVector<T, VecSize> &src,  // NOLINT
-                        int idx) {                            // NOLINT
+                        int64_t idx) {                        // NOLINT
     using DstVec = phi::AlignedVector<int8_t, VecSize>;
     using Vec = phi::AlignedVector<T, VecSize>;
 
@@ -213,7 +234,7 @@ struct QuantStore<T, true> {
   const float quant_min_bound_;
   const T *shift_;
   const T *smooth_;
-  const int cols_;
+  const int64_t cols_;
 };
 
 }  // namespace funcs

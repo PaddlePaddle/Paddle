@@ -19,9 +19,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 class Pass;
 
@@ -54,6 +52,4 @@ std::shared_ptr<Pass> PassBuilder::InsertPass(size_t idx,
   return passes_[idx];
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir

@@ -52,6 +52,7 @@ HLIR_DCL_UNARY_PE(Log2);
 HLIR_DCL_UNARY_PE(Log10);
 HLIR_DCL_UNARY_PE(Floor);
 HLIR_DCL_UNARY_PE(Ceil);
+HLIR_DCL_UNARY_PE(Rint);
 HLIR_DCL_UNARY_PE(Round);
 HLIR_DCL_UNARY_PE(Trunc);
 HLIR_DCL_UNARY_PE(Cos);
@@ -149,10 +150,10 @@ ir::Tensor Store(const ir::Tensor& A,
                  const std::string& name = UniqName("T_Elementwise_Store_out"));
 
 ir::Tensor Arange(
-    const float start,
-    const float stop,
-    const float step,
+    Expr start,
+    Expr step,
     const Type& dtype,
+    const int64_t arange_size,
     const std::string& name = UniqName("T_Elementwise_Arange_out"));
 
 ir::Tensor Tril(const ir::Tensor& A,
@@ -165,6 +166,7 @@ ir::Tensor GenerateShape(
     const cinn::dialect::SymbolBindings& symbol_bindings,
     const std::vector<symbol::DimExpr>& output_dim_exprs,
     const std::vector<ir::Dim>& out_shape,
+    const std::vector<Type>& out_type,
     const std::string& name = UniqName("T_Generate_Shape_out"));
 
 // This operator checks if all x and y satisfy the condition: |x - y| <= atol +

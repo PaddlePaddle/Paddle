@@ -12,17 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.w
 
-import os
 import sys
 import unittest
 
 import numpy as np
 
 import paddle
-from paddle.base import core
 
 sys.path.append("..")
-from op_test import OpTest
+from op_test import OpTest, get_places
 
 from paddle import base
 
@@ -318,18 +316,11 @@ class TestSolveOpError(unittest.TestCase):
 class TestSolveOpAPI_1(unittest.TestCase):
     def setUp(self):
         np.random.seed(2021)
-        self.place = []
+        self.place = get_places()
         self.dtype = "float64"
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
 
     def check_static_result(self, place):
+        paddle.enable_static()
         with base.program_guard(base.Program(), base.Program()):
             paddle_input_x = paddle.static.data(
                 name="input_x", shape=[3, 3], dtype=self.dtype
@@ -350,9 +341,7 @@ class TestSolveOpAPI_1(unittest.TestCase):
                 feed={"input_x": np_input_x, "input_y": np_input_y},
                 fetch_list=[paddle_result],
             )
-            np.testing.assert_allclose(
-                fetches[0], np.linalg.solve(np_input_x, np_input_y), rtol=1e-05
-            )
+            np.testing.assert_allclose(fetches[0], np_result, rtol=1e-05)
 
     def test_static(self):
         for place in self.place:
@@ -384,16 +373,8 @@ class TestSolveOpAPI_1(unittest.TestCase):
 class TestSolveOpAPI_2(unittest.TestCase):
     def setUp(self):
         np.random.seed(2021)
-        self.place = []
+        self.place = get_places()
         self.dtype = "float64"
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
 
     def check_static_result(self, place):
         paddle.enable_static()
@@ -417,9 +398,7 @@ class TestSolveOpAPI_2(unittest.TestCase):
                 feed={"input_x": np_input_x, "input_y": np_input_y},
                 fetch_list=[paddle_result],
             )
-            np.testing.assert_allclose(
-                fetches[0], np.linalg.solve(np_input_x, np_input_y), rtol=1e-05
-            )
+            np.testing.assert_allclose(fetches[0], np_result, rtol=1e-05)
 
     def test_static(self):
         for place in self.place:
@@ -450,16 +429,8 @@ class TestSolveOpAPI_2(unittest.TestCase):
 class TestSolveOpAPI_3(unittest.TestCase):
     def setUp(self):
         np.random.seed(2021)
-        self.place = []
+        self.place = get_places()
         self.dtype = "float32"
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
 
     def check_static_result(self, place):
         paddle.enable_static()
@@ -483,9 +454,7 @@ class TestSolveOpAPI_3(unittest.TestCase):
                 feed={"input_x": np_input_x, "input_y": np_input_y},
                 fetch_list=[paddle_result],
             )
-            np.testing.assert_allclose(
-                fetches[0], np.linalg.solve(np_input_x, np_input_y), rtol=0.0001
-            )
+            np.testing.assert_allclose(fetches[0], np_result, rtol=0.0001)
 
     def test_static(self):
         for place in self.place:
@@ -517,16 +486,8 @@ class TestSolveOpAPI_3(unittest.TestCase):
 class TestSolveOpAPI_4(unittest.TestCase):
     def setUp(self):
         np.random.seed(2021)
-        self.place = []
+        self.place = get_places()
         self.dtype = "float64"
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
 
     def check_static_result(self, place):
         with base.program_guard(base.Program(), base.Program()):
@@ -549,9 +510,7 @@ class TestSolveOpAPI_4(unittest.TestCase):
                 feed={"input_x": np_input_x, "input_y": np_input_y},
                 fetch_list=[paddle_result],
             )
-            np.testing.assert_allclose(
-                fetches[0], np.linalg.solve(np_input_x, np_input_y), rtol=1e-05
-            )
+            np.testing.assert_allclose(fetches[0], np_result, rtol=1e-05)
 
     def test_static(self):
         for place in self.place:
@@ -598,16 +557,8 @@ def np_solve_right(x, y):
 class TestSolveOpAPIRight_1(unittest.TestCase):
     def setUp(self):
         np.random.seed(2021)
-        self.place = []
+        self.place = get_places()
         self.dtype = "float64"
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
 
     def check_static_result(self, place):
         with base.program_guard(base.Program(), base.Program()):
@@ -666,16 +617,8 @@ class TestSolveOpAPIRight_1(unittest.TestCase):
 class TestSolveOpAPIRight_2(unittest.TestCase):
     def setUp(self):
         np.random.seed(2021)
-        self.place = []
+        self.place = get_places()
         self.dtype = "float64"
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
 
     def check_static_result(self, place):
         paddle.enable_static()
@@ -734,16 +677,8 @@ class TestSolveOpAPIRight_2(unittest.TestCase):
 class TestSolveOpAPIRight_3(unittest.TestCase):
     def setUp(self):
         np.random.seed(2021)
-        self.place = []
+        self.place = get_places()
         self.dtype = "float32"
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
 
     def check_static_result(self, place):
         paddle.enable_static()
@@ -803,16 +738,8 @@ class TestSolveOpAPIRight_3(unittest.TestCase):
 class TestSolveOpAPIRight_4(unittest.TestCase):
     def setUp(self):
         np.random.seed(2021)
-        self.place = []
+        self.place = get_places()
         self.dtype = "float64"
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
 
     def check_static_result(self, place):
         with base.program_guard(base.Program(), base.Program()):
@@ -870,16 +797,8 @@ class TestSolveOpAPIRight_4(unittest.TestCase):
 class TestSolveOpSingularAPI(unittest.TestCase):
     # Singular matrix is ​​not invertible
     def setUp(self):
-        self.places = []
+        self.places = get_places()
         self.dtype = "float64"
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
 
     def check_static_result(self, place):
         with base.program_guard(base.Program(), base.Program()):
@@ -893,14 +812,14 @@ class TestSolveOpSingularAPI(unittest.TestCase):
 
             exe = base.Executor(place)
             try:
-                fetches = exe.run(
+                exe.run(
                     base.default_main_program(),
                     feed={"x": input_x_np, "y": input_y_np},
                     fetch_list=[result],
                 )
-            except RuntimeError as ex:
+            except RuntimeError:
                 print("The mat is singular")
-            except ValueError as ex:
+            except ValueError:
                 print("The mat is singular")
 
     def test_static(self):
@@ -916,11 +835,102 @@ class TestSolveOpSingularAPI(unittest.TestCase):
                 input_x = paddle.to_tensor(input_x_np)
                 input_y = paddle.to_tensor(input_y_np)
                 try:
-                    result = paddle.linalg.solve(input_x, input_y)
-                except RuntimeError as ex:
+                    paddle.linalg.solve(input_x, input_y)
+                except RuntimeError:
                     print("The mat is singular")
-                except ValueError as ex:
+                except ValueError:
                     print("The mat is singular")
+
+
+class TestSolveOpAPIZeroDimCase(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2021)
+        self.place = get_places()
+        self.dtype = "float32"
+
+    def check_static_result(self, place, x_shape, y_shape, np_y_shape):
+        paddle.enable_static()
+        with base.program_guard(base.Program(), base.Program()):
+            paddle_input_x = paddle.static.data(
+                name="input_x", shape=x_shape, dtype=self.dtype
+            )
+            paddle_input_y = paddle.static.data(
+                name="input_y", shape=y_shape, dtype=self.dtype
+            )
+            paddle_result = paddle.linalg.solve(
+                paddle_input_x, paddle_input_y, left=False
+            )
+
+            np_input_x = np.random.random(x_shape).astype(self.dtype)
+            np_input_y = np.random.random(np_y_shape).astype(self.dtype)
+
+            np_result = np.linalg.solve(np_input_x, np_input_y)
+
+            exe = base.Executor(place)
+            fetches = exe.run(
+                base.default_main_program(),
+                feed={"input_x": np_input_x, "input_y": np_input_y},
+                fetch_list=[paddle_result],
+            )
+            np.testing.assert_allclose(fetches[0], np_result, rtol=0.0001)
+
+    def test_static(self):
+        for place in self.place:
+            self.check_static_result(
+                place=place,
+                x_shape=[10, 0, 0],
+                y_shape=[10, 0, 0],
+                np_y_shape=[10, 0, 0],
+            )
+            with self.assertRaises(ValueError):
+                self.check_static_result(
+                    place=place,
+                    x_shape=[10, 0, 0],
+                    y_shape=[10],
+                    np_y_shape=[10],
+                )
+
+    def test_dygraph(self):
+        def run(place, x_shape, y_shape):
+            with base.dygraph.guard(place):
+                input_x_np = np.random.random(x_shape).astype(self.dtype)
+                input_y_np = np.random.random(y_shape).astype(self.dtype)
+
+                tensor_input_x = paddle.to_tensor(
+                    input_x_np, stop_gradient=False
+                )
+                tensor_input_y = paddle.to_tensor(
+                    input_y_np, stop_gradient=False
+                )
+
+                numpy_output = np.linalg.solve(input_x_np, input_y_np)
+                paddle_output = paddle.linalg.solve(
+                    tensor_input_x, tensor_input_y, left=True
+                )
+                np.testing.assert_allclose(
+                    numpy_output, paddle_output.numpy(), rtol=0.00011
+                )
+                self.assertEqual(
+                    numpy_output.shape, paddle_output.numpy().shape
+                )
+                loss = paddle.sum(paddle_output)
+                loss.backward()
+                np.testing.assert_allclose(
+                    tensor_input_x.grad.shape, tensor_input_x.shape
+                )
+                np.testing.assert_allclose(
+                    tensor_input_y.grad.shape, tensor_input_y.shape
+                )
+
+        for place in self.place:
+            run(place, x_shape=[1, 10, 10], y_shape=[1, 10, 10])
+            run(place, x_shape=[0, 10, 10], y_shape=[0, 10, 10])
+            run(place, x_shape=[0, 10, 10], y_shape=[1, 10, 10])
+            run(place, x_shape=[10, 0, 0], y_shape=[10, 0, 0])
+            run(place, x_shape=[10, 1, 1], y_shape=[10, 1, 0])
+
+            with self.assertRaises(ValueError):
+                run(place, x_shape=[10, 0, 0], y_shape=[10])
 
 
 if __name__ == "__main__":

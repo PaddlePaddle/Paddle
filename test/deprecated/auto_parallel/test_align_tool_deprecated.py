@@ -97,10 +97,8 @@ class TestAlignTool(unittest.TestCase):
                         os.mkdir("./serial")
                     align_tool.save("./serial", vars, fetch_list)
                     break
-            AutoAlignTool.diff_informations("./serial", "./serial")
-            AutoAlignTool.diff_informations_from_dirs(
-                ["./serial"], ["./serial"]
-            )
+            AutoAlignTool.diff_information("./serial", "./serial")
+            AutoAlignTool.diff_information_from_dirs(["./serial"], ["./serial"])
             break
 
         print("test auto parallel align tool successfully!")

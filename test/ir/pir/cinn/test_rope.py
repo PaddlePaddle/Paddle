@@ -73,9 +73,8 @@ class TestRotaryPosEmb(unittest.TestCase):
         net.eval()
         out = net(self.q, self.k, self.cos, self.sin, self.position_ids)
 
-        # TODO(phlrain): Need to Fuse to one Kernel
-        # if use_cinn:
-        #     self.check_jit_kernel_info(net.forward)
+        if use_cinn:
+            self.check_jit_kernel_info(net.forward)
         return out
 
     def test_eval(self):

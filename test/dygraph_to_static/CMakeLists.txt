@@ -3,8 +3,8 @@ file(
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
-set(SOT_ENVS SOT_LOG_LEVEL=0 COST_MODEL=False MIN_GRAPH_SIZE=0
-             STRICT_MODE=False)
+set(SOT_ENVS SOT_LOG_LEVEL=0 MIN_GRAPH_SIZE=0 STRICT_MODE=False
+             SOT_ENABLE_STRICT_GUARD_CHECK=True)
 
 if(WIN32 AND NOT WITH_GPU)
   # disable on Windows CPU CI for timeout
@@ -41,7 +41,8 @@ set_tests_properties(test_loop PROPERTIES TIMEOUT 180)
 set_tests_properties(test_mnist_amp PROPERTIES TIMEOUT 240)
 set_tests_properties(test_sentiment PROPERTIES TIMEOUT 150)
 set_tests_properties(test_incubate_jit_inference PROPERTIES TIMEOUT 150)
-
+set_tests_properties(test_partial_program_hook
+                     PROPERTIES ENVIRONMENT "FLAGS_comp_skip_default_ops=False")
 if(TEST test_resnet_amp)
   set_tests_properties(test_resnet_amp PROPERTIES TIMEOUT 360)
 endif()
