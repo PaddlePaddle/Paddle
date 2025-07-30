@@ -86,14 +86,17 @@ nvinfer1::DataType SkipGroupnormActPluginDynamic::getOutputDataType(
 }
 int SkipGroupnormActPluginDynamic::initialize() TRT_NOEXCEPT { return 0; }
 
-static inline int32_t divUp(int32_t m, int32_t n) { return (m + n - 1) / n; }
+template <typename T>
+static inline T divUp(T m, T n) {
+  return (m + n - 1) / n;
+}
 
-static int32_t findMaxDivisor(int32_t n, int32_t maxAllowedDivisor) {
-  int32_t maxDivisor = -1;
-  for (int32_t i = 1; i <= std::sqrt(n); i++) {
+static int64_t findMaxDivisor(int64_t n, int64_t maxAllowedDivisor) {
+  int64_t maxDivisor = -1;
+  for (int64_t i = 1; i <= std::sqrt(n); i++) {
     if (n % i == 0) {
-      int32_t divisor1 = n / i;
-      int32_t divisor2 = i;
+      int64_t divisor1 = n / i;
+      int64_t divisor2 = i;
 
       if (divisor1 > maxDivisor && divisor1 < maxAllowedDivisor) {
         maxDivisor = divisor1;
@@ -132,7 +135,7 @@ struct GroupSumsOp {
 
 template <int32_t tTHREADS_PER_BLOCK>
 __global__ void skipGroupNormNDHWCSumKernel(
-    GroupNormNDHWCParams<__half, int32_t> params) {
+    GroupNormNDHWCParams<__half> params) {
   // The object in charge of doing the sums for the different blocks.
   typedef cub::BlockScan<GroupSums, tTHREADS_PER_BLOCK> BlockScan;
 
@@ -148,16 +151,16 @@ __global__ void skipGroupNormNDHWCSumKernel(
   int32_t ci = blockIdx.x * params.cPerBlock + threadIdx.x * 2;
 
   // The first activation loaded by that block.
-  int32_t dhwBegin = blockIdx.y * params.dhwPerBlock;
+  int64_t dhwBegin = blockIdx.y * params.dhwPerBlock;
   // The last activation loaded by that block.
-  int32_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
+  int64_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
 
   // The sums.
   float sum = 0.F;
   float sumSq = 0.F;
 
   // Iterate over the activations to compute the sums.
-  for (int32_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
+  for (int64_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The offset.
     int64_t offset = static_cast<int64_t>(ni) * params.dhwc +
                      static_cast<int64_t>(dhwi) * params.c + ci;
@@ -225,7 +228,7 @@ __global__ void skipGroupNormNDHWCSumKernel(
   atomicAdd(&params.redBuffer[(2 * ni + 1) * params.groups + gj], sums.y);
 }
 
-void skipGroupNormNDHWCSum(GroupNormNDHWCParams<__half, int32_t> const &params,
+void skipGroupNormNDHWCSum(GroupNormNDHWCParams<__half> const &params,
                            cudaStream_t stream) {
   // Make sure the values are as we expect.
   PADDLE_ENFORCE_EQ(params.c % params.cPerBlock,
@@ -286,7 +289,7 @@ void skipGroupNormNDHWCSum(GroupNormNDHWCParams<__half, int32_t> const &params,
 
 template <int32_t tTHREADS_PER_BLOCK>
 __global__ void skipGroupNormNDHWCScaleKernel(
-    GroupNormNDHWCParams<__half, int32_t> params) {
+    GroupNormNDHWCParams<__half> params) {
   // The instance in the batch.
   int32_t ni = blockIdx.z;
   // The channel loaded by that thread (2 channels per thread for F16x2).
@@ -318,12 +321,12 @@ __global__ void skipGroupNormNDHWCScaleKernel(
   float invStdDev = rsqrtf(var + params.eps);
 
   // The first activation loaded by that block.
-  int32_t dhwBegin = blockIdx.y * params.dhwPerBlock;
+  int64_t dhwBegin = blockIdx.y * params.dhwPerBlock;
   // The last activation loaded by that block.
-  int32_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
+  int64_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
 
   // Iterate over the activations to compute the sums.
-  for (int32_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
+  for (int64_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The src/dst offset.
     int64_t offset = (int64_t)ni * params.dhwc + dhwi * params.c + ci;
 
@@ -357,8 +360,8 @@ __global__ void skipGroupNormNDHWCScaleKernel(
   }
 }
 
-void skipGroupNormNDHWCScale(
-    GroupNormNDHWCParams<__half, int32_t> const &params, cudaStream_t stream) {
+void skipGroupNormNDHWCScale(GroupNormNDHWCParams<__half> const &params,
+                             cudaStream_t stream) {
   // Make sure the dimensions are aligned with what we expect.
   PADDLE_ENFORCE_EQ(
       params.c % params.cPerBlock,
@@ -475,8 +478,9 @@ int SkipGroupnormActPluginDynamic::enqueue(
     // params_.w = input_desc[0].dims.d[3];
     // params_.c = input_desc[0].dims.d[1];
     params_.groups = groups_;
-    params_.dhw = params_.d * params_.h * params_.w;
-    const int32_t blocksPerDHW = findMaxDivisor(params_.dhw, maxBlocksPerDHW);
+    params_.dhw = static_cast<int64_t>(params_.d) * params_.h * params_.w;
+    const int64_t blocksPerDHW =
+        findMaxDivisor(params_.dhw, static_cast<int64_t>(maxBlocksPerDHW));
     params_.dhwPerBlock = divUp(params_.dhw, blocksPerDHW);
     params_.cPerBlock = cPerBlock;
     params_.cPerGroup = params_.c / params_.groups;

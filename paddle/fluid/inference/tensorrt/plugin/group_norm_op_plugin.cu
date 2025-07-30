@@ -77,7 +77,7 @@ static int64_t findMaxDivisor(int64_t n, int64_t maxAllowedDivisor) {
 
 template <int tTHREADS_PER_BLOCK>
 __global__ void groupNormNCHW32SumKernelQDQ(
-    const GroupNormNDHWCParams<__half, int64_t> params) {
+    const GroupNormNDHWCParams<__half> params) {
   // The object in charge of doing the sums for the different blocks.
   typedef cub::BlockScan<GroupSums, tTHREADS_PER_BLOCK> BlockScan;
 
@@ -168,7 +168,7 @@ __global__ void groupNormNCHW32SumKernelQDQ(
   atomicAdd(&params.redBuffer[(2 * ni + 1) * params.groups + gj], sums.y);
 }
 
-void groupNormNCHW32SumQDQ(const GroupNormNDHWCParams<__half, int64_t> &params,
+void groupNormNCHW32SumQDQ(const GroupNormNDHWCParams<__half> &params,
                            cudaStream_t stream) {
   dim3 grid;
 
@@ -200,7 +200,7 @@ void groupNormNCHW32SumQDQ(const GroupNormNDHWCParams<__half, int64_t> &params,
 
 template <int tTHREADS_PER_BLOCK>
 __global__ void groupNormNCHW32ScaleKernelQDQ(
-    const GroupNormNDHWCParams<__half, int64_t> params) {
+    const GroupNormNDHWCParams<__half> params) {
   // The instance in the batch.
   int32_t ni = blockIdx.z;
   // The channel loaded by that thread (2 channels per thread for F16x2).
@@ -292,8 +292,8 @@ __global__ void groupNormNCHW32ScaleKernelQDQ(
   }
 }
 
-void groupNormNCHW32ScaleQDQ(
-    const GroupNormNDHWCParams<__half, int64_t> &params, cudaStream_t stream) {
+void groupNormNCHW32ScaleQDQ(const GroupNormNDHWCParams<__half> &params,
+                             cudaStream_t stream) {
   dim3 grid;
 
   // The number of blocks to compute all the channels.

@@ -174,7 +174,7 @@ class PrelnGroupnormActPluginDynamic : public DynamicPluginTensorRT {
   std::vector<float> bias_;
   std::shared_ptr<void> scale_gpu_;
   std::shared_ptr<void> bias_gpu_;
-  GroupNormNDHWCParams<__half, int32_t> params_;
+  GroupNormNDHWCParams<__half> params_;
   int groups_;
   float eps_;
   bool with_silu_;

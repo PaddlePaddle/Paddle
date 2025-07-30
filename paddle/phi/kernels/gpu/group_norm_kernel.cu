@@ -213,7 +213,7 @@ inline __device__ void UpdateSum<phi::dtype::bfloat16, 2>(
 
 template <typename T, int THREADS_PER_BLOCK>
 __global__ void groupNormNDHWCSumSingerChannelKernel(
-    const GroupNormNDHWCParams<T, int64_t> params) {
+    const GroupNormNDHWCParams<T> params) {
   // The instance in the batch.
   __shared__ float2 smem[THREADS_PER_BLOCK];
   int32_t ni = blockIdx.z;
@@ -254,8 +254,7 @@ __global__ void groupNormNDHWCSumSingerChannelKernel(
 }
 
 template <typename T, int THREADS_PER_BLOCK, int THREADS_PER_CHANNEL>
-__global__ void groupNormNDHWCSumKernel(
-    const GroupNormNDHWCParams<T, int64_t> params) {
+__global__ void groupNormNDHWCSumKernel(const GroupNormNDHWCParams<T> params) {
   // The object in charge of doing the sums for the different blocks.
   typedef cub::BlockScan<GroupSums, THREADS_PER_BLOCK> BlockScan;
   __shared__ typename BlockScan::TempStorage tempStorage;
@@ -323,7 +322,7 @@ __global__ void groupNormNDHWCSumKernel(
 }
 
 template <typename T>
-void groupNormNDHWCSum<T>::operator()(GroupNormNDHWCParams<T, int64_t>* params,
+void groupNormNDHWCSum<T>::operator()(GroupNormNDHWCParams<T>* params,
                                       gpuStream_t stream) {
   dim3 grid;
   grid.x = divUp(params->c, params->cPerBlock);
@@ -406,13 +405,12 @@ void groupNormNDHWCSum<T>::operator()(GroupNormNDHWCParams<T, int64_t>* params,
 template class groupNormNDHWCSum<half>;
 
 template <typename T, int THREADS_PER_CHANNEL>
-inline __device__ void GroupNormCompute(
-    int64_t dhwBegin,
-    int64_t dhwEnd,
-    int32_t ci,
-    const GroupNormNDHWCParams<T, int64_t>& params,
-    float mean,
-    float invStdDev) {
+inline __device__ void GroupNormCompute(int64_t dhwBegin,
+                                        int64_t dhwEnd,
+                                        int32_t ci,
+                                        const GroupNormNDHWCParams<T>& params,
+                                        float mean,
+                                        float invStdDev) {
   float gamma =
       phi::__2float<T>(*(reinterpret_cast<T const*>(params.gamma) + ci));
   float beta =
@@ -449,7 +447,7 @@ inline __device__ void GroupNormCompute<phi::dtype::float16, 2>(
     int64_t dhwBegin,
     int64_t dhwEnd,
     int32_t ci,
-    const GroupNormNDHWCParams<phi::dtype::float16, int64_t>& params,
+    const GroupNormNDHWCParams<phi::dtype::float16>& params,
     float mean,
     float invStdDev) {
   float2 gammaF2, betaF2;
@@ -504,7 +502,7 @@ inline __device__ void GroupNormCompute<__half, 2>(
     int64_t dhwBegin,
     int64_t dhwEnd,
     int32_t ci,
-    const GroupNormNDHWCParams<__half, int64_t>& params,
+    const GroupNormNDHWCParams<__half>& params,
     float mean,
     float invStdDev) {
   float2 gammaF2, betaF2;
@@ -559,7 +557,7 @@ inline __device__ void GroupNormCompute<phi::dtype::bfloat16, 2>(
     int64_t dhwBegin,
     int64_t dhwEnd,
     int32_t ci,
-    const GroupNormNDHWCParams<phi::dtype::bfloat16, int64_t>& params,
+    const GroupNormNDHWCParams<phi::dtype::bfloat16>& params,
     float mean,
     float invStdDev) {
   float2 gammaF2, betaF2;
@@ -615,7 +613,7 @@ inline __device__ void GroupNormCompute<phi::dtype::bfloat16, 2>(
 
 template <typename T, int THREADS_PER_CHANNEL>
 __global__ void groupNormNDHWCScaleKernel(
-    const GroupNormNDHWCParams<T, int64_t> params) {
+    const GroupNormNDHWCParams<T> params) {
   // The instance in the batch.
   int32_t ni = blockIdx.z;
   // The channel loaded by that thread (2 channels per thread for F16x2).
@@ -653,8 +651,8 @@ __global__ void groupNormNDHWCScaleKernel(
 }
 
 template <typename T>
-void groupNormNDHWCScale<T>::operator()(
-    const GroupNormNDHWCParams<T, int64_t>& params, gpuStream_t stream) {
+void groupNormNDHWCScale<T>::operator()(const GroupNormNDHWCParams<T>& params,
+                                        gpuStream_t stream) {
   dim3 grid;
 
   // The number of blocks to compute all the channels.
@@ -727,7 +725,7 @@ void GroupNormNDHWCKernel(const Context& dev_ctx,
     PD_THROW("data_layout only supports NHWC and NDHWC");
   }
   using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
-  GroupNormNDHWCParams<T, int64_t> params_;
+  GroupNormNDHWCParams<T> params_;
   params_.withSilu = activation == "silu" ? true : false;
 
   const auto x_dims = x.dims();
