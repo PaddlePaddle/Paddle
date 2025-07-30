@@ -3503,7 +3503,7 @@ def unique_consecutive(
         attr_dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_mode():
-        if x.size == 0:
+        if math.prod(x.shape) == 0:
             if axis == []:
                 outs = [paddle.to_tensor([], dtype=x.dtype)]
             else:
@@ -3756,7 +3756,7 @@ def unique(
         axis = [axis]
     attr_dtype = convert_np_dtype_to_dtype_(dtype)
     if in_dynamic_mode():
-        if x.size == 0:
+        if math.prod(x.shape) == 0:
             outs = [x.clone()]
             if dtype == 'int32' or dtype == paddle.int32:
                 return_dtype = paddle.int32
