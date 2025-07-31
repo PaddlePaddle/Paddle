@@ -74,6 +74,17 @@ void FusedRopeKernel(const Context& dev_ctx,
   int num_inputs = 1;
 
   if (k) {
+    auto k_dims = k->dims();
+    auto k_batch_size = time_major ? k_dims[1] : k_dims[0];
+    PADDLE_ENFORCE_LE(
+        batch_size,
+        k_batch_size,
+        common::errors::InvalidArgument("The batch_size of q (%d) must be less "
+                                        "than or equal to k's (%d) to "
+                                        "prevent out-of-bounds memory access.",
+                                        batch_size,
+                                        k_batch_size));
+
     dev_ctx.template Alloc<T>(out_k);
     ins_data[num_inputs] = k->data<T>();
     outs_data[num_inputs] = out_k->data<T>();
@@ -82,6 +93,17 @@ void FusedRopeKernel(const Context& dev_ctx,
   }
 
   if (v) {
+    auto v_dims = v->dims();
+    auto v_batch_size = time_major ? v_dims[1] : v_dims[0];
+    PADDLE_ENFORCE_LE(
+        batch_size,
+        v_batch_size,
+        common::errors::InvalidArgument("The batch_size of q (%d) must be less "
+                                        "than or equal to v's (%d) to "
+                                        "prevent out-of-bounds memory access.",
+                                        batch_size,
+                                        v_batch_size));
+
     dev_ctx.template Alloc<T>(out_v);
     ins_data[num_inputs] = v->data<T>();
     outs_data[num_inputs] = out_v->data<T>();
@@ -166,7 +188,6 @@ void FusedRopeKernel(const Context& dev_ctx,
               sin_dims,
               q.dims()));
     }
-
     sin_cos_data[0] = sin->data<T>();
     sin_cos_data[1] = cos->data<T>();
 
@@ -182,7 +203,6 @@ void FusedRopeKernel(const Context& dev_ctx,
     }
     prev_num_heads = inputs_num_heads[i];
   }
-
   int sign = 1;
   VectorizedFusedRopeCudaKernelFunc<T, MPType, vec_size> kernel_func =
       use_neox_rotary_style
@@ -251,7 +271,6 @@ void FusedRopeKernel(const Context& dev_ctx,
                                             div_c,
                                             rotary_emb_base,
                                             outs_data);
-
     // rotary position embedding K,V
     phi::Array<const T*, 3> input_kv{ins_data[1], ins_data[2], nullptr};
     phi::Array<T*, 3> out_kv{outs_data[1], outs_data[2], nullptr};
