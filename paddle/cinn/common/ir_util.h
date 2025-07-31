@@ -185,11 +185,14 @@ void OpDataTypePromote(ir::LoweredFunc *func);
 
 // only process ir::Min and ir::Max where the operands 1. contains dynamic shape
 // symbols. 2. the operands are both int types and both are 32/64 bits. Returns
-// the number of bits for unifying operands (by casting)
-int UnifiedOperandTypeBits(
+// the number of bits for unifying operands (by casting). The bool flag
+// indicates whether both sides has different dynamic shape symbols, since if
+// true (like min(S0, S1))), we should not make a ir::Cast but a ir::Call
+// (coercion)
+std::pair<int, bool> UnifiedOperandTypeBits(
     const std::unordered_map<std::string, common::Type> *search_map,
     const ir::Min *op);
-int UnifiedOperandTypeBits(
+std::pair<int, bool> UnifiedOperandTypeBits(
     const std::unordered_map<std::string, common::Type> *search_map,
     const ir::Max *op);
 }  // namespace common

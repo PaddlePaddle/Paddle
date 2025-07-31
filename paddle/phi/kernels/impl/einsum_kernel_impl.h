@@ -546,10 +546,51 @@ DenseTensor PerformContraction(
       trans_t = PerformTranspose<T, Context>(
           dev_ctx, reduct_t, perm, reordered_all_labels, label2type);
       if (cache[operand_idx] != nullptr) {
-        cache[operand_idx]->ShareBufferWith(trans_t);
-        cache[operand_idx]->Resize(trans_t.dims());
-        VLOG(5) << "Set dims of cache[" << operand_idx
-                << "]: " << trans_t.dims();
+        std::vector<int64_t> broadcast_shapes_restore(
+            broadcast_shapes[operand_idx].size());
+
+        auto contraction_dim1 =
+            [&](const std::vector<int64_t>& broadcast_shapes,
+                const std::vector<int64_t>& original_shapes) -> bool {
+          bool found = false;
+          for (size_t i = 0; i < broadcast_shapes.size(); ++i) {
+            if (broadcast_shapes[i] != original_shapes[i] &&
+                label2type[input_strs[operand_idx][i]] ==
+                    LabelType::Contraction) {
+              broadcast_shapes_restore[i] = original_shapes[i];
+              found = true;
+            } else {
+              broadcast_shapes_restore[i] = broadcast_shapes[i];
+            }
+          }
+          return found;
+        };
+        if (!contraction_dim1(broadcast_shapes[operand_idx],
+                              common::vectorize<int64_t>(t.dims()))) {
+          cache[operand_idx]->ShareBufferWith(trans_t);
+          cache[operand_idx]->Resize(trans_t.dims());
+          VLOG(5) << "Set dims of cache[" << operand_idx
+                  << "]: " << trans_t.dims();
+        } else {
+          auto reduct_t_for_cache =
+              PerformDiagonalAndReduction<T, Context>(dev_ctx,
+                                                      t,
+                                                      input_strs[operand_idx],
+                                                      perm,
+                                                      all_labels,
+                                                      broadcast_shapes_restore,
+                                                      label2type);
+          DenseTensor trans_t_for_cache;
+          trans_t_for_cache = PerformTranspose<T, Context>(dev_ctx,
+                                                           reduct_t_for_cache,
+                                                           perm,
+                                                           reordered_all_labels,
+                                                           label2type);
+          cache[operand_idx]->ShareBufferWith(trans_t_for_cache);
+          cache[operand_idx]->Resize(trans_t_for_cache.dims());
+          VLOG(5) << "Set dims of cache[" << operand_idx
+                  << "]: " << trans_t_for_cache.dims();
+        }
       }
     }
     auto mul_dims = GetShapeByType<int64_t>(

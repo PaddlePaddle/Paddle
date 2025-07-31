@@ -3502,6 +3502,24 @@ def unique_consecutive(
     ):
         attr_dtype = convert_np_dtype_to_dtype_(dtype)
 
+    if in_dynamic_mode():
+        if math.prod(x.shape) == 0:
+            if axis == []:
+                outs = [paddle.to_tensor([], dtype=x.dtype)]
+            else:
+                outs = [x.clone()]
+            if dtype == 'int32' or dtype == paddle.int32:
+                return_dtype = paddle.int32
+            else:
+                return_dtype = paddle.int64
+            if return_inverse:
+                outs.append(paddle.to_tensor([], dtype=return_dtype))
+            if return_counts:
+                outs.append(paddle.to_tensor([], dtype=return_dtype))
+            if len(outs) == 1:
+                return outs[0]
+            return tuple(outs)
+
     if in_dynamic_or_pir_mode():
         out, inverse, counts = _C_ops.unique_consecutive(
             x, return_inverse, return_counts, axis, attr_dtype
@@ -3738,6 +3756,22 @@ def unique(
         axis = [axis]
     attr_dtype = convert_np_dtype_to_dtype_(dtype)
     if in_dynamic_mode():
+        if math.prod(x.shape) == 0:
+            outs = [x.clone()]
+            if dtype == 'int32' or dtype == paddle.int32:
+                return_dtype = paddle.int32
+            else:
+                return_dtype = paddle.int64
+            if return_index:
+                outs.append(paddle.to_tensor([], dtype=return_dtype))
+            if return_inverse:
+                outs.append(paddle.to_tensor([], dtype=return_dtype))
+            if return_counts:
+                outs.append(paddle.to_tensor([], dtype=return_dtype))
+            if len(outs) == 1:
+                return outs[0]
+            return tuple(outs)
+
         out, indices, inverse, counts = _C_ops.unique(
             x, return_index, return_inverse, return_counts, axis, attr_dtype
         )
