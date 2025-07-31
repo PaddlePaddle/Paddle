@@ -93,8 +93,7 @@ jobs:
           cd ../..
 
           # docker build images
-          if [ "${{ inputs.task }}" == "cpu" ]; then
-            declare -A docker_files=(["docker_cpu"]="$docker_cpu_file" ["docker_distribute"]="$docker_distribute_file" ["docker_xpu"]="$docker_xpu_file" ["docker_npu"]="$docker_npu_file" ["docker_dcu"]="$docker_dcu_file" ["docker_build"]="$docker_build_file" ["docker_doc"]="$docker_doc_file" ["docker_coverage"]="$docker_coverage_file")
+          declare -A docker_files=(["docker_cpu"]="$docker_cpu_file" ["docker_distribute"]="$docker_distribute_file" ["docker_xpu"]="$docker_xpu_file" ["docker_npu"]="$docker_npu_file" ["docker_dcu"]="$docker_dcu_file" ["docker_build"]="$docker_build_file" ["docker_doc"]="$docker_doc_file" ["docker_coverage"]="$docker_coverage_file")
           for name in "${!docker_files[@]}"
           do
             md5_value=`md5sum tools/dockerfile/${docker_files[$name]} | awk '{print $1}'`
