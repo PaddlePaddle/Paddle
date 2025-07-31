@@ -150,7 +150,7 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
       use_onednn = attr.index() == 1 ? PADDLE_GET_CONST(int, attr)
                                      : PADDLE_GET_CONST(bool, attr);
     }
-    if (op->HasAttr("use_onednn")) {
+    if (!use_onednn && op->HasAttr("use_onednn")) {
       Attribute attr = op->GetAttr("use_onednn");
       use_onednn = attr.index() == 1 ? PADDLE_GET_CONST(int, attr)
                                      : PADDLE_GET_CONST(bool, attr);
