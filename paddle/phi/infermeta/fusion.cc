@@ -4508,6 +4508,20 @@ void VariableLengthMemoryEfficientAttentionInferMeta(
                     true,
                     common::errors::InvalidArgument(
                         "The seq length of Key, Value should be equal."));
+  if (mask) {
+    PADDLE_ENFORCE_EQ(
+        mask.dims().size(),
+        4,
+        common::errors::InvalidArgument("Mask should be a 4-D tensor"
+                                        "But received Value dimension(%s)",
+                                        mask.dims().size()));
+    const int64_t mask_batch_size = mask.dims()[0];
+    PADDLE_ENFORCE_EQ(
+        query_batch_size == mask_batch_size,
+        true,
+        common::errors::InvalidArgument(
+            "The batch size of Query, Key, Value and Mask should be equal."));
+  }
 
   std::vector<int64_t> out_dims(
       {query_batch_size, query_num_head, query_seq_length, value_head_size});

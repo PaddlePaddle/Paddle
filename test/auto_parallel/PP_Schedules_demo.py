@@ -380,6 +380,7 @@ class Test_Schedules:
         loader = DataLoader(dataset, batch_size=8)
         losses_by_step = []
         num_iterations = 20
+        all_losses_in_one_step_md5sum = []
         for iter_idx in range(num_iterations):
             losses_by_micro_batch = []
             for i, (data, label) in enumerate(loader):
@@ -399,6 +400,10 @@ class Test_Schedules:
                             local_loss, op=dist.ReduceOp.AVG, group=dp_group
                         )
                         reduced_losses.append(local_loss)
+                        if iter_idx == 0:
+                            all_losses_in_one_step_md5sum.append(
+                                local_loss._md5sum()
+                            )
 
                 if self.rank == 3:
                     # Calculate mean using reduced losses
@@ -407,7 +412,7 @@ class Test_Schedules:
                     )
             opt.step()
             opt.clear_grad()
-        return losses_by_step
+        return losses_by_step, all_losses_in_one_step_md5sum
 
     def test_pp_model_with_ClipGradByGlobalNorm(self):
         """Test pipeline parallel model with ClipGradByGlobalNorm using PPMyModel as the baseline"""
@@ -470,6 +475,75 @@ class Test_Schedules:
             opt.clear_grad()
         return losses_by_step
 
+    def test_dp_pp_align_mode(self):
+        fix_seeds()
+        paddle.set_flags({'FLAGS_enable_auto_parallel_align_mode': True})
+        global_mesh = paddle.distributed.ProcessMesh(
+            [[0, 2], [1, 3]], dim_names=["pp", "dp"]
+        )
+        fleet.auto.set_mesh(global_mesh)
+        self.model = PP_DP_MyModel()
+        pp_mesh0 = paddle.distributed.ProcessMesh([0, 2], dim_names=["dp"])
+        pp_mesh1 = paddle.distributed.ProcessMesh([1, 3], dim_names=["dp"])
+        dp_pp_pleacement = [dist.Shard(0)]
+        pp_group_1 = paddle.distributed.new_group([0, 1])
+        pp_group_2 = paddle.distributed.new_group([2, 3])
+        dp_group = paddle.distributed.new_group([1, 3])
+        self.micro_batches = 4
+        if self.rank < 2:
+            self.stage = PipelineStage(
+                self.model, self.rank % 2, 2, group=pp_group_1
+            )
+        else:
+            self.stage = PipelineStage(
+                self.model, self.rank % 2, 2, group=pp_group_2
+            )
+        self.stage.has_backward = True
+        loss_fn_ = nn.MSELoss()
+        schedule = ScheduleFThenB(
+            self.stage, self.micro_batches, loss_fn=loss_fn_
+        )
+        opt = paddle.optimizer.AdamW(
+            learning_rate=0.001, parameters=self.model.parameters()
+        )
+        dataset = RandomDataset(image_size=8, output_size=8, num_samples=8)
+        loader = DataLoader(dataset, batch_size=8)
+        losses_by_step = []
+        all_losses_in_one_step_md5sum = []
+        num_iterations = 20
+        for iter_idx in range(num_iterations):
+            losses_by_micro_batch = []
+            for i, (data, label) in enumerate(loader):
+                dist_data = dist.shard_tensor(data, pp_mesh0, dp_pp_pleacement)
+                dist_label = dist.shard_tensor(
+                    label, pp_mesh1, dp_pp_pleacement
+                )
+                schedule.step(
+                    dist_data, target=dist_label, losses=losses_by_micro_batch
+                )
+                # Losses from two dp paths are in Partial(AVG) state, need to do all_reduce
+                if self.rank == 1 or self.rank == 3:
+                    reduced_losses = []
+                    for item in losses_by_micro_batch:
+                        local_loss = item._local_value()
+                        dist.all_reduce(
+                            local_loss, op=dist.ReduceOp.AVG, group=dp_group
+                        )
+                        reduced_losses.append(local_loss)
+                        if iter_idx == 0:
+                            all_losses_in_one_step_md5sum.append(
+                                local_loss._md5sum()
+                            )
+
+                if self.rank == 3:
+                    # Calculate mean using reduced losses
+                    losses_by_step.append(
+                        np.array(reduced_losses, dtype=np.float32).mean()
+                    )
+            opt.step()
+            opt.clear_grad()
+        return losses_by_step, all_losses_in_one_step_md5sum
+
     def run_test(self):
         """Compare losses between three training methods"""
         self.setUpClass()
@@ -483,7 +557,10 @@ class Test_Schedules:
         scheduleFThenB_with_ClipGradByGlobalNorm_losses = (
             self.test_ScheduleFThenB_with_ClipGradByGlobalNorm()
         )
-        dp_pp_losses = self.test_dp_pp()
+        dp_pp_losses, dp_pp_losses_md5sum = self.test_dp_pp()
+        dp_pp_align_mode_losses, dp_pp_align_mode_losses_md5sum = (
+            self.test_dp_pp_align_mode()
+        )
 
         if self.rank == 3:
             np.testing.assert_allclose(
@@ -515,6 +592,14 @@ class Test_Schedules:
                 scheduleFThenB_with_ClipGradByGlobalNorm_losses,
                 rtol=1e-5,
             )
+
+            np.testing.assert_allclose(
+                dp_pp_align_mode_losses,
+                dp_pp_losses,
+                rtol=1e-5,
+            )
+
+            assert dp_pp_losses_md5sum == dp_pp_align_mode_losses_md5sum
 
 
 if __name__ == '__main__':
