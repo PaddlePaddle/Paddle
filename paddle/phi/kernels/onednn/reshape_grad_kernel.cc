@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 
@@ -19,6 +20,12 @@ void ReshapeGradKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& out_grad,
                        DenseTensor* x_grad) {
+  if ((x_grad && x_grad->numel() == 0) || out_grad.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    return;
+  }
+
   auto out_grad_vec_dims = out_grad.dims().size() != 0
                                ? common::vectorize(out_grad.dims())
                                : std::vector<int64_t>{1};

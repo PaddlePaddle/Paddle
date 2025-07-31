@@ -20,10 +20,10 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-
 #define SWITCH_RESHAPE_DIMS(n)                                                \
   case n: {                                                                   \
     Eigen::DSizes<Eigen::DenseIndex, n> reshape_dims;                         \
@@ -68,6 +68,14 @@ void BroadcastTensorsGradKernel(const Context& dev_ctx,
   auto& out_tensors = dx;
 
   size_t num_ins = in_tensors.size();
+  if (dout[0] && dout[0]->numel() == 0) {
+    for (auto dx : out_tensors) {
+      if (dx)
+        Full<T, Context>(
+            dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+    }
+    return;
+  }
 
   PADDLE_ENFORCE_GT(
       num_ins,

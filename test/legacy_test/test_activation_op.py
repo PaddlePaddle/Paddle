@@ -3952,6 +3952,26 @@ class TestReciprocal_ZeroDim(TestReciprocal):
         self.shape = []
 
 
+class TestReciprocalComplex(unittest.TestCase):
+    def test_reciprocal_complex(self):
+        for place in get_places():
+            x_np = np.array(
+                [
+                    complex(float('inf'), 0),
+                    complex(0, float('inf')),
+                    complex(float('inf'), float('inf')),
+                    complex(0, float('nan')),
+                    complex(0, 1),
+                ],
+                dtype=np.complex64,
+            )
+            res_np = np.reciprocal(x_np)
+            with paddle.base.dygraph.guard(place):
+                x = paddle.to_tensor(x_np, dtype='complex64', place=place)
+                res = paddle.reciprocal(x)
+                np.testing.assert_allclose(res.numpy(), res_np)
+
+
 class TestLog(TestActivation):
     def setUp(self):
         self.op_type = "log"

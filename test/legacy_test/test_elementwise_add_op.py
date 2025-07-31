@@ -29,7 +29,7 @@ from paddle.base.layer_helper import LayerHelper
 
 class TestElementwiseAddOp(OpTest):
     def init_kernel_type(self):
-        self.use_mkldnn = False
+        self.use_onednn = False
 
     def setUp(self):
         self.op_type = "elementwise_add"
@@ -47,11 +47,11 @@ class TestElementwiseAddOp(OpTest):
             'X': OpTest.np_dtype_to_base_dtype(self.x),
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_onednn}
         self.outputs = {'Out': self.out}
 
     def check_dygraph(self):
-        return not self.use_mkldnn and self.axis == -1
+        return not self.use_onednn and self.axis == -1
 
     def test_check_output(self):
         # TODO(wangzhongpu): support onednn op in dygraph mode
@@ -1023,7 +1023,7 @@ class TestTensorFloat32Float16Add(TestTensorFloat32Bfloat16OrFloat16Add):
 
 class TestElementwiseAddOpAutoParallel(OpTest):
     def init_kernel_type(self):
-        self.use_mkldnn = False
+        self.use_onednn = False
 
     def setUp(self):
         self.op_type = "elementwise_add"
@@ -1042,11 +1042,11 @@ class TestElementwiseAddOpAutoParallel(OpTest):
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
 
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_onednn}
         self.outputs = {'Out': self.out}
 
     def check_dygraph(self):
-        return not self.use_mkldnn and self.axis == -1
+        return not self.use_onednn and self.axis == -1
 
     def test_check_grad(self):
         self.check_grad(

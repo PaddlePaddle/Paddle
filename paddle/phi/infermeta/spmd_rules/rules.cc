@@ -830,4 +830,19 @@ PD_REGISTER_SPMD_RULE(
     conv2d_transpose,
     PD_INFER_SPMD(phi::distributed::Conv2dTransposeInferSpmd),
     PD_INFER_SPMD(phi::distributed::Conv2dTransposeGradInferSpmd));
+
+// einsum
+PD_REGISTER_SPMD_RULE(einsum,
+                      PD_INFER_SPMD(phi::distributed::EinsumInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::EinsumGradInferSpmd));
+// moe_gate_dispatch
+PD_REGISTER_SPMD_RULE(
+    moe_gate_dispatch,
+    PD_INFER_SPMD(phi::distributed::MoEGateDispatchInferSpmd),
+    PD_INFER_SPMD(phi::distributed::MoEGateDispatchGradInferSpmd));
+
+// moe_combine
+PD_REGISTER_SPMD_RULE(moe_combine,
+                      PD_INFER_SPMD(phi::distributed::MoECombineInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::MoECombineGradInferSpmd));
 }  // namespace phi::distributed

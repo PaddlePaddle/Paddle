@@ -124,7 +124,7 @@ class TestDygraphLoadStatic(unittest.TestCase):
                     super().__init__()
 
                     self.linear1 = Linear(10, 10)
-                    self.lienar2 = Linear(10, 20)
+                    self.linear2 = Linear(10, 20)
 
                     self.conv2d_1 = paddle.nn.Conv2D(
                         in_channels=10, out_channels=10, kernel_size=5

@@ -230,8 +230,7 @@ void DenseTensor::set_meta(const DenseTensorMeta& meta) {
    1. Designed behaviour: DenseTensor constructed with its underlying storage_
    initialized
    2. Legacy behaviour(fluid): DenseTensor constructed using default
-   constructor, where
-                               storage_ won't be initialized until the first
+   constructor, where storage_ won't be initialized until the first
    call to mutable_data(place)
    */
 void DenseTensor::ResizeAndAllocate(const DDim& dims) {

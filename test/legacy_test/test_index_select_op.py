@@ -68,19 +68,15 @@ class TestIndexSelectOp(OpTest):
 
     def test_check_output(self):
         if self.x_type == np.complex64 or self.x_type == np.complex128:
-            self.check_output(
-                check_prim=False, check_pir=True, check_prim_pir=False
-            )
+            self.check_output(check_pir=True, check_prim_pir=False)
         else:
-            self.check_output(
-                check_prim=True, check_pir=True, check_prim_pir=True
-            )
+            self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad_normal(self):
         if self.x_type == np.complex64 or self.x_type == np.complex128:
-            self.check_grad(['X'], 'Out', check_prim=False, check_pir=True)
+            self.check_grad(['X'], 'Out', check_pir=True)
         else:
-            self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+            self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestIndexSelectOpCase2(TestIndexSelectOp):
@@ -223,9 +219,7 @@ class TestIndexSelectBF16Op(OpTest):
 
     def test_check_grad_normal(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place, ['X'], 'Out', check_prim=True, check_pir=True
-        )
+        self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
 
 
 class TestIndexSelectComplex64(TestIndexSelectOp):

@@ -27,6 +27,7 @@ namespace cub = hipcub;
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/detection/bbox_util.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
@@ -490,6 +491,24 @@ void GenerateProposalsKernel(const Context &dev_ctx,
   int64_t h_bbox = bbox_dim[2];
   int64_t w_bbox = bbox_dim[3];
 
+  rpn_rois->Resize(common::make_ddim({bbox_deltas.numel() / 4, 4}));
+  dev_ctx.template Alloc<T>(rpn_rois);
+  rpn_roi_probs->Resize(common::make_ddim({scores.numel(), 1}));
+  dev_ctx.template Alloc<T>(rpn_roi_probs);
+
+  if (scores.numel() == 0) {
+    rpn_rois->Resize(common::make_ddim({0, 4}));
+    if (rpn_rois_num != nullptr) {
+      rpn_rois_num->Resize(common::make_ddim({}));
+      phi::Full<int64_t, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(rpn_rois_num->dims())),
+          0,
+          rpn_rois_num);
+    }
+    return;
+  }
+
   DenseTensor bbox_deltas_swap, scores_swap;
   bbox_deltas_swap.Resize(common::make_ddim({num, h_bbox, w_bbox, c_bbox}));
   dev_ctx.template Alloc<T>(&bbox_deltas_swap);
@@ -505,11 +524,6 @@ void GenerateProposalsKernel(const Context &dev_ctx,
   DenseTensor tmp_variances = variances;
   tmp_anchors.Resize(common::make_ddim({tmp_anchors.numel() / 4, 4}));
   tmp_variances.Resize(common::make_ddim({tmp_variances.numel() / 4, 4}));
-
-  rpn_rois->Resize(common::make_ddim({bbox_deltas.numel() / 4, 4}));
-  dev_ctx.template Alloc<T>(rpn_rois);
-  rpn_roi_probs->Resize(common::make_ddim({scores.numel(), 1}));
-  dev_ctx.template Alloc<T>(rpn_roi_probs);
 
   T *rpn_rois_data = rpn_rois->data<T>();
   T *rpn_roi_probs_data = rpn_roi_probs->data<T>();

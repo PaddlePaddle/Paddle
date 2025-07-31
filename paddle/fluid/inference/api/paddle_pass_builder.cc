@@ -317,7 +317,7 @@ void GpuPassStrategy::EnableCUDNN() {
   use_cudnn_ = true;
 }
 
-void GpuPassStrategy::EnableMKLDNN() {
+void GpuPassStrategy::EnableONEDNN() {
   LOG(ERROR) << "GPU not support MKLDNN yet";
 }
 
@@ -329,7 +329,7 @@ void GpuPassStrategy::EnableMkldnnInt8() {
   LOG(ERROR) << "GPU not support MKL-DNN int8";
 }
 
-void GpuPassStrategy::DisableMkldnnFcPasses() {
+void GpuPassStrategy::DisableOnednnFcPasses() {
   LOG(ERROR) << "GPU not support MKL-DNN fc";
 }
 
@@ -343,10 +343,10 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
 
 void CpuPassStrategy::EnableCUDNN() { LOG(ERROR) << "CPU not support cuDNN"; }
 
-void CpuPassStrategy::EnableMKLDNN() {
+void CpuPassStrategy::EnableONEDNN() {
 // TODO(Superjomn) Consider the way to mix CPU with GPU.
 #ifdef PADDLE_WITH_DNNL
-  if (!use_mkldnn_) {
+  if (!use_onednn_) {
     passes_.insert(passes_.begin(), "onednn_placement_pass");
 
     for (auto &pass : std::vector<std::string>({
@@ -383,20 +383,20 @@ void CpuPassStrategy::EnableMKLDNN() {
       passes_.push_back(pass);
     }
   }
-  use_mkldnn_ = true;
+  use_onednn_ = true;
 #else
-  use_mkldnn_ = false;
+  use_onednn_ = false;
 #endif
 }
 
-void CpuPassStrategy::DisableMKLDNN() {
+void CpuPassStrategy::DisableONEDNN() {
   ClearPasses();
   passes_.assign(CpuBasicPasses.begin(), CpuBasicPasses.end());
 }
 
 void CpuPassStrategy::EnableMkldnnBfloat16() {
 #ifdef PADDLE_WITH_DNNL
-  if (!use_mkldnn_bfloat16_) {
+  if (!use_onednn_bfloat16_) {
     passes_.emplace_back("fc_onednn_pass");
     passes_.emplace_back("fc_act_onednn_fuse_pass");
 
@@ -404,15 +404,15 @@ void CpuPassStrategy::EnableMkldnnBfloat16() {
     passes_.emplace_back("cpu_bfloat16_pass");
     passes_.emplace_back("cpu_quantize_squash_pass");
   }
-  use_mkldnn_bfloat16_ = true;
+  use_onednn_bfloat16_ = true;
 #else
-  use_mkldnn_bfloat16_ = false;
+  use_onednn_bfloat16_ = false;
 #endif
 }
 
 void CpuPassStrategy::EnableMkldnnInt8() {
 #ifdef PADDLE_WITH_DNNL
-  if (!use_mkldnn_int8_) {
+  if (!use_onednn_int8_) {
     passes_.clear();
     passes_.emplace_back("simplify_with_basic_ops_pass");
     passes_.emplace_back("quant_dequant_onednn_pass");
@@ -469,20 +469,20 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.emplace_back("cpu_quantize_squash_pass");
     passes_.emplace_back("quant_transpose2_dequant_onednn_fuse_pass");
   }
-  use_mkldnn_int8_ = true;
+  use_onednn_int8_ = true;
 #else
-  use_mkldnn_int8_ = false;
+  use_onednn_int8_ = false;
 #endif
 }
 
-void CpuPassStrategy::DisableMkldnnFcPasses() {
+void CpuPassStrategy::DisableOnednnFcPasses() {
 #ifdef PADDLE_WITH_DNNL
-  if (!disable_mkldnn_fc_passes_) {
+  if (!disable_onednn_fc_passes_) {
     EraseFcMkldnnPasses();
   }
-  disable_mkldnn_fc_passes_ = true;
+  disable_onednn_fc_passes_ = true;
 #else
-  disable_mkldnn_fc_passes_ = false;
+  disable_onednn_fc_passes_ = false;
 #endif
 }
 

@@ -263,7 +263,8 @@ std::vector<paddle::Tensor> run_program_ad_func(
     const std::vector<paddle::Tensor>& x,
     const std::vector<paddle::Tensor>& params,
     std::vector<paddle::framework::Scope*>& step_scope,  // NOLINT
-    const paddle::framework::AttributeMap& attrs) {
+    const paddle::framework::AttributeMap& prog_attrs,
+    const paddle::framework::AttributeMap& cuda_graph_attrs) {
   // Prepare Autograd Meta
   VLOG(2) << "start run pir run_program ad function.";
   std::vector<egr::AutogradMeta*> p_autograd_x =
@@ -276,8 +277,8 @@ std::vector<paddle::Tensor> run_program_ad_func(
       trace_backward, &p_autograd_x, &p_autograd_params);
 
   auto is_test = false;
-  if (attrs.count("is_test")) {
-    is_test = PADDLE_GET_CONST(bool, attrs.at("is_test"));
+  if (prog_attrs.count("is_test")) {
+    is_test = PADDLE_GET_CONST(bool, prog_attrs.at("is_test"));
   }
   VLOG(2) << "start run run_program with require_any_grad = "
           << require_any_grad << ", is_test = " << is_test;
@@ -299,10 +300,15 @@ std::vector<paddle::Tensor> run_program_ad_func(
     int64_t device_type = static_cast<int64_t>(tensor.place().GetType());
     place_hash_key = hash_with_seed(place_hash_key, device_type);
   }
-  auto out = egr::to_static::RunProgramImpl(
-      x_tmp, params_tmp, step_scope, require_any_grad, attrs, place_hash_key);
+  auto out = egr::to_static::RunProgramImpl(x_tmp,
+                                            params_tmp,
+                                            step_scope,
+                                            require_any_grad,
+                                            prog_attrs,
+                                            cuda_graph_attrs,
+                                            place_hash_key);
   const auto& out_values =
-      PADDLE_GET_CONST(std::vector<pir::Value>, attrs.at("fo_values"));
+      PADDLE_GET_CONST(std::vector<pir::Value>, prog_attrs.at("fo_values"));
   std::vector<egr::AutogradMeta*> p_autograd_outs =
       AttachAutoGradMeta(out, out_values);
   if (!is_test && require_any_grad) {
@@ -313,7 +319,7 @@ std::vector<paddle::Tensor> run_program_ad_func(
     grad_node->SetPlaceHashKey(place_hash_key);
 
     // Set Attributes
-    grad_node->SetAttrMap(attrs);
+    grad_node->SetAttrMap(prog_attrs, cuda_graph_attrs);
 
     // Clear unused x vars
     // NOTE(SigureMo): There are 2 kinds Tensor need to be filtered:
@@ -323,16 +329,16 @@ std::vector<paddle::Tensor> run_program_ad_func(
     // For the first kind, we can create a empty Tensor to replace it.
     // For the second kind, we need to keep the meta only Tensor.
     auto filter_x = filter_no_need_buffer_input_var_in_backward(
-        filter_unused_input_var_in_backward(x_tmp, attrs), attrs);
+        filter_unused_input_var_in_backward(x_tmp, prog_attrs), prog_attrs);
     // Set TensorWrappers
     grad_node->SetFwdX(filter_x);
 
     std::shared_ptr<::pir::Program> backward_program = PADDLE_GET_CONST(
-        std::shared_ptr<::pir::Program>, attrs.at("backward_program"));
+        std::shared_ptr<::pir::Program>, prog_attrs.at("backward_program"));
     const auto& forward_outputs_names =
-        PADDLE_GET_CONST(std::vector<std::string>, attrs.at("fo_names"));
+        PADDLE_GET_CONST(std::vector<std::string>, prog_attrs.at("fo_names"));
     const auto& backward_params_grad_names =
-        PADDLE_GET_CONST(std::vector<std::string>, attrs.at("bp_g_names"));
+        PADDLE_GET_CONST(std::vector<std::string>, prog_attrs.at("bp_g_names"));
 
     clear_unused_out_var_in_backward(
         forward_outputs_names, backward_program->block(), step_scope[0]);

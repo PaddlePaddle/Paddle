@@ -125,7 +125,7 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
     set_zero(dev_ctx, input_grad, static_cast<T>(0));
 
     if (fuse_relu) {
-      paddle::operators::math::DepthwiseConvInputGradFunctor<Context, T, true>
+      phi::math::DepthwiseConvInputGradFunctor<Context, T, true>
           depthwiseConvInputGrad;
       depthwiseConvInputGrad(dev_ctx,
                              input,
@@ -137,7 +137,7 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
                              input_grad,
                              data_layout);
     } else {
-      paddle::operators::math::DepthwiseConvInputGradFunctor<Context, T, false>
+      phi::math::DepthwiseConvInputGradFunctor<Context, T, false>
           depthwiseConvInputGrad;
       depthwiseConvInputGrad(dev_ctx,
                              input,
@@ -155,7 +155,7 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(filter_grad);
     set_zero(dev_ctx, filter_grad, static_cast<T>(0));
     if (fuse_relu) {
-      paddle::operators::math::DepthwiseConvFilterGradFunctor<Context, T, true>
+      phi::math::DepthwiseConvFilterGradFunctor<Context, T, true>
           depthwiseConvFilterGrad;
       depthwiseConvFilterGrad(dev_ctx,
                               input,
@@ -166,7 +166,7 @@ void DepthwiseConvGradKernel(const Context& dev_ctx,
                               filter_grad,
                               data_layout);
     } else {
-      paddle::operators::math::DepthwiseConvFilterGradFunctor<Context, T, false>
+      phi::math::DepthwiseConvFilterGradFunctor<Context, T, false>
           depthwiseConvFilterGrad;
       depthwiseConvFilterGrad(dev_ctx,
                               input,

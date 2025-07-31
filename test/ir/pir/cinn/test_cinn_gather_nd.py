@@ -26,7 +26,7 @@ class TestGatherNd(unittest.TestCase):
         dy_out = dy_compute(*inputs)
 
         static_compute = utils.apply_to_static(
-            dy_compute, use_cinn=True, input_spec=None
+            dy_compute, use_cinn=True, input_spec=input_spec
         )
         st_out = static_compute(*inputs)
 

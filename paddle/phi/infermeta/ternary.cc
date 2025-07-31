@@ -719,29 +719,36 @@ void FlashAttnV3InferMeta(const MetaTensor& q,
                           const MetaTensor& v,
                           MetaTensor* out,
                           MetaTensor* softmax_lse) {
-  // TODO(umiswing): support varlen
-  constexpr bool is_varlen_q = false;
-  auto const sizes = q.dims();
-  const int batch_size = sizes[0];
-  const int seqlen_q = sizes[1];
-  int num_heads = q.dims()[q.dims().size() - 2];
-  int const head_size_v = v.dims()[v.dims().size() - 1];
+  const int batch_size = q.dims()[0];
+  const int seqlen_q = q.dims()[1];
+  const int num_heads = q.dims()[q.dims().size() - 2];
+  const int head_size_v = v.dims()[v.dims().size() - 1];
   auto q_type = q.dtype();
   auto out_type =
       q_type == phi::DataType::FLOAT8_E4M3FN ? phi::DataType::BFLOAT16 : q_type;
-  if (!is_varlen_q) {
-    out->set_dims({batch_size, seqlen_q, num_heads, head_size_v});
-  } else {
-    // TODO(umiswing): support varlen
-  }
+
+  out->set_dims({batch_size, seqlen_q, num_heads, head_size_v});
 
   out->set_dtype(out_type);
 
-  if (!is_varlen_q) {
-    softmax_lse->set_dims({batch_size, num_heads, seqlen_q});
-  } else {
-    // TODO(umiswing): support varlen
-  }
+  softmax_lse->set_dims({batch_size, num_heads, seqlen_q});
+  softmax_lse->set_dtype(phi::DataType::FLOAT32);
+}
+
+void FlashAttnV3VarlenInferMeta(const MetaTensor& q,
+                                const MetaTensor& k,
+                                const MetaTensor& v,
+                                MetaTensor* out,
+                                MetaTensor* softmax_lse) {
+  const int total_q = q.dims()[0];
+  const int num_heads = q.dims()[q.dims().size() - 2];
+  const int head_size_v = v.dims()[v.dims().size() - 1];
+  auto q_type = q.dtype();
+  auto out_type =
+      q_type == phi::DataType::FLOAT8_E4M3FN ? phi::DataType::BFLOAT16 : q_type;
+  out->set_dims({total_q, num_heads, head_size_v});
+  softmax_lse->set_dims({num_heads, total_q});
+  out->set_dtype(out_type);
   softmax_lse->set_dtype(phi::DataType::FLOAT32);
 }
 
@@ -826,13 +833,6 @@ void InstanceNormInferMeta(const MetaTensor& x,
                     common::errors::InvalidArgument(
                         "The y in InstanceNormInferMeta can't be nullptr."));
   const auto x_dims = x.dims();
-  PADDLE_ENFORCE_NE(common::product(x_dims),
-                    0,
-                    common::errors::PreconditionNotMet(
-                        "The Input variable X has not "
-                        "been initialized. You may need to confirm "
-                        "if you put exe.run(startup_program) "
-                        "after optimizer.minimize function."));
   PADDLE_ENFORCE_GE(
       x_dims.size(),
       2,
@@ -867,13 +867,16 @@ void InstanceNormInferMeta(const MetaTensor& x,
             scale_dim.size()));
     bool check = config.is_runtime || contain_unknown_dim(scale_dim);
     if (check) {
-      PADDLE_ENFORCE_EQ(scale_dim[0],
-                        C,
-                        common::errors::InvalidArgument(
-                            "ShapeError: the shape of scale must equal to [%d]"
-                            "But received: the shape of scale is [%d]",
-                            C,
-                            scale_dim[0]));
+      if (C != 0) {
+        PADDLE_ENFORCE_EQ(
+            scale_dim[0],
+            C,
+            common::errors::InvalidArgument(
+                "ShapeError: the shape of scale must equal to [%d]"
+                "But received: the shape of scale is [%d]",
+                C,
+                scale_dim[0]));
+      }
     }
   }
   if (bias) {
@@ -889,13 +892,15 @@ void InstanceNormInferMeta(const MetaTensor& x,
             bias_dim.size()));
     bool check = config.is_runtime || !contain_unknown_dim(bias_dim);
     if (check) {
-      PADDLE_ENFORCE_EQ(bias_dim[0],
-                        C,
-                        common::errors::InvalidArgument(
-                            "ShapeError: the shape of bias must equal to [%d]"
-                            "But received: the shape of bias is [%d]",
-                            C,
-                            bias_dim[0]));
+      if (C != 0) {
+        PADDLE_ENFORCE_EQ(bias_dim[0],
+                          C,
+                          common::errors::InvalidArgument(
+                              "ShapeError: the shape of bias must equal to [%d]"
+                              "But received: the shape of bias is [%d]",
+                              C,
+                              bias_dim[0]));
+      }
     }
   }
   y->set_dims(x_dims);
@@ -2332,12 +2337,14 @@ void ScatterInferMeta(const MetaTensor& x,
   const auto& index_dims = index.dims();
 
   if (index_dims.size() == 2) {
-    PADDLE_ENFORCE_EQ(index_dims[1],
-                      1,
-                      common::errors::InvalidArgument(
-                          "The last dim of the index should be 1 when the "
-                          "index is a 2D tensor, but we get %d.",
-                          index_dims[1]));
+    if (index_dims[1] != 0) {
+      PADDLE_ENFORCE_EQ(index_dims[1],
+                        1,
+                        common::errors::InvalidArgument(
+                            "The last dim of the index should be 1 when the "
+                            "index is a 2D tensor, but we get %d.",
+                            index_dims[1]));
+    }
   } else {
     PADDLE_ENFORCE_EQ(index_dims.size() == 1 || index_dims.size() == 0,
                       true,
@@ -2517,10 +2524,13 @@ void SendURecvInferMeta(const MetaTensor& x,
                                         dst_index_dims.size()));
   }
 
-  PADDLE_ENFORCE_EQ(src_index_dims[0],
-                    dst_index_dims[0],
-                    common::errors::InvalidArgument(
-                        "Src_index and Dst_index should have the same shape."));
+  if (src_index_dims[0] != 0 && dst_index_dims[0] != 0) {
+    PADDLE_ENFORCE_EQ(
+        src_index_dims[0],
+        dst_index_dims[0],
+        common::errors::InvalidArgument(
+            "Src_index and Dst_index should have the same shape."));
+  }
 
   auto dims = x.dims();
   std::vector<int64_t> dims_ = common::vectorize(dims);

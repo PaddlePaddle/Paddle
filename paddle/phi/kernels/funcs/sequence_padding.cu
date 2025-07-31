@@ -164,14 +164,6 @@ class UnpaddingDenseTensorFunctor<phi::GPUContext, T> {
               pad_seq_len,
               step_width,
               layout);
-    /*
-    if (!norm_by_times && seq_num == 1UL && pad_seq_len == max_seq_len) {
-      paddle::framework::TensorCopy(pad_tensor, dev_ctx.GetPlace(), dev_ctx,
-    seq_tensor);
-      seq_tensor->Resize(seq_tensor_dims);
-      return;
-    }
-    */
 
     const int kBlockSize = 512;
 

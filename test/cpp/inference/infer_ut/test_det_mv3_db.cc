@@ -133,7 +133,7 @@ TEST(tensorrt_tester_det_mv3_db, multi_thread2_trt_fp32_dynamic_shape_bz2) {
   std::cout << "finish multi-thread test" << std::endl;
 }
 
-TEST(mkldnn_tester_det_mv3_db, multi_thread2_mkl_fp32_bz2) {
+TEST(onednn_tester_det_mv3_db, multi_thread2_mkl_fp32_bz2) {
   int thread_num = 2;  // thread > 2 may OOM
   // init input data
   std::map<std::string, paddle::test::Record> my_input_data_map;
@@ -150,8 +150,8 @@ TEST(mkldnn_tester_det_mv3_db, multi_thread2_mkl_fp32_bz2) {
   config.SetModel(FLAGS_modeldir + "/inference.pdmodel",
                   FLAGS_modeldir + "/inference.pdiparams");
   config.DisableGpu();
-  config.EnableMKLDNN();
-  config.SetMkldnnCacheCapacity(10);
+  config.EnableONEDNN();
+  config.SetOnednnCacheCapacity(10);
   config.SetCpuMathLibraryNumThreads(10);
   // get ground truth by disable ir
   paddle_infer::services::PredictorPool pred_pool_no_ir(config_no_ir, 1);

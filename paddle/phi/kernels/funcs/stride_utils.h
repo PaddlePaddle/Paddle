@@ -281,6 +281,51 @@ static inline void coalesce_dimensions(const int64_t ndim,
 }
 
 template <int N>
+static inline void CopyStride(
+    const std::vector<int64_t> output_dims,  // value_tensor
+    const std::vector<int64_t> output_strides,
+    const int64_t output_elesize,
+    const std::vector<int64_t> input_dims,  // input_tensor
+    const std::vector<int64_t> input_strides,
+    const int64_t input_elesize,
+    std::vector<int64_t>* desired_shape,
+    std::array<int64_t*, N>* strides_array,
+    int64_t* numel,
+    std::array<std::vector<int64_t>, N>& strides_vec) {  // NOLINT
+  int ndim = output_dims.size();
+
+  std::vector<int64_t> stride_size;
+
+  *desired_shape = compute_shapes({input_dims, output_dims});
+  strides_vec[0] = compute_strides(output_dims,  // input_tensor
+                                   output_strides,
+                                   output_elesize,
+                                   ndim,
+                                   desired_shape,
+                                   &stride_size);
+
+  strides_vec[1] = compute_strides(input_dims,  // value_tensor
+                                   input_strides,
+                                   input_elesize,
+                                   ndim,
+                                   desired_shape,
+                                   &stride_size);
+
+  for (size_t i = 0; i < N; i++) {
+    (*strides_array)[i] = strides_vec[i].data();
+  }
+  reorder_dimensions<N>(stride_size, desired_shape, strides_array);
+
+  coalesce_dimensions<N>(ndim, strides_array, &stride_size, desired_shape);
+
+  int num = 1;
+  for (size_t i = 0; i < desired_shape->size(); i++) {
+    num *= (*desired_shape)[i];
+  }
+  *numel = num;
+}
+
+template <int N>
 static inline void IndexPutStride(
     const std::vector<int64_t> output_dims,  // value_tensor
     const std::vector<int64_t> output_strides,
@@ -392,6 +437,44 @@ static inline void IndexGetStride(
     num *= (*desired_shape)[i];
   }
   *numel = num;
+}
+
+static inline void cal_shape_stride(const std::vector<int64_t> index_dims,
+                                    int64_t* num_indices,
+                                    std::vector<int64_t>* shape_tmp,
+                                    std::vector<int64_t>* stride_tmp) {
+  std::vector<int64_t> index_dims_;
+  std::vector<int64_t> index_stride_;
+
+  bool tmp_flag = false;
+  for (unsigned i = 0; i < index_dims.size(); i++) {
+    if (index_dims[i] == -1) {
+      if (!tmp_flag) {
+        *num_indices = i;
+        tmp_flag = true;
+        continue;
+      } else {
+        break;
+      }
+    }
+
+    if (!tmp_flag) {
+      index_dims_.push_back(index_dims[i]);
+    } else {
+      shape_tmp->push_back(index_dims[i]);
+    }
+  }
+
+  int shape_size = shape_tmp->size();
+  stride_tmp->resize(shape_size);
+  if (shape_size > 0) {
+    (*stride_tmp)[shape_size - 1] = 1;
+  }
+  if (shape_size > 1) {
+    for (int i = shape_size - 2; i >= 0; i--) {
+      (*stride_tmp)[i] = (*stride_tmp)[i + 1] * (*shape_tmp)[i + 1];
+    }
+  }
 }
 
 template <int N>
