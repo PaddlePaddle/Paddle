@@ -1296,6 +1296,7 @@ void BilinearInterpKernel(
     bool align_corners,
     int align_mode,
     DenseTensor* output) {
+  std::cout << "over" << std::endl;
   InterpolateKernel<T, Context>(dev_ctx,
                                 x,
                                 out_size,
@@ -1310,6 +1311,8 @@ void BilinearInterpKernel(
                                 align_corners,
                                 align_mode,
                                 output);
+  cudaDeviceSynchronize();
+  std::cout << "over" << std::endl;
 }
 
 template <typename T, typename Context>
