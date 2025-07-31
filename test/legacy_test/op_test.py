@@ -400,10 +400,6 @@ def get_places(string_format=False):
             places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
-        if len(core.get_all_custom_device_type()) > 0:
-            dev_type = core.get_all_custom_device_type()[0]
-            if core.is_compiled_with_custom_device(dev_type):
-                places.append(base.CustomPlace(dev_type, 0))
     else:
         if (
             os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
@@ -413,22 +409,16 @@ def get_places(string_format=False):
             places.append('cpu')
         if paddle.is_compiled_with_cuda():
             places.append('gpu')
-        if len(paddle.device.get_all_custom_device_type()) > 0:
-            dev_type = paddle.device.get_all_custom_device_type()[0]
-            if paddle.device.is_compiled_with_custom_device(dev_type):
-                places.append(f'{dev_type}:0')
     return places
 
 
-def get_current_place():
+def get_device_place():
     if core.is_compiled_with_cuda():
-        print("core.is_compiled_with_cuda: ", core.is_compiled_with_cuda())
         return base.CUDAPlace(0)
     custom_dev_types = paddle.device.get_all_custom_device_type()
     if custom_dev_types and core.is_compiled_with_custom_device(
         custom_dev_types[0]
     ):
-        print("custom_dev_types: ", custom_dev_types)
         return base.CustomPlace(custom_dev_types[0], 0)
     return base.CPUPlace()
 

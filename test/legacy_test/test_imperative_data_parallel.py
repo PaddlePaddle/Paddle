@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_current_place
+from op_test import get_device_place
 
 import paddle
 from paddle import base
@@ -46,7 +46,7 @@ class TestDataParallelStateDict(unittest.TestCase):
             parallel_state = parallel_mlp.state_dict()
 
             base_para = {}
-            place = get_current_place()
+            place = get_device_place()
             for k, v in single_state.items():
                 self.assertTrue(k in parallel_state)
 

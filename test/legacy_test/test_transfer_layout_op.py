@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_current_place
+from op_test import OpTest, convert_float_to_uint16, get_device_place
 
 import paddle
 from paddle import base
@@ -75,7 +75,7 @@ class TestTransferLayoutOpGpu(unittest.TestCase):
                 y = softmax_with_data_format(x, data_format='NCHW')
                 z = softmax_with_data_format(y, data_format='NHWC')
 
-            place = get_current_place()
+            place = get_device_place()
             exe = base.Executor(place)
             exe.run(startup_program)
             ret = exe.run(

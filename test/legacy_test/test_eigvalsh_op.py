@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, get_current_place
+from op_test import OpTest, get_device_place
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -128,7 +128,7 @@ class TestEigvalshAPI(unittest.TestCase):
         self.UPLO = 'L'
         self.rtol = 1e-5  # test_eigvalsh_grad
         self.atol = 1e-5  # test_eigvalsh_grad
-        self.place = get_current_place()
+        self.place = get_device_place()
         np.random.seed(123)
         self.init_input_shape()
         self.init_input_data()
@@ -256,7 +256,7 @@ class TestEigvalshAPIError(unittest.TestCase):
 class TestEigvalshAPIZeroSize(unittest.TestCase):
     def setUp(self):
         self.dtype = "float32"
-        self.place = get_current_place()
+        self.place = get_device_place()
         np.random.seed(123)
         self.init_input_shape()
         self.init_input_data()

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_current_place
+from op_test import get_device_place
 from utils import dygraph_guard
 
 import paddle
@@ -99,7 +99,7 @@ class TestNNMseLoss(unittest.TestCase):
             paddle.enable_static()
             prog = base.Program()
             startup_prog = base.Program()
-            place = get_current_place()
+            place = get_device_place()
             with base.program_guard(prog, startup_prog):
                 input = paddle.static.data(
                     name='input', shape=dim, dtype='float32'
@@ -139,7 +139,7 @@ class TestNNMseLoss(unittest.TestCase):
             paddle.enable_static()
             prog = base.Program()
             startup_prog = base.Program()
-            place = get_current_place()
+            place = get_device_place()
             with base.program_guard(prog, startup_prog):
                 input = paddle.static.data(
                     name='input', shape=dim, dtype='float32'
@@ -179,7 +179,7 @@ class TestNNMseLoss(unittest.TestCase):
             paddle.enable_static()
             prog = base.Program()
             startup_prog = base.Program()
-            place = get_current_place()
+            place = get_device_place()
             with base.program_guard(prog, startup_prog):
                 input = paddle.static.data(
                     name='input', shape=dim, dtype='float32'
@@ -222,7 +222,7 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
             paddle.enable_static()
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
-            place = get_current_place()
+            place = get_device_place()
             with paddle.static.program_guard(prog, startup_prog):
                 input = paddle.static.data(
                     name='input', shape=dim, dtype='float32'
@@ -260,7 +260,7 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
             paddle.enable_static()
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
-            place = get_current_place()
+            place = get_device_place()
             with paddle.static.program_guard(prog, startup_prog):
                 input = paddle.static.data(
                     name='input', shape=dim, dtype='float32'
@@ -298,7 +298,7 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
             paddle.enable_static()
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
-            place = get_current_place()
+            place = get_device_place()
             with paddle.static.program_guard(prog, startup_prog):
                 input = paddle.static.data(
                     name='input', shape=dim, dtype='float32'

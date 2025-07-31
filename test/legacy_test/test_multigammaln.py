@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_current_place
+from op_test import get_device_place
 from scipy import special
 
 import paddle
@@ -39,7 +39,7 @@ class TestMultigammalnAPI(unittest.TestCase):
         self.x = np.random.rand(10, 20).astype('float32') + 1.0
         self.p = 2
         self.init_input()
-        self.place = get_current_place()
+        self.place = get_device_place()
 
     def init_input(self):
         pass
@@ -79,7 +79,7 @@ class TestMultigammalnGrad(unittest.TestCase):
         self.dtype = 'float32'
         self.x = np.array([2, 3, 4, 5, 6, 7, 8]).astype(dtype=self.dtype)
         self.p = 3
-        self.place = get_current_place()
+        self.place = get_device_place()
 
     def test_backward(self):
         expected_x_grad = ref_multigammaln_grad(self.x, self.p)

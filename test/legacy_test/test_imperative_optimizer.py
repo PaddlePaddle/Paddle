@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_current_place
+from op_test import get_device_place
 from test_imperative_base import new_program_scope
 
 import paddle
@@ -63,7 +63,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
         seed = 90
         batch_size = 128
         if place is None:
-            place = get_current_place()
+            place = get_device_place()
 
         with base.dygraph.guard(place):
             try:
@@ -81,7 +81,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
         batch_size = 128
 
         if place is None:
-            place = get_current_place()
+            place = get_device_place()
 
         with base.dygraph.guard(place):
             paddle.seed(seed)
@@ -132,7 +132,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
             paddle.framework.random._manual_program_seed(seed)
 
             if place is None:
-                place = get_current_place()
+                place = get_device_place()
 
             exe = base.Executor(place)
 

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_current_place
+from op_test import get_device_place
 
 import paddle
 
@@ -32,7 +32,7 @@ class TestNanmeanAPI(unittest.TestCase):
         self.x_grad = np.array(
             [[np.nan, np.nan, 3.0], [0.0, np.nan, 2.0]]
         ).astype(np.float32)
-        self.place = get_current_place()
+        self.place = get_device_place()
 
     def test_api_static(self):
         paddle.enable_static()
@@ -137,7 +137,7 @@ class TestNanmeanAPI_ZeroSize(unittest.TestCase):
         self.x_shape = [2, 0, 4, 5]
         self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
         self.x[0, :, :, :] = np.nan
-        self.place = get_current_place()
+        self.place = get_device_place()
 
     def test_api_dygraph(self):
         paddle.disable_static(self.place)

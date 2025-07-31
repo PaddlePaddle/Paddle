@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, get_current_place
+from op_test import OpTest, get_device_place
 
 import paddle
 
@@ -144,7 +144,7 @@ class TestRandintAPI(unittest.TestCase):
                 low=1, high=1000, shape=var_shape, dtype='int64'
             )
 
-            place = get_current_place()
+            place = get_device_place()
             exe = paddle.static.Executor(place)
             outs = exe.run(
                 feed={'var_shape': np.array([100, 100]).astype('int64')},

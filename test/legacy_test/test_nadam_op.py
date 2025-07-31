@@ -16,7 +16,7 @@ import unittest
 from copy import deepcopy
 
 import numpy as np
-from op_test import OpTest, get_places
+from op_test import OpTest, get_device_place, get_places
 
 import paddle
 from paddle import base
@@ -501,7 +501,7 @@ class TestNdamaxMultiPrecision2_0(unittest.TestCase):
         paddle.enable_static()
         paddle.seed(2024)
         with paddle.pir_utils.OldIrGuard():
-            exe = paddle.static.Executor('gpu')
+            exe = paddle.static.Executor(get_device_place())
             train_program = paddle.static.Program()
             startup_program = paddle.static.Program()
             optimizer = paddle.optimizer.NAdam(0.1)
@@ -550,7 +550,7 @@ class TestNdamaxMultiPrecision2_0(unittest.TestCase):
         paddle.enable_static()
         with paddle.pir_utils.IrGuard():
             paddle.seed(2024)
-            exe = paddle.static.Executor('gpu')
+            exe = paddle.static.Executor(get_device_place())
             train_program = paddle.static.Program()
             startup_program = paddle.static.Program()
 
@@ -607,7 +607,7 @@ class TestNdamaxMultiPrecision2_0(unittest.TestCase):
             train_program = paddle.static.Program()
             startup_program = paddle.static.Program()
             with paddle.static.program_guard(train_program, startup_program):
-                exe = paddle.static.Executor('gpu')
+                exe = paddle.static.Executor(get_device_place())
                 linear = paddle.nn.Linear(2, 10)
                 optimizer = paddle.optimizer.NAdam(
                     0.1, parameters=linear.parameters()

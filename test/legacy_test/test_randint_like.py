@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_current_place
+from op_test import get_device_place
 
 import paddle
 
@@ -31,7 +31,7 @@ class TestRandintLikeAPI(unittest.TestCase):
         self.x_float64 = np.zeros((10, 12)).astype("float64")
 
         self.dtype = ["bool", "int32", "int64", "float16", "float32", "float64"]
-        self.place = get_current_place()
+        self.place = get_device_place()
 
     def test_static_api(self):
         paddle.enable_static()

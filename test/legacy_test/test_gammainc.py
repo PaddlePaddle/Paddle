@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, get_current_place
+from op_test import OpTest, get_device_place
 from scipy import special
 
 import paddle
@@ -31,7 +31,7 @@ class TestGammaincApi(unittest.TestCase):
         self.init_dtype_type()
         self.x_np = np.random.random(self.shape).astype(self.dtype) + 1
         self.y_np = np.random.random(self.shape).astype(self.dtype) + 1
-        self.place = get_current_place()
+        self.place = get_device_place()
 
     def init_dtype_type(self):
         self.dtype = "float64"

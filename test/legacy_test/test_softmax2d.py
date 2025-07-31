@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 sys.path.append("../deprecated/legacy_test")
-from op_test import get_current_place
+from op_test import get_device_place
 from test_softmax_op import ref_softmax
 
 import paddle
@@ -29,7 +29,7 @@ class TestSoftmax2DAPI(unittest.TestCase):
         self.shape = [2, 6, 5, 4]
         self.x_np = np.random.uniform(-1, 1, self.shape).astype('float64')
         self.axis = -3
-        self.place = get_current_place()
+        self.place = get_device_place()
 
     def test_static_api(self):
         paddle.enable_static()
@@ -57,7 +57,7 @@ class TestSoftmax2DShape(TestSoftmax2DAPI):
         self.shape = [2, 6, 4]
         self.x_np = np.random.uniform(-1, 1, self.shape).astype('float64')
         self.axis = -3
-        self.place = get_current_place()
+        self.place = get_device_place()
 
 
 class TestSoftmax2DFloat32(TestSoftmax2DAPI):
@@ -65,7 +65,7 @@ class TestSoftmax2DFloat32(TestSoftmax2DAPI):
         self.shape = [2, 3, 4]
         self.x_np = np.random.uniform(-1, 1, self.shape).astype('float32')
         self.axis = -3
-        self.place = get_current_place()
+        self.place = get_device_place()
 
 
 class TestSoftmax2DCPU(TestSoftmax2DAPI):
@@ -78,7 +78,7 @@ class TestSoftmax2DCPU(TestSoftmax2DAPI):
 
 class TestSoftmax2DRepr(unittest.TestCase):
     def setUp(self):
-        self.place = get_current_place()
+        self.place = get_device_place()
 
     def test_extra_repr(self):
         paddle.disable_static(self.place)
@@ -89,7 +89,7 @@ class TestSoftmax2DRepr(unittest.TestCase):
 
 class TestSoftmax2DError(unittest.TestCase):
     def setUp(self):
-        self.place = get_current_place()
+        self.place = get_device_place()
 
     def test_static_error(self):
         paddle.enable_static()

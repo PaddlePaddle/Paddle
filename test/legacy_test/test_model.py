@@ -18,7 +18,7 @@ import tempfile
 import unittest
 
 import numpy as np
-from op_test import get_current_place
+from op_test import get_device_place
 
 import paddle
 from paddle import Model, base, jit, to_tensor
@@ -861,7 +861,7 @@ class TestModelFunction(unittest.TestCase):
             ori_results = model.predict_batch(tensor_img)
             base.disable_dygraph() if dynamic else None
 
-            place = get_current_place()
+            place = get_device_place()
             new_scope = base.Scope()
             with base.scope_guard(new_scope):
                 exe = base.Executor(place)

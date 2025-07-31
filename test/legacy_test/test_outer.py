@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_current_place
+from op_test import get_device_place
 
 import paddle
 
@@ -34,7 +34,7 @@ class TestMultiplyApi(unittest.TestCase):
             )
             res = paddle.outer(x, y)
 
-            place = get_current_place()
+            place = get_device_place()
             exe = paddle.static.Executor(place)
             outs = exe.run(
                 paddle.static.default_main_program(),

@@ -19,7 +19,7 @@ from op_test import (
     OpTest,
     convert_float_to_uint16,
     convert_uint16_to_float,
-    get_current_place,
+    get_device_place,
 )
 
 import paddle
@@ -176,7 +176,7 @@ class TestRandpermAPI(unittest.TestCase):
     def test_out(self):
         paddle.enable_static()
         n = 10
-        place = get_current_place()
+        place = get_device_place()
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):

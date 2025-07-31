@@ -17,7 +17,7 @@ import tempfile
 import unittest
 
 import numpy as np
-from op_test import get_current_place
+from op_test import get_device_place
 
 import paddle
 from paddle import base
@@ -271,7 +271,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 new_lr = 1.0
                 lr_arr.append(new_lr)
 
-            place = get_current_place()
+            place = get_device_place()
             scheduler = paddle.optimizer.lr.PiecewiseDecay(
                 boundaries=bd, values=lr_arr
             )
@@ -370,7 +370,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 new_lr = 1.0
                 lr_arr.append(new_lr)
 
-            place = get_current_place()
+            place = get_device_place()
             scheduler = paddle.optimizer.lr.PiecewiseDecay(
                 boundaries=bd, values=lr_arr
             )
@@ -488,7 +488,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 new_lr = 1.0
                 lr_arr.append(new_lr)
 
-            place = get_current_place()
+            place = get_device_place()
             scheduler = paddle.optimizer.lr.PiecewiseDecay(
                 boundaries=bd, values=lr_arr
             )
@@ -602,7 +602,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 new_lr = 1.0
                 lr_arr.append(new_lr)
 
-            place = get_current_place()
+            place = get_device_place()
             scheduler = paddle.optimizer.lr.PiecewiseDecay(
                 boundaries=bd, values=lr_arr
             )
@@ -714,7 +714,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 init_scale=init_scale,
             )
 
-            place = get_current_place()
+            place = get_device_place()
             adam = Adam(
                 learning_rate=0.0,
                 beta1=0.8,
@@ -807,7 +807,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 new_lr = 0.0
                 lr_arr.append(new_lr)
 
-            place = get_current_place()
+            place = get_device_place()
             adam = Adam(
                 learning_rate=0.0,
                 beta1=0.8,
@@ -905,7 +905,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 new_lr = 0.0
                 lr_arr.append(new_lr)
 
-            place = get_current_place()
+            place = get_device_place()
             scheduler = paddle.optimizer.lr.PiecewiseDecay(
                 boundaries=bd, values=lr_arr
             )

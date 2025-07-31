@@ -20,7 +20,7 @@ import unittest
 sys.path.append("../../legacy_test")
 import nets
 import numpy as np
-from op_test import get_current_place
+from op_test import get_device_place
 from test_imperative_base import new_program_scope
 
 import paddle
@@ -165,7 +165,7 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
 
             prediction, avg_loss = static_train_net(img, label)
 
-            place = get_current_place()
+            place = get_device_place()
 
             exe = base.Executor(place)
 

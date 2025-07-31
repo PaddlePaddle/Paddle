@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_current_place, get_places
+from op_test import get_device_place, get_places
 
 import paddle
 
@@ -47,7 +47,7 @@ def test_static(
 ):
     prog = paddle.static.Program()
     startup_prog = paddle.static.Program()
-    place = get_current_place()
+    place = get_device_place()
     paddle.enable_static()
     with paddle.static.program_guard(prog, startup_prog):
         x = paddle.static.data(name='x', shape=x_np.shape, dtype=x_np.dtype)

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_current_place, get_places
+from op_test import get_device_place, get_places
 
 import paddle
 
@@ -198,7 +198,7 @@ class TestBCEWithLogitsLoss(unittest.TestCase):
             np.float64
         )
         weight_np = np.random.random(size=(2, 3, 4, 10)).astype(np.float64)
-        place = get_current_place()
+        place = get_device_place()
         for reduction in ['sum', 'mean', 'none']:
             dy_result = test_dygraph(
                 place,
@@ -259,7 +259,7 @@ class TestBCEWithLogitsLoss(unittest.TestCase):
         )
         pos_weight_np = np.random.random(size=(3, 4, 10)).astype(np.float64)
         weight_np = np.random.random(size=(2, 3, 4, 10)).astype(np.float64)
-        place = get_current_place()
+        place = get_device_place()
         reduction = "mean"
 
         dy_result = test_dygraph(

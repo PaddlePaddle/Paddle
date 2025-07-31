@@ -16,7 +16,7 @@ import unittest
 from functools import partial
 
 import numpy as np
-from op_test import get_current_place
+from op_test import get_device_place
 
 import paddle
 from paddle import base
@@ -84,7 +84,7 @@ class TestAPICase(unittest.TestCase):
                 pred_fn_pairs=[(pred_2, fn_2)]
             )
 
-            place = get_current_place()
+            place = get_device_place()
             exe = base.Executor(place)
 
             res = exe.run(
@@ -141,7 +141,7 @@ class TestAPICase(unittest.TestCase):
                 pred_fn_pairs=[(pred_2, fn_2)]
             )
 
-            place = get_current_place()
+            place = get_device_place()
             exe = base.Executor(place)
 
             res = exe.run(
@@ -173,7 +173,7 @@ class TestAPICase(unittest.TestCase):
             )
             grad_list = append_backward(out)
 
-        place = get_current_place()
+        place = get_device_place()
         exe = base.Executor(place)
 
         if paddle.framework.in_pir_mode():
@@ -285,7 +285,7 @@ class TestAPICase(unittest.TestCase):
                 ((pred_1, fn_1), (pred_2, fn_2)), fn_3
             )
 
-            place = get_current_place()
+            place = get_device_place()
             exe = base.Executor(place)
             ret = exe.run(main_program, fetch_list=out)
 
@@ -403,7 +403,7 @@ class TestAPICase_Nested(unittest.TestCase):
                 pred_fn_pairs=[(x == y, fn_1), (x == z, fn_2)], default=fn_3
             )
 
-            place = get_current_place()
+            place = get_device_place()
             exe = base.Executor(place)
 
             res = exe.run(main_program, fetch_list=[out_1, out_2, out_3])
@@ -499,7 +499,7 @@ class TestAPICase_Nested(unittest.TestCase):
                 pred_fn_pairs=[(x == y, fn_1), (x == z, fn_2)], default=fn_3
             )
 
-            place = get_current_place()
+            place = get_device_place()
             exe = base.Executor(place)
 
             res = exe.run(main_program, fetch_list=[out_1, out_2, out_3])

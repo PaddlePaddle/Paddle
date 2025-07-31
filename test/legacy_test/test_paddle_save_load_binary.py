@@ -19,7 +19,7 @@ import unittest
 from io import BytesIO
 
 import numpy as np
-from op_test import get_current_place
+from op_test import get_device_place
 from test_imperative_base import new_program_scope
 
 import paddle
@@ -84,7 +84,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             z = paddle.static.nn.fc(x, 10, bias_attr=False)
             z = paddle.static.nn.fc(z, 128, bias_attr=False)
             loss = paddle.mean(z)
-            place = get_current_place()
+            place = get_device_place()
             exe = paddle.static.Executor(place)
             exe.run(paddle.static.default_startup_program())
             prog = paddle.static.default_main_program()
@@ -152,7 +152,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
                 name='fc_vars',
             )
             prog = paddle.static.default_main_program()
-            place = get_current_place()
+            place = get_device_place()
             exe = base.Executor(place)
             prog = paddle.static.default_main_program()
             exe.run(base.default_startup_program())
@@ -234,7 +234,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
 
     def test_save_load_selected_rows(self):
         paddle.enable_static()
-        place = get_current_place()
+        place = get_device_place()
         height = 10
         rows = [0, 4, 7]
         row_numel = 12
