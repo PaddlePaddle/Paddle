@@ -506,6 +506,8 @@ class PipelineLayer(nn.Layer):
             self.run_function = []
             self._build_layer()
 
+        self.comm_key_to_layer_name = {}
+
         self.shared_comm = self._construct_shared_comm()
         self._synchronize_shared_weights()
 
@@ -602,6 +604,59 @@ class PipelineLayer(nn.Layer):
                     current_layer_idx_to_stage_idx
                 ] = layer_name_to_attrs_on_stage_idx
 
+        # The second loop generates comm keys and assigns stages and attrs to the comm key.
+        # Record all unique comm keys, the comm key is generated from the layer name and the stage idx.
+        # Each comm key represents a comm group.
+        comm_keys = []
+        # Maps comm key to layer name.
+        comm_key_to_layer_name = {}
+        # Maps comm key to two stage idx using the comm key.
+        comm_key_to_stage_idx = {}
+        # Maps comm key to all shared attrs that will be communicated by the comm group indicated by the comm key.
+        comm_key_to_shared_attrs = {}
+        for layer_name in layer_name_to_stage_idx.keys():
+            all_stage_idx_contains_layer = layer_name_to_stage_idx[layer_name]
+            # For all stages contain a same layer name,
+            # generate a comm group between each stage and the pivot explicitly.
+            for stage_idx in all_stage_idx_contains_layer:
+                comm_key = f'LAYER_NAME:{layer_name},STAGE_IDX:{stage_idx}'
+                for idx, layer in enumerate(self._layers_desc):
+                    current_layer_idx_to_stage_idx = self.get_stage_from_index(
+                        idx
+                    )
+                    if not isinstance(layer, SharedLayerDesc):
+                        continue
+                    if (
+                        current_layer_idx_to_stage_idx
+                        == layer_name_to_pivot_stage_idx[layer_name]
+                    ):
+                        # Skip the pivot, the pivot stage will be added automatically when creating a new comm group.
+                        continue
+                    if (
+                        layer.layer_name == layer_name
+                        and current_layer_idx_to_stage_idx == stage_idx
+                    ):
+                        # Add comm key to comm_keys and add current stage idx to comm group.
+                        if comm_key not in comm_keys:
+                            comm_keys.append(comm_key)
+                            comm_key_to_layer_name[comm_key] = layer_name
+                            # The comm will only happen between pivot and current stage.
+                            comm_key_to_stage_idx[comm_key] = [
+                                layer_name_to_pivot_stage_idx[layer_name],
+                                current_layer_idx_to_stage_idx,
+                            ]
+                            comm_key_to_shared_attrs[comm_key] = (
+                                stage_idx_to_layer_name_to_attrs[stage_idx][
+                                    layer.layer_name
+                                ]
+                            )
+
+        if len(comm_keys) == 0:
+            warnings.warn(
+                "No shared comm will be constructed, "
+                "this may happen when all shared attrs are on a same stage."
+            )
+
         from paddle.distributed import fleet
         from paddle.distributed.fleet.base.topology import message2nccl_config
         from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.hybrid_parallel_optimizer import (
@@ -610,14 +665,14 @@ class PipelineLayer(nn.Layer):
 
         hybrid_configs = fleet.fleet._user_defined_strategy.hybrid_configs
 
-        # The next loop generates comm group for each layer_name.
-        for layer_name in layer_name_to_stage_idx.keys():
-            shared_stages = layer_name_to_stage_idx[layer_name]
-            weight_attrs = layer_name_to_pivot_attrs[layer_name]
-            shared_weight_attrs = layer_name_to_attrs_on_stage_idx[layer_name]
+        # The third loop generates comm group for each comm key.
+        for comm_key in comm_keys:
+            shared_stages = comm_key_to_stage_idx[comm_key]
+            layer_name = comm_key_to_layer_name[comm_key]
+            shared_attrs = comm_key_to_shared_attrs[comm_key]
             logger.info(
-                f'Constructing shared comm for {layer_name} among pp stages {shared_stages}, '
-                f'this shared comm will communicate attrs: {weight_attrs}.'
+                f'Constructing shared comm for {comm_key} among pp stages {shared_stages}, '
+                f'this shared comm will communicate attrs: {shared_attrs}.'
             )
 
             if hasattr(self._topo, "_parent_hcg"):
@@ -638,11 +693,10 @@ class PipelineLayer(nn.Layer):
                 )
                 if self.global_rank in shared_ranks:
                     assert layer_name in self.shared_layers
-                    shared_comm[layer_name] = {
+                    shared_comm[comm_key] = {
                         "ranks": shared_ranks,
                         "group": group,
-                        "weight_attr": weight_attrs,
-                        "shared_weight_attr": shared_weight_attrs,
+                        "weight_attr": shared_attrs,
                         "layer": self.shared_layers[layer_name],
                     }
 
@@ -652,13 +706,13 @@ class PipelineLayer(nn.Layer):
                     ):
                         # Set color for shared parameters to facilitate synchronization of parameters
                         # and optimizer states after each step
-                        for weight_attr in weight_attrs:
+                        for weight_attr in shared_attrs:
                             shared_param = getattr(
                                 self.shared_layers[layer_name], weight_attr
                             )
                             hcg = fleet.get_hybrid_communicate_group()
                             shared_param.color = {
-                                "color": f"{SHARED_WEIGHT_SYNC_PREFIX}_{layer_name}_{weight_attr}",
+                                "color": f"{SHARED_WEIGHT_SYNC_PREFIX}_{comm_key}",
                                 "group": hcg.get_sharding_parallel_group(),
                                 "broadcast_group": group,
                             }
@@ -717,9 +771,6 @@ class PipelineLayer(nn.Layer):
                             grad_var,
                             group=comm['group'],
                         )
-                    # clear the grad of unused params in current stage
-                    if weight_attr not in comm["shared_weight_attr"]:
-                        param.clear_grad()
                 else:
                     with paddle.framework.no_grad():
                         framework._dygraph_tracer().trace_op(

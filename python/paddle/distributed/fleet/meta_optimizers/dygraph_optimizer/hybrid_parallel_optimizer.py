@@ -524,7 +524,7 @@ class HybridParallelOptimizer:
         if pp_configs and (pp_configs.sync_param or pp_configs.sync_moment):
             params = sorted(
                 [p for p in parameters_list if self._pp_filter_fn(p)],
-                key=lambda p: p.color['color'],
+                key=lambda p: p.name,
             )
         return params, pp_configs
 
