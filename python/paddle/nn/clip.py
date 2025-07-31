@@ -717,7 +717,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
         sum_square_list = []
         sum_square_list_fp16 = []
         sum_square_list_fp32 = []
-        flag_new_pp = True
+        flag_auto_hybrid_pp = True
         if len(params_grads) > 0 and len(params_grads[0]) > 0:
             src_mesh = params_grads[0][0].process_mesh
         else:
@@ -743,7 +743,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
             # if the gradient mesh is not equal to src mesh
             # do reshard to get the result of squared_l2 from other pp stage mesh
             if src_mesh is not None and g.process_mesh != src_mesh:
-                flag_new_pp = False
+                flag_auto_hybrid_pp = False
                 pp_mesh = get_complete_pp_mesh(g.process_mesh)
                 if set(g.process_mesh.process_ids) < set(pp_mesh.process_ids):
                     sum_square = dist.reshard(
@@ -800,7 +800,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 and global_mesh.get_dim_size("pp") > 1
             )
         if (
-            flag_new_pp and src_mesh is not None and is_pp_enable
+            flag_auto_hybrid_pp and src_mesh is not None and is_pp_enable
         ):  # Use new pp_flask,At this point global_norm_var it's sub_norm_var_sum,we need to sum it between different pp_stage
             global_pp_mesh = global_mesh.get_mesh_with_dim("pp")
             reorder_mesh = global_pp_mesh._mesh.reshape(

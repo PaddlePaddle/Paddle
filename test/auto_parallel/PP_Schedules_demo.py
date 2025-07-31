@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import random
+import types
 
 import numpy as np
 
@@ -20,6 +21,9 @@ import paddle
 import paddle.distributed as dist
 from paddle import nn
 from paddle.distributed import fleet
+from paddle.distributed.auto_parallel._utils import (
+    _in_auto_parallel_align_mode_handle_none_gradients_in_step,
+)
 from paddle.distributed.auto_parallel.pipelining.schedules import (
     Schedule1F1B,
     ScheduleFThenB,
@@ -475,9 +479,58 @@ class Test_Schedules:
             opt.clear_grad()
         return losses_by_step
 
+    def test_FthenB_align_mode_of_GradientClipByGlobalNorm(self):
+        fix_seeds()
+        paddle.set_flags(
+            {'FLAGS_enable_auto_parallel_align_mode': True}
+        )  # Represents logical alignment with GradientClipByGlobalNorm that is semi-automatically parallel to the original dynamic graph, because the processing logic here is not aligned with the dynamic graph manually parallel
+        self.model = PPMyModel_SingleStage()
+        self.micro_batches = 8
+        self.stage = PipelineStage(self.model, self.rank, 4, group=self.group)
+        self.stage.has_backward = True
+        loss_fn_ = nn.MSELoss()
+        schedule = ScheduleFThenB(
+            self.stage, self.micro_batches, loss_fn=loss_fn_
+        )
+        opt = paddle.optimizer.AdamW(
+            learning_rate=0.001,
+            parameters=self.model.parameters(),
+            grad_clip=paddle.nn.ClipGradByGlobalNorm(1.0),
+        )
+        if (
+            dist.in_auto_parallel_align_mode()
+        ):  # When in auto parallel align mode, patching the optimizer step function
+            orig_step = (
+                opt.step.__func__ if hasattr(opt.step, "__func__") else opt.step
+            )
+            new_step = (
+                _in_auto_parallel_align_mode_handle_none_gradients_in_step(
+                    orig_step
+                )
+            )
+            opt.step = types.MethodType(new_step, opt)
+        dataset = RandomDataset(image_size=8, output_size=8, num_samples=8)
+        loader = DataLoader(dataset, batch_size=8)
+        losses_by_step = []
+        num_iterations = 20
+
+        for iter_idx in range(num_iterations):
+            losses_by_micro_batch = []
+            for i, (data, label) in enumerate(loader):
+                schedule.step(data, target=label, losses=losses_by_micro_batch)
+                if self.rank == 3:
+                    losses_by_step.append(
+                        np.array(losses_by_micro_batch, dtype=np.float32).mean()
+                    )
+            opt.step()
+            opt.clear_grad()
+        return losses_by_step
+
     def test_dp_pp_align_mode(self):
         fix_seeds()
-        paddle.set_flags({'FLAGS_enable_auto_parallel_align_mode': True})
+        paddle.set_flags(
+            {'FLAGS_enable_auto_parallel_align_mode': True}
+        )  # Represents manual parallel alignment with dynamic graphs, mainly segmenting microbatches when aligning DP and PP mixing
         global_mesh = paddle.distributed.ProcessMesh(
             [[0, 2], [1, 3]], dim_names=["pp", "dp"]
         )
@@ -557,6 +610,9 @@ class Test_Schedules:
         scheduleFThenB_with_ClipGradByGlobalNorm_losses = (
             self.test_ScheduleFThenB_with_ClipGradByGlobalNorm()
         )
+        scheduleFthenB_align_mode_losses_of_GradientClipByGlobalNorm = (
+            self.test_FthenB_align_mode_of_GradientClipByGlobalNorm()
+        )
         dp_pp_losses, dp_pp_losses_md5sum = self.test_dp_pp()
         dp_pp_align_mode_losses, dp_pp_align_mode_losses_md5sum = (
             self.test_dp_pp_align_mode()
@@ -596,6 +652,12 @@ class Test_Schedules:
             np.testing.assert_allclose(
                 dp_pp_align_mode_losses,
                 dp_pp_losses,
+                rtol=1e-5,
+            )
+
+            np.testing.assert_allclose(
+                scheduleFthenB_align_mode_losses_of_GradientClipByGlobalNorm,
+                pp_model_with_ClipGradByGlobalNorm_losses,
                 rtol=1e-5,
             )
 
