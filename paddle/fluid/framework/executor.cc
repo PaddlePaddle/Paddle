@@ -598,8 +598,10 @@ void Executor::EnableONEDNN(const ProgramDesc& program) {
   for (size_t bid = 0; bid < program.Size(); ++bid) {
     auto* block = const_cast<ProgramDesc&>(program).MutableBlock(bid);
     for (auto* op : block->AllOps()) {
-      if (FoundOneDNNKernel(op) || FoundPhiOneDNNKernel(op))
+      if (FoundOneDNNKernel(op) || FoundPhiOneDNNKernel(op)) {
         op->SetAttr("use_mkldnn", true);
+        op->SetAttr("use_onednn", true);
+      }
     }
   }
 #else

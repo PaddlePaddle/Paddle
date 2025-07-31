@@ -349,6 +349,10 @@ void CreateAllOps(const framework::BlockDesc& block,
         VLOG(4) << "Set use_mkldnn=True for " << op_base->Type();
         op_base->SetAttr("use_mkldnn", true);
       }
+      if (op->HasAttr("use_onednn")) {
+        VLOG(4) << "Set use_onednn=True for " << op_base->Type();
+        op_base->SetAttr("use_onednn", true);
+      }
     }
 #endif
 

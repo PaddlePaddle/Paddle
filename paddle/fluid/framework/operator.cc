@@ -1599,7 +1599,8 @@ bool OperatorWithKernel::SupportsKernelType(
 
 bool OperatorWithKernel::CanONEDNNBeUsed(const framework::ExecutionContext& ctx,
                                          phi::DataType data_type) const {
-  return ctx.HasAttr("use_mkldnn") && ctx.Attr<bool>("use_mkldnn") &&
+  return ((ctx.HasAttr("use_mkldnn") && ctx.Attr<bool>("use_mkldnn")) ||
+          (ctx.HasAttr("use_onednn") && ctx.Attr<bool>("use_onednn"))) &&
          phi::is_cpu_place(ctx.GetPlace()) && this->SupportsONEDNN(data_type);
 }
 

@@ -246,10 +246,12 @@ void Tracer::TraceOpImpl(const std::string& type,
     if (!FLAGS_tracer_onednn_ops_on.empty()) {
       auto is_on = FLAGS_tracer_onednn_ops_on.find(type) != std::string::npos;
       attrs["use_mkldnn"] = is_on;
+      attrs["use_onednn"] = is_on;
     } else {
       // if ops_on list is empty all ops are enabled except types from off_list
       auto is_off = FLAGS_tracer_onednn_ops_off.find(type) != std::string::npos;
       attrs["use_mkldnn"] = !is_off;
+      attrs["use_onednn"] = !is_off;
     }
   }
 
