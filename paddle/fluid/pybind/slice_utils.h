@@ -782,6 +782,7 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
     }
 
     AdvancedIndex ad = AdvancedIndex(tensor, indices_int64);
+    const bool is_combined = false;
     const bool accumulate = false;
 
     return index_elementwise_get_ad_func(tensor,
@@ -791,7 +792,8 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
                                          ad.indexed_sizes,
                                          ad.indexed_strides,
                                          slice_offset,
-                                         accumulate);
+                                         accumulate,
+                                         is_combined);
   } else {
     if (bool_index.shape().size() == 1)
       return gather_ad_func(tensor, bool_2_idx);
@@ -1238,23 +1240,17 @@ static void ApplyGetitem(const int index_size,
                     &transed_index_int64);
 
       AdvancedIndex ad = AdvancedIndex(*transed_tensor, transed_index_int64);
-      if (index_size == 1) {
-        paddle::Tensor flattened_tensor =
-            flatten_ad_func((*transed_index)[0], 0, -1);
-        *out = gather_ad_func(*transed_tensor, flattened_tensor);
-        *out = reshape_ad_func(*out, ad.src_sizes);
-      } else {
-        const bool accumulate = true;
-        *out = index_elementwise_get_ad_func(*self_tensor,
-                                             ad.indices,
-                                             ad.src_sizes,
-                                             ad.src_strides,
-                                             ad.indexed_sizes,
-                                             ad.indexed_strides,
-                                             slice_offset,
-                                             accumulate);
-      }
-
+      const bool is_combined = (index_size == 1) ? false : true;
+      const bool accumulate = true;
+      *out = index_elementwise_get_ad_func(*self_tensor,
+                                           ad.indices,
+                                           ad.src_sizes,
+                                           ad.src_strides,
+                                           ad.indexed_sizes,
+                                           ad.indexed_strides,
+                                           slice_offset,
+                                           accumulate,
+                                           is_combined);
       return;
     } else {
       paddle::Tensor transed_advanced_index_tensor;

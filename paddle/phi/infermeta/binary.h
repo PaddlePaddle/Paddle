@@ -493,6 +493,7 @@ void IndexElementwiseGetInferMeta(const MetaTensor& x,
                                   const std::vector<int64_t>& index_stride,
                                   const int64_t slice_offset,
                                   const bool accumulate,
+                                  const bool is_combined,
                                   MetaTensor* out);
 
 void KronInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
