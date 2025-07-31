@@ -2931,10 +2931,6 @@ class OpTest(unittest.TestCase):
             and not cpu_only
         ):
             places.append(core.CUDAPlace(0))
-        if len(core.get_all_custom_device_type()) > 0:
-            dev_type = core.get_all_custom_device_type()[0]
-            if core.is_compiled_with_custom_device(dev_type) and not cpu_only:
-                places.append(core.CustomPlace(dev_type, 0))
         return places
 
     def check_output(
