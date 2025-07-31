@@ -252,7 +252,7 @@ def to_string(var, prefix='Tensor'):
         return "Tensor(Not initialized)"
 
     if var.dtype == paddle.bfloat16:
-        if paddle.is_compiled_with_cuda() or paddle.is_compiled_with_xpu():
+        if not var.place.is_cpu_place():
             paddle.device.synchronize()
         var = var.astype('float32')
     np_var = var.numpy(False)
@@ -299,7 +299,7 @@ def _format_dense_tensor(tensor, indent):
         or dtype == core.VarDesc.VarType.FP8_E4M3FN
         or dtype == core.VarDesc.VarType.FP8_E5M2
     ):
-        if paddle.is_compiled_with_cuda() or paddle.is_compiled_with_xpu():
+        if not tensor.place.is_cpu_place():
             paddle.device.synchronize()
         tensor = tensor.astype('float32')
 
