@@ -965,7 +965,7 @@ void BatchNormInferMeta(const MetaTensor& x,
           x_dims,
           x_dims.size()));
 
-  const int64_t C = ((config.is_run_mkldnn_kernel == true) ||
+  const int64_t C = ((config.is_run_onednn_kernel == true) ||
                              (data_layout == DataLayout::kNCHW)
                          ? x_dims[1]
                          : x_dims[x_dims.size() - 1]);
@@ -2476,7 +2476,7 @@ void FusedBiasActInferMeta(const MetaTensor& x,
     x_shapes.push_back(x_dims[i]);
   }
 
-  if (config.is_runtime) {
+  if (config.is_runtime && x.numel() != 0) {
     PADDLE_ENFORCE_GT(
         x.numel() / dim,
         0,
@@ -2632,7 +2632,9 @@ void FusedLayerNormInferMeta(const MetaTensor& x,
   if (residual) {
     std::vector<int64_t> residual_dims_vec = common::vectorize(residual.dims());
     for (size_t i = 0; i < x_dims_vec.size(); ++i) {
-      if (x_dims_vec[i] == -1 || residual_dims_vec[i] == -1) continue;
+      if (x_dims_vec[i] == -1 || residual_dims_vec[i] == -1 ||
+          x_dims_vec[i] == 0)
+        continue;
 
       PADDLE_ENFORCE_EQ(x_dims_vec[i],
                         residual_dims_vec[i],

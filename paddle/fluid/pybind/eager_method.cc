@@ -45,6 +45,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/core/memory/memcpy.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/core/vocab/string_array.h"
 #include "pybind11/detail/internals.h"
 #include "pybind11/numpy.h"
@@ -64,6 +65,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/core/memory/allocation/mmap_allocator.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/strided_utils.h"
 #include "paddle/utils/pybind.h"
 
 COMMON_DECLARE_bool(set_to_1d);
@@ -1412,15 +1414,34 @@ static PyObject* tensor_method_set_underline_tensor(TensorObject* self,
     if (self->tensor.is_dense_tensor()) {
       auto* dst_tensor =
           static_cast<phi::DenseTensor*>(self->tensor.impl().get());
-      if (dst_tensor->place().GetType() != phi::AllocationType::UNDEFINED) {
-        framework::TensorCopy(*src_tensor, dst_tensor->place(), dst_tensor);
-      } else if (src_tensor->place().GetType() !=
-                 phi::AllocationType::UNDEFINED) {
-        framework::TensorCopy(*src_tensor, src_tensor->place(), dst_tensor);
+      if (!dst_tensor->meta().is_contiguous() ||
+          !src_tensor->meta().is_contiguous()) {
+        VLOG(8) << "set_tensor() method , src or dst tensor is not contiguous";
+        if (!FLAGS_use_stride_kernel) {
+          PADDLE_THROW(common::errors::Fatal(
+              "FLAGS_use_stride_kernel is closed. Strided kernel "
+              "be called, something wrong has happened!"));
+        }
+        PD_VISIT_ALL_TYPES(
+            src_tensor->dtype(), "StridedTensorCopy", ([&] {
+              phi::StridedTensorCopy<data_t>(
+                  *src_tensor,
+                  common::vectorize<int64_t>(dst_tensor->dims()),
+                  common::vectorize<int64_t>(dst_tensor->strides()),
+                  dst_tensor->offset(),
+                  dst_tensor);
+            }));
       } else {
-        PADDLE_THROW(common::errors::Unavailable(
-            "The `set_tensor()` method of (Dist)Tensor get a src value with "
-            "undefined place"));
+        if (dst_tensor->place().GetType() != phi::AllocationType::UNDEFINED) {
+          framework::TensorCopy(*src_tensor, dst_tensor->place(), dst_tensor);
+        } else if (src_tensor->place().GetType() !=
+                   phi::AllocationType::UNDEFINED) {
+          framework::TensorCopy(*src_tensor, src_tensor->place(), dst_tensor);
+        } else {
+          PADDLE_THROW(common::errors::Unavailable(
+              "The `set_tensor()` method of (Dist)Tensor get a src value with "
+              "undefined place"));
+        }
       }
 
     } else {

@@ -385,7 +385,7 @@ bool IsCompiledWithIPU() {
 #endif
 }
 
-bool IsCompiledWithMKLDNN() {
+bool IsCompiledWithONEDNN() {
 #ifndef PADDLE_WITH_DNNL
   return false;
 #else
@@ -2992,7 +2992,8 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_custom_device", IsCompiledWithCustomDevice);
   m.def("is_compiled_with_ipu", IsCompiledWithIPU);
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
-  m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
+  m.def("is_compiled_with_mkldnn", IsCompiledWithONEDNN);  // deprecated
+  m.def("is_compiled_with_onednn", IsCompiledWithONEDNN);
   m.def("is_compiled_with_nccl", IsCompiledWithNCCL);
   m.def("is_compiled_with_mpi", IsCompiledWithMPI);
   m.def("is_compiled_with_mpi_aware", IsCompiledWithMPIAWARE);

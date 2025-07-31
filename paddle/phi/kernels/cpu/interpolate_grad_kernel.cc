@@ -28,9 +28,9 @@ template <typename T>
 static void LinearInterpolationGrad(const DenseTensor& output_grad,
                                     DenseTensor* input_grad,
                                     const float ratio_w,
-                                    const int in_w,
-                                    const int n,
-                                    const int c,
+                                    const int64_t in_w,
+                                    const int64_t n,
+                                    const int64_t c,
                                     const int out_w,
                                     const bool align_corners,
                                     const int align_mode,
@@ -75,10 +75,10 @@ static void BilinearInterpolationGrad(const DenseTensor& output_grad,
                                       DenseTensor* input_grad,
                                       const float ratio_h,
                                       const float ratio_w,
-                                      const int in_h,
-                                      const int in_w,
-                                      const int n,
-                                      const int c,
+                                      const int64_t in_h,
+                                      const int64_t in_w,
+                                      const int64_t n,
+                                      const int64_t c,
                                       const int out_h,
                                       const int out_w,
                                       const bool align_corners,
@@ -142,8 +142,8 @@ static void NearestNeighborInterpolateGrad(const DenseTensor& output_grad,
                                            DenseTensor* input_grad,
                                            const float ratio_h,
                                            const float ratio_w,
-                                           const int n,
-                                           const int c,
+                                           const int64_t n,
+                                           const int64_t c,
                                            const int out_h,
                                            const int out_w,
                                            const bool align_corners,
@@ -179,10 +179,10 @@ static void BicubicInterpolationGrad(const DenseTensor& output_grad,
                                      DenseTensor* input_grad,
                                      const float ratio_h,
                                      const float ratio_w,
-                                     const int in_h,
-                                     const int in_w,
-                                     const int n,
-                                     const int c,
+                                     const int64_t in_h,
+                                     const int64_t in_w,
+                                     const int64_t n,
+                                     const int64_t c,
                                      const int out_h,
                                      const int out_w,
                                      const bool align_corners,
@@ -194,13 +194,13 @@ static void BicubicInterpolationGrad(const DenseTensor& output_grad,
   for (int k = 0; k < out_h; k++) {  // loop for images
     MT y_n = align_corners ? ratio_h * static_cast<float>(k)
                            : ratio_h * (static_cast<float>(k) + 0.5f) - 0.5f;
-    int input_y = floorf(y_n);
+    int64_t input_y = floorf(y_n);
     MT y_t = y_n - input_y;
 
     for (int l = 0; l < out_w; l++) {
       MT x_n = align_corners ? ratio_w * static_cast<float>(l)
                              : ratio_w * (static_cast<float>(l) + 0.5f) - 0.5f;
-      int input_x = floorf(x_n);
+      int64_t input_x = floorf(x_n);
       MT x_t = x_n - input_x;
 
       std::array<MT, 4> x_coeffs;
@@ -215,9 +215,9 @@ static void BicubicInterpolationGrad(const DenseTensor& output_grad,
           for (int ii = 0; ii < 4; ii++) {
             for (int jj = 0; jj < 4; jj++) {
               int access_x = std::max(std::min(input_x - 1 + ii, in_w - 1),
-                                      static_cast<int>(0));
+                                      static_cast<int64_t>(0));
               int access_y = std::max(std::min(input_y - 1 + jj, in_h - 1),
-                                      static_cast<int>(0));
+                                      static_cast<int64_t>(0));
               if (data_layout == DataLayout::kNCHW) {
                 MT grad = static_cast<MT>(output_grad_t(i, j, k, l));
                 input_grad_t(i, j, access_y, access_x) +=
@@ -241,11 +241,11 @@ static void TrilinearInterpolationGrad(const DenseTensor& output_grad,
                                        const float ratio_d,
                                        const float ratio_h,
                                        const float ratio_w,
-                                       const int in_d,
-                                       const int in_h,
-                                       const int in_w,
-                                       const int n,
-                                       const int c,
+                                       const int64_t in_d,
+                                       const int64_t in_h,
+                                       const int64_t in_w,
+                                       const int64_t n,
+                                       const int64_t c,
                                        const int out_d,
                                        const int out_h,
                                        const int out_w,
@@ -348,8 +348,8 @@ static void NearestNeighbor3DInterpolateGrad(const DenseTensor& output_grad,
                                              const float ratio_d,
                                              const float ratio_h,
                                              const float ratio_w,
-                                             const int n,
-                                             const int c,
+                                             const int64_t n,
+                                             const int64_t c,
                                              const int out_d,
                                              const int out_h,
                                              const int out_w,
@@ -407,7 +407,7 @@ static void Interpolate1DCPUBwd(
     int align_mode,
     DenseTensor* input_grad) {
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
-  int n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
+  int64_t n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
   float scale_w = -1.0;
@@ -508,7 +508,7 @@ static void Interpolate2DCPUBwd(
     int align_mode,
     DenseTensor* input_grad) {
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
-  int n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
+  int64_t n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
   float scale_h = -1;
@@ -674,7 +674,7 @@ static void Interpolate3DCPUBwd(
     int align_mode,
     DenseTensor* input_grad) {
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
-  int n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
+  int64_t n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
   float scale_d = -1;

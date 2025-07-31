@@ -1584,13 +1584,13 @@ void AnalysisPredictor::MkldnnPreSet(
 void AnalysisPredictor::MkldnnPreSet(
     const std::vector<std::vector<int>> &inputs_shape) {
 #ifdef PADDLE_WITH_DNNL
-  VLOG(2) << "AnalysisPredictor::ZeroCopyRun get_cur_mkldnn_session_id="
-          << phi::OneDNNContext::tls().get_cur_mkldnn_session_id();
+  VLOG(2) << "AnalysisPredictor::ZeroCopyRun get_cur_onednn_session_id="
+          << phi::OneDNNContext::tls().get_cur_onednn_session_id();
   // In cache clearing mode.
   if (config_.onednn_cache_capacity_ > 0) {
     VLOG(2) << "In mkldnn cache clear mode.";
-    phi::OneDNNContext::tls().set_cur_mkldnn_session_id(
-        phi::OneDNNContextThreadLocals::kMKLDNNSessionID_CacheClearing);
+    phi::OneDNNContext::tls().set_cur_onednn_session_id(
+        phi::OneDNNContextThreadLocals::kONEDNNSessionID_CacheClearing);
     // Set current_input_shape for caching dynamic shape.
     std::stringstream ss;
     for (const auto &input_shape : inputs_shape) {

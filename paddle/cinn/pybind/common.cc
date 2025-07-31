@@ -164,6 +164,7 @@ void BindType(py::module *m) {
   specific_type_t.value("UNK", Type::specific_type_t::None)
       .value("FP16", Type::specific_type_t::FP16)
       .value("BF16", Type::specific_type_t::BF16)
+      .value("FP8E4M3", Type::specific_type_t::FP8E4M3)
       .export_values();
 
   py::enum_<Type::cpp_type_t> cpp_type_t(type, "cpp_type_t");
@@ -183,6 +184,7 @@ void BindType(py::module *m) {
            py::arg("st") = Type::specific_type_t::None)
       .def("Float16", &cinn::common::Float16, py::arg("lanes") = 1)
       .def("BFloat16", &cinn::common::BFloat16, py::arg("lanes") = 1)
+      .def("Float8e4m3", &cinn::common::Float8e4m3, py::arg("lanes") = 1)
       .def("Bool", &cinn::common::Bool, py::arg("lanes") = 1)
       .def("String", &cinn::common::String);
 

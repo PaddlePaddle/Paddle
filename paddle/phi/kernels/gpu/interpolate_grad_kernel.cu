@@ -847,7 +847,7 @@ static void Interpolate1DCUDABwd(
     int align_mode,
     DenseTensor* input_grad) {
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
-  int n, c, in_d, in_h, in_w;
+  int64_t n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
   float scale_w = -1;
@@ -961,7 +961,7 @@ static void Interpolate2DCUDABwd(
     int align_mode,
     DenseTensor* input_grad) {
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
-  int n, c, in_d, in_h, in_w;
+  int64_t n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
   float scale_h = -1;
@@ -1239,7 +1239,7 @@ static void Interpolate3DCUDABwd(
     int align_mode,
     DenseTensor* input_grad) {
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
-  int n, c, in_d, in_h, in_w;
+  int64_t n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
   float scale_d = -1;

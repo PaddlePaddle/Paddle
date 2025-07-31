@@ -31,52 +31,52 @@ static inline int NumBlocks(const int N) {
 
 template <typename T>
 __global__ void ModulatedDeformableCol2imGpuKernel(
-    const int64_t nthreads,
+    const int nthreads,
     const T* data_col,
     const T* data_offset,
     const T* data_mask,
-    const int64_t channels,
-    const int64_t height,
-    const int64_t width,
-    const int64_t kernel_h,
-    const int64_t kernel_w,
-    const int64_t pad_h,
-    const int64_t pad_w,
-    const int64_t stride_h,
-    const int64_t stride_w,
-    const int64_t dilation_h,
-    const int64_t dilation_w,
-    const int64_t channel_per_deformable_group,
-    const int64_t batch_size,
-    const int64_t deformable_group,
-    const int64_t height_col,
-    const int64_t width_col,
+    const int channels,
+    const int height,
+    const int width,
+    const int kernel_h,
+    const int kernel_w,
+    const int pad_h,
+    const int pad_w,
+    const int stride_h,
+    const int stride_w,
+    const int dilation_h,
+    const int dilation_w,
+    const int channel_per_deformable_group,
+    const int batch_size,
+    const int deformable_group,
+    const int height_col,
+    const int width_col,
     T* grad_im) {
-  int64_t index = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-  int64_t offset = static_cast<int64_t>(blockDim.x) * gridDim.x;
-  for (int64_t thread = index; thread < nthreads; thread += offset) {
-    const int64_t j = (thread / width_col / height_col / batch_size) % kernel_w;
-    const int64_t i =
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int offset = blockDim.x * gridDim.x;
+  for (size_t thread = index; thread < nthreads; thread += offset) {
+    const int j = (thread / width_col / height_col / batch_size) % kernel_w;
+    const int i =
         (thread / width_col / height_col / batch_size / kernel_w) % kernel_h;
-    const int64_t c =
+    const int c =
         thread / width_col / height_col / batch_size / kernel_w / kernel_h;
 
-    const int64_t deformable_group_index = c / channel_per_deformable_group;
+    const int deformable_group_index = c / channel_per_deformable_group;
 
-    int64_t w_out = thread % width_col;
-    int64_t h_out = (thread / width_col) % height_col;
-    int64_t b = (thread / width_col / height_col) % batch_size;
-    int64_t w_in = w_out * stride_w - pad_w;
-    int64_t h_in = h_out * stride_h - pad_h;
+    int w_out = thread % width_col;
+    int h_out = (thread / width_col) % height_col;
+    int b = (thread / width_col / height_col) % batch_size;
+    int w_in = w_out * stride_w - pad_w;
+    int h_in = h_out * stride_h - pad_h;
 
     const T* data_offset_ptr =
         data_offset + (b * deformable_group + deformable_group_index) * 2 *
                           kernel_h * kernel_w * height_col * width_col;
-    const int64_t data_offset_h_ptr =
+    const int data_offset_h_ptr =
         ((2 * (i * kernel_w + j)) * height_col + h_out) * width_col + w_out;
-    const int64_t data_offset_w_ptr =
+    const int data_offset_w_ptr =
         ((2 * (i * kernel_w + j) + 1) * height_col + h_out) * width_col + w_out;
-    const int64_t data_mask_hw_ptr =
+    const int data_mask_hw_ptr =
         ((i * kernel_w + j) * height_col + h_out) * width_col + w_out;
     const T offset_h = data_offset_ptr[data_offset_h_ptr];
     const T offset_w = data_offset_ptr[data_offset_w_ptr];
@@ -91,14 +91,14 @@ __global__ void ModulatedDeformableCol2imGpuKernel(
       const T mask = data_mask_ptr[data_mask_hw_ptr];
       cur_top_grad *= mask;
     }
-    const int64_t cur_h = static_cast<int64_t>(cur_inv_h_data);
-    const int64_t cur_w = static_cast<int64_t>(cur_inv_w_data);
-    for (int64_t dy = -2; dy <= 2; dy++) {
-      for (int64_t dx = -2; dx <= 2; dx++) {
+    const int cur_h = static_cast<int>(cur_inv_h_data);
+    const int cur_w = static_cast<int>(cur_inv_w_data);
+    for (int dy = -2; dy <= 2; dy++) {
+      for (int dx = -2; dx <= 2; dx++) {
         if (cur_h + dy >= 0 && cur_h + dy < height && cur_w + dx >= 0 &&
             cur_w + dx < width && abs(cur_inv_h_data - (cur_h + dy)) < 1 &&
             abs(cur_inv_w_data - (cur_w + dx)) < 1) {
-          int64_t cur_bottom_grad_pos =
+          int cur_bottom_grad_pos =
               ((b * channels + c) * height + cur_h + dy) * width + cur_w + dx;
           T weight = DmcnGetGradientWeight(cur_inv_h_data,
                                            cur_inv_w_data,
@@ -128,11 +128,10 @@ void ModulatedDeformableCol2im(const Context& dev_ctx,
                                const std::vector<int>& dilation,
                                const int deformable_group,
                                T* grad_im) {
-  int64_t channel_per_deformable_group = im_shape[0] / deformable_group;
-  int64_t num_kernels =
-      col_shape[0] * col_shape[1] * col_shape[2] * col_shape[3];
-  int64_t blocks = NumBlocks(num_kernels);
-  int64_t threads = kNumCUDAThreads;
+  int channel_per_deformable_group = im_shape[0] / deformable_group;
+  int num_kernels = col_shape[0] * col_shape[1] * col_shape[2] * col_shape[3];
+  int blocks = NumBlocks(num_kernels);
+  int threads = kNumCUDAThreads;
 
   ModulatedDeformableCol2imGpuKernel<T>
       <<<blocks, threads, 0, dev_ctx.stream()>>>(num_kernels,
@@ -160,42 +159,42 @@ void ModulatedDeformableCol2im(const Context& dev_ctx,
 
 template <typename T>
 __global__ void ModulatedDeformableCol2imCoordGpuKernel(
-    const int64_t nthreads,
+    const int nthreads,
     const T* data_col,
     const T* data_im,
     const T* data_offset,
     const T* data_mask,
-    const int64_t channels,
-    const int64_t height,
-    const int64_t width,
-    const int64_t kernel_h,
-    const int64_t kernel_w,
-    const int64_t pad_h,
-    const int64_t pad_w,
-    const int64_t stride_h,
-    const int64_t stride_w,
-    const int64_t dilation_h,
-    const int64_t dilation_w,
-    const int64_t channel_per_deformable_group,
-    const int64_t batch_size,
-    const int64_t offset_channels,
-    const int64_t deformable_group,
-    const int64_t height_col,
-    const int64_t width_col,
+    const int channels,
+    const int height,
+    const int width,
+    const int kernel_h,
+    const int kernel_w,
+    const int pad_h,
+    const int pad_w,
+    const int stride_h,
+    const int stride_w,
+    const int dilation_h,
+    const int dilation_w,
+    const int channel_per_deformable_group,
+    const int batch_size,
+    const int offset_channels,
+    const int deformable_group,
+    const int height_col,
+    const int width_col,
     T* grad_offset,
     T* grad_mask) {
-  int64_t index = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-  int64_t offset = blockDim.x * static_cast<int64_t>(gridDim.x);
-  for (int64_t i = index; i < nthreads; i += offset) {
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int offset = blockDim.x * gridDim.x;
+  for (size_t i = index; i < nthreads; i += offset) {
     T val = 0, mval = 0;
-    const int64_t w = i % width_col;
-    const int64_t h = (i / width_col) % height_col;
-    const int64_t c = (i / width_col / height_col) % offset_channels;
-    const int64_t b = (i / width_col / height_col) / offset_channels;
+    const int w = i % width_col;
+    const int h = (i / width_col) % height_col;
+    const int c = (i / width_col / height_col) % offset_channels;
+    const int b = (i / width_col / height_col) / offset_channels;
 
-    const int64_t deformable_group_index = c / (2 * kernel_h * kernel_w);
-    const int64_t col_step = kernel_h * kernel_w;
-    int64_t cnt = 0;
+    const int deformable_group_index = c / (2 * kernel_h * kernel_w);
+    const int col_step = kernel_h * kernel_w;
+    int cnt = 0;
     const T* data_col_ptr = data_col + deformable_group_index *
                                            channel_per_deformable_group *
                                            batch_size * width_col * height_col;
@@ -212,25 +211,24 @@ __global__ void ModulatedDeformableCol2imCoordGpuKernel(
                               kernel_h * kernel_w * height_col * width_col
             : nullptr;
 
-    const int64_t offset_c =
-        c - deformable_group_index * 2 * kernel_h * kernel_w;
+    const int offset_c = c - deformable_group_index * 2 * kernel_h * kernel_w;
 
-    for (int64_t col_c = offset_c / 2; col_c < channel_per_deformable_group;
+    for (int col_c = offset_c / 2; col_c < channel_per_deformable_group;
          col_c += col_step) {
-      const int64_t col_pos =
+      const int col_pos =
           (((col_c * batch_size + b) * height_col) + h) * width_col + w;
-      const int64_t bp_dir = offset_c % 2;
+      const int bp_dir = offset_c % 2;
 
-      int64_t j = (col_pos / width_col / height_col / batch_size) % kernel_w;
-      int64_t i =
+      int j = (col_pos / width_col / height_col / batch_size) % kernel_w;
+      int i =
           (col_pos / width_col / height_col / batch_size / kernel_w) % kernel_h;
-      int64_t w_out = col_pos % width_col;
-      int64_t h_out = (col_pos / width_col) % height_col;
-      int64_t w_in = w_out * stride_w - pad_w;
-      int64_t h_in = h_out * stride_h - pad_h;
-      const int64_t data_offset_h_ptr =
+      int w_out = col_pos % width_col;
+      int h_out = (col_pos / width_col) % height_col;
+      int w_in = w_out * stride_w - pad_w;
+      int h_in = h_out * stride_h - pad_h;
+      const int data_offset_h_ptr =
           (((2 * (i * kernel_w + j)) * height_col + h_out) * width_col + w_out);
-      const int64_t data_offset_w_ptr =
+      const int data_offset_w_ptr =
           (((2 * (i * kernel_w + j) + 1) * height_col + h_out) * width_col +
            w_out);
       const T offset_h = data_offset_ptr[data_offset_h_ptr];
@@ -257,7 +255,7 @@ __global__ void ModulatedDeformableCol2imCoordGpuKernel(
                                   width,
                                   bp_dir);
       if (data_mask_ptr) {
-        const int64_t data_mask_hw_ptr =
+        const int data_mask_hw_ptr =
             (((i * kernel_w + j) * height_col + h_out) * width_col + w_out);
         const T mask = data_mask_ptr[data_mask_hw_ptr];
         val += weight * data_col_ptr[col_pos] * mask;
@@ -293,11 +291,11 @@ void ModulatedDeformableCol2imCoord(const Context& dev_ctx,
                                     const int deformable_groups,
                                     T* grad_offset,
                                     T* grad_mask) {
-  int64_t num_kernels = 2 * kernel_shape[2] * kernel_shape[3] * col_shape[1] *
-                        col_shape[2] * col_shape[3] * deformable_groups;
-  int64_t channel_per_deformable_group = col_shape[0] / deformable_groups;
-  int64_t blocks = NumBlocks(num_kernels);
-  int64_t threads = kNumCUDAThreads;
+  int num_kernels = 2 * kernel_shape[2] * kernel_shape[3] * col_shape[1] *
+                    col_shape[2] * col_shape[3] * deformable_groups;
+  int channel_per_deformable_group = col_shape[0] / deformable_groups;
+  int blocks = NumBlocks(num_kernels);
+  int threads = kNumCUDAThreads;
 
   ModulatedDeformableCol2imCoordGpuKernel<T>
       <<<blocks, threads, 0, dev_ctx.stream()>>>(
@@ -328,32 +326,29 @@ void ModulatedDeformableCol2imCoord(const Context& dev_ctx,
 }
 
 template <typename T>
-__global__ void FilterGradAddupGpuKernel(const int64_t nthreads,
-                                         const int64_t n,
-                                         const int64_t height,
-                                         const int64_t width,
+__global__ void FilterGradAddupGpuKernel(const int nthreads,
+                                         const int n,
+                                         const int height,
+                                         const int width,
                                          const T* dweight_3d,
                                          T* filter_grad) {
-  int64_t index = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-  int64_t offset = blockDim.x * static_cast<int64_t>(gridDim.x);
-  for (int64_t i = index; i < nthreads; i += offset) {
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int offset = blockDim.x * gridDim.x;
+  for (size_t i = index; i < nthreads; i += offset) {
     filter_grad[i] = filter_grad[i] + dweight_3d[i];
   }
 }
 
 template <typename T, typename Context>
 void FilterGradAddup(const Context& dev_ctx,
-                     const int64_t nthreads,
-                     const int64_t n,
-                     const int64_t height,
-                     const int64_t width,
+                     const int nthreads,
+                     const int n,
+                     const int height,
+                     const int width,
                      const T* dweight_3d,
                      T* filter_grad) {
-  const int64_t max_grid_x = dev_ctx.GetCUDAMaxGridDimSize()[0];
-  const int64_t grid_size = std::min<int64_t>(
-      (nthreads + kNumCUDAThreads - 1) / kNumCUDAThreads, max_grid_x);
   FilterGradAddupGpuKernel<T>
-      <<<grid_size, kNumCUDAThreads, 0, dev_ctx.stream()>>>(
+      <<<NumBlocks(nthreads), kNumCUDAThreads, 0, dev_ctx.stream()>>>(
           nthreads, n, height, width, dweight_3d, filter_grad);
 }
 

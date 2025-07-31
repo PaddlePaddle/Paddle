@@ -26,7 +26,10 @@
 #include "paddle/phi/kernels/full_kernel.h"
 namespace phi {
 
-static inline int32_t divUp(int32_t m, int32_t n) { return (m + n - 1) / n; }
+template <typename T>
+static inline T divUp(T m, T n) {
+  return (m + n - 1) / n;
+}
 
 static inline __device__ __host__ float sigmoid(float x) {
   return 1.F / (1.F + expf(-x));
@@ -98,12 +101,12 @@ struct GroupSumsOp {
   }
 };
 
-static int32_t findMaxDivisor(int32_t n, int32_t maxAllowedDivisor) {
-  int32_t maxDivisor = -1;
-  for (int32_t i = 1; i <= std::sqrt(n); i++) {
+static int64_t findMaxDivisor(int64_t n, int64_t maxAllowedDivisor) {
+  int64_t maxDivisor = -1;
+  for (int64_t i = 1; i <= std::sqrt(n); i++) {
     if (n % i == 0) {
-      int32_t divisor1 = n / i;
-      int32_t divisor2 = i;
+      int64_t divisor1 = n / i;
+      int64_t divisor2 = i;
 
       if (divisor1 > maxDivisor && divisor1 < maxAllowedDivisor) {
         maxDivisor = divisor1;
@@ -219,18 +222,17 @@ __global__ void groupNormNDHWCSumSingerChannelKernel(
     return;
   }
   // The first activation loaded by that block.
-  int32_t dhwBegin = blockIdx.y * params.dhwPerBlock;
+  int64_t dhwBegin = blockIdx.y * params.dhwPerBlock;
   // The last activation loaded by that block.
-  int32_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
+  int64_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
 
   // The sums.
   float sum = 0.F;
   float sumSq = 0.F;
 
-  for (int32_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
+  for (int64_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The offset.
-    int64_t offset = static_cast<int64_t>(ni) * params.dhwc +
-                     static_cast<int64_t>(dhwi) * params.c + ci;
+    int64_t offset = ni * params.dhwc + dhwi * params.c + ci;
     float src_data = *reinterpret_cast<float const*>(&params.srcX[offset]);
     if (params.srcR != nullptr) {
       int64_t g_offset = params.y_same_with_x ? offset : ci;
@@ -271,18 +273,17 @@ __global__ void groupNormNDHWCSumKernel(const GroupNormNDHWCParams<T> params) {
   }
   int32_t gj = ci / params.cPerGroup;
   int32_t cj = ci % params.cPerGroup;
-  int32_t dhwBegin = blockIdx.y * params.dhwPerBlock;
+  int64_t dhwBegin = blockIdx.y * params.dhwPerBlock;
   // The last activation loaded by that block.
-  int32_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
+  int64_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
 
   // The sums.
   float sum = 0.F;
   float sumSq = 0.F;
 
-  for (int32_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
+  for (int64_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The offset.
-    int64_t offset = static_cast<int64_t>(ni) * params.dhwc +
-                     static_cast<int64_t>(dhwi) * params.c + ci;
+    int64_t offset = ni * params.dhwc + dhwi * params.c + ci;
     float src_data = *reinterpret_cast<float const*>(&params.srcX[offset]);
     if (params.srcR != nullptr) {
       int64_t g_offset =
@@ -404,8 +405,8 @@ void groupNormNDHWCSum<T>::operator()(GroupNormNDHWCParams<T>* params,
 template class groupNormNDHWCSum<half>;
 
 template <typename T, int THREADS_PER_CHANNEL>
-inline __device__ void GroupNormCompute(int32_t dhwBegin,
-                                        int32_t dhwEnd,
+inline __device__ void GroupNormCompute(int64_t dhwBegin,
+                                        int64_t dhwEnd,
                                         int32_t ci,
                                         const GroupNormNDHWCParams<T>& params,
                                         float mean,
@@ -414,9 +415,9 @@ inline __device__ void GroupNormCompute(int32_t dhwBegin,
       phi::__2float<T>(*(reinterpret_cast<T const*>(params.gamma) + ci));
   float beta =
       phi::__2float<T>(*(reinterpret_cast<T const*>(params.beta) + ci));
-  for (int32_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
+  for (int64_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The src/dst offset.
-    int64_t offset = (int64_t)blockIdx.z * params.dhwc + dhwi * params.c + ci;
+    int64_t offset = blockIdx.z * params.dhwc + dhwi * params.c + ci;
     float src_data = phi::__2float<T>(params.srcX[offset]);
     if (params.srcR != nullptr) {
       auto gi = ci / params.cPerGroup;
@@ -443,8 +444,8 @@ inline __device__ void GroupNormCompute(int32_t dhwBegin,
 
 template <>
 inline __device__ void GroupNormCompute<phi::dtype::float16, 2>(
-    int32_t dhwBegin,
-    int32_t dhwEnd,
+    int64_t dhwBegin,
+    int64_t dhwEnd,
     int32_t ci,
     const GroupNormNDHWCParams<phi::dtype::float16>& params,
     float mean,
@@ -456,9 +457,9 @@ inline __device__ void GroupNormCompute<phi::dtype::float16, 2>(
       reinterpret_cast<half const*>(params.beta) + ci));
 
   // Iterate over the activations to compute the sums.
-  for (int32_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
+  for (int64_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The src/dst offset.
-    int64_t offset = (int64_t)blockIdx.z * params.dhwc + dhwi * params.c + ci;
+    int64_t offset = blockIdx.z * params.dhwc + dhwi * params.c + ci;
 
     // Fetch two channels per thread.
     __half2 h2 = *reinterpret_cast<__half2 const*>(&params.srcX[offset]);
@@ -498,8 +499,8 @@ inline __device__ void GroupNormCompute<phi::dtype::float16, 2>(
 
 template <>
 inline __device__ void GroupNormCompute<__half, 2>(
-    int32_t dhwBegin,
-    int32_t dhwEnd,
+    int64_t dhwBegin,
+    int64_t dhwEnd,
     int32_t ci,
     const GroupNormNDHWCParams<__half>& params,
     float mean,
@@ -511,9 +512,9 @@ inline __device__ void GroupNormCompute<__half, 2>(
       reinterpret_cast<half const*>(params.beta) + ci));
 
   // Iterate over the activations to compute the sums.
-  for (int32_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
+  for (int64_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The src/dst offset.
-    int64_t offset = (int64_t)blockIdx.z * params.dhwc + dhwi * params.c + ci;
+    int64_t offset = blockIdx.z * params.dhwc + dhwi * params.c + ci;
 
     // Fetch two channels per thread.
     __half2 h2 = *reinterpret_cast<__half2 const*>(&params.srcX[offset]);
@@ -553,8 +554,8 @@ inline __device__ void GroupNormCompute<__half, 2>(
 #ifdef PADDLE_CUDA_BF16
 template <>
 inline __device__ void GroupNormCompute<phi::dtype::bfloat16, 2>(
-    int32_t dhwBegin,
-    int32_t dhwEnd,
+    int64_t dhwBegin,
+    int64_t dhwEnd,
     int32_t ci,
     const GroupNormNDHWCParams<phi::dtype::bfloat16>& params,
     float mean,
@@ -566,9 +567,9 @@ inline __device__ void GroupNormCompute<phi::dtype::bfloat16, 2>(
       reinterpret_cast<__nv_bfloat16 const*>(params.beta) + ci));
 
   // Iterate over the activations to compute the sums.
-  for (int32_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
+  for (int64_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The src/dst offset.
-    int64_t offset = (int64_t)blockIdx.z * params.dhwc + dhwi * params.c + ci;
+    int64_t offset = blockIdx.z * params.dhwc + dhwi * params.c + ci;
 
     // Fetch two channels per thread.
     __nv_bfloat162 h2 =
@@ -642,9 +643,9 @@ __global__ void groupNormNDHWCScaleKernel(
   float invStdDev = rsqrtf(var + params.eps);
 
   // The first activation loaded by that block.
-  int32_t dhwBegin = blockIdx.y * params.dhwPerBlock;
+  int64_t dhwBegin = blockIdx.y * params.dhwPerBlock;
   // The last activation loaded by that block.
-  int32_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
+  int64_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
   GroupNormCompute<T, THREADS_PER_CHANNEL>(
       dhwBegin, dhwEnd, ci, params, mean, invStdDev);
 }
@@ -765,14 +766,15 @@ void GroupNormNDHWCKernel(const Context& dev_ctx,
     residual_data = residual_ptr->data<T>();
     residual_out_data = residual_out->data<T>();
     const auto r_dims = residual_ptr->dims();
-    int32_t r_dim = 1;
+    int64_t r_dim = 1;
     for (size_t i = 0; i < r_dims.size(); i++) {
       r_dim *= r_dims[i];
     }
-    params_.y_same_with_x =
-        r_dim == params_.n * params_.c * params_.d * params_.h * params_.w
-            ? true
-            : false;
+    params_.y_same_with_x = r_dim == static_cast<int64_t>(params_.n) *
+                                         params_.c * params_.d * params_.h *
+                                         params_.w
+                                ? true
+                                : false;
   }
   dev_ctx.template Alloc<AccT>(mean);
   dev_ctx.template Alloc<AccT>(var);
@@ -814,8 +816,9 @@ void GroupNormNDHWCKernel(const Context& dev_ctx,
   }
   params_.gamma = scale_data;
   params_.beta = bias_data;
-  params_.dhw = params_.d * params_.h * params_.w;
-  const int32_t blocksPerDHW = findMaxDivisor(params_.dhw, maxBlocksPerDHW);
+  params_.dhw = static_cast<int64_t>(params_.d) * params_.h * params_.w;
+  const int64_t blocksPerDHW =
+      findMaxDivisor(params_.dhw, static_cast<int64_t>(maxBlocksPerDHW));
   params_.dhwPerBlock = divUp(params_.dhw, blocksPerDHW);
   params_.cPerBlock = cPerBlock;
   params_.dhwc = params_.dhw * params_.c;
@@ -826,6 +829,41 @@ void GroupNormNDHWCKernel(const Context& dev_ctx,
   int buffer_sizes = 2 * params_.n * groups;
   redBuffer.Resize({1, buffer_sizes});
   params_.redBuffer = dev_ctx.template Alloc<float>(&redBuffer);
+  int64_t max_grid_x = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  int64_t max_grid_y = dev_ctx.GetCUDAMaxGridDimSize()[1];
+  int64_t max_grid_z = dev_ctx.GetCUDAMaxGridDimSize()[2];
+  if (params_.n > max_grid_z) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "GroupNorm kernel launch failed: 'batch_size' (%ld) exceeds the "
+        "maximum supported limit (%ld). "
+        "Please reduce the batch size or modify the kernel configuration.",
+        params_.n,
+        max_grid_z));
+  }
+
+  if (divUp(params_.dhw, params_.dhwPerBlock) > max_grid_y) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "GroupNorm kernel launch failed: computed gridDim.y (%ld) exceeds the "
+        "hardware limit (%ld). "
+        "This may be due to excessively large 'dhw' (%ld). Consider reducing "
+        "input spatial dimensions "
+        "or adjusting 'dhwPerBlock'.",
+        divUp(params_.dhw, params_.dhwPerBlock),
+        max_grid_y,
+        params_.dhw));
+  }
+
+  if (divUp(params_.c, std::max(params_.cPerBlock, 128)) > max_grid_x) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "GroupNorm kernel launch failed: computed gridDim.x (%ld) exceeds the "
+        "hardware limit (%ld). "
+        "This may be due to excessively large channel count 'c' (%ld). "
+        "Consider reducing the number of channels "
+        "or adjusting 'cPerBlock'.",
+        divUp(params_.c, std::max(params_.cPerBlock, 128)),
+        max_grid_x,
+        params_.c));
+  }
 #ifdef PADDLE_WITH_HIP
   hipMemset(params_.redBuffer, 0, buffer_sizes * sizeof(float));
 #else

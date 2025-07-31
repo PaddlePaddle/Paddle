@@ -22,7 +22,7 @@ namespace funcs {
 template <typename DeviceContext, typename T>
 class MaxOutFunctor {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& input,
                   phi::DenseTensor* output,
                   const int groups,
@@ -32,7 +32,7 @@ class MaxOutFunctor {
 template <typename DeviceContext, typename T>
 class MaxOutGradFunctor {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& input,
                   phi::DenseTensor* input_grad,
                   const phi::DenseTensor& output,
