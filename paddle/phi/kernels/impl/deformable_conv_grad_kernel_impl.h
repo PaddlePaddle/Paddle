@@ -271,7 +271,8 @@ void DeformableConvGradKernel(const Context& dev_ctx,
       (x.numel() <= std::numeric_limits<int>::max()) &&
       (offset.numel() <= std::numeric_limits<int>::max()) &&
       (filter.numel() <= std::numeric_limits<int>::max()) &&
-      (mask ? mask->numel() <= std::numeric_limits<int>::max() : true);
+      (mask ? mask->numel() <= std::numeric_limits<int>::max() : true) &&
+      (out_grad.numel() <= std::numeric_limits<int>::max());
 
   for (int i = 0; i < batch_size / im2col_step; ++i) {
     DenseTensor out_grad_3d = out_grad_4d.Slice(i, i + 1).Resize(
@@ -438,13 +439,13 @@ void DeformableConvGradKernel(const Context& dev_ctx,
                                          dweight_3d.data<T>(),
                                          filter_grad->data<T>());
       } else {
-        FilterGradAddup<T, Context, int>(dev_ctx,
-                                         dweight_3d.numel(),
-                                         groups,
-                                         K,
-                                         M,
-                                         dweight_3d.data<T>(),
-                                         filter_grad->data<T>());
+        FilterGradAddup<T, Context, int64_t>(dev_ctx,
+                                             dweight_3d.numel(),
+                                             groups,
+                                             K,
+                                             M,
+                                             dweight_3d.data<T>(),
+                                             filter_grad->data<T>());
       }
     }
   }

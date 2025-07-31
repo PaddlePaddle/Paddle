@@ -102,7 +102,8 @@ void DeformableConvKernel(const Context& dev_ctx,
       (x.numel() <= std::numeric_limits<int>::max()) &&
       (offset.numel() <= std::numeric_limits<int>::max()) &&
       (filter.numel() <= std::numeric_limits<int>::max()) &&
-      (mask ? mask->numel() <= std::numeric_limits<int>::max() : true);
+      (mask ? mask->numel() <= std::numeric_limits<int>::max() : true) &&
+      (out->numel() <= std::numeric_limits<int>::max());
 
   for (int64_t i = 0; i < batch_size / im2col_step; ++i) {
     const T* temp_mask_ptr =
