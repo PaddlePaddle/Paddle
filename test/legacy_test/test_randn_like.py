@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_current_place
+from op_test import get_device_place
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -29,7 +29,7 @@ class TestRandnLikeAPI(unittest.TestCase):
         self.x_float64 = np.zeros((10, 12)).astype("float64")
 
         self.dtype = ["float16", "float32", "float64"]
-        self.place = get_current_place()
+        self.place = get_device_place()
 
     def test_static_api(self):
         with (

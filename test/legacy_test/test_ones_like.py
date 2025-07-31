@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_current_place
+from op_test import get_device_place
 
 import paddle
 from paddle import _C_ops, base, ones_like
@@ -38,7 +38,7 @@ class TestOnesLikeAPI(unittest.TestCase):
             out4 = ones_like(x, 'int32')
             out5 = ones_like(x, 'int64')
 
-        place = get_current_place()
+        place = get_device_place()
         exe = base.Executor(place)
         outs = exe.run(
             train_program,
@@ -56,7 +56,7 @@ class TestOnesLikeAPI(unittest.TestCase):
 class TestOnesAPI(unittest.TestCase):
     def test_api(self):
         shape = [3, 4]
-        place = get_current_place()
+        place = get_device_place()
         paddle.disable_static(place)
 
         for dtype in [np.float32, np.float64, np.int32, np.int64]:

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_current_place
+from op_test import get_device_place
 
 import paddle
 
@@ -42,7 +42,7 @@ class TestLogNormalAPI(unittest.TestCase):
         self.duplicates = 1000
         self.set_attrs()
         self.dtype = self.get_dtype()
-        self.place = get_current_place()
+        self.place = get_device_place()
 
     def set_attrs(self):
         self.shape = [self.duplicates]

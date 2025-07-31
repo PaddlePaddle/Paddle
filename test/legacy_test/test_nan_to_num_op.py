@@ -17,7 +17,7 @@ from __future__ import annotations
 import unittest
 
 import numpy as np
-from op_test import get_current_place
+from op_test import get_device_place
 
 import paddle
 
@@ -56,7 +56,7 @@ def np_nan_to_num_grad(x: np.ndarray, dout: np.ndarray) -> np.ndarray:
 
 class TestNanToNum(unittest.TestCase):
     def setUp(self):
-        self.place = get_current_place()
+        self.place = get_device_place()
 
     def test_static(self):
         x_np = np.array([[1, np.nan, -2], [np.inf, 0, -np.inf]]).astype(
@@ -200,7 +200,7 @@ class TestNanToNum(unittest.TestCase):
 
 class TestNanToNum_ZeroSize(unittest.TestCase):
     def setUp(self):
-        self.place = get_current_place()
+        self.place = get_device_place()
         self.x_np = np.random.random([2, 0, 3]).astype(np.float32)
 
     def test_dygraph(self):

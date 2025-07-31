@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_current_place
+from op_test import get_device_place
 
 import paddle
 from paddle import base
@@ -27,7 +27,7 @@ class TestMaxMinAmaxAminAPI(unittest.TestCase):
     def setUp(self):
         self.init_case()
         self.cal_np_out_and_gradient()
-        self.place = get_current_place()
+        self.place = get_device_place()
 
     def init_case(self):
         self.x_np = np.array([[0.2, 0.3, 0.5, 0.9], [0.1, 0.2, 0.6, 0.7]])

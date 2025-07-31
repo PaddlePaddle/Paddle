@@ -14,7 +14,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_current_place
+from op_test import get_device_place
 
 import paddle
 import paddle.base
@@ -25,7 +25,7 @@ class TestFrexpAPI(unittest.TestCase):
         np.random.seed(1024)
         self.rtol = 1e-5
         self.atol = 1e-8
-        self.place = get_current_place()
+        self.place = get_device_place()
         self.set_input()
 
     def set_input(self):
@@ -95,7 +95,7 @@ class TestSplitsFloat64Case2(TestFrexpAPI):
 
 class TestFrexpAPI_ZeroSize(unittest.TestCase):
     def setUp(self):
-        self.place = get_current_place()
+        self.place = get_device_place()
         self.set_input()
 
     def set_input(self):

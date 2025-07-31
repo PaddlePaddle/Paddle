@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_current_place
+from op_test import get_device_place
 
 import paddle
 
@@ -40,7 +40,7 @@ class TestHistogramddAPI(unittest.TestCase):
 
         self.init_input()
         self.set_expect_output()
-        self.place = get_current_place()
+        self.place = get_device_place()
 
     def init_input(self):
         # self.sample = np.array([[0.0, 1.0], [1.0, 0.0], [2.0, 0.0], [2.0, 2.0]])

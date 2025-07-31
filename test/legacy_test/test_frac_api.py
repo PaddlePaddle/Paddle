@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_current_place
+from op_test import get_device_place
 
 import paddle
 from paddle import base
@@ -34,7 +34,7 @@ class TestFracAPI(unittest.TestCase):
     def setUp(self):
         self.set_dtype()
         self.x_np = np.random.uniform(-3, 3, [2, 3]).astype(self.dtype)
-        self.place = get_current_place()
+        self.place = get_device_place()
 
     def test_api_static(self):
         paddle.enable_static()
@@ -88,7 +88,7 @@ class TestFracError(unittest.TestCase):
 
     def setUp(self):
         self.x_np = np.random.uniform(-3, 3, [2, 3]).astype('int16')
-        self.place = get_current_place()
+        self.place = get_device_place()
 
     def test_static_error(self):
         paddle.enable_static()
@@ -109,7 +109,7 @@ class TestFracAPI_ZeroSize(unittest.TestCase):
     def setUp(self):
         self.set_dtype()
         self.x_np = np.random.random([0, 3]).astype(self.dtype)
-        self.place = get_current_place()
+        self.place = get_device_place()
 
     def test_api_dygraph(self):
         paddle.disable_static(self.place)

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_current_place
+from op_test import OpTest, convert_float_to_uint16, get_device_place
 
 import paddle
 from paddle import base
@@ -599,7 +599,7 @@ class TestBicubicInterpOpAPI(unittest.TestCase):
 
         prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
-        place = get_current_place()
+        place = get_device_place()
 
         with paddle.static.program_guard(prog, startup_prog):
             x = paddle.static.data(

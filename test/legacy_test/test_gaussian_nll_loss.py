@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_current_place
+from op_test import get_device_place
 
 import paddle
 import paddle.nn.functional as F
@@ -86,7 +86,7 @@ class TestGaussianNLLLossAPI(unittest.TestCase):
         if type == 'test_err':
             self.variance_np = -np.ones(self.shape).astype(np.float32)
 
-        self.place = get_current_place()
+        self.place = get_device_place()
 
     def test_dynamic_case(self, type=None, full=False, reduction='none'):
         self.setUp(type)

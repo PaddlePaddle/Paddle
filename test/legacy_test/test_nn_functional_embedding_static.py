@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_current_place
+from op_test import get_device_place
 
 import paddle
 from paddle import base
@@ -114,7 +114,7 @@ class EmbeddingStatic(unittest.TestCase):
         max_norm = 5.0
         norm_type = 2.0
         y_ref = self.ref_embedding_renorm_(x_np, weight_np, max_norm, norm_type)
-        place = get_current_place()
+        place = get_device_place()
         prog = paddle.static.Program()
         with paddle.static.program_guard(prog):
             x = paddle.static.data(name="x", shape=[-1, 3], dtype="int64")

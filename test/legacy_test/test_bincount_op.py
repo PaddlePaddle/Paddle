@@ -19,7 +19,7 @@ import unittest
 
 sys.path.append("../../legacy_test")
 import numpy as np
-from op_test import OpTest, get_current_place
+from op_test import OpTest, get_device_place
 
 import paddle
 import paddle.inference as paddle_infer
@@ -251,7 +251,7 @@ class TestTensorMinlength(unittest.TestCase):
         self.save_path = os.path.join(
             self.temp_dir.name, 'tensor_minlength_bincount'
         )
-        self.place = get_current_place()
+        self.place = get_device_place()
 
     def test_dygraph(self):
         paddle.disable_static()

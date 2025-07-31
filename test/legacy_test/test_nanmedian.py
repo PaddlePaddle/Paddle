@@ -16,7 +16,7 @@ import copy
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_current_place
+from op_test import OpTest, convert_float_to_uint16, get_device_place
 
 import paddle
 from paddle.base import core
@@ -142,7 +142,7 @@ class TestNanmedianModeMin(unittest.TestCase):
         col_data[:, :, 2, 3:] = np.nan
         self.fake_data["col_nan_odd"] = col_data.astype(np.float32)
 
-        self.place = get_current_place()
+        self.place = get_device_place()
         self.axis_candidate_list = [
             None,
             0,
@@ -393,7 +393,7 @@ class TestNanmedianModeMean(unittest.TestCase):
         col_data[:, :, 2, 3:] = np.nan
         self.fake_data["col_nan_odd"] = col_data.astype(np.float32)
 
-        self.place = get_current_place()
+        self.place = get_device_place()
         self.axis_candidate_list = [
             None,
             0,

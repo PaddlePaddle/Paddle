@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_current_place
+from op_test import get_device_place
 
 import paddle
 from paddle import base
@@ -41,7 +41,7 @@ class TestDeg2radAPI(unittest.TestCase):
             )
             out = paddle.deg2rad(x)
 
-            place = get_current_place()
+            place = get_device_place()
             exe = base.Executor(place)
             res = exe.run(
                 feed={'input': self.x_np},

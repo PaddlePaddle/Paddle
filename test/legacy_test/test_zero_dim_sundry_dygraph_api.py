@@ -21,7 +21,7 @@ import os
 import unittest
 
 import numpy as np
-from op_test import get_current_place, get_places
+from op_test import get_device_place, get_places
 
 import paddle
 import paddle.nn.functional as F
@@ -2031,7 +2031,7 @@ class TestSundryAPI(unittest.TestCase):
                     di = g
                 elif p.is_same(x):
                     dx = g
-            place = get_current_place()
+            place = get_device_place()
             exe = base.Executor(place)
             main_program = paddle.static.default_main_program()
             out_i, out_x, di, dx = exe.run(

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, get_current_place
+from op_test import OpTest, get_device_place
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -94,7 +94,7 @@ class TestSvdvalsAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(1024)
         self.x_np = np.random.uniform(-3, 3, [10, 12]).astype('float32')
-        self.place = get_current_place()
+        self.place = get_device_place()
 
     def test_dygraph_api(self):
         with dygraph_guard():
