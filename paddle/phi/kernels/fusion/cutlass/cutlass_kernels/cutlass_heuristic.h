@@ -120,9 +120,17 @@ static std::vector<CutlassGemmConfig> get_candidate_configs(
   if (is_moe) {
     max_stages = 5;
   }
+  // NOTE: (changwenbin)
+  // Support enabling stream_k by setting the environment
+  // variable `export CUTLASS_GEMM_STREAM_K=1`.
+  SplitKStyle env_split_k = SplitKStyle::NO_SPLIT_K;
+  const char* env_stream_k = std::getenv("CUTLASS_GEMM_STREAM_K");
+  if (env_stream_k != nullptr) {
+    env_split_k = SplitKStyle::SPLIT_K_SERIAL;
+  }
   for (const auto& tile_config : tiles) {
     for (int stages = min_stages; stages <= max_stages; ++stages) {
-      CutlassGemmConfig config{tile_config, SplitKStyle::NO_SPLIT_K, 1, stages};
+      CutlassGemmConfig config{tile_config, env_split_k, 1, stages};
       candidate_configs.push_back(config);
     }
   }

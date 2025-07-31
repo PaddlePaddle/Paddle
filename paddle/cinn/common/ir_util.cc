@@ -614,21 +614,21 @@ struct DynamicSymbolExprBitTracker : public ir::IRVisitor {
   int dyn_symbol_bit = 0;
 };
 
-#define VISIT_OP(NodeType)                                                  \
-  int UnifiedOperandTypeBits(                                               \
-      const std::unordered_map<std::string, common::Type> *search_map,      \
-      const ir::NodeType *node) {                                           \
-    if (search_map->empty()) return 0;                                      \
-    if (!node->a().type().is_int() || !node->b().type().is_int()) return 0; \
-    int node_a_bits = node->a().type().bits();                              \
-    int node_b_bits = node->b().type().bits();                              \
-    if (node_a_bits < 32 || node_b_bits < 32) return 0;                     \
-    DynamicSymbolExprBitTracker tracker;                                    \
-    tracker(search_map, &node->a());                                        \
-    int target_bit = tracker(search_map, &node->b());                       \
-    if (target_bit > 0) {                                                   \
-    }                                                                       \
-    return target_bit;                                                      \
+#define VISIT_OP(NodeType)                                             \
+  std::pair<int, bool> UnifiedOperandTypeBits(                         \
+      const std::unordered_map<std::string, common::Type> *search_map, \
+      const ir::NodeType *node) {                                      \
+    if (search_map->empty()) return {0, false};                        \
+    if (!node->a().type().is_int() || !node->b().type().is_int())      \
+      return {0, false};                                               \
+    int node_a_bits = node->a().type().bits();                         \
+    int node_b_bits = node->b().type().bits();                         \
+    if (node_a_bits < 32 || node_b_bits < 32) return {0, false};       \
+    DynamicSymbolExprBitTracker tracker;                               \
+    int b1 = tracker(search_map, &node->a());                          \
+    tracker.dyn_symbol_bit = 0;                                        \
+    int b2 = tracker(search_map, &node->b());                          \
+    return std::make_pair(std::max(b1, b2), b1 > 0 && b2 > 0);         \
   }
 
 VISIT_OP(Min)

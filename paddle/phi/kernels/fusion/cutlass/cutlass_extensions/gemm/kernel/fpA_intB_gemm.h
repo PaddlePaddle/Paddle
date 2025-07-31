@@ -76,6 +76,16 @@ struct GemmFpAIntB {
   using LayoutC = typename Mma::LayoutC;
   using ElementScale = typename Mma::IteratorA::Element;
 
+  // NOTE: (changwenbin) Currently only A row major and B column major are
+  // supported. Other cases have not been verified yet.
+
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 750)
+  static_assert(
+      platform::is_same<LayoutA, layout::RowMajor>::value &&
+          platform::is_same<LayoutB, layout::ColumnMajor>::value,
+      "A must be row major and B must be col major in cuda_arch >= sm75");
+#endif
+
   static ComplexTransform const kTransformA = Mma::kTransformA;
   static ComplexTransform const kTransformB = Mma::kTransformA;
 
