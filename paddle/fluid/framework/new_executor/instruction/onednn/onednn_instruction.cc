@@ -375,9 +375,9 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
   }
   TensorNameMap(op, *value_exec_info_, yaml_info_parser, inputs_, outputs_);
 
-  // Step4: Mark is_run_mkldnn_kernel=true
+  // Step4: Mark is_run_onednn_kernel=true
   phi::MetaConfig new_config = infer_meta_context_.GetMetaConfig();
-  new_config.is_run_mkldnn_kernel = true;
+  new_config.is_run_onednn_kernel = true;
   infer_meta_context_.SetMetaConfig(new_config);
 
   // Step5: Handle skip_transform_inputs

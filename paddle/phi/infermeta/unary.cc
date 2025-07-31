@@ -3625,7 +3625,7 @@ void Pool2DInferMeta(const MetaTensor& x,
                      const std::string& padding_algorithm,
                      MetaTensor* out,
                      MetaConfig config) {
-  const bool channel_last = (config.is_run_mkldnn_kernel == false) &&
+  const bool channel_last = (config.is_run_onednn_kernel == false) &&
                             (data_format == "NHWC" || data_format == "NDHWC");
   if (!config.is_runtime && kernel_size.FromTensor()) {
     auto x_dims = x.dims();
@@ -3755,7 +3755,7 @@ void PoolInferMeta(const MetaTensor& x,
 
   // MKL-DNN Kernels are using NCHW order of dims description
   // so we ignore data_format consideration for MKL-DNN kernel
-  const bool channel_last = (config.is_run_mkldnn_kernel == false) &&
+  const bool channel_last = (config.is_run_onednn_kernel == false) &&
                             (data_format == "NHWC" || data_format == "NDHWC");
 
   // update paddings if "SAME" or global_pooling
@@ -4430,7 +4430,7 @@ void Shape64InferMeta(const MetaTensor& input,
                       MetaConfig config) {
   auto in_dim = input.dims();
   out->set_dims(common::make_ddim({in_dim.size()}));
-  if (config.is_run_mkldnn_kernel) {
+  if (config.is_run_onednn_kernel) {
     out->set_dtype(DataType::INT32);
   } else {
     out->set_dtype(DataType::INT64);

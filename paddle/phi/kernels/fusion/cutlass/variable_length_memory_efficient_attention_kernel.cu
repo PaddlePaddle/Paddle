@@ -67,7 +67,8 @@ void MultiHeadAttentionVariableForwardKernel(
   params.causal = causal;
   params.pre_cache_length = pre_cache_length;
 
-  if (mask) {
+  // if the mask is 0-size tensor, we don't need to set mask_ptr
+  if (mask && mask.get().numel() > 0) {
     // [B, 1, S, D]
     auto mask_tensor = mask.get();
     int64_t mask_num_heads = mask_tensor.dims()[1];
