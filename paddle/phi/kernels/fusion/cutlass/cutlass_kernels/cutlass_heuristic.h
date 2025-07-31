@@ -125,7 +125,7 @@ static std::vector<CutlassGemmConfig> get_candidate_configs(
   // variable `export CUTLASS_GEMM_STREAM_K=1`.
   SplitKStyle env_split_k = SplitKStyle::NO_SPLIT_K;
   const char* env_stream_k = std::getenv("CUTLASS_GEMM_STREAM_K");
-  if (env_stream_k != nullptr) {
+  if (env_stream_k != nullptr && !is_moe) {
     env_split_k = SplitKStyle::SPLIT_K_SERIAL;
   }
   for (const auto& tile_config : tiles) {
