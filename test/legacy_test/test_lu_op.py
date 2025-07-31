@@ -23,6 +23,7 @@ from op_test import OpTest, get_places
 
 import paddle
 from paddle import base
+from paddle.base import core
 
 
 def scipy_lu(A, pivot):
@@ -381,6 +382,48 @@ class TestLUAPI_ZeroSize(unittest.TestCase):
         loss = lu.sum()
         loss.backward()
         self.assertEqual(x.grad.shape, x.shape)
+
+
+class TestLUOp(OpTest):
+    def config(self):
+        self.x_shape = [2, 0, 12]
+        self.pivot = True
+        self.get_infos = True
+        self.dtype = "float64"
+
+    def setUp(self):
+        self.op_type = "lu"
+        self.python_api = paddle.tensor.linalg.lu
+        self.python_out_sig = ["Out", "Pivots"]
+        self.config()
+
+        A = np.random.random([2, 0, 12]).astype(self.dtype)
+        self.inputs = {'X': A}
+        self.attrs = {'pivots': self.pivot}
+
+        self.output = np.zeros([2, 0, 12]).astype(self.dtype)
+        self.Pivots = np.zeros([2, 0]).astype(self.dtype)
+        self.Infos = np.zeros([2]).astype(self.dtype)
+
+        self.outputs = {
+            'Out': self.output,
+            'Pivots': self.Pivots,
+            'Infos': self.Infos,
+        }
+
+    def test_check_output(self):
+        self.check_output_with_place(paddle.CPUPlace(), check_pir=True)
+        if core.is_compiled_with_cuda():
+            self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            paddle.CPUPlace(), ['X'], ['Out'], check_pir=True
+        )
+        if core.is_compiled_with_cuda():
+            self.check_grad_with_place(
+                core.CUDAPlace(0), ['X'], ['Out'], check_pir=True
+            )
 
 
 if __name__ == "__main__":

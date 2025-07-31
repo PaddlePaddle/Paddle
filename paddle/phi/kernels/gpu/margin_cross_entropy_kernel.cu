@@ -11,11 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/impl/margin_cross_entropy.cu.h"
 
 namespace phi {
 
-template <typename T, typename IndexT>
+template <typename T, typename MPType, typename IndexT>
 __global__ void AddMarginToPositiveLogitsKernel(T* logit,
                                                 const IndexT* label,
                                                 const float margin1,
@@ -26,7 +27,6 @@ __global__ void AddMarginToPositiveLogitsKernel(T* logit,
                                                 const int64_t N,
                                                 const int64_t D,
                                                 const int* class_interval_ptr) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   int64_t start_index = class_interval_ptr[rank];
   int64_t end_index = class_interval_ptr[rank + 1];
   int num_classes = class_interval_ptr[nranks];
@@ -42,55 +42,48 @@ __global__ void AddMarginToPositiveLogitsKernel(T* logit,
 
     if (real_label >= start_index && real_label < end_index) {
       int64_t offset = i * D + real_label - start_index;
-      if (fabs(margin1 - 1.0) > 1e-8 || fabs(margin2) > 1e-8) {
-        MPType x = static_cast<MPType>(logit[offset]);
-        MPType theta = acos(x);
-        if (fabs(margin1 - 1.0) > 1e-8) {
-          theta *= static_cast<MPType>(margin1);
-        }
-        if (fabs(margin2) > 1e-8) {
-          theta += static_cast<MPType>(margin2);
-        }
-        logit[offset] = static_cast<T>(cos(theta));
-      }
-      if (fabs(margin3) > 1e-8) {
-        MPType y = static_cast<MPType>(logit[offset]);
-        y -= static_cast<MPType>(margin3);
-        logit[offset] = static_cast<T>(y);
-      }
+      MPType x = static_cast<MPType>(logit[offset]);
+      MPType theta = acos(x);
+      theta *= static_cast<MPType>(margin1);
+      theta += static_cast<MPType>(margin2);
+      MPType y = cos(theta) - static_cast<MPType>(margin3);
+      logit[offset] = static_cast<T>(y);
     }
   }
 }
 
-template <typename T>
+template <typename T, typename MPType>
 __global__ void ScaleLogitKernel(T* logits,
                                  const float scale,
                                  const int64_t N,
                                  const int64_t D) {
   CUDA_KERNEL_LOOP_TYPE(i, N * D, int64_t) {
-    logits[i] *= static_cast<T>(scale);
+    logits[i] = static_cast<MPType>(logits[i]) * (scale);
   }
 }
 
-template <typename T>
+template <typename T, typename MPType>
 __global__ void LogitsMinusMaxKernel(T* logits,
                                      const T* logits_max_per_row,
                                      const int64_t N,
                                      const int64_t D) {
   CUDA_KERNEL_LOOP_TYPE(i, N * D, int64_t) {
     auto row = i / D;
-    logits[i] -= logits_max_per_row[row];
+    logits[i] = static_cast<MPType>(logits[i]) -
+                static_cast<MPType>(logits_max_per_row[row]);
   }
 }
 
-template <typename T>
+template <typename T, typename MPType>
 __global__ void LogitsMinusLogSumKernel(T* logits,
                                         const T* logits_sum_per_row,
                                         const int64_t N,
                                         const int64_t D) {
   CUDA_KERNEL_LOOP_TYPE(i, N * D, int64_t) {
     auto row = i / D;
-    logits[i] -= phi::kps::details::Log(logits_sum_per_row[row]);
+    logits[i] =
+        static_cast<MPType>(logits[i]) -
+        static_cast<MPType>(phi::kps::details::Log(logits_sum_per_row[row]));
   }
 }
 
@@ -132,6 +125,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
                               DenseTensor* softmax,
                               DenseTensor* loss) {
   const auto& place = dev_ctx.GetPlace();  // old code
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   phi::distributed::NCCLCommContext* comm_ctx = nullptr;
@@ -192,7 +186,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
   // save match_logits, used for gradient computation.
   if (label_type == phi::DataType::INT32) {
     typedef int32_t LabelT;
-    AddMarginToPositiveLogitsKernel<T>
+    AddMarginToPositiveLogitsKernel<T, MPType>
         <<<NumBlocks(N), threads, 0, dev_ctx.stream()>>>(
             logits_ptr,
             labels.data<LabelT>(),
@@ -206,7 +200,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
             class_interval.data<int>());
   } else if (label_type == phi::DataType::INT64) {
     typedef int64_t LabelT;
-    AddMarginToPositiveLogitsKernel<T>
+    AddMarginToPositiveLogitsKernel<T, MPType>
         <<<NumBlocks(N), threads, 0, dev_ctx.stream()>>>(
             logits_ptr,
             labels.data<LabelT>(),
@@ -226,8 +220,9 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
   }
 
   // scale by s
-  ScaleLogitKernel<T><<<NumBlocks(N * D), threads, 0, dev_ctx.stream()>>>(
-      logits_ptr, scale, N, D);
+  ScaleLogitKernel<T, MPType>
+      <<<NumBlocks(N * D), threads, 0, dev_ctx.stream()>>>(
+          logits_ptr, scale, N, D);
 
   // step 2, obtain logit_max
   DenseTensor logits_max;
@@ -250,8 +245,9 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
 #endif
 
   // step 3, logit - logit_max
-  LogitsMinusMaxKernel<T><<<NumBlocks(N * D), threads, 0, dev_ctx.stream()>>>(
-      logits_ptr, logits_max_buff, N, D);
+  LogitsMinusMaxKernel<T, MPType>
+      <<<NumBlocks(N * D), threads, 0, dev_ctx.stream()>>>(
+          logits_ptr, logits_max_buff, N, D);
 
   // step 4, sum(exp(logit - logit_max))
   DenseTensor sum_exp_logits;
@@ -272,7 +268,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
 #endif
 
   // step 5, (logit - logit_max) - log(sum(exp(logit - logit_max)))
-  LogitsMinusLogSumKernel<T>
+  LogitsMinusLogSumKernel<T, MPType>
       <<<NumBlocks(N * D), threads, 0, dev_ctx.stream()>>>(
           logits_ptr, sum_exp_logits_buff, N, D);
 

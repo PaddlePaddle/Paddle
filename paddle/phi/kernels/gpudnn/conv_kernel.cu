@@ -313,7 +313,7 @@ void ConvCudnnKernel(const Context& dev_ctx,
                      int groups,
                      const std::string& data_format,
                      DenseTensor* output) {
-  if (input.numel() == 0) {
+  if (input.numel() == 0 || filter.numel() == 0) {
     phi::Full<T, Context>(
         dev_ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
     return;

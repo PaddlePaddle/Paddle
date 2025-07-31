@@ -43,7 +43,7 @@ void BatchTranspose(T* output,
 template <typename DeviceContext, typename T>
 struct TransposeNormal {
   // for dims >= 7 situation
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& in,
                   phi::DenseTensor* out,
                   const std::vector<int>& axis);
@@ -51,7 +51,7 @@ struct TransposeNormal {
 
 template <typename DeviceContext, typename T, int Rank>
 struct Transpose {
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& in,
                   phi::DenseTensor* out,
                   const std::vector<int>& axis);
@@ -59,7 +59,7 @@ struct Transpose {
 
 template <typename DeviceContext, typename T>
 struct SetConstant {
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   phi::DenseTensor* tensor,
                   T num);
 };
@@ -67,24 +67,24 @@ struct SetConstant {
 #ifdef PADDLE_WITH_XPU
 template <typename T>
 struct SetConstant<phi::XPUContext, T> {
-  void operator()(const phi::XPUContext& context,
+  void operator()(const phi::XPUContext& dev_ctx,
                   phi::DenseTensor* tensor,
                   T num);
 };
 #endif
 
 template <typename Place>
-void set_constant_with_place(const phi::DeviceContext& context,
+void set_constant_with_place(const phi::DeviceContext& dev_ctx,
                              phi::DenseTensor* tensor,
                              float value);
 
-void set_constant(const phi::DeviceContext& context,
+void set_constant(const phi::DeviceContext& dev_ctx,
                   phi::DenseTensor* tensor,
                   float value);
 
 template <typename DeviceContext, typename T>
 struct RowwiseAdd {
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& input,
                   const phi::DenseTensor& vec,
                   phi::DenseTensor* output);
@@ -92,21 +92,21 @@ struct RowwiseAdd {
 
 template <typename DeviceContext, typename T>
 struct ColwiseSum {
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& input,
                   phi::DenseTensor* vec);
 };
 
 template <typename DeviceContext, typename T>
 struct RowwiseSum {
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& input,
                   phi::DenseTensor* vec);
 };
 
 template <typename DeviceContext, typename T>
 struct RowwiseMean {
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& input,
                   phi::DenseTensor* vec);
 };

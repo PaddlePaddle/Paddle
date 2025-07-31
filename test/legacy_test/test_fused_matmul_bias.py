@@ -163,5 +163,24 @@ class TestStaticGraph(unittest.TestCase):
         paddle.disable_static()
 
 
+@unittest.skipIf(
+    not is_fused_matmul_bias_supported(),
+    "fused_gemm_epilogue is only supported when CUDA version >= 11.6",
+)
+class TestFusedLinear_ZeroSize(unittest.TestCase):
+    def check_fused_linear(self, transpose):
+        x = paddle.randn([0, 40])
+        x.stop_gradient = False
+        linear = FusedLinear(40, 50, transpose_weight=transpose)
+        y1 = linear(x)
+        y2 = fused_linear(x, linear.weight, linear.bias, transpose)
+        np.testing.assert_array_equal(y1.numpy(), y2.numpy())
+        y2.sum().backward()
+        np.testing.assert_allclose(x.grad.shape, x.shape)
+
+    def test_non_transpose(self):
+        self.check_fused_linear(False)
+
+
 if __name__ == "__main__":
     unittest.main()

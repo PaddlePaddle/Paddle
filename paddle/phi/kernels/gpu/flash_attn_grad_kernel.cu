@@ -927,6 +927,18 @@ void FlashAttnGradKernel(const Context& dev_ctx,
   if (dv) {
     dev_ctx.template Alloc<T>(dv);
   }
+  if (dout.numel() == 0) {
+    if (dq)
+      Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(dq->dims())), 0, dq);
+    if (dk)
+      Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(dk->dims())), 0, dk);
+    if (dv)
+      Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(dv->dims())), 0, dv);
+    return;
+  }
   FlashAttnGradBaseKernel<T, Context>(dev_ctx,
                                       q,
                                       k,

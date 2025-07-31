@@ -44,7 +44,7 @@ void InterpolateKernel(
   }
   using XPUType = typename XPUTypeTrait<T>::Type;
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
-  int n, c, in_d, in_h, in_w;
+  int64_t n, c, in_d, in_h, in_w;
   phi::funcs::ExtractNCDWH(x.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
   float scale_h = -1;
