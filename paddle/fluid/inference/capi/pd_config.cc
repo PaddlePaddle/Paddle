@@ -277,6 +277,10 @@ void PD_SwitchIrDebug(PD_AnalysisConfig* config, bool x) {
   config->config.SwitchIrDebug(x);
 }
 
+void PD_EnableMKLDNN(PD_AnalysisConfig* config) {
+  LOG(WARNING) << ONEDNN_UPDATE_WARNING(PD_EnableONEDNN);
+  PD_EnableONEDNN(config);
+}
 void PD_EnableONEDNN(PD_AnalysisConfig* config) {
   PADDLE_ENFORCE_NOT_NULL(
       config,
@@ -285,6 +289,10 @@ void PD_EnableONEDNN(PD_AnalysisConfig* config) {
   config->config.EnableONEDNN();
 }
 
+void PD_SetMkldnnCacheCapacity(PD_AnalysisConfig* config, int capacity) {
+  LOG(WARNING) << ONEDNN_UPDATE_WARNING(PD_SetOnednnCacheCapacity);
+  PD_SetOnednnCacheCapacity(config, capacity);
+}
 void PD_SetOnednnCacheCapacity(PD_AnalysisConfig* config, int capacity) {
   PADDLE_ENFORCE_NOT_NULL(
       config,
