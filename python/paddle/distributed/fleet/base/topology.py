@@ -784,6 +784,8 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
         self._pp_degree = dim_dict['pipe']
         self._sharding_degree = dim_dict['sharding']
         self._sep_degree = dim_dict['sep']
+        if 'context' not in dim_dict:
+            dim_dict['context'] = 1
         self._cp_degree = dim_dict['context']
 
         moe_hybrid_group_names = []
