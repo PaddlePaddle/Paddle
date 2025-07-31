@@ -2599,6 +2599,7 @@ void IndexElementwiseGetInferMeta(const MetaTensor& x,
                                   const std::vector<int64_t>& index_stride,
                                   const int64_t slice_offset,
                                   const bool accumulate,
+                                  const bool is_combined,
                                   MetaTensor* out) {
   out->set_dims(common::make_ddim(input_dims));
   out->set_dtype(x.dtype());
