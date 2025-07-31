@@ -1271,7 +1271,7 @@ void FlashMaskV2BaseKernel(
                       common::errors::InvalidArgument(
                           "batch_size must be equal to batch_size_k"));
   }
-  int const max_headdim = get_max_headdim();
+  int const max_headdim = std::min(get_max_headdim(), 128);
   PADDLE_ENFORCE_LE(
       head_size,
       max_headdim,
@@ -1453,9 +1453,9 @@ void FlashMaskV2BaseKernel(
   }
   ctx.template Alloc<float>(softmax_lse);
 
-  Flash_fwd_params *params_handle = get_flash_fwd_params_handle();
+  FlashMask_fwd_params *params_handle = get_flashmask_fwd_params_handle();
   dynload::flashmaskv2_clear_fwd_params_handle(params_handle);
-  set_params_fprop(
+  set_flashmaskv2_params_fprop(
       params_handle,
       batch_size,
       seqlen_q,

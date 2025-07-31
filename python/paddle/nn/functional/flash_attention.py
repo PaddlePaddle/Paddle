@@ -2140,7 +2140,10 @@ def flashmask_attention(
         outputs = [out]
         if return_softmax_lse:
             outputs += [softmax_lse]
-        return outputs
+        if len(outputs) == 1:
+            return outputs[0]
+        else:
+            return outputs
     else:
         raise ValueError(f"Invalid flash attention version: {fa_version}")
 
