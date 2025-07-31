@@ -285,7 +285,6 @@ if(WITH_ROCM)
     "gpu/apply_per_channel_scale_kernel.cu"
     "gpu/calc_reduced_attn_kernel.cu"
     "gpu/eigvalsh_kernel.cu"
-    "gpu/lu_kernel.cu"
     "gpu/matrix_rank_kernel.cu"
     "gpu/matrix_rank_tol_kernel.cu"
     "gpu/svd_kernel.cu"
