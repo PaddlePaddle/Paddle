@@ -788,9 +788,6 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
 
     AdvancedIndex ad = AdvancedIndex(tensor, indices_int64);
     const bool accumulate = false;
-    const int64_t input_offset_bytes =
-        reinterpret_cast<const char*>(tensor.data()) -
-        reinterpret_cast<const char*>(self_tensor.data());
 
     return index_elementwise_get_ad_func(self_tensor,
                                          ad.indices,
@@ -798,7 +795,7 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
                                          ad.src_strides,
                                          ad.indexed_sizes,
                                          ad.indexed_strides,
-                                         input_offset_bytes,
+                                         slice_offset,
                                          accumulate);
   } else {
     if (bool_index.shape().size() == 1)
@@ -1208,7 +1205,9 @@ static void ApplyGetitem(const int index_size,
   if (transed_index->size() == 1 &&
       (*transed_index)[0].dtype() == phi::DataType::BOOL) {
     // get value for bool tensor
-    int64_t slice_offset = 0;
+    const int64_t slice_offset =
+        reinterpret_cast<const char*>(transed_tensor->data()) -
+        reinterpret_cast<const char*>(self_tensor->data());
     *out = getValueForBoolTensor(*transed_tensor,
                                  (*self_tensor),
                                  (*transed_index)[0],
