@@ -188,6 +188,7 @@ void FusedRopeKernel(const Context& dev_ctx,
               sin_dims,
               q.dims()));
     }
+
     sin_cos_data[0] = sin->data<T>();
     sin_cos_data[1] = cos->data<T>();
 
@@ -203,6 +204,7 @@ void FusedRopeKernel(const Context& dev_ctx,
     }
     prev_num_heads = inputs_num_heads[i];
   }
+
   int sign = 1;
   VectorizedFusedRopeCudaKernelFunc<T, MPType, vec_size> kernel_func =
       use_neox_rotary_style
@@ -271,6 +273,7 @@ void FusedRopeKernel(const Context& dev_ctx,
                                             div_c,
                                             rotary_emb_base,
                                             outs_data);
+
     // rotary position embedding K,V
     phi::Array<const T*, 3> input_kv{ins_data[1], ins_data[2], nullptr};
     phi::Array<T*, 3> out_kv{outs_data[1], outs_data[2], nullptr};
