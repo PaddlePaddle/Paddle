@@ -115,7 +115,7 @@ __global__ void ModulatedDeformableCol2imGpuKernel(
   }
 }
 
-template <typename T, typename Context>
+template <typename T, typename Context, typename IndexT>
 void ModulatedDeformableCol2im(const Context& dev_ctx,
                                const T* data_col,
                                const T* data_offset,
@@ -133,61 +133,28 @@ void ModulatedDeformableCol2im(const Context& dev_ctx,
       col_shape[0] * col_shape[1] * col_shape[2] * col_shape[3];
   int64_t blocks = NumBlocks(num_kernels);
   int64_t threads = kNumCUDAThreads;
-
-  bool is_using_int_index =
-      (num_kernels <= std::numeric_limits<int>::max()) &&
-      (im_shape[1] <= std::numeric_limits<int>::max()) &&
-      (im_shape[2] <= std::numeric_limits<int>::max()) &&
-      (kernel_shape[2] <= std::numeric_limits<int>::max()) &&
-      (kernel_shape[3] <= std::numeric_limits<int>::max()) &&
-      (channel_per_deformable_group <= std::numeric_limits<int>::max());
-  if (is_using_int_index) {
-    ModulatedDeformableCol2imGpuKernel<T, int>
-        <<<blocks, threads, 0, dev_ctx.stream()>>>(num_kernels,
-                                                   data_col,
-                                                   data_offset,
-                                                   data_mask,
-                                                   im_shape[0],
-                                                   im_shape[1],
-                                                   im_shape[2],
-                                                   kernel_shape[2],
-                                                   kernel_shape[3],
-                                                   pad[0],
-                                                   pad[1],
-                                                   stride[0],
-                                                   stride[1],
-                                                   dilation[0],
-                                                   dilation[1],
-                                                   channel_per_deformable_group,
-                                                   col_shape[1],
-                                                   deformable_group,
-                                                   col_shape[2],
-                                                   col_shape[3],
-                                                   grad_im);
-  } else {
-    ModulatedDeformableCol2imGpuKernel<T, int64_t>
-        <<<blocks, threads, 0, dev_ctx.stream()>>>(num_kernels,
-                                                   data_col,
-                                                   data_offset,
-                                                   data_mask,
-                                                   im_shape[0],
-                                                   im_shape[1],
-                                                   im_shape[2],
-                                                   kernel_shape[2],
-                                                   kernel_shape[3],
-                                                   pad[0],
-                                                   pad[1],
-                                                   stride[0],
-                                                   stride[1],
-                                                   dilation[0],
-                                                   dilation[1],
-                                                   channel_per_deformable_group,
-                                                   col_shape[1],
-                                                   deformable_group,
-                                                   col_shape[2],
-                                                   col_shape[3],
-                                                   grad_im);
-  }
+  ModulatedDeformableCol2imGpuKernel<T, IndexT>
+      <<<blocks, threads, 0, dev_ctx.stream()>>>(num_kernels,
+                                                 data_col,
+                                                 data_offset,
+                                                 data_mask,
+                                                 im_shape[0],
+                                                 im_shape[1],
+                                                 im_shape[2],
+                                                 kernel_shape[2],
+                                                 kernel_shape[3],
+                                                 pad[0],
+                                                 pad[1],
+                                                 stride[0],
+                                                 stride[1],
+                                                 dilation[0],
+                                                 dilation[1],
+                                                 channel_per_deformable_group,
+                                                 col_shape[1],
+                                                 deformable_group,
+                                                 col_shape[2],
+                                                 col_shape[3],
+                                                 grad_im);
 }
 
 template <typename T, typename IndexT>
@@ -310,7 +277,7 @@ __global__ void ModulatedDeformableCol2imCoordGpuKernel(
   }
 }
 
-template <typename T, typename Context>
+template <typename T, typename Context, typename IndexT>
 void ModulatedDeformableCol2imCoord(const Context& dev_ctx,
                                     const T* data_col,
                                     const T* data_im,
@@ -331,68 +298,32 @@ void ModulatedDeformableCol2imCoord(const Context& dev_ctx,
   int64_t blocks = NumBlocks(num_kernels);
   int64_t threads = kNumCUDAThreads;
 
-  bool is_using_int_index =
-      (num_kernels <= std::numeric_limits<int>::max()) &&
-      (im_shape[0] <= std::numeric_limits<int>::max()) &&
-      (im_shape[1] <= std::numeric_limits<int>::max()) &&
-      (im_shape[2] <= std::numeric_limits<int>::max()) &&
-      (channel_per_deformable_group <= std::numeric_limits<int>::max());
-
-  if (is_using_int_index) {
-    ModulatedDeformableCol2imCoordGpuKernel<T, int>
-        <<<blocks, threads, 0, dev_ctx.stream()>>>(
-            num_kernels,
-            data_col,
-            data_im,
-            data_offset,
-            data_mask,
-            im_shape[0],
-            im_shape[1],
-            im_shape[2],
-            kernel_shape[2],
-            kernel_shape[3],
-            paddings[0],
-            paddings[1],
-            strides[0],
-            strides[1],
-            dilations[0],
-            dilations[1],
-            channel_per_deformable_group,
-            col_shape[1],
-            2 * kernel_shape[2] * kernel_shape[3] * deformable_groups,
-            deformable_groups,
-            col_shape[2],
-            col_shape[3],
-            grad_offset,
-            grad_mask);
-  } else {
-    ModulatedDeformableCol2imCoordGpuKernel<T, int64_t>
-        <<<blocks, threads, 0, dev_ctx.stream()>>>(
-            num_kernels,
-            data_col,
-            data_im,
-            data_offset,
-            data_mask,
-            im_shape[0],
-            im_shape[1],
-            im_shape[2],
-            kernel_shape[2],
-            kernel_shape[3],
-            paddings[0],
-            paddings[1],
-            strides[0],
-            strides[1],
-            dilations[0],
-            dilations[1],
-            channel_per_deformable_group,
-            col_shape[1],
-            2 * kernel_shape[2] * kernel_shape[3] * deformable_groups,
-            deformable_groups,
-            col_shape[2],
-            col_shape[3],
-            grad_offset,
-            grad_mask);
-  }
+  ModulatedDeformableCol2imCoordGpuKernel<T, IndexT>
+      <<<blocks, threads, 0, dev_ctx.stream()>>>(
+          num_kernels,
+          data_col,
+          data_im,
+          data_offset,
+          data_mask,
+          im_shape[0],
+          im_shape[1],
+          im_shape[2],
+          kernel_shape[2],
+          kernel_shape[3],
+          paddings[0],
+          paddings[1],
+          strides[0],
+          strides[1],
+          dilations[0],
+          dilations[1],
+          channel_per_deformable_group,
+          col_shape[1],
+          2 * kernel_shape[2] * kernel_shape[3] * deformable_groups,
+          deformable_groups,
+          col_shape[2],
+          col_shape[3],
+          grad_offset,
+          grad_mask);
 }
 
 template <typename T, typename IndexT>
@@ -409,7 +340,7 @@ __global__ void FilterGradAddupGpuKernel(const IndexT nthreads,
   }
 }
 
-template <typename T, typename Context>
+template <typename T, typename Context, typename IndexT>
 void FilterGradAddup(const Context& dev_ctx,
                      const int64_t nthreads,
                      const int64_t n,
@@ -420,19 +351,10 @@ void FilterGradAddup(const Context& dev_ctx,
   const int64_t max_grid_x = dev_ctx.GetCUDAMaxGridDimSize()[0];
   const int64_t grid_size = std::min<int64_t>(
       (nthreads + kNumCUDAThreads - 1) / kNumCUDAThreads, max_grid_x);
-  bool is_using_int_index = (nthreads <= std::numeric_limits<int>::max()) &&
-                            (n <= std::numeric_limits<int>::max()) &&
-                            (height <= std::numeric_limits<int>::max()) &&
-                            (width <= std::numeric_limits<int>::max());
-  if (is_using_int_index) {
-    FilterGradAddupGpuKernel<T, int>
-        <<<grid_size, kNumCUDAThreads, 0, dev_ctx.stream()>>>(
-            nthreads, n, height, width, dweight_3d, filter_grad);
-  } else {
-    FilterGradAddupGpuKernel<T, int64_t>
-        <<<grid_size, kNumCUDAThreads, 0, dev_ctx.stream()>>>(
-            nthreads, n, height, width, dweight_3d, filter_grad);
-  }
+
+  FilterGradAddupGpuKernel<T, IndexT>
+      <<<grid_size, kNumCUDAThreads, 0, dev_ctx.stream()>>>(
+          nthreads, n, height, width, dweight_3d, filter_grad);
 }
 
 }  // namespace phi

@@ -104,7 +104,7 @@ inline void ModulatedDeformableCol2imCPUKernel(
   }
 }
 
-template <typename T, typename Context>
+template <typename T, typename Context, typename IndexT>
 void ModulatedDeformableCol2im(const Context& dev_ctx,
                                const T* data_col,
                                const T* data_offset,
@@ -121,59 +121,27 @@ void ModulatedDeformableCol2im(const Context& dev_ctx,
   int64_t num_kernels =
       col_shape[0] * col_shape[1] * col_shape[2] * col_shape[3];
 
-  bool is_using_int_index =
-      (num_kernels <= std::numeric_limits<int>::max()) &&
-      (im_shape[1] <= std::numeric_limits<int>::max()) &&
-      (im_shape[2] <= std::numeric_limits<int>::max()) &&
-      (kernel_shape[2] <= std::numeric_limits<int>::max()) &&
-      (kernel_shape[3] <= std::numeric_limits<int>::max()) &&
-      (channel_per_deformable_group <= std::numeric_limits<int>::max());
-
-  if (is_using_int_index) {
-    ModulatedDeformableCol2imCPUKernel<T, int>(num_kernels,
-                                               data_col,
-                                               data_offset,
-                                               data_mask,
-                                               im_shape[0],
-                                               im_shape[1],
-                                               im_shape[2],
-                                               kernel_shape[2],
-                                               kernel_shape[3],
-                                               pad[0],
-                                               pad[1],
-                                               stride[0],
-                                               stride[1],
-                                               dilation[0],
-                                               dilation[1],
-                                               channel_per_deformable_group,
-                                               col_shape[1],
-                                               deformable_group,
-                                               col_shape[2],
-                                               col_shape[3],
-                                               grad_im);
-  } else {
-    ModulatedDeformableCol2imCPUKernel<T, int64_t>(num_kernels,
-                                                   data_col,
-                                                   data_offset,
-                                                   data_mask,
-                                                   im_shape[0],
-                                                   im_shape[1],
-                                                   im_shape[2],
-                                                   kernel_shape[2],
-                                                   kernel_shape[3],
-                                                   pad[0],
-                                                   pad[1],
-                                                   stride[0],
-                                                   stride[1],
-                                                   dilation[0],
-                                                   dilation[1],
-                                                   channel_per_deformable_group,
-                                                   col_shape[1],
-                                                   deformable_group,
-                                                   col_shape[2],
-                                                   col_shape[3],
-                                                   grad_im);
-  }
+  ModulatedDeformableCol2imCPUKernel<T, IndexT>(num_kernels,
+                                                data_col,
+                                                data_offset,
+                                                data_mask,
+                                                im_shape[0],
+                                                im_shape[1],
+                                                im_shape[2],
+                                                kernel_shape[2],
+                                                kernel_shape[3],
+                                                pad[0],
+                                                pad[1],
+                                                stride[0],
+                                                stride[1],
+                                                dilation[0],
+                                                dilation[1],
+                                                channel_per_deformable_group,
+                                                col_shape[1],
+                                                deformable_group,
+                                                col_shape[2],
+                                                col_shape[3],
+                                                grad_im);
 }
 
 template <typename T, typename IndexT>
@@ -294,7 +262,7 @@ void ModulatedDeformableCol2imCoordCPUKernel(
   }
 }
 
-template <typename T, typename Context>
+template <typename T, typename Context, typename IndexT>
 void ModulatedDeformableCol2imCoord(const Context& dev_ctx,
                                     const T* data_col,
                                     const T* data_im,
@@ -313,68 +281,34 @@ void ModulatedDeformableCol2imCoord(const Context& dev_ctx,
                         col_shape[2] * col_shape[3] * deformable_groups;
   int64_t channel_per_deformable_group = col_shape[0] / deformable_groups;
 
-  bool is_using_int_index =
-      (num_kernels <= std::numeric_limits<int>::max()) &&
-      (im_shape[0] <= std::numeric_limits<int>::max()) &&
-      (im_shape[1] <= std::numeric_limits<int>::max()) &&
-      (im_shape[2] <= std::numeric_limits<int>::max()) &&
-      (channel_per_deformable_group <= std::numeric_limits<int>::max());
-  if (is_using_int_index) {
-    ModulatedDeformableCol2imCoordCPUKernel<T, int>(
-        num_kernels,
-        data_col,
-        data_im,
-        data_offset,
-        data_mask,
-        im_shape[0],
-        im_shape[1],
-        im_shape[2],
-        kernel_shape[2],
-        kernel_shape[3],
-        paddings[0],
-        paddings[1],
-        strides[0],
-        strides[1],
-        dilations[0],
-        dilations[1],
-        channel_per_deformable_group,
-        col_shape[1],
-        2 * kernel_shape[2] * kernel_shape[3] * deformable_groups,
-        deformable_groups,
-        col_shape[2],
-        col_shape[3],
-        grad_offset,
-        grad_mask);
-  } else {
-    ModulatedDeformableCol2imCoordCPUKernel<T, int64_t>(
-        num_kernels,
-        data_col,
-        data_im,
-        data_offset,
-        data_mask,
-        im_shape[0],
-        im_shape[1],
-        im_shape[2],
-        kernel_shape[2],
-        kernel_shape[3],
-        paddings[0],
-        paddings[1],
-        strides[0],
-        strides[1],
-        dilations[0],
-        dilations[1],
-        channel_per_deformable_group,
-        col_shape[1],
-        2 * kernel_shape[2] * kernel_shape[3] * deformable_groups,
-        deformable_groups,
-        col_shape[2],
-        col_shape[3],
-        grad_offset,
-        grad_mask);
-  }
+  ModulatedDeformableCol2imCoordCPUKernel<T, IndexT>(
+      num_kernels,
+      data_col,
+      data_im,
+      data_offset,
+      data_mask,
+      im_shape[0],
+      im_shape[1],
+      im_shape[2],
+      kernel_shape[2],
+      kernel_shape[3],
+      paddings[0],
+      paddings[1],
+      strides[0],
+      strides[1],
+      dilations[0],
+      dilations[1],
+      channel_per_deformable_group,
+      col_shape[1],
+      2 * kernel_shape[2] * kernel_shape[3] * deformable_groups,
+      deformable_groups,
+      col_shape[2],
+      col_shape[3],
+      grad_offset,
+      grad_mask);
 }
 
-template <typename T, typename Context>
+template <typename T, typename Context, typename IndexT>
 void FilterGradAddup(const Context& dev_ctx,
                      const int64_t nthreads,
                      const int64_t n,
@@ -382,7 +316,7 @@ void FilterGradAddup(const Context& dev_ctx,
                      const int64_t width,
                      const T* dweight_3d,
                      T* filter_grad) {
-  for (int64_t i = 0; i < nthreads; i++) {
+  for (IndexT i = 0; i < nthreads; i++) {
     filter_grad[i] = filter_grad[i] + dweight_3d[i];
   }
 }

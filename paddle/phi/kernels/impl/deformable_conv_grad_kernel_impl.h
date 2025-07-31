@@ -119,7 +119,7 @@ HOSTDEVICE T DmcnGetCoordinateWeight(T argmax_h,
   return weight;
 }
 
-template <typename T, typename Context>
+template <typename T, typename Context, typename IndexT>
 void ModulatedDeformableCol2imCoord(const Context& dev_ctx,
                                     const T* data_col,
                                     const T* data_im,
@@ -135,7 +135,7 @@ void ModulatedDeformableCol2imCoord(const Context& dev_ctx,
                                     T* grad_offset,
                                     T* grad_mask);
 
-template <typename T, typename Context>
+template <typename T, typename Context, typename IndexT>
 void ModulatedDeformableCol2im(const Context& dev_ctx,
                                const T* data_col,
                                const T* data_offset,
@@ -149,7 +149,7 @@ void ModulatedDeformableCol2im(const Context& dev_ctx,
                                const int deformable_group,
                                T* grad_im);
 
-template <typename T, typename Context>
+template <typename T, typename Context, typename IndexT>
 void FilterGradAddup(const Context& dev_ctx,
                      const int64_t nthreads,
                      const int64_t n,
@@ -267,6 +267,12 @@ void DeformableConvGradKernel(const Context& dev_ctx,
     }
   }
 
+  bool using_int32_index =
+      (x.numel() <= std::numeric_limits<int>::max()) &&
+      (offset.numel() <= std::numeric_limits<int>::max()) &&
+      (filter.numel() <= std::numeric_limits<int>::max()) &&
+      (mask ? mask->numel() <= std::numeric_limits<int>::max() : true);
+
   for (int i = 0; i < batch_size / im2col_step; ++i) {
     DenseTensor out_grad_3d = out_grad_4d.Slice(i, i + 1).Resize(
         common::slice_ddim(out_grad_4d.dims(), 1, out_grad_4d.dims().size()));
@@ -299,9 +305,78 @@ void DeformableConvGradKernel(const Context& dev_ctx,
           mask_grad ? mask_grad->data<T>() + i * im2col_step * input_mask_dim
                     : nullptr;
       // get grad of offset and mask
-      ModulatedDeformableCol2imCoord(
+      if (using_int32_index) {
+        ModulatedDeformableCol2imCoord<T, Context, int>(
+            dev_ctx,
+            col_buffer_ptr,
+            input_ptr + i * im2col_step * input_dim,
+            offset_ptr + i * im2col_step * input_offset_dim,
+            mask_data_ptr,
+            input_shape_vec,
+            col_buffer_shape_vec,
+            filter_shape_vec,
+            paddings,
+            strides,
+            dilations,
+            deformable_groups,
+            offset_grad_ptr + i * im2col_step * input_offset_dim,
+            mask_grad_data_ptr);
+      } else {
+        ModulatedDeformableCol2imCoord<T, Context, int64_t>(
+            dev_ctx,
+            col_buffer_ptr,
+            input_ptr + i * im2col_step * input_dim,
+            offset_ptr + i * im2col_step * input_offset_dim,
+            mask_data_ptr,
+            input_shape_vec,
+            col_buffer_shape_vec,
+            filter_shape_vec,
+            paddings,
+            strides,
+            dilations,
+            deformable_groups,
+            offset_grad_ptr + i * im2col_step * input_offset_dim,
+            mask_grad_data_ptr);
+      }
+    }
+    if (dx) {
+      T* dx_ptr = dx->data<T>();
+      // get grad of input
+      if (using_int32_index) {
+        ModulatedDeformableCol2im<T, Context, int>(
+            dev_ctx,
+            col_buffer_ptr,
+            offset_ptr + i * im2col_step * input_offset_dim,
+            mask_data_ptr,
+            input_shape_vec,
+            col_buffer_shape_vec,
+            filter_shape_vec,
+            paddings,
+            strides,
+            dilations,
+            deformable_groups,
+            dx_ptr + i * im2col_step * input_dim);
+      } else {
+        ModulatedDeformableCol2im<T, Context, int64_t>(
+            dev_ctx,
+            col_buffer_ptr,
+            offset_ptr + i * im2col_step * input_offset_dim,
+            mask_data_ptr,
+            input_shape_vec,
+            col_buffer_shape_vec,
+            filter_shape_vec,
+            paddings,
+            strides,
+            dilations,
+            deformable_groups,
+            dx_ptr + i * im2col_step * input_dim);
+      }
+
+      dx->Resize(x.dims());
+    }
+    if (using_int32_index) {
+      funcs::ModulatedDeformableIm2col<T, Context, int>(
           dev_ctx,
-          col_buffer_ptr,
           input_ptr + i * im2col_step * input_dim,
           offset_ptr + i * im2col_step * input_offset_dim,
           mask_data_ptr,
@@ -312,40 +387,22 @@ void DeformableConvGradKernel(const Context& dev_ctx,
           strides,
           dilations,
           deformable_groups,
-          offset_grad_ptr + i * im2col_step * input_offset_dim,
-          mask_grad_data_ptr);
+          col_buffer_ptr);
+    } else {
+      funcs::ModulatedDeformableIm2col<T, Context, int64_t>(
+          dev_ctx,
+          input_ptr + i * im2col_step * input_dim,
+          offset_ptr + i * im2col_step * input_offset_dim,
+          mask_data_ptr,
+          input_shape_vec,
+          col_buffer_shape_vec,
+          filter_shape_vec,
+          paddings,
+          strides,
+          dilations,
+          deformable_groups,
+          col_buffer_ptr);
     }
-    if (dx) {
-      T* dx_ptr = dx->data<T>();
-      // get grad of input
-      ModulatedDeformableCol2im(dev_ctx,
-                                col_buffer_ptr,
-                                offset_ptr + i * im2col_step * input_offset_dim,
-                                mask_data_ptr,
-                                input_shape_vec,
-                                col_buffer_shape_vec,
-                                filter_shape_vec,
-                                paddings,
-                                strides,
-                                dilations,
-                                deformable_groups,
-                                dx_ptr + i * im2col_step * input_dim);
-      dx->Resize(x.dims());
-    }
-
-    funcs::ModulatedDeformableIm2col(
-        dev_ctx,
-        input_ptr + i * im2col_step * input_dim,
-        offset_ptr + i * im2col_step * input_offset_dim,
-        mask_data_ptr,
-        input_shape_vec,
-        col_buffer_shape_vec,
-        filter_shape_vec,
-        paddings,
-        strides,
-        dilations,
-        deformable_groups,
-        col_buffer_ptr);
 
     col_buffer_3d.Resize(col_buffer_3d_shape);
 
@@ -372,13 +429,23 @@ void DeformableConvGradKernel(const Context& dev_ctx,
       }
 
       // update grad of weights
-      FilterGradAddup<T>(dev_ctx,
-                         dweight_3d.numel(),
-                         groups,
-                         K,
-                         M,
-                         dweight_3d.data<T>(),
-                         filter_grad->data<T>());
+      if (using_int32_index) {
+        FilterGradAddup<T, Context, int>(dev_ctx,
+                                         dweight_3d.numel(),
+                                         groups,
+                                         K,
+                                         M,
+                                         dweight_3d.data<T>(),
+                                         filter_grad->data<T>());
+      } else {
+        FilterGradAddup<T, Context, int>(dev_ctx,
+                                         dweight_3d.numel(),
+                                         groups,
+                                         K,
+                                         M,
+                                         dweight_3d.data<T>(),
+                                         filter_grad->data<T>());
+      }
     }
   }
   if (filter_grad) {

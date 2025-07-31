@@ -107,7 +107,7 @@ __global__ void ModulatedDeformableIm2colGpuKernel(
   }
 }
 
-template <typename T, typename Context>
+template <typename T, typename Context, typename IndexT>
 void ModulatedDeformableIm2col(const Context& dev_ctx,
                                const T* data_im,
                                const T* data_offset,
@@ -126,64 +126,31 @@ void ModulatedDeformableIm2col(const Context& dev_ctx,
 
   int64_t blocks = NumBlocks(num_kernels);
   int64_t threads = kNumCUDAThreads;
-
-  bool is_using_int_index =
-      (num_kernels <= std::numeric_limits<int>::max()) &&
-      (im_shape[1] <= std::numeric_limits<int>::max()) &&
-      (im_shape[2] <= std::numeric_limits<int>::max()) &&
-      (filter_shape[2] <= std::numeric_limits<int>::max()) &&
-      (channel_per_deformable_group <= std::numeric_limits<int>::max()) &&
-      (filter_shape[3] <= std::numeric_limits<int>::max());
-  if (is_using_int_index) {
-    ModulatedDeformableIm2colGpuKernel<T, int>
-        <<<blocks, threads, 0, dev_ctx.stream()>>>(num_kernels,
-                                                   data_im,
-                                                   data_offset,
-                                                   data_mask,
-                                                   im_shape[1],
-                                                   im_shape[2],
-                                                   filter_shape[2],
-                                                   filter_shape[3],
-                                                   paddings[0],
-                                                   paddings[1],
-                                                   strides[0],
-                                                   strides[1],
-                                                   dilations[0],
-                                                   dilations[1],
-                                                   channel_per_deformable_group,
-                                                   col_shape[1],
-                                                   im_shape[0],
-                                                   deformable_groups,
-                                                   col_shape[2],
-                                                   col_shape[3],
-                                                   data_col);
-  } else {
-    ModulatedDeformableIm2colGpuKernel<T, int64_t>
-        <<<blocks, threads, 0, dev_ctx.stream()>>>(num_kernels,
-                                                   data_im,
-                                                   data_offset,
-                                                   data_mask,
-                                                   im_shape[1],
-                                                   im_shape[2],
-                                                   filter_shape[2],
-                                                   filter_shape[3],
-                                                   paddings[0],
-                                                   paddings[1],
-                                                   strides[0],
-                                                   strides[1],
-                                                   dilations[0],
-                                                   dilations[1],
-                                                   channel_per_deformable_group,
-                                                   col_shape[1],
-                                                   im_shape[0],
-                                                   deformable_groups,
-                                                   col_shape[2],
-                                                   col_shape[3],
-                                                   data_col);
-  }
+  ModulatedDeformableIm2colGpuKernel<T, IndexT>
+      <<<blocks, threads, 0, dev_ctx.stream()>>>(num_kernels,
+                                                 data_im,
+                                                 data_offset,
+                                                 data_mask,
+                                                 im_shape[1],
+                                                 im_shape[2],
+                                                 filter_shape[2],
+                                                 filter_shape[3],
+                                                 paddings[0],
+                                                 paddings[1],
+                                                 strides[0],
+                                                 strides[1],
+                                                 dilations[0],
+                                                 dilations[1],
+                                                 channel_per_deformable_group,
+                                                 col_shape[1],
+                                                 im_shape[0],
+                                                 deformable_groups,
+                                                 col_shape[2],
+                                                 col_shape[3],
+                                                 data_col);
 }
 
-template void ModulatedDeformableIm2col(
+template void ModulatedDeformableIm2col<float, phi::GPUContext, int>(
     const phi::GPUContext& dev_ctx,
     const float* data_im,
     const float* data_offset,
@@ -197,7 +164,35 @@ template void ModulatedDeformableIm2col(
     const int deformable_groups,
     float* data_col);
 
-template void ModulatedDeformableIm2col(
+template void ModulatedDeformableIm2col<float, phi::GPUContext, int64_t>(
+    const phi::GPUContext& dev_ctx,
+    const float* data_im,
+    const float* data_offset,
+    const float* data_mask,
+    const std::vector<int64_t>& im_shape,
+    const std::vector<int64_t>& col_shape,
+    const std::vector<int64_t>& filter_shape,
+    const std::vector<int>& paddings,
+    const std::vector<int>& strides,
+    const std::vector<int>& dilations,
+    const int deformable_groups,
+    float* data_col);
+
+template void ModulatedDeformableIm2col<double, phi::GPUContext, int>(
+    const phi::GPUContext& dev_ctx,
+    const double* data_im,
+    const double* data_offset,
+    const double* data_mask,
+    const std::vector<int64_t>& im_shape,
+    const std::vector<int64_t>& col_shape,
+    const std::vector<int64_t>& filter_shape,
+    const std::vector<int>& paddings,
+    const std::vector<int>& strides,
+    const std::vector<int>& dilations,
+    const int deformable_groups,
+    double* data_col);
+
+template void ModulatedDeformableIm2col<double, phi::GPUContext, int64_t>(
     const phi::GPUContext& dev_ctx,
     const double* data_im,
     const double* data_offset,
