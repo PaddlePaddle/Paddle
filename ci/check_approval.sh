@@ -16,7 +16,6 @@ if [ -z ${BRANCH} ]; then
     BRANCH="develop"
 fi
 
-
 PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../" && pwd )"
 # If you want to add monitoring file modifications, please perform the. github/CODEOWNERS operation
 API_FILES=(
@@ -91,6 +90,15 @@ for API_FILE in ${API_FILES[*]}; do
   fi
 done
 
+CI_OLD_SCRIPTS_PADDLE_BUILD=$(git diff --name-only upstream/$BRANCH | grep -E "paddle/scripts/paddle_build.*")
+CI_OLD_SCRIPTS_COVERAGE=$(git diff --name-only upstream/$BRANCH | grep -E "tools/coverage")
+CI_OLD_SCRIPTS_TOOLS=$(git diff --name-only upstream/$BRANCH | grep -E "tools" | grep "check_")
+
+if [ -n "$CI_OLD_SCRIPTS_PADDLE_BUILD" ] || [ -n "$CI_OLD_SCRIPTS_COVERAGE" ] || [ -n "$CI_OLD_SCRIPTS_TOOLS" ]; then
+    echo_line="You must have one RD (tianshuo78520a, swgu98) approval for the old CI scripts.\n"
+    check_approval 1 tianshuo78520a swgu98
+fi
+
 DEPS_PHI_IN_IR=`git diff --name-only upstream/$BRANCH | grep -E "paddle/pir/" | grep "CMakeList" |xargs -r git diff -U0 upstream/$BRANCH --| grep "^\+" | grep "phi" || true`
 echo "DEPS_PHI_IN_IR:${DEPS_PHI_IN_IR}"
 if [ "${DEPS_PHI_IN_IR}" ] && [ "${DEPS_PHI_IN_IR}" != "" ]; then
@@ -142,15 +150,15 @@ IF_ADD_METACONFIG=`echo $INFERMETA_FILES_ADDED_LINES | grep -B5 --no-group-separ
 HAS_MODIFIED_OP_BUILD_GEN_SCRIPT=`git diff --name-only upstream/$BRANCH -- 'paddle/fluid/pir/dialect/op_generator/op_build_gen.py'`
 if [ -n "${IF_ADD_METACONFIG}" ] && [ -z "${HAS_MODIFIED_OP_BUILD_GEN_SCRIPT}" ]; then
     echo_line="If your added infermeta file contains MetaConfig, you must update _INFERMETA_NEED_META_CONFIG in op_build_gen.py synchronously.\n"
-    echo_line=${echo_line}"If you believe this is a false positive, please request one of the RD (SigureMo(Recommend), zyfncg, zhangbo9674) approval for the changes.\n"
-    check_approval 1 SigureMo zyfncg zhangbo9674
+    echo_line=${echo_line}"If you believe this is a false positive, please request one of the RD (SigureMo(Recommend), DrRyanHuang, zyfncg, zhangbo9674) approval for the changes.\n"
+    check_approval 1 SigureMo DrRyanHuang zyfncg zhangbo9674
 fi
 
 CINN_FILES_ADDED_LINES=$(git diff -U0 upstream/$BRANCH -- 'paddle/cinn/' |grep "^+")
 IF_ADD_LOG_INFO=`echo $CINN_FILES_ADDED_LINES | grep -B5 --no-group-separator "LOG(INFO)" || true`
 if [[ ${IF_ADD_LOG_INFO} ]]; then
-    echo_line="You must have one RD (SigureMo(Recommend), zyfncg) approval for using LOG(INFO), which may make user confused. Recommend to move it under if (FLAGS_cinn_debug)\n"
-    check_approval 1 SigureMo zyfncg
+    echo_line="You must have one RD (SigureMo(Recommend), DrRyanHuang, zyfncg) approval for using LOG(INFO), which may make user confused. Recommend to move it under if (FLAGS_cinn_debug)\n"
+    check_approval 1 SigureMo DrRyanHuang zyfncg
 fi
 
 HAS_DEFINE_FLAG=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "DEFINE_int32" |grep -o -m 1 "DEFINE_bool" | grep -o -m 1 "DEFINE_string" || true`
@@ -318,8 +326,8 @@ fi
 
 INVALID_UNITTEST_ASSERT_CHECK=`echo "$ALL_ADDED_LINES" | grep -zoE '\+\s+((assert\s+)|(self\.assert(True|Equal)\())(\s*\+\s*)?(np|numpy)\.(allclose|array_equal)[^+]*' || true`
 if [ "${INVALID_UNITTEST_ASSERT_CHECK}" != "" ] && [ "${PR_ID}" != "" ]; then
-    echo_line="It is recommended to use 'np.testing.assert_allclose' and 'np.testing.assert_array_equal' instead of 'self.assertTrue(np.allclose(...))' and 'self.assertTrue(np.array_equal(...))'.\nPlease modify the code below. If anything is unclear, please read the specification [ https://github.com/PaddlePaddle/community/blob/master/rfcs/CodeStyle/20220805_code_style_improvement_for_unittest.md#background ]. If it is a mismatch, please request SigureMo (Recommend) or luotao1 review and approve.\nThe code that do not meet the specification are as follows:\n${INVALID_UNITTEST_ASSERT_CHECK}\n"
-    check_approval 1 SigureMo luotao1
+    echo_line="It is recommended to use 'np.testing.assert_allclose' and 'np.testing.assert_array_equal' instead of 'self.assertTrue(np.allclose(...))' and 'self.assertTrue(np.array_equal(...))'.\nPlease modify the code below. If anything is unclear, please read the specification [ https://github.com/PaddlePaddle/community/blob/master/rfcs/CodeStyle/20220805_code_style_improvement_for_unittest.md#background ]. If it is a mismatch, please request SigureMo (Recommend) or zrr1999 or luotao1 review and approve.\nThe code that do not meet the specification are as follows:\n${INVALID_UNITTEST_ASSERT_CHECK}\n"
+    check_approval 1 SigureMo zrr1999 luotao1
 fi
 
 TEST_FILE_ADDED_LINES=$(git diff -U0 upstream/$BRANCH -- test |grep "^+")
@@ -539,25 +547,6 @@ SKIP_CI=`git log --pretty=oneline|grep $COMMIT_ID |grep -w "test=document_fix" |
 if [[ ${SKIP_CI} ]];then
     echo_line="You must have one RD (tianshuo78520a (Recommend), zhiqiu, phlrain ) or PM (Ligoml) approval you add test=document_fix method in commit skips CI"
     check_approval 1 tianshuo78520a zhiqiu phlrain Ligoml
-fi
-
-echo "::group:: Installing dependencies..."
-# Get the list of PR authors with unresolved unit test issues
-pip install PyGithub
-echo "::endgroup::"
-# For getting PR related data
-wget https://sys-p0.bj.bcebos.com/blk/block.txt --no-check-certificate --no-proxy
-wget https://sys-p0.bj.bcebos.com/bk-ci/bk.txt --no-check-certificate --no-proxy
-HASUTFIXED=`python ${PADDLE_ROOT}/tools/check_ut.py | grep "has unit-test to be fixed" || true`
-if [ "${HASUTFIXED}" != "" ]; then
-    echo_line="${HASUTFIXED} You must have one RD (chalsliu (Recommend) or kolinwei) approval.\n"
-    check_approval 1 chalsliu kolinwei
-fi
-
-HASUTFIXED=`python ${PADDLE_ROOT}/tools/check_ut.py | grep "has benchmark issue to be fixed" || true`
-if [ "${HASUTFIXED}" != "" ]; then
-    echo_line="${HASUTFIXED} You must have one RD (hysunflower or xiegegege or Xreki) approval.\n"
-    check_approval 1 hysunflower xiegegege Xreki
 fi
 
 # NOTE(Avin0323): Files with the name "unity_build_rule.cmake" are rules used
