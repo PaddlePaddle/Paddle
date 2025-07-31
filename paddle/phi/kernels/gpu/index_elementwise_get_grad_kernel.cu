@@ -334,7 +334,6 @@ void IndexPutWithSortKernel(const phi::GPUContext& dev_ctx,
 
     const int UNROLL = 4;
     const int INDICES_PER_BLOCK = 4;
-
     auto max_grid_size = phi::backends::gpu::GetGpuMaxGridDimSize(
         dev_ctx.GetPlace().GetDeviceId());
 
