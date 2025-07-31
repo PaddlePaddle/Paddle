@@ -717,7 +717,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
         sum_square_list = []
         sum_square_list_fp16 = []
         sum_square_list_fp32 = []
-        flag_auto_hybrid_pp = True
+        flag_auto_hybrid_pp = True  # Determine whether to use the new dynamic graph semi-automatic parallel pp framework
         if len(params_grads) > 0 and len(params_grads[0]) > 0:
             src_mesh = params_grads[0][0].process_mesh
         else:
