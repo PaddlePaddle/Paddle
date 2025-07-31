@@ -17,6 +17,7 @@
 #include <vector>
 #include "paddle/common/array.h"
 #include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"

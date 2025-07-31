@@ -1251,7 +1251,6 @@ static void ApplyGetitem(const int index_size,
                                            slice_offset,
                                            accumulate,
                                            is_combined);
-
       return;
     } else {
       paddle::Tensor transed_advanced_index_tensor;
