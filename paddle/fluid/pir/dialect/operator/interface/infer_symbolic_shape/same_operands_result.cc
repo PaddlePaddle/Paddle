@@ -214,6 +214,8 @@ OP_SAME_OPERANDS_AND_RESULT(MaskedFill)
 OP_SAME_OPERANDS_AND_RESULT(MaskedFill_)
 OP_SAME_OPERANDS_AND_RESULT(IndexElementwisePut)
 OP_SAME_OPERANDS_AND_RESULT(IndexElementwisePut_)
+OP_SAME_OPERANDS_AND_RESULT(IndexElementwisePutWithTensor)
+OP_SAME_OPERANDS_AND_RESULT(IndexElementwisePutWithTensor_)
 
 bool ScaleOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {

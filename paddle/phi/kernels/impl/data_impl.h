@@ -105,7 +105,7 @@ void PrintKernel(const Context& dev_ctx,
   // if (first_n > 0 && ++times_ > first_n) return;
 
   // TODO(phlrain): support printed_var_name
-  paddle::funcs::TensorFormatter formatter;
+  phi::funcs::TensorFormatter formatter;
   const std::string& name = print_tensor_name ? "var" : "";
   formatter.SetPrintTensorType(print_tensor_type);
   formatter.SetPrintTensorShape(print_tensor_shape);

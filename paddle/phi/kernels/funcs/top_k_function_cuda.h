@@ -404,8 +404,8 @@ __device__ __forceinline__ void BlockReduce(Pair<T> shared_max[],
  * In a block:
  * 1. every thread get top MaxLength value;
  * 2. merge to sh_topk, block reduce and get max value;
- * 3. go to the second setp, until one thread's topk value is null;
- * 4. go to the first setp, until get the topk value.
+ * 3. go to the second step, until one thread's topk value is null;
+ * 4. go to the first step, until get the topk value.
  */
 
 template <typename T, int MaxLength, int BlockSize>

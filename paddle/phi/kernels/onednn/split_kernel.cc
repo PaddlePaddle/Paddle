@@ -19,8 +19,8 @@
 
 namespace phi {
 
-bool SplitCheckIfOneDNNSupport(const KernelContext* ctx) {
-  if (ctx->InputAt<phi::DenseTensor>(0).mem_desc().get_inner_nblks() == 0) {
+bool SplitCheckIfOneDNNSupport(const KernelContext* dev_ctx) {
+  if (dev_ctx->InputAt<phi::DenseTensor>(0).mem_desc().get_inner_nblks() == 0) {
     return true;
   }
   return false;

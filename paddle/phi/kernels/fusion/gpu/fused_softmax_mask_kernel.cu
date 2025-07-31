@@ -479,6 +479,7 @@ void FusedSoftmaxMaskKernel(const Context& dev_ctx,
                             DenseTensor* out) {
   auto* x_data = x.data<T>();
   auto* y_data = dev_ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) return;
 
   auto x_dim = x.dims();
   auto mask_dim = mask.dims();

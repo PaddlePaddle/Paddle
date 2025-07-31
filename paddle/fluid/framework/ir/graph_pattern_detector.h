@@ -654,8 +654,8 @@ struct FC : public PatternBase {
 // named node:
 // fc
 // w, bias, output, residual_data
-struct FCMKLDNN : public PatternBase {
-  FCMKLDNN(PDPattern* pattern, const std::string& name_scope)
+struct FCONEDNN : public PatternBase {
+  FCONEDNN(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "fc_mkldnn") {}
 
   PDNode* operator()(bool with_residual_data);

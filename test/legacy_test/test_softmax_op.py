@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_places
 from utils import static_guard
 
 import paddle
@@ -57,7 +57,7 @@ class TestSoftmaxOp(OpTest):
         self.python_api = F.softmax
         self.public_python_api = F.softmax
         self.use_cudnn = False
-        self.use_mkldnn = False
+        self.use_onednn = False
         # explicitly use float32 for ROCm, as MIOpen does not yet support float64
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
         self.init_kernel_type()
@@ -73,7 +73,7 @@ class TestSoftmaxOp(OpTest):
         self.attrs = {
             'axis': self.axis,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_mkldnn,
+            'use_mkldnn': self.use_onednn,
         }
         self.enable_cinn = True
 
@@ -112,7 +112,7 @@ class TestSoftmaxOp(OpTest):
                     ["X"],
                     "Out",
                     max_relative_error=0.01,
-                    check_dygraph=(not self.use_mkldnn),
+                    check_dygraph=(not self.use_onednn),
                     check_pir=True,
                     check_prim_pir=True,
                     check_pir_onednn=self.check_pir_onednn,
@@ -122,7 +122,7 @@ class TestSoftmaxOp(OpTest):
                 ["X"],
                 "Out",
                 max_relative_error=0.01,
-                check_dygraph=(not self.use_mkldnn),
+                check_dygraph=(not self.use_onednn),
                 check_prim=True,
                 check_pir=True,
                 check_prim_pir=True,
@@ -142,7 +142,7 @@ class TestSoftmaxOp_ZeroDim1(TestSoftmaxOp):
         self.python_api = F.softmax
         self.public_python_api = F.softmax
         self.use_cudnn = False
-        self.use_mkldnn = False
+        self.use_onednn = False
         # explicitly use float32 for ROCm, as MIOpen does not yet support float64
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
         self.init_kernel_type()
@@ -156,7 +156,7 @@ class TestSoftmaxOp_ZeroDim1(TestSoftmaxOp):
         self.attrs = {
             'axis': -1,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_mkldnn,
+            'use_mkldnn': self.use_onednn,
         }
         self.enable_cinn = False
 
@@ -192,7 +192,7 @@ class TestSoftmaxOp_ZeroDim2(TestSoftmaxOp):
         self.public_python_api = F.softmax
         self.prim_op_type = "comp"
         self.use_cudnn = True
-        self.use_mkldnn = False
+        self.use_onednn = False
         # explicitly use float32 for ROCm, as MIOpen does not yet support float64
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
 
@@ -205,7 +205,7 @@ class TestSoftmaxOp_ZeroDim2(TestSoftmaxOp):
         self.attrs = {
             'axis': -1,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_mkldnn,
+            'use_mkldnn': self.use_onednn,
         }
         self.enable_cinn = False
 
@@ -466,7 +466,7 @@ class TestSoftmaxBF16Op(OpTest):
         self.python_api = F.softmax
         self.public_python_api = F.softmax
         self.use_cudnn = self.init_cudnn()
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.dtype = np.uint16
         self.shape = [10, 10]
         self.axis = -1
@@ -482,7 +482,7 @@ class TestSoftmaxBF16Op(OpTest):
         self.attrs = {
             'axis': self.axis,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_mkldnn,
+            'use_mkldnn': self.use_onednn,
         }
 
     def init_cudnn(self):
@@ -492,10 +492,10 @@ class TestSoftmaxBF16Op(OpTest):
         place = core.CUDAPlace(0)
         self.check_output_with_place(
             place,
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_onednn),
             check_prim=True,
-            check_pir=(not self.use_mkldnn),
-            check_prim_pir=(not self.use_mkldnn),
+            check_pir=(not self.use_onednn),
+            check_prim_pir=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
             check_symbol_infer=False,
         )
@@ -507,10 +507,10 @@ class TestSoftmaxBF16Op(OpTest):
             ["X"],
             "Out",
             numeric_grad_delta=0.05,
-            check_dygraph=(not self.use_mkldnn),
+            check_dygraph=(not self.use_onednn),
             check_prim=True,
-            check_pir=(not self.use_mkldnn),
-            check_prim_pir=(not self.use_mkldnn),
+            check_pir=(not self.use_onednn),
+            check_prim_pir=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
         )
 
@@ -644,6 +644,21 @@ class TestSoftmaxAPI_ZeroDim(unittest.TestCase):
 class TestSoftmaxInplaceAPI(TestSoftmaxAPI):
     def executed_api(self):
         self.softmax = F.softmax_
+
+
+class TestSoftmaxAPI_ZeroSize(unittest.TestCase):
+    def test_dygraph(self):
+        for place in get_places():
+            paddle.disable_static(place)
+            x = paddle.rand([0, 2, 3])
+            x.stop_gradient = False
+            x.retain_grads()
+            out = paddle.nn.functional.softmax(x)
+            out.retain_grads()
+            out.backward()
+            np.testing.assert_allclose(out.numpy(), np.random.random([0, 2, 3]))
+            np.testing.assert_allclose(x.grad.shape, x.shape)
+            paddle.enable_static()
 
 
 if __name__ == "__main__":

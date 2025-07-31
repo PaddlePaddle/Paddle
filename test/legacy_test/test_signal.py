@@ -1045,5 +1045,12 @@ class TestIstftException(unittest.TestCase):
             ),
 
 
+class TestIstftException_ZeroSize(unittest.TestCase):
+    def test_istft(self):
+        self.x = np.random.random([5, 0])
+        with self.assertRaises(AssertionError):
+            paddle.signal.istft(paddle.to_tensor(self.x), 512)
+
+
 if __name__ == '__main__':
     unittest.main()

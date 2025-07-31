@@ -111,7 +111,7 @@ inline DenseTensor MatChainMul(const Context& dev_ctx,
 template <typename Context, typename T>
 std::vector<uint64_t> GetOrder(const std::vector<const DenseTensor*>& ins,
                                const std::vector<phi::DDim>& ins_dims) {
-  auto n = ins.size();
+  uint64_t n = ins.size();
   // p: save the ins shape, the ins[i] shape is (p[i], p[i+1])
   std::vector<uint64_t> p(n + 1);
   for (uint64_t i = 0; i < n; i++) {
@@ -329,7 +329,7 @@ void MultiDotGradMatChainOrder(const Context& dev_ctx,
                                std::vector<DenseTensor*>* dx) {
   auto order = GetOrder<Context, T>(ins, ins_dims);
   auto n = ins.size();
-  std::vector<DenseTensor> results(n * n);
+  std::vector<DenseTensor> results(static_cast<int64_t>(n) * n);
   MatChainMul<Context, T>(
       dev_ctx, ins, ins_dims, order, 0, n - 1, true, &results);
   MatChainMulGrad<Context, T>(
