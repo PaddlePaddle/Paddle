@@ -768,23 +768,6 @@ void FlashAttnV3InferMeta(const MetaTensor& q,
   softmax_lse->set_dtype(phi::DataType::FLOAT32);
 }
 
-void FlashAttnVarlenV3InferMeta(const MetaTensor& q,
-                                const MetaTensor& k,
-                                const MetaTensor& v,
-                                MetaTensor* out,
-                                MetaTensor* softmax_lse) {
-  const int total_q = q.dims()[0];
-  const int num_heads = q.dims()[q.dims().size() - 2];
-  const int head_size_v = v.dims()[v.dims().size() - 1];
-  auto q_type = q.dtype();
-  auto out_type =
-      q_type == phi::DataType::FLOAT8_E4M3FN ? phi::DataType::BFLOAT16 : q_type;
-  out->set_dims({total_q, num_heads, head_size_v});
-  softmax_lse->set_dims({num_heads, total_q});
-  out->set_dtype(out_type);
-  softmax_lse->set_dtype(phi::DataType::FLOAT32);
-}
-
 void ArangeTensorInferMeta(const MetaTensor& start,
                            const MetaTensor& end,
                            const MetaTensor& step,
