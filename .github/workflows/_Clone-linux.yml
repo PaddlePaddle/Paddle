@@ -43,6 +43,10 @@ jobs:
       group: HK-Clone
 
     steps:
+      - name: Clean environment
+        run: |
+          rm -rf * .[^.]*
+
       - name: Clone paddle
         uses: actions/checkout@v4
         with:
@@ -109,8 +113,7 @@ jobs:
           git branch -D test
           git gc
 
-    # - name: Clean environment
-    #   if: always()
-    #   run: |
-    #     cd ${{ github.workspace }}
-    #     rm -rf * .[^.]*
+      - name: Clean environment
+        if: always()
+        run: |
+          rm -rf * .[^.]*
