@@ -1016,79 +1016,6 @@ def flash_attn_unpadded(
     return out, softmax if return_softmax else None
 
 
-def flash_attn_varlen_v3(
-    query,
-    key,
-    value,
-    cu_seqlens_q,
-    cu_seqlens_k,
-    max_seqlen_q,
-    max_seqlen_k,
-    seqused_q=None,
-    seqused_k=None,
-    softmax_scale=None,
-    causal=False,
-    qv=None,
-    q_descale=None,
-    k_descale=None,
-    v_descale=None,
-    window_size=(-1, -1),
-    softcap=0.0,
-    num_splits=1,
-    pack_gqa=None,
-    sm_margin=0,
-):
-    assert (
-        "xpu" not in paddle.get_device()
-    ), "flash_attn_varlen_v3 is not supported on xpu"
-
-    assert not paddle.get_flags(["FLAGS_cudnn_deterministic"])[
-        "FLAGS_cudnn_deterministic"
-    ], "flash_attn_varlen_v3 does not support deterministic"
-
-    assert (
-        paddle.base.framework.get_flags(["FLAGS_flash_attn_version"])[
-            "FLAGS_flash_attn_version"
-        ]
-        == 3
-    ), "FLAGS_flash_attn_version is 2, conflits with flash_attn_varlen_v3"
-
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "flash_attn_varlen_v3 only support dynamic or pir mode"
-
-    if softmax_scale is None:
-        softmax_scale = (
-            query.shape[-1] + (qv.shape[-1] if qv is not None else 0)
-        ) ** (-0.5)
-
-    out, softmax_lse = _C_ops.flash_attn_varlen_v3(
-        query,
-        key,
-        value,
-        cu_seqlens_q,
-        cu_seqlens_k,
-        seqused_q,
-        seqused_k,
-        qv,
-        q_descale,
-        k_descale,
-        v_descale,
-        max_seqlen_q,
-        max_seqlen_k,
-        softmax_scale,
-        causal,
-        window_size[0],
-        window_size[1],
-        softcap,
-        num_splits,
-        pack_gqa is not None,
-        pack_gqa if pack_gqa is not None else False,
-        sm_margin,
-    )
-    return out, softmax_lse
-
-
 @overload
 def flash_attn_varlen_qkvpacked(
     qkv: Tensor,
@@ -2213,7 +2140,10 @@ def flashmask_attention(
         outputs = [out]
         if return_softmax_lse:
             outputs += [softmax_lse]
-        return outputs
+        if len(outputs) == 1:
+            return outputs[0]
+        else:
+            return outputs
     else:
         raise ValueError(f"Invalid flash attention version: {fa_version}")
 

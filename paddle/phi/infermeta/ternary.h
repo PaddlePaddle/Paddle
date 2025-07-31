@@ -174,12 +174,6 @@ void FlashMaskV2InferMeta(const MetaTensor& q,
                           MetaTensor* out,
                           MetaTensor* softmax_lse);
 
-void FlashAttnVarlenV3InferMeta(const MetaTensor& q,
-                                const MetaTensor& k,
-                                const MetaTensor& v,
-                                MetaTensor* out,
-                                MetaTensor* softmax_lse);
-
 void InstanceNormInferMeta(const MetaTensor& x,
                            const MetaTensor& scale,
                            const MetaTensor& bias,
