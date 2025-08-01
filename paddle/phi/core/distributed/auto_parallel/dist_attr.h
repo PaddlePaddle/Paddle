@@ -156,6 +156,8 @@ class TEST_API TensorDistAttr {
 
   void set_default_dynamic_dims(const std::vector<int64_t>& tensor_shape);
 
+  void set_default_dynamic_dims(int64_t tensor_shape_size);
+
   const std::map<std::string, bool>& annotated() const { return annotated_; }
 
   void set_annotated(const std::map<std::string, bool>& annotated);
