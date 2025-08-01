@@ -2587,7 +2587,7 @@ AnalysisPredictor::GetOutputTypes() {
       if (dtype == paddle::framework::proto::VarType::FP32) {
         output_type[name] = paddle_infer::DataType::FLOAT32;
       } else if (dtype == paddle::framework::proto::VarType::FP16) {
-       output_type[name] = paddle_infer::DataType::FLOAT16;
+        output_type[name] = paddle_infer::DataType::FLOAT16;
       } else if (dtype == paddle::framework::proto::VarType::BF16) {
         output_type[name] = paddle_infer::DataType::BFLOAT16;
       } else if (dtype == paddle::framework::proto::VarType::INT64) {
