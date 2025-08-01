@@ -265,16 +265,34 @@ __device__ inline int64_t FN_INT64(pow)(int64_t a, int64_t b) {
 // float16 unary and binary operator
 #ifdef CINN_HIP_FP16
 
-#define EXPAND_REDUCE_FP16_MACRO(MACRO, ...)                                           \
-   MACRO(sum_fp16, float16(0.0), float16, ##__VA_ARGS__)                                \
-   MACRO(prod_fp16, float16(1.0), float16, ##__VA_ARGS__)                               \
-   MACRO(max_fp16, cinn::common::raw_uint16_to_float16(0xfbff), float16, ##__VA_ARGS__) \
-   MACRO(min_fp16, cinn::common::raw_uint16_to_float16(0x7bff), float16, ##__VA_ARGS__)
- 
- __device__ inline float16 cinn_sum_fp16(const float16 left, const float16 right) { return left + right; }
- __device__ inline float16 cinn_prod_fp16(const float16 left, const float16 right) { return left * right; }
- __device__ inline float16 cinn_max_fp16(const float16 left, const float16 right) { return left > right ? left : right; }
- __device__ inline float16 cinn_min_fp16(const float16 left, const float16 right) { return left < right ? left : right; }
+#define EXPAND_REDUCE_FP16_MACRO(MACRO, ...)             \
+  MACRO(sum_fp16, float16(0.0), float16, ##__VA_ARGS__)  \
+  MACRO(prod_fp16, float16(1.0), float16, ##__VA_ARGS__) \
+  MACRO(max_fp16,                                        \
+        cinn::common::raw_uint16_to_float16(0xfbff),     \
+        float16,                                         \
+        ##__VA_ARGS__)                                   \
+  MACRO(min_fp16,                                        \
+        cinn::common::raw_uint16_to_float16(0x7bff),     \
+        float16,                                         \
+        ##__VA_ARGS__)
+
+__device__ inline float16 cinn_sum_fp16(const float16 left,
+                                        const float16 right) {
+  return left + right;
+}
+__device__ inline float16 cinn_prod_fp16(const float16 left,
+                                         const float16 right) {
+  return left * right;
+}
+__device__ inline float16 cinn_max_fp16(const float16 left,
+                                        const float16 right) {
+  return left > right ? left : right;
+}
+__device__ inline float16 cinn_min_fp16(const float16 left,
+                                        const float16 right) {
+  return left < right ? left : right;
+}
 
 #endif
 
@@ -349,52 +367,110 @@ __device__ inline float cinn_min_fp32(const float left, const float right) {
 
 #ifdef CINN_HIP_FP16
 #define FN_FP16(func) cinn_hip_##func##_fp16
- 
- __device__ inline float16 FN_FP16(ceil)(float16 x) { return float16(hceil(x.to_half())); }
- __device__ inline float16 FN_FP16(floor)(float16 x) { return float16(hfloor(x.to_half())); }
- __device__ inline float16 FN_FP16(round)(float16 x) { return float16(FN_FP32(round)(static_cast<float>(x))); }
- __device__ inline float16 FN_FP16(trunc)(float16 x) { return float16(htrunc(x.to_half())); }
- 
- __device__ inline float16 FN_FP16(sin)(float16 x) { return float16(hsin(x.to_half())); }
- __device__ inline float16 FN_FP16(cos)(float16 x) { return float16(hcos(x.to_half())); }
- 
- __device__ inline float16 FN_FP16(exp)(float16 x) { return float16(hexp(x.to_half())); }
- __device__ inline float16 FN_FP16(log)(float16 x) { return float16(hlog(x.to_half())); }
- __device__ inline float16 FN_FP16(log2)(float16 x) { return float16(hlog2(x.to_half())); }
- __device__ inline float16 FN_FP16(log10)(float16 x) { return float16(hlog10(x.to_half())); }
- 
- __device__ inline float16 FN_FP16(sqrt)(float16 x) { return float16(hsqrt(x.to_half())); }
- __device__ inline float16 FN_FP16(rsqrt)(float16 x) { return float16(hrsqrt(x.to_half())); }
- 
- __device__ inline float16 FN_FP16(cbrt)(float16 x) { return float16(FN_FP32(cbrt)(static_cast<float>(x))); }
- 
- __device__ inline float16 FN_FP16(abs)(float16 x) { return cinn::common::abs(x); }
- 
- __device__ inline bool FN_FP16(isnan)(float16 x) { return cinn::common::isnan(x); }
- __device__ inline bool FN_FP16(isinf)(float16 x) { return cinn::common::isinf(x); }
- __device__ inline bool FN_FP16(isfinite)(float16 x) { return cinn::common::isfinite(x); }
- 
- __device__ inline float16 FN_FP16(erf)(float16 x) { return float16(FN_FP32(erf)(static_cast<float>(x))); }
- 
- __device__ inline float16 FN_FP16(tan)(float16 x) { return float16(FN_FP32(tan)(static_cast<float>(x))); }
- __device__ inline float16 FN_FP16(sinh)(float16 x) { return float16(FN_FP32(sinh)(static_cast<float>(x))); }
- __device__ inline float16 FN_FP16(cosh)(float16 x) { return float16(FN_FP32(cosh)(static_cast<float>(x))); }
- __device__ inline float16 FN_FP16(tanh)(float16 x) { return float16(FN_FP32(tanh)(static_cast<float>(x))); }
- __device__ inline float16 FN_FP16(asin)(float16 x) { return float16(FN_FP32(asin)(static_cast<float>(x))); }
- __device__ inline float16 FN_FP16(acos)(float16 x) { return float16(FN_FP32(acos)(static_cast<float>(x))); }
- __device__ inline float16 FN_FP16(atan)(float16 x) { return float16(FN_FP32(atan)(static_cast<float>(x))); }
- __device__ inline float16 FN_FP16(asinh)(float16 x) { return float16(FN_FP32(asinh)(static_cast<float>(x))); }
- __device__ inline float16 FN_FP16(acosh)(float16 x) { return float16(FN_FP32(acosh)(static_cast<float>(x))); }
- __device__ inline float16 FN_FP16(atanh)(float16 x) { return float16(FN_FP32(atanh)(static_cast<float>(x))); }
- 
- __device__ inline float16 FN_FP16(sigmoid)(float16 x) { return float16(FN_FP32(sigmoid)(static_cast<float>(x))); }
- 
- __device__ inline float16 FN_FP16(mod)(float16 a, float16 b) {
-   return float16(FN_FP32(mod)(static_cast<float>(a), static_cast<float>(b)));
- }
- __device__ inline float16 FN_FP16(pow)(float16 a, float16 b) {
-   return float16(FN_FP32(pow)(static_cast<float>(a), static_cast<float>(b)));
- }
+
+__device__ inline float16 FN_FP16(ceil)(float16 x) {
+  return float16(hceil(x.to_half()));
+}
+__device__ inline float16 FN_FP16(floor)(float16 x) {
+  return float16(hfloor(x.to_half()));
+}
+__device__ inline float16 FN_FP16(round)(float16 x) {
+  return float16(FN_FP32(round)(static_cast<float>(x)));
+}
+__device__ inline float16 FN_FP16(trunc)(float16 x) {
+  return float16(htrunc(x.to_half()));
+}
+
+__device__ inline float16 FN_FP16(sin)(float16 x) {
+  return float16(hsin(x.to_half()));
+}
+__device__ inline float16 FN_FP16(cos)(float16 x) {
+  return float16(hcos(x.to_half()));
+}
+
+__device__ inline float16 FN_FP16(exp)(float16 x) {
+  return float16(hexp(x.to_half()));
+}
+__device__ inline float16 FN_FP16(log)(float16 x) {
+  return float16(hlog(x.to_half()));
+}
+__device__ inline float16 FN_FP16(log2)(float16 x) {
+  return float16(hlog2(x.to_half()));
+}
+__device__ inline float16 FN_FP16(log10)(float16 x) {
+  return float16(hlog10(x.to_half()));
+}
+
+__device__ inline float16 FN_FP16(sqrt)(float16 x) {
+  return float16(hsqrt(x.to_half()));
+}
+__device__ inline float16 FN_FP16(rsqrt)(float16 x) {
+  return float16(hrsqrt(x.to_half()));
+}
+
+__device__ inline float16 FN_FP16(cbrt)(float16 x) {
+  return float16(FN_FP32(cbrt)(static_cast<float>(x)));
+}
+
+__device__ inline float16 FN_FP16(abs)(float16 x) {
+  return cinn::common::abs(x);
+}
+
+__device__ inline bool FN_FP16(isnan)(float16 x) {
+  return cinn::common::isnan(x);
+}
+__device__ inline bool FN_FP16(isinf)(float16 x) {
+  return cinn::common::isinf(x);
+}
+__device__ inline bool FN_FP16(isfinite)(float16 x) {
+  return cinn::common::isfinite(x);
+}
+
+__device__ inline float16 FN_FP16(erf)(float16 x) {
+  return float16(FN_FP32(erf)(static_cast<float>(x)));
+}
+
+__device__ inline float16 FN_FP16(tan)(float16 x) {
+  return float16(FN_FP32(tan)(static_cast<float>(x)));
+}
+__device__ inline float16 FN_FP16(sinh)(float16 x) {
+  return float16(FN_FP32(sinh)(static_cast<float>(x)));
+}
+__device__ inline float16 FN_FP16(cosh)(float16 x) {
+  return float16(FN_FP32(cosh)(static_cast<float>(x)));
+}
+__device__ inline float16 FN_FP16(tanh)(float16 x) {
+  return float16(FN_FP32(tanh)(static_cast<float>(x)));
+}
+__device__ inline float16 FN_FP16(asin)(float16 x) {
+  return float16(FN_FP32(asin)(static_cast<float>(x)));
+}
+__device__ inline float16 FN_FP16(acos)(float16 x) {
+  return float16(FN_FP32(acos)(static_cast<float>(x)));
+}
+__device__ inline float16 FN_FP16(atan)(float16 x) {
+  return float16(FN_FP32(atan)(static_cast<float>(x)));
+}
+__device__ inline float16 FN_FP16(asinh)(float16 x) {
+  return float16(FN_FP32(asinh)(static_cast<float>(x)));
+}
+__device__ inline float16 FN_FP16(acosh)(float16 x) {
+  return float16(FN_FP32(acosh)(static_cast<float>(x)));
+}
+__device__ inline float16 FN_FP16(atanh)(float16 x) {
+  return float16(FN_FP32(atanh)(static_cast<float>(x)));
+}
+
+__device__ inline float16 FN_FP16(sigmoid)(float16 x) {
+  return float16(FN_FP32(sigmoid)(static_cast<float>(x)));
+}
+
+__device__ inline float16 FN_FP16(mod)(float16 a, float16 b) {
+  return float16(FN_FP32(mod)(static_cast<float>(a), static_cast<float>(b)));
+}
+__device__ inline float16 FN_FP16(pow)(float16 a, float16 b) {
+  return float16(FN_FP32(pow)(static_cast<float>(a), static_cast<float>(b)));
+}
 
 #endif
 
@@ -607,11 +683,12 @@ EXPAND_REDUCE_FP16_MACRO(CINN_BLOCK_REDUCE_INTERNAL_MACRO)
                   ? shm[threadIdx.y * row_dim + threadIdx.x] \
                   : init_value;                              \
     shm[warp_id] = cinn_warp_shuffle_internal(tmp_val);      \
-    if (blockIdx.x == 64 && threadIdx.x < row_dim) printf("Before 2, warp_id:%d, threadIdx:%d, threadIdy:%d, shm_data:%f \n", warp_id, threadIdx.x, threadIdx.y, shm[warp_id]);\
+    if (blockIdx.x == 64 && threadIdx.x < row_dim) printf("Before 2, warp_id:%d,
+  threadIdx:%d, threadIdy:%d, shm_data:%f \n", warp_id, threadIdx.x,
+  threadIdx.y, shm[warp_id]);\
   }                                                          \
   __syncthreads();                                           \
   return shm[threadIdx.y * row_dim]; */
-
 
 #define CINN_BLOCK_REDUCE_INTERNAL_SHM_IMPL(                 \
     TYPE, value, init_value, cinn_warp_shuffle_internal)     \
@@ -631,7 +708,7 @@ EXPAND_REDUCE_FP16_MACRO(CINN_BLOCK_REDUCE_INTERNAL_MACRO)
     tmp_val = (threadIdx.x < row_dim)                        \
                   ? shm[threadIdx.y * row_dim + threadIdx.x] \
                   : init_value;                              \
-    shm[warp_id] = cinn_warp_shuffle_internal(tmp_val);       \
+    shm[warp_id] = cinn_warp_shuffle_internal(tmp_val);      \
   }                                                          \
   __syncthreads();                                           \
   return shm[threadIdx.y * row_dim];
