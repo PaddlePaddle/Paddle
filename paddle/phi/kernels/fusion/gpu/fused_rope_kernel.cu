@@ -80,8 +80,7 @@ void FusedRopeKernel(const Context& dev_ctx,
         batch_size,
         k_batch_size,
         common::errors::InvalidArgument("The batch_size of q (%d) must be less "
-                                        "than or equal to k's (%d) to "
-                                        "prevent out-of-bounds memory access.",
+                                        "than or equal to k's (%d).",
                                         batch_size,
                                         k_batch_size));
 
@@ -99,8 +98,7 @@ void FusedRopeKernel(const Context& dev_ctx,
         batch_size,
         v_batch_size,
         common::errors::InvalidArgument("The batch_size of q (%d) must be less "
-                                        "than or equal to v's (%d) to "
-                                        "prevent out-of-bounds memory access.",
+                                        "than or equal to v's (%d).",
                                         batch_size,
                                         v_batch_size));
 
