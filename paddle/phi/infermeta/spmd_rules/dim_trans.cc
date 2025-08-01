@@ -649,14 +649,6 @@ InferFromDimTransCoShard(
           mesh_dims.begin(),
           mesh_dims.end());
     }
-    for (auto& mapping : out_dims_mapping) {
-      std::sort(mapping.begin(), mapping.end());
-      mapping.erase(std::unique(mapping.begin(), mapping.end()), mapping.end());
-    }
-    for (auto& mapping : new_input_dims_mapping) {
-      std::sort(mapping.begin(), mapping.end());
-      mapping.erase(std::unique(mapping.begin(), mapping.end()), mapping.end());
-    }
   }
 
   return {new_input_dims_mapping, out_dims_mapping};
