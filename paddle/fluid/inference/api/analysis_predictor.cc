@@ -2500,14 +2500,13 @@ std::map<std::string, paddle_infer::DataType>
 AnalysisPredictor::GetInputTypes() {
   std::map<std::string, paddle_infer::DataType> input_type;
   std::vector<std::string> names = GetInputNames();
-   if (load_pir_model_) {
+  if (load_pir_model_) {
     for (const auto &name : names) {
       auto tensor= GetInputTensor(name);
       input_type[name] = tensor->type();
     }
   }
-  else
-  {
+  else{
     for (const auto &name : names) {
       auto *var = inference_program_->Block(0).FindVar(name);
       PADDLE_ENFORCE_NOT_NULL(
