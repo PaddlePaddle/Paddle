@@ -2505,8 +2505,7 @@ AnalysisPredictor::GetInputTypes() {
       auto tensor= GetInputTensor(name);
       input_type[name] = tensor->type();
     }
-  }
-  else{
+  }else{
     for (const auto &name : names) {
       auto *var = inference_program_->Block(0).FindVar(name);
       PADDLE_ENFORCE_NOT_NULL(
@@ -2575,8 +2574,7 @@ AnalysisPredictor::GetOutputTypes() {
       auto tensor = GetOutputTensor(name);
       output_type[name] = tensor->type();
     }
-  }
-  else{
+  }else{
     for (const auto &name : names) {
       auto *var = inference_program_->Block(0).FindVar(name);
       PADDLE_ENFORCE_NOT_NULL(
