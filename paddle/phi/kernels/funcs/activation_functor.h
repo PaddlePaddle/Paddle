@@ -308,6 +308,41 @@ struct ReciprocalFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct Reciprocal {
+  HOSTDEVICE ComplexType<T> operator()(const ComplexType<T>& val) const {
+    auto both_inf = [](T real, T imag) {
+      return (std::isinf(real) && std::isinf(imag));
+    };
+
+    auto either_inf = [](T real, T imag) {
+      return std::isinf(real) || std::isinf(imag);
+    };
+
+    auto either_nan = [](T real, T imag) {
+      return std::isnan(real) || std::isnan(imag);
+    };
+    if (either_nan(val.real, val.imag) || both_inf(val.real, val.imag)) {
+      // If either is Nan or both are infinite, return {nan, nan}
+      return ComplexType<T>(std::numeric_limits<T>::quiet_NaN(),
+                            std::numeric_limits<T>::quiet_NaN());
+    } else if (either_inf(val.real, val.imag)) {
+      // If either is Inf, return {0, 0}
+      return ComplexType<T>{static_cast<T>(0), static_cast<T>(0)};
+    }
+    return static_cast<ComplexType<T>>(1.0) / val;
+  }
+};
+
+template <typename T>
+struct ReciprocalFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.unaryExpr(Reciprocal<T>());
+  }
+};
+
+template <typename T>
 struct ReciprocalGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device,
             typename X,
@@ -1955,8 +1990,8 @@ struct HardShrinkFunctor : public BaseActivationFunctor<T> {
   }
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    auto temp1 = x < static_cast<T>(threshold * -1.f);  // NOLINT
-    auto temp2 = x > static_cast<T>(threshold);
+    auto temp1 = x <= static_cast<T>(threshold * -1.f);  // NOLINT
+    auto temp2 = x >= static_cast<T>(threshold);
     out.device(d) = x * (temp1 || temp2).template cast<T>();
   }
 };
@@ -1975,8 +2010,8 @@ struct HardShrinkGradFunctor : public BaseActivationFunctor<T> {
             typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
-    auto temp1 = x < static_cast<T>(threshold * -1.f);  // NOLINT
-    auto temp2 = x > static_cast<T>(threshold);
+    auto temp1 = x <= static_cast<T>(threshold * -1.f);  // NOLINT
+    auto temp2 = x >= static_cast<T>(threshold);
     dx.device(d) = dout * (temp1 || temp2).template cast<T>();
   }
 
@@ -3005,6 +3040,26 @@ struct FloorFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+// rint(x) = [x]
+template <typename T, typename Enable = void>
+struct RintFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.unaryExpr([](const T& val) {
+      return (std::isnan(val) || std::isinf(val)) ? val : std::rint(val);
+    });
+  }
+};
+
+template <typename T>
+struct RintFunctor<T, std::enable_if_t<std::is_integral_v<T>>>
+    : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x;
+  }
+};
+
 // round(x) = [x]
 template <typename T, typename Enable = void>
 struct RoundFunctor : public BaseActivationFunctor<T> {
@@ -3584,6 +3639,37 @@ struct CudaReciprocalFunctor : public BaseActivationFunctor<T> {
 
   __device__ __forceinline__ T operator()(const T x) const {
     return static_cast<T>(one / static_cast<MPType>(x));
+  }
+};
+
+template <typename T>
+struct CudaReciprocalFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  __device__ __forceinline__ ComplexType<T> operator()(
+      const ComplexType<T> x) const {
+    auto both_inf = [](T real, T imag) {
+      return (::isinf(real) && ::isinf(imag));
+    };
+
+    auto either_inf = [](T real, T imag) {
+      return ::isinf(real) || ::isinf(imag);
+    };
+
+    auto either_nan = [](T real, T imag) {
+      return ::isnan(real) || ::isnan(imag);
+    };
+    if (either_nan(x.real, x.imag) || both_inf(x.real, x.imag)) {
+      // If either is Nan or both are infinite, return {nan, nan}
+      if constexpr (std::is_same<T, float>::value) {
+        return ComplexType<T>(nanf(""), nanf(""));
+      } else if constexpr (std::is_same<T, double>::value) {
+        return ComplexType<T>(nan(""), nan(""));
+      }
+    } else if (either_inf(x.real, x.imag)) {
+      // If either is Inf, return {0, 0}
+      return ComplexType<T>(static_cast<T>(0), static_cast<T>(0));
+    }
+    return static_cast<ComplexType<T>>(1.0) / x;
   }
 };
 
@@ -4578,7 +4664,7 @@ struct CudaHardShrinkFunctor : public BaseActivationFunctor<T> {
   // hadrshrink(x) = (x > -threshold && x < threshold) ? 0 : x
   __device__ __forceinline__ T operator()(const T x) const {
     T t = static_cast<T>(threshold);
-    return (x > -t && x < t) ? zero : x;
+    return (x >= -t && x <= t) ? zero : x;
   }
 };
 
@@ -4594,7 +4680,7 @@ struct CudaHardShrinkGradFunctor : public BaseActivationFunctor<T> {
   // dx = (x > -threshold && x < threshold) ? 0 : dout
   __device__ __forceinline__ T operator()(const T dout, const T x) const {
     T t = static_cast<T>(threshold);
-    return (x > -t && x < t) ? zero : dout;
+    return (x >= -t && x <= t) ? zero : dout;
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
@@ -5408,6 +5494,25 @@ struct CudaFloorFunctor : public BaseActivationFunctor<T> {
     MPType x = static_cast<MPType>(arg_x);
     return static_cast<T>(floor(x));
   }
+};
+
+template <typename T, typename Enable = void>
+struct CudaRintFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  // rint(x) = rint(x)
+  __device__ __forceinline__ T operator()(const T arg_x) const {
+    MPType x = static_cast<MPType>(arg_x);
+    if (isnan(x) || isinf(x)) return arg_x;
+    return static_cast<T>(std::rint(x));
+  }
+};
+
+template <typename T>
+struct CudaRintFunctor<T, std::enable_if_t<std::is_integral_v<T>>>
+    : public BaseActivationFunctor<T> {
+  // rint(x) = x
+  __device__ __forceinline__ T operator()(const T arg_x) const { return arg_x; }
 };
 
 template <typename T, typename Enable = void>

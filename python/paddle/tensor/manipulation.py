@@ -629,7 +629,7 @@ def transpose(
         return out
 
 
-def unstack(x: Tensor, axis: int = 0, num: int | None = None) -> Tensor:
+def unstack(x: Tensor, axis: int = 0, num: int | None = None) -> list[Tensor]:
     """
     This layer unstacks input Tensor :code:`x` into several Tensors along :code:`axis`.
 
@@ -961,12 +961,12 @@ def crop(
         return _C_ops.crop(x, shape, offsets)
 
     out = helper.create_variable_for_type_inference(x.dtype)
-    ipts = {'X': x}
+    inputs = {'X': x}
     attrs = {}
 
     if isinstance(offsets, Variable):
         offsets.stop_gradient = True
-        ipts['Offsets'] = offsets
+        inputs['Offsets'] = offsets
         attrs['offsets'] = [-1] * len(x.shape)
     elif paddle.utils._contain_var(offsets):
         new_offsets_tensor = []
@@ -982,7 +982,7 @@ def crop(
                 fill_constant([1], 'int32', dim, force_cpu=True, out=temp_out)
                 new_offsets_tensor.append(temp_out)
                 offsets_attr.append(dim)
-        ipts['OffsetsTensor'] = new_offsets_tensor
+        inputs['OffsetsTensor'] = new_offsets_tensor
         attrs['offsets'] = offsets_attr
     else:
         for offset in offsets:
@@ -991,7 +991,7 @@ def crop(
 
     if isinstance(shape, Variable):
         shape.stop_gradient = True
-        ipts['Shape'] = shape
+        inputs['Shape'] = shape
     elif paddle.utils._contain_var(shape):
         new_shape_tensor = []
         shape_attr = []
@@ -1008,7 +1008,7 @@ def crop(
                 )
                 new_shape_tensor.append(temp_out)
                 shape_attr.append(dim_size)
-        ipts['ShapeTensor'] = new_shape_tensor
+        inputs['ShapeTensor'] = new_shape_tensor
         attrs['shape'] = shape_attr
     else:
         for dim_size in shape:
@@ -1017,7 +1017,7 @@ def crop(
 
     helper.append_op(
         type='crop_tensor',
-        inputs=ipts,
+        inputs=inputs,
         outputs={'Out': out},
         attrs=None if len(attrs) == 0 else attrs,
     )
@@ -3336,6 +3336,9 @@ def squeeze(
         axis = [axis]
     elif isinstance(axis, tuple):
         axis = list(axis)
+    elif isinstance(axis, (paddle.Tensor, Variable)):
+        if axis.size == 0:
+            return x
 
     input = x
     axes = axis
@@ -3498,6 +3501,24 @@ def unique_consecutive(
         attr_dtype, (core.VarDesc.VarType, paddle.pir.core.DataType)
     ):
         attr_dtype = convert_np_dtype_to_dtype_(dtype)
+
+    if in_dynamic_mode():
+        if math.prod(x.shape) == 0:
+            if axis == []:
+                outs = [paddle.to_tensor([], dtype=x.dtype)]
+            else:
+                outs = [x.clone()]
+            if dtype == 'int32' or dtype == paddle.int32:
+                return_dtype = paddle.int32
+            else:
+                return_dtype = paddle.int64
+            if return_inverse:
+                outs.append(paddle.to_tensor([], dtype=return_dtype))
+            if return_counts:
+                outs.append(paddle.to_tensor([], dtype=return_dtype))
+            if len(outs) == 1:
+                return outs[0]
+            return tuple(outs)
 
     if in_dynamic_or_pir_mode():
         out, inverse, counts = _C_ops.unique_consecutive(
@@ -3735,6 +3756,22 @@ def unique(
         axis = [axis]
     attr_dtype = convert_np_dtype_to_dtype_(dtype)
     if in_dynamic_mode():
+        if math.prod(x.shape) == 0:
+            outs = [x.clone()]
+            if dtype == 'int32' or dtype == paddle.int32:
+                return_dtype = paddle.int32
+            else:
+                return_dtype = paddle.int64
+            if return_index:
+                outs.append(paddle.to_tensor([], dtype=return_dtype))
+            if return_inverse:
+                outs.append(paddle.to_tensor([], dtype=return_dtype))
+            if return_counts:
+                outs.append(paddle.to_tensor([], dtype=return_dtype))
+            if len(outs) == 1:
+                return outs[0]
+            return tuple(outs)
+
         out, indices, inverse, counts = _C_ops.unique(
             x, return_index, return_inverse, return_counts, axis, attr_dtype
         )
@@ -4371,6 +4408,9 @@ def scatter_nd_add(
             f"x and updates must have same data type but x.dtype={convert_dtype(x.dtype)}, updates.dtype={convert_dtype(updates.dtype)}"
         )
 
+    if in_dynamic_mode():
+        if index.size == 0:
+            return x.clone() + updates
     if in_dynamic_or_pir_mode():
         return _C_ops.scatter_nd_add(x, index, updates)
     else:
@@ -4479,6 +4519,16 @@ def chunk(
             >>> # out2.shape [3, 3, 5]
     """
     check_type(chunks, 'chunks', (int), 'chunk')
+    # check the chunks value to avoid the meanless split operation, such as <=0 or > x.shape[axis]
+    if chunks <= 0 or (
+        isinstance(axis, int)
+        and axis >= 0
+        and (x.shape[axis] != 0 and chunks > x.shape[axis])
+        and x.shape[axis] != -1
+    ):
+        raise ValueError(
+            f"The value of 'chunks' must be greater than 0 and less than or equal to the size of the dimension specified by 'axis', but received chunks={chunks} and x.shape[axis]={x.shape[axis]}."
+        )
     return split(x, num_or_sections=chunks, axis=axis, name=name)
 
 
@@ -5013,6 +5063,7 @@ def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
             x,
             'x',
             [
+                'float8_e4m3fn',
                 'float16',
                 'float32',
                 'float64',
@@ -5158,7 +5209,7 @@ def masked_scatter(
     zeros_like_x = paddle.zeros_like(x, dtype=int)
     mask = paddle.add(paddle.cast(mask, dtype="int"), zeros_like_x)
     mask_prefix = paddle.clip(mask.cumsum() - 1, min=0)
-    if in_dynamic_mode():
+    if in_dynamic_mode() and mask_prefix.numel() != 0:
         assert (
             mask_prefix[-1] <= value.numel()
         ), f'mask true nums must be <= value size, but got mask true nums is {mask_prefix[-1].item()}, value size is {value.numel().item()}'
@@ -5273,6 +5324,20 @@ def atleast_1d(*inputs, name=None):
             [123]), Tensor(shape=[1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[1.23000002]])]
     """
+    if len(inputs) == 1 and isinstance(inputs[0], (list, tuple)):
+        if any(
+            isinstance(
+                item,
+                (
+                    paddle.Tensor,
+                    paddle.base.framework.Variable,
+                    paddle.base.libpaddle.pir.Value,
+                ),
+            )
+            for item in inputs[0]
+        ):
+            inputs = inputs[0]
+
     out = []
     for input in inputs:
         if not isinstance(
@@ -5362,6 +5427,20 @@ def atleast_2d(*inputs, name=None):
             [[123]]), Tensor(shape=[1, 1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[[1.23000002]]])]
     """
+    if len(inputs) == 1 and isinstance(inputs[0], (list, tuple)):
+        if any(
+            isinstance(
+                item,
+                (
+                    paddle.Tensor,
+                    paddle.base.framework.Variable,
+                    paddle.base.libpaddle.pir.Value,
+                ),
+            )
+            for item in inputs[0]
+        ):
+            inputs = inputs[0]
+
     out = []
     for input in inputs:
         if not isinstance(
@@ -5440,6 +5519,20 @@ def atleast_3d(*inputs, name=None):
             [[[123]]]), Tensor(shape=[1, 1, 1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[[[1.23000002]]]])]
     """
+    if len(inputs) == 1 and isinstance(inputs[0], (list, tuple)):
+        if any(
+            isinstance(
+                item,
+                (
+                    paddle.Tensor,
+                    paddle.base.framework.Variable,
+                    paddle.base.libpaddle.pir.Value,
+                ),
+            )
+            for item in inputs[0]
+        ):
+            inputs = inputs[0]
+
     out = []
     for input in inputs:
         if not isinstance(
@@ -6587,10 +6680,15 @@ def take_along_axis(
         )
     axis = non_negative_axis(arr, axis)
     if broadcast:
-        broadcast_shape = infer_broadcast_shape(arr, indices, axis)
-        if not broadcast_shape:
-            # if indices matrix have larger size than arr, arr should broadcast into indices shape.
-            broadcast_shape = indices.shape
+        broadcast_shape_list = list(arr.shape)
+        for i in range(len(arr.shape)):
+            if indices.shape[i] == 0 or arr.shape[i] == 0:
+                broadcast_shape_list[i] = 0
+            else:
+                broadcast_shape_list[i] = max(arr.shape[i], indices.shape[i])
+        broadcast_shape_list[axis] = list(indices.shape)[axis]
+        broadcast_shape = tuple(broadcast_shape_list)
+
         indices = paddle.broadcast_to(indices, broadcast_shape)
         broadcast_shape_list = list(broadcast_shape)
         broadcast_shape_list[axis] = list(arr.shape)[axis]
@@ -7373,11 +7471,15 @@ def _index_fill_impl(
     perm[axis] = 0
 
     if inplace:
+        if in_dynamic_mode() and index.size == 0:
+            return x
         paddle.transpose_(x, perm)
         paddle.index_put_(x, (index,), value)
         paddle.transpose_(x, perm)
         return x
     else:
+        if in_dynamic_mode() and index.size == 0:
+            return x.clone()
         out = paddle.transpose(x, perm)
         out = paddle.index_put(out, (index,), value)
         out = paddle.transpose(out, perm)

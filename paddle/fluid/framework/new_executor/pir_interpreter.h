@@ -29,6 +29,7 @@ class Block;
 namespace paddle {
 namespace framework {
 class ValueExecutionInfo;
+class InterpreterCoreAsyncFastGarbageCollector;
 class PirInterpreter : public InterpreterBaseImpl {
   using ExecutionConfig = interpreter::ExecutionConfig;
   using InstructionSchedulingPriorityLess = std::function<bool(size_t, size_t)>;
@@ -124,6 +125,10 @@ class PirInterpreter : public InterpreterBaseImpl {
     force_events_to_wait_ = force_events_to_wait;
   }
 
+  void SetCUDAGraphState(uint8_t cuda_graph_state) override {
+    cuda_graph_state_ = cuda_graph_state;
+  }
+
  private:
   // build graph
   void UpdateSyncOpNum();
@@ -188,6 +193,7 @@ class PirInterpreter : public InterpreterBaseImpl {
   std::shared_ptr<EventsWaiter::EventNotifier> completion_notifier_{nullptr};
 
   std::unique_ptr<InterpreterCoreGarbageCollector> gc_;
+  std::unique_ptr<InterpreterCoreAsyncFastGarbageCollector> async_gc_;
 
   // last_live_ops_[i] contains the id of operators that last access the i-th
   // var
@@ -201,6 +207,7 @@ class PirInterpreter : public InterpreterBaseImpl {
   std::vector<std::shared_ptr<interpreter::VarRefInfo>> refs_;
 
   // used for Trace
+  bool use_trace_run_{false};
   int64_t sync_op_num_{-1};
   int64_t nccl_op_num_{-1};
   int64_t onednn_op_num_{-1};
@@ -285,6 +292,17 @@ class PirInterpreter : public InterpreterBaseImpl {
 #endif
   size_t last_calculate_instr_id_;
   bool enable_job_schedule_profiler_;
+
+  // 0: not in cuda graph
+  // 1: in cuda graph warmup
+  // 2: in cuda graph capture
+  // 3: in cuda graph replay
+  uint8_t cuda_graph_state_{0};
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  // Currently, all cuda graphs use the same memory pool.
+  static const int64_t cuda_graph_capture_pool_id_;
+#endif
 };
 
 }  // namespace framework

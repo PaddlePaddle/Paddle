@@ -150,7 +150,7 @@ def _reference_grad(x, y_grad, scale, mean, var, epsilon, data_format):
 
 class TestBatchNormOpTraining(unittest.TestCase):
     def setUp(self):
-        self.use_mkldnn = False
+        self.use_onednn = False
         self.fuse_with_relu = False
         self.data_formats = ["NCHW", "NHWC"]
         self.momentum = 0.9
@@ -303,7 +303,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
                     "epsilon": epsilon,
                     "is_test": False,
                     "data_layout": data_layout,
-                    "use_mkldnn": self.use_mkldnn,
+                    "use_mkldnn": self.use_onednn,
                     "fuse_with_relu": self.fuse_with_relu,
                     "use_global_stats": self.use_global_stats,
                 }

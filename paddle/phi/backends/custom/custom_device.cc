@@ -559,7 +559,8 @@ class CustomDevice : public DeviceInterface {
     }
     VLOG(10) << Type() << " get device properties"
              << "DeviceProperties(name='" << prop.name
-             << "', major=" << prop.major << ", minor=" << prop.minor
+             << "', major=" << prop.deviceMajor
+             << ", minor=" << prop.deviceMajor
              << ", total_memory=" << prop.totalGlobalMem / (1024 * 1024)
              << "MB, multi_processor_count=" << prop.multiProcessorCount << ")";
     return prop;

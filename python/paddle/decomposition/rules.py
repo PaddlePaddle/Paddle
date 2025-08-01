@@ -29,12 +29,6 @@ def unsqueeze(x, axis):
     for i in axis_list:
         if i < 0:
             i += len(x_shape) + 1
-        x_shape = (
-            x_shape[:i]
-            + [
-                1,
-            ]
-            + x_shape[i:]
-        )
+        x_shape = [*x_shape[:i], 1, *x_shape[i:]]
     out = reshape(x, x_shape)
     return [out, None]

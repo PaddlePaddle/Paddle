@@ -851,16 +851,7 @@ def is_transpiler():
         if e.errno != errno.EEXIST:
             raise
     with open(filename, 'w') as f:
-        f.write(
-            cnt
-            % {
-                'mode': (
-                    'PSLIB'
-                    if env_dict.get("WITH_PSLIB") == 'ON'
-                    else 'TRANSPILER'
-                )
-            }
-        )
+        f.write(cnt % {'mode': 'TRANSPILER'})
 
 
 def find_files(pattern, root, recursive=False):
@@ -1550,14 +1541,12 @@ def get_package_data_and_package_dir():
         if len(env_dict.get("NVSHMEM_BOOTSTRAP_UID_LIB", "")) > 1:
             package_data['paddle.libs'] += [
                 os.path.basename(env_dict.get("NVSHMEM_BOOTSTRAP_UID_LIB")),
-                os.path.basename(env_dict.get("NVSHMEM_BOOTSTRAP_MPI_LIB")),
                 os.path.basename(env_dict.get("NVSHMEM_BOOTSTRAP_PMI_LIB")),
                 os.path.basename(env_dict.get("NVSHMEM_BOOTSTRAP_PMI2_LIB")),
                 os.path.basename(env_dict.get("NVSHMEM_TRANSPORT_IBRC_LIB")),
                 os.path.basename(env_dict.get("NVSHMEM_TRANSPORT_IBGDA_LIB")),
             ]
             shutil.copy(env_dict.get("NVSHMEM_BOOTSTRAP_UID_LIB"), libs_path)
-            shutil.copy(env_dict.get("NVSHMEM_BOOTSTRAP_MPI_LIB"), libs_path)
             shutil.copy(env_dict.get("NVSHMEM_BOOTSTRAP_PMI_LIB"), libs_path)
             shutil.copy(env_dict.get("NVSHMEM_BOOTSTRAP_PMI2_LIB"), libs_path)
             shutil.copy(env_dict.get("NVSHMEM_TRANSPORT_IBRC_LIB"), libs_path)
@@ -1604,6 +1593,13 @@ def get_package_data_and_package_dir():
         if os.path.exists(cinn_bf16_file):
             shutil.copy(cinn_bf16_file, libs_path)
             package_data['paddle.libs'] += ['bfloat16.h']
+        cinn_fp8_file = (
+            env_dict.get("CINN_INCLUDE_DIR")
+            + '/paddle/cinn/runtime/cuda/float8e4m3.h'
+        )
+        if os.path.exists(cinn_fp8_file):
+            shutil.copy(cinn_fp8_file, libs_path)
+            package_data['paddle.libs'] += ['float8e4m3.h']
 
         if env_dict.get("CMAKE_BUILD_TYPE") == 'Release' and os.name != 'nt':
             command = (
@@ -1619,17 +1615,6 @@ def get_package_data_and_package_dir():
                     + ' failed',
                     f'command: {command}',
                 )
-    if env_dict.get("WITH_PSLIB") == 'ON':
-        shutil.copy(env_dict.get("PSLIB_LIB"), libs_path)
-        shutil.copy(env_dict.get("JVM_LIB"), libs_path)
-        if os.path.exists(env_dict.get("PSLIB_VERSION_PY")):
-            shutil.copy(
-                env_dict.get("PSLIB_VERSION_PY"),
-                paddle_binary_dir
-                + '/python/paddle/incubate/distributed/fleet/parameter_server/pslib/',
-            )
-        package_data['paddle.libs'] += ['libps' + ext_suffix]
-        package_data['paddle.libs'] += ['libjvm' + ext_suffix]
     if env_dict.get("WITH_ONEDNN") == 'ON':
         if env_dict.get("CMAKE_BUILD_TYPE") == 'Release' and os.name != 'nt':
             # only change rpath in Release mode.
@@ -2432,8 +2417,8 @@ def get_setup_parameters():
 
     if (
         env_dict.get("WITH_GPU") == 'ON'
-        and env_dict.get("CUDA_ARCH_BIN")
-        and env_dict.get("CUDA_ARCH_BIN").find("90") != -1
+        and env_dict.get("COMPILED_CUDA_ARCHS")
+        and env_dict.get("COMPILED_CUDA_ARCHS").find("90") != -1
     ):
         packages.extend(['paddle.distributed.communication.deep_ep'])
     if (

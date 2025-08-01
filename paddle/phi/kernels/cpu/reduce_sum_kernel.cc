@@ -37,11 +37,23 @@ void SumRawKernel(const Context& dev_ctx,
   }
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(out);
-    FullKernel<T, Context>(dev_ctx,
-                           phi::IntArray(common::vectorize(out->dims())),
-                           0,
-                           out_dtype,
-                           out);
+    // When out_dtype is DataType::UNDEFINED and input is int32 or bool,
+    // result is int64, but FullKernel out_dtype parameter is not used, we need
+    // to set int64 explicitly.
+    if (out_dtype == DataType::INT64) {
+      FullKernel<int64_t, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(out->dims())),
+          0,
+          out_dtype,  // not used
+          out);
+    } else {
+      FullKernel<T, Context>(dev_ctx,
+                             phi::IntArray(common::vectorize(out->dims())),
+                             0,
+                             out_dtype,  // not used
+                             out);
+    }
     return;
   }
   if constexpr (std::is_same_v<T, phi::dtype::float16> ||

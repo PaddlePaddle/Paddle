@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
+from op_test import get_places
 
 import paddle
 from paddle import base
@@ -89,16 +89,7 @@ class TestTensorDataset(unittest.TestCase):
                 np.testing.assert_allclose(label.numpy(), label_np[i])
 
     def test_main(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            places.append(paddle.CPUPlace())
-        if paddle.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.run_main(num_workers=0, places=p)
 
 
@@ -205,16 +196,7 @@ class TestSubsetDataset(unittest.TestCase):
     def test_main(self):
         paddle.seed(1)
 
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            places.append(paddle.CPUPlace())
-        if paddle.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.run_main(num_workers=0, places=p)
 
 
@@ -242,16 +224,7 @@ class TestChainDataset(unittest.TestCase):
             idx += 1
 
     def test_main(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            places.append(paddle.CPUPlace())
-        if paddle.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.run_main(num_workers=0, places=p)
 
 
@@ -472,16 +445,7 @@ class TestConcatDataset(unittest.TestCase):
             result[11]
 
     def test_main(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            places.append(paddle.CPUPlace())
-        if paddle.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.run_main(num_workers=0, places=p)
 
     def test_iterable_dataset_err(self):

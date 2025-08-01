@@ -674,6 +674,12 @@ void FusedTransposeSplitQuantInferMeta(const MetaTensor& x,
                                        std::vector<MetaTensor*> outs,
                                        std::vector<MetaTensor*> scales);
 
+void FusedTransposeWLCHSplitQuantInferMeta(const MetaTensor& x,
+                                           const IntArray& tokens_per_expert,
+                                           bool pow_2_scales,
+                                           std::vector<MetaTensor*> outs,
+                                           std::vector<MetaTensor*> scales);
+
 void YoloBoxXPUInferMeta(const MetaTensor& x,
                          const MetaTensor& x_max,
                          const MetaTensor& grid,

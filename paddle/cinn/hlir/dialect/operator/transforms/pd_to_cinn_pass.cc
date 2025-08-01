@@ -514,18 +514,68 @@ class SliceOpPattern : public pir::OpRewritePattern<paddle::dialect::SliceOp> {
   }
 };
 
+/**
+ * CINN ArangeOp supports two kinds of input:
+ * input from pd_op.full (static) and input from cinn_op.generate_shape
+ * An example for the latter:
+ * ```c++
+ * x = paddle.zeros([3, 10])
+ * batch_size = paddle.shape(x)[1]
+ * stop = batch_size * 2
+ * paddle.arange(
+ *    0,          // static start (from pd_op.full)
+ *    stop,       // symbolic stop (from cinn_op.generate_shape)
+ *    2           // static end (from pd_op.full)
+ * )
+ * ``` Note that step is not allowed to be symbolic, and when
+ * the inputs are symbolic, the start and end must be of integer type
+ */
 class ArangeOpPattern
     : public pir::OpRewritePattern<paddle::dialect::ArangeOp> {
  public:
   using pir::OpRewritePattern<paddle::dialect::ArangeOp>::OpRewritePattern;
 
   bool Match(paddle::dialect::ArangeOp op) const override {
-    // ArangeOp for CINN must have static start, end, step to calculate
-    // the shape of output tensor. Otherwise, it will be denied
-    // due to CauseNewSymbolicShape returning false
     bool is_denied = CompatibleInfo::IsDeniedForCinn(*op.operation());
-    return !is_denied && IsDefinedBy<FullOp>(op, 0) &&
-           IsDefinedBy<FullOp>(op, 1) && IsDefinedBy<FullOp>(op, 2);
+    if (is_denied) return false;
+    // step is not allowed to be symbolic
+    if (IsDefinedBy<FullOp>(op, 2)) {
+      const FullOp full_op = CastDefinedTo<FullOp>(op, 2);
+      phi::Scalar step = full_op.attribute("value")
+                             .dyn_cast<paddle::dialect::ScalarAttribute>()
+                             .data();
+      bool positive_step = true;
+#define MATCH_TYPE_TEST(TypeEnum, Dtype)  \
+  case phi::DataType::TypeEnum:           \
+    positive_step = step.to<Dtype>() > 0; \
+    break;
+
+      switch (step.dtype()) {
+        MATCH_TYPE_TEST(FLOAT32, float)
+        MATCH_TYPE_TEST(FLOAT64, double)
+        MATCH_TYPE_TEST(INT32, int)
+        MATCH_TYPE_TEST(INT64, int64_t)
+        MATCH_TYPE_TEST(FLOAT16, float)
+        MATCH_TYPE_TEST(BFLOAT16, float)
+#undef MATCH_TYPE_TEST
+        default:
+          positive_step = false;
+      }
+      if (positive_step) {
+        const auto &dtype = op.attributes()
+                                .at("dtype")
+                                .dyn_cast<paddle::dialect::DataTypeAttribute>()
+                                .data();
+        return (IsDefinedBy<FullOp>(op, 0) ||
+                IsDefinedBy<GenerateShapeOp>(op, 0)) &&
+               (IsDefinedBy<FullOp>(op, 1) ||
+                IsDefinedBy<GenerateShapeOp>(op, 1)) &&
+               (dtype == phi::DataType::INT32 || dtype == phi::DataType::INT64);
+      } else {
+        return IsDefinedBy<FullOp>(op, 0) && IsDefinedBy<FullOp>(op, 1);
+      }
+    }
+    return false;
   }
 
   void Rewrite(paddle::dialect::ArangeOp op,
@@ -537,31 +587,39 @@ class ArangeOpPattern
 
     std::array<phi::Scalar, 3> input_list;
     for (int i = 0; i < 3; i++) {
-      const FullOp full_op = CastDefinedTo<FullOp>(op, i);
-      phi::Scalar input = full_op.attribute("value")
-                              .dyn_cast<paddle::dialect::ScalarAttribute>()
-                              .data();
-      if (input.dtype() != dtype) {
-        // FullOp creates a tensor (scalar) with fp64 type by default
-        // therefore, we might need to perform type casting
-        switch (dtype) {
-          case phi::DataType::FLOAT32:
-            input = phi::Scalar(input.to<float>());
-            break;
-          case phi::DataType::FLOAT64:
-            input = phi::Scalar(input.to<double>());
-            break;
-          case phi::DataType::INT32:
-            input = phi::Scalar(input.to<int>());
-            break;
-          case phi::DataType::FLOAT16:
-            input = phi::Scalar(input.to<float>());
-            break;
-          case phi::DataType::BFLOAT16:
-            input = phi::Scalar(input.to<float>());
-            break;
-          default:
-            input = phi::Scalar(input.to<int64_t>());
+      phi::Scalar input;
+      if (IsDefinedBy<GenerateShapeOp>(op, i)) {
+        // arange does not support bool, so if the input is boolean, this would
+        // mean that there is dynamic shape
+        input = phi::Scalar(false);
+        input.SetFromTensor(true);
+      } else {
+        const FullOp full_op = CastDefinedTo<FullOp>(op, i);
+        input = full_op.attribute("value")
+                    .dyn_cast<paddle::dialect::ScalarAttribute>()
+                    .data();
+        if (input.dtype() != dtype) {
+          // FullOp creates a tensor (scalar) with fp64 type by default
+          // therefore, we might need to perform type casting
+          switch (dtype) {
+            case phi::DataType::FLOAT32:
+              input = phi::Scalar(input.to<float>());
+              break;
+            case phi::DataType::FLOAT64:
+              input = phi::Scalar(input.to<double>());
+              break;
+            case phi::DataType::INT32:
+              input = phi::Scalar(input.to<int>());
+              break;
+            case phi::DataType::FLOAT16:
+              input = phi::Scalar(input.to<float>());
+              break;
+            case phi::DataType::BFLOAT16:
+              input = phi::Scalar(input.to<float>());
+              break;
+            default:
+              input = phi::Scalar(input.to<int64_t>());
+          }
         }
       }
       input_list[i] = input;
@@ -1436,6 +1494,7 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add<
       ArgMinMaxOpPattern<paddle::dialect::ArgmaxOp, cinn::dialect::ArgmaxOp>>(
       context);
+  // Arange in this pass only handles static inputs
   ps.Add<ArangeOpPattern>(context);
   ps.Add<ProdOpPattern>(context);
   ps.Add<ReshapeOpPattern>(context);
@@ -1467,6 +1526,24 @@ bool PdOpToCinnOpPass::CanApplyOn(pir::Operation *op) const {
 
 std::unique_ptr<pir::Pass> CreatePdOpToCinnOpPass() {
   return std::make_unique<PdOpToCinnOpPass>();
+}
+
+PdOpToDynamicShapeCinnOpPass::PdOpToDynamicShapeCinnOpPass()
+    : pir::PatternRewritePass("pd_to_dyn_shape_cinn_pass", 1) {}
+
+pir::RewritePatternSet PdOpToDynamicShapeCinnOpPass::InitializePatterns(
+    pir::IrContext *context) {
+  pir::RewritePatternSet ps(context);
+  ps.Add<ArangeOpPattern>(context);
+  return ps;
+}
+
+bool PdOpToDynamicShapeCinnOpPass::CanApplyOn(pir::Operation *op) const {
+  return op->num_regions() > 0;
+}
+
+std::unique_ptr<pir::Pass> CreatePdOpToDynamicShapeCinnOpPass() {
+  return std::make_unique<PdOpToDynamicShapeCinnOpPass>();
 }
 
 }  // namespace ir

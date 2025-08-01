@@ -127,6 +127,7 @@ from . import (
     linalg as linalg,
     signal as signal,
     tensor as tensor,
+    utils as utils,
 )
 from .autograd import (
     enable_grad,
@@ -136,6 +137,7 @@ from .autograd import (
     set_grad_enabled,
 )
 from .device import (  # noqa: F401
+    device_guard,
     get_cudnn_version,
     get_device,
     is_compiled_with_cinn,
@@ -190,6 +192,7 @@ from .tensor.attribute import (
     shape,
 )
 from .tensor.creation import (
+    MmapStorage,
     arange,
     assign,
     cauchy_,
@@ -885,6 +888,7 @@ __all__ = [
     'vsplit',
     'logical_and',
     'logical_and_',
+    'MmapStorage',
     'full_like',
     'less_than',
     'less_than_',

@@ -26,7 +26,10 @@
 #include "paddle/phi/kernels/full_kernel.h"
 namespace phi {
 
-static inline int32_t divUp(int32_t m, int32_t n) { return (m + n - 1) / n; }
+template <typename T>
+static inline T divUp(T m, T n) {
+  return (m + n - 1) / n;
+}
 
 static inline __device__ __host__ float sigmoid(float x) {
   return 1.F / (1.F + expf(-x));
@@ -98,12 +101,12 @@ struct GroupSumsOp {
   }
 };
 
-static int32_t findMaxDivisor(int32_t n, int32_t maxAllowedDivisor) {
-  int32_t maxDivisor = -1;
-  for (int32_t i = 1; i <= std::sqrt(n); i++) {
+static int64_t findMaxDivisor(int64_t n, int64_t maxAllowedDivisor) {
+  int64_t maxDivisor = -1;
+  for (int64_t i = 1; i <= std::sqrt(n); i++) {
     if (n % i == 0) {
-      int32_t divisor1 = n / i;
-      int32_t divisor2 = i;
+      int64_t divisor1 = n / i;
+      int64_t divisor2 = i;
 
       if (divisor1 > maxDivisor && divisor1 < maxAllowedDivisor) {
         maxDivisor = divisor1;
@@ -219,18 +222,17 @@ __global__ void groupNormNDHWCSumSingerChannelKernel(
     return;
   }
   // The first activation loaded by that block.
-  int32_t dhwBegin = blockIdx.y * params.dhwPerBlock;
+  int64_t dhwBegin = blockIdx.y * params.dhwPerBlock;
   // The last activation loaded by that block.
-  int32_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
+  int64_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
 
   // The sums.
   float sum = 0.F;
   float sumSq = 0.F;
 
-  for (int32_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
+  for (int64_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The offset.
-    int64_t offset = static_cast<int64_t>(ni) * params.dhwc +
-                     static_cast<int64_t>(dhwi) * params.c + ci;
+    int64_t offset = ni * params.dhwc + dhwi * params.c + ci;
     float src_data = *reinterpret_cast<float const*>(&params.srcX[offset]);
     if (params.srcR != nullptr) {
       int64_t g_offset = params.y_same_with_x ? offset : ci;
@@ -271,18 +273,17 @@ __global__ void groupNormNDHWCSumKernel(const GroupNormNDHWCParams<T> params) {
   }
   int32_t gj = ci / params.cPerGroup;
   int32_t cj = ci % params.cPerGroup;
-  int32_t dhwBegin = blockIdx.y * params.dhwPerBlock;
+  int64_t dhwBegin = blockIdx.y * params.dhwPerBlock;
   // The last activation loaded by that block.
-  int32_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
+  int64_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
 
   // The sums.
   float sum = 0.F;
   float sumSq = 0.F;
 
-  for (int32_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
+  for (int64_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The offset.
-    int64_t offset = static_cast<int64_t>(ni) * params.dhwc +
-                     static_cast<int64_t>(dhwi) * params.c + ci;
+    int64_t offset = ni * params.dhwc + dhwi * params.c + ci;
     float src_data = *reinterpret_cast<float const*>(&params.srcX[offset]);
     if (params.srcR != nullptr) {
       int64_t g_offset =
@@ -404,8 +405,8 @@ void groupNormNDHWCSum<T>::operator()(GroupNormNDHWCParams<T>* params,
 template class groupNormNDHWCSum<half>;
 
 template <typename T, int THREADS_PER_CHANNEL>
-inline __device__ void GroupNormCompute(int32_t dhwBegin,
-                                        int32_t dhwEnd,
+inline __device__ void GroupNormCompute(int64_t dhwBegin,
+                                        int64_t dhwEnd,
                                         int32_t ci,
                                         const GroupNormNDHWCParams<T>& params,
                                         float mean,
@@ -414,9 +415,9 @@ inline __device__ void GroupNormCompute(int32_t dhwBegin,
       phi::__2float<T>(*(reinterpret_cast<T const*>(params.gamma) + ci));
   float beta =
       phi::__2float<T>(*(reinterpret_cast<T const*>(params.beta) + ci));
-  for (int32_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
+  for (int64_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The src/dst offset.
-    int64_t offset = (int64_t)blockIdx.z * params.dhwc + dhwi * params.c + ci;
+    int64_t offset = blockIdx.z * params.dhwc + dhwi * params.c + ci;
     float src_data = phi::__2float<T>(params.srcX[offset]);
     if (params.srcR != nullptr) {
       auto gi = ci / params.cPerGroup;
@@ -443,8 +444,8 @@ inline __device__ void GroupNormCompute(int32_t dhwBegin,
 
 template <>
 inline __device__ void GroupNormCompute<phi::dtype::float16, 2>(
-    int32_t dhwBegin,
-    int32_t dhwEnd,
+    int64_t dhwBegin,
+    int64_t dhwEnd,
     int32_t ci,
     const GroupNormNDHWCParams<phi::dtype::float16>& params,
     float mean,
@@ -456,9 +457,9 @@ inline __device__ void GroupNormCompute<phi::dtype::float16, 2>(
       reinterpret_cast<half const*>(params.beta) + ci));
 
   // Iterate over the activations to compute the sums.
-  for (int32_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
+  for (int64_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The src/dst offset.
-    int64_t offset = (int64_t)blockIdx.z * params.dhwc + dhwi * params.c + ci;
+    int64_t offset = blockIdx.z * params.dhwc + dhwi * params.c + ci;
 
     // Fetch two channels per thread.
     __half2 h2 = *reinterpret_cast<__half2 const*>(&params.srcX[offset]);
@@ -498,8 +499,8 @@ inline __device__ void GroupNormCompute<phi::dtype::float16, 2>(
 
 template <>
 inline __device__ void GroupNormCompute<__half, 2>(
-    int32_t dhwBegin,
-    int32_t dhwEnd,
+    int64_t dhwBegin,
+    int64_t dhwEnd,
     int32_t ci,
     const GroupNormNDHWCParams<__half>& params,
     float mean,
@@ -511,9 +512,9 @@ inline __device__ void GroupNormCompute<__half, 2>(
       reinterpret_cast<half const*>(params.beta) + ci));
 
   // Iterate over the activations to compute the sums.
-  for (int32_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
+  for (int64_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The src/dst offset.
-    int64_t offset = (int64_t)blockIdx.z * params.dhwc + dhwi * params.c + ci;
+    int64_t offset = blockIdx.z * params.dhwc + dhwi * params.c + ci;
 
     // Fetch two channels per thread.
     __half2 h2 = *reinterpret_cast<__half2 const*>(&params.srcX[offset]);
@@ -553,8 +554,8 @@ inline __device__ void GroupNormCompute<__half, 2>(
 #ifdef PADDLE_CUDA_BF16
 template <>
 inline __device__ void GroupNormCompute<phi::dtype::bfloat16, 2>(
-    int32_t dhwBegin,
-    int32_t dhwEnd,
+    int64_t dhwBegin,
+    int64_t dhwEnd,
     int32_t ci,
     const GroupNormNDHWCParams<phi::dtype::bfloat16>& params,
     float mean,
@@ -566,9 +567,9 @@ inline __device__ void GroupNormCompute<phi::dtype::bfloat16, 2>(
       reinterpret_cast<__nv_bfloat16 const*>(params.beta) + ci));
 
   // Iterate over the activations to compute the sums.
-  for (int32_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
+  for (int64_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The src/dst offset.
-    int64_t offset = (int64_t)blockIdx.z * params.dhwc + dhwi * params.c + ci;
+    int64_t offset = blockIdx.z * params.dhwc + dhwi * params.c + ci;
 
     // Fetch two channels per thread.
     __nv_bfloat162 h2 =
@@ -642,9 +643,9 @@ __global__ void groupNormNDHWCScaleKernel(
   float invStdDev = rsqrtf(var + params.eps);
 
   // The first activation loaded by that block.
-  int32_t dhwBegin = blockIdx.y * params.dhwPerBlock;
+  int64_t dhwBegin = blockIdx.y * params.dhwPerBlock;
   // The last activation loaded by that block.
-  int32_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
+  int64_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
   GroupNormCompute<T, THREADS_PER_CHANNEL>(
       dhwBegin, dhwEnd, ci, params, mean, invStdDev);
 }
@@ -765,14 +766,15 @@ void GroupNormNDHWCKernel(const Context& dev_ctx,
     residual_data = residual_ptr->data<T>();
     residual_out_data = residual_out->data<T>();
     const auto r_dims = residual_ptr->dims();
-    int32_t r_dim = 1;
+    int64_t r_dim = 1;
     for (size_t i = 0; i < r_dims.size(); i++) {
       r_dim *= r_dims[i];
     }
-    params_.y_same_with_x =
-        r_dim == params_.n * params_.c * params_.d * params_.h * params_.w
-            ? true
-            : false;
+    params_.y_same_with_x = r_dim == static_cast<int64_t>(params_.n) *
+                                         params_.c * params_.d * params_.h *
+                                         params_.w
+                                ? true
+                                : false;
   }
   dev_ctx.template Alloc<AccT>(mean);
   dev_ctx.template Alloc<AccT>(var);
@@ -814,8 +816,9 @@ void GroupNormNDHWCKernel(const Context& dev_ctx,
   }
   params_.gamma = scale_data;
   params_.beta = bias_data;
-  params_.dhw = params_.d * params_.h * params_.w;
-  const int32_t blocksPerDHW = findMaxDivisor(params_.dhw, maxBlocksPerDHW);
+  params_.dhw = static_cast<int64_t>(params_.d) * params_.h * params_.w;
+  const int64_t blocksPerDHW =
+      findMaxDivisor(params_.dhw, static_cast<int64_t>(maxBlocksPerDHW));
   params_.dhwPerBlock = divUp(params_.dhw, blocksPerDHW);
   params_.cPerBlock = cPerBlock;
   params_.dhwc = params_.dhw * params_.c;
@@ -826,6 +829,41 @@ void GroupNormNDHWCKernel(const Context& dev_ctx,
   int buffer_sizes = 2 * params_.n * groups;
   redBuffer.Resize({1, buffer_sizes});
   params_.redBuffer = dev_ctx.template Alloc<float>(&redBuffer);
+  int64_t max_grid_x = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  int64_t max_grid_y = dev_ctx.GetCUDAMaxGridDimSize()[1];
+  int64_t max_grid_z = dev_ctx.GetCUDAMaxGridDimSize()[2];
+  if (params_.n > max_grid_z) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "GroupNorm kernel launch failed: 'batch_size' (%ld) exceeds the "
+        "maximum supported limit (%ld). "
+        "Please reduce the batch size or modify the kernel configuration.",
+        params_.n,
+        max_grid_z));
+  }
+
+  if (divUp(params_.dhw, params_.dhwPerBlock) > max_grid_y) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "GroupNorm kernel launch failed: computed gridDim.y (%ld) exceeds the "
+        "hardware limit (%ld). "
+        "This may be due to excessively large 'dhw' (%ld). Consider reducing "
+        "input spatial dimensions "
+        "or adjusting 'dhwPerBlock'.",
+        divUp(params_.dhw, params_.dhwPerBlock),
+        max_grid_y,
+        params_.dhw));
+  }
+
+  if (divUp(params_.c, std::max(params_.cPerBlock, 128)) > max_grid_x) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "GroupNorm kernel launch failed: computed gridDim.x (%ld) exceeds the "
+        "hardware limit (%ld). "
+        "This may be due to excessively large channel count 'c' (%ld). "
+        "Consider reducing the number of channels "
+        "or adjusting 'cPerBlock'.",
+        divUp(params_.c, std::max(params_.cPerBlock, 128)),
+        max_grid_x,
+        params_.c));
+  }
 #ifdef PADDLE_WITH_HIP
   hipMemset(params_.redBuffer, 0, buffer_sizes * sizeof(float));
 #else
@@ -852,51 +890,54 @@ void GroupNormNDHWCKernel(const Context& dev_ctx,
 
 template <typename T, typename AccT>
 __global__ void GroupNormForwardGetMeanAndVar(const T* x,
-                                              int N,
-                                              int C,
-                                              int W,
-                                              int imsize,
+                                              int64_t N,
+                                              int64_t C,
+                                              int64_t W,
+                                              int64_t imsize,
                                               int groups,
-                                              int group_size,
+                                              int64_t group_size,
                                               AccT* mean,
                                               AccT* var) {
-  int gid = blockIdx.y;
-  int cid = blockIdx.x;
-  int bid = blockIdx.z;
-  int H = imsize / W;
-  int number = min(group_size, static_cast<int>(C - gid * group_size));
-  int ccid = gid * group_size + cid;
-  if (ccid >= C) return;
-  AccT x_mean = static_cast<AccT>(0);
-  AccT x_var = static_cast<AccT>(0);
-  for (int imid = threadIdx.x; imid < imsize; imid += blockDim.x) {
-    AccT val;
-    int hid = imid / W;
-    int wid = imid % W;
-    val = static_cast<AccT>(x[(bid * H + hid) * W * C + wid * C + ccid]);
+  int64_t gid = blockIdx.y;
+  for (int64_t cid = blockIdx.x; cid < group_size; cid += gridDim.x) {
+    for (int64_t bid = blockIdx.z; bid < N; bid += gridDim.z) {
+      int64_t H = imsize / W;
+      int64_t number =
+          min(group_size, static_cast<int64_t>(C - gid * group_size));
+      int64_t ccid = gid * group_size + cid;
+      if (ccid >= C) return;
+      AccT x_mean = static_cast<AccT>(0);
+      AccT x_var = static_cast<AccT>(0);
+      for (int64_t imid = threadIdx.x; imid < imsize; imid += blockDim.x) {
+        AccT val;
+        int64_t hid = imid / W;
+        int64_t wid = imid % W;
+        val = static_cast<AccT>(x[(bid * H + hid) * W * C + wid * C + ccid]);
 
-    x_mean += val;
-    x_var += val * val;
-  }
-  x_mean /= number * imsize;
-  x_var /= number * imsize;
+        x_mean += val;
+        x_var += val * val;
+      }
+      x_mean /= number * imsize;
+      x_var /= number * imsize;
 
 #ifdef __NVCC__
-  CudaAtomicAddWithWarp(&mean[bid * groups + gid], x_mean);
-  CudaAtomicAddWithWarp(&var[bid * groups + gid], x_var);
+      CudaAtomicAddWithWarp(&mean[bid * groups + gid], x_mean);
+      CudaAtomicAddWithWarp(&var[bid * groups + gid], x_var);
 #endif
 #ifdef __HIPCC__
-  // Note(wangyanpeng04): When the block size is less than the warp size,
-  // WarpReduce will result in all zeros. It seems to be an internal problem of
-  // hipcub on DCU.
-  if (blockDim.x < phi::kps::details::kWarpSize) {
-    phi::CudaAtomicAdd(&mean[bid * groups + gid], x_mean);
-    phi::CudaAtomicAdd(&var[bid * groups + gid], x_var);
-  } else {
-    CudaAtomicAddWithWarp(&mean[bid * groups + gid], x_mean);
-    CudaAtomicAddWithWarp(&var[bid * groups + gid], x_var);
-  }
+      // Note(wangyanpeng04): When the block size is less than the warp size,
+      // WarpReduce will result in all zeros. It seems to be an internal problem
+      // of hipcub on DCU.
+      if (blockDim.x < phi::kps::details::kWarpSize) {
+        phi::CudaAtomicAdd(&mean[bid * groups + gid], x_mean);
+        phi::CudaAtomicAdd(&var[bid * groups + gid], x_var);
+      } else {
+        CudaAtomicAddWithWarp(&mean[bid * groups + gid], x_mean);
+        CudaAtomicAddWithWarp(&var[bid * groups + gid], x_var);
+      }
 #endif
+    }
+  }
 }
 
 template <typename T, typename AccT, int flags>
@@ -905,53 +946,55 @@ __global__ void GroupNormForward(const T* x,
                                  const AccT* var,
                                  const T* scale,
                                  const T* bias,
-                                 int N,
-                                 int C,
-                                 int W,
-                                 int imsize,
+                                 int64_t N,
+                                 int64_t C,
+                                 int64_t W,
+                                 int64_t imsize,
                                  int groups,
-                                 int group_size,
+                                 int64_t group_size,
                                  AccT epsilon,
                                  T* y,
                                  AccT* real_var,
                                  const DataLayout data_layout) {
-  int gid = blockIdx.y;
-  int cid = blockIdx.x;
-  int bid = blockIdx.z;
-  int H = imsize / W;
-  int ccid = gid * group_size + cid;
-  if (ccid >= C) return;
-  auto ng = bid * groups + gid;
-  AccT x_mean = mean[ng];
-  AccT x_var = var[ng];
-  x_var = x_var - x_mean * x_mean;
+  int64_t gid = blockIdx.y;
+  for (int64_t cid = blockIdx.x; cid < group_size; cid += gridDim.x) {
+    for (int64_t bid = blockIdx.z; bid < N; bid += gridDim.z) {
+      int64_t H = imsize / W;
+      int64_t ccid = gid * group_size + cid;
+      if (ccid >= C) return;
+      auto ng = bid * groups + gid;
+      AccT x_mean = mean[ng];
+      AccT x_var = var[ng];
+      x_var = x_var - x_mean * x_mean;
 
-  AccT var_inv = rsqrt(x_var + epsilon);
-  if (cid == 0 && threadIdx.x == 0) {
-    real_var[ng] = x_var;
-  }
-  for (int imid = threadIdx.x; imid < imsize; imid += blockDim.x) {
-    AccT val;
-    int hid, wid;
-    int index = (bid * C + ccid) * imsize + imid;
-    if (data_layout == DataLayout::kNCHW) {
-      val = static_cast<AccT>(x[index]);
-    } else {
-      hid = imid / W;
-      wid = imid % W;
-      val = static_cast<AccT>(x[(bid * H + hid) * W * C + wid * C + ccid]);
-    }
-    val = (val - x_mean) * var_inv;
-    if (flags & kHasScale) {
-      val *= static_cast<AccT>(scale[ccid]);
-    }
-    if (flags & kHasBias) {
-      val += static_cast<AccT>(bias[ccid]);
-    }
-    if (data_layout == DataLayout::kNCHW) {
-      y[index] = static_cast<T>(val);
-    } else {
-      y[(bid * H + hid) * W * C + wid * C + ccid] = static_cast<T>(val);
+      AccT var_inv = rsqrt(x_var + epsilon);
+      if (cid == 0 && threadIdx.x == 0) {
+        real_var[ng] = x_var;
+      }
+      for (int64_t imid = threadIdx.x; imid < imsize; imid += blockDim.x) {
+        AccT val;
+        int64_t hid, wid;
+        int64_t index = (bid * C + ccid) * imsize + imid;
+        if (data_layout == DataLayout::kNCHW) {
+          val = static_cast<AccT>(x[index]);
+        } else {
+          hid = imid / W;
+          wid = imid % W;
+          val = static_cast<AccT>(x[(bid * H + hid) * W * C + wid * C + ccid]);
+        }
+        val = (val - x_mean) * var_inv;
+        if (flags & kHasScale) {
+          val *= static_cast<AccT>(scale[ccid]);
+        }
+        if (flags & kHasBias) {
+          val += static_cast<AccT>(bias[ccid]);
+        }
+        if (data_layout == DataLayout::kNCHW) {
+          y[index] = static_cast<T>(val);
+        } else {
+          y[(bid * H + hid) * W * C + wid * C + ccid] = static_cast<T>(val);
+        }
+      }
     }
   }
 }
@@ -971,15 +1014,15 @@ void GroupNormDirectCUDAFunctor<T, AccT>::operator()(
     AccT* variance,
     const DataLayout data_layout) {
   const auto input_ddim = common::make_ddim(input_shape);
-  const int C =
+  const int64_t C =
       (data_layout == DataLayout::kNCHW ? input_ddim[1]
                                         : input_ddim[input_ddim.size() - 1]);
-  const int group_size = C / groups;
-  const int W =
+  const int64_t group_size = C / groups;
+  const int64_t W =
       (data_layout == DataLayout::kNCHW ? input_ddim[input_ddim.size() - 1]
                                         : input_ddim[input_ddim.size() - 2]);
 
-  int image_size = 1;
+  int64_t image_size = 1;
   if (data_layout == DataLayout::kNCHW) {
     for (int i = 2; i < input_ddim.size(); ++i) {
       image_size *= input_ddim[i];
@@ -989,29 +1032,35 @@ void GroupNormDirectCUDAFunctor<T, AccT>::operator()(
       image_size *= input_ddim[i];
     }
   }
-  int block_size = std::min(1024, image_size);
-  dim3 grid(group_size, groups, input_ddim[0]);
+  int block_size = std::min(static_cast<int64_t>(1024), image_size);
+  int64_t max_grid_x = 65535;
+  dim3 grid(std::min(group_size, max_grid_x),
+            groups,
+            std::min(input_ddim[0], max_grid_x));
   dim3 threads(block_size, 1, 1);
   if (data_layout == DataLayout::kNCHW) {
     constexpr int vec_size = sizeof(float4) / sizeof(T);
-    int size = group_size * image_size;  // group element size
+    int64_t size = group_size * image_size;  // group element size
     const int max_num_threads = 1024;
-    int max_block_size = std::min(size / vec_size, max_num_threads);
+    int max_block_size =
+        std::min(static_cast<int>(size / vec_size), max_num_threads);
     int block_size_nchw = 1;
     while (block_size_nchw < max_block_size) {
       block_size_nchw *= 2;
     }
 
     block_size_nchw = std::max(block_size_nchw, phi::kps::details::kWarpSize);
-    dim3 grids(input_ddim[0] * groups);
+    int64_t n_groups = input_ddim[0] * static_cast<int64_t>(groups);
+    dim3 grids(std::min(max_grid_x, n_groups));
     dim3 blocks(block_size_nchw);
 
     if (size < vec_size * block_size_nchw) {
-      phi::ScalarGetMeanAndVarNCHW<T, AccT>
-          <<<grids, blocks, 0, stream>>>(input, mean, temp_variance, size);
+      phi::ScalarGetMeanAndVarNCHW<T, AccT><<<grids, blocks, 0, stream>>>(
+          input, mean, temp_variance, size, n_groups);
     } else {
       phi::VectorizedGetMeanAndVarNCHW<T, AccT, vec_size>
-          <<<grids, blocks, 0, stream>>>(input, mean, temp_variance, size);
+          <<<grids, blocks, 0, stream>>>(
+              input, mean, temp_variance, size, n_groups);
     }
   } else {
 #ifdef PADDLE_WITH_HIP
@@ -1071,11 +1120,13 @@ void GroupNormGeneralCaseKernel(const Context& dev_ctx,
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();
   const auto x_dims = x.dims();
-  const int C = (data_layout == DataLayout::kNCHW ? x_dims[1]
-                                                  : x_dims[x_dims.size() - 1]);
-  const int group_size = C / groups;
-  const int W = (data_layout == DataLayout::kNCHW ? x_dims[x_dims.size() - 1]
-                                                  : x_dims[x_dims.size() - 2]);
+  const int64_t C =
+      (data_layout == DataLayout::kNCHW ? x_dims[1]
+                                        : x_dims[x_dims.size() - 1]);
+  const int64_t group_size = C / groups;
+  const int64_t W =
+      (data_layout == DataLayout::kNCHW ? x_dims[x_dims.size() - 1]
+                                        : x_dims[x_dims.size() - 2]);
 
   dev_ctx.template Alloc<T>(y);
   dev_ctx.template Alloc<AccT>(mean);
@@ -1097,7 +1148,7 @@ void GroupNormGeneralCaseKernel(const Context& dev_ctx,
   const T* bias_data = nullptr;
   if (bias_ptr) bias_data = bias_ptr->data<T>();
 
-  int imsize = 1;
+  int64_t imsize = 1;
   if (data_layout == DataLayout::kNCHW) {
     for (int i = 2; i < x_dims.size(); ++i) {
       imsize *= x_dims[i];
@@ -1108,29 +1159,34 @@ void GroupNormGeneralCaseKernel(const Context& dev_ctx,
     }
   }
 
-  int block_size = std::min(1024, imsize);
-
-  dim3 grid(group_size, groups, x_dims[0]);
+  int block_size = std::min(static_cast<int64_t>(1024), imsize);
+  int64_t max_grid_x = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  int64_t max_grid_z = dev_ctx.GetCUDAMaxGridDimSize()[2];
+  dim3 grid(std::min(max_grid_x, group_size),
+            groups,
+            std::min(max_grid_z, x_dims[0]));
   dim3 threads(block_size, 1, 1);
   if (data_layout == DataLayout::kNCHW) {
     constexpr int vec_size = sizeof(float4) / sizeof(T);
-    int size = group_size * imsize;
+    int64_t size = group_size * imsize;
     const int max_num_threads = 1024;
-    int max_block_size = std::min(size / vec_size, max_num_threads);
+    int max_block_size =
+        std::min(static_cast<int>(size / vec_size), max_num_threads);
     int block_size_nchw = 1;
     while (block_size_nchw < max_block_size) {
       block_size_nchw *= 2;
     }
     block_size_nchw = std::max(block_size_nchw, kps::details::kWarpSize);
-    dim3 grids(x_dims[0] * groups);
+    int64_t n_groups = x_dims[0] * static_cast<int64_t>(groups);
+    dim3 grids(std::min(max_grid_x, n_groups));
     dim3 blocks(block_size_nchw);
     if (size < vec_size * block_size_nchw) {
       ScalarGetMeanAndVarNCHW<T, AccT><<<grids, blocks, 0, dev_ctx.stream()>>>(
-          x_data, mean_data, temp_var_data, size);
+          x_data, mean_data, temp_var_data, size, n_groups);
     } else {
       VectorizedGetMeanAndVarNCHW<T, AccT, vec_size>
           <<<grids, blocks, 0, dev_ctx.stream()>>>(
-              x_data, mean_data, temp_var_data, size);
+              x_data, mean_data, temp_var_data, size, n_groups);
     }
   } else {
     set_zero_AccT(dev_ctx, mean, static_cast<AccT>(0));

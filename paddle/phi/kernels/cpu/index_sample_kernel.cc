@@ -37,10 +37,10 @@ void IndexSampleInner(const Context &context,
   auto input_dims = input.dims();
   auto index_dims = index.dims();
 
-  int batch_size = static_cast<int>(input_dims[0]);
+  int64_t batch_size = input_dims[0];
   auto value_length = input_dims[1];
   auto index_length = index_dims[1];
-  int index_ids_num = static_cast<int>(index.numel());
+  int64_t index_ids_num = index.numel();
 
   std::vector<T> input_vec;
   std::vector<IndexT> index_vec;
@@ -48,8 +48,8 @@ void IndexSampleInner(const Context &context,
   phi::TensorToVector<IndexT>(index, context, &index_vec);
 
   std::vector<T> res(index_ids_num);
-  for (int i = 0; i < index_ids_num; i++) {
-    int b = floor(i / index_length);
+  for (int64_t i = 0; i < index_ids_num; i++) {
+    int64_t b = floor(i / index_length);
     PADDLE_ENFORCE_GE(
         index_vec[i],
         0,
@@ -69,7 +69,7 @@ void IndexSampleInner(const Context &context,
             value_length,
             index_vec[i]));
 
-    int v_i = b * value_length + static_cast<int>(index_vec[i]);
+    int64_t v_i = b * value_length + static_cast<int64_t>(index_vec[i]);
     T v = input_vec[v_i];
     VLOG(4) << "Index Sample: batch = " << b << " index = " << v_i
             << " value = " << v;

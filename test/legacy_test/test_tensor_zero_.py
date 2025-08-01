@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
+from op_test import get_places
 
 import paddle
 from paddle import base
@@ -27,15 +27,8 @@ class TensorFill_Test(unittest.TestCase):
 
     def test_tensor_fill_true(self):
         typelist = ['float32', 'float64', 'int32', 'int64', 'float16']
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not base.core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
+        places = get_places()
         if base.core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
             places.append(base.CUDAPinnedPlace())
 
         for p in places:

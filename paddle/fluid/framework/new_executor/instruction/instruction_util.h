@@ -68,5 +68,15 @@ void HandleForInplaceOp(pir::Operation* op,
                         InstructionBase* instr);
 
 void ShareVarBuffer(const Variable* src_var, Variable* dst_var);
+
+void inline CUDAErrorCheck(const std::string& check_tag) {
+#ifdef PADDLE_WITH_CUDA
+  std::cout << check_tag << " checking..." << std::endl;
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+  std::cout << check_tag << " check done." << std::endl;
+#endif
+}
+
 }  // namespace framework
 }  // namespace paddle

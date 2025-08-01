@@ -207,7 +207,7 @@ AnalysisConfig SetConfig(bool use_mkldnn, bool use_bfloat16) {
   config.DisableFCPadding();
 
   if (use_mkldnn) {
-    config.EnableMKLDNN();
+    config.EnableONEDNN();
   }
 
   if (use_bfloat16) config.EnableMkldnnBfloat16();

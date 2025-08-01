@@ -27,12 +27,12 @@ using XPUDeviceGuard = phi::backends::xpu::XPUDeviceGuard;
 template <typename T>
 class ConcatFunctor<XPUContext, T> {
  public:
-  void operator()(const XPUContext& context,
+  void operator()(const XPUContext& dev_ctx,
                   const std::vector<phi::DenseTensor>& input,
                   int axis,
                   phi::DenseTensor* output) {
     using XPUType = typename XPUTypeTrait<T>::Type;
-    int dev_id = context.GetPlace().GetDeviceId();
+    int dev_id = dev_ctx.GetPlace().GetDeviceId();
     XPUDeviceGuard guard(dev_id);
 
     int num = input.size();
@@ -49,18 +49,18 @@ class ConcatFunctor<XPUContext, T> {
 
     std::vector<const XPUType*> ptrs;
     for (int i = 0; i < num; ++i) {
-      if (input[i].place() != context.GetPlace()) {
+      if (input[i].place() != dev_ctx.GetPlace()) {
         // data not on xpu, probably on cpu. move it now
         phi::DenseTensor tmp_data = input[i];
-        context.template Alloc<T>(&tmp_data);
+        dev_ctx.template Alloc<T>(&tmp_data);
         ptrs.push_back(reinterpret_cast<const XPUType*>(tmp_data.data<T>()));
       } else {
         ptrs.push_back(reinterpret_cast<const XPUType*>(input[i].data<T>()));
       }
     }
-    context.template Alloc<T>(output);
+    dev_ctx.template Alloc<T>(output);
 
-    auto r = xpu::concat<XPUType>(context.x_context(),
+    auto r = xpu::concat<XPUType>(dev_ctx.x_context(),
                                   ptrs,
                                   reinterpret_cast<XPUType*>(output->data<T>()),
                                   xdims_list,
@@ -72,13 +72,13 @@ class ConcatFunctor<XPUContext, T> {
 template <typename T>
 class SplitFunctor<XPUContext, T> {
  public:
-  void operator()(const XPUContext& context,
+  void operator()(const XPUContext& dev_ctx,
                   const phi::DenseTensor& input,
                   const std::vector<const phi::DenseTensor*>& ref_inputs,
                   const int axis,
                   std::vector<phi::DenseTensor*>* outputs) {
     using XPUType = typename XPUTypeTrait<T>::Type;
-    int dev_id = context.GetPlace().GetDeviceId();
+    int dev_id = dev_ctx.GetPlace().GetDeviceId();
     XPUDeviceGuard guard(dev_id);
 
     auto& ins = ref_inputs;
@@ -110,20 +110,20 @@ class SplitFunctor<XPUContext, T> {
 
     std::vector<XPUType*> ptrs(num);
     for (int i = 0; i < num; ++i) {
-      context.template Alloc<T>(outputs->at(i));
+      dev_ctx.template Alloc<T>(outputs->at(i));
       ptrs[i] = reinterpret_cast<XPUType*>(outputs->at(i)->data<T>());
     }
     phi::DenseTensor tmp_data = input;
-    if (input.place() != context.GetPlace()) {
+    if (input.place() != dev_ctx.GetPlace()) {
       // data not on xpu, probably on cpu. move it now
-      context.template Alloc<T>(&tmp_data);
+      dev_ctx.template Alloc<T>(&tmp_data);
     }
 
     // int split(Context* xpu_ctx, const T* x, const std::vector<T*>& y_list,
     // const std::vector<int64_t>& xshape, const std::vector<int64_t>&
     // split_list, int64_t axis);
     auto r = xpu::split<XPUType>(
-        context.x_context(),
+        dev_ctx.x_context(),
         reinterpret_cast<const XPUType*>(tmp_data.data<T>()),
         ptrs,
         xdims_list,

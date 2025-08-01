@@ -809,8 +809,9 @@ def _dygraph_tracer():
 
 def _current_expected_place_():
     global _global_expected_place_
-    if _global_expected_place_ is None or isinstance(
-        _global_expected_place_, core.Place
+    if (
+        _global_expected_place_ is None
+        or type(_global_expected_place_) is core.Place
     ):
         if core.is_compiled_with_cuda():
             try:
@@ -7903,6 +7904,18 @@ class EagerParamBase(core.eager.Tensor):
         new_param = EagerParamBase(self.shape, self.dtype, **state)
         core.eager.tensor_copy(self, new_param, device, blocking)
         return new_param
+
+    def __setattr__(self, name, value):
+        if (
+            name == 'color'
+            and hasattr(self, 'color')
+            and self.color is not None
+        ):
+            raise AttributeError(
+                f"Parameter '{self.name}' already has a 'color' attribute (used for distributed sharding parallel grouping) "
+                f"and cannot be reassigned."
+            )
+        super().__setattr__(name, value)
 
     __repr__ = __str__
 

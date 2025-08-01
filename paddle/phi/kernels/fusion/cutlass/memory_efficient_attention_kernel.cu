@@ -29,7 +29,7 @@ using gemm_kernel_utils::getMaximumSharedMemoryPerBlockKb;
 
 template <typename T, typename Context>
 void MemoryEfficientAttentionForwardKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& query,
     const DenseTensor& key,
     const DenseTensor& value,
@@ -47,7 +47,7 @@ void MemoryEfficientAttentionForwardKernel(
     DenseTensor* output,
     DenseTensor* logsumexp,
     DenseTensor* seed_and_offset) {
-  int compute_capacity = ctx.GetComputeCapability();
+  int compute_capacity = dev_ctx.GetComputeCapability();
   const auto max_shmem =
       getMaximumSharedMemoryPerBlockKb(compute_capacity) * 1024;
   bool kernel_launched = false;
@@ -122,7 +122,7 @@ void MemoryEfficientAttentionForwardKernel(
         is_test ? 0 : (max_seqlen_q_tmp + kAlignLSE - 1) / kAlignLSE;
     logsumexp_dims[2] *= kAlignLSE;
     logsumexp->Resize(logsumexp_dims);
-    ctx.template Alloc<float>(logsumexp);
+    dev_ctx.template Alloc<float>(logsumexp);
     VLOG(3) << "logsumexp dims" << logsumexp_dims;
     VLOG(3) << "logsumexp" << logsumexp;
     VLOG(3) << "kAlignLSE" << kAlignLSE;
@@ -139,13 +139,13 @@ void MemoryEfficientAttentionForwardKernel(
       out_accum.Resize(output->dims());
       p.output_accum_ptr =
           phi::SafeAllocTensor<typename KernelType::output_accum_t, Context>(
-              ctx, &out_accum);
+              dev_ctx, &out_accum);
       VLOG(3) << "output_accum_ptr " << p.output_accum_ptr;
     } else {
       p.output_accum_ptr = nullptr;
     }
     p.output_ptr = phi::SafeAllocTensor<typename KernelType::output_t, Context>(
-        ctx, output);
+        dev_ctx, output);
     VLOG(3) << "output_ptr " << p.output_ptr;
 
     if (cu_seqlens_q) {
@@ -221,11 +221,11 @@ void MemoryEfficientAttentionForwardKernel(
     phi::Dim<1> seed_dims;
     seed_dims[0] = 2;
     seed_and_offset->Resize(seed_dims);
-    ctx.template HostAlloc<int64_t>(seed_and_offset);
+    dev_ctx.template HostAlloc<int64_t>(seed_and_offset);
     int64_t* seed_and_offset_ptr =
         phi::SafeGetTensorPtr<int64_t>(seed_and_offset);
 
-    auto gen = ctx.GetGenerator();
+    auto gen = dev_ctx.GetGenerator();
     uint64_t inc = query.dims()[0] * query.dims()[2] * 32;
     auto seed_offset_pair = gen->IncrementOffset(inc);
     auto seed = (seed_offset_pair.first);
@@ -259,9 +259,9 @@ void MemoryEfficientAttentionForwardKernel(
     kernel_fn<<<p.getBlocksGrid(),
                 p.getThreadsGrid(),
                 smem_bytes,
-                ctx.stream()>>>(p);
+                dev_ctx.stream()>>>(p);
   };
-  dispatch_cutlass_forward<T>(ctx, launchKernel);
+  dispatch_cutlass_forward<T>(dev_ctx, launchKernel);
   PADDLE_ENFORCE_EQ(
       kernel_launched,
       true,

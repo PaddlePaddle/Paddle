@@ -233,6 +233,8 @@ def _is_custom_device_bfloat16_supported() -> bool:
     return (
         place.get_device_type() == 'npu'
         or place.get_device_type() == 'intel_hpu'
+        or place.get_device_type() == 'iluvatar_gpu'
+        or place.get_device_type() == 'metax_gpu'
     )
 
 
@@ -691,18 +693,13 @@ def amp_guard(
                                 ].append(param)
                     amp_global_state().already_classify_params_meshes = True
 
-                if os.getenv("FLAGS_enable_tensor_fusion") not in [
-                    "True",
-                    "true",
-                    "1",
-                ]:
-                    if len(amp_global_state().mesh2params):
-                        for _, params in amp_global_state().mesh2params.items():
-                            core.eager.set_master_grads(params)
-                    else:
-                        core.eager.set_master_grads(
-                            amp_global_state().model_parameters
-                        )
+                if len(amp_global_state().mesh2params):
+                    for _, params in amp_global_state().mesh2params.items():
+                        core.eager.set_master_grads(params)
+                else:
+                    core.eager.set_master_grads(
+                        amp_global_state().model_parameters
+                    )
 
                 amp_global_state().already_register_final_backward_hook = False
 
@@ -731,13 +728,22 @@ def amp_guard(
 
                 return param_hook
 
-            if os.getenv("FLAGS_enable_tensor_fusion") in ["True", "true", "1"]:
+            if os.getenv("FLAGS_enable_tensor_fusion") in [
+                "True",
+                "true",
+                "1",
+            ] or os.getenv("FLAGS_enable_main_grad") in [
+                "True",
+                "true",
+                "1",
+            ]:
                 for param in amp_global_state().model_parameters:
                     if not hasattr(param, "main_grad"):
                         param.main_grad = None
                         param._register_grad_hook(_update_main_grad_hook(param))
-
-            core.eager._add_backward_final_hook(master_grad_hook)
+                os.environ["FLAGS_enable_tensor_fusion"] = "0"
+            else:
+                core.eager._add_backward_final_hook(master_grad_hook)
             amp_global_state().already_register_final_backward_hook = True
 
         if tracer:

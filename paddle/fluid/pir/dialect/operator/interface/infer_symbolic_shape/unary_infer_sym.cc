@@ -899,6 +899,9 @@ bool DiagOpInferSymbolicShape(pir::Operation *op,
           size_ = x_shape[1].dyn_cast<int64_t>();
         }
       }
+      if (size_ < 0) {
+        size_ = 0;
+      }
       infer_context->SetShapeOrDataForValue(
           op->result(0), symbol::TensorShapeOrDataDimExprs({size_}));
     } else {

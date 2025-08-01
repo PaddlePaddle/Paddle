@@ -21,7 +21,7 @@
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/kernel_registry.h"
-
+#include "paddle/phi/kernels/full_kernel.h"
 namespace phi {
 
 using ScopedSpatialTransformerDescriptor =
@@ -51,6 +51,11 @@ void AffineGridCudnnKernel(const Context& dev_ctx,
   h_size_data[3] = size_attr[3];
   output->Resize(common::make_ddim({n, h_size_data[2], h_size_data[3], 2}));
   T* output_data = dev_ctx.template Alloc<T>(output);
+  if (input.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
+    return;
+  }
   ScopedSpatialTransformerDescriptor st_desc;
   cudnnSpatialTransformerDescriptor_t cudnn_st_desc =
       st_desc.descriptor<T>(4, h_size_data);

@@ -174,7 +174,7 @@ __global__ void FusedResidualDropoutBiasGrad(const T *dout,
                                              const int64_t cols,
                                              T *dx,
                                              T *dbias) {
-  int64_t col_id = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t col_id = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
 
   using LoadT = phi::AlignedVector<T, VecSize>;
   using StoreT = phi::AlignedVector<T, VecSize>;
@@ -186,8 +186,8 @@ __global__ void FusedResidualDropoutBiasGrad(const T *dout,
                                                factor == static_cast<T>(1.0));
 
   if (col_id * VecSize < cols) {
-    for (int row_id = threadIdx.y; row_id < rows; row_id += blockDim.y) {
-      int index = row_id * cols + col_id * VecSize;
+    for (int64_t row_id = threadIdx.y; row_id < rows; row_id += blockDim.y) {
+      int64_t index = row_id * cols + col_id * VecSize;
       LoadT out_vec;
       MaskLoadT mask_vec;
       StoreT dx_vec;
@@ -278,12 +278,12 @@ __global__ void FusedResidualDropoutBias(
     const float *dequant_out_scale_data = nullptr,
     const float quant_next_in_scale = 1.0,
     const float residual_alpha = 1.0) {
-  int col_id = blockDim.x * blockIdx.x + threadIdx.x;
-  int row_id = blockIdx.y * gridDim.z + blockIdx.z;
+  int64_t col_id = blockDim.x * blockIdx.x + threadIdx.x;
+  int64_t row_id = blockIdx.y * gridDim.z + blockIdx.z;
   if (row_id >= rows) {
     return;
   }
-  int idx = row_id * cols + col_id;
+  int64_t idx = row_id * cols + col_id;
   GPURAND(StatePhilox4_32_10_t) state;
   if (HasDropout) {
     GPURAND(_init)(seed, idx, increment, &state);
@@ -296,8 +296,8 @@ __global__ void FusedResidualDropoutBias(
     factor = static_cast<T>(1);
   }
   phi::funcs::ReluFunctor<T> relu;
-  for (int r = row_id; r < rows; r += blockDim.y * gridDim.y) {
-    for (int i = col_id * VecSize; i < cols;
+  for (int64_t r = row_id; r < rows; r += gridDim.y * gridDim.z) {
+    for (int64_t i = col_id * VecSize; i < cols;
          i += blockDim.x * gridDim.x * VecSize) {
       FusedResidualDropoutBiasOneThread<T,
                                         MaskType,
@@ -337,9 +337,9 @@ template <typename T,
           typename MaskType,
           typename InType = T,
           typename OutType = T>
-void LaunchResidualDropoutBias(const uint32_t rows,
-                               const uint32_t cols,
-                               const int increment,
+void LaunchResidualDropoutBias(const uint64_t rows,
+                               const uint64_t cols,
+                               const uint64_t increment,
                                uint64_t seed,
                                const float dropout_prob,
                                const bool is_test,
@@ -375,7 +375,7 @@ void LaunchResidualDropoutBias(const uint32_t rows,
   }
 
   const int VecSize = MAX_CACHE_BYTES / sizeof(T);
-  const int real_vec_size = cols % VecSize == 0 ? VecSize : 1;
+  const int64_t real_vec_size = cols % VecSize == 0 ? VecSize : 1;
   auto config = Get1DBlocksAnd2DGrids(dev_ctx, rows, cols, real_vec_size);
 
 #define PD_LAUNCH_FUSED_RESIDUAL_DROPOUT_BIAS_KERNEL(__has_dropout)           \

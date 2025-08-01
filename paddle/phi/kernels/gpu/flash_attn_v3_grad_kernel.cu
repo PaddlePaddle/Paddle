@@ -618,7 +618,9 @@ void FlashAttnV3GradKernel(const Context &dev_ctx,
   const int64_t h_k = k.dims()[2];
   const int64_t d_q = q.dims()[3];
   const int64_t d_v = v.dims()[3];
-  if (q.dims()[q.dims().size() - 1] > v.dims()[v.dims().size() - 1]) {
+  const bool is_mla =
+      q.dims()[q.dims().size() - 1] > v.dims()[v.dims().size() - 1];
+  if (is_mla) {
     PADDLE_ENFORCE_EQ(v.dims()[v.dims().size() - 1],
                       out.dims()[out.dims().size() - 1],
                       common::errors::InvalidArgument(
@@ -663,6 +665,155 @@ void FlashAttnV3GradKernel(const Context &dev_ctx,
                                         &dq_accum,
                                         &dk_accum,
                                         &dv_accum);
+  // umiswing: some branch in upstream fa3 could have padded the head
+  // dimension
+  PADDLE_ENFORCE_EQ(
+      dq->dims()[dq->dims().size() - 1],
+      q.dims()[q.dims().size() - 1],
+      common::errors::InvalidArgument(
+          "head dimension of dq != head dimension of q (%d != %d)",
+          dq->dims()[dq->dims().size() - 1],
+          q.dims()[q.dims().size() - 1]));
+
+  PADDLE_ENFORCE_EQ(
+      dk->dims()[dk->dims().size() - 1],
+      k.dims()[k.dims().size() - 1],
+      common::errors::InvalidArgument(
+          "head dimension of dk != head dimension of k (%d != %d)",
+          dk->dims()[dk->dims().size() - 1],
+          k.dims()[k.dims().size() - 1]));
+
+  PADDLE_ENFORCE_EQ(
+      dv->dims()[dv->dims().size() - 1],
+      v.dims()[v.dims().size() - 1],
+      common::errors::InvalidArgument(
+          "head dimension of dv != head dimension of v (%d != %d)",
+          dv->dims()[dv->dims().size() - 1],
+          v.dims()[v.dims().size() - 1]));
+#else
+  RaiseNotSupportedError();
+#endif
+}
+
+template <typename T, typename Context>
+void FlashAttnV3VarlenGradKernel(const Context &dev_ctx,
+                                 const DenseTensor &q,
+                                 const DenseTensor &k,
+                                 const DenseTensor &v,
+                                 const DenseTensor &out,
+                                 const DenseTensor &softmax_lse,
+                                 const DenseTensor &cu_seqlens_q,
+                                 const DenseTensor &cu_seqlens_k,
+                                 const paddle::optional<DenseTensor> &seqused_q,
+                                 const paddle::optional<DenseTensor> &seqused_k,
+                                 const DenseTensor &out_grad,
+                                 float const softmax_scale,
+                                 int const max_seqlen_q,
+                                 int const max_seqlen_k,
+                                 bool const causal,
+                                 int const window_size_left,
+                                 int const window_size_right,
+                                 float const softcap,
+                                 int const sm_margin,
+                                 DenseTensor *dq,
+                                 DenseTensor *dk,
+                                 DenseTensor *dv) {
+#ifdef PADDLE_WITH_FLASHATTN_V3
+  PADDLE_ENFORCE_EQ(
+      window_size_left,
+      -1,
+      common::errors::InvalidArgument("window_size is not supported, please "
+                                      "set window_size_left/right to -1"));
+  PADDLE_ENFORCE_EQ(
+      window_size_right,
+      -1,
+      common::errors::InvalidArgument("window_size is not supported, please "
+                                      "set window_size_left/right to -1"));
+  PADDLE_ENFORCE_EQ(softcap,
+                    0,
+                    common::errors::InvalidArgument(
+                        "softcap is not supported, please set softcap to 0"));
+  PADDLE_ENFORCE_EQ(
+      sm_margin,
+      0,
+      common::errors::InvalidArgument(
+          "sm_margin is not supported, please set sm_margin to 0"));
+  PADDLE_ENFORCE_EQ(FLAGS_cudnn_deterministic,
+                    false,
+                    common::errors::InvalidArgument(
+                        "deterministic is not supported in flash attention 3, "
+                        "please set FLAGS_cudnn_deterministic to false"));
+
+  PADDLE_ENFORCE_EQ(
+      q.dims()[q.dims().size() - 1],
+      v.dims()[v.dims().size() - 1],
+      common::errors::InvalidArgument("head_dim_q != head_dim_v (%d != %d)",
+                                      q.dims()[q.dims().size() - 1],
+                                      v.dims()[v.dims().size() - 1]));
+
+  // umiswing: fake grad tensor for FlashAttnV3GradBaseKernel
+  DenseTensor softmax_d;
+  DenseTensor softmax_lse_log2;
+  DenseTensor dq_accum;
+  DenseTensor dk_accum;
+  DenseTensor dv_accum;
+  FlashAttnV3GradBaseKernel<T, Context>(dev_ctx,
+                                        out_grad,
+                                        q,
+                                        k,
+                                        v,
+                                        out,
+                                        softmax_lse,
+                                        paddle::none,  // dq_
+                                        paddle::none,  // dk_
+                                        paddle::none,  // dv_
+                                        cu_seqlens_q,
+                                        cu_seqlens_k,
+                                        seqused_q,
+                                        seqused_k,
+                                        max_seqlen_q,
+                                        max_seqlen_k,
+                                        softmax_scale,
+                                        causal,
+                                        window_size_left,
+                                        window_size_right,
+                                        softcap,
+                                        FLAGS_cudnn_deterministic,
+                                        sm_margin,
+                                        dq,
+                                        dk,
+                                        dv,
+                                        &softmax_d,
+                                        &softmax_lse_log2,
+                                        &dq_accum,
+                                        &dk_accum,
+                                        &dv_accum);
+
+  // umiswing: some branch in upstream fa3 could have padded the head dimension
+  PADDLE_ENFORCE_EQ(
+      dq->dims()[dq->dims().size() - 1],
+      q.dims()[q.dims().size() - 1],
+      common::errors::InvalidArgument(
+          "head dimension of dq != head dimension of q (%d != %d)",
+          dq->dims()[dq->dims().size() - 1],
+          q.dims()[q.dims().size() - 1]));
+
+  PADDLE_ENFORCE_EQ(
+      dk->dims()[dk->dims().size() - 1],
+      k.dims()[k.dims().size() - 1],
+      common::errors::InvalidArgument(
+          "head dimension of dk != head dimension of k (%d != %d)",
+          dk->dims()[dk->dims().size() - 1],
+          k.dims()[k.dims().size() - 1]));
+
+  PADDLE_ENFORCE_EQ(
+      dv->dims()[dv->dims().size() - 1],
+      v.dims()[v.dims().size() - 1],
+      common::errors::InvalidArgument(
+          "head dimension of dv != head dimension of v (%d != %d)",
+          dv->dims()[dv->dims().size() - 1],
+          v.dims()[v.dims().size() - 1]));
+
 #else
   RaiseNotSupportedError();
 #endif
@@ -674,5 +825,12 @@ PD_REGISTER_KERNEL(flash_attn_v3_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::FlashAttnV3GradKernel,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(flash_attn_v3_varlen_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::FlashAttnV3VarlenGradKernel,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}

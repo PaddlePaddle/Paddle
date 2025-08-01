@@ -164,6 +164,90 @@ CUDA_ATOMIC_WRAPPER(Add, double) {
 }
 #endif
 
+// NOTE(zhangbo): cuda do not have atomicCAS for __nv_bfloat16.
+inline static __device__ uint32_t bf16_add_to_low_half(uint32_t val, float x) {
+  phi::dtype::bfloat16 low_half;
+  // the bfloat16 in lower 16bits
+  low_half.x = static_cast<uint16_t>(val & 0xFFFFu);
+  low_half =
+      static_cast<phi::dtype::bfloat16>(static_cast<float>(low_half) + x);
+  return (val & 0xFFFF0000u) | low_half.x;
+}
+
+inline static __device__ uint32_t bf16_add_to_high_half(uint32_t val, float x) {
+  phi::dtype::bfloat16 high_half;
+  // the bfloat16 in higher 16bits
+  high_half.x = static_cast<uint16_t>(val >> 16);
+  high_half =
+      static_cast<phi::dtype::bfloat16>(static_cast<float>(high_half) + x);
+  return (val & 0xFFFFu) | (static_cast<uint32_t>(high_half.x) << 16);
+}
+
+#if CUDA_VERSION >= 11000 && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
+static __device__ __forceinline__ phi::dtype::bfloat16 CUDABF16ToPDBF16(
+    __nv_bfloat16 x) {
+  return *reinterpret_cast<phi::dtype::bfloat16 *>(&x);
+}
+
+static __device__ __forceinline__ __nv_bfloat16
+PDBF16ToCUDABF16(phi::dtype::bfloat16 x) {
+  return *reinterpret_cast<__nv_bfloat16 *>(&x);
+}
+
+CUDA_ATOMIC_WRAPPER(Add, phi::dtype::bfloat16) {
+  return CUDABF16ToPDBF16(atomicAdd(reinterpret_cast<__nv_bfloat16 *>(address),
+                                    PDBF16ToCUDABF16(val)));
+}
+#else
+CUDA_ATOMIC_WRAPPER(Add, phi::dtype::bfloat16) {
+  // concrete packed bfloat16 value may exist in lower or higher 16bits
+  // of the 32bits address.
+  uint32_t *address_as_ui = reinterpret_cast<uint32_t *>(
+      reinterpret_cast<char *>(address) -
+      (reinterpret_cast<uintptr_t>(address) & 0x02));
+  float val_f = static_cast<float>(val);
+  uint32_t old = *address_as_ui;
+  uint32_t sum;
+  uint32_t newval;
+  uint32_t assumed;
+  if (((uintptr_t)address & 0x02) == 0) {
+    // the bfloat16 value stay at lower 16 bits of the address.
+    do {
+      assumed = old;
+      old = atomicCAS(
+          address_as_ui, assumed, bf16_add_to_low_half(assumed, val_f));
+    } while (old != assumed);
+    phi::dtype::bfloat16 ret;
+    ret.x = old & 0xFFFFu;
+    return ret;
+  } else {
+    // the bfloat16 value stay at higher 16 bits of the address.
+    do {
+      assumed = old;
+      old = atomicCAS(
+          address_as_ui, assumed, bf16_add_to_high_half(assumed, val_f));
+    } while (old != assumed);
+    phi::dtype::bfloat16 ret;
+    ret.x = old >> 16;
+    return ret;
+  }
+}
+#endif
+
+CUDA_ATOMIC_WRAPPER(Add, complex<float>) {
+  float *real = reinterpret_cast<float *>(address);
+  float *imag = real + 1;
+  return complex<float>(CudaAtomicAdd(real, val.real),
+                        CudaAtomicAdd(imag, val.imag));
+}
+
+CUDA_ATOMIC_WRAPPER(Add, complex<double>) {
+  double *real = reinterpret_cast<double *>(address);
+  double *imag = real + 1;
+  return complex<double>(CudaAtomicAdd(real, val.real),
+                         CudaAtomicAdd(imag, val.imag));
+}
+
 #ifdef PADDLE_CUDA_FP16
 // NOTE(dzhwinter): cuda do not have atomicCAS for half.
 // Just use the half address as a unsigned value address and
@@ -310,90 +394,6 @@ __device__ __forceinline__ void fastAtomicAdd(T *arr,
   CudaAtomicAdd(arr + index, value);
 }
 #endif
-
-// NOTE(zhangbo): cuda do not have atomicCAS for __nv_bfloat16.
-inline static __device__ uint32_t bf16_add_to_low_half(uint32_t val, float x) {
-  phi::dtype::bfloat16 low_half;
-  // the bfloat16 in lower 16bits
-  low_half.x = static_cast<uint16_t>(val & 0xFFFFu);
-  low_half =
-      static_cast<phi::dtype::bfloat16>(static_cast<float>(low_half) + x);
-  return (val & 0xFFFF0000u) | low_half.x;
-}
-
-inline static __device__ uint32_t bf16_add_to_high_half(uint32_t val, float x) {
-  phi::dtype::bfloat16 high_half;
-  // the bfloat16 in higher 16bits
-  high_half.x = static_cast<uint16_t>(val >> 16);
-  high_half =
-      static_cast<phi::dtype::bfloat16>(static_cast<float>(high_half) + x);
-  return (val & 0xFFFFu) | (static_cast<uint32_t>(high_half.x) << 16);
-}
-
-#if CUDA_VERSION >= 11000 && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
-static __device__ __forceinline__ phi::dtype::bfloat16 CUDABF16ToPDBF16(
-    __nv_bfloat16 x) {
-  return *reinterpret_cast<phi::dtype::bfloat16 *>(&x);
-}
-
-static __device__ __forceinline__ __nv_bfloat16
-PDBF16ToCUDABF16(phi::dtype::bfloat16 x) {
-  return *reinterpret_cast<__nv_bfloat16 *>(&x);
-}
-
-CUDA_ATOMIC_WRAPPER(Add, phi::dtype::bfloat16) {
-  return CUDABF16ToPDBF16(atomicAdd(reinterpret_cast<__nv_bfloat16 *>(address),
-                                    PDBF16ToCUDABF16(val)));
-}
-#else
-CUDA_ATOMIC_WRAPPER(Add, phi::dtype::bfloat16) {
-  // concrete packed bfloat16 value may exist in lower or higher 16bits
-  // of the 32bits address.
-  uint32_t *address_as_ui = reinterpret_cast<uint32_t *>(
-      reinterpret_cast<char *>(address) -
-      (reinterpret_cast<uintptr_t>(address) & 0x02));
-  float val_f = static_cast<float>(val);
-  uint32_t old = *address_as_ui;
-  uint32_t sum;
-  uint32_t newval;
-  uint32_t assumed;
-  if (((uintptr_t)address & 0x02) == 0) {
-    // the bfloat16 value stay at lower 16 bits of the address.
-    do {
-      assumed = old;
-      old = atomicCAS(
-          address_as_ui, assumed, bf16_add_to_low_half(assumed, val_f));
-    } while (old != assumed);
-    phi::dtype::bfloat16 ret;
-    ret.x = old & 0xFFFFu;
-    return ret;
-  } else {
-    // the bfloat16 value stay at higher 16 bits of the address.
-    do {
-      assumed = old;
-      old = atomicCAS(
-          address_as_ui, assumed, bf16_add_to_high_half(assumed, val_f));
-    } while (old != assumed);
-    phi::dtype::bfloat16 ret;
-    ret.x = old >> 16;
-    return ret;
-  }
-}
-#endif
-
-CUDA_ATOMIC_WRAPPER(Add, complex<float>) {
-  float *real = reinterpret_cast<float *>(address);
-  float *imag = real + 1;
-  return complex<float>(CudaAtomicAdd(real, val.real),
-                        CudaAtomicAdd(imag, val.imag));
-}
-
-CUDA_ATOMIC_WRAPPER(Add, complex<double>) {
-  double *real = reinterpret_cast<double *>(address);
-  double *imag = real + 1;
-  return complex<double>(CudaAtomicAdd(real, val.real),
-                         CudaAtomicAdd(imag, val.imag));
-}
 
 // For atomicMul.
 CUDA_ATOMIC_WRAPPER(Mul, int) {

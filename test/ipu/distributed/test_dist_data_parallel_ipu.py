@@ -61,109 +61,111 @@ class TestBase(IPUOpTest):
         bs = self.ipu_bs if self.enable_ipu else self.cpu_bs
         data = np.random.rand(1, 3, 10, 10).astype(np.float32)
 
-        with paddle.static.scope_guard(scope):
-            with paddle.static.program_guard(main_prog, startup_prog):
-                image = paddle.static.data(
-                    name='image', shape=[bs, 3, 10, 10], dtype='float32'
+        with (
+            paddle.static.scope_guard(scope),
+            paddle.static.program_guard(main_prog, startup_prog),
+        ):
+            image = paddle.static.data(
+                name='image', shape=[bs, 3, 10, 10], dtype='float32'
+            )
+            with paddle.static.ipu_shard_guard(index=0, stage=0):
+                conv1 = paddle.nn.Conv2D(
+                    in_channels=image.shape[1],
+                    out_channels=3,
+                    kernel_size=3,
+                    bias_attr=False,
+                )(image)
+
+            with paddle.static.ipu_shard_guard(index=1, stage=1):
+                conv2 = paddle.nn.Conv2D(
+                    in_channels=conv1.shape[1],
+                    out_channels=3,
+                    kernel_size=3,
+                    bias_attr=False,
+                )(conv1)
+
+                # should consider influence of bs
+                loss = paddle.mean(conv2)
+
+            if self.optimizer == 'sgd':
+                opt = paddle.optimizer.SGD(learning_rate=1e-2)
+            elif self.optimizer == 'adam':
+                opt = paddle.optimizer.Adam(learning_rate=1e-2)
+            elif self.optimizer == 'lamb':
+                opt = paddle.optimizer.Lamb(learning_rate=1e-2)
+            else:
+                raise Exception('optimizer must be sgd, adam or lamb')
+
+            opt.minimize(loss)
+
+            if self.enable_ipu:
+                place = paddle.IPUPlace()
+            else:
+                place = paddle.CPUPlace()
+            executor = paddle.static.Executor(place)
+            executor.run(startup_prog)
+
+            if self.enable_ipu:
+                feed_list = [image.name]
+                fetch_list = [loss.name]
+                ipu_strategy = paddle.static.IpuStrategy()
+                ipu_strategy.set_graph_config(
+                    num_ipus=2 * self.ipu_options['replicated_graph_count'],
+                    is_training=True,
+                    enable_manual_shard=True,
                 )
-                with paddle.static.ipu_shard_guard(index=0, stage=0):
-                    conv1 = paddle.nn.Conv2D(
-                        in_channels=image.shape[1],
-                        out_channels=3,
-                        kernel_size=3,
-                        bias_attr=False,
-                    )(image)
-
-                with paddle.static.ipu_shard_guard(index=1, stage=1):
-                    conv2 = paddle.nn.Conv2D(
-                        in_channels=conv1.shape[1],
-                        out_channels=3,
-                        kernel_size=3,
-                        bias_attr=False,
-                    )(conv1)
-
-                    # should consider influence of bs
-                    loss = paddle.mean(conv2)
-
-                if self.optimizer == 'sgd':
-                    opt = paddle.optimizer.SGD(learning_rate=1e-2)
-                elif self.optimizer == 'adam':
-                    opt = paddle.optimizer.Adam(learning_rate=1e-2)
-                elif self.optimizer == 'lamb':
-                    opt = paddle.optimizer.Lamb(learning_rate=1e-2)
-                else:
-                    raise Exception('optimizer must be sgd, adam or lamb')
-
-                opt.minimize(loss)
-
-                if self.enable_ipu:
-                    place = paddle.IPUPlace()
-                else:
-                    place = paddle.CPUPlace()
-                executor = paddle.static.Executor(place)
-                executor.run(startup_prog)
-
-                if self.enable_ipu:
-                    feed_list = [image.name]
-                    fetch_list = [loss.name]
-                    ipu_strategy = paddle.static.IpuStrategy()
-                    ipu_strategy.set_graph_config(
-                        num_ipus=2 * self.ipu_options['replicated_graph_count'],
-                        is_training=True,
-                        enable_manual_shard=True,
-                    )
-                    ipu_strategy.set_options(self.ipu_options)
-                    ipu_strategy.set_options(
-                        {
-                            "enable_distribution": True,
-                            "enable_distributed_replicated_graphs": True,
-                            "global_replica_offset": int(
-                                os.environ.get("PADDLE_TRAINER_ID")
-                            )
-                            * 2,
-                            "global_replication_factor": 4,
-                        }
-                    )
-                    program = paddle.static.IpuCompiledProgram(
-                        main_prog, ipu_strategy=ipu_strategy
-                    ).compile(feed_list, fetch_list)
-                    feed = {
-                        "image": np.tile(
-                            data,
-                            [
-                                self.ipu_options['replicated_graph_count']
-                                * self.ipu_options['batches_per_step']
-                                * self.ipu_options['accumulation_factor'],
-                                1,
-                                1,
-                                1,
-                            ],
+                ipu_strategy.set_options(self.ipu_options)
+                ipu_strategy.set_options(
+                    {
+                        "enable_distribution": True,
+                        "enable_distributed_replicated_graphs": True,
+                        "global_replica_offset": int(
+                            os.environ.get("PADDLE_TRAINER_ID")
                         )
+                        * 2,
+                        "global_replication_factor": 4,
                     }
+                )
+                program = paddle.static.IpuCompiledProgram(
+                    main_prog, ipu_strategy=ipu_strategy
+                ).compile(feed_list, fetch_list)
+                feed = {
+                    "image": np.tile(
+                        data,
+                        [
+                            self.ipu_options['replicated_graph_count']
+                            * self.ipu_options['batches_per_step']
+                            * self.ipu_options['accumulation_factor'],
+                            1,
+                            1,
+                            1,
+                        ],
+                    )
+                }
 
-                else:
-                    program = main_prog
-                    feed = {"image": np.tile(data, [self.cpu_bs, 1, 1, 1])}
+            else:
+                program = main_prog
+                feed = {"image": np.tile(data, [self.cpu_bs, 1, 1, 1])}
 
-                epoch = 10
-                if not self.enable_ipu:
-                    # global replication factor
-                    epoch *= 4
-                    epoch *= self.ipu_options['batches_per_step']
-                    epoch *= self.ipu_options['accumulation_factor']
-                    epoch = epoch / (self.cpu_bs / self.ipu_bs)
+            epoch = 10
+            if not self.enable_ipu:
+                # global replication factor
+                epoch *= 4
+                epoch *= self.ipu_options['batches_per_step']
+                epoch *= self.ipu_options['accumulation_factor']
+                epoch = epoch / (self.cpu_bs / self.ipu_bs)
 
-                results = []
-                for i in range(int(epoch)):
-                    res = executor.run(program, feed=feed, fetch_list=[loss])
-                    if self.enable_ipu:
-                        res = mpi_comm.gather(res, root=0)
-                    results.append(res)
+            results = []
+            for i in range(int(epoch)):
+                res = executor.run(program, feed=feed, fetch_list=[loss])
                 if self.enable_ipu:
-                    if int(os.environ.get("PADDLE_TRAINER_ID")) == 0:
-                        np.savetxt(self.log, np.array(results).flatten())
-                else:
+                    res = mpi_comm.gather(res, root=0)
+                results.append(res)
+            if self.enable_ipu:
+                if int(os.environ.get("PADDLE_TRAINER_ID")) == 0:
                     np.savetxt(self.log, np.array(results).flatten())
+            else:
+                np.savetxt(self.log, np.array(results).flatten())
 
 
 if __name__ == "__main__":

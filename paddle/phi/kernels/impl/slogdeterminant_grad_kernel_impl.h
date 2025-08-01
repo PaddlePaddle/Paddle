@@ -104,8 +104,8 @@ void SlogDeterminantGradKernel(const Context& dev_ctx,
 
   // remove useless first dimension
   int det_grad_size = det_grad.dims().size();
-  std::vector<int> det_grad_vec;
-  for (int i = 1; i < det_grad_size; ++i) {
+  std::vector<int64_t> det_grad_vec;
+  for (int64_t i = 1; i < det_grad_size; ++i) {
     det_grad_vec.emplace_back(det_grad.dims()[i]);
   }
   det_grad.Resize(det_grad.dims().reshape(det_grad_vec));

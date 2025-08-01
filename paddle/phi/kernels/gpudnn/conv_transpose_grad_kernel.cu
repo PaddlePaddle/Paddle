@@ -37,6 +37,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/cuda/cudnn_workspace_helper.h"
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"
 #endif
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 
@@ -55,6 +56,26 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& dev_ctx,
                                       const std::string& data_format,
                                       DenseTensor* dx,
                                       DenseTensor* dfilter) {
+  // 0-size
+  if (x.numel() == 0) {
+    if (dx) dev_ctx.template Alloc<T>(dx);
+    if (dfilter) {
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(dfilter->dims())),
+                            0,
+                            dfilter);
+    }
+    return;
+  }
+  if (filter.numel() == 0) {
+    if (dfilter) dev_ctx.template Alloc<T>(dfilter);
+    if (dx) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+    }
+    return;
+  }
+
   const T* filter_data = filter.data<T>();
   std::vector<int> paddings_ = paddings;
   std::vector<int> dilations_ =
@@ -158,6 +179,12 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& dev_ctx,
   out_vec = common::vectorize<int>(transformed_dout.dims());
 
   // ------------------- cudnn descriptors ---------------------
+#ifndef PADDLE_WITH_HIP
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(transformed_dout);
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(filter);
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(x_transpose);
+#endif
+
   GPUDNNDataLayout layout;
 
   if (strides.size() == 2U) {
@@ -202,9 +229,6 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& dev_ctx,
   SearchResult<miopenConvFwdAlgorithm_t> fwd_result;
   SearchResult<miopenConvBwdWeightsAlgorithm_t> filter_result;
 #else
-  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(transformed_dout);
-  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(filter);
-  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(x_transpose);
   SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result;
   SearchResult<cudnnConvolutionBwdFilterAlgo_t> filter_result;
 #endif

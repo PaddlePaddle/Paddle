@@ -102,6 +102,7 @@ class TestLlamaAuto:
         self.dp = int(os.getenv("dp"))
         self.mp = int(os.getenv("mp"))
         self.pp = int(os.getenv("pp"))
+        self.sep = int(os.getenv("sep", "1"))
         if os.getenv("virtual_pp_degree"):
             self.config.virtual_pp_degree = int(os.getenv("virtual_pp_degree"))
         if os.getenv("use_sp") == "true":
@@ -116,6 +117,23 @@ class TestLlamaAuto:
             self.schedule_mode = "1F1B"
         elif self.config.virtual_pp_degree > 1:
             self.schedule_mode = "VPP"
+
+        self.config.tensor_parallel_degree = self.mp
+        self.config.pipeline_parallel_degree = self.pp
+        self.config.context_parallel_degree = 1
+        self.config.sep_parallel_degree = 1
+        if os.getenv("context_parallel", "false") == "true":
+            self.config.context_parallel_degree = self.sep
+            self.config.use_flash_attention = True
+            dist.init_parallel_env()
+        if os.getenv("sep_parallel", "false") == "true":
+            self.config.sep_parallel_degree = self.sep
+        if self.sep > 1:
+            # only one of the context_parallel and sep_parallel can be True
+            assert (
+                self.config.sep_parallel_degree
+                != self.config.context_parallel_degree
+            ), f"only one of the context_parallel and sep_parallel can be True, but get context_parallel_degree = {self.config.context_parallel_degree} and sep_parallel_degree = {self.config.sep_parallel_degree}, please check your env"
 
         self.init_dist_env()
 
@@ -279,7 +297,7 @@ class TestLlamaAuto:
                         if tr_loss_step:
                             tr_loss += tr_loss_step
 
-                    print(f"step: {step}  loss: {np.array(tr_loss)}")
+                    print(f"step: {step} loss: {np.array(tr_loss)}")
                     lr_scheduler.step()
                     tr_loss = float(0)
 

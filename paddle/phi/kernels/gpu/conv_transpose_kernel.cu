@@ -37,6 +37,11 @@ void DepthwiseConv2dTransposeKernel(const Context& dev_ctx,
                                     const std::vector<int>& dilations,
                                     const std::string& data_format,
                                     DenseTensor* out) {
+  if (x.numel() == 0 || filter.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    return;
+  }
   const DataLayout data_layout = common::StringToDataLayout(data_format);
   DenseTensor filter_ = filter;
   dev_ctx.template Alloc<T>(out);
@@ -81,8 +86,7 @@ void DepthwiseConv2dTransposeKernel(const Context& dev_ctx,
   funcs::SetConstant<Context, T> set_zero;
   set_zero(dev_ctx, out, static_cast<T>(0));
 
-  paddle::operators::math::DepthwiseConvInputGradFunctor<Context, T>
-      depthwiseConvInputGrad;
+  phi::math::DepthwiseConvInputGradFunctor<Context, T> depthwiseConvInputGrad;
   depthwiseConvInputGrad(
       dev_ctx,
       *out,

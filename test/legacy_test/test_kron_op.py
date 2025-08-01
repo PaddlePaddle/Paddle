@@ -246,11 +246,13 @@ class TestKronLayer(unittest.TestCase):
         out_np = np.kron(a, b)
         paddle.enable_static()
         prog = paddle.static.Program()
-        with base.unique_name.guard():
-            with paddle.static.program_guard(prog, prog):
-                a_var = paddle.static.data("a", [-1, -1], dtype="float64")
-                b_var = paddle.static.data("b", [-1, -1], dtype="float64")
-                out_var = paddle.kron(a_var, b_var)
+        with (
+            base.unique_name.guard(),
+            paddle.static.program_guard(prog, prog),
+        ):
+            a_var = paddle.static.data("a", [-1, -1], dtype="float64")
+            b_var = paddle.static.data("b", [-1, -1], dtype="float64")
+            out_var = paddle.kron(a_var, b_var)
         exe = paddle.static.Executor(place=place)
         (res,) = exe.run(prog, feed={'a': a, 'b': b}, fetch_list=[out_var])
         np.testing.assert_allclose(res, out_np)

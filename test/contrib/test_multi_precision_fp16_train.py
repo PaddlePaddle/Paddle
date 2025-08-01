@@ -306,37 +306,39 @@ class TestImageMultiPrecision(unittest.TestCase):
         prog = base.Program()
         startup_prog = base.Program()
         scope = base.core.Scope()
-        with base.scope_guard(scope):
-            with base.program_guard(prog, startup_prog):
-                yield
+        with (
+            base.scope_guard(scope),
+            base.program_guard(prog, startup_prog),
+        ):
+            yield
 
 
 class TestAmpWithNonIterableDataLoader(unittest.TestCase):
     def decorate_with_data_loader(self):
         main_prog = paddle.static.Program()
         start_prog = paddle.static.Program()
-        with paddle.static.program_guard(main_prog, start_prog):
-            with paddle.base.unique_name.guard():
-                image = paddle.static.data(
-                    name='image', shape=[-1, 3, 224, 224], dtype='float32'
-                )
-                label = paddle.static.data(
-                    name='label', shape=[-1, 1], dtype='int64'
-                )
-                zero_var = paddle.tensor.fill_constant(
-                    shape=[1], dtype='int64', value=0
-                )
-                one_var = paddle.tensor.fill_constant(
-                    shape=[1], dtype='int64', value=1
-                )
-                label_val = paddle.static.nn.cond(
-                    label != zero_var, lambda: zero_var, lambda: one_var
-                )
-                paddle.assign(label_val, output=label)
-                net = resnet_cifar10(image)
-                logits = paddle.static.nn.fc(
-                    x=net, size=10, activation="softmax"
-                )
+        with (
+            paddle.static.program_guard(main_prog, start_prog),
+            paddle.base.unique_name.guard(),
+        ):
+            image = paddle.static.data(
+                name='image', shape=[-1, 3, 224, 224], dtype='float32'
+            )
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
+            zero_var = paddle.tensor.fill_constant(
+                shape=[1], dtype='int64', value=0
+            )
+            one_var = paddle.tensor.fill_constant(
+                shape=[1], dtype='int64', value=1
+            )
+            label_val = paddle.static.nn.cond(
+                label != zero_var, lambda: zero_var, lambda: one_var
+            )
+            paddle.assign(label_val, output=label)
+            net = resnet_cifar10(image)
+            logits = paddle.static.nn.fc(x=net, size=10, activation="softmax")
 
         block = main_prog.global_block()
         for op in block.ops:

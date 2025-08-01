@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_places
 
 import paddle
 from paddle import base
@@ -200,15 +199,7 @@ class TestUniqueConsecutiveOp4(TestUniqueConsecutiveOp):
 
 class TestUniqueConsecutiveAPI(unittest.TestCase):
     def setUp(self):
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def check_static_result(self, place):
         with paddle.static.program_guard(
@@ -244,15 +235,7 @@ class TestUniqueConsecutiveAPI(unittest.TestCase):
 
 class TestUniqueConsecutiveCase2API(unittest.TestCase):
     def setUp(self):
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def check_static_result(self, place):
         with paddle.static.program_guard(
@@ -292,15 +275,7 @@ class TestUniqueConsecutiveCase2API(unittest.TestCase):
 
 class TestUniqueConsecutiveCase3API(unittest.TestCase):
     def setUp(self):
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def check_static_result(self, place):
         with paddle.static.program_guard(
@@ -359,6 +334,33 @@ class TestUniqueConsecutiveEmptyInput(OpTest):
         )
         out = reference_unique_consecutive(x)
         out = np.array(out).astype(self.dtype)
+        self.inputs = {
+            'X': x,
+        }
+        self.python_out_sig = ["Out"]
+        self.attrs = {'dtype': paddle.int32}
+        self.outputs = {
+            'Out': out,
+        }
+
+    def test_check_output(self):
+        self.check_output(check_pir=True, check_symbol_infer=False)
+
+
+class TestUniqueConsecutive_ZeroSize(OpTest):
+    def config(self):
+        self.python_api = paddle.unique_consecutive
+
+    def init_kernel_type(self):
+        self.dtype = "float32" if core.is_compiled_with_rocm() else "float64"
+
+    def setUp(self):
+        paddle.disable_static()
+        self.init_kernel_type()
+        self.config()
+        self.op_type = "unique_consecutive"
+        x = np.random.random([2, 0]).astype(self.dtype)
+        out = np.array([]).astype(self.dtype)
         self.inputs = {
             'X': x,
         }

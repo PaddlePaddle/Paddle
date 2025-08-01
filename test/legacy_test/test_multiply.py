@@ -290,5 +290,26 @@ class TestMultiplyApiZeroSize3(TestMultiplyApiZeroSize):
         self.y_shape = [5, 1]
 
 
+class TestMultiplyApiBF16(unittest.TestCase):
+    # Now only check the successful run of multiply with bfloat16 and backward.
+    def setUp(self):
+        paddle.device.set_device('cpu')
+
+    def test_multiply(self):
+        self.x_shape = [1, 1024, 32, 128]
+        self.y_shape = [1, 1024, 1, 128]
+        x = paddle.rand(self.x_shape, dtype='bfloat16')
+        x.stop_gradient = False
+        y = paddle.rand(self.y_shape, dtype='bfloat16')
+        y.stop_gradient = False
+        res = paddle.multiply(x, y)
+        loss = res.sum()
+        loss.backward()
+        assert x.grad is not None
+        assert x.grad.dtype == paddle.bfloat16
+        assert y.grad is not None
+        assert y.grad.dtype == paddle.bfloat16
+
+
 if __name__ == '__main__':
     unittest.main()

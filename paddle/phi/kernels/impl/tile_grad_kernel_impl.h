@@ -17,6 +17,8 @@
 #include <vector>
 
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/tile_grad_kernel.h"
@@ -26,27 +28,56 @@ namespace phi {
 template <typename Context, typename T, int Dims>
 void TileBackward(const Context& dev_ctx,
                   const DenseTensor& out_grad,
-                  const std::vector<int>& reshape_dims_vec,
-                  const std::vector<int>& reduce_dims_vec,
+                  const std::vector<int64_t>& reshape_dims_vec,
+                  const std::vector<int64_t>& reduce_dims_vec,
                   DenseTensor* x_grad) {
   size_t reshape_size = reshape_dims_vec.size();
   size_t reduce_size = reduce_dims_vec.size();
   dev_ctx.template Alloc<T>(x_grad);
 
-  auto eigen_x_grad = EigenVector<T>::Flatten(*x_grad);
-  Eigen::DSizes<Eigen::DenseIndex, Dims * 2> reshape_dims;
-  for (size_t i = 0; i < reshape_size; ++i) {
-    reshape_dims[i] = reshape_dims_vec[i];
-  }
-  Eigen::DSizes<Eigen::DenseIndex, Dims> reduce_dims;
-  for (size_t i = 0; i < reduce_size; ++i) {
-    reduce_dims[i] = reduce_dims_vec[i];
-  }
+  if constexpr (std::is_same_v<T, dtype::float16> ||
+                std::is_same_v<T, dtype::bfloat16>) {
+    const DenseTensor out_grad_fp32 =
+        phi::Cast<T, Context>(dev_ctx, out_grad, DataType::FLOAT32);
+    DenseTensor x_grad_fp32;
+    x_grad_fp32.Resize(x_grad->dims());
+    dev_ctx.template Alloc<float>(&x_grad_fp32);
+    auto eigen_x_grad = EigenVector<float>::Flatten(x_grad_fp32);
+    Eigen::DSizes<Eigen::DenseIndex, Dims * 2> reshape_dims;
+    for (size_t i = 0; i < reshape_size; ++i) {
+      reshape_dims[i] = reshape_dims_vec[i];
+    }
+    Eigen::DSizes<Eigen::DenseIndex, Dims> reduce_dims;
+    for (size_t i = 0; i < reduce_size; ++i) {
+      reduce_dims[i] = reduce_dims_vec[i];
+    }
+    const auto eigen_out_grad_fp32 = EigenVector<float>::Flatten(out_grad_fp32);
+    auto& place = *dev_ctx.eigen_device();
+    funcs::EigenBroadcastGrad<std::decay_t<decltype(place)>, float, Dims>::Eval(
+        place, eigen_x_grad, eigen_out_grad_fp32, reduce_dims, reshape_dims);
+    if constexpr (std::is_same_v<T, dtype::float16>) {
+      phi::CastKernel<float, Context>(
+          dev_ctx, x_grad_fp32, DataType::FLOAT16, x_grad);
+    } else {
+      phi::CastKernel<float, Context>(
+          dev_ctx, x_grad_fp32, DataType::BFLOAT16, x_grad);
+    }
+  } else {
+    auto eigen_x_grad = EigenVector<T>::Flatten(*x_grad);
+    Eigen::DSizes<Eigen::DenseIndex, Dims * 2> reshape_dims;
+    for (size_t i = 0; i < reshape_size; ++i) {
+      reshape_dims[i] = reshape_dims_vec[i];
+    }
+    Eigen::DSizes<Eigen::DenseIndex, Dims> reduce_dims;
+    for (size_t i = 0; i < reduce_size; ++i) {
+      reduce_dims[i] = reduce_dims_vec[i];
+    }
 
-  auto eigen_out_grad = EigenVector<T>::Flatten(out_grad);
-  auto& place = *dev_ctx.eigen_device();
-  funcs::EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::Eval(
-      place, eigen_x_grad, eigen_out_grad, reduce_dims, reshape_dims);
+    auto eigen_out_grad = EigenVector<T>::Flatten(out_grad);
+    auto& place = *dev_ctx.eigen_device();
+    funcs::EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::Eval(
+        place, eigen_x_grad, eigen_out_grad, reduce_dims, reshape_dims);
+  }
 }
 
 template <typename T, typename Context>
@@ -55,8 +86,14 @@ void TileGradKernel(const Context& dev_ctx,
                     const DenseTensor& out_grad,
                     const IntArray& repeat_times,
                     DenseTensor* x_grad) {
+  // x_grad->numel() may be not 0.
+  if (out_grad.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    return;
+  }
   auto x_dims = x.dims();
-  auto vec_x_dims = common::vectorize<int>(x_dims);
+  auto vec_x_dims = common::vectorize<int64_t>(x_dims);
   auto repeat_times_data = repeat_times.GetData();
   if (repeat_times_data.size() < vec_x_dims.size()) {
     int diff = vec_x_dims.size() - repeat_times_data.size();
@@ -69,8 +106,8 @@ void TileGradKernel(const Context& dev_ctx,
   // 2. reduce_dims_vec is the dimension parameter to compute gradients. For
   //    each dimension expanded, the gradients should be summed to original
   //    size.
-  std::vector<int> reshape_dims_vec;
-  std::vector<int> reduce_dims_vec;
+  std::vector<int64_t> reshape_dims_vec;
+  std::vector<int64_t> reduce_dims_vec;
   for (size_t i = 0; i < repeat_times_data.size(); ++i) {
     reduce_dims_vec.push_back(reshape_dims_vec.size());
     reshape_dims_vec.push_back(repeat_times_data[i]);
@@ -134,9 +171,13 @@ void TileGradKernel(const Context& dev_ctx,
         TileBackward<Context, T, 6>(
             dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, x_grad);
         break;
+      case 7:
+        TileBackward<Context, T, 7>(
+            dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, x_grad);
+        break;
       default:
         PADDLE_THROW(errors::InvalidArgument(
-            "Only support tensor with rank being between 1 and 6. But "
+            "Only support tensor with rank being between 1 and 7. But "
             "received tensor's rank = %d.",
             dims));
     }

@@ -692,5 +692,55 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         self.assertRaises(AssertionError, test_error2)
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
+    "core is not compiled with CUDA or ROCM ",
+)
+class TestFusedRotaryPositionEmbeddingZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.dtype = "float32"
+        self.qkv_shape = [0, 1, 8, 8]
+        self.sin_cos_shape = [1, 1, 1, 8]
+
+    def init_data(self):
+        self.q = paddle.randn(self.qkv_shape, dtype=self.dtype)
+        self.k = paddle.randn(self.qkv_shape, dtype=self.dtype)
+        self.v = paddle.randn(self.qkv_shape, dtype=self.dtype)
+        self.q.stop_gradient = False
+        self.k.stop_gradient = False
+        self.v.stop_gradient = False
+        self.sin = paddle.sin(
+            paddle.randn(self.sin_cos_shape, dtype=self.dtype)
+        )
+        self.cos = paddle.cos(
+            paddle.randn(self.sin_cos_shape, dtype=self.dtype)
+        )
+
+    def _test_forward_backward(self):
+        out_q, out_k, out_v = fused_rotary_position_embedding(
+            self.q,
+            self.k,
+            self.v,
+            sin=self.sin,
+            cos=self.cos,
+            use_neox_rotary_style=False,
+        )
+        out = out_q + out_k + out_v
+        out.backward()
+        np.testing.assert_allclose(
+            self.q.shape, self.q.grad.shape, rtol=1e-05, atol=1e-06
+        )
+        np.testing.assert_allclose(
+            self.k.shape, self.k.grad.shape, rtol=1e-05, atol=1e-06
+        )
+        np.testing.assert_allclose(
+            self.v.shape, self.v.grad.shape, rtol=1e-05, atol=1e-06
+        )
+
+    def test_zero_size(self):
+        self.init_data()
+        self._test_forward_backward()
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -298,19 +298,50 @@ class TestLogsumexpAPI(unittest.TestCase):
         paddle.enable_static()
 
 
-# Test logsumexp bug
-class TestLogZeroError(unittest.TestCase):
-    def test_errors(self):
-        with paddle.base.dygraph.guard():
+class TestLogsumexp_ZeroSize(OpTest):
+    def setUp(self):
+        self.op_type = 'logsumexp'
+        self.python_api = logsumexp_wrapper
+        self.public_python_api = logsumexp_wrapper
+        self.dtype = 'float64'
+        self.shape = [2, 3, 0]
+        self.axis = [-1]  # out return shape [2, 3], value -inf
+        self.keepdim = False
+        self.reduce_all = False
+        self.set_attrs()
 
-            def test_0_size():
-                array = np.array([], dtype=np.float32)
-                x = paddle.to_tensor(
-                    np.reshape(array, [0, 0, 0]), dtype='float32'
-                )
-                paddle.logsumexp(x, axis=1)
+        np.random.seed(10)
+        x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        out = ref_logsumexp(x, self.axis, self.keepdim, self.reduce_all)
 
-            self.assertRaises(ValueError, test_0_size)
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
+        self.attrs = {
+            'axis': self.axis,
+            'keepdim': self.keepdim,
+            'reduce_all': self.reduce_all,
+        }
+
+    def set_attrs(self):
+        pass
+
+    def test_check_output(self):
+        self.check_output(
+            check_pir=True,
+        )
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            ['Out'],
+            check_pir=True,
+        )
+
+
+class TestLogsumexp_ZeroSize2(TestLogsumexp_ZeroSize):
+    def set_attrs(self):
+        self.shape = [2, 3, 0]
+        self.axis = [1]  # out return shape [2, 0]
 
 
 if __name__ == '__main__':

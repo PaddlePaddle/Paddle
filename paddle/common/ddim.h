@@ -128,6 +128,8 @@ class TEST_API DDim {
 
   DDim reshape(std::vector<int>& shape) const;  // NOLINT
 
+  DDim reshape(std::vector<int64_t>& shape) const;  // NOLINT
+
   DDim transpose(const std::vector<int>& axis) const;
 
  private:

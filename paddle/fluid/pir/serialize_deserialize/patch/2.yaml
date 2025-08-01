@@ -4,13 +4,13 @@ op_patches:
       - action : modify_attr
         object : strides
         type : pir::ArrayAttribute
-        default :
+        data :
           - type: pir::Int64Attribute
           - type: pir::Int64Attribute
       - action : modify_attr
         object : paddings
         type : pir::ArrayAttribute
-        default :
+        data :
           - type: pir::Int64Attribute
           - type: pir::Int64Attribute
   - op_name : pd_op.pool2d
@@ -18,13 +18,13 @@ op_patches:
       - action : modify_attr
         object : strides
         type : pir::ArrayAttribute
-        default :
+        data :
           - type: pir::Int64Attribute
           - type: pir::Int64Attribute
       - action : modify_attr
         object : paddings
         type : pir::ArrayAttribute
-        default :
+        data :
           - type: pir::Int64Attribute
           - type: pir::Int64Attribute
   - op_name : pd_op.pool3d
@@ -32,21 +32,21 @@ op_patches:
       - action : modify_attr
         object : kernel_size
         type : pir::ArrayAttribute
-        default :
+        data :
           - type: pir::Int64Attribute
           - type: pir::Int64Attribute
           - type: pir::Int64Attribute
       - action : modify_attr
         object : strides
         type : pir::ArrayAttribute
-        default :
+        data :
           - type: pir::Int64Attribute
           - type: pir::Int64Attribute
           - type: pir::Int64Attribute
       - action : modify_attr
         object : paddings
         type : pir::ArrayAttribute
-        default :
+        data :
           - type: pir::Int64Attribute
           - type: pir::Int64Attribute
           - type: pir::Int64Attribute
@@ -55,5 +55,5 @@ op_patches:
       - action : modify_attr
         object : target_shape
         type : pir::ArrayAttribute
-        default :
+        data :
           - type: pir::Int64Attribute

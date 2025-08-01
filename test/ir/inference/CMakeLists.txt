@@ -4,6 +4,10 @@ file(
   "test_*.py")
 string(REPLACE ".py" "" TEST_INFERENCE_IR_PASSES "${TEST_INFERENCE_IR_PASSES}")
 
+if(WITH_COVERAGE)
+  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_quant_linear_fuse_pass")
+endif()
+
 file(
   GLOB TEST_TRT_IR_PASSES
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"

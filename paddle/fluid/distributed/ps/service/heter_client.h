@@ -93,17 +93,9 @@ class HeterClient {
     options.timeout_ms = FLAGS_pserver_timeout_ms;
     std::vector<std::shared_ptr<brpc::Channel>>* client_channels = nullptr;
     if (peer_role == PEER_ROLE_IS_SWITCH) {
-#ifdef PADDLE_WITH_ARM_BRPC
       if (need_encrypt) {
         options.mutable_ssl_options();
       }
-      options.connection_type = "";
-      VLOG(4) << "ssl enabled in arm";
-#else
-      if (need_encrypt) {
-        options.mutable_ssl_options();
-      }
-#endif
       client_channels = &peer_switch_channels_;
     } else if (peer_role == PEER_ROLE_IS_WORKER) {
       client_channels = &peer_worker_channels_;

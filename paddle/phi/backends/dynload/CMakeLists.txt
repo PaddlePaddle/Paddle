@@ -33,6 +33,10 @@ if(WITH_ROCM)
     rocsolver.cc)
 endif()
 
+if(WITH_XPU_FFT)
+  list(APPEND XPU_SRCS xpufft.cc)
+endif()
+
 # There is no macOS version of NCCL.
 # Disable nvrtc and cuda_driver api on macOS, and only do an early test on Linux and Windows.
 if(NOT APPLE)
@@ -92,10 +96,6 @@ if(WITH_FLASHATTN_V3)
   list(APPEND DYNLOAD_COMMON_SRCS flashattnv3.cc)
 endif()
 
-if(WITH_PSCORE)
-  list(APPEND DYNLOAD_COMMON_SRCS afs_api.cc)
-endif()
-
 if(MKL_FOUND AND WITH_ONEMKL)
   message("ONEMKL INCLUDE directory is ${MKL_INCLUDE}")
   list(APPEND DYNLOAD_COMMON_SRCS mklrt.cc)
@@ -105,6 +105,8 @@ if(WITH_ROCM)
   collect_srcs(backends_srcs SRCS ${DYNLOAD_COMMON_SRCS} ${HIP_SRCS})
 elseif(WITH_GPU)
   collect_srcs(backends_srcs SRCS ${DYNLOAD_COMMON_SRCS} ${CUDA_SRCS})
+elseif(WITH_XPU_FFT)
+  collect_srcs(backends_srcs SRCS ${DYNLOAD_COMMON_SRCS} ${XPU_SRCS})
 else()
   collect_srcs(backends_srcs SRCS ${DYNLOAD_COMMON_SRCS})
 endif()

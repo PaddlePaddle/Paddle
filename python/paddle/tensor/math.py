@@ -2869,15 +2869,26 @@ def inner(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
 
     """
+    xshape = x.shape
+    yshape = y.shape
     if in_dynamic_mode() and (x.size == 1 or y.size == 1):
         return multiply(x, y)
     else:
-        xshape = x.shape
-        yshape = y.shape
         dstshape = list(xshape[:-1]) + list(yshape[:-1])
-
-        nx = x.reshape((-1, xshape[-1]))
-        ny = y.reshape((-1, yshape[-1]))
+        if xshape[-1] == 0:  # If the last dimension is 0
+            if len(xshape) == 1:  # shape is [0]
+                nx = x.reshape((1, 0))
+            else:
+                nx = x.reshape((math.prod(xshape[:-1]), 0))
+        else:
+            nx = x.reshape((-1, xshape[-1]))
+        if yshape[-1] == 0:  # If the last dimension is 0
+            if len(yshape) == 1:  # shape is [0]
+                ny = y.reshape((1, 0))
+            else:
+                ny = y.reshape((math.prod(yshape[:-1]), 0))
+        else:
+            ny = y.reshape((-1, yshape[-1]))
 
         def __check_input(x, y):
             var_names = {'x': x, 'y': y}
@@ -2954,7 +2965,7 @@ def outer(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         ny = y.reshape((1, -1))
 
     if in_dynamic_mode():
-        return _C_ops.matmul(nx, ny, False, False)
+        return _C_ops.multiply(nx, ny)
 
     def __check_input(x, y):
         var_names = {'x': x, 'y': y}
@@ -2968,7 +2979,7 @@ def outer(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
     __check_input(nx, ny)
     if in_pir_mode():
-        return _C_ops.matmul(nx, ny, False, False)
+        return _C_ops.multiply(nx, ny)
     else:
         helper = LayerHelper('outer', **locals())
         out = helper.create_variable_for_type_inference(dtype=nx.dtype)
@@ -4012,6 +4023,9 @@ def clip(
     elif x_dtype == 'paddle.float16':
         min_ = float(np.finfo(np.float16).min)
         max_ = float(np.finfo(np.float16).max)
+    elif x_dtype == 'paddle.float64':
+        min_ = float(np.finfo(np.float64).min)
+        max_ = float(np.finfo(np.float64).max)
     else:
         min_ = float(np.finfo(np.float32).min)
         max_ = float(np.finfo(np.float32).max)
@@ -4681,8 +4695,8 @@ def cumprod(
 
     Args:
         x (Tensor): the input tensor need to be cumproded.
-        dim (int|None, optional): the dimension along which the input tensor will be accumulated. It need to be in the range of [-x.rank, x.rank),
-                    where x.rank means the dimensions of the input tensor x and -1 means the last dimension.
+        dim (int|None, optional): the dimension along which the input tensor will be accumulated. It need to be in the range of [-x.rank, x.rank) or None,
+                    where x.rank means the dimensions of the input tensor x and -1 means the last dimension. The default (None) is to compute the cumprod over the flattened array.
         dtype (str|paddle.dtype|np.dtype, optional): The data type of the output tensor, can be bfloat16, float16, float32, float64, int32, int64,
                     complex64, complex128. If specified, the input tensor is casted to dtype before the operation is performed.
                     This is useful for preventing data type overflows. The default value is None.
@@ -4729,6 +4743,9 @@ def cumprod(
             >>> assert y.dtype == paddle.float64
 
     """
+    if dim is None:
+        dim = -1
+        x = x.flatten(0, len(x.shape) - 1)
 
     if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
         x = cast(x, dtype)
@@ -4775,6 +4792,10 @@ def cumprod_(
     Inplace version of ``cumprod`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_cumprod`.
     """
+    if dim is None:
+        dim = -1
+        x = _C_ops.flatten_(x, 0, len(x.shape) - 1)
+
     if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
         x = cast_(x, dtype)
 
@@ -5011,6 +5032,10 @@ def prod(
         )
         if x.dtype != convert_np_dtype_to_dtype_(dtype):
             x = cast(x, dtype)
+
+    # axis is 0-size tensor.
+    if paddle.is_tensor(axis) and axis.shape == [0]:
+        return x
 
     reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
     if in_dynamic_or_pir_mode():
@@ -6808,7 +6833,7 @@ def diff(
 def angle(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     Element-wise angle of complex numbers. For non-negative real numbers, the angle is 0 while
-    for negative real numbers, the angle is :math:`\pi`.
+    for negative real numbers, the angle is :math:`\pi`, and NaNs are propagated..
 
     Equation:
         .. math::

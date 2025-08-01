@@ -450,6 +450,75 @@ class TestMarkerUnified(Dy2StTestBase):
             )
         )
 
+    def test_nn_layer_subclass_skip_sot_only(self):
+        @paddle.jit.marker.unified(for_sot=True, for_ast=False)
+        class MyLayer(paddle.nn.Layer):
+
+            def __init__(self):
+                super().__init__()
+                self.w = paddle.create_parameter(shape=[1], dtype='float32')
+
+            def forward(self, x):
+                return x * self.w
+
+        self.assertFalse(
+            TransformOptions.check_fn_need_transform(
+                MyLayer(), TransformOptions.ToStaticMode.SOT
+            )
+        )
+
+        self.assertTrue(
+            TransformOptions.check_fn_need_transform(
+                MyLayer(), TransformOptions.ToStaticMode.AST
+            )
+        )
+
+    def test_nn_layer_subclass_skip_ast_only(self):
+        @paddle.jit.marker.unified(for_sot=False, for_ast=True)
+        class MyLayer(paddle.nn.Layer):
+
+            def __init__(self):
+                super().__init__()
+                self.w = paddle.create_parameter(shape=[1], dtype='float32')
+
+            def forward(self, x):
+                return x * self.w
+
+        self.assertTrue(
+            TransformOptions.check_fn_need_transform(
+                MyLayer(), TransformOptions.ToStaticMode.SOT
+            )
+        )
+
+        self.assertFalse(
+            TransformOptions.check_fn_need_transform(
+                MyLayer(), TransformOptions.ToStaticMode.AST
+            )
+        )
+
+    def test_nn_layer_subclass_skip_ast_and_sot(self):
+        @paddle.jit.marker.unified()
+        class MyLayer(paddle.nn.Layer):
+
+            def __init__(self):
+                super().__init__()
+                self.w = paddle.create_parameter(shape=[1], dtype='float32')
+
+            def forward(self, x):
+                return x * self.w
+
+        self.assertFalse(
+            TransformOptions.check_fn_need_transform(
+                MyLayer(), TransformOptions.ToStaticMode.SOT
+            )
+        )
+
+        self.assertFalse(
+            TransformOptions.check_fn_need_transform(
+                MyLayer(), TransformOptions.ToStaticMode.AST
+            )
+        )
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -184,6 +184,10 @@ struct VisitDataCudaArgMinMaxFunctor {
       x_dims = x.dims();
       if (axis < 0) new_axis = axis + x.dims().size();
     }
+    if (x.numel() == 0) {
+      dev_ctx.template Alloc<IndType>(out);
+      return;
+    }
     // For 0D Tensor
     if (x.dims().size() == 0) {
       dev_ctx.template Alloc<IndType>(out);
@@ -223,7 +227,7 @@ void ArgMinMaxOpCUDAKernel(const Context& dev_ctx,
                            bool flatten,
                            DataType dtype,
                            DenseTensor* out) {
-  PADDLE_ENFORCE_GT(
+  PADDLE_ENFORCE_GE(
       x.numel(),
       0,
       common::errors::InvalidArgument(

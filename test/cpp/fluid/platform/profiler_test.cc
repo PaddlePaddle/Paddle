@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 
+#include "glog/logging.h"
 #include "gtest/gtest.h"
 
 TEST(Event, CpuElapsedTime) {

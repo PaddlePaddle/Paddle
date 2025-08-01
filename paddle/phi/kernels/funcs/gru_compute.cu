@@ -21,18 +21,18 @@ namespace funcs {
 
 template <typename T>
 struct GRUUnitFunctor<phi::GPUContext, T> {
-  static void compute(const phi::GPUContext &context,
+  static void compute(const phi::GPUContext &dev_ctx,
                       GRUMetaValue<T> value,
                       int frame_size,
                       int batch_size,
                       const phi::funcs::detail::ActivationType active_node,
                       const phi::funcs::detail::ActivationType active_gate,
                       bool origin_mode) {
-    auto stream = context.stream();
+    auto stream = dev_ctx.stream();
     dim3 threads;
     dim3 grid;
     if (batch_size == 1) {
-      if (context.GetComputeCapability() >= 70) {
+      if (dev_ctx.GetComputeCapability() >= 70) {
         if (frame_size < 16) {
           constexpr int tiled_size = 8;
           int frame_blocks = (frame_size * 2 + tiled_size - 1) / tiled_size;
@@ -93,7 +93,7 @@ struct GRUUnitFunctor<phi::GPUContext, T> {
       threads = dim3(32, 32);
       grid = dim3((frame_size + 32 - 1) / 32, (batch_size + 32 - 1) / 32);
     }
-    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(context);
+    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
     if (value.prev_out_value) {
       blas.GEMM(false,
                 false,
@@ -184,7 +184,7 @@ struct GRUUnitFunctor<phi::GPUContext, T> {
 
 template <typename T>
 struct GRUUnitGradFunctor<phi::GPUContext, T> {
-  static void compute(const phi::GPUContext &context,
+  static void compute(const phi::GPUContext &dev_ctx,
                       GRUMetaValue<T> value,
                       GRUMetaGrad<T> grad,
                       int frame_size,
@@ -192,7 +192,7 @@ struct GRUUnitGradFunctor<phi::GPUContext, T> {
                       const phi::funcs::detail::ActivationType active_node,
                       const phi::funcs::detail::ActivationType active_gate,
                       bool origin_mode) {
-    auto stream = context.stream();
+    auto stream = dev_ctx.stream();
     dim3 threads;
     dim3 grid;
     if (batch_size == 1) {
@@ -235,7 +235,7 @@ struct GRUUnitGradFunctor<phi::GPUContext, T> {
           origin_mode);
     }
 
-    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(context);
+    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
 
     if (value.prev_out_value && grad.prev_out_grad) {
       blas.GEMM(false,

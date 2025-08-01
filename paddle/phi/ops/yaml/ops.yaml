@@ -589,7 +589,7 @@
 
 - op : bce_loss
   args : (Tensor input, Tensor label)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : BCELossInferMeta
   kernel :
@@ -1122,6 +1122,7 @@
   output : Tensor(out)
   infer_meta :
     func : Conv2dTransposeInferMeta
+    spmd_rule : Conv2dTransposeInferSpmd
   kernel :
     func : conv2d_transpose
     data_type : x
@@ -1145,6 +1146,7 @@
   output : Tensor
   infer_meta :
     func : Conv3DInferMeta
+    spmd_rule : Conv3dInferSpmd
   kernel :
     func : conv3d
     data_type : input
@@ -1418,6 +1420,7 @@
   output : Tensor(out)
   infer_meta :
     func : DepthwiseConvInferMeta
+    spmd_rule : DepthwiseConv2dInferSpmd
   kernel :
     func : depthwise_conv2d
     data_type : input
@@ -2088,15 +2091,16 @@
   backward : flash_attn_v3_grad
 
 - op : flash_attn_v3_varlen
-  args : (Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor q_v_, Tensor q_descale_, Tensor k_descale_, Tensor v_descale_, float softmax_scale, bool is_causal, int window_size_left, int window_size_right, float softcap, int num_splits, bool manual_set_pack_gqa, bool pack_gqa_, int sm_margin, int max_seqlen_q, int max_seqlen_k)
+  args : (Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor seqused_q, Tensor seqused_k, Tensor qv, Tensor q_descale, Tensor k_descale, Tensor v_descale, int max_seqlen_q, int max_seqlen_k, float softmax_scale, bool causal, int window_size_left, int window_size_right, float softcap, int num_splits, bool manual_set_pack_gqa, bool pack_gqa, int sm_margin)
   output : Tensor(out), Tensor(softmax_lse)
-  optional : q_v_, q_descale_, k_descale_, v_descale_
+  optional : seqused_q, seqused_k, qv, q_descale, k_descale, v_descale
   infer_meta :
-    func : FlashAttnV3InferMeta
+    func : FlashAttnV3VarlenInferMeta
     param : [q, k, v]
   kernel :
     func : flash_attn_v3_varlen
     data_type : q
+  backward : flash_attn_v3_varlen_grad
 
 - op : flash_attn_varlen_qkvpacked
   args : (Tensor qkv, Tensor cu_seqlens_q,  Tensor cu_seqlens_k, Tensor fixed_seed_offset, Tensor attn_mask, Scalar max_seqlen_q, Scalar max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "", bool varlen_padded = true)
@@ -2799,7 +2803,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : index_elementwise_get
-  args : (Tensor x, Tensor[] index, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_stride)
+  args : (Tensor x, Tensor[] index, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_stride, int64_t slice_offset = 0, bool accumulate = true)
   output : Tensor (out)
   infer_meta :
     func : IndexElementwiseGetInferMeta
@@ -2809,7 +2813,7 @@
   backward : index_elementwise_get_grad
 
 - op : index_elementwise_put
-  args : (Tensor x, Tensor[] index, Tensor value, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides)
+  args : (Tensor x, Tensor[] index, Scalar value, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset)
   output : Tensor (out)
   infer_meta :
     func : IndexElementwisePutInferMeta
@@ -2820,11 +2824,24 @@
   backward : index_elementwise_put_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : index_elementwise_put_with_tensor
+  args : (Tensor x, Tensor[] index, Tensor value, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset)
+  output : Tensor (out)
+  infer_meta :
+    func : IndexElementwisePutWithTensorInferMeta
+  kernel :
+    func : index_elementwise_put_with_tensor
+    data_type : x
+  inplace : (x -> out)
+  backward : index_elementwise_put_with_tensor_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : index_put
   args : (Tensor x, Tensor[] indices, Tensor value, bool accumulate=false)
   output : Tensor(out)
   infer_meta :
     func : IndexPutInferMeta
+    spmd_rule : IndexPutInferSpmd
   kernel :
     func : index_put
     data_type : x
@@ -2972,7 +2989,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : kthvalue
-  args : (Tensor x, int k = 1, int axis = -1, bool keepdim = false)
+  args : (Tensor x, int64_t k = 1, int axis = -1, bool keepdim = false)
   output : Tensor(out), Tensor(indices)
   infer_meta :
     func : KthvalueInferMeta
@@ -3673,21 +3690,43 @@
   output : Tensor(y)
   infer_meta :
     func : MoeCombineInferMeta
+    spmd_rule : MoECombineInferSpmd
   kernel :
     func : moe_combine
     data_type : x
   backward : moe_combine_grad
+
+- op : moe_combine_no_weight
+  args : (Tensor x, Tensor combine_weight, Tensor scatter_index, float epsilon = 1.0e-15)
+  output : Tensor(y)
+  infer_meta :
+    func : MoeCombineNoWeightInferMeta
+  kernel :
+    func : moe_combine_no_weight
+    data_type : x
+  backward : moe_combine_no_weight_grad
 
 - op : moe_gate_dispatch
   args : (Tensor x, Tensor gate_logits, Tensor corr_bias, int64_t k, int64_t capacity, bool use_pad)
   output : Tensor(y), Tensor(combine_weights), Tensor(scatter_index), Tensor(expert_offset), Tensor(expert_id)
   infer_meta :
     func : MoeGateDispatchInferMeta
+    spmd_rule : MoEGateDispatchInferSpmd
   kernel :
     func : moe_gate_dispatch
     data_type : x
   optional : corr_bias
   backward : moe_gate_dispatch_grad
+
+- op : moe_gate_dispatch_and_quant
+  args : (Tensor x, Tensor gate_logits, Tensor corr_bias, int64_t k, int64_t capacity, bool use_pad, bool use_pow2_scale)
+  output : Tensor(out_fp8), Tensor(scale), Tensor(combine_weights), Tensor(scatter_index), Tensor(expert_offset), Tensor(expert_id)
+  infer_meta :
+    func : MoeGateDispatchAndQuantInferMeta
+  kernel :
+    func : moe_gate_dispatch_and_quant
+    data_type : x
+  optional : corr_bias
 
 - op : moe_gate_dispatch_partial_nosoftmaxtopk
   args : (Tensor x, Tensor combine_weights, Tensor expert_id, int64_t k, int64_t capacity, int64_t num_experts, bool use_pad, int64_t expert_start_index, int64_t expert_end_index, bool reverse_token_drop)
@@ -4444,6 +4483,18 @@
     data_type : x
   backward : reverse_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
+
+- op : rint
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : rint
+  inplace : (x -> out)
+  backward : rint_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : rms_norm
   args : (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, float epsilon, int begin_norm_axis, float quant_scale, int quant_round_type, float quant_max_bound, float quant_min_bound)
@@ -5219,6 +5270,7 @@
   infer_meta :
     func : TakeAlongAxisInferMeta
     param : [arr, indices, axis]
+    spmd_rule : TakeAlongAxisInferSpmd
   kernel :
     func : take_along_axis
     data_type : arr
@@ -5801,6 +5853,24 @@
   optional: seq_length
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : paddle::dialect::ForwardOnlyTrait
+
+- op: fp8_gemm_blockwise_
+  args: (Tensor A, Tensor A_scale, Tensor B, Tensor B_scale, Tensor input_result, Tensor bias, Tensor pre_gelu, Tensor workspace, bool transa, bool transb, bool grad, bool accumulate, bool use_split_accumulator, int math_sm_count, bool is_A_1d_scaled, bool is_B_1d_scaled)
+  output: Tensor (output), Tensor (pre_gelu_out), Tensor (workspace_out)
+  inplace: (input_result -> output), (pre_gelu -> pre_gelu_out), (workspace -> workspace_out)
+  infer_meta:
+    func: Fp8GemmBlockwiseInferMeta
+  kernel:
+    func: fp8_gemm_blockwise
+
+- op: fp8_quant_blockwise
+  args: (Tensor x, float epsilon, bool using_1x128_vec_quant, bool input_transpose, bool output_scale_transpose, bool return_transpose_only, bool using_e5m2, bool using_pow2_scale)
+  output: Tensor(out), Tensor(scale), Tensor(out_transposed), Tensor(scale_transposed)
+  infer_meta:
+    func: Fp8QuantBlockwiseInferMeta
+  kernel:
+    func: fp8_quant_blockwise
+    data_type: x
 
 - op: fused_rms_norm_ext
   args: (Tensor x, Tensor scale, float epsilon)

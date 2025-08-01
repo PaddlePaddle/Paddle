@@ -147,8 +147,7 @@ def update_api_info_file(fail_case_list, api_info_file):
 
     # update api info file
     with open(api_info_file, 'w') as f:
-        for api_info_line in api_info_list:
-            f.write(api_info_line)
+        f.writelines(api_info_line for api_info_line in api_info_list)
 
 
 def summary_results(check_results, api_info_file):
