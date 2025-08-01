@@ -2502,7 +2502,7 @@ AnalysisPredictor::GetInputTypes() {
   std::vector<std::string> names = GetInputNames();
   if (load_pir_model_) {
     for (const auto &name : names) {
-      auto tensor= GetInputTensor(name);
+      auto tensor = GetInputTensor(name);
       input_type[name] = tensor->type();
     }
   } else {
