@@ -3502,6 +3502,24 @@ def unique_consecutive(
     ):
         attr_dtype = convert_np_dtype_to_dtype_(dtype)
 
+    if in_dynamic_mode():
+        if math.prod(x.shape) == 0:
+            if axis == []:
+                outs = [paddle.to_tensor([], dtype=x.dtype)]
+            else:
+                outs = [x.clone()]
+            if dtype == 'int32' or dtype == paddle.int32:
+                return_dtype = paddle.int32
+            else:
+                return_dtype = paddle.int64
+            if return_inverse:
+                outs.append(paddle.to_tensor([], dtype=return_dtype))
+            if return_counts:
+                outs.append(paddle.to_tensor([], dtype=return_dtype))
+            if len(outs) == 1:
+                return outs[0]
+            return tuple(outs)
+
     if in_dynamic_or_pir_mode():
         out, inverse, counts = _C_ops.unique_consecutive(
             x, return_inverse, return_counts, axis, attr_dtype
@@ -3738,6 +3756,22 @@ def unique(
         axis = [axis]
     attr_dtype = convert_np_dtype_to_dtype_(dtype)
     if in_dynamic_mode():
+        if math.prod(x.shape) == 0:
+            outs = [x.clone()]
+            if dtype == 'int32' or dtype == paddle.int32:
+                return_dtype = paddle.int32
+            else:
+                return_dtype = paddle.int64
+            if return_index:
+                outs.append(paddle.to_tensor([], dtype=return_dtype))
+            if return_inverse:
+                outs.append(paddle.to_tensor([], dtype=return_dtype))
+            if return_counts:
+                outs.append(paddle.to_tensor([], dtype=return_dtype))
+            if len(outs) == 1:
+                return outs[0]
+            return tuple(outs)
+
         out, indices, inverse, counts = _C_ops.unique(
             x, return_index, return_inverse, return_counts, axis, attr_dtype
         )
@@ -5029,6 +5063,7 @@ def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
             x,
             'x',
             [
+                'float8_e4m3fn',
                 'float16',
                 'float32',
                 'float64',
@@ -6645,10 +6680,15 @@ def take_along_axis(
         )
     axis = non_negative_axis(arr, axis)
     if broadcast:
-        broadcast_shape = infer_broadcast_shape(arr, indices, axis)
-        if not broadcast_shape:
-            # if indices matrix have larger size than arr, arr should broadcast into indices shape.
-            broadcast_shape = indices.shape
+        broadcast_shape_list = list(arr.shape)
+        for i in range(len(arr.shape)):
+            if indices.shape[i] == 0 or arr.shape[i] == 0:
+                broadcast_shape_list[i] = 0
+            else:
+                broadcast_shape_list[i] = max(arr.shape[i], indices.shape[i])
+        broadcast_shape_list[axis] = list(indices.shape)[axis]
+        broadcast_shape = tuple(broadcast_shape_list)
+
         indices = paddle.broadcast_to(indices, broadcast_shape)
         broadcast_shape_list = list(broadcast_shape)
         broadcast_shape_list[axis] = list(arr.shape)[axis]

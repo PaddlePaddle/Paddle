@@ -965,7 +965,7 @@ void BatchNormInferMeta(const MetaTensor& x,
           x_dims,
           x_dims.size()));
 
-  const int64_t C = ((config.is_run_mkldnn_kernel == true) ||
+  const int64_t C = ((config.is_run_onednn_kernel == true) ||
                              (data_layout == DataLayout::kNCHW)
                          ? x_dims[1]
                          : x_dims[x_dims.size() - 1]);
@@ -2476,7 +2476,7 @@ void FusedBiasActInferMeta(const MetaTensor& x,
     x_shapes.push_back(x_dims[i]);
   }
 
-  if (config.is_runtime) {
+  if (config.is_runtime && x.numel() != 0) {
     PADDLE_ENFORCE_GT(
         x.numel() / dim,
         0,

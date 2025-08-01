@@ -2755,8 +2755,8 @@ def fold(
 
     assert len(x.shape) == 3, "input should be the format of [N, C, L]"
     assert (
-        math.prod(x.shape) > 0
-    ), "The number of elements must greater than zero."
+        math.prod(x.shape) >= 0
+    ), "The number of elements must greater or equal than zero."
 
     def _is_list_or_tuple_(data):
         return isinstance(data, (list, tuple))

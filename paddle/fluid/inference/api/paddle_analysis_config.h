@@ -869,6 +869,35 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \brief Turn on OneDNN.
   ///
   ///
+  void EnableMKLDNN();  // deprecated
+
+  ///
+  /// \brief Turn down OneDNN.
+  ///
+  ///
+  void DisableMKLDNN();  // deprecated
+
+  ///
+  /// \brief Set the cache capacity of different input shapes for OneDNN.
+  /// Default value 0 means not caching any shape.
+  /// Please see MKL-DNN Data Caching Design Document:
+  /// https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/design/mkldnn/caching/caching.md
+  ///
+  /// \param capacity The cache capacity.
+  ///
+  void SetMkldnnCacheCapacity(int capacity);  // deprecated
+
+  ///
+  /// \brief A boolean state telling whether to use the OneDNN.
+  ///
+  /// \return bool Whether to use the OneDNN.
+  ///
+  bool mkldnn_enabled() const { return use_onednn_; }
+
+  ///
+  /// \brief Turn on OneDNN.
+  ///
+  ///
   void EnableONEDNN();
 
   ///
@@ -886,12 +915,6 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \param capacity The cache capacity.
   ///
   void SetOnednnCacheCapacity(int capacity);
-  ///
-  /// \brief A boolean state telling whether to use the OneDNN.
-  ///
-  /// \return bool Whether to use the OneDNN.
-  ///
-  bool mkldnn_enabled() const { return use_onednn_; }
 
   ///
   /// \brief Set the number of cpu math library threads.
@@ -921,6 +944,14 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \param op_list The operator type list.
   ///
+  void SetMKLDNNOp(std::unordered_set<std::string> op_list) {  // deprecated
+    onednn_enabled_op_types_ = op_list;
+  }
+  ///
+  /// \brief Specify the operator type list to use OneDNN acceleration.
+  ///
+  /// \param op_list The operator type list.
+  ///
   void SetONEDNNOp(std::unordered_set<std::string> op_list) {
     onednn_enabled_op_types_ = op_list;
   }
@@ -944,6 +975,11 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   ///
   void EnableMkldnnBfloat16();
+
+  ///
+  /// \brief Turn off OneDNN fc passes.
+  ///
+  void DisableMkldnnFcPasses();  // deprecated
 
   ///
   /// \brief Turn off OneDNN fc passes.

@@ -482,5 +482,15 @@ class TestUniqueError(unittest.TestCase):
             self.assertRaises(TypeError, test_axis)
 
 
+class TestUniqueAPI_ZeroSize(unittest.TestCase):
+    def test_dygraph_api_out(self):
+        paddle.disable_static()
+        x_data = np.random.randint(0, 10, (0, 2))
+        x = paddle.to_tensor(x_data)
+        out = paddle.unique(x)
+        expected_out = np.random.random([0, 2])
+        np.testing.assert_allclose(out.numpy(), expected_out)
+
+
 if __name__ == "__main__":
     unittest.main()

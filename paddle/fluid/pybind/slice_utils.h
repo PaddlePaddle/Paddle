@@ -1112,6 +1112,7 @@ static void ApplySetitem(const std::vector<int> trans_dim,
                          paddle::Tensor* transed_sub_tensor,
                          paddle::Tensor* value_tensor,
                          std::vector<phi::Scalar>* values) {
+  if (!value_tensor->initialized() && (*values).size() == 0) return;
   if (value_tensor->initialized()) {
     if (self_tensor->dtype() != value_tensor->dtype()) {
       if (egr::Controller::Instance().GetAMPLevel() !=

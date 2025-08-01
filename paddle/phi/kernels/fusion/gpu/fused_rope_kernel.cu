@@ -38,8 +38,10 @@ void FusedRopeKernel(const Context& dev_ctx,
                      DenseTensor* out_k,
                      DenseTensor* out_v) {
   int64_t numel = q.numel();
-  if (numel <= 0) return;
   dev_ctx.template Alloc<T>(out_q);
+  if (k) dev_ctx.template Alloc<T>(out_k);
+  if (v) dev_ctx.template Alloc<T>(out_v);
+  if (numel <= 0) return;
 
   phi::Array<int64_t, 3> inputs_num_heads;
 

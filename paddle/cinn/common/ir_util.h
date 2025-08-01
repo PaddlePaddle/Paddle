@@ -21,6 +21,7 @@
 
 #include "paddle/cinn/common/bfloat16.h"
 #include "paddle/cinn/common/float16.h"
+#include "paddle/cinn/common/float8e4m3.h"
 #include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/utils/flat_hash_map.h"
@@ -53,6 +54,9 @@ std::vector<Expr *> GetForloopStackToStore(Expr *expr,
 inline Expr make_const(int32_t x) { return Expr(static_cast<int32_t>(x)); }
 inline Expr make_const(int64_t x) { return Expr(static_cast<int64_t>(x)); }
 inline Expr make_const(bfloat16 x) { return Expr(static_cast<bfloat16>(x)); }
+inline Expr make_const(float8e4m3 x) {
+  return Expr(static_cast<float8e4m3>(x));
+}
 inline Expr make_const(float16 x) { return Expr(static_cast<float16>(x)); }
 inline Expr make_const(float x) { return Expr(static_cast<float>(x)); }
 inline Expr make_const(double x) { return Expr(static_cast<double>(x)); }
@@ -181,11 +185,14 @@ void OpDataTypePromote(ir::LoweredFunc *func);
 
 // only process ir::Min and ir::Max where the operands 1. contains dynamic shape
 // symbols. 2. the operands are both int types and both are 32/64 bits. Returns
-// the number of bits for unifying operands (by casting)
-int UnifiedOperandTypeBits(
+// the number of bits for unifying operands (by casting). The bool flag
+// indicates whether both sides has different dynamic shape symbols, since if
+// true (like min(S0, S1))), we should not make a ir::Cast but a ir::Call
+// (coercion)
+std::pair<int, bool> UnifiedOperandTypeBits(
     const std::unordered_map<std::string, common::Type> *search_map,
     const ir::Min *op);
-int UnifiedOperandTypeBits(
+std::pair<int, bool> UnifiedOperandTypeBits(
     const std::unordered_map<std::string, common::Type> *search_map,
     const ir::Max *op);
 }  // namespace common

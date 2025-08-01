@@ -116,11 +116,11 @@ void FusedBiasDropoutResidualLnGradKernel(
   }
 
   const auto input_x_dims = y_grad.dims();
-  int bsz_seq = 1;
+  int64_t bsz_seq = 1;
   for (int i = 0; i < input_x_dims.size() - 1; i++) {
     bsz_seq *= input_x_dims[i];
   }
-  int dim_embed = input_x_dims[input_x_dims.size() - 1];
+  int64_t dim_embed = input_x_dims[input_x_dims.size() - 1];
   phi::fusion::DropoutParam dropout_param(
       dropout_fix_seed,
       0,

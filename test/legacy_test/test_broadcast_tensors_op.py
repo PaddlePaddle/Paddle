@@ -501,7 +501,27 @@ class TestBroadcastTensorsAPIZeroSize(unittest.TestCase):
             ]
             outputs = paddle.broadcast_tensors(inputs)
             self.assertEqual(outputs[0].shape, self.expected_shape)
+
+    def test_zero_size_dynamic_backward(self):
+        with dygraph_guard():
+            data1 = np.ones(self.shape1, dtype=self.dtype)
+            data2 = np.ones(self.shape2, dtype=self.dtype)
+            input1 = paddle.to_tensor(
+                data1, dtype=self.dtype, stop_gradient=False
+            )
+            input2 = paddle.to_tensor(
+                data2, dtype=self.dtype, stop_gradient=False
+            )
+            inputs = [
+                input1,
+                input2,
+            ]
+            outputs = paddle.broadcast_tensors(inputs)
+            self.assertEqual(outputs[0].shape, self.expected_shape)
             self.assertEqual(outputs[1].shape, self.expected_shape)
+            grads = paddle.grad(
+                inputs, outputs, retain_graph=True, allow_unused=True
+            )
 
 
 class TestBroadcastTensorsAPIZeroSize_bool(TestBroadcastTensorsAPIZeroSize):

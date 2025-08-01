@@ -719,29 +719,36 @@ void FlashAttnV3InferMeta(const MetaTensor& q,
                           const MetaTensor& v,
                           MetaTensor* out,
                           MetaTensor* softmax_lse) {
-  // TODO(umiswing): support varlen
-  constexpr bool is_varlen_q = false;
-  auto const sizes = q.dims();
-  const int batch_size = sizes[0];
-  const int seqlen_q = sizes[1];
-  int num_heads = q.dims()[q.dims().size() - 2];
-  int const head_size_v = v.dims()[v.dims().size() - 1];
+  const int batch_size = q.dims()[0];
+  const int seqlen_q = q.dims()[1];
+  const int num_heads = q.dims()[q.dims().size() - 2];
+  const int head_size_v = v.dims()[v.dims().size() - 1];
   auto q_type = q.dtype();
   auto out_type =
       q_type == phi::DataType::FLOAT8_E4M3FN ? phi::DataType::BFLOAT16 : q_type;
-  if (!is_varlen_q) {
-    out->set_dims({batch_size, seqlen_q, num_heads, head_size_v});
-  } else {
-    // TODO(umiswing): support varlen
-  }
+
+  out->set_dims({batch_size, seqlen_q, num_heads, head_size_v});
 
   out->set_dtype(out_type);
 
-  if (!is_varlen_q) {
-    softmax_lse->set_dims({batch_size, num_heads, seqlen_q});
-  } else {
-    // TODO(umiswing): support varlen
-  }
+  softmax_lse->set_dims({batch_size, num_heads, seqlen_q});
+  softmax_lse->set_dtype(phi::DataType::FLOAT32);
+}
+
+void FlashAttnV3VarlenInferMeta(const MetaTensor& q,
+                                const MetaTensor& k,
+                                const MetaTensor& v,
+                                MetaTensor* out,
+                                MetaTensor* softmax_lse) {
+  const int total_q = q.dims()[0];
+  const int num_heads = q.dims()[q.dims().size() - 2];
+  const int head_size_v = v.dims()[v.dims().size() - 1];
+  auto q_type = q.dtype();
+  auto out_type =
+      q_type == phi::DataType::FLOAT8_E4M3FN ? phi::DataType::BFLOAT16 : q_type;
+  out->set_dims({total_q, num_heads, head_size_v});
+  softmax_lse->set_dims({num_heads, total_q});
+  out->set_dtype(out_type);
   softmax_lse->set_dtype(phi::DataType::FLOAT32);
 }
 

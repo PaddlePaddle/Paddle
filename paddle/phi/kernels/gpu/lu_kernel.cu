@@ -12,11 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef PADDLE_WITH_HIP
-// HIP not support cusolver
-
+#ifdef PADDLE_WITH_HIP
+#include "paddle/phi/backends/dynload/rocsolver.h"
+#else
 #include "paddle/phi/backends/dynload/cusolver.h"
+#endif
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
 
@@ -26,6 +29,91 @@
 
 namespace phi {
 
+#ifdef PADDLE_WITH_HIP
+template <typename T>
+void rocsolver_getrf(const rocblas_handle& handle,
+                     int m,
+                     int n,
+                     T* a,
+                     int lda,
+                     int* ipiv,
+                     int* info);
+
+template <>
+void rocsolver_getrf<float>(const rocblas_handle& handle,
+                            int m,
+                            int n,
+                            float* a,
+                            int lda,
+                            int* ipiv,
+                            int* info) {
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      dynload::rocsolver_sgetrf(handle, m, n, a, lda, ipiv, info));
+}
+
+template <>
+void rocsolver_getrf<double>(const rocblas_handle& handle,
+                             int m,
+                             int n,
+                             double* a,
+                             int lda,
+                             int* ipiv,
+                             int* info) {
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      dynload::rocsolver_dgetrf(handle, m, n, a, lda, ipiv, info));
+}
+
+template <>
+void rocsolver_getrf<dtype::complex<float>>(const rocblas_handle& handle,
+                                            int m,
+                                            int n,
+                                            dtype::complex<float>* a,
+                                            int lda,
+                                            int* ipiv,
+                                            int* info) {
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      dynload::rocsolver_cgetrf(handle,
+                                m,
+                                n,
+                                reinterpret_cast<rocblas_float_complex*>(a),
+                                lda,
+                                ipiv,
+                                info));
+}
+
+template <>
+void rocsolver_getrf<dtype::complex<double>>(const rocblas_handle& handle,
+                                             int m,
+                                             int n,
+                                             dtype::complex<double>* a,
+                                             int lda,
+                                             int* ipiv,
+                                             int* info) {
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      dynload::rocsolver_zgetrf(handle,
+                                m,
+                                n,
+                                reinterpret_cast<rocblas_double_complex*>(a),
+                                lda,
+                                ipiv,
+                                info));
+}
+
+template <typename T, typename Context>
+void lu_decomposed_kernel(const Context& dev_ctx,
+                          int m,
+                          int n,
+                          T* d_A,
+                          int lda,
+                          int* d_Ipiv,
+                          int* d_info) {
+  // rocSOLVER's getrf does not require a workspace buffer
+  auto handle = dev_ctx.cusolver_dn_handle();
+  rocsolver_getrf<T>(handle, m, n, d_A, lda, d_Ipiv, d_info);
+  PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
+}
+
+#else  // PADDLE_WITH_CUDA
 template <typename T>
 void cusolver_bufferSize(const cusolverDnHandle_t& cusolverH,
                          int m,
@@ -184,6 +272,7 @@ void lu_decomposed_kernel(const Context& dev_ctx,
   }
   PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
 }
+#endif
 
 template <typename T, typename Context>
 void LUKernel(const Context& dev_ctx,
@@ -268,7 +357,7 @@ void LUKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(lu,  // cuda_only
+PD_REGISTER_KERNEL(lu,
                    GPU,
                    ALL_LAYOUT,
                    phi::LUKernel,
@@ -279,5 +368,3 @@ PD_REGISTER_KERNEL(lu,  // cuda_only
   kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
   kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
 }
-
-#endif  // not PADDLE_WITH_HIP
