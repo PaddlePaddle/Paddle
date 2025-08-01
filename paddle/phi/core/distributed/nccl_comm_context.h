@@ -26,6 +26,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/core/distributed/comm_context.h"
+#include "paddle/phi/core/distributed/nccl_config.h"
 
 #if defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/backends/dynload/rccl.h"
@@ -39,15 +40,23 @@ namespace distributed {
 
 class NCCLCommContext final : public CommContext {
  public:
-  NCCLCommContext(int rank,
-                  int size,
-                  ncclUniqueId nccl_id,
-                  int nccl_comm_init_option = 0);
+  NCCLCommContext(
+      int rank,
+      int size,
+      ncclUniqueId nccl_id,
+      int nccl_comm_init_option = 0,
+      std::shared_ptr<phi::distributed::NCCLConfig> nccl_config_ptr = nullptr);
   ~NCCLCommContext() override = default;
 
   int GetNcclVersion();
 
   ncclComm_t GetNcclComm();
+
+  void CreateNCCLComm(
+      ncclUniqueId nccl_id,
+      std::shared_ptr<phi::distributed::NCCLConfig> nccl_config_ptr = nullptr);
+
+  void DestroyNCCLComm();
 
   gpuStream_t GetStream();
 
@@ -132,6 +141,10 @@ class NCCLCommContext final : public CommContext {
 
   // used for compute wait comm, comm_stream-->event-->compute_stream
   std::shared_ptr<std::remove_pointer<phi::gpuEvent_t>::type> comm_event_;
+
+  int nranks;
+  int myrank;
+  int param;
 };
 
 }  // namespace distributed

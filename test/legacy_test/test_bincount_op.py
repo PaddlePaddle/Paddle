@@ -71,6 +71,18 @@ class TestBincountOpAPI(unittest.TestCase):
                 msg='bincount output is wrong, out =' + str(actual.numpy()),
             )
 
+    def test_dygraph_cpu(self):
+        with base.dygraph.guard():
+            paddle.device.set_device('cpu')
+            inputs_np = np.array([0, 1, 1, 3, 2, 1, 7]).astype(np.int64)
+            inputs = paddle.to_tensor(inputs_np)
+            actual = paddle.bincount(inputs)
+            expected = np.bincount(inputs)
+            self.assertTrue(
+                (actual.numpy() == expected).all(),
+                msg='bincount output is wrong, out =' + str(actual.numpy()),
+            )
+
 
 class TestBincountOpError(unittest.TestCase):
     """Test bincount op error."""

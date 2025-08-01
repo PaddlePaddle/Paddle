@@ -2366,13 +2366,27 @@ bool NonzeroOpInferSymbolicShape(
       common::errors::InvalidArgument(
           "Input(x) should have number of dimension at least 1."));
 
-  std::string sym_name = infer_context->GetNextSymName();
-  std::vector<symbol::DimExpr> out_shape{symbol::DimExpr{sym_name},
-                                         symbol::DimExpr{rank}};
-
-  symbol::ShapeOrDataDimExprs shape_data{
-      symbol::TensorShapeOrDataDimExprs(out_shape)};
-  infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
+  bool zero = 0;
+  for (int i = 0; i < rank; i++) {
+    if (x_shape[i] == 0) {
+      zero = 1;
+      break;
+    }
+  }
+  if (zero) {
+    std::vector<symbol::DimExpr> out_shape{symbol::DimExpr{0},
+                                           symbol::DimExpr{rank}};
+    symbol::ShapeOrDataDimExprs shape_data{
+        symbol::TensorShapeOrDataDimExprs(out_shape)};
+    infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
+  } else {
+    std::string sym_name = infer_context->GetNextSymName();
+    std::vector<symbol::DimExpr> out_shape{symbol::DimExpr{sym_name},
+                                           symbol::DimExpr{rank}};
+    symbol::ShapeOrDataDimExprs shape_data{
+        symbol::TensorShapeOrDataDimExprs(out_shape)};
+    infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
+  }
   return true;
 }
 

@@ -748,8 +748,8 @@ class TestSundryAPI(unittest.TestCase):
 
         self.assertEqual(out1.shape, [])
         self.assertEqual(out2.shape, [])
-        self.assertEqual(out1, 0)
-        self.assertEqual(out2, 0)
+        self.assertTrue(np.isnan(out1.numpy()))
+        self.assertTrue(np.isnan(out2.numpy()))
 
         self.assertEqual(x.grad.shape, [])
 
@@ -773,11 +773,11 @@ class TestSundryAPI(unittest.TestCase):
 
         self.assertEqual(out1.shape, [])
         self.assertEqual(out2.shape, [])
-        self.assertEqual(out1, 0)
-        self.assertEqual(out2, 0)
+        self.assertTrue(np.isnan(out1.numpy()))
+        self.assertTrue(np.isnan(out2.numpy()))
 
         self.assertEqual(x.grad.shape, [])
-        np.testing.assert_allclose(x.grad, 0)
+        self.assertTrue(np.isnan(x.grad.numpy()))
 
         # 2) x is ND
         x = paddle.rand([3, 5])

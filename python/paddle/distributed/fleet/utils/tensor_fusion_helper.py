@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import itertools
 import os
 import weakref
@@ -284,8 +283,8 @@ class ShardingGradView:
         slice_begin = self._param_begin
         slice_end = self._param_end
         slice_buffer = self._param_buffer._slice(slice_begin, slice_end)
-        slice_param.get_tensor()._set_dims([slice_end - slice_begin])
         slice_buffer._share_buffer_to(slice_param)
+        slice_param.get_tensor()._set_dims([slice_end - slice_begin])
 
     def assign_slice_grad(self, slice_param):
         assert self._param_buffer._is_shared_buffer_with(self._param)
@@ -303,6 +302,16 @@ class ShardingGradView:
                 slice_param._copy_gradient_from(slice_grad)
             else:
                 assert slice_param.grad._is_shared_buffer_with(slice_grad)
+
+    def _clear_param_buffer(self):
+        self._param._clear_to_zero_allocation()
+        self._param_buffer._clear_to_zero_allocation()
+
+    def _reset_param_buffer(self, new_param_storage):
+        new_param = paddle.empty_like(self._param)
+        new_param._share_buffer_to(self._param)
+        new_param_storage._share_buffer_to(self._param_buffer)
+        self._share_param_buffer()
 
     def _clear_grad_buffer(self):
         if self._slice_grad is not None:
@@ -539,6 +548,18 @@ class FusedCommBuffer:
                 param, self.use_main_grad
             )
 
+    def _clear_param_storage(self):
+        self.param_storage._clear_to_zero_allocation()
+        for param in self._params:
+            self._sharding_param_grad_view[param.name]._clear_param_buffer()
+
+    def _reset_param_storage(self):
+        new_param_storage = paddle.empty_like(self.param_storage)
+        new_param_storage._share_buffer_to(self.param_storage)
+        for param in self._params:
+            grad_view = self._sharding_param_grad_view[param.name]
+            grad_view._reset_param_buffer(new_param_storage)
+
     def _clear_grad_storage(self):
         self.grad_storage._clear_dataptr()
         self.grad_storage = None
@@ -558,7 +579,8 @@ class FusedCommBuffer:
         for p in self._params:
             self._params_step_dict[p.name] = 0
 
-    def _copy_grad_to_buffer(self, param):
+    def _copy_grad_to_buffer(self, param, param_grad_is_none=False):
+        # if param_grad is not None , skip record grad addr
         if self._params_step_dict[param.name] > 0:
             return
 
@@ -584,22 +606,26 @@ class FusedCommBuffer:
             )
 
         grad_var = param.main_grad if self.use_main_grad else param.grad
-        assert (
-            grad_var is not None
-        ), f"The current parameter[{param.name}] has no gradient, its stop_grdient is {param.stop_gradient}"
-        grad_var.stop_gradient = True
-        grad_var.flatten_()
 
-        tmp_var.add_(grad_var)
+        if param_grad_is_none:
+            # NOTE(zhangwl): in acc . maybe param_a have grad_a in acc_1 , dnot have grad in acc_2,need support this scene.
+            assert (
+                grad_var is None
+            ), f"The current parameter[{param.name}] has gradient, its stop_grdient is {param.stop_gradient} , but we excepte it^s grad is None ,  Here are some examples: user marked_unused_param incorrect ,like marked_unused_param when backward unfinished,marked_unused_param which param have grad"
+            return
+
+        if grad_var is not None:
+            grad_var.stop_gradient = True
+            grad_var.flatten_()
+            tmp_var.add_(grad_var)
+            grad_var._clear()
+
         tmp_var.get_tensor()._set_dims(param.shape)
-
         if self.use_main_grad:
-            param.main_grad._clear()
             if not self._free_grads_in_comm:
                 param.main_grad = tmp_var
                 param.main_grad.name = "main_grad@" + param.name
         else:
-            param.grad._clear()
             if not self._free_grads_in_comm:
                 param._copy_gradient_from(tmp_var)
 
@@ -620,12 +646,15 @@ class FusedCommBuffer:
             and len(self._params_step_dict) == 0
         )
 
-    def add_grad(self, param, use_comm=True):
+    def add_grad(self, param, use_comm=True, param_grad_is_none=False):
         assert param.name in self._params_step_dict
 
         if not self._release_grads or self._params_step_dict[param.name] > 0:
             current_ptr = get_grad_address(param, self.use_main_grad)
-            if self._grads_to_addr[param.name] != current_ptr:
+            if (
+                self._grads_to_addr[param.name] is not None
+                and self._grads_to_addr[param.name] != current_ptr
+            ):
                 error_message = f"The address of the grad/main_grad of param {param.name} has been changed during training, which is not allowed for dp/sharding overlap with pp. This may be caused by some non-inplace operations on the grad/main_grad. Here are some examples: 1. The grad/main_grad of the param is changed by other operations, such as: clear_grad; 2. Using non-inplace operations on the grad/main_grad, such as: add, sub, mul, div, etc."
                 logger.error(error_message)
                 raise ValueError(error_message)
@@ -633,7 +662,7 @@ class FusedCommBuffer:
             # When release_grads is enabled, fusing of gradients only happen
             # in the 0-th gradient accumulation step, and remain unchanged for
             # the following `acc_steps - 1` steps.
-            self._copy_grad_to_buffer(param)
+            self._copy_grad_to_buffer(param, param_grad_is_none)
 
         self._params_step_dict[param.name] += 1
 
@@ -759,6 +788,7 @@ class FusedCommBuffer:
                 group=self._comm_group,
                 sync_op=False,
             )
+
             if self._free_grads_in_comm:
                 self._reset_grad_storage(reduce_scattered)
 
