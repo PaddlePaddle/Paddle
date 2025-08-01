@@ -593,14 +593,14 @@ struct C_DeviceInterface {
   /**
    * @brief Is float16 supported
    *
-   * @param[C_Device, bool*]    grid_dim_size
+   * @param[C_Device, bool*]     device, supported
    */
   C_Status (*is_float16_supported)(const C_Device device, bool* supported);
 
   /**
    * @brief Is bfloat16 supported
    *
-   * @param[C_Device, bool*]      grid_dim_size
+   * @param[C_Device, bool*]     device, supported
    */
   C_Status (*is_bfloat16_supported)(const C_Device device, bool* supported);
 
