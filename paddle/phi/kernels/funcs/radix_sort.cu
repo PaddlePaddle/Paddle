@@ -18,8 +18,8 @@
 namespace phi {
 namespace funcs {
 
+#ifdef PADDLE_WITH_CUDA
 namespace {
-
 template <typename T>
 struct CudaType {
   using type = T;
@@ -113,5 +113,6 @@ INSTANTIATE_SORT_PAIRS(int64_t, 4)
 INSTANTIATE_SORT_PAIRS(int32_t, 8)
 INSTANTIATE_SORT_PAIRS(int64_t, 8)
 
+#endif
 }  // namespace funcs
 }  // namespace phi

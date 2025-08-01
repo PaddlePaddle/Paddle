@@ -156,6 +156,7 @@ void GPUIndexElementwiseGetGrad(const phi::GPUContext& dev_ctx,
   }
 }
 
+#ifdef PADDLE_WITH_CUDA
 #define WARP_SIZE 32
 
 template <typename scalar_t, int SZ>
@@ -372,6 +373,7 @@ void IndexPutWithSortKernel(const phi::GPUContext& dev_ctx,
     }
   }
 }
+#endif
 
 template <typename T, typename Context>
 void IndexElementwiseGetGradKernel(const Context& dev_ctx,
@@ -401,6 +403,7 @@ void IndexElementwiseGetGradKernel(const Context& dev_ctx,
                         phi::DataType::INT64));
 
   if (accumulate && index.size() == 1 && !is_combined) {
+#ifdef PADDLE_WITH_CUDA
     IndexPutWithSortKernel<T, int64_t>(dev_ctx,
                                        x,
                                        out_grad,
@@ -412,19 +415,21 @@ void IndexElementwiseGetGradKernel(const Context& dev_ctx,
                                        slice_offset,
                                        accumulate,
                                        x_grad);
-  } else {
-    GPUIndexElementwiseGetGrad<T, int64_t>(dev_ctx,
-                                           x,
-                                           out_grad,
-                                           index,
-                                           input_dims,
-                                           input_strides,
-                                           index_dims,
-                                           index_strides,
-                                           slice_offset,
-                                           accumulate,
-                                           x_grad);
+    return;
+#endif
   }
+
+  GPUIndexElementwiseGetGrad<T, int64_t>(dev_ctx,
+                                         x,
+                                         out_grad,
+                                         index,
+                                         input_dims,
+                                         input_strides,
+                                         index_dims,
+                                         index_strides,
+                                         slice_offset,
+                                         accumulate,
+                                         x_grad);
 }
 
 }  // namespace phi

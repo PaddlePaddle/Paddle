@@ -544,7 +544,7 @@ static inline void ScatterAddStride(
   *numel = num;
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA)
 
 static inline std::vector<phi::DenseTensor> expandTensors(
     const phi::GPUContext& dev_ctx,

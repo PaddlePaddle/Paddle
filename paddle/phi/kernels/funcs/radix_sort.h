@@ -13,13 +13,16 @@
 // limitations under the License.
 
 #pragma once
+#ifdef PADDLE_WITH_CUDA
 #include <cub/cub.cuh>
+#endif
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 namespace funcs {
 
+#ifdef PADDLE_WITH_CUDA
 template <int kValueSize>
 struct OpaqueTypeRadix {
   uint8_t data[kValueSize];
@@ -76,5 +79,6 @@ void RadixSortPairs(const phi::GPUContext& dev_ctx,
       end_bit);
 }
 
+#endif
 }  // namespace funcs
 }  // namespace phi
