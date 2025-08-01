@@ -108,8 +108,13 @@ def create_async_load():
     Constructs a new AsyncLoad object.
     It is used to load/reload data asynchronously on GPU.
     """
+    custom_devices = paddle.device.get_all_custom_device_type()
     if paddle.is_compiled_with_xpu():
         return core.XpuAsyncLoad()
+    elif any(
+        paddle.is_compiled_with_custom_device(dev) for dev in custom_devices
+    ):
+        return None
     else:  # default is GPU or CUDA
         return core.AsyncLoad()
 
@@ -154,7 +159,17 @@ def async_offload(src_tensor, async_load):
         and src_tensor.place.is_xpu_place()
     )
 
-    if is_xpu_tensor:
+    # async_offload does not support custom device now
+    custom_devices = paddle.device.get_all_custom_device_type()
+    is_custom_tensor = (
+        any(
+            paddle.is_compiled_with_custom_device(dev) for dev in custom_devices
+        )
+        and hasattr(src_tensor, "place")
+        and src_tensor.place.custom_device_type() in custom_devices
+    )
+
+    if is_xpu_tensor or is_custom_tensor:
         # sync fallback
         host_tensor = src_tensor.cpu()
         out = paddle.to_tensor(host_tensor.numpy(), place=paddle.CPUPlace())

@@ -560,6 +560,95 @@ class TestGenerateProposalsV2Op(OpTest):
 #         np.testing.assert_allclose(self.roi_probs_expected, np.array(roi_probs), rtol=1e-5)
 #         np.testing.assert_allclose(self.rois_num_expected, np.array(rois_num), rtol=1e-5)
 
+
+class TestGenerateProposalsV2Op_ZeroSize(OpTest):
+    def set_data(self):
+        self.init_test_params()
+        self.init_test_input()
+        self.init_test_output()
+        self.inputs = {
+            'Scores': self.scores,
+            'BboxDeltas': self.bbox_deltas,
+            'ImShape': self.im_shape.astype(np.float32),
+            'Anchors': self.anchors,
+            'Variances': self.variances,
+        }
+
+        self.attrs = {
+            'pre_nms_topN': self.pre_nms_topN,
+            'post_nms_topN': self.post_nms_topN,
+            'nms_thresh': self.nms_thresh,
+            'min_size': self.min_size,
+            'eta': self.eta,
+            'pixel_offset': self.pixel_offset,
+        }
+
+        self.outputs = {
+            'RpnRois': self.rpn_rois[0],
+            'RpnRoiProbs': self.rpn_roi_probs[0],
+        }
+
+    def test_check_output(self):
+        self.check_output(check_pir=True, check_symbol_infer=False)
+
+    def setUp(self):
+        self.op_type = "generate_proposals_v2"
+        self.python_api = python_generate_proposals_v2
+        self.set_data()
+
+    def init_test_params(self):
+        self.pre_nms_topN = 12000  # train 12000, test 2000
+        self.post_nms_topN = 5000  # train 6000, test 1000
+        self.nms_thresh = 0.7
+        self.min_size = 3.0
+        self.eta = 1.0
+        self.pixel_offset = True
+
+    def init_test_input(self):
+        batch_size = 1
+        input_channels = 0
+        layer_h = 16
+        layer_w = 16
+        input_feat = np.random.random(
+            (batch_size, input_channels, layer_h, layer_w)
+        ).astype('float32')
+        self.anchors, self.variances = anchor_generator_in_python(
+            input_feat=input_feat,
+            anchor_sizes=[16.0, 32.0],
+            aspect_ratios=[0.5, 1.0],
+            variances=[1.0, 1.0, 1.0, 1.0],
+            stride=[16.0, 16.0],
+            offset=0.5,
+        )
+        self.im_shape = np.array([[64, 64]]).astype('float32')
+        num_anchors = self.anchors.shape[2]
+        self.scores = np.random.random(
+            (batch_size, num_anchors, layer_h, layer_w)
+        ).astype('float32')
+        self.bbox_deltas = np.random.random(
+            (batch_size, num_anchors * 4, layer_h, layer_w)
+        ).astype('float32')
+
+    def init_test_output(self):
+        (
+            self.rpn_rois,
+            self.rpn_roi_probs,
+            self.rois_num,
+        ) = generate_proposals_v2_in_python(
+            self.scores,
+            self.bbox_deltas,
+            self.im_shape,
+            self.anchors,
+            self.variances,
+            self.pre_nms_topN,
+            self.post_nms_topN,
+            self.nms_thresh,
+            self.min_size,
+            self.eta,
+            self.pixel_offset,
+        )
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

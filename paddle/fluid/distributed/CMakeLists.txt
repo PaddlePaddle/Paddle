@@ -43,25 +43,3 @@ if(WITH_PYTHON)
     STATUS
       "Copy generated python ps_pb2.py into directory ${PSLIB_PROTO_DSTPATH}")
 endif()
-
-if(WITH_RPC)
-  add_subdirectory(rpc)
-endif()
-
-if(NOT WITH_PSCORE)
-  return()
-endif()
-
-proto_library(ps_framework_proto SRCS the_one_ps.proto)
-
-set(DISTRIBUTE_COMPILE_FLAGS
-    "-Wno-error=unused-value -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=parentheses -Wno-error=unused-result"
-)
-
-if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
-  set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
-endif()
-add_subdirectory(common)
-add_subdirectory(ps)
-add_subdirectory(test)
-add_subdirectory(index_dataset)

@@ -21,8 +21,7 @@ namespace phi {
 class DenseTensor;
 }  // namespace phi
 
-namespace paddle {
-namespace funcs {
+namespace phi::funcs {
 
 class TensorFormatter {
  public:
@@ -54,5 +53,4 @@ class TensorFormatter {
   bool print_tensor_layout_ = true;
 };
 
-}  // namespace funcs
-}  // namespace paddle
+}  // namespace phi::funcs

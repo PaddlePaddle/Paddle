@@ -1351,6 +1351,9 @@ void FusedBiasDropoutResidualLnInferMeta(
   ln_mean->set_dims({left});
   ln_variance->set_dims({left});
   y->set_dims(x.dims());
+  if (common::product(x_dim) != 0 && common::product(residual.dims()) == 0) {
+    y->set_dims(residual.dims());
+  }
 }
 
 void FusedBiasDropoutResidualLnGradInferMeta(
@@ -2911,7 +2914,7 @@ void BNActXPUInferMeta(const MetaTensor& x,
           x_dims,
           x_dims.size()));
 
-  const int64_t C = ((config.is_run_mkldnn_kernel == true) ||
+  const int64_t C = ((config.is_run_onednn_kernel == true) ||
                              (data_layout_str == DataLayout::kNCHW)
                          ? x_dims[1]
                          : x_dims[x_dims.size() - 1]);
@@ -4484,14 +4487,17 @@ void VariableLengthMemoryEfficientAttentionInferMeta(
                     common::errors::InvalidArgument(
                         "The head number of Key, Value should be equal."));
 
-  PADDLE_ENFORCE_EQ(
-      query_num_head % key_num_head,
-      0,
-      errors::InvalidArgument(
-          "The num_head of query must be divisible by the num_head of key, but "
-          "received num_head of query is %d, and the num_head of key is %d",
-          query_num_head,
-          key_num_head));
+  if (key_num_head != 0) {
+    PADDLE_ENFORCE_EQ(
+        query_num_head % key_num_head,
+        0,
+        errors::InvalidArgument(
+            "The num_head of query must be divisible by the num_head of key, "
+            "but "
+            "received num_head of query is %d, and the num_head of key is %d",
+            query_num_head,
+            key_num_head));
+  }
 
   PADDLE_ENFORCE_EQ(query_head_size == key_head_size,
                     true,
@@ -4502,6 +4508,20 @@ void VariableLengthMemoryEfficientAttentionInferMeta(
                     true,
                     common::errors::InvalidArgument(
                         "The seq length of Key, Value should be equal."));
+  if (mask) {
+    PADDLE_ENFORCE_EQ(
+        mask.dims().size(),
+        4,
+        common::errors::InvalidArgument("Mask should be a 4-D tensor"
+                                        "But received Value dimension(%s)",
+                                        mask.dims().size()));
+    const int64_t mask_batch_size = mask.dims()[0];
+    PADDLE_ENFORCE_EQ(
+        query_batch_size == mask_batch_size,
+        true,
+        common::errors::InvalidArgument(
+            "The batch size of Query, Key, Value and Mask should be equal."));
+  }
 
   std::vector<int64_t> out_dims(
       {query_batch_size, query_num_head, query_seq_length, value_head_size});

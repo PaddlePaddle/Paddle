@@ -26,6 +26,8 @@
 #else
 namespace phi {
 class XPUCUDAStream {};
+class XPUStreamHandle {};
+class XPUEventHandle {};
 }  // namespace phi
 #endif
 

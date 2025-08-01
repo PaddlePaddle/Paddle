@@ -58,13 +58,13 @@ void FusePassBase::AddStatis(int count_of_fused) const {
 FuseOptions FusePassBase::FindFuseOption(const Node& node1,
                                          const Node& node2) const {
 #ifdef PADDLE_WITH_DNNL
-  bool node1_mkldnn = node1.Op()->HasAttr("use_mkldnn") &&
+  bool node1_onednn = node1.Op()->HasAttr("use_mkldnn") &&
                       PADDLE_GET_CONST(bool, node1.Op()->GetAttr("use_mkldnn"));
-  bool node2_mkldnn = node2.Op()->HasAttr("use_mkldnn") &&
+  bool node2_onednn = node2.Op()->HasAttr("use_mkldnn") &&
                       PADDLE_GET_CONST(bool, node2.Op()->GetAttr("use_mkldnn"));
-  if (node1_mkldnn && node2_mkldnn)
-    return FUSE_MKLDNN;
-  else if (!node1_mkldnn && !node2_mkldnn)
+  if (node1_onednn && node2_onednn)
+    return FUSE_ONEDNN;
+  else if (!node1_onednn && !node2_onednn)
     return FUSE_NATIVE;
   else
     return DO_NOT_FUSE;

@@ -365,6 +365,23 @@ void FlashAttnV3GradInferMeta(const MetaTensor& q,
   }
 }
 
+void FlashAttnV3VarlenGradInferMeta(const MetaTensor& q,
+                                    const MetaTensor& k,
+                                    const MetaTensor& v,
+                                    MetaTensor* dq,
+                                    MetaTensor* dk,
+                                    MetaTensor* dv) {
+  if (dq) {
+    dq->share_meta(q);
+  }
+  if (dk) {
+    dk->share_meta(k);
+  }
+  if (dv) {
+    dv->share_meta(v);
+  }
+}
+
 void Flatten2GradInferMeta(const MetaTensor& x,
                            const MetaTensor& x_shape,
                            const MetaTensor& out_grad,
@@ -921,6 +938,7 @@ void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
 
 void InstanceNormGradInferMeta(const MetaTensor& x,
                                const MetaTensor& scale,
+                               const MetaTensor& bias,
                                const MetaTensor& saved_mean,
                                const MetaTensor& saved_variance,
                                const MetaTensor& y_grad,
@@ -939,10 +957,18 @@ void InstanceNormGradInferMeta(const MetaTensor& x,
   x_grad->set_dtype(x.dtype());
   x_grad->set_layout(x.layout());
   if (scale_grad) {
-    scale_grad->set_dims({C});
+    if (C == 0) {
+      scale_grad->set_dims({scale.dims()[0]});
+    } else {
+      scale_grad->set_dims({C});
+    }
   }
   if (bias_grad) {
-    bias_grad->set_dims({C});
+    if (C == 0) {
+      bias_grad->set_dims({bias.dims()[0]});
+    } else {
+      bias_grad->set_dims({C});
+    }
   }
 }
 void InstanceNormDoubleGradInferMeta(const MetaTensor& x,
@@ -1948,6 +1974,21 @@ void IndexPutGradInferMeta(const MetaTensor& x,
 void IndexElementwisePutGradInferMeta(
     const MetaTensor& x,
     const std::vector<const MetaTensor*>& index,
+    const MetaTensor& out_grad,
+    const std::vector<int64_t>& input_dims,
+    const std::vector<int64_t>& input_strides,
+    const std::vector<int64_t>& index_dims,
+    const std::vector<int64_t>& index_strides,
+    const int64_t slice_offset,
+    MetaTensor* x_grad) {
+  if (x_grad) {
+    x_grad->share_meta(x);
+  }
+}
+
+void IndexElementwisePutWithTensorGradInferMeta(
+    const MetaTensor& x,
+    const std::vector<const MetaTensor*>& index,
     const MetaTensor& value,
     const MetaTensor& out_grad,
     const std::vector<int64_t>& input_dims,
@@ -2000,7 +2041,7 @@ void FusedRopeGradInferMeta(const MetaTensor& sin,
 }
 
 void SetValueGradInferMeta(const MetaTensor& out_grad,
-                           const MetaTensor& values,
+                           const MetaTensor& value,
                            MetaTensor* x_grad,
                            MetaTensor* value_grad) {
   if (x_grad) {
@@ -2009,9 +2050,9 @@ void SetValueGradInferMeta(const MetaTensor& out_grad,
     x_grad->share_lod(out_grad);
   }
   if (value_grad) {
-    value_grad->set_dims(values.dims());
-    value_grad->set_dtype(values.dtype());
-    value_grad->share_lod(values);
+    value_grad->set_dims(value.dims());
+    value_grad->set_dtype(value.dtype());
+    value_grad->share_lod(value);
   }
 }
 
@@ -2095,17 +2136,20 @@ void FusedRMSNormGradInferMeta(const MetaTensor& x,
                                MetaTensor* x_grad,
                                MetaTensor* scale_grad) {
   PADDLE_ENFORCE_EQ(
-      x.dtype() == DataType::FLOAT32 || x.dtype() == DataType::BFLOAT16,
+      x.dtype() == DataType::FLOAT32 || x.dtype() == DataType::FLOAT16 ||
+          x.dtype() == DataType::BFLOAT16,
       true,
       common::errors::InvalidArgument(
-          "The dtype of x must be FLOAT32 or BFLOAT16, but got [%s]",
+          "The dtype of x must be FLOAT32, FLOAT16 or BFLOAT16, but got [%s]",
           x.dtype()));
   PADDLE_ENFORCE_EQ(
-      scale.dtype() == DataType::FLOAT32 || scale.dtype() == DataType::BFLOAT16,
+      scale.dtype() == DataType::FLOAT32 ||
+          scale.dtype() == DataType::FLOAT16 ||
+          scale.dtype() == DataType::BFLOAT16,
       true,
-      common::errors::InvalidArgument(
-          "The dtype of scale must be FLOAT32 or BFLOAT16, but got [%s]",
-          scale.dtype()));
+      common::errors::InvalidArgument("The dtype of scale must be FLOAT32, "
+                                      "FLOAT16 or BFLOAT16, but got [%s]",
+                                      scale.dtype()));
   if (x_grad && x) {
     x_grad->share_meta(x);
   }

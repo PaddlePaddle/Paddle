@@ -87,6 +87,18 @@ class TestMultiplyApi(unittest.TestCase):
         res = self._run_static_graph_case(x_data, y_data)
         np.testing.assert_allclose(res, np.outer(x_data, y_data), rtol=1e-05)
 
+        # test static computation graph: 3-d int32 big array
+        x_data = np.random.randint(-80000, 80000, [5, 10, 10]).astype(np.int32)
+        y_data = np.random.randint(-80000, 80000, [2, 10]).astype(np.int32)
+        res = self._run_static_graph_case(x_data, y_data)
+        np.testing.assert_allclose(res, np.outer(x_data, y_data), rtol=1e-05)
+
+        # test static computation graph: 3-d int64 big array
+        x_data = np.random.randint(-80000, 80000, [5, 10, 10]).astype(np.int64)
+        y_data = np.random.randint(-80000, 80000, [2, 10]).astype(np.int64)
+        res = self._run_static_graph_case(x_data, y_data)
+        np.testing.assert_allclose(res, np.outer(x_data, y_data), rtol=1e-05)
+
     def test_multiply_dynamic(self):
         # test dynamic computation graph: 3-d array
         x_data = np.random.rand(5, 10, 10).astype(np.float64)
@@ -135,6 +147,18 @@ class TestMultiplyApi(unittest.TestCase):
         # test dynamic computation graph: 3-d int64 array
         x_data = np.random.rand(5, 10, 10).astype(np.int64)
         y_data = np.random.rand(2, 10).astype(np.int64)
+        res = self._run_dynamic_graph_case(x_data, y_data)
+        np.testing.assert_allclose(res, np.outer(x_data, y_data), rtol=1e-05)
+
+        # test dynamic computation graph: 3-d int32 big array
+        x_data = np.random.randint(-80000, 80000, [5, 10, 10]).astype(np.int32)
+        y_data = np.random.randint(-80000, 80000, [2, 10]).astype(np.int32)
+        res = self._run_dynamic_graph_case(x_data, y_data)
+        np.testing.assert_allclose(res, np.outer(x_data, y_data), rtol=1e-05)
+
+        # test dynamic computation graph: 3-d int64 big array
+        x_data = np.random.randint(-80000, 80000, [5, 10, 10]).astype(np.int64)
+        y_data = np.random.randint(-80000, 80000, [2, 10]).astype(np.int64)
         res = self._run_dynamic_graph_case(x_data, y_data)
         np.testing.assert_allclose(res, np.outer(x_data, y_data), rtol=1e-05)
 

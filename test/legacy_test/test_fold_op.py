@@ -229,7 +229,7 @@ class TestFoldOpError(unittest.TestCase):
                 )
 
             def test_dilations_shape():
-                # dialtions_size must be 2
+                # dilations_size must be 2
                 x = paddle.randn(shape=[2, 6, 6], dtype="float32")
                 out = fold(
                     x,
@@ -239,7 +239,7 @@ class TestFoldOpError(unittest.TestCase):
                 )
 
             def test_strides_shape():
-                # strids_size must be 2
+                # strides_size must be 2
                 x = paddle.randn(shape=[2, 6, 6], dtype="float32")
                 out = fold(
                     x,

@@ -220,7 +220,10 @@ class TestFusedAttentionOp(OpTest):
         )
         out = self.out_proj(out_linear_in)
 
-        residual_out = residual + self.dropout(out)
+        if out.size == 0:
+            residual_out = residual
+        else:
+            residual_out = residual + self.dropout(out)
         if not self.pre_layer_norm:
             final_out = self.norm1(residual_out)
         else:
@@ -729,6 +732,34 @@ class TestFusedAttentionOpParamStopGradient(OpTest):
         np.testing.assert_allclose(
             x_grad_ref, x_grad.numpy(), rtol=self.rtol, atol=self.atol
         )
+
+
+class TestFusedAttentionOp_ZeroSize(TestFusedAttentionOp):
+    def config(self):
+        self.x_type = np.float32
+        self.attn_mask_type = np.float64
+        self.pre_layer_norm = False
+        self.has_attn_mask = False
+        self.has_cache_kv = False
+        self.training = True
+
+        self.batch_size = 0  # 0-size
+        self.query_length = 128
+        self.cache_length = 128
+        self.head_dim = 64
+        self.num_heads = 16
+        self.embed_dim = self.head_dim * self.num_heads
+
+        self.dropout_prob = 0.0
+        self.attn_dropout_prob = 0.0
+        self.weight_attr = None
+        self.bias_attr = None
+        self.kdim, self.vdim = self.embed_dim, self.embed_dim
+        self.key_length, self.value_length = (
+            self.query_length,
+            self.query_length,
+        )
+        self.transpose_qkv_wb = False
 
 
 if __name__ == "__main__":

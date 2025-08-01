@@ -829,6 +829,7 @@ utils::AttributeMap CompatibleInfo::ConvertAttributes(
   else if (type.isa<::pir::src>()) return cinn::common::dst();
 
 cinn::common::Type CompatibleInfo::ConvertIRType(::pir::Type type) {
+  if (type.isa<::pir::Float8E4M3FNType>()) return cinn::common::F8E4M3();
   if (type.isa<::pir::BFloat16Type>()) return cinn::common::BF16();
   CASE_TYPE(Float16Type, F16)
   CASE_TYPE(Float32Type, F32)

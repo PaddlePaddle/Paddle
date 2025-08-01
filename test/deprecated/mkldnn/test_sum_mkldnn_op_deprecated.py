@@ -21,18 +21,18 @@ from test_sum_op import TestSumOp
 from paddle.base import core
 
 
-class TestSumMKLDNN(TestSumOp):
+class TestSumONEDNN(TestSumOp):
     def setUp(self):
         self.op_type = "sum"
         self.init_data_type()
-        self.use_mkldnn = True
+        self.use_onednn = True
         x0 = np.random.random((25, 8)).astype(self.dtype)
         x1 = np.random.random((25, 8)).astype(self.dtype)
         x2 = np.random.random((25, 8)).astype(self.dtype)
         self.inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
         y = x0 + x1 + x2
         self.outputs = {'Out': y}
-        self.attrs = {'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'use_mkldnn': self.use_onednn}
 
     def init_data_type(self):
         self.dtype = np.float32
@@ -48,11 +48,11 @@ class TestSumMKLDNN(TestSumOp):
         )
 
 
-class TestMKLDNNSumInplaceOp(unittest.TestCase):
+class TestONEDNNSumInplaceOp(unittest.TestCase):
     def setUp(self):
         self.op_type = "sum"
         self.init_data_type()
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.x0 = np.random.random((25, 8)).astype(self.dtype)
         self.x1 = np.random.random((25, 8)).astype(self.dtype)
 

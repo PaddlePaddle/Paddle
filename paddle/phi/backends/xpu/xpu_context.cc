@@ -170,7 +170,7 @@ struct XPUContext::Impl {
                         errors::PreconditionNotMet(
                             "No ctx_guard when overload_free is called"));
       allocations_to_free_.pop_back();
-      VLOG(3) << "XHPC ctx_guard destropyed, " << GetStackLevel()
+      VLOG(3) << "XHPC ctx_guard destroyed, " << GetStackLevel()
               << " are in use now.";
     }
 
@@ -340,14 +340,14 @@ XPUContext::XPUContext() : DeviceContext() {
     for (int i = 0; i < default_num_stream; i++) {
       impls_.push_back(std::make_unique<Impl>());
       impls_[i]->Init(get_gm_size(i), get_l3_size(i));
-      // idle_stream_flags.push_back(false);
     }
   } else {
     impls_.push_back(std::make_unique<Impl>());
     impls_[0]->Init(get_gm_size(0), get_l3_size(0));
     stream_pool.push_back(impls_[0]->context_->get_stream());
     idle_stream_flags.push_back(false);
-
+    current_stream_handle =
+        XPUStreamHandle(impls_[0]->context_->get_stream(), 0);
     if (std::getenv("XPU_DEFAULT_STREAM_NUMBER") != nullptr) {
       int default_num_stream = atoi(std::getenv("XPU_DEFAULT_STREAM_NUMBER"));
       for (int i = 0; i < default_num_stream; i++) {
@@ -387,6 +387,7 @@ XPUContext::XPUContext(const XPUPlace& place, bool is_comm_context)
     impls_[0]->SetStream(s, false);
     stream_pool.push_back(s);
     idle_stream_flags.push_back(false);
+    current_stream_handle = XPUStreamHandle(s, 0);
   }
 
   current_stream_idx = 0;
@@ -404,6 +405,9 @@ XPUStream XPUContext::stream(int i) const {
 void XPUContext::SetStream(void* stream, int i) {
   CheckValidStreamId(i);
   impls_[i]->SetStream(stream);
+  if (i == 0) {
+    current_stream_handle.set_stream(static_cast<XPUStream>(stream));
+  }
 }
 
 void XPUContext::CheckValidStreamId(int i) const {
@@ -513,6 +517,7 @@ int XPUContext::SetCurrentStream(int idx) {
   int prev_stream_idx = current_stream_idx;
   if (prev_stream_idx != idx) {
     impls_[0]->SetStream(stream_pool[idx]);
+    current_stream_handle.set_stream(stream_pool[idx]);
     current_stream_idx = idx;
     idle_stream_flags[prev_stream_idx] = true;
     idle_stream_flags[current_stream_idx] = false;
@@ -587,6 +592,10 @@ void XPUContext::AddStashedMemory(int stream, const DenseTensor& tensor) {
 
 XPUStream XPUContext::get_current_stream() { return impls_[0]->stream(); }
 
+XPUStreamHandle* XPUContext::get_current_stream_handle() {
+  return &current_stream_handle;
+}
+
 void XPUContext::Init() { impls_[0]->Init(); }
 
 XPUContext* get_xpu_context(int device_id) {
@@ -598,36 +607,59 @@ XPUContext* get_xpu_context(int device_id) {
   return dev_ctx;
 }
 
-XPUStreamHandle::XPUStreamHandle() {
-  auto* dev_ctx = phi::get_xpu_context();
-  stream_id = dev_ctx->get_idle_stream();
-  stream =
-      std::make_shared<XPUStream>(dev_ctx->get_stream_from_pool(stream_id));
-}
+XPUStreamHandle::XPUStreamHandle() {}
 
 XPUStreamHandle::XPUStreamHandle(const int idx) {
   auto* dev_ctx = phi::get_xpu_context();
   stream_id = idx;
-  stream =
-      std::make_shared<XPUStream>(dev_ctx->get_stream_from_pool(stream_id));
+  stream = dev_ctx->get_stream_from_pool(stream_id);
 }
 
 XPUStreamHandle::XPUStreamHandle(const phi::XPUPlace& place) {
   phi::XPUContext* dev_ctx = static_cast<phi::XPUContext*>(
       phi::DeviceContextPool::Instance().Get(place));
   stream_id = dev_ctx->get_idle_stream();
-  stream =
-      std::make_shared<XPUStream>(dev_ctx->get_stream_from_pool(stream_id));
+  stream = dev_ctx->get_stream_from_pool(stream_id);
+}
+
+XPUStreamHandle::XPUStreamHandle(const XPUStream xpu_stream, const int id) {
+  stream = xpu_stream;
+  stream_id = id;
+}
+
+void XPUStreamHandle::Init() {
+  auto* dev_ctx = phi::get_xpu_context();
+  stream_id = dev_ctx->get_idle_stream();
+  stream = dev_ctx->get_stream_from_pool(stream_id);
 }
 
 void XPUStreamHandle::wait_event(XPUEvent event) const {
-  int r = xpu_stream_wait_event(*stream, event);
+  int r = xpu_stream_wait_event(stream, event);
   PADDLE_ENFORCE_XRE_SUCCESS(r);
 }
 
-XPUStreamHandle get_current_stream_handle(int device_id) {
-  auto* dev_ctx = get_xpu_context(device_id);
-  return XPUStreamHandle(dev_ctx->get_current_stream_idx());
+void XPUStreamHandle::synchronize() const {
+  int r = xpu_wait(stream);
+  PADDLE_ENFORCE_XRE_SUCCESS(r);
+}
+
+void XPUStreamHandle::set_stream(XPUStream stream_) { stream = stream_; }
+
+bool XPUStreamHandle::query() const {
+  XPUEvent event = XPUEventPool::Instance().CreateEventFromPool();
+  int r = xpu_event_record(event, stream);
+  PADDLE_ENFORCE_XRE_SUCCESS(r);
+  r = xpu_event_query(event);
+  if (r == XPU_SUCCESS) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+void XPUStreamHandle::record_event(XPUEvent event) const {
+  int r = xpu_event_record(event, stream);
+  PADDLE_ENFORCE_XRE_SUCCESS(r);
 }
 
 XPUStreamHandle get_stream_handle(int device_id) {
@@ -703,7 +735,8 @@ XPUEventHandle::XPUEventHandle(XPUStream stream) {
 }
 
 void XPUEventHandle::record(XPUStream stream) {
-  PADDLE_ENFORCE_XRE_SUCCESS(xpu_event_query(event_));
+  int r = xpu_event_query(event_);
+  printf("====r: %d\n", r);
   PADDLE_ENFORCE_XRE_SUCCESS(xpu_event_record(event_, stream));
 }
 

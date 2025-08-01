@@ -39,6 +39,27 @@ namespace phi {
 
 #ifdef PADDLE_WITH_XPU
 class XPUCUDAStream;
+class XPUStreamHandle {
+ public:
+  XPUStreamHandle();
+  explicit XPUStreamHandle(const int idx);
+  explicit XPUStreamHandle(const XPUPlace& place);
+  explicit XPUStreamHandle(const XPUStream xpu_stream, const int id);
+
+  void Init();
+
+  int id() const { return stream_id; }
+  XPUStream raw_stream() const { return stream; }
+  void wait_event(XPUEvent event) const;
+  void synchronize() const;
+  bool query() const;
+  void record_event(XPUEvent event) const;
+  void set_stream(XPUStream stream);
+
+ private:
+  XPUStream stream;
+  int stream_id;
+};
 #endif
 
 class DenseTensor;
@@ -118,9 +139,11 @@ class XPUContext : public DeviceContext,
   void StreamWaitEventInPool(int wait_stream, XPUEvent event) const;
   int get_idle_stream();
   int get_current_stream_idx();
+  XPUStreamHandle* get_current_stream_handle();
 
  private:
   struct Impl;
+  XPUStreamHandle current_stream_handle;
   std::vector<std::unique_ptr<Impl>> impls_;
   std::vector<bool> idle_stream_flags;
   std::vector<XPUStream> stream_pool;
@@ -133,21 +156,6 @@ class XPUContext : public DeviceContext,
 };
 
 XPUContext* get_xpu_context(int device_id = -1);
-
-class XPUStreamHandle {
- public:
-  XPUStreamHandle();
-  explicit XPUStreamHandle(const int idx);
-  explicit XPUStreamHandle(const XPUPlace& place);
-
-  int id() const { return stream_id; }
-  XPUStream raw_stream() const { return *stream; }
-  void wait_event(XPUEvent event) const;
-
- private:
-  std::shared_ptr<XPUStream> stream;
-  int stream_id;
-};
 
 class XPUEventPool {
  public:
@@ -178,7 +186,6 @@ class XPUEventHandle {
   XPUEvent event_;
 };
 
-XPUStreamHandle get_current_stream_handle(int device_id = -1);
 XPUStreamHandle get_stream_handle(int device_id = -1);
 void set_current_stream(XPUStreamHandle* s);
 

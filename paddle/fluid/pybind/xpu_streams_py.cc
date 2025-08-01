@@ -34,8 +34,10 @@ namespace paddle {
 namespace platform {
 #ifdef PADDLE_WITH_XPU
 phi::XPUStreamHandle *get_current_stream(int device_id) {
-  auto handle = new phi::XPUStreamHandle();
-  return handle;
+  auto place = phi::XPUPlace(device_id);
+  auto *dev_ctx = static_cast<phi::XPUContext *>(
+      phi::DeviceContextPool::Instance().Get(place));
+  return dev_ctx->get_current_stream_handle();
 }
 
 phi::XPUStreamHandle *set_current_stream(int idx) {
@@ -118,19 +120,17 @@ void BindXpuStream(py::module *m_ptr) {
   });
 
   py::class_<phi::XPUStreamHandle>(m, "XPUStream", R"DOC(
-      The handle of the CUDA stream.
+      The handle of the XPU stream.
 
       Parameters:
           device(paddle.XPUPlace()|int|None, optional): The device which wanted to allocate the stream.
               If device is None or negative integer, device will be the current device.
               If device is positive integer, it must less than the device count. Default: None.
-          priority(int|None, optional): The priority of stream. The priority can be 1(high) or 2(normal).
-              If priority is None, the priority is 2(normal). Default: None.
 
       Examples:
           .. code-block:: python
 
-              >>> # doctest: +REQUIRES(env:GPU)
+              >>> # doctest: +REQUIRES(env:XPU)
               >>> import paddle
               >>> s1 = paddle.device.xpu.Stream(paddle.XPUPlace(0))
               >>> s2 = paddle.device.xpu.Stream(0)
@@ -152,6 +152,30 @@ void BindXpuStream(py::module *m_ptr) {
            [](phi::XPUStreamHandle &self, phi::XPUEventHandle &other) {
              self.wait_event(other.get_event());
            })
+      .def("query", [](phi::XPUStreamHandle &self) { return self.query(); })
+      .def("record_event",
+           [](phi::XPUStreamHandle &self, phi::XPUEventHandle *event) {
+             if (event == nullptr) {
+               event = new phi::XPUEventHandle();
+             }
+             self.record_event(event->get_event());
+             return event;
+           })
+      .def(
+          "synchronize",
+          [](phi::XPUStreamHandle &self) { self.synchronize(); },
+          R"DOC(
+          Waits for stream tasks to complete.
+
+          Examples:
+              .. code-block:: python
+
+                  >>> # doctest: +REQUIRES(env:GPU)
+                  >>> import paddle
+                  >>> s = paddle.device.cuda.Stream(paddle.CUDAPlace(0), 1)
+                  >>> s.synchronize()
+
+          )DOC")
       .def_property_readonly(
           "place",
           [](phi::XPUStreamHandle &self) {
@@ -165,6 +189,7 @@ void BindXpuStream(py::module *m_ptr) {
            [](phi::XPUStreamHandle &self) {
 #ifdef PADDLE_WITH_XPU
              new (&self) phi::XPUStreamHandle();
+             self.Init();
 #else
             PADDLE_THROW(common::errors::Unavailable(
                 "Class XPUStream can only be initialized on the XPU "
@@ -208,11 +233,6 @@ void BindXpuStream(py::module *m_ptr) {
   py::class_<phi::XPUEventHandle>(m, "XPUEvent", R"DOC(
       The handle of the XPU event.
 
-      Parameters:
-          enable_timing(bool, optional): Whether the event will measure time. Default: False.
-          blocking(bool, optional): Whether the wait() func will be blocking. Default: False;
-          interprocess(bool, optional): Whether the event can be shared between processes. Default: False.
-
       Examples:
           .. code-block:: python
 
@@ -226,8 +246,9 @@ void BindXpuStream(py::module *m_ptr) {
           "record",
           [](phi::XPUEventHandle &self, phi::XPUStreamHandle *stream) {
             if (stream == nullptr) {
-              auto stream_handle = phi::get_current_stream_handle();
-              self.record(stream_handle.raw_stream());
+              auto *dev_ctx = phi::get_xpu_context();
+              auto stream_handle = dev_ctx->get_current_stream_handle();
+              self.record(stream_handle->raw_stream());
             } else {
               self.record(stream->raw_stream());
             }
@@ -249,7 +270,7 @@ void BindXpuStream(py::module *m_ptr) {
                 "Class XPUEvent can only be initialized on the XPU platform."));
 #endif
       });
-
+#ifdef PADDLE_WITH_XPU
   py::class_<phi::XPUCUDAStream>(m, "XPUCUDAStream", R"DOC(
       The handle of the XPU stream.
 
@@ -257,11 +278,13 @@ void BindXpuStream(py::module *m_ptr) {
           device(paddle.XPUPlace()|int|None, optional): The device which wanted to allocate the stream.
               If device is None or negative integer, device will be the current device.
               If device is positive integer, it must less than the device count. Default: None.
+          priority(int|None, optional): The priority of stream. The priority can be 1(high) or 2(normal).
+              If priority is None, the priority is 2(normal). Default: None.
 
       Examples:
           .. code-block:: python
 
-              >>> # doctest: +REQUIRES(env:GPU)
+              >>> # doctest: +REQUIRES(env:XPU)
               >>> import paddle
               >>> s1 = paddle.device.xpu.Stream(paddle.XPUPlace(0), 1)
               >>> s2 = paddle.device.xpu.Stream(0, 1)

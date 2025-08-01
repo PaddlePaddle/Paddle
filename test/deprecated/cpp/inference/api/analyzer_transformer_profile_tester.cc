@@ -24,7 +24,7 @@ void profile(bool use_mkldnn = false) {
   SetConfig(&cfg);
   std::vector<std::vector<PaddleTensor>> outputs;
   if (use_mkldnn) {
-    cfg.EnableMKLDNN();
+    cfg.EnableONEDNN();
   }
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;

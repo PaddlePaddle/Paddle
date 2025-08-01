@@ -179,6 +179,12 @@ void ConvTransposeRawGPUDNNKernel(const Context& dev_ctx,
   }
   T* transformed_out_data = transformed_out.data<T>();
 
+#ifndef PADDLE_WITH_HIP
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(transformed_x);
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(filter);
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(transformed_out);
+#endif
+
   GPUDNNDataLayout layout;
 
   int iwo_groups = groups;
@@ -235,9 +241,6 @@ void ConvTransposeRawGPUDNNKernel(const Context& dev_ctx,
   bwd_result.algo =
       search::Find<T>(args, false, deterministic, workspace_size, dev_ctx);
 #else
-  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(transformed_x);
-  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(filter);
-  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(transformed_out);
   SearchResult<cudnnConvolutionBwdDataAlgo_t> bwd_result;
   using search = SearchAlgorithm<ConvKind::kBackwardData>;
   bwd_result = search::Find<T>(dev_ctx, args, false, deterministic, false);

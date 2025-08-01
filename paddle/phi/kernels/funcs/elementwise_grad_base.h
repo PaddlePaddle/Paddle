@@ -21,9 +21,11 @@ limitations under the License. */
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/elementwise_utils.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
+#include "paddle/phi/kernels/funcs/get_current_context.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
@@ -63,18 +65,28 @@ void CommonGradBroadcastCPU(const DenseTensor &x,
                             const CPUContext &dev_ctx,
                             DX_OP dx_op,
                             DY_OP dy_op) {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
   std::vector<int64_t> index_array(max_dim, 0);
   const T *x_data = x.data<T>();
   const T *y_data = y.data<T>();
   const Tout *out_data = out.data<Tout>();
   const Tout *dout_data = dout.data<Tout>();
-  T *dx_data = dx == nullptr ? nullptr : dev_ctx.Alloc<T>(dx);
-  T *dy_data = dy == nullptr ? nullptr : dev_ctx.Alloc<T>(dy);
-  if (dx_data != nullptr) {
-    memset(dx_data, 0, dx->numel() * sizeof(T));
+
+  DenseTensor dx_mp, dy_mp;
+  MPType *dx_mp_data = nullptr;
+  MPType *dy_mp_data = nullptr;
+  if (dx != nullptr) {
+    dx_mp.Resize(dx->dims());
+    dev_ctx.Alloc<MPType>(&dx_mp);
+    dx_mp_data = dx_mp.data<MPType>();
+    memset(dx_mp_data, 0, dx->numel() * sizeof(MPType));
   }
-  if (dy_data != nullptr) {
-    memset(dy_data, 0, dy->numel() * sizeof(T));
+  if (dy != nullptr) {
+    dy_mp.Resize(dy->dims());
+    dev_ctx.Alloc<MPType>(&dy_mp);
+    dy_mp_data = dy_mp.data<MPType>();
+    memset(dy_mp_data, 0, dy->numel() * sizeof(MPType));
   }
   const int64_t out_size = std::accumulate(out_dims_array,
                                            out_dims_array + max_dim,
@@ -86,21 +98,31 @@ void CommonGradBroadcastCPU(const DenseTensor &x,
         GetElementwiseIndex<int64_t>(x_dims_array, max_dim, index_array.data());
     y_index =
         GetElementwiseIndex<int64_t>(y_dims_array, max_dim, index_array.data());
-    if (dx_data != nullptr) {
-      dx_data[x_index] += dx_op(x_data[x_index],
-                                y_data[y_index],
-                                out_data[out_index],
-                                dout_data[out_index]);
+    if (dx_mp_data != nullptr) {
+      dx_mp_data[x_index] += static_cast<MPType>(dx_op(x_data[x_index],
+                                                       y_data[y_index],
+                                                       out_data[out_index],
+                                                       dout_data[out_index]));
     }
-    if (dy_data != nullptr) {
-      dy_data[y_index] += dy_op(x_data[x_index],
-                                y_data[y_index],
-                                out_data[out_index],
-                                dout_data[out_index]);
+    if (dy_mp_data != nullptr) {
+      dy_mp_data[y_index] += static_cast<MPType>(dy_op(x_data[x_index],
+                                                       y_data[y_index],
+                                                       out_data[out_index],
+                                                       dout_data[out_index]));
     }
 
     UpdateElementwiseIndexArray<int64_t>(
         out_dims_array, max_dim, index_array.data());
+  }
+  if (dx != nullptr) {
+    dev_ctx.Alloc<T>(dx);
+    phi::CastKernel<MPType, CPUContext>(
+        dev_ctx, dx_mp, phi::CppTypeToDataType<T>::Type(), dx);
+  }
+  if (dy != nullptr) {
+    dev_ctx.Alloc<T>(dy);
+    phi::CastKernel<MPType, CPUContext>(
+        dev_ctx, dy_mp, phi::CppTypeToDataType<T>::Type(), dy);
   }
 }
 
@@ -1011,10 +1033,7 @@ static void ElemwiseGradBroadcast1CUDA(gpuStream_t stream,
   if (w < half_walf || h < half_walf) {
     int block_size = std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), h);
     int64_t grid_size = w;
-    auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
-    auto *dev_ctx = static_cast<GPUContext *>(
-        phi::DeviceContextPool::Instance().Get(gplace));
-
+    auto *dev_ctx = phi::funcs::GetCurrentContext();
     int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
     grid_size = std::min(grid_size, max_grid_dim);
     if (h * w > std::numeric_limits<int>::max()) {
@@ -1031,9 +1050,7 @@ static void ElemwiseGradBroadcast1CUDA(gpuStream_t stream,
     // suppose performance improves with h increased.
     dim3 block_size = dim3(BLOCK_X, BLOCK_Y);
     int64_t grid_size = (w + BLOCK_X - 1) / BLOCK_X;
-    auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
-    auto *dev_ctx = static_cast<GPUContext *>(
-        phi::DeviceContextPool::Instance().Get(gplace));
+    auto *dev_ctx = phi::funcs::GetCurrentContext();
     int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
     grid_size = std::min(grid_size, max_grid_dim);
     if (h * w > std::numeric_limits<int>::max()) {
@@ -1065,9 +1082,7 @@ static void ElemwiseGradBroadcast2CUDA(gpuStream_t stream,
   int block_size =
       std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), pre * post);
   int64_t grid_size = n;
-  auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
-  auto *dev_ctx =
-      static_cast<GPUContext *>(phi::DeviceContextPool::Instance().Get(gplace));
+  auto *dev_ctx = phi::funcs::GetCurrentContext();
   int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
   grid_size = std::min(grid_size, max_grid_dim);
 
@@ -1273,9 +1288,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
         int block_size =
             std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), h);
         int64_t grid_size = w;
-        auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
-        auto *dev_ctx = static_cast<GPUContext *>(
-            phi::DeviceContextPool::Instance().Get(gplace));
+        auto *dev_ctx = phi::funcs::GetCurrentContext();
         int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
         grid_size = std::min(grid_size, max_grid_dim);
         if (use_int64_index) {
@@ -1309,10 +1322,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
       } else {
         dim3 block_size = dim3(BLOCK_X, BLOCK_Y);
         int64_t grid_size = (w + BLOCK_X - 1) / BLOCK_X;
-        auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
-        auto *dev_ctx = static_cast<GPUContext *>(
-            phi::DeviceContextPool::Instance().Get(gplace));
-
+        auto *dev_ctx = phi::funcs::GetCurrentContext();
         int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
         grid_size = std::min(grid_size, max_grid_dim);
         if (use_int64_index) {
@@ -1348,9 +1358,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
         int block_size =
             std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), h);
         int64_t grid_size = w;
-        auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
-        auto *dev_ctx = static_cast<GPUContext *>(
-            phi::DeviceContextPool::Instance().Get(gplace));
+        auto *dev_ctx = phi::funcs::GetCurrentContext();
         int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
         grid_size = std::min(grid_size, max_grid_dim);
         if (use_int64_index) {
@@ -1384,10 +1392,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
       } else {
         dim3 block_size = dim3(BLOCK_X, BLOCK_Y);
         int64_t grid_size = (w + BLOCK_X - 1) / BLOCK_X;
-        auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
-        auto *dev_ctx = static_cast<GPUContext *>(
-            phi::DeviceContextPool::Instance().Get(gplace));
-
+        auto *dev_ctx = phi::funcs::GetCurrentContext();
         int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
         grid_size = std::min(grid_size, max_grid_dim);
         if (use_int64_index) {
@@ -1442,9 +1447,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
       int block_size =
           std::min(static_cast<int64_t>(ELEMWISE_MAX_BLOCK_DIM), h);
       int64_t grid_size = w;
-      auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
-      auto *dev_ctx = static_cast<GPUContext *>(
-          phi::DeviceContextPool::Instance().Get(gplace));
+      auto *dev_ctx = phi::funcs::GetCurrentContext();
       int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
       grid_size = std::min(grid_size, max_grid_dim);
       if (use_int64_index) {
@@ -1478,10 +1481,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
     } else {
       dim3 block_size = dim3(BLOCK_X, BLOCK_Y);
       int64_t grid_size = (w + BLOCK_X - 1) / BLOCK_X;
-      auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
-      auto *dev_ctx = static_cast<GPUContext *>(
-          phi::DeviceContextPool::Instance().Get(gplace));
-
+      auto *dev_ctx = phi::funcs::GetCurrentContext();
       int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
       grid_size = std::min(grid_size, max_grid_dim);
       if (use_int64_index) {
@@ -1545,10 +1545,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
 
     int block_size = std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), mid);
     int64_t grid_size = pre * post;
-    auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
-    auto *dev_ctx = static_cast<GPUContext *>(
-        phi::DeviceContextPool::Instance().Get(gplace));
-
+    auto *dev_ctx = phi::funcs::GetCurrentContext();
     int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
     grid_size = std::min(grid_size, max_grid_dim);
     if (pre * mid * post > std::numeric_limits<int32_t>::max()) {
@@ -1612,9 +1609,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
           int block_size =
               std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), mid);
           int64_t grid_size = pre * post;
-          auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
-          auto *dev_ctx = static_cast<GPUContext *>(
-              phi::DeviceContextPool::Instance().Get(gplace));
+          auto *dev_ctx = phi::funcs::GetCurrentContext();
           int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
           grid_size = std::min(grid_size, max_grid_dim);
           // we need to calc y offset with blockid, so do x_pre/y_pre to get
@@ -1666,9 +1661,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
           int block_size =
               std::min(static_cast<size_t>(ELEMWISE_MAX_BLOCK_DIM), mid);
           int64_t grid_size = pre * post;
-          auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
-          auto *dev_ctx = static_cast<GPUContext *>(
-              phi::DeviceContextPool::Instance().Get(gplace));
+          auto *dev_ctx = phi::funcs::GetCurrentContext();
           int64_t max_grid_dim = dev_ctx->GetCUDAMaxGridDimSize()[0];
           grid_size = std::min(grid_size, max_grid_dim);
           if (k_pre != pre) k_pre = pre / k_pre;

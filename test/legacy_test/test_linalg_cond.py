@@ -163,6 +163,37 @@ class TestCondEmptyTensorInput(unittest.TestCase):
         test_dygraph_assert_true(self, x_list_m_n, p_list_m_n)
 
 
+class TestCondZeroSizeTensor(unittest.TestCase):
+    def setUp(self):
+        self.shape = [0, 3]
+        self.dtype = 'float32'
+        self.p = 2
+        self.except_shape = []
+
+    def _init_data(self):
+        self.x = paddle.randn(self.shape, dtype=self.dtype)
+        self.x.stop_gradient = False
+
+    def _test_cond(self):
+        res = paddle.linalg.cond(self.x, self.p)
+        np.testing.assert_allclose(res.shape, self.except_shape)
+        loss = res.sum()
+        loss.backward()
+        np.testing.assert_allclose(self.x.grad.shape, self.x.shape)
+
+    def test_dygraph(self):
+        self._init_data()
+        self._test_cond()
+
+
+class TestCondZeroSizeTensor1(TestCondZeroSizeTensor):
+    def setUp(self):
+        self.shape = [8, 9, 0, 3]
+        self.dtype = 'float32'
+        self.p = 2
+        self.except_shape = [8, 9]
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
