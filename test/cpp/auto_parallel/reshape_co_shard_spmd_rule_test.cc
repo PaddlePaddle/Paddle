@@ -29,7 +29,7 @@ struct ReshapeTestCase {
   // output
   std::vector<std::vector<int64_t>> expected_input_dims_mapping;
   std::vector<std::vector<int64_t>> expected_output_dims_mapping;
-}
+};
 
 TEST(Reshape, Ctor) {
   std::vector<int64_t> mesh_shape = {2, 2};
