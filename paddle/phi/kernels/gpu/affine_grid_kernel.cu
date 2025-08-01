@@ -22,6 +22,7 @@
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/affine_grid_utils.h"
 
 namespace phi {
@@ -138,6 +139,11 @@ void AffineGrid4DCUDAKernel(const Context& dev_ctx,
   w = size_attr[3];
   output->Resize(common::make_ddim({n, h, w, 2}));
   T* out_data = dev_ctx.template Alloc<T>(output);
+  if (input.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
+    return;
+  }
 
   T h_step;
   T w_step;
@@ -188,6 +194,11 @@ void AffineGrid5DCUDAKernel(const Context& dev_ctx,
   w = size_attr[4];
   output->Resize(common::make_ddim({n, d, h, w, 3}));
   T* out_data = dev_ctx.template Alloc<T>(output);
+  if (input.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(output->dims())), 0, output);
+    return;
+  }
 
   T d_step;
   T h_step;

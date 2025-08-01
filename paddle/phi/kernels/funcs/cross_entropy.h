@@ -76,7 +76,7 @@ struct TolerableValue<phi::dtype::bfloat16> {
 template <typename DeviceContext, typename T>
 class CrossEntropyFunctor {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   phi::DenseTensor* out,
                   const phi::DenseTensor* prob,
                   const phi::DenseTensor* labels,

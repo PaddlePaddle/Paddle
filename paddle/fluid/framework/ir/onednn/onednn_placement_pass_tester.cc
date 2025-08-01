@@ -27,13 +27,13 @@ class PlacementPassTest {
              const std::string& name,
              const std::vector<std::string>& inputs,
              const std::vector<std::string>& outputs,
-             paddle::tribool use_mkldnn) {
+             paddle::tribool use_onednn) {
     auto* op = prog->MutableBlock(0)->AppendOp();
 
     op->SetType(type);
 
-    if (!paddle::indeterminate(use_mkldnn))
-      op->SetAttr("use_mkldnn", use_mkldnn);
+    if (!paddle::indeterminate(use_onednn))
+      op->SetAttr("use_mkldnn", use_onednn);
 
     if (type == "conv2d") {
       op->SetAttr("name", name);
@@ -53,7 +53,7 @@ class PlacementPassTest {
     op->SetOutput("Out", {outputs[0]});
   }
 
-  // operator                      use_mkldnn
+  // operator                      use_onednn
   // ---------------------------------------
   // (a,b)->concat->c              none
   // (c,weights,bias)->conv->f     none
@@ -125,8 +125,8 @@ class PlacementPassTest {
   }
 
  public:
-  void MainTest(std::initializer_list<std::string> mkldnn_enabled_op_types,
-                unsigned expected_use_mkldnn_true_count) {
+  void MainTest(std::initializer_list<std::string> onednn_enabled_op_types,
+                unsigned expected_use_onednn_true_count) {
     auto prog = BuildProgramDesc();
     RegisterOpKernel({"conv2d", "pool2d", "concat", "relu"});
     std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
@@ -134,23 +134,23 @@ class PlacementPassTest {
     auto pass = PassRegistry::Instance().Get("onednn_placement_pass");
 
     pass->Set("mkldnn_enabled_op_types",
-              new std::unordered_set<std::string>(mkldnn_enabled_op_types));
+              new std::unordered_set<std::string>(onednn_enabled_op_types));
 
     graph.reset(pass->Apply(graph.release()));
 
-    unsigned use_mkldnn_true_count = 0;
+    unsigned use_onednn_true_count = 0;
 
     for (auto* node : graph->Nodes()) {
       if (node->IsOp()) {
         auto* op = node->Op();
         if (op->HasAttr("use_mkldnn") &&
             PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn"))) {
-          ++use_mkldnn_true_count;
+          ++use_onednn_true_count;
         }
       }
     }
 
-    EXPECT_EQ(use_mkldnn_true_count, expected_use_mkldnn_true_count);
+    EXPECT_EQ(use_onednn_true_count, expected_use_onednn_true_count);
   }
 
   void PlacementNameTest() {

@@ -28,8 +28,8 @@ from paddle.base import core
 class TestSumBF16ONEDNN(TestSumOp):
     def setUp(self):
         self.op_type = "sum"
-        self.use_mkldnn = True
-        self.mkldnn_data_type = "bfloat16"
+        self.use_onednn = True
+        self.onednn_data_type = "bfloat16"
 
         # float32 input to be use for reference
         x0 = np.random.random((25, 8)).astype('float32')
@@ -45,7 +45,7 @@ class TestSumBF16ONEDNN(TestSumOp):
 
         y = x0 + x1 + x2
         self.outputs = {'Out': convert_float_to_uint16(y)}
-        self.attrs = {'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'use_mkldnn': self.use_onednn}
 
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace(), check_pir_onednn=True)

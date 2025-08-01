@@ -569,6 +569,7 @@ def istft(
     fft_size = x.shape[-2]
 
     if in_dynamic_mode():
+        assert x.size != 0, 'x should not be an empty tensor.'
         if onesided:
             assert (
                 fft_size == n_fft // 2 + 1

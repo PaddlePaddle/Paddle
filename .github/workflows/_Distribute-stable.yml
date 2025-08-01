@@ -42,9 +42,6 @@ jobs:
           WITH_MKL: "OFF"
           WITH_PYTHON: "ON"
           WITH_DISTRIBUTE: "ON"
-          WITH_PSCORE: "ON"
-          WITH_PSLIB: "OFF"
-          WITH_HETERPS: "ON"
           WITH_TESTING: "ON"
           WITH_INFERENCE_API_TEST: "OFF"
           COVERALLS_UPLOAD: "ON"
@@ -105,9 +102,6 @@ jobs:
             -e CTEST_OUTPUT_ON_FAILURE \
             -e CTEST_PARALLEL_LEVEL \
             -e WITH_GPU \
-            -e WITH_PSCORE \
-            -e WITH_PSLIB \
-            -e WITH_HETERPS \
             -e WITH_INFERENCE_API_TEST \
             -e CUDA_VISIBLE_DEVICES \
             -e GPUBOX_DEMO_INSTALL_DIR \
@@ -128,11 +122,14 @@ jobs:
           rm -rf * .[^.]*
           set -e
           echo "Downloading Paddle.tar.gz"
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
+          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
           echo "Extracting Paddle.tar.gz"
-          tar xf Paddle.tar.gz --strip-components=1
+          tar -xf Paddle.tar.gz --strip-components=1
           rm Paddle.tar.gz
+          git remote -v
+          set +e
           git remote add upstream https://github.com/PaddlePaddle/Paddle.git
+          set -e
           source ${{ github.workspace }}/../../../proxy
           git checkout test
           echo "Pull upstream develop"
@@ -153,7 +150,7 @@ jobs:
           set +e
           flashattn_version=$(git submodule status | grep flashattn | awk "{print \$1}" | sed "s#-##g")
           echo "flashattn_version=${flashattn_version}" >> ${{ github.env }}
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/gpups/flashattn_cache/flashattn_libs_${flashattn_version}.tar.gz --no-check-certificate; FACODE=$?
+          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/gpups/flashattn_cache/flashattn_libs_${flashattn_version}.tar.gz --no-check-certificate; FACODE=$?
           if [ $FACODE -ne 0 ]; then
             echo "flashattn_cached_package=true" >> ${{ github.env }}
           fi
@@ -241,7 +238,6 @@ jobs:
           WITH_GPU: "ON"
           WITH_AVX: "ON"
           WITH_DISTRIBUTE: "ON"
-          WITH_HETERPS: "ON"
           WITH_TESTING: "ON"
           WITH_COVERAGE: "OFF"
           CMAKE_BUILD_TYPE: Release
@@ -288,7 +284,6 @@ jobs:
           -e WITH_GPU \
           -e WITH_AVX \
           -e WITH_DISTRIBUTE \
-          -e WITH_HETERPS \
           -e WITH_TESTING \
           -e WITH_COVERAGE \
           -e CMAKE_BUILD_TYPE \
@@ -316,7 +311,7 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*
           echo "Downloading Paddle.tar.gz"
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/gpups/${{ env.PR_ID }}/${{ env.COMMIT_ID }}/Paddle.tar.gz --no-check-certificate
+          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/gpups/${{ env.PR_ID }}/${{ env.COMMIT_ID }}/Paddle.tar.gz --no-check-certificate
           echo "Extracting Paddle.tar.gz"
           tar --use-compress-program="pzstd" -xf Paddle.tar.gz --strip-components=1
           rm Paddle.tar.gz

@@ -40,6 +40,7 @@ from paddle.utils import flatten, map_structure
 
 from .envs import (
     ENV_SOT_LOG_LEVEL,
+    ENV_SOT_SPECIALIZED_DIM_NUMBERS,
     ENV_STRICT_MODE,
 )
 from .paddle_api_config import (
@@ -513,3 +514,21 @@ def get_obj_stable_repr(obj) -> str:
             return f"{module}.{class_name}()"
 
     return f"{class_name}()"
+
+
+def get_min_non_specialized_number() -> int:
+    specialized_dim_numbers_raw_str = (
+        ENV_SOT_SPECIALIZED_DIM_NUMBERS.get().lower()
+    )
+    assert specialized_dim_numbers_raw_str in [
+        "no",
+        "0",
+        "01",
+    ], f"Unsupported specialized_dim_numbers: {specialized_dim_numbers_raw_str}"
+    to_min_non_specialized_number = {
+        # specialized numbers, minimum non-specialized number
+        "no": 0,
+        "0": 1,
+        "01": 2,
+    }
+    return to_min_non_specialized_number[specialized_dim_numbers_raw_str]

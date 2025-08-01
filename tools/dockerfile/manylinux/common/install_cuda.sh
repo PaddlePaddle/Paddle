@@ -229,6 +229,41 @@ function install_126 {
     ldconfig
 }
 
+
+function install_129 {
+    CUDNN_VERSION=9.9.0.52
+    NCCL_VERSION=2.23.4
+    TensorRT_VERSION=10.5
+    echo "Installing CUDA 12.9.0 and cuDNN ${CUDNN_VERSION} and NCCL ${NCCL_VERSION} and TensorRT ${TensorRT_VERSION} and cuSparseLt-0.6.3"
+    rm -rf /usr/local/cuda-12.9 /usr/local/cuda
+    # install CUDA 12.9.0 in the same container
+    wget -q https://developer.download.nvidia.com/compute/cuda/12.9.0/local_installers/cuda_12.9.0_575.51.03_linux.run
+    chmod +x cuda_12.9.0_575.51.03_linux.run
+    ./cuda_12.9.0_575.51.03_linux.run --toolkit --driver --silent --kernel-source-path=/usr/src/kernels/4.18.0-553.34.1.el8_10.x86_64
+    rm -f cuda_12.9.0_575.51.03_linux.run
+    rm -f /usr/local/cuda && ln -s /usr/local/cuda-12.9 /usr/local/cuda
+    rm -rf /usr/bin/nvidia-smi
+
+    # cuDNN license: https://developer.nvidia.com/cudnn/license_agreement
+    mkdir tmp_cudnn && cd tmp_cudnn
+    wget -q https://developer.download.nvidia.com/compute/cudnn/redist/cudnn/linux-x86_64/cudnn-linux-x86_64-${CUDNN_VERSION}_cuda12-archive.tar.xz -O cudnn-linux-x86_64-${CUDNN_VERSION}_cuda12-archive.tar.xz
+    tar xf cudnn-linux-x86_64-${CUDNN_VERSION}_cuda12-archive.tar.xz
+    cp -a cudnn-linux-x86_64-${CUDNN_VERSION}_cuda12-archive/include/* /usr/local/cuda/include/
+    cp -a cudnn-linux-x86_64-${CUDNN_VERSION}_cuda12-archive/lib/* /usr/local/cuda/lib64/
+    cd ..
+    rm -rf tmp_cudnn
+
+    install_nccl_2234
+    install_trt_105018
+    install_cusparselt_063
+
+    # install gdrcopy
+    cd /usr/local
+    wget -q https://paddle-ci.gz.bcebos.com/gdrcopy.tar && tar xf gdrcopy.tar && rm -rf gdrcopy.tar
+
+    ldconfig
+}
+
 function prune_118 {
     echo "Pruning CUDA 11.8 and cuDNN"
     #####################################################################################
@@ -370,6 +405,8 @@ do
     12.4) install_124; prune_124
         ;;
     12.6) install_126; prune_126
+        ;;
+    12.9) install_129
         ;;
     *) echo "bad argument $1"; exit 1
         ;;

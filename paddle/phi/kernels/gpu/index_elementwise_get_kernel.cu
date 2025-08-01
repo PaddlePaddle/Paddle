@@ -22,7 +22,7 @@
 
 namespace phi {
 template <typename T, typename IndexT = int>
-void GPUIndexElementwiseGetKernel(const phi::GPUContext& ctx,
+void GPUIndexElementwiseGetKernel(const phi::GPUContext& dev_ctx,
                                   const DenseTensor& input,
                                   const std::vector<const DenseTensor*> index,
                                   const std::vector<int64_t>& input_dims,
@@ -32,14 +32,17 @@ void GPUIndexElementwiseGetKernel(const phi::GPUContext& ctx,
                                   const int64_t slice_offset,
                                   DenseTensor* output) {
   int64_t numel = 0;
-  auto num_indices = index_dims.size();
+  int64_t num_indices = 0;
+  std::vector<int64_t> shape_tmp;
+  std::vector<int64_t> stride_tmp;
+  funcs::cal_shape_stride(index_dims, &num_indices, &shape_tmp, &stride_tmp);
 
   auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
 
   auto sizes = std::array<int64_t, DDim::kMaxRank>{};
   auto strides = std::array<int64_t, DDim::kMaxRank>{};
 
-  for (unsigned i = 0; i < num_indices; i++) {
+  for (int64_t i = 0; i < num_indices; i++) {
     sizes[i] = index_dims[i];
     strides[i] = index_stride[i];
   }
@@ -54,8 +57,8 @@ void GPUIndexElementwiseGetKernel(const phi::GPUContext& ctx,
                            std::vector<int64_t>(),
                            std::vector<int64_t>(),
                            phi::SizeOf(input.dtype()),
-                           common::vectorize<int64_t>(index[0]->dims()),
-                           common::vectorize<int64_t>(index[0]->strides()),
+                           shape_tmp,
+                           stride_tmp,
                            phi::SizeOf(index[0]->dtype()),
                            &desired_shape,
                            &strides_array,
@@ -75,14 +78,14 @@ void GPUIndexElementwiseGetKernel(const phi::GPUContext& ctx,
   constexpr int vt = 4;
   const dim3 block(nt);
   const dim3 grid((N + block.x * vt - 1) / (block.x * vt));
-  auto stream = ctx.stream();
+  auto stream = dev_ctx.stream();
 
   using dtype = funcs::OpaqueType<sizeof(T)>;
 
   const char* in_ptr =
       reinterpret_cast<const char*>(input.data<T>()) + slice_offset;
   char* out_ptr = reinterpret_cast<char*>(output->data<T>());
-  funcs::index_elementwise_kernel<nt, vt>
+  funcs::index_elementwise_with_tensor_kernel<nt, vt>
       <<<grid, block, 0, stream>>>(N, [=] __device__(int idx) {
         const auto offsets = offset_calc.get(idx);
         char* const out_data = out_ptr + offsets[0];
@@ -90,7 +93,7 @@ void GPUIndexElementwiseGetKernel(const phi::GPUContext& ctx,
 
         int64_t offset = 0;
 #pragma unroll
-        for (int i = 0; i < num_indices; i++) {
+        for (int64_t i = 0; i < num_indices; i++) {
           int64_t index =
               *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
           if (index < 0) {
@@ -105,7 +108,7 @@ void GPUIndexElementwiseGetKernel(const phi::GPUContext& ctx,
 }
 
 template <typename T, typename Context>
-void IndexElementwiseGetKernel(const Context& ctx,
+void IndexElementwiseGetKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                const std::vector<const DenseTensor*>& index,
                                const std::vector<int64_t>& input_dims,
@@ -130,10 +133,10 @@ void IndexElementwiseGetKernel(const Context& ctx,
     out->Resize(phi::make_ddim(output_dims));
   }
 
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   if (out->numel() == 0) return;
 
-  GPUIndexElementwiseGetKernel<T, int64_t>(ctx,
+  GPUIndexElementwiseGetKernel<T, int64_t>(dev_ctx,
                                            x,
                                            index,
                                            input_dims,

@@ -181,27 +181,27 @@ __global__ void GetScaleBiasGradientCUDAKernel(int64_t N,
                                                const AccT* db,
                                                T* d_scale,
                                                T* d_bias) {
-  // TODO(guoxiangmin) :add check when C / block >= gridDim.x
-  const int64_t c = blockIdx.x * blockDim.x + threadIdx.x;
-  if (c < C) {
-    const int G = group;
-    const int64_t D = C / G;
-    AccT sum1 = static_cast<AccT>(0);
-    AccT sum2 = static_cast<AccT>(0);
-    for (int64_t n = 0; n < N; ++n) {
-      const int64_t nc = n * C + c;
-      const int64_t ng = n * G + c / D;
-      sum1 +=
-          (d_scale == nullptr)
-              ? AccT(0)
-              : ((ds[nc] - db[nc] * (mean[ng])) * (rsqrt((var[ng]) + epsilon)));
-      sum2 += (d_bias == nullptr) ? AccT(0) : db[nc];
-    }
-    if (d_scale != nullptr) {
-      d_scale[c] = static_cast<T>(sum1);
-    }
-    if (d_bias != nullptr) {
-      d_bias[c] = static_cast<T>(sum2);
+  for (int64_t c = blockIdx.x * blockDim.x + threadIdx.x; c < C;
+       c += gridDim.x * blockDim.x) {
+    if (c < C) {
+      const int G = group;
+      const int64_t D = C / G;
+      AccT sum1 = static_cast<AccT>(0);
+      AccT sum2 = static_cast<AccT>(0);
+      for (int64_t n = 0; n < N; ++n) {
+        const int64_t nc = n * C + c;
+        const int64_t ng = n * G + c / D;
+        sum1 += (d_scale == nullptr) ? AccT(0)
+                                     : ((ds[nc] - db[nc] * (mean[ng])) *
+                                        (rsqrt((var[ng]) + epsilon)));
+        sum2 += (d_bias == nullptr) ? AccT(0) : db[nc];
+      }
+      if (d_scale != nullptr) {
+        d_scale[c] = static_cast<T>(sum1);
+      }
+      if (d_bias != nullptr) {
+        d_bias[c] = static_cast<T>(sum2);
+      }
     }
   }
 }
@@ -407,17 +407,19 @@ void GroupNormGradKernel(const Context& dev_ctx,
     if (d_scale || d_bias) {
       const int block = 256;
       GetScaleBiasGradientCUDAKernel<T, AccT>
-          <<<(C + block - 1) / block, block, 0, dev_ctx.stream()>>>(
-              x_dims[0],
-              C,
-              groups,
-              epsilon,
-              mean_data,
-              var_data,
-              ds_data,
-              db_data,
-              d_scale_data,
-              d_bias_data);
+          <<<std::min(max_grid_x, (C + block - 1) / block),
+             block,
+             0,
+             dev_ctx.stream()>>>(x_dims[0],
+                                 C,
+                                 groups,
+                                 epsilon,
+                                 mean_data,
+                                 var_data,
+                                 ds_data,
+                                 db_data,
+                                 d_scale_data,
+                                 d_bias_data);
     }
 
     if (d_x_data != nullptr) {

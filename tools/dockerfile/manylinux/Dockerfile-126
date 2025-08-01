@@ -5,8 +5,7 @@ ARG CUDA_VERSION=12.6
 ARG CUDA_PADDLE=126
 ARG BASE_TARGET=cuda${CUDA_VERSION}
 
-FROM nvidia/cuda:12.6.0-cudnn-devel-ubuntu22.04 as base
-#FROM nvidia/cuda:12.6.0-devel-ubuntu22.04 as base
+FROM nvidia/cuda:12.6.3-cudnn-devel-ubuntu22.04 as base
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 
 
@@ -18,7 +17,7 @@ ARG PYTHON_VERSION=3.10
 ENV WITH_GPU=${WITH_GPU:-ON}
 ENV WITH_AVX=${WITH_AVX:-ON}
 ENV DEBIAN_FRONTEND=noninteractive
-ENV LD_LIBRARY_PATH=/usr/local/cuda-${CUDA_VERSION}/targets/x86_64-linux/lib:$LD_LIBRARY_PATH
+ENV LD_LIBRARY_PATH=/usr/local/cuda-${CUDA_VERSION}/compat:/usr/local/cuda-${CUDA_VERSION}/targets/x86_64-linux/lib:$LD_LIBRARY_PATH
 
 ENV HOME /root
 
@@ -33,6 +32,8 @@ RUN apt-get update --allow-unauthenticated && \
       autoconf \
       automake \
       libtool \
+      libmlx5-1 \
+      libibverbs-dev \
       python${PYTHON_VERSION} \
       python${PYTHON_VERSION}-dev \
       python3-pip && \
@@ -40,12 +41,12 @@ RUN apt-get update --allow-unauthenticated && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /home
-RUN wget -q https://cmake.org/files/v3.18/cmake-3.18.0-Linux-x86_64.tar.gz && \
-    tar -zxf cmake-3.18.0-Linux-x86_64.tar.gz && \
-    rm cmake-3.18.0-Linux-x86_64.tar.gz && \
-    rm -rf /home/cmake-3.18.0-Linux-x86_64/doc /home/cmake-3.18.0-Linux-x86_64/man
+RUN wget -q https://cmake.org/files/v3.31/cmake-3.31.0-linux-x86_64.tar.gz && \
+    tar -zxf cmake-3.31.0-linux-x86_64.tar.gz && \
+    rm cmake-3.31.0-linux-x86_64.tar.gz && \
+    rm -rf /home/cmake-3.31.0-linux-x86_64/doc /home/cmake-3.31.0-linux-x86_64/man
 
-ENV PATH=/home/cmake-3.18.0-Linux-x86_64/bin:$PATH
+ENV PATH=/home/cmake-3.31.0-linux-x86_64/bin:$PATH
 
 
 ARG TMP_DIR=patchelf_tmp
@@ -62,4 +63,8 @@ RUN wget -q https://paddle-ci.gz.bcebos.com/ccache-4.8.2.tar.gz && \
     ln -s /usr/local/ccache-4.8.2/bin/ccache /usr/local/bin/ccache && \
     cd ../../ && rm -rf ccache-4.8.2.tar.gz && rm -rf ccache-4.8.2
 
-RUN python -m pip install --no-cache-dir paddlepaddle-gpu==3.0.0 -i https://www.paddlepaddle.org.cn/packages/stable/cu126/
+COPY paddle/scripts/compile_requirements.txt /root
+COPY python/requirements.txt /root
+RUN pip install -r /root/requirements.txt && \
+    pip install -r /root/compile_requirements.txt && \
+    rm -rf /root/compile_requirements.txt /root/requirements.txt

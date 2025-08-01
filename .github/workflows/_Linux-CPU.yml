@@ -37,6 +37,7 @@ jobs:
     steps:
       - name: Check docker image  and run container
         env:
+          WITH_GPU: "OFF"
           WITH_SHARED_PHI: "ON"
           WITH_MKL: "OFF"
           WITH_TESTING: "ON"
@@ -67,6 +68,7 @@ jobs:
             -v "/dev/shm:/dev/shm"  \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
             -v ${{ github.workspace }}:/paddle \
+            -e WITH_GPU \
             -e BRANCH \
             -e PR_ID \
             -e COMMIT_ID \
@@ -105,13 +107,16 @@ jobs:
           rm -rf  * .[^.]*
           set -e
           echo "Downloading Paddle.tar.gz"
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
+          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
           echo "Extracting Paddle.tar.gz"
-          tar xf Paddle.tar.gz --strip-components=1
+          tar -xf Paddle.tar.gz --strip-components=1
           rm Paddle.tar.gz
           git config --global user.name "PaddleCI"
           git config --global user.email "paddle_ci@example.com"
+          git remote -v
+          set +e
           git remote add upstream https://github.com/PaddlePaddle/Paddle.git
+          set -e
           source ${{ github.workspace }}/../../../proxy
           cp ci/git_pull.sh ci/git_pull_copy.sh
           git checkout $BRANCH
@@ -167,7 +172,7 @@ jobs:
           if [ ! -f "${{ env.bos_file }}" ]; then
             wget -q --no-proxy -O ${{ env.home_path }}/bos_new.tar.gz https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz --no-check-certificate
             mkdir ${{ env.home_path }}/bos
-            tar xf ${{ env.home_path }}/bos_new.tar.gz -C ${{ env.home_path }}/bos
+            tar -xf ${{ env.home_path }}/bos_new.tar.gz -C ${{ env.home_path }}/bos
           fi
           cd dist
           echo "Uploading paddle_whl to bos"

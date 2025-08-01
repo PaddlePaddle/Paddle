@@ -24,7 +24,7 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-static inline void GetBlockDims(const phi::GPUContext& context,
+static inline void GetBlockDims(const phi::GPUContext& dev_ctx,
                                 int64_t num_rows,
                                 int64_t num_cols,
                                 dim3* block_dims,
@@ -39,7 +39,7 @@ static inline void GetBlockDims(const phi::GPUContext& context,
   *block_dims = dim3(block_cols, block_rows, 1);
 
   constexpr int waves = 1;
-  int max_threads = context.GetMaxPhysicalThreadCount() * waves;
+  int max_threads = dev_ctx.GetMaxPhysicalThreadCount() * waves;
   int64_t max_blocks = std::max(max_threads / kThreadsPerBlock, 1);
 
   int grid_cols =
@@ -605,14 +605,14 @@ void ConcatFunctorWithIndexType(const phi::GPUContext& dev_ctx,
 
 template <typename T>
 struct ConcatFunctor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const std::vector<phi::DenseTensor>& input,
                   int axis,
                   phi::DenseTensor* output) {
     if (output->numel() < std::numeric_limits<int32_t>::max()) {
-      ConcatFunctorWithIndexType<T, int32_t>(context, input, axis, output);
+      ConcatFunctorWithIndexType<T, int32_t>(dev_ctx, input, axis, output);
     } else {
-      ConcatFunctorWithIndexType<T, int64_t>(context, input, axis, output);
+      ConcatFunctorWithIndexType<T, int64_t>(dev_ctx, input, axis, output);
     }
   }
 };
@@ -805,7 +805,7 @@ void SplitFunctorDispatchWithIndexType(
 template <typename T>
 class SplitFunctor<phi::GPUContext, T> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const phi::DenseTensor& input,
                   const std::vector<const phi::DenseTensor*>& ref_inputs,
                   int axis,
@@ -819,10 +819,10 @@ class SplitFunctor<phi::GPUContext, T> {
 
     if (numel < std::numeric_limits<int32_t>::max()) {
       SplitFunctorDispatchWithIndexType<T, int32_t>(
-          context, axis, input, ref_inputs, outputs);
+          dev_ctx, axis, input, ref_inputs, outputs);
     } else {
       SplitFunctorDispatchWithIndexType<T, int64_t>(
-          context, axis, input, ref_inputs, outputs);
+          dev_ctx, axis, input, ref_inputs, outputs);
     }
   }
 };

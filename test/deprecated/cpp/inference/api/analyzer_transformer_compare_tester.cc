@@ -23,7 +23,7 @@ void compare(bool use_mkldnn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
   if (!use_mkldnn) {
-    cfg.DisableMKLDNN();
+    cfg.DisableONEDNN();
   }
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;

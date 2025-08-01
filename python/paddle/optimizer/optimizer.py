@@ -2016,11 +2016,9 @@ class Optimizer:
             for param in self._param_groups:
                 if param.stop_gradient:
                     continue
-                if os.getenv("FLAGS_enable_tensor_fusion") in [
-                    "True",
-                    "true",
-                    "1",
-                ] or os.getenv("FLAGS_enable_main_grad") in [
+                if getattr(self, 'enable_tensor_fusion', False) or os.getenv(
+                    "FLAGS_enable_main_grad"
+                ) in [
                     "True",
                     "true",
                     "1",

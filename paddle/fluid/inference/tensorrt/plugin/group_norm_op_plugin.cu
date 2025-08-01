@@ -28,7 +28,10 @@ namespace tensorrt {
 namespace plugin {
 using DataLayout = phi::DataLayout;
 
-static inline int32_t divUp(int32_t m, int32_t n) { return (m + n - 1) / n; }
+template <typename T>
+static inline T divUp(T m, T n) {
+  return (m + n - 1) / n;
+}
 
 static inline __device__ __host__ float sigmoid(float x) {
   return 1.F / (1.F + expf(-x));
@@ -54,12 +57,12 @@ struct GroupSumsOp {
   }
 };
 
-static int32_t findMaxDivisor(int32_t n, int32_t maxAllowedDivisor) {
-  int32_t maxDivisor = -1;
-  for (int32_t i = 1; i <= std::sqrt(n); i++) {
+static int64_t findMaxDivisor(int64_t n, int64_t maxAllowedDivisor) {
+  int64_t maxDivisor = -1;
+  for (int64_t i = 1; i <= std::sqrt(n); i++) {
     if (n % i == 0) {
-      int32_t divisor1 = n / i;
-      int32_t divisor2 = i;
+      int64_t divisor1 = n / i;
+      int64_t divisor2 = i;
 
       if (divisor1 > maxDivisor && divisor1 < maxAllowedDivisor) {
         maxDivisor = divisor1;
@@ -90,9 +93,9 @@ __global__ void groupNormNCHW32SumKernelQDQ(
   int32_t ci = blockIdx.x * params.cPerBlock + threadIdx.x * 2;
 
   // The first activation loaded by that block.
-  int32_t dhwBegin = blockIdx.y * params.dhwPerBlock;
+  int64_t dhwBegin = blockIdx.y * params.dhwPerBlock;
   // The last activation loaded by that block.
-  int32_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
+  int64_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
 
   // The sums.
   float sum = 0.F;
@@ -102,11 +105,10 @@ __global__ void groupNormNCHW32SumKernelQDQ(
 
   // nchw32 layout
   // batch offset + channel offset
-  int nc_offset = static_cast<int64_t>(ni) * params.dhwc +
-                  ci / 32 * params.dhw * 32 + ci % 32;
+  int64_t nc_offset = ni * params.dhwc + ci / 32 * params.dhw * 32 + ci % 32;
 
   // Iterate over the activations to compute the sums.
-  for (int32_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
+  for (int64_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The offset.
     int64_t offset = nc_offset + static_cast<int64_t>(dhwi) * 32;
 
@@ -233,15 +235,15 @@ __global__ void groupNormNCHW32ScaleKernelQDQ(
   float invStdDev = rsqrtf(var + params.eps);
 
   // The first activation loaded by that block.
-  int32_t dhwBegin = blockIdx.y * params.dhwPerBlock;
+  int64_t dhwBegin = blockIdx.y * params.dhwPerBlock;
   // The last activation loaded by that block.
-  int32_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
+  int64_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
 
   // nchw32 layout
-  int c_offset = ci / 32 * params.dhw * 32 + ci % 32;
+  int64_t c_offset = ci / 32 * params.dhw * 32 + ci % 32;
 
   // Iterate over the activations to compute the sums.
-  for (int32_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
+  for (int64_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The src/dst offset.
     int64_t offset = static_cast<int64_t>(ni) * params.dhwc + c_offset +
                      static_cast<int64_t>(dhwi) * 32;
@@ -581,7 +583,7 @@ int GroupNormPluginDynamic::enqueue(
   const auto input_ddim = common::make_ddim(input_shape);
 
   int C = input_shape[1];
-  int image_size = input_shape[2] * input_shape[3];
+  int64_t image_size = input_shape[2] * input_shape[3];
   int batchSize = input_shape[0];
 
   PADDLE_ENFORCE_EQ(
@@ -693,8 +695,9 @@ int GroupNormPluginDynamic::enqueue(
       // params_.w = input_desc[0].dims.d[3];
       // params_.c = input_desc[0].dims.d[1];
       params_.groups = groups_;
-      params_.dhw = params_.d * params_.h * params_.w;
-      const int32_t blocksPerDHW = findMaxDivisor(params_.dhw, maxBlocksPerDHW);
+      params_.dhw = static_cast<int64_t>(params_.d) * params_.h * params_.w;
+      const int64_t blocksPerDHW =
+          findMaxDivisor(params_.dhw, static_cast<int64_t>(maxBlocksPerDHW));
       params_.dhwPerBlock = divUp(params_.dhw, blocksPerDHW);
       params_.cPerBlock = cPerBlock;
       params_.cPerGroup = params_.c / params_.groups;
@@ -774,8 +777,9 @@ int GroupNormPluginDynamic::enqueue(
       // params_.w = input_desc[0].dims.d[3];
       // params_.c = input_desc[0].dims.d[1];
       params_.groups = groups_;
-      params_.dhw = params_.d * params_.h * params_.w;
-      const int32_t blocksPerDHW = findMaxDivisor(params_.dhw, maxBlocksPerDHW);
+      params_.dhw = static_cast<int64_t>(params_.d) * params_.h * params_.w;
+      const int64_t blocksPerDHW =
+          findMaxDivisor(params_.dhw, static_cast<int64_t>(maxBlocksPerDHW));
       params_.dhwPerBlock = divUp(params_.dhw, blocksPerDHW);
       params_.cPerBlock = cPerBlock;
       params_.cPerGroup = params_.c / params_.groups;

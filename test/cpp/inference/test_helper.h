@@ -236,7 +236,7 @@ void TestInference(
   }
 
   // 6. If export Flags_use_mkldnn=True, use onednn related ops.
-  if (FLAGS_use_mkldnn) executor.EnableMKLDNN(*inference_program);
+  if (FLAGS_use_mkldnn) executor.EnableONEDNN(*inference_program);
 
   // 7. Run the inference program
   {

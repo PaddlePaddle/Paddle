@@ -18,6 +18,19 @@
 
 namespace phi {
 
+template <typename T>
+struct LuUnpackEyeFunctor {
+  LuUnpackEyeFunctor(int64_t num_columns, T* output)
+      : num_columns_(num_columns), output_(output) {}
+
+  HOSTDEVICE void operator()(size_t idx) const {
+    output_[idx * num_columns_ + idx % num_columns_] = static_cast<T>(1);
+  }
+
+  int64_t num_columns_;
+  T* output_;
+};
+
 template <typename T, typename Context>
 void LUUnpackKernel(const Context& dev_ctx,
                     const DenseTensor& x,
@@ -37,20 +50,37 @@ void LUUnpackKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(l);
     dev_ctx.template Alloc<T>(u);
 
-    DenseTensor L, U;
-    LU_Unpack<Context, T>(dev_ctx, &x, &L, &U);
+    if (x.numel() != 0) {
+      DenseTensor L, U;
+      LU_Unpack<Context, T>(dev_ctx, &x, &L, &U);
 
-    if (m >= n) {
-      phi::Copy(dev_ctx, L, dev_ctx.GetPlace(), false, l);
-      Tensor_narrow<Context, T>(dev_ctx, &U, u, 0, k, 0, k);
-    } else {
-      phi::Copy(dev_ctx, U, dev_ctx.GetPlace(), false, u);
-      Tensor_narrow<Context, T>(dev_ctx, &L, l, 0, k, 0, k);
+      if (m >= n) {
+        phi::Copy(dev_ctx, L, dev_ctx.GetPlace(), false, l);
+        Tensor_narrow<Context, T>(dev_ctx, &U, u, 0, k, 0, k);
+      } else {
+        phi::Copy(dev_ctx, U, dev_ctx.GetPlace(), false, u);
+        Tensor_narrow<Context, T>(dev_ctx, &L, l, 0, k, 0, k);
+      }
     }
   }
 
   if (unpack_pivots) {
     dev_ctx.template Alloc<T>(pmat);
+    if (x.numel() == 0 || pivots.numel() == 0) {
+      // columns is the last dim.
+      auto pmat_dims = pmat->dims();
+      int64_t columns = pmat_dims[pmat_dims.size() - 1];
+      if (columns == 0) return;
+
+      T* pmat_data = pmat->data<T>();
+      phi::funcs::SetConstant<Context, T> set_zero;
+      set_zero(dev_ctx, pmat, static_cast<T>(0));
+      int64_t rows = pmat->numel() / columns;
+      phi::funcs::ForRange<Context> for_range(dev_ctx, rows);
+      LuUnpackEyeFunctor<T> functor(columns, pmat_data);
+      for_range(functor);
+      return;
+    }
 
     PADDLE_ENFORCE_EQ(
         pivots.dtype(),

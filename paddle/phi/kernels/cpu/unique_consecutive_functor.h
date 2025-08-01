@@ -23,7 +23,7 @@
 namespace phi {
 
 template <typename InT, typename IndexT, typename Context>
-static void UniqueConsecutiveFlattenedTensor(const Context& context,
+static void UniqueConsecutiveFlattenedTensor(const Context& dev_ctx,
                                              const DenseTensor& in,
                                              DenseTensor* out,
                                              bool return_inverse,
@@ -61,18 +61,18 @@ static void UniqueConsecutiveFlattenedTensor(const Context& context,
   out_vec.resize(output_size);
 
   out->Resize(common::make_ddim({output_size}));
-  auto* out_data = context.template Alloc<InT>(out);
+  auto* out_data = dev_ctx.template Alloc<InT>(out);
   std::copy(out_vec.begin(), out_vec.end(), out_data);
 
   if (return_inverse) {
     inverse->Resize(common::make_ddim({in.numel()}));
-    auto* inverse_data = context.template Alloc<IndexT>(inverse);
+    auto* inverse_data = dev_ctx.template Alloc<IndexT>(inverse);
     std::copy(inverse_vec.begin(), inverse_vec.end(), inverse_data);
   }
 
   if (return_counts) {
     count->Resize(common::make_ddim({out->numel()}));
-    auto* counts_data = context.template Alloc<IndexT>(count);
+    auto* counts_data = dev_ctx.template Alloc<IndexT>(count);
     std::copy(counts_vec.begin(), counts_vec.end(), counts_data);
   }
 }
@@ -87,14 +87,14 @@ struct UniqueConsecutiveFlattenedTensorFunctor {
   DenseTensor* inverse_;
   DenseTensor* count_;
 
-  UniqueConsecutiveFlattenedTensorFunctor(const Context& context,
+  UniqueConsecutiveFlattenedTensorFunctor(const Context& dev_ctx,
                                           const DenseTensor& in,
                                           DenseTensor* out,
                                           bool return_inverse,
                                           bool return_counts,
                                           DenseTensor* inverse,
                                           DenseTensor* count)
-      : dev_ctx_(context),
+      : dev_ctx_(dev_ctx),
         in_(in),
         out_(out),
         return_inverse_(return_inverse),
@@ -111,7 +111,7 @@ struct UniqueConsecutiveFlattenedTensorFunctor {
 
 template <typename Context, class ForwardIt, typename InT, typename IndexT>
 static ForwardIt UniqueConsecutiveDimImpl(
-    const Context& context UNUSED,
+    const Context& dev_ctx UNUSED,
     ForwardIt first,
     ForwardIt last,
     const std::vector<IndexT>& sorted_indices_vec,
@@ -143,7 +143,7 @@ static ForwardIt UniqueConsecutiveDimImpl(
 }
 
 template <typename Context, typename InT, typename IndexT>
-static void UniqueConsecutiveDim(const Context& context,
+static void UniqueConsecutiveDim(const Context& dev_ctx,
                                  const DenseTensor& in,
                                  DenseTensor* out,
                                  bool return_inverse,
@@ -162,9 +162,9 @@ static void UniqueConsecutiveDim(const Context& context,
   DenseTensor in_trans;
   DDim in_trans_dims = common::make_ddim(in_trans_dims_vec);
   in_trans.Resize(in_trans_dims);
-  context.template Alloc<InT>(&in_trans);
+  dev_ctx.template Alloc<InT>(&in_trans);
   phi::funcs::TransCompute<Context, InT>(
-      in.dims().size(), context, in, &in_trans, permute);
+      in.dims().size(), dev_ctx, in, &in_trans, permute);
   // reshape tensor: eg. [dim1, dim0, dim2] -> [dim1, dim0*dim2]
   DDim in_trans_flat_dims = common::flatten_to_2d(in_trans_dims, 1);
   in_trans.Resize(in_trans_flat_dims);
@@ -177,7 +177,7 @@ static void UniqueConsecutiveDim(const Context& context,
   // sort tensor according to indices
   DenseTensor input_sorted;
   input_sorted.Resize(in_trans_dims);
-  context.template Alloc<InT>(&input_sorted);
+  dev_ctx.template Alloc<InT>(&input_sorted);
   InT* input_sorted_data = input_sorted.data<InT>();
   for (size_t i = 0; i < sorted_indices_vec.size(); ++i) {
     memcpy(input_sorted_data + i * col,
@@ -189,7 +189,7 @@ static void UniqueConsecutiveDim(const Context& context,
   std::vector<IndexT> counts_vec(sorted_indices_vec.size(), 0);
   auto last = UniqueConsecutiveDimImpl<Context,
                                        std::vector<DenseTensor>::iterator,
-                                       InT>(context,
+                                       InT>(dev_ctx,
                                             input_unbind.begin(),
                                             input_unbind.end(),
                                             sorted_indices_vec,
@@ -203,18 +203,18 @@ static void UniqueConsecutiveDim(const Context& context,
   std::vector<int64_t> out_trans_dims_vec = in_trans_dims_vec;
   out_trans_dims_vec[0] = input_unbind.size();
   out_trans.Resize(common::make_ddim(out_trans_dims_vec));
-  context.template Alloc<InT>(&out_trans);
+  dev_ctx.template Alloc<InT>(&out_trans);
   std::swap(out_trans_dims_vec[0], out_trans_dims_vec[axis]);
   out->Resize(common::make_ddim(out_trans_dims_vec));
-  context.template Alloc<InT>(out);
-  concat_functor(context, input_unbind, 0, &out_trans);
+  dev_ctx.template Alloc<InT>(out);
+  concat_functor(dev_ctx, input_unbind, 0, &out_trans);
   phi::funcs::TransCompute<Context, InT>(
-      out_trans.dims().size(), context, out_trans, out, permute);
+      out_trans.dims().size(), dev_ctx, out_trans, out, permute);
   if (return_inverse) {
-    phi::TensorFromVector(inverse_vec, context, inverse);
+    phi::TensorFromVector(inverse_vec, dev_ctx, inverse);
   }
   if (return_counts) {
-    phi::TensorFromVector(counts_vec, context, count);
+    phi::TensorFromVector(counts_vec, dev_ctx, count);
   }
 }
 
@@ -229,7 +229,7 @@ struct UniqueConsecutiveDimFunctor {
   DenseTensor* inverse_;
   DenseTensor* count_;
 
-  UniqueConsecutiveDimFunctor(const Context& context,
+  UniqueConsecutiveDimFunctor(const Context& dev_ctx,
                               const DenseTensor& in,
                               DenseTensor* out,
                               const int axis,
@@ -237,7 +237,7 @@ struct UniqueConsecutiveDimFunctor {
                               bool return_counts,
                               DenseTensor* inverse,
                               DenseTensor* count)
-      : dev_ctx_(context),
+      : dev_ctx_(dev_ctx),
         in_(in),
         out_(out),
         axis_(axis),

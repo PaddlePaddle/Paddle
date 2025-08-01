@@ -147,6 +147,8 @@ class TestEinsum(unittest.TestCase):
             "I": np.random.rand(2, 2),
             "J": np.random.rand(1, 3, 5),
             "K": np.random.rand(1, 2, 3, 4),
+            "L": np.random.rand(2, 0, 13),
+            "M": np.random.rand(13),
         }
 
     def _get_place(self, force_to_use_cpu=False):
@@ -318,6 +320,42 @@ class TestEinsumTestEinsumOthers2(TestEinsum):
 class TestEinsumBatch1(TestEinsum):
     def setUp(self):
         self.sample = {"paradigm": "blq,bhlk->bhlqk", "data": ["J", "K"]}
+
+
+class TestEinsumZeroSizeTensor(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "...i, ...i", "data": ["L", "M"]}
+
+    def test_backward(self):
+        operands = [
+            TestEinsum.TEST_SAMPLES[operand] for operand in self.sample["data"]
+        ]
+        expected_result = np.einsum(self.sample["paradigm"], *operands)
+        equation = self.sample["paradigm"]
+
+        with paddle.base.dygraph.guard(self._get_place(force_to_use_cpu=False)):
+            pd_operands = [
+                paddle.to_tensor(operand, stop_gradient=False)
+                for operand in operands
+            ]
+            result = paddle.einsum(equation, *pd_operands)
+            self.check_output_equal(result.numpy(), expected_result)
+            loss = result.sum()
+            loss.backward()
+            for x in pd_operands:
+                np.testing.assert_allclose(x.grad.shape, x.shape)
+
+        with paddle.base.dygraph.guard(self._get_place(force_to_use_cpu=True)):
+            pd_operands = [
+                paddle.to_tensor(operand, stop_gradient=False)
+                for operand in operands
+            ]
+            result = paddle.einsum(equation, *pd_operands)
+            self.check_output_equal(result.numpy(), expected_result)
+            loss = result.sum()
+            loss.backward()
+            for x in pd_operands:
+                np.testing.assert_allclose(x.grad.shape, x.shape)
 
 
 class TestNumpyTests(unittest.TestCase):
@@ -492,6 +530,51 @@ class TestNumpyTests(unittest.TestCase):
         expect.append(np.einsum('ijk..., ikj->...ij', c, e))
         for a, e in zip(actual, expect):
             self.check_output_equal(a, e)
+
+
+class TestContractionBroadcastGrad(unittest.TestCase):
+    def setUp(self):
+        self.place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+
+    def test_case1(self):
+        with paddle.base.dygraph.guard(self.place):
+            # paddle.einsum("i, i", Tensor([2],"float32"), Tensor([1],"float32"), )
+            x_np = np.array([0.1, 0.2]).astype(np.float32)
+            y_np = np.array([0.5]).astype(np.float32)
+            except_res = np.einsum("i, i", x_np, y_np)
+            except_grad_x = np.array([0.5, 0.5]).astype(np.float32)
+            except_grad_y = np.array([0.3]).astype(np.float32)
+            x = paddle.to_tensor(x_np, stop_gradient=False)
+            y = paddle.to_tensor(y_np, stop_gradient=False)
+            res = paddle.einsum("i, i", x, y)
+            np.testing.assert_allclose(res.numpy(), except_res)
+            res.sum().backward()
+            x.grad.get_tensor()  # To check if accessing unallocated memory
+            np.testing.assert_allclose(x.grad.numpy(), except_grad_x)
+            np.testing.assert_allclose(y.grad.numpy(), except_grad_y)
+
+    def test_case2(self):
+        with paddle.base.dygraph.guard(self.place):
+            # paddle.einsum("ij,ij->j", Tensor([2, 2],"float32"), Tensor([1, 2],"float32"), )
+            x_np = np.array([[0.1, 0.2], [0.3, 0.4]]).astype(np.float32)
+            y_np = np.array([[0.5, 0.6]]).astype(np.float32)
+            except_res = np.einsum("ij,ij->j", x_np, y_np)
+            except_grad_x = np.array([[0.5, 0.6], [0.5, 0.6]]).astype(
+                np.float32
+            )
+            except_grad_y = np.array([[0.4, 0.6]]).astype(np.float32)
+            x = paddle.to_tensor(x_np, stop_gradient=False)
+            y = paddle.to_tensor(y_np, stop_gradient=False)
+            res = paddle.einsum("ij,ij->j", x, y)
+            np.testing.assert_allclose(res.numpy(), except_res)
+            res.sum().backward()
+            x.grad.get_tensor()  # To check if accessing unallocated memory
+            np.testing.assert_allclose(x.grad.numpy(), except_grad_x)
+            np.testing.assert_allclose(y.grad.numpy(), except_grad_y)
 
 
 if __name__ == "__main__":
