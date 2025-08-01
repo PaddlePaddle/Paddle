@@ -144,13 +144,14 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
         (dynamic_cast<framework::OperatorWithKernel*>(op_base) == nullptr);
     bool is_custom_op =
         egr::Controller::Instance().GetOpMetaInfoMap().count(op_type);
-    bool use_onednn = false;
+    bool use_mkldnn = false;
     if (op->HasAttr("use_mkldnn")) {
       Attribute attr = op->GetAttr("use_mkldnn");
-      use_onednn = attr.index() == 1 ? PADDLE_GET_CONST(int, attr)
+      use_mkldnn = attr.index() == 1 ? PADDLE_GET_CONST(int, attr)
                                      : PADDLE_GET_CONST(bool, attr);
     }
-    if (!use_onednn && op->HasAttr("use_onednn")) {
+    bool use_onednn = use_mkldnn;
+    if (!use_mkldnn && op->HasAttr("use_onednn")) {
       Attribute attr = op->GetAttr("use_onednn");
       use_onednn = attr.index() == 1 ? PADDLE_GET_CONST(int, attr)
                                      : PADDLE_GET_CONST(bool, attr);
