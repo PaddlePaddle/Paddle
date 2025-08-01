@@ -1397,7 +1397,6 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
                                    DenseTensor* loss) {
   const int rank = logits.dims().size();
   const int64_t axis_v = phi::funcs::CanonicalAxis(axis, rank);
-  const int64_t axis_dim = logits.dims()[axis_v];
   const int64_t d = phi::funcs::SizeFromAxis<int64_t>(axis_v, logits.dims());
   PADDLE_ENFORCE_LE(d,
                     std::numeric_limits<int>::max(),
