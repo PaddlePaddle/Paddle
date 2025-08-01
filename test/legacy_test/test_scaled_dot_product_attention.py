@@ -25,6 +25,14 @@ from paddle.nn.functional.flash_attention import (
 
 
 def attention_naive(q, k, v, causal=False):
+    q_ndim = q.ndim
+    if q.ndim == 3:
+        q = paddle.unsqueeze(q, axis=0)
+    if k.ndim == 3:
+        k = paddle.unsqueeze(k, axis=0)
+    if v.ndim == 3:
+        v = paddle.unsqueeze(v, axis=0)
+
     qt = paddle.transpose(q, [0, 2, 1, 3])
     kt = paddle.transpose(k, [0, 2, 1, 3])
     vt = paddle.transpose(v, [0, 2, 1, 3])
@@ -36,10 +44,26 @@ def attention_naive(q, k, v, causal=False):
         else F.softmax(s)
     )
     o = paddle.matmul(p, vt)
-    return paddle.transpose(o, [0, 2, 1, 3])
+
+    out = paddle.transpose(o, [0, 2, 1, 3])
+
+    if q_ndim == 3:
+        out = paddle.squeeze(out, axis=0)
+
+    return out
 
 
 def attention_naive_with_mask(q, k, v, attn_bias):
+    q_ndim = q.ndim
+    if q.ndim == 3:
+        q = paddle.unsqueeze(q, axis=0)
+    if k.ndim == 3:
+        k = paddle.unsqueeze(k, axis=0)
+    if v.ndim == 3:
+        v = paddle.unsqueeze(v, axis=0)
+    if attn_bias is not None and attn_bias.ndim == 3:
+        attn_bias = paddle.unsqueeze(attn_bias, axis=0)
+
     qt = paddle.transpose(q, [0, 2, 1, 3])
     kt = paddle.transpose(k, [0, 2, 1, 3])
     vt = paddle.transpose(v, [0, 2, 1, 3])
@@ -48,7 +72,13 @@ def attention_naive_with_mask(q, k, v, attn_bias):
     s = paddle.scale(s, scale)
     p = F.softmax(s + attn_bias)
     o = paddle.matmul(p, vt)
-    return paddle.transpose(o, [0, 2, 1, 3])
+
+    out = paddle.transpose(o, [0, 2, 1, 3])
+
+    if q_ndim == 3:
+        out = paddle.squeeze(out, axis=0)
+
+    return out
 
 
 def attention_naive_with_bool_mask(q, k, v, bool_mask):
@@ -202,10 +232,6 @@ class TestAttentionWith3DInput(unittest.TestCase):
         k = paddle.to_tensor(key, dtype=self.dtype, stop_gradient=False)
         v = paddle.to_tensor(value, dtype=self.dtype, stop_gradient=False)
 
-        q_ref = paddle.unsqueeze(q, axis=0)
-        k_ref = paddle.unsqueeze(k, axis=0)
-        v_ref = paddle.unsqueeze(v, axis=0)
-
         with sdp_kernel(
             enable_math=True, enable_flash=False, enable_mem_efficient=False
         ):
@@ -213,9 +239,7 @@ class TestAttentionWith3DInput(unittest.TestCase):
                 q, k, v, None, self.dropout, self.causal
             )
 
-        out_ref = attention_naive(q_ref, k_ref, v_ref, self.causal)
-
-        out_ref = paddle.squeeze(out_ref, axis=0)
+        out_ref = attention_naive(q, k, v, self.causal)
 
         np.testing.assert_allclose(out.numpy(), out_ref, rtol=5e-03, atol=1e-03)
 
@@ -239,18 +263,12 @@ class TestAttentionWith3DInput(unittest.TestCase):
         mask = np.random.random(mask_shape).astype(np.float32)
         m = paddle.to_tensor(mask, dtype=self.dtype, stop_gradient=False)
 
-        q_ref = paddle.unsqueeze(q, axis=0)
-        k_ref = paddle.unsqueeze(k, axis=0)
-        v_ref = paddle.unsqueeze(v, axis=0)
-        m_ref = paddle.unsqueeze(m, axis=0)
-
         with sdp_kernel(
             enable_math=True, enable_flash=False, enable_mem_efficient=False
         ):
             out = scaled_dot_product_attention(q, k, v, m, self.dropout)
 
-        out_ref = attention_naive_with_mask(q_ref, k_ref, v_ref, m_ref)
-        out_ref = paddle.squeeze(out_ref, axis=0)
+        out_ref = attention_naive_with_mask(q, k, v, m)
 
         np.testing.assert_allclose(out.numpy(), out_ref, rtol=5e-03, atol=1e-03)
 
