@@ -892,7 +892,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \return bool Whether to use the OneDNN.
   ///
-  bool mkldnn_enabled() const { return use_onednn_; }
+  bool mkldnn_enabled() const { return use_onednn_; }  // deprecated
 
   ///
   /// \brief Turn on OneDNN.
@@ -915,6 +915,13 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \param capacity The cache capacity.
   ///
   void SetOnednnCacheCapacity(int capacity);
+
+  ///
+  /// \brief A boolean state telling whether to use the OneDNN.
+  ///
+  /// \return bool Whether to use the OneDNN.
+  ///
+  bool onednn_enabled() const { return use_onednn_; }
 
   ///
   /// \brief Set the number of cpu math library threads.
@@ -961,25 +968,46 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \param op_list The operator type list.
   ///
-  void EnableMkldnnInt8(const std::unordered_set<std::string>& op_list = {});
+  void EnableMkldnnInt8(
+      const std::unordered_set<std::string>& op_list = {});  // deprecated
 
   ///
   /// \brief A boolean state telling whether to use the OneDNN Int8.
   ///
   /// \return bool Whether to use the OneDNN Int8.
   ///
-  bool mkldnn_int8_enabled() const { return use_onednn_int8_; }
+  bool mkldnn_int8_enabled() const { return use_onednn_int8_; }  // deprecated
 
   ///
   /// \brief Turn on OneDNN bfloat16.
   ///
   ///
-  void EnableMkldnnBfloat16();
+  void EnableMkldnnBfloat16();  // deprecated
 
   ///
   /// \brief Turn off OneDNN fc passes.
   ///
   void DisableMkldnnFcPasses();  // deprecated
+
+  ///
+  /// \brief Turn on OneDNN int8.
+  ///
+  /// \param op_list The operator type list.
+  ///
+  void EnableOnednnInt8(const std::unordered_set<std::string>& op_list = {});
+
+  ///
+  /// \brief A boolean state telling whether to use the OneDNN Int8.
+  ///
+  /// \return bool Whether to use the OneDNN Int8.
+  ///
+  bool onednn_int8_enabled() const { return use_onednn_int8_; }
+
+  ///
+  /// \brief Turn on OneDNN bfloat16.
+  ///
+  ///
+  void EnableOnednnBfloat16();
 
   ///
   /// \brief Turn off OneDNN fc passes.
@@ -991,14 +1019,32 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \return bool Whether to disable the OneDNN Fc passes.
   ///
-  bool mkldnn_fc_passes_disabled() const { return disable_onednn_fc_passes_; }
+  bool mkldnn_fc_passes_disabled() const {
+    return disable_onednn_fc_passes_;
+  }  // deprecated
 
   ///
   /// \brief A boolean state telling whether to use the OneDNN Bfloat16.
   ///
   /// \return bool Whether to use the OneDNN Bfloat16.
   ///
-  bool mkldnn_bfloat16_enabled() const { return use_onednn_bfloat16_; }
+  bool mkldnn_bfloat16_enabled() const {
+    return use_onednn_bfloat16_;
+  }  // deprecated
+
+  ///
+  /// \brief A boolean state telling whether to disable the OneDNN Fc passes.
+  ///
+  /// \return bool Whether to disable the OneDNN Fc passes.
+  ///
+  bool onednn_fc_passes_disabled() const { return disable_onednn_fc_passes_; }
+
+  ///
+  /// \brief A boolean state telling whether to use the OneDNN Bfloat16.
+  ///
+  /// \return bool Whether to use the OneDNN Bfloat16.
+  ///
+  bool onednn_bfloat16_enabled() const { return use_onednn_bfloat16_; }
 
   /// \brief Specify the operator type list to use Bfloat16 acceleration.
   ///

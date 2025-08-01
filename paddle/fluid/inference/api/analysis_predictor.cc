@@ -1043,7 +1043,7 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
             pass_pm.AddPass(pir::PassRegistry::Instance().Get(mkldnn_pass));
           }
         }
-        if (config_.mkldnn_bfloat16_enabled()) {
+        if (config_.onednn_bfloat16_enabled()) {
           for (const auto &mkldnn_pass : kPirMkldnnBf16Passes) {
             if (std::find(config_.deleted_passes_.begin(),
                           config_.deleted_passes_.end(),
@@ -2110,7 +2110,7 @@ void AnalysisPredictor::PrepareArgument() {
   }
 
 #ifdef PADDLE_WITH_DNNL
-  if (config_.mkldnn_bfloat16_enabled()) {
+  if (config_.onednn_bfloat16_enabled()) {
     LOG(INFO) << "Bfloat16 is enabled";
     argument_->SetBfloat16EnabledOpTypes(config_.bfloat16_enabled_op_types_);
   }
