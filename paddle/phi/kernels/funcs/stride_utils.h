@@ -544,35 +544,6 @@ static inline void ScatterAddStride(
   *numel = num;
 }
 
-#if defined(PADDLE_WITH_CUDA)
-
-static inline std::vector<phi::DenseTensor> expandTensors(
-    const phi::GPUContext& dev_ctx,
-    const std::vector<const phi::DenseTensor*>& indices) {
-  std::vector<phi::DenseTensor> result;
-  for (const auto& index : indices) {
-    if (index == nullptr) {
-      result.emplace_back();
-      continue;
-    }
-
-    if (index->dtype() == phi::DataType::BOOL) {
-      phi::DenseTensor bool_2_idx;
-      phi::NonZeroKernel<bool, phi::GPUContext>(dev_ctx, *index, &bool_2_idx);
-
-      for (int j = 0; j < index->dims().size(); ++j) {
-        phi::DenseTensor sliced_tensor;
-        phi::SliceKernel<int64_t, phi::GPUContext>(
-            dev_ctx, bool_2_idx, {1}, {j}, {j + 1}, {1}, {}, &sliced_tensor);
-        result.emplace_back(sliced_tensor);
-      }
-    } else {
-      result.emplace_back(*index);
-    }
-  }
-  return result;
-}
-
 static inline common::DDim infer_size_symdimvector(common::DDim a,
                                                    common::DDim b) {
   auto dimsA = a.size();
@@ -603,6 +574,50 @@ static inline common::DDim infer_size_symdimvector(common::DDim a,
   return expandedSizes;
 }
 
+static inline bool hasContiguousSubspace(
+    const std::vector<phi::DenseTensor>& tl) {
+  auto isDefined = [](const phi::DenseTensor& tensor) {
+    return tensor.initialized();
+  };
+  auto isNull = [](const phi::DenseTensor& tensor) {
+    return !tensor.initialized();
+  };
+
+  auto start = std::find_if(tl.begin(), tl.end(), isDefined);
+  auto stop = std::find_if(tl.rbegin(), tl.rend(), isDefined);
+  auto it = std::find_if(start, stop.base(), isNull);
+  return it == stop.base();
+}
+
+#if defined(PADDLE_WITH_CUDA)
+
+static inline std::vector<phi::DenseTensor> expandTensors(
+    const phi::GPUContext& dev_ctx,
+    const std::vector<const phi::DenseTensor*>& indices) {
+  std::vector<phi::DenseTensor> result;
+  for (const auto& index : indices) {
+    if (index == nullptr) {
+      result.emplace_back();
+      continue;
+    }
+
+    if (index->dtype() == phi::DataType::BOOL) {
+      phi::DenseTensor bool_2_idx;
+      phi::NonZeroKernel<bool, phi::GPUContext>(dev_ctx, *index, &bool_2_idx);
+
+      for (int j = 0; j < index->dims().size(); ++j) {
+        phi::DenseTensor sliced_tensor;
+        phi::SliceKernel<int64_t, phi::GPUContext>(
+            dev_ctx, bool_2_idx, {1}, {j}, {j + 1}, {1}, {}, &sliced_tensor);
+        result.emplace_back(sliced_tensor);
+      }
+    } else {
+      result.emplace_back(*index);
+    }
+  }
+  return result;
+}
+
 static inline std::vector<phi::DenseTensor> expand_outplace(
     const phi::GPUContext& dev_ctx, std::vector<phi::DenseTensor> to_expand) {
   bool first = true;
@@ -631,21 +646,6 @@ static inline std::vector<phi::DenseTensor> expand_outplace(
     }
   }
   return result;
-}
-
-static inline bool hasContiguousSubspace(
-    const std::vector<phi::DenseTensor>& tl) {
-  auto isDefined = [](const phi::DenseTensor& tensor) {
-    return tensor.initialized();
-  };
-  auto isNull = [](const phi::DenseTensor& tensor) {
-    return !tensor.initialized();
-  };
-
-  auto start = std::find_if(tl.begin(), tl.end(), isDefined);
-  auto stop = std::find_if(tl.rbegin(), tl.rend(), isDefined);
-  auto it = std::find_if(start, stop.base(), isNull);
-  return it == stop.base();
 }
 
 template <typename T>
@@ -814,6 +814,7 @@ makeLinearIndex(const phi::GPUContext& dev_ctx,
                          inv_perm);
 }
 
+#endif
 inline bool are_expandable(const std::vector<int64_t>& shape1,
                            const std::vector<int64_t>& shape2) {
   size_t ndim1 = shape1.size();
@@ -852,7 +853,5 @@ inline int GetNumBits(uint64_t max_val) {
   }
   return num_bits;
 }
-
-#endif
 }  // namespace funcs
 }  // namespace phi
