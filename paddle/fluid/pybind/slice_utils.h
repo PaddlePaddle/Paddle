@@ -662,17 +662,12 @@ static paddle::Tensor dealWithAdvancedIndex(
     bool* out_is_view) {
   *rank_of_new_dim = 0;
   int p = 0;
-  bool int_tensor_only = true;
-
   for (size_t i = 0; i < advanced_index_dim->size(); ++i) {
     auto index_dim = (*advanced_index_dim)[i];
     if (index_dim != -1) {
       // sum of each advanced_index_tensor's rank equals to number of non -1
       // element in advanced_index_dim
       auto index = (*advanced_index)[p++];
-      if (index.dtype() == phi::DataType::BOOL) {
-        int_tensor_only = false;
-      }
 
       if (index_dim == 0) {
         // case 1: advanced indices at axis 0, the new dim will be at first.
@@ -769,17 +764,32 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
                      bool_index.shape().size()));
   auto tensor_shape = tensor.shape();
   size_t i = 0;
-  while (i < bool_index.shape().size()) {
-    PADDLE_ENFORCE_EQ(
-        bool_index.shape()[i],
-        tensor_shape[i + pos_of_new_dim],
-        common::errors::OutOfRange(
-            "The dimension of bool index doesn't match indexed array along "
-            "dimension %d, the target dimension is %d, but received %d",
-            i,
-            tensor_shape[i + pos_of_new_dim],
-            bool_index.shape()[i]));
-    i++;
+  if (FLAGS_use_stride_kernel) {
+    while (i < bool_index.shape().size()) {
+      PADDLE_ENFORCE_EQ(
+          bool_index.shape()[i],
+          tensor_shape[i + pos_of_new_dim],
+          common::errors::OutOfRange(
+              "The dimension of bool index doesn't match indexed array along "
+              "dimension %d, the target dimension is %d, but received %d",
+              i,
+              tensor_shape[i + pos_of_new_dim],
+              bool_index.shape()[i]));
+      i++;
+    }
+  } else {
+    while (i < bool_index.shape().size()) {
+      PADDLE_ENFORCE_EQ(
+          bool_index.shape()[i],
+          tensor_shape[i],
+          common::errors::OutOfRange(
+              "The dimension of bool index doesn't match indexed array along "
+              "dimension %d, the target dimension is %d, but received %d",
+              i,
+              tensor_shape[i],
+              bool_index.shape()[i]));
+      i++;
+    }
   }
 
   const phi::distributed::ProcessMesh* mesh = nullptr;
@@ -1237,6 +1247,9 @@ static void ApplyGetitem(const int index_size,
                                  (*transed_index)[0],
                                  slice_offset,
                                  pos_of_new_dim);
+    if (!FLAGS_use_stride_kernel) {
+      handle_transpose(*out);
+    }
     return;
   } else {
     // get value for int tensor
