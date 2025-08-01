@@ -887,7 +887,7 @@ class TestNLLLoss(unittest.TestCase):
 
         input_shape = input_np.shape
         label_shape = label_np.shape
-        out_shape = (input_shape[0],) + input_shape[2:]
+        out_shape = (input_shape[0], *input_shape[2:])
         input_np_reshape = np.reshape(
             input_np, (input_shape[0], input_shape[1], 1, -1)
         )
@@ -952,7 +952,7 @@ class TestNLLLoss(unittest.TestCase):
 
         input_shape = input_np.shape
         label_shape = label_np.shape
-        out_shape = (input_shape[0],) + input_shape[2:]
+        out_shape = (input_shape[0], *input_shape[2:])
         input_np_reshape = np.reshape(
             input_np, (input_shape[0], input_shape[1], 1, -1)
         )

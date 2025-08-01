@@ -23,6 +23,8 @@ import re
 import subprocess
 import uuid
 
+import paddle
+
 from ..utils import get_cuda_home
 from . import interleave_ffma
 from .runtime import Runtime, RuntimeCache
@@ -125,9 +127,8 @@ def put(path, data, is_binary=False):
 
 def build(name: str, arg_defs: tuple, code: str) -> Runtime:
     # Compiler flags
-    cpp_standard = int(os.getenv("DG_NVCC_OVERRIDE_CPP_STANDARD", 20))
     nvcc_flags = [
-        f"-std=c++{cpp_standard}",
+        "-std=c++17",
         "-shared",
         "-O3",
         "--expt-relaxed-constexpr",
@@ -136,20 +137,13 @@ def build(name: str, arg_defs: tuple, code: str) -> Runtime:
         "--ptxas-options=--register-usage-level=10"
         + (",--verbose" if "DG_PTXAS_VERBOSE" in os.environ else ""),
         # Suppress some unnecessary warnings, such as unused variables for certain `constexpr` branch cases
-        "--diag-suppress=39,174,177,940",
+        "--diag-suppress=177,174,940",
     ]
-    cxx_flags = [
-        "-fPIC",
-        "-O3",
-        "-Wno-deprecated-declarations",
-        "-Wno-abi",
-        "-fconcepts",
-    ]
+    cxx_flags = ["-fPIC", "-O3", "-Wno-deprecated-declarations", "-Wno-abi"]
     flags = [*nvcc_flags, f'--compiler-options={",".join(cxx_flags)}']
     include_dirs = [
         f"{get_jit_include_dir()}/../../../../include/paddle/fluid/fp8/deep_gemm/include"
     ]
-
     # Build signature
     enable_sass_opt = (
         get_nvcc_compiler()[1] <= "12.8"
@@ -158,14 +152,13 @@ def build(name: str, arg_defs: tuple, code: str) -> Runtime:
     signature = f"{name}$${get_deep_gemm_version()}$${code}$${get_nvcc_compiler()}$${flags}$${enable_sass_opt}"
     name = f"kernel.{name}.{hash_to_hex(signature)}"
     path = f"{get_cache_dir()}/{name}"
-
     # Check runtime cache or file system hit
     global runtime_cache
     if runtime_cache[path] is not None:
         if os.getenv("DG_JIT_DEBUG", None):
             print(f"Using cached JIT runtime {name} during build")
         return runtime_cache[path]
-
+    paddle.base.core.nvprof_nvtx_pop()
     # Write the code
     os.makedirs(path, exist_ok=True)
     args_path = f"{path}/kernel.args"
@@ -186,7 +179,6 @@ def build(name: str, arg_defs: tuple, code: str) -> Runtime:
     tmp_so_path = (
         f"{make_tmp_dir()}/nvcc.tmp.{uuid.uuid4()!s}.{hash_to_hex(so_path)}.so"
     )
-
     # Compile
     command = [
         get_nvcc_compiler()[0],

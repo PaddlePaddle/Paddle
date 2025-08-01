@@ -27,7 +27,12 @@ struct LgammaGradFunctor {
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     const MT mp_dout = static_cast<MT>(dout_[idx]);
     const MT mp_x = static_cast<MT>(x_[idx]);
-    output_[idx] = static_cast<T>(mp_dout * Eigen::numext::digamma(mp_x));
+    MT eigen_out = Eigen::numext::digamma(mp_x);
+    constexpr MT mp_inf = std::numeric_limits<MT>::infinity();
+    MT mp_out = mp_x == static_cast<MT>(0)
+                    ? (std::signbit(mp_x) ? mp_inf : -mp_inf)
+                    : eigen_out;
+    output_[idx] = static_cast<T>(mp_dout * mp_out);
   }
 
  private:
@@ -36,6 +41,7 @@ struct LgammaGradFunctor {
   T* output_;
   int64_t numel_;
 };
+
 template <typename T, typename Context>
 void LgammaGradKernel(const Context& dev_ctx,
                       const DenseTensor& x,

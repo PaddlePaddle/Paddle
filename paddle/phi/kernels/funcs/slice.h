@@ -125,13 +125,13 @@ DenseTensor Slice(const Context& dev_ctx,
 
 // Use in conv_transpose kernel
 template <typename Context, typename T, size_t D>
-static void Slice(const Context& ctx,
+static void Slice(const Context& dev_ctx,
                   const DenseTensor* input,
                   DenseTensor* out,
                   const std::vector<int64_t>& begin_vec,
                   const std::vector<int64_t>& end_vec,
                   const std::vector<int64_t>& axes_vec) {
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   auto in_dims = input->dims();
   auto offsets = Eigen::DSizes<Eigen::DenseIndex, D>();
   auto extents = Eigen::DSizes<Eigen::DenseIndex, D>();
@@ -149,7 +149,7 @@ static void Slice(const Context& ctx,
 
   DDim out_dims(common::make_ddim(out_shape_vec));
   out->Resize(out_dims);
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
 
   auto in_t =
       EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(*input);
@@ -162,7 +162,7 @@ static void Slice(const Context& ctx,
 }
 
 template <typename Context, typename T, size_t D>
-static void Slice(const Context& ctx,
+static void Slice(const Context& dev_ctx,
                   const DenseTensor* input,
                   DenseTensor* out,
                   int64_t begin_idx,
@@ -171,7 +171,7 @@ static void Slice(const Context& ctx,
   std::vector<int64_t> begin_vec = {begin_idx};
   std::vector<int64_t> end_vec = {end_idx};
   std::vector<int64_t> axes_vec = {axes};
-  Slice<Context, T, D>(ctx, input, out, begin_vec, end_vec, axes_vec);
+  Slice<Context, T, D>(dev_ctx, input, out, begin_vec, end_vec, axes_vec);
 }
 
 }  // namespace funcs

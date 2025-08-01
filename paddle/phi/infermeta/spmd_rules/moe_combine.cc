@@ -25,9 +25,9 @@ limitations under the License. */
 namespace phi {
 namespace distributed {
 
-SpmdInfo MoECombineFwdInferSpmd(const DistMetaTensor& x,
-                                const DistMetaTensor& combine_weights,
-                                const DistMetaTensor& scatter_index) {
+SpmdInfo MoECombineInferSpmd(const DistMetaTensor& x,
+                             const DistMetaTensor& combine_weights,
+                             const DistMetaTensor& scatter_index) {
   /* kernel logic:
   y is [seqlen, hidden_size]
   for kk in k:
@@ -107,10 +107,10 @@ SpmdInfo MoECombineFwdInferSpmd(const DistMetaTensor& x,
           {y_dist_attr_dst}};
 }
 
-SpmdInfo MoECombineBwdInferSpmd(const DistMetaTensor& x,
-                                const DistMetaTensor& combine_weights,
-                                const DistMetaTensor& scatter_index,
-                                const DistMetaTensor& grad_y) {
+SpmdInfo MoECombineGradInferSpmd(const DistMetaTensor& x,
+                                 const DistMetaTensor& combine_weights,
+                                 const DistMetaTensor& scatter_index,
+                                 const DistMetaTensor& grad_y) {
   /* kernel logic:
   for(int i = 0; i < s; ++i) {
       for(int j = 0; j < h; ++j) {

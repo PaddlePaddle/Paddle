@@ -483,7 +483,15 @@ def convert_shape_to_list(shape):
     Convert shape(list, tuple, variable) to list in imperative mode
     """
     if isinstance(shape, (list, tuple)):
-        shape = [x.item(0) if isinstance(x, Variable) else x for x in shape]
+        shape_out = []
+        for x in shape:
+            if isinstance(x, Variable):
+                # skip item if size = 0
+                if x.size > 0:
+                    shape_out.append(x.item(0))
+            else:
+                shape_out.append(x)
+        shape = shape_out
     else:
         if in_dygraph_mode():
             shape = shape.astype(int).tolist()

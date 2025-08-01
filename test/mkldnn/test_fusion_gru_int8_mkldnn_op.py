@@ -20,7 +20,7 @@ from test_fusion_gru_op import fusion_gru
 from test_fusion_lstm_op import ACTIVATION
 
 
-class TestFusionGRUINT8MKLDNNOp(OpTest):
+class TestFusionGRUINT8ONEDNNOp(OpTest):
     def set_confs(self):
         pass
 
@@ -35,8 +35,8 @@ class TestFusionGRUINT8MKLDNNOp(OpTest):
         self.act_state = 'tanh'
         self.act_gate = 'sigmoid'
         self.origin_mode = True
-        self.use_mkldnn = True
-        self.mkldnn_data_type = "int8"
+        self.use_onednn = True
+        self.onednn_data_type = "int8"
         self.force_fp32_output = True
         self.error_margin = 1e-5
         self.set_confs()
@@ -141,8 +141,8 @@ class TestFusionGRUINT8MKLDNNOp(OpTest):
             'gate_activation': self.act_gate,
             'is_reverse': self.is_reverse,
             'origin_mode': self.origin_mode,
-            'use_mkldnn': self.use_mkldnn,
-            'mkldnn_data_type': self.mkldnn_data_type,
+            'use_mkldnn': self.use_onednn,
+            'mkldnn_data_type': self.onednn_data_type,
             'force_fp32_output': self.force_fp32_output,
             'Scale_data': scale_data,
             'Shift_data': shift_data,
@@ -157,22 +157,22 @@ class TestFusionGRUINT8MKLDNNOp(OpTest):
         )
 
 
-class TestFusionGRUINT8MKLDNNOp2(TestFusionGRUINT8MKLDNNOp):
+class TestFusionGRUINT8ONEDNNOp2(TestFusionGRUINT8ONEDNNOp):
     def set_confs(self):
         self.force_fp32_output = False
 
 
-class TestFusionGRUINT8MKLDNNOp3(TestFusionGRUINT8MKLDNNOp):
+class TestFusionGRUINT8ONEDNNOp3(TestFusionGRUINT8ONEDNNOp):
     def set_confs(self):
         self.origin_mode = False
 
 
-class TestFusionGRUINT8MKLDNNOp4(TestFusionGRUINT8MKLDNNOp):
+class TestFusionGRUINT8ONEDNNOp4(TestFusionGRUINT8ONEDNNOp):
     def set_confs(self):
         self.with_bias = False
 
 
-class TestFusionGRUINT8MKLDNNOp5(TestFusionGRUINT8MKLDNNOp):
+class TestFusionGRUINT8ONEDNNOp5(TestFusionGRUINT8ONEDNNOp):
     def set_confs(self):
         self.with_h0 = False
 

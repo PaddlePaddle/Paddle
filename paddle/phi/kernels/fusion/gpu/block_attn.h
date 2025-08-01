@@ -4342,14 +4342,14 @@ struct MaxOp {
 template <int THREADBLOCK_SIZE>
 __global__ void GetMaxLenKernel(const int *seq_lens,
                                 int *max_len,
-                                const int batch_size) {
-  const int tid = threadIdx.x;
+                                const int64_t batch_size) {
+  const int64_t tid = threadIdx.x;
 
   typedef cub::BlockReduce<int, THREADBLOCK_SIZE> BlockReduce;
   __shared__ typename BlockReduce::TempStorage temp_storage;
 
   int max_len_this_thread = 0;
-  for (int i = tid; i < batch_size; i += blockDim.x) {
+  for (int64_t i = tid; i < batch_size; i += blockDim.x) {
     max_len_this_thread = max(seq_lens[i], max_len_this_thread);
   }
   int total =

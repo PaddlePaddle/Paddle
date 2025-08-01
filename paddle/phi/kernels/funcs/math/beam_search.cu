@@ -404,7 +404,7 @@ static inline int GetNumUsedThreads(const int max_threads_per_seq,
 template <typename T>
 class BeamSearchFunctor<phi::GPUContext, T> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const phi::DenseTensor* pre_ids,
                   const phi::DenseTensor* pre_scores,
                   const phi::DenseTensor* ids,
@@ -433,22 +433,22 @@ class BeamSearchFunctor<phi::GPUContext, T> {
     auto selected_dims =
         common::make_ddim({static_cast<int64_t>(num_seqs * beam_size), 1});
     selected_ids->Resize(selected_dims);
-    int64_t* selected_ids_data = context.template Alloc<int64_t>(selected_ids);
+    int64_t* selected_ids_data = dev_ctx.template Alloc<int64_t>(selected_ids);
     selected_scores->Resize(selected_dims);
     float* selected_scores_data =
-        context.template Alloc<float>(selected_scores);
+        dev_ctx.template Alloc<float>(selected_scores);
     if (parent_idx != nullptr) {
       parent_idx->Resize({static_cast<int64_t>(num_seqs * beam_size)});
     }
     int* parent_idx_data =
-        parent_idx ? context.template Alloc<int>(parent_idx) : nullptr;
+        parent_idx ? dev_ctx.template Alloc<int>(parent_idx) : nullptr;
 
     phi::LegacyLoD selected_lod(2);
     selected_lod[0].assign(abs_lod[level].begin(), abs_lod[level].end());
     selected_lod[1].resize(scores->dims()[0] + 1);
     phi::MixVector<size_t> mix_vector(&selected_lod[1]);
     phi::MixVector<size_t> mixv_abs(&abs_lod[level]);
-    size_t* selected_offsets = mix_vector.CUDAMutableData(context.GetPlace());
+    size_t* selected_offsets = mix_vector.CUDAMutableData(dev_ctx.GetPlace());
 
     if (num_seqs == 1) {
       const int seq_length = static_cast<int>(abs_lod[level][1]);
@@ -459,7 +459,7 @@ class BeamSearchFunctor<phi::GPUContext, T> {
       switch (phi::backends::gpu::RoundToPowerOfTwo(beam_size * seq_width)) {
         CUDA_LAUNCH_KERNEL_HELPER(
             BeamSearchKernelSingle<kPowerOfTwoDim, kMaxThreadsPerSeq>
-            <<<1, kMaxThreadsPerSeq, 0, context.stream()>>>(
+            <<<1, kMaxThreadsPerSeq, 0, dev_ctx.stream()>>>(
                 selected_ids_data,
                 selected_scores_data,
                 parent_idx_data,
@@ -476,7 +476,7 @@ class BeamSearchFunctor<phi::GPUContext, T> {
                 num_used_threads));
       }
     } else if (num_seqs <= 4) {
-      const size_t* seq_offsets = mixv_abs.CUDAData(context.GetPlace());
+      const size_t* seq_offsets = mixv_abs.CUDAData(dev_ctx.GetPlace());
       // Use only 1 block
       const int kMaxThreadsPerSeq = 32;
       const int kMaxSeqs = 4;
@@ -487,7 +487,7 @@ class BeamSearchFunctor<phi::GPUContext, T> {
           phi::backends::gpu::RoundToPowerOfTwo(beam_size * num_seqs * 32)) {
         CUDA_LAUNCH_KERNEL_HELPER(
             BeamSearchKernel<kPowerOfTwoDim, kMaxThreadsPerSeq, kMaxSeqs>
-            <<<1, num_seqs * kMaxThreadsPerSeq, 0, context.stream()>>>(
+            <<<1, num_seqs * kMaxThreadsPerSeq, 0, dev_ctx.stream()>>>(
                 selected_ids_data,
                 selected_scores_data,
                 parent_idx_data,
@@ -509,7 +509,7 @@ class BeamSearchFunctor<phi::GPUContext, T> {
           "Not implemented other number of sequences yet."));
     }
 
-    context.Wait();
+    dev_ctx.Wait();
     mix_vector.CopyToCPU();
     if (!CheckLegacyLoD(selected_lod)) {
       PADDLE_THROW(common::errors::InvalidArgument(

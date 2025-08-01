@@ -85,27 +85,27 @@ def group_norm_naive(x, scale, bias, epsilon, groups, data_layout):
 
 class TestGroupNormOpError(unittest.TestCase):
     def test_errors(self):
-        with paddle_static_guard():
-            with base.program_guard(base.Program(), base.Program()):
+        with (
+            paddle_static_guard(),
+            base.program_guard(base.Program(), base.Program()),
+        ):
 
-                def test_x_type():
-                    input = np.random.random(2, 100, 3, 5).astype('float32')
-                    groups = 2
-                    paddle.nn.GroupNorm(num_channels=100, num_groups=groups)(
-                        input
-                    )
+            def test_x_type():
+                input = np.random.random(2, 100, 3, 5).astype('float32')
+                groups = 2
+                paddle.nn.GroupNorm(num_channels=100, num_groups=groups)(input)
 
-                self.assertRaises(TypeError, test_x_type)
+            self.assertRaises(TypeError, test_x_type)
 
-                def test_x_dtype():
-                    x2 = paddle.static.data(
-                        name='x2', shape=[-1, 2, 100, 3, 5], dtype='int32'
-                    )
-                    groups = 2
-                    paddle.static.nn.group_norm(x2, groups)
+            def test_x_dtype():
+                x2 = paddle.static.data(
+                    name='x2', shape=[-1, 2, 100, 3, 5], dtype='int32'
+                )
+                groups = 2
+                paddle.static.nn.group_norm(x2, groups)
 
-                with paddle.pir_utils.OldIrGuard():
-                    self.assertRaises(TypeError, test_x_dtype)
+            with paddle.pir_utils.OldIrGuard():
+                self.assertRaises(TypeError, test_x_dtype)
 
 
 def group_norm_wrapper(

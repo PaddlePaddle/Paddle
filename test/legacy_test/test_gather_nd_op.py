@@ -721,6 +721,58 @@ class TestGatherNdAPI2(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestGatherNdOp_ZeroSize(OpTest):
+    def setUp(self):
+        self.op_type = "gather_nd"
+        self.python_api = paddle.gather_nd
+        self.public_python_api = paddle.gather_nd
+        xnp = np.random.random([10, 20])
+        index = np.random.random([0]).astype("int32")
+        output = xnp[tuple(index.T)]
+
+        self.inputs = {'X': xnp, 'Index': index}
+        self.outputs = {'Out': output}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_pir=True,
+        )
+
+    def test_check_output_cpu(self):
+        self.check_output_with_place(check_pir=True, place=paddle.CPUPlace())
+
+
+class TestGatherNdOp_ZeroSize2(TestGatherNdOp_ZeroSize):
+    def setUp(self):
+        self.op_type = "gather_nd"
+        self.python_api = paddle.gather_nd
+        self.public_python_api = paddle.gather_nd
+        xnp = np.random.random([10, 20])
+        index = np.random.random([2, 0]).astype("int32")
+        output = np.tile(xnp, [2, 1, 1])
+
+        self.inputs = {'X': xnp, 'Index': index}
+        self.outputs = {'Out': output}
+
+
+class TestGatherNdOp_ZeroSize3(TestGatherNdOp_ZeroSize):
+    def setUp(self):
+        self.op_type = "gather_nd"
+        self.python_api = paddle.gather_nd
+        self.public_python_api = paddle.gather_nd
+        xnp = np.random.random([1, 2, 3, 2])
+        index = np.random.random([1, 1, 1, 0]).astype("int32")
+        output = np.tile(xnp, [1, 1, 1, 1, 1, 1, 1])
+
+        self.inputs = {'X': xnp, 'Index': index}
+        self.outputs = {'Out': output}
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

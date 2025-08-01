@@ -48,6 +48,7 @@ std::unordered_set<std::string> decomp_op_contain_none = {
     "pd_op.batch_norm_",
     "pd_op.dropout",
     "pd_op.instance_norm",
+    "pd_op.rms_norm",
 };
 //
 

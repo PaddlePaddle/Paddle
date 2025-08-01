@@ -521,7 +521,7 @@ bool TensorRTEngine::SetRefitWeights(
 bool TensorRTEngine::FinalizeRefit() {
   PADDLE_ENFORCE_NOT_NULL(
       infer_refitter_,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Refit is not initialize.Make sure you enabled refit."));
   int missing_count = infer_refitter_->getMissingWeights(0, nullptr);
   VLOG(3) << "missing_count" << missing_count;

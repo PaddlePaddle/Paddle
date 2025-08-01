@@ -62,11 +62,13 @@ class TestGraph(unittest.TestCase):
     def graph_apis(self, use_cuda=False, for_ci=True):
         main = paddle.static.Program()
         startup = paddle.static.Program()
-        with paddle.utils.unique_name.guard():
-            with paddle.static.program_guard(main, startup):
-                feeds, loss = conv_block()
-                opt = paddle.optimizer.Adam(learning_rate=0.001)
-                opt.minimize(loss)
+        with (
+            paddle.utils.unique_name.guard(),
+            paddle.static.program_guard(main, startup),
+        ):
+            feeds, loss = conv_block()
+            opt = paddle.optimizer.Adam(learning_rate=0.001)
+            opt.minimize(loss)
         graph = IrGraph(core.Graph(main.desc), for_test=False)
         backup_graph = graph.clone()
         self.assertEqual(len(graph.all_nodes()), len(backup_graph.all_nodes()))

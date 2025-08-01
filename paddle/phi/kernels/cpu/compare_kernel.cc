@@ -70,6 +70,8 @@ inline void CompareAllKernelImpl(const Context& dev_ctx,
 
   if (x.dims() != y.dims()) {
     out_data[0] = false;
+  } else if (x.numel() == 0) {  // shape equal and numel is 0, return true
+    out_data[0] = true;
   } else {
     DenseTensor tmp;
     tmp.Resize(x.dims());

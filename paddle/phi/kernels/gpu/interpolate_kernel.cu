@@ -645,7 +645,7 @@ static void Interpolate1DCUDAFwd(
   auto* input_data = input.data<T>();
 
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
-  int n, c, in_d, in_h, in_w;
+  int64_t n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
   float scale_w = -1;
@@ -759,7 +759,7 @@ static void Interpolate2DCUDAFwd(
   auto* input_data = input.data<T>();
 
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
-  int n, c, in_d, in_h, in_w;
+  int64_t n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
   float scale_w = -1;
@@ -1011,7 +1011,7 @@ static void Interpolate3DCUDAFwd(
   auto* input_data = input.data<T>();
 
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
-  int n, c, in_d, in_h, in_w;
+  int64_t n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
   float scale_w = -1;
@@ -1230,6 +1230,10 @@ void InterpolateKernel(
     bool align_corners,
     int align_mode,
     DenseTensor* output) {
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(output);
+    return;
+  }
   auto input_dims = x.dims();
   if (input_dims.size() == 3) {  // 1D interpolation
     Interpolate1DCUDAFwd<T, Context>(dev_ctx,

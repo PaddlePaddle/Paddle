@@ -45,6 +45,47 @@ inline const char* xblasGetErrorString(int stat) {
   }
 }
 
+#ifdef PADDLE_WITH_XPU_FFT
+inline const char* fftGetErrorString(cufftResult_t stat) {
+  switch (stat) {
+    case CUFFT_SUCCESS:
+      return "CUFFT_SUCCESS";
+    case CUFFT_INVALID_PLAN:
+      return "CUFFT_INVALID_PLAN";
+    case CUFFT_ALLOC_FAILED:
+      return "CUFFT_ALLOC_FAILED";
+    case CUFFT_INVALID_TYPE:
+      return "CUFFT_INVALID_TYPE";
+    case CUFFT_INVALID_VALUE:
+      return "CUFFT_INVALID_VALUE";
+    case CUFFT_INTERNAL_ERROR:
+      return "CUFFT_INTERNAL_ERROR";
+    case CUFFT_EXEC_FAILED:
+      return "CUFFT_EXEC_FAILED";
+    case CUFFT_SETUP_FAILED:
+      return "CUFFT_SETUP_FAILED";
+    case CUFFT_INVALID_SIZE:
+      return "CUFFT_INVALID_SIZE";
+    case CUFFT_UNALIGNED_DATA:
+      return "CUFFT_UNALIGNED_DATA";
+    case CUFFT_INCOMPLETE_PARAMETER_LIST:
+      return "CUFFT_INCOMPLETE_PARAMETER_LIST";
+    case CUFFT_INVALID_DEVICE:
+      return "CUFFT_INVALID_DEVICE";
+    case CUFFT_PARSE_ERROR:
+      return "CUFFT_PARSE_ERROR";
+    case CUFFT_NO_WORKSPACE:
+      return "CUFFT_NO_WORKSPACE";
+    case CUFFT_NOT_IMPLEMENTED:
+      return "CUFFT_NOT_IMPLEMENTED";
+    case CUFFT_LICENSE_ERROR:
+      return "CUFFT_LICENSE_ERROR";
+    default:
+      return "CUFFT_NOT_SUPPORTED";
+  }
+}
+#endif
+
 // Note: XPU runtime api return int, not XPUError_t
 inline const char* xpuGetErrorString(int stat) {
   switch (stat) {
@@ -171,6 +212,14 @@ inline std::string build_bkcl_error_msg(BKCLResult_t stat) {
 }
 #endif
 
+#ifdef PADDLE_WITH_XPU_FFT
+inline std::string build_fft_error_msg(cufftResult_t stat) {
+  std::string error_msg = "FFT Error <" + std::to_string(stat) + ">, " +
+                          fftGetErrorString(stat) + " ";
+  return error_msg;
+}
+#endif
+
 inline std::string build_xdnn_error_msg(int stat, std::string msg) {
   std::string error_msg = msg + " XDNN Error <" + std::to_string(stat) + ">, " +
                           xdnnGetErrorString(stat) + " ";
@@ -200,6 +249,13 @@ std::string get_bkcl_error_msg(BKCLResult_t stat) {
   } else {
     error_msg = ::phi::backends::xpu::build_bkcl_error_msg(stat);
   }
+  return error_msg;
+}
+#endif
+
+#ifdef PADDLE_WITH_XPU_FFT
+std::string get_fft_error_msg(cufftResult_t stat) {
+  std::string error_msg = ::phi::backends::xpu::build_fft_error_msg(stat);
   return error_msg;
 }
 #endif

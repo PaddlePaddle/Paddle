@@ -22,7 +22,7 @@ namespace math {
 template <typename T>
 class BeamSearchFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const phi::CPUContext &context UNUSED,
+  void operator()(const phi::CPUContext &dev_ctx UNUSED,
                   const phi::DenseTensor *pre_ids,
                   const phi::DenseTensor *pre_scores,
                   const phi::DenseTensor *ids,
@@ -67,14 +67,14 @@ class BeamSearchFunctor<phi::CPUContext, T> {
     auto dims = common::make_ddim(
         std::vector<int64_t>({static_cast<int>(num_instances), 1}));
     selected_ids->Resize(dims);
-    auto *selected_ids_data = context.template Alloc<int64_t>(selected_ids);
+    auto *selected_ids_data = dev_ctx.template Alloc<int64_t>(selected_ids);
     selected_scores->Resize(dims);
-    auto *selected_scores_data = context.template Alloc<float>(selected_scores);
+    auto *selected_scores_data = dev_ctx.template Alloc<float>(selected_scores);
     if (parent_idx != nullptr) {
       parent_idx->Resize({static_cast<int64_t>(num_instances)});
     }
     auto *parent_idx_data =
-        parent_idx ? context.template Alloc<int>(parent_idx) : nullptr;
+        parent_idx ? dev_ctx.template Alloc<int>(parent_idx) : nullptr;
 
     // fill in data
     std::vector<size_t> low_level;

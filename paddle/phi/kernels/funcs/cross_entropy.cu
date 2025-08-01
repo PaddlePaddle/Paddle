@@ -112,14 +112,14 @@ struct HardLabelCrossEntropyCUDAFunctorImpl {
 
 template <typename DeviceContext, typename T>
 void CrossEntropyFunctor<DeviceContext, T>::operator()(
-    const DeviceContext& ctx,
+    const DeviceContext& dev_ctx,
     phi::DenseTensor* out,
     const phi::DenseTensor* prob,
     const phi::DenseTensor* labels,
     const bool softLabel,
     const int ignore_index,
     const int axis_dim) {
-  T* loss_data = ctx.template Alloc<T>(out);
+  T* loss_data = dev_ctx.template Alloc<T>(out);
   const T* prob_data = prob->data<T>();
 
   int batch_size = prob->dims()[0];
@@ -132,7 +132,7 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
                     ? kMaxBlockDim
                     : pow(2, static_cast<int>(std::log2(class_num)));
 
-    SoftCrossEntropyKernel<T><<<batch_size, block, 0, ctx.stream()>>>(
+    SoftCrossEntropyKernel<T><<<batch_size, block, 0, dev_ctx.stream()>>>(
         loss_data, prob_data, label_data, class_num);
   } else {
     HardLabelCrossEntropyCUDAFunctorImpl<T> functor(loss_data,
@@ -142,7 +142,7 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
                                                     class_num,
                                                     ignore_index,
                                                     kMaxBlockDim,
-                                                    ctx.stream());
+                                                    dev_ctx.stream());
     phi::VisitDataType(labels->dtype(), functor);
   }
 }

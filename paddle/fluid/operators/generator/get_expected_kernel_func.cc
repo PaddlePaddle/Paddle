@@ -324,7 +324,7 @@ phi::KernelKey GetPad3dExpectedKernelType(
   auto input_data_type = op_ptr->IndicateVarDataType(ctx, "X");
 #ifdef PADDLE_WITH_DNNL
   // only constant mode and non-blocked layouts are supported for oneDNN
-  if (op_ptr->CanMKLDNNBeUsed(ctx, input_data_type) &&
+  if (op_ptr->CanONEDNNBeUsed(ctx, input_data_type) &&
       ctx.Attr<std::string>("mode") == "constant" &&
       ctx.Input<phi::DenseTensor>("X")->mem_desc().get_inner_nblks() == 0) {
     return phi::KernelKey(phi::Backend::ONEDNN,

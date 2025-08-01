@@ -83,6 +83,7 @@ EXTERN_CALL_IMP(Log2, log2);
 EXTERN_CALL_IMP(Log10, log10);
 EXTERN_CALL_IMP(Floor, floor);
 EXTERN_CALL_IMP(Ceil, ceil);
+EXTERN_CALL_IMP(Rint, rint);
 EXTERN_CALL_IMP(Round, round);
 EXTERN_CALL_IMP(Trunc, trunc);
 EXTERN_CALL_IMP(Cos, cos);

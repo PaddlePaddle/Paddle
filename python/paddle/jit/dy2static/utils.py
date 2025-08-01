@@ -29,6 +29,7 @@ import textwrap
 import time
 import types
 import warnings
+from abc import ABC
 from contextlib import contextmanager
 from dataclasses import fields, is_dataclass
 from enum import Enum, Flag, IntEnum, auto
@@ -47,6 +48,7 @@ from paddle.jit.utils import OrderedSet
 from paddle.utils import flatten, gast
 from paddle.utils.environments import (
     BooleanEnvironmentVariable,
+    IntegerEnvironmentVariable,
 )
 
 from .ast_utils import ast_to_source_code
@@ -82,6 +84,7 @@ NO_SHAPE_VAR_TYPE = [
     core.VarDesc.VarType.FETCH_LIST,
 ]
 
+ENV_SOT_EVENT_LEVEL = IntegerEnvironmentVariable("SOT_EVENT_LEVEL", 0)
 ENV_ENABLE_SOT = BooleanEnvironmentVariable("ENABLE_FALL_BACK", True)
 ENV_ENABLE_CINN_IN_DY2ST = BooleanEnvironmentVariable(
     "ENABLE_CINN_IN_DY2ST", True
@@ -306,6 +309,21 @@ def is_dataclass_instance(obj):
 
 def is_dataclass_type(obj):
     return is_dataclass(obj) and isinstance(obj, type)
+
+
+def is_plain_dataclass_type(cls: type):
+    """
+    Returns True if `cls` and all its non-ABC, non-object base classes are dataclasses.
+    Disallows inheritance from any non-dataclass types except for ABC and object.
+    """
+    if not is_dataclass_type(cls):
+        return False
+    for base_cls in cls.__mro__[-2 : -len(cls.__mro__) - 1 : -1]:
+        if base_cls is ABC:
+            continue
+        if not is_dataclass_type(base_cls):
+            return False
+    return True
 
 
 def dataclass_as_dict(obj):
@@ -849,6 +867,12 @@ def cse_is_enabled():
 def use_specialized_device():
     return paddle.get_flags(["FLAGS_specialize_device_in_dy2st"])[
         "FLAGS_specialize_device_in_dy2st"
+    ]
+
+
+def parameters_persistent_mode_is_enabled():
+    return paddle.get_flags(["FLAGS_parameters_persistent_mode_in_dy2st"])[
+        "FLAGS_parameters_persistent_mode_in_dy2st"
     ]
 
 

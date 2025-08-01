@@ -109,6 +109,10 @@ class JITTuner:
         signature = (name, m, k, n)
         if signature in self.tuned:
             return self.tuned[signature]
+        # keys = {k: keys[k] for k in sorted(keys.keys())}
+        # signature = (name, f"{keys}")
+        # if signature in self.tuned:
+        #     return self.tuned[signature]
         space = ({},) if len(space) == 0 else space
 
         kernels = []

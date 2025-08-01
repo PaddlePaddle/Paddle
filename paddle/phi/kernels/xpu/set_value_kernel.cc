@@ -367,6 +367,10 @@ void SetTensorValueKernel(const Context& dev_ctx,
                           const std::vector<int64_t>& decrease_axes,
                           const std::vector<int64_t>& none_axes,
                           DenseTensor* out) {
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   SetValueKernelImpl<T, Context>(dev_ctx,
                                  x,
                                  value.data<T>(),

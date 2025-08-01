@@ -28,7 +28,7 @@ namespace phi {
 
 template <typename T, typename OUT_TYPE>
 __global__ void Range(T start, T step, int64_t size, OUT_TYPE* out) {
-  CUDA_KERNEL_LOOP(index, size) {
+  CUDA_KERNEL_LOOP_TYPE(index, size, int64_t) {
     out[index] = static_cast<OUT_TYPE>(start + step * index);
   }
 }
@@ -70,6 +70,17 @@ void ArangeNullaryKernel(const Context& dev_ctx,
   MPType start_value_mpt = static_cast<MPType>(start_value);
   MPType end_value_mpt = static_cast<MPType>(end_value);
   MPType step_value_mpt = static_cast<MPType>(step_value);
+  if constexpr (std::is_same_v<T, float>) {
+    if (std::isnan(static_cast<float>(end_value))) {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "The end value of arange cannot be NaN. Please check your input."));
+    }
+  } else if constexpr (std::is_same_v<T, double>) {
+    if (std::isnan(static_cast<double>(end_value))) {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "The end value of arange cannot be NaN. Please check your input."));
+    }
+  }
   int64_t size = 0;
   phi::funcs::GetSize(start_value_mpt, end_value_mpt, step_value_mpt, &size);
   out->Resize(common::make_ddim({size}));
@@ -94,6 +105,17 @@ void ArangeKernel(const Context& dev_ctx,
   T start_value = start.to<T>();
   T end_value = end.to<T>();
   T step_value = step.to<T>();
+  if constexpr (std::is_same_v<T, float>) {
+    if (std::isnan(end_value)) {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "The end value of arange cannot be NaN. Please check your input."));
+    }
+  } else if constexpr (std::is_same_v<T, double>) {
+    if (std::isnan(end_value)) {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "The end value of arange cannot be NaN. Please check your input."));
+    }
+  }
   ArangeNullaryKernel<T, Context>(
       dev_ctx, start_value, end_value, step_value, out);
 }

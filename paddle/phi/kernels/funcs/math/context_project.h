@@ -82,7 +82,7 @@ namespace math {
 template <typename DeviceContext, typename T>
 class ContextProjectFunctor {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& in,
                   const phi::DenseTensor* padding_data,
                   bool padding_trainable,
@@ -135,7 +135,7 @@ class ContextProjectFunctor {
              input_row_end - input_row_begin,
              sequence_width});  // input_channels, input_height, input_width
         in_t.Resize(common::make_ddim(input_shape));
-        im2col_ocf(context, in_t, dilation, stride, padding, &out_t);
+        im2col_ocf(dev_ctx, in_t, dilation, stride, padding, &out_t);
         out_t.Resize({sequence_height, context_length * sequence_width});
       }
     }
@@ -167,7 +167,7 @@ class ContextProjectFunctor {
             phi::DenseTensor out_t_sub = out_t.Slice(
                 k * context_length, k * context_length + padding_size);
             phi::DenseTensor w_sub = padding_data->Slice(k, k + padding_size);
-            phi::Copy(context, w_sub, context.GetPlace(), false, &out_t_sub);
+            phi::Copy(dev_ctx, w_sub, dev_ctx.GetPlace(), false, &out_t_sub);
           }
         }
         if (down_pad > 0) {  // add down pad
@@ -197,7 +197,7 @@ class ContextProjectFunctor {
                 (down_pad_begin_row + t) * context_length);
             phi::DenseTensor w_sub = padding_data->Slice(
                 up_pad + padding_idx, up_pad + padding_idx + padding_size);
-            phi::Copy(context, w_sub, context.GetPlace(), false, &out_t_sub);
+            phi::Copy(dev_ctx, w_sub, dev_ctx.GetPlace(), false, &out_t_sub);
           }
         }
         out_t.Resize({sequence_height,
@@ -210,7 +210,7 @@ class ContextProjectFunctor {
 template <typename DeviceContext, typename T>
 class ContextProjectGradFunctor {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& in,
                   bool padding_trainable,
                   const int context_start,
@@ -234,7 +234,7 @@ class ContextProjectGradFunctor {
     int input_row_begin, input_row_end;
     int sequence_height, sequence_width;
     sequence_width = in.dims()[1];
-    auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
 
     if (input_grad) {
       for (int i = 0; i < static_cast<int>(lod_level_0.size()) - 1; ++i) {
@@ -269,7 +269,7 @@ class ContextProjectGradFunctor {
                sequence_width});  // input_channels, input_height, input_width
           in_t.Resize(common::make_ddim(input_shape));
 
-          col2im_ocf(context, out_t, dilation, stride, padding, &in_t);
+          col2im_ocf(dev_ctx, out_t, dilation, stride, padding, &in_t);
           out_t.Resize({sequence_height, context_length * sequence_width});
         }
       }

@@ -13,13 +13,12 @@
 # limitations under the License.
 
 import itertools
-import os
 import unittest
 
 import numpy as np
+from op_test import get_places
 
 import paddle
-from paddle.framework import core
 
 paddle.enable_static()
 
@@ -57,18 +56,8 @@ def numpy_ref(_x, value, axes, starts, ends, strides):
 class TestSliceScatterApi(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
-
         self.init_shape()
-
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
+        self.place = get_places()
 
     def init_np(self):
         self.x_np = np.random.random(self.x_shape).astype(
@@ -351,6 +340,61 @@ class TestSliceScatterApiError(unittest.TestCase):
             _ = paddle.slice_scatter(
                 x, value, axes=[0], starts=[0], ends=[8], strides=[1]
             )
+
+
+class TestSliceScatterApi_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.init_shape()
+        self.place = get_places()
+
+    def init_np(self):
+        self.x_np = np.random.random(self.x_shape).astype(
+            'uint16' if self.dtype == 'bfloat16' else self.dtype
+        )
+        self.value_np = np.random.random(self.value_shape).astype(
+            'uint16' if self.dtype == 'bfloat16' else self.dtype
+        )
+
+    def init_dtype(self):
+        self.dtype = 'float64'
+
+    def init_shape(self):
+        self.x_shape = [0, 6]
+        self.value_shape = [0, 2]
+        self.axes = [1]
+        self.starts = [2]
+        self.ends = [6]
+        self.strides = [2]
+
+    def test_api_dygraph(self):
+        self.init_dtype()
+        self.init_np()
+        for place in self.place:
+            paddle.disable_static(place)
+            x_tensor = paddle.to_tensor(self.x_np)
+            x_tensor.stop_gradient = False
+            value_tensor = paddle.to_tensor(self.value_np)
+            out = paddle.slice_scatter(
+                x_tensor,
+                value_tensor,
+                axes=self.axes,
+                starts=self.starts,
+                ends=self.ends,
+                strides=self.strides,
+            )
+            out_ref = numpy_ref(
+                self.x_np,
+                self.value_np,
+                axes=self.axes,
+                starts=self.starts,
+                ends=self.ends,
+                strides=self.strides,
+            )
+            np.testing.assert_allclose(out.numpy(), out_ref)
+            out.sum().backward()
+            np.testing.assert_allclose(x_tensor.grad.numpy(), x_tensor.numpy())
+            paddle.enable_static()
 
 
 if __name__ == '__main__':

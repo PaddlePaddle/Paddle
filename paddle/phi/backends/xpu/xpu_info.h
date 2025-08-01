@@ -115,8 +115,8 @@ void set_xpu_debug_level(int level);
 
 int get_xpu_max_ptr_size(int dev_id);
 int GetXPUDeviceUtilizationRate(int dev_id);
-int GetXPUDeviceTotalMemory(int dev_id);
-int GetXPUDeviceUsedMemory(int dev_id);
+int64_t GetXPUDeviceTotalMemory(int dev_id);
+int64_t GetXPUDeviceUsedMemory(int dev_id);
 
 }  // namespace xpu
 }  // namespace backends

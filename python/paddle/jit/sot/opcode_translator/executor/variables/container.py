@@ -962,7 +962,10 @@ class DictVariable(ContainerVariable):
     def getitem(self, key):
         self.graph.add_global_guarded_variable(key)
         key = key.get_py_value()
-        return self.proxy.get(key)
+        res = self.proxy.get(key)
+        if self.proxy.is_empty(res):
+            raise KeyError(key)
+        return res
 
     def setitem(self, key, value):
         if isinstance(key, VariableBase):

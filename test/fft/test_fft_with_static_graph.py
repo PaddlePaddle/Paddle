@@ -773,17 +773,19 @@ class TestHfftException(unittest.TestCase):
 
     def test_static_hfft(self):
         if 'test_input_dtype' in str(self):
-            with paddle.pir_utils.OldIrGuard():
-                with self.assertRaises(self.expect_exception):
-                    with stgraph(
-                        paddle.fft.hfft,
-                        self.place,
-                        self.x,
-                        self.n,
-                        self.axis,
-                        self.norm,
-                    ) as y:
-                        pass
+            with (
+                paddle.pir_utils.OldIrGuard(),
+                self.assertRaises(self.expect_exception),
+                stgraph(
+                    paddle.fft.hfft,
+                    self.place,
+                    self.x,
+                    self.n,
+                    self.axis,
+                    self.norm,
+                ) as y,
+            ):
+                pass
         else:
             with (
                 self.assertRaises(self.expect_exception),
@@ -883,17 +885,19 @@ class TestIrfftException(unittest.TestCase):
 
     def test_static_irfft(self):
         if 'test_input_dtype' in str(self):
-            with paddle.pir_utils.OldIrGuard():
-                with self.assertRaises(self.expect_exception):
-                    with stgraph(
-                        paddle.fft.irfft,
-                        self.place,
-                        self.x,
-                        self.n,
-                        self.axis,
-                        self.norm,
-                    ) as y:
-                        pass
+            with (
+                paddle.pir_utils.OldIrGuard(),
+                self.assertRaises(self.expect_exception),
+                stgraph(
+                    paddle.fft.irfft,
+                    self.place,
+                    self.x,
+                    self.n,
+                    self.axis,
+                    self.norm,
+                ) as y,
+            ):
+                pass
         else:
             with (
                 self.assertRaises(self.expect_exception),
@@ -1001,17 +1005,19 @@ class TestHfft2Exception(unittest.TestCase):
 
     def test_static_hfft2(self):
         if 'test_input_dtype' in str(self):
-            with paddle.pir_utils.OldIrGuard():
-                with self.assertRaises(self.expect_exception):
-                    with stgraph(
-                        paddle.fft.hfft2,
-                        self.place,
-                        self.x,
-                        self.n,
-                        self.axis,
-                        self.norm,
-                    ) as y:
-                        pass
+            with (
+                paddle.pir_utils.OldIrGuard(),
+                self.assertRaises(self.expect_exception),
+                stgraph(
+                    paddle.fft.hfft2,
+                    self.place,
+                    self.x,
+                    self.n,
+                    self.axis,
+                    self.norm,
+                ) as y,
+            ):
+                pass
         else:
             with (
                 self.assertRaises(self.expect_exception),
@@ -1119,17 +1125,19 @@ class TestIrfft2Exception(unittest.TestCase):
 
     def test_static_irfft2(self):
         if 'test_input_dtype' in str(self):
-            with paddle.pir_utils.OldIrGuard():
-                with self.assertRaises(self.expect_exception):
-                    with stgraph(
-                        paddle.fft.irfft2,
-                        self.place,
-                        self.x,
-                        self.n,
-                        self.axis,
-                        self.norm,
-                    ) as y:
-                        pass
+            with (
+                paddle.pir_utils.OldIrGuard(),
+                self.assertRaises(self.expect_exception),
+                stgraph(
+                    paddle.fft.irfft2,
+                    self.place,
+                    self.x,
+                    self.n,
+                    self.axis,
+                    self.norm,
+                ) as y,
+            ):
+                pass
         else:
             with (
                 self.assertRaises(self.expect_exception),
@@ -1237,17 +1245,19 @@ class TestHfftnException(unittest.TestCase):
 
     def test_static_hfftn(self):
         if 'test_input_dtype' in str(self):
-            with paddle.pir_utils.OldIrGuard():
-                with self.assertRaises(self.expect_exception):
-                    with stgraph(
-                        paddle.fft.hfftn,
-                        self.place,
-                        self.x,
-                        self.n,
-                        self.axis,
-                        self.norm,
-                    ) as y:
-                        pass
+            with (
+                paddle.pir_utils.OldIrGuard(),
+                self.assertRaises(self.expect_exception),
+                stgraph(
+                    paddle.fft.hfftn,
+                    self.place,
+                    self.x,
+                    self.n,
+                    self.axis,
+                    self.norm,
+                ) as y,
+            ):
+                pass
         else:
             with (
                 self.assertRaises(self.expect_exception),
@@ -1348,17 +1358,19 @@ class TestIrfftnException(unittest.TestCase):
 
     def test_static_irfftn(self):
         if 'test_input_dtype' in str(self):
-            with paddle.pir_utils.OldIrGuard():
-                with self.assertRaises(self.expect_exception):
-                    with stgraph(
-                        paddle.fft.irfftn,
-                        self.place,
-                        self.x,
-                        self.n,
-                        self.axis,
-                        self.norm,
-                    ) as y:
-                        pass
+            with (
+                paddle.pir_utils.OldIrGuard(),
+                self.assertRaises(self.expect_exception),
+                stgraph(
+                    paddle.fft.irfftn,
+                    self.place,
+                    self.x,
+                    self.n,
+                    self.axis,
+                    self.norm,
+                ) as y,
+            ):
+                pass
         else:
             with (
                 self.assertRaises(self.expect_exception),

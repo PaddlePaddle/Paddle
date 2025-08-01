@@ -34,19 +34,21 @@ class TestLookAhead(unittest.TestCase):
         exe = base.Executor(place)
         train_program = paddle.static.Program()
         startup = paddle.static.Program()
-        with paddle.static.program_guard(train_program, startup):
-            with base.unique_name.guard():
-                data = paddle.static.data(
-                    name='X', shape=[None, 1], dtype='float32'
-                )
-                hidden = paddle.nn.Linear(1, 10)
-                loss = paddle.mean(hidden(data))
+        with (
+            paddle.static.program_guard(train_program, startup),
+            base.unique_name.guard(),
+        ):
+            data = paddle.static.data(
+                name='X', shape=[None, 1], dtype='float32'
+            )
+            hidden = paddle.nn.Linear(1, 10)
+            loss = paddle.mean(hidden(data))
 
-                optimizer = paddle.optimizer.SGD(learning_rate=SGD_LR)
-                lookahead = paddle.incubate.optimizer.LookAhead(
-                    optimizer, alpha=LOOKAHEAD_ALPHA, k=LOOKAHEAD_K
-                )
-                lookahead.minimize(loss)
+            optimizer = paddle.optimizer.SGD(learning_rate=SGD_LR)
+            lookahead = paddle.incubate.optimizer.LookAhead(
+                optimizer, alpha=LOOKAHEAD_ALPHA, k=LOOKAHEAD_K
+            )
+            lookahead.minimize(loss)
 
         exe.run(startup)
         slow_param = None

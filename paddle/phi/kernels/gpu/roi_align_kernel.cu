@@ -27,23 +27,27 @@ static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaximumNumBlocks = 4096;
 static constexpr int kROISize = 4;
 
-static inline int NumBlocks(const int N) {
-  return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
-                  kNumMaximumNumBlocks);
+static inline uint32_t NumBlocks(const int64_t N) {
+  return static_cast<uint32_t>(
+      std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
+               static_cast<int64_t>(kNumMaximumNumBlocks)));
 }
 
-template <class T>
-__device__ T BilinearInterpolate(
-    const T* input_data, const int height, const int width, T y, T x) {
+template <class T, typename IndexType>
+__device__ T BilinearInterpolate(const T* input_data,
+                                 const IndexType height,
+                                 const IndexType width,
+                                 T y,
+                                 T x) {
   if (y < -1.0 || y > height || x < -1.0 || x > width) {
     return 0;
   }
   y = y <= 0 ? 0 : y;
   x = x <= 0 ? 0 : x;
-  int y_low = static_cast<int>(y);
-  int x_low = static_cast<int>(x);
-  int y_high;
-  int x_high;
+  IndexType y_low = static_cast<IndexType>(y);
+  IndexType x_low = static_cast<IndexType>(x);
+  IndexType y_high;
+  IndexType x_high;
   if (y_low >= height - 1) {
     y_high = y_low = height - 1;
     y = static_cast<T>(y_low);
@@ -69,25 +73,25 @@ __device__ T BilinearInterpolate(
   return val;
 }
 
-template <class T>
-__global__ void GPURoiAlignForward(const int nthreads,
+template <class T, typename IndexType>
+__global__ void GPURoiAlignForward(const IndexType nthreads,
                                    const T* input_data,
                                    const T* input_rois,
                                    const float spatial_scale,
-                                   const int channels,
-                                   const int height,
-                                   const int width,
+                                   const IndexType channels,
+                                   const IndexType height,
+                                   const IndexType width,
                                    const int pooled_height,
                                    const int pooled_width,
                                    const int sampling_ratio,
                                    int* roi_batch_id_data,
                                    T* output_data,
                                    const bool continuous_coordinate) {
-  CUDA_KERNEL_LOOP(i, nthreads) {
-    int pw = i % pooled_width;
-    int ph = (i / pooled_width) % pooled_height;
-    int c = (i / pooled_width / pooled_height) % channels;
-    int n = i / pooled_width / pooled_height / channels;
+  CUDA_KERNEL_LOOP_TYPE(i, nthreads, IndexType) {
+    IndexType pw = i % pooled_width;
+    IndexType ph = (i / pooled_width) % pooled_height;
+    IndexType c = (i / pooled_width / pooled_height) % channels;
+    IndexType n = i / pooled_width / pooled_height / channels;
 
     const T* offset_input_rois = input_rois + n * kROISize;
     int roi_batch_ind = roi_batch_id_data[n];
@@ -126,7 +130,8 @@ __global__ void GPURoiAlignForward(const int nthreads,
         const T x = roi_xmin + pw * bin_size_w +
                     static_cast<T>(ix + .5f) * bin_size_w /
                         static_cast<T>(roi_bin_grid_w);
-        T val = BilinearInterpolate(offset_input_data, height, width, y, x);
+        T val = BilinearInterpolate<T, IndexType>(
+            offset_input_data, height, width, y, x);
         output_val += val;
       }
     }
@@ -156,21 +161,21 @@ void RoiAlignKernel(const Context& dev_ctx,
     return;
   }
   auto in_dims = x.dims();
-  int batch_size = in_dims[0];
-  int channels = in_dims[1];
-  int height = in_dims[2];
-  int width = in_dims[3];
+  int64_t batch_size = in_dims[0];
+  int64_t channels = in_dims[1];
+  int64_t height = in_dims[2];
+  int64_t width = in_dims[3];
 
-  int rois_num = boxes.dims()[0];
+  int64_t rois_num = boxes.dims()[0];
 
   if (rois_num == 0) {
     dev_ctx.template Alloc<T>(out);
     return;
   }
 
-  int output_size = out->numel();
-  int blocks = NumBlocks(output_size);
-  int threads = kNumCUDAThreads;
+  int64_t output_size = out->numel();
+  uint32_t blocks = NumBlocks(output_size);
+  uint32_t threads = kNumCUDAThreads;
 #ifdef WITH_NV_JETSON
   backends::gpu::ChangeThreadNum(dev_ctx, &threads, 256);
 #endif
@@ -180,7 +185,7 @@ void RoiAlignKernel(const Context& dev_ctx,
   auto cplace = phi::CPUPlace();
   auto gplace = dev_ctx.GetPlace();
   if (boxes_num) {
-    int boxes_batch_size = boxes_num->numel();
+    int64_t boxes_batch_size = boxes_num->numel();
     PADDLE_ENFORCE_EQ(
         boxes_batch_size,
         batch_size,
@@ -214,9 +219,9 @@ void RoiAlignKernel(const Context& dev_ctx,
                          boxes_num->data<int>(),
                          sizeof(int) * boxes_batch_size,
                          0);
-      int start = 0;
-      for (int n = 0; n < boxes_batch_size; ++n) {
-        for (int i = start; i < start + boxes_num_list[n]; ++i) {
+      int64_t start = 0;
+      for (int64_t n = 0; n < boxes_batch_size; ++n) {
+        for (int64_t i = start; i < start + boxes_num_list[n]; ++i) {
           roi_batch_id_data[i] = n;
         }
         start += boxes_num_list[n];
@@ -229,7 +234,7 @@ void RoiAlignKernel(const Context& dev_ctx,
                       errors::InvalidArgument("Input(ROIs) in ROIAlignOp does "
                                               "not contain LoD information."));
     auto boxes_lod = lod.back();
-    int boxes_batch_size = boxes_lod.size() - 1;
+    int64_t boxes_batch_size = boxes_lod.size() - 1;
     PADDLE_ENFORCE_EQ(
         boxes_batch_size,
         batch_size,
@@ -239,7 +244,7 @@ void RoiAlignKernel(const Context& dev_ctx,
             "and images batch size = %d",
             boxes_batch_size,
             batch_size));
-    int boxes_num_with_lod = boxes_lod[boxes_batch_size];
+    int64_t boxes_num_with_lod = boxes_lod[boxes_batch_size];
     PADDLE_ENFORCE_EQ(
         rois_num,
         boxes_num_with_lod,
@@ -250,13 +255,13 @@ void RoiAlignKernel(const Context& dev_ctx,
             "of rois from RoIsLoD is %d",
             rois_num,
             boxes_num_with_lod));
-    for (int n = 0; n < boxes_batch_size; ++n) {
+    for (int64_t n = 0; n < boxes_batch_size; ++n) {
       for (size_t i = boxes_lod[n]; i < boxes_lod[n + 1]; ++i) {
         roi_batch_id_data[i] = n;
       }
     }
   }
-  int bytes = roi_batch_id_list.numel() * sizeof(int);
+  int64_t bytes = roi_batch_id_list.numel() * sizeof(int);
   auto roi_ptr = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       bytes,
@@ -264,20 +269,38 @@ void RoiAlignKernel(const Context& dev_ctx,
   int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
   memory_utils::Copy(
       gplace, roi_id_data, cplace, roi_batch_id_data, bytes, dev_ctx.stream());
-  GPURoiAlignForward<T>
-      <<<blocks, threads, 0, dev_ctx.stream()>>>(output_size,
-                                                 x.data<T>(),
-                                                 boxes.data<T>(),
-                                                 spatial_scale,
-                                                 channels,
-                                                 height,
-                                                 width,
-                                                 pooled_height,
-                                                 pooled_width,
-                                                 sampling_ratio,
-                                                 roi_id_data,
-                                                 dev_ctx.template Alloc<T>(out),
-                                                 aligned);
+  if (output_size > std::numeric_limits<int>::max() ||
+      x.numel() > std::numeric_limits<int>::max()) {
+    GPURoiAlignForward<T, int64_t><<<blocks, threads, 0, dev_ctx.stream()>>>(
+        output_size,
+        x.data<T>(),
+        boxes.data<T>(),
+        spatial_scale,
+        channels,
+        height,
+        width,
+        pooled_height,
+        pooled_width,
+        sampling_ratio,
+        roi_id_data,
+        dev_ctx.template Alloc<T>(out),
+        aligned);
+  } else {
+    GPURoiAlignForward<T, int32_t><<<blocks, threads, 0, dev_ctx.stream()>>>(
+        output_size,
+        x.data<T>(),
+        boxes.data<T>(),
+        spatial_scale,
+        channels,
+        height,
+        width,
+        pooled_height,
+        pooled_width,
+        sampling_ratio,
+        roi_id_data,
+        dev_ctx.template Alloc<T>(out),
+        aligned);
+  }
 }
 
 }  // namespace phi

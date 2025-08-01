@@ -273,9 +273,11 @@ class MasterGradPass(PassBase):
             dist_context._serial_optimizer._learning_rate
         )
         serial_optimizer._sorted = False
-        with program_guard(main_program, startup_program):
-            with main_program.switch_name_generator_guard("opt_"):
-                _ = serial_optimizer.apply_gradients(params_grads)
+        with (
+            program_guard(main_program, startup_program),
+            main_program.switch_name_generator_guard("opt_"),
+        ):
+            _ = serial_optimizer.apply_gradients(params_grads)
         self._completer.complete_update_annotation(main_program)
 
     def _add_master_grad(self, main_program, params_grads, dist_context):

@@ -305,6 +305,7 @@ template <typename T, typename Context>
 void InstanceNormGradKernel(const Context &dev_ctx,
                             const DenseTensor &x,
                             const paddle::optional<DenseTensor> &scale,
+                            const paddle::optional<DenseTensor> &bias UNUSED,
                             const DenseTensor &saved_mean,
                             const DenseTensor &saved_variance,
                             const DenseTensor &d_y,
@@ -326,11 +327,25 @@ void InstanceNormGradKernel(const Context &dev_ctx,
   x_tmp.ShareDataWith(x).Resize({1, NxC, H, W, D});
   d_y_tmp.ShareDataWith(d_y).Resize({1, NxC, H, W, D});
 
+  phi::funcs::SetConstant<GPUContext, AccT> set_constant;
+
   dev_ctx.template Alloc<T>(d_x);
+  if (x.numel() == 0) {
+    if (d_scale) {
+      dev_ctx.template Alloc<AccT>(d_scale);
+      set_constant(dev_ctx, d_scale, static_cast<AccT>(0));
+    }
+    if (d_bias) {
+      dev_ctx.template Alloc<AccT>(d_bias);
+      set_constant(dev_ctx, d_bias, static_cast<AccT>(0));
+    }
+    return;
+  }
   if (d_scale && d_bias) {
     dev_ctx.template Alloc<AccT>(d_scale);
     dev_ctx.template Alloc<AccT>(d_bias);
   }
+
   if (scale_ptr) {
     PADDLE_ENFORCE_EQ(
         scale_ptr->dims().size(),
@@ -353,8 +368,6 @@ void InstanceNormGradKernel(const Context &dev_ctx,
                           scale_ptr->dims()[0],
                           scale_ptr->dims()));
   }
-
-  phi::funcs::SetConstant<GPUContext, AccT> set_constant;
 
   const int n = x.numel();
   const int block = 512;

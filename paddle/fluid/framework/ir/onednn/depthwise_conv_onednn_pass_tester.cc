@@ -24,10 +24,10 @@ void SetOp(ProgramDesc* prog,
            const std::string& name,
            const std::vector<std::string>& inputs,
            const std::vector<std::string>& outputs,
-           bool use_mkldnn = false) {
+           bool use_onednn = false) {
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
-  op->SetAttr("use_mkldnn", use_mkldnn);
+  op->SetAttr("use_mkldnn", use_onednn);
   op->SetAttr("name", name);
   op->SetAttr("groups", 1);
   op->SetAttr("padding_algorithm", std::string("EXPLICIT"));
@@ -41,10 +41,10 @@ void SetOp(ProgramDesc* prog,
   op->SetOutput("Output", outputs);
 }
 
-// (a, weights, bias)->depthwise conv mkldnn->b
-// (b, weights2, bias2)->depthwise conv no mkldnn->c
-// (c, weights3, bias3)->conv mkldnn->d
-// (d, weights3, bias3)->conv no mkldnn->e
+// (a, weights, bias)->depthwise conv onednn->b
+// (b, weights2, bias2)->depthwise conv no onednn->c
+// (c, weights3, bias3)->conv onednn->d
+// (d, weights3, bias3)->conv no onednn->e
 ProgramDesc BuildProgramDesc() {
   ProgramDesc prog;
   for (auto& v : std::vector<std::string>({"a",

@@ -301,11 +301,8 @@ option(WITH_INCREMENTAL_COVERAGE
        "Generate coverage reports only for incremental code" OFF)
 option(WITH_LIBXSMM "Compile with libxsmm" OFF)
 option(COVERALLS_UPLOAD "Package code coverage data to coveralls" OFF)
-option(WITH_PSLIB "Compile with pslib support" OFF)
 option(WITH_BOX_PS "Compile with box_ps support" OFF)
 option(WITH_XBYAK "Compile with xbyak support" ON)
-option(WITH_PSCORE "Compile with parameter server support" ${WITH_DISTRIBUTE})
-option(WITH_HETERPS "Compile with heterps" OFF)
 option(WITH_INFERENCE_API_TEST
        "Test fluid inference C++ high-level api interface" OFF)
 option(WITH_NVTX "Paddle with nvtx for profiler" OFF)
@@ -339,9 +336,7 @@ option(WITH_POCKETFFT "Compile with pocketfft support" ON)
 option(WITH_RECORD_BUILDTIME
        "Compile PaddlePaddle with record all targets build time" OFF)
 option(WITH_CUSTOM_DEVICE "Compile with custom device support" OFF)
-option(WITH_ARM_BRPC "Support Brpc in Arm" OFF)
 option(WITH_FLPS "FL PS mode" OFF)
-option(WITH_RPC "Compile with rpc support" ${WITH_DISTRIBUTE})
 option(WITH_CUDNN_FRONTEND
        "Compile with CUDNN Frontend API support (experimental)" OFF)
 option(WITH_SHARED_IR "Compile PaddlePaddle with SHARED LIB of IR" ON)
@@ -555,62 +550,11 @@ if(WITH_FLAGCX)
   add_definitions("-DPADDLE_WITH_FLAGCX")
 endif()
 
-if(WITH_HETERPS AND WITH_PSLIB)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
-endif()
-
 if(WITH_DISTRIBUTE)
   if(LINUX)
     set(WITH_GLOO
         ON
         CACHE STRING "Enable GLOO when compiling WITH_DISTRIBUTE=ON." FORCE)
-  endif()
-  if(WITH_ROCM AND HIP_VERSION LESS_EQUAL 40020496)
-    # TODO(qili93): third-party rocksdb throw Illegal instruction with HIP version 40020496
-    message(
-      WARNING
-        "Disable WITH_PSCORE when HIP_VERSION is less than or equal 40020496. Force WITH_PSCORE=OFF."
-    )
-    set(WITH_PSCORE
-        OFF
-        CACHE
-          BOOL
-          "Disable WITH_PSCORE when HIP_VERSION is less than or equal 40020496"
-          FORCE)
-  endif()
-endif()
-
-if(WITH_RPC)
-  if(NOT LINUX)
-    message(
-      WARNING "Disable WITH_RPC when not compiled on Linux. Force WITH_RPC=OFF."
-    )
-    set(WITH_RPC
-        OFF
-        CACHE BOOL "Disable WITH_RPC when not compiled on Linux" FORCE)
-  endif()
-  if(NOT WITH_DISTRIBUTE AND WITH_RPC)
-    message(
-      WARNING
-        "Disable WITH_RPC when not compiled with distribute. Force WITH_RPC=OFF."
-    )
-    set(WITH_RPC
-        OFF
-        CACHE BOOL "Disable WITH_RPC when not compiled with distribute" FORCE)
-  endif()
-  if(WITH_ROCM AND WITH_RPC)
-    message(
-      WARNING "Disable WITH_RPC when compiling with ROCM. Force WITH_RPC=OFF.")
-    set(WITH_RPC
-        OFF
-        CACHE BOOL "Disable WITH_RPC when compiling with ROCM" FORCE)
-  endif()
-  if(WITH_XPU AND WITH_RPC)
-    message(
-      WARNING "Disable WITH_RPC when compiling with XPU. Force WITH_RPC=OFF.")
-    set(WITH_RPC
-        OFF
-        CACHE BOOL "Disable WITH_RPC when compiling with XPU" FORCE)
   endif()
 endif()
 
@@ -715,11 +659,6 @@ if(WITH_ONEMKL)
   add_definitions(-DPADDLE_WITH_ONEMKL)
 endif()
 
-if(WITH_HETERPS)
-  if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -faligned-new")
-  endif()
-endif()
 set(PADDLE_PYTHON_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/python/build")
 
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")

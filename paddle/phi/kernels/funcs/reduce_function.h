@@ -607,7 +607,8 @@ __global__ void ReduceAnyKernel(const Tx* x,
                                 bool is_mean,
                                 MPType* tmp_data,
                                 bool need_store_tmp = false) {
-  IndexType input_idx, left_idx, stride;
+  int64_t input_idx;
+  IndexType left_idx, stride;
   IndexType block_size = 0;
   bool need_store = true;
   IndexType loop_left = 0;
@@ -644,7 +645,7 @@ __global__ void ReduceAnyKernel(const Tx* x,
   // 1. reduce for each thread
   MPType input_compute[REDUCE_VEC_SIZE];
   Tx input_reg[REDUCE_VEC_SIZE];
-  IndexType input_idx_tmp = input_idx;
+  int64_t input_idx_tmp = input_idx;
   for (IndexType i = 0; i < loop_left; i += stride_left) {
     IndexType input_offset = left_index_calculator(left_idx + i);
     const _ptr_ Tx* input = x + input_offset;
@@ -653,7 +654,7 @@ __global__ void ReduceAnyKernel(const Tx* x,
     IndexType bound = reduce_num - (REDUCE_VEC_SIZE - 1) * stride;
     input_idx = input_idx_tmp;
     for (; input_idx + block_size < bound;
-         input_idx += REDUCE_VEC_SIZE * stride) {
+         input_idx += REDUCE_VEC_SIZE * static_cast<int64_t>(stride)) {
       kps::ReadDataReduce<Tx,
                           Tx,
                           1,

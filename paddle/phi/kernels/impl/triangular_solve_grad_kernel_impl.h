@@ -16,6 +16,7 @@
 
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
@@ -24,7 +25,6 @@
 #include "paddle/phi/kernels/funcs/tril_triu_compute.h"
 #include "paddle/phi/kernels/triangular_solve_grad_kernel.h"
 #include "paddle/phi/kernels/triangular_solve_kernel.h"
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -38,6 +38,17 @@ void TriangularSolveGradKernel(const Context& dev_ctx,
                                bool unitriangular,
                                DenseTensor* dx,
                                DenseTensor* dy) {
+  if (out.numel() == 0) {
+    if (dx) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+    }
+    if (dy) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+    }
+    return;
+  }
   std::vector<int64_t> x_bst_dims_vec;
   std::vector<int64_t> y_bst_dims_vec;
   std::tie(x_bst_dims_vec, y_bst_dims_vec) =

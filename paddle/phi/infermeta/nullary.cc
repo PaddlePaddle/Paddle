@@ -21,7 +21,16 @@ void ArangeInferMeta(const Scalar& start,
                      const Scalar& step,
                      DataType dtype,
                      MetaTensor* out) {
-  if (!start.FromTensor() && !end.FromTensor() && !step.FromTensor()) {
+  // ugly, but no work-around. 1. For pd_op, dynamic shape generated scalar will
+  // have FromTensor == true, yet the dtype is related to input op's dtype,
+  // 2. while for cinn_op.Build, pir::Attribute won't record FromTensor flag, so
+  // the info is discarded, dtype will however be intact.
+  auto IsFromTensor = [=](const Scalar& scalar) {
+    return scalar.FromTensor() || scalar.dtype() == DataType::BOOL;
+  };
+  if (IsFromTensor(start) || IsFromTensor(end) || step.FromTensor()) {
+    out->set_dims({-1});
+  } else {
     auto GetArangeSize = [](auto start, auto end, auto step) -> int64_t {
       using ElementType = std::decay_t<decltype(start)>;
       PADDLE_ENFORCE_NE(step,
@@ -68,8 +77,6 @@ void ArangeInferMeta(const Scalar& start,
 #undef GET_SIZE_GIVEN_TYPE
 
     out->set_dims(common::make_ddim(std::vector<int64_t>(1, arange_size)));
-  } else {
-    out->set_dims({-1});
   }
   out->set_dtype(dtype);
 }

@@ -12,17 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_places
 
 import paddle
 from paddle import base
-from paddle.base import core
 
 paddle.enable_static()
 
@@ -37,7 +35,7 @@ class TestTransposeOp(OpTest):
         self.inputs = {'X': np.random.random(self.shape).astype("float64")}
         self.attrs = {
             'axis': list(self.axis),
-            'use_mkldnn': self.use_mkldnn,
+            'use_mkldnn': self.use_onednn,
         }
         self.outputs = {
             'XShape': np.random.random(self.shape).astype("float64"),
@@ -47,7 +45,7 @@ class TestTransposeOp(OpTest):
 
     def init_op_type(self):
         self.op_type = "transpose2"
-        self.use_mkldnn = False
+        self.use_onednn = False
 
     def test_check_output(self):
         self.check_output(no_check_set=['XShape'], check_pir=True)
@@ -148,7 +146,7 @@ class TestCase10(TestTransposeOp):
         self.inputs = {'X': np.random.random(self.shape).astype("float64")}
         self.attrs = {
             'axis': list(self.axis),
-            'use_mkldnn': self.use_mkldnn,
+            'use_mkldnn': self.use_onednn,
         }
         self.outputs = {
             'XShape': np.random.random(self.shape).astype("float64"),
@@ -171,7 +169,7 @@ class TestCase_ZeroDim(TestTransposeOp):
         self.inputs = {'X': np.random.random(self.shape).astype("float64")}
         self.attrs = {
             'axis': list(self.axis),
-            'use_mkldnn': self.use_mkldnn,
+            'use_mkldnn': self.use_onednn,
         }
         self.outputs = {
             'XShape': np.random.random(self.shape).astype("float64"),
@@ -193,7 +191,7 @@ class TestAutoTuneTransposeOp(OpTest):
         self.inputs = {'X': np.random.random(self.shape).astype("float64")}
         self.attrs = {
             'axis': list(self.axis),
-            'use_mkldnn': self.use_mkldnn,
+            'use_mkldnn': self.use_onednn,
         }
         self.outputs = {
             'XShape': np.random.random(self.shape).astype("float64"),
@@ -209,7 +207,7 @@ class TestAutoTuneTransposeOp(OpTest):
 
     def init_op_type(self):
         self.op_type = "transpose2"
-        self.use_mkldnn = False
+        self.use_onednn = False
 
     def test_check_output(self):
         self.check_output(no_check_set=['XShape'], check_pir=True)
@@ -236,7 +234,7 @@ class TestAutoTuneTransposeFP16Op(OpTest):
         self.inputs = {'X': np.random.random(self.shape).astype(self.dtype)}
         self.attrs = {
             'axis': list(self.axis),
-            'use_mkldnn': self.use_mkldnn,
+            'use_mkldnn': self.use_onednn,
         }
         self.outputs = {
             'XShape': np.random.random(self.shape).astype(self.dtype),
@@ -252,7 +250,7 @@ class TestAutoTuneTransposeFP16Op(OpTest):
 
     def init_op_type(self):
         self.op_type = "transpose2"
-        self.use_mkldnn = False
+        self.use_onednn = False
 
     def test_check_output(self):
         self.check_output(no_check_set=['XShape'], check_pir=True)
@@ -281,7 +279,7 @@ class TestAutoTuneTransposeBF16Op(OpTest):
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.attrs = {
             'axis': list(self.axis),
-            'use_mkldnn': self.use_mkldnn,
+            'use_mkldnn': self.use_onednn,
         }
         self.outputs = {
             'XShape': convert_float_to_uint16(
@@ -302,7 +300,7 @@ class TestAutoTuneTransposeBF16Op(OpTest):
 
     def init_op_type(self):
         self.op_type = "transpose2"
-        self.use_mkldnn = False
+        self.use_onednn = False
 
     def test_check_output(self):
         self.check_output(no_check_set=['XShape'], check_pir=True)
@@ -332,7 +330,7 @@ class TestTransposeFP16Op(OpTest):
         self.inputs = {'X': x}
         self.attrs = {
             'axis': list(self.axis),
-            'use_mkldnn': self.use_mkldnn,
+            'use_mkldnn': self.use_onednn,
         }
         self.outputs = {
             'XShape': np.random.random(self.shape).astype(self.dtype),
@@ -344,7 +342,7 @@ class TestTransposeFP16Op(OpTest):
 
     def init_op_type(self):
         self.op_type = "transpose2"
-        self.use_mkldnn = False
+        self.use_onednn = False
 
     def test_check_output(self):
         self.check_output(no_check_set=['XShape'], check_pir=True)
@@ -378,7 +376,7 @@ class TestTransposeBF16Op(OpTest):
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.attrs = {
             'axis': list(self.axis),
-            'use_mkldnn': self.use_mkldnn,
+            'use_mkldnn': self.use_onednn,
         }
         self.outputs = {
             'XShape': convert_float_to_uint16(
@@ -392,7 +390,7 @@ class TestTransposeBF16Op(OpTest):
 
     def init_op_type(self):
         self.op_type = "transpose2"
-        self.use_mkldnn = False
+        self.use_onednn = False
 
     def test_check_output(self):
         self.check_output(no_check_set=['XShape'], check_pir=True)
@@ -757,16 +755,7 @@ class TestTransposeDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func(p)
 
 
@@ -794,16 +783,7 @@ class TestTransposeTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func(p)
 
 

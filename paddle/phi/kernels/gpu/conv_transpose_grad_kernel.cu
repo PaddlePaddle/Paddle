@@ -18,6 +18,7 @@
 #include "paddle/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpu/depthwise_conv.h"
 #include "paddle/phi/kernels/impl/conv_transpose_grad_kernel_impl.h"
@@ -77,7 +78,25 @@ void DepthwiseConv2dTransposeGradKernel(const Context& dev_ctx,
   if (!dx && !dfilter) {
     return;
   }
-
+  // 0-size
+  if (x.numel() == 0) {
+    if (dx) dev_ctx.template Alloc<T>(dx);
+    if (dfilter) {
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(dfilter->dims())),
+                            0,
+                            dfilter);
+    }
+    return;
+  }
+  if (filter.numel() == 0) {
+    if (dfilter) dev_ctx.template Alloc<T>(dfilter);
+    if (dx) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+    }
+    return;
+  }
   std::vector<int> paddings_ = paddings;
   std::vector<int> dilations_ = dilations;
 
@@ -96,7 +115,7 @@ void DepthwiseConv2dTransposeGradKernel(const Context& dev_ctx,
       &paddings_, &dilations_, padding_algorithm, in_data_dims, strides, ksize);
 
   if (dx) {
-    paddle::operators::math::DepthwiseConvFunctor<Context, T> depthwiseConv;
+    phi::math::DepthwiseConvFunctor<Context, T> depthwiseConv;
     depthwiseConv(dev_ctx,
                   dout,
                   filter_,
@@ -113,7 +132,7 @@ void DepthwiseConv2dTransposeGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(dfilter);
     set_zero(dev_ctx, dfilter, static_cast<T>(0));
 
-    paddle::operators::math::DepthwiseConvFilterGradFunctor<Context, T>
+    phi::math::DepthwiseConvFilterGradFunctor<Context, T>
         depthwiseConvFilterGrad;
     depthwiseConvFilterGrad(
         dev_ctx,

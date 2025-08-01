@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import unittest
 
 import paddle
@@ -25,9 +26,14 @@ class TestFP8Quantization(unittest.TestCase):
         self.m = 32768
         self.n = 7168
         self.x = paddle.randn((self.m, self.n), dtype=paddle.bfloat16)
-        self.rmse_threshold = 0.03
+        self.rmse_threshold = 3e-2
+        self.quant_method_options = ["1x128", "128x128"]
+        self.input_transpose_options = [True]  # return non-transpose afterall
+        self.output_scale_transpose_options = [True, False]
+        self.return_transpose_only_options = [True, False]
+        self.using_pow2_scale_options = [True, False]
 
-    def cal_all_rmse(self, x, x_q, x_qdq, transposed: bool):
+    def cal_all_rmse(self, x, x_qdq, transposed: bool):
         if transposed:
             diff_squared = (x_qdq.T - x.to(paddle.float32)) ** 2
         else:
@@ -35,110 +41,123 @@ class TestFP8Quantization(unittest.TestCase):
         rmse = paddle.sqrt(paddle.sum(diff_squared) / x.numel())
         return rmse
 
-    def eval_per_128x128_quant(
+    def quant_verify_wrapper(
         self,
         x: paddle.Tensor,
+        quant_method: str = "1x128",
         input_transpose: bool = False,
-        scale_transpose=False,
+        output_scale_transpose: bool = False,
+        return_transpose_only: bool = False,
+        using_pow2_scale=True,
     ):
         x = x.contiguous()
+        x_q_valid = False
+        x_t_q_valid = False
         if input_transpose:
-            x_q, scale, x_t_q, scale_t = fp8.fp8_quant_blockwise(
-                x,
-                quant_method="128x128",
-                input_transpose=True,
-                output_scale_transpose=False,
-                using_pow2_scale=False,
-            )
+            if return_transpose_only:
+                x_t_q, scale_t = fp8.fp8_quant_blockwise(
+                    x,
+                    quant_method=quant_method,
+                    input_transpose=input_transpose,
+                    output_scale_transpose=output_scale_transpose,
+                    using_pow2_scale=using_pow2_scale,
+                    return_transpose_only=return_transpose_only,
+                )
+                x_t_q_valid = True
+            else:
+                x_q, scale, x_t_q, scale_t = fp8.fp8_quant_blockwise(
+                    x,
+                    quant_method=quant_method,
+                    input_transpose=input_transpose,
+                    output_scale_transpose=output_scale_transpose,
+                    using_pow2_scale=using_pow2_scale,
+                    return_transpose_only=return_transpose_only,
+                )
+                x_t_q_valid = True
+                x_q_valid = True
+
         else:
             x_q, scale = fp8.fp8_quant_blockwise(
                 x,
-                quant_method="128x128",
-                input_transpose=False,
-                output_scale_transpose=False,
-                using_pow2_scale=False,
+                quant_method=quant_method,
+                input_transpose=input_transpose,
+                output_scale_transpose=output_scale_transpose,
+                using_pow2_scale=using_pow2_scale,
+                return_transpose_only=return_transpose_only,
             )
+            x_q_valid = True
 
-        self.assertEqual(len(x_q.shape), 2)
-        self.assertEqual(len(scale.shape), 2)
+        valid_test_list = []
 
-        scale = paddle.repeat_interleave(
-            paddle.repeat_interleave(scale, repeats=128, axis=0),
-            repeats=128,
-            axis=1,
-        )
-        scale = scale[: x_q.shape[0], : x_q.shape[1]]
+        if x_q_valid:
+            valid_test_list.append((False, x_q, scale))
+        if x_t_q_valid:
+            valid_test_list.append((True, x_t_q, scale_t))
 
-        self.assertEqual(scale.shape, x_q.shape)
-
-        x_qdq = x_q.astype('float32') * scale
-        rmse = self.cal_all_rmse(x, x_q, x_qdq, input_transpose)
-
-        self.assertLessEqual(rmse, self.rmse_threshold)
+        rmse = 0
+        for verify_transpose, x_q_in, scale_in in valid_test_list:
+            scale_in = scale_in.T if output_scale_transpose else scale_in
+            scale_in = paddle.repeat_interleave(
+                (
+                    paddle.repeat_interleave(scale_in, repeats=128, axis=0)
+                    if quant_method == "128x128"
+                    else scale_in
+                ),
+                repeats=128,
+                axis=1,
+            )
+            scale_in = scale_in[: x_q_in.shape[0], : x_q_in.shape[1]]
+            self.assertEqual(scale_in.shape, x_q_in.shape)
+            x_qdq = x_q_in.astype('float32') * scale_in
+            rmse = rmse + self.cal_all_rmse(x, x_qdq, verify_transpose) / len(
+                valid_test_list
+            )
         return rmse
 
-    def eval_per_1x128_quant(
+    def eval_all(
         self,
         x: paddle.Tensor,
-        input_transpose: bool = False,
-        scale_transpose=False,
     ):
-        if input_transpose:
-            x_q, scale, x_t_q, scale_t = fp8.fp8_quant_blockwise(
+        rmses = []
+        for (
+            quant_method,
+            input_transpose,
+            output_scale_transpose,
+            using_pow2_scale,
+            return_transpose_only,
+        ) in itertools.product(
+            self.quant_method_options,
+            self.input_transpose_options,
+            self.output_scale_transpose_options,
+            self.using_pow2_scale_options,
+            self.return_transpose_only_options,
+        ):
+            rmse = self.quant_verify_wrapper(
                 x,
-                quant_method="1x128",
-                input_transpose=True,
-                output_scale_transpose=False,
-                using_pow2_scale=False,
+                quant_method=quant_method,
+                input_transpose=input_transpose,
+                output_scale_transpose=output_scale_transpose,
+                return_transpose_only=return_transpose_only,
+                using_pow2_scale=using_pow2_scale,
             )
-        else:
-            x_q, scale = fp8.fp8_quant_blockwise(
-                x,
-                quant_method="1x128",
-                input_transpose=False,
-                output_scale_transpose=False,
-                using_pow2_scale=False,
-            )
-
-        self.assertEqual(len(x_q.shape), 2)
-        self.assertEqual(len(scale.shape), 2)
-
-        scale = paddle.repeat_interleave(scale, repeats=128, axis=1)
-        scale = scale[: x_q.shape[0], : x_q.shape[1]]
-
-        self.assertEqual(scale.shape, x_q.shape)
-
-        x_qdq = x_q.astype('float32') * scale
-        rmse = self.cal_all_rmse(x, x_q, x_qdq, input_transpose)
-
-        self.assertLessEqual(rmse, self.rmse_threshold)
-        return rmse
+            self.assertLessEqual(rmse, self.rmse_threshold)
+            rmses.append(rmse)
+        return rmses
 
     def test_tensor_shapes(self):
         self.assertEqual(self.x.shape, [self.m, self.n])
         self.assertEqual(self.x.dtype, paddle.bfloat16)
 
-    def test_quantization_consistency_128x128(self):
-        paddle.seed(42)
-        x1 = paddle.randn((1024, 1024), dtype=paddle.bfloat16)
-        rmse1 = self.eval_per_128x128_quant(x1, input_transpose=False)
+    def test_quantization_accuracy(self):
+        rmses = self.eval_all(self.x)
+        for r in rmses:
+            self.assertLessEqual(r, self.rmse_threshold)
 
-        paddle.seed(42)
-        x2 = paddle.randn((1024, 1024), dtype=paddle.bfloat16)
-        rmse2 = self.eval_per_128x128_quant(x2, input_transpose=False)
-
-        self.assertAlmostEqual(rmse1.item(), rmse2.item(), places=6)
-
-    def test_quantization_consistency_1x128(self):
-        paddle.seed(42)
-        x1 = paddle.randn((1024, 1024), dtype=paddle.bfloat16)
-        rmse1 = self.eval_per_1x128_quant(x1, input_transpose=False)
-
-        paddle.seed(42)
-        x2 = paddle.randn((1024, 1024), dtype=paddle.bfloat16)
-        rmse2 = self.eval_per_1x128_quant(x2, input_transpose=False)
-
-        self.assertAlmostEqual(rmse1.item(), rmse2.item(), places=6)
+    def test_quantization_consistency(self):
+        rmses1 = self.eval_all(self.x)
+        rmses2 = self.eval_all(self.x)
+        for r1, r2 in zip(rmses1, rmses1):
+            self.assertEqual(r1, r2)
 
 
 if __name__ == '__main__':

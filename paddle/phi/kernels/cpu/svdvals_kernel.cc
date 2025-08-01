@@ -78,10 +78,11 @@ void LapackSvdvals(const T* X, T* S, int rows, int cols) {
 }
 
 template <typename T>
-void BatchSvdvals(const T* X, T* S, int rows, int cols, int batches) {
-  int stride = rows * cols;
-  int stride_s = std::min(rows, cols);
-  for (int i = 0; i < batches; i++) {
+void BatchSvdvals(
+    const T* X, T* S, int64_t rows, int64_t cols, int64_t batches) {
+  int64_t stride = rows * cols;
+  int64_t stride_s = std::min(rows, cols);
+  for (int64_t i = 0; i < batches; i++) {
     LapackSvdvals<T>(X + i * stride, S + i * stride_s, rows, cols);
   }
 }
@@ -95,8 +96,14 @@ void SvdvalsKernel(const Context& dev_ctx,
     return;
   }
   auto x_dims = X.dims();
-  int rows = static_cast<int>(x_dims[x_dims.size() - 2]);
-  int cols = static_cast<int>(x_dims[x_dims.size() - 1]);
+  int64_t rows = static_cast<int64_t>(x_dims[x_dims.size() - 2]);
+  int64_t cols = static_cast<int64_t>(x_dims[x_dims.size() - 1]);
+  PADDLE_ENFORCE_LT(rows * cols,
+                    std::numeric_limits<int32_t>::max(),
+                    common::errors::InvalidArgument(
+                        "The product of rows and columns must be less than %d.",
+                        std::numeric_limits<int32_t>::max()));
+
   // Validate dimensions
   PADDLE_ENFORCE_GT(
       rows,
@@ -106,8 +113,8 @@ void SvdvalsKernel(const Context& dev_ctx,
       cols,
       0,
       common::errors::InvalidArgument("The column of Input(X) must be > 0."));
-  int k = std::min(rows, cols);
-  int batches = static_cast<int>(X.numel() / (rows * cols));
+  int64_t k = std::min(rows, cols);
+  int64_t batches = static_cast<int64_t>(X.numel() / (rows * cols));
   PADDLE_ENFORCE_GT(batches,
                     0,
                     common::errors::InvalidArgument(

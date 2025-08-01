@@ -40,6 +40,8 @@
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/kernels/funcs/data_layout_transform.h"
 
+COMMON_DECLARE_bool(check_cuda_error);
+
 namespace paddle::framework {
 
 static phi::Attribute ConvertPirAttribute2RuntimeAttribute(
@@ -373,9 +375,9 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
   }
   TensorNameMap(op, *value_exec_info_, yaml_info_parser, inputs_, outputs_);
 
-  // Step4: Mark is_run_mkldnn_kernel=true
+  // Step4: Mark is_run_onednn_kernel=true
   phi::MetaConfig new_config = infer_meta_context_.GetMetaConfig();
-  new_config.is_run_mkldnn_kernel = true;
+  new_config.is_run_onednn_kernel = true;
   infer_meta_context_.SetMetaConfig(new_config);
 
   // Step5: Handle skip_transform_inputs
@@ -404,6 +406,10 @@ OneDNNPhiKernelInstruction::~OneDNNPhiKernelInstruction() {
 }
 
 void OneDNNPhiKernelInstruction::Run() {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("OneDNNPhiKernelInstruction " + phi_op_name_ + " begin");
+  }
+
   std::vector<std::shared_ptr<phi::DenseTensor>> tmp_holders;
   auto tmp_kernel_context = kernel_context_;
   auto tmp_infer_meta_context_ = infer_meta_context_;
@@ -513,6 +519,10 @@ void OneDNNPhiKernelInstruction::Run() {
 
   // Step5. ClearDnnAttr
   one_dnn_ctx->ClearDnnAttr();
+
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("OneDNNPhiKernelInstruction " + phi_op_name_ + " finish");
+  }
 }
 
 }  // namespace paddle::framework

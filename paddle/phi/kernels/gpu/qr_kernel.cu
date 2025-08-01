@@ -411,47 +411,131 @@ void BatchedGeqrf<GPUContext, float>(const GPUContext& dev_ctx,
                                      float* tau,
                                      int a_stride,
                                      int tau_stride) {
-  int lwork = 0;
+  if (static_cast<int64_t>(m) * n * 171 > std::numeric_limits<int>::max()) {
+    const int64_t batch_size_64 = static_cast<int64_t>(batch_size);
+    const int64_t m_64 = static_cast<int64_t>(m);
+    const int64_t n_64 = static_cast<int64_t>(n);
+    const int64_t lda_64 = static_cast<int64_t>(lda);
+    const int64_t a_stride_64 = static_cast<int64_t>(a_stride);
+    const int64_t tau_stride_64 = static_cast<int64_t>(tau_stride);
 
-  auto handle = dev_ctx.cusolver_dn_handle();
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      phi::dynload::cusolverDnSgeqrf_bufferSize(handle, m, n, a, lda, &lwork));
+    auto handle = dev_ctx.cusolver_dn_handle();
 
-  DenseTensor workspace = DenseTensor();
-  workspace.Resize(common::make_ddim({lwork}));
-  float* workspace_ptr = dev_ctx.template Alloc<float>(&workspace);
+    size_t workspace_in_bytes_on_device = 0;
+    size_t workspace_in_bytes_on_host = 0;
 
-  DenseTensor info = DenseTensor();
-  info.Resize(common::make_ddim({1}));
-  int* info_d = dev_ctx.template Alloc<int>(&info);
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cusolverDnXgeqrf_bufferSize(handle,
+                                                  nullptr,
+                                                  m_64,
+                                                  n_64,
+                                                  CUDA_R_32F,
+                                                  a,
+                                                  lda_64,
+                                                  CUDA_R_32F,
+                                                  tau,
+                                                  CUDA_R_32F,
+                                                  &workspace_in_bytes_on_device,
+                                                  &workspace_in_bytes_on_host));
 
-  for (int i = 0; i < batch_size; ++i) {
-    float* a_working_ptr = &a[i * a_stride];
-    float* tau_working_ptr = &tau[i * tau_stride];
-    // compute geqrf
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnSgeqrf(handle,
-                                                              m,
-                                                              n,
-                                                              a_working_ptr,
-                                                              lda,
-                                                              tau_working_ptr,
-                                                              workspace_ptr,
-                                                              lwork,
-                                                              info_d));
-    // Do we need synchronized here?
-    // check the error info
-    int info_h;
-    memory_utils::Copy(phi::CPUPlace(),
-                       &info_h,
-                       dev_ctx.GetPlace(),
-                       info_d,
-                       sizeof(int),
-                       dev_ctx.stream());
-    PADDLE_ENFORCE_EQ(
-        info_h,
-        0,
-        common::errors::PreconditionNotMet(
-            "For batch [%d]: CUSolver geqrf is not zero. [%d]", i, info_h));
+    DenseTensor device_workspace;
+    device_workspace.Resize(common::make_ddim(
+        {static_cast<int64_t>(workspace_in_bytes_on_device)}));
+    uint8_t* device_workspace_ptr =
+        dev_ctx.template Alloc<uint8_t>(&device_workspace);
+
+    DenseTensor host_workspace;
+    uint8_t* host_workspace_ptr = nullptr;
+
+    if (workspace_in_bytes_on_host > 0) {
+      host_workspace.Resize(common::make_ddim(
+          {static_cast<int64_t>(workspace_in_bytes_on_host)}));
+      host_workspace_ptr = dev_ctx.template HostAlloc<uint8_t>(&host_workspace);
+    }
+
+    DenseTensor info;
+    info.Resize(common::make_ddim({1}));
+    int* info_d = dev_ctx.template Alloc<int>(&info);
+
+    for (int64_t i = 0; i < batch_size_64; ++i) {
+      float* a_working_ptr = &a[i * a_stride_64];
+      float* tau_working_ptr = &tau[i * tau_stride_64];
+
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::cusolverDnXgeqrf(handle,
+                                         nullptr,
+                                         m_64,
+                                         n_64,
+                                         CUDA_R_32F,
+                                         a_working_ptr,
+                                         lda_64,
+                                         CUDA_R_32F,
+                                         tau_working_ptr,
+                                         CUDA_R_32F,
+                                         device_workspace_ptr,
+                                         workspace_in_bytes_on_device,
+                                         host_workspace_ptr,
+                                         workspace_in_bytes_on_host,
+                                         info_d));
+
+      int info_h;
+      memory_utils::Copy(phi::CPUPlace(),
+                         &info_h,
+                         dev_ctx.GetPlace(),
+                         info_d,
+                         sizeof(int),
+                         dev_ctx.stream());
+      PADDLE_ENFORCE_EQ(
+          info_h,
+          0,
+          common::errors::PreconditionNotMet(
+              "For batch [%d]: CUSolver (64-bit) geqrf is not zero. [%d]",
+              i,
+              info_h));
+    }
+  } else {
+    int lwork = 0;
+
+    auto handle = dev_ctx.cusolver_dn_handle();
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnSgeqrf_bufferSize(
+        handle, m, n, a, lda, &lwork));
+
+    DenseTensor workspace = DenseTensor();
+    workspace.Resize(common::make_ddim({lwork}));
+    float* workspace_ptr = dev_ctx.template Alloc<float>(&workspace);
+
+    DenseTensor info = DenseTensor();
+    info.Resize(common::make_ddim({1}));
+    int* info_d = dev_ctx.template Alloc<int>(&info);
+
+    for (int i = 0; i < batch_size; ++i) {
+      float* a_working_ptr = &a[i * a_stride];
+      float* tau_working_ptr = &tau[i * tau_stride];
+      // compute geqrf
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnSgeqrf(handle,
+                                                                m,
+                                                                n,
+                                                                a_working_ptr,
+                                                                lda,
+                                                                tau_working_ptr,
+                                                                workspace_ptr,
+                                                                lwork,
+                                                                info_d));
+      // Do we need synchronized here?
+      // check the error info
+      int info_h;
+      memory_utils::Copy(phi::CPUPlace(),
+                         &info_h,
+                         dev_ctx.GetPlace(),
+                         info_d,
+                         sizeof(int),
+                         dev_ctx.stream());
+      PADDLE_ENFORCE_EQ(
+          info_h,
+          0,
+          common::errors::PreconditionNotMet(
+              "For batch [%d]: CUSolver geqrf is not zero. [%d]", i, info_h));
+    }
   }
 }
 

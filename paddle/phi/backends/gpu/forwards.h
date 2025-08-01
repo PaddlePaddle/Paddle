@@ -67,8 +67,10 @@ using cusolverDnHandle_t = struct cusolverDnContext *;
 // Forward declaration of cuSparse types.
 using cusparseHandle_t = struct cusparseContext *;
 
+#ifdef PADDLE_WITH_CUDA
 // Forward declaration of cuFFT types.
 using cufftHandle = int;
+#endif
 
 // Forward declaration of NCCL types.
 using ncclComm_t = struct ncclComm *;
