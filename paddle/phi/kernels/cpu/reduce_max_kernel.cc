@@ -40,4 +40,4 @@ void MaxKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    max, CPU, ALL_LAYOUT, phi::MaxKernel, float, double, int, int64_t) {}
+    max, CPU, ALL_LAYOUT, phi::MaxKernel, bool, float, double, int, int64_t) {}
