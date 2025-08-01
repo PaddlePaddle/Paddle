@@ -881,7 +881,7 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \brief Set the cache capacity of different input shapes for OneDNN.
   /// Default value 0 means not caching any shape.
   /// Please see MKL-DNN Data Caching Design Document:
-  /// https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/design/mkldnn/caching/caching.md
+  /// https://github.com/PaddlePaddle/docs/blob/develop/docs/design/mkldnn/caching/caching.md
   ///
   /// \param capacity The cache capacity.
   ///
@@ -910,7 +910,7 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \brief Set the cache capacity of different input shapes for OneDNN.
   /// Default value 0 means not caching any shape.
   /// Please see MKL-DNN Data Caching Design Document:
-  /// https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/design/mkldnn/caching/caching.md
+  /// https://github.com/PaddlePaddle/docs/blob/develop/docs/design/mkldnn/caching/caching.md
   ///
   /// \param capacity The cache capacity.
   ///
