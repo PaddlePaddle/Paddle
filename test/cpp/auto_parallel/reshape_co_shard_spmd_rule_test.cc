@@ -18,41 +18,131 @@ namespace paddle {
 namespace distributed {
 namespace auto_parallel {
 
+struct ReshapeTestCase {
+  // input
+  std::vector<int64_t> input_shape;
+  std::vector<std::vector<int64_t>> input_dims_mapping;
+
+  // shape attribute
+  std::vector<int64_t> target_shape;
+
+  // output
+  std::vector<std::vector<int64_t>> expected_input_dims_mapping;
+  std::vector<std::vector<int64_t>> expected_output_dims_mapping;
+}
+
 TEST(Reshape, Ctor) {
   std::vector<int64_t> mesh_shape = {2, 2};
   std::vector<int64_t> process_ids = {0, 1, 2, 3};
   std::vector<std::string> dim_names = {"x", "y"};
   ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
 
-  std::vector<int64_t> shape = {4, 6, 8};
+  // test flatten
+  // [4, 6, 8] -> [192]:
+  // [[0], [1], [ ]] -> [[0, 1], [ ], [ ]], [[0, 1], [ ], [ ]]
+
+  // [4, 6, 8] -> [192]: [[ ], [0], [1]] -> [[ ], [ ], [ ]], [[ ], [ ], [ ]]
+
+  // [4, 6, 8] -> [192]:
+  // [[0, 1], [ ], [ ]] -> [[0, 1], [ ], [ ]], [[0, 1], [ ], [ ]]
+
+  // [2, 12, 8] -> [192]:
+  // [[0], [1], [ ]] -> [[0], [ ], [ ]], [[0], [ ], [ ]]
+
+  // test split
+
+  // [128] -> [4, 6, 8]:
+  // [[0, 1]] -> [[0, 1]], [[0, 1], [ ], [ ]]
+
+  // [128] -> [6, 4, 8]:
+  // [[0, 1]] -> [[ ], [ ], [ ]]
+
   // [4, 6, 8] -> [2, 12, 8]
-  std::vector<std::vector<int64_t>> dims_mapping = {{0, 1}, {}, {}};
+  // [[0], [1], [ ]] -> [[0], [ ], [ ]], [[0], [ ], [ ]]
 
-  TensorDistAttr t_dist_attr = TensorDistAttr();
-  t_dist_attr.set_process_mesh(process_mesh);
-  t_dist_attr.set_dims_mapping(dims_mapping);
-  t_dist_attr.set_dynamic_dims({false, false, false});
-  phi::distributed::DistMetaTensor x =
-      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
-  std::vector<int64_t> target_shape = {2, 12, 8};
-  // test forward
-  phi::distributed::SpmdInfo forward_spmd_info =
-      phi::distributed::ReshapeInferSpmd(x, target_shape);
-  EXPECT_EQ(forward_spmd_info.first.size(), static_cast<size_t>(1));
-  EXPECT_EQ(forward_spmd_info.second.size(), static_cast<size_t>(1));
-  check_multi_dims_mapping(forward_spmd_info.first[0], {{}, {}, {}});
-  check_multi_dims_mapping(forward_spmd_info.second[0], {{}, {}, {}});
+  // [4, 6, 8] -> [2, 12, 8]
+  // [[0, 1], [ ], [ ]] -> [[ ], [ ], [ ]], [[ ], [ ], [ ]]
 
-  // [4, 6, 8] -> [24, 2, 4]
-  target_shape = {24, 2, 4};
-  dims_mapping = {{0, 1}, {}, {}};
-  t_dist_attr.set_dims_mapping(dims_mapping);
-  x = phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
-  forward_spmd_info = phi::distributed::ReshapeInferSpmd(x, target_shape);
-  EXPECT_EQ(forward_spmd_info.first.size(), static_cast<size_t>(1));
-  EXPECT_EQ(forward_spmd_info.second.size(), static_cast<size_t>(1));
-  check_multi_dims_mapping(forward_spmd_info.first[0], {{0, 1}, {}, {}});
-  check_multi_dims_mapping(forward_spmd_info.second[0], {{0, 1}, {}, {}});
+  // [4, 6, 8] -> [12, 2, 8]:
+  // [[0], [1], [ ]] -> [[0, 1], [ ], [ ]], [[0, 1], [ ], [ ]]
+
+  // [4, 6, 8] -> [12, 2, 8]:
+  // [[0, 1], [ ], [ ]] -> [[0, 1], [ ], [ ]], [[0, 1], [ ], [ ]]
+
+  // [4, 6, 8] -> [8, 6, 4]:
+  // [[0], [1], [ ]] -> [[0, 1], [ ], [ ]], [[0, 1], [ ], [ ]]
+
+  // [4, 6, 8] -> [8, 6, 4]:
+  // [[ ], [0], [1]] -> [[ ], [ ], [ ]], [[ ], [ ], [ ]]
+
+  // [4, 6, 8] -> [8, 6, 4]:
+  // [[0], [ ], [1]] -> [[0], [ ], [ ]], [[0], [ ], [ ]]
+
+  // [4, 6, 8] -> [8, 6, 4]:
+  // [[0, 1], [ ], [ ]] -> [[0, 1], [ ], [ ]], [[0, 1], [ ], [ ]]
+
+  std::vector<ReshapeTestCase> test_cases = {
+      // input_shape, input_dims_mapping, target_shape,
+      // expected_input_dims_mapping, expected_output_dims_mapping
+
+      // test flatten
+      {{4, 6, 8}, {{0}, {1}, {}}, {192}, {{0, 1}, {}, {}}, {{0, 1}}},
+      {{4, 6, 8}, {{}, {0}, {1}}, {192}, {{}, {0, 1}, {}}, {{0, 1}}},
+      {{4, 6, 8}, {{0, 1}, {}, {}}, {192}, {{0, 1}, {}, {}}, {{0, 1}}},
+      {{2, 12, 8}, {{0}, {1}, {}}, {192}, {{0, 1}, {}, {}}, {{0, 1}}},
+
+      // test split
+      {{192}, {{0, 1}}, {4, 6, 8}, {{0, 1}}, {{0, 1}, {}, {}}},
+      {{192}, {{0, 1}}, {6, 4, 8}, {{0, 1}}, {{0, 1}, {}, {}}},
+
+      // test combination
+      {{4, 6, 8}, {{0}, {1}, {}}, {2, 12, 8}, {{0, 1}, {}, {}}, {{0}, {1}, {}}},
+      {{4, 6, 8}, {{0, 1}, {}, {}}, {2, 12, 8}, {{}, {}, {}}, {{}, {}, {}}},
+      {{4, 6, 8},
+       {{0}, {1}, {}},
+       {12, 2, 8},
+       {{0, 1}, {}, {}},
+       {{0, 1}, {}, {}}},
+      {{4, 6, 8},
+       {{0, 1}, {}, {}},
+       {12, 2, 8},
+       {{0, 1}, {}, {}},
+       {{0, 1}, {}, {}}},
+      {{4, 6, 8}, {{0}, {1}, {}}, {8, 6, 4}, {{0, 1}, {}, {}}, {{1}, {0}, {}}},
+      {{4, 6, 8}, {{}, {0}, {1}}, {8, 6, 4}, {{}, {0, 1}, {}}, {{1}, {0}, {}}},
+      {{4, 6, 8}, {{0}, {}, {1}}, {8, 6, 4}, {{0}, {}, {1}}, {{1}, {}, {0}}},
+      {{4, 6, 8},
+       {{0, 1}, {}, {}},
+       {8, 6, 4},
+       {{0, 1}, {}, {}},
+       {{}, {}, {0, 1}}},
+      {{4, 6, 8}, {{}, {}, {0, 1}}, {24, 2, 4}, {{}, {}, {}}, {{}, {}, {}}},
+      {{4, 6, 8},
+       {{}, {}, {0, 1}},
+       {24, 4, 2},
+       {{}, {0, 1}, {}},
+       {{}, {0, 1}, {}}},
+  };
+
+  for (const auto& tc : test_cases) {
+    TensorDistAttr t_dist_attr = TensorDistAttr();
+    t_dist_attr.set_process_mesh(process_mesh);
+    t_dist_attr.set_dims_mapping(tc.input_dims_mapping);
+    t_dist_attr.set_dynamic_dims(
+        std::vector<bool>(tc.input_shape.size(), false));
+    phi::distributed::DistMetaTensor x = phi::distributed::DistMetaTensor(
+        common::make_ddim(tc.input_shape), t_dist_attr);
+
+    // test forward
+    phi::distributed::SpmdInfo forward_spmd_info =
+        phi::distributed::ReshapeInferSpmd(x, tc.target_shape);
+    EXPECT_EQ(forward_spmd_info.first.size(), static_cast<size_t>(1));
+    EXPECT_EQ(forward_spmd_info.second.size(), static_cast<size_t>(1));
+    check_multi_dims_mapping(forward_spmd_info.first[0],
+                             tc.expected_input_dims_mapping);
+    check_multi_dims_mapping(forward_spmd_info.second[0],
+                             tc.expected_output_dims_mapping);
+  }
 }
 }  // namespace auto_parallel
 }  // namespace distributed

@@ -301,33 +301,33 @@ std::vector<std::shared_ptr<DimTrans>> GetDimTransCoShard(
     int64_t mesh_shape_prod = 1;
 
     int last_shard_idx = -1;
-    int first_shard_idx = -1;
+    int64_t first_shard_idx = -1;
     int64_t first_sharded_shape = -1;
+
     for (int i = 0, n = static_cast<int>(inputs.size()); i < n; ++i) {
       std::shared_ptr<DimTrans> input = inputs[i];
-      if (input->type() == DimTrans::Type::INPUTDIM) {
-        std::shared_ptr<InputDim> inputdim =
-            std::dynamic_pointer_cast<InputDim>(input);
-        if (sharded_input_dims.count(inputdim->input_dim()) > 0) {
-          if (first_shard_idx == -1) {
-            first_shard_idx = i;
-            first_sharded_shape = input_shape[inputdim->input_dim()];
-          }
-          for (const auto& dim : input_dims_mapping[inputdim->input_dim()]) {
-            mesh_shape_prod *= mesh_shape[dim];
-          }
-          if (first_sharded_shape % mesh_shape_prod == 0) {
-            ret_dim_trans.push_back(inputdim);
-          } else {
-            break;
-          }
+      if (input->type() != DimTrans::Type::INPUTDIM) {
+        break;
+      }
+      std::shared_ptr<InputDim> inputdim =
+          std::dynamic_pointer_cast<InputDim>(input);
+      if (sharded_input_dims.count(inputdim->input_dim()) > 0) {
+        if (first_shard_idx == -1) {
+          first_shard_idx = i;
+          first_sharded_shape = input_shape[inputdim->input_dim()];
+        }
+        for (const auto& dim : input_dims_mapping[inputdim->input_dim()]) {
+          mesh_shape_prod *= mesh_shape[dim];
+        }
+        if (first_sharded_shape % mesh_shape_prod == 0) {
+          ret_dim_trans.push_back(inputdim);
         } else {
           break;
         }
-        last_shard_idx = i;
       } else {
         break;
       }
+      last_shard_idx = i;
     }
 
     for (int i = last_shard_idx + 1, n = static_cast<int>(inputs.size()); i < n;
