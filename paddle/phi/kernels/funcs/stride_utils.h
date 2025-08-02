@@ -119,7 +119,9 @@ static inline void permute_dimensions(const std::vector<int64_t> stride_size,
       std::vector<int64_t> original_data((*strides_array)[i],
                                          (*strides_array)[i] + stride_size[i]);
       temp_strides[i] = reorder(original_data);
-      (*strides_array)[i] = temp_strides[i].data();
+      for (int64_t j = 0; j < stride_size[i]; j++) {
+        (*strides_array)[i][j] = temp_strides[i][j];
+      }
     }
   }
 }
@@ -180,7 +182,7 @@ static inline void reorder_dimensions(const std::vector<int64_t> stride_size,
     return 0;
   };
   // insertion sort with support for ambiguous comparisons
-  for (size_t i = 0; i < ndim; i++) {
+  for (size_t i = 1; i < ndim; i++) {
     int dim1 = i;
     for (int dim0 = i - 1; dim0 >= 0; dim0--) {
       int comparison = should_swap(perm_[dim0], perm_[dim1]);

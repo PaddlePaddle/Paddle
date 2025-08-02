@@ -587,7 +587,7 @@ void ConvInferMeta(const MetaTensor& input,
             "dilation is %d.",
             dilations[i]));
   }
-  const bool channel_last = (config.is_run_mkldnn_kernel == false) &&
+  const bool channel_last = (config.is_run_onednn_kernel == false) &&
                             (data_format == "NHWC" || data_format == "NDHWC");
 
   PADDLE_ENFORCE_EQ(
@@ -773,7 +773,7 @@ void ConvTransposeInferMeta(const MetaTensor& x,
   std::vector<int> paddings_ = paddings;
   std::vector<int> dilations_ = dilations;
 
-  const DataLayout data_layout = config.is_run_mkldnn_kernel
+  const DataLayout data_layout = config.is_run_onednn_kernel
                                      ? DataLayout::kNCHW
                                      : common::StringToDataLayout(data_format);
 
@@ -1700,7 +1700,7 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
 
 #ifdef PADDLE_WITH_DNNL
     bool should_rotate =
-        config.is_run_mkldnn_kernel &&
+        config.is_run_onednn_kernel &&
         (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
          phi::DataLayout::kNHWC) &&
         (x_dims.size() >= 3 || y_dims.size() >= 3);
@@ -3374,7 +3374,7 @@ void PReluInferMeta(const MetaTensor& x,
                           "For mode 'channel', data_format must be one of "
                           "NCHW and NHWC. But received data_format: %s",
                           data_format));
-    if (data_format == "NCHW" || config.is_run_mkldnn_kernel) {
+    if (data_format == "NCHW" || config.is_run_onednn_kernel) {
       PADDLE_ENFORCE_EQ(product(alpha.dims()) == x_dim[1],
                         true,
                         common::errors::InvalidArgument(
