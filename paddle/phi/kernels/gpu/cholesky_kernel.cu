@@ -237,8 +237,6 @@ void CholeskyKernel(const Context& dev_ctx,
     for (int i = 0; i < batch_count; i++) {
       int64_t offset = static_cast<int64_t>(i) * m * m;
 #if CUDA_VERSION >= 11040
-      // COMPILATION FIX: Call Potrf64 directly without the <T> specialization,
-      // as the macro FUNC_WITH_TYPES already handles the float/double types.
       Potrf64(dev_ctx, uplo, m, out_data + offset, m, info_ptr + i);
 #else
     Potrf(dev_ctx, uplo, m, out_data + offset, m, info_ptr + i);
