@@ -373,11 +373,6 @@ paddle::Tensor CreateTensorFromValue(const pir::Value &value) {
   const auto &value_type = value.type();
 
   if (value_type.isa<paddle::dialect::DenseTensorType>()) {
-    const auto &ddims =
-        value_type.dyn_cast<paddle::dialect::DenseTensorType>().dims();
-    const auto &dtype = paddle::dialect::TransToPhiDataType(
-        value_type.dyn_cast<paddle::dialect::DenseTensorType>().dtype());
-
     std::shared_ptr<phi::DenseTensor> dense_tensor =
         std::make_shared<phi::DenseTensor>();
 
