@@ -113,78 +113,52 @@ inline bool CheckMatrixInvertible(const Context& dev_ctx,
 }
 
 template <typename T>
-struct BatchedDiagFunctor {
-  BatchedDiagFunctor(int64_t m, const T* diag_data, T* out_data)
-      : m_(m), diag_data_(diag_data), out_data_(out_data) {}
+struct PerturbLUFunctor {
+  using RealType = phi::dtype::Real<T>;
 
-  HOSTDEVICE void operator()(size_t index) const {
-    const int64_t col = index % m_;
-    const int64_t row = (index / m_) % m_;
-    const int64_t batch_id = index / (m_ * m_);
-    if (row == col) {
-      out_data_[index] = diag_data_[batch_id];
-    } else {
-      out_data_[index] = static_cast<T>(0);
+  PerturbLUFunctor(const int* infos, T* lu_data, int64_t m)
+      : infos_(infos), lu_data_(lu_data), m_(m) {}
+
+  HOSTDEVICE void operator()(int64_t batch_id) const {
+    // infos[i] != 0 indicates a singular matrix.
+    if (infos_[batch_id] != 0) {
+      constexpr RealType perturb_epsilon =
+          detail::PerturbEpsilon<RealType>::value();
+      const int64_t batch_offset = batch_id * m_ * m_;
+      for (int64_t i = 0; i < m_; ++i) {
+        // only perturb if the diagonal element of U is zero.
+        T& diag_val = lu_data_[batch_offset + i * m_ + i];
+        if (std::abs(static_cast<RealType>(diag_val)) == 0) {
+          diag_val += static_cast<T>(perturb_epsilon);
+        }
+      }
     }
   }
 
+  const int* infos_;
+  T* lu_data_;
   int64_t m_;
-  const T* diag_data_;
-  T* out_data_;
 };
 
 template <typename T>
-struct FusedPerturbFunctor {
-  FusedPerturbFunctor(int64_t m,
-                      const T* in_data,
-                      const T* det_data,
-                      T* out_data)
-      : m_(m), in_data_(in_data), det_data_(det_data), out_data_(out_data) {}
-
-  HOSTDEVICE void operator()(int64_t index) const {
-    using RealType = phi::dtype::Real<T>;
-    constexpr RealType decision_epsilon =
-        detail::DetZeroEpsilon<RealType>::value();
-    constexpr RealType perturb_epsilon =
-        detail::PerturbEpsilon<RealType>::value();
-
-    const int64_t col = index % m_;
-    const int64_t row = (index / m_) % m_;
-    const int64_t batch_id = index / (m_ * m_);
-
-    const bool is_singular =
-        std::abs(static_cast<RealType>(det_data_[batch_id])) < decision_epsilon;
-    const T in_val = in_data_[index];
-    if (is_singular && row == col) {
-      out_data_[index] = in_val + static_cast<T>(perturb_epsilon);
-    } else {
-      out_data_[index] = in_val;
-    }
-  }
-
-  int64_t m_;
-  const T* in_data_;
-  const T* det_data_;
-  T* out_data_;
-};
-
-template <typename T>
-struct FusedDetLUFunctor {
-  FusedDetLUFunctor(int64_t m,
-                    const T* grad_data,
-                    const T* lu_data,
-                    const int* pivots_data,
-                    T* out_data)
-      : m_(m),
-        grad_data_(grad_data),
+struct BuildAdjointRHSFunctor {
+  BuildAdjointRHSFunctor(const T* grad_data,
+                         const T* lu_data,
+                         const int* pivots_data,
+                         T* b_data,
+                         int64_t m)
+      : grad_data_(grad_data),
         lu_data_(lu_data),
         pivots_data_(pivots_data),
-        out_data_(out_data) {}
+        b_data_(b_data),
+        m_(m) {}
 
   HOSTDEVICE void operator()(int64_t batch_id) const {
     const T* lu_batch = lu_data_ + batch_id * m_ * m_;
     const int* pivots_batch = pivots_data_ + batch_id * m_;
+    T* b_batch = b_data_ + batch_id * m_ * m_;
 
+    // calculate determinant from LU factors
     T det_val = static_cast<T>(1);
     int64_t swaps = 0;
     for (int64_t i = 0; i < m_; ++i) {
@@ -197,20 +171,29 @@ struct FusedDetLUFunctor {
       det_val = -det_val;
     }
 
+    // calculate k
+    T k;
     if constexpr (std::is_same_v<T, phi::dtype::complex<float>> ||
                   std::is_same_v<T, phi::dtype::complex<double>>) {
-      out_data_[batch_id] = grad_data_[batch_id] * phi::dtype::conj(det_val);
+      k = grad_data_[batch_id] * phi::dtype::conj(det_val);
     } else {
-      out_data_[batch_id] = grad_data_[batch_id] * det_val;
+      k = grad_data_[batch_id] * det_val;
+    }
+
+    // construct the diagonal matrix B
+    for (int64_t i = 0; i < m_ * m_; ++i) {
+      b_batch[i] = static_cast<T>(0);
+    }
+    for (int64_t i = 0; i < m_; ++i) {
+      b_batch[i * m_ + i] = k;
     }
   }
 
-  int64_t m_;
-  const T* det_data_;
   const T* grad_data_;
   const T* lu_data_;
   const int* pivots_data_;
-  T* out_data_;
+  T* b_data_;
+  int64_t m_;
 };
 
 }  // namespace detail
@@ -247,61 +230,49 @@ void DeterminantGradKernel(const Context& dev_ctx,
     // checked in forward, pass
   }
 
-  const auto& x_dims = x.dims();
-  const int64_t m = x_dims[x_dims.size() - 1];
-  const int64_t batch_count = x.numel() / (m * m);
-  const int64_t numel = x.numel();
-  funcs::ForRange<Context> for_range(dev_ctx, numel);
-  funcs::ForRange<Context> for_range_batch(dev_ctx, batch_count);
-
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
   auto x_mp = x;
-  auto out_mp = out;
   auto out_grad_mp = out_grad;
 
   if constexpr (!std::is_same_v<MPType, T>) {
     x_mp = phi::Cast<T, Context>(
         dev_ctx, x, phi::CppTypeToDataType<MPType>::Type());
-    out_mp = phi::Cast<T, Context>(
-        dev_ctx, out, phi::CppTypeToDataType<MPType>::Type());
     out_grad_mp = phi::Cast<T, Context>(
         dev_ctx, out_grad, phi::CppTypeToDataType<MPType>::Type());
   }
 
-  DenseTensor A_perturbed;
-  A_perturbed.Resize(x_dims);
-  dev_ctx.template Alloc<MPType>(&A_perturbed);
-  detail::FusedPerturbFunctor<MPType> perturb_functor(
-      m,
-      x_mp.data<MPType>(),
-      out_mp.data<MPType>(),
-      A_perturbed.data<MPType>());
-  for_range(perturb_functor);
+  const auto& x_dims = x.dims();
+  const int64_t m = x_dims[x_dims.size() - 1];
+  const int64_t batch_count = x.numel() / (m * m);
+  funcs::ForRange<Context> for_range_batch(dev_ctx, batch_count);
 
+  // LU decomposition
   DenseTensor lu_data, pivots, infos;
   lu_data.Resize(x_dims);
   pivots.Resize(common::slice_ddim(x_dims, 0, x_dims.size() - 1));
   infos.Resize({batch_count});
   LUKernel<MPType, Context>(
-      dev_ctx, A_perturbed, true, &lu_data, &pivots, &infos);
+      dev_ctx, x_mp, /*pivot=*/true, &lu_data, &pivots, &infos);
 
-  DenseTensor A_grad;
-  A_grad.Resize({batch_count});
-  dev_ctx.template Alloc<MPType>(&A_grad);
-  detail::FusedDetLUFunctor<MPType> det_lu_functor(m,
-                                                   out_grad_mp.data<MPType>(),
-                                                   lu_data.data<MPType>(),
-                                                   pivots.data<int>(),
-                                                   A_grad.data<MPType>());
-  for_range_batch(det_lu_functor);
+  // perturb LU to avoid singularity
+  detail::PerturbLUFunctor<MPType> perturb_functor(
+      infos.data<int>(), lu_data.data<MPType>(), m);
+  for_range_batch(perturb_functor);
 
+  // B = diag(grad_out * conj(det(A)))
   DenseTensor B;
   B.Resize(x_dims);
   dev_ctx.template Alloc<MPType>(&B);
-  detail::BatchedDiagFunctor<MPType> diag_functor(
-      m, A_grad.data<MPType>(), B.data<MPType>());
-  for_range(diag_functor);
+  detail::BuildAdjointRHSFunctor<MPType> build_rhs_functor(
+      out_grad_mp.data<MPType>(),
+      lu_data.data<MPType>(),
+      pivots.data<int>(),
+      B.data<MPType>(),
+      m);
+  for_range_batch(build_rhs_functor);
 
+  // solve A^H * G = B
   DenseTensor grad_mp;
   grad_mp.Resize(x_dims);
   LuSolveKernel<MPType, Context>(dev_ctx, B, lu_data, pivots, "C", &grad_mp);
