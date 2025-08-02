@@ -414,7 +414,7 @@ def set_paddle_lib_path():
                 os.path.sep.join([lib_dir, '..', '..', 'paddle_custom_device'])
             )
             return
-    if hasattr(site, 'USER_SITE'):
+    if hasattr(site, 'USER_SITE') and site.USER_SITE:
         lib_dir = os.path.sep.join([site.USER_SITE, 'paddle', 'libs'])
         if os.path.exists(lib_dir):
             _set_paddle_lib_path(lib_dir)
