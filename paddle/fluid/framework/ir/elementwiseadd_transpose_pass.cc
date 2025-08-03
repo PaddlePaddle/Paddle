@@ -153,7 +153,7 @@ int ElementwiseAddTransposeFusePass::ApplyEleTransPattern(
           << "found that shape_attr[3](channel size) mod 8 !=0 for reshape op "
              "in elementwise_add_transpose, "
              "currently, the elementwiseadd transpose pass only support "
-             "channel size mod 8 == 0 for khwc8 trt format"
+             "channel size mod 8 == 0 for khwc8 trt format. "
              "Therefore, the fusion will be stopped.";
       return;
     }
