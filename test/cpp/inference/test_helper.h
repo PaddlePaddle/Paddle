@@ -59,7 +59,7 @@ void SetupTensor(phi::DenseTensor* input,
   PADDLE_ENFORCE_EQ(common::product(dims),
                     static_cast<int64_t>(data.size()),
                     common::errors::InvalidArgument(
-                        "common::product(dims) and data.size() are not equal"
+                        "common::product(dims) and data.size() are not equal, "
                         "common::product(dims) is %d and data.size() is %d",
                         common::product(dims),
                         static_cast<int64_t>(data.size())));
