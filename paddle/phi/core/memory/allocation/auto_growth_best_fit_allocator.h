@@ -41,6 +41,8 @@ class AutoGrowthBestFitAllocator : public Allocator {
 
   void DumpInfo() const;
 
+  void PreAlloc() override;
+
  protected:
   phi::Allocation *AllocateImpl(size_t size) override;
 

@@ -193,6 +193,11 @@ void StreamSafeCUDAAllocator::SetDefaultStream(gpuStream_t stream) {
   default_stream_ = stream;
 }
 
+void StreamSafeCUDAAllocator::PreAlloc() {
+  std::lock_guard<SpinLock> lock_guard(unfreed_allocation_lock_);
+  underlying_allocator_->PreAlloc();
+}
+
 phi::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
   phi::RecordEvent record("StreamSafeCUDAAllocator::Allocate",
                           phi::TracerEventType::UserDefined,
