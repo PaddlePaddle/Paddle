@@ -21,7 +21,9 @@
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/determinant_grad_kernel.h"
+#include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -140,60 +142,19 @@ struct PerturbLUFunctor {
   int64_t m_;
 };
 
-template <typename T>
-struct BuildAdjointRHSFunctor {
-  BuildAdjointRHSFunctor(const T* grad_data,
-                         const T* lu_data,
-                         const int* pivots_data,
-                         T* b_data,
-                         int64_t m)
-      : grad_data_(grad_data),
-        lu_data_(lu_data),
-        pivots_data_(pivots_data),
-        b_data_(b_data),
-        m_(m) {}
+template <typename Context, typename T>
+struct MatrixIdentityFunctor {
+  MatrixIdentityFunctor(int64_t m, T* output) : m_(m), output_(output) {}
 
-  HOSTDEVICE void operator()(int64_t batch_id) const {
-    const T* lu_batch = lu_data_ + batch_id * m_ * m_;
-    const int* pivots_batch = pivots_data_ + batch_id * m_;
-    T* b_batch = b_data_ + batch_id * m_ * m_;
-
-    // calculate determinant from LU factors
-    T det_val = static_cast<T>(1);
-    int64_t swaps = 0;
-    for (int64_t i = 0; i < m_; ++i) {
-      det_val *= lu_batch[i * m_ + i];
-      if (pivots_batch[i] != (i + 1)) {
-        swaps++;
-      }
-    }
-    if (swaps % 2 != 0) {
-      det_val = -det_val;
-    }
-
-    // calculate k
-    T k;
-    if constexpr (std::is_same_v<T, phi::dtype::complex<float>> ||
-                  std::is_same_v<T, phi::dtype::complex<double>>) {
-      k = grad_data_[batch_id] * phi::dtype::conj(det_val);
-    } else {
-      k = grad_data_[batch_id] * det_val;
-    }
-
-    // construct the diagonal matrix B
-    for (int64_t i = 0; i < m_ * m_; ++i) {
-      b_batch[i] = static_cast<T>(0);
-    }
-    for (int64_t i = 0; i < m_; ++i) {
-      b_batch[i * m_ + i] = k;
-    }
+  HOSTDEVICE void operator()(int64_t index) const {
+    const int64_t col = index % m_;
+    const int64_t global_row = index / m_;
+    const int64_t row = global_row % m_;
+    output_[index] = (row == col) ? static_cast<T>(1) : static_cast<T>(0);
   }
 
-  const T* grad_data_;
-  const T* lu_data_;
-  const int* pivots_data_;
-  T* b_data_;
-  int64_t m_;
+  const int64_t m_;
+  T* output_;
 };
 
 }  // namespace detail
@@ -233,11 +194,14 @@ void DeterminantGradKernel(const Context& dev_ctx,
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
 
   auto x_mp = x;
+  auto out_mp = out;
   auto out_grad_mp = out_grad;
 
   if constexpr (!std::is_same_v<MPType, T>) {
     x_mp = phi::Cast<T, Context>(
         dev_ctx, x, phi::CppTypeToDataType<MPType>::Type());
+    out_mp = phi::Cast<T, Context>(
+        dev_ctx, out, phi::CppTypeToDataType<MPType>::Type());
     out_grad_mp = phi::Cast<T, Context>(
         dev_ctx, out_grad, phi::CppTypeToDataType<MPType>::Type());
   }
@@ -245,7 +209,6 @@ void DeterminantGradKernel(const Context& dev_ctx,
   const auto& x_dims = x.dims();
   const int64_t m = x_dims[x_dims.size() - 1];
   const int64_t batch_count = x.numel() / (m * m);
-  funcs::ForRange<Context> for_range_batch(dev_ctx, batch_count);
 
   // LU decomposition
   DenseTensor lu_data, pivots, infos;
@@ -256,26 +219,31 @@ void DeterminantGradKernel(const Context& dev_ctx,
       dev_ctx, x_mp, /*pivot=*/true, &lu_data, &pivots, &infos);
 
   // perturb LU to avoid singularity
+  funcs::ForRange<Context> for_range_batch(dev_ctx, batch_count);
   detail::PerturbLUFunctor<MPType> perturb_functor(
       infos.data<int>(), lu_data.data<MPType>(), m);
   for_range_batch(perturb_functor);
 
-  // B = diag(grad_out * conj(det(A)))
-  DenseTensor B;
-  B.Resize(x_dims);
-  dev_ctx.template Alloc<MPType>(&B);
-  detail::BuildAdjointRHSFunctor<MPType> build_rhs_functor(
-      out_grad_mp.data<MPType>(),
-      lu_data.data<MPType>(),
-      pivots.data<int>(),
-      B.data<MPType>(),
-      m);
-  for_range_batch(build_rhs_functor);
+  DenseTensor I;
+  I.Resize(x_dims);
+  auto* i_data = dev_ctx.template Alloc<MPType>(&I);
+  funcs::ForRange<Context> for_range(dev_ctx, I.numel());
+  detail::MatrixIdentityFunctor<Context, MPType> identity_functor(m, i_data);
+  for_range(identity_functor);
 
-  // solve A^H * G = B
-  DenseTensor grad_mp;
-  grad_mp.Resize(x_dims);
-  LuSolveKernel<MPType, Context>(dev_ctx, B, lu_data, pivots, "C", &grad_mp);
+  DenseTensor a_inv_h;
+  a_inv_h.Resize(x_dims);
+  LuSolveKernel<MPType, Context>(
+      dev_ctx, I, lu_data, pivots, /*trans=*/"C", &a_inv_h);
+
+  auto conj_out_mp = phi::Conj<MPType, Context>(dev_ctx, out_mp);
+  auto k = phi::Multiply<MPType, Context>(dev_ctx, out_grad_mp, conj_out_mp);
+  std::vector<int64_t> k_dims = common::vectorize(k.dims());
+  k_dims.push_back(1);
+  k_dims.push_back(1);
+  k.Resize(common::make_ddim(k_dims));
+
+  auto grad_mp = phi::Multiply<MPType, Context>(dev_ctx, a_inv_h, k);
 
   x_grad->Resize(x_dims);
   phi::Copy(dev_ctx, grad_mp, dev_ctx.GetPlace(), false, x_grad);
