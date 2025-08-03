@@ -1348,7 +1348,7 @@ void ConcatInferMeta(const std::vector<const MetaTensor*>& x,
   PADDLE_ENFORCE_GE(x.size(),
                     0UL,
                     common::errors::InvalidArgument(
-                        "The size of input meta vector should be greater"
+                        "The size of input meta vector should be greater "
                         "than 0."));
   if (axis_scalar.FromTensor() && !config.is_runtime) {
     auto out_dims =
@@ -2652,15 +2652,16 @@ void FusedLayerNormInferMeta(const MetaTensor& x,
   }
   if (config.is_runtime) {
     if (norm_weight) {
-      PADDLE_ENFORCE_EQ(normalized_dims,
-                        norm_weight.dims()[0],
-                        common::errors::InvalidArgument(
-                            "The normalized size of Input(X) must equal to be"
-                            "the size of Weight, but received"
-                            "normalized size of Input(X) is [%d], received size"
-                            "of Weight is [%d]",
-                            normalized_dims,
-                            norm_weight.dims()[0]));
+      PADDLE_ENFORCE_EQ(
+          normalized_dims,
+          norm_weight.dims()[0],
+          common::errors::InvalidArgument(
+              "The normalized size of Input(X) must equal to be "
+              "the size of Weight, but received "
+              "normalized size of Input(X) is [%d], received size "
+              "of Weight is [%d]",
+              normalized_dims,
+              norm_weight.dims()[0]));
     }
   }
 
@@ -3243,7 +3244,7 @@ static void Interpolate1DInferShapeCheck(
   PADDLE_ENFORCE_EQ("linear",
                     interp_method,
                     common::errors::InvalidArgument(
-                        "Interpolation method can only be \"linear\" when"
+                        "Interpolation method can only be \"linear\" when "
                         "Input(X) dimension is 3, but got method = %s .",
                         interp_method));
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
@@ -4147,19 +4148,19 @@ void MemoryEfficientAttentionInferMeta(const MetaTensor& query,
   PADDLE_ENFORCE_EQ(
       query.dims().size(),
       4,
-      common::errors::InvalidArgument("Query should be a 4-D tensor"
+      common::errors::InvalidArgument("Query should be a 4-D tensor. "
                                       "But received Query dimension(%s)",
                                       query.dims().size()));
   PADDLE_ENFORCE_EQ(
       key.dims().size(),
       4,
-      common::errors::InvalidArgument("Key should be a 4-D tensor"
+      common::errors::InvalidArgument("Key should be a 4-D tensor. "
                                       "But received Key dimension(%s)",
                                       key.dims().size()));
   PADDLE_ENFORCE_EQ(
       value.dims().size(),
       4,
-      common::errors::InvalidArgument("Value should be a 4-D tensor"
+      common::errors::InvalidArgument("Value should be a 4-D tensor. "
                                       "But received Value dimension(%s)",
                                       value.dims().size()));
 
@@ -5573,7 +5574,7 @@ void UnchangedMultiInferMeta(const std::vector<const MetaTensor*>& x,
       x.size(),
       out.size(),
       common::errors::InvalidArgument(
-          "Input's size should be equal to the output's size"
+          "Input's size should be equal to the output's size, "
           "but received input size: (%d) does not equals output_size: (%d)",
           x.size(),
           out.size()));
@@ -5793,7 +5794,7 @@ void WeightOnlyLinearInferMeta(const MetaTensor& x,
         weight_scale_dims[0],
         (w_dims[1] + (group_size - 1)) / group_size,
         errors::InvalidArgument("The input(weight_scale) dim[0] must be equal "
-                                "to Input(weight) dim[1] / group_size"
+                                "to Input(weight) dim[1] / group_size. "
                                 "But receive %d and %d",
                                 weight_scale_dims[0],
                                 (w_dims[1] + (group_size - 1)) / group_size));
@@ -6000,17 +6001,17 @@ void YoloLossInferMeta(const MetaTensor& x,
 
   if (gt_score) {
     auto dim_gtscore = gt_score.dims();
-    PADDLE_ENFORCE_EQ(
-        dim_gtscore.size(),
-        2,
-        common::errors::InvalidArgument("Input(GTScore) should be a 2-D tensor"
-                                        "But received GTScore dimension(%s)",
-                                        dim_gtbox.size()));
+    PADDLE_ENFORCE_EQ(dim_gtscore.size(),
+                      2,
+                      common::errors::InvalidArgument(
+                          "Input(GTScore) should be a 2-D tensor. "
+                          "But received GTScore dimension(%s)",
+                          dim_gtbox.size()));
     PADDLE_ENFORCE_EQ(
         dim_gtscore[0],
         dim_gtbox[0],
         common::errors::InvalidArgument(
-            "Input(GTBox) and Input(GTScore) dim[0] should be same"
+            "Input(GTBox) and Input(GTScore) dim[0] should be same. "
             "But received GTBox dim[0](%s) != GTScore dim[0](%s)",
             dim_gtbox[0],
             dim_gtscore[0]));
@@ -6018,7 +6019,7 @@ void YoloLossInferMeta(const MetaTensor& x,
         dim_gtscore[1],
         dim_gtbox[1],
         common::errors::InvalidArgument(
-            "Input(GTBox) and Input(GTScore) dim[1] should be same"
+            "Input(GTBox) and Input(GTScore) dim[1] should be same. "
             "But received GTBox dim[1](%s) != GTScore dim[1](%s)",
             dim_gtscore[1],
             dim_gtbox[1]));

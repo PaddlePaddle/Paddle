@@ -187,8 +187,8 @@ void FusedMultiTransformerInferMeta(
       x_dim.size(),
       3,
       common::errors::InvalidArgument("The dimensions of x must be 3"
-                                      "(batch_size, seq_len, dim_embed),"
-                                      "but received dimensions of"
+                                      "(batch_size, seq_len, dim_embed), "
+                                      "but received dimensions of "
                                       "Input is [%d]",
                                       x_dim.size()));
 
@@ -197,8 +197,8 @@ void FusedMultiTransformerInferMeta(
                       3,
                       common::errors::InvalidArgument(
                           "The dimensions of qkv_weight when use gqa must be 3"
-                          "(num_head + 2 * kv_num_heads, dim_head, dim_embed),"
-                          "but received dimensions of"
+                          "(num_head + 2 * kv_num_heads, dim_head, dim_embed), "
+                          "but received dimensions of "
                           "Input is [%d]",
                           y_dim.size()));
   } else {
@@ -206,8 +206,8 @@ void FusedMultiTransformerInferMeta(
         y_dim.size(),
         4,
         common::errors::InvalidArgument("The dimensions of qkv_weight must be 4"
-                                        "(3, num_head, dim_head, dim_embed),"
-                                        "but received dimensions of"
+                                        "(3, num_head, dim_head, dim_embed), "
+                                        "but received dimensions of "
                                         "Input is [%d]",
                                         y_dim.size()));
   }
@@ -264,7 +264,7 @@ void FusedMultiTransformerInferMeta(
       PADDLE_ENFORCE_EQ(c_dim[2],
                         gqa_group_size,
                         common::errors::InvalidArgument(
-                            "The third dim of CacheKV must be equal with num"
+                            "The third dim of CacheKV must be equal with num "
                             "head %d, but got %d",
                             gqa_group_size,
                             c_dim[2]));  // num_head
@@ -280,7 +280,7 @@ void FusedMultiTransformerInferMeta(
       PADDLE_ENFORCE_EQ(c_dim[2],
                         trans_qkvw ? y_dim[1] : y_dim[2],
                         common::errors::InvalidArgument(
-                            "The third dim of CacheKV must be equal with num"
+                            "The third dim of CacheKV must be equal with num "
                             "head %d, but got %d",
                             trans_qkvw ? y_dim[1] : y_dim[2],
                             c_dim[2]));  // num_head
@@ -956,9 +956,9 @@ void FusedAttentionInferMeta(const MetaTensor& x,
     PADDLE_ENFORCE_EQ(y_dim.size(),
                       2,
                       common::errors::InvalidArgument(
-                          "The dimensions of qkv_weight must be 2 if enable"
-                          "transpose_qkv_wb: (dim_embed, 3 * dim_embed),"
-                          "but received dimensions of"
+                          "The dimensions of qkv_weight must be 2 if enable "
+                          "transpose_qkv_wb: (dim_embed, 3 * dim_embed), "
+                          "but received dimensions of "
                           "Input is [%d]",
                           y_dim.size()));
     PADDLE_ENFORCE_GT(num_heads,
@@ -991,7 +991,7 @@ void FusedAttentionInferMeta(const MetaTensor& x,
     PADDLE_ENFORCE_EQ(y_dim.size(),
                       4,
                       common::errors::InvalidArgument(
-                          "The dimensions of qkv_weight must be 4 if not"
+                          "The dimensions of qkv_weight must be 4 if not "
                           "enable transpose_qkv_wb: (3, num_head, dim_head, "
                           "dim_embed), but received [%d]",
                           y_dim.size()));
@@ -1019,8 +1019,8 @@ void FusedAttentionInferMeta(const MetaTensor& x,
       x_dim.size(),
       3,
       common::errors::InvalidArgument("The dimensions of x must be 3"
-                                      "(batch_size, seq_len, dim_embed),"
-                                      "but received dimensions of"
+                                      "(batch_size, seq_len, dim_embed), "
+                                      "but received dimensions of "
                                       "Input is [%d]",
                                       x_dim.size()));
 
@@ -1423,8 +1423,8 @@ void FusedDotProductAttentionInferMeta(const MetaTensor& q,
   PADDLE_ENFORCE(q_dim.size() == 4 && k_dim.size() == 4 && v_dim.size() == 4,
                  common::errors::InvalidArgument(
                      "The dimensions of q, k, v must be 4"
-                     "(batch_size, seq_len, num_heads, head_size),"
-                     "but received dimensions of"
+                     "(batch_size, seq_len, num_heads, head_size), "
+                     "but received dimensions of "
                      "Input is [%d], [%d], [%d]",
                      q_dim.size(),
                      k_dim.size(),
@@ -1432,8 +1432,8 @@ void FusedDotProductAttentionInferMeta(const MetaTensor& q,
 
   PADDLE_ENFORCE(q_dim[0] == k_dim[0] && k_dim[0] == v_dim[0],
                  common::errors::InvalidArgument(
-                     "The first dimension of q, k, v must be equal"
-                     "but received dimensions of"
+                     "The first dimension of q, k, v must be equal, "
+                     "but received dimensions of "
                      "Input is [%d], [%d], [%d]",
                      q_dim[0],
                      k_dim[0],
@@ -1662,7 +1662,7 @@ void FusedElemwiseAddActivationInferMeta(
       true,
       common::errors::InvalidArgument(
           "When the FusedElemwiseAddActivationOp Is used in fused pass, the "
-          "elementwise_add Op must be"
+          "elementwise_add Op must be "
           "detected and used, Please check the fuse pass pattern"));
 }
 
@@ -1746,7 +1746,7 @@ void FusedElemwiseAddActivationGradInferMeta(
       true,
       common::errors::InvalidArgument(
           "When the FusedElemwiseAddActivationOpGrad Is used in fused pass, "
-          "the elementwise_add_grad Op must be"
+          "the elementwise_add_grad Op must be "
           "detected and used, Please check the fuse pass pattern"));
 }
 
@@ -2028,7 +2028,7 @@ void FusedGemmEpilogueGradInferMeta(const MetaTensor& x,
       dout_mat_dims[1],
       trans_y ? y_dims[0] : y_dims[1],
       common::errors::InvalidArgument(
-          "The last dimension of DOut should be equal with Y's last"
+          "The last dimension of DOut should be equal with Y's last "
           "dimension. But received DOut[-1] = [%d], Y[1] = [%d].",
           dout_mat_dims[1],
           y_dims[1]));
@@ -2328,16 +2328,16 @@ void FusedMultiTransformerInt8InferMeta(
       x_dim.size(),
       3,
       common::errors::InvalidArgument("The dimensions of x must be 3"
-                                      "(batch_size, seq_len, dim_embed),"
-                                      "but received dimensions of"
+                                      "(batch_size, seq_len, dim_embed), "
+                                      "but received dimensions of "
                                       "Input is [%d]",
                                       x_dim.size()));
   PADDLE_ENFORCE_EQ(
       y_dim.size(),
       4,
       common::errors::InvalidArgument("The dimensions of qkv_weight must be 4"
-                                      "(3, num_head, dim_head, dim_embed),"
-                                      "but received dimensions of"
+                                      "(3, num_head, dim_head, dim_embed), "
+                                      "but received dimensions of "
                                       "Input is [%d]",
                                       y_dim.size()));
   PADDLE_ENFORCE_EQ(
@@ -3905,7 +3905,7 @@ void FusionGRUInferMeta(const MetaTensor& x,
       wx_dims[0],
       x_mat_dims[1],
       common::errors::InvalidArgument(
-          "The first dimension of flattened WeightX"
+          "The first dimension of flattened WeightX "
           "should equal to last dimension of flattened input X, but "
           "received fattened WeightX dimension is:%d, flattened X dimension "
           "is:%d",
@@ -4444,19 +4444,19 @@ void VariableLengthMemoryEfficientAttentionInferMeta(
   PADDLE_ENFORCE_EQ(
       query.dims().size(),
       4,
-      common::errors::InvalidArgument("Query should be a 4-D tensor"
+      common::errors::InvalidArgument("Query should be a 4-D tensor. "
                                       "But received Query dimension(%s)",
                                       query.dims().size()));
   PADDLE_ENFORCE_EQ(
       key.dims().size(),
       4,
-      common::errors::InvalidArgument("Key should be a 4-D tensor"
+      common::errors::InvalidArgument("Key should be a 4-D tensor. "
                                       "But received Key dimension(%s)",
                                       key.dims().size()));
   PADDLE_ENFORCE_EQ(
       value.dims().size(),
       4,
-      common::errors::InvalidArgument("Value should be a 4-D tensor"
+      common::errors::InvalidArgument("Value should be a 4-D tensor. "
                                       "But received Value dimension(%s)",
                                       value.dims().size()));
 
@@ -4512,7 +4512,7 @@ void VariableLengthMemoryEfficientAttentionInferMeta(
     PADDLE_ENFORCE_EQ(
         mask.dims().size(),
         4,
-        common::errors::InvalidArgument("Mask should be a 4-D tensor"
+        common::errors::InvalidArgument("Mask should be a 4-D tensor. "
                                         "But received Value dimension(%s)",
                                         mask.dims().size()));
     const int64_t mask_batch_size = mask.dims()[0];
@@ -4822,7 +4822,7 @@ void MultiGruInferMeta(
         weight_x[i]->dims()[0],
         x_mat_dims[1],
         common::errors::InvalidArgument(
-            "The first dimension of flattened WeightX #%d"
+            "The first dimension of flattened WeightX #%d "
             "should equal to last dimension of flattened input X, but "
             "received fattened WeightX dimension is:%d, flattened X "
             "dimension "
@@ -5353,39 +5353,39 @@ void FusedTokenPruneInferMeta(const MetaTensor& attn,
   PADDLE_ENFORCE_EQ(mask_dim[0],
                     attn_dim[0],
                     common::errors::InvalidArgument(
-                        "The first dim of mask and attn should be the same"
+                        "The first dim of mask and attn should be the same "
                         "which is batch size"));
   PADDLE_ENFORCE_EQ(mask_dim[1],
                     attn_dim[1],
                     common::errors::InvalidArgument(
-                        "The second dim of mask and attn should be the same"
+                        "The second dim of mask and attn should be the same "
                         "which is nb_head"));
   PADDLE_ENFORCE_EQ(mask_dim[0],
                     x_dim[0],
                     common::errors::InvalidArgument(
-                        "The first dim of mask and x should be the same"
+                        "The first dim of mask and x should be the same "
                         "which is batch size"));
   PADDLE_ENFORCE_EQ(
       mask_dim[2],
       mask_dim[3],
       common::errors::InvalidArgument(
-          "The third dim and the fourth dim of mask should be the same"
+          "The third dim and the fourth dim of mask should be the same "
           "which is max seq len"));
   PADDLE_ENFORCE_EQ(
       attn_dim[2],
       attn_dim[3],
       common::errors::InvalidArgument(
-          "The third dim and the fourth dim of mask should be the same"
+          "The third dim and the fourth dim of mask should be the same "
           "which is max seq len"));
   PADDLE_ENFORCE_EQ(attn_dim[2],
                     mask_dim[2],
                     common::errors::InvalidArgument(
-                        "The third dim of mask and attn should be the same"
+                        "The third dim of mask and attn should be the same "
                         "which is max seq len"));
   PADDLE_ENFORCE_EQ(attn_dim[2],
                     x_dim[1],
                     common::errors::InvalidArgument(
-                        "The third dim of mask and the second dim of attn"
+                        "The third dim of mask and the second dim of attn "
                         "should be the same which is max seq len"));
 
   auto bsz = mask_dim[0];
