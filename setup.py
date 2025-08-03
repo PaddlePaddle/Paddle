@@ -273,7 +273,7 @@ class EggInfo(egg_info):
         egg_info.run(self)
 
 
-# class Installlib is rewritten to add header files to .egg/paddle
+# class InstallLib is rewritten to add header files to .egg/paddle
 class InstallLib(install_lib):
     def run(self):
         self.build()

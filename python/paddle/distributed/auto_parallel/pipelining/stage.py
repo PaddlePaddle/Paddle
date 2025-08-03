@@ -282,7 +282,7 @@ class _PipelineStageBase(ABC):
         def map_recv_to_send(a):
             # Note: we send gradients back to previous stage as long as in
             # forward it is a received input, regardless of whether it requires
-            # grad. It is up to the previous stage to disgard this gradient.
+            # grad. It is up to the previous stage to discard this gradient.
             if isinstance(a, _RecvInfo):
                 grad_send_info.append(a.source)
                 return a.source
