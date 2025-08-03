@@ -639,9 +639,9 @@ __global__ void KeTrilinearInterpBw(T* in,
                                     const size_t output_h,
                                     const size_t output_w,
                                     const size_t num_channels,
-                                    const float ratio_d,
-                                    const float ratio_h,
-                                    const float ratio_w,
+                                    const double ratio_d,
+                                    const double ratio_h,
+                                    const double ratio_w,
                                     const bool align_corners,
                                     const int align_mode,
                                     const DataLayout data_layout) {
@@ -674,37 +674,51 @@ __global__ void KeTrilinearInterpBw(T* in,
                    : static_cast<int>(ratio_d * out_img_idt);
     in_img_idt = (in_img_idt > 0) ? in_img_idt : 0;
     size_t d_id = (in_img_idt < in_img_d - 1) ? 1 : 0;
-    T src_d = static_cast<T>(ratio_d * (out_img_idt + 0.5) - 0.5);
-    src_d = (src_d > static_cast<T>(0)) ? src_d : static_cast<T>(0);
+    double src_d = static_cast<double>(ratio_d * (out_img_idt + 0.5) - 0.5);
+    src_d = (src_d > static_cast<double>(0)) ? src_d : static_cast<double>(0);
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-    T d1lambda = align_flag
-                     ? static_cast<T>(static_cast<MT>(src_d) - in_img_idt)
-                     : static_cast<T>(ratio_d * out_img_idt - in_img_idt);
-    T d2lambda = static_cast<T>(1.0) - d1lambda;
+    double d1lambda_mt = align_flag ? src_d - static_cast<double>(in_img_idt)
+                                    : static_cast<double>(ratio_d) *
+                                              static_cast<double>(out_img_idt) -
+                                          static_cast<double>(in_img_idt);
+    double d2lambda_mt = static_cast<double>(1.0) - d1lambda_mt;
 
     size_t in_img_idy =
         align_flag ? static_cast<int>(ratio_h * (out_img_idy + 0.5) - 0.5)
                    : static_cast<int>(ratio_h * out_img_idy);
     in_img_idy = (in_img_idy > 0) ? in_img_idy : 0;
     size_t h_id = (in_img_idy < in_img_h - 1) ? 1 : 0;
-    T src_h = static_cast<T>(ratio_h * (out_img_idy + 0.5) - 0.5);
-    src_h = (src_h > static_cast<T>(0)) ? src_h : static_cast<T>(0);
-    T h1lambda = align_flag
-                     ? static_cast<T>(static_cast<MT>(src_h) - in_img_idy)
-                     : static_cast<T>(ratio_h * out_img_idy - in_img_idy);
-    T h2lambda = static_cast<T>(1.0) - h1lambda;
+    double src_h =
+        static_cast<double>(ratio_h) * static_cast<double>(out_img_idy + 0.5) -
+        static_cast<double>(0.5);
+    src_h = (src_h > static_cast<double>(0)) ? src_h : static_cast<double>(0);
+    double h1lambda_mt = align_flag ? src_h - static_cast<double>(in_img_idy)
+                                    : static_cast<double>(ratio_h) *
+                                              static_cast<double>(out_img_idy) -
+                                          static_cast<double>(in_img_idy);
+    double h2lambda_mt = static_cast<double>(1.0) - h1lambda_mt;
 
     size_t in_img_idx =
         align_flag ? static_cast<int>(ratio_w * (out_img_idx + 0.5) - 0.5)
                    : static_cast<int>(ratio_w * out_img_idx);
     in_img_idx = (in_img_idx > 0) ? in_img_idx : 0;
     size_t w_id = (in_img_idx < in_img_w - 1) ? 1 : 0;
-    T src_w = static_cast<T>(ratio_w * (out_img_idx + 0.5) - 0.5);
-    src_w = (src_w > static_cast<T>(0)) ? src_w : static_cast<T>(0);
-    T w1lambda = align_flag
-                     ? static_cast<T>(static_cast<MT>(src_w) - in_img_idx)
-                     : static_cast<T>(ratio_w * out_img_idx - in_img_idx);
-    T w2lambda = static_cast<T>(1.0) - w1lambda;
+    double src_w =
+        static_cast<double>(ratio_w) * static_cast<double>(out_img_idx + 0.5) -
+        static_cast<double>(0.5);
+    src_w = (src_w > static_cast<double>(0)) ? src_w : static_cast<double>(0);
+    double w1lambda_mt = align_flag ? src_w - static_cast<double>(in_img_idx)
+                                    : static_cast<double>(ratio_w) *
+                                              static_cast<double>(out_img_idx) -
+                                          static_cast<double>(in_img_idx);
+    double w2lambda_mt = static_cast<double>(1.0) - w1lambda_mt;
+
+    T d1lambda = static_cast<T>(d1lambda_mt);
+    T d2lambda = static_cast<T>(d2lambda_mt);
+    T h1lambda = static_cast<T>(h1lambda_mt);
+    T h2lambda = static_cast<T>(h2lambda_mt);
+    T w1lambda = static_cast<T>(w1lambda_mt);
+    T w2lambda = static_cast<T>(w2lambda_mt);
 
     if (data_layout == DataLayout::kNCHW) {
       size_t in_pos1_idx =
@@ -1179,10 +1193,6 @@ static void Interpolate2DCUDABwd(
     } else if (!optimize_flag & is_nchw) {
       const int64_t num_kernels = static_cast<int64_t>(n) * c * out_h * out_w;
       const int num_threads = std::min(dev_ctx.GetMaxThreadsPerBlock(), 1024);
-      int grid_size =
-          backends::gpu::DivUp(num_kernels, static_cast<int64_t>(num_threads));
-      int block_size = num_threads;
-
       KeBilinearInterpNCHWBw<T>
           <<<backends::gpu::DivUp(num_kernels,
                                   static_cast<int64_t>(num_threads)),
@@ -1366,29 +1376,31 @@ static void Interpolate3DCUDABwd(
     return;
   }
 
-  float ratio_d = 0.f;
-  float ratio_h = 0.f;
-  float ratio_w = 0.f;
+  double ratio_d = 0.f;
+  double ratio_h = 0.f;
+  double ratio_w = 0.f;
   if (out_d > 1) {
-    float new_scale_d = 0.f;
-    new_scale_d = (scale_d > 0) ? static_cast<float>(1. / scale_d)
-                                : static_cast<float>(in_d) / out_d;
-    ratio_d = (align_corners) ? static_cast<float>(in_d - 1) / (out_d - 1)
-                              : static_cast<float>(new_scale_d);
+    double new_scale_d = 0.0;
+    new_scale_d = (scale_d > 0) ? static_cast<double>(1.0 / scale_d)
+                                : static_cast<double>(in_d) / out_d;
+    ratio_d = (align_corners) ? static_cast<double>(in_d - 1) / (out_d - 1)
+                              : new_scale_d;
   }
+
   if (out_h > 1) {
-    float new_scale_h = 0.f;
-    new_scale_h = (scale_h > 0) ? static_cast<float>(1. / scale_h)
-                                : static_cast<float>(in_h) / out_h;
-    ratio_h = (align_corners) ? static_cast<float>(in_h - 1) / (out_h - 1)
-                              : static_cast<float>(new_scale_h);
+    double new_scale_h = 0.0;
+    new_scale_h = (scale_h > 0) ? static_cast<double>(1.0 / scale_h)
+                                : static_cast<double>(in_h) / out_h;
+    ratio_h = (align_corners) ? static_cast<double>(in_h - 1) / (out_h - 1)
+                              : new_scale_h;
   }
+
   if (out_w > 1) {
-    float new_scale_w = 0.f;
-    new_scale_w = (scale_w > 0) ? static_cast<float>(1. / scale_w)
-                                : static_cast<float>(in_w) / out_w;
-    ratio_w = (align_corners) ? static_cast<float>(in_w - 1) / (out_w - 1)
-                              : static_cast<float>(new_scale_w);
+    double new_scale_w = 0.0;
+    new_scale_w = (scale_w > 0) ? static_cast<double>(1.0 / scale_w)
+                                : static_cast<double>(in_w) / out_w;
+    ratio_w = (align_corners) ? static_cast<double>(in_w - 1) / (out_w - 1)
+                              : new_scale_w;
   }
 
   int64_t in_dhw = in_d * in_h * in_w;
