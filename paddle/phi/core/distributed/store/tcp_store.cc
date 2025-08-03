@@ -318,7 +318,7 @@ void MasterDaemon::run() {
 std::unique_ptr<TCPServer> TCPServer::create(uint16_t port,
                                              int nranks,
                                              int stop_check_timeout,
-                                             int use_libuv) {
+                                             bool use_libuv) {
   auto server = std::make_unique<TCPServer>();
   if (use_libuv) {
     // start libuv server

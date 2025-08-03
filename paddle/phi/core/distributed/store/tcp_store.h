@@ -127,7 +127,7 @@ class TCPServer {
   static std::unique_ptr<TCPServer> create(std::uint16_t port,
                                            int nranks,
                                            int stop_check_timeout,
-                                           int use_libuv);
+                                           bool use_libuv);
 
  private:
   std::unique_ptr<DaemonThread> _master_daemon;
