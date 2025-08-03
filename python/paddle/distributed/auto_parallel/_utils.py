@@ -12,18 +12,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import paddle
-import paddle.distributed as dist
 
 
 def _in_auto_parallel_align_mode_handle_none_gradients_in_step(step_method):
     def wrapper(self, *args, **kwargs):
-        if dist.in_auto_parallel_align_mode():
+        if not isinstance(self._parameter_list[0], dict):
             for param in self._parameter_list:
-                if param.stop_gradient:
+                if param.stop_gradient or param.grad is not None:
                     continue
-                if param._grad_ivar() is None:
-                    param.grad = paddle.zeros_like(param, dtype=param.dtype)
 
+                if hasattr(param, "main_grad"):
+                    param.main_grad = paddle.zeros_like(
+                        param, dtype=paddle.float32
+                    )
+                else:
+                    param.grad = paddle.zeros_like(param, dtype=param.dtype)
+        else:
+            for param_group in self._param_groups:
+                for param in param_group['params']:
+                    if param.stop_gradient or param.grad is not None:
+                        continue
+
+                    if hasattr(param, "main_grad"):
+                        param.main_grad = paddle.zeros_like(
+                            param, dtype=paddle.float32
+                        )
+                    else:
+                        param.grad = paddle.zeros_like(param, dtype=param.dtype)
         return step_method(self, *args, **kwargs)
 
     return wrapper
