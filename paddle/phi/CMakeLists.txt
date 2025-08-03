@@ -44,6 +44,7 @@ set(PHI_DEPS
     phi_profiler_proto
     auto_parallel_proto
     glog
+    libuv
     warpctc
     warprnnt
     eigen3
