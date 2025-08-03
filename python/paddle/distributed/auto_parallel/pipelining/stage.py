@@ -709,19 +709,19 @@ class _PipelineStageBase(ABC):
         flat_args = _flatten_args(input_args)
         flat_kwargs = _flatten_args(composite_kwargs)
         flatten_input_tensors = flat_args + flat_kwargs
-        grad_required_output_tuple = tuple(
+        requires_grad_output_tuple = tuple(
             out
             for out in output_tuple
             if isinstance(out, paddle.Tensor) and not out.stop_gradient
         )
-        grad_required_flatten_input_tensors = [
+        flatten_requires_grad_input_tensors = [
             inp
             for inp in flatten_input_tensors
             if isinstance(inp, paddle.Tensor) and not inp.stop_gradient
         ]
         self.fwd_cache[fwd_chunk_id] = (
-            grad_required_output_tuple,  # stage_output
-            grad_required_flatten_input_tensors,  # input_values
+            requires_grad_output_tuple,  # stage_output
+            flatten_requires_grad_input_tensors,  # input_values
         )
 
         logger.debug(
