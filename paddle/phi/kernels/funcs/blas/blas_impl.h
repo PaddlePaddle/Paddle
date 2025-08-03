@@ -1872,7 +1872,7 @@ void Blas<DeviceContext>::MatMulWithHead(const phi::DenseTensor &mat_a,
       dim_a.width_ % head_number,
       0,
       common::errors::InvalidArgument(
-          "The first input width must be some times the head number"
+          "The first input width must be some times the head number, "
           "but received first input width %d"
           ",  head_number %d",
           dim_a.width_,
@@ -1908,7 +1908,7 @@ void Blas<DeviceContext>::MatMulWithHead(const phi::DenseTensor &mat_a,
         dim_a.width_ % head_number,
         0,
         common::errors::InvalidArgument(
-            "The second input width should be some times the head number"
+            "The second input width should be some times the head number, "
             "but received second input width %d"
             ",  head_number %d",
             dim_b.width_,
