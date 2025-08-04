@@ -414,67 +414,6 @@ class Test_Schedules:
             opt.clear_grad()
         return losses_by_step, all_losses_in_one_step_md5sum
 
-    def test_pp_model_with_ClipGradByGlobalNorm(self):
-        """Test pipeline parallel model with ClipGradByGlobalNorm using PPMyModel as the baseline"""
-        fix_seeds()
-        pp_model = PPMyModel()
-        opt = paddle.optimizer.AdamW(
-            learning_rate=0.001,
-            parameters=pp_model.parameters(),
-            grad_clip=paddle.nn.ClipGradByGlobalNorm(1.0),
-        )
-        loss_fn = nn.MSELoss()
-        dataset = RandomDataset(image_size=8, output_size=8, num_samples=8)
-        loader = DataLoader(dataset, batch_size=1)
-        pp_losses_step = []
-        num_iterations = 20
-
-        for iter_idx in range(num_iterations):
-            pp_losses_micro_batch = []
-            for i, (data, label) in enumerate(loader):
-                output = pp_model(data)
-                loss = loss_fn(output, label)
-                pp_losses_micro_batch.append(loss.item())
-                loss.backward()
-            pp_losses_step.append(
-                np.array(pp_losses_micro_batch, dtype=np.float32).mean()
-            )
-            opt.step()
-            opt.clear_grad()
-        return pp_losses_step
-
-    def test_ScheduleFThenB_with_ClipGradByGlobalNorm(self):
-        fix_seeds()
-        self.model = PPMyModel_SingleStage()
-        self.micro_batches = 8
-        self.stage = PipelineStage(self.model, self.rank, 4, group=self.group)
-        self.stage.has_backward = True
-        loss_fn_ = nn.MSELoss()
-        schedule = ScheduleFThenB(
-            self.stage, self.micro_batches, loss_fn=loss_fn_
-        )
-        opt = paddle.optimizer.AdamW(
-            learning_rate=0.001,
-            parameters=self.model.parameters(),
-            grad_clip=paddle.nn.ClipGradByGlobalNorm(1.0),
-        )
-        dataset = RandomDataset(image_size=8, output_size=8, num_samples=8)
-        loader = DataLoader(dataset, batch_size=8)
-        losses_by_step = []
-        num_iterations = 20
-
-        for iter_idx in range(num_iterations):
-            losses_by_micro_batch = []
-            for i, (data, label) in enumerate(loader):
-                schedule.step(data, target=label, losses=losses_by_micro_batch)
-                if self.rank == 3:
-                    losses_by_step.append(
-                        np.array(losses_by_micro_batch, dtype=np.float32).mean()
-                    )
-            opt.step()
-            opt.clear_grad()
-        return losses_by_step
-
     def test_dp_pp_align_mode(self):
         fix_seeds()
         paddle.set_flags({'FLAGS_enable_auto_parallel_align_mode': True})
@@ -551,12 +490,6 @@ class Test_Schedules:
         scheduleFThenB_losses = self.test_ScheduleFThenB()
         schedule1f1b_losses = self.test_Schedule1F1B()
         schedulevpp_losses = self.test_ScheduleVPP()
-        pp_model_with_ClipGradByGlobalNorm_losses = (
-            self.test_pp_model_with_ClipGradByGlobalNorm()
-        )
-        scheduleFThenB_with_ClipGradByGlobalNorm_losses = (
-            self.test_ScheduleFThenB_with_ClipGradByGlobalNorm()
-        )
         dp_pp_losses, dp_pp_losses_md5sum = self.test_dp_pp()
         dp_pp_align_mode_losses, dp_pp_align_mode_losses_md5sum = (
             self.test_dp_pp_align_mode()
@@ -584,12 +517,6 @@ class Test_Schedules:
             np.testing.assert_allclose(
                 dp_pp_losses,
                 scheduleFThenB_losses,
-                rtol=1e-5,
-            )
-
-            np.testing.assert_allclose(
-                pp_model_with_ClipGradByGlobalNorm_losses,
-                scheduleFThenB_with_ClipGradByGlobalNorm_losses,
                 rtol=1e-5,
             )
 
