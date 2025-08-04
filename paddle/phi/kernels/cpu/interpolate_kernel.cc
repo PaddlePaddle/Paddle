@@ -561,7 +561,7 @@ static void Interpolate1DCPUFwd(
     int align_mode,
     DenseTensor* output) {
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
-  int n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
+  int64_t n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
   funcs::ExtractNCDWH(x.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
   float scale_w = -1.;
@@ -662,7 +662,7 @@ static void Interpolate2DCPUFwd(
     int align_mode,
     DenseTensor* output) {
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
-  int n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
+  int64_t n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
   funcs::ExtractNCDWH(x.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
   float scale_h = -1;
@@ -833,7 +833,7 @@ static void Interpolate3DCPUFwd(
     int align_mode,
     DenseTensor* output) {
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
-  int n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
+  int64_t n = 0, c = 0, in_d = 0, in_h = 0, in_w = 0;
   funcs::ExtractNCDWH(x.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
   float scale_d = -1;

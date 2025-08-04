@@ -925,5 +925,138 @@ class WeightOnlyLinearBackwardAndWeightDequantizeTestCase(unittest.TestCase):
             )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11020
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
+class WeightOnlyLinear_stream_k_TestCase(unittest.TestCase):
+
+    def test_weightonly_linear_backward_int4(self):
+        def test_weightonly_linear_backward(
+            self, algo='weight_only_int4', weight_dtype='int4'
+        ):
+            x = (
+                paddle.rand(shape=(128, 8192), dtype='float16')
+                * 1
+                / math.sqrt(8192)
+            )
+            x.stop_gradient = False
+            quant_x = copy.deepcopy(x)
+            quant_x.stop_gradient = False
+            weight = (
+                paddle.rand(shape=(8192, 8192), dtype='float16')
+                * 1
+                / math.sqrt(8192)
+            )
+
+            quant_weight, quant_scale = Q.weight_quantize(
+                x=weight.cuda(), algo=algo
+            )
+
+            quant_out = Q.weight_only_linear(
+                x=quant_x,
+                weight=quant_weight,
+                weight_scale=quant_scale,
+                weight_dtype=weight_dtype,
+            )
+
+        test_weightonly_linear_backward(self)
+
+    def test_weightonly_linear_backward_int4_bf16(self):
+        def test_weightonly_linear_backward(
+            self, algo='weight_only_int4', weight_dtype='int4'
+        ):
+            x = (
+                paddle.rand(shape=(128, 8192), dtype='bfloat16')
+                * 1
+                / math.sqrt(8192)
+            )
+            x.stop_gradient = False
+            quant_x = copy.deepcopy(x)
+            quant_x.stop_gradient = False
+            weight = (
+                paddle.rand(shape=(8192, 8192), dtype='bfloat16')
+                * 1
+                / math.sqrt(8192)
+            )
+
+            quant_weight, quant_scale = Q.weight_quantize(
+                x=weight.cuda(), algo=algo
+            )
+
+            quant_out = Q.weight_only_linear(
+                x=quant_x,
+                weight=quant_weight,
+                weight_scale=quant_scale,
+                weight_dtype=weight_dtype,
+            )
+
+        test_weightonly_linear_backward(self)
+
+    def test_weightonly_linear_backward_int8(self):
+        def test_weightonly_linear_backward(
+            self, algo='weight_only_int8', weight_dtype='int8'
+        ):
+            x = (
+                paddle.rand(shape=(128, 8192), dtype='float16')
+                * 1
+                / math.sqrt(8192)
+            )
+            x.stop_gradient = False
+            quant_x = copy.deepcopy(x)
+            quant_x.stop_gradient = False
+            weight = (
+                paddle.rand(shape=(8192, 8192), dtype='float16')
+                * 1
+                / math.sqrt(8192)
+            )
+
+            quant_weight, quant_scale = Q.weight_quantize(
+                x=weight.cuda(), algo=algo
+            )
+
+            quant_out = Q.weight_only_linear(
+                x=quant_x,
+                weight=quant_weight,
+                weight_scale=quant_scale,
+                weight_dtype=weight_dtype,
+            )
+
+        test_weightonly_linear_backward(self)
+
+    def test_weightonly_linear_backward_int8_bf16(self):
+        def test_weightonly_linear_backward(
+            self, algo='weight_only_int8', weight_dtype='int8'
+        ):
+            x = (
+                paddle.rand(shape=(128, 8192), dtype='bfloat16')
+                * 1
+                / math.sqrt(8192)
+            )
+            x.stop_gradient = False
+            quant_x = copy.deepcopy(x)
+            quant_x.stop_gradient = False
+            weight = (
+                paddle.rand(shape=(8192, 8192), dtype='bfloat16')
+                * 1
+                / math.sqrt(8192)
+            )
+
+            quant_weight, quant_scale = Q.weight_quantize(
+                x=weight.cuda(), algo=algo
+            )
+
+            quant_out = Q.weight_only_linear(
+                x=quant_x,
+                weight=quant_weight,
+                weight_scale=quant_scale,
+                weight_dtype=weight_dtype,
+            )
+
+        test_weightonly_linear_backward(self)
+
+
 if __name__ == '__main__':
     unittest.main()

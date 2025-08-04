@@ -142,16 +142,27 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   /// \brief Enable the use of OneDNN.
   /// The OneDNN control exists in both CPU and GPU mode, because there can
   /// still be some CPU kernels running in GPU mode.
-  virtual void EnableONEDNN() {}
+  virtual void EnableMKLDNN() {}  // deprecated
 
   /// \brief Disable the use of OneDNN.
-  virtual void DisableONEDNN() {}
+  virtual void DisableMKLDNN() {}  // deprecated
 
   /// \brief Enable OneDNN bfloat16.
   virtual void EnableMkldnnBfloat16() {}
 
   /// \brief Enable OneDNN int8.
   virtual void EnableMkldnnInt8() {}
+
+  /// \brief Disable OneDNN fc passes.
+  virtual void DisableMkldnnFcPasses() {}  // deprecated
+
+  /// \brief Enable the use of OneDNN.
+  /// The OneDNN control exists in both CPU and GPU mode, because there can
+  /// still be some CPU kernels running in GPU mode.
+  virtual void EnableONEDNN() {}
+
+  /// \brief Disable the use of OneDNN.
+  virtual void DisableONEDNN() {}
 
   /// \brief Disable OneDNN fc passes.
   virtual void DisableOnednnFcPasses() {}
@@ -211,16 +222,25 @@ class PD_INFER_DECL CpuPassStrategy : public PassStrategy {
   void EnableCUDNN() override;
 
   /// \brief Enable the use of OneDNN.
-  void EnableONEDNN() override;
+  void EnableMKLDNN() override;  // deprecated
 
   /// \brief Disable the use of OneDNN.
-  void DisableONEDNN() override;
+  void DisableMKLDNN() override;  // deprecated
 
   /// \brief Enable OneDNN bfloat16.
   void EnableMkldnnBfloat16() override;
 
   /// \brief Enable OneDNN int8.
   void EnableMkldnnInt8() override;
+
+  /// \brief Disable OneDNN fc passes.
+  void DisableMkldnnFcPasses() override;  // deprecated
+
+  /// \brief Enable the use of OneDNN.
+  void EnableONEDNN() override;
+
+  /// \brief Disable the use of OneDNN.
+  void DisableONEDNN() override;
 
   /// \brief Disable OneDNN fc passes.
   void DisableOnednnFcPasses() override;
@@ -257,13 +277,19 @@ class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
   void EnableCUDNN() override;
 
   /// \brief Not supported in GPU mode yet.
-  void EnableONEDNN() override;
+  void EnableMKLDNN() override;  // deprecated
 
   /// \brief Not supported in GPU mode yet.
   void EnableMkldnnBfloat16() override;
 
   /// \brief Not supported in GPU mode yet.
   void EnableMkldnnInt8() override;
+
+  /// \brief Disable OneDNN fc passes.
+  void DisableMkldnnFcPasses() override;
+
+  /// \brief Not supported in GPU mode yet.
+  void EnableONEDNN() override;
 
   /// \brief Disable OneDNN fc passes.
   void DisableOnednnFcPasses() override;
