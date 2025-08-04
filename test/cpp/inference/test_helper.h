@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/phi/common/port.h"
 #include "paddle/phi/core/platform/profiler.h"
 
-COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_onednn);
 
 namespace paddle {
 bool gpu_place_used(const paddle::PaddlePlace& place) {
@@ -235,8 +235,8 @@ void TestInference(
     fetch_targets[fetch_target_names[i]] = cpu_fetches[i];
   }
 
-  // 6. If export Flags_use_mkldnn=True, use onednn related ops.
-  if (FLAGS_use_mkldnn) executor.EnableONEDNN(*inference_program);
+  // 6. If export Flags_use_onednn=True, use onednn related ops.
+  if (FLAGS_use_onednn) executor.EnableONEDNN(*inference_program);
 
   // 7. Run the inference program
   {
