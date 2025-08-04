@@ -25,13 +25,6 @@ jobs:
     needs: clone
     uses: ./.github/workflows/docker.yml
 
-  xpu:
-    name: Linux-XPU
-    uses: ./.github/workflows/_Linux-XPU.yml
-    needs: build-docker
-    with:
-      docker_xpu_image: ${{ needs.build-docker.outputs.docker_xpu_image }}
-
   distribute:
     name: Distribute-stable
     uses: ./.github/workflows/_Distribute-stable.yml
@@ -44,7 +37,7 @@ jobs:
     uses: ./.github/workflows/_Coverage.yml
     needs: build-docker
     with:
-      docker_coverage_file: ${{ needs.build-docker.outputs.docker_coverage_file }}
+      docker_coverage_image: ${{ needs.build-docker.outputs.docker_coverage_image }}
 
   build:
     name: Linux-build
