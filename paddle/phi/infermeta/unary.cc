@@ -931,10 +931,10 @@ void DiagInferMeta(const MetaTensor& x,
   auto x_dims = x.dims();
 
   if (x_dims.size() <= 1) {
-    int64_t size_ = (x_dims.size() == 1UL ? x_dims[0] : 1) + std::abs(offset);
+    int64_t size_ = (x_dims.size() == 1ULL ? x_dims[0] : 1) + std::abs(offset);
     out->set_dims({size_, size_});
     out->set_dtype(x.dtype());
-  } else if (x_dims.size() == 2UL) {
+  } else if (x_dims.size() == 2ULL) {
     int64_t size_ = 0;
     if (offset >= 0) {
       // Note(LutaoChu): Do not use std::min here, otherwise the calculation
@@ -1617,7 +1617,7 @@ void FlattenInferMeta(const MetaTensor& x,
   }
 
   int64_t outer = 1;
-  std::vector<int32_t> out_shape;
+  std::vector<int64_t> out_shape;
   out_shape.reserve(in_dims_size - stop_axis + start_axis + 1);
 
   for (int i = 0; i < start_axis; ++i) {
@@ -2873,7 +2873,12 @@ void NonZeroInferMeta(const MetaTensor& condition, MetaTensor* out) {
       1UL,
       common::errors::InvalidArgument(
           "Input(Condition) should have number of dimension at least 1"));
-  out->set_dims(common::make_ddim({-1, rank}));
+  if (condition.numel() == 0) {
+    out->set_dims(common::make_ddim({0, rank}));
+  } else {
+    out->set_dims(common::make_ddim({-1, rank}));
+  }
+
   out->set_dtype(DataType::INT64);
 }
 
@@ -4380,7 +4385,7 @@ void SplitInferMeta(const MetaTensor& x,
         axis_value == -1) {  // NOLINT
       out_dims = std::vector<phi::DDim>(
           sections_data.size(),
-          common::make_ddim(std::vector<int>(x.dims().size(), -1)));
+          common::make_ddim(std::vector<int64_t>(x.dims().size(), -1)));
     } else {
       out_dims = std::vector<phi::DDim>(sections_data.size(), x.dims());
     }
@@ -4403,7 +4408,7 @@ void SplitInferMeta(const MetaTensor& x,
     const int unknow_dim_val = -1;
     int unknow_dim_idx = -1;
     int num_of_unknow = 0;
-    int sum_of_section = 0;
+    int64_t sum_of_section = 0;
 
     for (int i = 0; i < static_cast<int>(sections_data.size()); ++i) {
       sections_vec.push_back(sections_data[i]);
@@ -4412,7 +4417,7 @@ void SplitInferMeta(const MetaTensor& x,
         num_of_unknow++;
         unknow_dim_idx = i;
       } else {
-        sum_of_section += static_cast<int>(sections_data[i]);
+        sum_of_section += static_cast<int64_t>(sections_data[i]);
       }
     }
 

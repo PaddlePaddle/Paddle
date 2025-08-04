@@ -766,14 +766,34 @@ def _to_tensor_non_static(
         data = _handle_np_dtype(data, dtype)
 
     if isinstance(data, np.ndarray):
-        return core.eager.Tensor(
-            value=data,
-            place=place,
-            persistable=False,
-            zero_copy=False,
-            name=None,
-            stop_gradient=stop_gradient,
-        )
+        if (
+            data.dtype
+            in [
+                np.float32,
+                np.float64,
+                np.int32,
+                np.int64,
+                np.complex64,
+                np.complex128,
+            ]
+            and data.size == 1
+            and (
+                isinstance(place, core.CUDAPlace)
+                or (isinstance(place, core.Place) and place.is_gpu_place())
+            )
+        ):
+            ret = paddle.full(data.shape, data.reshape([1])[0], data.dtype)
+            ret.stop_gradient = stop_gradient
+            return ret
+        else:
+            return core.eager.Tensor(
+                value=data,
+                place=place,
+                persistable=False,
+                zero_copy=False,
+                name=None,
+                stop_gradient=stop_gradient,
+            )
     else:
         return paddle.Tensor(
             value=data,

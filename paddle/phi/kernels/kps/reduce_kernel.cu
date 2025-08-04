@@ -259,80 +259,24 @@ void SumRawKernel(const Context& dev_ctx,
     FullKernel<T, Context>(dev_ctx, out_dims, 0, out_dtype, out);
     return;
   }
-  if (x.numel() > std::numeric_limits<int32_t>::max()) {
-#ifndef PADDLE_WITH_XPU_KP
-    if (out_dtype != phi::DataType::UNDEFINED && out_dtype != x.dtype()) {
-      PADDLE_THROW(common::errors::Fatal(
-          "If Input.numel() > INT32_MAX, reduce_sum kernel uses EigenTensor "
-          "sum for reduce_sum function. As a result, input dtype should be "
-          "the same as out dtype"));
-    }
 
+  if (x.dtype() == phi::DataType::BFLOAT16 &&
+      out_dtype == phi::DataType::FLOAT32) {
     std::vector<int> reduce_dims = phi::funcs::details::GetReduceDim(
         dims.GetData(), x.dims().size(), reduce_all);
 
-#define CALL_EIGEN_REDUCE_SUM_KERNEL(reduce_rank)              \
-  case reduce_rank: {                                          \
-    if (reduce_all) {                                          \
-      ReduceSumEigen<T, 5, reduce_rank, true>(dev_ctx,         \
-                                              x,               \
-                                              reduce_all,      \
-                                              dims.GetData(),  \
-                                              out_dtype,       \
-                                              out,             \
-                                              &reduce_dims);   \
-    } else {                                                   \
-      ReduceSumEigen<T, 5, reduce_rank, false>(dev_ctx,        \
-                                               x,              \
-                                               reduce_all,     \
-                                               dims.GetData(), \
-                                               out_dtype,      \
-                                               out,            \
-                                               &reduce_dims);  \
-    }                                                          \
-    break;                                                     \
-  }
-
-    switch (reduce_dims.size()) {
-      CALL_EIGEN_REDUCE_SUM_KERNEL(1);
-      CALL_EIGEN_REDUCE_SUM_KERNEL(2);
-      CALL_EIGEN_REDUCE_SUM_KERNEL(3);
-      CALL_EIGEN_REDUCE_SUM_KERNEL(4);
-      CALL_EIGEN_REDUCE_SUM_KERNEL(5);
-      default:
-        PADDLE_THROW(common::errors::Fatal(
-            "If Input.numel() > INT32_MAX, reduce_sum kernel uses EigenTensor "
-            "sum for reduce_sum function. As a result, its dim should be <= "
-            "5."));
-        break;
-    }
-#undef CALL_EIGEN_REDUCE_SUM_KERNEL
-#else
-    PADDLE_THROW(common::errors::Fatal(
-        "If Input.numel() > INT32_MAX, reduce_sum kernel uses EigenTensor "
-        "sum for reduce_sum function. Such case is only supported on GPU "
-        "now."));
-#endif
+    phi::funcs::ReduceKernel<phi::dtype::bfloat16,
+                             float,
+                             kps::AddFunctor,
+                             kps::IdentityFunctor<phi::dtype::bfloat16, float>>(
+        dev_ctx,
+        x,
+        out,
+        kps::IdentityFunctor<phi::dtype::bfloat16, float>(),
+        reduce_dims);
   } else {
-    if (x.dtype() == phi::DataType::BFLOAT16 &&
-        out_dtype == phi::DataType::FLOAT32) {
-      std::vector<int> reduce_dims = phi::funcs::details::GetReduceDim(
-          dims.GetData(), x.dims().size(), reduce_all);
-
-      phi::funcs::ReduceKernel<
-          phi::dtype::bfloat16,
-          float,
-          kps::AddFunctor,
-          kps::IdentityFunctor<phi::dtype::bfloat16, float>>(
-          dev_ctx,
-          x,
-          out,
-          kps::IdentityFunctor<phi::dtype::bfloat16, float>(),
-          reduce_dims);
-    } else {
-      phi::Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(
-          dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
-    }
+    phi::Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(
+        dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
   }
 }
 }  // namespace phi

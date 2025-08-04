@@ -739,12 +739,13 @@ void BroadcastKernelApply(const KPDevice &ctx,
                           int axis,
                           Functor func) {
 #ifndef PADDLE_WITH_XPU_KP
-  constexpr bool kEnabledInt64IndexKernel = (NumOuts == 1 && kArity <= 3);
-  // check whether need broadcast
   auto compute_size = std::numeric_limits<int32_t>::max();
-  bool use_int64_index_kernel =
-      kEnabledInt64IndexKernel && (*outs)[0]->numel() >= compute_size;
-
+  bool use_int64_index_kernel = false;
+  for (auto *out : *outs) {
+    if (out->numel() >= compute_size) {
+      use_int64_index_kernel = true;
+    }
+  }
   if (use_int64_index_kernel) {  // use_int64_index_kernel
     BroadcastKernelSplit<OutT, Functor, kArity, NumOuts>(
         ctx, ins, outs, axis, func, compute_size);

@@ -237,6 +237,7 @@ test_roll_op
 test_row_conv_op
 test_rrelu_op
 test_scale_op
+test_scatter_add_op
 test_scatter_nd_op
 test_scatter_op
 test_searchsorted_op

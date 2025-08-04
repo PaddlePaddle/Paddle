@@ -205,6 +205,30 @@ class TestElementwiseOp2(TestElementwiseOp):
         self.outputs = {'Out': np.heaviside(self.inputs['X'], self.inputs['Y'])}
 
 
+class TestElementwiseOp3(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_heaviside"
+        x = np.random.uniform(-10, 10, [100]).astype("float64")
+        y = np.random.uniform(-10, 10, [3, 100]).astype("float64")
+        self.python_api = paddle.heaviside
+        self.prim_op_type = "comp"
+        self.public_python_api = paddle.heaviside
+        self.inputs = {'X': x, 'Y': y}
+        self.outputs = {'Out': np.heaviside(self.inputs['X'], self.inputs['Y'])}
+
+
+class TestElementwiseOp4(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_heaviside"
+        x = np.random.uniform(0, 10, []).astype("float64")
+        y = np.random.uniform(-10, 0, [2, 3, 20]).astype("float64")
+        self.python_api = paddle.heaviside
+        self.prim_op_type = "comp"
+        self.public_python_api = paddle.heaviside
+        self.inputs = {'X': x, 'Y': y}
+        self.outputs = {'Out': np.heaviside(self.inputs['X'], self.inputs['Y'])}
+
+
 class TestHeavisideFP16Op(OpTest):
     def setUp(self):
         self.dtype = np.float16

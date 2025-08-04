@@ -506,13 +506,13 @@ def flash_attention(
         ), "flash attention 3 does not support return softmax"
         assert (
             fixed_seed_offset is None or fa_version == 2
-        ), "flash attention 3 does not support setting seed_offset"
+        ), "flash attention 3 does not support return softmax"
         assert (
             rng_name == "" or fa_version == 2
         ), "flash attention 3 does not support setting rng_name"
         assert (
             training or fa_version == 2
-        ), "flash attention 3 does not support setting training to False"
+        ), "flash attention 3 does not support setting training"
         assert (
             name is None or fa_version == 2
         ), "flash attention 3 does not support setting name"

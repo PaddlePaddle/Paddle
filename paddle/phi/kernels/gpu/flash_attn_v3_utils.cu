@@ -273,7 +273,6 @@ void set_params_dgrad(Flash_bwd_params *params_handle,
                       const float softcap,
                       bool deterministic,
                       int const sm_margin) {
-  // TODO(xiehaoyang): add flashmask params
   set_params_fprop(dynload::fa3_cast_to_fwd_params_handle(params_handle),
                    b,
                    seqlen_q,

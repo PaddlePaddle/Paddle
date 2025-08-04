@@ -2096,6 +2096,36 @@ static PyObject* tensor_remove_grad_hook(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* apply_backward_hook(TensorObject* self,
+                                     PyObject* args,
+                                     PyObject* kwargs) {
+  EAGER_TRY
+  VLOG(6) << " Apply tensor hook for tensor: " << self->tensor.name();
+  std::shared_ptr<egr::GradNodeBase> grad_node =
+      egr::EagerUtils::grad_node(self->tensor);
+  PADDLE_ENFORCE_EQ(
+      !egr::EagerUtils::unsafe_autograd_meta(self->tensor)->StopGradient(),
+      true,
+      common::errors::InvalidArgument(
+          "Cannot apply backward hook on a Tensor that stop "
+          "gradient."));
+  PADDLE_ENFORCE_NE(
+      grad_node.get(),
+      nullptr,
+      common::errors::Fatal("Detected nullptr grad_node,"
+                            "Leaf tensor should have had grad_node "
+                            "with type: GradNodeAccumulation."));
+
+  auto accumulation_grad_node =
+      std::dynamic_pointer_cast<egr::GradNodeAccumulation>(grad_node);
+
+  if (accumulation_grad_node->ReduceHooksRegistered()) {
+    accumulation_grad_node->ApplyReduceHooks();
+  }
+  RETURN_PY_NONE;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor_inplace_assign(TensorObject* self,
                                        PyObject* args,
                                        PyObject* kwargs) {
@@ -2199,6 +2229,36 @@ static PyObject* tensor__clear_dataptr(TensorObject* self,
   EAGER_TRY
   self->tensor.set_impl(nullptr);
   RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor__clear_to_zero_allocation(TensorObject* self,
+                                                  PyObject* args,
+                                                  PyObject* kwargs) {
+  EAGER_TRY
+  auto* dense_tensor =
+      dynamic_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  if (dense_tensor != nullptr && dense_tensor->Holder() != nullptr) {
+    phi::DenseTensor tmp(std::make_shared<phi::Allocation>(
+                             nullptr, 0, dense_tensor->Holder()->place()),
+                         dense_tensor->meta());
+    dense_tensor->ShareBufferWith(std::move(tmp), /*only_buffer=*/true);
+  }
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor__holder_size(TensorObject* self,
+                                     PyObject* args,
+                                     PyObject* kwargs) {
+  EAGER_TRY
+  auto* dense_tensor =
+      dynamic_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  size_t size = 0;
+  if (dense_tensor != nullptr && dense_tensor->Holder() != nullptr) {
+    size = dense_tensor->Holder()->size();
+  }
+  return PyLong_FromSize_t(size);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -3663,6 +3723,10 @@ PyMethodDef variable_methods[] = {  // NOLINT
      (PyCFunction)(void (*)())tensor_remove_grad_hook,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
+    {"_apply_backward_hook",
+     (PyCFunction)(void (*)())apply_backward_hook,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
     {"_register_backward_hook",
      (PyCFunction)(void (*)())tensor_register_reduce_hook,
      METH_VARARGS | METH_KEYWORDS,
@@ -3677,6 +3741,14 @@ PyMethodDef variable_methods[] = {  // NOLINT
      nullptr},
     {"_clear_dataptr",
      (PyCFunction)(void (*)())tensor__clear_dataptr,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_clear_to_zero_allocation",
+     (PyCFunction)(void (*)())tensor__clear_to_zero_allocation,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_holder_size",
+     (PyCFunction)(void (*)())tensor__holder_size,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
     {"_copy_gradient_from",
