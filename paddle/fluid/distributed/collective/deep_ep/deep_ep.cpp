@@ -1983,7 +1983,10 @@ Buffer::low_latency_dispatch_two_stage(
   auto next_buffer = layout.buffers[low_latency_buffer_idx ^= 1];
 
   // Wait previous tasks to be finished
-  auto launch_stream = calc_ctx->stream();
+  auto compute_stream = calc_ctx->stream();
+  auto launch_stream = async ? comm_stream : compute_stream;
+  EP_HOST_ASSERT(!(async && return_recv_hook));
+
   auto return_x_dtype = phi::DataType::BFLOAT16;
   if (use_fp8) {
     return_x_dtype = phi::DataType::FLOAT8_E4M3FN;
@@ -2084,11 +2087,16 @@ Buffer::low_latency_dispatch_two_stage(
         phases,
         low_latency_buffer_idx);
   };
-  // TODO(Zhenyu Li): supports async/return_recv_hook
-  launcher((LOW_LATENCY_SEND_PHASE | LOW_LATENCY_RECV_PHASE));
-  // Wait streams
+  launcher(return_recv_hook
+               ? LOW_LATENCY_SEND_PHASE
+               : (LOW_LATENCY_SEND_PHASE | LOW_LATENCY_RECV_PHASE));
+  // Async event
   std::optional<EventHandle> event;
+  if (async) {
+    event = EventHandle(launch_stream);
+  }
   std::optional<std::function<void()>> recv_hook = std::nullopt;
+  if (return_recv_hook) recv_hook = [=]() { launcher(LOW_LATENCY_RECV_PHASE); };
   return {packed_recv_x,
           packed_recv_x_scales,
           packed_rdma_recv_x,
@@ -2158,7 +2166,9 @@ Buffer::low_latency_combine_two_stage(
   auto buffer = layout.buffers[low_latency_buffer_idx];
   auto next_buffer = layout.buffers[low_latency_buffer_idx ^= 1];
 
-  auto launch_stream = calc_ctx->stream();
+  auto compute_stream = calc_ctx->stream();
+  auto launch_stream = async ? comm_stream : compute_stream;
+  EP_HOST_ASSERT(!(async && return_recv_hook));
 
   // Allocate output tensor
   deep_ep::detail::Tensor combined_x;
@@ -2204,12 +2214,17 @@ Buffer::low_latency_combine_two_stage(
                                     dispatch_use_fp8,
                                     low_latency_buffer_idx);
   };
-  // TODO(Zhenyu Li): supports async/return_recv_hook
-  launcher((LOW_LATENCY_SEND_PHASE | LOW_LATENCY_RECV_PHASE));
-  // Wait streams
+  launcher(return_recv_hook
+               ? LOW_LATENCY_SEND_PHASE
+               : (LOW_LATENCY_SEND_PHASE | LOW_LATENCY_RECV_PHASE));
+  // Async event
   std::optional<EventHandle> event;
+  if (async) {
+    event = EventHandle(launch_stream);
+  }
   // Receiver callback
   std::optional<std::function<void()>> recv_hook = std::nullopt;
+  if (return_recv_hook) recv_hook = [=]() { launcher(LOW_LATENCY_RECV_PHASE); };
   // Return values
   return {combined_x, event, recv_hook};
 }
