@@ -3,7 +3,7 @@ name: Coverage
 on:
   workflow_call:
     inputs:
-      docker_coverage_file:
+      docker_coverage_image:
         type: string
         required: true
 
@@ -68,7 +68,7 @@ jobs:
         run: |
           container_name=${TASK}-build-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
-          docker_image=${{ inputs.docker_coverage_file }}
+          docker_image=${{ inputs.docker_coverage_image }}
           docker run -d -t --name ${container_name} \
             -v "/home/data/cfs:/home/data/cfs" \
             -v "/home/data/cfs/.cache:/root/.cache" \
