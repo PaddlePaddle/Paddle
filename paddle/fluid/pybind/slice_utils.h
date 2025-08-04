@@ -1240,6 +1240,11 @@ static void ApplyGetitem(const int index_size,
                     &transed_index_int64);
 
       AdvancedIndex ad = AdvancedIndex(*transed_tensor, transed_index_int64);
+      // is_combined:
+      //   Distinguishes between regular indexing (single index) and combined
+      //   indexing (multiple indices). When false (single index case), enables
+      //   optimized backward pass using IndexPutWithSortKernel for better
+      //   performance.
       const bool is_combined = (index_size == 1) ? false : true;
       const bool accumulate = true;
       *out = index_elementwise_get_ad_func(*self_tensor,
