@@ -573,7 +573,9 @@ void FusionGRUKernel(const Context& dev_ctx,
                              dev_ctx.GetDnnAttr("mkldnn_data_type"))
           : "float32";
   const std::string onednn_data_type =
-      dev_ctx.HasDnnAttr("onednn_data_type")
+      (dev_ctx.HasDnnAttr("onednn_data_type") &&
+       PADDLE_GET_CONST(std::string, dev_ctx.GetDnnAttr("onednn_data_type")) !=
+           "")
           ? PADDLE_GET_CONST(std::string,
                              dev_ctx.GetDnnAttr("onednn_data_type"))
           : mkldnn_data_type;
