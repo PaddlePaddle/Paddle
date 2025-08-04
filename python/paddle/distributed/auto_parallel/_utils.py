@@ -11,10 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from functools import wraps
+
 import paddle
 
 
 def _in_auto_parallel_align_mode_handle_none_gradients_in_step(step_method):
+    @wraps(step_method)
     def wrapper(self, *args, **kwargs):
         if not isinstance(self._parameter_list[0], dict):
             for param in self._parameter_list:
