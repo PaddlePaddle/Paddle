@@ -119,9 +119,7 @@ struct DWConvParams {
 
 }  // namespace phi
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace phi::math {
 
 /*
  * \brief Compute the depthwise convolution which include
@@ -2002,6 +2000,4 @@ template class DepthwiseConvFilterGradFunctor<phi::GPUContext,
                                               phi::dtype::float16,
                                               true>;
 
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace phi::math

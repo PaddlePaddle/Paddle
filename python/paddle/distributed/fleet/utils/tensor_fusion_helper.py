@@ -807,6 +807,7 @@ class FusedCommBuffer:
     def scale_grads(self):
         if self.need_reduce_scale_sync():
             if self._comm_group.nranks == 1 and self._task is None:
+                self._reset_params_checked_in()
                 return
             assert self._task is not None, "Task is not initialized."
             self._task.wait()

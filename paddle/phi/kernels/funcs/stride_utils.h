@@ -119,7 +119,9 @@ static inline void permute_dimensions(const std::vector<int64_t> stride_size,
       std::vector<int64_t> original_data((*strides_array)[i],
                                          (*strides_array)[i] + stride_size[i]);
       temp_strides[i] = reorder(original_data);
-      (*strides_array)[i] = temp_strides[i].data();
+      for (int64_t j = 0; j < stride_size[i]; j++) {
+        (*strides_array)[i][j] = temp_strides[i][j];
+      }
     }
   }
 }
@@ -180,7 +182,7 @@ static inline void reorder_dimensions(const std::vector<int64_t> stride_size,
     return 0;
   };
   // insertion sort with support for ambiguous comparisons
-  for (size_t i = 0; i < ndim; i++) {
+  for (size_t i = 1; i < ndim; i++) {
     int dim1 = i;
     for (int dim0 = i - 1; dim0 >= 0; dim0--) {
       int comparison = should_swap(perm_[dim0], perm_[dim1]);
@@ -278,6 +280,51 @@ static inline void coalesce_dimensions(const int64_t ndim,
   for (int64_t i = 0; i < N; i++) {
     (*stride_size)[i] = shape_->size();
   }
+}
+
+template <int N>
+static inline void CopyStride(
+    const std::vector<int64_t> output_dims,  // value_tensor
+    const std::vector<int64_t> output_strides,
+    const int64_t output_elesize,
+    const std::vector<int64_t> input_dims,  // input_tensor
+    const std::vector<int64_t> input_strides,
+    const int64_t input_elesize,
+    std::vector<int64_t>* desired_shape,
+    std::array<int64_t*, N>* strides_array,
+    int64_t* numel,
+    std::array<std::vector<int64_t>, N>& strides_vec) {  // NOLINT
+  int ndim = output_dims.size();
+
+  std::vector<int64_t> stride_size;
+
+  *desired_shape = compute_shapes({input_dims, output_dims});
+  strides_vec[0] = compute_strides(output_dims,  // input_tensor
+                                   output_strides,
+                                   output_elesize,
+                                   ndim,
+                                   desired_shape,
+                                   &stride_size);
+
+  strides_vec[1] = compute_strides(input_dims,  // value_tensor
+                                   input_strides,
+                                   input_elesize,
+                                   ndim,
+                                   desired_shape,
+                                   &stride_size);
+
+  for (size_t i = 0; i < N; i++) {
+    (*strides_array)[i] = strides_vec[i].data();
+  }
+  reorder_dimensions<N>(stride_size, desired_shape, strides_array);
+
+  coalesce_dimensions<N>(ndim, strides_array, &stride_size, desired_shape);
+
+  int num = 1;
+  for (size_t i = 0; i < desired_shape->size(); i++) {
+    num *= (*desired_shape)[i];
+  }
+  *numel = num;
 }
 
 template <int N>

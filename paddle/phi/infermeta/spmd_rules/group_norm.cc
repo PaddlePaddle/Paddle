@@ -77,8 +77,14 @@ SpmdInfo GroupNormInferSpmdBase(const DistMetaTensor& x,
   for (int i = 0; i < x_ndim; ++i) {
     x_axes[i] = alphabet[i];
   }
-  std::string mean_axes(1, x_axes[0]);
-  std::string variance_axes(1, x_axes[0]);
+  std::string mean_axes(2, '1');
+  std::string variance_axes(2, '1');
+
+  for (int i = 0; i < 2; ++i) {
+    mean_axes[i] = x_axes[i];
+    variance_axes[i] = x_axes[i];
+  }
+
   // x_axes[0] = alphabet[0];
   std::string scale_axes(1, x_axes[0]);
   std::string bias_axes(1, x_axes[0]);
@@ -217,16 +223,16 @@ SpmdInfo GroupNormGradInferSpmdBase(const DistMetaTensor& x,
           bias_ndim));
   PADDLE_ENFORCE_EQ(
       mean_ndim,
-      1,
+      2,
       common::errors::InvalidArgument(
-          "The ndim of mean in group_norm should be 1, but got [%d].",
-          mean_ndim));
+          "The ndim of bias in group_norm should be 2, but got [%d].",
+          bias_ndim));
   PADDLE_ENFORCE_EQ(
       variance_ndim,
-      1,
+      2,
       common::errors::InvalidArgument(
-          "The ndim of variance in group_norm should be 1, but got [%d].",
-          variance_ndim));
+          "The ndim of bias in group_norm should be 2, but got [%d].",
+          bias_ndim));
 
   // Step1: Build Einsum Notation
   // Only N axis can be sharded.
@@ -243,8 +249,13 @@ SpmdInfo GroupNormGradInferSpmdBase(const DistMetaTensor& x,
   }
   std::string scale_axes(1, x_axes[0]);
   std::string bias_axes(1, x_axes[0]);
-  std::string mean_axes(1, x_axes[0]);
-  std::string variance_axes(1, x_axes[0]);
+  std::string mean_axes(2, '1');
+  std::string variance_axes(2, '1');
+
+  for (int i = 0; i < 2; ++i) {
+    mean_axes[i] = x_axes[i];
+    variance_axes[i] = x_axes[i];
+  }
   // output
   std::string x_grad_axes = x_axes;
   std::string scale_grad_axes(1, x_axes[0]);  // C axis

@@ -628,7 +628,23 @@ def median(
             axis += dims
     sz = x.shape[axis]
     kth = sz >> 1
-    tensor_topk, idx = paddle.topk(x, kth + 1, axis=axis, largest=False)
+    # Use `sort` when:
+    # 1. The axis is not the last dimension (memory non-contiguous)
+    # 2. The axis size exceeds 10000 (heuristic threshold for performance crossover)
+    # Rationale:
+    # - `paddle.topk` in non-contiguous dimensions has O(N*k) complexity (k=n/2 for median → O(n²)). in paddle/phi/kernels/gpu/top_k_kernel.cu
+    # - `paddle.sort` has guaranteed O(n log n) complexity regardless of axis
+    use_sort = (axis != dims - 1) and (sz > 10000)
+    if use_sort:
+        sorted_x = paddle.sort(x, axis=axis, stable=True)
+        tensor_topk = paddle.slice(
+            sorted_x, axes=[axis], starts=[0], ends=[kth + 1]
+        )
+        if need_idx:
+            idx = paddle.argsort(x, axis=axis, stable=True)
+            idx = paddle.slice(idx, axes=[axis], starts=[0], ends=[kth + 1])
+    else:
+        tensor_topk, idx = paddle.topk(x, kth + 1, axis=axis, largest=False)
     if mode == 'avg':
         dtype = (
             'float64'

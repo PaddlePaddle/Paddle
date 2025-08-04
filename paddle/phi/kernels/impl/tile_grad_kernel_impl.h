@@ -171,9 +171,13 @@ void TileGradKernel(const Context& dev_ctx,
         TileBackward<Context, T, 6>(
             dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, x_grad);
         break;
+      case 7:
+        TileBackward<Context, T, 7>(
+            dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, x_grad);
+        break;
       default:
         PADDLE_THROW(errors::InvalidArgument(
-            "Only support tensor with rank being between 1 and 6. But "
+            "Only support tensor with rank being between 1 and 7. But "
             "received tensor's rank = %d.",
             dims));
     }

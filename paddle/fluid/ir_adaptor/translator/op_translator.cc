@@ -262,6 +262,7 @@ inline std::string GetPrefix(pir::IrContext* ctx, const OpDesc& op_desc) {
   }
 #ifdef PADDLE_WITH_DNNL
   if (op_desc.GetAttrIfExists<bool>("use_mkldnn") ||
+      op_desc.GetAttrIfExists<bool>("use_onednn") ||
       paddle::dialect::IsOneDNNOnlyOp(op_desc.Type())) {
     if (!HasOpInfo(ctx, op_desc, kOneDNNTargetDialectPrefix)) {
       VLOG(3) << op_desc.Type()
@@ -1838,7 +1839,8 @@ struct MulOpTranscriber : public OpTranscriber {
                              const OpDesc& op_desc,
                              pir::Block* block) override {
 #ifdef PADDLE_WITH_DNNL
-    if (op_desc.GetAttrIfExists<bool>("use_mkldnn")) {
+    if (op_desc.GetAttrIfExists<bool>("use_mkldnn") ||
+        op_desc.GetAttrIfExists<bool>("use_onednn")) {
       return static_cast<OpTranscriber>(*this).operator()(  // NOLINT
           ctx,
           param_map,
@@ -2015,7 +2017,8 @@ struct MulGradOpTranscriber : public OpTranscriber {
                              const OpDesc& op_desc,
                              pir::Block* block) override {
 #ifdef PADDLE_WITH_DNNL
-    if (op_desc.GetAttrIfExists<bool>("use_mkldnn")) {
+    if (op_desc.GetAttrIfExists<bool>("use_mkldnn") ||
+        op_desc.GetAttrIfExists<bool>("use_onednn")) {
       return static_cast<OpTranscriber>(*this).operator()(  // NOLINT
           ctx,
           param_map,

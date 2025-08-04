@@ -59,7 +59,7 @@ class MatmulOneDNNHandler : public OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
     std::vector<int64_t> x_strides(x_dims.size() - 3, 1);
     std::vector<int64_t> y_strides(x_dims.size() - 3, 1);
     std::vector<int64_t> out_strides(x_dims.size() - 3, 1);
-    std::vector<int64_t> out_ddims(x_dims.size() - 3, 1);
+    std::vector<int64_t> out_dims(x_dims.size() - 3, 1);
 
     x_strides.reserve(x_dims.size());
     y_strides.reserve(x_dims.size());
@@ -78,20 +78,20 @@ class MatmulOneDNNHandler : public OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
     }
 
     out_strides.insert(out_strides.end(), {M * N, N, 1});
-    out_ddims.insert(out_ddims.end(),
-                     {std::max(x_dims[MB_idx], y_dims[MB_idx]), M, N});
+    out_dims.insert(out_dims.end(),
+                    {std::max(x_dims[MB_idx], y_dims[MB_idx]), M, N});
 
     for (int i = x_dims.size() - 4; i >= 0; --i) {
-      out_ddims[i] = std::max(x_dims[i], y_dims[i]);
+      out_dims[i] = std::max(x_dims[i], y_dims[i]);
       x_strides[i] = x_dims[i + 1] * x_strides[i + 1];
       y_strides[i] = y_dims[i + 1] * y_strides[i + 1];
 
-      out_strides[i] = out_ddims[i + 1] * out_strides[i + 1];
+      out_strides[i] = out_dims[i + 1] * out_strides[i + 1];
     }
 
     auto x_md = memory::desc(x_dims, OneDNNGetDataType<XT>(), x_strides);
     auto y_md = memory::desc(y_dims, OneDNNGetDataType<YT>(), y_strides);
-    auto out_md = memory::desc(out_ddims, OneDNNGetDataType<OT>(), out_strides);
+    auto out_md = memory::desc(out_dims, OneDNNGetDataType<OT>(), out_strides);
 
     this->AcquireForwardPrimitiveDescriptor(x_md, y_md, out_md);
   }

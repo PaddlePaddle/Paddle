@@ -639,6 +639,21 @@ class TestNanmedianZeroSize1(TestNanmedianZeroSize):
         self.axis = -1
 
 
+class TestNanmedianNan(unittest.TestCase):
+    def init_data(self):
+        x_np = np.array([1.4907, np.nan, 1.0593, 1.5696])
+        self.x = paddle.to_tensor(x_np)
+        self.expect_out = np.nanmedian(x_np)
+        self.axis = None
+
+    def test_nan(self):
+        self.init_data()
+        out = paddle.nanmedian(self.x, axis=self.axis)
+        np.testing.assert_allclose(
+            out.numpy(), self.expect_out, rtol=1e-05, equal_nan=True
+        )
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),

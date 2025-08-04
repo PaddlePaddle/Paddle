@@ -71,7 +71,7 @@ inline void GetResidualsTensor(const DeviceContext& dev_ctx,
 
   if (m > n && driver != "gelsy") {
     bool compute_residuals = true;
-    if (driver == "gelss" || driver == "gelsd") {
+    if ((driver == "gelss" || driver == "gelsd") && rank->numel() != 0) {
       if (dim_size == 2) {
         compute_residuals = rank->data<int>()[0] == n;
       } else {

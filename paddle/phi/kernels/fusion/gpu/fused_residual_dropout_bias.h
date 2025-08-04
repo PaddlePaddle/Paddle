@@ -174,7 +174,7 @@ __global__ void FusedResidualDropoutBiasGrad(const T *dout,
                                              const int64_t cols,
                                              T *dx,
                                              T *dbias) {
-  int64_t col_id = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t col_id = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
 
   using LoadT = phi::AlignedVector<T, VecSize>;
   using StoreT = phi::AlignedVector<T, VecSize>;
@@ -186,8 +186,8 @@ __global__ void FusedResidualDropoutBiasGrad(const T *dout,
                                                factor == static_cast<T>(1.0));
 
   if (col_id * VecSize < cols) {
-    for (int row_id = threadIdx.y; row_id < rows; row_id += blockDim.y) {
-      int index = row_id * cols + col_id * VecSize;
+    for (int64_t row_id = threadIdx.y; row_id < rows; row_id += blockDim.y) {
+      int64_t index = row_id * cols + col_id * VecSize;
       LoadT out_vec;
       MaskLoadT mask_vec;
       StoreT dx_vec;

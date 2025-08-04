@@ -308,6 +308,41 @@ struct ReciprocalFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct Reciprocal {
+  HOSTDEVICE ComplexType<T> operator()(const ComplexType<T>& val) const {
+    auto both_inf = [](T real, T imag) {
+      return (std::isinf(real) && std::isinf(imag));
+    };
+
+    auto either_inf = [](T real, T imag) {
+      return std::isinf(real) || std::isinf(imag);
+    };
+
+    auto either_nan = [](T real, T imag) {
+      return std::isnan(real) || std::isnan(imag);
+    };
+    if (either_nan(val.real, val.imag) || both_inf(val.real, val.imag)) {
+      // If either is Nan or both are infinite, return {nan, nan}
+      return ComplexType<T>(std::numeric_limits<T>::quiet_NaN(),
+                            std::numeric_limits<T>::quiet_NaN());
+    } else if (either_inf(val.real, val.imag)) {
+      // If either is Inf, return {0, 0}
+      return ComplexType<T>{static_cast<T>(0), static_cast<T>(0)};
+    }
+    return static_cast<ComplexType<T>>(1.0) / val;
+  }
+};
+
+template <typename T>
+struct ReciprocalFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.unaryExpr(Reciprocal<T>());
+  }
+};
+
+template <typename T>
 struct ReciprocalGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device,
             typename X,
@@ -3604,6 +3639,37 @@ struct CudaReciprocalFunctor : public BaseActivationFunctor<T> {
 
   __device__ __forceinline__ T operator()(const T x) const {
     return static_cast<T>(one / static_cast<MPType>(x));
+  }
+};
+
+template <typename T>
+struct CudaReciprocalFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  __device__ __forceinline__ ComplexType<T> operator()(
+      const ComplexType<T> x) const {
+    auto both_inf = [](T real, T imag) {
+      return (::isinf(real) && ::isinf(imag));
+    };
+
+    auto either_inf = [](T real, T imag) {
+      return ::isinf(real) || ::isinf(imag);
+    };
+
+    auto either_nan = [](T real, T imag) {
+      return ::isnan(real) || ::isnan(imag);
+    };
+    if (either_nan(x.real, x.imag) || both_inf(x.real, x.imag)) {
+      // If either is Nan or both are infinite, return {nan, nan}
+      if constexpr (std::is_same<T, float>::value) {
+        return ComplexType<T>(nanf(""), nanf(""));
+      } else if constexpr (std::is_same<T, double>::value) {
+        return ComplexType<T>(nan(""), nan(""));
+      }
+    } else if (either_inf(x.real, x.imag)) {
+      // If either is Inf, return {0, 0}
+      return ComplexType<T>(static_cast<T>(0), static_cast<T>(0));
+    }
+    return static_cast<ComplexType<T>>(1.0) / x;
   }
 };
 
