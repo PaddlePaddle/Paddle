@@ -1,4 +1,4 @@
-#   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,9 +14,9 @@
 
 import unittest
 
-import paddle
+from utils import dygraph_guard
 
-# from .utils import dygraph_guard
+import paddle
 
 
 class TestTensorCreation(unittest.TestCase):
@@ -32,139 +32,266 @@ class TestTensorCreation(unittest.TestCase):
         for device in self.devices:
             for requires_grad in self.requires_grads:
                 for dtype in self.dtypes:
-                    x = paddle.ones(
-                        [2],
-                        dtype=dtype,
-                        requires_grad=requires_grad,
-                        device=device,
-                    )
-                    self.assertEqual(x.place, device)
-                    self.assertEqual(x.stop_gradient, not requires_grad)
-                    if isinstance(dtype, paddle.dtype):
-                        self.assertEqual(x.dtype, dtype)
+                    with dygraph_guard():
+                        x = paddle.ones(
+                            [2],
+                            dtype=dtype,
+                            requires_grad=requires_grad,
+                            device=device,
+                        )
+                        self.assertEqual(x.place, device)
+                        self.assertEqual(x.stop_gradient, not requires_grad)
+                        if isinstance(dtype, paddle.dtype):
+                            self.assertEqual(x.dtype, dtype)
+                        st_f = paddle.jit.to_static(
+                            paddle.ones, full_graph=True
+                        )
+                        x = st_f(
+                            [2],
+                            dtype=dtype,
+                            requires_grad=requires_grad,
+                            device=device,
+                        )
+                        self.assertEqual(x.place, device)
+                        self.assertEqual(x.stop_gradient, not requires_grad)
+                        if isinstance(dtype, paddle.dtype):
+                            self.assertEqual(x.dtype, dtype)
 
     def test_zeros(self):
         for device in self.devices:
             for requires_grad in self.requires_grads:
                 for dtype in self.dtypes:
-                    x = paddle.zeros(
-                        [2],
-                        dtype=dtype,
-                        requires_grad=requires_grad,
-                        device=device,
-                    )
-                    self.assertEqual(x.place, device)
-                    self.assertEqual(x.stop_gradient, not requires_grad)
-                    if isinstance(dtype, paddle.dtype):
-                        self.assertEqual(x.dtype, dtype)
+                    with dygraph_guard():
+                        x = paddle.zeros(
+                            [2],
+                            dtype=dtype,
+                            requires_grad=requires_grad,
+                            device=device,
+                        )
+                        self.assertEqual(x.place, device)
+                        self.assertEqual(x.stop_gradient, not requires_grad)
+                        if isinstance(dtype, paddle.dtype):
+                            self.assertEqual(x.dtype, dtype)
+                        st_f = paddle.jit.to_static(
+                            paddle.zeros, full_graph=True
+                        )
+                        x = st_f(
+                            [2],
+                            dtype=dtype,
+                            requires_grad=requires_grad,
+                            device=device,
+                        )
+                        self.assertEqual(x.place, device)
+                        self.assertEqual(x.stop_gradient, not requires_grad)
+                        if isinstance(dtype, paddle.dtype):
+                            self.assertEqual(x.dtype, dtype)
 
     def test_full(self):
         for device in self.devices:
             for requires_grad in self.requires_grads:
                 for dtype in self.dtypes:
-                    x = paddle.full(
-                        [2],
-                        fill_value=3.14,
-                        dtype=dtype,
-                        requires_grad=requires_grad,
-                        device=device,
-                    )
-                    self.assertEqual(x.place, device)
-                    self.assertEqual(x.stop_gradient, not requires_grad)
-                    if isinstance(dtype, paddle.dtype):
-                        self.assertEqual(x.dtype, dtype)
+                    with dygraph_guard():
+                        x = paddle.full(
+                            [2],
+                            fill_value=3.14,
+                            dtype=dtype,
+                            requires_grad=requires_grad,
+                            device=device,
+                        )
+                        self.assertEqual(x.place, device)
+                        self.assertEqual(x.stop_gradient, not requires_grad)
+                        if isinstance(dtype, paddle.dtype):
+                            self.assertEqual(x.dtype, dtype)
+                        st_f = paddle.jit.to_static(
+                            paddle.full, full_graph=True
+                        )
+                        x = st_f(
+                            [2],
+                            fill_value=3.14,
+                            dtype=dtype,
+                            requires_grad=requires_grad,
+                            device=device,
+                        )
+                        self.assertEqual(x.place, device)
+                        self.assertEqual(x.stop_gradient, not requires_grad)
+                        if isinstance(dtype, paddle.dtype):
+                            self.assertEqual(x.dtype, dtype)
 
     def test_empty(self):
         for device in self.devices:
             for requires_grad in self.requires_grads:
                 for dtype in self.dtypes:
-                    x = paddle.empty(
-                        [2],
-                        dtype=dtype,
-                        requires_grad=requires_grad,
-                        device=device,
-                    )
-                    self.assertEqual(x.place, device)
-                    self.assertEqual(x.stop_gradient, not requires_grad)
-                    if isinstance(dtype, paddle.dtype):
-                        self.assertEqual(x.dtype, dtype)
+                    with dygraph_guard():
+                        x = paddle.empty(
+                            [2],
+                            dtype=dtype,
+                            requires_grad=requires_grad,
+                            device=device,
+                        )
+                        self.assertEqual(x.place, device)
+                        self.assertEqual(x.stop_gradient, not requires_grad)
+                        if isinstance(dtype, paddle.dtype):
+                            self.assertEqual(x.dtype, dtype)
+                        st_f = paddle.jit.to_static(
+                            paddle.empty, full_graph=True
+                        )
+                        x = st_f(
+                            [2],
+                            dtype=dtype,
+                            requires_grad=requires_grad,
+                            device=device,
+                        )
+                        self.assertEqual(x.place, device)
+                        self.assertEqual(x.stop_gradient, not requires_grad)
+                        if isinstance(dtype, paddle.dtype):
+                            self.assertEqual(x.dtype, dtype)
 
     def test_eye(self):
         for device in self.devices:
             for requires_grad in self.requires_grads:
                 for dtype in self.dtypes:
-                    x = paddle.eye(
-                        3,
-                        3,
-                        dtype=dtype,
-                        requires_grad=requires_grad,
-                        device=device,
-                    )
-                    self.assertEqual(x.place, device)
-                    self.assertEqual(x.stop_gradient, not requires_grad)
-                    if isinstance(dtype, paddle.dtype):
-                        self.assertEqual(x.dtype, dtype)
+                    with dygraph_guard():
+                        x = paddle.eye(
+                            3,
+                            3,
+                            dtype=dtype,
+                            requires_grad=requires_grad,
+                            device=device,
+                        )
+                        self.assertEqual(x.place, device)
+                        self.assertEqual(x.stop_gradient, not requires_grad)
+                        if isinstance(dtype, paddle.dtype):
+                            self.assertEqual(x.dtype, dtype)
+                        st_f = paddle.jit.to_static(paddle.eye, full_graph=True)
+                        x = st_f(
+                            3,
+                            3,
+                            dtype=dtype,
+                            requires_grad=requires_grad,
+                            device=device,
+                        )
+                        self.assertEqual(x.place, device)
+                        self.assertEqual(x.stop_gradient, not requires_grad)
+                        if isinstance(dtype, paddle.dtype):
+                            self.assertEqual(x.dtype, dtype)
 
     def test_ones_like(self):
         for device in self.devices:
             for requires_grad in self.requires_grads:
                 for dtype in self.dtypes:
-                    x = paddle.ones_like(
-                        paddle.randn([2, 2]),
-                        dtype=dtype,
-                        requires_grad=requires_grad,
-                        device=device,
-                    )
-                    self.assertEqual(x.place, device)
-                    self.assertEqual(x.stop_gradient, not requires_grad)
-                    if isinstance(dtype, paddle.dtype):
-                        self.assertEqual(x.dtype, dtype)
+                    with dygraph_guard():
+                        x = paddle.ones_like(
+                            paddle.randn([2, 2]),
+                            dtype=dtype,
+                            requires_grad=requires_grad,
+                            device=device,
+                        )
+                        self.assertEqual(x.place, device)
+                        self.assertEqual(x.stop_gradient, not requires_grad)
+                        if isinstance(dtype, paddle.dtype):
+                            self.assertEqual(x.dtype, dtype)
+                        st_f = paddle.jit.to_static(
+                            paddle.ones_like, full_graph=True
+                        )
+                        x = st_f(
+                            paddle.randn([2, 2]),
+                            dtype=dtype,
+                            requires_grad=requires_grad,
+                            device=device,
+                        )
+                        self.assertEqual(x.place, device)
+                        self.assertEqual(x.stop_gradient, not requires_grad)
+                        if isinstance(dtype, paddle.dtype):
+                            self.assertEqual(x.dtype, dtype)
 
     def test_zeros_like(self):
         for device in self.devices:
             for requires_grad in self.requires_grads:
                 for dtype in self.dtypes:
-                    x = paddle.zeros_like(
-                        paddle.randn([2, 2]),
-                        dtype=dtype,
-                        requires_grad=requires_grad,
-                        device=device,
-                    )
-                    self.assertEqual(x.place, device)
-                    self.assertEqual(x.stop_gradient, not requires_grad)
-                    if isinstance(dtype, paddle.dtype):
-                        self.assertEqual(x.dtype, dtype)
+                    with dygraph_guard():
+                        x = paddle.zeros_like(
+                            paddle.randn([2, 2]),
+                            dtype=dtype,
+                            requires_grad=requires_grad,
+                            device=device,
+                        )
+                        self.assertEqual(x.place, device)
+                        self.assertEqual(x.stop_gradient, not requires_grad)
+                        if isinstance(dtype, paddle.dtype):
+                            self.assertEqual(x.dtype, dtype)
+                        st_f = paddle.jit.to_static(
+                            paddle.zeros_like, full_graph=True
+                        )
+                        x = st_f(
+                            paddle.randn([2, 2]),
+                            dtype=dtype,
+                            requires_grad=requires_grad,
+                            device=device,
+                        )
+                        self.assertEqual(x.place, device)
+                        self.assertEqual(x.stop_gradient, not requires_grad)
+                        if isinstance(dtype, paddle.dtype):
+                            self.assertEqual(x.dtype, dtype)
 
     def test_full_like(self):
         for device in self.devices:
             for requires_grad in self.requires_grads:
                 for dtype in self.dtypes:
-                    x = paddle.full_like(
-                        paddle.randn([2, 2]),
-                        3.14,
-                        dtype=dtype,
-                        requires_grad=requires_grad,
-                        device=device,
-                    )
-                    self.assertEqual(x.place, device)
-                    self.assertEqual(x.stop_gradient, not requires_grad)
-                    if isinstance(dtype, paddle.dtype):
-                        self.assertEqual(x.dtype, dtype)
+                    with dygraph_guard():
+                        x = paddle.full_like(
+                            paddle.randn([2, 2]),
+                            3.14,
+                            dtype=dtype,
+                            requires_grad=requires_grad,
+                            device=device,
+                        )
+                        self.assertEqual(x.place, device)
+                        self.assertEqual(x.stop_gradient, not requires_grad)
+                        if isinstance(dtype, paddle.dtype):
+                            self.assertEqual(x.dtype, dtype)
+                        st_f = paddle.jit.to_static(
+                            paddle.full_like, full_graph=True
+                        )
+                        x = st_f(
+                            paddle.randn([2, 2]),
+                            3.14,
+                            dtype=dtype,
+                            requires_grad=requires_grad,
+                            device=device,
+                        )
+                        self.assertEqual(x.place, device)
+                        self.assertEqual(x.stop_gradient, not requires_grad)
+                        if isinstance(dtype, paddle.dtype):
+                            self.assertEqual(x.dtype, dtype)
 
     def test_empty_like(self):
         for device in self.devices:
             for requires_grad in self.requires_grads:
                 for dtype in self.dtypes:
-                    x = paddle.empty_like(
-                        paddle.randn([2, 2]),
-                        dtype=dtype,
-                        requires_grad=requires_grad,
-                        device=device,
-                    )
-                    self.assertEqual(x.place, device)
-                    self.assertEqual(x.stop_gradient, not requires_grad)
-                    if isinstance(dtype, paddle.dtype):
-                        self.assertEqual(x.dtype, dtype)
+                    with dygraph_guard():
+                        x = paddle.empty_like(
+                            paddle.randn([2, 2]),
+                            dtype=dtype,
+                            requires_grad=requires_grad,
+                            device=device,
+                        )
+                        self.assertEqual(x.place, device)
+                        self.assertEqual(x.stop_gradient, not requires_grad)
+                        if isinstance(dtype, paddle.dtype):
+                            self.assertEqual(x.dtype, dtype)
+                        st_f = paddle.jit.to_static(
+                            paddle.empty_like, full_graph=True
+                        )
+                        x = st_f(
+                            paddle.randn([2, 2]),
+                            dtype=dtype,
+                            requires_grad=requires_grad,
+                            device=device,
+                        )
+                        self.assertEqual(x.place, device)
+                        self.assertEqual(x.stop_gradient, not requires_grad)
+                        if isinstance(dtype, paddle.dtype):
+                            self.assertEqual(x.dtype, dtype)
 
 
 if __name__ == '__main__':
