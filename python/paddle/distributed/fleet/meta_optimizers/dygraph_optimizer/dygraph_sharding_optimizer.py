@@ -650,7 +650,7 @@ class DygraphShardingOptimizerV2:
         self.comm_overlap = sharding_config.comm_overlap
 
         comm_buffer_size_MB = sharding_config.comm_buffer_size_MB
-        free_grads_in_comm = sharding_config.free_grads_in_comm
+        self.free_grads_in_comm = sharding_config.free_grads_in_comm
 
         self._enable_timer = strategy.hybrid_configs["enable_optimizer_timer"]
 
@@ -679,7 +679,7 @@ class DygraphShardingOptimizerV2:
 
         self.param2bucket = {}
         self._build_comm_buffers(
-            acc_steps, comm_buffer_size_MB * 1024 * 1024, free_grads_in_comm
+            acc_steps, comm_buffer_size_MB * 1024 * 1024,
         )
         if self.enable_fuse_optimizer_states:
             self._inner_opt.use_fusion_storage()
@@ -762,11 +762,9 @@ class DygraphShardingOptimizerV2:
         for buffer in self._comm_buffer_list:
             buffer._acc_steps = acc_steps
 
-    def _build_comm_buffers(
-        self, acc_steps, group_size=256 * 1024 * 1024, free_grads_in_comm=False
+    def build_comm_buffers_impl(
+        self, parameter_list, comm_overlap, acc_steps, group_size, free_grads_in_comm
     ):
-        if self.pp_overlap:
-            return
         # NOTE(lijin23): for XPU, we fuse all params to a single comm buffer to
         # improve the communication bandwidth of BKCL.
         if (
@@ -778,7 +776,7 @@ class DygraphShardingOptimizerV2:
         comm_group = self._hcg.get_sharding_parallel_group()
 
         color_dict = defaultdict(list)
-        for param in self._parameter_list:
+        for param in parameter_list:
             color = getattr(param, 'color', -1)
             color_color = -1
             color_group = comm_group
@@ -793,11 +791,12 @@ class DygraphShardingOptimizerV2:
 
         # NOTE(shenliang03): If comm_overlap is not used, the parameter list is sorted by data type to
         # to reduce communication overhead.
-        if not self.comm_overlap:
+        if not comm_overlap:
             for color, params in color_dict.items():
                 params.sort(key=lambda x: str(x.dtype))
 
         group_idx = 0
+        comm_buffer_list = []
         for color, params in color_dict.items():
             g_color = color[0]
             g_group = color[1]
@@ -817,7 +816,7 @@ class DygraphShardingOptimizerV2:
                     slice_params=self._slice_params,
                 )
                 group_idx += 1
-                self._comm_buffer_list.append(buffer)
+                comm_buffer_list.append(buffer)
 
                 if g_color not in self._color_to_comm_buffer_list.keys():
                     self._color_to_comm_buffer_list[g_color] = []
@@ -828,6 +827,23 @@ class DygraphShardingOptimizerV2:
                         self.param2bucket[p.name].append(buffer)
                     else:
                         self.param2bucket[p.name] = [buffer]
+        
+        return comm_buffer_list
+
+    def _build_comm_buffers(
+        self, acc_steps, group_size=256 * 1024 * 1024, free_grads_in_comm=False
+    ):
+        if self.pp_overlap:
+            # In this case, the comm buffers are built in the PipelineParallel.
+            return
+
+        self._comm_buffer_list = self.build_comm_buffers_impl(
+            self._parameter_list,
+            self.comm_overlap,
+            acc_steps,
+            group_size,
+            free_grads_in_comm
+        )
 
     def clear_param_storage(self, color):
         self.clear_color = color

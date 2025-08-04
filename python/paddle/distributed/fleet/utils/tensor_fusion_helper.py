@@ -1,4 +1,4 @@
-# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -657,6 +657,7 @@ class FusedCommBuffer:
         )
 
     def add_grad(self, param, use_comm=True):
+        # Only used when overlap is enabled.
         assert param.name in self._params_step_dict
 
         if not self._release_grads or self._params_step_dict[param.name] > 0:
@@ -673,11 +674,13 @@ class FusedCommBuffer:
 
         self._params_step_dict[param.name] += 1
 
-        if self._params_step_dict[param.name] == self._acc_steps:
+        # NOTE: When use_comm is False, communication is triggered by arrangement (e.g. pipeline parallelism).
+        # Therefore, there is no need to perform the check-in.
+        if use_comm and self._params_step_dict[param.name] == self._acc_steps:
             self._params_checked_in += 1
             self._params_step_dict.pop(param.name)
 
-        if self._all_params_checked_in and use_comm:
+        if use_comm and self._all_params_checked_in:
             self.comm_grads()
 
     @imperative_base.no_grad
@@ -717,6 +720,10 @@ class FusedCommBuffer:
     @property
     def params(self):
         return self._params
+
+    @imperative_base.no_grad
+    def comm_grads_unsafe(self):
+        self._comm_grads()
 
     @imperative_base.no_grad
     def comm_grads(self):
@@ -807,6 +814,7 @@ class FusedCommBuffer:
     def scale_grads(self):
         if self.need_reduce_scale_sync():
             if self._comm_group.nranks == 1 and self._task is None:
+                self._reset_params_checked_in()
                 return
             assert self._task is not None, "Task is not initialized."
             self._task.wait()

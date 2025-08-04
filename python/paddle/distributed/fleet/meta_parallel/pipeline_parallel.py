@@ -386,9 +386,12 @@ class PipelineParallel(MetaParallelBase):
         ), "Cannot use dp pp overlap and sharding pp overlap at the same time."
 
         self._chunk_2_comm_buffers = defaultdict(list)
+        self._shared_param_comm_buffers = []
         self._comm_overlap = (
             self._dp_comm_overlap or self._sharding_comm_overlap
         )
+
+        self._check_comm_overlap_sanity()
 
         if self._enable_timer:
             if not timer.is_timer_initialized():
@@ -449,6 +452,9 @@ class PipelineParallel(MetaParallelBase):
         self._init_user_hooks()
         # only support user hooks during training
         self.user_hooks_enabled = True
+
+    def _check_comm_overlap_sanity(self):
+        assert not self._comm_overlap, "comm overlap is not supported yet."
 
     def register_hook(
         self, location: PipelineParallelMicroStepLocations, hook: Callable
@@ -600,6 +606,78 @@ class PipelineParallel(MetaParallelBase):
     def fused_gradient(
         self, model, comm_group, acc_steps, dp, group_size=128 * 1024 * 1024
     ):
+        if self._sharding_split_param:
+            return self.fused_gradient_shardingv2_impl(
+                model, comm_group, acc_steps, dp, group_size
+            )
+        else:
+            return self.fused_gradient_legacy_impl(
+                model, comm_group, acc_steps, dp, group_size
+            )
+
+    def fused_gradient_shardingv2_impl(
+        self, model, comm_group, acc_steps, dp, group_size=128 * 1024 * 1024
+    ):
+        if model.get_num_virtual_stages() > 1:
+            models = model.get_model_chunks()
+        else:
+            models = [model]
+
+
+        parameter_count = defaultdict(int)
+
+        for chunk_idx, model in enumerate(models):
+            for p in model.parameters():
+                parameter_count[p.name] += 1
+
+        # For shared parameters
+        shared_parameter_list = []
+        unique_set = set()
+        for chunk_idx, model in enumerate(models):
+            # If the parameter is shared in the pipeline, its gradient should be accumulated and cannot
+            # be communicated until the whole pipeline is finished.
+            filtered_parameter_list = [
+                p for p in model.parameters() if (not p.stop_gradient and parameter_count[p.name] > 1)
+            ]
+            for p in filtered_parameter_list:
+                if p.name not in unique_set:
+                    unique_set.add(p.name)
+                    shared_parameter_list.append(p)
+
+        if len(shared_parameter_list) > 0:
+            shared_buffer_list = self.optimizer.build_comm_buffers_impl(
+                shared_parameter_list,
+                False,
+                acc_steps,
+                group_size,
+                False,
+            )
+            self._shared_param_comm_buffers.extend(shared_buffer_list)
+
+
+        # For normal parameters
+        for chunk_idx, model in enumerate(models):
+            # For virtual pipeline. Will separate parameters in different chunk into
+            # different groups to get the best performance.
+
+            parameter_list = [
+                p for p in model.parameters() if not (p.stop_gradient or parameter_count[p.name] > 1)
+            ]
+
+            if len(parameter_list) > 0:
+                comm_buffer_list = self.optimizer.build_comm_buffers_impl(
+                    parameter_list,
+                    False,
+                    acc_steps,
+                    group_size,
+                    False,
+                )
+
+                self._chunk_2_comm_buffers[chunk_idx].extend(comm_buffer_list)
+
+    def fused_gradient_legacy_impl(
+        self, model, comm_group, acc_steps, dp, group_size=128 * 1024 * 1024
+    ):
         if model.get_num_virtual_stages() > 1:
             models = model.get_model_chunks()
         else:
@@ -674,6 +752,11 @@ class PipelineParallel(MetaParallelBase):
                     param._register_backward_hook(
                         self.bw_hook_func(buffer, param)
                     )
+        for buffer in self._shared_param_comm_buffers:
+            for param in buffer._params:
+                param._register_backward_hook(
+                    self.bw_hook_func(buffer, param)
+                )
 
     def timer_printer(self):
         if not self._enable_timer:
@@ -1377,6 +1460,8 @@ class PipelineParallel(MetaParallelBase):
             for _, buffers in self._chunk_2_comm_buffers.items():
                 for buffer in buffers:
                     buffer._clear_grad_storage()
+            for buffer in self._shared_param_comm_buffers:
+                buffer._clear_grad_storage()
         else:
             self.optimizer.clear_grad()
 
@@ -1492,10 +1577,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
         self._best_unbalanced_scheduler = self._strategy.hybrid_configs[
             "pp_configs"
         ].best_unbalanced_scheduler
-        if self._best_unbalanced_scheduler:
-            assert (
-                not self._comm_overlap
-            ), "pp best unbalaced scheduler can not run together with dp/sharding overlap"
+        self._check_comm_overlap_sanity()
 
         self._enable_offload_queue = self._strategy.hybrid_configs[
             "pp_configs"
@@ -1524,6 +1606,12 @@ class PipelineParallelWithInterleave(PipelineParallel):
         assert (
             self.accumulate_steps >= 2 * self.num_stages
         ), f"accumulate_steps({self.accumulate_steps}) should be greater than or equal to 2 * num_stages({self.num_stages}) for pipeline with interleave"
+
+    def _check_comm_overlap_sanity(self):
+        if not self._comm_overlap:
+            assert (
+                not self._best_unbalanced_scheduler
+            ), "pp best unbalaced can not run together with dp/sharding overlap."
 
     def _reset_counter(self):
         for i in range(self.num_model_chunks):
@@ -1714,7 +1802,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     sync_step // self.num_stages
                 )
                 for buffer in self._chunk_2_comm_buffers[chunk_idx]:
-                    buffer.comm_grads()
+                    buffer.comm_grads_unsafe()
 
             if self.stage_id != 0:
                 if (
@@ -1722,7 +1810,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     == self.num_stages * self.num_model_chunks
                 ):
                     for buffer in self._chunk_2_comm_buffers[0]:
-                        buffer.comm_grads()
+                        buffer.comm_grads_unsafe()
 
     def _sync_overlap_grads(self):
         if self._comm_overlap:
@@ -1737,6 +1825,13 @@ class PipelineParallelWithInterleave(PipelineParallel):
             for _, buffers in self._chunk_2_comm_buffers.items():
                 for buffer in buffers:
                     buffer.scale_grads()
+    
+    def _sync_shared_overlap_grads(self):
+        if self._comm_overlap:
+            for buffer in self._shared_param_comm_buffers:
+                buffer.comm_grads_unsafe()
+            for buffer in self._shared_param_comm_buffers:
+                buffer.scale_grads()
 
     def _get_backward_input(self, virtual_pp_rank):
         # some checkers
@@ -2747,6 +2842,8 @@ class PipelineParallelWithInterleave(PipelineParallel):
             if self._enable_timer:
                 self.timers("allreduce_shared_weight_gradients").stop()
 
+            self._sync_shared_overlap_grads()
+
         self._flush_records()
 
         assert bwd_buffer_queue.empty(), "backward buffer should be empty"
@@ -2846,6 +2943,9 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
         # self.bubble_hooks = PipelineHook()
         # self.bubble_hooks.set_hooks_capacity(2 * self.num_stages - 2)
 
+    def _check_comm_overlap_sanity(self):
+        pass
+
     def _check_sanity(self):
         assert (
             framework.in_dynamic_mode()
@@ -2876,7 +2976,7 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
                 sync_step // self.accumulate_steps
             )
             for buffer in self._chunk_2_comm_buffers[chunk_idx]:
-                buffer.comm_grads()
+                buffer.comm_grads_unsafe()
 
         if self.stage_id == 0:
             return
@@ -2886,7 +2986,7 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
             == self.accumulate_steps * self._virtual_pp_world_size
         ):
             for buffer in self._chunk_2_comm_buffers[0]:
-                buffer.comm_grads()
+                buffer.comm_grads_unsafe()
 
     def _sync_overlap_grads(self):
         if not self._comm_overlap:
@@ -3057,6 +3157,8 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
             if self._enable_timer:
                 self.timers("allreduce_shared_weight_gradients").stop()
 
+            self._sync_shared_overlap_grads()
+
         if compute_loss:
             # return loss if compute loss
             if self._enable_timer:
@@ -3167,6 +3269,8 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
         self._forward_only = forward_only
 
         self._init_buffers()
+
+        self._backward_step_count = 0
 
         backward_send_recv_buffer_queue = OffloadQueue(
             offload=self._enable_offload_queue
@@ -3410,6 +3514,8 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
         self._layers.allreduce_shared_weight_gradients()
         if self._enable_timer:
             self.timers("allreduce_shared_weight_gradients").stop()
+
+        self._sync_shared_overlap_grads()
 
         if compute_loss:
             # return loss if compute loss
