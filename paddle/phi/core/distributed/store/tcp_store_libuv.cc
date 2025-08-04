@@ -69,7 +69,7 @@ class LibUVTCPSocket : public LibUVHandle {
     uv_tcp_init(loop, &client);
     if (int err = uv_tcp_nodelay(&client, 1)) {
       VLOG(2)
-          << "The no-delay option cannot be enabled for the client socket. err="
+          << "The no-delay option is unavailable for the client socket. err: "
           << err;
     }
   }
@@ -85,8 +85,8 @@ class LibUVTCPSocket : public LibUVHandle {
   }
 
   virtual void doProcess(const uv_buf_t* buf, size_t nread) {
-    PADDLE_THROW(common::errors::Fatal(
-        "Trying to read from a socket subclass that lacks doProcess"));
+    PADDLE_THROW(
+        common::errors::Fatal("Socket subclass does not implement doProcess"));
   }
 
   uv_tcp_t client{};
@@ -122,8 +122,8 @@ class LibUVTCPServer : public LibUVTCPSocket {
       PADDLE_ENFORCE_EQ(uv_res,
                         0,
                         common::errors::InvalidArgument(paddle::string::Sprintf(
-                            "UV Store addr parsing failure. port: %d, useIpv6: "
-                            "%d, code: %d, name: %s, message: %s",
+                            "sockaddr parsing failure. port: %d, useIpv6:%d, "
+                            "code: %d, name: %s, message: %s",
                             port,
                             useIpv6,
                             uv_res,
@@ -132,16 +132,17 @@ class LibUVTCPServer : public LibUVTCPSocket {
 
       uv_res =
           uv_tcp_bind(res->getRawSocket(), (const struct ::sockaddr*)&addr, 0);
-      PADDLE_ENFORCE_EQ(uv_res,
-                        0,
-                        common::errors::InvalidArgument(paddle::string::Sprintf(
-                            "The server socket has failed to bind. port: %d, "
-                            "useIpv6: %d, code: %d, name: %s, message: %s",
-                            port,
-                            useIpv6,
-                            uv_res,
-                            uv_err_name(uv_res),
-                            uv_strerror(uv_res))));
+      PADDLE_ENFORCE_EQ(
+          uv_res,
+          0,
+          common::errors::InvalidArgument(paddle::string::Sprintf(
+              "Bind operation failed for the server socket. port: %d, "
+              "useIpv6: %d, code: %d, name: %s, message: %s",
+              port,
+              useIpv6,
+              uv_res,
+              uv_err_name(uv_res),
+              uv_strerror(uv_res))));
 
       uv_res = uv_listen(
           res->getRawStream(), FLAGS_tcp_max_syn_backlog, onNewConnection);
@@ -149,8 +150,8 @@ class LibUVTCPServer : public LibUVTCPSocket {
           uv_res,
           0,
           common::errors::InvalidArgument(paddle::string::Sprintf(
-              "The server socket has failed to listen on any local network "
-              "address. port: %d, useIpv6: %d, code: %d, name: %s, message: %s",
+              "Server socket unable to listen on local network interfaces. "
+              "port: %d, useIpv6: %d, code: %d, name: %s, message: %s",
               port,
               useIpv6,
               uv_res,
@@ -173,7 +174,7 @@ class LibUVTCPServer : public LibUVTCPSocket {
         res,
         0,
         common::errors::InvalidArgument(paddle::string::Sprintf(
-            "Failed to accept socket. code: %d, name: %s, message: %s",
+            "Socket accept operation failed. code: %d, name: %s, message: %s",
             res,
             uv_err_name(res),
             uv_strerror(res))));
@@ -207,7 +208,7 @@ class LibUVTCPServer : public LibUVTCPSocket {
 
   static void defaultOnConnect(int status) {
     PADDLE_THROW(common::errors::Fatal(
-        "Socket accepted but onConnect callback missing"));
+        "Socket accepted, but onConnect callback is undefined"));
   }
 
   static void onNewConnection(uv_stream_t* server, int status) {
@@ -287,8 +288,6 @@ class WriteUVContent : public std::enable_shared_from_this<WriteUVContent> {
   std::shared_ptr<WriteUVContent> ptr() { return shared_from_this(); }
 
   static void writeDone(uv_write_t* req, int status) {
-    /* Since we're no longer actively used by the event loop, transfer ownership
-     * to this frame. */
     auto data_ptr = static_cast<RequestData*>(uv_req_get_data((uv_req_t*)req));
     if (!data_ptr) return;
 
@@ -298,8 +297,8 @@ class WriteUVContent : public std::enable_shared_from_this<WriteUVContent> {
 
     if (self && status) {
       VLOG(2) << "Write to client failed. code:" << status
-              << " name:" << uv_err_name(status)
-              << " desc:" << uv_strerror(status);
+              << " desc:" << uv_strerror(status)
+              << " name:" << uv_err_name(status);
       self->handle->close();
     }
   }
@@ -337,8 +336,8 @@ class WriteUVContent : public std::enable_shared_from_this<WriteUVContent> {
         &req, (uv_stream_t*)handle->getRawHandle(), &buf, 1, writeDone);
 
     if (res) {
-      VLOG(2) << "Write setup to client failed. code:" << res
-              << "name:" << uv_err_name(res) << "desc:" << uv_strerror(res);
+      VLOG(2) << "Write failed. code:" << res << "desc:" << uv_strerror(res)
+              << "name:" << uv_err_name(res);
       handle->close();
     } else {
       /* This object was successfully registered with the event loop, so keep it
@@ -422,12 +421,13 @@ class SegmentedDataStream {
         _buff_offset = 0;
         ++_buff_idx;
         if (_buff_idx >= _buffers.size() && remaining > 0) {
-          PADDLE_THROW(common::errors::Fatal(paddle::string::Sprintf(
-              "Trying to read past end of buffer. buffer_idx: %d, available: "
-              "%d, remaining: ",
-              _buff_idx,
-              _buffers.size(),
-              remaining)));
+          PADDLE_THROW(common::errors::Fatal(
+              paddle::string::Sprintf("Read operation exceeds buffer boundary. "
+                                      "buffer index: %d, available: %d, "
+                                      "remaining: %d",
+                                      _buff_idx,
+                                      _buffers.size(),
+                                      remaining)));
         }
       }
     }
@@ -446,7 +446,7 @@ class SegmentedDataStream {
     PADDLE_ENFORCE_LE(size,
                       phi::distributed::detail::MAX_KEY_LEN,
                       common::errors::InvalidArgument(paddle::string::Sprintf(
-                          "Invalid string size. size: %d, max: %d",
+                          "Key size validation failed. size: %d, max: %d",
                           size,
                           phi::distributed::detail::MAX_KEY_LEN)));
 
@@ -462,7 +462,7 @@ class SegmentedDataStream {
     PADDLE_ENFORCE_LE(size_in_bytes,
                       MAX_CONTENT_LEN,
                       common::errors::InvalidArgument(paddle::string::Sprintf(
-                          "Invalid payload size. size: %d, max: %d",
+                          "Content size validation failed. size: %d, max: %d",
                           size_in_bytes,
                           MAX_CONTENT_LEN)));
 
@@ -545,21 +545,20 @@ class LibUVClient : public LibUVTCPSocket {
     if (nread > 0) {
       try {
         uv_socket->doProcess(buf, nread);
-        // We do free inside doProcess.
         return;
       } catch (std::exception& ex) {
-        VLOG(2) << "Error processing client message: " << ex.what();
+        VLOG(2) << "Failed to process incoming client message: " << ex.what();
         uv_socket->close();
       }
     } else if (nread == UV_EOF) {
-      // Handle EOF cases
+      // EOF
       VLOG(5) << "Remote peer closed the connection.";
       uv_socket->close();
     } else if (nread < 0) {
-      // Handle error and EOF cases
-      VLOG(5) << "Read callback failed. code:" << nread
-              << " name:" << uv_err_name(nread)
-              << " desc:" << uv_strerror(nread);
+      // error and EOF
+      VLOG(5) << "Read callback handler exception. code:" << nread
+              << " desc:" << uv_strerror(nread)
+              << " name:" << uv_err_name(nread);
       uv_socket->close();
     }
     free(buf->base);
@@ -596,8 +595,7 @@ class LibUVClient : public LibUVTCPSocket {
           if (!doWaitCommand()) return;
           break;
         default:
-          VLOG(4) << "invalid command from Client:" << (void*)this
-                  << "command: " << (int)command;
+          VLOG(4) << "invalid command from Client, command: " << (int)command;
           close();
           return;
       }
@@ -692,9 +690,8 @@ class LibUVClient : public LibUVTCPSocket {
 
     if (int err = uv_tcp_getpeername(
             &client, reinterpret_cast<struct ::sockaddr*>(&addr), &addrLen)) {
-      VLOG(2)
-          << "The remote address of the client socket cannot be retrieved. err="
-          << uv_strerror(err);
+      VLOG(2) << "Client remote endpoint resolution failed. err="
+              << uv_strerror(err);
     } else {
       _address =
           formatSockAddr(reinterpret_cast<struct ::sockaddr*>(&addr), addrLen);
@@ -702,9 +699,9 @@ class LibUVClient : public LibUVTCPSocket {
 
     int res = uv_read_start((uv_stream_t*)&client, allocBuffer, readCallback);
     if (res) {
-      VLOG(2) << "Failed to setup read callback. client:" << (void*)this
-              << " code:" << res << " name:" << uv_err_name(res)
-              << " desc:" << uv_strerror(res);
+      VLOG(2) << "Read callback initialization failure. client:" << (void*)this
+              << " code:" << res << " desc:" << uv_strerror(res)
+              << " name:" << uv_err_name(res);
       close();
     }
   }
@@ -731,13 +728,13 @@ void LibUVMasterDaemon::onConnect(int status) {
     _tcp_server->accept(client);
     client->readStart();
   } catch (std::exception& e) {
-    VLOG(2) << "Failed to accept client, err: " << e.what();
+    VLOG(2) << "Accept client failed, err: " << e.what();
     client->close();
   }
 }
 
 void LibUVMasterDaemon::onExitRequest() {
-  VLOG(4) << "on exit requested";
+  VLOG(4) << "begin to exit requested";
   uv_close((uv_handle_t*)&_exit_handle, nullptr);
   uv_stop(&loop_);
 }
@@ -746,8 +743,8 @@ void LibUVMasterDaemon::init(const std::uint16_t& port) {
   try {
     _tcp_server = LibUVTCPServer::createServer(&loop_, port, /*useIpv6=*/false);
   } catch (std::exception& ex) {
-    PADDLE_THROW(common::errors::Fatal(paddle::string::Sprintf(
-        "Failed to bind to ipv4 address: %s", ex.what())));
+    PADDLE_THROW(common::errors::Fatal(
+        paddle::string::Sprintf("Bind to ipv4 address failed: %s", ex.what())));
   }
   _tcp_server->setCallback([this](auto status) { this->onConnect(status); });
 
@@ -756,9 +753,7 @@ void LibUVMasterDaemon::init(const std::uint16_t& port) {
       port_,
       port,
       common::errors::InvalidArgument(paddle::string::Sprintf(
-          "listen fd , is bound to port %d, expected to be bound to port %d",
-          port_,
-          port)));
+          "listen fd is bound to port %d, but expected port %d", port_, port)));
 }
 
 LibUVMasterDaemon::LibUVMasterDaemon(int port) : port_(port) {
@@ -818,7 +813,7 @@ void LibUVMasterDaemon::run() {
 void LibUVMasterDaemon::stop() {
   int res = uv_async_send(&_exit_handle);
   if (res) {
-    VLOG(2) << "uv_async_send failed with:" << res
+    VLOG(2) << "stop with uv_async_send failed:" << res
             << " err:" << uv_err_name(res) << " std error:" << uv_strerror(res);
   }
 }
