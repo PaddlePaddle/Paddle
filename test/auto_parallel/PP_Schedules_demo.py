@@ -503,11 +503,12 @@ class Test_Schedules:
             orig_step = (
                 opt.step.__func__ if hasattr(opt.step, "__func__") else opt.step
             )
-            new_step = (
+            decorator = (
                 _in_auto_parallel_align_mode_handle_none_gradients_in_step(
-                    orig_step
+                    amp_master_grad=True
                 )
             )
+            new_step = decorator(orig_step)
             opt.step = types.MethodType(new_step, opt)
         dataset = RandomDataset(image_size=8, output_size=8, num_samples=8)
         loader = DataLoader(dataset, batch_size=8)

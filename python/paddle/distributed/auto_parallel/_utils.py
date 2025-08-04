@@ -16,23 +16,32 @@ from functools import wraps
 import paddle
 
 
-def _in_auto_parallel_align_mode_handle_none_gradients_in_step(step_method):
-    @wraps(step_method)
-    def wrapper(self, *args, **kwargs):
-        if not isinstance(self._parameter_list[0], dict):
-            for param in self._parameter_list:
-                if param.stop_gradient or param.grad is not None:
-                    continue
+def _in_auto_parallel_align_mode_handle_none_gradients_in_step(
+    amp_master_grad=False,
+):
+    """
+    Decorator to handle None gradients in optimizer step when in auto parallel align mode.
 
-                if hasattr(param, "main_grad"):
-                    param.main_grad = paddle.zeros_like(
-                        param, dtype=paddle.float32
-                    )
-                else:
-                    param.grad = paddle.zeros_like(param, dtype=param.dtype)
-        else:
-            for param_group in self._param_groups:
-                for param in param_group['params']:
+    This decorator is applied to optimizer step methods to handle cases where parameters
+    have None gradients. It creates zero gradients for parameters that need gradients
+    but currently have None gradients.
+
+    Args:
+        amp_master_grad (bool, optional): Whether to use master gradient mode.
+            If True, gradients will be created as float32 regardless of parameter dtype.
+            If False, gradients will be created with the same dtype as the parameter.
+            Default is False.
+
+    Returns:
+        function: Decorated step method that handles None gradients.
+
+    """
+
+    def decorator(step_method):
+        @wraps(step_method)
+        def wrapper(self, *args, **kwargs):
+            if not isinstance(self._parameter_list[0], dict):
+                for param in self._parameter_list:
                     if param.stop_gradient or param.grad is not None:
                         continue
 
@@ -41,7 +50,31 @@ def _in_auto_parallel_align_mode_handle_none_gradients_in_step(step_method):
                             param, dtype=paddle.float32
                         )
                     else:
-                        param.grad = paddle.zeros_like(param, dtype=param.dtype)
-        return step_method(self, *args, **kwargs)
 
-    return wrapper
+                        dtype = (
+                            paddle.float32 if amp_master_grad else param.dtype
+                        )
+                        param.grad = paddle.zeros_like(param, dtype=dtype)
+            else:
+                for param_group in self._param_groups:
+                    for param in param_group['params']:
+                        if param.stop_gradient or param.grad is not None:
+                            continue
+
+                        if hasattr(param, "main_grad"):
+                            param.main_grad = paddle.zeros_like(
+                                param, dtype=paddle.float32
+                            )
+                        else:
+
+                            dtype = (
+                                paddle.float32
+                                if amp_master_grad
+                                else param.dtype
+                            )
+                            param.grad = paddle.zeros_like(param, dtype=dtype)
+            return step_method(self, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
