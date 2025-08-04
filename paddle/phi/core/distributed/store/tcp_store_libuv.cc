@@ -786,7 +786,7 @@ void LibUVMasterDaemon::run() {
   VLOG(4) << "start LibUV master daemon loop";
   int res = uv_run(&loop_, UV_RUN_DEFAULT);
   if (res) {
-    VLOG(4) << "master daemon loop done: " << res;
+    VLOG(4) << "LibUV master daemon loop done: " << res;
   }
 
   for (const auto& client : _clients) {
