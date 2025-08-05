@@ -35,7 +35,7 @@
 #ifdef __NVCC__
 #include <cuda.h>
 #elif defined(__HIPCC__)
-#endif
+#include <hip/hip_runtime.h>
 #endif
 #include <thrust/iterator/iterator_adaptor.h>
 
