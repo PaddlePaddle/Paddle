@@ -637,7 +637,7 @@ void BuildOpFuncList(const phi::Place& place,
         "conditional_block",
         "conditional_block_grad",
         "pylayer",
-        "pylayer_grad"
+        "pylayer_grad",
         "recurrent_grad",
         "while",
         "while_grad"};

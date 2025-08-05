@@ -17,7 +17,7 @@ import unittest
 
 import numpy as np
 from op import Operator
-from op_test import OpTest, get_places
+from op_test import OpTest, get_device_place, get_places
 
 import paddle
 from paddle.base import core
@@ -283,7 +283,7 @@ class TestAdagradMultiPrecision2_0(unittest.TestCase):
         paddle.enable_static()
         paddle.seed(100)
         np.random.seed(100)
-        exe = paddle.static.Executor('gpu')
+        exe = paddle.static.Executor(get_device_place())
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         optimizer = paddle.optimizer.Adagrad(0.1)

@@ -1708,14 +1708,14 @@
   no_need_buffer: add_value
 
 - backward_op : index_elementwise_get_double_grad
-  forward : index_elementwise_get_grad (Tensor x, Tensor[] index, Tensor out_grad, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_stride, int64_t slice_offset, bool accumulate) -> Tensor(x_grad)
-  args : (Tensor[] index, Tensor x_grad_grad, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_stride, int64_t slice_offset = 0, bool accumulate = true)
+  forward : index_elementwise_get_grad (Tensor x, Tensor[] index, Tensor out_grad, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_stride, int64_t slice_offset, bool accumulate, bool is_combined) -> Tensor(x_grad)
+  args : (Tensor[] index, Tensor x_grad_grad, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_stride, int64_t slice_offset = 0, bool accumulate = true, bool is_combined = false)
   output : Tensor(out_grad_grad)
-  invoke : index_elementwise_get(x_grad_grad, index, input_dims, input_strides, index_dims, index_stride, slice_offset, accumulate)
+  invoke : index_elementwise_get(x_grad_grad, index, input_dims, input_strides, index_dims, index_stride, slice_offset, accumulate, is_combined)
 
 - backward_op : index_elementwise_get_grad
-  forward : index_elementwise_get (Tensor x, Tensor[] index, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_stride, int64_t slice_offset, bool accumulate) -> Tensor(out)
-  args : (Tensor x, Tensor[] index, Tensor out_grad, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_stride, int64_t slice_offset = 0, bool accumulate = true)
+  forward : index_elementwise_get (Tensor x, Tensor[] index, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_stride, int64_t slice_offset, bool accumulate, bool is_combined) -> Tensor(out)
+  args : (Tensor x, Tensor[] index, Tensor out_grad, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_stride, int64_t slice_offset = 0, bool accumulate = true, bool is_combined = false)
   output : Tensor(x_grad)
   infer_meta :
     func : IndexElementwiseGetGradInferMeta

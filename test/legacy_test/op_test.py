@@ -412,6 +412,17 @@ def get_places(string_format=False):
     return places
 
 
+def get_device_place():
+    if core.is_compiled_with_cuda():
+        return base.CUDAPlace(0)
+    custom_dev_types = paddle.device.get_all_custom_device_type()
+    if custom_dev_types and core.is_compiled_with_custom_device(
+        custom_dev_types[0]
+    ):
+        return base.CustomPlace(custom_dev_types[0], 0)
+    return base.CPUPlace()
+
+
 @contextmanager
 def auto_parallel_test_guard(test_info_path, generated_test_file_path):
     test_info_file, generated_test_file = None, None

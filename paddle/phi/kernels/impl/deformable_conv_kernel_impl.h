@@ -43,9 +43,10 @@ void DeformableConvKernel(const Context& dev_ctx,
         dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
     return;
   }
-  const int batch_size = static_cast<int>(x.dims()[0]);
 
-  int temp_step = std::min(64, batch_size);
+  const int64_t batch_size = static_cast<int64_t>(x.dims()[0]);
+
+  int64_t temp_step = std::min<int64_t>(64, batch_size);
   if (batch_size % temp_step == 0) {
     im2col_step = temp_step;
   }
@@ -86,9 +87,9 @@ void DeformableConvKernel(const Context& dev_ctx,
   DDim input_shape = common::slice_ddim(x.dims(), 1, x.dims().size());
   std::vector<int64_t> input_shape_vec = common::vectorize(input_shape);
 
-  int input_dim = x.numel() / x.dims()[0];
-  int input_offset_dim = offset.numel() / offset.dims()[0];
-  int input_mask_dim = mask ? mask->numel() / mask->dims()[0] : 0;
+  int64_t input_dim = x.numel() / x.dims()[0];
+  int64_t input_offset_dim = offset.numel() / offset.dims()[0];
+  int64_t input_mask_dim = mask ? mask->numel() / mask->dims()[0] : 0;
 
   const T* input_ptr = x.data<T>();
   const T* offset_ptr = offset.data<T>();
@@ -97,22 +98,46 @@ void DeformableConvKernel(const Context& dev_ctx,
 
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
 
-  for (int i = 0; i < batch_size / im2col_step; ++i) {
+  bool using_int32_index =
+      (x.numel() <= std::numeric_limits<int>::max()) &&
+      (offset.numel() <= std::numeric_limits<int>::max()) &&
+      (filter.numel() <= std::numeric_limits<int>::max()) &&
+      (mask ? mask->numel() <= std::numeric_limits<int>::max() : true) &&
+      (out->numel() <= std::numeric_limits<int>::max());
+
+  for (int64_t i = 0; i < batch_size / im2col_step; ++i) {
     const T* temp_mask_ptr =
         mask_ptr ? mask_ptr + i * im2col_step * input_mask_dim : nullptr;
-    funcs::ModulatedDeformableIm2col(
-        dev_ctx,
-        input_ptr + i * im2col_step * input_dim,
-        offset_ptr + i * im2col_step * input_offset_dim,
-        temp_mask_ptr,
-        input_shape_vec,
-        col_buffer_shape_vec,
-        filter_shape_vec,
-        paddings,
-        strides,
-        dilations,
-        deformable_groups,
-        col_buffer_ptr);
+    if (using_int32_index) {
+      funcs::ModulatedDeformableIm2col<T, Context, int>(
+          dev_ctx,
+          input_ptr + i * im2col_step * input_dim,
+          offset_ptr + i * im2col_step * input_offset_dim,
+          temp_mask_ptr,
+          input_shape_vec,
+          col_buffer_shape_vec,
+          filter_shape_vec,
+          paddings,
+          strides,
+          dilations,
+          deformable_groups,
+          col_buffer_ptr);
+    } else {
+      funcs::ModulatedDeformableIm2col<T, Context, int64_t>(
+          dev_ctx,
+          input_ptr + i * im2col_step * input_dim,
+          offset_ptr + i * im2col_step * input_offset_dim,
+          temp_mask_ptr,
+          input_shape_vec,
+          col_buffer_shape_vec,
+          filter_shape_vec,
+          paddings,
+          strides,
+          dilations,
+          deformable_groups,
+          col_buffer_ptr);
+    }
+
     DenseTensor output_3d = output_4d.Slice(i, i + 1).Resize(common::slice_ddim(
         output_4d.dims(),
         1,

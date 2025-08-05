@@ -484,8 +484,8 @@ MultiplyDoubleGradNode::operator()(
   if (need_skip) {
     if (trace_backward) {
       PADDLE_THROW(common::errors::Unavailable(
-          "The Op multiply_double_grad doesn't have any grad"
-          "op. If you don't intend calculating higher order"
+          "The Op multiply_double_grad doesn't have any grad "
+          "op. If you don't intend calculating higher order "
           "derivatives, please set `create_graph`to False."));
     }
   }
@@ -669,8 +669,8 @@ MultiplyGradNode::operator()(
   // Create Grad Node
   if (trace_backward) {
     PADDLE_THROW(common::errors::Unavailable(
-        "The Op multiply_grad doesn't have any grad"
-        "op. If you don't intend calculating higher order"
+        "The Op multiply_grad doesn't have any grad "
+        "op. If you don't intend calculating higher order "
         "derivatives, please set `create_graph`to False."));
   }
   VLOG(4) << "Finish AD API GRAD: multiply_grad";

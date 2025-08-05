@@ -28,14 +28,15 @@ set(XPU_XPTI_LIB_NAME "libxpti.so")
 set(XPU_XBLAS_LIB_NAME "libxpu_blas.so")
 set(XPU_XFA_LIB_NAME "libxpu_flash_attention.so")
 set(XPU_XPUDNN_LIB_NAME "libxpu_dnn.so")
+set(XPU_XPUDNN_OMP_LIB_NAME "libomp.so")
 set(XPU_FFT_LIB_NAME "libcufft.so")
 # Avoid deprecated int32 apis:
 add_compile_definitions(XPUAPI_NOT_INCLUDE_DEPRECATED)
 
 if(NOT DEFINED XPU_XHPC_BASE_DATE)
-  set(XPU_XHPC_BASE_DATE "dev/20990602")
+  set(XPU_XHPC_BASE_DATE "dev/20250722")
 endif()
-set(XPU_XCCL_BASE_VERSION "3.0.2.7") # For XRE5
+set(XPU_XCCL_BASE_VERSION "3.0.3.1") # For XRE5
 if(NOT DEFINED XPU_XFT_BASE_VERSION)
   set(XPU_XFT_BASE_VERSION "20250507/xpu3")
 endif()
@@ -183,6 +184,7 @@ set(XPU_CUDA_RT_LIB "${XPU_LIB_DIR}/${XPU_CUDA_RT_LIB_NAME}")
 set(XPU_ML_LIB "${XPU_LIB_DIR}/${XPU_ML_LIB_NAME}")
 set(XPU_XFA_LIB "${XPU_LIB_DIR}/${XPU_XFA_LIB_NAME}")
 set(XPU_XPUDNN_LIB "${XPU_LIB_DIR}/${XPU_XPUDNN_LIB_NAME}")
+set(XPU_XPUDNN_OMP_LIB "${XPU_LIB_DIR}/${XPU_XPUDNN_OMP_LIB_NAME}")
 
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${XPU_INSTALL_DIR}/lib")
 
@@ -251,8 +253,9 @@ if(WITH_XPU_XRE5)
     DOWNLOAD_COMMAND
       bash ${CMAKE_SOURCE_DIR}/tools/xpu/pack_paddle_dependence.sh
       ${XPU_XRE_URL} ${XPU_XRE_DIR_NAME} ${XPU_XHPC_URL} ${XPU_XHPC_DIR_NAME}
-      ${XPU_XCCL_URL} ${XPU_XCCL_DIR_NAME} 1 && wget ${XPU_XFT_GET_DEPENCE_URL}
-      && bash ${XFT_COMMAND} ${XPU_XFT_URL} ${XPU_XFT_DIR_NAME} && bash
+      ${XPU_XCCL_URL} ${XPU_XCCL_DIR_NAME} 1 ${WITH_MKL}
+      "${CMAKE_SOURCE_DIR}/build" && wget ${XPU_XFT_GET_DEPENCE_URL} && bash
+      ${XFT_COMMAND} ${XPU_XFT_URL} ${XPU_XFT_DIR_NAME} && bash
       ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpti_dependence.sh ${XPU_XPTI_URL}
       ${XPU_XPTI_DIR_NAME} && bash
       ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpufft_dependence.sh ${XPU_FFT_URL}
@@ -263,6 +266,7 @@ if(WITH_XPU_XRE5)
     BUILD_BYPRODUCTS ${XPU_API_LIB}
     BUILD_BYPRODUCTS ${XPU_XBLAS_LIB}
     BUILD_BYPRODUCTS ${XPU_XPUDNN_LIB}
+    BUILD_BYPRODUCTS ${XPU_XPUDNN_OMP_LIB}
     BUILD_BYPRODUCTS ${XPU_XFA_LIB}
     BUILD_BYPRODUCTS ${XPU_RT_LIB}
     BUILD_BYPRODUCTS ${XPU_CUDA_RT_LIB}
@@ -360,6 +364,10 @@ if(WITH_XPU_XRE5)
     ${XPU_XFA_LIB}
     ${XPU_XPUDNN_LIB}
     ${XPU_ML_LIB})
+
+  if(NOT WITH_MKL)
+    target_link_libraries(xpulib ${XPU_XPUDNN_OMP_LIB})
+  endif()
 else()
   target_link_libraries(xpulib ${XPU_RT_LIB} ${XPU_API_LIB})
 endif()
