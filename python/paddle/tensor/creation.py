@@ -2743,7 +2743,7 @@ def empty_like(
         dtype = x.dtype
     if requires_grad is None:
         requires_grad = not x.stop_gradient
-    if in_dynamic_mode() and device is None:
+    if device is None:
         device = x.place
     dtype = convert_dtype(dtype)
 
