@@ -18,6 +18,7 @@ typedef SSIZE_T ssize_t;
 #include <Python.h>
 
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -474,6 +475,11 @@ static PyObject* eager_api__get_custom_operator_inplace_reverse_idx(
   EAGER_TRY
   std::string op_type = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 0), 0);
   auto meta_info_map = egr::Controller::Instance().GetOpMetaInfoMap();
+  auto trim_custom_prefix = [](std::string_view str) {
+    constexpr std::string_view prefix(paddle::framework::kCustomDialectPrefix);
+    return str.substr(prefix.size());
+  };
+  op_type = trim_custom_prefix(op_type);
   PADDLE_ENFORCE_NE(meta_info_map.find(op_type),
                     meta_info_map.end(),
                     common::errors::NotFound(
@@ -543,6 +549,11 @@ PyObject* eager_api_run_custom_op(PyObject* self,
   }
 
   std::string op_type = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 0), 0);
+  auto trim_custom_prefix = [](std::string_view str) {
+    constexpr std::string_view prefix(paddle::framework::kCustomDialectPrefix);
+    return str.substr(prefix.size());
+  };
+  op_type = trim_custom_prefix(op_type);
   VLOG(7) << "Get things from python for Custom Op: " << op_type;
   if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("eager_api_run_custom_op " + op_type + " begin");

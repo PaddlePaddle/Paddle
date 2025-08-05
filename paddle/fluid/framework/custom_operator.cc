@@ -961,7 +961,8 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
 
   auto& base_op_meta = op_meta_infos.front();
 
-  auto op_name = OpMetaInfoHelper::GetOpName(base_op_meta);
+  auto op_name = paddle::framework::kCustomDialectPrefix +
+                 OpMetaInfoHelper::GetOpName(base_op_meta);
 
   if (OpInfoMap::Instance().Has(op_name)) {
     LOG(WARNING) << "Operator (" << op_name << ") has been registered.";
@@ -1084,7 +1085,8 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
   for (size_t i = 1; i < op_meta_infos.size(); ++i) {
     auto& cur_grad_op = op_meta_infos[i];
 
-    auto& grad_op_name = OpMetaInfoHelper::GetOpName(cur_grad_op);
+    auto grad_op_name = paddle::framework::kCustomDialectPrefix +
+                        OpMetaInfoHelper::GetOpName(cur_grad_op);
     auto& grad_op_inputs = OpMetaInfoHelper::GetInputs(cur_grad_op);
     auto& grad_op_outputs = OpMetaInfoHelper::GetOutputs(cur_grad_op);
     auto& grad_op_attrs = OpMetaInfoHelper::GetAttrs(cur_grad_op);
@@ -1282,6 +1284,8 @@ void RegisterOperatorWithMetaInfoMap(
 
     // Register PIR op
 
+    // Note(Pan Zhaowu): This context guard is prevent custom op registered in
+    // same name, but will not check the naming conflict with PIR op.
     if (custom_dialect->HasRegistered(pair.first)) {
       VLOG(3) << "The operator `" << pair.first
               << "` has been registered. "
@@ -1291,10 +1295,12 @@ void RegisterOperatorWithMetaInfoMap(
     for (const auto& meta_info : pair.second) {
       VLOG(3) << "register pir custom op :"
               << OpMetaInfoHelper::GetOpName(meta_info);
+      // TODO(Pan Zhaowu): Do namespace quarantine between PIR op and custom op.
       custom_dialect->RegisterCustomOp(meta_info);
     }
 
     // Register Fluid op
+    // TODO(Pan Zhaowu): Do namespace quarantine between PIR op and custom op.
     RegisterOperatorWithMetaInfo(pair.second, dso_handle);
   }
 }

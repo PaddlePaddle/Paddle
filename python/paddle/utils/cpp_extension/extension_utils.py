@@ -206,7 +206,8 @@ def custom_write_stub(resource, pyfile):
                     mod = types.ModuleType(__name__)
 
             for custom_op in custom_ops:
-                setattr(mod, custom_op, eval(custom_op))
+                trimmed_custom_op = custom_op.replace("custom_op.", "")
+                setattr(mod, trimmed_custom_op, eval(trimmed_custom_op))
 
         __bootstrap__()
 
@@ -1226,7 +1227,7 @@ def _custom_api_content(op_name):
         from paddle.jit.marker import unified
 
         @unified
-        def {op_name}({params_list}):
+        def {op_name_trimmed}({params_list}):
             # The output variable's dtype use default value 'float32',
             # and the actual dtype of output variable will be inferred in runtime.
             if in_dynamic_or_pir_mode():
@@ -1236,9 +1237,10 @@ def _custom_api_content(op_name):
                 {static_content}
             """
     ).lstrip()
-
+    op_name_trimmed = op_name.removeprefix("custom_op.")
     # generate python api file
     api_content = API_TEMPLATE.format(
+        op_name_trimmed=op_name_trimmed,
         op_name=op_name,
         params_list=params_list,
         dynamic_content=dynamic_content,
