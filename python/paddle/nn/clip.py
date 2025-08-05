@@ -793,15 +793,13 @@ class ClipGradByGlobalNorm(ClipGradBase):
 
         global_norm_var = async_add_n(global_norm_var)
 
-        """
-        NOTE(zhengtianyu): Fix grad_clip in auto_hybrid_pp mode.
-        Reason: In auto_hybrid_pp mode, each rank only keeps local parameters and gradient information,
-        so global_norm_var is in a partial state, leading to incorrect calculation.
-        Reference dynamic manual-parallel: Each rank computes local global_norm_var,
-        then performs pp group communication reduce(sum) to get correct global_norm_var.
-        For complete alignment with old dygraph semi-auto parallel PP logic,
-        refer to NOTE: align ClipGradByGlobalNorm in auto_parallel_align_mode
-        """
+        # NOTE(zhengtianyu): Fix grad_clip in auto_hybrid_pp mode.
+        # Reason: In auto_hybrid_pp mode, each rank only keeps local parameters and gradient information,
+        # so global_norm_var is in a partial state, leading to incorrect calculation.
+        # Reference dynamic manual-parallel: Each rank computes local global_norm_var,
+        # then performs pp group communication reduce(sum) to get correct global_norm_var.
+        # For complete alignment with old dygraph semi-auto parallel PP logic,
+        # refer to NOTE: align ClipGradByGlobalNorm in auto_parallel_align_mode
         if flag_auto_hybrid_pp and src_mesh is not None:
             g_mesh = dist.get_mesh()
             is_pp_enable = False
