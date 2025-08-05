@@ -524,11 +524,7 @@ void ReplaceGenerateShapeAttribute(const OpLoweringGroupPtr& group,
                                    ::pir::Operation* unsafe_op) {
   if (!group->HasShapeOrDataExprs(unsafe_op->result(0))) return;
   auto data = group->GetShapeOrDataExprs(unsafe_op->result(0)).data();
-  if (!data.has_value()) {
-    VLOG(4) << "cinn_op.generate_shape attribute 'output_dim_exprs' replace "
-               "failed.";
-    return;
-  }
+  if (!data.has_value()) return;
   auto real_data = data.value();
   auto dim_expr_attr = unsafe_op->attribute("output_dim_exprs");
   auto dim_exprs =
@@ -543,9 +539,7 @@ void ReplaceGenerateShapeAttribute(const OpLoweringGroupPtr& group,
 
   std::vector<::pir::Attribute> attr_vec;
   auto _ctx = ::pir::IrContext::Instance();
-  VLOG(4) << "/HQY/ Original exprs: ";
   for (size_t i = 0; i < dim_exprs.size(); i++) {
-    VLOG(4) << "\tExpr: " << dim_exprs[i] << ", replaced by: " << real_data[i];
     attr_vec.emplace_back(
         cinn::dialect::ConvertDimExprToAttribute(_ctx, real_data[i]));
   }
