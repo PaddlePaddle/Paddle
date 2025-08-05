@@ -2756,7 +2756,7 @@ def empty_like(
         tensor = _C_ops.empty(
             x_shape,
             convert_np_dtype_to_dtype_(dtype),
-            (device if in_dynamic_mode() else _current_expected_place()),
+            (device or _current_expected_place()),
         )
         tensor.stop_gradient = not requires_grad
         return tensor
