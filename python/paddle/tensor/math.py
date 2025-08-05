@@ -96,6 +96,7 @@ from .ops import (  # noqa: F401
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from numbers import Number
 
     from paddle import Tensor
     from paddle._typing import DTypeLike
@@ -695,7 +696,14 @@ def _elementwise_op(helper):
     return helper.append_activation(out)
 
 
-def add(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+def add(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+    *,
+    alpha: Number | None = 1,
+    out: Tensor | None = None,
+) -> Tensor:
     """
     Elementwise Add Operator.
     Add two tensors element-wise
@@ -731,6 +739,8 @@ def add(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         y (Tensor): Tensor of any dimensions. Its dtype should be bool, bfloat16, float16, float32, float64,
             int8, int16, int32, int64, uint8, complex64, complex128.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        alpha (Number, optional): Scaling factor for Y. Default: 1.
+        out (Tensor, optional): Output tensor. If provided, result will be stored here.
 
     Returns:
         N-D Tensor. A location into which the result is stored. It's dimension equals with x.
@@ -748,15 +758,53 @@ def add(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
             [3., 8., 6.])
     """
-
     if in_dynamic_or_pir_mode():
-        return _C_ops.add(x, y)
+        if alpha != 1:
+            y = y * alpha
+
+        result = _C_ops.add(x, y)
+        if out is not None:
+            _C_ops.assign_out_(result, out)
+            return out
+        return result
     else:
-        return _elementwise_op(LayerHelper('elementwise_add', **locals()))
+        helper = LayerHelper('elementwise_add', **locals())
+        if alpha != 1:
+            y = helper.create_variable_for_type_inference(y.dtype)
+            helper.append_op(
+                type='scale',
+                inputs={'X': [y]},
+                outputs={'Out': [y]},
+                attrs={'scale': alpha, 'bias': 0.0},
+            )
+
+        if out is not None:
+            helper.append_op(
+                type='elementwise_add',
+                inputs={'X': x, 'Y': y},
+                outputs={'Out': out},
+                attrs={'axis': -1},
+            )
+            return out
+
+        output = helper.create_variable_for_type_inference(x.dtype)
+        helper.append_op(
+            type='elementwise_add',
+            inputs={'X': x, 'Y': y},
+            outputs={'Out': output},
+            attrs={'axis': -1},
+        )
+        return output
 
 
 @inplace_apis_in_dygraph_only
-def add_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+def add_(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+    *,
+    alpha: Number | None = 1,
+) -> Tensor:
     """
     Inplace version of ``add`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_add`.
@@ -768,6 +816,8 @@ def add_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
         )
 
+    if alpha != 1:
+        y = y * alpha
     return _C_ops.add_(x, y)
 
 
