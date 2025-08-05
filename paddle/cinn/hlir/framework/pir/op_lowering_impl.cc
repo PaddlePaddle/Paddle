@@ -515,6 +515,44 @@ std::vector<CondFuncPriorWrapper> OpLowererImpl::PostProcess(
   return ret;
 }
 
+// unsafe_op is generated from const_cast, actually, since the
+// 'output_dim_exprs' attribute is used almost nowhere but symbolic arange, it
+// will be fine to use a unsafe const_cast. It will actually be better, if we
+// can trace verify whether this `cinn_op.generate_shape` is the input to the
+// arange op.
+void ReplaceGenerateShapeAttribute(const OpLoweringGroupPtr& group,
+                                   ::pir::Operation* unsafe_op) {
+  if (!group->HasShapeOrDataExprs(unsafe_op->result(0))) return;
+  auto data = group->GetShapeOrDataExprs(unsafe_op->result(0)).data();
+  if (!data.has_value()) {
+    VLOG(4) << "cinn_op.generate_shape attribute 'output_dim_exprs' replace "
+               "failed.";
+    return;
+  }
+  auto real_data = data.value();
+  auto dim_expr_attr = unsafe_op->attribute("output_dim_exprs");
+  auto dim_exprs =
+      cinn::dialect::ConvertAttributeToDimExprs(dim_expr_attr).value();
+  PADDLE_ENFORCE_EQ(real_data.size(),
+                    dim_exprs.size(),
+                    ::common::errors::InvalidArgument(
+                        "The size of dim expr vector should not be empty."));
+  // TODO(heqianyue): more secure impl is to check whether the old DimExpr has
+  // the same structure as the updated one. We can use a binary tree comparison
+  // algorithm. Yet normally we will be fine without checking.
+
+  std::vector<::pir::Attribute> attr_vec;
+  auto _ctx = ::pir::IrContext::Instance();
+  VLOG(4) << "/HQY/ Original exprs: ";
+  for (size_t i = 0; i < dim_exprs.size(); i++) {
+    VLOG(4) << "\tExpr: " << dim_exprs[i] << ", replaced by: " << real_data[i];
+    attr_vec.emplace_back(
+        cinn::dialect::ConvertDimExprToAttribute(_ctx, real_data[i]));
+  }
+  auto arr_attr = ::pir::ArrayAttribute::get(_ctx, attr_vec);
+  unsafe_op->set_attribute("output_dim_exprs", arr_attr);
+}
+
 std::vector<ir::stmt::BlockRef> OpLowererImpl::LowerOps(
     const OpLoweringGroupPtr& group,
     const std::vector<::pir::Operation*>& ops,
@@ -523,6 +561,12 @@ std::vector<ir::stmt::BlockRef> OpLowererImpl::LowerOps(
   auto& strategy = Operator::GetAttrs<StrategyFunction>("CINNStrategy");
   std::vector<ir::stmt::BlockRef> func_bodies;
 
+  // cinn_op.arange is a special op which can introduce complex symbolic shape
+  // relations in the CINN IR, therefore requires particular attention
+  bool group_has_arange =
+      std::any_of(ops.begin(), ops.end(), [](const ::pir::Operation* op) {
+        return op->name() == "cinn_op.arange";
+      });
   for (auto* op : ops) {
     VLOG(4) << "start lowering op:" << op->name() << " id: " << op->id();
     std::string cinn_op_name = CompatibleInfo::OpName(*op);
@@ -563,6 +607,10 @@ std::vector<ir::stmt::BlockRef> OpLowererImpl::LowerOps(
     // 2.Perform the lower process of Op
     std::vector<ir::LoweredFunc> funcs =
         DoOpLower(op_impl, op, tensor_map, &op_func_arg_tensors);
+    if (group_has_arange && op->name() == "cinn_op.generate_shape") {
+      auto unsafe_op_ = const_cast<::pir::Operation*>(op);
+      ReplaceGenerateShapeAttribute(group, unsafe_op_);
+    }
 
     for (const ir::LoweredFunc& func : funcs) {
       func_bodies.push_back(func->body_block);
