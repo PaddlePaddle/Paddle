@@ -152,7 +152,11 @@ void BindXpuStream(py::module *m_ptr) {
            [](phi::XPUStreamHandle &self, phi::XPUEventHandle &other) {
              self.wait_event(other.get_event());
            })
-      .def("query", [](phi::XPUStreamHandle &self) { return self.query(); })
+      .def("query",
+           [](phi::XPUStreamHandle &self) {
+             PADDLE_THROW(common::errors::Unavailable(
+                 "Query function for XPUStream is not supported now"));
+           })
       .def("record_event",
            [](phi::XPUStreamHandle &self, phi::XPUEventHandle *event) {
              if (event == nullptr) {
@@ -170,9 +174,9 @@ void BindXpuStream(py::module *m_ptr) {
           Examples:
               .. code-block:: python
 
-                  >>> # doctest: +REQUIRES(env:GPU)
+                  >>> # doctest: +REQUIRES(env:XPU)
                   >>> import paddle
-                  >>> s = paddle.device.cuda.Stream(paddle.CUDAPlace(0), 1)
+                  >>> s = paddle.device.xpu.Stream(paddle.XPUPlace(0), 1)
                   >>> s.synchronize()
 
           )DOC")

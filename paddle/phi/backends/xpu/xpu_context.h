@@ -52,7 +52,6 @@ class XPUStreamHandle {
   XPUStream raw_stream() const { return stream; }
   void wait_event(XPUEvent event) const;
   void synchronize() const;
-  bool query() const;
   void record_event(XPUEvent event) const;
   void set_stream(XPUStream stream);
 
@@ -186,6 +185,7 @@ class XPUEventHandle {
   XPUEvent event_;
 };
 
+XPUStreamHandle get_current_stream_handle(int device_id = -1);
 XPUStreamHandle get_stream_handle(int device_id = -1);
 void set_current_stream(XPUStreamHandle* s);
 

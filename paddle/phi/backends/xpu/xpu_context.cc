@@ -645,21 +645,14 @@ void XPUStreamHandle::synchronize() const {
 
 void XPUStreamHandle::set_stream(XPUStream stream_) { stream = stream_; }
 
-bool XPUStreamHandle::query() const {
-  XPUEvent event = XPUEventPool::Instance().CreateEventFromPool();
-  int r = xpu_event_record(event, stream);
-  PADDLE_ENFORCE_XRE_SUCCESS(r);
-  r = xpu_event_query(event);
-  if (r == XPU_SUCCESS) {
-    return true;
-  } else {
-    return false;
-  }
-}
-
 void XPUStreamHandle::record_event(XPUEvent event) const {
   int r = xpu_event_record(event, stream);
   PADDLE_ENFORCE_XRE_SUCCESS(r);
+}
+
+XPUStreamHandle get_current_stream_handle(int device_id) {
+  auto* dev_ctx = get_xpu_context(device_id);
+  return *dev_ctx->get_current_stream_handle();
 }
 
 XPUStreamHandle get_stream_handle(int device_id) {
@@ -736,7 +729,6 @@ XPUEventHandle::XPUEventHandle(XPUStream stream) {
 
 void XPUEventHandle::record(XPUStream stream) {
   int r = xpu_event_query(event_);
-  printf("====r: %d\n", r);
   PADDLE_ENFORCE_XRE_SUCCESS(xpu_event_record(event_, stream));
 }
 
