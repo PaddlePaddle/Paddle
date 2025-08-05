@@ -80,7 +80,7 @@ void InstanceNormGradKernel(const Context& dev_ctx,
         common::errors::InvalidArgument(
             "The `shape` in InstanceNormOp is invalid: "
             "the size of scale's dimensions must be equal to 1. But "
-            "received: the size of scale's dimensions"
+            "received: the size of scale's dimensions "
             "is [%d]",
             scale_ptr->dims().size()));
     PADDLE_ENFORCE_EQ(scale_ptr->dims()[0],

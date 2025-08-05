@@ -1095,8 +1095,7 @@ void CrossEntropyInferMeta(const MetaTensor& x,
             "shall have the same dimensions. But received: the dimensions of "
             "Input(X) is [%d],"
             "the shape of Input(X) is [%s], the dimensions of Input(Label) "
-            "is "
-            "[%d], the shape of"
+            "is [%d], the shape of "
             "Input(Label) is [%s]",
             rank,
             x_dims,
@@ -1109,11 +1108,11 @@ void CrossEntropyInferMeta(const MetaTensor& x,
           label_dims[rank - 1],
           common::errors::InvalidArgument(
               "If Attr(soft_label) == true, the last dimension of "
-              "Input(X) and Input(Label) should be equal. But received: the"
+              "Input(X) and Input(Label) should be equal. But received: the "
               "last dimension of Input(X) is [%d], the shape of Input(X) is "
-              "[%s],"
+              "[%s], "
               "the last dimension of Input(Label) is [%d], the shape of "
-              "Input(Label)"
+              "Input(Label) "
               "is [%s], the last dimension is [%d].",
               x_dims[rank - 1],
               x_dims,
@@ -2707,9 +2706,9 @@ void LogLossInferMeta(const MetaTensor& input,
         pred_dims,
         label_dims,
         common::errors::InvalidArgument(
-            "The dimensions of Input(Predicted) must be equal to the"
+            "The dimensions of Input(Predicted) must be equal to the "
             "dimensions of Input(Labels), but received dimensions of "
-            "Input(Predicted)"
+            "Input(Predicted) "
             "is [%s], received dimensions of Input(Labels) is [%s].",
             pred_dims,
             label_dims));
@@ -3332,7 +3331,7 @@ void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out) {
                     dim_vec[0],
                     common::errors::InvalidArgument(
                         "X's second dimension is expected to be equal to "
-                        "Vec's first dimension"
+                        "Vec's first dimension, "
                         "but received X'shape = [%s], Vec's shape = [%s]",
                         dim_x,
                         dim_vec));
@@ -4535,9 +4534,9 @@ void UnpoolInferMeta(const MetaTensor& x,
   PADDLE_ENFORCE_EQ(in_x_dims,
                     in_y_dims,
                     common::errors::InvalidArgument(
-                        "The dimensions of Input(X) must equal to be"
-                        "the dimensions of Input(Indices), but received"
-                        "dimensions of Input(X) is [%d], received dimensions"
+                        "The dimensions of Input(X) must equal to be "
+                        "the dimensions of Input(Indices), but received "
+                        "dimensions of Input(X) is [%d], received dimensions "
                         "of Input(Indices) is [%d]",
                         in_x_dims,
                         in_y_dims));
@@ -4581,9 +4580,9 @@ void Unpool3dInferMeta(const MetaTensor& x,
   PADDLE_ENFORCE_EQ(in_x_dims,
                     in_y_dims,
                     common::errors::InvalidArgument(
-                        "The dimensions of Input(X) must equal to be"
-                        "the dimensions of Input(Indices), but received"
-                        "dimensions of Input(X) is [%d], received dimensions"
+                        "The dimensions of Input(X) must equal to be "
+                        "the dimensions of Input(Indices), but received "
+                        "dimensions of Input(X) is [%d], received dimensions "
                         "of Input(Indices) is [%d]",
                         in_x_dims,
                         in_y_dims));
@@ -4656,7 +4655,7 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
         (x.dims()[1] + (group_size - 1)) / group_size,
         errors::InvalidArgument("The input(weight_scale) dim[0] must be equal "
                                 "to (Input(weight).dim[1] + (group_size -1))"
-                                " / group_size"
+                                " / group_size. "
                                 "But receive %d and %d",
                                 dim_scale[0],
                                 (x.dims()[1] + (group_size - 1)) / group_size));
