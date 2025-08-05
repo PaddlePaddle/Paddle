@@ -389,27 +389,36 @@ def convert_uint16_to_float(in_list):
     return np.reshape(out, in_list.shape)
 
 
-def get_places(string_format=False):
+def get_places():
     places = []
-    if not string_format:
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-    else:
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            places.append('cpu')
-        if paddle.is_compiled_with_cuda():
-            places.append('gpu')
+    if (
+        os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+        in ['1', 'true', 'on']
+        or not core.is_compiled_with_cuda()
+    ):
+        places.append(base.CPUPlace())
+    if core.is_compiled_with_cuda():
+        places.append(base.CUDAPlace(0))
+    if is_custom_device():
+        dev_type = paddle.device.get_all_custom_device_type()[0]
+        places.append(base.CustomPlace(dev_type, 0))
     return places
+
+
+def get_devices():
+    devices = []
+    if (
+        os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+        in ['1', 'true', 'on']
+        or not paddle.is_compiled_with_cuda()
+    ):
+        devices.append('cpu')
+    if paddle.is_compiled_with_cuda():
+        devices.append('gpu')
+    if is_custom_device():
+        dev_type = paddle.device.get_all_custom_device_type()[0]
+        devices.append(f'{dev_type}:0')
+    return devices
 
 
 def get_device_place():
@@ -421,6 +430,15 @@ def get_device_place():
     ):
         return base.CustomPlace(custom_dev_types[0], 0)
     return base.CPUPlace()
+
+
+def is_custom_device():
+    custom_dev_types = paddle.device.get_all_custom_device_type()
+    if custom_dev_types and paddle.device.is_compiled_with_custom_device(
+        custom_dev_types[0]
+    ):
+        return True
+    return False
 
 
 @contextmanager
@@ -2902,6 +2920,13 @@ class OpTest(unittest.TestCase):
                     return [place]
                 else:
                     return []
+            elif is_custom_device():
+                dev_type = paddle.device.get_all_custom_device_type()[0]
+                place = core.CustomPlace(dev_type, 0)
+                if core.is_float16_supported(place):
+                    return [place]
+                else:
+                    return []
             else:
                 return []
         places = []
@@ -2931,6 +2956,9 @@ class OpTest(unittest.TestCase):
             and not cpu_only
         ):
             places.append(core.CUDAPlace(0))
+        if is_custom_device():
+            dev_type = paddle.device.get_all_custom_device_type()[0]
+            places.append(core.CustomPlace(dev_type, 0))
         return places
 
     def check_output(

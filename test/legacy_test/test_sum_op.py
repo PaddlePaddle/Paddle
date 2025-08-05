@@ -889,9 +889,7 @@ class TestSum_BoolToInt64_ZeroSize(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         self.shape = [3, 0, 2]
-        self.places = [base.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def check_result(
         self, dygraph_result, expected_result, axis, keepdim, dtype, place

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, get_device_place, get_places
+from op_test import OpTest, get_device_place, get_devices
 
 import paddle
 from paddle import base
@@ -294,10 +294,10 @@ class TestAdadeltaOpMultiPrecision(unittest.TestCase):
         paddle.enable_static()
 
     def test_main(self):
-        for place in get_places(string_format=True):
+        for device in get_devices():
             use_amp_list = [True, False]
             for use_amp in use_amp_list:
-                self._test_adadelta_op_dygraph_place_amp(place, use_amp)
+                self._test_adadelta_op_dygraph_place_amp(device, use_amp)
 
 
 class TestAdadeltaMultiPrecision2_0(unittest.TestCase):

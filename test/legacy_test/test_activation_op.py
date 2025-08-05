@@ -23,6 +23,7 @@ from op_test import (
     convert_float_to_uint16,
     get_device_place,
     get_places,
+    is_custom_device,
 )
 from scipy.special import erf, expit
 from utils import static_guard
@@ -497,7 +498,8 @@ class TestSigmoid_ZeroDim(TestSigmoid):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or core.is_compiled_with_rocm(),
     "core is not compiled with CUDA",
 )
 class TestSigmoidBF16(OpTest):
@@ -1765,7 +1767,8 @@ class TestSqrt_Complex128(TestSqrt):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or core.is_compiled_with_rocm(),
     "core is not compiled with CUDA",
 )
 class TestSqrtBF16(OpTest):
@@ -2037,7 +2040,7 @@ class TestCeil(TestActivation):
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
         self.convert_input_output()
-        if not core.is_compiled_with_cuda():
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
             self.__class__.no_need_check_grad = True
 
     def init_shape(self):
@@ -2091,7 +2094,7 @@ class TestFloor(TestActivation):
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
         self.convert_input_output()
-        if not core.is_compiled_with_cuda():
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
             self.__class__.no_need_check_grad = True
 
     def init_shape(self):
@@ -4563,7 +4566,8 @@ class TestSquare_ZeroDim(TestSquare):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or core.is_compiled_with_rocm(),
     "core is not compiled with CUDA",
 )
 class TestSquareBF16(OpTest):
@@ -4917,7 +4921,8 @@ class TestSoftplus_ZeroDim(TestSoftplus):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or core.is_compiled_with_rocm(),
     "core is not compiled with CUDA",
 )
 class TestSoftplusBF16(OpTest):
@@ -5595,7 +5600,8 @@ class TestMishAPI(unittest.TestCase):
 # ------------------ Test Cudnn Activation----------------------
 def create_test_act_cudnn_class(parent, atol=1e-3, grad_atol=1e-3):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestActCudnn(parent):
         def init_kernel_type(self):

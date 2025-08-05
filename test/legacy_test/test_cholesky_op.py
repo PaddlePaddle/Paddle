@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 from decorator_helper import prog_scope
 from gradient_checker import grad_check
-from op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest, get_places, skip_check_grad_ci
 
 import paddle
 from paddle import base
@@ -173,9 +173,7 @@ class TestDygraph(unittest.TestCase):
 
 class TestCholeskySingularAPI(unittest.TestCase):
     def setUp(self):
-        self.places = [base.CPUPlace()]
-        if core.is_compiled_with_cuda() and (not core.is_compiled_with_rocm()):
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def check_static_result(self, place, input_shape, with_out=False):
         with paddle.static.program_guard(
