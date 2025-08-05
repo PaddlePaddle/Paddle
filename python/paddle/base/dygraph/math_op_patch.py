@@ -116,9 +116,9 @@ def monkey_patch_math_tensor():
 
         Examples:
             .. code-block:: python
-    
+
                 >>> import paddle
-    
+
                 >>> original_tensor = paddle.to_tensor([1, 0, -3])
                 >>> print("original tensor's dtype is: {}".format(original_tensor.dtype))
                 original tensor's dtype is: paddle.int64
@@ -129,9 +129,11 @@ def monkey_patch_math_tensor():
                 [True False True]
         """
 
-        if self.dtype == core.DataType.BOOL or self.dtype == core.VarDesc.VarType.BOOL:
+        if (
+            self.dtype == core.DataType.BOOL
+            or self.dtype == core.VarDesc.VarType.BOOL
+        ):
             return self
-
         return _C_ops.cast(self, core.DataType.BOOL)
 
     def _scalar_elementwise_op_(
