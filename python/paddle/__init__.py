@@ -182,6 +182,7 @@ from .nn.functional.distance import (
     pdist,
 )
 from .nn.initializer.lazy_init import LazyGuard
+from .tensor import compat as compat
 from .tensor.attribute import (
     imag,
     is_complex,
