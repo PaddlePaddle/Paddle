@@ -19,6 +19,7 @@ from . import (  # noqa: F401
     download,
     image_util,
     layers_utils,
+    param_alias_utils,
     unique_name,
 )
 from .deprecated import deprecated
