@@ -25,10 +25,11 @@
 #include "paddle/phi/kernels/determinant_grad_kernel.h"
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/funcs/conjugate_transpose.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
+#include "paddle/phi/kernels/funcs/inverse_from_lu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/lu_kernel.h"
-#include "paddle/phi/kernels/lu_solve_kernel.h"
 
 namespace phi {
 namespace detail {
@@ -179,22 +180,6 @@ struct FusedPerturbAndDetFunctor {
   const int* pivots_data_;
   T* out_k_data_;
 };
-
-template <typename Context, typename T>
-struct MatrixIdentityFunctor {
-  MatrixIdentityFunctor(int64_t m, T* output) : m_(m), output_(output) {}
-
-  HOSTDEVICE void operator()(int64_t index) const {
-    const int64_t col = index % m_;
-    const int64_t global_row = index / m_;
-    const int64_t row = global_row % m_;
-    output_[index] = (row == col) ? static_cast<T>(1) : static_cast<T>(0);
-  }
-
-  const int64_t m_;
-  T* output_;
-};
-
 }  // namespace detail
 
 template <typename T, typename Context>
@@ -258,6 +243,11 @@ void DeterminantGradKernel(const Context& dev_ctx,
   k.Resize({batch_count});
   dev_ctx.template Alloc<MPType>(&k);
 
+  std::vector<int64_t> k_dims = common::vectorize(x_dims);
+  k_dims[k_dims.size() - 1] = 1;
+  k_dims[k_dims.size() - 2] = 1;
+  k.Resize(common::make_ddim(k_dims));
+
   funcs::ForRange<Context> for_range_batch(dev_ctx, batch_count);
   detail::FusedPerturbAndDetFunctor<MPType> fused_functor(
       m,
@@ -268,23 +258,18 @@ void DeterminantGradKernel(const Context& dev_ctx,
       k.data<MPType>());
   for_range_batch(fused_functor);
 
-  std::vector<int64_t> k_dims = common::vectorize(x_dims);
-  k_dims[k_dims.size() - 1] = 1;
-  k_dims[k_dims.size() - 2] = 1;
-  k.Resize(common::make_ddim(k_dims));
-
-  DenseTensor I;
-  I.Resize(x_dims);
-  dev_ctx.template Alloc<MPType>(&I);
-  funcs::ForRange<Context> for_range(dev_ctx, I.numel());
-  detail::MatrixIdentityFunctor<Context, MPType> identity_functor(
-      m, I.data<MPType>());
-  for_range(identity_functor);
+  DenseTensor a_inv;
+  a_inv.Resize(x_dims);
+  funcs::InverseFromLUFunctor<MPType, Context> inverse_from_lu;
+  inverse_from_lu(dev_ctx, lu_data, pivots, &a_inv);
 
   DenseTensor a_inv_h;
   a_inv_h.Resize(x_dims);
-  LuSolveKernel<MPType, Context>(
-      dev_ctx, I, lu_data, pivots, /*trans=*/"C", &a_inv_h);
+  dev_ctx.template Alloc<MPType>(&a_inv_h);
+  funcs::ForRange<Context> for_range_transpose(dev_ctx, a_inv.numel());
+  funcs::ConjugateTransposeFunctor<MPType> conj_trans_functor(
+      a_inv.data<MPType>(), a_inv_h.data<MPType>(), batch_count, m);
+  for_range_transpose(conj_trans_functor);
 
   auto grad_mp = phi::Multiply<MPType, Context>(dev_ctx, a_inv_h, k);
 
