@@ -26,7 +26,8 @@ if(WITH_GPU OR WITH_ROCM)
     cuda_malloc_async_allocator.cc
     pinned_allocator.cc
     stream_safe_cuda_allocator.cc
-    thread_local_allocator.cc)
+    thread_local_allocator.cc
+    monotonic_allocator.cc)
 endif()
 
 if(CUDA_VERSION VERSION_GREATER_EQUAL 10.2)

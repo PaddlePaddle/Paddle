@@ -24,13 +24,20 @@ from . import (  # noqa: F401
     sequence_parallel_utils,
     tensor_parallel_utils,
 )
+from .allocator_utils import MonotonicAllocatorManager
 from .fs import HDFSClient, LocalFS
 from .ps_util import DistributedInfer
 
 if TYPE_CHECKING:
     from paddle.nn import Layer
 
-__all__ = ["LocalFS", "recompute", "DistributedInfer", "HDFSClient"]
+__all__ = [
+    "LocalFS",
+    "recompute",
+    "DistributedInfer",
+    "HDFSClient",
+    "MonotonicAllocatorManager",
+]
 
 
 def recompute(

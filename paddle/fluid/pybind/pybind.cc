@@ -90,6 +90,7 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/core/memory/allocation/auto_growth_best_fit_allocator_v2.h"
 #include "paddle/phi/core/memory/allocation/cuda_ipc_allocator.h"
+#include "paddle/phi/core/memory/allocation/monotonic_allocator.h"
 #endif
 #include "paddle/common/macros.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
@@ -3960,6 +3961,41 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("register_paddle_plugin", []() {
     paddle::platform::TrtPluginRegistry::Global()->RegisterToTrt();
   });
+#endif
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  py::class_<paddle::memory::allocation::MonotonicAllocatorManager>(
+      m, "_MonotonicAllocatorManager")
+      .def("_enable",
+           [] {
+             paddle::memory::allocation::MonotonicAllocatorManager::Instance()
+                 .Enable();
+           })
+      .def("_disable",
+           [] {
+             paddle::memory::allocation::MonotonicAllocatorManager::Instance()
+                 .Disable();
+           })
+      .def("_is_enabled",
+           [] {
+             return paddle::memory::allocation::MonotonicAllocatorManager::
+                 Instance()
+                     .IsEnabled();
+           })
+      .def("_allocate_buffer",
+           [](const phi::Place &place, size_t capacity) {
+             paddle::memory::allocation::MonotonicAllocatorManager::Instance()
+                 .AllocateBuffer(place, capacity);
+           })
+      .def("_deallocate_buffer",
+           [](const phi::Place &place) {
+             paddle::memory::allocation::MonotonicAllocatorManager::Instance()
+                 .DeallocateBuffer(place);
+           })
+      .def("_reset_buffer", [](const phi::Place &place) {
+        paddle::memory::allocation::MonotonicAllocatorManager::Instance()
+            .ResetBuffer(place);
+      });
 #endif
 
 #if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)

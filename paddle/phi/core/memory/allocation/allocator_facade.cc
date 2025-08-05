@@ -36,6 +36,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/memory/allocation/cuda_allocator.h"
 #include "paddle/phi/core/memory/allocation/cuda_managed_allocator.h"
+#include "paddle/phi/core/memory/allocation/monotonic_allocator.h"
 #include "paddle/phi/core/memory/allocation/pinned_allocator.h"
 #include "paddle/phi/core/memory/allocation/stream_safe_cuda_allocator.h"
 #include "paddle/phi/core/memory/allocation/thread_local_allocator.h"
@@ -359,6 +360,11 @@ class AllocatorFacadePrivate {
 
     CheckAllocThreadSafe();
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    for (int dev_id = 0; dev_id < platform::GetGPUDeviceCount(); ++dev_id) {
+      InitMonotonicCUDAAllocator(phi::GPUPlace(dev_id));
+    }
+#endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     // No need to wrap CUDAGraphAllocator for StreamSafeCUDAAllocator
     if (!is_stream_safe_cuda_allocator_used_ &&
@@ -1166,6 +1172,68 @@ class AllocatorFacadePrivate {
       allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
           underlying_allocator, alignment, chunk_size, allow_free_idle_chunk);
     }
+#endif
+#endif
+  }
+
+  void InitMonotonicCUDAAllocator(phi::GPUPlace p) {
+#if defined(PADDLE_WITH_HIP)
+    auto cuda_allocator = CreateCUDAAllocator(p);
+    MonotonicAllocatorManager::Instance().SetAllocator(
+        std::make_shared<MonotonicAllocator>(cuda_allocator,
+                                             platform::GpuMinChunkSize()),
+        p);
+#endif
+
+#if defined(PADDLE_WITH_CUDA)
+#if CUDA_VERSION >= 10020
+    CUdevice device;
+    int val;
+    try {
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::cuDeviceGet(&device, p.GetDeviceId()));
+
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cuDeviceGetAttribute(
+          &val,
+          CU_DEVICE_ATTRIBUTE_VIRTUAL_ADDRESS_MANAGEMENT_SUPPORTED,
+          device));
+    } catch (...) {
+      val = 0;
+    }
+    auto cuda_allocator = CreateCUDAAllocator(p);
+    MonotonicAllocatorManager::Instance().SetAllocator(
+        std::make_shared<MonotonicAllocator>(cuda_allocator,
+                                             platform::GpuMinChunkSize()),
+        p);
+#else
+    auto cuda_allocator = CreateCUDAAllocator(p);
+    auto alignment = platform::GpuMinChunkSize();
+    bool need_addr_align = true;
+
+    try {
+      const auto& prop = platform::GetDeviceProperties(p.GetDeviceId());
+      need_addr_align = prop.textureAlignment < alignment;
+      VLOG(4) << "GetDeviceProperties ok, textureAlignment: "
+              << prop.textureAlignment
+              << ", set need_addr_align=" << need_addr_align;
+    } catch (...) {
+      need_addr_align = true;
+      VLOG(4) << "GetDeviceProperties failed, set need_addr_align=true";
+    }
+    // The address returned is aligned already,
+    // ref:
+    // https://stackoverflow.com/questions/14082964/cuda-alignment-256bytes-seriously/14083295#14083295
+    std::shared_ptr<Allocator> underlying_allocator{nullptr};
+    if (need_addr_align) {
+      VLOG(10) << "use AlignedAllocator with alignment: " << alignment;
+      underlying_allocator =
+          std::make_shared<AlignedAllocator>(underlying_allocator, alignment);
+    } else {
+      VLOG(10) << "not use AlignedAllocator with alignment: " << alignment;
+      underlying_allocator = cuda_allocator;
+    }
+    MonotonicAllocatorManager::Instance().SetAllocator(
+        std::make_shared<MonotonicAllocator>(cuda_allocator, alignment), p);
 #endif
 #endif
   }

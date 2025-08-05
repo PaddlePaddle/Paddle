@@ -309,6 +309,7 @@ try:
         _is_compiled_with_heterps,
         _is_dygraph_debug_enabled,
         _is_program_version_supported,
+        _MonotonicAllocatorManager,
         _Profiler,
         _ProfilerResult,
         _promote_types_if_complex_exists,

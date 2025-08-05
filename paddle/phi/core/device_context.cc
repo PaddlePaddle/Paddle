@@ -16,8 +16,10 @@
 
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
+#include "paddle/phi/core/memory/allocation/monotonic_allocator.h"
 #elif defined(PADDLE_WITH_HIP)
 #include "paddle/phi/backends/gpu/rocm/hip_graph.h"
+#include "paddle/phi/core/memory/allocation/monotonic_allocator.h"
 #endif
 
 #include "paddle/phi/core/dense_tensor.h"
@@ -29,7 +31,7 @@ namespace phi {
 using DataType = phi::DataType;
 
 struct DeviceContext::Impl {
-  Impl() = default;
+  explicit Impl(DeviceContext* ctx) : device_ctx_(ctx) {}
   ~Impl() = default;
 
   void SetAllocator(const Allocator* allocator) {
@@ -166,16 +168,22 @@ struct DeviceContext::Impl {
             ? zero_allocator_
             : (pinned ? pinned_allocator_ : device_allocator_);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    bool must_cuda_graph_allocator =
-        (!fake_alloc && tensor->numel() != 0) && !pinned;
-    if (must_cuda_graph_allocator &&
-        place.GetType() == phi::AllocationType::GPU &&
+    bool use_cuda_allocator = (!fake_alloc && tensor->numel() != 0) && !pinned;
+    if (use_cuda_allocator && place.GetType() == phi::AllocationType::GPU &&
         phi::backends::gpu::CUDAGraph::IsThisThreadCapturing()) {
       PADDLE_ENFORCE_NOT_NULL(cuda_graph_allocator_,
                               common::errors::InvalidArgument(
                                   "Required cuda_graph_allocator_ shall not be "
                                   "nullptr, but received nullptr."));
       allocator = cuda_graph_allocator_;
+    }
+    if (use_cuda_allocator && place.GetType() == phi::AllocationType::GPU &&
+        paddle::memory::allocation::MonotonicAllocatorManager::Instance()
+            .IsEnabled()) {
+      allocator =
+          paddle::memory::allocation::MonotonicAllocatorManager::Instance()
+              .GetAllocator(place)
+              .get();
     }
 #endif
     return tensor->AllocateFrom(const_cast<Allocator*>(allocator),
@@ -298,12 +306,13 @@ struct DeviceContext::Impl {
   Generator* host_generator_{nullptr};
 
   distributed::CommContext* comm_context_{nullptr};
+  DeviceContext* device_ctx_{nullptr};
 };
 
-DeviceContext::DeviceContext() { impl_ = std::make_unique<Impl>(); }
+DeviceContext::DeviceContext() { impl_ = std::make_unique<Impl>(this); }
 
 DeviceContext::DeviceContext(const DeviceContext& other) {
-  impl_ = std::make_unique<Impl>();
+  impl_ = std::make_unique<Impl>(this);
   impl_->SetHostAllocator(&other.GetHostAllocator());
   impl_->SetAllocator(&other.GetAllocator());
   impl_->SetZeroAllocator(&other.GetZeroAllocator());
