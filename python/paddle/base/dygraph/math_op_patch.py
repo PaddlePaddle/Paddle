@@ -104,6 +104,36 @@ def monkey_patch_math_tensor():
 
         return _C_ops.cast(self, dtype)
 
+    def bool(self: Tensor) -> Tensor:
+        """
+
+        Cast a Tensor to boolean data type if it differs from the current dtype;
+        otherwise, return the original Tensor. Non-zero elements will be cast to True,
+        and zero elements will be cast to False.
+
+        Returns:
+            Tensor: a new Tensor with bool dtype
+
+        Examples:
+            .. code-block:: python
+    
+                >>> import paddle
+    
+                >>> original_tensor = paddle.to_tensor([1, 0, -3])
+                >>> print("original tensor's dtype is: {}".format(original_tensor.dtype))
+                original tensor's dtype is: paddle.int64
+                >>> bool_tensor = original_tensor.bool()
+                >>> print("bool tensor's dtype is: {}".format(bool_tensor.dtype))
+                bool tensor's dtype is: paddle.bool
+                >>> print(bool_tensor)
+                [True False True]
+        """
+
+        if self.dtype == core.DataType.BOOL or self.dtype == core.VarDesc.VarType.BOOL:
+            return self
+
+        return _C_ops.cast(self, core.DataType.BOOL)
+
     def _scalar_elementwise_op_(
         var: Tensor, scale: float, bias: float
     ) -> Tensor:
@@ -225,6 +255,7 @@ def monkey_patch_math_tensor():
         ('__len__', _len_),
         ('__index__', _index_),
         ('astype', astype),
+        ('bool', bool),
         ('dim', dim),
         ('ndimension', ndimension),
         ('ndim', _ndim),
