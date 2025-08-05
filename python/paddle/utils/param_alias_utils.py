@@ -18,9 +18,7 @@ import functools
 from typing import Callable, dict, list
 
 
-def param_alias(
-    alias_mapping: dict[str, list[str]], paddle_param_len: int
-) -> Callable:
+def param_alias(alias_mapping: dict[str, list[str]]) -> Callable:
     """
     Decorator to map parameter names between different API conventions.
     """
@@ -28,7 +26,7 @@ def param_alias(
     def decorator(func: Callable):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            if not kwargs or len(args) >= paddle_param_len:
+            if not kwargs:
                 return func(*args, **kwargs)
             for original, aliases in alias_mapping.items():
                 for alias in aliases:

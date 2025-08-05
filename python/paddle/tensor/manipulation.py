@@ -4763,7 +4763,7 @@ def expand_as(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
-@param_alias({"x": ["input"], "shape": ["size"]}, 2)
+@param_alias({"x": ["input"], "shape": ["size"]})
 def broadcast_to(
     x: Tensor, shape: ShapeLike, name: str | None = None
 ) -> Tensor:
