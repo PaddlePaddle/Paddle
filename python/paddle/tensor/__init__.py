@@ -53,6 +53,7 @@ from .creation import (  # noqa: F401
     ones,
     ones_like,
     polar,
+    range,
     resize_,
     set_,
     to_tensor,

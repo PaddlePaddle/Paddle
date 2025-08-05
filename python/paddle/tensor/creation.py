@@ -1718,6 +1718,81 @@ def arange(
         return out
 
 
+def range(
+    start: float | paddle.Tensor = 0,
+    end: float | paddle.Tensor | None = None,
+    step: float | paddle.Tensor = 1,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+) -> paddle.Tensor:
+    """
+    Returns a 1-D Tensor with spaced values within a given interval.
+
+    Values are generated into the half-open interval [``start``, ``end``] with
+    the ``step``. (the interval including ``start`` and ``end``).
+
+    If ``dtype`` is float32 or float64, we advise adding a small epsilon to
+    ``end`` to avoid floating point rounding errors when comparing against ``end``.
+
+    Parameters:
+        start(float|int|Tensor): Start of interval. The interval includes this
+            value. If ``end`` is None, the half-open interval is [0, ``start``).
+            If ``start`` is a Tensor, it is a 0-D Tensor which represents a scalar
+            and data type is int32, int64, float32, float64. Default is 0.
+        end(float|int|Tensor, optional): End of interval. The interval includes this
+            value. If ``end`` is a Tensor, it is a 0-D Tensor which
+            represents a scalar and data type is int32, int64, float32, float64.
+            If ``end`` is None, the half-open interval is [0, ``start``).
+            Default is None.
+        step(float|int|Tensor, optional): Spacing between values. For any out,
+            it is the instance between two adjacent values, out[i+1] - out[i].
+            If ``step`` is a Tensor, it is a 0-D Tensor which represents a scalar
+            and data type is int32, int64, float32, float64. . Default is 1.
+        dtype(str|np.dtype, optional): The data type of the
+            output tensor. Supported data types: int32, int64, float32, float64.
+            If ``dtype`` is None, the data type is float32. Default is None.
+        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor: A 1-D Tensor with values from the interval [``start``, ``end``]
+        taken with common difference ``step`` beginning from ``start``. Its
+        data type is set by ``dtype``.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> out1 = paddle.range(5)
+            >>> print(out1.numpy())
+            [0 1 2 3 4]
+
+            >>> out2 = paddle.range(3, 9, 2.0)
+            >>> print(out2.numpy())
+            [3. 5. 7. 9.]
+
+            >>> # use 4.999 instead of 5.0 to avoid floating point rounding errors
+            >>> out3 = paddle.range(4.999, dtype='float32')
+            >>> print(out3.numpy())
+            [0. 1. 2. 3. 4.]
+
+            >>> start_var = paddle.to_tensor(3)
+            >>> out4 = paddle.range(start_var, 7)
+            >>> print(out4.numpy())
+            [3 4 5 6 7]
+    """
+
+    warnings.warn(
+        "paddle.range is deprecated and will be removed in a future release because its behavior is inconsistent with Python's range builtin. Instead, use paddle.arange, which produces values in [start, end).",
+        stacklevel=2,
+    )
+
+    if end is None:
+        return arange(start, end, step, dtype, name)
+
+    return arange(start, end + 1, step, dtype, name)
+
+
 def _tril_triu_op(helper: LayerHelper) -> paddle.Tensor:
     """Base op of tril_op and triu_op"""
     op_type = helper.layer_type
