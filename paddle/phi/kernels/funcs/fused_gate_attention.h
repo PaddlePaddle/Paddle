@@ -993,7 +993,7 @@ class FlashAttnWithGating {
 
     PADDLE_ENFORCE_NOT_NULL(
         qkv_transpose_out,
-        common::errors::NotFound("The input qkv_transpose_out can not be"
+        common::errors::NotFound("The input qkv_transpose_out can not be "
                                  "nullptr when merge_qkv is true."));
 
     int64_t q_size = config->GetQuerySize();

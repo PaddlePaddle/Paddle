@@ -517,7 +517,7 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigEnableONEDNN(
 /// \brief Set the cache capacity of different input shapes for OneDNN.
 /// Default value 0 means not caching any shape.
 /// Please see MKL-DNN Data Caching Design Document:
-/// https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/design/mkldnn/caching/caching.md
+/// https://github.com/PaddlePaddle/docs/blob/develop/docs/design/mkldnn/caching/caching.md
 ///
 /// \param[in] pd_config config
 /// \param[in] capacity The cache capacity.
@@ -528,7 +528,7 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigSetMkldnnCacheCapacity(
 /// \brief Set the cache capacity of different input shapes for OneDNN.
 /// Default value 0 means not caching any shape.
 /// Please see MKL-DNN Data Caching Design Document:
-/// https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/design/mkldnn/caching/caching.md
+/// https://github.com/PaddlePaddle/docs/blob/develop/docs/design/mkldnn/caching/caching.md
 ///
 /// \param[in] pd_config config
 /// \param[in] capacity The cache capacity.

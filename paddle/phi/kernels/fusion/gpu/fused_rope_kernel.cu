@@ -75,13 +75,36 @@ void FusedRopeKernel(const Context& dev_ctx,
   outs_data[0] = out_q->data<T>();
   int num_inputs = 1;
 
-  if (out_k && out_k->numel() > 0) {
+  if (k) {
+    auto k_dims = k->dims();
+    auto k_batch_size = time_major ? k_dims[1] : k_dims[0];
+    PADDLE_ENFORCE_LE(
+        batch_size,
+        k_batch_size,
+        common::errors::InvalidArgument("The batch_size of q (%d) must be less "
+                                        "than or equal to k's (%d).",
+                                        batch_size,
+                                        k_batch_size));
+
+    dev_ctx.template Alloc<T>(out_k);
     ins_data[num_inputs] = k->data<T>();
     outs_data[num_inputs] = out_k->data<T>();
     inputs_num_heads[num_inputs] = k->dims()[2];
     num_inputs++;
   }
-  if (out_v && out_v->numel() > 0) {
+
+  if (v) {
+    auto v_dims = v->dims();
+    auto v_batch_size = time_major ? v_dims[1] : v_dims[0];
+    PADDLE_ENFORCE_LE(
+        batch_size,
+        v_batch_size,
+        common::errors::InvalidArgument("The batch_size of q (%d) must be less "
+                                        "than or equal to v's (%d).",
+                                        batch_size,
+                                        v_batch_size));
+
+    dev_ctx.template Alloc<T>(out_v);
     ins_data[num_inputs] = v->data<T>();
     outs_data[num_inputs] = out_v->data<T>();
     inputs_num_heads[num_inputs] = v->dims()[2];

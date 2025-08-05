@@ -176,7 +176,7 @@ PreparedOp PrepareImpl(
   // OneDNN variant of code reads attributes in some of GetKernelTypeForVar and
   // GetKernelType functions, so we need to copy the attributes there.
   // Const qualifier of Attrs had to be discarded to overwrite it.
-  if (FLAGS_use_mkldnn) {
+  if (FLAGS_use_mkldnn || FLAGS_use_onednn) {
     auto& mutable_op_attrs = const_cast<framework::AttributeMap&>(op.Attrs());
     mutable_op_attrs = default_attrs;
     for (auto& attr : attrs) {

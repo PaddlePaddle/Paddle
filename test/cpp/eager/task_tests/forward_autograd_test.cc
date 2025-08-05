@@ -185,9 +185,9 @@ TEST(Forward, LinearNodes) {
     PADDLE_ENFORCE_EQ(node1_meta[0].GetEdge().GetGradNode(),
                       grad_node0,
                       common::errors::InvalidArgument(
-                          "node1_meta[0].GetEdge().GetGradNode()"
-                          "is not equal with grad_node0"
-                          "the value of grad_node0 is %d"
+                          "node1_meta[0].GetEdge().GetGradNode() "
+                          "is not equal with grad_node0, "
+                          "the value of grad_node0 is %d "
                           "and node1_meta[0].GetEdge().GetGradNode() is %d",
                           grad_node0,
                           node1_meta[0].GetEdge().GetGradNode()));

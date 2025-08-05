@@ -189,7 +189,7 @@ void BroadcastTensorsGradKernel(const Context& dev_ctx,
 
         default: {
           PADDLE_THROW(
-              errors::InvalidArgument("Detected reduce size: %d out of range"
+              errors::InvalidArgument("Detected reduce size: %d out of range. "
                                       "While maximum supported is: 5",
                                       reduce_size));
         }
