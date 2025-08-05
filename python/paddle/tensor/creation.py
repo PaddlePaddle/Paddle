@@ -1087,11 +1087,9 @@ def full_like(
 
     if in_dynamic_or_pir_mode():
         if in_dynamic_mode():
-            tensor = _C_ops.full_like(x, fill_value, dtype, x.place)
+            tensor = _C_ops.full_like(x, fill_value, dtype, device)
         else:
             tensor = _C_ops.full_like(x, fill_value, dtype, core.Place())
-        if in_dynamic_mode():
-            tensor = tensor.to(device=device)
         tensor.stop_gradient = not requires_grad
         return tensor
     else:
@@ -1358,18 +1356,14 @@ def ones_like(
             [1 1 1]
 
     """
-    if dtype is None:
-        dtype = x.dtype
-    if requires_grad is None:
-        requires_grad = not x.stop_gradient
-    if device is None:
-        device = x.place
-
-    tensor = full_like(x=x, fill_value=1, dtype=dtype, name=name)
-    if in_dynamic_mode():
-        tensor = tensor.to(device=device)
-    tensor.stop_gradient = not requires_grad
-    return tensor
+    return full_like(
+        x=x,
+        fill_value=1,
+        dtype=dtype,
+        name=name,
+        device=device,
+        requires_grad=requires_grad,
+    )
 
 
 def zeros(
@@ -1482,19 +1476,14 @@ def zeros_like(
             [0 0 0]
 
     """
-    if dtype is None:
-        dtype = x.dtype
-    if requires_grad is None:
-        requires_grad = not x.stop_gradient
-    if device is None:
-        device = x.place
-
-    tensor = full_like(x=x, fill_value=0, dtype=dtype, name=name)
-
-    if in_dynamic_mode():
-        tensor = tensor.to(device=device)
-    tensor.stop_gradient = not requires_grad
-    return tensor
+    return full_like(
+        x=x,
+        fill_value=0,
+        dtype=dtype,
+        name=name,
+        device=device,
+        requires_grad=requires_grad,
+    )
 
 
 def eye(
@@ -1563,11 +1552,15 @@ def eye(
 
     if in_dynamic_or_pir_mode():
         tensor = _C_ops.eye(
-            num_rows, num_columns, dtype, _current_expected_place()
+            num_rows,
+            num_columns,
+            dtype,
+            (
+                device
+                if (in_dynamic_mode() and device is not None)
+                else _current_expected_place()
+            ),
         )
-        if device is not None and in_dynamic_mode():
-            tensor = tensor.to(device=device)
-
         tensor.stop_gradient = not requires_grad
         return tensor
     else:
@@ -2650,11 +2643,14 @@ def empty(
                 raise TypeError("Shape only supports Value, or list, or tuple.")
 
         tensor = _C_ops.empty(
-            shape, convert_np_dtype_to_dtype_(dtype), _current_expected_place()
+            shape,
+            convert_np_dtype_to_dtype_(dtype),
+            (
+                device
+                if (in_dynamic_mode() and device is not None)
+                else _current_expected_place()
+            ),
         )
-        if device is not None and in_dynamic_mode():
-            tensor = tensor.to(device=device)
-
         tensor.stop_gradient = not requires_grad
         return tensor
     else:
@@ -2743,14 +2739,12 @@ def empty_like(
             [[1.8491974e+20 1.8037303e+28 1.7443726e+28]
              [4.9640171e+28 3.0186127e+32 5.6715899e-11]]
     """
-
     if dtype is None:
         dtype = x.dtype
     if requires_grad is None:
         requires_grad = not x.stop_gradient
-    if device is None:
+    if in_dynamic_mode() and device is None:
         device = x.place
-
     dtype = convert_dtype(dtype)
 
     if in_dynamic_or_pir_mode():
@@ -2762,10 +2756,8 @@ def empty_like(
         tensor = _C_ops.empty(
             x_shape,
             convert_np_dtype_to_dtype_(dtype),
-            _current_expected_place(),
+            (device if in_dynamic_mode() else _current_expected_place()),
         )
-        if in_dynamic_mode():
-            tensor = tensor.to(device=device)
         tensor.stop_gradient = not requires_grad
         return tensor
 
