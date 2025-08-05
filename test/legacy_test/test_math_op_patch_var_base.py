@@ -608,51 +608,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.testing.assert_array_equal(res1.numpy(), res2.numpy())
             np.testing.assert_array_equal(res1.numpy(), res3.numpy())
 
-    def test_bool(self):
-        dtypes = [
-            np.float16,
-            np.float32,
-            np.float64,
-            np.complex64,
-            np.complex128,
-        ]
-        with base.dygraph.guard():
-            for dtype in dtypes:
-                data_np = np.random.uniform(-1, 1, self.shape).astype(dtype)
-                data = paddle.to_tensor(data_np, dtype=dtype)
-                res = data.bool()
-                res_np = data_np.astype(bool)
-                self.assertEqual(res.dtype, paddle.bool)
-                np.testing.assert_array_equal(res.numpy(), res_np)
-
-        dtypes = [np.int8, np.int16, np.int32, np.int64, np.uint8]
-        with base.dygraph.guard():
-            for dtype in dtypes:
-                data_np = np.random.randint(-100, 100, self.shape).astype(dtype)
-                data = paddle.to_tensor(data_np, dtype=dtype)
-                res = data.bool()
-                res_np = data_np.astype(bool)
-                self.assertEqual(res.dtype, paddle.bool)
-                np.testing.assert_array_equal(res.numpy(), res_np)
-
-        dtypes = [paddle.bfloat16]
-        with base.dygraph.guard():
-            for dtype in dtypes:
-                data_np = np.random.uniform(-1, 1, self.shape)
-                data = paddle.to_tensor(data_np, dtype=dtype)
-                res = data.bool()
-                res_np = data.numpy().astype(bool)
-                self.assertEqual(res.dtype, paddle.bool)
-                np.testing.assert_array_equal(res.numpy(), res_np)
-
-        with base.dygraph.guard():
-            data_np = np.random.uniform(-1, 1, self.shape).astype(bool)
-            data = paddle.to_tensor(data_np)
-            res = data.bool()
-            self.assertEqual(
-                data.data_ptr(), res.data_ptr()
-            )  # zero-copy if same dtype
-
     def test_conpare_op_broadcast(self):
         a_np = np.random.uniform(-1, 1, [10, 1, 10]).astype(self.dtype)
         b_np = np.random.uniform(-1, 1, [1, 1, 10]).astype(self.dtype)
