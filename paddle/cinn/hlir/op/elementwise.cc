@@ -92,7 +92,7 @@ std::shared_ptr<OpStrategy> StrategyForElementwise(
     PADDLE_ENFORCE_EQ(
         pack_args.size(),
         2U,
-        ::common::errors::InvalidArgument("the size of pack_args should be"
+        ::common::errors::InvalidArgument("the size of pack_args should be "
                                           "equal to 2, but got %d.",
                                           pack_args.size()));
     PADDLE_ENFORCE_EQ(pack_args[1].is_string(),

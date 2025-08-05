@@ -51,14 +51,14 @@ __all__ = [
 
 def current_stream(device: _XPUPlaceLike | None = None) -> core.XPUStream:
     '''
-    Return the current CUDA stream by the device.
+    Return the current XPU stream by the device.
 
     Args:
-        device(paddle.CUDAPlace()|int|None, optional): The device or the ID of the device which want to get stream from.
+        device(paddle.XPUPlace()|int|None, optional): The device or the ID of the device which want to get stream from.
                 If device is None, the device is the current device. Default: None.
 
     Returns:
-            CUDAStream: the stream to the device.
+            XPUStream: the stream to the device.
 
     Examples:
         .. code-block:: python

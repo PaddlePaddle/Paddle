@@ -23,6 +23,7 @@ limitations under the License. */
 
 PD_DECLARE_bool(convert_all_blocks);
 COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_onednn);
 #ifdef PADDLE_WITH_CINN
 PD_DECLARE_bool(use_cinn);
 #endif
@@ -203,22 +204,23 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 
   void AppendPassToSetMkldnnAttr(const std::string &pass_name) {
 #ifdef PADDLE_WITH_DNNL
-    if (FLAGS_use_mkldnn) {
+    if (FLAGS_use_mkldnn || FLAGS_use_onednn) {
       AppendPass(pass_name);
     } else if (!strategy_.onednn_enabled_op_types_.empty()) {
-      VLOG(1) << "mkldnn_enabled_op_types specify the operator type list to "
-                 "use MKLDNN acceleration. It is null in default, means "
-                 "that all the operators supported by MKLDNN will be "
+      VLOG(1) << "onednn_enabled_op_types specify the operator type list to "
+                 "use ONEDNN acceleration. It is null in default, means "
+                 "that all the operators supported by ONEDNN will be "
                  "accelerated. And it should not be set when "
-                 "FLAGS_use_mkldnn=false.";
+                 "FLAGS_use_onednn=false.";
     }
 #else
-    PADDLE_ENFORCE_NE(FLAGS_use_mkldnn,
-                      true,
-                      common::errors::PreconditionNotMet(
-                          "FLAGS_use_mkldnn has been set to True, but "
-                          "PaddlePaddle is compiled without MKLDNN. "
-                          "Please compile PaddlePaddle with MKLDNN first."));
+    PADDLE_ENFORCE_NE(
+        FLAGS_use_mkldnn || FLAGS_use_onednn,
+        true,
+        common::errors::PreconditionNotMet(
+            "FLAGS_use_mkldnn or FLAGS_use_onednn has been set to True, but "
+            "PaddlePaddle is compiled without ONEDNN. "
+            "Please compile PaddlePaddle with ONEDNN first."));
 #endif
   }
 

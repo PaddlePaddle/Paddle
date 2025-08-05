@@ -37,6 +37,7 @@ phi::XPUStreamHandle *get_current_stream(int device_id) {
   auto place = phi::XPUPlace(device_id);
   auto *dev_ctx = static_cast<phi::XPUContext *>(
       phi::DeviceContextPool::Instance().Get(place));
+  dev_ctx->Wait();
   return dev_ctx->get_current_stream_handle();
 }
 

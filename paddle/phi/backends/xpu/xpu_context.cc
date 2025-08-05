@@ -382,12 +382,10 @@ XPUContext::XPUContext(const XPUPlace& place, bool is_comm_context)
   } else {
     impls_.push_back(std::make_unique<Impl>(place));
     impls_[0]->Init(get_gm_size(0), get_l3_size(0));
-    XPUStream s;
-    PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&s));
-    impls_[0]->SetStream(s, false);
-    stream_pool.push_back(s);
+    stream_pool.push_back(impls_[0]->context_->get_stream());
     idle_stream_flags.push_back(false);
-    current_stream_handle = XPUStreamHandle(s, 0);
+    current_stream_handle =
+        XPUStreamHandle(impls_[0]->context_->get_stream(), 0);
   }
 
   current_stream_idx = 0;
@@ -593,6 +591,13 @@ void XPUContext::AddStashedMemory(int stream, const DenseTensor& tensor) {
 XPUStream XPUContext::get_current_stream() { return impls_[0]->stream(); }
 
 XPUStreamHandle* XPUContext::get_current_stream_handle() {
+  if (impls_[0]->context_->get_stream() == nullptr) {
+    XPUStream s;
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&s));
+    impls_[0]->SetStream(s);
+    stream_pool[current_stream_idx] = s;
+    current_stream_handle.set_stream(s);
+  }
   return &current_stream_handle;
 }
 
@@ -728,7 +733,7 @@ XPUEventHandle::XPUEventHandle(XPUStream stream) {
 }
 
 void XPUEventHandle::record(XPUStream stream) {
-  int r = xpu_event_query(event_);
+  PADDLE_ENFORCE_XRE_SUCCESS(xpu_event_query(event_));
   PADDLE_ENFORCE_XRE_SUCCESS(xpu_event_record(event_, stream));
 }
 
