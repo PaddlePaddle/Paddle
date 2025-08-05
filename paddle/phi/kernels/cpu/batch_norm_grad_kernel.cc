@@ -408,8 +408,6 @@ void BatchNormDoubleGradKernel(
   auto* dX = x_grad;
   auto* dScale = scale_grad;
   auto* ddY = y_grad_grad;
-  dev_ctx.template Alloc<T>(dX);
-  dev_ctx.template Alloc<T>(ddY);
 
   const auto& x_dims = X->dims();
   const int C = static_cast<int>(
@@ -440,8 +438,14 @@ void BatchNormDoubleGradKernel(
   DenseTensor transformed_dy(dY->type());
   DenseTensor transformed_ddx(ddX->type());
 
-  DenseTensor transformed_dx(dX->type());
-  DenseTensor transformed_ddy(ddY->type());
+  DenseTensor transformed_dx;
+  if (dX) {
+    transformed_dx = DenseTensor(dX->type());
+  }
+  DenseTensor transformed_ddy;
+  if (ddY) {
+    transformed_ddy = DenseTensor(ddY->type());
+  }
   if (data_layout == DataLayout::kNCHW && x_dims.size() > 2) {
     VLOG(3) << "Transform batchnorm output from NCHW to NHWC";
     // Input Tensor
@@ -452,15 +456,23 @@ void BatchNormDoubleGradKernel(
     ResizeToChannelLast<Context, T>(dev_ctx, ddX, &transformed_ddx);
     TransToChannelLast<Context, T>(dev_ctx, ddX, &transformed_ddx);
     // Output Tensor
-    ResizeToChannelLast<Context, T>(dev_ctx, dX, &transformed_dx);
-    ResizeToChannelLast<Context, T>(dev_ctx, ddY, &transformed_ddy);
+    if (dX) {
+      ResizeToChannelLast<Context, T>(dev_ctx, dX, &transformed_dx);
+    }
+    if (ddY) {
+      ResizeToChannelLast<Context, T>(dev_ctx, ddY, &transformed_ddy);
+    }
   } else {
     transformed_x.ShareDataWith(*X);
     transformed_dy.ShareDataWith(*dY);
     transformed_ddx.ShareDataWith(*ddX);
 
-    transformed_dx.ShareDataWith(*dX);
-    transformed_ddy.ShareDataWith(*ddY);
+    if (dX) {
+      transformed_dx.ShareDataWith(*dX);
+    }
+    if (ddY) {
+      transformed_ddy.ShareDataWith(*ddY);
+    }
   }
 
   ConstEigenArrayMap<T> x_arr(transformed_x.data<T>(), C, sample_size);
