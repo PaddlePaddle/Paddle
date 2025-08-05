@@ -65,6 +65,35 @@ _complex_dtypes = [
 _already_patch_eager_tensor = False
 
 
+_supported_dtype_conversions = {
+    # float
+    'float16': 'float16',
+    'half': 'float16',
+    'bfloat16': 'bfloat16',
+    'float32': 'float32',
+    'float': 'float32',
+    'float64': 'float64',
+    'double': 'float64',
+    # int
+    'int8': 'int8',
+    'char': 'int8',
+    'uint8': 'uint8',
+    'byte': 'uint8',
+    'int16': 'int16',
+    'short': 'int16',
+    'int32': 'int32',
+    'int': 'int32',
+    'int64': 'int64',
+    'long': 'int64',
+    # other
+    'bool': 'bool',
+    'complex64': 'complex64',
+    'complex128': 'complex128',
+    'cfloat': 'complex64',
+    'cdouble': 'complex128',
+}
+
+
 def monkey_patch_math_tensor():
     """
     Similar to monkey_patch_variable.
@@ -104,37 +133,32 @@ def monkey_patch_math_tensor():
 
         return _C_ops.cast(self, dtype)
 
-    def bool(self: Tensor) -> Tensor:
+    def _create_dtype_conversion_methods():
         """
-
-        Cast a Tensor to boolean data type if it differs from the current dtype;
-        otherwise, return the original Tensor. Non-zero elements will be cast to True,
-        and zero elements will be cast to False.
-
-        Returns:
-            Tensor: a new Tensor with bool dtype
-
-        Examples:
-            .. code-block:: python
-
-                >>> import paddle
-
-                >>> original_tensor = paddle.to_tensor([1, 0, -3])
-                >>> print("original tensor's dtype is: {}".format(original_tensor.dtype))
-                original tensor's dtype is: paddle.int64
-                >>> bool_tensor = original_tensor.bool()
-                >>> print("bool tensor's dtype is: {}".format(bool_tensor.dtype))
-                bool tensor's dtype is: paddle.bool
-                >>> print(bool_tensor)
-                [True False True]
+        Batch create all data type conversion methods
         """
+        methods = []
 
-        if (
-            self.dtype == core.DataType.BOOL
-            or self.dtype == core.VarDesc.VarType.BOOL
-        ):
-            return self
-        return _C_ops.cast(self, core.DataType.BOOL)
+        for method_name, target_dtype in _supported_dtype_conversions.items():
+
+            def make_conversion_method(dtype):
+                def conversion_method(self: Tensor) -> Tensor:
+                    return astype(self, dtype)
+
+                return conversion_method
+
+            method_impl = make_conversion_method(target_dtype)
+            method_impl.__name__ = method_name
+            method_impl.__doc__ = f"""
+            Cast a Tensor to {target_dtype} data type if it differs from the current dtype;
+            otherwise, return the original Tensor.
+            Returns:
+                Tensor: a new Tensor with {target_dtype} dtype
+            """
+
+            methods.append((method_name, method_impl))
+
+        return methods
 
     def _scalar_elementwise_op_(
         var: Tensor, scale: float, bias: float
@@ -257,7 +281,6 @@ def monkey_patch_math_tensor():
         ('__len__', _len_),
         ('__index__', _index_),
         ('astype', astype),
-        ('bool', bool),
         ('dim', dim),
         ('ndimension', ndimension),
         ('ndim', _ndim),
@@ -267,6 +290,9 @@ def monkey_patch_math_tensor():
         # for logical compare
         ('__array_ufunc__', None),
     ]
+
+    dtype_conversion_methods = _create_dtype_conversion_methods()
+    eager_methods.extend(dtype_conversion_methods)
 
     eager_cpp_level_patch = [
         "__add__",
