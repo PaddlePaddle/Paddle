@@ -515,38 +515,6 @@ std::vector<CondFuncPriorWrapper> OpLowererImpl::PostProcess(
   return ret;
 }
 
-// unsafe_op is generated from const_cast, actually, since the
-// 'output_dim_exprs' attribute is used almost nowhere but symbolic arange, it
-// will be fine to use a unsafe const_cast. It will actually be better, if we
-// can trace verify whether this `cinn_op.generate_shape` is the input to the
-// arange op.
-void ReplaceGenerateShapeAttribute(const OpLoweringGroupPtr& group,
-                                   ::pir::Operation* unsafe_op) {
-  if (!group->HasShapeOrDataExprs(unsafe_op->result(0))) return;
-  auto data = group->GetShapeOrDataExprs(unsafe_op->result(0)).data();
-  if (!data.has_value()) return;
-  auto real_data = data.value();
-  auto dim_expr_attr = unsafe_op->attribute("output_dim_exprs");
-  auto dim_exprs =
-      cinn::dialect::ConvertAttributeToDimExprs(dim_expr_attr).value();
-  PADDLE_ENFORCE_EQ(real_data.size(),
-                    dim_exprs.size(),
-                    ::common::errors::InvalidArgument(
-                        "The size of dim expr vector should not be empty."));
-  // TODO(heqianyue): more secure impl is to check whether the old DimExpr has
-  // the same structure as the updated one. We can use a binary tree comparison
-  // algorithm. Yet normally we will be fine without checking.
-
-  std::vector<::pir::Attribute> attr_vec;
-  auto _ctx = ::pir::IrContext::Instance();
-  for (size_t i = 0; i < dim_exprs.size(); i++) {
-    attr_vec.emplace_back(
-        cinn::dialect::ConvertDimExprToAttribute(_ctx, real_data[i]));
-  }
-  auto arr_attr = ::pir::ArrayAttribute::get(_ctx, attr_vec);
-  unsafe_op->set_attribute("output_dim_exprs", arr_attr);
-}
-
 std::vector<ir::stmt::BlockRef> OpLowererImpl::LowerOps(
     const OpLoweringGroupPtr& group,
     const std::vector<::pir::Operation*>& ops,
@@ -555,12 +523,6 @@ std::vector<ir::stmt::BlockRef> OpLowererImpl::LowerOps(
   auto& strategy = Operator::GetAttrs<StrategyFunction>("CINNStrategy");
   std::vector<ir::stmt::BlockRef> func_bodies;
 
-  // cinn_op.arange is a special op which can introduce complex symbolic shape
-  // relations in the CINN IR, therefore requires particular attention
-  bool group_has_arange =
-      std::any_of(ops.begin(), ops.end(), [](const ::pir::Operation* op) {
-        return op->name() == "cinn_op.arange";
-      });
   for (auto* op : ops) {
     VLOG(4) << "start lowering op:" << op->name() << " id: " << op->id();
     std::string cinn_op_name = CompatibleInfo::OpName(*op);
@@ -601,10 +563,6 @@ std::vector<ir::stmt::BlockRef> OpLowererImpl::LowerOps(
     // 2.Perform the lower process of Op
     std::vector<ir::LoweredFunc> funcs =
         DoOpLower(op_impl, op, tensor_map, &op_func_arg_tensors);
-    if (group_has_arange && op->name() == "cinn_op.generate_shape") {
-      auto unsafe_op_ = const_cast<::pir::Operation*>(op);
-      ReplaceGenerateShapeAttribute(group, unsafe_op_);
-    }
 
     for (const ir::LoweredFunc& func : funcs) {
       func_bodies.push_back(func->body_block);
@@ -709,79 +667,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
   return funcs;
 }
 
-/**
- * This function converts pir::Value::defining_op for ir::Tensor::operation
- * Normally, ir::Tensor::operation will only be used to record the name
- * of the compiler-generated var name, which is useless. However, operation
- * has Attributes field, so can be used to record the op info.
- */
-ir::PlaceholderOp* TensorOperationRecording(const ::pir::Value& value) {
-  // TODO(heqianyue): I think this is kinda ugly, since we should manually
-  // specify the rules to convert all the op (and their attribute), yet current
-  // implementation works and can be quickly written.
-  const ::pir::Operation* define_op = value.defining_op();
-  ir::PlaceholderOp* res = nullptr;
-  if (!define_op) return res;
-  res = cinn::common::make_shared<ir::PlaceholderOp>();
-  res->name = define_op->name();
-  // we filter some of the ops, and only record the **needed** attributes
-  if (define_op->name() == "pd_op.full") {
-    auto dtype = define_op->attribute("dtype")
-                     .dyn_cast<paddle::dialect::DataTypeAttribute>()
-                     .data();
-    phi::Scalar data = define_op->attribute("value")
-                           .dyn_cast<paddle::dialect::ScalarAttribute>()
-                           .data();
-    ir::Expr value;
-#define DEFINE_CASE(TypeFlag, Type)    \
-  case phi::DataType::TypeFlag:        \
-    value = ir::Expr(data.to<Type>()); \
-    break;
-    switch (dtype) {
-      DEFINE_CASE(FLOAT32, float)
-      DEFINE_CASE(FLOAT64, double)
-      DEFINE_CASE(INT32, int)
-      DEFINE_CASE(BFLOAT16, float)
-      value->set_type(cinn::common::BFloat16());
-      break;
-      DEFINE_CASE(FLOAT16, float)
-      value->set_type(cinn::common::Float16());
-      break;
-      default:
-        value = ir::Expr(data.to<int64_t>());
-    }
-#undef DEFINE_CASE
-    res->attrs.emplace("value", value);
-  } else if (define_op->name() == "cinn_op.generate_shape") {
-    // pir::Attribute --> symbol::DimExpr --> ir::Expr
-
-    auto ir_dim_expr = [&]() {
-      auto dim_expr_attr = define_op->attribute("output_dim_exprs");
-      auto dim_exprs = dialect::ConvertAttributeToDimExprs(dim_expr_attr);
-
-      PADDLE_ENFORCE_EQ(
-          dim_exprs.has_value(),
-          true,
-          ::common::errors::PreconditionNotMet(
-              "Required success to execute convert attribute to dim exprs."));
-
-      auto expr_vec = dim_exprs.value();
-      PADDLE_ENFORCE_EQ(
-          expr_vec.empty(),
-          false,
-          ::common::errors::PreconditionNotMet(
-              "Generate shape op can not yield empty symbolic shape."));
-      // only the first dim_expr matters for ArangeOp
-      return common::DimExprConverter().ConvertToIrExpr(expr_vec[0]);
-    }();
-    res->attrs.emplace("value", ir_dim_expr);
-  } else {
-    VLOG(6) << "Tensor defining op recording: not currently supported op.";
-    return nullptr;
-  }
-  return res;
-}
-
 ir::Tensor OpLowererImpl::GetTensor(const OpLoweringGroupPtr& group,
                                     const ::pir::Value& value) {
   auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
@@ -819,9 +704,6 @@ ir::Tensor OpLowererImpl::GetTensor(const OpLoweringGroupPtr& group,
     if (tensor_value.has_value()) {
       tensor->set_value(*tensor_value);
     }
-  }
-  if (auto op_ptr = TensorOperationRecording(value)) {
-    tensor->operation = ir::FunctionRef(op_ptr);
   }
   return tensor;
 }
