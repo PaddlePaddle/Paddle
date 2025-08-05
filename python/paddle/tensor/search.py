@@ -33,6 +33,7 @@ from ..framework import (
     in_dynamic_or_pir_mode,
     in_pir_mode,
 )
+from .creation import assign
 
 if TYPE_CHECKING:
     from paddle import Tensor
@@ -674,6 +675,54 @@ def sort(
             attrs={'axis': axis, 'descending': descending, 'stable': stable},
         )
         return out
+
+
+def msort(x: Tensor, output: Tensor | None = None) -> Tensor:
+    """
+
+    Sorts the input along the given axis = 0, and returns the sorted output tensor. The sort algorithm is ascending.
+
+    Args:
+        x (Tensor): An input N-D Tensor with type float32, float64, int16,
+            int32, int64, uint8.
+        output (Tensor, optional): A Tensor. If :attr:`output` is None, a new Tensor will be created as :attr:`output`. Default: None.
+
+    Returns:
+        Tensor, sorted tensor(with the same shape and data type as ``x``).
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[[5,8,9,5],
+            ...                        [0,0,1,7],
+            ...                        [6,9,2,4]],
+            ...                       [[5,2,4,2],
+            ...                        [4,7,7,9],
+            ...                        [1,7,0,6]]],
+            ...                      dtype='float32')
+            >>> out1 = paddle.msort(x=x)
+            >>> out2 = paddle.zeros_like(x)
+            >>> paddle.msort(x=x, output=out2)
+            >>> print(out1.numpy())
+            [[[5. 2. 4. 2.]
+              [0. 0. 1. 7.]
+              [1. 7. 0. 4.]]
+             [[5. 8. 9. 5.]
+              [4. 7. 7. 9.]
+              [6. 9. 2. 6.]]]
+            >>> print(out2.numpy())
+            [[[5. 2. 4. 2.]
+              [0. 0. 1. 7.]
+              [1. 7. 0. 4.]]
+             [[5. 8. 9. 5.]
+              [4. 7. 7. 9.]
+              [6. 9. 2. 6.]]]
+    """
+
+    return assign(sort(x, axis=0), output)
 
 
 def mode(
