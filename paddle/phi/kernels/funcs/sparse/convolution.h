@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 
-#ifndef PADDLE_WITH_CUSTOM_DEVICE
+#if !defined(PADDLE_WITH_CUDA) || !defined(PADDLE_WITH_CUSTOM_DEVICE)
 #include "paddle/phi/kernels/funcs/sparse/convolution_blas.h"
 #endif
 
