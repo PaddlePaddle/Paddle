@@ -67,20 +67,20 @@ TEST(PD_Config, interface) {
 #ifdef PADDLE_WITH_DNNL
   const char* ops_name = "conv_2d";
   PD_ConfigEnableONEDNN(config);
-  PD_ConfigSetMkldnnOp(config, 1, &ops_name);
+  PD_ConfigSetOnednnOp(config, 1, &ops_name);
   PD_ConfigSetOnednnCacheCapacity(config, 100);
-  bool onednn_enabled = PD_ConfigMkldnnEnabled(config);
+  bool onednn_enabled = PD_ConfigOnednnEnabled(config);
   EXPECT_TRUE(onednn_enabled);
 
   PD_ConfigSetCpuMathLibraryNumThreads(config, 10);
   int32_t cpu_threads = PD_ConfigGetCpuMathLibraryNumThreads(config);
   EXPECT_EQ(cpu_threads, 10);
 
-  PD_ConfigEnableMkldnnBfloat16(config);
+  PD_ConfigEnableOnednnBfloat16(config);
   PD_ConfigSetBfloat16Op(config, 1, &ops_name);
 
-  PD_ConfigEnableMkldnnInt8(config);
-  bool onednn_int8_enabled = PD_ConfigMkldnnInt8Enabled(config);
+  PD_ConfigEnableOnednnInt8(config);
+  bool onednn_int8_enabled = PD_ConfigOnednnInt8Enabled(config);
   EXPECT_TRUE(onednn_int8_enabled);
 #endif
 

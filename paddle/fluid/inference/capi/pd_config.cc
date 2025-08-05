@@ -302,6 +302,11 @@ void PD_SetOnednnCacheCapacity(PD_AnalysisConfig* config, int capacity) {
 }
 
 bool PD_MkldnnEnabled(const PD_AnalysisConfig* config) {
+  LOG(WARNING) << ONEDNN_UPDATE_WARNING(PD_OnednnEnabled);
+  return PD_OnednnEnabled(config);
+}
+
+bool PD_OnednnEnabled(const PD_AnalysisConfig* config) {
   PADDLE_ENFORCE_NOT_NULL(
       config,
       common::errors::InvalidArgument(
@@ -327,6 +332,11 @@ int PD_CpuMathLibraryNumThreads(const PD_AnalysisConfig* config) {
 }
 
 void PD_EnableMkldnnBfloat16(PD_AnalysisConfig* config) {
+  LOG(WARNING) << ONEDNN_UPDATE_WARNING(PD_EnableOnednnBfloat16);
+  PD_EnableOnednnBfloat16(config);
+}
+
+void PD_EnableOnednnBfloat16(PD_AnalysisConfig* config) {
   PADDLE_ENFORCE_NOT_NULL(
       config,
       common::errors::InvalidArgument(
@@ -335,11 +345,16 @@ void PD_EnableMkldnnBfloat16(PD_AnalysisConfig* config) {
 }
 
 bool PD_MkldnnBfloat16Enabled(const PD_AnalysisConfig* config) {
+  LOG(WARNING) << ONEDNN_UPDATE_WARNING(PD_OnednnBfloat16Enabled);
+  return PD_OnednnBfloat16Enabled(config);
+}
+
+bool PD_OnednnBfloat16Enabled(const PD_AnalysisConfig* config) {
   PADDLE_ENFORCE_NOT_NULL(
       config,
       common::errors::InvalidArgument(
           "The pointer of analysis configuration shouldn't be nullptr"));
-  return config->config.mkldnn_bfloat16_enabled();
+  return config->config.onednn_bfloat16_enabled();
 }
 
 void PD_SetModelBuffer(PD_AnalysisConfig* config,

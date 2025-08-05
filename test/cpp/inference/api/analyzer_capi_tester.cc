@@ -84,9 +84,9 @@ TEST(PD_AnalysisConfig, profile_onednn) {
   PD_SwitchSpecifyInputNames(config, true);
   PD_SwitchIrDebug(config, true);
   PD_EnableONEDNN(config);
-  bool onednn_enable = PD_MkldnnEnabled(config);
+  bool onednn_enable = PD_OnednnEnabled(config);
   EXPECT_TRUE(onednn_enable);
-  PD_EnableMkldnnBfloat16(config);
+  PD_EnableOnednnBfloat16(config);
   PD_SetOnednnCacheCapacity(config, 0);
   PD_SetModel(config, prog_file.c_str(), params_file.c_str());
   PD_DeleteAnalysisConfig(config);
