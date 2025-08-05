@@ -65,6 +65,36 @@ if TYPE_CHECKING:
 __all__ = []
 
 
+def forbid_keywords(illegal_keys, correct_func_name):
+    """
+    A decorator that hints users to use the correct `compat` functions, when erroneous keyword arguments are detected
+
+        illegal_keys: list[str] | str - Forbidden keyword names
+        correct_func_name: str - Recommended function name
+    """
+    if isinstance(illegal_keys, str):
+        illegal_keys = [illegal_keys]
+
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            found_keys = [key for key in illegal_keys if key in kwargs]
+
+            if found_keys:
+                keys_str = ", ".join(f"'{key}'" for key in found_keys)
+                plural = "s" if len(found_keys) > 1 else ""
+
+                raise TypeError(
+                    f"{func.__name__}() received unexpected keyword argument{plural} {keys_str}. "
+                    f"\nDid you mean to use {correct_func_name}() instead?"
+                )
+
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
 def tensor_array_to_tensor(
     input: Tensor | list[Tensor],
     axis: int = 1,
@@ -2734,6 +2764,7 @@ def row_stack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
     return paddle.vstack(x, name=name)
 
 
+@forbid_keywords(["split_size_or_sections", "dim"], "paddle.compat.split")
 def split(
     x: Tensor,
     num_or_sections: int | Sequence[int],
