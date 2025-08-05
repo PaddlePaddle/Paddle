@@ -561,6 +561,103 @@ def nonzero(x: Tensor, as_tuple=False):
         return tuple(list_out)
 
 
+def argwhere(x: Tensor, as_tuple=False):
+    """
+    Return a tensor containing the indices of all non-zero elements of the `input`
+    tensor. If as_tuple is True, return a tuple of 1-D tensors, one for each dimension
+    in `input`, each containing the indices (in that dimension) of all non-zero elements
+    of `input`. Given a n-Dimensional `input` tensor with shape [x_1, x_2, ..., x_n], If
+    as_tuple is False, we can get a output tensor with shape [z, n], where `z` is the
+    number of all non-zero elements in the `input` tensor. If as_tuple is True, we can get
+    a 1-D tensor tuple of length `n`, and the shape of each 1-D tensor is [z, 1].
+
+    Args:
+        x (Tensor): The input tensor variable.
+        as_tuple (bool, optional): Return type, Tensor or tuple of Tensor.
+
+    Returns:
+        Tensor or tuple of Tensor, The data type is int64.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x1 = paddle.to_tensor([[1.0, 0.0, 0.0],
+            ...                        [0.0, 2.0, 0.0],
+            ...                        [0.0, 0.0, 3.0]])
+            >>> x2 = paddle.to_tensor([0.0, 1.0, 0.0, 3.0])
+            >>> out_z1 = paddle.argwhere(x1)
+            >>> print(out_z1)
+            Tensor(shape=[3, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 0],
+             [1, 1],
+             [2, 2]])
+
+            >>> out_z1_tuple = paddle.argwhere(x1, as_tuple=True)
+            >>> for out in out_z1_tuple:
+            ...     print(out)
+            Tensor(shape=[3, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0],
+             [1],
+             [2]])
+            Tensor(shape=[3, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0],
+             [1],
+             [2]])
+
+            >>> out_z2 = paddle.argwhere(x2)
+            >>> print(out_z2)
+            Tensor(shape=[2, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1],
+             [3]])
+
+            >>> out_z2_tuple = paddle.argwhere(x2, as_tuple=True)
+            >>> for out in out_z2_tuple:
+            ...     print(out)
+            Tensor(shape=[2, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1],
+             [3]])
+
+    """
+    if in_dynamic_or_pir_mode():
+        outs = _C_ops.nonzero(x)
+    else:
+        check_variable_and_dtype(
+            x,
+            'x',
+            [
+                'int16',
+                'int32',
+                'int64',
+                'uint16',
+                'float16',
+                'float32',
+                'float64',
+                'bool',
+            ],
+            'where_index',
+        )
+
+        helper = LayerHelper("where_index", **locals())
+
+        outs = helper.create_variable_for_type_inference(
+            dtype=core.VarDesc.VarType.INT64
+        )
+
+        helper.append_op(
+            type='where_index', inputs={'Condition': x}, outputs={'Out': [outs]}
+        )
+
+    if not as_tuple:
+        return outs
+    else:
+        rank = x.ndim
+        list_out = [outs[:, i] for i in range(rank)]
+        return tuple(list_out)
+
+
 def _restrict_nonzero(condition: Tensor, total_true_num: int) -> Tensor:
     """
     Return a tensor containing the indices of all non-zero elements of the `input`

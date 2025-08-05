@@ -453,6 +453,7 @@ from .search import (  # noqa: F401
     argmax,
     argmin,
     argsort,
+    argwhere,
     bucketize,
     index_sample,
     index_select,
