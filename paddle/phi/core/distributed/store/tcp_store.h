@@ -32,8 +32,6 @@
 #include <thread>
 #include <unordered_map>
 
-#include <unistd.h>
-
 #include "paddle/phi/core/distributed/store/socket.h"
 #include "paddle/phi/core/distributed/store/store.h"
 #include "paddle/phi/core/distributed/store/tcp_utils.h"
@@ -53,21 +51,21 @@ namespace detail {
 // shutdown sequence for the thread
 class DaemonThread {
  public:
-  explicit DaemonThread();
+  DaemonThread();
 
   virtual ~DaemonThread() = 0;
 
   void start() {
     daemonThread_ = std::thread{&DaemonThread::run, this};
     is_running_.store(true);
-  };
+  }
 
  protected:
   void cleanup() {
     stop();
     // Join the thread
     daemonThread_.join();
-  };
+  }
   virtual void run() = 0;
   virtual void stop() = 0;
   bool is_running() { return is_running_.load(); }
@@ -81,9 +79,9 @@ std::unique_ptr<DaemonThread> create_libuv_tcpstore(const std::uint16_t& port);
 
 class MasterDaemon : public DaemonThread {
  public:
-  static std::unique_ptr<MasterDaemon> start(SocketType listen_socket,
-                                             int nranks,
-                                             int timeout);
+  static std::unique_ptr<MasterDaemon> createDaemon(SocketType listen_socket,
+                                                    int nranks,
+                                                    int timeout);
   MasterDaemon() = delete;
   explicit MasterDaemon(SocketType listen_socket,
                         int nranks,
@@ -92,7 +90,7 @@ class MasterDaemon : public DaemonThread {
 
  protected:
   void run() override;
-  void stop() override {};
+  void stop() override{};
 
  private:
   void ProcessCommands(std::vector<struct pollfd>* p_fds);

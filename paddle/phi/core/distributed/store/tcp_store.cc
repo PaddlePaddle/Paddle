@@ -32,9 +32,9 @@ DaemonThread::~DaemonThread() = default;
 
 constexpr int INFTIME = 10000;  // 10 seconds
 
-std::unique_ptr<MasterDaemon> MasterDaemon::start(SocketType socket,
-                                                  int nranks,
-                                                  int timeout) {
+std::unique_ptr<MasterDaemon> MasterDaemon::createDaemon(SocketType socket,
+                                                         int nranks,
+                                                         int timeout) {
   VLOG(8) << ("begin to run start");
   return std::make_unique<MasterDaemon>(socket, nranks, timeout);
 }
@@ -328,7 +328,7 @@ std::unique_ptr<TCPServer> TCPServer::create(uint16_t port,
   } else {
     int socket = tcputils::tcp_listen("", std::to_string(port), AF_INET);
     server->_master_daemon =
-        MasterDaemon::start(socket, nranks, stop_check_timeout);
+        MasterDaemon::createDaemon(socket, nranks, stop_check_timeout);
     server->_master_daemon->start();
   }
   return server;
