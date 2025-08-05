@@ -104,6 +104,39 @@ def monkey_patch_math_tensor():
 
         return _C_ops.cast(self, dtype)
 
+    def type(self: Tensor, dtype: DTypeLike) -> Tensor:
+        """
+
+        Cast a Tensor to a specified data type if it differs from the current dtype;
+        otherwise, return the original Tensor.
+
+        Args:
+            dtype: The target data type.
+
+        Returns:
+            Tensor: a new Tensor with target dtype
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> import numpy as np
+
+                >>> original_tensor = paddle.ones([2, 2])
+                >>> print("original tensor's dtype is: {}".format(original_tensor.dtype))
+                original tensor's dtype is: paddle.float32
+                >>> new_tensor = original_tensor.astype('float32')
+                >>> print("new tensor's dtype is: {}".format(new_tensor.dtype))
+                new tensor's dtype is: paddle.float32
+        """
+        if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
+            dtype = convert_np_dtype_to_dtype_(dtype)
+
+        if self.dtype == dtype:
+            return self
+
+        return _C_ops.cast(self, dtype)
+
     def _scalar_elementwise_op_(
         var: Tensor, scale: float, bias: float
     ) -> Tensor:
@@ -225,6 +258,7 @@ def monkey_patch_math_tensor():
         ('__len__', _len_),
         ('__index__', _index_),
         ('astype', astype),
+        ('type', type),
         ('dim', dim),
         ('ndimension', ndimension),
         ('ndim', _ndim),
