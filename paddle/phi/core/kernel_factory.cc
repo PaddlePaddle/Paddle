@@ -386,11 +386,16 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
             kernel_key,
             kernel_name,
             KernelSelectionErrorMessage(kernel_name, kernel_key)));
-
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
+    VLOG(3) << "missing " << kernel_key.backend() << " kernel: " << kernel_name
+            << ", expected_kernel_key:" << kernel_key
+            << ", fallbacking to CPU one!";
+#else
     LOG(WARNING) << "missing " << kernel_key.backend()
                  << " kernel: " << kernel_name
                  << ", expected_kernel_key:" << kernel_key
                  << ", fallbacking to CPU one!";
+#endif
 
     return {kernel_iter->second, true, false};
   }
