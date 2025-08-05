@@ -255,7 +255,6 @@ def gemm_fp8_fp8_bf16_nt(
     # NOTES: `get_tma_aligned_lhs_scales` may launch a kernel if not processed by previous kernels
     lhs_scales = get_col_major_tma_aligned_tensor(lhs_scales)
     assert rhs_scales.is_contiguous()
-    paddle.base.core.nvprof_nvtx_pop()
 
     # Do nothing if `m` is zero
     if m == 0:
@@ -275,4 +274,3 @@ def gemm_fp8_fp8_bf16_nt(
 
     # Run the kernel.
     runtime(*args)
-    paddle.base.core.nvprof_nvtx_pop()

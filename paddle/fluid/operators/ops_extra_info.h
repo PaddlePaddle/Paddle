@@ -87,6 +87,7 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         // SCHEDULE attributes
         {"use_cudnn", ExtraAttrProperty::SCHEDULE},
         {"use_mkldnn", ExtraAttrProperty::SCHEDULE},
+        {"use_onednn", ExtraAttrProperty::SCHEDULE},
         // ONEDNN dedicated attributes
         {"data_format", ExtraAttrProperty::ONEDNN},
         {"force_fp32_output", ExtraAttrProperty::ONEDNN},
@@ -98,6 +99,7 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"fuse_residual_connection", ExtraAttrProperty::ONEDNN},
         {"fuse_with_relu", ExtraAttrProperty::ONEDNN},
         {"mkldnn_data_type", ExtraAttrProperty::ONEDNN},
+        {"onednn_data_type", ExtraAttrProperty::ONEDNN},
         {"scale_x", ExtraAttrProperty::ONEDNN},
         {"scale_y", ExtraAttrProperty::ONEDNN},
         {"scale_out", ExtraAttrProperty::ONEDNN},

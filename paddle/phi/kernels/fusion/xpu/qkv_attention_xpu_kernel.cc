@@ -321,7 +321,7 @@ void QKVAttentionXPUKernel(const Context& dev_ctx,
 
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
-        "Not support q_dtype is %s, k_dtype is %s, k_dtype is %s"
+        "Not support q_dtype is %s, k_dtype is %s, k_dtype is %s "
         "and qkv_dtype is %s.",
         DataTypeToString(q.dtype()),
         DataTypeToString(k.dtype()),

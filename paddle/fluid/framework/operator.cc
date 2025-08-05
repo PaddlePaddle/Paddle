@@ -1599,7 +1599,8 @@ bool OperatorWithKernel::SupportsKernelType(
 
 bool OperatorWithKernel::CanONEDNNBeUsed(const framework::ExecutionContext& ctx,
                                          phi::DataType data_type) const {
-  return ctx.HasAttr("use_mkldnn") && ctx.Attr<bool>("use_mkldnn") &&
+  return ((ctx.HasAttr("use_mkldnn") && ctx.Attr<bool>("use_mkldnn")) ||
+          (ctx.HasAttr("use_onednn") && ctx.Attr<bool>("use_onednn"))) &&
          phi::is_cpu_place(ctx.GetPlace()) && this->SupportsONEDNN(data_type);
 }
 
@@ -2329,10 +2330,11 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
   auto kernel_iter = kernels.find(expected_kernel_key);
 
 #ifdef PADDLE_WITH_DNNL
-  // workaround for missing MKLDNN kernel when FLAGS_use_mkldnn env var is set
+  // workaround for missing ONEDNN kernel when FLAGS_use_mkldnn or
+  // FLAGS_use_onednn env var is set
   if (kernel_iter == kernels.end() &&
       expected_kernel_key.library_type_ == LibraryType::kMKLDNN) {
-    VLOG(3) << "missing MKLDNN kernel: fallbacking to PLAIN one";
+    VLOG(3) << "missing ONEDNN kernel: fallbacking to PLAIN one";
     expected_kernel_key.library_type_ = LibraryType::kPlain;
     expected_kernel_key.data_layout_ = DataLayout::kAnyLayout;
     kernel_iter = kernels.find(expected_kernel_key);

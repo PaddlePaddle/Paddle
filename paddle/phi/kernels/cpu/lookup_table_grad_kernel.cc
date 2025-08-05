@@ -85,7 +85,7 @@ void LookupTableGradKernel(const Context &dev_ctx,
           0,
           common::errors::InvalidArgument(
               "Variable value (input) of OP(fluid.layers.embedding) "
-              "expected >= 0 and < %ld, but got %ld. Please check input"
+              "expected >= 0 and < %ld, but got %ld. Please check input "
               "value.",
               N,
               ids_data[i]));

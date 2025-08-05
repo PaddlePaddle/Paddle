@@ -523,6 +523,20 @@ std::array<unsigned int, 3> DeviceManager::GetMaxGridDimSize(
   return dev_impl->GetMaxGridDimSize(device_id);
 }
 
+bool DeviceManager::IsFloat16Supported(const Place& place) {
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  return dev_impl->IsFloat16Supported(device_id);
+}
+
+bool DeviceManager::IsBFloat16Supported(const Place& place) {
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  return dev_impl->IsBFloat16Supported(device_id);
+}
+
 void* DeviceManager::InitEigenDevice(const Place& place,
                                      phi::stream::stream_t stream,
                                      phi::Allocator* allocator) {

@@ -1414,7 +1414,8 @@ static PyObject* tensor_method_set_underline_tensor(TensorObject* self,
     if (self->tensor.is_dense_tensor()) {
       auto* dst_tensor =
           static_cast<phi::DenseTensor*>(self->tensor.impl().get());
-      if (!dst_tensor->meta().is_contiguous() ||
+      if (self->tensor.has_allocation() &&
+              !dst_tensor->meta().is_contiguous() ||
           !src_tensor->meta().is_contiguous()) {
         VLOG(8) << "set_tensor() method , src or dst tensor is not contiguous";
         if (!FLAGS_use_stride_kernel) {
@@ -1622,19 +1623,10 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
                                                         &trans_dim,
                                                         &out_is_view);
 
-  bool has_bool_index = false;
-  for (auto& index : transed_index) {
-    if (index.dtype() == phi::DataType::BOOL) {
-      has_bool_index = true;
-    }
-  }
   const int index_size = PyTuple_GET_SIZE(index_ptr);
-  const bool is_combined_bool = has_bool_index && index_size > 1;
-
   ApplyGetitem(index_size,
                pos_of_new_dim,
                rank_of_new_dim,
-               is_combined_bool,
                &transed_index,
                &tensor,
                &self->tensor,

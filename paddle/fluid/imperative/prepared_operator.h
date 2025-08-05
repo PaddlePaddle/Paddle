@@ -37,6 +37,7 @@
 #include "paddle/phi/core/vocab/string_array.h"
 
 COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_onednn);
 
 namespace paddle {
 namespace imperative {
