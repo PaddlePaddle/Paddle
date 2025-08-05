@@ -91,6 +91,7 @@ class TestEmptyLikeAPI(TestEmptyLikeAPICommon):
         self.dtype = self.x.dtype
         self.dst_shape = self.x.shape
         self.dst_dtype = self.dtype
+        self.x = paddle.to_tensor(self.x)
 
 
 class TestEmptyLikeAPI2(TestEmptyLikeAPI):
@@ -99,6 +100,7 @@ class TestEmptyLikeAPI2(TestEmptyLikeAPI):
         self.dtype = self.x.dtype
         self.dst_shape = self.x.shape
         self.dst_dtype = self.dtype
+        self.x = paddle.to_tensor(self.x)
 
 
 class TestEmptyLikeAPI3(TestEmptyLikeAPI):
@@ -107,6 +109,7 @@ class TestEmptyLikeAPI3(TestEmptyLikeAPI):
         self.dtype = self.x.dtype
         self.dst_shape = self.x.shape
         self.dst_dtype = self.dtype
+        self.x = paddle.to_tensor(self.x)
 
 
 class TestEmptyLikeAPI4(TestEmptyLikeAPI):
@@ -115,6 +118,7 @@ class TestEmptyLikeAPI4(TestEmptyLikeAPI):
         self.dtype = self.x.dtype
         self.dst_shape = self.x.shape
         self.dst_dtype = self.dtype
+        self.x = paddle.to_tensor(self.x)
 
 
 class TestEmptyLikeAPI5(TestEmptyLikeAPI):
@@ -123,6 +127,7 @@ class TestEmptyLikeAPI5(TestEmptyLikeAPI):
         self.dtype = self.x.dtype
         self.dst_shape = self.x.shape
         self.dst_dtype = self.dtype
+        self.x = paddle.to_tensor(self.x)
 
 
 class TestEmptyLikeAPI6(TestEmptyLikeAPI):
@@ -131,6 +136,7 @@ class TestEmptyLikeAPI6(TestEmptyLikeAPI):
         self.dtype = "float32"
         self.dst_shape = self.x.shape
         self.dst_dtype = self.dtype
+        self.x = paddle.to_tensor(self.x)
 
 
 class TestEmptyLikeAPI7(TestEmptyLikeAPI):
@@ -139,6 +145,7 @@ class TestEmptyLikeAPI7(TestEmptyLikeAPI):
         self.dtype = "float32"
         self.dst_shape = self.x.shape
         self.dst_dtype = self.dtype
+        self.x = paddle.to_tensor(self.x)
 
 
 class TestEmptyLikeAPI8(TestEmptyLikeAPI):
@@ -147,6 +154,7 @@ class TestEmptyLikeAPI8(TestEmptyLikeAPI):
         self.dtype = "float32"
         self.dst_shape = self.x.shape
         self.dst_dtype = self.dtype
+        self.x = paddle.to_tensor(self.x)
 
 
 class TestEmptyLikeAPI9(TestEmptyLikeAPI):
@@ -155,6 +163,7 @@ class TestEmptyLikeAPI9(TestEmptyLikeAPI):
         self.dtype = "float32"
         self.dst_shape = self.x.shape
         self.dst_dtype = self.dtype
+        self.x = paddle.to_tensor(self.x)
 
 
 class TestEmptyLikeAPI10(TestEmptyLikeAPI):
@@ -163,6 +172,7 @@ class TestEmptyLikeAPI10(TestEmptyLikeAPI):
         self.dtype = "bool"
         self.dst_shape = self.x.shape
         self.dst_dtype = self.dtype
+        self.x = paddle.to_tensor(self.x)
 
 
 class TestEmptyLikeAPI_Static(TestEmptyLikeAPICommon):
