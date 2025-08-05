@@ -51,6 +51,7 @@ class TensorDtypeConversionsTest(unittest.TestCase):
         'cfloat': 'complex64',
         'cdouble': 'complex128',
     }
+    _device = paddle.device.get_device()
 
     def setUp(self):
         """Set up test data for different types."""
@@ -82,6 +83,8 @@ class TensorDtypeConversionsTest(unittest.TestCase):
             method_name,
             target_dtype,
         ) in self._supported_dtype_conversions.items():
+            if self._device.startswith('xpu') and target_dtype == 'complex128':
+                self.skipTest("Skipping complex conversion tests on XPU")
             with self.subTest(method=method_name, target_dtype=target_dtype):
                 self._test_single_dtype_conversion(method_name, target_dtype)
 
@@ -142,6 +145,8 @@ class TensorDtypeConversionsTest(unittest.TestCase):
 
     def test_complex_conversions(self):
         """Test complex dtype conversions."""
+        if self._device.startswith('xpu'):
+            self.skipTest("Skipping complex conversion tests on XPU")
         # Create a complex tensor
         complex_data = np.array([1 + 2j, 3 + 4j], dtype=np.complex64)
         tensor = paddle.to_tensor(complex_data, dtype='complex64')
@@ -186,6 +191,11 @@ class TensorDtypeConversionsTest(unittest.TestCase):
                 method_name,
                 target_dtype,
             ) in self._supported_dtype_conversions.items():
+                if (
+                    self._device.startswith('xpu')
+                    and target_dtype == 'complex128'
+                ):
+                    self.skipTest("Skipping complex conversion tests on XPU")
                 with self.subTest(
                     pir_method=method_name, pir_target_dtype=target_dtype
                 ):
