@@ -264,7 +264,8 @@ CreateGroupShapeOrDataExprs(
       if (global_result_shape.size() != local_result_shape.size()) continue;
       for (size_t i = 0; i < global_result_shape.size(); ++i) {
         if (global_result_shape[i] != local_result_shape[i] &&
-            !global_result_shape[i].isa<std::int64_t>()) {
+            !global_result_shape[i].isa<std::int64_t>() &&
+            !ContainsDimExpr(local_result_shape[i], global_result_shape[i])) {
           mut_substitute_dimexpr_map[global_result_shape[i]] =
               local_result_shape[i];
         }

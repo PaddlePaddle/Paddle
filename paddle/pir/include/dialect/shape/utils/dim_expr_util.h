@@ -27,6 +27,8 @@ IR_API DimExpr SubstituteDimExpr(
     const DimExpr& dim_expr,
     const std::unordered_map<DimExpr, DimExpr>& pattern_to_replacement);
 
+IR_API bool ContainsDimExpr(const DimExpr& dim_expr, const DimExpr& target);
+
 IR_API int GetDimExprPriority(const DimExpr& dim_expr);
 
 enum class PriorityComparisonStatus {
