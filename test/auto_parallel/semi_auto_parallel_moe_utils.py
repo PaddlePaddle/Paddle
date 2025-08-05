@@ -31,9 +31,9 @@ from paddle.distributed.auto_parallel.moe_utils import (
 class TestMoEUtils(unittest.TestCase):
     def __init__(self, methodName='runTest'):
         super().__init__(methodName)
-        self._dtype = os.getenv("dtype", "float32")
-        self._seed = eval(os.getenv("seed", "2024"))
-        self._backend = os.getenv("backend", "gpu")
+        self._dtype = os.getenv("dtype")
+        self._seeds = eval(os.getenv("seeds"))
+        self._backend = os.getenv("backend")
         self._mesh0 = dist.ProcessMesh([[0], [1]], dim_names=["x", "y"])  # 2x1
         self._mesh1 = dist.ProcessMesh([[0, 1]], dim_names=["x", "y"])  # 1x2
         self._mesh2 = dist.ProcessMesh(
@@ -95,7 +95,11 @@ class TestMoEUtils(unittest.TestCase):
             dist_x, dist_x.shape, self._mesh0, [dist.Shard(1), dist.Shard(1)]
         )
 
+    # python -m paddle.distributed.launch --devices=0,1 semi_auto_parallel_moe_utils.py
     def test_nd_mesh_alltoall(self):
+        if self._backend == "cpu":
+            return
+
         (h, w) = (4, 4)
         src_shape = [h, w]
         x = paddle.arange(0, h * w).reshape(src_shape)
@@ -157,21 +161,25 @@ class TestMoEUtils(unittest.TestCase):
                 dist_x.placements[1].reduce_type(),
             )
 
-    # New tests to increase coverage
+    # python -m paddle.distributed.launch --devices=0,1 semi_auto_parallel_moe_utils.py
     def test_reshard_general_case(self):
         """Test reshard when _only_reshard_mesh_shape returns False."""
         (h, w) = (4, 4)
         x = paddle.arange(0, h * w, dtype=self._dtype).reshape([h, w])
-        dist_x = dist.shard_tensor(x, self._mesh2, [dist.Shard(0)])
-        dist_y = dist.reshard(dist_x, self._mesh2, [dist.Replicate()])
+        dist_x = dist.shard_tensor(
+            x, self._mesh2, [dist.Replicate(), dist.Replicate()]
+        )
+        dist_y = dist.reshard(
+            dist_x, self._mesh2, [dist.Shard(0), dist.Replicate()]
+        )
 
         if dist.get_rank() == 0:
-            expected_y = x[:, :2]  # Process 0 gets first half of axis 1
+            expected_y = x[:2, :]  # Process 0 gets first half of axis 0
             np.testing.assert_array_equal(
                 dist_y._local_value().numpy(), expected_y.numpy()
             )
         elif dist.get_rank() == 1:
-            expected_y = x[:, 2:]  # Process 1 gets second half of axis 1
+            expected_y = x[2:, :]  # Process 1 gets second half of axis 0
             np.testing.assert_array_equal(
                 dist_y._local_value().numpy(), expected_y.numpy()
             )
