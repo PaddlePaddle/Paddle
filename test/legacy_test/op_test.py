@@ -2920,13 +2920,13 @@ class OpTest(unittest.TestCase):
                     return [place]
                 else:
                     return []
-            # elif is_custom_device():
-            #     dev_type = paddle.device.get_all_custom_device_type()[0]
-            #     place = core.CustomPlace(dev_type, 0)
-            #     if core.is_float16_supported(place):
-            #         return [place]
-            #     else:
-            #         return []
+            elif is_custom_device():
+                dev_type = paddle.device.get_all_custom_device_type()[0]
+                place = core.CustomPlace(dev_type, 0)
+                if core.is_float16_supported(place):
+                    return [place]
+                else:
+                    return []
             else:
                 return []
         places = []
