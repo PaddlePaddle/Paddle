@@ -147,6 +147,8 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   # End of unittests WITH multi cards and timeout
 
   # NOTE(zyl): unittests WITH multi cards and WITHOUT timeout
+  py_test_modules(semi_auto_parallel_moe_utils MODULES
+                  semi_auto_parallel_moe_utils)
   # End of unittests WITH multi cards and WITHOUT timeout
 
   py_test_modules(test_semi_auto_parallel_functional_in_single_card MODULES
