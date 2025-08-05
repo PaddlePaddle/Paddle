@@ -24,7 +24,7 @@
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/transform.h"
 #include "paddle/phi/core/dense_tensor.h"
-#ifndef PADDLE_WITH_CUSTOM_DEVICE
+#ifndef PADDLE_WITH_CUDA
 #include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/cpu/elementwise_grad.h"
 #endif
