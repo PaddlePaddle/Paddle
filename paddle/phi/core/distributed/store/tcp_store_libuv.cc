@@ -58,7 +58,7 @@ class LibUVHandle : public std::enable_shared_from_this<LibUVHandle> {
 
  private:
   static void handleClose(uv_handle_t* uv_handle) {
-    auto h = reinterpret_cast<LibUVHandle*> uv_handle_get_data(uv_handle);
+    auto h = reinterpret_cast<LibUVHandle*>(uv_handle_get_data(uv_handle));
     h->onClose();
   }
 };
@@ -74,7 +74,7 @@ class LibUVTCPSocket : public LibUVHandle {
     }
   }
   uv_handle_t* getRawHandle() override {
-    return reinterpret_cast<uv_handle_t*> & client;
+    return reinterpret_cast<uv_handle_t*>(&client);
   }
 
   std::shared_ptr<LibUVTCPSocket> ptr() {
@@ -82,8 +82,8 @@ class LibUVTCPSocket : public LibUVHandle {
   }
 
   static std::shared_ptr<LibUVTCPSocket> getTCPSocket(uv_stream_t* handle) {
-    auto h = reinterpret_cast<LibUVTCPSocket*> uv_handle_get_data(
-        reinterpret_cast<uv_handle_t*> handle);
+    auto h = reinterpret_cast<LibUVTCPSocket*>(
+        uv_handle_get_data(reinterpret_cast<uv_handle_t*>(handle)));
     return h->ptr();
   }
 
@@ -115,7 +115,7 @@ class LibUVTCPServer : public LibUVTCPSocket {
     auto res = std::make_shared<LibUVTCPServer>(loop);
     res->handleAvailable();
     try {
-      struct sockaddr_storage addr{};
+      struct sockaddr_storage addr {};
       int uv_res = 0;
       if (useIpv6) {
         uv_res = uv_ip6_addr("::", port, (struct sockaddr_in6*)&addr);
@@ -173,7 +173,7 @@ class LibUVTCPServer : public LibUVTCPSocket {
 
   void accept(const std::shared_ptr<LibUVTCPSocket>& socket) {
     int res = uv_accept(getRawStream(),
-                        reinterpret_cast<uv_stream_t*> socket->getRawHandle());
+                        reinterpret_cast<uv_stream_t*>(socket->getRawHandle()));
     PADDLE_ENFORCE_EQ(
         res,
         0,
@@ -187,7 +187,7 @@ class LibUVTCPServer : public LibUVTCPSocket {
  protected:
   uv_tcp_t* getRawSocket() { return &client; }
   uv_stream_t* getRawStream() {
-    return reinterpret_cast<uv_stream_t*> & client;
+    return reinterpret_cast<uv_stream_t*>(&client);
   }
 
  private:
@@ -199,7 +199,7 @@ class LibUVTCPServer : public LibUVTCPSocket {
 
     int addr_len = sizeof(addr_s);
 
-    if (uv_tcp_getsockname(reinterpret_cast<uv_tcp_t*> getRawStream(),
+    if (uv_tcp_getsockname(reinterpret_cast<uv_tcp_t*>(getRawStream()),
                            reinterpret_cast<::sockaddr*>(&addr_s),
                            &addr_len) != 0) {
       throw std::runtime_error(
@@ -218,8 +218,8 @@ class LibUVTCPServer : public LibUVTCPSocket {
   }
 
   static void onNewConnection(uv_stream_t* server, int status) {
-    auto h = reinterpret_cast<LibUVTCPServer*> uv_handle_get_data(
-        reinterpret_cast<uv_handle_t*> server);
+    auto h = reinterpret_cast<LibUVTCPServer*>(
+        uv_handle_get_data(reinterpret_cast<uv_handle_t*>(server)));
     h->_on_connect_callback(status);
   }
 };
@@ -275,15 +275,15 @@ class LibUVMasterDaemon : public DaemonThread {
   int port_;
 
   static LibUVMasterDaemon& UVMasterDaemon(uv_handle_t* stream) {
-    return *reinterpret_cast<LibUVMasterDaemon*> uv_handle_get_data(stream);
+    return *reinterpret_cast<LibUVMasterDaemon*>(uv_handle_get_data(stream));
   }
 
   static void on_new_connection(uv_stream_t* server, int status) {
-    UVMasterDaemon(reinterpret_cast<uv_handle_t*> server).onConnect(status);
+    UVMasterDaemon(reinterpret_cast<uv_handle_t*>(server)).onConnect(status);
   }
 
   static void on_exit_request(uv_async_t* handle) {
-    UVMasterDaemon(reinterpret_cast<uv_handle_t*> handle).onExitRequest();
+    UVMasterDaemon(reinterpret_cast<uv_handle_t*>(handle)).onExitRequest();
   }
 
   void onConnect(int status);
@@ -296,12 +296,12 @@ class WriteUVContent : public std::enable_shared_from_this<WriteUVContent> {
 
   static void writeDone(uv_write_t* req, int status) {
     auto data_ptr = static_cast<RequestData*>(
-        uv_req_get_data(reinterpret_cast<uv_req_t*> req));
+        uv_req_get_data(reinterpret_cast<uv_req_t*>(req)));
     if (!data_ptr) return;
 
     auto self = std::move(data_ptr->strong_self);
     delete data_ptr;
-    uv_req_set_data(reinterpret_cast<uv_req_t*> req, nullptr);
+    uv_req_set_data(reinterpret_cast<uv_req_t*>(req), nullptr);
 
     if (self && status) {
       VLOG(2) << "Write to client failed. code:" << status
@@ -324,24 +324,24 @@ class WriteUVContent : public std::enable_shared_from_this<WriteUVContent> {
   WriteUVContent(std::vector<uint8_t>&& in_data,
                  std::shared_ptr<LibUVHandle> handle)
       : data(std::move(in_data)), handle(std::move(handle)) {
-    uv_req_set_data(reinterpret_cast<uv_req_t*> & req, new RequestData());
+    uv_req_set_data(reinterpret_cast<uv_req_t*>(&req), new RequestData());
   }
 
   ~WriteUVContent() {
     // safely clean up pending request data
     if (auto data = static_cast<RequestData*>(
-            uv_req_get_data(reinterpret_cast<uv_req_t*> & req))) {
+            uv_req_get_data(reinterpret_cast<uv_req_t*>(&req)))) {
       delete data;
-      uv_req_set_data(reinterpret_cast<uv_req_t*> & req, nullptr);
+      uv_req_set_data(reinterpret_cast<uv_req_t*>(&req), nullptr);
     }
   }
 
   void send() {
     if (data.empty()) return;
 
-    buf = uv_buf_init(reinterpret_cast<char*> data.data(), data.size());
+    buf = uv_buf_init(reinterpret_cast<char*>(data.data()), data.size());
     int res = uv_write(&req,
-                       reinterpret_cast<uv_stream_t*> handle->getRawHandle(),
+                       reinterpret_cast<uv_stream_t*>(handle->getRawHandle()),
                        &buf,
                        1,
                        writeDone);
@@ -354,7 +354,7 @@ class WriteUVContent : public std::enable_shared_from_this<WriteUVContent> {
       /* This object was successfully registered with the event loop, so keep it
        * alive until it's unregistered. */
       auto data_ptr = static_cast<RequestData*>(
-          uv_req_get_data(reinterpret_cast<uv_req_t*> & req));
+          uv_req_get_data(reinterpret_cast<uv_req_t*>(&req)));
       if (data_ptr) {
         data_ptr->strong_self = shared_from_this();
       }
@@ -374,7 +374,7 @@ class UVWriter {
 
   template <typename T>
   void writeValue(T val) {
-    uint8_t* val_ptr = reinterpret_cast<uint8_t*> & val;
+    uint8_t* val_ptr = reinterpret_cast<uint8_t*>(&val);
     data.insert(data.end(), val_ptr, val_ptr + sizeof(T));
   }
 
@@ -448,7 +448,7 @@ class SegmentedDataStream {
 
   template <typename T>
   bool readValue(T& value) {  // NOLINT(runtime/references)
-    return readMany(reinterpret_cast<char*> & value, sizeof(T));
+    return readMany(reinterpret_cast<char*>(&value), sizeof(T));
   }
 
   bool readKey(std::string& str) {  // NOLINT(runtime/references)
@@ -463,7 +463,7 @@ class SegmentedDataStream {
 
     if (available() < size) return false;
     str.resize(size);
-    return readMany(reinterpret_cast<char*> str.data(), size);
+    return readMany(reinterpret_cast<char*>(str.data()), size);
   }
 
   bool readContent(std::vector<uint8_t>& data) {  // NOLINT(runtime/references)
@@ -479,7 +479,7 @@ class SegmentedDataStream {
 
     if (available() < size_in_bytes) return false;
     data.resize(size);
-    return readMany(reinterpret_cast<char*> data.data(), size_in_bytes);
+    return readMany(reinterpret_cast<char*>(data.data()), size_in_bytes);
   }
 
   size_t available() { return capacity - _read_offset; }
@@ -542,7 +542,7 @@ class LibUVClient : public LibUVTCPSocket {
 
   static void allocBuffer(uv_handle_t* handle, size_t buf_size, uv_buf_t* buf) {
     buf_size = std::min(buf_size, MAX_BUFFER_SIZE);
-    buf->base = reinterpret_cast<char*> malloc(buf_size);
+    buf->base = reinterpret_cast<char*>(malloc(buf_size));
     buf->len = buf_size;
   }
 
@@ -605,7 +605,7 @@ class LibUVClient : public LibUVTCPSocket {
           break;
         default:
           VLOG(4) << "invalid command from Client, command: "
-                  << static_cast<int> command;
+                  << static_cast<int>(command);
           close();
           return;
       }
@@ -695,7 +695,7 @@ class LibUVClient : public LibUVTCPSocket {
       : LibUVTCPSocket(loop), store(store) {}
 
   void readStart() {
-    struct ::sockaddr_storage addr{};
+    struct ::sockaddr_storage addr {};
     int addrLen{sizeof(struct ::sockaddr_storage)};
 
     if (int err = uv_tcp_getpeername(
@@ -708,10 +708,10 @@ class LibUVClient : public LibUVTCPSocket {
     }
 
     int res = uv_read_start(
-        reinterpret_cast<uv_stream_t*> & client, allocBuffer, readCallback);
+        reinterpret_cast<uv_stream_t*>(&client), allocBuffer, readCallback);
     if (res) {
       VLOG(2) << "Read callback initialization failure. client:"
-              << reinterpret_cast<void*> this << " code:" << res
+              << reinterpret_cast<void*>(this) << " code:" << res
               << " desc:" << uv_strerror(res) << " name:" << uv_err_name(res);
       close();
     }
@@ -746,7 +746,7 @@ void LibUVMasterDaemon::onConnect(int status) {
 
 void LibUVMasterDaemon::onExitRequest() {
   VLOG(4) << "begin to exit requested";
-  uv_close(reinterpret_cast<uv_handle_t*> & _exit_handle, nullptr);
+  uv_close(reinterpret_cast<uv_handle_t*>(&_exit_handle), nullptr);
   uv_stop(&loop_);
 }
 
@@ -777,12 +777,12 @@ LibUVMasterDaemon::LibUVMasterDaemon(int port) : port_(port) {
       uv_async_init(&loop_, &_exit_handle, LibUVMasterDaemon::on_exit_request),
       0,
       common::errors::InvalidArgument("init libuv async event failed"));
-  uv_handle_set_data(reinterpret_cast<uv_handle_t*> & _exit_handle, this);
+  uv_handle_set_data(reinterpret_cast<uv_handle_t*>(&_exit_handle), this);
 }
 
 LibUVMasterDaemon::~LibUVMasterDaemon() {
   if (!is_running()) {
-    uv_close(reinterpret_cast<uv_handle_t*> & _exit_handle, nullptr);
+    uv_close(reinterpret_cast<uv_handle_t*>(&_exit_handle), nullptr);
     uv_run(&loop_, UV_RUN_NOWAIT);
     if (uv_loop_close(&loop_) != 0) {
       VLOG(0) << "uv loop close failed";
