@@ -20,7 +20,6 @@ limitations under the License. */
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/transform.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
-#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace phi {
 
