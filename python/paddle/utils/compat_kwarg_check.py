@@ -14,7 +14,9 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, TypeVar
+import functools
+import inspect
+from typing import Any, Callable, TypeVar, cast
 
 F = TypeVar('F', bound=Callable[..., Any])
 
@@ -29,10 +31,12 @@ def forbid_keywords(
         illegal_keys: list[str] | str - Forbidden keyword names
         correct_func_name: str - Recommended function name
     """
-    if isinstance(illegal_keys, str):
-        illegal_keys = [illegal_keys]
+    keys = [illegal_keys] if isinstance(illegal_keys, str) else illegal_keys
 
     def decorator(func: F) -> F:
+        orig_sig = inspect.signature(func)
+
+        @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             found_keys = [key for key in illegal_keys if key in kwargs]
 
@@ -47,6 +51,14 @@ def forbid_keywords(
 
             return func(*args, **kwargs)
 
-        return wrapper
+        # Important: function signatures / specs should be copied to avoid erroneous input/output extraction (particularly in static graph, like test_split_op.py)
+        wrapper.__signature__ = orig_sig
+        if hasattr(func, "__defaults__"):
+            wrapper.__defaults__ = func.__defaults__
+        if hasattr(func, "__kwdefaults__"):
+            wrapper.__kwdefaults__ = func.__kwdefaults__
+        wrapper.__wrapped__ = func
+
+        return cast('F', wrapper)
 
     return decorator
