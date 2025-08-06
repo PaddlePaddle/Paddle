@@ -193,6 +193,7 @@ from .manipulation import (  # noqa: F401
     moveaxis,
     put_along_axis,
     put_along_axis_,
+    ravel,
     repeat_interleave,
     reshape,
     reshape_,
