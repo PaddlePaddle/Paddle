@@ -20,6 +20,12 @@ on:
         type: string
         required: false
         default: 'paddle'
+      MANUALLY_PR_ID:
+        type: string
+        required: false
+      MANUALLY_COMMIT_ID:
+        type: string
+        required: false
 
 env:
   PR_ID: ${{ github.event.pull_request.number || '0' }}
@@ -105,7 +111,11 @@ jobs:
           if [[ "${{ inputs.SLICE_BENCHMARK_FRAMEWORKS }}" == "torch" ]];then
             python3.10 -m pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu118
           else
-            python3.10 -m pip install $wheel_link
+            if [[ "${{ inputs.MANUALLY_PR_ID }}" == "" ]]; then
+              python3.10 -m pip install $wheel_link
+            else
+              python3.10 -m pip install https://paddle-github-action.bj.bcebos.com/PR/build/${{ inputs.MANUALLY_PR_ID }}/${{ inputs.MANUALLY_COMMIT_ID }}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+            fi
           fi
           python3.10 -m pip install -r PaddleTest/framework/e2e/api_benchmark/requirement.txt
           cd PaddleTest/framework/slice_benchmark
