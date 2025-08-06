@@ -143,8 +143,10 @@ class PlacementPassTest {
     for (auto* node : graph->Nodes()) {
       if (node->IsOp()) {
         auto* op = node->Op();
-        if (op->HasAttr("use_mkldnn") &&
-            PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn"))) {
+        if ((op->HasAttr("use_mkldnn") &&
+             PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn"))) ||
+            (op->HasAttr("use_onednn") &&
+             PADDLE_GET_CONST(bool, op->GetAttr("use_onednn")))) {
           ++use_onednn_true_count;
         }
       }
@@ -156,7 +158,7 @@ class PlacementPassTest {
   void PlacementNameTest() {
     auto pass = PassRegistry::Instance().Get("onednn_placement_pass");
     EXPECT_EQ(static_cast<PlacementPassBase*>(pass.get())->GetPlacementName(),
-              "MKLDNN");
+              "ONEDNN");
   }
 };
 
