@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import functools
+import inspect
 from typing import Callable
 
 
@@ -38,6 +39,7 @@ def param_alias(alias_mapping: dict[str, list[str]]) -> Callable:
                         del kwargs[alias]
             return func(*args, **kwargs)
 
+        wrapper.__signature__ = inspect.signature(func)
         return wrapper
 
     return decorator

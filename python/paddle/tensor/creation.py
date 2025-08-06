@@ -25,7 +25,7 @@ import numpy as np
 import paddle
 from paddle import _C_ops
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
-from paddle.utils.param_alias_utils import param_alias
+from paddle.utils.param_decorator import param_alias
 
 from ..base.data_feeder import (
     check_dtype,
