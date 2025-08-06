@@ -25,7 +25,6 @@ if TYPE_CHECKING:
 F = TypeVar('F', bound=Callable[..., Any])
 
 
-@signature_safe_contextmanager
 def param_alias(alias_mapping: dict[str, Iterable[str]]) -> Callable[[F], F]:
     """Decorator for handling parameter aliases in function calls.
 
@@ -43,6 +42,7 @@ def param_alias(alias_mapping: dict[str, Iterable[str]]) -> Callable[[F], F]:
             raise TypeError(f"Aliases for '{k}' must be iterable")
 
     def decorator(func: F) -> F:
+        @signature_safe_contextmanager
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             if not kwargs:
