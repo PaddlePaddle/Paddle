@@ -39,8 +39,6 @@ class TestMoEUtils:
             [0, 1], dim_names=["x"]
         )  # 1D mesh with 2 processes
         paddle.seed(self._seeds)
-
-    def setUp(self):
         # Ensure the environment flag is set for _only_reshard_mesh_shape
         os.environ["FLAGS_enable_moe_utils"] = "true"
 
@@ -310,6 +308,8 @@ class TestMoEUtils:
         os.environ["FLAGS_enable_moe_utils"] = "true"  # Reset
 
     def run_test_case(self):
+        if self._backend == "cpu":
+            paddle.set_device("cpu")
         self.test_local_reshape()
         self.test_nd_mesh_alltoall()
         self.test_reshard_mesh_shape()
