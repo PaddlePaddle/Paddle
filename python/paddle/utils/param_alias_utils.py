@@ -15,24 +15,18 @@
 from __future__ import annotations
 
 import functools
-from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any, Callable, TypeVar
-
-from typing_extensions import ParamSpec
 
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-
-_InputT = ParamSpec("_InputT")
-_RetT = TypeVar("_RetT")
+F = TypeVar('F', bound=Callable[..., Any])
 
 
-def param_alias(
-    alias_mapping: dict[str, Iterable[str]],
-) -> Callable[[Callable[_InputT, _RetT]], Callable[_InputT, _RetT]]:
+@signature_safe_contextmanager
+def param_alias(alias_mapping: dict[str, Iterable[str]]) -> Callable[[F], F]:
     """Decorator for handling parameter aliases in function calls.
 
     Args:
@@ -48,30 +42,25 @@ def param_alias(
         if not isinstance(v, (list, tuple, set)):
             raise TypeError(f"Aliases for '{k}' must be iterable")
 
-    @signature_safe_contextmanager
-    def alias_context(
-        *args: _InputT.args, **kwargs: _InputT.kwargs
-    ) -> Iterable[dict[str, Any]]:
-        processed_kwargs = kwargs.copy()
-        for original, aliases in alias_mapping.items():
-            for alias in aliases:
-                if alias in processed_kwargs:
-                    if original not in processed_kwargs:
-                        processed_kwargs[original] = processed_kwargs.pop(alias)
-                    else:
-                        raise ValueError(
-                            f"Cannot specify both '{original}' and its alias '{alias}'"
-                        )
-        yield processed_kwargs
-
-    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+    def decorator(func: F) -> F:
         @functools.wraps(func)
-        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             if not kwargs:
                 return func(*args, **kwargs)
-            with alias_context(*args, **kwargs) as processed_kwargs:
-                return func(*args, **processed_kwargs)
+            processed_kwargs = kwargs.copy()
+            for original, aliases in alias_mapping.items():
+                for alias in aliases:
+                    if alias in processed_kwargs:
+                        if original not in processed_kwargs:
+                            processed_kwargs[original] = processed_kwargs.pop(
+                                alias
+                            )
+                        else:
+                            raise ValueError(
+                                f"Cannot specify both '{original}' and its alias '{alias}'"
+                            )
+            return func(*args, **processed_kwargs)
 
-        return wrapper
+        return wrapper  # type: ignore
 
     return decorator
