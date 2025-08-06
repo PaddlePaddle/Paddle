@@ -802,20 +802,22 @@ class ClipGradByGlobalNorm(ClipGradBase):
         # refer to NOTE: align ClipGradByGlobalNorm in auto_parallel_align_mode
         if flag_auto_hybrid_pp and src_mesh is not None:
             g_mesh = dist.get_mesh()
-            is_pp_enable = False
-            if g_mesh is not None:
-                is_pp_enable = (
-                    "pp" in g_mesh.dim_names and g_mesh.get_dim_size("pp") > 1
-                )
-            if is_pp_enable:
-                sub_mesh_pp = g_mesh.get_submesh_with_dim("pp")
-                curr_group = sub_mesh_pp.get_group("pp")
+            if (
+                g_mesh
+                and "pp" in g_mesh.dim_names
+                and g_mesh.get_dim_size("pp") > 1
+            ):
+                # Get the pipeline parallelism subgroup for communication
+                pp_group = g_mesh.get_submesh_with_dim("pp").get_group("pp")
+
+                # Perform all-reduce on the local tensor value across the PP group
                 global_norm_var_local = global_norm_var._local_value()
                 dist.all_reduce(
                     global_norm_var_local,
-                    group=curr_group,
                     op=dist.ReduceOp.SUM,
+                    group=pp_group,
                 )
+
                 global_norm_var = dist.shard_tensor(
                     global_norm_var_local,
                     global_norm_var.process_mesh,
