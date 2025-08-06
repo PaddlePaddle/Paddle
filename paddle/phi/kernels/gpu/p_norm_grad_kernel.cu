@@ -40,15 +40,14 @@ struct AbsMaxAndMinGradFunctor {
   }
 };
 
-
 template <typename T>
 struct PNormGradFunctor {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-
   HOSTDEVICE explicit inline PNormGradFunctor(float porder, float eps) {
     this->porder = static_cast<MT>(porder - 1.);
     this->eps = static_cast<MT>(eps);
   }
+
   template <typename Context,
             typename X,
             typename Y,
@@ -62,23 +61,36 @@ struct PNormGradFunctor {
                   DY* dy,
                   const Dim& dim,
                   int size) {
-    // dx->device(place) =
-    //     (*x).abs().pow(this->porder) * (*x).sign() * dy->broadcast(dim) *
-    //     (*y + y->constant(eps)).pow(-this->porder).broadcast(dim);
-    auto x_mt  = x->template cast<MT>();
-    auto y_mt  = y->template cast<MT>();
+    auto x_mt = x->template cast<MT>();
+    auto y_mt = y->template cast<MT>();
     auto dy_mt = dy->template cast<MT>();
 
+    auto norm_pow = y_mt.pow(-this->porder);
+    auto mask_norm_nonzero = (y_mt != static_cast<MT>(0)).template cast<MT>();
+
+    // ⚠️ 新增：当 porder < 0 且 x == 0 的位置，置 0
+    // 条件掩码：x == 0 && this->porder < 0
+    MT zero = static_cast<MT>(0);
+    auto mask_x_zero = (x_mt == zero).template cast<MT>();
+
+    MT is_porder_negative =
+        this->porder < zero ? static_cast<MT>(1) : static_cast<MT>(0);
+    auto invalid_mask =
+        (mask_x_zero * is_porder_negative);  // 只有满足两个条件的地方为1
+
+    auto safe_pow =
+        x_mt.abs().pow(this->porder) * (static_cast<MT>(1) - invalid_mask);
+
     dx->device(place) =
-        (
-          x_mt.abs().pow(this->porder) *
-          x_mt.sign() *
-          dy_mt.broadcast(dim) *
-          (y_mt + y_mt.constant(eps)).pow(-this->porder).broadcast(dim)
-        ).template cast<T>();
+        (safe_pow * x_mt.sign() * dy_mt.broadcast(dim) *
+         norm_pow.broadcast(dim) *
+         mask_norm_nonzero.broadcast(dim)  // ⚠ 屏蔽 norm == 0 的地方
+         )
+            .template cast<T>();
   }
-  T porder;
-  T eps;
+
+  MT porder;
+  MT eps;
 };
 
 template <typename T, typename Context>

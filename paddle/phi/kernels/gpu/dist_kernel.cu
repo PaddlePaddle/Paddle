@@ -63,7 +63,9 @@ struct PowFunctor {
   Ty p_order_;
 };
 
-template <typename Tx, typename Ty, typename Tout>//Tx is high precision, Tout is low/out precision
+template <typename Tx,
+          typename Ty,
+          typename Tout>  // Tx is high precision, Tout is low/out precision
 struct PowFunctor_high_precision {
   HOSTDEVICE explicit inline PowFunctor_high_precision(const Ty& p_order)
       : p_order_(p_order) {}
@@ -78,16 +80,8 @@ __global__ void ReduceSumWithSubtract(
     const T* x, const T* y, T* out, int64_t N, Functor func) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   MT sum_val(0.0);
-  CUDA_KERNEL_LOOP_TYPE(i, N, int64_t) { 
-    if (threadIdx.x == 0 && blockIdx.x == 0) {
-      printf("cuda kernel begin: i = %d, N = %d\n", i, N);
-    }
-      if (i < N) {
-        sum_val += func(x[i], y[i]);
-      }else{
-        printf("cuda kernel error: i = %d, N = %d\n", i, N);
-      }
-  }
+  CUDA_KERNEL_LOOP_TYPE(i, N, int64_t) { sum_val += func(x[i], y[i]); }
+
   sum_val = phi::funcs::BlockReduceSum<MT>(sum_val, FULL_MASK);
   if (threadIdx.x == 0) {
     out[blockIdx.x] = static_cast<T>(sum_val);
@@ -151,14 +145,10 @@ void DistKernel(const Context& dev_ctx,
   auto xdim = x.dims();
   if (xdim == y.dims()) {  // same shape
     int64_t n = x.numel();
-    std::cout << "n: " << n << std::endl;
 
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, n);
     intermediate.Resize(common::make_ddim({config.block_per_grid.x}));
     T* i_ptr = dev_ctx.template Alloc<T>(&intermediate);
-    std::cout << "thread_per_block: " << config.thread_per_block.x
-          << ", block_per_grid: " << config.block_per_grid.x << std::endl;
-
     std::vector<int64_t> axis_dims = {static_cast<int64_t>(-1)};
     std::vector<int> reduce_axis =
         funcs::details::GetReduceDim(axis_dims, xdim.size(), true);
@@ -189,31 +179,23 @@ void DistKernel(const Context& dev_ctx,
       ReduceSumWithSubtract<T>
           <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
               x_ptr, y_ptr, i_ptr, n, OtherOrderFunctor<T, MT>(p_order));
-      std::cout << "first reduce over!"<< std::endl;
-      cudaError_t err = cudaDeviceSynchronize();
-        printf(" first CUDA Error after ReduceSumWithSubtract: %s\n", cudaGetErrorString(err));
-      // 新建一个中间张量，用于存储中间结果
       DenseTensor out_other;
       out_other.Resize(out->dims());
       dev_ctx.template Alloc<MT>(&out_other);
 
-      phi::funcs::ReduceKernel<T, MT, kps::AddFunctor, kps::IdentityFunctor<MT>>(
-          dev_ctx,
-          intermediate, &out_other,
-          kps::IdentityFunctor<MT>(), reduce_axis);
-      std::cout << "second reduce over!"<< std::endl;
-      err = cudaDeviceSynchronize();
-        printf("second CUDA Error after ReduceKernel: %s\n", cudaGetErrorString(err));
-
+      phi::funcs::
+          ReduceKernel<T, MT, kps::AddFunctor, kps::IdentityFunctor<MT>>(
+              dev_ctx,
+              intermediate,
+              &out_other,
+              kps::IdentityFunctor<MT>(),
+              reduce_axis);
       std::vector<const DenseTensor*> ins = {&out_other};
-      std::vector<DenseTensor*> outs = {out}; 
+      std::vector<DenseTensor*> outs = {out};
 
       MT p_order_ = static_cast<MT>(1.f / p_order);
       phi::funcs::ElementwiseKernel<T>(
           dev_ctx, ins, &outs, PowFunctor_high_precision<MT, MT, T>(p_order_));
-      std::cout << "elementwise kernel over!"<< std::endl;
-      err = cudaDeviceSynchronize();
-        printf("----third CUDA Error after ElementwiseKernel: %s\n", cudaGetErrorString(err));
     }
 
   } else {
