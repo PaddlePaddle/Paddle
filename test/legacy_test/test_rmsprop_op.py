@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 from op import Operator
-from op_test import get_places
+from op_test import get_device_place, get_places
 
 import paddle
 from paddle import base
@@ -457,7 +457,7 @@ class TestRMSPropMultiPrecision2_0(unittest.TestCase):
         paddle.enable_static()
         paddle.seed(100)
         np.random.seed(100)
-        exe = paddle.static.Executor('gpu')
+        exe = paddle.static.Executor(get_device_place())
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
 
@@ -545,7 +545,7 @@ class TestRMSPropMultiPrecision2_0(unittest.TestCase):
         with paddle.pir_utils.IrGuard():
             paddle.seed(100)
             np.random.seed(100)
-            exe = paddle.static.Executor('gpu')
+            exe = paddle.static.Executor(get_device_place())
             train_program = paddle.static.Program()
             startup_program = paddle.static.Program()
             optimizer = paddle.optimizer.RMSProp(0.1)

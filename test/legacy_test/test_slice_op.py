@@ -20,6 +20,7 @@ from decorator_helper import prog_scope
 from op_test import (
     OpTest,
     convert_float_to_uint16,
+    get_device_place,
     get_places,
     paddle_static_guard,
 )
@@ -941,11 +942,7 @@ class TestSliceApiWithDenseTensorArray(unittest.TestCase):
         self.end = 2
         self.axis = 1
 
-        self.place = (
-            base.CUDAPlace(0)
-            if base.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        self.place = get_device_place()
         self.exe = base.Executor(self.place)
 
     def set_program_and_run(self, main_program, case_num):

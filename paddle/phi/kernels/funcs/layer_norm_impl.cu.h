@@ -550,7 +550,9 @@ __inline__ __device__ void cuLoadAddStridedInputs(const int64_t i1_block,
   for (int k = 0; k < VPT; ++k) {
     const int i2 = i2_off + k;
     const int64_t load_idx = i1 * n2 + i2;
-    const int write_idx = thr_load_row_off * row_stride + thr_load_col_off + k;
+    const int64_t write_idx =
+        static_cast<int64_t>(thr_load_row_off) * row_stride + thr_load_col_off +
+        k;
     if (i2 < n2) {
       U curr_input = static_cast<U>(input[load_idx]);
       U curr_dout = static_cast<U>(dout[load_idx]);
@@ -748,7 +750,12 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_fast_kernel(
         // Note: reuse x and dout vec register to store dx and d_dropout_src.
         x[it][jt] = static_cast<T>(dx_tmp);
         if (IsFusedDropoutResidualLn) {
-          dout[it][jt] = x[it][jt] * static_cast<T>(mask_vec[it][jt]) * factor;
+          if (factor == static_cast<T>(1.0f)) {  // no dropout
+            dout[it][jt] = x[it][jt] * factor;
+          } else {
+            dout[it][jt] =
+                x[it][jt] * static_cast<T>(mask_vec[it][jt]) * factor;
+          }
         }
       }
     }

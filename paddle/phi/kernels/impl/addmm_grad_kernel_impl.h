@@ -87,6 +87,12 @@ void AddmmGradKernel(const Context& dev_ctx,
   }
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   bool is_float16_or_bfloat16 = false;
+  bool is_big_tensor = false;
+  if (input.numel() * input.dims()[1] > std::numeric_limits<int>::max() ||
+      x.numel() > std::numeric_limits<int>::max() ||
+      y.numel() * y.dims()[1] > std::numeric_limits<int>::max()) {
+    is_big_tensor = true;
+  }
   if (std::is_same<T, phi::dtype::float16>::value ||
       std::is_same<T, phi::dtype::bfloat16>::value) {
     is_float16_or_bfloat16 = true;
@@ -126,7 +132,7 @@ void AddmmGradKernel(const Context& dev_ctx,
         Array2(input_grad->dims()[0], input_grad->dims()[1]);
 
     if (row_compress && col_compress) {
-      if (!is_float16_or_bfloat16) {
+      if (!is_float16_or_bfloat16 && !is_big_tensor) {
         eigen_dinput.device(place) =
             eigen_dout.sum().eval().reshape(eigen_dinput_shape);
       } else {
@@ -137,7 +143,7 @@ void AddmmGradKernel(const Context& dev_ctx,
                                          .template cast<T>();
       }
     } else if (row_compress) {
-      if (!is_float16_or_bfloat16) {
+      if (!is_float16_or_bfloat16 && !is_big_tensor) {
         eigen_dinput.device(place) =
             eigen_dout.sum(Array1(0)).eval().reshape(eigen_dinput_shape);
       } else {
@@ -148,7 +154,7 @@ void AddmmGradKernel(const Context& dev_ctx,
                                          .template cast<T>();
       }
     } else if (col_compress) {
-      if (!is_float16_or_bfloat16) {
+      if (!is_float16_or_bfloat16 && !is_big_tensor) {
         eigen_dinput.device(place) =
             eigen_dout.sum(Array1(1)).eval().reshape(eigen_dinput_shape);
       } else {
@@ -160,7 +166,7 @@ void AddmmGradKernel(const Context& dev_ctx,
       }
     } else {
       // The VCOPY does not support the float16, bfloat16
-      if (!is_float16_or_bfloat16) {
+      if (!is_float16_or_bfloat16 && !is_big_tensor) {
         mt_blas.VCOPY(
             total_elems, out_grad.data<MPType>(), input_grad->data<MPType>());
       } else {
@@ -172,7 +178,7 @@ void AddmmGradKernel(const Context& dev_ctx,
     }
 
     // The SCAL does not support the float16, bfloat16
-    if (!is_float16_or_bfloat16) {
+    if (!is_float16_or_bfloat16 && !is_big_tensor) {
       mt_blas.SCAL(total_elems, beta, input_grad->data<MPType>());
     } else {
       phi::funcs::ForRange<Context> for_range(dev_ctx, total_elems);
@@ -202,7 +208,7 @@ void AddmmGradKernel(const Context& dev_ctx,
     total_elems = x.dims()[0] * x.dims()[1];
     // x_grad = out_grad * y'. x_grad: M x K, out_grad : M x N, y : K x N
     blas.MatMul(out_grad, false, y, true, x_grad);
-    if (!is_float16_or_bfloat16) {
+    if (!is_float16_or_bfloat16 && !is_big_tensor) {
       mt_blas.SCAL(total_elems, alpha, x_grad->data<MPType>());
     } else {
       phi::funcs::ForRange<Context> for_range(dev_ctx, total_elems);
@@ -216,7 +222,7 @@ void AddmmGradKernel(const Context& dev_ctx,
     total_elems = x.dims()[1] * y.dims()[1];
     // y_grad = x' * out_grad. y_grad K x N, out_grad : M x N, x : M x K
     blas.MatMul(x, true, out_grad, false, y_grad);
-    if (!is_float16_or_bfloat16) {
+    if (!is_float16_or_bfloat16 && !is_big_tensor) {
       mt_blas.SCAL(total_elems, alpha, y_grad->data<MPType>());
     } else {
       phi::funcs::ForRange<Context> for_range(dev_ctx, total_elems);

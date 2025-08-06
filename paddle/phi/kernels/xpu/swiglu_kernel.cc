@@ -30,7 +30,6 @@ void SwiGluKernel(const Context& dev_ctx,
   const auto& dims = x.dims();
   int64_t axis = dims.size() - 1;
   auto dims_vec = common::vectorize<int64_t>(dims);
-  const XPUTypefp32* const_nullptr = nullptr;
   const XPUType* y_ptr = nullptr;
 
   if (y) {
@@ -48,13 +47,11 @@ void SwiGluKernel(const Context& dev_ctx,
   }
   int ret = xpu::swiglu(dev_ctx.x_context(),
                         reinterpret_cast<const XPUType*>(x_data),
+                        y_ptr,
                         reinterpret_cast<XPUType*>(z_data),
                         dims_vec,
                         axis,
-                        true,
-                        const_nullptr,
-                        nullptr,
-                        y_ptr);
+                        true);
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "swiglu");
 }
 }  // namespace phi

@@ -1162,8 +1162,8 @@ void EighInferMeta(const MetaTensor& x,
       input_dim[rank - 2],
       input_dim[rank - 1],
       common::errors::InvalidArgument(
-          "Eigh op is designed for square matrix, consequently"
-          "inner-most 2 dimensions of Input(X) should be symmetric."
+          "Eigh op is designed for square matrix, consequently "
+          "inner-most 2 dimensions of Input(X) should be symmetric. "
           "But received X's shape[-2] = %d and shape[-1] = %d.",
           input_dim[rank - 2],
           input_dim[rank - 1]));
@@ -1230,8 +1230,8 @@ void EigvalshInferMeta(const MetaTensor& x,
       input_dim[rank - 2],
       input_dim[rank - 1],
       errors::InvalidArgument(
-          "Eigvalsh op is designed for square matrix, consequently"
-          "inner-most 2 dimensions of Input(X) should be symmetric."
+          "Eigvalsh op is designed for square matrix, consequently "
+          "inner-most 2 dimensions of Input(X) should be symmetric. "
           "But received X's shape[-2] = %d and shape[-1] = %d.",
           input_dim[rank - 2],
           input_dim[rank - 1]));
@@ -1395,7 +1395,7 @@ void ExpandModalityExpertIdInferMeta(const MetaTensor& expert_id,
           expert_id.dtype() == DataType::INT64,
       true,
       common::errors::InvalidArgument(
-          "The dtype of expert_id should be INT32 or INT64. But received"
+          "The dtype of expert_id should be INT32 or INT64. But received "
           "dtype=%s.",
           DataTypeToString(expert_id.dtype())));
 
@@ -1652,7 +1652,7 @@ void FlattenInferMeta(const MetaTensor& x,
     PADDLE_ENFORCE_GE(
         stop_axis,
         start_axis,
-        common::errors::InvalidArgument("The stop_axis should be greater"
+        common::errors::InvalidArgument("The stop_axis should be greater "
                                         "than or equal to start_axis."));
   }
 
@@ -1985,7 +1985,7 @@ void FoldInferMeta(const MetaTensor& x,
       in_dims[1] % (kernel_sizes[0] * kernel_sizes[1]),
       0,
       common::errors::InvalidArgument(
-          "Expected size of input's dimension 1 to be divisible by the"
+          "Expected size of input's dimension 1 to be divisible by the "
           "product of kernel_size, but got input.size(1)=%d and "
           "kernel_size=( %d"
           ", %d).",
@@ -3625,7 +3625,7 @@ void Pool2DInferMeta(const MetaTensor& x,
                      const std::string& padding_algorithm,
                      MetaTensor* out,
                      MetaConfig config) {
-  const bool channel_last = (config.is_run_mkldnn_kernel == false) &&
+  const bool channel_last = (config.is_run_onednn_kernel == false) &&
                             (data_format == "NHWC" || data_format == "NDHWC");
   if (!config.is_runtime && kernel_size.FromTensor()) {
     auto x_dims = x.dims();
@@ -3755,7 +3755,7 @@ void PoolInferMeta(const MetaTensor& x,
 
   // MKL-DNN Kernels are using NCHW order of dims description
   // so we ignore data_format consideration for MKL-DNN kernel
-  const bool channel_last = (config.is_run_mkldnn_kernel == false) &&
+  const bool channel_last = (config.is_run_onednn_kernel == false) &&
                             (data_format == "NHWC" || data_format == "NDHWC");
 
   // update paddings if "SAME" or global_pooling
@@ -4430,7 +4430,7 @@ void Shape64InferMeta(const MetaTensor& input,
                       MetaConfig config) {
   auto in_dim = input.dims();
   out->set_dims(common::make_ddim({in_dim.size()}));
-  if (config.is_run_mkldnn_kernel) {
+  if (config.is_run_onednn_kernel) {
     out->set_dtype(DataType::INT32);
   } else {
     out->set_dtype(DataType::INT64);
@@ -6063,7 +6063,7 @@ void UniqueConsecutiveInferMeta(const MetaTensor& x,
     PADDLE_ENFORCE_EQ(axis.empty(),
                       true,
                       common::errors::InvalidArgument(
-                          "The Input(X) with 0-D Tensor, axis must be None"
+                          "The Input(X) with 0-D Tensor, axis must be None. "
                           "But now the axis is %d.",
                           axis[0]));
   }
@@ -6164,7 +6164,7 @@ void UniqueRawInferMeta(const MetaTensor& x,
     PADDLE_ENFORCE_EQ(axis.empty(),
                       true,
                       common::errors::InvalidArgument(
-                          "The Input(X) with 0-D Tensor, axis must be None"
+                          "The Input(X) with 0-D Tensor, axis must be None. "
                           "But now the axis is %d.",
                           axis[0]));
   }

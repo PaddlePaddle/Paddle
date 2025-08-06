@@ -481,12 +481,12 @@ class TestResnet(Dy2StTestBase):
 
     @test_default_mode_only
     def test_in_static_mode_mkldnn(self):
-        paddle.set_flags({'FLAGS_use_mkldnn': True})
+        paddle.set_flags({'FLAGS_use_onednn': True})
         try:
             if paddle.base.core.is_compiled_with_mkldnn():
                 self.train(to_static=True)
         finally:
-            paddle.set_flags({'FLAGS_use_mkldnn': False})
+            paddle.set_flags({'FLAGS_use_onednn': False})
 
 
 if __name__ == '__main__':

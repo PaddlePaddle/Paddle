@@ -401,5 +401,23 @@ class TestMedianMin_ZeroSize(unittest.TestCase):
         self.dygraph_single_test_median([x, 1, False])
 
 
+class TestMedianSort(unittest.TestCase):
+    def dygraph_single_test_median(self, lis_test):
+        x, axis, keepdims = lis_test
+        res_np = np.median(x, axis=axis, keepdims=keepdims)
+        x_pd = paddle.to_tensor(x)
+        x_pd.stop_gradient = False
+        res_pd = paddle.median(x_pd, axis, keepdims)
+        np.testing.assert_allclose(res_pd.numpy(), res_np)
+
+    def test_median_dygraph(self):
+        paddle.disable_static()
+        h = 2
+        w = 20000
+        l = 2
+        x = np.arange(h * w * l).reshape([h, w, l])
+        self.dygraph_single_test_median([x, 1, False])
+
+
 if __name__ == '__main__':
     unittest.main()

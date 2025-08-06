@@ -490,30 +490,30 @@ __global__ void KeTrilinearInterpFw(const T* in,
     size_t in_img_idt = ScaleIdxOut2In(out_img_idt, ratio_d, align_flag);
     size_t d_id = (in_img_idt + 1 < in_img_d) ? 1 : 0;
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-    T src_d = static_cast<T>(ratio_d * (out_img_idt + 0.5) - 0.5);
-    src_d = (src_d > static_cast<T>(0)) ? src_d : static_cast<T>(0);
-    T d1lambda = align_flag
-                     ? static_cast<T>(static_cast<MT>(src_d) - in_img_idt)
-                     : static_cast<T>(ratio_d * out_img_idt - in_img_idt);
-    T d2lambda = static_cast<T>(1.0) - d1lambda;
+    MT src_d = ratio_d * (static_cast<MT>(out_img_idt) + MT(0.5)) - MT(0.5);
+    src_d = src_d > MT(0) ? src_d : MT(0);
+    MT d1lambda = align_flag ? src_d - static_cast<MT>(in_img_idt)
+                             : ratio_d * static_cast<MT>(out_img_idt) -
+                                   static_cast<MT>(in_img_idt);
+    MT d2lambda = MT(1.0) - d1lambda;
 
     size_t in_img_idy = ScaleIdxOut2In(out_img_idy, ratio_h, align_flag);
     size_t h_id = (in_img_idy + 1 < in_img_h) ? 1 : 0;
-    T src_h = static_cast<T>(ratio_h * (out_img_idy + 0.5) - 0.5);
-    src_h = (src_h > static_cast<T>(0)) ? src_h : static_cast<T>(0);
-    T h1lambda = align_flag
-                     ? static_cast<T>(static_cast<MT>(src_h) - in_img_idy)
-                     : static_cast<T>(ratio_h * out_img_idy - in_img_idy);
-    T h2lambda = static_cast<T>(1.0) - h1lambda;
+    MT src_h = ratio_h * (static_cast<MT>(out_img_idy) + MT(0.5)) - MT(0.5);
+    src_h = src_h > MT(0) ? src_h : MT(0);
+    MT h1lambda = align_flag ? src_h - static_cast<MT>(in_img_idy)
+                             : ratio_h * static_cast<MT>(out_img_idy) -
+                                   static_cast<MT>(in_img_idy);
+    MT h2lambda = MT(1.0) - h1lambda;
 
     size_t in_img_idx = ScaleIdxOut2In(out_img_idx, ratio_w, align_flag);
     size_t w_id = (in_img_idx + 1 < in_img_w) ? 1 : 0;
-    T src_w = static_cast<T>(ratio_w * (out_img_idx + 0.5) - 0.5);
-    src_w = (src_w > static_cast<T>(0)) ? src_w : static_cast<T>(0);
-    T w1lambda = align_flag
-                     ? static_cast<T>(static_cast<MT>(src_w) - in_img_idx)
-                     : static_cast<T>(ratio_w * out_img_idx - in_img_idx);
-    T w2lambda = static_cast<T>(1.0) - w1lambda;
+    MT src_w = ratio_w * (static_cast<MT>(out_img_idx) + MT(0.5)) - MT(0.5);
+    src_w = src_w > MT(0) ? src_w : MT(0);
+    MT w1lambda = align_flag ? src_w - static_cast<MT>(in_img_idx)
+                             : ratio_w * static_cast<MT>(out_img_idx) -
+                                   static_cast<MT>(in_img_idx);
+    MT w2lambda = MT(1.0) - w1lambda;
 
     if (data_layout == DataLayout::kNCHW) {
       size_t in_pos1_idx = out_id_h * input_w + channel_id * in_img_size +
@@ -523,17 +523,21 @@ __global__ void KeTrilinearInterpFw(const T* in,
       size_t in_pos2_idx = in_pos1_idx + d_id * in_img_h * in_img_w;
       const T* in_pos2 = &in[in_pos2_idx];
 
-      // trilinear interpolation
-      out[out_id_h * output_w + out_id_w] =
-          d2lambda *
-              (h2lambda * (w2lambda * in_pos1[0] + w1lambda * in_pos1[w_id]) +
-               h1lambda * (w2lambda * in_pos1[h_id * in_img_w] +
-                           w1lambda * in_pos1[h_id * in_img_w + w_id])) +
-          d1lambda *
-              (h2lambda * (w2lambda * in_pos2[0] + w1lambda * in_pos2[w_id]) +
-               h1lambda * (w2lambda * in_pos2[h_id * in_img_w] +
-                           w1lambda * in_pos2[h_id * in_img_w + w_id]));
-
+      MT val = d2lambda *
+                   (h2lambda * (w2lambda * static_cast<MT>(in_pos1[0]) +
+                                w1lambda * static_cast<MT>(in_pos1[w_id])) +
+                    h1lambda *
+                        (w2lambda * static_cast<MT>(in_pos1[h_id * in_img_w]) +
+                         w1lambda * static_cast<MT>(
+                                        in_pos1[h_id * in_img_w + w_id]))) +
+               d1lambda *
+                   (h2lambda * (w2lambda * static_cast<MT>(in_pos2[0]) +
+                                w1lambda * static_cast<MT>(in_pos2[w_id])) +
+                    h1lambda *
+                        (w2lambda * static_cast<MT>(in_pos2[h_id * in_img_w]) +
+                         w1lambda *
+                             static_cast<MT>(in_pos2[h_id * in_img_w + w_id])));
+      out[out_id_h * output_w + out_id_w] = static_cast<T>(val);
     } else {
       size_t in_pos1_idx = out_id_h * input_w +
                            in_img_idt * in_img_h * in_img_w * num_channels +
@@ -544,20 +548,28 @@ __global__ void KeTrilinearInterpFw(const T* in,
           in_pos1_idx + d_id * in_img_h * in_img_w * num_channels;
       const T* in_pos2 = &in[in_pos2_idx];
 
-      // trilinear interpolation
-      out[out_id_h * output_w + out_id_w] =
+      MT val =
           d2lambda *
-              (h2lambda * (w2lambda * in_pos1[0] +
-                           w1lambda * in_pos1[w_id * num_channels]) +
-               h1lambda * (w2lambda * in_pos1[h_id * in_img_w * num_channels] +
-                           w1lambda * in_pos1[h_id * in_img_w * num_channels +
-                                              w_id * num_channels])) +
+              (h2lambda *
+                   (w2lambda * static_cast<MT>(in_pos1[0]) +
+                    w1lambda * static_cast<MT>(in_pos1[w_id * num_channels])) +
+               h1lambda *
+                   (w2lambda * static_cast<MT>(
+                                   in_pos1[h_id * in_img_w * num_channels]) +
+                    w1lambda *
+                        static_cast<MT>(in_pos1[h_id * in_img_w * num_channels +
+                                                w_id * num_channels]))) +
           d1lambda *
-              (h2lambda * (w2lambda * in_pos2[0] +
-                           w1lambda * in_pos2[w_id * num_channels]) +
-               h1lambda * (w2lambda * in_pos2[h_id * in_img_w * num_channels] +
-                           w1lambda * in_pos2[h_id * in_img_w * num_channels +
-                                              w_id * num_channels]));
+              (h2lambda *
+                   (w2lambda * static_cast<MT>(in_pos2[0]) +
+                    w1lambda * static_cast<MT>(in_pos2[w_id * num_channels])) +
+               h1lambda *
+                   (w2lambda * static_cast<MT>(
+                                   in_pos2[h_id * in_img_w * num_channels]) +
+                    w1lambda *
+                        static_cast<MT>(in_pos2[h_id * in_img_w * num_channels +
+                                                w_id * num_channels])));
+      out[out_id_h * output_w + out_id_w] = static_cast<T>(val);
     }
   }
 }

@@ -43,15 +43,33 @@ DenseTensor PerformTileAndReduction(const Context& dev_ctx,
   std::vector<int64_t> repeat_times;
   std::vector<int64_t> resize_dims;
   std::vector<int64_t> recover_shape;
-  for (int c : op_label) {
+  std::vector<int64_t> t_shape = common::vectorize<int64_t>(t.dims());
+  for (int i = 0; i < op_label.size(); i++) {
+    int c = op_label[i];
     if (label2type[c] == LabelType::Reduction) {
       repeat_times.push_back(label2shape[c]);
       resize_dims.push_back(1);
       recover_shape.push_back(label2shape[c]);
+      t_shape.insert(t_shape.begin() + i, 1);
     } else {
       resize_dims.push_back(label2shape[c]);
       repeat_times.push_back(1);
       recover_shape.push_back(label2shape[c]);
+    }
+  }
+  PADDLE_ENFORCE_EQ(op_label.size(),
+                    t_shape.size(),
+                    common::errors::InvalidArgument(
+                        "Input shape size doesn't match label nums, input "
+                        "shape size: `%d`, but got label nums: `%d`",
+                        t_shape.size(),
+                        op_label.size()));
+  for (int i = 0; i < op_label.size(); i++) {
+    int c = op_label[i];
+    if (label2type[c] == LabelType::Contraction &&
+        t_shape[i] != label2shape[c]) {
+      repeat_times[i] = label2shape[c];
+      resize_dims[i] = 1;
     }
   }
   t.Resize(common::make_ddim(resize_dims));

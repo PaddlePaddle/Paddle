@@ -1072,46 +1072,48 @@ void FlashAttnV3Kernel(const Context &dev_ctx,
 }
 
 template <typename T, typename Context>
-void FlashAttnV3VarLenKernel(const Context &dev_ctx,
+void FlashAttnV3VarlenKernel(const Context &dev_ctx,
                              const DenseTensor &q,
                              const DenseTensor &k,
                              const DenseTensor &v,
                              const DenseTensor &cu_seqlens_q,
                              const DenseTensor &cu_seqlens_k,
-                             const paddle::optional<DenseTensor> &q_v_,
-                             const paddle::optional<DenseTensor> &q_descale_,
-                             const paddle::optional<DenseTensor> &k_descale_,
-                             const paddle::optional<DenseTensor> &v_descale_,
-                             const float softmax_scale,
-                             bool is_causal,
-                             int window_size_left,
-                             int window_size_right,
-                             const float softcap,
-                             int num_splits,
-                             const bool manual_set_pack_gqa,
-                             const bool pack_gqa_,
-                             const int sm_margin,
+                             const paddle::optional<DenseTensor> &seqused_q,
+                             const paddle::optional<DenseTensor> &seqused_k,
+                             const paddle::optional<DenseTensor> &qv,
+                             const paddle::optional<DenseTensor> &q_descale,
+                             const paddle::optional<DenseTensor> &k_descale,
+                             const paddle::optional<DenseTensor> &v_descale,
                              const int max_seqlen_q,
                              const int max_seqlen_k,
+                             const float softmax_scale,
+                             const bool causal,
+                             const int window_size_left,
+                             const int window_size_right,
+                             const float softcap,
+                             const int num_splits,
+                             const bool manual_set_pack_gqa,
+                             const bool pack_gqa,
+                             const int sm_margin,
                              DenseTensor *out,
                              DenseTensor *softmax_lse) {
 #ifdef PADDLE_WITH_FLASHATTN_V3
   // umiswing: the following options have not been fully tested
-  PADDLE_ENFORCE_EQ(q_v_.is_initialized(),
+  PADDLE_ENFORCE_EQ(qv.is_initialized(),
                     false,
                     common::errors::InvalidArgument("q_v_ is not supported"));
   PADDLE_ENFORCE_EQ(
-      q_descale_.is_initialized(),
+      q_descale.is_initialized(),
       false,
-      common::errors::InvalidArgument("q_descale_ is not supported"));
+      common::errors::InvalidArgument("q_descale is not supported"));
   PADDLE_ENFORCE_EQ(
-      k_descale_.is_initialized(),
+      k_descale.is_initialized(),
       false,
-      common::errors::InvalidArgument("k_descale_ is not supported"));
+      common::errors::InvalidArgument("k_descale is not supported"));
   PADDLE_ENFORCE_EQ(
-      v_descale_.is_initialized(),
+      v_descale.is_initialized(),
       false,
-      common::errors::InvalidArgument("v_descale_ is not supported"));
+      common::errors::InvalidArgument("v_descale is not supported"));
   PADDLE_ENFORCE_EQ(
       window_size_left,
       -1,
@@ -1137,10 +1139,11 @@ void FlashAttnV3VarLenKernel(const Context &dev_ctx,
                         "manual_set_pack_gqa is not supported, please set "
                         "manual_set_pack_gqa to false"));
   PADDLE_ENFORCE_EQ(
-      pack_gqa_,
+      pack_gqa,
       false,
       common::errors::InvalidArgument(
-          "pack_gqa_ is not supported, please set pack_gqa_ to false"));
+          "pack_gqa is not supported, please set pack_gqa to false"));
+
   PADDLE_ENFORCE_EQ(
       sm_margin,
       0,
@@ -1155,38 +1158,39 @@ void FlashAttnV3VarLenKernel(const Context &dev_ctx,
                                     v,
                                     paddle::none,  // k_new_
                                     paddle::none,  // v_new_
-                                    q_v_,
+                                    qv,
                                     paddle::none,  // out_
                                     cu_seqlens_q,  // cu_seqlens_q_
                                     cu_seqlens_k,  // cu_seqlens_k_
                                     paddle::none,  // cu_seqlens_k_new_
-                                    paddle::none,  // seqused_q_
-                                    paddle::none,  // seqused_k_
+                                    seqused_q,     // seqused_q_
+                                    seqused_k,     // seqused_k_
                                     paddle::none,  // page_table_
                                     paddle::none,  // kv_batch_idx_
                                     paddle::none,  // leftpad_k_
                                     paddle::none,  // rotary_cos_
                                     paddle::none,  // rotary_sin_
-                                    q_descale_,
-                                    k_descale_,
-                                    v_descale_,
+                                    q_descale,
+                                    k_descale,
+                                    v_descale,
                                     paddle::none,  // scheduler_metadata
                                     max_seqlen_q,  // max_seqlen_q_
                                     max_seqlen_k,  // max_seqlen_k_
                                     softmax_scale,
-                                    is_causal,
+                                    causal,
                                     window_size_left,
                                     window_size_right,
                                     softcap,
                                     true,  // is_rotary_interleaved
                                     num_splits,
                                     manual_set_pack_gqa,
-                                    pack_gqa_,
+                                    pack_gqa,
                                     sm_margin,
                                     out,
                                     softmax_lse,
                                     &out_accum,
                                     &softmax_lse_accum);
+
 #else
   RaiseNotSupportedError();
 #endif
@@ -1204,6 +1208,6 @@ PD_REGISTER_KERNEL(flash_attn_v3,
 PD_REGISTER_KERNEL(flash_attn_v3_varlen,
                    GPU,
                    ALL_LAYOUT,
-                   phi::FlashAttnV3VarLenKernel,
+                   phi::FlashAttnV3VarlenKernel,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}

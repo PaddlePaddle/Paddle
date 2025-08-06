@@ -365,6 +365,23 @@ void FlashAttnV3GradInferMeta(const MetaTensor& q,
   }
 }
 
+void FlashAttnV3VarlenGradInferMeta(const MetaTensor& q,
+                                    const MetaTensor& k,
+                                    const MetaTensor& v,
+                                    MetaTensor* dq,
+                                    MetaTensor* dk,
+                                    MetaTensor* dv) {
+  if (dq) {
+    dq->share_meta(q);
+  }
+  if (dk) {
+    dk->share_meta(k);
+  }
+  if (dv) {
+    dv->share_meta(v);
+  }
+}
+
 void Flatten2GradInferMeta(const MetaTensor& x,
                            const MetaTensor& x_shape,
                            const MetaTensor& out_grad,
@@ -1140,13 +1157,13 @@ void MemoryEfficientAttentionGradInferMeta(const MetaTensor& query,
   PADDLE_ENFORCE_EQ(
       output_grad.dims().size(),
       4,
-      common::errors::InvalidArgument("Key should be a 4-D tensor"
+      common::errors::InvalidArgument("Key should be a 4-D tensor. "
                                       "But received Key dimension(%s)",
                                       output_grad.dims().size()));
   PADDLE_ENFORCE_EQ(
       output.dims().size(),
       4,
-      common::errors::InvalidArgument("Key should be a 4-D tensor"
+      common::errors::InvalidArgument("Key should be a 4-D tensor. "
                                       "But received Key dimension(%s)",
                                       output_grad.dims().size()));
 
@@ -1237,13 +1254,13 @@ void MoeCombineGradInferMeta(const MetaTensor& x,
   PADDLE_ENFORCE_EQ(
       x_dim.size(),
       2,
-      errors::InvalidArgument("The input X should have 2 dimensions"
+      errors::InvalidArgument("The input X should have 2 dimensions. "
                               "But received X's dimension = %d",
                               x_dim.size()));
   PADDLE_ENFORCE_EQ(
       (scatter_index.dtype() == phi::DataType::INT32),
       true,
-      errors::InvalidArgument("The input scatter_index type should be int32"
+      errors::InvalidArgument("The input scatter_index type should be int32. "
                               "But received scatter_index type = %s",
                               scatter_index.dtype()));
   grad_x->set_dims(common::make_ddim({x_dim[0], x_dim[1]}));
@@ -2151,6 +2168,7 @@ void IndexElementwiseGetGradInferMeta(
     const std::vector<int64_t>& index_strides,
     const int64_t slice_offset,
     const bool accumulate,
+    const bool is_combined,
     MetaTensor* x_grad) {
   if (x_grad) {
     x_grad->share_meta(x);

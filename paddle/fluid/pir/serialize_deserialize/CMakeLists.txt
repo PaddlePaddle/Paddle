@@ -13,7 +13,7 @@ endif()
 
 file(GLOB_RECURSE YAML_PATCH_FILES "*.yaml")
 # change pir version when new patches are added
-add_definitions(-DDEVELOP_VERSION=2)
+add_definitions(-DDEVELOP_VERSION=0)
 add_definitions(-DRELEASE_VERSION=2)
 set(TEMPLATE_FILE ${CMAKE_CURRENT_SOURCE_DIR}/patch/template.h.in)
 set(PATCH_HEADER ${CMAKE_CURRENT_BINARY_DIR}/patch/patch.h)

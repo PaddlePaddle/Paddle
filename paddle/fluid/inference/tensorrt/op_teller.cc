@@ -1430,7 +1430,7 @@ struct SimpleOpTypeSetTeller : public Teller {
             input_type != framework::proto::VarType::FP32 &&
             input_type != framework::proto::VarType::FP64) {
           VLOG(3) << "the fill_any_like only supports "
-                     "int32/int64/float32/float64 by"
+                     "int32/int64/float32/float64 by "
                      "trt8.4 below";
           return false;
         }

@@ -15,9 +15,9 @@
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
-from paddle.base import core
 
 np.random.seed(10)
 
@@ -28,11 +28,7 @@ class TestCountNonzeroAPI(unittest.TestCase):
     def setUp(self):
         self.x_shape = [2, 3, 4, 5]
         self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
-        self.place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_api_static(self):
         paddle.enable_static()

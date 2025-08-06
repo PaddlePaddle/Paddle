@@ -295,7 +295,7 @@ message DevicePropertyProto {
 
 message NodeTreesProto {
   required string version = 1;
-  required uint32 span_indx = 2;
+  required uint32 span_index = 2;
   repeated ThreadNodeTreeProto thread_trees = 3;
   repeated ExtraInfoMap extra_info = 4;
   repeated DevicePropertyProto device_property = 5;

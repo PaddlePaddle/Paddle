@@ -24,12 +24,12 @@ static paddle::Tensor Transpose(const paddle::Tensor& t,
   dim0 = dim0 >= 0 ? dim0 : len + dim0;
   dim1 = dim1 >= 0 ? dim1 : len + dim1;
   PD_CHECK(dim0 >= 0 && dim0 < len,
-           "dim0 not in range"
+           "dim0 not in range, "
            "dim0:%d ,range:%d",
            dim0,
            len);
   PD_CHECK(dim1 >= 0 && dim1 < len,
-           "dim1 not in range"
+           "dim1 not in range, "
            "dim1:%d ,range:%d",
            dim1,
            len);

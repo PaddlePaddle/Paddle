@@ -23,8 +23,6 @@ import re
 import subprocess
 import uuid
 
-import paddle
-
 from ..utils import get_cuda_home
 from . import interleave_ffma
 from .runtime import Runtime, RuntimeCache
@@ -158,7 +156,6 @@ def build(name: str, arg_defs: tuple, code: str) -> Runtime:
         if os.getenv("DG_JIT_DEBUG", None):
             print(f"Using cached JIT runtime {name} during build")
         return runtime_cache[path]
-    paddle.base.core.nvprof_nvtx_pop()
     # Write the code
     os.makedirs(path, exist_ok=True)
     args_path = f"{path}/kernel.args"

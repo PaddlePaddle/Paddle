@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    skip_check_grad_ci,
+)
 
 import paddle
 import paddle.nn.functional as F
@@ -39,11 +44,7 @@ def ref_prelu_nn(x, num_parameters, init):
 
 class TestFunctionalPReluAPI(unittest.TestCase):
     def setUp(self):
-        self.place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
         self.x_np = np.random.uniform(-1.0, 1.0, [1, 2, 3, 4]).astype('float32')
         self.weight_np_0 = np.random.randn(1).astype('float32')
         self.weight_np_1 = np.random.randn(self.x_np.shape[1]).astype('float32')
@@ -99,11 +100,7 @@ class TestFunctionalPReluAPI(unittest.TestCase):
 
 class TestNNPReluAPI(unittest.TestCase):
     def setUp(self):
-        self.place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
         self.x_np = np.ones([1, 2, 3, 4]).astype('float32')
 
     def test_static_api(self):
