@@ -18,18 +18,10 @@ from typing import TYPE_CHECKING, NamedTuple
 
 import paddle
 from paddle import _C_ops
-from paddle.tensor import fill_constant
 
-from ..base.data_feeder import (
-    check_dtype,
-    check_type,
-    check_variable_and_dtype,
-)
 from ..base.framework import Variable
 from ..framework import (
-    LayerHelper,
     in_dynamic_mode,
-    in_pir_mode,
 )
 
 if TYPE_CHECKING:

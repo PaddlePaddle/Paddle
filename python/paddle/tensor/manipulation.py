@@ -87,16 +87,8 @@ def forbid_keywords(illegal_keys, correct_func_name):
                 keys_str = ", ".join(f"'{key}'" for key in found_keys)
                 plural = "s" if len(found_keys) > 1 else ""
 
-                raise TypeError(
-                    f"{func.__name__}() received unexpected keyword argument{plural} {keys_str}. "
-                    f"\nDid you mean to use {correct_func_name}() instead?"
-                )
 
-            return func(*args, **kwargs)
-
-        return wrapper
-
-    return decorator
+__all__ = []
 
 
 def tensor_array_to_tensor(
