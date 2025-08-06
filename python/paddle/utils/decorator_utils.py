@@ -15,23 +15,19 @@
 from __future__ import annotations
 
 import functools
+import inspect
 from typing import TYPE_CHECKING, Any, Callable, TypeVar
-
-from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
-
 F = TypeVar('F', bound=Callable[..., Any])
 
 
 def param_alias(alias_mapping: dict[str, Iterable[str]]) -> Callable[[F], F]:
     """Decorator for handling parameter aliases in function calls.
-
     Args:
         alias_mapping: Dictionary mapping original parameter names to their aliases.
                       Example: {'original': ['alias1', 'alias2']}
-
     Returns:
         A decorator that processes parameter aliases before calling the original function.
     """
@@ -42,7 +38,6 @@ def param_alias(alias_mapping: dict[str, Iterable[str]]) -> Callable[[F], F]:
             raise TypeError(f"Aliases for '{k}' must be iterable")
 
     def decorator(func: F) -> F:
-        @signature_safe_contextmanager
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             if not kwargs:
@@ -61,6 +56,7 @@ def param_alias(alias_mapping: dict[str, Iterable[str]]) -> Callable[[F], F]:
                             )
             return func(*args, **processed_kwargs)
 
-        return wrapper  # type: ignore
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
 
     return decorator

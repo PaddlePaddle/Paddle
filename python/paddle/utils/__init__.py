@@ -15,11 +15,11 @@
 from ..base.framework import require_version
 from . import (  # noqa: F401
     cpp_extension,
+    decorator_utils,
     dlpack,
     download,
     image_util,
     layers_utils,
-    param_alias_utils,
     unique_name,
 )
 from .deprecated import deprecated
