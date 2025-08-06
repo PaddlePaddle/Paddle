@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import functools
+import inspect
 from typing import TYPE_CHECKING, Any, Callable, TypeVar
 
 if TYPE_CHECKING:
@@ -58,6 +59,7 @@ def param_alias(alias_mapping: dict[str, Iterable[str]]) -> Callable[[F], F]:
                             )
             return func(*args, **processed_kwargs)
 
+        wrapper.__signature__ = inspect.signature(func)
         return wrapper  # type: ignore
 
     return decorator
