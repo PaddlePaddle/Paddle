@@ -676,7 +676,7 @@ const std::vector<std::string> kPirXpuPasses{
     "group_norm_silu_fuse_pass",
     "fc_xpu_fuse_pass"};
 
-const std::vector<std::string> kPirMkldnnPasses {
+const std::vector<std::string> kPirOnednnPasses {
   "add_shadow_output_after_dead_parameter_pass",
       "delete_quant_dequant_linear_op_pass",      //
       "delete_weight_dequant_linear_op_pass",     //
@@ -718,7 +718,7 @@ const std::vector<std::string> kPirMkldnnPasses {
       "onednn_placement_pass",                //
 };
 
-const std::vector<std::string> kPirMkldnnBf16Passes{
+const std::vector<std::string> kPirOnednnBf16Passes{
     "add_shadow_output_after_dead_parameter_pass",
     "cpu_bfloat16_placement_pass",
     "cpu_bfloat16_pass",
