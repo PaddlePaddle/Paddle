@@ -122,6 +122,7 @@ from . import (
     _pir_ops as _pir_ops,
     _typing as _typing,
     callbacks as callbacks,
+    compat as compat,
     fft as fft,
     hub as hub,
     linalg as linalg,
@@ -182,7 +183,6 @@ from .nn.functional.distance import (
     pdist,
 )
 from .nn.initializer.lazy_init import LazyGuard
-from .tensor import compat as compat
 from .tensor.attribute import (
     imag,
     is_complex,
