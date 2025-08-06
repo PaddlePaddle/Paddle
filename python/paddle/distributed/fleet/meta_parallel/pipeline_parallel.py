@@ -757,27 +757,37 @@ class PipelineParallel(MetaParallelBase):
                 schedule += f"f{step_id};"
                 logger.info(f"forward step for micro step {step_id}")
                 continue
+
             input_tensor = self._p2p_helper.recv_forward(
                 self.is_pipeline_first_stage(),
                 batch_p2p_comm=self._use_batch_p2p_comm,
             )
 
+            input_tensor_dict, use_dict = tuple_to_dict_helper(input_tensor)
+
             self._record_stamp("F", step_id, '"B"', self._forward_color)
             output_tensor, _, _ = self._forward_step(
-                input_tensor, micro_dataset, step_id=step_id
+                input_tensor=input_tensor_dict if use_dict else input_tensor,
+                micro_dataset=micro_dataset,
+                step_id=step_id,
             )
+
+            # convert dict to tuple whose tensor element has a key attribution
+            output_tensor_tuple = dict_to_tuple_helper(output_tensor)
+
             self._record_stamp("F", step_id, '"E"', self._forward_color)
+            # fwd output dict -> send tuple
             self._p2p_helper.send_forward(
-                output_tensor,
-                self.is_pipeline_last_stage(),
+                output_tensor=output_tensor_tuple,
+                pp_last_stage=self.is_pipeline_last_stage(),
                 batch_p2p_comm=self._use_batch_p2p_comm,
             )
 
             input_buffers.append(input_tensor)
-            output_buffers.append(output_tensor)
+            output_buffers.append(output_tensor_tuple)
 
             if not self.is_pipeline_last_stage():
-                self._release_output(output_tensor)
+                self._release_output(output_tensor_tuple)
 
         if steady_steps > 0 and not static_scheduler:
             input_tensor = self._p2p_helper.recv_forward(
@@ -794,27 +804,33 @@ class PipelineParallel(MetaParallelBase):
                 continue
             last_iter = i == (steady_steps - 1)
 
+            input_tensor_dict, use_dict = tuple_to_dict_helper(input_tensor)
+
             self._record_stamp(
                 "F", startup_steps + i, '"B"', self._forward_color
             )
             output_tensor, _, _ = self._forward_step(
-                input_tensor, micro_dataset, step_id=startup_steps + i
+                input_tensor=input_tensor_dict if use_dict else input_tensor,
+                micro_dataset=micro_dataset,
+                step_id=startup_steps + i,
             )
             self._record_stamp(
                 "F", startup_steps + i, '"E"', self._forward_color
             )
 
+            output_tensor_tuple = dict_to_tuple_helper(output_tensor)
+
             output_tensor_grad = self._p2p_helper.send_forward_recv_backward(
-                output_tensor,
+                output_tensor_tuple,
                 self.is_pipeline_last_stage(),
                 batch_p2p_comm=self._use_batch_p2p_comm,
             )
 
             input_buffers.append(input_tensor)
-            output_buffers.append(output_tensor)
+            output_buffers.append(output_tensor_tuple)
 
             if not self.is_pipeline_last_stage():
-                self._release_output(output_tensor)
+                self._release_output(output_tensor_tuple)
 
             input_tensor, output_tensor = input_buffers.pop(
                 0
@@ -1692,18 +1708,22 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         input_tensor = self._get_forward_input(virtual_pp_rank)
 
+        input_tensor_dict, use_dict = tuple_to_dict_helper(input_tensor)
+
         output_tensor, schedule_chunk, loss_fn_node = self._forward_step(
-            input_tensor,
+            input_tensor_dict if use_dict else input_tensor,
             micro_dataset,
-            virtual_pp_rank,
+            virtual_pp_rank,  # chunk_id
             step_id=micro_step,
             overlap_schedule_mode=overlap_schedule_mode,
         )
 
+        output_tensor_tuple = dict_to_tuple_helper(output_tensor)
+
         self._store_forward_outputs(
-            virtual_pp_rank, output_tensor, schedule_chunk, loss_fn_node
+            virtual_pp_rank, output_tensor_tuple, schedule_chunk, loss_fn_node
         )
-        return output_tensor
+        return output_tensor_tuple
 
     def _overlap_comm_grads(self):
         if self._comm_overlap:
@@ -2953,7 +2973,6 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
             )
         )
 
-        # run startup steps
         for micro_step in range(num_steps):
             output_tensor = self._forward_step_helper(micro_dataset, micro_step)
             # determine whether recv forward tensor or not
@@ -3433,3 +3452,41 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
         self.processed_steps += 1
         self._check_user_hooks_status_at_step_end()
         return train_loss
+
+
+def tuple_to_dict_helper(input_tensor):
+    # recv tuple -> fwd input dict
+    use_dict = False
+    if isinstance(input_tensor, tuple):
+        use_dict = hasattr(input_tensor[0], "key")
+    else:  # single tensor
+        use_dict = hasattr(input_tensor, "key")
+    if use_dict:
+        input_tensor = convert_tensor_tuple_to_dict(input_tensor)
+    return input_tensor, use_dict
+
+
+def dict_to_tuple_helper(output_tensor):
+    if isinstance(output_tensor, dict):
+        output_tensor_tuple = convert_tensor_dict_to_tuple(
+            output_tensor_dict=output_tensor
+        )
+    else:  # single tensor or tensor tuple
+        output_tensor_tuple = output_tensor
+    return output_tensor_tuple
+
+
+def convert_tensor_dict_to_tuple(output_tensor_dict):
+    for key, tensor in output_tensor_dict.items():
+        tensor.key = key
+
+    return tuple(output_tensor_dict.values())
+
+
+def convert_tensor_tuple_to_dict(input_tensor_tuple):
+    input_tensor_dict = {}
+    for tensor in input_tensor_tuple:
+        key = tensor.key
+        input_tensor_dict[key] = tensor
+        delattr(tensor, "key")
+    return input_tensor_dict
