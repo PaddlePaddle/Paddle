@@ -1088,7 +1088,7 @@ def full_like(
             tensor = _C_ops.full_like(x, fill_value, dtype, device)
         else:
             tensor = _C_ops.full_like(x, fill_value, dtype, core.Place())
-        if requires_grad:
+        if requires_grad is True:
             tensor.stop_gradient = False
         return tensor
     else:
@@ -1307,7 +1307,7 @@ def ones(
 
     if device is not None and in_dynamic_mode():
         tensor = tensor.to(device=device)
-    if requires_grad:
+    if requires_grad is True:
         tensor.stop_gradient = False
     return tensor
 
@@ -1426,7 +1426,7 @@ def zeros(
 
     if device is not None and in_dynamic_mode():
         tensor = tensor.to(device=device)
-    if requires_grad:
+    if requires_grad is True:
         tensor.stop_gradient = True
     return tensor
 
@@ -1560,7 +1560,7 @@ def eye(
                 else _current_expected_place()
             ),
         )
-        if requires_grad:
+        if requires_grad is True:
             tensor.stop_gradient = False
         return tensor
     else:
@@ -1678,7 +1678,7 @@ def full(
     )
     if device is not None and in_dynamic_mode():
         tensor = tensor.to(device=device)
-    if requires_grad:
+    if requires_grad is True:
         tensor.stop_gradient = False
     return tensor
 
@@ -2651,7 +2651,7 @@ def empty(
                 else _current_expected_place()
             ),
         )
-        if requires_grad:
+        if requires_grad is True:
             tensor.stop_gradient = False
         return tensor
     else:
@@ -2757,7 +2757,7 @@ def empty_like(
             convert_np_dtype_to_dtype_(dtype),
             (device or _current_expected_place()),
         )
-        if requires_grad:
+        if requires_grad is True:
             tensor.stop_gradient = False
         return tensor
 
