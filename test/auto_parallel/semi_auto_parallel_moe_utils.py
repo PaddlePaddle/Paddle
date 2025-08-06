@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import unittest
 
 import numpy as np
 
@@ -28,7 +27,7 @@ from paddle.distributed.auto_parallel.moe_utils import (
 )
 
 
-class TestMoEUtils(unittest.TestCase):
+class TestMoEUtils:
     def __init__(self, methodName='runTest'):
         super().__init__(methodName)
         self._dtype = os.getenv("dtype")
