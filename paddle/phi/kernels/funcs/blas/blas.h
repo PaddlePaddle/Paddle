@@ -181,7 +181,7 @@ class Blas {
              const T* alpha,
              const char* matdescra,
              const T* val,
-             const int* indx,
+             const int* index,
              const int* pntrb,
              const int* pntre,
              const T* b,

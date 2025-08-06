@@ -1043,7 +1043,7 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
             pass_pm.AddPass(pir::PassRegistry::Instance().Get(mkldnn_pass));
           }
         }
-        if (config_.mkldnn_bfloat16_enabled()) {
+        if (config_.onednn_bfloat16_enabled()) {
           for (const auto &mkldnn_pass : kPirMkldnnBf16Passes) {
             if (std::find(config_.deleted_passes_.begin(),
                           config_.deleted_passes_.end(),
@@ -2110,7 +2110,7 @@ void AnalysisPredictor::PrepareArgument() {
   }
 
 #ifdef PADDLE_WITH_DNNL
-  if (config_.mkldnn_bfloat16_enabled()) {
+  if (config_.onednn_bfloat16_enabled()) {
     LOG(INFO) << "Bfloat16 is enabled";
     argument_->SetBfloat16EnabledOpTypes(config_.bfloat16_enabled_op_types_);
   }
@@ -2500,34 +2500,41 @@ std::map<std::string, paddle_infer::DataType>
 AnalysisPredictor::GetInputTypes() {
   std::map<std::string, paddle_infer::DataType> input_type;
   std::vector<std::string> names = GetInputNames();
-  for (const auto &name : names) {
-    auto *var = inference_program_->Block(0).FindVar(name);
-    PADDLE_ENFORCE_NOT_NULL(
-        var,
-        common::errors::PreconditionNotMet(
-            "Input %s does not exist inference_program_.", name));
-    auto dtype = var->GetDataType();
-    if (dtype == paddle::framework::proto::VarType::FP32) {
-      input_type[name] = paddle_infer::DataType::FLOAT32;
-    } else if (dtype == paddle::framework::proto::VarType::FP16) {
-      input_type[name] = paddle_infer::DataType::FLOAT16;
-    } else if (dtype == paddle::framework::proto::VarType::BF16) {
-      input_type[name] = paddle_infer::DataType::BFLOAT16;
-    } else if (dtype == paddle::framework::proto::VarType::INT64) {
-      input_type[name] = paddle_infer::DataType::INT64;
-    } else if (dtype == paddle::framework::proto::VarType::INT32) {
-      input_type[name] = paddle_infer::DataType::INT32;
-    } else if (dtype == paddle::framework::proto::VarType::UINT8) {
-      input_type[name] = paddle_infer::DataType::UINT8;
-    } else if (dtype == paddle::framework::proto::VarType::INT8) {
-      input_type[name] = paddle_infer::DataType::INT8;
-    } else if (dtype == paddle::framework::proto::VarType::FP64) {
-      input_type[name] = paddle_infer::DataType::FLOAT64;
-    } else if (dtype == paddle::framework::proto::VarType::BOOL) {
-      input_type[name] = paddle_infer::DataType::BOOL;
-    } else {
-      PADDLE_THROW(common::errors::Unimplemented(
-          "Unsupported data type `%s` when get input dtype ", dtype));
+  if (load_pir_model_) {
+    for (const auto &name : names) {
+      auto tensor = GetInputTensor(name);
+      input_type[name] = tensor->type();
+    }
+  } else {
+    for (const auto &name : names) {
+      auto *var = inference_program_->Block(0).FindVar(name);
+      PADDLE_ENFORCE_NOT_NULL(
+          var,
+          common::errors::PreconditionNotMet(
+              "Input %s does not exist inference_program_.", name));
+      auto dtype = var->GetDataType();
+      if (dtype == paddle::framework::proto::VarType::FP32) {
+        input_type[name] = paddle_infer::DataType::FLOAT32;
+      } else if (dtype == paddle::framework::proto::VarType::FP16) {
+        input_type[name] = paddle_infer::DataType::FLOAT16;
+      } else if (dtype == paddle::framework::proto::VarType::BF16) {
+        input_type[name] = paddle_infer::DataType::BFLOAT16;
+      } else if (dtype == paddle::framework::proto::VarType::INT64) {
+        input_type[name] = paddle_infer::DataType::INT64;
+      } else if (dtype == paddle::framework::proto::VarType::INT32) {
+        input_type[name] = paddle_infer::DataType::INT32;
+      } else if (dtype == paddle::framework::proto::VarType::UINT8) {
+        input_type[name] = paddle_infer::DataType::UINT8;
+      } else if (dtype == paddle::framework::proto::VarType::INT8) {
+        input_type[name] = paddle_infer::DataType::INT8;
+      } else if (dtype == paddle::framework::proto::VarType::FP64) {
+        input_type[name] = paddle_infer::DataType::FLOAT64;
+      } else if (dtype == paddle::framework::proto::VarType::BOOL) {
+        input_type[name] = paddle_infer::DataType::BOOL;
+      } else {
+        PADDLE_THROW(common::errors::Unimplemented(
+            "Unsupported data type `%s` when get input dtype ", dtype));
+      }
     }
   }
   return input_type;
@@ -2562,30 +2569,37 @@ std::map<std::string, paddle_infer::DataType>
 AnalysisPredictor::GetOutputTypes() {
   std::map<std::string, paddle_infer::DataType> output_type;
   std::vector<std::string> names = GetOutputNames();
-  for (const auto &name : names) {
-    auto *var = inference_program_->Block(0).FindVar(name);
-    PADDLE_ENFORCE_NOT_NULL(
-        var,
-        common::errors::PreconditionNotMet(
-            "Output %s does not exist inference_program_.", name));
-    auto dtype = var->GetDataType();
-    if (dtype == paddle::framework::proto::VarType::FP32) {
-      output_type[name] = paddle_infer::DataType::FLOAT32;
-    } else if (dtype == paddle::framework::proto::VarType::FP16) {
-      output_type[name] = paddle_infer::DataType::FLOAT16;
-    } else if (dtype == paddle::framework::proto::VarType::BF16) {
-      output_type[name] = paddle_infer::DataType::BFLOAT16;
-    } else if (dtype == paddle::framework::proto::VarType::INT64) {
-      output_type[name] = paddle_infer::DataType::INT64;
-    } else if (dtype == paddle::framework::proto::VarType::INT32) {
-      output_type[name] = paddle_infer::DataType::INT32;
-    } else if (dtype == paddle::framework::proto::VarType::UINT8) {
-      output_type[name] = paddle_infer::DataType::UINT8;
-    } else if (dtype == paddle::framework::proto::VarType::INT8) {
-      output_type[name] = paddle_infer::DataType::INT8;
-    } else {
-      PADDLE_THROW(common::errors::Unimplemented(
-          "Unsupported data type `%s` when get output dtype ", dtype));
+  if (load_pir_model_) {
+    for (const auto &name : names) {
+      auto tensor = GetOutputTensor(name);
+      output_type[name] = tensor->type();
+    }
+  } else {
+    for (const auto &name : names) {
+      auto *var = inference_program_->Block(0).FindVar(name);
+      PADDLE_ENFORCE_NOT_NULL(
+          var,
+          common::errors::PreconditionNotMet(
+              "Output %s does not exist inference_program_.", name));
+      auto dtype = var->GetDataType();
+      if (dtype == paddle::framework::proto::VarType::FP32) {
+        output_type[name] = paddle_infer::DataType::FLOAT32;
+      } else if (dtype == paddle::framework::proto::VarType::FP16) {
+        output_type[name] = paddle_infer::DataType::FLOAT16;
+      } else if (dtype == paddle::framework::proto::VarType::BF16) {
+        output_type[name] = paddle_infer::DataType::BFLOAT16;
+      } else if (dtype == paddle::framework::proto::VarType::INT64) {
+        output_type[name] = paddle_infer::DataType::INT64;
+      } else if (dtype == paddle::framework::proto::VarType::INT32) {
+        output_type[name] = paddle_infer::DataType::INT32;
+      } else if (dtype == paddle::framework::proto::VarType::UINT8) {
+        output_type[name] = paddle_infer::DataType::UINT8;
+      } else if (dtype == paddle::framework::proto::VarType::INT8) {
+        output_type[name] = paddle_infer::DataType::INT8;
+      } else {
+        PADDLE_THROW(common::errors::Unimplemented(
+            "Unsupported data type `%s` when get output dtype ", dtype));
+      }
     }
   }
   return output_type;

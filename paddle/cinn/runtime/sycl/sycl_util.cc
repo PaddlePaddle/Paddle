@@ -22,10 +22,8 @@
 #include "paddle/cinn/runtime/sycl/sycl_util.h"
 #include "paddle/cinn/utils/profiler.h"
 #include "paddle/common/enforce.h"
-#ifdef CINN_WITH_CNNL
-#include <cn_api.h>
-#include <cnnl.h>
-#include <CL/sycl/backend/cnrt.hpp>
+#ifdef CINN_WITH_HIP
+#include <hip/hip_runtime.h>
 #endif
 
 namespace cinn {
@@ -40,7 +38,9 @@ void cinn_call_sycl_kernel(void *kernel_fn,
                            int grid_z,
                            int block_x,
                            int block_y,
-                           int block_z) {
+                           int block_z,
+                           int shared_memory_bytes,
+                           void *stream) {
   VLOG(3) << "cinn_call_sycl_kernel, grid_dim={" << grid_x << ", " << grid_y
           << ", " << grid_z << "}, block_dim={" << block_x << ", " << block_y
           << ", " << block_z << "}, num_args=" << num_args;
@@ -58,7 +58,7 @@ void cinn_call_sycl_kernel(void *kernel_fn,
         ss << std::hex << addr;
         VLOG(4) << "sycl kernel arg[" << idx
                 << "] is a buffer, addr=" << ss.str();
-        kernel_args.emplace_back(&addr);
+        kernel_args.emplace_back(addr);
       } else {
         kernel_args.emplace_back((args[idx].data_addr()));
       }
@@ -76,7 +76,7 @@ void cinn_call_sycl_kernel(void *kernel_fn,
                   ::sycl::range<3> k0_dimGrid,
                   ::sycl::range<3> k0_dimBlock,
                   void **void_args))(kernel_fn);
-    ::sycl::queue *Queue = SYCLBackendAPI::Global()->get_now_queue();
+    ::sycl::queue *Queue = SYCLBackendAPI::Global()->get_now_queue(stream);
     ::sycl::range<3> Grid(grid_z, grid_y, grid_x);
     ::sycl::range<3> Block(block_z, block_y, block_x);
     SYCL_CALL(kernel_func(*Queue, Grid, Block, kernel_args.data()));
@@ -87,10 +87,8 @@ void infer_shape_set_value(int row, int col, int64_t value, int64_t **v) {
   v[row][col] = value;
 }
 
-void cinn_call_sycl_memset(void *v_args,
-                           int num_args,
-                           int value,
-                           size_t count) {
+void cinn_call_sycl_memset(
+    void *v_args, int num_args, int value, size_t count, void *stream) {
   PADDLE_ENFORCE_EQ(num_args,
                     1,
                     ::common::errors::PreconditionNotMet(
@@ -105,12 +103,15 @@ void cinn_call_sycl_memset(void *v_args,
   ss << std::hex << output;
   VLOG(4) << "cinn_call_sycl_memset: " << ss.str();
 
-  auto Queue = SYCLBackendAPI::Global()->get_now_queue();
+  ::sycl::queue *Queue = SYCLBackendAPI::Global()->get_now_queue(stream);
 
   SYCL_CALL(Queue->memset(output, value, count));
 }
 
-void cinn_call_sycl_memcpy(void *v_args, int num_args, size_t count) {
+void cinn_call_sycl_memcpy(void *v_args,
+                           int num_args,
+                           size_t count,
+                           void *stream) {
   PADDLE_ENFORCE_EQ(
       num_args,
       2,
@@ -132,7 +133,7 @@ void cinn_call_sycl_memcpy(void *v_args, int num_args, size_t count) {
   ss << std::hex << input << " -> " << output;
   VLOG(4) << "cinn_call_sycl_memcpy: " << ss.str();
 
-  auto Queue = SYCLBackendAPI::Global()->get_now_queue();
+  ::sycl::queue *Queue = SYCLBackendAPI::Global()->get_now_queue(stream);
 
   SYCL_CALL(Queue->memcpy(output, input, count));
 }

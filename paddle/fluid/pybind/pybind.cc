@@ -3447,11 +3447,11 @@ All parameter, weight, gradient are variables in Paddle.
       .def("get_extra_info", &paddle::platform::ProfilerResult::GetExtraInfo)
       .def("get_version", &paddle::platform::ProfilerResult::GetVersion)
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      .def("get_span_indx", &paddle::platform::ProfilerResult::GetSpanIndx)
+      .def("get_span_index", &paddle::platform::ProfilerResult::GetSpanIndex)
       .def("get_device_property",
            &paddle::platform::ProfilerResult::GetDeviceProperty);
 #else
-      .def("get_span_indx", &paddle::platform::ProfilerResult::GetSpanIndx);
+      .def("get_span_index", &paddle::platform::ProfilerResult::GetSpanIndex);
 #endif
 
   py::class_<paddle::platform::MemPythonNode>(m, "MemPythonNode")

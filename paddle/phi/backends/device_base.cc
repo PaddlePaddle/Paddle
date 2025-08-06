@@ -37,7 +37,7 @@ size_t DeviceInterface::GetComputeCapability(size_t dev_id) {
 }
 
 DeviceProp& DeviceInterface::GetDeviceProperties(size_t dev_id) {
-  DeviceProp prop;
+  static DeviceProp prop;
   VLOG(10) << Type() << " get device properties " << 0;
   return prop;
 }
@@ -71,6 +71,16 @@ std::array<unsigned int, 3> DeviceInterface::GetMaxGridDimSize(size_t dev_id) {
   VLOG(10) << Type() << " get max grid dim size [" << 0 << ", " << 0 << ", "
            << 0 << "]";
   return {0, 0, 0};
+}
+
+bool DeviceInterface::IsFloat16Supported(size_t dev_id) {
+  VLOG(10) << Type() << " is float16 supported: " << false;
+  return false;
+}
+
+bool DeviceInterface::IsBFloat16Supported(size_t dev_id) {
+  VLOG(10) << Type() << " is bfloat16 supported: " << false;
+  return false;
 }
 
 void* DeviceInterface::InitEigenDevice(const Place& place,

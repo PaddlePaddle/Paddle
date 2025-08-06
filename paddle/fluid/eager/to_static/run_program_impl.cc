@@ -374,11 +374,6 @@ paddle::Tensor CreateTensorFromValue(const pir::Value &value) {
   const auto &value_type = value.type();
 
   if (value_type.isa<paddle::dialect::DenseTensorType>()) {
-    const auto &ddims =
-        value_type.dyn_cast<paddle::dialect::DenseTensorType>().dims();
-    const auto &dtype = paddle::dialect::TransToPhiDataType(
-        value_type.dyn_cast<paddle::dialect::DenseTensorType>().dtype());
-
     std::shared_ptr<phi::DenseTensor> dense_tensor =
         std::make_shared<phi::DenseTensor>();
 
@@ -1073,7 +1068,7 @@ void LegacyRunProgramGradImpl(
   if (!cache.Has(cache_key)) {
     phi::RecordEvent record_event(
         "create_new_interpretercore", phi::TracerEventType::UserDefined, 1);
-    VLOG(2) << "No interpretercore cache, so create a new interpretercore"
+    VLOG(2) << "No interpretercore cache, so create a new interpretercore "
                "for program: "
             << program_id;
     details::ShareTensorsIntoScope(out_grad, global_inner_scope);

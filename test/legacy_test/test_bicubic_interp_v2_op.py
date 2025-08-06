@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_device_place
 
 import paddle
 from paddle import base
@@ -599,11 +599,7 @@ class TestBicubicInterpOpAPI(unittest.TestCase):
 
         prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
 
         with paddle.static.program_guard(prog, startup_prog):
             x = paddle.static.data(

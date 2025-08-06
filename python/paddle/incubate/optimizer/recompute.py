@@ -390,7 +390,7 @@ class RecomputeOptimizer(Optimizer):
                                     self._record_fetch_op(idx)
                                 )
 
-                        # should check the current used checkpoint is ths last fetch one
+                        # should check the current used checkpoint is the last fetch one
                         assert (
                             second_to_last_fetch_checkpoint == input_var
                         ), f"Current recompute segment should use [{second_to_last_fetch_checkpoint}] BUT got [{input_var}]"

@@ -32,7 +32,7 @@ def skip_unit_test():
 skip_msg = "only support with cuda and Ampere or later devices"
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(skip_unit_test(), skip_msg)
 class TestFusedScaleBiasAddReluOp(OpTest):
     def setUp(self):
@@ -109,7 +109,7 @@ class TestFusedScaleBiasAddReluOp(OpTest):
         self.exhaustive_search = False
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(skip_unit_test(), skip_msg)
 class TestFusedScaleBiasAddReluOpDual(TestFusedScaleBiasAddReluOp):
     def init_attr(self):
@@ -117,7 +117,7 @@ class TestFusedScaleBiasAddReluOpDual(TestFusedScaleBiasAddReluOp):
         self.exhaustive_search = False
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(skip_unit_test(), skip_msg)
 class TestFusedScaleBiasAddReluOpExhaustive(TestFusedScaleBiasAddReluOp):
     def init_attr(self):

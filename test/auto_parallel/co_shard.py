@@ -189,6 +189,11 @@ class TestCoShard:
             str(relu_out.placements[1]), "Shard(dim=0, shard_order=1)"
         )
 
+        # test fallback to shard by one dim.
+        add_out = paddle.add(relu_out, relu_out)
+        np.testing.assert_equal(str(add_out.placements[0]), "Shard(dim=0)")
+        np.testing.assert_equal(str(add_out.placements[1]), "Replicate()")
+
     def run_test_case_main(self):
         self.basic_interface_case()
         self.run_test_case_0()

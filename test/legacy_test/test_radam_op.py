@@ -16,7 +16,7 @@ import unittest
 from copy import deepcopy
 
 import numpy as np
-from op_test import OpTest, get_places
+from op_test import OpTest, get_device_place, get_places
 
 import paddle
 from paddle import base
@@ -511,7 +511,7 @@ class TestNdamaxMultiPrecision2_0(unittest.TestCase):
     def static_radam_mp(self, mp, use_amp):
         paddle.seed(2024)
         paddle.enable_static()
-        exe = paddle.static.Executor('gpu')
+        exe = paddle.static.Executor(get_device_place())
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
 

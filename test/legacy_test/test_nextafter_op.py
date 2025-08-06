@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place
 
 import paddle
 
@@ -33,11 +33,7 @@ class TestNextafterAPI(unittest.TestCase):
         self.y1 = np.array([np.inf, -np.inf, 10]).astype("float32")
         self.x2 = np.random.rand(100).astype("float32")
         self.y2 = np.random.rand(100).astype("float32")
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_static_api(self):
         paddle.enable_static()

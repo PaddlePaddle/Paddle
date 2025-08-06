@@ -28,6 +28,10 @@ XCCL_DIR_NAME=$6
 
 WITH_XPU_XRE5=$7
 
+WITH_MKL=${8:-"OFF"}
+
+BUILD_DIR=${9:-}
+
 mkdir -p xpu/include/xhpc/xblas
 mkdir -p xpu/include/xhpc/xfa
 mkdir -p xpu/include/xhpc/xpudnn
@@ -85,9 +89,21 @@ function xhpc_prepare() {
     cp -r ${XHPC_DIR_NAME}/xfa/include/* xpu/include/xhpc/xfa
     cp -r ${XHPC_DIR_NAME}/xfa/so/libxpu_flash_attention.so xpu/lib/
 
-    check_files ${XHPC_DIR_NAME}/xpudnn/include/xpudnn.h ${XHPC_DIR_NAME}/xpudnn/so/libxpu_dnn.so
+    check_files ${XHPC_DIR_NAME}/xpudnn/include/xpudnn.h ${XHPC_DIR_NAME}/xpudnn/so/libxpu_dnn.so ${XHPC_DIR_NAME}/xpudnn/so/libomp.so
     cp -r ${XHPC_DIR_NAME}/xpudnn/include/* xpu/include/xhpc/xpudnn
     cp -r ${XHPC_DIR_NAME}/xpudnn/so/libxpu_dnn.so xpu/lib/
+
+    if [[ "${WITH_MKL}" == "ON" ]]; then
+      cp -r ${BUILD_DIR}/third_party/install/mklml/lib/libiomp5.so xpu/lib/
+      pushd xpu/lib
+      ln -sf libiomp5.so libomp.so
+      popd
+    else
+      cp -r ${XHPC_DIR_NAME}/xpudnn/so/libomp.so xpu/lib/
+      pushd xpu/lib
+      ln -sf libomp.so libiomp5.so
+      popd
+    fi
   fi
 }
 
@@ -142,8 +158,18 @@ function local_assemble() {
 
       cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xpudnn/include/* xpu/include/xhpc/xpudnn
       cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xpudnn/so/libxpu_dnn.so xpu/lib/
-      # FIXME(yangjianbang): 待bkcl增加RPATH后, 删除以下代码
-      patchelf --set-rpath '$ORIGIN/' xpu/lib/libbkcl.so
+
+      if [[ "${WITH_MKL}" == "ON" ]]; then
+        cp -r ${BUILD_DIR}/third_party/install/mklml/lib/libiomp5.so xpu/lib/
+        pushd xpu/lib
+        ln -sf libiomp5.so libomp.so
+        popd
+      else
+        cp -r ${XHPC_DIR_NAME}/xpudnn/so/libomp.so xpu/lib/
+        pushd xpu/lib
+        ln -sf libomp.so libiomp5.so
+        popd
+      fi
     fi
 }
 

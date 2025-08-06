@@ -213,7 +213,8 @@ void FlashAttnKernelBase(
                    : 0,                           // flash_mask_head_num
       nullptr,                                    // flashmask_maxmin
       is_flashmask ? flashmask_stream : nullptr,  // side_stream
-      0                                           // fixlen_batch_num
+      0,                                          // fixlen_batch_num
+      false                                       // unpadded_lse
   );
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "mha_varlen_fwd");
   if (is_flashmask && flashmask_stream != nullptr) {
