@@ -28,7 +28,7 @@ class TestSemiAutoParallelMoeUtilsAPI(test_base.CommunicationTestDistBase):
             "backend": ["cpu", "gpu"],
         }
 
-    def test_reshard_api(self):
+    def test_moe_utils(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
         )

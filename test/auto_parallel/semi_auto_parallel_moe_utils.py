@@ -39,7 +39,7 @@ class TestMoEUtils(unittest.TestCase):
         self._mesh2 = dist.ProcessMesh(
             [0, 1], dim_names=["x"]
         )  # 1D mesh with 2 processes
-        paddle.seed(self._seed)
+        paddle.seed(self._seeds)
 
     def setUp(self):
         # Ensure the environment flag is set for _only_reshard_mesh_shape
