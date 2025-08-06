@@ -52,30 +52,48 @@ class TensorDtypeConversionsTest(unittest.TestCase):
         'cdouble': 'complex128',
     }
     _device = paddle.device.get_device()
+    _total_init_dtype = [
+        'float16',
+        'float32',
+        'float64',
+        'int8',
+        'uint8',
+        'int16',
+        'int32',
+        'int64',
+        'bool',
+        'complex64',
+        'complex128',
+    ]
 
     def setUp(self):
-        """Set up test data for different types."""
-        self.test_values = {
-            'float': np.array([1.5, 2.5, 3.5]),
-            'int': np.array([1, 2, 3]),
-            'bool': np.array([True, False, True]),
-            'complex': np.array([1 + 2j, 3 + 4j, 5 + 6j]),
-        }
+        self.shape = [10, 1000]
 
     def _get_paddle_dtype(self, dtype_str):
         """Get the Paddle dtype constant by string name."""
         return getattr(paddle, dtype_str)
 
-    def _get_appropriate_test_data(self, target_dtype):
-        """Select appropriate test data according to target dtype."""
-        if target_dtype in ['complex64', 'complex128']:
-            return self.test_values['complex']
-        elif target_dtype == 'bool':
-            return self.test_values['bool']
-        elif target_dtype.startswith(('int', 'long')):
-            return self.test_values['int']
-        else:  # float types
-            return self.test_values['float']
+    def test_bfloat16_conversion(self):
+        for init_dtype in self._total_init_dtype:
+            if self._device.startswith('xpu') and init_dtype == 'complex128':
+                continue
+            tensor = paddle.randn(self.shape).astype(init_dtype)
+            converted_tensor = tensor.bfloat16()
+            self.assertEqual(converted_tensor.dtype, paddle.bfloat16)
+            self.assertEqual(converted_tensor.shape, tensor.shape)
+
+        for (
+            method_name,
+            target_dtype,
+        ) in self._supported_dtype_conversions.items():
+            if self._device.startswith('xpu') and target_dtype == 'complex128':
+                continue
+            tensor = paddle.randn(self.shape).astype('bfloat16')
+            converted_tensor = getattr(tensor, method_name)()
+            self.assertEqual(
+                converted_tensor.dtype, self._get_paddle_dtype(target_dtype)
+            )
+            self.assertEqual(converted_tensor.shape, tensor.shape)
 
     def test_all_dtype_conversions(self):
         """Test all dtype conversion methods."""
@@ -83,32 +101,46 @@ class TensorDtypeConversionsTest(unittest.TestCase):
             method_name,
             target_dtype,
         ) in self._supported_dtype_conversions.items():
-            if self._device.startswith('xpu') and target_dtype == 'complex128':
-                self.skipTest("Skipping complex conversion tests on XPU")
-            with self.subTest(method=method_name, target_dtype=target_dtype):
-                self._test_single_dtype_conversion(method_name, target_dtype)
+            if target_dtype == 'bfloat16':
+                continue
+            for init_dtype in self._total_init_dtype:
+                if self._device.startswith('xpu') and (
+                    target_dtype == 'complex128' or init_dtype == 'complex128'
+                ):
+                    self.skipTest("Skipping complex conversion tests on XPU")
 
-    def _test_single_dtype_conversion(self, method_name, target_dtype):
+                with self.subTest(
+                    method=method_name,
+                    init_dtype=init_dtype,
+                    target_dtype=target_dtype,
+                ):
+                    self._test_single_dtype_conversion(
+                        method_name, init_dtype, target_dtype
+                    )
+
+    def _test_single_dtype_conversion(
+        self, method_name, init_dtype, target_dtype
+    ):
         """Test a single dtype conversion method."""
-        # Select appropriate test data
-        test_data = self._get_appropriate_test_data(target_dtype)
-
-        # Create initial tensor (use float32 unless special type)
-        if target_dtype in ['complex64', 'complex128']:
-            initial_dtype = 'complex64'
-        elif target_dtype == 'bool':
-            initial_dtype = 'bool'
+        if init_dtype.startswith('float'):
+            data_np = np.random.randn(*self.shape).astype(init_dtype)
+        elif init_dtype.startswith('complex'):
+            data_np_real = np.random.randn(*self.shape)
+            data_np_imag = np.random.randn(*self.shape)
+            data_np = data_np_real + data_np_imag * 1j
+            data_np = data_np.astype(init_dtype)
         else:
-            initial_dtype = 'float32'
+            data_np = np.random.randint(-100, 100, size=self.shape).astype(
+                init_dtype
+            )
 
-        tensor = paddle.to_tensor(test_data, dtype=initial_dtype)
+        tensor = paddle.to_tensor(data_np, dtype=init_dtype)
 
         # Check if conversion method exists
         self.assertTrue(
             hasattr(tensor, method_name),
             f"Tensor should have method '{method_name}'",
         )
-
         # Perform dtype conversion
         converted_tensor = getattr(tensor, method_name)()
 
@@ -127,51 +159,21 @@ class TensorDtypeConversionsTest(unittest.TestCase):
             f"Shape should remain unchanged after {method_name} conversion",
         )
 
-    def test_float_to_int_conversion(self):
-        """Test float to int conversion."""
-        float_tensor = paddle.to_tensor([1.7, 2.3, 3.9], dtype='float32')
-        int_tensor = float_tensor.int32()
+        if target_dtype.endswith('float16'):
+            rtol = 1e-3
+            atol = 1e-3
+        else:
+            rtol = 1e-7
+            atol = 0
 
-        self.assertEqual(int_tensor.dtype, paddle.int32)
-
-    def test_int_to_float_conversion(self):
-        """Test int to float conversion."""
-        int_tensor = paddle.to_tensor([1, 2, 3], dtype='int32')
-        float_tensor = int_tensor.float32()
-
-        self.assertEqual(float_tensor.dtype, paddle.float32)
-        expected = np.array([1.0, 2.0, 3.0], dtype=np.float32)
-        np.testing.assert_array_equal(float_tensor.numpy(), expected)
-
-    def test_complex_conversions(self):
-        """Test complex dtype conversions."""
-        if self._device.startswith('xpu'):
-            self.skipTest("Skipping complex conversion tests on XPU")
-        # Create a complex tensor
-        complex_data = np.array([1 + 2j, 3 + 4j], dtype=np.complex64)
-        tensor = paddle.to_tensor(complex_data, dtype='complex64')
-
-        # Test complex64 to complex128
-        complex128_tensor = tensor.complex128()
-        self.assertEqual(complex128_tensor.dtype, paddle.complex128)
-
-        # Test complex128 to complex64
-        complex64_tensor = complex128_tensor.complex64()
-        self.assertEqual(complex64_tensor.dtype, paddle.complex64)
-
-    def test_bool_conversions(self):
-        """Test bool dtype conversions."""
-        # From numeric to bool
-        numeric_tensor = paddle.to_tensor([0, 1, 2, -1], dtype='int32')
-        bool_tensor = numeric_tensor.bool()
-        self.assertEqual(bool_tensor.dtype, paddle.bool)
-
-        # From bool to numeric
-        bool_data = paddle.to_tensor([True, False, True], dtype='bool')
-        int_tensor = bool_data.int32()
-        self.assertEqual(int_tensor.dtype, paddle.int32)
-        expected = np.array([1, 0, 1], dtype=np.int32)
-        np.testing.assert_array_equal(int_tensor.numpy(), expected)
+        # Check the value after conversion
+        np.testing.assert_allclose(
+            converted_tensor.numpy(),
+            data_np.astype(target_dtype),
+            rtol=rtol,
+            atol=atol,
+            err_msg=f"Value mismatch after {method_name} conversion",
+        )
 
     def test_method_chaining(self):
         """Test method chaining for dtype conversions."""
@@ -191,27 +193,32 @@ class TensorDtypeConversionsTest(unittest.TestCase):
                 method_name,
                 target_dtype,
             ) in self._supported_dtype_conversions.items():
-                if (
-                    self._device.startswith('xpu')
-                    and target_dtype == 'complex128'
-                ):
-                    self.skipTest("Skipping complex conversion tests on XPU")
-                with self.subTest(
-                    pir_method=method_name, pir_target_dtype=target_dtype
-                ):
-                    self._pir_single_dtype_conversion(method_name, target_dtype)
 
-    def _pir_single_dtype_conversion(self, method_name, target_dtype):
-        # Select appropriate test data
-        test_data = self._get_appropriate_test_data(target_dtype)
-        shape = test_data.shape
-        dtype = 'float32'
-        if target_dtype in ['complex64', 'complex128']:
-            dtype = 'complex64'
-        elif target_dtype == 'bool':
-            dtype = 'bool'
+                if target_dtype == 'bfloat16':
+                    continue
+                for init_dtype in self._total_init_dtype:
+                    if (
+                        self._device.startswith('xpu')
+                        and target_dtype == 'complex128'
+                    ):
+                        self.skipTest(
+                            "Skipping complex conversion tests on XPU"
+                        )
+                    with self.subTest(
+                        pir_method=method_name,
+                        pir_init_dtype=init_dtype,
+                        pir_target_dtype=target_dtype,
+                    ):
+                        self._pir_single_dtype_conversion(
+                            method_name, init_dtype, target_dtype
+                        )
+
+    def _pir_single_dtype_conversion(
+        self, method_name, init_dtype, target_dtype
+    ):
+
         # Create static graph input
-        x = paddle.static.data(name="x", shape=shape, dtype=dtype)
+        x = paddle.static.data(name="x", shape=self.shape, dtype=init_dtype)
         # Check if the method exists
         self.assertTrue(
             hasattr(x, method_name),
