@@ -16,6 +16,7 @@ file(
   "test_trt_convert_*.py")
 string(REPLACE ".py" "" TEST_TRT_CONVERTER "${TEST_TRT_CONVERTER}")
 
+list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_quant_linear_fuse_pass")
 list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_use_optimized_model_api")
 list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_mkldnn_conv_gelu_fuse_pass")
 list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES

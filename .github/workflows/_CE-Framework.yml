@@ -250,7 +250,8 @@ jobs:
           cd /
           cp /paddle/build/pr_whl/*.whl .
           echo "Downloading PaddleTest.tar.gz"
-          wget -q --tries=5 --no-proxy https://xly-devops.bj.bcebos.com/PaddleTest/PaddleTest.tar.gz --no-check-certificate
+          # wget -q --tries=5 --no-proxy https://xly-devops.bj.bcebos.com/PaddleTest/PaddleTest.tar.gz --no-check-certificate
+          wget -q --tries=5 --no-proxy https://xly-devops.cdn.bcebos.com/fleety_0421/PaddleTest.tar.gz --no-check-certificate
           echo "Extracting PaddleTest.tar.gz"
           tar -zvxf PaddleTest.tar.gz 1>/dev/null 2>&1
           '
