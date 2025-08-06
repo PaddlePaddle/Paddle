@@ -324,4 +324,4 @@ class TestMoEUtils(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    TestMoEUtils().run_test_case()
