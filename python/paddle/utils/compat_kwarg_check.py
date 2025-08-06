@@ -31,7 +31,9 @@ def forbid_keywords(
         illegal_keys: list[str] | str - Forbidden keyword names
         correct_func_name: str - Recommended function name
     """
-    keys = [illegal_keys] if isinstance(illegal_keys, str) else illegal_keys
+    illegal_keys = (
+        [illegal_keys] if isinstance(illegal_keys, str) else illegal_keys
+    )
 
     def decorator(func: F) -> F:
         orig_sig = inspect.signature(func)
