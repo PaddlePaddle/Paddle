@@ -425,7 +425,7 @@ class DualPipeVParallel(PipelineParallel):
         self._release_output(self.to_free)
         self.to_free = []
 
-    def _recv_forward(self, phase: int) -> None:
+    def _recv_forward(self, phase: int, async_finish: bool = False) -> None:
         if (self.is_pipeline_first_stage() and phase == 0) or (
             self.is_pipeline_last_stage() and phase == 1
         ):
@@ -433,12 +433,16 @@ class DualPipeVParallel(PipelineParallel):
 
         self.current_recv_f_acc_id[phase] += 1
 
+        comm_forward_ops = []
         tensors = self._p2p_helper.append_irecv(
-            self.comm_forward_ops,
+            comm_forward_ops,
             self.prev_rank if phase == 0 else self.next_rank,
             self.pp_group,
             alloc_on_comm_stream=self._overlap_p2p_comm,
         )
+        for op in comm_forward_ops:
+            op.async_finish = async_finish
+            self.comm_forward_ops.append(op)
         self.input_tensors[phase].append(tensors)
 
     def _send_forward(self, phase: int) -> None:
@@ -510,9 +514,32 @@ class DualPipeVParallel(PipelineParallel):
     ) -> None:
         if recv:
             self._recv_forward(phase)
-        self._commit_and_wait_comm()
+
+        async_reqs = ()
+        if self.comm_forward_ops and not self.comm_backward_ops:
+            sync_ops, async_ops = [], []
+            for op in self.comm_forward_ops:
+                if op.op is paddle.distributed.isend or getattr(op, 'async_finish', False):
+                    async_ops.append(op)
+                else:
+                    sync_ops.append(op)
+            if sync_ops:
+                for req in batch_isend_irecv(sync_ops):
+                    req.wait()
+                del sync_ops
+            if async_ops:
+                print(f'[{self.group_rank}/{self.num_ranks}]({phase}) async_ops', async_ops)
+                async_reqs = batch_isend_irecv(async_ops)
+                del async_ops
+            self.comm_forward_ops = []
+            self._free_tensors()
+        else:
+            self._commit_and_wait_comm()
 
         self._forward_compute(phase, micro_datasets)
+
+        for req in async_reqs:
+            req.wait()
 
         if send:
             self._send_forward(phase)
@@ -680,7 +707,7 @@ class DualPipeVParallel(PipelineParallel):
         self._recv_forward(0)
         for i in range(step_2):
             self._forward_pass(0, micro_datasets, recv=False, send=False)
-            self._recv_forward(0)
+            self._recv_forward(0, async_finish=True)
             self._forward_pass(
                 1,
                 micro_datasets,
