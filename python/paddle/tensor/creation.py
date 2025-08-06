@@ -891,6 +891,10 @@ def to_tensor(
     If the ``data`` is already a Tensor, copy will be performed and return a new tensor.
     If you only want to change stop_gradient property, please call ``Tensor.stop_gradient = stop_gradient`` directly.
 
+    .. note::
+    Alias Support: The parameter name ``device`` can be used as an alias for ``place``.
+    For example, ``device=paddle.CUDAPlace(0)`` is equivalent to ``place=paddle.CUDAPlace(0)``.
+
     .. code-block:: text
 
         We use the dtype conversion rules following this:
@@ -913,7 +917,7 @@ def to_tensor(
         place(CPUPlace|CUDAPinnedPlace|CUDAPlace|str, optional): The place to allocate Tensor. Can be
             CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place. If ``place`` is
             string, It can be ``cpu``, ``gpu:x`` and ``gpu_pinned``, where ``x`` is the index of the GPUs.
-            Note: 'device' is accepted as alias via @param_alias.
+        device: An alias for ``place`` , with identical behavior.
         stop_gradient(bool, optional): Whether to block the gradient propagation of Autograd. Default: True.
 
     Returns:
