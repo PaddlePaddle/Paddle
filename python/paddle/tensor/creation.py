@@ -25,6 +25,7 @@ import numpy as np
 import paddle
 from paddle import _C_ops
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
+from paddle.utils.param_alias_utils import param_alias
 
 from ..base.data_feeder import (
     check_dtype,
@@ -876,6 +877,7 @@ def _to_tensor_static(
     return output
 
 
+@param_alias({"place": ["device"]})
 def to_tensor(
     data: TensorLike | NestedNumericSequence,
     dtype: DTypeLike | None = None,
@@ -911,6 +913,7 @@ def to_tensor(
         place(CPUPlace|CUDAPinnedPlace|CUDAPlace|str, optional): The place to allocate Tensor. Can be
             CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place. If ``place`` is
             string, It can be ``cpu``, ``gpu:x`` and ``gpu_pinned``, where ``x`` is the index of the GPUs.
+            Note: 'device' is accepted as alias via @param_alias.
         stop_gradient(bool, optional): Whether to block the gradient propagation of Autograd. Default: True.
 
     Returns:
@@ -938,6 +941,11 @@ def to_tensor(
             1)
 
             >>> paddle.to_tensor([[0.1, 0.2], [0.3, 0.4]], place=paddle.CPUPlace(), stop_gradient=False)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[0.10000000, 0.20000000],
+             [0.30000001, 0.40000001]])
+
+             >>> paddle.to_tensor([[0.1, 0.2], [0.3, 0.4]], device=paddle.CPUPlace(), stop_gradient=False)
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
             [[0.10000000, 0.20000000],
              [0.30000001, 0.40000001]])
