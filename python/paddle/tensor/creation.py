@@ -1427,7 +1427,7 @@ def zeros(
     if device is not None and in_dynamic_mode():
         tensor = tensor.to(device=device)
     if requires_grad is True:
-        tensor.stop_gradient = True
+        tensor.stop_gradient = False
     return tensor
 
 
