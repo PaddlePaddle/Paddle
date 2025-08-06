@@ -64,7 +64,8 @@ def split(
         tuple(Tensor), The tuple of segmented Tensors.
 
     Note:
-        This is a pytorch compatible API that follows the function signature and behavior of torch.split. To use the original split of paddle, please consider `paddle.split`
+        This is a pytorch compatible API that follows the function signature and behavior of torch.split.
+        To use the original split of paddle, please consider `paddle.split`
 
     Examples:
         .. code-block:: python
@@ -74,7 +75,7 @@ def split(
             >>> # x is a Tensor of shape [3, 9, 5]
             >>> x = paddle.rand([3, 8, 5])
 
-            >>> out0, out1, out2 = paddle.compatible.split(x, split_size_or_sections=3, dim=1)
+            >>> out0, out1, out2 = paddle.compat.split(x, split_size_or_sections=3, dim=1)
             >>> print(out0.shape)
             [3, 3, 5]
             >>> print(out1.shape)
@@ -82,7 +83,7 @@ def split(
             >>> print(out2.shape)
             [3, 2, 5]
 
-            >>> out0, out1, out2 = paddle.split(x, split_size_or_sections=[1, 2, 5], dim=1)
+            >>> out0, out1, out2 = paddle.compat.split(x, split_size_or_sections=[1, 2, 5], dim=1)
             >>> print(out0.shape)
             [3, 1, 5]
             >>> print(out1.shape)
@@ -91,7 +92,7 @@ def split(
             [3, 5, 5]
 
             >>> # dim is negative, the real dim is (rank(x) + dim)=1
-            >>> out0, out1, out2 = paddle.split(x, split_size_or_sections=3, dim=-2)
+            >>> out0, out1, out2 = paddle.compat.split(x, split_size_or_sections=3, dim=-2)
             >>> print(out0.shape)
             [3, 3, 5]
             >>> print(out1.shape)
