@@ -1477,8 +1477,7 @@ void TransposeGPUKernelDriver(const phi::GPUContext& dev_ctx,
   if (!ret) {
     auto simplifier = phi::funcs::PermuteDimsSimplifier(
         rank, numel, perm, common::vectorize<int64_t>(in.dims()));
-    auto* tuner = phi::autotune::MakeTransposeTuner<T>(PermuteWithEigen<T>);
-    tuner->AddCallBack(PermuteAndTranspose<T>);
+    auto* tuner = phi::autotune::MakeTransposeTuner<T>(PermuteAndTranspose<T>);
 
     size_t key = phi::autotune::TransposeKey(simplifier.GetSrcDims(),
                                              simplifier.GetPerm(),

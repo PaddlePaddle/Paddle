@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/impl/matmul_kernel_impl.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 #include "paddle/phi/kernels/scale_kernel.h"
+#include "paddle/phi/kernels/transpose_kernel.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/phi/kernels/gpu/reduce.h"
@@ -92,8 +93,7 @@ static DenseTensor FoldHeadAndLastDims(const Context& dev_ctx,
   DenseTensor output = EmptyLike<T, Context>(dev_ctx, input);
   output.Resize({in_dims[1], in_dims[0], in_dims[2]});
   std::vector<int> axis = {1, 0, 2};
-  funcs::Transpose<Context, T, 3> trans;
-  trans(dev_ctx, input, &output, axis);
+  TransposeKernel<T, Context>(dev_ctx, input, axis, &output);
   output.Resize({in_dims[1], in_dims[0] * in_dims[2]});
   return output;
 }

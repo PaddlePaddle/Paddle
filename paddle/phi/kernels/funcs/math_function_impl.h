@@ -57,8 +57,7 @@ void Transpose<DeviceContext, T, Rank>::operator()(
   auto eigen_out = phi::EigenTensor<T, Rank>::From(*out);
   auto* dev = dev_ctx.eigen_device();
   // use 32bit index to speed up computation
-  bool use_32bit_index =
-      eigen_out.size() < Eigen::NumTraits<int>::highest() / 2;
+  bool use_32bit_index = eigen_out.size() < Eigen::NumTraits<int>::highest();
   bool is_gpu_place = dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU;
   if (use_32bit_index && is_gpu_place) {
     To32BitIndex(eigen_out).device(*dev) =
