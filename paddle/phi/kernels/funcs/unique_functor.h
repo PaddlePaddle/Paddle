@@ -27,7 +27,7 @@ template <typename T>
 static bool NaNSafeEqual(const T& a, const T& b) {
   if constexpr (std::is_floating_point_v<T>) {
     if (std::isnan(a) && std::isnan(b)) {
-      return true;
+      return &a == &b;
     }
     if (std::isnan(a) || std::isnan(b)) {
       return false;
@@ -39,14 +39,14 @@ static bool NaNSafeEqual(const T& a, const T& b) {
 template <typename T>
 static bool NaNSafeLess(const T& a, const T& b) {
   if constexpr (std::is_floating_point_v<T>) {
-    if (std::isnan(a) && std::isnan(b)) {
+    if (std::isnan(a) && !std::isnan(b)) {
       return false;
     }
-    if (std::isnan(a)) {
-      return false;
-    }
-    if (std::isnan(b)) {
+    if (!std::isnan(a) && std::isnan(b)) {
       return true;
+    }
+    if (std::isnan(a) && std::isnan(b)) {
+      return &a < &b;
     }
   }
   return a < b;
