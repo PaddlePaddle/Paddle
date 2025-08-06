@@ -377,11 +377,11 @@ class TestEagerTensor(unittest.TestCase):
         self.assertEqual(var.dtype, paddle.float32)
         self.assertEqual(var.type, core.VarDesc.VarType.DENSE_TENSOR)
 
-    def test_to_tensor_param_map(self):
+    def test_to_tensor_param_alias(self):
         """Test paddle.to_tensor parameter mapping ("place": ["device"])."""
         # 1. Test equivalence of place and device parameters
-        tensor_place = paddle.to_tensor(self.array, place=paddle.CUDAPlace(0))
-        tensor_device = paddle.to_tensor(self.array, device=paddle.CUDAPlace(0))
+        tensor_place = paddle.to_tensor(self.array, place=paddle.CPUPlace())
+        tensor_device = paddle.to_tensor(self.array, device=paddle.CPUPlace())
 
         np.testing.assert_array_equal(
             tensor_device.numpy(), tensor_place.numpy()
@@ -392,8 +392,8 @@ class TestEagerTensor(unittest.TestCase):
         with self.assertRaises(KeyError) as context:
             paddle.to_tensor(
                 self.array,
-                place=paddle.CUDAPlace(0),
-                device=paddle.CUDAPlace(0),  # Conflict
+                place=paddle.CPUPlace(),
+                device=paddle.CPUPlace(),  # Conflict
             )
         self.assertIn(
             "Both place and device are provided.", str(context.exception)
@@ -401,10 +401,10 @@ class TestEagerTensor(unittest.TestCase):
 
         # 3. Test dtype and stop_gradient consistency
         tensor1 = paddle.to_tensor(
-            self.array, dtype="float32", device=paddle.CUDAPlace(0)
+            self.array, dtype="float32", device=paddle.CPUPlace()
         )
         tensor2 = paddle.to_tensor(
-            self.array, dtype="float32", place=paddle.CUDAPlace(0)
+            self.array, dtype="float32", place=paddle.CPUPlace()
         )
 
         self.assertEqual(tensor1.dtype, tensor2.dtype)
@@ -413,7 +413,9 @@ class TestEagerTensor(unittest.TestCase):
         self.assertEqual(tensor1.stop_gradient, tensor2.stop_gradient)
 
         # 4. Test cross-device compatibility (CPU/GPU)
-        for device in [paddle.CPUPlace(), paddle.CUDAPlace(0)]:
+        for device in [paddle.CPUPlace()] + (
+            [paddle.CUDAPlace(0)] if core.is_compiled_with_cuda() else []
+        ):
             tensor_device = paddle.to_tensor(self.array, device=device)
             tensor_place = paddle.to_tensor(self.array, place=device)
 
