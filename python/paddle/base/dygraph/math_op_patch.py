@@ -77,8 +77,9 @@ _supported_dtype_conversions = {
     # int
     'int8': 'int8',
     'char': 'int8',
-    'uint8': 'uint8',
-    'byte': 'uint8',
+    # We handle uint8 conversion separately
+    # 'uint8': 'uint8',
+    # 'byte': 'uint8',
     'int16': 'int16',
     'short': 'int16',
     'int32': 'int32',
@@ -132,6 +133,17 @@ def monkey_patch_math_tensor():
             return self
 
         return _C_ops.cast(self, dtype)
+
+    def byte(self: Tensor) -> Tensor:
+        # since paddle don't support float to uint8, so we need to convert it to int8 first
+        if self.is_floating_point():
+            tensor = astype(self, 'int8')
+            return astype(tensor, 'uint8')
+        elif self.is_complex():
+            real = astype(self.real(), 'int8')
+            return astype(real, 'uint8')
+        else:
+            return astype(self, 'uint8')
 
     def _create_dtype_conversion_methods():
         """
@@ -281,6 +293,8 @@ def monkey_patch_math_tensor():
         ('__len__', _len_),
         ('__index__', _index_),
         ('astype', astype),
+        ('byte', byte),
+        ('uint8', byte),
         ('dim', dim),
         ('ndimension', ndimension),
         ('ndim', _ndim),
