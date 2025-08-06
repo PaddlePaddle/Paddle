@@ -1324,9 +1324,7 @@ PHI_DEFINE_EXPORTED_bool(eager_communication_connection,
                          false,
                          "enable eager to create nccl comm");
 
-PHI_DEFINE_EXPORTED_bool(tcp_store_using_libuv,
-                         false,
-                         "enable libuv tcp store");
+PHI_DEFINE_EXPORTED_bool(tcp_store_using_libuv, true, "enable libuv tcp store");
 
 PHI_DEFINE_EXPORTED_int64(
     tcp_max_syn_backlog,
