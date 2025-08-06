@@ -28,8 +28,7 @@ from paddle.distributed.auto_parallel.moe_utils import (
 
 
 class TestMoEUtils:
-    def __init__(self, methodName='runTest'):
-        super().__init__(methodName)
+    def __init__(self):
         self._dtype = os.getenv("dtype")
         self._seeds = eval(os.getenv("seeds"))
         self._backend = os.getenv("backend")
