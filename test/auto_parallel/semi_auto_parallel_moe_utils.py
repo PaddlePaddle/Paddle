@@ -79,7 +79,7 @@ class TestMoEUtils:
             dist_x.grad._local_value().numpy(),
         )
 
-        with self.assertRaises(AssertionError):
+        with np.testing.assert_raises(AssertionError):
             dist_z = dist.auto_parallel.moe_utils._dist_reshape(
                 dist_x,
                 dist_x.shape,
@@ -109,8 +109,10 @@ class TestMoEUtils:
         )
         dist_y.backward()
 
-        self.assertEqual(dist_y.placements, [dist.Shard(0), dist.Replicate()])
-        self.assertEqual(
+        np.testing.assert_equal(
+            dist_y.placements, [dist.Shard(0), dist.Replicate()]
+        )
+        np.testing.assert_equal(
             dist_x.grad.placements, [dist.Shard(1), dist.Replicate()]
         )
         np_grad = np.ones(src_shape, dtype="int64")
@@ -132,7 +134,7 @@ class TestMoEUtils:
             dist_x, self._mesh1, [dist.Replicate(), dist.Replicate()]
         )
 
-        self.assertEqual(dist_y.process_mesh, self._mesh1)
+        np.testing.assert_equal(dist_y.process_mesh, self._mesh1)
         np.testing.assert_array_equal(
             dist_y._local_value().numpy(), dist_x._local_value().numpy()
         )
@@ -145,14 +147,18 @@ class TestMoEUtils:
         dist_x = dist.shard_tensor(x, self._mesh0, placements)
         dist_x_local_slices = get_local_slices(x, self._mesh0, placements)
         if dist.get_rank() == 0:
-            self.assertEqual(dist_x_local_slices[0]['slice'], [(0, 2), (0, 4)])
-            self.assertEqual(
+            np.testing.assert_equal(
+                dist_x_local_slices[0]['slice'], [(0, 2), (0, 4)]
+            )
+            np.testing.assert_equal(
                 dist_x_local_slices[0]['partial'][1],
                 dist_x.placements[1].reduce_type(),
             )
         if dist.get_rank() == 1:
-            self.assertEqual(dist_x_local_slices[1]['slice'], [(2, 4), (0, 4)])
-            self.assertEqual(
+            np.testing.assert_equal(
+                dist_x_local_slices[1]['slice'], [(2, 4), (0, 4)]
+            )
+            np.testing.assert_equal(
                 dist_x_local_slices[1]['partial'][1],
                 dist_x.placements[1].reduce_type(),
             )
@@ -187,18 +193,18 @@ class TestMoEUtils:
         )  # 2x2 mesh
         # Shard along dim 0
         sub_meshes = get_sub_meshes_for_shard(mesh, 0)
-        self.assertEqual(len(sub_meshes), 2)
-        self.assertEqual(sub_meshes[0].process_ids, [0, 1])
-        self.assertEqual(sub_meshes[0].shape, [1, 2])
-        self.assertEqual(sub_meshes[1].process_ids, [2, 3])
-        self.assertEqual(sub_meshes[1].shape, [1, 2])
+        np.testing.assert_equal(len(sub_meshes), 2)
+        np.testing.assert_equal(sub_meshes[0].process_ids, [0, 1])
+        np.testing.assert_equal(sub_meshes[0].shape, [1, 2])
+        np.testing.assert_equal(sub_meshes[1].process_ids, [2, 3])
+        np.testing.assert_equal(sub_meshes[1].shape, [1, 2])
         # Shard along dim 1
         sub_meshes = get_sub_meshes_for_shard(mesh, 1)
-        self.assertEqual(len(sub_meshes), 2)
-        self.assertEqual(sub_meshes[0].process_ids, [0, 2])
-        self.assertEqual(sub_meshes[0].shape, [2, 1])
-        self.assertEqual(sub_meshes[1].process_ids, [1, 3])
-        self.assertEqual(sub_meshes[1].shape, [2, 1])
+        np.testing.assert_equal(len(sub_meshes), 2)
+        np.testing.assert_equal(sub_meshes[0].process_ids, [0, 2])
+        np.testing.assert_equal(sub_meshes[0].shape, [2, 1])
+        np.testing.assert_equal(sub_meshes[1].process_ids, [1, 3])
+        np.testing.assert_equal(sub_meshes[1].shape, [2, 1])
 
     def test_shard_submesh_and_slice(self):
         """Test shard_submesh_and_slice with even and uneven tensor sizes."""
@@ -209,21 +215,21 @@ class TestMoEUtils:
         new_sub_meshes, new_slices = shard_submesh_and_slice(
             mesh, tensor_slice, tensor_dim, mesh_dim
         )
-        self.assertEqual(len(new_sub_meshes), 2)
-        self.assertEqual(new_sub_meshes[0].process_ids, [0])
-        self.assertEqual(new_sub_meshes[1].process_ids, [1])
-        self.assertEqual(new_slices[0], [(0, 2), (0, 4)])
-        self.assertEqual(new_slices[1], [(2, 4), (0, 4)])
+        np.testing.assert_equal(len(new_sub_meshes), 2)
+        np.testing.assert_equal(new_sub_meshes[0].process_ids, [0])
+        np.testing.assert_equal(new_sub_meshes[1].process_ids, [1])
+        np.testing.assert_equal(new_slices[0], [(0, 2), (0, 4)])
+        np.testing.assert_equal(new_slices[1], [(2, 4), (0, 4)])
 
         # Uneven size
         tensor_slice = [(0, 5), (0, 4)]
         new_sub_meshes, new_slices = shard_submesh_and_slice(
             mesh, tensor_slice, tensor_dim, mesh_dim
         )
-        self.assertEqual(
+        np.testing.assert_equal(
             new_slices[0], [(0, 3), (0, 4)]
         )  # First shard: 3 elements
-        self.assertEqual(
+        np.testing.assert_equal(
             new_slices[1], [(3, 5), (0, 4)]
         )  # Last shard: 2 elements
 
@@ -234,10 +240,10 @@ class TestMoEUtils:
             dist.ProcessMesh([1]): {'slice': [(2, 4), (0, 4)], 'partial': {}},
         }
         rank2tensor_indices = get_rank2tensor_indices(sub_mesh2tensor_indices)
-        self.assertEqual(
+        np.testing.assert_equal(
             rank2tensor_indices[0], {'slice': [(0, 2), (0, 4)], 'partial': {}}
         )
-        self.assertEqual(
+        np.testing.assert_equal(
             rank2tensor_indices[1], {'slice': [(2, 4), (0, 4)], 'partial': {}}
         )
 
@@ -250,14 +256,14 @@ class TestMoEUtils:
         placements = [dist.Replicate(), dist.Replicate()]
         slices = get_local_slices(x, self._mesh0, placements)
         for rank in [0, 1]:
-            self.assertEqual(slices[rank]['slice'], [(0, 4), (0, 4)])
-            self.assertEqual(slices[rank]['partial'], {})
+            np.testing.assert_equal(slices[rank]['slice'], [(0, 4), (0, 4)])
+            np.testing.assert_equal(slices[rank]['partial'], {})
 
         # Test with [Shard(1), Replicate()] on mesh1
         placements = [dist.Replicate(), dist.Shard(1)]
         slices = get_local_slices(x, self._mesh1, placements)
-        self.assertEqual(slices[0]['slice'], [(0, 4), (0, 2)])
-        self.assertEqual(slices[1]['slice'], [(0, 4), (2, 4)])
+        np.testing.assert_equal(slices[0]['slice'], [(0, 4), (0, 2)])
+        np.testing.assert_equal(slices[1]['slice'], [(0, 4), (2, 4)])
 
     def test_only_reshard_mesh_shape(self):
         """Test _only_reshard_mesh_shape conditions."""
@@ -271,14 +277,14 @@ class TestMoEUtils:
         result = _only_reshard_mesh_shape(
             dist_x, self._mesh0, [dist.Replicate(), dist.Replicate()]
         )
-        self.assertFalse(result)
+        assert not result
 
         # Case 2: Different process IDs, should return False
         mesh_diff = dist.ProcessMesh([[2], [3]], dim_names=["x", "y"])
         result = _only_reshard_mesh_shape(
             dist_x, mesh_diff, [dist.Replicate(), dist.Replicate()]
         )
-        self.assertFalse(result)
+        assert not result
 
         # Case 3: Same process IDs, different slices
         dist_x = dist.shard_tensor(
@@ -287,7 +293,7 @@ class TestMoEUtils:
         result = _only_reshard_mesh_shape(
             dist_x, self._mesh1, [dist.Replicate(), dist.Shard(1)]
         )
-        self.assertFalse(result)
+        assert not result
 
         # Case 4: Same process IDs, same slices
         dist_x = dist.shard_tensor(
@@ -296,14 +302,14 @@ class TestMoEUtils:
         result = _only_reshard_mesh_shape(
             dist_x, self._mesh1, [dist.Replicate(), dist.Replicate()]
         )
-        self.assertTrue(result)
+        assert result
 
         # Case 5: Flag disabled
         os.environ["FLAGS_enable_moe_utils"] = "false"
         result = _only_reshard_mesh_shape(
             dist_x, self._mesh1, [dist.Replicate(), dist.Replicate()]
         )
-        self.assertFalse(result)
+        assert not result
         os.environ["FLAGS_enable_moe_utils"] = "true"  # Reset
 
     def run_test_case(self):
