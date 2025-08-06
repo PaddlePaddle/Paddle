@@ -11,7 +11,7 @@ function(_inference_analysis_python_api_int8_test target model_dir data_path
     SRCS ${filename}
          ENVS
          CPU_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
-         FLAGS_use_mkldnn=${use_mkldnn}
+         FLAGS_use_onednn=${use_mkldnn}
          ARGS
          --infer_model
          ${model_dir}/model
@@ -67,7 +67,7 @@ function(inference_quant_int8_image_classification_test target quant_model_dir
          ENVS
          FLAGS_OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
          OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
-         FLAGS_use_mkldnn=true
+         FLAGS_use_onednn=true
          ARGS
          --quant_model
          ${quant_model_dir}
@@ -91,7 +91,7 @@ function(inference_quant2_int8_image_classification_test target quant_model_dir
          ENVS
          FLAGS_OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
          OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
-         FLAGS_use_mkldnn=true
+         FLAGS_use_onednn=true
          ARGS
          --quant_model
          ${quant_model_dir}
@@ -123,7 +123,7 @@ function(
          ENVS
          FLAGS_OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
          OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
-         FLAGS_use_mkldnn=true
+         FLAGS_use_onednn=true
          ARGS
          --quant_model
          ${quant_model_dir}

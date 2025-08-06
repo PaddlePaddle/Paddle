@@ -635,10 +635,18 @@ def extract_device_id(device: _CustomPlaceLike, op_name: str) -> int:
         else:
             device_type = None
             available_custom_devices = core.get_available_custom_device()
-            for d in available_custom_devices:
-                dev_type, dev_id = d.split(':')
-                if int(dev_id) == device:
-                    device_type = dev_type
+            if len(available_custom_devices) == 1:
+                if device == 0:
+                    device_type = available_custom_devices[0]
+                else:
+                    raise ValueError(
+                        f"Device id {device} not found in available_custom_devices: [{available_custom_devices[0]}:0]"
+                    )
+            else:
+                for d in available_custom_devices:
+                    dev_type, dev_id = d.split(':')
+                    if int(dev_id) == device:
+                        device_type = dev_type
             if device_type is None:
                 raise ValueError(
                     f"Device id {device} not found in available_custom_devices: {available_custom_devices}"

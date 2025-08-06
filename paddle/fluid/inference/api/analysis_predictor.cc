@@ -1036,19 +1036,19 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       pir::IrContext *ctx = pir::IrContext::Instance();
       ctx->GetOrRegisterDialect<paddle::dialect::OneDNNOperatorDialect>();
       if (!config_.custom_pass_only_) {
-        for (const auto &mkldnn_pass : kPirMkldnnPasses) {
+        for (const auto &onednn_pass : kPirOnednnPasses) {
           if (std::find(config_.deleted_passes_.begin(),
                         config_.deleted_passes_.end(),
-                        mkldnn_pass) == config_.deleted_passes_.end()) {
-            pass_pm.AddPass(pir::PassRegistry::Instance().Get(mkldnn_pass));
+                        onednn_pass) == config_.deleted_passes_.end()) {
+            pass_pm.AddPass(pir::PassRegistry::Instance().Get(onednn_pass));
           }
         }
         if (config_.onednn_bfloat16_enabled()) {
-          for (const auto &mkldnn_pass : kPirMkldnnBf16Passes) {
+          for (const auto &onednn_pass : kPirOnednnBf16Passes) {
             if (std::find(config_.deleted_passes_.begin(),
                           config_.deleted_passes_.end(),
-                          mkldnn_pass) == config_.deleted_passes_.end()) {
-              pass_pm.AddPass(pir::PassRegistry::Instance().Get(mkldnn_pass));
+                          onednn_pass) == config_.deleted_passes_.end()) {
+              pass_pm.AddPass(pir::PassRegistry::Instance().Get(onednn_pass));
             }
           }
         }

@@ -2176,11 +2176,11 @@ class OpTest(unittest.TestCase):
             else:
                 # TODO(zhiqiu): enhance inplace_grad test for ops (sum and activation) using mkldnn
                 # skip op that use_mkldnn currently
-                flags_use_mkldnn = base.core.globals()["FLAGS_use_mkldnn"]
+                flags_use_onednn = base.core.globals()["FLAGS_use_onednn"]
                 attrs_use_mkldnn = hasattr(self, 'attrs') and bool(
                     self.attrs.get('use_mkldnn', False)
                 )
-                if flags_use_mkldnn or attrs_use_mkldnn:
+                if flags_use_onednn or attrs_use_mkldnn:
                     warnings.warn(
                         "check inplace_grad for ops using mkldnn is not supported"
                     )
@@ -2216,7 +2216,7 @@ class OpTest(unittest.TestCase):
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
         if not self.is_onednn_op():
-            set_flags({"FLAGS_use_mkldnn": False})
+            set_flags({"FLAGS_use_onednn": False})
 
         if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
@@ -3285,7 +3285,7 @@ class OpTest(unittest.TestCase):
             check_dygraph = False
 
         if not self.is_onednn_op():
-            set_flags({"FLAGS_use_mkldnn": False})
+            set_flags({"FLAGS_use_onednn": False})
 
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)

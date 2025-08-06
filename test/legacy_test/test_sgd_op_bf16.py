@@ -239,7 +239,7 @@ class TestSGDOpBF16API(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         np.random.seed(12345)
-        base.set_flags({'FLAGS_use_mkldnn': True})
+        base.set_flags({'FLAGS_use_onednn': True})
 
     def setUp(self):
         self.sample_count = 20
