@@ -170,6 +170,7 @@ limitations under the License. */
 #include "pybind11/stl.h"
 
 COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_onednn);
 COMMON_DECLARE_bool(use_shm_cache);
 
 // disable auto conversion to list in Python

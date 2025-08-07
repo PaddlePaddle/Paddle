@@ -176,7 +176,7 @@ PreparedOp PrepareImpl(
   // OneDNN variant of code reads attributes in some of GetKernelTypeForVar and
   // GetKernelType functions, so we need to copy the attributes there.
   // Const qualifier of Attrs had to be discarded to overwrite it.
-  if (FLAGS_use_mkldnn) {
+  if (FLAGS_use_mkldnn || FLAGS_use_onednn) {
     auto& mutable_op_attrs = const_cast<framework::AttributeMap&>(op.Attrs());
     mutable_op_attrs = default_attrs;
     for (auto& attr : attrs) {
@@ -206,7 +206,7 @@ PreparedOp PrepareImpl(
 // 3. Whether onednn kernel can be used.
 #ifdef PADDLE_WITH_DNNL
   if (!op.DnnFallback() && !paddle::platform::in_onednn_white_list(op.Type()) &&
-      op.CanMKLDNNBeUsed(dygraph_exe_ctx, expected_kernel_key.dtype())) {
+      op.CanONEDNNBeUsed(dygraph_exe_ctx, expected_kernel_key.dtype())) {
     expected_kernel_key.set_backend(phi::Backend::ONEDNN);
     expected_kernel_key.set_layout(phi::DataLayout::ONEDNN);
   }

@@ -2460,6 +2460,9 @@ def margin_cross_entropy(
         label = paddle.unsqueeze(label, axis=-1)
 
     if in_dynamic_or_pir_mode():
+        out_type = logits.dtype
+        if out_type == paddle.float16:
+            logits = paddle.cast(logits, paddle.float32)
         softmax, loss = _C_ops.margin_cross_entropy(
             logits,
             label,
@@ -2476,6 +2479,11 @@ def margin_cross_entropy(
             loss = paddle.mean(loss)
         elif reduction == 'sum':
             loss = paddle.sum(loss)
+
+        if out_type == paddle.float16:
+            softmax = paddle.cast(softmax, out_type)
+            loss = paddle.cast(loss, out_type)
+
         if not return_softmax:
             return loss
         else:
@@ -4652,7 +4660,7 @@ def adaptive_log_softmax_with_loss(
     target_dim = label.dim()
 
     if target_dim == 1:
-        if input.shape[0] != label.shape[0]:
+        if input.shape[0] != label.shape[0] and label.shape[0] != 0:
             raise ValueError(
                 'Input and label should have the same size '
                 'in the batch dimension.'
@@ -4749,9 +4757,10 @@ def adaptive_log_softmax_with_loss(
         x=input, weight=head_weight, bias=head_bias
     )
     head_logprob = paddle.nn.functional.log_softmax(head_output, axis=1)
-    output += paddle.take_along_axis(
-        head_logprob, gather_inds.unsqueeze(1), axis=1
-    ).squeeze()
+    if gather_inds.size != 0:
+        output += paddle.take_along_axis(
+            head_logprob, gather_inds.unsqueeze(1), axis=1
+        ).squeeze()
     loss = (-output).mean()
 
     if not is_batched:

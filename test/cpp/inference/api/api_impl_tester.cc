@@ -321,12 +321,12 @@ TEST(inference_api_native, image_classification_gpu) {
 
 #ifdef PADDLE_WITH_DNNL
 TEST(inference_api_native, image_classification_cpu_onednn) {
-  FLAGS_use_mkldnn = true;
+  FLAGS_use_onednn = true;
   MainImageClassification(::paddle::PaddlePlace::kCPU);
 }
 
 TEST(inference_api_native, word2vec_cpu_onednn) {
-  FLAGS_use_mkldnn = true;
+  FLAGS_use_onednn = true;
   MainWord2Vec(::paddle::PaddlePlace::kCPU);
 }
 #endif

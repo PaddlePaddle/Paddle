@@ -63,7 +63,7 @@ PHI_DEFINE_EXPORTED_int32(paddle_num_threads,
  */
 PHI_DEFINE_EXPORTED_int32(low_precision_op_list,
                           0,
-                          "Setting the level of low precision op"
+                          "Setting the level of low precision op "
                           "list printing. It will be return the "
                           "low precision op list of current module.");
 
@@ -171,8 +171,8 @@ PHI_DEFINE_EXPORTED_string(
     "This option is useful when doing multi process training and "
     "each process have only one device (GPU). If you want to use "
     "all visible devices, set this to empty string. NOTE: the "
-    "reason of doing this is that we want to use P2P communication"
-    "between GPU devices, use CUDA_VISIBLE_DEVICES can only use"
+    "reason of doing this is that we want to use P2P communication "
+    "between GPU devices, use CUDA_VISIBLE_DEVICES can only use "
     "share-memory only.");
 #endif
 
@@ -697,6 +697,16 @@ PHI_DEFINE_EXPORTED_bool(
 PHI_DEFINE_EXPORTED_bool(use_mkldnn, false, "Use MKLDNN to run");
 
 /**
+ * ONEDNN related FLAG
+ * Name: use_onednn
+ * Since Version:
+ * Value Range: bool, default=false
+ * Example:
+ * Note:
+ */
+PHI_DEFINE_EXPORTED_bool(use_onednn, false, "Use ONEDNN to run");
+
+/**
  * Debug related FLAG
  * Name: FLAGS_call_stack_level
  * Since Version: 2.0.0
@@ -759,7 +769,7 @@ PHI_DEFINE_EXPORTED_int32(
     0,
     "The maximum number of inplace grad_add. When doing "
     "gradient accumulation, if the number of gradients need to that "
-    "less FLAGS_max_inplace_grad_add, than it will be use several grad_add"
+    "less FLAGS_max_inplace_grad_add, than it will be use several grad_add "
     "instead of sum. Default is 0.");
 
 /**
@@ -1360,7 +1370,7 @@ PHI_DEFINE_EXPORTED_bool(
     false,
     "Doing memory benchmark. It will make deleting scope synchronized, "
     "and add some memory usage logs."
-    "Default cuda is asynchronous device, set to True will"
+    "Default cuda is asynchronous device, set to True will "
     "force op run in synchronous mode.");
 
 PHI_DEFINE_EXPORTED_bool(eager_communication_connection,

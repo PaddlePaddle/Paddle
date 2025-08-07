@@ -1,8 +1,9 @@
-name: Slice-baseline
+name: Slice-baseline-paddle
 
 on:
+  workflow_dispatch:
   schedule:
-    - cron: '0 9 * * *'
+    - cron: '0 20 * * 0'
 
 permissions: read-all
 
@@ -32,7 +33,7 @@ jobs:
     uses: ./.github/workflows/_Linux-build.yml
     with:
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
-      CI_name: slice-baseline
+      is_pr: 'false'
 
   slice-test:
     name: Slice test
@@ -41,4 +42,4 @@ jobs:
     with:
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
       slice-check: 'true'
-      SLICE_TEST_MODE: 'insert_baseline'
+      SLICE_TEST_MODE: insert_baseline

@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
 import paddle.nn.functional as F
@@ -68,11 +69,7 @@ class TestPoissonNLLLossBasicCase(unittest.TestCase):
         self.dtype = dtype
         self.input_np = np.random.random(self.shape).astype(self.dtype)
         self.label_np = np.random.random(self.shape).astype(self.dtype)
-        self.place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_static_case(
         self,
@@ -252,11 +249,7 @@ class TestPoissonNLLLossCase_ZeroSize(unittest.TestCase):
         self.dtype = dtype
         self.input_np = np.random.random(self.shape).astype(self.dtype)
         self.label_np = np.random.random(self.shape).astype(self.dtype)
-        self.place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def _test_dynamic_case_and_grad(
         self,

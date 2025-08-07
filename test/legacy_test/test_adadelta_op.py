@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, get_places
+from op_test import OpTest, get_device_place, get_places
 
 import paddle
 from paddle import base
@@ -337,7 +337,7 @@ class TestAdadeltaMultiPrecision2_0(unittest.TestCase):
         paddle.enable_static()
         paddle.seed(100)
         np.random.seed(100)
-        exe = paddle.static.Executor('gpu')
+        exe = paddle.static.Executor(get_device_place())
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         optimizer = paddle.optimizer.Adadelta(0.1)

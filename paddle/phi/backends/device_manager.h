@@ -186,6 +186,10 @@ class DeviceManager {
 
   static std::array<unsigned int, 3> GetMaxGridDimSize(const Place& place);
 
+  static bool IsFloat16Supported(const Place& place);
+
+  static bool IsBFloat16Supported(const Place& place);
+
   static void* InitEigenDevice(const Place& place,
                                phi::stream::stream_t stream,
                                phi::Allocator* allocator);

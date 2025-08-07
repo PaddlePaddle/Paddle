@@ -48,7 +48,7 @@ void Pool2dGradKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       data_format,
       "NCHW",
-      common::errors::InvalidArgument("The Pool2d_grad XPU OP only support"
+      common::errors::InvalidArgument("The Pool2d_grad XPU OP only support "
                                       "data_format is 'NCHW', but received %s",
                                       data_format));
 
@@ -213,7 +213,7 @@ void Pool3dGradKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       data_format,
       "NCDHW",
-      common::errors::InvalidArgument("The Pool3d_grad XPU OP only support"
+      common::errors::InvalidArgument("The Pool3d_grad XPU OP only support "
                                       "data_format is 'NCDHW', but received %s",
                                       data_format));
   if (!dx) {

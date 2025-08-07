@@ -15,23 +15,27 @@ limitations under the License. */
 #include "paddle/phi/api/include/tensor.h"
 
 #include "glog/logging.h"
-
-#include "paddle/phi/common/int_array.h"
-#include "paddle/phi/core/compat/convert_utils.h"
-#include "paddle/phi/core/tensor_base.h"
+#include "paddle/common/flags.h"
 
 #include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
+#include "paddle/phi/common/int_array.h"
+#include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/infermeta/unary.h"
+#include "paddle/phi/kernels/funcs/strided_utils.h"
 // clang-format off
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #endif
+
+COMMON_DECLARE_bool(use_stride_kernel);
 namespace paddle {
 namespace experimental {
 // declare cast api
@@ -194,17 +198,52 @@ void Tensor::copy_(const Tensor &src,
     return;
   }
 #endif
-    SetKernelOutput(this);
-    phi::MetaTensor meta_out(impl_.get());
-    phi::UnchangedInferMeta(
+    if(is_dense_tensor() && has_allocation() && src.is_dense_tensor()) {
+      auto dst_tensor = static_cast<phi::DenseTensor*>(impl_.get());
+      auto src_tensor = std::static_pointer_cast<phi::DenseTensor>(src.impl_);
+      if(!dst_tensor->meta().is_contiguous() ||
+        !src_tensor->meta().is_contiguous()) {
+        VLOG(8) << "Tensor::copy_ , src or dst tesnor is not contiguous";
+        if (!FLAGS_use_stride_kernel) {
+          PADDLE_THROW(common::errors::Fatal(
+              "FLAGS_use_stride_kernel is closed. Strided kernel "
+              "be called, something wrong has happened!"));
+        }
+        PD_VISIT_ALL_TYPES(src_tensor->dtype(), "StridedTensorCopy", ([&] {
+                          phi::StridedTensorCopy<data_t>(
+                              *src_tensor,
+                              common::vectorize<int64_t>(dst_tensor->dims()),
+                              common::vectorize<int64_t>(dst_tensor->strides()),
+                              dst_tensor->offset(),
+                              dst_tensor);
+                        }));
+      } else {
+        SetKernelOutput(this);
+        phi::MetaTensor meta_out(impl_.get());
+        phi::UnchangedInferMeta(
+          MakeMetaTensor(
+              *(std::static_pointer_cast<phi::DenseTensor>(src.impl_))),
+          &meta_out);
+        phi::Copy(*dev_ctx,
+                  (*(std::static_pointer_cast<phi::DenseTensor>(src.impl_))),
+                  target_place,
+                  blocking,
+                  static_cast<phi::DenseTensor *>(impl_.get()));
+      }
+    } else {
+      SetKernelOutput(this);
+      phi::MetaTensor meta_out(impl_.get());
+      phi::UnchangedInferMeta(
         MakeMetaTensor(
             *(std::static_pointer_cast<phi::DenseTensor>(src.impl_))),
         &meta_out);
-    phi::Copy(*dev_ctx,
-              (*(std::static_pointer_cast<phi::DenseTensor>(src.impl_))),
-              target_place,
-              blocking,
-              static_cast<phi::DenseTensor *>(impl_.get()));
+      phi::Copy(*dev_ctx,
+                (*(std::static_pointer_cast<phi::DenseTensor>(src.impl_))),
+                target_place,
+                blocking,
+                static_cast<phi::DenseTensor *>(impl_.get()));
+    }
+
   } else if (kernel_type == KernelType::SELECTED_ROWS_KERNEL) {
     SetSelectedRowsKernelOutput(this);
     phi::MetaTensor meta_out(impl_.get());

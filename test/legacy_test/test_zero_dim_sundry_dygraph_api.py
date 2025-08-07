@@ -21,11 +21,11 @@ import os
 import unittest
 
 import numpy as np
-from op_test import get_places
+from op_test import get_device_place, get_places
 
 import paddle
 import paddle.nn.functional as F
-from paddle import base, core
+from paddle import base
 from paddle.framework import in_dynamic_mode
 
 
@@ -2031,11 +2031,7 @@ class TestSundryAPI(unittest.TestCase):
                     di = g
                 elif p.is_same(x):
                     dx = g
-            place = (
-                base.CUDAPlace(0)
-                if core.is_compiled_with_cuda()
-                else base.CPUPlace()
-            )
+            place = get_device_place()
             exe = base.Executor(place)
             main_program = paddle.static.default_main_program()
             out_i, out_x, di, dx = exe.run(

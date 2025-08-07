@@ -14,7 +14,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_device_place
 
 import paddle
 from paddle import base, tensor
@@ -261,11 +261,7 @@ class TestTrilTriuOpAPI(unittest.TestCase):
                     ).astype(dtype)
                 tril_out, triu_out = tensor.tril(x), tensor.triu(x)
 
-                place = (
-                    base.CUDAPlace(0)
-                    if base.core.is_compiled_with_cuda()
-                    else base.CPUPlace()
-                )
+                place = get_device_place()
                 exe = base.Executor(place)
                 tril_out, triu_out = exe.run(
                     prog,
@@ -314,11 +310,7 @@ class TestTrilTriuOpAPI(unittest.TestCase):
                     ).astype(dtype)
                 triu_out = paddle.triu(x)
 
-                place = (
-                    base.CUDAPlace(0)
-                    if base.core.is_compiled_with_cuda()
-                    else base.CPUPlace()
-                )
+                place = get_device_place()
                 exe = base.Executor(place)
                 triu_out = exe.run(
                     prog,

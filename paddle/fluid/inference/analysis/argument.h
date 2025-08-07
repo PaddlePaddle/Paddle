@@ -219,7 +219,7 @@ struct Argument {
                       Bfloat16EnabledOpTypes,
                       std::unordered_set<std::string>);
 
-  DECL_ARGUMENT_FIELD(use_mkldnn_int8, UseMkldnnInt8, bool);
+  DECL_ARGUMENT_FIELD(use_onednn_int8, UseMkldnnInt8, bool);
 #endif
 
   // Passed from config.

@@ -416,8 +416,12 @@ SpmdInfo LayerNormGradInferSpmd(const DistMetaTensor& x,
       partial_on_dims.push_back(mapping);
     }
   }
-  scale_grad_dist_attr.set_partial_status(partial_on_dims);
-  bias_grad_dist_attr.set_partial_status(partial_on_dims);
+  if (!scale_grad_dist_attr.empty()) {
+    scale_grad_dist_attr.set_partial_status(partial_on_dims);
+  }
+  if (!bias_grad_dist_attr.empty()) {
+    bias_grad_dist_attr.set_partial_status(partial_on_dims);
+  }
 
   VLOG(4) << "LayerNormGradInferSpmd:";
   VLOG(4) << "begin_norm_axis: " << begin_norm_axis;

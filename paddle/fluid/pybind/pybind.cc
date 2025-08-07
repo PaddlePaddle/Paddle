@@ -246,6 +246,7 @@ limitations under the License. */
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 
 COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_onednn);
 COMMON_DECLARE_string(prim_backward_blacklist);
 
 // disable auto conversion to list in Python
@@ -385,7 +386,7 @@ bool IsCompiledWithIPU() {
 #endif
 }
 
-bool IsCompiledWithMKLDNN() {
+bool IsCompiledWithONEDNN() {
 #ifndef PADDLE_WITH_DNNL
   return false;
 #else
@@ -2992,7 +2993,8 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_custom_device", IsCompiledWithCustomDevice);
   m.def("is_compiled_with_ipu", IsCompiledWithIPU);
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
-  m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
+  m.def("is_compiled_with_mkldnn", IsCompiledWithONEDNN);  // deprecated
+  m.def("is_compiled_with_onednn", IsCompiledWithONEDNN);
   m.def("is_compiled_with_nccl", IsCompiledWithNCCL);
   m.def("is_compiled_with_mpi", IsCompiledWithMPI);
   m.def("is_compiled_with_mpi_aware", IsCompiledWithMPIAWARE);
@@ -3445,11 +3447,11 @@ All parameter, weight, gradient are variables in Paddle.
       .def("get_extra_info", &paddle::platform::ProfilerResult::GetExtraInfo)
       .def("get_version", &paddle::platform::ProfilerResult::GetVersion)
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      .def("get_span_indx", &paddle::platform::ProfilerResult::GetSpanIndx)
+      .def("get_span_index", &paddle::platform::ProfilerResult::GetSpanIndex)
       .def("get_device_property",
            &paddle::platform::ProfilerResult::GetDeviceProperty);
 #else
-      .def("get_span_indx", &paddle::platform::ProfilerResult::GetSpanIndx);
+      .def("get_span_index", &paddle::platform::ProfilerResult::GetSpanIndex);
 #endif
 
   py::class_<paddle::platform::MemPythonNode>(m, "MemPythonNode")
