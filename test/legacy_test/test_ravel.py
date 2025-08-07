@@ -12,85 +12,120 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import textwrap
 import unittest
 
 import numpy as np
 
 import paddle
+from paddle import base
 
 
 class TestPaddleRavel(unittest.TestCase):
     def setUp(self):
-        self.data_np = np.array([[1, 2, 3], [4, 5, 6]], dtype='float32')
-        self.data_flat = self.data_np.ravel()
+        self.input_np = np.array([[1, 2, 3], [4, 5, 6]], dtype="float32")
+        self.input_shape = self.input_np.shape
+        self.input_dtype = "float32"
+        self.op_static = lambda x: paddle.ravel(x)
+        self.op_dygraph = lambda x: paddle.ravel(x)
+        self.expected = lambda x: x.flatten()
+        self.places = [None, paddle.CPUPlace()]
 
-    def test_case_1(self):
-        paddle_code = textwrap.dedent(
-            """
-            import paddle
-            x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], dtype='float32')
-            result = paddle.ravel(x)
-            """
-        )
-        x = paddle.to_tensor(self.data_np)
-        result = paddle.ravel(x)
-        np.testing.assert_array_equal(result.numpy(), self.data_flat)
-        self.assertEqual(result.shape, [6])
+    def check_static_result(self, place):
+        paddle.enable_static()
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
+            input_name = 'input'
+            input_var = paddle.static.data(
+                name=input_name, shape=self.input_shape, dtype=self.input_dtype
+            )
+            res = self.op_static(input_var)
+            exe = base.Executor(place)
+            fetches = exe.run(
+                main_prog,
+                feed={input_name: self.input_np},
+                fetch_list=[res],
+            )
+            expect = (
+                self.expected(self.input_np)
+                if callable(self.expected)
+                else self.expected
+            )
+            np.testing.assert_allclose(fetches[0], expect, rtol=1e-05)
 
-    def test_case_2(self):
-        paddle_code = textwrap.dedent(
-            """
-            import paddle
-            x = paddle.to_tensor([[[1, 2], [3, 4]], [[5, 6], [7, 8]]], dtype='int64')
-            result = paddle.ravel(x)
-            """
-        )
-        x = paddle.to_tensor(
-            [[[1, 2], [3, 4]], [[5, 6], [7, 8]]], dtype='int64'
-        )
-        result = paddle.ravel(x)
-        np.testing.assert_array_equal(result.numpy(), np.ravel(x.numpy()))
-        self.assertEqual(list(result.shape), [8])
+    def test_static(self):
+        for place in self.places:
+            self.check_static_result(place=place)
 
-    def test_case_3(self):
-        paddle_code = textwrap.dedent(
-            """
-            import paddle
-            x = paddle.to_tensor(42, dtype='float32')
-            result = paddle.ravel(x)
-            """
-        )
-        x = paddle.to_tensor(42, dtype='float32')
-        result = paddle.ravel(x)
-        np.testing.assert_array_equal(result.numpy(), np.ravel(x.numpy()))
-        self.assertEqual(list(result.shape), [1])
+    def check_dygraph_result(self, place):
+        with base.dygraph.guard(place):
+            input = paddle.to_tensor(self.input_np, stop_gradient=False)
+            result = self.op_dygraph(input)
+            expect = (
+                self.expected(self.input_np)
+                if callable(self.expected)
+                else self.expected
+            )
+            # check forward
+            np.testing.assert_allclose(result.numpy(), expect, rtol=1e-05)
 
-    def test_case_4(self):
-        paddle_code = textwrap.dedent(
-            """
-            import paddle
-            x = paddle.to_tensor([], dtype='float32')
-            result = paddle.ravel(x)
-            """
-        )
-        x = paddle.to_tensor([], dtype='float32')
-        result = paddle.ravel(x)
-        np.testing.assert_array_equal(result.numpy(), np.ravel(x.numpy()))
-        self.assertEqual(list(result.shape), [0])
+            # check backward
+            paddle.autograd.backward([result])
+            np.testing.assert_allclose(
+                input.grad.numpy(), np.ones_like(self.input_np), rtol=1e-05
+            )
 
-    def test_case_5(self):
-        paddle_code = textwrap.dedent(
-            """
-            import paddle
-            x = paddle.to_tensor([10, 20, 30], dtype='int32')
-            result = paddle.ravel(x)
-            """
-        )
-        x = paddle.to_tensor([10, 20, 30], dtype='int32')
-        result = paddle.ravel(x)
-        np.testing.assert_array_equal(result.numpy(), np.ravel(x.numpy()))
-        self.assertEqual(list(result.shape), [3])
+    def test_dygraph(self):
+        for place in self.places:
+            self.check_dygraph_result(place=place)
+
+
+class TestPaddleRavel_case1(TestPaddleRavel):
+    def setUp(self):
+        # check Ravel 1d
+        self.input_np = np.array([7, 8, 9], dtype="float32")
+        self.input_shape = self.input_np.shape
+        self.input_dtype = "float32"
+        self.op_static = lambda x: paddle.ravel(x)
+        self.op_dygraph = lambda x: paddle.ravel(x)
+        self.expected = lambda x: x.flatten()
+        self.places = [None, paddle.CPUPlace()]
+
+
+class TestPaddleRavel_case2(TestPaddleRavel):
+    def setUp(self):
+        # check Ravel 3d
+        self.input_np = np.arange(24, dtype="float32").reshape(2, 3, 4)
+        self.input_shape = self.input_np.shape
+        self.input_dtype = "float32"
+        self.op_static = lambda x: paddle.ravel(x)
+        self.op_dygraph = lambda x: paddle.ravel(x)
+        self.expected = lambda x: x.flatten()
+        self.places = [None, paddle.CPUPlace()]
+
+
+class TestPaddleRavel_case3(TestPaddleRavel):
+    def setUp(self):
+        # check Ravel 0d (scalar)
+        self.input_np = np.array(5.0, dtype="float32")  # 标量
+        self.input_shape = self.input_np.shape
+        self.input_dtype = "float32"
+        self.op_static = lambda x: paddle.ravel(x)
+        self.op_dygraph = lambda x: paddle.ravel(x)
+        self.expected = lambda x: x.flatten()
+        self.places = [None, paddle.CPUPlace()]
+
+
+class TestPaddleRavel_case4(TestPaddleRavel):
+    def setUp(self):
+        # check Ravel empty array
+        self.input_np = np.array([], dtype="float32").reshape(0, 3)
+        self.input_shape = self.input_np.shape
+        self.input_dtype = "float32"
+        self.op_static = lambda x: paddle.ravel(x)
+        self.op_dygraph = lambda x: paddle.ravel(x)
+        self.expected = lambda x: x.flatten()
+        self.places = [None, paddle.CPUPlace()]
 
 
 if __name__ == "__main__":
