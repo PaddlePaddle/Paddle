@@ -158,9 +158,13 @@ set +x
             #install paddlex
             git clone --depth 1000 https://gitee.com/paddlepaddle/PaddleX.git
             cd PaddleX
+            echo 1111
+            pip list
             pip install -e .
 
             #install paddle x dependency
+            echo 2222
+            pip list
             paddlex --install PaddleClas -y
 
             #download paddle dataset
