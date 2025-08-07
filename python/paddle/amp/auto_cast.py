@@ -1338,7 +1338,7 @@ def is_autocast_enabled(device_type: PlaceLike | None = None) -> bool:
         bool: True if auto-mixed-precision is enabled, False otherwise.
 
     Examples:
-    .. code-block:: python
+        .. code-block:: python
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> # Demo1: Check if auto-mixed-precision is enabled by default
@@ -1373,7 +1373,7 @@ def get_autocast_dtype(device_type: PlaceLike | None = None) -> _DTypeLiteral:
         _DTypeLiteral: The current AMP dtype.
 
     Examples:
-    .. code-block:: python
+        .. code-block:: python
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> # Demo1: Get default auto-mixed-precision dtype
