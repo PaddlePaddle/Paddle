@@ -12,41 +12,52 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from paddle.base.framework import EagerParamBase
 from paddle.tensor.creation import to_tensor
+
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 
 class Parameter(EagerParamBase):
     """
-    Parameter is a subclass of EagerParamBase, which is a persistable Tensor
+    Parameter is a subclass of Tensor, which is a persistable Tensor
     that can be updated by optimizers during training.
 
     Args:
         data (Tensor, optional): The initial data for the Parameter.
             If None, an empty Tensor will be created. Default: None.
-        requires_grad (bool): Whether this Parameter requires gradient computation.
+        requires_grad (bool, optional): Whether this Parameter requires gradient computation.
             If True, the Parameter will accumulate gradients during backward pass.
             Default: True.
 
     Examples:
-        >>> # Create a Parameter from existing Tensor
-        >>> weight = paddle.to_tensor([1.0, 2.0, 3.0])
-        >>> param = Parameter(weight)
-        >>> print(param.requires_grad)  # True by default
+        .. code-block:: python
 
-        >>> # Create a Parameter without initial data
-        >>> param = Parameter()
-        >>> print(param.shape)  # empty tensor: []
+            >>> import paddle
+            >>> # Create a Parameter from existing Tensor
+            >>> weight = paddle.to_tensor([1.0, 2.0, 3.0])
+            >>> param = paddle.nn.Parameter(weight)
+            >>> print(param)
+
+            >>> # Create a Parameter without initial data
+            >>> param = paddle.nn.Parameter()
+            >>> print(param)
     """
 
-    def __new__(cls, data=None, requires_grad=True):
+    def __init__(
+        self, data: Tensor | None = None, requires_grad: bool = True
+    ) -> Parameter:
         if data is None:
             data = to_tensor([])
-        param = EagerParamBase.from_tensor(data)
-        param.stop_gradient = not requires_grad
-        return param
+        super().__init__(data.shape, data.dtype, trainable=requires_grad)
+        super()._set_impl(data)
 
-    def __repr__(self):
-        return f"Parameter containing:\n{super().__repr__()}"
+    def __repr__(self) -> str:
+        return super().__repr__()
 
     __str__ = __repr__

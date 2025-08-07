@@ -118,6 +118,24 @@ class TestPaddleParameter(unittest.TestCase):
         self.assertEqual(result.shape, [0])  # Empty parameter
         self.assertEqual(result.trainable, True)
 
+    def test_inheritance(self):
+        """Test that Parameter is subclass of both Parameter and Tensor"""
+        param = paddle.nn.Parameter()
+        self.assertTrue(isinstance(param, paddle.Tensor))
+        self.assertTrue(isinstance(param, paddle.nn.Parameter))
+        self.assertEqual(type(param), paddle.nn.Parameter)
+
+    def test_repr(self):
+        """Test Parameter.__repr__() output"""
+        x = paddle.to_tensor(self.data_np)
+        x.stop_gradient = False
+        param = paddle.nn.Parameter(x)
+
+        expected_repr = f"Parameter containing:\n{x!s}"
+
+        self.assertEqual(repr(param), expected_repr)
+        self.assertEqual(str(param), expected_repr)
+
 
 if __name__ == "__main__":
     unittest.main()
