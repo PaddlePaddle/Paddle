@@ -389,14 +389,15 @@ class TestEagerTensor(unittest.TestCase):
         self.assertEqual(tensor_device.place, tensor_place.place)
 
         # 2. Test conflict between place and device (should raise KeyError)
-        with self.assertRaises(KeyError) as context:
+        with self.assertRaises(ValueError) as context:
             paddle.to_tensor(
                 self.array,
                 place=paddle.CPUPlace(),
                 device=paddle.CPUPlace(),  # Conflict
             )
         self.assertIn(
-            "Both place and device are provided.", str(context.exception)
+            "Cannot specify both 'place' and its alias 'device'",
+            str(context.exception),
         )
 
         # 3. Test dtype and stop_gradient consistency
