@@ -14,11 +14,13 @@
 
 import numpy as np
 
+from paddle.utils import deprecated
+
 from ...base.framework import IrGraph
 from ...framework import _get_paddle_place
 
 
-class QuantInt8MkldnnPass:
+class QuantInt8OnednnPass:
     """
     Convert QuantizationFreezePass generated IrGraph to MKL-DNN supported INT8
     IrGraph. Following transformations did in this pass:
@@ -48,13 +50,13 @@ class QuantInt8MkldnnPass:
                 >>> # The original graph will be rewrite.
                 >>> import paddle
                 >>> from paddle import static
-                >>> from paddle.static.quantization import QuantInt8MkldnnPass
+                >>> from paddle.static.quantization import QuantInt8OnednnPass
                 >>> from paddle.framework import IrGraph
                 >>> from paddle.framework import core
 
                 >>> graph = IrGraph(core.Graph(static.Program().desc), for_test=False)
                 >>> place = paddle.CPUPlace()
-                >>> onednn_pass = QuantInt8MkldnnPass(static.global_scope(), place)
+                >>> onednn_pass = QuantInt8OnednnPass(static.global_scope(), place)
                 >>> onednn_pass.apply(graph)
         """
 
@@ -245,7 +247,7 @@ class QuantInt8MkldnnPass:
         quant_op_node = graph.create_op_node(
             op_type='quantize',
             attrs={
-                'data_format': 'MKLDNNLAYOUT',
+                'data_format': 'ONEDNNLAYOUT',
                 'use_mkldnn': 1,
                 'Scale': scale_in,
                 'is_negative_input': 1,
@@ -287,3 +289,14 @@ class QuantInt8MkldnnPass:
             )
         )
         graph.safe_remove_nodes(all_unused_vars)
+
+
+class QuantInt8MkldnnPass(QuantInt8OnednnPass):
+    @deprecated(
+        since="3.1.0",
+        update_to="paddle.static.quantization.QuantInt8OnednnPass",
+        level=1,
+        reason="QuantInt8MkldnnPass will be removed in future",
+    )
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)

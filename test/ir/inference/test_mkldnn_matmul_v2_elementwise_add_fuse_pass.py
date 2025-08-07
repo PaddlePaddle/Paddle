@@ -86,7 +86,7 @@ class TestMatmulV2ElementwiseAddOnednnFusePass(PassAutoScanTest):
         return program_config
 
     def sample_predictor_configs(self, program_config):
-        config = self.create_inference_config(use_mkldnn=True)
+        config = self.create_inference_config(use_onednn=True)
         yield config, ['fused_matmul'], (1e-5, 1e-5)
 
     def test(self):

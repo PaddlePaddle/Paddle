@@ -28,7 +28,7 @@ A procedure on how to transform an FP32 model into a Quant model supported by th
 
 ## 3. How to turn a Quant model into an INT8 MKL-DNN model?
 
-A Quant model can be transformed into an INT8 quantized model if it contains enough information about quantization scales for every quantized operator in the graph. The process of quantization is done by the `Quant2Int8MkldnnPass` pass which comprises several steps:
+A Quant model can be transformed into an INT8 quantized model if it contains enough information about quantization scales for every quantized operator in the graph. The process of quantization is done by the `Quant2Int8OnednnPass` pass which comprises several steps:
 
 ### Gathering scales
 
@@ -88,12 +88,12 @@ Having gathered all the data needed for quantization we apply the `cpu_quantize_
 
 ## 4. Code example
 
-The code snipped shows how the `Quant2Int8MkldnnPass` can be applied to a model graph:
+The code snipped shows how the `Quant2Int8OnednnPass` can be applied to a model graph:
 
 ```python
     import paddle
     import paddle.static as static
-    from paddle.static.quantization import Quant2Int8MkldnnPass
+    from paddle.static.quantization import Quant2Int8OnednnPass
     from paddle.base.framework import IrGraph
     from paddle.framework import core
 
@@ -101,10 +101,10 @@ The code snipped shows how the `Quant2Int8MkldnnPass` can be applied to a model 
     graph = IrGraph(core.Graph(static.Program().desc), for_test=False)
     place = paddle.CPUPlace()
     # Convert the IrGraph to MKL-DNN supported INT8 IrGraph using the
-    # Quant2Int8MkldnnPass. It requires a list of operators to be quantized
-    mkldnn_pass = Quant2Int8MkldnnPass({'conv2d', 'pool2d'}, static.global_scope(), place, core, False)
-    # Apply Quant2Int8MkldnnPass to IrGraph
-    mkldnn_pass.apply(graph)
+    # Quant2Int8OnednnPass. It requires a list of operators to be quantized
+    onednn_pass = Quant2Int8OnednnPass({'conv2d', 'pool2d'}, static.global_scope(), place, core, False)
+    # Apply Quant2Int8OnednnPass to IrGraph
+    onednn_pass.apply(graph)
 
 ```
 
@@ -273,7 +273,7 @@ OMP_NUM_THREADS=28 FLAGS_use_mkldnn=true python python/paddle/static/quantizatio
 
 To reproduce the performance results, the environment variable `OMP_NUM_THREADS=1` and `--batch_size=1` option should be set.
 
-1. Transform the Quant model into INT8 model by applying the `Quant2Int8MkldnnPass` pass and save the result. You can use the script `save_quant_model.py` for this purpose. It also accepts the option `--ops_to_quantize` with a list of operators to quantize.
+1. Transform the Quant model into INT8 model by applying the `Quant2Int8OnednnPass` pass and save the result. You can use the script `save_quant_model.py` for this purpose. It also accepts the option `--ops_to_quantize` with a list of operators to quantize.
 
    ```bash
    cd /PATH/TO/PADDLE/build
