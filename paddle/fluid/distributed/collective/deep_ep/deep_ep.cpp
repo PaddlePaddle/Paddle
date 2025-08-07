@@ -36,7 +36,13 @@
 #include "paddle/phi/core/distributed/utils.h"
 #include "paddle/phi/core/memory/allocation/allocator_facade.h"
 
+COMMON_DECLARE_bool(use_deep_ep_comm_prealloc);
+
 namespace deep_ep {
+
+if (FLAGS_use_deep_ep_comm_prealloc) {
+  std::once_flag pre_alloc_once_flag;
+}
 
 namespace detail {
 void SetAllocatorStreamForGPUContext(cudaStream_t stream,
@@ -46,6 +52,18 @@ void SetAllocatorStreamForGPUContext(cudaStream_t stream,
                         .get());
 }
 }  // namespace detail
+
+void PreAlloc(paddle::Tensor tensor, cudaStream_t stream) {
+  int64_t numel = tensor.numel();
+
+  std::cerr << "alloc once  here " << numel * 8 * 2 << std::endl;
+  std::cerr << tensor.place() << "\t" << stream << std::endl;
+
+  auto alloc_size = numel * 8 * 2 * sizeof(tensor.dtype());
+  paddle::memory::allocation::AllocatorFacade::Instance()
+      .GetAllocator(tensor.place(), stream)
+      ->Allocate(alloc_size);
+}
 
 Buffer::Buffer(int rank,
                int num_ranks,
@@ -537,6 +555,9 @@ Buffer::intranode_dispatch(
   if (allocate_on_comm_stream) {
     EP_HOST_ASSERT(previous_event.has_value() && async);
     deep_ep::detail::SetAllocatorStreamForGPUContext(comm_stream, calc_ctx);
+    if (FLAGS_use_deep_ep_comm_prealloc)
+      std::call_once(
+          pre_alloc_once_flag, PreAlloc, x.raw_tensor(), comm_stream);
   }
 
   // Wait previous tasks to be finished
@@ -1101,6 +1122,9 @@ Buffer::internode_dispatch(
   if (allocate_on_comm_stream) {
     EP_HOST_ASSERT(previous_event.has_value() && async);
     deep_ep::detail::SetAllocatorStreamForGPUContext(comm_stream, calc_ctx);
+    if (FLAGS_use_deep_ep_comm_prealloc)
+      std::call_once(
+          pre_alloc_once_flag, PreAlloc, x.raw_tensor(), comm_stream);
   }
 
   // Wait previous tasks to be finished

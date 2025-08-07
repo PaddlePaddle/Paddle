@@ -2180,3 +2180,15 @@ PHI_DEFINE_EXPORTED_bool(check_cuda_error,
 PHI_DEFINE_EXPORTED_bool(use_default_stream,
                          false,
                          "Whether use default stream.");
+
+/**
+ * Allocator related FLAG
+ * Name: use_deep_ep_comm_prealloc
+ * Since Version: 3.1.1
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Whether use prealloc for deepep communication.
+ */
+PHI_DEFINE_EXPORTED_bool(use_deep_ep_comm_prealloc,
+                         false,
+                         "Whether use prealloc for deepep communication.");
