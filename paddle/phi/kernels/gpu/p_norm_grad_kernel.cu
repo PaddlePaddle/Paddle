@@ -68,26 +68,22 @@ struct PNormGradFunctor {
     auto norm_pow = y_mt.pow(-this->porder);
     auto mask_norm_nonzero = (y_mt != static_cast<MT>(0)).template cast<MT>();
 
-    // ⚠️ New: Set to 0 where porder < 0 and x == 0
-    // Condition mask: x == 0 && this->porder < 0
+    // Set to 0 where porder < 0 and x == 0
     MT zero = static_cast<MT>(0);
     auto mask_x_zero = (x_mt == zero).template cast<MT>();
 
     MT is_porder_negative =
         this->porder < zero ? static_cast<MT>(1) : static_cast<MT>(0);
-    auto invalid_mask =
-        (mask_x_zero * is_porder_negative);  // Only positions where both
-                                             // conditions are true are set to 1
-
+    auto invalid_mask = (mask_x_zero * is_porder_negative);
     auto safe_pow =
         x_mt.abs().pow(this->porder) * (static_cast<MT>(1) - invalid_mask);
 
-    dx->device(place) = (safe_pow * x_mt.sign() * dy_mt.broadcast(dim) *
-                         norm_pow.broadcast(dim) *
-                         mask_norm_nonzero.broadcast(
-                             dim)  // ⚠ Mask out positions where norm == 0
-                         )
-                            .template cast<T>();
+    dx->device(place) =
+        (safe_pow * x_mt.sign() * dy_mt.broadcast(dim) *
+         norm_pow.broadcast(dim) *
+         mask_norm_nonzero.broadcast(dim)  // Mask out positions where norm == 0
+         )
+            .template cast<T>();
   }
 
   MT porder;
