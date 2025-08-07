@@ -165,9 +165,10 @@ struct DeviceContext::Impl {
         (fake_alloc || tensor->numel() == 0) && requested_size == 0
             ? zero_allocator_
             : (pinned ? pinned_allocator_ : device_allocator_);
+    bool use_normal_allocator =
+        (!fake_alloc && tensor->numel() != 0) && !pinned;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    bool use_cuda_allocator = (!fake_alloc && tensor->numel() != 0) && !pinned;
-    if (use_cuda_allocator && place.GetType() == phi::AllocationType::GPU &&
+    if (use_normal_allocator && place.GetType() == phi::AllocationType::GPU &&
         phi::backends::gpu::CUDAGraph::IsThisThreadCapturing()) {
       PADDLE_ENFORCE_NOT_NULL(cuda_graph_allocator_,
                               common::errors::InvalidArgument(
@@ -175,15 +176,15 @@ struct DeviceContext::Impl {
                                   "nullptr, but received nullptr."));
       allocator = cuda_graph_allocator_;
     }
-    if (use_cuda_allocator && place.GetType() == phi::AllocationType::GPU &&
+#endif
+    if (use_normal_allocator && place.GetType() == phi::AllocationType::GPU &&
         paddle::memory::allocation::MonotonicAllocatorManager::Instance()
             .IsEnabled()) {
       allocator =
           paddle::memory::allocation::MonotonicAllocatorManager::Instance()
-              .GetAllocator(place)
+              .CreateOrGetAllocator(place, const_cast<Allocator*>(allocator))
               .get();
     }
-#endif
     return tensor->AllocateFrom(const_cast<Allocator*>(allocator),
                                 dtype,
                                 requested_size,

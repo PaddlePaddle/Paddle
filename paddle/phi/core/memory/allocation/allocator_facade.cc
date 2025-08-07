@@ -366,13 +366,6 @@ class AllocatorFacadePrivate {
         UNLIKELY(IsCUDAGraphCapturing())) {
       WrapCUDAGraphAllocator();
     }
-
-    // MonotonicAllocator is not compatible with CUDAGraphAllocator and
-    // StreamSafeCUDAAllocator
-    if (is_stream_safe_cuda_allocator_used_ ||
-        !UNLIKELY(IsCUDAGraphCapturing)) {
-      InitMonotonicCUDAAllocator();
-    }
 #endif
   }
 
@@ -1176,17 +1169,6 @@ class AllocatorFacadePrivate {
     }
 #endif
 #endif
-  }
-
-  void InitMonotonicCUDAAllocator() {
-    for (const auto& pair : allocators_) {
-      if (phi::is_gpu_place(pair.first)) {
-        MonotonicAllocatorManager::Instance().SetAllocator(
-            std::make_shared<MonotonicAllocator>(pair.second,
-                                                 platform::GpuMinChunkSize()),
-            pair.first);
-      }
-    }
   }
 
   void InitThreadLocalCUDAAllocator(phi::GPUPlace p) {

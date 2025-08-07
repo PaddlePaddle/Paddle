@@ -18,9 +18,9 @@
 #include <mutex>  // NOLINT
 #include <utility>
 
-#include "paddle/phi/api/profiler/event_tracing.h"
-#include "paddle/phi/backends/device_manager.h"
-#include "paddle/phi/core/memory/allocation/aligned_allocator.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
+#endif
 
 namespace paddle::memory::allocation {
 
@@ -84,15 +84,18 @@ void MonotonicAllocator::FreeImpl(phi::Allocation* allocation) {
   delete allocation;
 }
 
-void MonotonicAllocatorManager::SetAllocator(
-    std::shared_ptr<Allocator> allocator, const phi::Place& place) {
+std::shared_ptr<Allocator> MonotonicAllocatorManager::CreateOrGetAllocator(
+    const phi::Place& place, phi::Allocator* underlying_allocator) {
   std::lock_guard<SpinLock> guard(spinlock_);
-  allocators_[place] = std::move(allocator);
-}
-
-std::shared_ptr<Allocator> MonotonicAllocatorManager::GetAllocator(
-    const phi::Place& place) {
-  std::lock_guard<SpinLock> guard(spinlock_);
+#ifdef PADDLE_WITH_CUDA
+  size_t alignment = platform::GpuMinChunkSize();
+#else
+  size_t alignment = 1 << 8;
+#endif
+  if (allocators_.find(place) == allocators_.end()) {
+    allocators_[place] =
+        std::make_shared<MonotonicAllocator>(underlying_allocator, alignment);
+  }
   return allocators_[place];
 }
 

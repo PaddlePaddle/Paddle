@@ -31,10 +31,9 @@ namespace allocation {
 class MonotonicAllocation;
 class MonotonicAllocator : public Allocator {
  public:
-  explicit MonotonicAllocator(std::shared_ptr<Allocator> underlying_allocator,
+  explicit MonotonicAllocator(phi::Allocator* underlying_allocator,
                               size_t alignment)
-      : underlying_allocator_(std::move(underlying_allocator)),
-        alignment_(alignment) {}
+      : underlying_allocator_(underlying_allocator), alignment_(alignment) {}
 
   bool IsAllocThreadSafe() const override { return true; }
 
@@ -47,12 +46,10 @@ class MonotonicAllocator : public Allocator {
 
   void FreeImpl(phi::Allocation* allocation) override;
 
-  uint64_t ReleaseImpl(const phi::Place& place) override {
-    return underlying_allocator_->Release(place);
-  }
+  uint64_t ReleaseImpl(const phi::Place& place) override { return 0; }
 
  protected:
-  std::shared_ptr<Allocator> underlying_allocator_;
+  phi::Allocator* underlying_allocator_;
   AllocationPtr buffer_allocation_;
 
   size_t capacity_{0};
@@ -99,9 +96,8 @@ class MonotonicAllocatorManager {
   void Disable() { enabled_ = false; }
   bool IsEnabled() const { return enabled_; }
 
-  void SetAllocator(std::shared_ptr<Allocator> allocator,
-                    const phi::Place& place);
-  std::shared_ptr<Allocator> GetAllocator(const phi::Place& place);
+  std::shared_ptr<Allocator> CreateOrGetAllocator(
+      const phi::Place& place, phi::Allocator* underlying_allocator);
 
   void AllocateBuffer(const phi::Place& place, size_t capacity);
   void DeallocateBuffer(const phi::Place& place);

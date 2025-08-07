@@ -33,7 +33,8 @@ class MonotonicAllocatorManager:
         # The framework's device_context is lazily inited. When manually calling allocate,
         # the device_context may not have finished initialization yet. Therefore, calling
         # paddle.empty([1]) triggers the initialization of device_context.
-        paddle.empty([1])
+        with MonotonicAllocatorManager.switch_to_monotonic_allocator():
+            paddle.empty([1])
         core._MonotonicAllocatorManager._allocate_buffer(place, size)
 
     @staticmethod
