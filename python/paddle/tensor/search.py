@@ -676,17 +676,17 @@ def sort(
         return out
 
 
-def msort(x: Tensor) -> Tensor:
+def msort(input: Tensor) -> Tensor:
     """
 
     Sorts the input along the given axis = 0, and returns the sorted output tensor. The sort algorithm is ascending.
 
     Args:
-        x (Tensor): An input N-D Tensor with type float32, float64, int16,
+        input (Tensor): An input N-D Tensor with type float32, float64, int16,
             int32, int64, uint8.
 
     Returns:
-        Tensor, sorted tensor(with the same shape and data type as ``x``).
+        Tensor, sorted tensor(with the same shape and data type as ``input``).
 
     Examples:
 
@@ -701,7 +701,7 @@ def msort(x: Tensor) -> Tensor:
             ...                        [4,7,7,9],
             ...                        [1,7,0,6]]],
             ...                      dtype='float32')
-            >>> out1 = paddle.msort(x=x)
+            >>> out1 = paddle.msort(input=x)
             >>> print(out1.numpy())
             [[[5. 2. 4. 2.]
               [0. 0. 1. 7.]
@@ -711,7 +711,7 @@ def msort(x: Tensor) -> Tensor:
               [6. 9. 2. 6.]]]
     """
 
-    return sort(x, axis=0)
+    return sort(input, axis=0)
 
 
 def mode(

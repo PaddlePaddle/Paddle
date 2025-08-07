@@ -30,7 +30,7 @@ class TestMsortOnCPU(unittest.TestCase):
             input = paddle.static.data(
                 name="input", shape=[2, 3, 4], dtype="float32"
             )
-            output = paddle.msort(x=input)
+            output = paddle.msort(input=input)
             exe = base.Executor(self.place)
             data = np.array(
                 [
@@ -63,7 +63,7 @@ class TestMsortDygraph(unittest.TestCase):
     def test_api_0(self):
         paddle.disable_static(self.place)
         var_x = paddle.to_tensor(self.input_data)
-        out = paddle.msort(x=var_x)
+        out = paddle.msort(input=var_x)
         self.assertEqual(
             (np.sort(self.input_data, axis=0) == out.numpy()).all(), True
         )
