@@ -1088,8 +1088,7 @@ def full_like(
             tensor = _C_ops.full_like(x, fill_value, dtype, device)
         else:
             tensor = _C_ops.full_like(x, fill_value, dtype, core.Place())
-        if requires_grad is True:
-            tensor.stop_gradient = False
+        tensor.stop_gradient = not requires_grad
         return tensor
     else:
         helper = LayerHelper("full_like", **locals())
@@ -1305,10 +1304,9 @@ def ones(
         dtype = paddle.get_default_dtype()
     tensor = fill_constant(value=1.0, shape=shape, dtype=dtype, name=name)
 
-    if device is not None and in_dynamic_mode():
+    if device is not None:
         tensor = tensor.to(device=device)
-    if requires_grad is True:
-        tensor.stop_gradient = False
+    tensor.stop_gradient = not requires_grad
     return tensor
 
 
@@ -1424,10 +1422,9 @@ def zeros(
         dtype = paddle.get_default_dtype()
     tensor = fill_constant(value=0.0, shape=shape, dtype=dtype, name=name)
 
-    if device is not None and in_dynamic_mode():
+    if device is not None:
         tensor = tensor.to(device=device)
-    if requires_grad is True:
-        tensor.stop_gradient = False
+    tensor.stop_gradient = not requires_grad
     return tensor
 
 
@@ -1560,8 +1557,7 @@ def eye(
                 else _current_expected_place()
             ),
         )
-        if requires_grad is True:
-            tensor.stop_gradient = False
+        tensor.stop_gradient = not requires_grad
         return tensor
     else:
         helper = LayerHelper("eye", **locals())
@@ -1676,10 +1672,9 @@ def full(
     tensor = fill_constant(
         shape=shape, dtype=dtype, value=fill_value, name=name
     )
-    if device is not None and in_dynamic_mode():
+    if device is not None:
         tensor = tensor.to(device=device)
-    if requires_grad is True:
-        tensor.stop_gradient = False
+    tensor.stop_gradient = not requires_grad
     return tensor
 
 
@@ -2651,8 +2646,7 @@ def empty(
                 else _current_expected_place()
             ),
         )
-        if requires_grad is True:
-            tensor.stop_gradient = False
+        tensor.stop_gradient = not requires_grad
         return tensor
     else:
         helper = LayerHelper("empty", **locals())
@@ -2757,8 +2751,7 @@ def empty_like(
             convert_np_dtype_to_dtype_(dtype),
             (device or _current_expected_place()),
         )
-        if requires_grad is True:
-            tensor.stop_gradient = False
+        tensor.stop_gradient = not requires_grad
         return tensor
 
     else:
