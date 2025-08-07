@@ -24,6 +24,7 @@ from typing_extensions import overload
 import paddle
 from paddle import _C_ops
 from paddle.tensor import fill_constant
+from paddle.utils.decorator_utils import ParamAliasDecorator
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
@@ -4762,6 +4763,7 @@ def expand_as(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
+@ParamAliasDecorator({"x": ["input"], "shape": ["size"]})
 def broadcast_to(
     x: Tensor, shape: ShapeLike, name: str | None = None
 ) -> Tensor:

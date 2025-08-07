@@ -16,7 +16,7 @@ import unittest
 from itertools import combinations
 
 import numpy as np
-from op_test import get_places
+from op_test import get_devices
 
 import paddle
 from paddle.base import Program
@@ -44,7 +44,7 @@ class TestIndexFillAPIBase(unittest.TestCase):
             self.index_type
         )
 
-        self.place = get_places(string_format=True)
+        self.place = get_devices()
         if self.dtype_np == 'float16' and 'cpu' in self.place:
             self.place.remove('cpu')
 
@@ -150,7 +150,7 @@ class TestIndexFillAPI_ZeroSize(unittest.TestCase):
             self.index_type
         )
 
-        self.place = get_places(string_format=True)
+        self.place = get_devices()
         if self.dtype_np == 'float16' and 'cpu' in self.place:
             self.place.remove('cpu')
 

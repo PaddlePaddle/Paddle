@@ -1031,8 +1031,8 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       }
 #endif
 #ifdef PADDLE_WITH_DNNL
-    } else if (config_.mkldnn_enabled()) {
-      // mkldnn
+    } else if (config_.onednn_enabled()) {
+      // onednn
       pir::IrContext *ctx = pir::IrContext::Instance();
       ctx->GetOrRegisterDialect<paddle::dialect::OneDNNOperatorDialect>();
       if (!config_.custom_pass_only_) {
@@ -2100,9 +2100,9 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetIpuCustomPatterns(config_.ipu_custom_patterns_);
 #endif
 
-  if (config_.mkldnn_enabled() && !config_.use_gpu()) {
-    LOG(INFO) << "MKLDNN is enabled";
-    argument_->SetMKLDNNEnabledOpTypes(config_.onednn_enabled_op_types_);
+  if (config_.onednn_enabled() && !config_.use_gpu()) {
+    LOG(INFO) << "ONEDNN is enabled";
+    argument_->SetONEDNNEnabledOpTypes(config_.onednn_enabled_op_types_);
   }
 
   if (config_.cinn_enabled()) {
@@ -2115,7 +2115,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetBfloat16EnabledOpTypes(config_.bfloat16_enabled_op_types_);
   }
 
-  if (config_.mkldnn_int8_enabled()) {
+  if (config_.onednn_int8_enabled()) {
     LOG(INFO) << "Int8 is enabled";
     argument_->SetQuantizeEnabledOpTypes(config_.quantize_enabled_op_types_);
     argument_->SetQuantizeExcludedOpIds(config_.quantize_excluded_op_ids_);
@@ -2296,7 +2296,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 #if defined(_WIN32)
   argument_->PartiallyRelease();
 #else
-  if (config_.mkldnn_enabled() ||
+  if (config_.onednn_enabled() ||
       (config_.tensorrt_engine_enabled() &&
        config_.tensorrt_precision_mode_ ==
            AnalysisConfig::Precision::kInt8)) {  // NOLINT

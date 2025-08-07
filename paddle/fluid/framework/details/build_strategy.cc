@@ -321,7 +321,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
         continue;
       }
     } else if (pass->Type() == "onednn_placement_pass") {
-      pass->Set("mkldnn_enabled_op_types",
+      pass->Set("onednn_enabled_op_types",
                 new std::unordered_set<std::string>(onednn_enabled_op_types_));
     }
     VLOG(1) << "Start Apply Pass " << pass->Type();

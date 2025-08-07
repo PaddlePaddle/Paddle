@@ -21,7 +21,7 @@ import unittest
 
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import get_places
+from op_test import get_devices
 
 import paddle
 
@@ -182,7 +182,7 @@ class TestNoBackwardAPI(unittest.TestCase):
         self.assertEqual(one_hot_label.numpy()[2], 1)
 
     def test_unique_consecutive(self):
-        for place in get_places(string_format=True):
+        for place in get_devices():
             paddle.set_device(place)
             x = paddle.rand([])
             y, inverse, counts = paddle.unique_consecutive(
@@ -199,7 +199,7 @@ class TestNoBackwardAPI(unittest.TestCase):
             self.assertEqual(counts.shape, [1])
 
     def test_unique(self):
-        for place in get_places(string_format=True):
+        for place in get_devices():
             paddle.set_device(place)
             x = paddle.rand([])
             y, index, inverse, counts = paddle.unique(

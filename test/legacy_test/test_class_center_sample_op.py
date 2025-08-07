@@ -15,10 +15,9 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, paddle_static_guard
+from op_test import OpTest, get_places, paddle_static_guard
 
 import paddle
-from paddle.base import core
 
 
 def class_center_sample_numpy(label, classes_list, num_samples):
@@ -135,9 +134,7 @@ class TestClassCenterSampleV2(unittest.TestCase):
         self.initParams()
         np.random.seed(self.seed)
         paddle.framework.random._manual_program_seed(2021)
-        self.places = [paddle.base.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            self.places.append(paddle.base.CUDAPlace(0))
+        self.places = get_places()
 
     def initParams(self):
         self.batch_size = 10
@@ -235,9 +232,7 @@ class TestClassCenterSampleAPIError(unittest.TestCase):
     def setUp(self):
         self.initParams()
         np.random.seed(self.seed)
-        self.places = [paddle.base.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            self.places.append(paddle.base.CUDAPlace(0))
+        self.places = get_places()
 
     def initParams(self):
         self.batch_size = 20
@@ -275,9 +270,7 @@ class TestClassCenterSampleAPIError1(unittest.TestCase):
     def setUp(self):
         self.initParams()
         np.random.seed(self.seed)
-        self.places = [paddle.base.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            self.places.append(paddle.base.CUDAPlace(0))
+        self.places = get_places()
 
     def initParams(self):
         self.batch_size = 5

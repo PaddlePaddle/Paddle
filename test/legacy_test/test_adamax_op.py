@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, get_device_place, get_places
+from op_test import OpTest, get_device_place, get_devices
 
 import paddle
 
@@ -275,7 +275,7 @@ class TestAdamaxOpMultiPrecision(unittest.TestCase):
         paddle.enable_static()
 
     def _get_places(self):
-        return get_places(string_format=True)
+        return get_devices()
 
     def test_main(self):
         for place in self._get_places():

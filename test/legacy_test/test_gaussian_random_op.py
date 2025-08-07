@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_uint16_to_float, paddle_static_guard
+from op_test import (
+    OpTest,
+    convert_uint16_to_float,
+    is_custom_device,
+    paddle_static_guard,
+)
 
 import paddle
 from paddle import base
@@ -61,7 +66,8 @@ class TestGaussianRandomOp(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestGaussianRandomFP16Op(OpTest):
     def setUp(self):
@@ -111,7 +117,8 @@ def gaussian_wrapper(dtype_=np.uint16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestGaussianRandomBF16Op(OpTest):
     def setUp(self):

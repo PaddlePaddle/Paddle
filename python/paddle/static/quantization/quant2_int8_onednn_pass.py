@@ -429,7 +429,7 @@ class Quant2Int8MkldnnPass:
         graph = self._update_activations(graph)
         graph = self._remove_ctrl_vars(graph)
         graph = self._apply_pass(
-            graph, 'onednn_placement_pass', ['mkldnn_enabled_op_types'], [set()]
+            graph, 'onednn_placement_pass', ['onednn_enabled_op_types'], [set()]
         )
         # remove dropout ops
         graph = self._apply_pass(graph, 'simplify_with_basic_ops_pass')

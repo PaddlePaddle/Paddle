@@ -21,7 +21,7 @@ import os
 import unittest
 
 import numpy as np
-from op_test import get_device_place, get_places
+from op_test import get_device_place, get_devices
 
 import paddle
 import paddle.nn.functional as F
@@ -1691,7 +1691,7 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(y2.grad.shape, [])
 
     def test_repeat_interleave(self):
-        for place in get_places(string_format=True):
+        for place in get_devices():
             paddle.set_device(place)
 
             x = paddle.randn(())
