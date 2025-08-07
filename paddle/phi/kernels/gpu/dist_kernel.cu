@@ -66,8 +66,8 @@ struct PowFunctor {
 template <typename Tx,
           typename Ty,
           typename Tout>  // Tx is high precision, Tout is low/out precision
-struct PowFunctor_high_precision {
-  HOSTDEVICE explicit inline PowFunctor_high_precision(const Ty& p_order)
+struct PowFunctorHighPrecision {
+  HOSTDEVICE explicit inline PowFunctorHighPrecision(const Ty& p_order)
       : p_order_(p_order) {}
   HOSTDEVICE inline Tx operator()(const Tx x) const {
     return static_cast<Tout>(pow(static_cast<Ty>(x), p_order_));
@@ -195,7 +195,7 @@ void DistKernel(const Context& dev_ctx,
 
       MT p_order_ = static_cast<MT>(1.f / p_order);
       phi::funcs::ElementwiseKernel<T>(
-          dev_ctx, ins, &outs, PowFunctor_high_precision<MT, MT, T>(p_order_));
+          dev_ctx, ins, &outs, PowFunctorHighPrecision<MT, MT, T>(p_order_));
     }
 
   } else {
