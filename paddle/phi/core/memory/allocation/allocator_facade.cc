@@ -115,6 +115,7 @@ PHI_DEFINE_EXPORTED_bool(
 
 COMMON_DECLARE_string(allocator_strategy);
 COMMON_DECLARE_uint64(auto_growth_chunk_size_in_mb);
+COMMON_DECLARE_uint64(alignment_size);
 COMMON_DECLARE_bool(use_auto_growth_pinned_allocator);
 COMMON_DECLARE_bool(use_cuda_malloc_async_allocator);
 COMMON_DECLARE_bool(auto_free_cudagraph_allocations_on_launch);
@@ -945,8 +946,10 @@ class AllocatorFacadePrivate {
 
   void InitAutoGrowthCUDAAllocator(phi::GPUPlace p, gpuStream_t stream) {
     auto chunk_size = FLAGS_auto_growth_chunk_size_in_mb << 20;
+    auto alignment_size = FLAGS_alignment_size;
     VLOG(4) << "FLAGS_auto_growth_chunk_size_in_mb is "
-            << FLAGS_auto_growth_chunk_size_in_mb;
+            << FLAGS_auto_growth_chunk_size_in_mb << ", alignment_size is "
+            << alignment_size;
 #if defined(PADDLE_WITH_HIP)
     auto cuda_allocator = CreateCUDAAllocator(p);
     if (FLAGS_use_auto_growth_v2) {
@@ -959,11 +962,10 @@ class AllocatorFacadePrivate {
               allow_free_idle_chunk_);
     } else {
       cuda_allocators_[p][stream] =
-          std::make_shared<AutoGrowthBestFitAllocator>(
-              cuda_allocator,
-              platform::GpuMinChunkSize(),
-              chunk_size,
-              allow_free_idle_chunk_);
+          std::make_shared<AutoGrowthBestFitAllocator>(cuda_allocator,
+                                                       alignment_size,
+                                                       chunk_size,
+                                                       allow_free_idle_chunk_);
     }
 #endif
 
