@@ -1050,26 +1050,35 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::SwitchIrDebug,
            py::arg("x") = true,
            py::arg("passes") = std::vector<std::string>())
-      .def("enable_mkldnn", &AnalysisConfig::EnableONEDNN)
-      .def("disable_mkldnn", &AnalysisConfig::DisableONEDNN)
-      .def("mkldnn_enabled", &AnalysisConfig::onednn_enabled)
+      .def("enable_mkldnn", &AnalysisConfig::EnableONEDNN)     // deprecated
+      .def("disable_mkldnn", &AnalysisConfig::DisableONEDNN)   // deprecated
+      .def("mkldnn_enabled", &AnalysisConfig::onednn_enabled)  // deprecated
+      .def("enable_onednn", &AnalysisConfig::EnableONEDNN)
+      .def("disable_onednn", &AnalysisConfig::DisableONEDNN)
+      .def("onednn_enabled", &AnalysisConfig::onednn_enabled)
       .def("enable_cinn", &AnalysisConfig::EnableCINN)
       .def("set_cpu_math_library_num_threads",
            &AnalysisConfig::SetCpuMathLibraryNumThreads)
       .def("cpu_math_library_num_threads",
            &AnalysisConfig::cpu_math_library_num_threads)
       .def("to_native_config", &AnalysisConfig::ToNativeConfig)
-      .def("enable_mkldnn_bfloat16", &AnalysisConfig::EnableOnednnBfloat16)
+      .def("enable_mkldnn_bfloat16",
+           &AnalysisConfig::EnableOnednnBfloat16)  // deprecated
+      .def("enable_onednn_bfloat16", &AnalysisConfig::EnableOnednnBfloat16)
 #ifdef PADDLE_WITH_DNNL
       .def("set_mkldnn_cache_capacity",
+           &AnalysisConfig::SetOnednnCacheCapacity,
+           py::arg("capacity") = 0)  // deprecated
+      .def("set_onednn_cache_capacity",
            &AnalysisConfig::SetOnednnCacheCapacity,
            py::arg("capacity") = 0)
       .def("set_bfloat16_op", &AnalysisConfig::SetBfloat16Op)
       .def("enable_mkldnn_int8",
            &AnalysisConfig::EnableOnednnInt8,
            py::arg("mkldnn_int8_enabled_op_types") =
-               std::unordered_set<std::string>({}))
-      .def("mkldnn_int8_enabled", &AnalysisConfig::onednn_int8_enabled)
+               std::unordered_set<std::string>({}))  // deprecated
+      .def("mkldnn_int8_enabled",
+           &AnalysisConfig::onednn_int8_enabled)  // deprecated
       .def("disable_mkldnn_fc_passes",
            &AnalysisConfig::DisableOnednnFcPasses,
            R"DOC(
@@ -1085,9 +1094,31 @@ void BindAnalysisConfig(py::module *m) {
                     >>> config = Config("")
                     >>> config.enable_mkldnn()
                     >>> config.disable_mkldnn_fc_passes()
+            )DOC")  // deprecated
+      .def("enable_onednn_int8",
+           &AnalysisConfig::EnableOnednnInt8,
+           py::arg("onednn_int8_enabled_op_types") =
+               std::unordered_set<std::string>({}))
+      .def("onednn_int8_enabled", &AnalysisConfig::onednn_int8_enabled)
+      .def("disable_onednn_fc_passes",
+           &AnalysisConfig::DisableOnednnFcPasses,
+           R"DOC(
+            Disable Onednn FC
+            Returns:
+                None.
+
+            Examples:
+                .. code-block:: python
+
+                    >>> from paddle.inference import Config
+
+                    >>> config = Config("")
+                    >>> config.enable_onednn()
+                    >>> config.disable_onednn_fc_passes()
             )DOC")
 #endif
-      .def("set_mkldnn_op", &AnalysisConfig::SetONEDNNOp)
+      .def("set_mkldnn_op", &AnalysisConfig::SetONEDNNOp)  // deprecated
+      .def("set_onednn_op", &AnalysisConfig::SetONEDNNOp)
       .def("set_model_buffer", &AnalysisConfig::SetModelBuffer)
       .def("model_from_memory", &AnalysisConfig::model_from_memory)
       .def("delete_pass", &AnalysisConfig::DeletePass)
@@ -1329,23 +1360,32 @@ void BindPaddlePassBuilder(py::module *m) {
   py::class_<PassStrategy, PaddlePassBuilder>(*m, "PassStrategy")
       .def(py::init<const std::vector<std::string> &>())
       .def("enable_cudnn", &PassStrategy::EnableCUDNN)
-      .def("enable_mkldnn", &PassStrategy::EnableONEDNN)
-      .def("enable_mkldnn_bfloat16", &PassStrategy::EnableMkldnnBfloat16)
+      .def("enable_mkldnn", &PassStrategy::EnableONEDNN)  // deprecated
+      .def("enable_mkldnn_bfloat16",
+           &PassStrategy::EnableMkldnnBfloat16)  // deprecated
+      .def("enable_onednn", &PassStrategy::EnableONEDNN)
+      .def("enable_onednn_bfloat16", &PassStrategy::EnableOnednnBfloat16)
       .def("use_gpu", &PassStrategy::use_gpu);
 
   py::class_<CpuPassStrategy, PassStrategy>(*m, "CpuPassStrategy")
       .def(py::init<>())
       .def(py::init<const CpuPassStrategy &>())
       .def("enable_cudnn", &CpuPassStrategy::EnableCUDNN)
-      .def("enable_mkldnn", &CpuPassStrategy::EnableONEDNN)
-      .def("enable_mkldnn_bfloat16", &CpuPassStrategy::EnableMkldnnBfloat16);
+      .def("enable_mkldnn", &CpuPassStrategy::EnableONEDNN)  // deprecated
+      .def("enable_mkldnn_bfloat16",
+           &CpuPassStrategy::EnableMkldnnBfloat16)  // deprecated
+      .def("enable_onednn", &CpuPassStrategy::EnableONEDNN)
+      .def("enable_onednn_bfloat16", &CpuPassStrategy::EnableOnednnBfloat16);
 
   py::class_<GpuPassStrategy, PassStrategy>(*m, "GpuPassStrategy")
       .def(py::init<>())
       .def(py::init<const GpuPassStrategy &>())
       .def("enable_cudnn", &GpuPassStrategy::EnableCUDNN)
-      .def("enable_mkldnn", &GpuPassStrategy::EnableONEDNN)
-      .def("enable_mkldnn_bfloat16", &GpuPassStrategy::EnableMkldnnBfloat16);
+      .def("enable_mkldnn", &GpuPassStrategy::EnableONEDNN)  // deprecated
+      .def("enable_mkldnn_bfloat16",
+           &GpuPassStrategy::EnableMkldnnBfloat16)  // deprecated
+      .def("enable_onednn", &GpuPassStrategy::EnableONEDNN)
+      .def("enable_onednn_bfloat16", &GpuPassStrategy::EnableOnednnBfloat16);
 }
 
 void BindInternalUtils(py::module *m) {
