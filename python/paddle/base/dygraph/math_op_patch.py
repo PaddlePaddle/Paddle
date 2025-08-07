@@ -25,7 +25,7 @@ from ..framework import convert_np_dtype_to_dtype_
 
 if TYPE_CHECKING:
     from paddle import Tensor
-    from paddle._typing import DTypeLike
+    from paddle._typing import DTypeLike, PlaceLike
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.UINT8,
@@ -215,6 +215,83 @@ def monkey_patch_math_tensor():
         out = _C_ops.transpose(var, perm)
         return out
 
+    def _new_full_(
+        var: Tensor,
+        fill_value: bool | float | paddle.Tensor,
+        *,
+        dtype: DTypeLike | None = None,
+        device: PlaceLike | None = None,
+        requires_grad: bool = False,
+    ) -> Tensor:
+        if dtype is None:
+            dtype = var.dtype
+        if device is None:
+            device = var.device
+
+        return paddle.full(
+            var.shape,
+            fill_value=fill_value,
+            dtype=dtype,
+            device=device,
+            requires_grad=requires_grad,
+        )
+
+    def _new_empty_(
+        var: Tensor,
+        *,
+        dtype: DTypeLike | None = None,
+        device: PlaceLike | None = None,
+        requires_grad: bool = False,
+    ) -> Tensor:
+        if dtype is None:
+            dtype = var.dtype
+        if device is None:
+            device = var.device
+
+        return paddle.empty(
+            var.shape, dtype=dtype, device=device, requires_grad=requires_grad
+        )
+
+    def _new_ones_(
+        var: Tensor,
+        *,
+        dtype: DTypeLike | None = None,
+        device: PlaceLike | None = None,
+        requires_grad: bool = False,
+    ) -> Tensor:
+        if dtype is None:
+            dtype = var.dtype
+        if device is None:
+            device = var.device
+
+        return paddle.full(
+            var.shape,
+            fill_value=1,
+            dtype=dtype,
+            device=device,
+            requires_grad=requires_grad,
+        )
+
+    def _new_zeros_(
+        var: Tensor,
+        *,
+        dtype: DTypeLike | None = None,
+        device: PlaceLike | None = None,
+        requires_grad: bool = False,
+    ) -> Tensor:
+        if dtype is None:
+            dtype = var.dtype
+        if device is None:
+            device = var.device
+
+        return paddle.full(
+            var.shape,
+            fill_value=0,
+            dtype=dtype,
+            device=device,
+            requires_grad=requires_grad,
+        )
+
     eager_methods = [
         ('__neg__', _neg_),
         ('__abs__', _abs_),
@@ -231,6 +308,10 @@ def monkey_patch_math_tensor():
         ('size', _size_),
         ('T', _T_),
         ('mT', _mT_),
+        ('new_full', _new_full_),
+        ('new_empty', _new_empty_),
+        ('new_ones', _new_ones_),
+        ('new_zeros', _new_zeros_),
         # for logical compare
         ('__array_ufunc__', None),
     ]

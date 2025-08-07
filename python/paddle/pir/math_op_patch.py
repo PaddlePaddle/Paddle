@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
 
 import inspect
 import textwrap
 import warnings
 from functools import reduce
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -25,6 +27,10 @@ from paddle.base.libpaddle import DataType
 from paddle.base.wrapped_decorator import wrap_decorator
 
 from . import Value
+
+if TYPE_CHECKING:
+    from paddle._typing import DTypeLike, PlaceLike
+
 
 _already_patch_value = False
 
@@ -565,6 +571,178 @@ def monkey_patch_value():
         perm[-1], perm[-2] = perm[-2], perm[-1]
 
         return _C_ops.transpose(self, perm)
+
+    def _new_full_(
+        self,
+        fill_value: bool | float | paddle.Tensor,
+        *,
+        dtype: DTypeLike | None = None,
+        device: PlaceLike | None = None,
+        requires_grad: bool = False,
+    ):
+        """
+
+        Returns a Tensor of size size filled with fill_value.
+        By default, the returned Tensor has the same dtype and place as this tensor.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> paddle.enable_static()
+
+                >>> x = paddle.ones(shape=[2, 3, 5])
+                >>> x_new = x.new_full(3.14, dtype="float64", device="cpu")
+
+                >>> exe = paddle.static.Executor()
+                >>> x_new_np = exe.run(paddle.static.default_main_program(), fetch_list=[x_new])[0]
+                >>> print(x_new_np.shape)
+                (2, 5, 3)
+                >>> print(str(x_new_np.dtype))
+                'paddle.float64'
+                >>> print(x_new_np.place)
+                Place(cpu)
+        """
+        if dtype is None:
+            dtype = self.dtype
+        if device is None:
+            device = self.device
+
+        return paddle.full(
+            self.shape,
+            fill_value=fill_value,
+            dtype=dtype,
+            device=device,
+            requires_grad=requires_grad,
+        )
+
+    def _new_empty_(
+        self,
+        fill_value: bool | float | paddle.Tensor,
+        *,
+        dtype: DTypeLike | None = None,
+        device: PlaceLike | None = None,
+        requires_grad: bool = False,
+    ):
+        """
+
+        Returns a Tensor of size size filled with fill_value.
+        By default, the returned Tensor has the same dtype and place as this tensor.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> paddle.enable_static()
+
+                >>> x = paddle.ones(shape=[2, 3, 5])
+                >>> x_new = x.new_empty(dtype="float64", device="cpu")
+
+                >>> exe = paddle.static.Executor()
+                >>> x_new_np = exe.run(paddle.static.default_main_program(), fetch_list=[x_new])[0]
+                >>> print(x_new_np.shape)
+                (2, 5, 3)
+                >>> print(str(x_new_np.dtype))
+                'paddle.float64'
+                >>> print(x_new_np.place)
+                Place(cpu)
+        """
+        if dtype is None:
+            dtype = self.dtype
+        if device is None:
+            device = self.device
+
+        return paddle.empty(
+            self.shape, dtype=dtype, device=device, requires_grad=requires_grad
+        )
+
+    def _new_ones_(
+        self,
+        fill_value: bool | float | paddle.Tensor,
+        *,
+        dtype: DTypeLike | None = None,
+        device: PlaceLike | None = None,
+        requires_grad: bool = False,
+    ):
+        """
+
+        Returns a Tensor of size size filled with fill_value.
+        By default, the returned Tensor has the same dtype and place as this tensor.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> paddle.enable_static()
+
+                >>> x = paddle.ones(shape=[2, 3, 5])
+                >>> x_new = x.new_ones(3.14, dtype="float64", device="cpu")
+
+                >>> exe = paddle.static.Executor()
+                >>> x_new_np = exe.run(paddle.static.default_main_program(), fetch_list=[x_new])[0]
+                >>> print(x_new_np.shape)
+                (2, 5, 3)
+                >>> print(str(x_new_np.dtype))
+                'paddle.float64'
+                >>> print(x_new_np.place)
+                Place(cpu)
+        """
+        if dtype is None:
+            dtype = self.dtype
+        if device is None:
+            device = self.device
+
+        return paddle.full(
+            self.shape,
+            fill_value=1,
+            dtype=dtype,
+            device=device,
+            requires_grad=requires_grad,
+        )
+
+    def _new_zeros_(
+        self,
+        fill_value: bool | float | paddle.Tensor,
+        *,
+        dtype: DTypeLike | None = None,
+        device: PlaceLike | None = None,
+        requires_grad: bool = False,
+    ):
+        """
+
+        Returns a Tensor of size size filled with fill_value.
+        By default, the returned Tensor has the same dtype and place as this tensor.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> paddle.enable_static()
+
+                >>> x = paddle.ones(shape=[2, 3, 5])
+                >>> x_new = x.new_zeros(3.14, dtype="float64", device="cpu")
+
+                >>> exe = paddle.static.Executor()
+                >>> x_new_np = exe.run(paddle.static.default_main_program(), fetch_list=[x_new])[0]
+                >>> print(x_new_np.shape)
+                (2, 5, 3)
+                >>> print(str(x_new_np.dtype))
+                'paddle.float64'
+                >>> print(x_new_np.place)
+                Place(cpu)
+        """
+        if dtype is None:
+            dtype = self.dtype
+        if device is None:
+            device = self.device
+
+        return paddle.full(
+            self.shape,
+            fill_value=0,
+            dtype=dtype,
+            device=device,
+            requires_grad=requires_grad,
+        )
 
     def _int_(self):
         error_msg = """\
@@ -1112,6 +1290,10 @@ def monkey_patch_value():
         ('size', _size_),
         ('T', _T_),
         ('mT', _mT_),
+        ('new_full', _new_full_),
+        ('new_empty', _new_empty_),
+        ('new_ones', _new_ones_),
+        ('new_zeros', _new_zeros_),
         ('clone', clone),
         ('clear_gradient', clear_gradient),
         ('append', append),
