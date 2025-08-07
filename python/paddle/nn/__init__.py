@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddle.nn import init as init
+
 from . import functional, initializer, quant, utils  # noqa: F401
 from .clip import ClipGradByGlobalNorm, ClipGradByNorm, ClipGradByValue
 from .decode import BeamSearchDecoder, dynamic_decode
@@ -319,4 +321,5 @@ __all__ = [
     'LPPool2D',
     'ZeroPad1D',
     'ZeroPad3D',
+    'init',
 ]
