@@ -1414,7 +1414,7 @@ static PyObject* tensor_method_set_underline_tensor(TensorObject* self,
     if (self->tensor.is_dense_tensor()) {
       auto* dst_tensor =
           static_cast<phi::DenseTensor*>(self->tensor.impl().get());
-      if (self->tensor.has_allocation() &&
+      if (self->tensor.has_allocation() && self->tensor.initialized() &&
               !dst_tensor->meta().is_contiguous() ||
           !src_tensor->meta().is_contiguous()) {
         VLOG(8) << "set_tensor() method , src or dst tensor is not contiguous";

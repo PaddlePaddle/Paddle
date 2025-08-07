@@ -47,7 +47,7 @@ class TestConvEltwiseaddBnFusePass(PassAutoScanTest):
 
         # MKLDNN
         config = self.create_inference_config(use_gpu=False)
-        config.enable_mkldnn()
+        config.enable_onednn()
         yield config, ["conv2d", "elementwise_add"], (1e-4, 1e-5)
 
         # for gpu
