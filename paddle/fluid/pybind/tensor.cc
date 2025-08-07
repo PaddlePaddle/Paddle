@@ -795,7 +795,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              tensor.ResetHolderWithType(
                  shared_reader_holder,
                  static_cast<phi::DataType>(t[3].cast<int>()));
-             tensor.Resize(common::make_ddim(t[4].cast<std::vector<int>>()));
+             tensor.Resize(common::make_ddim(t[4].cast<std::vector<int64_t>>()));
 
              return tensor;
            },
