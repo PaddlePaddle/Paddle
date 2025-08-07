@@ -93,7 +93,8 @@ static DenseTensor FoldHeadAndLastDims(const Context& dev_ctx,
   DenseTensor output = EmptyLike<T, Context>(dev_ctx, input);
   output.Resize({in_dims[1], in_dims[0], in_dims[2]});
   std::vector<int> axis = {1, 0, 2};
-  TransposeKernel<T, Context>(dev_ctx, input, axis, &output);
+  funcs::Transpose<Context, T, 3> trans;
+  trans(dev_ctx, input, &output, axis);
   output.Resize({in_dims[1], in_dims[0] * in_dims[2]});
   return output;
 }
