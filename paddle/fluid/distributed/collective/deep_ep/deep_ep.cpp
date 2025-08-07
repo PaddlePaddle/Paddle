@@ -39,10 +39,7 @@
 COMMON_DECLARE_bool(use_deep_ep_comm_prealloc);
 
 namespace deep_ep {
-
-if (FLAGS_use_deep_ep_comm_prealloc) {
-  std::once_flag pre_alloc_once_flag;
-}
+std::once_flag pre_alloc_once_flag;
 
 namespace detail {
 void SetAllocatorStreamForGPUContext(cudaStream_t stream,
