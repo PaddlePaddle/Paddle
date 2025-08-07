@@ -109,44 +109,45 @@ class Initializer:
 
         return block
 
-    def _compute_fans(self, var: paddle.Tensor) -> tuple[int, int]:
-        """Compute the fan_in and the fan_out for layers
 
-        This method computes the fan_in and the fan_out
-        for neural network layers, if not specified. It is
-        not possible to perfectly estimate fan_in and fan_out.
-        This method will estimate it correctly for matrix multiply and
-        convolutions.
+def compute_fans(var: paddle.Tensor) -> tuple[int, int]:
+    """Compute the fan_in and the fan_out for layers
 
-        Args:
-            var: variable for which fan_in and fan_out have to be computed.
+    This method computes the fan_in and the fan_out
+    for neural network layers, if not specified. It is
+    not possible to perfectly estimate fan_in and fan_out.
+    This method will estimate it correctly for matrix multiply and
+    convolutions.
 
-        Returns:
-            tuple of two integers (fan_in, fan_out).
-        """
-        shape = (
-            var._local_shape
-            if (isinstance(var, EagerParamBase) and var.is_dist())
-            else var.shape
-        )
-        if not shape or len(shape) == 0:
-            fan_in = fan_out = 1
-        elif len(shape) == 1:
-            fan_in = fan_out = shape[0]
-        elif len(shape) == 2:
-            # This is the case for simple matrix multiply
-            fan_in = shape[0]
-            fan_out = shape[1]
-        else:
-            # Assume this to be a convolutional kernel
-            # In PaddlePaddle, the shape of the kernel is like:
-            # [num_filters, num_filter_channels, ...] where the remaining
-            # dimensions are the filter_size
-            receptive_field_size = np.prod(shape[2:])
-            fan_in = shape[1] * receptive_field_size
-            fan_out = shape[0] * receptive_field_size
+    Args:
+        var: variable for which fan_in and fan_out have to be computed.
 
-        return (fan_in, fan_out)
+    Returns:
+        tuple of two integers (fan_in, fan_out).
+    """
+    shape = (
+        var._local_shape
+        if (isinstance(var, EagerParamBase) and var.is_dist())
+        else var.shape
+    )
+    if not shape or len(shape) == 0:
+        fan_in = fan_out = 1
+    elif len(shape) == 1:
+        fan_in = fan_out = shape[0]
+    elif len(shape) == 2:
+        # This is the case for simple matrix multiply
+        fan_in = shape[0]
+        fan_out = shape[1]
+    else:
+        # Assume this to be a convolutional kernel
+        # In PaddlePaddle, the shape of the kernel is like:
+        # [num_filters, num_filter_channels, ...] where the remaining
+        # dimensions are the filter_size
+        receptive_field_size = np.prod(shape[2:])
+        fan_in = shape[1] * receptive_field_size
+        fan_out = shape[0] * receptive_field_size
+
+    return (fan_in, fan_out)
 
 
 def calculate_gain(
@@ -193,8 +194,11 @@ def calculate_gain(
         'conv2d': 1,
         'conv3d': 1,
         'conv1d_transpose': 1,
+        'conv_transpose1d': 1,
         'conv2d_transpose': 1,
+        'conv_transpose2d': 1,
         'conv3d_transpose': 1,
+        'conv_transpose3d': 1,
         'tanh': 5.0 / 3,
         'relu': math.sqrt(2.0),
         'leaky_relu': math.sqrt(2.0 / (1 + param**2)),

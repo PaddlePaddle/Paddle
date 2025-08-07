@@ -27,7 +27,7 @@ from ...base.framework import (
     in_dygraph_mode,
     in_pir_mode,
 )
-from .initializer import Initializer, calculate_gain
+from .initializer import Initializer, calculate_gain, compute_fans
 
 if TYPE_CHECKING:
     from .initializer import _NonLinearity
@@ -120,7 +120,7 @@ class MSRAInitializer(Initializer):
             var, (framework.Variable, paddle.pir.core.ParameterMeta)
         )
         assert isinstance(block, (framework.Block, paddle.pir.Block))
-        f_in, f_out = self._compute_fans(var)
+        f_in, f_out = compute_fans(var)
 
         # If fan_in is passed, use it
         if self._mode == 'fan_in':
