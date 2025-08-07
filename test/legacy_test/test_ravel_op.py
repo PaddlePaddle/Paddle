@@ -23,8 +23,8 @@ from paddle.base import core
 
 class TestRavelOp(OpTest):
     def setUp(self):
-        self.python_api = paddle.ravel
-        self.public_python_api = paddle.ravel
+        self.python_api = paddle.Tensor.ravel
+        self.public_python_api = paddle.Tensor.ravel
         self.python_out_sig = ["Out"]
         self.op_type = "flatten_contiguous_range"
         self.prim_op_type = "comp"
@@ -170,14 +170,14 @@ class TestRavelOpError(unittest.TestCase):
         x = x.astype('float32')
 
         def test_InputError():
-            out = paddle.ravel(x)
+            out = paddle.Tensor.ravel(x)
 
         self.assertRaises(ValueError, test_InputError)
 
 
 class TestStaticRavelPythonAPI(unittest.TestCase):
     def execute_api(self, x):
-        return paddle.ravel(x)
+        return paddle.Tensor.ravel(x)
 
     def test_static_api(self):
         paddle.enable_static()
@@ -197,7 +197,7 @@ class TestStaticRavelPythonAPI(unittest.TestCase):
 
 class TestStaticRavelInferShapePythonAPI(unittest.TestCase):
     def execute_api(self, x):
-        return paddle.ravel(x)
+        return paddle.Tensor.ravel(x)
 
     def test_static_api(self):
         paddle.enable_static()
@@ -215,7 +215,7 @@ class TestRavelZeroSizedTensorAPI(unittest.TestCase):
         paddle.disable_static()
         data = np.random.randn(2, 3, 0)
         x = paddle.to_tensor(data)
-        out = paddle.ravel(x)
+        out = paddle.Tensor.ravel(x)
         out_np = data.flatten()
         np.testing.assert_equal(out.numpy(), out_np)
 
@@ -225,7 +225,7 @@ class TestRavelZeroSizedTensorAPI(unittest.TestCase):
         main_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, paddle.static.Program()):
             x = paddle.static.data(name="x", shape=[2, 3, 0], dtype='float64')
-            out = paddle.ravel(x)
+            out = paddle.Tensor.ravel(x)
 
         exe = paddle.static.Executor(place=paddle.CPUPlace())
         fetch_out = exe.run(main_prog, feed={"x": data}, fetch_list=[out])[0]
