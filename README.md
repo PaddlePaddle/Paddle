@@ -1,5 +1,4 @@
 <p align="center">
-# 中文
 <img align="center" src="doc/imgs/logo.png", width=1600>
 <p>
 
