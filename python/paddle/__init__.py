@@ -289,9 +289,7 @@ from .tensor.logic import (
 )
 from .tensor.manipulation import (
     as_complex,
-    as_complex as view_as_complex,
     as_real,
-    as_real as view_as_real,
     as_strided,
     atleast_1d,
     atleast_2d,
@@ -365,6 +363,8 @@ from .tensor.manipulation import (
     unstack,
     view,
     view_as,
+    view_as_complex,
+    view_as_real,
     vsplit,
     vstack,
 )
