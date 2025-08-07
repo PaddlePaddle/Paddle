@@ -1414,43 +1414,42 @@ static PyObject* tensor_method_set_underline_tensor(TensorObject* self,
     if (self->tensor.is_dense_tensor()) {
       auto* dst_tensor =
           static_cast<phi::DenseTensor*>(self->tensor.impl().get());
-      // if (self->tensor.has_allocation() && self->tensor.initialized() &&
-      //         !dst_tensor->meta().is_contiguous() ||
-      //     !src_tensor->meta().is_contiguous()) {
-      //   VLOG(8) << "set_tensor() method , src or dst tensor is not
-      //   contiguous"; if (!FLAGS_use_stride_kernel) {
-      //     PADDLE_THROW(common::errors::Fatal(
-      //         "FLAGS_use_stride_kernel is closed. Strided kernel "
-      //         "be called, something wrong has happened!"));
-      //   }
-      //   PD_VISIT_ALL_TYPES(
-      //       src_tensor->dtype(), "StridedTensorCopy", ([&] {
-      //         phi::StridedTensorCopy<data_t>(
-      //             *src_tensor,
-      //             common::vectorize<int64_t>(dst_tensor->dims()),
-      //             common::vectorize<int64_t>(dst_tensor->strides()),
-      //             dst_tensor->offset(),
-      //             dst_tensor);
-      //       }));
-      // } else {
-      if (dst_tensor->place().GetType() != phi::AllocationType::UNDEFINED) {
-        framework::TensorCopy(*src_tensor, dst_tensor->place(), dst_tensor);
-      } else if (src_tensor->place().GetType() !=
-                 phi::AllocationType::UNDEFINED) {
-        framework::TensorCopy(*src_tensor, src_tensor->place(), dst_tensor);
+      if (self->tensor.has_allocation() && self->tensor.initialized() &&
+          (!dst_tensor->meta().is_contiguous() ||
+           !src_tensor->meta().is_contiguous())) {
+        VLOG(8) << "set_tensor() method , src or dst tensor is not contiguous ";
+        if (!FLAGS_use_stride_kernel) {
+          PADDLE_THROW(common::errors::Fatal(
+              "FLAGS_use_stride_kernel is closed. Strided kernel "
+              "be called, something wrong has happened!"));
+        }
+        PD_VISIT_ALL_TYPES(
+            src_tensor->dtype(), "StridedTensorCopy", ([&] {
+              phi::StridedTensorCopy<data_t>(
+                  *src_tensor,
+                  common::vectorize<int64_t>(dst_tensor->dims()),
+                  common::vectorize<int64_t>(dst_tensor->strides()),
+                  dst_tensor->offset(),
+                  dst_tensor);
+            }));
       } else {
-        PADDLE_THROW(common::errors::Unavailable(
-            "The `set_tensor()` method of (Dist)Tensor get a src value with "
-            "undefined place"));
+        if (dst_tensor->place().GetType() != phi::AllocationType::UNDEFINED) {
+          framework::TensorCopy(*src_tensor, dst_tensor->place(), dst_tensor);
+        } else if (src_tensor->place().GetType() !=
+                   phi::AllocationType::UNDEFINED) {
+          framework::TensorCopy(*src_tensor, src_tensor->place(), dst_tensor);
+        } else {
+          PADDLE_THROW(common::errors::Unavailable(
+              "The `set_tensor()` method of (Dist)Tensor get a src value with "
+              "undefined place"));
+        }
       }
-      //}
 
     } else {
       PADDLE_THROW(common::errors::Unavailable(
           "The `set_tensor()` method of non DenseTensor get a DenseTensor src "
           "value"));
     }
-
   } else if (value.is_dist_tensor()) {
 #ifdef PADDLE_WITH_DISTRIBUTE
     auto* src_tensor =
@@ -1484,7 +1483,6 @@ static PyObject* tensor_method_set_underline_tensor(TensorObject* self,
         "current PaddlePaddle, please recompile and installPaddlePaddle "
         "with the option of `WITH_DISTRIBUTE=ON`."));
 #endif
-
   } else {
     PADDLE_THROW(common::errors::Unavailable(
         "The `set_tensor()` method of (Dist)Tensor get a non "
