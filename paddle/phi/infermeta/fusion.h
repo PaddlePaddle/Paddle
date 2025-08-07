@@ -669,6 +669,7 @@ void FusedMultiTransformerInt8InferMeta(
     MetaTensor* out);
 
 void FusedTransposeSplitQuantInferMeta(const MetaTensor& x,
+                                       const MetaTensor& input_scales,
                                        const IntArray& tokens_per_expert,
                                        bool pow_2_scales,
                                        std::vector<MetaTensor*> outs,

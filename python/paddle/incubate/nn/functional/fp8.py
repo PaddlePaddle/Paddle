@@ -173,7 +173,9 @@ def fused_swiglu_weighted_bwd(
         return _C_ops.fused_swiglu_weighted_bwd(o1, do2_s, unzipped_probs)
 
 
-def fused_transpose_split_quant(x, tokens_per_expert, pow_2_scales=False):
+def fused_transpose_split_quant(
+    x, input_scales, tokens_per_expert, pow_2_scales=False
+):
     """
     Applies fused transpose, split, and quantization operation for Mixture of Experts (MoE) models.
 
@@ -228,7 +230,7 @@ def fused_transpose_split_quant(x, tokens_per_expert, pow_2_scales=False):
 
     if in_dynamic_or_pir_mode():
         return _C_ops.fused_transpose_split_quant(
-            x, tokens_per_expert, pow_2_scales
+            x, input_scales, tokens_per_expert, pow_2_scales
         )
 
 
