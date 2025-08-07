@@ -1088,7 +1088,8 @@ def full_like(
             tensor = _C_ops.full_like(x, fill_value, dtype, device)
         else:
             tensor = _C_ops.full_like(x, fill_value, dtype, core.Place())
-        tensor.stop_gradient = not requires_grad
+        if requires_grad is True:
+            tensor.stop_gradient = False
         return tensor
     else:
         helper = LayerHelper("full_like", **locals())
@@ -1306,7 +1307,8 @@ def ones(
 
     if device is not None:
         tensor = tensor.to(device=device)
-    tensor.stop_gradient = not requires_grad
+    if requires_grad is True:
+        tensor.stop_gradient = False
     return tensor
 
 
@@ -1424,7 +1426,8 @@ def zeros(
 
     if device is not None:
         tensor = tensor.to(device=device)
-    tensor.stop_gradient = not requires_grad
+    if requires_grad is True:
+        tensor.stop_gradient = False
     return tensor
 
 
@@ -1557,7 +1560,8 @@ def eye(
                 else _current_expected_place()
             ),
         )
-        tensor.stop_gradient = not requires_grad
+        if requires_grad is True:
+            tensor.stop_gradient = False
         return tensor
     else:
         helper = LayerHelper("eye", **locals())
@@ -1674,7 +1678,8 @@ def full(
     )
     if device is not None:
         tensor = tensor.to(device=device)
-    tensor.stop_gradient = not requires_grad
+    if requires_grad is True:
+        tensor.stop_gradient = False
     return tensor
 
 
@@ -2646,7 +2651,8 @@ def empty(
                 else _current_expected_place()
             ),
         )
-        tensor.stop_gradient = not requires_grad
+        if requires_grad is True:
+            tensor.stop_gradient = False
         return tensor
     else:
         helper = LayerHelper("empty", **locals())
@@ -2751,7 +2757,8 @@ def empty_like(
             convert_np_dtype_to_dtype_(dtype),
             (device or _current_expected_place()),
         )
-        tensor.stop_gradient = not requires_grad
+        if requires_grad is True:
+            tensor.stop_gradient = False
         return tensor
 
     else:
