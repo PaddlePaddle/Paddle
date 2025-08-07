@@ -619,7 +619,18 @@ class FusedCommBuffer:
                 self.param2offset[param.name], grad_end
             )
 
-        grad_var = param.main_grad if self.use_main_grad else param.grad
+        def get_grad_var(param):
+            grad_var = param.main_grad if self.use_main_grad else param.grad
+            if grad_var is None:
+                zeros_grad = paddle.zeros_like(param, dtype=param.dtype)
+                if self.use_main_grad:
+                    param.main_grad = zeros_grad.astype(paddle.float32)
+                    param.main_grad.name = "main_grad@" + param.name
+                else:
+                    param.grad = zeros_grad
+            return param.main_grad if self.use_main_grad else param.grad
+
+        grad_var = get_grad_var(param)
         assert (
             grad_var is not None
         ), f"The current parameter[{param.name}] has no gradient, its stop_grdient is {param.stop_gradient}"
