@@ -47,7 +47,7 @@ class MonotonicAllocator : public Allocator {
 
   void FreeImpl(phi::Allocation* allocation) override;
 
-  uint64_t ReleaseImpl(const phi::Place& place) {
+  uint64_t ReleaseImpl(const phi::Place& place) override {
     return underlying_allocator_->Release(place);
   }
 

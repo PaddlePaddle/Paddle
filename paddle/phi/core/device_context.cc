@@ -16,14 +16,12 @@
 
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
-#include "paddle/phi/core/memory/allocation/monotonic_allocator.h"
 #elif defined(PADDLE_WITH_HIP)
 #include "paddle/phi/backends/gpu/rocm/hip_graph.h"
-#include "paddle/phi/core/memory/allocation/monotonic_allocator.h"
 #endif
-
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/memory/allocation/monotonic_allocator.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/string_tensor.h"
 
@@ -31,7 +29,7 @@ namespace phi {
 using DataType = phi::DataType;
 
 struct DeviceContext::Impl {
-  explicit Impl(DeviceContext* ctx) : device_ctx_(ctx) {}
+  Impl() = default;
   ~Impl() = default;
 
   void SetAllocator(const Allocator* allocator) {
@@ -306,13 +304,12 @@ struct DeviceContext::Impl {
   Generator* host_generator_{nullptr};
 
   distributed::CommContext* comm_context_{nullptr};
-  DeviceContext* device_ctx_{nullptr};
 };
 
-DeviceContext::DeviceContext() { impl_ = std::make_unique<Impl>(this); }
+DeviceContext::DeviceContext() { impl_ = std::make_unique<Impl>(); }
 
 DeviceContext::DeviceContext(const DeviceContext& other) {
-  impl_ = std::make_unique<Impl>(this);
+  impl_ = std::make_unique<Impl>();
   impl_->SetHostAllocator(&other.GetHostAllocator());
   impl_->SetAllocator(&other.GetAllocator());
   impl_->SetZeroAllocator(&other.GetZeroAllocator());

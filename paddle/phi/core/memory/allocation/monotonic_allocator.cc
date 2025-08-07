@@ -60,10 +60,13 @@ phi::Allocation* MonotonicAllocator::AllocateImpl(size_t unaligned_size) {
            << ", Free size " << free_size;
 
   if (free_size >= size) {
+    if (buffer_allocation_ == nullptr) {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "MonotonicAllocator::Allocate: buffer_allocation_ is null"));
+    }
     void* ptr = reinterpret_cast<char*>(buffer_ptr_) + buffer_offset_;
     buffer_offset_ += size;
-    phi::GPUPlace place(phi::backends::gpu::GetCurrentDeviceId());
-    return new MonotonicAllocation(ptr, size, place);
+    return new MonotonicAllocation(ptr, size, buffer_allocation_->place());
   } else {
     VLOG(10) << "Allocate fail, fallback to underlying_allocator";
     AllocationPtr underlying_allocation = underlying_allocator_->Allocate(size);

@@ -15,7 +15,8 @@ set(ALLOCATOR_SRCS
     memory_block_desc.cc
     meta_cache.cc
     buddy_allocator.cc
-    system_allocator.cc)
+    system_allocator.cc
+    monotonic_allocator.cc)
 
 if(WITH_GPU OR WITH_ROCM)
   list(
@@ -26,8 +27,7 @@ if(WITH_GPU OR WITH_ROCM)
     cuda_malloc_async_allocator.cc
     pinned_allocator.cc
     stream_safe_cuda_allocator.cc
-    thread_local_allocator.cc
-    monotonic_allocator.cc)
+    thread_local_allocator.cc)
 endif()
 
 if(CUDA_VERSION VERSION_GREATER_EQUAL 10.2)

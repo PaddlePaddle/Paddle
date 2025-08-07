@@ -16,7 +16,6 @@
 #include <memory>
 
 #include "paddle/phi/core/memory/allocation/allocator.h"
-#include "paddle/phi/core/memory/allocation/spin_lock.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #endif

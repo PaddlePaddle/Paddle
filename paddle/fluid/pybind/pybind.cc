@@ -85,12 +85,12 @@ limitations under the License. */
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/framework/reader.h"
 #include "paddle/phi/core/memory/allocation/allocator_strategy.h"
+#include "paddle/phi/core/memory/allocation/monotonic_allocator.h"
 #include "paddle/phi/core/raw_tensor.h"
 #include "paddle/phi/core/tensor_meta.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/core/memory/allocation/auto_growth_best_fit_allocator_v2.h"
 #include "paddle/phi/core/memory/allocation/cuda_ipc_allocator.h"
-#include "paddle/phi/core/memory/allocation/monotonic_allocator.h"
 #endif
 #include "paddle/common/macros.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
@@ -3963,7 +3963,6 @@ All parameter, weight, gradient are variables in Paddle.
   });
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   py::class_<paddle::memory::allocation::MonotonicAllocatorManager>(
       m, "_MonotonicAllocatorManager")
       .def("_enable",
@@ -3996,7 +3995,6 @@ All parameter, weight, gradient are variables in Paddle.
         paddle::memory::allocation::MonotonicAllocatorManager::Instance()
             .ResetBuffer(place);
       });
-#endif
 
 #if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
   BindHeterWrapper(&m);
