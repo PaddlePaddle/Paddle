@@ -1086,7 +1086,9 @@ def full_like(
 
     if in_dynamic_or_pir_mode():
         if in_dynamic_mode():
-            tensor = _C_ops.full_like(x, fill_value, dtype, device)
+            tensor = _C_ops.full_like(
+                x, fill_value, dtype, _convert_to_place(device)
+            )
         else:
             tensor = _C_ops.full_like(x, fill_value, dtype, core.Place())
         if requires_grad is True:
@@ -2757,7 +2759,11 @@ def empty_like(
         tensor = _C_ops.empty(
             x_shape,
             convert_np_dtype_to_dtype_(dtype),
-            (device or _current_expected_place()),
+            (
+                _convert_to_place(device)
+                if device is not None
+                else _current_expected_place()
+            ),
         )
         if requires_grad is True:
             tensor.stop_gradient = False
