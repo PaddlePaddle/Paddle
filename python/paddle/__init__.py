@@ -130,6 +130,7 @@ from . import (
     utils as utils,
 )
 from .amp import (
+    get_autocast_cpu_dtype,
     get_autocast_dtype,
     get_autocast_gpu_dtype,
     is_autocast_enabled,
@@ -1236,6 +1237,7 @@ __all__ = [
     'e',
     'is_autocast_enabled',
     'get_autocast_dtype',
+    'get_autocast_cpu_dtype',
     'get_autocast_gpu_dtype',
 ]
 

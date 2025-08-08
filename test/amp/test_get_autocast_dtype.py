@@ -22,13 +22,17 @@ class TestAutocast(unittest.TestCase):
     def setUp(self) -> None:
         paddle.disable_static()
         self.device_list = [None, paddle.device.get_device()]
-        self.default_dtype = "float32"
+        self.default_dtype = "float16"
 
     def do_test(self, device, expected_type):
         self.assertTrue(paddle.get_autocast_dtype(device) == expected_type)
         self.assertTrue(paddle.get_autocast_gpu_dtype() == expected_type)
         self.assertTrue(paddle.amp.get_autocast_dtype(device) == expected_type)
         self.assertTrue(paddle.amp.get_autocast_gpu_dtype() == expected_type)
+        self.assertTrue(paddle.amp.get_autocast_cpu_dtype() == expected_type)
+        self.assertTrue(
+            paddle.amp.get_autocast_cpu_dtype(device) == expected_type
+        )
 
     def test_amp_default(self):
         for device in self.device_list:
@@ -66,7 +70,7 @@ class TestAutocastStatic(TestAutocast):
     def setUp(self) -> None:
         paddle.enable_static()
         self.device_list = [None, paddle.device.get_device()]
-        self.default_dtype = "float32"
+        self.default_dtype = "float16"
 
 
 if __name__ == "__main__":

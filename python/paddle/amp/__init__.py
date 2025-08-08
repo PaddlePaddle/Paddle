@@ -50,9 +50,11 @@ __all__ = [
     'is_bfloat16_supported',
     'is_autocast_enabled',
     'get_autocast_dtype',
+    'get_autocast_cpu_dtype',
     'get_autocast_gpu_dtype',
 ]
 
+get_autocast_cpu_dtype = get_autocast_dtype
 get_autocast_gpu_dtype = get_autocast_dtype
 
 
