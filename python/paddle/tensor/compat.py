@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 import paddle
 from paddle import _C_ops
@@ -223,6 +223,10 @@ class SortRetType(NamedTuple):
     values: Tensor
     indices: Tensor
 
+class MinMaxRetType(NamedTuple):
+    values: Tensor
+    indices: Tensor
+
 
 def _check_out_status(
     out: Tensor | tuple[Tensor, Tensor] | list[Tensor],
@@ -398,3 +402,148 @@ class Unfold(nn.Unfold):
             dilations=to_list_if_necessary(self.dilations),
             name=self.name,
         )
+def _min_max_param_checker(func_name: str, *args: Any, **kwargs: Any):
+    def invalid_arguments_exception(error_prefix=""):
+        type_strs = [type(v).__name__ for v in args]
+        type_strs.extend([f"{k}={type(v).__name__}" for k, v in kwargs.items()])
+        signature = ", ".join(type_strs)
+
+        error_msg = (
+            f"Invalid arguments for `paddle.compat.{func_name}`:\n{error_prefix}"
+            f"Got: (paddle.Tensor input, {signature}), but expect one of:\n"
+            f" - (input: paddle.Tensor) for reduce_{func_name} on all dims.\n"
+            f" - (input: paddle.Tensor, other: paddle.Tensor) -> see paddle.{func_name}imum\n"
+            f" - (input: paddle.Tensor, int dim (cannot be None), bool keepdim = False)\n"
+        )
+        return TypeError(error_msg)
+
+    def try_get_keys(key):
+        res = None
+        try:
+            res = kwargs[key]
+        except KeyError:
+            raise invalid_arguments_exception() from None
+        return res
+        found_key = None
+
+    dim_or_other = None
+    keepdim = False
+
+    num_args = len(args)
+    total_arg_num = num_args + len(kwargs)
+    if total_arg_num > 2:
+        raise invalid_arguments_exception()
+    elif total_arg_num == 2:
+        if num_args == 2:
+            dim_or_other, keepdim = args
+            if dim_or_other is None or isinstance(
+                dim_or_other, (Variable, paddle.pir.Value)
+            ):
+                raise invalid_arguments_exception()
+        elif num_args == 1:
+            dim_or_other = args[0]
+            if dim_or_other is None or isinstance(
+                dim_or_other, (Variable, paddle.pir.Value)
+            ):
+                raise invalid_arguments_exception()
+            keepdim = try_get_keys("keepdim")
+        else:
+            dim_or_other = try_get_keys("dim")
+            keepdim = try_get_keys("keepdim")
+    elif total_arg_num == 1:
+        if num_args:
+            dim_or_other = args[0]
+            if dim_or_other is None:
+                raise invalid_arguments_exception()
+        else:
+            if "dim" in kwargs:
+                dim_or_other = kwargs["dim"]
+            elif "other" in kwargs:
+                dim_or_other = kwargs["other"]
+                if not isinstance(dim_or_other, (Variable, paddle.pir.Value)):
+                    raise invalid_arguments_exception()
+            if dim_or_other is None:
+                raise invalid_arguments_exception()
+
+    if (
+        dim_or_other is not None
+        and not isinstance(dim_or_other, (Variable, paddle.pir.Value))
+        and type(dim_or_other) is not int
+    ):
+        raise invalid_arguments_exception(
+            f"The second input must be int or Tensor or implicit None in compat.min, but received {type(dim_or_other)}.\n"
+        )
+
+    return dim_or_other, keepdim
+
+
+@forbid_keywords(['x', 'axis'], 'paddle.min')
+def min(input: Tensor, *args: Any, **kwargs: Any) -> Tensor | MinMaxRetType:
+    if not isinstance(input, paddle.pir.Value) and not isinstance(
+        input, paddle.Tensor
+    ):
+        raise TypeError(
+            f"input should be a tensor, but got an instance with type '{type(input).__name__}'"
+        )
+
+    dim_or_other, keepdim = _min_max_param_checker("min", *args, **kwargs)
+
+    if dim_or_other is None:
+        return _C_ops.min(input, None, False)
+    elif isinstance(dim_or_other, int):
+        if input.place.is_gpu_place():
+            vals, inds = _C_ops.min_with_index(
+                input, dim_or_other, keepdim, False
+            )
+            inds.stop_gradient = True
+            return MinMaxRetType(values=vals, indices=inds)
+        else:
+            # CPUPlace and other placements are implemented by composition
+            indices = _C_ops.argmin(
+                input, dim_or_other, True, False, paddle.int64
+            )
+            values = _C_ops.take_along_axis(input, indices, dim_or_other)
+            if keepdim:
+                return MinMaxRetType(values=values, indices=indices)
+            return MinMaxRetType(
+                values=values.squeeze_(axis=dim_or_other),
+                indices=indices.squeeze_(axis=dim_or_other),
+            )
+    else:
+        return _C_ops.minimum(input, dim_or_other)
+
+
+@forbid_keywords(['x', 'axis'], 'paddle.max')
+def max(input: Tensor, *args: Any, **kwargs: Any) -> Tensor | MinMaxRetType:
+    if not isinstance(input, paddle.pir.Value) and not isinstance(
+        input, paddle.Tensor
+    ):
+        raise TypeError(
+            f"input should be a tensor, but got an instance with type '{type(input).__name__}'"
+        )
+
+    dim_or_other, keepdim = _min_max_param_checker("max", *args, **kwargs)
+
+    if dim_or_other is None:
+        return _C_ops.max(input, None, False)
+    elif isinstance(dim_or_other, int):
+        if input.place.is_gpu_place():
+            vals, inds = _C_ops.max_with_index(
+                input, dim_or_other, keepdim, False
+            )
+            inds.stop_gradient = True
+            return MinMaxRetType(values=vals, indices=inds)
+        else:
+            # CPUPlace and other placements are implemented by composition
+            indices = _C_ops.argmax(
+                input, dim_or_other, True, False, paddle.int64
+            )
+            values = _C_ops.take_along_axis(input, indices, dim_or_other)
+            if keepdim:
+                return MinMaxRetType(values=values, indices=indices)
+            return MinMaxRetType(
+                values=values.squeeze_(axis=dim_or_other),
+                indices=indices.squeeze_(axis=dim_or_other),
+            )
+    else:
+        return _C_ops.maximum(input, dim_or_other)
