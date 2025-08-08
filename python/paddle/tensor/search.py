@@ -561,6 +561,38 @@ def nonzero(x: Tensor, as_tuple=False):
         return tuple(list_out)
 
 
+def argwhere(input: Tensor) -> Tensor:
+    """
+    Return a tensor containing the indices of all non-zero elements of the `input`
+    tensor. The returned tensor has shape [z, n], where `z` is the number of all non-zero
+    elements in the `input` tensor, and `n` is the number of dimensions in the `input`
+    tensor.
+
+    Args:
+        input (Tensor): The input tensor variable.
+
+    Returns:
+        Tensor, The data type is int64.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[1.0, 0.0, 0.0],
+            ...                       [0.0, 2.0, 0.0],
+            ...                       [0.0, 0.0, 3.0]])
+            >>> out = paddle.tensor.search.argwhere(x)
+            >>> print(out)
+            Tensor(shape=[3, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 0],
+             [1, 1],
+             [2, 2]])
+    """
+    return nonzero(input, as_tuple=False)
+
+
 def _restrict_nonzero(condition: Tensor, total_true_num: int) -> Tensor:
     """
     Return a tensor containing the indices of all non-zero elements of the `input`
