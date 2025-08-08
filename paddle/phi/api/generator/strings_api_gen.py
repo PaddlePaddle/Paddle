@@ -309,7 +309,7 @@ class StringsAPI(ForwardAPI):
     def gene_base_api_code(self, inplace_flag=False):
         api_func_name = self.get_api_func_name()
         return f"""
-PADDLE_API {self.get_return_type(inplace_flag)} {api_func_name}({self.get_define_args(inplace_flag)}) {{
+PADDLE_API {self.get_return_type(inplace_flag)} {api_func_name}({self.get_define_args(inplace_flag, append_input_out=False)}) {{
 {self.gene_kernel_select()}
 {self.gen_string_tensor_kernel_code(inplace_flag)}
 }}

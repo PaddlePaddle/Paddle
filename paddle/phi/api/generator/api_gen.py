@@ -217,7 +217,19 @@ class ForwardAPI(BaseAPI):
                 if inplace_flag and self.outputs['names'][0] in self.inplace_map
                 else ""
             )
-            output_create = f"""
+            if (
+                len(self.outputs['names']) == 1
+                and self.outputs['types'][0] == "Tensor"
+                and not (
+                    inplace_flag
+                    and self.outputs['names'][0].split('@')[0]
+                    in self.inplace_map
+                )
+            ):
+                output_create = f"""
+{code_indent}  Tensor out_tmp; Tensor& api_output = input_out ? **input_out : out_tmp;"""
+            else:
+                output_create = f"""
 {code_indent}  {return_type} api_output{inplace_assign};"""
             set_out_func = (
                 'SetKernelOutput'

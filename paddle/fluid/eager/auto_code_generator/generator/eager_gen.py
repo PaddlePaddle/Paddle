@@ -660,6 +660,7 @@ FORWARD_H_FILE_TEMPLATE = """
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/utils/test_macros.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
+#include "paddle/utils/optional.h"
 using CPUPlace = phi::CPUPlace;
 {}
 {}
@@ -1881,6 +1882,20 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
 
         inputs_args_declaration_str = ", ".join(inputs_args_declaration_list)
         inputs_args_definition_str = ", ".join(inputs_args_definition_list)
+        if (
+            len(self.forward_outputs_position_map) == 1
+            and next(iter(self.forward_outputs_position_map.values()))[0]
+            == "Tensor"
+        ):
+            inputs_args_declaration_str = (
+                inputs_args_declaration_str
+                + ", paddle::optional<paddle::Tensor*> input_out = paddle::none"
+            )
+            inputs_args_definition_str = (
+                inputs_args_definition_str
+                + ", paddle::optional<paddle::Tensor*> input_out"
+            )
+            inputs_call_list.append("input_out")
         inputs_call_args_str = ", ".join(inputs_call_list)
         self.inputs_call_list = inputs_call_list
 
@@ -2135,6 +2150,12 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             + "    ".join(amp_autocast_optional_list)
         )
         amp_inputs_call_args_str = ", ".join(amp_inputs_call_list)
+        if (
+            len(self.forward_outputs_position_map) == 1
+            and next(iter(self.forward_outputs_position_map.values()))[0]
+            == "Tensor"
+        ):
+            amp_inputs_call_args_str = amp_inputs_call_args_str + ", input_out"
         amp_call_str = (
             f"return {forward_ad_function_name}({amp_inputs_call_args_str});"
         )
@@ -2158,6 +2179,14 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             type_promote_inputs_call_args_str = ", ".join(
                 type_promote_inputs_call_list
             )
+            if (
+                len(self.forward_outputs_position_map) == 1
+                and next(iter(self.forward_outputs_position_map.values()))[0]
+                == "Tensor"
+            ):
+                type_promote_inputs_call_args_str = (
+                    type_promote_inputs_call_args_str + ", input_out"
+                )
             type_promote_call_list = f"return {forward_ad_function_name}({type_promote_inputs_call_args_str});"
 
             x_cast = (
@@ -2180,6 +2209,15 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             type_promote_inputs_call_args_str = ", ".join(
                 type_promote_inputs_call_list
             )
+            if (
+                len(self.forward_outputs_position_map) == 1
+                and next(iter(self.forward_outputs_position_map.values()))[0]
+                == "Tensor"
+            ):
+                type_promote_inputs_call_args_str = (
+                    type_promote_inputs_call_args_str + ", input_out"
+                )
+
             type_promote_call_list = f"return {forward_ad_function_name}({type_promote_inputs_call_args_str});"
 
             x_cast = (

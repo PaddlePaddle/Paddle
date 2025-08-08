@@ -238,7 +238,7 @@ class BaseAPI:
         else:
             return f"""std::make_tuple({", ".join(args)})"""
 
-    def get_declare_args(self, inplace_flag=False):
+    def get_declare_args(self, inplace_flag=False, append_input_out=False):
         declare_args = self.get_input_tensor_args(inplace_flag)
         for name in self.attrs['names']:
             default_value = ''
@@ -248,12 +248,30 @@ class BaseAPI:
                 self.attrs['attr_info'][name][0] + ' ' + name + default_value
             )
 
+        if (
+            not inplace_flag
+            and append_input_out
+            and len(self.outputs['names']) == 1
+            and self.outputs['types'][0] == "Tensor"
+        ):
+            declare_args.append(
+                "paddle::optional<Tensor*> input_out = paddle::none"
+            )
+
         return ", ".join(declare_args)
 
-    def get_define_args(self, inplace_flag=False):
+    def get_define_args(self, inplace_flag=False, append_input_out=True):
         define_args = self.get_input_tensor_args(inplace_flag)
         for name in self.attrs['names']:
             define_args.append(self.attrs['attr_info'][name][0] + ' ' + name)
+
+        if (
+            not inplace_flag
+            and append_input_out
+            and len(self.outputs['names']) == 1
+            and self.outputs['types'][0] == "Tensor"
+        ):
+            define_args.append("paddle::optional<Tensor*> input_out")
 
         return ", ".join(define_args)
 
@@ -523,7 +541,7 @@ class BaseAPI:
         api_func_name = self.get_api_func_name()
         if api_func_name[-1] != '_':
             api_declaration = f"""
-PADDLE_API {self.get_return_type()} {api_func_name}({self.get_declare_args()});
+PADDLE_API {self.get_return_type()} {api_func_name}({self.get_declare_args(append_input_out=True)});
 """
 
         if self.is_base_api and len(self.inplace_map) > 0:
@@ -532,7 +550,7 @@ PADDLE_API {self.get_return_type()} {api_func_name}({self.get_declare_args()});
             api_declaration = (
                 api_declaration
                 + f"""
-PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_declare_args(inplace_flag=True)});
+PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_declare_args(inplace_flag=True, append_input_out=True)});
 """
             )
 

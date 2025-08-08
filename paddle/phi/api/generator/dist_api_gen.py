@@ -1140,9 +1140,15 @@ class DistForwardAPI(ForwardAPI):
                     return_type, inplace_assign_code
                 )
             else:
-                output_creation_code += API_OUT_CREATION_TEMPLATE.format(
-                    return_type, ""
-                )
+                if (
+                    len(self.outputs['names']) == 1
+                    and self.outputs['types'][0] == "Tensor"
+                ):
+                    output_creation_code += "Tensor out_tmp; Tensor& api_output = input_out ? **input_out : out_tmp;"
+                else:
+                    output_creation_code += API_OUT_CREATION_TEMPLATE.format(
+                        return_type, ""
+                    )
             # kernel output generate
             self.dist_output_args.append('dist_out')
             self.dense_output_args.append('dense_out')

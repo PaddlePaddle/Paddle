@@ -97,7 +97,7 @@ class BackwardAPI(BaseAPI):
             'Tensor': 'Tensor*',
             'std::vector<Tensor>': 'std::vector<Tensor*>',
         }
-        inputs_and_attrs = super().get_define_args()
+        inputs_and_attrs = super().get_define_args(append_input_out=False)
         outs = []
         for i, name in enumerate(self.outputs['names']):
             outs.append(
