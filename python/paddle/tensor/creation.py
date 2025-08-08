@@ -1559,8 +1559,8 @@ def eye(
             num_columns,
             dtype,
             (
-                device
-                if (in_dynamic_mode() and device is not None)
+                _convert_to_place(device)
+                if device is not None
                 else _current_expected_place()
             ),
         )
@@ -2648,8 +2648,8 @@ def empty(
             shape,
             convert_np_dtype_to_dtype_(dtype),
             (
-                device
-                if (in_dynamic_mode() and device is not None)
+                _convert_to_place(device)
+                if device is not None
                 else _current_expected_place()
             ),
         )
