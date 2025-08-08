@@ -28,6 +28,7 @@ from paddle.base.framework import (
 )
 from paddle.common_ops_import import Variable
 from paddle.framework import LayerHelper
+from paddle.utils.decorator_utils import ParamAliasDecorator
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -879,6 +880,7 @@ def expm1(x: Tensor, name: str | None = None) -> Tensor:
     return _C_ops.sparse_expm1(x)
 
 
+@ParamAliasDecorator({"x": ["input"]})
 def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
     """
     Changes the shape of ``x`` without changing its value, requiring x to be a SparseCooTensor or SparseCsrTensor.

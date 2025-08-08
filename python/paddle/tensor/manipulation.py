@@ -4936,6 +4936,7 @@ def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
         return out
 
 
+@ParamAliasDecorator({"x": ["input"]})
 def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
     """
     Changes the shape of ``x`` without changing its data.
