@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/index_put_kernel.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
@@ -22,6 +23,8 @@
 #include "paddle/phi/kernels/funcs/index_put_utils.h"
 #include "paddle/phi/kernels/funcs/stride_utils.h"
 #include "paddle/phi/kernels/index_elementwise_put_kernel.h"
+
+COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace phi {
 
@@ -239,6 +242,20 @@ void IndexPutKernel_V2(const Context& dev_ctx,
 
   funcs::AdvancedIndex ad = funcs::make_info<T, Context>(dev_ctx, x, indices);
   if (!CheckIsDimsMatchBool(common::make_ddim(ad.src_sizes), value.dims())) {
+    for (size_t i = 0; i < indices.size(); i++) {
+      PADDLE_ENFORCE_EQ(indices[i]->meta().is_contiguous(),
+                        true,
+                        common::errors::InvalidArgument(
+                            "Indices in Index_put must be contiguous."));
+    }
+    PADDLE_ENFORCE_EQ(
+        x.meta().is_contiguous(),
+        true,
+        common::errors::InvalidArgument("X in Index_put must be contiguous."));
+    PADDLE_ENFORCE_EQ(value.meta().is_contiguous(),
+                      true,
+                      common::errors::InvalidArgument(
+                          "Value in Index_put must be contiguous."));
     IndexPutKernel_V1<T, Context>(dev_ctx, x, indices, value, accumulate, out);
     return;
   }
@@ -328,6 +345,23 @@ void IndexPutKernel_V2(const Context& dev_ctx,
 PD_REGISTER_KERNEL(index_put,
                    GPU,
                    ALL_LAYOUT,
+                   phi::IndexPutKernel_V1,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   bool,
+                   int16_t,
+                   uint8_t,
+                   int8_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+
+PD_REGISTER_KERNEL(index_put,
+                   GPU,
+                   STRIDED,
                    phi::IndexPutKernel_V2,
                    float,
                    double,

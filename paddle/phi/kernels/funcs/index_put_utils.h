@@ -42,8 +42,8 @@ namespace phi {
 
 namespace funcs {
 
-static inline common::DDim infer_size_symdimvector(common::DDim a,
-                                                   common::DDim b) {
+static inline common::DDim infer_size_symdimvector_v2(common::DDim a,
+                                                      common::DDim b) {
   // Use ptrdiff_t to ensure signed comparison.
   auto dimsA = a.size();
   auto dimsB = b.size();
@@ -111,7 +111,7 @@ std::vector<phi::DenseTensor*> expand_outplace(
       sizes = to_expand[i]->dims();
       first = false;
     } else {
-      sizes = infer_size_symdimvector(sizes, to_expand[i]->dims());
+      sizes = infer_size_symdimvector_v2(sizes, to_expand[i]->dims());
     }
   }
 
