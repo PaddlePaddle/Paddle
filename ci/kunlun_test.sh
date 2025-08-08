@@ -158,14 +158,10 @@ set +x
             #install paddlex
             git clone --depth 1000 https://gitee.com/paddlepaddle/PaddleX.git
             cd PaddleX
-            echo 1111
-            pip list
             pip install -e .
             pip install numpy==1.24.4 pypdfium2
 
             #install paddle x dependency
-            echo 2222
-            pip list
             paddlex --install PaddleClas -y
 
             #download paddle dataset
