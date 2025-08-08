@@ -190,7 +190,7 @@ class QuantDequantTest(unittest.TestCase):
         return outs
 
     def _get_analysis_config(
-        self, use_gpu=False, use_trt=False, use_mkldnn=False
+        self, use_gpu=False, use_trt=False, use_onednn=False
     ):
         '''
         Return a new object of AnalysisConfig.
@@ -230,7 +230,7 @@ class QuantDequantTest(unittest.TestCase):
                 if self.enable_tensorrt_varseqlen:
                     config.enable_tensorrt_varseqlen()
 
-        elif use_mkldnn:
+        elif use_onednn:
             config.enable_onednn()
             if self.enable_onednn_bfloat16:
                 config.enable_onednn_bfloat16()
@@ -391,7 +391,7 @@ class QuantDequantTest(unittest.TestCase):
         if (not use_gpu) and self.enable_mkldnn:
             onednn_outputs = self._get_inference_outs(
                 self._get_analysis_config(
-                    use_gpu=use_gpu, use_mkldnn=self.enable_mkldnn
+                    use_gpu=use_gpu, use_onednn=self.enable_mkldnn
                 )
             )
 

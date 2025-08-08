@@ -633,8 +633,8 @@ class OpTest(unittest.TestCase):
     def is_onednn_op(self):
         return (hasattr(self, "use_onednn") and self.use_onednn) or (
             hasattr(self, "attrs")
-            and "use_mkldnn" in self.attrs
-            and self.attrs["use_mkldnn"]
+            and "use_onednn" in self.attrs
+            and self.attrs["use_onednn"]
         )
 
     def is_xpu_op(self):
@@ -2193,12 +2193,12 @@ class OpTest(unittest.TestCase):
                     )
             else:
                 # TODO(zhiqiu): enhance inplace_grad test for ops (sum and activation) using mkldnn
-                # skip op that use_mkldnn currently
+                # skip op that use_onednn currently
                 flags_use_onednn = base.core.globals()["FLAGS_use_onednn"]
-                attrs_use_mkldnn = hasattr(self, 'attrs') and bool(
-                    self.attrs.get('use_mkldnn', False)
+                attrs_use_onednn = hasattr(self, 'attrs') and bool(
+                    self.attrs.get('use_onednn', False)
                 )
-                if flags_use_onednn or attrs_use_mkldnn:
+                if flags_use_onednn or attrs_use_onednn:
                     warnings.warn(
                         "check inplace_grad for ops using mkldnn is not supported"
                     )
@@ -3442,8 +3442,8 @@ class OpTest(unittest.TestCase):
 
         # oneDNN numeric gradient should use CPU kernel
         use_onednn = False
-        if op_attrs.get("use_mkldnn"):
-            op_attrs["use_mkldnn"] = False
+        if op_attrs.get("use_onednn"):
+            op_attrs["use_onednn"] = False
             use_onednn = True
         if hasattr(self, "attrs"):
             for k, v in self.attrs.items():
@@ -3460,7 +3460,7 @@ class OpTest(unittest.TestCase):
         )
 
         if use_onednn:
-            op_attrs["use_mkldnn"] = True
+            op_attrs["use_onednn"] = True
 
         if no_grad_set is None:
             no_grad_set = set()

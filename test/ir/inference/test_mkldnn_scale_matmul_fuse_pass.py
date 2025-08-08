@@ -137,7 +137,7 @@ class TestScaleMatmulOnednnFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(
-            use_mkldnn=True, passes=['scale_matmul_fuse_pass']
+            use_onednn=True, passes=['scale_matmul_fuse_pass']
         )
         yield config, ['matmul'], (1e-5, 1e-5)
 
