@@ -190,6 +190,50 @@ def transpose_(x, perm, name=None):
         return _C_ops.transpose_(x, perm)
 
 
+@overload
+def permute(
+    input: Tensor, dims: Sequence[int], name: str | None = None
+) -> Tensor: ...
+
+
+@overload
+def permute(input: Tensor, *dims: int, name: str | None = None) -> Tensor: ...
+
+
+def permute(input: Tensor, *dims: int, name: str | None = None) -> Tensor:
+    """
+    Permute the dimensions of a tensor.
+
+    Args:
+        input (Tensor): the input tensor.
+        dims (tuple of int): The desired ordering of dimensions. Supports passing as variable-length
+            arguments (e.g., permute(x, 1, 0, 2)) or as a single list/tuple (e.g., permute(x, [1, 0, 2])).
+
+    Returns:
+        Tensor: A tensor with permuted dimensions.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.randn([2, 3, 4])
+            >>> y = paddle.permute(x, (1, 0, 2))
+            >>> print(y.shape)
+            [3, 2, 4]
+
+            >>> y = paddle.permute(x, 1, 0, 2)
+            >>> print(y.shape)
+            [3, 2, 4]
+    """
+    if len(dims) == 1 and isinstance(dims[0], (list, tuple)):
+        perm = list(dims[0])
+    else:
+        perm = list(dims)
+
+    return paddle.transpose(x=input, perm=perm, name=name)
+
+
 def matrix_transpose(
     x: paddle.Tensor,
     name: str | None = None,

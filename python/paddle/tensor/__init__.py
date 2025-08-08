@@ -98,6 +98,7 @@ from .linalg import (  # noqa: F401
     norm,
     ormqr,
     pca_lowrank,
+    permute,
     pinv,
     qr,
     solve,
