@@ -90,7 +90,10 @@ void FlashAttnV3GradBaseKernel(
 
   // TODO(umiswing): support ampere
   int device_id = ctx.GetPlace().GetDeviceId();
+  auto dprops = paddle::platform::GetDeviceProperties(device_id);
+  const bool is_sm90 = dprops.major == 9 && dprops.minor == 0;
   PADDLE_ENFORCE_EQ(is_sm90,
+                    true,
                     common::errors::Unavailable(
                         "FlashAttention-3 only supports Hopper GPUs."));
 
