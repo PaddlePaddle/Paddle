@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place
 
 import paddle
 from paddle import base
@@ -84,11 +84,7 @@ class TestNLLLoss(unittest.TestCase):
         np.random.seed(200)
         label_np = np.random.randint(0, 10, size=(10,)).astype(np.int64)
 
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
 
         expected = nll_loss_1d(input_np, label_np)[0]
         with base.dygraph.guard():
@@ -131,11 +127,7 @@ class TestNLLLoss(unittest.TestCase):
         np.random.seed(200)
         label_np = np.random.randint(0, 10, size=(10,)).astype(np.int64)
 
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         expected = nll_loss_1d(input_np, label_np, reduction='sum')[0]
 
         def test_static_or_pir_mode():
@@ -188,11 +180,7 @@ class TestNLLLoss(unittest.TestCase):
         label_np = np.random.randint(0, 10, size=(10,)).astype(np.int64)
         weight_np = np.random.random(size=(10,)).astype(np.float64)
 
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
 
         expected = nll_loss_1d(input_np, label_np, weight=weight_np)[0]
 
@@ -255,11 +243,7 @@ class TestNLLLoss(unittest.TestCase):
         label_np = np.random.randint(0, 10, size=(10,)).astype(np.int64)
         weight_np = np.random.random(size=(10,)).astype(np.float64)
 
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         # place = base.CPUPlace()
 
         expected = nll_loss_1d(
@@ -423,11 +407,7 @@ class TestNLLLoss(unittest.TestCase):
         np.random.seed(200)
         label_np = np.random.randint(0, 3, size=(5, 5, 5)).astype(np.int64)
 
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         expected = nll_loss_2d(input_np, label_np)[0]
         with base.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss()
@@ -471,11 +451,7 @@ class TestNLLLoss(unittest.TestCase):
         label_np = np.random.randint(0, 3, size=(5, 5, 5)).astype(np.int64)
         prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         # place = base.CPUPlace()
 
         expected = nll_loss_2d(input_np, label_np, reduction='sum')[0]
@@ -519,11 +495,7 @@ class TestNLLLoss(unittest.TestCase):
         label_np = np.random.randint(0, 3, size=(5, 5, 5)).astype(np.int64)
         weight_np = np.random.random(size=(3,)).astype(np.float64)
 
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         with base.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
                 weight=paddle.to_tensor(weight_np)
@@ -630,11 +602,7 @@ class TestNLLLoss(unittest.TestCase):
         label_np = np.random.randint(0, 3, size=(5, 5, 5)).astype(np.int64)
         weight_np = np.random.random(size=(3,)).astype(np.float64)
 
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
 
         expected = nll_loss_2d(
             input_np, label_np, weight=weight_np, reduction='sum'
@@ -690,11 +658,7 @@ class TestNLLLoss(unittest.TestCase):
         np.random.seed(200)
         label_np = np.random.randint(0, 3, size=(5, 5, 5, 5)).astype(np.int64)
 
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         # place = base.CPUPlace()
         input_shape = input_np.shape
         label_shape = label_np.shape
@@ -743,11 +707,7 @@ class TestNLLLoss(unittest.TestCase):
         label_np = np.random.randint(0, 3, size=(5, 5, 5, 5)).astype(np.int64)
         weight_np = np.random.random(size=(3,)).astype(np.float64)
 
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         # place = base.CPUPlace()
         input_shape = input_np.shape
         label_shape = label_np.shape
@@ -808,11 +768,7 @@ class TestNLLLoss(unittest.TestCase):
         label_np = np.random.randint(0, 3, size=(5, 5, 5, 5)).astype(np.int64)
         weight_np = np.random.random(size=(3,)).astype(np.float64)
 
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         place = base.CPUPlace()
 
         input_shape = input_np.shape
@@ -878,11 +834,7 @@ class TestNLLLoss(unittest.TestCase):
         label_np = np.random.randint(0, 3, size=(5, 5, 5, 5)).astype(np.int64)
         weight_np = np.random.random(size=(3,)).astype(np.float64)
 
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         # place = base.CPUPlace()
 
         input_shape = input_np.shape

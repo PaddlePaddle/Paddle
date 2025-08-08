@@ -742,9 +742,7 @@ class SplitOpPattern : public pir::OpRewritePattern<paddle::dialect::SplitOp> {
   using pir::OpRewritePattern<paddle::dialect::SplitOp>::OpRewritePattern;
 
   bool Match(paddle::dialect::SplitOp op) const override {
-    const bool is_denied = CompatibleInfo::IsDeniedForCinn(*op.operation());
-
-    return !is_denied && PatternConstraint(op);
+    return PatternConstraint(op);
   }
 
   void Rewrite(paddle::dialect::SplitOp op,
@@ -1483,6 +1481,7 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   pir::RewritePatternSet ps(context);
   ps.Add<ScaleOpPattern>(
       context);  // NOTE, scale op pattern should before AddBroadcastTo
+#ifndef CINN_WITH_SYCL
   ps.Add<SumOpPattern>(context);
   ps.Add<ReduceMinMaxOpPattern<paddle::dialect::MinOp,
                                cinn::dialect::ReduceMinOp>>(context);
@@ -1495,6 +1494,7 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
       ArgMinMaxOpPattern<paddle::dialect::ArgmaxOp, cinn::dialect::ArgmaxOp>>(
       context);
   // Arange in this pass only handles static inputs
+#endif
   ps.Add<ArangeOpPattern>(context);
   ps.Add<ProdOpPattern>(context);
   ps.Add<ReshapeOpPattern>(context);

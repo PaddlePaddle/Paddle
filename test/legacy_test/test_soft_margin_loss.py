@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_places
+from op_test import get_devices, get_places
 
 import paddle
 
@@ -127,7 +127,7 @@ class TestSoftMarginLoss(unittest.TestCase):
     def test_SoftMarginLoss(self):
         input_np = np.random.uniform(0.1, 0.8, size=(5, 5)).astype(np.float64)
         types = [np.int32, np.int64, np.float32, np.float64]
-        places = get_places(string_format=True)
+        places = get_devices()
         reductions = ['sum', 'mean', 'none']
         for place in places:
             for reduction in reductions:

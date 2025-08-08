@@ -15,10 +15,9 @@
 import unittest
 
 import numpy as np
-from op_test import convert_uint16_to_float
+from op_test import convert_uint16_to_float, get_device_place
 
 import paddle
-from paddle.base import core
 from paddle.base.data_feeder import convert_dtype
 
 
@@ -182,11 +181,7 @@ class TestEmptyLikeAPI_Static(TestEmptyLikeAPICommon):
 
             out = paddle.empty_like(data_x)
 
-            place = (
-                paddle.CUDAPlace(0)
-                if core.is_compiled_with_cuda()
-                else paddle.CPUPlace()
-            )
+            place = get_device_place()
             exe = paddle.static.Executor(place)
             res = exe.run(train_program, feed={'x': x}, fetch_list=[out])
 

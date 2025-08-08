@@ -231,9 +231,9 @@ class QuantDequantTest(unittest.TestCase):
                     config.enable_tensorrt_varseqlen()
 
         elif use_mkldnn:
-            config.enable_mkldnn()
+            config.enable_onednn()
             if self.enable_mkldnn_bfloat16:
-                config.enable_mkldnn_bfloat16()
+                config.enable_onednn_bfloat16()
         return config
 
     def check_output_with_option(

@@ -198,7 +198,8 @@ void Tensor::copy_(const Tensor &src,
     return;
   }
 #endif
-    if(is_dense_tensor() && has_allocation() && src.is_dense_tensor()) {
+    if(is_dense_tensor() && has_allocation() &&
+      initialized() && src.is_dense_tensor()) {
       auto dst_tensor = static_cast<phi::DenseTensor*>(impl_.get());
       auto src_tensor = std::static_pointer_cast<phi::DenseTensor>(src.impl_);
       if(!dst_tensor->meta().is_contiguous() ||

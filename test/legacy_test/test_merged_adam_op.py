@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_places
+from op_test import get_devices
 
 import paddle
 from paddle import _C_ops
@@ -205,7 +205,7 @@ class TestMergedAdam(unittest.TestCase):
 
     def test_main(self):
         for multi_precision in [False, True]:
-            for place in get_places(string_format=True):
+            for place in get_devices():
                 self.check_with_place(place, multi_precision)
 
 

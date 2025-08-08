@@ -24,6 +24,7 @@ from typing_extensions import overload
 import paddle
 from paddle import _C_ops
 from paddle.tensor import fill_constant
+from paddle.utils.decorator_utils import ParamAliasDecorator
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
@@ -1989,6 +1990,46 @@ def flatten(
             attrs={"start_axis": start_axis, "stop_axis": stop_axis},
         )
         return out
+
+
+def ravel(input: Tensor) -> Tensor:
+    """
+    Return a contiguous flattened tensor. A copy is made only if needed.
+    Note:
+        The output Tensor will share data with origin Tensor and doesn't have a Tensor copy in ``dygraph`` mode.
+        If you want to use the Tensor copy version, please use `Tensor.clone` like ``ravel_clone_x = x.ravel().clone()``.
+        For example:
+
+        .. code-block:: text
+            Case 1:
+              Given
+                X.shape = (3, 100, 100, 4)
+
+              We get:
+                Out.shape = (3 * 100 * 100 * 4)
+    Args:
+        x (Tensor): A tensor of number of dimensions >= axis. A tensor with data type float16, float32,
+                      float64, int8, int32, int64, uint8.
+
+    Returns:
+        Tensor: A tensor with the contents of the input tensor, whose input axes are flattened by indicated :attr:`start_axis` and :attr:`stop_axis`, and data type is the same as input :attr:`x`.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> image_shape=(2, 3, 4, 4)
+
+            >>> x = paddle.arange(end=image_shape[0] * image_shape[1] * image_shape[2] * image_shape[3])
+            >>> img = paddle.reshape(x, image_shape)
+
+            >>> out = paddle.ravel(img)
+            >>> print(out.shape)
+            [96]
+    """
+    return flatten(input)
 
 
 @inplace_apis_in_dygraph_only
@@ -4762,6 +4803,7 @@ def expand_as(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
+@ParamAliasDecorator({"x": ["input"], "shape": ["size"]})
 def broadcast_to(
     x: Tensor, shape: ShapeLike, name: str | None = None
 ) -> Tensor:
@@ -6680,10 +6722,15 @@ def take_along_axis(
         )
     axis = non_negative_axis(arr, axis)
     if broadcast:
-        broadcast_shape = infer_broadcast_shape(arr, indices, axis)
-        if not broadcast_shape:
-            # if indices matrix have larger size than arr, arr should broadcast into indices shape.
-            broadcast_shape = indices.shape
+        broadcast_shape_list = list(arr.shape)
+        for i in range(len(arr.shape)):
+            if indices.shape[i] == 0 or arr.shape[i] == 0:
+                broadcast_shape_list[i] = 0
+            else:
+                broadcast_shape_list[i] = max(arr.shape[i], indices.shape[i])
+        broadcast_shape_list[axis] = list(indices.shape)[axis]
+        broadcast_shape = tuple(broadcast_shape_list)
+
         indices = paddle.broadcast_to(indices, broadcast_shape)
         broadcast_shape_list = list(broadcast_shape)
         broadcast_shape_list[axis] = list(arr.shape)[axis]

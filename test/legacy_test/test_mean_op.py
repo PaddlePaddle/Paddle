@@ -828,9 +828,7 @@ class TestMeanAPIInt32(unittest.TestCase):
         self.x_np = np.random.randint(-1, 10000, self.x_shape).astype(
             self.dtype
         )
-        self.places = [paddle.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
 
     def test_dygraph(self):
         for place in self.places:
@@ -864,9 +862,7 @@ class TestMeanAPIInt64(TestMeanAPIInt32):
         self.x_np = np.random.randint(-1, 10000, self.x_shape).astype(
             self.dtype
         )
-        self.places = [paddle.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
 
 
 class TestMeanAPIBool(TestMeanAPIInt32):
@@ -874,9 +870,7 @@ class TestMeanAPIBool(TestMeanAPIInt32):
         self.x_shape = [2, 3, 4, 5]
         self.dtype = "bool"
         self.x_np = np.random.uniform(-1, 1, self.x_shape).astype(self.dtype)
-        self.places = [paddle.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
 
 
 class TestMeanWithTensorAxis1(TestReduceOPTensorAxisBase):

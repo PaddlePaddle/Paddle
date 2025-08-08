@@ -17,7 +17,7 @@ import unittest
 
 import numpy as np
 from op import Operator
-from op_test import OpTest, get_places
+from op_test import OpTest, get_device_place, get_devices, get_places
 
 import paddle
 from paddle.base import core
@@ -242,7 +242,7 @@ class TestAdagradOpMultiPrecision(unittest.TestCase):
         paddle.enable_static()
 
     def test_main(self):
-        for place in get_places(string_format=True):
+        for place in get_devices():
             use_amp_list = [True, False]
             for use_amp in use_amp_list:
                 self._test_adagrad_op_dygraph_place_amp(place, use_amp)
@@ -283,7 +283,7 @@ class TestAdagradMultiPrecision2_0(unittest.TestCase):
         paddle.enable_static()
         paddle.seed(100)
         np.random.seed(100)
-        exe = paddle.static.Executor('gpu')
+        exe = paddle.static.Executor(get_device_place())
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         optimizer = paddle.optimizer.Adagrad(0.1)

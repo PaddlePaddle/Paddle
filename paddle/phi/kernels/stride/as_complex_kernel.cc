@@ -91,7 +91,7 @@ PD_REGISTER_KERNEL(
 }
 #endif
 
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#if defined(PADDLE_WITH_CUSTOM_DEVICE) && !defined(PADDLE_WITH_CUDA)
 PD_REGISTER_KERNEL(
     as_complex, Custom, STRIDED, phi::AsComplexStridedKernel, float, double) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
