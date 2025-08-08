@@ -4206,7 +4206,7 @@ struct CudaSqrtGradFunctor : public BaseActivationFunctor<T> {
 
   // dx = dout * 0.5 / out
   __device__ __forceinline__ T operator()(const T dout, const T out) const {
-    return one_half * dout / out;
+    return out != T(0) ? one_half * dout / out : T(0);
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {
