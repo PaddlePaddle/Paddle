@@ -161,7 +161,7 @@ set +x
             echo 1111
             pip list
             pip install -e .
-            pip install numpy==1.24.4
+            pip install numpy==1.24.4 pypdfium2
 
             #install paddle x dependency
             echo 2222
