@@ -26,6 +26,9 @@ from typing import (
     NamedTuple,
 )
 
+from paddle import nn
+from paddle.distributed.auto_parallel.pipelining.stage import PipelineStage
+
 if TYPE_CHECKING:
     from .stage import _PipelineStageBase
 
@@ -427,6 +430,134 @@ def _sorted_batch_p2p(p2p_ops: list[dist.P2POp], desc: str | None = None):
         work_by_peer[peer] = _batch_p2p(ops, desc=desc)
 
     return work_by_peer
+
+
+class PPChunk(nn.Layer):
+    def __init__(self, layers=None, is_first=False, is_last=False):
+        super().__init__()
+        assert not (is_first and is_last)
+        self.layers = layers
+        self.is_first = is_first
+        self.is_last = is_last
+
+    def forward(self, *args, **kwargs):
+        if self.is_first:
+            input_ids = kwargs.get("input_ids")
+            attention_mask = kwargs.get("attention_mask")
+            position_ids = kwargs.get("position_ids")
+            outputs = (input_ids, attention_mask, position_ids)
+            # decoder layers
+            for idx, (decoder_layer) in enumerate(self.layers):
+                outputs = decoder_layer(outputs)
+            return outputs
+        elif self.is_last:
+            outputs = args
+            # decoder layers
+            for idx, (decoder_layer) in enumerate(self.layers):
+                outputs = decoder_layer(outputs)
+            if isinstance(outputs, tuple):
+                outputs = outputs[0]
+        else:
+            outputs = args
+            # decoder layers
+            for idx, (decoder_layer) in enumerate(self.layers):
+                outputs = decoder_layer(outputs)
+        return outputs
+
+
+def manual_model_split(model, stage_idx, group, mode, pp_degree):
+
+    num_hidden_layers = model.config.num_hidden_layers
+    virtual_pp_degree = model.config.virtual_pp_degree if mode == "VPP" else 1
+    chunk_size = num_hidden_layers // virtual_pp_degree // pp_degree
+    chunk_num = virtual_pp_degree * pp_degree
+    layer_lists = None
+
+    layer_lists = model.layers
+
+    def _build_stage(model, stage_idx, group):
+        new_model = None
+        if stage_idx == 0:
+            new_model = PPChunk(
+                layer_lists[:chunk_size], is_first=True, is_last=False
+            )
+        elif stage_idx == chunk_num - 1:
+            new_model = PPChunk(
+                layer_lists[
+                    stage_idx * chunk_size : (stage_idx + 1) * chunk_size
+                ],
+                is_first=False,
+                is_last=True,
+            )
+        else:
+            new_model = PPChunk(
+                layer_lists[
+                    stage_idx * chunk_size : (stage_idx + 1) * chunk_size
+                ],
+                is_first=False,
+                is_last=False,
+            )
+        stage = PipelineStage(new_model, stage_idx, chunk_num, group=group)
+        return stage
+
+    stages = []
+    for i in range(virtual_pp_degree):
+        stage = _build_stage(model, stage_idx + i * pp_degree, group)
+        stages.append(stage)
+    return stages
+
+
+def get_pp_schedule(model, n_microbatches, loss_fn, mode, pp_degree, group):
+    assert mode in ["VPP", "1F1B", "FThenB"]
+    stages = manual_model_split(model, group.rank, group, mode, pp_degree)
+    if mode == "VPP":
+        schedule = ScheduleVPP(
+            stages, n_microbatches=n_microbatches, loss_fn=loss_fn
+        )
+    elif mode == "1F1B":
+        schedule = Schedule1F1B(
+            stages[0], n_microbatches=n_microbatches, loss_fn=loss_fn
+        )
+    else:
+        schedule = ScheduleFThenB(
+            stages[0], n_microbatches=n_microbatches, loss_fn=loss_fn
+        )
+    return schedule
+
+
+def parse_args(args, num=3):
+    trip = tuple([None] * num)
+    if isinstance(args, tuple):
+        for i in range(min(len(args), num)):
+            trip = (*trip[:i], args[i], *trip[i + 1 :])
+    else:
+        trip = (args, *trip[1:])
+    for i in range(1, num):
+        if trip[i] is not None and hasattr(trip[i], 'stop_gradient'):
+            trip[i].stop_gradient = True
+
+    return trip
+
+
+def return_args(**kwargs):
+    ret = ()
+
+    for name, value in kwargs.items():
+        if value is not None:
+            ret += (value.clone() if hasattr(value, "clone") else value,)
+
+    return ret[0] if len(ret) == 1 else ret
+
+
+from paddle.distributed import fleet
+
+
+def get_pp_stage_id(layer_id, num_hidden_layers, virtual_pp_degree):
+    pp_degree = fleet.auto.get_mesh().get_mesh_with_dim("pp").shape[0]
+    chunk_size = num_hidden_layers // (pp_degree * virtual_pp_degree)
+    chunk_id = layer_id // chunk_size
+    pp_stage_id = chunk_id % pp_degree
+    return pp_stage_id
 
 
 class ScheduleFThenB(PipelineScheduleSingle):
