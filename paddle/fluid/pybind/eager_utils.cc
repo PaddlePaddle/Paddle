@@ -3097,4 +3097,13 @@ void EagerSetDeviceId() {
   }
 }
 
+paddle::optional<Tensor*> GetInputOutTensorFromKwargs(PyObject* kwargs) {
+  PyObject* obj = PyDict_GetItemString(kwargs, "out");
+  if (obj) {
+    return paddle::make_optional<paddle::Tensor*>(
+        &(reinterpret_cast<TensorObject*>(obj)->tensor));
+  }
+  return paddle::none;
+}
+
 }  // namespace paddle::pybind

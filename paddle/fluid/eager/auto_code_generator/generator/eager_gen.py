@@ -1883,7 +1883,9 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         inputs_args_declaration_str = ", ".join(inputs_args_declaration_list)
         inputs_args_definition_str = ", ".join(inputs_args_definition_list)
         if (
-            len(self.forward_outputs_position_map) == 1
+            not grad_flag
+            and not is_inplaced
+            and len(self.forward_outputs_position_map) == 1
             and next(iter(self.forward_outputs_position_map.values()))[0]
             == "Tensor"
         ):
@@ -2151,7 +2153,9 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         )
         amp_inputs_call_args_str = ", ".join(amp_inputs_call_list)
         if (
-            len(self.forward_outputs_position_map) == 1
+            not grad_flag
+            and not is_inplaced
+            and len(self.forward_outputs_position_map) == 1
             and next(iter(self.forward_outputs_position_map.values()))[0]
             == "Tensor"
         ):
@@ -2180,7 +2184,9 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 type_promote_inputs_call_list
             )
             if (
-                len(self.forward_outputs_position_map) == 1
+                not grad_flag
+                and not is_inplaced
+                and len(self.forward_outputs_position_map) == 1
                 and next(iter(self.forward_outputs_position_map.values()))[0]
                 == "Tensor"
             ):
@@ -2210,7 +2216,9 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 type_promote_inputs_call_list
             )
             if (
-                len(self.forward_outputs_position_map) == 1
+                not grad_flag
+                and not is_inplaced
+                and len(self.forward_outputs_position_map) == 1
                 and next(iter(self.forward_outputs_position_map.values()))[0]
                 == "Tensor"
             ):
