@@ -796,7 +796,7 @@ def where(
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        Tensor, A Tensor with the same shape as :attr:`condition` and same data type as :attr:`x` and :attr:`y`.
+       Tensor, A Tensor with the same shape as :attr:`condition` and same data type as :attr:`x` and :attr:`y`. If :attr:`x` and :attr:`y` have different data types, type promotion rules will be applied (see `Auto Type Promotion <https://www.paddlepaddle.org.cn/documentation/docs/en/develop/guides/advanced/auto_type_promotion_en.html#introduction-to-data-type-promotion>`_).
 
     Examples:
 
@@ -819,10 +819,10 @@ def where(
              [3]]),)
     """
     if np.isscalar(x):
-        x = paddle.full([1], x, np.array([x]).dtype.name)
+        x = paddle.to_tensor(x)
 
     if np.isscalar(y):
-        y = paddle.full([1], y, np.array([y]).dtype.name)
+        y = paddle.to_tensor(y)
 
     if x is None and y is None:
         return nonzero(condition, as_tuple=True)
