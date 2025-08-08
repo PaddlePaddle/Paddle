@@ -33,50 +33,58 @@ template <typename InT, int VecSize>
 __device__ void BlockLoad(const InT* input,
                           const float* input_scales,
                           __nv_bfloat16 x[8][4],
-                          size_t K) {
+                          size_t K,
+                          size_t k_scaled) {
   constexpr bool need_dequant = std::is_same_v<InT, phi::dtype::float8_e4m3fn>;
+
+#pragma unroll
   for (uint32_t i = 0; i < 8; i++) {
-    size_t local_off_M = threadIdx.y + i * 16;
-    size_t off_m = blockIdx.x * size_t(128) + local_off_M;
-    size_t off_k = blockIdx.y * 128 + threadIdx.x * VecSize;
-    size_t offset = off_m * K + off_k;
+    const uint32_t local_off_M = threadIdx.y + i * 16;
+    const uint32_t off_m = blockIdx.x * 128 + local_off_M;
+    const uint32_t off_k = blockIdx.y * 128 + threadIdx.x * VecSize;
+    const size_t offset = off_m * K + off_k;
+
     float scale;
     if constexpr (need_dequant) {
-      scale = input_scales[local_off_M];
+      const uint32_t m_base = blockIdx.x * 128;
+      const uint32_t m_stride = k_scaled;
+      scale = input_scales[off_m * m_stride + blockIdx.y];
     }
 
+#pragma unroll
     for (uint32_t j = 0; j < 4; j += VecSize) {
-      if (off_k + j * 32 < K) {
-        size_t idx = offset + j * 32;
-        using LoadT = VecType<InT, VecSize>;
-        LoadT data = *reinterpret_cast<const LoadT*>(input + idx);
-        for (uint32_t k = 0; k < VecSize; k++) {
-          if constexpr (need_dequant) {
-            x[i][j + k] = __float2bfloat16(static_cast<float>(data[k]) * scale);
-          } else {
-            x[i][j + k] = (*reinterpret_cast<__nv_bfloat16*>(&data[k]));
-          }
+      const size_t idx = offset + j * 32;
+      using LoadT = VecType<InT, VecSize>;
+      LoadT data = *reinterpret_cast<const LoadT*>(input + idx);
+#pragma unroll
+      for (uint32_t k = 0; k < VecSize; k++) {
+        if constexpr (need_dequant) {
+          x[i][j + k] = __float2bfloat16(static_cast<float>(data[k]) * scale);
+        } else {
+          x[i][j + k] = (*reinterpret_cast<__nv_bfloat16*>(&data[k]));
         }
       }
     }
   }
 }
-
 template <bool Pow2Scales>
 __device__ void BlockColumnScale(const __nv_bfloat16 x[8][4],
                                  float scales[128],
                                  __nv_bfloat16* shm) {
   // reduce [(8), 16, 32, 4] => [16, 32, 4]
   __nv_bfloat16 warp_max[4];
+#pragma unroll
   for (uint32_t i = 0; i < 8; i++) {
+#pragma unroll
     for (uint32_t j = 0; j < 4; j++) {
-      __nv_bfloat16 t = BF16_ABS(x[i][j]);
+      const __nv_bfloat16 t = BF16_ABS(x[i][j]);
       warp_max[j] = i == 0 ? t : BF16_MAX(warp_max[j], t);
     }
   }
 
   // reduce [(16), 32, 4] => [8, 32, 4]
   if (threadIdx.y >= 8) {
+#pragma unroll
     for (uint32_t j = 0; j < 4; j++) {
       shm[(threadIdx.y - 8) * 128 + threadIdx.x + j * 32] = warp_max[j];
     }
@@ -86,8 +94,9 @@ __device__ void BlockColumnScale(const __nv_bfloat16 x[8][4],
   // reduce [(8), 32, 4] => [32, 4]
   for (uint32_t offset = 8; offset > 0; offset /= 2) {
     if (threadIdx.y < offset) {
+#pragma unroll
       for (uint32_t j = 0; j < 4; j++) {
-        __nv_bfloat16 other =
+        const __nv_bfloat16 other =
             offset == 8
                 ? warp_max[j]
                 : shm[(threadIdx.y + offset) * 128 + threadIdx.x + j * 32];
@@ -119,9 +128,9 @@ __device__ void BlockStoreScale(float* scale,
       off = (off / 64) * 64 + (off % 2) * 32 + (off % 64) / 2;
     }
     float scale_out = 1.0f / scales[off];
-    size_t idx_y = blockIdx.x - off_m / 128;
-    size_t idx_x = blockIdx.y * 128 + threadIdx.y * 32 + threadIdx.x;
-    size_t idx = idx_y * K + idx_x;
+    const size_t idx_y = blockIdx.x - off_m / 128;
+    const size_t idx_x = blockIdx.y * 128 + threadIdx.y * 32 + threadIdx.x;
+    const size_t idx = idx_y * K + idx_x;
     if (idx_x < K) {
       scale[idx] = scale_out;
     }
@@ -134,14 +143,16 @@ __device__ void BlockStoreOut(OutT* out,
                               size_t cur_tokens,
                               const OutT shm[128][129],
                               size_t K) {
+#pragma unroll
   for (uint32_t i = 0; i < 8; i++) {
-    size_t idx_m = blockIdx.x * size_t(128) + threadIdx.x * 4;
-    size_t idx_k = blockIdx.y * 128 + threadIdx.y + i * 16;
-    size_t idx = idx_k * cur_tokens + (idx_m - off_m);
+    const size_t idx_m = blockIdx.x * size_t(128) + threadIdx.x * 4;
+    const size_t idx_k = blockIdx.y * 128 + threadIdx.y + i * 16;
+    const size_t idx = idx_k * cur_tokens + (idx_m - off_m);
 
     if (idx_k < K) {
       using StoreT = VecType<OutT, VecSize>;
       StoreT data;
+#pragma unroll
       for (uint32_t j = 0; j < VecSize; j++) {
         data[j] = shm[i * 16 + threadIdx.y][threadIdx.x * 4 + j];
       }
@@ -152,35 +163,24 @@ __device__ void BlockStoreOut(OutT* out,
 
 template <typename InT, typename OutT, bool Pow2Scales, int VecSize>
 __global__ void __launch_bounds__(512)
-    FusedTransposeSplitQuantKernel(const InT* __restrict__ input,
-                                   const float* __restrict__ input_scales,
-                                   int64_t* __restrict__ meta,
-                                   size_t num_experts,
-                                   size_t K,
-                                   size_t k_scaled) {
+    /*  */ FusedTransposeSplitQuantKernel(
+        const InT* __restrict__ input,
+        const float* __restrict__ input_scales,
+        int64_t* __restrict__ meta,
+        size_t num_experts,
+        size_t K,
+        size_t k_scaled) {
   __shared__ OutT shm[128][129];
-  __shared__ float scales[128];
   __shared__ size_t expert_info[2];
+  __shared__ float scales[128];  // 用于存储列方向计算出的scale
 
-  // 0. Load input_scales if float8
-  if constexpr (std::is_same_v<InT, phi::dtype::float8_e4m3fn>) {
-    const int tid = blockDim.y * threadIdx.x + threadIdx.y;
-    if (tid < 128) {
-      const size_t m_base = blockIdx.x * size_t(128);
-      const size_t k_base = blockIdx.y * size_t(128);
-      const size_t m_stride = k_scaled;
-      const size_t input_scale_offset = (m_base + tid) * m_stride + blockIdx.y;
-      scales[tid] = input_scales[input_scale_offset];
-    }
-    __syncthreads();
-  }
   int64_t* tokens_per_expert = meta;
   OutT** out_ptrs = reinterpret_cast<OutT**>(meta + num_experts);
   float** scale_ptrs = reinterpret_cast<float**>(meta + num_experts * 2);
 
   // 1. Load 128x128 elements from input
   __nv_bfloat16 x[8][4];
-  BlockLoad<InT, VecSize>(input, scales, x, K);
+  BlockLoad<InT, VecSize>(input, input_scales, x, K, k_scaled);
 
   // 2. Get expert index and offset of the current block
   if (threadIdx.x == 0 && threadIdx.y == 0) {
@@ -198,10 +198,6 @@ __global__ void __launch_bounds__(512)
     expert_info[1] = off_m;
   }
 
-  if constexpr (std::is_same_v<InT, phi::dtype::float8_e4m3fn>) {
-    __syncthreads();
-  }
-
   // 3. Calculate scale along the column
   BlockColumnScale<Pow2Scales>(
       x, scales, reinterpret_cast<__nv_bfloat16*>(shm));
@@ -211,9 +207,12 @@ __global__ void __launch_bounds__(512)
   const size_t off_m = expert_info[1];
   BlockStoreScale<OutT, VecSize>(scale_ptrs[expert_idx], off_m, scales, K);
 
-  // 5. Scale x and save into shared memory with transposed layout
+// 5. Scale x and save into shared memory with transposed layout
+#pragma unroll
   for (uint32_t i = 0; i < 8; i++) {
+#pragma unroll
     for (uint32_t j = 0; j < 4; j += VecSize) {
+#pragma unroll
       for (uint32_t k = 0; k < VecSize; k++) {
         float x_fp32 = static_cast<float>(x[i][j + k]);
         float x_scaled = x_fp32 * scales[threadIdx.x + (j + k) * 32];
