@@ -38,7 +38,7 @@ def fill_any_like_wrapper(x, value, out_dtype=None, name=None):
             out_dtype, paddle.framework.core.VarDesc.VarType
         ):
             tmp_dtype = paddle.pir.core.vartype_to_datatype[tmp_dtype]
-    return paddle.full_like(x, value, tmp_dtype, name)
+    return paddle.full_like(x, value, tmp_dtype, name=name)
 
 
 class TestFullOp(unittest.TestCase):
