@@ -1,0 +1,71 @@
+name: CI-fleety
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [incubate/fleety**]
+
+permissions: read-all
+
+concurrency:
+  group: ${{ github.event.pull_request.number }}-${{ github.workflow }}
+  cancel-in-progress: true
+
+env:
+  PR_ID: ${{ github.event.pull_request.number }}
+  COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+
+jobs:
+  clone:
+    name: Clone-linux
+    uses: ./.github/workflows/_Clone-linux.yml
+
+  build-docker:
+    name: build docker images
+    needs: clone
+    uses: ./.github/workflows/docker.yml
+
+  distribute:
+    name: Distribute-stable
+    uses: ./.github/workflows/_Distribute-stable.yml
+    needs: build-docker
+    with:
+      docker_distribute_image: ${{ needs.build-docker.outputs.docker_distribute_image }}
+
+  coverage:
+    name: Coverage
+    uses: ./.github/workflows/_Coverage.yml
+    needs: build-docker
+    with:
+      docker_coverage_image: ${{ needs.build-docker.outputs.docker_coverage_image }}
+
+  build:
+    name: Linux-build
+    uses: ./.github/workflows/_Linux-build.yml
+    needs: build-docker
+    with:
+      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
+
+  static-check:
+    name: Static-Check
+    uses: ./.github/workflows/_Static-Check.yml
+    needs: [build-docker, build]
+    with:
+      can-skip: ${{ needs.build.outputs.can-skip }}
+      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
+
+  ce-framework:
+    name: CE-Framework
+    uses: ./.github/workflows/_CE-Framework.yml
+    needs: [build-docker, build]
+    with:
+      can-skip: ${{ needs.build.outputs.can-skip }}
+      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
+
+  api-benchmark:
+    name: Api-Benchmark
+    uses: ./.github/workflows/_Api-Benchmark.yml
+    needs: [build-docker, build]
+    with:
+      can-skip: ${{ needs.build.outputs.can-skip }}
+      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}

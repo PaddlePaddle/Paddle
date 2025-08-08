@@ -607,6 +607,11 @@ if(WITH_DISTRIBUTE
   list(APPEND third_party_deps extern_brpc)
 endif()
 
+include(external/libuv)
+if(TARGET extern_libuv)
+  list(APPEND third_party_deps extern_libuv)
+endif()
+
 if(WITH_XBYAK)
   include(external/xbyak) # prepare submodule xbyak
   list(APPEND third_party_deps extern_xbyak)
