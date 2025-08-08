@@ -115,12 +115,12 @@ void RunOperator(const phi::Place &place,
                       {{first_input_var_name, {first_input}},
                        {second_input_var_name, {"x1"}}},
                       {{output_var_name, {output_name}}},
-                      {{"use_mkldnn", {true}}})
+                      {{"use_onednn", {true}}})
                 : framework::OpRegistry::CreateOp(
                       op_type,
                       {{first_input_var_name, {first_input}}},
                       {{output_var_name, {output_name}}},
-                      {{"use_mkldnn", {true}}});
+                      {{"use_onednn", {true}}});
 
   op->Run(scope, place);
   pool.Get(place)->Wait();
