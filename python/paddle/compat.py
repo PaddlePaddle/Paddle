@@ -13,9 +13,13 @@
 # limitations under the License.
 
 from .tensor.compat import (
+    max,
+    min,
     split,
 )
 
 __all__ = [
     'split',
+    'min',
+    'max',
 ]
