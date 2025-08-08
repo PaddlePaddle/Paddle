@@ -3420,6 +3420,7 @@ def squeeze_(
         return _C_ops.squeeze_(input, axes)
 
 
+@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
 def unique_consecutive(
     x: Tensor,
     return_inverse: bool = False,
@@ -6646,6 +6647,7 @@ def infer_broadcast_shape(
     return broadcast_shape
 
 
+@ParamAliasDecorator({"arr": ["input"], "axis": ["dim"]})
 def take_along_axis(
     arr: Tensor, indices: Tensor, axis: int, broadcast: bool = True
 ) -> Tensor:
