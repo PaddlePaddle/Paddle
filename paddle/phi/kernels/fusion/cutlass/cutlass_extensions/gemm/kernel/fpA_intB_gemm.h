@@ -87,6 +87,20 @@ struct GemmFpAIntB {
   using InstructionShape = typename Mma::Policy::Operator::InstructionShape;
   using ArchTag = typename Mma::ArchTag;
 
+  // NOTE: (changwenbin) Ensure that the GEMM layout meets the requirements
+  // under different architectures.
+  static_assert(
+      (platform::is_same<ArchTag, arch::Sm75>::value &&
+       platform::is_same<LayoutA, layout::RowMajor>::value &&
+       platform::is_same<LayoutB, layout::ColumnMajor>::value) ||
+          (platform::is_same<ArchTag, arch::Sm80>::value &&
+           platform::is_same<LayoutA, layout::RowMajor>::value &&
+           platform::is_same<LayoutB, layout::ColumnMajor>::value) ||
+          (platform::is_same<ArchTag, arch::Sm70>::value &&
+           platform::is_same<LayoutA, layout::RowMajor>::value &&
+           platform::is_same<LayoutB, layout::RowMajor>::value),
+      "A must be row major and B must be col major in cuda_arch >= sm75");
+
   static int const kStages = Mma::kStages;
   static int const kAlignmentA = Mma::IteratorA::AccessType::kElements;
   static int const kAlignmentB = Mma::IteratorB::AccessType::kElements;

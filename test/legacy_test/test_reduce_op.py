@@ -19,6 +19,7 @@ from op_test import (
     OpTest,
     convert_float_to_uint16,
     get_places,
+    is_custom_device,
     skip_check_grad_ci,
 )
 from utils import dygraph_guard, static_guard
@@ -192,7 +193,8 @@ class TestSumOp3Dim(TestSumOp):
 
 def create_test_fp16_class(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestSumOpFp16(parent):
         def init_dtype(self):
@@ -341,9 +343,7 @@ class TestSumAPIZeroDimKeepDim(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         paddle.enable_static()
-        self.places = [paddle.CPUPlace()]
-        if paddle.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
 
     def test_static(self):
         for place in self.places:
@@ -2365,9 +2365,7 @@ class TestAllZero(unittest.TestCase):
             "complex64",
             "complex128",
         ]
-        self.places = [base.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def calculate_expected_result(self, x_np, axis, keepdim):
         expected_result = np.all(x_np, axis=axis, keepdims=keepdim)
@@ -2454,9 +2452,7 @@ class TestAnyZero(unittest.TestCase):
             "complex64",
             "complex128",
         ]
-        self.places = [base.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def calculate_expected_result(self, x_np, axis, keepdim):
         expected_result = np.any(x_np, axis=axis, keepdims=keepdim)

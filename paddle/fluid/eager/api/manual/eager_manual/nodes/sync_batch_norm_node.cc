@@ -201,8 +201,8 @@ SyncBatchNormGradNode::operator()(
   // Create Grad Node
   if (trace_backward) {
     PADDLE_THROW(common::errors::Unavailable(
-        "The Op sync_batch_norm_grad doesn't have any grad"
-        "op. If you don't intend calculating higher order"
+        "The Op sync_batch_norm_grad doesn't have any grad "
+        "op. If you don't intend calculating higher order "
         "derivatives, please set `create_graph`to False."));
   }
   VLOG(4) << "Finish AD API GRAD: sync_batch_norm_grad";
@@ -442,8 +442,8 @@ SyncBatchNormGradNode::operator()(
   // Create Grad Node
   if (trace_backward) {
     PADDLE_THROW(common::errors::Unavailable(
-        "The Op sync_batch_norm_grad doesn't have any grad"
-        "op. If you don't intend calculating higher order"
+        "The Op sync_batch_norm_grad doesn't have any grad "
+        "op. If you don't intend calculating higher order "
         "derivatives, please set `create_graph`to False."));
   }
   VLOG(4) << "Finish AD API GRAD: sync_batch_norm_grad";

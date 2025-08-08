@@ -35,7 +35,7 @@ void FusedSoftmaxMaskKernel(const Context& dev_ctx,
 
   // dim of x and mask must be equal
   for (size_t idx = 0; idx < 4; ++idx) {
-    if (idx == 1) continue;
+    if (idx == 1 || x_dim[idx] == 0) continue;
     PADDLE_ENFORCE_EQ(
         x_dim[idx],
         mask_dim[idx],

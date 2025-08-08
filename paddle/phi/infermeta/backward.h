@@ -255,6 +255,13 @@ void FlashAttnV3GradInferMeta(const MetaTensor& q,
                               MetaTensor* dk,
                               MetaTensor* dv);
 
+void FlashAttnV3VarlenGradInferMeta(const MetaTensor& q,
+                                    const MetaTensor& k,
+                                    const MetaTensor& v,
+                                    MetaTensor* dq,
+                                    MetaTensor* dk,
+                                    MetaTensor* dv);
+
 void Flatten2GradInferMeta(const MetaTensor& x,
                            const MetaTensor& x_shape,
                            const MetaTensor& out_grad,
@@ -781,5 +788,6 @@ void IndexElementwiseGetGradInferMeta(
     const std::vector<int64_t>& index_strides,
     const int64_t slice_offset,
     const bool accumulate,
+    const bool is_combined,
     MetaTensor* x_grad);
 }  // namespace phi

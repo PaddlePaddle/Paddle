@@ -53,7 +53,7 @@ void InterpreterEngine::CreateInterpreterCore() {
 #ifdef PADDLE_WITH_DNNL
   auto onednn_pass =
       framework::ir::PassRegistry::Instance().Get("onednn_placement_pass");
-  onednn_pass->Set("mkldnn_enabled_op_types",
+  onednn_pass->Set("onednn_enabled_op_types",
                    new std::unordered_set<std::string>({}));
   onednn_pass->Apply(&graph);
 #endif

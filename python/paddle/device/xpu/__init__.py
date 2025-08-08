@@ -20,6 +20,8 @@ from typing_extensions import TypeAlias
 from paddle.base import core
 from paddle.utils import deprecated
 
+from .streams import Event, Stream
+
 if TYPE_CHECKING:
     from paddle import XPUPlace
 
@@ -30,6 +32,8 @@ if TYPE_CHECKING:
     ]
 
 __all__ = [
+    'Stream',
+    'Event',
     'synchronize',
     'device_count',
     'set_debug_level',
@@ -43,6 +47,45 @@ __all__ = [
     'memory_total',  # memory maneged by runtime, not paddle
     'memory_used',  # memory maneged by runtime, not paddle
 ]
+
+
+def current_stream(device: _XPUPlaceLike | None = None) -> core.XPUStream:
+    '''
+    Return the current XPU stream by the device.
+
+    Args:
+        device(paddle.XPUPlace()|int|None, optional): The device or the ID of the device which want to get stream from.
+                If device is None, the device is the current device. Default: None.
+
+    Returns:
+            XPUStream: the stream to the device.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:XPU)
+            >>> import paddle
+            >>> paddle.device.set_device('xpu')
+
+            >>> s1 = paddle.device.xpu.current_stream()
+
+            >>> s2 = paddle.device.xpu.current_stream(0)
+
+            >>> s3 = paddle.device.xpu.current_stream(paddle.XPUPlace(0))
+
+    '''
+
+    device_id = -1
+
+    if device is not None:
+        if isinstance(device, int):
+            device_id = device
+        elif isinstance(device, core.XPUPlace):
+            device_id = device.get_device_id()
+        else:
+            raise ValueError("device type must be int or paddle.XPUPlace")
+
+    return core._xpu_get_current_stream(device_id)
 
 
 def extract_xpu_device_id(device: _XPUPlaceLike, op_name: str) -> int:

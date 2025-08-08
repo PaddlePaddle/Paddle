@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <complex>
 
+#include "paddle/phi/backends/gpu/cuda/cudnn_workspace_helper.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
@@ -61,6 +62,10 @@ void LstsqKernel(const Context& dev_ctx,
           singular_values);
     return;
   }
+
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(x);
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(y);
+
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   int dim_size = x_dims.size();

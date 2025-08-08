@@ -32,7 +32,7 @@ void BeamSearchDecodeXPUKernel(const Context& dev_ctx,
       step_num,
       0UL,
       common::errors::InvalidArgument(
-          "beam search steps, which is the"
+          "beam search steps, which is the "
           "size of Input(Ids) TensorArray. beam search steps should "
           "be larger than 0, but received %d. ",
           step_num));
@@ -42,9 +42,9 @@ void BeamSearchDecodeXPUKernel(const Context& dev_ctx,
       source_num,
       0UL,
       common::errors::InvalidArgument(
-          "source_num is the sequence number of the"
+          "source_num is the sequence number of the "
           "first decoding step, indicating by Input(Ids)[0].lod[0].size. "
-          "The number of source_num should be larger than"
+          "The number of source_num should be larger than "
           "0, but received %d. ",
           source_num));
 

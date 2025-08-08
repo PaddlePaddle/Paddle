@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import convert_float_to_uint16, get_places
+from op_test import convert_float_to_uint16, get_device_place, get_places
 
 import paddle
 from paddle import base
@@ -71,11 +71,7 @@ class TestMaskedFillAPI(unittest.TestCase):
             )
             out = paddle.masked_fill(x, mask, value)
 
-            place = (
-                base.CUDAPlace(0)
-                if core.is_compiled_with_cuda()
-                else base.CPUPlace()
-            )
+            place = get_device_place()
             exe = base.Executor(place)
             res = exe.run(
                 base.default_main_program(),

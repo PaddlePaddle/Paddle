@@ -15,10 +15,9 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, get_places
+from op_test import OpTest, get_device_place, get_places
 
 import paddle
-from paddle import base
 from paddle.base import core
 
 
@@ -196,11 +195,7 @@ class TestBCELoss(unittest.TestCase):
             np.float64
         )
         weight_np = np.random.random(size=(3, 4, 10)).astype(np.float64)
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         for reduction in ['sum', 'mean', 'none']:
             static_result = test_static_layer(
                 place, input_np, label_np, reduction, weight_np=weight_np

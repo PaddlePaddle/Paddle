@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 from op import Operator
-from op_test import OpTest, get_places
+from op_test import OpTest, get_device_place, get_places
 from utils import dygraph_guard
 
 import paddle
@@ -271,7 +271,7 @@ class TestSGDSimple(unittest.TestCase):
             paddle.seed(10)
             np.random.seed(10)
 
-            exe = paddle.static.Executor('gpu')
+            exe = paddle.static.Executor(get_device_place())
             train_program = paddle.static.Program()
             startup_program = paddle.static.Program()
 

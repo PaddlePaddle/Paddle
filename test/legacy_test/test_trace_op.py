@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_places
 
 import paddle
 from paddle import base, tensor
@@ -202,9 +202,7 @@ class TestTraceAPICase(unittest.TestCase):
 
 class TestTraceAPIZerodimCase(unittest.TestCase):
     def setUp(self):
-        self.places = [paddle.CPUPlace()]
-        if paddle.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
         self.x = np.random.random([5, 0, 0, 0]).astype('float32')
 
     def test_dygraph(self):

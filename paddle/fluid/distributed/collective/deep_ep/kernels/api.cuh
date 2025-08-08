@@ -349,6 +349,7 @@ namespace internode_ll_two_stage {
 
 void dispatch(void* packed_recv_x,
               float* packed_recv_x_scales,
+              void* packed_rdma_recv_x,
               int* packed_recv_src_info,
               int64_t* packed_recv_layout_range,
               int* packed_recv_count,
@@ -373,7 +374,8 @@ void dispatch(void* packed_recv_x,
               bool use_fp8,
               void* workspace,
               cudaStream_t stream,
-              int phases);
+              int phases,
+              int next_buffer_id);
 
 void combine(void* combined_x,
              void* rdma_recv_x,
@@ -400,7 +402,8 @@ void combine(void* combined_x,
              void* workspace,
              cudaStream_t stream,
              int phases,
-             bool dispatch_use_fp8);
+             bool dispatch_use_fp8,
+             int next_buffer_id);
 
 }  // namespace internode_ll_two_stage
 

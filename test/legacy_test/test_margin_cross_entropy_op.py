@@ -15,7 +15,13 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_places,
+    is_custom_device,
+    paddle_static_guard,
+)
 
 import paddle
 from paddle.base import core
@@ -329,16 +335,15 @@ class TestMarginCrossEntropyOpCPU(TestMarginCrossEntropyOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMarginCrossEntropyOpV2(unittest.TestCase):
     def setUp(self):
         self.initParams()
         np.random.seed(self.seed)
         paddle.framework.random._manual_program_seed(self.seed)
-        self.places = []
-        if core.is_compiled_with_cuda():
-            self.places.append(paddle.base.CUDAPlace(0))
+        self.places = get_places()
 
     def initParams(self):
         self.python_out_sig = ["Loss"]
@@ -501,16 +506,15 @@ class TestMarginCrossEntropyOpV4(TestMarginCrossEntropyOpV2):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMarginCrossEntropyOpAPIError(unittest.TestCase):
     def setUp(self):
         self.initParams()
         np.random.seed(self.seed)
         paddle.framework.random._manual_program_seed(self.seed)
-        self.places = []
-        if core.is_compiled_with_cuda():
-            self.places.append(paddle.base.CUDAPlace(0))
+        self.places = get_places()
 
     def initParams(self):
         self.python_api = python_api

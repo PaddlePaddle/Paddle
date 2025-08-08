@@ -26,17 +26,17 @@ namespace ir {
 /*
  * Specifies which operators should use MKLDNN.
  */
-class MKLDNNPlacementPass : public PlacementPassBase {
+class ONEDNNPlacementPass : public PlacementPassBase {
  protected:
   bool IsSupport(const Node* op) const override;
 
  private:
-  const std::string GetPlacementName() const override { return "MKLDNN"; }
+  const std::string GetPlacementName() const override { return "ONEDNN"; }
 
   const std::string GetAttrName() const override { return "use_mkldnn"; }
 
   const std::unordered_set<std::string> GetOpTypesList() const override {
-    return Get<std::unordered_set<std::string>>("mkldnn_enabled_op_types");
+    return Get<std::unordered_set<std::string>>("onednn_enabled_op_types");
   }
 };
 

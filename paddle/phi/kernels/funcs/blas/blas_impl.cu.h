@@ -1260,6 +1260,14 @@ struct CUBlas<phi::dtype::complex<double>> {
   }
 };
 
+inline void CheckGEMMNSize(int64_t N) {
+  constexpr int64_t kMaxN = 1073741823;
+  if (N > kMaxN) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "cublas GEMM does not support N > %ld. Got N = %ld. ", kMaxN, N));
+  }
+}
+
 template <>
 template <typename T>
 void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
@@ -1307,6 +1315,7 @@ void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
           "GEMM_EX_64 is not supported on cuda < 12.3"));
 #endif
     } else {
+      CheckGEMMNSize(N);
       CUBlas<T>::GEMM_EX(&cuda_ctx,
                          cuTransB,
                          cuTransA,
@@ -1418,6 +1427,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
         "GEMM_EX_64 is not supported on cuda < 12.3"));
 #endif  // CUDA_VERSION >= 12030
   } else {
+    CheckGEMMNSize(N);
     CUBlas<phi::dtype::float16>::GEMM_EX(&cuda_ctx,
                                          cuTransB,
                                          cuTransA,
@@ -1514,6 +1524,7 @@ void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
           "GEMM_EX_64 is not supported on cuda < 12.3"));
 #endif
     } else {
+      CheckGEMMNSize(N);
       CUBlas<T>::GEMM_EX(&cuda_ctx,
                          cuTransB,
                          cuTransA,
@@ -1627,6 +1638,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
 #endif  // CUDA_VERSION >= 12030
   } else {
 #if CUDA_VERSION >= 8000
+    CheckGEMMNSize(N);
     CUBlas<phi::dtype::float16>::GEMM_EX(&cuda_ctx,
                                          cuTransB,
                                          cuTransA,
@@ -1736,6 +1748,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
         "cublasGemmEx_64 is not supported on cuda < 12.3"));
 #endif  // CUDA_VERSION >= 12030
   } else {
+    CheckGEMMNSize(N);
     dev_ctx_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::cublasGemmEx(handle,
@@ -1836,6 +1849,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
         "cublasGemmEx_64 is not supported on cuda < 12.3"));
 #endif  // CUDA_VERSION >= 12030
   } else {
+    CheckGEMMNSize(N);
     dev_ctx_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::cublasGemmEx(handle,
@@ -1931,6 +1945,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
 #endif  // CUDA_VERSION >= 12030
   } else {
 #if CUDA_VERSION >= 8000
+    CheckGEMMNSize(N);
     CUBlas<phi::dtype::complex<float>>::GEMM_EX(&cuda_ctx,
                                                 cuTransB,
                                                 cuTransA,
@@ -2040,6 +2055,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
 #endif  // CUDA_VERSION >= 12030
   } else {
 #if CUDA_VERSION >= 8000
+    CheckGEMMNSize(N);
     CUBlas<phi::dtype::complex<double>>::GEMM_EX(&cuda_ctx,
                                                  cuTransB,
                                                  cuTransA,
@@ -2101,6 +2117,7 @@ void Blas<phi::GPUContext>::GEMM(bool transA,
   cublasOperation_t cuTransB = transB ? CUBLAS_OP_T : CUBLAS_OP_N;
 
 #if CUDA_VERSION >= 8000
+  CheckGEMMNSize(N);
   if (FLAGS_enable_cublas_tensor_op_math && std::is_same<T, float>::value) {
     auto &cuda_ctx = const_cast<phi::GPUContext &>(dev_ctx_);
     CUBlas<T>::GEMM_EX(&cuda_ctx,
@@ -2173,6 +2190,7 @@ inline void Blas<phi::GPUContext>::GEMM(bool transA,
   if (use_tensor_op_math) {
     algo = CUBLAS_GEMM_DFALT_TENSOR_OP;
   }
+  CheckGEMMNSize(N);
   dev_ctx_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasGemmEx(handle,
                                                           cuTransB,
@@ -2234,6 +2252,7 @@ inline void Blas<phi::GPUContext>::GEMM(bool transA,
     algo = CUBLAS_GEMM_DFALT_TENSOR_OP;
   }
 
+  CheckGEMMNSize(N);
   dev_ctx_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasGemmEx(handle,
                                                           cuTransB,

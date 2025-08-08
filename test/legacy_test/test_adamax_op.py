@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, get_places
+from op_test import OpTest, get_device_place, get_devices
 
 import paddle
 
@@ -275,7 +275,7 @@ class TestAdamaxOpMultiPrecision(unittest.TestCase):
         paddle.enable_static()
 
     def _get_places(self):
-        return get_places(string_format=True)
+        return get_devices()
 
     def test_main(self):
         for place in self._get_places():
@@ -319,7 +319,7 @@ class TestAdamaxMultiPrecision2_0(unittest.TestCase):
         paddle.enable_static()
         paddle.seed(100)
         np.random.seed(100)
-        exe = paddle.static.Executor('gpu')
+        exe = paddle.static.Executor(get_device_place())
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         optimizer = paddle.optimizer.Adamax(0.1)
