@@ -37,48 +37,48 @@ _DecoratedFunc = Callable[_P, _R]
 
 
 class DecoratorBase(Generic[_P, _R]):
-    """装饰器基类，提供通用装饰器框架
+    """Decorative base class, providing a universal decorative framework.
 
-    子类只需实现 `process` 方法定义核心逻辑
+    Subclass only needs to implement the 'process' method to define the core logic.
     """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        """初始化装饰器参数"""
+        """Initialize decorator parameters"""
         self.args = args
         self.kwargs = kwargs
 
     def __call__(self, func: _DecoratedFunc[_P, _R]) -> _DecoratedFunc[_P, _R]:
-        """作为装饰器应用的入口点"""
+        """As an entry point for decorative applications"""
 
         @functools.wraps(func)
         def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _R:
-            # 预处理参数
+            # Pretreatment parameters
             processed_args, processed_kwargs = self.process(args, kwargs)
-            # 调用原函数
+            # Call the original function
             return func(*processed_args, **processed_kwargs)
 
-        # 保留原始签名
+        # Keep original signature
         wrapper.__signature__ = inspect.signature(func)
         return cast("_DecoratedFunc[_P, _R]", wrapper)
 
     def process(
         self, args: tuple[Any, ...], kwargs: dict[str, Any]
     ) -> tuple[tuple[Any, ...], dict[str, Any]]:
-        """子类必须实现的核心处理方法
+        """Core processing methods that subclasses must implement.
 
         Args:
-            args: 位置参数
-            kwargs: 关键字参数
+            args: positional parameter
+            kwargs: Keyword Argument
 
         Returns:
-            处理后的 (args, kwargs) 元组
+            Processed tuples (args, kwargs)
         """
         raise NotImplementedError("Subclasses must implement this method")
 
 
-# 示例实现：参数别名装饰器
+# Example implementation: Parameter alias decorator
 class ParamAliasDecorator(DecoratorBase[_P, _R]):
-    """参数别名处理的装饰器实现"""
+    """Implementation of Decorator for Parameter Alias Processing"""
 
     def __init__(self, alias_mapping: dict[str, Iterable[str]]) -> None:
         super().__init__()
