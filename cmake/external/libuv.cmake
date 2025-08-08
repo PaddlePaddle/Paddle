@@ -24,12 +24,20 @@ set(LIBUV_INSTALL_DIR ${THIRD_PARTY_PATH}/install/libuv)
 set(LIBUV_INCLUDE_DIR
     ${LIBUV_INSTALL_DIR}/include
     CACHE PATH "libuv include directory." FORCE)
-set(LIBUV_LIBRARY_DIR
-    ${LIBUV_INSTALL_DIR}/lib
-    CACHE PATH "libuv library directory." FORCE)
+
+if(EXISTS "/etc/almalinux-release")
+  message(STATUS "Running on AlmaLinux")
+  set(LIBUV_LIBRARY_DIR
+      ${LIBUV_INSTALL_DIR}/lib64
+      CACHE PATH "libuv library directory." FORCE)
+else()
+  set(LIBUV_LIBRARY_DIR
+      ${LIBUV_INSTALL_DIR}/lib
+      CACHE PATH "libuv library directory." FORCE)
+endif()
 
 set(LIBUV_LIBRARIES
-    ${LIBUV_INSTALL_DIR}/lib/libuv.a
+    ${LIBUV_LIBRARY_DIR}/libuv.a
     CACHE FILEPATH "libuv library." FORCE)
 
 set(LIBUV_BuildTests
