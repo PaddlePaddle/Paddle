@@ -105,3 +105,35 @@ class ParamAliasDecorator(DecoratorBase[_P, _R]):
                             f"Cannot specify both '{original}' and its alias '{alias}'"
                         )
         return args, processed_kwargs
+
+
+# *size => shape decorator
+class SizeArgsDecorator(DecoratorBase[_P, _R]):
+    """
+    Usage Example:
+
+    paddle.ones(1, dtype=paddle.float32)
+    paddle.ones(1, 2, 3, dtype=paddle.float32)
+    paddle.ones([1, 2, 3], dtype=paddle.float32)
+    paddle.ones(size=[1, 2, 3], dtype=paddle.float32)
+
+    paddle.ones([1, 2, 3], paddle.float32)
+    paddle.ones(shape=[1, 2, 3], dtype=paddle.float32)
+    """
+
+    def process(
+        self, args: tuple[Any, ...], kwargs: dict[str, Any]
+    ) -> tuple[tuple[Any, ...], dict[str, Any]]:
+        if 'size' in kwargs:
+            kwargs['shape'] = kwargs.pop('size')
+        elif len(args) >= 1:
+            is_all_int = True
+            for ele in args:
+                if not isinstance(ele, int):
+                    is_all_int = False
+                    break
+            if is_all_int:
+                kwargs['shape'] = list(args)
+                args = ()
+
+        return args, kwargs
