@@ -1854,45 +1854,6 @@ def rot90(
         return flip(transpose(x, axes_list), axes[1])
 
 
-def ravel(input: Tensor) -> Tensor:
-    """
-    Flattens a tensor across all axes.
-
-    Note:
-        The output Tensor will share data with origin Tensor and doesn't have a Tensor copy in ``dygraph`` mode.
-        If you want to use the Tensor copy version, please use `Tensor.clone` like ``ravel_clone_input = input.ravel().clone()``.
-
-    Args:
-        input (Tensor): A tensor with data type float16, float32, float64, int8, int32, int64, uint8.
-
-    Returns:
-        Tensor, A tensor with the contents of the input tensor, whose input axes are across all axes, and data type is the same as input :attr:`input`.
-
-    Examples:
-
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> image_shape=(2, 3, 4, 4)
-
-            >>> x = paddle.arange(end=image_shape[0] * image_shape[1] * image_shape[2] * image_shape[3])
-            >>> img = paddle.reshape(x, image_shape)
-
-            >>> out = paddle.ravel(img)
-            >>> print(out.shape)
-            [96]
-
-            >>> # out shares data with img in dygraph mode
-            >>> img[0, 0, 0, 0] = -1
-            >>> print(out[0])
-            Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,
-            -1)
-    """
-
-    return flatten(input)
-
-
 def flatten(
     x: Tensor, start_axis: int = 0, stop_axis: int = -1, name: str | None = None
 ) -> Tensor:
