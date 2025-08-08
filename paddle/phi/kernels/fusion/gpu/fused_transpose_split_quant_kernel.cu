@@ -163,13 +163,12 @@ __device__ void BlockStoreOut(OutT* out,
 
 template <typename InT, typename OutT, bool Pow2Scales, int VecSize>
 __global__ void __launch_bounds__(512)
-    /*  */ FusedTransposeSplitQuantKernel(
-        const InT* __restrict__ input,
-        const float* __restrict__ input_scales,
-        int64_t* __restrict__ meta,
-        size_t num_experts,
-        size_t K,
-        size_t k_scaled) {
+    FusedTransposeSplitQuantKernel(const InT* __restrict__ input,
+                                   const float* __restrict__ input_scales,
+                                   int64_t* __restrict__ meta,
+                                   size_t num_experts,
+                                   size_t K,
+                                   size_t k_scaled) {
   __shared__ OutT shm[128][129];
   __shared__ size_t expert_info[2];
   __shared__ float scales[128];  // May be reused? Is it worthy?
