@@ -179,7 +179,7 @@ function(inference_quant2_int8_lstm_model_test target fp32_model quant_model
          ${dataset_path}
          --num_threads
          1
-         --mkldnn_cache_capacity
+         --onednn_cache_capacity
          100
          --warmup_iter
          100
