@@ -160,6 +160,36 @@ void ReduceAMaxGradKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+void MinWithIndexGradKernel(const Context& dev_ctx,
+                            const DenseTensor& x,
+                            const DenseTensor& values,
+                            const DenseTensor& values_grad,
+                            const Scalar& dim,
+                            bool keepdims,
+                            bool flatten,
+                            DenseTensor* x_grad) {
+  int64_t dim_val = dim.to<int64_t>();
+  flatten = recompute_reduce_all(x, {dim_val}, flatten);
+  ReduceCudaAMaxAMinGrad<T, Context>(
+      dev_ctx, x, values, values_grad, {dim_val}, keepdims, flatten, x_grad);
+}
+
+template <typename T, typename Context>
+void MaxWithIndexGradKernel(const Context& dev_ctx,
+                            const DenseTensor& x,
+                            const DenseTensor& values,
+                            const DenseTensor& values_grad,
+                            const Scalar& dim,
+                            bool keepdims,
+                            bool flatten,
+                            DenseTensor* x_grad) {
+  int64_t dim_val = dim.to<int64_t>();
+  flatten = recompute_reduce_all(x, {dim_val}, flatten);
+  ReduceCudaAMaxAMinGrad<T, Context>(
+      dev_ctx, x, values, values_grad, {dim_val}, keepdims, flatten, x_grad);
+}
+
+template <typename T, typename Context>
 void ReduceMaxGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& out,
@@ -284,6 +314,17 @@ PD_REGISTER_KERNEL(max_grad,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 
+PD_REGISTER_KERNEL(max_with_index_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MaxWithIndexGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+
 PD_REGISTER_KERNEL(mean_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -303,6 +344,17 @@ PD_REGISTER_KERNEL(min_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::ReduceMinGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(min_with_index_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MinWithIndexGradKernel,
                    float,
                    double,
                    int,

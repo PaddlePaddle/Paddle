@@ -315,8 +315,9 @@ bool AnyOpInferSymbolicShape(pir::Operation *op,
                                  axis.size() == 0 /*reduce_all*/);
 }
 
-bool ArgmaxOpInferSymbolicShape(pir::Operation *op,
-                                pir::InferSymbolicShapeContext *infer_context) {
+bool MinMaxOpInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context,
+                                bool output_val_and_ind = false) {
   bool flatten = GetBoolAttr(op, "flatten");
   bool keepdims = GetBoolAttr(op, "keepdims");
 
@@ -357,13 +358,23 @@ bool ArgmaxOpInferSymbolicShape(pir::Operation *op,
       symbol::TensorShapeOrDataDimExprs(out_sym_shape)};
 
   infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
+  if (output_val_and_ind)
+    infer_context->SetShapeOrDataForValue(op->result(1), shape_data);
   return true;
 }
 
-bool ArgminOpInferSymbolicShape(pir::Operation *op,
-                                pir::InferSymbolicShapeContext *infer_context) {
-  return ArgmaxOpInferSymbolicShape(op, infer_context);
-}
+#define DEFINE_MINMAX_OP_INFER_FUNC(OpName, output_val_and_ind)               \
+  bool OpName##OpInferSymbolicShape(                                          \
+      pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {    \
+    return MinMaxOpInferSymbolicShape(op, infer_context, output_val_and_ind); \
+  }
+
+DEFINE_MINMAX_OP_INFER_FUNC(Argmin, false)
+DEFINE_MINMAX_OP_INFER_FUNC(Argmax, false)
+DEFINE_MINMAX_OP_INFER_FUNC(MinWithIndex, true)
+DEFINE_MINMAX_OP_INFER_FUNC(MaxWithIndex, true)
+
+#undef DEFINE_MINMAX_OP_INFER_FUNC
 
 bool AsComplexOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
