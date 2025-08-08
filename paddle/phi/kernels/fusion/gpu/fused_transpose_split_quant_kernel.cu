@@ -172,7 +172,7 @@ __global__ void __launch_bounds__(512)
         size_t k_scaled) {
   __shared__ OutT shm[128][129];
   __shared__ size_t expert_info[2];
-  __shared__ float scales[128];  // 用于存储列方向计算出的scale
+  __shared__ float scales[128];  // May be reused? Is it worthy?
 
   int64_t* tokens_per_expert = meta;
   OutT** out_ptrs = reinterpret_cast<OutT**>(meta + num_experts);
