@@ -107,7 +107,7 @@ class TestPaddleRavel_case2(TestPaddleRavel):
 class TestPaddleRavel_case3(TestPaddleRavel):
     def setUp(self):
         # check Ravel 0d (scalar)
-        self.input_np = np.array(5.0, dtype="float32")  # 标量
+        self.input_np = np.array(5.0, dtype="float32")
         self.input_shape = self.input_np.shape
         self.input_dtype = "float32"
         self.op_static = lambda x: paddle.ravel(x)
