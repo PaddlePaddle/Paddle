@@ -24,6 +24,7 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
+from paddle.device import _convert_to_place
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
@@ -1141,11 +1142,16 @@ def fill_constant(
     value: bool | float | paddle.Tensor,
     force_cpu: bool = False,
     out: paddle.Tensor | None = None,
+    place: PlaceLike | None = None,
     name: str | None = None,
 ) -> paddle.Tensor:
     shape = [shape] if isinstance(shape, int) else shape
     if in_dynamic_or_pir_mode():
-        place = _current_expected_place()
+        if place is None:
+            place = _current_expected_place()
+        else:
+            place = _convert_to_place(place)
+
         if force_cpu:
             place = core.CPUPlace()
 
@@ -1301,15 +1307,14 @@ def ones(
              [1. 1.]
              [1. 1.]]
     """
-    if dtype is None:
-        dtype = paddle.get_default_dtype()
-    tensor = fill_constant(value=1.0, shape=shape, dtype=dtype, name=name)
-
-    if device is not None:
-        tensor = tensor.to(device=device)
-    if requires_grad is True:
-        tensor.stop_gradient = False
-    return tensor
+    return full(
+        shape,
+        1,
+        dtype,
+        device=device,
+        requires_grad=requires_grad,
+        name=name,
+    )
 
 
 def ones_like(
@@ -1420,15 +1425,14 @@ def zeros(
              [0. 0.]
              [0. 0.]]
     """
-    if dtype is None:
-        dtype = paddle.get_default_dtype()
-    tensor = fill_constant(value=0.0, shape=shape, dtype=dtype, name=name)
-
-    if device is not None:
-        tensor = tensor.to(device=device)
-    if requires_grad is True:
-        tensor.stop_gradient = False
-    return tensor
+    return full(
+        shape,
+        0,
+        dtype,
+        device=device,
+        requires_grad=requires_grad,
+        name=name,
+    )
 
 
 def zeros_like(
@@ -1674,10 +1678,8 @@ def full(
             dtype = paddle.get_default_dtype()
 
     tensor = fill_constant(
-        shape=shape, dtype=dtype, value=fill_value, name=name
+        shape=shape, dtype=dtype, value=fill_value, place=device, name=name
     )
-    if device is not None:
-        tensor = tensor.to(device=device)
     if requires_grad is True:
         tensor.stop_gradient = False
     return tensor
