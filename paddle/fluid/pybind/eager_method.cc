@@ -1415,9 +1415,9 @@ static PyObject* tensor_method_set_underline_tensor(TensorObject* self,
       auto* dst_tensor =
           static_cast<phi::DenseTensor*>(self->tensor.impl().get());
       if (self->tensor.has_allocation() && self->tensor.initialized() &&
-              !dst_tensor->meta().is_contiguous() ||
-          !src_tensor->meta().is_contiguous()) {
-        VLOG(8) << "set_tensor() method , src or dst tensor is not contiguous";
+          (!dst_tensor->meta().is_contiguous() ||
+           !src_tensor->meta().is_contiguous())) {
+        VLOG(8) << "set_tensor() method , src or dst tensor is not contiguous ";
         if (!FLAGS_use_stride_kernel) {
           PADDLE_THROW(common::errors::Fatal(
               "FLAGS_use_stride_kernel is closed. Strided kernel "
@@ -1450,7 +1450,6 @@ static PyObject* tensor_method_set_underline_tensor(TensorObject* self,
           "The `set_tensor()` method of non DenseTensor get a DenseTensor src "
           "value"));
     }
-
   } else if (value.is_dist_tensor()) {
 #ifdef PADDLE_WITH_DISTRIBUTE
     auto* src_tensor =
@@ -1484,7 +1483,6 @@ static PyObject* tensor_method_set_underline_tensor(TensorObject* self,
         "current PaddlePaddle, please recompile and installPaddlePaddle "
         "with the option of `WITH_DISTRIBUTE=ON`."));
 #endif
-
   } else {
     PADDLE_THROW(common::errors::Unavailable(
         "The `set_tensor()` method of (Dist)Tensor get a non "
