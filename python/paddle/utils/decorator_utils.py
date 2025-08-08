@@ -12,31 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import annotations
-
 import functools
 import inspect
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Generic,
-    TypeVar,
-    cast,
-)
+from collections.abc import Iterable
+from typing import Any, Callable, TypeVar, cast
 
-from typing_extensions import ParamSpec
-
-if TYPE_CHECKING:
-    from collections.abc import Iterable
+_F = TypeVar("_F", bound=Callable[..., Any])
 
 
-_P = ParamSpec("_P")
-_R = TypeVar("_R")
-_DecoratedFunc = Callable[_P, _R]
-
-
-class DecoratorBase(Generic[_P, _R]):
+class DecoratorBase:
     """装饰器基类，提供通用装饰器框架
 
     子类只需实现 `process` 方法定义核心逻辑
@@ -47,11 +31,11 @@ class DecoratorBase(Generic[_P, _R]):
         self.args = args
         self.kwargs = kwargs
 
-    def __call__(self, func: _DecoratedFunc[_P, _R]) -> _DecoratedFunc[_P, _R]:
+    def __call__(self, func: _F) -> _F:
         """作为装饰器应用的入口点"""
 
         @functools.wraps(func)
-        def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _R:
+        def wrapper(*args, **kwargs):
             # 预处理参数
             processed_args, processed_kwargs = self.process(args, kwargs)
             # 调用原函数
@@ -59,7 +43,7 @@ class DecoratorBase(Generic[_P, _R]):
 
         # 保留原始签名
         wrapper.__signature__ = inspect.signature(func)
-        return cast("_DecoratedFunc[_P, _R]", wrapper)
+        return cast("_F", wrapper)
 
     def process(
         self, args: tuple[Any, ...], kwargs: dict[str, Any]
@@ -77,7 +61,7 @@ class DecoratorBase(Generic[_P, _R]):
 
 
 # 示例实现：参数别名装饰器
-class ParamAliasDecorator(DecoratorBase[_P, _R]):
+class ParamAliasDecorator(DecoratorBase):
     """参数别名处理的装饰器实现"""
 
     def __init__(self, alias_mapping: dict[str, Iterable[str]]) -> None:
