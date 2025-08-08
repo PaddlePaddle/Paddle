@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_places
 
 import paddle
 from paddle.framework import core
@@ -39,9 +39,7 @@ class TestPowOp(OpTest):
             self.outputs = {
                 'Out': np.power(self.inputs['X'], self.attrs["factor"])
             }
-        self.places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            self.places.append(core.CUDAPlace(0))
+        self.places = get_places()
 
     def custom_setting(self):
         self.inputs = {

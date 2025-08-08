@@ -156,9 +156,7 @@ class TestMaxZeroSize1(unittest.TestCase):
         self.expect_res = np.max(
             self.data, axis=tuple(self.axis), keepdims=self.keepdims
         )
-        self.places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            self.places.append(core.CUDAPlace(0))
+        self.places = get_places()
 
     def test_static(self):
         with static_guard():
