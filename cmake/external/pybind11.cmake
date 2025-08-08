@@ -27,7 +27,7 @@ set(PYBIND_PATCH_COMMAND "")
 if(LINUX
    AND (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
    AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
-  set(PYBIND_TAG v2.13.6)
+  set(PYBIND_TAG v3.0.0)
   file(TO_NATIVE_PATH
        ${PADDLE_SOURCE_DIR}/patches/pybind/detail/internals.h.patch native_dst)
   # Note: [Why calling some `git` commands before `patch`?]
@@ -50,7 +50,7 @@ ExternalProject_Add(
   # third-party library version changes cannot be incorporated.
   # reference: https://cmake.org/cmake/help/latest/module/ExternalProject.html
   UPDATE_COMMAND ""
-  PATCH_COMMAND ${PYBIND_PATCH_COMMAND}
+  # PATCH_COMMAND ${PYBIND_PATCH_COMMAND}
   CONFIGURE_COMMAND ""
   # I intentionally preserved an extern_pybind/include/pybind11 directory
   # to site-packages, so that you could discern that you intended to
