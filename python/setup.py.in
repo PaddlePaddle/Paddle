@@ -1202,7 +1202,7 @@ if '${WITH_ONEDNN}' == 'ON':
     if os.name != 'nt':
         package_data['paddle.libs']+=['libdnnl.so.3']
     else:
-        package_data['paddle.libs']+=['mkldnn.dll']
+        package_data['paddle.libs']+=['onednn.dll']
 
 if '${WITH_ONNXRUNTIME}' == 'ON':
     shutil.copy('${ONNXRUNTIME_SHARED_LIB}', libs_path)

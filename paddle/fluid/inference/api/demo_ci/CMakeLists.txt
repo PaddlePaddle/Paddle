@@ -162,7 +162,7 @@ if(WITH_MKL)
   if(EXISTS ${ONEDNN_PATH})
     include_directories("${ONEDNN_PATH}/include")
     if(WIN32)
-      set(ONEDNN_LIB ${ONEDNN_PATH}/lib/mkldnn.lib)
+      set(ONEDNN_LIB ${ONEDNN_PATH}/lib/onednn.lib)
     else()
       set(ONEDNN_LIB ${ONEDNN_PATH}/lib/libdnnl.so.3)
     endif()
@@ -324,7 +324,7 @@ if(WIN32)
               ${LIB_PATH}
       COMMAND ${CMAKE_COMMAND} -E copy ${MATH_LIB_PATH}/lib/libiomp5md.dll
               ${LIB_PATH}
-      COMMAND ${CMAKE_COMMAND} -E copy ${ONEDNN_PATH}/lib/mkldnn.dll
+      COMMAND ${CMAKE_COMMAND} -E copy ${ONEDNN_PATH}/lib/onednn.dll
               ${LIB_PATH})
   else()
     add_custom_command(

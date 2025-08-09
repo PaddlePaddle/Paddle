@@ -1633,7 +1633,7 @@ def get_package_data_and_package_dir():
         if os.name != 'nt':
             package_data['paddle.libs'] += ['libdnnl.so.3']
         else:
-            package_data['paddle.libs'] += ['mkldnn.dll']
+            package_data['paddle.libs'] += ['onednn.dll']
 
     if env_dict.get("WITH_ONNXRUNTIME") == 'ON':
         shutil.copy(env_dict.get("ONNXRUNTIME_SHARED_LIB"), libs_path)

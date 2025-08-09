@@ -349,13 +349,13 @@ if(WITH_PYTHON)
     endif()
 
     if(WITH_ONEDNN)
-      message("Copied mkldnn.dll for Eager AutoCodeGen")
+      message("Copied onednn.dll for Eager AutoCodeGen")
       add_custom_command(
-        OUTPUT ${eager_generator_path}/mkldnn.dll
+        OUTPUT ${eager_generator_path}/onednn.dll
         COMMAND ${CMAKE_COMMAND} -E copy ${ONEDNN_SHARED_LIB}
                 ${eager_generator_path}
         DEPENDS onednn)
-      list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/mkldnn.dll)
+      list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/onednn.dll)
     endif()
 
     if(WITH_ONNXRUNTIME)
@@ -471,11 +471,11 @@ if(WITH_PYTHON)
     endif()
     if(WITH_ONEDNN)
       add_custom_command(
-        OUTPUT ${op_impl_path}/mkldnn.dll
+        OUTPUT ${op_impl_path}/onednn.dll
         COMMAND ${CMAKE_COMMAND} -E copy ${ONEDNN_SHARED_LIB} ${op_impl_path}
         DEPENDS onednn)
-      list(APPEND OP_IMPL_DEPS ${op_impl_path}/mkldnn.dll)
-      list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/mkldnn.dll)
+      list(APPEND OP_IMPL_DEPS ${op_impl_path}/onednn.dll)
+      list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/onednn.dll)
     endif()
     if(WITH_ONNXRUNTIME)
       add_custom_command(
