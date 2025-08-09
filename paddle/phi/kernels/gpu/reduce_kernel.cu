@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/reduce_kernel.h"
+#include <type_traits>
 
 #include "paddle/phi/kernels/gpu/reduce_amin_amax_common.h"
 #include "paddle/phi/kernels/reduce_amin_grad_kernel.h"
@@ -159,7 +160,15 @@ void ReduceAMaxGradKernel(const Context& dev_ctx,
       dev_ctx, x, out, out_grad, dims, keep_dim, reduce_all, x_grad);
 }
 
-template <typename T, typename Context>
+template <typename T>
+using EnableIfInteger =
+    typename std::enable_if<std::is_integral<T>::value, int>::type;
+
+template <typename T>
+using EnableIfNonInteger =
+    typename std::enable_if<!std::is_integral<T>::value, int>::type;
+
+template <typename T, typename Context, EnableIfNonInteger<T> = 0>
 void MinWithIndexGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& values,
@@ -174,7 +183,25 @@ void MinWithIndexGradKernel(const Context& dev_ctx,
       dev_ctx, x, values, values_grad, {dim_val}, keepdims, flatten, x_grad);
 }
 
-template <typename T, typename Context>
+template <typename T, typename Context, EnableIfInteger<T> = 0>
+void MinWithIndexGradKernel(const Context& dev_ctx,
+                            const DenseTensor& x,
+                            const DenseTensor& values,
+                            const DenseTensor& values_grad,
+                            const Scalar& dim,
+                            bool keepdims,
+                            bool flatten,
+                            DenseTensor* x_grad) {
+  std::string dtype_name = phi::DataTypeToString(x.dtype());
+  PADDLE_ENFORCE_EQ(
+      0,
+      1,
+      phi::errors::InvalidArgument(
+          "Integer type '%s' is not allowed to have stop_gradient=False.",
+          dtype_name.c_str()));
+}
+
+template <typename T, typename Context, EnableIfNonInteger<T> = 0>
 void MaxWithIndexGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& values,
@@ -187,6 +214,24 @@ void MaxWithIndexGradKernel(const Context& dev_ctx,
   flatten = recompute_reduce_all(x, {dim_val}, flatten);
   ReduceCudaAMaxAMinGrad<T, Context>(
       dev_ctx, x, values, values_grad, {dim_val}, keepdims, flatten, x_grad);
+}
+
+template <typename T, typename Context, EnableIfInteger<T> = 0>
+void MaxWithIndexGradKernel(const Context& dev_ctx,
+                            const DenseTensor& x,
+                            const DenseTensor& values,
+                            const DenseTensor& values_grad,
+                            const Scalar& dim,
+                            bool keepdims,
+                            bool flatten,
+                            DenseTensor* x_grad) {
+  std::string dtype_name = phi::DataTypeToString(x.dtype());
+  PADDLE_ENFORCE_EQ(
+      0,
+      1,
+      phi::errors::InvalidArgument(
+          "Integer type '%s' is not allowed to have stop_gradient=False.",
+          dtype_name.c_str()));
 }
 
 template <typename T, typename Context>
@@ -320,7 +365,9 @@ PD_REGISTER_KERNEL(max_with_index_grad,
                    phi::MaxWithIndexGradKernel,
                    float,
                    double,
+                   uint8_t,
                    int,
+                   int16_t,
                    int64_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
@@ -357,7 +404,9 @@ PD_REGISTER_KERNEL(min_with_index_grad,
                    phi::MinWithIndexGradKernel,
                    float,
                    double,
+                   uint8_t,
                    int,
+                   int16_t,
                    int64_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
