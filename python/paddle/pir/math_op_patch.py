@@ -29,7 +29,7 @@ from paddle.base.wrapped_decorator import wrap_decorator
 from . import Value
 
 if TYPE_CHECKING:
-    from paddle._typing import DTypeLike, PlaceLike
+    from paddle._typing import DTypeLike, PlaceLike, ShapeLike
 
 
 _already_patch_value = False
@@ -574,6 +574,7 @@ def monkey_patch_value():
 
     def _new_full_(
         self,
+        size: ShapeLike,
         fill_value: bool | float | paddle.Tensor,
         *,
         dtype: DTypeLike | None = None,
@@ -609,8 +610,8 @@ def monkey_patch_value():
             device = self.device
 
         return paddle.full(
-            self.shape,
-            fill_value=fill_value,
+            size,
+            fill_value,
             dtype=dtype,
             device=device,
             requires_grad=requires_grad,
@@ -618,7 +619,7 @@ def monkey_patch_value():
 
     def _new_empty_(
         self,
-        fill_value: bool | float | paddle.Tensor,
+        size: ShapeLike,
         *,
         dtype: DTypeLike | None = None,
         device: PlaceLike | None = None,
@@ -653,12 +654,12 @@ def monkey_patch_value():
             device = self.device
 
         return paddle.empty(
-            self.shape, dtype=dtype, device=device, requires_grad=requires_grad
+            size, dtype=dtype, device=device, requires_grad=requires_grad
         )
 
     def _new_ones_(
         self,
-        fill_value: bool | float | paddle.Tensor,
+        size: ShapeLike,
         *,
         dtype: DTypeLike | None = None,
         device: PlaceLike | None = None,
@@ -693,8 +694,8 @@ def monkey_patch_value():
             device = self.device
 
         return paddle.full(
-            self.shape,
-            fill_value=1,
+            size,
+            1,
             dtype=dtype,
             device=device,
             requires_grad=requires_grad,
@@ -702,7 +703,7 @@ def monkey_patch_value():
 
     def _new_zeros_(
         self,
-        fill_value: bool | float | paddle.Tensor,
+        size: ShapeLike,
         *,
         dtype: DTypeLike | None = None,
         device: PlaceLike | None = None,
@@ -737,8 +738,8 @@ def monkey_patch_value():
             device = self.device
 
         return paddle.full(
-            self.shape,
-            fill_value=0,
+            size,
+            0,
             dtype=dtype,
             device=device,
             requires_grad=requires_grad,

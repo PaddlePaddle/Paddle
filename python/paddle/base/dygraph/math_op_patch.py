@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+import paddle
 from paddle import _C_ops
 
 from .. import core
@@ -25,7 +26,7 @@ from ..framework import convert_np_dtype_to_dtype_
 
 if TYPE_CHECKING:
     from paddle import Tensor
-    from paddle._typing import DTypeLike, PlaceLike
+    from paddle._typing import DTypeLike, PlaceLike, ShapeLike
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.UINT8,
@@ -70,6 +71,7 @@ def monkey_patch_math_tensor():
     Similar to monkey_patch_variable.
     The difference is, in dygraph mode, use auto-generated op functions for better performance.
     """
+    global paddle
 
     def astype(self: Tensor, dtype: DTypeLike) -> Tensor:
         """
@@ -217,6 +219,7 @@ def monkey_patch_math_tensor():
 
     def _new_full_(
         var: Tensor,
+        size: ShapeLike,
         fill_value: bool | float | paddle.Tensor,
         *,
         dtype: DTypeLike | None = None,
@@ -229,8 +232,8 @@ def monkey_patch_math_tensor():
             device = var.device
 
         return paddle.full(
-            var.shape,
-            fill_value=fill_value,
+            size,
+            fill_value,
             dtype=dtype,
             device=device,
             requires_grad=requires_grad,
@@ -238,6 +241,7 @@ def monkey_patch_math_tensor():
 
     def _new_empty_(
         var: Tensor,
+        size: ShapeLike,
         *,
         dtype: DTypeLike | None = None,
         device: PlaceLike | None = None,
@@ -249,11 +253,15 @@ def monkey_patch_math_tensor():
             device = var.device
 
         return paddle.empty(
-            var.shape, dtype=dtype, device=device, requires_grad=requires_grad
+            size,
+            dtype,
+            device=device,
+            requires_grad=requires_grad,
         )
 
     def _new_ones_(
         var: Tensor,
+        size: ShapeLike,
         *,
         dtype: DTypeLike | None = None,
         device: PlaceLike | None = None,
@@ -265,15 +273,16 @@ def monkey_patch_math_tensor():
             device = var.device
 
         return paddle.full(
-            var.shape,
-            fill_value=1,
-            dtype=dtype,
+            size,
+            1,
+            dtype,
             device=device,
             requires_grad=requires_grad,
         )
 
     def _new_zeros_(
         var: Tensor,
+        size: ShapeLike,
         *,
         dtype: DTypeLike | None = None,
         device: PlaceLike | None = None,
@@ -285,9 +294,9 @@ def monkey_patch_math_tensor():
             device = var.device
 
         return paddle.full(
-            var.shape,
-            fill_value=0,
-            dtype=dtype,
+            size,
+            0,
+            dtype,
             device=device,
             requires_grad=requires_grad,
         )
