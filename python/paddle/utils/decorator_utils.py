@@ -105,3 +105,32 @@ class ParamAliasDecorator(DecoratorBase[_P, _R]):
                             f"Cannot specify both '{original}' and its alias '{alias}'"
                         )
         return args, processed_kwargs
+
+
+class ForbidKeywordsDecorator(DecoratorBase[_P, _R]):
+    """A decorator that hints users to use the correct `compat` functions, when erroneous keyword arguments are detected"""
+
+    def __init__(
+        self, illegal_keys: list[str] | str, func_name: str, correct_name: str
+    ) -> None:
+        super().__init__()
+        self.illegal_keys = (
+            [illegal_keys] if isinstance(illegal_keys, str) else illegal_keys
+        )
+        self.func_name = func_name
+        self.correct_name = correct_name
+
+    def process(
+        self, args: tuple[Any, ...], kwargs: dict[str, Any]
+    ) -> tuple[tuple[Any, ...], dict[str, Any]]:
+        found_keys = [key for key in self.illegal_keys if key in kwargs]
+
+        if found_keys:
+            keys_str = ", ".join(f"'{key}'" for key in found_keys)
+            plural = "s" if len(found_keys) > 1 else ""
+
+            raise TypeError(
+                f"{self.func_name}() received unexpected keyword argument{plural} {keys_str}. "
+                f"\nDid you mean to use {self.correct_name}() instead?"
+            )
+        return args, kwargs
