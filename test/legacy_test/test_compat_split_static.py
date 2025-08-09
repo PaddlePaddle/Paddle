@@ -162,9 +162,9 @@ class TestCompatSplitStatic(unittest.TestCase):
                 feed=feed, fetch_list=[result0, result1, result2, output]
             )
 
-            np.testing.assert_allclose(input_data[:, 0:4], results[0])
-            np.testing.assert_allclose(input_data[:, 4:8], results[1])
-            np.testing.assert_allclose(input_data[:, 8:9], results[2])
+            np.testing.assert_allclose(results[0], input_data[:, 0:4])
+            np.testing.assert_allclose(results[1], input_data[:, 4:8])
+            np.testing.assert_allclose(results[2], input_data[:, 8:9])
 
             expected_output = (
                 input_data[:, 0:4] + input_data[:, 4:8] * input_data[:, -1:]
