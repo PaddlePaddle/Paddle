@@ -29,12 +29,16 @@ if TYPE_CHECKING:
 
     from paddle import Tensor
 
-from paddle.utils.compat_kwarg_check import forbid_keywords
+from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
 __all__ = []
 
 
-@forbid_keywords(["x", "num_or_sections", "axis", "name"], "paddle.split")
+@ForbidKeywordsDecorator(
+    illegal_keys=["x", "num_or_sections", "axis", "name"],
+    func_name="paddle.compat.split",
+    correct_name="paddle.split",
+)
 def split(
     tensor: Tensor, split_size_or_sections: int | Sequence[int], dim: int = 0
 ) -> tuple[Tensor, ...]:
@@ -105,12 +109,13 @@ def split(
             sections.append(remaining_num)
             return sections
 
-    def SaveGetShapeOnDim(shape, dim: int) -> int:
+    def GetShapeOnDimInRange(shape, dim: int) -> int:
         shape_range = len(shape)
-        if dim < -shape_range or dim >= shape_range:
-            raise ValueError(
-                f"(InvalidArgument) The dim is expected to be in range of [-{shape_range}, {shape_range}), but got {dim}"
-            )
+        if isinstance(dim, int):
+            if dim < -shape_range or dim >= shape_range:
+                raise ValueError(
+                    f"(InvalidArgument) The dim is expected to be in range of [-{shape_range}, {shape_range}), but got {dim}"
+                )
         return shape[dim]
 
     if isinstance(split_size_or_sections, (list, tuple)):
@@ -151,7 +156,7 @@ def split(
             ), 'split_size_or_sections must be greater than 0.'
 
             split_size_or_sections = GetSplitSize(
-                split_size_or_sections, SaveGetShapeOnDim(tensor.shape, dim)
+                split_size_or_sections, GetShapeOnDimInRange(tensor.shape, dim)
             )
 
             if isinstance(split_size_or_sections, list):
@@ -164,7 +169,10 @@ def split(
             return tuple(_C_ops.split(tensor, split_size_or_sections, dim))
     else:
         if isinstance(dim, paddle.pir.Value):
-            dim.stop_gradient = True
+            raise TypeError(
+                "'dim' is not allowed to be a pir.Value in a static graph: "
+                "\npir.Value can not be used for indexing python lists/tuples."
+            )
         if isinstance(dim, int):
             assert len(tensor.shape) + dim >= 0, "(rank(x) + dim) must >= 0"
             dim = (len(tensor.shape) + dim) if dim < 0 else dim
@@ -173,8 +181,7 @@ def split(
 
         if not isinstance(split_size_or_sections, (int, list, tuple)):
             raise TypeError(
-                "The type of 'split_size_or_sections' in split must be int, list or tuple in imperative mode, but "
-                f"received {type(split_size_or_sections)}."
+                "The type of 'split_size_or_sections' in split must be int, list or tuple in imperative mode."
             )
         if isinstance(split_size_or_sections, int):
             assert (
@@ -182,7 +189,7 @@ def split(
             ), 'split_size_or_sections must be greater than 0.'
 
             split_size_or_sections = GetSplitSize(
-                split_size_or_sections, SaveGetShapeOnDim(tensor.shape, dim)
+                split_size_or_sections, GetShapeOnDimInRange(tensor.shape, dim)
             )
             if isinstance(split_size_or_sections, list):
                 if paddle.utils._contain_var(split_size_or_sections):
