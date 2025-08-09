@@ -14,7 +14,6 @@
 
 from ..base.framework import require_version
 from . import (  # noqa: F401
-    compat_kwarg_check,
     cpp_extension,
     decorator_utils,
     dlpack,
