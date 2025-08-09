@@ -98,7 +98,7 @@ class TestPirOneDNNPad3DOp(PirOnednnAutoScanTest):
                 "mode": "constant",
                 "data_format": kwargs['data_format'],
                 "paddings": kwargs['paddings'],
-                "use_onednn": True,
+                "use_mkldnn": True,
             },
         )
 

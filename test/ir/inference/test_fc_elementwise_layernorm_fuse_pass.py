@@ -99,7 +99,7 @@ class TestFCElementwiseLayerNormFusePass(PassAutoScanTest):
             padding_weights=False,
             activation_type="",
             use_quantizer=False,
-            use_onednn=False,
+            use_mkldnn=False,
         )
         add_op = OpConfig(
             "elementwise_add",

@@ -633,8 +633,10 @@ class OpTest(unittest.TestCase):
     def is_onednn_op(self):
         return (hasattr(self, "use_onednn") and self.use_onednn) or (
             hasattr(self, "attrs")
-            and "use_onednn" in self.attrs
-            and self.attrs["use_onednn"]
+            and (
+                ("use_mkldnn" in self.attrs and self.attrs["use_mkldnn"])
+                or ("use_onednn" in self.attrs and self.attrs["use_onednn"])
+            )
         )
 
     def is_xpu_op(self):
@@ -2193,12 +2195,15 @@ class OpTest(unittest.TestCase):
                     )
             else:
                 # TODO(zhiqiu): enhance inplace_grad test for ops (sum and activation) using mkldnn
-                # skip op that use_onednn currently
+                # skip op that use_mkldnn currently
                 flags_use_onednn = base.core.globals()["FLAGS_use_onednn"]
+                attrs_use_mkldnn = hasattr(self, 'attrs') and bool(
+                    self.attrs.get('use_mkldnn', False)
+                )
                 attrs_use_onednn = hasattr(self, 'attrs') and bool(
                     self.attrs.get('use_onednn', False)
                 )
-                if flags_use_onednn or attrs_use_onednn:
+                if flags_use_onednn or attrs_use_mkldnn or attrs_use_onednn:
                     warnings.warn(
                         "check inplace_grad for ops using mkldnn is not supported"
                     )
@@ -3441,6 +3446,10 @@ class OpTest(unittest.TestCase):
             cache_list = self.cache_name_list
 
         # oneDNN numeric gradient should use CPU kernel
+        use_mkldnn = False
+        if op_attrs.get("use_mkldnn"):
+            op_attrs["use_mkldnn"] = False
+            use_mkldnn = True
         use_onednn = False
         if op_attrs.get("use_onednn"):
             op_attrs["use_onednn"] = False
@@ -3459,6 +3468,8 @@ class OpTest(unittest.TestCase):
             cache_list=cache_list,
         )
 
+        if use_mkldnn:
+            op_attrs["use_mkldnn"] = True
         if use_onednn:
             op_attrs["use_onednn"] = True
 

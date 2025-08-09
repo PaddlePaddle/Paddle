@@ -103,7 +103,7 @@ class TestOneDNNFCGruFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(
-            use_onednn=True,
+            use_mkldnn=True,
             passes=[
                 'onednn_placement_pass',
                 'fc_gru_fuse_pass',

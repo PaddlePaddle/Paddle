@@ -77,7 +77,7 @@ class TestMatmulActivationOnednnFusePass(PassAutoScanTest):
                 'transpose_X': transpose_X,
                 'transpose_Y': transpose_Y,
                 'alpha': alpha,
-                'use_onednn': True,
+                'use_mkldnn': True,
             },
         )
 
@@ -140,7 +140,7 @@ class TestMatmulActivationOnednnFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(
-            use_onednn=True,
+            use_mkldnn=True,
             passes=[
                 'matmul_activation_onednn_fuse_pass',
                 'operator_scale_onednn_fuse_pass',

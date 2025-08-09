@@ -53,7 +53,7 @@ class TestMatmulV2ElementwiseAddOnednnFusePass(PassAutoScanTest):
             type='matmul_v2',
             inputs={'X': ['matmul_X'], 'Y': ['matmul_Y']},
             outputs={'Out': ['matmul_output']},
-            attrs={'use_onednn': True},
+            attrs={'use_mkldnn': True},
         )
 
         if matmul_as_x:
@@ -65,7 +65,7 @@ class TestMatmulV2ElementwiseAddOnednnFusePass(PassAutoScanTest):
             type='elementwise_add',
             inputs=inputs,
             outputs={'Out': ['elementwise_add_output']},
-            attrs={'axis': axis, 'use_onednn': True},
+            attrs={'axis': axis, 'use_mkldnn': True},
         )
 
         model_net = [matmul_op, elt_add_op]

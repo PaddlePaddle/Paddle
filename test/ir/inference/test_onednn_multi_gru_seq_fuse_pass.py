@@ -56,7 +56,7 @@ class TestOneDNNMultiGruSeqFusePass(PassAutoScanTest):
             attrs={
                 'origin_mode': False,
                 'is_reverse': False,
-                'use_onednn': True,
+                'use_mkldnn': True,
             },
         )
 
@@ -75,7 +75,7 @@ class TestOneDNNMultiGruSeqFusePass(PassAutoScanTest):
             attrs={
                 'origin_mode': False,
                 'is_reverse': True,
-                'use_onednn': True,
+                'use_mkldnn': True,
             },
         )
 
@@ -88,7 +88,7 @@ class TestOneDNNMultiGruSeqFusePass(PassAutoScanTest):
                 ]
             },
             outputs={'Out': ['concat_output_1']},
-            attrs={'axis': 1, 'use_onednn': True},
+            attrs={'axis': 1, 'use_mkldnn': True},
         )
 
         fusion_gru_op_3 = OpConfig(
@@ -196,7 +196,7 @@ class TestOneDNNMultiGruSeqFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(
-            use_onednn=True,
+            use_mkldnn=True,
             passes=['multi_gru_fuse_pass', 'multi_gru_seq_fuse_pass'],
         )
         yield config, ['multi_gru'], (1e-5, 1e-5)
