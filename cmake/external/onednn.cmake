@@ -56,7 +56,7 @@ else()
   string(REPLACE "/O2 " "" ONEDNN_CFLAG_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
   string(REPLACE "/O2 " "" ONEDNN_CXXFLAG_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
   set(ONEDNN_LIB
-      "${ONEDNN_INSTALL_DIR}/bin/mkldnn.lib"
+      "${ONEDNN_INSTALL_DIR}/bin/onednn.lib"
       CACHE FILEPATH "oneDNN library." FORCE)
 endif()
 
@@ -95,7 +95,7 @@ add_definitions(-DPADDLE_WITH_DNNL)
 # copy the real so.0 lib to install dir
 # it can be directly contained in wheel or capi
 if(WIN32)
-  set(ONEDNN_SHARED_LIB ${ONEDNN_INSTALL_DIR}/bin/mkldnn.dll)
+  set(ONEDNN_SHARED_LIB ${ONEDNN_INSTALL_DIR}/bin/onednn.dll)
 
   file(TO_NATIVE_PATH ${ONEDNN_INSTALL_DIR} NATIVE_ONEDNN_INSTALL_DIR)
   file(TO_NATIVE_PATH ${ONEDNN_SHARED_LIB} NATIVE_ONEDNN_SHARED_LIB)
@@ -104,10 +104,10 @@ if(WIN32)
     OUTPUT ${ONEDNN_LIB}
     COMMAND (copy ${NATIVE_ONEDNN_INSTALL_DIR}\\bin\\dnnl.dll
              ${NATIVE_ONEDNN_SHARED_LIB} /Y)
-    COMMAND dumpbin /exports ${ONEDNN_INSTALL_DIR}/bin/mkldnn.dll >
+    COMMAND dumpbin /exports ${ONEDNN_INSTALL_DIR}/bin/onednn.dll >
             ${ONEDNN_INSTALL_DIR}/bin/exports.txt
-    COMMAND echo LIBRARY mkldnn > ${ONEDNN_INSTALL_DIR}/bin/mkldnn.def
-    COMMAND echo EXPORTS >> ${ONEDNN_INSTALL_DIR}/bin/mkldnn.def
+    COMMAND echo LIBRARY onednn > ${ONEDNN_INSTALL_DIR}/bin/onednn.def
+    COMMAND echo EXPORTS >> ${ONEDNN_INSTALL_DIR}/bin/onednn.def
     COMMAND
       echo off && (for
                    /f
@@ -119,10 +119,10 @@ if(WIN32)
                    echo
                    %A
                    >>
-                   ${ONEDNN_INSTALL_DIR}/bin/mkldnn.def) && echo on
-    COMMAND lib /def:${ONEDNN_INSTALL_DIR}/bin/mkldnn.def /out:${ONEDNN_LIB}
+                   ${ONEDNN_INSTALL_DIR}/bin/onednn.def) && echo on
+    COMMAND lib /def:${ONEDNN_INSTALL_DIR}/bin/onednn.def /out:${ONEDNN_LIB}
             /machine:x64
-    COMMENT "Generate mkldnn.lib manually--->"
+    COMMENT "Generate onednn.lib manually--->"
     DEPENDS ${ONEDNN_PROJECT}
     VERBATIM)
   add_custom_target(onednn_cmd ALL DEPENDS ${ONEDNN_LIB})
