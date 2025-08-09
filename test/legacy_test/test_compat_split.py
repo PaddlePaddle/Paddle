@@ -71,42 +71,46 @@ class TestCompatSplit(unittest.TestCase):
         np.testing.assert_allclose(z_np[:, :7], z1.numpy())
         np.testing.assert_allclose(z_np[:, 7:], z2.numpy())
 
-    def test_static_graph(self):
-        """Test static graph execution"""
-        # fixed random seed for reproducibility
-        np.random.seed(114514)
-        # old static graph mode
-        paddle.enable_static()
+    def test_split_grad(self):
+        """Test backprop for split, in1 and in2 are computed by
+        compat.split and original split"""
 
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data(name='x', shape=[None, 6], dtype='float32')
-            result0, result1 = split(x, split_size_or_sections=[3, 3], dim=1)
-            output = result0 * 2.0 + paddle.sin(result1)
+        def get_tensors():
+            np.random.seed(114514)
+            np_arr = np.random.normal(0, 1, [2, 3, 4, 5])
+            return paddle.to_tensor(np_arr), paddle.to_tensor(np_arr)
 
-            place = (
-                paddle.CUDAPlace(0)
-                if paddle.is_compiled_with_cuda()
-                else paddle.CPUPlace()
-            )
-            exe = paddle.static.Executor(place)
+        in1, in2 = get_tensors()
+        in1.stop_gradient = False
+        in2.stop_gradient = False
 
-            input_data = np.random.rand(3, 6).astype('float32')
-            feed = {'x': input_data}
+        def computation_graph(in_tensor):
+            y = in_tensor * 2.3 + 3.0
+            y = paddle.maximum(y, paddle.to_tensor([0], dtype=paddle.float32))
+            return y.mean(axis=0)
 
-            results = exe.run(feed=feed, fetch_list=[result0, result1, output])
+        out1 = computation_graph(in1)
+        out2 = computation_graph(in2)
 
-            pd_result0, pd_result1 = results[0], results[1]
-            np.testing.assert_allclose(input_data[:, :3], pd_result0)
-            np.testing.assert_allclose(input_data[:, 3:], pd_result1)
+        packs1 = paddle.compat.split(out1, 2, dim=2)
+        packs2 = paddle.split(out2, [2, 2, 1], axis=2)
 
-            expected_output = input_data[:, :3] * 2.0 + np.sin(
-                input_data[:, 3:]
-            )
-            np.testing.assert_allclose(
-                expected_output, results[2], rtol=1e-3, atol=1e-3
-            )
+        res1 = packs1[0] + packs1[1] + packs1[2]
+        res2 = packs2[0] + packs2[1] + packs2[2]
+        res1.backward()
+        res2.backward()
+        np.testing.assert_allclose(in1.grad.numpy(), in2.grad.numpy())
 
-        paddle.disable_static()
+    def test_empty_dim(self):
+        """Split with empty dim"""
+        in_tensor = paddle.arange(72, dtype=paddle.int64).reshape([3, 12, 2])
+        self._compare_with_origin(in_tensor, [5, 0, 7], axis=1)
+
+    def test_split_with_one_block(self):
+        """Resulting tuple should be of length 1"""
+        in_tensor = paddle.arange(60, dtype=paddle.float32).reshape([3, 4, 5])
+        self._compare_with_origin(in_tensor, 5, paddle.to_tensor([-1]))
+        self._compare_with_origin(in_tensor, [5], paddle.to_tensor(2))
 
     def test_edge_cases(self):
         """Test edge cases and error handling"""
@@ -131,8 +135,22 @@ class TestCompatSplit(unittest.TestCase):
         """Test whether there will be correct exception when users pass paddle.split kwargs in paddle.compat.split, vice versa."""
         x = paddle.randn([3, 9, 5])
 
-        msg_gt_1 = "split() received unexpected keyword arguments 'tensor', 'split_size_or_sections', 'dim'. \nDid you mean to use paddle.compat.split() instead?"
-        msg_gt_2 = "split() received unexpected keyword argument 'num_or_sections'. \nDid you mean to use paddle.split() instead?"
+        msg_gt_1 = (
+            "paddle.split() received unexpected keyword arguments 'tensor', 'split_size_or_sections', 'dim'. "
+            "\nDid you mean to use paddle.compat.split() instead?"
+        )
+        msg_gt_2 = (
+            "paddle.compat.split() received unexpected keyword argument 'num_or_sections'. "
+            "\nDid you mean to use paddle.split() instead?"
+        )
+        msg_gt_3 = "(InvalidArgument) The dim is expected to be in range of [-3, 3), but got 3"
+        msg_gt_4 = "paddle.compat.split expects split_sizes have only non-negative entries, but got size = -5 on dim 2"
+
+        split_size = paddle.to_tensor([3])
+        msg_gt_5 = (
+            "The type of 'split_size_or_sections' in split must be int, list or tuple in imperative mode, but "
+            f"received {type(split_size)}."
+        )
 
         with self.assertRaises(TypeError) as cm:
             tensors = paddle.split(tensor=x, split_size_or_sections=3, dim=0)
@@ -141,6 +159,18 @@ class TestCompatSplit(unittest.TestCase):
         with self.assertRaises(TypeError) as cm:
             tensors = split(x, num_or_sections=3, dim=0)
         self.assertEqual(str(cm.exception), msg_gt_2)
+
+        with self.assertRaises(ValueError) as cm:
+            tensors = split(x, 3, dim=3)
+        self.assertEqual(str(cm.exception), msg_gt_3)
+
+        with self.assertRaises(ValueError) as cm:
+            tensors = split(x, [3, 3, -5], -2)
+        self.assertEqual(str(cm.exception), msg_gt_4)
+
+        with self.assertRaises(TypeError) as cm:
+            tensors = split(x, split_size, 1)
+        self.assertEqual(str(cm.exception), msg_gt_5)
 
 
 if __name__ == '__main__':
