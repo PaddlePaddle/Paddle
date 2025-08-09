@@ -22,9 +22,11 @@ import paddle
 
 class TestTensorCreation(unittest.TestCase):
     def setUp(self):
-        self.devices = [paddle.CPUPlace()]
+        self.devices = [paddle.CPUPlace(), "cpu"]
         if paddle.device.is_compiled_with_cuda():
             self.devices.append(paddle.CUDAPlace(0))
+            self.devices.append("gpu")
+            self.devices.append("gpu:0")
         if paddle.device.is_compiled_with_xpu():
             self.devices.append(paddle.device.XPUPlace(0))
         if paddle.device.is_compiled_with_ipu():
@@ -44,11 +46,14 @@ class TestTensorCreation(unittest.TestCase):
                     requires_grad=requires_grad,
                     device=device,
                 )
-                self.assertEqual(x.place, device)
+                if isinstance(device, paddle.framework.core.Place):
+                    self.assertEqual(x.place, device)
                 self.assertEqual(x.stop_gradient, not requires_grad)
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
-                st_f = paddle.jit.to_static(paddle.ones, full_graph=True)
+                st_f = paddle.jit.to_static(
+                    paddle.ones, full_graph=True, backend=None
+                )
                 x = st_f(
                     [2],
                     dtype=dtype,
@@ -70,11 +75,14 @@ class TestTensorCreation(unittest.TestCase):
                     requires_grad=requires_grad,
                     device=device,
                 )
-                self.assertEqual(x.place, device)
+                if isinstance(device, paddle.framework.core.Place):
+                    self.assertEqual(x.place, device)
                 self.assertEqual(x.stop_gradient, not requires_grad)
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
-                st_f = paddle.jit.to_static(paddle.zeros, full_graph=True)
+                st_f = paddle.jit.to_static(
+                    paddle.zeros, full_graph=True, backend=None
+                )
                 x = st_f(
                     [2],
                     dtype=dtype,
@@ -97,11 +105,14 @@ class TestTensorCreation(unittest.TestCase):
                     requires_grad=requires_grad,
                     device=device,
                 )
-                self.assertEqual(x.place, device)
+                if isinstance(device, paddle.framework.core.Place):
+                    self.assertEqual(x.place, device)
                 self.assertEqual(x.stop_gradient, not requires_grad)
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
-                st_f = paddle.jit.to_static(paddle.full, full_graph=True)
+                st_f = paddle.jit.to_static(
+                    paddle.full, full_graph=True, backend=None
+                )
                 x = st_f(
                     [2],
                     fill_value=3.14,
@@ -124,11 +135,14 @@ class TestTensorCreation(unittest.TestCase):
                     requires_grad=requires_grad,
                     device=device,
                 )
-                self.assertEqual(x.place, device)
+                if isinstance(device, paddle.framework.core.Place):
+                    self.assertEqual(x.place, device)
                 self.assertEqual(x.stop_gradient, not requires_grad)
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
-                st_f = paddle.jit.to_static(paddle.empty, full_graph=True)
+                st_f = paddle.jit.to_static(
+                    paddle.empty, full_graph=True, backend=None
+                )
                 x = st_f(
                     [2],
                     dtype=dtype,
@@ -151,11 +165,14 @@ class TestTensorCreation(unittest.TestCase):
                     requires_grad=requires_grad,
                     device=device,
                 )
-                self.assertEqual(x.place, device)
+                if isinstance(device, paddle.framework.core.Place):
+                    self.assertEqual(x.place, device)
                 self.assertEqual(x.stop_gradient, not requires_grad)
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
-                st_f = paddle.jit.to_static(paddle.eye, full_graph=True)
+                st_f = paddle.jit.to_static(
+                    paddle.eye, full_graph=True, backend=None
+                )
                 x = st_f(
                     3,
                     3,
@@ -178,11 +195,14 @@ class TestTensorCreation(unittest.TestCase):
                     requires_grad=requires_grad,
                     device=device,
                 )
-                self.assertEqual(x.place, device)
+                if isinstance(device, paddle.framework.core.Place):
+                    self.assertEqual(x.place, device)
                 self.assertEqual(x.stop_gradient, not requires_grad)
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
-                st_f = paddle.jit.to_static(paddle.ones_like, full_graph=True)
+                st_f = paddle.jit.to_static(
+                    paddle.ones_like, full_graph=True, backend=None
+                )
                 x = st_f(
                     paddle.randn([2, 2]),
                     dtype=dtype,
@@ -204,11 +224,14 @@ class TestTensorCreation(unittest.TestCase):
                     requires_grad=requires_grad,
                     device=device,
                 )
-                self.assertEqual(x.place, device)
+                if isinstance(device, paddle.framework.core.Place):
+                    self.assertEqual(x.place, device)
                 self.assertEqual(x.stop_gradient, not requires_grad)
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
-                st_f = paddle.jit.to_static(paddle.zeros_like, full_graph=True)
+                st_f = paddle.jit.to_static(
+                    paddle.zeros_like, full_graph=True, backend=None
+                )
                 x = st_f(
                     paddle.randn([2, 2]),
                     dtype=dtype,
@@ -231,11 +254,14 @@ class TestTensorCreation(unittest.TestCase):
                     requires_grad=requires_grad,
                     device=device,
                 )
-                self.assertEqual(x.place, device)
+                if isinstance(device, paddle.framework.core.Place):
+                    self.assertEqual(x.place, device)
                 self.assertEqual(x.stop_gradient, not requires_grad)
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
-                st_f = paddle.jit.to_static(paddle.full_like, full_graph=True)
+                st_f = paddle.jit.to_static(
+                    paddle.full_like, full_graph=True, backend=None
+                )
                 x = st_f(
                     paddle.randn([2, 2]),
                     3.14,
@@ -258,11 +284,14 @@ class TestTensorCreation(unittest.TestCase):
                     requires_grad=requires_grad,
                     device=device,
                 )
-                self.assertEqual(x.place, device)
+                if isinstance(device, paddle.framework.core.Place):
+                    self.assertEqual(x.place, device)
                 self.assertEqual(x.stop_gradient, not requires_grad)
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
-                st_f = paddle.jit.to_static(paddle.empty_like, full_graph=True)
+                st_f = paddle.jit.to_static(
+                    paddle.empty_like, full_graph=True, backend=None
+                )
                 x = st_f(
                     paddle.randn([2, 2]),
                     dtype=dtype,
