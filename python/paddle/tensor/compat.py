@@ -593,10 +593,8 @@ def min(input: Tensor, *args: Any, **kwargs: Any) -> Tensor | MinMaxRetType:
             return MinMaxRetType(values=vals, indices=inds)
         else:
             # CPUPlace and other placements are implemented by composition
-            indices = _C_ops.argmin(
-                input, dim_or_other, True, False, paddle.int64
-            )
-            values = _C_ops.take_along_axis(input, indices, dim_or_other)
+            indices = paddle.argmin(input, axis=dim_or_other, keepdim=True)
+            values = paddle.take_along_axis(input, indices, axis=dim_or_other)
             if keepdim:
                 return MinMaxRetType(values=values, indices=indices)
             return MinMaxRetType(
@@ -708,10 +706,8 @@ def max(input: Tensor, *args: Any, **kwargs: Any) -> Tensor | MinMaxRetType:
             return MinMaxRetType(values=vals, indices=inds)
         else:
             # CPUPlace and other placements are implemented by composition
-            indices = _C_ops.argmax(
-                input, dim_or_other, True, False, paddle.int64
-            )
-            values = _C_ops.take_along_axis(input, indices, dim_or_other)
+            indices = paddle.argmax(input, axis=dim_or_other, keepdim=True)
+            values = paddle.take_along_axis(input, indices, axis=dim_or_other)
             if keepdim:
                 return MinMaxRetType(values=values, indices=indices)
             return MinMaxRetType(
