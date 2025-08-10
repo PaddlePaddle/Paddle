@@ -507,6 +507,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             and len(self.forward_outputs_position_map) == 1
             and next(iter(self.forward_outputs_position_map.values()))[0]
             == "Tensor"
+            and forward_api_name != "empty_like"
         ):
             dygraph_function_call_str = (
                 dygraph_function_call_str + ", input_out"
