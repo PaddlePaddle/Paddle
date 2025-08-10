@@ -357,13 +357,10 @@ void ScanKernel(const Context& dev_ctx,
 
   // Use thrust for parallel acceleration when the input size is equal to the
   // length of the 'axis' dimension.
-  constexpr int64_t kThrustCumsumThreshold = 1 << 18;
   int64_t size = x.numel();
-
   if (!std::is_same<T, phi::dtype::float16>::value &&
       !std::is_same<T, phi::dtype::bfloat16>::value &&
-      std::is_same<Op, cub::Sum>::value && size == out_dims[axis] &&
-      size < kThrustCumsumThreshold) {
+      std::is_same<Op, cub::Sum>::value && size == out_dims[axis]) {
     ThrustCumsumKernel<Context, T>(
         dev_ctx, in_data, out_data, size, reverse, exclusive);
     return;
