@@ -187,6 +187,14 @@ class TestCompatMinMax(unittest.TestCase):
         err_msg1 = (
             "Tensors with integral type: 'paddle.int32' should stop gradient."
         )
+        err_msg2 = (
+            "paddle.min() received unexpected keyword arguments 'input', 'dim'. "
+            "\nDid you mean to use paddle.compat.min() instead?"
+        )
+        err_msg3 = (
+            "paddle.compat.max() received unexpected keyword argument 'axis'. "
+            "\nDid you mean to use paddle.max() instead?"
+        )
 
         # empty tensor
         empty_tensor = paddle.to_tensor([], dtype='float32')
@@ -249,6 +257,16 @@ class TestCompatMinMax(unittest.TestCase):
         # Duplicate Arguments case 3
         with self.assertRaises(TypeError) as cm:
             paddle.compat.max(input_ts, dim=0, other=0, keepdim=True)
+
+        # Wrong API used case 1
+        with self.assertRaises(TypeError) as cm:
+            paddle.min(input=input_ts, dim=0)
+        self.assertEqual(str(cm.exception), err_msg2)
+
+        # Wrong API used case 2
+        with self.assertRaises(TypeError) as cm:
+            paddle.compat.max(input_ts, axis=0)
+        self.assertEqual(str(cm.exception), err_msg3)
 
 
 if __name__ == '__main__':

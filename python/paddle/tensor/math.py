@@ -100,6 +100,8 @@ if TYPE_CHECKING:
     from paddle import Tensor
     from paddle._typing import DTypeLike
 
+from paddle.utils.decorator_utils import ForbidKeywordsDecorator
+
 __all__ = []
 
 _supported_int_dtype_ = [
@@ -3131,6 +3133,11 @@ def inverse(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
+@ForbidKeywordsDecorator(
+    illegal_keys=["input", "dim", "other"],
+    func_name="paddle.max",
+    correct_name="paddle.compat.max",
+)
 def max(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
@@ -3290,6 +3297,11 @@ def max(
             return out
 
 
+@ForbidKeywordsDecorator(
+    illegal_keys=["input", "dim", "other"],
+    func_name="paddle.min",
+    correct_name="paddle.compat.min",
+)
 def min(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
