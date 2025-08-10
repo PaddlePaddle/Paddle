@@ -2098,7 +2098,9 @@ class DistForwardAPI(ForwardAPI):
         return True
 
     # override BaseAPI's method
-    def gene_base_api_code(self, inplace_flag=False):
+    def gene_base_api_code(
+        self, inplace_flag=False, grad_flag=False, append_input_out=True
+    ):
         # init status
         self.inplace_flag = inplace_flag
         self.dist_output_args = []
@@ -2165,14 +2167,25 @@ class DistForwardAPI(ForwardAPI):
 
 class DistBackwardAPI(DistForwardAPI):
 
-    def gene_base_api_code(self, inplace_flag=False):
-        return BackwardAPI.gene_base_api_code(self, inplace_flag)
+    def gene_base_api_code(
+        self, inplace_flag=False, grad_flag=False, append_input_out=True
+    ):
+        return BackwardAPI.gene_base_api_code(
+            self,
+            inplace_flag,
+            grad_flag=grad_flag,
+            append_input_out=append_input_out,
+        )
 
-    def gene_api_code(self):
-        return BackwardAPI.gene_api_code(self)
+    def gene_api_code(self, grad_flag=False, append_input_out=False):
+        return BackwardAPI.gene_api_code(
+            self, grad_flag=grad_flag, append_input_out=append_input_out
+        )
 
-    def gene_api_declaration(self):
-        return BackwardAPI.gene_api_declaration(self)
+    def gene_api_declaration(self, grad_flag=False, append_input_out=True):
+        return BackwardAPI.gene_api_declaration(
+            self, grad_flag=grad_flag, append_input_out=append_input_out
+        )
 
 
 def generate_api(
@@ -2239,12 +2252,22 @@ def generate_api(
 
         if dist_forward_api.is_dygraph_api and is_fused_ops_yaml:
             dist_forward_api.is_dygraph_api = False
-            header_file.write(dist_forward_api.gene_api_declaration())
-            source_file.write(dist_forward_api.gene_api_code())
+            header_file.write(
+                dist_forward_api.gene_api_declaration(
+                    grad_flag=grad_flag, append_input_out=not grad_flag
+                )
+            )
+            source_file.write(
+                dist_forward_api.gene_api_code(grad_flag=grad_flag)
+            )
             dist_forward_api.is_dygraph_api = True
 
-        header_file.write(dist_forward_api.gene_api_declaration())
-        source_file.write(dist_forward_api.gene_api_code())
+        header_file.write(
+            dist_forward_api.gene_api_declaration(
+                grad_flag=grad_flag, append_input_out=not grad_flag
+            )
+        )
+        source_file.write(dist_forward_api.gene_api_code(grad_flag=grad_flag))
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])
