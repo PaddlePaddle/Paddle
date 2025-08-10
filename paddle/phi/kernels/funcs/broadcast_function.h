@@ -584,7 +584,7 @@ static void SliceTensor(DenseTensor *x,
   DenseTensorMeta meta(share->dtype(),
                        new_dim,
                        share->layout(),
-                       offset * SizeOf(share->dtype()));
+                       offset * SizeOf(share->dtype()) + share->offset());
   x->set_meta(meta);
   x->ShareBufferWith(*(share), true);
   x->Resize(new_dim);

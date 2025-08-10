@@ -311,7 +311,7 @@ bool PD_OnednnEnabled(const PD_AnalysisConfig* config) {
       config,
       common::errors::InvalidArgument(
           "The pointer of analysis configuration shouldn't be nullptr"));
-  return config->config.mkldnn_enabled();
+  return config->config.onednn_enabled();
 }
 
 void PD_SetCpuMathLibraryNumThreads(PD_AnalysisConfig* config,

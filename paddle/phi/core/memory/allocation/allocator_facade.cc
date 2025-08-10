@@ -1940,6 +1940,14 @@ void AllocatorFacade::SetDefaultStream(const phi::XPUPlace& place,
 }
 #endif
 
+#ifdef PADDLE_WITH_XPU
+
+bool AllocatorFacade::RecordStream(std::shared_ptr<phi::Allocation> allocation,
+                                   XPUStream stream) {
+  return GetPrivate()->RecordStream(allocation, stream);
+}
+#endif
+
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 uint64_t AllocatorFacade::Release(const phi::CustomPlace& place,
                                   phi::stream::stream_t stream) {

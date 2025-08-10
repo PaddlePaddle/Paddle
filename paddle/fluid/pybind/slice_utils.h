@@ -525,7 +525,7 @@ static void ParseIndex(const paddle::Tensor& tensor,
         if (slice_tensor.dtype() == phi::DataType::BOOL) {
           // bool tensor consumes (rank of index tensor) dimensions of input
           // tensor
-          for (int i = 0; i < slice_tensor.shape().size(); i++) {
+          for (size_t i = 0; i < slice_tensor.shape().size(); i++) {
             PADDLE_ENFORCE_EQ(slice_tensor.shape()[i],
                               dim_len,
                               common::errors::OutOfRange(
@@ -684,7 +684,7 @@ static paddle::Tensor dealWithAdvancedIndex(
       if (index.dtype() == phi::DataType::BOOL) {
         *rank_of_new_dim = std::max(*rank_of_new_dim, 1);
         i--;
-        for (int j = 0; j < index.shape().size(); j++) {
+        for (size_t j = 0; j < index.shape().size(); j++) {
           i++;
           index_dim = (*advanced_index_dim)[i];
           trans_dim->push_back(index_dim);

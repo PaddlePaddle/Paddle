@@ -37,6 +37,35 @@ _supported_int_dtype_ = [
     DataType.INT64,
 ]
 
+_supported_dtype_conversions = {
+    # float
+    'float16': 'float16',
+    'half': 'float16',
+    'bfloat16': 'bfloat16',
+    'float32': 'float32',
+    'float': 'float32',
+    'float64': 'float64',
+    'double': 'float64',
+    # int
+    'int8': 'int8',
+    'char': 'int8',
+    # We handle uint8 conversion separately
+    # 'uint8': 'uint8',
+    # 'byte': 'uint8',
+    'int16': 'int16',
+    'short': 'int16',
+    'int32': 'int32',
+    'int': 'int32',
+    'int64': 'int64',
+    'long': 'int64',
+    # other
+    'bool': 'bool',
+    'complex64': 'complex64',
+    'complex128': 'complex128',
+    'cfloat': 'complex64',
+    'cdouble': 'complex128',
+}
+
 SUPPORT_PROMOTION_OPS = [
     "__add__",
     "__radd__",
@@ -369,6 +398,41 @@ def monkey_patch_value():
             return self
 
         return _C_ops.cast(self, dtype)
+
+    def byte(self):
+        # since paddle don't support float to uint8, so we need to convert it to int8 first
+        if self.is_floating_point():
+            tensor = astype(self, 'int8')
+            return astype(tensor, 'uint8')
+        elif self.is_complex():
+            real = astype(self.real(), 'int8')
+            return astype(real, 'uint8')
+        else:
+            return astype(self, 'uint8')
+
+    def _create_dtype_conversion_methods():
+        """
+        Batch create all data type conversion methods
+        """
+        methods = []
+        for method_name, target_dtype in _supported_dtype_conversions.items():
+
+            def make_conversion_method(dtype):
+                def conversion_method(self):
+                    return astype(self, dtype)
+
+                return conversion_method
+
+            method_impl = make_conversion_method(target_dtype)
+            method_impl.__name__ = method_name
+            method_impl.__doc__ = f"""
+            Cast a Value to {target_dtype} data type if it differs from the current dtype;
+            otherwise, return the original Value.
+            Returns:
+                Value: a new Value with {target_dtype} dtype
+            """
+            methods.append((method_name, method_impl))
+        return methods
 
     def _scalar_add_(var, value):
         return paddle.scale(var, 1.0, value)
@@ -1109,6 +1173,8 @@ def monkey_patch_value():
         ('ndimension', ndimension),
         ('ndim', _ndim),
         ('astype', astype),
+        ('byte', byte),
+        ('uint8', byte),
         ('size', _size_),
         ('T', _T_),
         ('mT', _mT_),
@@ -1253,6 +1319,8 @@ def monkey_patch_value():
         ('__bool__', _bool_),
         ('__complex__', _complex_),
     ]
+    dtype_conversion_methods = _create_dtype_conversion_methods()
+    value_methods.extend(dtype_conversion_methods)
 
     global _already_patch_value
     if not _already_patch_value:
