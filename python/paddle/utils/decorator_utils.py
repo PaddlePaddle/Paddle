@@ -22,7 +22,6 @@ from typing import (
     Callable,
     Generic,
     TypeVar,
-    cast,
 )
 
 from typing_extensions import ParamSpec
@@ -37,71 +36,68 @@ _DecoratedFunc = Callable[_P, _R]
 
 
 class DecoratorBase(Generic[_P, _R]):
-    """Decorative base class, providing a universal decorative framework.
-
-    Subclass only needs to implement the 'process' method to define the core logic.
-    """
+    """Base class for creating decorators"""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        """Initialize decorator parameters"""
         self.args = args
         self.kwargs = kwargs
 
-    def __call__(self, func: _DecoratedFunc[_P, _R]) -> _DecoratedFunc[_P, _R]:
-        """As an entry point for decorative applications"""
+    def __call__(self, func: Callable[..., _R]) -> Callable[..., _R]:
+        """Wrap the function with the decorator"""
 
         @functools.wraps(func)
         def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _R:
-            # Pretreatment parameters
+            # Call the core logic for parameter processing
             processed_args, processed_kwargs = self.process(args, kwargs)
-            # Call the original function
             return func(*processed_args, **processed_kwargs)
 
-        # Keep original signature
         wrapper.__signature__ = inspect.signature(func)
-        return cast("_DecoratedFunc[_P, _R]", wrapper)
+        return wrapper
 
     def process(
         self, args: tuple[Any, ...], kwargs: dict[str, Any]
     ) -> tuple[tuple[Any, ...], dict[str, Any]]:
-        """Core processing methods that subclasses must implement.
-
-        Args:
-            args: positional parameter
-            kwargs: Keyword Argument
-
-        Returns:
-            Processed tuples (args, kwargs)
-        """
+        """To be implemented by subclass"""
         raise NotImplementedError("Subclasses must implement this method")
 
 
-# Example implementation: Parameter alias decorator
 class ParamAliasDecorator(DecoratorBase[_P, _R]):
-    """Implementation of Decorator for Parameter Alias Processing"""
+    """Decorator for parameter alias processing"""
 
     def __init__(self, alias_mapping: dict[str, Iterable[str]]) -> None:
         super().__init__()
+        # Check alias_mapping types
         if not isinstance(alias_mapping, dict):
             raise TypeError("alias_mapping must be a dictionary")
         for k, v in alias_mapping.items():
             if not isinstance(v, (list, tuple, set)):
                 raise TypeError(f"Aliases for '{k}' must be iterable")
-        self.alias_mapping = alias_mapping
+
+        # Build a reverse alias map for faster lookup
+        self.alias_mapping = {}
+        for original, aliases in alias_mapping.items():
+            for alias in aliases:
+                self.alias_mapping[alias] = original
 
     def process(
         self, args: tuple[Any, ...], kwargs: dict[str, Any]
     ) -> tuple[tuple[Any, ...], dict[str, Any]]:
+        """Process parameters to handle alias mapping"""
         if not kwargs:
             return args, kwargs
-        processed_kwargs = kwargs.copy()
-        for original, aliases in self.alias_mapping.items():
-            for alias in aliases:
-                if alias in processed_kwargs:
-                    if original not in processed_kwargs:
-                        processed_kwargs[original] = processed_kwargs.pop(alias)
-                    else:
-                        raise ValueError(
-                            f"Cannot specify both '{original}' and its alias '{alias}'"
-                        )
+
+        processed_kwargs = kwargs
+        alias_mapping = self.alias_mapping
+
+        # Directly modify kwargs based on alias mapping (only modify if necessary)
+        for alias, original in alias_mapping.items():
+            if alias in processed_kwargs:
+                if original not in processed_kwargs:
+                    # Only modify the dictionary if necessary
+                    processed_kwargs[original] = processed_kwargs.pop(alias)
+                else:
+                    raise ValueError(
+                        f"Cannot specify both '{original}' and its alias '{alias}'"
+                    )
+
         return args, processed_kwargs
