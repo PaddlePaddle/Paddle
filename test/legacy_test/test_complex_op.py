@@ -183,13 +183,32 @@ class OutTest(unittest.TestCase):
 
             d.mean().backward()
 
-            return x.grad, y.grad, z.grad
+            return c, x.grad, y.grad, z.grad
 
         paddle.disable_static()
-        x1, y1, z1 = run_complex("return")
-        x2, y2, z2 = run_complex("input_out")
-        x3, y3, z3 = run_complex("both_return")
-        x4, y4, z4 = run_complex("both_input_out")
+        out1, x1, y1, z1 = run_complex("return")
+        out2, x2, y2, z2 = run_complex("input_out")
+        out3, x3, y3, z3 = run_complex("both_return")
+        out4, x4, y4, z4 = run_complex("both_input_out")
+
+        np.testing.assert_allclose(
+            out1.numpy(),
+            out2.numpy(),
+            1e-20,
+            1e-20,
+        )
+        np.testing.assert_allclose(
+            out1.numpy(),
+            out3.numpy(),
+            1e-20,
+            1e-20,
+        )
+        np.testing.assert_allclose(
+            out1.numpy(),
+            out4.numpy(),
+            1e-20,
+            1e-20,
+        )
 
         np.testing.assert_allclose(
             x1.numpy(),
