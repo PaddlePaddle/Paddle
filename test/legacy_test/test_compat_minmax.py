@@ -92,6 +92,15 @@ class TestCompatMinMax(unittest.TestCase):
         )
         np.testing.assert_allclose(data.grad.numpy(), expected_grad, atol=1e-6)
 
+        data.clear_grad()
+        y = data * data
+        min_result = paddle.compat.min(y, dim=1)
+        min_result[0].backward()
+        expected_grad = np.array(
+            [[[2.0, 4.0], [0.0, 0.0]], [[8.0, 2.0], [0.0, 0.0]]]
+        )
+        np.testing.assert_allclose(data.grad.numpy(), expected_grad, atol=1e-6)
+
     def test_case3_elementwise(self):
         """minimum/maximum"""
         x = paddle.to_tensor([[1, 5], [4, 2]], dtype='float32')
@@ -115,10 +124,10 @@ class TestCompatMinMax(unittest.TestCase):
 
     def test_case3_grad(self):
         x = paddle.to_tensor(
-            [[1.0, 2.0], [3.0, 4.0]], dtype=paddle.float16, stop_gradient=False
+            [[1.0, 2.0], [3.0, 4.0]], dtype=paddle.float32, stop_gradient=False
         )
         y = paddle.to_tensor(
-            [[0.5, 2.5], [2.0, 3.5]], dtype=paddle.float16, stop_gradient=False
+            [[0.5, 2.5], [2.0, 3.5]], dtype=paddle.float32, stop_gradient=False
         )
 
         min_val = paddle.compat.min(x, y)
@@ -135,10 +144,17 @@ class TestCompatMinMax(unittest.TestCase):
         # uniform distributed gradient
         uniform_data = paddle.ones([2, 3], dtype='float64')
         uniform_data.stop_gradient = False
+        min_val = paddle.compat.min(uniform_data)
+        min_val.sum().backward()
+        # uniformly distributed (amin)
+        expected_grad = np.full((2, 3), 1.0 / 6.0)
+        np.testing.assert_allclose(uniform_data.grad.numpy(), expected_grad)
+
+        uniform_data.clear_grad()
         min_val = paddle.compat.min(uniform_data, 0)
         min_val.values.sum().backward()
-
-        expected_grad = np.full((2, 3), 0.5)
+        # take_along_axis like gradient behavior
+        expected_grad = np.array([[1.0, 1.0, 1.0], [0.0, 0.0, 0.0]])
         np.testing.assert_allclose(uniform_data.grad.numpy(), expected_grad)
 
         # 0-dim tensor
@@ -159,16 +175,26 @@ class TestCompatMinMax(unittest.TestCase):
         )
 
     def test_compare_with_index_ops_to_origin(self):
-        dtypes = ['float32', 'float64', 'bfloat16', 'float16', 'int32', 'int64']
+        dtypes = ['float32', 'float64', 'int32', 'int64', 'uint8']
+        cpu_reject_types = {'int16', 'bfloat16', 'float16'}
 
         for i, dtype in enumerate(dtypes):
             data = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], dtype=dtype)
+            # `bfloat16` and `float16` are rejected on CPU
+            if not data.place.is_gpu_place() and dtype in cpu_reject_types:
+                continue
             min_vals_inds = paddle.compat.min(data, dim=0)
             self.assertEqual(min_vals_inds.values.dtype, data.dtype)
             self.assertEqual(min_vals_inds.indices.dtype, paddle.int64)
 
-            origin_values = paddle.min(data, axis=0)
             origin_indices = paddle.argmin(data, axis=0, dtype="int64")
+            if dtype != 'uint8':
+                origin_values = paddle.min(data, axis=0)
+            else:
+                origin_values = paddle.take_along_axis(
+                    data, origin_indices.unsqueeze(0), axis=0
+                )
+                origin_values.squeeze_(axis=0)
             if i < 4:  # floating point
                 np.testing.assert_allclose(
                     min_vals_inds.values.numpy(), origin_values.numpy()
@@ -194,6 +220,10 @@ class TestCompatMinMax(unittest.TestCase):
         err_msg3 = (
             "paddle.compat.max() received unexpected keyword argument 'axis'. "
             "\nDid you mean to use paddle.max() instead?"
+        )
+        err_msg4 = (
+            "Non-CUDA GPU placed Tensor does not have 'paddle.float16' op registered.\n"
+            "Paddle support following DataTypes: int32, int64, float64, float32, uint8"
         )
 
         # empty tensor
@@ -267,6 +297,13 @@ class TestCompatMinMax(unittest.TestCase):
         with self.assertRaises(TypeError) as cm:
             paddle.compat.max(input_ts, axis=0)
         self.assertEqual(str(cm.exception), err_msg3)
+
+        # Rejected on CPU types
+        with self.assertRaises(TypeError) as cm:
+            tensor = paddle.to_tensor([1, 2, 3], dtype="float16")
+            cpu_tensor = tensor.to("cpu")
+            paddle.compat.max(cpu_tensor, dim=0)
+        self.assertEqual(str(cm.exception), err_msg4)
 
 
 if __name__ == '__main__':
