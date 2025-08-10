@@ -549,17 +549,42 @@ static inline void IndexPutStride(
 
 static inline void IndexPutStrideV2(
     const int64_t ntensor,
-    const std::vector<int64_t> output_dims,  // input_tensor
-    const std::vector<int64_t> output_strides,
-    const int64_t output_elesize,
-    const std::vector<int64_t> input_dims,  // value_tensor
-    const std::vector<int64_t> input_strides,
-    const int64_t input_elesize,
+    const DenseTensor output,
+    const DenseTensor input,
     const std::vector<DenseTensor*> index,
     std::vector<int64_t>* desired_shape,
     std::vector<int64_t*>* strides_array,
     int64_t* numel,
     std::vector<std::vector<int64_t>>& strides_vec) {  // NOLINT
+
+  std::vector<int64_t> output_dims;
+  std::vector<int64_t> output_strides;
+  int64_t output_elesize = phi::SizeOf(output.dtype());
+  std::vector<int64_t> input_dims;
+  std::vector<int64_t> input_strides;
+  int64_t input_elesize = phi::SizeOf(input.dtype());
+
+  if (output.dims().size() == 0) {
+    output_dims = {1};
+  } else {
+    output_dims = common::vectorize<int64_t>(output.dims());
+  }
+  if (output.strides().size() == 0) {
+    output_strides = {1};
+  } else {
+    output_strides = common::vectorize<int64_t>(output.strides());
+  }
+  if (input.dims().size() == 0) {
+    input_dims = {1};
+  } else {
+    input_dims = common::vectorize<int64_t>(input.dims());
+  }
+  if (input.strides().size() == 0) {
+    input_strides = {1};
+  } else {
+    input_strides = common::vectorize<int64_t>(input.strides());
+  }
+
   int ndim = output_dims.size();
 
   std::vector<int64_t> stride_size;
@@ -586,7 +611,7 @@ static inline void IndexPutStrideV2(
                                    ndim,
                                    desired_shape,
                                    &stride_size);
-  for (int i = 2; i < ntensor; i++) {
+  for (int64_t i = 2; i < ntensor; i++) {
     strides_vec[i] = compute_strides(
         common::vectorize<int64_t>(index[i - 2]->dims()),  // index_tensor
         common::vectorize<int64_t>(index[i - 2]->strides()),
@@ -596,7 +621,7 @@ static inline void IndexPutStrideV2(
         &stride_size);
   }
 
-  for (size_t i = 0; i < ntensor; i++) {
+  for (int64_t i = 0; i < ntensor; i++) {
     (*strides_array)[i] = strides_vec[i].data();
   }
   reorder_dimensions_v2(ntensor, stride_size, desired_shape, strides_array);

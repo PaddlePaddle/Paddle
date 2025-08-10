@@ -19,6 +19,7 @@
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/contiguous_kernel.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
 #include "paddle/phi/kernels/funcs/index_put_utils.h"
 #include "paddle/phi/kernels/funcs/stride_utils.h"
@@ -172,6 +173,26 @@ void IndexPutKernel_V1(const Context& dev_ctx,
       indices.empty(),
       false,
       common::errors::InvalidArgument("Indices cannot be empty."));
+  for (size_t i = 0; i < indices.size(); i++) {
+    PADDLE_ENFORCE_EQ(indices[i]->meta().is_contiguous(),
+                      true,
+                      common::errors::InvalidArgument(
+                          "Indices in Index_put must be contiguous."));
+  }
+
+  DenseTensor con_x;
+  DenseTensor con_v;
+  if (!x.meta().is_contiguous()) {
+    phi::ContiguousKernel<T, Context>(dev_ctx, x, &con_x);
+  } else {
+    con_x = x;
+  }
+  if (!value.meta().is_contiguous()) {
+    phi::ContiguousKernel<T, Context>(dev_ctx, value, &con_v);
+  } else {
+    con_v = value;
+  }
+
   std::vector<DenseTensor> tmp_args;
   std::vector<const phi::DenseTensor*> int_indices_v =
       funcs::DealWithBoolIndices<T, Context>(dev_ctx, indices, &tmp_args);
@@ -184,19 +205,20 @@ void IndexPutKernel_V1(const Context& dev_ctx,
   auto bd_dim = funcs::BroadCastTensorsDims(int_indices_v);
 
   std::vector<int64_t> res_dim_v(common::vectorize(bd_dim));
-  std::vector<const phi::DenseTensor*> res_indices_v(x.dims().size(), nullptr);
+  std::vector<const phi::DenseTensor*> res_indices_v(con_x.dims().size(),
+                                                     nullptr);
   std::vector<DenseTensor> tmp_res_indices_v;
   std::vector<DenseTensor> tmp_value_v;
   std::vector<DenseTensor> range_tensor_v;
   const DenseTensor* ptr_value = nullptr;
 
-  for (int i = int_indices_v.size(); i < x.dims().size(); ++i) {
+  for (int i = int_indices_v.size(); i < con_x.dims().size(); ++i) {
     range_tensor_v.emplace_back(funcs::GetRangeCudaTensor<int64_t, Context>(
-        dev_ctx, x.dims()[i], phi::DataType::INT64));
+        dev_ctx, con_x.dims()[i], phi::DataType::INT64));
   }
 
   funcs::DealWithIndices<T, Context>(dev_ctx,
-                                     x,
+                                     con_x,
                                      int_indices_v,
                                      &res_indices_v,
                                      &tmp_res_indices_v,
@@ -204,14 +226,14 @@ void IndexPutKernel_V1(const Context& dev_ctx,
                                      bd_dim,
                                      &res_dim_v);
 
-  if (value.numel() != 1) {
+  if (con_v.numel() != 1) {
     tmp_value_v.emplace_back(
-        DenseTensor(value.dtype()).Resize(common::make_ddim(res_dim_v)));
+        DenseTensor(con_v.dtype()).Resize(common::make_ddim(res_dim_v)));
     ExpandKernel<T, Context>(
-        dev_ctx, value, IntArray(res_dim_v), &tmp_value_v[0]);
+        dev_ctx, con_v, IntArray(res_dim_v), &tmp_value_v[0]);
     ptr_value = &tmp_value_v[0];
   } else {
-    ptr_value = &value;
+    ptr_value = &con_v;
   }
 
   LaunchIndexPutCudaKernel<T, Context>(
@@ -241,36 +263,13 @@ void IndexPutKernel_V2(const Context& dev_ctx,
       common::errors::InvalidArgument("Indices cannot be empty."));
 
   funcs::AdvancedIndex ad = funcs::make_info<T, Context>(dev_ctx, x, indices);
-  if (!CheckIsDimsMatchBool(common::make_ddim(ad.src_sizes), value.dims())) {
-    for (size_t i = 0; i < indices.size(); i++) {
-      PADDLE_ENFORCE_EQ(indices[i]->meta().is_contiguous(),
-                        true,
-                        common::errors::InvalidArgument(
-                            "Indices in Index_put must be contiguous."));
-    }
-    PADDLE_ENFORCE_EQ(
-        x.meta().is_contiguous(),
-        true,
-        common::errors::InvalidArgument("X in Index_put must be contiguous."));
-    PADDLE_ENFORCE_EQ(value.meta().is_contiguous(),
-                      true,
-                      common::errors::InvalidArgument(
-                          "Value in Index_put must be contiguous."));
+  if (!CheckIsDimsMatchBool(ad.src.dims(), value.dims())) {
     IndexPutKernel_V1<T, Context>(dev_ctx, x, indices, value, accumulate, out);
     return;
   }
 
   int64_t numel = 0;
   int64_t num_indices = ad.indexed_sizes.size();
-
-  auto sizes = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
-  auto strides = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
-  for (int64_t i = 0; i < num_indices; i++) {
-    sizes[i] = ad.indexed_sizes[i];
-    strides[i] = ad.indexed_strides[i];
-  }
-
-  auto index_ptrs = funcs::GetIndexDataPtrs_v2<int64_t>(ad.indices);
 
   std::vector<int64_t*> strides_array;
   std::vector<int64_t> desired_shape;
@@ -281,18 +280,22 @@ void IndexPutKernel_V2(const Context& dev_ctx,
   strides_vec.resize(ntensor);
 
   funcs::IndexPutStrideV2(ntensor,
-                          ad.src_sizes,
-                          ad.src_strides,
-                          phi::SizeOf(x.dtype()),
-                          common::vectorize<int64_t>(value.dims()),
-                          common::vectorize<int64_t>(value.strides()),
-                          phi::SizeOf(value.dtype()),
+                          ad.src,
+                          value,
                           ad.indices,
                           &desired_shape,
                           &strides_array,
                           &numel,
                           strides_vec);
 
+  auto sizes = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
+  auto strides = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
+  for (int64_t i = 0; i < num_indices; i++) {
+    sizes[i] = ad.indexed_sizes[i];
+    strides[i] = ad.indexed_strides[i];
+  }
+
+  auto index_ptrs = funcs::GetIndexDataPtrs_v2<int64_t>(ad.indices);
   auto offset_calc =
       funcs::make_offset_calculator_put_v2<3>(desired_shape, strides_array);
 
@@ -310,7 +313,7 @@ void IndexPutKernel_V2(const Context& dev_ctx,
   bool is_initialized = out->initialized();
   T* out_data = dev_ctx.template Alloc<T>(out);
   if (!is_initialized) {
-    phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    funcs::Stride_Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   }
 
   const char* in_ptr = reinterpret_cast<const char*>(val_data);

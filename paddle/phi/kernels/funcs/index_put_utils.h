@@ -42,6 +42,227 @@ namespace phi {
 
 namespace funcs {
 
+template <typename Context>
+void Stride_Copy(const Context& dev_ctx,
+                 const DenseTensor& src,
+                 Place dst_place,
+                 bool blocking,
+                 DenseTensor* dst) {
+  auto* src_ptr = src.data();
+  const auto& src_place = src.place();
+
+  if (&src == dst) {
+    if (src_place.GetType() == dst_place.GetType()) {
+    } else {
+      const DenseTensor src_copy = src;
+      Stride_Copy<Context>(dev_ctx, src_copy, dst_place, blocking, dst);
+    }
+    return;
+  }
+
+  dst->Resize(src.dims());
+
+  void* dst_ptr = nullptr;
+  if (dst_place.GetType() == AllocationType::CPU) {
+    dst_ptr = dev_ctx.HostAlloc(dst, src.dtype());
+#ifdef PADDLE_WITH_DNNL
+    dst->set_layout(src.layout());
+#endif
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  } else if (dst_place.GetType() == AllocationType::GPU ||
+             dst_place.GetType() == AllocationType::GPUPINNED) {
+    dst_ptr = dev_ctx.Alloc(
+        dst, src.dtype(), 0, dst_place.GetType() == AllocationType::GPUPINNED);
+#endif
+#ifdef PADDLE_WITH_XPU
+  } else if (dst_place.GetType() == AllocationType::XPU) {
+    dst_ptr = dev_ctx.Alloc(dst, src.dtype());
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  } else if (dst_place.GetType() == AllocationType::CUSTOM) {
+    dst_ptr = dev_ctx.Alloc(dst, src.dtype());
+#endif
+  }
+
+  auto size = src.numel() * phi::SizeOf(src.dtype());
+  if (UNLIKELY(size) == 0) {
+    return;
+  }
+
+  PADDLE_ENFORCE_EQ(
+      dst->place(),
+      dst_place,
+      errors::Unavailable(
+          "The Dst Tensor's place and dst_place do not match, Tensor's place "
+          "place is %s, dst_place is %s.",
+          dst->place(),
+          dst_place));
+
+  PADDLE_ENFORCE_EQ(dst->layout(),
+                    src.layout(),
+                    common::errors::PreconditionNotMet(
+                        "dst's layout differs from src's layout"));
+
+  if (src_place.GetType() == AllocationType::CPU &&
+      dst_place.GetType() == AllocationType::CPU) {
+    memory_utils::Copy(src_place, dst_ptr, src_place, src_ptr, size);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  } else if ((src_place.GetType() == AllocationType::CPU ||
+              src_place.GetType() == AllocationType::GPUPINNED) &&  // NOLINT
+             (dst_place.GetType() == AllocationType::CPU ||
+              dst_place.GetType() == AllocationType::GPUPINNED)) {
+    memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size, nullptr);
+  } else if (src_place.GetType() == AllocationType::GPU &&  // NOLINT
+             dst_place.GetType() == AllocationType::CPU) {
+    auto src_gpu_place = src_place;
+    auto dst_cpu_place = dst_place;
+    auto ctx_place = dev_ctx.GetPlace();
+    PADDLE_ENFORCE_EQ(
+        ctx_place.GetType() == AllocationType::GPU,
+        true,
+        errors::PreconditionNotMet(
+            "Context place error, excepted GPUPlace, but actually %s.",
+            ctx_place));
+    auto ctx_gpu_place = ctx_place;
+    PADDLE_ENFORCE_EQ(src_gpu_place,
+                      ctx_gpu_place,
+                      errors::Unavailable(
+                          "Source place and context place do not match, source "
+                          "place is %s, context place is %s.",
+                          src_gpu_place,
+                          ctx_gpu_place));
+    auto stream =
+        blocking ? nullptr
+                 : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+    memory_utils::Copy(
+        dst_cpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
+  } else if ((src_place.GetType() == AllocationType::CPU ||
+              src_place.GetType() == AllocationType::GPUPINNED) &&  // NOLINT
+             dst_place.GetType() == AllocationType::GPU) {
+    auto src_cpu_place = src_place;
+    auto dst_gpu_place = dst_place;
+    auto ctx_place = dev_ctx.GetPlace();
+    PADDLE_ENFORCE_EQ(
+        ctx_place.GetType() == AllocationType::GPU,
+        true,
+        errors::PreconditionNotMet(
+            "Context place error, excepted GPUPlace, but actually %s.",
+            ctx_place));
+    auto ctx_gpu_place = ctx_place;
+    PADDLE_ENFORCE_EQ(
+        dst_gpu_place,
+        ctx_gpu_place,
+        errors::Unavailable("Destination place and context place do not match, "
+                            "destination place is %s, context place is %s.",
+                            dst_gpu_place,
+                            ctx_gpu_place));
+    auto stream =
+        blocking ? nullptr
+                 : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+    memory_utils::Copy(
+        dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size, stream);
+  } else if (src_place.GetType() == AllocationType::GPU &&  // NOLINT
+             dst_place.GetType() == AllocationType::GPU) {
+    auto src_gpu_place = src_place;
+    auto dst_gpu_place = dst_place;
+    auto ctx_place = dev_ctx.GetPlace();
+
+    PADDLE_ENFORCE_EQ(
+        ctx_place.GetType() == AllocationType::GPU,
+        true,
+        errors::PreconditionNotMet(
+            "Context place error, excepted GPUPlace, but actually %s.",
+            ctx_place));
+    auto stream =
+        blocking ? nullptr
+                 : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+    if (src_place.GetDeviceId() == dst_place.GetDeviceId()) {
+      memory_utils::Copy(
+          dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
+    } else {
+      if (ctx_place.GetDeviceId() == src_place.GetDeviceId()) {
+        memory_utils::Copy(
+            dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
+        phi::DeviceContextPool::Instance().Get(src.place())->Wait();
+      } else if (ctx_place.GetDeviceId() == dst_place.GetDeviceId()) {
+        phi::DeviceContextPool::Instance().Get(src.place())->Wait();
+        memory_utils::Copy(
+            dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
+        phi::DeviceContextPool::Instance().Get(dst_place)->Wait();
+      } else {
+        PADDLE_THROW(errors::Unavailable(
+            "Context place dose not match the source and destination place."));
+      }
+    }
+  } else if (src_place.GetType() == AllocationType::GPU &&  // NOLINT
+             dst_place.GetType() == AllocationType::GPUPINNED) {
+    auto src_gpu_place = src_place;
+    auto dst_cuda_pinned_place = dst_place;
+    auto ctx_place = dev_ctx.GetPlace();
+    PADDLE_ENFORCE_EQ(
+        ctx_place.GetType() == AllocationType::GPU,
+        true,
+        errors::PreconditionNotMet(
+            "Context place error, excepted GPUPlace, but actually %s.",
+            ctx_place));
+    auto ctx_gpu_place = ctx_place;
+    PADDLE_ENFORCE_EQ(src_gpu_place,
+                      ctx_gpu_place,
+                      errors::Unavailable(
+                          "Source place and context place do not match, source "
+                          "place is %s, context place is %s.",
+                          src_gpu_place,
+                          ctx_gpu_place));
+    auto stream =
+        blocking ? nullptr
+                 : reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+    memory_utils::Copy(
+        dst_cuda_pinned_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
+#endif
+#ifdef PADDLE_WITH_XPU
+  } else if (src_place.GetType() == AllocationType::XPU &&  // NOLINT
+             dst_place.GetType() == AllocationType::CPU) {
+    memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+  } else if (src_place.GetType() == AllocationType::CPU &&
+             dst_place.GetType() == AllocationType::XPU) {
+    memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+  } else if (src_place.GetType() == AllocationType::XPU &&
+             dst_place.GetType() == AllocationType::XPU) {
+    if (src_ptr == dst_ptr) {
+      return;
+    }
+    memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  } else if (src_place.GetType() == AllocationType::CUSTOM &&  // NOLINT
+             dst_place.GetType() == AllocationType::CPU) {
+    auto stream =
+        blocking
+            ? nullptr
+            : reinterpret_cast<const phi::CustomContext&>(dev_ctx).stream();
+    memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
+  } else if (src_place.GetType() == AllocationType::CPU &&  // NOLINT
+             dst_place.GetType() == AllocationType::CUSTOM) {
+    auto stream =
+        blocking
+            ? nullptr
+            : reinterpret_cast<const phi::CustomContext&>(dev_ctx).stream();
+    memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
+  } else if (src_place.GetType() == AllocationType::CUSTOM &&  // NOLINT
+             dst_place.GetType() == AllocationType::CUSTOM) {
+    auto stream =
+        blocking
+            ? nullptr
+            : reinterpret_cast<const phi::CustomContext&>(dev_ctx).stream();
+    memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size, stream);
+#endif
+  } else {
+    PADDLE_THROW(errors::Unimplemented(
+        "Copy from %s to %s is not supported.", src_place, dst_place));
+  }
+  dst->set_strides(src.strides());
+}
+
 static inline common::DDim infer_size_symdimvector_v2(common::DDim a,
                                                       common::DDim b) {
   // Use ptrdiff_t to ensure signed comparison.
@@ -152,18 +373,21 @@ struct AdvancedIndex {
   std::vector<phi::DenseTensor*> indices;
   std::vector<int64_t> indexed_sizes;
   std::vector<int64_t> indexed_strides;
-  std::vector<int64_t> src_sizes;
-  std::vector<int64_t> src_strides;
   int64_t dims_before;
   int64_t dims_after;
   bool bool_case;
 };
 
-inline static void restride_src(std::vector<int64_t>* shape,
-                                std::vector<int64_t>* strides,
-                                int64_t dims_before,
-                                int64_t dims_indexed,
-                                std::vector<int64_t> replacement_shape) {
+inline static phi::DenseTensor restride_src(
+    phi::DenseTensor* src,
+    int64_t dims_before,
+    int64_t dims_indexed,
+    std::vector<int64_t> replacement_shape) {
+  std::vector<int64_t> shape_vec = (common::vectorize<int64_t>(src->dims()));
+  std::vector<int64_t> strides_vec =
+      (common::vectorize<int64_t>(src->strides()));
+  std::vector<int64_t>* shape = &shape_vec;
+  std::vector<int64_t>* strides = &strides_vec;
   int64_t end = dims_before + dims_indexed;
   shape->erase(shape->begin() + dims_before, shape->begin() + end);
   strides->erase(strides->begin() + dims_before, strides->begin() + end);
@@ -171,6 +395,12 @@ inline static void restride_src(std::vector<int64_t>* shape,
                 replacement_shape.begin(),
                 replacement_shape.end());
   strides->insert(strides->begin() + dims_before, replacement_shape.size(), 0);
+  auto meta = src->meta();
+  meta.dims = common::make_ddim(*shape);
+  meta.strides = common::make_ddim(*strides);
+  meta.offset = src->offset();
+  src->set_meta(meta);
+  return *src;
 }
 
 // move to cuda kernel
@@ -212,11 +442,7 @@ inline AdvancedIndex::AdvancedIndex(
 
   this->dims_before = dims_before;
   this->dims_after = dims_after;
-  restride_src(
-      &shape_vec, &stride_vec, dims_before, dims_indexed, replacement_shape);
-  this->src_sizes = shape_vec;
-  this->src_strides = stride_vec;
-
+  this->src = restride_src(&src, dims_before, dims_indexed, replacement_shape);
   // use dims_before and dims_after / move to cuda kernel
   for (auto& index : indices_list) {
     if (index) {
