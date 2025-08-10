@@ -22,8 +22,8 @@ namespace phi {
 template <typename T, typename Context>
 void MinWithIndexKernel(const Context& dev_ctx,
                         const DenseTensor& x,
-                        const Scalar& axis,
-                        bool keepdims,
+                        const Scalar& dim,
+                        bool keepdim,
                         bool flatten,
                         DenseTensor* val_out,
                         DenseTensor* ind_out);
@@ -31,8 +31,8 @@ void MinWithIndexKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void MaxWithIndexKernel(const Context& dev_ctx,
                         const DenseTensor& x,
-                        const Scalar& axis,
-                        bool keepdims,
+                        const Scalar& dim,
+                        bool keepdim,
                         bool flatten,
                         DenseTensor* val_out,
                         DenseTensor* ind_out);

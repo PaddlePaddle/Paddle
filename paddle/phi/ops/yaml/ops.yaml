@@ -3554,7 +3554,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : max_with_index
-  args : (Tensor x, Scalar(int64_t) axis, bool keepdims = false, bool flatten = false)
+  args : (Tensor x, Scalar(int64_t) dim, bool keepdim = false, bool flatten = false)
   output : Tensor(values), Tensor(indices)
   infer_meta :
     func : MinMaxWithIndexInferMeta
@@ -3674,7 +3674,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : min_with_index
-  args : (Tensor x, Scalar(int64_t) axis, bool keepdims = false, bool flatten = false)
+  args : (Tensor x, Scalar(int64_t) dim, bool keepdim = false, bool flatten = false)
   output : Tensor(values), Tensor(indices)
   infer_meta :
     func : MinMaxWithIndexInferMeta

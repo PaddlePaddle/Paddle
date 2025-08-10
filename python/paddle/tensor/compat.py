@@ -308,6 +308,21 @@ def _min_max_tensor_allow_grad(input: Tensor):
             )
 
 
+def _min_max_allow_cpu_composite(input: Tensor):
+    """paddle.min/argmin(max/argmax), paddle.take_along_axis reject the following types"""
+    in_dtype = input.dtype
+    if (
+        in_dtype == paddle.float16
+        or in_dtype == paddle.bfloat16
+        or in_dtype == paddle.int16
+    ):
+        if not input.place.is_gpu_place():
+            raise TypeError(
+                f"Non-CUDA GPU placed Tensor does not have '{in_dtype}' op registered.\n"
+                "Paddle support following DataTypes: int32, int64, float64, float32, uint8"
+            )
+
+
 @ForbidKeywordsDecorator(
     illegal_keys=['x', 'axis'],
     func_name="paddle.compat.min",
@@ -326,7 +341,8 @@ def min(input: Tensor, *args: Any, **kwargs: Any) -> Tensor | MinMaxRetType:
         following torch.min. The gradient behavior of `values` for case 2 is the same as `paddle.amin`.
 
     Args:
-        input (Tensor): A tensor, the data type is bfloat16, float16, float32, float64, int32, int64.
+        input (Tensor): A tensor, the data type is bfloat16, float16, float32, float64, int32, int64 on GPU.
+            uint8, int32, int64, float32, float64 are allowed on CPU.
         dim (int, optional): The dim along which the minimum is computed.
             If this is not specified: see case 1, note that: `None` cannot be passed to this (TypeError will be thrown)
             compute the minimum over all elements of `input` and return a Tensor with a single element,
@@ -408,6 +424,7 @@ def min(input: Tensor, *args: Any, **kwargs: Any) -> Tensor | MinMaxRetType:
             inds.stop_gradient = True
             return MinMaxRetType(values=vals, indices=inds)
         else:
+            _min_max_allow_cpu_composite(input)
             # CPUPlace and other placements are implemented by composition
             indices = paddle.argmin(input, axis=dim_or_other, keepdim=True)
             values = paddle.take_along_axis(input, indices, axis=dim_or_other)
@@ -439,7 +456,8 @@ def max(input: Tensor, *args: Any, **kwargs: Any) -> Tensor | MinMaxRetType:
         following torch.max. The gradient behavior of `values` for case 2 is the same as `paddle.amax`.
 
     Args:
-        input (Tensor): A tensor, the data type is bfloat16, float16, float32, float64, int32, int64.
+        input (Tensor): A tensor, the data type is bfloat16, float16, float32, float64, int32, int64 on GPU.
+            uint8, int32, int64, float32, float64 are allowed on CPU.
         dim (int, optional): The dim along which the maximum is computed.
             If this is not specified: see case 1, note that: `None` cannot be passed to this (TypeError will be thrown)
             compute the maximum over all elements of `input` and return a Tensor with a single element,
@@ -521,6 +539,7 @@ def max(input: Tensor, *args: Any, **kwargs: Any) -> Tensor | MinMaxRetType:
             inds.stop_gradient = True
             return MinMaxRetType(values=vals, indices=inds)
         else:
+            _min_max_allow_cpu_composite(input)
             # CPUPlace and other placements are implemented by composition
             indices = paddle.argmax(input, axis=dim_or_other, keepdim=True)
             values = paddle.take_along_axis(input, indices, axis=dim_or_other)

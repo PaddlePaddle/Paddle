@@ -254,25 +254,25 @@ void MinMaxWithIndexOpCUDAKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void MinWithIndexKernel(const Context& dev_ctx,
                         const DenseTensor& x,
-                        const Scalar& axis,
-                        bool keepdims,
+                        const Scalar& dim,
+                        bool keepdim,
                         bool flatten,
                         DenseTensor* val_out,
                         DenseTensor* ind_out) {
   MinMaxWithIndexOpCUDAKernel<Context, T, cub::ArgMin>(
-      dev_ctx, x, axis, keepdims, flatten, val_out, ind_out);
+      dev_ctx, x, dim, keepdim, flatten, val_out, ind_out);
 }
 
 template <typename T, typename Context>
 void MaxWithIndexKernel(const Context& dev_ctx,
                         const DenseTensor& x,
-                        const Scalar& axis,
-                        bool keepdims,
+                        const Scalar& dim,
+                        bool keepdim,
                         bool flatten,
                         DenseTensor* val_out,
                         DenseTensor* ind_out) {
   MinMaxWithIndexOpCUDAKernel<Context, T, cub::ArgMax>(
-      dev_ctx, x, axis, keepdims, flatten, val_out, ind_out);
+      dev_ctx, x, dim, keepdim, flatten, val_out, ind_out);
 }
 
 #endif
