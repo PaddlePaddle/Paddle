@@ -225,6 +225,7 @@ class ForwardAPI(BaseAPI):
                     and self.outputs['names'][0].split('@')[0]
                     in self.inplace_map
                 )
+                and self.api != "empty_like"
             ):
                 output_create = f"""
 {code_indent}  Tensor out_tmp; Tensor& api_output = input_out ? **input_out : out_tmp;"""

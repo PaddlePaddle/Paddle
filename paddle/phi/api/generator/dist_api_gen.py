@@ -1143,6 +1143,7 @@ class DistForwardAPI(ForwardAPI):
                 if (
                     len(self.outputs['names']) == 1
                     and self.outputs['types'][0] == "Tensor"
+                    and self.api != "empty_like"
                 ):
                     output_creation_code += "Tensor out_tmp; Tensor& api_output = input_out ? **input_out : out_tmp;"
                 else:

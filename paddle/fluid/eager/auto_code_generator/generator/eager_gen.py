@@ -1891,6 +1891,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             and len(self.forward_outputs_position_map) == 1
             and next(iter(self.forward_outputs_position_map.values()))[0]
             == "Tensor"
+            and forward_api_name != "empty_like"
         ):
             inputs_args_declaration_str = (
                 inputs_args_declaration_str
@@ -2162,6 +2163,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             and len(self.forward_outputs_position_map) == 1
             and next(iter(self.forward_outputs_position_map.values()))[0]
             == "Tensor"
+            and forward_api_name != "empty_like"
         ):
             amp_inputs_call_args_str = amp_inputs_call_args_str + ", input_out"
         amp_call_str = (
@@ -2194,6 +2196,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 and len(self.forward_outputs_position_map) == 1
                 and next(iter(self.forward_outputs_position_map.values()))[0]
                 == "Tensor"
+                and forward_api_name != "empty_like"
             ):
                 type_promote_inputs_call_args_str = (
                     type_promote_inputs_call_args_str + ", input_out"
@@ -2227,6 +2230,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 and len(self.forward_outputs_position_map) == 1
                 and next(iter(self.forward_outputs_position_map.values()))[0]
                 == "Tensor"
+                and forward_api_name != "empty_like"
             ):
                 type_promote_inputs_call_args_str = (
                     type_promote_inputs_call_args_str + ", input_out"

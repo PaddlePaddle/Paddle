@@ -256,6 +256,7 @@ class BaseAPI:
             and append_input_out
             and len(self.outputs['names']) == 1
             and self.outputs['types'][0] == "Tensor"
+            and self.api != "empty_like"
         ):
             declare_args.append(
                 "paddle::optional<Tensor*> input_out = paddle::none"
@@ -276,6 +277,7 @@ class BaseAPI:
             and append_input_out
             and len(self.outputs['names']) == 1
             and self.outputs['types'][0] == "Tensor"
+            and self.api != "empty_like"
         ):
             define_args.append("paddle::optional<Tensor*> input_out")
 
