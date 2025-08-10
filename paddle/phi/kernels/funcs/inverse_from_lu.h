@@ -14,31 +14,14 @@
 
 #pragma once
 
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 namespace funcs {
 
-template <typename T, typename Context>
+template <typename T, typename DeviceContext>
 class InverseFromLUFunctor;
-
-template <typename T>
-class InverseFromLUFunctor<T, CPUContext> {
- public:
-  void operator()(const CPUContext& dev_ctx,
-                  const DenseTensor& lu_data,
-                  const DenseTensor& pivots,
-                  DenseTensor* inverse_out);
-};
-
-template <typename T>
-class InverseFromLUFunctor<T, GPUContext> {
- public:
-  void operator()(const GPUContext& dev_ctx,
-                  const DenseTensor& lu_data,
-                  const DenseTensor& pivots,
-                  DenseTensor* inverse_out);
-};
 
 }  // namespace funcs
 }  // namespace phi
