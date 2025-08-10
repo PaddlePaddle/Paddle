@@ -179,6 +179,14 @@ class OutTest(unittest.TestCase):
             elif test_type == "both_input_out":
                 tmp = paddle.complex(a, b, out=c)
 
+            out = paddle._C_ops.complex(a, b)
+            np.testing.assert_allclose(
+                out.numpy(),
+                c.numpy(),
+                1e-20,
+                1e-20,
+            )
+
             d = c + c
 
             d.mean().backward()
