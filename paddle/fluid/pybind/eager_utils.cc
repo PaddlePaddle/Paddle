@@ -3098,6 +3098,9 @@ void EagerSetDeviceId() {
 }
 
 paddle::optional<Tensor*> GetInputOutTensorFromKwargs(PyObject* kwargs) {
+  if (!kwargs) {
+    return paddle::none;
+  }
   PyObject* obj = PyDict_GetItemString(kwargs, "out");
   if (obj) {
     return paddle::make_optional<paddle::Tensor*>(
