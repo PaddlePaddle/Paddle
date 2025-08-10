@@ -108,7 +108,7 @@ class TestConvBnFusePass(PassAutoScanTest):
             groups=groups,
             paddings=paddings,
             strides=strides,
-            use_mkldnn=use_onednn,
+            use_onednn=use_onednn,
             has_bias=False,
             is_test=True,
         )
