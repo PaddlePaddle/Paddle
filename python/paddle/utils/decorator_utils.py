@@ -67,11 +67,11 @@ class ParamAliasDecorator(DecoratorBase[_P, _R]):
     def __init__(self, alias_mapping: dict[str, Iterable[str]]) -> None:
         super().__init__()
         # Check alias_mapping types
-        if not isinstance(alias_mapping, dict):
-            raise TypeError("alias_mapping must be a dictionary")
-        for k, v in alias_mapping.items():
-            if not isinstance(v, (list, tuple, set)):
-                raise TypeError(f"Aliases for '{k}' must be iterable")
+        # if not isinstance(alias_mapping, dict):
+        #     raise TypeError("alias_mapping must be a dictionary")
+        # for k, v in alias_mapping.items():
+        #     if not isinstance(v, (list, tuple, set)):
+        #         raise TypeError(f"Aliases for '{k}' must be iterable")
 
         # Build a reverse alias map for faster lookup
         self.alias_mapping = {}
