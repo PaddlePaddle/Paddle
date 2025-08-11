@@ -12,47 +12,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import annotations
-
 import functools
 import inspect
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Generic,
-    TypeVar,
-)
+from collections.abc import Iterable
+from typing import Any, Callable, TypeVar, cast
 
-from typing_extensions import ParamSpec
-
-if TYPE_CHECKING:
-    from collections.abc import Iterable
+_F = TypeVar("_F", bound=Callable[..., Any])
 
 
-_P = ParamSpec("_P")
-_R = TypeVar("_R")
-_DecoratedFunc = Callable[_P, _R]
+class DecoratorBase:
+    """Decorative base class, providing a universal decorative framework.
 
-
-class DecoratorBase(Generic[_P, _R]):
-    """Base class for creating decorators"""
+    Subclass only needs to implement the 'process' method to define the core logic.
+    """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self.args = args
         self.kwargs = kwargs
 
-    def __call__(self, func: Callable[..., _R]) -> Callable[..., _R]:
-        """Wrap the function with the decorator"""
+    def __call__(self, func: _F) -> _F:
+        """As an entry point for decorative applications"""
 
         @functools.wraps(func)
-        def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _R:
-            # Call the core logic for parameter processing
+        def wrapper(*args, **kwargs):
+            # Pretreatment parameters
             processed_args, processed_kwargs = self.process(args, kwargs)
             return func(*processed_args, **processed_kwargs)
 
         wrapper.__signature__ = inspect.signature(func)
-        return wrapper
+        return cast("_F", wrapper)
 
     def process(
         self, args: tuple[Any, ...], kwargs: dict[str, Any]
@@ -61,8 +49,9 @@ class DecoratorBase(Generic[_P, _R]):
         raise NotImplementedError("Subclasses must implement this method")
 
 
-class ParamAliasDecorator(DecoratorBase[_P, _R]):
-    """Decorator for parameter alias processing"""
+# Example implementation: Parameter alias decorator
+class ParamAliasDecorator(DecoratorBase):
+    """Implementation of Decorator for Parameter Alias Processing"""
 
     def __init__(self, alias_mapping: dict[str, Iterable[str]]) -> None:
         super().__init__()

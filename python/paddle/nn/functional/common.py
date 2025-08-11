@@ -32,6 +32,7 @@ from paddle.framework import (
 )
 from paddle.tensor.creation import full
 from paddle.utils import deprecated
+from paddle.utils.decorator_utils import ParamAliasDecorator
 from paddle.utils.layers_utils import NotSupportedTensorArgumentError
 
 from ...base.data_feeder import (
@@ -1857,6 +1858,7 @@ def feature_alpha_dropout(
     )
 
 
+@ParamAliasDecorator({"x": ["input"]})
 def pad(
     x: Tensor,
     pad: ShapeLike,
@@ -1892,8 +1894,14 @@ def pad(
         4. If mode is ``'reflect'``, pad[0] and pad[1] must be no greater than width-1. The height and depth
         dimension has the same condition.
 
+    .. note::
+    Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+    For example, ``input=tensor_x`` is equivalent to ``x=tensor_x``.
+
+
     Args:
         x (Tensor): The input tensor with data type float32, float64, int32, int64, complex64 or complex128.
+        input: An alias for ``x`` , with identical behavior.
         pad (Tensor|list[int]|tuple[int]): The padding size with data type int. Refer to Note for details.
         mode (str, optional): Four modes: ``'constant'`` (default), ``'reflect'``, ``'replicate'``, ``'circular'``. Default is ``'constant'``.
 

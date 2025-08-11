@@ -24,6 +24,7 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
+from paddle.utils.decorator_utils import ParamAliasDecorator
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
@@ -876,6 +877,7 @@ def _to_tensor_static(
     return output
 
 
+@ParamAliasDecorator({"place": ["device"]})
 def to_tensor(
     data: TensorLike | NestedNumericSequence,
     dtype: DTypeLike | None = None,
@@ -888,6 +890,10 @@ def to_tensor(
 
     If the ``data`` is already a Tensor, copy will be performed and return a new tensor.
     If you only want to change stop_gradient property, please call ``Tensor.stop_gradient = stop_gradient`` directly.
+
+    .. note::
+    Alias Support: The parameter name ``device`` can be used as an alias for ``place``.
+    For example, ``device=paddle.CUDAPlace(0)`` is equivalent to ``place=paddle.CUDAPlace(0)``.
 
     .. code-block:: text
 
@@ -911,6 +917,7 @@ def to_tensor(
         place(CPUPlace|CUDAPinnedPlace|CUDAPlace|str, optional): The place to allocate Tensor. Can be
             CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place. If ``place`` is
             string, It can be ``cpu``, ``gpu:x`` and ``gpu_pinned``, where ``x`` is the index of the GPUs.
+        device: An alias for ``place`` , with identical behavior.
         stop_gradient(bool, optional): Whether to block the gradient propagation of Autograd. Default: True.
 
     Returns:
