@@ -45,7 +45,7 @@ class TestSumBF16ONEDNN(TestSumOp):
 
         y = x0 + x1 + x2
         self.outputs = {'Out': convert_float_to_uint16(y)}
-        self.attrs = {'use_mkldnn': self.use_onednn}
+        self.attrs = {'use_onednn': self.use_onednn}
 
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace(), check_pir_onednn=True)

@@ -12,31 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import annotations
-
 import functools
 import inspect
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Generic,
-    TypeVar,
-    cast,
-)
+from collections.abc import Iterable
+from typing import Any, Callable, TypeVar, cast
 
-from typing_extensions import ParamSpec
-
-if TYPE_CHECKING:
-    from collections.abc import Iterable
+_F = TypeVar("_F", bound=Callable[..., Any])
 
 
-_P = ParamSpec("_P")
-_R = TypeVar("_R")
-_DecoratedFunc = Callable[_P, _R]
-
-
-class DecoratorBase(Generic[_P, _R]):
+class DecoratorBase:
     """Decorative base class, providing a universal decorative framework.
 
     Subclass only needs to implement the 'process' method to define the core logic.
@@ -47,11 +31,11 @@ class DecoratorBase(Generic[_P, _R]):
         self.args = args
         self.kwargs = kwargs
 
-    def __call__(self, func: _DecoratedFunc[_P, _R]) -> _DecoratedFunc[_P, _R]:
+    def __call__(self, func: _F) -> _F:
         """As an entry point for decorative applications"""
 
         @functools.wraps(func)
-        def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _R:
+        def wrapper(*args, **kwargs):
             # Pretreatment parameters
             processed_args, processed_kwargs = self.process(args, kwargs)
             # Call the original function
@@ -59,7 +43,7 @@ class DecoratorBase(Generic[_P, _R]):
 
         # Keep original signature
         wrapper.__signature__ = inspect.signature(func)
-        return cast("_DecoratedFunc[_P, _R]", wrapper)
+        return cast("_F", wrapper)
 
     def process(
         self, args: tuple[Any, ...], kwargs: dict[str, Any]
@@ -77,7 +61,7 @@ class DecoratorBase(Generic[_P, _R]):
 
 
 # Example implementation: Parameter alias decorator
-class ParamAliasDecorator(DecoratorBase[_P, _R]):
+class ParamAliasDecorator(DecoratorBase):
     """Implementation of Decorator for Parameter Alias Processing"""
 
     def __init__(self, alias_mapping: dict[str, Iterable[str]]) -> None:
