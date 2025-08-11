@@ -26,7 +26,7 @@ from ...base.framework import (
     in_dygraph_mode,
     in_pir_mode,
 )
-from .initializer import Initializer, compute_fans
+from .initializer import Initializer
 
 __all__ = []
 
@@ -109,7 +109,7 @@ class XavierInitializer(Initializer):
                 "xavier_init",
             )
 
-        f_in, f_out = compute_fans(var)
+        f_in, f_out = self._compute_fans(var)
 
         # If fan_in and fan_out are passed, use them
         fan_in = f_in if self._fan_in is None else self._fan_in
