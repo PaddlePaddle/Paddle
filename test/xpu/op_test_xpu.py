@@ -292,8 +292,8 @@ class XPUOpTest(OpTest):
 
             # oneDNN numeric gradient should use CPU kernel
             use_onednn = False
-            if op_attrs.get("use_mkldnn"):
-                op_attrs["use_mkldnn"] = False
+            if op_attrs.get("use_onednn"):
+                op_attrs["use_onednn"] = False
                 use_onednn = True
 
             mean_grad_op_types = get_xpu_op_support_types('mean')
@@ -311,7 +311,7 @@ class XPUOpTest(OpTest):
             )
 
             if use_onednn:
-                op_attrs["use_mkldnn"] = True
+                op_attrs["use_onednn"] = True
 
             if no_grad_set is None:
                 no_grad_set = set()

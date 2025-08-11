@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import paddle
+from paddle.utils.decorator_utils import ParamAliasDecorator
 
 from ..base import framework
 from ..base.core import (
@@ -205,6 +206,7 @@ def iinfo(dtype):
     return core_iinfo(dtype)
 
 
+@ParamAliasDecorator({"dtype": ["type"]})
 def finfo(dtype):
     """
 
@@ -212,9 +214,14 @@ def finfo(dtype):
     ``paddle.dtype``.
     This is similar to `numpy.finfo <https://numpy.org/doc/stable/reference/generated/numpy.finfo.html#numpy-finfo>`_.
 
+    .. note::
+    Alias Support: The parameter name ``type`` can be used as an alias for ``dtype``.
+    For example, ``type=paddle.float32`` is equivalent to ``type=paddle.float32``.
+
     Args:
         dtype(paddle.dtype|string):  One of ``paddle.float16``, ``paddle.float32``, ``paddle.float64``, ``paddle.bfloat16``,
             ``paddle.complex64``, and ``paddle.complex128``.
+        type: An alias for ``dtype`` , with identical behavior.
 
     Returns:
         An ``finfo`` object, which has the following 8 attributes:

@@ -764,7 +764,7 @@ class TestExpandV2ZeroSizeOneDNNOp(TestExpandV2ZeroSizeOp):
         self.init_place()
         self.python_api = paddle.expand
         self.x = np.zeros(self.ori_shape).astype("float32")
-        self.attrs = {'shape': self.shape, 'use_mkldnn': True}
+        self.attrs = {'shape': self.shape, 'use_onednn': True}
         self.use_onednn = True
         self.set_inputs()
         self.set_additional_inputs()
