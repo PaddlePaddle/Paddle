@@ -104,6 +104,7 @@ class SizeArgsDecorator(DecoratorBase):
     paddle.ones([1, 2, 3], paddle.float32)
     paddle.ones(shape=[1, 2, 3], dtype=paddle.float32)
     """
+
     def process(
         self, args: tuple[Any, ...], kwargs: dict[str, Any]
     ) -> tuple[tuple[Any, ...], dict[str, Any]]:
@@ -114,6 +115,7 @@ class SizeArgsDecorator(DecoratorBase):
             args = ()
 
         return args, kwargs
+
 
 class ForbidKeywordsDecorator(DecoratorBase):
     """A decorator that hints users to use the correct `compat` functions, when erroneous keyword arguments are detected"""
