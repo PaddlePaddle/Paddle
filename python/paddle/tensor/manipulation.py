@@ -4678,6 +4678,35 @@ def tile(
         return out
 
 
+@overload
+def repeat(
+    x: Tensor,
+    repeat: TensorOrTensors | Sequence[int],
+    name: str | None = None,
+) -> Tensor: ...
+
+
+@overload
+def repeat(
+    x: Tensor,
+    *repeat: int,
+    name: str | None = None,
+) -> Tensor: ...
+
+
+def repeat(
+    x: Tensor,
+    *repeat,
+    name: str | None = None,
+) -> Tensor:
+    if len(repeat) == 1:
+        repeat_times = repeat[0]
+    else:
+        repeat_times = list(repeat)
+
+    return paddle.tile(x=x, repeat_times=repeat_times, name=name)
+
+
 def expand_as(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
 
