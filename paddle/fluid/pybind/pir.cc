@@ -337,7 +337,7 @@ void PruneWithInput(const std::vector<pir::Value> &input_vars,
       if (!input_vars_set.empty() && SomeInSet(op_results, input_vars_set)) {
         PADDLE_THROW(common::errors::InvalidArgument(
             "The input_var create by: '{%s}' is not involved in the "
-            "output_vars calculation"
+            "output_vars calculation. "
             "Please remove it from input_vars.",
             op->name()));
       }

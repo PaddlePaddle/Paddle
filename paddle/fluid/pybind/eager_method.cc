@@ -931,8 +931,8 @@ static PyObject* tensor_clear_gradient(TensorObject* self,
     grad = egr::EagerUtils::mutable_grad(self->tensor);
     PADDLE_ENFORCE(
         grad != nullptr,
-        common::errors::Fatal("Detected nullptr grad"
-                              "Please check if you have manually cleared"
+        common::errors::Fatal("Detected nullptr grad. "
+                              "Please check if you have manually cleared "
                               "the grad inside autograd_meta"));
   } else {
     auto meta = egr::EagerUtils::unsafe_autograd_meta(self->tensor);
@@ -995,8 +995,8 @@ static PyObject* tensor__zero_grads(TensorObject* self,
     paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
     PADDLE_ENFORCE(
         grad != nullptr,
-        common::errors::Fatal("Detected nullptr grad"
-                              "Please check if you have manually cleared"
+        common::errors::Fatal("Detected nullptr grad. "
+                              "Please check if you have manually cleared "
                               "the grad inside autograd_meta"));
     if (grad->initialized()) {
       if (grad->is_dense_tensor() || grad->is_dist_tensor()) {

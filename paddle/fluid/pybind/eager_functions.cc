@@ -1353,8 +1353,8 @@ static PyObject* eager_api_set_master_grads(PyObject* self,
     PADDLE_ENFORCE_NE(
         grad,
         nullptr,
-        common::errors::Fatal("Detected nullptr grad"
-                              "Please check if you have manually cleared"
+        common::errors::Fatal("Detected nullptr grad. "
+                              "Please check if you have manually cleared "
                               "the grad inside autograd_meta"));
     if (((*grad).has_allocation() || (*grad).is_dist_tensor()) &&
         ((*grad).dtype() == phi::DataType::FLOAT16 ||
