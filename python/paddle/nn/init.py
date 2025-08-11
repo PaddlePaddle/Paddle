@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 from .initializer.initializer import calculate_gain as calculate_gain_
 from .initializer.kaiming import KaimingNormal, KaimingUniform
-from .initializer.normal import Normal
+from .initializer.normal import Normal, TruncatedNormal
 from .initializer.uniform import Uniform
 from .initializer.xavier import XavierNormal, XavierUniform
 
@@ -174,5 +174,29 @@ def normal_(
         Tensor: Initialized tensor.
     """
     init = Normal(mean=mean, std=std)
+
+    return init(tensor)
+
+
+def trunc_normal_(
+    tensor: paddle.Tensor,
+    mean: float = 0.0,
+    std: float = 1.0,
+    a: float = -2.0,
+    b: float = 2.0,
+) -> paddle.Tensor | None:
+    """Modify tensor inplace using truncated normal method.
+
+    Args:
+        tensor (Tensor):  Paddle Tensor.
+        mean (float|complex, optional): mean of the normal distribution. Default is 0.0.
+        std (float, optional): standard deviation of the normal distribution. Default is 1.0.
+        a (float, optional): The minimum cutoff value. Default is -2.0.
+        b (float, optional): The maximum cutoff value. Default is 2.0.
+
+    Returns:
+        Tensor: Initialized tensor.
+    """
+    init = TruncatedNormal(mean=mean, std=std, a=a, b=b)
 
     return init(tensor)
