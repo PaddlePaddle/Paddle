@@ -345,7 +345,8 @@ void ScanKernel(const Context& dev_ctx,
 
   // Use thrust for parallel acceleration when the input size is equal to the
   // length of the 'axis' dimension (i.e., it's a 1D scan).
-  if (x.numel() == out_dims[axis]) {
+  int64_t size = x.numel();
+  if (size == out_dims[axis]) {
     ThrustCumsumKernel<Context, T, Op>(
         dev_ctx, in_data, out_data, size, reverse, exclusive, op);
     return;
