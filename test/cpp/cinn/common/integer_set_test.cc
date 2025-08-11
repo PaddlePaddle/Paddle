@@ -24,11 +24,13 @@ namespace common {
 class TestSymbolicExprAnalyzer : public ::testing::Test {
  public:
   void SetUp() override {
-    i = ir::Var(ir::Expr(0), ir::Expr(7), "i");
-    j = ir::Var(ir::Expr(0), ir::Expr(15), "j");
+    // Var is [lower_bound, upper_bound)
+    i = ir::Var(ir::Expr(0), ir::Expr(7), "i");   // i ∈ [0, 7)
+    j = ir::Var(ir::Expr(0), ir::Expr(15), "j");  // j ∈ [0, 15)
+    // CasInterval is [lower_bound, upper_bound]
     var_intervals = {
-        {"i", CasInterval(i->lower_bound, i->upper_bound)},
-        {"j", CasInterval(j->lower_bound, j->upper_bound)},
+        {"i", CasInterval(i->lower_bound, i->upper_bound - 1)},  // i ∈ [0, 6]
+        {"j", CasInterval(j->lower_bound, j->upper_bound - 1)},  // j ∈ [0, 14]
     };
   }
 
@@ -41,35 +43,35 @@ class TestSymbolicExprAnalyzer : public ::testing::Test {
 TEST_F(TestSymbolicExprAnalyzer, bound) {
   ir::Expr e1 = i + j;
   EXPECT_EQ(analyzer.LowerBound(e1), ir::Expr(0));
-  EXPECT_EQ(analyzer.UpperBound(e1), ir::Expr(22));
+  EXPECT_EQ(analyzer.UpperBound(e1), ir::Expr(20));  // 6 + 14 = 20
 
   ir::Expr e2 = 16 * i + j;
   EXPECT_EQ(analyzer.LowerBound(e2), ir::Expr(0));
-  EXPECT_EQ(analyzer.UpperBound(e2), ir::Expr(127));
+  EXPECT_EQ(analyzer.UpperBound(e2), ir::Expr(110));  // 16 * 6 + 14 = 110
 
   ir::Expr e3 = 16 * i + j + 1;
   EXPECT_EQ(analyzer.LowerBound(e3), ir::Expr(1));
-  EXPECT_EQ(analyzer.UpperBound(e3), ir::Expr(128));
+  EXPECT_EQ(analyzer.UpperBound(e3), ir::Expr(111));  // 16 * 6 + 15 = 111
 
   ir::Expr e4 = (16 * i + j) / 16;
   EXPECT_EQ(analyzer.LowerBound(e4), ir::Expr(0));
-  EXPECT_EQ(analyzer.UpperBound(e4), ir::Expr(7));
+  EXPECT_EQ(analyzer.UpperBound(e4), ir::Expr(6));  // 110 / 16 = 6
 
   ir::Expr e5 = (16 * i + j) % 16;
   EXPECT_EQ(analyzer.LowerBound(e5), ir::Expr(0));
-  EXPECT_EQ(analyzer.UpperBound(e5), ir::Expr(15));
+  EXPECT_EQ(analyzer.UpperBound(e5), ir::Expr(14));  // 110 % 16
 
   ir::Expr e6 = i - j;
-  EXPECT_EQ(analyzer.LowerBound(e6), ir::Expr(-15));
-  EXPECT_EQ(analyzer.UpperBound(e6), ir::Expr(7));
+  EXPECT_EQ(analyzer.LowerBound(e6), ir::Expr(-14));  // 0 - 14
+  EXPECT_EQ(analyzer.UpperBound(e6), ir::Expr(6));    // 6 - 0
 
   ir::Expr e7 = 0 - i - j;
-  EXPECT_EQ(analyzer.LowerBound(e7), ir::Expr(-22));
-  EXPECT_EQ(analyzer.UpperBound(e7), ir::Expr(0));
+  EXPECT_EQ(analyzer.LowerBound(e7), ir::Expr(-20));  // 0 - 6 - 14
+  EXPECT_EQ(analyzer.UpperBound(e7), ir::Expr(0));    // 0 - 0 - 0
 
   ir::Expr e8 = -1 * i - j;
-  EXPECT_EQ(analyzer.LowerBound(e8), ir::Expr(-22));
-  EXPECT_EQ(analyzer.UpperBound(e8), ir::Expr(0));
+  EXPECT_EQ(analyzer.LowerBound(e8), ir::Expr(-20));  // -1 * 6 - 14
+  EXPECT_EQ(analyzer.UpperBound(e8), ir::Expr(0));    // -1 * 0 - 0
 }
 
 TEST_F(TestSymbolicExprAnalyzer, compare) {
@@ -142,9 +144,9 @@ TEST_F(TestSymbolicExprAnalyzer, Divisible) {
   auto S = ir::Var(ir::Expr(16), ir::Expr(256), "S");
 
   cas_intervals_t divisible_var_intervals = {
-      {"x", CasInterval(x->lower_bound, x->upper_bound)},
-      {"y", CasInterval(y->lower_bound, y->upper_bound)},
-      {"S", CasInterval(S->lower_bound, S->upper_bound)},
+      {"x", CasInterval(x->lower_bound, x->upper_bound - ir::Expr(1))},
+      {"y", CasInterval(y->lower_bound, y->upper_bound - ir::Expr(1))},
+      {"S", CasInterval(S->lower_bound, S->upper_bound - ir::Expr(1))},
   };
   SymbolicExprAnalyzer divisible_analyzer{divisible_var_intervals};
 
@@ -323,11 +325,11 @@ TEST(SingleIntervalIntSet, case_1) {
 }
 
 TEST(SingleIntervalIntSet, case_2) {
-  ir::Var S = ir::Var(ir::Expr(0), ir::Expr(0), "S");
+  ir::Var S = ir::Var(ir::Expr(0), ir::Expr(1), "S");  // S ∈ [0, 1)
 
-  SingleIntervalIntSet set_0{S, S + Expr(1)};
-  SingleIntervalIntSet set_1{Expr(0), Expr(1)};
-  SingleIntervalIntSet set_2{Expr(0), Expr(2)};
+  SingleIntervalIntSet set_0{S, S + Expr(1)};    // [0, 1]
+  SingleIntervalIntSet set_1{Expr(0), Expr(1)};  // [0, 1]
+  SingleIntervalIntSet set_2{Expr(0), Expr(2)};  // [0, 2]
 
   EXPECT_TRUE(ProveEQ(set_0, set_1).value());
   EXPECT_FALSE(ProveEQ(set_0, set_2).value());
