@@ -252,6 +252,7 @@ class AutoScanTest(unittest.TestCase):
         passes: list[str] | None = None,
         use_gpu: bool = False,
         use_mkldnn: bool = False,
+        use_onednn: bool = False,
         use_xpu: bool = False,
         ir_optim: bool | None = None,
     ):
@@ -263,8 +264,10 @@ class AutoScanTest(unittest.TestCase):
             config.switch_ir_optim(ir_optim)
         if use_gpu:
             config.enable_use_gpu(100, 0)
-        if not use_mkldnn:
-            config.disable_mkldnn()
+        if use_mkldnn:
+            use_onednn = True
+        if not use_onednn:
+            config.disable_onednn()
         if use_xpu:
             config.enable_xpu()
         if passes is not None:
@@ -273,7 +276,7 @@ class AutoScanTest(unittest.TestCase):
         return config
 
 
-class MkldnnAutoScanTest(AutoScanTest):
+class OnednnAutoScanTest(AutoScanTest):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -370,14 +373,14 @@ class MkldnnAutoScanTest(AutoScanTest):
 
     def inference_config_str(self, config) -> str:
         dic = {}
-        enable_mkldnn = config.mkldnn_enabled()
-        dic["use_mkldnn"] = enable_mkldnn
+        enable_onednn = config.onednn_enabled()
+        dic["use_onednn"] = enable_onednn
         enable_gpu = config.use_gpu()
         dic["use_gpu"] = enable_gpu
         return str(dic)
 
 
-class PirMkldnnAutoScanTest(MkldnnAutoScanTest):
+class PirOnednnAutoScanTest(OnednnAutoScanTest):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -616,8 +619,8 @@ class PassAutoScanTest(AutoScanTest):
 
     def inference_config_str(self, config) -> str:
         dic = {}
-        enable_mkldnn = config.mkldnn_enabled()
-        dic["use_mkldnn"] = enable_mkldnn
+        enable_onednn = config.onednn_enabled()
+        dic["use_onednn"] = enable_onednn
         enable_gpu = config.use_gpu()
         dic['use_gpu'] = enable_gpu
         enable_xpu = config.use_xpu()

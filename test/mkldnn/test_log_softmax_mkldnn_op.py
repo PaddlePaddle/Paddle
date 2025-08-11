@@ -44,7 +44,7 @@ class TestLogSoftmaxOneDNNOp(OpTest):
 
         self.inputs = {'X': x}
         self.outputs = {'Out': out}
-        self.attrs = {'axis': self.axis, 'use_mkldnn': True}
+        self.attrs = {'axis': self.axis, 'use_onednn': True}
 
     def set_dtype(self):
         self.dtype = np.float32

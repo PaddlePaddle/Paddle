@@ -1420,7 +1420,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
       if (dtype != -1 && dtype != 2 && dtype != 3 && dtype != 5 && dtype != 6) {
         VLOG(3)
-            << "the fill_any_like only supports int32/int64/float32/float64 by"
+            << "the fill_any_like only supports int32/int64/float32/float64 by "
                "trt8.4 below";
         return false;
       }
