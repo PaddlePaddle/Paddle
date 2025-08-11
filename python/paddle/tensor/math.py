@@ -704,6 +704,7 @@ def add(
     name: str | None = None,
     *,
     alpha: Number | None = 1,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Elementwise Add Operator.
@@ -741,6 +742,7 @@ def add(
             int8, int16, int32, int64, uint8, complex64, complex128.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
         alpha (Number, optional): Scaling factor for Y. Default: 1.
+        out (Tensor, optional): The output tensor. Default: None.
 
     Returns:
         N-D Tensor. A location into which the result is stored. It's dimension equals with x.
@@ -765,7 +767,7 @@ def add(
         if alpha != 1:
             y = y * alpha
 
-        result = _C_ops.add(x, y)
+        result = _C_ops.add(x, y, out=out)
         return result
     else:
         helper = LayerHelper('elementwise_add', **locals())

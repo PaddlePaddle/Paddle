@@ -5,13 +5,13 @@ file(
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
 function(_inference_analysis_python_api_int8_test target model_dir data_path
-         filename use_mkldnn)
+         filename use_onednn)
   py_test(
     ${target}
     SRCS ${filename}
          ENVS
          CPU_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
-         FLAGS_use_onednn=${use_mkldnn}
+         FLAGS_use_onednn=${use_onednn}
          ARGS
          --infer_model
          ${model_dir}/model
@@ -207,7 +207,7 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_apply_per_channel_scale)
 endif()
 
-if(LINUX AND WITH_MKLDNN)
+if(LINUX AND WITH_ONEDNN)
 
   #### Image classification dataset: ImageNet (small)
   # The dataset should already be downloaded for INT8v2 unit tests

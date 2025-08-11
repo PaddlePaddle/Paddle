@@ -16,6 +16,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.base import core
 
 
 class TestPaddleAddNewFeatures(unittest.TestCase):
@@ -24,9 +25,9 @@ class TestPaddleAddNewFeatures(unittest.TestCase):
         self.y_np = np.array([2, 3], dtype='float32')
         self.scalar = 2.0
         self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
+            core.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
+            else core.CPUPlace()
         )
 
     def test_paddle_add_with_alpha(self):
@@ -165,6 +166,85 @@ class TestPaddleAddNewFeatures(unittest.TestCase):
             np.testing.assert_array_equal(res[0].flatten(), expected1)
             np.testing.assert_array_equal(res[1].flatten(), expected2)
         paddle.disable_static()
+
+
+class TestAddOut(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        if core.is_compiled_with_cuda():
+            self.place = core.CUDAPlace(0)
+        else:
+            self.place = core.CPUPlace()
+
+    def test_add_with_alpha_out(self):
+        def run_add_with_alpha(test_type):
+            x = paddle.to_tensor([1.0, 2.0, 3.0], stop_gradient=False)
+            y = paddle.to_tensor([4.0, 5.0, 6.0], stop_gradient=False)
+            out = paddle.zeros_like(x)
+            out.stop_gradient = False
+            alpha = 2.0
+
+            if test_type == "return":
+                out = paddle.add(x, y, alpha=alpha)
+            elif test_type == "input_out":
+                paddle.add(x, y, alpha=alpha, out=out)
+            elif test_type == "both_return":
+                out = paddle.add(x, y, alpha=alpha, out=out)
+            elif test_type == "both_input_out":
+                tmp = paddle.add(x, y, alpha=alpha, out=out)
+
+            expected = x + y * alpha
+            np.testing.assert_allclose(
+                out.numpy(),
+                expected.numpy(),
+                rtol=1e-20,
+                atol=1e-20,
+            )
+
+            loss = out.sum()
+            loss.backward()
+
+            return out, x.grad, y.grad, out.grad
+
+        out1, x1, y1, o1 = run_add_with_alpha("return")
+        out2, x2, y2, o2 = run_add_with_alpha("input_out")
+        out3, x3, y3, o3 = run_add_with_alpha("both_return")
+        out4, x4, y4, o4 = run_add_with_alpha("both_input_out")
+
+        np.testing.assert_allclose(
+            out1.numpy(), out2.numpy(), rtol=1e-20, atol=1e-20
+        )
+        np.testing.assert_allclose(
+            out1.numpy(), out3.numpy(), rtol=1e-20, atol=1e-20
+        )
+        np.testing.assert_allclose(
+            out1.numpy(), out4.numpy(), rtol=1e-20, atol=1e-20
+        )
+
+        np.testing.assert_allclose(
+            x1.numpy(), x2.numpy(), rtol=1e-20, atol=1e-20
+        )
+        np.testing.assert_allclose(
+            x1.numpy(), x3.numpy(), rtol=1e-20, atol=1e-20
+        )
+        np.testing.assert_allclose(
+            x1.numpy(), x4.numpy(), rtol=1e-20, atol=1e-20
+        )
+
+        np.testing.assert_allclose(
+            y1.numpy(), y2.numpy(), rtol=1e-20, atol=1e-20
+        )
+        np.testing.assert_allclose(
+            y1.numpy(), y3.numpy(), rtol=1e-20, atol=1e-20
+        )
+        np.testing.assert_allclose(
+            y1.numpy(), y4.numpy(), rtol=1e-20, atol=1e-20
+        )
+
+        np.testing.assert_equal(o1, None)
+        np.testing.assert_equal(o2, None)
+        np.testing.assert_equal(o3, None)
+        np.testing.assert_equal(o4, None)
 
 
 if __name__ == "__main__":

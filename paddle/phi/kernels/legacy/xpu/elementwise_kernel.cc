@@ -31,13 +31,13 @@ void MaximumRawKernel(const Context& dev_ctx,
   }
 
   using XPUType = typename XPUTypeTrait<T>::Type;
-  auto f = [](xpu::Context* ctx,
+  auto f = [](xpu::Context* xpu_ctx,
               const XPUType* x,
               const XPUType* y,
               XPUType* z,
               const std::vector<int64_t>& xshape,
               const std::vector<int64_t>& yshape) {
-    return xpu::broadcast_max<XPUType>(ctx, x, y, z, xshape, yshape);
+    return xpu::broadcast_max<XPUType>(xpu_ctx, x, y, z, xshape, yshape);
   };
 
   XPUElementwise<T, XPUType>(dev_ctx, x, y, axis, out, f);
@@ -55,13 +55,13 @@ void MinimumRawKernel(const Context& dev_ctx,
   }
 
   using XPUType = typename XPUTypeTrait<T>::Type;
-  auto f = [](xpu::Context* ctx,
+  auto f = [](xpu::Context* xpu_ctx,
               const XPUType* x,
               const XPUType* y,
               XPUType* z,
               const std::vector<int64_t>& xshape,
               const std::vector<int64_t>& yshape) {
-    return xpu::broadcast_min<XPUType>(ctx, x, y, z, xshape, yshape);
+    return xpu::broadcast_min<XPUType>(xpu_ctx, x, y, z, xshape, yshape);
   };
 
   XPUElementwise<T, XPUType>(dev_ctx, x, y, axis, out, f);
@@ -74,13 +74,13 @@ void RemainderRawKernel(const Context& dev_ctx,
                         int axis,
                         DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  auto f = [](xpu::Context* ctx,
+  auto f = [](xpu::Context* xpu_ctx,
               const XPUType* x,
               const XPUType* y,
               XPUType* z,
               const std::vector<int64_t>& xshape,
               const std::vector<int64_t>& yshape) {
-    return xpu::broadcast_mod<XPUType>(ctx, x, y, z, xshape, yshape);
+    return xpu::broadcast_mod<XPUType>(xpu_ctx, x, y, z, xshape, yshape);
   };
 
   XPUElementwise<T, XPUType>(dev_ctx, x, y, axis, out, f);
@@ -93,13 +93,13 @@ void FloorDivideRawKernel(const Context& dev_ctx,
                           int axis,
                           DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  auto f = [](xpu::Context* ctx,
+  auto f = [](xpu::Context* xpu_ctx,
               const XPUType* x,
               const XPUType* y,
               XPUType* z,
               const std::vector<int64_t>& xshape,
               const std::vector<int64_t>& yshape) {
-    return xpu::broadcast_floordiv<XPUType>(ctx, x, y, z, xshape, yshape);
+    return xpu::broadcast_floordiv<XPUType>(xpu_ctx, x, y, z, xshape, yshape);
   };
 
   XPUElementwise<T, XPUType>(dev_ctx, x, y, axis, out, f);
@@ -112,13 +112,13 @@ void ElementwisePowRawKernel(const Context& dev_ctx,
                              int axis,
                              DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  auto f = [](xpu::Context* ctx,
+  auto f = [](xpu::Context* xpu_ctx,
               const XPUType* x,
               const XPUType* y,
               XPUType* z,
               const std::vector<int64_t>& xshape,
               const std::vector<int64_t>& yshape) {
-    return xpu::broadcast_pow<XPUType>(ctx, x, y, z, xshape, yshape);
+    return xpu::broadcast_pow<XPUType>(xpu_ctx, x, y, z, xshape, yshape);
   };
 
   XPUElementwise<T, XPUType>(dev_ctx, x, y, axis, out, f);
