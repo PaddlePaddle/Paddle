@@ -195,10 +195,10 @@ def permute(
     input: Tensor, dims: Sequence[int], name: str | None = None
 ) -> Tensor: ...
 
+
 @overload
-def permute(
-    input: Tensor, *dims: int, name: str | None = None
-) -> Tensor: ...
+def permute(input: Tensor, *dims: int, name: str | None = None) -> Tensor: ...
+
 
 def permute(input: Tensor, dims=None, *args, name: str | None = None) -> Tensor:
     """
@@ -232,7 +232,7 @@ def permute(input: Tensor, dims=None, *args, name: str | None = None) -> Tensor:
         else:
             perm = [dims]
     else:
-        perm = (dims,) + args if dims is not None else args
+        perm = (dims, *args) if dims is not None else args
     return paddle.transpose(x=input, perm=perm, name=name)
 
 
