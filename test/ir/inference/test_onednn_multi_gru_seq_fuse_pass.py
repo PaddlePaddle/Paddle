@@ -196,7 +196,7 @@ class TestOneDNNMultiGruSeqFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(
-            use_mkldnn=True,
+            use_onednn=True,
             passes=['multi_gru_fuse_pass', 'multi_gru_seq_fuse_pass'],
         )
         yield config, ['multi_gru'], (1e-5, 1e-5)

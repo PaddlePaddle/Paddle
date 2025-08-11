@@ -46,8 +46,8 @@ class QuantDequantTest(unittest.TestCase):
         self.test_startup_program = paddle.static.Program()
         self.feeds = None
         self.fetch_list = None
-        self.enable_mkldnn = False
-        self.enable_mkldnn_bfloat16 = False
+        self.enable_onednn = False
+        self.enable_onednn_bfloat16 = False
         self.enable_trt = False
         self.enable_tensorrt_varseqlen = True
         self.trt_parameters = None
@@ -190,7 +190,7 @@ class QuantDequantTest(unittest.TestCase):
         return outs
 
     def _get_analysis_config(
-        self, use_gpu=False, use_trt=False, use_mkldnn=False
+        self, use_gpu=False, use_trt=False, use_onednn=False
     ):
         '''
         Return a new object of AnalysisConfig.
@@ -204,7 +204,7 @@ class QuantDequantTest(unittest.TestCase):
                 self.path + ".pdmodel", self.path + ".pdiparams"
             )
         config.disable_gpu()
-        config.disable_mkldnn()
+        config.disable_onednn()
         config.switch_specify_input_names(True)
         config.switch_ir_optim(True)
         config.switch_use_feed_fetch_ops(False)
@@ -230,9 +230,9 @@ class QuantDequantTest(unittest.TestCase):
                 if self.enable_tensorrt_varseqlen:
                     config.enable_tensorrt_varseqlen()
 
-        elif use_mkldnn:
+        elif use_onednn:
             config.enable_onednn()
-            if self.enable_mkldnn_bfloat16:
+            if self.enable_onednn_bfloat16:
                 config.enable_onednn_bfloat16()
         print('config summary:', config.summary())
         return config
@@ -388,24 +388,24 @@ class QuantDequantTest(unittest.TestCase):
                 )
 
         # Check whether the onednn results and the CPU results are the same.
-        if (not use_gpu) and self.enable_mkldnn:
-            mkldnn_outputs = self._get_inference_outs(
+        if (not use_gpu) and self.enable_onednn:
+            onednn_outputs = self._get_inference_outs(
                 self._get_analysis_config(
-                    use_gpu=use_gpu, use_mkldnn=self.enable_mkldnn
+                    use_gpu=use_gpu, use_onednn=self.enable_onednn
                 )
             )
 
             self.assertTrue(
-                len(paddle_outs) == len(mkldnn_outputs),
+                len(paddle_outs) == len(onednn_outputs),
                 "The number of outputs is different between CPU and MKLDNN. ",
             )
 
-            if self.enable_mkldnn_bfloat16:
+            if self.enable_onednn_bfloat16:
                 atol = 0.01
-            for paddle_out, mkldnn_output in zip(paddle_outs, mkldnn_outputs):
+            for paddle_out, onednn_output in zip(paddle_outs, onednn_outputs):
                 np.testing.assert_allclose(
                     np.array(paddle_out),
-                    mkldnn_output,
+                    onednn_output,
                     rtol=1e-05,
                     atol=atol,
                     err_msg='Output has diff between CPU and MKLDNN. ',

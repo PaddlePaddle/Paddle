@@ -108,7 +108,7 @@ class TestScaleOneDNNFusePass(PassAutoScanTest):
         return program_config
 
     def sample_predictor_configs(self, program_config):
-        config = self.create_inference_config(use_mkldnn=True)
+        config = self.create_inference_config(use_onednn=True)
         yield config, ['batch_norm'], (1e-5, 1e-5)
 
     def test(self):

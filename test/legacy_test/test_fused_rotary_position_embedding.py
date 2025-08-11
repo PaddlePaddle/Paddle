@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 import parameterized as param
+from op_test import is_custom_device
 
 import paddle
 from paddle.base import core
@@ -158,7 +159,8 @@ def paddle_fused_rotary_position_embedding(
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    and not paddle.is_compiled_with_rocm(),
     "core is not compiled with CUDA or ROCM ",
 )
 @param.parameterized_class(
@@ -693,7 +695,8 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    and not paddle.is_compiled_with_rocm(),
     "core is not compiled with CUDA or ROCM ",
 )
 class TestFusedRotaryPositionEmbeddingZeroSize(unittest.TestCase):

@@ -325,6 +325,8 @@ try:
         _switch_tracer,
         _test_enforce_gpu_success,
         _xpu_device_synchronize,
+        _xpu_get_current_stream,
+        _xpu_set_current_stream,
     )
 
     # isort: off

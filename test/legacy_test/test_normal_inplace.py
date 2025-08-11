@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_places
+from op_test import get_devices
 
 import paddle
 
@@ -43,7 +43,7 @@ class TestNormalRandomInplaceOpDtype(unittest.TestCase):
             tensor_fp64.normal_()
             self.assertEqual(tensor_fp64.dtype, paddle.float64)
 
-        for place in get_places(string_format=True):
+        for place in get_devices():
             paddle.set_device(place)
             test_fp32()
             test_fp64()
@@ -64,7 +64,7 @@ class TestNormalRandomComplexInplaceOpDtype(unittest.TestCase):
             tensor_fp64.normal_()
             self.assertEqual(tensor_fp64.dtype, paddle.complex128)
 
-        for place in get_places(string_format=True):
+        for place in get_devices():
             paddle.set_device(place)
             test_fp32()
             test_fp64()
@@ -164,7 +164,7 @@ class TestNormalRandomComplexInplaceOpDistribution(unittest.TestCase):
 class TestNormalRandomInplaceOpEmptyTensor(unittest.TestCase):
     def test_normal_inplace_op_empty_tensor(self):
         test_shapes = [(200, 0), (0, 200)]
-        for place in get_places(string_format=True):
+        for place in get_devices():
             paddle.set_device(place)
             for test_shape in test_shapes:
                 tensor = paddle.empty(shape=test_shape)
@@ -190,7 +190,7 @@ class TestNormalRandomInplaceGrad(unittest.TestCase):
             normal_grad = tensor_b.grad.numpy()
             self.assertTrue((normal_grad == 0).all())
 
-        for place in get_places(string_format=True):
+        for place in get_devices():
             paddle.set_device(place)
             test_grad()
 
@@ -215,7 +215,7 @@ class TestNormalRandomComplexInplaceGrad(unittest.TestCase):
             self.assertTrue((normal_grad.real == 0).all())
             self.assertTrue((normal_grad.imag == 0).all())
 
-        for place in get_places(string_format=True):
+        for place in get_devices():
             paddle.set_device(place)
             test_grad()
 

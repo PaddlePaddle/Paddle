@@ -6,13 +6,13 @@ file(
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
 function(_inference_analysis_python_api_int8_test target model_dir data_path
-         filename use_mkldnn)
+         filename use_onednn)
   py_test(
     ${target}
     SRCS ${filename}
          ENVS
          CPU_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
-         FLAGS_use_onednn=${use_mkldnn}
+         FLAGS_use_onednn=${use_onednn}
          ARGS
          --infer_model
          ${model_dir}/model
@@ -179,7 +179,7 @@ function(inference_quant2_int8_lstm_model_test target fp32_model quant_model
          ${dataset_path}
          --num_threads
          1
-         --mkldnn_cache_capacity
+         --onednn_cache_capacity
          100
          --warmup_iter
          100
