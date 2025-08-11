@@ -28,8 +28,8 @@ void InverseFromLUFunctor<T, Context>::operator()(const Context& dev_ctx,
                                                   DenseTensor* inverse_out) {
   const auto& dims = lu_data.dims();
   const int rank = dims.size();
-  const int64_t n = dims[rank - 1];
-  const int64_t n_square = n * n;
+  const int n = static_cast<int>(dims[rank - 1]);
+  const int64_t n_square = static_cast<int64_t>(n) * n;
   const int64_t batch_size = lu_data.numel() / n_square;
 
   if (batch_size == 0) {
@@ -49,7 +49,13 @@ void InverseFromLUFunctor<T, Context>::operator()(const Context& dev_ctx,
   phi::funcs::lapackGETRI<T>(
       n, inverse_data, n, pivots_data, &wkopt, lwork, &info);
 
-  lwork = static_cast<int>(std::real(wkopt));
+  if constexpr (std::is_same_v<T, phi::dtype::complex<float>> ||
+                std::is_same_v<T, phi::dtype::complex<double>>) {
+    lwork = static_cast<int>(wkopt.real);
+  } else {
+    lwork = static_cast<int>(wkopt);
+  }
+
   DenseTensor work_tensor;
   work_tensor.Resize({lwork});
   auto* work_data = dev_ctx.template Alloc<T>(&work_tensor);

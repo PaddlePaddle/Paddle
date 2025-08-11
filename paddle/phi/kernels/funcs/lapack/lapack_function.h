@@ -36,7 +36,7 @@ void lapackLuSolve(char trans,
 // GETRI
 template <typename T>
 void lapackGETRI(
-    int n, T *a, int lda, int *ipiv, T *work, int lwork, int *info);
+    int n, T *a, int lda, const int *ipiv, T *work, int lwork, int *info);
 
 // Eigh
 template <typename T, typename ValueType = T>
