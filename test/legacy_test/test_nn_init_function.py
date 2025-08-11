@@ -676,6 +676,185 @@ class TestXavierUniformFuncPir(unittest.TestCase):
                 self.assertEqual(init_op.attrs()['seed'], 0)
 
 
+class TestXavierNormalFunc(unittest.TestCase):
+    def _test_xavier_normal_common(self, tensor):
+        init = paddle.nn.init.xavier_normal_
+        init(tensor, gain=0.2)
+        init(tensor, gain=0.25)
+        init(tensor, gain=1.0)
+        init(tensor, gain=2.0)
+
+    def test_xavier_normal_linear(self):
+        linear = nn.Linear(40, 20)
+        self._test_xavier_normal_common(linear.weight)
+
+    def _create_random_nd_tensor(self, dims, size_min, size_max):
+        size = [random.randint(size_min, size_max) for _ in range(dims)]
+        tensor = paddle.zeros(size)
+        return tensor
+
+    def _is_normal(self, tensor, mean, std):
+        samples = tensor.view([-1]).tolist()
+        p_value = stats.kstest(samples, "norm", args=(mean, std))[1]
+        return p_value > 0.0001
+
+    def _random_float(self, a, b):
+        return (b - a) * random.random() + a
+
+    def test_xavier_uniform(self):
+        for use_gain in [True, False]:
+            for dims in [2, 3, 4]:
+                input_tensor = self._create_random_nd_tensor(
+                    dims, size_min=20, size_max=108
+                )
+                if use_gain:
+                    gain = self._random_float(0.1, 3.0)
+                else:
+                    gain = 1.0
+                paddle.nn.init.xavier_normal_(input_tensor, gain=gain)
+
+                if dims == 2:
+                    # This is the case for simple matrix multiply
+                    fan_in = input_tensor.shape[0]
+                    fan_out = input_tensor.shape[1]
+                else:
+                    fan_in = input_tensor.shape[1]
+                    fan_out = input_tensor.shape[0]
+
+                if input_tensor.dim() > 2:
+                    fan_in *= input_tensor[0, 0].numel()
+                    fan_out *= input_tensor[0, 0].numel()
+
+                bounds = gain * math.sqrt(2.0 / float(fan_in + fan_out))
+                assert self._is_normal(input_tensor, 0.0, bounds)
+
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    )
+    def test_xavier_normal_fp16(self):
+        input_tensor = paddle.zeros([1024, 512], dtype='float16')
+        paddle.nn.init.xavier_normal_(input_tensor)
+        fan_in = input_tensor.shape[0]
+        fan_out = input_tensor.shape[1]
+
+        bounds = math.sqrt(2.0 / float(fan_in + fan_out))
+        assert self._is_normal(input_tensor, 0.0, bounds)
+        assert input_tensor.dtype == paddle.float16
+
+
+class TestXavierNormalFuncPir(unittest.TestCase):
+    def setUp(self):
+        self.init_normal_op_name = 'pd_op.gaussian'
+
+    def get_operand_definition_op_attrs(self, cur_op, operand_name, attr_name):
+        input_names = cur_op.get_input_names()
+        self.assertIn(operand_name, input_names)
+        attr = (
+            cur_op.operand(input_names.index(operand_name))
+            .source()
+            .get_defining_op()
+            .attrs()[attr_name]
+        )
+        return attr
+
+    def get_init_ops_by_op_name(self, block, op_name):
+        checked_ops = []
+        for op in block.ops:
+            # get init op
+            if op_name == op.name():
+                checked_ops.append(op)
+        return checked_ops
+
+    def test_xavier_normal_(self):
+        with paddle.pir_utils.IrGuard():
+            main = paddle.static.Program()
+            with paddle.static.program_guard(main, paddle.static.Program()):
+                parameter_meta = ParameterMeta([1024, 512], paddle.float32)
+                init_result = paddle.nn.init.xavier_normal_(
+                    parameter_meta, block=main.global_block()
+                )
+                block = main.global_block()
+                checked_ops = self.get_init_ops_by_op_name(
+                    block, self.init_normal_op_name
+                )
+                self.assertEqual(len(checked_ops), 1)
+                init_op = checked_ops[0]
+                limit = np.sqrt(
+                    2.0 / (init_result.shape[0] + init_result.shape[1])
+                )
+
+                self.assertAlmostEqual(
+                    init_op.attrs()['mean'], 0.0, delta=DELTA
+                )
+                self.assertAlmostEqual(
+                    init_op.attrs()['std'], limit, delta=DELTA
+                )
+                self.assertEqual(init_op.attrs()['seed'], 0)
+
+    def test_xavier_normal_conv(self):
+        with paddle.pir_utils.IrGuard():
+            main = paddle.static.Program()
+            with paddle.static.program_guard(main, paddle.static.Program()):
+                parameter_meta = ParameterMeta([5, 10, 15, 20], paddle.float32)
+                init_result = paddle.nn.init.xavier_normal_(
+                    parameter_meta, block=main.global_block()
+                )
+                block = main.global_block()
+                checked_ops = self.get_init_ops_by_op_name(
+                    block, self.init_normal_op_name
+                )
+                self.assertEqual(len(checked_ops), 1)
+                init_op = checked_ops[0]
+                limit = np.sqrt(
+                    2.0
+                    / (
+                        (init_result.shape[0] + init_result.shape[1])
+                        * init_result.shape[2]
+                        * init_result.shape[3]
+                    )
+                )
+
+                self.assertAlmostEqual(
+                    init_op.attrs()['mean'], 0.0, delta=DELTA
+                )
+                self.assertAlmostEqual(
+                    init_op.attrs()['std'], limit, delta=DELTA
+                )
+                self.assertEqual(init_op.attrs()['seed'], 0)
+
+    def test_xavier_normal_gain(self):
+        with paddle.pir_utils.IrGuard():
+            main = paddle.static.Program()
+            with paddle.static.program_guard(main, paddle.static.Program()):
+                parameter_meta = ParameterMeta([5, 10, 15, 20], paddle.float32)
+                init_result = paddle.nn.init.xavier_normal_(
+                    parameter_meta, gain=0.5, block=main.global_block()
+                )
+                block = main.global_block()
+                checked_ops = self.get_init_ops_by_op_name(
+                    block, self.init_normal_op_name
+                )
+                self.assertEqual(len(checked_ops), 1)
+                init_op = checked_ops[0]
+
+                limit = 0.5 * np.sqrt(
+                    2.0
+                    / (
+                        (init_result.shape[0] + init_result.shape[1])
+                        * init_result.shape[2]
+                        * init_result.shape[3]
+                    )
+                )
+
+                self.assertAlmostEqual(
+                    init_op.attrs()['mean'], 0.0, delta=DELTA
+                )
+                self.assertAlmostEqual(
+                    init_op.attrs()['std'], limit, delta=DELTA
+                )
+                self.assertEqual(init_op.attrs()['seed'], 0)
+
+
 class TestUniformFunc(unittest.TestCase):
     def _test_uniform_common(self, tensor):
         init = paddle.nn.init.uniform_

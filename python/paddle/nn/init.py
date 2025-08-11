@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 from .initializer.initializer import calculate_gain as calculate_gain_
 from .initializer.kaiming import KaimingNormal, KaimingUniform
 from .initializer.uniform import Uniform
-from .initializer.xavier import XavierUniform
+from .initializer.xavier import XavierNormal, XavierUniform
 
 calculate_gain = calculate_gain_
 
@@ -110,6 +110,37 @@ def xavier_uniform_(
         Tensor: Initialized tensor.
     """
     init = XavierUniform(
+        gain=gain,
+        fan_in=fan_in,
+        fan_out=fan_out,
+    )
+
+    return init(tensor, block=block)
+
+
+def xavier_normal_(
+    tensor: paddle.Tensor,
+    gain: float = 1.0,
+    fan_in: float | None = None,
+    fan_out: float | None = None,
+    block: paddle.pir.Block | None = None,
+) -> paddle.Tensor | None:
+    """Modify tensor inplace using Xavier normal method.
+
+    Args:
+        tensor (Tensor):  Paddle Tensor.
+        gain (float, optional): Scaling Tensor. Default is 1.0.
+        fan_in (float|None, optional): fan_in for Xavier initialization, which is
+                inferred from the Tensor. Default is None.
+        fan_out (float|None, optional): fan_out for Xavier initialization, which is
+                 inferred from the Tensor. Default is None.
+        block (Block|None, optional): The block in which initialization ops
+                should be added. Used in static graph only, default None.
+
+    Returns:
+        Tensor: Initialized tensor.
+    """
+    init = XavierNormal(
         gain=gain,
         fan_in=fan_in,
         fan_out=fan_out,
