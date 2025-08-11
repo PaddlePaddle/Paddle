@@ -365,8 +365,6 @@ from .math import (  # noqa: F401
     mm,
     mod,
     mod_,
-    mul,
-    mul_,
     multigammaln,
     multigammaln_,
     multiplex,
@@ -884,6 +882,9 @@ tensor_method_func = [
     'resize_',
     'argwhere',
 ]
+
+mul = multiply
+mul_ = multiply_
 
 # this list used in math_op_patch.py for magic_method bind
 magic_method_func = [

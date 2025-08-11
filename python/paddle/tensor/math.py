@@ -98,7 +98,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from paddle import Tensor
-    from paddle._typing import DTypeLike, Numeric
+    from paddle._typing import DTypeLike
 
 __all__ = []
 
@@ -1164,67 +1164,6 @@ def multiply(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         return _elementwise_op(LayerHelper('elementwise_mul', **locals()))
 
 
-def mul(x: Tensor, other: Numeric) -> Tensor:
-    """
-    Multiplies the input tensor ``x`` with ``other`` element-wise.
-
-    The equation is:
-
-    .. math::
-        out = x * other
-
-    Note:
-        Tensor.mul supports broadcasting. If you would like to know more about broadcasting, please refer to `Introduction to Tensor`_ .
-
-        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
-
-    Args:
-        x (Tensor): The first input tensor, its data type should be one of bfloat16, float16, float32, float64, int32, int64, bool, complex64, complex128.
-        other (Tensor|float|int|bool|complex): The second input, which can be a Tensor, float, int, bool or complex. If ``other`` is a Tensor, its data type should be one of bfloat16, float16, float32, float64, int32, int64, bool, complex64, complex128.
-
-    Returns:
-        N-D Tensor. A location into which the result is stored. If ``x``, ``other`` have different shapes and are "broadcastable", the resulting tensor shape is the shape of ``x`` and ``other`` after broadcasting. If ``x``, ``other`` have the same shape, its shape is the same as ``x`` and ``other``.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> # Multiply a tensor by a scalar
-            >>> x = paddle.to_tensor([1, 2, 3])
-            >>> res = paddle.mul(x, 2.0)
-            >>> print(res)
-            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [2., 4., 6.])
-
-            >>> # Multiply a tensor by another tensor
-            >>> x = paddle.to_tensor([[1, 2], [3, 4]])
-            >>> y = paddle.to_tensor([[5, 6], [7, 8]])
-            >>> res = paddle.mul(x, y)
-            >>> # also equivalent to `res = x * y`
-            >>> print(res)
-            Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[5 , 12],
-             [21, 32]])
-
-            >>> # Broadcasting example
-            >>> x = paddle.to_tensor([[[1, 2, 3], [1, 2, 3]]])
-            >>> y = paddle.to_tensor([2])
-            >>> res = paddle.mul(x, y)
-            >>> print(res)
-            Tensor(shape=[1, 2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[[2, 4, 6],
-              [2, 4, 6]]])
-
-    """
-    other_tensor = (
-        other
-        if isinstance(other, paddle.Tensor)
-        else paddle.to_tensor(other, place=x.place)
-    )
-    return multiply(x, other_tensor)
-
-
 @inplace_apis_in_dygraph_only
 def multiply_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
@@ -1239,21 +1178,6 @@ def multiply_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         )
 
     return _C_ops.multiply_(x, y)
-
-
-@inplace_apis_in_dygraph_only
-def mul_(x: Tensor, other: Numeric) -> Tensor:
-    """
-    Inplace version of ``mul`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_mul`.
-    """
-
-    other_tensor = (
-        other
-        if isinstance(other, paddle.Tensor)
-        else paddle.to_tensor(other, place=x.place)
-    )
-    return multiply_(x, other_tensor)
 
 
 def _elementwise_op_with_axis(x, y, axis=-1, name=None, op_type="Undefined"):
