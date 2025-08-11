@@ -36,6 +36,21 @@ class TestIsComplex(unittest.TestCase):
         with self.assertRaises(TypeError):
             paddle.is_complex(np.array([1, 2]))
 
+    def test_for_alias(self):
+        for alias_param in ["x", "input"]:
+            # test_for_integer
+            x = paddle.arange(10)
+            self.assertFalse(paddle.is_complex(**{alias_param: x}))
+            # test_for_floating_point
+            x = paddle.randn([2, 3])
+            self.assertFalse(paddle.is_complex(**{alias_param: x}))
+            # test_for_complex
+            x = paddle.randn([2, 3]) + 1j * paddle.randn([2, 3])
+            self.assertTrue(paddle.is_complex(**{alias_param: x}))
+            # test_for_exception
+            with self.assertRaises(TypeError):
+                paddle.is_complex(**{alias_param: np.array([1, 2])})
+
 
 if __name__ == '__main__':
     unittest.main()
