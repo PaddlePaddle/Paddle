@@ -166,7 +166,7 @@ class TestConv2DInt8Op(TestConv2DOp):
             'groups': self.groups,
             'dilations': self.dilations,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_onednn,
+            'use_onednn': self.use_onednn,
             'data_format': self.data_format,
             'exhaustive_search': self.exhaustive_search,
             'Scale_in': self.scale_in,
