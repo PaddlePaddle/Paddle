@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #ifndef _WIN32
-
 #include "paddle/phi/core/memory/allocation/mmap_allocator.h"
+#include <sys/statvfs.h>  // for statvfs
 
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -102,10 +102,35 @@ void AllocateMemoryMap(std::string filename,
     shm_unlink(filename.c_str());
   }
 
-  PADDLE_ENFORCE_NE(*map_ptr_,
-                    MAP_FAILED,
-                    common::errors::Unavailable(
-                        "Memory map failed when create shared memory."));
+  if (*map_ptr_ == MAP_FAILED) {
+    const int err = errno;
+    std::string shm_usage;
+    struct statvfs vfs;
+    if (statvfs("/dev/shm", &vfs) == 0) {
+      const uint64_t total_bytes = vfs.f_blocks * vfs.f_frsize;
+      const uint64_t free_bytes = vfs.f_bfree * vfs.f_frsize;
+      const uint64_t used_bytes = total_bytes - free_bytes;
+
+      shm_usage =
+          "\n/dev/shm usage:"
+          "\n  Total: " +
+          std::to_string(total_bytes >> 20) + " MB" +
+          "\n  Free:  " + std::to_string(free_bytes >> 20) + " MB" +
+          "\n  Used:  " + std::to_string(used_bytes >> 20) + " MB";
+    } else {
+      shm_usage = "\nstatvfs failed: " + std::string(strerror(errno));
+    }
+
+    std::ostringstream oss;
+    oss << "Memory map failed when creating shared memory."
+        << "\nError: " << strerror(err) << " (errno=" << err << ")"
+        << "\nFailed mapping parameters:"
+        << "\n  fd: " << fd << (fd == -1 ? " (INVALID)" : "")
+        << "\n  size: " << size << " bytes"
+        << "\n  flags: 0x" << std::hex << flags << std::dec << shm_usage;
+    PADDLE_THROW(common::errors::Unavailable(oss.str()));
+  }
+
   if (flags & MAPPED_KEEPFD) {
     *shared_fd = fd;
     VLOG(6) << "keep fd: " << *shared_fd;
