@@ -415,7 +415,11 @@ def min(input: Tensor, *args: Any, **kwargs: Any) -> Tensor | MinMaxRetType:
     dim_or_other, keepdim = _min_max_param_checker("min", *args, **kwargs)
 
     if dim_or_other is None:
-        return _C_ops.min(input, None, False)
+        if input.numel() == 0:
+            raise ValueError(
+                "Reduce max cannot apply on empty tensor (numel == 0)"
+            )
+        return paddle.amin(input)
     elif isinstance(dim_or_other, int):
         if input.place.is_gpu_place():
             vals, inds = _C_ops.min_with_index(
@@ -530,7 +534,11 @@ def max(input: Tensor, *args: Any, **kwargs: Any) -> Tensor | MinMaxRetType:
     dim_or_other, keepdim = _min_max_param_checker("max", *args, **kwargs)
 
     if dim_or_other is None:
-        return _C_ops.max(input, None, False)
+        if input.numel() == 0:
+            raise ValueError(
+                "Reduce max cannot apply on empty tensor (numel == 0)"
+            )
+        return paddle.amax(input)
     elif isinstance(dim_or_other, int):
         if input.place.is_gpu_place():
             vals, inds = _C_ops.max_with_index(
