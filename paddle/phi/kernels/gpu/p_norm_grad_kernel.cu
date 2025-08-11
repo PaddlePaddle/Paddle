@@ -35,8 +35,12 @@ struct AbsMaxAndMinGradFunctor {
                   DY* dy,
                   const Dim& dim,
                   int size) {
-    dx->device(place) = dy->broadcast(dim) * (*x).sign() *
-                        ((*x).abs() == y->broadcast(dim)).template cast<T>();
+    auto abs_x = x->abs();
+    auto y_bc = y->broadcast(dim);
+    auto mask = (abs_x == y_bc).template cast<T>();
+    auto count = mask.sum(dim);
+
+    dx->device(place) = dy->broadcast(dim) * x->sign() * mask / count;
   }
 };
 
