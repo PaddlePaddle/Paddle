@@ -79,6 +79,10 @@ class DeviceInterface {  // Driver / Runtime
 
   virtual std::array<unsigned int, 3> GetMaxGridDimSize(size_t dev_id);
 
+  virtual bool IsFloat16Supported(size_t dev_id);
+
+  virtual bool IsBFloat16Supported(size_t dev_id);
+
   virtual void* InitEigenDevice(const Place& place,
                                 phi::stream::stream_t stream,
                                 phi::Allocator* allocator);

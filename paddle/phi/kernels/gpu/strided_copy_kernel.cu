@@ -125,7 +125,7 @@ __global__ void StridedCopyCaseOneFunc(
     phi::Array<int64_t, phi::DDim::kMaxRank + 1> output_stride,
     phi::Array<int64_t, 6> dims,
     const int64_t x_max) {
-  int64_t x = blockIdx.x * blockDim.x + threadIdx.x;
+  int64_t x = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (x < x_max) {
     int64_t input_offset = 0;
     int64_t output_offset = 0;
@@ -720,8 +720,8 @@ void StridedCopyKernel(const Context& dev_ctx,
   meta.offset = offset;
   out->set_meta(meta);
   int rank = out->dims().size();
-  auto input_numel = input.numel();
-  auto output_numel = out->numel();
+  int64_t input_numel = input.numel();
+  int64_t output_numel = out->numel();
   T* output_data = out->data<T>();
   PADDLE_ENFORCE_NOT_NULL(output_data,
                           common::errors::InvalidArgument(

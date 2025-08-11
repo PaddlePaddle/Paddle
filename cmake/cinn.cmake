@@ -26,12 +26,21 @@ else()
 endif()
 
 if(NOT DEFINED ENV{runtime_include_dir})
-  message(
-    STATUS
-      "set runtime_include_dir: ${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/cuda")
-  set(ENV{runtime_include_dir} "${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/cuda")
-  add_definitions(
-    -DRUNTIME_INCLUDE_DIR="${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/cuda")
+  if(WITH_GPU)
+    message(
+      STATUS
+        "set runtime_include_dir: ${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/cuda")
+    set(ENV{runtime_include_dir} "${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/cuda")
+    add_definitions(
+      -DRUNTIME_INCLUDE_DIR="${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/cuda")
+  elseif(WITH_ROCM)
+    message(
+      STATUS
+        "set runtime_include_dir: ${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/hip")
+    set(ENV{runtime_include_dir} "${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/hip")
+    add_definitions(
+      -DRUNTIME_INCLUDE_DIR="${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/hip")
+  endif()
 endif()
 
 if(WITH_TESTING)
@@ -118,6 +127,10 @@ if(WITH_ROCM)
     add_definitions(-DCINN_WITH_HIP)
   endif()
   link_libraries(${ROCM_HIPRTC_LIB})
+
+  message(
+    STATUS "copy paddle/cinn/common/float16.h to $ENV{runtime_include_dir}")
+  file(COPY paddle/cinn/common/float16.h DESTINATION $ENV{runtime_include_dir})
 endif()
 
 set(cinnapi_src CACHE INTERNAL "" FORCE)

@@ -37,7 +37,7 @@ skip_msg = (
 )
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(skip_unit_test(), skip_msg)
 class TestFusedScaleBiasReluConvBnOp(OpTest):
     def setUp(self):

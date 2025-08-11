@@ -1156,7 +1156,7 @@ def flash_attn_varlen_func(
             "FLAGS_flash_attn_version"
         ]
         == 3
-    ), "FLAGS_flash_attn_version is 2, conflits with flash_attn_varlen_func"
+    ), "FLAGS_flash_attn_version is 2, conflicts with flash_attn_varlen_func"
 
     assert (
         in_dynamic_or_pir_mode()
@@ -1650,7 +1650,7 @@ def flashmask_attention(
             If causal mode is disabled, Query at position i will only attend to keys between [i - window_size, i + window_size] or [i - window_size[0], i + window_size[1]].
         return_softmax_lse (bool): Whether to return the log-sum-exp of the softmax. Default is False.
         return_seed_offset (bool): Whether to return the random seed offset. Default is False.
-        fixed_seed_of fset(Tensor, optional): With fixed seed, offset for dropout mask.
+        fixed_seed_offset(Tensor, optional): With fixed seed, offset for dropout mask.
         rng_name (str): The name to select Generator.
         training (bool): Whether the module is in training mode. Default is True.
         name (str, optional): Name of the operation. Default is None. Normally, users do not need to set this property.

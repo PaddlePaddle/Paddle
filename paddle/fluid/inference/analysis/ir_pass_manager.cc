@@ -131,9 +131,9 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("optim_cache_dir", new std::string(std::move(optim_cache_dir)));
       pass_num++;
     } else if (pass_name == "onednn_placement_pass") {
-      pass->Set("mkldnn_enabled_op_types",
+      pass->Set("onednn_enabled_op_types",
                 new std::unordered_set<std::string>(
-                    argument->mkldnn_enabled_op_types()));
+                    argument->onednn_enabled_op_types()));
     } else if (pass_name == "cudnn_placement_pass") {
       pass->Set("cudnn_enabled_op_types",
                 new std::unordered_set<std::string>());

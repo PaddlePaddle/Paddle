@@ -317,7 +317,7 @@ class TestBatchNormOpInference(unittest.TestCase):
             # attrs
             is_test=True,
             data_layout=data_layout,
-            use_mkldnn=self.use_onednn,
+            use_onednn=self.use_onednn,
             fuse_with_relu=self.fuse_with_relu,
             epsilon=epsilon,
         )

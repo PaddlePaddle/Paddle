@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
 
@@ -33,11 +34,7 @@ class TestMultiplyApi(unittest.TestCase):
             )
             res = paddle.inner(x, y)
 
-            place = (
-                paddle.CUDAPlace(0)
-                if paddle.is_compiled_with_cuda()
-                else paddle.CPUPlace()
-            )
+            place = get_device_place()
             exe = paddle.static.Executor(place)
             outs = exe.run(
                 paddle.static.default_main_program(),

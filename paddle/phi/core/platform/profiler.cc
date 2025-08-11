@@ -625,7 +625,7 @@ void EnableProfiler(ProfilerState state) {
   PADDLE_ENFORCE_NE(state,
                     ProfilerState::kDisabled,
                     common::errors::InvalidArgument(
-                        "Can't enable profiling, since the input state is"
+                        "Can't enable profiling, since the input state is "
                         "ProfilerState::kDisabled"));
   SynchronizeAllDevice();
   std::lock_guard<std::mutex> l(profiler_mu);

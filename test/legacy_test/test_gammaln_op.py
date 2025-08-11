@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_device_place
 from scipy import special
 
 import paddle
@@ -172,11 +172,7 @@ class TestGammalnOpApi(unittest.TestCase):
         self.shape = [2, 3, 4, 5]
         self.init_dtype_type()
         self.x_np = np.random.random(self.shape).astype(self.dtype) + 1
-        self.place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def init_dtype_type(self):
         self.dtype = "float64"

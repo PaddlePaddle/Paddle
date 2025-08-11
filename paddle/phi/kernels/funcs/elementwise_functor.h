@@ -1378,7 +1378,7 @@ struct CopySignGradXYFunctor {
     if (x == static_cast<InT>(0))
       outs[0] = static_cast<OutT>(0);
     else
-      outs[0] = static_cast<OutT>(dout * (funcs::copysign_func(x, y)) / x);
+      outs[0] = static_cast<OutT>(dout * (funcs::copysign_func(x, y) / x));
     // dy = 0
     outs[1] = static_cast<OutT>(0);
     return outs;
