@@ -92,18 +92,13 @@ class ParamAliasDecorator(DecoratorBase):
         return args, processed_kwargs
 
 
-def reshape_param_alias(alias_mapping):
+def param_one_alias(alias_mapping):
     def decorator(func):
         def wrapper(*args, **kwargs):
             if not kwargs:
                 return func(*args, **kwargs)
-            for original, alias in alias_mapping.items():
-                if alias in kwargs:
-                    if original not in kwargs:
-                        kwargs[original] = kwargs.pop(alias)
-            # if "input" in kwargs:
-            #     if "x" not in kwargs:
-            #         kwargs["x"] = kwargs.pop("input")
+            if ("input" in kwargs) and ("x" not in kwargs):
+                kwargs["x"] = kwargs.pop("input")
             return func(*args, **kwargs)
 
         wrapper.__signature__ = inspect.signature(func)
