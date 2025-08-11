@@ -129,7 +129,7 @@ class InferencePassTest(unittest.TestCase):
         return outs
 
     def _get_analysis_config(
-        self, use_gpu=False, use_trt=False, use_mkldnn=False
+        self, use_gpu=False, use_trt=False, use_onednn=False
     ):
         '''
         Return a new object of AnalysisConfig.
@@ -177,7 +177,7 @@ class InferencePassTest(unittest.TestCase):
                 if self.enable_tensorrt_varseqlen:
                     config.enable_tensorrt_varseqlen()
 
-        elif use_mkldnn:
+        elif use_onednn:
             config.enable_onednn()
             if self.enable_onednn_bfloat16:
                 config.enable_onednn_bfloat16()
@@ -186,7 +186,7 @@ class InferencePassTest(unittest.TestCase):
     def check_output(self, atol=1e-3):
         '''
         Check whether calculating on CPU and GPU, enable TensorRT
-        or disable TensorRT, enable MKLDNN or disable MKLDNN
+        or disable TensorRT, enable ONEDNN or disable ONEDNN
         are all the same.
         '''
         self.assertFalse(
@@ -201,7 +201,7 @@ class InferencePassTest(unittest.TestCase):
     ):
         '''
         Check whether calculating on CPU and GPU, enable TensorRT
-        or disable TensorRT, enable MKLDNN or disable MKLDNN
+        or disable TensorRT, enable ONEDNN or disable ONEDNN
         are all the same.
         '''
         place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
@@ -287,13 +287,13 @@ class InferencePassTest(unittest.TestCase):
         if (not use_gpu) and self.enable_mkldnn:
             onednn_outputs = self._get_inference_outs(
                 self._get_analysis_config(
-                    use_gpu=use_gpu, use_mkldnn=self.enable_mkldnn
+                    use_gpu=use_gpu, use_onednn=self.enable_mkldnn
                 )
             )
 
             self.assertTrue(
                 len(paddle_outs) == len(onednn_outputs),
-                "The number of outputs is different between CPU and MKLDNN. ",
+                "The number of outputs is different between CPU and ONEDNN. ",
             )
 
             if self.enable_onednn_bfloat16:
@@ -304,7 +304,7 @@ class InferencePassTest(unittest.TestCase):
                     onednn_output,
                     rtol=1e-05,
                     atol=atol,
-                    err_msg='Output has diff between CPU and MKLDNN. ',
+                    err_msg='Output has diff between CPU and ONEDNN. ',
                 )
 
     class TensorRTParam:

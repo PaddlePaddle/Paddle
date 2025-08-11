@@ -71,7 +71,7 @@ class TestConvTransposeEltwiseaddBnFusePass(PassAutoScanTest):
             st.sampled_from(["EXPLICIT", "SAME", "VALID"])
         )
         random_data_layout = draw(st.sampled_from(["NCHW", "NHWC"]))
-        random_use_mkldnn = draw(st.booleans())
+        random_use_onednn = draw(st.booleans())
         random_output_size = []
         random_filter = draw(
             st.lists(
@@ -141,7 +141,7 @@ class TestConvTransposeEltwiseaddBnFusePass(PassAutoScanTest):
                 'data_format': random_data_layout,
                 'output_size': random_output_size,
                 'output_padding': random_output_size,
-                'use_mkldnn': random_use_mkldnn,
+                'use_mkldnn': random_use_onednn,
                 'is_test': True,
             },
         )
@@ -182,7 +182,7 @@ class TestConvTransposeEltwiseaddBnFusePass(PassAutoScanTest):
                 'is_test': True,
                 'trainable_statistics': False,
                 'data_layout': random_data_layout,
-                'use_mkldnn': random_use_mkldnn,
+                'use_mkldnn': random_use_onednn,
             },
         )
 

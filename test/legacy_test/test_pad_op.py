@@ -608,6 +608,64 @@ class TestPadOp_ZeroSize2(TestPadOp_ZeroSize):
         self.pad_value = 0.5
 
 
+class TestPadAliasSupport(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.shape = (2, 3)
+        self.paddings = [1, 2, 3, 4]
+        self.value = 0.5
+        self.x = np.random.random(self.shape).astype('float32')
+
+    def test_no_param_name(self):
+        out = paddle.nn.functional.pad(
+            paddle.to_tensor(self.x), self.paddings, value=self.value
+        )
+        expected = np.pad(
+            self.x,
+            [(1, 2), (3, 4)],
+            mode='constant',
+            constant_values=self.value,
+        )
+        np.testing.assert_array_equal(out.numpy(), expected)
+
+    def test_x_param_name(self):
+        out = paddle.nn.functional.pad(
+            x=paddle.to_tensor(self.x), pad=self.paddings, value=self.value
+        )
+        expected = np.pad(
+            self.x,
+            [(1, 2), (3, 4)],
+            mode='constant',
+            constant_values=self.value,
+        )
+        np.testing.assert_array_equal(out.numpy(), expected)
+
+    def test_input_param_name(self):
+        out = paddle.nn.functional.pad(
+            input=paddle.to_tensor(self.x), pad=self.paddings, value=self.value
+        )
+        expected = np.pad(
+            self.x,
+            [(1, 2), (3, 4)],
+            mode='constant',
+            constant_values=self.value,
+        )
+        np.testing.assert_array_equal(out.numpy(), expected)
+
+    def test_both_param_name(self):
+        with self.assertRaises(ValueError) as context:
+            paddle.nn.functional.pad(
+                x=paddle.to_tensor(self.x),
+                input=paddle.to_tensor(self.x),
+                pad=self.paddings,
+                value=self.value,
+            )
+        self.assertIn(
+            "Cannot specify both 'x' and its alias 'input'",
+            str(context.exception),
+        )
+
+
 if __name__ == "__main__":
     # paddle.enable_static()
     unittest.main()

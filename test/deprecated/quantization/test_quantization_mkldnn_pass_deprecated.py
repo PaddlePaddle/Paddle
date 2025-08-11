@@ -60,7 +60,7 @@ def conv_net(img, label):
     return avg_loss
 
 
-class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
+class TestONEDNNTransformBasedFreezePass(unittest.TestCase):
     def setUp(self):
         self.quantizable_op_and_inputs = {
             'conv2d': ['Input', 'Filter'],
