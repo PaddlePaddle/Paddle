@@ -15,16 +15,17 @@
 #include "paddle/phi/kernels/funcs/inverse_from_lu.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 
 namespace phi {
 namespace funcs {
 
-template <typename T>
-void InverseFromLUFunctor<T, CPUContext>::operator()(const CPUContext& dev_ctx,
-                                                     const DenseTensor& lu_data,
-                                                     const DenseTensor& pivots,
-                                                     DenseTensor* inverse_out) {
+template <typename T, typename Context>
+void InverseFromLUFunctor<T, Context>::operator()(const Context& dev_ctx,
+                                                  const DenseTensor& lu_data,
+                                                  const DenseTensor& pivots,
+                                                  DenseTensor* inverse_out) {
   const auto& dims = lu_data.dims();
   const int rank = dims.size();
   const int64_t n = dims[rank - 1];

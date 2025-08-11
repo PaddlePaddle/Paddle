@@ -16,16 +16,17 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace phi {
 namespace funcs {
 
-template <typename T>
-void InverseFromLUFunctor<T, GPUContext>::operator()(const GPUContext& dev_ctx,
-                                                     const DenseTensor& lu_data,
-                                                     const DenseTensor& pivots,
-                                                     DenseTensor* inverse_out) {
+template <typename T, typename Context>
+void InverseFromLUFunctor<T, Context>::operator()(const Context& dev_ctx,
+                                                  const DenseTensor& lu_data,
+                                                  const DenseTensor& pivots,
+                                                  DenseTensor* inverse_out) {
   const auto& dims = lu_data.dims();
   const int rank = dims.size();
   const int64_t n = dims[rank - 1];
@@ -48,9 +49,13 @@ void InverseFromLUFunctor<T, GPUContext>::operator()(const GPUContext& dev_ctx,
 
   // Copy pointer arrays from Host to Device
   auto a_ptr_device = memory_utils::Alloc(
-      dev_ctx.GetPlace(), batch_size * sizeof(T*), dev_ctx.stream());
+      dev_ctx.GetPlace(),
+      batch_size * sizeof(T*),
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   auto c_ptr_device = memory_utils::Alloc(
-      dev_ctx.GetPlace(), batch_size * sizeof(T*), dev_ctx.stream());
+      dev_ctx.GetPlace(),
+      batch_size * sizeof(T*),
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
 
   memory_utils::Copy(dev_ctx.GetPlace(),
                      a_ptr_device->ptr(),
@@ -67,10 +72,12 @@ void InverseFromLUFunctor<T, GPUContext>::operator()(const GPUContext& dev_ctx,
 
   // Allocate device memory for info array
   auto info_device = memory_utils::Alloc(
-      dev_ctx.GetPlace(), batch_size * sizeof(int), dev_ctx.stream());
+      dev_ctx.GetPlace(),
+      batch_size * sizeof(int),
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
 
   // Get BLAS wrapper and call BatchedGETRI
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  auto blas = phi::funcs::GetBlas<GPUContext, T>(dev_ctx);
   blas.BatchedGETRI(n,
                     reinterpret_cast<const T**>(a_ptr_device->ptr()),
                     pivots.data<int>(),
