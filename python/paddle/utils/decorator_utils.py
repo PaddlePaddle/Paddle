@@ -97,11 +97,10 @@ def reshape_param_alias(alias_mapping):
         def wrapper(*args, **kwargs):
             if not kwargs:
                 return func(*args, **kwargs)
-            for original, aliases in alias_mapping.items():
-                for alias in aliases:
-                    if alias in kwargs:
-                        if original not in kwargs:
-                            kwargs[original] = kwargs.pop(alias)
+            for original, alias in alias_mapping.items():
+                if alias in kwargs:
+                    if original not in kwargs:
+                        kwargs[original] = kwargs.pop(alias)
             # if "input" in kwargs:
             #     if "x" not in kwargs:
             #         kwargs["x"] = kwargs.pop("input")

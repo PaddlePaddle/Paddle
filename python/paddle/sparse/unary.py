@@ -882,7 +882,7 @@ def expm1(x: Tensor, name: str | None = None) -> Tensor:
     return _C_ops.sparse_expm1(x)
 
 
-@reshape_param_alias({"x": ["input"]})
+@reshape_param_alias({"x": "input"})
 def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
     """
     Changes the shape of ``x`` without changing its value, requiring x to be a SparseCooTensor or SparseCsrTensor.
