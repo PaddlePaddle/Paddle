@@ -53,6 +53,13 @@ class WeightGradStore:
         cls.cache = []
         cls.funcs_queue = queue.Queue()
 
+class EventStore:
+
+    event = None
+
+    @classmethod
+    def set(cls, event) -> None:
+        cls.event = event
 
 def fold_init_dims(tensor):
     # NOTE(zhangyuqin1998): Reshape a rank-3 tensor from P x M x N to (P * M) x N,
