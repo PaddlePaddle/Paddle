@@ -671,7 +671,7 @@ def monkey_patch_value():
         if dtype is None:
             dtype = self.dtype
         if device is None:
-            device = self.device
+            device = self.place
 
         return paddle.full(
             size,
@@ -715,7 +715,7 @@ def monkey_patch_value():
         if dtype is None:
             dtype = self.dtype
         if device is None:
-            device = self.device
+            device = self.place
 
         return paddle.empty(
             size, dtype=dtype, device=device, requires_grad=requires_grad
@@ -755,7 +755,7 @@ def monkey_patch_value():
         if dtype is None:
             dtype = self.dtype
         if device is None:
-            device = self.device
+            device = self.place
 
         return paddle.full(
             size,
@@ -799,7 +799,7 @@ def monkey_patch_value():
         if dtype is None:
             dtype = self.dtype
         if device is None:
-            device = self.device
+            device = self.place
 
         return paddle.full(
             size,
