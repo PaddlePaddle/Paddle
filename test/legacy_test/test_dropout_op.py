@@ -919,6 +919,121 @@ class TestDropoutCAPI(unittest.TestCase):
                 )
 
 
+class TestDropout1DFAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        self.places = get_places()
+
+    def check_static_result(
+        self, place, input_name, input_shape, training=False, p=0.0
+    ):
+        paddle.enable_static()
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
+            input_var = paddle.static.data(
+                name=input_name, shape=input_shape, dtype="float32"
+            )
+            res = paddle.nn.functional.dropout1d(
+                input=input_var, p=p, training=training
+            )
+            in_np = np.random.random(input_shape).astype("float32")
+            exe = base.Executor(place)
+            fetches = exe.run(
+                main_prog,
+                feed={input_name: in_np},
+                fetch_list=[res],
+            )
+
+            np.testing.assert_allclose(fetches[0], in_np, rtol=1e-05)
+
+    def test_static(self):
+        for place in self.places:
+            self.check_static_result(
+                place=place,
+                input_name="input_2d",
+                input_shape=[3, 4],
+                training=False,
+                p=0.0,
+            )
+
+            self.check_static_result(
+                place=place,
+                input_name="input_3d",
+                input_shape=[2, 3, 4],
+                training=False,
+                p=0.0,
+            )
+
+            self.check_static_result(
+                place=place,
+                input_name="input_2d_1",
+                input_shape=[3, 4],
+                training=False,
+                p=1.0,
+            )
+
+            self.check_static_result(
+                place=place,
+                input_name="input_3d_1",
+                input_shape=[2, 3, 4],
+                training=False,
+                p=1.0,
+            )
+
+    def test_dygraph(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                # Test 2D input
+                in_np_2d = np.random.random([3, 4]).astype("float32")
+                input_2d = paddle.to_tensor(in_np_2d)
+                res1 = paddle.nn.functional.dropout1d(
+                    input=input_2d, p=0.0, training=False
+                )
+                np.testing.assert_allclose(res1.numpy(), in_np_2d, rtol=1e-05)
+
+                # Test 3D input
+                in_np_3d = np.random.random([2, 3, 4]).astype("float32")
+                input_3d = paddle.to_tensor(in_np_3d)
+                res2 = paddle.nn.functional.dropout1d(
+                    input=input_3d, p=0.0, training=False
+                )
+                np.testing.assert_allclose(res2.numpy(), in_np_3d, rtol=1e-05)
+
+
+class TestDropout1DFAPIError(unittest.TestCase):
+    def test_errors(self):
+        paddle.enable_static()
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
+
+            def test_xdim_1d():
+                # dimensions of x should be 2 or 3
+                x = paddle.static.data(name='x1', shape=[4], dtype="float32")
+                paddle.nn.functional.dropout1d(x)
+
+            self.assertRaises(RuntimeError, test_xdim_1d)
+
+            def test_xdim_4d():
+                # dimensions of x should be 2 or 3
+                x = paddle.static.data(
+                    name='x2', shape=[2, 3, 4, 5], dtype="float32"
+                )
+                paddle.nn.functional.dropout1d(x)
+
+            self.assertRaises(RuntimeError, test_xdim_4d)
+
+            def test_prob_range():
+                # p should be in [0, 1]
+                x = paddle.static.data(
+                    name='x3', shape=[2, 3, 4], dtype="float32"
+                )
+                paddle.nn.functional.dropout1d(x, p=1.5)
+
+            self.assertRaises(ValueError, test_prob_range)
+
+
 class TestDropout2DFAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
@@ -1402,6 +1517,12 @@ class TestDropOutWithProbTensor(unittest.TestCase):
         static_res = self.run_static(self.input)
         dygraph_res = self.run_dygraph(self.input)
         np.testing.assert_array_equal(static_res, dygraph_res)
+
+
+class TestDropOut1DWithProbTensor(TestDropOutWithProbTensor):
+    def init_info(self):
+        self.shape = [2, 3, 4]
+        self.api = paddle.nn.functional.dropout1d
 
 
 class TestDropOut2DWithProbTensor(TestDropOutWithProbTensor):

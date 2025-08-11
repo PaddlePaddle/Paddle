@@ -25,7 +25,7 @@ class TestScaleOp(OpTest):
         self.init_shape()
         self.op_type = "scale"
         self.inputs = {'X': np.random.random(self.shape).astype(np.float32)}
-        self.attrs = {'scale': -2.3, 'use_mkldnn': True, 'bias': 0.2}
+        self.attrs = {'scale': -2.3, 'use_onednn': True, 'bias': 0.2}
         self.use_onednn = True
         self.outputs = {
             'Out': (self.inputs['X'] * self.attrs['scale']) + self.attrs['bias']
@@ -54,7 +54,7 @@ class TestScaleOpBiasNotAfterScale(OpTest):
         self.inputs = {'X': np.random.random((10, 10)).astype(np.float32)}
         self.attrs = {
             'scale': 1.5,
-            'use_mkldnn': True,
+            'use_onednn': True,
             'bias': 2.3,
             'bias_after_scale': False,
         }

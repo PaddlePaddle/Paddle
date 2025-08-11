@@ -311,8 +311,8 @@ int tensor_properties_set_grad(TensorObject* self,
   paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
   PADDLE_ENFORCE(
       grad != nullptr,
-      common::errors::Fatal("Detected NULL grad"
-                            "Please check if you have manually cleared"
+      common::errors::Fatal("Detected NULL grad. "
+                            "Please check if you have manually cleared "
                             "the grad inside autograd_meta"));
   const phi::distributed::ProcessMesh* mesh = nullptr;
   if (InputsContainDistTensor(&mesh, src, self->tensor, *grad)) {
@@ -334,8 +334,8 @@ int tensor_properties_set_grad_(TensorObject* self,
   paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
   PADDLE_ENFORCE(
       grad != nullptr,
-      common::errors::Fatal("Detected NULL grad"
-                            "Please check if you have manually cleared"
+      common::errors::Fatal("Detected NULL grad. "
+                            "Please check if you have manually cleared "
                             "the grad inside autograd_meta"));
   *grad = src;
   return 0;
