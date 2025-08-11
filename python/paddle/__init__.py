@@ -36,12 +36,18 @@ except ImportError:
 # NOTE(SigureMo): We should place the import of base.core before other modules,
 # because there are some initialization codes in base/core/__init__.py.
 from .base import core  # noqa: F401
+from .base.dygraph.generated_tensor_methods_patch import (
+    monkey_patch_generated_tensor_methods,
+)
 from .batch import batch
 
 # Do the *DUPLICATED* monkey-patch for the tensor object.
 # We need remove the duplicated code here once we fix
 # the illogical implement in the monkey-patch methods later.
-from .framework import monkey_patch_math_tensor, monkey_patch_variable
+from .framework import (
+    monkey_patch_math_tensor,
+    monkey_patch_variable,
+)
 from .pir import monkey_patch_dtype, monkey_patch_program, monkey_patch_value
 
 monkey_patch_variable()
@@ -49,6 +55,7 @@ monkey_patch_math_tensor()
 monkey_patch_value()
 monkey_patch_program()
 monkey_patch_dtype()
+monkey_patch_generated_tensor_methods()
 
 from .base.dataset import *  # noqa: F403
 from .framework import (

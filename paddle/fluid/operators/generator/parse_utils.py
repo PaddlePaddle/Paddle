@@ -369,6 +369,7 @@ def check_op_config(op_entry, op_name):
         'support_tensor',
         'traits',
         'interfaces',
+        'python_api',
     )
     infer_meta_key_set = (
         'func',
@@ -384,6 +385,8 @@ def check_op_config(op_entry, op_name):
         'layout',
         'backend',
         'force_backend',
+        'python_api',
+        'dispatch',
     )
     for key in op_entry.keys():
         assert (

@@ -3434,13 +3434,18 @@ def min(
             )
             return out
 
+    # def amax(
+    #     *args,
+    #     **kwargs
+    # ) -> Tensor:
+    #     if in_dynamic_or_pir_mode():
+    #         return _C_ops.amax(*args, **kwargs)
 
-def amax(
-    x: Tensor,
-    axis: int | Sequence[int] | None = None,
-    keepdim: bool = False,
-    name: str | None = None,
-) -> Tensor:
+    # def amax(
+    #     x: Tensor,
+    #     *args,
+    #     **kwargs
+    # ) -> Tensor:
     """
     Computes the maximum of tensor elements over the given axis.
 
@@ -3567,24 +3572,26 @@ def amax(
              [[0.50000000, 0.33333333],
               [0.        , 0.        ]]])
     """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.amax(x, axis, keepdim)
 
-    else:
-        reduce_all, axis = _get_reduce_axis(axis, x)
-        helper = LayerHelper('amax', **locals())
-        check_variable_and_dtype(
-            x, 'x', ['float32', 'float64', 'int32', 'int64'], 'amax'
-        )
 
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-            type='reduce_amax',
-            inputs={'X': x},
-            outputs={'Out': out},
-            attrs={'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all},
-        )
-        return out
+#     if in_dynamic_or_pir_mode():
+#         return _C_ops.amax(x, *args, **kwargs)
+
+# else:
+#     reduce_all, axis = _get_reduce_axis(axis, x)
+#     helper = LayerHelper('amax', **locals())
+#     check_variable_and_dtype(
+#         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'amax'
+#     )
+
+#     out = helper.create_variable_for_type_inference(dtype=x.dtype)
+#     helper.append_op(
+#         type='reduce_amax',
+#         inputs={'X': x},
+#         outputs={'Out': out},
+#         attrs={'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all},
+#     )
+#     return out
 
 
 def amin(
