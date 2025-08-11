@@ -89,15 +89,23 @@ class BackwardAPI(BaseAPI):
         ), f"{self.api} : Output error: The number of outputs should be less then the number of inputs of forward api. \
              Please check the output of {self.api} in yaml."
 
-    def get_declare_args(self, inplace_flag=False):
-        return self.get_define_args()
+    def get_declare_args(
+        self, inplace_flag=False, grad_flag=False, append_input_out=False
+    ):
+        return self.get_define_args(
+            grad_flag=grad_flag, append_input_out=append_input_out
+        )
 
-    def get_define_args(self, inplace_flag=False):
+    def get_define_args(
+        self, inplace_flag=False, grad_flag=False, append_input_out=False
+    ):
         out_type_map = {
             'Tensor': 'Tensor*',
             'std::vector<Tensor>': 'std::vector<Tensor*>',
         }
-        inputs_and_attrs = super().get_define_args()
+        inputs_and_attrs = super().get_define_args(
+            grad_flag=grad_flag, append_input_out=False
+        )
         outs = []
         for i, name in enumerate(self.outputs['names']):
             outs.append(
@@ -111,7 +119,7 @@ class BackwardAPI(BaseAPI):
     def gene_return_code(self):
         return ""
 
-    def gene_api_declaration(self):
+    def gene_api_declaration(self, grad_flag=False, append_input_out=False):
         if not self.is_base_api and not self.is_only_composite_api:
             invoke_func_name = self.invoke.split('(')[0]
             if (not invoke_func_name.endswith("_grad")) and (
