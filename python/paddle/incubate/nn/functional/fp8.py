@@ -217,7 +217,7 @@ def fused_transpose_split_quant(
             >>> x = paddle.randn([384, 512], dtype='bfloat16')
             >>> x = paddle.clip(x, min=-50, max=50)
             >>> tokens_per_expert = [128, 128, 128]
-            >>> outs, scales = F.fused_transpose_split_quant(x, tokens_per_expert, pow_2_scales=True)
+            >>> outs, scales = F.fused_transpose_split_quant(x,None, tokens_per_expert, pow_2_scales=True)
             >>> print(outs[0].shape)
             [512, 128]
             >>> print(scales[0].shape)
