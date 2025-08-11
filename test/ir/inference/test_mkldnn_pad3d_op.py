@@ -17,7 +17,7 @@ from functools import partial
 
 import hypothesis.strategies as st
 import numpy as np
-from auto_scan_test import MkldnnAutoScanTest, PirMkldnnAutoScanTest
+from auto_scan_test import OnednnAutoScanTest, PirOnednnAutoScanTest
 from hypothesis import given
 from program_config import (
     OpConfig,
@@ -26,7 +26,7 @@ from program_config import (
 )
 
 
-class TestOneDNNPad3DOp(MkldnnAutoScanTest):
+class TestOneDNNPad3DOp(OnednnAutoScanTest):
     def sample_program_configs(self, *args, **kwargs):
         def generate_input(*args, **kwargs):
             return np.random.random(kwargs['in_shape']).astype(np.float32)
@@ -60,7 +60,7 @@ class TestOneDNNPad3DOp(MkldnnAutoScanTest):
         yield program_config
 
     def sample_predictor_configs(self, program_config):
-        config = self.create_inference_config(use_mkldnn=True)
+        config = self.create_inference_config(use_onednn=True)
         yield config, (1e-5, 1e-5)
 
     @given(
@@ -82,7 +82,7 @@ class TestOneDNNPad3DOp(MkldnnAutoScanTest):
         self.run_test(quant=False, *args, **kwargs)
 
 
-class TestPirOneDNNPad3DOp(PirMkldnnAutoScanTest):
+class TestPirOneDNNPad3DOp(PirOnednnAutoScanTest):
     def sample_program_configs(self, *args, **kwargs):
         def generate_input(*args, **kwargs):
             return np.random.random(kwargs['in_shape']).astype(np.float32)
@@ -117,7 +117,7 @@ class TestPirOneDNNPad3DOp(PirMkldnnAutoScanTest):
         yield program_config
 
     def sample_predictor_configs(self, program_config):
-        config = self.create_inference_config(use_mkldnn=True)
+        config = self.create_inference_config(use_onednn=True)
         yield config, (1e-5, 1e-5)
 
     @given(

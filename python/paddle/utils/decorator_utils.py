@@ -12,73 +12,57 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import annotations
-
 import functools
 import inspect
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Generic,
-    TypeVar,
-    cast,
-)
+from collections.abc import Iterable
+from typing import Any, Callable, TypeVar, cast
 
-from typing_extensions import ParamSpec
-
-if TYPE_CHECKING:
-    from collections.abc import Iterable
+_F = TypeVar("_F", bound=Callable[..., Any])
 
 
-_P = ParamSpec("_P")
-_R = TypeVar("_R")
-_DecoratedFunc = Callable[_P, _R]
+class DecoratorBase:
+    """Decorative base class, providing a universal decorative framework.
 
-
-class DecoratorBase(Generic[_P, _R]):
-    """装饰器基类，提供通用装饰器框架
-
-    子类只需实现 `process` 方法定义核心逻辑
+    Subclass only needs to implement the 'process' method to define the core logic.
     """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        """初始化装饰器参数"""
+        """Initialize decorator parameters"""
         self.args = args
         self.kwargs = kwargs
 
-    def __call__(self, func: _DecoratedFunc[_P, _R]) -> _DecoratedFunc[_P, _R]:
-        """作为装饰器应用的入口点"""
+    def __call__(self, func: _F) -> _F:
+        """As an entry point for decorative applications"""
 
         @functools.wraps(func)
-        def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _R:
-            # 预处理参数
+        def wrapper(*args, **kwargs):
+            # Pretreatment parameters
             processed_args, processed_kwargs = self.process(args, kwargs)
-            # 调用原函数
+            # Call the original function
             return func(*processed_args, **processed_kwargs)
 
-        # 保留原始签名
+        # Keep original signature
         wrapper.__signature__ = inspect.signature(func)
-        return cast("_DecoratedFunc[_P, _R]", wrapper)
+        return cast("_F", wrapper)
 
     def process(
         self, args: tuple[Any, ...], kwargs: dict[str, Any]
     ) -> tuple[tuple[Any, ...], dict[str, Any]]:
-        """子类必须实现的核心处理方法
+        """Core processing methods that subclasses must implement.
 
         Args:
-            args: 位置参数
-            kwargs: 关键字参数
+            args: positional parameter
+            kwargs: Keyword Argument
 
         Returns:
-            处理后的 (args, kwargs) 元组
+            Processed tuples (args, kwargs)
         """
         raise NotImplementedError("Subclasses must implement this method")
 
 
-# 示例实现：参数别名装饰器
-class ParamAliasDecorator(DecoratorBase[_P, _R]):
-    """参数别名处理的装饰器实现"""
+# Example implementation: Parameter alias decorator
+class ParamAliasDecorator(DecoratorBase):
+    """Implementation of Decorator for Parameter Alias Processing"""
 
     def __init__(self, alias_mapping: dict[str, Iterable[str]]) -> None:
         super().__init__()

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_places
+from op_test import get_devices
 
 import paddle
 from paddle.static import Program, program_guard
@@ -79,7 +79,7 @@ class TestPowerAPI(unittest.TestCase):
     """TestPowerAPI."""
 
     def setUp(self):
-        self.places = get_places(string_format=True)
+        self.places = get_devices()
 
     def test_power(self):
         """test_power."""
@@ -227,7 +227,7 @@ class TestPowerAPI_ZeroSize(unittest.TestCase):
     """TestPowerAPI."""
 
     def setUp(self):
-        self.places = get_places(string_format=True)
+        self.places = get_devices()
 
     def _test_power(self, shape):
         np.random.seed(7)
