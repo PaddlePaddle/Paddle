@@ -452,6 +452,9 @@ class Layer:
         self._forward_pre_hooks_with_kwargs_flag: typing.OrderedDict[
             int, bool
         ] = OrderedDict()
+        self._forward_post_hooks_with_kwargs_flag: typing.OrderedDict[
+            int, bool
+        ] = OrderedDict()
 
         # only used in AMP Training
         self._cast_to_low_precision = True
@@ -661,7 +664,11 @@ class Layer:
         return self._full_name
 
     def register_forward_post_hook(
-        self, hook: _ForwardPostHook
+        self,
+        hook: _ForwardPostHook,
+        *,
+        prepend: bool = False,
+        with_kwargs: bool = False
     ) -> HookRemoveHelper:
         """
 
@@ -674,6 +681,13 @@ class Layer:
 
         Parameters:
             hook(function): a function registered as a forward post-hook
+            prepend (bool): If ``True``, the provided ``hook`` will be fired
+                before all existing ``forward`` hooks on this
+                :class:`paddle.nn.Layer`.
+                Default: ``False``
+            with_kwargs (bool): If ``True``, the ``hook`` will be passed the
+                kwargs given to the forward function.
+                Default: ``False``
 
         Returns:
             HookRemoveHelper, a HookRemoveHelper object that can be used to remove the added hook by calling `hook_remove_helper.remove()` .
@@ -710,12 +724,27 @@ class Layer:
                 >>> assert (out0.numpy() == (out1.numpy()) * 2).any()
 
         """
-        hook_remove_helper = HookRemoveHelper(self._forward_post_hooks)
+        hook_remove_helper = HookRemoveHelper(
+            self._forward_post_hooks,
+            extra_hook_dict=self._forward_post_hooks_with_kwargs_flag
+        )
         self._forward_post_hooks[hook_remove_helper._hook_id] = hook
+        if with_kwargs:
+            self._forward_post_hooks_with_kwargs_flag[
+                hook_remove_helper._hook_id
+            ] = True
+        if prepend:
+            self._forward_post_hooks.move_to_end(
+                hook_remove_helper._hook_id, last=False
+            )
         return hook_remove_helper
 
     def register_forward_pre_hook(
-        self, hook: _ForwardPreHook, *, with_kwargs: bool = False
+        self,
+        hook: _ForwardPreHook,
+        *,
+        prepend: bool = False,
+        with_kwargs: bool = False
     ) -> HookRemoveHelper:
         """
 
@@ -730,6 +759,9 @@ class Layer:
 
         Parameters:
             hook(function): a function registered as a forward pre-hook
+            with_kwargs (bool): If true, the ``hook`` will be passed the kwargs
+                given to the forward function.
+                Default: ``False``
 
         Returns:
             HookRemoveHelper, a HookRemoveHelper object that can be used to remove the added hook by calling `hook_remove_helper.remove()` .
@@ -776,6 +808,11 @@ class Layer:
             self._forward_pre_hooks_with_kwargs_flag[
                 hook_remove_helper._hook_id
             ] = True
+
+        if prepend:
+            self._forward_pre_hooks.move_to_end(
+                hook_remove_helper._hook_id, last=False
+            )
         return hook_remove_helper
 
     def create_parameter(
