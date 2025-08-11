@@ -32,6 +32,10 @@ void InverseFromLUFunctor<T, Context>::operator()(const Context& dev_ctx,
   const int64_t n_square = n * n;
   const int64_t batch_size = lu_data.numel() / n_square;
 
+  if (batch_size == 0) {
+    return;
+  }
+
   // getri is an in-place operation, copy lu_data to inverse_out first.
   dev_ctx.template Alloc<T>(inverse_out);
   phi::Copy(dev_ctx, lu_data, dev_ctx.GetPlace(), false, inverse_out);
@@ -39,10 +43,26 @@ void InverseFromLUFunctor<T, Context>::operator()(const Context& dev_ctx,
   auto* pivots_data = pivots.data<int>();
   auto* inverse_data = inverse_out->data<T>();
 
+  int lwork = -1;
+  T wkopt;
+  int info = 0;
+  phi::funcs::lapackGETRI<T>(
+      n, inverse_data, n, pivots_data, &wkopt, lwork, &info);
+
+  lwork = static_cast<int>(std::real(wkopt));
+  DenseTensor work_tensor;
+  work_tensor.Resize({lwork});
+  auto* work_data = dev_ctx.template Alloc<T>(&work_tensor);
+
   for (int64_t i = 0; i < batch_size; ++i) {
-    int info = 0;
-    phi::funcs::lapackGETRI<T>(
-        n, inverse_data + i * n_square, pivots_data + i * n, &info);
+    info = 0;
+    phi::funcs::lapackGETRI<T>(n,
+                               inverse_data + i * n_square,
+                               n,
+                               pivots_data + i * n,
+                               work_data,
+                               lwork,
+                               &info);
   }
 }
 
