@@ -35,12 +35,20 @@ struct AbsMaxAndMinGradFunctor {
                   DY* dy,
                   const Dim& dim,
                   int size) {
-    auto abs_x = x->abs();
+    auto abs_x = (*x).abs();
     auto y_bc = y->broadcast(dim);
+    auto dy_bc = dy->broadcast(dim);
     auto mask = (abs_x == y_bc).template cast<T>();
-    auto count = mask.sum(dim);
 
-    dx->device(place) = y_bc * x->sign() * mask / count;
+    Eigen::array<int, 1> reduce_dim = {static_cast<int>(dim.size() - 1)};
+    auto shape1 = (*x).dimensions();
+    shape1[shape1.size() - 1] = 1;
+    auto shape2 = (*x).dimensions();
+    for (size_t i = 0; i < shape2.size() - 1; i++) shape2[i] = 1;
+
+    auto count = mask.sum(reduce_dim).reshape(shape1).broadcast(shape2);
+
+    dx->device(place) = dy_bc * (*x).sign() * mask / count;
   }
 };
 
