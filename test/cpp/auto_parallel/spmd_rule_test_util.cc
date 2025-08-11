@@ -45,7 +45,8 @@ const std::vector<std::vector<int64_t>>& get_multi_dims_mapping(
     const phi::distributed::ArgDistAttr& dist_attr) {
   EXPECT_TRUE(
       paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr));
-  const auto& tensor_attr = paddle::get<0>(dist_attr);
+  const auto& tensor_attr =
+      PADDLE_GET_CONST(phi::distributed::TensorDistAttr, dist_attr);
   return tensor_attr.multi_dims_mapping();
 }
 
