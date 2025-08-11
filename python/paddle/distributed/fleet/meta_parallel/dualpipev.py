@@ -37,7 +37,7 @@ from .pipeline_parallel import (
     PipelineParallel,
 )
 from .pp_utils.batch_comm_helper import BatchCommHelper
-from .zero_bubble_utils import WeightGradStore, EventStore
+from .zero_bubble_utils import EventStore, WeightGradStore
 
 __all__ = []
 
@@ -393,9 +393,11 @@ class DualPipeVParallel(PipelineParallel):
 
         backward_outer_event_wait = False
         if EventStore.event is not None:
-            with paddle.device.stream_guard( paddle.device.Stream( stream_base= pp_raw_stream)):
+            with paddle.device.stream_guard(
+                paddle.device.Stream(stream_base=pp_raw_stream)
+            ):
                 EventStore.event.current_stream_wait()
-            
+
             EventStore.set(None)
             self.pp_group.process_group.set_outer_wait(True)
 

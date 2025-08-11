@@ -23,8 +23,7 @@ EventPool &EventPool::Instance() {
 }
 
 EventPool::EventPool() {
-  for ( size_t i = 0; i < 1000; ++i )
-  {
+  for (size_t i = 0; i < 1000; ++i) {
     cudaEvent_t new_event;
     CUDA_CHECK(cudaEventCreate(&new_event));
 
