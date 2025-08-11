@@ -455,6 +455,9 @@ class Layer:
         self._forward_post_hooks_with_kwargs_flag: typing.OrderedDict[
             int, bool
         ] = OrderedDict()
+        self._forward_post_hooks_always_called: typing.OrderedDict[
+            int, bool
+        ] = OrderedDict()
 
         # only used in AMP Training
         self._cast_to_low_precision = True
@@ -668,7 +671,8 @@ class Layer:
         hook: _ForwardPostHook,
         *,
         prepend: bool = False,
-        with_kwargs: bool = False
+        with_kwargs: bool = False,
+        always_call: bool = False,
     ) -> HookRemoveHelper:
         """
 
@@ -687,6 +691,9 @@ class Layer:
                 Default: ``False``
             with_kwargs (bool): If ``True``, the ``hook`` will be passed the
                 kwargs given to the forward function.
+                Default: ``False``
+            always_call (bool): If ``True`` the ``hook`` will be run regardless of
+                whether an exception is raised while calling the Module.
                 Default: ``False``
 
         Returns:
@@ -726,11 +733,18 @@ class Layer:
         """
         hook_remove_helper = HookRemoveHelper(
             self._forward_post_hooks,
-            extra_hook_dict=self._forward_post_hooks_with_kwargs_flag
+            extra_hook_dict=[
+                self._forward_post_hooks_with_kwargs_flag,
+                self._forward_post_hooks_always_called
+            ]
         )
         self._forward_post_hooks[hook_remove_helper._hook_id] = hook
         if with_kwargs:
             self._forward_post_hooks_with_kwargs_flag[
+                hook_remove_helper._hook_id
+            ] = True
+        if always_call:
+            self._forward_post_hooks_always_called[
                 hook_remove_helper._hook_id
             ] = True
         if prepend:
@@ -738,6 +752,9 @@ class Layer:
                 hook_remove_helper._hook_id, last=False
             )
         return hook_remove_helper
+
+    # [aliases]
+    register_forward_hook = register_forward_post_hook
 
     def register_forward_pre_hook(
         self,
@@ -1589,10 +1606,24 @@ class Layer:
             with name_struct(self.__class__.__name__):
                 outputs = self.forward(*inputs, **kwargs)
 
-        for forward_post_hook in self._forward_post_hooks.values():
-            hook_result = forward_post_hook(self, inputs, outputs)
-            if hook_result is not None:
-                outputs = hook_result
+        for hook_id, forward_post_hook in self._forward_post_hooks.items():
+            if hook_id in self._forward_post_hooks_with_kwargs_flag:
+                post_kwargs_result = forward_post_hook(self, inputs, outputs, kwargs)
+                if post_kwargs_result is not None:
+                    if (
+                        isinstance(post_kwargs_result, tuple)
+                        and len(post_kwargs_result) == 2
+                    ):
+                        outputs, kwargs = post_kwargs_result
+                    else:
+                        raise RuntimeError(
+                            "forward post-hook must return None or a tuple "
+                            f"of (new_args, new_kwargs), but got {post_kwargs_result}."
+                        )
+            else:
+                hook_result = forward_post_hook(self, inputs, outputs)
+                if hook_result is not None:
+                    outputs = hook_result
 
         return outputs
 
