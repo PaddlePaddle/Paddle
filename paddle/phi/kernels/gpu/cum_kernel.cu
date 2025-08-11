@@ -258,14 +258,13 @@ __global__ void BlockScanKernel(T* d_out,
   }
 }
 
-template <typename Context, typename T, typename Op>
+template <typename Context, typename T>
 void ThrustCumsumKernel(const Context& dev_ctx,
                         const T* in_data,
                         T* out_data,
                         int64_t size,
                         bool reverse,
-                        bool exclusive,
-                        Op op) {
+                        bool exclusive) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
 #ifdef __HIPCC__
@@ -283,26 +282,17 @@ void ThrustCumsumKernel(const Context& dev_ctx,
       thrust::reverse_iterator<thrust::device_ptr<T>> reversed_out(
           thrust::device_pointer_cast(out_data) + size);
       if (exclusive) {
-        thrust::exclusive_scan(policy,
-                               reversed_in,
-                               reversed_in + size,
-                               reversed_out,
-                               Identity<T, Op>::value,
-                               op);
+        thrust::exclusive_scan(
+            policy, reversed_in, reversed_in + size, reversed_out);
       } else {
         thrust::inclusive_scan(
-            policy, reversed_in, reversed_in + size, reversed_out, op);
+            policy, reversed_in, reversed_in + size, reversed_out);
       }
     } else {
       if (exclusive) {
-        thrust::exclusive_scan(policy,
-                               in_data,
-                               in_data + size,
-                               out_data,
-                               Identity<T, Op>::value,
-                               op);
+        thrust::exclusive_scan(policy, in_data, in_data + size, out_data);
       } else {
-        thrust::inclusive_scan(policy, in_data, in_data + size, out_data, op);
+        thrust::inclusive_scan(policy, in_data, in_data + size, out_data);
       }
     }
   } else {
@@ -318,27 +308,17 @@ void ThrustCumsumKernel(const Context& dev_ctx,
       auto reversed_in = tmp_in.rbegin();
       auto reversed_out = tmp_out.rbegin();
       if (exclusive) {
-        thrust::exclusive_scan(policy,
-                               reversed_in,
-                               reversed_in + size,
-                               reversed_out,
-                               Identity<MT, Op>::value,
-                               op);
+        thrust::exclusive_scan(
+            policy, reversed_in, reversed_in + size, reversed_out);
       } else {
         thrust::inclusive_scan(
-            policy, reversed_in, reversed_in + size, reversed_out, op);
+            policy, reversed_in, reversed_in + size, reversed_out);
       }
     } else {
       if (exclusive) {
-        thrust::exclusive_scan(policy,
-                               tmp_in_begin,
-                               tmp_in_end,
-                               tmp_out_begin,
-                               Identity<MT, Op>::value,
-                               op);
+        thrust::exclusive_scan(policy, tmp_in_begin, tmp_in_end, tmp_out_begin);
       } else {
-        thrust::inclusive_scan(
-            policy, tmp_in_begin, tmp_in_end, tmp_out_begin, op);
+        thrust::inclusive_scan(policy, tmp_in_begin, tmp_in_end, tmp_out_begin);
       }
     }
 
@@ -389,9 +369,9 @@ void ScanKernel(const Context& dev_ctx,
   // Use thrust for parallel acceleration when the input size is equal to the
   // length of the 'axis' dimension (i.e., it's a 1D scan).
   int64_t size = x.numel();
-  if (size == out_dims[axis]) {
-    ThrustCumsumKernel<Context, T, Op>(
-        dev_ctx, in_data, out_data, size, reverse, exclusive, op);
+  if (std::is_same_v<Op, cub::Sum> && size == out_dims[axis]) {
+    ThrustCumsumKernel<Context, T>(
+        dev_ctx, in_data, out_data, size, reverse, exclusive);
     return;
   }
 
