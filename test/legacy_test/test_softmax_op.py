@@ -78,7 +78,7 @@ class TestSoftmaxOp(OpTest):
         self.attrs = {
             'axis': self.axis,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_onednn,
+            'use_onednn': self.use_onednn,
         }
         self.enable_cinn = True
 
@@ -161,7 +161,7 @@ class TestSoftmaxOp_ZeroDim1(TestSoftmaxOp):
         self.attrs = {
             'axis': -1,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_onednn,
+            'use_onednn': self.use_onednn,
         }
         self.enable_cinn = False
 
@@ -210,7 +210,7 @@ class TestSoftmaxOp_ZeroDim2(TestSoftmaxOp):
         self.attrs = {
             'axis': -1,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_onednn,
+            'use_onednn': self.use_onednn,
         }
         self.enable_cinn = False
 
@@ -487,7 +487,7 @@ class TestSoftmaxBF16Op(OpTest):
         self.attrs = {
             'axis': self.axis,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_onednn,
+            'use_onednn': self.use_onednn,
         }
 
     def init_cudnn(self):

@@ -39,7 +39,7 @@ class ONEDNNBF16ActivationOp(metaclass=abc.ABCMeta):
         pass
 
     def set_attrs(self):
-        self.attrs = {"use_mkldnn": True}
+        self.attrs = {"use_onednn": True}
 
     def init_data(self):
         self.x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype(np.float32)
@@ -147,7 +147,7 @@ class TestONEDNNGeluTanhBF16Op(ONEDNNBF16ActivationOp, TestActivation):
         )
 
     def set_attrs(self):
-        self.attrs = {"use_mkldnn": True, "approximate": True}
+        self.attrs = {"use_onednn": True, "approximate": True}
 
 
 class TestONEDNNGeluTanhDim2BF16Op(TestONEDNNGeluTanhBF16Op):
@@ -211,7 +211,7 @@ class TestONEDNNLeakyReluBF16Op(ONEDNNBF16ActivationOp, TestActivation):
 
     def set_attrs(self):
         self.alpha = 0.2
-        self.attrs = {"use_mkldnn": True, "alpha": self.alpha}
+        self.attrs = {"use_onednn": True, "alpha": self.alpha}
 
 
 class TestONEDNNSwishBF16Op(ONEDNNBF16ActivationOp, TestActivation):
@@ -230,7 +230,7 @@ class TestONEDNNSwishBF16Op(ONEDNNBF16ActivationOp, TestActivation):
 
     def set_attrs(self):
         self.beta = 0.2
-        self.attrs = {"use_mkldnn": True, "beta": self.beta}
+        self.attrs = {"use_onednn": True, "beta": self.beta}
 
 
 class TestONEDNNHardSwishBF16Op(ONEDNNBF16ActivationOp, TestActivation):
@@ -284,7 +284,7 @@ class TestONEDNNEluBF16Op(ONEDNNBF16ActivationOp, TestActivation):
 
     def set_attrs(self):
         self.alpha = 0.2
-        self.attrs = {"use_mkldnn": True, "alpha": self.alpha}
+        self.attrs = {"use_onednn": True, "alpha": self.alpha}
 
 
 class TestONEDNNExpBF16Op(ONEDNNBF16ActivationOp, TestActivation):
