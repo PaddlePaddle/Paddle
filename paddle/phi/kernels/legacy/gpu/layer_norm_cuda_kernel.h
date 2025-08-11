@@ -943,7 +943,7 @@ void HostApplyRMSNorm(V* output,
 }
 
 template <typename T, typename Context>
-void cuda_rms_norm(const Context& ctx,
+void cuda_rms_norm(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& scale,
                    int rows,
@@ -960,7 +960,7 @@ void cuda_rms_norm(const Context& ctx,
       cols,                                                  \
       epsilon,                                               \
       const_cast<scalar_t_out*>(scale.data<scalar_t_out>()), \
-      ctx.stream())
+      dev_ctx.stream())
   // scale.dtype() same as y->dtype()
   if (scale.dtype() == phi::DataType::FLOAT32) {
     DISPATCH_FWD_CASE(float);
@@ -971,7 +971,7 @@ void cuda_rms_norm(const Context& ctx,
 }
 
 template <typename T, typename U, typename V, typename Context>
-void HostRMSNormGradient(const Context& ctx,
+void HostRMSNormGradient(const Context& dev_ctx,
                          const V* dout,
                          const U* invvar,
                          const DenseTensor& input,
@@ -992,7 +992,7 @@ void HostRMSNormGradient(const Context& ctx,
     const int nshared2 = nshared2_a > nshared2_b ? nshared2_a : nshared2_b;
     auto place = input.place();
     DenseTensor part_grad_gamma =
-        phi::Empty<float, Context>(ctx, {part_size, n2});
+        phi::Empty<float, Context>(dev_ctx, {part_size, n2});
     cuComputePartGradGammaBeta<<<blocks2, threads2, nshared2, stream>>>(
         dout,
         input.data<T>(),
@@ -1038,7 +1038,7 @@ void HostRMSNormGradient(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void cuda_rms_norm_gradient(const Context& ctx,
+void cuda_rms_norm_gradient(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& scale,
                             const DenseTensor& invvar,
@@ -1050,7 +1050,7 @@ void cuda_rms_norm_gradient(const Context& ctx,
                             DenseTensor* grad_scale) {
 #define DISPATCH_BWD_CASE(scalar_t_out)                 \
   HostRMSNormGradient<T, float, scalar_t_out, Context>( \
-      ctx,                                              \
+      dev_ctx,                                          \
       dy.data<scalar_t_out>(),                          \
       invvar.data<float>(),                             \
       x,                                                \
@@ -1060,7 +1060,7 @@ void cuda_rms_norm_gradient(const Context& ctx,
       epsilon,                                          \
       grad_x->data<T>(),                                \
       grad_scale->data<scalar_t_out>(),                 \
-      ctx.stream())
+      dev_ctx.stream())
   if (scale.dtype() == phi::DataType::FLOAT32) {
     DISPATCH_BWD_CASE(float);
   } else if (scale.dtype() == phi::DataType::BFLOAT16) {
