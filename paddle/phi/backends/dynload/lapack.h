@@ -71,6 +71,31 @@ extern "C" void zgetrs_(char *trans,
                         int *ldb,
                         int *info);
 
+// getri_
+extern "C" void sgetri_(
+    int *n, float *a, int *lda, int *ipiv, float *work, int *lwork, int *info);
+extern "C" void dgetri_(int *n,
+                        double *a,
+                        int *lda,
+                        int *ipiv,
+                        double *work,
+                        int *lwork,
+                        int *info);
+extern "C" void cgetri_(int *n,
+                        std::complex<float> *a,
+                        int *lda,
+                        int *ipiv,
+                        std::complex<float> *work,
+                        int *lwork,
+                        int *info);
+extern "C" void zgetri_(int *n,
+                        std::complex<double> *a,
+                        int *lda,
+                        int *ipiv,
+                        std::complex<double> *work,
+                        int *lwork,
+                        int *info);
+
 // evd
 extern "C" void zheevd_(char *jobz,
                         char *uplo,
@@ -416,6 +441,10 @@ extern void *lapack_dso_handle;
   __macro(dgetrs_);                  \
   __macro(cgetrs_);                  \
   __macro(zgetrs_);                  \
+  __macro(sgetri_);                  \
+  __macro(dgetri_);                  \
+  __macro(cgetri_);                  \
+  __macro(zgetri_);                  \
   __macro(zheevd_);                  \
   __macro(cheevd_);                  \
   __macro(dsyevd_);                  \

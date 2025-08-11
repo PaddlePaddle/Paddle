@@ -121,6 +121,53 @@ void lapackLuSolve<phi::dtype::complex<double>>(char trans,
                    info);
 }
 
+// GETRI
+template <>
+void lapackGETRI<float>(
+    int n, float *a, int lda, int *ipiv, float *work, int lwork, int *info) {
+  dynload::sgetri_(&n, a, &lda, ipiv, work, &lwork, info);
+}
+
+template <>
+void lapackGETRI<double>(
+    int n, double *a, int lda, int *ipiv, double *work, int lwork, int *info) {
+  dynload::dgetri_(&n, a, &lda, ipiv, work, &lwork, info);
+}
+
+template <>
+void lapackGETRI<phi::dtype::complex<float>>(int n,
+                                             phi::dtype::complex<float> *a,
+                                             int lda,
+                                             int *ipiv,
+                                             phi::dtype::complex<float> *work,
+                                             int lwork,
+                                             int *info) {
+  dynload::cgetri_(&n,
+                   reinterpret_cast<std::complex<float> *>(a),
+                   &lda,
+                   ipiv,
+                   reinterpret_cast<std::complex<float> *>(work),
+                   &lwork,
+                   info);
+}
+
+template <>
+void lapackGETRI<phi::dtype::complex<double>>(int n,
+                                              phi::dtype::complex<double> *a,
+                                              int lda,
+                                              int *ipiv,
+                                              phi::dtype::complex<double> *work,
+                                              int lwork,
+                                              int *info) {
+  dynload::zgetri_(&n,
+                   reinterpret_cast<std::complex<double> *>(a),
+                   &lda,
+                   ipiv,
+                   reinterpret_cast<std::complex<double> *>(work),
+                   &lwork,
+                   info);
+}
+
 // eigh
 template <>
 void lapackEigh<float>(char jobz,
