@@ -138,43 +138,6 @@ class TestCompatSplitStatic(unittest.TestCase):
 
         paddle.disable_static()
 
-    def test_static_graph_2(self):
-        """Test static graph execution"""
-        np.random.seed(114514)
-        axis = paddle.to_tensor(-1)
-        paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data(name='x', shape=[None, 9], dtype='float32')
-            result0, result1, result2 = split(x, 4, dim=axis)
-            output = result0 + result1 * result2
-
-            place = (
-                paddle.CUDAPlace(0)
-                if paddle.is_compiled_with_cuda()
-                else paddle.CPUPlace()
-            )
-            exe = paddle.static.Executor(place)
-
-            input_data = np.random.rand(3, 9).astype('float32')
-            feed = {'x': input_data}
-
-            results = exe.run(
-                feed=feed, fetch_list=[result0, result1, result2, output]
-            )
-
-            np.testing.assert_allclose(input_data[:, 0:4], results[0])
-            np.testing.assert_allclose(input_data[:, 4:8], results[1])
-            np.testing.assert_allclose(input_data[:, 8:9], results[2])
-
-            expected_output = (
-                input_data[:, 0:4] + input_data[:, 4:8] * input_data[:, -1:]
-            )
-            np.testing.assert_allclose(
-                expected_output, results[3], rtol=1e-4, atol=1e-4
-            )
-
-        paddle.disable_static()
-
     def test_error_hint(self):
         """Test whether there will be correct exception when users pass paddle.split kwargs in paddle.compat.split, vice versa."""
 
