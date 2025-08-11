@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 
 from .initializer.initializer import calculate_gain as calculate_gain_
 from .initializer.kaiming import KaimingNormal, KaimingUniform
+from .initializer.normal import Normal
 from .initializer.uniform import Uniform
 from .initializer.xavier import XavierNormal, XavierUniform
 
@@ -168,5 +169,28 @@ def uniform_(
         Tensor: Initialized tensor.
     """
     init = Uniform(low=a, high=b)
+
+    return init(tensor, block=block)
+
+
+def normal_(
+    tensor: paddle.Tensor,
+    mean: float = 0.0,
+    std: float = 1.0,
+    block: paddle.pir.Block | None = None,
+) -> paddle.Tensor | None:
+    """Modify tensor inplace using normal method.
+
+    Args:
+        tensor (Tensor):  Paddle Tensor.
+        mean (float|complex, optional): mean of the normal distribution. Default is 0.0.
+        std (float, optional): standard deviation of the normal distribution. Default is 1.0.
+        block (Block|None, optional): The block in which initialization ops
+                should be added. Used in static graph only, default None.
+
+    Returns:
+        Tensor: Initialized tensor.
+    """
+    init = Normal(mean=mean, std=std)
 
     return init(tensor, block=block)

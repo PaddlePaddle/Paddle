@@ -880,7 +880,7 @@ class TestUniformFunc(unittest.TestCase):
     def _random_float(self, a, b):
         return (b - a) * random.random() + a
 
-    def test_xavier_uniform(self):
+    def test_uniform(self):
         for dims in [2, 3, 4]:
             input_tensor = self._create_random_nd_tensor(
                 dims, size_min=20, size_max=108
@@ -995,6 +995,138 @@ class TestUniformFuncPir(unittest.TestCase):
                 )
                 self.assertAlmostEqual(min, -0.8, delta=DELTA)
                 self.assertAlmostEqual(max, 0.8, delta=DELTA)
+                self.assertEqual(init_op.attrs()['seed'], 0)
+
+
+class TestNormalFunc(unittest.TestCase):
+    def _test_normal_common(self, tensor):
+        init = paddle.nn.init.normal_
+        init(tensor, mean=0.2, std=2.0)
+        init(tensor, mean=0.0, std=2.0)
+        init(tensor, mean=-0.1, std=1.0)
+        init(tensor, mean=0.4, std=2.5)
+
+    def test_normal_linear(self):
+        linear = nn.Linear(40, 20)
+        self._test_normal_common(linear.weight)
+
+    def _create_random_nd_tensor(self, dims, size_min, size_max):
+        size = [random.randint(size_min, size_max) for _ in range(dims)]
+        tensor = paddle.zeros(size)
+        return tensor
+
+    def _is_normal(self, tensor, mean, std):
+        samples = tensor.view([-1]).tolist()
+        p_value = stats.kstest(samples, "norm", args=(mean, std))[1]
+        return p_value > 0.0001
+
+    def _random_float(self, a, b):
+        return (b - a) * random.random() + a
+
+    def test_normal(self):
+        for dims in [2, 3, 4]:
+            input_tensor = self._create_random_nd_tensor(
+                dims, size_min=20, size_max=108
+            )
+            mean = self._random_float(-3.0, 3.0)
+            std = self._random_float(0.5, 3.0)
+            paddle.nn.init.normal_(input_tensor, mean=mean, std=std)
+
+            assert self._is_normal(input_tensor, mean, std)
+
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    )
+    def test_normal_fp16(self):
+        input_tensor = paddle.zeros([1024, 512], dtype='float16')
+        paddle.nn.init.normal_(input_tensor)
+        assert self._is_normal(input_tensor, 0.0, 1.0)
+        assert input_tensor.dtype == paddle.float16
+
+
+class TestNormalFuncPir(unittest.TestCase):
+    def setUp(self):
+        self.init_normal_op_name = 'pd_op.gaussian'
+
+    def get_operand_definition_op_attrs(self, cur_op, operand_name, attr_name):
+        input_names = cur_op.get_input_names()
+        self.assertIn(operand_name, input_names)
+        attr = (
+            cur_op.operand(input_names.index(operand_name))
+            .source()
+            .get_defining_op()
+            .attrs()[attr_name]
+        )
+        return attr
+
+    def get_init_ops_by_op_name(self, block, op_name):
+        checked_ops = []
+        for op in block.ops:
+            # get init op
+            if op_name == op.name():
+                checked_ops.append(op)
+        return checked_ops
+
+    def test_normal_(self):
+        with paddle.pir_utils.IrGuard():
+            main = paddle.static.Program()
+            with paddle.static.program_guard(main, paddle.static.Program()):
+                parameter_meta = ParameterMeta([1024, 512], paddle.float32)
+                init_result = paddle.nn.init.normal_(
+                    parameter_meta, block=main.global_block()
+                )
+                block = main.global_block()
+                checked_ops = self.get_init_ops_by_op_name(
+                    block, self.init_normal_op_name
+                )
+                self.assertEqual(len(checked_ops), 1)
+                init_op = checked_ops[0]
+                self.assertAlmostEqual(
+                    init_op.attrs()['mean'], 0.0, delta=DELTA
+                )
+                self.assertAlmostEqual(init_op.attrs()['std'], 1.0, delta=DELTA)
+                self.assertEqual(init_op.attrs()['seed'], 0)
+
+    def test_normal_conv(self):
+        with paddle.pir_utils.IrGuard():
+            main = paddle.static.Program()
+            with paddle.static.program_guard(main, paddle.static.Program()):
+                parameter_meta = ParameterMeta([5, 10, 15, 20], paddle.float32)
+                init_result = paddle.nn.init.normal_(
+                    parameter_meta, block=main.global_block()
+                )
+                block = main.global_block()
+                checked_ops = self.get_init_ops_by_op_name(
+                    block, self.init_normal_op_name
+                )
+                self.assertEqual(len(checked_ops), 1)
+                init_op = checked_ops[0]
+
+                self.assertAlmostEqual(
+                    init_op.attrs()['mean'], 0.0, delta=DELTA
+                )
+                self.assertAlmostEqual(init_op.attrs()['std'], 1.0, delta=DELTA)
+                self.assertEqual(init_op.attrs()['seed'], 0)
+
+    def test_normal_mean_std(self):
+        with paddle.pir_utils.IrGuard():
+            main = paddle.static.Program()
+            with paddle.static.program_guard(main, paddle.static.Program()):
+                parameter_meta = ParameterMeta([5, 10, 15, 20], paddle.float32)
+                init_result = paddle.nn.init.normal_(
+                    parameter_meta, mean=0.3, std=3.5, block=main.global_block()
+                )
+                block = main.global_block()
+                checked_ops = self.get_init_ops_by_op_name(
+                    block, self.init_normal_op_name
+                )
+                self.assertEqual(len(checked_ops), 1)
+                init_op = checked_ops[0]
+
+                self.assertAlmostEqual(
+                    init_op.attrs()['mean'], 0.3, delta=DELTA
+                )
+                self.assertAlmostEqual(init_op.attrs()['std'], 3.5, delta=DELTA)
                 self.assertEqual(init_op.attrs()['seed'], 0)
 
 
