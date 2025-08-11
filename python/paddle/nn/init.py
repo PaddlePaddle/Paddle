@@ -12,32 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import math
+from __future__ import annotations
 
-import paddle
+from typing import TYPE_CHECKING
 
-from .initializer.initializer import calculate_gain, compute_fans
+if TYPE_CHECKING:
+    import paddle
 
-
-def _no_grad_uniform_(tensor, a, b):
-    with paddle.no_grad():
-        tensor.set_value(
-            paddle.uniform(shape=tensor.shape, dtype=tensor.dtype, min=a, max=b)
-        )
-        return tensor
-
-
-def _calculate_correct_fan(tensor, mode):
-    mode = mode.lower()
-    valid_modes = ["fan_in", "fan_out"]
-    if mode not in valid_modes:
-        raise ValueError(
-            f"Mode {mode} not supported, please use one of {valid_modes}"
-        )
-
-    fan_in, fan_out = compute_fans(tensor)
-
-    return fan_in if mode == "fan_in" else fan_out
+from .initializer.kaiming import KaimingUniform
 
 
 def kaiming_uniform_(
@@ -45,7 +27,8 @@ def kaiming_uniform_(
     a: float = 0,
     mode: str = "fan_in",
     nonlinearity: str = "leaky_relu",
-) -> paddle.Tensor:
+    block: paddle.pir.Block | None = None,
+) -> paddle.Tensor | None:
     """Modify tensor inplace using Kaiming uniform method.
 
     Args:
@@ -57,12 +40,14 @@ def kaiming_uniform_(
             When set to 'fan_out', the out_features of trainable Tensor will be used.
             Default is 'fan_in'.
         nonlinearity (str, optional): Nonlinearity method name. Defaults to "leaky_relu".
+        block (Block|None, optional): The block in which initialization ops
+                should be added. Used in static graph only, default None.
 
     Returns:
         Tensor: Initialized tensor.
     """
-    fan = _calculate_correct_fan(tensor, mode)
-    gain = calculate_gain(nonlinearity, a)
-    std = gain / math.sqrt(fan)
-    k = math.sqrt(3.0) * std
-    return _no_grad_uniform_(tensor, -k, k)
+    init = KaimingUniform(
+        negative_slope=a, nonlinearity=nonlinearity, mode=mode
+    )
+
+    return init(tensor, block=block)
