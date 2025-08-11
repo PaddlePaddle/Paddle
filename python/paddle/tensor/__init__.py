@@ -703,6 +703,7 @@ tensor_method_func = [
     'strided_slice',
     'transpose',
     'transpose_',
+    'permute',
     'cauchy_',
     'geometric_',
     'tan_',

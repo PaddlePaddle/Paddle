@@ -195,12 +195,12 @@ def permute(
     input: Tensor, dims: Sequence[int], name: str | None = None
 ) -> Tensor: ...
 
-
 @overload
-def permute(input: Tensor, *dims: int, name: str | None = None) -> Tensor: ...
+def permute(
+    input: Tensor, *dims: int, name: str | None = None
+) -> Tensor: ...
 
-
-def permute(input: Tensor, *dims: int, name: str | None = None) -> Tensor:
+def permute(input: Tensor, dims=None, *args, name: str | None = None) -> Tensor:
     """
     Permute the dimensions of a tensor.
 
@@ -226,11 +226,13 @@ def permute(input: Tensor, *dims: int, name: str | None = None) -> Tensor:
             >>> print(y.shape)
             [3, 2, 4]
     """
-    if len(dims) == 1 and isinstance(dims[0], (list, tuple)):
-        perm = list(dims[0])
+    if dims is not None and not args:
+        if isinstance(dims, (list, tuple)):
+            perm = dims
+        else:
+            perm = [dims]
     else:
-        perm = list(dims)
-
+        perm = (dims,) + args if dims is not None else args
     return paddle.transpose(x=input, perm=perm, name=name)
 
 

@@ -31,12 +31,13 @@ class TestPermuteApi(unittest.TestCase):
             y1 = paddle.permute(x, [1, 0, 2])
             y2 = paddle.permute(x, (2, 1, 0))
             y3 = paddle.permute(x, 1, 2, 0)
+            y4 = paddle.permute(x, dims=[1, 2, 0])
 
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
             x_np = np.random.random([2, 3, 4]).astype("float32")
-            out1, out2, out3 = exe.run(
-                feed={"x": x_np}, fetch_list=[y1, y2, y3]
+            out1, out2, out3, out4 = exe.run(
+                feed={"x": x_np}, fetch_list=[y1, y2, y3, y4]
             )
 
             expected1 = np.transpose(x_np, [1, 0, 2])
@@ -46,6 +47,7 @@ class TestPermuteApi(unittest.TestCase):
             np.testing.assert_array_equal(out1, expected1)
             np.testing.assert_array_equal(out2, expected2)
             np.testing.assert_array_equal(out3, expected3)
+            np.testing.assert_array_equal(out4, expected3)
 
     def test_dygraph(self):
         paddle.disable_static()
@@ -55,10 +57,12 @@ class TestPermuteApi(unittest.TestCase):
         y1 = paddle.permute(x, [1, 0, 2])
         y2 = paddle.permute(x, (2, 1, 0))
         y3 = paddle.permute(x, 1, 2, 0)
+        y4 = paddle.permute(x, dims=[1, 2, 0])
 
         m1 = x.permute([1, 0, 2])
         m2 = x.permute((2, 1, 0))
         m3 = x.permute(1, 2, 0)
+        m4 = x.permute(dims=[1, 2, 0])
 
         expected1 = np.transpose(x_np, [1, 0, 2])
         expected2 = np.transpose(x_np, (2, 1, 0))
@@ -67,10 +71,12 @@ class TestPermuteApi(unittest.TestCase):
         np.testing.assert_array_equal(y1.numpy(), expected1)
         np.testing.assert_array_equal(y2.numpy(), expected2)
         np.testing.assert_array_equal(y3.numpy(), expected3)
+        np.testing.assert_array_equal(y4.numpy(), expected3)
 
         np.testing.assert_array_equal(m1.numpy(), expected1)
         np.testing.assert_array_equal(m2.numpy(), expected2)
         np.testing.assert_array_equal(m3.numpy(), expected3)
+        np.testing.assert_array_equal(m4.numpy(), expected3)
 
         paddle.enable_static()
 
