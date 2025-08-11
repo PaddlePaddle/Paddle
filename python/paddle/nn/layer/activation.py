@@ -15,7 +15,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from paddle.framework import get_default_dtype
 
@@ -237,7 +237,9 @@ class GELU(Layer):
     """
 
     def __init__(
-        self, approximate: str | bool = False, name: str | None = None
+        self,
+        approximate: Literal["tanh", "none"] | bool = False,
+        name: str | None = None,
     ) -> None:
         super().__init__()
         self._approximate = approximate

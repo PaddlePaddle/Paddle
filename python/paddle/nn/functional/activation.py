@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import paddle
 from paddle import _C_ops, in_dynamic_mode
@@ -150,7 +150,9 @@ def elu_(x: Tensor, alpha: float = 1.0, name: str | None = None) -> Tensor:
 
 
 def gelu(
-    x: Tensor, approximate: str | bool = False, name: str | None = None
+    x: Tensor,
+    approximate: Literal["tanh", "none"] | bool = False,
+    name: str | None = None,
 ) -> Tensor:
     r"""
     gelu activation.
