@@ -253,9 +253,9 @@ if(WITH_XPU_XRE5)
     DOWNLOAD_COMMAND
       bash ${CMAKE_SOURCE_DIR}/tools/xpu/pack_paddle_dependence.sh
       ${XPU_XRE_URL} ${XPU_XRE_DIR_NAME} ${XPU_XHPC_URL} ${XPU_XHPC_DIR_NAME}
-      ${XPU_XCCL_URL} ${XPU_XCCL_DIR_NAME} 1 ${WITH_MKL}
-      "${CMAKE_SOURCE_DIR}/build" && wget ${XPU_XFT_GET_DEPENCE_URL} && bash
-      ${XFT_COMMAND} ${XPU_XFT_URL} ${XPU_XFT_DIR_NAME} && bash
+      ${XPU_XCCL_URL} ${XPU_XCCL_DIR_NAME} 1 ${WITH_MKL} "${CMAKE_BINARY_DIR}"
+      && wget ${XPU_XFT_GET_DEPENCE_URL} && bash ${XFT_COMMAND} ${XPU_XFT_URL}
+      ${XPU_XFT_DIR_NAME} && bash
       ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpti_dependence.sh ${XPU_XPTI_URL}
       ${XPU_XPTI_DIR_NAME} && bash
       ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpufft_dependence.sh ${XPU_FFT_URL}

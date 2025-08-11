@@ -25,7 +25,8 @@ COMMON_DECLARE_bool(check_cuda_error);
 paddle::Tensor dtensor_from_local_ad_function(
     const paddle::Tensor& input,
     const phi::distributed::ProcessMesh& process_mesh,
-    const phi::distributed::Placements& placements) {
+    const phi::distributed::Placements& placements,
+    paddle::optional<paddle::Tensor*> input_out) {
 #ifdef PADDLE_WITH_DISTRIBUTE
   VLOG(3) << "Running AD API: "
           << "dtensor_from_local dygraph";
