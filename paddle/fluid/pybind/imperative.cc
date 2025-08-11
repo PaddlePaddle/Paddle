@@ -737,7 +737,7 @@ void BindImperative(py::module *m_ptr) {
             } else {
               PADDLE_THROW(common::errors::InvalidArgument(
                   "Incompatible Place Type: supports XPUPlace, CUDAPlace, "
-                  "CPUPlace, IPUPlace, XPUPinnedPlace"
+                  "CPUPlace, IPUPlace, XPUPinnedPlace "
                   "and CUDAPinnedPlace, "
                   "but got Unknown Type!"));
             }
