@@ -61,6 +61,8 @@ class TestTensorCreation(unittest.TestCase):
                     requires_grad=requires_grad,
                     device=device,
                 )
+                if isinstance(device, paddle.framework.core.Place):
+                    self.assertEqual(x.place, device)
                 self.assertEqual(x.stop_gradient, not requires_grad)
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
@@ -90,6 +92,8 @@ class TestTensorCreation(unittest.TestCase):
                     requires_grad=requires_grad,
                     device=device,
                 )
+                if isinstance(device, paddle.framework.core.Place):
+                    self.assertEqual(x.place, device)
                 self.assertEqual(x.stop_gradient, not requires_grad)
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
@@ -121,6 +125,8 @@ class TestTensorCreation(unittest.TestCase):
                     requires_grad=requires_grad,
                     device=device,
                 )
+                if isinstance(device, paddle.framework.core.Place):
+                    self.assertEqual(x.place, device)
                 self.assertEqual(x.stop_gradient, not requires_grad)
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
@@ -150,6 +156,8 @@ class TestTensorCreation(unittest.TestCase):
                     requires_grad=requires_grad,
                     device=device,
                 )
+                if isinstance(device, paddle.framework.core.Place):
+                    self.assertEqual(x.place, device)
                 self.assertEqual(x.stop_gradient, not requires_grad)
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
@@ -181,6 +189,8 @@ class TestTensorCreation(unittest.TestCase):
                     requires_grad=requires_grad,
                     device=device,
                 )
+                if isinstance(device, paddle.framework.core.Place):
+                    self.assertEqual(x.place, device)
                 self.assertEqual(x.stop_gradient, not requires_grad)
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
@@ -210,6 +220,8 @@ class TestTensorCreation(unittest.TestCase):
                     requires_grad=requires_grad,
                     device=device,
                 )
+                if isinstance(device, paddle.framework.core.Place):
+                    self.assertEqual(x.place, device)
                 self.assertEqual(x.stop_gradient, not requires_grad)
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
@@ -239,6 +251,8 @@ class TestTensorCreation(unittest.TestCase):
                     requires_grad=requires_grad,
                     device=device,
                 )
+                if isinstance(device, paddle.framework.core.Place):
+                    self.assertEqual(x.place, device)
                 self.assertEqual(x.stop_gradient, not requires_grad)
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
@@ -270,6 +284,8 @@ class TestTensorCreation(unittest.TestCase):
                     requires_grad=requires_grad,
                     device=device,
                 )
+                if isinstance(device, paddle.framework.core.Place):
+                    self.assertEqual(x.place, device)
                 self.assertEqual(x.stop_gradient, not requires_grad)
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
@@ -299,6 +315,8 @@ class TestTensorCreation(unittest.TestCase):
                     requires_grad=requires_grad,
                     device=device,
                 )
+                if isinstance(device, paddle.framework.core.Place):
+                    self.assertEqual(x.place, device)
                 self.assertEqual(x.stop_gradient, not requires_grad)
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
@@ -306,7 +324,7 @@ class TestTensorCreation(unittest.TestCase):
 
 class TestTensorKPatchMethod(unittest.TestCase):
     def setUp(self):
-        self.devices = [paddle.CPUPlace(), "cpu"]
+        self.devices = [None, paddle.CPUPlace(), "cpu"]
         if paddle.device.is_compiled_with_cuda():
             self.devices.append(paddle.CUDAPlace(0))
             self.devices.append("gpu")
@@ -359,6 +377,8 @@ class TestTensorKPatchMethod(unittest.TestCase):
                     requires_grad=requires_grad,
                     device=device,
                 )
+                if isinstance(device, paddle.framework.core.Place):
+                    self.assertEqual(x.place, device)
                 self.assertEqual(x.stop_gradient, not requires_grad)
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
@@ -400,6 +420,8 @@ class TestTensorKPatchMethod(unittest.TestCase):
                     requires_grad=requires_grad,
                     device=device,
                 )
+                if isinstance(device, paddle.framework.core.Place):
+                    self.assertEqual(x.place, device)
                 self.assertEqual(x.stop_gradient, not requires_grad)
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
@@ -450,6 +472,8 @@ class TestTensorKPatchMethod(unittest.TestCase):
                     requires_grad=requires_grad,
                     device=device,
                 )
+                if isinstance(device, paddle.framework.core.Place):
+                    self.assertEqual(x.place, device)
                 self.assertEqual(x.stop_gradient, not requires_grad)
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
@@ -494,6 +518,8 @@ class TestTensorKPatchMethod(unittest.TestCase):
                     requires_grad=requires_grad,
                     device=device,
                 )
+                if isinstance(device, paddle.framework.core.Place):
+                    self.assertEqual(x.place, device)
                 self.assertEqual(x.stop_gradient, not requires_grad)
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
