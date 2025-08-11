@@ -40,7 +40,7 @@ struct AbsMaxAndMinGradFunctor {
     auto mask = (abs_x == y_bc).template cast<T>();
     auto count = mask.sum(dim);
 
-    dx->device(place) = dy->broadcast(dim) * x->sign() * mask / count;
+    dx->device(place) = y_bc * x->sign() * mask / count;
   }
 };
 
