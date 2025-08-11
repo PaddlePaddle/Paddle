@@ -91,11 +91,11 @@ class ParamAliasDecorator(DecoratorBase):
         return args, processed_kwargs
 
 
-class ForbidKeywordsDecorator(DecoratorBase[_P, _R]):
+class ForbidKeywordsDecorator(DecoratorBase):
     """A decorator that hints users to use the correct `compat` functions, when erroneous keyword arguments are detected"""
 
     def __init__(
-        self, illegal_keys: list[str] | str, func_name: str, correct_name: str
+        self, illegal_keys: list[str], func_name: str, correct_name: str
     ) -> None:
         super().__init__()
         self.illegal_keys = (
