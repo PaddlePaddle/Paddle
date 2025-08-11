@@ -1351,6 +1351,16 @@ class TestEagerTensor(unittest.TestCase):
             flag = paddle.tensor.creation._warned_in_to_tensor
             self.assertTrue(flag)
 
+    def test_tensor_for_use_to_tensor(self):
+        # check the warning , when use to_tensor
+        with (
+            dygraph_guard(),
+            warnings.catch_warnings(record=True) as w,
+        ):
+            x = paddle.to_tensor([1, 2, 3])
+            flag = paddle.tensor.creation._warned_in_use_to_tensor
+            self.assertTrue(flag)
+
     def test_dlpack_device(self):
         """test Tensor.__dlpack_device__"""
         with dygraph_guard():
