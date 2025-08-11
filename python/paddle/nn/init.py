@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import paddle
 
+from .initializer.constant import Constant
 from .initializer.initializer import calculate_gain as calculate_gain_
 from .initializer.kaiming import KaimingNormal, KaimingUniform
 from .initializer.normal import Normal, TruncatedNormal
@@ -198,5 +199,55 @@ def trunc_normal_(
         Tensor: Initialized tensor.
     """
     init = TruncatedNormal(mean=mean, std=std, a=a, b=b)
+
+    return init(tensor)
+
+
+def constant_(
+    tensor: paddle.Tensor,
+    val: float,
+) -> paddle.Tensor | None:
+    """Modify tensor inplace using constant method.
+
+    Args:
+        tensor (Tensor):  Paddle Tensor.
+        value (float32|float64, optional): constant value to initialize the parameter.
+
+    Returns:
+        Tensor: Initialized tensor.
+    """
+    init = Constant(value=val)
+
+    return init(tensor)
+
+
+def ones_(
+    tensor: paddle.Tensor,
+) -> paddle.Tensor | None:
+    """Fill the input Tensor with the scalar value 1.
+
+    Args:
+        tensor (Tensor):  Paddle Tensor.
+
+    Returns:
+        Tensor: Initialized tensor.
+    """
+    init = Constant(value=1.0)
+
+    return init(tensor)
+
+
+def zeros_(
+    tensor: paddle.Tensor,
+) -> paddle.Tensor | None:
+    """Fill the input Tensor with the scalar value 0.
+
+    Args:
+        tensor (Tensor):  Paddle Tensor.
+
+    Returns:
+        Tensor: Initialized tensor.
+    """
+    init = Constant(value=0.0)
 
     return init(tensor)
