@@ -303,7 +303,39 @@ class TestTensorCreation(unittest.TestCase):
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
 
-    def test_paddle_range(self):
+    def test_arange(self):
+        for device, requires_grad, dtype in product(
+            self.devices, self.requires_grads, self.dtypes
+        ):
+            x = paddle.arange(
+                3.14,
+                5.9,
+                1.11,
+                dtype=dtype,
+                requires_grad=requires_grad,
+                device=device,
+            )
+            if isinstance(device, paddle.framework.core.Place):
+                self.assertEqual(x.place, device)
+            self.assertEqual(x.stop_gradient, not requires_grad)
+            if isinstance(dtype, paddle.dtype):
+                self.assertEqual(x.dtype, dtype)
+            st_f = paddle.jit.to_static(
+                paddle.arange, full_graph=True, backend=None
+            )
+            x = st_f(
+                3.14,
+                5.9,
+                1.11,
+                dtype=dtype,
+                requires_grad=requires_grad,
+                device=device,
+            )
+            self.assertEqual(x.stop_gradient, not requires_grad)
+            if isinstance(dtype, paddle.dtype):
+                self.assertEqual(x.dtype, dtype)
+
+    def test_range(self):
         def range_manual(start, end, step, dtype, device, requires_grad):
             if end is None:
                 end = start
