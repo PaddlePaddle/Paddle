@@ -142,10 +142,10 @@ class TestLayerNormOp(unittest.TestCase):
         has_scale=True,
         has_bias=True,
         y_grad_scale=1.0,
-        use_mkldnn=False,
+        use_onednn=False,
     ):
         def test_with_place(
-            place, shape, begin_norm_axis, use_mkldnn=use_mkldnn
+            place, shape, begin_norm_axis, use_onednn=use_onednn
         ):
             # attr
             epsilon = 0.00001
@@ -221,7 +221,7 @@ class TestLayerNormOp(unittest.TestCase):
                     attrs={
                         "epsilon": epsilon,
                         "begin_norm_axis": begin_norm_axis,
-                        "use_mkldnn": use_mkldnn,
+                        "use_onednn": use_onednn,
                     },
                 )
                 # generate backward op_desc

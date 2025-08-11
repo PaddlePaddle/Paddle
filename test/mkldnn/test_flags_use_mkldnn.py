@@ -22,7 +22,7 @@ import unittest
 class TestFlagsUseOnednn(unittest.TestCase):
     def setUp(self):
         self._python_interp = sys.executable
-        self._python_interp += " check_flags_use_mkldnn.py"
+        self._python_interp += " check_flags_use_onednn.py"
 
         self.env = os.environ.copy()
         self.env["GLOG_v"] = "1"
