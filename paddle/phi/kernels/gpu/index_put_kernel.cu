@@ -23,6 +23,7 @@
 #include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
 #include "paddle/phi/kernels/funcs/index_put_utils.h"
 #include "paddle/phi/kernels/funcs/stride_utils.h"
+#include "paddle/phi/kernels/funcs/strided_utils.h"
 #include "paddle/phi/kernels/index_elementwise_put_kernel.h"
 
 COMMON_DECLARE_bool(use_stride_kernel);
@@ -313,7 +314,11 @@ void IndexPutKernel_V2(const Context& dev_ctx,
   bool is_initialized = out->initialized();
   T* out_data = dev_ctx.template Alloc<T>(out);
   if (!is_initialized) {
-    funcs::Stride_Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    StridedTensorCopy<T>(x,
+                         common::vectorize<int64_t>(x.dims()),
+                         common::vectorize<int64_t>(x.strides()),
+                         x.offset(),
+                         out);
   }
 
   const char* in_ptr = reinterpret_cast<const char*>(val_data);
