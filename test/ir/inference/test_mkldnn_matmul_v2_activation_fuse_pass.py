@@ -144,7 +144,7 @@ class TestMatmulv2ActivationOnednnFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(
-            use_mkldnn=True,
+            use_onednn=True,
             passes=[
                 'matmul_activation_onednn_fuse_pass',
                 'operator_scale_onednn_fuse_pass',

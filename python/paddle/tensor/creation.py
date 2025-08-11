@@ -24,6 +24,7 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
+from paddle.utils.decorator_utils import ParamAliasDecorator, SizeArgsDecorator
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
@@ -876,6 +877,7 @@ def _to_tensor_static(
     return output
 
 
+@ParamAliasDecorator({"place": ["device"]})
 def to_tensor(
     data: TensorLike | NestedNumericSequence,
     dtype: DTypeLike | None = None,
@@ -888,6 +890,10 @@ def to_tensor(
 
     If the ``data`` is already a Tensor, copy will be performed and return a new tensor.
     If you only want to change stop_gradient property, please call ``Tensor.stop_gradient = stop_gradient`` directly.
+
+    .. note::
+    Alias Support: The parameter name ``device`` can be used as an alias for ``place``.
+    For example, ``device=paddle.CUDAPlace(0)`` is equivalent to ``place=paddle.CUDAPlace(0)``.
 
     .. code-block:: text
 
@@ -911,6 +917,7 @@ def to_tensor(
         place(CPUPlace|CUDAPinnedPlace|CUDAPlace|str, optional): The place to allocate Tensor. Can be
             CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place. If ``place`` is
             string, It can be ``cpu``, ``gpu:x`` and ``gpu_pinned``, where ``x`` is the index of the GPUs.
+        device: An alias for ``place`` , with identical behavior.
         stop_gradient(bool, optional): Whether to block the gradient propagation of Autograd. Default: True.
 
     Returns:
@@ -1234,6 +1241,7 @@ def fill_constant(
         return out
 
 
+@SizeArgsDecorator()
 def ones(
     shape: ShapeLike, dtype: DTypeLike | None = None, name: str | None = None
 ) -> paddle.Tensor:
@@ -3025,7 +3033,7 @@ def _memcpy(input, place=None, output=None) -> paddle.Tensor:
 
 
 def complex(
-    real: paddle.Tensor, imag: paddle.Tensor, name: str | None = None
+    real: paddle.Tensor, imag: paddle.Tensor, out=None, name: str | None = None
 ) -> paddle.Tensor:
     """Return a complex tensor given the real and image component.
 
@@ -3033,6 +3041,7 @@ def complex(
         real (Tensor): The real component. The data type should be 'float32' or 'float64'.
         imag (Tensor): The image component. The data type should be the same as ``real``.
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor, The output tensor. The data type is 'complex64' or 'complex128', with the same precision as ``real`` and ``imag``.
@@ -3055,7 +3064,7 @@ def complex(
              [(1+0j), (1+1j), (1+2j)]])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.complex(real, imag)
+        return _C_ops.complex(real, imag, out=out)
     else:
         check_variable_and_dtype(
             real, 'real', ['float32', 'float64'], 'complex'

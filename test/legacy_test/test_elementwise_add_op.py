@@ -47,7 +47,7 @@ class TestElementwiseAddOp(OpTest):
             'X': OpTest.np_dtype_to_base_dtype(self.x),
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_onednn}
+        self.attrs = {'axis': self.axis, 'use_onednn': self.use_onednn}
         self.outputs = {'Out': self.out}
 
     def check_dygraph(self):
@@ -244,7 +244,7 @@ class TestBF16ElementwiseAddOp(OpTest):
             'X': OpTest.np_dtype_to_base_dtype(convert_float_to_uint16(self.x)),
             'Y': OpTest.np_dtype_to_base_dtype(convert_float_to_uint16(self.y)),
         }
-        self.attrs = {'axis': self.axis, 'use_mkldnn': False}
+        self.attrs = {'axis': self.axis, 'use_onednn': False}
         self.outputs = {'Out': convert_float_to_uint16(self.out)}
         self.if_enable_cinn()
 
@@ -827,7 +827,7 @@ class TestComplexElementwiseAddOp(OpTest):
             'X': OpTest.np_dtype_to_base_dtype(self.x),
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
-        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.attrs = {'axis': -1, 'use_onednn': False}
         self.outputs = {'Out': self.out}
 
     def init_base_dtype(self):
@@ -968,7 +968,7 @@ class TestTensorAddAPIWarnings(unittest.TestCase):
                 type="elementwise_add",
                 inputs={'X': data, 'Y': data},
                 outputs={'Out': out},
-                attrs={'axis': 1, 'use_mkldnn': False},
+                attrs={'axis': 1, 'use_onednn': False},
             )
             self.assertTrue(
                 "op elementwise_add's attr axis = 1 is not the default value: -1"
@@ -1042,7 +1042,7 @@ class TestElementwiseAddOpAutoParallel(OpTest):
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
 
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_onednn}
+        self.attrs = {'axis': self.axis, 'use_onednn': self.use_onednn}
         self.outputs = {'Out': self.out}
 
     def check_dygraph(self):

@@ -27,7 +27,7 @@ class TestConcatOp(OpTest):
         self.init_shape()
         self.init_test_data()
         self.inputs = {'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)]}
-        self.attrs = {'axis': self.axis, 'use_mkldnn': True}
+        self.attrs = {'axis': self.axis, 'use_onednn': True}
 
         self.output = np.concatenate(
             (self.x0, self.x1, self.x2), axis=self.axis

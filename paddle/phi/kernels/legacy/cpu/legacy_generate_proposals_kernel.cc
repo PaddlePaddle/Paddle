@@ -28,7 +28,7 @@ namespace phi {
 
 template <typename T>
 std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
-    const phi::CPUContext &ctx,
+    const phi::CPUContext &dev_ctx,
     const phi::DenseTensor &im_info_slice,
     const phi::DenseTensor &anchors,
     const phi::DenseTensor &variances,
@@ -44,7 +44,7 @@ std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
   // Sort index
   phi::DenseTensor index_t;
   index_t.Resize({scores_slice.numel()});
-  int *index = ctx.Alloc<int>(&index_t);
+  int *index = dev_ctx.Alloc<int>(&index_t);
   for (int i = 0; i < scores_slice.numel(); ++i) {
     index[i] = i;
   }
@@ -65,53 +65,54 @@ std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
   bbox_sel.Resize({index_t.numel(), 4});
   anchor_sel.Resize({index_t.numel(), 4});
   var_sel.Resize({index_t.numel(), 4});
-  ctx.Alloc<T>(&scores_sel);
-  ctx.Alloc<T>(&bbox_sel);
-  ctx.Alloc<T>(&anchor_sel);
-  ctx.Alloc<T>(&var_sel);
+  dev_ctx.Alloc<T>(&scores_sel);
+  dev_ctx.Alloc<T>(&bbox_sel);
+  dev_ctx.Alloc<T>(&anchor_sel);
+  dev_ctx.Alloc<T>(&var_sel);
 
-  phi::funcs::CPUGather<T>(ctx, scores_slice, index_t, &scores_sel);
-  phi::funcs::CPUGather<T>(ctx, bbox_deltas_slice, index_t, &bbox_sel);
-  phi::funcs::CPUGather<T>(ctx, anchors, index_t, &anchor_sel);
-  phi::funcs::CPUGather<T>(ctx, variances, index_t, &var_sel);
+  phi::funcs::CPUGather<T>(dev_ctx, scores_slice, index_t, &scores_sel);
+  phi::funcs::CPUGather<T>(dev_ctx, bbox_deltas_slice, index_t, &bbox_sel);
+  phi::funcs::CPUGather<T>(dev_ctx, anchors, index_t, &anchor_sel);
+  phi::funcs::CPUGather<T>(dev_ctx, variances, index_t, &var_sel);
 
   phi::DenseTensor proposals;
   proposals.Resize({index_t.numel(), 4});
-  ctx.Alloc<T>(&proposals);
-  phi::funcs::BoxCoder<T>(ctx, &anchor_sel, &bbox_sel, &var_sel, &proposals);
+  dev_ctx.Alloc<T>(&proposals);
+  phi::funcs::BoxCoder<T>(
+      dev_ctx, &anchor_sel, &bbox_sel, &var_sel, &proposals);
 
   phi::funcs::ClipTiledBoxes<T>(
-      ctx, im_info_slice, proposals, &proposals, false);
+      dev_ctx, im_info_slice, proposals, &proposals, false);
 
   phi::DenseTensor keep;
   phi::funcs::FilterBoxes<T>(
-      ctx, &proposals, min_size, im_info_slice, true, &keep);
+      dev_ctx, &proposals, min_size, im_info_slice, true, &keep);
   // Handle the case when there is no keep index left
   if (keep.numel() == 0) {
     phi::funcs::SetConstant<phi::CPUContext, T> set_zero;
     bbox_sel.Resize({1, 4});
-    ctx.Alloc<T>(&bbox_sel);
-    set_zero(ctx, &bbox_sel, static_cast<T>(0));
+    dev_ctx.Alloc<T>(&bbox_sel);
+    set_zero(dev_ctx, &bbox_sel, static_cast<T>(0));
     phi::DenseTensor scores_filter;
     scores_filter.Resize({1, 1});
-    ctx.Alloc<T>(&scores_filter);
-    set_zero(ctx, &scores_filter, static_cast<T>(0));
+    dev_ctx.Alloc<T>(&scores_filter);
+    set_zero(dev_ctx, &scores_filter, static_cast<T>(0));
     return std::make_pair(bbox_sel, scores_filter);
   }
 
   phi::DenseTensor scores_filter;
   bbox_sel.Resize({keep.numel(), 4});
   scores_filter.Resize({keep.numel(), 1});
-  ctx.Alloc<T>(&bbox_sel);
-  ctx.Alloc<T>(&scores_filter);
-  phi::funcs::CPUGather<T>(ctx, proposals, keep, &bbox_sel);
-  phi::funcs::CPUGather<T>(ctx, scores_sel, keep, &scores_filter);
+  dev_ctx.Alloc<T>(&bbox_sel);
+  dev_ctx.Alloc<T>(&scores_filter);
+  phi::funcs::CPUGather<T>(dev_ctx, proposals, keep, &bbox_sel);
+  phi::funcs::CPUGather<T>(dev_ctx, scores_sel, keep, &scores_filter);
   if (nms_thresh <= 0) {
     return std::make_pair(bbox_sel, scores_filter);
   }
 
   phi::DenseTensor keep_nms =
-      phi::funcs::NMS<T>(ctx, &bbox_sel, &scores_filter, nms_thresh, eta);
+      phi::funcs::NMS<T>(dev_ctx, &bbox_sel, &scores_filter, nms_thresh, eta);
 
   if (post_nms_top_n > 0 && post_nms_top_n < keep_nms.numel()) {
     keep_nms.Resize({post_nms_top_n});
@@ -119,10 +120,10 @@ std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
 
   proposals.Resize({keep_nms.numel(), 4});
   scores_sel.Resize({keep_nms.numel(), 1});
-  ctx.Alloc<T>(&proposals);
-  ctx.Alloc<T>(&scores_sel);
-  phi::funcs::CPUGather<T>(ctx, bbox_sel, keep_nms, &proposals);
-  phi::funcs::CPUGather<T>(ctx, scores_filter, keep_nms, &scores_sel);
+  dev_ctx.Alloc<T>(&proposals);
+  dev_ctx.Alloc<T>(&scores_sel);
+  phi::funcs::CPUGather<T>(dev_ctx, bbox_sel, keep_nms, &proposals);
+  phi::funcs::CPUGather<T>(dev_ctx, scores_filter, keep_nms, &scores_sel);
 
   return std::make_pair(proposals, scores_sel);
 }
