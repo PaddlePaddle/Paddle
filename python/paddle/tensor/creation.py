@@ -24,7 +24,7 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
-from paddle.utils.decorator_utils import ParamAliasDecorator
+from paddle.utils.decorator_utils import ParamAliasDecorator, SizeArgsDecorator
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
@@ -1241,6 +1241,7 @@ def fill_constant(
         return out
 
 
+@SizeArgsDecorator()
 def ones(
     shape: ShapeLike, dtype: DTypeLike | None = None, name: str | None = None
 ) -> paddle.Tensor:

@@ -91,30 +91,27 @@ class ParamAliasDecorator(DecoratorBase):
         return args, processed_kwargs
 
 
-class ForbidKeywordsDecorator(DecoratorBase):
-    """A decorator that hints users to use the correct `compat` functions, when erroneous keyword arguments are detected"""
+# *size => shape decorator
+class SizeArgsDecorator(DecoratorBase):
+    """
+    Usage Example:
 
-    def __init__(
-        self, illegal_keys: list[str], func_name: str, correct_name: str
-    ) -> None:
-        super().__init__()
-        self.illegal_keys = (
-            [illegal_keys] if isinstance(illegal_keys, str) else illegal_keys
-        )
-        self.func_name = func_name
-        self.correct_name = correct_name
+    paddle.ones(1, dtype=paddle.float32)
+    paddle.ones(1, 2, 3, dtype=paddle.float32)
+    paddle.ones([1, 2, 3], dtype=paddle.float32)
+    paddle.ones(size=[1, 2, 3], dtype=paddle.float32)
+
+    paddle.ones([1, 2, 3], paddle.float32)
+    paddle.ones(shape=[1, 2, 3], dtype=paddle.float32)
+    """
 
     def process(
         self, args: tuple[Any, ...], kwargs: dict[str, Any]
     ) -> tuple[tuple[Any, ...], dict[str, Any]]:
-        found_keys = [key for key in self.illegal_keys if key in kwargs]
+        if 'size' in kwargs:
+            kwargs['shape'] = kwargs.pop('size')
+        elif len(args) >= 1 and isinstance(args[0], int):
+            kwargs['shape'] = list(args)
+            args = ()
 
-        if found_keys:
-            keys_str = ", ".join(f"'{key}'" for key in found_keys)
-            plural = "s" if len(found_keys) > 1 else ""
-
-            raise TypeError(
-                f"{self.func_name}() received unexpected keyword argument{plural} {keys_str}. "
-                f"\nDid you mean to use {self.correct_name}() instead?"
-            )
         return args, kwargs
