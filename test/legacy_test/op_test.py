@@ -633,8 +633,10 @@ class OpTest(unittest.TestCase):
     def is_onednn_op(self):
         return (hasattr(self, "use_onednn") and self.use_onednn) or (
             hasattr(self, "attrs")
-            and "use_mkldnn" in self.attrs
-            and self.attrs["use_mkldnn"]
+            and (
+                ("use_mkldnn" in self.attrs and self.attrs["use_mkldnn"])
+                or ("use_onednn" in self.attrs and self.attrs["use_onednn"])
+            )
         )
 
     def is_xpu_op(self):
@@ -2198,7 +2200,10 @@ class OpTest(unittest.TestCase):
                 attrs_use_mkldnn = hasattr(self, 'attrs') and bool(
                     self.attrs.get('use_mkldnn', False)
                 )
-                if flags_use_onednn or attrs_use_mkldnn:
+                attrs_use_onednn = hasattr(self, 'attrs') and bool(
+                    self.attrs.get('use_onednn', False)
+                )
+                if flags_use_onednn or attrs_use_mkldnn or attrs_use_onednn:
                     warnings.warn(
                         "check inplace_grad for ops using mkldnn is not supported"
                     )
@@ -3441,9 +3446,13 @@ class OpTest(unittest.TestCase):
             cache_list = self.cache_name_list
 
         # oneDNN numeric gradient should use CPU kernel
-        use_onednn = False
+        use_mkldnn = False
         if op_attrs.get("use_mkldnn"):
             op_attrs["use_mkldnn"] = False
+            use_mkldnn = True
+        use_onednn = False
+        if op_attrs.get("use_onednn"):
+            op_attrs["use_onednn"] = False
             use_onednn = True
         if hasattr(self, "attrs"):
             for k, v in self.attrs.items():
@@ -3459,8 +3468,10 @@ class OpTest(unittest.TestCase):
             cache_list=cache_list,
         )
 
-        if use_onednn:
+        if use_mkldnn:
             op_attrs["use_mkldnn"] = True
+        if use_onednn:
+            op_attrs["use_onednn"] = True
 
         if no_grad_set is None:
             no_grad_set = set()
