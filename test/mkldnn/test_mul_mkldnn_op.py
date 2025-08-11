@@ -25,7 +25,7 @@ from paddle.base import core
 class TestMulOneDNNOp(OpTest):
     def setUp(self):
         self.op_type = "mul"
-        self.attrs = {'use_mkldnn': True}
+        self.attrs = {'use_onednn': True}
         self.init_shapes_and_attrs()
 
         self.x_fp32 = np.random.random(self.x_shape).astype(np.float32)

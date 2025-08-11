@@ -35,7 +35,7 @@ class TestONEDNNMulOpS8S8(OpTest):
         self.init_data_type()
         self.init_data()
         self.attrs = {
-            "use_mkldnn": self.use_onednn,
+            "use_onednn": self.use_onednn,
             "scale_x": self.scale_x,
             "scale_y": self.scale_y,
             "scale_out": self.scale_out,
@@ -106,7 +106,7 @@ class TestONEDNNMulOpS8S8WithFlatten(TestONEDNNMulOpS8S8):
         self.init_data_type()
         self.init_data()
         self.attrs = {
-            "use_mkldnn": self.use_onednn,
+            "use_onednn": self.use_onednn,
             "scale_x": self.scale_x,
             "scale_y": self.scale_y,
             "scale_out": self.scale_out,
