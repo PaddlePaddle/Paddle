@@ -270,6 +270,7 @@ class TestPowerAPI_Alias(unittest.TestCase):
             for alias_param_2 in ["y", "exponent"]:
                 for place in self.places:
                     paddle.set_device(place)
+                    paddle.disable_static(place)
                     for input_data, exp_data in self.test_cases:
                         input_tensor = paddle.to_tensor(input_data)
                         exp_tensor = paddle.to_tensor(exp_data)
@@ -289,6 +290,7 @@ class TestPowerAPI_Alias(unittest.TestCase):
         for alias_param_2 in ["y", "exponent"]:
             for place in self.places:
                 paddle.set_device(place)
+                paddle.disable_static(place)
                 for input_data, exp_data in self.test_cases:
                     input_tensor = paddle.to_tensor(input_data)
                     exp_tensor = paddle.to_tensor(exp_data)
