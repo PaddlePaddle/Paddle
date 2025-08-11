@@ -6285,6 +6285,7 @@ def as_real(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
+@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
 def repeat_interleave(
     x: Tensor,
     repeats: int | Tensor,

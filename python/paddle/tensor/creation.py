@@ -1292,6 +1292,7 @@ def ones(
     return fill_constant(value=1.0, shape=shape, dtype=dtype, name=name)
 
 
+@ParamAliasDecorator({"x": ["input"]})
 def ones_like(
     x: paddle.Tensor, dtype: DTypeLike | None = None, name: str | None = None
 ) -> paddle.Tensor:
