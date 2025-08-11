@@ -18,7 +18,13 @@ import warnings
 from contextlib import contextmanager
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_places
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 from scipy.special import erf, expit
 from utils import static_guard
 
@@ -492,7 +498,8 @@ class TestSigmoid_ZeroDim(TestSigmoid):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or core.is_compiled_with_rocm(),
     "core is not compiled with CUDA",
 )
 class TestSigmoidBF16(OpTest):
@@ -637,11 +644,7 @@ class TestSiluAPI(unittest.TestCase):
     # test paddle.nn.Silu, paddle.nn.functional.silu
     def setUp(self):
         self.x_np = np.random.uniform(-1, 1, [11, 17]).astype('float32')
-        self.place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_static_api(self):
         with static_guard():
@@ -739,11 +742,7 @@ class TestLogSigmoidAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [11, 17]).astype('float32')
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_static_api(self):
         with static_guard():
@@ -883,11 +882,7 @@ class TestTanhAPI(unittest.TestCase):
         self.dtype = 'float32'
         np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
         self.executed_api()
 
     def executed_api(self):
@@ -1328,11 +1323,7 @@ class TestTanhshrinkAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(1024)
         self.x_np = np.random.uniform(10, 20, [10, 17]).astype(np.float64)
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_static_api(self):
         with static_guard():
@@ -1441,11 +1432,7 @@ class TestHardShrinkAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float32')
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_static_api(self):
         with static_guard():
@@ -1510,11 +1497,7 @@ class TestHardtanhAPI(unittest.TestCase):
         np.random.seed(1024)
         self.init_shape()
         self.x_np = np.random.uniform(-3, 3, self.x_shape).astype('float32')
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def init_shape(self):
         self.x_shape = [10, 12]
@@ -1620,11 +1603,7 @@ class TestSoftshrinkAPI(unittest.TestCase):
         self.threshold = 0.8
         np.random.seed(1024)
         self.x_np = np.random.uniform(0.25, 10, [10, 12]).astype(np.float64)
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_static_api(self):
         with static_guard():
@@ -1788,7 +1767,8 @@ class TestSqrt_Complex128(TestSqrt):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or core.is_compiled_with_rocm(),
     "core is not compiled with CUDA",
 )
 class TestSqrtBF16(OpTest):
@@ -2060,7 +2040,7 @@ class TestCeil(TestActivation):
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
         self.convert_input_output()
-        if not core.is_compiled_with_cuda():
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
             self.__class__.no_need_check_grad = True
 
     def init_shape(self):
@@ -2114,7 +2094,7 @@ class TestFloor(TestActivation):
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
         self.convert_input_output()
-        if not core.is_compiled_with_cuda():
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
             self.__class__.no_need_check_grad = True
 
     def init_shape(self):
@@ -2247,11 +2227,7 @@ class TestTan(TestActivation):
                 np.random.uniform(-1, 1, self.shape)
                 + 1j * np.random.uniform(-1, 1, self.shape)
             ).astype(self.dtype)
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
         out = np.tan(self.x_np)
 
@@ -2302,11 +2278,7 @@ class TestTanAPI(unittest.TestCase):
         np.random.seed(1024)
         self.dtype = 'float32'
         self.x_np = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_dygraph_api(self):
         with dynamic_guard():
@@ -2852,11 +2824,7 @@ class TestReluAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float32')
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
         self.executed_api()
 
     def executed_api(self):
@@ -2996,11 +2964,7 @@ class TestLeakyReluAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float32')
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_static_api(self):
         with static_guard():
@@ -3176,11 +3140,7 @@ class TestGELUAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [11, 17]).astype('float32')
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
         self.enable_cinn = False
 
         # The backward decomposite of gelu is inconsistent with raw kernel on
@@ -3335,11 +3295,7 @@ class TestRelu6API(unittest.TestCase):
         np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 10, [10, 12]).astype(np.float64)
         self.x_np[np.abs(self.x_np) < 0.005] = 0.02
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_static_api(self):
         with static_guard():
@@ -3524,11 +3480,7 @@ class TestHardswishAPI(unittest.TestCase):
     # test paddle.nn.Hardswish, paddle.nn.functional.hardswish
     def setUp(self):
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(np.float64)
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_static_api(self):
         with static_guard():
@@ -3691,11 +3643,7 @@ class TestELUAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(1024)
         self.x_np = np.random.uniform(-3, 3, [10, 12]).astype('float32')
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
         self.executed_api()
 
     def executed_api(self):
@@ -3806,11 +3754,7 @@ class TestCELUAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(1024)
         self.x_np = np.random.uniform(-3, 3, [10, 12]).astype('float32')
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
         self.executed_api()
 
     def executed_api(self):
@@ -4622,7 +4566,8 @@ class TestSquare_ZeroDim(TestSquare):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or core.is_compiled_with_rocm(),
     "core is not compiled with CUDA",
 )
 class TestSquareBF16(OpTest):
@@ -4841,11 +4786,7 @@ class TestSTanhAPI(unittest.TestCase):
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float32')
         self.scale_a = self.get_scale_a()
         self.scale_b = self.get_scale_b()
-        self.place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_static_api(self):
         with static_guard():
@@ -4980,7 +4921,8 @@ class TestSoftplus_ZeroDim(TestSoftplus):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or core.is_compiled_with_rocm(),
     "core is not compiled with CUDA",
 )
 class TestSoftplusBF16(OpTest):
@@ -5025,11 +4967,7 @@ class TestSoftplusAPI(unittest.TestCase):
         self.threshold = 15
         np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(np.float64)
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_static_api(self):
         with static_guard():
@@ -5160,11 +5098,7 @@ class TestSoftsignAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(np.float64)
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_static_api(self):
         with static_guard():
@@ -5265,11 +5199,7 @@ class TestThresholdedReluAPI(unittest.TestCase):
         np.random.seed(1024)
         self.x_np = np.random.uniform(-20, 20, [10, 12]).astype(np.float64)
         self.x_np[np.abs(self.x_np) < 0.005] = 0.02
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_static_api(self):
         with static_guard():
@@ -5397,11 +5327,7 @@ class TestHardsigmoidAPI(unittest.TestCase):
     # test paddle.nn.Hardsigmoid, paddle.nn.functional.hardsigmoid
     def setUp(self):
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(np.float64)
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_static_api(self):
         with static_guard():
@@ -5508,11 +5434,7 @@ class TestSwishAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(np.float64)
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_static_api(self):
         with static_guard():
@@ -5619,11 +5541,7 @@ class TestMishAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(np.float64)
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_static_api(self):
         with static_guard():
@@ -5682,7 +5600,8 @@ class TestMishAPI(unittest.TestCase):
 # ------------------ Test Cudnn Activation----------------------
 def create_test_act_cudnn_class(parent, atol=1e-3, grad_atol=1e-3):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestActCudnn(parent):
         def init_kernel_type(self):

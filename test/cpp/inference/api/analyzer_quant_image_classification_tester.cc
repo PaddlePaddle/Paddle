@@ -127,7 +127,7 @@ TEST(Analyzer_quant_image_classification, quantization) {
 
   AnalysisConfig int8_cfg;
   SetConfig(&int8_cfg, FLAGS_int8_model);
-  if (FLAGS_enable_int8_qat) int8_cfg.EnableMkldnnInt8();
+  if (FLAGS_enable_int8_qat) int8_cfg.EnableOnednnInt8();
 
   // read data from file and prepare batches with test data
   std::vector<std::vector<PaddleTensor>> input_slots_all;

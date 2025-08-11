@@ -2421,16 +2421,17 @@ void FusedMultiTransformerInt8InferMeta(
 }
 
 void FusedTransposeSplitQuantInferMeta(const MetaTensor& x,
+                                       const MetaTensor& input_scales,
                                        const IntArray& tokens_per_expert,
                                        bool pow_2_scales,
                                        std::vector<MetaTensor*> outs,
                                        std::vector<MetaTensor*> scales) {
   PADDLE_ENFORCE_EQ(
-      x.dtype(),
-      DataType::BFLOAT16,
-      common::errors::InvalidArgument(
-          "The dtype of Input(x) must be BFLOAT16, but received %s",
-          x.dtype()));
+      x.dtype() == DataType::BFLOAT16 || x.dtype() == DataType::FLOAT8_E4M3FN,
+      true,
+      common::errors::InvalidArgument("The dtype of Input(x) must be BFLOAT16 "
+                                      "or FLOAT8_E4M3FN, but received %s",
+                                      x.dtype()));
 
   auto x_dims = x.dims();
 
@@ -4800,7 +4801,7 @@ void MultiGruInferMeta(
     const std::string& gate_activation,
     int layers,
     bool origin_mode,
-    const std::string& mkldnn_data_type,
+    const std::string& onednn_data_type,
     float scale_data,
     float shift_data,
     bool force_fp32_output,

@@ -17,12 +17,12 @@ from functools import partial
 
 import hypothesis.strategies as st
 import numpy as np
-from auto_scan_test import MkldnnAutoScanTest
+from auto_scan_test import OnednnAutoScanTest
 from hypothesis import given
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
-class TestMKLDNNShuffleChannelOp(MkldnnAutoScanTest):
+class TestMKLDNNShuffleChannelOp(OnednnAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -51,7 +51,7 @@ class TestMKLDNNShuffleChannelOp(MkldnnAutoScanTest):
         yield program_config
 
     def sample_predictor_configs(self, program_config):
-        config = self.create_inference_config(use_mkldnn=True)
+        config = self.create_inference_config(use_onednn=True)
         yield config, (1e-5, 1e-5)
 
     @given(

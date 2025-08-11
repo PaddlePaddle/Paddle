@@ -19,11 +19,11 @@ namespace inference {
 namespace analysis {
 namespace transformer_tester {
 
-void profile(bool use_mkldnn = false) {
+void profile(bool use_onednn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
   std::vector<std::vector<PaddleTensor>> outputs;
-  if (use_mkldnn) {
+  if (use_onednn) {
     cfg.EnableONEDNN();
   }
 
@@ -37,7 +37,7 @@ void profile(bool use_mkldnn = false) {
 
 TEST(Analyzer_Transformer, profile) { profile(); }
 #ifdef PADDLE_WITH_DNNL
-TEST(Analyzer_Transformer, profile_mkldnn) { profile(true); }
+TEST(Analyzer_Transformer, profile_onednn) { profile(true); }
 #endif
 
 }  // namespace transformer_tester

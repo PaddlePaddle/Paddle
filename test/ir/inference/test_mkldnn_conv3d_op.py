@@ -17,12 +17,12 @@ from functools import partial
 
 import hypothesis.strategies as st
 import numpy as np
-from auto_scan_test import MkldnnAutoScanTest, PirMkldnnAutoScanTest
+from auto_scan_test import OnednnAutoScanTest, PirOnednnAutoScanTest
 from hypothesis import given
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
-class TestMkldnnConv3dOp(MkldnnAutoScanTest):
+class TestMkldnnConv3dOp(OnednnAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -75,7 +75,7 @@ class TestMkldnnConv3dOp(MkldnnAutoScanTest):
         yield program_config
 
     def sample_predictor_configs(self, program_config):
-        config = self.create_inference_config(use_mkldnn=True)
+        config = self.create_inference_config(use_onednn=True)
         yield config, (1e-5, 1e-5)
 
     @given(
@@ -91,7 +91,7 @@ class TestMkldnnConv3dOp(MkldnnAutoScanTest):
         self.run_test(*args, **kwargs)
 
 
-class TestPirOneDNNPad3DOp(PirMkldnnAutoScanTest):
+class TestPirOneDNNPad3DOp(PirOnednnAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -145,7 +145,7 @@ class TestPirOneDNNPad3DOp(PirMkldnnAutoScanTest):
         yield program_config
 
     def sample_predictor_configs(self, program_config):
-        config = self.create_inference_config(use_mkldnn=True)
+        config = self.create_inference_config(use_onednn=True)
         yield config, (1e-5, 1e-5)
 
     @given(

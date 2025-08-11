@@ -309,6 +309,12 @@ if [ "${ALL_PADDLE_ENFORCE}" != "" ] && [ "${PR_ID}" != "" ]; then
     check_approval 1 luotao1 zhangbo9674 phlrain
 fi
 
+CHINESE_CHECK=$(git diff -U0 upstream/$BRANCH |grep "^+" |grep -P '[\p{Han}]')
+if [ "${CHINESE_CHECK}" != "" ] && [ "${PR_ID}" != "" ]; then
+	echo_line="Not recommended to use Chinese. You must have one RD (tianshuo78520a or swgu98 or zhangbo9674 or risemeup1) approval."
+    check_approval 1 tianshuo78520a swgu98 zhangbo9674 risemeup1
+fi
+
 ALL_ADDED_LINES=$(git diff -U0 upstream/$BRANCH |grep "^+" || true)
 ALL_PADDLE_CHECK=$(echo $ALL_ADDED_LINES |grep -zoE "(PADDLE_ENFORCE[A-Z_]{0,9}|PADDLE_THROW)\(.[^,\);]*.[^;]*\);\s" || true)
 VALID_PADDLE_CHECK=$(echo "$ALL_PADDLE_CHECK" | grep -zoE '(PADDLE_ENFORCE[A-Z_]{0,9}|PADDLE_THROW)\(([^,;]+,)*[^";]*errors::.[^"]*".[^";]{20,}.[^;]*\);\s' || true)

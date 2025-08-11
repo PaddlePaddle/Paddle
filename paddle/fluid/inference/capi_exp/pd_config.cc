@@ -384,8 +384,12 @@ void PD_ConfigSetOnednnCacheCapacity(__pd_keep PD_Config* pd_config,
   config->SetOnednnCacheCapacity(capacity);
 }
 PD_Bool PD_ConfigMkldnnEnabled(__pd_keep PD_Config* pd_config) {
+  LOG(WARNING) << ONEDNN_UPDATE_WARNING(PD_ConfigOnednnEnabled);
+  return PD_ConfigOnednnEnabled(pd_config);
+}
+PD_Bool PD_ConfigOnednnEnabled(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  return config->mkldnn_enabled();  // NOLINT
+  return config->onednn_enabled();  // NOLINT
 }
 void PD_ConfigSetCpuMathLibraryNumThreads(
     __pd_keep PD_Config* pd_config, int32_t cpu_math_library_num_threads) {
@@ -400,6 +404,12 @@ int32_t PD_ConfigGetCpuMathLibraryNumThreads(__pd_keep PD_Config* pd_config) {
 void PD_ConfigSetMkldnnOp(__pd_keep PD_Config* pd_config,
                           size_t ops_num,
                           const char** op_list) {
+  LOG(WARNING) << ONEDNN_UPDATE_WARNING(PD_ConfigSetOnednnOp);
+  PD_ConfigSetOnednnOp(pd_config, ops_num, op_list);
+}
+void PD_ConfigSetOnednnOp(__pd_keep PD_Config* pd_config,
+                          size_t ops_num,
+                          const char** op_list) {
   CHECK_AND_CONVERT_PD_CONFIG;
   std::unordered_set<std::string> op_names;
   for (size_t index = 0; index < ops_num; ++index) {
@@ -409,12 +419,20 @@ void PD_ConfigSetMkldnnOp(__pd_keep PD_Config* pd_config,
 }
 
 void PD_ConfigEnableMkldnnBfloat16(__pd_keep PD_Config* pd_config) {
+  LOG(WARNING) << ONEDNN_UPDATE_WARNING(PD_ConfigEnableOnednnBfloat16);
+  PD_ConfigEnableOnednnBfloat16(pd_config);
+}
+void PD_ConfigEnableOnednnBfloat16(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  config->EnableMkldnnBfloat16();
+  config->EnableOnednnBfloat16();
 }
 PD_Bool PD_ConfigMkldnnBfloat16Enabled(__pd_keep PD_Config* pd_config) {
+  LOG(WARNING) << ONEDNN_UPDATE_WARNING(PD_ConfigOnednnBfloat16Enabled);
+  return PD_ConfigOnednnBfloat16Enabled(pd_config);
+}
+PD_Bool PD_ConfigOnednnBfloat16Enabled(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  return config->mkldnn_bfloat16_enabled();  // NOLINT
+  return config->onednn_bfloat16_enabled();  // NOLINT
 }
 void PD_ConfigSetBfloat16Op(__pd_keep PD_Config* pd_config,
                             size_t ops_num,
@@ -427,12 +445,20 @@ void PD_ConfigSetBfloat16Op(__pd_keep PD_Config* pd_config,
   config->SetBfloat16Op(std::move(op_names));
 }
 void PD_ConfigEnableMkldnnInt8(__pd_keep PD_Config* pd_config) {
+  LOG(WARNING) << ONEDNN_UPDATE_WARNING(PD_ConfigEnableOnednnInt8);
+  PD_ConfigEnableOnednnInt8(pd_config);
+}
+void PD_ConfigEnableOnednnInt8(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  config->EnableMkldnnInt8();
+  config->EnableOnednnInt8();
 }
 PD_Bool PD_ConfigMkldnnInt8Enabled(__pd_keep PD_Config* pd_config) {
+  LOG(WARNING) << ONEDNN_UPDATE_WARNING(PD_ConfigOnednnInt8Enabled);
+  return PD_ConfigOnednnInt8Enabled(pd_config);
+}
+PD_Bool PD_ConfigOnednnInt8Enabled(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  return config->mkldnn_int8_enabled();  // NOLINT
+  return config->onednn_int8_enabled();  // NOLINT
 }
 PD_Bool PD_ConfigThreadLocalStreamEnabled(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
