@@ -247,32 +247,6 @@ def param_two_alias_one_default(alias_list1, alias_list2, default_param):
     return decorator
 
 
-# *size => shape decorator
-class SizeArgsDecorator(DecoratorBase):
-    """
-    Usage Example:
-
-    paddle.ones(1, dtype=paddle.float32)
-    paddle.ones(1, 2, 3, dtype=paddle.float32)
-    paddle.ones([1, 2, 3], dtype=paddle.float32)
-    paddle.ones(size=[1, 2, 3], dtype=paddle.float32)
-
-    paddle.ones([1, 2, 3], paddle.float32)
-    paddle.ones(shape=[1, 2, 3], dtype=paddle.float32)
-    """
-
-    def process(
-        self, args: tuple[Any, ...], kwargs: dict[str, Any]
-    ) -> tuple[tuple[Any, ...], dict[str, Any]]:
-        if 'size' in kwargs:
-            kwargs['shape'] = kwargs.pop('size')
-        elif len(args) >= 1 and isinstance(args[0], int):
-            kwargs['shape'] = list(args)
-            args = ()
-
-        return args, kwargs
-
-
 class VariableArgsDecorator(DecoratorBase):
     def __init__(self, var: str) -> None:
         super().__init__()
