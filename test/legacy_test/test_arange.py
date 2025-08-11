@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_device_place
 
 import paddle
 from paddle.base import core
@@ -146,11 +146,7 @@ class TestArangeAPI(unittest.TestCase):
         ):
             x1 = paddle.arange(0, 5, 1, 'float32')
 
-            place = (
-                paddle.CUDAPlace(0)
-                if core.is_compiled_with_cuda()
-                else paddle.CPUPlace()
-            )
+            place = get_device_place()
             exe = paddle.static.Executor(place)
             out = exe.run(fetch_list=[x1])
 
@@ -162,11 +158,7 @@ class TestArangeAPI(unittest.TestCase):
 
 class TestArangeImperative(unittest.TestCase):
     def test_out(self):
-        place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        place = get_device_place()
         paddle.disable_static(place)
         x1 = paddle.arange(0, 5, 1)
         x2 = paddle.tensor.arange(5)

@@ -145,7 +145,7 @@ class TestFusionLSTMBF16ONEDNNOp(OpTest):
             'cell_activation': self.act_cell,
             'candidate_activation': self.act_cand,
             'force_fp32_output': self.force_fp32_output,
-            'use_mkldnn': self.use_onednn,
+            'use_onednn': self.use_onednn,
             'mkldnn_data_type': self.onednn_data_type,
         }
 

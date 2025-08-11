@@ -26,7 +26,7 @@ class TestReduceSumDefaultOneDNNOp(OpTest):
         self.use_onednn = True
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float32")}
         self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
-        self.attrs = {'use_mkldnn': self.use_onednn}
+        self.attrs = {'use_onednn': self.use_onednn}
         self.check_pir_onednn = True
 
     def test_check_output(self):
@@ -53,7 +53,7 @@ class TestReduceSum4DOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
         self.op_type = "reduce_sum"
         self.use_onednn = True
         self.inputs = {'X': np.random.random((5, 10, 5, 5)).astype("float32")}
-        self.attrs = {'use_mkldnn': self.use_onednn, 'dim': [2]}
+        self.attrs = {'use_onednn': self.use_onednn, 'dim': [2]}
         self.outputs = {
             'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
         }
@@ -66,7 +66,7 @@ class TestReduceSum4DReduceAllDimAttributeBF16OneDNNOp(
         self.op_type = "reduce_sum"
         self.use_onednn = True
         self.inputs = {'X': np.random.random((5, 10, 5, 3)).astype("float32")}
-        self.attrs = {'use_mkldnn': self.use_onednn, 'dim': [0, 1, 2, 3]}
+        self.attrs = {'use_onednn': self.use_onednn, 'dim': [0, 1, 2, 3]}
         self.outputs = {
             'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
         }
@@ -77,7 +77,7 @@ class TestReduceSum5DKeepDimsOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
         self.op_type = "reduce_sum"
         self.use_onednn = True
         self.inputs = {'X': np.random.random((2, 5, 3, 2, 2)).astype("float32")}
-        self.attrs = {'dim': (2, 3, 4), 'keep_dim': True, 'use_mkldnn': True}
+        self.attrs = {'dim': (2, 3, 4), 'keep_dim': True, 'use_onednn': True}
         self.outputs = {
             'Out': self.inputs['X'].sum(
                 axis=tuple(self.attrs['dim']), keepdims=self.attrs['keep_dim']
@@ -90,7 +90,7 @@ class TestReduceSum0DOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
         self.op_type = "reduce_sum"
         self.use_onednn = True
         self.inputs = {'X': np.random.random(()).astype("float32")}
-        self.attrs = {'use_mkldnn': self.use_onednn, 'dim': []}
+        self.attrs = {'use_onednn': self.use_onednn, 'dim': []}
         self.outputs = {
             'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
         }
@@ -103,7 +103,7 @@ class TestReduceSum5DReduceAllKeepDimsOneDNNOp(
         self.op_type = "reduce_sum"
         self.use_onednn = True
         self.inputs = {'X': np.random.random((2, 5, 3, 2, 2)).astype("float32")}
-        self.attrs = {'reduce_all': True, 'keep_dim': True, 'use_mkldnn': True}
+        self.attrs = {'reduce_all': True, 'keep_dim': True, 'use_onednn': True}
         self.outputs = {
             'Out': self.inputs['X'].sum(keepdims=self.attrs['keep_dim'])
         }
@@ -115,7 +115,7 @@ class TestReduceSum4DReduceAllOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
         self.op_type = "reduce_sum"
         self.use_onednn = True
         self.inputs = {'X': np.random.random((5, 6, 2, 10)).astype("float32")}
-        self.attrs = {'reduce_all': True, 'use_mkldnn': self.use_onednn}
+        self.attrs = {'reduce_all': True, 'use_onednn': self.use_onednn}
         self.outputs = {'Out': self.inputs['X'].sum()}
         self.check_pir_onednn = False
 
@@ -131,7 +131,7 @@ class TestReduceSum4DNoReduceSimpleCopyOneDNNOp(
         self.op_type = "reduce_sum"
         self.use_onednn = True
         self.inputs = {'X': np.random.random((5, 6, 2, 10)).astype("float32")}
-        self.attrs = {'dim': (), 'use_mkldnn': self.use_onednn}
+        self.attrs = {'dim': (), 'use_onednn': self.use_onednn}
         self.outputs = {'Out': np.copy(self.inputs['X'])}
 
 
@@ -146,7 +146,7 @@ class TestReduceMax3DOneDNNOp(TestReduceSumDefaultOneDNNOp):
         self.op_type = "reduce_max"
         self.use_onednn = True
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float32")}
-        self.attrs = {'dim': [-1], 'use_mkldnn': self.use_onednn}
+        self.attrs = {'dim': [-1], 'use_onednn': self.use_onednn}
         self.outputs = {
             'Out': self.inputs['X'].max(axis=tuple(self.attrs['dim']))
         }
@@ -161,7 +161,7 @@ class TestReduceMax0DOneDNNOp(TestReduceSumDefaultOneDNNOp):
         self.op_type = "reduce_max"
         self.use_onednn = True
         self.inputs = {'X': np.random.random(()).astype("float32")}
-        self.attrs = {'use_mkldnn': self.use_onednn, 'dim': []}
+        self.attrs = {'use_onednn': self.use_onednn, 'dim': []}
         self.outputs = {
             'Out': self.inputs['X'].max(axis=tuple(self.attrs['dim']))
         }
@@ -180,7 +180,7 @@ class TestReduceMax4DNegativeAndPositiveDimsOneDNNOp(
         self.op_type = "reduce_max"
         self.use_onednn = True
         self.inputs = {'X': np.random.random((5, 6, 10, 9)).astype("float32")}
-        self.attrs = {'dim': [-1, 0, 1], 'use_mkldnn': self.use_onednn}
+        self.attrs = {'dim': [-1, 0, 1], 'use_onednn': self.use_onednn}
         self.outputs = {
             'Out': self.inputs['X'].max(axis=tuple(self.attrs['dim']))
         }
@@ -197,7 +197,7 @@ class TestReduceMin3DOneDNNOp(TestReduceSumDefaultOneDNNOp):
         self.op_type = "reduce_min"
         self.use_onednn = True
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float32")}
-        self.attrs = {'dim': [2], 'use_mkldnn': self.use_onednn}
+        self.attrs = {'dim': [2], 'use_onednn': self.use_onednn}
         self.outputs = {
             'Out': self.inputs['X'].min(axis=tuple(self.attrs['dim']))
         }
@@ -212,7 +212,7 @@ class TestReduceMin0DOneDNNOp(TestReduceSumDefaultOneDNNOp):
         self.op_type = "reduce_min"
         self.use_onednn = True
         self.inputs = {'X': np.random.random(()).astype("float32")}
-        self.attrs = {'use_mkldnn': self.use_onednn, 'dim': []}
+        self.attrs = {'use_onednn': self.use_onednn, 'dim': []}
         self.outputs = {
             'Out': self.inputs['X'].min(axis=tuple(self.attrs['dim']))
         }
@@ -223,7 +223,7 @@ class TestReduceMean3DOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
         self.op_type = "reduce_mean"
         self.use_onednn = True
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float32")}
-        self.attrs = {'dim': [0], 'use_mkldnn': self.use_onednn}
+        self.attrs = {'dim': [0], 'use_onednn': self.use_onednn}
         self.outputs = {
             'Out': self.inputs['X'].sum(axis=0) / self.inputs['X'].shape[0]
         }
@@ -234,7 +234,7 @@ class TestReduceMean0DOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
         self.op_type = "reduce_mean"
         self.use_onednn = True
         self.inputs = {'X': np.random.random(()).astype("float32")}
-        self.attrs = {'use_mkldnn': self.use_onednn, 'dim': []}
+        self.attrs = {'use_onednn': self.use_onednn, 'dim': []}
         self.outputs = {
             # scalar mean is equal to sum
             'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
@@ -246,7 +246,7 @@ class TestReduceMean4DReduceAllOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
         self.op_type = "reduce_mean"
         self.use_onednn = True
         self.inputs = {'X': np.random.random((5, 6, 8, 10)).astype("float32")}
-        self.attrs = {'reduce_all': True, 'use_mkldnn': self.use_onednn}
+        self.attrs = {'reduce_all': True, 'use_onednn': self.use_onednn}
         self.outputs = {
             'Out': self.inputs['X'].sum()
             / np.asarray(self.inputs['X'].shape).prod()

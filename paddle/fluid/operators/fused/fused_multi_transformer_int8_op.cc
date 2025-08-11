@@ -72,16 +72,16 @@ class FusedMultiTransformerINT8Op : public framework::OperatorWithKernel {
         x_dim.size(),
         3,
         common::errors::InvalidArgument("The dimensions of x must be 3"
-                                        "(batch_size, seq_len, dim_embed),"
-                                        "but received dimensions of"
+                                        "(batch_size, seq_len, dim_embed), "
+                                        "but received dimensions of "
                                         "Input is [%d]",
                                         x_dim.size()));
     PADDLE_ENFORCE_EQ(
         y_dim.size(),
         4,
         common::errors::InvalidArgument("The dimensions of qkv_weight must be 4"
-                                        "(3, num_head, dim_head, dim_embed),"
-                                        "but received dimensions of"
+                                        "(3, num_head, dim_head, dim_embed), "
+                                        "but received dimensions of "
                                         "Input is [%d]",
                                         y_dim.size()));
     PADDLE_ENFORCE_EQ(

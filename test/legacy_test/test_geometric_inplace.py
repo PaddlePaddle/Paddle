@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 import scipy.stats
-from op_test import get_places
+from op_test import get_devices
 
 import paddle
 
@@ -36,7 +36,7 @@ class TestGeometricInplaceDtype(unittest.TestCase):
             tensor_fp64.geometric_(probs=0.3)
             self.assertEqual(tensor_fp64.dtype, paddle.float64)
 
-        for place in get_places(string_format=True):
+        for place in get_devices():
             paddle.set_device(place)
             test_fp32()
             test_fp64()
@@ -96,7 +96,7 @@ class TestGeometricInplaceDistribution(unittest.TestCase):
 class TestGeometricInplaceEmptyTensor(unittest.TestCase):
     def test_geometric_inplace_op_empty_tensor(self):
         test_shapes = [(200, 1), (1, 200)]
-        for place in get_places(string_format=True):
+        for place in get_devices():
             paddle.set_device(place)
             for test_shape in test_shapes:
                 tensor = paddle.empty(shape=test_shape)
@@ -122,7 +122,7 @@ class TestGeometricInplaceGrad(unittest.TestCase):
             geometric_grad = tensor_b.grad.numpy()
             self.assertTrue((geometric_grad == 0).all())
 
-        for place in get_places(string_format=True):
+        for place in get_devices():
             paddle.set_device(place)
             test_grad()
 

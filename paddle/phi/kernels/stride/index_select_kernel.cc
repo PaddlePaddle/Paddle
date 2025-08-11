@@ -25,7 +25,7 @@ COMMON_DECLARE_bool(use_stride_kernel);
 namespace phi {
 
 template <typename Context>
-void IndexSelectStridedKernel(const Context& ctx,
+void IndexSelectStridedKernel(const Context& dev_ctx,
                               const DenseTensor& x,
                               int64_t index,
                               int dim,

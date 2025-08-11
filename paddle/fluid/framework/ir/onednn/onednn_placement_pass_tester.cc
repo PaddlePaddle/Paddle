@@ -133,7 +133,7 @@ class PlacementPassTest {
 
     auto pass = PassRegistry::Instance().Get("onednn_placement_pass");
 
-    pass->Set("mkldnn_enabled_op_types",
+    pass->Set("onednn_enabled_op_types",
               new std::unordered_set<std::string>(onednn_enabled_op_types));
 
     graph.reset(pass->Apply(graph.release()));
@@ -143,8 +143,10 @@ class PlacementPassTest {
     for (auto* node : graph->Nodes()) {
       if (node->IsOp()) {
         auto* op = node->Op();
-        if (op->HasAttr("use_mkldnn") &&
-            PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn"))) {
+        if ((op->HasAttr("use_mkldnn") &&
+             PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn"))) ||
+            (op->HasAttr("use_onednn") &&
+             PADDLE_GET_CONST(bool, op->GetAttr("use_onednn")))) {
           ++use_onednn_true_count;
         }
       }
@@ -156,27 +158,27 @@ class PlacementPassTest {
   void PlacementNameTest() {
     auto pass = PassRegistry::Instance().Get("onednn_placement_pass");
     EXPECT_EQ(static_cast<PlacementPassBase*>(pass.get())->GetPlacementName(),
-              "MKLDNN");
+              "ONEDNN");
   }
 };
 
-TEST(MKLDNNPlacementPass, enable_conv_relu) {
+TEST(ONEDNNPlacementPass, enable_conv_relu) {
   // 2 conv (1 conv is always true) + 2 relu (1 relu is always true) + 0 pool
   PlacementPassTest().MainTest({"conv2d", "relu"}, 4);
 }
 
-TEST(MKLDNNPlacementPass, enable_relu_pool) {
+TEST(ONEDNNPlacementPass, enable_relu_pool) {
   // 1 conv (1 conv is always true) + 2 relu (1 relu is always true) + 1 pool
   PlacementPassTest().MainTest({"relu", "pool2d"}, 4);
 }
 
-TEST(MKLDNNPlacementPass, enable_all) {
+TEST(ONEDNNPlacementPass, enable_all) {
   // 2 conv (1 conv is always true) + 2 relu (1 relu is always true) + 1 pool +
   // 1 concat
   PlacementPassTest().MainTest({}, 6);
 }
 
-TEST(MKLDNNPlacementPass, placement_name) {
+TEST(ONEDNNPlacementPass, placement_name) {
   PlacementPassTest().PlacementNameTest();
 }
 

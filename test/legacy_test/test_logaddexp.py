@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
 
@@ -31,11 +32,7 @@ def ref_logaddexp(x, y):
 
 class TestLogsumexpAPI(unittest.TestCase):
     def setUp(self):
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.base.core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def api_case(self):
         self.x = np.random.uniform(-1, 1, self.xshape).astype(self.dtype)
@@ -81,11 +78,7 @@ class TestLogsumexpAPI(unittest.TestCase):
 
 class TestLogsumexpAPI_ZeroSize(unittest.TestCase):
     def setUp(self):
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.base.core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def api_case(self):
         self.x = np.random.uniform(-1, 1, self.xshape).astype(self.dtype)

@@ -109,14 +109,14 @@ void ReduceMaxGradKernel(const Context& dev_ctx,
   r = xpu::constant(
       dev_ctx.x_context(), broadcast1, x.numel(), static_cast<XPUDataType>(0));
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
-  r = xpu::select(dev_ctx.x_context(),
-                  equal,
-                  broadcast2,
-                  broadcast1,
-                  x_grad_data,
-                  xdims,
-                  xdims);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "select");
+  r = xpu::where(dev_ctx.x_context(),
+                 equal,
+                 broadcast2,
+                 broadcast1,
+                 x_grad_data,
+                 xdims,
+                 xdims);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "where");
 }
 
 }  // namespace phi

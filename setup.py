@@ -1701,6 +1701,10 @@ def get_package_data_and_package_dir():
             package_data['paddle.libs'] += [env_dict.get("XPU_XFA_LIB_NAME")]
             shutil.copy(env_dict.get("XPU_XPUDNN_LIB"), libs_path)
             package_data['paddle.libs'] += [env_dict.get("XPU_XPUDNN_LIB_NAME")]
+            shutil.copy(env_dict.get("XPU_XPUDNN_OMP_LIB"), libs_path)
+            package_data['paddle.libs'] += [
+                env_dict.get("XPU_XPUDNN_OMP_LIB_NAME")
+            ]
 
     if env_dict.get("WITH_XPU_BKCL") == 'ON':
         shutil.copy(env_dict.get("XPU_BKCL_LIB"), libs_path)

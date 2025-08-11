@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_places
+from op_test import get_devices, get_places
 
 import paddle
 
@@ -86,7 +86,7 @@ def check_dtype(input, desired_dtype):
 
 class TestLdexpAPIWithDynamic(unittest.TestCase):
     def setUp(self):
-        self.places = get_places(string_format=True)
+        self.places = get_devices()
 
     def test_ldexp_dynamic(self):
         np.random.seed(7)
@@ -136,7 +136,7 @@ class TestLdexpAPIWithDynamic(unittest.TestCase):
 
 class TestLdexpAPIWithStatic(unittest.TestCase):
     def setUp(self):
-        self.places = get_places(string_format=True)
+        self.places = get_devices()
 
     def test_ldexp_static(self):
         np.random.seed(7)

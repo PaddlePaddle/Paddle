@@ -37,7 +37,7 @@ from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_pir_mode
 
 
-def sum_wrapper(X, use_mkldnn=False):
+def sum_wrapper(X, use_onednn=False):
     res = paddle.full(shape=X[0].shape, fill_value=0.0, dtype=X[0].dtype)
     for x in X:
         res = paddle.add(res, x)
@@ -59,7 +59,7 @@ class TestSumOp(OpTest):
         self.inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
         y = x0 + x1 + x2
         self.outputs = {'Out': y}
-        self.attrs = {'use_mkldnn': self.use_onednn}
+        self.attrs = {'use_onednn': self.use_onednn}
 
     def init_kernel_type(self):
         self.dtype = np.float64
@@ -889,9 +889,7 @@ class TestSum_BoolToInt64_ZeroSize(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
         self.shape = [3, 0, 2]
-        self.places = [base.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def check_result(
         self, dygraph_result, expected_result, axis, keepdim, dtype, place
