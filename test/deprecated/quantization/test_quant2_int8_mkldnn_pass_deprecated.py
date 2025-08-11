@@ -64,7 +64,7 @@ class TestQuant2Int8OnednnPassMul(unittest.TestCase):
             type=self.op_name(),
             inputs={"X": block.var('mul_input'), "Y": block.var('mul_weights')},
             outputs={"Out": block.var('mul_output')},
-            attrs={'use_mkldnn': self.use_onednn},
+            attrs={'use_onednn': self.use_onednn},
         )
 
     def test_dequantize_op_weights(self):
@@ -179,7 +179,7 @@ class TestQuant2Int8OnednnPassConv2D(unittest.TestCase):
                 'groups': self.groups,
                 'dilations': self.dilations,
                 'use_cudnn': self.use_cudnn,
-                'use_mkldnn': self.use_onednn,
+                'use_onednn': self.use_onednn,
                 'data_format': self.data_format,
                 'fuse_relu': True,
             },
@@ -197,7 +197,7 @@ class TestQuant2Int8OnednnPassConv2D(unittest.TestCase):
                 'groups': self.groups,
                 'dilations': self.dilations,
                 'use_cudnn': self.use_cudnn,
-                'use_mkldnn': self.use_onednn,
+                'use_onednn': self.use_onednn,
                 'data_format': self.data_format,
             },
         )
@@ -312,7 +312,7 @@ class TestQuant2Int8OnednnPassConv2D(unittest.TestCase):
                     'groups': self.groups,
                     'dilations': self.dilations,
                     'use_cudnn': self.use_cudnn,
-                    'use_mkldnn': self.use_onednn,
+                    'use_onednn': self.use_onednn,
                     'data_format': self.data_format,
                     'fuse_relu': True,
                 },
@@ -329,7 +329,7 @@ class TestQuant2Int8OnednnPassConv2D(unittest.TestCase):
                     'out_w': self.out_w,
                     'scale': self.scale,
                     'data_layout': self.data_layout,
-                    'use_mkldnn': self.use_onednn,
+                    'use_onednn': self.use_onednn,
                 },
             )
             block.append_op(

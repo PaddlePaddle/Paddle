@@ -529,7 +529,7 @@ static void ParseIndex(const paddle::Tensor& tensor,
             PADDLE_ENFORCE_EQ(slice_tensor.shape()[i],
                               dim_len,
                               common::errors::OutOfRange(
-                                  "The shape of boolean index %d did not match"
+                                  "The shape of boolean index %d did not match "
                                   "indexed tensor %d along axis %d.",
                                   slice_tensor.shape()[0],
                                   dim_len,
