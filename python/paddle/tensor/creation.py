@@ -1833,6 +1833,100 @@ def arange(
         return out
 
 
+def paddle_range(
+    start: float | paddle.Tensor = 0,
+    end: float | paddle.Tensor | None = None,
+    step: float | paddle.Tensor = 1,
+    dtype=None,
+    *,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
+    name: str | None = None,
+):
+    r"""
+    Returns a 1-D Tensor of size $$ \lfloor \dfrac{end - start}{step} \rfloor + 1 $$ with values
+    from ``start`` to ``end`` with ``step``. ``step`` is the gap between two values in the tensor.
+
+    $$
+    out_{i+1} = out_{i} + step
+    $$
+
+    Values are generated into the half-open interval [``start``, ``end``) with
+    the ``step``. (the interval including ``start`` but excluding ``end``).
+
+    If ``dtype`` is float32 or float64, we advise adding a small epsilon to
+    ``end`` to avoid floating point rounding errors when comparing against ``end``.
+
+    Parameters:
+        start(float|int|Tensor): Start of interval. The interval includes this
+            value. If ``end`` is None, the half-open interval is [0, ``start``).
+            If ``start`` is a Tensor, it is a 0-D Tensor which represents a scalar
+            and data type is int32, int64, float32, float64. Default is 0.
+        end(float|int|Tensor, optional): End of interval. The interval does not
+            include this value. If ``end`` is a Tensor, it is a 0-D Tensor which
+            represents a scalar and data type is int32, int64, float32, float64.
+            If ``end`` is None, the half-open interval is [0, ``start``).
+            Default is None.
+        step(float|int|Tensor, optional): Spacing between values. For any out,
+            it is the instance between two adjacent values, out[i+1] - out[i].
+            If ``step`` is a Tensor, it is a 0-D Tensor which represents a scalar
+            and data type is int32, int64, float32, float64. . Default is 1.
+        dtype(str|np.dtype, optional): The data type of the
+            output tensor. Supported data types: int32, int64, float32, float64.
+            If ``dtype`` is None, the data type is float32. Default is None.
+        device(PlaceLike|None, optional): The desired device of returned tensor.
+            if None, uses the current device for the default tensor type (see paddle.device.set_device()).
+            device will be the CPU for CPU tensor types and the current CUDA device for CUDA tensor types. Default: None.
+        requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
+        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor: A 1-D Tensor with values from the interval [``start``, ``end``)
+        taken with common difference ``step`` beginning from ``start``. Its
+        data type is set by ``dtype``.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> out1 = paddle.arange(5)
+            >>> print(out1.numpy())
+            [0 1 2 3 4]
+
+            >>> out2 = paddle.arange(3, 9, 2.0)
+            >>> print(out2.numpy())
+            [3. 5. 7.]
+
+            >>> # use 4.999 instead of 5.0 to avoid floating point rounding errors
+            >>> out3 = paddle.arange(4.999, dtype='float32')
+            >>> print(out3.numpy())
+            [0. 1. 2. 3. 4.]
+
+            >>> start_var = paddle.to_tensor(3)
+            >>> out4 = paddle.arange(start_var, 7)
+            >>> print(out4.numpy())
+            [3 4 5 6]
+
+    """
+    if end is None:
+        end = start
+        start = 0
+
+    if not paddle.is_tensor(start):
+        start = paddle.to_tensor(start)
+
+    eps = paddle.finfo(start.dtype).eps if start.is_floating_point() else 0
+    return arange(
+        start,
+        end + step - eps,
+        step,
+        dtype=dtype,
+        device=device,
+        requires_grad=requires_grad,
+    )
+
+
 def _tril_triu_op(helper: LayerHelper) -> paddle.Tensor:
     """Base op of tril_op and triu_op"""
     op_type = helper.layer_type
