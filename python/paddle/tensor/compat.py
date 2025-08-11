@@ -287,7 +287,7 @@ def _min_max_param_checker(func_name: str, *args: Any, **kwargs: Any):
         and type(dim_or_other) is not int
     ):
         raise invalid_arguments_exception(
-            f"The second input must be int or Tensor or implicit None in compat.min, but received {type(dim_or_other)}.\n"
+            f"The second input must be int or Tensor or implicit None in compat.{func_name}, but received {type(dim_or_other)}.\n"
         )
 
     return dim_or_other, keepdim
@@ -316,11 +316,10 @@ def _min_max_allow_cpu_composite(input: Tensor):
         or in_dtype == paddle.bfloat16
         or in_dtype == paddle.int16
     ):
-        if not input.place.is_gpu_place():
-            raise TypeError(
-                f"Non-CUDA GPU placed Tensor does not have '{in_dtype}' op registered.\n"
-                "Paddle support following DataTypes: int32, int64, float64, float32, uint8"
-            )
+        raise TypeError(
+            f"Non-CUDA GPU placed Tensor does not have '{in_dtype}' op registered.\n"
+            "Paddle support following DataTypes: int32, int64, float64, float32, uint8"
+        )
 
 
 @ForbidKeywordsDecorator(
@@ -337,8 +336,12 @@ def min(input: Tensor, *args: Any, **kwargs: Any) -> Tensor | MinMaxRetType:
         returns a named tuple MinMaxRetType(values: Tensor, indices: Tensor)
     3. paddle.compat.min(input: Tensor, other: Tensor): see `paddle.minimum`
 
-    Note: If there are multiple minimum elements, this API evenly distributes gradient between these equal values,
-        following torch.min. The gradient behavior of `values` for case 2 is the same as `paddle.amin`.
+    Special warning: the gradient behavior is NOT well-documented by PyTorch, the actual behavior should be:
+    1. Case 1: the same as `amin`
+    2. Case 2: NOT evenly distributing the gradient for equal minimum elements! PyTorch actually only propagates to the elements with indices,
+        for example: Tensor([1, 1, 1]) -> min(..., dim=0) -> values=Tensor(0, ...), indices=Tensor(0), the gradient for input tensor won't be
+        Tensor([1/3, 1/3, 1/3]) as stated in their documentation, but will be Tensor([1, 0, 0]). This API implements a similar backward kernel.
+    3. Case 3: the same as `minimum`
 
     Args:
         input (Tensor): A tensor, the data type is bfloat16, float16, float32, float64, int32, int64 on GPU.
@@ -348,6 +351,8 @@ def min(input: Tensor, *args: Any, **kwargs: Any) -> Tensor | MinMaxRetType:
             compute the minimum over all elements of `input` and return a Tensor with a single element,
             otherwise must be in the range :math:`[-input.ndim, input.ndim)`.
             If :math:`dim < 0`, the axis to reduce is :math:`input.ndim + dim`.
+            Warning: if `dim` is specified, execute static graph will throw exceptions
+            when not on a GPU device, since max_with_index is not implemented for non-GPU devices
         keepdim (bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the `input` unless :attr:`keepdim` is true, default
@@ -421,13 +426,7 @@ def min(input: Tensor, *args: Any, **kwargs: Any) -> Tensor | MinMaxRetType:
             )
         return paddle.amin(input)
     elif isinstance(dim_or_other, int):
-        if input.place.is_gpu_place():
-            vals, inds = _C_ops.min_with_index(
-                input, dim_or_other, keepdim, False
-            )
-            inds.stop_gradient = True
-            return MinMaxRetType(values=vals, indices=inds)
-        else:
+        if in_dynamic_mode() and not input.place.is_gpu_place():
             _min_max_allow_cpu_composite(input)
             # CPUPlace and other placements are implemented by composition
             indices = paddle.argmin(input, axis=dim_or_other, keepdim=True)
@@ -438,6 +437,12 @@ def min(input: Tensor, *args: Any, **kwargs: Any) -> Tensor | MinMaxRetType:
                 values=values.squeeze_(axis=dim_or_other),
                 indices=indices.squeeze_(axis=dim_or_other),
             )
+        else:
+            vals, inds = _C_ops.min_with_index(
+                input, dim_or_other, keepdim, False
+            )
+            inds.stop_gradient = True
+            return MinMaxRetType(values=vals, indices=inds)
     else:
         return _C_ops.minimum(input, dim_or_other)
 
@@ -456,8 +461,12 @@ def max(input: Tensor, *args: Any, **kwargs: Any) -> Tensor | MinMaxRetType:
         returns a named tuple MinMaxRetType(values: Tensor, indices: Tensor)
     3. paddle.compat.max(input: Tensor, other: Tensor): see `paddle.maximum`
 
-    Note: If there are multiple maximum elements, this API evenly distributes gradient between these equal values,
-        following torch.max. The gradient behavior of `values` for case 2 is the same as `paddle.amax`.
+    Special warning: the gradient behavior is NOT well-documented by PyTorch, the actual behavior should be:
+    1. Case 1: the same as `amax`
+    2. Case 2: NOT evenly distributing the gradient for equal maximum elements! PyTorch actually only propagates to the elements with indices,
+        for example: Tensor([1, 1, 1]) -> max(..., dim=0) -> values=Tensor(0, ...), indices=Tensor(0), the gradient for input tensor won't be
+        Tensor([1/3, 1/3, 1/3]) as stated in their documentation, but will be Tensor([1, 0, 0]). This API implements a similar backward kernel.
+    3. Case 3: the same as `maximum`
 
     Args:
         input (Tensor): A tensor, the data type is bfloat16, float16, float32, float64, int32, int64 on GPU.
@@ -467,6 +476,8 @@ def max(input: Tensor, *args: Any, **kwargs: Any) -> Tensor | MinMaxRetType:
             compute the maximum over all elements of `input` and return a Tensor with a single element,
             otherwise must be in the range :math:`[-input.ndim, input.ndim)`.
             If :math:`dim < 0`, the axis to reduce is :math:`input.ndim + dim`.
+            Warning: if `dim` is specified, execute static graph will throw exceptions
+            when not on a GPU device, since max_with_index is not implemented for non-GPU devices
         keepdim (bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the `input` unless :attr:`keepdim` is true, default
@@ -540,15 +551,8 @@ def max(input: Tensor, *args: Any, **kwargs: Any) -> Tensor | MinMaxRetType:
             )
         return paddle.amax(input)
     elif isinstance(dim_or_other, int):
-        if input.place.is_gpu_place():
-            vals, inds = _C_ops.max_with_index(
-                input, dim_or_other, keepdim, False
-            )
-            inds.stop_gradient = True
-            return MinMaxRetType(values=vals, indices=inds)
-        else:
+        if in_dynamic_mode() and not input.place.is_gpu_place():
             _min_max_allow_cpu_composite(input)
-            # CPUPlace and other placements are implemented by composition
             indices = paddle.argmax(input, axis=dim_or_other, keepdim=True)
             values = paddle.take_along_axis(input, indices, axis=dim_or_other)
             if keepdim:
@@ -557,5 +561,11 @@ def max(input: Tensor, *args: Any, **kwargs: Any) -> Tensor | MinMaxRetType:
                 values=values.squeeze_(axis=dim_or_other),
                 indices=indices.squeeze_(axis=dim_or_other),
             )
+        else:
+            vals, inds = _C_ops.max_with_index(
+                input, dim_or_other, keepdim, False
+            )
+            inds.stop_gradient = True
+            return MinMaxRetType(values=vals, indices=inds)
     else:
         return _C_ops.maximum(input, dim_or_other)
