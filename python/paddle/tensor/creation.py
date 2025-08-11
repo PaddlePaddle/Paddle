@@ -24,7 +24,6 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
-from paddle.device import _convert_to_place
 from paddle.utils.decorator_utils import ParamAliasDecorator, SizeArgsDecorator
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -1094,7 +1093,7 @@ def full_like(
     if in_dynamic_or_pir_mode():
         if in_dynamic_mode():
             tensor = _C_ops.full_like(
-                x, fill_value, dtype, _convert_to_place(device)
+                x, fill_value, dtype, _get_paddle_place(device)
             )
         else:
             tensor = _C_ops.full_like(x, fill_value, dtype, core.Place())
@@ -1159,7 +1158,7 @@ def fill_constant(
         if place is None:
             place = _current_expected_place()
         else:
-            place = _convert_to_place(place)
+            place = _get_paddle_place(place)
 
         if force_cpu:
             place = core.CPUPlace()
@@ -1569,7 +1568,7 @@ def eye(
             num_columns,
             dtype,
             (
-                _convert_to_place(device)
+                _get_paddle_place(device)
                 if device is not None
                 else _current_expected_place()
             ),
@@ -1805,7 +1804,7 @@ def arange(
             step,
             dtype,
             (
-                _convert_to_place(device)
+                _get_paddle_place(device)
                 if device is not None
                 else _current_expected_place()
             ),
@@ -1838,7 +1837,7 @@ def arange(
             step,
             dtype,
             (
-                _convert_to_place(device)
+                _get_paddle_place(device)
                 if device is not None
                 else _current_expected_place()
             ),
@@ -2689,7 +2688,7 @@ def empty(
             shape,
             convert_np_dtype_to_dtype_(dtype),
             (
-                _convert_to_place(device)
+                _get_paddle_place(device)
                 if device is not None
                 else _current_expected_place()
             ),
@@ -2799,7 +2798,7 @@ def empty_like(
             x_shape,
             convert_np_dtype_to_dtype_(dtype),
             (
-                _convert_to_place(device)
+                _get_paddle_place(device)
                 if device is not None
                 else _current_expected_place()
             ),
