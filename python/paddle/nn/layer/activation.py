@@ -240,22 +240,7 @@ class GELU(Layer):
         self, approximate: str | bool = False, name: str | None = None
     ) -> None:
         super().__init__()
-        self._origin_approximate = approximate
-        if isinstance(approximate, bool):
-            self._approximate = approximate
-        elif isinstance(approximate, str):
-            if approximate == "tanh":
-                self._approximate = True
-            elif approximate == "none":
-                self._approximate = False
-            else:
-                raise ValueError(
-                    f"unsupported approximate value in GELU class: {approximate}"
-                )
-        else:
-            raise TypeError(
-                f"approximate parameter must be bool or str in GELU class: {approximate}"
-            )
+        self._approximate = approximate
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
@@ -263,7 +248,7 @@ class GELU(Layer):
 
     def extra_repr(self) -> str:
         name_str = f', name={self._name}' if self._name else ''
-        return f'approximate={self._origin_approximate}{name_str}'
+        return f'approximate={self._approximate}{name_str}'
 
 
 class Hardshrink(Layer):

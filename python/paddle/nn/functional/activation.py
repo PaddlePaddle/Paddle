@@ -208,21 +208,10 @@ def gelu(
              [ 0.84119201,  1.39957154]])
     """
 
-    if isinstance(approximate, bool):
-        pass
-    elif isinstance(approximate, str):
-        if approximate == "tanh":
-            approximate = True
-        elif approximate == "none":
-            approximate = False
-        else:
-            raise ValueError(
-                f"unsupported approximate value in gelu function: {approximate}"
-            )
-    else:
-        raise TypeError(
-            f"approximate parameter must be bool or str in gelu function: {approximate}"
-        )
+    if approximate == "tanh":
+        approximate = True
+    elif approximate == "none":
+        approximate = False
 
     if in_dynamic_or_pir_mode():
         return _C_ops.gelu(x, approximate)

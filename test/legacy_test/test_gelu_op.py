@@ -209,25 +209,27 @@ class TestGeluError(unittest.TestCase):
 
     def test_gelu_op_error(self):
 
-        def test_value_error():
+        def test_type_error1():
             y = F.gelu(self.x, "tan")
 
-        def test_type_error():
+        def test_type_error2():
             y = F.gelu(self.x, 1234)
 
-        self.assertRaises(ValueError, test_value_error)
-        self.assertRaises(TypeError, test_type_error)
+        self.assertRaises(TypeError, test_type_error1)
+        self.assertRaises(TypeError, test_type_error2)
 
     def test_gelu_class_error(self):
 
-        def test_value_error():
+        def test_type_error1():
             func = nn.GELU("tan")
+            y = func(self.x)
 
-        def test_type_error():
+        def test_type_error2():
             func = nn.GELU(1234)
+            y = func(self.x)
 
-        self.assertRaises(ValueError, test_value_error)
-        self.assertRaises(TypeError, test_type_error)
+        self.assertRaises(TypeError, test_type_error1)
+        self.assertRaises(TypeError, test_type_error2)
 
 
 if __name__ == '__main__':
