@@ -127,6 +127,21 @@ class SetDefaultParaAliasDecorator(DecoratorBase):
         self.default_params = default_params
         warnings.simplefilter("always", category=Warning)
 
+
+# *size => shape decorator
+class SizeArgsDecorator(DecoratorBase):
+    """
+    Usage Example:
+
+    paddle.ones(1, dtype=paddle.float32)
+    paddle.ones(1, 2, 3, dtype=paddle.float32)
+    paddle.ones([1, 2, 3], dtype=paddle.float32)
+    paddle.ones(size=[1, 2, 3], dtype=paddle.float32)
+
+    paddle.ones([1, 2, 3], paddle.float32)
+    paddle.ones(shape=[1, 2, 3], dtype=paddle.float32)
+    """
+
     def process(
         self, args: tuple[Any, ...], kwargs: dict[str, Any]
     ) -> tuple[tuple[Any, ...], dict[str, Any]]:
