@@ -258,15 +258,14 @@ __global__ void BlockScanKernel(T* d_out,
   }
 }
 
-template <typename Context, typename T>
-typename std::enable_if<!std::is_same<T, phi::dtype::float16>::value &&
-                        !std::is_same<T, phi::dtype::bfloat16>::value>::type
-ThrustCumsumKernel(const Context& dev_ctx,
-                   const T* in_data,
-                   T* out_data,
-                   int64_t size,
-                   bool reverse,
-                   bool exclusive) {
+template <typename Context, typename T, typename Op>
+void ThrustCumsumKernel(const Context& dev_ctx,
+                        const T* in_data,
+                        T* out_data,
+                        int64_t size,
+                        bool reverse,
+                        bool exclusive,
+                        Op op) {
 #ifdef __HIPCC__
   const auto& policy = thrust::hip::par.on(dev_ctx.stream());
 #else
@@ -280,40 +279,29 @@ ThrustCumsumKernel(const Context& dev_ctx,
     thrust::reverse_iterator<thrust::device_ptr<T>> reversed_out(
         thrust::device_pointer_cast(out_data) + size);
     if (exclusive) {
-      thrust::exclusive_scan(
-          policy, reversed_in, reversed_in + size, reversed_out);
+      thrust::exclusive_scan(policy,
+                             reversed_in,
+                             reversed_in + size,
+                             reversed_out,
+                             Identity<T, Op>::value,
+                             op);
     } else {
       thrust::inclusive_scan(
-          policy, reversed_in, reversed_in + size, reversed_out);
+          policy, reversed_in, reversed_in + size, reversed_out, op);
     }
   } else {
     if (exclusive) {
-      thrust::exclusive_scan(policy, in_data, in_data + size, out_data);
+      thrust::exclusive_scan(policy,
+                             in_data,
+                             in_data + size,
+                             out_data,
+                             Identity<T, Op>::value,
+                             op);
     } else {
-      thrust::inclusive_scan(policy, in_data, in_data + size, out_data);
+      thrust::inclusive_scan(policy, in_data, in_data + size, out_data, op);
     }
   }
-
-  return;
 }
-
-template <typename Context, typename T>
-typename std::enable_if<std::is_same<T, phi::dtype::float16>::value>::type
-ThrustCumsumKernel(const Context& dev_ctx,
-                   const phi::dtype::float16* in_data,
-                   phi::dtype::float16* out_data,
-                   int64_t size,
-                   bool reverse,
-                   bool exclusive) {}
-
-template <typename Context, typename T>
-typename std::enable_if<std::is_same<T, phi::dtype::bfloat16>::value>::type
-ThrustCumsumKernel(const Context& dev_ctx,
-                   const phi::dtype::bfloat16* in_data,
-                   phi::dtype::bfloat16* out_data,
-                   int64_t size,
-                   bool reverse,
-                   bool exclusive) {}
 
 template <typename T, typename Context, typename Op>
 void ScanKernel(const Context& dev_ctx,
@@ -356,13 +344,10 @@ void ScanKernel(const Context& dev_ctx,
   const T* in_data = x.data<T>();
 
   // Use thrust for parallel acceleration when the input size is equal to the
-  // length of the 'axis' dimension.
-  int64_t size = x.numel();
-  if (!std::is_same<T, phi::dtype::float16>::value &&
-      !std::is_same<T, phi::dtype::bfloat16>::value &&
-      std::is_same<Op, cub::Sum>::value && size == out_dims[axis]) {
-    ThrustCumsumKernel<Context, T>(
-        dev_ctx, in_data, out_data, size, reverse, exclusive);
+  // length of the 'axis' dimension (i.e., it's a 1D scan).
+  if (x.numel() == out_dims[axis]) {
+    ThrustCumsumKernel<Context, T, Op>(
+        dev_ctx, in_data, out_data, size, reverse, exclusive, op);
     return;
   }
 
