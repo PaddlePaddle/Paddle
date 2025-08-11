@@ -266,6 +266,8 @@ void ThrustCumsumKernel(const Context& dev_ctx,
                         bool reverse,
                         bool exclusive,
                         Op op) {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+
 #ifdef __HIPCC__
   const auto& policy = thrust::hip::par.on(dev_ctx.stream());
 #else
@@ -273,33 +275,74 @@ void ThrustCumsumKernel(const Context& dev_ctx,
                                                              dev_ctx.stream());
   const auto& policy = thrust::cuda::par(allocator).on(dev_ctx.stream());
 #endif
-  if (reverse) {
-    thrust::reverse_iterator<thrust::device_ptr<const T>> reversed_in(
-        thrust::device_pointer_cast(in_data) + size);
-    thrust::reverse_iterator<thrust::device_ptr<T>> reversed_out(
-        thrust::device_pointer_cast(out_data) + size);
-    if (exclusive) {
-      thrust::exclusive_scan(policy,
-                             reversed_in,
-                             reversed_in + size,
-                             reversed_out,
-                             Identity<T, Op>::value,
-                             op);
+
+  if constexpr (std::is_same_v<T, MT>) {
+    if (reverse) {
+      thrust::reverse_iterator<thrust::device_ptr<const T>> reversed_in(
+          thrust::device_pointer_cast(in_data) + size);
+      thrust::reverse_iterator<thrust::device_ptr<T>> reversed_out(
+          thrust::device_pointer_cast(out_data) + size);
+      if (exclusive) {
+        thrust::exclusive_scan(policy,
+                               reversed_in,
+                               reversed_in + size,
+                               reversed_out,
+                               Identity<T, Op>::value,
+                               op);
+      } else {
+        thrust::inclusive_scan(
+            policy, reversed_in, reversed_in + size, reversed_out, op);
+      }
     } else {
-      thrust::inclusive_scan(
-          policy, reversed_in, reversed_in + size, reversed_out, op);
+      if (exclusive) {
+        thrust::exclusive_scan(policy,
+                               in_data,
+                               in_data + size,
+                               out_data,
+                               Identity<T, Op>::value,
+                               op);
+      } else {
+        thrust::inclusive_scan(policy, in_data, in_data + size, out_data, op);
+      }
     }
   } else {
-    if (exclusive) {
-      thrust::exclusive_scan(policy,
-                             in_data,
-                             in_data + size,
-                             out_data,
-                             Identity<T, Op>::value,
-                             op);
+    thrust::device_vector<MT> tmp_in(size);
+    thrust::device_vector<MT> tmp_out(size);
+    thrust::copy(policy, in_data, in_data + size, tmp_in.begin());
+
+    auto tmp_in_begin = tmp_in.begin();
+    auto tmp_in_end = tmp_in.end();
+    auto tmp_out_begin = tmp_out.begin();
+
+    if (reverse) {
+      auto reversed_in = tmp_in.rbegin();
+      auto reversed_out = tmp_out.rbegin();
+      if (exclusive) {
+        thrust::exclusive_scan(policy,
+                               reversed_in,
+                               reversed_in + size,
+                               reversed_out,
+                               Identity<MT, Op>::value,
+                               op);
+      } else {
+        thrust::inclusive_scan(
+            policy, reversed_in, reversed_in + size, reversed_out, op);
+      }
     } else {
-      thrust::inclusive_scan(policy, in_data, in_data + size, out_data, op);
+      if (exclusive) {
+        thrust::exclusive_scan(policy,
+                               tmp_in_begin,
+                               tmp_in_end,
+                               tmp_out_begin,
+                               Identity<MT, Op>::value,
+                               op);
+      } else {
+        thrust::inclusive_scan(
+            policy, tmp_in_begin, tmp_in_end, tmp_out_begin, op);
+      }
     }
+
+    thrust::copy(policy, tmp_out.begin(), tmp_out.end(), out_data);
   }
 }
 
