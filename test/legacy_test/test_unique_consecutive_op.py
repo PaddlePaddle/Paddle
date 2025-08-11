@@ -347,6 +347,33 @@ class TestUniqueConsecutiveEmptyInput(OpTest):
         self.check_output(check_pir=True, check_symbol_infer=False)
 
 
+class TestUniqueConsecutive_ZeroSize(OpTest):
+    def config(self):
+        self.python_api = paddle.unique_consecutive
+
+    def init_kernel_type(self):
+        self.dtype = "float32" if core.is_compiled_with_rocm() else "float64"
+
+    def setUp(self):
+        paddle.disable_static()
+        self.init_kernel_type()
+        self.config()
+        self.op_type = "unique_consecutive"
+        x = np.random.random([2, 0]).astype(self.dtype)
+        out = np.array([]).astype(self.dtype)
+        self.inputs = {
+            'X': x,
+        }
+        self.python_out_sig = ["Out"]
+        self.attrs = {'dtype': paddle.int32}
+        self.outputs = {
+            'Out': out,
+        }
+
+    def test_check_output(self):
+        self.check_output(check_pir=True, check_symbol_infer=False)
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

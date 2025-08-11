@@ -628,6 +628,26 @@ class CustomDevice : public DeviceInterface {
     return grid_dim_size;
   }
 
+  bool IsFloat16Supported(size_t dev_id) {
+    const auto device = &devices_pool[dev_id];
+    bool supported = false;
+    if (pimpl_->is_float16_supported) {
+      pimpl_->is_float16_supported(device, &supported);
+    }
+    VLOG(10) << Type() << " is float16 supported: " << supported;
+    return supported;
+  }
+
+  bool IsBFloat16Supported(size_t dev_id) {
+    const auto device = &devices_pool[dev_id];
+    bool supported = false;
+    if (pimpl_->is_bfloat16_supported) {
+      pimpl_->is_bfloat16_supported(device, &supported);
+    }
+    VLOG(10) << Type() << " is bfloat16 supported: " << false;
+    return supported;
+  }
+
   void* InitEigenDevice(const Place& place,
                         phi::stream::stream_t stream,
                         phi::Allocator* allocator) override {

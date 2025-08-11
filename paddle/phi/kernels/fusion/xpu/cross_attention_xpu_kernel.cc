@@ -225,7 +225,7 @@ void CrossAttentionXPUKernel(
     return;
   }
   PADDLE_THROW(common::errors::Unimplemented(
-      "Not support q_dtype is %s, k_dtype is %s, k_dtype is %s"
+      "Not support q_dtype is %s, k_dtype is %s, k_dtype is %s "
       "and qkv_dtype is %s.",
       DataTypeToString(input_q.dtype()),
       DataTypeToString(input_kv.dtype()),

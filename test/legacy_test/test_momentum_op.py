@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 from op import Operator
-from op_test import OpTest, get_places
+from op_test import OpTest, get_devices, get_places
 
 import paddle
 from paddle import base
@@ -1036,7 +1036,7 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
             np.testing.assert_allclose(params1[idx], params2[idx], rtol=1e-05)
 
     def test_main(self):
-        for place in get_places(string_format=True):
+        for place in get_devices():
             use_amp_list = [True, False]
             for use_amp in use_amp_list:
                 self._check_with_place_amp(place, use_amp)

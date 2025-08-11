@@ -72,7 +72,7 @@ class XPUEventManager {
     PADDLE_ENFORCE_EQ(device_index,
                       device_index_,
                       common::errors::PreconditionNotMet(
-                          "XPUContext's device %d does not match"
+                          "XPUContext's device %d does not match. "
                           "Event's device %d",
                           device_index,
                           device_index_));

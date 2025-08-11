@@ -199,10 +199,10 @@ KernelArgsNameMakerByOpProto::GetAttrsArgsNames() {
   for (int i = 0; i < op_proto_->attrs_size(); ++i) {
     auto& attr = op_proto_->attrs()[i];
     auto& attr_name = attr.name();
-    if (attr_name == "use_mkldnn" || attr_name == "use_cudnn" ||
-        attr_name == "op_role" || attr_name == "op_role_var" ||
-        attr_name == "op_namescope" || attr_name == "op_callstack" ||
-        attr_name == "op_device") {
+    if (attr_name == "use_mkldnn" || attr_name == "use_onednn" ||
+        attr_name == "use_cudnn" || attr_name == "op_role" ||
+        attr_name == "op_role_var" || attr_name == "op_namescope" ||
+        attr_name == "op_callstack" || attr_name == "op_device") {
       continue;
     }
     if ((attr.has_extra() && attr.extra()) ||

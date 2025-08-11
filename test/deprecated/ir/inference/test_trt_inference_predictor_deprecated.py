@@ -98,14 +98,14 @@ class BackendPaddle:
 
         if self.args.enable_mkldnn and not self.args.enable_gpu:
             config.disable_gpu()
-            config.enable_mkldnn()
+            config.enable_onednn()
             if self.args.precision == 'int8':
-                config.enable_mkldnn_int8(
+                config.enable_onednn_int8(
                     {"conv2d", "depthwise_conv2d", "transpose2", "pool2d"}
                 )
         if not self.args.enable_mkldnn and not self.args.enable_gpu:
             config.disable_gpu()
-            # config.enable_mkldnn()
+            # config.enable_onednn()
         if self.args.enable_profile:
             config.enable_profile()
         shape_range_file = os.path.join(

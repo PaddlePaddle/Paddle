@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_uint16_to_float, get_places
+from op_test import OpTest, convert_uint16_to_float, get_devices
 
 import paddle
 from paddle.base import core
@@ -44,7 +44,7 @@ class TestUniformRandomInplaceOpDtype(unittest.TestCase):
             tensor_fp64.uniform_()
             self.assertEqual(tensor_fp64.dtype, paddle.float64)
 
-        for place in get_places(string_format=True):
+        for place in get_devices():
             paddle.set_device(place)
             test_fp32()
             test_fp64()
@@ -215,7 +215,7 @@ class TestUniformRandomInplaceOpError(unittest.TestCase):
 class TestUniformRandomInplaceOpEmptyTensor(unittest.TestCase):
     def test_uniform_random_inplace_op_empty_tensor(self):
         test_shapes = [(200, 0), (0, 200)]
-        for place in get_places(string_format=True):
+        for place in get_devices():
             paddle.set_device(place)
             for test_shape in test_shapes:
                 tensor = paddle.empty(shape=test_shape)
@@ -241,7 +241,7 @@ class TestUniformRandomInplaceGrad(unittest.TestCase):
             uniform_grad = tensor_b.grad.numpy()
             self.assertTrue((uniform_grad == 0).all())
 
-        for place in get_places(string_format=True):
+        for place in get_devices():
             paddle.set_device(place)
             test_grad()
 

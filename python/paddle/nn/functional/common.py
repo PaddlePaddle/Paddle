@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import math
+import warnings
 from typing import TYPE_CHECKING, Literal
 
 import numpy
@@ -31,6 +32,7 @@ from paddle.framework import (
 )
 from paddle.tensor.creation import full
 from paddle.utils import deprecated
+from paddle.utils.decorator_utils import ParamAliasDecorator
 from paddle.utils.layers_utils import NotSupportedTensorArgumentError
 
 from ...base.data_feeder import (
@@ -1427,6 +1429,74 @@ def dropout(
             return ret
 
 
+def dropout1d(
+    input: paddle.Tensor,
+    p: float = 0.5,
+    training: bool = True,
+    inplace: bool = False,
+) -> paddle.Tensor:
+    """
+    Randomly zero out entire 1D channels (feature maps) during training.
+
+    Args:
+        input: Input tensor of shape [C, L] (2D) or [N, C, L] (3D)
+        p: Probability of a channel being zeroed. Default: 0.5
+        training: If False, returns input unchanged. Default: True
+        inplace: If True, modifies input tensor in-place. Default: False
+                WARNING: Currently not implemented (will behave as False).
+                TODO: Implement in-place operation in future versions.
+                Default: False
+
+    Returns:
+        Tensor with the same shape as input, where entire channels are zeroed with probability p
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            # Case 1: 3D input (batched)
+            >>> x = paddle.randn([2, 3, 10])  # [N, C, L]
+            >>> y_train = paddle.nn.functional.dropout1d(x, p=0.2)  # Training mode
+            >>> y_test = paddle.nn.functional.dropout1d(x, p=0.2, training=False)  # Test mode
+            >>> print("Original first channel:", x[0, 0, :])
+            >>> print("Train output (may be zeroed):", y_train[0, 0, :])
+            >>> print("Test output (always unchanged):", y_test[0, 0, :])
+
+            # Case 2: 2D input (single sample)
+            >>> x = paddle.randn([3, 8])  # [C, L]
+            >>> y = paddle.nn.functional.dropout1d(x, p=0.5)
+            >>> print("Input shape:", x.shape)
+            >>> print("Output shape:", y.shape)
+            >>> print("Zeroed channels count:", paddle.sum(y == 0).item())
+    """
+    if p < 0 or p > 1:
+        raise ValueError(f"dropout probability must be in [0, 1], got {p}")
+
+    ndim = input.ndim
+    if ndim not in [2, 3]:
+        raise RuntimeError(f"dropout1d expects 2D or 3D input, got {ndim}D")
+
+    if inplace:
+        warnings.warn(
+            "inplace=True is currently not supported in dropout1d and will be ignored. "
+            "This parameter is reserved for future implementation."
+        )
+        # TODO: Implement actual in-place operation when supported by dropout
+
+    need_squeeze = ndim == 2
+    if need_squeeze:
+        input = input.unsqueeze(0)  # [C, L] -> [1, C, L]
+
+    # Apply dropout along channel dimension
+    result = dropout(input, p=p, axis=1, training=training)
+
+    if need_squeeze:
+        result = result.squeeze(0)  # [1, C, L] -> [C, L]
+
+    return result
+
+
 def dropout2d(
     x: Tensor,
     p: float = 0.5,
@@ -1788,6 +1858,7 @@ def feature_alpha_dropout(
     )
 
 
+@ParamAliasDecorator({"x": ["input"]})
 def pad(
     x: Tensor,
     pad: ShapeLike,
@@ -1823,8 +1894,14 @@ def pad(
         4. If mode is ``'reflect'``, pad[0] and pad[1] must be no greater than width-1. The height and depth
         dimension has the same condition.
 
+    .. note::
+    Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+    For example, ``input=tensor_x`` is equivalent to ``x=tensor_x``.
+
+
     Args:
         x (Tensor): The input tensor with data type float32, float64, int32, int64, complex64 or complex128.
+        input: An alias for ``x`` , with identical behavior.
         pad (Tensor|list[int]|tuple[int]): The padding size with data type int. Refer to Note for details.
         mode (str, optional): Four modes: ``'constant'`` (default), ``'reflect'``, ``'replicate'``, ``'circular'``. Default is ``'constant'``.
 
@@ -2755,8 +2832,8 @@ def fold(
 
     assert len(x.shape) == 3, "input should be the format of [N, C, L]"
     assert (
-        math.prod(x.shape) > 0
-    ), "The number of elements must greater than zero."
+        math.prod(x.shape) >= 0
+    ), "The number of elements must greater or equal than zero."
 
     def _is_list_or_tuple_(data):
         return isinstance(data, (list, tuple))

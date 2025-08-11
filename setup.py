@@ -273,7 +273,7 @@ class EggInfo(egg_info):
         egg_info.run(self)
 
 
-# class Installlib is rewritten to add header files to .egg/paddle
+# class InstallLib is rewritten to add header files to .egg/paddle
 class InstallLib(install_lib):
     def run(self):
         self.build()
@@ -1593,6 +1593,13 @@ def get_package_data_and_package_dir():
         if os.path.exists(cinn_bf16_file):
             shutil.copy(cinn_bf16_file, libs_path)
             package_data['paddle.libs'] += ['bfloat16.h']
+        cinn_fp8_file = (
+            env_dict.get("CINN_INCLUDE_DIR")
+            + '/paddle/cinn/runtime/cuda/float8e4m3.h'
+        )
+        if os.path.exists(cinn_fp8_file):
+            shutil.copy(cinn_fp8_file, libs_path)
+            package_data['paddle.libs'] += ['float8e4m3.h']
 
         if env_dict.get("CMAKE_BUILD_TYPE") == 'Release' and os.name != 'nt':
             command = (
@@ -1694,6 +1701,10 @@ def get_package_data_and_package_dir():
             package_data['paddle.libs'] += [env_dict.get("XPU_XFA_LIB_NAME")]
             shutil.copy(env_dict.get("XPU_XPUDNN_LIB"), libs_path)
             package_data['paddle.libs'] += [env_dict.get("XPU_XPUDNN_LIB_NAME")]
+            shutil.copy(env_dict.get("XPU_XPUDNN_OMP_LIB"), libs_path)
+            package_data['paddle.libs'] += [
+                env_dict.get("XPU_XPUDNN_OMP_LIB_NAME")
+            ]
 
     if env_dict.get("WITH_XPU_BKCL") == 'ON':
         shutil.copy(env_dict.get("XPU_BKCL_LIB"), libs_path)

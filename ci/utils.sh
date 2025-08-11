@@ -1219,9 +1219,9 @@ function generate_api_spec() {
     pip install -r $REQUIREMENTS_PATH
 
     if [ -d "${PADDLE_ROOT}/build/python/dist/" ]; then
-        pip install ${PADDLE_ROOT}/build/python/dist/*whl
+        pip install ${PADDLE_ROOT}/build/python/dist/*whl --no-index --no-deps
     elif [ -d "${PADDLE_ROOT}/dist/" ];then
-        pip install ${PADDLE_ROOT}/dist/*whl
+        pip install ${PADDLE_ROOT}/dist/*whl --no-index --no-deps
         mkdir ${PADDLE_ROOT}/build/python/dist/ && mv  ${PADDLE_ROOT}/dist/*whl  ${PADDLE_ROOT}/build/python/dist/
     fi
     spec_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.spec

@@ -142,16 +142,33 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   /// \brief Enable the use of OneDNN.
   /// The OneDNN control exists in both CPU and GPU mode, because there can
   /// still be some CPU kernels running in GPU mode.
+  virtual void EnableMKLDNN() {}  // deprecated
+
+  /// \brief Disable the use of OneDNN.
+  virtual void DisableMKLDNN() {}  // deprecated
+
+  /// \brief Enable OneDNN bfloat16.
+  virtual void EnableMkldnnBfloat16() {}  // deprecated
+
+  /// \brief Enable OneDNN int8.
+  virtual void EnableMkldnnInt8() {}  // deprecated
+
+  /// \brief Disable OneDNN fc passes.
+  virtual void DisableMkldnnFcPasses() {}  // deprecated
+
+  /// \brief Enable the use of OneDNN.
+  /// The OneDNN control exists in both CPU and GPU mode, because there can
+  /// still be some CPU kernels running in GPU mode.
   virtual void EnableONEDNN() {}
 
   /// \brief Disable the use of OneDNN.
   virtual void DisableONEDNN() {}
 
   /// \brief Enable OneDNN bfloat16.
-  virtual void EnableMkldnnBfloat16() {}
+  virtual void EnableOnednnBfloat16() {}
 
   /// \brief Enable OneDNN int8.
-  virtual void EnableMkldnnInt8() {}
+  virtual void EnableOnednnInt8() {}
 
   /// \brief Disable OneDNN fc passes.
   virtual void DisableOnednnFcPasses() {}
@@ -211,23 +228,41 @@ class PD_INFER_DECL CpuPassStrategy : public PassStrategy {
   void EnableCUDNN() override;
 
   /// \brief Enable the use of OneDNN.
+  void EnableMKLDNN() override;  // deprecated
+
+  /// \brief Disable the use of OneDNN.
+  void DisableMKLDNN() override;  // deprecated
+
+  /// \brief Enable OneDNN bfloat16.
+  void EnableMkldnnBfloat16() override;  // deprecated
+
+  /// \brief Enable OneDNN int8.
+  void EnableMkldnnInt8() override;  // deprecated
+
+  /// \brief Disable OneDNN fc passes.
+  void DisableMkldnnFcPasses() override;  // deprecated
+
+  /// \brief Enable the use of OneDNN.
   void EnableONEDNN() override;
 
   /// \brief Disable the use of OneDNN.
   void DisableONEDNN() override;
 
   /// \brief Enable OneDNN bfloat16.
-  void EnableMkldnnBfloat16() override;
+  void EnableOnednnBfloat16() override;
 
   /// \brief Enable OneDNN int8.
-  void EnableMkldnnInt8() override;
+  void EnableOnednnInt8() override;
 
   /// \brief Disable OneDNN fc passes.
   void DisableOnednnFcPasses() override;
 
  protected:
   /// \brief Erase OneDNN fc passes.
-  void EraseFcMkldnnPasses();
+  void EraseFcMkldnnPasses();  // deprecated
+
+  /// \brief Erase OneDNN fc passes.
+  void EraseFcOnednnPasses();
 
   /// \cond Protected
   bool use_onednn_bfloat16_{false};
@@ -257,13 +292,25 @@ class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
   void EnableCUDNN() override;
 
   /// \brief Not supported in GPU mode yet.
+  void EnableMKLDNN() override;  // deprecated
+
+  /// \brief Not supported in GPU mode yet.
+  void EnableMkldnnBfloat16() override;  // deprecated
+
+  /// \brief Not supported in GPU mode yet.
+  void EnableMkldnnInt8() override;  // deprecated
+
+  /// \brief Disable OneDNN fc passes.
+  void DisableMkldnnFcPasses() override;  // deprecated
+
+  /// \brief Not supported in GPU mode yet.
   void EnableONEDNN() override;
 
   /// \brief Not supported in GPU mode yet.
-  void EnableMkldnnBfloat16() override;
+  void EnableOnednnBfloat16() override;
 
   /// \brief Not supported in GPU mode yet.
-  void EnableMkldnnInt8() override;
+  void EnableOnednnInt8() override;
 
   /// \brief Disable OneDNN fc passes.
   void DisableOnednnFcPasses() override;
@@ -345,7 +392,7 @@ PD_INFER_DECL extern const std::vector<std::string> kPirCustomDevicePasses;
 PD_INFER_DECL extern const std::vector<std::string> kPirGpuPasses;
 PD_INFER_DECL extern const std::vector<std::string> kPirCpuPasses;
 PD_INFER_DECL extern const std::vector<std::string> kPirXpuPasses;
-PD_INFER_DECL extern const std::vector<std::string> kPirMkldnnPasses;
-PD_INFER_DECL extern const std::vector<std::string> kPirMkldnnBf16Passes;
+PD_INFER_DECL extern const std::vector<std::string> kPirOnednnPasses;
+PD_INFER_DECL extern const std::vector<std::string> kPirOnednnBf16Passes;
 
 }  // namespace paddle

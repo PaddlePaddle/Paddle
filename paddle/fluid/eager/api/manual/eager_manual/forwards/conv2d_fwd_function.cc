@@ -31,7 +31,8 @@ paddle::Tensor conv2d_ad_func(const paddle::Tensor& input,
                               std::string padding_algorithm,
                               std::vector<int> dilations,
                               int groups,
-                              std::string data_format) {
+                              std::string data_format,
+                              paddle::optional<paddle::Tensor*> input_out) {
   VLOG(3) << "Running AD API: "
           << "conv2d";
   if (FLAGS_check_cuda_error) [[unlikely]] {

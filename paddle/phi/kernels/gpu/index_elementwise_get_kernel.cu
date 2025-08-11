@@ -117,6 +117,7 @@ void IndexElementwiseGetKernel(const Context& dev_ctx,
                                const std::vector<int64_t>& index_stride,
                                const int64_t slice_offset,
                                const bool accumulate,
+                               const bool is_combined,
                                DenseTensor* out) {
   const auto& index_type = index[0]->dtype();
   PADDLE_ENFORCE_EQ(index_type == phi::DataType::INT64,

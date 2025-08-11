@@ -126,18 +126,15 @@ class LPPoolGrad {
 
 /* used for adaptive pool to calculate start and end index of each divided grid
  */
-template <typename T = int>
+template <typename T = int64_t>
 HOSTDEVICE inline T AdaptStartIndex(T ph, T input_size, T output_size) {
-  return static_cast<T>(
-      floor(static_cast<float>(ph * input_size) / output_size));
+  return (ph * input_size) / output_size;
 }
 
-template <typename T = int>
+template <typename T = int64_t>
 HOSTDEVICE inline T AdaptEndIndex(T ph, T input_size, T output_size) {
-  return static_cast<T>(
-      ceil(static_cast<float>((ph + 1) * input_size) / output_size));
+  return ((ph + 1) * input_size + output_size - 1) / output_size;
 }
-
 /* used for fractional pool to calculate start and end index of each divided
  * grid
  */

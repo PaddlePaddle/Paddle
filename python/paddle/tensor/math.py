@@ -2965,7 +2965,7 @@ def outer(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         ny = y.reshape((1, -1))
 
     if in_dynamic_mode():
-        return _C_ops.matmul(nx, ny, False, False)
+        return _C_ops.multiply(nx, ny)
 
     def __check_input(x, y):
         var_names = {'x': x, 'y': y}
@@ -2979,7 +2979,7 @@ def outer(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
     __check_input(nx, ny)
     if in_pir_mode():
-        return _C_ops.matmul(nx, ny, False, False)
+        return _C_ops.multiply(nx, ny)
     else:
         helper = LayerHelper('outer', **locals())
         out = helper.create_variable_for_type_inference(dtype=nx.dtype)

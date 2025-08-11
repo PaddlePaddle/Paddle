@@ -112,6 +112,7 @@ void FusedBiasActKernel(const Context &dev_ctx,
                         DenseTensor *out) {
   auto xpu_ctx = static_cast<const phi::XPUContext *>(&dev_ctx);
   dev_ctx.template Alloc<T>(out);
+  if (out->numel() == 0) return;
 
   if (dequant_scales && dequant_scales.get().numel() > 0) {
     return DispatchComputeImpl<T>(xpu_ctx,

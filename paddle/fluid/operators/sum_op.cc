@@ -127,8 +127,8 @@ class SumOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput(
         "X",
-        "A Variable list. The shape and data type of the list elements"
-        "should be consistent. Variable can be multi-dimensional Tensor"
+        "A Variable list. The shape and data type of the list elements "
+        "should be consistent. Variable can be multi-dimensional Tensor "
         "or phi::DenseTensor, and data types can be: float32, float64, int32, "
         "int64.")
         .AsDuplicable();

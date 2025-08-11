@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
 from paddle import _C_ops, base, zeros_like
-from paddle.base import Program, core, program_guard
+from paddle.base import Program, program_guard
 from paddle.base.framework import convert_np_dtype_to_dtype_
 
 
@@ -34,11 +35,7 @@ class TestZerosLikeAPI(unittest.TestCase):
             out3 = zeros_like(x, 'float64')
             out4 = zeros_like(x, 'int32')
             out5 = zeros_like(x, 'int64')
-        place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         exe = base.Executor(place)
         outs = exe.run(
             train_program,
@@ -55,11 +52,7 @@ class TestZerosLikeAPI(unittest.TestCase):
 class TestZerosLikeImperative(unittest.TestCase):
     def test_out(self):
         shape = [3, 4]
-        place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         paddle.disable_static(place)
         x = paddle.to_tensor(np.ones(shape))
         for dtype in [np.bool_, np.float32, np.float64, np.int32, np.int64]:
@@ -77,11 +70,7 @@ class TestZerosLikeImperative(unittest.TestCase):
 class TestZerosAPI(unittest.TestCase):
     def test_api(self):
         shape = [3, 4]
-        place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         paddle.disable_static(place)
 
         for dtype in [np.float32, np.float64, np.int32, np.int64]:

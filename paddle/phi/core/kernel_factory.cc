@@ -386,8 +386,7 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
             kernel_key,
             kernel_name,
             KernelSelectionErrorMessage(kernel_name, kernel_key)));
-
-    VLOG(3) << "missing " << kernel_key.backend() << " kernel: " << kernel_name
+    VLOG(1) << "missing " << kernel_key.backend() << " kernel: " << kernel_name
             << ", expected_kernel_key:" << kernel_key
             << ", fallbacking to CPU one!";
 

@@ -56,7 +56,7 @@ HOSTDEVICE T DmcnIm2colBilinear(const T* bottom_data,
   return w1 * v1 + w2 * v2 + w3 * v3 + w4 * v4;
 }
 
-template <typename T, typename Context>
+template <typename T, typename Context, typename IndexT>
 void ModulatedDeformableIm2col(const Context& dev_ctx,
                                const T* data_im,
                                const T* data_offset,

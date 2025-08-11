@@ -4829,7 +4829,7 @@ def lstsq(
             x, y, rcond, driver
         )
         if driver == "gels":
-            rank = paddle.empty(shape=[0], dtype="int32")
+            rank = paddle.empty(shape=[0], dtype="int64")
             singular_values = paddle.empty(shape=[0], dtype=x.dtype)
         elif driver == "gelsy":
             singular_values = paddle.empty(shape=[0], dtype=x.dtype)

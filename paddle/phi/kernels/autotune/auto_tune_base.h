@@ -63,7 +63,7 @@ class AutoTuneBase {
   }
 
   template <typename Context, typename... Args>
-  void Run(const Context& ctx,
+  void Run(const Context& dev_ctx,
            const AlgorithmType& algo,
            const size_t key,
            Args&&... args) {
@@ -78,7 +78,7 @@ class AutoTuneBase {
       if (use_autotune) {
         // All available kernels have ran while picking the best kernel,
         // so there may be no need for another kernel run.
-        auto best_idx = PickBestKernel(ctx, args...);
+        auto best_idx = PickBestKernel(dev_ctx, args...);
         cache.Set(key, best_idx);
       } else {
         kernels_[0].Run(args...);
@@ -100,14 +100,14 @@ class AutoTuneBase {
   }
 
   template <typename Context, typename... Args>
-  size_t PickBestKernel(const Context& ctx, Args&&... args) {
+  size_t PickBestKernel(const Context& dev_ctx, Args&&... args) {
     std::lock_guard<std::mutex> lock(mutex_);
     size_t best_idx = 0;
     float min_time = std::numeric_limits<float>::max();
 
     // Time cost test established in default stream.
     for (size_t i = 0; i < kernels_.size(); ++i) {
-      auto time = RunAndMeasureKernel<Context>(ctx, i, args...);
+      auto time = RunAndMeasureKernel<Context>(dev_ctx, i, args...);
       if (time < min_time) {
         min_time = time;
         best_idx = i;
@@ -118,15 +118,17 @@ class AutoTuneBase {
   }
 
   template <typename Context, typename... Args>
-  float RunAndMeasureKernel(const Context& ctx, const int idx, Args&&... args) {
+  float RunAndMeasureKernel(const Context& dev_ctx,
+                            const int idx,
+                            Args&&... args) {
     // Regard 1st run as warmup, judge the compare result by the time cost
     // of rest cycles.
     constexpr int repeats = 11;
     phi::GpuTimer timer;
     float time_cost = 0;
-    const auto& stream = ctx.stream();
+    const auto& stream = dev_ctx.stream();
 
-    ctx.Wait();
+    dev_ctx.Wait();
     for (int i = 0; i < repeats; ++i) {
       timer.Start(stream);
       kernels_[idx].Run(args...);
@@ -158,7 +160,7 @@ class MatmulAutoTuner
   }
 
   template <typename Context>
-  void Run(const Context& ctx, const size_t key, Args... args) {
+  void Run(const Context& dev_ctx, const size_t key, Args... args) {
     this->is_init_ = true;
     this->CheckKernelSize();
     auto& cache = AutoTuneCache::Instance().GetMatmul();
@@ -168,7 +170,7 @@ class MatmulAutoTuner
     } else {
       bool use_autotune = AutoTuneStatus::Instance().UseAutoTune();
       if (use_autotune) {
-        auto best_idx = this->PickBestKernel(ctx, args...);
+        auto best_idx = this->PickBestKernel(dev_ctx, args...);
         cache.Set(key, best_idx);
       } else {
         this->kernels_[0].Run(args...);
@@ -210,7 +212,7 @@ class GatherGemmScatterAutoTuner
     return instance.get();
   }
 
-  void Run(const phi::GPUContext& ctx,
+  void Run(const phi::GPUContext& dev_ctx,
            const size_t key,
            T const alpha,
            T const beta,
@@ -227,15 +229,15 @@ class GatherGemmScatterAutoTuner
     } else {
       // Set alpha to 0 and beta to 1 to avoid changing the value of d when
       // picking the best kernel
-      auto best_idx =
-          PickBestKernel(ctx, static_cast<T>(0), static_cast<T>(1), args...);
+      auto best_idx = PickBestKernel(
+          dev_ctx, static_cast<T>(0), static_cast<T>(1), args...);
       cache.Set(key, best_idx);
       this->kernels_[best_idx].Run(alpha, beta, args...);
     }
   }
 
  protected:
-  size_t PickBestKernel(const phi::GPUContext& ctx,
+  size_t PickBestKernel(const phi::GPUContext& dev_ctx,
                         const T& alpha,
                         const T& beta,
                         Args&... args) {
@@ -250,7 +252,7 @@ class GatherGemmScatterAutoTuner
       // Some kernels may require more shared memory than available, skip these
       // kernels.
       try {
-        time = this->RunAndMeasureKernel(ctx, i, alpha, beta, args...);
+        time = this->RunAndMeasureKernel(dev_ctx, i, alpha, beta, args...);
         if (time < min_time) {
           min_time = time;
           best_idx = i;

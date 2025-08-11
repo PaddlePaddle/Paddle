@@ -534,6 +534,8 @@ CvtPlacements(phi::distributed::Placements placements, int ndim);
 
 void EagerSetDeviceId();
 
+paddle::optional<Tensor*> GetInputOutTensorFromKwargs(PyObject* kwargs);
+
 /*----------------------for arg parse-----------------------------*/
 paddle::Tensor& GetTensorFromArgsOrKWArgs(
     const std::string& op_type,

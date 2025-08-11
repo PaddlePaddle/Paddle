@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
 
@@ -33,11 +34,7 @@ class TestMultiplyApi(unittest.TestCase):
             )
             res = paddle.outer(x, y)
 
-            place = (
-                paddle.CUDAPlace(0)
-                if paddle.is_compiled_with_cuda()
-                else paddle.CPUPlace()
-            )
+            place = get_device_place()
             exe = paddle.static.Executor(place)
             outs = exe.run(
                 paddle.static.default_main_program(),
@@ -84,6 +81,18 @@ class TestMultiplyApi(unittest.TestCase):
         # test static computation graph: 1-d int64 array
         x_data = np.random.rand(50).astype(np.int64)
         y_data = np.random.rand(50).astype(np.int64)
+        res = self._run_static_graph_case(x_data, y_data)
+        np.testing.assert_allclose(res, np.outer(x_data, y_data), rtol=1e-05)
+
+        # test static computation graph: 3-d int32 big array
+        x_data = np.random.randint(-80000, 80000, [5, 10, 10]).astype(np.int32)
+        y_data = np.random.randint(-80000, 80000, [2, 10]).astype(np.int32)
+        res = self._run_static_graph_case(x_data, y_data)
+        np.testing.assert_allclose(res, np.outer(x_data, y_data), rtol=1e-05)
+
+        # test static computation graph: 3-d int64 big array
+        x_data = np.random.randint(-80000, 80000, [5, 10, 10]).astype(np.int64)
+        y_data = np.random.randint(-80000, 80000, [2, 10]).astype(np.int64)
         res = self._run_static_graph_case(x_data, y_data)
         np.testing.assert_allclose(res, np.outer(x_data, y_data), rtol=1e-05)
 
@@ -135,6 +144,18 @@ class TestMultiplyApi(unittest.TestCase):
         # test dynamic computation graph: 3-d int64 array
         x_data = np.random.rand(5, 10, 10).astype(np.int64)
         y_data = np.random.rand(2, 10).astype(np.int64)
+        res = self._run_dynamic_graph_case(x_data, y_data)
+        np.testing.assert_allclose(res, np.outer(x_data, y_data), rtol=1e-05)
+
+        # test dynamic computation graph: 3-d int32 big array
+        x_data = np.random.randint(-80000, 80000, [5, 10, 10]).astype(np.int32)
+        y_data = np.random.randint(-80000, 80000, [2, 10]).astype(np.int32)
+        res = self._run_dynamic_graph_case(x_data, y_data)
+        np.testing.assert_allclose(res, np.outer(x_data, y_data), rtol=1e-05)
+
+        # test dynamic computation graph: 3-d int64 big array
+        x_data = np.random.randint(-80000, 80000, [5, 10, 10]).astype(np.int64)
+        y_data = np.random.randint(-80000, 80000, [2, 10]).astype(np.int64)
         res = self._run_dynamic_graph_case(x_data, y_data)
         np.testing.assert_allclose(res, np.outer(x_data, y_data), rtol=1e-05)
 

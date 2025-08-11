@@ -784,5 +784,31 @@ class TestWithoutBias(unittest.TestCase):
         )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_rocm(),
+    "core is not compiled with CUDA or ROCm",
+)
+class TestFusedBiasActOp_ZeroSize(TestWithoutBias):
+    def setUp(self):
+        paddle.seed(2017)
+        np.random.seed(2017)
+
+        self.op_type = "fused_bias_act"
+        self.rtol = 1e-5
+        self.atol = 1e-3
+
+        self.batch_size = 2
+        self.seq_len = 0
+        self.cols = 512
+
+        self.dtype = 'float32'
+        self.act_method = 'gelu'
+
+        self.use_glu = False
+
+        self.init_test_case()
+        self.generate_inputs()
+
+
 if __name__ == '__main__':
     unittest.main()

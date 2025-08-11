@@ -3128,10 +3128,8 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
         return "VPPFhenBInBalancedMemory"
 
     def _init_user_bubble_hooks(self):
-        # (TODO:gexiao) support bubble hooks if needed
-        self.bubble_hooks = None
-        # self.bubble_hooks = PipelineHook()
-        # self.bubble_hooks.set_hooks_capacity(2 * self.num_stages - 2)
+        self.bubble_hooks = PipelineHook()
+        self.bubble_hooks.set_hooks_capacity(2 * self.num_stages - 2)
 
     def forward_backward_pipeline(
         self,
@@ -3194,6 +3192,11 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
         )
         cooldown_steps = startup_steps
 
+        # Bubbles before startup_steps
+        for _ in range(self.stage_id):
+            if self.user_hooks_enabled:
+                self.bubble_hooks.run_hook()
+
         self.set_virtual_pipeline_rank(0)
         self.input_tensors[0].append(
             self._p2p_helper.recv_forward(
@@ -3247,6 +3250,7 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
 
         input_tensor_grad = None
         for micro_step in range(steady_1f1b_steps):
+            first_iter = micro_step == 0
             last_iter = micro_step == (steady_1f1b_steps - 1)
             forward_micro_step_id = micro_step + startup_steps
             backward_micro_step_id = micro_step
@@ -3258,6 +3262,11 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
                 check_is_last_chunk=True,
             )
             self._record_stamp("F", forward_micro_step_id, '"E"', forward=True)
+
+            if first_iter:
+                for _ in range(self.num_stages - self.stage_id - 1):
+                    if self.user_hooks_enabled:
+                        self.bubble_hooks.run_hook()
 
             # NOTE: `send_forward_recv_backward` is intentionally unused to
             # prevent hanging bugs in dynamic shape mode.
@@ -3312,6 +3321,10 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
                 self.input_tensors[next_forward_virtual_pp_rank].append(
                     input_tensor
                 )
+            else:
+                for _ in range(self.num_stages - self.stage_id - 1):
+                    if self.user_hooks_enabled:
+                        self.bubble_hooks.run_hook()
 
         assert (
             forward_send_recv_buffer_queue.qsize() == 0
@@ -3376,6 +3389,11 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
         assert (
             backward_send_recv_buffer_queue.empty()
         ), "send_recv buffer should be empty"
+
+        # Bubbles after cooldown
+        for _ in range(self.stage_id):
+            if self.user_hooks_enabled:
+                self.bubble_hooks.run_hook()
 
         # reset dynamic meta counter
         if self._dynamic_shape:

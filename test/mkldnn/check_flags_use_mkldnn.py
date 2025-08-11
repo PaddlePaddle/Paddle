@@ -24,12 +24,12 @@ from paddle.base.layer_helper import LayerHelper
 
 def check():
     print(
-        "check: _global_flags()['FLAGS_use_mkldnn']=",
-        _global_flags()["FLAGS_use_mkldnn"],
+        "check: _global_flags()['FLAGS_use_onednn']=",
+        _global_flags()["FLAGS_use_onednn"],
     )
     print(
-        "check: base.get_flags('FLAGS_use_mkldnn')=",
-        base.get_flags(['FLAGS_use_mkldnn']),
+        "check: base.get_flags('FLAGS_use_onednn')=",
+        base.get_flags(['FLAGS_use_onednn']),
     )
     print("check: DNNL_VERBOSE=", os.environ['DNNL_VERBOSE'])
     a_np = np.random.uniform(-2, 2, (10, 20, 30)).astype(np.float32)

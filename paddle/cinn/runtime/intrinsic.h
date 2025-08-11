@@ -97,6 +97,7 @@ static const char* pod_value_to_float = "cinn_pod_value_to_float";
 static const char* pod_value_to_double = "cinn_pod_value_to_double";
 static const char* pod_value_to_bfloat16 = "cinn_pod_value_to_bfloat16";
 static const char* pod_value_to_float16 = "cinn_pod_value_to_float16";
+static const char* pod_value_to_float8e4m3 = "cinn_pod_value_to_float8e4m3";
 
 static const char* pod_value_to_void_p = "cinn_pod_value_to_void_p";
 
@@ -112,8 +113,7 @@ static const char* call_sycl_kernel = "cinn_call_sycl_kernel";
 
 static const char* call_cuda_memset = "cinn_call_cuda_memset";
 
-static const char* get_value_in_cuda_kernel_args =
-    "cinn_get_value_in_cuda_kernel_args";
+static const char* get_value_in_kernel_args = "cinn_get_value_in_kernel_args";
 
 static const char* get_item_in_cuda_kernel_args =
     "cinn_get_item_in_cuda_kernel_args";

@@ -18,7 +18,7 @@ import unittest
 from functools import partial
 
 import numpy as np
-from op_test import OpTest, get_places
+from op_test import OpTest, get_devices
 
 import paddle
 from paddle import base, nn
@@ -758,7 +758,7 @@ class TestAdamWOpMultiPrecision(unittest.TestCase):
                 optimizer.clear_grad()
 
     def _get_places(self):
-        places = get_places(string_format=True)
+        places = get_devices()
         if paddle.is_compiled_with_xpu():
             places.append('xpu')
         return places

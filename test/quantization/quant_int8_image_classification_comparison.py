@@ -25,7 +25,7 @@ import numpy as np
 import paddle
 from paddle.base.framework import IrGraph
 from paddle.framework import core
-from paddle.static.quantization import QuantInt8MkldnnPass
+from paddle.static.quantization import QuantInt8OnednnPass
 
 paddle.enable_static()
 
@@ -190,10 +190,10 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
             if self._debug:
                 graph.draw('.', 'quant_orig', graph.all_op_nodes())
             if transform_to_int8:
-                mkldnn_int8_pass = QuantInt8MkldnnPass(
+                onednn_int8_pass = QuantInt8OnednnPass(
                     _scope=inference_scope, _place=place
                 )
-                graph = mkldnn_int8_pass.apply(graph)
+                graph = onednn_int8_pass.apply(graph)
             else:
                 graph = self._prepare_for_fp32_mkldnn(graph)
 

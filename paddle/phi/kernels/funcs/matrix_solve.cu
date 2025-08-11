@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/matrix_solve.h"
+#include "paddle/phi/backends/gpu/cuda/cudnn_workspace_helper.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
@@ -161,11 +162,13 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& dev_ctx,
   int n = a_dims[a_rank - 1];
   int lda = n;
   int64_t batch_size = a_rank > 2 ? a.numel() / (n * n) : 1;
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(a);
 
   const auto& b_dims = b.dims();
   const int b_rank = b_dims.size();
   int nrhs = b_dims[b_rank - 1];
   int ldb = n;
+  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(b);
 
   // 1. Copy input A to a temporary tensor tmp_a for LU factorization.
   DenseTensor tmp_a(a.dtype());
