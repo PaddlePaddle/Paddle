@@ -174,9 +174,7 @@ class TestKaimingUniformFuncPir(unittest.TestCase):
             main = paddle.static.Program()
             with paddle.static.program_guard(main, paddle.static.Program()):
                 parameter_meta = ParameterMeta([1024, 512], paddle.float32)
-                init_result = paddle.nn.init.kaiming_uniform_(
-                    parameter_meta, block=main.global_block()
-                )
+                init_result = paddle.nn.init.kaiming_uniform_(parameter_meta)
                 block = main.global_block()
                 checked_ops = self.get_init_ops_by_op_name(
                     block, self.init_uniform_op_name
@@ -201,7 +199,7 @@ class TestKaimingUniformFuncPir(unittest.TestCase):
             with paddle.static.program_guard(main, paddle.static.Program()):
                 parameter_meta = ParameterMeta([5, 10, 15, 20], paddle.float32)
                 init_result = paddle.nn.init.kaiming_uniform_(
-                    parameter_meta, block=main.global_block()
+                    parameter_meta,
                 )
                 block = main.global_block()
                 checked_ops = self.get_init_ops_by_op_name(
@@ -234,7 +232,8 @@ class TestKaimingUniformFuncPir(unittest.TestCase):
             with paddle.static.program_guard(main, paddle.static.Program()):
                 parameter_meta = ParameterMeta([5, 10, 15, 20], paddle.float32)
                 init_result = paddle.nn.init.kaiming_uniform_(
-                    parameter_meta, mode='fan_out', block=main.global_block()
+                    parameter_meta,
+                    mode='fan_out',
                 )
                 block = main.global_block()
                 checked_ops = self.get_init_ops_by_op_name(
@@ -411,7 +410,7 @@ class TestKaimingNormalFuncPir(unittest.TestCase):
             with paddle.static.program_guard(main, paddle.static.Program()):
                 parameter_meta = ParameterMeta([1024, 512], paddle.float32)
                 init_result = paddle.nn.init.kaiming_normal_(
-                    parameter_meta, block=main.global_block()
+                    parameter_meta,
                 )
                 block = main.global_block()
                 checked_ops = self.get_init_ops_by_op_name(
@@ -434,7 +433,7 @@ class TestKaimingNormalFuncPir(unittest.TestCase):
             with paddle.static.program_guard(main, paddle.static.Program()):
                 parameter_meta = ParameterMeta([5, 10, 15, 20], paddle.float32)
                 init_result = paddle.nn.init.kaiming_normal_(
-                    parameter_meta, block=main.global_block()
+                    parameter_meta,
                 )
                 block = main.global_block()
                 checked_ops = self.get_init_ops_by_op_name(
@@ -465,7 +464,8 @@ class TestKaimingNormalFuncPir(unittest.TestCase):
             with paddle.static.program_guard(main, paddle.static.Program()):
                 parameter_meta = ParameterMeta([5, 10, 15, 20], paddle.float32)
                 init_result = paddle.nn.init.kaiming_normal_(
-                    parameter_meta, mode='fan_out', block=main.global_block()
+                    parameter_meta,
+                    mode='fan_out',
                 )
                 block = main.global_block()
                 checked_ops = self.get_init_ops_by_op_name(
@@ -586,7 +586,7 @@ class TestXavierUniformFuncPir(unittest.TestCase):
             with paddle.static.program_guard(main, paddle.static.Program()):
                 parameter_meta = ParameterMeta([1024, 512], paddle.float32)
                 init_result = paddle.nn.init.xavier_uniform_(
-                    parameter_meta, block=main.global_block()
+                    parameter_meta,
                 )
                 block = main.global_block()
                 checked_ops = self.get_init_ops_by_op_name(
@@ -614,7 +614,7 @@ class TestXavierUniformFuncPir(unittest.TestCase):
             with paddle.static.program_guard(main, paddle.static.Program()):
                 parameter_meta = ParameterMeta([5, 10, 15, 20], paddle.float32)
                 init_result = paddle.nn.init.xavier_uniform_(
-                    parameter_meta, block=main.global_block()
+                    parameter_meta,
                 )
                 block = main.global_block()
                 checked_ops = self.get_init_ops_by_op_name(
@@ -647,7 +647,8 @@ class TestXavierUniformFuncPir(unittest.TestCase):
             with paddle.static.program_guard(main, paddle.static.Program()):
                 parameter_meta = ParameterMeta([5, 10, 15, 20], paddle.float32)
                 init_result = paddle.nn.init.xavier_uniform_(
-                    parameter_meta, gain=0.5, block=main.global_block()
+                    parameter_meta,
+                    gain=0.5,
                 )
                 block = main.global_block()
                 checked_ops = self.get_init_ops_by_op_name(
@@ -771,7 +772,7 @@ class TestXavierNormalFuncPir(unittest.TestCase):
             with paddle.static.program_guard(main, paddle.static.Program()):
                 parameter_meta = ParameterMeta([1024, 512], paddle.float32)
                 init_result = paddle.nn.init.xavier_normal_(
-                    parameter_meta, block=main.global_block()
+                    parameter_meta,
                 )
                 block = main.global_block()
                 checked_ops = self.get_init_ops_by_op_name(
@@ -797,7 +798,7 @@ class TestXavierNormalFuncPir(unittest.TestCase):
             with paddle.static.program_guard(main, paddle.static.Program()):
                 parameter_meta = ParameterMeta([5, 10, 15, 20], paddle.float32)
                 init_result = paddle.nn.init.xavier_normal_(
-                    parameter_meta, block=main.global_block()
+                    parameter_meta,
                 )
                 block = main.global_block()
                 checked_ops = self.get_init_ops_by_op_name(
@@ -828,7 +829,8 @@ class TestXavierNormalFuncPir(unittest.TestCase):
             with paddle.static.program_guard(main, paddle.static.Program()):
                 parameter_meta = ParameterMeta([5, 10, 15, 20], paddle.float32)
                 init_result = paddle.nn.init.xavier_normal_(
-                    parameter_meta, gain=0.5, block=main.global_block()
+                    parameter_meta,
+                    gain=0.5,
                 )
                 block = main.global_block()
                 checked_ops = self.get_init_ops_by_op_name(
@@ -929,7 +931,7 @@ class TestUniformFuncPir(unittest.TestCase):
             with paddle.static.program_guard(main, paddle.static.Program()):
                 parameter_meta = ParameterMeta([1024, 512], paddle.float32)
                 init_result = paddle.nn.init.uniform_(
-                    parameter_meta, block=main.global_block()
+                    parameter_meta,
                 )
                 block = main.global_block()
                 checked_ops = self.get_init_ops_by_op_name(
@@ -954,7 +956,7 @@ class TestUniformFuncPir(unittest.TestCase):
             with paddle.static.program_guard(main, paddle.static.Program()):
                 parameter_meta = ParameterMeta([5, 10, 15, 20], paddle.float32)
                 init_result = paddle.nn.init.uniform_(
-                    parameter_meta, block=main.global_block()
+                    parameter_meta,
                 )
                 block = main.global_block()
                 checked_ops = self.get_init_ops_by_op_name(
@@ -978,7 +980,9 @@ class TestUniformFuncPir(unittest.TestCase):
             with paddle.static.program_guard(main, paddle.static.Program()):
                 parameter_meta = ParameterMeta([5, 10, 15, 20], paddle.float32)
                 init_result = paddle.nn.init.uniform_(
-                    parameter_meta, a=-0.8, b=0.8, block=main.global_block()
+                    parameter_meta,
+                    a=-0.8,
+                    b=0.8,
                 )
                 block = main.global_block()
                 checked_ops = self.get_init_ops_by_op_name(
@@ -1073,7 +1077,7 @@ class TestNormalFuncPir(unittest.TestCase):
             with paddle.static.program_guard(main, paddle.static.Program()):
                 parameter_meta = ParameterMeta([1024, 512], paddle.float32)
                 init_result = paddle.nn.init.normal_(
-                    parameter_meta, block=main.global_block()
+                    parameter_meta,
                 )
                 block = main.global_block()
                 checked_ops = self.get_init_ops_by_op_name(
@@ -1093,7 +1097,7 @@ class TestNormalFuncPir(unittest.TestCase):
             with paddle.static.program_guard(main, paddle.static.Program()):
                 parameter_meta = ParameterMeta([5, 10, 15, 20], paddle.float32)
                 init_result = paddle.nn.init.normal_(
-                    parameter_meta, block=main.global_block()
+                    parameter_meta,
                 )
                 block = main.global_block()
                 checked_ops = self.get_init_ops_by_op_name(
@@ -1114,7 +1118,9 @@ class TestNormalFuncPir(unittest.TestCase):
             with paddle.static.program_guard(main, paddle.static.Program()):
                 parameter_meta = ParameterMeta([5, 10, 15, 20], paddle.float32)
                 init_result = paddle.nn.init.normal_(
-                    parameter_meta, mean=0.3, std=3.5, block=main.global_block()
+                    parameter_meta,
+                    mean=0.3,
+                    std=3.5,
                 )
                 block = main.global_block()
                 checked_ops = self.get_init_ops_by_op_name(

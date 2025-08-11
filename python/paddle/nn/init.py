@@ -33,7 +33,6 @@ def kaiming_uniform_(
     a: float = 0,
     mode: str = "fan_in",
     nonlinearity: str = "leaky_relu",
-    block: paddle.pir.Block | None = None,
 ) -> paddle.Tensor | None:
     """Modify tensor inplace using Kaiming uniform method.
 
@@ -46,8 +45,6 @@ def kaiming_uniform_(
             When set to 'fan_out', the out_features of trainable Tensor will be used.
             Default is 'fan_in'.
         nonlinearity (str, optional): Nonlinearity method name. Defaults to "leaky_relu".
-        block (Block|None, optional): The block in which initialization ops
-                should be added. Used in static graph only, default None.
 
     Returns:
         Tensor: Initialized tensor.
@@ -56,7 +53,7 @@ def kaiming_uniform_(
         negative_slope=a, nonlinearity=nonlinearity, mode=mode
     )
 
-    return init(tensor, block=block)
+    return init(tensor)
 
 
 def kaiming_normal_(
@@ -64,7 +61,6 @@ def kaiming_normal_(
     a: float = 0,
     mode: str = "fan_in",
     nonlinearity: str = "leaky_relu",
-    block: paddle.pir.Block | None = None,
 ) -> paddle.Tensor | None:
     """Modify tensor inplace using Kaiming normal method.
 
@@ -77,15 +73,13 @@ def kaiming_normal_(
             When set to 'fan_out', the out_features of trainable Tensor will be used.
             Default is 'fan_in'.
         nonlinearity (str, optional): Nonlinearity method name. Defaults to "leaky_relu".
-        block (Block|None, optional): The block in which initialization ops
-                should be added. Used in static graph only, default None.
 
     Returns:
         Tensor: Initialized tensor.
     """
     init = KaimingNormal(negative_slope=a, nonlinearity=nonlinearity, mode=mode)
 
-    return init(tensor, block=block)
+    return init(tensor)
 
 
 def xavier_uniform_(
@@ -93,7 +87,6 @@ def xavier_uniform_(
     gain: float = 1.0,
     fan_in: float | None = None,
     fan_out: float | None = None,
-    block: paddle.pir.Block | None = None,
 ) -> paddle.Tensor | None:
     """Modify tensor inplace using Xavier uniform method.
 
@@ -104,8 +97,6 @@ def xavier_uniform_(
                 inferred from the Tensor. Default is None.
         fan_out (float|None, optional): fan_out for Xavier initialization, which is
                  inferred from the Tensor. Default is None.
-        block (Block|None, optional): The block in which initialization ops
-                should be added. Used in static graph only, default None.
 
     Returns:
         Tensor: Initialized tensor.
@@ -116,7 +107,7 @@ def xavier_uniform_(
         fan_out=fan_out,
     )
 
-    return init(tensor, block=block)
+    return init(tensor)
 
 
 def xavier_normal_(
@@ -124,7 +115,6 @@ def xavier_normal_(
     gain: float = 1.0,
     fan_in: float | None = None,
     fan_out: float | None = None,
-    block: paddle.pir.Block | None = None,
 ) -> paddle.Tensor | None:
     """Modify tensor inplace using Xavier normal method.
 
@@ -135,8 +125,6 @@ def xavier_normal_(
                 inferred from the Tensor. Default is None.
         fan_out (float|None, optional): fan_out for Xavier initialization, which is
                  inferred from the Tensor. Default is None.
-        block (Block|None, optional): The block in which initialization ops
-                should be added. Used in static graph only, default None.
 
     Returns:
         Tensor: Initialized tensor.
@@ -147,14 +135,13 @@ def xavier_normal_(
         fan_out=fan_out,
     )
 
-    return init(tensor, block=block)
+    return init(tensor)
 
 
 def uniform_(
     tensor: paddle.Tensor,
     a: float = 0.0,
     b: float = 1.0,
-    block: paddle.pir.Block | None = None,
 ) -> paddle.Tensor | None:
     """Modify tensor inplace using uniform method.
 
@@ -162,22 +149,19 @@ def uniform_(
         tensor (Tensor):  Paddle Tensor.
         low (float, optional): Lower boundary of the uniform distribution. Default is :math:`-1.0`.
         high (float, optional): Upper boundary of the uniform distribution. Default is :math:`1.0`.
-        block (Block|None, optional): The block in which initialization ops
-                should be added. Used in static graph only, default None.
 
     Returns:
         Tensor: Initialized tensor.
     """
     init = Uniform(low=a, high=b)
 
-    return init(tensor, block=block)
+    return init(tensor)
 
 
 def normal_(
     tensor: paddle.Tensor,
     mean: float = 0.0,
     std: float = 1.0,
-    block: paddle.pir.Block | None = None,
 ) -> paddle.Tensor | None:
     """Modify tensor inplace using normal method.
 
@@ -185,12 +169,10 @@ def normal_(
         tensor (Tensor):  Paddle Tensor.
         mean (float|complex, optional): mean of the normal distribution. Default is 0.0.
         std (float, optional): standard deviation of the normal distribution. Default is 1.0.
-        block (Block|None, optional): The block in which initialization ops
-                should be added. Used in static graph only, default None.
 
     Returns:
         Tensor: Initialized tensor.
     """
     init = Normal(mean=mean, std=std)
 
-    return init(tensor, block=block)
+    return init(tensor)
