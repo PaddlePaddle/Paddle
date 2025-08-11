@@ -105,14 +105,14 @@ void ReduceMinGradKernel(const Context& dev_ctx,
   // step 3. get x_grad
   r = xpu::constant<T>(dev_ctx.x_context(), broadcast1, x.numel(), 0);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
-  r = xpu::select<T>(dev_ctx.x_context(),
-                     equal,
-                     broadcast2,
-                     broadcast1,
-                     x_grad_data,
-                     xdims,
-                     xdims);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "select");
+  r = xpu::where<T>(dev_ctx.x_context(),
+                    equal,
+                    broadcast2,
+                    broadcast1,
+                    x_grad_data,
+                    xdims,
+                    xdims);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "where");
 }
 
 }  // namespace phi

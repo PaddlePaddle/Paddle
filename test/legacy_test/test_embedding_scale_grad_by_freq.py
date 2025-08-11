@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import get_places
 
 import paddle
 from paddle.nn.functional import embedding
@@ -32,9 +33,7 @@ def ref_embedding_scale_grad_(x, weight_unscaled_grad):
 class TestEmbeddingAPIScaleGradByFreq(unittest.TestCase):
     def setUp(self):
         self.init_data()
-        self.places = [paddle.CPUPlace()]
-        if paddle.core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
 
     def init_data(self):
         self.dtype = "float32"

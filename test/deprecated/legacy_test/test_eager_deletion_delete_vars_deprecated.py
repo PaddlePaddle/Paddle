@@ -16,7 +16,7 @@ import os
 
 import numpy as np
 
-os.environ['FLAGS_use_mkldnn'] = '0'
+os.environ['FLAGS_use_onednn'] = '0'
 os.environ['CPU_NUM'] = '4'
 
 import unittest

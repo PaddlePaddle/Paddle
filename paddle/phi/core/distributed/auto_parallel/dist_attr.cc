@@ -560,15 +560,31 @@ TensorDistAttr::DimMapProxy::operator const std::vector<int64_t>&() const {
 void TensorDistAttr::DimMapProxy::sync_1d_map() const {
   dims_mapping_1d.resize(dims_mapping_2d->size());
   for (size_t i = 0; i < dims_mapping_2d->size(); ++i) {
-    PADDLE_ENFORCE_LE(dims_mapping_2d->at(i).size(),
-                      1,
-                      common::errors::InvalidArgument(
-                          "There are %d mesh dim sharded on tensor dim %d,"
-                          "you should call \"multi_dims_mapping()\"",
-                          dims_mapping_2d->at(i).size(),
-                          i));
-    dims_mapping_1d[i] =
-        (*dims_mapping_2d)[i].empty() ? -1 : (*dims_mapping_2d)[i][0];
+    size_t num_mesh_dim = dims_mapping_2d->at(i).size();
+    if (num_mesh_dim <= 1) {
+      dims_mapping_1d[i] =
+          (*dims_mapping_2d)[i].empty() ? -1 : (*dims_mapping_2d)[i][0];
+      continue;
+    }
+
+    int64_t max_mesh_dim = (*dims_mapping_2d)[i][0];
+    int64_t max_mesh_dim_size = process_mesh.shape()[max_mesh_dim];
+
+    for (size_t j = 1; j < num_mesh_dim; ++j) {
+      int64_t cur_mesh_dim = (*dims_mapping_2d)[i][j];
+      int64_t cur_mesh_dim_size = process_mesh.shape()[cur_mesh_dim];
+
+      if (cur_mesh_dim_size > max_mesh_dim_size) {
+        max_mesh_dim = cur_mesh_dim;
+        max_mesh_dim_size = cur_mesh_dim_size;
+      }
+    }
+
+    LOG(WARNING) << "There are " << num_mesh_dim << " shared on tensor dim "
+                 << i << ". Now fallback to sharding by mesh dim "
+                 << max_mesh_dim << ".";
+
+    dims_mapping_1d[i] = max_mesh_dim;
   }
 }
 

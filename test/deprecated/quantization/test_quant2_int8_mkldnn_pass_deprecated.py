@@ -19,12 +19,12 @@ import numpy as np
 import paddle
 from paddle.base.framework import IrGraph
 from paddle.framework import core
-from paddle.static.quantization import Quant2Int8MkldnnPass
+from paddle.static.quantization import Quant2Int8OnednnPass
 
 paddle.enable_static()
 
 
-class TestQuant2Int8MkldnnPassMul(unittest.TestCase):
+class TestQuant2Int8OnednnPassMul(unittest.TestCase):
     def op_name(self):
         return "mul"
 
@@ -80,7 +80,7 @@ class TestQuant2Int8MkldnnPassMul(unittest.TestCase):
                     break
             assert op_node != "", f"op of type {self.op_name()} not found"
 
-            qpass = Quant2Int8MkldnnPass(
+            qpass = Quant2Int8OnednnPass(
                 self.quantized_ops,
                 _scope=self.scope,
                 _place=self.place,
@@ -125,12 +125,12 @@ class TestQuant2Int8MkldnnPassMul(unittest.TestCase):
                 qpass._dequantize_op_weights(graph, op_node, "Y", "Out")
 
 
-class TestQuant2Int8MkldnnPassMatmulV2(TestQuant2Int8MkldnnPassMul):
+class TestQuant2Int8OnednnPassMatmulV2(TestQuant2Int8OnednnPassMul):
     def op_name(self):
         return "matmul_v2"
 
 
-class TestQuant2Int8MkldnnPassConv2D(unittest.TestCase):
+class TestQuant2Int8OnednnPassConv2D(unittest.TestCase):
     def setUp(self):
         self.scope = paddle.static.global_scope()
         self.place = paddle.CPUPlace()
@@ -225,17 +225,17 @@ class TestQuant2Int8MkldnnPassConv2D(unittest.TestCase):
             graph = IrGraph(core.Graph(program.desc), for_test=True)
             graph = self.remove_fuse_activation_attribute(graph)
             self.check_graph_before_pass(graph)
-            quant2_int8_mkldnn_pass = Quant2Int8MkldnnPass(
+            quant2_int8_onednn_pass = Quant2Int8OnednnPass(
                 self.quantized_ops,
                 _scope=self.scope,
                 _place=self.place,
                 _core=core,
                 _debug=False,
             )
-            graph = quant2_int8_mkldnn_pass._update_activations(graph)
+            graph = quant2_int8_onednn_pass._update_activations(graph)
             self.check_graph_after_pass(graph)
 
-    class TestQuant2Int8MkldnnPassNearestInterp(unittest.TestCase):
+    class TestQuant2Int8OnednnPassNearestInterp(unittest.TestCase):
         def op_name(self):
             return "nearest_interp"
 
@@ -357,7 +357,7 @@ class TestQuant2Int8MkldnnPassConv2D(unittest.TestCase):
             with paddle.static.program_guard(program):
                 self.prepare_program(program)
                 graph = IrGraph(core.Graph(program.desc), for_test=True)
-                quant2_int8_mkldnn_pass = Quant2Int8MkldnnPass(
+                quant2_int8_onednn_pass = Quant2Int8OnednnPass(
                     self.quantized_ops,
                     _scope=self.scope,
                     _place=self.place,
@@ -366,12 +366,12 @@ class TestQuant2Int8MkldnnPassConv2D(unittest.TestCase):
                 )
 
                 input_scale_tensor = (
-                    quant2_int8_mkldnn_pass._convert_scale2tensor(
+                    quant2_int8_onednn_pass._convert_scale2tensor(
                         np.array(self.scale).astype(np.float64)
                     )
                 )
                 output_scale_tensor = (
-                    quant2_int8_mkldnn_pass._convert_scale2tensor(
+                    quant2_int8_onednn_pass._convert_scale2tensor(
                         np.array(1.0 / self.scale * self.scale).astype(
                             np.float64
                         )
@@ -383,12 +383,12 @@ class TestQuant2Int8MkldnnPassConv2D(unittest.TestCase):
                     "conv_output": (False, output_scale_tensor),
                 }
                 if core.avx_supported():
-                    quant2_int8_mkldnn_pass._var_quant_scales = var_scale
-                    graph = quant2_int8_mkldnn_pass._propagate_scales(graph)
-                    graph = quant2_int8_mkldnn_pass._quantize_fp32_graph(graph)
+                    quant2_int8_onednn_pass._var_quant_scales = var_scale
+                    graph = quant2_int8_onednn_pass._propagate_scales(graph)
+                    graph = quant2_int8_onednn_pass._quantize_fp32_graph(graph)
                     self.check_graph_after_pass(graph)
 
-    class TestQuant2Int8MkldnnPassNearestInterpV2(unittest.TestCase):
+    class TestQuant2Int8OnednnPassNearestInterpV2(unittest.TestCase):
         def op_name(self):
             return "nearest_interp_v2"
 

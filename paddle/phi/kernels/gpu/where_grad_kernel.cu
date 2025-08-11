@@ -22,8 +22,7 @@ namespace phi {
 template <typename T, typename IndexT>
 __global__ void WhereGradCUDAKernel(
     const IndexT N, const T* dout, const bool* cond, T* dx, T* dy) {
-  IndexT idx = blockDim.x * blockIdx.x + threadIdx.x;
-  for (; idx < N; idx += blockDim.x * gridDim.x) {
+  CUDA_KERNEL_LOOP_TYPE(idx, N, IndexT) {
     if (dx != nullptr) {
       dx[idx] = cond[idx] ? dout[idx] : static_cast<T>(0.);
     }

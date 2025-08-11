@@ -15,6 +15,8 @@
 #pragma once
 
 #include <sycl/sycl.hpp>
+
+#include <hip/hip_runtime.h>
 #include <vector>
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/common/target.h"
@@ -103,7 +105,7 @@ class SYCLBackendAPI final : public BackendAPI {
               MemcpyType type) final;
   void device_sync() final;
   void stream_sync(void* stream) final;
-  ::sycl::queue* get_now_queue();
+  ::sycl::queue* get_now_queue(void* stream);
   std::string GetGpuVersion();
   std::array<int, 3> get_max_grid_dims(
       std::optional<int> device_id = std::nullopt) final;
@@ -118,9 +120,11 @@ class SYCLBackendAPI final : public BackendAPI {
   // all queues in all devices
   std::vector<std::vector<::sycl::queue*>> queues;
   // now_device_id, change by set_device()
-  int now_device_id = -1;
+  int now_device_id = 0;
   // whether the BackendAPI is initialized.
   bool initialized_{false};
+  hipDevice_t device_;
+  hipCtx_t context_;
 };
 }  // namespace sycl
 }  // namespace runtime

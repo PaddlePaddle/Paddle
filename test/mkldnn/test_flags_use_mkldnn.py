@@ -19,7 +19,7 @@ import sys
 import unittest
 
 
-class TestFlagsUseMkldnn(unittest.TestCase):
+class TestFlagsUseOnednn(unittest.TestCase):
     def setUp(self):
         self._python_interp = sys.executable
         self._python_interp += " check_flags_use_mkldnn.py"
@@ -27,7 +27,7 @@ class TestFlagsUseMkldnn(unittest.TestCase):
         self.env = os.environ.copy()
         self.env["GLOG_v"] = "1"
         self.env["DNNL_VERBOSE"] = "1"
-        self.env["FLAGS_use_mkldnn"] = "1"
+        self.env["FLAGS_use_onednn"] = "1"
 
         self.relu_regex = b"^onednn_verbose,primitive,exec,cpu,eltwise,.+alg:eltwise_relu alpha:0 beta:0,10x20x30"
 
@@ -41,7 +41,7 @@ class TestFlagsUseMkldnn(unittest.TestCase):
         _found = re.search(regex, out, re.MULTILINE)
         return self._print_when_false(_found, out, err)
 
-    def test_flags_use_mkl_dnn(self):
+    def test_flags_use_onednn(self):
         cmd = self._python_interp
 
         proc = subprocess.Popen(

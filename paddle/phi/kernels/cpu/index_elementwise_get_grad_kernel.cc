@@ -131,6 +131,7 @@ void IndexElementwiseGetGradKernel(const Context& dev_ctx,
                                    const std::vector<int64_t>& index_strides,
                                    const int64_t slice_offset,
                                    const bool accumulate,
+                                   const bool is_combined,
                                    DenseTensor* x_grad) {
   dev_ctx.template Alloc<T>(x_grad);
   auto dxt = phi::EigenVector<T>::Flatten(*x_grad);

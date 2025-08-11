@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_places
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+)
 from utils import static_guard
 
 import paddle
@@ -528,11 +533,7 @@ class TestSoftmaxBF16CUDNNOp(TestSoftmaxBF16Op):
 
 class TestSoftmaxAPI(unittest.TestCase):
     def setUp(self):
-        self.place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
         self.x_np = np.random.uniform(-1.0, 1.0, [2, 3, 4, 5]).astype('float32')
         self.out_ref = np.apply_along_axis(stable_softmax, -1, self.x_np)
         self.executed_api()

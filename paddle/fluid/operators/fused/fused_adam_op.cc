@@ -115,7 +115,7 @@ class FusedAdamOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(0);
     AddAttr<bool>("use_adamw",
                   "(bool, default False) "
-                  "Whether to use AdamW"
+                  "Whether to use AdamW. "
                   "True for decoupled weight decay")
         .SetDefault(false);
     AddAttr<bool>("multi_precision",
