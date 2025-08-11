@@ -1133,6 +1133,7 @@ class TestWhereAlias(unittest.TestCase):
         for params in combinations:
             out = paddle.where(**params)
             np.testing.assert_allclose(out.numpy(), expected, rtol=1e-05)
+        paddle.enable_static()
 
 
 if __name__ == "__main__":
