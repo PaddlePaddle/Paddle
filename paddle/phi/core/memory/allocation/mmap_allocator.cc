@@ -22,6 +22,7 @@
 
 #include <atomic>
 #include <random>
+#include <sstream>
 #include <string>
 
 #include "glog/logging.h"
