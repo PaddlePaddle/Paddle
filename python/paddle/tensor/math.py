@@ -2930,7 +2930,10 @@ def inner(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             return out.reshape(dstshape)
 
 
-def outer(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+@ParamAliasDecorator({"x": ["input"], "y": ["vec2"]})
+def outer(
+    x: Tensor, y: Tensor, name: str | None = None, out: Tensor | None = None
+) -> Tensor:
     """
 
     Outer product of two Tensors.
@@ -2941,6 +2944,7 @@ def outer(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         x (Tensor): An N-D Tensor or a Scalar Tensor.
         y (Tensor): An N-D Tensor or a Scalar Tensor.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output Tensor. If set, the result will be stored in this Tensor.
 
     Returns:
         Tensor: The outer-product Tensor.
@@ -2972,7 +2976,7 @@ def outer(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         ny = y.reshape((1, -1))
 
     if in_dynamic_mode():
-        return _C_ops.multiply(nx, ny)
+        return _C_ops.multiply(nx, ny, out=out)
 
     def __check_input(x, y):
         var_names = {'x': x, 'y': y}
@@ -2986,7 +2990,7 @@ def outer(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
     __check_input(nx, ny)
     if in_pir_mode():
-        return _C_ops.multiply(nx, ny)
+        return _C_ops.multiply(nx, ny, out=out)
     else:
         helper = LayerHelper('outer', **locals())
         out = helper.create_variable_for_type_inference(dtype=nx.dtype)
@@ -2996,11 +3000,13 @@ def outer(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
+@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
 def logsumexp(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
     keepdim: bool = False,
     name: str | None = None,
+    out: Tensor | None = None,
 ) -> Tensor:
     r"""
     Calculates the log of the sum of exponentials of ``x`` along ``axis`` .
@@ -3028,6 +3034,8 @@ def logsumexp(
             the output Tensor is squeezed in ``axis`` . Default is False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output Tensor. If set, the result will be
+            stored in this Tensor.
 
     Returns:
         Tensor, results of logsumexp along ``axis`` of ``x``, with the same data
@@ -3053,7 +3061,7 @@ def logsumexp(
     reduce_all, axis = _get_reduce_axis(axis, x)
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.logsumexp(x, axis, keepdim, reduce_all)
+        return _C_ops.logsumexp(x, axis, keepdim, reduce_all, out=out)
     else:
         check_variable_and_dtype(
             x,
@@ -3977,11 +3985,13 @@ def log10_(x: Tensor, name: str | None = None) -> Tensor:
         return _C_ops.log10_(x)
 
 
+@ParamAliasDecorator({"x": ["input"]})
 def clip(
     x: Tensor,
     min: float | None = None,
     max: float | None = None,
     name: str | None = None,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     This operator clip all elements in input into the range [ min, max ] and return
@@ -3998,6 +4008,7 @@ def clip(
         max (float|int|Tensor, optional): The upper bound with type ``float``, ``int`` or a ``0-D Tensor``
             with shape [] and type ``bfloat16``, ``float16``, ``float32``, ``float64``, ``int32``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor.
 
     Returns:
         Tensor: A Tensor with the same data type and data shape as input.
@@ -4044,7 +4055,7 @@ def clip(
             max = max.item(0)
         min = min_ if min is None else min
         max = max_ if max is None else max
-        return _C_ops.clip(x, min, max)
+        return _C_ops.clip(x, min, max, out=out)
     else:
         if min is not None:
             check_type(min, 'min', (float, int, Variable), 'clip')

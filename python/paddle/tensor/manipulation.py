@@ -1343,8 +1343,12 @@ def tolist(x: Tensor) -> NestedList[int | float | complex]:
     return x.numpy(False).tolist()
 
 
+@ParamAliasDecorator({"x": ["tensors"], "axis": ["dim"]})
 def concat(
-    x: Sequence[Tensor], axis: int | Tensor = 0, name: str | None = None
+    x: Sequence[Tensor],
+    axis: int | Tensor = 0,
+    name: str | None = None,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
 
@@ -1367,6 +1371,7 @@ def concat(
             Tt should be integer or 0-D int Tensor with shape []. The effective range is [-R, R), where R is Rank(x). When ``axis < 0``,
             it works the same way as ``axis+R``. Default is 0.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output Tensor. If set, the result will be stored in this Tensor. Default is None.
 
     Returns:
         Tensor, A Tensor with the same data type as ``x``.
@@ -1409,7 +1414,7 @@ def concat(
     if in_dynamic_mode():
         if isinstance(axis, Variable):
             axis = axis.item(0)
-        return _C_ops.concat(input, axis)
+        return _C_ops.concat(input, axis, out=out)
     elif in_pir_mode():
 
         def is_in_amp_mode():
@@ -4809,7 +4814,10 @@ def expand_as(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
 @ParamAliasDecorator({"x": ["input"], "shape": ["size"]})
 def broadcast_to(
-    x: Tensor, shape: ShapeLike, name: str | None = None
+    x: Tensor,
+    shape: ShapeLike,
+    name: str | None = None,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
 
@@ -4830,6 +4838,7 @@ def broadcast_to(
             should be integers or 0-D or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32.
             The value -1 in shape means keeping the corresponding dimension unchanged.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output tensor. If set, the result will be written to this tensor.
     Returns:
         N-D Tensor, A Tensor with the given shape. The data type is the same as ``x``.
 
@@ -4845,10 +4854,15 @@ def broadcast_to(
             [[1, 2, 3],
              [1, 2, 3]])
     """
-    return expand(x, shape, name)
+    return expand(x, shape, name, out=out)
 
 
-def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
+def expand(
+    x: Tensor,
+    shape: ShapeLike,
+    name: str | None = None,
+    out: Tensor | None = None,
+) -> Tensor:
     """
 
     Expand the input tensor to a given shape.
@@ -4869,7 +4883,8 @@ def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
         shape (list|tuple|Tensor): The result shape after expanding. The data type is int32. If shape is a list or tuple, all its elements
             should be integers or 0-D or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32.
             The value -1 in shape means keeping the corresponding dimension unchanged.
-        name (str|None, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` .
+        name (str|None, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output tensor. If set, the result will be written to this tensor.
 
     Returns:
         N-D Tensor, A Tensor with the given shape. The data type is the same as ``x``.
@@ -4887,7 +4902,7 @@ def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
              [1, 2, 3]])
     """
     if in_dynamic_mode():
-        return _C_ops.expand(x, shape)
+        return _C_ops.expand(x, shape, out=out)
     elif in_pir_mode():
         if convert_dtype(x.dtype) == 'bool' and not x.stop_gradient:
             raise ValueError(
@@ -4903,7 +4918,7 @@ def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
                 shape = paddle.utils.get_int_tensor_list(shape)
         else:
             raise TypeError("Shape only supports Value, or list, or tuple.")
-        return _C_ops.expand(x, shape)
+        return _C_ops.expand(x, shape, out=out)
     else:
         if isinstance(shape, Variable):
             assert len(shape.shape) == 1, 'shape must be a 1-D Tensor.'
@@ -6694,7 +6709,11 @@ def infer_broadcast_shape(
 
 @ParamAliasDecorator({"arr": ["input"], "axis": ["dim"]})
 def take_along_axis(
-    arr: Tensor, indices: Tensor, axis: int, broadcast: bool = True
+    arr: Tensor,
+    indices: Tensor,
+    axis: int,
+    broadcast: bool = True,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Take values from the input array by given indices matrix along the designated axis.
@@ -6706,9 +6725,10 @@ def take_along_axis(
             and need to broadcast against arr. Supported data type are int32 and int64.
         axis (int) : The axis to take 1d slices along.
         broadcast (bool, optional): whether the indices broadcast.
+        out (Tensor, optional): The output Tensor. If set, the output will be written to this Tensor.
 
     Returns:
-        Tensor, The indexed element, same dtype with arr
+        Tensor, The indexed element, same dtype with arr.
 
     Examples:
         .. code-block:: python
@@ -6755,7 +6775,7 @@ def take_along_axis(
                 )
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.take_along_axis(arr, indices, axis)
+        return _C_ops.take_along_axis(arr, indices, axis, out=out)
     else:
         check_variable_and_dtype(
             arr,
