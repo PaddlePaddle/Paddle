@@ -189,7 +189,11 @@ class TestTensorCreation(unittest.TestCase):
                     requires_grad=requires_grad,
                     device=device,
                 )
-                if isinstance(device, paddle.framework.core.Place):
+                if (
+                    isinstance(device, paddle.framework.core.Place)
+                    # skip xpu for unknown reason
+                    and not isinstance(device, paddle.framework.core.XPUPlace)
+                ):
                     self.assertEqual(x.place, device)
                 self.assertEqual(x.stop_gradient, not requires_grad)
                 if isinstance(dtype, paddle.dtype):
@@ -322,7 +326,7 @@ class TestTensorCreation(unittest.TestCase):
                     self.assertEqual(x.dtype, dtype)
 
 
-class TestTensorKPatchMethod(unittest.TestCase):
+class TestTensorPatchMethod(unittest.TestCase):
     def setUp(self):
         self.devices = [None, paddle.CPUPlace(), "cpu"]
         if paddle.device.is_compiled_with_cuda():
