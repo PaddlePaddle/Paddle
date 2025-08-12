@@ -680,6 +680,7 @@ tensor_method_func = [
     'expand',
     'broadcast_to',
     'expand_as',
+    'ravel',
     'flatten',
     'flatten_',
     'gather',
