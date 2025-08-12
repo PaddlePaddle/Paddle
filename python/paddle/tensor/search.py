@@ -822,9 +822,8 @@ def where(
 
             >>> out = paddle.where(x>1)
             >>> print(out)
-            (Tensor(shape=[2, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[2],
-             [3]]),)
+            (Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [2, 3]),)
     """
     if np.isscalar(x):
         x = paddle.full([1], x, np.array([x]).dtype.name)
