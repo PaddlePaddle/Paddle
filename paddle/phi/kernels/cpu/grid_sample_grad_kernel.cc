@@ -253,8 +253,8 @@ static void GatherOutputGradToInputGrad(const DenseTensor& output_grad,
           for (int j = 0; j < c; j++) {
             input_grad_t(i,
                          j,
-                         static_cast<int>(round(y_t(i, k, l))),
-                         static_cast<int>(round(x_t(i, k, l)))) +=
+                         static_cast<int>(std::floor(y_t(i, k, l))),
+                         static_cast<int>(std::floor(x_t(i, k, l)))) +=
                 output_grad_t(i, j, k, l) * d1_t(i, k, l) * d2_t(i, k, l);
           }
         }
@@ -595,8 +595,8 @@ static void GatherOutputGradToInputGrad(const DenseTensor& output_grad,
           for (int j = 0; j < c; j++) {
             input_grad_t(i,
                          j,
-                         static_cast<int>(round(y_t(i, k, l))),
-                         static_cast<int>(round(x_t(i, k, l)))) +=
+                         static_cast<int>(std::nearbyint(y_t(i, k, l))),
+                         static_cast<int>(std::nearbyint(x_t(i, k, l)))) +=
                 output_grad_t(i, j, k, l);
           }
         }
@@ -637,9 +637,9 @@ static void Gather3DOutputGradToInputGrad(const DenseTensor& output_grad,
             for (int j = 0; j < c; j++) {
               input_grad_t(i,
                            j,
-                           static_cast<int>(round(z_t(i, m, k, l))),
-                           static_cast<int>(round(y_t(i, m, k, l))),
-                           static_cast<int>(round(x_t(i, m, k, l)))) +=
+                           static_cast<int>(std::nearbyint(z_t(i, m, k, l))),
+                           static_cast<int>(std::nearbyint(y_t(i, m, k, l))),
+                           static_cast<int>(std::nearbyint(x_t(i, m, k, l)))) +=
                   output_grad_t(i, j, m, k, l);
             }
           }
@@ -673,6 +673,13 @@ void GridSampleGradKernel(const Context& dev_ctx,
     return;
   }
 
+  std::string enum_mode;
+  if (mode == "nearest") {
+    enum_mode = "nearest";
+  } else {
+    enum_mode = "bilinear";
+  }
+
   if (x.dims().size() == 4) {
     const int n = static_cast<int>(grid.dims()[0]);
     const int out_h = static_cast<int>(grid.dims()[1]);
@@ -704,7 +711,10 @@ void GridSampleGradKernel(const Context& dev_ctx,
                                  &grid_y,
                                  &grid_x_scale,
                                  &grid_y_scale);
-    if (mode == "bilinear") {
+    if (enum_mode == "nearest") {
+      GatherOutputGradToInputGrad<T>(out_grad, x_grad, grid_x, grid_y);
+
+    } else if (enum_mode == "bilinear") {
       GatherBilinearGrad<T>(dev_ctx,
                             x,
                             out_grad,
@@ -714,12 +724,6 @@ void GridSampleGradKernel(const Context& dev_ctx,
                             &grid_y_scale,
                             x_grad,
                             grid_grad);
-    } else {
-      auto grid_x_t = EigenTensor<T, 3>::From(grid_x);
-      auto grid_y_t = EigenTensor<T, 3>::From(grid_y);
-      grid_x_t = grid_x_t.round();
-      grid_y_t = grid_y_t.round();
-      GatherOutputGradToInputGrad<T>(out_grad, x_grad, grid_x, grid_y);
     }
   } else {
     const int n = static_cast<int>(grid.dims()[0]);
@@ -757,7 +761,11 @@ void GridSampleGradKernel(const Context& dev_ctx,
                                    &grid_x_scale,
                                    &grid_y_scale,
                                    &grid_z_scale);
-    if (mode == "bilinear") {
+    if (enum_mode == "nearest") {
+      Gather3DOutputGradToInputGrad<T>(
+          out_grad, x_grad, grid_x, grid_y, grid_z);
+
+    } else if (enum_mode == "bilinear") {
       Gather3DBilinearGrad<T>(dev_ctx,
                               x,
                               out_grad,
@@ -769,9 +777,6 @@ void GridSampleGradKernel(const Context& dev_ctx,
                               &grid_z_scale,
                               x_grad,
                               grid_grad);
-    } else {
-      Gather3DOutputGradToInputGrad<T>(
-          out_grad, x_grad, grid_x, grid_y, grid_z);
     }
   }
 }
