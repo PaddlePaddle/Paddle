@@ -36,7 +36,7 @@ class TestSliceOneDNNOp(OpTest):
             'starts': self.starts,
             'ends': self.ends,
             'infer_flags': self.infer_flags,
-            'use_mkldnn': True,
+            'use_onednn': True,
         }
         self.set_attrs()
 

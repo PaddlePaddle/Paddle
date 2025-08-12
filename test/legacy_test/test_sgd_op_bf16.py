@@ -49,7 +49,7 @@ class TestSGDOpBF16(OpTest):
 
         self.inputs = {'Param': w_bf16, 'Grad': g_bf16, 'LearningRate': lr_bf16}
         self.outputs = {'ParamOut': w - lr * g}
-        self.attrs = {'use_mkldnn': self.use_onednn}
+        self.attrs = {'use_onednn': self.use_onednn}
 
     def conf(self):
         self.h = 102
@@ -157,7 +157,7 @@ class TestSparseGradSGDOpBF16(TestSparseSGDOpBF16):
             Grad='Grad',
             ParamOut='Param',
             LearningRate='LearningRate',
-            use_mkldnn=True,
+            use_onednn=True,
         )
         sgd_op.run(scope, place)
 
@@ -215,7 +215,7 @@ class TestSparseGradParamSGDOpBF16(TestSparseSGDOpBF16):
             Grad='Grad',
             ParamOut='Param',
             LearningRate='LearningRate',
-            use_mkldnn=True,
+            use_onednn=True,
         )
         sgd_op.run(scope, place)
 

@@ -16,7 +16,7 @@ import unittest
 from copy import deepcopy
 
 import numpy as np
-from op_test import OpTest, get_device_place, get_places
+from op_test import OpTest, get_device_place, get_devices, get_places
 
 import paddle
 from paddle import base
@@ -460,7 +460,7 @@ class TestNAdamMultiPrecision(unittest.TestCase):
                 optimizer.clear_grad()
 
     def test_main(self):
-        for place in get_places(string_format=True):
+        for place in get_devices():
             use_amp_list = [True, False]
             for use_amp in use_amp_list:
                 self._test_nadam_dygraph_place_amp(place, use_amp)

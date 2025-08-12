@@ -170,7 +170,7 @@ inline void RegisterKernelClass(const char* op_type,
   std::string library(library_type);
   std::string data_layout = "ANYLAYOUT";
   if (library == "MKLDNN") {
-    data_layout = "MKLDNNLAYOUT";
+    data_layout = "ONEDNNLAYOUT";
   }
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (std::is_same<PlaceType, phi::CustomPlace>::value) {

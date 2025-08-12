@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 from op import Operator
-from op_test import OpTest, get_places
+from op_test import OpTest, get_devices, get_places
 
 import paddle
 from paddle import base
@@ -1296,7 +1296,7 @@ class TestMultiTensorAdam(unittest.TestCase):
         return out
 
     def _get_places(self):
-        return get_places(string_format=True)
+        return get_devices()
 
     def _check_with_place_amp(self, place, use_amp):
         # test dygraph mode

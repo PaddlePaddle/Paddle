@@ -16,7 +16,7 @@ import copy
 import unittest
 
 import numpy as np
-from op_test import get_places
+from op_test import get_devices
 
 import paddle
 
@@ -120,7 +120,7 @@ class TestIndexPutAPIBase(unittest.TestCase):
         self.accumulate = False
 
     def setPlace(self):
-        self.place = get_places(string_format=True)
+        self.place = get_devices()
         if self.dtype_np is np.float16 and "cpu" in self.place:
             self.place.remove("cpu")
 
@@ -620,7 +620,7 @@ class TestIndexPutInplaceAPI(unittest.TestCase):
         self.accumulate = False
 
     def setPlace(self):
-        self.place = get_places(string_format=True)
+        self.place = get_devices()
 
     def test_dygraph_forward(self):
         paddle.disable_static()
@@ -661,7 +661,7 @@ class TestIndexPutAPIBackward(unittest.TestCase):
         self.setPlace()
 
     def setPlace(self):
-        self.place = get_places(string_format=True)
+        self.place = get_devices()
 
     def test_backward(self):
         paddle.disable_static()
@@ -1019,7 +1019,7 @@ class TestIndexPutAPI_ZeroSize(unittest.TestCase):
         self.index_type_pd = paddle.int64
 
     def setPlace(self):
-        self.place = get_places(string_format=True)
+        self.place = get_devices()
         if self.dtype_np is np.float16 and "cpu" in self.place:
             self.place.remove("cpu")
 

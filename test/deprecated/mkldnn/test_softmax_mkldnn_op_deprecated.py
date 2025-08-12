@@ -67,7 +67,7 @@ class TestSoftmaxONEDNNOp(TestSoftmaxOp):
         self.attrs = {
             'axis': self.axis,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_onednn,
+            'use_onednn': self.use_onednn,
         }
 
     def test_check_output(self):
