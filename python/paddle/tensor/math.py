@@ -97,6 +97,7 @@ from .ops import (  # noqa: F401
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from numbers import Number
 
     from paddle import Tensor
     from paddle._typing import DTypeLike
@@ -919,9 +920,17 @@ def subtract_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     return _C_ops.subtract_(x, y)
 
 
-def divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+@ParamAliasDecorator({"x": ["input"], "y": ["other"]})
+def divide(
+    x: Tensor,
+    y: Tensor | Number,
+    name: str | None = None,
+    *,
+    rounding_mode: str | None = None,
+    out: Tensor | None = None,
+) -> Tensor:
     """
-    Divide two tensors element-wise. The equation is:
+    Divide tensor x by y (Tensor or Number) element-wise.The equation is:
 
     .. math::
         out = x / y
@@ -934,9 +943,11 @@ def divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     Args:
         x (Tensor): the input tensor, it's data type should be bool, bfloat16, float16, float32, float64,
             int8, int16, int32, int64, uint8, complex64, complex128.
-        y (Tensor): the input tensor, it's data type should be bool, bfloat16, float16, float32, float64,
+        y (Tensor| Number): the input tensor or scalar, it's data type should be bool, bfloat16, float16, float32, float64,
             int8, int16, int32, int64, uint8, complex64, complex128.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        rounding_mode (str|None, optional): The rounding mode. Can be None (default), "trunc" (truncate toward zero), or "floor" (round down toward negative infinity).
+        out (Tensor, optional): The output tensor. Default: None.
 
     Returns:
         N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
@@ -955,24 +966,186 @@ def divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             [2.        , 0.60000000, 2.        ])
 
     """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.divide(x, y)
+    if not isinstance(y, paddle.Tensor):
+        if in_dynamic_or_pir_mode():
+            y = paddle.to_tensor(y)
+        else:
+            if isinstance(y, bool):
+                dtype = paddle.int64
+            elif isinstance(y, int):
+                dtype = (
+                    paddle.int64
+                    if x.dtype in (paddle.int32, paddle.int64)
+                    else x.dtype
+                )
+            elif isinstance(y, float):
+                dtype = (
+                    paddle.float32
+                    if x.dtype in (paddle.float16, paddle.float32)
+                    else x.dtype
+                )
+            else:
+                dtype = x.dtype
+            y = paddle.full(shape=[1], fill_value=y, dtype=dtype)
+
+    # Cross-type operations: When performing integer and floating-point operations, the result only needs to meet floating-point precision requirements. long_tensor + float_tensor → float32 (no need for float64).
+    INTEGER_DTYPES = {
+        paddle.int8,
+        paddle.int16,
+        paddle.int32,
+        paddle.int64,
+        paddle.uint8,
+    }
+    FLOAT_DTYPES = {
+        paddle.bfloat16,
+        paddle.float16,
+        paddle.float32,
+        paddle.float64,
+    }
+
+    if x.dtype in INTEGER_DTYPES and y.dtype in FLOAT_DTYPES:
+        x = x.astype(y.dtype)
+    elif y.dtype in INTEGER_DTYPES and x.dtype in FLOAT_DTYPES:
+        y = y.astype(x.dtype)
+
+    if rounding_mode is None:
+        if in_dynamic_or_pir_mode():
+            res = _C_ops.divide(x, y, out=out)
+        else:
+            res = _elementwise_op(LayerHelper('elementwise_div', **locals()))
+
+        return res
+    elif rounding_mode == "trunc":
+        if in_dynamic_or_pir_mode():
+            tmp = _C_ops.divide(x, y)
+            res = _C_ops.trunc(tmp, out=out)
+        else:
+            tmp = _elementwise_op(LayerHelper('elementwise_div', **locals()))
+
+            inputs = {"X": tmp}
+            attrs = {}
+            helper = LayerHelper("trunc", **locals())
+            check_variable_and_dtype(
+                tmp, 'X', ['int32', 'int64', 'float32', 'float64'], 'trunc'
+            )
+            res = helper.create_variable_for_type_inference(dtype=tmp.dtype)
+            helper.append_op(
+                type="trunc", inputs=inputs, attrs=attrs, outputs={"Out": res}
+            )
+
+        return res
+    elif rounding_mode == "floor":
+        if in_dynamic_or_pir_mode():
+            res = _C_ops.floor_divide(x, y, out=out)
+        else:
+            res = _elementwise_op(
+                LayerHelper('elementwise_floordiv', **locals())
+            )
+
+        return res
     else:
-        return _elementwise_op(LayerHelper('elementwise_div', **locals()))
+        msg = f"div expected rounding_mode to be one of None, 'trunc', or 'floor' but found {rounding_mode}."
+        raise ValueError(msg)
 
 
+@ParamAliasDecorator({"x": ["input"], "y": ["other"]})
 @inplace_apis_in_dygraph_only
-def divide_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+def divide_(
+    x: Tensor,
+    y: Tensor | Number,
+    name: str | None = None,
+    *,
+    rounding_mode: str | None = None,
+) -> Tensor:
     r"""
     Inplace version of ``divide`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_divide`.
     """
+    if not isinstance(y, paddle.Tensor):
+        y = paddle.to_tensor(y)
+
+    # Cross-type operations: When performing integer and floating-point operations, the result only needs to meet floating-point precision requirements. long_tensor + float_tensor → float32 (no need for float64).
+    INTEGER_DTYPES = {
+        paddle.int8,
+        paddle.int16,
+        paddle.int32,
+        paddle.int64,
+        paddle.uint8,
+    }
+    FLOAT_DTYPES = {
+        paddle.bfloat16,
+        paddle.float16,
+        paddle.float32,
+        paddle.float64,
+    }
+
+    if x.dtype in INTEGER_DTYPES and y.dtype in FLOAT_DTYPES:
+        x = x.astype(y.dtype)
+    elif y.dtype in INTEGER_DTYPES and x.dtype in FLOAT_DTYPES:
+        y = y.astype(x.dtype)
+
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
         raise ValueError(
             f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
         )
-    return _C_ops.divide_(x, y)
+
+    if rounding_mode is None:
+        res = _C_ops.divide_(x, y)
+    elif rounding_mode == "trunc":
+        tmp = _C_ops.divide_(x, y)
+        res = _C_ops.trunc_(tmp)
+    elif rounding_mode == "floor":
+        res = _C_ops.floor_divide_(x, y)
+    else:
+        msg = f"div_ expected rounding_mode to be one of None, 'trunc', or 'floor' but found {rounding_mode}."
+        raise ValueError(msg)
+
+    return res
+
+
+@ParamAliasDecorator({"x": ["input"], "y": ["other"]})
+def div(
+    x: Tensor,
+    y: Tensor | Number,
+    *,
+    rounding_mode: str | None = None,
+    out: Tensor | None = None,
+) -> Tensor:
+    """
+    Alias for paddle.divide.
+    Please refer to :ref:`api_paddle_divide`.
+    """
+    return divide(x, y, rounding_mode=rounding_mode, out=out)
+
+
+@ParamAliasDecorator({"x": ["input"], "y": ["other"]})
+@inplace_apis_in_dygraph_only
+def div_(
+    x: Tensor,
+    y: Tensor | Number,
+    *,
+    rounding_mode: str | None = None,
+) -> Tensor:
+    """
+    Inplace version of ``div`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_div`.
+    """
+    return divide_(x, y, rounding_mode=rounding_mode)
+
+
+@ParamAliasDecorator({"x": ["input"], "y": ["other"]})
+def true_divide(
+    x: Tensor,
+    y: Tensor | Number,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
+    """
+    Alias for paddle.divide with rounding_mode=None.
+    Please refer to :ref:`api_paddle_divide`.
+    """
+    return divide(x, y, out=out)
 
 
 def floor_divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
