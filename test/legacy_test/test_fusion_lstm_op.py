@@ -137,7 +137,7 @@ class TestFusionLSTMOp(OpTest):
             'gate_activation': self.act_gate,
             'cell_activation': self.act_cell,
             'candidate_activation': self.act_cand,
-            'use_mkldnn': self.use_onednn,
+            'use_onednn': self.use_onednn,
         }
 
     def test_check_output(self):
