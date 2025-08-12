@@ -145,5 +145,5 @@ class VariableArgsDecorator(DecoratorBase):
     ) -> tuple[tuple[Any, ...], dict[str, Any]]:
         if len(args) >= 2 and isinstance(args[1], int):
             kwargs[self.var] = list(args[1:])
-            args = args[:1]
+            args = args[0]
         return args, kwargs
