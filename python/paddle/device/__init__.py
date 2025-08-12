@@ -217,7 +217,10 @@ def get_cudnn_version() -> int | None:
         return _cudnn_version
 
 
-def _convert_to_place(device: str) -> PlaceLike:
+def _convert_to_place(device: PlaceLike) -> PlaceLike:
+    if not isinstance(device, str):
+        return device  # return directly if not a string
+
     lower_device = device.lower()
     if device in core.get_all_custom_device_type():
         selected_devices = os.getenv(f"FLAGS_selected_{device}s", "0").split(
