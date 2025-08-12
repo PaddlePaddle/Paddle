@@ -147,8 +147,9 @@ class ReshapeDecorator(DecoratorBase):
     ) -> tuple[tuple[Any, ...], dict[str, Any]]:
         if ("input" in kwargs) and ("x" not in kwargs):
             kwargs["x"] = kwargs.pop("input")
-        elif len(args) >= 2 and all(type(arg) is int for arg in args[1:]):
-            kwargs["x"] = args[0]
-            kwargs['shape'] = list(args[1:])
-            args = ()
+        elif len(args) >= 2 and type(args[1]) is int:
+            if all(type(arg) is int for arg in args[1:]):
+                kwargs["x"] = args[0]
+                kwargs['shape'] = list(args[1:])
+                args = ()
         return args, kwargs
