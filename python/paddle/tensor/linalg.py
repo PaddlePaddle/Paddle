@@ -190,17 +190,7 @@ def transpose_(x, perm, name=None):
         return _C_ops.transpose_(x, perm)
 
 
-@overload
-def permute(
-    input: Tensor, dims: Sequence[int], name: str | None = None
-) -> Tensor: ...
-
-
-@overload
-def permute(input: Tensor, *dims: int, name: str | None = None) -> Tensor: ...
-
-
-def permute(input: Tensor, dims=None, *args, name: str | None = None) -> Tensor:
+def permute(input: Tensor, dims: Sequence[int], *args) -> Tensor:
     """
     Permute the dimensions of a tensor.
 
@@ -222,8 +212,8 @@ def permute(input: Tensor, dims=None, *args, name: str | None = None) -> Tensor:
             >>> print(y.shape)
             [3, 2, 4]
 
-            >>> y = paddle.permute(x, 1, 0, 2)
-            >>> print(y.shape)
+            >>> x.permute(1, 0, 2)
+            >>> print(x.shape)
             [3, 2, 4]
     """
     if dims is not None and not args:
@@ -233,7 +223,8 @@ def permute(input: Tensor, dims=None, *args, name: str | None = None) -> Tensor:
             perm = [dims]
     else:
         perm = (dims, *args) if dims is not None else args
-    return paddle.transpose(x=input, perm=perm, name=name)
+
+    return transpose(x=input, perm=perm)
 
 
 def matrix_transpose(
