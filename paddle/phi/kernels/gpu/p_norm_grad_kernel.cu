@@ -49,6 +49,27 @@ struct AbsMaxAndMinGradFunctor {
     auto count = mask.sum(reduce_dim).reshape(shape1).broadcast(shape2);
 
     dx->device(place) = (dy_bc * (*x).sign() * mask / count).template cast<T>();
+    std::cout << "11111"
+              << " begin" << std::endl;
+    // 1. wait all kernel finish
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+
+    // 2. get error state
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+
+    // 3. check if cuda 700
+    size_t bytes = 256;
+    char* cuda_mem;
+    char* cpu_mem = new char[bytes + 1];
+
+    cudaMalloc(&cuda_mem, bytes + 1);
+    cudaMemset(cuda_mem, 0, bytes + 1);
+    cudaMemcpyAsync(cpu_mem, cuda_mem, bytes, cudaMemcpyDeviceToHost);
+
+    cudaFree(cuda_mem);
+    delete[] cpu_mem;
+    std::cout << "1111"
+              << " end" << std::endl;
   }
 };
 
