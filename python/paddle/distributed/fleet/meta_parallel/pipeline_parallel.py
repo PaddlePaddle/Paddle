@@ -2962,7 +2962,7 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
         self._init_buffers()
 
         micro_dataset = self._wrap_data(data)
-        num_steps = self.accumulate_steps * self.num_model_chunks  # 4 * 2 = 8
+        num_steps = self.accumulate_steps * self.num_model_chunks
 
         self.set_virtual_pipeline_rank(0)
         self.input_tensors[0].append(

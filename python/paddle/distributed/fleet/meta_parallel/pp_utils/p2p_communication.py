@@ -165,7 +165,6 @@ class SendRecvMeta:
             raise TypeError(
                 "tensor must be paddle.Tensor or Tuple of paddle.Tensor"
             )
-        # 0 代表 tensor 1 代表是list
 
         # prepare data to send
         data = [tensor_type]
