@@ -565,7 +565,7 @@ class TestTensorPatchMethod(unittest.TestCase):
             if end is None:
                 end = start
                 start = 0
-            size_ = int(np.ceil(end - start) / step) + 1
+            size_ = int(np.floor(end - start) / step) + 1
             out = paddle.empty([size_])
 
             for i in range(size_):
