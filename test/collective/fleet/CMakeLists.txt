@@ -836,3 +836,9 @@ if((WITH_GPU) AND LOCAL_ALL_PLAT)
   )
   set_tests_properties(test_shutdown_process_group PROPERTIES TIMEOUT "200")
 endif()
+if((WITH_GPU) AND LOCAL_ALL_PLAT)
+  py_test_modules(
+    test_zero_fragmentation_allocator MODULES test_zero_fragmentation_allocator
+    ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+endif()

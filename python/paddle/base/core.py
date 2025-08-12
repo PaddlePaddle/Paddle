@@ -327,6 +327,7 @@ try:
         _xpu_device_synchronize,
         _xpu_get_current_stream,
         _xpu_set_current_stream,
+        _ZeroFragmentationAllocatorManager,
     )
 
     # isort: off
