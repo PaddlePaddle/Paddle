@@ -297,7 +297,7 @@ def monkey_patch_math_tensor():
         if dtype is None:
             dtype = var.dtype
         if device is None:
-            device = var.device
+            device = var.place
 
         return paddle.full(
             size,
@@ -318,7 +318,7 @@ def monkey_patch_math_tensor():
         if dtype is None:
             dtype = var.dtype
         if device is None:
-            device = var.device
+            device = var.place
 
         return paddle.empty(
             size,
@@ -338,7 +338,7 @@ def monkey_patch_math_tensor():
         if dtype is None:
             dtype = var.dtype
         if device is None:
-            device = var.device
+            device = var.place
 
         return paddle.full(
             size,
@@ -359,7 +359,7 @@ def monkey_patch_math_tensor():
         if dtype is None:
             dtype = var.dtype
         if device is None:
-            device = var.device
+            device = var.place
 
         return paddle.full(
             size,
