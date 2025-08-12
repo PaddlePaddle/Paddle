@@ -760,10 +760,30 @@ def add(
             Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
             [3., 8., 6.])
     """
-    if in_dynamic_or_pir_mode():
-        if not isinstance(y, paddle.Tensor):
-            y = paddle.to_tensor(y, dtype=x.dtype, place=x.place)
 
+    if not isinstance(y, paddle.Tensor):
+        if in_dynamic_or_pir_mode():
+            y = paddle.to_tensor(y)
+        else:
+            if isinstance(y, bool):
+                dtype = paddle.int64
+            elif isinstance(y, int):
+                dtype = (
+                    paddle.int64
+                    if x.dtype in (paddle.int32, paddle.int64)
+                    else x.dtype
+                )
+            elif isinstance(y, float):
+                dtype = (
+                    paddle.float32
+                    if x.dtype in (paddle.float16, paddle.float32)
+                    else x.dtype
+                )
+            else:
+                dtype = x.dtype
+            y = paddle.full(shape=[1], fill_value=y, dtype=dtype)
+
+    if in_dynamic_or_pir_mode():
         if alpha != 1:
             y = y * alpha
 
@@ -771,8 +791,6 @@ def add(
         return result
     else:
         helper = LayerHelper('elementwise_add', **locals())
-        if not isinstance(y, paddle.Tensor):
-            y = paddle.full(shape=[1], fill_value=y, dtype=x.dtype)
 
         if alpha != 1:
             y = helper.create_variable_for_type_inference(y.dtype)
@@ -808,7 +826,7 @@ def add_(
     """
 
     if not isinstance(y, paddle.Tensor):
-        y = paddle.to_tensor(y, dtype=x.dtype, place=x.place)
+        y = paddle.to_tensor(y)
 
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
