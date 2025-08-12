@@ -4787,15 +4787,7 @@ def repeat(
             [[[1, 1, 1, 2, 2, 2]],
              [[1, 1, 1, 2, 2, 2]]])
     """
-    if repeats is not None and not args:
-        if isinstance(repeats, (list, tuple, Variable, paddle.pir.Value)):
-            repeat_times = repeats
-        else:
-            repeat_times = [repeats]
-    else:
-        repeat_times = (repeats, *args) if repeats is not None else args
-
-    return tile(input, repeat_times=repeat_times)
+    return tile(input, repeat_times=repeats)
 
 
 def expand_as(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
