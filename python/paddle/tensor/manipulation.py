@@ -4678,27 +4678,10 @@ def tile(
         return out
 
 
-@overload
 def repeat(
-    x: Tensor,
-    repeats: TensorOrTensors | Sequence[int],
-    name: str | None = None,
-) -> Tensor: ...
-
-
-@overload
-def repeat(
-    x: Tensor,
-    *repeats: int,
-    name: str | None = None,
-) -> Tensor: ...
-
-
-def repeat(
-    x: Tensor,
-    repeats=None,
+    input: Tensor,
+    repeats: int | Sequence[int] | Tensor,
     *args,
-    name: str | None = None,
 ) -> Tensor:
     """
     Repeat elements of a tensor along specified dimensions.
@@ -4751,14 +4734,14 @@ def repeat(
              [3, 3, 3, 4, 4, 4]])
     """
     if repeats is not None and not args:
-        if isinstance(repeats, (list, tuple)):
+        if isinstance(repeats, (list, tuple, Variable, paddle.pir.Value)):
             repeat_times = repeats
         else:
             repeat_times = [repeats]
     else:
         repeat_times = (repeats, *args) if repeats is not None else args
 
-    return paddle.tile(x=x, repeat_times=repeat_times, name=name)
+    return tile(input, repeat_times=repeat_times)
 
 
 def expand_as(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
