@@ -81,7 +81,8 @@ void RepeatInterleaveWithTensorIndexGradKernel(
     const DenseTensor& repeats_tensor,
     const DenseTensor& out_grad,
     int dim,
-    DenseTensor* x_grad) {
+    DenseTensor* x_grad,
+    int output_size) {
   auto input_dim = x_grad->dims();
   if (dim < 0) {
     dim += static_cast<int>(input_dim.size());
@@ -186,7 +187,8 @@ void RepeatInterleaveGradKernel(const Context& dev_ctx,
                                 const DenseTensor& out_grad,
                                 int repeats,
                                 int dim,
-                                DenseTensor* x_grad) {
+                                DenseTensor* x_grad,
+                                int output_size) {
   if (x_grad && x_grad->numel() == 0) {
     dev_ctx.template Alloc<T>(x_grad);
     return;

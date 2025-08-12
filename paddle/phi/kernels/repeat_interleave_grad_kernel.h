@@ -24,7 +24,8 @@ void RepeatInterleaveGradKernel(const Context& dev_ctx,
                                 const DenseTensor& out_grad,
                                 int repeats,
                                 int dim,
-                                DenseTensor* x_grad);
+                                DenseTensor* x_grad,
+                                int output_size = -1);
 
 template <typename T, typename Context>
 void RepeatInterleaveWithTensorIndexGradKernel(
@@ -33,6 +34,7 @@ void RepeatInterleaveWithTensorIndexGradKernel(
     const DenseTensor& repeats_tensor,
     const DenseTensor& out_grad,
     int dim,
-    DenseTensor* x_grad);
+    DenseTensor* x_grad,
+    int output_size = -1);
 
 }  // namespace phi

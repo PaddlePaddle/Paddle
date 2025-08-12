@@ -4162,7 +4162,8 @@ void ReduceScatterInferMeta(const MetaTensor& x, int nranks, MetaTensor* out) {
 void RepeatInterleaveInferMeta(const MetaTensor& x,
                                int repeats,
                                int dim,
-                               MetaTensor* out) {
+                               MetaTensor* out,
+                               int output_size) {
   const auto& input_dim = x.dims();
   auto output_dim = common::vectorize(input_dim);
   auto n_dim = dim;
@@ -4198,7 +4199,13 @@ void RepeatInterleaveInferMeta(const MetaTensor& x,
       common::errors::InvalidArgument(
           "repeat_interleave's output tensor can't be nullptr"));
 
-  if (input_dim[n_dim] != -1) output_dim[n_dim] = input_dim[n_dim] * repeats;
+  if (output_size > 0) {
+    // Use provided output_size to avoid stream synchronization
+    output_dim[n_dim] = output_size;
+  } else if (input_dim[n_dim] != -1) {
+    output_dim[n_dim] = input_dim[n_dim] * repeats;
+  }
+
   out->set_dims(common::make_ddim(output_dim));
   out->share_lod(x);
   out->set_dtype(x.dtype());

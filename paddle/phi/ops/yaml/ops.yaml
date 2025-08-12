@@ -4428,7 +4428,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : repeat_interleave
-  args : (Tensor x, int repeats, int axis)
+  args : (Tensor x, int repeats, int axis, int output_size = -1)
   output : Tensor(out)
   infer_meta :
     func : RepeatInterleaveInferMeta
@@ -4439,7 +4439,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : repeat_interleave_with_tensor_index
-  args : (Tensor x, Tensor repeats, int axis)
+  args : (Tensor x, Tensor repeats, int axis, int output_size = -1)
   output : Tensor(out)
   infer_meta :
     func : RepeatInterleaveWithTensorIndexInferMeta

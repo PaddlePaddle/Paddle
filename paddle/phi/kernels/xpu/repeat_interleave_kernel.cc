@@ -24,7 +24,8 @@ void RepeatInterleaveKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             int repeats,
                             int dim,
-                            DenseTensor* out) {
+                            DenseTensor* out,
+                            int output_size) {
   PADDLE_ENFORCE_GT(repeats,
                     0,
                     common::errors::InvalidArgument(
@@ -70,7 +71,8 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
                                            const DenseTensor& x,
                                            const DenseTensor& repeats_tensor,
                                            int dim,
-                                           DenseTensor* out) {
+                                           DenseTensor* out,
+                                           int output_size) {
   auto input_dim = x.dims();
   if (dim < 0) {
     dim += input_dim.size();
@@ -110,7 +112,11 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
           dev_ctx, repeats_tensor, &index);
     }
     auto output_dim = common::vectorize(x.dims());
-    output_dim[dim] = index.dims()[0];
+    if (output_size > 0) {
+      output_dim[dim] = output_size;
+    } else {
+      output_dim[dim] = index.dims()[0];
+    }
     out->Resize(common::make_ddim(output_dim));
     dev_ctx.template Alloc<T>(out);
     return;
@@ -118,7 +124,11 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
   if (index_type == phi::DataType::INT64) {
     phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
         dev_ctx, repeats_tensor, &index);
-    out_shape[dim] = index.dims()[0];
+    if (output_size > 0) {
+      out_shape[dim] = output_size;
+    } else {
+      out_shape[dim] = index.dims()[0];
+    }
     out->Resize(common::make_ddim(out_shape));
     dev_ctx.template Alloc<T>(out);
     int ret = xpu::paddle_gather<XPUType, int64_t>(
@@ -133,7 +143,11 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
   } else {
     phi::funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
         dev_ctx, repeats_tensor, &index);
-    out_shape[dim] = index.dims()[0];
+    if (output_size > 0) {
+      out_shape[dim] = output_size;
+    } else {
+      out_shape[dim] = index.dims()[0];
+    }
     out->Resize(common::make_ddim(out_shape));
     dev_ctx.template Alloc<T>(out);
     int ret = xpu::paddle_gather<XPUType, int>(
