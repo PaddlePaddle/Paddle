@@ -98,4 +98,4 @@ jobs:
       - name: Clean up dir
         if: always()
         run: |
-          timeout /t 7200
+          timeout /t 7200 /nobreak >nul 2>&1 || powershell -Command "Start-Sleep -Seconds 7200"
