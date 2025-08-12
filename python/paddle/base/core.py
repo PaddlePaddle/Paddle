@@ -325,6 +325,7 @@ try:
         _switch_tracer,
         _test_enforce_gpu_success,
         _xpu_device_synchronize,
+        _ZeroFragmentationAllocatorManager,
     )
 
     # isort: off

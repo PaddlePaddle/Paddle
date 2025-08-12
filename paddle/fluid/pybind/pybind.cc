@@ -130,6 +130,7 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/phi/core/memory/allocation/mmap_allocator.h"
+#include "paddle/phi/core/memory/allocation/zero_fragmentation_allocator.h"
 #include "paddle/phi/core/platform/cpu_helper.h"
 #include "paddle/phi/core/platform/device/device_wrapper.h"
 #include "paddle/phi/core/platform/device_context.h"
@@ -3538,6 +3539,43 @@ All parameter, weight, gradient are variables in Paddle.
     paddle::platform::TrtPluginRegistry::Global()->RegisterToTrt();
   });
 #endif
+  py::class_<paddle::memory::allocation::ZeroFragmentationAllocatorManager>(
+      m, "_ZeroFragmentationAllocatorManager")
+      .def("_enable",
+           [] {
+             paddle::memory::allocation::ZeroFragmentationAllocatorManager::
+                 Instance()
+                     .Enable();
+           })
+      .def("_disable",
+           [] {
+             paddle::memory::allocation::ZeroFragmentationAllocatorManager::
+                 Instance()
+                     .Disable();
+           })
+      .def("_enable_prealloc",
+           [] {
+             paddle::memory::allocation::ZeroFragmentationAllocatorManager::
+                 Instance()
+                     .EnablePeralloc();
+           })
+      .def("_disable_prealloc",
+           [] {
+             paddle::memory::allocation::ZeroFragmentationAllocatorManager::
+                 Instance()
+                     .DisablePeralloc();
+           })
+      .def("_enable_deallocate",
+           [] {
+             paddle::memory::allocation::ZeroFragmentationAllocatorManager::
+                 Instance()
+                     .EnableDeallocate();
+           })
+      .def("_disable_deallocate", [] {
+        paddle::memory::allocation::ZeroFragmentationAllocatorManager::
+            Instance()
+                .DisableDeallocate();
+      });
 
 #if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
   BindHeterWrapper(&m);

@@ -110,7 +110,7 @@ phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
       block_it->is_free_ = false;
     } else {
       auto remaining_free_block = chunk->blocks_.insert(
-          block_it, Block(block_it->ptr_, remaining_size, true, chunk));
+          block_it, Block(block_it->ptr_, remaining_size, true, true, chunk));
       free_blocks_.emplace(std::make_pair(remaining_size, block_it->ptr_),
                            remaining_free_block);
       block_it->ptr_ =
@@ -151,10 +151,10 @@ phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
 
     size_t remaining_size = realloc_size - size;
     if (remaining_size > 0) {
-      blocks.emplace_back(p, remaining_size, true, chunk);
+      blocks.emplace_back(p, remaining_size, true, true, chunk);
       free_blocks_.emplace(std::make_pair(remaining_size, p), --(blocks.end()));
     }
-    blocks.emplace_back(p + remaining_size, size, false, chunk);
+    blocks.emplace_back(p + remaining_size, size, false, true, chunk);
     block_it = --(blocks.end());
     VLOG(2) << "Not found and reallocate " << realloc_size << "("
             << static_cast<void *>(p) << "), and remaining " << remaining_size;
@@ -189,7 +189,13 @@ void AutoGrowthBestFitAllocator::FreeImpl(phi::Allocation *allocation) {
     auto prev_it = block_it;
     --prev_it;
 
-    if (prev_it->is_free_) {
+    // Memory block management rules:
+    // - If a block is free and belongs to the default pool:
+    //   → It must be present in `free_blocks`
+    // - If a block is free but belongs to a zero-fragmentation pool:
+    //   → It must NOT be in `free_blocks`
+    //   → Instead, it should be managed by `zero_fragmentation_block`
+    if (prev_it->is_free_ && prev_it->in_default_pool_) {
       free_blocks_.erase(std::make_pair(prev_it->size_, prev_it->ptr_));
       prev_it->size_ += block_it->size_;
       blocks.erase(block_it);
@@ -200,7 +206,9 @@ void AutoGrowthBestFitAllocator::FreeImpl(phi::Allocation *allocation) {
   auto next_it = block_it;
   ++next_it;
 
-  if (next_it != blocks.end() && next_it->is_free_) {
+  // It's weird that using `next_it == blocks.end()` will cause a judgment fail.
+  if (block_it != (--blocks.end()) && next_it->is_free_ &&
+      next_it->in_default_pool_) {
     free_blocks_.erase(std::make_pair(next_it->size_, next_it->ptr_));
     block_it->size_ += next_it->size_;
     blocks.erase(next_it);
@@ -226,7 +234,8 @@ uint64_t AutoGrowthBestFitAllocator::FreeIdleChunks() {
   uint64_t bytes = 0;
   for (auto chunk_it = chunks_.begin(); chunk_it != chunks_.end();) {
     auto &blocks = chunk_it->blocks_;
-    if (blocks.size() == 1 && blocks.begin()->is_free_) {
+    if (blocks.size() == 1 && blocks.begin()->is_free_ &&
+        blocks.begin()->in_default_pool_) {
       auto &block = *blocks.begin();
       VLOG(2) << "Free chunk with size " << block.size_;
       if (FLAGS_dump_chunk_info) {

@@ -27,6 +27,7 @@
 #include "paddle/phi/core/memory/allocation/naive_best_fit_allocator.h"
 #include "paddle/phi/core/memory/allocation/retry_allocator.h"
 #include "paddle/phi/core/memory/allocation/stat_allocator.h"
+#include "paddle/phi/core/memory/allocation/zero_fragmentation_allocator.h"
 #include "paddle/phi/core/platform/device_context.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -111,6 +112,12 @@ PHI_DEFINE_EXPORTED_bool(
     use_auto_growth_v2,
     false,
     "Whether to use AutoGrowthBestFitAllocatorV2 for auto_growth "
+    "strategy");
+
+PHI_DEFINE_EXPORTED_bool(
+    use_zero_fragmentation,
+    false,
+    "Whether to use ZeroFragmentationAllocator for auto_growth "
     "strategy");
 
 COMMON_DECLARE_string(allocator_strategy);
@@ -938,7 +945,14 @@ class AllocatorFacadePrivate {
             << FLAGS_auto_growth_chunk_size_in_mb;
 #if defined(PADDLE_WITH_HIP)
     auto cuda_allocator = CreateCUDAAllocator(p);
-    if (FLAGS_use_auto_growth_v2) {
+    if (FLAGS_use_zero_fragmentation) {
+      cuda_allocators_[p][stream] =
+          std::make_shared<ZeroFragmentationAllocator>(
+              cuda_allocator,
+              platform::GpuMinChunkSize(),
+              chunk_size,
+              allow_free_idle_chunk_);
+    } else if (FLAGS_use_auto_growth_v2) {
       cuda_allocators_[p][stream] =
           std::make_shared<AutoGrowthBestFitAllocatorV2>(
               cuda_allocator,
@@ -979,7 +993,14 @@ class AllocatorFacadePrivate {
               cuda_allocator, platform::GpuMinChunkSize(), p);
     } else {
       auto cuda_allocator = CreateCUDAAllocator(p);
-      if (FLAGS_use_auto_growth_v2) {
+      if (FLAGS_use_zero_fragmentation) {
+        cuda_allocators_[p][stream] =
+            std::make_shared<ZeroFragmentationAllocator>(
+                cuda_allocator,
+                platform::GpuMinChunkSize(),
+                chunk_size,
+                allow_free_idle_chunk_);
+      } else if (FLAGS_use_auto_growth_v2) {
         cuda_allocators_[p][stream] =
             std::make_shared<AutoGrowthBestFitAllocatorV2>(
                 cuda_allocator,
@@ -1029,7 +1050,13 @@ class AllocatorFacadePrivate {
       VLOG(10) << "not use AlignedAllocator with alignment: " << alignment;
       underlying_allocator = cuda_allocator;
     }
-    if (FLAGS_use_auto_growth_v2) {
+    if (FLAGS_use_zero_fragmentation) {
+      cuda_allocators_[p][stream] =
+          std::make_shared<ZeroFragmentationAllocator>(underlying_allocator,
+                                                       alignment,
+                                                       chunk_size,
+                                                       allow_free_idle_chunk_);
+    } else if (FLAGS_use_auto_growth_v2) {
       cuda_allocators_[p][stream] =
           std::make_shared<AutoGrowthBestFitAllocatorV2>(
               underlying_allocator,
@@ -1056,7 +1083,13 @@ class AllocatorFacadePrivate {
             << FLAGS_auto_growth_chunk_size_in_mb;
 #if defined(PADDLE_WITH_HIP)
     auto cuda_allocator = CreateCUDAAllocator(p);
-    if (FLAGS_use_auto_growth_v2) {
+    if (FLAGS_use_zero_fragmentation) {
+      allocators_[p] = std::make_shared<ZeroFragmentationAllocator>(
+          cuda_allocator,
+          platform::GpuMinChunkSize(),
+          chunk_size,
+          allow_free_idle_chunk);
+    } else if (FLAGS_use_auto_growth_v2) {
       allocators_[p] = std::make_shared<AutoGrowthBestFitAllocatorV2>(
           cuda_allocator,
           platform::GpuMinChunkSize(),
@@ -1095,7 +1128,13 @@ class AllocatorFacadePrivate {
               cuda_allocator, platform::GpuMinChunkSize(), p);
     } else {
       auto cuda_allocator = CreateCUDAAllocator(p);
-      if (FLAGS_use_auto_growth_v2) {
+      if (FLAGS_use_zero_fragmentation) {
+        allocators_[p] = std::make_shared<ZeroFragmentationAllocator>(
+            cuda_allocator,
+            platform::GpuMinChunkSize(),
+            /*chunk_size=*/chunk_size,
+            allow_free_idle_chunk);
+      } else if (FLAGS_use_auto_growth_v2) {
         allocators_[p] = std::make_shared<AutoGrowthBestFitAllocatorV2>(
             cuda_allocator,
             platform::GpuMinChunkSize(),
@@ -1144,7 +1183,10 @@ class AllocatorFacadePrivate {
       VLOG(10) << "not use AlignedAllocator with alignment: " << alignment;
       underlying_allocator = cuda_allocator;
     }
-    if (FLAGS_use_auto_growth_v2) {
+    if (FLAGS_use_zero_fragmentation) {
+      allocators_[p] = std::make_shared<ZeroFragmentationAllocator>(
+          underlying_allocator, alignment, chunk_size, allow_free_idle_chunk);
+    } else if (FLAGS_use_auto_growth_v2) {
       allocators_[p] =
           std::make_shared<AutoGrowthBestFitAllocatorV2>(underlying_allocator,
                                                          alignment,
