@@ -349,6 +349,12 @@ class TestMultinomialAlias(unittest.TestCase):
         paddle.tensor.random.multinomial(x, num_samples=10, replacement=True)
 
     def test_alias_torch(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+
+        if "V100" not in paddle.device.cuda.get_device_name():
+            return
+
         paddle.disable_static()
         paddle.set_device('gpu')
         paddle.seed(100)
