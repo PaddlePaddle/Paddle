@@ -129,6 +129,12 @@ from . import (
     tensor as tensor,
     utils as utils,
 )
+from .amp import (
+    get_autocast_cpu_dtype,
+    get_autocast_dtype,
+    get_autocast_gpu_dtype,
+    is_autocast_enabled,
+)
 from .autograd import (
     enable_grad,
     grad,
@@ -1233,6 +1239,10 @@ __all__ = [
     'nan',
     'pi',
     'e',
+    'is_autocast_enabled',
+    'get_autocast_dtype',
+    'get_autocast_cpu_dtype',
+    'get_autocast_gpu_dtype',
 ]
 
 import os
