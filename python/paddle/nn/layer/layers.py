@@ -1651,7 +1651,7 @@ class Layer:
                         if hook_result is not None:
                             outputs = hook_result
                     except Exception as e:
-                        warnings.warn("module forward hook with ``always_call=True`` raised an exception "
+                        warnings.warn("forward hook with ``always_call=True`` raised an exception "
                                       f"that was silenced as another error was raised in forward: {str(e)}")
                         continue
             # raise exception raised in try block
