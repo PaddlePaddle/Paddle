@@ -740,9 +740,9 @@ class TestMathOpPatchesPir(unittest.TestCase):
                 with program_guard:
                     x = paddle.rand(shape, dtype="float32")
                     x_new = x.new_full([7], 1.0)
-                    self.assertEqual(x_new.shape, out_shape)
+                    self.assertEqual(x_new.shape, [7])
                     (output_x,) = exe.run(main_program, fetch_list=[x_new])
-                    self.assertEqual(output_x.shape, (7))
+                    self.assertEqual(output_x.shape, (7,))
 
             shape = [1, 2, 3, 0, 1]
             out_shape = list(shape)
@@ -751,7 +751,7 @@ class TestMathOpPatchesPir(unittest.TestCase):
             with program_guard:
                 x = paddle.rand(shape, dtype="float32")
                 x_new = x.new_full([3, 0], 4.0)
-                self.assertEqual(x_new.shape, out_shape)
+                self.assertEqual(x_new.shape, [3, 0])
                 (output_x,) = exe.run(main_program, fetch_list=[x_new])
                 self.assertEqual(output_x.shape, (3, 0))
 
@@ -762,7 +762,7 @@ class TestMathOpPatchesPir(unittest.TestCase):
             with program_guard:
                 x = paddle.rand(shape, dtype="float32")
                 x_new = x.new_empty([2, 2])
-                self.assertEqual(x_new.shape, out_shape)
+                self.assertEqual(x_new.shape, [2, 2])
                 (output_x,) = exe.run(main_program, fetch_list=[x_new])
                 self.assertEqual(output_x.shape, (2, 2))
 
@@ -773,7 +773,7 @@ class TestMathOpPatchesPir(unittest.TestCase):
             with program_guard:
                 x = paddle.rand(shape, dtype="float32")
                 x_new = x.new_ones([2, 2])
-                self.assertEqual(x_new.shape, out_shape)
+                self.assertEqual(x_new.shape, [2, 2])
                 (output_x,) = exe.run(main_program, fetch_list=[x_new])
                 self.assertEqual(output_x.shape, (2, 2))
 
@@ -784,7 +784,7 @@ class TestMathOpPatchesPir(unittest.TestCase):
             with program_guard:
                 x = paddle.rand(shape, dtype="float32")
                 x_new = x.new_zeros([2, 3])
-                self.assertEqual(x_new.shape, out_shape)
+                self.assertEqual(x_new.shape, [2, 3])
                 (output_x,) = exe.run(main_program, fetch_list=[x_new])
                 self.assertEqual(output_x.shape, (2, 3))
 
