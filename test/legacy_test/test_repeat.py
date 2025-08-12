@@ -27,12 +27,12 @@ class TestRepeatBase(unittest.TestCase):
         self.repeats = 3
         self.expected = np.tile(self.x.numpy(), self.repeats)
 
-    def test_repeat_dygraph(self):
+    def test_dygraph(self):
         with dygraph_guard():
             result = self.x.repeat(self.repeats)
         np.testing.assert_array_equal(result.numpy(), self.expected)
 
-    def test_repeat_static(self):
+    def test_static(self):
         with (
             static_guard(),
             paddle.static.program_guard(
@@ -141,6 +141,26 @@ class TestRepeatAPIEdgeCases(unittest.TestCase):
         x = paddle.to_tensor([1, 2, 3])
         with self.assertRaises(TypeError):
             x.repeat()
+
+
+class TestRepeatVariableArgs(unittest.TestCase):
+    def test_1d_variable_args(self):
+        x = paddle.to_tensor([1, 2, 3])
+        result = x.repeat(3)
+        expected = np.tile(x.numpy(), 3)
+        np.testing.assert_array_equal(result.numpy(), expected)
+
+    def test_2d_variable_args(self):
+        x = paddle.to_tensor([[1, 2], [3, 4]])
+        result = x.repeat(2, 3)
+        expected = np.tile(x.numpy(), (2, 3))
+        np.testing.assert_array_equal(result.numpy(), expected)
+
+    def test_3d_variable_args(self):
+        x = paddle.to_tensor([[[1, 2], [3, 4]]])
+        result = x.repeat(2, 1, 3)
+        expected = np.tile(x.numpy(), (2, 1, 3))
+        np.testing.assert_array_equal(result.numpy(), expected)
 
 
 if __name__ == "__main__":

@@ -4684,38 +4684,48 @@ def repeat(
     *args,
 ) -> Tensor:
     """
-    Repeat elements of a tensor along specified dimensions.
+    Repeat elements of a tensor along all dimensions.
 
-    This function repeats the input tensor along specified dimensions. It supports
-    two calling conventions:
-    1. Using a single repeat value or sequence: `repeat(x, repeat_times)`
-    2. Using variable arguments: `repeat(x, *repeat_times)`
+    This method repeats the entire tensor along each dimension.
+    When called as a tensor method, it supports two calling conventions:
+    1. Using a single repeat value: `x.repeat(n)`
+    2. Using multiple arguments: `x.repeat(dim1, dim2, ..., dimN)`
 
     Args:
-        x (Tensor): The input tensor to be repeated.
-        repeat (int|list|tuple|Tensor, optional): The number of times to repeat along each dimension.
-            Can be a single integer, a list/tuple of integers, or a tensor.
-        *args (int): Variable length argument list for repeat times along each dimension.
-        name (str|None, optional): Name for the operation. Default is None.
+        repeats (int|list|tuple|Tensor): The number of times to repeat along each dimension.
+            Can be a single integer (applies to all dimensions), or multiple integers (one per dimension).
 
     Returns:
-        Tensor: A tensor with repeated elements along the specified dimensions.
+        Tensor: The repeated tensor with expanded dimensions.
+
+    Note:
+        The total number of repeat values must match the number of dimensions in the tensor.
 
     Examples:
         .. code-block:: python
 
             >>> import paddle
 
-            >>> # Example 1: Repeat a 1D tensor
+            >>> # Example 1: 1D tensor - single repeat
             >>> x = paddle.to_tensor([1, 2, 3])
-            >>> out = paddle.repeat(x, 3)
+            >>> out = x.repeat(2)
             >>> print(out)
-            Tensor(shape=[9], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [1, 2, 3, 1, 2, 3, 1, 2, 3])
+            Tensor(shape=[6], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [1, 2, 3, 1, 2, 3])
 
-            >>> # Example 2: Repeat a 2D tensor using list
+            >>> # Example 2: 2D tensor - single repeat value
             >>> x = paddle.to_tensor([[1, 2], [3, 4]])
-            >>> out = paddle.repeat(x, [2, 3])
+            >>> out = x.repeat(2)
+            >>> print(out)
+            Tensor(shape=[4, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1, 2, 1, 2],
+             [3, 4, 3, 4],
+             [1, 2, 1, 2],
+             [3, 4, 3, 4]])
+
+            >>> # Example 3: 2D tensor - multiple repeats
+            >>> x = paddle.to_tensor([[1, 2], [3, 4]])
+            >>> out = x.repeat(2, 3)
             >>> print(out)
             Tensor(shape=[4, 6], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[1, 1, 1, 2, 2, 2],
@@ -4723,15 +4733,13 @@ def repeat(
              [3, 3, 3, 4, 4, 4],
              [3, 3, 3, 4, 4, 4]])
 
-            >>> # Example 3: Repeat using variable arguments
-            >>> x = paddle.to_tensor([[1, 2], [3, 4]])
-            >>> out = paddle.repeat(x, 2, 3)
+            >>> # Example 4: 3D tensor - mixed repeats
+            >>> x = paddle.to_tensor([[[1, 2], [3, 4]]])
+            >>> out = x.repeat(2, 1, 3)
             >>> print(out)
-            Tensor(shape=[4, 6], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[1, 1, 1, 2, 2, 2],
-             [1, 1, 1, 2, 2, 2],
-             [3, 3, 3, 4, 4, 4],
-             [3, 3, 3, 4, 4, 4]])
+            Tensor(shape=[2, 1, 6], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[[1, 1, 1, 2, 2, 2]],
+             [[1, 1, 1, 2, 2, 2]]])
     """
     if repeats is not None and not args:
         if isinstance(repeats, (list, tuple, Variable, paddle.pir.Value)):
