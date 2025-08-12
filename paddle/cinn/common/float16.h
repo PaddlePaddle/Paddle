@@ -94,7 +94,7 @@ struct CINN_ALIGN(2) float16 {
 // Constructors
 #if defined(CINN_CUDA_FP16) || defined(CINN_HIP_FP16)
   __host__ __device__ inline explicit float16(const half& h) {
-#if (CUDA_VERSION >= 9000)
+#if defined(CINN_CUDA_FP16) && (CUDA_VERSION >= 9000) || defined(CINN_HIP_FP16)
     x = reinterpret_cast<__half_raw*>(const_cast<half*>(&h))->x;
 #else
     x = h.x;
