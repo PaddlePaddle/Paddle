@@ -3281,7 +3281,7 @@ PDNode *patterns::Bloat16Ops::operator()() {
   return op;
 }
 
-PDNode *patterns::MKLDNNInPlace::operator()() {
+PDNode *patterns::ONEDNNInPlace::operator()() {
   const std::unordered_set<std::string> &supported_op_types = {
       "abs", "gelu", "leaky_relu", "relu", "softmax", "sqrt", "swish", "tanh"};
 

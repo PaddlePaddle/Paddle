@@ -24,8 +24,7 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
-from paddle.device import _convert_to_place
-from paddle.utils.decorator_utils import ParamAliasDecorator
+from paddle.utils.decorator_utils import ParamAliasDecorator, SizeArgsDecorator
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
@@ -1094,7 +1093,7 @@ def full_like(
     if in_dynamic_or_pir_mode():
         if in_dynamic_mode():
             tensor = _C_ops.full_like(
-                x, fill_value, dtype, _convert_to_place(device)
+                x, fill_value, dtype, _get_paddle_place(device)
             )
         else:
             tensor = _C_ops.full_like(x, fill_value, dtype, core.Place())
@@ -1159,7 +1158,7 @@ def fill_constant(
         if place is None:
             place = _current_expected_place()
         else:
-            place = _convert_to_place(place)
+            place = _get_paddle_place(place)
 
         if force_cpu:
             place = core.CPUPlace()
@@ -1262,6 +1261,7 @@ def fill_constant(
         return out
 
 
+@SizeArgsDecorator()
 def ones(
     shape: ShapeLike,
     dtype: DTypeLike | None = None,
@@ -1568,7 +1568,7 @@ def eye(
             num_columns,
             dtype,
             (
-                _convert_to_place(device)
+                _get_paddle_place(device)
                 if device is not None
                 else _current_expected_place()
             ),
@@ -2657,7 +2657,7 @@ def empty(
             shape,
             convert_np_dtype_to_dtype_(dtype),
             (
-                _convert_to_place(device)
+                _get_paddle_place(device)
                 if device is not None
                 else _current_expected_place()
             ),
@@ -2767,7 +2767,7 @@ def empty_like(
             x_shape,
             convert_np_dtype_to_dtype_(dtype),
             (
-                _convert_to_place(device)
+                _get_paddle_place(device)
                 if device is not None
                 else _current_expected_place()
             ),
@@ -3168,7 +3168,7 @@ def _memcpy(input, place=None, output=None) -> paddle.Tensor:
 
 
 def complex(
-    real: paddle.Tensor, imag: paddle.Tensor, name: str | None = None
+    real: paddle.Tensor, imag: paddle.Tensor, out=None, name: str | None = None
 ) -> paddle.Tensor:
     """Return a complex tensor given the real and image component.
 
@@ -3176,6 +3176,7 @@ def complex(
         real (Tensor): The real component. The data type should be 'float32' or 'float64'.
         imag (Tensor): The image component. The data type should be the same as ``real``.
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor, The output tensor. The data type is 'complex64' or 'complex128', with the same precision as ``real`` and ``imag``.
@@ -3198,7 +3199,7 @@ def complex(
              [(1+0j), (1+1j), (1+2j)]])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.complex(real, imag)
+        return _C_ops.complex(real, imag, out=out)
     else:
         check_variable_and_dtype(
             real, 'real', ['float32', 'float64'], 'complex'
