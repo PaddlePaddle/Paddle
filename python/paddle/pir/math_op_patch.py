@@ -647,7 +647,7 @@ def monkey_patch_value():
     ):
         """
 
-        Returns a Tensor of size size filled with fill_value.
+        Returns a Tensor of size ``size`` filled with ``fill_value``.
         By default, the returned Tensor has the same dtype and place as this tensor.
 
         Examples:
@@ -657,7 +657,7 @@ def monkey_patch_value():
                 >>> paddle.enable_static()
 
                 >>> x = paddle.ones(shape=[2, 3, 5])
-                >>> x_new = x.new_full(3.14, dtype="float64", device="cpu")
+                >>> x_new = x.new_full([2, 3], 3.14, dtype="float64", device="cpu")
 
                 >>> exe = paddle.static.Executor()
                 >>> x_new_np = exe.run(paddle.static.default_main_program(), fetch_list=[x_new])[0]
@@ -691,7 +691,7 @@ def monkey_patch_value():
     ):
         """
 
-        Returns a Tensor of size size filled with fill_value.
+        Returns a Tensor of size ``size`` filled with uninitialized data.
         By default, the returned Tensor has the same dtype and place as this tensor.
 
         Examples:
@@ -701,12 +701,12 @@ def monkey_patch_value():
                 >>> paddle.enable_static()
 
                 >>> x = paddle.ones(shape=[2, 3, 5])
-                >>> x_new = x.new_empty(dtype="float64", device="cpu")
+                >>> x_new = x.new_empty([2, 3], dtype="float64", device="cpu")
 
                 >>> exe = paddle.static.Executor()
                 >>> x_new_np = exe.run(paddle.static.default_main_program(), fetch_list=[x_new])[0]
                 >>> print(x_new_np.shape)
-                (2, 5, 3)
+                (2, 3)
                 >>> print(str(x_new_np.dtype))
                 'paddle.float64'
                 >>> print(x_new_np.place)
@@ -731,7 +731,7 @@ def monkey_patch_value():
     ):
         """
 
-        Returns a Tensor of size size filled with fill_value.
+        Returns a Tensor of size ``size`` filled with ``1``.
         By default, the returned Tensor has the same dtype and place as this tensor.
 
         Examples:
@@ -741,12 +741,12 @@ def monkey_patch_value():
                 >>> paddle.enable_static()
 
                 >>> x = paddle.ones(shape=[2, 3, 5])
-                >>> x_new = x.new_ones(3.14, dtype="float64", device="cpu")
+                >>> x_new = x.new_ones([2, 3], dtype="float64", device="cpu")
 
                 >>> exe = paddle.static.Executor()
                 >>> x_new_np = exe.run(paddle.static.default_main_program(), fetch_list=[x_new])[0]
                 >>> print(x_new_np.shape)
-                (2, 5, 3)
+                (2, 3)
                 >>> print(str(x_new_np.dtype))
                 'paddle.float64'
                 >>> print(x_new_np.place)
@@ -775,7 +775,7 @@ def monkey_patch_value():
     ):
         """
 
-        Returns a Tensor of size size filled with fill_value.
+        Returns a Tensor of size ``size`` filled with ``0``.
         By default, the returned Tensor has the same dtype and place as this tensor.
 
         Examples:
@@ -785,12 +785,12 @@ def monkey_patch_value():
                 >>> paddle.enable_static()
 
                 >>> x = paddle.ones(shape=[2, 3, 5])
-                >>> x_new = x.new_zeros(3.14, dtype="float64", device="cpu")
+                >>> x_new = x.new_zeros([2, 3], dtype="float64", device="cpu")
 
                 >>> exe = paddle.static.Executor()
                 >>> x_new_np = exe.run(paddle.static.default_main_program(), fetch_list=[x_new])[0]
                 >>> print(x_new_np.shape)
-                (2, 5, 3)
+                (2, 3)
                 >>> print(str(x_new_np.dtype))
                 'paddle.float64'
                 >>> print(x_new_np.place)
