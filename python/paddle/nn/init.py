@@ -14,15 +14,15 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import paddle
 
-if TYPE_CHECKING:
-    import paddle
-
+from ..base.framework import in_dygraph_mode, in_pir_mode
 from .initializer.constant import Constant
+from .initializer.dirac import Dirac
 from .initializer.initializer import calculate_gain as calculate_gain_
 from .initializer.kaiming import KaimingNormal, KaimingUniform
 from .initializer.normal import Normal, TruncatedNormal
+from .initializer.orthogonal import Orthogonal
 from .initializer.uniform import Uniform
 from .initializer.xavier import XavierNormal, XavierUniform
 
@@ -250,4 +250,72 @@ def zeros_(
     """
     init = Constant(value=0.0)
 
+    return init(tensor)
+
+
+def dirac_(
+    tensor: paddle.Tensor,
+    groups: int = 1,
+) -> paddle.Tensor | None:
+    """Initialize the 3D/4D/5D Tensor with Dirac delta function.
+
+    Args:
+        tensor (Tensor):  Paddle Tensor.
+        groups (int|None, optional): 0-dimension of the Tensor will be divided by groups,
+            each group has the same value. Default: 1.
+    Returns:
+        Tensor: Initialized tensor.
+    """
+    init = Dirac(groups=groups)
+
+    return init(tensor)
+
+
+def eye_(
+    tensor: paddle.Tensor,
+) -> paddle.Tensor | None:
+    """Fill the 2-dimensional input Tensor with the identity matrix.
+
+    Args:
+        tensor (Tensor):  Paddle Tensor.
+    Returns:
+        Tensor: Initialized tensor.
+    """
+
+    if len(tensor.shape) != 2:
+        raise AssertionError(
+            f"Only support 2 dimensional tensor, but got {len(tensor.shape)}."
+        )
+
+    if in_dygraph_mode():
+        new_tensor = paddle.eye(
+            tensor.shape[0], tensor.shape[1], dtype=tensor.dtype
+        )
+        new_tensor._share_underline_tensor_to(tensor)
+        return None
+    elif in_pir_mode():
+        new_tensor = paddle.eye(
+            tensor.shape[0], tensor.shape[1], dtype=tensor.dtype
+        )
+        return new_tensor
+    else:
+        new_tensor = paddle.eye(
+            tensor.shape[0], tensor.shape[1], dtype=tensor.dtype
+        )
+        return new_tensor
+
+
+def orthogonal_(
+    tensor: paddle.Tensor,
+    gain: float = 1,
+) -> paddle.Tensor | None:
+    """Fill the input Tensor with a (semi) orthogonal matrix.
+
+    Args:
+        tensor (Tensor):  Paddle Tensor.
+        gain(float, optional): The multiplication coefficient for initialized tensor. Default: 1.0.
+    Returns:
+        Tensor: Initialized tensor.
+    """
+    init = Orthogonal(gain=gain)
     return init(tensor)
