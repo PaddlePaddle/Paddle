@@ -6188,6 +6188,7 @@ def tensordot(
     return out
 
 
+@ParamAliasDecorator({"x": ["input"]})
 def as_complex(x: Tensor, name: str | None = None) -> Tensor:
     """Transform a real tensor to a complex tensor.
 
@@ -6241,6 +6242,7 @@ def as_complex(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
+@ParamAliasDecorator({"x": ["input"]})
 def as_real(x: Tensor, name: str | None = None) -> Tensor:
     """Transform a complex tensor to a real tensor.
 
