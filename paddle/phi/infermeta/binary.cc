@@ -3722,8 +3722,8 @@ void PullBoxSparseInferMeta(const MetaTensor& w,
 void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
                                               const MetaTensor& repeats,
                                               int dim,
-                                              MetaTensor* out,
-                                              int output_size) {
+                                              int output_size,
+                                              MetaTensor* out) {
   const auto& input_dim = x.dims();
   auto output_dim = common::vectorize(input_dim);
   PADDLE_ENFORCE_EQ(

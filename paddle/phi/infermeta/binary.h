@@ -655,8 +655,8 @@ void PullSparseV2InferMeta(const std::vector<const MetaTensor*>& ids,
 void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
                                               const MetaTensor& repeats,
                                               int dim,
-                                              MetaTensor* out,
-                                              int output_size = -1);
+                                              int output_size,
+                                              MetaTensor* out);
 
 void RowConvInferMeta(const MetaTensor& x,
                       const MetaTensor& filter,
