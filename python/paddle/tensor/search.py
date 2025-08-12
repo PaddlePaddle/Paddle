@@ -626,7 +626,7 @@ def _restrict_nonzero(condition: Tensor, total_true_num: int) -> Tensor:
 
 
 @ForbidKeywordsDecorator(
-    illegal_keys=['input', 'dim'],
+    illegal_keys={'input', 'dim'},
     func_name='paddle.sort',
     correct_name='paddle.compat.sort',
 )
