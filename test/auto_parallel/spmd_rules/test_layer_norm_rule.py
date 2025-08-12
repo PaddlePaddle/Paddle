@@ -17,6 +17,8 @@ from collections import OrderedDict
 
 import numpy as np
 
+import paddle
+import paddle.distributed as dist
 from paddle.distributed.auto_parallel.static.dist_attribute import (
     DistTensorSpec,
     TensorDistAttr,
@@ -554,6 +556,33 @@ class TestLayerNormSPMDRule(unittest.TestCase):
         self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [0, 1, -1])
         self.assertEqual(inferred_output_dist_attrs[1].dims_mapping, [0, 1])
         self.assertEqual(inferred_output_dist_attrs[2].dims_mapping, [0, 1])
+
+    def test_co_shard_for_layernorm(self):
+        x = paddle.rand((64, 32, 128, 128))
+        layer_norm = paddle.nn.LayerNorm(x.shape[1:])
+
+        mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=['x', 'y'])
+        # [[0],[1],[],[]] -> [[0,1],[],[]] | [[0,1],[],[]]
+        placements = [
+            dist.Shard(dim=0),
+            dist.Shard(dim=1),
+            dist.Replicate(),
+            dist.Replicate(),
+        ]
+        input = dist.shard_tensor(x, mesh, placements)
+        out = layer_norm(input)
+        np.testing.assert_equal(
+            str(input.placements[0]), "Shard(dim=0, shard_order=0)"
+        )
+        np.testing.assert_equal(
+            str(input.placements[1]), "Shard(dim=0, shard_order=1)"
+        )
+        np.testing.assert_equal(
+            str(out.placements[0]), "Shard(dim=0, shard_order=0)"
+        )
+        np.testing.assert_equal(
+            str(out.placements[1]), "Shard(dim=0, shard_order=1)"
+        )
 
 
 if __name__ == "__main__":

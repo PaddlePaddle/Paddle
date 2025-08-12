@@ -496,6 +496,53 @@ TEST(LayerNormSPMDRule, Ctor) {
   check_dim_mapping(inferred_dist_attrs.second[1], {0});
   check_dim_mapping(inferred_dist_attrs.second[2], {0});
   VLOG(4) << "test3 done.";
+
+  // {{0, 1}, {}, {}} {{}} {{}} -> {{0, 1}, {}, {}} {{0, 1}, {}} {{0, 1}, {}}
+  begin_norm_axis = 2;
+  std::vector<std::vector<int64_t>> dims_mapping = {{0, 1}, {}, {}};
+  x_dist_attr.set_dims_mapping(dims_mapping);
+  scale_dist_attr.set_dims_mapping(std::vector<int64_t>{-1});
+  bias_dist_attr.set_dims_mapping(std::vector<int64_t>{-1});
+  x = phi::distributed::DistMetaTensor(common::make_ddim(x_shape), x_dist_attr);
+  scale = phi::distributed::DistMetaTensor(common::make_ddim(scale_shape),
+                                           scale_dist_attr);
+  bias = phi::distributed::DistMetaTensor(common::make_ddim(bias_shape),
+                                          bias_dist_attr);
+  ctx = phi::distributed::InferSpmdContext({x, scale, bias},
+                                           {epsilon, begin_norm_axis});
+  inferred_dist_attrs = layer_norm_rule.InferForward(ctx);
+
+  check_multi_dims_mapping(inferred_dist_attrs.first[0], {{0, 1}, {}, {}});
+  check_multi_dims_mapping(inferred_dist_attrs.first[1], {{}});
+  check_multi_dims_mapping(inferred_dist_attrs.first[2], {{}});
+  check_multi_dims_mapping(inferred_dist_attrs.second[0], {{0, 1}, {}, {}});
+  check_multi_dims_mapping(inferred_dist_attrs.second[1], {{0, 1}, {}});
+  check_multi_dims_mapping(inferred_dist_attrs.second[2], {{0, 1}, {}});
+  VLOG(4) << "test4 done.";
+
+  // {{0}, {1}, {}} {{}} {{}}->{{0, 1}, {}, {}} {{}} {{}} | {{0, 1}, {}, {}}
+  // {{0, 1}} {{0, 1}}
+  begin_norm_axis = 1;
+  std::vector<std::vector<int64_t>> dims_mapping = {{0}, {1}, {}};
+  x_dist_attr.set_dims_mapping(dims_mapping);
+  scale_dist_attr.set_dims_mapping(std::vector<int64_t>{-1});
+  bias_dist_attr.set_dims_mapping(std::vector<int64_t>{-1});
+  x = phi::distributed::DistMetaTensor(common::make_ddim(x_shape), x_dist_attr);
+  scale = phi::distributed::DistMetaTensor(common::make_ddim(scale_shape),
+                                           scale_dist_attr);
+  bias = phi::distributed::DistMetaTensor(common::make_ddim(bias_shape),
+                                          bias_dist_attr);
+  ctx = phi::distributed::InferSpmdContext({x, scale, bias},
+                                           {epsilon, begin_norm_axis});
+  inferred_dist_attrs = layer_norm_rule.InferForward(ctx);
+
+  check_multi_dims_mapping(inferred_dist_attrs.first[0], {{0, 1}, {}, {}});
+  check_multi_dims_mapping(inferred_dist_attrs.first[1], {{}});
+  check_multi_dims_mapping(inferred_dist_attrs.first[2], {{}});
+  check_multi_dims_mapping(inferred_dist_attrs.second[0], {{0, 1}, {}, {}});
+  check_multi_dims_mapping(inferred_dist_attrs.second[1], {{0, 1}});
+  check_multi_dims_mapping(inferred_dist_attrs.second[2], {{0, 1}});
+  VLOG(4) << "test5 done.";
 }
 
 TEST(MatmulSPMDRuleInferBackward, Ctor) {
@@ -1932,6 +1979,69 @@ TEST(ElementwiseUnaryLike, Ctor) {
       phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
   inferred_dist_attrs = phi::distributed::LogitGradInfoSpmd(input, input, 1.0);
   check_element_unary_like_backward(inferred_dist_attrs);
+}
+
+TEST(ElementwiseBinaryLike, Ctor) {
+  // build input data class
+  std::vector<int64_t> x_shape = {64, 64, 64};
+  std::vector<int64_t> y_shape = {64, 64, 64};
+  std::vector<int64_t> mesh_shape = {2, 2};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  TensorDistAttr x_dist_attr = TensorDistAttr();
+  x_dist_attr.set_process_mesh(process_mesh);
+  x_dist_attr.set_dims_mapping(
+      std::vector<std::vector<int64_t>>({{}, {0, 1}, {}}));
+  x_dist_attr.set_dynamic_dims(std::vector<bool>({false, false, false}));
+
+  TensorDistAttr y_dist_attr = TensorDistAttr();
+  y_dist_attr.set_process_mesh(process_mesh);
+  y_dist_attr.set_dims_mapping(
+      std::vector<std::vector<int64_t>>({{0}, {1}, {}}));
+  y_dist_attr.set_dynamic_dims(std::vector<bool>({false, false, false}));
+
+  // Test forward.
+  // [-1 , [0,1], -1], [0, 1, -1] --> input: [-1, [0,1], -1], [-1,[0,1],-1]
+  // output: [-1,[0,1],-1]
+
+  phi::distributed::DistMetaTensor x(common::make_ddim(x_shape), x_dist_attr);
+  phi::distributed::DistMetaTensor y(common::make_ddim(y_shape), y_dist_attr);
+  phi::distributed::SpmdInfo forward_info =
+      phi::distributed::ElementwiseBinaryInferSpmd(x, y);
+  size_t input_size = 2;
+  size_t output_size = 1;
+  EXPECT_EQ(forward_info.first.size(), input_size);
+  EXPECT_EQ(forward_info.second.size(), output_size);
+  check_multi_dims_mapping(forward_info.first[0], {{}, {0, 1}, {}});
+  check_multi_dims_mapping(forward_info.first[1], {{}, {0, 1}, {}});
+  check_multi_dims_mapping(forward_info.second[0], {{}, {0, 1}, {}});
+
+  VLOG(4) << "test forward done.";
+
+  // Test backward.
+  // [-1 , [0,1], -1], [0, 1, -1],[-1,-1,0] --> input: [-1, [0,1], -1],
+  // [-1,[0,1],-1],[-1,[0,1],-1] output: [-1,[0,1],-1],[-1,[0,1],-1]
+  TensorDistAttr out_grad_dist_attr = TensorDistAttr();
+  out_grad_dist_attr.set_process_mesh(process_mesh);
+  out_grad_dist_attr.set_dims_mapping(
+      std::vector<std::vector<int64_t>>({{}, {}, {0, 1}}));
+  out_grad_dist_attr.set_dynamic_dims(std::vector<bool>({false, false, false}));
+  phi::distributed::DistMetaTensor out_grad(common::make_ddim(x_shape),
+                                            out_grad_dist_attr);
+  phi::distributed::SpmdInfo backward_info =
+      phi::distributed::ElementwiseBinaryGradInferSpmd(x, y, out_grad);
+  input_size = 3;
+  output_size = 2;
+  EXPECT_EQ(backward_info.first.size(), input_size);
+  EXPECT_EQ(backward_info.second.size(), output_size);
+  check_multi_dims_mapping(backward_info.first[0], {{}, {}, {0, 1}});
+  check_multi_dims_mapping(backward_info.first[1], {{}, {}, {0, 1}});
+  check_multi_dims_mapping(backward_info.first[2], {{}, {}, {0, 1}});
+  check_multi_dims_mapping(backward_info.second[0], {{}, {}, {0, 1}});
+  check_multi_dims_mapping(backward_info.second[1], {{}, {}, {0, 1}});
+  VLOG(4) << "test backward done.";
 }
 
 TEST(EmbeddingGradInferSpmd, Ctor) {
