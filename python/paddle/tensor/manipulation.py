@@ -26,6 +26,7 @@ from paddle import _C_ops
 from paddle.tensor import fill_constant
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
+    VariableArgsDecorator,
     param_one_alias,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
@@ -4723,10 +4724,10 @@ def tile(
         return out
 
 
+@VariableArgsDecorator('repeats')
 def repeat(
     input: Tensor,
     repeats: int | Sequence[int] | Tensor,
-    *args,
 ) -> Tensor:
     """
     Repeat elements of a tensor along all dimensions.
