@@ -1096,7 +1096,12 @@ def full_like(
                 x, fill_value, dtype, _get_paddle_place(device)
             )
         else:
-            tensor = _C_ops.full_like(x, fill_value, dtype, core.Place())
+            tensor = _C_ops.full_like(
+                x,
+                fill_value,
+                dtype,
+                core.Place() if device is None else _get_paddle_place(device),
+            )
         if requires_grad is True:
             tensor.stop_gradient = False
         return tensor
@@ -1326,6 +1331,7 @@ def ones(
     )
 
 
+@ParamAliasDecorator({"x": ["input"]})
 def ones_like(
     x: paddle.Tensor,
     dtype: DTypeLike | None = None,

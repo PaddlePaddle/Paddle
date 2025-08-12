@@ -41,6 +41,15 @@ const std::set<int64_t> get_partial_dims(
   return tensor_attr.partial_dims();
 }
 
+const std::vector<std::vector<int64_t>>& get_multi_dims_mapping(
+    const phi::distributed::ArgDistAttr& dist_attr) {
+  EXPECT_TRUE(
+      paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr));
+  const auto& tensor_attr =
+      PADDLE_GET_CONST(phi::distributed::TensorDistAttr, dist_attr);
+  return tensor_attr.multi_dims_mapping();
+}
+
 void check_dim_mapping(const phi::distributed::ArgDistAttr& dist_attr,
                        const std::vector<int64_t>& dim_mapping,
                        const std::string& line) {
@@ -48,6 +57,16 @@ void check_dim_mapping(const phi::distributed::ArgDistAttr& dist_attr,
       paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr))
       << line;
   EXPECT_EQ(get_dims_mapping(dist_attr), dim_mapping) << line;
+}
+
+void check_multi_dims_mapping(
+    const phi::distributed::ArgDistAttr& dist_attr,
+    const std::vector<std::vector<int64_t>>& dim_mapping,
+    const std::string& line) {
+  EXPECT_TRUE(
+      paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr))
+      << line;
+  EXPECT_EQ(get_multi_dims_mapping(dist_attr), dim_mapping) << line;
 }
 
 void check_empty_dist_attr(const phi::distributed::ArgDistAttr& dist_attr,
