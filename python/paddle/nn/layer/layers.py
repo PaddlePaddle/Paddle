@@ -1570,62 +1570,84 @@ class Layer:
         pass
 
     def _dygraph_call_func(self, *inputs: Any, **kwargs: Any) -> Any:
+        outputs = None
+        called_always_called_hooks = set()
 
-        for hook_id, forward_pre_hook in self._forward_pre_hooks.items():
-            if hook_id in self._forward_pre_hooks_with_kwargs_flag:
-                args_kwargs_result = forward_pre_hook(self, inputs, kwargs)
-                if args_kwargs_result is not None:
-                    if (
-                        isinstance(args_kwargs_result, tuple)
-                        and len(args_kwargs_result) == 2
-                    ):
-                        inputs, kwargs = args_kwargs_result
-                    else:
-                        raise RuntimeError(
-                            "forward pre-hook must return None or a tuple "
-                            f"of (new_args, new_kwargs), but got {args_kwargs_result}."
-                        )
+        def inner():
+            nonlocal outputs, inputs, kwargs
+
+            for hook_id, forward_pre_hook in self._forward_pre_hooks.items():
+                if hook_id in self._forward_pre_hooks_with_kwargs_flag:
+                    args_kwargs_result = forward_pre_hook(self, inputs, kwargs)
+                    if args_kwargs_result is not None:
+                        if (
+                            isinstance(args_kwargs_result, tuple)
+                            and len(args_kwargs_result) == 2
+                        ):
+                            inputs, kwargs = args_kwargs_result
+                        else:
+                            raise RuntimeError(
+                                "forward pre-hook must return None or a tuple "
+                                f"of (new_args, new_kwargs), but got {args_kwargs_result}."
+                            )
+                else:
+                    hook_result = forward_pre_hook(self, inputs)
+                    if hook_result is not None:
+                        if not isinstance(hook_result, tuple):
+                            hook_result = (hook_result,)
+                        inputs = hook_result
+
+            if not self._built:
+                self._build_once(*inputs, **kwargs)
+
+                self._built = True
+
+            if in_profiler_mode():
+                with profiler.RecordEvent(
+                    self.__class__.__name__, profiler.TracerEventType.Forward
+                ):
+                    outputs = self.forward(*inputs, **kwargs)
             else:
-                hook_result = forward_pre_hook(self, inputs)
-                if hook_result is not None:
-                    if not isinstance(hook_result, tuple):
-                        hook_result = (hook_result,)
-                    inputs = hook_result
+                with name_struct(self.__class__.__name__):
+                    outputs = self.forward(*inputs, **kwargs)
 
-        if not self._built:
-            self._build_once(*inputs, **kwargs)
+            for hook_id, forward_post_hook in self._forward_post_hooks.items():
+                # mark that always_called_hook to be run
+                if hook_id in self._forward_post_hooks_always_called:
+                    called_always_called_hooks.add(hook_id)
 
-            self._built = True
+                if hook_id in self._forward_post_hooks_with_kwargs_flag:
+                    hook_result = forward_post_hook(self, inputs, kwargs, outputs)
+                else:
+                    hook_result = forward_post_hook(self, inputs, outputs)
 
-        if in_profiler_mode():
-            with profiler.RecordEvent(
-                self.__class__.__name__, profiler.TracerEventType.Forward
-            ):
-                outputs = self.forward(*inputs, **kwargs)
-        else:
-            with name_struct(self.__class__.__name__):
-                outputs = self.forward(*inputs, **kwargs)
-
-        for hook_id, forward_post_hook in self._forward_post_hooks.items():
-            if hook_id in self._forward_post_hooks_with_kwargs_flag:
-                post_kwargs_result = forward_post_hook(self, inputs, outputs, kwargs)
-                if post_kwargs_result is not None:
-                    if (
-                        isinstance(post_kwargs_result, tuple)
-                        and len(post_kwargs_result) == 2
-                    ):
-                        outputs, kwargs = post_kwargs_result
-                    else:
-                        raise RuntimeError(
-                            "forward post-hook must return None or a tuple "
-                            f"of (new_args, new_kwargs), but got {post_kwargs_result}."
-                        )
-            else:
-                hook_result = forward_post_hook(self, inputs, outputs)
                 if hook_result is not None:
                     outputs = hook_result
 
-        return outputs
+            return outputs
+
+        try:
+            return inner()
+        except Exception:
+            for hook_id, forward_post_hook in self._forward_post_hooks.items():
+                if (
+                    (hook_id in self._forward_post_hooks_always_called)
+                    and hook_id not in called_always_called_hooks
+                ):
+                    try:
+                        if hook_id in self._forward_post_hooks_with_kwargs_flag:
+                            hook_result = forward_post_hook(self, inputs, kwargs, outputs)
+                        else:
+                            hook_result = forward_post_hook(self, inputs, outputs)
+
+                        if hook_result is not None:
+                            outputs = hook_result
+                    except Exception as e:
+                        warnings.warn("module forward hook with ``always_call=True`` raised an exception "
+                                      f"that was silenced as another error was raised in forward: {str(e)}")
+                        continue
+            # raise exception raised in try block
+            raise
 
     def __call__(self, *inputs: Any, **kwargs: Any) -> Any:
         if (
