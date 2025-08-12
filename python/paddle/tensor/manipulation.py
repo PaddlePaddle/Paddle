@@ -6786,6 +6786,70 @@ def take_along_axis(
         return result
 
 
+@ParamAliasDecorator(
+    {"arr": ["input"], "axis": ["dim"], "indices": ["index"], "values": ["src"]}
+)
+def scatter_reduce(
+    arr: Tensor,
+    axis: int,
+    indices: Tensor,
+    values: Tensor,
+    reduce: Literal['sum', 'prod', 'mean', 'amin', 'amax'],
+    include_self: bool = True,
+) -> Tensor:
+    """
+    Scatter the values of the source tensor to the target tensor according to the given indices, and perform a reduction operation along the designated axis.
+
+    Args:
+        arr (Tensor) : The Input Tensor. Supported data types are bfloat16, float16, float32, float64,
+            int32, int64, uint8.
+        axis (int) : The axis to scatter 1d slices along.
+        indices (Tensor) : Indices to scatter along each 1d slice of arr. This must match the dimension of arr,
+             Supported data type are int32 and int64.
+        values (Tensor) : The value element(s) to scatter. The data types should be same as arr.
+        reduce (str): The reduce operation, support 'sum', 'prod', 'mean', 'amin', 'amax'.
+        include_self (bool, optional): whether to reduce with the elements of arr, default is 'True'.
+
+    Returns:
+        Tensor, The indexed element, same dtype with arr
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[10, 20, 30], [40, 50, 60]])
+            >>> indices = paddle.zeros((2,3)).astype("int32")
+            >>> values = paddle.to_tensor([[1, 2, 3],[4, 5, 6]]).astype(x.dtype)
+            >>> result = paddle.scatter_reduce(x, 0, indices, values, "sum", True)
+            >>> print(result)
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[15, 27, 39],
+             [40, 50, 60]])
+
+            >>> result = paddle.scatter_reduce(x, 0, indices, values, "prod", True)
+            >>> print(result)
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[40 , 200, 540],
+             [40 , 50 , 60 ]])
+
+            >>> result = paddle.scatter_reduce(x, 0, indices, values, "mean", True)
+            >>> print(result)
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[5 , 9 , 13],
+             [40, 50, 60]])
+
+    """
+
+    if reduce == 'sum':
+        reduce = 'add'
+    if reduce == 'prod':
+        reduce = 'multiply'
+    return put_along_axis(
+        arr, indices, values, axis, reduce, include_self, broadcast=False
+    )
+
+
 def put_along_axis(
     arr: Tensor,
     indices: Tensor,
