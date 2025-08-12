@@ -19,14 +19,12 @@ import paddle
 from ..base.framework import in_dygraph_mode, in_pir_mode
 from .initializer.constant import Constant
 from .initializer.dirac import Dirac
-from .initializer.initializer import calculate_gain as calculate_gain_
+from .initializer.initializer import calculate_gain  # noqa: F401
 from .initializer.kaiming import KaimingNormal, KaimingUniform
 from .initializer.normal import Normal, TruncatedNormal
 from .initializer.orthogonal import Orthogonal
 from .initializer.uniform import Uniform
 from .initializer.xavier import XavierNormal, XavierUniform
-
-calculate_gain = calculate_gain_
 
 
 def kaiming_uniform_(
@@ -299,10 +297,9 @@ def eye_(
         )
         return new_tensor
     else:
-        new_tensor = paddle.eye(
-            tensor.shape[0], tensor.shape[1], dtype=tensor.dtype
+        raise NotImplementedError(
+            'Only support run in dygraph mode or PIR mode.'
         )
-        return new_tensor
 
 
 def orthogonal_(
