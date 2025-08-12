@@ -698,6 +698,35 @@ def extract_device_id(device: _CustomPlaceLike, op_name: str) -> int:
     return device_id
 
 
+def empty_cache() -> None:
+    '''
+    Releases idle cached memory held by the allocator so that those can be used in other GPU
+    application and visible in `nvidia-smi`. In most cases you don't need to use this function,
+    Paddle does not release the memory back to the OS when you remove Tensors on the GPU,
+    Because it keeps gpu memory in a pool so that next allocations can be done much faster.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
+
+            >>> tensor = paddle.randn([512, 512, 512], "float64")
+            >>> del tensor
+            >>> paddle.device.empty_cache()
+    '''
+    custom_devices = paddle.device.get_all_custom_device_type()
+    if core.is_compiled_with_cuda():
+        core.cuda_empty_cache()
+    elif core.is_compiled_with_custom_device(custom_devices[0]):
+        core.device_empty_cache()
+    else:
+        raise ValueError(
+            "The API paddle.device.empty_cache is not supported in CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU or custom device support to call this API."
+        )
+
+
 def max_memory_allocated(device: _CustomPlaceLike | None = None) -> int:
     '''
     Return the peak size of memory that is allocated to tensor of the given device. This
