@@ -14,6 +14,7 @@
 
 import functools
 import inspect
+import warnings
 from collections.abc import Iterable
 from typing import Any, Callable, TypeVar, cast
 
@@ -90,6 +91,63 @@ class ParamAliasDecorator(DecoratorBase):
                     )
 
         return args, processed_kwargs
+
+
+class SetDefaultParaAliasDecorator(DecoratorBase):
+    """Support default parameter settings, implementation of parameter alias processing decorator"""
+
+    def __init__(
+        self,
+        alias_mapping: dict[str, Iterable[str]],
+        default_params: dict[str, Any],
+    ) -> None:
+        super().__init__()
+        # Check alias_mapping types
+        if not isinstance(alias_mapping, dict):
+            raise TypeError("alias_mapping must be a dictionary")
+        for k, v in alias_mapping.items():
+            if not isinstance(v, (list, tuple, set)):
+                raise TypeError(f"Aliases for '{k}' must be iterable")
+
+        # Build a reverse alias map for faster lookup
+        self.alias_mapping = {}
+        for original, aliases in alias_mapping.items():
+            for alias in aliases:
+                self.alias_mapping[alias] = original
+
+        self.default_params = default_params
+        warnings.simplefilter("always", category=Warning)
+
+    def process(
+        self, args: tuple[Any, ...], kwargs: dict[str, Any]
+    ) -> tuple[tuple[Any, ...], dict[str, Any]]:
+        """Process parameters to handle alias mapping"""
+        if not kwargs:
+            return args, kwargs
+
+        is_torch_call = False
+
+        # Directly modify kwargs based on alias mapping (only modify if necessary)
+        for alias, original in self.alias_mapping.items():
+            if alias in kwargs:
+                if original not in kwargs:
+                    kwargs[original] = kwargs.pop(alias)
+                    is_torch_call = True
+                else:
+                    raise ValueError(
+                        f"Cannot specify both '{original}' and its alias '{alias}'"
+                    )
+
+        if is_torch_call:
+            warnings.warn(
+                "Set default parameters " + str(self.default_params),
+                category=Warning,
+            )
+            for key, value in self.default_params.items():
+                if key not in kwargs:
+                    kwargs[key] = value
+
+        return args, kwargs
 
 
 def param_one_alias(alias_mapping):

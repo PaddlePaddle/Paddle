@@ -6621,6 +6621,7 @@ def lcm_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     return out
 
 
+@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
 def diff(
     x: Tensor,
     n: int = 1,
