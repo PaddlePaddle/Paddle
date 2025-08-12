@@ -131,3 +131,24 @@ class SizeArgsDecorator(DecoratorBase):
             args = ()
 
         return args, kwargs
+
+
+class ReshapeDecorator(DecoratorBase):
+    """
+    Usage Example:
+    paddle.reshape(x=tensor_x, shape=[-1, 1, 3], name=None)
+    paddle.reshape(input=tensor_x, shape=[-1, 1, 3], name=None)
+    tensor_x.reshape([-1, 1, 3]) -> paddle.reshape(tensor_x, [-1, 1, 3])
+    tensor_x.reshape(-1, 1, 3) -> paddle.reshape(tensor_x, -1, 1, 3])
+    """
+
+    def process(
+        self, args: tuple[Any, ...], kwargs: dict[str, Any]
+    ) -> tuple[tuple[Any, ...], dict[str, Any]]:
+        if ("input" in kwargs) and ("x" not in kwargs):
+            kwargs["x"] = kwargs.pop("input")
+        elif len(args) >= 2 and all(type(arg) is int for arg in args[1:]):
+            kwargs["x"] = args[0]
+            kwargs['shape'] = list(args[1:])
+            args = ()
+        return args, kwargs
