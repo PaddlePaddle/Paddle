@@ -31,7 +31,7 @@ class StringsAPI(ForwardAPI):
     def gene_api_declaration(self):
         return f"""
 // {", ".join(self.outputs['names'])}
-{super().gene_api_declaration()}
+{super().gene_api_declaration(append_input_out=False)}
 """
 
     def get_kernel_tensor_out_type(self, output_name):
@@ -306,10 +306,12 @@ class StringsAPI(ForwardAPI):
 
         return kernel_select_code
 
-    def gene_base_api_code(self, inplace_flag=False):
+    def gene_base_api_code(
+        self, inplace_flag=False, grad_flag=False, append_input_out=False
+    ):
         api_func_name = self.get_api_func_name()
         return f"""
-PADDLE_API {self.get_return_type(inplace_flag)} {api_func_name}({self.get_define_args(inplace_flag)}) {{
+PADDLE_API {self.get_return_type(inplace_flag)} {api_func_name}({self.get_define_args(inplace_flag, grad_flag=grad_flag, append_input_out=False)}) {{
 {self.gene_kernel_select()}
 {self.gen_string_tensor_kernel_code(inplace_flag)}
 }}

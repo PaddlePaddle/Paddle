@@ -514,5 +514,7 @@ CvtPlacements(phi::distributed::Placements placements, int ndim);
 
 void EagerSetDeviceId();
 
+paddle::optional<Tensor*> GetInputOutTensorFromKwargs(PyObject* kwargs);
+
 }  // namespace pybind
 }  // namespace paddle

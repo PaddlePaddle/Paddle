@@ -19,7 +19,7 @@ from op_test import OpTest
 
 import paddle
 from paddle import static
-from paddle.base import dygraph
+from paddle.base import core, dygraph
 
 paddle.enable_static()
 
@@ -134,6 +134,7 @@ class TestComplexAPI(unittest.TestCase):
         np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
 
     def test_static(self):
+        paddle.enable_static()
         mp, sp = static.Program(), static.Program()
         with static.program_guard(mp, sp):
             x = static.data("x", shape=[10, 10], dtype="float64")
@@ -146,6 +147,117 @@ class TestComplexAPI(unittest.TestCase):
             mp, feed={"x": self.x, "y": self.y}, fetch_list=[out]
         )
         np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
+
+
+class OutTest(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        if core.is_compiled_with_cuda():
+            self.place = core.CUDAPlace(0)
+        else:
+            self.place = core.CPUPlace()
+
+    def test_complex_api(self):
+        def run_complex(test_type):
+            x = paddle.arange(2, dtype=paddle.float32).unsqueeze(-1)
+            y = paddle.arange(3, dtype=paddle.float32)
+            x.stop_gradient = False
+            y.stop_gradient = False
+            z = paddle.ones([100])
+            z.stop_gradient = False
+
+            a = x + x
+            b = y + y
+            c = z + z
+
+            if test_type == "return":
+                c = paddle.complex(a, b)
+            elif test_type == "input_out":
+                paddle.complex(a, b, out=c)
+            elif test_type == "both_return":
+                c = paddle.complex(a, b, out=c)
+            elif test_type == "both_input_out":
+                tmp = paddle.complex(a, b, out=c)
+
+            out = paddle._C_ops.complex(a, b)
+            np.testing.assert_allclose(
+                out.numpy(),
+                c.numpy(),
+                1e-20,
+                1e-20,
+            )
+
+            d = c + c
+
+            d.mean().backward()
+
+            return c, x.grad, y.grad, z.grad
+
+        paddle.disable_static()
+        out1, x1, y1, z1 = run_complex("return")
+        out2, x2, y2, z2 = run_complex("input_out")
+        out3, x3, y3, z3 = run_complex("both_return")
+        out4, x4, y4, z4 = run_complex("both_input_out")
+
+        np.testing.assert_allclose(
+            out1.numpy(),
+            out2.numpy(),
+            1e-20,
+            1e-20,
+        )
+        np.testing.assert_allclose(
+            out1.numpy(),
+            out3.numpy(),
+            1e-20,
+            1e-20,
+        )
+        np.testing.assert_allclose(
+            out1.numpy(),
+            out4.numpy(),
+            1e-20,
+            1e-20,
+        )
+
+        np.testing.assert_allclose(
+            x1.numpy(),
+            x2.numpy(),
+            1e-20,
+            1e-20,
+        )
+        np.testing.assert_allclose(
+            x1.numpy(),
+            x3.numpy(),
+            1e-20,
+            1e-20,
+        )
+        np.testing.assert_allclose(
+            x1.numpy(),
+            x3.numpy(),
+            1e-20,
+            1e-20,
+        )
+        np.testing.assert_allclose(
+            y1.numpy(),
+            y2.numpy(),
+            1e-20,
+            1e-20,
+        )
+        np.testing.assert_allclose(
+            y1.numpy(),
+            y3.numpy(),
+            1e-20,
+            1e-20,
+        )
+        np.testing.assert_allclose(
+            y1.numpy(),
+            y4.numpy(),
+            1e-20,
+            1e-20,
+        )
+        np.testing.assert_equal(z1, None)
+        np.testing.assert_equal(z2, None)
+        np.testing.assert_equal(z3, None)
+        np.testing.assert_equal(z4, None)
 
 
 if __name__ == "__main__":

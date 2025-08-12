@@ -35,14 +35,24 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
     def gene_return_code(self):
         return "return;"
 
-    def gene_api_declaration(self):
-        return SparseAPI.gene_api_declaration(self)
+    def gene_api_declaration(self, grad_flag=False, append_input_out=False):
+        return SparseAPI.gene_api_declaration(
+            self, grad_flag=grad_flag, append_input_out=False
+        )
 
-    def get_declare_args(self, inplace_flag=False):
-        return BackwardAPI.get_declare_args(self)
+    def get_declare_args(
+        self, inplace_flag=False, grad_flag=False, append_input_out=False
+    ):
+        return BackwardAPI.get_declare_args(
+            self, grad_flag=grad_flag, append_input_out=False
+        )
 
-    def get_define_args(self, inplace_flag=False):
-        return BackwardAPI.get_define_args(self)
+    def get_define_args(
+        self, inplace_flag=False, grad_flag=False, append_input_out=False
+    ):
+        return BackwardAPI.get_define_args(
+            self, grad_flag=grad_flag, append_input_out=False
+        )
 
     def gene_output(
         self,
@@ -157,7 +167,9 @@ namespace sparse {
     )
 
 
-def generate_api(api_yaml_path, header_file_path, source_file_path):
+def generate_api(
+    api_yaml_path, header_file_path, source_file_path, grad_flag=False
+):
     with open(api_yaml_path, 'r') as f:
         apis = yaml.load(f, Loader=yaml.FullLoader)
     header_file = open(header_file_path, 'w')
@@ -175,8 +187,16 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
 
     for api in apis:
         sparse_bw_api = SparseBackwardAPI(api)
-        header_file.write(sparse_bw_api.gene_api_declaration())
-        source_file.write(sparse_bw_api.gene_api_code())
+        header_file.write(
+            sparse_bw_api.gene_api_declaration(
+                grad_flag=grad_flag, append_input_out=False
+            )
+        )
+        source_file.write(
+            sparse_bw_api.gene_api_code(
+                grad_flag=grad_flag, append_input_out=False
+            )
+        )
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])
@@ -213,7 +233,9 @@ def main():
     header_file_path = options.api_header_path
     source_file_path = options.api_source_path
 
-    generate_api(api_yaml_path, header_file_path, source_file_path)
+    generate_api(
+        api_yaml_path, header_file_path, source_file_path, grad_flag=True
+    )
 
 
 if __name__ == '__main__':

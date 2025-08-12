@@ -15,9 +15,11 @@
 import unittest
 
 import numpy as np
-from op_test import convert_uint16_to_float, get_device_place
+from op_test import convert_uint16_to_float
+from utils import dygraph_guard, static_guard
 
 import paddle
+from paddle.base import core
 from paddle.base.data_feeder import convert_dtype
 
 
@@ -80,16 +82,16 @@ class TestEmptyLikeAPI(TestEmptyLikeAPICommon):
         self.init_config()
 
     def test_dygraph_api_out(self):
-        paddle.disable_static()
-        out = paddle.empty_like(self.x, self.dtype)
-        self.__check_out__(out.numpy())
-        paddle.enable_static()
+        with dygraph_guard():
+            out = paddle.empty_like(self.x, self.dtype)
+            self.__check_out__(out.numpy())
 
     def init_config(self):
         self.x = np.random.random((200, 3)).astype("float32")
         self.dtype = self.x.dtype
         self.dst_shape = self.x.shape
         self.dst_dtype = self.dtype
+        self.x = paddle.to_tensor(self.x)
 
 
 class TestEmptyLikeAPI2(TestEmptyLikeAPI):
@@ -98,6 +100,7 @@ class TestEmptyLikeAPI2(TestEmptyLikeAPI):
         self.dtype = self.x.dtype
         self.dst_shape = self.x.shape
         self.dst_dtype = self.dtype
+        self.x = paddle.to_tensor(self.x)
 
 
 class TestEmptyLikeAPI3(TestEmptyLikeAPI):
@@ -106,6 +109,7 @@ class TestEmptyLikeAPI3(TestEmptyLikeAPI):
         self.dtype = self.x.dtype
         self.dst_shape = self.x.shape
         self.dst_dtype = self.dtype
+        self.x = paddle.to_tensor(self.x)
 
 
 class TestEmptyLikeAPI4(TestEmptyLikeAPI):
@@ -114,6 +118,7 @@ class TestEmptyLikeAPI4(TestEmptyLikeAPI):
         self.dtype = self.x.dtype
         self.dst_shape = self.x.shape
         self.dst_dtype = self.dtype
+        self.x = paddle.to_tensor(self.x)
 
 
 class TestEmptyLikeAPI5(TestEmptyLikeAPI):
@@ -122,6 +127,7 @@ class TestEmptyLikeAPI5(TestEmptyLikeAPI):
         self.dtype = self.x.dtype
         self.dst_shape = self.x.shape
         self.dst_dtype = self.dtype
+        self.x = paddle.to_tensor(self.x)
 
 
 class TestEmptyLikeAPI6(TestEmptyLikeAPI):
@@ -130,6 +136,7 @@ class TestEmptyLikeAPI6(TestEmptyLikeAPI):
         self.dtype = "float32"
         self.dst_shape = self.x.shape
         self.dst_dtype = self.dtype
+        self.x = paddle.to_tensor(self.x)
 
 
 class TestEmptyLikeAPI7(TestEmptyLikeAPI):
@@ -138,6 +145,7 @@ class TestEmptyLikeAPI7(TestEmptyLikeAPI):
         self.dtype = "float32"
         self.dst_shape = self.x.shape
         self.dst_dtype = self.dtype
+        self.x = paddle.to_tensor(self.x)
 
 
 class TestEmptyLikeAPI8(TestEmptyLikeAPI):
@@ -146,6 +154,7 @@ class TestEmptyLikeAPI8(TestEmptyLikeAPI):
         self.dtype = "float32"
         self.dst_shape = self.x.shape
         self.dst_dtype = self.dtype
+        self.x = paddle.to_tensor(self.x)
 
 
 class TestEmptyLikeAPI9(TestEmptyLikeAPI):
@@ -154,6 +163,7 @@ class TestEmptyLikeAPI9(TestEmptyLikeAPI):
         self.dtype = "float32"
         self.dst_shape = self.x.shape
         self.dst_dtype = self.dtype
+        self.x = paddle.to_tensor(self.x)
 
 
 class TestEmptyLikeAPI10(TestEmptyLikeAPI):
@@ -162,6 +172,7 @@ class TestEmptyLikeAPI10(TestEmptyLikeAPI):
         self.dtype = "bool"
         self.dst_shape = self.x.shape
         self.dst_dtype = self.dtype
+        self.x = paddle.to_tensor(self.x)
 
 
 class TestEmptyLikeAPI_Static(TestEmptyLikeAPICommon):
@@ -169,27 +180,29 @@ class TestEmptyLikeAPI_Static(TestEmptyLikeAPICommon):
         self.init_config()
 
     def test_static_graph(self):
-        paddle.enable_static()
-        train_program = paddle.static.Program()
-        startup_program = paddle.static.Program()
+        with static_guard():
+            train_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
 
-        with paddle.static.program_guard(train_program, startup_program):
-            x = np.random.random(self.x_shape).astype(self.dtype)
-            data_x = paddle.static.data(
-                'x', shape=self.data_x_shape, dtype=self.dtype
-            )
+            with paddle.static.program_guard(train_program, startup_program):
+                x = np.random.random(self.x_shape).astype(self.dtype)
+                data_x = paddle.static.data(
+                    'x', shape=self.data_x_shape, dtype=self.dtype
+                )
 
-            out = paddle.empty_like(data_x)
+                out = paddle.empty_like(data_x)
 
-            place = get_device_place()
-            exe = paddle.static.Executor(place)
-            res = exe.run(train_program, feed={'x': x}, fetch_list=[out])
+                place = (
+                    paddle.CUDAPlace(0)
+                    if core.is_compiled_with_cuda()
+                    else paddle.CPUPlace()
+                )
+                exe = paddle.static.Executor(place)
+                res = exe.run(train_program, feed={'x': x}, fetch_list=[out])
 
-            self.dst_dtype = self.dtype
-            self.dst_shape = x.shape
-            self.__check_out__(res[0])
-
-            paddle.disable_static()
+                self.dst_dtype = self.dtype
+                self.dst_shape = x.shape
+                self.__check_out__(res[0])
 
     def init_config(self):
         self.x_shape = (200, 3)
@@ -214,27 +227,27 @@ class TestEmptyLikeAPI_StaticForFP16Op(TestEmptyLikeAPICommon):
         self.dtype = 'float16'
 
     def test_static_graph(self):
-        paddle.enable_static()
-        if paddle.base.core.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
-                x = np.random.random([200, 3]).astype(self.dtype)
-                data_x = paddle.static.data(
-                    name="x", shape=[200, 3], dtype=self.dtype
-                )
-                out = paddle.empty_like(data_x)
-                exe = paddle.static.Executor(place)
-                res = exe.run(
-                    paddle.static.default_main_program(),
-                    feed={'x': x},
-                    fetch_list=[out],
-                )
+        with static_guard():
+            if paddle.base.core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                with paddle.static.program_guard(
+                    paddle.static.Program(), paddle.static.Program()
+                ):
+                    x = np.random.random([200, 3]).astype(self.dtype)
+                    data_x = paddle.static.data(
+                        name="x", shape=[200, 3], dtype=self.dtype
+                    )
+                    out = paddle.empty_like(data_x)
+                    exe = paddle.static.Executor(place)
+                    res = exe.run(
+                        paddle.static.default_main_program(),
+                        feed={'x': x},
+                        fetch_list=[out],
+                    )
 
-            self.dst_dtype = self.dtype
-            self.dst_shape = x.shape
-            self.__check_out__(res[0])
+                self.dst_dtype = self.dtype
+                self.dst_shape = x.shape
+                self.__check_out__(res[0])
 
 
 class TestEmptyLikeAPI_StaticForBF16Op(TestEmptyLikeAPICommon):
@@ -247,27 +260,27 @@ class TestEmptyLikeAPI_StaticForBF16Op(TestEmptyLikeAPICommon):
         self.dtype = 'uint16'
 
     def test_static_graph(self):
-        paddle.enable_static()
-        if paddle.base.core.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
-                x = np.random.random([200, 3]).astype(np.uint16)
-                data_x = paddle.static.data(
-                    name="x", shape=[200, 3], dtype=np.uint16
-                )
-                out = paddle.empty_like(data_x)
-                exe = paddle.static.Executor(place)
-                res = exe.run(
-                    paddle.static.default_main_program(),
-                    feed={'x': x},
-                    fetch_list=[out],
-                )
+        with static_guard():
+            if paddle.base.core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                with paddle.static.program_guard(
+                    paddle.static.Program(), paddle.static.Program()
+                ):
+                    x = np.random.random([200, 3]).astype(np.uint16)
+                    data_x = paddle.static.data(
+                        name="x", shape=[200, 3], dtype=np.uint16
+                    )
+                    out = paddle.empty_like(data_x)
+                    exe = paddle.static.Executor(place)
+                    res = exe.run(
+                        paddle.static.default_main_program(),
+                        feed={'x': x},
+                        fetch_list=[out],
+                    )
 
-            self.dst_dtype = self.dtype
-            self.dst_shape = x.shape
-            self.__check_out__(res[0])
+                self.dst_dtype = self.dtype
+                self.dst_shape = x.shape
+                self.__check_out__(res[0])
 
 
 if __name__ == '__main__':
