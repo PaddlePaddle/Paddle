@@ -67,13 +67,13 @@ __all__ = []
 
 _ForwardPreHook = Union[
     Callable[["Layer", Tensor], Tensor],  # (layer, input) -> transformed_input
-    Callable[["Layer", Tensor, dict[str, Any]], tuple[Tensor, dict[str, Any]]]
+    Callable[["Layer", Tensor, dict[str, Any]], tuple[Tensor, dict[str, Any]]],
 ]
 _ForwardPostHook = Union[
     Callable[
         ["Layer", Tensor, Tensor], Tensor
     ],  # (layer, input, output) -> transformed_output
-    Callable[["Layer", Tensor, dict[str, Any], Tensor], Tensor]
+    Callable[["Layer", Tensor, dict[str, Any], Tensor], Tensor],
 ]
 _StateDict = Union[dict[str, Tensor], typing.OrderedDict[str, Tensor]]
 _StateDictHook = Callable[[_StateDict], None]
@@ -739,8 +739,8 @@ class Layer:
             self._forward_post_hooks,
             extra_hook_dict=[
                 self._forward_post_hooks_with_kwargs_flag,
-                self._forward_post_hooks_always_called
-            ]
+                self._forward_post_hooks_always_called,
+            ],
         )
         self._forward_post_hooks[hook_remove_helper._hook_id] = hook
         if with_kwargs:
@@ -1625,7 +1625,9 @@ class Layer:
                     called_always_called_hooks.add(hook_id)
 
                 if hook_id in self._forward_post_hooks_with_kwargs_flag:
-                    hook_result = forward_post_hook(self, inputs, kwargs, outputs)
+                    hook_result = forward_post_hook(
+                        self, inputs, kwargs, outputs
+                    )
                 else:
                     hook_result = forward_post_hook(self, inputs, outputs)
 
@@ -1639,20 +1641,25 @@ class Layer:
         except Exception:
             for hook_id, forward_post_hook in self._forward_post_hooks.items():
                 if (
-                    (hook_id in self._forward_post_hooks_always_called)
-                    and hook_id not in called_always_called_hooks
-                ):
+                    hook_id in self._forward_post_hooks_always_called
+                ) and hook_id not in called_always_called_hooks:
                     try:
                         if hook_id in self._forward_post_hooks_with_kwargs_flag:
-                            hook_result = forward_post_hook(self, inputs, kwargs, outputs)
+                            hook_result = forward_post_hook(
+                                self, inputs, kwargs, outputs
+                            )
                         else:
-                            hook_result = forward_post_hook(self, inputs, outputs)
+                            hook_result = forward_post_hook(
+                                self, inputs, outputs
+                            )
 
                         if hook_result is not None:
                             outputs = hook_result
                     except Exception as e:
-                        warnings.warn("forward hook with ``always_call=True`` raised an exception "
-                                      f"that was silenced as another error was raised in forward: {str(e)}")
+                        warnings.warn(
+                            "forward hook with ``always_call=True`` raised an exception "
+                            f"that was silenced as another error was raised in forward: {e!s}"
+                        )
                         continue
             # raise exception raised in try block
             raise
