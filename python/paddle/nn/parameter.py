@@ -23,7 +23,16 @@ if TYPE_CHECKING:
     from paddle import Tensor
 
 
-class Parameter(EagerParamBase):
+class _ParameterMeta(type):
+    # Make `isinstance(t, Parameter)` return True for custom tensor instances that have the _is_param flag.
+    def __instancecheck__(self, instance):
+        if self is Parameter:
+            if hasattr(instance, '_is_param') and instance._is_param:
+                return True
+        return super().__instancecheck__(instance)
+
+
+class Parameter(EagerParamBase, metaclass=_ParameterMeta):
     """
     Parameter is a subclass of Tensor, which is a persistable Tensor
     that can be updated by optimizers during training.
@@ -56,6 +65,7 @@ class Parameter(EagerParamBase):
             data = to_tensor([])
         super().__init__(data.shape, data.dtype, trainable=requires_grad)
         super()._set_impl(data)
+        self._is_param = True
 
     def __repr__(self) -> str:
         return super().__repr__()
