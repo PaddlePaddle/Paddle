@@ -518,6 +518,7 @@ def scale_(
         return _C_ops.scale_(x, scale, float(bias), bias_after_scale)
 
 
+@ParamAliasDecorator({"x": ["input"], "y": ["exponent"]})
 def pow(x: Tensor, y: float | Tensor, name: str | None = None) -> Tensor:
     """
     Compute the power of Tensor elements. The equation is:
@@ -530,10 +531,15 @@ def pow(x: Tensor, y: float | Tensor, name: str | None = None) -> Tensor:
 
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
+    .. note::
+            Alias Support: The parameter name ``input`` can be used as an alias for ``x``, The parameter name ``exponent`` can be used as an alias for ``y``.
+            For example, ``pow(input=2, exponent=1.1)`` is equivalent to ``pow(x=2, y=1.1)``.
 
     Args:
         x (Tensor): An N-D Tensor, the data type is bfloat16, float16, float32, float64, int32, int64, complex64 or complex128.
+        input: An alias for ``x`` , with identical behavior.
         y (float|int|Tensor): If it is an N-D Tensor, its data type should be the same as `x`.
+        exponent: An alias for ``y`` , with identical behavior.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
