@@ -133,7 +133,7 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
                 'data_format': random_data_layout,
                 'output_size': random_output_size,
                 'output_padding': random_output_size,
-                'use_mkldnn': random_use_onednn,
+                'use_onednn': random_use_onednn,
                 'is_test': True,
             },
         )
@@ -160,7 +160,7 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
                 'is_test': True,
                 'trainable_statistics': False,
                 'data_layout': random_data_layout,
-                'use_mkldnn': random_use_onednn,
+                'use_onednn': random_use_onednn,
             },
         )
 
@@ -194,7 +194,7 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         # for onednn
-        if program_config.ops[0].attrs['use_mkldnn']:
+        if program_config.ops[0].attrs['use_onednn']:
             config = self.create_inference_config(use_onednn=True)
             yield config, ['conv2d_transpose_bias'], (1e-5, 1e-5)
         # for cpu

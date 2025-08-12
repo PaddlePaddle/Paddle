@@ -33,9 +33,9 @@ class TestScaleOneDNNFusePass(PassAutoScanTest):
         momentum = draw(st.floats(min_value=0.0, max_value=5))
         trainable_statistics = False
         use_global_stats = draw(st.booleans())
-        use_mkldnn1 = draw(st.sampled_from([True]))
+        use_onednn1 = draw(st.sampled_from([True]))
         use_cudnn = draw(st.booleans())
-        use_mkldnn2 = draw(st.sampled_from([True]))
+        use_onednn2 = draw(st.sampled_from([True]))
         batch_size = draw(st.integers(min_value=1, max_value=4))
         channel = draw(st.integers(min_value=1, max_value=64))
         input_dim1 = draw(st.integers(min_value=1, max_value=512))
@@ -78,7 +78,7 @@ class TestScaleOneDNNFusePass(PassAutoScanTest):
                 'momentum': momentum,
                 'trainable_statistics': trainable_statistics,
                 'use_global_stats': use_global_stats,
-                'use_mkldnn': use_mkldnn1,
+                'use_mkldnn': use_onednn1,
             },
         )
 
@@ -86,7 +86,7 @@ class TestScaleOneDNNFusePass(PassAutoScanTest):
             type='relu',
             inputs={'X': ['norm_output']},
             outputs={'Out': ['relu_output']},
-            attrs={'use_cudnn': use_cudnn, 'use_mkldnn': use_mkldnn2},
+            attrs={'use_cudnn': use_cudnn, 'use_mkldnn': use_onednn2},
         )
 
         model_net = [batch_norm_op, relu_op]

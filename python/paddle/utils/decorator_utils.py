@@ -27,7 +27,6 @@ class DecoratorBase:
     """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        """Initialize decorator parameters"""
         self.args = args
         self.kwargs = kwargs
 
@@ -38,25 +37,15 @@ class DecoratorBase:
         def wrapper(*args, **kwargs):
             # Pretreatment parameters
             processed_args, processed_kwargs = self.process(args, kwargs)
-            # Call the original function
             return func(*processed_args, **processed_kwargs)
 
-        # Keep original signature
         wrapper.__signature__ = inspect.signature(func)
         return cast("_F", wrapper)
 
     def process(
         self, args: tuple[Any, ...], kwargs: dict[str, Any]
     ) -> tuple[tuple[Any, ...], dict[str, Any]]:
-        """Core processing methods that subclasses must implement.
-
-        Args:
-            args: positional parameter
-            kwargs: Keyword Argument
-
-        Returns:
-            Processed tuples (args, kwargs)
-        """
+        """To be implemented by subclass"""
         raise NotImplementedError("Subclasses must implement this method")
 
 
@@ -66,29 +55,56 @@ class ParamAliasDecorator(DecoratorBase):
 
     def __init__(self, alias_mapping: dict[str, Iterable[str]]) -> None:
         super().__init__()
+        # Check alias_mapping types
         if not isinstance(alias_mapping, dict):
             raise TypeError("alias_mapping must be a dictionary")
         for k, v in alias_mapping.items():
             if not isinstance(v, (list, tuple, set)):
                 raise TypeError(f"Aliases for '{k}' must be iterable")
-        self.alias_mapping = alias_mapping
+
+        # Build a reverse alias map for faster lookup
+        self.alias_mapping = {}
+        for original, aliases in alias_mapping.items():
+            for alias in aliases:
+                self.alias_mapping[alias] = original
 
     def process(
         self, args: tuple[Any, ...], kwargs: dict[str, Any]
     ) -> tuple[tuple[Any, ...], dict[str, Any]]:
+        """Process parameters to handle alias mapping"""
         if not kwargs:
             return args, kwargs
-        processed_kwargs = kwargs.copy()
-        for original, aliases in self.alias_mapping.items():
-            for alias in aliases:
-                if alias in processed_kwargs:
-                    if original not in processed_kwargs:
-                        processed_kwargs[original] = processed_kwargs.pop(alias)
-                    else:
-                        raise ValueError(
-                            f"Cannot specify both '{original}' and its alias '{alias}'"
-                        )
+
+        processed_kwargs = kwargs
+        alias_mapping = self.alias_mapping
+
+        # Directly modify kwargs based on alias mapping (only modify if necessary)
+        for alias, original in alias_mapping.items():
+            if alias in processed_kwargs:
+                if original not in processed_kwargs:
+                    # Only modify the dictionary if necessary
+                    processed_kwargs[original] = processed_kwargs.pop(alias)
+                else:
+                    raise ValueError(
+                        f"Cannot specify both '{original}' and its alias '{alias}'"
+                    )
+
         return args, processed_kwargs
+
+
+def param_one_alias(alias_mapping):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            if not kwargs:
+                return func(*args, **kwargs)
+            if ("input" in kwargs) and ("x" not in kwargs):
+                kwargs["x"] = kwargs.pop("input")
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
 
 
 # *size => shape decorator

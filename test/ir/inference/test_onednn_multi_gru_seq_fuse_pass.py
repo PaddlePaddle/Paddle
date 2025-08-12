@@ -56,7 +56,7 @@ class TestOneDNNMultiGruSeqFusePass(PassAutoScanTest):
             attrs={
                 'origin_mode': False,
                 'is_reverse': False,
-                'use_mkldnn': True,
+                'use_onednn': True,
             },
         )
 
@@ -75,7 +75,7 @@ class TestOneDNNMultiGruSeqFusePass(PassAutoScanTest):
             attrs={
                 'origin_mode': False,
                 'is_reverse': True,
-                'use_mkldnn': True,
+                'use_onednn': True,
             },
         )
 
@@ -88,7 +88,7 @@ class TestOneDNNMultiGruSeqFusePass(PassAutoScanTest):
                 ]
             },
             outputs={'Out': ['concat_output_1']},
-            attrs={'axis': 1, 'use_mkldnn': True},
+            attrs={'axis': 1, 'use_onednn': True},
         )
 
         fusion_gru_op_3 = OpConfig(
