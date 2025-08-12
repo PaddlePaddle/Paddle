@@ -6786,14 +6786,11 @@ def take_along_axis(
         return result
 
 
-@ParamAliasDecorator(
-    {"arr": ["input"], "axis": ["dim"], "indices": ["index"], "values": ["src"]}
-)
 def scatter_reduce(
-    arr: Tensor,
-    axis: int,
-    indices: Tensor,
-    values: Tensor,
+    input: Tensor,
+    dim: int,
+    index: Tensor,
+    src: Tensor,
     reduce: Literal['sum', 'prod', 'mean', 'amin', 'amax'],
     include_self: bool = True,
 ) -> Tensor:
@@ -6801,17 +6798,17 @@ def scatter_reduce(
     Scatter the values of the source tensor to the target tensor according to the given indices, and perform a reduction operation along the designated axis.
 
     Args:
-        arr (Tensor) : The Input Tensor. Supported data types are bfloat16, float16, float32, float64,
+        input (Tensor) : The Input Tensor. Supported data types are bfloat16, float16, float32, float64,
             int32, int64, uint8.
-        axis (int) : The axis to scatter 1d slices along.
-        indices (Tensor) : Indices to scatter along each 1d slice of arr. This must match the dimension of arr,
+        dim (int) : The axis to scatter 1d slices along.
+        index (Tensor) : Indices to scatter along each 1d slice of input. This must match the dimension of input,
              Supported data type are int32 and int64.
-        values (Tensor) : The value element(s) to scatter. The data types should be same as arr.
+        src (Tensor) : The value element(s) to scatter. The data types should be same as input.
         reduce (str): The reduce operation, support 'sum', 'prod', 'mean', 'amin', 'amax'.
-        include_self (bool, optional): whether to reduce with the elements of arr, default is 'True'.
+        include_self (bool, optional): whether to reduce with the elements of input, default is 'True'.
 
     Returns:
-        Tensor, The indexed element, same dtype with arr
+        Tensor, The indexed element, same dtype with input
 
     Examples:
         .. code-block:: python
@@ -6846,7 +6843,7 @@ def scatter_reduce(
     if reduce == 'prod':
         reduce = 'multiply'
     return put_along_axis(
-        arr, indices, values, axis, reduce, include_self, broadcast=False
+        input, index, src, dim, reduce, include_self, broadcast=False
     )
 
 
