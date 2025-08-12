@@ -15,9 +15,11 @@
 from .tensor.compat import (
     sort,
     split,
+    Unfold,
 )
 
 __all__ = [
     'split',
     'sort',
+    'Unfold'
 ]
