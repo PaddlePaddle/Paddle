@@ -32,9 +32,12 @@ void InverseFromLUFunctor<T, Context>::operator()(const Context& dev_ctx,
   const int64_t n = dims[rank - 1];
   const int64_t batch_size = lu_data.numel() / (n * n);
 
+  if (batch_size == 0) {
+    return;
+  }
+
   // getri is an in-place operation, copy lu_data to the output tensor first.
   dev_ctx.template Alloc<T>(inverse_out);
-  phi::Copy(dev_ctx, lu_data, dev_ctx.GetPlace(), false, inverse_out);
 
   // cuBLAS batched operations require an array of pointers to matrices.
   // This part is similar to the matrix_inverse GPU implementation.
@@ -43,7 +46,7 @@ void InverseFromLUFunctor<T, Context>::operator()(const Context& dev_ctx,
   for (int64_t i = 0; i < batch_size; ++i) {
     // For in-place getri, input and output pointers point to the same
     // locations.
-    a_ptr_host[i] = inverse_out->data<T>() + i * n * n;
+    a_ptr_host[i] = lu_data.data<T>() + i * n * n;
     c_ptr_host[i] = inverse_out->data<T>() + i * n * n;
   }
 

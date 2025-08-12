@@ -27,23 +27,33 @@ struct ConjugateTransposeFunctor {
 
   HOSTDEVICE void operator()(int64_t index) const {
     const int64_t n_square = n_ * n_;
+
+    // Calculate the batch index and the element's index within that batch
+    // matrix.
     const int64_t batch_idx = index / n_square;
-    const int64_t element_idx_in_batch = index % n_square;
-    const int64_t row = element_idx_in_batch / n_;
-    const int64_t col = element_idx_in_batch % n_;
+    const int64_t elem_in_batch_idx = index % n_square;
 
-    // The source element is at (batch_idx, row, col)
-    const int64_t src_index = index;
+    // 'index' corresponds to the linear index in the output tensor.
+    // We determine its row and column in the destination matrix.
+    const int64_t dest_row = elem_in_batch_idx / n_;
+    const int64_t dest_col = elem_in_batch_idx % n_;
 
-    // The destination element is at (batch_idx, col, row)
-    const int64_t dest_index = batch_idx * n_square + col * n_ + row;
+    // For a transpose operation, the source element for output[row, col]
+    // is located at input[col, row].
+    const int64_t src_row = dest_col;
+    const int64_t src_col = dest_row;
 
+    // Calculate the linear index of the source element in the input tensor.
+    const int64_t src_index = batch_idx * n_square + src_row * n_ + src_col;
+
+    // Perform the operation using a "gather" pattern:
+    // output[current_index] = op(input[transposed_index]).
     if constexpr (std::is_same_v<T, phi::dtype::complex<float>> ||
                   std::is_same_v<T, phi::dtype::complex<double>>) {
-      output_[dest_index] = phi::dtype::conj(input_[src_index]);
+      output_[index] = phi::dtype::conj(input_[src_index]);
     } else {
       // For real numbers, conjugate is a no-op.
-      output_[dest_index] = input_[src_index];
+      output_[index] = input_[src_index];
     }
   }
 
