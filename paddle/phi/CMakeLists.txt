@@ -25,8 +25,6 @@ add_subdirectory(backends)
 add_subdirectory(kernels)
 # phi infermeta
 add_subdirectory(infermeta)
-# phi tools
-add_subdirectory(tools)
 # phi capi
 if(WITH_CUSTOM_DEVICE)
   add_subdirectory(capi)

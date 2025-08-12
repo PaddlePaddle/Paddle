@@ -303,7 +303,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
                     "epsilon": epsilon,
                     "is_test": False,
                     "data_layout": data_layout,
-                    "use_mkldnn": self.use_onednn,
+                    "use_onednn": self.use_onednn,
                     "fuse_with_relu": self.fuse_with_relu,
                     "use_global_stats": self.use_global_stats,
                 }

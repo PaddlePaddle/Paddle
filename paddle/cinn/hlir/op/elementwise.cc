@@ -1257,16 +1257,12 @@ std::shared_ptr<framework::OpStrategy> StrategyForArangeSymbolic(
     const Target &target) {
   bool all_static = true;
   for (int i = 0; i < 3; i++) {
-    auto op_node = inputs[i]->operation->as<ir::PlaceholderOp>();
-    PADDLE_ENFORCE_NE(
-        op_node,
-        nullptr,
-        ::common::errors::PreconditionNotMet(
-            "The defining op of the input tensor is not set! Please check."));
-    if (op_node->name == "cinn_op.generate_shape") {
-      all_static = false;
-      break;
-    }
+    if (!inputs[i]->value().has_value()) continue;
+    auto input_val = inputs[i]->value().value();
+    if (input_val.empty()) continue;
+    if (input_val[0].is_constant()) continue;
+    all_static = false;
+    break;
   }
   auto attr_store = attrs.attr_store;
   auto dtype =
@@ -1341,15 +1337,22 @@ std::shared_ptr<framework::OpStrategy> StrategyForArangeSymbolic(
                                             "bfloat16 or float16."));
     }
 #undef EXPR_FROM_ATTR
-  } else {  // has dynamic shape, some of the operands come from
-            // cinn_op.generate_shape
-    // in op_lowering_impl.cc, tensor op recorder unified the attribute name
-    start = Expr(
-        inputs[0]->operation->as<ir::PlaceholderOp>()->attrs.at("value").ptr());
-    step = Expr(
-        inputs[2]->operation->as<ir::PlaceholderOp>()->attrs.at("value").ptr());
-    Expr end = Expr(
-        inputs[1]->operation->as<ir::PlaceholderOp>()->attrs.at("value").ptr());
+  } else {
+    for (int i = 0; i < 3; i++) {
+      PADDLE_ENFORCE_EQ(
+          inputs[i]->value().has_value(),
+          true,
+          ::common::errors::InvalidArgument(
+              "The input tensor of dynamic arange should have valid values."));
+      PADDLE_ENFORCE_NE(
+          inputs[i]->value().value().empty(),
+          true,
+          ::common::errors::InvalidArgument(
+              "The tensor value of dynamic arange should not be empty."));
+    }
+    start = inputs[0]->value().value()[0];
+    step = inputs[2]->value().value()[0];
+    Expr end = inputs[1]->value().value()[0];
     auto IrAbs = [=](Expr ir) -> Expr {
       return ir::Call::Make(step.type(), "abs", {ir}, {}, ir::CallType::Extern);
     };

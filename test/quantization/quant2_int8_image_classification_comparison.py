@@ -25,7 +25,7 @@ import numpy as np
 import paddle
 from paddle.base.framework import IrGraph
 from paddle.framework import core
-from paddle.static.quantization import Quant2Int8MkldnnPass
+from paddle.static.quantization import Quant2Int8OnednnPass
 
 paddle.enable_static()
 
@@ -211,7 +211,7 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
             graph = IrGraph(core.Graph(inference_program.desc), for_test=True)
             if self._debug:
                 graph.draw('.', 'quant_orig', graph.all_op_nodes())
-            quant_transform_pass = Quant2Int8MkldnnPass(
+            quant_transform_pass = Quant2Int8OnednnPass(
                 self._quantized_ops,
                 _op_ids_to_skip=self._op_ids_to_skip,
                 _scope=inference_scope,

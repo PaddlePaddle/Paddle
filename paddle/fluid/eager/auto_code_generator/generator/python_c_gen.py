@@ -127,6 +127,8 @@ PyObject * eager_api_{}(PyObject *self, PyObject *args, PyObject *kwargs) {{
 {}
     // Parse Attributes if needed
 {}
+    // Parse input_out if needed
+{}
     tstate = PyEval_SaveThread();
 
     // Set Device ID
@@ -335,7 +337,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             False if 'backward' in forward_api_contents.keys() else True
         )
 
-    def GeneratePythonCFunction(self):
+    def GeneratePythonCFunction(self, no_input_out_tensor=False):
         namespace = self.namespace
         forward_inplace_map = self.forward_inplace_map
         forward_api_name = self.forward_api_name
@@ -498,6 +500,22 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             dygraph_function_call_list[pos] = f"{name}"
         dygraph_function_call_str = ",".join(dygraph_function_call_list)
 
+        get_input_out_str = ""
+        if (
+            not no_input_out_tensor
+            and not forward_inplace_map
+            and len(self.forward_outputs_position_map) == 1
+            and next(iter(self.forward_outputs_position_map.values()))[0]
+            == "Tensor"
+            and forward_api_name != "empty_like"
+        ):
+            dygraph_function_call_str = (
+                dygraph_function_call_str + ", input_out"
+            )
+            get_input_out_str = (
+                "    auto input_out = GetInputOutTensorFromKwargs(kwargs);"
+            )
+
         # Generate Python-C Function Definitions
         fwd_function_name = FUNCTION_NAME_TEMPLATE.format(
             "::", namespace, GetForwardFunctionName(forward_api_name)
@@ -524,6 +542,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             forward_api_name,
             get_eager_tensor_str,
             parse_attributes_str,
+            get_input_out_str,
             set_device_str,
             noamp_dygraph_function_str,
             return_str,
@@ -581,6 +600,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                 inplaced_forward_api_name,
                 get_eager_tensor_str,
                 parse_attributes_str,
+                "",
                 set_device_str,
                 inplace_noamp_dygraph_function_str,
                 return_str,
@@ -618,7 +638,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                 # Generate Python-C Function Registration
                 self.python_c_function_reg_str += python_c_inplace_func_reg_str
 
-    def run(self):
+    def run(self, no_input_out_tensor=False):
         # Initialized is_forward_only
         self.CollectIsForwardOnly()
 
@@ -640,7 +660,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         )
 
         # Code Generation
-        self.GeneratePythonCFunction()
+        self.GeneratePythonCFunction(no_input_out_tensor)
 
         return True
 
@@ -658,7 +678,7 @@ class PythonCGenerator(GeneratorBase):
         self.python_c_functions_reg_str = ""
         self.python_c_function_declare_str = ""
 
-    def GeneratePythonCFunctions(self):
+    def GeneratePythonCFunctions(self, no_input_out_tensor=False):
         namespace = self.namespace
 
         forward_api_list = self.forward_api_list
@@ -670,7 +690,7 @@ class PythonCGenerator(GeneratorBase):
             f_generator = PythonCSingleFunctionGenerator(
                 forward_api_content, namespace
             )
-            status = f_generator.run()
+            status = f_generator.run(no_input_out_tensor)
 
             if status:
                 self.python_c_functions_str += (
@@ -698,7 +718,7 @@ class PythonCGenerator(GeneratorBase):
                 )
             )
 
-    def run(self):
+    def run(self, no_input_out_tensor=False):
         # Infer namespace from yaml_path
         self.InferNameSpace()
 
@@ -706,7 +726,7 @@ class PythonCGenerator(GeneratorBase):
         self.ParseForwardYamlContents()
 
         # Code Generation
-        self.GeneratePythonCFunctions()
+        self.GeneratePythonCFunctions(no_input_out_tensor)
 
         # Wrap with namespace
         self.AttachNamespace()
@@ -763,8 +783,14 @@ if __name__ == "__main__":
     for i in range(len(api_yaml_paths)):
         api_yaml_path = api_yaml_paths[i]
 
+        no_input_out_tensor = (
+            "backward" in api_yaml_path
+            or "strings" in api_yaml_path
+            or "sparse" in api_yaml_path
+        )
+
         py_c_generator = PythonCGenerator(api_yaml_path)
-        py_c_generator.run()
+        py_c_generator.run(no_input_out_tensor)
 
         generated_python_c_functions += (
             py_c_generator.python_c_functions_str + "\n"

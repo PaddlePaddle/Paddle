@@ -15,10 +15,9 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place
 
 import paddle
-from paddle.base import core
 
 paddle.enable_static()
 
@@ -145,11 +144,7 @@ class TestRandintAPI(unittest.TestCase):
                 low=1, high=1000, shape=var_shape, dtype='int64'
             )
 
-            place = (
-                paddle.CUDAPlace(0)
-                if core.is_compiled_with_cuda()
-                else paddle.CPUPlace()
-            )
+            place = get_device_place()
             exe = paddle.static.Executor(place)
             outs = exe.run(
                 feed={'var_shape': np.array([100, 100]).astype('int64')},

@@ -93,7 +93,7 @@ struct HardLabelCrossEntropyCPUFunctorImpl {
 
 template <typename DeviceContext, typename T>
 void CrossEntropyFunctor<DeviceContext, T>::operator()(
-    const DeviceContext& ctx,
+    const DeviceContext& dev_ctx,
     phi::DenseTensor* out,
     const phi::DenseTensor* prob,
     const phi::DenseTensor* labels,
@@ -110,7 +110,7 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
     auto lbl = EigenMatrix<T>::From(*labels);
     auto loss = EigenMatrix<T>::From(*out);
 
-    loss.device(*ctx.eigen_device()) =
+    loss.device(*dev_ctx.eigen_device()) =
         -((lbl * in.log().unaryExpr(phi::funcs::TolerableValue<T>()))
               .reshape(batch_axis_remain)
               .sum(Eigen::DSizes<int, 1>(1)));

@@ -46,15 +46,15 @@ void WhereKernel(const Context& dev_ctx,
     x_dims = std::vector<int64_t>({1});
   }
 
-  int ret = xpu::select(dev_ctx.x_context(),
-                        cond_data,
-                        x_data,
-                        y_data,
-                        out_data,
-                        cond_dims,
-                        x_dims);
+  int ret = xpu::where(dev_ctx.x_context(),
+                       cond_data,
+                       x_data,
+                       y_data,
+                       out_data,
+                       cond_dims,
+                       x_dims);
 
-  PADDLE_ENFORCE_XDNN_SUCCESS(ret, "xpu::select");
+  PADDLE_ENFORCE_XDNN_SUCCESS(ret, "where");
 }
 
 }  // namespace phi

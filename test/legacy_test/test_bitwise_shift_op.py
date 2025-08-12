@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
 
@@ -64,11 +65,7 @@ def ref_right_shift_logical(x, y):
 class TestBitwiseLeftShiftAPI(unittest.TestCase):
     def setUp(self):
         self.init_input()
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def init_input(self):
         self.x = np.random.randint(0, 256, [200, 300]).astype('uint8')
@@ -248,11 +245,7 @@ class TestBitwiseLeftShiftAPI_special_case4(TestBitwiseLeftShiftAPI):
 class TestTensorRlshiftAPI(unittest.TestCase):
     def setUp(self):
         self.init_input()
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def init_input(self):
         self.x = np.random.randint(-255, 256)
@@ -309,11 +302,7 @@ class TestTensorRlshiftAPI_INT64(TestTensorRlshiftAPI):
 class TestBitwiseRightShiftAPI(unittest.TestCase):
     def setUp(self):
         self.init_input()
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def init_input(self):
         self.x = np.random.randint(0, 256, [200, 300]).astype('uint8')
@@ -493,11 +482,7 @@ class TestBitwiseRightShiftAPI_special_case4(TestBitwiseRightShiftAPI):
 class TestTensorRrshiftAPI(unittest.TestCase):
     def setUp(self):
         self.init_input()
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def init_input(self):
         self.x = np.random.randint(-255, 256)
@@ -554,11 +539,7 @@ class TestTensorRrshiftAPI_INT64(TestTensorRrshiftAPI):
 class TestTensorShiftAPI_FLOAT(unittest.TestCase):
     def setup(self):
         paddle.disable_static()
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_lshift_float(self):
         x = paddle.to_tensor(np.random.randint(-255, 256, [200, 300]))

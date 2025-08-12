@@ -22,7 +22,7 @@ from paddle.framework import use_pir_api
 sys.path.append("../../legacy_test")
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_device_place
 
 import paddle
 import paddle.inference as paddle_infer
@@ -611,11 +611,7 @@ class TestTensorAxis(unittest.TestCase):
         paddle.seed(2022)
         self.temp_dir = tempfile.TemporaryDirectory()
         self.save_path = os.path.join(self.temp_dir.name, 'tensor_axis_cumsum')
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_dygraph(self):
         paddle.disable_static()

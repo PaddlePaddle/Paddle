@@ -1771,8 +1771,8 @@ struct Bloat16Ops : public PatternBase {
 
 // Pattern used for enforcing inplace computation for in-place computation
 // supporting DNNL ops. softmax, batch_norm and layer_norm
-struct MKLDNNInPlace : public PatternBase {
-  MKLDNNInPlace(PDPattern* pattern, const std::string& name_scope)
+struct ONEDNNInPlace : public PatternBase {
+  ONEDNNInPlace(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "mkldnn_inplace") {}
   PDNode* operator()();
 
