@@ -17,1273 +17,1158 @@ import random
 import unittest
 
 import numpy as np
+from op_test import get_devices
 from scipy import stats
+from utils import dygraph_guard, static_guard
 
 import paddle
 from paddle import nn
-from paddle.pir.core import ParameterMeta
+from paddle.base import Program
 
 DELTA = 0.00001
 
 
-class TestKaimingUniformFunc(unittest.TestCase):
-    def _test_kaiming_uniform_common(self, tensor):
-        init = paddle.nn.init.kaiming_uniform_
-        init(tensor, a=0, mode="fan_in", nonlinearity="leaky_relu")
-        init(tensor, a=-0.2, mode="fan_out", nonlinearity="leaky_relu")
-        init(tensor, a=0, mode="fan_in", nonlinearity="relu")
-        init(tensor, a=0, mode="fan_out", nonlinearity="relu")
-
-    def test_kaiming_uniform_linear(self):
-        linear = nn.Linear(40, 20)
-        self._test_kaiming_uniform_common(linear.weight)
-
-    def _create_random_nd_tensor(self, dims, size_min, size_max):
-        size = [random.randint(size_min, size_max) for _ in range(dims)]
+def _create_random_nd_tensor(dims, size_min, size_max, random_value=False):
+    size = [random.randint(size_min, size_max) for _ in range(dims)]
+    if random_value:
+        tensor = paddle.randn(size)
+    else:
         tensor = paddle.zeros(size)
-        return tensor
+    return tensor
 
-    def _is_uniform(self, tensor, a, b):
-        samples = tensor.view([-1]).tolist()
-        p_value = stats.kstest(samples, "uniform", args=(a, (b - a)))[1]
-        return p_value > 0.0001
 
-    def _random_float(self, a, b):
-        return (b - a) * random.random() + a
+def _random_float(a, b):
+    return (b - a) * random.random() + a
 
-    def calculate_gain(self, nonlinearity, param):
-        recommended_gain = {
-            'sigmoid': 1,
-            'linear': 1,
-            'conv1d': 1,
-            'conv2d': 1,
-            'conv3d': 1,
-            'conv1d_transpose': 1,
-            'conv_transpose1d': 1,
-            'conv2d_transpose': 1,
-            'conv_transpose2d': 1,
-            'conv3d_transpose': 1,
-            'conv_transpose3d': 1,
-            'tanh': 5.0 / 3,
-            'relu': math.sqrt(2.0),
-            'leaky_relu': math.sqrt(2.0 / (1 + param**2)),
-            'selu': 3.0 / 4,
-        }
-        return recommended_gain[nonlinearity]
 
-    def test_kaiming_uniform_nonlinearity(self):
+def _calculate_gain(nonlinearity, param):
+    recommended_gain = {
+        'sigmoid': 1,
+        'linear': 1,
+        'conv1d': 1,
+        'conv2d': 1,
+        'conv3d': 1,
+        'conv1d_transpose': 1,
+        'conv_transpose1d': 1,
+        'conv2d_transpose': 1,
+        'conv_transpose2d': 1,
+        'conv3d_transpose': 1,
+        'conv_transpose3d': 1,
+        'tanh': 5.0 / 3,
+        'relu': math.sqrt(2.0),
+        'leaky_relu': math.sqrt(2.0 / (1 + param**2)),
+        'selu': 3.0 / 4,
+    }
+    return recommended_gain[nonlinearity]
+
+
+class Test_calculate_gain(unittest.TestCase):
+    def test(self):
         for nonlinearity in [
-            'conv_transpose1d',
-            'conv_transpose2d',
-            'conv_transpose3d',
-            'relu',
-            'leaky_relu',
+            "linear",
+            "conv1d",
+            "conv2d",
+            "conv3d",
+            'conv1d_transpose',
+            "conv_transpose1d",
+            "conv2d_transpose",
+            "conv_transpose2d",
+            "conv3d_transpose",
+            "conv_transpose3d",
+            'sigmoid',
+            'tanh',
+            "relu",
+            "leaky_relu",
+            "selu",
         ]:
-            input_tensor = paddle.zeros([1024, 512])
-            paddle.nn.init.kaiming_uniform_(
-                input_tensor, nonlinearity=nonlinearity
+            self.assertEqual(
+                _calculate_gain(nonlinearity, 0),
+                paddle.nn.init.calculate_gain(nonlinearity, 0),
             )
 
-            fan_in = input_tensor.shape[0]
 
-            expected_std = self.calculate_gain(
-                nonlinearity=nonlinearity, param=0
-            )
+class Test_kaiming_uniform_(unittest.TestCase):
 
-            bounds = expected_std * math.sqrt(3.0 / float(fan_in))
-            assert self._is_uniform(input_tensor, -bounds, bounds)
+    def check_kaiming_uniform(
+        self, tensor, a=0, mode='fan_in', nonlinearity='leaky_relu'
+    ):
+        if len(tensor.shape) == 2:
+            # This is the case for simple matrix multiply
+            fan_in = tensor.shape[0]
+            fan_out = tensor.shape[1]
+        else:
+            fan_in = tensor.shape[1]
+            fan_out = tensor.shape[0]
 
-    def test_kaiming_uniform(self):
-        for use_a in [True, False]:
-            for dims in [2, 3, 4]:
-                for mode in ["fan_in", "fan_out"]:
-                    input_tensor = self._create_random_nd_tensor(
-                        dims, size_min=20, size_max=108
-                    )
-                    if use_a:
-                        a = self._random_float(0.1, 2)
+        if len(tensor.shape) > 2:
+            receptive_field_size = np.prod(tensor.shape[2:])
+            fan_in *= receptive_field_size
+            fan_out *= receptive_field_size
+
+        if mode == "fan_in":
+            n = fan_in
+        else:
+            n = fan_out
+        expected_std = _calculate_gain(nonlinearity=nonlinearity, param=a)
+        bounds = expected_std * math.sqrt(3.0 / float(n))
+
+        samples = tensor.flatten().tolist()
+        p_value = stats.kstest(samples, "uniform", args=(-bounds, bounds * 2))[
+            1
+        ]
+        self.assertGreater(p_value, 0.0001)
+
+    def test_nonlinearity_dygraph(self):
+        with dygraph_guard():
+            for nonlinearity in [
+                'conv_transpose1d',
+                'conv_transpose2d',
+                'conv_transpose3d',
+                'relu',
+                'leaky_relu',
+            ]:
+                input_tensor = paddle.zeros([1024, 512])
+                paddle.nn.init.kaiming_uniform_(
+                    input_tensor, nonlinearity=nonlinearity
+                )
+                self.check_kaiming_uniform(
+                    input_tensor, nonlinearity=nonlinearity
+                )
+
+    def test_dygraph(self):
+        with dygraph_guard():
+            for use_a in [True, False]:
+                for dims in [2, 3, 4]:
+                    for mode in ["fan_in", "fan_out"]:
+                        input_tensor = _create_random_nd_tensor(
+                            dims, size_min=20, size_max=108
+                        )
+                        if use_a:
+                            a = _random_float(0.1, 2)
+                        else:
+                            a = 0
                         paddle.nn.init.kaiming_uniform_(
                             input_tensor, a=a, mode=mode
                         )
-                    else:
-                        a = 0
-                        paddle.nn.init.kaiming_uniform_(input_tensor, mode=mode)
+                        self.check_kaiming_uniform(input_tensor, a=a, mode=mode)
 
-                    if dims == 2:
-                        # This is the case for simple matrix multiply
-                        fan_in = input_tensor.shape[0]
-                        fan_out = input_tensor.shape[1]
-                    else:
-                        fan_in = input_tensor.shape[1]
-                        fan_out = input_tensor.shape[0]
+    def test_linear_dygraph(self):
+        with dygraph_guard():
+            linear = nn.Linear(40, 20)
+            init = paddle.nn.init.kaiming_uniform_
+            init(linear.weight, a=0, mode="fan_in", nonlinearity="leaky_relu")
+            self.check_kaiming_uniform(
+                linear.weight, a=0, mode="fan_in", nonlinearity="leaky_relu"
+            )
 
-                    if input_tensor.dim() > 2:
-                        fan_in *= input_tensor[0, 0].numel()
-                        fan_out *= input_tensor[0, 0].numel()
+            init(
+                linear.weight, a=-0.2, mode="fan_out", nonlinearity="leaky_relu"
+            )
+            self.check_kaiming_uniform(
+                linear.weight, a=-0.2, mode="fan_out", nonlinearity="leaky_relu"
+            )
 
-                    if mode == "fan_in":
-                        n = fan_in
-                    else:
-                        n = fan_out
-                    expected_std = self.calculate_gain(
-                        nonlinearity='leaky_relu', param=a
-                    )
-                    bounds = expected_std * math.sqrt(3.0 / float(n))
-                    assert self._is_uniform(input_tensor, -bounds, bounds)
+            init(linear.weight, a=0, mode="fan_in", nonlinearity="relu")
+            self.check_kaiming_uniform(
+                linear.weight, a=0, mode="fan_in", nonlinearity="relu"
+            )
+
+            init(linear.weight, a=0, mode="fan_out", nonlinearity="relu")
+            self.check_kaiming_uniform(
+                linear.weight, a=0, mode="fan_out", nonlinearity="relu"
+            )
 
     @unittest.skipIf(
         not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
     )
     def test_kaiming_uniform_fp16(self):
-        input_tensor = paddle.zeros([1024, 512], dtype='float16')
-        paddle.nn.init.kaiming_uniform_(input_tensor)
-        fan_in = input_tensor.shape[0]
+        with dygraph_guard():
+            input_tensor = paddle.zeros([1024, 512], dtype='float16')
+            paddle.nn.init.kaiming_uniform_(input_tensor)
+            self.check_kaiming_uniform(input_tensor)
+            assert input_tensor.dtype == paddle.float16
 
-        expected_std = self.calculate_gain(nonlinearity='leaky_relu', param=0)
-
-        bounds = expected_std * math.sqrt(3.0 / float(fan_in))
-        assert self._is_uniform(input_tensor, -bounds, bounds)
-        assert input_tensor.dtype == paddle.float16
-
-
-class TestKaimingUniformFuncPir(unittest.TestCase):
-    def setUp(self):
-        self.init_uniform_op_name = 'pd_op.uniform'
-
-    def get_operand_definition_op_attrs(self, cur_op, operand_name, attr_name):
-        input_names = cur_op.get_input_names()
-        self.assertIn(operand_name, input_names)
-        attr = (
-            cur_op.operand(input_names.index(operand_name))
-            .source()
-            .get_defining_op()
-            .attrs()[attr_name]
-        )
-        return attr
-
-    def get_init_ops_by_op_name(self, block, op_name):
-        checked_ops = []
-        for op in block.ops:
-            # get init op
-            if op_name == op.name():
-                checked_ops.append(op)
-        return checked_ops
-
-    def test_kaiming_uniform_(self):
-        with paddle.pir_utils.IrGuard():
-            main = paddle.static.Program()
-            with paddle.static.program_guard(main, paddle.static.Program()):
-                parameter_meta = ParameterMeta([1024, 512], paddle.float32)
-                init_result = paddle.nn.init.kaiming_uniform_(parameter_meta)
-                block = main.global_block()
-                checked_ops = self.get_init_ops_by_op_name(
-                    block, self.init_uniform_op_name
-                )
-                self.assertEqual(len(checked_ops), 1)
-                init_op = checked_ops[0]
-                limit = np.sqrt(6.0 / init_result.shape[0])
-
-                min = self.get_operand_definition_op_attrs(
-                    init_op, "min", "value"
-                )
-                max = self.get_operand_definition_op_attrs(
-                    init_op, "max", "value"
-                )
-                self.assertAlmostEqual(min, -limit, delta=DELTA)
-                self.assertAlmostEqual(max, limit, delta=DELTA)
-                self.assertEqual(init_op.attrs()['seed'], 0)
-
-    def test_kaiming_uniform_conv(self):
-        with paddle.pir_utils.IrGuard():
-            main = paddle.static.Program()
-            with paddle.static.program_guard(main, paddle.static.Program()):
-                parameter_meta = ParameterMeta([5, 10, 15, 20], paddle.float32)
-                init_result = paddle.nn.init.kaiming_uniform_(
-                    parameter_meta,
-                )
-                block = main.global_block()
-                checked_ops = self.get_init_ops_by_op_name(
-                    block, self.init_uniform_op_name
-                )
-                self.assertEqual(len(checked_ops), 1)
-                init_op = checked_ops[0]
-                limit = np.sqrt(
-                    6.0
-                    / (
-                        init_result.shape[1]
-                        * init_result.shape[2]
-                        * init_result.shape[3]
+    def test_static_graph_case1(self):
+        self.place = get_devices()
+        with static_guard():
+            for place in self.place:
+                x_np = np.zeros([10, 5]).astype('float32')
+                with paddle.static.program_guard(Program()):
+                    x = paddle.static.data(
+                        name="x", shape=[10, 5], dtype='float32'
                     )
-                )
+                    out = paddle.nn.init.kaiming_uniform_(x)
+                    exe = paddle.static.Executor(place=place)
+                    feed_list = {"x": x_np}
+                    pd_res = exe.run(
+                        paddle.static.default_main_program(),
+                        feed=feed_list,
+                        fetch_list=[out],
+                    )[0]
+                    self.check_kaiming_uniform(pd_res)
 
-                min = self.get_operand_definition_op_attrs(
-                    init_op, "min", "value"
-                )
-                max = self.get_operand_definition_op_attrs(
-                    init_op, "max", "value"
-                )
-                self.assertAlmostEqual(min, -limit, delta=DELTA)
-                self.assertAlmostEqual(max, limit, delta=DELTA)
-                self.assertEqual(init_op.attrs()['seed'], 0)
-
-    def test_kaiming_uniform_fan_out(self):
-        with paddle.pir_utils.IrGuard():
-            main = paddle.static.Program()
-            with paddle.static.program_guard(main, paddle.static.Program()):
-                parameter_meta = ParameterMeta([5, 10, 15, 20], paddle.float32)
-                init_result = paddle.nn.init.kaiming_uniform_(
-                    parameter_meta,
-                    mode='fan_out',
-                )
-                block = main.global_block()
-                checked_ops = self.get_init_ops_by_op_name(
-                    block, self.init_uniform_op_name
-                )
-                self.assertEqual(len(checked_ops), 1)
-                init_op = checked_ops[0]
-                limit = np.sqrt(
-                    6.0
-                    / (
-                        init_result.shape[0]
-                        * init_result.shape[2]
-                        * init_result.shape[3]
+    def test_static_graph_case2(self):
+        self.place = get_devices()
+        with static_guard():
+            for place in self.place:
+                x_np = np.zeros([100, 52, 3, 4]).astype('float32')
+                with paddle.static.program_guard(Program()):
+                    x = paddle.static.data(
+                        name="x", shape=[100, 52, 3, 4], dtype='float32'
                     )
-                )
-
-                min = self.get_operand_definition_op_attrs(
-                    init_op, "min", "value"
-                )
-                max = self.get_operand_definition_op_attrs(
-                    init_op, "max", "value"
-                )
-                self.assertAlmostEqual(min, -limit, delta=DELTA)
-                self.assertAlmostEqual(max, limit, delta=DELTA)
-                self.assertEqual(init_op.attrs()['seed'], 0)
-
-
-class TestKaimingNormalFunc(unittest.TestCase):
-    def _test_kaiming_normal_common(self, tensor):
-        init = paddle.nn.init.kaiming_normal_
-        init(tensor, a=0, mode="fan_in", nonlinearity="leaky_relu")
-        init(tensor, a=-0.2, mode="fan_out", nonlinearity="leaky_relu")
-        init(tensor, a=0, mode="fan_in", nonlinearity="relu")
-        init(tensor, a=0, mode="fan_out", nonlinearity="relu")
-
-    def test_kaiming_normal_linear(self):
-        linear = nn.Linear(40, 20)
-        self._test_kaiming_normal_common(linear.weight)
-
-    def _create_random_nd_tensor(self, dims, size_min, size_max):
-        size = [random.randint(size_min, size_max) for _ in range(dims)]
-        tensor = paddle.zeros(size)
-        return tensor
-
-    def _is_normal(self, tensor, mean, std):
-        samples = tensor.view([-1]).tolist()
-        p_value = stats.kstest(samples, "norm", args=(mean, std))[1]
-        return p_value > 0.0001
-
-    def _random_float(self, a, b):
-        return (b - a) * random.random() + a
-
-    def calculate_gain(self, nonlinearity, param):
-        recommended_gain = {
-            'sigmoid': 1,
-            'linear': 1,
-            'conv1d': 1,
-            'conv2d': 1,
-            'conv3d': 1,
-            'conv1d_transpose': 1,
-            'conv_transpose1d': 1,
-            'conv2d_transpose': 1,
-            'conv_transpose2d': 1,
-            'conv3d_transpose': 1,
-            'conv_transpose3d': 1,
-            'tanh': 5.0 / 3,
-            'relu': math.sqrt(2.0),
-            'leaky_relu': math.sqrt(2.0 / (1 + param**2)),
-            'selu': 3.0 / 4,
-        }
-        return recommended_gain[nonlinearity]
-
-    def test_kaiming_normal_nonlinearity(self):
-        for nonlinearity in [
-            'conv_transpose1d',
-            'conv_transpose2d',
-            'conv_transpose3d',
-            'relu',
-            'leaky_relu',
-        ]:
-            input_tensor = paddle.zeros([1024, 512])
-            paddle.nn.init.kaiming_normal_(
-                input_tensor, nonlinearity=nonlinearity
-            )
-
-            fan_in = input_tensor.shape[0]
-
-            expected_std = self.calculate_gain(
-                nonlinearity=nonlinearity, param=0
-            )
-
-            std = expected_std / math.sqrt(float(fan_in))
-            assert self._is_normal(input_tensor, 0.0, std)
-
-    def test_kaiming_normal(self):
-        for use_a in [True, False]:
-            for dims in [2, 3, 4]:
-                for mode in ["fan_in", "fan_out"]:
-                    input_tensor = self._create_random_nd_tensor(
-                        dims, size_min=20, size_max=108
+                    out = paddle.nn.init.kaiming_uniform_(
+                        x, a=0.1, mode='fan_out'
                     )
-                    if use_a:
-                        a = self._random_float(0.1, 2)
+                    exe = paddle.static.Executor(place=place)
+                    feed_list = {"x": x_np}
+                    pd_res = exe.run(
+                        paddle.static.default_main_program(),
+                        feed=feed_list,
+                        fetch_list=[out],
+                    )[0]
+                    self.check_kaiming_uniform(pd_res, a=0.1, mode='fan_out')
+
+
+class Test_kaiming_normal_(unittest.TestCase):
+
+    def check_kaiming_normal(
+        self, tensor, a=0, mode='fan_in', nonlinearity='leaky_relu'
+    ):
+        if len(tensor.shape) == 2:
+            # This is the case for simple matrix multiply
+            fan_in = tensor.shape[0]
+            fan_out = tensor.shape[1]
+        else:
+            fan_in = tensor.shape[1]
+            fan_out = tensor.shape[0]
+
+        if len(tensor.shape) > 2:
+            receptive_field_size = np.prod(tensor.shape[2:])
+            fan_in *= receptive_field_size
+            fan_out *= receptive_field_size
+
+        if mode == "fan_in":
+            n = fan_in
+        else:
+            n = fan_out
+        expected_std = _calculate_gain(nonlinearity=nonlinearity, param=a)
+        std = expected_std / math.sqrt(float(n))
+
+        samples = tensor.flatten().tolist()
+        p_value = stats.kstest(samples, "norm", args=(0.0, std))[1]
+        self.assertGreater(p_value, 0.0001)
+
+    def test_nonlinearity_dygraph(self):
+        with dygraph_guard():
+            for nonlinearity in [
+                'conv_transpose1d',
+                'conv_transpose2d',
+                'conv_transpose3d',
+                'relu',
+                'leaky_relu',
+            ]:
+                input_tensor = paddle.zeros([1024, 512])
+                paddle.nn.init.kaiming_normal_(
+                    input_tensor, nonlinearity=nonlinearity
+                )
+                self.check_kaiming_normal(
+                    input_tensor, nonlinearity=nonlinearity
+                )
+
+    def test_dygraph(self):
+        with dygraph_guard():
+            for use_a in [True, False]:
+                for dims in [2, 3, 4]:
+                    for mode in ["fan_in", "fan_out"]:
+                        input_tensor = _create_random_nd_tensor(
+                            dims, size_min=20, size_max=108
+                        )
+                        if use_a:
+                            a = _random_float(0.1, 2)
+                        else:
+                            a = 0
                         paddle.nn.init.kaiming_normal_(
                             input_tensor, a=a, mode=mode
                         )
-                    else:
-                        a = 0
-                        paddle.nn.init.kaiming_normal_(input_tensor, mode=mode)
+                        self.check_kaiming_normal(input_tensor, a=a, mode=mode)
 
-                    if dims == 2:
-                        # This is the case for simple matrix multiply
-                        fan_in = input_tensor.shape[0]
-                        fan_out = input_tensor.shape[1]
-                    else:
-                        fan_in = input_tensor.shape[1]
-                        fan_out = input_tensor.shape[0]
+    def test_linear_dygraph(self):
+        with dygraph_guard():
+            linear = nn.Linear(40, 20)
+            init = paddle.nn.init.kaiming_normal_
+            init(linear.weight, a=0, mode="fan_in", nonlinearity="leaky_relu")
+            self.check_kaiming_normal(
+                linear.weight, a=0, mode="fan_in", nonlinearity="leaky_relu"
+            )
 
-                    if input_tensor.dim() > 2:
-                        fan_in *= input_tensor[0, 0].numel()
-                        fan_out *= input_tensor[0, 0].numel()
+            init(
+                linear.weight, a=-0.2, mode="fan_out", nonlinearity="leaky_relu"
+            )
+            self.check_kaiming_normal(
+                linear.weight, a=-0.2, mode="fan_out", nonlinearity="leaky_relu"
+            )
 
-                    if mode == "fan_in":
-                        n = fan_in
-                    else:
-                        n = fan_out
-                    expected_std = self.calculate_gain(
-                        nonlinearity='leaky_relu', param=a
-                    )
-                    std = expected_std / math.sqrt(float(n))
-                    assert self._is_normal(input_tensor, 0.0, std)
+            init(linear.weight, a=0, mode="fan_in", nonlinearity="relu")
+            self.check_kaiming_normal(
+                linear.weight, a=0, mode="fan_in", nonlinearity="relu"
+            )
+
+            init(linear.weight, a=0, mode="fan_out", nonlinearity="relu")
+            self.check_kaiming_normal(
+                linear.weight, a=0, mode="fan_out", nonlinearity="relu"
+            )
 
     @unittest.skipIf(
         not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
     )
-    def test_kaiming_normal_fp16(self):
-        input_tensor = paddle.zeros([1024, 512], dtype='float16')
-        paddle.nn.init.kaiming_normal_(input_tensor)
-        fan_in = input_tensor.shape[0]
+    def test_fp16(self):
+        with dygraph_guard():
+            input_tensor = paddle.zeros([1024, 512], dtype='float16')
+            paddle.nn.init.kaiming_normal_(input_tensor)
+            self.check_kaiming_normal(input_tensor)
+            assert input_tensor.dtype == paddle.float16
 
-        expected_std = self.calculate_gain(nonlinearity='leaky_relu', param=0)
-
-        std = expected_std / math.sqrt(float(fan_in))
-        assert self._is_normal(input_tensor, 0.0, std)
-        assert input_tensor.dtype == paddle.float16
-
-
-class TestKaimingNormalFuncPir(unittest.TestCase):
-    def setUp(self):
-        self.init_normal_op_name = 'pd_op.gaussian'
-
-    def get_operand_definition_op_attrs(self, cur_op, operand_name, attr_name):
-        input_names = cur_op.get_input_names()
-        self.assertIn(operand_name, input_names)
-        attr = (
-            cur_op.operand(input_names.index(operand_name))
-            .source()
-            .get_defining_op()
-            .attrs()[attr_name]
-        )
-        return attr
-
-    def get_init_ops_by_op_name(self, block, op_name):
-        checked_ops = []
-        for op in block.ops:
-            # get init op
-            if op_name == op.name():
-                checked_ops.append(op)
-        return checked_ops
-
-    def test_kaiming_normal_(self):
-        with paddle.pir_utils.IrGuard():
-            main = paddle.static.Program()
-            with paddle.static.program_guard(main, paddle.static.Program()):
-                parameter_meta = ParameterMeta([1024, 512], paddle.float32)
-                init_result = paddle.nn.init.kaiming_normal_(
-                    parameter_meta,
-                )
-                block = main.global_block()
-                checked_ops = self.get_init_ops_by_op_name(
-                    block, self.init_normal_op_name
-                )
-                self.assertEqual(len(checked_ops), 1)
-                init_op = checked_ops[0]
-                limit = np.sqrt(2.0 / init_result.shape[0])
-                self.assertAlmostEqual(
-                    init_op.attrs()["mean"], 0.0, delta=DELTA
-                )
-                self.assertAlmostEqual(
-                    init_op.attrs()["std"], limit, delta=DELTA
-                )
-                self.assertEqual(init_op.attrs()['seed'], 0)
-
-    def test_kaiming_normal_conv(self):
-        with paddle.pir_utils.IrGuard():
-            main = paddle.static.Program()
-            with paddle.static.program_guard(main, paddle.static.Program()):
-                parameter_meta = ParameterMeta([5, 10, 15, 20], paddle.float32)
-                init_result = paddle.nn.init.kaiming_normal_(
-                    parameter_meta,
-                )
-                block = main.global_block()
-                checked_ops = self.get_init_ops_by_op_name(
-                    block, self.init_normal_op_name
-                )
-                self.assertEqual(len(checked_ops), 1)
-                init_op = checked_ops[0]
-                limit = np.sqrt(
-                    2.0
-                    / (
-                        init_result.shape[1]
-                        * init_result.shape[2]
-                        * init_result.shape[3]
+    def test_static_graph_case1(self):
+        self.place = get_devices()
+        with static_guard():
+            for place in self.place:
+                x_np = np.zeros([10, 5]).astype('float32')
+                with paddle.static.program_guard(Program()):
+                    x = paddle.static.data(
+                        name="x", shape=[10, 5], dtype='float32'
                     )
-                )
+                    out = paddle.nn.init.kaiming_normal_(x)
+                    exe = paddle.static.Executor(place=place)
+                    feed_list = {"x": x_np}
+                    pd_res = exe.run(
+                        paddle.static.default_main_program(),
+                        feed=feed_list,
+                        fetch_list=[out],
+                    )[0]
+                    self.check_kaiming_normal(pd_res)
 
-                self.assertAlmostEqual(
-                    init_op.attrs()["mean"], 0.0, delta=DELTA
-                )
-                self.assertAlmostEqual(
-                    init_op.attrs()["std"], limit, delta=DELTA
-                )
-                self.assertEqual(init_op.attrs()['seed'], 0)
-
-    def test_kaiming_normal_fan_out(self):
-        with paddle.pir_utils.IrGuard():
-            main = paddle.static.Program()
-            with paddle.static.program_guard(main, paddle.static.Program()):
-                parameter_meta = ParameterMeta([5, 10, 15, 20], paddle.float32)
-                init_result = paddle.nn.init.kaiming_normal_(
-                    parameter_meta,
-                    mode='fan_out',
-                )
-                block = main.global_block()
-                checked_ops = self.get_init_ops_by_op_name(
-                    block, self.init_normal_op_name
-                )
-                self.assertEqual(len(checked_ops), 1)
-                init_op = checked_ops[0]
-                limit = np.sqrt(
-                    2.0
-                    / (
-                        init_result.shape[0]
-                        * init_result.shape[2]
-                        * init_result.shape[3]
+    def test_static_graph_case2(self):
+        self.place = get_devices()
+        with static_guard():
+            for place in self.place:
+                x_np = np.zeros([100, 52, 3, 4]).astype('float32')
+                with paddle.static.program_guard(Program()):
+                    x = paddle.static.data(
+                        name="x", shape=[100, 52, 3, 4], dtype='float32'
                     )
-                )
+                    out = paddle.nn.init.kaiming_normal_(
+                        x, a=0.1, mode='fan_out'
+                    )
+                    exe = paddle.static.Executor(place=place)
+                    feed_list = {"x": x_np}
+                    pd_res = exe.run(
+                        paddle.static.default_main_program(),
+                        feed=feed_list,
+                        fetch_list=[out],
+                    )[0]
+                    self.check_kaiming_normal(pd_res, a=0.1, mode='fan_out')
 
-                self.assertAlmostEqual(
-                    init_op.attrs()["mean"], 0.0, delta=DELTA
-                )
-                self.assertAlmostEqual(
-                    init_op.attrs()["std"], limit, delta=DELTA
-                )
-                self.assertEqual(init_op.attrs()['seed'], 0)
+
+class Test_xavier_uniform_(unittest.TestCase):
+
+    def check(self, tensor, gain=1.0):
+        if len(tensor.shape) == 2:
+            # This is the case for simple matrix multiply
+            fan_in = tensor.shape[0]
+            fan_out = tensor.shape[1]
+        else:
+            fan_in = tensor.shape[1]
+            fan_out = tensor.shape[0]
+
+        if len(tensor.shape) > 2:
+            receptive_field_size = np.prod(tensor.shape[2:])
+            fan_in *= receptive_field_size
+            fan_out *= receptive_field_size
+
+        bounds = gain * math.sqrt(6.0 / float(fan_in + fan_out))
+
+        samples = tensor.flatten().tolist()
+        p_value = stats.kstest(samples, "uniform", args=(-bounds, bounds * 2))[
+            1
+        ]
+        self.assertGreater(p_value, 0.0001)
+
+    def test_dygraph(self):
+        with dygraph_guard():
+            for use_gain in [True, False]:
+                for dims in [2, 3, 4]:
+                    input_tensor = _create_random_nd_tensor(
+                        dims, size_min=20, size_max=108
+                    )
+                    if use_gain:
+                        gain = _random_float(0.1, 3.0)
+                    else:
+                        gain = 1.0
+                    paddle.nn.init.xavier_uniform_(input_tensor, gain=gain)
+                    self.check(input_tensor, gain=gain)
+
+    def test_linear_dygraph(self):
+        with dygraph_guard():
+            linear = nn.Linear(40, 20)
+            init = paddle.nn.init.xavier_uniform_
+            init(linear.weight, gain=0.2)
+            self.check(linear.weight, gain=0.2)
+
+            init(linear.weight, gain=0.25)
+            self.check(linear.weight, gain=0.25)
+
+            init(linear.weight, gain=1.0)
+            self.check(linear.weight, gain=1.0)
+
+            init(linear.weight, gain=2.0)
+            self.check(linear.weight, gain=2.0)
+
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    )
+    def test_fp16(self):
+        with dygraph_guard():
+            input_tensor = paddle.zeros([1024, 512], dtype='float16')
+            paddle.nn.init.xavier_uniform_(input_tensor)
+            self.check(input_tensor)
+            assert input_tensor.dtype == paddle.float16
+
+    def test_static_graph_case1(self):
+        self.place = get_devices()
+        with static_guard():
+            for place in self.place:
+                x_np = np.zeros([10, 5]).astype('float32')
+                with paddle.static.program_guard(Program()):
+                    x = paddle.static.data(
+                        name="x", shape=[10, 5], dtype='float32'
+                    )
+                    out = paddle.nn.init.xavier_uniform_(x)
+                    exe = paddle.static.Executor(place=place)
+                    feed_list = {"x": x_np}
+                    pd_res = exe.run(
+                        paddle.static.default_main_program(),
+                        feed=feed_list,
+                        fetch_list=[out],
+                    )[0]
+                    self.check(pd_res)
+
+    def test_static_graph_case2(self):
+        self.place = get_devices()
+        with static_guard():
+            for place in self.place:
+                x_np = np.zeros([100, 52, 3, 4]).astype('float32')
+                with paddle.static.program_guard(Program()):
+                    x = paddle.static.data(
+                        name="x", shape=[100, 52, 3, 4], dtype='float32'
+                    )
+                    out = paddle.nn.init.xavier_uniform_(x, gain=0.5)
+                    exe = paddle.static.Executor(place=place)
+                    feed_list = {"x": x_np}
+                    pd_res = exe.run(
+                        paddle.static.default_main_program(),
+                        feed=feed_list,
+                        fetch_list=[out],
+                    )[0]
+                    self.check(pd_res, gain=0.5)
 
 
-class TestXavierUniformFunc(unittest.TestCase):
-    def _test_xavier_uniform_common(self, tensor):
-        init = paddle.nn.init.xavier_uniform_
-        init(tensor, gain=0.2)
-        init(tensor, gain=0.25)
-        init(tensor, gain=1.0)
-        init(tensor, gain=2.0)
+class Test_xavier_normal_(unittest.TestCase):
 
-    def test_xavier_uniform_linear(self):
-        linear = nn.Linear(40, 20)
-        self._test_xavier_uniform_common(linear.weight)
+    def check(self, tensor, gain=1.0):
+        if len(tensor.shape) == 2:
+            # This is the case for simple matrix multiply
+            fan_in = tensor.shape[0]
+            fan_out = tensor.shape[1]
+        else:
+            fan_in = tensor.shape[1]
+            fan_out = tensor.shape[0]
 
-    def _create_random_nd_tensor(self, dims, size_min, size_max):
-        size = [random.randint(size_min, size_max) for _ in range(dims)]
-        tensor = paddle.zeros(size)
-        return tensor
+        if len(tensor.shape) > 2:
+            receptive_field_size = np.prod(tensor.shape[2:])
+            fan_in *= receptive_field_size
+            fan_out *= receptive_field_size
 
-    def _is_uniform(self, tensor, a, b):
-        samples = tensor.view([-1]).tolist()
+        std = gain * math.sqrt(2.0 / float(fan_in + fan_out))
+        samples = tensor.flatten().tolist()
+        p_value = stats.kstest(samples, "norm", args=(0.0, std))[1]
+        self.assertGreater(p_value, 0.0001)
+
+    def test_dygraph(self):
+        with dygraph_guard():
+            for use_gain in [True, False]:
+                for dims in [2, 3, 4]:
+                    input_tensor = _create_random_nd_tensor(
+                        dims, size_min=20, size_max=108
+                    )
+                    if use_gain:
+                        gain = _random_float(0.1, 3.0)
+                    else:
+                        gain = 1.0
+                    paddle.nn.init.xavier_normal_(input_tensor, gain=gain)
+                    self.check(input_tensor, gain=gain)
+
+    def test_linear_dygraph(self):
+        with dygraph_guard():
+            linear = nn.Linear(40, 20)
+            init = paddle.nn.init.xavier_normal_
+            init(linear.weight, gain=1.0)
+            self.check(linear.weight, gain=1.0)
+
+            init(linear.weight, gain=2.6)
+            self.check(linear.weight, gain=2.6)
+
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    )
+    def test_fp16(self):
+        with dygraph_guard():
+            input_tensor = paddle.zeros([1024, 512], dtype='float16')
+            paddle.nn.init.xavier_normal_(input_tensor)
+            self.check(input_tensor)
+            assert input_tensor.dtype == paddle.float16
+
+    def test_static_graph_case1(self):
+        self.place = get_devices()
+        with static_guard():
+            for place in self.place:
+                x_np = np.zeros([10, 5]).astype('float32')
+                with paddle.static.program_guard(Program()):
+                    x = paddle.static.data(
+                        name="x", shape=[10, 5], dtype='float32'
+                    )
+                    out = paddle.nn.init.xavier_normal_(x)
+                    exe = paddle.static.Executor(place=place)
+                    feed_list = {"x": x_np}
+                    pd_res = exe.run(
+                        paddle.static.default_main_program(),
+                        feed=feed_list,
+                        fetch_list=[out],
+                    )[0]
+                    self.check(pd_res)
+
+    def test_static_graph_case2(self):
+        self.place = get_devices()
+        with static_guard():
+            for place in self.place:
+                x_np = np.zeros([100, 52, 3, 4]).astype('float32')
+                with paddle.static.program_guard(Program()):
+                    x = paddle.static.data(
+                        name="x", shape=[100, 52, 3, 4], dtype='float32'
+                    )
+                    out = paddle.nn.init.xavier_normal_(x, gain=0.3)
+                    exe = paddle.static.Executor(place=place)
+                    feed_list = {"x": x_np}
+                    pd_res = exe.run(
+                        paddle.static.default_main_program(),
+                        feed=feed_list,
+                        fetch_list=[out],
+                    )[0]
+                    self.check(pd_res, gain=0.3)
+
+
+class Test_uniform_(unittest.TestCase):
+
+    def check(self, tensor, a=0.0, b=1.0):
+        samples = tensor.flatten().tolist()
         p_value = stats.kstest(samples, "uniform", args=(a, (b - a)))[1]
-        return p_value > 0.0001
+        self.assertGreater(p_value, 0.0001)
 
-    def _random_float(self, a, b):
-        return (b - a) * random.random() + a
+    def test_linear_dygraph(self):
+        with dygraph_guard():
+            linear = nn.Linear(40, 20)
+            init = paddle.nn.init.uniform_
+            init(linear.weight, a=0.2, b=1.3)
+            self.check(linear.weight, a=0.2, b=1.3)
 
-    def test_xavier_uniform(self):
-        for use_gain in [True, False]:
+            init(linear.weight, a=2.2, b=4.3)
+            self.check(linear.weight, a=2.2, b=4.3)
+            init(linear.weight, a=-0.2, b=0.2)
+            self.check(linear.weight, a=-0.2, b=0.2)
+            init(linear.weight, a=-1.5, b=1.5)
+            self.check(linear.weight, a=-1.5, b=1.5)
+
+    def test_dygraph(self):
+        with dygraph_guard():
             for dims in [2, 3, 4]:
-                input_tensor = self._create_random_nd_tensor(
+                input_tensor = _create_random_nd_tensor(
                     dims, size_min=20, size_max=108
                 )
-                if use_gain:
-                    gain = self._random_float(0.1, 3.0)
-                else:
-                    gain = 1.0
-                paddle.nn.init.xavier_uniform_(input_tensor, gain=gain)
-
-                if dims == 2:
-                    # This is the case for simple matrix multiply
-                    fan_in = input_tensor.shape[0]
-                    fan_out = input_tensor.shape[1]
-                else:
-                    fan_in = input_tensor.shape[1]
-                    fan_out = input_tensor.shape[0]
-
-                if input_tensor.dim() > 2:
-                    fan_in *= input_tensor[0, 0].numel()
-                    fan_out *= input_tensor[0, 0].numel()
-
-                bounds = gain * math.sqrt(6.0 / float(fan_in + fan_out))
-                assert self._is_uniform(input_tensor, -bounds, bounds)
+                paddle.nn.init.uniform_(input_tensor, a=-3.0, b=2.0)
+                self.check(input_tensor, -3.0, 2.0)
 
     @unittest.skipIf(
         not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
     )
-    def test_xavier_uniform_fp16(self):
-        input_tensor = paddle.zeros([1024, 512], dtype='float16')
-        paddle.nn.init.xavier_uniform_(input_tensor)
-        fan_in = input_tensor.shape[0]
-        fan_out = input_tensor.shape[1]
+    def test_fp16(self):
+        with dygraph_guard():
+            input_tensor = paddle.zeros([1024, 512], dtype='float16')
+            paddle.nn.init.uniform_(input_tensor)
+            self.check(input_tensor)
+            assert input_tensor.dtype == paddle.float16
 
-        bounds = math.sqrt(6.0 / float(fan_in + fan_out))
-        assert self._is_uniform(input_tensor, -bounds, bounds)
-        assert input_tensor.dtype == paddle.float16
-
-
-class TestXavierUniformFuncPir(unittest.TestCase):
-    def setUp(self):
-        self.init_uniform_op_name = 'pd_op.uniform'
-
-    def get_operand_definition_op_attrs(self, cur_op, operand_name, attr_name):
-        input_names = cur_op.get_input_names()
-        self.assertIn(operand_name, input_names)
-        attr = (
-            cur_op.operand(input_names.index(operand_name))
-            .source()
-            .get_defining_op()
-            .attrs()[attr_name]
-        )
-        return attr
-
-    def get_init_ops_by_op_name(self, block, op_name):
-        checked_ops = []
-        for op in block.ops:
-            # get init op
-            if op_name == op.name():
-                checked_ops.append(op)
-        return checked_ops
-
-    def test_xavier_uniform_(self):
-        with paddle.pir_utils.IrGuard():
-            main = paddle.static.Program()
-            with paddle.static.program_guard(main, paddle.static.Program()):
-                parameter_meta = ParameterMeta([1024, 512], paddle.float32)
-                init_result = paddle.nn.init.xavier_uniform_(
-                    parameter_meta,
-                )
-                block = main.global_block()
-                checked_ops = self.get_init_ops_by_op_name(
-                    block, self.init_uniform_op_name
-                )
-                self.assertEqual(len(checked_ops), 1)
-                init_op = checked_ops[0]
-                limit = np.sqrt(
-                    6.0 / (init_result.shape[0] + init_result.shape[1])
-                )
-
-                min = self.get_operand_definition_op_attrs(
-                    init_op, "min", "value"
-                )
-                max = self.get_operand_definition_op_attrs(
-                    init_op, "max", "value"
-                )
-                self.assertAlmostEqual(min, -limit, delta=DELTA)
-                self.assertAlmostEqual(max, limit, delta=DELTA)
-                self.assertEqual(init_op.attrs()['seed'], 0)
-
-    def test_xavier_uniform_conv(self):
-        with paddle.pir_utils.IrGuard():
-            main = paddle.static.Program()
-            with paddle.static.program_guard(main, paddle.static.Program()):
-                parameter_meta = ParameterMeta([5, 10, 15, 20], paddle.float32)
-                init_result = paddle.nn.init.xavier_uniform_(
-                    parameter_meta,
-                )
-                block = main.global_block()
-                checked_ops = self.get_init_ops_by_op_name(
-                    block, self.init_uniform_op_name
-                )
-                self.assertEqual(len(checked_ops), 1)
-                init_op = checked_ops[0]
-                limit = np.sqrt(
-                    6.0
-                    / (
-                        (init_result.shape[0] + init_result.shape[1])
-                        * init_result.shape[2]
-                        * init_result.shape[3]
+    def test_static_graph_case1(self):
+        self.place = get_devices()
+        with static_guard():
+            for place in self.place:
+                x_np = np.zeros([10, 5]).astype('float32')
+                with paddle.static.program_guard(Program()):
+                    x = paddle.static.data(
+                        name="x", shape=[10, 5], dtype='float32'
                     )
-                )
+                    out = paddle.nn.init.uniform_(x)
+                    exe = paddle.static.Executor(place=place)
+                    feed_list = {"x": x_np}
+                    pd_res = exe.run(
+                        paddle.static.default_main_program(),
+                        feed=feed_list,
+                        fetch_list=[out],
+                    )[0]
+                    self.check(pd_res)
 
-                min = self.get_operand_definition_op_attrs(
-                    init_op, "min", "value"
-                )
-                max = self.get_operand_definition_op_attrs(
-                    init_op, "max", "value"
-                )
-                self.assertAlmostEqual(min, -limit, delta=DELTA)
-                self.assertAlmostEqual(max, limit, delta=DELTA)
-                self.assertEqual(init_op.attrs()['seed'], 0)
-
-    def test_xavier_uniform_gain(self):
-        with paddle.pir_utils.IrGuard():
-            main = paddle.static.Program()
-            with paddle.static.program_guard(main, paddle.static.Program()):
-                parameter_meta = ParameterMeta([5, 10, 15, 20], paddle.float32)
-                init_result = paddle.nn.init.xavier_uniform_(
-                    parameter_meta,
-                    gain=0.5,
-                )
-                block = main.global_block()
-                checked_ops = self.get_init_ops_by_op_name(
-                    block, self.init_uniform_op_name
-                )
-                self.assertEqual(len(checked_ops), 1)
-                init_op = checked_ops[0]
-
-                limit = 0.5 * np.sqrt(
-                    6.0
-                    / (
-                        (init_result.shape[0] + init_result.shape[1])
-                        * init_result.shape[2]
-                        * init_result.shape[3]
+    def test_static_graph_case2(self):
+        self.place = get_devices()
+        with static_guard():
+            for place in self.place:
+                x_np = np.zeros([100, 52, 3, 4]).astype('float32')
+                with paddle.static.program_guard(Program()):
+                    x = paddle.static.data(
+                        name="x", shape=[100, 52, 3, 4], dtype='float32'
                     )
-                )
-
-                min = self.get_operand_definition_op_attrs(
-                    init_op, "min", "value"
-                )
-                max = self.get_operand_definition_op_attrs(
-                    init_op, "max", "value"
-                )
-                self.assertAlmostEqual(min, -limit, delta=DELTA)
-                self.assertAlmostEqual(max, limit, delta=DELTA)
-                self.assertEqual(init_op.attrs()['seed'], 0)
+                    out = paddle.nn.init.uniform_(x, a=0.4, b=1.9)
+                    exe = paddle.static.Executor(place=place)
+                    feed_list = {"x": x_np}
+                    pd_res = exe.run(
+                        paddle.static.default_main_program(),
+                        feed=feed_list,
+                        fetch_list=[out],
+                    )[0]
+                    self.check(pd_res, a=0.4, b=1.9)
 
 
-class TestXavierNormalFunc(unittest.TestCase):
-    def _test_xavier_normal_common(self, tensor):
-        init = paddle.nn.init.xavier_normal_
-        init(tensor, gain=0.2)
-        init(tensor, gain=0.25)
-        init(tensor, gain=1.0)
-        init(tensor, gain=2.0)
+class Test_normal_(unittest.TestCase):
 
-    def test_xavier_normal_linear(self):
-        linear = nn.Linear(40, 20)
-        self._test_xavier_normal_common(linear.weight)
-
-    def _create_random_nd_tensor(self, dims, size_min, size_max):
-        size = [random.randint(size_min, size_max) for _ in range(dims)]
-        tensor = paddle.zeros(size)
-        return tensor
-
-    def _is_normal(self, tensor, mean, std):
-        samples = tensor.view([-1]).tolist()
+    def check(self, tensor, mean=0.0, std=1.0):
+        samples = tensor.flatten().tolist()
         p_value = stats.kstest(samples, "norm", args=(mean, std))[1]
-        return p_value > 0.0001
+        self.assertGreater(p_value, 0.0001)
 
-    def _random_float(self, a, b):
-        return (b - a) * random.random() + a
+    def test_linear_dygraph(self):
+        with dygraph_guard():
+            linear = nn.Linear(40, 20)
+            init = paddle.nn.init.normal_
+            init(linear.weight, mean=0.2, std=1.3)
+            self.check(linear.weight, mean=0.2, std=1.3)
 
-    def test_xavier_uniform(self):
-        for use_gain in [True, False]:
+            init(linear.weight, mean=2.2, std=4.3)
+            self.check(linear.weight, mean=2.2, std=4.3)
+            init(linear.weight, mean=-0.2, std=0.2)
+            self.check(linear.weight, mean=-0.2, std=0.2)
+            init(linear.weight, mean=-1.5, std=1.5)
+            self.check(linear.weight, mean=-1.5, std=1.5)
+
+    def test_dygraph(self):
+        with dygraph_guard():
             for dims in [2, 3, 4]:
-                input_tensor = self._create_random_nd_tensor(
+                input_tensor = _create_random_nd_tensor(
                     dims, size_min=20, size_max=108
                 )
-                if use_gain:
-                    gain = self._random_float(0.1, 3.0)
-                else:
-                    gain = 1.0
-                paddle.nn.init.xavier_normal_(input_tensor, gain=gain)
-
-                if dims == 2:
-                    # This is the case for simple matrix multiply
-                    fan_in = input_tensor.shape[0]
-                    fan_out = input_tensor.shape[1]
-                else:
-                    fan_in = input_tensor.shape[1]
-                    fan_out = input_tensor.shape[0]
-
-                if input_tensor.dim() > 2:
-                    fan_in *= input_tensor[0, 0].numel()
-                    fan_out *= input_tensor[0, 0].numel()
-
-                bounds = gain * math.sqrt(2.0 / float(fan_in + fan_out))
-                assert self._is_normal(input_tensor, 0.0, bounds)
+                mean = _random_float(-3.0, 3.0)
+                std = _random_float(0.5, 3.0)
+                paddle.nn.init.normal_(input_tensor, mean, std)
+                self.check(input_tensor, mean, std)
 
     @unittest.skipIf(
         not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
     )
-    def test_xavier_normal_fp16(self):
-        input_tensor = paddle.zeros([1024, 512], dtype='float16')
-        paddle.nn.init.xavier_normal_(input_tensor)
-        fan_in = input_tensor.shape[0]
-        fan_out = input_tensor.shape[1]
+    def test_fp16(self):
+        with dygraph_guard():
+            input_tensor = paddle.zeros([1024, 512], dtype='float16')
+            paddle.nn.init.normal_(input_tensor)
+            self.check(input_tensor)
+            assert input_tensor.dtype == paddle.float16
 
-        bounds = math.sqrt(2.0 / float(fan_in + fan_out))
-        assert self._is_normal(input_tensor, 0.0, bounds)
-        assert input_tensor.dtype == paddle.float16
-
-
-class TestXavierNormalFuncPir(unittest.TestCase):
-    def setUp(self):
-        self.init_normal_op_name = 'pd_op.gaussian'
-
-    def get_operand_definition_op_attrs(self, cur_op, operand_name, attr_name):
-        input_names = cur_op.get_input_names()
-        self.assertIn(operand_name, input_names)
-        attr = (
-            cur_op.operand(input_names.index(operand_name))
-            .source()
-            .get_defining_op()
-            .attrs()[attr_name]
-        )
-        return attr
-
-    def get_init_ops_by_op_name(self, block, op_name):
-        checked_ops = []
-        for op in block.ops:
-            # get init op
-            if op_name == op.name():
-                checked_ops.append(op)
-        return checked_ops
-
-    def test_xavier_normal_(self):
-        with paddle.pir_utils.IrGuard():
-            main = paddle.static.Program()
-            with paddle.static.program_guard(main, paddle.static.Program()):
-                parameter_meta = ParameterMeta([1024, 512], paddle.float32)
-                init_result = paddle.nn.init.xavier_normal_(
-                    parameter_meta,
-                )
-                block = main.global_block()
-                checked_ops = self.get_init_ops_by_op_name(
-                    block, self.init_normal_op_name
-                )
-                self.assertEqual(len(checked_ops), 1)
-                init_op = checked_ops[0]
-                limit = np.sqrt(
-                    2.0 / (init_result.shape[0] + init_result.shape[1])
-                )
-
-                self.assertAlmostEqual(
-                    init_op.attrs()['mean'], 0.0, delta=DELTA
-                )
-                self.assertAlmostEqual(
-                    init_op.attrs()['std'], limit, delta=DELTA
-                )
-                self.assertEqual(init_op.attrs()['seed'], 0)
-
-    def test_xavier_normal_conv(self):
-        with paddle.pir_utils.IrGuard():
-            main = paddle.static.Program()
-            with paddle.static.program_guard(main, paddle.static.Program()):
-                parameter_meta = ParameterMeta([5, 10, 15, 20], paddle.float32)
-                init_result = paddle.nn.init.xavier_normal_(
-                    parameter_meta,
-                )
-                block = main.global_block()
-                checked_ops = self.get_init_ops_by_op_name(
-                    block, self.init_normal_op_name
-                )
-                self.assertEqual(len(checked_ops), 1)
-                init_op = checked_ops[0]
-                limit = np.sqrt(
-                    2.0
-                    / (
-                        (init_result.shape[0] + init_result.shape[1])
-                        * init_result.shape[2]
-                        * init_result.shape[3]
+    def test_static_graph_case1(self):
+        self.place = get_devices()
+        with static_guard():
+            for place in self.place:
+                x_np = np.zeros([10, 5]).astype('float32')
+                with paddle.static.program_guard(Program()):
+                    x = paddle.static.data(
+                        name="x", shape=[10, 5], dtype='float32'
                     )
-                )
+                    out = paddle.nn.init.normal_(x)
+                    exe = paddle.static.Executor(place=place)
+                    feed_list = {"x": x_np}
+                    pd_res = exe.run(
+                        paddle.static.default_main_program(),
+                        feed=feed_list,
+                        fetch_list=[out],
+                    )[0]
+                    self.check(pd_res)
 
-                self.assertAlmostEqual(
-                    init_op.attrs()['mean'], 0.0, delta=DELTA
-                )
-                self.assertAlmostEqual(
-                    init_op.attrs()['std'], limit, delta=DELTA
-                )
-                self.assertEqual(init_op.attrs()['seed'], 0)
-
-    def test_xavier_normal_gain(self):
-        with paddle.pir_utils.IrGuard():
-            main = paddle.static.Program()
-            with paddle.static.program_guard(main, paddle.static.Program()):
-                parameter_meta = ParameterMeta([5, 10, 15, 20], paddle.float32)
-                init_result = paddle.nn.init.xavier_normal_(
-                    parameter_meta,
-                    gain=0.5,
-                )
-                block = main.global_block()
-                checked_ops = self.get_init_ops_by_op_name(
-                    block, self.init_normal_op_name
-                )
-                self.assertEqual(len(checked_ops), 1)
-                init_op = checked_ops[0]
-
-                limit = 0.5 * np.sqrt(
-                    2.0
-                    / (
-                        (init_result.shape[0] + init_result.shape[1])
-                        * init_result.shape[2]
-                        * init_result.shape[3]
+    def test_static_graph_case2(self):
+        self.place = get_devices()
+        with static_guard():
+            for place in self.place:
+                x_np = np.zeros([100, 52, 3, 4]).astype('float32')
+                with paddle.static.program_guard(Program()):
+                    x = paddle.static.data(
+                        name="x", shape=[100, 52, 3, 4], dtype='float32'
                     )
-                )
-
-                self.assertAlmostEqual(
-                    init_op.attrs()['mean'], 0.0, delta=DELTA
-                )
-                self.assertAlmostEqual(
-                    init_op.attrs()['std'], limit, delta=DELTA
-                )
-                self.assertEqual(init_op.attrs()['seed'], 0)
-
-
-class TestUniformFunc(unittest.TestCase):
-    def _test_uniform_common(self, tensor):
-        init = paddle.nn.init.uniform_
-        init(tensor, a=0.2, b=1.3)
-        init(tensor, a=2.2, b=4.3)
-        init(tensor, a=-0.2, b=-0.2)
-        init(tensor, a=-1.5, b=1.5)
-
-    def test_uniform_linear(self):
-        linear = nn.Linear(40, 20)
-        self._test_uniform_common(linear.weight)
-
-    def _create_random_nd_tensor(self, dims, size_min, size_max):
-        size = [random.randint(size_min, size_max) for _ in range(dims)]
-        tensor = paddle.zeros(size)
-        return tensor
-
-    def _is_uniform(self, tensor, a, b):
-        samples = tensor.view([-1]).tolist()
-        p_value = stats.kstest(samples, "uniform", args=(a, (b - a)))[1]
-        return p_value > 0.0001
-
-    def _random_float(self, a, b):
-        return (b - a) * random.random() + a
-
-    def test_uniform(self):
-        for dims in [2, 3, 4]:
-            input_tensor = self._create_random_nd_tensor(
-                dims, size_min=20, size_max=108
-            )
-            paddle.nn.init.uniform_(input_tensor, a=-3.0, b=2.0)
-
-            assert self._is_uniform(input_tensor, -3.0, 2.0)
-
-    @unittest.skipIf(
-        not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
-    )
-    def test_uniform_fp16(self):
-        input_tensor = paddle.zeros([1024, 512], dtype='float16')
-        paddle.nn.init.uniform_(input_tensor)
-
-        assert self._is_uniform(input_tensor, 0.0, 1.0)
-        assert input_tensor.dtype == paddle.float16
+                    out = paddle.nn.init.normal_(x, mean=0.4, std=1.9)
+                    exe = paddle.static.Executor(place=place)
+                    feed_list = {"x": x_np}
+                    pd_res = exe.run(
+                        paddle.static.default_main_program(),
+                        feed=feed_list,
+                        fetch_list=[out],
+                    )[0]
+                    self.check(pd_res, mean=0.4, std=1.9)
 
 
-class TestUniformFuncPir(unittest.TestCase):
-    def setUp(self):
-        self.init_uniform_op_name = 'pd_op.uniform'
+class Test_trunc_normal_(unittest.TestCase):
 
-    def get_operand_definition_op_attrs(self, cur_op, operand_name, attr_name):
-        input_names = cur_op.get_input_names()
-        self.assertIn(operand_name, input_names)
-        attr = (
-            cur_op.operand(input_names.index(operand_name))
-            .source()
-            .get_defining_op()
-            .attrs()[attr_name]
-        )
-        return attr
-
-    def get_init_ops_by_op_name(self, block, op_name):
-        checked_ops = []
-        for op in block.ops:
-            # get init op
-            if op_name == op.name():
-                checked_ops.append(op)
-        return checked_ops
-
-    def test_uniform_(self):
-        with paddle.pir_utils.IrGuard():
-            main = paddle.static.Program()
-            with paddle.static.program_guard(main, paddle.static.Program()):
-                parameter_meta = ParameterMeta([1024, 512], paddle.float32)
-                init_result = paddle.nn.init.uniform_(
-                    parameter_meta,
-                )
-                block = main.global_block()
-                checked_ops = self.get_init_ops_by_op_name(
-                    block, self.init_uniform_op_name
-                )
-                self.assertEqual(len(checked_ops), 1)
-                init_op = checked_ops[0]
-
-                min = self.get_operand_definition_op_attrs(
-                    init_op, "min", "value"
-                )
-                max = self.get_operand_definition_op_attrs(
-                    init_op, "max", "value"
-                )
-                self.assertAlmostEqual(min, 0.0, delta=DELTA)
-                self.assertAlmostEqual(max, 1.0, delta=DELTA)
-                self.assertEqual(init_op.attrs()['seed'], 0)
-
-    def test_uniform_conv(self):
-        with paddle.pir_utils.IrGuard():
-            main = paddle.static.Program()
-            with paddle.static.program_guard(main, paddle.static.Program()):
-                parameter_meta = ParameterMeta([5, 10, 15, 20], paddle.float32)
-                init_result = paddle.nn.init.uniform_(
-                    parameter_meta,
-                )
-                block = main.global_block()
-                checked_ops = self.get_init_ops_by_op_name(
-                    block, self.init_uniform_op_name
-                )
-                self.assertEqual(len(checked_ops), 1)
-                init_op = checked_ops[0]
-                min = self.get_operand_definition_op_attrs(
-                    init_op, "min", "value"
-                )
-                max = self.get_operand_definition_op_attrs(
-                    init_op, "max", "value"
-                )
-                self.assertAlmostEqual(min, 0.0, delta=DELTA)
-                self.assertAlmostEqual(max, 1.0, delta=DELTA)
-                self.assertEqual(init_op.attrs()['seed'], 0)
-
-    def test_uniform_bound(self):
-        with paddle.pir_utils.IrGuard():
-            main = paddle.static.Program()
-            with paddle.static.program_guard(main, paddle.static.Program()):
-                parameter_meta = ParameterMeta([5, 10, 15, 20], paddle.float32)
-                init_result = paddle.nn.init.uniform_(
-                    parameter_meta,
-                    a=-0.8,
-                    b=0.8,
-                )
-                block = main.global_block()
-                checked_ops = self.get_init_ops_by_op_name(
-                    block, self.init_uniform_op_name
-                )
-                self.assertEqual(len(checked_ops), 1)
-                init_op = checked_ops[0]
-
-                min = self.get_operand_definition_op_attrs(
-                    init_op, "min", "value"
-                )
-                max = self.get_operand_definition_op_attrs(
-                    init_op, "max", "value"
-                )
-                self.assertAlmostEqual(min, -0.8, delta=DELTA)
-                self.assertAlmostEqual(max, 0.8, delta=DELTA)
-                self.assertEqual(init_op.attrs()['seed'], 0)
-
-
-class TestNormalFunc(unittest.TestCase):
-    def _test_normal_common(self, tensor):
-        init = paddle.nn.init.normal_
-        init(tensor, mean=0.2, std=2.0)
-        init(tensor, mean=0.0, std=2.0)
-        init(tensor, mean=-0.1, std=1.0)
-        init(tensor, mean=0.4, std=2.5)
-
-    def test_normal_linear(self):
-        linear = nn.Linear(40, 20)
-        self._test_normal_common(linear.weight)
-
-    def _create_random_nd_tensor(self, dims, size_min, size_max):
-        size = [random.randint(size_min, size_max) for _ in range(dims)]
-        tensor = paddle.zeros(size)
-        return tensor
-
-    def _is_normal(self, tensor, mean, std):
-        samples = tensor.view([-1]).tolist()
-        p_value = stats.kstest(samples, "norm", args=(mean, std))[1]
-        return p_value > 0.0001
-
-    def _random_float(self, a, b):
-        return (b - a) * random.random() + a
-
-    def test_normal(self):
-        for dims in [2, 3, 4]:
-            input_tensor = self._create_random_nd_tensor(
-                dims, size_min=20, size_max=108
-            )
-            mean = self._random_float(-3.0, 3.0)
-            std = self._random_float(0.5, 3.0)
-            paddle.nn.init.normal_(input_tensor, mean=mean, std=std)
-
-            assert self._is_normal(input_tensor, mean, std)
-
-    @unittest.skipIf(
-        not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
-    )
-    def test_normal_fp16(self):
-        input_tensor = paddle.zeros([1024, 512], dtype='float16')
-        paddle.nn.init.normal_(input_tensor)
-        assert self._is_normal(input_tensor, 0.0, 1.0)
-        assert input_tensor.dtype == paddle.float16
-
-
-class TestNormalFuncPir(unittest.TestCase):
-    def setUp(self):
-        self.init_normal_op_name = 'pd_op.gaussian'
-
-    def get_operand_definition_op_attrs(self, cur_op, operand_name, attr_name):
-        input_names = cur_op.get_input_names()
-        self.assertIn(operand_name, input_names)
-        attr = (
-            cur_op.operand(input_names.index(operand_name))
-            .source()
-            .get_defining_op()
-            .attrs()[attr_name]
-        )
-        return attr
-
-    def get_init_ops_by_op_name(self, block, op_name):
-        checked_ops = []
-        for op in block.ops:
-            # get init op
-            if op_name == op.name():
-                checked_ops.append(op)
-        return checked_ops
-
-    def test_normal_(self):
-        with paddle.pir_utils.IrGuard():
-            main = paddle.static.Program()
-            with paddle.static.program_guard(main, paddle.static.Program()):
-                parameter_meta = ParameterMeta([1024, 512], paddle.float32)
-                init_result = paddle.nn.init.normal_(
-                    parameter_meta,
-                )
-                block = main.global_block()
-                checked_ops = self.get_init_ops_by_op_name(
-                    block, self.init_normal_op_name
-                )
-                self.assertEqual(len(checked_ops), 1)
-                init_op = checked_ops[0]
-                self.assertAlmostEqual(
-                    init_op.attrs()['mean'], 0.0, delta=DELTA
-                )
-                self.assertAlmostEqual(init_op.attrs()['std'], 1.0, delta=DELTA)
-                self.assertEqual(init_op.attrs()['seed'], 0)
-
-    def test_normal_conv(self):
-        with paddle.pir_utils.IrGuard():
-            main = paddle.static.Program()
-            with paddle.static.program_guard(main, paddle.static.Program()):
-                parameter_meta = ParameterMeta([5, 10, 15, 20], paddle.float32)
-                init_result = paddle.nn.init.normal_(
-                    parameter_meta,
-                )
-                block = main.global_block()
-                checked_ops = self.get_init_ops_by_op_name(
-                    block, self.init_normal_op_name
-                )
-                self.assertEqual(len(checked_ops), 1)
-                init_op = checked_ops[0]
-
-                self.assertAlmostEqual(
-                    init_op.attrs()['mean'], 0.0, delta=DELTA
-                )
-                self.assertAlmostEqual(init_op.attrs()['std'], 1.0, delta=DELTA)
-                self.assertEqual(init_op.attrs()['seed'], 0)
-
-    def test_normal_mean_std(self):
-        with paddle.pir_utils.IrGuard():
-            main = paddle.static.Program()
-            with paddle.static.program_guard(main, paddle.static.Program()):
-                parameter_meta = ParameterMeta([5, 10, 15, 20], paddle.float32)
-                init_result = paddle.nn.init.normal_(
-                    parameter_meta,
-                    mean=0.3,
-                    std=3.5,
-                )
-                block = main.global_block()
-                checked_ops = self.get_init_ops_by_op_name(
-                    block, self.init_normal_op_name
-                )
-                self.assertEqual(len(checked_ops), 1)
-                init_op = checked_ops[0]
-
-                self.assertAlmostEqual(
-                    init_op.attrs()['mean'], 0.3, delta=DELTA
-                )
-                self.assertAlmostEqual(init_op.attrs()['std'], 3.5, delta=DELTA)
-                self.assertEqual(init_op.attrs()['seed'], 0)
-
-
-class TestTruncNormalFunc(unittest.TestCase):
-    def _test_normal_common(self, tensor):
-        init = paddle.nn.init.trunc_normal_
-        init(tensor, mean=0.2, std=2.0, a=-1.8, b=2.2)
-        init(tensor, mean=0.0, std=2.0, a=-2, b=2)
-        init(tensor, mean=-0.1, std=1.0, a=-2, b=2)
-        init(tensor, mean=0.4, std=2.5, a=-3, b=3)
-
-    def test_normal_linear(self):
-        linear = nn.Linear(40, 20)
-        self._test_normal_common(linear.weight)
-
-    def _create_random_nd_tensor(self, dims, size_min, size_max):
-        size = [random.randint(size_min, size_max) for _ in range(dims)]
-        tensor = paddle.zeros(size)
-        return tensor
-
-    def _is_trunc_normal(self, tensor, mean, std, a, b):
-        z_samples = (tensor.view([-1]) - mean) / std
-        z_samples = z_samples.tolist()
+    def check(self, tensor, mean=0.0, std=1.0, a=-2.0, b=2.0):
+        samples = ((tensor.flatten() - mean) / std).tolist()
         a0 = (a - mean) / std
         b0 = (b - mean) / std
-        p_value = stats.kstest(z_samples, "truncnorm", args=(a0, b0))[1]
-        return p_value > 0.0001
+        p_value = stats.kstest(samples, "truncnorm", args=(a0, b0))[1]
+        self.assertGreater(p_value, 0.0001)
 
-    def _random_float(self, a, b):
-        return (b - a) * random.random() + a
+    def test_linear_dygraph(self):
+        with dygraph_guard():
+            linear = nn.Linear(40, 20)
+            init = paddle.nn.init.trunc_normal_
+            init(linear.weight, mean=0.2, std=1.3, a=1.0, b=2.0)
+            self.check(linear.weight, mean=0.2, std=1.3, a=1.0, b=2.0)
 
-    def test_normal(self):
-        for dims in [2, 3, 4]:
-            input_tensor = self._create_random_nd_tensor(
-                dims, size_min=20, size_max=108
-            )
-            mean = self._random_float(-3.0, 3.0)
-            std = self._random_float(0.5, 3.0)
-            bound = self._random_float(0.5, 10)
-            a = mean - bound
-            b = mean + bound
-            paddle.nn.init.trunc_normal_(
-                input_tensor, mean=mean, std=std, a=a, b=b
-            )
+            init(linear.weight, mean=2.2, std=4.3, a=1.3, b=2.0)
+            self.check(linear.weight, mean=2.2, std=4.3, a=1.3, b=2.0)
+            init(linear.weight, mean=-0.2, std=0.2, a=-1.0, b=2.9)
+            self.check(linear.weight, mean=-0.2, std=0.2, a=-1.0, b=2.9)
+            init(linear.weight, mean=-1.5, std=1.5, a=-1.4, b=2.9)
+            self.check(linear.weight, mean=-1.5, std=1.5, a=-1.4, b=2.9)
 
-            assert self._is_trunc_normal(input_tensor, mean, std, a=a, b=b)
+    def test_dygraph(self):
+        with dygraph_guard():
+            for dims in [2, 3, 4]:
+                input_tensor = _create_random_nd_tensor(
+                    dims, size_min=20, size_max=108
+                )
+                mean = _random_float(-3.0, 3.0)
+                std = _random_float(0.5, 3.0)
+                bound = _random_float(0.5, 10)
+                a = mean - bound
+                b = mean + bound
+                paddle.nn.init.trunc_normal_(input_tensor, mean, std, a, b)
+                self.check(input_tensor, mean, std, a, b)
+
+    def test_static_graph_case1(self):
+        self.place = get_devices()
+        with static_guard():
+            for place in self.place:
+                x_np = np.zeros([10, 5]).astype('float32')
+                with paddle.static.program_guard(Program()):
+                    x = paddle.static.data(
+                        name="x", shape=[10, 5], dtype='float32'
+                    )
+                    out = paddle.nn.init.trunc_normal_(x)
+                    exe = paddle.static.Executor(place=place)
+                    feed_list = {"x": x_np}
+                    pd_res = exe.run(
+                        paddle.static.default_main_program(),
+                        feed=feed_list,
+                        fetch_list=[out],
+                    )[0]
+                    self.check(pd_res)
+
+    def test_static_graph_case2(self):
+        self.place = get_devices()
+        with static_guard():
+            for place in self.place:
+                x_np = np.zeros([100, 52, 3, 4]).astype('float32')
+                with paddle.static.program_guard(Program()):
+                    x = paddle.static.data(
+                        name="x", shape=[100, 52, 3, 4], dtype='float32'
+                    )
+                    out = paddle.nn.init.trunc_normal_(
+                        x, mean=0.4, std=1.9, a=-1.9, b=6
+                    )
+                    exe = paddle.static.Executor(place=place)
+                    feed_list = {"x": x_np}
+                    pd_res = exe.run(
+                        paddle.static.default_main_program(),
+                        feed=feed_list,
+                        fetch_list=[out],
+                    )[0]
+                    self.check(pd_res, mean=0.4, std=1.9, a=-1.9, b=6)
+
+
+class Test_constant_(unittest.TestCase):
+
+    def check(self, tensor, val):
+        if isinstance(tensor, paddle.Tensor):
+            diff = (tensor - val).abs().max().item()
+        elif isinstance(tensor, np.ndarray):
+            diff = np.max(np.abs(tensor - val))
+        self.assertLess(diff, 0.000001)
+
+    def test_linear_dygraph(self):
+        with dygraph_guard():
+            linear = nn.Linear(40, 20)
+            init = paddle.nn.init.constant_
+            init(linear.weight, val=1.0)
+            self.check(linear.weight, val=1.0)
+
+            init(linear.weight, val=0.8)
+            self.check(linear.weight, val=0.8)
+            init(linear.weight, val=0.0)
+            self.check(linear.weight, val=0.0)
+            init(linear.weight, val=1.9)
+            self.check(linear.weight, val=1.9)
+
+    def test_dygraph(self):
+        with dygraph_guard():
+            for dims in [2, 3, 4]:
+                input_tensor = _create_random_nd_tensor(
+                    dims, size_min=20, size_max=108
+                )
+                val = _random_float(-1024.0, 1024.0)
+                paddle.nn.init.constant_(input_tensor, val)
+                self.check(input_tensor, val)
+
+    def test_static_graph_case1(self):
+        self.place = get_devices()
+        with static_guard():
+            for place in self.place:
+                x_np = np.zeros([10, 5]).astype('float32')
+                with paddle.static.program_guard(Program()):
+                    x = paddle.static.data(
+                        name="x", shape=[10, 5], dtype='float32'
+                    )
+                    out = paddle.nn.init.constant_(x, val=-0.4)
+                    exe = paddle.static.Executor(place=place)
+                    feed_list = {"x": x_np}
+                    pd_res = exe.run(
+                        paddle.static.default_main_program(),
+                        feed=feed_list,
+                        fetch_list=[out],
+                    )[0]
+                    self.check(pd_res, val=-0.4)
+
+    def test_static_graph_case2(self):
+        self.place = get_devices()
+        with static_guard():
+            for place in self.place:
+                x_np = np.zeros([100, 52, 3, 4]).astype('float32')
+                with paddle.static.program_guard(Program()):
+                    x = paddle.static.data(
+                        name="x", shape=[100, 52, 3, 4], dtype='float32'
+                    )
+                    out = paddle.nn.init.constant_(x, val=8.4)
+                    exe = paddle.static.Executor(place=place)
+                    feed_list = {"x": x_np}
+                    pd_res = exe.run(
+                        paddle.static.default_main_program(),
+                        feed=feed_list,
+                        fetch_list=[out],
+                    )[0]
+                    self.check(pd_res, val=8.4)
+
+
+class Test_ones_(unittest.TestCase):
+
+    def check(self, tensor, eps=1e-6):
+        if isinstance(tensor, paddle.Tensor):
+            diff = (tensor - 1.0).abs().max().item()
+        elif isinstance(tensor, np.ndarray):
+            diff = np.max(np.abs(tensor - 1.0))
+        self.assertLess(diff, eps)
+
+    def test_linear_dygraph(self):
+        with dygraph_guard():
+            linear = nn.Linear(40, 20)
+            init = paddle.nn.init.ones_
+            init(linear.weight)
+            self.check(linear.weight)
+
+            init(linear.weight)
+            self.check(linear.weight)
+            init(linear.weight)
+            self.check(linear.weight)
+            init(linear.weight)
+            self.check(linear.weight)
+
+    def test_dygraph(self):
+        with dygraph_guard():
+            for dims in [2, 3, 4]:
+                input_tensor = _create_random_nd_tensor(
+                    dims, size_min=20, size_max=108
+                )
+                paddle.nn.init.ones_(input_tensor)
+                self.check(input_tensor)
+
+    def test_static_graph_case1(self):
+        self.place = get_devices()
+        with static_guard():
+            for place in self.place:
+                x_np = np.zeros([10, 5]).astype('float32')
+                with paddle.static.program_guard(Program()):
+                    x = paddle.static.data(
+                        name="x", shape=[10, 5], dtype='float32'
+                    )
+                    out = paddle.nn.init.ones_(x)
+                    exe = paddle.static.Executor(place=place)
+                    feed_list = {"x": x_np}
+                    pd_res = exe.run(
+                        paddle.static.default_main_program(),
+                        feed=feed_list,
+                        fetch_list=[out],
+                    )[0]
+                    self.check(pd_res)
+
+    def test_static_graph_case2(self):
+        self.place = get_devices()
+        with static_guard():
+            for place in self.place:
+                x_np = np.zeros([100, 52, 3, 4]).astype('float32')
+                with paddle.static.program_guard(Program()):
+                    x = paddle.static.data(
+                        name="x", shape=[100, 52, 3, 4], dtype='float32'
+                    )
+                    out = paddle.nn.init.ones_(x)
+                    exe = paddle.static.Executor(place=place)
+                    feed_list = {"x": x_np}
+                    pd_res = exe.run(
+                        paddle.static.default_main_program(),
+                        feed=feed_list,
+                        fetch_list=[out],
+                    )[0]
+                    self.check(pd_res)
 
     @unittest.skipIf(
         not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
     )
-    def test_normal_fp16(self):
-        input_tensor = paddle.zeros([1024, 512], dtype='float16')
-        paddle.nn.init.trunc_normal_(input_tensor)
-        assert self._is_trunc_normal(input_tensor, 0.0, 1.0, -2, 2)
-        assert input_tensor.dtype == paddle.float16
+    def test_fp16(self):
+        with dygraph_guard():
+            input_tensor = paddle.zeros([1024, 512], dtype='float16')
+            paddle.nn.init.ones_(input_tensor)
+            self.check(input_tensor)
+            assert input_tensor.dtype == paddle.float16
 
 
-class TestTruncNormalFuncPir(unittest.TestCase):
-    def setUp(self):
-        self.init_normal_op_name = 'pd_op.truncated_gaussian_random'
+class Test_zeros_(unittest.TestCase):
 
-    def get_operand_definition_op_attrs(self, cur_op, operand_name, attr_name):
-        input_names = cur_op.get_input_names()
-        self.assertIn(operand_name, input_names)
-        attr = (
-            cur_op.operand(input_names.index(operand_name))
-            .source()
-            .get_defining_op()
-            .attrs()[attr_name]
-        )
-        return attr
+    def check(self, tensor, eps=1e-6):
+        if isinstance(tensor, paddle.Tensor):
+            diff = tensor.abs().max().item()
+        elif isinstance(tensor, np.ndarray):
+            diff = np.max(np.abs(tensor))
+        self.assertLess(diff, eps)
 
-    def get_init_ops_by_op_name(self, block, op_name):
-        checked_ops = []
-        for op in block.ops:
-            # get init op
-            if op_name == op.name():
-                checked_ops.append(op)
-        return checked_ops
+    def test_linear_dygraph(self):
+        with dygraph_guard():
+            linear = nn.Linear(40, 20)
+            init = paddle.nn.init.zeros_
+            init(linear.weight)
+            self.check(linear.weight)
 
-    def test_trunc_normal_(self):
-        with paddle.pir_utils.IrGuard():
-            main = paddle.static.Program()
-            with paddle.static.program_guard(main, paddle.static.Program()):
-                parameter_meta = ParameterMeta([1024, 512], paddle.float32)
-                init_result = paddle.nn.init.trunc_normal_(
-                    parameter_meta,
-                )
-                block = main.global_block()
-                checked_ops = self.get_init_ops_by_op_name(
-                    block, self.init_normal_op_name
-                )
-                self.assertEqual(len(checked_ops), 1)
-                init_op = checked_ops[0]
-                self.assertAlmostEqual(
-                    init_op.attrs()['mean'], 0.0, delta=DELTA
-                )
-                self.assertAlmostEqual(init_op.attrs()['std'], 1.0, delta=DELTA)
-                self.assertAlmostEqual(init_op.attrs()['a'], -2.0, delta=DELTA)
-                self.assertAlmostEqual(init_op.attrs()['b'], 2.0, delta=DELTA)
-                self.assertEqual(init_op.attrs()['seed'], 0)
+            init(linear.weight)
+            self.check(linear.weight)
+            init(linear.weight)
+            self.check(linear.weight)
+            init(linear.weight)
+            self.check(linear.weight)
 
-    def test_normal_conv(self):
-        with paddle.pir_utils.IrGuard():
-            main = paddle.static.Program()
-            with paddle.static.program_guard(main, paddle.static.Program()):
-                parameter_meta = ParameterMeta([5, 10, 15, 20], paddle.float32)
-                init_result = paddle.nn.init.trunc_normal_(
-                    parameter_meta,
+    def test_dygraph(self):
+        with dygraph_guard():
+            for dims in [2, 3, 4]:
+                input_tensor = _create_random_nd_tensor(
+                    dims, size_min=20, size_max=108
                 )
-                block = main.global_block()
-                checked_ops = self.get_init_ops_by_op_name(
-                    block, self.init_normal_op_name
-                )
-                self.assertEqual(len(checked_ops), 1)
-                init_op = checked_ops[0]
+                paddle.nn.init.zeros_(input_tensor)
+                self.check(input_tensor)
 
-                self.assertAlmostEqual(
-                    init_op.attrs()['mean'], 0.0, delta=DELTA
-                )
-                self.assertAlmostEqual(init_op.attrs()['std'], 1.0, delta=DELTA)
-                self.assertAlmostEqual(init_op.attrs()['a'], -2.0, delta=DELTA)
-                self.assertAlmostEqual(init_op.attrs()['b'], 2.0, delta=DELTA)
-                self.assertEqual(init_op.attrs()['seed'], 0)
+    def test_static_graph_case1(self):
+        self.place = get_devices()
+        with static_guard():
+            for place in self.place:
+                x_np = np.zeros([10, 5]).astype('float32')
+                with paddle.static.program_guard(Program()):
+                    x = paddle.static.data(
+                        name="x", shape=[10, 5], dtype='float32'
+                    )
+                    out = paddle.nn.init.zeros_(x)
+                    exe = paddle.static.Executor(place=place)
+                    feed_list = {"x": x_np}
+                    pd_res = exe.run(
+                        paddle.static.default_main_program(),
+                        feed=feed_list,
+                        fetch_list=[out],
+                    )[0]
+                    self.check(pd_res)
 
-    def test_normal_mean_std(self):
-        with paddle.pir_utils.IrGuard():
-            main = paddle.static.Program()
-            with paddle.static.program_guard(main, paddle.static.Program()):
-                parameter_meta = ParameterMeta([5, 10, 15, 20], paddle.float32)
-                init_result = paddle.nn.init.trunc_normal_(
-                    parameter_meta,
-                    mean=0.3,
-                    std=3.5,
-                    a=-3.0,
-                    b=3.0,
-                )
-                block = main.global_block()
-                checked_ops = self.get_init_ops_by_op_name(
-                    block, self.init_normal_op_name
-                )
-                self.assertEqual(len(checked_ops), 1)
-                init_op = checked_ops[0]
+    def test_static_graph_case2(self):
+        self.place = get_devices()
+        with static_guard():
+            for place in self.place:
+                x_np = np.zeros([100, 52, 3, 4]).astype('float32')
+                with paddle.static.program_guard(Program()):
+                    x = paddle.static.data(
+                        name="x", shape=[100, 52, 3, 4], dtype='float32'
+                    )
+                    out = paddle.nn.init.zeros_(x)
+                    exe = paddle.static.Executor(place=place)
+                    feed_list = {"x": x_np}
+                    pd_res = exe.run(
+                        paddle.static.default_main_program(),
+                        feed=feed_list,
+                        fetch_list=[out],
+                    )[0]
+                    self.check(pd_res)
 
-                self.assertAlmostEqual(
-                    init_op.attrs()['mean'], 0.3, delta=DELTA
-                )
-                self.assertAlmostEqual(init_op.attrs()['std'], 3.5, delta=DELTA)
-                self.assertAlmostEqual(init_op.attrs()['a'], -3.0, delta=DELTA)
-                self.assertAlmostEqual(init_op.attrs()['b'], 3.0, delta=DELTA)
-                self.assertEqual(init_op.attrs()['seed'], 0)
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    )
+    def test_fp16(self):
+        with dygraph_guard():
+            input_tensor = paddle.zeros([1024, 512], dtype='float16')
+            paddle.nn.init.zeros_(input_tensor)
+            self.check(input_tensor)
+            assert input_tensor.dtype == paddle.float16
+
+
+class Test_eye_(unittest.TestCase):
+
+    def check(self, tensor):
+        for i in range(tensor.shape[0]):
+            for j in range(tensor.shape[1]):
+                if i == j:
+                    self.assertEqual(
+                        tensor[i][j], 1, f"{tensor[i][j]}, {i}, {j}"
+                    )
+                else:
+                    self.assertEqual(
+                        tensor[i][j], 0, f"{tensor[i][j]}, {i}, {j}"
+                    )
+
+    def test_linear_dygraph(self):
+        with dygraph_guard():
+            linear = nn.Linear(40, 20)
+            init = paddle.nn.init.eye_
+            init(linear.weight)
+            self.check(linear.weight)
+
+    def test_dygraph(self):
+        with dygraph_guard():
+            input_tensor = _create_random_nd_tensor(
+                2, size_min=20, size_max=108
+            )
+            paddle.nn.init.eye_(input_tensor)
+            self.check(input_tensor)
+
+    def test_dims_error(self):
+        with dygraph_guard():
+            with self.assertRaises(AssertionError):
+                input_tensor = paddle.zeros([5, 5, 1024, 512, 10, 2])
+                paddle.nn.init.eye_(input_tensor)
+            with self.assertRaises(AssertionError):
+                input_tensor = paddle.zeros([5, 5, 4])
+                paddle.nn.init.eye_(input_tensor)
+
+    def test_static_graph_case1(self):
+        self.place = get_devices()
+        with static_guard():
+            for place in self.place:
+                x_np = np.zeros([10, 5]).astype('float32')
+                with paddle.static.program_guard(Program()):
+                    x = paddle.static.data(
+                        name="x", shape=[10, 5], dtype='float32'
+                    )
+                    out = paddle.nn.init.eye_(x)
+                    exe = paddle.static.Executor(place=place)
+                    feed_list = {"x": x_np}
+                    pd_res = exe.run(
+                        paddle.static.default_main_program(),
+                        feed=feed_list,
+                        fetch_list=[out],
+                    )[0]
+                    self.check(pd_res)
+
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    )
+    def test_fp16(self):
+        with dygraph_guard():
+            input_tensor = paddle.zeros([128, 64], dtype='float16')
+            paddle.nn.init.eye_(input_tensor)
+            self.check(input_tensor)
+            assert input_tensor.dtype == paddle.float16
+
+
+class Test_dirac_(unittest.TestCase):
+
+    def test_dygraph(self):
+        with dygraph_guard():
+            for dims in [3, 4, 5]:
+                for groups in [1, 2, 3]:
+
+                    a, c, d, e = (random.randint(1, 5) for _ in range(4))
+                    b = random.randint(1, 5 * groups)
+                    input_tensor = paddle.randn((a * groups, b, c, d, e)[:dims])
+
+                    paddle.nn.init.dirac_(input_tensor, groups)
+
+                    c_out, c_in = (
+                        input_tensor.shape[0] // groups,
+                        input_tensor.shape[1],
+                    )
+                    min_d = min(c_out, c_in)
+                    assert (
+                        paddle.nonzero(input_tensor).shape[0] == min_d * groups
+                    )
+                    self.assertEqual(input_tensor.sum(), min_d * groups)
+
+    def test_dims_error(self):
+        with dygraph_guard():
+            with self.assertRaises(AssertionError):
+                input_tensor = paddle.zeros([5, 5, 1024, 512, 10, 2])
+                paddle.nn.init.dirac_(input_tensor)
+            with self.assertRaises(AssertionError):
+                input_tensor = paddle.zeros([5, 5])
+                paddle.nn.init.dirac_(input_tensor)
+
+    def test_static_graph_case1(self):
+        self.place = get_devices()
+        with static_guard():
+            for place in self.place:
+                x_np = np.zeros([10, 5, 20]).astype('float32')
+                with paddle.static.program_guard(Program()):
+                    x = paddle.static.data(
+                        name="x", shape=[10, 5, 20], dtype='float32'
+                    )
+                    out = paddle.nn.init.dirac_(x, groups=2)
+                    exe = paddle.static.Executor(place=place)
+                    feed_list = {"x": x_np}
+                    pd_res = exe.run(
+                        paddle.static.default_main_program(),
+                        feed=feed_list,
+                        fetch_list=[out],
+                    )[0]
+
+                    c_out, c_in = pd_res.shape[0] // 2, pd_res.shape[1]
+                    min_d = min(c_out, c_in)
+                    assert np.nonzero(pd_res)[0].shape[0] == min_d * 2
+                    self.assertEqual(pd_res.sum(), min_d * 2)
+
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    )
+    def test_fp16(self):
+        with dygraph_guard():
+            input_tensor = paddle.zeros([5, 5, 1024, 512], dtype='float16')
+            paddle.nn.init.dirac_(input_tensor)
+            assert input_tensor.dtype == paddle.float16
 
 
 if __name__ == '__main__':
