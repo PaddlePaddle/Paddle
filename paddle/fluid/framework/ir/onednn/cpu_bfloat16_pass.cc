@@ -249,11 +249,11 @@ void CPUBFloat16Pass::ApplyImpl(ir::Graph* graph) const {
   int dequantize_counter = 0;
 
   GraphPatternDetector gpd;
-  patterns::Bloat16Ops Bloat16Ops{gpd.mutable_pattern(), "Bloat16Ops"};
-  Bloat16Ops();
+  patterns::Bfloat16Ops Bfloat16Ops{gpd.mutable_pattern(), "Bfloat16Ops"};
+  Bfloat16Ops();
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {
-    GET_IR_NODE_FROM_SUBGRAPH(op, op, Bloat16Ops);
+    GET_IR_NODE_FROM_SUBGRAPH(op, op, Bfloat16Ops);
 
     Quantizer quantizer(graph, op);
     quantizer.AddQuantOps();
