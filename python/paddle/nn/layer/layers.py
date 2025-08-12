@@ -65,12 +65,16 @@ if TYPE_CHECKING:
 __all__ = []
 
 
-_ForwardPreHook = Callable[
-    ["Layer", Tensor], Tensor
-]  # (layer, input) -> transformed_input
-_ForwardPostHook = Callable[
-    ["Layer", Tensor, Tensor], Tensor
-]  # (layer, input, output) -> transformed_output
+_ForwardPreHook = Union[
+    Callable[["Layer", Tensor], Tensor],  # (layer, input) -> transformed_input
+    Callable[["Layer", Tensor, dict[str, Any]], tuple[Tensor, dict[str, Any]]]
+]
+_ForwardPostHook = Union[
+    Callable[
+        ["Layer", Tensor, Tensor], Tensor
+    ],  # (layer, input, output) -> transformed_output
+    Callable[["Layer", Tensor, dict[str, Any], Tensor], Tensor]
+]
 _StateDict = Union[dict[str, Tensor], typing.OrderedDict[str, Tensor]]
 _StateDictHook = Callable[[_StateDict], None]
 
@@ -686,7 +690,7 @@ class Layer:
         Parameters:
             hook(function): a function registered as a forward post-hook
             prepend (bool): If ``True``, the provided ``hook`` will be fired
-                before all existing ``forward`` hooks on this
+                before all existing ``forward_post`` hooks on this
                 :class:`paddle.nn.Layer`.
                 Default: ``False``
             with_kwargs (bool): If ``True``, the ``hook`` will be passed the
@@ -761,7 +765,7 @@ class Layer:
         hook: _ForwardPreHook,
         *,
         prepend: bool = False,
-        with_kwargs: bool = False
+        with_kwargs: bool = False,
     ) -> HookRemoveHelper:
         """
 
@@ -776,6 +780,10 @@ class Layer:
 
         Parameters:
             hook(function): a function registered as a forward pre-hook
+            prepend (bool): If ``True``, the provided ``hook`` will be fired
+                before all existing ``forward_pre`` hooks on this
+                :class:`paddle.nn.Layer`.
+                Default: ``False``
             with_kwargs (bool): If true, the ``hook`` will be passed the kwargs
                 given to the forward function.
                 Default: ``False``
