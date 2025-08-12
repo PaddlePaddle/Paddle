@@ -98,4 +98,4 @@ jobs:
       - name: Clean up dir
         if: always()
         run: |
-          timeout /t 1800
+          timeout /t 7200
