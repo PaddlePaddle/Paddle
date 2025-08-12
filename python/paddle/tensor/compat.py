@@ -233,7 +233,7 @@ def sort(
 
     Args:
         input (Tensor): An input N-D Tensor with type float32, float64, int16,
-            int32, int64, uint8.
+            int32, int64, uint8, float16, bfloat16
         dim (int, optional): Dimension to compute indices along. The effective range
             is [-R, R), where R is Rank(x). when dim<0, it works the same way
             as dim+R. Default is -1.
@@ -261,12 +261,40 @@ def sort(
             ...                        [4,7,7,9],
             ...                        [1,7,0,6]]],
             ...                      dtype='float32')
-            >>> out1 = paddle.compat.sort(x=x, dim=-1)
-            >>> out2 = paddle.compat.sort(x=x, dim=0)
-            >>> out3 = paddle.compat.sort(x=x, dim=1, descending=True)
+            >>> out1 = paddle.compat.sort(input=x, dim=-1)
+            >>> out2 = paddle.compat.sort(x, 1, descending=True)
             >>> out1
+            SortRetType(values=Tensor(shape=[2, 3, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                [[[5., 5., 8., 9.],
+                 [0., 0., 1., 7.],
+                 [2., 4., 6., 9.]],
+
+                 [[2., 2., 4., 5.],
+                 [4., 7., 7., 9.],
+                 [0., 1., 6., 7.]]]), indices=Tensor(shape=[2, 3, 4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                [[[0, 3, 1, 2],
+                 [0, 1, 2, 3],
+                 [2, 3, 0, 1]],
+
+                 [[1, 3, 2, 0],
+                 [0, 1, 2, 3],
+                 [2, 0, 3, 1]]]))
             >>> out2
-            >>> out3
+            SortRetType(values=Tensor(shape=[2, 3, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                [[[6., 9., 9., 7.],
+                 [5., 8., 2., 5.],
+                 [0., 0., 1., 4.]],
+
+                 [[5., 7., 7., 9.],
+                 [4., 7., 4., 6.],
+                 [1., 2., 0., 2.]]]), indices=Tensor(shape=[2, 3, 4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                [[[2, 2, 0, 1],
+                 [0, 0, 2, 0],
+                 [1, 1, 1, 2]],
+
+                 [[0, 1, 1, 1],
+                 [1, 2, 0, 2],
+                 [2, 0, 2, 0]]]))
     """
     outputs, indices = _C_ops.argsort(input, dim, descending, stable)
     return SortRetType(values=outputs, indices=indices)
