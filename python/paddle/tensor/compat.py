@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 import paddle
 from paddle import _C_ops
@@ -26,7 +26,6 @@ from ..framework import (
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-
     from paddle import Tensor
 
 from paddle.utils.decorator_utils import ForbidKeywordsDecorator
@@ -64,6 +63,7 @@ def split(
         To use the original split of paddle, please consider `paddle.split`
 
     Examples:
+
         .. code-block:: python
 
             >>> import paddle
@@ -211,3 +211,62 @@ def split(
                     split_size_or_sections
                 )
             return tuple(_C_ops.split(tensor, split_size_or_sections, dim))
+
+class SortRetType(NamedTuple):
+    values: Tensor
+    indices: Tensor
+
+@ForbidKeywordsDecorator(
+    illegal_keys=['x', 'axis'],
+    func_name="paddle.compat.sort",
+    correct_name='paddle.sort',
+)
+def sort(
+    input: Tensor,
+    dim: int = -1,
+    descending: bool = False,
+    stable: bool = False,
+) -> SortRetType:
+    """
+
+    Sorts the input along the given dimension, and returns the sorted output and indices tensor. The default sort algorithm is ascending, if you want the sort algorithm to be descending, you must set the :attr:`descending` as True.
+
+    Args:
+        input (Tensor): An input N-D Tensor with type float32, float64, int16,
+            int32, int64, uint8.
+        dim (int, optional): Dimension to compute indices along. The effective range
+            is [-R, R), where R is Rank(x). when dim<0, it works the same way
+            as dim+R. Default is -1.
+        descending (bool, optional) : Descending is a flag, if set to true,
+            algorithm will sort by descending order, else sort by
+            ascending order. Default is false.
+        stable (bool, optional): Whether to use stable sorting algorithm or not.
+            When using stable sorting algorithm, the order of equivalent elements
+            will be preserved. Default is False.
+
+    Returns:
+        SortRetType, a named tuple which contains `values` and `indices`, can be accessed through either indexing
+        (e.g. `result[0]` for values and `result[1]` for indices), or by `result.values` & `result.indices`
+
+    Examples:
+
+    .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[[5,8,9,5],
+            ...                        [0,0,1,7],
+            ...                        [6,9,2,4]],
+            ...                       [[5,2,4,2],
+            ...                        [4,7,7,9],
+            ...                        [1,7,0,6]]],
+            ...                      dtype='float32')
+            >>> out1 = paddle.compat.sort(x=x, dim=-1)
+            >>> out2 = paddle.compat.sort(x=x, dim=0)
+            >>> out3 = paddle.compat.sort(x=x, dim=1, descending=True)
+            >>> out1
+            >>> out2
+            >>> out3
+    """
+    outputs, indices = _C_ops.argsort(input, dim, descending, stable)
+    return SortRetType(values=outputs, indices=indices)
