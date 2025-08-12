@@ -32,6 +32,12 @@ inline bool IsEmpty(const std::vector<int64_t>& shape) {
   return shape.empty() || shape.at(0) == 0;
 }
 
+inline bool IsSharedDim(const std::vector<int64_t>& dims_mapping) {
+  return std::any_of(dims_mapping.begin(), dims_mapping.end(), [](int64_t i) {
+    return i >= 0;
+  });
+}
+
 // Generate the axis notation of tensor for the einsum notation of a broadcast
 // operation(alignment star from the rightmost axis). tensor_ndim: the size of
 // the tensor. broadcast_ndim: the maximum size of tensors in this broadcast
