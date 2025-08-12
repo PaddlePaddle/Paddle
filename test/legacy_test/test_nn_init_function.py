@@ -1171,5 +1171,78 @@ class Test_dirac_(unittest.TestCase):
             assert input_tensor.dtype == paddle.float16
 
 
+class Test_orthogonal_(unittest.TestCase):
+
+    def check(self, tensor, gain):
+        if isinstance(tensor, paddle.Tensor):
+            tensor = tensor.numpy()
+
+        tensor = tensor.reshape([tensor.shape[0], -1])
+
+        row, col = tensor.shape
+        if row > col:
+            np.testing.assert_allclose(
+                gain**2 * np.eye(col),
+                np.matmul(tensor.T, tensor),
+                rtol=1e-5,
+                atol=1e-6,
+            )
+        else:
+            np.testing.assert_allclose(
+                gain**2 * np.eye(row),
+                np.matmul(tensor, tensor.T),
+                rtol=1e-5,
+                atol=1e-6,
+            )
+
+    def test_dygraph(self):
+        with dygraph_guard():
+            for use_gain in [True, False]:
+                for tensor_size in [
+                    [3, 4],
+                    [4, 3],
+                    [20, 2, 3, 4],
+                    [2, 3, 4, 5],
+                ]:
+                    input_tensor = paddle.zeros(tensor_size)
+                    gain = 1.0
+
+                    if use_gain:
+                        gain = _random_float(0.1, 2)
+
+                    paddle.nn.init.orthogonal_(input_tensor, gain=gain)
+
+                    self.check(input_tensor, gain=gain)
+
+    def test_dims_error(self):
+        with dygraph_guard(), self.assertRaises(AssertionError):
+            input_tensor = paddle.zeros(
+                [
+                    5,
+                ]
+            )
+            paddle.nn.init.orthogonal_(input_tensor)
+
+    def test_static_graph_case1(self):
+        self.place = get_devices()
+        with static_guard():
+            for place in self.place:
+                x_np = np.zeros([10, 5]).astype('float32')
+                with paddle.static.program_guard(Program()):
+                    x = paddle.static.data(
+                        name="x", shape=[10, 5], dtype='float32'
+                    )
+                    out = paddle.nn.init.orthogonal_(x, gain=0.4)
+                    exe = paddle.static.Executor(place=place)
+                    feed_list = {"x": x_np}
+                    pd_res = exe.run(
+                        paddle.static.default_main_program(),
+                        feed=feed_list,
+                        fetch_list=[out],
+                    )[0]
+
+                    self.check(pd_res, gain=0.4)
+
+
 if __name__ == '__main__':
     unittest.main()
