@@ -83,7 +83,8 @@ class Shard : public Placement {
 
   bool operator==(const Placement& other) const override {
     const Shard* other_shard = dynamic_cast<const Shard*>(&other);
-    return other_shard && this->dim_ == other_shard->dim_;
+    return other_shard && this->dim_ == other_shard->dim_ &&
+           this->split_factor_ == other_shard->split_factor_;
   }
 
   bool operator!=(const Placement& other) const override {
@@ -152,11 +153,21 @@ class CoShard : public Shard {
   }
 
   std::shared_ptr<Shard> copy() const override {
-    return std::make_shared<Shard>(*this);
+    return std::make_shared<CoShard>(*this);
   }
 
   std::shared_ptr<Shard> deepcopy() const override {
     return std::make_shared<CoShard>(*this);
+  }
+
+  bool operator==(const Placement& other) const override {
+    const CoShard* other_coshard = dynamic_cast<const CoShard*>(&other);
+    return other_coshard && this->dim_ == other_coshard->dim_ &&
+           other_coshard->co_shard_order_ == co_shard_order_;
+  }
+
+  bool operator!=(const Placement& other) const override {
+    return !(*this == other);
   }
 
  private:

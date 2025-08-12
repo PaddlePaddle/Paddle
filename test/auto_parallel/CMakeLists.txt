@@ -9,6 +9,7 @@ add_subdirectory(pir)
 if(WITH_DISTRIBUTE AND WITH_GPU)
 
   # NOTE(zyl): unittests WITH multi cards and timeout
+  py_test_modules(test_co_shard MODULES test_co_shard)
   py_test_modules(test_converter MODULES test_converter)
   set_tests_properties(test_converter PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
                                                  TIMEOUT 50)
