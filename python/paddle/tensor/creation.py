@@ -1706,6 +1706,7 @@ def arange(
     step: float | paddle.Tensor = 1,
     dtype: DTypeLike | None = None,
     *,
+    out: paddle.Tensor | None = None,
     device: PlaceLike | None = None,
     requires_grad: bool = False,
     name: str | None = None,
@@ -1736,6 +1737,7 @@ def arange(
         dtype(str|np.dtype, optional): The data type of the
             output tensor. Supported data types: int32, int64, float32, float64.
             If ``dtype`` is None, the data type is float32. Default is None.
+        out(Tensor, optional): The output tensor.
         device(PlaceLike|None, optional): The desired device of returned tensor.
             if None, uses the current device for the default tensor type (see paddle.device.set_device()).
             device will be the CPU for CPU tensor types and the current CUDA device for CUDA tensor types. Default: None.
@@ -1814,6 +1816,7 @@ def arange(
                 if device is not None
                 else _current_expected_place()
             ),
+            out=out,
         )
         tensor.stop_gradient = not requires_grad
         return tensor
@@ -1847,6 +1850,7 @@ def arange(
                 if device is not None
                 else _current_expected_place()
             ),
+            out=out,
         )
         tensor.stop_gradient = not requires_grad
         return tensor
