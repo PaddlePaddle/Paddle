@@ -19,7 +19,6 @@ from collections.abc import Iterable
 from typing import Any, Callable, TypeVar, cast
 
 _F = TypeVar("_F", bound=Callable[..., Any])
-warnings.simplefilter("always", category=Warning)
 
 
 class DecoratorBase:

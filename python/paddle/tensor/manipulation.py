@@ -27,6 +27,7 @@ from paddle.tensor import fill_constant
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     param_one_alias,
+    param_two_alias,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -3463,7 +3464,7 @@ def squeeze_(
         return _C_ops.squeeze_(input, axes)
 
 
-@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def unique_consecutive(
     x: Tensor,
     return_inverse: bool = False,
