@@ -14,10 +14,6 @@
 
 import unittest
 
-import numpy as np
-
-import paddle
-import paddle.distributed as dist
 from paddle.distributed.auto_parallel.static.dist_attribute import (
     DistTensorSpec,
     TensorDistAttr,
@@ -798,52 +794,6 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.assertEqual(inferred_input_dist_attrs[1]._is_partial(), False)
         self.assertEqual(inferred_output_dist_attrs[0]._is_partial(), True)
         self.assertEqual(inferred_output_dist_attrs[0]._partial_dims(), {1})
-
-    def test_co_shard_for_binary_elementwise(self):
-        a = paddle.randn([64, 64], dtype='float32')
-        b = paddle.randn([64, 64], dtype='float32')
-        # [[0],[1]],[[0,1],[]]->[[0],[1]], [[0],[1]], [[0],[1]]
-        mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=['x', 'y'])
-        placements1 = [dist.Shard(0), dist.Shard(1)]
-        placements2 = [
-            dist.Shard(dim=0, shard_order=0),
-            dist.Shard(dim=0, shard_order=1),
-        ]
-        x = dist.shard_tensor(a, mesh, placements1)
-        y = dist.shard_tensor(b, mesh, placements2)
-        out = paddle.add(x, y)
-        np.testing.assert_equal(str(x.placements[0]), "Shard(dim=0)")
-        np.testing.assert_equal(str(x.placements[1]), "Shard(dim=1)")
-        np.testing.assert_equal(str(y.placements[0]), "Shard(dim=0)")
-        np.testing.assert_equal(str(y.placements[1]), "Shard(dim=1)")
-        np.testing.assert_equal(out.shape, [64, 64])
-        np.testing.assert_equal(str(out.placements[0]), "Shard(dim=0)")
-        np.testing.assert_equal(str(out.placements[1]), "Shard(dim=1)")
-        # [[0],[]], [[1],[]] ->[[0,1],[]], [[0,1],[]], [[0,1],[]]
-        placements1 = [dist.Shard(0), dist.Replicate()]
-        placements2 = [dist.Shard(1), dist.Replicate()]
-        x = dist.shard_tensor(a, mesh, placements1)
-        y = dist.shard_tensor(b, mesh, placements2)
-        out = paddle.add(x, y)
-        np.testing.assert_equal(
-            str(x.placements[0]), "Shard(dim=0, shard_order=0)"
-        )
-        np.testing.assert_equal(
-            str(x.placements[1]), "Shard(dim=0, shard_order=1)"
-        )
-        np.testing.assert_equal(
-            str(y.placements[0]), "Shard(dim=0, shard_order=0)"
-        )
-        np.testing.assert_equal(
-            str(y.placements[1]), "Shard(dim=0, shard_order=1)"
-        )
-        np.testing.assert_equal(out.shape, [64, 64])
-        np.testing.assert_equal(
-            str(out.placements[0]), "Shard(dim=0, shard_order=0)"
-        )
-        np.testing.assert_equal(
-            str(out.placements[1]), "Shard(dim=0, shard_order=1)"
-        )
 
 
 if __name__ == "__main__":

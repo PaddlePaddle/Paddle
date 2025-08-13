@@ -92,6 +92,7 @@ SpmdInfo LayerNormInferSpmd(const DistMetaTensor& x,
       for (const auto& dim : x_dims_mapping[i]) {
         x_dims_mapping[begin_norm_axis - 1].emplace_back(dim);
       }
+      x_dims_mapping[i].clear();
     }
   }
   std::unordered_map<std::string, std::vector<int64_t>> axis_to_dim_map =
@@ -380,11 +381,13 @@ SpmdInfo LayerNormGradInferSpmd(const DistMetaTensor& x,
         for (const auto& dim : x_dims_mapping[i]) {
           x_dims_mapping[begin_norm_axis - 1].emplace_back(dim);
         }
+        x_dims_mapping[i].clear();
       }
       if (!out_grad_dims_mapping[i].empty()) {
         for (const auto& dim : out_grad_dims_mapping[i]) {
           out_grad_dims_mapping[begin_norm_axis - 1].emplace_back(dim);
         }
+        out_grad_dims_mapping[i].clear();
       }
     }
     axes_sharding_info.emplace_back(annotations[0], x_dims_mapping);

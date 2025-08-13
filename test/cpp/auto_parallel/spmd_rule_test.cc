@@ -2026,7 +2026,7 @@ TEST(ElementwiseBinaryLike, Ctor) {
   TensorDistAttr out_grad_dist_attr = TensorDistAttr();
   out_grad_dist_attr.set_process_mesh(process_mesh);
   out_grad_dist_attr.set_dims_mapping(
-      std::vector<std::vector<int64_t>>({{}, {}, {0, 1}}));
+      std::vector<std::vector<int64_t>>({{}, {}, {0}}));
   out_grad_dist_attr.set_dynamic_dims(std::vector<bool>({false, false, false}));
   phi::distributed::DistMetaTensor out_grad(common::make_ddim(x_shape),
                                             out_grad_dist_attr);
@@ -2036,11 +2036,11 @@ TEST(ElementwiseBinaryLike, Ctor) {
   output_size = 2;
   EXPECT_EQ(backward_info.first.size(), input_size);
   EXPECT_EQ(backward_info.second.size(), output_size);
-  check_multi_dims_mapping(backward_info.first[0], {{}, {}, {0, 1}});
-  check_multi_dims_mapping(backward_info.first[1], {{}, {}, {0, 1}});
-  check_multi_dims_mapping(backward_info.first[2], {{}, {}, {0, 1}});
-  check_multi_dims_mapping(backward_info.second[0], {{}, {}, {0, 1}});
-  check_multi_dims_mapping(backward_info.second[1], {{}, {}, {0, 1}});
+  check_multi_dims_mapping(backward_info.first[0], {{}, {0, 1}, {}});
+  check_multi_dims_mapping(backward_info.first[1], {{}, {0, 1}, {}});
+  check_multi_dims_mapping(backward_info.first[2], {{}, {0, 1}, {}});
+  check_multi_dims_mapping(backward_info.second[0], {{}, {0, 1}, {}});
+  check_multi_dims_mapping(backward_info.second[1], {{}, {0, 1}, {}});
   VLOG(4) << "test backward done.";
 }
 

@@ -194,6 +194,79 @@ class TestCoShard:
         np.testing.assert_equal(str(add_out.placements[0]), "Shard(dim=0)")
         np.testing.assert_equal(str(add_out.placements[1]), "Replicate()")
 
+    def test_co_shard_for_binary_elementwise(self):
+        a = paddle.randn([64, 64], dtype='float32')
+        b = paddle.randn([64, 64], dtype='float32')
+        # [[0],[1]],[[0,1],[]]->[[0],[1]], [[0],[1]], [[0],[1]]
+        mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=['x', 'y'])
+        placements1 = [dist.Shard(0), dist.Shard(1)]
+        placements2 = [
+            dist.Shard(dim=0, shard_order=0),
+            dist.Shard(dim=0, shard_order=1),
+        ]
+        x = dist.shard_tensor(a, mesh, placements1)
+        y = dist.shard_tensor(b, mesh, placements2)
+        out = paddle.add(x, y)
+        np.testing.assert_equal(str(x.placements[0]), "Shard(dim=0)")
+        np.testing.assert_equal(str(x.placements[1]), "Shard(dim=1)")
+        np.testing.assert_equal(str(y.placements[0]), "Shard(dim=0)")
+        np.testing.assert_equal(str(y.placements[1]), "Shard(dim=1)")
+        np.testing.assert_equal(out.shape, [64, 64])
+        np.testing.assert_equal(str(out.placements[0]), "Shard(dim=0)")
+        np.testing.assert_equal(str(out.placements[1]), "Shard(dim=1)")
+        # [[0],[]], [[1],[]] ->[[0,1],[]], [[0,1],[]], [[0,1],[]]
+        placements1 = [dist.Shard(0), dist.Replicate()]
+        placements2 = [dist.Shard(1), dist.Replicate()]
+        x = dist.shard_tensor(a, mesh, placements1)
+        y = dist.shard_tensor(b, mesh, placements2)
+        out = paddle.add(x, y)
+        np.testing.assert_equal(
+            str(x.placements[0]), "Shard(dim=0, shard_order=0)"
+        )
+        np.testing.assert_equal(
+            str(x.placements[1]), "Shard(dim=0, shard_order=1)"
+        )
+        np.testing.assert_equal(
+            str(y.placements[0]), "Shard(dim=0, shard_order=0)"
+        )
+        np.testing.assert_equal(
+            str(y.placements[1]), "Shard(dim=0, shard_order=1)"
+        )
+        np.testing.assert_equal(out.shape, [64, 64])
+        np.testing.assert_equal(
+            str(out.placements[0]), "Shard(dim=0, shard_order=0)"
+        )
+        np.testing.assert_equal(
+            str(out.placements[1]), "Shard(dim=0, shard_order=1)"
+        )
+
+    def test_co_shard_for_layernorm(self):
+        x = paddle.rand((64, 32, 128, 128))
+        layer_norm = paddle.nn.LayerNorm(x.shape[1:])
+
+        mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=['x', 'y'])
+        # [[0],[1],[],[]] -> [[0,1],[],[]] | [[0,1],[],[]]
+        placements = [
+            dist.Shard(dim=0),
+            dist.Shard(dim=1),
+            dist.Replicate(),
+            dist.Replicate(),
+        ]
+        input = dist.shard_tensor(x, mesh, placements)
+        out = layer_norm(input)
+        np.testing.assert_equal(
+            str(input.placements[0]), "Shard(dim=0, shard_order=0)"
+        )
+        np.testing.assert_equal(
+            str(input.placements[1]), "Shard(dim=0, shard_order=1)"
+        )
+        np.testing.assert_equal(
+            str(out.placements[0]), "Shard(dim=0, shard_order=0)"
+        )
+        np.testing.assert_equal(
+            str(out.placements[1]), "Shard(dim=0, shard_order=1)"
+        )
+
     def run_test_case_main(self):
         self.basic_interface_case()
         self.run_test_case_0()
@@ -201,6 +274,8 @@ class TestCoShard:
         self.run_test_case_2()
         self.run_test_case_3()
         self.run_test_case_4()
+        self.test_co_shard_for_binary_elementwise()
+        self.test_co_shard_for_layernorm()
 
 
 if __name__ == '__main__':
