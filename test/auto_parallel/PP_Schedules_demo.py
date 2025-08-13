@@ -390,14 +390,16 @@ class Test_Schedules:
             for i, (data, label) in enumerate(loader):
                 # reorder data and label
                 batch_size = data.shape[0]
-                even_indices = list(range(0, batch_size, 2))  
-                odd_indices = list(range(1, batch_size, 2))  
-                reordered_indices = even_indices + odd_indices              
-                
+                even_indices = list(range(0, batch_size, 2))
+                odd_indices = list(range(1, batch_size, 2))
+                reordered_indices = even_indices + odd_indices
+
                 reordered_data = data[reordered_indices]
                 reordered_label = label[reordered_indices]
-                
-                dist_data = dist.shard_tensor(reordered_data, pp_mesh0, dp_pp_pleacement)
+
+                dist_data = dist.shard_tensor(
+                    reordered_data, pp_mesh0, dp_pp_pleacement
+                )
                 dist_label = dist.shard_tensor(
                     reordered_label, pp_mesh1, dp_pp_pleacement
                 )
@@ -487,7 +489,7 @@ class Test_Schedules:
             opt.step()
             opt.clear_grad()
         return losses_by_step
-    
+
     def test_FthenB_align_mode_of_GradientClipByGlobalNorm(self):
         fix_seeds()
         paddle.set_flags(
@@ -534,9 +536,7 @@ class Test_Schedules:
                     )
             opt.step()
             opt.clear_grad()
-        paddle.set_flags(
-            {'FLAGS_enable_auto_parallel_align_mode': False}
-        )
+        paddle.set_flags({'FLAGS_enable_auto_parallel_align_mode': False})
         return losses_by_step
 
     def test_dp_pp_align_mode(self):
@@ -608,9 +608,7 @@ class Test_Schedules:
                     )
             opt.step()
             opt.clear_grad()
-        paddle.set_flags(
-            {'FLAGS_enable_auto_parallel_align_mode': False}
-        )
+        paddle.set_flags({'FLAGS_enable_auto_parallel_align_mode': False})
         return losses_by_step, all_losses_in_one_step_md5sum
 
     def run_test(self):
