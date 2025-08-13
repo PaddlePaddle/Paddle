@@ -523,7 +523,7 @@ TEST(LayerNormSPMDRule, Ctor) {
   // {{0}, {1}, {}} {{}} {{}}->{{0, 1}, {}, {}} {{}} {{}} | {{0, 1}, {}, {}}
   // {{0, 1}} {{0, 1}}
   begin_norm_axis = 1;
-  std::vector<std::vector<int64_t>> dims_mapping = {{0}, {1}, {}};
+  dims_mapping = {{0}, {1}, {}};
   x_dist_attr.set_dims_mapping(dims_mapping);
   scale_dist_attr.set_dims_mapping(std::vector<int64_t>{-1});
   bias_dist_attr.set_dims_mapping(std::vector<int64_t>{-1});
