@@ -510,10 +510,7 @@ class PipelineLayer(nn.Layer):
             self._build_layer()
 
         self.comm_key_to_layer_name = {}
-        if self._num_stages > 1:
-            self.shared_comm = self._construct_shared_comm()
-        else:
-            self.shared_comm = {}
+        self.shared_comm = self._construct_shared_comm()
         self._synchronize_shared_weights()
 
     def get_stage_from_index(self, layer_idx):
@@ -544,7 +541,7 @@ class PipelineLayer(nn.Layer):
     def _construct_shared_comm(self):
         shared_comm = {}
         if self._topo.get_dim("pipe") == 1:
-            return
+            return shared_comm
 
         # The first loop gets the pivot stage and all different shared_weight_attrs for one layer name.
         # Maps stage idx to all shared attrs of each different layer names on that stage.
@@ -1004,12 +1001,9 @@ class PipelineLayer(nn.Layer):
                             param.is_firstly_shared = True
 
                 if layer.forward_func is None:
-                    if self._num_stages == 1:
-                        run_function.append(layer.build_layer())
-                    else:
-                        run_function.append(
-                            self.shared_layers[layer.layer_name]
-                        )
+                    run_function.append(
+                        self.shared_layers[layer.layer_name]
+                    )
 
                 else:
                     run_function.append(

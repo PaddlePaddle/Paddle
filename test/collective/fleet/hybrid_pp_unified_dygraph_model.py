@@ -1,5 +1,6 @@
 import unittest
 import numpy as np
+import random
 
 import paddle
 import paddle.distributed as dist
@@ -16,13 +17,19 @@ from paddle.distributed.fleet.meta_parallel import (
 batch_size = 5
 micro_batch_size = 1
 
+def set_random_seed(seed, dp_id, rank_id):
+    """Set random seed for reproducibility."""
+    random.seed(seed)
+    np.random.seed(seed + dp_id)
+    paddle.seed(seed + dp_id)
+
 class RandomDataset(Dataset):
     def __init__(self, num_samples):
         self.num_samples = num_samples
 
     def __getitem__(self, idx):
-        input_ids = np.random.random([5]).astype('int64')
-        label = np.random.randint(0, 5, (5)).astype('int64')
+        input_ids = np.random.randint(0, 20, [10]).astype('int64')
+        label = np.random.randint(0, 20, (10)).astype('int64')
         return input_ids, label
 
     def __len__(self):
@@ -36,18 +43,29 @@ class EmbeddingPipe(nn.Layer):
     def __init__(self, **kwargs):
         super().__init__()
         self.embed_tokens = nn.Embedding(kwargs["num_embeddings"], kwargs["embedding_dim"])
+        #print(f"liyurui, embeding weight init = {self.embedding_weight._md5sum()}")
 
     def forward(self, input_ids):
+        #print(f"liyurui, input_ids is {input_ids}")
+        #print(f"liyurui, input_ids is {input_ids._md5sum()}, weight={self.embedding_weight._md5sum()}")
         hidden_states = self.embed_tokens.forward(input_ids)
+        #print(f"liyurui, hidden_states of embedding pipe {hidden_states._md5sum()}")
         return (hidden_states, input_ids)
 
     @property
     def embedding_weight(self):
         return getattr(self.embed_tokens, "weight")
 
+def mtp_forward(layer, args):
+    hidden_states = args[0]
+    input_ids = args[1]
+    embed = layer.forward(input_ids)
+    output = embed[0] + hidden_states
+    return (output, input_ids)
 
 class MTPEmbeddingPipe(EmbeddingPipe):
     def forward(self, args):
+        #print(f"liyurui, input of MTPEmbedding is {args}")
         hidden_states = args[0]
         input_ids = args[1]
         embed = super().forward(input_ids)
@@ -87,23 +105,23 @@ class UnifiedPPModel(PipelineLayer):
         self._sequential_layers = []
         self.num_layer = 4
 
-        #self.add_sequential_layer(
-        #   SharedLayerDesc(
-        #       key="embed_weight_share",
-        #       layer_func=EmbeddingPipe,
-        #       shared_weight_attr="embedding_weight",
-        #       num_embeddings=vocab_size,
-        #       embedding_dim=hidden_size,
-        #   ),
-        #   "embed",
-        #)
         self.add_sequential_layer(
-            LayerDesc(
-                EmbeddingPipe,
-                num_embeddings=vocab_size,
-                embedding_dim=hidden_size,
-            ), "embed"
+           SharedLayerDesc(
+               key="embed_weight_share",
+               layer_func=EmbeddingPipe,
+               shared_weight_attr="embedding_weight",
+               num_embeddings=vocab_size,
+               embedding_dim=hidden_size,
+           ),
+           "embed",
         )
+        #self.add_sequential_layer(
+        #    LayerDesc(
+        #        EmbeddingPipe,
+        #        num_embeddings=vocab_size,
+        #        embedding_dim=hidden_size,
+        #    ), "embed"
+        #)
 
         for i in range(self.num_layer):
             self.add_sequential_layer(
@@ -119,13 +137,22 @@ class UnifiedPPModel(PipelineLayer):
         self.add_sequential_layer(
            SharedLayerDesc(
                key="embed_weight_share",
-               layer_func=MTPEmbeddingPipe,
+               #layer_func=MTPEmbeddingPipe,
+               layer_func=EmbeddingPipe,
                shared_weight_attr="embedding_weight",
+               forward_func=mtp_forward,
                num_embeddings=vocab_size,
                embedding_dim=hidden_size,
            ),
            "embed_shared",
         )
+        #self.add_sequential_layer(
+        #    LayerDesc(
+        #        MTPEmbeddingPipe,
+        #        num_embeddings=vocab_size,
+        #        embedding_dim=hidden_size,
+        #    ), "embed"
+        #)
 
         self.add_sequential_layer(
            LayerDesc(
@@ -177,6 +204,12 @@ class TestDistPPTraining(unittest.TestCase):
         return model, optimizer
 
     def test_unified_pp_model(self):
+        hcg = fleet.get_hybrid_communicate_group()
+        dp_id = hcg.get_data_parallel_rank()
+        pp_id = hcg.get_stage_id()
+        rank_id = dist.get_rank()
+        set_random_seed(1024, dp_id, rank_id)
+
         unified_model_pp = UnifiedPPModel(num_stages=self.pipeline_parallel_size)
         unified_scheduler_pp, unified_optimizer_pp = self.build_optimizer(unified_model_pp)
         unified_model_pp, unified_optimizer_pp = self.wrapper_mix_precision(unified_model_pp, unified_optimizer_pp)
@@ -185,6 +218,32 @@ class TestDistPPTraining(unittest.TestCase):
 
         unified_model_nonpp = UnifiedPPModel(num_stages=1)
         unified_scheduler_nonpp, unified_optimizer_nonpp = self.build_optimizer(unified_model_nonpp)
+
+        pp_id_sname = {}
+        for n, p in unified_model_pp.named_parameters():
+            pp_id_sname[id(p)] = n
+
+        #for p in unified_model_pp.parameters():
+        #    print(f"liyurui, pp parameter is {pp_id_sname[id(p)]}, {p.name}, {p.shape}")
+
+        nonpp_id_sname = {}
+        for n, p in unified_model_nonpp.named_parameters():
+            nonpp_id_sname[id(p)] = n
+
+        #for p in unified_model_nonpp.parameters():
+        #    print(f"liyurui, nonpp parameter is {nonpp_id_sname[id(p)]}, {p.name}, {p.shape}")
+
+        # reset to make pp and nonpp model have same parameters value
+        if pp_id == 0:
+            unified_model_pp.parameters()[0].set_value(unified_model_nonpp.parameters()[0])
+            unified_model_pp.parameters()[1].set_value(unified_model_nonpp.parameters()[1])
+            unified_model_pp.parameters()[2].set_value(unified_model_nonpp.parameters()[2])
+        else:
+            #unified_model_pp.parameters()[0].set_value(unified_model_nonpp.parameters()[0])
+            unified_model_pp.parameters()[1].set_value(unified_model_nonpp.parameters()[3])
+            unified_model_pp.parameters()[2].set_value(unified_model_nonpp.parameters()[4])
+            unified_model_pp.parameters()[3].set_value(unified_model_nonpp.parameters()[5])
+            #unified_model_pp.parameters()[3].set_value(unified_model_nonpp.parameters()[6])
 
         dataset = RandomDataset(5 * batch_size)
 
@@ -196,17 +255,43 @@ class TestDistPPTraining(unittest.TestCase):
             num_workers=2,
         )
 
+        for p in unified_model_pp.parameters():
+            print(f"liyurui, pp parameter is {pp_id_sname[id(p)]}, {p.name}, {p._md5sum()}")
+
+        for p in unified_model_nonpp.parameters():
+            print(f"liyurui, nonpp parameter is {nonpp_id_sname[id(p)]}, {p.name}, {p._md5sum()}")
+
         for _, (input_ids, label) in enumerate(train_reader()):
-            print(f"liyurui, input_ids is {input_ids.shape}, {input_ids.dtype}, label is {label.shape}, {label.dtype}")
+            #print(f"liyurui, input_ids is {input_ids.shape}, {input_ids.dtype}, label is {label.shape}, {label.dtype}")
             pp_loss = unified_model_pp.train_batch([input_ids, label], unified_optimizer_pp, unified_scheduler_pp)
             print(f"liyurui, pp_loss is {pp_loss}")
 
-            nonpp_output = unified_model_nonpp(input_ids)
-            loss_fn = nn.loss.CrossEntropyLoss()
-            nonpp_loss = loss_fn(nonpp_output[0], label)
+            num_acc = batch_size // micro_batch_size
+            micro_input_ids = paddle.split(input_ids, num_acc)
+            micro_labels = paddle.split(label, num_acc)
+
+            nonpp_loss = 0
+            for micro_input, micro_label in zip(micro_input_ids, micro_labels):
+                nonpp_output = unified_model_nonpp(micro_input)
+                loss_fn = nn.loss.CrossEntropyLoss()
+                loss = loss_fn(nonpp_output[0], micro_label) / num_acc
+                loss.backward()
+                nonpp_loss += loss.detach()
             print(f"liyurui, nonpp_loss is {nonpp_loss}")
 
-            return
+            #for p in unified_model_nonpp.parameters():
+            #    print(f"nonpp {p.name}@grad, sname: {nonpp_id_sname[id(p)]}, {p.grad._md5sum()}")
+            #    #if hasattr(p, "main_grad") and p.main_grad is not None:
+            #    #    print(f"nonpp {p.name}@grad, sname: {nonpp_id_sname[id(p)]}, {p.main_grad._md5sum()}")
+
+            #for p in unified_model_pp.parameters():
+            #    print(f"pp {p.name}@grad, sname: {pp_id_sname[id(p)]}, {p.grad._md5sum()}")
+            #    #if hasattr(p, "main_grad") and p.main_grad is not None:
+            #    #    print(f"pp {p.name}@grad, sname: {pp_id_sname[id(p)]}, {p.main_grad._md5sum()}")
+
+            unified_optimizer_nonpp.step()
+            unified_optimizer_nonpp.clear_grad()
+            unified_scheduler_nonpp.step()
 
 
 if __name__ == "__main__":
