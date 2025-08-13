@@ -256,7 +256,11 @@ class AoAEngine:
                 elif len(right_vars) == 1:
                     in_name = right_vars[0].name
                     in_ref = _get_var_ref(right_vars[0])
-                    sizes = [var.shape[axis] for var in left_vars]
+                    assert in_ref.shape[axis] % len(left_vars) == 0
+                    sizes = [
+                        in_ref.shape[axis] // len(left_vars)
+                        for var in left_vars
+                    ]
                     result = self.split(in_ref, axis, sizes)
                     for out_var, out_ref in zip(left_vars, result):
                         intermediate_vars[out_var.name] = out_ref
