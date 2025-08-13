@@ -4854,7 +4854,7 @@ def broadcast_to(
             [[1, 2, 3],
              [1, 2, 3]])
     """
-    return expand(x, shape, name, out=out)
+    return expand(x, shape, out, name)
 
 
 def expand(
