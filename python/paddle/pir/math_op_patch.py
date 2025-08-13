@@ -434,6 +434,9 @@ def monkey_patch_value():
             methods.append((method_name, method_impl))
         return methods
 
+    def type_as(self, other):
+        return self.astype(other.dtype)
+
     def _scalar_add_(var, value):
         return paddle.scale(var, 1.0, value)
 
@@ -1175,6 +1178,7 @@ def monkey_patch_value():
         ('astype', astype),
         ('byte', byte),
         ('uint8', byte),
+        ('type_as', type_as),
         ('size', _size_),
         ('T', _T_),
         ('mT', _mT_),

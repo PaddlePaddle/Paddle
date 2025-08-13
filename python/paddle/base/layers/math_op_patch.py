@@ -382,6 +382,9 @@ def monkey_patch_variable():
         out.stop_gradient = self.stop_gradient
         return out
 
+    def type_as(self, other):
+        return self.astype(other.dtype)
+
     @static_only
     def append(self, var):
         """
@@ -799,6 +802,7 @@ def monkey_patch_variable():
         ('__neg__', _neg_),
         ('__abs__', _abs_),
         ('astype', astype),
+        ('type_as', type_as),
         ('cpu', cpu),
         ('cuda', cuda),
         ('place', place),
