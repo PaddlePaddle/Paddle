@@ -70,7 +70,6 @@ PHI_DEFINE_string(rccl_dir,
 
 #ifdef PADDLE_WITH_FLAGCX
 COMMON_DECLARE_string(flagcx_dir);
-#endif
 
 PHI_DEFINE_EXPORTED_string(
     flagcx_dir,  // NOLINT
@@ -78,6 +77,7 @@ PHI_DEFINE_EXPORTED_string(
     "Specify path for loading libflagcx.so. For instance, "
     "For instance, /usr/local/flagcx/lib. If default, "
     "dlopen will search flagcx from LD_LIBRARY_PATH");
+#endif
 
 #ifdef PADDLE_WITH_XPU
 PD_DEFINE_string(xpti_dir, "", "Specify path for loading libxpti.so.");
