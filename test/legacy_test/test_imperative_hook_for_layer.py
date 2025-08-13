@@ -304,6 +304,20 @@ class Test_Forward_Hook(unittest.TestCase):
         self.assertEqual(stack, [2, -1, 2, -1, 2, -1, 2, -1])
 
 
+        # make sure that always called forward hooks are properly removed
+        forward_post_hook_handle.remove()
+        forward_post_hook_handle2.remove()
+        self.assertTrue(len(net._forward_post_hooks_always_called) == 0)
+
+        # make sure that always called forward hook is not run twice if it fails while running
+        forward_post_hook_handle3 = net.register_forward_post_hook(
+            ctx_shutdown_failure_hook, always_call=True
+        )
+        with self.assertRaisesRegex(RuntimeError, "failing in ctx setup"):
+            net(x, fail=False)
+        self.assertEqual(stack, [2, -1, 2, -1, 2, -1, 2, -1, 2, -1])
+
+
 class TestHookWithKWArgs(unittest.TestCase):
     def test_kwargs_hook(self):
         x = paddle.randn((2, 3))
