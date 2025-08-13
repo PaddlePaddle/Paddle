@@ -561,6 +561,38 @@ def nonzero(x: Tensor, as_tuple=False):
         return tuple(list_out)
 
 
+def argwhere(input: Tensor) -> Tensor:
+    """
+    Return a tensor containing the indices of all non-zero elements of the `input`
+    tensor. The returned tensor has shape [z, n], where `z` is the number of all non-zero
+    elements in the `input` tensor, and `n` is the number of dimensions in the `input`
+    tensor.
+
+    Args:
+        input (Tensor): The input tensor variable.
+
+    Returns:
+        Tensor, The data type is int64.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[1.0, 0.0, 0.0],
+            ...                       [0.0, 2.0, 0.0],
+            ...                       [0.0, 0.0, 3.0]])
+            >>> out = paddle.tensor.search.argwhere(x)
+            >>> print(out)
+            Tensor(shape=[3, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 0],
+             [1, 1],
+             [2, 2]])
+    """
+    return nonzero(input, as_tuple=False)
+
+
 def _restrict_nonzero(condition: Tensor, total_true_num: int) -> Tensor:
     """
     Return a tensor containing the indices of all non-zero elements of the `input`
@@ -796,7 +828,7 @@ def where(
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        Tensor, A Tensor with the same shape as :attr:`condition` and same data type as :attr:`x` and :attr:`y`.
+       Tensor, A Tensor with the same shape as :attr:`condition` and same data type as :attr:`x` and :attr:`y`. If :attr:`x` and :attr:`y` have different data types, type promotion rules will be applied (see `Auto Type Promotion <https://www.paddlepaddle.org.cn/documentation/docs/en/develop/guides/advanced/auto_type_promotion_en.html#introduction-to-data-type-promotion>`_).
 
     Examples:
 
@@ -814,15 +846,14 @@ def where(
 
             >>> out = paddle.where(x>1)
             >>> print(out)
-            (Tensor(shape=[2, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[2],
-             [3]]),)
+            (Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [2, 3]),)
     """
     if np.isscalar(x):
-        x = paddle.full([1], x, np.array([x]).dtype.name)
+        x = paddle.to_tensor(x)
 
     if np.isscalar(y):
-        y = paddle.full([1], y, np.array([y]).dtype.name)
+        y = paddle.to_tensor(y)
 
     if x is None and y is None:
         return nonzero(condition, as_tuple=True)

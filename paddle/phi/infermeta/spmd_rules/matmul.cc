@@ -291,7 +291,7 @@ SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x_,
                              bool trans_y) {
   DistMetaTensor x = x_, y = y_;
   auto get_attr = [](const ArgDistAttr& attr) -> const TensorDistAttr& {
-    return paddle::get<TensorDistAttr>(attr);
+    return PADDLE_GET_CONST(TensorDistAttr, attr);
   };
 
   auto confirm_dist_attr_same_fn = [&](const ArgDistAttr& x_dist_attr,

@@ -1765,7 +1765,7 @@
   attrs :
     {scale_data : Scale_data, shift_data : Shift_data, scale_weights : Scale_weights}
   extra :
-    attrs : [bool use_mkldnn = true, bool use_onednn = false, str mkldnn_data_type = "float32"]
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32"]
 
 - op : fusion_repeated_fc_relu
   inputs :

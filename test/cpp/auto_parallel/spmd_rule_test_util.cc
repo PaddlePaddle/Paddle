@@ -22,14 +22,16 @@ const std::vector<int64_t>& get_dims_mapping(
     const phi::distributed::ArgDistAttr& dist_attr) {
   EXPECT_TRUE(
       paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr));
-  const auto& tensor_attr = paddle::get<0>(dist_attr);
+  const auto& tensor_attr =
+      PADDLE_GET_CONST(phi::distributed::TensorDistAttr, dist_attr);
   return tensor_attr.dims_mapping();
 }
 
 bool is_partial(const phi::distributed::ArgDistAttr& dist_attr) {
   EXPECT_TRUE(
       paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr));
-  const auto& tensor_attr = paddle::get<0>(dist_attr);
+  const auto& tensor_attr =
+      PADDLE_GET_CONST(phi::distributed::TensorDistAttr, dist_attr);
   return tensor_attr.is_partial();
 }
 
@@ -37,7 +39,8 @@ const std::set<int64_t> get_partial_dims(
     const phi::distributed::ArgDistAttr& dist_attr) {
   EXPECT_TRUE(
       paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr));
-  const auto& tensor_attr = paddle::get<0>(dist_attr);
+  const auto& tensor_attr =
+      PADDLE_GET_CONST(phi::distributed::TensorDistAttr, dist_attr);
   return tensor_attr.partial_dims();
 }
 
@@ -74,7 +77,8 @@ void check_empty_dist_attr(const phi::distributed::ArgDistAttr& dist_attr,
   EXPECT_TRUE(
       paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr))
       << line;
-  EXPECT_EQ(paddle::get<0>(dist_attr), phi::distributed::TensorDistAttr());
+  EXPECT_EQ(PADDLE_GET_CONST(phi::distributed::TensorDistAttr, dist_attr),
+            phi::distributed::TensorDistAttr());
 }
 
 void check_partial_dims(const phi::distributed::ArgDistAttr& dist_attr,
@@ -89,7 +93,7 @@ void check_partial_dims(const phi::distributed::ArgDistAttr& dist_attr,
 void clean_partial_status(phi::distributed::ArgDistAttr* dist_attr) {
   EXPECT_TRUE(
       paddle::holds_alternative<phi::distributed::TensorDistAttr>(*dist_attr));
-  auto& tensor_attr = paddle::get<0>(*dist_attr);
+  auto& tensor_attr = PADDLE_GET(phi::distributed::TensorDistAttr, *dist_attr);
   tensor_attr.clean_partial_status();
 }
 
@@ -97,7 +101,7 @@ void clean_partial_dims(phi::distributed::ArgDistAttr* dist_attr,
                         std::vector<int64_t> dims) {
   EXPECT_TRUE(
       paddle::holds_alternative<phi::distributed::TensorDistAttr>(*dist_attr));
-  auto& tensor_attr = paddle::get<0>(*dist_attr);
+  auto& tensor_attr = PADDLE_GET(phi::distributed::TensorDistAttr, *dist_attr);
   tensor_attr.clean_partial_dims(dims);
 }
 
@@ -105,7 +109,7 @@ void set_partial_status(phi::distributed::ArgDistAttr* dist_attr,
                         std::vector<int64_t> dims) {
   EXPECT_TRUE(
       paddle::holds_alternative<phi::distributed::TensorDistAttr>(*dist_attr));
-  auto& tensor_attr = paddle::get<0>(*dist_attr);
+  auto& tensor_attr = PADDLE_GET(phi::distributed::TensorDistAttr, *dist_attr);
   tensor_attr.set_partial_status(dims);
 }
 
