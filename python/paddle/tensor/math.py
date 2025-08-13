@@ -707,13 +707,14 @@ def _elementwise_op(helper):
 def add(
     x: Tensor,
     y: Tensor,
+    name: str | None = None,
+    *,
     alpha: Number = 1,
     out: Tensor | None = None,
-    name: str | None = None,
 ) -> Tensor:
     """
     Elementwise Add Operator.
-    Add two tensors element-wise to tensor.
+    Add two tensors element-wise.
     The equation is:
 
     ..  math::
@@ -796,7 +797,11 @@ def add(
 @ParamAliasDecorator({"x": ["input"], "y": ["other"]})
 @inplace_apis_in_dygraph_only
 def add_(
-    x: Tensor, y: Tensor, alpha: Number = 1, name: str | None = None
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+    *,
+    alpha: Number = 1,
 ) -> Tensor:
     """
     Inplace version of ``add`` API, the output Tensor will be inplaced with input ``x``.
