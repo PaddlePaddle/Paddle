@@ -2026,7 +2026,7 @@ TEST(ElementwiseBinaryLike, Ctor) {
   TensorDistAttr out_grad_dist_attr = TensorDistAttr();
   out_grad_dist_attr.set_process_mesh(process_mesh);
   out_grad_dist_attr.set_dims_mapping(
-      std::vector<std::vector<int64_t>>({{}, {}, {0}}));
+      std::vector<std::vector<int64_t>>({{}, {}, {0, 1}}));
   out_grad_dist_attr.set_dynamic_dims(std::vector<bool>({false, false, false}));
   phi::distributed::DistMetaTensor out_grad(common::make_ddim(x_shape),
                                             out_grad_dist_attr);
