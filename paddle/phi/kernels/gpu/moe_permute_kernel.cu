@@ -65,10 +65,12 @@ __global__ __launch_bounds__(512) void tokens_unzip_stable_kernel(
   int local_expert_offsets;
   const int block_row_base = blockIdx.x * CUMSUM_BLOCK_SIZE;
   int cumsum_offset = (blockIdx.x != 0) * CUMSUM_INVALID_TAG;
-  __shared__ expert_infos_t
-      shared_expert_infos[CUMSUM_BLOCK_SIZE][MAX_NUM_EXPERTS];
 
-  // ---------------Expertwise deterministic job scheduling ---------------
+  extern __shared__ __align__(16) char shared_mem[];
+  expert_infos_t *shared_expert_infos =
+      reinterpret_cast<expert_infos_t *>(shared_mem);
+
+  // ---------------Expertwise deterministic job scheduling -------------
   if (threadIdx.x < num_experts) {
     local_expert_offsets = expert_base_offset[threadIdx.x];
     expert_infos_t local_expert_infos[CUMSUM_BLOCK_SIZE];
@@ -109,7 +111,8 @@ __global__ __launch_bounds__(512) void tokens_unzip_stable_kernel(
           (local_expert_infos[i].expert_row_idx == -1)
               ? -1
               : local_expert_infos[i].expert_row_idx + cumsum_offset;
-      shared_expert_infos[i][threadIdx.x] = local_expert_infos[i];
+      shared_expert_infos[i * num_experts + threadIdx.x] =
+          local_expert_infos[i];
     }
   }
 
@@ -123,7 +126,115 @@ __global__ __launch_bounds__(512) void tokens_unzip_stable_kernel(
 #pragma unroll
     for (int expert = 0; expert < num_experts; expert++) {
       const expert_infos_t this_expert_token_info =
-          shared_expert_infos[internal_row][expert];
+          shared_expert_infos[internal_row * num_experts + expert];
+      const int proposed_row_idx = this_expert_token_info.expert_row_idx;
+      if (threadIdx.x == 0)
+        zipped_expertwise_rowmap[row * num_experts + expert] = proposed_row_idx;
+      if (proposed_row_idx == -1) continue;  // no memcpy
+      if (threadIdx.x == 0)
+        probs_unzipped[proposed_row_idx] = this_expert_token_info.expert_probs;
+      // vec copy
+      if constexpr (has_scale) {
+        vectorized_memcpy(
+            &XScale[(int64_t)row * (int64_t)scale_length],
+            &XScale_unzipped[(int64_t)proposed_row_idx * (int64_t)scale_length],
+            scale_length);
+      }
+      vectorized_memcpy(
+          &X[(int64_t)row * (int64_t)token_length],
+          &X_unzipped[(int64_t)proposed_row_idx * (int64_t)token_length],
+          token_length);
+    }
+  }
+}
+
+template <typename X_T,
+          typename routemap_T,
+          typename probs_T,
+          bool has_scale,
+          int num_experts,
+          int topk>
+__global__ __launch_bounds__(512) void tokens_unzip_stable_static_kernel(
+    const X_T *__restrict__ X,
+    const routemap_T *__restrict__ routemap_topk,
+    const probs_T *__restrict__ probs_topk,
+    const float *__restrict__ XScale,
+    const int *__restrict__ expert_base_offset,
+    X_T *__restrict__ X_unzipped,
+    int *__restrict__ zipped_expertwise_rowmap,
+    probs_T *__restrict__ probs_unzipped,
+    float *__restrict__ XScale_unzipped,
+    int *global_expertwise_block_cumsum,
+    const int total_zipped_tokens_num,
+    const int token_length,
+    const int scale_length) {
+  using expert_infos_t = expert_infos<probs_T>;
+  int local_cumsum = 0;
+  int local_expert_offsets;
+  const int block_row_base = blockIdx.x * CUMSUM_BLOCK_SIZE;
+  int cumsum_offset = (blockIdx.x != 0) * CUMSUM_INVALID_TAG;
+
+  extern __shared__ __align__(16) char shared_mem[];
+  expert_infos_t *shared_expert_infos =
+      reinterpret_cast<expert_infos_t *>(shared_mem);
+
+  // ---------------Expertwise deterministic job scheduling -------------
+  if (threadIdx.x < num_experts) {
+    local_expert_offsets = expert_base_offset[threadIdx.x];
+    expert_infos_t local_expert_infos[CUMSUM_BLOCK_SIZE];
+    for (int row = block_row_base; row < block_row_base + CUMSUM_BLOCK_SIZE;
+         row++) {
+      if (row >= total_zipped_tokens_num) break;
+      const int internal_row = row - block_row_base;
+      expert_infos_t proposed;
+#pragma unroll
+      for (int k = 0; k < topk; k++) {
+        proposed = {routemap_topk[row * topk + k], probs_topk[row * topk + k]};
+        if (proposed.expert_row_idx == -1) continue;
+        if (threadIdx.x == proposed.expert_row_idx) {
+          local_expert_infos[internal_row] = {
+              local_cumsum + local_expert_offsets, proposed.expert_probs};
+          local_cumsum++;
+        }
+      }
+    }
+    // Inter-block communication
+    const int anticipate_signal_idx = blockIdx.x * num_experts + threadIdx.x;
+    const int push_signal_idx = (blockIdx.x + 1) * num_experts + threadIdx.x;
+    if (blockIdx.x != 0) {
+      // signal receive from previous block, using light-weight atomicAdd(check)
+      // this will not change any data, only do fetch in low-cost
+      while ((cumsum_offset = atomicAdd(
+                  &global_expertwise_block_cumsum[anticipate_signal_idx], 0)) ==
+             CUMSUM_INVALID_TAG) {
+      }
+    }
+    // signal send for next block, with current cumsum
+    const int proposed_offset = cumsum_offset + local_cumsum;
+    global_expertwise_block_cumsum[push_signal_idx] = proposed_offset;
+    // Intra-block communication;
+#pragma unroll
+    for (int i = 0; i < CUMSUM_BLOCK_SIZE; i++) {
+      local_expert_infos[i].expert_row_idx =
+          (local_expert_infos[i].expert_row_idx == -1)
+              ? -1
+              : local_expert_infos[i].expert_row_idx + cumsum_offset;
+      shared_expert_infos[i * num_experts + threadIdx.x] =
+          local_expert_infos[i];
+    }
+  }
+
+  // --------------------------- Jobs schedule done -------------------------
+  __syncthreads();
+  for (int row = block_row_base; row < block_row_base + CUMSUM_BLOCK_SIZE;
+       row++) {
+    // OOB check
+    if (row >= total_zipped_tokens_num) return;
+    const int internal_row = row - block_row_base;
+#pragma unroll
+    for (int expert = 0; expert < num_experts; expert++) {
+      const expert_infos_t this_expert_token_info =
+          shared_expert_infos[internal_row * num_experts + expert];
       const int proposed_row_idx = this_expert_token_info.expert_row_idx;
       if (threadIdx.x == 0)
         zipped_expertwise_rowmap[row * num_experts + expert] = proposed_row_idx;
@@ -169,9 +280,40 @@ void dispatch_tokens_unzip_stable(const Context &dev_ctx,
 #define DTYPE_CASE(dtype, type) dtype == phi::DataType::type
 #define GET_DATA(tensor, type) tensor.data<type>()
 #define GET_PTR_DATA(tensor, type) tensor->data<type>()
+#define HANDLE_STATIC_CASE(                                             \
+    NUM_EXPERTS, TOPK, TOKEN_T, PROB_T, INT_T, HAS_SCALE)               \
+  if (num_experts == NUM_EXPERTS && topk == TOPK) {                     \
+    auto static_kernel = tokens_unzip_stable_static_kernel<TOKEN_T,     \
+                                                           INT_T,       \
+                                                           PROB_T,      \
+                                                           HAS_SCALE,   \
+                                                           NUM_EXPERTS, \
+                                                           TOPK>;       \
+    const size_t shared_mem_size =                                      \
+        CUMSUM_BLOCK_SIZE * NUM_EXPERTS * sizeof(expert_infos<PROB_T>); \
+    static_kernel<<<grid, block, shared_mem_size, dev_ctx.stream()>>>(  \
+        GET_DATA(X, TOKEN_T),                                           \
+        GET_DATA(expert_routemap_topk, INT_T),                          \
+        GET_DATA(expert_prob_topk, PROB_T),                             \
+        XScale ? XScale.get_ptr()->data<float>() : nullptr,             \
+        GET_DATA(expert_offsets, int),                                  \
+        GET_PTR_DATA(X_unzipped, TOKEN_T),                              \
+        GET_PTR_DATA(zipped_expertwise_rowmap, INT_T),                  \
+        GET_PTR_DATA(token_prob_unzipped, PROB_T),                      \
+        XScale_unzipped->data<float>(),                                 \
+        global_expertwise_block_cumsum->data<int>(),                    \
+        total_zipped_tokens_num,                                        \
+        token_length,                                                   \
+        scale_length);                                                  \
+    return;                                                             \
+  }
+
 #define DISPATCH_CASE(TOKEN_T, PROB_T, INT_T, HAS_SCALE)                       \
+  HANDLE_STATIC_CASE(4, 8, TOKEN_T, PROB_T, INT_T, HAS_SCALE)                  \
   auto kernel = tokens_unzip_stable_kernel<TOKEN_T, INT_T, PROB_T, HAS_SCALE>; \
-  kernel<<<grid, block, 0, dev_ctx.stream()>>>(                                \
+  const size_t shared_mem_size =                                               \
+      CUMSUM_BLOCK_SIZE * num_experts * sizeof(expert_infos<PROB_T>);          \
+  kernel<<<grid, block, shared_mem_size, dev_ctx.stream()>>>(                  \
       GET_DATA(X, TOKEN_T),                                                    \
       GET_DATA(expert_routemap_topk, INT_T),                                   \
       GET_DATA(expert_prob_topk, PROB_T),                                      \

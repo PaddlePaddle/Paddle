@@ -369,6 +369,7 @@ __global__ void __launch_bounds__(512)
 
   // 1. Load 128x128 block of input.
   bf16x4_t x[8];
+#pragma unroll
   for (uint32_t i = 0; i < 8; i++) {
     size_t col_idx = block_offset_y + threadIdx.y + i * 16;
     size_t row_idx = block_offset_x + threadIdx.x * 4;
@@ -393,13 +394,15 @@ __global__ void __launch_bounds__(512)
       }
     }
 
-    // 4. Do quantization on X and write 128x128 output.
+// 4. Do quantization on X and write 128x128 output.
+#pragma unroll
     for (uint32_t i = 0; i < 8; i++) {
       size_t col_idx = block_offset_y + threadIdx.y + i * 16;
       size_t row_idx = block_offset_x + threadIdx.x * 4;
       size_t idx = col_idx * rows + row_idx;
       float scale_val = block_scale[i * 16 + threadIdx.y];
       fp8x4_t data;
+#pragma unroll
       for (uint32_t j = 0; j < 4; j++) {
         float x_scaled = static_cast<float>(x[i].val[j]) * scale_val;
         data.val[j] = static_cast<__nv_fp8_e4m3>(x_scaled);
@@ -425,8 +428,10 @@ __global__ void __launch_bounds__(512)
       }
     }
 
-    // 7. Do quantization on X and transpose in the block.
+// 7. Do quantization on X and transpose in the block.
+#pragma unroll
     for (uint32_t i = 0; i < 8; i++) {
+#pragma unroll
       for (uint32_t j = 0; j < 4; j++) {
         float scale_val = block_scale[threadIdx.x * 4 + j];
         float x_scaled = static_cast<float>(x[i].val[j]) * scale_val;
@@ -436,12 +441,14 @@ __global__ void __launch_bounds__(512)
     }
     __syncthreads();
 
-    // 8. Write 128x128 transposed output.
+// 8. Write 128x128 transposed output.
+#pragma unroll
     for (uint32_t i = 0; i < 8; i++) {
       size_t row_idx = block_offset_x + threadIdx.y + i * 16;
       size_t col_idx = block_offset_y + threadIdx.x * 4;
       size_t idx = row_idx * cols + col_idx;
       fp8x4_t data;
+#pragma unroll
       for (uint32_t j = 0; j < 4; j++) {
         data.val[j] = shm[i * 16 + threadIdx.y][threadIdx.x * 4 + j];
       }
