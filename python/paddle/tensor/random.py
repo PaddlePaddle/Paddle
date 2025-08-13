@@ -29,7 +29,7 @@ from paddle.framework import (
     in_pir_mode,
     use_pir_api,
 )
-from paddle.utils.decorator_utils import ParamAliasDecorator
+from paddle.utils.decorator_utils import param_one_alias
 
 from ..base.data_feeder import (
     check_dtype,
@@ -443,7 +443,8 @@ def log_normal_(
     return normal_(x, mean=mean, std=std).exp_()
 
 
-@ParamAliasDecorator({"x": ["input"]})
+# @ParamAliasDecorator({"x": ["input"]})
+@param_one_alias(["x", "input"])
 def multinomial(
     x: Tensor,
     num_samples: int = 1,
@@ -1951,7 +1952,8 @@ def rand(
     return uniform(shape, dtype, min=0.0, max=1.0, name=name)
 
 
-@ParamAliasDecorator({"lam": ["lambd"]})
+# @ParamAliasDecorator({"lam": ["lambd"]})
+@param_one_alias(["lam", "lambd"])
 def exponential_(
     x: Tensor, lam: float = 1.0, name: str | None = None
 ) -> Tensor:

@@ -150,13 +150,45 @@ class SetDefaultParaAliasDecorator(DecoratorBase):
         return args, kwargs
 
 
-def param_one_alias(alias_mapping):
+# def param_one_alias(alias_mapping):
+#     def decorator(func):
+#         def wrapper(*args, **kwargs):
+#             if not kwargs:
+#                 return func(*args, **kwargs)
+#             if ("input" in kwargs) and ("x" not in kwargs):
+#                 kwargs["x"] = kwargs.pop("input")
+#             return func(*args, **kwargs)
+
+#         wrapper.__signature__ = inspect.signature(func)
+#         return wrapper
+
+#     return decorator
+
+
+def param_one_alias(alias_list):
     def decorator(func):
         def wrapper(*args, **kwargs):
             if not kwargs:
                 return func(*args, **kwargs)
-            if ("input" in kwargs) and ("x" not in kwargs):
-                kwargs["x"] = kwargs.pop("input")
+            if (alias_list[0] in kwargs) and (alias_list[1] not in kwargs):
+                kwargs[alias_list[1]] = kwargs.pop(alias_list[0])
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+def param_two_alias(alias_list1, alias_list2):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            if not kwargs:
+                return func(*args, **kwargs)
+            if (alias_list1[0] in kwargs) and (alias_list1[1] not in kwargs):
+                kwargs[alias_list1[1]] = kwargs.pop(alias_list1[0])
+            if (alias_list2[0] in kwargs) and (alias_list2[1] not in kwargs):
+                kwargs[alias_list2[1]] = kwargs.pop(alias_list2[0])
             return func(*args, **kwargs)
 
         wrapper.__signature__ = inspect.signature(func)

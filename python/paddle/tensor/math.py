@@ -25,7 +25,7 @@ from paddle import _C_ops
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc, dygraph_utils
 from paddle.pir import Value
-from paddle.utils.decorator_utils import ParamAliasDecorator
+from paddle.utils.decorator_utils import ParamAliasDecorator, param_two_alias
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
@@ -4956,7 +4956,8 @@ def isnan(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
-@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
+# @ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def prod(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
