@@ -25,9 +25,6 @@ from paddle import _C_ops
 from .. import core
 """
 
-EXTRA_IMPORTS_TEMPLATE = """
-__all__ = [methods_map,{func_name}]
-"""
 FUNCTION_NAME_TEMPLATE = """
 def {func_name}():
 """
@@ -111,9 +108,6 @@ class MonkeyPatchTensorMethodsGenerator(GeneratorBase):
             func_name="monkey_patch_generated_methods_for_tensor"
         )
         self.MonkeyPatchTensorMethods_str += SET_METHOD_TEMPLATE
-        self.MonkeyPatchTensorMethods_str += EXTRA_IMPORTS_TEMPLATE.format(
-            func_name="monkey_patch_generated_methods_for_tensor"
-        )
 
     def run(self):
         # Read Yaml file
