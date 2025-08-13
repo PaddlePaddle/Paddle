@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.base.framework import Variable
 
 #  Parameters
 #     data (Tensor) – parameter tensor.
@@ -124,6 +125,7 @@ class TestPaddleParameter(unittest.TestCase):
         self.assertTrue(isinstance(param, paddle.Tensor))
         self.assertTrue(isinstance(param, paddle.nn.Parameter))
         self.assertEqual(type(param), paddle.nn.Parameter)
+        self.assertTrue(isinstance(param, Variable))
 
         class MyTensor(paddle.Tensor):
             _is_param = True
