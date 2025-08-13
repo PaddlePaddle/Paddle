@@ -172,6 +172,9 @@ def monkey_patch_math_tensor():
 
         return methods
 
+    def type_as(self: Tensor, other: Tensor) -> Tensor:
+        return self.astype(other.dtype)
+
     def _scalar_elementwise_op_(
         var: Tensor, scale: float, bias: float
     ) -> Tensor:
@@ -295,6 +298,7 @@ def monkey_patch_math_tensor():
         ('astype', astype),
         ('byte', byte),
         ('uint8', byte),
+        ('type_as', type_as),
         ('dim', dim),
         ('ndimension', ndimension),
         ('ndim', _ndim),
