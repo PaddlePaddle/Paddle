@@ -17,7 +17,7 @@ env:
 
 jobs:
   cancel:
-    name: Cancel CI for ${{ github.event.pull_request.number }}
+    name: Cancel CI-Windows for ${{ github.event.pull_request.number }}
     runs-on: ubuntu-latest
     steps:
       - name: Cancel CI-Windows
