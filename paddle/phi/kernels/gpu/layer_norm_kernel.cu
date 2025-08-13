@@ -159,7 +159,7 @@ struct LayerNormDataWriter {
           temp_dst[j] = static_cast<T>((buffer[i * VecSize + j] - row_mean) *
                                        row_inv_var);
         }
-        v_dst[threadIdx.x + blockDim.x * i] = temp_dst;
+        v_dst[threadIdx.x + static_cast<int64_t>(blockDim.x) * i] = temp_dst;
       }
     } else {
       const VecScaleT *__restrict__ v_scale =
@@ -168,7 +168,7 @@ struct LayerNormDataWriter {
           reinterpret_cast<const VecScaleT *__restrict__>(bias);
       if (valid_scale && valid_bias) {
         for (int i = 0; i < write_times; ++i) {
-          int idx = threadIdx.x + blockDim.x * i;
+          int64_t idx = threadIdx.x + static_cast<int64_t>(blockDim.x) * i;
           VecT temp_dst;
           VecScaleT temp_v_scale = v_scale[idx];
           VecScaleT temp_v_bias = v_bias[idx];
@@ -184,7 +184,7 @@ struct LayerNormDataWriter {
       } else {
         if (valid_scale) {
           for (int i = 0; i < write_times; ++i) {
-            int idx = threadIdx.x + blockDim.x * i;
+            int64_t idx = threadIdx.x + static_cast<int64_t>(blockDim.x) * i;
             VecT temp_dst;
             VecScaleT temp_v_scale = v_scale[idx];
 #pragma unroll
@@ -232,19 +232,19 @@ struct LayerNormDataWriter<T, U, IsSameType, 1> {
     if ((!valid_scale) && (!valid_bias)) {
       if (threadIdx.x < last_tid_idx) {
         for (int i = 0; i < cols_this_thread; ++i) {
-          row_dst[threadIdx.x + last_tid_idx * i] =
+          row_dst[threadIdx.x + static_cast<int64_t>(last_tid_idx) * i] =
               (buffer[i] - row_mean) * row_inv_var;
         }
       } else {
         for (int i = 0; i < cols_this_thread; ++i) {
-          row_dst[last_tid_idx * write_times + i] =
+          row_dst[static_cast<int64_t>(last_tid_idx) * write_times + i] =
               (buffer[i] - row_mean) * row_inv_var;
         }
       }
     } else if (valid_scale && valid_bias) {
       if (threadIdx.x < last_tid_idx) {
         for (int i = 0; i < cols_this_thread; ++i) {
-          int idx = threadIdx.x + last_tid_idx * i;
+          int64_t idx = threadIdx.x + static_cast<int64_t>(last_tid_idx) * i;
           row_dst[idx] =
               static_cast<T>(static_cast<U>(scale[idx]) *
                                  (buffer[i] - row_mean) * row_inv_var +
@@ -252,7 +252,7 @@ struct LayerNormDataWriter<T, U, IsSameType, 1> {
         }
       } else {
         for (int i = 0; i < cols_this_thread; ++i) {
-          int idx = last_tid_idx * write_times + i;
+          int64_t idx = static_cast<int64_t>(last_tid_idx) * write_times + i;
           row_dst[idx] =
               static_cast<T>(static_cast<U>(scale[idx]) *
                                  (buffer[i] - row_mean) * row_inv_var +
@@ -263,13 +263,13 @@ struct LayerNormDataWriter<T, U, IsSameType, 1> {
       if (valid_scale) {
         if (threadIdx.x < last_tid_idx) {
           for (int i = 0; i < cols_this_thread; ++i) {
-            int idx = threadIdx.x + last_tid_idx * i;
+            int64_t idx = threadIdx.x + static_cast<int64_t>(last_tid_idx) * i;
             row_dst[idx] = static_cast<T>(static_cast<U>(scale[idx]) *
                                           (buffer[i] - row_mean) * row_inv_var);
           }
         } else {
           for (int i = 0; i < cols_this_thread; ++i) {
-            int idx = last_tid_idx * write_times + i;
+            int64_t idx = static_cast<int64_t>(last_tid_idx) * write_times + i;
             row_dst[idx] = static_cast<T>(static_cast<U>(scale[idx]) *
                                           (buffer[i] - row_mean) * row_inv_var);
           }
@@ -277,13 +277,13 @@ struct LayerNormDataWriter<T, U, IsSameType, 1> {
       } else {
         if (threadIdx.x < last_tid_idx) {
           for (int i = 0; i < cols_this_thread; ++i) {
-            int idx = threadIdx.x + last_tid_idx * i;
+            int64_t idx = threadIdx.x + static_cast<int64_t>(last_tid_idx) * i;
             row_dst[idx] = static_cast<T>((buffer[i] - row_mean) * row_inv_var +
                                           static_cast<U>(bias[idx]));
           }
         } else {
           for (int i = 0; i < cols_this_thread; ++i) {
-            int idx = last_tid_idx * write_times + i;
+            int64_t idx = static_cast<int64_t>(last_tid_idx) * write_times + i;
             row_dst[idx] = static_cast<T>((buffer[i] - row_mean) * row_inv_var +
                                           static_cast<U>(bias[idx]));
           }

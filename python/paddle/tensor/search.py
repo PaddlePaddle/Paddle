@@ -561,6 +561,38 @@ def nonzero(x: Tensor, as_tuple=False):
         return tuple(list_out)
 
 
+def argwhere(input: Tensor) -> Tensor:
+    """
+    Return a tensor containing the indices of all non-zero elements of the `input`
+    tensor. The returned tensor has shape [z, n], where `z` is the number of all non-zero
+    elements in the `input` tensor, and `n` is the number of dimensions in the `input`
+    tensor.
+
+    Args:
+        input (Tensor): The input tensor variable.
+
+    Returns:
+        Tensor, The data type is int64.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[1.0, 0.0, 0.0],
+            ...                       [0.0, 2.0, 0.0],
+            ...                       [0.0, 0.0, 3.0]])
+            >>> out = paddle.tensor.search.argwhere(x)
+            >>> print(out)
+            Tensor(shape=[3, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 0],
+             [1, 1],
+             [2, 2]])
+    """
+    return nonzero(input, as_tuple=False)
+
+
 def _restrict_nonzero(condition: Tensor, total_true_num: int) -> Tensor:
     """
     Return a tensor containing the indices of all non-zero elements of the `input`
@@ -674,6 +706,44 @@ def sort(
             attrs={'axis': axis, 'descending': descending, 'stable': stable},
         )
         return out
+
+
+def msort(input: Tensor) -> Tensor:
+    """
+
+    Sorts the input along the given axis = 0, and returns the sorted output tensor. The sort algorithm is ascending.
+
+    Args:
+        input (Tensor): An input N-D Tensor with type float32, float64, int16,
+            int32, int64, uint8.
+
+    Returns:
+        Tensor, sorted tensor(with the same shape and data type as ``input``).
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[[5,8,9,5],
+            ...                        [0,0,1,7],
+            ...                        [6,9,2,4]],
+            ...                       [[5,2,4,2],
+            ...                        [4,7,7,9],
+            ...                        [1,7,0,6]]],
+            ...                      dtype='float32')
+            >>> out1 = paddle.msort(input=x)
+            >>> print(out1.numpy())
+            [[[5. 2. 4. 2.]
+              [0. 0. 1. 7.]
+              [1. 7. 0. 4.]]
+             [[5. 8. 9. 5.]
+              [4. 7. 7. 9.]
+              [6. 9. 2. 6.]]]
+    """
+
+    return sort(input, axis=0)
 
 
 def mode(

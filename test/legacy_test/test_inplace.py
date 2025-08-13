@@ -1529,6 +1529,22 @@ class TestDygraphInplacBitwiseOr(TestDygraphInplacBitwiseAnd):
         return paddle.bitwise_or(var, self.y)
 
 
+class TestDygraphInplacBitwiseOrAlias1(TestDygraphInplacBitwiseAnd):
+    def inplace_api_processing(self, var):
+        return paddle.bitwise_or_(var, other=self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.bitwise_or(var, other=self.y)
+
+
+class TestDygraphInplacBitwiseOrAlias2(TestDygraphInplacBitwiseAnd):
+    def inplace_api_processing(self, var):
+        return paddle.bitwise_or_(input=var, other=self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.bitwise_or(input=var, other=self.y)
+
+
 class TestDygraphInplacBitwiseXor(TestDygraphInplacBitwiseAnd):
     def inplace_api_processing(self, var):
         return paddle.bitwise_xor_(var, self.y)
@@ -2090,9 +2106,7 @@ class TestDygraphInplaceBernoulliError(unittest.TestCase):
 class TestDygraphInplaceSet(unittest.TestCase):
     def setUp(self):
         self.init_data()
-        self.places = [paddle.CPUPlace()]
-        if paddle.base.core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
         self.support_dtypes = [
             'float32',
             'float64',
@@ -2274,7 +2288,7 @@ class TestDygraphInplaceSet(unittest.TestCase):
 class TestDygraphInplaceSetFP16(TestDygraphInplaceSet):
     def setUp(self):
         self.init_data()
-        self.places = [paddle.CUDAPlace(0)]
+        self.places = get_places()
 
     def init_data(self):
         self.x_np = np.random.uniform(-5, 5, [7, 20, 2])
@@ -2304,7 +2318,7 @@ class TestDygraphInplaceSetFP16(TestDygraphInplaceSet):
 class TestDygraphInplaceSetBF16(TestDygraphInplaceSet):
     def setUp(self):
         self.init_data()
-        self.places = [paddle.CUDAPlace(0)]
+        self.places = get_places()
 
     def init_data(self):
         self.x_np = np.random.uniform(-5, 5, [7, 20, 2])
@@ -2329,9 +2343,7 @@ class TestDygraphInplaceSetBF16(TestDygraphInplaceSet):
 class TestDygraphInplaceResize(unittest.TestCase):
     def setUp(self):
         self.init_data()
-        self.places = [paddle.CPUPlace()]
-        if paddle.base.core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
         self.support_dtypes = [
             'float32',
             'float64',
@@ -2444,7 +2456,7 @@ class TestDygraphInplaceResize(unittest.TestCase):
 class TestDygraphInplaceResizeFP16(TestDygraphInplaceResize):
     def setUp(self):
         self.init_data()
-        self.places = [paddle.CUDAPlace(0)]
+        self.places = get_places()
 
     def init_data(self):
         self.x_np = np.random.uniform(-5, 5, [3, 10, 2])
@@ -2472,7 +2484,7 @@ class TestDygraphInplaceResizeFP16(TestDygraphInplaceResize):
 class TestDygraphInplaceResizeBF16(TestDygraphInplaceResize):
     def setUp(self):
         self.init_data()
-        self.places = [paddle.CUDAPlace(0)]
+        self.places = get_places()
 
     def init_data(self):
         self.x_np = np.random.uniform(-5, 5, [3, 10, 2])

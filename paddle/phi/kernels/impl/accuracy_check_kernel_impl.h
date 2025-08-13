@@ -108,7 +108,7 @@ struct AccuracyCheckFunctor<phi::CPUContext, phi::dtype::complex<T>> {
     for (int i = 0; i < num; i++) {
       out_data[i] = true;
     }
-    bool val;
+    bool val = false;
     int res_index = -1;
     for (int i = 0; i < num; i++) {
       const phi::dtype::complex<T> a = in_a[i], b = in_b[i];

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_device_place
 
 import paddle
 from paddle.base import core
@@ -183,11 +183,7 @@ class TestLogitAPI(unittest.TestCase):
     def setUp(self):
         self.init_data()
         self.x = np.random.uniform(-1.0, 1.0, self.x_shape).astype(self.x_dtype)
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.base.core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def check_api(self, eps=1e-8):
         ref_out = logit(self.x, eps)

@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+    get_device_place,
+)
 
 import paddle
 from paddle.base import core
@@ -171,11 +176,7 @@ class TestRandpermAPI(unittest.TestCase):
     def test_out(self):
         paddle.enable_static()
         n = 10
-        place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        place = get_device_place()
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):

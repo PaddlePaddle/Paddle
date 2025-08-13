@@ -7,4 +7,5 @@ gather_srcs(
   hip_backend_api.cc
   hip_module.cc
   hip_intrinsics.cc
-  hip_intrinsics_reduce.cc)
+  hip_intrinsics_reduce.cc
+  hip_intrinsics_float16.cc)

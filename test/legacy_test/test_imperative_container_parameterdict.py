@@ -16,6 +16,7 @@ import unittest
 from collections import OrderedDict
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
 from paddle import base
@@ -46,11 +47,7 @@ class MyLayer(paddle.nn.Layer):
 
 class TestImperativeContainerParameterDict(unittest.TestCase):
     def parameter_dict(self):
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
         data_np = np.random.uniform(-1, 1, [5, 2]).astype('float32')
         with base.dygraph.guard():
             x = paddle.to_tensor(data_np)

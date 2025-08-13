@@ -15,9 +15,9 @@
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
-from paddle.base import core
 from paddle.static import Program, program_guard
 
 
@@ -37,11 +37,7 @@ class TestRandnOp(unittest.TestCase):
             var_shape = paddle.static.data('X', [2], 'int32')
             x4 = paddle.randn(var_shape)
 
-        place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        place = get_device_place()
         exe = paddle.static.Executor(place)
         res = exe.run(
             train_program,
@@ -57,11 +53,7 @@ class TestRandnOp(unittest.TestCase):
 class TestRandnOpForDygraph(unittest.TestCase):
     def test_api(self):
         shape = [1000, 784]
-        place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        place = get_device_place()
         paddle.disable_static(place)
         x1 = paddle.randn(shape, 'float32')
         x2 = paddle.randn(shape, 'float64')

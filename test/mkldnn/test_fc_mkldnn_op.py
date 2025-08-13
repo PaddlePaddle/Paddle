@@ -45,7 +45,7 @@ class TestFCONEDNNOp(OpTest):
             'Bias': self.bias,
         }
 
-        self.attrs = {'use_mkldnn': self.use_onednn}
+        self.attrs = {'use_onednn': self.use_onednn}
 
         self.outputs = {
             'Out': fully_connected_naive(
