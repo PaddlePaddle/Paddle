@@ -9,9 +9,12 @@ env:
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   BRANCH: ${{ github.base_ref }}
-  ci_scripts: ${{ github.workspace }}\ci\windows
-  ACTION_DIR: ${{ github.workspace }}\..\..\..
-  WORKSPACE_DIR: ${{ github.workspace }}\..
+  # ci_scripts: ${{ github.workspace }}\ci\windows
+  # ACTION_DIR: ${{ github.workspace }}\..\..\..
+  # WORKSPACE_DIR: ${{ github.workspace }}\..
+  WORKSPACE_DIR: C:\workspace
+  ci_scripts: C:\workspace\Paddle\ci\windows
+  ACTION_DIR: C:\actions-runner
   cache_dir: C:\action-cache
   SCCACHE_ROOT: C:\sccache
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
@@ -59,10 +62,14 @@ jobs:
       CUDA_ARCH_NAME: "Auto"
     steps:
       - name: Download Paddle and clean env
-        working-directory: ..
+        working-directory: ..\..\..\..
         run: |
           whoami
           cd
+          if not exist "%WORKSPACE_DIR%" (
+            mkdir "%WORKSPACE_DIR%"
+            cd "%WORKSPACE_DIR%"
+          )
           rmdir /s/q %WORKSPACE_DIR%\Paddle
           python -m pip install wget
           python -c "import wget;wget.download('https://paddle-github-action.bj.bcebos.com/windows/PR/%PR_ID%/%COMMIT_ID%/Paddle.tar.zst')"
