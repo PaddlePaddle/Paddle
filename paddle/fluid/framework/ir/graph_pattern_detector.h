@@ -168,6 +168,20 @@ struct PDNode {
     return this;
   }
 
+  template <typename T>
+  PDNode* assert_op_attr_or(const std::string& attr_name1,
+                            const std::string& attr_name2,
+                            const T& attr) {
+    asserts_.emplace_back([=](Node* x) {
+      return x && x->IsOp() &&
+             ((x->Op()->HasAttr(attr_name1) &&
+               PADDLE_GET_CONST(T, x->Op()->GetAttr(attr_name1)) == attr) ||
+              (x->Op()->HasAttr(attr_name2) &&
+               PADDLE_GET_CONST(T, x->Op()->GetAttr(attr_name2)) == attr));
+    });
+    return this;
+  }
+
  private:
   PDNode(PDPattern* pattern,
          const std::string& name = "",
