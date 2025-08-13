@@ -153,6 +153,7 @@ class SetDefaultParaAliasDecorator(DecoratorBase):
 
 # def param_one_alias(alias_mapping):
 #     def decorator(func):
+#         @functools.wraps(func)
 #         def wrapper(*args, **kwargs):
 #             if not kwargs:
 #                 return func(*args, **kwargs)
@@ -168,6 +169,7 @@ class SetDefaultParaAliasDecorator(DecoratorBase):
 
 def param_one_alias(alias_list):
     def decorator(func):
+        @functools.wraps(func)
         def wrapper(*args, **kwargs):
             if not kwargs:
                 return func(*args, **kwargs)
@@ -183,6 +185,7 @@ def param_one_alias(alias_list):
 
 def param_two_alias(alias_list1, alias_list2):
     def decorator(func):
+        @functools.wraps(func)
         def wrapper(*args, **kwargs):
             if not kwargs:
                 return func(*args, **kwargs)
@@ -200,6 +203,7 @@ def param_two_alias(alias_list1, alias_list2):
 
 def param_two_alias_one_default(alias_list1, alias_list2, default_param):
     def decorator(func):
+        @functools.wraps(func)
         def wrapper(*args, **kwargs):
             if not kwargs:
                 return func(*args, **kwargs)

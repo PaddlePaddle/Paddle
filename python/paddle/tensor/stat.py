@@ -27,7 +27,6 @@ from paddle.framework import (
 )
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
-    param_two_alias_one_default,
     # SetDefaultParaAliasDecorator,
 )
 
@@ -480,7 +479,7 @@ def nanmedian(
 # @SetDefaultParaAliasDecorator(
 #     {"x": ["input"], "axis": ["dim"]}, {"mode": 'min'}
 # )
-@param_two_alias_one_default(["x", "input"], ["axis", "dim"], ["mode", 'min'])
+# @param_two_alias_one_default(["x", "input"], ["axis", "dim"], ["mode", 'min'])
 def median(
     x: Tensor,
     axis: int = ...,
@@ -494,7 +493,7 @@ def median(
 # @SetDefaultParaAliasDecorator(
 #     {"x": ["input"], "axis": ["dim"]}, {"mode": 'min'}
 # )
-@param_two_alias_one_default(["x", "input"], ["axis", "dim"], ["mode", 'min'])
+# @param_two_alias_one_default(["x", "input"], ["axis", "dim"], ["mode", 'min'])
 def median(
     x: Tensor,
     axis: int | None = ...,
@@ -507,7 +506,7 @@ def median(
 # @SetDefaultParaAliasDecorator(
 #     {"x": ["input"], "axis": ["dim"]}, {"mode": 'min'}
 # )
-@param_two_alias_one_default(["x", "input"], ["axis", "dim"], ["mode", 'min'])
+# @param_two_alias_one_default(["x", "input"], ["axis", "dim"], ["mode", 'min'])
 def median(
     x,
     axis=None,
