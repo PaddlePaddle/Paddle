@@ -324,13 +324,14 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
+          mkdir -p /workspace
           bash ${ci_scripts}/distribute_test.sh
           '
       - name: Auto Parallel Test
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
-          mkdir -p /workspace && cd /workspace
+          cd /workspace
           echo "Download and extract PaddleNLP.tar.gz"
           wget -q --tries=5 --no-proxy  https://paddle-qa.bj.bcebos.com/CodeSync/develop/PaddleNLP.tar --no-check-certificate
           tar xf PaddleNLP.tar && rm -rf PaddleNLP.tar
