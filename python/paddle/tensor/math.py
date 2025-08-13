@@ -3275,7 +3275,7 @@ def inverse(x: Tensor, name: str | None = None) -> Tensor:
 
 
 @ForbidKeywordsDecorator(
-    illegal_keys=["input", "dim", "other"],
+    illegal_keys={"input", "dim", "other"},
     func_name="paddle.max",
     correct_name="paddle.compat.max",
 )
@@ -3439,7 +3439,7 @@ def max(
 
 
 @ForbidKeywordsDecorator(
-    illegal_keys=["input", "dim", "other"],
+    illegal_keys={"input", "dim", "other"},
     func_name="paddle.min",
     correct_name="paddle.compat.min",
 )

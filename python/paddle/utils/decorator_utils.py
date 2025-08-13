@@ -366,7 +366,7 @@ class ForbidKeywordsDecorator(DecoratorBase):
     """A decorator that hints users to use the correct `compat` functions, when erroneous keyword arguments are detected"""
 
     def __init__(
-        self, illegal_keys: list[str], func_name: str, correct_name: str
+        self, illegal_keys: set[str], func_name: str, correct_name: str
     ) -> None:
         super().__init__()
         self.illegal_keys = illegal_keys
@@ -379,6 +379,7 @@ class ForbidKeywordsDecorator(DecoratorBase):
         found_keys = [key for key in self.illegal_keys if key in kwargs]
 
         if found_keys:
+            found_keys.sort()
             keys_str = ", ".join(f"'{key}'" for key in found_keys)
             plural = "s" if len(found_keys) > 1 else ""
 

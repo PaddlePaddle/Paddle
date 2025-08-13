@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.base import core
 
 
 class TestCompatMinMaxBase(unittest.TestCase):
@@ -89,6 +90,8 @@ class TestCompatMinMaxBase(unittest.TestCase):
 
         result_keep = self.test_op(data, dim=0, keepdim=True)
         self.assertEqual(result_keep.values.shape, [1, 2, 2])
+        np.testing.assert_array_equal(result_keep.values.numpy(), expected_res)
+        result_keep = self.test_op(data, 0, keepdim=True)
         np.testing.assert_array_equal(result_keep.values.numpy(), expected_res)
 
         result_neg = self.test_op(data, dim=in_dim - 3)
@@ -206,13 +209,10 @@ class TestCompatMinMaxBase(unittest.TestCase):
 
     def test_compare_with_index_ops_to_origin(self):
         dtypes = ['float32', 'float64', 'int32', 'int64', 'uint8']
-        cpu_reject_types = {'int16', 'bfloat16', 'float16'}
 
         for i, dtype in enumerate(dtypes):
             data = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], dtype=dtype)
-            # `bfloat16` and `float16` are rejected on CPU
-            if not data.place.is_gpu_place() and dtype in cpu_reject_types:
-                continue
+            # `bfloat16`, `uint8` and `float16` are rejected for min/argmin
             vals_inds = self.test_op(data, dim=0)
             self.assertEqual(vals_inds.values.dtype, data.dtype)
             self.assertEqual(vals_inds.indices.dtype, paddle.int64)
@@ -244,7 +244,7 @@ class TestCompatMinMaxBase(unittest.TestCase):
             "Tensors with integral type: 'paddle.int32' should stop gradient."
         )
         err_msg2 = (
-            f"{self.origin_op_name}() received unexpected keyword arguments 'input', 'dim'. "
+            f"{self.origin_op_name}() received unexpected keyword arguments 'dim', 'input'. "
             f"\nDid you mean to use {self.test_op_name}() instead?"
         )
         err_msg3 = (
@@ -254,6 +254,9 @@ class TestCompatMinMaxBase(unittest.TestCase):
         err_msg4 = (
             "Non-CUDA GPU placed Tensor does not have 'paddle.float16' op registered.\n"
             "Paddle support following DataTypes: int32, int64, float64, float32, uint8"
+        )
+        err_msg5 = (
+            "input should be a tensor, but got an instance with type 'list'"
         )
 
         # empty tensor
@@ -306,6 +309,14 @@ class TestCompatMinMaxBase(unittest.TestCase):
         with self.assertRaises(TypeError) as cm:
             self.test_op(input_ts, dim=paddle.to_tensor(0))
 
+        # Tensor input for dim case 3
+        with self.assertRaises(TypeError) as cm:
+            self.test_op(input_ts, paddle.to_tensor([0]), keepdim=True)
+
+        # Tensor input for dim case 4
+        with self.assertRaises(TypeError) as cm:
+            self.test_op(input_ts, paddle.to_tensor([0]), True)
+
         # Duplicate Arguments case 1
         with self.assertRaises(TypeError) as cm:
             self.test_op(input_ts, 0, dim=0)
@@ -335,9 +346,16 @@ class TestCompatMinMaxBase(unittest.TestCase):
             self.test_op(cpu_tensor, dim=0)
         self.assertEqual(str(cm.exception), err_msg4)
 
+        # Wrong input type
+        with self.assertRaises(TypeError) as cm:
+            self.test_op([1, 2])
+        self.assertEqual(str(cm.exception), err_msg5)
+
+        # Wrong second parameter type
+        with self.assertRaises(TypeError):
+            self.test_op(input_ts, "first_dim")
+
     def _compare_with_origin_static(self, input_shape, axis=0, keepdim=False):
-        if not paddle.is_compiled_with_cuda():
-            return
         numel = 1
         for v in input_shape:
             numel *= v
@@ -363,6 +381,10 @@ class TestCompatMinMaxBase(unittest.TestCase):
             np.testing.assert_equal(indices_np, gt_indices_np)
         paddle.disable_static()
 
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(),
+        "core is not compiled with CUDA, skipping",
+    )
     def test_static_graph(self):
         self._compare_with_origin_static([3, 10, 2], axis=1)
         self._compare_with_origin_static([3, 10, 2], axis=0, keepdim=True)

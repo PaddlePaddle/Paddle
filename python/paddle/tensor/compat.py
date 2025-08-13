@@ -424,7 +424,6 @@ def _min_max_param_checker(func_name: str, *args: Any, **kwargs: Any):
         except KeyError:
             raise invalid_arguments_exception() from None
         return res
-        found_key = None
 
     dim_or_other = None
     keepdim = False
@@ -436,25 +435,19 @@ def _min_max_param_checker(func_name: str, *args: Any, **kwargs: Any):
     elif total_arg_num == 2:
         if num_args == 2:
             dim_or_other, keepdim = args
-            if dim_or_other is None or isinstance(
-                dim_or_other, (Variable, paddle.pir.Value)
-            ):
-                raise invalid_arguments_exception()
         elif num_args == 1:
             dim_or_other = args[0]
-            if dim_or_other is None or isinstance(
-                dim_or_other, (Variable, paddle.pir.Value)
-            ):
-                raise invalid_arguments_exception()
             keepdim = try_get_keys("keepdim")
         else:
             dim_or_other = try_get_keys("dim")
             keepdim = try_get_keys("keepdim")
+        if dim_or_other is None or isinstance(
+            dim_or_other, (Variable, paddle.pir.Value)
+        ):
+            raise invalid_arguments_exception()
     elif total_arg_num == 1:
         if num_args:
             dim_or_other = args[0]
-            if dim_or_other is None:
-                raise invalid_arguments_exception()
         else:
             if "dim" in kwargs:
                 dim_or_other = kwargs["dim"]
@@ -462,8 +455,8 @@ def _min_max_param_checker(func_name: str, *args: Any, **kwargs: Any):
                 dim_or_other = kwargs["other"]
                 if not isinstance(dim_or_other, (Variable, paddle.pir.Value)):
                     raise invalid_arguments_exception()
-            if dim_or_other is None:
-                raise invalid_arguments_exception()
+        if dim_or_other is None:
+            raise invalid_arguments_exception()
 
     if (
         dim_or_other is not None
@@ -507,9 +500,9 @@ def _min_max_allow_cpu_composite(input: Tensor):
 
 
 @ForbidKeywordsDecorator(
-    illegal_keys=['x', 'axis'],
+    illegal_keys={"x", "axis"},
     func_name="paddle.compat.min",
-    correct_name='paddle.min',
+    correct_name="paddle.min",
 )
 def min(input: Tensor, *args: Any, **kwargs: Any) -> Tensor | MinMaxRetType:
     """
@@ -521,7 +514,7 @@ def min(input: Tensor, *args: Any, **kwargs: Any) -> Tensor | MinMaxRetType:
     3. paddle.compat.min(input: Tensor, other: Tensor): see `paddle.minimum`
 
     Special warning: the gradient behavior is NOT well-documented by PyTorch, the actual behavior should be:
-    1. Case 1: the same as `amin`
+    1. Case 1: the same as `min`
     2. Case 2: NOT evenly distributing the gradient for equal minimum elements! PyTorch actually only propagates to the elements with indices,
         for example: Tensor([1, 1, 1]) -> min(..., dim=0) -> values=Tensor(0, ...), indices=Tensor(0), the gradient for input tensor won't be
         Tensor([1/3, 1/3, 1/3]) as stated in their documentation, but will be Tensor([1, 0, 0]). This API implements a similar backward kernel.
@@ -593,9 +586,7 @@ def min(input: Tensor, *args: Any, **kwargs: Any) -> Tensor | MinMaxRetType:
                 [[0.20000000, 0.30000000, 0.10000000, 0.20000000],
                  [0.10000000, 0.10000000, 0.60000000, 0.70000000]])
     """
-    if not isinstance(input, paddle.pir.Value) and not isinstance(
-        input, paddle.Tensor
-    ):
+    if not isinstance(input, (paddle.pir.Value, paddle.Tensor)):
         raise TypeError(
             f"input should be a tensor, but got an instance with type '{type(input).__name__}'"
         )
@@ -604,11 +595,8 @@ def min(input: Tensor, *args: Any, **kwargs: Any) -> Tensor | MinMaxRetType:
     dim_or_other, keepdim = _min_max_param_checker("min", *args, **kwargs)
 
     if dim_or_other is None:
-        if input.numel() == 0:
-            raise ValueError(
-                "Reduce max cannot apply on empty tensor (numel == 0)"
-            )
-        return paddle.amin(input)
+        # paddle.min and paddle.amin actually shares the same grad op (ReduceAminKernel)
+        return paddle.min(input)
     elif isinstance(dim_or_other, int):
         if in_dynamic_mode() and not input.place.is_gpu_place():
             _min_max_allow_cpu_composite(input)
@@ -632,9 +620,9 @@ def min(input: Tensor, *args: Any, **kwargs: Any) -> Tensor | MinMaxRetType:
 
 
 @ForbidKeywordsDecorator(
-    illegal_keys=['x', 'axis'],
+    illegal_keys={"x", "axis"},
     func_name="paddle.compat.max",
-    correct_name='paddle.max',
+    correct_name="paddle.max",
 )
 def max(input: Tensor, *args: Any, **kwargs: Any) -> Tensor | MinMaxRetType:
     """
@@ -646,7 +634,7 @@ def max(input: Tensor, *args: Any, **kwargs: Any) -> Tensor | MinMaxRetType:
     3. paddle.compat.max(input: Tensor, other: Tensor): see `paddle.maximum`
 
     Special warning: the gradient behavior is NOT well-documented by PyTorch, the actual behavior should be:
-    1. Case 1: the same as `amax`
+    1. Case 1: the same as `max`
     2. Case 2: NOT evenly distributing the gradient for equal maximum elements! PyTorch actually only propagates to the elements with indices,
         for example: Tensor([1, 1, 1]) -> max(..., dim=0) -> values=Tensor(0, ...), indices=Tensor(0), the gradient for input tensor won't be
         Tensor([1/3, 1/3, 1/3]) as stated in their documentation, but will be Tensor([1, 0, 0]). This API implements a similar backward kernel.
@@ -718,9 +706,7 @@ def max(input: Tensor, *args: Any, **kwargs: Any) -> Tensor | MinMaxRetType:
                 [[0.50000000, 0.40000000, 0.50000000, 0.90000000],
                  [0.30000000, 0.20000000, 0.60000000, 0.70000000]])
     """
-    if not isinstance(input, paddle.pir.Value) and not isinstance(
-        input, paddle.Tensor
-    ):
+    if not isinstance(input, (paddle.pir.Value, paddle.Tensor)):
         raise TypeError(
             f"input should be a tensor, but got an instance with type '{type(input).__name__}'"
         )
@@ -729,11 +715,7 @@ def max(input: Tensor, *args: Any, **kwargs: Any) -> Tensor | MinMaxRetType:
     dim_or_other, keepdim = _min_max_param_checker("max", *args, **kwargs)
 
     if dim_or_other is None:
-        if input.numel() == 0:
-            raise ValueError(
-                "Reduce max cannot apply on empty tensor (numel == 0)"
-            )
-        return paddle.amax(input)
+        return paddle.max(input)
     elif isinstance(dim_or_other, int):
         if in_dynamic_mode() and not input.place.is_gpu_place():
             _min_max_allow_cpu_composite(input)
