@@ -3177,8 +3177,8 @@ def complex(
     Args:
         real (Tensor): The real component. The data type should be 'float32' or 'float64'.
         imag (Tensor): The image component. The data type should be the same as ``real``.
-        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
         out (Tensor|None, optional): The output tensor. Default: None.
+        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor, The output tensor. The data type is 'complex64' or 'complex128', with the same precision as ``real`` and ``imag``.
@@ -3392,14 +3392,18 @@ def triu_indices(
 
 
 def polar(
-    abs: paddle.Tensor, angle: paddle.Tensor, name: str | None = None
+    abs: paddle.Tensor,
+    angle: paddle.Tensor,
+    out: paddle.Tensor | None = None,
+    name: str | None = None,
 ) -> paddle.Tensor:
     """Return a Cartesian coordinates corresponding to the polar coordinates complex tensor given the ``abs`` and ``angle`` component.
 
     Args:
         abs (Tensor): The abs component. The data type should be 'float32' or 'float64'.
         angle (Tensor): The angle component. The data type should be the same as ``abs``.
-        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor, The output tensor. The data type is 'complex64' or 'complex128', with the same precision as ``abs`` and ``angle``.
@@ -3428,7 +3432,9 @@ def polar(
         angle, 'angle', ['float32', 'float64'], 'paddle.polar'
     )
 
-    return paddle.complex(abs * paddle.cos(angle), abs * paddle.sin(angle))
+    return paddle.complex(
+        abs * paddle.cos(angle), abs * paddle.sin(angle), out=out, name=name
+    )
 
 
 @dygraph_only

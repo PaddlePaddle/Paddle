@@ -153,7 +153,10 @@ def _get_reduce_axis_with_tensor(axis, x):
     return reduce_all, axis
 
 
-def log(x: Tensor, name: str | None = None) -> Tensor:
+@ParamAliasDecorator({"x": ["input"]})
+def log(
+    x: Tensor, out: Tensor | None = None, name: str | None = None
+) -> Tensor:
     r"""
     Calculates the natural log of the given input Tensor, element-wise.
 
@@ -163,6 +166,7 @@ def log(x: Tensor, name: str | None = None) -> Tensor:
 
     Args:
         x (Tensor): Input Tensor. Must be one of the following types: int32, int64, float16, bfloat16, float32, float64, complex64, complex128.
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this tensor. Default is None.
         name (str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
 
 
@@ -183,7 +187,7 @@ def log(x: Tensor, name: str | None = None) -> Tensor:
              [1.94591010, 2.07944155, 2.19722462]])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.log(x)
+        return _C_ops.log(x, out=out)
     else:
         check_variable_and_dtype(
             x,
@@ -519,7 +523,12 @@ def scale_(
 
 
 @ParamAliasDecorator({"x": ["input"], "y": ["exponent"]})
-def pow(x: Tensor, y: float | Tensor, name: str | None = None) -> Tensor:
+def pow(
+    x: Tensor,
+    y: float | Tensor,
+    out: Tensor | None = None,
+    name: str | None = None,
+) -> Tensor:
     """
     Compute the power of Tensor elements. The equation is:
 
@@ -540,6 +549,7 @@ def pow(x: Tensor, y: float | Tensor, name: str | None = None) -> Tensor:
         input: An alias for ``x`` , with identical behavior.
         y (float|int|Tensor): If it is an N-D Tensor, its data type should be the same as `x`.
         exponent: An alias for ``y`` , with identical behavior.
+        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -575,9 +585,9 @@ def pow(x: Tensor, y: float | Tensor, name: str | None = None) -> Tensor:
     # in dynamic graph mode
     if in_dynamic_or_pir_mode():
         if isinstance(y, (int, float)):
-            return _C_ops.pow(x, y)
+            return _C_ops.pow(x, y, out=out)
         elif isinstance(y, (paddle.Tensor, Variable, paddle.pir.Value)):
-            return _C_ops.elementwise_pow(x, y)
+            return _C_ops.elementwise_pow(x, y, out=out)
         else:
             raise TypeError(
                 f"y must be scalar, Tensor(in dygraph mode), Value(in pir mode) but received: {type(y)}"
@@ -1120,7 +1130,10 @@ floor_mod_.__doc__ = r"""
     """
 
 
-def multiply(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+@ParamAliasDecorator({"x": ["input"], "y": ["other"]})
+def multiply(
+    x: Tensor, y: Tensor, out: Tensor | None = None, name: str | None = None
+) -> Tensor:
     """
     multiply two tensors element-wise. The equation is:
 
@@ -1138,6 +1151,7 @@ def multiply(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     Args:
         x (Tensor): the input tensor, its data type should be one of bfloat16, float16, float32, float64, int32, int64, bool, complex64, complex128.
         y (Tensor): the input tensor, its data type should be one of bfloat16, float16, float32, float64, int32, int64, bool, complex64, complex128.
+        out (Tensor|None, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1166,7 +1180,7 @@ def multiply(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.multiply(x, y)
+        return _C_ops.multiply(x, y, out=out)
     else:
         return _elementwise_op(LayerHelper('elementwise_mul', **locals()))
 
@@ -5077,12 +5091,16 @@ def prod(
         return out
 
 
-def sign(x: Tensor, name: str | None = None) -> Tensor:
+@ParamAliasDecorator({"x": ["input"]})
+def sign(
+    x: Tensor, out: Tensor | None = None, name: str | None = None
+) -> Tensor:
     """
     Returns sign of every element in `x`: For real numbers, 1 for positive, -1 for negative and 0 for zero. For complex numbers, the return value is a complex number with unit magnitude. If a complex number element is zero, the result is 0+0j.
 
     Args:
         x (Tensor): The input tensor. The data type can be uint8, int8, int16, int32, int64, bfloat16, float16, float32, float64, complex64 or complex128.
+        out (Tensor|None, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -5100,7 +5118,7 @@ def sign(x: Tensor, name: str | None = None) -> Tensor:
             [ 1.,  0., -1.,  1.])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.sign(x)
+        return _C_ops.sign(x, out=out)
     else:
         check_variable_and_dtype(
             x,

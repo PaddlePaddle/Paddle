@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from paddle.utils.decorator_utils import ParamAliasDecorator
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from .. import _C_ops
@@ -474,7 +475,10 @@ def ceil(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
-def cos(x: Tensor, name: str | None = None) -> Tensor:
+@ParamAliasDecorator({"x": ["input"]})
+def cos(
+    x: Tensor, out: Tensor | None = None, name: str | None = None
+) -> Tensor:
     """
     Cosine Operator. Computes cosine of x element-wise.
 
@@ -486,6 +490,7 @@ def cos(x: Tensor, name: str | None = None) -> Tensor:
     Args:
         x (Tensor): Input of Cos operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
             uint8, int8, int16, int32, int64, complex64, complex128.
+        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -504,7 +509,7 @@ def cos(x: Tensor, name: str | None = None) -> Tensor:
             [0.92106098, 0.98006660, 0.99500418, 0.95533651])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.cos(x)
+        return _C_ops.cos(x, out=out)
     else:
         check_variable_and_dtype(
             x,
@@ -686,7 +691,10 @@ def expm1(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
-def floor(x: Tensor, name: str | None = None) -> Tensor:
+@ParamAliasDecorator({"x": ["input"]})
+def floor(
+    x: Tensor, out: Tensor | None = None, name: str | None = None
+) -> Tensor:
     """
 
     Floor Activation Operator. Computes floor of x element-wise.
@@ -697,6 +705,7 @@ def floor(x: Tensor, name: str | None = None) -> Tensor:
     Args:
         x (Tensor): Input of Floor operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
             uint8, int8, int16, int32, int64.
+        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -715,7 +724,7 @@ def floor(x: Tensor, name: str | None = None) -> Tensor:
             [-1., -1.,  0.,  0.])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.floor(x)
+        return _C_ops.floor(x, out=out)
     else:
         check_variable_and_dtype(
             x,
@@ -866,7 +875,10 @@ def round_(x, decimals=0, name=None):
     return _C_ops.round_(x, decimals)
 
 
-def rsqrt(x: Tensor, name: str | None = None) -> Tensor:
+@ParamAliasDecorator({"x": ["input"]})
+def rsqrt(
+    x: Tensor, out: Tensor | None = None, name: str | None = None
+) -> Tensor:
     """
     Rsqrt Activation Operator.
 
@@ -878,6 +890,7 @@ def rsqrt(x: Tensor, name: str | None = None) -> Tensor:
     Args:
         x (Tensor): Input of Rsqrt operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
             uint8, int8, int16, int32, int64.
+        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -896,7 +909,7 @@ def rsqrt(x: Tensor, name: str | None = None) -> Tensor:
             [3.16227770, 2.23606801, 1.82574177, 1.58113885])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.rsqrt(x)
+        return _C_ops.rsqrt(x, out=out)
     else:
         check_variable_and_dtype(
             x,
@@ -975,7 +988,10 @@ def sigmoid(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
-def sin(x: Tensor, name: str | None = None) -> Tensor:
+@ParamAliasDecorator({"x": ["input"]})
+def sin(
+    x: Tensor, out: Tensor | None = None, name: str | None = None
+) -> Tensor:
     """
     Sine Activation Operator.
 
@@ -985,6 +1001,7 @@ def sin(x: Tensor, name: str | None = None) -> Tensor:
     Args:
         x (Tensor): Input of Sin operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
             uint8, int8, int16, int32, int64, complex64 or complex128.
+        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1003,7 +1020,7 @@ def sin(x: Tensor, name: str | None = None) -> Tensor:
             [-0.38941833, -0.19866933,  0.09983342,  0.29552022])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.sin(x)
+        return _C_ops.sin(x, out=out)
     else:
         check_variable_and_dtype(
             x,

@@ -2187,8 +2187,12 @@ def roll(
         return out
 
 
+@ParamAliasDecorator({"x": ["tensors"], "axis": ["dim"]})
 def stack(
-    x: Sequence[Tensor], axis: int = 0, name: str | None = None
+    x: Sequence[Tensor],
+    axis: int = 0,
+    out: Tensor | None = None,
+    name: str | None = None,
 ) -> Tensor:
     """
     Stacks all the input tensors ``x`` along ``axis`` dimension.
@@ -2288,6 +2292,7 @@ def stack(
         axis (int, optional): The axis along which all inputs are stacked. ``axis`` range is ``[-(R+1), R+1)``,
                               where ``R`` is the number of dimensions of the first input tensor ``x[0]``.
                               If ``axis < 0``, ``axis = axis+R+1``. The default value of axis is 0.
+        out (Tensor, optional): The output tensor. If set, the output will be written to this tensor.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -2342,7 +2347,7 @@ def stack(
     axis = 0 if axis is None else axis
 
     if in_dynamic_mode():
-        return _C_ops.stack(x, axis)
+        return _C_ops.stack(x, axis, out=out)
 
     if not isinstance(x, list) and not isinstance(x, tuple):
         # NOTE:(zhiqiu) Only support Variable as input if the Variable is a DENSE_TENSOR_ARRAY create by create_array, array_write, array_read, etc.
