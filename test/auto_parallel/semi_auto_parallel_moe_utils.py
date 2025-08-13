@@ -22,7 +22,6 @@ from paddle.distributed.auto_parallel.moe_utils import (
     _only_reshard_mesh_shape,
     get_local_slices,
     get_rank2tensor_indices,
-    get_sub_meshes_for_shard,
     shard_submesh_and_slice,
 )
 
@@ -146,34 +145,28 @@ class TestMoEUtils:
         placements = [dist.Shard(0), dist.Partial()]
         dist_x = dist.shard_tensor(x, self._mesh0, placements)
         dist_x_local_slices = get_local_slices(x, self._mesh0, placements)
-        if dist.get_rank() == 0:
-            np.testing.assert_equal(
-                dist_x_local_slices[0]['slice'], [(0, 2), (0, 4)]
-            )
-            np.testing.assert_equal(
-                dist_x_local_slices[0]['partial'][1],
-                dist_x.placements[1].reduce_type(),
-            )
-        if dist.get_rank() == 1:
-            np.testing.assert_equal(
-                dist_x_local_slices[1]['slice'], [(2, 4), (0, 4)]
-            )
-            np.testing.assert_equal(
-                dist_x_local_slices[1]['partial'][1],
-                dist_x.placements[1].reduce_type(),
-            )
+        np.testing.assert_equal(
+            dist_x_local_slices[0]['slice'], [(0, 2), (0, 4)]
+        )
+        np.testing.assert_equal(
+            dist_x_local_slices[0]['partial'][1],
+            dist_x.placements[1].reduce_type(),
+        )
+        np.testing.assert_equal(
+            dist_x_local_slices[1]['slice'], [(2, 4), (0, 4)]
+        )
+        np.testing.assert_equal(
+            dist_x_local_slices[1]['partial'][1],
+            dist_x.placements[1].reduce_type(),
+        )
 
     # python -m paddle.distributed.launch --devices=0,1 semi_auto_parallel_moe_utils.py
     def test_reshard_general_case(self):
         """Test reshard when _only_reshard_mesh_shape returns False."""
         (h, w) = (4, 4)
         x = paddle.arange(0, h * w, dtype=self._dtype).reshape([h, w])
-        dist_x = dist.shard_tensor(
-            x, self._mesh2, [dist.Replicate(), dist.Replicate()]
-        )
-        dist_y = dist.reshard(
-            dist_x, self._mesh2, [dist.Shard(0), dist.Replicate()]
-        )
+        dist_x = dist.shard_tensor(x, self._mesh2, [dist.Replicate()])
+        dist_y = dist.reshard(dist_x, self._mesh2, [dist.Shard(0)])
 
         if dist.get_rank() == 0:
             expected_y = x[:2, :]  # Process 0 gets first half of axis 0
@@ -185,26 +178,6 @@ class TestMoEUtils:
             np.testing.assert_array_equal(
                 dist_y._local_value().numpy(), expected_y.numpy()
             )
-
-    def test_get_sub_meshes_for_shard(self):
-        """Test get_sub_meshes_for_shard with a 2x2 mesh."""
-        mesh = dist.ProcessMesh(
-            [[0, 1], [2, 3]], dim_names=["x", "y"]
-        )  # 2x2 mesh
-        # Shard along dim 0
-        sub_meshes = get_sub_meshes_for_shard(mesh, 0)
-        np.testing.assert_equal(len(sub_meshes), 2)
-        np.testing.assert_equal(sub_meshes[0].process_ids, [0, 1])
-        np.testing.assert_equal(sub_meshes[0].shape, [1, 2])
-        np.testing.assert_equal(sub_meshes[1].process_ids, [2, 3])
-        np.testing.assert_equal(sub_meshes[1].shape, [1, 2])
-        # Shard along dim 1
-        sub_meshes = get_sub_meshes_for_shard(mesh, 1)
-        np.testing.assert_equal(len(sub_meshes), 2)
-        np.testing.assert_equal(sub_meshes[0].process_ids, [0, 2])
-        np.testing.assert_equal(sub_meshes[0].shape, [2, 1])
-        np.testing.assert_equal(sub_meshes[1].process_ids, [1, 3])
-        np.testing.assert_equal(sub_meshes[1].shape, [2, 1])
 
     def test_shard_submesh_and_slice(self):
         """Test shard_submesh_and_slice with even and uneven tensor sizes."""
@@ -235,11 +208,14 @@ class TestMoEUtils:
 
     def test_get_rank2tensor_indices(self):
         """Test get_rank2tensor_indices mapping."""
-        sub_mesh2tensor_indices = {
-            dist.ProcessMesh([0]): {'slice': [(0, 2), (0, 4)], 'partial': {}},
-            dist.ProcessMesh([1]): {'slice': [(2, 4), (0, 4)], 'partial': {}},
+        sub_mesh_indices_info = {
+            dist.ProcessMesh([0]): [(0, 2), (0, 4)],
+            dist.ProcessMesh([1]): [(2, 4), (0, 4)],
         }
-        rank2tensor_indices = get_rank2tensor_indices(sub_mesh2tensor_indices)
+        sub_mesh_partial_info = {}
+        rank2tensor_indices = get_rank2tensor_indices(
+            sub_mesh_indices_info, sub_mesh_partial_info
+        )
         np.testing.assert_equal(
             rank2tensor_indices[0], {'slice': [(0, 2), (0, 4)], 'partial': {}}
         )
@@ -320,7 +296,6 @@ class TestMoEUtils:
         self.test_reshard_mesh_shape()
         self.test_get_local_slices()
         self.test_reshard_general_case()
-        self.test_get_sub_meshes_for_shard()
         self.test_shard_submesh_and_slice()
         self.test_get_rank2tensor_indices()
         self.test_get_local_slices_additional()

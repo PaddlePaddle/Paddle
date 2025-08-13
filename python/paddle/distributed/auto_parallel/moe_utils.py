@@ -29,6 +29,7 @@ from paddle.autograd import PyLayer
 from .placement_type import check_placements_equal, to_dim_map
 from .static.reshard_funcs.base_reshard_func import choose_reshard_func
 from .static.reshard_funcs.nd_mesh_reshard_func import get_1D_sub_process_mesh
+from .static.utils import split_mesh
 
 if TYPE_CHECKING:
     from paddle.distributed import Placement
@@ -358,28 +359,8 @@ def _dist_reshape(
         )
 
 
-def get_sub_meshes_for_shard(mesh, mesh_dim):
-    process_ids = np.array(mesh.process_ids).reshape(mesh.shape)
-    num_shards = mesh.shape[mesh_dim]
-
-    sub_meshes = []
-    for i in range(num_shards):
-        coords = [slice(None)] * len(mesh.shape)
-        coords[mesh_dim] = i
-        sub_process_ids = process_ids[tuple(coords)].flatten().tolist()
-        new_shape = list(mesh.shape)
-        new_shape[mesh_dim] = 1
-        sub_mesh = dist.ProcessMesh(
-            shape=new_shape,
-            process_ids=sub_process_ids,
-            dim_names=mesh.dim_names,
-        )
-        sub_meshes.append(sub_mesh)
-    return sub_meshes
-
-
 def shard_submesh_and_slice(mesh, tensor_slice, tensor_dim, mesh_dim):
-    new_sub_meshes = get_sub_meshes_for_shard(mesh, mesh_dim)
+    new_sub_meshes = split_mesh(mesh, mesh_dim)
     num_shards = len(new_sub_meshes)
 
     total_size = tensor_slice[tensor_dim][1] - tensor_slice[tensor_dim][0]
@@ -400,13 +381,13 @@ def shard_submesh_and_slice(mesh, tensor_slice, tensor_dim, mesh_dim):
     return new_sub_meshes, new_slices
 
 
-def get_rank2tensor_indices(sub_mesh2tensor_indices):
+def get_rank2tensor_indices(sub_mesh_indices_info, sub_mesh_partial_info):
     rank2tensor_indices = {}
-    for sub_mesh, info in sub_mesh2tensor_indices.items():
+    for sub_mesh, slice_info in sub_mesh_indices_info.items():
         for rank in sub_mesh.process_ids:
             rank2tensor_indices[rank] = {
-                'slice': info['slice'],
-                'partial': info['partial'],
+                'slice': slice_info,
+                'partial': sub_mesh_partial_info,
             }
     return rank2tensor_indices
 
@@ -417,38 +398,24 @@ def get_local_slices(tensor, mesh, placements):
             f"placements nums ({len(placements)}) must equal mesh_shape({len(mesh.shape)})"
         )
 
-    sub_mesh2tensor_indices = {
-        mesh: {'slice': [(0, s) for s in tensor.shape], 'partial': {}}
-    }
+    sub_mesh_indices_info = {mesh: [(0, s) for s in tensor.shape]}
+    sub_mesh_partial_info = {}
     for mesh_dim, placement in enumerate(placements):
-        new_sub_mesh2tensor_indices = {}
-
         if placement.is_shard():
             tensor_dim = placement.get_dim()
-
-            for sub_mesh, info in sub_mesh2tensor_indices.items():
+            tmp = {}
+            while sub_mesh_indices_info:
+                sub_mesh, slice_info = sub_mesh_indices_info.popitem()
                 new_sub_meshes, new_slices = shard_submesh_and_slice(
-                    sub_mesh, info['slice'], tensor_dim, mesh_dim
+                    sub_mesh, slice_info, tensor_dim, mesh_dim
                 )
-                for new_sub_mesh, new_slice in zip(new_sub_meshes, new_slices):
-                    new_sub_mesh2tensor_indices[new_sub_mesh] = {
-                        'slice': new_slice,
-                        'partial': info['partial'].copy(),
-                    }
-        elif hasattr(placement, 'is_partial') and placement.is_partial():
-            for sub_mesh, info in sub_mesh2tensor_indices.items():
-                new_partial = info['partial'].copy()
-                new_partial[mesh_dim] = placement.reduce_type()
-                new_sub_mesh2tensor_indices[sub_mesh] = {
-                    'slice': info['slice'],
-                    'partial': new_partial,
-                }
-        else:
-            for sub_mesh, info in sub_mesh2tensor_indices.items():
-                new_sub_mesh2tensor_indices[sub_mesh] = info.copy()
+                tmp.update(dict(zip(new_sub_meshes, new_slices)))
+            sub_mesh_indices_info.update(tmp)
 
-        sub_mesh2tensor_indices = new_sub_mesh2tensor_indices
-    return get_rank2tensor_indices(sub_mesh2tensor_indices)
+        if hasattr(placement, 'is_partial') and placement.is_partial():
+            sub_mesh_partial_info[mesh_dim] = placement.reduce_type()
+
+    return get_rank2tensor_indices(sub_mesh_indices_info, sub_mesh_partial_info)
 
 
 def _only_reshard_mesh_shape(
