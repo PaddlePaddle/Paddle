@@ -172,6 +172,9 @@ def monkey_patch_math_tensor():
 
         return methods
 
+    def type_as(self: Tensor, other: Tensor) -> Tensor:
+        return self.astype(other.dtype)
+
     def _scalar_elementwise_op_(
         var: Tensor, scale: float, bias: float
     ) -> Tensor:
@@ -283,6 +286,40 @@ def monkey_patch_math_tensor():
         out = _C_ops.transpose(var, perm)
         return out
 
+    @property
+    def requires_grad(self: Tensor) -> bool:
+        """
+        Whether this Tensor requires gradient computation.
+
+        This is a convenience property that returns the opposite of stop_gradient.
+        Setting requires_grad=True is equivalent to setting stop_gradient=False.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> x = paddle.randn([2, 3])
+                >>> print(x.requires_grad)  # False by default
+                >>>
+                >>> x.requires_grad = False
+                >>> print(x.stop_gradient)  # True
+        """
+        return not self.stop_gradient
+
+    @requires_grad.setter
+    def requires_grad(self: Tensor, value: bool) -> None:
+        """
+        Set whether this Tensor requires gradient computation.
+
+        Args:
+            value (bool): True to enable gradient computation, False to disable.
+        """
+        if not isinstance(value, bool):
+            raise TypeError(
+                f"requires_grad must be bool, but got {type(value)}"
+            )
+        self.stop_gradient = not value
+
     eager_methods = [
         ('__neg__', _neg_),
         ('__abs__', _abs_),
@@ -295,12 +332,14 @@ def monkey_patch_math_tensor():
         ('astype', astype),
         ('byte', byte),
         ('uint8', byte),
+        ('type_as', type_as),
         ('dim', dim),
         ('ndimension', ndimension),
         ('ndim', _ndim),
         ('size', _size_),
         ('T', _T_),
         ('mT', _mT_),
+        ("requires_grad", requires_grad),
         # for logical compare
         ('__array_ufunc__', None),
     ]
