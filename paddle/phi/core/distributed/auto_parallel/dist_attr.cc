@@ -211,10 +211,8 @@ bool TensorDistAttr::verify_dims_mapping(
   }
   std::unordered_map<int64_t, int64_t> map;
   if (!process_mesh_.empty()) {
-    auto mesh_shape = process_mesh_.shape();
-    for (int64_t i = 0; i < dims_mapping.size(); ++i) {
-      int64_t process_num = 0;
-      for (int64_t mesh_dim : dims_mapping[i]) {
+    for (const auto& mesh_dims : dims_mapping) {
+      for (int64_t mesh_dim : mesh_dims) {
         if (mesh_dim >= process_mesh_.ndim()) {
           return false;
         }
@@ -222,9 +220,7 @@ bool TensorDistAttr::verify_dims_mapping(
         if (map[mesh_dim] > 1) {
           return false;
         }
-        process_num += mesh_shape[mesh_dim];
       }
-      if (tensor_shape[i] < process_num) return false;
     }
   } else {
     for (const auto& mesh_dims : dims_mapping) {
