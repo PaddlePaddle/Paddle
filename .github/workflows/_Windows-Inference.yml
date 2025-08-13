@@ -38,7 +38,7 @@ jobs:
       NIGHTLY_MODE: "OFF"
       WITH_UNITY_BUILD: "ON"
       WITH_TPCACHE: "ON"
-      WITH_SCCACHE: "OFF"
+      WITH_SCCACHE: "ON"
       WITH_SHARED_PHI: "OFF"
       GIT_PR_ID: ${{ github.event.pull_request.number }}
       WITH_TESTING: "ON"
@@ -95,10 +95,10 @@ jobs:
         run: |
           call %ci_scripts%\test.bat
 
-      - name: Clean up dir
-        if: always()
-        run: |
-          call %ci_scripts%\clean_env.bat
-          if "%WITH_TESTING%"=="ON" (
-              for /F "tokens=1 delims= " %%# in ('tasklist ^| findstr /i test') do taskkill /f /im %%# /t
-          )  || ver >nul
+    # - name: Clean up dir
+    #   if: always()
+    #   run: |
+    #     call %ci_scripts%\clean_env.bat
+    #     if "%WITH_TESTING%"=="ON" (
+    #         for /F "tokens=1 delims= " %%# in ('tasklist ^| findstr /i test') do taskkill /f /im %%# /t
+    #     )  || ver >nul

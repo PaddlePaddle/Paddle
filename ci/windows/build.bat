@@ -30,7 +30,6 @@ if "%WITH_SCCACHE%"=="ON" (
     sccache -z
     goto :begin_cmake
 ) else (
-    del %SCCACHE_ROOT%\sccache.exe 2> NUL
     goto :begin_cmake
 )
 
