@@ -1587,7 +1587,7 @@ def get_package_data_and_package_dir():
             cinn_fp16_file = (
                 '${CINN_INCLUDE_DIR}/paddle/cinn/runtime/hip/float16.h'
             )
-        if os.path.exists(cinn_fp16_file):
+        if cinn_fp16_file and os.path.exists(cinn_fp16_file):
             shutil.copy(cinn_fp16_file, libs_path)
             package_data['paddle.libs'] += ['float16.h']
         cinn_bf16_file = (

@@ -103,7 +103,9 @@ struct CINN_ALIGN(2) float16 {
 #endif  // CINN_CUDA_FP16
 
   __host__ __device__ inline explicit float16(float val) {
-#if defined(CINN_CUDA_FP16) && (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300)
+#if defined(CINN_CUDA_FP16) &&                              \
+        (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300) || \
+    defined(CINN_HIP_FP16)
     half tmp = __float2half(val);
     x = *reinterpret_cast<uint16_t*>(&tmp);
 
@@ -663,7 +665,8 @@ __host__ __device__ inline float16(log)(const float16& a) {
 }  // namespace cinn
 #endif  // __cplusplus
 
-#if defined(__cplusplus) && defined(CINN_CUDA_FP16)
+#if defined(__cplusplus) && defined(CINN_CUDA_FP16) || defined(CINN_HIP_FP16)
+#ifndef CINN_HIP_FP16
 __device__ inline cinn::common::float16 __shfl_sync(unsigned mask,
                                                     cinn::common::float16 var,
                                                     int srcLane,
@@ -698,6 +701,8 @@ __device__ inline cinn::common::float16 __shfl_xor_sync(
   return cinn::common::float16(
       __shfl_xor_sync(mask, var.to_half(), laneMask, width));
 }
+
+#endif
 
 __host__ __device__ inline cinn::common::float16 max(
     const cinn::common::float16& a, const cinn::common::float16& b) {
