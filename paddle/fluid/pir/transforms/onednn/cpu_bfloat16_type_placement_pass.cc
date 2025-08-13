@@ -135,7 +135,7 @@ class CpuBfloat16TypePattern : public pir::RewritePattern {
         } else {
           PADDLE_THROW(common::errors::Unimplemented(
               "result type is not DenseTensorType or VectorType, please close "
-              "MKLDNNBf16"));
+              "ONEDNNBf16"));
         }
       }
     }

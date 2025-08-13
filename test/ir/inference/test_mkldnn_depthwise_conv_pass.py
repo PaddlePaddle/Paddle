@@ -99,7 +99,7 @@ class DepthwiseConvMKLDNNPass(PassAutoScanTest):
                 'paddings': random_paddings,
                 'padding_algorithm': random_padding_algorithm,
                 'data_format': random_data_layout,
-                'use_mkldnn': True,
+                'use_onednn': True,
             },
         )
 

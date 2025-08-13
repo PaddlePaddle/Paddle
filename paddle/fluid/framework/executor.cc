@@ -607,7 +607,7 @@ void Executor::EnableONEDNN(const ProgramDesc& program) {
   }
 #else
   LOG(WARNING)
-      << "'MKLDNN' is not supported, Please re-compile with WITH_ONEDNN option";
+      << "'ONEDNN' is not supported, Please re-compile with WITH_ONEDNN option";
 #endif
 }
 }  // namespace paddle::framework

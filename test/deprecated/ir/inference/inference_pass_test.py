@@ -37,7 +37,7 @@ class InferencePassTest(unittest.TestCase):
         self.feeds = None
         self.fetch_list = None
 
-        self.enable_mkldnn = False
+        self.enable_onednn = False
         self.enable_onednn_bfloat16 = False
         self.enable_trt = False
         self.enable_tensorrt_varseqlen = False
@@ -284,10 +284,10 @@ class InferencePassTest(unittest.TestCase):
                 )
 
         # Check whether the onednn results and the CPU results are the same.
-        if (not use_gpu) and self.enable_mkldnn:
+        if (not use_gpu) and self.enable_onednn:
             onednn_outputs = self._get_inference_outs(
                 self._get_analysis_config(
-                    use_gpu=use_gpu, use_onednn=self.enable_mkldnn
+                    use_gpu=use_gpu, use_onednn=self.enable_onednn
                 )
             )
 
