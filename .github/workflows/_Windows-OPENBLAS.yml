@@ -15,7 +15,7 @@ env:
   WORKSPACE_DIR: C:\workspace
   ci_scripts: C:\workspace\Paddle\ci\windows
   ACTION_DIR: C:\actions-runner
-  cache_dir: C:\action-cache
+  cache_dir: C:\ac-cache
   SCCACHE_ROOT: C:\sccache
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 
