@@ -150,22 +150,6 @@ class SetDefaultParaAliasDecorator(DecoratorBase):
         return args, kwargs
 
 
-# def param_one_alias(alias_mapping):
-#     def decorator(func):
-#         @functools.wraps(func)
-#         def wrapper(*args, **kwargs):
-#             if not kwargs:
-#                 return func(*args, **kwargs)
-#             if ("input" in kwargs) and ("x" not in kwargs):
-#                 kwargs["x"] = kwargs.pop("input")
-#             return func(*args, **kwargs)
-
-#         wrapper.__signature__ = inspect.signature(func)
-#         return wrapper
-
-#     return decorator
-
-
 def param_one_alias(alias_list):
     def decorator(func):
         @functools.wraps(func)
