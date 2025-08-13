@@ -96,14 +96,14 @@ class BackendPaddle:
         elif self.args.precision == 'int8':
             precision_mode = paddle_infer.PrecisionType.Int8
 
-        if self.args.enable_mkldnn and not self.args.enable_gpu:
+        if self.args.enable_onednn and not self.args.enable_gpu:
             config.disable_gpu()
             config.enable_onednn()
             if self.args.precision == 'int8':
                 config.enable_onednn_int8(
                     {"conv2d", "depthwise_conv2d", "transpose2", "pool2d"}
                 )
-        if not self.args.enable_mkldnn and not self.args.enable_gpu:
+        if not self.args.enable_onednn and not self.args.enable_gpu:
             config.disable_gpu()
             # config.enable_onednn()
         if self.args.enable_profile:
@@ -251,7 +251,7 @@ def parse_args():
     parser.add_argument(
         '--paddle_params_file', type=str, default="model.pdiparams"
     )
-    parser.add_argument('--enable_mkldnn', type=str2bool, default=False)
+    parser.add_argument('--enable_onednn', type=str2bool, default=False)
     parser.add_argument('--enable_gpu', type=str2bool, default=True)
     parser.add_argument('--enable_trt', type=str2bool, default=True)
     parser.add_argument('--enable_dynamic_shape', type=str2bool, default=True)

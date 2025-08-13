@@ -37,7 +37,7 @@ from .pipeline_parallel import (
     PipelineParallel,
 )
 from .pp_utils.batch_comm_helper import BatchCommHelper
-from .zero_bubble_utils import WeightGradStore
+from .zero_bubble_utils import EventStore, WeightGradStore
 
 __all__ = []
 
@@ -358,6 +358,10 @@ class DualPipeVParallel(PipelineParallel):
             else 0
         )
         if common_forward_ops_num == 0 and common_backward_ops_num == 0:
+            if EventStore.event is not None:
+                e_t = EventStore.event
+                EventStore.event = None
+                return e_t
             return deep_ep.get_event_from_custom_stream(
                 paddle.device.current_stream().stream_base
             )
@@ -387,12 +391,27 @@ class DualPipeVParallel(PipelineParallel):
                 pp_raw_stream
             )
 
+        backward_outer_event_wait = False
+        if EventStore.event is not None:
+            with paddle.device.stream_guard(
+                paddle.device.Stream(stream_base=pp_raw_stream)
+            ):
+                EventStore.event.current_stream_wait()
+
+            EventStore.set(None)
+            self.pp_group.process_group.set_outer_wait(True)
+
+            backward_outer_event_wait = True
+
         if common_backward_ops_num > 0:
             bwd_reqs = batch_isend_irecv(self.comm_backward_ops)
 
             if not use_stream_wait_event:
                 for req in bwd_reqs:
                     req.wait()
+
+        if backward_outer_event_wait:
+            self.pp_group.process_group.set_outer_wait(False)
 
         if use_stream_wait_event:
             forward_event_to_wait.current_stream_wait()

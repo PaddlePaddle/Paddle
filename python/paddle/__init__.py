@@ -140,6 +140,12 @@ from . import (
     tensor as tensor,
     utils as utils,
 )
+from .amp import (
+    get_autocast_cpu_dtype,
+    get_autocast_dtype,
+    get_autocast_gpu_dtype,
+    is_autocast_enabled,
+)
 from .autograd import (
     enable_grad,
     grad,
@@ -585,6 +591,7 @@ from .tensor.search import (
     argmax,
     argmin,
     argsort,
+    argwhere,
     bucketize,
     index_sample,
     index_select,
@@ -1136,6 +1143,7 @@ __all__ = [
     'atleast_3d',
     'reverse',
     'nonzero',
+    'argwhere',
     'CUDAPinnedPlace',
     'XPUPinnedPlace',
     'logical_not',
@@ -1244,6 +1252,10 @@ __all__ = [
     'nan',
     'pi',
     'e',
+    'is_autocast_enabled',
+    'get_autocast_dtype',
+    'get_autocast_cpu_dtype',
+    'get_autocast_gpu_dtype',
 ]
 import os
 

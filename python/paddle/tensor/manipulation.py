@@ -24,7 +24,10 @@ from typing_extensions import overload
 import paddle
 from paddle import _C_ops
 from paddle.tensor import fill_constant
-from paddle.utils.decorator_utils import ParamAliasDecorator
+from paddle.utils.decorator_utils import (
+    ParamAliasDecorator,
+    param_one_alias,
+)
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
@@ -3460,6 +3463,7 @@ def squeeze_(
         return _C_ops.squeeze_(input, axes)
 
 
+@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
 def unique_consecutive(
     x: Tensor,
     return_inverse: bool = False,
@@ -4976,6 +4980,7 @@ def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
         return out
 
 
+@param_one_alias({"x": "input"})
 def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
     """
     Changes the shape of ``x`` without changing its data.
@@ -6284,6 +6289,7 @@ def as_real(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
+@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
 def repeat_interleave(
     x: Tensor,
     repeats: int | Tensor,
@@ -6686,6 +6692,7 @@ def infer_broadcast_shape(
     return broadcast_shape
 
 
+@ParamAliasDecorator({"arr": ["input"], "axis": ["dim"]})
 def take_along_axis(
     arr: Tensor, indices: Tensor, axis: int, broadcast: bool = True
 ) -> Tensor:
