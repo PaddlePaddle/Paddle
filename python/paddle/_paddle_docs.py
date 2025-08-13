@@ -66,7 +66,7 @@ add_doc_all(
 
     Examples:
         .. code-block:: python
-
+            >>> # type: ignore
             >>> import paddle
             >>> # data_x is a Tensor with shape [2, 4] with multiple minimum elements
             >>> # the axis is a int element
@@ -196,7 +196,7 @@ add_doc_all(
 
     Examples:
         .. code-block:: python
-
+            >>> # type: ignore
             >>> import paddle
             >>> # data_x is a Tensor with shape [2, 4] with multiple maximum elements
             >>> # the axis is a int element
