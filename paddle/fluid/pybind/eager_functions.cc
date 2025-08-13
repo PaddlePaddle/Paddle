@@ -1378,25 +1378,26 @@ PyObject* eager__is_run_in_backward(PyObject* self,
 
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
-PyObject* eager__add_doc_str(PyObject* self, PyObject* args, ) {
+PyObject* eager__add_doc_str(PyObject* self, PyObject* args) {
   EAGER_TRY
+  static std::vector<std::string> all_docs;
   PyObject* obj = nullptr;
   PyObject* doc_obj = nullptr;
   if (!PyArg_ParseTuple(args, "OO", &obj, &doc_obj)) {
     return nullptr;
   }
-  const char* doc_str = "<invalid string>";
   std::string doc_string = CastPyArg2AttrString(doc_obj, 1);
-  std::cout < < doc_string << std::endl;
+
   if (Py_TYPE(obj) == &PyCFunction_Type) {
     PyCFunctionObject* f = reinterpret_cast<PyCFunctionObject*>(obj);
-    std::cout << "type : " << Py_TYPE(obj)->tp_name << std::endl;
     if (f->m_ml->ml_doc) {
-      std::cout << "doc : " << f->m_ml->ml_doc << std::endl;
+      VLOG(6)
+          << "eager__add_doc_str will update doc for PyCFunction, original doc "
+          << f->m_ml->ml_doc;
     }
-    f->m_ml->ml_doc = doc_str;
+    all_docs.emplace_back(doc_string);
+    f->m_ml->ml_doc = all_docs.back().c_str();
   }
-
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }

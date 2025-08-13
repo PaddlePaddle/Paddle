@@ -37,7 +37,7 @@ except ImportError:
 # because there are some initialization codes in base/core/__init__.py.
 from .base import core  # noqa: F401
 from .base.dygraph.generated_tensor_methods_patch import (
-    monkey_patch_generated_tensor_methods,
+    monkey_patch_generated_methods_for_tensor,
 )
 from .batch import batch
 
@@ -49,13 +49,17 @@ from .framework import (
     monkey_patch_variable,
 )
 from .pir import monkey_patch_dtype, monkey_patch_program, monkey_patch_value
+from .pir.generated_methods_patch import (
+    monkey_patch_generated_methods_for_value,
+)
 
 monkey_patch_variable()
 monkey_patch_math_tensor()
 monkey_patch_value()
 monkey_patch_program()
 monkey_patch_dtype()
-monkey_patch_generated_tensor_methods()
+monkey_patch_generated_methods_for_tensor()
+monkey_patch_generated_methods_for_value()
 
 from .base.dataset import *  # noqa: F403
 from .framework import (
@@ -1241,8 +1245,9 @@ __all__ = [
     'pi',
     'e',
 ]
-
 import os
+
+import paddle._paddle_docs
 
 FLAGS_trace_api = os.environ.get("FLAGS_trace_api", None)
 if FLAGS_trace_api is not None and FLAGS_trace_api != "":

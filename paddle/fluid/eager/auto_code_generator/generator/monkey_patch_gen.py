@@ -25,26 +25,31 @@ from paddle import _C_ops
 from .. import core
 """
 
+EXTRA_IMPORTS_TEMPLATE = """
+__all__ = [methods_map,{func_name}]
+"""
 FUNCTION_NAME_TEMPLATE = """
 def {func_name}():
 """
 
-NAME_METHOD_MAPPING_TEMPLATE = """('{api_name}',_{api_name}),\n"""
+NAME_METHOD_MAPPING_TEMPLATE = """  ('{api_name}',_{api_name})"""
 
 METHODS_MAP_TEMPLATE = """
-    eager_methods_map = [
-        {}
-    ]
+methods_map = [
+{}
+]
 """
 
 METHOD_TEMPLATE = """
-    def _{name}(self,*args, **kwargs):
-        return _C_ops.{name}(self,*args, **kwargs)
+def _{name}(self,*args, **kwargs):
+    return _C_ops.{name}(self,*args, **kwargs)
 """
 SET_METHOD_TEMPLATE = """
+    # set methods for Tensor in dygraph
     local_tensor = core.eager.Tensor
-    for method_name, method in eager_methods_map:
+    for method_name, method in methods_map:
         setattr(local_tensor, method_name, method)
+
 """
 
 
@@ -86,9 +91,7 @@ class MonkeyPatchTensorMethodsGenerator(GeneratorBase):
 
     def GenerateMonkeyPatchTensorMethods(self):
         self.MonkeyPatchTensorMethods_str += IMPORT_TEMPLATE
-        self.MonkeyPatchTensorMethods_str += FUNCTION_NAME_TEMPLATE.format(
-            func_name="monkey_patch_generated_tensor_methods"
-        )
+
         forward_api_list = self.forward_api_list
         methods_map = []  # [("method_name",method),]
         for forward_api_content in forward_api_list:
@@ -104,7 +107,13 @@ class MonkeyPatchTensorMethodsGenerator(GeneratorBase):
             self.MonkeyPatchTensorMethods_str += method_str
         result = ',\n '.join(methods_map)
         self.MonkeyPatchTensorMethods_str += METHODS_MAP_TEMPLATE.format(result)
+        self.MonkeyPatchTensorMethods_str += FUNCTION_NAME_TEMPLATE.format(
+            func_name="monkey_patch_generated_methods_for_tensor"
+        )
         self.MonkeyPatchTensorMethods_str += SET_METHOD_TEMPLATE
+        self.MonkeyPatchTensorMethods_str += EXTRA_IMPORTS_TEMPLATE.format(
+            func_name="monkey_patch_generated_methods_for_tensor"
+        )
 
     def run(self):
         # Read Yaml file
@@ -127,7 +136,7 @@ def ParseArguments():
 
 
 def GenerateMonkeyPathFile(filepath, python_c_str):
-    with open(filepath, 'a') as f:
+    with open(filepath, 'w') as f:
         f.write(python_c_str)
 
 

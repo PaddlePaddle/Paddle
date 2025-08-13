@@ -80,7 +80,7 @@ PARSE_PYTHON_C_TENSORS_TEMPLATE = (
 PARSE_PYTHON_C_TENSOR_REF_TEMPLATE = (
     '    auto& {} = {}("{}", "{}", args, {}, {});\n'
 )
-PARSE_PYTHON_C_TENSORS_FROM_ARGS_OR_KWARGS_TEMPLATE = '    auto {} = GetTensorFromArgsOrKWArgs("{}", "{}", args, {}, kwargs,{},nargs,remaining_kwargs,{});\n'
+PARSE_PYTHON_C_TENSORS_FROM_ARGS_OR_KWARGS_TEMPLATE = '    auto {} = GetTensorFromArgsOrKWArgs("{}", "{}", args, {}, kwargs,{},nargs,&remaining_kwargs,{});\n'
 
 CONVERT_TO_DISTTENSOR_AND_PARSE_PYTHON_C_TENSORS_TEMPLATE = (
     '    {} = {}("{}", "{}", args, {}, {}, mesh);\n'
@@ -226,6 +226,8 @@ PYTHON_C_WRAPPER_TEMPLATE = """
 #include "paddle/fluid/pybind/eager_custom_python_api.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_op_function.h"
+#include "paddle/fluid/pybind/arg_pre_process.h"
+
 namespace paddle {{
 namespace pybind {{
 
@@ -571,8 +573,12 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             )
         pre_process_str = "    //NO NEED"
         if need_parse_python_api_args and len(dygraph_pre_process) > 0:
+
+            def pre_process_add_ampersand(s):
+                return s.replace('(', '(&').replace(',', ',&').rstrip(')') + ')'
+
             pre_process_str = CALL_PRE_PROCESS_TEMPLATE.format(
-                dygraph_pre_process
+                pre_process_add_ampersand(dygraph_pre_process)
             )
         set_device_str = FUNCTION_SET_DEVICE_TEMPLATE.format(expected_place_str)
 

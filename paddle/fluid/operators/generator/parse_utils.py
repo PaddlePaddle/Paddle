@@ -619,6 +619,9 @@ def parse_op_entry(op_entry: dict[str, Any], name_field="op"):
         else:
             forward = None
         op["forward"] = forward
+    # parse python_api
+    if "python_api" in op_entry:
+        op.update({"python_api": op_entry["python_api"]})
     return op
 
 

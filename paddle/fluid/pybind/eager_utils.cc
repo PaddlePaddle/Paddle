@@ -864,6 +864,17 @@ paddle::DataType CastPyArg2DataTypeDirectly(PyObject* obj,
   return dtype;
 }
 
+paddle::DataType CastPyArg2DataTypeDirectly(PyObject* obj,
+                                            const std::string& op_type,
+                                            ssize_t arg_pos,
+                                            paddle::DataType default_value) {
+  if (obj == nullptr) {
+    return default_value;
+  } else {
+    return CastPyArg2DataTypeDirectly(obj, op_type, arg_pos);
+  }
+}
+
 phi::Vocab CastPyArg2Vocab(PyObject* obj, ssize_t arg_pos) {
   if (PyDict_Check(obj)) {
     phi::Vocab vocab;

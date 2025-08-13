@@ -27,8 +27,6 @@ from typing import TYPE_CHECKING, Any, Callable, Literal
 
 from typing_extensions import TypeAlias, get_overloads
 
-from paddle._paddle_docs import get_docstr
-
 if TYPE_CHECKING:
     from types import ModuleType
 
@@ -423,7 +421,7 @@ def get_tensor_members(module: str = 'paddle.Tensor') -> dict[int, Member]:
         member_doc_cleaned = (
             func_doc_to_method_doc(inspect.cleandoc(member_doc))
             if member_doc is not None
-            else get_docstr("paddle." + name)
+            else None
         )
         try:
             sig = inspect.signature(member)
@@ -433,9 +431,6 @@ def get_tensor_members(module: str = 'paddle.Tensor') -> dict[int, Member]:
         except (TypeError, ValueError):
             member_signature = f"{name}()"
 
-        if name == 'amax' or name == 'amin':
-            print(member, id)
-            print("member_signature : ", member_signature)
         if is_inherited_member(name, tensor_class):
             continue
 
