@@ -1327,6 +1327,7 @@ def ones(
     )
 
 
+@ParamAliasDecorator({"x": ["input"]})
 def ones_like(
     x: paddle.Tensor,
     dtype: DTypeLike | None = None,
