@@ -253,6 +253,7 @@ jobs:
           GIT_PR_ID: ${{ github.event.pull_request.number }}
           PY_VERSION: "3.10"
           CUDA_ARCH_NAME: Auto
+          work_dir: "/workspace"
           WITH_CUDNN_FRONTEND: "ON"
           FLAGS_enable_cudnn_frontend: 1
           CACHE_DIR: /root/.cache/build
