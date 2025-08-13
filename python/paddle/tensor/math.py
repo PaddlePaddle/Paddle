@@ -5477,12 +5477,15 @@ def broadcast_shapes(*shapes: Sequence[int]) -> list[int]:
             >>> # ValueError (terminated with error message).
 
     """
-    if len(shapes) < 2:
-        return list(shapes[0]) if shapes else []
-    current_shape = list(shapes[0])
-    for next_shape in shapes[1:]:
-        current_shape = broadcast_shape(current_shape, next_shape)
-    return current_shape
+    if len(shapes) == 0:
+        return []
+    elif len(shapes) == 1:
+        return list(shapes[0])
+    else:
+        current_shape = list(shapes[0])
+        for next_shape in shapes[1:]:
+            current_shape = broadcast_shape(current_shape, next_shape)
+        return current_shape
 
 
 def broadcast_shape(
