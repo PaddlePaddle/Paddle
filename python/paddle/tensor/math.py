@@ -22,6 +22,10 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
+from paddle._C_ops import (  # noqa: F401
+    amax,
+    amin,
+)
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc, dygraph_utils
 from paddle.pir import Value
