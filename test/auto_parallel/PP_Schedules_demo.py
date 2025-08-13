@@ -388,9 +388,18 @@ class Test_Schedules:
         for iter_idx in range(num_iterations):
             losses_by_micro_batch = []
             for i, (data, label) in enumerate(loader):
-                dist_data = dist.shard_tensor(data, pp_mesh0, dp_pp_pleacement)
+                # reorder data and label
+                batch_size = data.shape[0]
+                even_indices = list(range(0, batch_size, 2))  
+                odd_indices = list(range(1, batch_size, 2))  
+                reordered_indices = even_indices + odd_indices              
+                
+                reordered_data = data[reordered_indices]
+                reordered_label = label[reordered_indices]
+                
+                dist_data = dist.shard_tensor(reordered_data, pp_mesh0, dp_pp_pleacement)
                 dist_label = dist.shard_tensor(
-                    label, pp_mesh1, dp_pp_pleacement
+                    reordered_label, pp_mesh1, dp_pp_pleacement
                 )
                 schedule.step(
                     dist_data, target=dist_label, losses=losses_by_micro_batch
@@ -478,6 +487,57 @@ class Test_Schedules:
             opt.step()
             opt.clear_grad()
         return losses_by_step
+    
+    def test_FthenB_align_mode_of_GradientClipByGlobalNorm(self):
+        fix_seeds()
+        paddle.set_flags(
+            {'FLAGS_enable_auto_parallel_align_mode': True}
+        )  # Represents logical alignment with GradientClipByGlobalNorm that is semi-automatically parallel to the original dynamic graph, because the processing logic here is not aligned with the dynamic graph manually parallel
+        self.model = PPMyModel_SingleStage()
+        self.micro_batches = 8
+        self.stage = PipelineStage(self.model, self.rank, 4, group=self.group)
+        self.stage.has_backward = True
+        loss_fn_ = nn.MSELoss()
+        schedule = ScheduleFThenB(
+            self.stage, self.micro_batches, loss_fn=loss_fn_
+        )
+        opt = paddle.optimizer.AdamW(
+            learning_rate=0.001,
+            parameters=self.model.parameters(),
+            grad_clip=paddle.nn.ClipGradByGlobalNorm(1.0),
+        )
+        if (
+            dist.in_auto_parallel_align_mode()
+        ):  # When in auto parallel align mode, patching the optimizer step function
+            orig_step = (
+                opt.step.__func__ if hasattr(opt.step, "__func__") else opt.step
+            )
+            decorator = (
+                _in_auto_parallel_align_mode_handle_none_gradients_in_step(
+                    amp_master_grad=True
+                )
+            )
+            new_step = decorator(orig_step)
+            opt.step = types.MethodType(new_step, opt)
+        dataset = RandomDataset(image_size=8, output_size=8, num_samples=8)
+        loader = DataLoader(dataset, batch_size=8)
+        losses_by_step = []
+        num_iterations = 20
+
+        for iter_idx in range(num_iterations):
+            losses_by_micro_batch = []
+            for i, (data, label) in enumerate(loader):
+                schedule.step(data, target=label, losses=losses_by_micro_batch)
+                if self.rank == 3:
+                    losses_by_step.append(
+                        np.array(losses_by_micro_batch, dtype=np.float32).mean()
+                    )
+            opt.step()
+            opt.clear_grad()
+        paddle.set_flags(
+            {'FLAGS_enable_auto_parallel_align_mode': False}
+        )
+        return losses_by_step
 
     def test_dp_pp_align_mode(self):
         fix_seeds()
@@ -548,6 +608,9 @@ class Test_Schedules:
                     )
             opt.step()
             opt.clear_grad()
+        paddle.set_flags(
+            {'FLAGS_enable_auto_parallel_align_mode': False}
+        )
         return losses_by_step, all_losses_in_one_step_md5sum
 
     def run_test(self):
@@ -562,6 +625,9 @@ class Test_Schedules:
         )
         scheduleFThenB_with_ClipGradByGlobalNorm_losses = (
             self.test_ScheduleFThenB_with_ClipGradByGlobalNorm()
+        )
+        scheduleFthenB_align_mode_losses_of_GradientClipByGlobalNorm = (
+            self.test_FthenB_align_mode_of_GradientClipByGlobalNorm()
         )
         dp_pp_losses, dp_pp_losses_md5sum = self.test_dp_pp()
         dp_pp_align_mode_losses, dp_pp_align_mode_losses_md5sum = (
