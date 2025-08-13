@@ -47,12 +47,12 @@ class TestPaddleDivide(unittest.TestCase):
         expected = self.x_np / self.y_np
         np.testing.assert_allclose(out.numpy(), expected, rtol=1e-6)
 
-    def test_paddle_divide_with_scalar(self):
-        """Test paddle.divide with scalar"""
-        x = paddle.to_tensor(self.x_np)
-        out = paddle.divide(x, self.scalar)
-        expected = self.x_np / self.scalar
-        np.testing.assert_allclose(out.numpy(), expected, rtol=1e-6)
+    # def test_paddle_divide_with_scalar(self):
+    #     """Test paddle.divide with scalar"""
+    #     x = paddle.to_tensor(self.x_np)
+    #     out = paddle.divide(x, self.scalar)
+    #     expected = self.x_np / self.scalar
+    #     np.testing.assert_allclose(out.numpy(), expected, rtol=1e-6)
 
     def test_paddle_divide_rounding_modes(self):
         """Test paddle.divide with different rounding modes"""
@@ -85,31 +85,31 @@ class TestPaddleDivide(unittest.TestCase):
         expected_floor = np.array([2.0, -3.0, 1.0, -2.0])
         np.testing.assert_allclose(out.numpy(), expected_floor, rtol=1e-20)
 
-    def test_paddle_divide_mixed_dtypes(self):
-        """Test paddle.divide with mixed dtypes (int/float combinations)"""
-        test_cases = [
-            # (x_dtype, y_dtype, expected_dtype)
-            ('int8', 'float16', 'float16'),
-            ('int16', 'float32', 'float32'),
-            ('uint8', 'float64', 'float64'),
-            ('int32', 'bfloat16', 'bfloat16'),
-            ('float16', 'int64', 'float16'),
-            ('bfloat16', 'uint8', 'bfloat16'),
-            ('float64', 'int8', 'float64'),
-        ]
+    # def test_paddle_divide_mixed_dtypes(self):
+    #     """Test paddle.divide with mixed dtypes (int/float combinations)"""
+    #     test_cases = [
+    #         # (x_dtype, y_dtype, expected_dtype)
+    #         ('int8', 'float16', 'float16'),
+    #         ('int16', 'float32', 'float32'),
+    #         ('uint8', 'float64', 'float64'),
+    #         ('int32', 'bfloat16', 'bfloat16'),
+    #         ('float16', 'int64', 'float16'),
+    #         ('bfloat16', 'uint8', 'bfloat16'),
+    #         ('float64', 'int8', 'float64'),
+    #     ]
 
-        for x_dtype, y_dtype, expected_dtype in test_cases:
-            with self.subTest(x_dtype=x_dtype, y_dtype=y_dtype):
-                x = paddle.to_tensor([1, 2, 3], dtype=x_dtype)
-                y = paddle.to_tensor([2, 1, 3], dtype=y_dtype)
+    #     for x_dtype, y_dtype, expected_dtype in test_cases:
+    #         with self.subTest(x_dtype=x_dtype, y_dtype=y_dtype):
+    #             x = paddle.to_tensor([1, 2, 3], dtype=x_dtype)
+    #             y = paddle.to_tensor([2, 1, 3], dtype=y_dtype)
 
-                out = paddle.divide(x, y)
+    #             out = paddle.divide(x, y)
 
-                self.assertEqual(
-                    out.dtype,
-                    getattr(paddle, expected_dtype),
-                    f'Dtype mismatch: {x_dtype}/{y_dtype} should be {expected_dtype}',
-                )
+    #             self.assertEqual(
+    #                 out.dtype,
+    #                 getattr(paddle, expected_dtype),
+    #                 f'Dtype mismatch: {x_dtype}/{y_dtype} should be {expected_dtype}',
+    #             )
 
     def test_paddle_divide_static_graph(self):
         """Test paddle.divide in static graph"""
@@ -236,12 +236,12 @@ class TestPaddleDiv(unittest.TestCase):
         expected = self.x_np / self.y_np
         np.testing.assert_allclose(out.numpy(), expected, rtol=1e-6)
 
-    def test_paddle_div_with_scalar(self):
-        """Test paddle.div with scalar"""
-        x = paddle.to_tensor(self.x_np)
-        out = paddle.div(x, self.scalar)
-        expected = self.x_np / self.scalar
-        np.testing.assert_allclose(out.numpy(), expected, rtol=1e-6)
+    # def test_paddle_div_with_scalar(self):
+    #     """Test paddle.div with scalar"""
+    #     x = paddle.to_tensor(self.x_np)
+    #     out = paddle.div(x, self.scalar)
+    #     expected = self.x_np / self.scalar
+    #     np.testing.assert_allclose(out.numpy(), expected, rtol=1e-6)
 
     def test_paddle_div_rounding_modes(self):
         """Test paddle.div with different rounding modes"""
@@ -344,12 +344,12 @@ class TestPaddleDivideInplace(unittest.TestCase):
         expected = self.x_np / self.y_np
         np.testing.assert_allclose(x.numpy(), expected, rtol=1e-6)
 
-    def test_paddle_divide__with_scalar(self):
-        """Test paddle.divide_ with scalar"""
-        x = paddle.to_tensor(self.x_np)
-        x.divide_(self.scalar)
-        expected = self.x_np / self.scalar
-        np.testing.assert_allclose(x.numpy(), expected, rtol=1e-6)
+    # def test_paddle_divide__with_scalar(self):
+    #     """Test paddle.divide_ with scalar"""
+    #     x = paddle.to_tensor(self.x_np)
+    #     x.divide_(self.scalar)
+    #     expected = self.x_np / self.scalar
+    #     np.testing.assert_allclose(x.numpy(), expected, rtol=1e-6)
 
     def test_paddle_divide__rounding_modes(self):
         """Test paddle.divide_ with different rounding modes"""
@@ -391,12 +391,12 @@ class TestPaddleDivInplace(unittest.TestCase):
         expected = self.x_np / self.y_np
         np.testing.assert_allclose(x.numpy(), expected, rtol=1e-6)
 
-    def test_paddle_div__with_scalar(self):
-        """Test paddle.div_ with scalar"""
-        x = paddle.to_tensor(self.x_np)
-        x.div_(self.scalar)
-        expected = self.x_np / self.scalar
-        np.testing.assert_allclose(x.numpy(), expected, rtol=1e-6)
+    # def test_paddle_div__with_scalar(self):
+    #     """Test paddle.div_ with scalar"""
+    #     x = paddle.to_tensor(self.x_np)
+    #     x.div_(self.scalar)
+    #     expected = self.x_np / self.scalar
+    #     np.testing.assert_allclose(x.numpy(), expected, rtol=1e-6)
 
     def test_paddle_div__rounding_modes(self):
         """Test paddle.div_ with different rounding modes"""
@@ -443,12 +443,12 @@ class TestPaddleTrueDivide(unittest.TestCase):
         expected = self.x_np / self.y_np
         np.testing.assert_allclose(out.numpy(), expected, rtol=1e-6)
 
-    def test_paddle_true_divide_with_scalar(self):
-        """Test paddle.true_divide with scalar"""
-        x = paddle.to_tensor(self.x_np)
-        out = paddle.true_divide(x, self.scalar)
-        expected = self.x_np / self.scalar
-        np.testing.assert_allclose(out.numpy(), expected, rtol=1e-6)
+    # def test_paddle_true_divide_with_scalar(self):
+    #     """Test paddle.true_divide with scalar"""
+    #     x = paddle.to_tensor(self.x_np)
+    #     out = paddle.true_divide(x, self.scalar)
+    #     expected = self.x_np / self.scalar
+    #     np.testing.assert_allclose(out.numpy(), expected, rtol=1e-6)
 
     def test_paddle_true_divide_static_graph(self):
         """Test paddle.true_divide in static graph"""

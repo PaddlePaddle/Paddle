@@ -97,7 +97,6 @@ from .ops import (  # noqa: F401
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-    from numbers import Number
 
     from paddle import Tensor
     from paddle._typing import DTypeLike
@@ -923,14 +922,13 @@ def subtract_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 @ParamAliasDecorator({"x": ["input"], "y": ["other"]})
 def divide(
     x: Tensor,
-    y: Tensor | Number,
-    name: str | None = None,
-    *,
+    y: Tensor,
     rounding_mode: str | None = None,
     out: Tensor | None = None,
+    name: str | None = None,
 ) -> Tensor:
     """
-    Divide tensor x by y (Tensor or Number) element-wise.The equation is:
+    Divide two tensors element-wise. The equation is:
 
     .. math::
         out = x / y
@@ -943,11 +941,11 @@ def divide(
     Args:
         x (Tensor): the input tensor, it's data type should be bool, bfloat16, float16, float32, float64,
             int8, int16, int32, int64, uint8, complex64, complex128.
-        y (Tensor| Number): the input tensor or scalar, it's data type should be bool, bfloat16, float16, float32, float64,
+        y (Tensor): the input tensor, it's data type should be bool, bfloat16, float16, float32, float64,
             int8, int16, int32, int64, uint8, complex64, complex128.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
         rounding_mode (str|None, optional): The rounding mode. Can be None (default), "trunc" (truncate toward zero), or "floor" (round down toward negative infinity).
         out (Tensor, optional): The output tensor. Default: None.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
@@ -966,48 +964,6 @@ def divide(
             [2.        , 0.60000000, 2.        ])
 
     """
-    if not isinstance(y, paddle.Tensor):
-        if in_dynamic_or_pir_mode():
-            y = paddle.to_tensor(y)
-        else:
-            if isinstance(y, bool):
-                dtype = paddle.int64
-            elif isinstance(y, int):
-                dtype = (
-                    paddle.int64
-                    if x.dtype in (paddle.int32, paddle.int64)
-                    else x.dtype
-                )
-            elif isinstance(y, float):
-                dtype = (
-                    paddle.float32
-                    if x.dtype in (paddle.float16, paddle.float32)
-                    else x.dtype
-                )
-            else:
-                dtype = x.dtype
-            y = paddle.full(shape=[1], fill_value=y, dtype=dtype)
-
-    # Cross-type operations: When performing integer and floating-point operations, the result only needs to meet floating-point precision requirements. long_tensor + float_tensor → float32 (no need for float64).
-    INTEGER_DTYPES = {
-        paddle.int8,
-        paddle.int16,
-        paddle.int32,
-        paddle.int64,
-        paddle.uint8,
-    }
-    FLOAT_DTYPES = {
-        paddle.bfloat16,
-        paddle.float16,
-        paddle.float32,
-        paddle.float64,
-    }
-
-    if x.dtype in INTEGER_DTYPES and y.dtype in FLOAT_DTYPES:
-        x = x.astype(y.dtype)
-    elif y.dtype in INTEGER_DTYPES and x.dtype in FLOAT_DTYPES:
-        y = y.astype(x.dtype)
-
     if rounding_mode is None:
         if in_dynamic_or_pir_mode():
             res = _C_ops.divide(x, y, out=out)
@@ -1052,7 +1008,7 @@ def divide(
 @inplace_apis_in_dygraph_only
 def divide_(
     x: Tensor,
-    y: Tensor | Number,
+    y: Tensor,
     name: str | None = None,
     *,
     rounding_mode: str | None = None,
@@ -1061,29 +1017,6 @@ def divide_(
     Inplace version of ``divide`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_divide`.
     """
-    if not isinstance(y, paddle.Tensor):
-        y = paddle.to_tensor(y)
-
-    # Cross-type operations: When performing integer and floating-point operations, the result only needs to meet floating-point precision requirements. long_tensor + float_tensor → float32 (no need for float64).
-    INTEGER_DTYPES = {
-        paddle.int8,
-        paddle.int16,
-        paddle.int32,
-        paddle.int64,
-        paddle.uint8,
-    }
-    FLOAT_DTYPES = {
-        paddle.bfloat16,
-        paddle.float16,
-        paddle.float32,
-        paddle.float64,
-    }
-
-    if x.dtype in INTEGER_DTYPES and y.dtype in FLOAT_DTYPES:
-        x = x.astype(y.dtype)
-    elif y.dtype in INTEGER_DTYPES and x.dtype in FLOAT_DTYPES:
-        y = y.astype(x.dtype)
-
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
         raise ValueError(
@@ -1107,7 +1040,7 @@ def divide_(
 @ParamAliasDecorator({"x": ["input"], "y": ["other"]})
 def div(
     x: Tensor,
-    y: Tensor | Number,
+    y: Tensor,
     *,
     rounding_mode: str | None = None,
     out: Tensor | None = None,
@@ -1123,7 +1056,7 @@ def div(
 @inplace_apis_in_dygraph_only
 def div_(
     x: Tensor,
-    y: Tensor | Number,
+    y: Tensor,
     *,
     rounding_mode: str | None = None,
 ) -> Tensor:
@@ -1137,7 +1070,7 @@ def div_(
 @ParamAliasDecorator({"x": ["input"], "y": ["other"]})
 def true_divide(
     x: Tensor,
-    y: Tensor | Number,
+    y: Tensor,
     *,
     out: Tensor | None = None,
 ) -> Tensor:
