@@ -1381,6 +1381,7 @@ def ones_like(
     )
 
 
+@SizeArgsDecorator()
 def zeros(
     shape: ShapeLike,
     dtype: DTypeLike | None = None,

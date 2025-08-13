@@ -27,6 +27,7 @@ from paddle.tensor import fill_constant
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     param_one_alias,
+    view_decorator,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -7334,6 +7335,7 @@ def as_strided(
 
 
 @dygraph_only
+@view_decorator()
 def view(
     x: Tensor,
     shape_or_dtype: Sequence[int] | DTypeLike,
