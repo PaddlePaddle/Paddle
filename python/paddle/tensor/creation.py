@@ -3170,7 +3170,10 @@ def _memcpy(input, place=None, output=None) -> paddle.Tensor:
 
 
 def complex(
-    real: paddle.Tensor, imag: paddle.Tensor, out=None, name: str | None = None
+    real: paddle.Tensor,
+    imag: paddle.Tensor,
+    out: paddle.Tensor | None = None,
+    name: str | None = None,
 ) -> paddle.Tensor:
     """Return a complex tensor given the real and image component.
 
