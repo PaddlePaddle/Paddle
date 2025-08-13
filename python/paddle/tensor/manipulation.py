@@ -1347,8 +1347,8 @@ def tolist(x: Tensor) -> NestedList[int | float | complex]:
 def concat(
     x: Sequence[Tensor],
     axis: int | Tensor = 0,
-    name: str | None = None,
     out: Tensor | None = None,
+    name: str | None = None,
 ) -> Tensor:
     """
 
@@ -1370,8 +1370,8 @@ def concat(
         axis (int|Tensor, optional): Specify the axis to operate on the input Tensors.
             Tt should be integer or 0-D int Tensor with shape []. The effective range is [-R, R), where R is Rank(x). When ``axis < 0``,
             it works the same way as ``axis+R``. Default is 0.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
         out (Tensor|None, optional): The output Tensor. If set, the result will be stored in this Tensor. Default is None.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, A Tensor with the same data type as ``x``.
@@ -4816,8 +4816,8 @@ def expand_as(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 def broadcast_to(
     x: Tensor,
     shape: ShapeLike,
-    name: str | None = None,
     out: Tensor | None = None,
+    name: str | None = None,
 ) -> Tensor:
     """
 
@@ -4837,8 +4837,8 @@ def broadcast_to(
         shape (list|tuple|Tensor): The result shape after broadcasting. The data type is int32. If shape is a list or tuple, all its elements
             should be integers or 0-D or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32.
             The value -1 in shape means keeping the corresponding dimension unchanged.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
         out (Tensor, optional): The output tensor. If set, the result will be written to this tensor.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
     Returns:
         N-D Tensor, A Tensor with the given shape. The data type is the same as ``x``.
 
@@ -4860,8 +4860,8 @@ def broadcast_to(
 def expand(
     x: Tensor,
     shape: ShapeLike,
-    name: str | None = None,
     out: Tensor | None = None,
+    name: str | None = None,
 ) -> Tensor:
     """
 
@@ -4883,8 +4883,8 @@ def expand(
         shape (list|tuple|Tensor): The result shape after expanding. The data type is int32. If shape is a list or tuple, all its elements
             should be integers or 0-D or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32.
             The value -1 in shape means keeping the corresponding dimension unchanged.
-        name (str|None, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
         out (Tensor, optional): The output tensor. If set, the result will be written to this tensor.
+        name (str|None, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         N-D Tensor, A Tensor with the given shape. The data type is the same as ``x``.

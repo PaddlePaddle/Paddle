@@ -303,8 +303,6 @@ from .tensor.manipulation import (
     chunk,
     column_stack,
     concat,
-    concat as cat,
-    concat as concatenate,
     crop,
     diagonal_scatter,
     dsplit,
@@ -352,7 +350,6 @@ from .tensor.manipulation import (
     stack,
     strided_slice,
     take_along_axis,
-    take_along_axis as take_along_dim,
     tensor_split,
     tensordot,
     tile,
@@ -405,7 +402,6 @@ from .tensor.math import (  # noqa: F401
     cartesian_prod,
     ceil,
     clip,
-    clip as clamp,
     combinations,
     conj,
     copysign,
@@ -512,7 +508,6 @@ from .tensor.math import (  # noqa: F401
     negative,
     nextafter,
     outer,
-    outer as ger,
     polygamma,
     polygamma_,
     positive,
@@ -791,6 +786,14 @@ inf = math.inf
 nan = math.nan
 pi = math.pi
 e = math.e
+
+# API alias
+cat = concat
+concatenate = concat
+take_along_dim = take_along_axis
+clamp = clip
+ger = outer
+
 
 __all__ = [
     'block_diag',

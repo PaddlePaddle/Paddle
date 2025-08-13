@@ -2932,7 +2932,10 @@ def inner(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
 @ParamAliasDecorator({"x": ["input"], "y": ["vec2"]})
 def outer(
-    x: Tensor, y: Tensor, name: str | None = None, out: Tensor | None = None
+    x: Tensor,
+    y: Tensor,
+    out: Tensor | None = None,
+    name: str | None = None,
 ) -> Tensor:
     """
 
@@ -2943,8 +2946,8 @@ def outer(
     Args:
         x (Tensor): An N-D Tensor or a Scalar Tensor.
         y (Tensor): An N-D Tensor or a Scalar Tensor.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
         out (Tensor|None, optional): The output Tensor. If set, the result will be stored in this Tensor.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: The outer-product Tensor.
@@ -3005,8 +3008,8 @@ def logsumexp(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
     keepdim: bool = False,
-    name: str | None = None,
     out: Tensor | None = None,
+    name: str | None = None,
 ) -> Tensor:
     r"""
     Calculates the log of the sum of exponentials of ``x`` along ``axis`` .
@@ -3032,10 +3035,10 @@ def logsumexp(
             the output Tensor is the same as ``x`` except in the reduced
             dimensions(it is of size 1 in this case). Otherwise, the shape of
             the output Tensor is squeezed in ``axis`` . Default is False.
-        name (str|None, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
         out (Tensor|None, optional): The output Tensor. If set, the result will be
             stored in this Tensor.
+        name (str|None, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, results of logsumexp along ``axis`` of ``x``, with the same data
@@ -3990,8 +3993,8 @@ def clip(
     x: Tensor,
     min: float | None = None,
     max: float | None = None,
-    name: str | None = None,
     out: Tensor | None = None,
+    name: str | None = None,
 ) -> Tensor:
     """
     This operator clip all elements in input into the range [ min, max ] and return
@@ -4007,8 +4010,8 @@ def clip(
             with shape [] and type ``bfloat16``, ``float16``, ``float32``, ``float64``, ``int32``.
         max (float|int|Tensor, optional): The upper bound with type ``float``, ``int`` or a ``0-D Tensor``
             with shape [] and type ``bfloat16``, ``float16``, ``float32``, ``float64``, ``int32``.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
         out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: A Tensor with the same data type and data shape as input.
