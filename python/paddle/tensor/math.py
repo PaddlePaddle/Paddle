@@ -706,15 +706,14 @@ def _elementwise_op(helper):
 @ParamAliasDecorator({"x": ["input"], "y": ["other"]})
 def add(
     x: Tensor,
-    y: Tensor | Number,
-    name: str | None = None,
-    *,
-    alpha: Number | None = 1,
+    y: Tensor,
+    alpha: Number = 1,
     out: Tensor | None = None,
+    name: str | None = None,
 ) -> Tensor:
     """
     Elementwise Add Operator.
-    Add two tensors element-wise or add a scalar to tensor.
+    Add two tensors element-wise to tensor.
     The equation is:
 
     ..  math::
@@ -722,7 +721,7 @@ def add(
         Out=X+Y
 
     $X$ the tensor of any dimension.
-    $Y$ the tensor or scalar whose dimensions must be less than or equal to the dimensions of $X$.
+    $Y$ the tensor whose dimensions must be less than or equal to the dimensions of $X$.
 
     This operator is used in the following cases:
 
@@ -744,11 +743,11 @@ def add(
     Args:
         x (Tensor): Tensor of any dimensions. Its dtype should be bool, bfloat16, float16, float32, float64,
             int8, int16, int32, int64, uint8, complex64, complex128.
-        y (Tensor|Number): Tensor or scalar of any dimensions. Its dtype should be bool, bfloat16, float16, float32, float64,
+        y (Tensor): Tensor of any dimensions. Its dtype should be bool, bfloat16, float16, float32, float64,
             int8, int16, int32, int64, uint8, complex64, complex128.
-        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
         alpha (Number, optional): Scaling factor for Y. Default: 1.
         out (Tensor, optional): The output tensor. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         N-D Tensor. A location into which the result is stored. It's dimension equals with x.
@@ -766,29 +765,6 @@ def add(
             Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
             [3., 8., 6.])
     """
-
-    if not isinstance(y, paddle.Tensor):
-        if in_dynamic_or_pir_mode():
-            y = paddle.to_tensor(y)
-        else:
-            if isinstance(y, bool):
-                dtype = paddle.int64
-            elif isinstance(y, int):
-                dtype = (
-                    paddle.int64
-                    if x.dtype in (paddle.int32, paddle.int64)
-                    else x.dtype
-                )
-            elif isinstance(y, float):
-                dtype = (
-                    paddle.float32
-                    if x.dtype in (paddle.float16, paddle.float32)
-                    else x.dtype
-                )
-            else:
-                dtype = x.dtype
-            y = paddle.full(shape=[1], fill_value=y, dtype=dtype)
-
     if in_dynamic_or_pir_mode():
         if alpha != 1:
             y = y * alpha
@@ -820,19 +796,12 @@ def add(
 @ParamAliasDecorator({"x": ["input"], "y": ["other"]})
 @inplace_apis_in_dygraph_only
 def add_(
-    x: Tensor,
-    y: Tensor | Number,
-    name: str | None = None,
-    *,
-    alpha: Number | None = 1,
+    x: Tensor, y: Tensor, alpha: Number = 1, name: str | None = None
 ) -> Tensor:
     """
     Inplace version of ``add`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_add`.
     """
-
-    if not isinstance(y, paddle.Tensor):
-        y = paddle.to_tensor(y)
 
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:

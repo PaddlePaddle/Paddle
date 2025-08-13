@@ -106,66 +106,67 @@ class TestPaddleAddNewFeatures(unittest.TestCase):
         np.testing.assert_array_equal(out2.numpy(), expected)
         np.testing.assert_array_equal(x_clone.numpy(), expected)
 
-    def test_scalar_addition(self):
-        """test scalar addition"""
-        x = paddle.to_tensor(self.x_np)
+    # Note: y does not support scalars separately, but will support them uniformly in the future.
+    # def test_scalar_addition(self):
+    #     """test scalar addition"""
+    #     x = paddle.to_tensor(self.x_np)
 
-        out1 = paddle.add(x, self.scalar)
-        expected1 = self.x_np + self.scalar
-        np.testing.assert_array_equal(out1.numpy(), expected1)
+    #     out1 = paddle.add(x, self.scalar)
+    #     expected1 = self.x_np + self.scalar
+    #     np.testing.assert_array_equal(out1.numpy(), expected1)
 
-        out2 = x.add(self.scalar)
-        np.testing.assert_array_equal(out2.numpy(), expected1)
+    #     out2 = x.add(self.scalar)
+    #     np.testing.assert_array_equal(out2.numpy(), expected1)
 
-        out3 = paddle.add(x, self.scalar, alpha=2)
-        expected3 = self.x_np + self.scalar * 2
-        np.testing.assert_array_equal(out3.numpy(), expected3)
+    #     out3 = paddle.add(x, self.scalar, alpha=2)
+    #     expected3 = self.x_np + self.scalar * 2
+    #     np.testing.assert_array_equal(out3.numpy(), expected3)
 
-    def test_scalar_addition_inplace(self):
-        """test inplace scalar addition"""
-        x = paddle.to_tensor(self.x_np)
-        x_clone = x.clone()
+    # def test_scalar_addition_inplace(self):
+    #     """test inplace scalar addition"""
+    #     x = paddle.to_tensor(self.x_np)
+    #     x_clone = x.clone()
 
-        x_clone.add_(self.scalar)
-        expected = self.x_np + self.scalar
-        np.testing.assert_array_equal(x_clone.numpy(), expected)
+    #     x_clone.add_(self.scalar)
+    #     expected = self.x_np + self.scalar
+    #     np.testing.assert_array_equal(x_clone.numpy(), expected)
 
-        x_clone2 = x.clone()
-        x_clone2.add_(self.scalar, alpha=2)
-        expected2 = self.x_np + self.scalar * 2
-        np.testing.assert_array_equal(x_clone2.numpy(), expected2)
+    #     x_clone2 = x.clone()
+    #     x_clone2.add_(self.scalar, alpha=2)
+    #     expected2 = self.x_np + self.scalar * 2
+    #     np.testing.assert_array_equal(x_clone2.numpy(), expected2)
 
-    def test_different_dtype_scalar(self):
-        """test different dtype scalar addition"""
-        x = paddle.to_tensor(self.x_np)
+    # def test_different_dtype_scalar(self):
+    #     """test different dtype scalar addition"""
+    #     x = paddle.to_tensor(self.x_np)
 
-        out1 = x.add(2)
-        expected1 = self.x_np + 2
-        np.testing.assert_array_equal(out1.numpy(), expected1)
+    #     out1 = x.add(2)
+    #     expected1 = self.x_np + 2
+    #     np.testing.assert_array_equal(out1.numpy(), expected1)
 
-        out2 = x.add(2.5)
-        expected2 = self.x_np + 2.5
-        np.testing.assert_array_equal(out2.numpy(), expected2)
+    #     out2 = x.add(2.5)
+    #     expected2 = self.x_np + 2.5
+    #     np.testing.assert_array_equal(out2.numpy(), expected2)
 
-    def test_scalar_addition_static_graph(self):
-        """test static graph scalar addition"""
-        paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
-            out1 = paddle.add(x, self.scalar)
-            out2 = paddle.add(x, self.scalar, alpha=2)
+    # def test_scalar_addition_static_graph(self):
+    #     """test static graph scalar addition"""
+    #     paddle.enable_static()
+    #     with paddle.static.program_guard(paddle.static.Program()):
+    #         x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
+    #         out1 = paddle.add(x, self.scalar)
+    #         out2 = paddle.add(x, self.scalar, alpha=2)
 
-            exe = paddle.static.Executor(self.place)
-            res = exe.run(
-                feed={'x': self.x_np.reshape(1, 2)},
-                fetch_list=[out1, out2],
-            )
+    #         exe = paddle.static.Executor(self.place)
+    #         res = exe.run(
+    #             feed={'x': self.x_np.reshape(1, 2)},
+    #             fetch_list=[out1, out2],
+    #         )
 
-            expected1 = self.x_np + self.scalar
-            expected2 = self.x_np + self.scalar * 2
-            np.testing.assert_array_equal(res[0].flatten(), expected1)
-            np.testing.assert_array_equal(res[1].flatten(), expected2)
-        paddle.disable_static()
+    #         expected1 = self.x_np + self.scalar
+    #         expected2 = self.x_np + self.scalar * 2
+    #         np.testing.assert_array_equal(res[0].flatten(), expected1)
+    #         np.testing.assert_array_equal(res[1].flatten(), expected2)
+    #     paddle.disable_static()
 
 
 class TestAddOut(unittest.TestCase):
