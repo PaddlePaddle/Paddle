@@ -1529,6 +1529,22 @@ class TestDygraphInplacBitwiseOr(TestDygraphInplacBitwiseAnd):
         return paddle.bitwise_or(var, self.y)
 
 
+class TestDygraphInplacBitwiseOrAlias1(TestDygraphInplacBitwiseAnd):
+    def inplace_api_processing(self, var):
+        return paddle.bitwise_or_(var, other=self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.bitwise_or(var, other=self.y)
+
+
+class TestDygraphInplacBitwiseOrAlias2(TestDygraphInplacBitwiseAnd):
+    def inplace_api_processing(self, var):
+        return paddle.bitwise_or_(input=var, other=self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.bitwise_or(input=var, other=self.y)
+
+
 class TestDygraphInplacBitwiseXor(TestDygraphInplacBitwiseAnd):
     def inplace_api_processing(self, var):
         return paddle.bitwise_xor_(var, self.y)
