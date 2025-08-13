@@ -162,7 +162,6 @@ def embedding_renorm_(
         return weight
 
 
-# @ParamAliasDecorator({"x": ["input"]})
 @param_one_alias(["x", "input"])
 def embedding(
     x: Tensor,

@@ -443,7 +443,6 @@ def log_normal_(
     return normal_(x, mean=mean, std=std).exp_()
 
 
-# @ParamAliasDecorator({"x": ["input"]})
 @param_one_alias(["x", "input"])
 def multinomial(
     x: Tensor,
@@ -1952,7 +1951,6 @@ def rand(
     return uniform(shape, dtype, min=0.0, max=1.0, name=name)
 
 
-# @ParamAliasDecorator({"lam": ["lambd"]})
 @param_one_alias(["lam", "lambd"])
 def exponential_(
     x: Tensor, lam: float = 1.0, name: str | None = None

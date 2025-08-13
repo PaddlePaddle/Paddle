@@ -1330,7 +1330,6 @@ def bitwise_and_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         return _C_ops.bitwise_and_(x, y)
 
 
-# @ParamAliasDecorator({"x": ["input"], "y": ["other"]})
 @param_two_alias(["x", "input"], ["y", "other"])
 def bitwise_or(
     x: Tensor, y: Tensor, out: Tensor | None = None, name: str | None = None

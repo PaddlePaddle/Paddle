@@ -4956,7 +4956,6 @@ def isnan(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
-# @ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
 @param_two_alias(["x", "input"], ["axis", "dim"])
 def prod(
     x: Tensor,
