@@ -510,8 +510,10 @@ class PipelineLayer(nn.Layer):
             self._build_layer()
 
         self.comm_key_to_layer_name = {}
-
-        self.shared_comm = self._construct_shared_comm()
+        if self._num_stages > 1:
+            self.shared_comm = self._construct_shared_comm()
+        else:
+            self.shared_comm = {}
         self._synchronize_shared_weights()
 
     def get_stage_from_index(self, layer_idx):
@@ -1002,7 +1004,12 @@ class PipelineLayer(nn.Layer):
                             param.is_firstly_shared = True
 
                 if layer.forward_func is None:
-                    run_function.append(self.shared_layers[layer.layer_name])
+                    if self._num_stages == 1:
+                        run_function.append(layer.build_layer())
+                    else:
+                        run_function.append(
+                            self.shared_layers[layer.layer_name]
+                        )
 
                 else:
                     run_function.append(
