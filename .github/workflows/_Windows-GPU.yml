@@ -81,25 +81,35 @@ jobs:
           call %ci_scripts%\clean_env.bat
 
       - name: Config env
+        working-directory: ..\..\..\..\Paddle
         run: |
+          cd
           call %ci_scripts%\config_env.bat
 
       - name: Build paddle
+        working-directory: ..\..\..\..\Paddle
         run: |
+          cd
           python -m pip install bce-python-sdk==0.8.74
           call %ACTION_DIR%\proxy.bat
           call %ci_scripts%\build.bat
 
       - name: Test whl package
+        working-directory: ..\..\..\..\Paddle
         run: |
+          cd
           call %ci_scripts%\test_whl_package.bat
 
       - name: Test paddle
+        working-directory: ..\..\..\..\Paddle
         run: |
+          cd
           call %ci_scripts%\test.bat
 
       - name: Test fluid library
+        working-directory: ..\..\..\..\Paddle
         run: |
+          cd
           call %ci_scripts%\test_fluid_library.bat
 
     # - name: Clean up dir

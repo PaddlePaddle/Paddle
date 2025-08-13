@@ -82,11 +82,15 @@ jobs:
           call %ci_scripts%\clean_env.bat
 
       - name: Config env
+        working-directory: ..\..\..\..\Paddle
         run: |
+          cd
           call %ci_scripts%\config_env.bat
 
       - name: Build paddle
+        working-directory: ..\..\..\..\Paddle
         run: |
+          cd
           python -m pip install bce-python-sdk==0.8.74
           python -c "import wget;wget.download('https://paddle-github-action.cdn.bcebos.com/windows/tp_predownload/onnxruntime-win-x64-1.11.1.zip')"
           if not exist "third_party/onnxruntime/Windows" mkdir "third_party/onnxruntime/Windows"
@@ -95,11 +99,15 @@ jobs:
           call %ci_scripts%\build.bat
 
       - name: Test whl package
+        working-directory: ..\..\..\..\Paddle
         run: |
+          cd
           call %ci_scripts%\test_whl_package.bat
 
       - name: Test paddle
+        working-directory: ..\..\..\..\Paddle
         run: |
+          cd
           call %ci_scripts%\test.bat
 
     # - name: Clean up dir
