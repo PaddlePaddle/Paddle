@@ -19,6 +19,7 @@ from collections.abc import Iterable
 from typing import Any, Callable, TypeVar, cast
 
 _F = TypeVar("_F", bound=Callable[..., Any])
+warnings.simplefilter("always", category=Warning)
 
 
 class DecoratorBase:
@@ -170,8 +171,8 @@ def param_one_alias(alias_list):
         def wrapper(*args, **kwargs):
             if not kwargs:
                 return func(*args, **kwargs)
-            if (alias_list[0] in kwargs) and (alias_list[1] not in kwargs):
-                kwargs[alias_list[1]] = kwargs.pop(alias_list[0])
+            if (alias_list[0] not in kwargs) and (alias_list[1] in kwargs):
+                kwargs[alias_list[0]] = kwargs.pop(alias_list[1])
             return func(*args, **kwargs)
 
         wrapper.__signature__ = inspect.signature(func)
@@ -185,10 +186,40 @@ def param_two_alias(alias_list1, alias_list2):
         def wrapper(*args, **kwargs):
             if not kwargs:
                 return func(*args, **kwargs)
-            if (alias_list1[0] in kwargs) and (alias_list1[1] not in kwargs):
-                kwargs[alias_list1[1]] = kwargs.pop(alias_list1[0])
-            if (alias_list2[0] in kwargs) and (alias_list2[1] not in kwargs):
-                kwargs[alias_list2[1]] = kwargs.pop(alias_list2[0])
+            if (alias_list1[0] not in kwargs) and (alias_list1[1] in kwargs):
+                kwargs[alias_list1[0]] = kwargs.pop(alias_list1[1])
+            if (alias_list2[0] not in kwargs) and (alias_list2[1] in kwargs):
+                kwargs[alias_list2[0]] = kwargs.pop(alias_list2[1])
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+def param_two_alias_one_default(alias_list1, alias_list2, default_param):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            if not kwargs:
+                return func(*args, **kwargs)
+
+            is_torch_call = False
+
+            if (alias_list1[0] not in kwargs) and (alias_list1[1] in kwargs):
+                kwargs[alias_list1[0]] = kwargs.pop(alias_list1[1])
+                is_torch_call = True
+            if (alias_list2[0] not in kwargs) and (alias_list2[1] in kwargs):
+                kwargs[alias_list2[0]] = kwargs.pop(alias_list2[1])
+                is_torch_call = True
+
+            if is_torch_call:
+                warnings.warn(
+                    "Set default parameters " + str(default_param),
+                    category=Warning,
+                )
+                if default_param[0] not in kwargs:
+                    kwargs[default_param[0]] = default_param[1]
             return func(*args, **kwargs)
 
         wrapper.__signature__ = inspect.signature(func)
