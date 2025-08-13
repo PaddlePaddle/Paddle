@@ -440,6 +440,9 @@ def monkey_patch_value():
             methods.append((method_name, method_impl))
         return methods
 
+    def type_as(self, other):
+        return self.astype(other.dtype)
+
     def _scalar_add_(var, value):
         return paddle.scale(var, 1.0, value)
 
@@ -1339,6 +1342,40 @@ def monkey_patch_value():
         """
         pass
 
+    @property
+    def requires_grad(self) -> bool:
+        """
+        Whether this Tensor requires gradient computation.
+
+        This is a convenience property that returns the opposite of stop_gradient.
+        Setting requires_grad=True is equivalent to setting stop_gradient=False.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> x = paddle.randn([2, 3])
+                >>> print(x.requires_grad)  # False by default
+                >>>
+                >>> x.requires_grad = False
+                >>> print(x.stop_gradient)  # True
+        """
+        return not self.stop_gradient
+
+    @requires_grad.setter
+    def requires_grad(self, value: bool) -> None:
+        """
+        Set whether this Tensor requires gradient computation.
+
+        Args:
+            value (bool): True to enable gradient computation, False to disable.
+        """
+        if not isinstance(value, bool):
+            raise TypeError(
+                f"requires_grad must be bool, but got {type(value)}"
+            )
+        self.stop_gradient = not value
+
     import paddle
 
     value_methods = [
@@ -1354,6 +1391,7 @@ def monkey_patch_value():
         ('astype', astype),
         ('byte', byte),
         ('uint8', byte),
+        ('type_as', type_as),
         ('size', _size_),
         ('T', _T_),
         ('mT', _mT_),
@@ -1361,6 +1399,7 @@ def monkey_patch_value():
         ('new_empty', _new_empty_),
         ('new_ones', _new_ones_),
         ('new_zeros', _new_zeros_),
+        ("requires_grad", requires_grad),
         ('clone', clone),
         ('clear_gradient', clear_gradient),
         ('append', append),
