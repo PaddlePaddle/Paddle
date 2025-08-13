@@ -503,7 +503,6 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         get_input_out_str = ""
         if (
             not no_input_out_tensor
-            and not forward_inplace_map
             and len(self.forward_outputs_position_map) == 1
             and next(iter(self.forward_outputs_position_map.values()))[0]
             == "Tensor"
@@ -573,6 +572,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                 namespace,
                 GetForwardFunctionName(inplaced_forward_api_name),
             )
+            dygraph_function_call_str = ",".join(dygraph_function_call_list)
 
             inplace_noamp_dygraph_function_str = (
                 NOAMP_DYGRAPH_FUNCTION_TEMPLATE.format(
