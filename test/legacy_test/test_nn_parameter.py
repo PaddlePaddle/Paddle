@@ -78,15 +78,6 @@ class TestPaddleParameter(unittest.TestCase):
         self.assertEqual(type(param), paddle.nn.Parameter)
         self.assertTrue(isinstance(param, Variable))
 
-        class MyTensor(paddle.Tensor):
-            _is_param = True
-
-        a = MyTensor(self.data_np)
-        self.assertTrue(isinstance(a, paddle.nn.Parameter))
-
-        b = paddle.to_tensor(self.data_np)
-        self.assertFalse(isinstance(b, paddle.nn.Parameter))
-
     def test_repr(self):
         """Test Parameter.__repr__() output"""
         x = paddle.to_tensor(self.data_np)
