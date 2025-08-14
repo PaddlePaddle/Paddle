@@ -88,7 +88,7 @@ rem install ninja if GENERATOR is Ninja
 if "%GENERATOR%" == "Ninja" (
     rem Set the default generator for cmake to Ninja
     setx CMAKE_GENERATOR Ninja
-    pip install ninja
+    pip install ninja==1.11.1.4
     if %errorlevel% NEQ 0 (
         echo pip install ninja failed!
         exit /b 5
