@@ -16,11 +16,17 @@ from functools import wraps
 import paddle
 
 
-def _in_auto_parallel_align_mode_handle_none_gradients_in_step(
+# NOTE(zhengtianyu): align ClipGradByGlobalNorm in auto_parallel_align_mode.
+# In old dygraph semi-auto parallel, each rank has parameter and gradient information
+# from other ranks. To align with this behavior, this decorator ensures auto_hybrid_pp
+# uses the same logic as old dygraph semi-auto parallel for ClipGradByGlobalNorm in align mode.
+# Pay attention to the auto_hybrid_pp's default logic matches dynamic manual-parallel,
+# Refer to NOTE: Fix grad_clip in auto_hybrid_pp mode
+def _patch_grads_for_step(
     amp_master_grad=False,
 ):
     """
-    Decorator to handle None gradients in optimizer step when in auto parallel align mode.
+    Only for auto parallel align mode, use this decorator to handle None gradients in optimizer step.
 
     This decorator is applied to optimizer step methods to handle cases where parameters
     have None gradients. It creates zero gradients for parameters that need gradients
@@ -35,44 +41,56 @@ def _in_auto_parallel_align_mode_handle_none_gradients_in_step(
     Returns:
         function: Decorated step method that handles None gradients.
 
+    Example:
+        .. code-block:: python
+
+            >>> from __future__ import annotations
+            >>> import paddle.distributed as dist
+            >>> import types
+            >>> from paddle.distributed.auto_parallel._utils import _patch_grads_for_step
+
+            >>> opt = paddle.optimizer.AdamW(
+            ...     learning_rate=0.001,
+            ...     parameters=self.model.parameters(),
+            ...     grad_clip=paddle.nn.ClipGradByGlobalNorm(1.0),
+            ...     )
+            >>> if dist.in_auto_parallel_align_mode():
+            >>>     orig_step = (
+            ...         opt.step.__func__ if hasattr(opt.step, "__func__") else opt.step
+            ...     )
+            >>>     decorator = (
+            ...         _patch_grads_for_step(
+            ...             amp_master_grad=True
+            ...         )
+            ...     )
+            >>>     new_step = decorator(orig_step)
+            >>>     opt.step = types.MethodType(new_step, opt)
+
     """
 
     def decorator(step_method):
         @wraps(step_method)
         def wrapper(self, *args, **kwargs):
+            # Helper function to set gradient for a parameter
+            def set_param_grad(param):
+                if param.stop_gradient or param.grad is not None:
+                    return
+
+                if hasattr(param, "main_grad"):
+                    param.main_grad = paddle.zeros_like(
+                        param, dtype=paddle.float32
+                    )
+                else:
+                    dtype = paddle.float32 if amp_master_grad else param.dtype
+                    param.grad = paddle.zeros_like(param, dtype=dtype)
+
             if not isinstance(self._parameter_list[0], dict):
                 for param in self._parameter_list:
-                    if param.stop_gradient or param.grad is not None:
-                        continue
-
-                    if hasattr(param, "main_grad"):
-                        param.main_grad = paddle.zeros_like(
-                            param, dtype=paddle.float32
-                        )
-                    else:
-
-                        dtype = (
-                            paddle.float32 if amp_master_grad else param.dtype
-                        )
-                        param.grad = paddle.zeros_like(param, dtype=dtype)
+                    set_param_grad(param)
             else:
                 for param_group in self._param_groups:
                     for param in param_group['params']:
-                        if param.stop_gradient or param.grad is not None:
-                            continue
-
-                        if hasattr(param, "main_grad"):
-                            param.main_grad = paddle.zeros_like(
-                                param, dtype=paddle.float32
-                            )
-                        else:
-
-                            dtype = (
-                                paddle.float32
-                                if amp_master_grad
-                                else param.dtype
-                            )
-                            param.grad = paddle.zeros_like(param, dtype=dtype)
+                        set_param_grad(param)
             return step_method(self, *args, **kwargs)
 
         return wrapper

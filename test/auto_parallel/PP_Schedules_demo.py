@@ -22,7 +22,7 @@ import paddle.distributed as dist
 from paddle import nn
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel._utils import (
-    _in_auto_parallel_align_mode_handle_none_gradients_in_step,
+    _patch_grads_for_step,
 )
 from paddle.distributed.auto_parallel.pipelining.schedules import (
     Schedule1F1B,
@@ -514,12 +514,10 @@ class Test_Schedules:
             orig_step = (
                 opt.step.__func__ if hasattr(opt.step, "__func__") else opt.step
             )
-            decorator = (
-                _in_auto_parallel_align_mode_handle_none_gradients_in_step(
-                    amp_master_grad=True
-                )
-            )
-            new_step = decorator(orig_step)
+            decorator = _patch_grads_for_step(amp_master_grad=True)
+            new_step = decorator(
+                orig_step
+            )  # When the step function is wrapped by the decorator, it initializes gradients for parameters belonging to other ranks prior to step method execution, ensuring their metadata is preserved.
             opt.step = types.MethodType(new_step, opt)
         dataset = RandomDataset(image_size=8, output_size=8, num_samples=8)
         loader = DataLoader(dataset, batch_size=8)
