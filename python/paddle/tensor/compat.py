@@ -285,47 +285,28 @@ def sort(
 
             >>> import paddle
 
-            >>> x = paddle.to_tensor([[[5,8,9,5],
-            ...                        [0,0,1,7],
-            ...                        [6,9,2,4]],
-            ...                       [[5,2,4,2],
-            ...                        [4,7,7,9],
-            ...                        [1,7,0,6]]],
+            >>> x = paddle.to_tensor([[5,8,9,5],
+            ...                       [0,0,1,7],
+            ...                       [6,9,2,4]],
             ...                      dtype='float32')
             >>> out1 = paddle.compat.sort(input=x, dim=-1)
             >>> out2 = paddle.compat.sort(x, 1, descending=True)
             >>> out1
-            SortRetType(values=Tensor(shape=[2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
-                   [[[5., 5., 8., 9.],
-                     [0., 0., 1., 7.],
-                     [2., 4., 6., 9.]],
-
-                    [[2., 2., 4., 5.],
-                     [4., 7., 7., 9.],
-                     [0., 1., 6., 7.]]]), indices=Tensor(shape=[2, 3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
-                   [[[0, 3, 1, 2],
-                     [0, 1, 2, 3],
-                     [2, 3, 0, 1]],
-
-                    [[1, 3, 2, 0],
-                     [0, 1, 2, 3],
-                     [2, 0, 3, 1]]]))
+            SortRetType(values=Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[5., 5., 8., 9.],
+                    [0., 0., 1., 7.],
+                    [2., 4., 6., 9.]]), indices=Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+                   [[0, 3, 1, 2],
+                    [0, 1, 2, 3],
+                    [2, 3, 0, 1]]))
             >>> out2
-            SortRetType(values=Tensor(shape=[2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
-                   [[[6., 9., 9., 7.],
-                     [5., 8., 2., 5.],
-                     [0., 0., 1., 4.]],
-
-                     [[5., 7., 7., 9.],
-                     [4., 7., 4., 6.],
-                     [1., 2., 0., 2.]]]), indices=Tensor(shape=[2, 3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
-                   [[[2, 2, 0, 1],
-                     [0, 0, 2, 0],
-                     [1, 1, 1, 2]],
-
-                     [[0, 1, 1, 1],
-                     [1, 2, 0, 2],
-                     [2, 0, 2, 0]]]))
+            SortRetType(values=Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[9., 8., 5., 5.],
+                    [7., 1., 0., 0.],
+                    [9., 6., 4., 2.]]), indices=Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+                   [[2, 1, 0, 3],
+                    [3, 2, 0, 1],
+                    [1, 0, 3, 2]]))
     """
     _check_out_status(out, expect_multiple=True)
     outputs, indices = _C_ops.argsort(input, dim, descending, stable)
