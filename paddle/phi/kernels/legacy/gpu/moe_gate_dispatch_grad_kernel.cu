@@ -78,11 +78,7 @@ void moe_dispatch_bwd(const Context& dev_ctx,
                       int64_t num_local_experts = -1) {
   int64_t num_rows = combine_weights.dims()[0];
   int64_t k = combine_weights.dims()[1];
-#ifdef MOE_OPS_AUTO
   int64_t hidden_size = y_grad.dims()[2];
-#else
-  int64_t hidden_size = y_grad.dims()[1];
-#endif
   int64_t num_experts = gate_logits_grad.dims()[1];
 
   apply_moe_dispatch_bwd<T>(y_grad.data<T>(),
@@ -118,14 +114,6 @@ void MoeGateDispatchGradKernel(const Context& dev_ctx,
   auto y_grad_dims = y_grad.dims();
   auto scatter_index_dims = scatter_index.dims();
 
-#ifdef MOE_OPS_AUTO
-  // y_grad shape is [num_experts, capacity, h]
-  int64_t num_experts = y_grad_dims[0];
-  int64_t hidden_size = y_grad_dims[2];
-#else
-  int64_t num_experts = y_grad_dims[0] / capacity;
-  int64_t hidden_size = y_grad_dims[1];
-#endif
   int64_t num_rows = scatter_index_dims[1];
 
   const std::vector<int32_t> axis = {1, 0};

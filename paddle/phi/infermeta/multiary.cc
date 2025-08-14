@@ -6677,9 +6677,9 @@ void MoeGateDispatchInferMeta(const MetaTensor& x,
 
   std::vector<int64_t> y_dims;
   if (use_pad) {
-    y_dims = {num_experts * capacity, x_dims[1]};
+    y_dims = {num_experts, num_rows * k / num_experts, x_dims[1]};
   } else {
-    y_dims = {num_rows * k, x_dims[1]};
+    y_dims = {num_rows, k, x_dims[1]};
   }
 
   y->set_dims(common::make_ddim(y_dims));

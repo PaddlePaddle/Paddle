@@ -2109,24 +2109,24 @@ void MoeGateDispatchGradInferMeta(const MetaTensor& combine_weights,
 
   PADDLE_ENFORCE_EQ(
       y_grad_dims.size(),
-      2,
-      errors::InvalidArgument("Input y_grad should have 2 dimensions"));
+      3,
+      errors::InvalidArgument("Input y_grad should have 3 dimensions"));
 
   PADDLE_ENFORCE_EQ(combine_weights_grad_dims.size(),
                     2,
                     errors::InvalidArgument(
                         "Input combine_weights_grad should have 2 dimensions"));
 
-  int64_t num_experts = y_grad_dims[0] / capacity;
-  int64_t hidden_size = y_grad_dims[1];
+  int64_t num_experts = y_grad_dims[0];
+  int64_t hidden_size = y_grad_dims[2];
 
   int64_t num_rows = scatter_index_dims[1];
 
-  gate_logits_grad->set_dims(common::make_ddim({num_rows, num_experts}));
-  gate_logits_grad->set_dtype(phi::DataType::FLOAT32);
-
   x_grad->set_dims(common::make_ddim({num_rows, hidden_size}));
   x_grad->set_dtype(y_grad.dtype());
+
+  gate_logits_grad->set_dims(common::make_ddim({num_rows, num_experts}));
+  gate_logits_grad->set_dtype(phi::DataType::FLOAT32);
 }
 void FusedRMSNormGradInferMeta(const MetaTensor& x,
                                const MetaTensor& scale,
