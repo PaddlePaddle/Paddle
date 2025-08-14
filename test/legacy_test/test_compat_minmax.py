@@ -40,6 +40,7 @@ class TestCompatMinMaxBase(unittest.TestCase):
         self.index_op = index_op
         self.test_op_name = test_op_name
         self.origin_op_name = origin_op_name
+        np.random.seed(1)
 
     def test_case1_simple_reduce_all(self):
         data = paddle.to_tensor([[1.0, 2.0], [3.0, 4.0]], dtype='float32')
@@ -237,6 +238,47 @@ class TestCompatMinMaxBase(unittest.TestCase):
                 vals_inds[1].numpy(), origin_indices.numpy()
             )
 
+    def test_case1_out(self):
+        data = np.random.randn(4, 5, 6).astype(np.float32)
+        x = paddle.to_tensor(data, stop_gradient=False)
+        y = paddle.to_tensor(data, stop_gradient=False)
+        out = paddle.to_tensor(0)
+        self.test_op(x, out=out)
+        gt_out = self.origin_op(y)
+        gt_out.backward()
+        out.backward()
+
+        np.testing.assert_allclose(out.numpy(), gt_out.numpy())
+        np.testing.assert_allclose(x.grad.numpy(), y.grad.numpy())
+
+    def test_case2_out(self):
+        for type_to_use in (list, tuple):
+            data = np.random.randn(3, 17, 5).astype(np.float32)
+            x = paddle.to_tensor(data, stop_gradient=False)
+            y = paddle.to_tensor(data, stop_gradient=False)
+            out = type_to_use((paddle.to_tensor(0), paddle.to_tensor(0)))
+            self.test_op(x, dim=1, out=out)
+            gt_vals = self.origin_op(y, axis=1)
+            gt_inds = self.index_op(y, axis=1)
+            gt_vals.backward()
+            out[0].backward()
+
+            np.testing.assert_allclose(out[0].numpy(), gt_vals.numpy())
+            np.testing.assert_array_equal(out[1].numpy(), gt_inds.numpy())
+            np.testing.assert_allclose(x.grad.numpy(), y.grad.numpy())
+
+    def test_case3_out(self):
+        data = np.random.randn(3, 4, 5).astype(np.float32)
+        x = paddle.to_tensor(data)
+        y = paddle.to_tensor(data)
+        out = paddle.to_tensor(0)
+        self.test_op(x, paddle.ones_like(x), out=out)
+        if self.test_op_name.endswith("min"):
+            gt_vals = paddle.minimum(x, paddle.ones_like(x))
+        else:
+            gt_vals = paddle.maximum(x, paddle.ones_like(x))
+        np.testing.assert_allclose(out.numpy(), gt_vals.numpy())
+
     def test_error_handling(self):
         """Test whether correct exception will be thrown. Skip error messages (some of them are long)"""
 
@@ -355,7 +397,54 @@ class TestCompatMinMaxBase(unittest.TestCase):
         with self.assertRaises(TypeError):
             self.test_op(input_ts, "first_dim")
 
-    def _compare_with_origin_static(self, input_shape, axis=0, keepdim=False):
+        paddle.enable_static()
+        with (
+            self.assertRaises(RuntimeError) as cm,
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            x = paddle.static.data(name='x', shape=[None, 6], dtype='float32')
+            result0, result1 = self.test_op(
+                paddle.zeros([3, 4]),
+                dim=1,
+                out=(
+                    paddle.zeros([3, 4]),
+                    paddle.zeros([3, 4], dtype=paddle.int64),
+                ),
+            )
+
+            place = (
+                paddle.CUDAPlace(0)
+                if paddle.is_compiled_with_cuda()
+                else paddle.CPUPlace()
+            )
+            paddle.static.Executor(place).run()
+            self.assertEqual(
+                str(cm.exception),
+                "Using `out` static graph CINN backend is currently not supported. Directly return the tensor tuple instead.\n",
+            )
+        paddle.disable_static()
+
+        def test_wrong_out_input(dim, out_input):
+            with self.assertRaises(TypeError) as cm:
+                if dim is None:
+                    self.test_op(input_ts, out=out_input)
+                else:
+                    self.test_op(input_ts, dim=dim, out=out_input)
+
+        test_wrong_out_input(0, [0, paddle.to_tensor(0)])
+        test_wrong_out_input(0, paddle.to_tensor(0))
+        test_wrong_out_input(None, 0)
+        test_wrong_out_input(None, (paddle.to_tensor(0),))
+
+    def _compare_with_origin_static(
+        self, input_shape, axis_or_other=0, keepdim=False, use_out=False
+    ):
+        """Test Case 2 and Case 3 for return output or param output in static graph mode
+
+        TODO(heqianyue): DO NOT set use_out for now!
+        Currently, static graph + CINN backend will result in unresolved dependency bug for assign op
+        This test is disabled for now, but will be useful when dy2st bug is fixed.
+        """
         numel = 1
         for v in input_shape:
             numel *= v
@@ -365,12 +454,34 @@ class TestCompatMinMaxBase(unittest.TestCase):
                 input_shape
             )
 
-            y = input_tensor**2 + input_tensor
-            values, indices = self.test_op(y, dim=axis, keepdim=keepdim)
-            values += 1
-
-            gt_values = self.origin_op(y, axis=axis, keepdim=keepdim) + 1
-            gt_indices = self.index_op(y, axis=axis, keepdim=keepdim)
+            y = input_tensor**2
+            if isinstance(axis_or_other, int):
+                if use_out:
+                    out = [paddle.to_tensor(0), paddle.to_tensor([0])]
+                    self.test_op(y, dim=axis_or_other, keepdim=keepdim, out=out)
+                    values, indices = out
+                else:
+                    values, indices = self.test_op(
+                        y, dim=axis_or_other, keepdim=keepdim
+                    )
+                gt_values = self.origin_op(
+                    y, axis=axis_or_other, keepdim=keepdim
+                )
+                gt_indices = self.index_op(
+                    y, axis=axis_or_other, keepdim=keepdim
+                )
+            else:
+                if use_out:
+                    out = paddle.to_tensor(0)
+                    self.test_op(y, axis_or_other, out=out)
+                    values, indices = out, paddle.to_tensor(0)
+                else:
+                    values, indices = self.test_op(y, axis_or_other)
+                if self.test_op_name.endswith("min"):
+                    gt_values = paddle.minimum(y, axis=axis_or_other, out=None)
+                else:
+                    gt_values = paddle.maximum(y, axis=axis_or_other)
+                gt_indices = paddle.to_tensor(0)
 
             place = paddle.CUDAPlace(0)
             exe = paddle.static.Executor(place)
@@ -386,9 +497,9 @@ class TestCompatMinMaxBase(unittest.TestCase):
         "core is not compiled with CUDA, skipping",
     )
     def test_static_graph(self):
-        self._compare_with_origin_static([3, 10, 2], axis=1)
-        self._compare_with_origin_static([3, 10, 2], axis=0, keepdim=True)
-        self._compare_with_origin_static([17], axis=0)
+        self._compare_with_origin_static([3, 10, 2], 1)
+        self._compare_with_origin_static([3, 10, 2], 0, keepdim=True)
+        self._compare_with_origin_static([17], 0)
 
 
 class TestCompatMax(TestCompatMinMaxBase):

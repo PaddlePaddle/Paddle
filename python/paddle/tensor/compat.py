@@ -499,12 +499,44 @@ def _min_max_allow_cpu_composite(input: Tensor):
         )
 
 
+def _check_out_status(
+    out: Tensor | tuple[Tensor, Tensor] | list[Tensor],
+    expect_multiple: bool = False,
+):
+    if out is None:
+        return
+    if not in_dynamic_mode():
+        raise RuntimeError(
+            "Using `out` static graph CINN backend is currently not supported. Directly return the tensor tuple instead.\n"
+        )
+    if expect_multiple:
+        if not isinstance(out, (tuple, list)) or len(out) != 2:
+            raise TypeError(
+                f"Expected a list or tuple of two tensors, got {type(out)} instead."
+            )
+        if not (
+            isinstance(out[0], paddle.Tensor)
+            and isinstance(out[1], paddle.Tensor)
+        ):
+            raise TypeError(
+                f"Expected Tensor type in the tuple/list, got ({type(out[0])}, {type(out[1])}) instead."
+            )
+    else:
+        if not isinstance(out, paddle.Tensor):
+            raise TypeError(f"Expected a Tensor, got {type(out)} instead.")
+
+
 @ForbidKeywordsDecorator(
     illegal_keys={"x", "axis"},
     func_name="paddle.compat.min",
     correct_name="paddle.min",
 )
-def min(input: Tensor, *args: Any, **kwargs: Any) -> Tensor | MinMaxRetType:
+def min(
+    input: Tensor,
+    *args: Any,
+    out: Tensor | tuple[Tensor, Tensor] | list[Tensor] = None,
+    **kwargs: Any,
+) -> Tensor | MinMaxRetType:
     """
 
     Computes the minimum of tensor elements. There are mainly 3 cases (functionalities):
@@ -537,6 +569,9 @@ def min(input: Tensor, *args: Any, **kwargs: Any) -> Tensor | MinMaxRetType:
         other (Tensor, optional): the other tensor to perform `paddle.minimum` with. This Tensor should
             have the same or broadcast-able shape as the `input`. Note that (`dim` & `keepdim`) and `other` are mutually exclusive
             meaning that trying to composite both will result in TypeError
+        out (Tensor|tuple[Tensor, Tensor], optional): the output Tensor or tuple of (Tensor, int64 Tensor) that can be optionally
+            given to be used as output buffers. For case 1 and 3 out is just a Tensor, while for case 2 we expect a tuple
+
 
     Returns:
         - For case 1: a single value Tensor (0-dim)
@@ -594,29 +629,43 @@ def min(input: Tensor, *args: Any, **kwargs: Any) -> Tensor | MinMaxRetType:
 
     dim_or_other, keepdim = _min_max_param_checker("min", *args, **kwargs)
 
+    ret = None
     if dim_or_other is None:
         # paddle.min and paddle.amin actually shares the same grad op (ReduceAminKernel)
-        return paddle.min(input)
+        _check_out_status(out, False)
+        ret = paddle.min(input)
     elif isinstance(dim_or_other, int):
+        _check_out_status(out, True)
         if in_dynamic_mode() and not input.place.is_gpu_place():
             _min_max_allow_cpu_composite(input)
             # CPUPlace and other placements are implemented by composition
             indices = paddle.argmin(input, axis=dim_or_other, keepdim=True)
             values = paddle.take_along_axis(input, indices, axis=dim_or_other)
             if keepdim:
-                return MinMaxRetType(values=values, indices=indices)
-            return MinMaxRetType(
-                values=values.squeeze_(axis=dim_or_other),
-                indices=indices.squeeze_(axis=dim_or_other),
-            )
+                ret = MinMaxRetType(values=values, indices=indices)
+            else:
+                ret = MinMaxRetType(
+                    values=values.squeeze_(axis=dim_or_other),
+                    indices=indices.squeeze_(axis=dim_or_other),
+                )
         else:
             vals, inds = _C_ops.min_with_index(
                 input, dim_or_other, keepdim, False
             )
             inds.stop_gradient = True
-            return MinMaxRetType(values=vals, indices=inds)
+            ret = MinMaxRetType(values=vals, indices=inds)
     else:
-        return _C_ops.minimum(input, dim_or_other)
+        _check_out_status(out, False)
+        ret = _C_ops.minimum(input, dim_or_other)
+
+    if out is None:
+        return ret
+    else:
+        if isinstance(ret, MinMaxRetType):
+            paddle.assign(ret.values, out[0])
+            paddle.assign(ret.indices, out[1])
+        else:
+            paddle.assign(ret, out)
 
 
 @ForbidKeywordsDecorator(
@@ -624,7 +673,12 @@ def min(input: Tensor, *args: Any, **kwargs: Any) -> Tensor | MinMaxRetType:
     func_name="paddle.compat.max",
     correct_name="paddle.max",
 )
-def max(input: Tensor, *args: Any, **kwargs: Any) -> Tensor | MinMaxRetType:
+def max(
+    input: Tensor,
+    *args: Any,
+    out: Tensor | tuple[Tensor, Tensor] | list[Tensor] = None,
+    **kwargs: Any,
+) -> Tensor | MinMaxRetType:
     """
 
     Computes the maximum of tensor elements. There are mainly 3 cases (functionalities):
@@ -657,6 +711,9 @@ def max(input: Tensor, *args: Any, **kwargs: Any) -> Tensor | MinMaxRetType:
         other (Tensor, optional): the other tensor to perform `paddle.maximum` with. This Tensor should
             have the same or broadcast-able shape as the `input`. Note that (`dim` & `keepdim`) and `other` are mutually exclusive
             meaning that trying to composite both will result in TypeError
+        out (Tensor|tuple[Tensor, Tensor], optional): the output Tensor or tuple of (Tensor, int64 Tensor) that can be optionally
+            given to be used as output buffers. For case 1 and 3 out is just a Tensor, while for case 2 we expect a tuple
+
 
     Returns:
         - For case 1: a single value Tensor (0-dim)
@@ -714,24 +771,38 @@ def max(input: Tensor, *args: Any, **kwargs: Any) -> Tensor | MinMaxRetType:
 
     dim_or_other, keepdim = _min_max_param_checker("max", *args, **kwargs)
 
+    ret = None
     if dim_or_other is None:
-        return paddle.max(input)
+        _check_out_status(out, False)
+        ret = paddle.max(input)
     elif isinstance(dim_or_other, int):
+        _check_out_status(out, True)
         if in_dynamic_mode() and not input.place.is_gpu_place():
             _min_max_allow_cpu_composite(input)
             indices = paddle.argmax(input, axis=dim_or_other, keepdim=True)
             values = paddle.take_along_axis(input, indices, axis=dim_or_other)
             if keepdim:
-                return MinMaxRetType(values=values, indices=indices)
-            return MinMaxRetType(
-                values=values.squeeze_(axis=dim_or_other),
-                indices=indices.squeeze_(axis=dim_or_other),
-            )
+                ret = MinMaxRetType(values=values, indices=indices)
+            else:
+                ret = MinMaxRetType(
+                    values=values.squeeze_(axis=dim_or_other),
+                    indices=indices.squeeze_(axis=dim_or_other),
+                )
         else:
             vals, inds = _C_ops.max_with_index(
                 input, dim_or_other, keepdim, False
             )
             inds.stop_gradient = True
-            return MinMaxRetType(values=vals, indices=inds)
+            ret = MinMaxRetType(values=vals, indices=inds)
     else:
-        return _C_ops.maximum(input, dim_or_other)
+        _check_out_status(out, False)
+        ret = _C_ops.maximum(input, dim_or_other)
+
+    if out is None:
+        return ret
+    else:
+        if isinstance(ret, MinMaxRetType):
+            paddle.assign(ret.values, out[0])
+            paddle.assign(ret.indices, out[1])
+        else:
+            paddle.assign(ret, out)
