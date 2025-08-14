@@ -123,7 +123,7 @@ class TestScatterReduceAPIAddNotIncludeSelf(unittest.TestCase):
                 index = paddle.static.data('Index', self.index_shape, "int64")
                 value = paddle.static.data('Value', self.value_shape)
                 out = paddle.scatter_reduce(
-                    x, self.axis, index, value, "sum", False
+                    x, self.axis, index, value, "sum", include_self=False
                 )
                 exe = paddle.static.Executor(self.place[0])
                 res = exe.run(
@@ -160,7 +160,12 @@ class TestScatterReduceAPIAddNotIncludeSelf(unittest.TestCase):
             index_tensor = paddle.to_tensor(self.index_np)
             value_tensor = paddle.to_tensor(self.value_np)
             out = paddle.scatter_reduce(
-                x_tensor, self.axis, index_tensor, value_tensor, "sum", False
+                x_tensor,
+                self.axis,
+                index_tensor,
+                value_tensor,
+                "sum",
+                include_self=False,
             )
             nums = np.zeros_like(self.x_np)
             target = copy.deepcopy(self.x_np)
@@ -274,7 +279,7 @@ class TestScatterReduceAPIMulNotIncludeSelf(unittest.TestCase):
                 index = paddle.static.data('Index', self.index_shape, "int64")
                 value = paddle.static.data('Value', self.value_shape)
                 out = paddle.scatter_reduce(
-                    x, self.axis, index, value, "prod", False
+                    x, self.axis, index, value, "prod", include_self=False
                 )
                 exe = paddle.static.Executor(self.place[0])
                 res = exe.run(
@@ -311,7 +316,12 @@ class TestScatterReduceAPIMulNotIncludeSelf(unittest.TestCase):
             index_tensor = paddle.to_tensor(self.index_np)
             value_tensor = paddle.to_tensor(self.value_np)
             out = paddle.scatter_reduce(
-                x_tensor, self.axis, index_tensor, value_tensor, "prod", False
+                x_tensor,
+                self.axis,
+                index_tensor,
+                value_tensor,
+                "prod",
+                include_self=False,
             )
             nums = np.zeros_like(self.x_np)
             target = copy.deepcopy(self.x_np)
@@ -436,7 +446,7 @@ class TestScatterReduceAPIMeanNotIncludeSelf(unittest.TestCase):
                 index = paddle.static.data('Index', self.index_shape, "int64")
                 value = paddle.static.data('Value', self.value_shape)
                 out = paddle.scatter_reduce(
-                    x, self.axis, index, value, "mean", False
+                    x, self.axis, index, value, "mean", include_self=False
                 )
                 exe = paddle.static.Executor(self.place[0])
                 res = exe.run(
@@ -478,7 +488,12 @@ class TestScatterReduceAPIMeanNotIncludeSelf(unittest.TestCase):
             index_tensor = paddle.to_tensor(self.index_np)
             value_tensor = paddle.to_tensor(self.value_np)
             out = paddle.scatter_reduce(
-                x_tensor, self.axis, index_tensor, value_tensor, "mean", False
+                x_tensor,
+                self.axis,
+                index_tensor,
+                value_tensor,
+                "mean",
+                include_self=False,
             )
             nums = np.zeros_like(self.x_np)
             target = copy.deepcopy(self.x_np)
@@ -601,7 +616,7 @@ class TestScatterReduceAPIMinNotIncludeSelf(unittest.TestCase):
                 index = paddle.static.data('Index', self.index_shape, "int64")
                 value = paddle.static.data('Value', self.value_shape)
                 out = paddle.scatter_reduce(
-                    x, self.axis, index, value, "amin", False
+                    x, self.axis, index, value, "amin", include_self=False
                 )
                 exe = paddle.static.Executor(self.place[0])
                 res = exe.run(
@@ -640,7 +655,12 @@ class TestScatterReduceAPIMinNotIncludeSelf(unittest.TestCase):
             index_tensor = paddle.to_tensor(self.index_np)
             value_tensor = paddle.to_tensor(self.value_np)
             out = paddle.scatter_reduce(
-                x_tensor, self.axis, index_tensor, value_tensor, "amin", False
+                x_tensor,
+                self.axis,
+                index_tensor,
+                value_tensor,
+                "amin",
+                include_self=False,
             )
 
             target = copy.deepcopy(self.x_np)
@@ -759,7 +779,7 @@ class TestScatterReduceAPIMaxNotIncludeSelf(unittest.TestCase):
                 index = paddle.static.data('Index', self.index_shape, "int64")
                 value = paddle.static.data('Value', self.value_shape)
                 out = paddle.scatter_reduce(
-                    x, self.axis, index, value, "amax", False
+                    x, self.axis, index, value, "amax", include_self=False
                 )
                 exe = paddle.static.Executor(self.place[0])
                 res = exe.run(
@@ -797,7 +817,12 @@ class TestScatterReduceAPIMaxNotIncludeSelf(unittest.TestCase):
             index_tensor = paddle.to_tensor(self.index_np)
             value_tensor = paddle.to_tensor(self.value_np)
             out = paddle.scatter_reduce(
-                x_tensor, self.axis, index_tensor, value_tensor, "amax", False
+                x_tensor,
+                self.axis,
+                index_tensor,
+                value_tensor,
+                "amax",
+                include_self=False,
             )
 
             target = copy.deepcopy(self.x_np)

@@ -6792,6 +6792,7 @@ def scatter_reduce(
     index: Tensor,
     src: Tensor,
     reduce: Literal['sum', 'prod', 'mean', 'amin', 'amax'],
+    *,
     include_self: bool = True,
 ) -> Tensor:
     """
