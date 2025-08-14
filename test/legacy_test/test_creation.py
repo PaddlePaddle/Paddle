@@ -325,6 +325,104 @@ class TestTensorCreation(unittest.TestCase):
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
 
+    def test_arange(self):
+        for device, requires_grad, dtype in product(
+            self.devices, self.requires_grads, self.dtypes
+        ):
+            with dygraph_guard():
+                x = paddle.arange(
+                    3.14,
+                    5.9,
+                    1.11,
+                    dtype=dtype,
+                    requires_grad=requires_grad,
+                    device=device,
+                )
+                if isinstance(device, paddle.framework.core.Place):
+                    self.assertEqual(x.place, device)
+                self.assertEqual(x.stop_gradient, not requires_grad)
+                if isinstance(dtype, paddle.dtype):
+                    self.assertEqual(x.dtype, dtype)
+                st_f = paddle.jit.to_static(
+                    paddle.arange, full_graph=True, backend=None
+                )
+                x = st_f(
+                    3.14,
+                    5.9,
+                    1.11,
+                    dtype=dtype,
+                    requires_grad=requires_grad,
+                    device=device,
+                )
+                if not paddle.device.is_compiled_with_xpu() and isinstance(
+                    device, paddle.framework.core.Place
+                ):
+                    self.assertEqual(x.place, device)
+                self.assertEqual(x.stop_gradient, not requires_grad)
+                if isinstance(dtype, paddle.dtype):
+                    self.assertEqual(x.dtype, dtype)
+
+    def test_range(self):
+        def range_manual(start, end, step, dtype, device, requires_grad):
+            if end is None:
+                end = start
+                start = 0
+            size_ = int(np.floor(end - start) / step) + 1
+            out = paddle.empty([size_])
+
+            for i in range(size_):
+                out[i] = start + i * step
+
+            out = out.to(device=device, dtype=dtype)
+            out.stop_gradient = not requires_grad
+            return out
+
+        for device, requires_grad, dtype in product(
+            self.devices, self.requires_grads, self.dtypes
+        ):
+            with dygraph_guard():
+                for start, end, step in [
+                    (0, 5, 1),
+                    (2, 7, 2),
+                    (5, None, 1),
+                    (0, 1, 0.1),
+                ]:
+                    x = paddle.range(
+                        start,
+                        end,
+                        step,
+                        dtype=dtype,
+                        device=device,
+                        requires_grad=requires_grad,
+                    )
+                    x_ref = range_manual(
+                        start, end, step, dtype, device, requires_grad
+                    )
+                    if isinstance(device, paddle.framework.core.Place):
+                        self.assertEqual(x.place, device)
+                    if isinstance(dtype, paddle.dtype):
+                        self.assertEqual(x.dtype, dtype)
+                    self.assertEqual(x.stop_gradient, not requires_grad)
+                    np.testing.assert_allclose(x.numpy(), x_ref.numpy())
+
+                    st_f = paddle.jit.to_static(
+                        paddle.range, full_graph=True, backend=None
+                    )
+                    x = st_f(
+                        start,
+                        end,
+                        step,
+                        dtype=dtype,
+                        device=device,
+                        requires_grad=requires_grad,
+                    )
+                    if isinstance(device, paddle.framework.core.Place):
+                        self.assertEqual(x.place, device)
+                    if isinstance(dtype, paddle.dtype):
+                        self.assertEqual(x.dtype, dtype)
+                    self.assertEqual(x.stop_gradient, not requires_grad)
+                    np.testing.assert_allclose(x.numpy(), x_ref.numpy())
+
 
 class TestTensorPatchMethod(unittest.TestCase):
     def setUp(self):
@@ -527,99 +625,6 @@ class TestTensorPatchMethod(unittest.TestCase):
                 self.assertEqual(x.stop_gradient, not requires_grad)
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
-
-    def test_arange(self):
-        for device, requires_grad, dtype in product(
-            self.devices, self.requires_grads, self.dtypes
-        ):
-            x = paddle.arange(
-                3.14,
-                5.9,
-                1.11,
-                dtype=dtype,
-                requires_grad=requires_grad,
-                device=device,
-            )
-            if isinstance(device, paddle.framework.core.Place):
-                self.assertEqual(x.place, device)
-            self.assertEqual(x.stop_gradient, not requires_grad)
-            if isinstance(dtype, paddle.dtype):
-                self.assertEqual(x.dtype, dtype)
-            st_f = paddle.jit.to_static(
-                paddle.arange, full_graph=True, backend=None
-            )
-            x = st_f(
-                3.14,
-                5.9,
-                1.11,
-                dtype=dtype,
-                requires_grad=requires_grad,
-                device=device,
-            )
-            self.assertEqual(x.stop_gradient, not requires_grad)
-            if isinstance(dtype, paddle.dtype):
-                self.assertEqual(x.dtype, dtype)
-
-    def test_range(self):
-        def range_manual(start, end, step, dtype, device, requires_grad):
-            if end is None:
-                end = start
-                start = 0
-            size_ = int(np.floor(end - start) / step) + 1
-            out = paddle.empty([size_])
-
-            for i in range(size_):
-                out[i] = start + i * step
-
-            out = out.to(device=device, dtype=dtype)
-            out.stop_gradient = not requires_grad
-            return out
-
-        for device, requires_grad, dtype in product(
-            self.devices, self.requires_grads, self.dtypes
-        ):
-            with dygraph_guard():
-                for start, end, step in [
-                    (0, 5, 1),
-                    (2, 7, 2),
-                    (5, None, 1),
-                    (0, 1, 0.1),
-                ]:
-                    x = paddle.range(
-                        start,
-                        end,
-                        step,
-                        dtype=dtype,
-                        device=device,
-                        requires_grad=requires_grad,
-                    )
-                    x_ref = range_manual(
-                        start, end, step, dtype, device, requires_grad
-                    )
-                    if isinstance(device, paddle.framework.core.Place):
-                        self.assertEqual(x.place, device)
-                    if isinstance(dtype, paddle.dtype):
-                        self.assertEqual(x.dtype, dtype)
-                    self.assertEqual(x.stop_gradient, not requires_grad)
-                    np.testing.assert_allclose(x.numpy(), x_ref.numpy())
-
-                    st_f = paddle.jit.to_static(
-                        paddle.range, full_graph=True, backend=None
-                    )
-                    x = st_f(
-                        start,
-                        end,
-                        step,
-                        dtype=dtype,
-                        device=device,
-                        requires_grad=requires_grad,
-                    )
-                    if isinstance(device, paddle.framework.core.Place):
-                        self.assertEqual(x.place, device)
-                    if isinstance(dtype, paddle.dtype):
-                        self.assertEqual(x.dtype, dtype)
-                    self.assertEqual(x.stop_gradient, not requires_grad)
-                    np.testing.assert_allclose(x.numpy(), x_ref.numpy())
 
 
 if __name__ == '__main__':
