@@ -56,7 +56,7 @@ void Unnormalize3D(const CPUContext& dev_ctx,
 
 template <typename T>
 inline bool IsInBound(T x, T y, T x_max, T y_max) {
-  if (x < 0 || x >= x_max || y < 0 || y >= y_max) {
+  if (x < 0 || x > x_max || y < 0 || y > y_max) {
     return false;
   }
   return true;
@@ -89,14 +89,15 @@ void GetGridPointValue(const DenseTensor& input,
   for (int i = 0; i < n; i++) {
     for (int k = 0; k < out_h; k++) {
       for (int l = 0; l < out_w; l++) {
-        if (IsInBound(
-                x_t(i, k, l), y_t(i, k, l), (T)(in_w - 1), (T)(in_h - 1))) {
+        if (IsInBound<int>(static_cast<int>(x_t(i, k, l)),
+                           static_cast<int>(y_t(i, k, l)),
+                           (in_w - 1),
+                           (in_h - 1))) {
           for (int j = 0; j < c; j++) {
-            output_t(i, j, k, l) =
-                input_t(i,
-                        j,
-                        static_cast<int>(std::floor(y_t(i, k, l))),
-                        static_cast<int>(std::floor(x_t(i, k, l))));
+            output_t(i, j, k, l) = input_t(i,
+                                           j,
+                                           static_cast<int>(y_t(i, k, l)),
+                                           static_cast<int>(x_t(i, k, l)));
           }
         }
       }
@@ -123,8 +124,10 @@ void GetGridPointValue_nearest(const DenseTensor& input,
   for (int i = 0; i < n; i++) {
     for (int k = 0; k < out_h; k++) {
       for (int l = 0; l < out_w; l++) {
-        if (IsInBound(
-                x_t(i, k, l), y_t(i, k, l), (T)(in_w - 1), (T)(in_h - 1))) {
+        if (IsInBound<int>(static_cast<int>(std::nearbyint(x_t(i, k, l))),
+                           static_cast<int>(std::nearbyint(y_t(i, k, l))),
+                           (in_w - 1),
+                           (in_h - 1))) {
           for (int j = 0; j < c; j++) {
             output_t(i, j, k, l) =
                 input_t(i,
@@ -241,19 +244,19 @@ void Get3DGridPointValue(const DenseTensor& input,
     for (int m = 0; m < out_d; m++) {
       for (int k = 0; k < out_h; k++) {
         for (int l = 0; l < out_w; l++) {
-          if (IsInBound3D(x_t(i, m, k, l),
-                          y_t(i, m, k, l),
-                          z_t(i, m, k, l),
-                          (T)(in_w - 1),
-                          (T)(in_h - 1),
-                          (T)(in_d - 1))) {
+          if (IsInBound3D<int>(static_cast<int>(x_t(i, m, k, l)),
+                               static_cast<int>(y_t(i, m, k, l)),
+                               static_cast<int>(z_t(i, m, k, l)),
+                               (in_w - 1),
+                               (in_h - 1),
+                               (in_d - 1))) {
             for (int j = 0; j < c; j++) {
               output_t(i, j, m, k, l) =
                   input_t(i,
                           j,
-                          static_cast<int>(std::floor(z_t(i, m, k, l))),
-                          static_cast<int>(std::floor(y_t(i, m, k, l))),
-                          static_cast<int>(std::floor(x_t(i, m, k, l))));
+                          static_cast<int>(z_t(i, m, k, l)),
+                          static_cast<int>(y_t(i, m, k, l)),
+                          static_cast<int>(x_t(i, m, k, l)));
             }
           }
         }
@@ -287,12 +290,13 @@ void Get3DGridPointValue_nearest(const DenseTensor& input,
     for (int m = 0; m < out_d; m++) {
       for (int k = 0; k < out_h; k++) {
         for (int l = 0; l < out_w; l++) {
-          if (IsInBound3D(x_t(i, m, k, l),
-                          y_t(i, m, k, l),
-                          z_t(i, m, k, l),
-                          (T)(in_w - 1),
-                          (T)(in_h - 1),
-                          (T)(in_d - 1))) {
+          if (IsInBound3D<int>(
+                  static_cast<int>(std::nearbyint(x_t(i, m, k, l))),
+                  static_cast<int>(std::nearbyint(y_t(i, m, k, l))),
+                  static_cast<int>(std::nearbyint(z_t(i, m, k, l))),
+                  (in_w - 1),
+                  (in_h - 1),
+                  (in_d - 1))) {
             for (int j = 0; j < c; j++) {
               output_t(i, j, m, k, l) =
                   input_t(i,
