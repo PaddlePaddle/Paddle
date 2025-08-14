@@ -547,8 +547,8 @@ class FunctionGeneratorBase:
             if 'func' in pre_process.keys():
                 self.dygraph_pre_process = pre_process['func']
                 self.static_pre_process = pre_process['func']
-                if len(pre_process) > 1:
-                    print("error")
+                # TODO check len(pre_process) > 1
+
             if 'dygraph_func' in pre_process.keys():
                 self.dygraph_pre_process = pre_process['dygraph_func']
             if 'static_func' in pre_process.keys():
