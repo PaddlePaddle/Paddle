@@ -43,8 +43,12 @@ if TYPE_CHECKING:
     from paddle._typing.device_like import PlaceLike
     from paddle.base.core import Place
 
-    _InitStreamBase = Union[core.CUDAStream, core.CustomDeviceStream]
-    _InitEventBase = Union[core.CUDAEvent, core.CustomDeviceEvent]
+    _InitStreamBase = Union[
+        core.CUDAStream, core.CustomDeviceStream, core.XPUStream
+    ]
+    _InitEventBase = Union[
+        core.CUDAEvent, core.CustomDeviceEvent, core.XPUEvent
+    ]
 
     from paddle import CUDAPlace, CustomPlace
     from paddle.base.libpaddle import _customDeviceProperties
@@ -213,7 +217,10 @@ def get_cudnn_version() -> int | None:
         return _cudnn_version
 
 
-def _convert_to_place(device: str) -> PlaceLike:
+def _convert_to_place(device: PlaceLike) -> PlaceLike:
+    if not isinstance(device, str):
+        return device  # return directly if not a string
+
     lower_device = device.lower()
     if device in core.get_all_custom_device_type():
         selected_devices = os.getenv(f"FLAGS_selected_{device}s", "0").split(
@@ -691,6 +698,35 @@ def extract_device_id(device: _CustomPlaceLike, op_name: str) -> int:
     return device_id
 
 
+def empty_cache() -> None:
+    '''
+    Releases idle cached memory held by the allocator so that those can be used in other GPU
+    application and visible in `nvidia-smi`. In most cases you don't need to use this function,
+    Paddle does not release the memory back to the OS when you remove Tensors on the GPU,
+    Because it keeps gpu memory in a pool so that next allocations can be done much faster.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
+
+            >>> tensor = paddle.randn([512, 512, 512], "float64")
+            >>> del tensor
+            >>> paddle.device.empty_cache()
+    '''
+    custom_devices = paddle.device.get_all_custom_device_type()
+    if core.is_compiled_with_cuda():
+        core.cuda_empty_cache()
+    elif core.is_compiled_with_custom_device(custom_devices[0]):
+        core.device_empty_cache()
+    else:
+        raise ValueError(
+            "The API paddle.device.empty_cache is not supported in CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU or custom device support to call this API."
+        )
+
+
 def max_memory_allocated(device: _CustomPlaceLike | None = None) -> int:
     '''
     Return the peak size of memory that is allocated to tensor of the given device. This
@@ -983,6 +1019,11 @@ class Event:
             self.event_base = core.CUDAEvent(
                 enable_timing, blocking, interprocess
             )
+        elif paddle.is_compiled_with_xpu() and isinstance(
+            self.device, paddle.XPUPlace
+        ):
+            self.event_base = core.XPUEvent()
+
         elif isinstance(self.device, paddle.CustomPlace):
             self.event_base = core.CustomDeviceEvent(
                 self.device.get_device_type(),
@@ -1146,13 +1187,14 @@ class Stream:
     ) -> None:
         if stream_base is not None:
             if isinstance(
-                stream_base, (core.CUDAStream, core.CustomDeviceStream)
+                stream_base,
+                (core.CUDAStream, core.CustomDeviceStream, core.XPUStream),
             ):
                 self.stream_base = stream_base
                 self.device = stream_base.place
             else:
                 raise TypeError(
-                    "stream_base should be CUDAStream, CustomDeviceStream"
+                    "stream_base should be CUDAStream, XPUStream, CustomDeviceStream"
                 )
             return
 
@@ -1169,6 +1211,10 @@ class Stream:
             self.stream_base = core.CUDAStream(
                 self.device.get_device_id(), priority
             )
+        elif paddle.is_compiled_with_xpu() and isinstance(
+            self.device, paddle.XPUPlace
+        ):
+            self.stream_base = core.XPUStream(self.device.get_device_id())
         elif isinstance(self.device, paddle.CustomPlace):
             self.stream_base = core.CustomDeviceStream(
                 self.device.get_device_type(),
@@ -1314,6 +1360,8 @@ class Stream:
     def _as_parameter_(self):
         if isinstance(self.stream_base, core.CUDAStream):
             return ctypes.c_void_p(self.stream_base.cuda_stream)
+        elif isinstance(self.stream_base, core.XPUStream):
+            return ctypes.c_void_p(self.stream_base.xpu_stream)
         else:
             return ctypes.c_void_p(self.stream_base.raw_stream)
 
@@ -1366,6 +1414,10 @@ def current_stream(device: PlaceLike | None = None) -> Stream:
         return Stream(
             stream_base=core._get_current_stream(place.get_device_id())
         )
+    elif paddle.is_compiled_with_xpu() and isinstance(place, paddle.XPUPlace):
+        return Stream(
+            stream_base=core._xpu_get_current_stream(place.get_device_id())
+        )
     elif isinstance(place, paddle.CustomPlace):
         return Stream(
             stream_base=core._get_current_custom_device_stream(
@@ -1409,6 +1461,10 @@ def set_stream(stream: Stream) -> Stream:
         stream.stream_base.place, paddle.CUDAPlace
     ):
         core._set_current_stream(stream.stream_base)
+    elif paddle.is_compiled_with_xpu() and isinstance(
+        stream.stream_base.place, paddle.XPUPlace
+    ):
+        core._xpu_set_current_stream(stream.stream_base.idx)
     elif isinstance(stream.stream_base.place, paddle.CustomPlace):
         core._set_current_custom_device_stream(
             stream.stream_base.place.get_device_type(),

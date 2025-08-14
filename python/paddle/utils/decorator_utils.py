@@ -12,96 +12,156 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import annotations
-
 import functools
 import inspect
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Generic,
-    TypeVar,
-    cast,
-)
+from collections.abc import Iterable
+from typing import Any, Callable, TypeVar, cast
 
-from typing_extensions import ParamSpec
-
-if TYPE_CHECKING:
-    from collections.abc import Iterable
+_F = TypeVar("_F", bound=Callable[..., Any])
 
 
-_P = ParamSpec("_P")
-_R = TypeVar("_R")
-_DecoratedFunc = Callable[_P, _R]
+class DecoratorBase:
+    """Decorative base class, providing a universal decorative framework.
 
-
-class DecoratorBase(Generic[_P, _R]):
-    """装饰器基类，提供通用装饰器框架
-
-    子类只需实现 `process` 方法定义核心逻辑
+    Subclass only needs to implement the 'process' method to define the core logic.
     """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        """初始化装饰器参数"""
         self.args = args
         self.kwargs = kwargs
 
-    def __call__(self, func: _DecoratedFunc[_P, _R]) -> _DecoratedFunc[_P, _R]:
-        """作为装饰器应用的入口点"""
+    def __call__(self, func: _F) -> _F:
+        """As an entry point for decorative applications"""
 
         @functools.wraps(func)
-        def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _R:
-            # 预处理参数
+        def wrapper(*args, **kwargs):
+            # Pretreatment parameters
             processed_args, processed_kwargs = self.process(args, kwargs)
-            # 调用原函数
             return func(*processed_args, **processed_kwargs)
 
-        # 保留原始签名
         wrapper.__signature__ = inspect.signature(func)
-        return cast("_DecoratedFunc[_P, _R]", wrapper)
+        return cast("_F", wrapper)
 
     def process(
         self, args: tuple[Any, ...], kwargs: dict[str, Any]
     ) -> tuple[tuple[Any, ...], dict[str, Any]]:
-        """子类必须实现的核心处理方法
-
-        Args:
-            args: 位置参数
-            kwargs: 关键字参数
-
-        Returns:
-            处理后的 (args, kwargs) 元组
-        """
+        """To be implemented by subclass"""
         raise NotImplementedError("Subclasses must implement this method")
 
 
-# 示例实现：参数别名装饰器
-class ParamAliasDecorator(DecoratorBase[_P, _R]):
-    """参数别名处理的装饰器实现"""
+# Example implementation: Parameter alias decorator
+class ParamAliasDecorator(DecoratorBase):
+    """Implementation of Decorator for Parameter Alias Processing"""
 
     def __init__(self, alias_mapping: dict[str, Iterable[str]]) -> None:
         super().__init__()
+        # Check alias_mapping types
         if not isinstance(alias_mapping, dict):
             raise TypeError("alias_mapping must be a dictionary")
         for k, v in alias_mapping.items():
             if not isinstance(v, (list, tuple, set)):
                 raise TypeError(f"Aliases for '{k}' must be iterable")
-        self.alias_mapping = alias_mapping
+
+        # Build a reverse alias map for faster lookup
+        self.alias_mapping = {}
+        for original, aliases in alias_mapping.items():
+            for alias in aliases:
+                self.alias_mapping[alias] = original
 
     def process(
         self, args: tuple[Any, ...], kwargs: dict[str, Any]
     ) -> tuple[tuple[Any, ...], dict[str, Any]]:
+        """Process parameters to handle alias mapping"""
         if not kwargs:
             return args, kwargs
-        processed_kwargs = kwargs.copy()
-        for original, aliases in self.alias_mapping.items():
-            for alias in aliases:
-                if alias in processed_kwargs:
-                    if original not in processed_kwargs:
-                        processed_kwargs[original] = processed_kwargs.pop(alias)
-                    else:
-                        raise ValueError(
-                            f"Cannot specify both '{original}' and its alias '{alias}'"
-                        )
+
+        processed_kwargs = kwargs
+        alias_mapping = self.alias_mapping
+
+        # Directly modify kwargs based on alias mapping (only modify if necessary)
+        for alias, original in alias_mapping.items():
+            if alias in processed_kwargs:
+                if original not in processed_kwargs:
+                    # Only modify the dictionary if necessary
+                    processed_kwargs[original] = processed_kwargs.pop(alias)
+                else:
+                    raise ValueError(
+                        f"Cannot specify both '{original}' and its alias '{alias}'"
+                    )
+
         return args, processed_kwargs
+
+
+def param_one_alias(alias_mapping):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            if not kwargs:
+                return func(*args, **kwargs)
+            if ("input" in kwargs) and ("x" not in kwargs):
+                kwargs["x"] = kwargs.pop("input")
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+# *size => shape decorator
+class SizeArgsDecorator(DecoratorBase):
+    """
+    Usage Example:
+
+    paddle.ones(1, dtype=paddle.float32)
+    paddle.ones(1, 2, 3, dtype=paddle.float32)
+    paddle.ones([1, 2, 3], dtype=paddle.float32)
+    paddle.ones(size=[1, 2, 3], dtype=paddle.float32)
+
+    paddle.ones([1, 2, 3], paddle.float32)
+    paddle.ones(shape=[1, 2, 3], dtype=paddle.float32)
+    """
+
+    def process(
+        self, args: tuple[Any, ...], kwargs: dict[str, Any]
+    ) -> tuple[tuple[Any, ...], dict[str, Any]]:
+        if 'size' in kwargs:
+            kwargs['shape'] = kwargs.pop('size')
+        elif len(args) >= 1 and isinstance(args[0], int):
+            kwargs['shape'] = list(args)
+            args = ()
+
+        return args, kwargs
+
+
+"""
+    Usage Example:
+    paddle.view(x=tensor_x, shape_or_dtype=[-1, 1, 3], name=None)
+
+    tensor_x.view(paddle.float32) -> paddle.view(tensor_x, paddle.float32)
+    tensor_x.view(dtype=paddle.float32) -> paddle.view(tensor_x, dtype=paddle.float32)
+
+    tensor_x.view([-1, 1, 3]) -> paddle.view(tensor_x, [-1, 1, 3])
+    tensor_x.view(-1, 1, 3) -> paddle.view(tensor_x, -1, 1, 3)
+    tensor_x.view(size=[-1, 1, 3]) -> paddle.view(tensor_x, size=[-1, 1, 3])
+"""
+
+
+def view_decorator():
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            if ("dtype" in kwargs) and ("shape_or_dtype" not in kwargs):
+                kwargs["shape_or_dtype"] = kwargs.pop("dtype")
+            elif ("size" in kwargs) and ("shape_or_dtype" not in kwargs):
+                kwargs["shape_or_dtype"] = kwargs.pop("size")
+            elif len(args) >= 2 and type(args[1]) is int:
+                if all(type(arg) is int for arg in args[1:]):
+                    kwargs["x"] = args[0]
+                    kwargs['shape_or_dtype'] = list(args[1:])
+                    args = ()
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator

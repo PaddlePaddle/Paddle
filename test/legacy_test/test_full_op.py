@@ -370,6 +370,49 @@ class TestFullAPI(unittest.TestCase):
             np.testing.assert_allclose(out_20, np.full([1, 2, 3], 1.1 + 1.1j))
             np.testing.assert_array_equal(out_21, np.full([1, 2, 3], True))
 
+    def test_full_alias(self):
+        """
+        Test the alias of full function.
+        ``full(shape=[1])`` is equivalent to ``full(size=[1])``
+        """
+        paddle.disable_static()
+        shape_cases = [
+            [2],
+            [2, 4],
+            [2, 4, 8],
+        ]
+        dtype_cases = [
+            "float32",
+            "float64",
+            "int32",
+            "int64",
+            "bool",
+        ]
+        fill_value_cases = [
+            1,
+            0,
+            -1,
+            True,
+            False,
+            3.14,
+        ]
+        for shape in shape_cases:
+            for param_alias in ["shape", "size"]:
+                for dtype in dtype_cases:
+                    for fill_value in fill_value_cases:
+                        if dtype == "bool" and not isinstance(fill_value, bool):
+                            continue  # skip invalid bool cases
+                        out = paddle.full(
+                            **{param_alias: shape},
+                            fill_value=fill_value,
+                            dtype=dtype,
+                        )
+                        expected = np.full(shape, fill_value, dtype=dtype)
+                        if dtype == "bool":
+                            np.testing.assert_array_equal(out, expected)
+                        else:
+                            np.testing.assert_allclose(out, expected)
+
 
 class TestFullOpError(unittest.TestCase):
 

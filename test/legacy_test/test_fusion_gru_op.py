@@ -111,7 +111,7 @@ class TestFusionGRUOp(OpTest):
             'gate_activation': self.act_gate,
             'is_reverse': self.is_reverse,
             'origin_mode': self.origin_mode,
-            'use_mkldnn': self.use_onednn,
+            'use_onednn': self.use_onednn,
         }
 
     def test_check_output(self):

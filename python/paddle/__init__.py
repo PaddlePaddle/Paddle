@@ -129,6 +129,12 @@ from . import (
     tensor as tensor,
     utils as utils,
 )
+from .amp import (
+    get_autocast_cpu_dtype,
+    get_autocast_dtype,
+    get_autocast_gpu_dtype,
+    is_autocast_enabled,
+)
 from .autograd import (
     enable_grad,
     grad,
@@ -328,6 +334,7 @@ from .tensor.manipulation import (
     masked_scatter_,
     moveaxis,
     put_along_axis,
+    ravel,
     repeat_interleave,
     reshape,
     reshape_,
@@ -573,12 +580,14 @@ from .tensor.search import (
     argmax,
     argmin,
     argsort,
+    argwhere,
     bucketize,
     index_sample,
     index_select,
     kthvalue,
     masked_select,
     mode,
+    msort,
     nonzero,
     searchsorted,
     sort,
@@ -879,6 +888,7 @@ __all__ = [
     'summary',
     'flops',
     'sort',
+    'msort',
     'searchsorted',
     'bucketize',
     'split',
@@ -1092,6 +1102,7 @@ __all__ = [
     'std',
     'flatten',
     'flatten_',
+    'ravel',
     'asin',
     'multiply',
     'multiply_',
@@ -1121,6 +1132,7 @@ __all__ = [
     'atleast_3d',
     'reverse',
     'nonzero',
+    'argwhere',
     'CUDAPinnedPlace',
     'XPUPinnedPlace',
     'logical_not',
@@ -1229,6 +1241,10 @@ __all__ = [
     'nan',
     'pi',
     'e',
+    'is_autocast_enabled',
+    'get_autocast_dtype',
+    'get_autocast_cpu_dtype',
+    'get_autocast_gpu_dtype',
 ]
 
 import os
