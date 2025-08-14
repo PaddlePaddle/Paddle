@@ -1248,26 +1248,32 @@ void MoeCombineGradInferMeta(const MetaTensor& x,
                              const MetaTensor& scatter_index,
                              const MetaTensor& y,
                              MetaTensor* grad_x,
-                             MetaTensor* grad_combine_weights_helper) {
+                             MetaTensor* grad_combine_weights_helper,
+                             MetaTensor* grad_scatter_index) {
   auto x_dim = x.dims();
   auto combine_weights_shape = combine_weights.dims();
+  auto scatter_index_dim = scatter_index.dims();
   PADDLE_ENFORCE_EQ(
       x_dim.size(),
       2,
-      errors::InvalidArgument("The input X should have 2 dimensions. "
+      errors::InvalidArgument("The input X should have 2 dimensions"
                               "But received X's dimension = %d",
                               x_dim.size()));
   PADDLE_ENFORCE_EQ(
       (scatter_index.dtype() == phi::DataType::INT32),
       true,
-      errors::InvalidArgument("The input scatter_index type should be int32. "
+      errors::InvalidArgument("The input scatter_index type should be int32"
                               "But received scatter_index type = %s",
                               scatter_index.dtype()));
   grad_x->set_dims(common::make_ddim({x_dim[0], x_dim[1]}));
   grad_x->set_dtype(x.dtype());
-  grad_combine_weights_helper->set_dims(common::make_ddim(
-      {combine_weights_shape[0], combine_weights_shape[1], x_dim[1]}));
+
+  grad_combine_weights_helper->set_dims(
+      common::make_ddim({combine_weights_shape[0], combine_weights_shape[1]}));
   grad_combine_weights_helper->set_dtype(x.dtype());
+
+  grad_scatter_index->set_dims(scatter_index_dim);
+  grad_scatter_index->set_dtype(phi::DataType::INT32);
 }
 
 void MoeGateDispatchPartialNoSoftmaxTopkGradInferMeta(
