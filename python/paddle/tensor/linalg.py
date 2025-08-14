@@ -24,7 +24,10 @@ from paddle import _C_ops
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc
 from paddle.tensor.math import broadcast_shape
-from paddle.utils.decorator_utils import ParamAliasDecorator, VariableArgsDecorator
+from paddle.utils.decorator_utils import (
+    ParamAliasDecorator,
+    VariableArgsDecorator,
+)
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
