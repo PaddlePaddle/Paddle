@@ -32,19 +32,31 @@ class TestPaddleAddNewFeatures(unittest.TestCase):
 
     def test_paddle_add_with_alpha(self):
         """test paddle.add alpha"""
-        x = paddle.to_tensor(self.x_np)
-        y = paddle.to_tensor(self.y_np)
+        x = paddle.to_tensor(self.x_np, stop_gradient=False)
+        y = paddle.to_tensor(self.y_np, stop_gradient=False)
         out = paddle.add(x, y, alpha=2)
         expected = self.x_np + self.y_np * 2
         np.testing.assert_array_equal(out.numpy(), expected)
 
+        out.mean().backward()
+        expected_x_grad = np.array([0.5, 0.5], dtype='float32')
+        expected_y_grad = np.array([1.0, 1.0], dtype='float32')  # alpha=2
+        np.testing.assert_array_equal(x.grad.numpy(), expected_x_grad)
+        np.testing.assert_array_equal(y.grad.numpy(), expected_y_grad)
+
     def test_tensor_add_with_alpha(self):
         """test paddle.Tensor.add alpha"""
-        x = paddle.to_tensor(self.x_np)
-        y = paddle.to_tensor(self.y_np)
+        x = paddle.to_tensor(self.x_np, stop_gradient=False)
+        y = paddle.to_tensor(self.y_np, stop_gradient=False)
         out = x.add(y, alpha=2)
         expected = self.x_np + self.y_np * 2
         np.testing.assert_array_equal(out.numpy(), expected)
+
+        out.mean().backward()
+        expected_x_grad = np.array([0.5, 0.5], dtype='float32')
+        expected_y_grad = np.array([1.0, 1.0], dtype='float32')  # alpha=2
+        np.testing.assert_array_equal(x.grad.numpy(), expected_x_grad)
+        np.testing.assert_array_equal(y.grad.numpy(), expected_y_grad)
 
     def test_tensor_add_inplace_with_alpha(self):
         """test Tensor.add_ alpha"""
