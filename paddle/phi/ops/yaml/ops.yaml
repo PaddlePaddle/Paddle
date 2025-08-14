@@ -1691,6 +1691,18 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
   traits: pir::UnaryElementWiseTrait
 
+- op : embedding_grad_add_to
+  args : (Tensor hidden_states, Tensor weight, Tensor main_grad, int64_t padding_idx=-1)
+  output : Tensor(main_grad_out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [main_grad]
+  kernel :
+    func : embedding_grad_add_to
+    param : [hidden_states, weight, main_grad, padding_idx]
+    data_type : main_grad
+  inplace : (main_grad -> main_grad_out)
+
 - op : embedding_with_scaled_gradient
   args : (Tensor x, Tensor weight, int64_t padding_idx=-1)
   output : Tensor
