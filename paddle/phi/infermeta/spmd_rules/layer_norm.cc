@@ -87,14 +87,9 @@ SpmdInfo LayerNormInferSpmd(const DistMetaTensor& x,
   // As the mean and variance in outputs are `flattened` from
   // x[0:begin_norm_axis], only the first axis can be sharded,
   // the axes 1 to begin_norm_axis-1 are set to be replicated.
-  for (int64_t i = begin_norm_axis; i < x_dims_mapping.size(); ++i) {
-    if (!x_dims_mapping[i].empty()) {
-      for (const auto& dim : x_dims_mapping[i]) {
-        x_dims_mapping[begin_norm_axis - 1].emplace_back(dim);
-      }
-      x_dims_mapping[i].clear();
-    }
-  }
+  std::fill(x_dims_mapping.begin() + begin_norm_axis,
+            x_dims_mapping.end(),
+            std::vector<int64_t>{});
   std::unordered_map<std::string, std::vector<int64_t>> axis_to_dim_map =
       ShardingMergeForTensors({{x_axes, x_dims_mapping}});
 
@@ -376,20 +371,12 @@ SpmdInfo LayerNormGradInferSpmd(const DistMetaTensor& x,
         axes_sharding_info;
     auto x_dims_mapping = dist_attrs[0].multi_dims_mapping();
     auto out_grad_dims_mapping = dist_attrs[3].multi_dims_mapping();
-    for (int64_t i = begin_norm_axis; i < x_dims_mapping.size(); ++i) {
-      if (!x_dims_mapping[i].empty()) {
-        for (const auto& dim : x_dims_mapping[i]) {
-          x_dims_mapping[begin_norm_axis - 1].emplace_back(dim);
-        }
-        x_dims_mapping[i].clear();
-      }
-      if (!out_grad_dims_mapping[i].empty()) {
-        for (const auto& dim : out_grad_dims_mapping[i]) {
-          out_grad_dims_mapping[begin_norm_axis - 1].emplace_back(dim);
-        }
-        out_grad_dims_mapping[i].clear();
-      }
-    }
+    std::fill(x_dims_mapping.begin() + begin_norm_axis,
+              x_dims_mapping.end(),
+              std::vector<int64_t>{});
+    std::fill(out_grad_dims_mapping.begin() + begin_norm_axis,
+              out_grad_dims_mapping.end(),
+              std::vector<int64_t>{});
     axes_sharding_info.emplace_back(annotations[0], x_dims_mapping);
     axes_sharding_info.emplace_back(annotations[1],
                                     dist_attrs[1].multi_dims_mapping());

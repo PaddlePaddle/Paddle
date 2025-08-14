@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 
 import numpy as np
 
@@ -20,9 +19,9 @@ import paddle
 import paddle.distributed as dist
 
 
-class TestCoShardSPMDRule(unittest.TestCase):
+class TestCoShardSPMDRule:
     """
-    Unit tests for split spmd rule.
+    Unit tests for co_shard spmd rule.
     """
 
     def test_co_shard_for_binary_elementwise(self):
@@ -98,6 +97,10 @@ class TestCoShardSPMDRule(unittest.TestCase):
             str(out.placements[1]), "Shard(dim=0, shard_order=1)"
         )
 
+    def run_test_case_main(self):
+        self.test_co_shard_for_binary_elementwise()
+        self.test_co_shard_for_layernorm()
+
 
 if __name__ == "__main__":
-    unittest.main()
+    TestCoShardSPMDRule().run_test_case_main()

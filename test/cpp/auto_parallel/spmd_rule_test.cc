@@ -519,30 +519,6 @@ TEST(LayerNormSPMDRule, Ctor) {
   check_multi_dims_mapping(inferred_dist_attrs.second[1], {{0, 1}, {}});
   check_multi_dims_mapping(inferred_dist_attrs.second[2], {{0, 1}, {}});
   VLOG(4) << "test4 done.";
-
-  // {{0}, {1}, {}} {{}} {{}}->{{0, 1}, {}, {}} {{}} {{}} | {{0, 1}, {}, {}}
-  // {{0, 1}} {{0, 1}}
-  begin_norm_axis = 1;
-  dims_mapping = {{0}, {1}, {}};
-  x_dist_attr.set_dims_mapping(dims_mapping);
-  scale_dist_attr.set_dims_mapping(std::vector<int64_t>{-1});
-  bias_dist_attr.set_dims_mapping(std::vector<int64_t>{-1});
-  x = phi::distributed::DistMetaTensor(common::make_ddim(x_shape), x_dist_attr);
-  scale = phi::distributed::DistMetaTensor(common::make_ddim(scale_shape),
-                                           scale_dist_attr);
-  bias = phi::distributed::DistMetaTensor(common::make_ddim(bias_shape),
-                                          bias_dist_attr);
-  ctx = phi::distributed::InferSpmdContext({x, scale, bias},
-                                           {epsilon, begin_norm_axis});
-  inferred_dist_attrs = layer_norm_rule.InferForward(ctx);
-
-  check_multi_dims_mapping(inferred_dist_attrs.first[0], {{0, 1}, {}, {}});
-  check_multi_dims_mapping(inferred_dist_attrs.first[1], {{}});
-  check_multi_dims_mapping(inferred_dist_attrs.first[2], {{}});
-  check_multi_dims_mapping(inferred_dist_attrs.second[0], {{0, 1}, {}, {}});
-  check_multi_dims_mapping(inferred_dist_attrs.second[1], {{0, 1}});
-  check_multi_dims_mapping(inferred_dist_attrs.second[2], {{0, 1}});
-  VLOG(4) << "test5 done.";
 }
 
 TEST(MatmulSPMDRuleInferBackward, Ctor) {
@@ -1440,6 +1416,15 @@ TEST(LayerNorm, Ctor) {
   check_partial_dims(spmd1.second[1], {0, 1});
   check_partial_dims(spmd1.second[2], {0, 1});
   // test 2
+  std::vector<std::vector<int64_t>> dim_mapping = {{0, 1}, {}, {}};
+  auto t_dist_attr = TensorDistAttr();
+  t_dist_attr.set_process_mesh(process_mesh);
+  t_dist_attr.set_dims_mapping(dim_mapping);
+  t_dist_attr.set_dynamic_dims({false, false, false});
+  x = phi::distributed::DistMetaTensor(common::make_ddim(x_shapes),
+                                       t_dist_attr);
+  out_grad = phi::distributed::DistMetaTensor(common::make_ddim(x_shapes),
+                                              t_dist_attr);
   mean = build_input({16}, {0});
   variance = build_input({16}, {0});
   scale = build_input({32, 32}, {0, 1});
