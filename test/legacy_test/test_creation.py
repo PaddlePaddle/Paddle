@@ -557,6 +557,8 @@ class TestTensorPatchMethod(unittest.TestCase):
                     requires_grad=requires_grad,
                     device=device,
                 )
+                if isinstance(device, paddle.framework.core.Place):
+                    self.assertEqual(x.place, device)
                 self.assertEqual(x.stop_gradient, not requires_grad)
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
