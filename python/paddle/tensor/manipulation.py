@@ -26,6 +26,7 @@ from paddle import _C_ops
 from paddle.tensor import fill_constant
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
+    param_two_alias,
     reshape_decorator,
     view_decorator,
 )
@@ -3471,7 +3472,7 @@ def squeeze_(
         return _C_ops.squeeze_(input, axes)
 
 
-@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def unique_consecutive(
     x: Tensor,
     return_inverse: bool = False,
@@ -6297,7 +6298,83 @@ def as_real(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
-@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
+def view_as_complex(input: Tensor) -> Tensor:
+    """Return a complex tensor that is a view of the input real tensor .
+
+    The data type of the input tensor is 'float32' or 'float64', and the data
+    type of the returned tensor is 'complex64' or 'complex128', respectively.
+
+    The shape of the input tensor is ``(* ,2)``, (``*`` means arbitrary shape), i.e.
+    the size of the last axis should be 2, which represent the real and imag part
+    of a complex number. The shape of the returned tensor is ``(*,)``.
+
+    The complex tensor is a view of the input real tensor, meaning that it shares the same memory with real tensor.
+
+    The image below demonstrates the case that a real 3D-tensor with shape [2, 3, 2] is transformed into a complex 2D-tensor with shape [2, 3].
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/as_complex.png
+       :width: 500
+       :alt: Illustration of as_complex
+       :align: center
+
+    Args:
+        input (Tensor): The input tensor. Data type is 'float32' or 'float64'.
+
+    Returns:
+        Tensor, The output. Data type is 'complex64' or 'complex128', sharing the same memory with input.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.arange(12, dtype=paddle.float32).reshape([2, 3, 2])
+            >>> y = paddle.as_complex(x)
+            >>> print(y)
+            Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
+            [[1j      , (2+3j)  , (4+5j)  ],
+             [(6+7j)  , (8+9j)  , (10+11j)]])
+    """
+
+    return as_complex(x=input)
+
+
+def view_as_real(input: Tensor) -> Tensor:
+    """Return a real tensor that is a view of the input complex tensor.
+
+    The data type of the input tensor is 'complex64' or 'complex128', and the data
+    type of the returned tensor is 'float32' or 'float64', respectively.
+
+    When the shape of the input tensor is ``(*, )``, (``*`` means arbitrary shape),
+    the shape of the output tensor is ``(*, 2)``, i.e. the shape of the output is
+    the shape of the input appended by an extra ``2``.
+
+    The real tensor is a view of the input complex tensor, meaning that it shares the same memory with complex tensor.
+
+    Args:
+        input (Tensor): The input tensor. Data type is 'complex64' or 'complex128'.
+
+    Returns:
+        Tensor, The output. Data type is 'float32' or 'float64', sharing the same memory with input.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.arange(12, dtype=paddle.float32).reshape([2, 3, 2])
+            >>> y = paddle.as_complex(x)
+            >>> z = paddle.as_real(y)
+            >>> print(z)
+            Tensor(shape=[2, 3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[0. , 1. ],
+             [2. , 3. ],
+             [4. , 5. ]],
+            [[6. , 7. ],
+             [8. , 9. ],
+             [10., 11.]]])
+    """
+    return as_real(x=input)
+
+
 def repeat_interleave(
     x: Tensor,
     repeats: int | Tensor,
