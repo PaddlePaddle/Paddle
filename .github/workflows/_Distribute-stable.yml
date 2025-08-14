@@ -331,7 +331,8 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
-          mkdir -p ${{ env.work_dir }} && cd ${{ env.work_dir }}
+          export work_dir=${{ env.work_dir }}
+          mkdir -p ${work_dir} && cd ${work_dir}
           echo "Download and extract PaddleNLP.tar.gz"
           wget -q --tries=5 --no-proxy  https://paddle-qa.bj.bcebos.com/CodeSync/develop/PaddleNLP.tar --no-check-certificate
           tar xf PaddleNLP.tar && rm -rf PaddleNLP.tar
