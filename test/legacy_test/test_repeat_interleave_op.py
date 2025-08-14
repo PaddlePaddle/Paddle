@@ -32,7 +32,7 @@ class TestRepeatInterleaveOp(OpTest):
         x_np = np.random.random(self.x_shape).astype(self.x_type)
 
         self.inputs = {'X': x_np, 'RepeatsTensor': index_np}
-        self.attrs = {'dim': self.dim}
+        self.attrs = {'dim': self.dim, 'output_size': -1}
 
         outer_loop = np.prod(self.x_shape[: self.dim])
         x_reshape = [outer_loop, *self.x_shape[self.dim :]]
@@ -71,7 +71,7 @@ class TestRepeatInterleaveOp2(OpTest):
         index_np = 2
         x_np = np.random.random(self.x_shape).astype(self.x_type)
         self.inputs = {'X': x_np}  # , 'RepeatsTensor': None}
-        self.attrs = {'dim': self.dim, 'Repeats': index_np}
+        self.attrs = {'dim': self.dim, 'Repeats': index_np, 'output_size': -1}
 
         outer_loop = np.prod(self.x_shape[: self.dim])
         x_reshape = [outer_loop, *self.x_shape[self.dim :]]

@@ -6383,6 +6383,7 @@ def repeat_interleave(
         attrs={
             'dim': axis,
             'Repeats': repeats if isinstance(repeats, int) else 0,
+            'output_size': output_size if output_size is not None else -1,
         },
     )
     return out
