@@ -160,6 +160,25 @@ class TestSaveLoadPickle(unittest.TestCase):
                     dict_load[key].numpy(), value.numpy()
                 )
 
+    def test_safetensors(self):
+        # enable dygraph mode
+        paddle.disable_static()
+        # create network
+        layer = LinearNet()
+        save_dict = layer.state_dict()
+
+        path = os.path.join(
+            self.temp_dir.name,
+            "test_paddle_save_load_safetensors",
+            "layer.safetensors",
+        )
+
+        paddle.save(save_dict, path, safetensors=True)
+        dict_load = paddle.load(path, safetensors=True)
+        # compare results before and after saving
+        for key, value in save_dict.items():
+            np.testing.assert_array_equal(dict_load[key].numpy(), value.numpy())
+
 
 class TestSaveLoadAny(unittest.TestCase):
     def setUp(self):
