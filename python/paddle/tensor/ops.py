@@ -477,7 +477,7 @@ def ceil(x: Tensor, name: str | None = None) -> Tensor:
 
 @ParamAliasDecorator({"x": ["input"]})
 def cos(
-    x: Tensor, *, out: Tensor | None = None, name: str | None = None
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
 ) -> Tensor:
     """
     Cosine Operator. Computes cosine of x element-wise.
@@ -489,9 +489,9 @@ def cos(
 
     Args:
         x (Tensor): Input of Cos operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
-            uint8, int8, int16, int32, int64, complex64, complex128.
-        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
+            uint8, int8, int16, int32, int64, complex64, complex128. Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
 
     Returns:
         Tensor. Output of Cos operator, a Tensor with shape same as input
@@ -693,7 +693,7 @@ def expm1(x: Tensor, name: str | None = None) -> Tensor:
 
 @ParamAliasDecorator({"x": ["input"]})
 def floor(
-    x: Tensor, *, out: Tensor | None = None, name: str | None = None
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
 ) -> Tensor:
     """
 
@@ -704,9 +704,9 @@ def floor(
 
     Args:
         x (Tensor): Input of Floor operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
-            uint8, int8, int16, int32, int64.
-        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
+            uint8, int8, int16, int32, int64. Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
 
     Returns:
         Tensor. Output of Floor operator, a Tensor with shape same as input
@@ -877,7 +877,7 @@ def round_(x, decimals=0, name=None):
 
 @ParamAliasDecorator({"x": ["input"]})
 def rsqrt(
-    x: Tensor, *, out: Tensor | None = None, name: str | None = None
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
 ) -> Tensor:
     """
     Rsqrt Activation Operator.
@@ -889,9 +889,9 @@ def rsqrt(
 
     Args:
         x (Tensor): Input of Rsqrt operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
-            uint8, int8, int16, int32, int64.
-        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
+            uint8, int8, int16, int32, int64. Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
 
     Returns:
         Tensor. Output of Rsqrt operator, a Tensor with shape same as input
@@ -990,7 +990,7 @@ def sigmoid(x: Tensor, name: str | None = None) -> Tensor:
 
 @ParamAliasDecorator({"x": ["input"]})
 def sin(
-    x: Tensor, *, out: Tensor | None = None, name: str | None = None
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
 ) -> Tensor:
     """
     Sine Activation Operator.
@@ -1000,9 +1000,9 @@ def sin(
 
     Args:
         x (Tensor): Input of Sin operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
-            uint8, int8, int16, int32, int64, complex64 or complex128.
-        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
+            uint8, int8, int16, int32, int64, complex64 or complex128. Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
 
     Returns:
         Tensor. Output of Sin operator, a Tensor with shape same as input

@@ -155,7 +155,7 @@ def _get_reduce_axis_with_tensor(axis, x):
 
 @ParamAliasDecorator({"x": ["input"]})
 def log(
-    x: Tensor, *, out: Tensor | None = None, name: str | None = None
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
 ) -> Tensor:
     r"""
     Calculates the natural log of the given input Tensor, element-wise.
@@ -165,9 +165,9 @@ def log(
         Out = \ln(x)
 
     Args:
-        x (Tensor): Input Tensor. Must be one of the following types: int32, int64, float16, bfloat16, float32, float64, complex64, complex128.
-        out (Tensor, optional): The output Tensor. If set, the result will be stored in this tensor. Default is None.
+        x (Tensor): Input Tensor. Must be one of the following types: int32, int64, float16, bfloat16, float32, float64, complex64, complex128. Alias: ``input``.
         name (str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this tensor. Default is None.
 
 
     Returns:
@@ -526,9 +526,9 @@ def scale_(
 def pow(
     x: Tensor,
     y: float | Tensor,
+    name: str | None = None,
     *,
     out: Tensor | None = None,
-    name: str | None = None,
 ) -> Tensor:
     """
     Compute the power of Tensor elements. The equation is:
@@ -550,8 +550,8 @@ def pow(
         input: An alias for ``x`` , with identical behavior.
         y (float|int|Tensor): If it is an N-D Tensor, its data type should be the same as `x`.
         exponent: An alias for ``y`` , with identical behavior.
-        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
 
     Returns:
         N-D Tensor. A location into which the result is stored. Its dimension and data type are the same as `x`.
@@ -1133,7 +1133,7 @@ floor_mod_.__doc__ = r"""
 
 @ParamAliasDecorator({"x": ["input"], "y": ["other"]})
 def multiply(
-    x: Tensor, y: Tensor, *, out: Tensor | None = None, name: str | None = None
+    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
 ) -> Tensor:
     """
     multiply two tensors element-wise. The equation is:
@@ -1150,10 +1150,10 @@ def multiply(
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
-        x (Tensor): the input tensor, its data type should be one of bfloat16, float16, float32, float64, int32, int64, bool, complex64, complex128.
-        y (Tensor): the input tensor, its data type should be one of bfloat16, float16, float32, float64, int32, int64, bool, complex64, complex128.
-        out (Tensor|None, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
+        x (Tensor): the input tensor, its data type should be one of bfloat16, float16, float32, float64, int32, int64, bool, complex64, complex128. Alias: input.
+        y (Tensor): the input tensor, its data type should be one of bfloat16, float16, float32, float64, int32, int64, bool, complex64, complex128. Alias: other.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
 
     Returns:
         N-D Tensor. A location into which the result is stored. If :attr:`x`, :attr:`y` have different shapes and are "broadcastable", the resulting tensor shape is the shape of :attr:`x` and :attr:`y` after broadcasting. If :attr:`x`, :attr:`y` have the same shape, its shape is the same as :attr:`x` and :attr:`y`.
@@ -5094,15 +5094,15 @@ def prod(
 
 @ParamAliasDecorator({"x": ["input"]})
 def sign(
-    x: Tensor, *, out: Tensor | None = None, name: str | None = None
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
 ) -> Tensor:
     """
     Returns sign of every element in `x`: For real numbers, 1 for positive, -1 for negative and 0 for zero. For complex numbers, the return value is a complex number with unit magnitude. If a complex number element is zero, the result is 0+0j.
 
     Args:
-        x (Tensor): The input tensor. The data type can be uint8, int8, int16, int32, int64, bfloat16, float16, float32, float64, complex64 or complex128.
-        out (Tensor|None, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
+        x (Tensor): The input tensor. The data type can be uint8, int8, int16, int32, int64, bfloat16, float16, float32, float64, complex64 or complex128. Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
 
     Returns:
         Tensor: The output sign tensor with identical shape and data type to the input :attr:`x`.

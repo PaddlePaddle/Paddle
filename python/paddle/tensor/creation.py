@@ -3172,17 +3172,17 @@ def _memcpy(input, place=None, output=None) -> paddle.Tensor:
 def complex(
     real: paddle.Tensor,
     imag: paddle.Tensor,
+    name: str | None = None,
     *,
     out: paddle.Tensor | None = None,
-    name: str | None = None,
 ) -> paddle.Tensor:
     """Return a complex tensor given the real and image component.
 
     Args:
         real (Tensor): The real component. The data type should be 'float32' or 'float64'.
         imag (Tensor): The image component. The data type should be the same as ``real``.
-        out (Tensor|None, optional): The output tensor. Default: None.
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor, The output tensor. The data type is 'complex64' or 'complex128', with the same precision as ``real`` and ``imag``.
@@ -3398,17 +3398,17 @@ def triu_indices(
 def polar(
     abs: paddle.Tensor,
     angle: paddle.Tensor,
+    name: str | None = None,
     *,
     out: paddle.Tensor | None = None,
-    name: str | None = None,
 ) -> paddle.Tensor:
     """Return a Cartesian coordinates corresponding to the polar coordinates complex tensor given the ``abs`` and ``angle`` component.
 
     Args:
         abs (Tensor): The abs component. The data type should be 'float32' or 'float64'.
         angle (Tensor): The angle component. The data type should be the same as ``abs``.
-        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
 
     Returns:
         Tensor, The output tensor. The data type is 'complex64' or 'complex128', with the same precision as ``abs`` and ``angle``.
