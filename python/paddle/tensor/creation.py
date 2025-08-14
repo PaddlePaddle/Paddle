@@ -1446,6 +1446,7 @@ def zeros(
     )
 
 
+@ParamAliasDecorator({"x": ["input"]})
 def zeros_like(
     x: paddle.Tensor,
     dtype: DTypeLike | None = None,
@@ -1458,9 +1459,14 @@ def zeros_like(
     Returns a Tensor filled with the value 0, with the same shape and
     data type (use ``dtype`` if ``dtype`` is not None) as ``x``.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``zeros_like(input=x, ...)`` is equivalent to ``zeros_like(x=x, ...)``.
+
     Args:
         x(Tensor): The input tensor which specifies shape and dtype. The
             dtype of ``x`` can be bool, float16, float32, float64, int32, int64.
+            Alias: ``input``.
         dtype(str|np.dtype, optional): The data type of the
             output tensor. Supported data types: bool, float16, float32, float64,
             int32, int64. If ``dtype`` is None, the data type is the same as ``x``.
@@ -1612,6 +1618,7 @@ def eye(
     return out
 
 
+@ParamAliasDecorator({"shape": ["size"]})
 def full(
     shape: ShapeLike,
     fill_value: bool | float | paddle.Tensor,
@@ -1625,10 +1632,15 @@ def full(
 
     Return a Tensor with the ``fill_value`` which size is same as ``shape``.
 
+    .. note::
+        Alias Support: The parameter name ``size`` can be used as an alias for ``shape``.
+        For example, ``full(size=[2, 3], …)`` is equivalent to ``full(shape=[2, 3], …)``.
+
     Args:
         shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
+            Alias: ``size``.
         fill_value(bool|float|int|Tensor): The constant value used to initialize the Tensor to be created.
             If ``fill_value`` is an Tensor, it should be an 0-D Tensor which represents a scalar.
         dtype(np.dtype|str, optional): Data type of the output Tensor
@@ -2713,6 +2725,7 @@ def empty(
         return out
 
 
+@ParamAliasDecorator({"x": ["input"]})
 def empty_like(
     x: paddle.Tensor,
     dtype: DTypeLike | None = None,
@@ -2725,8 +2738,13 @@ def empty_like(
     Returns a Tensor with uninitialized data which has identical shape of ``x`` and ``dtype``.
     If the ``dtype`` is None, the data type of Tensor is same with ``x``.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``empty_like(input=tensor_x)`` is equivalent to ``empty_like(x=tensor_x)``.
+
     Args:
         x(Tensor): The input tensor which specifies shape and data type. The data type can be bool, float16, float32, float64, int32, int64.
+            Alias: ``input``.
         dtype(np.dtype|str, optional): The data type of output. The data type can be one
             of bool, float16, float32, float64, int32, int64. The default value is None, which means the output
             data type is the same as input.
