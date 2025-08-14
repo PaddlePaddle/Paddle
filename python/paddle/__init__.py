@@ -50,6 +50,43 @@ monkey_patch_value()
 monkey_patch_program()
 monkey_patch_dtype()
 
+from .base.dataset import *  # noqa: F403
+from .framework import (
+    disable_signal_handler,
+    disable_static,
+    enable_static,
+    get_flags,
+    in_dynamic_mode,
+    set_flags,
+)
+from .framework.dtype import (
+    bfloat16,
+    bool,
+    complex64,
+    complex128,
+    dtype,
+    finfo,
+    float8_e4m3fn,
+    float8_e5m2,
+    float16,
+    float32,
+    float64,
+    iinfo,
+    int8,
+    int16,
+    int32,
+    int64,
+    pstring,
+    raw,
+    uint8,
+)
+
+if typing.TYPE_CHECKING:
+    from .tensor.tensor import Tensor
+else:
+    Tensor = framework.core.eager.Tensor
+    Tensor.__qualname__ = 'Tensor'
+
 import paddle.distributed.fleet
 import paddle.text
 import paddle.vision
@@ -99,7 +136,6 @@ from .autograd import (
     no_grad,
     set_grad_enabled,
 )
-from .base.dataset import *  # noqa: F403
 from .device import (  # noqa: F401
     device_guard,
     get_cudnn_version,
@@ -125,37 +161,10 @@ from .framework import (  # noqa: F401
     XPUPlace,
     async_save,
     clear_async_save_task_queue,
-    disable_signal_handler,
-    disable_static,
-    enable_static,
     get_default_dtype,
-    get_flags,
-    in_dynamic_mode,
     load,
     save,
     set_default_dtype,
-    set_flags,
-)
-from .framework.dtype import (
-    bfloat16,
-    bool,
-    complex64,
-    complex128,
-    dtype,
-    finfo,
-    float8_e4m3fn,
-    float8_e5m2,
-    float16,
-    float32,
-    float64,
-    iinfo,
-    int8,
-    int16,
-    int32,
-    int64,
-    pstring,
-    raw,
-    uint8,
 )
 from .framework.random import (
     get_cuda_rng_state,
@@ -184,6 +193,7 @@ from .tensor.attribute import (
 )
 from .tensor.creation import (
     MmapStorage,
+    Tensor,
     arange,
     assign,
     cauchy_,
@@ -594,35 +604,6 @@ from .utils.dlpack import (
     from_dlpack,
     to_dlpack,
 )
-
-if typing.TYPE_CHECKING:
-    from .tensor.tensor import Tensor
-else:
-
-    class Tensor(framework.core.eager.Tensor):
-        def __init__(self, *args, **kwargs):
-            kwargs_cnt = len(kwargs.keys())
-            if kwargs_cnt:
-                super().__init__(*args, **kwargs)
-                return
-            if len(args) == 0:
-                super().__init__(empty(shape=[0], dtype="float32"))
-                return
-            elif len(args) == 1 and isinstance(args[0], (list, tuple)):
-                super().__init__(to_tensor(args[0], dtype="float32"))
-                return
-            create_random_tensor = True
-            for arg in args:
-                if not isinstance(arg, int):
-                    create_random_tensor = False
-                    break
-            if create_random_tensor:
-                super().__init__(randn(list(args), dtype="float32"))
-                return
-            else:
-                super().__init__(*args, **kwargs)
-
-    Tensor.__qualname__ = 'Tensor'
 
 # CINN has to set a flag to include a lib
 if is_compiled_with_cinn():
