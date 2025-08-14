@@ -2930,6 +2930,7 @@ def inner(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             return out.reshape(dstshape)
 
 
+@ParamAliasDecorator({"x": ["input"], "y": ["vec2"]})
 def outer(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
 
@@ -2937,9 +2938,15 @@ def outer(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
     Input is flattened if not already 1-dimensional.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``vec2`` can be used as an alias for ``y``.
+        For example, ``outer(input=tensor_x, vec2=tensor_y, ...)`` is equivalent to ``outer(x=tensor_x, y=tensor_y, ...)``.
+
     Args:
         x (Tensor): An N-D Tensor or a Scalar Tensor.
+            alias: ``input``.
         y (Tensor): An N-D Tensor or a Scalar Tensor.
+            alias: ``vec2``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
