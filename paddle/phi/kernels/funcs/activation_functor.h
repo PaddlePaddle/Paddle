@@ -5410,7 +5410,7 @@ struct CudaCeilFunctor : public BaseActivationFunctor<T> {
 template <typename T, typename MPType>
 __device__ __forceinline__
     typename std::enable_if<std::is_integral<T>::value, T>::type
-    compute_pow(const T a, const T b) {
+    compute_pow(const T a, const MPType b) {
   // TODO(wujionghao): A potential speed improvement is supporting different
   // types in C++.
   // On CUDAPlace, pow(3, 1) calls pow(float, float), and
@@ -5423,10 +5423,9 @@ __device__ __forceinline__
 template <typename T, typename MPType>
 __device__ __forceinline__
     typename std::enable_if<!std::is_integral<T>::value, T>::type
-    compute_pow(const T a, const T b) {
+    compute_pow(const T a, const MPType b) {
   MPType a_val = static_cast<MPType>(a);
-  MPType b_val = static_cast<MPType>(b);
-  return static_cast<T>(pow(a_val, b_val));
+  return static_cast<T>(pow(a_val, b));
 }
 
 template <typename T>
@@ -5437,7 +5436,7 @@ struct CudaPowFunctor : public BaseActivationFunctor<T> {
     return {{"factor", &factor}};
   }
   __device__ __forceinline__ T operator()(const T x) const {
-    return compute_pow<T, MT>(x, static_cast<T>(factor));
+    return compute_pow<T, MT>(x, static_cast<MT>(factor));
   }
 };
 
@@ -5451,7 +5450,7 @@ struct CudaPowGradFunctor : public BaseActivationFunctor<T> {
   // dx = dout * n * pow(x, n - 1)
   __device__ __forceinline__ T operator()(const T dout, const T x) const {
     return dout * static_cast<T>(factor) *
-           compute_pow<T, MT>(x, static_cast<T>(factor - 1));
+           compute_pow<T, MT>(x, static_cast<MT>(factor - 1));
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
