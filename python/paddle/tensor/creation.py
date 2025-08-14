@@ -24,7 +24,7 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
-from paddle.utils.decorator_utils import SizeArgsDecorator
+from paddle.utils.decorator_utils import ParamAliasDecorator, SizeArgsDecorator
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
