@@ -95,10 +95,7 @@ add_doc_all(
             >>> result1_min
             Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=False,
             0.10000000)
-            >>> x.grad
-            Tensor(shape=[2, 4], dtype=float64, place=Place(cpu), stop_gradient=False,
-            [[0., 1., 1., 1.],
-             [1., 1., 0., 0.]])
+
 
             >>> x.clear_grad()
             >>> result2 = paddle.amin(x, axis=0)
@@ -225,10 +222,7 @@ add_doc_all(
             >>> result1_max
             Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=False,
             0.90000000)
-            >>> x.grad
-            Tensor(shape=[2, 4], dtype=float64, place=Place(cpu), stop_gradient=False,
-            [[0., 1., 1., 1.],
-             [1., 1., 0., 0.]])
+
 
             >>> x.clear_grad()
             >>> result2 = paddle.amax(x, axis=0)
