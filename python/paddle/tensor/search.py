@@ -22,7 +22,7 @@ from typing_extensions import overload
 import paddle
 from paddle import _C_ops
 from paddle.common_ops_import import VarDesc, Variable
-from paddle.utils.decorator_utils import ParamAliasDecorator
+from paddle.utils.decorator_utils import ParamAliasDecorator, param_one_alias
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import check_dtype, check_variable_and_dtype
@@ -465,7 +465,7 @@ def nonzero(x: Tensor, as_tuple: Literal[True] = ...) -> tuple[Tensor, ...]: ...
 def nonzero(x: Tensor, as_tuple: bool = ...) -> Tensor | tuple[Tensor, ...]: ...
 
 
-@ParamAliasDecorator({'x': ['input']})
+@param_one_alias({'x': ['input']})
 def nonzero(x: Tensor, out: Tensor | None = None, as_tuple=False):
     """
     Return a tensor containing the indices of all non-zero elements of the `input`
@@ -509,14 +509,10 @@ def nonzero(x: Tensor, out: Tensor | None = None, as_tuple=False):
             >>> out_z1_tuple = paddle.nonzero(x1, as_tuple=True)
             >>> for out in out_z1_tuple:
             ...     print(out)
-            Tensor(shape=[3, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[0],
-             [1],
-             [2]])
-            Tensor(shape=[3, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[0],
-             [1],
-             [2]])
+            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [0, 1, 2])
+            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [0, 1, 2])
 
             >>> out_z2 = paddle.nonzero(x2)
             >>> print(out_z2)
@@ -527,9 +523,8 @@ def nonzero(x: Tensor, out: Tensor | None = None, as_tuple=False):
             >>> out_z2_tuple = paddle.nonzero(x2, as_tuple=True)
             >>> for out in out_z2_tuple:
             ...     print(out)
-            Tensor(shape=[2, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[1],
-             [3]])
+            Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [1, 3])
 
     """
     if in_dynamic_or_pir_mode():
