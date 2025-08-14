@@ -95,14 +95,13 @@ class TestRandnOpCompatibility(unittest.TestCase):
             for place in self.places:
                 paddle.device.set_device(place)
                 for param_name in ['shape', 'size']:
-                    # 列表形式输入
+
                     tensor = paddle.randn(
                         **{param_name: self.expected_shape}, dtype=self.dtype
                     )
                     self.assertEqual(tensor.shape, self.expected_shape)
                     self.assertEqual(tensor.dtype, self.dtype)
 
-                    # Tensor形式输入
                     shape_tensor = paddle.to_tensor(
                         self.expected_shape, dtype='int32'
                     )
@@ -112,7 +111,6 @@ class TestRandnOpCompatibility(unittest.TestCase):
                     self.assertEqual(tensor.shape, self.expected_shape)
                     self.assertEqual(tensor.dtype, self.dtype)
 
-                # 测试可变参数形式
                 tensor = paddle.randn(*self.expected_shape, dtype=self.dtype)
                 self.assertEqual(tensor.shape, self.expected_shape)
                 self.assertEqual(tensor.dtype, self.dtype)
