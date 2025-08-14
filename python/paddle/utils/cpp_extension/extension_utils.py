@@ -164,7 +164,11 @@ def bootstrap_context():
 
 
 def load_op_meta_info_and_register_op(lib_filename: str) -> list[str]:
-    core.load_op_meta_info_and_register_op(lib_filename)
+    # TODO(Pan Zhaowu): implement lib -> proto mapping, with proper update logic
+    # 1. register op in C++ even when conflict(override)
+    # 2. update op by get_lib_oplist method
+    # 3. return full op_names unless conflict inside.
+    new_list = core.load_op_meta_info_and_register_op(lib_filename)
     return OpProtoHolder.instance().update_op_proto()
 
 

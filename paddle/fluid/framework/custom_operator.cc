@@ -964,8 +964,10 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
   auto op_name = OpMetaInfoHelper::GetOpName(base_op_meta);
 
   if (OpInfoMap::Instance().Has(op_name)) {
-    LOG(WARNING) << "Operator (" << op_name << ") has been registered.";
-    return;
+    LOG(WARNING) << "Operator (" << op_name
+                 << ") has been registered before as PIR op.";
+    LOG(WARNING) << "PIR Operator (" << op_name
+                 << ") has been overridden by Custom op!.";
   }
 
   auto& op_inputs = OpMetaInfoHelper::GetInputs(base_op_meta);
@@ -1282,7 +1284,8 @@ void RegisterOperatorWithMetaInfoMap(
 
     // Register PIR op
 
-    if (custom_dialect->HasRegistered(pair.first)) {
+    if (custom_dialect->HasRegistered(paddle::framework::kCustomDialectPrefix +
+                                      pair.first)) {
       VLOG(3) << "The operator `" << pair.first
               << "` has been registered. "
                  "Therefore, we will not repeat the registration here.";
