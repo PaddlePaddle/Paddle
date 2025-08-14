@@ -633,6 +633,40 @@ def monkey_patch_value():
 
         return _C_ops.transpose(self, perm)
 
+    @property
+    def requires_grad(self) -> bool:
+        """
+        Whether this Tensor requires gradient computation.
+
+        This is a convenience property that returns the opposite of stop_gradient.
+        Setting requires_grad=True is equivalent to setting stop_gradient=False.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> x = paddle.randn([2, 3])
+                >>> print(x.requires_grad)  # False by default
+                >>>
+                >>> x.requires_grad = False
+                >>> print(x.stop_gradient)  # True
+        """
+        return not self.stop_gradient
+
+    @requires_grad.setter
+    def requires_grad(self, value: bool) -> None:
+        """
+        Set whether this Tensor requires gradient computation.
+
+        Args:
+            value (bool): True to enable gradient computation, False to disable.
+        """
+        if not isinstance(value, bool):
+            raise TypeError(
+                f"requires_grad must be bool, but got {type(value)}"
+            )
+        self.stop_gradient = not value
+
     def _int_(self):
         error_msg = """\
             int(Tensor) is not supported in static graph mode. Because it's value is not available during the static mode.
@@ -1182,6 +1216,7 @@ def monkey_patch_value():
         ('size', _size_),
         ('T', _T_),
         ('mT', _mT_),
+        ("requires_grad", requires_grad),
         ('clone', clone),
         ('clear_gradient', clear_gradient),
         ('append', append),
