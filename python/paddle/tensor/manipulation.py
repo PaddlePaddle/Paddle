@@ -1347,9 +1347,9 @@ def tolist(x: Tensor) -> NestedList[int | float | complex]:
 def concat(
     x: Sequence[Tensor],
     axis: int | Tensor = 0,
+    name: str | None = None,
     *,
     out: Tensor | None = None,
-    name: str | None = None,
 ) -> Tensor:
     """
 
@@ -1377,9 +1377,8 @@ def concat(
             Tt should be integer or 0-D int Tensor with shape []. The effective range is [-R, R), where R is Rank(x). When ``axis < 0``,
             it works the same way as ``axis+R``. Default is 0.
             alias: ``dim``.
-        out (Tensor|None, optional): The output Tensor. If set, the result will be stored in this Tensor. Default is None.
-
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output Tensor. If set, the result will be stored in this Tensor. Default is None.
 
     Returns:
         Tensor, A Tensor with the same data type as ``x``.
@@ -4841,10 +4840,11 @@ def broadcast_to(
         :align: center
 
     Args:
-        x (Tensor): The input tensor, its data type is bool, float16, float32, float64, int32, int64, uint8 or uint16.
+        x (Tensor): The input tensor, its data type is bool, float16, float32, float64, int32, int64, uint8 or uint16. Alias: input.
         shape (list|tuple|Tensor): The result shape after broadcasting. The data type is int32. If shape is a list or tuple, all its elements
             should be integers or 0-D or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32.
             The value -1 in shape means keeping the corresponding dimension unchanged.
+            Alias: size.
         out (Tensor, optional): The output tensor. If set, the result will be written to this tensor.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
     Returns:
@@ -6729,10 +6729,10 @@ def take_along_axis(
 
     Args:
         arr (Tensor) : The input Tensor. Supported data types are bfloat16, float16, float32, float64,
-            int32, int64, uint8.
+            int32, int64, uint8. Alias: input.
         indices (Tensor) : Indices to take along each 1d slice of arr. This must match the dimension of arr,
             and need to broadcast against arr. Supported data type are int32 and int64.
-        axis (int) : The axis to take 1d slices along.
+        axis (int) : The axis to take 1d slices along. Alias: dim.
         broadcast (bool, optional): whether the indices broadcast.
         out (Tensor, optional): The output Tensor. If set, the output will be written to this Tensor.
 

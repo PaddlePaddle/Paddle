@@ -2934,9 +2934,9 @@ def inner(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 def outer(
     x: Tensor,
     y: Tensor,
+    name: str | None = None,
     *,
     out: Tensor | None = None,
-    name: str | None = None,
 ) -> Tensor:
     """
 
@@ -2953,8 +2953,8 @@ def outer(
             alias: ``input``.
         y (Tensor): An N-D Tensor or a Scalar Tensor.
             alias: ``vec2``.
-        out (Tensor|None, optional): The output Tensor. If set, the result will be stored in this Tensor.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output Tensor. If set, the result will be stored in this Tensor.
 
     Returns:
         Tensor: The outer-product Tensor.
@@ -3015,9 +3015,9 @@ def logsumexp(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
     keepdim: bool = False,
+    name: str | None = None,
     *,
     out: Tensor | None = None,
-    name: str | None = None,
 ) -> Tensor:
     r"""
     Calculates the log of the sum of exponentials of ``x`` along ``axis`` .
@@ -3028,7 +3028,7 @@ def logsumexp(
     Args:
         x (Tensor): The input Tensor with data type bfloat16, float16, float32,
             float64, uint8, int8, int16, int32, int64, which have no more than
-            4 dimensions.
+            4 dimensions. Alias: input.
         axis (int|list|tuple|None, optional): The axis along which to perform
             logsumexp calculations. ``axis`` should be int, list(int) or
             tuple(int). If ``axis`` is a list/tuple of dimension(s), logsumexp
@@ -3037,16 +3037,16 @@ def logsumexp(
             dimensions of ``x`` . If ``axis`` or element(s) of ``axis`` is
             less than 0, it works the same way as :math:`axis + D` . If
             ``axis`` is None, logsumexp is calculated along all elements of
-            ``x``. Default is None.
+            ``x``. Default is None. Alias: dim.
         keepdim (bool, optional): Whether to reserve the reduced dimension(s)
             in the output Tensor. If ``keep_dim`` is True, the dimensions of
             the output Tensor is the same as ``x`` except in the reduced
             dimensions(it is of size 1 in this case). Otherwise, the shape of
             the output Tensor is squeezed in ``axis`` . Default is False.
-        out (Tensor|None, optional): The output Tensor. If set, the result will be
-            stored in this Tensor.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output Tensor. If set, the result will be
+            stored in this Tensor.
 
     Returns:
         Tensor, results of logsumexp along ``axis`` of ``x``, with the same data
@@ -4001,9 +4001,9 @@ def clip(
     x: Tensor,
     min: float | None = None,
     max: float | None = None,
+    name: str | None = None,
     *,
     out: Tensor | None = None,
-    name: str | None = None,
 ) -> Tensor:
     """
     This operator clip all elements in input into the range [ min, max ] and return
@@ -4015,12 +4015,13 @@ def clip(
 
     Args:
         x (Tensor): An N-D Tensor with data type bfloat16, float16, float32, float64, int32 or int64.
+            Alias: input.
         min (float|int|Tensor, optional): The lower bound with type ``float`` , ``int`` or a ``0-D Tensor``
             with shape [] and type ``bfloat16``, ``float16``, ``float32``, ``float64``, ``int32``.
         max (float|int|Tensor, optional): The upper bound with type ``float``, ``int`` or a ``0-D Tensor``
             with shape [] and type ``bfloat16``, ``float16``, ``float32``, ``float64``, ``int32``.
-        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this Tensor.
 
     Returns:
         Tensor: A Tensor with the same data type and data shape as input.
