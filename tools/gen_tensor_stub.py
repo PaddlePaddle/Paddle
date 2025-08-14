@@ -426,6 +426,12 @@ def get_tensor_members(module: str = 'paddle.Tensor') -> dict[int, Member]:
         try:
             sig = inspect.signature(member)
             # TODO: classmethod
+            sig = re.sub(r'\bint\b', '_int', f"{sig}")
+            sig = re.sub(r'\bfloat\b', '_float', f"{sig}")
+            sig = re.sub(r'\bbool\b', '_bool', f"{sig}")
+            sig = re.sub(r'\bcomplex\b', '_complex', f"{sig}")
+            sig = re.sub(r'\bbytes\b', '_bytes', f"{sig}")
+            sig = re.sub(r'\bstr\b', '_str', f"{sig}")
             member_signature = f"{name}{sig}"
 
         except (TypeError, ValueError):
