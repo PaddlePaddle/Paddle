@@ -136,7 +136,7 @@ class TestCompatSplit(unittest.TestCase):
         x = paddle.randn([3, 9, 5])
 
         msg_gt_1 = (
-            "paddle.split() received unexpected keyword arguments 'tensor', 'split_size_or_sections', 'dim'. "
+            "paddle.split() received unexpected keyword arguments 'dim', 'split_size_or_sections', 'tensor'. "
             "\nDid you mean to use paddle.compat.split() instead?"
         )
         msg_gt_2 = (

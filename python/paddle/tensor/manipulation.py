@@ -2737,7 +2737,7 @@ def row_stack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
 
 
 @ForbidKeywordsDecorator(
-    illegal_keys=["tensor", "split_size_or_sections", "dim"],
+    illegal_keys={"tensor", "split_size_or_sections", "dim"},
     func_name="paddle.split",
     correct_name="paddle.compat.split",
 )

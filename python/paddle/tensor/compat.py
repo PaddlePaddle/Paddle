@@ -35,7 +35,7 @@ __all__ = []
 
 
 @ForbidKeywordsDecorator(
-    illegal_keys=["x", "num_or_sections", "axis", "name"],
+    illegal_keys={"x", "num_or_sections", "axis", "name"},
     func_name="paddle.compat.split",
     correct_name="paddle.split",
 )
