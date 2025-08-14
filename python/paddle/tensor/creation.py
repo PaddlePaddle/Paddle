@@ -1901,8 +1901,13 @@ def _tril_triu_op(helper: LayerHelper) -> paddle.Tensor:
     return out
 
 
+@ParamAliasDecorator({"x": ["input"]})
 def tril(
-    x: paddle.Tensor, diagonal: int = 0, name: str | None = None
+    x: paddle.Tensor,
+    diagonal: int = 0,
+    *,
+    out: paddle.Tensor | None = None,
+    name: str | None = None,
 ) -> paddle.Tensor:
     r"""
     Returns the lower triangular part of a matrix (2-D tensor) or batch
@@ -1920,6 +1925,7 @@ def tril(
             the main diagonal. The main diagonal are the set of indices
             :math:`\{(i, i)\}` for :math:`i \in [0, \min\{d_{1}, d_{2}\} - 1]` where
             :math:`d_{1}, d_{2}` are the dimensions of the matrix.
+        out(Tensor, optional): The output tensor.
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1962,7 +1968,7 @@ def tril(
              [9 , 10, 0 , 0 ]])
     """
     if in_dynamic_mode():
-        return _C_ops.tril(x, diagonal)
+        return _C_ops.tril(x, diagonal, out=out)
     elif in_pir_mode():
         op_type = 'tril'
         assert x is not None, f'x cannot be None in {op_type}'
@@ -2004,8 +2010,13 @@ def tril_(
         return _C_ops.tril_(x, diagonal)
 
 
+@ParamAliasDecorator({"x": ["input"]})
 def triu(
-    x: paddle.Tensor, diagonal: int = 0, name: str | None = None
+    x: paddle.Tensor,
+    diagonal: int = 0,
+    *,
+    out: paddle.Tensor | None = None,
+    name: str | None = None,
 ) -> paddle.Tensor:
     r"""
     Return the upper triangular part of a matrix (2-D tensor) or batch of matrices
@@ -2023,6 +2034,7 @@ def triu(
             the main diagonal. The main diagonal are the set of indices
             :math:`\{(i, i)\}` for :math:`i \in [0, \min\{d_{1}, d_{2}\} - 1]` where
             :math:`d_{1}, d_{2}` are the dimensions of the matrix.
+        out(Tensor, optional): The output tensor.
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -2067,7 +2079,7 @@ def triu(
 
     """
     if in_dynamic_mode():
-        return _C_ops.triu(x, diagonal)
+        return _C_ops.triu(x, diagonal, out=out)
     elif in_pir_mode():
         op_type = 'triu'
         assert x is not None, f'x cannot be None in {op_type}'

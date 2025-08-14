@@ -374,5 +374,88 @@ class TestTrilTriu_ZeroDimGrad_Triu(OpTest):
         self.check_grad(['X'], 'Out', check_pir=True)
 
 
+class TestTrilTriuOutAndParamDecorator(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.x_np = np.random.random((8, 10, 5, 6)).astype("float64")
+        self.diagonal = 0
+        self.test_types = ["decorator", "out", "out_decorator"]
+
+    def do_tril_test(self, test_type):
+        x = paddle.to_tensor(self.x_np, stop_gradient=False)
+        diagonal = self.diagonal
+        if test_type == 'raw':
+            result = paddle.tril(x, diagonal)
+            result.mean().backward()
+            return result, x.grad
+        elif test_type == 'decorator':
+            result = paddle.tril(input=x, diagonal=diagonal)
+            result.mean().backward()
+            return result, x.grad
+        elif test_type == 'out':
+            out = paddle.empty_like(x)
+            out.stop_gradient = False
+            paddle.tril(x, diagonal, out=out)
+            out.mean().backward()
+            return out, x.grad
+        elif test_type == 'out_decorator':
+            out = paddle.empty_like(x)
+            out.stop_gradient = False
+            paddle.tril(input=x, diagonal=diagonal, out=out)
+            out.mean().backward()
+            return out, x.grad
+        else:
+            raise ValueError(f"Unknown test type: {test_type}")
+
+    def do_triu_test(self, test_type):
+        x = paddle.to_tensor(self.x_np, stop_gradient=False)
+        diagonal = self.diagonal
+        if test_type == 'raw':
+            result = paddle.triu(x, diagonal)
+            result.mean().backward()
+            return result, x.grad
+        elif test_type == 'decorator':
+            result = paddle.triu(input=x, diagonal=diagonal)
+            result.mean().backward()
+            return result, x.grad
+        elif test_type == 'out':
+            out = paddle.empty_like(x)
+            out.stop_gradient = False
+            paddle.triu(x, diagonal, out=out)
+            out.mean().backward()
+            return out, x.grad
+        elif test_type == 'out_decorator':
+            out = paddle.empty_like(x)
+            out.stop_gradient = False
+            paddle.triu(input=x, diagonal=diagonal, out=out)
+            out.mean().backward()
+            return out, x.grad
+        else:
+            raise ValueError(f"Unknown test type: {test_type}")
+
+    def test_all(self):
+        for d in range(-4, 6):
+            self.diagonal = d
+            out_std, grad_x_std = self.do_tril_test('raw')
+            for test_type in self.test_types:
+                out, grad_x = self.do_tril_test(test_type)
+                np.testing.assert_allclose(
+                    out.numpy(), out_std.numpy(), rtol=1e-7
+                )
+                np.testing.assert_allclose(
+                    grad_x.numpy(), grad_x_std.numpy(), rtol=1e-7
+                )
+
+            out_std, grad_x_std = self.do_triu_test('raw')
+            for test_type in self.test_types:
+                out, grad_x = self.do_triu_test(test_type)
+                np.testing.assert_allclose(
+                    out.numpy(), out_std.numpy(), rtol=1e-7
+                )
+                np.testing.assert_allclose(
+                    grad_x.numpy(), grad_x_std.numpy(), rtol=1e-7
+                )
+
+
 if __name__ == '__main__':
     unittest.main()
