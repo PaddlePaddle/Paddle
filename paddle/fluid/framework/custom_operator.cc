@@ -1270,8 +1270,9 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
   OpInfoMap::Instance().Insert(cur_op_name, info);
 }
 
-void RegisterOperatorWithMetaInfoMap(
-    const paddle::OpMetaInfoMap& op_meta_info_map, void* dso_handle) {
+std::unordered_map<std::string, std::vector<OpMetaInfo>>
+RegisterOperatorWithMetaInfoMap(const paddle::OpMetaInfoMap& op_meta_info_map,
+                                void* dso_handle) {
   auto& meta_info_map = op_meta_info_map.GetMap();
   VLOG(3) << "Custom Operator: size of op meta info map - "
           << meta_info_map.size();
@@ -1279,6 +1280,7 @@ void RegisterOperatorWithMetaInfoMap(
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   auto* custom_dialect =
       ctx->GetOrRegisterDialect<paddle::dialect::CustomOpDialect>();
+  std::unordered_map<std::string, std::vector<OpMetaInfo>> diff_map;
   for (auto& pair : meta_info_map) {
     VLOG(3) << "Custom Operator: pair first -> op name: " << pair.first;
 
@@ -1296,16 +1298,54 @@ void RegisterOperatorWithMetaInfoMap(
               << OpMetaInfoHelper::GetOpName(meta_info);
       custom_dialect->RegisterCustomOp(meta_info);
     }
+    diff_map[pair.first] = pair.second;
 
     // Register Fluid op
     RegisterOperatorWithMetaInfo(pair.second, dso_handle);
   }
+  return diff_map;
 }
+
+/*
+std::unordered_map<std::string, std::vector<OpMetaInfo>>
+RegisterOperatorWithMetaInfoMap(
+    const paddle::OpMetaInfoMap& op_meta_info_map, void* dso_handle) {
+  auto& meta_info_map = op_meta_info_map.GetMap();
+  VLOG(3) << "Custom Operator: size of op meta info map - "
+          << meta_info_map.size();
+  // pair: {op_type, OpMetaInfo}
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  auto* custom_dialect =
+      ctx->GetOrRegisterDialect<paddle::dialect::CustomOpDialect>();
+  std::unordered_map<std::string, std::vector<OpMetaInfo>> diff_map;
+  for (auto& pair : meta_info_map) {
+    VLOG(3) << "Custom Operator: pair first -> op name: " << pair.first;
+    // Register PIR op
+    if (custom_dialect->HasRegistered(paddle::framework::kCustomDialectPrefix +
+pair.first)) { VLOG(3) << "The operator `" << pair.first
+              << "` has been registered. "
+                 "Therefore, we will not repeat the registration here.";
+      diff_map[pair.first] = pair.second;
+      continue;
+    }
+    for (const auto& meta_info : pair.second) {
+      VLOG(3) << "register pir custom op :"
+              << OpMetaInfoHelper::GetOpName(meta_info);
+      custom_dialect->RegisterCustomOp(meta_info);
+    }
+
+
+    // Register Fluid op
+    RegisterOperatorWithMetaInfo(pair.second, dso_handle);
+  }
+  return diff_map;
+}
+*/
 
 ////////////////////// User APIs ///////////////////////
 
 // load op api
-const std::unordered_map<std::string, std::vector<OpMetaInfo>>&
+std::unordered_map<std::string, std::vector<OpMetaInfo>>
 LoadOpMetaInfoAndRegisterOp(const std::string& dso_name) {
   void* handle = phi::dynload::GetOpDsoHandle(dso_name);
   VLOG(3) << "load custom_op lib: " << dso_name;
@@ -1313,8 +1353,12 @@ LoadOpMetaInfoAndRegisterOp(const std::string& dso_name) {
   auto* get_op_meta_info_map =
       detail::DynLoad<get_op_meta_info_map_t>(handle, "PD_GetOpMetaInfoMap");
   auto& op_meta_info_map = get_op_meta_info_map();
-  RegisterOperatorWithMetaInfoMap(op_meta_info_map, handle);
-  return op_meta_info_map.GetMap();
+  auto diff_map = RegisterOperatorWithMetaInfoMap(op_meta_info_map, handle);
+  for (auto& pair : diff_map) {
+    VLOG(3) << "diff op name: " << pair.first;
+  }
+  // return op_meta_info_map.GetMap();
+  return diff_map;
 }
 
 }  // namespace paddle::framework

@@ -2971,6 +2971,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("load_op_meta_info_and_register_op", [](const std::string dso_name) {
     const auto &new_op_meta_info_map =
         framework::LoadOpMetaInfoAndRegisterOp(dso_name);
+    // Merging failed?
     egr::Controller::Instance().MergeOpMetaInfoMap(new_op_meta_info_map);
 
     py::list key_list;

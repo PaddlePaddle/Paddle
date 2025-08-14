@@ -105,6 +105,7 @@ class Controller {
       if (op_meta_info_map_.count(key)) {
         VLOG(3) << "Replacing existing OpMetaInfo for op: " << key;
       }
+      VLOG(3) << "Merging OpMetaInfo for op: " << key;
       op_meta_info_map_[key] = value;
     }
   }
