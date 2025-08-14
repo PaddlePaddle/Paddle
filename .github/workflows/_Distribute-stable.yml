@@ -253,7 +253,6 @@ jobs:
           GIT_PR_ID: ${{ github.event.pull_request.number }}
           PY_VERSION: "3.10"
           CUDA_ARCH_NAME: Auto
-          work_dir: "/workspace"
           WITH_CUDNN_FRONTEND: "ON"
           FLAGS_enable_cudnn_frontend: 1
           CACHE_DIR: /root/.cache/build
@@ -324,14 +323,15 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
-          mkdir -p /workspace
           bash ${ci_scripts}/distribute_test.sh
           '
       - name: Auto Parallel Test
+        env:
+          work_dir: '/workspace'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
-          cd /workspace
+          mkdir -p ${{ env.work_dir }} && cd ${{ env.work_dir }}
           echo "Download and extract PaddleNLP.tar.gz"
           wget -q --tries=5 --no-proxy  https://paddle-qa.bj.bcebos.com/CodeSync/develop/PaddleNLP.tar --no-check-certificate
           tar xf PaddleNLP.tar && rm -rf PaddleNLP.tar
