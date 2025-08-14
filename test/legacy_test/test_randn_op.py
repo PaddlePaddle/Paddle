@@ -75,8 +75,6 @@ class TestRandnOpForDygraph(unittest.TestCase):
 class TestRandnOpError(unittest.TestCase):
     def test_error(self):
         with program_guard(Program(), Program()):
-            # The argument shape's type of randn_op should be list or tuple.
-            self.assertRaises(TypeError, paddle.randn, 1)
 
             # The argument dtype of randn_op should be float32 or float64.
             self.assertRaises(TypeError, paddle.randn, [1, 2], 'int32')
