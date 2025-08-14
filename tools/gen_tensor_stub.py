@@ -75,6 +75,8 @@ def create_builtin_annotation_renamer():
     regex = re.compile(regex_string)
 
     def renamer(annotations):
+        if annotations is inspect.Signature.empty:
+            return annotations
         return regex.sub(lambda m: f"_{m.group(0)}", annotations)
 
     return renamer
