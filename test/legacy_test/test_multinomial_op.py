@@ -348,6 +348,53 @@ class TestMultinomialAlias(unittest.TestCase):
         paddle.tensor.multinomial(x, num_samples=10, replacement=True)
         paddle.tensor.random.multinomial(x, num_samples=10, replacement=True)
 
+    def test_alias_torch(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+
+        if "V100" not in paddle.device.cuda.get_device_name():
+            return
+
+        paddle.disable_static()
+        paddle.set_device('gpu')
+        paddle.seed(100)
+
+        x = paddle.randint(0, 100, [1024, 10000]).astype('float32')
+        y = paddle.multinomial(
+            input=x, num_samples=1, replacement=False
+        ).numpy()
+        self.assertEqual(np.sum(y), 5187793)
+        self.assertEqual(np.mean(y), 5066.2041015625)
+        expect = [9982, 1655, 4741, 1323, 9319, 3298, 6473, 7477, 2507, 2628]
+        np.testing.assert_array_equal(y[100:110, :].flatten(), expect)
+
+        y = paddle.multinomial(
+            input=x, num_samples=5000, replacement=False
+        ).numpy()
+        self.assertEqual(np.sum(y), 25603962316)
+        self.assertEqual(np.mean(y), 5000.77388984375)
+        expect = [7300, 6055, 8714, 5401, 7360, 161, 5035, 7002, 6788, 2916]
+        np.testing.assert_array_equal(y[100, 1000:1010], expect)
+
+        y = paddle.multinomial(
+            input=x, num_samples=5000, replacement=False
+        ).numpy()
+        self.assertEqual(np.sum(y), 25592855710)
+        self.assertEqual(np.mean(y), 4998.604630859375)
+        expect = [5700, 6567, 4399, 5688, 7472, 545, 6894, 526, 2124, 385]
+        np.testing.assert_array_equal(y[300, 3000:3010], expect)
+
+        y = paddle.multinomial(
+            input=x, num_samples=20000, replacement=True
+        ).numpy()
+        self.assertEqual(np.sum(y), 102371362581)
+        self.assertEqual(np.mean(y), 4998.60168852539)
+        self.assertEqual(np.std(y), 2886.316308500771)
+        expect = [7630, 8235, 8445, 3275, 5580, 4591, 1331, 342, 1662, 7156]
+        np.testing.assert_array_equal(y[100, 0:10], expect)
+
+        paddle.enable_static()
+
 
 class TestMultinomialError(unittest.TestCase):
     def setUp(self):
