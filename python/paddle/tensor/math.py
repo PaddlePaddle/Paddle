@@ -767,27 +767,28 @@ def add(
             [3., 8., 6.])
     """
     if in_dynamic_or_pir_mode():
-        if alpha != 1:
-            y = y * alpha
-
-        result = _C_ops.add(x, y, out=out)
-        return result
+        scaled_y = y * alpha if alpha != 1 else y
+        return _C_ops.add(x, scaled_y, out=out)
     else:
         helper = LayerHelper('elementwise_add', **locals())
+        scaled_y = (
+            helper.create_variable_for_type_inference(y.dtype)
+            if alpha != 1
+            else y
+        )
 
         if alpha != 1:
-            y = helper.create_variable_for_type_inference(y.dtype)
             helper.append_op(
                 type='scale',
                 inputs={'X': [y]},
-                outputs={'Out': [y]},
+                outputs={'Out': [scaled_y]},
                 attrs={'scale': alpha, 'bias': 0.0},
             )
 
         output = helper.create_variable_for_type_inference(x.dtype)
         helper.append_op(
             type='elementwise_add',
-            inputs={'X': x, 'Y': y},
+            inputs={'X': x, 'Y': scaled_y},
             outputs={'Out': output},
             attrs={'axis': -1},
         )
@@ -814,9 +815,8 @@ def add_(
             f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
         )
 
-    if alpha != 1:
-        y = y * alpha
-    return _C_ops.add_(x, y)
+    scaled_y = y * alpha if alpha != 1 else y
+    return _C_ops.add_(x, scaled_y)
 
 
 def logaddexp(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
