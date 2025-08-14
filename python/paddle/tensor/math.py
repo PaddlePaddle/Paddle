@@ -155,7 +155,7 @@ def _get_reduce_axis_with_tensor(axis, x):
 
 @ParamAliasDecorator({"x": ["input"]})
 def log(
-    x: Tensor, out: Tensor | None = None, name: str | None = None
+    x: Tensor, *, out: Tensor | None = None, name: str | None = None
 ) -> Tensor:
     r"""
     Calculates the natural log of the given input Tensor, element-wise.
@@ -526,6 +526,7 @@ def scale_(
 def pow(
     x: Tensor,
     y: float | Tensor,
+    *,
     out: Tensor | None = None,
     name: str | None = None,
 ) -> Tensor:
@@ -1132,7 +1133,7 @@ floor_mod_.__doc__ = r"""
 
 @ParamAliasDecorator({"x": ["input"], "y": ["other"]})
 def multiply(
-    x: Tensor, y: Tensor, out: Tensor | None = None, name: str | None = None
+    x: Tensor, y: Tensor, *, out: Tensor | None = None, name: str | None = None
 ) -> Tensor:
     """
     multiply two tensors element-wise. The equation is:
@@ -5093,7 +5094,7 @@ def prod(
 
 @ParamAliasDecorator({"x": ["input"]})
 def sign(
-    x: Tensor, out: Tensor | None = None, name: str | None = None
+    x: Tensor, *, out: Tensor | None = None, name: str | None = None
 ) -> Tensor:
     """
     Returns sign of every element in `x`: For real numbers, 1 for positive, -1 for negative and 0 for zero. For complex numbers, the return value is a complex number with unit magnitude. If a complex number element is zero, the result is 0+0j.

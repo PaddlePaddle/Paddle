@@ -2191,6 +2191,7 @@ def roll(
 def stack(
     x: Sequence[Tensor],
     axis: int = 0,
+    *,
     out: Tensor | None = None,
     name: str | None = None,
 ) -> Tensor:

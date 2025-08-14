@@ -3172,6 +3172,7 @@ def _memcpy(input, place=None, output=None) -> paddle.Tensor:
 def complex(
     real: paddle.Tensor,
     imag: paddle.Tensor,
+    *,
     out: paddle.Tensor | None = None,
     name: str | None = None,
 ) -> paddle.Tensor:
@@ -3397,6 +3398,7 @@ def triu_indices(
 def polar(
     abs: paddle.Tensor,
     angle: paddle.Tensor,
+    *,
     out: paddle.Tensor | None = None,
     name: str | None = None,
 ) -> paddle.Tensor:

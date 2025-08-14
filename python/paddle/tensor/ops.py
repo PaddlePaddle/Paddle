@@ -477,7 +477,7 @@ def ceil(x: Tensor, name: str | None = None) -> Tensor:
 
 @ParamAliasDecorator({"x": ["input"]})
 def cos(
-    x: Tensor, out: Tensor | None = None, name: str | None = None
+    x: Tensor, *, out: Tensor | None = None, name: str | None = None
 ) -> Tensor:
     """
     Cosine Operator. Computes cosine of x element-wise.
@@ -693,7 +693,7 @@ def expm1(x: Tensor, name: str | None = None) -> Tensor:
 
 @ParamAliasDecorator({"x": ["input"]})
 def floor(
-    x: Tensor, out: Tensor | None = None, name: str | None = None
+    x: Tensor, *, out: Tensor | None = None, name: str | None = None
 ) -> Tensor:
     """
 
@@ -877,7 +877,7 @@ def round_(x, decimals=0, name=None):
 
 @ParamAliasDecorator({"x": ["input"]})
 def rsqrt(
-    x: Tensor, out: Tensor | None = None, name: str | None = None
+    x: Tensor, *, out: Tensor | None = None, name: str | None = None
 ) -> Tensor:
     """
     Rsqrt Activation Operator.
@@ -990,7 +990,7 @@ def sigmoid(x: Tensor, name: str | None = None) -> Tensor:
 
 @ParamAliasDecorator({"x": ["input"]})
 def sin(
-    x: Tensor, out: Tensor | None = None, name: str | None = None
+    x: Tensor, *, out: Tensor | None = None, name: str | None = None
 ) -> Tensor:
     """
     Sine Activation Operator.
