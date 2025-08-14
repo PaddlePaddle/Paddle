@@ -292,8 +292,6 @@ from .math import (  # noqa: F401
     diff,
     digamma,
     digamma_,
-    div,
-    div_,
     divide,
     divide_,
     erf,
@@ -484,6 +482,10 @@ from .stat import (  # noqa: F401
     var,
 )
 from .to_string import set_printoptions  # noqa: F401
+
+# API alias
+div = divide
+div_ = divide_
 
 # this list used in math_op_patch.py for _binary_creator_
 tensor_method_func = [

@@ -427,8 +427,6 @@ from .tensor.math import (  # noqa: F401
     diff,
     digamma,
     digamma_,
-    div,
-    div_,
     divide,
     divide_,
     erf,
@@ -795,6 +793,10 @@ inf = math.inf
 nan = math.nan
 pi = math.pi
 e = math.e
+
+# API alias
+div = divide
+div_ = divide_
 
 __all__ = [
     'block_diag',

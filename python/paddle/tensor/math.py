@@ -923,10 +923,10 @@ def subtract_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 def divide(
     x: Tensor,
     y: Tensor,
+    name: str | None = None,
     *,
     rounding_mode: str | None = None,
     out: Tensor | None = None,
-    name: str | None = None,
 ) -> Tensor:
     """
     Divide two tensors element-wise. The equation is:
@@ -1010,9 +1010,9 @@ def divide(
 def divide_(
     x: Tensor,
     y: Tensor,
+    name: str | None = None,
     *,
     rounding_mode: str | None = None,
-    name: str | None = None,
 ) -> Tensor:
     r"""
     Inplace version of ``divide`` API, the output Tensor will be inplaced with input ``x``.
@@ -1038,40 +1038,9 @@ def divide_(
     return res
 
 
-@ParamAliasDecorator({"x": ["input"], "y": ["other"]})
-def div(
-    x: Tensor,
-    y: Tensor,
-    *,
-    rounding_mode: str | None = None,
-    out: Tensor | None = None,
-) -> Tensor:
-    """
-    Alias for paddle.divide.
-    Please refer to :ref:`api_paddle_divide`.
-    """
-    return divide(x, y, rounding_mode=rounding_mode, out=out)
-
-
-@ParamAliasDecorator({"x": ["input"], "y": ["other"]})
-@inplace_apis_in_dygraph_only
-def div_(
-    x: Tensor,
-    y: Tensor,
-    *,
-    rounding_mode: str | None = None,
-) -> Tensor:
-    """
-    Inplace version of ``div`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_div`.
-    """
-    return divide_(x, y, rounding_mode=rounding_mode)
-
-
-@ParamAliasDecorator({"x": ["input"], "y": ["other"]})
 def true_divide(
-    x: Tensor,
-    y: Tensor,
+    input: Tensor,
+    other: Tensor,
     *,
     out: Tensor | None = None,
 ) -> Tensor:
@@ -1079,7 +1048,7 @@ def true_divide(
     Alias for paddle.divide with rounding_mode=None.
     Please refer to :ref:`api_paddle_divide`.
     """
-    return divide(x, y, out=out)
+    return divide(input, other, out=out)
 
 
 def floor_divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
