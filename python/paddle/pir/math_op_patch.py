@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
 
 import inspect
 import textwrap
 import warnings
 from functools import reduce
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -25,6 +27,10 @@ from paddle.base.libpaddle import DataType
 from paddle.base.wrapped_decorator import wrap_decorator
 
 from . import Value
+
+if TYPE_CHECKING:
+    from paddle._typing import DTypeLike, PlaceLike, ShapeLike
+
 
 _already_patch_value = False
 
@@ -633,39 +639,178 @@ def monkey_patch_value():
 
         return _C_ops.transpose(self, perm)
 
-    @property
-    def requires_grad(self) -> bool:
+    def _new_full_(
+        self,
+        size: ShapeLike,
+        fill_value: bool | float | paddle.Tensor,
+        *,
+        dtype: DTypeLike | None = None,
+        device: PlaceLike | None = None,
+        requires_grad: bool = False,
+    ):
         """
-        Whether this Tensor requires gradient computation.
 
-        This is a convenience property that returns the opposite of stop_gradient.
-        Setting requires_grad=True is equivalent to setting stop_gradient=False.
+        Returns a Tensor of size ``size`` filled with ``fill_value``.
+        By default, the returned Tensor has the same dtype and place as this tensor.
 
         Examples:
             .. code-block:: python
 
                 >>> import paddle
-                >>> x = paddle.randn([2, 3])
-                >>> print(x.requires_grad)  # False by default
-                >>>
-                >>> x.requires_grad = False
-                >>> print(x.stop_gradient)  # True
-        """
-        return not self.stop_gradient
+                >>> paddle.enable_static()
 
-    @requires_grad.setter
-    def requires_grad(self, value: bool) -> None:
-        """
-        Set whether this Tensor requires gradient computation.
+                >>> x = paddle.ones(shape=[2, 3, 5])
+                >>> x_new = x.new_full([2, 3], 3.14, dtype="float64", device="cpu")
 
-        Args:
-            value (bool): True to enable gradient computation, False to disable.
+                >>> exe = paddle.static.Executor()
+                >>> x_new_np = exe.run(paddle.static.default_main_program(), fetch_list=[x_new])[0]
+                >>> print(x_new_np.shape)
+                (2, 5, 3)
+                >>> print(str(x_new_np.dtype))
+                'paddle.float64'
+                >>> print(x_new_np.place)
+                Place(cpu)
         """
-        if not isinstance(value, bool):
-            raise TypeError(
-                f"requires_grad must be bool, but got {type(value)}"
-            )
-        self.stop_gradient = not value
+        if dtype is None:
+            dtype = self.dtype
+        if device is None:
+            device = self.place
+
+        return paddle.full(
+            size,
+            fill_value,
+            dtype=dtype,
+            device=device,
+            requires_grad=requires_grad,
+        )
+
+    def _new_empty_(
+        self,
+        size: ShapeLike,
+        *,
+        dtype: DTypeLike | None = None,
+        device: PlaceLike | None = None,
+        requires_grad: bool = False,
+    ):
+        """
+
+        Returns a Tensor of size ``size`` filled with uninitialized data.
+        By default, the returned Tensor has the same dtype and place as this tensor.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> paddle.enable_static()
+
+                >>> x = paddle.ones(shape=[2, 3, 5])
+                >>> x_new = x.new_empty([2, 3], dtype="float64", device="cpu")
+
+                >>> exe = paddle.static.Executor()
+                >>> x_new_np = exe.run(paddle.static.default_main_program(), fetch_list=[x_new])[0]
+                >>> print(x_new_np.shape)
+                (2, 3)
+                >>> print(str(x_new_np.dtype))
+                'paddle.float64'
+                >>> print(x_new_np.place)
+                Place(cpu)
+        """
+        if dtype is None:
+            dtype = self.dtype
+        if device is None:
+            device = self.place
+
+        return paddle.empty(
+            size, dtype=dtype, device=device, requires_grad=requires_grad
+        )
+
+    def _new_ones_(
+        self,
+        size: ShapeLike,
+        *,
+        dtype: DTypeLike | None = None,
+        device: PlaceLike | None = None,
+        requires_grad: bool = False,
+    ):
+        """
+
+        Returns a Tensor of size ``size`` filled with ``1``.
+        By default, the returned Tensor has the same dtype and place as this tensor.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> paddle.enable_static()
+
+                >>> x = paddle.ones(shape=[2, 3, 5])
+                >>> x_new = x.new_ones([2, 3], dtype="float64", device="cpu")
+
+                >>> exe = paddle.static.Executor()
+                >>> x_new_np = exe.run(paddle.static.default_main_program(), fetch_list=[x_new])[0]
+                >>> print(x_new_np.shape)
+                (2, 3)
+                >>> print(str(x_new_np.dtype))
+                'paddle.float64'
+                >>> print(x_new_np.place)
+                Place(cpu)
+        """
+        if dtype is None:
+            dtype = self.dtype
+        if device is None:
+            device = self.place
+
+        return paddle.full(
+            size,
+            1,
+            dtype=dtype,
+            device=device,
+            requires_grad=requires_grad,
+        )
+
+    def _new_zeros_(
+        self,
+        size: ShapeLike,
+        *,
+        dtype: DTypeLike | None = None,
+        device: PlaceLike | None = None,
+        requires_grad: bool = False,
+    ):
+        """
+
+        Returns a Tensor of size ``size`` filled with ``0``.
+        By default, the returned Tensor has the same dtype and place as this tensor.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> paddle.enable_static()
+
+                >>> x = paddle.ones(shape=[2, 3, 5])
+                >>> x_new = x.new_zeros([2, 3], dtype="float64", device="cpu")
+
+                >>> exe = paddle.static.Executor()
+                >>> x_new_np = exe.run(paddle.static.default_main_program(), fetch_list=[x_new])[0]
+                >>> print(x_new_np.shape)
+                (2, 3)
+                >>> print(str(x_new_np.dtype))
+                'paddle.float64'
+                >>> print(x_new_np.place)
+                Place(cpu)
+        """
+        if dtype is None:
+            dtype = self.dtype
+        if device is None:
+            device = self.place
+
+        return paddle.full(
+            size,
+            0,
+            dtype=dtype,
+            device=device,
+            requires_grad=requires_grad,
+        )
 
     def _int_(self):
         error_msg = """\
@@ -1197,6 +1342,40 @@ def monkey_patch_value():
         """
         pass
 
+    @property
+    def requires_grad(self) -> bool:
+        """
+        Whether this Tensor requires gradient computation.
+
+        This is a convenience property that returns the opposite of stop_gradient.
+        Setting requires_grad=True is equivalent to setting stop_gradient=False.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> x = paddle.randn([2, 3])
+                >>> print(x.requires_grad)  # False by default
+                >>>
+                >>> x.requires_grad = False
+                >>> print(x.stop_gradient)  # True
+        """
+        return not self.stop_gradient
+
+    @requires_grad.setter
+    def requires_grad(self, value: bool) -> None:
+        """
+        Set whether this Tensor requires gradient computation.
+
+        Args:
+            value (bool): True to enable gradient computation, False to disable.
+        """
+        if not isinstance(value, bool):
+            raise TypeError(
+                f"requires_grad must be bool, but got {type(value)}"
+            )
+        self.stop_gradient = not value
+
     import paddle
 
     value_methods = [
@@ -1216,6 +1395,10 @@ def monkey_patch_value():
         ('size', _size_),
         ('T', _T_),
         ('mT', _mT_),
+        ('new_full', _new_full_),
+        ('new_empty', _new_empty_),
+        ('new_ones', _new_ones_),
+        ('new_zeros', _new_zeros_),
         ("requires_grad", requires_grad),
         ('clone', clone),
         ('clear_gradient', clear_gradient),
