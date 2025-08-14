@@ -524,6 +524,17 @@ def get_tensor_members(module: str = 'paddle.Tensor') -> dict[int, Member]:
             _overloads = get_overloads(member)
             for f in _overloads:
                 _sig = inspect.signature(f)
+                _sig = _sig.replace(
+                    parameters=[
+                        p.replace(
+                            annotation=rename_builtin_annotation(p.annotation)
+                        )
+                        for p in _sig.parameters.values()
+                    ],
+                    return_annotation=rename_builtin_annotation(
+                        _sig.return_annotation
+                    ),
+                )
                 all_signatures.append(
                     [
                         id(f),
