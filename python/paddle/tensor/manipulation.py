@@ -27,6 +27,7 @@ from paddle.tensor import fill_constant
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     param_one_alias,
+    param_two_alias,
     view_decorator,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
@@ -3471,7 +3472,7 @@ def squeeze_(
         return _C_ops.squeeze_(input, axes)
 
 
-@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def unique_consecutive(
     x: Tensor,
     return_inverse: bool = False,
@@ -4988,7 +4989,7 @@ def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
         return out
 
 
-@param_one_alias({"x": "input"})
+@param_one_alias(["x", "input"])
 def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
     """
     Changes the shape of ``x`` without changing its data.
