@@ -2506,7 +2506,14 @@ def matrix_rank(
             return out
 
 
-def bmm(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+@ParamAliasDecorator({"x": ["input"], "y": ["mat2"]})
+def bmm(
+    x: Tensor,
+    y: Tensor,
+    *,
+    out: paddle.Tensor | None = None,
+    name: str | None = None,
+) -> Tensor:
     """
     Applies batched matrix multiplication to two tensors.
 
@@ -2517,6 +2524,7 @@ def bmm(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     Args:
         x (Tensor): The input Tensor.
         y (Tensor): The input Tensor.
+        out(Tensor, optional): The output tensor.
         name (str|None): A name for this layer(optional). If set None, the layer
             will be named automatically. Default: None.
 
@@ -2546,7 +2554,7 @@ def bmm(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.bmm(x, y)
+        return _C_ops.bmm(x, y, out=out)
     else:
         x_shape = x.shape
         y_shape = y.shape

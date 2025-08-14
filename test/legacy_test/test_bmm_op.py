@@ -174,5 +174,52 @@ class TestBmmOp_ZeroSize(OpTest):
         self.check_grad(['X', 'Y'], 'Out', check_pir=True)
 
 
+class TestBmmOutAndParamDecorator(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.x_np = np.random.random((10, 3, 4)).astype("float64")
+        self.y_np = np.random.random((10, 4, 5)).astype("float64")
+        self.test_types = ["decorator", "out", "out_decorator"]
+
+    def do_test(self, test_type):
+        x = paddle.to_tensor(self.x_np, stop_gradient=False)
+        y = paddle.to_tensor(self.y_np, stop_gradient=False)
+        if test_type == 'raw':
+            result = paddle.bmm(x, y)
+            result.mean().backward()
+            return result, x.grad, y.grad
+        elif test_type == 'decorator':
+            result = paddle.bmm(input=x, mat2=y)
+            result.mean().backward()
+            return result, x.grad, y.grad
+        elif test_type == 'out':
+            out = paddle.empty([10, 3, 5], dtype='float64')
+            out.stop_gradient = False
+            paddle.bmm(x, y, out=out)
+            out.mean().backward()
+            return out, x.grad, y.grad
+        elif test_type == 'out_decorator':
+            out = paddle.empty([10, 3, 5], dtype='float64')
+            out.stop_gradient = False
+            paddle.bmm(input=x, mat2=y, out=out)
+            out.mean().backward()
+            return out, x.grad, y.grad
+        else:
+            raise ValueError(f"Unknown test type: {test_type}")
+
+    def test_all(self):
+        out_std, grad_x_std, grad_y_std = self.do_test('raw')
+        for test_type in self.test_types:
+            out, grad_x, grad_y = self.do_test(test_type)
+            np.testing.assert_allclose(out.numpy(), out_std.numpy(), rtol=1e-7)
+            np.testing.assert_allclose(
+                grad_x.numpy(), grad_x_std.numpy(), rtol=1e-7
+            )
+
+            np.testing.assert_allclose(
+                grad_y.numpy(), grad_y_std.numpy(), rtol=1e-7
+            )
+
+
 if __name__ == "__main__":
     unittest.main()
