@@ -329,7 +329,8 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
-          mkdir -p /workspace && cd /workspace
+          export paddlenlp_dir=/workspace
+          mkdir -p ${paddlenlp_dir} && cd ${paddlenlp_dir}
           echo "Download and extract PaddleNLP.tar.gz"
           wget -q --tries=5 --no-proxy  https://paddle-qa.bj.bcebos.com/CodeSync/develop/PaddleNLP.tar --no-check-certificate
           tar xf PaddleNLP.tar && rm -rf PaddleNLP.tar
@@ -367,5 +368,5 @@ jobs:
         if: always()
         run: |
           set +e
-          docker exec -t ${{ env.container_name }} /bin/bash -c 'sleep 30m && rm -rf * .[^.]*'
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
           docker rm -f ${{ env.container_name }}
