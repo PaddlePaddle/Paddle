@@ -1774,8 +1774,8 @@ struct UnsupportedBfloat16 : public PatternBase {
   PATTERN_DECL_NODE(op);
 };
 
-struct Bloat16Ops : public PatternBase {
-  Bloat16Ops(PDPattern* pattern, const std::string& name_scope)
+struct Bfloat16Ops : public PatternBase {
+  Bfloat16Ops(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "many_bfloat16_ops") {}
 
   PDNode* operator()();
