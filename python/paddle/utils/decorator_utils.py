@@ -131,3 +131,37 @@ class SizeArgsDecorator(DecoratorBase):
             args = ()
 
         return args, kwargs
+
+
+"""
+    Usage Example:
+    paddle.view(x=tensor_x, shape_or_dtype=[-1, 1, 3], name=None)
+
+    tensor_x.view(paddle.float32) -> paddle.view(tensor_x, paddle.float32)
+    tensor_x.view(dtype=paddle.float32) -> paddle.view(tensor_x, dtype=paddle.float32)
+
+    tensor_x.view([-1, 1, 3]) -> paddle.view(tensor_x, [-1, 1, 3])
+    tensor_x.view(-1, 1, 3) -> paddle.view(tensor_x, -1, 1, 3)
+    tensor_x.view(size=[-1, 1, 3]) -> paddle.view(tensor_x, size=[-1, 1, 3])
+"""
+
+
+def view_decorator():
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            if ("dtype" in kwargs) and ("shape_or_dtype" not in kwargs):
+                kwargs["shape_or_dtype"] = kwargs.pop("dtype")
+            elif ("size" in kwargs) and ("shape_or_dtype" not in kwargs):
+                kwargs["shape_or_dtype"] = kwargs.pop("size")
+            elif len(args) >= 2 and type(args[1]) is int:
+                if all(type(arg) is int for arg in args[1:]):
+                    kwargs["x"] = args[0]
+                    kwargs['shape_or_dtype'] = list(args[1:])
+                    args = ()
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator

@@ -24,6 +24,7 @@ from paddle import _C_ops
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc
 from paddle.tensor.math import broadcast_shape
+from paddle.utils.decorator_utils import ParamAliasDecorator
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
@@ -1133,6 +1134,7 @@ def matrix_norm(
         )
 
 
+@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
 def norm(
     x: Tensor,
     p: float | _POrder | None = None,
@@ -1184,9 +1186,14 @@ def norm(
     |     or float   |                                | {(1 / porder)}                 |
     +----------------+--------------------------------+--------------------------------+
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``dim`` can be used as an alias for ``axis``.
+        For example, ``norm(input=tensor_x, dim=1, ...)`` is equivalent to ``norm(x=tensor_x, axis=1, ...)``.
+
     Args:
         x (Tensor): The input tensor could be N-D tensor, and the input data
             type could be float32 or float64.
+            alias: ``input``.
         p (int|float|string|None, optional): Order of the norm. Supported values are `fro`, `nuc`, `0`, `±1`, `±2`,
             `±inf` and any real number yielding the corresponding p-norm.
             Default value is None.
@@ -1195,6 +1202,7 @@ def norm(
             If `axis < 0`, the dimension to norm operation is rank(input) + axis.
             If axis is a list(int)/tuple(int) with two elements, the matrix norm is computed over the axis.
             Default value is `None`.
+            alias: ``dim``.
         keepdim (bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have fewer dimension
             than the :attr:`input` unless :attr:`keepdim` is true, default
