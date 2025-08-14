@@ -235,7 +235,7 @@ class TEST_API OpDesc {
   // attribute name => all original attrs
   AttributeMap attrs_;
   // runtime_attrs_ contains the attributes which used for dispatching kernel
-  // (use_mkldnn, use_cudnn, ...) or passing additional configuration for
+  // (use_onednn, use_cudnn, ...) or passing additional configuration for
   // special heterogeneous kernel (workspace_size_MB, ...).
   // The attributes in runtime_attrs_ are set by framework (such as PASS),
   // and not in the python api.
