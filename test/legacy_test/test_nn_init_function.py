@@ -1041,16 +1041,11 @@ class Test_zeros_(unittest.TestCase):
 class Test_eye_(unittest.TestCase):
 
     def check(self, tensor):
-        for i in range(tensor.shape[0]):
-            for j in range(tensor.shape[1]):
-                if i == j:
-                    self.assertEqual(
-                        tensor[i][j], 1, f"{tensor[i][j]}, {i}, {j}"
-                    )
-                else:
-                    self.assertEqual(
-                        tensor[i][j], 0, f"{tensor[i][j]}, {i}, {j}"
-                    )
+        if not isinstance(tensor, np.ndarray):
+            tensor = tensor.numpy()
+        row, col = tensor.shape
+        expected = np.eye(row, col)
+        self.assertEqual((tensor == expected).all(), True)
 
     def test_linear_dygraph(self):
         with dygraph_guard():
