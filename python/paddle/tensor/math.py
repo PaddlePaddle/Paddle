@@ -4350,7 +4350,12 @@ def cumsum(
         flatten = False
     if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
         x = cast(x, dtype)
-    elif x.dtype in [paddle.uint8, paddle.int8, paddle.int16, paddle.int32]:
+    elif isinstance(x, paddle.Tensor) and x.dtype in [
+        paddle.uint8,
+        paddle.int8,
+        paddle.int16,
+        paddle.int32,
+    ]:
         x = cast(x, "int64")
 
     if in_dynamic_or_pir_mode():
