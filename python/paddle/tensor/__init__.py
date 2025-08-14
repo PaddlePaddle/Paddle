@@ -228,6 +228,8 @@ from .manipulation import (  # noqa: F401
     unstack,
     view,
     view_as,
+    view_as_complex,
+    view_as_real,
     vsplit,
     vstack,
 )
@@ -455,6 +457,7 @@ from .search import (  # noqa: F401
     argmax,
     argmin,
     argsort,
+    argwhere,
     bucketize,
     index_sample,
     index_select,
@@ -610,6 +613,8 @@ tensor_method_func = [
     'floor_mod_',
     'multiply',
     'multiply_',
+    'mul',
+    'mul_',
     'add',
     'add_',
     'subtract',
@@ -678,6 +683,7 @@ tensor_method_func = [
     'expand',
     'broadcast_to',
     'expand_as',
+    'ravel',
     'flatten',
     'flatten_',
     'gather',
@@ -781,7 +787,9 @@ tensor_method_func = [
     'lu_unpack',
     'cdist',
     'as_complex',
+    'view_as_complex',
     'as_real',
+    'view_as_real',
     'rad2deg',
     'deg2rad',
     'gcd',
@@ -882,7 +890,11 @@ tensor_method_func = [
     'log_normal_',
     'set_',
     'resize_',
+    'argwhere',
 ]
+
+mul = multiply
+mul_ = multiply_
 
 # this list used in math_op_patch.py for magic_method bind
 magic_method_func = [
