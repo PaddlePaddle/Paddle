@@ -160,6 +160,18 @@ class TestSaveLoadPickle(unittest.TestCase):
                     dict_load[key].numpy(), value.numpy()
                 )
 
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "Safetensors load functions only support cuda and cpu.",
+)
+class TestSaveLoadSafetensors(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def test_safetensors(self):
         # enable dygraph mode
         paddle.disable_static()
