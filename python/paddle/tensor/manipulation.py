@@ -27,6 +27,7 @@ from paddle.tensor import fill_constant
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     param_one_alias,
+    view_decorator,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -1343,6 +1344,7 @@ def tolist(x: Tensor) -> NestedList[int | float | complex]:
     return x.numpy(False).tolist()
 
 
+@ParamAliasDecorator({"x": ["tensors"], "axis": ["dim"]})
 def concat(
     x: Sequence[Tensor], axis: int | Tensor = 0, name: str | None = None
 ) -> Tensor:
@@ -1360,12 +1362,18 @@ def concat(
         :alt: legend of concat API
         :align: center
 
+    .. note::
+        Alias Support: The parameter name ``tensors`` can be used as an alias for ``x``, and ``dim`` can be used as an alias for ``axis``.
+        For example, ``concat(tensors=tensor_x, dim=1, ...)`` is equivalent to ``concat(x=tensor_x, axis=1, ...)``.
+
     Args:
         x (list|tuple): ``x`` is a Tensor list or Tensor tuple which is with data type bool, float16, bfloat16,
             float32, float64, int8, int16, int32, int64, uint8, uint16, complex64, complex128. All the Tensors in ``x`` must have same data type.
+            alias: ``tensors``.
         axis (int|Tensor, optional): Specify the axis to operate on the input Tensors.
             Tt should be integer or 0-D int Tensor with shape []. The effective range is [-R, R), where R is Rank(x). When ``axis < 0``,
             it works the same way as ``axis+R``. Default is 0.
+            alias: ``dim``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -3463,6 +3471,7 @@ def squeeze_(
         return _C_ops.squeeze_(input, axes)
 
 
+@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
 def unique_consecutive(
     x: Tensor,
     return_inverse: bool = False,
@@ -6288,6 +6297,7 @@ def as_real(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
+@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
 def repeat_interleave(
     x: Tensor,
     repeats: int | Tensor,
@@ -6690,6 +6700,7 @@ def infer_broadcast_shape(
     return broadcast_shape
 
 
+@ParamAliasDecorator({"arr": ["input"], "axis": ["dim"]})
 def take_along_axis(
     arr: Tensor, indices: Tensor, axis: int, broadcast: bool = True
 ) -> Tensor:
@@ -7331,6 +7342,7 @@ def as_strided(
 
 
 @dygraph_only
+@view_decorator()
 def view(
     x: Tensor,
     shape_or_dtype: Sequence[int] | DTypeLike,

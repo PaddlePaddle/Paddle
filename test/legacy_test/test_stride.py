@@ -890,6 +890,60 @@ class TestStride(unittest.TestCase):
 
         self.assertTrue(out_c._is_shared_buffer_with(out))
 
+    def call_view_alias1(self):
+        x_np = np.random.random(size=[10, 10, 10, 20]).astype('float32')
+        x = paddle.to_tensor(x_np)
+        np.testing.assert_allclose(x.numpy(), x_np)
+
+        np_out = x_np.reshape(10, 100, 20)
+
+        out1 = x.view([10, 100, 20])
+        np.testing.assert_allclose(out1.numpy(), np_out)
+        self.assertTrue(out1.is_contiguous())
+        self.assertTrue(x._is_shared_buffer_with(out1))
+        out_c1 = out1.contiguous()
+        np.testing.assert_allclose(out_c1.numpy(), np_out)
+        self.assertTrue(out_c1._is_shared_buffer_with(out1))
+
+        out2 = x.view(10, 100, 20)
+        np.testing.assert_allclose(out2.numpy(), np_out)
+        self.assertTrue(out2.is_contiguous())
+        self.assertTrue(x._is_shared_buffer_with(out2))
+        out_c2 = out2.contiguous()
+        np.testing.assert_allclose(out_c2.numpy(), np_out)
+        self.assertTrue(out_c2._is_shared_buffer_with(out2))
+
+        out3 = x.view(size=[10, 100, 20])
+        np.testing.assert_allclose(out3.numpy(), np_out)
+        self.assertTrue(out3.is_contiguous())
+        self.assertTrue(x._is_shared_buffer_with(out3))
+        out_c1 = out3.contiguous()
+        np.testing.assert_allclose(out_c1.numpy(), np_out)
+        self.assertTrue(out_c1._is_shared_buffer_with(out3))
+
+    def call_view_alias2(self):
+        x_np = np.random.random(size=[10, 10, 10, 20]).astype('float32')
+        x = paddle.to_tensor(x_np)
+        np.testing.assert_allclose(x.numpy(), x_np)
+
+        np_out = x_np.view(np.uint8)
+
+        out1 = paddle.view(x, dtype="uint8")
+        np.testing.assert_allclose(out1.numpy(), np_out)
+        self.assertTrue(out1.is_contiguous())
+        self.assertTrue(x._is_shared_buffer_with(out1))
+        out_c1 = out1.contiguous()
+        np.testing.assert_allclose(out_c1.numpy(), np_out)
+        self.assertTrue(out_c1._is_shared_buffer_with(out1))
+
+        out2 = x.view(dtype="uint8")
+        np.testing.assert_allclose(out2.numpy(), np_out)
+        self.assertTrue(out2.is_contiguous())
+        self.assertTrue(x._is_shared_buffer_with(out2))
+        out_c1 = out2.contiguous()
+        np.testing.assert_allclose(out_c1.numpy(), np_out)
+        self.assertTrue(out_c1._is_shared_buffer_with(out2))
+
     def call_stride(self):
         self.call_transpose()
         self.call_diagonal()
@@ -926,6 +980,8 @@ class TestStride(unittest.TestCase):
         self.call_view14()
         self.call_view15()
         self.call_view16()
+        self.call_view_alias1()
+        self.call_view_alias2()
         self.call_view_as()
         self.call_unfold()
 
