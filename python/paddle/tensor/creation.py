@@ -24,7 +24,7 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
-from paddle.utils.decorator_utils import ParamAliasDecorator, SizeArgsDecorator
+from paddle.utils.decorator_utils import SizeArgsDecorator
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
@@ -63,8 +63,8 @@ if TYPE_CHECKING:
 
 __all__ = []
 
+_warned_in_tensor = False
 _warned_in_to_tensor = False
-_warned_in_use_to_tensor = False
 
 
 def _complex_to_real_dtype(dtype: DTypeLike) -> DTypeLike:
@@ -960,6 +960,16 @@ def tensor(
     place = _get_paddle_place(device)
     if place is None:
         place = _current_expected_place_()
+    if pin_memory and not isinstance(
+        place, (core.CUDAPinnedPlace, core.XPUPinnedPlace)
+    ):
+        if isinstance(place, core.CUDAPlace):
+            place = core.CUDAPinnedPlace()
+        elif isinstance(place, core.XPUPlace):
+            place = core.XPUPinnedPlace()
+        else:
+            raise RuntimeError(f"Pinning memory is not supported for {place}.")
+
     if in_dynamic_mode():
         is_tensor = paddle.is_tensor(data)
         if not is_tensor and hasattr(data, "__cuda_array_interface__"):
@@ -968,19 +978,19 @@ def tensor(
                     "PaddlePaddle is not compiled with CUDA, but trying to create a Tensor from a CUDA array."
                 )
             tensor = core.tensor_from_cuda_array_interface(data)
+            if pin_memory:
+                tensor = tensor.pin_memory()
         else:
             if is_tensor:
-                global _warned_in_to_tensor
-                if not _warned_in_to_tensor:
+                global _warned_in_tensor
+                if not _warned_in_tensor:
                     warnings.warn(
                         "To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach(), "
                         "rather than paddle.to_tensor(sourceTensor).",
                         stacklevel=2,
                     )
-                    _warned_in_to_tensor = True
+                    _warned_in_tensor = True
             tensor = _to_tensor_non_static(data, dtype, place, stop_gradient)
-        if pin_memory:
-            tensor = tensor.pin_memory()
         return tensor
     # call assign for static graph
     else:
@@ -988,12 +998,9 @@ def tensor(
         place_str = re.findall(re_exp, str(place))[0]
         with paddle.static.device_guard(place_str):
             tensor = _to_tensor_static(data, dtype, stop_gradient)
-            if pin_memory:
-                tensor = tensor.pin_memory()
             return tensor
 
 
-@ParamAliasDecorator({"place": ["device"]})
 def to_tensor(
     data: TensorLike | NestedNumericSequence,
     dtype: DTypeLike | None = None,
@@ -1073,12 +1080,12 @@ def to_tensor(
             [[(1+1j), (2+0j)],
              [(3+2j), (4+0j)]])
     """
-    global _warned_in_use_to_tensor
-    if not _warned_in_use_to_tensor:
+    global _warned_in_to_tensor
+    if not _warned_in_to_tensor:
         warnings.warn(
             "`paddle.to_tensor` will be deprecated. Please use `paddle.tensor` instead."
         )
-        _warned_in_use_to_tensor = True
+        _warned_in_to_tensor = True
     return tensor(
         data, dtype=dtype, device=place, requires_grad=not stop_gradient
     )
