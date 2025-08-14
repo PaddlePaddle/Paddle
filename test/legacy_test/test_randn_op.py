@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 from op_test import get_device_place
+from utils import dygraph_guard
 
 import paddle
 from paddle.static import Program, program_guard
@@ -79,6 +80,42 @@ class TestRandnOpError(unittest.TestCase):
 
             # The argument dtype of randn_op should be float32 or float64.
             self.assertRaises(TypeError, paddle.randn, [1, 2], 'int32')
+
+
+class TestRandnOpCompatibility(unittest.TestCase):
+    def setUp(self):
+        self.places = [paddle.CPUPlace()]
+        if paddle.base.core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+        self.expected_shape = [2, 3]
+        self.dtype = paddle.float32
+
+    def test_gather_with_param_aliases(self):
+        with dygraph_guard():
+            for place in self.places:
+                paddle.device.set_device(place)
+                for param_name in ['shape', 'size']:
+                    # 列表形式输入
+                    tensor = paddle.randn(
+                        **{param_name: self.expected_shape}, dtype=self.dtype
+                    )
+                    self.assertEqual(tensor.shape, self.expected_shape)
+                    self.assertEqual(tensor.dtype, self.dtype)
+
+                    # Tensor形式输入
+                    shape_tensor = paddle.to_tensor(
+                        self.expected_shape, dtype='int32'
+                    )
+                    tensor = paddle.randn(
+                        **{param_name: shape_tensor}, dtype=self.dtype
+                    )
+                    self.assertEqual(tensor.shape, self.expected_shape)
+                    self.assertEqual(tensor.dtype, self.dtype)
+
+                # 测试可变参数形式
+                tensor = paddle.randn(*self.expected_shape, dtype=self.dtype)
+                self.assertEqual(tensor.shape, self.expected_shape)
+                self.assertEqual(tensor.dtype, self.dtype)
 
 
 if __name__ == "__main__":

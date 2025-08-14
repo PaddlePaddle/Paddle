@@ -465,7 +465,8 @@ def nonzero(x: Tensor, as_tuple: Literal[True] = ...) -> tuple[Tensor, ...]: ...
 def nonzero(x: Tensor, as_tuple: bool = ...) -> Tensor | tuple[Tensor, ...]: ...
 
 
-def nonzero(x: Tensor, as_tuple=False):
+@ParamAliasDecorator({'x': ['input']})
+def nonzero(x: Tensor, out: Tensor | None = None, as_tuple=False):
     """
     Return a tensor containing the indices of all non-zero elements of the `input`
     tensor. If as_tuple is True, return a tuple of 1-D tensors, one for each dimension
@@ -475,8 +476,14 @@ def nonzero(x: Tensor, as_tuple=False):
     number of all non-zero elements in the `input` tensor. If as_tuple is True, we can get
     a 1-D tensor tuple of length `n`, and the shape of each 1-D tensor is [z, 1].
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``nonzero(input=tensor_x)`` is equivalent to ``nonzero(x=tensor_x)``.
+
     Args:
         x (Tensor): The input tensor variable.
+            alias: ``input``.
+        out (Tensor|None, optional): The output tensor. Default: None.
         as_tuple (bool, optional): Return type, Tensor or tuple of Tensor.
 
     Returns:
@@ -526,7 +533,7 @@ def nonzero(x: Tensor, as_tuple=False):
 
     """
     if in_dynamic_or_pir_mode():
-        outs = _C_ops.nonzero(x)
+        outs = _C_ops.nonzero(x, out=out)
     else:
         check_variable_and_dtype(
             x,
