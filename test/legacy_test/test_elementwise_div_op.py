@@ -729,7 +729,7 @@ class TestDivApiZeroSize(unittest.TestCase):
         self.y_numpy = np.random.rand(0, 3, 4).astype('float32')
 
     def _executed_api(self, x, y, name=None):
-        return paddle.divide(x, y, name)
+        return paddle.divide(x, y, name=name)
 
     def test_declarative(self):
         self.init_data()

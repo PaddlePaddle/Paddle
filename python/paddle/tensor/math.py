@@ -923,10 +923,10 @@ def subtract_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 def divide(
     x: Tensor,
     y: Tensor,
-    name: str | None = None,
     *,
     rounding_mode: str | None = None,
     out: Tensor | None = None,
+    name: str | None = None,
 ) -> Tensor:
     """
     Divide two tensors element-wise. The equation is:
@@ -1010,9 +1010,9 @@ def divide(
 def divide_(
     x: Tensor,
     y: Tensor,
-    name: str | None = None,
     *,
     rounding_mode: str | None = None,
+    name: str | None = None,
 ) -> Tensor:
     r"""
     Inplace version of ``divide`` API, the output Tensor will be inplaced with input ``x``.
