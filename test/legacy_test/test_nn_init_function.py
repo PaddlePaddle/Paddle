@@ -1047,6 +1047,9 @@ class Test_eye_(unittest.TestCase):
         expected = np.eye(row, col)
         self.assertEqual((tensor == expected).all(), True)
 
+    @unittest.skipIf(
+        paddle.base.is_compiled_with_rocm(), "ROCM does not support this API"
+    )
     def test_linear_dygraph(self):
         with dygraph_guard():
             linear = nn.Linear(40, 20)
@@ -1054,6 +1057,9 @@ class Test_eye_(unittest.TestCase):
             init(linear.weight)
             self.check(linear.weight)
 
+    @unittest.skipIf(
+        paddle.base.is_compiled_with_rocm(), "ROCM does not support this API"
+    )
     def test_dygraph(self):
         with dygraph_guard():
             input_tensor = _create_random_nd_tensor(
@@ -1062,6 +1068,9 @@ class Test_eye_(unittest.TestCase):
             paddle.nn.init.eye_(input_tensor)
             self.check(input_tensor)
 
+    @unittest.skipIf(
+        paddle.base.is_compiled_with_rocm(), "ROCM does not support this API"
+    )
     def test_dims_error(self):
         with dygraph_guard():
             with self.assertRaises(AssertionError):
@@ -1071,6 +1080,9 @@ class Test_eye_(unittest.TestCase):
                 input_tensor = paddle.zeros([5, 5, 4])
                 paddle.nn.init.eye_(input_tensor)
 
+    @unittest.skipIf(
+        paddle.base.is_compiled_with_rocm(), "ROCM does not support this API"
+    )
     def test_static_graph_case1(self):
         self.place = get_devices()
         with static_guard():
