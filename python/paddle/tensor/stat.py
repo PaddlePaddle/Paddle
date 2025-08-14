@@ -25,6 +25,10 @@ from paddle.framework import (
     in_dynamic_mode,
     in_dynamic_or_pir_mode,
 )
+from paddle.utils.decorator_utils import (
+    ParamAliasDecorator,
+    param_two_alias_one_default,
+)
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..common_ops_import import Variable
@@ -149,6 +153,7 @@ def mean(
         return out
 
 
+@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
 def var(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
@@ -471,6 +476,7 @@ def nanmedian(
 
 
 @overload
+@param_two_alias_one_default(["x", "input"], ["axis", "dim"], ["mode", 'min'])
 def median(
     x: Tensor,
     axis: int = ...,
@@ -481,6 +487,7 @@ def median(
 
 
 @overload
+@param_two_alias_one_default(["x", "input"], ["axis", "dim"], ["mode", 'min'])
 def median(
     x: Tensor,
     axis: int | None = ...,
@@ -490,6 +497,7 @@ def median(
 ) -> Tensor: ...
 
 
+@param_two_alias_one_default(["x", "input"], ["axis", "dim"], ["mode", 'min'])
 def median(
     x,
     axis=None,
