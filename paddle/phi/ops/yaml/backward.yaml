@@ -2364,8 +2364,8 @@
 
 - backward_op : moe_combine_grad
   forward : moe_combine (Tensor x, Tensor combine_weights, Tensor scatter_index) -> Tensor(y)
-  args : (Tensor x, Tensor combine_weights, Tensor scatter_index, Tensor y_grad), Tensor(scatter_index_grad)
-  output : Tensor(x_grad), Tensor(combine_weights_grad)
+  args : (Tensor x, Tensor combine_weights, Tensor scatter_index, Tensor y_grad)
+  output : Tensor(x_grad), Tensor(combine_weights_grad), Tensor(scatter_index_grad)
   infer_meta :
     func : MoeCombineGradInferMeta
     spmd_rule : MoECombineGradInferSpmd
