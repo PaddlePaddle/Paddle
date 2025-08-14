@@ -32,7 +32,7 @@
                                DenseTensor* ind_out) {                  \
     PADDLE_ENFORCE_EQ(0,                                                \
                       1,                                                \
-                      phi::errors::Unimplemented(                       \
+                      phi::errors::PreconditionNotMet(                  \
                           "In static graph mode, %s PHI kernel is not " \
                           "currently available on non-GPU devices.",    \
                           #name));                                      \
@@ -48,7 +48,7 @@
                                    DenseTensor* x_grad) {               \
     PADDLE_ENFORCE_EQ(0,                                                \
                       1,                                                \
-                      phi::errors::Unimplemented(                       \
+                      phi::errors::PreconditionNotMet(                  \
                           "In static graph mode, %s PHI kernel is not " \
                           "currently available on non-GPU devices.",    \
                           #name));                                      \

@@ -25,7 +25,6 @@ from ..framework import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
 
     from paddle import Tensor
     from paddle._typing import (
@@ -223,6 +222,7 @@ class SortRetType(NamedTuple):
     values: Tensor
     indices: Tensor
 
+
 class MinMaxRetType(NamedTuple):
     values: Tensor
     indices: Tensor
@@ -402,6 +402,8 @@ class Unfold(nn.Unfold):
             dilations=to_list_if_necessary(self.dilations),
             name=self.name,
         )
+
+
 def _min_max_param_checker(func_name: str, *args: Any, **kwargs: Any):
     def invalid_arguments_exception(error_prefix=""):
         type_strs = [type(v).__name__ for v in args]

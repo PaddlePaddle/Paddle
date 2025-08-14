@@ -64,8 +64,6 @@ if TYPE_CHECKING:
         TensorOrTensors,
     )
 
-from paddle.utils.decorator_utils import ForbidKeywordsDecorator
-
 __all__ = []
 
 
@@ -2738,11 +2736,6 @@ def row_stack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
     return paddle.vstack(x, name=name)
 
 
-@ForbidKeywordsDecorator(
-    illegal_keys={"tensor", "split_size_or_sections", "dim"},
-    func_name="paddle.split",
-    correct_name="paddle.compat.split",
-)
 def split(
     x: Tensor,
     num_or_sections: int | Sequence[int],

@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/reduce_kernel.h"
-#include <type_traits>
 
 #include "paddle/phi/kernels/gpu/reduce_amin_amax_common.h"
 #include "paddle/phi/kernels/reduce_amin_grad_kernel.h"

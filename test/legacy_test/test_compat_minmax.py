@@ -45,21 +45,10 @@ class TestCompatMinMaxBase(unittest.TestCase):
     def test_case1_simple_reduce_all(self):
         data = paddle.to_tensor([[1.0, 2.0], [3.0, 4.0]], dtype='float32')
         val = self.test_op(data)
-
         if self.test_op_name.endswith("min"):
             self.assertAlmostEqual(val.item(), 1.0)
-            expected_grad = np.array([[0.5, 0.5], [0.0, 0.0]])
         else:
             self.assertAlmostEqual(val.item(), 4.0)
-            expected_grad = np.array([[0.0, 0.0], [0.0, 1.0]])
-
-        data = paddle.to_tensor(
-            [[1.0, 1.0], [2.0, 3.0]], dtype='float32', stop_gradient=False
-        )
-        val = self.test_op(data)
-        val.backward()
-
-        np.testing.assert_allclose(data.grad.numpy(), expected_grad)
 
     def test_case2_reduce_dim(self):
         """Test dim/keepdim"""

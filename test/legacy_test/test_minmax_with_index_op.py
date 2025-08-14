@@ -245,7 +245,7 @@ class TestMinMaxWithIndexPlace(unittest.TestCase):
     def test_api_static_cpu_err_handling_1(self):
         self.cpu_place()
         with (
-            self.assertRaises(NotImplementedError),
+            self.assertRaises(RuntimeError),
             paddle.static.program_guard(paddle.static.Program()),
         ):
             input = paddle.static.data(
@@ -262,7 +262,7 @@ class TestMinMaxWithIndexPlace(unittest.TestCase):
     def test_api_static_cpu_err_handling_2(self):
         self.cpu_place()
         with (
-            self.assertRaises(NotImplementedError),
+            self.assertRaises(RuntimeError),
             paddle.static.program_guard(paddle.static.Program()),
         ):
             input = paddle.static.data(
