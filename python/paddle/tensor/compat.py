@@ -216,6 +216,34 @@ class SortRetType(NamedTuple):
     values: Tensor
     indices: Tensor
 
+
+def _check_out_status(
+    out: Tensor | tuple[Tensor, Tensor] | list[Tensor],
+    expect_multiple: bool = False,
+):
+    if out is None:
+        return
+    if not in_dynamic_mode():
+        raise RuntimeError(
+            "Using `out` static graph CINN backend is currently not supported. Directly return the tensor tuple instead.\n"
+        )
+    if expect_multiple:
+        if not isinstance(out, (tuple, list)) or len(out) != 2:
+            raise TypeError(
+                f"Expected a list or tuple of two tensors, got {type(out)} instead."
+            )
+        if not (
+            isinstance(out[0], paddle.Tensor)
+            and isinstance(out[1], paddle.Tensor)
+        ):
+            raise TypeError(
+                f"Expected Tensor type in the tuple/list, got ({type(out[0])}, {type(out[1])}) instead."
+            )
+    else:
+        if not isinstance(out, paddle.Tensor):
+            raise TypeError(f"Expected a Tensor, got {type(out)} instead.")
+
+
 @ForbidKeywordsDecorator(
     illegal_keys={'x', 'axis'},
     func_name="paddle.compat.sort",
@@ -226,6 +254,7 @@ def sort(
     dim: int = -1,
     descending: bool = False,
     stable: bool = False,
+    out=None,
 ) -> SortRetType:
     """
 
@@ -243,6 +272,8 @@ def sort(
         stable (bool, optional): Whether to use stable sorting algorithm or not.
             When using stable sorting algorithm, the order of equivalent elements
             will be preserved. Default is False.
+        out (tuple, optional) : the output tuple/list of (Tensor, Tensor) that
+            can be optionally given to be used as output buffers
 
     Returns:
         SortRetType, a named tuple which contains `values` and `indices`, can be accessed through either indexing
@@ -296,5 +327,9 @@ def sort(
                      [1, 2, 0, 2],
                      [2, 0, 2, 0]]]))
     """
+    _check_out_status(out, expect_multiple=True)
     outputs, indices = _C_ops.argsort(input, dim, descending, stable)
-    return SortRetType(values=outputs, indices=indices)
+    if out is None:
+        return SortRetType(values=outputs, indices=indices)
+    paddle.assign(outputs, out[0])
+    paddle.assign(indices, out[1])
