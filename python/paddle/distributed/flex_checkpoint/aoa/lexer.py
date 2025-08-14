@@ -47,7 +47,7 @@ class MacroRegistry:
 macro_registry = MacroRegistry()
 
 
-## star_macro must be called after layer_id_macro
+# star_macro must be called after layer_id_macro
 @macro(name='star_macro', priority=3)
 def star_macro(tokens, expression, context):
     STAR_TAG = "*"
@@ -57,32 +57,32 @@ def star_macro(tokens, expression, context):
     def _sort_keys_by_numeric_part(prefix, suffix, allkeys):
         pattern = re.compile(fr"{re.escape(prefix)}(\d+){re.escape(suffix)}")
         filtered_keys = []
-        for key in allkeys.keys():
+        for key in allkeys:
             match = pattern.match(key)
             if match:
                 num = int(match.group(1))
                 filtered_keys.append((key, num))
         sorted_keys = sorted(filtered_keys, key=lambda x: x[1])
-        return [(key, allkeys[key]) for key, _ in sorted_keys]
+        return [key for key, _ in sorted_keys]
 
-    pre_larrow = True
+    pre_rarrow = True
     new_tokens = []
     for token in tokens:
-        if token.type == TokenType.LARROW:
-            pre_larrow = False
+        if token.type == TokenType.RARROW:
+            pre_rarrow = False
         if token.type == TokenType.IDENTIFIER and STAR_TAG in token.value:
             prefix, suffix = token.value.split(STAR_TAG)
             allkeys = (
                 context.get_all_dst_state_keys()
-                if pre_larrow
-                else context.get_src_sharded_state_dict_info()
+                if not pre_rarrow
+                else context.get_all_dst_state_keys()
             )
             assert (
                 len(allkeys) != 0
             ), f"No keys found with prefix {prefix} and suffix {suffix}!"
             keys = list(_sort_keys_by_numeric_part(prefix, suffix, allkeys))
             for key in keys:
-                new_tokens.append(Token(TokenType.IDENTIFIER, key[0]))
+                new_tokens.append(Token(TokenType.IDENTIFIER, key))
                 if key != keys[-1]:
                     new_tokens.append(Token(TokenType.COMMA, ","))
         else:
@@ -171,39 +171,50 @@ def fused_qkv_macro(tokens, expression, context):
     if FUSED_QKV_TAG not in expression:
         return expression
 
-    assert "num_heads" in expression, "num_heads is required for fused_qkv!"
-    assert (
-        "num_key_value_groups" in expression
-    ), "num_key_value_groups is required for fused_qkv!"
-
-    larrow_pos = -1
-    attn_head_num = -1
-    num_key_value_groups = -1
+    attn_head_num = None
+    num_key_value_groups = None
+    fused_qkv_pos = None
+    rarrow_pos = None
+    right_var_end_pos = None
 
     for idx, token in enumerate(tokens):
-        if token.type == TokenType.LARROW:
-            larrow_pos = idx
         if token.type == TokenType.IDENTIFIER:
-            if token.value == "num_heads":
+            if token.value == "num_heads" and idx + 2 < len(tokens):
                 attn_head_num = int(tokens[idx + 2].value)
-            elif token.value == "num_key_value_groups":
+            elif token.value == "num_key_value_groups" and idx + 2 < len(
+                tokens
+            ):
                 num_key_value_groups = int(tokens[idx + 2].value)
+            elif token.value == FUSED_QKV_TAG:
+                fused_qkv_pos = idx
+        elif token.type == TokenType.RARROW and rarrow_pos is None:
+            rarrow_pos = idx
+        if (
+            right_var_end_pos is None
+            and token.type == TokenType.IDENTIFIER
+            and token.value
+            in {FUSED_QKV_TAG, "num_heads", "num_key_value_groups"}
+        ):
+            right_var_end_pos = idx + 1
 
-    assert larrow_pos > 0, "No <- found in expression."
-    assert attn_head_num > 0, "num_heads must be positive."
-    assert num_key_value_groups > 0, "num_key_value_groups must be positive."
+    assert attn_head_num and attn_head_num > 0, "num_heads must be positive."
+    assert (
+        num_key_value_groups and num_key_value_groups > 0
+    ), "num_key_value_groups must be positive."
+    assert fused_qkv_pos is not None, "No fused_qkv tag found in expression."
+    assert rarrow_pos is not None, "No -> found in expression."
     assert (
         attn_head_num % num_key_value_groups == 0
     ), "num_heads must be divisible by num_key_value_groups."
 
     num_key_value_heads = attn_head_num // num_key_value_groups
 
-    src_qkv_weight_name = tokens[larrow_pos + 1].value
-    if larrow_pos > 1:
+    src_qkv_weight_name = tokens[0].value
+    if fused_qkv_pos > 4:
         dst_qkv_weight_name = (
             "".join(
                 token.value if token.type == TokenType.IDENTIFIER else "_"
-                for token in tokens[:larrow_pos]
+                for token in tokens[rarrow_pos + 1 : right_var_end_pos]
             )
             + ".fused_qkv_tmp"
         )
@@ -211,16 +222,17 @@ def fused_qkv_macro(tokens, expression, context):
         dst_qkv_weight_name = tokens[0].value
 
     src_state_shard_num = context.get_src_state_shard_num(src_qkv_weight_name)
-    if larrow_pos == 1:
-        dst_state_shard_num = context.get_dst_state_shard_num(
-            dst_qkv_weight_name
-        )
-    else:
-        dst_state_shard_num = 1
+    dst_state_shard_num = (
+        context.get_dst_state_shard_num(dst_qkv_weight_name)
+        if fused_qkv_pos == 4
+        else 1
+    )
+
     configs = [
         (src_state_shard_num, src_qkv_weight_name),
         (dst_state_shard_num, dst_qkv_weight_name),
     ]
+
     head_config = [
         ("Q", attn_head_num),
         ("K", num_key_value_heads),
@@ -241,17 +253,23 @@ def fused_qkv_macro(tokens, expression, context):
             for tp_rank in range(tp_degree)
             for c, n in head_config
         ]
-        mapping = (
-            f"{','.join(qkv_parts)} <- {qkv_weight_name}, axis=1 \n"
-            if idx == 0
-            else f"{qkv_weight_name} <- {','.join(qkv_parts)}, axis=1 \n"
-        )
+        if idx == 0:
+            mapping = f"{qkv_weight_name} -> {','.join(qkv_parts)}, axis=1\n"
+        else:
+            mapping = f"{','.join(qkv_parts)} -> {qkv_weight_name}, axis=1\n"
         results.append(mapping)
 
-    if larrow_pos > 1:
-        final_expr = "".join(token.value for token in tokens[: larrow_pos + 1])
-        final_expr += dst_qkv_weight_name + ", axis=1 \n"
+    if fused_qkv_pos > 4:
+        final_expr = (
+            f"{dst_qkv_weight_name}->"
+            + "".join(
+                token.value
+                for token in tokens[rarrow_pos + 1 : right_var_end_pos]
+            )
+            + ", axis=1\n"
+        )
         results.append(final_expr)
+
     return results
 
 
@@ -278,7 +296,7 @@ def fused_ffn_macro(tokens, expression, context):
 
     def gen_expr(tp_degree, splited_num, tp_rank, comp):
         return ",".join(
-            f"fused_qkv_tmp.{comp}_{tp_rank * splited_num // tp_degree + idx}"
+            f"fused_ffn_tmp.{comp}_{tp_rank * splited_num // tp_degree + idx}"
             for idx in range(splited_num // tp_degree)
         )
 
@@ -291,11 +309,11 @@ def fused_ffn_macro(tokens, expression, context):
         ]
         if idx == 0:
             results.append(
-                f"{','.join(ffn_parts)} <- {ffn_weight_name}, axis=1 \n"
+                f"{ffn_weight_name}  -> {','.join(ffn_parts)}, axis=1 \n"
             )
         else:
             results.append(
-                f"{ffn_weight_name} <- {','.join(ffn_parts)}, axis=1 \n"
+                f"{','.join(ffn_parts)} -> {ffn_weight_name}, axis=1 \n"
             )
     return results
 
@@ -316,7 +334,7 @@ class TokenType(Enum):
     LBRACKET = auto()
     RBRACKET = auto()
     COMMA = auto()
-    LARROW = auto()
+    RARROW = auto()
     STRING = auto()
     EQUAL = auto()
     NEWLINE = auto()
@@ -325,7 +343,7 @@ class TokenType(Enum):
 
 class Lexer:
     token_specification = [
-        ('LARROW', r'<-'),
+        ('RARROW', r'->'),
         ('EQUAL', r'='),
         ('COLON', r':'),
         ('LBRACKET', r'\['),

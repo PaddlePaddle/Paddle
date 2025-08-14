@@ -85,8 +85,8 @@ class TestAoAEngine(unittest.TestCase):
         #    - "s" is formed by concatenating s0 and s1 along axis 1 (columns).
         #    - d0 and d1 are obtained by splitting "s" along axis 0 (rows).
         aoa_statements = [
-            "s <- s0, s1, axis = 1 \n",
-            "d0, d1 <- s, axis = 0 \n",
+            "s0, s1 -> s, axis = 1 \n",
+            "s -> d0, d1, axis = 0 \n",
         ]
 
         # ------------------------------------------------------

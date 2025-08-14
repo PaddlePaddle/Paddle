@@ -47,10 +47,10 @@ class Parser:
     AOA Grammar
     PROGRAM   ::= { STATEMENT }
 
-    STATEMENT ::= VAR_LIST '<-' VAR ',' ATTR_LIST       // split
-                | VAR '<-' VAR_LIST ',' ATTR_LIST       // merge
-                | VAR '<-' VAR ',' ATTR_LIST            // single variable mapping + attributes
-                | VAR '<-' VAR                          // single variable mapping, rename
+    STATEMENT ::= VAR_LIST '->' VAR ',' ATTR_LIST       // meige
+                | VAR '->' VAR_LIST ',' ATTR_LIST       // split
+                | VAR '->' VAR ',' ATTR_LIST            // single variable mapping + attributes
+                | VAR '->' VAR                          // single variable mapping, rename
 
     VAR_LIST  ::= VAR { ',' VAR }
     VAR       ::= IDENTIFIER
@@ -101,7 +101,7 @@ class Parser:
         while self.peek().type == TokenType.COMMA:
             self.consume(TokenType.COMMA)
             left_vars.append(self.parse_var())
-        self.expect(TokenType.LARROW)
+        self.expect(TokenType.RARROW)
         right_vars = [self.parse_var()]
         while self.peek().type == TokenType.COMMA:
             # Lookahead for attribute: IDENT '=' after COMMA means attribute starts

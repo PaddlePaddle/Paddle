@@ -246,29 +246,30 @@ class AoAEngine:
                 axis = attrs[0].value
 
                 if len(left_vars) == 1:
-                    right_refs = [_get_var_ref(var) for var in right_vars]
-                    result = self.concat(right_refs, axis)
-                    out_name = left_vars[0].name
-                    intermediate_vars[out_name] = result
-                    if out_name in self.context.get_all_dst_state_keys():
-                        self.output_vars[out_name] = result
-
-                elif len(right_vars) == 1:
-                    in_name = right_vars[0].name
-                    in_ref = _get_var_ref(right_vars[0])
-                    assert in_ref.shape[axis] % len(left_vars) == 0
+                    in_name = left_vars[0].name
+                    in_ref = _get_var_ref(left_vars[0])
+                    assert in_ref.shape[axis] % len(right_vars) == 0
                     sizes = [
-                        in_ref.shape[axis] // len(left_vars)
-                        for var in left_vars
+                        in_ref.shape[axis] // len(right_vars)
+                        for var in right_vars
                     ]
                     result = self.split(in_ref, axis, sizes)
-                    for out_var, out_ref in zip(left_vars, result):
+                    for out_var, out_ref in zip(right_vars, result):
                         intermediate_vars[out_var.name] = out_ref
                         if (
                             out_var.name
                             in self.context.get_all_dst_state_keys()
                         ):
                             self.output_vars[out_var.name] = out_ref
+
+                elif len(right_vars) == 1:
+                    left_refs = [_get_var_ref(var) for var in left_vars]
+                    result = self.concat(left_refs, axis)
+                    out_name = right_vars[0].name
+                    intermediate_vars[out_name] = result
+                    if out_name in self.context.get_all_dst_state_keys():
+                        self.output_vars[out_name] = result
+
                 else:
                     raise SyntaxError(
                         f'Unexpected split/concat statement: {stmt}'
@@ -276,10 +277,10 @@ class AoAEngine:
 
             elif len(left_vars) == 1 and len(right_vars) == 1:
                 lvar, rvar = left_vars[0], right_vars[0]
-                if lvar.name == "_":
-                    self.need_remove_input_vars.add(rvar.name)
-                elif rvar.name == "_":
-                    self.need_remove_output_vars.add(lvar.name)
+                if rvar.name == "_":
+                    self.need_remove_input_vars.add(lvar.name)
+                elif lvar.name == "_":
+                    self.need_remove_output_vars.add(rvar.name)
                 else:
                     for attr in attrs:
                         if attr.key == "transpose":

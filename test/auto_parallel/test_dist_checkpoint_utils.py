@@ -23,6 +23,7 @@ import paddle
 import paddle.distributed as dist
 from paddle.distributed.flex_checkpoint.dcp.load_state_dict import (
     get_checkpoint_files,
+    get_rank_to_files,
 )
 from paddle.distributed.flex_checkpoint.dcp.utils import (
     flatten_state_dict,
@@ -134,7 +135,7 @@ class TestDistCheckpointUtils(test_base.CommunicationTestDistBase):
             rank_to_files,
             missing_keys,
             mw_name_compatibility_mapping,
-        ) = dist.load_state_dict.get_rank_to_files(
+        ) = get_rank_to_files(
             metadata_list,
             local_load_files,
             new_state_dict,
@@ -154,7 +155,7 @@ class TestDistCheckpointUtils(test_base.CommunicationTestDistBase):
             rank_to_files,
             missing_keys,
             mw_name_compatibility_mapping,
-        ) = dist.load_state_dict.get_rank_to_files(
+        ) = get_rank_to_files(
             metadata_list,
             local_load_files,
             new_state_dict,
@@ -175,7 +176,7 @@ class TestDistCheckpointUtils(test_base.CommunicationTestDistBase):
             rank_to_files,
             missing_keys,
             mw_name_compatibility_mapping,
-        ) = dist.load_state_dict.get_rank_to_files(
+        ) = get_rank_to_files(
             metadata_list,
             local_load_files,
             new_state_dict,
