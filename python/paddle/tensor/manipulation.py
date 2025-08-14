@@ -1347,6 +1347,7 @@ def tolist(x: Tensor) -> NestedList[int | float | complex]:
 def concat(
     x: Sequence[Tensor],
     axis: int | Tensor = 0,
+    *,
     out: Tensor | None = None,
     name: str | None = None,
 ) -> Tensor:
@@ -6713,6 +6714,7 @@ def take_along_axis(
     indices: Tensor,
     axis: int,
     broadcast: bool = True,
+    *,
     out: Tensor | None = None,
 ) -> Tensor:
     """

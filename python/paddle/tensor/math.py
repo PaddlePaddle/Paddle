@@ -2934,6 +2934,7 @@ def inner(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 def outer(
     x: Tensor,
     y: Tensor,
+    *,
     out: Tensor | None = None,
     name: str | None = None,
 ) -> Tensor:
@@ -3008,6 +3009,7 @@ def logsumexp(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
     keepdim: bool = False,
+    *,
     out: Tensor | None = None,
     name: str | None = None,
 ) -> Tensor:
@@ -3993,6 +3995,7 @@ def clip(
     x: Tensor,
     min: float | None = None,
     max: float | None = None,
+    *,
     out: Tensor | None = None,
     name: str | None = None,
 ) -> Tensor:

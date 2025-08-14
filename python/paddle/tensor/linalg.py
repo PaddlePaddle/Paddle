@@ -226,6 +226,7 @@ def matmul(
     y: Tensor,
     transpose_x: bool = False,
     transpose_y: bool = False,
+    *,
     out: Tensor | None = None,
     name: str | None = None,
 ) -> Tensor:
