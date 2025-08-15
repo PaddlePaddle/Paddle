@@ -1003,7 +1003,7 @@ def tensor(
 
 @deprecated(
     since="3.1.2",
-    update_to="paddle.vision.datasets.Flowers",
+    update_to="paddle.tensor",
     level=1,
     reason="`paddle.to_tensor` will be deprecated. Please use `paddle.tensor` instead.",
 )
