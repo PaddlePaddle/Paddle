@@ -215,6 +215,25 @@ void PowKernel(const Context& dev_ctx,
         0,
         common::errors::InvalidArgument(
             "Integers to negative integer powers are not allowed."));
+  } else {
+    if (factor.to<float>() == -0.5) {
+      funcs::CudaRsqrtFunctor<T> functor;
+      ActivationGPUImpl<T, Context, funcs::CudaRsqrtFunctor<T>>(
+          dev_ctx, x, out, functor);
+      return;
+    }
+    if (factor.to<float>() == -1) {
+      funcs::CudaReciprocalFunctor<T> functor;
+      ActivationGPUImpl<T, Context, funcs::CudaReciprocalFunctor<T>>(
+          dev_ctx, x, out, functor);
+      return;
+    }
+    if (factor.to<float>() == -2) {
+      funcs::CudaRsquareFunctor<T> functor;
+      ActivationGPUImpl<T, Context, funcs::CudaRsquareFunctor<T>>(
+          dev_ctx, x, out, functor);
+      return;
+    }
   }
   if (factor.to<float>() == 0) {
     std::vector<int64_t> vec_dims = common::vectorize(out->dims());
@@ -241,24 +260,6 @@ void PowKernel(const Context& dev_ctx,
   if (factor.to<float>() == 3) {
     funcs::CudaCubeFunctor<T> functor;
     ActivationGPUImpl<T, Context, funcs::CudaCubeFunctor<T>>(
-        dev_ctx, x, out, functor);
-    return;
-  }
-  if (factor.to<float>() == -0.5) {
-    funcs::CudaRsqrtFunctor<T> functor;
-    ActivationGPUImpl<T, Context, funcs::CudaRsqrtFunctor<T>>(
-        dev_ctx, x, out, functor);
-    return;
-  }
-  if (factor.to<float>() == -1) {
-    funcs::CudaReciprocalFunctor<T> functor;
-    ActivationGPUImpl<T, Context, funcs::CudaReciprocalFunctor<T>>(
-        dev_ctx, x, out, functor);
-    return;
-  }
-  if (factor.to<float>() == -2) {
-    funcs::CudaRsquareFunctor<T> functor;
-    ActivationGPUImpl<T, Context, funcs::CudaRsquareFunctor<T>>(
         dev_ctx, x, out, functor);
     return;
   }

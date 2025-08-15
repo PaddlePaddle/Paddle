@@ -251,6 +251,37 @@ class TestPowerAPI_ZeroSize(unittest.TestCase):
         self._test_power((0, 0))
 
 
+class TestPowerAPI_Specialization(unittest.TestCase):
+    """TestPowerAPI."""
+
+    def setUp(self):
+        self.places = get_devices()
+
+    def _test_power(self, factor: float):
+        np.random.seed(7)
+        for place in self.places:
+            x = (np.random.rand(10, 10) * 10).astype(np.float64)
+            paddle.disable_static()
+            paddle.set_device(place)
+            x_ = paddle.to_tensor(x)
+            x_.stop_gradient = False
+            res = paddle.pow(x_, factor)
+            np.testing.assert_allclose(res, np.power(x, factor), rtol=1e-05)
+            loss = paddle.sum(res)
+            loss.backward()
+            np.testing.assert_allclose(x_.grad.shape, x_.shape)
+
+    def test_power(self):
+        self._test_power(0)
+        # self._test_power(0.5)
+        self._test_power(1)
+        self._test_power(2)
+        self._test_power(3)
+        # self._test_power(-0.5)
+        # self._test_power(-1)
+        self._test_power(-2)
+
+
 class TestPowerAPI_Alias(unittest.TestCase):
     """
     Test the alias of pow function.

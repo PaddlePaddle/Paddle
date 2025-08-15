@@ -4364,22 +4364,13 @@ struct CudaSqrtGradFunctor<ComplexType<T>>
   }
 };
 
-template <typename T, typename Enable = void>
+template <typename T>
 struct CudaRsqrtFunctor : public BaseActivationFunctor<T> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
 
   // rsqrt(x) = rsqrt(x)
   __device__ __forceinline__ T operator()(const T arg_x) const {
     MPType x = static_cast<MPType>(arg_x);
-    return static_cast<T>(rsqrt(x));
-  }
-};
-template <typename T>
-struct CudaRsqrtFunctor<T, std::enable_if_t<std::is_integral_v<T>>>
-    : public BaseActivationFunctor<T> {
-  // rsqrt(x) = rsqrt(x)
-  __device__ __forceinline__ T operator()(const T arg_x) const {
-    float x = static_cast<float>(arg_x);
     return static_cast<T>(rsqrt(x));
   }
 };
