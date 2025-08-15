@@ -1104,6 +1104,38 @@ class TestWhereBoolInput(unittest.TestCase):
         np.testing.assert_allclose(out[0], out_ref, rtol=1e-05)
 
 
+class TestWhereAlias(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_where_alias(self):
+        """
+        Test the alias of where function.
+        ``where(condition=cond, input=x, other=y)`` is equivalent to
+        ``where(condition=cond, x=x, y=y)``
+        """
+        shape = [2, 4]
+        cond = paddle.randint(0, 2, shape).astype("bool")
+        x = paddle.rand(shape).astype("float32")
+        y = paddle.rand(shape).astype("float32")
+
+        # Test all alias combinations
+        combinations = [
+            {"condition": cond, "x": x, "y": y},
+            {"condition": cond, "input": x, "y": y},
+            {"condition": cond, "x": x, "other": y},
+            {"condition": cond, "input": x, "other": y},
+        ]
+
+        # Get baseline result
+        expected = np.where(cond.numpy(), x.numpy(), y.numpy())
+
+        for params in combinations:
+            out = paddle.where(**params)
+            np.testing.assert_allclose(out.numpy(), expected, rtol=1e-05)
+        paddle.enable_static()
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

@@ -25,7 +25,7 @@ from paddle import _C_ops
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc, dygraph_utils
 from paddle.pir import Value
-from paddle.utils.decorator_utils import ParamAliasDecorator
+from paddle.utils.decorator_utils import ParamAliasDecorator, param_two_alias
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
@@ -3006,6 +3006,7 @@ def inner(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             return out.reshape(dstshape)
 
 
+@ParamAliasDecorator({"x": ["input"], "y": ["vec2"]})
 def outer(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
 
@@ -3013,9 +3014,15 @@ def outer(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
     Input is flattened if not already 1-dimensional.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``vec2`` can be used as an alias for ``y``.
+        For example, ``outer(input=tensor_x, vec2=tensor_y, ...)`` is equivalent to ``outer(x=tensor_x, y=tensor_y, ...)``.
+
     Args:
         x (Tensor): An N-D Tensor or a Scalar Tensor.
+            alias: ``input``.
         y (Tensor): An N-D Tensor or a Scalar Tensor.
+            alias: ``vec2``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -5032,7 +5039,7 @@ def isnan(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
-@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def prod(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
@@ -6697,6 +6704,7 @@ def lcm_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     return out
 
 
+@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
 def diff(
     x: Tensor,
     n: int = 1,
