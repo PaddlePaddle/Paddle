@@ -15,7 +15,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from paddle.framework import get_default_dtype
 
@@ -176,7 +176,9 @@ class GELU(Layer):
     r"""
     GELU Activation.
 
-    If approximate is True
+    approximate parameter must be True, False, "tanh", "none".
+
+    If approximate is True or "tanh"
 
     .. math::
 
@@ -189,7 +191,7 @@ class GELU(Layer):
         GELU(x) = 0.5 * x * (1 + erf(\frac{x}{\sqrt{2}}))
 
     Parameters:
-        approximate (bool, optional): Whether to enable approximation. Default is False.
+        approximate (str|bool, optional): Whether to enable approximation. Default is False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -208,6 +210,24 @@ class GELU(Layer):
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-0.15865529,  0.34573123],
              [ 0.84134471,  1.39978933]])
+            >>> m = paddle.nn.GELU(False)
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.15865529,  0.34573123],
+             [ 0.84134471,  1.39978933]])
+            >>> m = paddle.nn.GELU("none")
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.15865529,  0.34573123],
+             [ 0.84134471,  1.39978933]])
+            >>> m = paddle.nn.GELU("tanh")
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.15880796,  0.34571400],
+             [ 0.84119201,  1.39957154]])
             >>> m = paddle.nn.GELU(True)
             >>> out = m(x)
             >>> print(out)
@@ -217,7 +237,9 @@ class GELU(Layer):
     """
 
     def __init__(
-        self, approximate: bool = False, name: str | None = None
+        self,
+        approximate: Literal["tanh", "none"] | bool = False,
+        name: str | None = None,
     ) -> None:
         super().__init__()
         self._approximate = approximate

@@ -81,7 +81,7 @@ class TestMatmulv2ActivationOnednnFusePass(PassAutoScanTest):
             attrs={
                 'trans_x': transpose_X,
                 'trans_y': transpose_Y,
-                'use_mkldnn': True,
+                'use_onednn': True,
             },
         )
 

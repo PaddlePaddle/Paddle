@@ -47,8 +47,8 @@ CudaGraphInstruction::CudaGraphInstruction(
     ValueExecutionInfo* value_exec_info,
     interpreter::ExecutionConfig execution_config)
     : InstructionBase(id, place),
-      op_(op),
       place_(place),
+      op_(op),
       cuda_graph_state_ref_(cuda_graph_state_ref),
       cuda_graph_capture_pool_id_(cuda_graph_capture_pool_id),
       name_("cuda_graph_instruction"),
@@ -95,7 +95,7 @@ CudaGraphInstruction::CudaGraphInstruction(
   SetInputs(inputs);
 
   std::unordered_map<pir::Value, std::vector<int>> outputs;
-  bool is_last_op = true;
+  bool is_last_op [[maybe_unused]] = true;
   for (size_t i = 0; i < op->num_results(); i++) {
     pir::Value value = op->result(i);
     if (value && value.type()) {
