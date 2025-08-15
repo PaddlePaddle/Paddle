@@ -222,13 +222,60 @@ void PowKernel(const Context& dev_ctx,
         dev_ctx, phi::IntArray(vec_dims), static_cast<T>(1), out);
     return;
   }
+  if (factor.to<float>() == 0.5) {
+    funcs::CudaSqrtFunctor<T> functor;
+    ActivationGPUImpl<T, Context, funcs::CudaSqrtFunctor<T>>(
+        dev_ctx, x, out, functor);
+    return;
+  }
   if (factor.to<float>() == 1) {
     phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
   }
+  // if (factor.to<float>() == 2) {
+  //   ActivationGPUImpl<T, Context, std::function<T(const T)>>(
+  //       dev_ctx, x, out, []__device__(const T x){
+  //         return x * x;
+  //       });
+  //   return;
+  // }
+  // if (factor.to<float>() == 3) {
+  //   ActivationGPUImpl<T, Context, std::function<T(const T)>>(
+  //       dev_ctx, x, out, [=] __host__ __device__(const T x) -> T {
+  //         return x * x*x;
+  //       });
+  //   return;
+  // }
+  // TODO(zrr1999): to add for CudaRsqrtFunctor
+  // if (factor.to<float>() == -0.5) {
+  //   funcs::CudaRsqrtFunctor<T> functor;
+  //   ActivationGPUImpl<T, Context, funcs::CudaRsqrtFunctor<T>>(
+  //       dev_ctx, x, out, functor);
+  //   return;
+  // }
+  if (factor.to<float>() == -1) {
+    funcs::CudaReciprocalFunctor<T> functor;
+    ActivationGPUImpl<T, Context, funcs::CudaReciprocalFunctor<T>>(
+        dev_ctx, x, out, functor);
+    return;
+  }
+  // if (factor.to<float>() == -2) {
+  //   ActivationGPUImpl<T, Context, std::function<T(const T)>>(
+  //       dev_ctx, x, out, [=] __host__ __device__(const T x) -> T {
+  //         return static_cast<T>(1)/ (x * x);
+  //       });
+  //   return;
+  // }
+  // if (factor.to<float>() == -3) {
+  //   ActivationGPUImpl<T, Context, std::function<T(const T)>>(
+  //       dev_ctx, x, out, [=] __host__ __device__(const T x) -> T {
+  //         return static_cast<T>(1)/ (x * x *x);
+  //       });
+  //   return;
+  // }
+
   funcs::CudaPowFunctor<T> functor;
-  auto attrs = functor.GetAttrs();
-  *(attrs[0].second) = factor.to<float>();
+  functor.SetFactor(factor.to<float>());
   ActivationGPUImpl<T, Context, funcs::CudaPowFunctor<T>>(
       dev_ctx, x, out, functor);
 }

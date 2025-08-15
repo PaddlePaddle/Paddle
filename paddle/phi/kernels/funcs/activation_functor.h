@@ -5429,59 +5429,80 @@ __device__ __forceinline__
 }
 
 template <typename T>
-struct CudaPowFunctor : public BaseActivationFunctor<T> {
+struct BaseCudaPowFunctor : public BaseActivationFunctor<T> {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   float factor;
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
     return {{"factor", &factor}};
   }
-  __device__ __forceinline__ T operator()(const T x) const {
-    return compute_pow<T, MT>(x, static_cast<MT>(factor));
-  }
+  void SetFactor(float factor) { this->factor = factor; }
 };
 
 template <typename T>
-struct CudaPowGradFunctor : public BaseActivationFunctor<T> {
+struct BaseCudaPowGradFunctor : public BaseActivationFunctor<T> {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   float factor;
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
     return {{"factor", &factor}};
   }
-  // dx = dout * n * pow(x, n - 1)
-  __device__ __forceinline__ T operator()(const T dout, const T x) const {
-    return dout * static_cast<T>(factor) *
-           compute_pow<T, MT>(x, static_cast<MT>(factor - 1));
-  }
+  void SetFactor(float factor) { this->factor = factor; }
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
 template <typename T>
-struct CudaPowFunctor<ComplexType<T>>
-    : public BaseActivationFunctor<ComplexType<T>> {
-  float factor;
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"factor", &factor}};
+struct CudaPowFunctor : public BaseCudaPowFunctor<T> {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  __device__ __forceinline__ T operator()(const T x) const {
+    return compute_pow<T, MT>(x, static_cast<MT>(this->factor));
   }
+};
+
+template <typename T>
+struct CudaPowGradFunctor : public BaseCudaPowGradFunctor<T> {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  // dx = dout * n * pow(x, n - 1)
+  __device__ __forceinline__ T operator()(const T dout, const T x) const {
+    return dout * static_cast<T>(this->factor) *
+           compute_pow<T, MT>(x, static_cast<MT>(this->factor - 1));
+  }
+};
+
+template <typename T>
+struct CudaPowFastFunctor : public BaseCudaPowFunctor<T> {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  __device__ __forceinline__ T operator()(const T x) const {
+    return compute_pow<T, MT>(x, static_cast<MT>(this->factor));
+  }
+};
+
+template <typename T>
+struct CudaPowGradFastFunctor : public BaseCudaPowGradFunctor<T> {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  // dx = dout * n * pow(x, n - 1)
+  __device__ __forceinline__ T operator()(const T dout, const T x) const {
+    return dout * static_cast<T>(this->factor) *
+           compute_pow<T, MT>(x, static_cast<MT>(this->factor - 1));
+  }
+};
+
+template <typename T>
+struct CudaPowFunctor<ComplexType<T>>
+    : public BaseCudaPowFunctor<ComplexType<T>> {
   __device__ __forceinline__ ComplexType<T> operator()(
       const ComplexType<T> x) const {
-    return pow(x, static_cast<ComplexType<T>>(factor));
+    return pow(x, static_cast<ComplexType<T>>(this->factor));
   }
 };
 
 template <typename T>
 struct CudaPowGradFunctor<ComplexType<T>>
-    : public BaseActivationFunctor<ComplexType<T>> {
-  float factor;
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"factor", &factor}};
-  }
+    : public BaseCudaPowGradFunctor<ComplexType<T>> {
   // dx = dout * n * pow(x, n - 1)
   __device__ __forceinline__ ComplexType<T> operator()(
       const ComplexType<T> dout, const ComplexType<T> x) const {
-    return dout * conj(static_cast<ComplexType<T>>(factor) *
-                       pow(x, static_cast<ComplexType<T>>(factor - 1)));
+    return dout * conj(static_cast<ComplexType<T>>(this->factor) *
+                       pow(x, static_cast<ComplexType<T>>(this->factor - 1)));
   }
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
 template <typename T>

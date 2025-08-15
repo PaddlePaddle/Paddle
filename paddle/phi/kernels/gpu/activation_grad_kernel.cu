@@ -318,8 +318,7 @@ void PowGradKernel(const Context& dev_ctx,
     return;
   }
   funcs::CudaPowGradFunctor<T> functor;
-  auto attrs = functor.GetAttrs();
-  *(attrs[0].second) = factor.to<float>();
+  functor.SetFactor(factor.to<float>());
   ActivationGradGPUImpl<T, Context, funcs::CudaPowGradFunctor<T>>(
       dev_ctx, &x, nullptr, &dout, dx, functor);
 }
