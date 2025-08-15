@@ -109,6 +109,15 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
     }
     auto output_dim = common::vectorize(x.dims());
     if (output_size > 0) {
+      PADDLE_ENFORCE_EQ(
+          output_size,
+          index.dims()[0],
+          common::errors::InvalidArgument(
+              "When output_size is provided, it should equal to "
+              "sum of repeats tensor. But received output_size = %d, "
+              "sum of repeats = %d.",
+              output_size,
+              index.dims()[0]));
       output_dim[dim] = output_size;
     } else {
       output_dim[dim] = index.dims()[0];
@@ -123,6 +132,15 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
         dev_ctx, repeats_tensor, &index);
     auto output_dim = common::vectorize(x.dims());
     if (output_size > 0) {
+      PADDLE_ENFORCE_EQ(
+          output_size,
+          index.dims()[0],
+          common::errors::InvalidArgument(
+              "When output_size is provided, it should equal to "
+              "sum of repeats tensor. But received output_size = %d, "
+              "sum of repeats = %d.",
+              output_size,
+              index.dims()[0]));
       output_dim[dim] = output_size;
     } else {
       output_dim[dim] = index.dims()[0];
@@ -134,6 +152,15 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
         dev_ctx, repeats_tensor, &index);
     auto output_dim = common::vectorize(x.dims());
     if (output_size > 0) {
+      PADDLE_ENFORCE_EQ(
+          output_size,
+          index.dims()[0],
+          common::errors::InvalidArgument(
+              "When output_size is provided, it should equal to "
+              "sum of repeats tensor. But received output_size = %d, "
+              "sum of repeats = %d.",
+              output_size,
+              index.dims()[0]));
       output_dim[dim] = output_size;
     } else {
       output_dim[dim] = index.dims()[0];
