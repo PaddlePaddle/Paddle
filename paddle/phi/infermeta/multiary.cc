@@ -4944,26 +4944,34 @@ void RmsNormInferMeta(const MetaTensor& x,
                       const float quant_min_bound,
                       MetaTensor* out,
                       MetaTensor* residual_out,
-                      MetaTensor* inv_var) {
+                      MetaTensor* inv_var,
+                      MetaConfig config) {
   size_t x_dims_size = x.dims().size();
 
   size_t normalized_dims = 1;
+  bool has_minus_one = false;
   for (size_t i = begin_norm_axis; i < x_dims_size; ++i) {
     normalized_dims *= x.dims().at(i);
+    has_minus_one |= (x.dims().at(i) == -1);
   }
 
-  if (normalized_dims != 0) {
-    PADDLE_ENFORCE_EQ(normalized_dims,
-                      norm_weight.dims()[0],
-                      common::errors::InvalidArgument(
-                          "The normalized size of Input(X) must equal to be "
-                          "the size of Weight, but received "
-                          "normalized size of Input(X) is [%d], received size "
-                          "of Weight is [%d]",
-                          normalized_dims,
-                          norm_weight.dims()[0]));
-  }
+  // NOTE: Although 'goto' is generally discouraged, its use here replaces two
+  // obscure if-statements, improves readability, and does not cross large code
+  // blocks or affect resource management. The jump is clear and safe in this
+  // context.
+  if (normalized_dims == 0) goto skip_check;
+  if (has_minus_one && !config.is_runtime) goto skip_check;
 
+  PADDLE_ENFORCE_EQ(normalized_dims,
+                    norm_weight.dims()[0],
+                    common::errors::InvalidArgument(
+                        "The normalized size of Input(X) must equal to be "
+                        "the size of Weight, but received "
+                        "normalized size of Input(X) is [%d], received size "
+                        "of Weight is [%d]",
+                        normalized_dims,
+                        norm_weight.dims()[0]));
+skip_check:
   out->set_dims(x.dims());
 
   if (quant_scale > 0) {
