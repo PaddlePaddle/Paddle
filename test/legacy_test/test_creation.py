@@ -367,7 +367,7 @@ class TestTensorCreation(unittest.TestCase):
             if end is None:
                 end = start
                 start = 0
-            size_ = int(np.floor(end - start) / step) + 1
+            size_ = int(np.abs(np.trunc((end - start) / step))) + 1
             out = paddle.empty([size_])
 
             for i in range(size_):
@@ -386,42 +386,70 @@ class TestTensorCreation(unittest.TestCase):
                     (2, 7, 2),
                     (5, None, 1),
                     (0, 1, 0.1),
+                    (-1.1, -3.7, -0.09),
+                    (-1.1, -3.7, -0.10001),
+                    (-1.1, -3.7, -0.9999),
                 ]:
-                    x = paddle.range(
-                        start,
-                        end,
-                        step,
-                        dtype=dtype,
-                        device=device,
-                        requires_grad=requires_grad,
-                    )
-                    x_ref = range_manual(
-                        start, end, step, dtype, device, requires_grad
-                    )
-                    if isinstance(device, paddle.framework.core.Place):
-                        self.assertEqual(x.place, device)
-                    if isinstance(dtype, paddle.dtype):
-                        self.assertEqual(x.dtype, dtype)
-                    self.assertEqual(x.stop_gradient, not requires_grad)
-                    np.testing.assert_allclose(x.numpy(), x_ref.numpy())
+                    if np.abs(step) < 1 and dtype in [
+                        paddle.int32,
+                        "int32",
+                        paddle.int64,
+                        "int64",
+                    ]:
+                        with self.assertRaises(ValueError):
+                            x = paddle.range(
+                                start,
+                                end,
+                                step,
+                                dtype=dtype,
+                                device=device,
+                                requires_grad=requires_grad,
+                            )
+                            continue
+                    else:
+                        x = paddle.range(
+                            start,
+                            end,
+                            step,
+                            dtype=dtype,
+                            device=device,
+                            requires_grad=requires_grad,
+                        )
+                        x_ref = range_manual(
+                            start, end, step, dtype, device, requires_grad
+                        )
+                        self.assertEqual(x.place, x_ref.place)
+                        self.assertEqual(x.dtype, x_ref.dtype)
+                        self.assertEqual(x.stop_gradient, x_ref.stop_gradient)
+                        np.testing.assert_allclose(
+                            x.numpy(),
+                            x_ref.numpy(),
+                            1e-6,
+                            1e-6,
+                            err_msg=f"[FAILED] wrong result when testing: range({start},{end},{step})",
+                        )
 
-                    st_f = paddle.jit.to_static(
-                        paddle.range, full_graph=True, backend=None
-                    )
-                    x = st_f(
-                        start,
-                        end,
-                        step,
-                        dtype=dtype,
-                        device=device,
-                        requires_grad=requires_grad,
-                    )
-                    if isinstance(device, paddle.framework.core.Place):
-                        self.assertEqual(x.place, device)
-                    if isinstance(dtype, paddle.dtype):
-                        self.assertEqual(x.dtype, dtype)
-                    self.assertEqual(x.stop_gradient, not requires_grad)
-                    np.testing.assert_allclose(x.numpy(), x_ref.numpy())
+                        st_f = paddle.jit.to_static(
+                            paddle.range, full_graph=True, backend=None
+                        )
+                        x = st_f(
+                            start,
+                            end,
+                            step,
+                            dtype=dtype,
+                            device=device,
+                            requires_grad=requires_grad,
+                        )
+                        self.assertEqual(x.place, x_ref.place)
+                        self.assertEqual(x.dtype, x_ref.dtype)
+                        self.assertEqual(x.stop_gradient, x_ref.stop_gradient)
+                        np.testing.assert_allclose(
+                            x.numpy(),
+                            x_ref.numpy(),
+                            1e-6,
+                            1e-6,
+                            err_msg=f"[FAILED] wrong result when testing: range({start},{end},{step})",
+                        )
 
 
 class TestTensorPatchMethod(unittest.TestCase):
@@ -625,6 +653,68 @@ class TestTensorPatchMethod(unittest.TestCase):
                 self.assertEqual(x.stop_gradient, not requires_grad)
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
+
+
+class TestCreationOut(unittest.TestCase):
+    def setUp(self):
+        self.x_np = np.random.rand(3, 4).astype(np.float32)
+        self.constant = 3.14
+
+    def test_full(self):
+        x = paddle.randn([2, 2])
+        t = paddle.empty_like(x)
+        y = paddle.full(x.shape, self.constant, out=t)
+        np.testing.assert_allclose(t.numpy(), np.full(x.shape, self.constant))
+        np.testing.assert_allclose(y.numpy(), np.full(x.shape, self.constant))
+        self.assertEqual(t.data_ptr(), y.data_ptr())
+
+    def test_ones(self):
+        x = paddle.randn([2, 2])
+        t = paddle.empty_like(x)
+        y = paddle.ones(x.shape, out=t)
+        np.testing.assert_allclose(t.numpy(), np.ones(x.shape))
+        np.testing.assert_allclose(y.numpy(), np.ones(x.shape))
+        self.assertEqual(t.data_ptr(), y.data_ptr())
+
+    def test_zeros(self):
+        x = paddle.randn([2, 2])
+        t = paddle.empty_like(x)
+        y = paddle.zeros(x.shape, out=t)
+        np.testing.assert_allclose(t.numpy(), np.zeros(x.shape))
+        np.testing.assert_allclose(y.numpy(), np.zeros(x.shape))
+        self.assertEqual(t.data_ptr(), y.data_ptr())
+
+    def test_empty(self):
+        x = paddle.randn([2, 2])
+        t = paddle.empty_like(x)
+        y = paddle.empty(x.shape, out=t)
+        self.assertEqual(t.data_ptr(), y.data_ptr())
+
+    def test_eye(self):
+        x = paddle.randn([2, 2])
+        t = paddle.empty_like(x)
+        y = paddle.eye(x.shape[0], x.shape[1], out=t)
+        np.testing.assert_allclose(t.numpy(), np.eye(x.shape[0], x.shape[1]))
+        np.testing.assert_allclose(y.numpy(), np.eye(x.shape[0], x.shape[1]))
+        self.assertEqual(t.data_ptr(), y.data_ptr())
+
+    def test_arange(self):
+        x = paddle.randn([2, 2])
+        t = paddle.empty_like(x)
+        y = paddle.arange(-1.1, 3.4, 0.1, out=t)
+        np.testing.assert_allclose(
+            t.numpy(), np.arange(-1.1, 3.4, 0.1), 1e-6, 1e-6
+        )
+        np.testing.assert_allclose(
+            y.numpy(), np.arange(-1.1, 3.4, 0.1), 1e-6, 1e-6
+        )
+        self.assertEqual(t.data_ptr(), y.data_ptr())
+
+    def test_range(self):
+        x = paddle.randn([2, 2])
+        t = paddle.empty_like(x)
+        y = paddle.range(-1.1, 3.4, 0.1, out=t)
+        self.assertEqual(t.data_ptr(), y.data_ptr())
 
 
 if __name__ == '__main__':

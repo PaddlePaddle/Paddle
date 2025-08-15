@@ -778,6 +778,32 @@ void ArangeTensorInferMeta(const MetaTensor& start,
   out->set_dtype(start.dtype());
 }
 
+void RangeTensorInferMeta(const MetaTensor& start,
+                          const MetaTensor& end,
+                          const MetaTensor& step,
+                          MetaTensor* out) {
+  PADDLE_ENFORCE_EQ(common::product(start.dims()),
+                    1,
+                    common::errors::InvalidArgument(
+                        "The numel of Input(start) should be 1, but got %d",
+                        common::product(start.dims())));
+
+  PADDLE_ENFORCE_EQ(common::product(end.dims()),
+                    1,
+                    common::errors::InvalidArgument(
+                        "The numel of Input(end) should be 1, but got %d",
+                        common::product(end.dims())));
+
+  PADDLE_ENFORCE_EQ(common::product(step.dims()),
+                    1,
+                    common::errors::InvalidArgument(
+                        "The numel of Input(step) should be 1, but got %d",
+                        common::product(step.dims())));
+
+  out->set_dims({-1});
+  out->set_dtype(start.dtype());
+}
+
 void CollectFpnProposalsInferMeta(
     const std::vector<const MetaTensor*>& multi_level_rois,
     const std::vector<const MetaTensor*>& multi_level_scores,
