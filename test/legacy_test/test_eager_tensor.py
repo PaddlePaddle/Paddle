@@ -404,7 +404,7 @@ class TestEagerTensor(unittest.TestCase):
             self.array, dtype="float32", device="cpu", requires_grad=True
         )
         tensor_target = paddle.to_tensor(
-            self.array, dtype="float32", device="cpu", stop_gradient=False
+            self.array, dtype="float32", place="cpu", stop_gradient=False
         )
         np.testing.assert_array_equal(tensor_res.numpy(), tensor_target.numpy())
         self.assertEqual(tensor_res.place, tensor_target.place)
