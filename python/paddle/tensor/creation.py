@@ -24,6 +24,7 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
+from paddle.utils import deprecated
 from paddle.utils.decorator_utils import ParamAliasDecorator, SizeArgsDecorator
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -64,7 +65,6 @@ if TYPE_CHECKING:
 __all__ = []
 
 _warned_in_tensor = False
-_warned_in_to_tensor = False
 
 
 def _complex_to_real_dtype(dtype: DTypeLike) -> DTypeLike:
@@ -1001,6 +1001,12 @@ def tensor(
             return tensor
 
 
+@deprecated(
+    since="3.1.2",
+    update_to="paddle.vision.datasets.Flowers",
+    level=1,
+    reason="`paddle.to_tensor` will be deprecated. Please use `paddle.tensor` instead.",
+)
 def to_tensor(
     data: TensorLike | NestedNumericSequence,
     dtype: DTypeLike | None = None,
@@ -1080,12 +1086,6 @@ def to_tensor(
             [[(1+1j), (2+0j)],
              [(3+2j), (4+0j)]])
     """
-    global _warned_in_to_tensor
-    if not _warned_in_to_tensor:
-        warnings.warn(
-            "`paddle.to_tensor` will be deprecated. Please use `paddle.tensor` instead."
-        )
-        _warned_in_to_tensor = True
     return tensor(
         data, dtype=dtype, device=place, requires_grad=not stop_gradient
     )
