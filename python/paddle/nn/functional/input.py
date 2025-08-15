@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 
 import paddle
 from paddle import _C_ops
+from paddle.utils.decorator_utils import param_one_alias
 
 from ...base.data_feeder import check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
@@ -161,6 +162,7 @@ def embedding_renorm_(
         return weight
 
 
+@param_one_alias(["x", "input"])
 def embedding(
     x: Tensor,
     weight: Tensor,

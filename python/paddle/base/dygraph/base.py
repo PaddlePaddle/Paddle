@@ -32,6 +32,7 @@ import paddle
 from paddle.base import core, framework
 from paddle.base.framework import global_var
 from paddle.base.multiprocess_utils import CleanupFuncRegistrar
+from paddle.utils.decorator_utils import ParamAliasDecorator
 
 from ..framework import _get_paddle_place
 from ..wrapped_decorator import (
@@ -323,6 +324,7 @@ def no_grad(func: None = ...) -> AbstractContextManager: ...
 def no_grad(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]: ...
 
 
+@ParamAliasDecorator({"func": ["orig_func"]})
 def no_grad(func=None):
     """
     :api_attr: imperative
