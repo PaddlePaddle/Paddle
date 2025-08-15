@@ -4823,7 +4823,6 @@ def expand_as(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 def broadcast_to(
     x: Tensor,
     shape: ShapeLike,
-    out: Tensor | None = None,
     name: str | None = None,
 ) -> Tensor:
     """
@@ -4845,7 +4844,6 @@ def broadcast_to(
             should be integers or 0-D or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32.
             The value -1 in shape means keeping the corresponding dimension unchanged.
             Alias: size.
-        out (Tensor, optional): The output tensor. If set, the result will be written to this tensor.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
     Returns:
         N-D Tensor, A Tensor with the given shape. The data type is the same as ``x``.
@@ -4862,13 +4860,12 @@ def broadcast_to(
             [[1, 2, 3],
              [1, 2, 3]])
     """
-    return expand(x, shape, out, name)
+    return expand(x, shape, name)
 
 
 def expand(
     x: Tensor,
     shape: ShapeLike,
-    out: Tensor | None = None,
     name: str | None = None,
 ) -> Tensor:
     """
@@ -4891,7 +4888,6 @@ def expand(
         shape (list|tuple|Tensor): The result shape after expanding. The data type is int32. If shape is a list or tuple, all its elements
             should be integers or 0-D or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32.
             The value -1 in shape means keeping the corresponding dimension unchanged.
-        out (Tensor, optional): The output tensor. If set, the result will be written to this tensor.
         name (str|None, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4910,7 +4906,7 @@ def expand(
              [1, 2, 3]])
     """
     if in_dynamic_mode():
-        return _C_ops.expand(x, shape, out=out)
+        return _C_ops.expand(x, shape)
     elif in_pir_mode():
         if convert_dtype(x.dtype) == 'bool' and not x.stop_gradient:
             raise ValueError(
@@ -4926,7 +4922,7 @@ def expand(
                 shape = paddle.utils.get_int_tensor_list(shape)
         else:
             raise TypeError("Shape only supports Value, or list, or tuple.")
-        return _C_ops.expand(x, shape, out=out)
+        return _C_ops.expand(x, shape)
     else:
         if isinstance(shape, Variable):
             assert len(shape.shape) == 1, 'shape must be a 1-D Tensor.'
