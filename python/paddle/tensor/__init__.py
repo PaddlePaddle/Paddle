@@ -227,6 +227,8 @@ from .manipulation import (  # noqa: F401
     unstack,
     view,
     view_as,
+    view_as_complex,
+    view_as_real,
     vsplit,
     vstack,
 )
@@ -783,7 +785,9 @@ tensor_method_func = [
     'lu_unpack',
     'cdist',
     'as_complex',
+    'view_as_complex',
     'as_real',
+    'view_as_real',
     'rad2deg',
     'deg2rad',
     'gcd',
