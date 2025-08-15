@@ -1698,7 +1698,7 @@ PYBIND11_MODULE(libpaddle, m) {
            phi::DataType dtype,
            int64_t count,
            int64_t offset) {
-          size_t actual_count = 0;
+          int64_t actual_count = 0;
           auto elsize = phi::SizeOf(dtype);
           Py_buffer view;
           if (PyObject_GetBuffer(buffer.ptr(), &view, PyBUF_WRITABLE) < 0) {
@@ -1730,16 +1730,17 @@ PYBIND11_MODULE(libpaddle, m) {
               common::errors::InvalidArgument("buffer length after offset must "
                                               "be a multiple of element size"));
           if (count < 0) {
-            actual_count = (len - offset) / elsize;
+            actual_count = static_cast<int64_t>(len - offset) / elsize;
           } else {
-            actual_count = static_cast<size_t>(count);
+            actual_count = static_cast<int64_t>(count);
           }
 
-          PADDLE_ENFORCE_LE(static_cast<size_t>(offset) + actual_count * elsize,
-                            static_cast<size_t>(len),
-                            common::errors::InvalidArgument(
-                                "requested buffer length after offset must not "
-                                "be greater than actual buffer length"));
+          PADDLE_ENFORCE_LE(
+              static_cast<int64_t>(offset) + actual_count * elsize,
+              static_cast<int64_t>(len),
+              common::errors::InvalidArgument(
+                  "requested buffer length after offset must not "
+                  "be greater than actual buffer length"));
 
           auto offset_buf = static_cast<char *>(buf) + offset;
           return from_blob(offset_buf,
