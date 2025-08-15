@@ -2077,6 +2077,11 @@ class TestCeil_ZeroDim(TestCeil):
         self.shape = []
 
 
+class TestCeil_Int16(TestCeil):
+    def init_dtype(self):
+        self.dtype = np.int16
+
+
 class TestFloor(TestActivation):
     def setUp(self):
         self.op_type = "floor"
@@ -2136,6 +2141,11 @@ class TestFloor(TestActivation):
 class TestFloor_ZeroDim(TestFloor):
     def init_shape(self):
         self.shape = []
+
+
+class TestFloor_Int16(TestFloor):
+    def init_dtype(self):
+        self.dtype = np.int16
 
 
 class TestCos(TestActivation):
