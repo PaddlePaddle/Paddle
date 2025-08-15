@@ -39,6 +39,13 @@ class TestMmapStorageBase(unittest.TestCase):
         res = tmp.get_slice(self.dtype, 0, self.data.size).reshape(self.shape)
         np.testing.assert_allclose(res.numpy(), self.data.numpy())
 
+    def test_from_buffer(self):
+        buffer = self.data.numpy().tobytes()
+        tmp = paddle.base.core.frombuffer(
+            buffer, self.data.dtype, self.data.size, 0
+        ).reshape(self.shape)
+        np.testing.assert_allclose(tmp.numpy(), self.data.numpy())
+
 
 class TestMmapStorage1(TestMmapStorageBase):
     def init_cfg(self):
@@ -104,3 +111,7 @@ class TestMmapStorage8(TestMmapStorage4):
     def init_cfg(self):
         self.shape = [300, 40, 10]
         self.dtype = 'bool'
+
+
+if __name__ == '__main__':
+    unittest.main()
