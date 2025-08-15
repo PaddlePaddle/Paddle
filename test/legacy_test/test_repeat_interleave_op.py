@@ -121,6 +121,7 @@ class TestIndexSelectAPI(unittest.TestCase):
         ).astype('float32')
         self.data_zero_dim_index = np.array(2)
         self.data_index = np.array([0, 1, 2, 1]).astype('int32')
+        self.data_index_output_size = np.array([2, 1, 3]).astype('int32')
 
     def test_repeat_interleave_api(self):
         paddle.enable_static()
@@ -234,6 +235,58 @@ class TestIndexSelectAPI(unittest.TestCase):
             )
         expect_out = np.repeat(self.data_x, self.data_index, axis=-1)
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
+
+        # case 5 output_size:
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.static.data(name='x', shape=[-1, 3], dtype='float32')
+            index = paddle.static.data(
+                name='repeats_',
+                shape=[3],
+                dtype='int32',
+            )
+            if not paddle.framework.in_pir_mode():
+                x.desc.set_need_check_feed(False)
+                index.desc.set_need_check_feed(False)
+
+            z = paddle.repeat_interleave(x, index, axis=1, output_size=6)
+            exe = base.Executor(base.CPUPlace())
+            (res,) = exe.run(
+                feed={
+                    'x': self.data_x[:, :3],
+                    'repeats_': self.data_index_output_size,
+                },
+                fetch_list=[z],
+            )
+
+        expect_out = np.repeat(
+            self.data_x[:, :3], self.data_index_output_size, axis=1
+        )
+        np.testing.assert_allclose(expect_out, res, rtol=1e-05)
+
+        # case 6 output_size error
+        with (
+            self.assertRaises(ValueError),
+            paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ),
+        ):
+            x = paddle.static.data(name='x', shape=[-1, 3], dtype='float32')
+            index = paddle.static.data(
+                name='repeats_',
+                shape=[3],
+                dtype='int32',
+            )
+            z = paddle.repeat_interleave(x, index, axis=1, output_size=5)
+            exe = base.Executor(base.CPUPlace())
+            exe.run(
+                feed={
+                    'x': self.data_x[:, :3],
+                    'repeats_': self.data_index_output_size,
+                },
+                fetch_list=[z],
+            )
 
     def test_dygraph_api(self):
         self.input_data()
@@ -438,6 +491,35 @@ class TestIndexSelectAPI(unittest.TestCase):
                 1e-5,
                 1e-5,
             )
+
+        # case 10 output_size:
+        with base.dygraph.guard():
+            x = paddle.to_tensor(self.data_x[:, :3])
+            index = paddle.to_tensor(self.data_index_output_size)
+
+            z = paddle.repeat_interleave(x, index, axis=1, output_size=6)
+            np_z = z.numpy()
+
+        expect_out = np.repeat(
+            self.data_x[:, :3], self.data_index_output_size, axis=1
+        )
+        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
+
+        with base.dygraph.guard():
+            x = paddle.to_tensor(self.data_x[:, :3])
+            index = paddle.to_tensor(self.data_index_output_size)
+
+            z = x.repeat_interleave(index, axis=1, output_size=6)
+            np_z = z.numpy()
+
+        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
+
+        with base.dygraph.guard():
+            x = paddle.to_tensor(self.data_x[:, :3])
+            index = paddle.to_tensor(self.data_index_output_size)
+
+            with self.assertRaises(ValueError):
+                z = paddle.repeat_interleave(x, index, axis=1, output_size=5)
 
 
 if __name__ == '__main__':
