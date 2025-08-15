@@ -27,8 +27,8 @@ from paddle.tensor import fill_constant
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     VariableArgsDecorator,
-    param_one_alias,
     param_two_alias,
+    reshape_decorator,
     view_decorator,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
@@ -5056,7 +5056,7 @@ def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
         return out
 
 
-@param_one_alias(["x", "input"])
+@reshape_decorator()
 def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
     """
     Changes the shape of ``x`` without changing its data.

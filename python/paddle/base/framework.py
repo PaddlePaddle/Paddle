@@ -8263,22 +8263,13 @@ def _cuda_graph_guard(cuda_graph_attr=None):
 
 
 def _get_paddle_place(place):
-    "convert the string to paddle Place"
+    """
+    Convert given place to standard paddle Place object
+    """
     if place is None:
         return place
-    if isinstance(
-        place,
-        (
-            core.Place,
-            core.XPUPlace,
-            core.CPUPlace,
-            core.CUDAPinnedPlace,
-            core.XPUPinnedPlace,
-            core.CUDAPlace,
-            core.IPUPlace,
-            core.CustomPlace,
-        ),
-    ):
+
+    if isinstance(place, core.Place):
         return place
 
     if not isinstance(place, str):
