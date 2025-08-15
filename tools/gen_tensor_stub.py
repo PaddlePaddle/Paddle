@@ -67,6 +67,26 @@ def _slot_pattern(slot_name: str) -> re.Pattern:
     )
 
 
+@lru_cache
+def create_builtin_annotation_renamer():
+    # NOTE(ooooo-create): Rename built-in types to avoid naming conflicts
+    builtin_types = ["int", "bool", "str", "float", "complex", "bytes"]
+    regex_string = "|".join([rf"\b{t}\b" for t in builtin_types])
+    regex = re.compile(regex_string)
+
+    def renamer(annotations):
+        if annotations is inspect.Signature.empty:
+            return annotations
+        return regex.sub(lambda m: f"_{m.group(0)}", annotations)
+
+    return renamer
+
+
+def rename_builtin_annotation(annotation):
+    renamer = create_builtin_annotation_renamer()
+    return renamer(annotation)
+
+
 class TensorGen:
     def __init__(self, template: str = '', prefix: str = 'tensor'):
         self._template = template
@@ -425,6 +445,17 @@ def get_tensor_members(module: str = 'paddle.Tensor') -> dict[int, Member]:
         )
         try:
             sig = inspect.signature(member)
+            sig = sig.replace(
+                parameters=[
+                    p.replace(
+                        annotation=rename_builtin_annotation(p.annotation)
+                    )
+                    for p in sig.parameters.values()
+                ],
+                return_annotation=rename_builtin_annotation(
+                    sig.return_annotation
+                ),
+            )
             # TODO: classmethod
             member_signature = f"{name}{sig}"
 
@@ -493,6 +524,17 @@ def get_tensor_members(module: str = 'paddle.Tensor') -> dict[int, Member]:
             _overloads = get_overloads(member)
             for f in _overloads:
                 _sig = inspect.signature(f)
+                _sig = _sig.replace(
+                    parameters=[
+                        p.replace(
+                            annotation=rename_builtin_annotation(p.annotation)
+                        )
+                        for p in _sig.parameters.values()
+                    ],
+                    return_annotation=rename_builtin_annotation(
+                        _sig.return_annotation
+                    ),
+                )
                 all_signatures.append(
                     [
                         id(f),

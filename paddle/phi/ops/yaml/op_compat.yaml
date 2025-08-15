@@ -104,7 +104,7 @@
   attrs :
     {scale_x : Scale_x, scale_y : Scale_y, scale_out : Scale_out}
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = "",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
   complex_promote : [X, Y]
 
@@ -114,7 +114,7 @@
   outputs:
     {out : Out}
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32"]
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = ""]
 
 - op : add_position_encoding
   backward: add_position_encoding_grad
@@ -462,7 +462,7 @@
   attrs:
     data_format: data_layout
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32"]
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = ""]
 
 - op : bincount
   inputs :
@@ -564,7 +564,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32"]
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = ""]
 
 - op : ceil
   backward : ceil_grad
@@ -622,7 +622,7 @@
       data_type :  float
       tensor_name : Max
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32"]
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = ""]
 
 - op : clip_by_norm
   inputs :
@@ -667,7 +667,7 @@
       tensor_name : AxisTensor
   drop_empty_grad : [x_grad]
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, bool use_quantizer = false, str mkldnn_data_type = "float32"]
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, bool use_quantizer = false, str mkldnn_data_type = "float32", str onednn_data_type = ""]
   get_expected_kernel_type :
     concat : GetConcatExpectedKernelType
 
@@ -691,7 +691,7 @@
   extra :
     attrs : [bool is_test = false, bool use_cudnn = true, bool use_mkldnn = false, bool use_onednn = false, bool use_addto = false,
              bool force_fp32_output = false,
-             int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false, str mkldnn_data_type = "float32"]
+             int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false, str mkldnn_data_type = "float32", str onednn_data_type = ""]
   get_expected_kernel_type :
     conv2d : GetConvExpectedKernelType
 
@@ -708,7 +708,7 @@
   extra :
     inputs : [bias]
     attrs : [bool is_test = false, bool use_cudnn = true, bool use_mkldnn = false, bool use_onednn = false, bool force_fp32_output = false,
-             str mkldnn_data_type = "float32", bool fuse_relu = false,
+             str mkldnn_data_type = "float32", str onednn_data_type = "", bool fuse_relu = false,
              str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f,
              int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB()]
 
@@ -723,7 +723,7 @@
       support_tensor : true
   extra :
     attrs : [bool is_test = false, bool use_cudnn = false, bool use_mkldnn = true, bool use_onednn = false, bool force_fp32_output = false,
-             str mkldnn_data_type = "float32", bool fuse_relu = false,
+             str mkldnn_data_type = "float32", str onednn_data_type = "", bool fuse_relu = false,
              str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f]
 
 - op : conv3d
@@ -733,7 +733,7 @@
   outputs :
     out : Output
   extra :
-    attrs : [bool is_test = false, bool use_cudnn = true, bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", bool fuse_relu = false,
+    attrs : [bool is_test = false, bool use_cudnn = true, bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = "", bool fuse_relu = false,
              str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f,
              bool use_addto = false, bool fuse_residual_connection = false, bool force_fp32_output = false,
              int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
@@ -862,7 +862,7 @@
     {scale_in : Scale_in, scale_out : Scale_out, scale_in_eltwise : Scale_in_eltwise, scale_weights : Scale_weights}
   extra :
     attrs : [bool is_test = false, bool use_cudnn = false, bool fuse_relu_before_depthwise_conv = false, bool use_mkldnn = false, bool use_onednn = false,
-             bool use_quantizer = false, str mkldnn_data_type = "float32", bool fuse_relu = false,
+             bool use_quantizer = false, str mkldnn_data_type = "float32", str onednn_data_type = "", bool fuse_relu = false,
              str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f, bool use_addto = false,
              bool fuse_residual_connection = false, float Scale_in = 1.0f, float Scale_out = 1.0f,
              float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool force_fp32_output = false,
@@ -883,7 +883,7 @@
   extra :
     inputs : [bias]
     attrs : [bool is_test = false, bool use_cudnn = false, bool use_mkldnn = false, bool use_onednn = false, bool force_fp32_output = false,
-             str mkldnn_data_type = "float32", bool fuse_relu = false,
+             str mkldnn_data_type = "float32", str onednn_data_type = "", bool fuse_relu = false,
              str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f,
              int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB()]
 
@@ -979,7 +979,7 @@
   outputs :
     out: Out
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = "",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
 - op : dot
@@ -1069,7 +1069,7 @@
   outputs :
     {out : Out}
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = "",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
   complex_promote : [X, Y]
   manual_signature : [elementwise_pow]
@@ -1153,7 +1153,7 @@
       tensor_name : Shape
       tensors_name : expand_shapes_tensor
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32"]
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = ""]
   manual_signature : [expand, expand_grad]
 
 - op : expand_as (expand_as_v2)
@@ -1280,7 +1280,7 @@
   attrs :
     {scale_in : Scale_in, scale_out : Scale_out, scale_weights : Scale_weights}
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, bool use_quantizer = false, str mkldnn_data_type = "float32", float Scale_in = 1.0f, "float[] Scale_weights = {1.0f}", float Scale_out = 1.0f, bool force_fp32_output = false, str fuse_activation = "" , float fuse_alpha = 0.0f, float fuse_beta = 0.0f, float fused_output_scale = 1.0f, 'int[] fused_reshape2_shape = {}']
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, bool use_quantizer = false, str mkldnn_data_type = "float32", str onednn_data_type = "", float Scale_in = 1.0f, "float[] Scale_weights = {1.0f}", float Scale_out = 1.0f, bool force_fp32_output = false, str fuse_activation = "" , float fuse_alpha = 0.0f, float fuse_beta = 0.0f, float fused_output_scale = 1.0f, 'int[] fused_reshape2_shape = {}']
 
 - op : feed
   outputs: {out: Out}
@@ -1357,7 +1357,7 @@
     {start_axis : start_axis, stop_axis : stop_axis}
   extra :
     outputs : [xshape]
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32"]
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = ""]
   manual_signature : [flatten, flatten_grad]
 
 - op : flip
@@ -1381,7 +1381,7 @@
   outputs :
     {out : Out}
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = "",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
   complex_promote : [X, Y]
   manual_signature : [floor_divide]
@@ -1393,7 +1393,7 @@
   outputs :
     {out : Out}
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = "",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
   complex_promote : [X, Y]
   manual_signature : [fmax]
@@ -1405,7 +1405,7 @@
   outputs :
     {out : Out}
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = "",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
   complex_promote : [X, Y]
   manual_signature : [fmin]
@@ -1565,7 +1565,7 @@
     {scale_in : Scale_in, scale_out : Scale_out, scale_in_eltwise : Scale_in_eltwise, scale_weights : Scale_weights}
   extra :
     attrs : [bool use_cudnn = false, float fuse_alpha = 0.0f, float fuse_beta = 0.0f, float Scale_in = 1.0f,
-             float Scale_out = 1.0f, float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool use_mkldnn = true, bool use_onednn = false, str mkldnn_data_type = "float32"]
+             float Scale_out = 1.0f, float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool use_mkldnn = true, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = ""]
 
 - op : fused_conv2d_add_act
   inputs :
@@ -1578,7 +1578,7 @@
     outputs : Outputs
   extra :
     attrs : [bool is_test = false, bool use_cudnn = true, bool fuse_relu_before_depthwise_conv = false, bool use_mkldnn = false, bool use_onednn = false,
-             bool use_quantizer = false, str mkldnn_data_type = "float32", bool fuse_relu = false,
+             bool use_quantizer = false, str mkldnn_data_type = "float32", str onednn_data_type = "", bool fuse_relu = false,
              str fuse_activation = "", float fuse_beta = 0.0f, bool use_addto = false,
              bool fuse_residual_connection = false, float Scale_in = 1.0f, float Scale_out = 1.0f,
              float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool force_fp32_output = false]
@@ -1594,7 +1594,7 @@
     {scale_in : Scale_in, scale_out : Scale_out, scale_in_eltwise : Scale_in_eltwise, scale_weights : Scale_weights}
   extra :
     attrs : [bool use_cudnn = false, float fuse_alpha = 0.0f, float fuse_beta = 0.0f, float Scale_in = 1.0f,
-             float Scale_out = 1.0f, float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool use_mkldnn = true, bool use_onednn = false, str mkldnn_data_type = "float32"]
+             float Scale_out = 1.0f, float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool use_mkldnn = true, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = ""]
 
 - op : fused_elementwise_add
   inputs :
@@ -1741,7 +1741,7 @@
   attrs :
     {scale_data : Scale_data, shift_data : Shift_data, scale_weights : Scale_weights}
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", float Scale_data = 1.0f, float Shift_data = 0.0f, 'float[] Scale_weights = {1.0f}']
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = "", float Scale_data = 1.0f, float Shift_data = 0.0f, 'float[] Scale_weights = {1.0f}']
 
 - op : fusion_lstm
   inputs :
@@ -1765,7 +1765,7 @@
   attrs :
     {scale_data : Scale_data, shift_data : Shift_data, scale_weights : Scale_weights}
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32"]
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = ""]
 
 - op : fusion_repeated_fc_relu
   inputs :
@@ -1844,7 +1844,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32"]
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = ""]
 
 - op : generate_proposals(generate_proposals_v2)
   inputs :
@@ -1873,7 +1873,7 @@
   outputs :
     {out : Out}
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = "",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
 - op : graph_khop_sampler
@@ -1973,7 +1973,7 @@
   outputs :
     {out : Out}
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = "",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
   complex_promote : [X, Y]
 
@@ -2162,7 +2162,7 @@
     mean : Mean
     variance : Variance
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", bool is_test = false]
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = "", bool is_test = false]
   get_expected_kernel_type :
     layer_norm : GetLayerNormExpectedKernelType
 
@@ -2202,7 +2202,7 @@
       tensor_name : ExpandTimes
       tensors_name : expand_times_tensor
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32"]
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = ""]
   manual_signature : [legacy_expand, legacy_expand_grad]
 
 - op : legacy_generate_proposals(generate_proposals)
@@ -2222,7 +2222,7 @@
   outputs :
     {out : Out, x_grad : DX, y_grad : DY}
   extra :
-    attrs : [bool use_quantizer = false, str mkldnn_data_type = "float32",
+    attrs : [bool use_quantizer = false, str mkldnn_data_type = "float32", str onednn_data_type = "",
              float Scale_x = 1.0f, float Scale_y = 1.0f,
              float Scale_out = 1.0f, bool force_fp32_output = false]
   complex_promote : [X, Y]
@@ -2251,7 +2251,7 @@
       tensor_name : Shape
       tensors_name : ShapeTensor
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", bool use_quantizer = false]
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = "", bool use_quantizer = false]
 
 - op : lerp
   backward : lerp_grad
@@ -2473,7 +2473,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", bool force_fp32_output = false]
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = "", bool force_fp32_output = false]
   complex_promote : [X, Y]
 
 - op : matmul_with_flatten (mul)
@@ -2549,7 +2549,7 @@
   outputs :
     {out : Out}
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = "",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
   complex_promote : [X, Y]
   manual_signature : [maximum]
@@ -2654,7 +2654,7 @@
   outputs :
     {out : Out}
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32", str onednn_data_type = "",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
   complex_promote : [X, Y]
   manual_signature : [minimum]
@@ -2751,7 +2751,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = "",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
 - op : mv
@@ -2948,7 +2948,7 @@
     pool2d_double_grad : GetPoolDoubleGradExpectedKernelType
   extra :
     attrs : [bool use_mkldnn = false, bool use_onednn = false, bool use_quantizer = false,
-              str mkldnn_data_type = "float32", bool is_test = false]
+              str mkldnn_data_type = "float32", str onednn_data_type = "", bool is_test = false]
 
 - op : pool3d
   backward : pool3d_grad
@@ -2984,7 +2984,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", bool is_test = false]
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = "", bool is_test = false]
 
 - op : print
   inputs :
@@ -2998,7 +2998,7 @@
   outputs :
     {out: Boxes, var: Variances}
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, bool use_quantizer = false, str mkldnn_data_type = "float32"]
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, bool use_quantizer = false, str mkldnn_data_type = "float32", str onednn_data_type = ""]
 
 - op : prod (reduce_prod)
   backward : prod_grad (reduce_prod_grad)
@@ -3102,7 +3102,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, bool use_cudnn = false, str mkldnn_data_type = "float32"]
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, bool use_cudnn = false, str mkldnn_data_type = "float32", str onednn_data_type = ""]
 
 - op : relu6
   backward : relu6_grad
@@ -3119,7 +3119,7 @@
   outputs :
     {out : Out}
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = "",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
   complex_promote : [X, Y]
   manual_signature : [remainder]
@@ -3180,7 +3180,7 @@
       tensor_name : Shape
       tensors_name : ShapeTensor
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", bool use_quantizer = false]
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = "", bool use_quantizer = false]
 
 - op : resnet_basic_block
   backward: resnet_basic_block_grad
@@ -3289,7 +3289,7 @@
       data_type : float
       support_tensor : false
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32"]
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = ""]
 
 - op : scatter
   backward : scatter_grad
@@ -3408,7 +3408,7 @@
 
 - op : shape
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32"]
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = ""]
 
 - op : shard_index
   inputs :
@@ -3452,7 +3452,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, bool use_cudnn = false, str mkldnn_data_type = "float32"]
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, bool use_cudnn = false, str mkldnn_data_type = "float32", str onednn_data_type = ""]
 
 - op : sign
   backward : sign_grad
@@ -3495,7 +3495,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32"]
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = ""]
   int_array :
     starts :
       data_type : int
@@ -3530,7 +3530,7 @@
     softmax : GetSoftmaxExpectedKernelType
     softmax_grad : GetSoftmaxGradExpectedKernelType
   extra :
-    attrs : [str data_format = "AnyLayout", bool use_cudnn = true, bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", bool is_test = false]
+    attrs : [str data_format = "AnyLayout", bool use_cudnn = true, bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = "", bool is_test = false]
 
 - op : softplus
   backward : softplus_grad, softplus_double_grad
@@ -3619,7 +3619,7 @@
       data_type : int
       support_tensor : true
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32"]
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = ""]
 
 - op : split_with_num
   scalar :
@@ -3659,7 +3659,7 @@
       data_type : int
       support_tensor : true
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32"]
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = ""]
     outputs : [xshape]
 
 - op : stack
@@ -3716,7 +3716,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = "",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
   complex_promote : [X, Y]
 
@@ -3729,7 +3729,7 @@
   attrs:
     { axis : dim,  keepdim : keep_dim, dtype : out_dtype}
   extra :
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32"]
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str mkldnn_data_type = "float32", str onednn_data_type = ""]
   int_array:
       axis :
         data_type : int
@@ -3872,7 +3872,7 @@
     perm : axis
   extra :
     outputs : [XShape]
-    attrs : [bool use_mkldnn = false, bool use_onednn = false, str data_format = "AnyLayout", str mkldnn_data_type = "float32"]
+    attrs : [bool use_mkldnn = false, bool use_onednn = false, str data_format = "AnyLayout", str mkldnn_data_type = "float32", str onednn_data_type = ""]
 
 - op : triangular_solve
   backward : triangular_solve_grad
