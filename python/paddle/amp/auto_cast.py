@@ -48,6 +48,7 @@ if TYPE_CHECKING:
     from typing_extensions import TypeAlias, TypeGuard
 
     from paddle import Tensor
+    from paddle._typing import PlaceLike
     from paddle._typing.dtype_like import _DTypeLiteral
     from paddle.nn import Layer
     from paddle.nn.layer.layers import _StateDict
@@ -1322,3 +1323,73 @@ def decorate(
             master_grad,
             excluded_layers,
         )
+
+
+def is_autocast_enabled(device_type: PlaceLike | None = None) -> bool:
+    """
+    Check whether auto-mixed-precision is enabled in the current context.
+
+    Args:
+        device_type (PlaceLike, optional): The device type to check. This argument is ignored for all devices sharing the same AMP state in paddlepaddle.
+
+    Returns:
+        bool: True if auto-mixed-precision is enabled, False otherwise.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> # Demo1: Check if auto-mixed-precision is enabled by default
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
+            >>> print(paddle.is_autocast_enabled())
+            False
+
+            >>> # Demo2: Enable auto-mixed-precision and check again
+            >>> with paddle.amp.auto_cast():
+            ...     print(paddle.is_autocast_enabled())
+            True
+    """
+    if in_pir_mode():
+        amp_attrs = core._get_amp_attrs()
+        return amp_attrs._amp_level != AMP_LEVEL.O0
+    else:
+        tracer = _dygraph_tracer()
+        if tracer:
+            return tracer._amp_level != core.AmpLevel.O0
+        return False
+
+
+def get_autocast_dtype(device_type: PlaceLike | None = None) -> _DTypeLiteral:
+    """
+    Get the auto-mixed-precision dtype in the current context if autocast is enabled else default AMP dtype(float16).
+
+    Args:
+        device_type (PlaceLike, optional): The device type to check. This argument is ignored for all devices sharing the same AMP state in paddlepaddle.
+
+    Returns:
+        _DTypeLiteral: The current AMP dtype.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> # Demo1: Get default auto-mixed-precision dtype
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
+            >>> print(paddle.get_autocast_dtype())
+            float16
+
+            >>> # Demo2: Enable auto-mixed-precision and get the dtype
+            >>> with paddle.amp.auto_cast():
+            ...     print(paddle.get_autocast_dtype())
+            float16
+    """
+    if not is_autocast_enabled():
+        return "float16"
+    if in_pir_mode():
+        amp_attrs = core._get_amp_attrs()
+        return amp_attrs._amp_dtype
+    else:
+        tracer = _dygraph_tracer()
+        return tracer._amp_dtype

@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import paddle
 from paddle import _C_ops, in_dynamic_mode
@@ -150,14 +150,18 @@ def elu_(x: Tensor, alpha: float = 1.0, name: str | None = None) -> Tensor:
 
 
 def gelu(
-    x: Tensor, approximate: bool = False, name: str | None = None
+    x: Tensor,
+    approximate: Literal["tanh", "none"] | bool = False,
+    name: str | None = None,
 ) -> Tensor:
     r"""
     gelu activation.
 
     The activation function of Gelu is calculated element by element. More information refers to :ref: `Gaussian Error Linear Units`.
 
-    if approximate is True
+    approximate parameter must be True, False, "tanh", "none".
+
+    if approximate is True or "tanh"
 
     .. math::
 
@@ -171,7 +175,7 @@ def gelu(
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
-        approximate (bool, optional): Whether to enable approximation. Default is False.
+        approximate (str|bool, optional): Whether to enable approximation. Default is False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -194,7 +198,22 @@ def gelu(
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-0.15880796,  0.34571400],
              [ 0.84119201,  1.39957154]])
+            >>> out3 = F.gelu(x, "none")
+            >>> print(out3)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.15865529,  0.34573123],
+             [ 0.84134471,  1.39978933]])
+            >>> out4 = F.gelu(x, "tanh")
+            >>> print(out4)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.15880796,  0.34571400],
+             [ 0.84119201,  1.39957154]])
     """
+
+    if approximate == "tanh":
+        approximate = True
+    elif approximate == "none":
+        approximate = False
 
     if in_dynamic_or_pir_mode():
         return _C_ops.gelu(x, approximate)
