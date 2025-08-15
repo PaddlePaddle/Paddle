@@ -2180,3 +2180,15 @@ PHI_DEFINE_EXPORTED_bool(check_cuda_error,
 PHI_DEFINE_EXPORTED_bool(use_default_stream,
                          false,
                          "Whether use default stream.");
+
+/**
+ * DenseTensorIterator related FLAG
+ * Name: FLAGS_use_densetensor_iterator
+ * Since Version: 3.1.1
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Whether use DensetensorIterator.
+ */
+PHI_DEFINE_EXPORTED_bool(use_densetensor_iterator,
+                         false,
+                         "Whether use DensetensorIterator.");

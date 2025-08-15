@@ -25,4 +25,11 @@ void AddRawKernel(const Context& dev_ctx,
                   int axis,
                   DenseTensor* out);
 
+template <typename T, typename Context>
+void AddStrideRawKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& y,
+                        int axis,
+                        DenseTensor* out);
+
 }  // namespace phi
