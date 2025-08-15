@@ -4955,23 +4955,21 @@ void RmsNormInferMeta(const MetaTensor& x,
     has_minus_one |= (x.dims().at(i) == -1);
   }
 
-  // NOTE: Although 'goto' is generally discouraged, its use here replaces two
-  // obscure if-statements, improves readability, and does not cross large code
-  // blocks or affect resource management. The jump is clear and safe in this
-  // context.
-  if (normalized_dims == 0) goto skip_check;
-  if (has_minus_one && !config.is_runtime) goto skip_check;
+  bool skip_check = false;
+  if (normalized_dims == 0) skip_check = true;
+  if (has_minus_one && !config.is_runtime) skip_check = true;
 
-  PADDLE_ENFORCE_EQ(normalized_dims,
-                    norm_weight.dims()[0],
-                    common::errors::InvalidArgument(
-                        "The normalized size of Input(X) must equal to be "
-                        "the size of Weight, but received "
-                        "normalized size of Input(X) is [%d], received size "
-                        "of Weight is [%d]",
-                        normalized_dims,
-                        norm_weight.dims()[0]));
-skip_check:
+  if (!skip_check) {
+    PADDLE_ENFORCE_EQ(normalized_dims,
+                      norm_weight.dims()[0],
+                      common::errors::InvalidArgument(
+                          "The normalized size of Input(X) must equal to be "
+                          "the size of Weight, but received "
+                          "normalized size of Input(X) is [%d], received size "
+                          "of Weight is [%d]",
+                          normalized_dims,
+                          norm_weight.dims()[0]));
+  }
   out->set_dims(x.dims());
 
   if (quant_scale > 0) {
