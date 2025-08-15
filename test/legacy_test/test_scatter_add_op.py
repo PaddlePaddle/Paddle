@@ -1,4 +1,4 @@
-#   Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.#   Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ from paddle.static import InputSpec
 def scatter_add_net(x, axis=-1):
     index = paddle.full_like(x, fill_value=4, dtype='int64')
     n = paddle.numel(x)
-    ind = paddle.arange(n, dtype='float32')
+    ind = paddle.arange(n, dtype='int32').astype(x.dtype)
     value = paddle.reshape(ind, x.shape)
     return paddle.scatter_add(x, axis, index, value)
 
