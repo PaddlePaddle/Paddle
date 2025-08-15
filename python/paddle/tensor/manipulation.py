@@ -4769,29 +4769,29 @@ def repeat(
             >>> x = paddle.to_tensor([[1, 2], [3, 4]])
             >>> out = x.repeat(2)
             >>> print(out)
-            Tensor(shape=[4, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[1, 2],
-             [3, 4],
-             [1, 2],
-             [3, 4]])
+            Tensor(shape=[2, 4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            [[1, 2, 1, 2],
+            [3, 4, 3, 4]])
 
             >>> # Example 3: 2D tensor - multiple repeats
             >>> x = paddle.to_tensor([[1, 2], [3, 4]])
             >>> out = x.repeat([2, 3])
             >>> print(out)
-            Tensor(shape=[4, 6], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[1, 1, 1, 2, 2, 2],
-             [1, 1, 1, 2, 2, 2],
-             [3, 3, 3, 4, 4, 4],
-             [3, 3, 3, 4, 4, 4]])
+            Tensor(shape=[4, 6], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            [[1, 2, 1, 2, 1, 2],
+            [3, 4, 3, 4, 3, 4],
+            [1, 2, 1, 2, 1, 2],
+            [3, 4, 3, 4, 3, 4]])
 
             >>> # Example 4: 3D tensor - mixed repeats
             >>> x = paddle.to_tensor([[[1, 2], [3, 4]]])
             >>> out = x.repeat([2, 1, 3])
             >>> print(out)
-            Tensor(shape=[2, 1, 6], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[[1, 1, 1, 2, 2, 2]],
-             [[1, 1, 1, 2, 2, 2]]])
+            Tensor(shape=[2, 2, 6], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            [[[1, 2, 1, 2, 1, 2],
+            [3, 4, 3, 4, 3, 4]],
+            [[1, 2, 1, 2, 1, 2],
+            [3, 4, 3, 4, 3, 4]]])
     """
     return tile(input, repeat_times=repeats)
 
