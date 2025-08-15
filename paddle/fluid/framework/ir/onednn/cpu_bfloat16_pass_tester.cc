@@ -28,7 +28,7 @@ void SetOp(ProgramDesc* prog,
            const std::string& onednn_data_type = "float32") {
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
-  op->SetAttr("use_mkldnn", use_onednn);
+  op->SetAttr("use_onednn", use_onednn);
   op->SetAttr("name", name);
 
   if (type == "conv2d") {
