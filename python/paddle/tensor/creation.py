@@ -24,7 +24,6 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
-from paddle.device import _convert_to_place
 from paddle.utils.decorator_utils import ParamAliasDecorator, SizeArgsDecorator
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -1094,10 +1093,15 @@ def full_like(
     if in_dynamic_or_pir_mode():
         if in_dynamic_mode():
             tensor = _C_ops.full_like(
-                x, fill_value, dtype, _convert_to_place(device)
+                x, fill_value, dtype, _get_paddle_place(device)
             )
         else:
-            tensor = _C_ops.full_like(x, fill_value, dtype, core.Place())
+            tensor = _C_ops.full_like(
+                x,
+                fill_value,
+                dtype,
+                core.Place() if device is None else _get_paddle_place(device),
+            )
         if requires_grad is True:
             tensor.stop_gradient = False
         return tensor
@@ -1159,7 +1163,7 @@ def fill_constant(
         if place is None:
             place = _current_expected_place()
         else:
-            place = _convert_to_place(place)
+            place = _get_paddle_place(place)
 
         if force_cpu:
             place = core.CPUPlace()
@@ -1267,6 +1271,7 @@ def ones(
     shape: ShapeLike,
     dtype: DTypeLike | None = None,
     *,
+    out: paddle.Tensor | None = None,
     device: PlaceLike | None = None,
     requires_grad: bool = False,
     name: str | None = None,
@@ -1280,6 +1285,7 @@ def ones(
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         dtype (np.dtype|str, optional): Data type of output Tensor, it should be one of
             bool, float16, float32, float64, int32 and int64. If it is set to None, the data type will be float32.
+        out(Tensor, optional): The output tensor.
         device(PlaceLike|None, optional): The desired device of returned tensor.
             if None, uses the current device for the default tensor type (see paddle.device.set_device()).
             device will be the CPU for CPU tensor types and the current CUDA device for CUDA tensor types. Default: None.
@@ -1321,6 +1327,7 @@ def ones(
         shape,
         1,
         dtype,
+        out=out,
         device=device,
         requires_grad=requires_grad,
         name=name,
@@ -1386,6 +1393,7 @@ def zeros(
     shape: ShapeLike,
     dtype: DTypeLike | None = None,
     *,
+    out: paddle.Tensor | None = None,
     device: PlaceLike | None = None,
     requires_grad: bool = False,
     name: str | None = None,
@@ -1399,12 +1407,13 @@ def zeros(
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         dtype(np.dtype|str, optional): Data type of output Tensor, it supports
             bool, float16, float32, float64, int32 and int64. Default: if None, the data type is float32.
-        name(str|None, optional): The default value is None.  Normally there is no need for user to set this
             property.  For more information, please refer to :ref:`api_guide_Name`.
+        out(Tensor, optional): The output tensor.
         device(PlaceLike|None, optional): The desired device of returned tensor.
             if None, uses the current device for the default tensor type (see paddle.device.set_device()).
             device will be the CPU for CPU tensor types and the current CUDA device for CUDA tensor types. Default: None.
         requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
+        name(str|None, optional): The default value is None.  Normally there is no need for user to set this
 
     Returns:
         Tensor: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 0.
@@ -1441,6 +1450,7 @@ def zeros(
         shape,
         0,
         dtype,
+        out=out,
         device=device,
         requires_grad=requires_grad,
         name=name,
@@ -1512,6 +1522,7 @@ def eye(
     num_columns: int | None = None,
     dtype: DTypeLike | None = None,
     *,
+    out: paddle.Tensor | None = None,
     device: PlaceLike | None = None,
     requires_grad: bool = False,
     name: str | None = None,
@@ -1527,6 +1538,7 @@ def eye(
         dtype(np.dtype|str, optional): The data type of the returned Tensor.
             It should be int32, int64, float16, float32, float64, complex64, complex128. Default: if None, the data type
             is float32.
+        out(Tensor, optional): The output tensor.
         device(PlaceLike|None, optional): The desired device of returned tensor.
             if None, uses the current device for the default tensor type (see paddle.device.set_device()).
             device will be the CPU for CPU tensor types and the current CUDA device for CUDA tensor types. Default: None.
@@ -1577,10 +1589,11 @@ def eye(
             num_columns,
             dtype,
             (
-                _convert_to_place(device)
+                _get_paddle_place(device)
                 if device is not None
                 else _current_expected_place()
             ),
+            out=out,
         )
         if requires_grad is True:
             tensor.stop_gradient = False
@@ -1625,6 +1638,7 @@ def full(
     fill_value: bool | float | paddle.Tensor,
     dtype: DTypeLike | None = None,
     *,
+    out: paddle.Tensor | None = None,
     device: PlaceLike | None = None,
     requires_grad: bool = False,
     name: str | None = None,
@@ -1647,6 +1661,7 @@ def full(
         dtype(np.dtype|str, optional): Data type of the output Tensor
             which can be float16, float32, float64, int32, int64, if dtype is `None`, the data
             type of created Tensor is `float32`.
+        out(Tensor, optional): The output tensor.
         device(PlaceLike|None, optional): The desired device of returned tensor.
             if None, uses the current device for the default tensor type (see paddle.device.set_device()).
             device will be the CPU for CPU tensor types and the current CUDA device for CUDA tensor types. Default: None.
@@ -1702,7 +1717,12 @@ def full(
             dtype = paddle.get_default_dtype()
 
     tensor = fill_constant(
-        shape=shape, dtype=dtype, value=fill_value, place=device, name=name
+        shape=shape,
+        dtype=dtype,
+        value=fill_value,
+        out=out,
+        place=device,
+        name=name,
     )
     if requires_grad is True:
         tensor.stop_gradient = False
@@ -1714,6 +1734,10 @@ def arange(
     end: float | paddle.Tensor | None = None,
     step: float | paddle.Tensor = 1,
     dtype: DTypeLike | None = None,
+    *,
+    out: paddle.Tensor | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
     name: str | None = None,
 ) -> paddle.Tensor:
     """
@@ -1742,6 +1766,11 @@ def arange(
         dtype(str|np.dtype, optional): The data type of the
             output tensor. Supported data types: int32, int64, float32, float64.
             If ``dtype`` is None, the data type is float32. Default is None.
+        out(Tensor, optional): The output tensor.
+        device(PlaceLike|None, optional): The desired device of returned tensor.
+            if None, uses the current device for the default tensor type (see paddle.device.set_device()).
+            device will be the CPU for CPU tensor types and the current CUDA device for CUDA tensor types. Default: None.
+        requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1806,7 +1835,20 @@ def arange(
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if is_value_input and in_pir_mode():
-        return _C_ops.arange(start, end, step, dtype, _current_expected_place())
+        tensor = _C_ops.arange(
+            start,
+            end,
+            step,
+            dtype,
+            (
+                _get_paddle_place(device)
+                if device is not None
+                else _current_expected_place()
+            ),
+            out=out,
+        )
+        tensor.stop_gradient = not requires_grad
+        return tensor
 
     if not isinstance(start, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
@@ -1827,7 +1869,20 @@ def arange(
         step = paddle.cast(step, dtype)
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.arange(start, end, step, dtype, _current_expected_place())
+        tensor = _C_ops.arange(
+            start,
+            end,
+            step,
+            dtype,
+            (
+                _get_paddle_place(device)
+                if device is not None
+                else _current_expected_place()
+            ),
+            out=out,
+        )
+        tensor.stop_gradient = not requires_grad
+        return tensor
     else:
         check_dtype(
             dtype,
@@ -2572,6 +2627,7 @@ def empty(
     shape: ShapeLike,
     dtype: DTypeLike | None = None,
     *,
+    out: paddle.Tensor | None = None,
     device: PlaceLike | None = None,
     requires_grad: bool = False,
     name: str | None = None,
@@ -2587,6 +2643,7 @@ def empty(
             which can be bool, float16, float32, float64, int32, int64, complex64, complex128 if dtype is `None`, the data
             type of created Tensor use global default dtype (see ``get_default_dtype``
             for details).
+        out(Tensor, optional): The output tensor.
         device(PlaceLike|None, optional): The desired device of returned tensor.
             if None, uses the current device for the default tensor type (see paddle.device.set_device()).
             device will be the CPU for CPU tensor types and the current CUDA device for CUDA tensor types. Default: None.
@@ -2672,10 +2729,11 @@ def empty(
             shape,
             convert_np_dtype_to_dtype_(dtype),
             (
-                _convert_to_place(device)
+                _get_paddle_place(device)
                 if device is not None
                 else _current_expected_place()
             ),
+            out=out,
         )
         if requires_grad is True:
             tensor.stop_gradient = False
@@ -2788,7 +2846,7 @@ def empty_like(
             x_shape,
             convert_np_dtype_to_dtype_(dtype),
             (
-                _convert_to_place(device)
+                _get_paddle_place(device)
                 if device is not None
                 else _current_expected_place()
             ),
@@ -3197,7 +3255,7 @@ def complex(
         real (Tensor): The real component. The data type should be 'float32' or 'float64'.
         imag (Tensor): The image component. The data type should be the same as ``real``.
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-        out (Tensor|None, optional): The output tensor. Default: None.
+        out(Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor, The output tensor. The data type is 'complex64' or 'complex128', with the same precision as ``real`` and ``imag``.

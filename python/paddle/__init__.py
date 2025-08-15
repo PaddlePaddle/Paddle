@@ -369,6 +369,8 @@ from .tensor.manipulation import (
     unstack,
     view,
     view_as,
+    view_as_complex,
+    view_as_real,
     vsplit,
     vstack,
 )
@@ -1167,7 +1169,9 @@ __all__ = [
     'acosh',
     'atanh',
     'as_complex',
+    'view_as_complex',
     'as_real',
+    'view_as_real',
     'diff',
     'angle',
     'fmax',

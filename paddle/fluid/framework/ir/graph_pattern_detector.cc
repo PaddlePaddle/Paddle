@@ -3289,7 +3289,7 @@ PDNode *patterns::UnsupportedBfloat16::operator()() {
   return op;
 }
 
-PDNode *patterns::Bloat16Ops::operator()() {
+PDNode *patterns::Bfloat16Ops::operator()() {
   auto op = pattern->NewNode(op_repr())->assert_is_op();
   op->assert_more([&](Node *node) {
     return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
