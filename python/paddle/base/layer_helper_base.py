@@ -340,6 +340,7 @@ class LayerHelperBase:
         default_initializer=None,
         stop_gradient=False,
         type=core.VarDesc.VarType.DENSE_TENSOR,
+        device=None,
     ):
         """Create parameters for this layers.
 
@@ -349,6 +350,7 @@ class LayerHelperBase:
                dtype: data type of this parameter
                is_bias: if this is a bias parameter
                default_initializer: set the default initializer for this parameter
+               device: device where this parameter will be placed
 
         Returns created parameter Variable.
         """
@@ -439,13 +441,16 @@ class LayerHelperBase:
                     "Please check the parameter attr value passed to self.create_parameter or "
                     "constructor of dygraph Layers"
                 )
-            return self.main_program.global_block().create_parameter(
+            param = self.main_program.global_block().create_parameter(
                 dtype=dtype,
                 shape=shape,
                 type=type,
                 stop_gradient=stop_gradient,
                 **attr._to_kwargs(with_initializer=True),
             )
+            if device is not None:
+                param = param.to(device)
+            return param
         else:
             if in_pir_mode():
                 if isinstance(dtype, core.VarDesc.VarType):
