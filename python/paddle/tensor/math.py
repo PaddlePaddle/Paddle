@@ -919,7 +919,7 @@ def subtract_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     return _C_ops.subtract_(x, y)
 
 
-@ParamAliasDecorator({"x": ["input"], "y": ["other"]})
+@param_two_alias(["x", "input"], ["y", "other"])
 def divide(
     x: Tensor,
     y: Tensor,
@@ -1005,7 +1005,7 @@ def divide(
         raise ValueError(msg)
 
 
-@ParamAliasDecorator({"x": ["input"], "y": ["other"]})
+@param_two_alias(["x", "input"], ["y", "other"])
 @inplace_apis_in_dygraph_only
 def divide_(
     x: Tensor,
