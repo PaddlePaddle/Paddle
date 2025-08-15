@@ -26,16 +26,14 @@ if TYPE_CHECKING:
 
 
 def embedding_grad_add_to_(
-    hidden_states: Tensor,
-    weight: Tensor,
-    main_grad: Tensor,
-    padding_idx: int = -1,
+    token_indices: Tensor,
+    main_grad_: Tensor,
+    out_grad: Tensor,
     name: str | None = None,
 ) -> Tensor:
     if in_dynamic_or_pir_mode():
         return _C_ops.embedding_grad_add_to_(
-            hidden_states,
-            weight,
-            main_grad,
-            padding_idx,
+            token_indices,
+            main_grad_,
+            out_grad,
         )

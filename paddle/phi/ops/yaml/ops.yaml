@@ -1692,16 +1692,16 @@
   traits: pir::UnaryElementWiseTrait
 
 - op : embedding_grad_add_to
-  args : (Tensor hidden_states, Tensor weight, Tensor main_grad, int64_t padding_idx=-1)
+  args : (Tensor token_indices, Tensor main_grad_, Tensor out_grad)
   output : Tensor(main_grad_out)
   infer_meta :
     func : UnchangedInferMeta
-    param : [main_grad]
+    param : [main_grad_]
   kernel :
     func : embedding_grad_add_to
-    param : [hidden_states, weight, main_grad, padding_idx]
-    data_type : main_grad
-  inplace : (main_grad -> main_grad_out)
+    param : [token_indices, main_grad_, out_grad]
+    data_type : main_grad_
+  inplace : (main_grad_ -> main_grad_out)
 
 - op : embedding_with_scaled_gradient
   args : (Tensor x, Tensor weight, int64_t padding_idx=-1)
