@@ -465,7 +465,7 @@ def nonzero(x: Tensor, as_tuple: Literal[True] = ...) -> tuple[Tensor, ...]: ...
 def nonzero(x: Tensor, as_tuple: bool = ...) -> Tensor | tuple[Tensor, ...]: ...
 
 
-@param_one_alias({'x': ['input']})
+@param_one_alias(['x', 'input'])
 def nonzero(x: Tensor, out: Tensor | None = None, as_tuple=False):
     """
     Return a tensor containing the indices of all non-zero elements of the `input`
