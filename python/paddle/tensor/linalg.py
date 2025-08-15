@@ -201,7 +201,7 @@ def permute(input: Tensor, dims: Sequence[int]) -> Tensor:
 
     Args:
         input (Tensor): the input tensor.
-        dims (tuple|list|int): The desired ordering of dimensions. Supports passing as variable-length
+        *dims (tuple|list|int): The desired ordering of dimensions. Supports passing as variable-length
             arguments (e.g., permute(x, 1, 0, 2)) or as a single list/tuple (e.g., permute(x, [1, 0, 2])).
 
     Returns:
@@ -217,7 +217,7 @@ def permute(input: Tensor, dims: Sequence[int]) -> Tensor:
             >>> print(y.shape)
             [3, 2, 4]
 
-            >>> y = x.permute(1, 0, 2)
+            >>> y = x.permute([1, 0, 2])
             >>> print(y.shape)
             [3, 2, 4]
     """
