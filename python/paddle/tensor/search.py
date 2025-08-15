@@ -466,7 +466,7 @@ def nonzero(x: Tensor, as_tuple: bool = ...) -> Tensor | tuple[Tensor, ...]: ...
 
 
 @param_one_alias(['x', 'input'])
-def nonzero(x: Tensor, out: Tensor | None = None, as_tuple=False):
+def nonzero(x: Tensor, as_tuple=False, *, out: Tensor | None = None):
     """
     Return a tensor containing the indices of all non-zero elements of the `input`
     tensor. If as_tuple is True, return a tuple of 1-D tensors, one for each dimension
@@ -483,8 +483,8 @@ def nonzero(x: Tensor, out: Tensor | None = None, as_tuple=False):
     Args:
         x (Tensor): The input tensor variable.
             alias: ``input``.
-        out (Tensor|None, optional): The output tensor. Default: None.
         as_tuple (bool, optional): Return type, Tensor or tuple of Tensor.
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor or tuple of Tensor, The data type is int64.
