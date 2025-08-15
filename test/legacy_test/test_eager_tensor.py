@@ -377,51 +377,42 @@ class TestEagerTensor(unittest.TestCase):
         self.assertEqual(var.dtype, paddle.float32)
         self.assertEqual(var.type, core.VarDesc.VarType.DENSE_TENSOR)
 
-    def test_to_tensor_param_alias(self):
-        """Test paddle.to_tensor parameter mapping ("place": ["device"])."""
-        # 1. Test equivalence of place and device parameters
-        tensor_place = paddle.to_tensor(self.array, place=paddle.CPUPlace())
-        tensor_device = paddle.to_tensor(self.array, device=paddle.CPUPlace())
+    def test_tensor_pin_memory(self):
+        if core.is_compiled_with_cuda():
+            tensor_res = paddle.tensor(
+                self.array, device="gpu", pin_memory=True
+            )
+            self.assertEqual(tensor_res.place, core.CUDAPinnedPlace())
 
-        np.testing.assert_array_equal(
-            tensor_device.numpy(), tensor_place.numpy()
-        )
-        self.assertEqual(tensor_device.place, tensor_place.place)
+        if core.is_compiled_with_xpu():
+            tensor_res = paddle.tensor(
+                self.array, device="xpu", pin_memory=True
+            )
+            self.assertEqual(tensor_res.place, core.XPUPinnedPlace())
 
-        # 2. Test conflict between place and device (should raise KeyError)
-        with self.assertRaises(ValueError) as context:
-            paddle.to_tensor(
-                self.array,
-                place=paddle.CPUPlace(),
-                device=paddle.CPUPlace(),  # Conflict
+        with self.assertRaises(RuntimeError) as context:
+            paddle.tensor(
+                self.array, device="cpu", pin_memory=True  # no support
             )
         self.assertIn(
-            "Cannot specify both 'place' and its alias 'device'",
+            "Pinning memory is not supported",
             str(context.exception),
         )
 
-        # 3. Test dtype and stop_gradient consistency
-        tensor1 = paddle.to_tensor(
-            self.array, dtype="float32", device=paddle.CPUPlace()
+    def test_tensor_and_to_tensor(self):
+        tensor_res = paddle.tensor(
+            self.array, dtype="float32", device="cpu", requires_grad=True
         )
-        tensor2 = paddle.to_tensor(
-            self.array, dtype="float32", place=paddle.CPUPlace()
+        tensor_target = paddle.to_tensor(
+            self.array, dtype="float32", device="cpu", stop_gradient=False
         )
-
-        self.assertEqual(tensor1.dtype, tensor2.dtype)
-        self.assertEqual(tensor1.dtype, paddle.float32)
-        self.assertTrue(tensor1.stop_gradient)
-        self.assertEqual(tensor1.stop_gradient, tensor2.stop_gradient)
-
-        # 4. Test cross-device compatibility (CPU/GPU)
-        for device in [paddle.CPUPlace()] + (
-            [paddle.CUDAPlace(0)] if core.is_compiled_with_cuda() else []
-        ):
-            tensor_device = paddle.to_tensor(self.array, device=device)
-            tensor_place = paddle.to_tensor(self.array, place=device)
-
-            self.assertEqual(tensor_device.place, tensor_place.place)
-            self.assertEqual(tensor_device.place, device)
+        np.testing.assert_array_equal(tensor_res.numpy(), tensor_target.numpy())
+        self.assertEqual(tensor_res.place, tensor_target.place)
+        self.assertEqual(tensor_res.place, core.CPUPlace())
+        self.assertEqual(tensor_res.dtype, tensor_target.dtype)
+        self.assertEqual(tensor_res.dtype, paddle.float32)
+        self.assertEqual(tensor_res.stop_gradient, tensor_target.stop_gradient)
+        self.assertEqual(tensor_res.stop_gradient, False)
 
     def test_list_to_tensor(self):
         array = [[[1, 2], [1, 2], [1.0, 2]], [[1, 2], [1, 2], [1, 2]]]
