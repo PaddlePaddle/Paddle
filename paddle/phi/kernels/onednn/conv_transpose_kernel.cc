@@ -376,7 +376,12 @@ void Execute(const OneDNNContext& dev_ctx,
   std::shared_ptr<dnnl::memory> dst_memory_p;
   std::unordered_map<int, dnnl::memory> args;
 
+  // Note(ZKK):
+  // Add thread_id to cache_key
+  // fix issue https://github.com/PaddlePaddle/PaddleOCR/issues/15621
+  // https://github.com/PaddlePaddle/PaddleOCR/issues/15393
   std::string cache_key = funcs::CreateKey(dev_ctx,
+                                           phi::funcs::ThreadIDasStr(),
                                            dev_ctx.GetInputsName("Input")[0],
                                            dev_ctx.GetInputsName("Filter")[0],
                                            common::vectorize(x->dims()),
