@@ -1864,6 +1864,14 @@ def get_headers():
         + list(  # common api
             find_files('*.h', paddle_source_dir + '/paddle/common')
         )
+        # torch like apis
+        + list(
+            find_files(
+                '*.h',
+                paddle_source_dir + '/paddle/phi/api/include/torch_like_api',
+                recursive=True,
+            )
+        )
         # phi level api headers (low level api, for training only)
         + list(  # phi extension header
             find_files('*.h', paddle_source_dir + '/paddle/phi')

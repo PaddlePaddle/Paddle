@@ -1337,12 +1337,8 @@ headers = (
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api/ext')) +  # custom op api
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api/include')) +  # phi api
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/common')) +  # phi common headers
-    # TODO: sync to setup.py
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api/include/torch_like_api/aten')) +  # torch like apis
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api/include/torch_like_api/c10')) +  # torch like apis
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api/include/torch_like_api/c10/cuda')) +  # torch like apis
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api/include/torch_like_api/compat')) +  # torch like apis
-    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api/include/torch_like_api/torch')) +  # torch like apis
+    # torch like apis
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api/include/torch_like_api', recursive=True)) +
     # phi level api headers (low level api, for training only)
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi')) +  # phi extension header
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/include', recursive=True)) +  # phi include headers
