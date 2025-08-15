@@ -5448,6 +5448,53 @@ def any(
         return out
 
 
+def broadcast_shapes(*shapes: Sequence[int]) -> list[int]:
+    """
+    The function returns the shape of doing operation with broadcasting on tensors of shape list.
+
+    Note:
+        If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+
+    Args:
+        *shapes (list[int]|tuple[int]): A shape list of multiple tensors.
+
+
+    Returns:
+        list[int], the result shape.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> shape = paddle.broadcast_shapes([2, 1, 3], [1, 3, 1])
+            >>> shape
+            [2, 3, 3]
+
+            >>> # shape = paddle.broadcast_shapes([2, 1, 3], [3, 3, 1])
+            >>> # ValueError (terminated with error message).
+
+            >>> shape = paddle.broadcast_shapes([5, 1, 3], [1, 4, 1], [1, 1, 3])
+            >>> shape
+            [5, 4, 3]
+
+            >>> # shape = paddle.broadcast_shapes([5, 1, 3], [1, 4, 1], [1, 2, 3])
+            >>> # ValueError (terminated with error message).
+
+    """
+    if len(shapes) == 0:
+        return []
+    elif len(shapes) == 1:
+        return list(shapes[0])
+    else:
+        current_shape = list(shapes[0])
+        for next_shape in shapes[1:]:
+            current_shape = broadcast_shape(current_shape, next_shape)
+        return current_shape
+
+
 def broadcast_shape(
     x_shape: Sequence[int], y_shape: Sequence[int]
 ) -> list[int]:

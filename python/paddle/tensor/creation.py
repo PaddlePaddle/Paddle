@@ -1852,14 +1852,31 @@ def arange(
 
     if not isinstance(start, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
+            if not np.isfinite(start):
+                raise ValueError(
+                    "The value of start must be finite, but received: "
+                    f"{start}."
+                )
             start = fill_constant([1], dtype, start, force_cpu=True)
     elif start.dtype != dtype:
+        if in_dynamic_mode() and not paddle.isfinite(start):
+            raise ValueError(
+                "The value of start must be finite, but received: " f"{start}."
+            )
         start = paddle.cast(start, dtype)
 
     if not isinstance(end, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
+            if not np.isfinite(end):
+                raise ValueError(
+                    "The value of end must be finite, but received: " f"{end}."
+                )
             end = fill_constant([1], dtype, end, force_cpu=True)
     elif end.dtype != dtype:
+        if in_dynamic_mode() and not paddle.isfinite(end):
+            raise ValueError(
+                "The value of end must be finite, but received: " f"{end}."
+            )
         end = paddle.cast(end, dtype)
 
     if not isinstance(step, (Variable, paddle.pir.Value)):
