@@ -283,5 +283,48 @@ class TestEmptyLikeAPI_StaticForBF16Op(TestEmptyLikeAPICommon):
                 self.__check_out__(res[0])
 
 
+class TestEmptyLikeAPI_Alias(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_check_output(self):
+        """
+        Test the alias of empty_like function.
+        ``empty_like(x=x)`` is equivalent to ``empty_like(input=x)``
+        """
+        shape_cases = [
+            [2],
+            [2, 4],
+            [2, 4, 8],
+        ]
+        dtype_cases = [
+            None,  # test default dtype
+            "float32",
+            "float64",
+            "int32",
+            "int64",
+            "bool",
+        ]
+
+        for shape in shape_cases:
+            for dtype in dtype_cases:
+                x = paddle.rand(shape)
+                for param_alias in ["x", "input"]:
+                    if dtype is None:
+                        out = paddle.empty_like(**{param_alias: x})
+                        expected_shape = x.shape
+                        expected_dtype = x.dtype
+                    else:
+                        out = paddle.empty_like(**{param_alias: x}, dtype=dtype)
+                        expected_shape = x.shape
+                        expected_dtype = paddle.to_tensor(
+                            [1], dtype=dtype
+                        ).dtype
+
+                    # Verify shape and dtype
+                    self.assertEqual(out.shape, expected_shape)
+                    self.assertEqual(out.dtype, expected_dtype)
+
+
 if __name__ == '__main__':
     unittest.main()

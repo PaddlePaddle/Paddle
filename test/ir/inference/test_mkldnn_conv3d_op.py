@@ -123,7 +123,7 @@ class TestPirOneDNNPad3DOp(PirOnednnAutoScanTest):
                 "paddings": kwargs["paddings"],
                 "strides": kwargs["strides"],
                 "is_test": True,
-                "use_mkldnn": True,
+                "use_onednn": True,
             },
         )
 
