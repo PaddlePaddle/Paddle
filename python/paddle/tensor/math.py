@@ -25,7 +25,10 @@ from paddle import _C_ops
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc, dygraph_utils
 from paddle.pir import Value
-from paddle.utils.decorator_utils import ParamAliasDecorator
+from paddle.utils.decorator_utils import (
+    ParamAliasDecorator,
+    XYInputAliasDecorator,
+)
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
@@ -703,7 +706,7 @@ def _elementwise_op(helper):
     return helper.append_activation(out)
 
 
-@ParamAliasDecorator({"x": ["input"], "y": ["other"]})
+@XYInputAliasDecorator
 def add(
     x: Tensor,
     y: Tensor,
@@ -795,7 +798,7 @@ def add(
         return output
 
 
-@ParamAliasDecorator({"x": ["input"], "y": ["other"]})
+@XYInputAliasDecorator
 @inplace_apis_in_dygraph_only
 def add_(
     x: Tensor,

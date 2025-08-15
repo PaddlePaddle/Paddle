@@ -92,6 +92,38 @@ class ParamAliasDecorator(DecoratorBase):
         return args, processed_kwargs
 
 
+class XYInputAliasDecorator:
+    """parameter alias converter for x/y-style functions.
+
+    Specifically handles these alias conversions:
+    - 'input' → 'x' parameter
+    - 'other' → 'y' parameter
+
+    Raises:
+        ValueError: If both original and alias parameters are provided.
+    """
+
+    def __init__(self, func):
+        self.func = func
+
+    def __call__(self, *args, **kwargs):
+        if 'input' in kwargs:
+            if 'x' in kwargs:
+                raise ValueError(
+                    "Parameter conflict: both 'x' and 'input' provided"
+                )
+            kwargs['x'] = kwargs.pop('input')
+
+        if 'other' in kwargs:
+            if 'y' in kwargs:
+                raise ValueError(
+                    "Parameter conflict: both 'y' and 'other' provided"
+                )
+            kwargs['y'] = kwargs.pop('other')
+
+        return self.func(*args, **kwargs)
+
+
 def param_one_alias(alias_mapping):
     def decorator(func):
         def wrapper(*args, **kwargs):
