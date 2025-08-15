@@ -1905,9 +1905,9 @@ def _tril_triu_op(helper: LayerHelper) -> paddle.Tensor:
 def tril(
     x: paddle.Tensor,
     diagonal: int = 0,
+    name: str | None = None,
     *,
     out: paddle.Tensor | None = None,
-    name: str | None = None,
 ) -> paddle.Tensor:
     r"""
     Returns the lower triangular part of a matrix (2-D tensor) or batch
@@ -2014,9 +2014,9 @@ def tril_(
 def triu(
     x: paddle.Tensor,
     diagonal: int = 0,
+    name: str | None = None,
     *,
     out: paddle.Tensor | None = None,
-    name: str | None = None,
 ) -> paddle.Tensor:
     r"""
     Return the upper triangular part of a matrix (2-D tensor) or batch of matrices
