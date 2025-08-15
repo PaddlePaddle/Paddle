@@ -241,7 +241,8 @@ class SizeArgsDecorator(DecoratorBase):
         return args, kwargs
 
 
-"""
+def view_decorator():
+    """
     Usage Example:
     paddle.view(x=tensor_x, shape_or_dtype=[-1, 1, 3], name=None)
     tensor_x.view(paddle.float32) -> paddle.view(tensor_x, paddle.float32)
@@ -249,10 +250,8 @@ class SizeArgsDecorator(DecoratorBase):
     tensor_x.view([-1, 1, 3]) -> paddle.view(tensor_x, [-1, 1, 3])
     tensor_x.view(-1, 1, 3) -> paddle.view(tensor_x, -1, 1, 3)
     tensor_x.view(size=[-1, 1, 3]) -> paddle.view(tensor_x, size=[-1, 1, 3])
-"""
+    """
 
-
-def view_decorator():
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
