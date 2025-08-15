@@ -161,10 +161,6 @@ class TestSaveLoadPickle(unittest.TestCase):
                 )
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "Safetensors load functions only support cuda and cpu.",
-)
 class TestSaveLoadSafetensors(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
