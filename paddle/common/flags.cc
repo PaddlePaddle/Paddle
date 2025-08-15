@@ -2190,5 +2190,5 @@ PHI_DEFINE_EXPORTED_bool(use_default_stream,
  * Note: Whether use DensetensorIterator.
  */
 PHI_DEFINE_EXPORTED_bool(use_densetensor_iterator,
-                         false,
+                         true,
                          "Whether use DensetensorIterator.");
