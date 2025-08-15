@@ -81,6 +81,7 @@ from .moe_utils import (
     _dist_reshape,
     _dtensor_from_local,
     _NdMeshAlltoAll,
+    _only_reshard_mesh_shape,
     _reshard_mesh_shape,
     _specific_alltoall_dim,
 )
@@ -851,6 +852,8 @@ def reshard(
             >>> print(out_d_tensor)
 
     """
+    if _only_reshard_mesh_shape(dist_tensor, mesh, placements):
+        return _dist_reshape(dist_tensor, dist_tensor.shape, mesh, placements)
 
     if paddle.framework.in_dynamic_mode():
         # TODO(LiYuRio): static logic here, reshard should be changed for dygraph logic
