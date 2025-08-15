@@ -389,7 +389,7 @@ def _parse_load_config(configs):
     inner_config.params_filename = configs.get('params_filename', None)
     inner_config.keep_name_table = configs.get('keep_name_table', None)
     inner_config.return_numpy = configs.get('return_numpy', False)
-    inner_config.safetensors = configs.get('safetensors', False)
+    inner_config.safetensors = configs.get('safetensors', True)
 
     return inner_config
 
@@ -412,7 +412,7 @@ def _parse_save_config(configs):
     inner_config = _SaveLoadConfig()
     inner_config.use_binary_format = configs.get('use_binary_format', False)
     inner_config.pickle_protocol = configs.get('pickle_protocol', None)
-    inner_config.safetensors = configs.get('safetensors', False)
+    inner_config.safetensors = configs.get('safetensors', True)
 
     return inner_config
 
@@ -1224,118 +1224,123 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
         config = _parse_load_config(configs)
         exception_type = pickle.UnpicklingError
         try:
-            if config.safetensors:
-                from safetensors.paddle import load_file
+            from safetensors.paddle import load_file
 
-                load_result = load_file(path)
-                return load_result
-            with _open_file_buffer(path, 'rb') as f:
-                # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
-                if (
-                    _is_file_path(path)
-                    and sys.platform == 'darwin'
-                    and sys.version_info.major == 3
-                ):
-                    load_result = _pickle_loads_mac(path, f)
-                else:
-                    load_result = pickle.load(f, encoding='latin1')
-
-                # TODO(weixin):If `obj` is any object, the judgment condition should be more precise.
-                if isinstance(load_result, dict):
-                    load_result = _pack_loaded_dict(load_result)
-                    # paddle2.0: paddle.save/load
-                    if "StructuredToParameterName@@" in load_result:
-                        for key, name in load_result[
-                            "StructuredToParameterName@@"
-                        ].items():
-                            if isinstance(load_result[key], np.ndarray):
-                                load_result[key] = _ndarray_to_tensor(
-                                    load_result[key], config.return_numpy
-                                )
-                                # default name is "generatedxxx" which is set in Tensor init, if not set
-                                if not config.return_numpy and getattr(
-                                    load_result[key], "name", ""
-                                ):
-                                    load_result[key].name = name
-
-                        if (
-                            not config.keep_name_table
-                            and "StructuredToParameterName@@" in load_result
-                        ):
-                            del load_result["StructuredToParameterName@@"]
+            load_result = load_file(path)
+            return load_result
+        except:
+            try:
+                with _open_file_buffer(path, 'rb') as f:
+                    # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
+                    if (
+                        _is_file_path(path)
+                        and sys.platform == 'darwin'
+                        and sys.version_info.major == 3
+                    ):
+                        load_result = _pickle_loads_mac(path, f)
                     else:
-                        # paddle2.1 static.save/load
+                        load_result = pickle.load(f, encoding='latin1')
+
+                    # TODO(weixin):If `obj` is any object, the judgment condition should be more precise.
+                    if isinstance(load_result, dict):
+                        load_result = _pack_loaded_dict(load_result)
+                        # paddle2.0: paddle.save/load
+                        if "StructuredToParameterName@@" in load_result:
+                            for key, name in load_result[
+                                "StructuredToParameterName@@"
+                            ].items():
+                                if isinstance(load_result[key], np.ndarray):
+                                    load_result[key] = _ndarray_to_tensor(
+                                        load_result[key], config.return_numpy
+                                    )
+                                    # default name is "generatedxxx" which is set in Tensor init, if not set
+                                    if not config.return_numpy and getattr(
+                                        load_result[key], "name", ""
+                                    ):
+                                        load_result[key].name = name
+
+                            if (
+                                not config.keep_name_table
+                                and "StructuredToParameterName@@" in load_result
+                            ):
+                                del load_result["StructuredToParameterName@@"]
+                        else:
+                            # paddle2.1 static.save/load
+                            load_result = _parse_load_result(
+                                load_result, config.return_numpy
+                            )
+
+                    else:
                         load_result = _parse_load_result(
                             load_result, config.return_numpy
                         )
 
-                else:
-                    load_result = _parse_load_result(
-                        load_result, config.return_numpy
-                    )
-
-        except exception_type as msg_pickle:
-            try:
-                tensor, _ = _load_selected_rows(path)
-                return tensor
-            except:
+            except exception_type as msg_pickle:
                 try:
-                    tensor, _ = _load_dense_tensor(path)
-                    if config.return_numpy:
-                        p = core.Place()
-                        p.set_place(paddle.CPUPlace())
-                        if tensor._place().is_custom_place():
-                            return np.array(
-                                paddle._C_ops.npu_identity(tensor, -1)._copy(p)
-                            )
-                        else:
-                            return np.array(tensor._copy(p))
-                    else:
-                        if in_dygraph_mode():
-                            return _lod_tensor2varbase(tensor)
-                        return tensor
+                    tensor, _ = _load_selected_rows(path)
+                    return tensor
                 except:
                     try:
-                        if in_pir_mode():
-                            program = paddle.static.Program()
-                            paddle.core.deserialize_pir_program(path, program)
-                            return program
-                        with _open_file_buffer(path, "rb") as f:
-                            program_desc_str = f.read()
-                            program = Program.parse_from_string(
-                                program_desc_str
-                            )
-                            if paddle.framework.in_pir_executor_mode():
-                                with paddle.pir_utils.IrGuard():
-                                    program = paddle.pir.translate_to_pir(
-                                        program.desc
-                                    )
-                                    block = program.global_block()
-                                    remove_op_list = []
-                                    for op in block.ops:
-                                        if op.name() == "pd_op.feed":
-                                            var_name = op.attrs()["name"]
-                                            org_value = op.result(0)
-                                            with block:
-                                                value = paddle.static.data(
-                                                    name=var_name,
-                                                    shape=org_value.shape,
-                                                    dtype=org_value.dtype,
-                                                )
-                                                org_value.replace_all_uses_with(
-                                                    value
-                                                )
-                                                value.get_defining_op().move_before(
-                                                    op
-                                                )
-                                            remove_op_list.append(op)
-                                    for op in remove_op_list:
-                                        block.remove_op(op)
-                            return program
+                        tensor, _ = _load_dense_tensor(path)
+                        if config.return_numpy:
+                            p = core.Place()
+                            p.set_place(paddle.CPUPlace())
+                            if tensor._place().is_custom_place():
+                                return np.array(
+                                    paddle._C_ops.npu_identity(
+                                        tensor, -1
+                                    )._copy(p)
+                                )
+                            else:
+                                return np.array(tensor._copy(p))
+                        else:
+                            if in_dygraph_mode():
+                                return _lod_tensor2varbase(tensor)
+                            return tensor
                     except:
-                        raise ValueError(
-                            f"`paddle.load` can not parse the file:{path}."
-                        )
+                        try:
+                            if in_pir_mode():
+                                program = paddle.static.Program()
+                                paddle.core.deserialize_pir_program(
+                                    path, program
+                                )
+                                return program
+                            with _open_file_buffer(path, "rb") as f:
+                                program_desc_str = f.read()
+                                program = Program.parse_from_string(
+                                    program_desc_str
+                                )
+                                if paddle.framework.in_pir_executor_mode():
+                                    with paddle.pir_utils.IrGuard():
+                                        program = paddle.pir.translate_to_pir(
+                                            program.desc
+                                        )
+                                        block = program.global_block()
+                                        remove_op_list = []
+                                        for op in block.ops:
+                                            if op.name() == "pd_op.feed":
+                                                var_name = op.attrs()["name"]
+                                                org_value = op.result(0)
+                                                with block:
+                                                    value = paddle.static.data(
+                                                        name=var_name,
+                                                        shape=org_value.shape,
+                                                        dtype=org_value.dtype,
+                                                    )
+                                                    org_value.replace_all_uses_with(
+                                                        value
+                                                    )
+                                                    value.get_defining_op().move_before(
+                                                        op
+                                                    )
+                                                remove_op_list.append(op)
+                                        for op in remove_op_list:
+                                            block.remove_op(op)
+                                return program
+                        except:
+                            raise ValueError(
+                                f"`paddle.load` can not parse the file:{path}."
+                            )
 
     else:
         load_result = _legacy_load(path, **configs)
