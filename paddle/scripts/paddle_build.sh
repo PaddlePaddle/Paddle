@@ -86,7 +86,7 @@ function cmake_base() {
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.8/bin/python3
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.8/include/python3.8/
             -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.8/lib/libpython3.8.dylib"
-                pip3.8 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.8 install --upgrade --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
             fi
@@ -98,7 +98,7 @@ function cmake_base() {
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.9/bin/python3
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.9/include/python3.9/
             -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.9/lib/libpython3.9.dylib"
-                pip3.9 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.9 install --upgrade --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
             fi
@@ -110,7 +110,7 @@ function cmake_base() {
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.10/bin/python3
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.10/include/python3.10/
             -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.10/lib/libpython3.10.dylib"
-                pip3.10 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.10 install --upgrade --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
             fi
@@ -122,7 +122,7 @@ function cmake_base() {
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.11/bin/python3
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.11/include/python3.11/
             -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.11/lib/libpython3.11.dylib"
-                pip3.11 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.11 install --upgrade --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
             fi
@@ -134,7 +134,7 @@ function cmake_base() {
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.12/bin/python3
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.12/include/python3.12/
             -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.12/lib/libpython3.12.dylib"
-                pip3.12 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.12 install --upgrade --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
             fi
@@ -146,7 +146,7 @@ function cmake_base() {
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.13/bin/python3
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.13/include/python3.13/
             -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.13/lib/libpython3.13.dylib"
-                pip3.13 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.13 install --upgrade --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
             fi
@@ -168,40 +168,40 @@ function cmake_base() {
                 export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.9.0/bin/python3.9
             -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.9.0/include/python3.9
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.9.0/lib/libpython3.so"
-                pip3.9 install -r ${PADDLE_ROOT}/python/requirements.txt
-                pip3.9 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
+                pip3.9 install --upgrade -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.9 install --upgrade -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
             elif [ "$1" == "cp310-cp310" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.10.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.10.0/bin/:${PATH}
                 export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.10.0/bin/python3.10
             -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.10.0/include/python3.10
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.10.0/lib/libpython3.so"
-                pip3.10 install -r ${PADDLE_ROOT}/python/requirements.txt
-                pip3.10 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
+                pip3.10 install --upgrade -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.10 install --upgrade -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
             elif [ "$1" == "cp311-cp311" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.11.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.11.0/bin/:${PATH}
                 export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.11.0/bin/python3.11
             -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.11.0/include/python3.11
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.11.0/lib/libpython3.so"
-                pip3.11 install -r ${PADDLE_ROOT}/python/requirements.txt
-                pip3.11 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
+                pip3.11 install --upgrade -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.11 install --upgrade -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
             elif [ "$1" == "cp312-cp312" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.12.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.12.0/bin/:${PATH}
                 export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.12.0/bin/python3.12
             -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.12.0/include/python3.12
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.12.0/lib/libpython3.so"
-                pip3.12 install -r ${PADDLE_ROOT}/python/requirements.txt
-                pip3.12 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
+                pip3.12 install --upgrade -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.12 install --upgrade -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
 	    elif [ "$1" == "cp313-cp313" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.13.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.13.0/bin/:${PATH}
                 export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.13.0/bin/python3.13
             -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.13.0/include/python3.13
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.13.0/lib/libpython3.so"
-                pip3.13 install -r ${PADDLE_ROOT}/python/requirements.txt
-                pip3.13 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
+                pip3.13 install --upgrade -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.13 install --upgrade -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
             elif [ "$1" == "conda-python3.8" ]; then
                 export LD_LIBRARY_PATH=/opt/conda/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/conda/bin/:${PATH}
@@ -4139,7 +4139,7 @@ function run_setup(){
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.8/bin/python3
                 export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.8/include/python3.8/
                 export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.8/lib/libpython3.8.dylib
-                pip3.8 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.8 install --upgrade --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
             fi
@@ -4152,7 +4152,7 @@ function run_setup(){
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.9/bin/python3
                 export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.9/include/python3.9/
                 export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.9/lib/libpython3.9.dylib
-                pip3.9 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.9 install --upgrade --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
             fi
@@ -4165,7 +4165,7 @@ function run_setup(){
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.10/bin/python3
                 export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.10/include/python3.10/
                 export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.10/lib/libpython3.10.dylib
-                pip3.10 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.10 install --upgrade --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
             fi
@@ -4178,7 +4178,7 @@ function run_setup(){
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.11/bin/python3
                 export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.11/include/python3.11/
                 export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.11/lib/libpython3.11.dylib
-                pip3.11 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.11 install --upgrade --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
             fi
@@ -4191,7 +4191,7 @@ function run_setup(){
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.12/bin/python3
                 export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.12/include/python3.12/
                 export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.12/lib/libpython3.12.dylib
-                pip3.12 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.12 install --upgrade --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
             fi
@@ -4204,7 +4204,7 @@ function run_setup(){
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.13/bin/python3
                 export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.13/include/python3.13/
                 export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.13/lib/libpython3.13.dylib
-                pip3.13 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.13 install --upgrade --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
             fi
@@ -4219,8 +4219,8 @@ function run_setup(){
                 export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.8.0/bin/python3.8
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.8.0/include/python3.8
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.8.0/lib/libpython3.so
-                pip3.8 install -r ${PADDLE_ROOT}/python/requirements.txt
-                pip3.8 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
+                pip3.8 install --upgrade -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.8 install --upgrade -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
             elif [ "$1" == "cp39-cp39" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.9.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.9.0/bin/:${PATH}
@@ -4228,8 +4228,8 @@ function run_setup(){
                 export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.9.0/bin/python3.9
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.9.0/include/python3.9
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.9.0/lib/libpython3.so
-                pip3.9 install -r ${PADDLE_ROOT}/python/requirements.txt
-                pip3.9 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
+                pip3.9 install --upgrade -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.9 install --upgrade -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
             elif [ "$1" == "cp310-cp310" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.10.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.10.0/bin/:${PATH}
@@ -4237,8 +4237,8 @@ function run_setup(){
                 export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.10.0/bin/python3.10
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.10.0/include/python3.10
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.10.0/lib/libpython3.so
-                pip3.10 install -r ${PADDLE_ROOT}/python/requirements.txt
-                pip3.10 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
+                pip3.10 install --upgrade -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.10 install --upgrade -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
             elif [ "$1" == "cp311-cp311" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.11.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.11.0/bin/:${PATH}
@@ -4246,8 +4246,8 @@ function run_setup(){
                 export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.11.0/bin/python3.11
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.11.0/include/python3.11
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.11.0/lib/libpython3.so
-                pip3.11 install -r ${PADDLE_ROOT}/python/requirements.txt
-                pip3.11 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
+                pip3.11 install --upgrade -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.11 install --upgrade -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
             elif [ "$1" == "cp312-cp312" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.12.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.12.0/bin/:${PATH}
@@ -4255,8 +4255,8 @@ function run_setup(){
                 export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.12.0/bin/python3.12
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.12.0/include/python3.12
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.12.0/lib/libpython3.so
-                pip3.12 install -r ${PADDLE_ROOT}/python/requirements.txt
-                pip3.12 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
+                pip3.12 install --upgrade -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.12 install --upgrade -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
 	    elif [ "$1" == "cp313-cp313" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.13.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.13.0/bin/:${PATH}
@@ -4264,8 +4264,8 @@ function run_setup(){
                 export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.13.0/bin/python3.13
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.13.0/include/python3.13
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.13.0/lib/libpython3.so
-                pip3.13 install -r ${PADDLE_ROOT}/python/requirements.txt
-                pip3.13 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
+                pip3.13 install --upgrade -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.13 install --upgrade -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
              fi
         else
             pip install -r ${PADDLE_ROOT}/python/requirements.txt
@@ -4432,7 +4432,7 @@ function run_setup_mac(){
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.8/bin/python3
                 export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.8/include/python3.8/
                 export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.8/lib/libpython3.8.dylib
-                pip3.8 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.8 install --upgrade --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
             fi
@@ -4446,7 +4446,7 @@ function run_setup_mac(){
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.9/bin/python3
                 export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.9/include/python3.9/
                 export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.9/lib/libpython3.9.dylib
-                pip3.9 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.9 install --upgrade --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
             fi
@@ -4460,7 +4460,7 @@ function run_setup_mac(){
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.10/bin/python3
                 export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.10/include/python3.10/
                 export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.10/lib/libpython3.10.dylib
-                pip3.10 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.10 install --upgrade --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
             fi
@@ -4474,7 +4474,7 @@ function run_setup_mac(){
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.11/bin/python3
                 export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.11/include/python3.11/
                 export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.11/lib/libpython3.11.dylib
-                pip3.11 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.11 install --upgrade --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
             fi
@@ -4488,7 +4488,7 @@ function run_setup_mac(){
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.12/bin/python3
                 export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.12/include/python3.12/
                 export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.12/lib/libpython3.12.dylib
-                pip3.12 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.12 install --upgrade --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
             fi
@@ -4502,7 +4502,7 @@ function run_setup_mac(){
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.13/bin/python3
                 export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.13/include/python3.13/
                 export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.13/lib/libpython3.13.dylib
-                pip3.13 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.13 install --upgrade --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
             fi
@@ -4517,7 +4517,7 @@ function run_setup_mac(){
                 export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.8.0/bin/python3.8
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.8.0/include/python3.8
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.8.0/lib/libpython3.so
-                pip3.8 install -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.8 install --upgrade -r ${PADDLE_ROOT}/python/requirements.txt
             elif [ "$1" == "cp39-cp39" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.9.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.9.0/bin/:${PATH}
@@ -4525,7 +4525,7 @@ function run_setup_mac(){
                 export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.9.0/bin/python3.9
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.9.0/include/python3.9
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.9.0/lib/libpython3.so
-                pip3.9 install -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.9 install --upgrade -r ${PADDLE_ROOT}/python/requirements.txt
             elif [ "$1" == "cp310-cp310" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.10.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.10.0/bin/:${PATH}
@@ -4533,7 +4533,7 @@ function run_setup_mac(){
                 export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.10.0/bin/python3.10
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.10.0/include/python3.10
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.10.0/lib/libpython3.so
-                pip3.10 install -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.10 install --upgrade -r ${PADDLE_ROOT}/python/requirements.txt
             elif [ "$1" == "cp311-cp311" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.11.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.11.0/bin/:${PATH}
@@ -4541,7 +4541,7 @@ function run_setup_mac(){
                 export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.11.0/bin/python3.11
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.11.0/include/python3.11
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.11.0/lib/libpython3.so
-                pip3.11 install -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.11 install --upgrade -r ${PADDLE_ROOT}/python/requirements.txt
             elif [ "$1" == "cp312-cp312" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.12.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.12.0/bin/:${PATH}
@@ -4549,7 +4549,7 @@ function run_setup_mac(){
                 export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.12.0/bin/python3.12
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.12.0/include/python3.12
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.12.0/lib/libpython3.so
-                pip3.12 install -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.12 install --upgrade -r ${PADDLE_ROOT}/python/requirements.txt
 	    elif [ "$1" == "cp313-cp313" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.13.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.13.0/bin/:${PATH}
@@ -4557,7 +4557,7 @@ function run_setup_mac(){
                 export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.13.0/bin/python3.13
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.13.0/include/python3.13
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.13.0/lib/libpython3.so
-                pip3.13 install -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.13 install --upgrade -r ${PADDLE_ROOT}/python/requirements.txt
             elif [ "$1" == "conda-python3.8" ]; then
                 export LD_LIBRARY_PATH=/opt/conda/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/conda/bin/:${PATH}
