@@ -15,10 +15,11 @@
 import re
 import unittest
 
-from utils import dygraph_guard
+import numpy as np
+from utils import dygraph_guard, static_guard
 
 import paddle
-from paddle import nn
+from paddle import base, nn
 
 
 def convert_place_to_device(place):
@@ -60,7 +61,6 @@ class Test_Conv3D(unittest.TestCase):
     def run_test_dygraph_one(self, dtype, device):
         with dygraph_guard():
             x_var = paddle.randn([10, 16, 32, 32, 32], dtype=dtype).to(device)
-            x_var.stop_gradient = False
             conv = nn.Conv3D(16, 33, 3, dtype=dtype, device=device)
             self.check(conv.weight, dtype, device)
             self.check(conv.bias, dtype, device)
@@ -74,10 +74,9 @@ class Test_Conv3D(unittest.TestCase):
                 with self.subTest(msg=f"Testing {dtype} on {device}"):
                     self.run_test_dygraph_one(dtype=dtype, device=device)
 
-    def test_bias(self):
+    def test_bias_dygraph(self):
         with dygraph_guard():
             x_var = paddle.randn([10, 16, 32, 32, 32])
-            x_var.stop_gradient = False
             conv = nn.Conv3D(16, 33, 3, bias=True)
             y_var = conv(x_var)
             assert isinstance(conv.bias, paddle.Tensor)
@@ -85,6 +84,29 @@ class Test_Conv3D(unittest.TestCase):
             conv = nn.Conv3D(16, 33, 3, bias=False)
             y_var = conv(x_var)
             assert conv.bias is None
+
+    def test_bias_static(self):
+
+        with static_guard():
+            main = base.Program()
+            start = base.Program()
+            with (
+                base.unique_name.guard(),
+                base.program_guard(main, start),
+            ):
+                input_shape = (-1, 16, -1, -1, -1)
+
+                x_var = paddle.static.data("input", input_shape)
+                conv = nn.Conv3D(16, 33, 3, bias=False)
+                y_var = conv(x_var)
+                assert conv.bias is None
+
+            feed_dict = {
+                "input": np.random.randn(10, 16, 32, 32, 32).astype('float32')
+            }
+            exe = base.Executor()
+            exe.run(start)
+            (y_np,) = exe.run(main, feed=feed_dict, fetch_list=[y_var])
 
 
 if __name__ == '__main__':
