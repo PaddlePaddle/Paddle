@@ -89,7 +89,6 @@ def test_scatter(ep_group: Group, mode: str):
     m, n = 4096, 8192
 
     if local_rank == 0:
-
         scatter_list = [
             paddle.ones(shape=[m, n], dtype=paddle.float32) * (i + 1)
             for i in range(num_local_ranks)
@@ -124,7 +123,6 @@ def test_reduce(ep_group: Group, mode: str):
     dist.reduce(gbl_x, dst=0, group=ep_group)
 
     if local_rank == 0:
-
         res = paddle.ones(shape=[m, n], dtype=paddle.float32) * (
             num_local_ranks * (num_local_ranks + 1) / 2
         )
@@ -208,7 +206,6 @@ def test_all_reduce(ep_group: Group, mode: str):
 
 
 def test_primitive():
-
     dist.init_parallel_env()
 
     ranks = [0, 1]

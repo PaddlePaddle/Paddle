@@ -411,7 +411,6 @@ class TestParallelAPI:
                     or paddle.device.cuda.get_device_capability()[0] < 8
                 )
             ):
-
                 bck = 'p2p'
                 if self.config.context_parallel is True:
                     bck = 'p2p'
