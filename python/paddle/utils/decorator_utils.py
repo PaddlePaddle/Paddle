@@ -12,13 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import functools
 import inspect
 import warnings
-from collections.abc import Iterable
-from typing import Any, Callable, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast
 
 from typing_extensions import ParamSpec
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 _InputT = ParamSpec("_InputT")
 _RetT = TypeVar("_RetT")
@@ -152,6 +156,55 @@ class SetDefaultParaAliasDecorator(DecoratorBase):
                 if key not in kwargs:
                     kwargs[key] = value
 
+        return args, kwargs
+
+
+# from liuyi
+class ParamIgnoreDecorator(DecoratorBase):
+    """Decorator for handling ignored parameters.
+
+    Args:
+        ignore_specs: An iterable of ignore specifications where each element is either:
+            - A string (parameter name to ignore)
+            - A tuple of (parameter_name, index, type) to ignore by name, position and type
+    """
+
+    def __init__(
+        self, ignore_specs: Iterable[str | tuple[str, int, type[Any]]]
+    ) -> None:
+        super().__init__()
+        self._ignore_names = set()
+        self._ignore_index_type = {}
+
+        for spec in ignore_specs:
+            if isinstance(spec, str):
+                self._ignore_names.add(spec)
+            elif isinstance(spec, tuple) and len(spec) == 3:
+                name, index, typ = spec
+                self._ignore_names.add(name)
+                self._ignore_index_type[index] = typ
+            else:
+                raise ValueError(
+                    f"Invalid ignore specification: {spec}. "
+                    "Expected str or tuple[str, int, Type[Any]]"
+                )
+
+    def process(self, args: tuple[Any, ...], kwargs: dict[str, Any]):
+        # Remove ignored parameters from kwargs
+        for k in list(kwargs.keys()):
+            if k in self._ignore_names:
+                del kwargs[k]
+
+        # Remove ignored parameters from args
+        if self._ignore_index_type:
+            args = tuple(
+                arg
+                for i, arg in enumerate(args)
+                if not (
+                    i in self._ignore_index_type
+                    and isinstance(arg, self._ignore_index_type[i])
+                )
+            )
         return args, kwargs
 
 

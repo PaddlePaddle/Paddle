@@ -200,6 +200,9 @@ from .nn.functional.distance import (
     pdist,
 )
 from .nn.initializer.lazy_init import LazyGuard
+from .softmax import (
+    softmax,
+)
 from .tensor.attribute import (
     imag,
     is_complex,
@@ -1263,6 +1266,7 @@ __all__ = [
     'get_autocast_dtype',
     'get_autocast_cpu_dtype',
     'get_autocast_gpu_dtype',
+    'softmax',
 ]
 import os
 

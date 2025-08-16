@@ -16,6 +16,7 @@ from ..signal import (  # noqa: F401
     istft,
     stft,
 )
+from ..softmax import softmax as softmax
 from .array import (  # noqa: F401
     array_length,
     array_read,
@@ -891,6 +892,7 @@ tensor_method_func = [
     'set_',
     'resize_',
     'argwhere',
+    'softmax',
 ]
 
 mul = multiply
