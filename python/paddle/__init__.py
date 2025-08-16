@@ -86,6 +86,31 @@ if typing.TYPE_CHECKING:
 else:
     Tensor = framework.core.eager.Tensor
     Tensor.__qualname__ = 'Tensor'
+    super_init = Tensor.__init__
+
+    def new_init(self, *args, **kwargs):
+        kwargs_cnt = len(kwargs.keys())
+        if kwargs_cnt:
+            super_init(self, *args, **kwargs)
+            return
+        if len(args) == 0:
+            super_init(self, paddle.empty(shape=[0], dtype="float32"))
+            return
+        elif len(args) == 1 and isinstance(args[0], (list, tuple)):
+            super_init(self, paddle.to_tensor(args[0], dtype="float32"))
+            return
+        create_random_tensor = True
+        for arg in args:
+            if not isinstance(arg, int):
+                create_random_tensor = False
+                break
+        if create_random_tensor:
+            super_init(self, paddle.randn(list(args), dtype="float32"))
+            return
+        else:
+            super_init(self, *args, **kwargs)
+
+    Tensor.__init__ = new_init
 
 import paddle.distributed.fleet
 import paddle.text
@@ -199,7 +224,6 @@ from .tensor.attribute import (
 )
 from .tensor.creation import (
     MmapStorage,
-    Tensor,
     arange,
     assign,
     cauchy_,
