@@ -163,7 +163,6 @@ class TestArgwhereBF16(OpTest):
 
 
 class TestZeroSizeOp(TestArgwhereOp):
-
     def init_shape(self):
         self.shape = [0, 10]
 
@@ -172,7 +171,6 @@ class TestZeroSizeOp(TestArgwhereOp):
 
 
 class TestZeroSizeOpCase2(TestArgwhereOp):
-
     def init_shape(self):
         self.shape = [0, 10]
 

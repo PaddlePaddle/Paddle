@@ -259,7 +259,6 @@ class TestBroadcastTensorsAPI(unittest.TestCase):
         self.dtype = 'float32'
 
     def test_api(self):
-
         def test_static():
             with (
                 static_guard(),
