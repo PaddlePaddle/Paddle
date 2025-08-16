@@ -2410,7 +2410,7 @@ def meshgrid(*args, **kwargs):
         num = len(args)
         out = [
             helper.create_variable_for_type_inference(dtype=args[i].dtype)
-            for i in range(num)
+            for i in builtins.range(num)
         ]
         helper.append_op(
             type='meshgrid', inputs={'X': list(args)}, outputs={'Out': out}
