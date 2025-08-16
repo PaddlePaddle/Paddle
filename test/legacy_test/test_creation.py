@@ -690,6 +690,11 @@ class TestCreationOut(unittest.TestCase):
         y = paddle.empty(x.shape, out=t)
         self.assertEqual(t.data_ptr(), y.data_ptr())
 
+    @unittest.skipIf(
+        paddle.device.is_compiled_with_cuda()
+        and paddle.device.is_compiled_with_rocm(),
+        reason="Skip for paddle.eye in dcu is not correct",
+    )
     def test_eye(self):
         x = paddle.randn([2, 2])
         t = paddle.empty_like(x)
