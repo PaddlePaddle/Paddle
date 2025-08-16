@@ -545,6 +545,8 @@ class OpInfoParser:
 
         # parse interfaces list
         self.interfaces_list = self.parse_op_interfaces()
+        # parse python api info
+        self.python_api_info = self.parse_python_api_info()
 
         # OneDNN info
         if "extra_args" in self.op_yaml_item:
@@ -1071,6 +1073,13 @@ class OpInfoParser:
     def parse_invoke_map(self):
         if 'invoke' in self.op_yaml_item:
             return self.op_yaml_item['invoke']
+        else:
+            return None
+
+    def parse_python_api_info(self):
+
+        if 'python_api' in self.op_yaml_item:
+            return self.op_yaml_item['python_api']
         else:
             return None
 

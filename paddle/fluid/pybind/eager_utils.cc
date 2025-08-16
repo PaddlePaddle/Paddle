@@ -864,6 +864,17 @@ paddle::DataType CastPyArg2DataTypeDirectly(PyObject* obj,
   return dtype;
 }
 
+paddle::DataType CastPyArg2DataTypeDirectly(PyObject* obj,
+                                            const std::string& op_type,
+                                            ssize_t arg_pos,
+                                            paddle::DataType default_value) {
+  if (obj == nullptr) {
+    return default_value;
+  } else {
+    return CastPyArg2DataTypeDirectly(obj, op_type, arg_pos);
+  }
+}
+
 phi::Vocab CastPyArg2Vocab(PyObject* obj, ssize_t arg_pos) {
   if (PyDict_Check(obj)) {
     phi::Vocab vocab;
@@ -1358,6 +1369,20 @@ paddle::Tensor& GetTensorFromArgs(const std::string& op_type,
                                   ssize_t arg_idx,
                                   bool dispensable) {
   PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
+  return GetTensorFromPyObject(op_type, arg_name, obj, arg_idx, dispensable);
+}
+paddle::Tensor& GetTensorFromArgsOrKWArgs(
+    const std::string& op_type,
+    const std::string& arg_name,
+    PyObject* args,
+    ssize_t arg_idx,
+    PyObject* kwargs,
+    const std::vector<std::string>& keywords,
+    const int nargs,
+    int* remaining_kwargs,
+    bool dispensable) {
+  PyObject* obj = GetItemFromArgsOrKWArgs(
+      args, arg_idx, kwargs, keywords, nargs, remaining_kwargs);
   return GetTensorFromPyObject(op_type, arg_name, obj, arg_idx, dispensable);
 }
 
@@ -2249,6 +2274,17 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
   // Fake a Scalar
   return paddle::experimental::Scalar(1.0);
 }
+paddle::experimental::Scalar CastPyArg2Scalar(
+    PyObject* obj,
+    const std::string& op_type,
+    ssize_t arg_pos,
+    paddle::experimental::Scalar default_value) {
+  if (obj != nullptr) {
+    return CastPyArg2Scalar(obj, op_type, arg_pos);
+  } else {
+    return default_value;
+  }
+}
 
 std::vector<phi::Scalar> CastPyArg2ScalarArray(PyObject* obj,
                                                const std::string& op_type,
@@ -2311,7 +2347,17 @@ std::vector<phi::Scalar> CastPyArg2ScalarArray(PyObject* obj,
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
   }
 }
-
+std::vector<phi::Scalar> CastPyArg2ScalarArray(
+    PyObject* obj,
+    const std::string& op_type,
+    ssize_t arg_pos,
+    std::vector<phi::Scalar> default_value) {
+  if (obj != nullptr) {
+    return CastPyArg2ScalarArray(obj, op_type, arg_pos);
+  } else {
+    return default_value;
+  }
+}
 paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
                                                   const std::string& op_type,
                                                   ssize_t arg_pos) {
@@ -2343,7 +2389,17 @@ paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
   // Fake a IntArray
   return paddle::experimental::IntArray({1});
 }
-
+paddle::experimental::IntArray CastPyArg2IntArray(
+    PyObject* obj,
+    const std::string& op_type,
+    ssize_t arg_pos,
+    paddle::experimental::IntArray default_value) {
+  if (obj != nullptr) {
+    return CastPyArg2IntArray(obj, op_type, arg_pos);
+  } else {
+    return default_value;
+  }
+}
 paddle::framework::Scope* CastPyArg2ScopePtr(PyObject* obj) {
   if (PyObject_TypeCheck(obj, g_framework_scope_pytype)) {
     return ::pybind11::handle(obj).cast<paddle::framework::Scope*>();
@@ -2582,7 +2638,16 @@ paddle::Place CastPyArg2Place(PyObject* obj,
                               ssize_t arg_pos) {
   return CastPyArg2Place(obj, arg_pos);
 }
-
+paddle::Place CastPyArg2Place(PyObject* obj,
+                              const std::string& op_type,
+                              ssize_t arg_pos,
+                              paddle::Place default_place) {
+  if (obj != nullptr) {
+    return CastPyArg2Place(obj, op_type, arg_pos);
+  } else {
+    return default_place;
+  }
+}
 paddle::DataType CastPyArg2DataType(PyObject* obj,
                                     const std::string& op_type,
                                     ssize_t arg_pos) {
@@ -2594,6 +2659,16 @@ paddle::DataType CastPyArg2DataType(PyObject* obj,
     return phi::TransToPhiDataType(type);
   }
   return CastPyArg2DataTypeDirectly(obj, op_type, arg_pos);
+}
+paddle::DataType CastPyArg2DataType(PyObject* obj,
+                                    const std::string& op_type,
+                                    ssize_t arg_pos,
+                                    paddle::DataType default_value) {
+  if (obj != nullptr) {
+    return CastPyArg2DataType(obj, op_type, arg_pos);
+  } else {
+    return default_value;
+  }
 }
 
 paddle::Tensor PyTensorHook::operator()(const paddle::Tensor& var) {
