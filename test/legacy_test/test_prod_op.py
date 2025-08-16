@@ -423,6 +423,35 @@ class TestProdAliasOp(unittest.TestCase):
         with static_guard():
             self.run_static()
 
+    def test_tensor_prod(self):
+        """x.prod(axis=1) is equivalent to x.prod(dim=1)"""
+        axis_cases = [0, 1, -1]
+
+        def run_test_cases(place):
+            """Helper function to run test cases on specified device."""
+            for param_alias in ["axis", "dim"]:
+                for axis in axis_cases:
+                    input_tensor = paddle.to_tensor(self.input, place=place)
+                    kwargs = {param_alias: axis}
+
+                    result = input_tensor.prod(**kwargs)
+                    expected = np.prod(self.input, axis=axis)
+                    np.testing.assert_allclose(
+                        (
+                            result.numpy()
+                            if place.is_cpu_place()
+                            else result.cpu().numpy()
+                        ),
+                        expected,
+                        rtol=1e-05,
+                    )
+
+        with dygraph_guard():
+            run_test_cases(paddle.CPUPlace())
+
+            if paddle.base.core.is_compiled_with_cuda():
+                run_test_cases(paddle.CUDAPlace(0))
+
 
 if __name__ == "__main__":
     unittest.main()
