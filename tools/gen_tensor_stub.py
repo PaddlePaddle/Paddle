@@ -611,7 +611,6 @@ def generate_stub_file(input_file=None, output_file=None):
 
         # Generate the Tensor stub
         tensor_gen = TensorGen(tensor_template, prefix)
-
         for member_id, member in tensor_members.items():
             if member_id in all_members:
                 continue
