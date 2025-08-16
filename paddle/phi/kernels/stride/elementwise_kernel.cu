@@ -47,7 +47,7 @@ template <typename Functor,
           int Arity,
           int NumOuts,
           int VecSize,
-          int LoadType>
+          int vt>
 __global__ void BinaryElementwiseKernel(
     Array<const _ptr_ char *__restrict__, Arity> ins,
     Array<_ptr_ OutT *, NumOuts> outs,
@@ -55,13 +55,12 @@ __global__ void BinaryElementwiseKernel(
     int read_lens,
     Functor func,
     funcs::OffsetCalculator<Arity + NumOuts> offset_calc) {
-  int64_t block_offset = BLOCK_ID_X * BLOCK_NUM_X * VecSize;
   int64_t tid = THREAD_ID_X;
-  int64_t nv = BLOCK_NUM_X * VecSize;
+  int64_t nv = BLOCK_NUM_X * vt;
   int64_t idx = nv * BLOCK_ID_X + tid;
 
 #pragma unroll
-  for (int i = 0; i < VecSize; i++) {
+  for (int i = 0; i < vt; i++) {
     if (idx < numel) {
       auto offsets = offset_calc.get(idx);
       using Traits = phi::funcs::FunctionTraits<Functor>;
@@ -154,7 +153,7 @@ void StrideBroadcastKernel(const KPDevice &dev_ctx,
   int vec_size = 1;
   int main_offset = (numel / (vec_size * threads)) * vec_size * threads;
 
-  BinaryElementwiseKernel<Functor, OutT, Arity, NumOuts, 1, funcs::kElementwise>
+  BinaryElementwiseKernel<Functor, OutT, Arity, NumOuts, 1, unroll_factor>
       <<<blocks, threads, 0, stream>>>(classifier.ins_data,
                                        classifier.outs_data,
                                        numel,
