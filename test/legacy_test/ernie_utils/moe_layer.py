@@ -19,6 +19,7 @@
 Returns:
     _type_: _description_
 """
+
 from __future__ import annotations
 
 import logging
