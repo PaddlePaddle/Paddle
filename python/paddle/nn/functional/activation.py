@@ -24,6 +24,7 @@ from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 from ...base.data_feeder import check_dtype, check_variable_and_dtype
 from ...base.framework import convert_np_dtype_to_dtype_
 from ...base.layer_helper import LayerHelper
+from ...softmax import softmax as softmax
 from ...tensor.manipulation import chunk
 from ...tensor.math import tanh, tanh_  # noqa: F401
 from ...tensor.ops import sigmoid
