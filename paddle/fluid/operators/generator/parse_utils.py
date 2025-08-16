@@ -634,7 +634,7 @@ def validate_backward_attrs(op, forward_attrs, backward_attrs):
     for i in range(-num_exceptional_attrs, 0):
         assert (
             "default_value" in backward_attrs[i]
-        ), f"{op } has exceptional attr without default value"
+        ), f"{op} has exceptional attr without default value"
 
 
 def validate_backward_inputs(
@@ -646,7 +646,7 @@ def validate_backward_inputs(
 
     assert len(backward_input_names) <= len(forward_input_names) + 2 * len(
         forward_output_names
-    ), f"{op } has too many inputs."
+    ), f"{op} has too many inputs."
 
 
 def validate_backward_outputs(op, forward_inputs, backward_outputs):
@@ -654,7 +654,7 @@ def validate_backward_outputs(op, forward_inputs, backward_outputs):
         return
     assert len(backward_outputs) <= len(
         forward_inputs
-    ), f"{op } has too many outputs"
+    ), f"{op} has too many outputs"
 
 
 def cross_validate(ops):
