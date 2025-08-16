@@ -304,8 +304,8 @@ __device__ __forceinline__ void ComputeLoss(StoreT* loss,
 template <typename T,
           typename AccT,
           typename LabelT,
-          typename StoreT = T,
-          int VecSize>
+          int VecSize,
+          typename StoreT>
 __device__ __forceinline__ void VectorizedSoftmaxForwardImpl(
     StoreT* loss,
     StoreT* softmax,
@@ -513,7 +513,7 @@ __global__ void VectorizedSoftmaxForward(StoreT* loss,
   // 3. softmax
   phi::LogSoftmaxForwardFunctor<AccT> func(max, sum);
   if (input_offset == output_offset) {
-    VectorizedSoftmaxForwardImpl<T, AccT, LabelT, StoreT, VecSize>(
+    VectorizedSoftmaxForwardImpl<T, AccT, LabelT, VecSize, StoreT>(
         loss,
         softmax,
         logits,
@@ -523,7 +523,7 @@ __global__ void VectorizedSoftmaxForward(StoreT* loss,
         func,
         ignore_index);
   } else {
-    ScalarSoftmaxForwardImpl<T, AccT, LabelT, VecSize>(
+    ScalarSoftmaxForwardImpl<T, AccT, LabelT, VecSize, StoreT>(
         loss, softmax, logits, label, mid_dim, func, ignore_index);
   }
 }
