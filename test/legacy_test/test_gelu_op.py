@@ -202,13 +202,11 @@ class TestGeluOp_ZeroSize(unittest.TestCase):
 
 
 class TestGeluError(unittest.TestCase):
-
     def setUp(self):
         x = np.random.uniform(-1, 1, size=(11, 17)).astype(np.float32)
         self.x = paddle.to_tensor(x)
 
     def test_gelu_op_error(self):
-
         def test_type_error1():
             y = F.gelu(self.x, "tan")
 
@@ -219,7 +217,6 @@ class TestGeluError(unittest.TestCase):
         self.assertRaises(TypeError, test_type_error2)
 
     def test_gelu_class_error(self):
-
         def test_type_error1():
             func = nn.GELU("tan")
             y = func(self.x)
