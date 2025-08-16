@@ -987,34 +987,6 @@ def to_tensor(
             return _to_tensor_static(data, dtype, stop_gradient)
 
 
-class Tensor(paddle.framework.core.eager.Tensor):
-    def __init__(self, *args, **kwargs):
-        kwargs_cnt = len(kwargs.keys())
-        if kwargs_cnt:
-            super().__init__(*args, **kwargs)
-            return
-        if len(args) == 0:
-            super().__init__(paddle.empty(shape=[0], dtype="float32"))
-            return
-        elif len(args) == 1 and isinstance(args[0], (list, tuple)):
-            super().__init__(paddle.to_tensor(args[0], dtype="float32"))
-            return
-        create_random_tensor = True
-        for arg in args:
-            if not isinstance(arg, int):
-                create_random_tensor = False
-                break
-        if create_random_tensor:
-            super().__init__(paddle.randn(list(args), dtype="float32"))
-            return
-        else:
-            super().__init__(*args, **kwargs)
-
-
-Tensor.__qualname__ = 'Tensor'
-Tensor.__doc__ = paddle.framework.core.eager.Tensor.__doc__
-
-
 class MmapStorage(paddle.base.core.MmapStorage):
     """
     This class will use mmap to load a file.
