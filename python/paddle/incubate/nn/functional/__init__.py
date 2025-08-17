@@ -76,6 +76,7 @@ from .variable_length_memory_efficient_attention import (
 )
 
 __all__ = [
+    'fp8_gemm_blockwise',
     'cross_entropy_with_softmax_bwd_w_downcast',
     'fp8_quant_blockwise',
     'fused_act_dequant',
