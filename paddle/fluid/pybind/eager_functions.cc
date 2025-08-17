@@ -1409,12 +1409,12 @@ PyObject* eager__add_doc_str(PyObject* self, PyObject* args) {
     if (func_obj->ob_type->tp_dict == nullptr) {
       func_obj->ob_type->tp_dict = PyDict_New();
     }
-    if (PyDict_SetItemString(
-            func_obj->ob_type->tp_dict, "__text_signature__", sig_obj) < 0) {
-      VLOG(6) << "eager__add_doc_str add __text_signature__ failed";
-      return nullptr;
-    }
-    Py_INCREF(sig_obj);
+    // if (PyDict_SetItemString(
+    //         func_obj->ob_type->tp_dict, "__text_signature__", sig_obj) < 0) {
+    //   VLOG(6) << "eager__add_doc_str add __text_signature__ failed";
+    //   return nullptr;
+    // }
+    // Py_INCREF(sig_obj);
     if (PyDict_SetItemString(
             func_obj->ob_type->tp_dict, "__annotations__", annotatio_obj) < 0) {
       VLOG(6) << "eager__add_doc_str add __annotations__ failed";
