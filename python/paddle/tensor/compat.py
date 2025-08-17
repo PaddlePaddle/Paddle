@@ -26,6 +26,7 @@ from ..framework import (
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
     from paddle import Tensor
 
 from paddle.utils.decorator_utils import ForbidKeywordsDecorator
@@ -211,6 +212,7 @@ def split(
                     split_size_or_sections
                 )
             return tuple(_C_ops.split(tensor, split_size_or_sections, dim))
+
 
 class SortRetType(NamedTuple):
     values: Tensor
