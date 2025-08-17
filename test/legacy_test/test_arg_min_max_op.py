@@ -343,7 +343,6 @@ class TestArgMaxTensorAxis(UnittestBase):
 
 
 class TestArgMinTensorAxis(TestArgMaxTensorAxis):
-
     def test_static(self):
         main_prog = paddle.base.Program()
         startup_prog = paddle.base.Program()

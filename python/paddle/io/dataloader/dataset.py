@@ -87,14 +87,16 @@ class Dataset(Generic[_T]):
 
     def __getitem__(self, idx: int) -> _T:
         raise NotImplementedError(
-            "'{}' not implement in class "
-            "{}".format('__getitem__', self.__class__.__name__)
+            "'{}' not implement in class {}".format(
+                '__getitem__', self.__class__.__name__
+            )
         )
 
     def __len__(self) -> int:
         raise NotImplementedError(
-            "'{}' not implement in class "
-            "{}".format('__len__', self.__class__.__name__)
+            "'{}' not implement in class {}".format(
+                '__len__', self.__class__.__name__
+            )
         )
 
     if TYPE_CHECKING:
@@ -268,20 +270,23 @@ class IterableDataset(Dataset[_T]):
 
     def __iter__(self) -> Iterator[_T]:
         raise NotImplementedError(
-            "'{}' not implement in class "
-            "{}".format('__iter__', self.__class__.__name__)
+            "'{}' not implement in class {}".format(
+                '__iter__', self.__class__.__name__
+            )
         )
 
     def __getitem__(self, idx: int) -> Never:
         raise RuntimeError(
-            "'{}' should not be called for IterableDataset"
-            "{}".format('__getitem__', self.__class__.__name__)
+            "'{}' should not be called for IterableDataset{}".format(
+                '__getitem__', self.__class__.__name__
+            )
         )
 
     def __len__(self) -> Never:
         raise RuntimeError(
-            "'{}' should not be called for IterableDataset"
-            "{}".format('__len__', self.__class__.__name__)
+            "'{}' should not be called for IterableDataset{}".format(
+                '__len__', self.__class__.__name__
+            )
         )
 
 

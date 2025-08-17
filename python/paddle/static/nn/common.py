@@ -725,7 +725,7 @@ def conv2d(
     )
     if len(input.shape) != 4:
         raise ValueError(
-            "Input size should be 4, " f"but received {len(input.shape)}"
+            f"Input size should be 4, but received {len(input.shape)}"
         )
     num_channels = input.shape[1]
     if not isinstance(use_cudnn, bool):
@@ -1367,7 +1367,7 @@ def conv2d_transpose(
     ), "param_attr should not be False in conv2d_transpose."
     if len(input.shape) != 4:
         raise ValueError(
-            "Input size should be 4, " f"but received {len(input.shape)}"
+            f"Input size should be 4, but received {len(input.shape)}"
         )
 
     if num_filters == 0:

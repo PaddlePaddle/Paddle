@@ -5050,9 +5050,9 @@ def cdist(
         f"But received Input x's last dimension is {x_shape[-1]}, "
         f"Input y's last dimension is {y_shape[-1]}.\n"
     )
-    assert p >= 0, (
-        "The p must be greater than or equal to 0, " f"But received p is {p}.\n"
-    )
+    assert (
+        p >= 0
+    ), f"The p must be greater than or equal to 0, But received p is {p}.\n"
 
     r1 = x.shape[-2]
     r2 = y.shape[-2]

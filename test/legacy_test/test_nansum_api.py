@@ -21,7 +21,6 @@ from paddle import base
 
 
 class API_Test_Nansum(unittest.TestCase):
-
     def test_static_graph(self):
         paddle.enable_static()
         startup_program = paddle.static.Program()
@@ -146,7 +145,6 @@ class API_Test_Nansum(unittest.TestCase):
 
 
 class API_Test_Nansum_ZeroSize(unittest.TestCase):
-
     def test_dygraph(self):
         x = np.random.random([2, 0, 3]).astype(np.float32)
         with base.dygraph.guard():

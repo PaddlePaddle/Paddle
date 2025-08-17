@@ -31,7 +31,6 @@ def convert_python_stmts_to_axpr_json(python_code_stmts_str):
 
 @dataclass
 class AnfExpr:
-
     def DumpToFileAsJson(self, file_name):
         with open(file_name, "w") as f:
             json.dump(self.value, f, indent=2)

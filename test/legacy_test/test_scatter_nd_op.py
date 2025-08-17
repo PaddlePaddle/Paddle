@@ -497,7 +497,6 @@ class TestScatterNdOpAPI(unittest.TestCase):
 
 # Test Raise Error
 class TestScatterNdOpRaise(unittest.TestCase):
-
     def test_check_raise(self):
         def check_raise_is_test():
             with static_guard():

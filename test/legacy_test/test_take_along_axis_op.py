@@ -409,7 +409,6 @@ class TestTakeAlongAxisAPICase2(unittest.TestCase):
 class TestTakeAlongAxisAPICase4(unittest.TestCase):
     def test_static_shape_take_along_axis(self):
         with dygraph_guard():
-
             x = paddle.randn([4, 2])
             ind = paddle.to_tensor([[0, 1]])
 
