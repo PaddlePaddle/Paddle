@@ -2184,11 +2184,11 @@ PHI_DEFINE_EXPORTED_bool(use_default_stream,
 /**
  * DenseTensorIterator related FLAG
  * Name: FLAGS_use_densetensor_iterator
- * Since Version: 3.1.1
+ * Since Version: 3.2
  * Value Range: bool, default=false
  * Example:
  * Note: Whether use DensetensorIterator.
  */
 PHI_DEFINE_EXPORTED_bool(use_densetensor_iterator,
-                         true,
+                         false,
                          "Whether use DensetensorIterator.");
