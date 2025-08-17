@@ -242,8 +242,7 @@
   python_api :
     name : [paddle.amax,paddle.Tensor.amax]
     args_alias:
-      x : [input,x1]
-      axis : [dim]
+      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
@@ -257,8 +256,7 @@
   python_api :
     name : [paddle.amin,paddle.Tensor.amin]
     args_alias :
-      x : [input,x1]
-      axis : [dim]
+      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
