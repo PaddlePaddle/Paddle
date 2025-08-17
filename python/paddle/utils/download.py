@@ -230,7 +230,7 @@ def _download(url, path, md5sum=None, method='get'):
             retry_cnt += 1
         else:
             raise RuntimeError(
-                f"Download from {url} failed. " "Retry limit reached"
+                f"Download from {url} failed. Retry limit reached"
             )
 
         if not _download_methods[method](url, fullname):

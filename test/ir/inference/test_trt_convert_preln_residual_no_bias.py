@@ -160,24 +160,32 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
         # for static_shape, fall back to base fused op
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-2  # atol=1e-2 while rtol is 1e-8
+        yield (
+            self.create_inference_config(),
+            generate_trt_nodes_num(attrs, False),
+            1e-2,
+        )  # atol=1e-2 while rtol is 1e-8
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-2  # atol=1e-2 while rtol is 1e-8
+        yield (
+            self.create_inference_config(),
+            generate_trt_nodes_num(attrs, False),
+            1e-2,
+        )  # atol=1e-2 while rtol is 1e-8
 
         # just support dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), 1e-2  # atol=1e-2 while rtol is 1e-8
+        yield (
+            self.create_inference_config(),
+            generate_trt_nodes_num(attrs, True),
+            1e-2,
+        )  # atol=1e-2 while rtol is 1e-8
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), 1e-2  # atol=1e-2 while rtol is 1e-8
+        yield (
+            self.create_inference_config(),
+            generate_trt_nodes_num(attrs, True),
+            1e-2,
+        )  # atol=1e-2 while rtol is 1e-8
 
     def add_skip_trt_case(self):
         pass

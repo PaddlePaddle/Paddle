@@ -111,7 +111,7 @@ def tril_matrix_to_vec(mat: Tensor, diag: int = 0) -> Tensor:
     out_shape = mat.shape[:-2]
     n = mat.shape[-1]
     if diag < -n or diag >= n:
-        raise ValueError(f"diag ({diag}) provided is outside [{-n}, {n-1}].")
+        raise ValueError(f"diag ({diag}) provided is outside [{-n}, {n - 1}].")
 
     rows, cols = paddle.meshgrid(paddle.arange(n), paddle.arange(n))
     tril_mask = diag + rows >= cols
