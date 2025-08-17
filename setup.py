@@ -111,7 +111,7 @@ def parse_input_command(input_parameters):
         dist.parse_command_line()
     except:
         print(
-            f"An error occurred while parsingthe parameters, {dist.script_args}"
+            f"An error occurred while parsing the parameters, {dist.script_args}"
         )
         sys.exit(1)
 
