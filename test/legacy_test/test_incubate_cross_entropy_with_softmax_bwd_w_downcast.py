@@ -17,71 +17,104 @@ import unittest
 import numpy as np
 
 import paddle
+import paddle.incubate.nn.functional as F
+from paddle import _C_ops
 
 
-class TestCrossEntropyWithSoftmaxBwdOperator(unittest.TestCase):
-    def setUp(self):
-        """Initialize test environment"""
-        paddle.seed(1024)
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+def create_test_data(
+    batch_size=1, seq_len=4096, vocab_size=129280, num_labels=12900
+):
+    labels = paddle.uniform(
+        [batch_size, seq_len, 1], min=0, max=num_labels
+    ).cast(paddle.int64)
 
-    def test_custom_backward_operator(self):
-        # 1. Prepare test data
-        batch_size = 1
-        seq_length = 4096
-        vocab_size = 129280
-        labels = paddle.randint(
-            low=0, high=12900, shape=[batch_size, seq_length, 1]
-        ).cast(paddle.int64)
-        logits = paddle.uniform(
-            shape=[batch_size, seq_length, vocab_size], dtype=paddle.float32
-        )
-        logits.stop_gradient = False
+    preds = paddle.uniform(
+        [batch_size, seq_len, vocab_size], dtype=paddle.float32
+    )
+    preds.stop_gradient = False
 
-        # 2. Native cross-entropy calculation
+    return labels, preds
+
+
+class TestCustomCrossEntropyBwd(unittest.TestCase):
+
+    def compute_losses(self, preds, labels):
         loss_func = paddle.nn.CrossEntropyLoss(
             reduction="none", ignore_index=-100
         )
-        masked_lm_loss = loss_func(logits, labels)
+        masked_lm_loss = loss_func(preds, labels)
 
-        # 3. Separate operator forward pass
-        softmax_val, separate_loss = paddle._C_ops.cross_entropy_with_softmax(
-            logits, labels, False, True, True, -100, -1
+        softmax_val, separate_loss = _C_ops.cross_entropy_with_softmax(
+            preds, labels, False, True, False, -100, -1
         )
 
-        # 4. Verify forward pass consistency
         np.testing.assert_allclose(
-            masked_lm_loss.numpy(),
-            separate_loss.numpy(),
-            rtol=1e-5,
-            atol=1e-8,
-            err_msg="Forward result mismatch between composite and separate ops",
+            masked_lm_loss.numpy(), separate_loss.numpy(), atol=1e-6
         )
 
-        # 5. Backward pass (native)
+        return masked_lm_loss, softmax_val, separate_loss
+
+    def compute_gradients(self, preds, labels, masked_lm_loss, softmax_val):
+        masked_lm_loss.retain_grads()
         loss = masked_lm_loss.sum()
-        loss.backward()
-        original_grad = logits.grad
+        loss.backward(retain_graph=True)
 
-        # 6. Custom backward pass (simulating bfloat16 downcasting)
-        broadcasted_loss = loss.expand_as(separate_loss)
-        custom_grad = paddle.incubate.nn.functional.cross_entropy_with_softmax_bwd_w_downcast(
-            labels, softmax_val, broadcasted_loss, axis=-1
+        custom_grad = F.cross_entropy_with_softmax_bwd_w_downcast(
+            labels, softmax_val, masked_lm_loss.grad
         )
 
-        # 7. Verify gradient consistency
+        separate_grad = _C_ops.cross_entropy_with_softmax_grad(
+            labels,
+            softmax_val,
+            masked_lm_loss.grad,
+            False,
+            True,
+            False,
+            -100,
+            -1,
+        )
+
+        return separate_grad, custom_grad
+
+    def verify_results(
+        self, separate_loss, masked_lm_loss, separate_grad, custom_grad, preds
+    ):
+        # float32 compare with float32, not exactly the same because non-deterministic
         np.testing.assert_allclose(
-            custom_grad.numpy(),
-            original_grad.numpy(),
-            rtol=1e-3,  # Relaxed tolerance for downcast precision
-            atol=1e-5,
-            err_msg="Backward gradient mismatch between custom and original ops",
+            separate_grad.numpy(), preds.grad.numpy(), atol=1e-7, rtol=1e-5
+        )
+
+        # float32 compare with float16, not exactly the same because non-deterministic, and dtype cast
+        np.testing.assert_allclose(
+            separate_grad.numpy(),
+            custom_grad.astype("float32").numpy(),
+            atol=1e-2,
+            rtol=1e-2,
+        )
+
+        # float32 compare with float16, not exactly the same because non-deterministic, and dtype cast
+        np.testing.assert_allclose(
+            custom_grad.astype("float32").numpy(),
+            preds.grad.numpy(),
+            atol=1e-2,
+            rtol=1e-2,
+        )
+
+    def test_custom_bwd(self):
+        labels, preds = create_test_data()
+
+        masked_lm_loss, softmax_val, separate_loss = self.compute_losses(
+            preds, labels
+        )
+
+        separate_grad, custom_grad = self.compute_gradients(
+            preds, labels, masked_lm_loss, softmax_val
+        )
+
+        self.verify_results(
+            separate_loss, masked_lm_loss, separate_grad, custom_grad, preds
         )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
