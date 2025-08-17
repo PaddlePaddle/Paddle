@@ -306,7 +306,6 @@ class TestDiffOpPreAppendAxis(TestDiffOp):
 
 
 class TestDiffOpFp16(TestDiffOp):
-
     def test_fp16_with_gpu(self):
         paddle.enable_static()
         if paddle.base.core.is_compiled_with_cuda():

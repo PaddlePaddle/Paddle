@@ -1,0 +1,213 @@
+#   Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+import paddle
+from paddle import _C_ops
+
+from ..base.framework import Variable
+from ..framework import (
+    in_dynamic_mode,
+)
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from paddle import Tensor
+
+from paddle.utils.decorator_utils import ForbidKeywordsDecorator
+
+__all__ = []
+
+
+@ForbidKeywordsDecorator(
+    illegal_keys={"x", "num_or_sections", "axis", "name"},
+    func_name="paddle.compat.split",
+    correct_name="paddle.split",
+)
+def split(
+    tensor: Tensor, split_size_or_sections: int | Sequence[int], dim: int = 0
+) -> tuple[Tensor, ...]:
+    """
+    (PyTorch Compatible API) Split the input tensor into multiple sub-Tensors.
+
+    Args:
+        tensor (Tensor): A N-D Tensor. The data type is bool, bfloat16, float16, float32, float64, uint8, int8, int32 or int64.
+        split_size_or_sections (int|list|tuple):
+            If split_size_or_sections is an integer type, then tensor will be split into equally sized chunks (if possible).
+            Last chunk will be smaller if the tensor size along the given dimension dim is not divisible by split_size.
+            If split_size_or_sections is a list, then tensor will be split into len(split_size_or_sections) chunks with sizes
+            in dim according to split_size_or_sections. Negative inputs are not allowed. For example: for a dim with 9 channels,
+            [2, 3, -1] will not be interpreted as [2, 3, 4], but will be rejected and an exception will be thrown.
+        dim (int|Tensor, optional): The dim along which to split, it can be a integer or a ``0-D Tensor``
+            with shape [] and data type  ``int32`` or ``int64``.
+            If :math::`dim < 0`, the dim to split along is :math:`rank(x) + dim`. Default is 0.
+    Returns:
+        tuple(Tensor), The tuple of segmented Tensors.
+
+    Note:
+        This is a pytorch compatible API that follows the function signature and behavior of torch.split.
+        To use the original split of paddle, please consider `paddle.split`
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> # x is a Tensor of shape [3, 8, 5]
+            >>> x = paddle.rand([3, 8, 5])
+
+            >>> out0, out1, out2 = paddle.compat.split(x, split_size_or_sections=3, dim=1)
+            >>> print(out0.shape)
+            [3, 3, 5]
+            >>> print(out1.shape)
+            [3, 3, 5]
+            >>> print(out2.shape)
+            [3, 2, 5]
+
+            >>> out0, out1, out2 = paddle.compat.split(x, split_size_or_sections=[1, 2, 5], dim=1)
+            >>> print(out0.shape)
+            [3, 1, 5]
+            >>> print(out1.shape)
+            [3, 2, 5]
+            >>> print(out2.shape)
+            [3, 5, 5]
+
+            >>> # dim is negative, the real dim is (rank(x) + dim)=1
+            >>> out0, out1, out2 = paddle.compat.split(x, split_size_or_sections=3, dim=-2)
+            >>> print(out0.shape)
+            [3, 3, 5]
+            >>> print(out1.shape)
+            [3, 3, 5]
+            >>> print(out2.shape)
+            [3, 2, 5]
+    """
+
+    def GetSplitSize(split_size, shape_on_dim):
+        remaining_num = shape_on_dim % split_size_or_sections
+        num_complete_section = shape_on_dim // split_size_or_sections
+        if remaining_num == 0:
+            return num_complete_section
+        else:
+            sections = [
+                split_size_or_sections for _ in range(num_complete_section)
+            ]
+            sections.append(remaining_num)
+            return sections
+
+    def GetShapeOnDimInRange(shape, dim: int) -> int:
+        shape_range = len(shape)
+        if isinstance(dim, int):
+            if dim < -shape_range or dim >= shape_range:
+                raise ValueError(
+                    f"(InvalidArgument) The dim is expected to be in range of [-{shape_range}, {shape_range}), but got {dim}"
+                )
+        return shape[dim]
+
+    if isinstance(split_size_or_sections, (list, tuple)):
+        for i, section_size in enumerate(split_size_or_sections):
+            shape_val = 0
+            if isinstance(section_size, Variable):
+                shape_val = int(section_size.item(0))
+            else:
+                shape_val = section_size
+            if section_size < 0:
+                raise ValueError(
+                    f"paddle.compat.split expects split_sizes have only non-negative entries, but got size = {section_size} on dim {i}"
+                )
+
+    if in_dynamic_mode():
+        if isinstance(dim, Variable):
+            dim = dim.item(0)
+        assert dim + len(tensor.shape) >= 0, "(rank(x) + dim) must >= 0"
+        dim = (dim + len(tensor.shape)) if dim < 0 else dim
+
+        if isinstance(split_size_or_sections, (list, tuple)):
+            if paddle.utils._contain_var(split_size_or_sections):
+                for index, item in enumerate(split_size_or_sections):
+                    if isinstance(item, Variable):
+                        split_size_or_sections[index] = split_size_or_sections[
+                            index
+                        ].item()
+        elif not isinstance(split_size_or_sections, int):
+            raise TypeError(
+                "The type of 'split_size_or_sections' in split must be int, list or tuple in imperative mode, but "
+                f"received {type(split_size_or_sections)}."
+            )
+
+        if isinstance(split_size_or_sections, int):
+            # check whether shape is divisible
+            assert (
+                split_size_or_sections > 0
+            ), 'split_size_or_sections must be greater than 0.'
+
+            split_size_or_sections = GetSplitSize(
+                split_size_or_sections, GetShapeOnDimInRange(tensor.shape, dim)
+            )
+
+            if isinstance(split_size_or_sections, list):
+                return tuple(_C_ops.split(tensor, split_size_or_sections, dim))
+            else:
+                return tuple(
+                    _C_ops.split_with_num(tensor, split_size_or_sections, dim)
+                )
+        else:
+            return tuple(_C_ops.split(tensor, split_size_or_sections, dim))
+    else:
+        if isinstance(dim, paddle.pir.Value):
+            raise TypeError(
+                "'dim' is not allowed to be a pir.Value in a static graph: "
+                "\npir.Value can not be used for indexing python lists/tuples."
+            )
+        if isinstance(dim, int):
+            assert len(tensor.shape) + dim >= 0, "(rank(x) + dim) must >= 0"
+            dim = (len(tensor.shape) + dim) if dim < 0 else dim
+
+        input_shape = tensor.shape
+
+        if not isinstance(split_size_or_sections, (int, list, tuple)):
+            raise TypeError(
+                "The type of 'split_size_or_sections' in split must be int, list or tuple in imperative mode."
+            )
+        if isinstance(split_size_or_sections, int):
+            assert (
+                split_size_or_sections > 0
+            ), 'split_size_or_sections must be greater than 0.'
+
+            split_size_or_sections = GetSplitSize(
+                split_size_or_sections, GetShapeOnDimInRange(tensor.shape, dim)
+            )
+            if isinstance(split_size_or_sections, list):
+                if paddle.utils._contain_var(split_size_or_sections):
+                    split_size_or_sections = paddle.utils.get_int_tensor_list(
+                        split_size_or_sections
+                    )
+                return tuple(_C_ops.split(tensor, split_size_or_sections, dim))
+            else:
+                return tuple(
+                    _C_ops.split_with_num(tensor, split_size_or_sections, dim)
+                )
+        else:
+            if isinstance(dim, int) and input_shape[dim] > 0:
+                assert (
+                    len(split_size_or_sections) <= input_shape[dim]
+                ), 'len(split_size_or_sections) must not be more than input.shape[dim].'
+            if paddle.utils._contain_var(split_size_or_sections):
+                split_size_or_sections = paddle.utils.get_int_tensor_list(
+                    split_size_or_sections
+                )
+            return tuple(_C_ops.split(tensor, split_size_or_sections, dim))

@@ -8546,7 +8546,6 @@ def auto_complete_op_role(program, op_role):
 # there would be always_forward_ops in your region, you should use "auto_complete_op_role"
 @signature_safe_contextmanager
 def pir_op_role_guard(op_role: int - 1) -> Generator[None, None, None]:
-
     if paddle.framework.in_pir_mode():
         original_op_rope = pir.get_op_role()
         pir.set_op_role(op_role)
@@ -8559,7 +8558,6 @@ def pir_op_role_guard(op_role: int - 1) -> Generator[None, None, None]:
 
 @signature_safe_contextmanager
 def pir_chunk_id_guard(chunk_id: int - 1) -> Generator[None, None, None]:
-
     if paddle.framework.in_pir_mode():
         original_chunk_id = pir.get_chunk_id()
         pir.set_chunk_id(chunk_id)
@@ -8572,7 +8570,6 @@ def pir_chunk_id_guard(chunk_id: int - 1) -> Generator[None, None, None]:
 
 @signature_safe_contextmanager
 def pir_op_name_guard(op_name: str) -> Generator[None, None, None]:
-
     if paddle.framework.in_pir_mode() and core._is_bwd_prim_enabled():
         original_comp_op_name = pir.get_comp_op_name()
         pir.set_comp_op_name(op_name)

@@ -106,7 +106,6 @@ class TestDiagV2OpCase4(TestDiagV2Op):
 
 
 class TestDiagV2Error(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         main = static.Program()

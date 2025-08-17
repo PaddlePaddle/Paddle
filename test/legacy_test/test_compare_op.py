@@ -515,7 +515,6 @@ create_bf16_case('not_equal', lambda _a, _b: _a != _b, True)
 
 
 class TestCompareOpError(unittest.TestCase):
-
     def test_int16_support(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -530,7 +529,6 @@ class TestCompareOpError(unittest.TestCase):
 
 
 class API_TestElementwise_Equal(unittest.TestCase):
-
     def test_api(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -571,7 +569,6 @@ class API_TestElementwise_Equal(unittest.TestCase):
 
 
 class API_TestElementwise_Greater_Than(unittest.TestCase):
-
     def test_api_fp16(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -588,7 +585,6 @@ class API_TestElementwise_Greater_Than(unittest.TestCase):
 
 
 class TestCompareOpPlace(unittest.TestCase):
-
     def test_place_1(self):
         paddle.enable_static()
         place = paddle.CPUPlace()
