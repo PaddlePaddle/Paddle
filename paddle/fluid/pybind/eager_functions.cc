@@ -1378,6 +1378,29 @@ PyObject* eager__is_run_in_backward(PyObject* self,
 
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+PyObject* eager__add_doc_str(PyObject* self, PyObject* args) {
+  EAGER_TRY
+  static std::vector<std::string> all_docs;
+  PyObject* obj = nullptr;
+  PyObject* doc_obj = nullptr;
+  if (!PyArg_ParseTuple(args, "OO", &obj, &doc_obj)) {
+    return nullptr;
+  }
+  std::string doc_string = CastPyArg2AttrString(doc_obj, 1);
+
+  if (Py_TYPE(obj) == &PyCFunction_Type) {
+    PyCFunctionObject* f = reinterpret_cast<PyCFunctionObject*>(obj);
+    if (f->m_ml->ml_doc) {
+      VLOG(6)
+          << "eager__add_doc_str will update doc for PyCFunction, original doc "
+          << f->m_ml->ml_doc;
+    }
+    all_docs.emplace_back(doc_string);
+    f->m_ml->ml_doc = all_docs.back().c_str();
+  }
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
 
 PyObject* eager__for_test_check_cuda_error(PyObject* self,
                                            PyObject* args,
@@ -1487,6 +1510,11 @@ PyMethodDef variable_functions[] = {  // NOLINT
     {"_for_test_check_cuda_error",
      (PyCFunction)(void (*)())eager__for_test_check_cuda_error,
      METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+
+    {"_add_docstr",
+     (PyCFunction)(void (*)())eager__add_doc_str,
+     METH_VARARGS,
      nullptr},
 /**sparse functions**/
 #if defined(PADDLE_WITH_CUDA)

@@ -1183,7 +1183,6 @@ class TestNLLLossName(unittest.TestCase):
 
 
 class TestNLLLossInvalidArgs(unittest.TestCase):
-
     def test_x_dim_value_error(self):
         def test_x_dim_lt_2():
             # place = paddle.CPUPlace()

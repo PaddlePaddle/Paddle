@@ -141,7 +141,7 @@ class PRChecker:
             for f in files:
                 file_dict[PADDLE_ROOT + f.filename] = f.status
                 file_count += 1
-            if file_count == 30:  # if pr file count = 31, nend to run all case
+            if file_count == 30:  # if pr file count = 31, need to run all case
                 break
             page += 1
         print(f"pr modify files: {file_dict}")
@@ -204,7 +204,7 @@ class PRChecker:
             # input += str(lineno) + '|' + line + '\n'
             inputs += str(lineno) + '|' + line
             lineno += 1
-        fietype = ''
+        filetype = ''
         if f.endswith('.h') or f.endswith('.cc') or f.endswith('.cu'):
             filetype = 'cc'
         if f.endswith('.py'):
@@ -405,7 +405,7 @@ class PRChecker:
                             f_judge_in_added_ut = False
                             path = PADDLE_ROOT + 'added_ut'
                             print("PADDLE_ROOT:", PADDLE_ROOT)
-                            print("adde_ut path:", path)
+                            print("added_ut path:", path)
                             (unittest_directory, unittest_name) = os.path.split(
                                 f_judge
                             )

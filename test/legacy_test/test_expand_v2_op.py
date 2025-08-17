@@ -405,7 +405,6 @@ class TestExpandV2BF16Op(OpTest):
 
 
 class TestExpandV2Error(unittest.TestCase):
-
     def test_errors(self):
         with (
             static_guard(),
@@ -428,7 +427,6 @@ class TestExpandV2Error(unittest.TestCase):
 
 # Test python API
 class TestExpandV2API(unittest.TestCase):
-
     def test_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
             input = np.random.random([12, 14]).astype("float32")
@@ -648,7 +646,6 @@ class TestExpandV2CompOpInt64_t(OpTest):
 
 
 class TestExpandPirValueListShape(unittest.TestCase):
-
     def test_value_list_shape1(self):
         with (
             static_guard(),
@@ -730,7 +727,6 @@ class TestExpandV2CPUOp2(TestExpandV2ZeroSizeOp):
     "core is not compiled with CUDA",
 )
 class TestExpandV2ZeroSizeGPUOp(TestExpandV2ZeroSizeOp):
-
     def init_place(self):
         self.place = core.CUDAPlace(0)
 

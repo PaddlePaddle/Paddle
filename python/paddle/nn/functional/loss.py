@@ -3917,9 +3917,7 @@ def triplet_margin_with_distance_loss(
 
     if not (input.shape == positive.shape == negative.shape):
         raise ValueError(
-            "input's shape must equal to "
-            "positive's shape and  "
-            "negative's shape"
+            "input's shape must equal to positive's shape and negative's shape"
         )
 
     distance_function = (
@@ -4064,9 +4062,7 @@ def triplet_margin_loss(
 
     if not (input.shape == positive.shape == negative.shape):
         raise ValueError(
-            "input's shape must equal to "
-            "positive's shape and  "
-            "negative's shape"
+            "input's shape must equal to positive's shape and negative's shape"
         )
 
     distance_function = paddle.nn.PairwiseDistance(p, epsilon=epsilon)
@@ -4420,7 +4416,7 @@ def soft_margin_loss(
         )
 
     if not (input.shape == label.shape):
-        raise ValueError("input's shape must equal to " "label's shape")
+        raise ValueError("input's shape must equal to label's shape")
 
     label = paddle.cast(label, input.dtype)
     out = paddle.log(1 + paddle.exp(-label * input))
@@ -4678,7 +4674,7 @@ def adaptive_log_softmax_with_loss(
             )
     else:
         raise ValueError(
-            '0D or 1D label tensor expected, ' 'multi-label not supported'
+            '0D or 1D label tensor expected, multi-label not supported'
         )
 
     is_batched = target_dim > 0

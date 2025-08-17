@@ -28,7 +28,7 @@ void SetOp(ProgramDesc* prog,
 
   op->SetType(type);
   if (type == "conv2d") {
-    op->SetAttr("use_mkldnn", true);
+    op->SetAttr("use_onednn", true);
     op->SetAttr("name", name);
     op->SetAttr("strides", std::vector<int>({1, 1}));
     op->SetAttr("groups", 1);
@@ -47,7 +47,7 @@ void SetOp(ProgramDesc* prog,
     op->SetAttr("Scale_in", 1.0f);
     op->SetAttr("Scale_out", 1.0f);
     op->SetAttr("Scale_weights", scale_weights);
-    op->SetAttr("use_mkldnn", true);
+    op->SetAttr("use_onednn", true);
     op->SetAttr("mkldnn_data_type", std::string("int8"));
   } else {
     FAIL() << "Unexpected operator type.";
@@ -103,7 +103,7 @@ void MainTest(bool convWithExistingBias,
   for (auto* node : graph->Nodes()) {
     if (node->IsOp() && node->Op()->Type() == "conv2d") {
       auto* op = node->Op();
-      ASSERT_TRUE(op->HasAttr("use_mkldnn"));
+      ASSERT_TRUE(op->HasAttr("use_mkldnn") || op->HasAttr("use_onednn"));
 
       EXPECT_EQ(op->GetAttrIfExists<std::vector<float>>("Scale_weights"),
                 scale_weights);
