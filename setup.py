@@ -49,7 +49,7 @@ if version_detail < (3, 9):
         f"you are using Python {python_version}"
     )
 elif env_version is None:
-    print(f"export PY_VERSION = { version }")
+    print(f"export PY_VERSION = {version}")
     os.environ["PY_VERSION"] = python_version
 
 elif env_version != version:
@@ -111,8 +111,7 @@ def parse_input_command(input_parameters):
         dist.parse_command_line()
     except:
         print(
-            f"An error occurred while parsing"
-            f"the parameters, {dist.script_args}"
+            f"An error occurred while parsingthe parameters, {dist.script_args}"
         )
         sys.exit(1)
 
@@ -451,7 +450,6 @@ def get_cuda_archs() -> list[int]:
 
 
 def get_tensorrt_version() -> str:
-
     def find_libnvinfer():
         """Search for libnvinfer.so file in LD_LIBRARY_PATH."""
 
@@ -1243,7 +1241,6 @@ def get_paddle_extra_install_requirements():
         if platform.system() == 'Linux' or (
             platform.system() == 'Windows' and version_default >= 10
         ):
-
             PADDLE_TENSORRT_INSTALL_REQUIREMENTS = [
                 "tensorrt==8.5.3.1",
                 "tensorrt==8.6.0",
