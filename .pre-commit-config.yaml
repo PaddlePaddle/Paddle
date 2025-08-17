@@ -59,11 +59,30 @@ repos:
     rev: 25.1.0
     hooks:
       - id: black
+        exclude: |
+          (?x)^(
+            third_party/.+|
+            ci/.+|
+            cmake/.+|
+            r/.+|
+            paddle/scripts/.+|
+            setup.py
+          )$
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.12.0
     hooks:
       - id: ruff-check
         args: [--fix, --exit-non-zero-on-fix, --no-cache]
+      - id: ruff-format
+        files: \.(py|pyi)$
+        exclude: |
+          (?x)^(
+            third_party/.+|
+            paddle/.+|
+            python/.+|
+            test/.+|
+            tools/.+
+          )$
   # For C++ files
   - repo: local
     hooks:
