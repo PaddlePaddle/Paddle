@@ -2077,9 +2077,29 @@ class TestCeil_ZeroDim(TestCeil):
         self.shape = []
 
 
+class TestCeil_UInt8(TestCeil):
+    def init_dtype(self):
+        self.dtype = np.uint8
+
+
+class TestCeil_Int8(TestCeil):
+    def init_dtype(self):
+        self.dtype = np.int8
+
+
 class TestCeil_Int16(TestCeil):
     def init_dtype(self):
         self.dtype = np.int16
+
+
+class TestCeil_Int32(TestCeil):
+    def init_dtype(self):
+        self.dtype = np.int32
+
+
+class TestCeil_Int64(TestCeil):
+    def init_dtype(self):
+        self.dtype = np.int64
 
 
 class TestFloor(TestActivation):
@@ -2143,9 +2163,29 @@ class TestFloor_ZeroDim(TestFloor):
         self.shape = []
 
 
+class TestFloor_UInt8(TestFloor):
+    def init_dtype(self):
+        self.dtype = np.uint8
+
+
+class TestFloor_Int8(TestFloor):
+    def init_dtype(self):
+        self.dtype = np.int8
+
+
 class TestFloor_Int16(TestFloor):
     def init_dtype(self):
         self.dtype = np.int16
+
+
+class TestFloor_Int32(TestFloor):
+    def init_dtype(self):
+        self.dtype = np.int32
+
+
+class TestFloor_Int64(TestFloor):
+    def init_dtype(self):
+        self.dtype = np.int64
 
 
 class TestCos(TestActivation):
