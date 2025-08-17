@@ -39,9 +39,7 @@ class TestMapMatmulToMulPass(PassAutoScanTest):
         config = self.create_inference_config(use_gpu=True)
         yield (
             config,
-            [
-                "matmul",
-            ],
+            ["matmul"],
             (1e-5, 1e-5),
         )
 
