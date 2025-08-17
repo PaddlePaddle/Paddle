@@ -331,31 +331,3 @@ def reshape_decorator():
         return wrapper
 
     return decorator
-
-
-class ForbidKeywordsDecorator(DecoratorBase):
-    """A decorator that hints users to use the correct `compat` functions, when erroneous keyword arguments are detected"""
-
-    def __init__(
-        self, illegal_keys: set[str], func_name: str, correct_name: str
-    ) -> None:
-        super().__init__()
-        self.illegal_keys = illegal_keys
-        self.func_name = func_name
-        self.correct_name = correct_name
-
-    def process(
-        self, args: tuple[Any, ...], kwargs: dict[str, Any]
-    ) -> tuple[tuple[Any, ...], dict[str, Any]]:
-        found_keys = [key for key in self.illegal_keys if key in kwargs]
-
-        if found_keys:
-            found_keys.sort()
-            keys_str = ", ".join(f"'{key}'" for key in found_keys)
-            plural = "s" if len(found_keys) > 1 else ""
-
-            raise TypeError(
-                f"{self.func_name}() received unexpected keyword argument{plural} {keys_str}. "
-                f"\nDid you mean to use {self.correct_name}() instead?"
-            )
-        return args, kwargs
