@@ -70,11 +70,15 @@ jobs:
 
   api-benchmark:
     name: Api-Benchmark
+    strategy:
+      matrix:
+        run-labels: [api-bm-20, api-bm-27]
     uses: ./.github/workflows/_Api-Benchmark.yml
     needs: [build-docker, build]
     with:
       can-skip: ${{ needs.build.outputs.can-skip }}
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
+      run-labels: ${{ matrix.run-labels }}
 
   auto-parallel:
     name: Auto-Parallel

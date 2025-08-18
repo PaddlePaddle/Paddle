@@ -19,6 +19,10 @@ on:
       MANUALLY_COMMIT_ID:
         type: string
         required: false
+      run-labels:
+        type: string
+        required: false
+        default: "api-bm"
 
 env:
   PR_ID: ${{ github.event.pull_request.number || '0' }}
@@ -50,6 +54,7 @@ jobs:
     if: ${{ inputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: Api-bm
+      labels: [self-hosted, "${{ inputs.run-labels }}"]
     steps:
       - name: Determine the runner
         run: |
