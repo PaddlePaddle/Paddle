@@ -504,7 +504,7 @@ add_doc_and_signature(
 
     Examples:
         .. code-block:: python
-
+            >>> # type: ignore
             >>> import paddle
 
             >>> # x is a bool Tensor with following elements:
