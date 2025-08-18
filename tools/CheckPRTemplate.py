@@ -21,7 +21,7 @@ import httpx
 PR_checkTemplate = ['Paddle']
 
 REPO_TEMPLATE = {
-    "Paddle": r'''### PR Category(.*[^\s].*)### PR Types(.*[^\s].*)### Description(.*[^\s].*)'''
+    "Paddle": r'''### PR Category(.*[^\s].*)### PR Types(.*[^\s].*)### Description(.*?https://github\.com/PaddlePaddle/Paddle/pull/.*?)(?:\n###|\Z)'''
 }
 
 
@@ -109,9 +109,11 @@ def checkPRTemplate(repo, body, CHECK_TEMPLATE):
     body = comment_pattern.sub('', body)
     print("---------")
     print(body)
+    print("---------")
     result = re_rule(body, CHECK_TEMPLATE)
     print("---------")
     print(result)
+    print("---------")
     message = ''
     if len(CHECK_TEMPLATE) == 0 and len(body) == 0:
         res = False
