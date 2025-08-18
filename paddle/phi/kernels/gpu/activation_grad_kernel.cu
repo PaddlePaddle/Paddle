@@ -322,6 +322,12 @@ void PowGradKernel(const Context& dev_ctx,
     phi::Copy<Context>(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
     return;
   }
+  if (factor.to<float>() == 1.5) {
+    funcs::CudaPow1p5GradFunctor<T> functor;
+    ActivationGradGPUImpl<T, Context, funcs::CudaPow1p5GradFunctor<T>>(
+        dev_ctx, &x, nullptr, &dout, dx, functor);
+    return;
+  }
   if (factor.to<float>() == 2) {
     funcs::CudaSquareGradFunctor<T> functor;
     ActivationGradGPUImpl<T, Context, funcs::CudaSquareGradFunctor<T>>(
@@ -334,28 +340,24 @@ void PowGradKernel(const Context& dev_ctx,
         dev_ctx, &x, nullptr, &dout, dx, functor);
     return;
   }
+  if (factor.to<float>() == 4) {
+    funcs::CudaPow4GradFunctor<T> functor;
+    ActivationGradGPUImpl<T, Context, funcs::CudaPow4GradFunctor<T>>(
+        dev_ctx, &x, nullptr, &dout, dx, functor);
+    return;
+  }
   if constexpr (!std::is_integral<T>::value) {
-    // if (factor.to<float>() == 0.5) {
-    //   funcs::CudaSqrtGradFunctor<T> functor;
-    //   ActivationGradGPUImpl<T, Context, funcs::CudaSqrtGradFunctor<T>>(
-    //       dev_ctx, &x, nullptr, &dout, dx, functor);
-    //   return;
-    // }
-    // if (factor.to<float>() == -0.5) {
-    //   funcs::CudaRsqrtGradFunctor<T> functor;
-    //   ActivationGradGPUImpl<T, Context, funcs::CudaRsqrtGradFunctor<T>>(
-    //       dev_ctx, &x, nullptr, &dout, dx, functor);
-    //   return;
-    // }
-    // if (factor.to<float>() == -1) {
-    //   funcs::CudaReciprocalGradFunctor<T> functor;
-    //   ActivationGradGPUImpl<T, Context, funcs::CudaReciprocalGradFunctor<T>>(
-    //       dev_ctx, &x, nullptr, &dout, dx, functor);
-    //   return;
-    // }
-    if (factor.to<float>() == -2) {
-      funcs::CudaRsquareGradFunctor<T> functor;
-      ActivationGradGPUImpl<T, Context, funcs::CudaRsquareGradFunctor<T>>(
+    if (factor.to<float>() == 0.5) {
+      funcs::CudaSqrtGradDepXFunctor<T> functor;
+      ActivationGradGPUImpl<T, Context, funcs::CudaSqrtGradDepXFunctor<T>>(
+          dev_ctx, &x, nullptr, &dout, dx, functor);
+      return;
+    }
+    if (factor.to<float>() == -1) {
+      funcs::CudaReciprocalGradDepXFunctor<T> functor;
+      ActivationGradGPUImpl<T,
+                            Context,
+                            funcs::CudaReciprocalGradDepXFunctor<T>>(
           dev_ctx, &x, nullptr, &dout, dx, functor);
       return;
     }

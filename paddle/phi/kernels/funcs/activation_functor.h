@@ -3643,38 +3643,6 @@ struct CudaRsquareGradFunctor<ComplexType<T>>
 };
 
 template <typename T>
-struct CudaCubeFunctor : public BaseActivationFunctor<T> {
-  // cube(x) = x * x * x
-  __device__ __forceinline__ T operator()(const T x) const { return x * x * x; }
-};
-
-template <typename T>
-struct CudaCubeGradFunctor : public BaseActivationFunctor<T> {
-  T three = static_cast<T>(3.0f);
-
-  // dx = dout * 3 * x * x
-  __device__ __forceinline__ T operator()(const T dout, const T x) const {
-    return dout * three * x * x;
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
-};
-
-template <typename T>
-struct CudaCubeGradFunctor<ComplexType<T>>
-    : public BaseActivationFunctor<ComplexType<T>> {
-  ComplexType<T> three = static_cast<ComplexType<T>>(3.0f);
-
-  // dx = dout * 3 * conj(x * x)
-  __device__ __forceinline__ ComplexType<T> operator()(
-      const ComplexType<T> dout, const ComplexType<T> x) const {
-    return static_cast<ComplexType<T>>(dout * three * conj(x * x));
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
-};
-
-template <typename T>
 struct CudaExpGradFunctor : public BaseActivationFunctor<T> {
   // dx = dout * out
   __device__ __forceinline__ T operator()(const T dout, const T out) const {
@@ -3771,6 +3739,36 @@ struct CudaReciprocalGradFunctor<ComplexType<T>>
   static constexpr ActBwdOpFwdDeps FwdDeps() {
     return ActBwdOpFwdDeps::kDepOut;
   }
+};
+
+// for pow(x, -1)
+template <typename T>
+struct CudaReciprocalGradDepXFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType one = static_cast<MPType>(1.0f);
+
+  // dx = -dout * out^2
+  __device__ __forceinline__ T operator()(const T arg_dout,
+                                          const T arg_x) const {
+    MPType dout = static_cast<MPType>(arg_dout);
+    MPType x = static_cast<MPType>(arg_x);
+    return static_cast<T>(-dout * (one / (x * x)));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaReciprocalGradDepXFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  ComplexType<T> one = static_cast<ComplexType<T>>(1.0f);
+  // dx = -dout * out^2
+  __device__ __forceinline__ ComplexType<T> operator()(
+      const ComplexType<T> dout, const ComplexType<T> x) const {
+    return -dout * conj(one / (x * x));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
 template <typename T>
@@ -4362,6 +4360,36 @@ struct CudaSqrtGradFunctor<ComplexType<T>>
   static constexpr ActBwdOpFwdDeps FwdDeps() {
     return ActBwdOpFwdDeps::kDepOut;
   }
+};
+
+// for pow(x, 0.5)
+template <typename T>
+struct CudaSqrtGradDepXFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  MPType one_half = static_cast<MPType>(0.5f);
+
+  // dx = dout * (0.5 * rsqrt(x))
+  __device__ __forceinline__ T operator()(const T dout, const T arg_x) const {
+    MPType x = static_cast<MPType>(arg_x);
+    return dout * static_cast<T>(one_half * rsqrt(x));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaSqrtGradDepXFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  ComplexType<T> one_half = static_cast<ComplexType<T>>(0.5f);
+
+  // dx = dout * conj(0.5 * rsqrt(x))
+  __device__ __forceinline__ ComplexType<T> operator()(
+      const ComplexType<T> dout, const ComplexType<T> x) const {
+    return dout * conj(one_half / sqrt(x));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
 template <typename T>
@@ -5555,16 +5583,6 @@ struct CudaPowFunctor : public BaseCudaPowFunctor<T> {
 };
 
 template <typename T>
-struct CudaPowGradFunctor : public BaseCudaPowGradFunctor<T> {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-  // dx = dout * n * pow(x, n - 1)
-  __device__ __forceinline__ T operator()(const T dout, const T x) const {
-    return dout * static_cast<T>(this->factor) *
-           compute_pow<T, MT>(x, static_cast<MT>(this->factor - 1));
-  }
-};
-
-template <typename T>
 struct CudaPowFunctor<ComplexType<T>>
     : public BaseCudaPowFunctor<ComplexType<T>> {
   __device__ __forceinline__ ComplexType<T> operator()(
@@ -5574,14 +5592,112 @@ struct CudaPowFunctor<ComplexType<T>>
 };
 
 template <typename T>
+struct CudaPowGradFunctor : public BaseCudaPowGradFunctor<T> {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  // dx = dout * n * pow(x, n - 1)
+  __device__ __forceinline__ T operator()(const T dout, const T x) const {
+    return dout * (static_cast<T>(this->factor) *
+                   compute_pow<T, MT>(x, static_cast<MT>(this->factor - 1)));
+  }
+};
+
+template <typename T>
 struct CudaPowGradFunctor<ComplexType<T>>
     : public BaseCudaPowGradFunctor<ComplexType<T>> {
-  // dx = dout * n * pow(x, n - 1)
+  // dx = dout * (4 * (x*x*x))
   __device__ __forceinline__ ComplexType<T> operator()(
       const ComplexType<T> dout, const ComplexType<T> x) const {
     return dout * conj(static_cast<ComplexType<T>>(this->factor) *
                        pow(x, static_cast<ComplexType<T>>(this->factor - 1)));
   }
+};
+
+template <typename T>
+struct CudaCubeFunctor : public BaseActivationFunctor<T> {
+  // cube(x) = x * x * x
+  __device__ __forceinline__ T operator()(const T x) const { return x * x * x; }
+};
+
+template <typename T>
+struct CudaCubeGradFunctor : public BaseActivationFunctor<T> {
+  T three = static_cast<T>(3.0f);
+
+  // dx = dout * 3 * x * x
+  __device__ __forceinline__ T operator()(const T dout, const T x) const {
+    return dout * (three * (x * x));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaCubeGradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  ComplexType<T> three = static_cast<ComplexType<T>>(3.0f);
+
+  // dx = dout * conj(3 * x * x)
+  __device__ __forceinline__ ComplexType<T> operator()(
+      const ComplexType<T> dout, const ComplexType<T> x) const {
+    return static_cast<ComplexType<T>>(dout * conj(three * (x * x)));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaPow4GradFunctor : public BaseActivationFunctor<T> {
+  T four = static_cast<T>(4.0f);
+
+  // dx = dout * 4 * x * x * x
+  __device__ __forceinline__ T operator()(const T dout, const T x) const {
+    return dout * (four * (x * x * x));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaPow4GradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  ComplexType<T> four = static_cast<ComplexType<T>>(4.0f);
+
+  // dx = dout * conj(4 * x * x * x)
+  __device__ __forceinline__ ComplexType<T> operator()(
+      const ComplexType<T> dout, const ComplexType<T> x) const {
+    return static_cast<ComplexType<T>>(dout * conj(four * (x * x * x)));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+// for pow(x, 1.5)
+template <typename T>
+struct CudaPow1p5GradFunctor : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  MPType f1p5 = static_cast<T>(1.5f);
+
+  // dx = dout * 1.5 * sqrt(x)
+  __device__ __forceinline__ T operator()(const T dout, const T arg_x) const {
+    MPType x = static_cast<MPType>(arg_x);
+    return dout * static_cast<T>(f1p5 * sqrt(x));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaPow1p5GradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  ComplexType<T> f1p5 = static_cast<ComplexType<T>>(1.5f);
+
+  // dx = dout * conj(1.5 * sqrt(x))
+  __device__ __forceinline__ ComplexType<T> operator()(
+      const ComplexType<T> dout, const ComplexType<T> x) const {
+    return static_cast<ComplexType<T>>(dout * conj(f1p5 * sqrt(x)));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
 template <typename T>
