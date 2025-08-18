@@ -24,6 +24,12 @@ from typing_extensions import overload
 import paddle
 from paddle import _C_ops
 from paddle.tensor import fill_constant
+from paddle.utils.decorator_utils import (
+    ParamAliasDecorator,
+    param_two_alias,
+    reshape_decorator,
+    view_decorator,
+)
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
@@ -56,6 +62,8 @@ if TYPE_CHECKING:
         ShapeLike,
         TensorOrTensors,
     )
+
+from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
 __all__ = []
 
@@ -1339,6 +1347,7 @@ def tolist(x: Tensor) -> NestedList[int | float | complex]:
     return x.numpy(False).tolist()
 
 
+@ParamAliasDecorator({"x": ["tensors"], "axis": ["dim"]})
 def concat(
     x: Sequence[Tensor], axis: int | Tensor = 0, name: str | None = None
 ) -> Tensor:
@@ -1356,12 +1365,18 @@ def concat(
         :alt: legend of concat API
         :align: center
 
+    .. note::
+        Alias Support: The parameter name ``tensors`` can be used as an alias for ``x``, and ``dim`` can be used as an alias for ``axis``.
+        For example, ``concat(tensors=tensor_x, dim=1, ...)`` is equivalent to ``concat(x=tensor_x, axis=1, ...)``.
+
     Args:
         x (list|tuple): ``x`` is a Tensor list or Tensor tuple which is with data type bool, float16, bfloat16,
             float32, float64, int8, int16, int32, int64, uint8, uint16, complex64, complex128. All the Tensors in ``x`` must have same data type.
+            alias: ``tensors``.
         axis (int|Tensor, optional): Specify the axis to operate on the input Tensors.
             Tt should be integer or 0-D int Tensor with shape []. The effective range is [-R, R), where R is Rank(x). When ``axis < 0``,
             it works the same way as ``axis+R``. Default is 0.
+            alias: ``dim``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1989,6 +2004,46 @@ def flatten(
             attrs={"start_axis": start_axis, "stop_axis": stop_axis},
         )
         return out
+
+
+def ravel(input: Tensor) -> Tensor:
+    """
+    Return a contiguous flattened tensor. A copy is made only if needed.
+    Note:
+        The output Tensor will share data with origin Tensor and doesn't have a Tensor copy in ``dygraph`` mode.
+        If you want to use the Tensor copy version, please use `Tensor.clone` like ``ravel_clone_x = x.ravel().clone()``.
+        For example:
+
+        .. code-block:: text
+            Case 1:
+              Given
+                X.shape = (3, 100, 100, 4)
+
+              We get:
+                Out.shape = (3 * 100 * 100 * 4)
+    Args:
+        x (Tensor): A tensor of number of dimensions >= axis. A tensor with data type float16, float32,
+                      float64, int8, int32, int64, uint8.
+
+    Returns:
+        Tensor: A tensor with the contents of the input tensor, whose input axes are flattened by indicated :attr:`start_axis` and :attr:`stop_axis`, and data type is the same as input :attr:`x`.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> image_shape=(2, 3, 4, 4)
+
+            >>> x = paddle.arange(end=image_shape[0] * image_shape[1] * image_shape[2] * image_shape[3])
+            >>> img = paddle.reshape(x, image_shape)
+
+            >>> out = paddle.ravel(img)
+            >>> print(out.shape)
+            [96]
+    """
+    return flatten(input)
 
 
 @inplace_apis_in_dygraph_only
@@ -2682,6 +2737,11 @@ def row_stack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
     return paddle.vstack(x, name=name)
 
 
+@ForbidKeywordsDecorator(
+    illegal_keys={"tensor", "split_size_or_sections", "dim"},
+    func_name="paddle.split",
+    correct_name="paddle.compat.split",
+)
 def split(
     x: Tensor,
     num_or_sections: int | Sequence[int],
@@ -3419,6 +3479,7 @@ def squeeze_(
         return _C_ops.squeeze_(input, axes)
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def unique_consecutive(
     x: Tensor,
     return_inverse: bool = False,
@@ -3501,6 +3562,24 @@ def unique_consecutive(
         attr_dtype, (core.VarDesc.VarType, paddle.pir.core.DataType)
     ):
         attr_dtype = convert_np_dtype_to_dtype_(dtype)
+
+    if in_dynamic_mode():
+        if math.prod(x.shape) == 0:
+            if axis == []:
+                outs = [paddle.to_tensor([], dtype=x.dtype)]
+            else:
+                outs = [x.clone()]
+            if dtype == 'int32' or dtype == paddle.int32:
+                return_dtype = paddle.int32
+            else:
+                return_dtype = paddle.int64
+            if return_inverse:
+                outs.append(paddle.to_tensor([], dtype=return_dtype))
+            if return_counts:
+                outs.append(paddle.to_tensor([], dtype=return_dtype))
+            if len(outs) == 1:
+                return outs[0]
+            return tuple(outs)
 
     if in_dynamic_or_pir_mode():
         out, inverse, counts = _C_ops.unique_consecutive(
@@ -3738,6 +3817,22 @@ def unique(
         axis = [axis]
     attr_dtype = convert_np_dtype_to_dtype_(dtype)
     if in_dynamic_mode():
+        if math.prod(x.shape) == 0:
+            outs = [x.clone()]
+            if dtype == 'int32' or dtype == paddle.int32:
+                return_dtype = paddle.int32
+            else:
+                return_dtype = paddle.int64
+            if return_index:
+                outs.append(paddle.to_tensor([], dtype=return_dtype))
+            if return_inverse:
+                outs.append(paddle.to_tensor([], dtype=return_dtype))
+            if return_counts:
+                outs.append(paddle.to_tensor([], dtype=return_dtype))
+            if len(outs) == 1:
+                return outs[0]
+            return tuple(outs)
+
         out, indices, inverse, counts = _C_ops.unique(
             x, return_index, return_inverse, return_counts, axis, attr_dtype
         )
@@ -4489,7 +4584,7 @@ def chunk(
     if chunks <= 0 or (
         isinstance(axis, int)
         and axis >= 0
-        and chunks > x.shape[axis]
+        and (x.shape[axis] != 0 and chunks > x.shape[axis])
         and x.shape[axis] != -1
     ):
         raise ValueError(
@@ -4728,6 +4823,7 @@ def expand_as(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
+@ParamAliasDecorator({"x": ["input"], "shape": ["size"]})
 def broadcast_to(
     x: Tensor, shape: ShapeLike, name: str | None = None
 ) -> Tensor:
@@ -4900,6 +4996,7 @@ def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
         return out
 
 
+@reshape_decorator()
 def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
     """
     Changes the shape of ``x`` without changing its data.
@@ -5029,6 +5126,7 @@ def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
             x,
             'x',
             [
+                'float8_e4m3fn',
                 'float16',
                 'float32',
                 'float64',
@@ -6207,6 +6305,83 @@ def as_real(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
+def view_as_complex(input: Tensor) -> Tensor:
+    """Return a complex tensor that is a view of the input real tensor .
+
+    The data type of the input tensor is 'float32' or 'float64', and the data
+    type of the returned tensor is 'complex64' or 'complex128', respectively.
+
+    The shape of the input tensor is ``(* ,2)``, (``*`` means arbitrary shape), i.e.
+    the size of the last axis should be 2, which represent the real and imag part
+    of a complex number. The shape of the returned tensor is ``(*,)``.
+
+    The complex tensor is a view of the input real tensor, meaning that it shares the same memory with real tensor.
+
+    The image below demonstrates the case that a real 3D-tensor with shape [2, 3, 2] is transformed into a complex 2D-tensor with shape [2, 3].
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/as_complex.png
+       :width: 500
+       :alt: Illustration of as_complex
+       :align: center
+
+    Args:
+        input (Tensor): The input tensor. Data type is 'float32' or 'float64'.
+
+    Returns:
+        Tensor, The output. Data type is 'complex64' or 'complex128', sharing the same memory with input.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.arange(12, dtype=paddle.float32).reshape([2, 3, 2])
+            >>> y = paddle.as_complex(x)
+            >>> print(y)
+            Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
+            [[1j      , (2+3j)  , (4+5j)  ],
+             [(6+7j)  , (8+9j)  , (10+11j)]])
+    """
+
+    return as_complex(x=input)
+
+
+def view_as_real(input: Tensor) -> Tensor:
+    """Return a real tensor that is a view of the input complex tensor.
+
+    The data type of the input tensor is 'complex64' or 'complex128', and the data
+    type of the returned tensor is 'float32' or 'float64', respectively.
+
+    When the shape of the input tensor is ``(*, )``, (``*`` means arbitrary shape),
+    the shape of the output tensor is ``(*, 2)``, i.e. the shape of the output is
+    the shape of the input appended by an extra ``2``.
+
+    The real tensor is a view of the input complex tensor, meaning that it shares the same memory with complex tensor.
+
+    Args:
+        input (Tensor): The input tensor. Data type is 'complex64' or 'complex128'.
+
+    Returns:
+        Tensor, The output. Data type is 'float32' or 'float64', sharing the same memory with input.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.arange(12, dtype=paddle.float32).reshape([2, 3, 2])
+            >>> y = paddle.as_complex(x)
+            >>> z = paddle.as_real(y)
+            >>> print(z)
+            Tensor(shape=[2, 3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[0. , 1. ],
+             [2. , 3. ],
+             [4. , 5. ]],
+            [[6. , 7. ],
+             [8. , 9. ],
+             [10., 11.]]])
+    """
+    return as_real(x=input)
+
+
 def repeat_interleave(
     x: Tensor,
     repeats: int | Tensor,
@@ -6609,6 +6784,7 @@ def infer_broadcast_shape(
     return broadcast_shape
 
 
+@ParamAliasDecorator({"arr": ["input"], "axis": ["dim"]})
 def take_along_axis(
     arr: Tensor, indices: Tensor, axis: int, broadcast: bool = True
 ) -> Tensor:
@@ -6645,10 +6821,15 @@ def take_along_axis(
         )
     axis = non_negative_axis(arr, axis)
     if broadcast:
-        broadcast_shape = infer_broadcast_shape(arr, indices, axis)
-        if not broadcast_shape:
-            # if indices matrix have larger size than arr, arr should broadcast into indices shape.
-            broadcast_shape = indices.shape
+        broadcast_shape_list = list(arr.shape)
+        for i in range(len(arr.shape)):
+            if indices.shape[i] == 0 or arr.shape[i] == 0:
+                broadcast_shape_list[i] = 0
+            else:
+                broadcast_shape_list[i] = max(arr.shape[i], indices.shape[i])
+        broadcast_shape_list[axis] = list(indices.shape)[axis]
+        broadcast_shape = tuple(broadcast_shape_list)
+
         indices = paddle.broadcast_to(indices, broadcast_shape)
         broadcast_shape_list = list(broadcast_shape)
         broadcast_shape_list[axis] = list(arr.shape)[axis]
@@ -7245,6 +7426,7 @@ def as_strided(
 
 
 @dygraph_only
+@view_decorator()
 def view(
     x: Tensor,
     shape_or_dtype: Sequence[int] | DTypeLike,

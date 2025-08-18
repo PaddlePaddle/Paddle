@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -158,11 +158,7 @@ class TestEighAPI(unittest.TestCase):
         self.UPLO = 'L'
         self.rtol = 1e-5  # for test_eigh_grad
         self.atol = 1e-5  # for test_eigh_grad
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
         np.random.seed(123)
 
     def init_input_shape(self):
@@ -256,7 +252,6 @@ class TestEighBatchAPI(TestEighAPI):
 
 
 class TestEighAPIError(unittest.TestCase):
-
     def test_error(self):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -290,11 +285,7 @@ class TestEighAPIError(unittest.TestCase):
 class TestEighAPIZeroSize(unittest.TestCase):
     def setUp(self):
         self.init_input_data()
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
         self.rtol = 1e-5  # for test_eigh_grad
         self.atol = 1e-5  # for test_eigh_grad
         np.random.seed(123)
@@ -373,6 +364,14 @@ class TestEighBatchAPIZeroSize(TestEighAPIZeroSize):
 class TestEighBatchAPIZeroSize1(TestEighAPIZeroSize):
     def init_input_shape(self):
         self.x_shape = [5, 0, 0]
+
+
+class TestEighAPIError_ZeroSize(unittest.TestCase):
+    def _test_case(self):
+        paddle.linalg.eigh(paddle.randn([0, 5]))
+
+    def test_error(self):
+        self.assertRaises(ValueError, self._test_case)
 
 
 if __name__ == "__main__":

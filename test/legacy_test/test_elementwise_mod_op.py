@@ -16,7 +16,12 @@ import random
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+    is_custom_device,
+)
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -41,7 +46,7 @@ class TestElementwiseModOp(OpTest):
             'X': OpTest.np_dtype_to_base_dtype(self.x),
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_onednn}
+        self.attrs = {'axis': self.axis, 'use_onednn': self.use_onednn}
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
@@ -124,7 +129,8 @@ class TestElementwiseModOpFloat(TestElementwiseModOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestElementwiseModFP16Op(TestElementwiseModOp):
     def init_dtype(self):
@@ -189,7 +195,7 @@ class TestElementwiseModBF16Op(OpTest):
             'X': convert_float_to_uint16(OpTest.np_dtype_to_base_dtype(self.x)),
             'Y': convert_float_to_uint16(OpTest.np_dtype_to_base_dtype(self.y)),
         }
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_onednn}
+        self.attrs = {'axis': self.axis, 'use_onednn': self.use_onednn}
         self.outputs = {'Out': convert_float_to_uint16(self.out)}
 
     def test_check_output(self):

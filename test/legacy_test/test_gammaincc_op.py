@@ -131,13 +131,11 @@ class TestGammainccOpFp32Api(TestGammainccOpApi):
 
 
 class TestGammainccOp_ZeroSize(TestGammainccOp):
-
     def init_shape(self):
         self.shape = (0, 40)
 
 
 class TestGammainccOp_ZeroSize2(TestGammainccOp):
-
     def init_shape(self):
         self.shape = (0, 0)
 

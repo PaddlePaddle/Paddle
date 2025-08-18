@@ -123,6 +123,7 @@ class TensorMeta:
             self._local_shape = None
         self.dtype = tensor.dtype
         self.placements = None if not tensor.is_dist() else tensor.placements
+        self.stop_gradient = tensor.stop_gradient
 
     def __repr__(self):
         return f"TensorMeta(global_shape={self.shape},local_shape={self._local_shape}, dtype={self.dtype}, placements={self.placements})"
@@ -151,7 +152,6 @@ def _get_stage_mesh(stage_index, pp_group_size, style=None):
     if style is not None:
         raise ValueError(f"Unknown style: {style}, style can be None, v.")
     else:
-
         pp_idx = stage_index % pp_group_size
         return _get_pp_mesh(pp_idx)
 

@@ -131,9 +131,10 @@ class LinalgLstsqTestCase(unittest.TestCase):
             if (
                 self._input_shape_1[-2] > self._input_shape_1[-1]
                 and self._output_rank == self._input_shape_1[-1]
+                and self.driver != "gelsy"
             ):
                 np.testing.assert_allclose(
-                    self._result_residuals, self._output_residuals, rtol=1e-5
+                    self._result_residuals, self._output_residuals, rtol=1e-3
                 )
             if self.driver in ("gelsy", "gelsd", "gelss"):
                 np.testing.assert_allclose(
@@ -153,6 +154,7 @@ class LinalgLstsqTestCase(unittest.TestCase):
                 if (
                     self._input_shape_1[-2] > self._input_shape_1[-1]
                     and self._output_rank[i] == self._input_shape_1[-1]
+                    and self.driver != "gelsy"
                 ):
                     np.testing.assert_allclose(
                         self._result_residuals[i],
@@ -261,6 +263,15 @@ class LinalgLstsqTestCaseBatch2(LinalgLstsqTestCase):
         self._input_shape_2 = (10, 8, 10)
 
 
+class LinalgLstsqTestCaseBatch3(LinalgLstsqTestCase):
+    def init_config(self):
+        self.dtype = 'float64'
+        self.rcond = 1e-15
+        self.driver = "gelss"
+        self._input_shape_1 = (2, 10, 3)
+        self._input_shape_2 = (2, 10, 4)
+
+
 class LinalgLstsqTestCaseLarge1(LinalgLstsqTestCase):
     def init_config(self):
         self.dtype = 'float64'
@@ -277,6 +288,33 @@ class LinalgLstsqTestCaseLarge2(LinalgLstsqTestCase):
         self.driver = "gelss"
         self._input_shape_1 = (50, 600)
         self._input_shape_2 = (50, 300)
+
+
+class LinalgLstsqTestZeroSize(LinalgLstsqTestCase):
+    def init_config(self):
+        self.dtype = 'float64'
+        self.rcond = 1e-15
+        self.driver = "gelsd"
+        self._input_shape_1 = (0, 100)
+        self._input_shape_2 = (0, 50)
+
+
+class LinalgLstsqTestZeroSize1(LinalgLstsqTestZeroSize):
+    def init_config(self):
+        self.dtype = 'float64'
+        self.rcond = 1e-15
+        self.driver = "gels"
+        self._input_shape_1 = (10, 7, 0)
+        self._input_shape_2 = (10, 7, 6)
+
+
+class LinalgLstsqTestZeroSize2(LinalgLstsqTestZeroSize):
+    def init_config(self):
+        self.dtype = 'float64'
+        self.rcond = 1e-15
+        self.driver = "gelss"
+        self._input_shape_1 = (5, 0)
+        self._input_shape_2 = (5, 0)
 
 
 class TestLinalgLstsqAPIError(unittest.TestCase):

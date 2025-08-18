@@ -54,7 +54,7 @@ class TestONEDNNCpuBfloat16Pass(InferencePassTest):
         self.shape_x = [12, 10, 1]
         self.shape_y = [12, 1, 64]
         self.enable_mkldnn = True
-        self.enable_mkldnn_bfloat16 = True
+        self.enable_onednn_bfloat16 = True
 
     def test_check_output(self):
         use_gpu = False

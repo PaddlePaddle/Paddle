@@ -210,7 +210,6 @@ class TestNonzeroBF16(OpTest):
 
 
 class TestZeroSizeOp(TestNonzeroOp):
-
     def init_shape(self):
         self.shape = [0, 10]
 
@@ -219,7 +218,6 @@ class TestZeroSizeOp(TestNonzeroOp):
 
 
 class TestZeroSizeOpCase2(TestNonzeroOp):
-
     def init_shape(self):
         self.shape = [0, 10]
 

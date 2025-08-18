@@ -153,6 +153,12 @@ std::vector<ir::stmt::StmtRef> CodeGenGpuDev::FilterDeallocTempBuffers(
 void CodeGenGpuDev::Visit(const ir::_LoweredFunc_ *op) {
   // clear names valid within scope when enter a new function
   vectorized_tensor_names_.clear();
+  dynamic_shape_map_.clear();
+  for (const auto &arg : op->args) {
+    if (arg.is_var()) {
+      dynamic_shape_map_.emplace(arg.name(), arg.type());
+    }
+  }
   str_ += "__global__\n";
 
   PrintFunctionDeclaration(op);
@@ -211,19 +217,48 @@ void CodeGenGpuDev::VisitStmt(const ir::stmt::Alloc &stmt) {
   PrintTempBufferCreation(stmt->destination().as_buffer_ref());
 }
 
+inline void ProcessMinMaxOperand(ir::Expr *a,
+                                 ir::Expr *b,
+                                 int unify_bit,
+                                 bool both_dyn) {
+  if (unify_bit > 0) {
+    std::string type_func = "int" + std::to_string(unify_bit) + "_t";
+    if (both_dyn) {
+      // if both contains dynamic symbol, like: min(S0, S1), it it likely that
+      // S0 is int and S1 is int64_t. So we need to enforce the type cast by
+      // ir::Call
+      *a = ir::Call::Make(
+          common::Int(unify_bit), type_func, {*a}, {}, ir::CallType::Intrinsic);
+      *b = ir::Call::Make(
+          common::Int(unify_bit), type_func, {*b}, {}, ir::CallType::Intrinsic);
+    } else {
+      *a = ir::Cast::Make(common::Int(unify_bit), *a);
+      *b = ir::Cast::Make(common::Int(unify_bit), *b);
+    }
+  }
+}
+
 void CodeGenGpuDev::Visit(const ir::Min *op) {
   str_ += "min(";
-  IrPrinter::Visit(op->a());
+  ir::Expr a = op->a(), b = op->b();
+  auto [unify_bit, both_dyn] =
+      common::UnifiedOperandTypeBits(&dynamic_shape_map_, op);
+  ProcessMinMaxOperand(&a, &b, unify_bit, both_dyn);
+  IrPrinter::Visit(a);
   str_ += ", ";
-  IrPrinter::Visit(op->b());
+  IrPrinter::Visit(b);
   str_ += ")";
 }
 
 void CodeGenGpuDev::Visit(const ir::Max *op) {
   str_ += "max(";
-  IrPrinter::Visit(op->a());
+  ir::Expr a = op->a(), b = op->b();
+  auto [unify_bit, both_dyn] =
+      common::UnifiedOperandTypeBits(&dynamic_shape_map_, op);
+  ProcessMinMaxOperand(&a, &b, unify_bit, both_dyn);
+  IrPrinter::Visit(a);
   str_ += ", ";
-  IrPrinter::Visit(op->b());
+  IrPrinter::Visit(b);
   str_ += ")";
 }
 

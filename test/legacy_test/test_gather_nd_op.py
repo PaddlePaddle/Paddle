@@ -562,7 +562,6 @@ class TestGatherNdOpWithHighRankDiffBF16(TestGatherNdOpWithHighRankDiff):
 
 # Test Python API
 class TestGatherNdOpAPI(unittest.TestCase):
-
     def test_case1(self):
         with static_guard():
             x1 = paddle.static.data(
@@ -596,7 +595,6 @@ class TestGatherNdOpAPI(unittest.TestCase):
 
 # Test Raise Index Error
 class TestGatherNdOpRaise(unittest.TestCase):
-
     def test_check_raise(self):
         def check_raise_is_test():
             with static_guard():
@@ -617,7 +615,6 @@ class TestGatherNdOpRaise(unittest.TestCase):
 
 
 class TestGatherNdError(unittest.TestCase):
-
     def test_error1(self):
         with (
             static_guard(),
@@ -661,7 +658,6 @@ class TestGatherNdError(unittest.TestCase):
 
 
 class TestGatherNdAPI2(unittest.TestCase):
-
     def test_static(self):
         with base.program_guard(base.Program(), base.Program()):
             data1 = paddle.static.data('data1', shape=[-1, 2], dtype='float64')
@@ -743,6 +739,9 @@ class TestGatherNdOp_ZeroSize(OpTest):
             check_pir=True,
         )
 
+    def test_check_output_cpu(self):
+        self.check_output_with_place(check_pir=True, place=paddle.CPUPlace())
+
 
 class TestGatherNdOp_ZeroSize2(TestGatherNdOp_ZeroSize):
     def setUp(self):
@@ -752,6 +751,19 @@ class TestGatherNdOp_ZeroSize2(TestGatherNdOp_ZeroSize):
         xnp = np.random.random([10, 20])
         index = np.random.random([2, 0]).astype("int32")
         output = np.tile(xnp, [2, 1, 1])
+
+        self.inputs = {'X': xnp, 'Index': index}
+        self.outputs = {'Out': output}
+
+
+class TestGatherNdOp_ZeroSize3(TestGatherNdOp_ZeroSize):
+    def setUp(self):
+        self.op_type = "gather_nd"
+        self.python_api = paddle.gather_nd
+        self.public_python_api = paddle.gather_nd
+        xnp = np.random.random([1, 2, 3, 2])
+        index = np.random.random([1, 1, 1, 0]).astype("int32")
+        output = np.tile(xnp, [1, 1, 1, 1, 1, 1, 1])
 
         self.inputs = {'X': xnp, 'Index': index}
         self.outputs = {'Out': output}

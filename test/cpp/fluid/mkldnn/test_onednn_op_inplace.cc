@@ -87,11 +87,11 @@ bool TestMain(const phi::Place &place,
           ? framework::OpRegistry::CreateOp(op_type,
                                             {{"X", {"x"}}, {"Y", {"x1"}}},
                                             {{"Out", {"y"}}},
-                                            {{"use_mkldnn", {true}}})
+                                            {{"use_onednn", {true}}})
           : framework::OpRegistry::CreateOp(op_type,
                                             {{"X", {"x"}}},
                                             {{"Out", {"y"}}},
-                                            {{"use_mkldnn", {true}}});
+                                            {{"use_onednn", {true}}});
 
   op_ref->Run(scope, place);
   pool.Get(place)->Wait();
@@ -104,11 +104,11 @@ bool TestMain(const phi::Place &place,
                 ? framework::OpRegistry::CreateOp(op_type,
                                                   {{"X", {"x"}}, {"Y", {"x1"}}},
                                                   {{"Out", {"x"}}},
-                                                  {{"use_mkldnn", {true}}})
+                                                  {{"use_onednn", {true}}})
                 : framework::OpRegistry::CreateOp(op_type,
                                                   {{"X", {"x"}}},
                                                   {{"Out", {"x"}}},
-                                                  {{"use_mkldnn", {true}}});
+                                                  {{"use_onednn", {true}}});
 
   op->Run(scope, place);
   phi::DeviceContextPool::Instance().Get(place)->Wait();

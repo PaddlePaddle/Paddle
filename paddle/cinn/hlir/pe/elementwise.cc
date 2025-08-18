@@ -311,11 +311,11 @@ ir::Tensor Store(const ir::Tensor& A, const std::string& name) {
 
 ir::Tensor Arange(Expr start,
                   Expr step,
+                  Expr size,
                   const Type& dtype,
-                  const int64_t size,
                   const std::string& output_name) {
   ir::Tensor res = lang::Compute(
-      {Expr(size)},
+      {size},
       [=](const std::vector<ir::Expr>& indices) {
         return ir::Cast::Make(dtype,
                               start + step * ir::Cast::Make(dtype, indices[0]));

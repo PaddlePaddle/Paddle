@@ -70,7 +70,9 @@ void StridedCopyKernel(const Context& dev_ctx,
     r = xpu::copy<XPUType>(dev_ctx.x_context(), input_data, output_data, 1);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
   } else {
-    int64_t data_size = input.Holder()->size() - input.meta().offset;
+    int64_t data_size_in = input.Holder()->size() - input.meta().offset;
+    int64_t data_size_out = out->Holder()->size() - out->meta().offset;
+    int64_t data_size = std::max(data_size_in, data_size_out);
     r = xpu::strided_copy<XPUType>(dev_ctx.x_context(),
                                    input_data,
                                    output_data,

@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+import paddle
 from paddle import _C_ops
 
 from .. import core
@@ -25,7 +26,7 @@ from ..framework import convert_np_dtype_to_dtype_
 
 if TYPE_CHECKING:
     from paddle import Tensor
-    from paddle._typing import DTypeLike
+    from paddle._typing import DTypeLike, PlaceLike, ShapeLike
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.UINT8,
@@ -65,11 +66,42 @@ _complex_dtypes = [
 _already_patch_eager_tensor = False
 
 
+_supported_dtype_conversions = {
+    # float
+    'float16': 'float16',
+    'half': 'float16',
+    'bfloat16': 'bfloat16',
+    'float32': 'float32',
+    'float': 'float32',
+    'float64': 'float64',
+    'double': 'float64',
+    # int
+    'int8': 'int8',
+    'char': 'int8',
+    # We handle uint8 conversion separately
+    # 'uint8': 'uint8',
+    # 'byte': 'uint8',
+    'int16': 'int16',
+    'short': 'int16',
+    'int32': 'int32',
+    'int': 'int32',
+    'int64': 'int64',
+    'long': 'int64',
+    # other
+    'bool': 'bool',
+    'complex64': 'complex64',
+    'complex128': 'complex128',
+    'cfloat': 'complex64',
+    'cdouble': 'complex128',
+}
+
+
 def monkey_patch_math_tensor():
     """
     Similar to monkey_patch_variable.
     The difference is, in dygraph mode, use auto-generated op functions for better performance.
     """
+    global paddle
 
     def astype(self: Tensor, dtype: DTypeLike) -> Tensor:
         """
@@ -103,6 +135,47 @@ def monkey_patch_math_tensor():
             return self
 
         return _C_ops.cast(self, dtype)
+
+    def byte(self: Tensor) -> Tensor:
+        # since paddle don't support float to uint8, so we need to convert it to int8 first
+        if self.is_floating_point():
+            tensor = astype(self, 'int8')
+            return astype(tensor, 'uint8')
+        elif self.is_complex():
+            real = astype(self.real(), 'int8')
+            return astype(real, 'uint8')
+        else:
+            return astype(self, 'uint8')
+
+    def _create_dtype_conversion_methods():
+        """
+        Batch create all data type conversion methods
+        """
+        methods = []
+
+        for method_name, target_dtype in _supported_dtype_conversions.items():
+
+            def make_conversion_method(dtype):
+                def conversion_method(self: Tensor) -> Tensor:
+                    return astype(self, dtype)
+
+                return conversion_method
+
+            method_impl = make_conversion_method(target_dtype)
+            method_impl.__name__ = method_name
+            method_impl.__doc__ = f"""
+            Cast a Tensor to {target_dtype} data type if it differs from the current dtype;
+            otherwise, return the original Tensor.
+            Returns:
+                Tensor: a new Tensor with {target_dtype} dtype
+            """
+
+            methods.append((method_name, method_impl))
+
+        return methods
+
+    def type_as(self: Tensor, other: Tensor) -> Tensor:
+        return self.astype(other.dtype)
 
     def _scalar_elementwise_op_(
         var: Tensor, scale: float, bias: float
@@ -215,6 +288,124 @@ def monkey_patch_math_tensor():
         out = _C_ops.transpose(var, perm)
         return out
 
+    def _new_full_(
+        var: Tensor,
+        size: ShapeLike,
+        fill_value: bool | float | paddle.Tensor,
+        *,
+        dtype: DTypeLike | None = None,
+        device: PlaceLike | None = None,
+        requires_grad: bool = False,
+    ) -> Tensor:
+        if dtype is None:
+            dtype = var.dtype
+        if device is None:
+            device = var.place
+
+        return paddle.full(
+            size,
+            fill_value,
+            dtype=dtype,
+            device=device,
+            requires_grad=requires_grad,
+        )
+
+    def _new_empty_(
+        var: Tensor,
+        size: ShapeLike,
+        *,
+        dtype: DTypeLike | None = None,
+        device: PlaceLike | None = None,
+        requires_grad: bool = False,
+    ) -> Tensor:
+        if dtype is None:
+            dtype = var.dtype
+        if device is None:
+            device = var.place
+
+        return paddle.empty(
+            size,
+            dtype,
+            device=device,
+            requires_grad=requires_grad,
+        )
+
+    def _new_ones_(
+        var: Tensor,
+        size: ShapeLike,
+        *,
+        dtype: DTypeLike | None = None,
+        device: PlaceLike | None = None,
+        requires_grad: bool = False,
+    ) -> Tensor:
+        if dtype is None:
+            dtype = var.dtype
+        if device is None:
+            device = var.place
+
+        return paddle.full(
+            size,
+            1,
+            dtype,
+            device=device,
+            requires_grad=requires_grad,
+        )
+
+    def _new_zeros_(
+        var: Tensor,
+        size: ShapeLike,
+        *,
+        dtype: DTypeLike | None = None,
+        device: PlaceLike | None = None,
+        requires_grad: bool = False,
+    ) -> Tensor:
+        if dtype is None:
+            dtype = var.dtype
+        if device is None:
+            device = var.place
+
+        return paddle.full(
+            size,
+            0,
+            dtype,
+            device=device,
+            requires_grad=requires_grad,
+        )
+
+    @property
+    def requires_grad(self: Tensor) -> bool:
+        """
+        Whether this Tensor requires gradient computation.
+
+        This is a convenience property that returns the opposite of stop_gradient.
+        Setting requires_grad=True is equivalent to setting stop_gradient=False.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> x = paddle.randn([2, 3])
+                >>> print(x.requires_grad)  # False by default
+                >>>
+                >>> x.requires_grad = False
+                >>> print(x.stop_gradient)  # True
+        """
+        return not self.stop_gradient
+
+    @requires_grad.setter
+    def requires_grad(self: Tensor, value: bool) -> None:
+        """
+        Set whether this Tensor requires gradient computation.
+
+        Args:
+            value (bool): True to enable gradient computation, False to disable.
+        """
+        if not isinstance(value, bool):
+            raise TypeError(
+                f"requires_grad must be bool, but got {type(value)}"
+            )
+        self.stop_gradient = not value
+
     eager_methods = [
         ('__neg__', _neg_),
         ('__abs__', _abs_),
@@ -225,15 +416,26 @@ def monkey_patch_math_tensor():
         ('__len__', _len_),
         ('__index__', _index_),
         ('astype', astype),
+        ('byte', byte),
+        ('uint8', byte),
+        ('type_as', type_as),
         ('dim', dim),
         ('ndimension', ndimension),
         ('ndim', _ndim),
         ('size', _size_),
         ('T', _T_),
         ('mT', _mT_),
+        ('new_full', _new_full_),
+        ('new_empty', _new_empty_),
+        ('new_ones', _new_ones_),
+        ('new_zeros', _new_zeros_),
+        ("requires_grad", requires_grad),
         # for logical compare
         ('__array_ufunc__', None),
     ]
+
+    dtype_conversion_methods = _create_dtype_conversion_methods()
+    eager_methods.extend(dtype_conversion_methods)
 
     eager_cpp_level_patch = [
         "__add__",

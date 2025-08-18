@@ -372,7 +372,7 @@ void BoxCoderInferMeta(const MetaTensor& prior_box,
           prior_box_dims,
           prior_box_var_dims,
           common::errors::InvalidArgument(
-              "The dimension of Input(PriorBoxVar) should be equal to"
+              "The dimension of Input(PriorBoxVar) should be equal to "
               "the dimension of Input(PriorBox) in BoxCoder operator "
               "when the rank is 2."));
     }
@@ -719,29 +719,36 @@ void FlashAttnV3InferMeta(const MetaTensor& q,
                           const MetaTensor& v,
                           MetaTensor* out,
                           MetaTensor* softmax_lse) {
-  // TODO(umiswing): support varlen
-  constexpr bool is_varlen_q = false;
-  auto const sizes = q.dims();
-  const int batch_size = sizes[0];
-  const int seqlen_q = sizes[1];
-  int num_heads = q.dims()[q.dims().size() - 2];
-  int const head_size_v = v.dims()[v.dims().size() - 1];
+  const int batch_size = q.dims()[0];
+  const int seqlen_q = q.dims()[1];
+  const int num_heads = q.dims()[q.dims().size() - 2];
+  const int head_size_v = v.dims()[v.dims().size() - 1];
   auto q_type = q.dtype();
   auto out_type =
       q_type == phi::DataType::FLOAT8_E4M3FN ? phi::DataType::BFLOAT16 : q_type;
-  if (!is_varlen_q) {
-    out->set_dims({batch_size, seqlen_q, num_heads, head_size_v});
-  } else {
-    // TODO(umiswing): support varlen
-  }
+
+  out->set_dims({batch_size, seqlen_q, num_heads, head_size_v});
 
   out->set_dtype(out_type);
 
-  if (!is_varlen_q) {
-    softmax_lse->set_dims({batch_size, num_heads, seqlen_q});
-  } else {
-    // TODO(umiswing): support varlen
-  }
+  softmax_lse->set_dims({batch_size, num_heads, seqlen_q});
+  softmax_lse->set_dtype(phi::DataType::FLOAT32);
+}
+
+void FlashAttnV3VarlenInferMeta(const MetaTensor& q,
+                                const MetaTensor& k,
+                                const MetaTensor& v,
+                                MetaTensor* out,
+                                MetaTensor* softmax_lse) {
+  const int total_q = q.dims()[0];
+  const int num_heads = q.dims()[q.dims().size() - 2];
+  const int head_size_v = v.dims()[v.dims().size() - 1];
+  auto q_type = q.dtype();
+  auto out_type =
+      q_type == phi::DataType::FLOAT8_E4M3FN ? phi::DataType::BFLOAT16 : q_type;
+  out->set_dims({total_q, num_heads, head_size_v});
+  softmax_lse->set_dims({num_heads, total_q});
+  out->set_dtype(out_type);
   softmax_lse->set_dtype(phi::DataType::FLOAT32);
 }
 
@@ -1265,7 +1272,7 @@ void LayerNormInferMeta(const MetaTensor& x,
   PADDLE_ENFORCE_GT(begin_norm_axis,
                     0,
                     common::errors::InvalidArgument(
-                        "'begin_norm_axis' in Op(LayerNorm) should be"
+                        "'begin_norm_axis' in Op(LayerNorm) should be "
                         "greater than zero. But received [%d].",
                         begin_norm_axis));
   PADDLE_ENFORCE_LT(
@@ -1289,7 +1296,7 @@ void LayerNormInferMeta(const MetaTensor& x,
                       1,
                       common::errors::InvalidArgument(
                           "The dimensions of Input(Scale) must be 1, but "
-                          "received dimensions of"
+                          "received dimensions of "
                           "Input(Scale) is [%d]",
                           scale.dims().size()));
   }
@@ -1299,10 +1306,10 @@ void LayerNormInferMeta(const MetaTensor& x,
         scale.dims()[0],
         right,
         common::errors::InvalidArgument(
-            "The first dimension value of Input(Scale) must equal to be the"
-            "second dimension value of the flattened 2D matrix of Input(X),"
-            "But received the first dimension value of Input(Scale) is"
-            "[%d], the second dimension value of the flattened 2D matrix of"
+            "The first dimension value of Input(Scale) must equal to be the "
+            "second dimension value of the flattened 2D matrix of Input(X), "
+            "But received the first dimension value of Input(Scale) is "
+            "[%d], the second dimension value of the flattened 2D matrix of "
             " Input(Scale) is [%d].",
             scale.dims()[0],
             right));
@@ -1312,7 +1319,7 @@ void LayerNormInferMeta(const MetaTensor& x,
                       1,
                       common::errors::InvalidArgument(
                           "The dimensions of Input(Bias) must be 1, but "
-                          "received dimensions of"
+                          "received dimensions of "
                           "Input(Bias) is [%d]",
                           bias.dims().size()));
   }
@@ -1321,10 +1328,10 @@ void LayerNormInferMeta(const MetaTensor& x,
         bias.dims()[0],
         right,
         common::errors::InvalidArgument(
-            "The first dimension value of Input(Bias) must equal to be the"
-            "second dimension value of the flattened 2D matrix of Input(X),"
-            "But received the first dimension value of Input(Bias) is"
-            "[%d], the second dimension value of the flattened 2D matrix of"
+            "The first dimension value of Input(Bias) must equal to be the "
+            "second dimension value of the flattened 2D matrix of Input(X), "
+            "But received the first dimension value of Input(Bias) is "
+            "[%d], the second dimension value of the flattened 2D matrix of "
             " Input(Bias) is [%d].",
             bias.dims()[0],
             right));
@@ -1620,7 +1627,7 @@ void MoeCombineInferMeta(const MetaTensor& x,
                     2,
                     common::errors::InvalidArgument(
                         "The dimensions of Input(x) must be 1, but "
-                        "received dimensions of"
+                        "received dimensions of "
                         "Input(x) is [%d]",
                         x_dim.size()));
   // maybe there is more conditions here....
@@ -1689,7 +1696,7 @@ void MoeGateDispatchPartialNoSoftmaxTopKInferMeta(
                     2,
                     common::errors::InvalidArgument(
                         "The dimensions of Input(x) must be 2, but "
-                        "received dimensions of"
+                        "received dimensions of "
                         "Input(x) is [%d]",
                         x_dims.size()));
   auto combine_weights_dims = combine_weights.dims();
@@ -1698,7 +1705,7 @@ void MoeGateDispatchPartialNoSoftmaxTopKInferMeta(
       2,
       common::errors::InvalidArgument(
           "The dimensions of Input(combine_weights) must be 2, but "
-          "received dimensions of"
+          "received dimensions of "
           "Input(combine_weights) is [%d]",
           combine_weights_dims.size()));
   PADDLE_ENFORCE_EQ(combine_weights_dims[0],
@@ -1797,7 +1804,7 @@ void MoeGateDispatchPermuteInferMeta(const MetaTensor& x,
                     2,
                     common::errors::InvalidArgument(
                         "The dimensions of Input(x) must be 2, but "
-                        "received dimensions of"
+                        "received dimensions of "
                         "Input(x) is [%d]",
                         x_dims.size()));
   auto gate_logits_dims = gate_logits.dims();
@@ -1805,7 +1812,7 @@ void MoeGateDispatchPermuteInferMeta(const MetaTensor& x,
                     2,
                     common::errors::InvalidArgument(
                         "The dimensions of Input(gate_logits) must be 2, but "
-                        "received dimensions of"
+                        "received dimensions of "
                         "Input(gate_logits) is [%d]",
                         gate_logits_dims.size()));
   PADDLE_ENFORCE_EQ(gate_logits_dims[0],
@@ -2192,7 +2199,7 @@ void RoiAlignInferMeta(const MetaTensor& x,
   PADDLE_ENFORCE_EQ(input_dims.size(),
                     4,
                     common::errors::InvalidArgument(
-                        "The format of Input(x) in"
+                        "The format of Input(x) in "
                         "RoiAlignOp is NCHW. And the rank of input must be 4. "
                         "But received rank = %d",
                         input_dims.size()));
@@ -2517,7 +2524,7 @@ void SendURecvInferMeta(const MetaTensor& x,
                                         dst_index_dims.size()));
   }
 
-  if (src_index_dims[0] != 0) {
+  if (src_index_dims[0] != 0 && dst_index_dims[0] != 0) {
     PADDLE_ENFORCE_EQ(
         src_index_dims[0],
         dst_index_dims[0],

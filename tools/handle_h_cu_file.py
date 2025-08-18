@@ -72,9 +72,9 @@ def insert_pile_to_h_file(rootPath):
 
 def add_simple_cxx_test(rootPath):
     variant_test_path = f'{rootPath}/paddle/utils/variant_test.cc'
-    variant_test_cmakeflie_path = f'{rootPath}/paddle/utils/CMakeLists.txt'
+    variant_test_cmakefile_path = f'{rootPath}/paddle/utils/CMakeLists.txt'
     if os.path.exists(variant_test_path) and os.path.exists(
-        variant_test_cmakeflie_path
+        variant_test_cmakefile_path
     ):
         simple_test_path = f'{rootPath}/paddle/utils/simple_precision_test.cc'
         os.system(f'touch {simple_test_path}')
@@ -82,14 +82,14 @@ def add_simple_cxx_test(rootPath):
         os.system(
             f'echo "TEST(interface_test, type) {{ }}\n" >> {simple_test_path}'
         )
-        os.system(f'echo "cc_test(" >> {variant_test_cmakeflie_path}')
+        os.system(f'echo "cc_test(" >> {variant_test_cmakefile_path}')
         os.system(
-            f'echo "  simple_precision_test" >> {variant_test_cmakeflie_path}'
+            f'echo "  simple_precision_test" >> {variant_test_cmakefile_path}'
         )
         os.system(
-            f'echo "  SRCS simple_precision_test.cc" >> {variant_test_cmakeflie_path}'
+            f'echo "  SRCS simple_precision_test.cc" >> {variant_test_cmakefile_path}'
         )
-        os.system(f'echo "  DEPS gtest)\n" >> {variant_test_cmakeflie_path}')
+        os.system(f'echo "  DEPS gtest)\n" >> {variant_test_cmakefile_path}')
 
 
 def remove_pile_from_h_file(rootPath):

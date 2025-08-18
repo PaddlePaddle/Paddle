@@ -45,15 +45,15 @@ void FastWhereXPUKernel(const Context& dev_ctx,
 #ifndef PADDLE_WITH_XPU_PLUGIN
   LOG(INFO)
       << "Add -DWITH_XPU_PLUGIN=ON to build xpu::plugin::fast_where(), or use "
-         "xpu::select() instead, which leads low performance.";
-  int r = xpu::select<XPUType>(dev_ctx.x_context(),
-                               condition_data,
-                               x_data,
-                               y_data,
-                               out_data,
-                               condition_dims,
-                               x_dims);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "select");
+         "xpu::where() instead, which leads low performance.";
+  int r = xpu::where<XPUType>(dev_ctx.x_context(),
+                              condition_data,
+                              x_data,
+                              y_data,
+                              out_data,
+                              condition_dims,
+                              x_dims);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "where");
 #else
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   if (condition_dims != x_dims) {

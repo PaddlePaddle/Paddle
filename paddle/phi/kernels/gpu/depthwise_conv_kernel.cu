@@ -122,8 +122,7 @@ void DepthwiseConvKernel(const Context& dev_ctx,
   }
 
   if (fuse_relu) {
-    paddle::operators::math::DepthwiseConvFunctor<Context, T, true>
-        depthwiseConv;
+    phi::math::DepthwiseConvFunctor<Context, T, true> depthwiseConv;
     depthwiseConv(dev_ctx,
                   input,
                   filter,
@@ -133,8 +132,7 @@ void DepthwiseConvKernel(const Context& dev_ctx,
                   output,
                   data_layout);
   } else {
-    paddle::operators::math::DepthwiseConvFunctor<Context, T, false>
-        depthwiseConv;
+    phi::math::DepthwiseConvFunctor<Context, T, false> depthwiseConv;
     depthwiseConv(dev_ctx,
                   input,
                   filter,

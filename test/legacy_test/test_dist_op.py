@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place
 
 import paddle
 from paddle import base
@@ -290,11 +290,7 @@ class TestDistAPI(unittest.TestCase):
             x_i = np.random.random((2, 3, 4, 5)).astype(self.data_type)
             y_i = np.random.random((3, 1, 5)).astype(self.data_type)
             result = paddle.dist(x, y, p)
-            place = (
-                base.CUDAPlace(0)
-                if core.is_compiled_with_cuda()
-                else base.CPUPlace()
-            )
+            place = get_device_place()
             exe = base.Executor(place)
             out = exe.run(
                 main_program,

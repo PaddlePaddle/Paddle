@@ -142,6 +142,22 @@ class TestMeanOp_float64ZeroSize3D(TestMeanOp_float64ZeroSize):
         self.outputs = {'Out': out_np}
 
 
+class TestMeanOp_Int32ZeroSize(OpTest):
+    def setUp(self):
+        self.op_type = "mean"
+        self.python_api = paddle.mean
+        self.dtype = np.int32
+        self.public_python_api = paddle.mean
+        self.inputs = {'X': np.array([]).astype(self.dtype)}
+        self.outputs = {'Out': np.nan}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_checkout_grad(self):
+        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
+
+
 class TestMeanOp_Int64ZeroSize(OpTest):
     def setUp(self):
         self.op_type = "mean"
@@ -812,9 +828,7 @@ class TestMeanAPIInt32(unittest.TestCase):
         self.x_np = np.random.randint(-1, 10000, self.x_shape).astype(
             self.dtype
         )
-        self.places = [paddle.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
 
     def test_dygraph(self):
         for place in self.places:
@@ -848,9 +862,7 @@ class TestMeanAPIInt64(TestMeanAPIInt32):
         self.x_np = np.random.randint(-1, 10000, self.x_shape).astype(
             self.dtype
         )
-        self.places = [paddle.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
 
 
 class TestMeanAPIBool(TestMeanAPIInt32):
@@ -858,9 +870,7 @@ class TestMeanAPIBool(TestMeanAPIInt32):
         self.x_shape = [2, 3, 4, 5]
         self.dtype = "bool"
         self.x_np = np.random.uniform(-1, 1, self.x_shape).astype(self.dtype)
-        self.places = [paddle.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
 
 
 class TestMeanWithTensorAxis1(TestReduceOPTensorAxisBase):

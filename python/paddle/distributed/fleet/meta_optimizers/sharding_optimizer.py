@@ -161,9 +161,9 @@ class ShardingOptimizer(MetaOptimizerBase):
             assert strategy.pipeline is True
 
         if os.getenv("PADDLE_MANUAL_PIPELINE_STAGE", None):
-            assert pp_degree == 2, (
-                "For manually set pipeline, only " "pp_degree = 2 is supported."
-            )
+            assert (
+                pp_degree == 2
+            ), "For manually set pipeline, only pp_degree = 2 is supported."
             assert (
                 global_world_size == mp_degree * sharding_degree * dp_degree
             ), f"global work size [{global_world_size}], mp_degree [{mp_degree}], sharding_degree [{sharding_degree}], dp_degree [{dp_degree}]."
@@ -1565,9 +1565,9 @@ class ShardingOptimizer(MetaOptimizerBase):
         # sharding-hybrid-dp as one scenario of outer-pure-dp
         local_pp_degree = self.pp_degree
         if os.getenv("PADDLE_MANUAL_PIPELINE_STAGE", None):
-            assert self.pp_degree == 2, (
-                "For manually set pipeline, only " "pp_degree = 2 is supported."
-            )
+            assert (
+                self.pp_degree == 2
+            ), "For manually set pipeline, only pp_degree = 2 is supported."
             assert (
                 self.global_word_size
                 == self.mp_degree * self.sharding_degree * self.dp_degree

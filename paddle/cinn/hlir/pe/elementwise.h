@@ -152,8 +152,8 @@ ir::Tensor Store(const ir::Tensor& A,
 ir::Tensor Arange(
     Expr start,
     Expr step,
+    Expr size,
     const Type& dtype,
-    const int64_t arange_size,
     const std::string& name = UniqName("T_Elementwise_Arange_out"));
 
 ir::Tensor Tril(const ir::Tensor& A,

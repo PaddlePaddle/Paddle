@@ -2460,6 +2460,9 @@ def margin_cross_entropy(
         label = paddle.unsqueeze(label, axis=-1)
 
     if in_dynamic_or_pir_mode():
+        out_type = logits.dtype
+        if out_type == paddle.float16:
+            logits = paddle.cast(logits, paddle.float32)
         softmax, loss = _C_ops.margin_cross_entropy(
             logits,
             label,
@@ -2476,6 +2479,11 @@ def margin_cross_entropy(
             loss = paddle.mean(loss)
         elif reduction == 'sum':
             loss = paddle.sum(loss)
+
+        if out_type == paddle.float16:
+            softmax = paddle.cast(softmax, out_type)
+            loss = paddle.cast(loss, out_type)
+
         if not return_softmax:
             return loss
         else:
@@ -3909,9 +3917,7 @@ def triplet_margin_with_distance_loss(
 
     if not (input.shape == positive.shape == negative.shape):
         raise ValueError(
-            "input's shape must equal to "
-            "positive's shape and  "
-            "negative's shape"
+            "input's shape must equal to positive's shape and negative's shape"
         )
 
     distance_function = (
@@ -4056,9 +4062,7 @@ def triplet_margin_loss(
 
     if not (input.shape == positive.shape == negative.shape):
         raise ValueError(
-            "input's shape must equal to "
-            "positive's shape and  "
-            "negative's shape"
+            "input's shape must equal to positive's shape and negative's shape"
         )
 
     distance_function = paddle.nn.PairwiseDistance(p, epsilon=epsilon)
@@ -4412,7 +4416,7 @@ def soft_margin_loss(
         )
 
     if not (input.shape == label.shape):
-        raise ValueError("input's shape must equal to " "label's shape")
+        raise ValueError("input's shape must equal to label's shape")
 
     label = paddle.cast(label, input.dtype)
     out = paddle.log(1 + paddle.exp(-label * input))
@@ -4670,7 +4674,7 @@ def adaptive_log_softmax_with_loss(
             )
     else:
         raise ValueError(
-            '0D or 1D label tensor expected, ' 'multi-label not supported'
+            '0D or 1D label tensor expected, multi-label not supported'
         )
 
     is_batched = target_dim > 0

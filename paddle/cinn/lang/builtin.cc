@@ -156,7 +156,7 @@ Expr min_value(const Type& type) {
   PADDLE_ENFORCE_EQ(type.lanes(),
                     1,
                     ::common::errors::InvalidArgument(
-                        "The value of min type's lanes is incorrect"
+                        "The value of min type's lanes is incorrect. "
                         "Expected value is 1, but receive %d. ",
                         type.lanes()));
 #define FOR_CASE(type__)                                                     \
@@ -183,7 +183,7 @@ Expr max_value(const Type& type) {
   PADDLE_ENFORCE_EQ(type.lanes(),
                     1,
                     ::common::errors::InvalidArgument(
-                        "The value of max type's lanes is incorrect"
+                        "The value of max type's lanes is incorrect. "
                         "Expected value is 1, but receive %d. ",
                         type.lanes()));
 
@@ -213,7 +213,7 @@ Expr Epsilon(const Type& type) {
   PADDLE_ENFORCE_EQ(type.lanes(),
                     1,
                     ::common::errors::InvalidArgument(
-                        "The value of epsilon type's lanes is incorrect"
+                        "The value of epsilon type's lanes is incorrect. "
                         "Expected value is 1, but receive %d. ",
                         type.lanes()));
 
@@ -280,7 +280,7 @@ Expr Infinity(const Type& type) {
   PADDLE_ENFORCE_EQ(type.lanes(),
                     1U,
                     ::common::errors::InvalidArgument(
-                        "The value of infinity type's lanes is incorrect"
+                        "The value of infinity type's lanes is incorrect. "
                         "Expected value is 1, but receive %d. ",
                         type.lanes()));
   if (type.is_float()) {

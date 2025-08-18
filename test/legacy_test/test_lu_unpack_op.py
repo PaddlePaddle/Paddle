@@ -413,6 +413,28 @@ class TestLU_UnpackAPIError(unittest.TestCase):
             self.assertRaises(Exception, test_y_data)
 
 
+class TestLuUnpackAPI_ZeroSize(unittest.TestCase):
+    def test_dygraph_api(self):
+        for place in get_places():
+            paddle.disable_static(place)
+            x_np = np.random.random([2, 3, 0])
+            y_np = np.random.random([2, 3])
+            x = paddle.to_tensor(x_np)
+            x.stop_gradient = False
+            y = paddle.to_tensor(y_np)
+            out = paddle.linalg.lu_unpack(x, y)
+            np_out0 = np.array([np.eye(3) for _ in range(2)])
+            np_out1 = np.random.random([2, 3, 0])
+            np_out2 = np.random.random([2, 0, 0])
+            np.testing.assert_allclose(out[0].numpy(), np_out0)
+            np.testing.assert_allclose(out[1].numpy(), np_out1)
+            np.testing.assert_allclose(out[2].numpy(), np_out2)
+
+            paddle.sum(out[0]).backward()
+            np.testing.assert_allclose(x.grad.shape, x.shape)
+            paddle.enable_static()
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

@@ -123,12 +123,12 @@ struct BuildStrategy {
   bool fuse_dot_product_attention_{false};
   // Fuse ResUnit
   bool fuse_resunit_{false};
-  // mkldnn_enabled_op_types specify the operator type list to
+  // onednn_enabled_op_types specify the operator type list to
   // use OneDNN acceleration. It is null in default, means
   // that all the operators supported by OneDNN will be
   // accelerated. And it should not be set when
-  // FLAGS_use_mkldnn=false
-  std::unordered_set<std::string> mkldnn_enabled_op_types_;
+  // FLAGS_use_onednn=false
+  std::unordered_set<std::string> onednn_enabled_op_types_;
 
   // By default, memory_optimize would be opened if gc is disabled, and
   // be closed if gc is enabled.
@@ -147,9 +147,9 @@ struct BuildStrategy {
   bool enable_inference_pass_{false};  // switch for infernce pass
   bool delete_dropout_{true};          // delete dropout op
 #ifdef PADDLE_WITH_DNNL
-  bool use_mkldnn_{true};  // use mkdnn to do inference
+  bool use_onednn_{true};  // use onednn to do inference
 #else
-  bool use_mkldnn_{false};  // use mkdnn to do inference
+  bool use_onednn_{false};  // use onednn to do inference
 #endif
 
   // FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
@@ -250,8 +250,8 @@ inline std::ostream &operator<<(std::ostream &os,
   os << "fused_attention_: " << strategy.fused_attention_ << std::endl;
   os << "fused_feedforward_: " << strategy.fused_feedforward_ << std::endl;
   os << "sequential_run_: " << strategy.sequential_run_ << std::endl;
-  os << "mkldnn_enabled_op_types_: ";
-  for (auto str : strategy.mkldnn_enabled_op_types_) {
+  os << "onednn_enabled_op_types_: ";
+  for (auto str : strategy.onednn_enabled_op_types_) {
     os << str << ", ";
   }
   os << std::endl;
@@ -262,7 +262,7 @@ inline std::ostream &operator<<(std::ostream &os,
   os << "enable_inference_pass_: " << strategy.enable_inference_pass_
      << std::endl;
   os << "delete_dropout_: " << strategy.delete_dropout_ << std::endl;
-  os << "use_mkldnn_: " << strategy.use_mkldnn_ << std::endl;
+  os << "use_onednn_: " << strategy.use_onednn_ << std::endl;
   os << "is_distribution_: " << strategy.is_distribution_ << std::endl;
   os << "async_mode_: " << strategy.async_mode_ << std::endl;
   os << "num_trainers_: " << strategy.num_trainers_ << std::endl;
