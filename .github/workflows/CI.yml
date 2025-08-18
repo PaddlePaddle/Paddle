@@ -26,8 +26,6 @@ jobs:
     name: build docker images
     needs: clone
     uses: ./.github/workflows/docker.yml
-    with:
-      clone-can-skip: ${{ needs.clone.outputs.can-skip }}
 
   sot:
     name: PR-CI-SOT
