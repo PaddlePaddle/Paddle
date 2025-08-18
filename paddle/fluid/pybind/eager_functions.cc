@@ -1381,15 +1381,24 @@ PyObject* eager__is_run_in_backward(PyObject* self,
 PyObject* eager__add_doc_str(PyObject* self, PyObject* args) {
   EAGER_TRY
   static std::vector<std::string> all_docs;
-  PyObject* obj = nullptr;
+  PyObject* func_obj = nullptr;
   PyObject* doc_obj = nullptr;
-  if (!PyArg_ParseTuple(args, "OO", &obj, &doc_obj)) {
+  PyObject* sig_obj = nullptr;
+  PyObject* annotatio_obj = nullptr;
+  if (!PyArg_ParseTuple(
+          args, "OOOO", &func_obj, &doc_obj, &sig_obj, &annotatio_obj)) {
+    return nullptr;
+  }
+  if (PyDict_Check(annotatio_obj) == false) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "The 4th arg which be used to init __annotations__  must be dict in "
+        "python!"));
     return nullptr;
   }
   std::string doc_string = CastPyArg2AttrString(doc_obj, 1);
 
-  if (Py_TYPE(obj) == &PyCFunction_Type) {
-    PyCFunctionObject* f = reinterpret_cast<PyCFunctionObject*>(obj);
+  if (Py_TYPE(func_obj) == &PyCFunction_Type) {
+    PyCFunctionObject* f = reinterpret_cast<PyCFunctionObject*>(func_obj);
     if (f->m_ml->ml_doc) {
       VLOG(6)
           << "eager__add_doc_str will update doc for PyCFunction, original doc "
@@ -1397,6 +1406,21 @@ PyObject* eager__add_doc_str(PyObject* self, PyObject* args) {
     }
     all_docs.emplace_back(doc_string);
     f->m_ml->ml_doc = all_docs.back().c_str();
+    if (func_obj->ob_type->tp_dict == nullptr) {
+      func_obj->ob_type->tp_dict = PyDict_New();
+    }
+    // if (PyDict_SetItemString(
+    //         func_obj->ob_type->tp_dict, "__text_signature__", sig_obj) < 0) {
+    //   VLOG(6) << "eager__add_doc_str add __text_signature__ failed";
+    //   return nullptr;
+    // }
+    // Py_INCREF(sig_obj);
+    if (PyDict_SetItemString(
+            func_obj->ob_type->tp_dict, "__annotations__", annotatio_obj) < 0) {
+      VLOG(6) << "eager__add_doc_str add __annotations__ failed";
+      return nullptr;
+    }
+    Py_INCREF(annotatio_obj);
   }
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL

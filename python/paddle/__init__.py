@@ -58,7 +58,7 @@ monkey_patch_math_tensor()
 monkey_patch_value()
 monkey_patch_program()
 monkey_patch_dtype()
-monkey_patch_generated_methods_for_tensor()
+
 monkey_patch_generated_methods_for_value()
 
 from .base.dataset import *  # noqa: F403
@@ -260,6 +260,7 @@ from .tensor.linalg import (  # noqa: F401
     matrix_transpose,
     mv,
     norm,
+    permute,
     t,
     t_,
     transpose,
@@ -566,6 +567,7 @@ from .tensor.math import (  # noqa: F401
     tanh_,
     trace,
     trapezoid,
+    true_divide,
     trunc,
     trunc_,
     vander,
@@ -807,6 +809,10 @@ inf = math.inf
 nan = math.nan
 pi = math.pi
 e = math.e
+
+# API alias
+div = divide
+div_ = divide_
 
 __all__ = [
     'block_diag',
@@ -1057,6 +1063,9 @@ __all__ = [
     'square_',
     'divide',
     'divide_',
+    'div',
+    'div_',
+    'true_divide',
     'gammaln',
     'gammaln_',
     'ceil',
@@ -1105,6 +1114,7 @@ __all__ = [
     'tanh_',
     'transpose',
     'transpose_',
+    'permute',
     'cauchy_',
     'geometric_',
     'randn',
@@ -1266,6 +1276,7 @@ __all__ = [
 ]
 import os
 
+monkey_patch_generated_methods_for_tensor()
 import paddle._paddle_docs
 
 FLAGS_trace_api = os.environ.get("FLAGS_trace_api", None)
