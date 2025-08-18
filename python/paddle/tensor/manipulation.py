@@ -26,8 +26,8 @@ from paddle import _C_ops
 from paddle.tensor import fill_constant
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
-    param_one_alias,
     param_two_alias,
+    reshape_decorator,
     view_decorator,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
@@ -62,6 +62,8 @@ if TYPE_CHECKING:
         ShapeLike,
         TensorOrTensors,
     )
+
+from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
 __all__ = []
 
@@ -2735,6 +2737,11 @@ def row_stack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
     return paddle.vstack(x, name=name)
 
 
+@ForbidKeywordsDecorator(
+    illegal_keys={"tensor", "split_size_or_sections", "dim"},
+    func_name="paddle.split",
+    correct_name="paddle.compat.split",
+)
 def split(
     x: Tensor,
     num_or_sections: int | Sequence[int],
@@ -4989,7 +4996,7 @@ def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
         return out
 
 
-@param_one_alias(["x", "input"])
+@reshape_decorator()
 def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
     """
     Changes the shape of ``x`` without changing its data.

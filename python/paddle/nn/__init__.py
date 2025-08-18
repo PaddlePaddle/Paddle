@@ -174,6 +174,7 @@ from .layer.transformer import (
     TransformerEncoderLayer,
 )
 from .layer.vision import ChannelShuffle, PixelShuffle, PixelUnshuffle
+from .parameter import Parameter
 from .utils.spectral_norm_hook import spectral_norm  # noqa: F401
 
 __all__ = [
@@ -319,4 +320,5 @@ __all__ = [
     'LPPool2D',
     'ZeroPad1D',
     'ZeroPad3D',
+    'Parameter',
 ]

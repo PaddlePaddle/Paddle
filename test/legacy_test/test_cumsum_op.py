@@ -590,7 +590,6 @@ create_test_bf16_class(TestSumOpReverseExclusive)
 
 
 class BadInputTest(unittest.TestCase):
-
     def test_error(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -725,7 +724,6 @@ class TestTensorAxis(unittest.TestCase):
 
 
 class TestCumSumOpFp16(unittest.TestCase):
-
     def test_fp16(self):
         if core.is_compiled_with_cuda():
             paddle.enable_static()

@@ -31,21 +31,27 @@ class TestMatmulScaleFusePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         # cpu
         config = self.create_inference_config(use_gpu=False)
-        yield config, [
-            "matmul",
-        ], (1e-5, 1e-5)
+        yield (
+            config,
+            ["matmul"],
+            (1e-5, 1e-5),
+        )
 
         # onednn
         config = self.create_inference_config(use_onednn=True)
-        yield config, [
-            "matmul",
-        ], (1e-5, 1e-5)
+        yield (
+            config,
+            ["matmul"],
+            (1e-5, 1e-5),
+        )
 
         # gpu
         config = self.create_inference_config(use_gpu=True)
-        yield config, [
-            "matmul",
-        ], (1e-5, 1e-5)
+        yield (
+            config,
+            ["matmul"],
+            (1e-5, 1e-5),
+        )
 
     def sample_program_config(self, draw):
         # 1. Generate shape and attr of matmul

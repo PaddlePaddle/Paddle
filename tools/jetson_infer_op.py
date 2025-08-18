@@ -65,7 +65,7 @@ def parse_arguments():
 
 def search_file(file_name, path, file_path):
     """
-    :param file_name:target
+    :param file_name: target
     :param path: to search this path
     :param file_path: result
     :return:

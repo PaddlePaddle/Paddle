@@ -93,7 +93,6 @@ def convert_load(x):
 
         # get the new output of the var
         if isinstance(x, Value):
-
             from paddle.jit.pir_dy2static.parameter_recorder import (
                 _global_inplace_map,
             )

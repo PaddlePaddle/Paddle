@@ -258,13 +258,17 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), tol_fp32
+        yield (
+            self.create_inference_config(),
+            generate_trt_nodes_num(attrs, True),
+            tol_fp32,
+        )
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), tol_half
+        yield (
+            self.create_inference_config(),
+            generate_trt_nodes_num(attrs, True),
+            tol_half,
+        )
 
     def test(self):
         self.run_test()

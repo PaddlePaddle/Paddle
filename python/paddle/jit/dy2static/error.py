@@ -211,7 +211,7 @@ class ErrorData:
         func_str = None
         for frame in tb:
             searched_name = re.search(
-                fr'({RE_PYMODULE})*{frame.name}',
+                rf'({RE_PYMODULE})*{frame.name}',
                 error_line,
             )
             if searched_name:

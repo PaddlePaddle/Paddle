@@ -476,7 +476,6 @@ def nanmedian(
 
 
 @overload
-@param_two_alias_one_default(["x", "input"], ["axis", "dim"], ["mode", 'min'])
 def median(
     x: Tensor,
     axis: int = ...,
@@ -487,7 +486,6 @@ def median(
 
 
 @overload
-@param_two_alias_one_default(["x", "input"], ["axis", "dim"], ["mode", 'min'])
 def median(
     x: Tensor,
     axis: int | None = ...,

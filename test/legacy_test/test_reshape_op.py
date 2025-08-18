@@ -915,6 +915,31 @@ class TestReshapeAliasAPI(unittest.TestCase):
         np.testing.assert_array_equal(out_2.numpy(), input.reshape([5, 10]))
         np.testing.assert_array_equal(out_3.numpy(), input.reshape(shape))
 
+    def test_tensor_reshape(self):
+        """The `shape` parameter accepts either variable arguments or a list/tuple.
+        For example, x.reshape(2, 5, 5) is equivalent to x.reshape([2, 5, 5]).
+        """
+
+        def run_test_cases(place):
+            """Helper function to run test cases on specified device."""
+            input = np.random.random([2, 25]).astype("float32")
+            input_tensor = paddle.to_tensor(input, place=place)
+
+            out_1 = input_tensor.reshape([2, 5, 5])
+            out_2 = input_tensor.reshape(2, 5, 5)
+
+            np.testing.assert_array_equal(
+                out_1.numpy(), input.reshape([2, 5, 5])
+            )
+            np.testing.assert_array_equal(
+                out_2.numpy(), input.reshape([2, 5, 5])
+            )
+
+        with base.dygraph.guard():
+            run_test_cases(paddle.CPUPlace())
+            if paddle.base.core.is_compiled_with_cuda():
+                run_test_cases(paddle.CUDAPlace(0))
+
 
 if __name__ == "__main__":
     paddle.enable_static()

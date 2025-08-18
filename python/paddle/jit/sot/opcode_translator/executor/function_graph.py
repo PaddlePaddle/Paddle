@@ -523,11 +523,14 @@ class FunctionGraph:
         from ..breakpoint import BreakpointManager
 
         BreakpointManager().on_event("compile_function")
-        graph_fn, (
-            statement_ir,
-            symbolic_inputs,
-            _,
-            symbolic_outputs,
+        (
+            graph_fn,
+            (
+                statement_ir,
+                symbolic_inputs,
+                _,
+                symbolic_outputs,
+            ),
         ) = compile_graph_result
         compiled_fn_name = f"___graph_fn_{statement_ir.name}"
         # prepare function and inputs

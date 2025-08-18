@@ -497,7 +497,6 @@ class TestTransposeOpBool8D(TestTransposeOpBool):
 
 
 class TestTransposeOpError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -534,7 +533,6 @@ class TestTransposeOpError(unittest.TestCase):
 
 
 class TestTransposeApi(unittest.TestCase):
-
     def test_static_out(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -572,7 +570,6 @@ class TestTransposeApi(unittest.TestCase):
 
 
 class TestTAPI(unittest.TestCase):
-
     def test_static_out(self):
         with base.program_guard(base.Program()):
             data = paddle.static.data(shape=[10], dtype="float64", name="data")
@@ -644,7 +641,6 @@ class TestTAPI(unittest.TestCase):
 
 
 class TestMoveAxis(unittest.TestCase):
-
     def test_static_moveaxis1(self):
         x_np = np.random.randn(2, 3, 4, 5, 7)
         expected = np.moveaxis(x_np, [0, 4, 3, 2], [1, 3, 2, 0])
