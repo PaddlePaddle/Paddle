@@ -58,7 +58,7 @@ monkey_patch_math_tensor()
 monkey_patch_value()
 monkey_patch_program()
 monkey_patch_dtype()
-monkey_patch_generated_methods_for_tensor()
+
 monkey_patch_generated_methods_for_value()
 
 from .base.dataset import *  # noqa: F403
@@ -1266,6 +1266,7 @@ __all__ = [
 ]
 import os
 
+monkey_patch_generated_methods_for_tensor()
 import paddle._paddle_docs
 
 FLAGS_trace_api = os.environ.get("FLAGS_trace_api", None)
