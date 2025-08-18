@@ -532,8 +532,11 @@ class FunctionGeneratorBase:
         if 'name' in python_api_info.keys():
             self.python_api_names = python_api_info['name']
         if 'args_alias' in python_api_info.keys():
-            for arg, alias in python_api_info['args_alias'].items():
-                alias_set = set(alias)
+            for arg, alias_or_mode in python_api_info['args_alias'].items():
+                if arg == 'use_default_mapping':
+                    args_alias.update({arg: alias_or_mode})
+                    continue
+                alias_set = set(alias_or_mode)
                 # Add the original argument name to the alias set
                 alias_set.add(arg)
                 # Convert to C++ vector format
