@@ -14,10 +14,6 @@ endif()
 list(REMOVE_ITEM TEST_OPS test_build_strategy)
 
 if(NOT WITH_GPU)
-  # TODO(SigureMo): Temporarily disable train step on Windows CPU CI.
-  # We should remove this after fix the performance issue.
-  list(REMOVE_ITEM TEST_OPS test_train_step_resnet18_adam)
-  list(REMOVE_ITEM TEST_OPS test_train_step_resnet18_sgd)
   # disable some model test on CPU to avoid timeout
   list(REMOVE_ITEM TEST_OPS test_resnet)
   list(REMOVE_ITEM TEST_OPS test_bert)
@@ -56,8 +52,6 @@ if(APPLE)
 endif()
 
 if(WITH_GPU)
-  set_tests_properties(test_train_step_resnet18_sgd PROPERTIES TIMEOUT 240)
-  set_tests_properties(test_train_step_resnet18_adam PROPERTIES TIMEOUT 240)
   set_tests_properties(test_bert PROPERTIES TIMEOUT 240)
   set_tests_properties(test_transformer PROPERTIES TIMEOUT 240)
   set_tests_properties(test_mobile_net PROPERTIES TIMEOUT 240)
