@@ -573,7 +573,7 @@ class OperantsAPI(ForwardAPI):
 """
         else:
             return f"""
-{self.get_return_type(inplace_flag=True)} PhiTensorOperants::{func_name}({self.get_define_args(inplace_flag=True,append_input_out=False)}) {{
+{self.get_return_type(inplace_flag=True)} PhiTensorOperants::{func_name}({self.get_define_args(inplace_flag=True, append_input_out=False)}) {{
 {indent}return paddle::experimental::{func_name}({func_args_code});
 }}
 
@@ -647,7 +647,7 @@ class OperantsAPI(ForwardAPI):
             return (
                 final_code
                 + f"""
-{self.get_return_type(inplace_flag=True)} OperantsManager::{func_name}({self.get_define_args(inplace_flag=True,append_input_out=False)}) {{
+{self.get_return_type(inplace_flag=True)} OperantsManager::{func_name}({self.get_define_args(inplace_flag=True, append_input_out=False)}) {{
 {self.gene_operants_manager_code()}
 }}
 """

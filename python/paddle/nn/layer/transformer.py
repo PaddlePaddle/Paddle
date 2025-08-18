@@ -197,14 +197,12 @@ class MultiHeadAttention(Layer):
     ) -> None:
         super().__init__()
 
-        assert embed_dim > 0, (
-            "Expected embed_dim to be greater than 0, "
-            f"but received {embed_dim}"
-        )
-        assert num_heads > 0, (
-            "Expected num_heads to be greater than 0, "
-            f"but received {num_heads}"
-        )
+        assert (
+            embed_dim > 0
+        ), f"Expected embed_dim to be greater than 0, but received {embed_dim}"
+        assert (
+            num_heads > 0
+        ), f"Expected num_heads to be greater than 0, but received {num_heads}"
 
         self.embed_dim = embed_dim
         self.kdim = kdim if kdim is not None else embed_dim
@@ -648,12 +646,12 @@ class TransformerEncoderLayer(Layer):
 
         super().__init__()
 
-        assert d_model > 0, (
-            "Expected d_model to be greater than 0, " f"but received {d_model}"
-        )
-        assert nhead > 0, (
-            "Expected nhead to be greater than 0, " f"but received {nhead}"
-        )
+        assert (
+            d_model > 0
+        ), f"Expected d_model to be greater than 0, but received {d_model}"
+        assert (
+            nhead > 0
+        ), f"Expected nhead to be greater than 0, but received {nhead}"
         assert dim_feedforward > 0, (
             "Expected dim_feedforward to be greater than 0, "
             f"but received {dim_feedforward}"
@@ -1019,12 +1017,12 @@ class TransformerDecoderLayer(Layer):
 
         super().__init__()
 
-        assert d_model > 0, (
-            "Expected d_model to be greater than 0, " f"but received {d_model}"
-        )
-        assert nhead > 0, (
-            "Expected nhead to be greater than 0, " f"but received {nhead}"
-        )
+        assert (
+            d_model > 0
+        ), f"Expected d_model to be greater than 0, but received {d_model}"
+        assert (
+            nhead > 0
+        ), f"Expected nhead to be greater than 0, but received {nhead}"
         assert dim_feedforward > 0, (
             "Expected dim_feedforward to be greater than 0, "
             f"but received {dim_feedforward}"
@@ -1549,12 +1547,12 @@ class Transformer(Layer):
     ) -> None:
         super().__init__()
 
-        assert d_model > 0, (
-            "Expected d_model to be greater than 0, " f"but received {d_model}"
-        )
-        assert nhead > 0, (
-            "Expected nhead to be greater than 0, " f"but received {nhead}"
-        )
+        assert (
+            d_model > 0
+        ), f"Expected d_model to be greater than 0, but received {d_model}"
+        assert (
+            nhead > 0
+        ), f"Expected nhead to be greater than 0, but received {nhead}"
         assert dim_feedforward > 0, (
             "Expected dim_feedforward to be greater than 0, "
             f"but received {dim_feedforward}"

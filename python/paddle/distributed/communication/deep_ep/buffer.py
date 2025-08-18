@@ -121,7 +121,7 @@ class Buffer:
             # Make sure QP depth is always larger than the number of on-flight WRs, so that we can skip WQ slot check
             os.environ['NVSHMEM_QP_DEPTH'] = '1024'
             # NOTES: NVSHMEM initialization requires at least 256 MiB
-            os.environ['NVSHMEM_CUMEM_GRANULARITY'] = f'{2 ** 29}'
+            os.environ['NVSHMEM_CUMEM_GRANULARITY'] = f'{2**29}'
 
             nvshmem_unique_ids = []
             if (low_latency_mode and self.rank == 0) or (

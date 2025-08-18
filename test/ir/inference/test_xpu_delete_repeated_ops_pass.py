@@ -385,9 +385,10 @@ class TestDeleteRepeatedScalePass(PassAutoScanTest):
 class TestDeleteRepeatedSqueezePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_xpu=True)
-        yield config, ['scale', 'squeeze2', 'relu', 'relu', 'relu'], (
-            1e-5,
-            1e-5,
+        yield (
+            config,
+            ['scale', 'squeeze2', 'relu', 'relu', 'relu'],
+            (1e-5, 1e-5),
         )
 
     def sample_program_config(self, draw):
@@ -499,9 +500,10 @@ class TestDeleteRepeatedSqueezePass(PassAutoScanTest):
 class TestDeleteRepeatedUnSqueezePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_xpu=True)
-        yield config, ['scale', 'unsqueeze2', 'relu', 'relu', 'relu'], (
-            1e-5,
-            1e-5,
+        yield (
+            config,
+            ['scale', 'unsqueeze2', 'relu', 'relu', 'relu'],
+            (1e-5, 1e-5),
         )
 
     def sample_program_config(self, draw):

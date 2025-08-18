@@ -246,6 +246,22 @@ class SizeArgsDecorator(DecoratorBase):
         return args, kwargs
 
 
+class VariableArgsDecorator(DecoratorBase):
+    def __init__(self, var: str) -> None:
+        super().__init__()
+        if not isinstance(var, str):
+            raise TypeError("var must be a string")
+        self.var = var
+
+    def process(
+        self, args: tuple[Any, ...], kwargs: dict[str, Any]
+    ) -> tuple[tuple[Any, ...], dict[str, Any]]:
+        if len(args) >= 2 and isinstance(args[1], int):
+            kwargs[self.var] = list(args[1:])
+            args = args[:1]
+        return args, kwargs
+
+
 """
     Usage Example:
     paddle.view(x=tensor_x, shape_or_dtype=[-1, 1, 3], name=None)
