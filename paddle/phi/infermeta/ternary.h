@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/common/int_array.h"
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/meta_tensor.h"
 
 namespace phi {
@@ -67,9 +68,9 @@ void ArangeTensorInferMeta(const MetaTensor& start,
                            const MetaTensor& step,
                            MetaTensor* out);
 
-void RangeTensorInferMeta(const MetaTensor& start,
-                          const MetaTensor& end,
-                          const MetaTensor& step,
+void RangeTensorInferMeta(const Scalar& start,
+                          const Scalar& end,
+                          const Scalar& step,
                           MetaTensor* out);
 
 void AssignPosInferMeta(const MetaTensor& x,

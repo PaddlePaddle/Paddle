@@ -35,15 +35,14 @@ __global__ void Range(T start, T step, int64_t size, OUT_TYPE* out) {
 
 template <typename T, typename Context>
 void RangeTensorKernel(const Context& dev_ctx,
-                       const DenseTensor& start,
-                       const DenseTensor& end,
-                       const DenseTensor& step,
+                       const Scalar& start,
+                       const Scalar& end,
+                       const Scalar& step,
                        DenseTensor* out) {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  MPType start_value =
-      static_cast<MPType>(GetValue<T, Context>(dev_ctx, start));
-  MPType end_value = static_cast<MPType>(GetValue<T, Context>(dev_ctx, end));
-  MPType step_value = static_cast<MPType>(GetValue<T, Context>(dev_ctx, step));
+  MPType start_value = start.to<MPType>();
+  MPType end_value = end.to<MPType>();
+  MPType step_value = step.to<MPType>();
   if (step_value == static_cast<MPType>(0)) {
     PADDLE_THROW(phi::errors::InvalidArgument("step must be nonzero."));
   }

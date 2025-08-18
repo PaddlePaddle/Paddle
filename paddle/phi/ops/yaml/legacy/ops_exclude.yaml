@@ -31,6 +31,7 @@
 - expand_as
 - exponential_
 - eye
+- range
 # FIXME(dev): Remove flatten after deprecate flatten_contiguous_range in old IR system.
 # flatten is alias name of flatten_contiguous_range.
 - flatten

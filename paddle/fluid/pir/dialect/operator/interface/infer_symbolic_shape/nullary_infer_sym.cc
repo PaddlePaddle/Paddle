@@ -68,8 +68,8 @@ bool ArangeOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-bool RangeV2OpInferSymbolicShape(
-    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+bool RangeOpInferSymbolicShape(pir::Operation *op,
+                               pir::InferSymbolicShapeContext *infer_context) {
   const auto &start_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const auto &end_shape_or_data =

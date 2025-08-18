@@ -42,13 +42,13 @@ void RangeFunc(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void RangeTensorKernel(const Context& dev_ctx,
-                       const DenseTensor& start,
-                       const DenseTensor& end,
-                       const DenseTensor& step,
+                       const Scalar& start,
+                       const Scalar& end,
+                       const Scalar& step,
                        DenseTensor* out) {
-  T start_value = start.data<T>()[0];
-  T end_value = end.data<T>()[0];
-  T step_value = step.data<T>()[0];
+  T start_value = start.to<T>();
+  T end_value = end.to<T>();
+  T step_value = step.to<T>();
   if (step_value == static_cast<T>(0)) {
     PADDLE_THROW(errors::InvalidArgument("step must be nonzero."));
   }

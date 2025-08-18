@@ -21,9 +21,9 @@ namespace phi {
 
 template <typename T, typename Context>
 void RangeTensorKernel(const Context& dev_ctx,
-                       const DenseTensor& start,
-                       const DenseTensor& end,
-                       const DenseTensor& step,
+                       const Scalar& start,
+                       const Scalar& end,
+                       const Scalar& step,
                        DenseTensor* out);
 
 template <typename T, typename Context>

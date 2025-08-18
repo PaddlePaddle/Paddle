@@ -4302,6 +4302,20 @@
   traits : pir::SideEffectTrait, paddle::dialect::ForwardOnlyTrait
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : range
+  args : (Scalar start, Scalar end, Scalar step, DataType dtype, Place place={})
+  output : Tensor(out)
+  infer_meta :
+    func : RangeTensorInferMeta
+    param : [start, end, step]
+  kernel :
+    func : range_tensor
+    param : [start, end, step]
+    data_type : dtype
+    backend : place
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
+
 - op : rank_attention
   args : (Tensor x, Tensor rank_offset, Tensor rank_param, int max_rank = 3, int max_size = 0)
   output : Tensor(input_help), Tensor(out), Tensor(ins_rank)

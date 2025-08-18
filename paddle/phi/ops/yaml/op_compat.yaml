@@ -3079,9 +3079,7 @@
   extra :
     attrs : [int seed = 0]
 
-- op : range_v2
-  inputs :
-    {start : Start, end : End, step : Step}
+- op : range
   outputs :
     out : Out
   scalar:

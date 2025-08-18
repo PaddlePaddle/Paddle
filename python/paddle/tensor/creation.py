@@ -2026,7 +2026,7 @@ def range(
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if is_value_input and in_pir_mode():
-        tensor = _C_ops.range_v2(
+        tensor = _C_ops.range(
             start,
             end,
             step,
@@ -2059,7 +2059,7 @@ def range(
     elif step.dtype != dtype:
         step = paddle.cast(step, dtype)
 
-    tensor = _C_ops.range_v2(
+    tensor = _C_ops.range(
         start,
         end,
         step,
