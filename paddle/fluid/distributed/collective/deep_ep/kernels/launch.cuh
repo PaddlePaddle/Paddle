@@ -137,10 +137,10 @@
     __VA_ARGS__                                    \
   } else if (hidden == 1536) {                     \
     constexpr size_t kHidden = 1536;               \
-    __VA_ARGS__                                 \
+    __VA_ARGS__                                    \
   } else if (hidden == 2048) {                     \
     constexpr size_t kHidden = 2048;               \
-    __VA_ARGS__     
+    __VA_ARGS__                                    \
   } else {                                         \
     EP_HOST_ASSERT(false && "Unsupported hidden"); \
   }
