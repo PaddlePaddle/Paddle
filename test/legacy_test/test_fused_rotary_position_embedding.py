@@ -12,17 +12,156 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import unittest
 
 import numpy as np
 import parameterized as param
+import torch
 from op_test import is_custom_device
 
+from paddle.utils import map_structure
+
+try:
+    from paddle.fluid.framework import in_dygraph_mode
+except:
+    from paddle.base.framework import in_dygraph_mode
 import paddle
 from paddle.base import core
 from paddle.incubate.nn.functional import fused_rotary_position_embedding
 
 position_ids_list = [[7, 5, 4, 6, 3, 1, 2, 0], [3, 1, 4, 0, 7, 6, 5, 2]]
+
+TOLERANCE = {
+    "float32": {"atol": 1e-6, "rtol": 1e-6},
+    "float16": {"atol": 1e-3, "rtol": 1e-3},
+    "bfloat16": {"atol": 1e-2, "rtol": 1e-2},
+}
+
+'''
+TOLERANCE = {
+    "float32": {"atol": 0, "rtol": 1e-6},
+    "float16": {"atol": 0, "rtol": 1e-5},
+    "bfloat16": {"atol": 0, "rtol": 1e-5},
+}
+'''
+
+
+def convert_dtype_to_torch_type(dtype):
+    import torch
+
+    if dtype in ["float32", np.float32]:
+        return torch.float32
+    elif dtype in ['float16', np.float16]:
+        return torch.float16
+    elif dtype in ['bfloat16', np.uint16]:
+        return torch.bfloat16
+    elif dtype in ['uint8', np.uint8]:
+        return torch.uint8
+    elif dtype in ['int32', np.int32]:
+        return torch.int32
+    elif dtype in ['int64', np.int64]:
+        return torch.int64
+    elif dtype in ['bool']:
+        return torch.bool
+    elif dtype in ['complex64', np.complex64]:
+        return torch.complex64
+    else:
+        raise ValueError(f'Unsupported dtype: {dtype}')
+
+
+def grad(outputs, inputs, grad_outputs=None, no_grad_vars=None):
+    if in_dygraph_mode():
+        return paddle.grad(
+            outputs,
+            inputs,
+            grad_outputs=grad_outputs,
+            no_grad_vars=no_grad_vars,
+        )
+    else:
+        return paddle.static.gradients(
+            outputs,
+            inputs,
+            target_gradients=grad_outputs,
+            no_grad_set=no_grad_vars,
+        )
+
+
+def np_assert_accuracy(
+    np_a,
+    np_b,
+    atol,
+    rtol,
+    dtype,
+    version_a,
+    version_b,
+    eager_or_static_mode,
+    fwd_or_bkd,
+    api,
+):
+    max_atol_idx = np.argmax(np.abs(np_a - np_b))
+    np_a_flatten = np_a.flatten()
+    np_b_flatten = np_b.flatten()
+    sub_res = np_a_flatten - np_b_flatten
+    nonzero_idx = np.nonzero(np_b_flatten)
+    sub_res = sub_res.take(nonzero_idx)
+    np_b_flatten_nonzero = np_b_flatten.take(nonzero_idx).flatten()
+    np_a_flatten_nonzero = np_a_flatten.take(nonzero_idx).flatten()
+    if sub_res.size == 0:
+        max_rtol_idx = 0
+    else:
+        max_rtol_idx = np.argmax(np.abs(sub_res / np_b_flatten_nonzero))
+    np.testing.assert_allclose(
+        np_a,
+        np_b,
+        rtol,
+        atol,
+        err_msg=(
+            f'{api} {eager_or_static_mode} {fwd_or_bkd}: compare {version_a} res with {version_b} failed in {dtype} dtype,\n'
+            + f'max_atol value, {version_a}_value: {np_a_flatten[max_atol_idx].item()!s}, {version_b}_value: {np_b_flatten[max_atol_idx].item()!s},\n'
+            + 'max_rtol value , {version_a}_value: {value_a}, {version_b}_value: {value_b},\n'.format(
+                version_a=version_a,
+                value_a=(
+                    str(np_a_flatten_nonzero[max_rtol_idx].item())
+                    if max_rtol_idx < len(np_a_flatten_nonzero)
+                    else ''
+                ),
+                version_b=version_b,
+                value_b=(
+                    str(np_b_flatten_nonzero[max_rtol_idx].item())
+                    if max_rtol_idx < len(np_b_flatten_nonzero)
+                    else ''
+                ),
+            )
+        ),
+    )
+
+
+def rotate_half(x):
+    x1, x2 = x.chunk(2, dim=-1)
+    return torch.cat((-x2, x1), dim=-1)
+
+
+##  the rotary position embedding forward logic in half mode
+def apply_rotary_pos_emb(x, cos, sin):
+    return x * cos + rotate_half(x) * sin
+
+
+def torch_fused_rotary_position_embedding_simple(
+    q,
+    k=None,
+    v=None,
+    sin=None,
+    cos=None,
+    position_ids=None,
+    use_neox_rotary_style=True,
+    time_major=False,
+    rotary_emb_base=10000.0,
+):
+    qn = apply_rotary_pos_emb(q, cos, sin)
+    kn = apply_rotary_pos_emb(k, cos, sin)
+    vn = apply_rotary_pos_emb(v, cos, sin)
+    return qn, kn, vn
 
 
 def deal_qkv(init_value):
@@ -743,6 +882,319 @@ class TestFusedRotaryPositionEmbeddingZeroSize(unittest.TestCase):
     def test_zero_size(self):
         self.init_data()
         self._test_forward_backward()
+
+
+class TestFusedRotatryPositionEmbedding_check_backward_accuracy(
+    unittest.TestCase
+):
+    def setUp(self):
+        seed = 2025
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed(seed)
+        paddle.seed(seed)
+        np.random.seed(seed)
+        self.init_params()
+        self.init_threshold()
+        self.init_shape()
+        self.generate_np_inputs_and_dout()
+        (
+            q_torch,
+            k_torch,
+            v_torch,
+            sin_torch,
+            cos_torch,
+            position_id_torch,
+            dq_torch,
+            dk_torch,
+            dv_torch,
+        ) = self.gen_torch_inputs_and_dout()
+        q_torch, k_torch, v_torch, torch_out_grads = self.cal_torch_res(
+            q_torch,
+            k_torch,
+            v_torch,
+            sin_torch,
+            cos_torch,
+            position_id_torch,
+            dq_torch,
+            dk_torch,
+            dv_torch,
+        )
+        self.q_torch = q_torch.cpu().detach().numpy()
+        self.k_torch = k_torch.cpu().detach().numpy()
+        self.v_torch = v_torch.cpu().detach().numpy()
+        self.out_grads_torch = map_structure(
+            lambda x: x.cpu().detach().numpy(),
+            torch_out_grads,
+        )
+        torch.cuda.empty_cache()
+
+    def generate_np_inputs_and_dout(self):
+        self.q_np = np.random.random(size=self.q_shape).astype("float32")
+        self.k_np = np.random.random(size=self.q_shape).astype("float32")
+        self.v_np = np.random.random(size=self.q_shape).astype("float32")
+        self.sin_np = np.random.random(size=self.sin_shape).astype("float32")
+
+        self.cos_np = np.random.random(size=self.sin_shape).astype("float32")
+        self.position_id_np = np.array([[0, 1, 2, 3, 4, 5, 6, 7]]).astype(
+            "int64"
+        )
+        self.dq_np = np.random.random(size=self.q_shape).astype("float32")
+        self.dk_np = np.random.random(size=self.q_shape).astype("float32")
+        self.dv_np = np.random.random(size=self.q_shape).astype("float32")
+
+    def init_params(self):
+        self.q_dtype = "float32"
+        self.pos_dtype = "int64"
+
+    def init_threshold(self):
+        self.atol = TOLERANCE["float32"]["atol"]
+        self.rtol = TOLERANCE["float32"]["rtol"]
+
+    def init_shape(self):
+        self.q_shape = [1, 8, 2, 8]
+        self.sin_shape = [1, 8, 1, 8]
+        pass
+
+    def gen_torch_inputs_and_dout(self):
+
+        q_torch = torch.tensor(
+            self.q_np,
+            device='cuda',
+            requires_grad=True,
+            dtype=convert_dtype_to_torch_type(self.q_dtype),
+        )
+        k_torch = torch.tensor(
+            self.k_np,
+            device='cuda',
+            requires_grad=True,
+            dtype=convert_dtype_to_torch_type(self.q_dtype),
+        )
+        v_torch = torch.tensor(
+            self.v_np,
+            device='cuda',
+            requires_grad=True,
+            dtype=convert_dtype_to_torch_type(self.q_dtype),
+        )
+        sin_torch = torch.tensor(
+            self.sin_np,
+            device='cuda',
+            requires_grad=False,
+            dtype=convert_dtype_to_torch_type(self.q_dtype),
+        )
+        cos_torch = torch.tensor(
+            self.cos_np,
+            device='cuda',
+            requires_grad=False,
+            dtype=convert_dtype_to_torch_type(self.q_dtype),
+        )
+
+        position_id_torch = torch.tensor(
+            self.position_id_np,
+            device='cuda',
+            requires_grad=False,
+            dtype=convert_dtype_to_torch_type(self.pos_dtype),
+        )
+
+        dq_torch = torch.tensor(
+            self.dq_np,
+            device='cuda',
+            requires_grad=False,
+            dtype=convert_dtype_to_torch_type(self.q_dtype),
+        )
+        dk_torch = torch.tensor(
+            self.dk_np,
+            device='cuda',
+            requires_grad=False,
+            dtype=convert_dtype_to_torch_type(self.q_dtype),
+        )
+        dv_torch = torch.tensor(
+            self.dv_np,
+            device='cuda',
+            requires_grad=False,
+            dtype=convert_dtype_to_torch_type(self.q_dtype),
+        )
+
+        return (
+            q_torch,
+            k_torch,
+            v_torch,
+            sin_torch,
+            cos_torch,
+            position_id_torch,
+            dq_torch,
+            dk_torch,
+            dv_torch,
+        )
+
+    def gen_eager_inputs_and_dout(self):
+
+        q_eager = paddle.to_tensor(self.q_np, dtype=self.q_dtype)
+        k_eager = paddle.to_tensor(self.k_np, dtype=self.q_dtype)
+        v_eager = paddle.to_tensor(self.v_np, dtype=self.q_dtype)
+        sin_eager = paddle.to_tensor(self.sin_np, dtype=self.q_dtype)
+        cos_eager = paddle.to_tensor(self.cos_np, dtype=self.q_dtype)
+        position_id_eager = paddle.to_tensor(
+            self.position_id_np, dtype=self.pos_dtype
+        )
+        dq_eager = paddle.to_tensor(self.dq_np, dtype=self.q_dtype)
+        dk_eager = paddle.to_tensor(self.dk_np, dtype=self.q_dtype)
+        dv_eager = paddle.to_tensor(self.dv_np, dtype=self.q_dtype)
+        q_eager.stop_gradient = False
+        k_eager.stop_gradient = False
+        v_eager.stop_gradient = False
+
+        return (
+            q_eager,
+            k_eager,
+            v_eager,
+            sin_eager,
+            cos_eager,
+            position_id_eager,
+            dq_eager,
+            dk_eager,
+            dv_eager,
+        )
+
+    def cal_torch_res(
+        self,
+        q_torch,
+        k_torch,
+        v_torch,
+        sin_torch,
+        cos_torch,
+        position_id_torch,
+        dq_torch,
+        dk_torch,
+        dv_torch,
+    ):
+        q, k, v = torch_fused_rotary_position_embedding_simple(
+            q_torch,
+            k_torch,
+            v_torch,
+            sin_torch,
+            cos_torch,
+            position_id_torch,
+            False,
+            False,
+        )
+        out_grads = torch.autograd.grad(
+            [q, k, v],
+            [q_torch, k_torch, v_torch],
+            grad_outputs=[dq_torch, dk_torch, dv_torch],
+        )
+        return q, k, v, out_grads
+
+    def cal_eager_res(
+        self,
+        q_eager,
+        k_eager,
+        v_eager,
+        sin_eager,
+        cos_eager,
+        position_id_eager,
+        dq_eager,
+        dk_eager,
+        dv_eager,
+    ):
+        q, k, v = paddle.incubate.nn.functional.fused_rotary_position_embedding(
+            q_eager,
+            k_eager,
+            v_eager,
+            sin_eager,
+            cos_eager,
+            position_id_eager,
+            False,
+            False,
+        )
+        out_grads = paddle.grad(
+            [q, k, v],
+            [q_eager, k_eager, v_eager],
+            grad_outputs=[dq_eager, dk_eager, dv_eager],
+        )
+        return q, k, v, out_grads
+
+    def test_eager_accuracy(self):
+        (
+            q_eager,
+            k_eager,
+            v_eager,
+            sin_eager,
+            cos_eager,
+            position_id_eager,
+            dq_eager,
+            dk_eager,
+            dv_eager,
+        ) = self.gen_eager_inputs_and_dout()
+        paddle_q, paddle_k, paddle_v, paddle_out_grads = self.cal_eager_res(
+            q_eager,
+            k_eager,
+            v_eager,
+            sin_eager,
+            cos_eager,
+            position_id_eager,
+            dq_eager,
+            dk_eager,
+            dv_eager,
+        )
+
+        paddle.device.cuda.empty_cache()
+        out_grads_eager_np = map_structure(
+            lambda x: x.numpy(),
+            paddle_out_grads,
+        )
+
+        np_assert_accuracy(
+            paddle_q.numpy(),
+            self.q_torch,
+            self.atol,
+            self.rtol,
+            self.q_dtype,
+            version_a="paddle_develop",
+            version_b="torch",
+            eager_or_static_mode="eager",
+            fwd_or_bkd="forward",
+            api="paddle.fused_rotary_position_embedding",
+        )
+
+        np_assert_accuracy(
+            paddle_k.numpy(),
+            self.k_torch,
+            self.atol,
+            self.rtol,
+            self.q_dtype,
+            version_a="paddle_develop",
+            version_b="torch",
+            eager_or_static_mode="eager",
+            fwd_or_bkd="forward",
+            api="paddle.fused_rotary_position_embedding",
+        )
+
+        np_assert_accuracy(
+            paddle_v.numpy(),
+            self.v_torch,
+            self.atol,
+            self.rtol,
+            self.q_dtype,
+            version_a="paddle_develop",
+            version_b="torch",
+            eager_or_static_mode="eager",
+            fwd_or_bkd="forward",
+            api="paddle.fused_rotary_position_embedding",
+        )
+
+        for idx in range(len(out_grads_eager_np)):
+            np_assert_accuracy(
+                out_grads_eager_np[idx],
+                self.out_grads_torch[idx],
+                self.atol,
+                self.rtol,
+                self.q_dtype,
+                version_a="paddle_develop",
+                version_b="torch",
+                eager_or_static_mode="eager",
+                fwd_or_bkd="backward",
+                api="paddle._C_ops.embedding",
+            )
 
 
 if __name__ == "__main__":
