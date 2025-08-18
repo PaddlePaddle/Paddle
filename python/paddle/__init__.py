@@ -110,12 +110,12 @@ else:
         elif len(args) == 1 and isinstance(args[0], (list, tuple)):
             super_init(self, paddle.to_tensor(args[0], dtype="float32"))
             return
-        with_shape_empty = True
+        is_all_int = True
         for arg in args:
             if not isinstance(arg, int):
-                with_shape_empty = False
+                is_all_int = False
                 break
-        if with_shape_empty:
+        if is_all_int:
             super_init(self, paddle.empty(list(args), dtype="float32"))
             return
         else:
