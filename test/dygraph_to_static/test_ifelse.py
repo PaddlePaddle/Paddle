@@ -16,11 +16,7 @@ import unittest
 
 import numpy as np
 from dygraph_to_static_utils import (
-    BackendMode,
     Dy2StTestBase,
-    IrMode,
-    ToStaticMode,
-    disable_test_case,
     enable_to_static_guard,
     test_ast_only,
     test_pir_only,
@@ -105,10 +101,6 @@ class TestDygraphIfElse2(TestDygraphIfElse):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = dyfunc_with_if_else2
 
-    # TODO(dev): fix AST mode
-    @disable_test_case(
-        (ToStaticMode.AST, IrMode.PT, BackendMode.PHI | BackendMode.CINN)
-    )
     def test_ast_to_func(self):
         np.testing.assert_allclose(
             self._run_dygraph(), self._run_static(), atol=1e-7, rtol=1e-7

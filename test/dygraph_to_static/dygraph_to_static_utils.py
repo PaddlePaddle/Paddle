@@ -17,7 +17,6 @@ from __future__ import annotations
 import importlib
 import inspect
 import logging
-import os
 import sys
 import unittest
 from contextlib import contextmanager
@@ -28,7 +27,7 @@ from pathlib import Path
 from typing_extensions import TypeAlias
 
 import paddle
-from paddle import get_flags, set_flags, static
+from paddle import set_flags
 from paddle.jit.api import sot_mode_guard
 from paddle.jit.dy2static.utils import (
     ENV_ENABLE_CINN_IN_DY2ST,
@@ -114,12 +113,9 @@ ModeTuple: TypeAlias = tuple[ToStaticMode, IrMode, BackendMode]
 DEFAULT_TO_STATIC_MODE = (
     ToStaticMode.AST | ToStaticMode.SOT | ToStaticMode.SOT_MGS10
 )
-DEFAULT_IR_MODE = IrMode.PT | IrMode.PIR
+DEFAULT_IR_MODE = IrMode.PIR
 DEFAULT_BACKEND_MODE = BackendMode.PHI | BackendMode.CINN
 VALID_MODES = [
-    # For `.pd_model` export, we still need test AST+PT / AST+LEGACY_IR
-    (ToStaticMode.AST, IrMode.LEGACY_IR, BackendMode.PHI),
-    (ToStaticMode.AST, IrMode.PT, BackendMode.PHI),
     (ToStaticMode.AST, IrMode.PIR, BackendMode.PHI),
     (ToStaticMode.SOT, IrMode.PIR, BackendMode.PHI),
     (ToStaticMode.SOT_MGS10, IrMode.PIR, BackendMode.PHI),
@@ -138,9 +134,7 @@ DISABLED_TO_STATIC_TEST_FILES = {
 
 DISABLED_IR_TEST_FILES = {
     IrMode.LEGACY_IR: [],
-    IrMode.PT: [
-        "test_tensor_hook",
-    ],
+    IrMode.PT: [],
     IrMode.PIR: [],
 }
 DISABLED_BACKEND_TEST_FILES = {
@@ -153,15 +147,6 @@ DISABLED_BACKEND_TEST_FILES = {
 def pir_dygraph_guard():
     in_dygraph_mode = paddle.in_dynamic_mode()
     with paddle.pir_utils.IrGuard():
-        if in_dygraph_mode:
-            paddle.disable_static()
-        yield
-
-
-@contextmanager
-def legacy_ir_dygraph_guard():
-    in_dygraph_mode = paddle.in_dynamic_mode()
-    with paddle.pir_utils.OldIrGuard():
         if in_dygraph_mode:
             paddle.disable_static()
         yield
@@ -220,45 +205,11 @@ def to_sot_mgs10_test(fn):
 
 
 def to_legacy_ir_test(fn):
-    @wraps(fn)
-    def legacy_ir_impl(*args, **kwargs):
-        logger.info("[LEGACY_IR] running legacy ir")
-        with legacy_ir_dygraph_guard():
-            pt_in_dy2st_flag = ENV_ENABLE_PIR_WITH_PT_IN_DY2ST.name
-            original_flag_value = get_flags(pt_in_dy2st_flag)[pt_in_dy2st_flag]
-            with EnvironmentVariableGuard(
-                ENV_ENABLE_PIR_WITH_PT_IN_DY2ST, False
-            ):
-                try:
-                    set_flags({pt_in_dy2st_flag: False})
-                    return fn(*args, **kwargs)
-                finally:
-                    set_flags({pt_in_dy2st_flag: original_flag_value})
-
-    return legacy_ir_impl
+    raise NotImplementedError("Legacy IR is not supported")
 
 
 def to_pt_test(fn):
-    @wraps(fn)
-    def pt_impl(*args, **kwargs):
-        logger.info("[PT] running PT")
-        with legacy_ir_dygraph_guard():
-            pt_in_dy2st_flag = ENV_ENABLE_PIR_WITH_PT_IN_DY2ST.name
-            original_flag_value = get_flags(pt_in_dy2st_flag)[pt_in_dy2st_flag]
-            if os.environ.get('FLAGS_use_stride_kernel', False):
-                return
-            with (
-                static.scope_guard(static.Scope()),
-                static.program_guard(static.Program()),
-                EnvironmentVariableGuard(ENV_ENABLE_PIR_WITH_PT_IN_DY2ST, True),
-            ):
-                try:
-                    set_flags({pt_in_dy2st_flag: True})
-                    return fn(*args, **kwargs)
-                finally:
-                    set_flags({pt_in_dy2st_flag: original_flag_value})
-
-    return pt_impl
+    raise NotImplementedError("PT is not supported")
 
 
 def to_pir_test(fn):
@@ -484,38 +435,8 @@ def test_sot_only(fn):
     return fn
 
 
-def test_legacy_only(fn):
-    fn = set_ir_mode(IrMode.LEGACY_IR)(fn)
-    return fn
-
-
-def test_pt_only(fn):
-    fn = set_ir_mode(IrMode.PT)(fn)
-    return fn
-
-
 def test_pir_only(fn):
     fn = set_ir_mode(IrMode.PIR)(fn)
-    return fn
-
-
-def test_legacy_and_pt(fn):
-    fn = set_ir_mode(IrMode.LEGACY_IR | IrMode.PT)(fn)
-    return fn
-
-
-def test_pt_and_pir(fn):
-    fn = set_ir_mode(IrMode.PT | IrMode.PIR)(fn)
-    return fn
-
-
-def test_legacy_and_pir(fn):
-    fn = set_ir_mode(IrMode.LEGACY_IR | IrMode.PIR)(fn)
-    return fn
-
-
-def test_legacy_and_pt_and_pir(fn):
-    fn = set_ir_mode(IrMode.LEGACY_IR | IrMode.PT | IrMode.PIR)(fn)
     return fn
 
 
