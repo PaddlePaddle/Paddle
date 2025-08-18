@@ -400,6 +400,9 @@ class TestEagerTensor(unittest.TestCase):
         )
 
     def test_tensor_and_to_tensor(self):
+        """
+        test tensor equal to to_tensor
+        """
         tensor_res = paddle.tensor(
             self.array, dtype="float32", device="cpu", requires_grad=True
         )
@@ -413,6 +416,38 @@ class TestEagerTensor(unittest.TestCase):
         self.assertEqual(tensor_res.dtype, paddle.float32)
         self.assertEqual(tensor_res.stop_gradient, tensor_target.stop_gradient)
         self.assertEqual(tensor_res.stop_gradient, False)
+
+    def test_tensor_module(self):
+        """
+        test paddle.tensor usable as an API and a module
+        """
+        tensor_api = paddle.tensor(self.array, dtype="float32")
+        tensor_module = paddle.tensor.creation.tensor(
+            self.array, dtype="float32"
+        )
+        np.testing.assert_array_equal(tensor_api.numpy(), tensor_module.numpy())
+        self.assertEqual(tensor_api.place, tensor_module.place)
+        self.assertEqual(tensor_api.dtype, tensor_module.dtype)
+        self.assertEqual(tensor_api.stop_gradient, tensor_module.stop_gradient)
+
+    def test_tensor_method_or_module(self):
+        """
+        test the class method
+        """
+        # __rerp__
+        ori_repr = repr(paddle.tensor.creation.tensor)
+        now_repr = repr(paddle.tensor)
+        self.assertEqual(ori_repr, now_repr)
+
+        # __str__
+        ori_str = str(paddle.tensor.creation.tensor)
+        now_str = str(paddle.tensor)
+        self.assertEqual(ori_str, now_str)
+
+        # __dir__
+        api_dir = dir(paddle.tensor.creation.tensor)
+        module_dir = dir(paddle.tensor)
+        self.assertGreater(len(module_dir), len(api_dir))
 
     def test_list_to_tensor(self):
         array = [[[1, 2], [1, 2], [1.0, 2]], [[1, 2], [1, 2], [1, 2]]]

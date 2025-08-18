@@ -663,9 +663,6 @@ class _TensorMethodOrModule:
     def __str__(self):
         return str(self.method)
 
-    def __type__(self):
-        return type(self.method)
-
     def __dir__(self):
         return dir(self.module)
 
