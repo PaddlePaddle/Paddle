@@ -321,8 +321,8 @@ def sort(
         return SortRetType(values=outputs, indices=indices)
     paddle.assign(outputs, out[0])
     paddle.assign(indices, out[1])
-        
-        
+
+
 class Unfold(nn.Unfold):
     """
     A compatible version of paddle.nn.Unfold:
