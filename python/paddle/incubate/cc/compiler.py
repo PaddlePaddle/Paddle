@@ -122,7 +122,7 @@ class OverloadedFunc:
 
     def mismatched_debug_info(self, dtypes):
         valid_signatures = "; ".join(
-            f"[{idx+1}] {dtypes}"
+            f"[{idx + 1}] {dtypes}"
             for idx, pair in enumerate(
                 self.func_overload_ctx.dtypes2func.items()
             )

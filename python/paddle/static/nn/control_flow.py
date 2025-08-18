@@ -1159,7 +1159,7 @@ def case(pred_fn_pairs, default=None, name=None):
 
             if not callable(fn):
                 raise TypeError(
-                    "The fn of pred_fn_pairs in Op(case) must" " be callable."
+                    "The fn of pred_fn_pairs in Op(case) must be callable."
                 )
 
         if default is None:
@@ -1891,9 +1891,10 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         )
 
     if in_pir_mode():
-        flattened_true_output, flattened_false_output = flatten(
-            true_output
-        ), flatten(false_output)
+        flattened_true_output, flattened_false_output = (
+            flatten(true_output),
+            flatten(false_output),
+        )
         flattened_return_names = [
             name
             for seq_out, name in zip(
@@ -2110,8 +2111,9 @@ def select_input_with_buildin_type(inputs, mask, name):
         isinstance(true_var, UndefinedVar)
         and isinstance(false_var, (Variable, *support_ret_buildin_type))
     ):
-        true_var, false_var = to_static_variable(true_var), to_static_variable(
-            false_var
+        true_var, false_var = (
+            to_static_variable(true_var),
+            to_static_variable(false_var),
         )
         inputs = [false_var, true_var]
     else:

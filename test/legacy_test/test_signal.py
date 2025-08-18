@@ -73,7 +73,7 @@ def normalize(S, norm=np.inf, axis=0, threshold=None, fill=None):
         threshold = tiny(S)
 
     elif threshold <= 0:
-        raise Exception(f"threshold={threshold} must be strictly " "positive")
+        raise Exception(f"threshold={threshold} must be strictly positive")
 
     if fill not in [None, False, True]:
         raise Exception(f"fill={fill} must be None or boolean")
@@ -211,7 +211,7 @@ def dtype_r2c(d, default=np.complex64):
 def frame(x, frame_length, hop_length, axis=-1):
     if not isinstance(x, np.ndarray):
         raise Exception(
-            "Input must be of type numpy.ndarray, " f"given type(x)={type(x)}"
+            f"Input must be of type numpy.ndarray, given type(x)={type(x)}"
         )
 
     if x.shape[axis] < frame_length:
@@ -267,7 +267,7 @@ def pad_center(data, size, axis=-1, **kwargs):
 
     if lpad < 0:
         raise Exception(
-            f"Target size ({size:d}) must be " f"at least input size ({n:d})"
+            f"Target size ({size:d}) must be at least input size ({n:d})"
         )
 
     return np.pad(data, lengths, **kwargs)
@@ -286,7 +286,7 @@ def get_window(window, Nx, fftbins=True):
         if len(window) == Nx:
             return np.asarray(window)
 
-        raise Exception("Window size mismatch: " f"{len(window):d} != {Nx:d}")
+        raise Exception(f"Window size mismatch: {len(window):d} != {Nx:d}")
     else:
         raise Exception(f"Invalid window specification: {window}")
 
@@ -694,7 +694,6 @@ class TestFrame(unittest.TestCase):
         ('test_3d_input2', rand_x(3, np.float64, shape=[4, 2, 150]), 50, 15, -1),
     ])  # fmt: skip
 class TestFrameStatic(unittest.TestCase):
-
     def test_frame_static(self):
         paddle.enable_static()
         mp, sp = paddle.static.Program(), paddle.static.Program()
@@ -777,7 +776,6 @@ class TestOverlapAdd(unittest.TestCase):
         ('test_4d_input2', rand_x(4, np.float64, shape=[3, 5, 12, 8]), 5, -1),
     ])  # fmt: skip
 class TestOverlapAddStatic(unittest.TestCase):
-
     def test_overlap_add_static(self):
         paddle.enable_static()
         mp, sp = paddle.static.Program(), paddle.static.Program()
@@ -937,7 +935,7 @@ class TestStftException(unittest.TestCase):
                 self.pad_mode,
                 self.normalized,
                 self.onesided,
-            ),
+            )
 
 
 @place(DEVICES)
@@ -1042,7 +1040,7 @@ class TestIstftException(unittest.TestCase):
                 self.onesided,
                 self.length,
                 self.return_complex,
-            ),
+            )
 
 
 class TestIstftException_ZeroSize(unittest.TestCase):

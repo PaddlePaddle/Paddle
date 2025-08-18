@@ -50,13 +50,16 @@ class CinnLowerLevelIrJit(Generic[T]):
         jit_input_args = ', '.join(arg_name for arg_name in self.arg_names)
         lazy_compile = f"""
 import paddle.cinn as cinn
-def {self.fn.__name__}({jit_input_args}, target=cinn.common.DefaultHostTarget()):
+def {self.fn.__name__}({
+            jit_input_args
+        }, target=cinn.common.DefaultHostTarget()):
     from paddle.cinn.compiler import compile
     jit_inputs = {', '.join([f'{arg}' for arg in self.arg_names])}
     jit_inputs_signature = {{ i: self._convert_arg_type(arg) \
                              for i, arg in enumerate(jit_inputs)}}
     module = compile(self, jit_inputs_signature=jit_inputs_signature, arg_names={
-                     self.arg_names}, target=target)
+            self.arg_names
+        }, target=target)
     module({jit_input_args})
 
     return module

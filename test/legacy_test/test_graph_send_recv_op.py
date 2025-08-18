@@ -378,7 +378,6 @@ def compute_graph_send_recv_for_min_max(inputs, attributes):
 
 
 class API_GraphSendRecvOpTest(unittest.TestCase):
-
     def test_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -541,7 +540,6 @@ class API_GraphSendRecvOpTest(unittest.TestCase):
 
 
 class API_GeometricSendURecvTest(unittest.TestCase):
-
     def test_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):

@@ -415,23 +415,31 @@ class TestEmbeddingEltwiseLayerNormFusePassNoBroadcast(PassAutoScanTest):
         # only used in gpu passes and trt passes.
         config = self.create_inference_config(use_gpu=True)
         if program_config.ops[0].type == 'lookup_table':
-            yield config, [
-                'lookup_table',
-                'lookup_table',
-                'lookup_table',
-                'elementwise_add',
-                'elementwise_add',
-                'layer_norm',
-            ], (1e-5, 1e-5)
+            yield (
+                config,
+                [
+                    'lookup_table',
+                    'lookup_table',
+                    'lookup_table',
+                    'elementwise_add',
+                    'elementwise_add',
+                    'layer_norm',
+                ],
+                (1e-5, 1e-5),
+            )
         else:
-            yield config, [
-                'lookup_table_v2',
-                'lookup_table_v2',
-                'lookup_table_v2',
-                'elementwise_add',
-                'elementwise_add',
-                'layer_norm',
-            ], (1e-5, 1e-5)
+            yield (
+                config,
+                [
+                    'lookup_table_v2',
+                    'lookup_table_v2',
+                    'lookup_table_v2',
+                    'elementwise_add',
+                    'elementwise_add',
+                    'layer_norm',
+                ],
+                (1e-5, 1e-5),
+            )
 
     def add_ignore_pass_case(self):
         pass

@@ -673,7 +673,6 @@ class TestConcatOpError(unittest.TestCase):
 
 
 class TestConcatAPI(unittest.TestCase):
-
     def test_base_api(self):
         paddle.enable_static()
         with paddle.base.program_guard(paddle.base.Program()):
@@ -1014,7 +1013,6 @@ class TestConcatOpAutoParallel(OpTest):
 
 
 class TestConcatOpErrorWithPir(unittest.TestCase):
-
     def test_errors_with_pir(self):
         paddle.enable_static()
         with paddle.base.program_guard(

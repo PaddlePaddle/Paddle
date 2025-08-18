@@ -407,33 +407,39 @@ class TestElementwiseOp0SizeInput(TestElementwiseOp):
 class TestMaximumOutAPI(unittest.TestCase):
     def test_out_in_dygraph(self):
         paddle.disable_static()
+        np.random.seed(2024)
         x = paddle.to_tensor(
-            np.array([[1, 2], [7, 8]]), dtype='float32', stop_gradient=False
+            np.random.randn(5, 7).astype('float32'), stop_gradient=False
         )
+        # shift y to avoid ties for stable gradient routing
         y = paddle.to_tensor(
-            np.array([[3, 4], [5, 6]]), dtype='float32', stop_gradient=False
+            (np.random.randn(5, 7) + 0.1).astype('float32'), stop_gradient=False
         )
 
-        def run_case(case):
+        def run_case(case_type):
             out_buf = paddle.zeros_like(x)
             out_buf.stop_gradient = False
-            if case == 'return':
+
+            if case_type == 'return':
                 z = paddle.maximum(x, y)
-            elif case == 'input_out':
+            elif case_type == 'input_out':
                 paddle.maximum(x, y, out=out_buf)
                 z = out_buf
-            elif case == 'both_return':
+            elif case_type == 'both_return':
                 z = paddle.maximum(x, y, out=out_buf)
-            elif case == 'both_input_out':
+            elif case_type == 'both_input_out':
                 _ = paddle.maximum(x, y, out=out_buf)
                 z = out_buf
             else:
                 raise AssertionError
+
             ref = paddle._C_ops.maximum(x, y)
             np.testing.assert_allclose(
                 z.numpy(), ref.numpy(), rtol=1e-6, atol=1e-6
             )
-            (z.mean()).backward()
+
+            loss = (z * 2).mean()
+            loss.backward()
             return z.numpy(), x.grad.numpy(), y.grad.numpy()
 
         z1, gx1, gy1 = run_case('return')
