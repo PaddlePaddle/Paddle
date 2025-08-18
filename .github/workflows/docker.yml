@@ -13,6 +13,10 @@ on:
         required: false
         type: string
         default: "false"
+      clone-can-skip:
+        type: string
+        required: false
+        default: "false"
     outputs:
       docker_cpu_image:
         description: "Generate images for all CI usage"
@@ -48,7 +52,7 @@ on:
 
 jobs:
   build-docker-images:
-    if: github.repository_owner == 'PaddlePaddle'
+    if: ${{ github.repository_owner == 'PaddlePaddle' && inputs.clone-can-skip != 'true' }}
     name: Build docker
     runs-on:
       group: Docker-build
