@@ -57,7 +57,6 @@ def add_doc_and_signature(func_name: str, docstr: str, func_def: str) -> None:
         tensor_func.__signature__ = python_api_sig
 
 
-__all__ = ['add_doc_and_signature']
 add_doc_and_signature(
     "amin",
     r"""
