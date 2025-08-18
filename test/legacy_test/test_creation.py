@@ -19,6 +19,7 @@ import numpy as np
 from utils import dygraph_guard
 
 import paddle
+from paddle.static import InputSpec
 
 
 class TestTensorCreation(unittest.TestCase):
@@ -439,6 +440,62 @@ class TestTensorCreation(unittest.TestCase):
                             dtype=dtype,
                             device=device,
                             requires_grad=requires_grad,
+                        )
+                        if (
+                            isinstance(device, paddle.framework.core.Place)
+                            # skip xpu for unknown reason
+                            and not isinstance(
+                                device, paddle.framework.core.XPUPlace
+                            )
+                        ):
+                            self.assertEqual(x.place, x_ref.place)
+                        self.assertEqual(x.dtype, x_ref.dtype)
+                        self.assertEqual(x.stop_gradient, x_ref.stop_gradient)
+                        np.testing.assert_allclose(
+                            x.numpy(),
+                            x_ref.numpy(),
+                            1e-6,
+                            1e-6,
+                            err_msg=f"[FAILED] wrong result when testing: range({start},{end},{step})",
+                        )
+
+                        def wrapped_range(start, end, step):
+                            return paddle.range(
+                                start,
+                                end,
+                                step,
+                                dtype,
+                                device=device,
+                                requires_grad=requires_grad,
+                            )
+
+                        if end is None:
+                            st_f = paddle.jit.to_static(
+                                wrapped_range,
+                                input_spec=[
+                                    InputSpec([-1]),
+                                    None,
+                                    InputSpec([-1]),
+                                ],
+                                full_graph=True,
+                                backend=None,
+                            )
+                        else:
+                            st_f = paddle.jit.to_static(
+                                wrapped_range,
+                                input_spec=[
+                                    InputSpec([-1]),
+                                    InputSpec([-1]),
+                                    InputSpec([-1]),
+                                ],
+                                full_graph=True,
+                                backend=None,
+                            )
+
+                        x = st_f(
+                            paddle.to_tensor(start),
+                            paddle.to_tensor(end) if end is not None else None,
+                            paddle.to_tensor(step),
                         )
                         if (
                             isinstance(device, paddle.framework.core.Place)
