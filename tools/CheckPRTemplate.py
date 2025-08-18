@@ -21,7 +21,8 @@ import httpx
 PR_checkTemplate = ['Paddle']
 
 REPO_TEMPLATE = {
-    "Paddle": r'''### PR Category(.*[^\s].*)### PR Types(.*[^\s].*)### Description(.*?https://github\.com/PaddlePaddle/Paddle/pull/.*?)(?:\n###|\Z)'''
+    "Paddle": r'''### PR Category(.*[^\s].*)### PR Types(.*[^\s].*)### Description(.*[^\s].*)'''
+    r'''### PR Category(.*[^\s].*)### PR Types(.*[^\s].*)### Description(.*?https://github\.com/PaddlePaddle/Paddle/pull/.*?)(?:\n###|\Z)'''
 }
 
 
