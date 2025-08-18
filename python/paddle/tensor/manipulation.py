@@ -6819,19 +6819,19 @@ def scatter_reduce(
             >>> x = paddle.to_tensor([[10, 20, 30], [40, 50, 60]])
             >>> indices = paddle.zeros((2,3)).astype("int32")
             >>> values = paddle.to_tensor([[1, 2, 3],[4, 5, 6]]).astype(x.dtype)
-            >>> result = paddle.scatter_reduce(x, 0, indices, values, "sum", True)
+            >>> result = paddle.scatter_reduce(x, 0, indices, values, "sum", include_self=True)
             >>> print(result)
             Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[15, 27, 39],
              [40, 50, 60]])
 
-            >>> result = paddle.scatter_reduce(x, 0, indices, values, "prod", True)
+            >>> result = paddle.scatter_reduce(x, 0, indices, values, "prod", include_self=True)
             >>> print(result)
             Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[40 , 200, 540],
              [40 , 50 , 60 ]])
 
-            >>> result = paddle.scatter_reduce(x, 0, indices, values, "mean", True)
+            >>> result = paddle.scatter_reduce(x, 0, indices, values, "mean", include_self=True)
             >>> print(result)
             Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[5 , 9 , 13],
