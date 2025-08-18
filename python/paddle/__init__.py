@@ -129,6 +129,7 @@ from . import (
     tensor as tensor,
     utils as utils,
 )
+from ._ops import ops as ops
 from .autograd import (
     enable_grad,
     grad,
