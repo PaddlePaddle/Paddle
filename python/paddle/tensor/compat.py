@@ -250,7 +250,7 @@ def slogdet(x: Tensor) -> tuple[Tensor, Tensor]:
             >>> import paddle
             >>> paddle.seed(2023)
             >>> x = paddle.randn([3, 3, 3])
-            >>> A = paddle.linalg.slogdet(x) # Updated example
+            >>> A = paddle.compat.slogdet(x) # Updated example
             >>> print(A)
            (Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
                   [-1.,  1.,  1.]), Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,

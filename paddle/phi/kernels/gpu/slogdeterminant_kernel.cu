@@ -259,19 +259,6 @@ void SlogDeterminantKernel(const Context& dev_ctx,
   VLOG(2) << "output dim:" << out->dims();
 }
 
-}  // namespace phi
-
-PD_REGISTER_KERNEL(slogdet,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::SlogDeterminantKernel,
-                   float,
-                   double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
-
-namespace phi {
-
 template <typename T>
 __global__ void GetSlogDetV2FromLU(const T* lu_data,
                                    const int* ipiv,
@@ -367,6 +354,15 @@ struct SlogDeterminantV2Functor {
     phi::TensorToVector(input, dev_ctx, &input_vec);
     for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
+      auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
+      std::vector<T> sub_vec(begin_iter,
+                             end_iter);  // get every square matrix data
+      typename detail::EigenMatrix<T>::MatrixType matrix(rank, rank);
+      for (int64_t i = 0; i < rank; ++i) {
+        for (int64_t j = 0; j < rank; ++j) {
+          matrix(i, j) = sub_vec[rank * i + j];
+        }
+      }
       VLOG(2) << "det value: " << matrix.determinant();
       VLOG(2) << "matrix val: " << matrix;
       auto det_val = matrix.determinant();
@@ -387,6 +383,41 @@ struct SlogDeterminantV2Functor {
 #endif
   }
 };
+
+template <typename Complex_T, typename T>
+__global__ void GetSlogDetV2FromLUComplex(const Complex_T* lu_data,
+                                          const int* ipiv,
+                                          int64_t n,
+                                          int64_t batch_size,
+                                          Complex_T* sign,
+                                          T* logdet) {
+  int64_t idx = threadIdx.x + static_cast<int64_t>(blockIdx.x) * blockDim.x;
+  if (idx < batch_size) {
+    int64_t offset_lu = idx * n * n;
+    int64_t offset_ipiv = idx * n;
+    Complex_T det_val = Complex_T(1.0, 0.0);
+    Complex_T negative = Complex_T(-1.0, 0.0);
+    for (int64_t i = 0; i < n; ++i) {
+      det_val *= lu_data[offset_lu + i * n + i];
+      if (ipiv[offset_ipiv + i] != i + 1) {
+        det_val *= negative;
+      }
+    }
+    T abs_det = abs(det_val);
+    T epsilon = std::numeric_limits<T>::epsilon();
+
+    if (abs_det <= epsilon) {
+      sign[idx] = Complex_T(0.0, 0.0);
+      logdet[idx] = -std::numeric_limits<T>::infinity();
+    } else {
+      Complex_T abs_det_complex = static_cast<Complex_T>(abs_det);
+      Complex_T s = det_val / abs_det_complex;
+      T log_abs_det = log(abs_det);
+      sign[idx] = s;
+      logdet[idx] = log_abs_det;
+    }
+  }
+}
 
 template <typename T, typename Context>
 struct SlogDeterminantV2Functor<phi::dtype::complex<T>, Context> {
@@ -456,7 +487,7 @@ struct SlogDeterminantV2Functor<phi::dtype::complex<T>, Context> {
     int block_size = std::min(256, dev_ctx.GetMaxThreadsPerBlock());
     dim3 dim_block(block_size);
     dim3 num_blocks((batch_count + block_size - 1) / block_size);
-    GetSlogDetFromLUComplex<phi::dtype::complex<T>, T>
+    GetSlogDetV2FromLUComplex<phi::dtype::complex<T>, T>
         <<<num_blocks, dim_block>>>(
             gpu_mat, pivot_data, rank, batch_count, sign_data, logdet_data);
 #else
@@ -499,41 +530,6 @@ struct SlogDeterminantV2Functor<phi::dtype::complex<T>, Context> {
   }
 };
 
-template <typename Complex_T, typename T>
-__global__ void GetSlogDetV2FromLUComplex(const Complex_T* lu_data,
-                                          const int* ipiv,
-                                          int64_t n,
-                                          int64_t batch_size,
-                                          Complex_T* sign,
-                                          T* logdet) {
-  int64_t idx = threadIdx.x + static_cast<int64_t>(blockIdx.x) * blockDim.x;
-  if (idx < batch_size) {
-    int64_t offset_lu = idx * n * n;
-    int64_t offset_ipiv = idx * n;
-    Complex_T det_val = Complex_T(1.0, 0.0);
-    Complex_T negative = Complex_T(-1.0, 0.0);
-    for (int64_t i = 0; i < n; ++i) {
-      det_val *= lu_data[offset_lu + i * n + i];
-      if (ipiv[offset_ipiv + i] != i + 1) {
-        det_val *= negative;
-      }
-    }
-    T abs_det = abs(det_val);
-    T epsilon = std::numeric_limits<T>::epsilon();
-
-    if (abs_det <= epsilon) {
-      sign[idx] = Complex_T(0.0, 0.0);
-      logdet[idx] = -std::numeric_limits<T>::infinity();
-    } else {
-      Complex_T abs_det_complex = static_cast<Complex_T>(abs_det);
-      Complex_T s = det_val / abs_det_complex;
-      T log_abs_det = log(abs_det);
-      sign[idx] = s;
-      logdet[idx] = log_abs_det;
-    }
-  }
-}
-
 template <typename T, typename Context>
 void SlogDeterminantV2Kernel(const Context& dev_ctx,
                              const DenseTensor& x,
@@ -547,6 +543,10 @@ void SlogDeterminantV2Kernel(const Context& dev_ctx,
   PADDLE_ENFORCE_GE(
       input_dim_size,
       2,
+      errors::InvalidArgument(
+          "the input matrix dimension size should greater than 2."));
+  PADDLE_ENFORCE_EQ(
+      input_dim[input_dim_size - 1],
       input_dim[input_dim_size - 2],
       errors::InvalidArgument("the input matrix should be square matrix."));
   int64_t rank = input_dim[input_dim_size - 1];  // square matrix length
@@ -556,6 +556,15 @@ void SlogDeterminantV2Kernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
+
+PD_REGISTER_KERNEL(slogdet,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::SlogDeterminantKernel,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(slogdet_v2,
                    GPU,

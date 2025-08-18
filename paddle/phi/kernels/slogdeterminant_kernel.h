@@ -24,9 +24,9 @@ void SlogDeterminantKernel(const Context& dev_ctx,
                            DenseTensor* out);
 
 template <typename T, typename Context>
-void SlogDeterminantKernel(const Context& dev_ctx,
-                           const DenseTensor& x,
-                           DenseTensor* sign,
-                           DenseTensor* logdet);
+void SlogDeterminantV2Kernel(const Context& dev_ctx,
+                             const DenseTensor& x,
+                             DenseTensor* sign,
+                             DenseTensor* logdet);
 
 }  // namespace phi

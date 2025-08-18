@@ -2610,9 +2610,9 @@ void LogicalNotInferMeta(const MetaTensor& x, MetaTensor* out) {
   }
 }
 
-void SlogdetInferMeta(const MetaTensor& x,
-                      MetaTensor* sign,
-                      MetaTensor* logdet) {
+void SlogdetV2InferMeta(const MetaTensor& x,
+                        MetaTensor* sign,
+                        MetaTensor* logdet) {
   DDim x_dims = x.dims();
   int rank = x_dims.size();
   PADDLE_ENFORCE_GE(rank,

@@ -42,9 +42,9 @@ void AffineGridInferMeta(const MetaTensor& input,
                          const IntArray& outputShape,
                          bool align_corners,
                          MetaTensor* output);
-void SlogdetInferMeta(const MetaTensor& x,
-                      MetaTensor* sign,
-                      MetaTensor* logdet);
+void SlogdetV2InferMeta(const MetaTensor& x,
+                        MetaTensor* sign,
+                        MetaTensor* logdet);
 
 void AllGatherInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
 
