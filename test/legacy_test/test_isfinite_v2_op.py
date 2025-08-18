@@ -475,10 +475,10 @@ class TestAPI_Compatibility(unittest.TestCase):
         with base.program_guard(main, startup):
             x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
 
-            out1 = paddle.isnan(x)
-            out2 = paddle.isnan(x=x)
-            out3 = paddle.isnan(input=x)
-            out4 = x.isnan()
+            out1 = paddle.isinf(x)
+            out2 = paddle.isinf(x=x)
+            out3 = paddle.isinf(input=x)
+            out4 = x.isinf()
 
             exe = base.Executor(paddle.CPUPlace())
             fetches = exe.run(
@@ -487,7 +487,7 @@ class TestAPI_Compatibility(unittest.TestCase):
                 fetch_list=[out1, out2, out3, out4],
             )
 
-            ref_out = np.isnan(self.np_input)
+            ref_out = np.isinf(self.np_input)
             for out in fetches:
                 self.assertTrue((out == ref_out.all()).all())
 
