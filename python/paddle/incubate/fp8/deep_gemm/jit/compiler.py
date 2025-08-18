@@ -45,7 +45,7 @@ def get_jit_include_dir() -> str:
 @functools.cache
 def get_deep_gemm_version() -> str:
     # Update include directories
-    include_dir = f"{get_jit_include_dir()+'/../../../../include/paddle/fluid/fp8/deep_gemm/include'}"
+    include_dir = f"{get_jit_include_dir()}/../../../../include/paddle/fluid/fp8/deep_gemm/include"
     assert os.path.exists(
         include_dir
     ), f"Cannot find GEMM include directory {include_dir}"

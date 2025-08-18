@@ -28,8 +28,7 @@ if TYPE_CHECKING:
 __all__ = []
 
 URL_DEV_TEST = (
-    'http://www-lium.univ-lemans.fr/~schwenk/'
-    'cslm_joint_paper/data/dev+test.tgz'
+    'http://www-lium.univ-lemans.fr/~schwenk/cslm_joint_paper/data/dev+test.tgz'
 )
 MD5_DEV_TEST = '7d7897317ddd8ba0ae5c5fa7248d3ff5'
 # this is a small set of data for test. The original data is too large and

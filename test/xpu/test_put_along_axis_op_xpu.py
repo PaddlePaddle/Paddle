@@ -35,7 +35,6 @@ class XPUTestPutAlongAxis(XPUOpTestWrapper):
 
     class TestXPUPutAlongAxisOpAssign(XPUOpTest):
         def setUp(self):
-
             self.init_config()
             self.init_data()
             self.x = np.random.random(self.x_shape).astype(

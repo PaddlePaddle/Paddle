@@ -1077,7 +1077,6 @@ class OpInfoParser:
             return None
 
     def parse_python_api_info(self):
-
         if 'python_api' in self.op_yaml_item:
             return self.op_yaml_item['python_api']
         else:

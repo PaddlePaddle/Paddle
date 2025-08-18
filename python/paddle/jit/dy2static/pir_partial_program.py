@@ -315,10 +315,13 @@ class RunnableProgram:
         ), "Please ensure only split once! don't call split_forward_backward manually."
         self.has_splited = True
         self.update_op_range()
-        [
-            fwd_prog,
-            bwd_prog,
-        ], prog_attr = paddle.base.libpaddle.pir.split_program(
+        (
+            [
+                fwd_prog,
+                bwd_prog,
+            ],
+            prog_attr,
+        ) = paddle.base.libpaddle.pir.split_program(
             self.program,
             self.x_values,
             self.param_values,
@@ -622,7 +625,10 @@ class ValuePreservePass:
         )
         names = paddle.utils.map_structure(
             lambda value: ValuePreservePass.attach_preserved_name(
-                value, program, value2name, name_generator  # noqa: F821
+                value,
+                program,
+                value2name,  # noqa: F821
+                name_generator,
             ),
             self.values,
         )

@@ -14,6 +14,7 @@
 """
 All layers just related to metric.
 """
+
 import numpy as np
 
 import paddle

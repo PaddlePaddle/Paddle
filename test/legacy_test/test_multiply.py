@@ -228,7 +228,6 @@ class TestMultiplyInplaceError(unittest.TestCase):
 
 
 class TestMultiplyApiZeroSize(TestMultiplyApi):
-
     # only support the 0 size tensor
     def _test_grad(self, x_data, y_data):
         paddle.disable_static()

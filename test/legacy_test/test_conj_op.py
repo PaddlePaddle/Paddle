@@ -155,7 +155,6 @@ class TestComplexConjOp(unittest.TestCase):
 
 
 class Testfp16ConjOp(unittest.TestCase):
-
     def testfp16(self):
         if paddle.is_compiled_with_cuda():
             input_x = (

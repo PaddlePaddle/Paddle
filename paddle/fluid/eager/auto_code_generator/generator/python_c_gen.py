@@ -23,6 +23,13 @@ from codegen_utils import (
     IsVectorTensorType,
 )
 
+args_default_mapping = {
+    "x": ["input"],
+    "y": ["other"],
+    "axis": ["dim"],
+    "keepdims": ["keepdim"],
+}
+
 #########################
 # Global Configurations #
 #########################
@@ -389,6 +396,25 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         get_eager_tensor_str = ""
         input_names = ""
         input_single_tensor_names = ""
+
+        def _get_keywords(name, alias_map):
+            keywords = f'{{"{name}"}}'
+            if name in args_alias_map.keys():
+                keywords = args_alias_map[name]
+            elif (
+                'use_default_mapping' in args_alias_map.keys()
+                and args_alias_map['use_default_mapping']
+            ):
+                # try to use default mapping
+                if name in args_default_mapping.keys():
+                    alias_set = set(args_default_mapping[name])
+                    alias_set.add(name)
+                    # Convert to C++ vector format
+                    keywords = (
+                        "{" + ",".join(f'"{name}"' for name in alias_set) + "}"
+                    )
+            return keywords
+
         for name, (ttype, pos) in forward_inputs_position_map.items():
             input_names = input_names + ", " + name
             if forward_inplace_map and name in forward_inplace_map.keys():
@@ -445,9 +471,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                             )
                         )
                     else:
-                        keywords = f'{{"{name}"}}'
-                        if name in args_alias_map.keys():
-                            keywords = args_alias_map[name]
+                        keywords = _get_keywords(name, args_alias_map)
                         get_eager_tensor_str += PARSE_PYTHON_C_TENSORS_FROM_ARGS_OR_KWARGS_TEMPLATE.format(
                             name,
                             forward_api_name,
@@ -525,9 +549,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                     name == "place"
                 ), "Only support 'place' as template argument name in FUNCTION_SET_DEVICE_TEMPLATE."
             if need_parse_python_api_args:
-                keywords = f'{{"{name}"}}'
-                if name in args_alias_map.keys():
-                    keywords = args_alias_map[name]
+                keywords = _get_keywords(name, args_alias_map)
                 if default_value is None:
                     parse_attributes_str += (
                         PARSE_PYTHON_C_ARGS_KWARGS_TEMPLATE.format(
