@@ -1418,7 +1418,11 @@ class TestPutAlongAxisAPIReduceLowBits(unittest.TestCase):
             out_ref = self.target
             np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
 
-        run(paddle.CUDAPlace(0))
+        run(
+            paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
 
 
 class TestPutAlongAxisAPIMulInt16(TestPutAlongAxisAPIReduceLowBits):
