@@ -429,6 +429,7 @@ from .math import (  # noqa: F401
     tanh_,
     trace,
     trapezoid,
+    true_divide,
     trunc,
     trunc_,
     vander,
@@ -484,6 +485,10 @@ from .stat import (  # noqa: F401
     var,
 )
 from .to_string import set_printoptions  # noqa: F401
+
+# API alias
+div = divide
+div_ = divide_
 
 # this list used in math_op_patch.py for _binary_creator_
 tensor_method_func = [
@@ -603,6 +608,9 @@ tensor_method_func = [
     'outer',
     'divide',
     'divide_',
+    'div',
+    'div_',
+    'true_divide',
     'floor_divide',
     'floor_divide_',
     'remainder',
