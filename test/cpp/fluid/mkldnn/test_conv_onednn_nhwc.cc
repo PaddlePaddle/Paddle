@@ -66,7 +66,7 @@ TEST(test_conv2d_output, fp32) {
   conv2d_op.SetAttr("paddings", paddings);
   conv2d_op.SetAttr("dilations", dilations);
   conv2d_op.SetAttr("groups", groups);
-  conv2d_op.SetAttr("use_mkldnn", true);
+  conv2d_op.SetAttr("use_onednn", true);
 
   auto op = paddle::framework::OpRegistry::CreateOp(conv2d_op);
 
@@ -95,7 +95,7 @@ TEST(test_conv2d_output, int8) {
   conv2d_op.SetAttr("paddings", paddings);
   conv2d_op.SetAttr("dilations", dilations);
   conv2d_op.SetAttr("groups", groups);
-  conv2d_op.SetAttr("use_mkldnn", true);
+  conv2d_op.SetAttr("use_onednn", true);
   conv2d_op.SetAttr("mkldnn_data_type", std::string("int8"));
   conv2d_op.SetAttr("force_fp32_output", false);
 
@@ -126,7 +126,7 @@ TEST(test_conv2d_output, ic1) {
   conv2d_op.SetAttr("paddings", paddings);
   conv2d_op.SetAttr("dilations", dilations);
   conv2d_op.SetAttr("groups", groups);
-  conv2d_op.SetAttr("use_mkldnn", true);
+  conv2d_op.SetAttr("use_onednn", true);
 
   auto op = paddle::framework::OpRegistry::CreateOp(conv2d_op);
 
@@ -156,7 +156,7 @@ TEST(test_conv2d_output, ic2) {
   conv2d_op.SetAttr("paddings", paddings);
   conv2d_op.SetAttr("dilations", dilations);
   conv2d_op.SetAttr("groups", groups);
-  conv2d_op.SetAttr("use_mkldnn", true);
+  conv2d_op.SetAttr("use_onednn", true);
 
   auto op = paddle::framework::OpRegistry::CreateOp(conv2d_op);
 
@@ -186,7 +186,7 @@ TEST(test_conv2d_output, ic4) {
   conv2d_op.SetAttr("paddings", paddings);
   conv2d_op.SetAttr("dilations", dilations);
   conv2d_op.SetAttr("groups", groups);
-  conv2d_op.SetAttr("use_mkldnn", true);
+  conv2d_op.SetAttr("use_onednn", true);
 
   auto op = paddle::framework::OpRegistry::CreateOp(conv2d_op);
 

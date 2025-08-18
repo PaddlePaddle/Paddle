@@ -1248,6 +1248,9 @@ if '${WITH_XPU}' == 'ON':
         package_data['paddle.libs'] += ['${XPU_XFA_LIB_NAME}']
         shutil.copy('${XPU_XPUDNN_LIB}', libs_path)
         package_data['paddle.libs'] += ['${XPU_XPUDNN_LIB_NAME}']
+        shutil.copy('${XPU_XPUDNN_OMP_LIB}', libs_path)
+        package_data['paddle.libs'] += ['${XPU_XPUDNN_OMP_LIB_NAME}']
+
 
 if '${WITH_XPU_BKCL}' == 'ON':
     shutil.copy('${XPU_BKCL_LIB}', libs_path)

@@ -272,7 +272,7 @@ class CollectiveOptimizer(DistributedOptimizer):
         self._forward_recompute = strategy.forward_recompute
         if not isinstance(strategy.recompute_checkpoints, list):
             raise ValueError(
-                "DistStrategy.recompute_checkpoints should" "be a List"
+                "DistStrategy.recompute_checkpoints should be a List"
             )
         self._recompute_checkpoints = strategy.recompute_checkpoints
         self._use_amp = strategy.use_amp

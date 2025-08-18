@@ -498,7 +498,6 @@ class TestArgsortWithInputNaN(unittest.TestCase):
 
 
 class TestArgsortOpFp16(unittest.TestCase):
-
     def test_fp16(self):
         if base.core.is_compiled_with_cuda():
             paddle.enable_static()

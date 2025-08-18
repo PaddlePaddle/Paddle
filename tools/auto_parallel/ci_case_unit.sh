@@ -47,7 +47,7 @@ function case_list_unit() {
         if [[ $item =~ PYTHONPATH=([^,;]*)([,;]|$) ]]; then
             substring="${BASH_REMATCH[1]}"
             echo "PYTHONPATH=$substring"
-            export PYTHONPATH=$substring:$PYTHNPATH
+            export PYTHONPATH=$substring:$PYTHONPATH
         fi
         python $case_name.py >>${log_path}/$case_name 2>&1
         if [ $? -eq 0 ]; then

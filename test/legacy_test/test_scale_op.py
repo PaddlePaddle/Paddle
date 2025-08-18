@@ -133,7 +133,6 @@ class TestScaleOpSelectedRows(unittest.TestCase):
 
 
 class TestScaleRaiseError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
 

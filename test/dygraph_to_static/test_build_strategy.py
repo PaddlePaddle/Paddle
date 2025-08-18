@@ -80,12 +80,12 @@ class TestResnetWithPass(Dy2StTestBase):
 
     @test_default_mode_only
     def test_in_static_mode_mkldnn(self):
-        paddle.set_flags({'FLAGS_use_mkldnn': True})
+        paddle.set_flags({'FLAGS_use_onednn': True})
         try:
             if paddle.base.core.is_compiled_with_mkldnn():
                 self.resnet_helper.train(True, self.build_strategy)
         finally:
-            paddle.set_flags({'FLAGS_use_mkldnn': False})
+            paddle.set_flags({'FLAGS_use_onednn': False})
 
 
 class TestError(Dy2StTestBase):

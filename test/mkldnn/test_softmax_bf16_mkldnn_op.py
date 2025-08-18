@@ -64,7 +64,7 @@ class TestSoftmaxONEDNNOp(TestSoftmaxOp):
 
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': out}
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_onednn}
+        self.attrs = {'axis': self.axis, 'use_onednn': self.use_onednn}
 
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace(), check_pir_onednn=True)

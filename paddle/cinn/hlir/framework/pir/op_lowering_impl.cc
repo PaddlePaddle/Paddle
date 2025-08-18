@@ -667,79 +667,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
   return funcs;
 }
 
-/**
- * This function converts pir::Value::defining_op for ir::Tensor::operation
- * Normally, ir::Tensor::operation will only be used to record the name
- * of the compiler-generated var name, which is useless. However, operation
- * has Attributes field, so can be used to record the op info.
- */
-ir::PlaceholderOp* TensorOperationRecording(const ::pir::Value& value) {
-  // TODO(heqianyue): I think this is kinda ugly, since we should manually
-  // specify the rules to convert all the op (and their attribute), yet current
-  // implementation works and can be quickly written.
-  const ::pir::Operation* define_op = value.defining_op();
-  ir::PlaceholderOp* res = nullptr;
-  if (!define_op) return res;
-  res = cinn::common::make_shared<ir::PlaceholderOp>();
-  res->name = define_op->name();
-  // we filter some of the ops, and only record the **needed** attributes
-  if (define_op->name() == "pd_op.full") {
-    auto dtype = define_op->attribute("dtype")
-                     .dyn_cast<paddle::dialect::DataTypeAttribute>()
-                     .data();
-    phi::Scalar data = define_op->attribute("value")
-                           .dyn_cast<paddle::dialect::ScalarAttribute>()
-                           .data();
-    ir::Expr value;
-#define DEFINE_CASE(TypeFlag, Type)    \
-  case phi::DataType::TypeFlag:        \
-    value = ir::Expr(data.to<Type>()); \
-    break;
-    switch (dtype) {
-      DEFINE_CASE(FLOAT32, float)
-      DEFINE_CASE(FLOAT64, double)
-      DEFINE_CASE(INT32, int)
-      DEFINE_CASE(BFLOAT16, float)
-      value->set_type(cinn::common::BFloat16());
-      break;
-      DEFINE_CASE(FLOAT16, float)
-      value->set_type(cinn::common::Float16());
-      break;
-      default:
-        value = ir::Expr(data.to<int64_t>());
-    }
-#undef DEFINE_CASE
-    res->attrs.emplace("value", value);
-  } else if (define_op->name() == "cinn_op.generate_shape") {
-    // pir::Attribute --> symbol::DimExpr --> ir::Expr
-
-    auto ir_dim_expr = [&]() {
-      auto dim_expr_attr = define_op->attribute("output_dim_exprs");
-      auto dim_exprs = dialect::ConvertAttributeToDimExprs(dim_expr_attr);
-
-      PADDLE_ENFORCE_EQ(
-          dim_exprs.has_value(),
-          true,
-          ::common::errors::PreconditionNotMet(
-              "Required success to execute convert attribute to dim exprs."));
-
-      auto expr_vec = dim_exprs.value();
-      PADDLE_ENFORCE_EQ(
-          expr_vec.empty(),
-          false,
-          ::common::errors::PreconditionNotMet(
-              "Generate shape op can not yield empty symbolic shape."));
-      // only the first dim_expr matters for ArangeOp
-      return common::DimExprConverter().ConvertToIrExpr(expr_vec[0]);
-    }();
-    res->attrs.emplace("value", ir_dim_expr);
-  } else {
-    VLOG(6) << "Tensor defining op recording: not currently supported op.";
-    return nullptr;
-  }
-  return res;
-}
-
 ir::Tensor OpLowererImpl::GetTensor(const OpLoweringGroupPtr& group,
                                     const ::pir::Value& value) {
   auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
@@ -777,9 +704,6 @@ ir::Tensor OpLowererImpl::GetTensor(const OpLoweringGroupPtr& group,
     if (tensor_value.has_value()) {
       tensor->set_value(*tensor_value);
     }
-  }
-  if (auto op_ptr = TensorOperationRecording(value)) {
-    tensor->operation = ir::FunctionRef(op_ptr);
   }
   return tensor;
 }

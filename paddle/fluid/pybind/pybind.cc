@@ -2597,7 +2597,7 @@ All parameter, weight, gradient are variables in Paddle.
           VLOG(1) << string::Sprintf(
               "Cannot use get_all_device_type because you have installed "
               "CPU/GPU version PaddlePaddle.\n"
-              "If you want to use get_all_device_type, please try to install"
+              "If you want to use get_all_device_type, please try to install "
               "CustomDevice version "
               "PaddlePaddle by: pip install paddlepaddle\n");
 #endif
@@ -2625,7 +2625,7 @@ All parameter, weight, gradient are variables in Paddle.
           VLOG(1) << string::Sprintf(
               "Cannot use get_available_device because you have installed "
               "CPU/GPU version PaddlePaddle.\n"
-              "If you want to use get_available_device, please try to install"
+              "If you want to use get_available_device, please try to install "
               "CustomDevice version "
               "PaddlePaddle by: pip install paddlepaddle\n");
 #endif
@@ -2640,7 +2640,7 @@ All parameter, weight, gradient are variables in Paddle.
               "Cannot use get_available_custom_device because you have "
               "installed CPU/GPU version PaddlePaddle.\n"
               "If you want to use get_available_custom_device, please try to "
-              "install"
+              "install "
               "CustomDevice version "
               "PaddlePaddle by: pip install paddlepaddle\n");
 #endif
@@ -2658,7 +2658,7 @@ All parameter, weight, gradient are variables in Paddle.
               "Cannot use get_custom_device_count because you have "
               "installed CPU/GPU version PaddlePaddle.\n"
               "If you want to use get_custom_device_count, please try to "
-              "install"
+              "install "
               "CustomDevice version "
               "PaddlePaddle by: pip install paddlepaddle\n");
 #endif
@@ -3341,6 +3341,17 @@ All parameter, weight, gradient are variables in Paddle.
       },
       py::return_value_policy::copy);
 
+  m.def("device_empty_cache", [] {
+    std::vector<std::string> dev_types =
+        phi::DeviceManager::GetAllCustomDeviceTypes();
+    std::string dev_type = dev_types[0];
+    std::vector<size_t> devices =
+        phi::DeviceManager::GetSelectedDeviceList(dev_type);
+    for (auto device : devices) {
+      memory::Release(phi::CustomPlace(dev_type, device));
+    }
+  });
+
   py::class_<phi::DeviceProp>(m, "_customDeviceProperties", py::module_local())
       .def_property_readonly(
           "name", [](const phi::DeviceProp &prop) { return prop.name; })
@@ -3448,11 +3459,11 @@ All parameter, weight, gradient are variables in Paddle.
       .def("get_extra_info", &paddle::platform::ProfilerResult::GetExtraInfo)
       .def("get_version", &paddle::platform::ProfilerResult::GetVersion)
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      .def("get_span_indx", &paddle::platform::ProfilerResult::GetSpanIndx)
+      .def("get_span_index", &paddle::platform::ProfilerResult::GetSpanIndex)
       .def("get_device_property",
            &paddle::platform::ProfilerResult::GetDeviceProperty);
 #else
-      .def("get_span_indx", &paddle::platform::ProfilerResult::GetSpanIndx);
+      .def("get_span_index", &paddle::platform::ProfilerResult::GetSpanIndex);
 #endif
 
   py::class_<paddle::platform::MemPythonNode>(m, "MemPythonNode")

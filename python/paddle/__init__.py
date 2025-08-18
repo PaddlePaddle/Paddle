@@ -36,19 +36,30 @@ except ImportError:
 # NOTE(SigureMo): We should place the import of base.core before other modules,
 # because there are some initialization codes in base/core/__init__.py.
 from .base import core  # noqa: F401
+from .base.dygraph.generated_tensor_methods_patch import (
+    monkey_patch_generated_methods_for_tensor,
+)
 from .batch import batch
 
 # Do the *DUPLICATED* monkey-patch for the tensor object.
 # We need remove the duplicated code here once we fix
 # the illogical implement in the monkey-patch methods later.
-from .framework import monkey_patch_math_tensor, monkey_patch_variable
+from .framework import (
+    monkey_patch_math_tensor,
+    monkey_patch_variable,
+)
 from .pir import monkey_patch_dtype, monkey_patch_program, monkey_patch_value
+from .pir.generated_methods_patch import (
+    monkey_patch_generated_methods_for_value,
+)
 
 monkey_patch_variable()
 monkey_patch_math_tensor()
 monkey_patch_value()
 monkey_patch_program()
 monkey_patch_dtype()
+
+monkey_patch_generated_methods_for_value()
 
 from .base.dataset import *  # noqa: F403
 from .framework import (
@@ -122,6 +133,7 @@ from . import (
     _pir_ops as _pir_ops,
     _typing as _typing,
     callbacks as callbacks,
+    compat as compat,
     fft as fft,
     hub as hub,
     linalg as linalg,
@@ -130,6 +142,12 @@ from . import (
     utils as utils,
 )
 from ._ops import ops as ops
+from .amp import (
+    get_autocast_cpu_dtype,
+    get_autocast_dtype,
+    get_autocast_gpu_dtype,
+    is_autocast_enabled,
+)
 from .autograd import (
     enable_grad,
     grad,
@@ -329,6 +347,7 @@ from .tensor.manipulation import (
     masked_scatter_,
     moveaxis,
     put_along_axis,
+    ravel,
     repeat_interleave,
     reshape,
     reshape_,
@@ -363,6 +382,8 @@ from .tensor.manipulation import (
     unstack,
     view,
     view_as,
+    view_as_complex,
+    view_as_real,
     vsplit,
     vstack,
 )
@@ -398,6 +419,7 @@ from .tensor.math import (  # noqa: F401
     bitwise_right_shift,
     bitwise_right_shift_,
     broadcast_shape,
+    broadcast_shapes,
     cartesian_prod,
     ceil,
     clip,
@@ -574,12 +596,14 @@ from .tensor.search import (
     argmax,
     argmin,
     argsort,
+    argwhere,
     bucketize,
     index_sample,
     index_select,
     kthvalue,
     masked_select,
     mode,
+    msort,
     nonzero,
     searchsorted,
     sort,
@@ -880,6 +904,7 @@ __all__ = [
     'summary',
     'flops',
     'sort',
+    'msort',
     'searchsorted',
     'bucketize',
     'split',
@@ -1013,6 +1038,7 @@ __all__ = [
     'DataParallel',
     'argmin',
     'prod',
+    'broadcast_shapes',
     'broadcast_shape',
     'conj',
     'neg',
@@ -1093,6 +1119,7 @@ __all__ = [
     'std',
     'flatten',
     'flatten_',
+    'ravel',
     'asin',
     'multiply',
     'multiply_',
@@ -1122,6 +1149,7 @@ __all__ = [
     'atleast_3d',
     'reverse',
     'nonzero',
+    'argwhere',
     'CUDAPinnedPlace',
     'XPUPinnedPlace',
     'logical_not',
@@ -1156,7 +1184,9 @@ __all__ = [
     'acosh',
     'atanh',
     'as_complex',
+    'view_as_complex',
     'as_real',
+    'view_as_real',
     'diff',
     'angle',
     'fmax',
@@ -1230,9 +1260,15 @@ __all__ = [
     'nan',
     'pi',
     'e',
+    'is_autocast_enabled',
+    'get_autocast_dtype',
+    'get_autocast_cpu_dtype',
+    'get_autocast_gpu_dtype',
 ]
-
 import os
+
+monkey_patch_generated_methods_for_tensor()
+import paddle._paddle_docs
 
 FLAGS_trace_api = os.environ.get("FLAGS_trace_api", None)
 if FLAGS_trace_api is not None and FLAGS_trace_api != "":

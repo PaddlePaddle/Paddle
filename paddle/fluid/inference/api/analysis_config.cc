@@ -665,32 +665,48 @@ void AnalysisConfig::EnableCUDNN() {
   Update();
 }
 
+void AnalysisConfig::EnableMKLDNN() {
+  LOG(WARNING) << ONEDNN_UPDATE_WARNING(EnableONEDNN);
+  EnableONEDNN();
+}
 void AnalysisConfig::EnableONEDNN() {
 #ifdef PADDLE_WITH_DNNL
   use_onednn_ = true;
 #else
-  LOG(ERROR) << "Please compile with MKLDNN first to use MKLDNN";
+  LOG(ERROR) << "Please compile with ONEDNN first to use ONEDNN";
   use_onednn_ = false;
 #endif
 
   Update();
 }
 
+void AnalysisConfig::DisableMKLDNN() {
+  LOG(WARNING) << ONEDNN_UPDATE_WARNING(DisableONEDNN);
+  DisableONEDNN();
+}
 void AnalysisConfig::DisableONEDNN() {
   use_onednn_ = false;
   Update();
 }
 
+void AnalysisConfig::SetMkldnnCacheCapacity(int capacity) {
+  LOG(WARNING) << ONEDNN_UPDATE_WARNING(SetOnednnCacheCapacity);
+  SetOnednnCacheCapacity(capacity);
+}
 void AnalysisConfig::SetOnednnCacheCapacity(int capacity) {
 #ifdef PADDLE_WITH_DNNL
   onednn_cache_capacity_ = capacity;
 #else
-  LOG(ERROR) << "Please compile with MKLDNN first to set MKLDNN Thread Id";
+  LOG(ERROR) << "Please compile with ONEDNN first to set ONEDNN Thread Id";
   onednn_cache_capacity_ = 0;
 #endif
 }
 
 void AnalysisConfig::EnableMkldnnBfloat16() {
+  LOG(WARNING) << ONEDNN_UPDATE_WARNING(EnableOnednnBfloat16);
+  EnableOnednnBfloat16();
+}
+void AnalysisConfig::EnableOnednnBfloat16() {
 #ifdef PADDLE_WITH_DNNL
   if (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512_core)) {
     use_onednn_bfloat16_ = true;
@@ -704,18 +720,22 @@ void AnalysisConfig::EnableMkldnnBfloat16() {
     use_onednn_bfloat16_ = false;
   }
 #else
-  LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnBfloat16";
+  LOG(ERROR) << "Please compile with ONEDNN first to use OnednnBfloat16";
   use_onednn_bfloat16_ = false;
 #endif
 
   Update();
 }
 
+void AnalysisConfig::DisableMkldnnFcPasses() {
+  LOG(WARNING) << ONEDNN_UPDATE_WARNING(DisableOnednnFcPasses);
+  DisableOnednnFcPasses();
+}
 void AnalysisConfig::DisableOnednnFcPasses() {
 #ifdef PADDLE_WITH_DNNL
   disable_onednn_fc_passes_ = true;
 #else
-  LOG(ERROR) << "Please compile with MKLDNN first to use DisableOnednnFcPasses";
+  LOG(ERROR) << "Please compile with ONEDNN first to use DisableOnednnFcPasses";
   disable_onednn_fc_passes_ = false;
 #endif
   Update();
@@ -723,13 +743,18 @@ void AnalysisConfig::DisableOnednnFcPasses() {
 
 void AnalysisConfig::EnableMkldnnInt8(
     const std::unordered_set<std::string> &op_list) {
+  LOG(WARNING) << ONEDNN_UPDATE_WARNING(EnableOnednnInt8);
+  EnableOnednnInt8(op_list);
+}
+void AnalysisConfig::EnableOnednnInt8(
+    const std::unordered_set<std::string> &op_list) {
 #ifdef PADDLE_WITH_DNNL
   use_onednn_int8_ = true;
   use_fc_padding_ = false;
   if (!op_list.empty())
     quantize_enabled_op_types_.insert(op_list.begin(), op_list.end());
 #else
-  LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnInt8";
+  LOG(ERROR) << "Please compile with ONEDNN first to use OnednnInt8";
   use_onednn_int8_ = false;
 #endif
 
@@ -970,7 +995,7 @@ void AnalysisConfig::Update() {
   // Since EnableONEDNN is default, the pass_builder has created in the first
   // time.
   // Case1: User manually disable onednn after pass_builder
-  // create.(config.disable_mkldnn())
+  // create.(config.disable_onednn())
   // Case2: User device is gpu/ipu/xpu, use
   // EnableXpu(), EnableCUDNN(), PassStrategy has been reset in the above code
   // block
@@ -1040,20 +1065,20 @@ void AnalysisConfig::Update() {
 
   if (use_onednn_bfloat16_) {
 #ifdef PADDLE_WITH_DNNL
-    pass_builder()->EnableMkldnnBfloat16();
+    pass_builder()->EnableOnednnBfloat16();
 #endif
   }
 
   if (use_onednn_int8_) {
 #ifdef PADDLE_WITH_DNNL
     if (!enable_ir_optim_) {
-      LOG(ERROR) << "EnableMkldnnInt8() only works when IR optimization "
+      LOG(ERROR) << "EnableOnednnInt8() only works when IR optimization "
                     "is enabled.";
     } else if (!use_onednn_) {
-      LOG(ERROR) << "EnableMkldnnInt8() only works when MKLDNN "
+      LOG(ERROR) << "EnableOnednnInt8() only works when ONEDNN "
                     "is enabled.";
     } else {
-      pass_builder()->EnableMkldnnInt8();
+      pass_builder()->EnableOnednnInt8();
     }
 #endif
   }

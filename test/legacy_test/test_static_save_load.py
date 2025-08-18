@@ -1072,7 +1072,6 @@ class TestVariableInit(unittest.TestCase):
 
 
 class TestStaticSaveLoadPickle(unittest.TestCase):
-
     def test_pickle_protocol(self):
         # enable static graph mode
         paddle.enable_static()

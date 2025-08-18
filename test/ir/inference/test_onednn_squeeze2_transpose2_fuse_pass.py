@@ -78,7 +78,7 @@ class TestSqueeze2Transpose2OneDNNFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(
-            use_mkldnn=True,
+            use_onednn=True,
             passes=[
                 "squeeze2_transpose2_onednn_fuse_pass",
             ],

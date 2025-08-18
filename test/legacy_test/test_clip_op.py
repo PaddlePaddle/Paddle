@@ -301,7 +301,6 @@ class TestBF16Case5(TestClipBF16Op):
 
 
 class TestClipOpError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -489,7 +488,6 @@ class TestClipAPI(unittest.TestCase):
 
 
 class TestClipOpFp16(unittest.TestCase):
-
     def test_fp16(self):
         if base.core.is_compiled_with_cuda():
             paddle.enable_static()

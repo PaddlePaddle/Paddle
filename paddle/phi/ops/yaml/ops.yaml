@@ -239,6 +239,10 @@
 
 - op : amax
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
+  python_api :
+    name : [paddle.amax,paddle.Tensor.amax]
+    args_alias:
+      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
@@ -249,6 +253,10 @@
 
 - op : amin
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
+  python_api :
+    name : [paddle.amin,paddle.Tensor.amin]
+    args_alias :
+      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
@@ -2803,7 +2811,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : index_elementwise_get
-  args : (Tensor x, Tensor[] index, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_stride, int64_t slice_offset = 0, bool accumulate = true)
+  args : (Tensor x, Tensor[] index, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_stride, int64_t slice_offset = 0, bool accumulate = true, bool is_combined = false)
   output : Tensor (out)
   infer_meta :
     func : IndexElementwiseGetInferMeta

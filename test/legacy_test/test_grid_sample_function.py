@@ -140,7 +140,6 @@ def load_tests(loader, standard_tests, pattern):
 
 
 class TestGridSampleAPI(unittest.TestCase):
-
     def test_errors(self):
         with self.assertRaises(ValueError):
             x = paddle.randn([1, 1, 3, 3])

@@ -305,7 +305,6 @@ AVAILABLE_LAYERS = [
 
 
 class LoRAModel(nn.Layer):
-
     def __init__(self, model, lora_config) -> None:
         super().__init__()
         self.model = self.get_lora_model(model, lora_config)

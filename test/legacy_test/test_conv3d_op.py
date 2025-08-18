@@ -444,7 +444,7 @@ class TestConv3DOp(OpTest):
             'groups': self.groups,
             'dilations': self.dilations,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_onednn,
+            'use_onednn': self.use_onednn,
             'data_format': self.data_format,
         }
         self.outputs = {'Output': output}
@@ -804,7 +804,7 @@ class TestConv3DOp_2(OpTest):
             'groups': self.groups,
             'dilations': self.dilations,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_onednn,
+            'use_onednn': self.use_onednn,
             'data_format': self.data_format,
         }
         self.outputs = {'Output': output}

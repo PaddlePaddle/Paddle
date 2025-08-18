@@ -130,7 +130,7 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
         return program_config
 
     def sample_predictor_configs(self, program_config):
-        config = self.create_inference_config(use_mkldnn=True)
+        config = self.create_inference_config(use_onednn=True)
         yield config, ['conv2d', 'elementwise_add'], (1e-4, 1e-4)
 
     def add_ignore_pass_case(self):
@@ -144,7 +144,7 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
         # onednn Output has diff with bias!
         def teller2(program_config, predictor_config):
             return (
-                predictor_config.mkldnn_enabled()
+                predictor_config.onednn_enabled()
                 and program_config.ops[0].attrs['has_bias']
             )
 
