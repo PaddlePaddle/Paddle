@@ -3190,8 +3190,11 @@ void Check_PIR_not_support_out(PyObject* kwargs) {
   }
   PyObject* obj = PyDict_GetItemString(kwargs, "out");
   if (obj) {
-    PADDLE_THROW(common::errors::InvalidArgument(
-        "Paddle static graph(PIR) not support input out tensor for now."));
+    static std::once_flag once_flag;
+    std::call_once(once_flag, [&] {
+      LOG(WARNING) << "Paddle static graph(PIR) not support input out tensor "
+                      "for now!!!!!";
+    });
   }
 }
 
