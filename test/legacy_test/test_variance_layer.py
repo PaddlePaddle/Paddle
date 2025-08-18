@@ -116,7 +116,6 @@ class TestVarAPI_alias(unittest.TestCase):
 
 
 class TestVarError(unittest.TestCase):
-
     def test_error(self):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data('X', [2, 3, 4], 'int32')

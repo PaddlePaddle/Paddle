@@ -279,7 +279,6 @@ class TestTensorStackAPIWithDenseTensorArray(unittest.TestCase):
 
 
 class API_test(unittest.TestCase):
-
     def test_out(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -336,7 +335,6 @@ class API_DygraphTest(unittest.TestCase):
 
 
 class TestStackOpWithNegativeShape(unittest.TestCase):
-
     def test_out(self):
         main_prg, startup_prg = paddle.static.Program(), paddle.static.Program()
         with paddle.static.program_guard(main_prg, startup_prg):

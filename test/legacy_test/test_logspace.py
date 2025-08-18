@@ -145,7 +145,6 @@ class TestLogspaceOpZeroBaseCase(TestLogspaceOpCommonCase):
 
 
 class TestLogspaceAPI(unittest.TestCase):
-
     def test_variable_input1(self):
         paddle.enable_static()
         prog = paddle.static.Program()

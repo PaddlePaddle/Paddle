@@ -48,7 +48,7 @@ CPP_FILE_TEMPLATE = """
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/fluid/pybind/op_callstack_utils.h"
-
+#include "paddle/fluid/pybind/arg_pre_process.h"
 
 {body}
 
@@ -59,13 +59,18 @@ PyObject *static_api_{api_name}(PyObject *self, PyObject *args, PyObject *kwargs
     try {{
         VLOG(6) << "Add {api_name} op into program";
         VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
-
+        // Get Total Params count and check validity if needed
+        {check_params_count}
         // Get Value from args
         {inputs}
 
         // Parse Attributes
         {attrs}
 
+        // Check Reminding Params validity if needed
+        {check_remaining_params_valid}
+        // Call Pre_Process before calling dygraph function if needed
+        {pre_process}
         // Call ir static api
         CallStackRecorder callstack_recorder("{api_name}");
         callstack_recorder.Record();
@@ -84,12 +89,19 @@ PyObject *static_api_{api_name}(PyObject *self, PyObject *args, PyObject *kwargs
     try {{
         VLOG(6) << "Add {api_name} op into program";
         VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+        // Get Total Params count and check validity if needed
+        {check_params_count}
 
         // Get Value from args
         {inputs}
 
         // Parse Attributes
         {attrs}
+
+        // Check Reminding Params validity if needed
+        {check_remaining_params_valid}
+        // Call Pre_Process before calling dygraph function if needed
+        {pre_process}
 
         // Call ir static api
         CallStackRecorder callstack_recorder("{api_name}");
@@ -104,19 +116,43 @@ PyObject *static_api_{api_name}(PyObject *self, PyObject *args, PyObject *kwargs
 }}
 """
 
+CHECK_PARAMS_COUNT_TEMPLATE = """    int nargs = args ? static_cast<int>(PyTuple_Size(args)) : 0;
+    int remaining_kwargs = kwargs ? static_cast<int>(PyDict_Size(kwargs)) : 0;
+    const int max_args = {max_args};
+    CheckParamsCount(nargs,remaining_kwargs,max_args);
+"""
+CHECK_REMAINING_PARAMS_VALID_TEMPLATE = """            CheckRemainingParamsValidity(args,kwargs,remaining_kwargs,nargs);
+"""
 INPUT_TEMPLATE = """
         PyObject *{name}_obj = PyTuple_GET_ITEM(args, {index});
         auto {name} = {cast_func}({name}_obj, "{api_name}", {index}, {dispensable});"""
 
+#     PyObject* axis_obj = GetItemFromArgsOrKWArgs(args, 1, kwargs, {"axis","dim"}, nargs,&remaining_kwargs);
+
+INPUT_FROM_ARGS_KWARGS_TEMPLATE = """
+        PyObject *{name}_obj = GetItemFromArgsOrKWArgs(args, {index},kwargs,{keywords}, nargs, &remaining_kwargs);
+        auto {name} = {cast_func}({name}_obj, "{api_name}", {index}, {dispensable});"""
+
+CALL_PRE_PROCESS_TEMPLATE = """{pre_process};"""
+
 NO_MUTABLE_ATTR_CAST_TEMPLATE = """
         PyObject *{name}_obj = PyTuple_GET_ITEM(args, {index});
         {type} {name} = {cast_func}({name}_obj, "{api_name}", {index});"""
+
+NO_MUTABLE_ATTR_CAST_FROM_ARGS_KWARGS_TEMPLATE = """
+        PyObject *{name}_obj = GetItemFromArgsOrKWArgs(args, {index},kwargs,{keywords}, nargs, &remaining_kwargs,false);
+        {type} {name} = {cast_func}({name}_obj, "{api_name}", {index});"""
+NO_MUTABLE_ATTR_CAST_FROM_ARGS_KWARGS_WITH_DEFAULT_VALUE_TEMPLATE = """
+        PyObject *{name}_obj = GetItemFromArgsOrKWArgs(args, {index},kwargs,{keywords}, nargs, &remaining_kwargs);
+        {type} {name} = {cast_func}({name}_obj, "{api_name}", {index},{default_value});"""
 
 MUTABLE_ATTR_API_IMPL_TEMPLATE = """
 PyObject *static_api_{api_name}(PyObject *self, PyObject *args, PyObject *kwargs) {{
     try {{
         VLOG(6) << "Add {api_name} op into program";
         VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+        // Get Total Params count and check validity if needed
+        {check_params_count}
 
         // Get Value from args
         {inputs}
@@ -127,6 +163,11 @@ PyObject *static_api_{api_name}(PyObject *self, PyObject *args, PyObject *kwargs
         // Check for mutable attrs
         {init_attrs}
         {cast_attrs}
+
+        // Check Reminding Params validity if needed
+        {check_remaining_params_valid}
+        // Call Pre_Process before calling dygraph function if needed
+        {pre_process}
 
         // Call ir static api
         CallStackRecorder callstack_recorder("{api_name}");
@@ -165,9 +206,15 @@ MUTABLE_ATTR_LIST_TEMPLATE = """
 MUTABLE_ATTR_OBJ_TEMPLATE = """
         PyObject *{name}_obj = PyTuple_GET_ITEM(args, {index});"""
 
+MUTABLE_ATTR_OBJ_FROM_ARGS_KWARGS_WITH_DEFAULT_VALUE_TEMPLATE = """
+        PyObject *{name}_obj = GetItemFromArgsOrKWArgs(args, {index},kwargs,{keywords}, nargs, &remaining_kwargs,false);"""
+MUTABLE_ATTR_OBJ_FROM_ARGS_KWARGS_TEMPLATE = """
+        PyObject *{name}_obj = GetItemFromArgsOrKWArgs(args, {index},kwargs,{keywords}, nargs, &remaining_kwargs);"""
+
 MUTABLE_ATTR_CAST_TEMPLATE = """
             {type} {name_} = {cast_func}({name}_obj, "{api_name}", {index});"""
-
+MUTABLE_ATTR_CAST_WITH_DEFAULT_VALUE_TEMPLATE = """
+            {type} {name_} = {cast_func}({name}_obj, "{api_name}", {index}, {default_value});"""
 FULL_OP_TEMPLATE = """
             {name} = paddle::dialect::full(std::vector<int64_t>{{1}}, {name}_tmp, phi::DataType::{phi_datatype}, phi::CPUPlace());
 """
@@ -224,6 +271,7 @@ MANUAL_STATIC_OP_FUNCTION_LIST = ['full']
 class PythonCCodeGen(CodeGen):
     def __init__(self) -> None:
         super().__init__()
+        self.need_parse_python_api_args = False
 
     def _gen_one_declare(self, op_name):
         return API_DECLARE_TEMPLATE.format(name=op_name)
@@ -255,7 +303,19 @@ class PythonCCodeGen(CodeGen):
         with open(h_file_path, 'w') as f:
             f.write(H_FILE_TEMPLATE.format(body=body))
 
-    def _gen_inputs(self, op_info, op_name):
+    def _gen_keywords_vector(self, args_alias_map, arg_name):
+        alias_vector = f'{{"{arg_name}"}}'
+        if arg_name in args_alias_map.keys():
+            alias_set = set(args_alias_map[arg_name])
+            # Add the original argument name to the alias set
+            alias_set.add(arg_name)
+            # Convert to C++ vector format
+            alias_vector = (
+                "{" + ",".join(f'"{name}"' for name in alias_set) + "}"
+            )
+        return alias_vector
+
+    def _gen_inputs(self, op_info, op_name, args_alias_map={}):
         name_list = op_info.input_name_list
         type_list = op_info.input_type_list
         optional_list = op_info.input_optional_list
@@ -278,41 +338,98 @@ class PythonCCodeGen(CodeGen):
                     else 'CastPyArg2Value'
                 )
                 dispensable = "false"
-            ret += INPUT_TEMPLATE.format(
-                name=name,
-                index=i,
-                cast_func=cast_func,
-                api_name=op_name,
-                dispensable=dispensable,
-            )
+            if self.need_parse_python_api_args:
+                keywords = self._gen_keywords_vector(args_alias_map, name)
+                ret += INPUT_FROM_ARGS_KWARGS_TEMPLATE.format(
+                    name=name,
+                    index=i,
+                    keywords=keywords,
+                    cast_func=cast_func,
+                    api_name=op_name,
+                    dispensable=dispensable,
+                )
+            else:
+                ret += INPUT_TEMPLATE.format(
+                    name=name,
+                    index=i,
+                    cast_func=cast_func,
+                    api_name=op_name,
+                    dispensable=dispensable,
+                )
         return ret
 
-    def _gen_attrs_without_mutable(self, op_info, op_name):
+    def _gen_attrs_without_mutable(self, op_info, op_name, args_alias_map={}):
         input_size = len(op_info.input_name_list)
         name_list = op_info.attribute_name_list
         type_list = op_info.attribute_build_arg_type_list
+        default_value_list = op_info.attribute_default_value_list
         assert len(name_list) == len(type_list)
         ret = ''
-        for i, (name, type) in enumerate(zip(name_list, type_list)):
+        for i, (name, type, default_value) in enumerate(
+            zip(name_list, type_list, default_value_list)
+        ):
             type = type.replace('const ', '').replace('&', '')
             cast_func = TYPE_TO_FUNC_MAP[type]
-            ret += NO_MUTABLE_ATTR_CAST_TEMPLATE.format(
-                name=name,
-                index=input_size + i,
-                type=type,
-                cast_func=cast_func,
-                api_name=op_name,
-            )
+            if self.need_parse_python_api_args:
+                keywords = self._gen_keywords_vector(args_alias_map, name)
+                if default_value is not None:
+                    ret += NO_MUTABLE_ATTR_CAST_FROM_ARGS_KWARGS_WITH_DEFAULT_VALUE_TEMPLATE.format(
+                        name=name,
+                        index=input_size + i,
+                        type=type,
+                        cast_func=cast_func,
+                        api_name=op_name,
+                        keywords=keywords,
+                        default_value=default_value,
+                    )
+                else:
+                    ret += (
+                        NO_MUTABLE_ATTR_CAST_FROM_ARGS_KWARGS_TEMPLATE.format(
+                            name=name,
+                            index=input_size + i,
+                            type=type,
+                            cast_func=cast_func,
+                            api_name=op_name,
+                            keywords=keywords,
+                        )
+                    )
+            else:
+                ret += NO_MUTABLE_ATTR_CAST_TEMPLATE.format(
+                    name=name,
+                    index=input_size + i,
+                    type=type,
+                    cast_func=cast_func,
+                    api_name=op_name,
+                )
         return ret
 
-    def _gen_attrs_py_obj_with_mutable(self, op_info):
+    def _gen_attrs_py_obj_with_mutable(self, op_info, args_alias_map={}):
         input_size = len(op_info.input_name_list)
         name_list = op_info.attribute_name_list
+        default_value_list = op_info.attribute_default_value_list
         ret = ''
-        for i, name in enumerate(name_list):
-            ret += MUTABLE_ATTR_OBJ_TEMPLATE.format(
-                name=name, index=input_size + i
-            )
+        for i, (name, default_value) in enumerate(
+            zip(name_list, default_value_list)
+        ):
+            if self.need_parse_python_api_args:
+                keywords = self._gen_keywords_vector(args_alias_map, name)
+                if default_value is not None:
+                    ret += MUTABLE_ATTR_OBJ_FROM_ARGS_KWARGS_WITH_DEFAULT_VALUE_TEMPLATE.format(
+                        name=name,
+                        index=input_size + i,
+                        keywords=keywords,
+                    )
+                else:
+                    ret += MUTABLE_ATTR_OBJ_FROM_ARGS_KWARGS_TEMPLATE.format(
+                        name=name,
+                        index=input_size + i,
+                        keywords=keywords,
+                    )
+
+            else:
+                ret += MUTABLE_ATTR_OBJ_TEMPLATE.format(
+                    name=name, index=input_size + i
+                )
         return ret
 
     def _gen_init_mutable_attrs(self, op_info):
@@ -329,9 +446,12 @@ class PythonCCodeGen(CodeGen):
         attr_type_list = op_info.attribute_build_arg_type_list
         mutable_attr_name_list = op_info.mutable_attribute_name_list
         mutable_attr_type_list = op_info.mutable_attribute_type_list
+        default_value_list = op_info.attribute_default_value_list
         assert len(attr_name_list) == len(attr_type_list)
         ret = ''
-        for i, (name, type) in enumerate(zip(attr_name_list, attr_type_list)):
+        for i, (name, type, default_value) in enumerate(
+            zip(attr_name_list, attr_type_list, default_value_list)
+        ):
             type = type.replace('const ', '').replace('&', '')
             cast_func = TYPE_TO_FUNC_MAP[type]
 
@@ -373,15 +493,27 @@ class PythonCCodeGen(CodeGen):
                         api_name=op_name,
                         index=input_size + i,
                     )
-
-                no_mutable_cast_str = MUTABLE_ATTR_CAST_TEMPLATE.format(
-                    type=type,
-                    name_=name + '_tmp',
-                    name=name,
-                    cast_func=cast_func,
-                    api_name=op_name,
-                    index=input_size + i,
-                )
+                if default_value is not None:
+                    no_mutable_cast_str = (
+                        MUTABLE_ATTR_CAST_WITH_DEFAULT_VALUE_TEMPLATE.format(
+                            type=type,
+                            name_=name + '_tmp',
+                            name=name,
+                            cast_func=cast_func,
+                            api_name=op_name,
+                            index=input_size + i,
+                            default_value=default_value,
+                        )
+                    )
+                else:
+                    no_mutable_cast_str = MUTABLE_ATTR_CAST_TEMPLATE.format(
+                        type=type,
+                        name_=name + '_tmp',
+                        name=name,
+                        cast_func=cast_func,
+                        api_name=op_name,
+                        index=input_size + i,
+                    )
 
                 if (
                     mutable_attr_type_list[mutable_attr_name_list.index(name)][
@@ -410,17 +542,60 @@ class PythonCCodeGen(CodeGen):
                         no_mutable_cast_attrs=no_mutable_cast_str,
                     )
             else:
-                mutable_cast_str = MUTABLE_ATTR_CAST_TEMPLATE.format(
-                    type=type,
-                    name_=name,
-                    name=name,
-                    cast_func=cast_func,
-                    api_name=op_name,
-                    index=input_size + i,
-                )
+                if (
+                    default_value is not None
+                    and self.need_parse_python_api_args
+                ):
+                    mutable_cast_str = (
+                        MUTABLE_ATTR_CAST_WITH_DEFAULT_VALUE_TEMPLATE.format(
+                            type=type,
+                            name_=name,
+                            name=name,
+                            cast_func=cast_func,
+                            api_name=op_name,
+                            index=input_size + i,
+                            default_value=default_value,
+                        )
+                    )
+                else:
+                    mutable_cast_str = MUTABLE_ATTR_CAST_TEMPLATE.format(
+                        type=type,
+                        name_=name,
+                        name=name,
+                        cast_func=cast_func,
+                        api_name=op_name,
+                        index=input_size + i,
+                    )
                 ret += mutable_cast_str
 
         return ret
+
+    def _gen_check_params_count(self, max_args, need_check):
+        if need_check:
+            return CHECK_PARAMS_COUNT_TEMPLATE.format(max_args=max_args)
+        else:
+            return '// NO NEED'
+
+    def _gen_check_reminding_params(self, need_check):
+        if need_check:
+            return CHECK_REMAINING_PARAMS_VALID_TEMPLATE
+        return '// NO NEED'
+
+    def _gen_pre_process(self, pre_process):
+        pre_process_str = ""
+        if pre_process is not None and self.need_parse_python_api_args:
+            if "static_func" in pre_process.keys():
+                pre_process_str = pre_process["static_func"]
+            elif "func" in pre_process.keys():
+                pre_process_str = pre_process["func"]
+
+            def pre_process_add_ampersand(s):
+                return s.replace('(', '(&').replace(',', ',&').rstrip(')') + ')'
+
+            return CALL_PRE_PROCESS_TEMPLATE.format(
+                pre_process=pre_process_add_ampersand(pre_process_str)
+            )
+        return "// NO NEED"
 
     def _gen_one_impl(self, op_info, op_name):
         input_name_list = op_info.input_name_list
@@ -428,21 +603,53 @@ class PythonCCodeGen(CodeGen):
         attr_name_list = op_info.attribute_name_list
         mutable_attr_name_list = op_info.mutable_attribute_name_list
         no_mutable_attr_name_list = op_info.non_mutable_attribute_name_list
+        max_args = len(input_name_list) + len(attr_name_list)
+        python_api_info = op_info.python_api_info
+        args_alias_map = None
+        pre_process = None
+        need_check_params_count = False
+        self.need_parse_python_api_args = False
+
+        if python_api_info is not None:
+            self.need_parse_python_api_args = True
+            if "args_alias" in python_api_info.keys():
+                args_alias_map = python_api_info["args_alias"]
+                need_check_params_count = True
+            if "pre_process" in python_api_info.keys():
+                pre_process = python_api_info["pre_process"]
 
         if len(output_name_list) == 0:
             ret = NO_OUTPUT_API_IMPL_TEMPLATE.format(
                 api_name=op_name,
-                inputs=self._gen_inputs(op_info, op_name),
-                attrs=self._gen_attrs_without_mutable(op_info, op_name),
+                check_params_count=self._gen_check_params_count(
+                    max_args, need_check=need_check_params_count
+                ),
+                inputs=self._gen_inputs(op_info, op_name, args_alias_map),
+                attrs=self._gen_attrs_without_mutable(
+                    op_info, op_name, args_alias_map
+                ),
+                check_remaining_params_valid=self._gen_check_reminding_params(
+                    need_check=need_check_params_count
+                ),
+                pre_process=self._gen_pre_process(pre_process),
                 args=', '.join(input_name_list + attr_name_list),
             )
         elif len(mutable_attr_name_list) > 0:
             ret = MUTABLE_ATTR_API_IMPL_TEMPLATE.format(
                 api_name=op_name,
-                inputs=self._gen_inputs(op_info, op_name),
-                attrs_py_obj=self._gen_attrs_py_obj_with_mutable(op_info),
+                check_params_count=self._gen_check_params_count(
+                    max_args, need_check=need_check_params_count
+                ),
+                inputs=self._gen_inputs(op_info, op_name, args_alias_map),
+                attrs_py_obj=self._gen_attrs_py_obj_with_mutable(
+                    op_info, args_alias_map
+                ),
                 init_attrs=self._gen_init_mutable_attrs(op_info),
                 cast_attrs=self._gen_cast_attrs(op_info, op_name),
+                check_remaining_params_valid=self._gen_check_reminding_params(
+                    need_check=need_check_params_count
+                ),
+                pre_process=self._gen_pre_process(pre_process),
                 args_with_mutable_attrs=', '.join(
                     input_name_list
                     + mutable_attr_name_list
@@ -452,9 +659,18 @@ class PythonCCodeGen(CodeGen):
         else:
             ret = NO_MUTABLE_ATTR_API_IMPL_TEMPLATE.format(
                 api_name=op_name,
-                inputs=self._gen_inputs(op_info, op_name),
-                attrs=self._gen_attrs_without_mutable(op_info, op_name),
+                check_params_count=self._gen_check_params_count(
+                    max_args, need_check=need_check_params_count
+                ),
+                inputs=self._gen_inputs(op_info, op_name, args_alias_map),
+                attrs=self._gen_attrs_without_mutable(
+                    op_info, op_name, args_alias_map
+                ),
                 args=', '.join(input_name_list + attr_name_list),
+                check_remaining_params_valid=self._gen_check_reminding_params(
+                    need_check=need_check_params_count
+                ),
+                pre_process=self._gen_pre_process(pre_process),
             )
         ret = re.sub(r' +\n', '', ret)
         return ret

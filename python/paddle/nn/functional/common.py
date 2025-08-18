@@ -657,7 +657,7 @@ def interpolate(
             if len(x.shape) == 5:
                 if len(out_shape) != 3:
                     raise ValueError(
-                        "size length should be 3 for " "input 5-D tensor."
+                        "size length should be 3 for input 5-D tensor."
                     )
                 if contain_var:
                     attrs['out_d'] = size_list[0]

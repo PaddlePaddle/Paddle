@@ -2167,7 +2167,6 @@ class DistForwardAPI(ForwardAPI):
 
 
 class DistBackwardAPI(DistForwardAPI):
-
     def gene_base_api_code(
         self, inplace_flag=False, grad_flag=False, append_input_out=True
     ):

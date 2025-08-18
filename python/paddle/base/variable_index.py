@@ -805,7 +805,6 @@ def get_tensor_with_basic_indexing(
                     attrs['decrease_axis'],
                 )
         else:
-
             target_block = paddle.static.default_main_program().current_block()
 
             slice_out_var = target_block.create_var(

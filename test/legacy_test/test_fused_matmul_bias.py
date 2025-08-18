@@ -153,7 +153,6 @@ class TestFusedLinear(unittest.TestCase):
     "fused_gemm_epilogue is only supported when CUDA version >= 11.6",
 )
 class TestStaticGraph(unittest.TestCase):
-
     def test_static_graph(self):
         paddle.enable_static()
         x = paddle.static.data(name='x', dtype='float32', shape=[-1, 100])

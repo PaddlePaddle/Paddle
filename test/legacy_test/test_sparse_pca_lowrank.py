@@ -54,7 +54,7 @@ class TestSparsePcaLowrankAPI(unittest.TestCase):
         indices = [row_indices, column_indices]
         values = paddle.randn((nonzero_elements,), dtype=dtype)
         values *= paddle.to_tensor(
-            [-float(i - j) ** 2 for i, j in zip(*indices)], dtype=dtype
+            [-(float(i - j) ** 2) for i, j in zip(*indices)], dtype=dtype
         ).exp()
         indices_tensor = paddle.to_tensor(indices)
         x = paddle.sparse.sparse_coo_tensor(

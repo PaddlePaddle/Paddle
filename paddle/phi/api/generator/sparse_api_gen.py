@@ -494,7 +494,6 @@ def generate_api(
     source_file.write(namespace[0])
 
     for api in apis:
-
         sparse_api = SparseAPI(api)
         if sparse_api.api in backward_api_black_list:
             continue
