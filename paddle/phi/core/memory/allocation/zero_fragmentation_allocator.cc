@@ -37,7 +37,7 @@ phi::Allocation *ZeroFragmentationAllocator::AllocateImpl(
 
   if (ZeroFragmentationAllocatorManager::Instance().IsEnabled()) {
     if (ZeroFragmentationAllocatorManager::Instance().IsPeralloc()) {
-      DeallocateZeroFragmentationBlocks();
+      FreeZeroFragmentationBlocks();
       allocation = AutoGrowthBestFitAllocator::AllocateImpl(size);
       zero_fragmentation_block_ =
           static_cast<BlockAllocation *>(allocation)->block_it_;
@@ -79,18 +79,18 @@ phi::Allocation *ZeroFragmentationAllocator::AllocateImpl(
 
 void ZeroFragmentationAllocator::FreeImpl(phi::Allocation *allocation) {
   if (ZeroFragmentationAllocatorManager::Instance().IsPeralloc()) {
-    FreeZeroFragmentationBlocks(allocation);
+    HoldZeroFragmentationBlocks(allocation);
   } else {
     AutoGrowthBestFitAllocator::FreeImpl(allocation);
   }
 }
 
 uint64_t ZeroFragmentationAllocator::ReleaseImpl(const phi::Place &place) {
-  DeallocateZeroFragmentationBlocks();
+  FreeZeroFragmentationBlocks();
   return AutoGrowthBestFitAllocator::ReleaseImpl(place);
 }
 
-void ZeroFragmentationAllocator::FreeZeroFragmentationBlocks(
+void ZeroFragmentationAllocator::HoldZeroFragmentationBlocks(
     phi::Allocation *allocation) {
   // Not return to default pool, just reuse the memory.
   std::lock_guard<SpinLock> guard(spinlock_);
@@ -98,7 +98,7 @@ void ZeroFragmentationAllocator::FreeZeroFragmentationBlocks(
 
   if (zero_fragmentation_block_ != block_it) {
     PADDLE_THROW(phi::errors::InvalidArgument(
-        "ZeroFragmentationAllocator::FreeZeroFragmentationBlocks, "
+        "ZeroFragmentationAllocator::HoldZeroFragmentationBlocks, "
         "zero_fragmentation_block_ != block_it"));
   }
 
@@ -107,7 +107,7 @@ void ZeroFragmentationAllocator::FreeZeroFragmentationBlocks(
   delete allocation;
 }
 
-void ZeroFragmentationAllocator::DeallocateZeroFragmentationBlocks() {
+void ZeroFragmentationAllocator::FreeZeroFragmentationBlocks() {
   std::lock_guard<SpinLock> guard(spinlock_);
 
   if (zero_fragmentation_block_ == nulliter) {

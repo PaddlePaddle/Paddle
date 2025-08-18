@@ -22,6 +22,7 @@
 #include <chrono>
 #include <memory>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/collective/deep_ep/deep_ep.hpp"
 #include "paddle/fluid/distributed/collective/deep_ep/kernels/api.cuh"
 #include "paddle/fluid/distributed/collective/deep_ep/kernels/configs.cuh"
@@ -31,10 +32,17 @@
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/tensor_utils.h"
+
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/distributed/utils.h"
 #include "paddle/phi/core/memory/allocation/allocator_facade.h"
+#include "paddle/phi/core/memory/allocation/zero_fragmentation_allocator.h"
+
+PHI_DEFINE_EXPORTED_READONLY_bool(zero_fragmentation_for_dispatch,
+                                  false,
+                                  "Using ZeroFragmentationAllocator to "
+                                  "allocate the output tensor of dispatch");
 
 namespace deep_ep {
 
@@ -1228,8 +1236,15 @@ Buffer::internode_dispatch(
   }
 
   // Allocate new tensors
-  auto recv_x = ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
-      {num_recv_tokens, hidden}, x.dtype(), x.place()));
+  deep_ep::detail::Tensor recv_x;
+  if (FLAGS_zero_fragmentation_for_dispatch) {
+    paddle::memory::allocation::ZeroFragmentationAllocatorGuard zfa_guard;
+    recv_x = ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
+        {num_recv_tokens, hidden}, x.dtype(), x.place()));
+  } else {
+    recv_x = ConvertPaddleTensorToDetailTensor(paddle::experimental::empty(
+        {num_recv_tokens, hidden}, x.dtype(), x.place()));
+  }
   auto recv_topk_idx = std::optional<deep_ep::detail::Tensor>(),
        recv_topk_weights = std::optional<deep_ep::detail::Tensor>(),
        recv_x_scales = std::optional<deep_ep::detail::Tensor>();

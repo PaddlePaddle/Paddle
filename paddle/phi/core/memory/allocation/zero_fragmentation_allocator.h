@@ -48,8 +48,8 @@ class ZeroFragmentationAllocator : public AutoGrowthBestFitAllocator {
   uint64_t ReleaseImpl(const phi::Place& place) override;
 
  private:
-  void FreeZeroFragmentationBlocks(phi::Allocation* allocation);
-  void DeallocateZeroFragmentationBlocks();
+  void HoldZeroFragmentationBlocks(phi::Allocation* allocation);
+  void FreeZeroFragmentationBlocks();
 
  private:
   BlockIt zero_fragmentation_block_{};
@@ -85,6 +85,24 @@ class ZeroFragmentationAllocatorManager {
 
   bool enabled_{false};
   bool prealloc_{false};
+};
+
+class ZeroFragmentationAllocatorGuard {
+ public:
+  ZeroFragmentationAllocatorGuard() {
+    ZeroFragmentationAllocatorManager::Instance().Enable();
+  }
+
+  ~ZeroFragmentationAllocatorGuard() {
+    ZeroFragmentationAllocatorManager::Instance().Disable();
+  }
+
+  ZeroFragmentationAllocatorGuard(const ZeroFragmentationAllocatorGuard&) =
+      delete;
+  ZeroFragmentationAllocatorGuard& operator=(
+      const ZeroFragmentationAllocatorGuard&) = delete;
+  ZeroFragmentationAllocatorGuard(ZeroFragmentationAllocatorGuard&& other) =
+      delete;
 };
 
 }  // namespace allocation
