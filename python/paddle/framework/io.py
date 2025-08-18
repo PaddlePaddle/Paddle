@@ -369,6 +369,7 @@ def _parse_load_config(configs):
         'params_filename',
         'keep_name_table',
         'return_numpy',
+        'safetensors',
     ]
 
     # input check
@@ -388,12 +389,13 @@ def _parse_load_config(configs):
     inner_config.params_filename = configs.get('params_filename', None)
     inner_config.keep_name_table = configs.get('keep_name_table', None)
     inner_config.return_numpy = configs.get('return_numpy', False)
+    inner_config.safetensors = configs.get('safetensors', False)
 
     return inner_config
 
 
 def _parse_save_config(configs):
-    supported_configs = ['use_binary_format', 'pickle_protocol']
+    supported_configs = ['use_binary_format', 'pickle_protocol', 'safetensors']
 
     # input check
     for key in configs:
@@ -410,6 +412,7 @@ def _parse_save_config(configs):
     inner_config = _SaveLoadConfig()
     inner_config.use_binary_format = configs.get('use_binary_format', False)
     inner_config.pickle_protocol = configs.get('pickle_protocol', None)
+    inner_config.safetensors = configs.get('safetensors', False)
 
     return inner_config
 
@@ -956,12 +959,43 @@ def save(
 
         elif _is_state_dict(obj):
             if in_dygraph_mode():
-                _legacy_save(obj, path, protocol)
+                if config.safetensors:
+                    _safe_save(obj, path)
+                else:
+                    _legacy_save(obj, path, protocol)
             else:
                 _legacy_static_save(obj, path, protocol)
         else:
             with _open_file_buffer(path, 'wb') as f:
                 _pickle_save(obj, f, protocol)
+
+
+def _safe_save(obj, path):
+    if not isinstance(obj, dict):
+        raise NotImplementedError(
+            "Now only supports save state_dict of Layer or Optimizer, "
+            f"expect dict, but received {type(obj)}."
+        )
+
+    if len(obj) == 0:
+        warnings.warn("The input state dict is empty, no need to save.")
+
+    if _is_file_path(path):
+        filename = os.path.basename(path)
+        if filename == "":
+            raise ValueError(
+                "The input path MUST be format of dirname/filename "
+                "[dirname\\filename in Windows system], but received "
+                "filename is empty string."
+            )
+        # 2. save object
+        dirname = os.path.dirname(path)
+        if dirname and not os.path.exists(dirname):
+            os.makedirs(dirname, exist_ok=True)
+
+    from safetensors.paddle import save_file
+
+    save_file(obj, path)
 
 
 def _legacy_save(obj, path, protocol=2):
@@ -1190,6 +1224,11 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
         config = _parse_load_config(configs)
         exception_type = pickle.UnpicklingError
         try:
+            if config.safetensors:
+                from safetensors.paddle import load_file
+
+                load_result = load_file(path)
+                return load_result
             with _open_file_buffer(path, 'rb') as f:
                 # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
                 if (
@@ -1310,8 +1349,13 @@ def _legacy_load(path, **configs):
 
     if os.path.isfile(path) or _is_memory_buffer(path):
         # we think path is file means this file is created by paddle.save
-        with _open_file_buffer(path, 'rb') as f:
-            load_result = pickle.load(f, encoding='latin1')
+        if config.safetensors:
+            from safetensors.paddle import load_file
+
+            load_result = load_file(path)
+        else:
+            with _open_file_buffer(path, 'rb') as f:
+                load_result = pickle.load(f, encoding='latin1')
         load_result = _pack_loaded_dict(load_result)
         if (
             not config.keep_name_table
