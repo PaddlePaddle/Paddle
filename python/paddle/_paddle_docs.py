@@ -74,7 +74,6 @@ def _parse_function_signature(
         if func_def.args.defaults and len(func_def.args.defaults) > (
             len(func_def.args.args) - len(func_def.args.defaults)
         ):
-
             idx = count - (
                 len(func_def.args.args) - len(func_def.args.defaults)
             )
