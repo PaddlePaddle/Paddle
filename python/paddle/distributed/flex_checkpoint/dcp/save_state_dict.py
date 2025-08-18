@@ -140,7 +140,7 @@ def dedup_tensor(
 
 
 def save_state_dict(
-    state_dict: dict[str, Tensor | ShardedTensor],
+    state_dict: dict[str, Tensor] | dict[str, ShardedTensor],
     path: str,
     process_group: Group | None = None,
     coordinator_rank: int = 0,
@@ -297,7 +297,7 @@ def save_state_dict(
 
 
 def save_state_dict_impl(
-    state_dict: dict[str, Tensor | ShardedTensor],
+    state_dict: dict[str, Tensor] | dict[str, ShardedTensor],
     path: str,
     process_group: Group | None = None,
     coordinator_rank: int = 0,

@@ -540,7 +540,7 @@ def get_read_items(metadata_list, state_dict, process_group, use_dist):
 
 
 def load_state_dict(
-    state_dict: dict[str, Tensor | ShardedTensor],
+    state_dict: dict[str, Tensor] | dict[str, ShardedTensor],
     path: str,
     process_group: Group | None = None,
     coordinator_rank: int = 0,
@@ -699,7 +699,7 @@ def load_state_dict(
 
 
 def load_state_dict_impl(
-    state_dict: dict[str, Tensor | ShardedTensor],
+    state_dict: dict[str, Tensor] | dict[str, ShardedTensor],
     path: str,
     process_group: Group | None = None,
     coordinator_rank: int = 0,
