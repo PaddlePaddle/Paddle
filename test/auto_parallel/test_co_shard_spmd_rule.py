@@ -51,23 +51,23 @@ class TestCoShardSPMDRule:
         y = dist.shard_tensor(b, mesh, placements2)
         out = paddle.add(x, y)
         np.testing.assert_equal(
-            str(x.placements[0]), "Shard(dim=0, shard_order=0)"
+            str(x.placements[0]), dist.Shard(dim=0, shard_order=0)
         )
         np.testing.assert_equal(
-            str(x.placements[1]), "Shard(dim=0, shard_order=1)"
+            str(x.placements[1]), dist.Shard(dim=0, shard_order=1)
         )
         np.testing.assert_equal(
-            str(y.placements[0]), "Shard(dim=0, shard_order=0)"
+            str(y.placements[0]), dist.Shard(dim=0, shard_order=0)
         )
         np.testing.assert_equal(
-            str(y.placements[1]), "Shard(dim=0, shard_order=1)"
+            str(y.placements[1]), dist.Shard(dim=0, shard_order=1)
         )
         np.testing.assert_equal(out.shape, [64, 64])
         np.testing.assert_equal(
-            str(out.placements[0]), "Shard(dim=0, shard_order=0)"
+            str(out.placements[0]), dist.Shard(dim=0, shard_order=0)
         )
         np.testing.assert_equal(
-            str(out.placements[1]), "Shard(dim=0, shard_order=1)"
+            str(out.placements[1]), dist.Shard(dim=0, shard_order=1)
         )
 
     def test_co_shard_for_layernorm(self):
@@ -85,16 +85,16 @@ class TestCoShardSPMDRule:
         input = dist.shard_tensor(x, mesh, placements)
         out = layer_norm(input)
         np.testing.assert_equal(
-            str(input.placements[0]), "Shard(dim=0, shard_order=0)"
+            str(input.placements[0]), dist.Shard(dim=0, shard_order=0)
         )
         np.testing.assert_equal(
-            str(input.placements[1]), "Shard(dim=0, shard_order=1)"
+            str(input.placements[1]), dist.Shard(dim=0, shard_order=1)
         )
         np.testing.assert_equal(
-            str(out.placements[0]), "Shard(dim=0, shard_order=0)"
+            str(out.placements[0]), dist.Shard(dim=0, shard_order=0)
         )
         np.testing.assert_equal(
-            str(out.placements[1]), "Shard(dim=0, shard_order=1)"
+            str(out.placements[1]), dist.Shard(dim=0, shard_order=1)
         )
 
     def run_test_case_main(self):
