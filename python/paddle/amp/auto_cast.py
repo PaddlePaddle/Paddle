@@ -145,9 +145,7 @@ def _update_list(
     if custom_white_list and custom_black_list:
         for op_name in custom_white_list:
             if op_name in custom_black_list:
-                raise ValueError(
-                    "Custom white list overlap " "custom black list"
-                )
+                raise ValueError("Custom white list overlap custom black list")
     if custom_white_list:
         for op_name in custom_white_list:
             if op_name in _black_list:

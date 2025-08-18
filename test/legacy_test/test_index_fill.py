@@ -183,7 +183,6 @@ class TestIndexFillAPI_ZeroSize(unittest.TestCase):
 
 
 class TestIndexFillAPI_ZeroSize2(TestIndexFillAPI_ZeroSize):
-
     def init_setting(self):
         self.dtype_np = 'float64'
         self.index_type = 'int64'

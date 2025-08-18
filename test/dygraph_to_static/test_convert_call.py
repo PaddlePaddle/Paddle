@@ -319,7 +319,6 @@ class TestConvertPaddleAPI(Dy2StTestBase):
 
 
 class TestMarkerUnified(Dy2StTestBase):
-
     def test_plain_function(self):
         def fn(x):
             return x
@@ -453,7 +452,6 @@ class TestMarkerUnified(Dy2StTestBase):
     def test_nn_layer_subclass_skip_sot_only(self):
         @paddle.jit.marker.unified(for_sot=True, for_ast=False)
         class MyLayer(paddle.nn.Layer):
-
             def __init__(self):
                 super().__init__()
                 self.w = paddle.create_parameter(shape=[1], dtype='float32')
@@ -476,7 +474,6 @@ class TestMarkerUnified(Dy2StTestBase):
     def test_nn_layer_subclass_skip_ast_only(self):
         @paddle.jit.marker.unified(for_sot=False, for_ast=True)
         class MyLayer(paddle.nn.Layer):
-
             def __init__(self):
                 super().__init__()
                 self.w = paddle.create_parameter(shape=[1], dtype='float32')
@@ -499,7 +496,6 @@ class TestMarkerUnified(Dy2StTestBase):
     def test_nn_layer_subclass_skip_ast_and_sot(self):
         @paddle.jit.marker.unified()
         class MyLayer(paddle.nn.Layer):
-
             def __init__(self):
                 super().__init__()
                 self.w = paddle.create_parameter(shape=[1], dtype='float32')

@@ -389,7 +389,7 @@ def ParseYamlForwardFromBackward(string):
     fargs = r'(.*?)'
     frets = r'(.*)'
     pattern = (
-        fr'{fname}{wspace}\({wspace}{fargs}{wspace}\){wspace}->{wspace}{frets}'
+        rf'{fname}{wspace}\({wspace}{fargs}{wspace}\){wspace}->{wspace}{frets}'
     )
 
     m = re.search(pattern, string)
@@ -409,7 +409,7 @@ def ParseYamlForward(args_str, returns_str):
 
     fargs = r'(.*?)'
     wspace = r'\s*'
-    args_pattern = fr'^\({fargs}\)$'
+    args_pattern = rf'^\({fargs}\)$'
     args_str = re.search(args_pattern, args_str.strip()).group(1)
 
     inputs_list, attrs_list = ParseYamlArgs(args_str)
@@ -424,7 +424,7 @@ def ParseYamlBackward(args_str, returns_str):
 
     fargs = r'(.*?)'
     wspace = r'\s*'
-    args_pattern = fr'\({fargs}\)'
+    args_pattern = rf'\({fargs}\)'
     args_str = re.search(args_pattern, args_str).group(1)
 
     inputs_list, attrs_list = ParseYamlArgs(args_str)
@@ -451,7 +451,7 @@ def ParseYamlCompositeInfo(string):
     fname = r'(.*?)'
     wspace = r'\s*'
     fargs = r'(.*?)'
-    pattern = fr'{fname}{wspace}\({wspace}{fargs}{wspace}\)'
+    pattern = rf'{fname}{wspace}\({wspace}{fargs}{wspace}\)'
 
     m = re.search(pattern, string)
     composite_fun_info = {}

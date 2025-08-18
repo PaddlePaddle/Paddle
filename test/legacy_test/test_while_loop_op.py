@@ -178,7 +178,6 @@ class TestApiWhileLoop(unittest.TestCase):
 
 
 class TestApiWhileLoop_Nested(unittest.TestCase):
-
     @compare_legacy_with_pt
     def test_nested_net(self):
         def external_cond(i, j, init, sums):

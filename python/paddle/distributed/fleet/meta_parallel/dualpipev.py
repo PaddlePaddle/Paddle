@@ -759,7 +759,6 @@ class DualPipeVParallel(PipelineParallel):
                         main_stage=True,
                     )
             else:
-
                 self._forward_backward_pass(
                     0,
                     1,

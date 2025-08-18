@@ -152,7 +152,6 @@ def _get_stage_mesh(stage_index, pp_group_size, style=None):
     if style is not None:
         raise ValueError(f"Unknown style: {style}, style can be None, v.")
     else:
-
         pp_idx = stage_index % pp_group_size
         return _get_pp_mesh(pp_idx)
 

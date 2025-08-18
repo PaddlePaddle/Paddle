@@ -163,7 +163,6 @@ create_test_fp16(TestCase5)
 
 
 class TestPadOpError(unittest.TestCase):
-
     def test_errors(self):
         with (
             static_guard(),
@@ -274,7 +273,6 @@ class TestPaddingValueTensor2(TestPaddingValueTensor):
 
 
 class TestPaddingValueTensor3(unittest.TestCase):
-
     def test_static(self):
         with static_guard():
             np_x = np.random.random((16, 16)).astype("float32")

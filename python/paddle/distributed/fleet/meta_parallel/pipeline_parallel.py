@@ -832,9 +832,10 @@ class PipelineParallel(MetaParallelBase):
             if not self.is_pipeline_last_stage():
                 self._release_output(output_tensor_tuple)
 
-            input_tensor, output_tensor = input_buffers.pop(
-                0
-            ), output_buffers.pop(0)
+            input_tensor, output_tensor = (
+                input_buffers.pop(0),
+                output_buffers.pop(0),
+            )
 
             self._record_stamp("B", i, '"B"', self._backward_color)
             input_tensor_grad = self._backward_step(
