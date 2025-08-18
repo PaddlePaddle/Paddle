@@ -34,8 +34,6 @@ if TYPE_CHECKING:
 
 
 from paddle import nn
-
-from paddle.framework import in_dynamic_mode
 from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
 __all__ = []
