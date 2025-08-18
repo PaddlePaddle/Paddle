@@ -338,7 +338,7 @@ REGISTER_OP_KERNEL(op_with_multi_kernel,
                    phi::CPUPlace,
                    paddle::framework::OpMultiKernelTest<CPUContext, float>);
 REGISTER_OP_KERNEL(op_with_multi_kernel,
-                   MKLDNN,
+                   ONEDNN,
                    phi::CPUPlace,
                    paddle::framework::OpMultiKernelTest2<CPUContext, float>);
 REGISTER_OP_KERNEL(
