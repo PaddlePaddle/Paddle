@@ -35,6 +35,7 @@ jobs:
     needs: [clone, build-docker]
     with:
       docker_cpu_image: ${{ needs.build-docker.outputs.docker_cpu_image }}
+      clone-can-skip: ${{ needs.clone.outputs.can-skip }}
 
   mac:
     name: Mac-CPU
@@ -49,6 +50,7 @@ jobs:
     needs: [clone, build-docker]
     with:
       docker_xpu_image: ${{ needs.build-docker.outputs.docker_xpu_image }}
+      clone-can-skip: ${{ needs.clone.outputs.can-skip }}
 
   dcu:
     name: Linux-DCU
@@ -56,6 +58,7 @@ jobs:
     needs: [clone, build-docker]
     with:
       docker_dcu_image: ${{ needs.build-docker.outputs.docker_dcu_image }}
+      clone-can-skip: ${{ needs.clone.outputs.can-skip }}
 
   cpu:
     name: Linux-CPU
@@ -78,3 +81,4 @@ jobs:
     needs: [clone, build-docker]
     with:
       docker_distribute_image: ${{ needs.build-docker.outputs.docker_distribute_image }}
+      clone-can-skip: ${{ needs.clone.outputs.can-skip }}

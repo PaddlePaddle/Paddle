@@ -30,7 +30,6 @@ jobs:
     with:
       clone_dir: Paddle-build
       task: build
-      clone-can-skip: ${{ needs.clone.outputs.can-skip }}
 
   inference:
     name: PR-CI-Inference
@@ -38,6 +37,7 @@ jobs:
     needs: [clone, build-docker]
     with:
       docker_inference_image: ${{ needs.build-docker.outputs.docker_build_image }}
+      clone-can-skip: ${{ needs.clone.outputs.can-skip }}
 
   build:
     name: Linux-build
