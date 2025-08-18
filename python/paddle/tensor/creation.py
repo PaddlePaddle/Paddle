@@ -3956,3 +3956,32 @@ def resize_(
             return x.set_(tmp, shape)
 
         return x.set_(x, shape)
+
+
+def dtype_tensor_factory(dtype):
+
+    class _DtypeTensorFactory:
+        def __new__(cls, *args, **kwargs):
+            if len(args) == 0:
+                return paddle.empty(shape=[0], dtype=dtype)
+            elif len(args) == 1 and isinstance(args[0], (list, tuple)):
+                return paddle.to_tensor(args[0], dtype=dtype)
+            elif all(isinstance(arg, int) for arg in args):
+                return paddle.empty(shape=list(args), dtype=dtype)
+            else:
+                kwargs.setdefault('dtype', dtype)
+                return paddle.Tensor(*args, **kwargs)
+
+    return _DtypeTensorFactory
+
+
+FloatTensor = dtype_tensor_factory('float32')
+DoubleTensor = dtype_tensor_factory('float64')
+HalfTensor = dtype_tensor_factory('float16')
+BFloat16Tensor = dtype_tensor_factory('bfloat16')
+ByteTensor = dtype_tensor_factory('uint8')
+CharTensor = dtype_tensor_factory('int8')
+ShortTensor = dtype_tensor_factory('int16')
+IntTensor = dtype_tensor_factory('int32')
+LongTensor = dtype_tensor_factory('int64')
+BoolTensor = dtype_tensor_factory('bool')
