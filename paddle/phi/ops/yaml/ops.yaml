@@ -4943,6 +4943,10 @@
 
 - op : sin
   args : (Tensor x)
+  python_api :
+    name: [paddle.sin, paddle.Tensor.sin]
+    args_alias:
+      x: [input]
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta

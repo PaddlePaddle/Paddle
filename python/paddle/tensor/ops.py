@@ -15,6 +15,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from paddle._C_ops import (  # noqa: F401
+    sin,
+)
 from paddle.utils.decorator_utils import ParamAliasDecorator
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -985,64 +988,6 @@ def sigmoid(x: Tensor, name: str | None = None) -> Tensor:
         helper = LayerHelper('sigmoid', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(type='sigmoid', inputs={"X": x}, outputs={"Out": out})
-        return out
-
-
-@ParamAliasDecorator({"x": ["input"]})
-def sin(
-    x: Tensor, name: str | None = None, *, out: Tensor | None = None
-) -> Tensor:
-    """
-    Sine Activation Operator.
-
-    .. math::
-       out = sin(x)
-
-    Args:
-        x (Tensor): Input of Sin operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
-            uint8, int8, int16, int32, int64, complex64 or complex128. Alias: ``input``.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
-
-    Returns:
-        Tensor. Output of Sin operator, a Tensor with shape same as input
-            (integer types are autocasted into float32).
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            >>> out = paddle.sin(x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [-0.38941833, -0.19866933,  0.09983342,  0.29552022])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.sin(x, out=out)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'uint8',
-                'int8',
-                'int16',
-                'int32',
-                'int64',
-                'complex64',
-                'complex128',
-            ],
-            'sin',
-        )
-        helper = LayerHelper('sin', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type='sin', inputs={"X": x}, outputs={"Out": out})
         return out
 
 
