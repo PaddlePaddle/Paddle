@@ -18,8 +18,6 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
-    test_pir_only,
-    test_pt_only,
 )
 
 import paddle
@@ -329,18 +327,7 @@ class TestTensorShapeBasic(Dy2StTestBase):
         return op_num, shape_op_num, slice_op_num
 
     @test_ast_only
-    @test_pt_only
     def test_op_num(self):
-        static_layer = paddle.jit.to_static(self.dygraph_func, self.input_spec)
-        program = static_layer.main_program
-        op_num, shape_op_num, slice_op_num = self._compute_op_num(program)
-        self.assertEqual(op_num, self.expected_op_num)
-        self.assertEqual(shape_op_num, self.expected_shape_op_num)
-        self.assertEqual(slice_op_num, self.expected_slice_op_num)
-
-    @test_ast_only
-    @test_pir_only
-    def test_pir_op_num(self):
         static_layer = paddle.jit.to_static(self.dygraph_func, self.input_spec)
         program = static_layer.main_program
         op_num, shape_op_num, slice_op_num = self._compute_pir_op_num(program)
@@ -675,19 +662,7 @@ class TestOpNumBasicWithTensorShape(Dy2StTestBase):
         return op_num, shape_op_num, slice_op_num
 
     @test_ast_only
-    @test_pt_only
     def test_op_num(self):
-        static_layer = paddle.jit.to_static(self.dygraph_func, self.input_spec)
-        program = static_layer.main_program
-
-        self._compute_op_num(program)
-        self.assertEqual(self.op_num, self.expected_op_num)
-        self.assertEqual(self.shape_op_num, self.expected_shape_op_num)
-        self.assertEqual(self.slice_op_num, self.expected_slice_op_num)
-
-    @test_ast_only
-    @test_pir_only
-    def test_pir_op_num(self):
         static_layer = paddle.jit.to_static(self.dygraph_func, self.input_spec)
         program = static_layer.main_program
         op_num, shape_op_num, slice_op_num = self._compute_pir_op_num(program)
