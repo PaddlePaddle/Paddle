@@ -125,8 +125,8 @@ def checkPRTemplate(repo, body, CHECK_TEMPLATE):
     elif result is None:
         res = False
         message = parameter_accuracy(body)
-        print(2)
-        print(message)
+        if len(message) == 0:
+            message = 'To merge into the fleety branch, you need to merge into the develop branch first and then cherry-pick it to the fleety branch. Please merge into develop first and fill in the PR link in the Description'
     return res, message
 
 
