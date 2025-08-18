@@ -107,16 +107,24 @@ def checkPRTemplate(repo, body, CHECK_TEMPLATE):
     if body is None:
         body = ''
     body = comment_pattern.sub('', body)
+    print("---------")
+    print(body)
     result = re_rule(body, CHECK_TEMPLATE)
+    print("---------")
+    print(result)
     message = ''
     if len(CHECK_TEMPLATE) == 0 and len(body) == 0:
         res = False
     elif result is not None:
         message = parameter_accuracy(body)
+        print(1)
+        print(message)
         res = True if message == '' else False
     elif result is None:
         res = False
         message = parameter_accuracy(body)
+        print(2)
+        print(message)
     return res, message
 
 
