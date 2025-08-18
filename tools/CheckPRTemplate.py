@@ -81,9 +81,6 @@ def parameter_accuracy(body):
     changes_end = body.find('### Description')
     PR_dic['PR Category'] = body[len('### PR Category') : type_end]
     PR_dic['PR Types'] = body[type_end + len('### PR Types') : changes_end]
-    PR_dic['Description'] = body[changes_end + len('### Description') :]
-    des_pr_id = extract_pr_links(PR_dic['Description'])
-    print(des_pr_id)
     message = ''
     for key in PR_dic:
         test_list = PR_Category if key == 'PR Category' else PR_Types
@@ -99,6 +96,9 @@ def parameter_accuracy(body):
                     single_mess += f'{i}.'
             if len(single_mess) != 0:
                 message += f'{key} should be in {test_list}. but now is [{single_mess}].'
+    PR_dic['Description'] = body[changes_end + len('### Description') :]
+    des_pr_id = extract_pr_links(PR_dic['Description'])
+    print(des_pr_id)
     if not check_github_pr_exists(
         "PaddlePaddle", "Paddle", des_pr_id, GITHUB_API_TOKEN
     ):
