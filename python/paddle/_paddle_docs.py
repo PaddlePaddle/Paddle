@@ -480,7 +480,7 @@ def amax(
 ) -> Tensor
 """,
 )
-add_doc_all(
+add_doc_and_signature(
     "all",
     """
     Computes the ``logical and`` of tensor elements over the given dimension.
@@ -543,5 +543,13 @@ add_doc_all(
             [[False],
              [True ]])
 
+    """,
+    """
+    def all(
+    x: Tensor,
+    axis: int | Sequence[int] | None = None,
+    keepdim: bool = False,
+    name: str | None = None,
+) -> Tensor
     """,
 )
