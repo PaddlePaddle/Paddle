@@ -98,7 +98,7 @@ def parameter_accuracy(body):
     des_pr_id = extract_pr_links(PR_dic['Description'])
     print(des_pr_id)
     if not check_link_accessible(
-        "https://github.com/PaddlePaddle/Paddle/pull/74707" + des_pr_id
+        "https://github.com/PaddlePaddle/Paddle/pull/74707" + des_pr_id[0]
     ):
         message += 'The PR link does not exist. To merge into the fleety branch, you need to merge into the develop branch first and then cherry-pick it to the fleety branch. Please merge into develop first and fill in the PR link in the Description'
     return message
