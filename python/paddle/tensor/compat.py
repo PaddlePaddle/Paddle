@@ -256,4 +256,5 @@ def slogdet(x: Tensor) -> tuple[Tensor, Tensor]:
                   [-1.,  1.,  1.]), Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
                   [ 0.25681755, -0.25061053, -0.10809596]))
     """
-    return _C_ops.slogdet(x)
+    sign, logdet = _C_ops.slogdet_v2(x)
+    return sign, logdet

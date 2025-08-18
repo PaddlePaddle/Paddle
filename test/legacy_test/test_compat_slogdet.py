@@ -105,8 +105,11 @@ class TestSlogDeterminantAPI(unittest.TestCase):
                 out = paddle.compat.slogdet(x)
                 exe = paddle.static.Executor(self.place)
                 res = exe.run(feed={'X': self.x}, fetch_list=[out])
-            out_ref = np.array(np.linalg.slogdet(self.x))
-            np.testing.assert_allclose(res, out_ref, rtol=0.001)
+            sign, logabsdet = res
+            out_ref = np.linalg.slogdet(self.x)
+            sign_ref, logabsdet_ref = out_ref
+            np.testing.assert_allclose(sign, sign_ref, rtol=0.001)
+            np.testing.assert_allclose(logabsdet, logabsdet_ref, rtol=0.001)
 
     def test_api_dygraph(self):
         with dygraph_guard():
