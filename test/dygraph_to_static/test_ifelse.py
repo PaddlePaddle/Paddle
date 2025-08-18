@@ -19,7 +19,6 @@ from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
     test_ast_only,
-    test_pir_only,
 )
 from ifelse_simple_func import (
     NetWithControlFlowIf,
@@ -547,7 +546,6 @@ class IfElseNet(paddle.nn.Layer):
 
 
 class TestDy2StIfElseBackward(Dy2StTestBase):
-    @test_pir_only
     def test_run_backward(self):
         a = paddle.randn((4, 3), dtype='float32')
         a.stop_gradient = False
@@ -599,7 +597,6 @@ class TestIfElseMaybeUnbound(Dy2StTestBase):
         np.testing.assert_allclose(dygraph_out.numpy(), static_out.numpy())
 
     @test_ast_only
-    @test_pir_only
     def test_use_undefined_var(self):
         truethy = paddle.to_tensor(1)
         falsy = paddle.to_tensor(0)
@@ -622,7 +619,6 @@ def dynamic_shape_with_constant_promotion(x):
 
 class TestDynamicShapeWithConstantPromotion(Dy2StTestBase):
     @test_ast_only
-    @test_pir_only
     def test_dynamic_shape_with_constant_promotion(self):
         x = paddle.randn([5, 3])
         static_fn = paddle.jit.to_static(
