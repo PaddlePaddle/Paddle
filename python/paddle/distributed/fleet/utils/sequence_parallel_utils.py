@@ -709,5 +709,5 @@ class RowSequenceParallelLinear(Layer):
     ):
         state_dict = self.state_dict(structured_name_prefix="")
         return build_sharded_state_dict(
-            state_dict, {"weight": 0, "bias": 0}, structured_name_prefix
+            state_dict, {"weight": 0}, structured_name_prefix
         )

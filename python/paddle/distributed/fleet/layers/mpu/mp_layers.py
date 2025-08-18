@@ -18,12 +18,10 @@ import paddle
 from paddle.autograd import PyLayer
 from paddle.base import core
 from paddle.distributed import fleet
-from paddle.distributed.flex_checkpoint import (
-    build_sharded_state_dict,
-)
 from paddle.nn import functional as F
 
 from ....communication.reduce import ReduceOp, _get_reduce_op
+from ....flex_checkpoint.dcp.sharded_weight import build_sharded_state_dict
 from ...base import topology as tp
 from ...utils.log_util import logger
 from . import mp_ops
@@ -767,7 +765,7 @@ class RowParallelLinear(paddle.nn.Layer):
     ):
         state_dict = self.state_dict(structured_name_prefix="")
         return build_sharded_state_dict(
-            state_dict, {"weight": 0, "bias": 0}, structured_name_prefix
+            state_dict, {"weight": 0}, structured_name_prefix
         )
 
 

@@ -22,7 +22,7 @@ import numpy as np
 
 import paddle
 
-from .sharded_tensor import ShardedTensor
+from .sharded_weight import ShardedWeight
 
 if TYPE_CHECKING:
     from paddle.framework import core
@@ -102,7 +102,7 @@ def flatten_state_dict(state_dict):
             for k, v in value.items():
                 assert isinstance(k, str), f"The key should be str, but is {k}"
                 _flatten((*key, k), v)
-        elif isinstance(value, (paddle.Tensor, ShardedTensor)):
+        elif isinstance(value, (paddle.Tensor, ShardedWeight)):
             flatten_key_str = ".".join(key)
             flatten_state_dict[flatten_key_str] = value
             mapping[flatten_key_str] = key
@@ -201,12 +201,12 @@ def is_sharded_state_dict(o):
         return False
 
     values = list(o.values())
-    has_sharded_tensor = any(isinstance(v, ShardedTensor) for v in values)
+    has_sharded_weight = any(isinstance(v, ShardedWeight) for v in values)
 
-    if has_sharded_tensor:
-        if not all(isinstance(v, ShardedTensor) for v in values):
+    if has_sharded_weight:
+        if not all(isinstance(v, ShardedWeight) for v in values):
             raise TypeError(
-                "All values must be ShardedTensor if any value is ShardedTensor."
+                "All values must be ShardedWeight if any value is ShardedWeight."
             )
         return True
     else:

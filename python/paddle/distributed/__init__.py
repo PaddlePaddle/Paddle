@@ -121,6 +121,12 @@ from .entry_attr import (
 from .fleet import BoxPSDataset  # noqa: F401
 from .flex_checkpoint.dcp.load_state_dict import load_state_dict
 from .flex_checkpoint.dcp.save_state_dict import save_state_dict
+from .flex_checkpoint.dcp.sharded_weight import (
+    ShardedStateDict,
+    ShardedWeight,
+    build_sharded_state_dict,
+    shard_weight,
+)
 from .launch.main import launch
 from .parallel import (  # noqa: F401
     DataParallel,
@@ -229,4 +235,8 @@ __all__ = [
     "ContextParallel",
     "PrepareContextParallel",
     "create_nccl_config",
+    "ShardedWeight",
+    "ShardedStateDict",
+    "shard_weight",
+    "build_sharded_state_dict",
 ]

@@ -16,7 +16,7 @@ import unittest
 
 from paddle.distributed.flex_checkpoint import (
     AoAEngine,
-    ShardedTensorDesc,
+    ShardedWeightDesc,
 )
 from paddle.distributed.flex_checkpoint.aoa.aoa_engine import (
     ShardMappingEntry,
@@ -35,13 +35,13 @@ class TestAoAEngine(unittest.TestCase):
         #  +----+----+       +----+----+
         #  |    |    |       |    |    |
         #  +----+----+       +----+----+
-        s0 = ShardedTensorDesc(
+        s0 = ShardedWeightDesc(
             key="s0",
             local_shape=(2, 2),
             global_shape=(2, 2),
             global_offset=(0, 0),
         )
-        s1 = ShardedTensorDesc(
+        s1 = ShardedWeightDesc(
             key="s1",
             local_shape=(2, 2),
             global_shape=(2, 2),
@@ -56,13 +56,13 @@ class TestAoAEngine(unittest.TestCase):
         #  +--+--+--+--+   +--+--+--+--+
         #  |  |  |  |  |   |  |  |  |  |
         #  +--+--+--+--+   +--+--+--+--+
-        d0 = ShardedTensorDesc(
+        d0 = ShardedWeightDesc(
             key="d0",
             local_shape=(1, 4),
             global_shape=(1, 4),
             global_offset=(0, 0),
         )
-        d1 = ShardedTensorDesc(
+        d1 = ShardedWeightDesc(
             key="d1",
             local_shape=(1, 4),
             global_shape=(1, 4),
@@ -111,13 +111,13 @@ class TestAoAEngine(unittest.TestCase):
         #  +------+------+------+------+
         #
         # This region is mapped from s0, row 0, columns 0-1
-        query = ShardedTensorDesc(
+        query = ShardedWeightDesc(
             key="d0",
             local_shape=(1, 2),
             global_shape=(1, 4),
             global_offset=(0, 0),
         )
-        src_sharded_tensor_desc = ShardedTensorDesc(
+        src_sharded_tensor_desc = ShardedWeightDesc(
             key="s0",
             local_shape=(1, 2),
             global_shape=(2, 2),
@@ -143,13 +143,13 @@ class TestAoAEngine(unittest.TestCase):
         #  +------+------+------+------+
         #
         # This region is mapped from s1, row 1, columns 0-1
-        query = ShardedTensorDesc(
+        query = ShardedWeightDesc(
             key="d1",
             local_shape=(1, 2),
             global_shape=(1, 4),
             global_offset=(0, 2),
         )
-        src_sharded_tensor_desc = ShardedTensorDesc(
+        src_sharded_tensor_desc = ShardedWeightDesc(
             key="s1",
             local_shape=(1, 2),
             global_shape=(2, 2),
@@ -190,7 +190,7 @@ class TestAoAEngine(unittest.TestCase):
         # The answer consists of two mapping entries:
         # 1. d1[:, 0:2] <-- s0[1, :]
         # 2. d1[:, 2:4] <-- s1[1, :]
-        query = ShardedTensorDesc(
+        query = ShardedWeightDesc(
             key="d1",
             local_shape=(1, 4),
             global_shape=(1, 4),
@@ -198,13 +198,13 @@ class TestAoAEngine(unittest.TestCase):
         )
 
         # d1[:, 0:2] <--- s0[1, :]
-        src_sharded_tensor_desc0 = ShardedTensorDesc(
+        src_sharded_tensor_desc0 = ShardedWeightDesc(
             key="s0",
             local_shape=(1, 2),
             global_shape=(2, 2),
             global_offset=(1, 0),  # row 1, columns 0:2
         )
-        dst_sharded_tensor_desc0 = ShardedTensorDesc(
+        dst_sharded_tensor_desc0 = ShardedWeightDesc(
             key="d1",
             local_shape=(1, 2),
             global_shape=(1, 4),
@@ -215,13 +215,13 @@ class TestAoAEngine(unittest.TestCase):
         #  +------+------+------+------+
         #  |==s0==|==s0==|      |      |
         #  +------+------+------+------+
-        src_sharded_tensor_desc1 = ShardedTensorDesc(
+        src_sharded_tensor_desc1 = ShardedWeightDesc(
             key="s1",
             local_shape=(1, 2),
             global_shape=(2, 2),
             global_offset=(1, 0),
         )
-        dst_sharded_tensor_desc1 = ShardedTensorDesc(
+        dst_sharded_tensor_desc1 = ShardedWeightDesc(
             key="d1",
             local_shape=(1, 2),
             global_shape=(1, 4),

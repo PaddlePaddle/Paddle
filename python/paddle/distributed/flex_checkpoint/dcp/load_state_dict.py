@@ -28,8 +28,8 @@ from paddle.distributed.communication.group import is_initialized
 from paddle.distributed.fleet.utils.log_util import logger
 
 from .metadata import LocalTensorIndex, LocalTensorMetadata
-from .sharded_tensor import (
-    ShardedTensor,
+from .sharded_weight import (
+    ShardedWeight,
 )
 from .utils import (
     check_unique_id,
@@ -485,7 +485,7 @@ def get_read_items(metadata_list, state_dict, process_group, use_dist):
                     tuple([0] * len(val.shape)) if len(val.shape) > 0 else ()
                 )
             dtype = str(val.dtype).split(".")[1]
-        elif isinstance(val, ShardedTensor):
+        elif isinstance(val, ShardedWeight):
             local_shape, global_offset = (
                 (val.local_shape, val.global_offset)
                 if len(val.global_shape) > 0
@@ -540,7 +540,7 @@ def get_read_items(metadata_list, state_dict, process_group, use_dist):
 
 
 def load_state_dict(
-    state_dict: dict[str, Tensor] | dict[str, ShardedTensor],
+    state_dict: dict[str, Tensor] | dict[str, ShardedWeight],
     path: str,
     process_group: Group | None = None,
     coordinator_rank: int = 0,
@@ -619,7 +619,7 @@ def load_state_dict(
 
                 if min_numel == flat_numel:
                     tensor = flat_shard.local_tensor.reshape_(min_shape)
-                    load_dict[key] = ShardedTensor(
+                    load_dict[key] = ShardedWeight(
                         key=key,
                         local_tensor=tensor,
                         local_shape=min_shape,
@@ -632,7 +632,7 @@ def load_state_dict(
                     pad_tensor = paddle.zeros(
                         min_shape, dtype=flat_shard.local_tensor.dtype
                     )
-                    load_dict[key] = ShardedTensor(
+                    load_dict[key] = ShardedWeight(
                         key=key,
                         local_tensor=pad_tensor,
                         local_shape=min_shape,
@@ -699,7 +699,7 @@ def load_state_dict(
 
 
 def load_state_dict_impl(
-    state_dict: dict[str, Tensor] | dict[str, ShardedTensor],
+    state_dict: dict[str, Tensor] | dict[str, ShardedWeight],
     path: str,
     process_group: Group | None = None,
     coordinator_rank: int = 0,
@@ -715,7 +715,7 @@ def load_state_dict_impl(
         if len(flat_state_dict) > 0:
             for val in flat_state_dict.values():
                 assert isinstance(
-                    val, (paddle.Tensor, ShardedTensor)
+                    val, (paddle.Tensor, ShardedWeight)
                 ), f"The value of state_dict should be a paddle.Tensor, but got: {val}."
 
         use_dist = True if paddle.distributed.get_world_size() > 1 else False
@@ -816,7 +816,7 @@ def load_state_dict_impl(
 
 
 def _load_state_dict(
-    target_state_dict: dict[str : Tensor | ShardedTensor],
+    target_state_dict: dict[str : Tensor | ShardedWeight],
     source_state_dict: dict[str : dict[str:Tensor]],
     metadata_list,
     process_group=None,
@@ -840,7 +840,7 @@ def _load_state_dict(
 
         copied_target_state_dict = {}
         for key, value in target_state_dict.items():
-            if isinstance(value, ShardedTensor):
+            if isinstance(value, ShardedWeight):
                 copied_target_state_dict[key] = value.local_tensor
             else:
                 copied_target_state_dict[key] = value

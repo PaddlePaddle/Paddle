@@ -24,7 +24,7 @@ from .metadata import LocalTensorIndex, LocalTensorMetadata, Metadata
 if TYPE_CHECKING:
     from paddle.distributed.communication.group import Group
 
-    from .shard_tensor import ShardedStateDict
+    from .sharded_weight import ShardedStateDict
 
 
 def check_shard_cover(shard_blocks, global_ranges):
