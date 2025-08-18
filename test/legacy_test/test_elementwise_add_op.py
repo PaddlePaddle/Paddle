@@ -1242,6 +1242,26 @@ class TestElementwiseAddOp_Stride5(TestElementwiseAddOp_Stride):
         self.stride_param = [520, 260, 20, 1]
 
 
+class TestElementwiseAddOp_Stride_ZeroDim1(TestElementwiseAddOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
+        self.perm = [1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseAddOp_Stride_ZeroSize1(TestElementwiseAddOp_Stride):
+    def init_data(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.rand(1, 0, 2).astype('float32')
+        self.y = np.random.rand(3, 0, 1).astype('float32')
+        self.out = np.add(self.x, self.y)
+        self.perm = [2, 1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

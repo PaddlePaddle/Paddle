@@ -16,6 +16,15 @@
 
 namespace phi {
 
+static bool judge_valid_stride(std::vector<int64_t> tmp_stride) {
+  for (size_t i = 0; i < tmp_stride.size(); i++) {
+    if (tmp_stride[i] == 0) {
+      return false;
+    }
+  }
+  return true;
+}
+
 void DenseOperandInfo::tensor(DenseTensor*&& tensor) {
   tensor_base_ = std::move(tensor);
 }
@@ -52,9 +61,7 @@ void DenseTensorIteratorBase::reorder_dimensions() {
     perm_[0] = 0;
     return;
   }
-
   std::iota(perm_.rbegin(), perm_.rend(), 0);
-
   auto should_swap = [&](size_t dim0, size_t dim1) {
     for (auto arg = 0; arg < ntensors(); arg++) {
       if (operands_[arg].stride_bytes.empty() || operands_[arg].will_resize) {
@@ -83,7 +90,6 @@ void DenseTensorIteratorBase::reorder_dimensions() {
     }
     return 0;
   };
-
   for (auto i = 1; i < ndim(); i++) {
     int dim1 = i;
     for (int dim0 = i - 1; dim0 >= 0; dim0--) {
@@ -96,7 +102,6 @@ void DenseTensorIteratorBase::reorder_dimensions() {
       }
     }
   }
-
   permute_dimensions(perm_);
 }
 
@@ -105,7 +110,6 @@ void DenseTensorIteratorBase::permute_dimensions(std::vector<int64_t> perm) {
       perm.size(),
       static_cast<unsigned>(ndim()),
       "perm.size() must equal to ndim in DenseDenseTensorIterator");
-
   auto reorder = [perm](std::vector<int64_t> data) {
     auto res = std::vector<int64_t>(data.size(), 0);
     for (size_t i = 0; i < perm.size(); i++) {
@@ -113,7 +117,6 @@ void DenseTensorIteratorBase::permute_dimensions(std::vector<int64_t> perm) {
     }
     return res;
   };
-
   shape_ = reorder(shape_);
   for (auto& op : operands_) {
     if (!op.stride_bytes.empty()) {
@@ -145,14 +148,8 @@ std::vector<int64_t> DenseTensorIteratorBase::invert_perm(
 void DenseTensorIteratorBase::allocate_or_resize_outputs() {
   for (auto i = 0; i < num_outputs_; i++) {
     auto& op = operands_[i];
-    bool valid_stride = true;
-    auto tmp_stride = common::vectorize<int64_t>(op.tensor().strides());
-    for (size_t i = 0; i < tmp_stride.size(); i++) {
-      if (tmp_stride[i] == 0) {
-        valid_stride = false;
-        break;
-      }
-    }
+    bool valid_stride =
+        judge_valid_stride(common::vectorize<int64_t>(op.tensor().strides()));
     if (!op.tensor().initialized() || op.will_resize || !valid_stride) {
       auto element_size = phi::SizeOf(op.tensor().dtype());
       op.stride_bytes = compatible_stride(static_cast<int64_t>(element_size));
@@ -193,14 +190,8 @@ void DenseTensorIterator::set_output_raw_strided(int64_t output_idx,
                                                  std::vector<int64_t> sizes,
                                                  std::vector<int64_t> strides) {
   auto& op = operands_[output_idx];
-  bool valid_stride = true;
-  auto tmp_stride = common::vectorize<int64_t>(op.tensor().strides());
-  for (size_t i = 0; i < tmp_stride.size(); i++) {
-    if (tmp_stride[i] == 0) {
-      valid_stride = false;
-      break;
-    }
-  }
+  bool valid_stride =
+      judge_valid_stride(common::vectorize<int64_t>(op.tensor().strides()));
   if (!op.tensor().initialized() || !valid_stride) {
     if (strides.empty()) {
       auto meta = op.tensor().meta();
@@ -227,7 +218,6 @@ void DenseTensorIteratorBase::coalesce_dimensions() {
   if (ndim() <= 1) {
     return;
   }
-
   auto can_coalesce = [&](int dim0, int dim1) {
     auto shape0 = shape_[dim0];
     auto shape1 = shape_[dim1];
@@ -242,14 +232,12 @@ void DenseTensorIteratorBase::coalesce_dimensions() {
     }
     return true;
   };
-
   auto replace_stride = [&](int dim0, int dim1) {
     for (auto i = 0; i < ntensors(); i++) {
       auto& stride = operands_[i].stride_bytes;
       stride[dim0] = stride[dim1];
     }
   };
-
   int prev_dim = 0;
   for (auto dim = 1; dim < ndim(); dim++) {
     if (can_coalesce(prev_dim, dim)) {
@@ -290,17 +278,14 @@ static inline std::vector<int64_t> infer_size_dimvector(
   auto dimsB = b.size();
   auto ndim = dimsA > dimsB ? dimsA : dimsB;
   std::vector<int64_t> expandedSizes = std::vector<int64_t>(ndim, 0);
-
   for (int64_t i = ndim - 1; i >= 0; --i) {
     int64_t offset = ndim - 1 - i;
     int64_t dimA = dimsA - 1 - offset;
     int64_t dimB = dimsB - 1 - offset;
     auto sizeA = (dimA >= 0) ? a[dimA] : 1;
     auto sizeB = (dimB >= 0) ? b[dimB] : 1;
-
     expandedSizes[i] = sizeA == 1 ? sizeB : sizeA;
   }
-
   return expandedSizes;
 }
 
@@ -318,7 +303,6 @@ FastSetupType DenseTensorIteratorBase::compute_fast_setup_type(
   if (is_reduction_ || !all_ops_same_shape_) {
     return FastSetupType::NONE;
   }
-
   bool is_contiguous = true;
   for (const auto& op : operands_) {
     if (op.tensor().initialized() && !op.will_resize) {
@@ -337,7 +321,6 @@ bool DenseTensorIteratorBase::fast_set_up(
   if (setup_type == FastSetupType::NONE) {
     return false;
   }
-
   switch (setup_type) {
     case FastSetupType::CONTIGUOUS: {
       for (auto i = 0; i < num_outputs_; i++) {
@@ -371,14 +354,8 @@ void DenseTensorIteratorBase::compute_shape(
   bool has_scalars = false;
   bool has_tensors = false;
   for (auto& op : operands_) {
-    bool valid_stride = true;
-    auto tmp_stride = common::vectorize<int64_t>(op.tensor().strides());
-    for (size_t i = 0; i < tmp_stride.size(); i++) {
-      if (tmp_stride[i] == 0) {
-        valid_stride = false;
-        break;
-      }
-    }
+    bool valid_stride =
+        judge_valid_stride(common::vectorize<int64_t>(op.tensor().strides()));
     if (!op.tensor().initialized() || !valid_stride) continue;
     if (config.resize_outputs_ && op.is_output) continue;
     auto shape = common::vectorize<int64_t>(op.tensor().dims());
@@ -403,14 +380,8 @@ void DenseTensorIteratorBase::compute_shape(
 void DenseTensorIteratorBase::compute_strides(
     const DenseTensorIteratorConfig& config) {
   for (auto& op : operands_) {
-    bool valid_stride = true;
-    auto tmp_stride = common::vectorize<int64_t>(op.tensor().strides());
-    for (size_t i = 0; i < tmp_stride.size(); i++) {
-      if (tmp_stride[i] == 0) {
-        valid_stride = false;
-        break;
-      }
-    }
+    bool valid_stride =
+        judge_valid_stride(common::vectorize<int64_t>(op.tensor().strides()));
     if (op.tensor().initialized() && !op.will_resize && valid_stride) {
       std::vector<int64_t> original_shape =
           config.static_shape_ ? shape_
@@ -436,24 +407,12 @@ void DenseTensorIteratorBase::compute_strides(
 
 void DenseTensorIteratorBase::build(DenseTensorIteratorConfig& config) {
   populate_operands(config);
-
   compute_shape(config);
-
   if (!fast_set_up(config)) {
     compute_strides(config);
-
     reorder_dimensions();
-
     allocate_or_resize_outputs();
-
     coalesce_dimensions();
   }
-
-  for (int i = 0; i < ntensors(); i++) {
-    if (i < num_outputs_) continue;
-    auto& op = operands_[i];
-    op.data = const_cast<void*>(op.tensor().data());
-  }
 }
-
 }  // namespace phi

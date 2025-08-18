@@ -45,22 +45,14 @@ struct DenseOperandInfo {
   inline ~DenseOperandInfo() = default;
 
   void* data = nullptr;
-
   std::vector<int64_t> stride_bytes;
-
   DataType target_dtype = DataType::UNDEFINED;
   DataType current_dtype = DataType::UNDEFINED;
-
-  bool is_type_defined() const { return target_dtype != DataType::UNDEFINED; }
-
   bool is_output = false;
-
   bool will_resize = false;
-
   bool is_read_write = false;
-
   bool is_const = false;
-
+  bool is_type_defined() const { return target_dtype != DataType::UNDEFINED; }
   DenseTensor& tensor() const { return *tensor_base_; }
   void tensor(DenseTensor*&& tensor);
 
@@ -70,14 +62,11 @@ struct DenseOperandInfo {
 
 struct DenseTensorIteratorBase {
   void build(DenseTensorIteratorConfig&);
-
   int ndim() const { return static_cast<int>(shape_.size()); }
   std::vector<int64_t> shape() const { return shape_; }
   int64_t numel() const;
   int ntensors() const { return static_cast<int>(operands_.size()); }
-
   bool is_contiguous() const;
-
   std::vector<int64_t> strides(int64_t arg) const {
     return operands_[arg].stride_bytes;
   }
@@ -107,7 +96,6 @@ struct DenseTensorIteratorBase {
   std::vector<DenseOperandInfo> operands_;
   std::vector<int64_t> compatible_stride(int64_t element_size) const;
   std::vector<int64_t> invert_perm(std::vector<int64_t> input) const;
-
   virtual void set_output_raw_strided(int64_t output_idx,
                                       std::vector<int64_t> sizes,
                                       std::vector<int64_t> strides);
@@ -130,7 +118,6 @@ class DenseTensorIteratorConfig final {
   friend struct DenseTensorIterator;
 
   DenseTensorIteratorConfig() = default;
-
   DenseTensorIteratorConfig(DenseTensorIteratorConfig&&) = default;
   DenseTensorIteratorConfig& operator=(DenseTensorIteratorConfig&&) = default;
   ~DenseTensorIteratorConfig() = default;

@@ -2182,13 +2182,13 @@ PHI_DEFINE_EXPORTED_bool(use_default_stream,
                          "Whether use default stream.");
 
 /**
- * DenseTensorIterator related FLAG
- * Name: FLAGS_use_densetensor_iterator
+ * Stride_Compute_Kernel related FLAG
+ * Name: FLAGS_use_stride_compute_kernel
  * Since Version: 3.2
  * Value Range: bool, default=false
  * Example:
- * Note: Whether use DensetensorIterator.
+ * Note: Whether use Stride_Compute_Kernel.
  */
-PHI_DEFINE_EXPORTED_bool(use_densetensor_iterator,
+PHI_DEFINE_EXPORTED_bool(use_stride_compute_kernel,
                          false,
-                         "Whether use DensetensorIterator.");
+                         "Whether use Stride_Compute_Kernel.");

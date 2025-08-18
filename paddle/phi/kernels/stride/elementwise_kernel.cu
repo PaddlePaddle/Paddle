@@ -23,23 +23,21 @@
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/contiguous_kernel.h"
+#include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/dense_tensor_iterator.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
-#include "paddle/phi/kernels/legacy/elementwise_add_kernel.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 #include "paddle/phi/kernels/funcs/dims_simplifier.h"
 
-namespace kps = phi::kps;
-
 #endif
 
 COMMON_DECLARE_bool(use_stride_kernel);
-COMMON_DECLARE_bool(use_densetensor_iterator);
+COMMON_DECLARE_bool(use_stride_compute_kernel);
 
 namespace phi {
 template <typename Functor,
@@ -58,7 +56,6 @@ __global__ void BinaryElementwiseKernel(
   int64_t tid = THREAD_ID_X;
   int64_t nv = BLOCK_NUM_X * vt;
   int64_t idx = nv * BLOCK_ID_X + tid;
-
 #pragma unroll
   for (int i = 0; i < vt; i++) {
     if (idx < numel) {
@@ -71,7 +68,6 @@ __global__ void BinaryElementwiseKernel(
       std::get<0>(args[idx]) =
           *(reinterpret_cast<const _ptr_ std::tuple_element_t<0, ArgsT> *>(
               reinterpret_cast<const _ptr_ char *>(ins[0]) + offsets[1]));
-
       std::get<1>(args[idx]) =
           *(reinterpret_cast<const _ptr_ std::tuple_element_t<1, ArgsT> *>(
               reinterpret_cast<const _ptr_ char *>(ins[1]) + offsets[2]));
@@ -87,21 +83,22 @@ __global__ void BinaryElementwiseKernel(
 
       *reinterpret_cast<OutT *>(out_ptr) =
           *reinterpret_cast<const OutT *>(&(result[0]));
-
       idx += BLOCK_NUM_X;
     }
   }
 }
 
-template <typename OutT, typename Functor, int NumOuts = 1>
-void StrideBroadcastKernel(const KPDevice &dev_ctx,
-                           const std::vector<const DenseTensor *> &ins,
-                           std::vector<DenseTensor *> *outs,
-                           Functor func,
-                           int axis = -1) {
+// Not Support Vectorized Kernel For Now
+#define VEC_SIZE 1
+
+template <typename OutT, typename Context, typename Functor, int NumOuts = 1>
+void BinaryStrideBroadcastKernel(const Context &dev_ctx,
+                                 const std::vector<const DenseTensor *> &ins,
+                                 std::vector<DenseTensor *> *outs,
+                                 Functor func,
+                                 int axis = -1) {
   using Traits = phi::funcs::FunctionTraits<Functor>;
   const int Arity = Traits::arity;
-
   for (auto i = 0; i < outs->size(); ++i) {
     if (i > 0) {
       PADDLE_ENFORCE_EQ(
@@ -117,7 +114,6 @@ void StrideBroadcastKernel(const KPDevice &dev_ctx,
   if ((*outs)[0]->numel() == 0) {
     return;
   }
-
   int max_rank = 0;
   int min_rank = phi::DDim::kMaxRank;
   for (auto *in : ins) {
@@ -128,32 +124,27 @@ void StrideBroadcastKernel(const KPDevice &dev_ctx,
     max_rank = std::max(max_rank, (*outs)[0]->dims().size());
   }
   axis = axis == -1 ? max_rank - min_rank : axis;
-
   auto classifier =
       funcs::BroadcastTypeClassifier<OutT, Functor, Arity, NumOuts>(
           ins, outs, axis);
-
   DenseTensorIteratorConfig config;
   config.add_output(*((*outs)[0]));
   config.add_const_input(*(ins[0]));
   config.add_const_input(*(ins[1]));
   DenseTensorIterator iter = config.build();
-
   const int &numel = iter.numel();
-
   funcs::OffsetCalculator offset_calc = funcs::make_offset_calculator<3>(iter);
-
   constexpr int unroll_factor = sizeof(OutT) >= 4 ? 2 : 4;
-
   auto stream = dev_ctx.stream();
   auto threads = 128;
   auto blocks = (numel + 128 * unroll_factor - 1) / (128 * unroll_factor);
-
-  // Support Vectorized Kernel
-  int vec_size = 1;
-  int main_offset = (numel / (vec_size * threads)) * vec_size * threads;
-
-  BinaryElementwiseKernel<Functor, OutT, Arity, NumOuts, 1, unroll_factor>
+  int vec_size = VEC_SIZE;
+  BinaryElementwiseKernel<Functor,
+                          OutT,
+                          Arity,
+                          NumOuts,
+                          VEC_SIZE,
+                          unroll_factor>
       <<<blocks, threads, 0, stream>>>(classifier.ins_data,
                                        classifier.outs_data,
                                        numel,
@@ -162,65 +153,67 @@ void StrideBroadcastKernel(const KPDevice &dev_ctx,
                                        offset_calc);
 }
 
-template <typename T, typename Context>
-void AddStrideRawKernel(const Context &dev_ctx,
-                        const DenseTensor &x,
-                        const DenseTensor &y,
-                        int axis,
-                        DenseTensor *out) {
+template <typename T, typename Context, typename Functor>
+void LaunchBinaryElementwiseStrideKernel(const Context &dev_ctx,
+                                         const DenseTensor &x,
+                                         const DenseTensor &y,
+                                         Functor func,
+                                         int axis,
+                                         DenseTensor *out) {
   std::vector<const DenseTensor *> inputs = {&x, &y};
   std::vector<DenseTensor *> outputs = {out};
   dev_ctx.template Alloc<T>(out);
-  StrideBroadcastKernel<T>(
-      dev_ctx, inputs, &outputs, funcs::AddFunctor<T>(), axis);
+  BinaryStrideBroadcastKernel<T, Context>(
+      dev_ctx, inputs, &outputs, func, axis);
 }
 
-template <typename T, typename Context>
-void AddStrideKernel(const Context &dev_ctx,
-                     const DenseTensor &x,
-                     const DenseTensor &y,
-                     DenseTensor *out) {
-  if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(common::errors::Fatal(
-        "FLAGS_use_stride_kernel is closed. Strided kernel "
-        "be called, something wrong has happened!"));
+#define DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(name)                        \
+  template <typename T, typename Context>                                     \
+  void name##StrideKernel(const Context &dev_ctx,                             \
+                          const DenseTensor &x,                               \
+                          const DenseTensor &y,                               \
+                          DenseTensor *out) {                                 \
+    if (!FLAGS_use_stride_kernel) {                                           \
+      PADDLE_THROW(common::errors::Fatal(                                     \
+          "FLAGS_use_stride_kernel is closed. Strided kernel "                \
+          "be called, something wrong has happened!"));                       \
+    }                                                                         \
+    DenseTensor x_;                                                           \
+    DenseTensor y_;                                                           \
+    if (!FLAGS_use_stride_compute_kernel || x.offset() != 0 ||                \
+        y.offset() != 0) {                                                    \
+      if (!x.meta().is_contiguous() || x.offset() != 0) {                     \
+        x_ = paddle::experimental::Trans2Contiguous(x);                       \
+      } else {                                                                \
+        x_ = x;                                                               \
+      }                                                                       \
+      if (!y.meta().is_contiguous() || y.offset() != 0) {                     \
+        y_ = paddle::experimental::Trans2Contiguous(y);                       \
+      } else {                                                                \
+        y_ = y;                                                               \
+      }                                                                       \
+    } else {                                                                  \
+      x_ = x;                                                                 \
+      y_ = y;                                                                 \
+    }                                                                         \
+    if (x_.meta().is_contiguous() && y_.meta().is_contiguous()) {             \
+      auto meta = out->meta();                                                \
+      meta.strides = meta.calc_strides(out->dims());                          \
+      out->set_meta(meta);                                                    \
+      phi::name##Kernel<T, Context>(dev_ctx, x_, y_, out);                    \
+      return;                                                                 \
+    }                                                                         \
+    if (!FLAGS_use_stride_compute_kernel) {                                   \
+      PADDLE_THROW(                                                           \
+          common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. " \
+                                "Kernel using DenseTensorIterator "           \
+                                "be called, something wrong has happened!")); \
+    }                                                                         \
+    LaunchBinaryElementwiseStrideKernel<T, Context>(                          \
+        dev_ctx, x_, y_, funcs::name##Functor<T>(), -1, out);                 \
   }
-  DenseTensor x_;
-  DenseTensor y_;
 
-  if (!FLAGS_use_densetensor_iterator) {
-    if (!x.meta().is_contiguous()) {
-      x_ = paddle::experimental::Trans2Contiguous(x);
-    } else {
-      x_ = x;
-    }
-    if (!y.meta().is_contiguous()) {
-      y_ = paddle::experimental::Trans2Contiguous(y);
-    } else {
-      y_ = y;
-    }
-  } else {
-    x_ = x;
-    y_ = y;
-  }
-
-  if (x_.meta().is_contiguous() && y_.meta().is_contiguous()) {
-    auto meta = out->meta();
-    meta.strides = meta.calc_strides(out->dims());
-    out->set_meta(meta);
-
-    phi::AddKernel<T, Context>(dev_ctx, x_, y_, out);
-    return;
-  }
-
-  if (!FLAGS_use_densetensor_iterator) {
-    PADDLE_THROW(
-        common::errors::Fatal("FLAGS_use_densetensor_iterator is closed. "
-                              "Kernel using DenseTensorIterator "
-                              "be called, something wrong has happened!"));
-  }
-  phi::AddStrideRawKernel<T, Context>(dev_ctx, x_, y_, -1, out);
-}
+DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(Add)
 
 }  // namespace phi
 
