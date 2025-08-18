@@ -227,6 +227,8 @@ from .manipulation import (  # noqa: F401
     unstack,
     view,
     view_as,
+    view_as_complex,
+    view_as_real,
     vsplit,
     vstack,
 )
@@ -267,6 +269,7 @@ from .math import (  # noqa: F401
     bitwise_right_shift,
     bitwise_right_shift_,
     broadcast_shape,
+    broadcast_shapes,
     cartesian_prod,
     ceil,
     ceil_,
@@ -426,6 +429,7 @@ from .math import (  # noqa: F401
     tanh_,
     trace,
     trapezoid,
+    true_divide,
     trunc,
     trunc_,
     vander,
@@ -481,6 +485,10 @@ from .stat import (  # noqa: F401
     var,
 )
 from .to_string import set_printoptions  # noqa: F401
+
+# API alias
+div = divide
+div_ = divide_
 
 # this list used in math_op_patch.py for _binary_creator_
 tensor_method_func = [
@@ -600,6 +608,9 @@ tensor_method_func = [
     'outer',
     'divide',
     'divide_',
+    'div',
+    'div_',
+    'true_divide',
     'floor_divide',
     'floor_divide_',
     'remainder',
@@ -636,6 +647,7 @@ tensor_method_func = [
     'isneginf',
     'isposinf',
     'isreal',
+    'broadcast_shapes',
     'broadcast_shape',
     'conj',
     'neg',
@@ -783,7 +795,9 @@ tensor_method_func = [
     'lu_unpack',
     'cdist',
     'as_complex',
+    'view_as_complex',
     'as_real',
+    'view_as_real',
     'rad2deg',
     'deg2rad',
     'gcd',

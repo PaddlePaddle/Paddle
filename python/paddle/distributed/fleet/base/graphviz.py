@@ -237,7 +237,7 @@ class GraphPreviewGenerator:
                 '  <tr>',
                 '    <td>',
                 str(data_type),
-                '    </td>' '  </tr>',
+                '    </td>  </tr>',
                 '</table>>',
             ]
         )

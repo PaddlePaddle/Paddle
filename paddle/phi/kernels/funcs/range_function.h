@@ -24,7 +24,24 @@ void GetSize(T start, T end, T step, int64_t* size) {
       step,
       0,
       common::errors::InvalidArgument("The step of range op should not be 0."));
-
+  if constexpr (std::is_same_v<T, phi::dtype::bfloat16> ||
+                std::is_same_v<T, phi::dtype::float16>) {
+    PADDLE_ENFORCE_EQ(phi::dtype::isfinite(start) && phi::dtype::isfinite(end),
+                      true,
+                      common::errors::InvalidArgument(
+                          "The start and end of range op should be finite "
+                          "numbers, but received  %f -> %f.",
+                          static_cast<double>(start),
+                          static_cast<double>(end)));
+  } else if constexpr (std::is_floating_point_v<T>) {
+    PADDLE_ENFORCE_EQ(std::isfinite(start) && std::isfinite(end),
+                      true,
+                      common::errors::InvalidArgument(
+                          "The start and end of range op should be finite "
+                          "numbers, but received  %f -> %f.",
+                          static_cast<double>(start),
+                          static_cast<double>(end)));
+  }
   if (start < end) {
     if (step < 0) {
       *size = 0;

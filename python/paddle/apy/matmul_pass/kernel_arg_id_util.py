@@ -16,7 +16,6 @@ import ap
 
 
 class KernelArgIdNameRegistry:
-
     def __init__(self, code_gen_ctx, tensor_match_ctx, name_prefix):
         self.code_gen_ctx = code_gen_ctx
         self.tensor_match_ctx = tensor_match_ctx

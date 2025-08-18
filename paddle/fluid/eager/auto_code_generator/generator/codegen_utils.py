@@ -389,7 +389,7 @@ def ParseYamlForwardFromBackward(string):
     fargs = r'(.*?)'
     frets = r'(.*)'
     pattern = (
-        fr'{fname}{wspace}\({wspace}{fargs}{wspace}\){wspace}->{wspace}{frets}'
+        rf'{fname}{wspace}\({wspace}{fargs}{wspace}\){wspace}->{wspace}{frets}'
     )
 
     m = re.search(pattern, string)
@@ -409,7 +409,7 @@ def ParseYamlForward(args_str, returns_str):
 
     fargs = r'(.*?)'
     wspace = r'\s*'
-    args_pattern = fr'^\({fargs}\)$'
+    args_pattern = rf'^\({fargs}\)$'
     args_str = re.search(args_pattern, args_str.strip()).group(1)
 
     inputs_list, attrs_list = ParseYamlArgs(args_str)
@@ -424,7 +424,7 @@ def ParseYamlBackward(args_str, returns_str):
 
     fargs = r'(.*?)'
     wspace = r'\s*'
-    args_pattern = fr'\({fargs}\)'
+    args_pattern = rf'\({fargs}\)'
     args_str = re.search(args_pattern, args_str).group(1)
 
     inputs_list, attrs_list = ParseYamlArgs(args_str)
@@ -451,7 +451,7 @@ def ParseYamlCompositeInfo(string):
     fname = r'(.*?)'
     wspace = r'\s*'
     fargs = r'(.*?)'
-    pattern = fr'{fname}{wspace}\({wspace}{fargs}{wspace}\)'
+    pattern = rf'{fname}{wspace}\({wspace}{fargs}{wspace}\)'
 
     m = re.search(pattern, string)
     composite_fun_info = {}
@@ -479,6 +479,7 @@ class FunctionGeneratorBase:
         )
 
         self.forward_api_name = ""
+        self.python_api_info = {}
 
         self.orig_forward_inputs_list = (
             []
@@ -506,6 +507,15 @@ class FunctionGeneratorBase:
         )  # {name: func_name, args: [input_name, ...]}
         self.intermediate_outputs = []  # [name, ...]
         self.forward_inplace_map = {}  # {name : name, ...}
+        self.args_alias_map = {}  # {arg_name: alias_vector, ...}
+        self.dygraph_pre_process = (
+            ""  # The pre_process function calling code for dygraph
+        )
+        self.static_pre_process = (
+            ""  # The pre_process function calling code for static graph
+        )
+        self.args_parser_func_name = ""  # The custom args parser function
+        self.python_api_names = ""
 
     def ParseForwardInplaceInfo(self):
         forward_api_contents = self.forward_api_contents
@@ -514,6 +524,43 @@ class FunctionGeneratorBase:
 
         inplace_map_str = forward_api_contents['inplace']
         self.forward_inplace_map = ParseYamlInplaceInfo(inplace_map_str)
+
+    # Function for parameters parse
+    def ParsePythonAPIInfo(self):
+        python_api_info = self.python_api_info
+        args_alias = {}
+        if 'name' in python_api_info.keys():
+            self.python_api_names = python_api_info['name']
+        if 'args_alias' in python_api_info.keys():
+            for arg, alias_or_mode in python_api_info['args_alias'].items():
+                if arg == 'use_default_mapping':
+                    args_alias.update({arg: alias_or_mode})
+                    continue
+                alias_set = set(alias_or_mode)
+                # Add the original argument name to the alias set
+                alias_set.add(arg)
+                # Convert to C++ vector format
+                alias_vector = (
+                    "{" + ",".join(f'"{name}"' for name in alias_set) + "}"
+                )
+                args_alias.update({arg: alias_vector})
+            self.args_alias_map = args_alias
+        if 'pre_process' in python_api_info.keys():
+            pre_process = python_api_info['pre_process']
+            if 'func' in pre_process.keys():
+                self.dygraph_pre_process = pre_process['func']
+                self.static_pre_process = pre_process['func']
+                # TODO check len(pre_process) > 1
+
+            if 'dygraph_func' in pre_process.keys():
+                self.dygraph_pre_process = pre_process['dygraph_func']
+            if 'static_func' in pre_process.keys():
+                self.static_pre_process = pre_process['static_func']
+        if (
+            'args_parser' in python_api_info.keys()
+            and 'func' in python_api_info['args_parser']
+        ):
+            self.args_parser_func_name = python_api_info['args_parser']['func']
 
     def ParseNoNeedBuffer(self):
         grad_api_contents = self.grad_api_contents
@@ -575,6 +622,8 @@ class FunctionGeneratorBase:
         ), 'Unable to find "output" in forward_api_contents keys'
 
         forward_returns_str = forward_api_contents['output']
+        if 'python_api' in forward_api_contents.keys():
+            self.python_api_info = forward_api_contents['python_api']
 
         # Collect Original Forward Inputs/Outputs and then perform validation checks
         (

@@ -533,7 +533,6 @@ create_test_fp16_class(TestElementwiseDivOpXsizeLessThanYsize)
 
 
 class TestElementwiseDivBroadcast(unittest.TestCase):
-
     def test_shape_with_batch_sizes(self):
         paddle.enable_static()
         main_program = paddle.static.Program()

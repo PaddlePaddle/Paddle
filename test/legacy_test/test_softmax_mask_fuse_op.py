@@ -119,7 +119,6 @@ class TestSoftmaxMaskFuseOp01(OpTest):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestDropoutBiasFuseOp3(unittest.TestCase):
-
     def test_static_result(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()

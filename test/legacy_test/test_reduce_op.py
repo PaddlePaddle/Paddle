@@ -232,7 +232,6 @@ def create_test_fp16_class_cpu(parent):
 
 
 class TestSumOp3D0size(TestSumOp3Dim):
-
     def test_check_output(self):
         self.check_output(check_pir=True, check_pir_onednn=True)
 
@@ -1243,7 +1242,6 @@ class TestAllComplex128OpMixed(TestAllComplex128Op):
 
 
 class TestAllOpError(unittest.TestCase):
-
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -1528,7 +1526,6 @@ class TestAny8DOpWithKeepDim(OpTest):
 
 
 class TestAnyOpError(unittest.TestCase):
-
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()

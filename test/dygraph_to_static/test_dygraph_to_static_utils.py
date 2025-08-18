@@ -47,10 +47,14 @@ DEFAULT_MODES = [
 
 class CheckTestCaseExistsMixin:
     def assert_hasattr(self, obj: object, attr: str):
-        self.assertTrue(hasattr(obj, attr), msg=f"{attr} not in {obj.__dict__.keys()}")  # type: ignore
+        self.assertTrue(  # type: ignore
+            hasattr(obj, attr), msg=f"{attr} not in {obj.__dict__.keys()}"
+        )
 
     def assert_not_hasattr(self, obj: object, attr: str):
-        self.assertFalse(hasattr(obj, attr), msg=f"{attr} in {obj.__dict__.keys()}")  # type: ignore
+        self.assertFalse(  # type: ignore
+            hasattr(obj, attr), msg=f"{attr} in {obj.__dict__.keys()}"
+        )
 
     def check_test_case_exists(
         self, test_case: Dy2StTestBase, case_name: str, mode_tuple: ModeTuple

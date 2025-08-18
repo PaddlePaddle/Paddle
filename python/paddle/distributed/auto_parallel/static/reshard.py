@@ -1096,9 +1096,9 @@ class Resharder:
                 "The type of auto_parallel_startup_prog should be Program or None, "
                 f"but got {type(auto_parallel_startup_prog)}."
             )
-        assert isinstance(rank_id, int), (
-            "The type of rank_id should be int, " f"but got {type(rank_id)}."
-        )
+        assert isinstance(
+            rank_id, int
+        ), f"The type of rank_id should be int, but got {type(rank_id)}."
         assert isinstance(dist_context, DistributedContext), (
             "The type of dist_context should be DistributedContext, "
             f"but got {type(dist_context)}."

@@ -48,6 +48,7 @@ from .fused_matmul_bias import (
     fused_linear_activation,
     fused_matmul_bias,
 )
+from .fused_partial_rope import fused_partial_rope
 from .fused_rms_norm import fused_rms_norm
 from .fused_rms_norm_ext import fused_rms_norm_ext
 from .fused_rotary_position_embedding import fused_rotary_position_embedding
