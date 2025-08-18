@@ -34,14 +34,22 @@ struct CustomContext::Impl {
     if (stream_owned_ && stream_) {
       stream_ = nullptr;
     }
-    phi::DeviceManager::DestroyBlasHandle(
-        place_, reinterpret_cast<void*>(blas_handle_));
-    phi::DeviceManager::DestroyBlasHandle(
-        place_, reinterpret_cast<void*>(blas_tensor_core_handle_));
-    phi::DeviceManager::DestroyBlasHandle(
-        place_, reinterpret_cast<void*>(blas_tf32_tensor_core_handle_));
-    phi::DeviceManager::DestroyBlasLtHandle(
-        place_, reinterpret_cast<void*>(blaslt_handle_));
+    if (blas_handle_) {
+      DeviceManager::DestroyBlasHandle(place_,
+                                       reinterpret_cast<void*>(blas_handle_));
+    }
+    if (blas_tensor_core_handle_) {
+      DeviceManager::DestroyBlasHandle(
+          place_, reinterpret_cast<void*>(blas_tensor_core_handle_));
+    }
+    if (blas_tf32_tensor_core_handle_) {
+      DeviceManager::DestroyBlasHandle(
+          place_, reinterpret_cast<void*>(blas_tf32_tensor_core_handle_));
+    }
+    if (blaslt_handle_) {
+      DeviceManager::DestroyBlasLtHandle(
+          place_, reinterpret_cast<void*>(blaslt_handle_));
+    }
   }
 
   void Init() {

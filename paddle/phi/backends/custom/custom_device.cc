@@ -1031,7 +1031,7 @@ class CustomDevice : public DeviceInterface {
 
   void InitBlasHandle(size_t dev_id,
                       void** blas_handle,
-                      phi::stream::stream_t stream) {
+                      phi::stream::stream_t stream) override {
     const auto device = &devices_pool[dev_id];
     if (pimpl_->init_blas_handle) {
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
@@ -1041,7 +1041,9 @@ class CustomDevice : public DeviceInterface {
     }
   }
 
-  void BlasSetMathMode(size_t dev_id, void* blas_handle, int math_mode) {
+  void BlasSetMathMode(size_t dev_id,
+                       void* blas_handle,
+                       int math_mode) override {
     const auto device = &devices_pool[dev_id];
     if (pimpl_->blas_set_math_mode) {
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->blas_set_math_mode(
@@ -1049,7 +1051,7 @@ class CustomDevice : public DeviceInterface {
     }
   }
 
-  void InitBlasLtHandle(size_t dev_id, void** blaslt_handle) {
+  void InitBlasLtHandle(size_t dev_id, void** blaslt_handle) override {
     const auto device = &devices_pool[dev_id];
     if (pimpl_->init_blaslt_handle) {
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->init_blaslt_handle(
@@ -1057,7 +1059,7 @@ class CustomDevice : public DeviceInterface {
     }
   }
 
-  void DestroyBlasHandle(size_t dev_id, void* blas_handle) {
+  void DestroyBlasHandle(size_t dev_id, void* blas_handle) override {
     const auto device = &devices_pool[dev_id];
     if (pimpl_->destroy_blas_handle) {
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->destroy_blas_handle(
@@ -1065,7 +1067,7 @@ class CustomDevice : public DeviceInterface {
     }
   }
 
-  void DestroyBlasLtHandle(size_t dev_id, void* blaslt_handle) {
+  void DestroyBlasLtHandle(size_t dev_id, void* blaslt_handle) override {
     const auto device = &devices_pool[dev_id];
     if (pimpl_->destroy_blaslt_handle) {
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->destroy_blaslt_handle(
