@@ -79,7 +79,7 @@ def parameter_accuracy(body):
                 if i not in test_list_lower:
                     single_mess += f'{i}.'
             if len(single_mess) != 0:
-                message += f'{key} should be in {test_list}. but now is [{single_mess}].\n'
+                message += f'\n{key} should be in {test_list}. but now is [{single_mess}].'
     return message
 
 
@@ -126,7 +126,7 @@ def checkPRTemplate(repo, body, CHECK_TEMPLATE):
         res = False
         message = parameter_accuracy(body)
         if len(message) == 0:
-            message = 'To merge into the fleety branch, you need to merge into the develop branch first and then cherry-pick it to the fleety branch. Please merge into develop first and fill in the PR link in the Description'
+            message = '\n To merge into the fleety branch, you need to merge into the develop branch first and then cherry-pick it to the fleety branch. Please merge into develop first and fill in the PR link in the Description'
     return res, message
 
 
