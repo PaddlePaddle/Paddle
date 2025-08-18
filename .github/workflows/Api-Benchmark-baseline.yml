@@ -56,6 +56,9 @@ jobs:
   api-benchmark-baseline:
     name: Api benchmark baseline
     if: github.event.schedule == '0 21 * * *' || github.event.inputs.job-name == 'api-benchmark'
+    strategy:
+      matrix:
+        run-labels: [api-bm-20, api-bm-27]
     uses: ./.github/workflows/_Api-Benchmark.yml
     needs: [clone, build-docker, build]
     with:
@@ -63,6 +66,7 @@ jobs:
       baseline: 'true'
       MANUALLY_PR_ID: ${{ inputs.PR_ID }}
       MANUALLY_COMMIT_ID: ${{ inputs.COMMIT_ID }}
+      run-labels: ${{ matrix.run-labels }}
 
   test1:
     runs-on: ubuntu-latest
