@@ -26,6 +26,7 @@ from paddle import _C_ops
 from paddle.tensor import fill_constant
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
+    VariableArgsDecorator,
     param_two_alias,
     reshape_decorator,
     view_decorator,
@@ -4737,6 +4738,69 @@ def tile(
             type='tile', inputs=inputs, outputs={'Out': out}, attrs=attrs
         )
         return out
+
+
+@VariableArgsDecorator('repeats')
+def repeat(
+    input: Tensor,
+    repeats: int | Sequence[int] | Tensor,
+) -> Tensor:
+    """
+    Repeat elements of a tensor along specified dimensions.
+
+    Args:
+        input (Tensor): The input tensor to be repeated.
+        *repeats (int|list|tuple|Tensor): The number of times to repeat along each dimension.
+            Can be a single integer (applies to the first dimension only), or multiple integers (one per dimension).
+
+    Returns:
+        Tensor: The repeated tensor with expanded dimensions.
+
+    Note:
+        When using a single integer, it only repeats along the first dimension.
+        The total number of repeat values must match the number of dimensions in the tensor when using multiple values.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> # Example 1: 1D tensor - single repeat
+            >>> x = paddle.to_tensor([1, 2, 3])
+            >>> out = x.repeat(2)
+            >>> print(out)
+            Tensor(shape=[6], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [1, 2, 3, 1, 2, 3])
+
+            >>> # Example 2: 2D tensor - single repeat value
+            >>> x = paddle.to_tensor([[1, 2], [3, 4]])
+            >>> out = x.repeat(2)
+            >>> print(out)
+            Tensor(shape=[2, 4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            [[1, 2, 1, 2],
+            [3, 4, 3, 4]])
+
+            >>> # Example 3: 2D tensor - multiple repeats
+            >>> x = paddle.to_tensor([[1, 2], [3, 4]])
+            >>> out = x.repeat([2, 3])
+            >>> print(out)
+            Tensor(shape=[4, 6], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            [[1, 2, 1, 2, 1, 2],
+            [3, 4, 3, 4, 3, 4],
+            [1, 2, 1, 2, 1, 2],
+            [3, 4, 3, 4, 3, 4]])
+
+            >>> # Example 4: 3D tensor - mixed repeats
+            >>> x = paddle.to_tensor([[[1, 2], [3, 4]]])
+            >>> out = x.repeat([2, 1, 3])
+            >>> print(out)
+            Tensor(shape=[2, 2, 6], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            [[[1, 2, 1, 2, 1, 2],
+            [3, 4, 3, 4, 3, 4]],
+            [[1, 2, 1, 2, 1, 2],
+            [3, 4, 3, 4, 3, 4]]])
+    """
+    return tile(input, repeat_times=repeats)
 
 
 def expand_as(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
