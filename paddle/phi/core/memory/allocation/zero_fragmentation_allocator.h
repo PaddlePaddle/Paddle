@@ -40,19 +40,15 @@ class ZeroFragmentationAllocator : public AutoGrowthBestFitAllocator {
                                    allow_free_idle_chunk,
                                    extra_padding_size) {}
 
-  void DumpInfo() const override;
-
  protected:
   phi::Allocation* AllocateImpl(size_t unaligned_size) override;
 
   void FreeImpl(phi::Allocation* allocation) override;
 
- protected:
-  uint64_t FreeIdleChunks() override;
+  uint64_t ReleaseImpl(const phi::Place& place) override;
 
  private:
   void FreeZeroFragmentationBlocks(phi::Allocation* allocation);
-  void DeallocateZeroFragmentationBlocksUnsafe();  // lock free
   void DeallocateZeroFragmentationBlocks();
 
  private:
@@ -84,16 +80,11 @@ class ZeroFragmentationAllocatorManager {
   void DisablePeralloc() { prealloc_ = false; }
   bool IsPeralloc() const { return prealloc_; }
 
-  void EnableDeallocate() { deallocate_ = true; }
-  void DisableDeallocate() { deallocate_ = false; }
-  bool IsDeallocate() const { return deallocate_; }
-
  private:
   ZeroFragmentationAllocatorManager() = default;
 
   bool enabled_{false};
   bool prealloc_{false};
-  bool deallocate_{false};
 };
 
 }  // namespace allocation

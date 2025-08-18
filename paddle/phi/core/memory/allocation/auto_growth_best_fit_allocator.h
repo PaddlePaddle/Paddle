@@ -37,7 +37,9 @@ class AutoGrowthBestFitAllocator : public Allocator {
 
   bool IsAllocThreadSafe() const override { return true; }
 
-  virtual void DumpInfo() const;
+  void DumpInfo() const;
+  void DumpFragmentationMetric() const;
+  size_t GetMaxFreeBlockSize() const;
 
  protected:
   phi::Allocation *AllocateImpl(size_t size) override;
@@ -52,7 +54,7 @@ class AutoGrowthBestFitAllocator : public Allocator {
   }
 
  protected:
-  virtual uint64_t FreeIdleChunks();
+  uint64_t FreeIdleChunks();
   void Trace() const;
 
   template <typename T>
@@ -61,21 +63,12 @@ class AutoGrowthBestFitAllocator : public Allocator {
   struct Chunk;
 
   struct Block {
-    Block(void *ptr,
-          size_t size,
-          bool is_free,
-          bool in_default_pool,
-          Chunk *chunk)
-        : ptr_(ptr),
-          size_(size),
-          is_free_(is_free),
-          in_default_pool_(in_default_pool),
-          chunk_(chunk) {}
+    Block(void *ptr, size_t size, bool is_free, Chunk *chunk)
+        : ptr_(ptr), size_(size), is_free_(is_free), chunk_(chunk) {}
 
     void *ptr_;
     size_t size_;
     bool is_free_;
-    bool in_default_pool_;
     Chunk *chunk_;  // which chunk it is from
   };
 

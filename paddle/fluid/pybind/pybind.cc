@@ -2710,6 +2710,20 @@ All parameter, weight, gradient are variables in Paddle.
             .GetAutoGrowthAllocator(place));
     allocator->DumpInfo();
   });
+  m.def("allocator_dump_fragmentation_metric", [](const phi::GPUPlace &place) {
+    auto allocator = std::dynamic_pointer_cast<
+        paddle::memory::allocation::AutoGrowthBestFitAllocator>(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAutoGrowthAllocator(place));
+    allocator->DumpFragmentationMetric();
+  });
+  m.def("allocator_get_max_free_block_size", [](const phi::GPUPlace &place) {
+    auto allocator = std::dynamic_pointer_cast<
+        paddle::memory::allocation::AutoGrowthBestFitAllocator>(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetAutoGrowthAllocator(place));
+    return allocator->GetMaxFreeBlockSize();
+  });
 
   m.def("set_skip_offload_callback_tensors",
         [](const std::vector<paddle::Tensor> &tensors) {
@@ -3559,22 +3573,10 @@ All parameter, weight, gradient are variables in Paddle.
                  Instance()
                      .EnablePeralloc();
            })
-      .def("_disable_prealloc",
-           [] {
-             paddle::memory::allocation::ZeroFragmentationAllocatorManager::
-                 Instance()
-                     .DisablePeralloc();
-           })
-      .def("_enable_deallocate",
-           [] {
-             paddle::memory::allocation::ZeroFragmentationAllocatorManager::
-                 Instance()
-                     .EnableDeallocate();
-           })
-      .def("_disable_deallocate", [] {
+      .def("_disable_prealloc", [] {
         paddle::memory::allocation::ZeroFragmentationAllocatorManager::
             Instance()
-                .DisableDeallocate();
+                .DisablePeralloc();
       });
 
 #if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)

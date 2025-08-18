@@ -62,6 +62,9 @@ from .pipeline_hooks import (
 g_profile_pipeline_details_steps = int(
     os.getenv("FLAGS_profile_pipeline_details_steps", "0")
 )
+g_log_allocator_fragmentation = int(
+    os.getenv("FLAGS_pipeline_log_allocator_fragmentation", "0")
+)
 
 __all__ = []
 
@@ -3387,6 +3390,11 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
         next_backward_virtual_pp_rank = self._get_virtual_pp_rank(
             steady_1f1b_steps, forward=False
         )
+
+        if g_log_allocator_fragmentation:
+            paddle.core.allocator_dump_fragmentation_metric(
+                paddle.framework._current_expected_place()
+            )
 
         # no more fwd, but we need to send the input_tensor_grad.
         if self.is_pipeline_first_stage(ignore_virtual=True):

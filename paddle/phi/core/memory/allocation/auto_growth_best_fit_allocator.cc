@@ -85,6 +85,69 @@ void AutoGrowthBestFitAllocator::DumpInfo() const {
               << std::endl;
   }
 }
+
+size_t AutoGrowthBestFitAllocator::GetMaxFreeBlockSize() const {
+  size_t max_free_block_size = 0;
+  for (auto &chunk : chunks_) {
+    for (auto &block : chunk.blocks_) {
+      if (!block.is_free_) {
+        continue;
+      }
+      max_free_block_size =
+          max_free_block_size > block.size_ ? max_free_block_size : block.size_;
+    }
+  }
+  return max_free_block_size;
+}
+
+void AutoGrowthBestFitAllocator::DumpFragmentationMetric() const {
+  constexpr size_t MB512 = 512 * 1024 * 1024;
+  constexpr size_t GB1 = 1024 * 1024 * 1024;
+  constexpr size_t GB2 = 2 * GB1;
+
+  size_t free_block_count = 0;
+  size_t free_blocks_above_512mb_count = 0;
+  size_t free_blocks_above_1gb_count = 0;
+  size_t free_blocks_above_2gb_count = 0;
+  size_t total_used_size = 0;
+  size_t total_free_size = 0;
+  size_t max_free_block_size = 0;
+
+  for (auto &chunk : chunks_) {
+    for (auto &block : chunk.blocks_) {
+      if (!block.is_free_) {
+        total_used_size += block.size_;
+        continue;
+      }
+      ++free_block_count;
+      total_free_size += block.size_;
+      max_free_block_size =
+          max_free_block_size > block.size_ ? max_free_block_size : block.size_;
+      if (block.size_ >= MB512) ++free_blocks_above_512mb_count;
+      if (block.size_ >= GB1) ++free_blocks_above_1gb_count;
+      if (block.size_ >= GB2) ++free_blocks_above_2gb_count;
+    }
+  }
+
+  std::ostringstream oss;
+  oss << "Total_used_size\t" << total_used_size << "\tTotal_freed_size\t"
+      << total_free_size;
+  oss << "\tMax_free_block_size\t" << max_free_block_size
+      << "\tMean_free_block_size\t"
+      << static_cast<float>(total_free_size) /
+             static_cast<float>(free_block_count);
+  oss << "\tRatio_free_blocks_above_512MB\t"
+      << static_cast<float>(free_blocks_above_512mb_count) /
+             static_cast<float>(free_block_count);
+  oss << "\tRatio_free_blocks_above_1GB\t"
+      << static_cast<float>(free_blocks_above_1gb_count) /
+             static_cast<float>(free_block_count);
+  oss << "\tRatio_free_blocks_above_2GB\t"
+      << static_cast<float>(free_blocks_above_2gb_count) /
+             static_cast<float>(free_block_count);
+  std::cout << oss.str() << std::endl;
+}
+
 phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
     size_t unaligned_size) {
   phi::RecordEvent record("AutoGrowthBestFitAllocator::Allocate",
@@ -110,7 +173,7 @@ phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
       block_it->is_free_ = false;
     } else {
       auto remaining_free_block = chunk->blocks_.insert(
-          block_it, Block(block_it->ptr_, remaining_size, true, true, chunk));
+          block_it, Block(block_it->ptr_, remaining_size, true, chunk));
       free_blocks_.emplace(std::make_pair(remaining_size, block_it->ptr_),
                            remaining_free_block);
       block_it->ptr_ =
@@ -151,10 +214,10 @@ phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
 
     size_t remaining_size = realloc_size - size;
     if (remaining_size > 0) {
-      blocks.emplace_back(p, remaining_size, true, true, chunk);
+      blocks.emplace_back(p, remaining_size, true, chunk);
       free_blocks_.emplace(std::make_pair(remaining_size, p), --(blocks.end()));
     }
-    blocks.emplace_back(p + remaining_size, size, false, true, chunk);
+    blocks.emplace_back(p + remaining_size, size, false, chunk);
     block_it = --(blocks.end());
     VLOG(2) << "Not found and reallocate " << realloc_size << "("
             << static_cast<void *>(p) << "), and remaining " << remaining_size;
@@ -195,7 +258,7 @@ void AutoGrowthBestFitAllocator::FreeImpl(phi::Allocation *allocation) {
     // - If a block is free but belongs to a zero-fragmentation pool:
     //   → It must NOT be in `free_blocks`
     //   → Instead, it should be managed by `zero_fragmentation_block`
-    if (prev_it->is_free_ && prev_it->in_default_pool_) {
+    if (prev_it->is_free_) {
       free_blocks_.erase(std::make_pair(prev_it->size_, prev_it->ptr_));
       prev_it->size_ += block_it->size_;
       blocks.erase(block_it);
@@ -207,8 +270,7 @@ void AutoGrowthBestFitAllocator::FreeImpl(phi::Allocation *allocation) {
   ++next_it;
 
   // It's weird that using `next_it == blocks.end()` will cause a judgment fail.
-  if (block_it != (--blocks.end()) && next_it->is_free_ &&
-      next_it->in_default_pool_) {
+  if (block_it != (--blocks.end()) && next_it->is_free_) {
     free_blocks_.erase(std::make_pair(next_it->size_, next_it->ptr_));
     block_it->size_ += next_it->size_;
     blocks.erase(next_it);
@@ -234,8 +296,7 @@ uint64_t AutoGrowthBestFitAllocator::FreeIdleChunks() {
   uint64_t bytes = 0;
   for (auto chunk_it = chunks_.begin(); chunk_it != chunks_.end();) {
     auto &blocks = chunk_it->blocks_;
-    if (blocks.size() == 1 && blocks.begin()->is_free_ &&
-        blocks.begin()->in_default_pool_) {
+    if (blocks.size() == 1 && blocks.begin()->is_free_) {
       auto &block = *blocks.begin();
       VLOG(2) << "Free chunk with size " << block.size_;
       if (FLAGS_dump_chunk_info) {

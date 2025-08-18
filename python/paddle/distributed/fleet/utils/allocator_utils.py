@@ -37,13 +37,13 @@ class ZeroFragmentationAllocatorManager:
             size: Size of the buffer to allocate in bytes.
         """
         with ZeroFragmentationAllocatorManager._prealloc_context():
+            size = min(
+                paddle.core.allocator_get_max_free_block_size(
+                    paddle.framework._current_expected_place()
+                ),
+                size,
+            )
             ZeroFragmentationAllocatorManager._allocate(size)
-
-    @staticmethod
-    def deallocate_buffer() -> None:
-        """Deallocate buffers using the monotonic allocator."""
-        with ZeroFragmentationAllocatorManager._deallocate_context():
-            ZeroFragmentationAllocatorManager._allocate(1)
 
     @staticmethod
     @contextlib.contextmanager
@@ -65,7 +65,7 @@ class ZeroFragmentationAllocatorManager:
         Returns:
             A paddle.Tensor of uint8 type with the requested size.
         """
-        return paddle.empty(shape=[size], dtype='uint8')
+        paddle.empty(shape=[size], dtype='uint8')
 
     @staticmethod
     @contextlib.contextmanager
@@ -77,16 +77,4 @@ class ZeroFragmentationAllocatorManager:
             yield
         finally:
             ZeroFragmentationAllocatorManager._core_manager._disable_prealloc()
-            ZeroFragmentationAllocatorManager._core_manager._disable()
-
-    @staticmethod
-    @contextlib.contextmanager
-    def _deallocate_context() -> Generator[None, Any, None]:
-        """Context manager for deallocation mode."""
-        ZeroFragmentationAllocatorManager._core_manager._enable()
-        ZeroFragmentationAllocatorManager._core_manager._enable_deallocate()
-        try:
-            yield
-        finally:
-            ZeroFragmentationAllocatorManager._core_manager._disable_deallocate()
             ZeroFragmentationAllocatorManager._core_manager._disable()

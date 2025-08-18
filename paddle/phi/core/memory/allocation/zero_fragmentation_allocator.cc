@@ -37,16 +37,10 @@ phi::Allocation *ZeroFragmentationAllocator::AllocateImpl(
 
   if (ZeroFragmentationAllocatorManager::Instance().IsEnabled()) {
     if (ZeroFragmentationAllocatorManager::Instance().IsPeralloc()) {
-      if (zero_fragmentation_block_ != nulliter) {
-        PADDLE_THROW(phi::errors::InvalidArgument(
-            "ZeroFragmentationAllocator::AllocateImpl, already has a buffer "
-            "block"));
-      } else {
-        allocation = AutoGrowthBestFitAllocator::AllocateImpl(size);
-        zero_fragmentation_block_ =
-            static_cast<BlockAllocation *>(allocation)->block_it_;
-        zero_fragmentation_block_->in_default_pool_ = false;
-      }
+      DeallocateZeroFragmentationBlocks();
+      allocation = AutoGrowthBestFitAllocator::AllocateImpl(size);
+      zero_fragmentation_block_ =
+          static_cast<BlockAllocation *>(allocation)->block_it_;
     } else {
       std::lock_guard<SpinLock> guard(spinlock_);
       if (zero_fragmentation_block_ != nulliter &&
@@ -65,17 +59,12 @@ phi::Allocation *ZeroFragmentationAllocator::AllocateImpl(
               std::next(block_it),
               Block(reinterpret_cast<uint8_t *>(block_it->ptr_) + size,
                     remaining_size,
-                    true,
                     false,
                     chunk));
           zero_fragmentation_block_ = remaining_free_block;
           block_it->size_ = size;
           block_it->is_free_ = false;
-          block_it->in_default_pool_ = true;
         }
-
-        ++total_alloc_times_;
-        total_alloc_size_ += size;
         allocation = new BlockAllocation(block_it);
       }
     }
@@ -83,16 +72,7 @@ phi::Allocation *ZeroFragmentationAllocator::AllocateImpl(
 
   if (allocation == nullptr) {
     VLOG(10) << "Allocate form default pool";
-    try {
-      allocation = AutoGrowthBestFitAllocator::AllocateImpl(size);
-    } catch (BadAlloc &ex) {
-      VLOG(10) << "ZeroFragmentationAllocator MemDbg OOM";
-      DeallocateZeroFragmentationBlocks();
-      if (FLAGS_dump_zero_fragmentation_info) {
-        DumpInfo();
-      }
-      allocation = AutoGrowthBestFitAllocator::AllocateImpl(size);
-    }
+    allocation = AutoGrowthBestFitAllocator::AllocateImpl(size);
   }
   return allocation;
 }
@@ -100,16 +80,19 @@ phi::Allocation *ZeroFragmentationAllocator::AllocateImpl(
 void ZeroFragmentationAllocator::FreeImpl(phi::Allocation *allocation) {
   if (ZeroFragmentationAllocatorManager::Instance().IsPeralloc()) {
     FreeZeroFragmentationBlocks(allocation);
-  } else if (ZeroFragmentationAllocatorManager::Instance().IsDeallocate()) {
-    AutoGrowthBestFitAllocator::FreeImpl(allocation);
-    DeallocateZeroFragmentationBlocks();
   } else {
     AutoGrowthBestFitAllocator::FreeImpl(allocation);
   }
 }
 
+uint64_t ZeroFragmentationAllocator::ReleaseImpl(const phi::Place &place) {
+  DeallocateZeroFragmentationBlocks();
+  return AutoGrowthBestFitAllocator::ReleaseImpl(place);
+}
+
 void ZeroFragmentationAllocator::FreeZeroFragmentationBlocks(
     phi::Allocation *allocation) {
+  // Not return to default pool, just reuse the memory.
   std::lock_guard<SpinLock> guard(spinlock_);
   auto block_it = static_cast<BlockAllocation *>(allocation)->block_it_;
 
@@ -119,31 +102,22 @@ void ZeroFragmentationAllocator::FreeZeroFragmentationBlocks(
         "zero_fragmentation_block_ != block_it"));
   }
 
-  total_free_times_ += 1;
-  total_free_size_ += block_it->size_;
-
-  block_it->is_free_ = true;
+  block_it->is_free_ = false;
 
   delete allocation;
 }
 
-uint64_t ZeroFragmentationAllocator::FreeIdleChunks() {
-  DeallocateZeroFragmentationBlocksUnsafe();
-  return AutoGrowthBestFitAllocator::FreeIdleChunks();
-}
-
 void ZeroFragmentationAllocator::DeallocateZeroFragmentationBlocks() {
   std::lock_guard<SpinLock> guard(spinlock_);
-  DeallocateZeroFragmentationBlocksUnsafe();
-}
-void ZeroFragmentationAllocator::DeallocateZeroFragmentationBlocksUnsafe() {
+
   if (zero_fragmentation_block_ == nulliter) {
     return;
   }
 
   auto block_it = zero_fragmentation_block_;
+  block_it->is_free_ = true;
+
   auto &blocks = block_it->chunk_->blocks_;
-  block_it->in_default_pool_ = true;
 
   if (block_it != blocks.begin()) {
     auto prev_it = block_it;
@@ -160,60 +134,15 @@ void ZeroFragmentationAllocator::DeallocateZeroFragmentationBlocksUnsafe() {
   auto next_it = block_it;
   ++next_it;
 
-  // It's weird that using `next_it == blocks.end()` will cause a judgment fail.
   if (block_it != (--blocks.end()) && next_it->is_free_) {
     free_blocks_.erase(std::make_pair(next_it->size_, next_it->ptr_));
     block_it->size_ += next_it->size_;
     blocks.erase(next_it);
-    block_it->in_default_pool_ = true;
   }
 
   free_blocks_.emplace(std::make_pair(block_it->size_, block_it->ptr_),
                        block_it);
   zero_fragmentation_block_ = nulliter;
-}
-
-void ZeroFragmentationAllocator::DumpInfo() const {
-  std::cout << "---Start DumpInfo---" << std::endl;
-  for (auto chunk_it = chunks_.begin(); chunk_it != chunks_.end(); ++chunk_it) {
-    std::cout << "Chunk\t";
-    std::ostringstream oss_used;
-    std::ostringstream oss_free;
-    std::ostringstream oss_blocks;
-    size_t total = 0, free = 0, used = 0;
-    for (auto &b : chunk_it->blocks_) {
-      total += b.size_;
-      if (b.is_free_) {
-        free += b.size_;
-        oss_free << "(" << b.size_ << ", " << b.ptr_
-                 << ", in_default_pool=" << b.in_default_pool_ << ")";
-      } else {
-        used += b.size_;
-        oss_used << "(" << b.size_ << ", " << b.ptr_
-                 << ", in_default_pool=" << b.in_default_pool_ << ")";
-      }
-    }
-    std::cout << "total:" << total << "\t"
-              << "used:" << used << "\t"
-              << "free:" << free << std::endl;
-    std::cout << "used:[" << oss_used.str() << "]\nfreed:[" << oss_free.str()
-              << "]" << std::endl;
-    oss_blocks << "zero_fragmentation_block:";
-    if (zero_fragmentation_block_ != nulliter) {
-      oss_blocks << "(" << zero_fragmentation_block_->size_ << ", "
-                 << zero_fragmentation_block_->ptr_ << ", in_default_pool="
-                 << zero_fragmentation_block_->in_default_pool_ << ")\n";
-    } else {
-      oss_blocks << "(nulliter)\n";
-    }
-    oss_blocks << "free_blocks:";
-    for (auto &pair : free_blocks_) {
-      oss_blocks << "(" << pair.second->size_ << ", " << pair.second->ptr_
-                 << ", in_default_pool=" << pair.second->in_default_pool_
-                 << ")";
-    }
-    std::cout << oss_blocks.str() << std::endl;
-  }
 }
 
 }  // namespace allocation

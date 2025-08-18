@@ -43,13 +43,10 @@ class ZeroFragmentationAllocatorTest(unittest.TestCase):
         ):
             data = paddle.randn(shape=[1024, 1024], dtype='float32')
 
-        ZeroFragmentationAllocatorManager.deallocate_buffer()
         np.testing.assert_array_equal(data_ref.numpy(), data.numpy())
 
-        del data_ref
-        del data
-        paddle.device.cuda.empty_cache()
-        np.testing.assert_array_equal(paddle.device.cuda.memory_reserved(), 0)
+        ZeroFragmentationAllocatorManager.allocate_buffer(1024 * 1024 * 6)
+        np.testing.assert_array_equal(data_ref.numpy(), data.numpy())
 
     def test_zero_fragmentation_allocator_fallback(self):
         if paddle.device.cuda.device_count() < 1:
@@ -65,14 +62,6 @@ class ZeroFragmentationAllocatorTest(unittest.TestCase):
         ):
             data = paddle.randn(shape=[1024, 1024], dtype='float32')
 
-        ZeroFragmentationAllocatorManager.deallocate_buffer()
-        np.testing.assert_array_equal(data_ref.numpy(), data.numpy())
-
-        del data_ref
-        del data
-        paddle.device.cuda.empty_cache()
-        np.testing.assert_array_equal(paddle.device.cuda.memory_reserved(), 0)
-
     def test_zero_fragmentation_allocator_non_cuda(self):
         paddle.seed(42)
         data_ref = paddle.randn(shape=[1024, 1024], dtype='float32').cpu()
@@ -83,11 +72,6 @@ class ZeroFragmentationAllocatorTest(unittest.TestCase):
         ):
             data = paddle.randn(shape=[1024, 1024], dtype='float32').cpu()
             np.testing.assert_array_equal(data_ref.numpy(), data.numpy())
-
-        del data_ref
-        del data
-        paddle.device.cuda.empty_cache()
-        np.testing.assert_array_equal(paddle.device.cuda.memory_reserved(), 0)
 
     def test_zero_fragmentation_allocator_multitensors(self):
         ZeroFragmentationAllocatorManager.allocate_buffer(1024 * 1024 * 10)
@@ -108,38 +92,9 @@ class ZeroFragmentationAllocatorTest(unittest.TestCase):
             for _ in range(10):
                 tensor_list.append(paddle.ones((1024, 1024)))
 
-        ZeroFragmentationAllocatorManager.deallocate_buffer()
-
-        tensor_list = []
-        paddle.device.cuda.empty_cache()
-        np.testing.assert_array_equal(paddle.device.cuda.memory_reserved(), 0)
-
-    def test_zero_fragmentation_allocator_empty_cache(self):
-        if paddle.device.cuda.device_count() < 1:
-            return
-
-        paddle.device.cuda.empty_cache()
-        ZeroFragmentationAllocatorManager.allocate_buffer(1024 * 1024 * 10)
-
-        paddle.device.cuda.empty_cache()
-        ZeroFragmentationAllocatorManager.allocate_buffer(1024 * 1024 * 10)
-
-        paddle.seed(42)
-        data_ref = paddle.randn(shape=[1024, 1024], dtype='float32')
-
-        paddle.seed(42)
-        with (
-            ZeroFragmentationAllocatorManager.zero_fragmentation_allocator_context()
-        ):
-            data = paddle.randn(shape=[1024, 1024], dtype='float32')
-
-        ZeroFragmentationAllocatorManager.deallocate_buffer()
-        np.testing.assert_array_equal(data_ref.numpy(), data.numpy())
-
-        del data_ref
-        del data
-        paddle.device.cuda.empty_cache()
-        np.testing.assert_array_equal(paddle.device.cuda.memory_reserved(), 0)
+        paddle.core.allocator_dump_fragmentation_metric(
+            paddle.framework._current_expected_place()
+        )
 
 
 if __name__ == '__main__':
