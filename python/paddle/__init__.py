@@ -110,13 +110,13 @@ else:
         elif len(args) == 1 and isinstance(args[0], (list, tuple)):
             super_init(self, paddle.to_tensor(args[0], dtype="float32"))
             return
-        create_random_tensor = True
+        with_shape_empty = True
         for arg in args:
             if not isinstance(arg, int):
-                create_random_tensor = False
+                with_shape_empty = False
                 break
-        if create_random_tensor:
-            super_init(self, paddle.randn(list(args), dtype="float32"))
+        if with_shape_empty:
+            super_init(self, paddle.empty(list(args), dtype="float32"))
             return
         else:
             super_init(self, *args, **kwargs)
