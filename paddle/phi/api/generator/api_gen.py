@@ -120,7 +120,6 @@ class ForwardAPI(BaseAPI):
         return inplace_map, view_map
 
     def get_return_type_with_intermediate(self, inplace_flag=False):
-
         out_type_list = []
         for i, out_type in enumerate(self.outputs['types']):
             out_name = self.outputs['names'][i].split('@')[0]
@@ -428,7 +427,6 @@ class ForwardAPI(BaseAPI):
 
 
 class BackwardAPI(ForwardAPI):
-
     def gene_base_api_code(
         self, inplace_flag=False, grad_flag=False, append_input_out=True
     ):
@@ -492,7 +490,7 @@ PADDLE_API {self.get_return_type()} {api_func_name}({self.get_declare_args(appen
             api_declaration = (
                 api_declaration
                 + f"""
-PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_declare_args(inplace_flag=True,append_input_out=append_input_out)});
+PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_declare_args(inplace_flag=True, append_input_out=append_input_out)});
 """
             )
 

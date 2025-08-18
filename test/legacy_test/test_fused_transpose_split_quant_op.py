@@ -52,7 +52,6 @@ def fused_transpose_split_quant_ref(x, xscale, tokens_per_expert, pow_2_scales):
 def test_fused_transpose_split_quant(
     tokens_per_expert, seq_len, pow_2_scales, using_fp8=False
 ):
-
     x = paddle.randn([sum(tokens_per_expert), seq_len], dtype='bfloat16')
     if using_fp8:
         x = x.cast('float8_e4m3fn')
