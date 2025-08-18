@@ -274,9 +274,11 @@ class TestPowerAPI_Specialization(unittest.TestCase):
     def test_power(self):
         self._test_power(0)
         self._test_power(0.5)
+        self._test_power(1.5)
         self._test_power(1)
         self._test_power(2)
         self._test_power(3)
+        self._test_power(4)
         self._test_power(-0.5)
         self._test_power(-1)
         self._test_power(-2)
