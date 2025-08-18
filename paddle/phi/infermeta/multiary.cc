@@ -4944,15 +4944,22 @@ void RmsNormInferMeta(const MetaTensor& x,
                       const float quant_min_bound,
                       MetaTensor* out,
                       MetaTensor* residual_out,
-                      MetaTensor* inv_var) {
+                      MetaTensor* inv_var,
+                      MetaConfig config) {
   size_t x_dims_size = x.dims().size();
 
   size_t normalized_dims = 1;
+  bool has_minus_one = false;
   for (size_t i = begin_norm_axis; i < x_dims_size; ++i) {
     normalized_dims *= x.dims().at(i);
+    has_minus_one |= (x.dims().at(i) == -1);
   }
 
-  if (normalized_dims != 0) {
+  bool skip_check = false;
+  if (normalized_dims == 0) skip_check = true;
+  if (has_minus_one && !config.is_runtime) skip_check = true;
+
+  if (!skip_check) {
     PADDLE_ENFORCE_EQ(normalized_dims,
                       norm_weight.dims()[0],
                       common::errors::InvalidArgument(
@@ -4963,7 +4970,6 @@ void RmsNormInferMeta(const MetaTensor& x,
                           normalized_dims,
                           norm_weight.dims()[0]));
   }
-
   out->set_dims(x.dims());
 
   if (quant_scale > 0) {
