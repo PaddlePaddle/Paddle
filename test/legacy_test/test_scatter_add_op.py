@@ -25,8 +25,8 @@ from paddle.static import InputSpec
 
 
 def scatter_add_net(x, axis=-1):
-    index = paddle.full_like(x, fill_value=4, dtype='int64')
-    value = paddle.full_like(x, fill_value=-2.0, dtype=x.dtype)
+    index = paddle.full_like(x, fill_value=2, dtype='int64')
+    value = paddle.full_like(x, fill_value=-4.0, dtype=x.dtype)
     return paddle.scatter_add(x, axis, index, value)
 
 
