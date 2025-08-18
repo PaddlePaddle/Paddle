@@ -363,7 +363,7 @@ class TestLogsumexpOutAPI(unittest.TestCase):
                 y = out_buf
             else:
                 raise AssertionError
-            ref = paddle._C_ops.logsumexp(x, None, False, True)
+            ref = paddle._C_ops.logsumexp(x, [], False, True)
             np.testing.assert_allclose(
                 y.numpy(), ref.numpy(), rtol=1e-6, atol=1e-6
             )
