@@ -200,9 +200,6 @@ from .nn.functional.distance import (
     pdist,
 )
 from .nn.initializer.lazy_init import LazyGuard
-from .softmax import (
-    softmax,
-)
 from .tensor.attribute import (
     imag,
     is_complex,
@@ -612,6 +609,9 @@ from .tensor.search import (
     topk,
     where,
     where_,
+)
+from .tensor.softmax import (
+    softmax,
 )
 from .tensor.stat import (
     mean,

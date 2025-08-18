@@ -16,7 +16,6 @@ from ..signal import (  # noqa: F401
     istft,
     stft,
 )
-from ..softmax import softmax as softmax
 from .array import (  # noqa: F401
     array_length,
     array_read,
@@ -474,6 +473,7 @@ from .search import (  # noqa: F401
     where,
     where_,
 )
+from .softmax import softmax as softmax
 from .stat import (  # noqa: F401
     mean,
     median,

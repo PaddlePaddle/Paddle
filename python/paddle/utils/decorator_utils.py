@@ -159,23 +159,24 @@ class SetDefaultParaAliasDecorator(DecoratorBase):
         return args, kwargs
 
 
-# from liuyi
-class ParamIgnoreDecorator(DecoratorBase):
-    """Decorator for handling ignored parameters.
+class ParamIgnoreAndAliasDecorator(DecoratorBase):
+    """Decorator for handling ignored parameters and parameter alias.
 
     Args:
         ignore_specs: An iterable of ignore specifications where each element is either:
             - A string (parameter name to ignore)
             - A tuple of (parameter_name, index, type) to ignore by name, position and type
+        alias_mapping: A dict mapping from origin to alias. Alias is iterable.
     """
 
     def __init__(
-        self, ignore_specs: Iterable[str | tuple[str, int, type[Any]]]
+        self,
+        ignore_specs: Iterable[str | tuple[str, int, type[Any]]],
+        alias_mapping: dict[str, Iterable[str]],
     ) -> None:
         super().__init__()
         self._ignore_names = set()
         self._ignore_index_type = {}
-
         for spec in ignore_specs:
             if isinstance(spec, str):
                 self._ignore_names.add(spec)
@@ -188,23 +189,53 @@ class ParamIgnoreDecorator(DecoratorBase):
                     f"Invalid ignore specification: {spec}. "
                     "Expected str or tuple[str, int, Type[Any]]"
                 )
+        self._ignore_index_type = dict(sorted(self._ignore_index_type.items()))
+
+        # Check alias_mapping types
+        if not isinstance(alias_mapping, dict):
+            raise TypeError("alias_mapping must be a dictionary")
+        # Build a reverse alias map for faster lookup
+        self._alias_mapping = {}
+        for original, aliases in alias_mapping.items():
+            if not isinstance(aliases, (list, tuple, set)):
+                raise TypeError(f"Aliases for '{aliases}' must be iterable")
+            for alias in aliases:
+                self._alias_mapping[alias] = original
 
     def process(self, args: tuple[Any, ...], kwargs: dict[str, Any]):
         # Remove ignored parameters from kwargs
-        for k in list(kwargs.keys()):
-            if k in self._ignore_names:
-                del kwargs[k]
+        ignore_names = self._ignore_names
+        if ignore_names and (args or kwargs):  # Skip if no names to ignore
+            if kwargs:
+                for name in ignore_names:
+                    kwargs.pop(name, None)
 
-        # Remove ignored parameters from args
-        if self._ignore_index_type:
-            args = tuple(
-                arg
-                for i, arg in enumerate(args)
-                if not (
-                    i in self._ignore_index_type
-                    and isinstance(arg, self._ignore_index_type[i])
+            # Remove ignored parameters from args
+            ignore_index_type = self._ignore_index_type
+            if ignore_index_type and args:
+                args = tuple(
+                    arg
+                    for i, arg in enumerate(args)
+                    if not (
+                        i in ignore_index_type
+                        and isinstance(arg, ignore_index_type[i])
+                    )
                 )
-            )
+
+        # Process parameters to handle alias mapping
+        alias_mapping = self._alias_mapping
+        if alias_mapping and kwargs:
+            # Directly modify kwargs based on alias mapping (only modify if necessary)
+            for alias, original in alias_mapping.items():
+                if alias in kwargs:
+                    if original not in kwargs:
+                        # Only modify the dictionary if necessary
+                        kwargs[original] = kwargs.pop(alias)
+                    else:
+                        raise ValueError(
+                            f"Cannot specify both '{original}' and its alias '{alias}'"
+                        )
+
         return args, kwargs
 
 
