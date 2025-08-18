@@ -2316,7 +2316,7 @@ class TestAllAPI_Compatibility(unittest.TestCase):
             )
             ref_out = np.all(self.np_input, 1, keepdims=True)
             for out in fetches:
-                self.assertTrue((out == ref_out.all()).all())
+                self.assertTrue((out == ref_out).all())
 
 
 class TestAnyAPI(unittest.TestCase):
