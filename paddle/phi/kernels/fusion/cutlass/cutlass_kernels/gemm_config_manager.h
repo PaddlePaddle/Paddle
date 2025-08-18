@@ -228,7 +228,7 @@ class GemmConfigManager {
     }
     auto mProfileMap = mGemmProfileMap->getMProfileMap(gemmId);
     if (mProfileMap->find(mRounded) == mProfileMap->end()) {
-      mProfileMap->insert({m, config});
+      mProfileMap->insert({mRounded, config});
     } else {
       return false;
     }
