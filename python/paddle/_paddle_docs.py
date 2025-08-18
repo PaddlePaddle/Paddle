@@ -58,6 +58,9 @@ add_doc_all(
             output Tensor. The result tensor will have one fewer dimension
             than the `x` unless :attr:`keepdim` is true, default
             value is False.
+        out (Tensor|None, optional): Output tensor. If provided in dynamic graph, the result will
+            be written to this tensor and also returned. The returned tensor and `out` share memory
+            and autograd meta. Default: None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -185,6 +188,9 @@ add_doc_all(
             output Tensor. The result tensor will have one fewer dimension
             than the `x` unless :attr:`keepdim` is true, default
             value is False.
+        out (Tensor|None, optional): Output tensor. If provided in dynamic graph, the result will
+            be written to this tensor and also returned. The returned tensor and `out` share memory
+            and autograd meta. Default: None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -292,72 +298,127 @@ add_doc_all(
 
 add_doc_all(
     "sqrt",
-    r"""
-    Computes the square root of the elements of the input tensor.
-
+    """
+    Sqrt Activation Operator.
+    .. math::
+       out=\\sqrt{x}=x^{1/2}
     Args:
-        x (Tensor): Input tensor. Supported dtypes: bfloat16, float16, float32, float64,
-            uint8, int8, int16, int32, int64 (integer types are autocasted to float32).
+        x (Tensor): Input of Sqrt operator, an N-D Tensor, with data type float32, float64, float16, bfloat16
+            uint8, int8, int16, int32, int64.
         out (Tensor|None, optional): Output tensor. If provided in dynamic graph, the result will
             be written to this tensor and also returned. The returned tensor and `out` share memory
             and autograd meta. Default: None.
-        name (str|None, optional): Name for the operation (optional, default is None).
-
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
     Returns:
-        Tensor: The elementwise square root of `x`, same shape as `x`.
-
-    Note:
-        In dynamic graph, both a return tensor and `out` can be used at the same time; they share
-        the same storage and autograd meta.
+        Tensor. Output of Sqrt operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
+    Examples:
+        .. code-block:: python
+            >>> import paddle
+            >>> x = paddle.to_tensor([0.1, 0.2, 0.3, 0.4])
+            >>> out = paddle.sqrt(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.31622776, 0.44721359, 0.54772258, 0.63245553])
     """,
 )
 
 add_doc_all(
     "maximum",
-    r"""
-    Returns the element-wise maximum of two tensors.
-
+    """
+    Compare two tensors and returns a new tensor containing the element-wise maxima. The equation is:
     .. math::
-        out = \max(x, other)
-
+        out = max(x, y)
+    Note:
+        ``paddle.maximum`` supports broadcasting. If you want know more about broadcasting, please refer to  `Introduction to Tensor`_ .
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
     Args:
-        x (Tensor): First input tensor.
-        y (Tensor): Second input tensor. Alias with PyTorch: `other`.
+        x (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64.
+        y (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64.
         out (Tensor|None, optional): Output tensor. If provided in dynamic graph, the result will
             be written to this tensor and also returned. The returned tensor and `out` share memory
             and autograd meta. Default: None.
-        name (str|None, optional): Name for the operation (optional, default is None).
-
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
     Returns:
-        Tensor: Element-wise maximum of `x` and `y`.
-
-    Note:
-        In dynamic graph, both a return tensor and `out` can be used at the same time; they share
-        the same storage and autograd meta.
+        N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
+    Examples:
+        .. code-block:: python
+            >>> import paddle
+            >>> x = paddle.to_tensor([[1, 2], [7, 8]])
+            >>> y = paddle.to_tensor([[3, 4], [5, 6]])
+            >>> res = paddle.maximum(x, y)
+            >>> print(res)
+            Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[3, 4],
+             [7, 8]])
+            >>> x = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
+            >>> y = paddle.to_tensor([3, 0, 4])
+            >>> res = paddle.maximum(x, y)
+            >>> print(res)
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[3, 2, 4],
+             [3, 2, 4]])
+            >>> x = paddle.to_tensor([2, 3, 5], dtype='float32')
+            >>> y = paddle.to_tensor([1, float("nan"), float("nan")], dtype='float32')
+            >>> res = paddle.maximum(x, y)
+            >>> print(res)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [2. , nan, nan])
+            >>> x = paddle.to_tensor([5, 3, float("inf")], dtype='float32')
+            >>> y = paddle.to_tensor([1, -float("inf"), 5], dtype='float32')
+            >>> res = paddle.maximum(x, y)
+            >>> print(res)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [5.  , 3.  , inf.])
     """,
 )
 
 add_doc_all(
     "minimum",
-    r"""
-    Returns the element-wise minimum of two tensors.
-
+    """
+    Compare two tensors and return a new tensor containing the element-wise minima. The equation is:
     .. math::
-        out = \min(x, other)
-
+        out = min(x, y)
+    Note:
+        ``paddle.minimum`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
     Args:
-        x (Tensor): First input tensor.
-        y (Tensor): Second input tensor. Alias with PyTorch: `other`.
+        x (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64.
+        y (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64.
         out (Tensor|None, optional): Output tensor. If provided in dynamic graph, the result will
             be written to this tensor and also returned. The returned tensor and `out` share memory
             and autograd meta. Default: None.
-        name (str|None, optional): Name for the operation (optional, default is None).
-
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
     Returns:
-        Tensor: Element-wise minimum of `x` and `y`.
-
-    Note:
-        In dynamic graph, both a return tensor and `out` can be used at the same time; they share
-        the same storage and autograd meta.
+        Tensor. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
+    Examples:
+        .. code-block:: python
+            >>> import paddle
+            >>> x = paddle.to_tensor([[1, 2], [7, 8]])
+            >>> y = paddle.to_tensor([[3, 4], [5, 6]])
+            >>> res = paddle.minimum(x, y)
+            >>> print(res)
+            Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1, 2],
+             [5, 6]])
+            >>> x = paddle.to_tensor([[[1, 2, 3], [1, 2, 3]]])
+            >>> y = paddle.to_tensor([3, 0, 4])
+            >>> res = paddle.minimum(x, y)
+            >>> print(res)
+            Tensor(shape=[1, 2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[[1, 0, 3],
+              [1, 0, 3]]])
+            >>> x = paddle.to_tensor([2, 3, 5], dtype='float32')
+            >>> y = paddle.to_tensor([1, float("nan"), float("nan")], dtype='float32')
+            >>> res = paddle.minimum(x, y)
+            >>> print(res)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [1. , nan, nan])
+            >>> x = paddle.to_tensor([5, 3, float("inf")], dtype='float64')
+            >>> y = paddle.to_tensor([1, -float("inf"), 5], dtype='float64')
+            >>> res = paddle.minimum(x, y)
+            >>> print(res)
+            Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [ 1.  , -inf.,  5.  ])
     """,
 )
