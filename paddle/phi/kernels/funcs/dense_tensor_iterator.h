@@ -21,11 +21,15 @@
 
 namespace phi {
 
-class DenseTensorIteratorConfig;
+struct DenseTensorIteratorConfig;
 struct DenseTensorIterator;
 
-enum class FastSetupType : uint8_t { NONE, CONTIGUOUS };
+enum struct FastSetupType : uint8_t { NONE, CONTIGUOUS };
 
+/**
+ * DenseOperandInfo: Used to store tensor-related information.
+ * Contains metadata and details about tensors participating in operations.
+ */
 struct DenseOperandInfo {
   DenseOperandInfo() = default;
   inline explicit DenseOperandInfo(DenseTensor*&& t) {
@@ -58,17 +62,21 @@ struct DenseOperandInfo {
   DenseTensor* tensor_base_;
 };
 
+/**
+ * DenseTensorIteratorBase: Base class for DenseTensorIterator.
+ * Defines and supports the key functions used by DenseTensorIterator.
+ */
 struct DenseTensorIteratorBase {
   void build(DenseTensorIteratorConfig&);
   int ndim() const { return static_cast<int>(shape_.size()); }
-  std::vector<int64_t> shape() const { return shape_; }
+  const std::vector<int64_t>& shape() const { return shape_; }
   int64_t numel() const;
   int ntensors() const { return static_cast<int>(operands_.size()); }
   bool is_contiguous() const;
-  std::vector<int64_t> strides(int64_t arg) const {
+  const std::vector<int64_t>& strides(int64_t arg) const {
     return operands_[arg].stride_bytes;
   }
-  void* data_ptr(int64_t arg) const;
+  const void* data_ptr(int64_t arg) const;
 
  protected:
   void populate_operands(DenseTensorIteratorConfig&);
@@ -86,7 +94,6 @@ struct DenseTensorIteratorBase {
   std::vector<int64_t> perm_;
   bool has_coalesced_dimensions_ = false;
   int num_outputs_ = 0;
-  bool accumulate_ = false;
   bool all_ops_same_shape_ = false;
   bool all_ops_are_scalars_ = false;
 
@@ -100,6 +107,11 @@ struct DenseTensorIteratorBase {
   bool is_reduction_ = false;
 };
 
+/**
+ * DenseTensorIterator: Used for preprocessing metadata of tensors participating
+ * in computation. Can be directly used as OffsetCalculator input parameter to
+ * assist with index calculations.
+ */
 struct DenseTensorIterator final : public DenseTensorIteratorBase {
   DenseTensorIterator() : DenseTensorIteratorBase() {}
   DenseTensorIterator(const DenseTensorIteratorBase& iter)
@@ -110,7 +122,24 @@ struct DenseTensorIterator final : public DenseTensorIteratorBase {
                               std::vector<int64_t> strides) override;
 };
 
-class DenseTensorIteratorConfig final {
+/**
+ * DenseTensorIteratorConfig: Used to configure tensors and computation rules
+ * for DenseTensorIterator
+ *
+ * This class configures the tensors participating in computation and the
+ * operation rules for DenseTensorIterator. Usage example:
+ *
+ * DenseTensorIteratorConfig config;
+ * // Add tensors participating in computation
+ * // Set whether to use specific methods in TensorIterator
+ * config.add_output(a);
+ * config.add_const_input(b);
+ * config.add_const_input(c);
+ *
+ * // Calculate the common broadcast shape and transformed strides for each
+ * dimension DenseTensorIterator iter = config.build();
+ */
+struct DenseTensorIteratorConfig final {
  public:
   friend struct DenseTensorIteratorBase;
   friend struct DenseTensorIterator;
@@ -161,12 +190,8 @@ class DenseTensorIteratorConfig final {
   int num_inputs_ = 0;
 
   std::optional<std::vector<int64_t>> static_shape_ = std::nullopt;
-  bool check_mem_overlap_ = true;
-  bool allow_cpu_scalars_ = false;
   bool is_reduction_ = false;
   bool resize_outputs_ = true;
-  bool check_all_same_dtype_ = true;
-  bool check_all_same_device_ = true;
 };
 
 }  // namespace phi

@@ -268,8 +268,8 @@ int64_t DenseTensorIteratorBase::numel() const {
   return numel;
 }
 
-void* DenseTensorIteratorBase::data_ptr(int64_t arg) const {
-  return const_cast<void*>(operands_[arg].tensor().data());
+const void* DenseTensorIteratorBase::data_ptr(int64_t arg) const {
+  return static_cast<void*>(operands_[arg].tensor().data());
 }
 
 static inline std::vector<int64_t> infer_size_dimvector(
