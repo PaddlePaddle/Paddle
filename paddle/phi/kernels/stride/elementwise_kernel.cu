@@ -64,23 +64,19 @@ __global__ void BinaryElementwiseKernel(
       using ArgsT = typename Traits::ArgsTuple;
       __simd__ ArgsT args[VecSize];
       __simd__ ConditionalT<OutT, NumOuts> result[VecSize];
-
       std::get<0>(args[idx]) =
           *(reinterpret_cast<const _ptr_ std::tuple_element_t<0, ArgsT> *>(
               reinterpret_cast<const _ptr_ char *>(ins[0]) + offsets[1]));
       std::get<1>(args[idx]) =
           *(reinterpret_cast<const _ptr_ std::tuple_element_t<1, ArgsT> *>(
               reinterpret_cast<const _ptr_ char *>(ins[1]) + offsets[2]));
-
       funcs::SameDimsElementwisePrimitiveCaller<ConditionalT<OutT, NumOuts>,
                                                 VecSize,
                                                 Functor,
                                                 ArgsT,
                                                 Arity>()(
           func, args, result, read_lens);
-
       char *out_ptr = reinterpret_cast<char *>(outs[0]) + offsets[0];
-
       *reinterpret_cast<OutT *>(out_ptr) =
           *reinterpret_cast<const OutT *>(&(result[0]));
       idx += BLOCK_NUM_X;

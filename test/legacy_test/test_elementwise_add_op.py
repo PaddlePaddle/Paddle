@@ -1167,10 +1167,7 @@ class TestElementwiseAddOp_Stride(TestElementwiseAddOp):
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
-        # TODO(wangzhongpu): support onednn op in dygraph mode
-        self.check_output(
-            check_dygraph=True,
-        )
+        self.check_output()
 
     def init_input_output(self):
         self.strided_input_type = "transpose"
