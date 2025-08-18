@@ -101,6 +101,30 @@ class TestRepeatInterleaveOp2(OpTest):
         self.check_grad(['X'], 'Out', check_pir=True)
 
 
+class TestRepeatInterleaveOpWithOutputSize1(TestRepeatInterleaveOp):
+    def setUp(self):
+        super().setUp()
+        self.attrs['output_size'] = self.out_shape[self.dim]
+
+
+class TestRepeatInterleaveOpWithOutputSize2(TestRepeatInterleaveOp):
+    def setUp(self):
+        super().setUp()
+        self.attrs['output_size'] = -1
+
+
+class TestRepeatInterleaveOp2WithOutputSize1(TestRepeatInterleaveOp2):
+    def setUp(self):
+        super().setUp()
+        self.attrs['output_size'] = self.out_shape[self.dim]
+
+
+class TestRepeatInterleaveOp2WithOutputSize2(TestRepeatInterleaveOp2):
+    def setUp(self):
+        super().setUp()
+        self.attrs['output_size'] = -1
+
+
 class TestRepeatInterleaveOp_ZeroSize(TestRepeatInterleaveOp2):
     def init_dtype_type(self):
         self.dim = 1
@@ -513,6 +537,30 @@ class TestIndexSelectAPI(unittest.TestCase):
             np_z = z.numpy()
 
         np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
+
+        with base.dygraph.guard():
+            x_np = np.array([[1.0, 2.0], [3.0, 4.0]]).astype('float32')
+            index_np = np.array([2, 1]).astype('int32')
+
+            x = paddle.to_tensor(x_np, stop_gradient=False)
+            index = paddle.to_tensor(index_np)
+            z = paddle.repeat_interleave(x, index, axis=1, output_size=3)
+
+            z.backward()
+
+            expected_grad = np.array([[2.0, 1.0], [2.0, 1.0]])
+            np.testing.assert_allclose(
+                x.grad.numpy(), expected_grad, rtol=1e-05
+            )
+
+            x = paddle.to_tensor(x_np, stop_gradient=False)
+            z = x.repeat_interleave(index, axis=1, output_size=3)
+
+            z.backward()
+
+            np.testing.assert_allclose(
+                x.grad.numpy(), expected_grad, rtol=1e-05
+            )
 
         with base.dygraph.guard():
             x = paddle.to_tensor(self.data_x[:, :3])
