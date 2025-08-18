@@ -3616,33 +3616,6 @@ struct CudaRsquareFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct CudaRsquareGradFunctor : public BaseActivationFunctor<T> {
-  T minus_two = static_cast<T>(-2.0f);
-  // dx = dout * -2 / (x * x * x)
-  __device__ __forceinline__ T operator()(const T dout, const T x) const {
-    return dout * minus_two / (x * x * x);
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
-};
-
-template <typename T>
-struct CudaRsquareGradFunctor<ComplexType<T>>
-    : public BaseActivationFunctor<ComplexType<T>> {
-  ComplexType<T> minus_two = static_cast<ComplexType<T>>(-2.0f);
-  ComplexType<T> one = static_cast<ComplexType<T>>(1.0f);
-
-  // dx = dout * -2 / (x * x * x)
-  __device__ __forceinline__ ComplexType<T> operator()(
-      const ComplexType<T> dout, const ComplexType<T> x) const {
-    return static_cast<ComplexType<T>>(dout * minus_two *
-                                       conj(one / (x * x * x)));
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
-};
-
-template <typename T>
 struct CudaExpGradFunctor : public BaseActivationFunctor<T> {
   // dx = dout * out
   __device__ __forceinline__ T operator()(const T dout, const T out) const {
@@ -4426,23 +4399,6 @@ struct CudaRsqrtGradFunctor : public BaseActivationFunctor<T> {
     MPType dout = static_cast<MPType>(arg_dout);
     MPType out = static_cast<MPType>(arg_out);
     return static_cast<T>(minus_one_half * dout * out * out * out);
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() {
-    return ActBwdOpFwdDeps::kDepOut;
-  }
-};
-
-template <typename T>
-struct CudaRsqrtGradFunctor<ComplexType<T>>
-    : public BaseActivationFunctor<ComplexType<T>> {
-  ComplexType<T> minus_one_half = static_cast<ComplexType<T>>(-0.5f);
-
-  // dx = -0.5 * dout * out^3
-  __device__ __forceinline__ ComplexType<T> operator()(
-      const ComplexType<T> arg_dout, const ComplexType<T> arg_out) const {
-    return static_cast<ComplexType<T>>(minus_one_half * arg_dout *
-                                       conj(arg_out * arg_out * arg_out));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {

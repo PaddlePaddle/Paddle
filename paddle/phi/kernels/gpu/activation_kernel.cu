@@ -216,12 +216,6 @@ void PowKernel(const Context& dev_ctx,
         common::errors::InvalidArgument(
             "Integers to negative integer powers are not allowed."));
   } else {
-    if (factor.to<float>() == 0.5) {
-      funcs::CudaSqrtFunctor<T> functor;
-      ActivationGPUImpl<T, Context, funcs::CudaSqrtFunctor<T>>(
-          dev_ctx, x, out, functor);
-      return;
-    }
     if (factor.to<float>() == -0.5) {
       funcs::CudaRsqrtFunctor<T> functor;
       ActivationGPUImpl<T, Context, funcs::CudaRsqrtFunctor<T>>(
@@ -245,6 +239,12 @@ void PowKernel(const Context& dev_ctx,
     std::vector<int64_t> vec_dims = common::vectorize(out->dims());
     phi::Full<T, Context>(
         dev_ctx, phi::IntArray(vec_dims), static_cast<T>(1), out);
+    return;
+  }
+  if (factor.to<float>() == 0.5) {
+    funcs::CudaSqrtFunctor<T> functor;
+    ActivationGPUImpl<T, Context, funcs::CudaSqrtFunctor<T>>(
+        dev_ctx, x, out, functor);
     return;
   }
   if (factor.to<float>() == 1) {
