@@ -303,7 +303,6 @@ class Test_Forward_Hook(unittest.TestCase):
             net(x, fail=False)
         self.assertEqual(stack, [2, -1, 2, -1, 2, -1, 2, -1])
 
-
         # make sure that always called forward hooks are properly removed
         forward_post_hook_handle.remove()
         forward_post_hook_handle2.remove()
