@@ -3184,4 +3184,15 @@ paddle::optional<Tensor*> GetInputOutTensorFromKwargs(PyObject* kwargs) {
   return paddle::none;
 }
 
+void Check_PIR_not_support_out(PyObject* kwargs) {
+  if (!kwargs) {
+    return;
+  }
+  PyObject* obj = PyDict_GetItemString(kwargs, "out");
+  if (obj) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Paddle static graph(PIR) not support input out tensor for now."));
+  }
+}
+
 }  // namespace paddle::pybind
