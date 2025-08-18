@@ -393,10 +393,13 @@ def get_rank2tensor_indices(sub_mesh_indices_info, sub_mesh_partial_info):
 
 
 def get_local_slices(tensor, mesh, placements):
-    if len(mesh.shape) != len(placements):
+    if len(mesh.shape) < len(placements):
         raise ValueError(
-            f"placements nums ({len(placements)}) must equal mesh_shape({len(mesh.shape)})"
+            f"placements length ({len(placements)}) must be smaller or equal to mesh_shape({len(mesh.shape)})"
         )
+    if len(placements) < len(mesh.shape):
+        for _ in range(len(mesh.shape) - len(placements)):
+            placements.append(dist.Replicate())
 
     sub_mesh_indices_info = {mesh: [(0, s) for s in tensor.shape]}
     sub_mesh_partial_info = {}
