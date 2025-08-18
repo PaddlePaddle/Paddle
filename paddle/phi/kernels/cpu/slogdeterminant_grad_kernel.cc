@@ -25,3 +25,16 @@ PD_REGISTER_KERNEL(slogdet_grad,
                    double,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
+
+PD_REGISTER_KERNEL(slogdet_v2_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::SlogDeterminantV2GradKernel,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
+  phi::DataType real_dtype = phi::dtype::ToReal(kernel_key.dtype());
+  kernel->InputAt(2).SetDataType(real_dtype);
+  kernel->InputAt(4).SetDataType(real_dtype);
+}

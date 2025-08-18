@@ -31,7 +31,10 @@ if TYPE_CHECKING:
 
 from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
-__all__ = []
+__all__ = [
+    "split",
+    "slogdet",
+]
 
 
 @ForbidKeywordsDecorator(
@@ -211,3 +214,46 @@ def split(
                     split_size_or_sections
                 )
             return tuple(_C_ops.split(tensor, split_size_or_sections, dim))
+
+
+def slogdet(x: Tensor) -> tuple[Tensor, Tensor]:
+    """
+
+    (PyTorch Compatible API) Calculates the sign and natural logarithm of the absolute value of a square matrix's or batches square matrices' determinant.
+    The determinant can be computed with ``sign * exp`` (logabsdet).
+
+    Supports input of float, double, complex64, complex128.
+
+    Notes:
+        1. For matrices that have zero determinant, this returns ``(0, -inf)``.
+
+        2. For matrices with complex value, the :math:`abs(det)` is the modulus of the determinant,
+        and therefore :math:`sign = det / abs(det)`.
+
+        3. The return structure of this API has been revised **from a single stacked Tensor of shape `[2, *]` (where index 0 was sign and index 1 was logdet) to a tuple of two independent Tensors `(sign, logdet)`** (see `PR #72505 <https://github.com/PaddlePaddle/Paddle/pull/72505>`_).
+        This modification may cause incompatibility with models previously exported for inference that relied on the old return structure.
+
+    Args:
+        x (Tensor): the batch of matrices of size :math:`(*, n, n)`
+            where math:`*` is one or more batch dimensions.
+
+    Returns:
+        tuple(Tensor, Tensor): A tuple containing two Tensors: (sign, logabsdet).
+        The first Tensor represents the signs of the determinants and the second Tensor
+        represents the natural logarithms of the absolute values of the determinants.
+        Each output Tensor has a shape of :math:`(*)`, where :math:`*` matches the
+        batch dimensions of the input `x`.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.seed(2023)
+            >>> x = paddle.randn([3, 3, 3])
+            >>> A = paddle.linalg.slogdet(x) # Updated example
+            >>> print(A)
+           (Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                  [-1.,  1.,  1.]), Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                  [ 0.25681755, -0.25061053, -0.10809596]))
+    """
+    return _C_ops.slogdet(x)
