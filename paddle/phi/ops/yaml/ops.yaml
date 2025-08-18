@@ -186,8 +186,7 @@
   python_api:
     name : [paddle.all,paddle.Tensor.all]
     args_alias:
-      x : [input]
-      axis : [dim]
+      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
