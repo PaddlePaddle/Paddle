@@ -42,6 +42,7 @@ def check_github_pr_exists(repo_owner, repo_name, pr_number, github_token=None):
     headers = {"Authorization": f"token {github_token}"} if github_token else {}
     try:
         response = requests.get(url, headers=headers, timeout=5)
+        print(response.status_code)
         return response.status_code == 200
     except requests.RequestException:
         return False
