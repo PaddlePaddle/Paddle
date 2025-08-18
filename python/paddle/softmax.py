@@ -20,7 +20,6 @@ from paddle import _C_ops
 from paddle.framework import core, in_dynamic_or_pir_mode
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
-    ParamIgnoreDecorator,
 )
 
 from .base.data_feeder import check_dtype, check_variable_and_dtype
@@ -33,7 +32,6 @@ if TYPE_CHECKING:
 
 
 @ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
-@ParamIgnoreDecorator([('_stacklevel', 2, int)])
 def softmax(
     x: Tensor,
     axis: int = -1,
