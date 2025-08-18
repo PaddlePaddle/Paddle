@@ -2924,17 +2924,17 @@ TEST(BatchNorm, Ctor) {
 
   EXPECT_EQ(forward_info.first.size(), 5UL);
   EXPECT_EQ(forward_info.second.size(), 6UL);
-  check_dim_mapping(forward_info.first[0], {-1, 1, -1, -1});
-  check_dim_mapping(forward_info.first[1], {1});
-  check_dim_mapping(forward_info.first[2], {1});
-  check_dim_mapping(forward_info.first[3], {-1});
-  check_dim_mapping(forward_info.first[4], {-1});
-  check_dim_mapping(forward_info.second[0], {-1, 1, -1, -1});
-  check_dim_mapping(forward_info.second[1], {1});
-  check_dim_mapping(forward_info.second[2], {1});
-  check_dim_mapping(forward_info.second[3], {1});
-  check_dim_mapping(forward_info.second[4], {1});
-  check_dim_mapping(forward_info.second[5], {-1});
+  check_multi_dims_mapping(forward_info.first[0], {{}, {0, 1}, {}, {}});
+  check_multi_dims_mapping(forward_info.first[1], {{0, 1}});
+  check_multi_dims_mapping(forward_info.first[2], {{0, 1}});
+  check_multi_dims_mapping(forward_info.first[3], {{}});
+  check_multi_dims_mapping(forward_info.first[4], {{}});
+  check_multi_dims_mapping(forward_info.second[0], {{}, {0, 1}, {}, {}});
+  check_multi_dims_mapping(forward_info.second[1], {{0, 1}});
+  check_multi_dims_mapping(forward_info.second[2], {{0, 1}});
+  check_multi_dims_mapping(forward_info.second[3], {{0, 1}});
+  check_multi_dims_mapping(forward_info.second[4], {{0, 1}});
+  check_multi_dims_mapping(forward_info.second[5], {{}});
 
   // test backward
   // data_format = NCHW
@@ -2983,19 +2983,19 @@ TEST(BatchNorm, Ctor) {
 
   EXPECT_EQ(backward_info.first.size(), 9UL);
   EXPECT_EQ(backward_info.second.size(), 3UL);
-  check_dim_mapping(backward_info.first[0], {-1, 1, -1, -1});
-  check_dim_mapping(backward_info.first[1], {-1});
-  check_dim_mapping(backward_info.first[2], {-1});
-  check_dim_mapping(backward_info.first[3], {1});
-  check_dim_mapping(backward_info.first[4], {1});
-  check_dim_mapping(backward_info.first[5], {1});
-  check_dim_mapping(backward_info.first[6], {1});
-  check_dim_mapping(backward_info.first[7], {-1});
-  check_dim_mapping(backward_info.first[8], {-1, 1, -1, -1});
+  check_multi_dims_mapping(backward_info.first[0], {{}, {0, 1}, {}, {}});
+  check_multi_dims_mapping(backward_info.first[1], {{}});
+  check_multi_dims_mapping(backward_info.first[2], {{}});
+  check_multi_dims_mapping(backward_info.first[3], {{0, 1}});
+  check_multi_dims_mapping(backward_info.first[4], {{0, 1}});
+  check_multi_dims_mapping(backward_info.first[5], {{0, 1}});
+  check_multi_dims_mapping(backward_info.first[6], {{0, 1}});
+  check_multi_dims_mapping(backward_info.first[7], {{}});
+  check_multi_dims_mapping(backward_info.first[8], {{}, {0, 1}, {}, {}});
 
-  check_dim_mapping(backward_info.second[0], {-1, 1, -1, -1});
-  check_dim_mapping(backward_info.second[1], {-1});
-  check_dim_mapping(backward_info.second[2], {-1});
+  check_multi_dims_mapping(backward_info.second[0], {{}, {0, 1}, {}, {}});
+  check_multi_dims_mapping(backward_info.second[1], {{}});
+  check_multi_dims_mapping(backward_info.second[2], {{}});
 }
 TEST(Topk, Ctor) {
   std::vector<int64_t> mesh_shape = {2, 2};

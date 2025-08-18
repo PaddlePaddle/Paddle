@@ -40,9 +40,8 @@ SpmdInfo GroupNormInferSpmdBase(const DistMetaTensor& x,
   TensorDistAttr x_dist_attr_src = x.dist_attr();
   TensorDistAttr scale_dist_attr_src = scale.dist_attr();
   TensorDistAttr bias_dist_attr_src = bias.dist_attr();
-  std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
-  std::vector<int64_t> scale_dims_mapping = scale_dist_attr_src.dims_mapping();
-  std::vector<int64_t> bias_dims_mapping = bias_dist_attr_src.dims_mapping();
+  std::vector<std::vector<int64_t>> x_dims_mapping =
+      x_dist_attr_src.multi_dims_mapping();
 
   PADDLE_ENFORCE_GE(
       x_ndim,
@@ -93,10 +92,16 @@ SpmdInfo GroupNormInferSpmdBase(const DistMetaTensor& x,
 
   // Step2: Sharding Propagation
   // Step2.1: merge input sharding
+  auto b_dim = x_dims_mapping[0];
   for (int i = 1; i < x_ndim; ++i) {
-    x_dims_mapping[i] = -1;
+    if (!x_dims_mapping[i].empty()) {
+      for (const auto dim : x_dims_mapping[i]) {
+        b_dim.emplace_back(dim);
+      }
+    }
   }
-  std::unordered_map<std::string, int64_t> axis_to_dim_map =
+  x_dims_mapping[0] = b_dim;
+  std::unordered_map<std::string, std::vector<int64_t>> axis_to_dim_map =
       ShardingMergeForTensors({{x_axes, x_dims_mapping}});
 
   // Step2.2: infer output dims mapping
@@ -172,13 +177,8 @@ SpmdInfo GroupNormGradInferSpmdBase(const DistMetaTensor& x,
   TensorDistAttr mean_dist_attr_src = mean.dist_attr();
   TensorDistAttr variance_dist_attr_src = variance.dist_attr();
   TensorDistAttr y_grad_dist_attr_src = mean.dist_attr();
-  std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
-  std::vector<int64_t> scale_dims_mapping = scale.dist_attr().dims_mapping();
-  std::vector<int64_t> bias_dims_mapping = bias.dist_attr().dims_mapping();
-  std::vector<int64_t> y_dims_mapping = scale.dist_attr().dims_mapping();
-  std::vector<int64_t> mean_dims_mapping = bias.dist_attr().dims_mapping();
-  std::vector<int64_t> variance_dims_mapping = scale.dist_attr().dims_mapping();
-  std::vector<int64_t> y_grad_dims_mapping = bias.dist_attr().dims_mapping();
+  std::vector<std::vector<int64_t>> x_dims_mapping =
+      x_dist_attr_src.multi_dims_mapping();
 
   PADDLE_ENFORCE_GE(
       x_ndim,
@@ -262,10 +262,16 @@ SpmdInfo GroupNormGradInferSpmdBase(const DistMetaTensor& x,
   std::string bias_grad_axes(1, x_axes[0]);
   // Step2: Sharding Propagation
   // Step2.1: merge input sharding
+  auto b_dim = x_dims_mapping[0];
   for (int i = 1; i < x_ndim; ++i) {
-    x_dims_mapping[i] = -1;
+    if (!x_dims_mapping[i].empty()) {
+      for (const auto dim : x_dims_mapping[i]) {
+        b_dim.emplace_back(dim);
+      }
+    }
   }
-  std::unordered_map<std::string, int64_t> axis_to_dim_map =
+  x_dims_mapping[0] = b_dim;
+  std::unordered_map<std::string, std::vector<int64_t>> axis_to_dim_map =
       ShardingMergeForTensors({{x_axes, x_dims_mapping}});
 
   // Step2.2: infer output dims mapping
@@ -307,8 +313,10 @@ SpmdInfo GroupNormGradInferSpmdBase(const DistMetaTensor& x,
   const auto& dim_mapping = x_dims_mapping;
   for (int i = 0; i < x_ndim; ++i) {
     auto mapping = dim_mapping[i];
-    if (mapping != -1) {
-      partial_on_dims.push_back(mapping);
+    if (!mapping.empty()) {
+      for (const auto mp : mapping) {
+        partial_on_dims.emplace_back(mp);
+      }
     }
   }
   scale_grad_dist_attr.set_partial_status(partial_on_dims);
