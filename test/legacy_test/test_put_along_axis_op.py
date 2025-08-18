@@ -80,6 +80,8 @@ class TestPutAlongAxisOp(OpTest):
 
 
 class TestPutAlongAxisInt16OpBase(TestPutAlongAxisOp):
+    no_need_check_grad = True
+
     def init_data(self):
         self.set_type()
         self.x_shape = (10, 10, 10)
@@ -107,6 +109,8 @@ class TestPutAlongAxisInt16OpBase(TestPutAlongAxisOp):
 
 
 class TestPutAlongAxisUInt8OpBase(TestPutAlongAxisInt16OpBase):
+    no_need_check_grad = True
+
     def set_type(self):
         self.dtype = np.uint8
         self.x_type = "uint8"
@@ -1338,10 +1342,6 @@ class TestPutAlongAxisAPIMulInt64(unittest.TestCase):
         run(paddle.CUDAPlace(0))
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "core is not compiled with CUDA",
-)
 class TestPutAlongAxisAPIReduceLowBits(unittest.TestCase):
     def setUp(self):
         np.random.seed(0)
@@ -1421,10 +1421,6 @@ class TestPutAlongAxisAPIReduceLowBits(unittest.TestCase):
         run(paddle.CUDAPlace(0))
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "core is not compiled with CUDA",
-)
 class TestPutAlongAxisAPIMulInt16(TestPutAlongAxisAPIReduceLowBits):
     def setup_dtype(self):
         self.dtype = 'int16'
@@ -1432,10 +1428,6 @@ class TestPutAlongAxisAPIMulInt16(TestPutAlongAxisAPIReduceLowBits):
         self.value_type = "int16"
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "core is not compiled with CUDA",
-)
 class TestPutAlongAxisAPIMinInt16(TestPutAlongAxisAPIMulInt16):
     def set_range(self):
         self.ranges = [-32760, 32761]
@@ -1444,19 +1436,11 @@ class TestPutAlongAxisAPIMinInt16(TestPutAlongAxisAPIMulInt16):
         self.op = "amin"
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "core is not compiled with CUDA",
-)
 class TestPutAlongAxisAPIMaxInt16(TestPutAlongAxisAPIMinInt16):
     def set_op_to_test(self):
         self.op = "amax"
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "core is not compiled with CUDA",
-)
 class TestPutAlongAxisAPIMinUInt8(TestPutAlongAxisAPIReduceLowBits):
     def set_range(self):
         self.ranges = [0, 256]
@@ -1465,10 +1449,6 @@ class TestPutAlongAxisAPIMinUInt8(TestPutAlongAxisAPIReduceLowBits):
         self.op = "amin"
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "core is not compiled with CUDA",
-)
 class TestPutAlongAxisAPIMaxUInt8(TestPutAlongAxisAPIMinUInt8):
 
     def set_op_to_test(self):
