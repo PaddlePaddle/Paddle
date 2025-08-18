@@ -553,6 +553,7 @@ from .tensor.math import (  # noqa: F401
     tanh_,
     trace,
     trapezoid,
+    true_divide,
     trunc,
     trunc_,
     vander,
@@ -794,6 +795,10 @@ inf = math.inf
 nan = math.nan
 pi = math.pi
 e = math.e
+
+# API alias
+div = divide
+div_ = divide_
 
 __all__ = [
     'block_diag',
@@ -1043,6 +1048,9 @@ __all__ = [
     'square_',
     'divide',
     'divide_',
+    'div',
+    'div_',
+    'true_divide',
     'gammaln',
     'gammaln_',
     'ceil',
