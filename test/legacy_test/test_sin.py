@@ -58,3 +58,7 @@ class TestSinOutAndParamDecorator(unittest.TestCase):
             np.testing.assert_allclose(
                 grad.numpy(), grad_std.numpy(), rtol=1e-7
             )
+
+
+if __name__ == "__main__":
+    unittest.main()
