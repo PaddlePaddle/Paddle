@@ -287,7 +287,6 @@ class TestExpandAsV2Error(unittest.TestCase):
 
 # Test python API
 class TestExpandAsV2API(unittest.TestCase):
-
     def test_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
             input1 = np.random.random([12, 14]).astype("float32")

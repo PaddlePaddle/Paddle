@@ -24,6 +24,10 @@ from paddle.distributed.communication.group import (
     _get_global_group,
     _warn_cur_rank_not_in_group,
 )
+from paddle.distributed.communication.serialization_utils import (
+    convert_object_to_tensor,
+    convert_tensor_to_object,
+)
 from paddle.framework.recall_error import check_naninf
 from paddle.utils import strtobool
 
@@ -58,10 +62,12 @@ class SendRecvMeta:
     def init_or_erase_meta(self):
         self.send_shape_message = None
         self.send_dtype_message = None
+        self.send_key_message = None
 
         self.recv_shape_message = None
         self.recv_dtype_message = None
         self.recv_stop_gradient = None
+        self.recv_key_message = None
 
         self.has_send_meta = False
         self.has_recv_meta = False
@@ -99,6 +105,7 @@ class SendRecvMeta:
         shapes = []
         dtypes = []
         stop_grads = []
+        keys = []
 
         for _ in range(tensor_num):
             shape_len = data.pop(0)
@@ -106,10 +113,23 @@ class SendRecvMeta:
             data = data[shape_len:]
             dtype_number = data.pop(0)
             stop_gradient = bool(data.pop(0))
+            # ------------------tensor key meta send-------------
+            key_len = data.pop(0)
+            key_data = data[:key_len]
+            if key_len > 0:
+                key = convert_tensor_to_object(
+                    paddle.to_tensor(key_data).astype("uint8"),
+                    paddle.to_tensor(key_len),
+                )
+            else:
+                key = None
+            data = data[key_len:]
+            # ------------------tensor key meta send-------------
 
             shapes.append(shape)
             dtypes.append(dtype_number)
             stop_grads.append(stop_gradient)
+            keys.append(key)
 
         assert (
             len(data) == 0
@@ -119,10 +139,12 @@ class SendRecvMeta:
             self.recv_shape_message = shapes[0]
             self.recv_dtype_message = dtypes[0]
             self.recv_stop_gradient = stop_grads[0]
+            self.recv_key_message = keys[0]
         else:
             self.recv_shape_message = tuple(shapes)
             self.recv_dtype_message = tuple(dtypes)
             self.recv_stop_gradient = tuple(stop_grads)
+            self.recv_key_message = tuple(keys)
 
     def send_meta(self, tensor, group, reverse=False, broadcast=False):
         if reverse:
@@ -152,12 +174,24 @@ class SendRecvMeta:
 
         for t in tensors_to_send:
             assert isinstance(t, paddle.Tensor)
+            # ------------------tensor key meta send-------------
+            if hasattr(t, "key"):
+                current_tensor_name = t.key
+                key_data_tensor, _ = convert_object_to_tensor(
+                    current_tensor_name
+                )
+                key_data = key_data_tensor.numpy().tolist()
+            else:
+                key_data = []
+            # ------------------tensor key meta send-------------
             data.extend(
                 [
                     len(t.shape),
                     *t.shape,
                     paddle_2_number(t.dtype),
                     int(t.stop_gradient),
+                    len(key_data),
+                    *key_data,
                 ]
             )
 
@@ -184,35 +218,44 @@ class SendRecvMeta:
 
     def _obtain_send_message(self, tensor):
         if isinstance(tensor, paddle.Tensor):
-            return tensor.shape, paddle_2_number(tensor.dtype)
+            key = tensor.key if hasattr(tensor, "key") else None
+            return tensor.shape, paddle_2_number(tensor.dtype), key
         else:
             shapes = []
             dtypes = []
+            keys = []
             for d in tensor:
                 assert isinstance(d, paddle.Tensor)
                 if d.stop_gradient:
                     continue
-                shape, dtype = self._obtain_send_message(d)
+                shape, dtype, key = self._obtain_send_message(d)
                 shapes.append(shape)
                 dtypes.append(dtype)
-            return tuple(shapes), tuple(dtypes)
+                keys.append(key)
+            return tuple(shapes), tuple(dtypes), tuple(keys)
 
     def set_send_message(self, tensor):
         (
             self.send_shape_message,
             self.send_dtype_message,
+            self.send_key_message,  # (key1_str, key2_str, key3_str ... )
         ) = self._obtain_send_message(tensor)
 
     def check_send_message(self, tensor):
         if self.send_shape_message is None or self.send_dtype_message is None:
             return
-        actual_shape, actual_dtype = self._obtain_send_message(tensor)
+        actual_shape, actual_dtype, actual_key = self._obtain_send_message(
+            tensor
+        )
         assert (
             self.send_shape_message == actual_shape
         ), f"send_shape_message: {self.send_shape_message}, actual_shape: {actual_shape}"
         assert (
             self.send_dtype_message == actual_dtype
         ), f"send_dtype_message: {self.send_dtype_message}, actual_dtype: {actual_dtype}"
+        assert (
+            self.send_key_message == actual_key
+        ), f"send_key_message: {self.send_key_message}, actual_key: {actual_key}"
 
     def __repr__(self):
         return f"send_shape_message: {self.send_shape_message}, send_dtype_message: {self.send_dtype_message}, recv_shape_message: {self.recv_shape_message}, recv_dtype_message: {self.recv_dtype_message}, recv_stop_gradient: {self.recv_stop_gradient}"
@@ -619,9 +662,11 @@ def _p2p_helper(
     recv_shape_msg = send_recv_meta.recv_shape_message
     recv_dtype_msg = send_recv_meta.recv_dtype_message
     recv_stop_gradient = send_recv_meta.recv_stop_gradient
+    recv_key_msg = send_recv_meta.recv_key_message
 
     send_shape_msg = send_recv_meta.send_shape_message
     send_dtype_msg = send_recv_meta.send_dtype_message
+    # backward has no key meta message
 
     # model parallel message
     mp_group = _hcg.get_model_parallel_group()
@@ -636,6 +681,8 @@ def _p2p_helper(
                     shape=shape, dtype=number_2_dtype(recv_dtype_msg[idx])
                 )
                 tmp.stop_gradient = recv_stop_gradient[idx]
+                if recv_key_msg[idx] is not None:
+                    tmp.key = recv_key_msg[idx]
                 tensor_recv_prev.append(tmp)
             tensor_recv_prev = tuple(tensor_recv_prev)
         else:
@@ -643,6 +690,8 @@ def _p2p_helper(
                 shape=recv_shape_msg, dtype=number_2_dtype(recv_dtype_msg)
             )
             tensor_recv_prev.stop_gradient = recv_stop_gradient
+            if recv_key_msg is not None:
+                tensor_recv_prev.key = recv_key_msg
 
     if recv_next:
         if dynamic_shape:

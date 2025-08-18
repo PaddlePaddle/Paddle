@@ -21,10 +21,10 @@ import paddle.distributed as dist
 class TestCoShard:
     def basic_interface_case(self):
         shard = dist.Shard(0, shard_order=0)
-        np.testing.assert_equal(str(shard), "Shard(dim=0, shard_order=0)")
+        np.testing.assert_equal(shard, dist.Shard(dim=0, shard_order=0))
 
         shard = dist.Shard(0, split_factor=2)
-        np.testing.assert_equal(str(shard), "Shard(dim=0, split_factor=2)")
+        np.testing.assert_equal(shard, dist.Shard(dim=0, split_factor=2))
 
     def run_test_case_0(self):
         a = paddle.to_tensor([[1, 2], [3, 4], [5, 6], [7, 8]])
@@ -157,10 +157,10 @@ class TestCoShard:
             a[dist.get_rank()].numpy().flatten(),
         )
         np.testing.assert_equal(
-            str(out.placements[0]), "Shard(dim=0, shard_order=0)"
+            out.placements[0], dist.Shard(dim=0, shard_order=0)
         )
         np.testing.assert_equal(
-            str(out.placements[1]), "Shard(dim=0, shard_order=1)"
+            out.placements[1], dist.Shard(dim=0, shard_order=1)
         )
 
     def run_test_case_4(self):
@@ -172,10 +172,10 @@ class TestCoShard:
         out = paddle.reshape(input, [-1])
         np.testing.assert_equal(out.shape, [8])
         np.testing.assert_equal(
-            str(out.placements[0]), "Shard(dim=0, shard_order=0)"
+            out.placements[0], dist.Shard(dim=0, shard_order=0)
         )
         np.testing.assert_equal(
-            str(out.placements[1]), "Shard(dim=0, shard_order=1)"
+            out.placements[1], dist.Shard(dim=0, shard_order=1)
         )
         np.testing.assert_equal(
             out._local_value().numpy(), a[dist.get_rank()].numpy().flatten()
@@ -183,16 +183,16 @@ class TestCoShard:
 
         relu_out = paddle.nn.ReLU()(out)
         np.testing.assert_equal(
-            str(relu_out.placements[0]), "Shard(dim=0, shard_order=0)"
+            relu_out.placements[0], dist.Shard(dim=0, shard_order=0)
         )
         np.testing.assert_equal(
-            str(relu_out.placements[1]), "Shard(dim=0, shard_order=1)"
+            relu_out.placements[1], dist.Shard(dim=0, shard_order=1)
         )
 
         # test fallback to shard by one dim.
         add_out = paddle.add(relu_out, relu_out)
-        np.testing.assert_equal(str(add_out.placements[0]), "Shard(dim=0)")
-        np.testing.assert_equal(str(add_out.placements[1]), "Replicate()")
+        np.testing.assert_equal(add_out.placements[0], dist.Shard(dim=0))
+        np.testing.assert_equal(add_out.placements[1], dist.Replicate())
 
     def run_test_case_main(self):
         self.basic_interface_case()

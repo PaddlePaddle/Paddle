@@ -22,7 +22,6 @@ from paddle.base import core
 
 
 class TestBilinearAPI(unittest.TestCase):
-
     def test_api(self):
         main = paddle.static.Program()
         startup = paddle.static.Program()

@@ -781,7 +781,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                     index += 1
             else:
                 AssertionError(
-                    "Can not insert the send op by original " "variable name :",
+                    "Can not insert the send op by original variable name :",
                     splited_grad_varname,
                 )
 
@@ -2370,8 +2370,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             )
         else:
             AssertionError(
-                "Variable type should be in set "
-                "[DENSE_TENSOR, SELECTED_ROWS]"
+                "Variable type should be in set [DENSE_TENSOR, SELECTED_ROWS]"
             )
 
     def _get_optimizer_input_shape(
