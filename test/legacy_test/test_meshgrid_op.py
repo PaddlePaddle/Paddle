@@ -170,7 +170,6 @@ class TestMeshgridOpBFP16OP(TestMeshgridOp):
 
 
 class TestMeshgridOp3(unittest.TestCase):
-
     def test_api(self):
         input_1 = np.random.randint(
             0,
@@ -208,7 +207,6 @@ class TestMeshgridOp3(unittest.TestCase):
 
 
 class TestMeshgridOp4(unittest.TestCase):
-
     def test_list_input(self):
         input_1 = np.random.randint(
             0,
@@ -246,7 +244,6 @@ class TestMeshgridOp4(unittest.TestCase):
 
 
 class TestMeshgridOp5(unittest.TestCase):
-
     def test_tuple_input(self):
         input_1 = np.random.randint(
             0,
@@ -362,7 +359,6 @@ class TestMeshgridOp8(unittest.TestCase):
 
 
 class TestMeshgridOpComplexStatic(unittest.TestCase):
-
     def test_tuple_input(self):
         input_1 = np.random.randint(
             0,

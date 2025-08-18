@@ -935,7 +935,6 @@ class TestSoftmaxWithCrossEntropyOpBoundary1(TestSoftmaxWithCrossEntropyOp):
 
 
 class TestSoftmaxWithCrossEntropyOpError(unittest.TestCase):
-
     def test_errors(self):
         with program_guard(Program(), Program()):
 

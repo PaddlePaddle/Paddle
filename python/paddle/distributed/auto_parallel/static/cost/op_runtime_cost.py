@@ -91,9 +91,10 @@ def _measure_program_real_op_cost_multipass(program, place, run_iters, verbose):
                 # ignore communication op from graph, because sometimes we want to profile a sub-graph
                 # and these dangling operators will not work (no graph to communicate to/from)
                 continue
-            input_var_names, output_var_names = _collect_op_input_var_names(
-                op
-            ), _collect_op_output_var_names(op)
+            input_var_names, output_var_names = (
+                _collect_op_input_var_names(op),
+                _collect_op_output_var_names(op),
+            )
             for var_name in input_var_names + output_var_names:
                 if var_name not in var_in_degree:
                     var_in_degree[var_name] = 0
@@ -280,10 +281,9 @@ def measure_program_real_op_cost(
         isinstance(place, supported_place)
         for supported_place in supported_places
     ), f'Current place ({place}) does not support runtime profiling. "place" should be one of the following: {supported_places}.'
-    assert isinstance(run_iters, int) and run_iters >= 1, (
-        'Invalid parameter run_iters set. run_iters '
-        'should be an integer >= 1.'
-    )
+    assert (
+        isinstance(run_iters, int) and run_iters >= 1
+    ), 'Invalid parameter run_iters set. run_iters should be an integer >= 1.'
     if run_iters == 1:
         warnings.warn(
             'run_iters was set to 1, profiling results might be inaccurate due to outliers.'

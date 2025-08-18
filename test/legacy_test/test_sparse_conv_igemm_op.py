@@ -214,7 +214,6 @@ class TestSparseConvImplicitGemm(unittest.TestCase):
 
 
 class TestStatic(unittest.TestCase):
-
     def test3d(self):
         paddle.enable_static()
         main = paddle.static.Program()

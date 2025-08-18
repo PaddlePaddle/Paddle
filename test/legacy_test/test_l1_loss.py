@@ -98,7 +98,6 @@ class TestFunctionalL1Loss(unittest.TestCase):
 
     # test case the raise message
     def test_errors(self):
-
         def test_value_error():
             input = paddle.static.data(
                 name='input', shape=[10, 10, 5], dtype='float32'
@@ -194,7 +193,6 @@ class TestClassL1Loss(unittest.TestCase):
 
     # test case the raise message
     def test_errors(self):
-
         def test_value_error():
             loss = paddle.nn.loss.L1Loss(reduction="reduce_mean")
 

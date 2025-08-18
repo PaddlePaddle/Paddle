@@ -204,7 +204,6 @@ def clip_converter(network, paddle_op, inputs):
     def _get_constant_or_expand_tensor(
         value, constant_inputs, input_shape_tensor, rank, name=None
     ):
-
         if value is not None:
             return fill_constant_layer(
                 network,

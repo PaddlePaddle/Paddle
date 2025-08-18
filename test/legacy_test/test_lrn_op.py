@@ -270,7 +270,6 @@ class TestLocalResponseNormFAPI(unittest.TestCase):
 
 
 class TestLocalResponseNormFAPIError(unittest.TestCase):
-
     def test_errors(self):
         with (
             paddle_static_guard(),

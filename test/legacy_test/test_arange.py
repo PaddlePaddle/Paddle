@@ -130,7 +130,6 @@ class TestZeroSizeArangeOp(TestArangeOp):
 
 
 class TestArangeOpError(unittest.TestCase):
-
     def test_static_errors(self):
         with program_guard(Program(), Program()):
             paddle.enable_static()
@@ -224,7 +223,6 @@ class TestArangeOpError(unittest.TestCase):
 
 
 class TestArangeAPI(unittest.TestCase):
-
     def test_out(self):
         paddle.enable_static()
         with paddle.static.program_guard(
