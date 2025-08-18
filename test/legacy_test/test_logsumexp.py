@@ -340,5 +340,53 @@ class TestLogsumexp_ZeroSize2(TestLogsumexp_ZeroSize):
         self.axis = [1]  # out return shape [2, 0]
 
 
+class TestLogsumexpOutAPI(unittest.TestCase):
+    def test_out_in_dygraph(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(
+            np.array([[-1.5, 0.0, 2.0], [3.0, 1.2, -2.4]]).astype('float32'),
+            stop_gradient=False,
+        )
+
+        def run_case(case):
+            out_buf = paddle.zeros([], dtype='float32')
+            out_buf.stop_gradient = False
+            if case == 'return':
+                y = paddle.logsumexp(x)
+            elif case == 'input_out':
+                paddle.logsumexp(x, out=out_buf)
+                y = out_buf
+            elif case == 'both_return':
+                y = paddle.logsumexp(x, out=out_buf)
+            elif case == 'both_input_out':
+                _ = paddle.logsumexp(x, out=out_buf)
+                y = out_buf
+            else:
+                raise AssertionError
+            ref = paddle._C_ops.logsumexp(x, None, False, True)
+            np.testing.assert_allclose(
+                y.numpy(), ref.numpy(), rtol=1e-6, atol=1e-6
+            )
+            (y.mean()).backward()
+            return y.numpy(), x.grad.numpy()
+
+        y1, g1 = run_case('return')
+        x.clear_gradient()
+        y2, g2 = run_case('input_out')
+        x.clear_gradient()
+        y3, g3 = run_case('both_return')
+        x.clear_gradient()
+        y4, g4 = run_case('both_input_out')
+
+        np.testing.assert_allclose(y1, y2, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(y1, y3, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(y1, y4, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(g1, g2, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(g1, g3, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(g1, g4, rtol=1e-6, atol=1e-6)
+
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
     unittest.main()

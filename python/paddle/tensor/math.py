@@ -1247,7 +1247,9 @@ def _divide_with_axis(x, y, axis=-1, name=None):
         return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
-def maximum(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+def maximum(
+    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     """
     Compare two tensors and returns a new tensor containing the element-wise maxima. The equation is:
 
@@ -1262,6 +1264,7 @@ def maximum(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     Args:
         x (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64.
         y (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64.
+        out (Tensor|None, optional): The output tensor. Default: None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1304,12 +1307,14 @@ def maximum(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             [5.  , 3.  , inf.])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.maximum(x, y)
+        return _C_ops.maximum(x, y, out=out)
     else:
         return _elementwise_op(LayerHelper('elementwise_max', **locals()))
 
 
-def minimum(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+def minimum(
+    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     """
     Compare two tensors and return a new tensor containing the element-wise minima. The equation is:
 
@@ -1324,6 +1329,7 @@ def minimum(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     Args:
         x (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64.
         y (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64.
+        out (Tensor|None, optional): The output tensor. Default: None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1366,7 +1372,7 @@ def minimum(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             [ 1.  , -inf.,  5.  ])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.minimum(x, y)
+        return _C_ops.minimum(x, y, out=out)
     else:
         return _elementwise_op(LayerHelper('elementwise_min', **locals()))
 
@@ -3008,6 +3014,8 @@ def logsumexp(
     axis: int | Sequence[int] | None = None,
     keepdim: bool = False,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     r"""
     Calculates the log of the sum of exponentials of ``x`` along ``axis`` .
@@ -3033,6 +3041,7 @@ def logsumexp(
             the output Tensor is the same as ``x`` except in the reduced
             dimensions(it is of size 1 in this case). Otherwise, the shape of
             the output Tensor is squeezed in ``axis`` . Default is False.
+        out (Tensor|None, optional): The output tensor. Default: None.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -3060,7 +3069,7 @@ def logsumexp(
     reduce_all, axis = _get_reduce_axis(axis, x)
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.logsumexp(x, axis, keepdim, reduce_all)
+        return _C_ops.logsumexp(x, axis, keepdim, reduce_all, out=out)
     else:
         check_variable_and_dtype(
             x,
@@ -3454,6 +3463,8 @@ def amax(
     axis: int | Sequence[int] | None = None,
     keepdim: bool = False,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Computes the maximum of tensor elements over the given axis.
@@ -3475,6 +3486,7 @@ def amax(
             output Tensor. The result tensor will have one fewer dimension
             than the `x` unless :attr:`keepdim` is true, default
             value is False.
+        out (Tensor|None, optional): The output tensor. Default: None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -3582,7 +3594,7 @@ def amax(
               [0.        , 0.        ]]])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.amax(x, axis, keepdim)
+        return _C_ops.amax(x, axis, keepdim, out=out)
 
     else:
         reduce_all, axis = _get_reduce_axis(axis, x)
@@ -3606,6 +3618,8 @@ def amin(
     axis: int | Sequence[int] | None = None,
     keepdim: bool = False,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
 
@@ -3628,6 +3642,7 @@ def amin(
             output Tensor. The result tensor will have one fewer dimension
             than the `x` unless :attr:`keepdim` is true, default
             value is False.
+        out (Tensor|None, optional): The output tensor. Default: None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -3735,7 +3750,7 @@ def amin(
               [0.        , 0.        ]]])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.amin(x, axis, keepdim)
+        return _C_ops.amin(x, axis, keepdim, out=out)
 
     else:
         reduce_all, axis = _get_reduce_axis(axis, x)

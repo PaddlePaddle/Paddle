@@ -1083,7 +1083,9 @@ def sinh(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
-def sqrt(x: Tensor, name: str | None = None) -> Tensor:
+def sqrt(
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     """
     Sqrt Activation Operator.
 
@@ -1093,6 +1095,7 @@ def sqrt(x: Tensor, name: str | None = None) -> Tensor:
     Args:
         x (Tensor): Input of Sqrt operator, an N-D Tensor, with data type float32, float64, float16, bfloat16
             uint8, int8, int16, int32, int64.
+        out (Tensor|None, optional): The output tensor. Default: None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1111,7 +1114,7 @@ def sqrt(x: Tensor, name: str | None = None) -> Tensor:
             [0.31622776, 0.44721359, 0.54772258, 0.63245553])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.sqrt(x)
+        return _C_ops.sqrt(x, out=out)
     else:
         check_variable_and_dtype(
             x,

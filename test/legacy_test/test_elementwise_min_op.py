@@ -485,5 +485,61 @@ class TestElementwiseOp0SizeInput(TestElementwiseOp):
         self.outputs = {'Out': np.minimum(self.inputs['X'], self.inputs['Y'])}
 
 
+class TestMinimumOutAPI(unittest.TestCase):
+    def test_out_in_dygraph(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(
+            np.array([[1, 2], [7, 8]]), dtype='float32', stop_gradient=False
+        )
+        y = paddle.to_tensor(
+            np.array([[3, 4], [5, 6]]), dtype='float32', stop_gradient=False
+        )
+
+        def run_case(case):
+            out_buf = paddle.zeros_like(x)
+            out_buf.stop_gradient = False
+            if case == 'return':
+                z = paddle.minimum(x, y)
+            elif case == 'input_out':
+                paddle.minimum(x, y, out=out_buf)
+                z = out_buf
+            elif case == 'both_return':
+                z = paddle.minimum(x, y, out=out_buf)
+            elif case == 'both_input_out':
+                _ = paddle.minimum(x, y, out=out_buf)
+                z = out_buf
+            else:
+                raise AssertionError
+            ref = paddle._C_ops.minimum(x, y)
+            np.testing.assert_allclose(
+                z.numpy(), ref.numpy(), rtol=1e-6, atol=1e-6
+            )
+            (z.mean()).backward()
+            return z.numpy(), x.grad.numpy(), y.grad.numpy()
+
+        z1, gx1, gy1 = run_case('return')
+        x.clear_gradient()
+        y.clear_gradient()
+        z2, gx2, gy2 = run_case('input_out')
+        x.clear_gradient()
+        y.clear_gradient()
+        z3, gx3, gy3 = run_case('both_return')
+        x.clear_gradient()
+        y.clear_gradient()
+        z4, gx4, gy4 = run_case('both_input_out')
+
+        np.testing.assert_allclose(z1, z2, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(z1, z3, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(z1, z4, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(gx1, gx2, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(gx1, gx3, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(gx1, gx4, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(gy1, gy2, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(gy1, gy3, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(gy1, gy4, rtol=1e-6, atol=1e-6)
+
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
     unittest.main()
