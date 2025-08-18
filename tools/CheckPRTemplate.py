@@ -17,6 +17,7 @@ import re
 import sys
 
 import httpx
+import requests
 
 PR_checkTemplate = ['Paddle']
 
@@ -29,6 +30,21 @@ def re_rule(body, CHECK_TEMPLATE):
     PR_RE = re.compile(CHECK_TEMPLATE, re.DOTALL)
     result = PR_RE.search(body)
     return result
+
+
+def extract_pr_links(description_text):
+    pattern = r'(?:https://github\.com/PaddlePaddle/Paddle/pull/|#)(\d+)'
+    return re.findall(pattern, description_text)
+
+
+def check_github_pr_exists(repo_owner, repo_name, pr_number, github_token=None):
+    url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/pulls/{pr_number}"
+    headers = {"Authorization": f"token {github_token}"} if github_token else {}
+    try:
+        response = requests.get(url, headers=headers, timeout=5)
+        return response.status_code == 200
+    except requests.RequestException:
+        return False
 
 
 def parameter_accuracy(body):
@@ -65,6 +81,9 @@ def parameter_accuracy(body):
     changes_end = body.find('### Description')
     PR_dic['PR Category'] = body[len('### PR Category') : type_end]
     PR_dic['PR Types'] = body[type_end + len('### PR Types') : changes_end]
+    PR_dic['Description'] = body[changes_end + len('### Description') :]
+    des_pr_id = extract_pr_links(PR_dic['Description'])
+    print(des_pr_id)
     message = ''
     for key in PR_dic:
         test_list = PR_Category if key == 'PR Category' else PR_Types
@@ -79,7 +98,11 @@ def parameter_accuracy(body):
                 if i not in test_list_lower:
                     single_mess += f'{i}.'
             if len(single_mess) != 0:
-                message += f'\n{key} should be in {test_list}. but now is [{single_mess}].'
+                message += f'{key} should be in {test_list}. but now is [{single_mess}].'
+    if not check_github_pr_exists(
+        "PaddlePaddle", "Paddle", des_pr_id, GITHUB_API_TOKEN
+    ):
+        message += 'The PR link does not exist. To merge into the fleety branch, you need to merge into the develop branch first and then cherry-pick it to the fleety branch. Please merge into develop first and fill in the PR link in the Description'
     return message
 
 
@@ -126,7 +149,7 @@ def checkPRTemplate(repo, body, CHECK_TEMPLATE):
         res = False
         message = parameter_accuracy(body)
         if len(message) == 0:
-            message = '\n To merge into the fleety branch, you need to merge into the develop branch first and then cherry-pick it to the fleety branch. Please merge into develop first and fill in the PR link in the Description'
+            message = 'The PR link does not exist. To merge into the fleety branch, you need to merge into the develop branch first and then cherry-pick it to the fleety branch. Please merge into develop first and fill in the PR link in the Description'
     return res, message
 
 
