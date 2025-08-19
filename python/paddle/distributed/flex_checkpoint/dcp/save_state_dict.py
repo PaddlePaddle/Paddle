@@ -146,6 +146,7 @@ def save_state_dict(
     coordinator_rank: int = 0,
     unique_id: int | None = None,
     async_save: bool = False,
+    safetensors: bool = False,
 ) -> None:
     r"""
     Save the state_dict of model to path.
@@ -284,6 +285,7 @@ def save_state_dict(
             coordinator_rank,
             unique_id,
             async_save,
+            safetensors,
         )
     else:
         save_state_dict_impl(
@@ -293,6 +295,7 @@ def save_state_dict(
             coordinator_rank,
             unique_id,
             async_save,
+            safetensors,
         )
 
 
@@ -303,6 +306,7 @@ def save_state_dict_impl(
     coordinator_rank: int = 0,
     unique_id: int | None = None,
     async_save: bool = False,
+    safetensors: bool = False,
 ) -> None:
     with paddle.base.dygraph.guard():
         assert isinstance(
@@ -441,6 +445,7 @@ def save_state_dict_impl(
                     p = ctx.Process(
                         target=paddle.save,
                         args=(cpu_state_dict, os.path.join(path, file_name)),
+                        kwargs={'safetensors': safetensors},
                     )
                     p.start()
                     return p
@@ -455,4 +460,8 @@ def save_state_dict_impl(
             p = start_process()
             async_save_queue.append(p)
         else:
-            paddle.save(local_state_dict, os.path.join(path, file_name))
+            paddle.save(
+                local_state_dict,
+                os.path.join(path, file_name),
+                safetensors=safetensors,
+            )
