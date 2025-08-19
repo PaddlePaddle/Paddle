@@ -26,14 +26,16 @@ from typing import (
     NamedTuple,
 )
 
+from paddle import nn
+from paddle.distributed.auto_parallel.pipelining.stage import PipelineStage
+
 if TYPE_CHECKING:
     from .stage import _PipelineStageBase
 
 
 import paddle
 import paddle.distributed as dist
-from paddle import nn, profiler
-from paddle.distributed.auto_parallel.pipelining.stage import PipelineStage
+from paddle import profiler
 
 from .microbatch import (
     TensorChunkSpec,
@@ -544,33 +546,35 @@ class PPChunk(nn.Layer):
             position_ids = kwargs.get("position_ids")
             outputs = (input_ids, attention_mask, position_ids)
             # decoder layers
-            for decoder_layer in self.layers:
+            for idx, (decoder_layer) in enumerate(self.layers):
                 outputs = decoder_layer(outputs)
             return outputs
         elif self.is_last:
             outputs = args
             # decoder layers
-            for decoder_layer in self.layers:
+            for idx, (decoder_layer) in enumerate(self.layers):
                 outputs = decoder_layer(outputs)
             if isinstance(outputs, tuple):
                 outputs = outputs[0]
         else:
             outputs = args
             # decoder layers
-            for decoder_layer in self.layers:
+            for idx, (decoder_layer) in enumerate(self.layers):
                 outputs = decoder_layer(outputs)
         return outputs
 
 
-def manual_model_split(model, stage_idx, group, mode, pp_degree):
+def _manual_model_split(model, stage_idx, group, mode, pp_degree):
+
     num_hidden_layers = model.config.num_hidden_layers
     virtual_pp_degree = model.config.virtual_pp_degree if mode == "VPP" else 1
     chunk_size = num_hidden_layers // virtual_pp_degree // pp_degree
     chunk_num = virtual_pp_degree * pp_degree
     layer_lists = None
+
     layer_lists = model.layers
 
-    def _build_stage(stage_idx, group):
+    def _build_stage(model, stage_idx, group):
         new_model = None
         if stage_idx == 0:
             new_model = PPChunk(
@@ -597,14 +601,18 @@ def manual_model_split(model, stage_idx, group, mode, pp_degree):
 
     stages = []
     for i in range(virtual_pp_degree):
-        stage = _build_stage(stage_idx + i * pp_degree, group)
+        stage = _build_stage(model, stage_idx + i * pp_degree, group)
         stages.append(stage)
     return stages
 
 
 def get_pp_schedule(model, n_microbatches, loss_fn, mode, pp_degree, group):
-    assert mode in ["VPP", "1F1B", "FThenB"]
-    stages = manual_model_split(model, group.rank, group, mode, pp_degree)
+    assert mode in [
+        "VPP",
+        "1F1B",
+        "FThenB",
+    ], f"Invalid pipeline schedule mode: {mode}, must be one of ['VPP', '1F1B', 'FThenB']"
+    stages = _manual_model_split(model, group.rank, group, mode, pp_degree)
     if mode == "VPP":
         schedule = ScheduleVPP(
             stages, n_microbatches=n_microbatches, loss_fn=loss_fn
@@ -630,22 +638,33 @@ def parse_args(args, num=3):
     for i in range(1, num):
         if trip[i] is not None and hasattr(trip[i], 'stop_gradient'):
             trip[i].stop_gradient = True
+
     return trip
 
 
 def return_args(**kwargs):
     ret = ()
+
     for name, value in kwargs.items():
         if value is not None:
             ret += (value.clone() if hasattr(value, "clone") else value,)
+
     return ret[0] if len(ret) == 1 else ret
 
 
+from paddle.distributed import fleet
+
+from ..static.utils import get_pp_stage_by_pp_degree
+
+
 def get_pp_stage_id(layer_id, num_hidden_layers, virtual_pp_degree):
-    pp_degree = dist.fleet.auto.get_mesh().get_mesh_with_dim("pp").shape[0]
+    pp_degree = fleet.auto.get_mesh().get_mesh_with_dim("pp").shape[0]
     chunk_size = num_hidden_layers // (pp_degree * virtual_pp_degree)
     chunk_id = layer_id // chunk_size
     pp_stage_id = chunk_id % pp_degree
+    pp_stage = get_pp_stage_by_pp_degree(pp_degree)
+    print("lzx debug pp_stage:", pp_stage)
+    print("lzx debug pp_stage_id:", pp_stage_id)
     return pp_stage_id
 
 
