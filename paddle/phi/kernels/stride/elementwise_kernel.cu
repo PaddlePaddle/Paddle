@@ -169,7 +169,7 @@ phi::DenseTensor Tensor2Contiguous(const Context &dev_ctx,
   return dense_out;
 }
 
-#define DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(name)                        \
+#define DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(name, functor_name)          \
   template <typename T, typename Context>                                     \
   void name##StrideKernel(const Context &dev_ctx,                             \
                           const DenseTensor &x,                               \
@@ -212,10 +212,16 @@ phi::DenseTensor Tensor2Contiguous(const Context &dev_ctx,
                                 "be called, something wrong has happened!")); \
     }                                                                         \
     LaunchBinaryElementwiseStrideKernel<T, Context>(                          \
-        dev_ctx, x_, y_, funcs::name##Functor<T>(), -1, out);                 \
+        dev_ctx, x_, y_, funcs::functor_name##Functor<T>(), -1, out);         \
   }
 
-DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(Add)
+DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(Add, Add)
+DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(Maximum, Maximum)
+DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(Minimum, Minimum)
+DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(FloorDivide, FloorDivide)
+DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(Heaviside, ElementwiseHeaviside)
+DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(FMax, FMax)
+DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(FMin, FMin)
 
 }  // namespace phi
 
@@ -240,5 +246,74 @@ PD_REGISTER_KERNEL(add,
                    phi::dtype::bfloat16,
                    complex64,
                    complex128) {}
+
+PD_REGISTER_KERNEL(maximum,
+                   GPU,
+                   STRIDED,
+                   phi::MaximumStrideKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(minimum,
+                   GPU,
+                   STRIDED,
+                   phi::MinimumStrideKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(floor_divide,
+                   GPU,
+                   STRIDED,
+                   phi::FloorDivideStrideKernel,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(heaviside,
+                   GPU,
+                   STRIDED,
+                   phi::HeavisideStrideKernel,
+                   float,
+                   double,
+                   int,
+                   float16,
+                   bfloat16,
+                   int64_t) {}
+
+PD_REGISTER_KERNEL(fmax,
+                   GPU,
+                   STRIDED,
+                   phi::FMaxStrideKernel,
+                   float,
+                   double,
+                   int,
+                   float16,
+                   bfloat16,
+                   int64_t) {}
+
+PD_REGISTER_KERNEL(fmin,
+                   GPU,
+                   STRIDED,
+                   phi::FMinStrideKernel,
+                   float,
+                   double,
+                   int,
+                   float16,
+                   bfloat16,
+                   int64_t) {}
 
 #endif
