@@ -111,14 +111,10 @@ class TestDyToStaticSaveLoad(Dy2StTestBase):
             )
 
     def _compute_op_num(self, composite_program):
-        if paddle.framework.use_pir_api():
-            comp_op_type_list = [
-                op.name() for op in composite_program.program.global_block().ops
-            ]
-        else:
-            comp_op_type_list = [
-                op.type for op in composite_program.block(0).ops
-            ]
+        comp_op_type_list = [
+            op.name() for op in composite_program.program.global_block().ops
+        ]
+
         return comp_op_type_list
 
     @test_ast_only

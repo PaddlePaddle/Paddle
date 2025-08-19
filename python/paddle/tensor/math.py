@@ -4790,12 +4790,18 @@ def prod(
     """
     Compute the product of tensor elements over the given axis.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``dim`` can be used as an alias for ``axis``.
+        For example, ``prod(input=tensor_x, dim=1, ...)`` is equivalent to ``prod(x=tensor_x, axis=1, ...)``.
+
     Args:
         x (Tensor): The input tensor, its data type should be bfloat16, float16, float32, float64, int32, int64, complex64, complex128.
+            alias: ``input``.
         axis (int|list|tuple|None, optional): The axis along which the product is computed. If :attr:`None`,
             multiply all elements of `x` and return a Tensor with a single element,
             otherwise must be in the range :math:`[-x.ndim, x.ndim)`. If :math:`axis[i]<0`,
             the axis to reduce is :math:`x.ndim + axis[i]`. Default is None.
+            alias: ``dim``.
         keepdim (bool, optional): Whether to reserve the reduced dimension in the output Tensor. The result
             tensor will have one fewer dimension than the input unless `keepdim` is true. Default is False.
         dtype (str|paddle.dtype|np.dtype, optional): The desired date type of returned tensor, can be bfloat16,
@@ -6511,11 +6517,17 @@ def diff(
     Higher-order differences are computed by using paddle.diff() recursively.
     The number of n supports any positive integer value.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``dim`` can be used as an alias for ``axis``.
+        For example, ``diff(input=tensor_x, dim=1, ...)`` is equivalent to ``diff(x=tensor_x, axis=1, ...)``.
+
     Args:
         x (Tensor): The input tensor to compute the forward difference on, the data type is float16, float32, float64, bool, int32, int64.
+            alias: ``input``.
         n (int, optional): The number of times to recursively compute the difference.
                             Supports any positive integer value. Default:1
         axis (int, optional): The axis to compute the difference along. Default:-1
+            alias: ``dim``.
         prepend (Tensor|None, optional): The tensor to prepend to input along axis before computing the difference.
                                    It's dimensions must be equivalent to that of x,
                                    and its shapes must match x's shape except on axis.

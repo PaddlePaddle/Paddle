@@ -42,6 +42,13 @@ def moe_combine(
         Output Combined output [s, dim]
     """
     if in_dynamic_or_pir_mode():
+        if not (
+            x.process_mesh is None
+            and combine_weights.process_mesh is None
+            and scatter_index.process_mesh is None
+        ):
+            # auto parallel mode
+            return _C_ops.moe_combine_auto(x, combine_weights, scatter_index)
         return _C_ops.moe_combine(x, combine_weights, scatter_index)
     helper = LayerHelper('moe_combine', **locals())
     y = helper.create_variable_for_type_inference(dtype=x.dtype)

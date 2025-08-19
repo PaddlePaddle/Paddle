@@ -3143,14 +3143,14 @@ class OpProtoHolder:
             raise ValueError(f'Operator "{type}" has not been registered.')
         return self.op_proto_map[type]
 
-    def update_op_proto(self):
+    def update_op_proto(self, new_op_list):
         op_protos = get_all_op_protos()
         custom_op_names = []
         for proto in op_protos:
             if proto.type not in self.op_proto_map:
                 self.op_proto_map[proto.type] = proto
                 custom_op_names.append(proto.type)
-
+        custom_op_names = list(set(custom_op_names).union(set(new_op_list)))
         return custom_op_names
 
     def has_op_proto(self, type):

@@ -720,9 +720,18 @@ class Sequential(Layer):
             >>> res2 = model2(data)  # [30, 30]
     """
 
-    def __init__(self, *layers: Layer | tuple[str, Layer] | list[Any]) -> None:
+    def __init__(
+        self,
+        *layers: Layer
+        | tuple[str, Layer]
+        | list[Any]
+        | OrderedDict[str, Layer],
+    ) -> None:
         super().__init__()
-        if len(layers) > 0 and isinstance(layers[0], (list, tuple)):
+        if len(layers) == 1 and isinstance(layers[0], OrderedDict):
+            for name, layer in layers[0].items():
+                self.add_sublayer(name, layer)
+        elif len(layers) > 0 and isinstance(layers[0], (list, tuple)):
             for name, layer in layers:
                 self.add_sublayer(name, layer)
         else:

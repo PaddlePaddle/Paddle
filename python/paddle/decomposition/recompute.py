@@ -243,13 +243,13 @@ class JudgeFusionLoop:
             return downstream_unrecomputable_ops
 
         for op in self.ops:
-            self.upstream_unrecomputable_ops_map[
-                op
-            ] |= _get_upstream_ops_recursively(op)
+            self.upstream_unrecomputable_ops_map[op] |= (
+                _get_upstream_ops_recursively(op)
+            )
         for op in reversed(self.ops):
-            self.downstream_unrecomputable_ops_map[
-                op
-            ] |= _get_downstream_ops_recursively(op)
+            self.downstream_unrecomputable_ops_map[op] |= (
+                _get_downstream_ops_recursively(op)
+            )
 
     def _has_unfusible_op_on_any_path(self, op1, op2):
         no_unfusible_op_on_path = (
