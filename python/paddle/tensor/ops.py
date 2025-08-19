@@ -15,6 +15,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from paddle._C_ops import (  # noqa: F401
+    sqrt,
+)
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from .. import _C_ops
