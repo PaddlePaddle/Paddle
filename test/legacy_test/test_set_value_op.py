@@ -17,7 +17,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_places
+from op_test import OpTest, convert_float_to_uint16, get_devices
 
 import paddle
 from paddle.base import core
@@ -1277,7 +1277,7 @@ class TestSetValueValueShape6(TestSetValueApi):
         return x
 
     def test_api(self):
-        for place in get_places(string_format=True):
+        for place in get_devices():
             paddle.set_device(place)
 
             static_out = self._run_static()

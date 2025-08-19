@@ -389,27 +389,36 @@ def convert_uint16_to_float(in_list):
     return np.reshape(out, in_list.shape)
 
 
-def get_places(string_format=False):
+def get_places():
     places = []
-    if not string_format:
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-    else:
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            places.append('cpu')
-        if paddle.is_compiled_with_cuda():
-            places.append('gpu')
+    if (
+        os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+        in ['1', 'true', 'on']
+        or not core.is_compiled_with_cuda()
+    ):
+        places.append(base.CPUPlace())
+    if core.is_compiled_with_cuda():
+        places.append(base.CUDAPlace(0))
+    if is_custom_device():
+        dev_type = paddle.device.get_all_custom_device_type()[0]
+        places.append(base.CustomPlace(dev_type, 0))
     return places
+
+
+def get_devices():
+    devices = []
+    if (
+        os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+        in ['1', 'true', 'on']
+        or not paddle.is_compiled_with_cuda()
+    ):
+        devices.append('cpu')
+    if paddle.is_compiled_with_cuda():
+        devices.append('gpu')
+    if is_custom_device():
+        dev_type = paddle.device.get_all_custom_device_type()[0]
+        devices.append(f'{dev_type}:0')
+    return devices
 
 
 def get_device_place():
@@ -421,6 +430,15 @@ def get_device_place():
     ):
         return base.CustomPlace(custom_dev_types[0], 0)
     return base.CPUPlace()
+
+
+def is_custom_device():
+    custom_dev_types = paddle.device.get_all_custom_device_type()
+    if custom_dev_types and paddle.device.is_compiled_with_custom_device(
+        custom_dev_types[0]
+    ):
+        return True
+    return False
 
 
 @contextmanager
@@ -615,8 +633,10 @@ class OpTest(unittest.TestCase):
     def is_onednn_op(self):
         return (hasattr(self, "use_onednn") and self.use_onednn) or (
             hasattr(self, "attrs")
-            and "use_mkldnn" in self.attrs
-            and self.attrs["use_mkldnn"]
+            and (
+                ("use_mkldnn" in self.attrs and self.attrs["use_mkldnn"])
+                or ("use_onednn" in self.attrs and self.attrs["use_onednn"])
+            )
         )
 
     def is_xpu_op(self):
@@ -1188,6 +1208,17 @@ class OpTest(unittest.TestCase):
             args = OpTestUtils.assumption_assert_and_transform(
                 args, len(inputs_sig)
             )
+            if hasattr(self, "check_strided_input"):
+                if self.strided_input_type == "transpose":
+                    args[1] = self.transpose_api(args[1], self.perm)
+                elif self.strided_input_type == "as_stride":
+                    args[1] = self.as_stride_api(
+                        args[1], self.shape_param, self.stride_param
+                    )
+                else:
+                    raise TypeError(
+                        f"Unsupported test type {self.strided_input_type}."
+                    )
             ret_tuple = python_api(*args)
             result = construct_output_dict_by_kernel_sig(ret_tuple, outputs_sig)
             if hasattr(self, "python_out_sig_sub_name"):
@@ -1202,11 +1233,14 @@ class OpTest(unittest.TestCase):
             block = base.framework.default_main_program().global_block()
             op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
             # prepare input variable
+            input_vars = self.inputs
+            if hasattr(self, "check_strided_input"):
+                input_vars = self.inputs_stride
             dygraph_tensor_inputs = (
                 egr_inps
                 if egr_inps
                 else self.append_input_output_for_dygraph(
-                    op_proto, self.inputs, True, False, block
+                    op_proto, input_vars, True, False, block
                 )
             )
             # prepare output variable
@@ -2176,11 +2210,14 @@ class OpTest(unittest.TestCase):
             else:
                 # TODO(zhiqiu): enhance inplace_grad test for ops (sum and activation) using mkldnn
                 # skip op that use_mkldnn currently
-                flags_use_mkldnn = base.core.globals()["FLAGS_use_mkldnn"]
+                flags_use_onednn = base.core.globals()["FLAGS_use_onednn"]
                 attrs_use_mkldnn = hasattr(self, 'attrs') and bool(
                     self.attrs.get('use_mkldnn', False)
                 )
-                if flags_use_mkldnn or attrs_use_mkldnn:
+                attrs_use_onednn = hasattr(self, 'attrs') and bool(
+                    self.attrs.get('use_onednn', False)
+                )
+                if flags_use_onednn or attrs_use_mkldnn or attrs_use_onednn:
                     warnings.warn(
                         "check inplace_grad for ops using mkldnn is not supported"
                     )
@@ -2216,7 +2253,7 @@ class OpTest(unittest.TestCase):
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
         if not self.is_onednn_op():
-            set_flags({"FLAGS_use_mkldnn": False})
+            set_flags({"FLAGS_use_onednn": False})
 
         if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
@@ -2902,6 +2939,13 @@ class OpTest(unittest.TestCase):
                     return [place]
                 else:
                     return []
+            elif is_custom_device():
+                dev_type = paddle.device.get_all_custom_device_type()[0]
+                place = core.CustomPlace(dev_type, 0)
+                if core.is_float16_supported(place):
+                    return [place]
+                else:
+                    return []
             else:
                 return []
         places = []
@@ -2931,6 +2975,9 @@ class OpTest(unittest.TestCase):
             and not cpu_only
         ):
             places.append(core.CUDAPlace(0))
+        if is_custom_device():
+            dev_type = paddle.device.get_all_custom_device_type()[0]
+            places.append(core.CustomPlace(dev_type, 0))
         return places
 
     def check_output(
@@ -3285,7 +3332,7 @@ class OpTest(unittest.TestCase):
             check_dygraph = False
 
         if not self.is_onednn_op():
-            set_flags({"FLAGS_use_mkldnn": False})
+            set_flags({"FLAGS_use_onednn": False})
 
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
@@ -3413,9 +3460,13 @@ class OpTest(unittest.TestCase):
             cache_list = self.cache_name_list
 
         # oneDNN numeric gradient should use CPU kernel
-        use_onednn = False
+        use_mkldnn = False
         if op_attrs.get("use_mkldnn"):
             op_attrs["use_mkldnn"] = False
+            use_mkldnn = True
+        use_onednn = False
+        if op_attrs.get("use_onednn"):
+            op_attrs["use_onednn"] = False
             use_onednn = True
         if hasattr(self, "attrs"):
             for k, v in self.attrs.items():
@@ -3431,8 +3482,10 @@ class OpTest(unittest.TestCase):
             cache_list=cache_list,
         )
 
-        if use_onednn:
+        if use_mkldnn:
             op_attrs["use_mkldnn"] = True
+        if use_onednn:
+            op_attrs["use_onednn"] = True
 
         if no_grad_set is None:
             no_grad_set = set()

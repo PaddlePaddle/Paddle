@@ -32,7 +32,7 @@ class TestSumONEDNN(TestSumOp):
         self.inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
         y = x0 + x1 + x2
         self.outputs = {'Out': y}
-        self.attrs = {'use_mkldnn': self.use_onednn}
+        self.attrs = {'use_onednn': self.use_onednn}
 
     def init_data_type(self):
         self.dtype = np.float32
@@ -73,7 +73,7 @@ class TestONEDNNSumInplaceOp(unittest.TestCase):
                 tensor.set(var_value, place)
 
         sum_op = Operator(
-            "sum", X=["x0", "x1"], Out=out_var_name, use_mkldnn=True
+            "sum", X=["x0", "x1"], Out=out_var_name, use_onednn=True
         )
         expected_out = np.array(self.x0 + self.x1)
         sum_op.run(scope, place)

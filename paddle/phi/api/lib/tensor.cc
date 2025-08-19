@@ -40,6 +40,8 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/core/tensor_utils.h"
 
+#include "paddle/phi/core/memory/malloc.h"
+
 namespace paddle {
 
 using DeviceContextPool = experimental::DeviceContextPool;
@@ -397,6 +399,14 @@ Tensor Tensor::slice(int64_t begin_idx, int64_t end_idx) const {
 
 const std::shared_ptr<phi::TensorBase> &Tensor::impl() const { return impl_; }
 
+#ifdef PADDLE_WITH_XPU
+
+void Tensor::record_stream(XPUStream stream) const {
+  paddle::memory::RecordStream(
+      std::dynamic_pointer_cast<phi::DenseTensor>(impl_)->Holder(), stream);
+}
+
+#endif
 void Tensor::set_impl(const std::shared_ptr<phi::TensorBase> &impl) {
   impl_ = impl;
 }

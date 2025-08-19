@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_places
+from op_test import get_devices
 
 import paddle
 
@@ -44,7 +44,7 @@ class TestLogNormalRandomInplaceOpDtype(unittest.TestCase):
             tensor_fp64.log_normal_()
             self.assertEqual(tensor_fp64.dtype, paddle.float64)
 
-        places = get_places(string_format=True)
+        places = get_devices()
         for place in places:
             paddle.set_device(place)
             test_fp32()
@@ -105,7 +105,7 @@ class TestLogNormalRandomInplaceOpDistribution(unittest.TestCase):
 
 class TestLogNormalRandomInplaceOpEmptyTensor(unittest.TestCase):
     def test_log_normal_inplace_op_empty_tensor(self):
-        places = get_places(string_format=True)
+        places = get_devices()
         test_shapes = [(200, 0), (0, 200)]
         for place in places:
             paddle.set_device(place)
@@ -133,7 +133,7 @@ class TestLogNormalRandomInplaceGrad(unittest.TestCase):
             log_normal_grad = tensor_b.grad.numpy()
             self.assertTrue((log_normal_grad == 0).all())
 
-        places = get_places(string_format=True)
+        places = get_devices()
         for place in places:
             paddle.set_device(place)
             test_grad()

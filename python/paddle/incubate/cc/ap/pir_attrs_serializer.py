@@ -24,7 +24,6 @@ from .apy_to_axpr_json import convert_python_stmts_to_axpr_json
 
 
 class PirAttrsSerializer:
-
     def __init__(self, func):
         self.attributes_schema = self._get_attributes_schema(func)
         self._check_attributes_schema(self.attributes_schema)
@@ -107,7 +106,6 @@ class PirAttrsSerializer:
 
 
 class PirAttributeSerializer:
-
     def __init__(self, attr_name):
         self.attr_name = attr_name
 
@@ -117,7 +115,6 @@ class PirAttributeSerializer:
 
 
 class BoolAttributeSerializer(PirAttributeSerializer):
-
     def __init__(self, attr_name):
         self.attr_name = attr_name
 
@@ -127,7 +124,6 @@ class BoolAttributeSerializer(PirAttributeSerializer):
 
 
 class IntAttributeSerializer(PirAttributeSerializer):
-
     def __init__(self, attr_name):
         self.attr_name = attr_name
 
@@ -137,7 +133,6 @@ class IntAttributeSerializer(PirAttributeSerializer):
 
 
 class FloatAttributeSerializer(PirAttributeSerializer):
-
     def __init__(self, attr_name):
         self.attr_name = attr_name
 
@@ -147,7 +142,6 @@ class FloatAttributeSerializer(PirAttributeSerializer):
 
 
 class StrAttributeSerializer(PirAttributeSerializer):
-
     def __init__(self, attr_name):
         self.attr_name = attr_name
 
@@ -157,7 +151,6 @@ class StrAttributeSerializer(PirAttributeSerializer):
 
 
 class DTypeAttributeSerializer(PirAttributeSerializer):
-
     def __init__(self, attr_name):
         self.attr_name = attr_name
 
@@ -168,7 +161,6 @@ class DTypeAttributeSerializer(PirAttributeSerializer):
 
 
 class BoolArrayAttributeSerializer(PirAttributeSerializer):
-
     def __init__(self, attr_name):
         self.attr_name = attr_name
 
@@ -180,7 +172,6 @@ class BoolArrayAttributeSerializer(PirAttributeSerializer):
 
 
 class IntArrayAttributeSerializer(PirAttributeSerializer):
-
     def __init__(self, attr_name):
         self.attr_name = attr_name
 
@@ -192,7 +183,6 @@ class IntArrayAttributeSerializer(PirAttributeSerializer):
 
 
 class FloatArrayAttributeSerializer(PirAttributeSerializer):
-
     def __init__(self, attr_name):
         self.attr_name = attr_name
 
@@ -204,7 +194,6 @@ class FloatArrayAttributeSerializer(PirAttributeSerializer):
 
 
 class StrArrayAttributeSerializer(PirAttributeSerializer):
-
     def __init__(self, attr_name):
         self.attr_name = attr_name
 
@@ -216,7 +205,6 @@ class StrArrayAttributeSerializer(PirAttributeSerializer):
 
 
 class DTypeArrayAttributeSerializer(PirAttributeSerializer):
-
     def __init__(self, attr_name):
         self.attr_name = attr_name
 

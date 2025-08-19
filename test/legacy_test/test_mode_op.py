@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -121,7 +126,8 @@ class TestModeOp(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestModeFP16Op(TestModeOp):
     def init_dtype(self):
@@ -168,7 +174,8 @@ class TestModeOpLastdim(TestModeOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestModeFP16OpLastdim(TestModeFP16Op):
     def init_args(self):
@@ -177,7 +184,8 @@ class TestModeFP16OpLastdim(TestModeFP16Op):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestModeBF16OpLastdim(TestModeBF16Op):
     def init_args(self):

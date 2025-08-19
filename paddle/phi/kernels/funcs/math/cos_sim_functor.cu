@@ -50,7 +50,7 @@ __global__ void CosSimDyKernel(const T* x_norm,
 
 template <typename T>
 struct CosSimDyFunctor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& ctx,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const T* x_norm,
                   const T* y_norm,
                   const T* x,
@@ -63,7 +63,7 @@ struct CosSimDyFunctor<phi::GPUContext, T> {
     const int block_size = 512;
     dim3 threads(block_size, 1);
     dim3 grid((rows + block_size - 1) / block_size, 1);
-    CosSimDyKernel<T><<<grid, threads, 0, ctx.stream()>>>(
+    CosSimDyKernel<T><<<grid, threads, 0, dev_ctx.stream()>>>(
         x_norm, y_norm, x, y, z, dz, rows, cols, dy);
   }
 };

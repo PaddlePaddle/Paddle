@@ -176,11 +176,11 @@ class TestMNISTWithToStatic(TestMNIST):
     @test_default_mode_only
     def test_mnist_declarative_cpu_vs_mkldnn(self):
         dygraph_loss_cpu = self.train_dygraph()
-        paddle.set_flags({'FLAGS_use_mkldnn': True})
+        paddle.set_flags({'FLAGS_use_onednn': True})
         try:
             dygraph_loss_mkldnn = self.train_dygraph()
         finally:
-            paddle.set_flags({'FLAGS_use_mkldnn': False})
+            paddle.set_flags({'FLAGS_use_onednn': False})
         np.testing.assert_allclose(
             dygraph_loss_cpu,
             dygraph_loss_mkldnn,

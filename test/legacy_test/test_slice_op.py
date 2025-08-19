@@ -160,7 +160,7 @@ class TestSliceZerosShapeTensor(OpTest):
             'starts': self.starts,
             'ends': self.ends,
             'infer_flags': self.infer_flags,
-            'use_mkldnn': True,
+            'use_onednn': True,
         }
 
     def config(self):

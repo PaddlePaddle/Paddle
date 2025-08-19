@@ -23,6 +23,7 @@ from op_test import (
     convert_float_to_uint16,
     get_device_place,
     get_places,
+    is_custom_device,
 )
 from scipy.special import erf, expit
 from utils import static_guard
@@ -46,7 +47,6 @@ def dynamic_guard():
 
 
 class TestSqrtOpError(unittest.TestCase):
-
     def test_errors(self):
         with (
             static_guard(),
@@ -228,7 +228,6 @@ class TestExp_Complex128(TestExp_Complex64):
 
 
 class Test_Exp_Op_Fp16(unittest.TestCase):
-
     def test_api_fp16(self):
         with (
             static_guard(),
@@ -497,7 +496,8 @@ class TestSigmoid_ZeroDim(TestSigmoid):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or core.is_compiled_with_rocm(),
     "core is not compiled with CUDA",
 )
 class TestSigmoidBF16(OpTest):
@@ -1122,7 +1122,6 @@ class TestSinhAPI(unittest.TestCase):
 
 
 class TestSinhOpError(unittest.TestCase):
-
     def test_errors(self):
         with (
             static_guard(),
@@ -1256,7 +1255,6 @@ class TestCoshAPI(unittest.TestCase):
 
 
 class TestCoshOpError(unittest.TestCase):
-
     def test_errors(self):
         with (
             static_guard(),
@@ -1765,7 +1763,8 @@ class TestSqrt_Complex128(TestSqrt):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or core.is_compiled_with_rocm(),
     "core is not compiled with CUDA",
 )
 class TestSqrtBF16(OpTest):
@@ -2037,7 +2036,7 @@ class TestCeil(TestActivation):
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
         self.convert_input_output()
-        if not core.is_compiled_with_cuda():
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
             self.__class__.no_need_check_grad = True
 
     def init_shape(self):
@@ -2074,6 +2073,31 @@ class TestCeil_ZeroDim(TestCeil):
         self.shape = []
 
 
+class TestCeil_UInt8(TestCeil):
+    def init_dtype(self):
+        self.dtype = np.uint8
+
+
+class TestCeil_Int8(TestCeil):
+    def init_dtype(self):
+        self.dtype = np.int8
+
+
+class TestCeil_Int16(TestCeil):
+    def init_dtype(self):
+        self.dtype = np.int16
+
+
+class TestCeil_Int32(TestCeil):
+    def init_dtype(self):
+        self.dtype = np.int32
+
+
+class TestCeil_Int64(TestCeil):
+    def init_dtype(self):
+        self.dtype = np.int64
+
+
 class TestFloor(TestActivation):
     def setUp(self):
         self.op_type = "floor"
@@ -2091,7 +2115,7 @@ class TestFloor(TestActivation):
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
         self.convert_input_output()
-        if not core.is_compiled_with_cuda():
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
             self.__class__.no_need_check_grad = True
 
     def init_shape(self):
@@ -2133,6 +2157,31 @@ class TestFloor(TestActivation):
 class TestFloor_ZeroDim(TestFloor):
     def init_shape(self):
         self.shape = []
+
+
+class TestFloor_UInt8(TestFloor):
+    def init_dtype(self):
+        self.dtype = np.uint8
+
+
+class TestFloor_Int8(TestFloor):
+    def init_dtype(self):
+        self.dtype = np.int8
+
+
+class TestFloor_Int16(TestFloor):
+    def init_dtype(self):
+        self.dtype = np.int16
+
+
+class TestFloor_Int32(TestFloor):
+    def init_dtype(self):
+        self.dtype = np.int32
+
+
+class TestFloor_Int64(TestFloor):
+    def init_dtype(self):
+        self.dtype = np.int64
 
 
 class TestCos(TestActivation):
@@ -4296,7 +4345,6 @@ class TestLog10_Op_Int(unittest.TestCase):
 
 
 class TestLog10API(unittest.TestCase):
-
     def test_api(self):
         with static_guard():
             with paddle.static.program_guard(
@@ -4387,7 +4435,6 @@ class TestLog1p_Complex128(TestLog1p_Complex64):
 
 
 class Test_Log1p_Op_Fp16(unittest.TestCase):
-
     def test_api_fp16(self):
         with (
             static_guard(),
@@ -4442,7 +4489,6 @@ class TestLog1p_ZeroSize(TestLog1p):
 
 
 class TestLog1pAPI(unittest.TestCase):
-
     def test_api(self):
         with static_guard():
             with base.program_guard(
@@ -4563,7 +4609,8 @@ class TestSquare_ZeroDim(TestSquare):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or core.is_compiled_with_rocm(),
     "core is not compiled with CUDA",
 )
 class TestSquareBF16(OpTest):
@@ -4917,7 +4964,8 @@ class TestSoftplus_ZeroDim(TestSoftplus):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or core.is_compiled_with_rocm(),
     "core is not compiled with CUDA",
 )
 class TestSoftplusBF16(OpTest):
@@ -5595,7 +5643,8 @@ class TestMishAPI(unittest.TestCase):
 # ------------------ Test Cudnn Activation----------------------
 def create_test_act_cudnn_class(parent, atol=1e-3, grad_atol=1e-3):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestActCudnn(parent):
         def init_kernel_type(self):

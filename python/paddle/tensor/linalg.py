@@ -24,6 +24,10 @@ from paddle import _C_ops
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc
 from paddle.tensor.math import broadcast_shape
+from paddle.utils.decorator_utils import (
+    ParamAliasDecorator,
+    VariableArgsDecorator,
+)
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
@@ -188,6 +192,36 @@ def transpose_(x, perm, name=None):
     """
     if in_dynamic_mode():
         return _C_ops.transpose_(x, perm)
+
+
+@VariableArgsDecorator('dims')
+def permute(input: Tensor, dims: Sequence[int]) -> Tensor:
+    """
+    Permute the dimensions of a tensor.
+
+    Args:
+        input (Tensor): the input tensor.
+        *dims (tuple|list|int): The desired ordering of dimensions. Supports passing as variable-length
+            arguments (e.g., permute(x, 1, 0, 2)) or as a single list/tuple (e.g., permute(x, [1, 0, 2])).
+
+    Returns:
+        Tensor: A tensor with permuted dimensions.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.randn([2, 3, 4])
+            >>> y = paddle.permute(x, (1, 0, 2))
+            >>> print(y.shape)
+            [3, 2, 4]
+
+            >>> y = x.permute([1, 0, 2])
+            >>> print(y.shape)
+            [3, 2, 4]
+    """
+    return transpose(x=input, perm=dims)
 
 
 def matrix_transpose(
@@ -1133,6 +1167,7 @@ def matrix_norm(
         )
 
 
+@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
 def norm(
     x: Tensor,
     p: float | _POrder | None = None,
@@ -1184,9 +1219,14 @@ def norm(
     |     or float   |                                | {(1 / porder)}                 |
     +----------------+--------------------------------+--------------------------------+
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``dim`` can be used as an alias for ``axis``.
+        For example, ``norm(input=tensor_x, dim=1, ...)`` is equivalent to ``norm(x=tensor_x, axis=1, ...)``.
+
     Args:
         x (Tensor): The input tensor could be N-D tensor, and the input data
             type could be float32 or float64.
+            alias: ``input``.
         p (int|float|string|None, optional): Order of the norm. Supported values are `fro`, `nuc`, `0`, `±1`, `±2`,
             `±inf` and any real number yielding the corresponding p-norm.
             Default value is None.
@@ -1195,6 +1235,7 @@ def norm(
             If `axis < 0`, the dimension to norm operation is rank(input) + axis.
             If axis is a list(int)/tuple(int) with two elements, the matrix norm is computed over the axis.
             Default value is `None`.
+            alias: ``dim``.
         keepdim (bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have fewer dimension
             than the :attr:`input` unless :attr:`keepdim` is true, default
@@ -5042,9 +5083,9 @@ def cdist(
         f"But received Input x's last dimension is {x_shape[-1]}, "
         f"Input y's last dimension is {y_shape[-1]}.\n"
     )
-    assert p >= 0, (
-        "The p must be greater than or equal to 0, " f"But received p is {p}.\n"
-    )
+    assert (
+        p >= 0
+    ), f"The p must be greater than or equal to 0, But received p is {p}.\n"
 
     r1 = x.shape[-2]
     r2 = y.shape[-2]

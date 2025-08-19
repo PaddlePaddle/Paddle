@@ -65,9 +65,11 @@ class TestAddReaderDependency(unittest.TestCase):
             def data_source():
                 for _ in range(self.batch_num):
                     time.sleep(self.sleep_time)  # sleep some times
-                    yield np.random.uniform(low=-1, high=1, size=[1]).astype(
-                        'float32'
-                    ),
+                    yield (
+                        np.random.uniform(low=-1, high=1, size=[1]).astype(
+                            'float32'
+                        ),
+                    )
 
             persistable_in = paddle.static.data(
                 name='persistable_in', dtype='float32', shape=[1]

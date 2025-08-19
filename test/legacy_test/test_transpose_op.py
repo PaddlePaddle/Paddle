@@ -35,7 +35,7 @@ class TestTransposeOp(OpTest):
         self.inputs = {'X': np.random.random(self.shape).astype("float64")}
         self.attrs = {
             'axis': list(self.axis),
-            'use_mkldnn': self.use_onednn,
+            'use_onednn': self.use_onednn,
         }
         self.outputs = {
             'XShape': np.random.random(self.shape).astype("float64"),
@@ -146,7 +146,7 @@ class TestCase10(TestTransposeOp):
         self.inputs = {'X': np.random.random(self.shape).astype("float64")}
         self.attrs = {
             'axis': list(self.axis),
-            'use_mkldnn': self.use_onednn,
+            'use_onednn': self.use_onednn,
         }
         self.outputs = {
             'XShape': np.random.random(self.shape).astype("float64"),
@@ -169,7 +169,7 @@ class TestCase_ZeroDim(TestTransposeOp):
         self.inputs = {'X': np.random.random(self.shape).astype("float64")}
         self.attrs = {
             'axis': list(self.axis),
-            'use_mkldnn': self.use_onednn,
+            'use_onednn': self.use_onednn,
         }
         self.outputs = {
             'XShape': np.random.random(self.shape).astype("float64"),
@@ -191,7 +191,7 @@ class TestAutoTuneTransposeOp(OpTest):
         self.inputs = {'X': np.random.random(self.shape).astype("float64")}
         self.attrs = {
             'axis': list(self.axis),
-            'use_mkldnn': self.use_onednn,
+            'use_onednn': self.use_onednn,
         }
         self.outputs = {
             'XShape': np.random.random(self.shape).astype("float64"),
@@ -234,7 +234,7 @@ class TestAutoTuneTransposeFP16Op(OpTest):
         self.inputs = {'X': np.random.random(self.shape).astype(self.dtype)}
         self.attrs = {
             'axis': list(self.axis),
-            'use_mkldnn': self.use_onednn,
+            'use_onednn': self.use_onednn,
         }
         self.outputs = {
             'XShape': np.random.random(self.shape).astype(self.dtype),
@@ -279,7 +279,7 @@ class TestAutoTuneTransposeBF16Op(OpTest):
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.attrs = {
             'axis': list(self.axis),
-            'use_mkldnn': self.use_onednn,
+            'use_onednn': self.use_onednn,
         }
         self.outputs = {
             'XShape': convert_float_to_uint16(
@@ -330,7 +330,7 @@ class TestTransposeFP16Op(OpTest):
         self.inputs = {'X': x}
         self.attrs = {
             'axis': list(self.axis),
-            'use_mkldnn': self.use_onednn,
+            'use_onednn': self.use_onednn,
         }
         self.outputs = {
             'XShape': np.random.random(self.shape).astype(self.dtype),
@@ -376,7 +376,7 @@ class TestTransposeBF16Op(OpTest):
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.attrs = {
             'axis': list(self.axis),
-            'use_mkldnn': self.use_onednn,
+            'use_onednn': self.use_onednn,
         }
         self.outputs = {
             'XShape': convert_float_to_uint16(
@@ -497,7 +497,6 @@ class TestTransposeOpBool8D(TestTransposeOpBool):
 
 
 class TestTransposeOpError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -534,7 +533,6 @@ class TestTransposeOpError(unittest.TestCase):
 
 
 class TestTransposeApi(unittest.TestCase):
-
     def test_static_out(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -572,7 +570,6 @@ class TestTransposeApi(unittest.TestCase):
 
 
 class TestTAPI(unittest.TestCase):
-
     def test_static_out(self):
         with base.program_guard(base.Program()):
             data = paddle.static.data(shape=[10], dtype="float64", name="data")
@@ -644,7 +641,6 @@ class TestTAPI(unittest.TestCase):
 
 
 class TestMoveAxis(unittest.TestCase):
-
     def test_static_moveaxis1(self):
         x_np = np.random.randn(2, 3, 4, 5, 7)
         expected = np.moveaxis(x_np, [0, 4, 3, 2], [1, 3, 2, 0])

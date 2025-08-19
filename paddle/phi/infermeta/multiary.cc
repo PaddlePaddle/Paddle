@@ -1853,31 +1853,34 @@ void DeformableConvInferMeta(const MetaTensor& x,
                         paddings.size(),
                         strides.size()));
 
-  PADDLE_ENFORCE_EQ(
-      in_dims[1],
-      filter_dims[1] * groups,
-      common::errors::InvalidArgument(
-          "The number of input channels should be equal to filter "
-          "channels * groups. The difference is [%d]: [%d]",
-          in_dims[1],
-          filter_dims[1] * groups));
-  PADDLE_ENFORCE_EQ(
-      filter_dims[0] % groups,
-      0,
-      common::errors::InvalidArgument(
-          "The number of output channels should be divided by groups. But "
-          "received output channels:[%d], groups:[%d]",
-          filter_dims[0],
-          groups));
-  PADDLE_ENFORCE_EQ(
-      filter_dims[0] % deformable_groups,
-      0,
-      common::errors::InvalidArgument(
-          "The number of output channels should be "
-          "divided by deformable groups. The difference is [%d]: [%d]",
-          filter_dims[0] % groups,
-          0));
-
+  if (config.is_runtime || (filter_dims[1] != -1 && in_dims[1] != -1)) {
+    PADDLE_ENFORCE_EQ(
+        in_dims[1],
+        filter_dims[1] * groups,
+        common::errors::InvalidArgument(
+            "The number of input channels should be equal to filter "
+            "channels * groups. The difference is [%d]: [%d]",
+            in_dims[1],
+            filter_dims[1] * groups));
+  }
+  if (config.is_runtime || filter_dims[0] != -1) {
+    PADDLE_ENFORCE_EQ(
+        filter_dims[0] % groups,
+        0,
+        common::errors::InvalidArgument(
+            "The number of output channels should be divided by groups. But "
+            "received output channels:[%d], groups:[%d]",
+            filter_dims[0],
+            groups));
+    PADDLE_ENFORCE_EQ(
+        filter_dims[0] % deformable_groups,
+        0,
+        common::errors::InvalidArgument(
+            "The number of output channels should be "
+            "divided by deformable groups. The difference is [%d]: [%d]",
+            filter_dims[0] % groups,
+            0));
+  }
   if (in_dims[0] > im2col_step) {
     PADDLE_ENFORCE_EQ(
         in_dims[0] % im2col_step,
@@ -4944,15 +4947,22 @@ void RmsNormInferMeta(const MetaTensor& x,
                       const float quant_min_bound,
                       MetaTensor* out,
                       MetaTensor* residual_out,
-                      MetaTensor* inv_var) {
+                      MetaTensor* inv_var,
+                      MetaConfig config) {
   size_t x_dims_size = x.dims().size();
 
   size_t normalized_dims = 1;
+  bool has_minus_one = false;
   for (size_t i = begin_norm_axis; i < x_dims_size; ++i) {
     normalized_dims *= x.dims().at(i);
+    has_minus_one |= (x.dims().at(i) == -1);
   }
 
-  if (normalized_dims != 0) {
+  bool skip_check = false;
+  if (normalized_dims == 0) skip_check = true;
+  if (has_minus_one && !config.is_runtime) skip_check = true;
+
+  if (!skip_check) {
     PADDLE_ENFORCE_EQ(normalized_dims,
                       norm_weight.dims()[0],
                       common::errors::InvalidArgument(
@@ -4963,7 +4973,6 @@ void RmsNormInferMeta(const MetaTensor& x,
                           normalized_dims,
                           norm_weight.dims()[0]));
   }
-
   out->set_dims(x.dims());
 
   if (quant_scale > 0) {
@@ -6098,7 +6107,7 @@ void FusedConvInferMeta(const MetaTensor& input,
                         const std::vector<int>& dilations,
                         int groups,
                         const std::string& data_format,
-                        const std::string& mkldnn_data_type,
+                        const std::string& onednn_data_type,
                         const std::string& fuse_activation,
                         bool fuse_residual_conn,
                         bool force_fp32_output,
