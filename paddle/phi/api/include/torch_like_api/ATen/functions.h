@@ -15,7 +15,7 @@
 #pragma once
 
 #include <ATen/common.h>
-#include <ATen/tensor.h>
+#include <ATen/core/TensorBody.h>
 #include "paddle/phi/api/include/api.h"
 
 namespace at {

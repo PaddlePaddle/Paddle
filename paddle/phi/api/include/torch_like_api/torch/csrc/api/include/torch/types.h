@@ -15,8 +15,8 @@
 #pragma once
 
 #include <ATen/common.h>
+#include <ATen/core/TensorBody.h>
 #include <ATen/functions.h>
-#include <ATen/tensor.h>
 #include <c10/core/ScalarType.h>
 
 namespace torch {

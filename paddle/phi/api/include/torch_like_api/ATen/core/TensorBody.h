@@ -1,30 +1,7 @@
-// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 #pragma once
 
-#include <ATen/common.h>
 #include <ATen/core/TensorBase.h>
-#include <c10/core/Device.h>
-#include <c10/core/MemoryFormat.h>
-#include <c10/core/ScalarType.h>
-#include <c10/core/TensorOptions.h>
-#include <compat/int_array_ref_conversion.h>
-#include <compat/scalar_type_conversion.h>
-#include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/common/place.h"
 
 namespace at {
 using PaddleTensor = paddle::Tensor;
@@ -32,26 +9,39 @@ using PaddleTensor = paddle::Tensor;
 class PADDLE_API Tensor : public TensorBase {
  public:
   Tensor() = default;
-  Tensor(const PaddleTensor& tensor) : tensor_(tensor){};  // NOLINT
+  Tensor(const PaddleTensor& tensor) : TensorBase(tensor){};  // NOLINT
 
   void* data_ptr() const { return const_cast<void*>(tensor_.data()); }
   template <typename T>
   T* data_ptr() const {
     return const_cast<T*>(tensor_.data<T>());
   }
-  int64_t stride(int64_t dim) const {
-    if (dim < 0) {
-      dim += tensor_.strides().size();
-    }
-    return tensor_.strides()[static_cast<int>(dim)];
+
+  const void* const_data_ptr() const {
+    return const_cast<void*>(tensor_.data());
   }
+
+  template <typename T, std::enable_if_t<!std::is_const_v<T>, int> = 0>
+  const T* const_data_ptr() const;
+
+  template <typename T, std::enable_if_t<std::is_const_v<T>, int> = 0>
+  const std::remove_const_t<T>* const_data_ptr() const;
+
+  void* mutable_data_ptr() const { return const_cast<void*>(tensor_.data()); }
+
+  template <typename T>
+  T* mutable_data_ptr() const;
+
+  using TensorBase::stride;
+
   c10::IntArrayRef strides() const {
     return compat::_PD_PhiDDimToIntArrayRef(tensor_.strides());
   }
 
-  int64_t size(int64_t dim) const {
-    return tensor_.dims()[static_cast<int>(dim)];
-  }
+  using TensorBase::size;
+  //   int64_t size(int64_t dim) const {
+  //     return tensor_.dims()[static_cast<int>(dim)];
+  //   }
 
   c10::IntArrayRef sizes() const {
     return compat::_PD_PhiDDimToIntArrayRef(tensor_.dims());
@@ -89,11 +79,6 @@ class PADDLE_API Tensor : public TensorBase {
 
   c10::ScalarType scalar_type() const {
     return compat::_PD_PhiDataTypeToAtenScalarType(tensor_.dtype());
-  }
-
-  c10::TensorOptions options() const {
-    // TODO(SigureMo): Implement layout
-    return c10::TensorOptions().dtype(dtype()).device(device());
   }
 
   const Tensor& fill_(const at::Scalar& scalar) const {
@@ -134,11 +119,35 @@ class PADDLE_API Tensor : public TensorBase {
         tensor_, compat::_PD_AtenScalarTypeToPhiDataType(dtype)));
   }
 
+  // Paddle Tensor has no storage_offset, so we add it here, and it is always
+  // 0.
+  //   int64_t storage_offset() const { return storage_offset_; }
+
+  inline size_t nbytes() const {
+    PD_CHECK(
+        ((tensor_.layout() != common::DataLayout::SPARSE_COO) &&
+         (tensor_.layout() != common::DataLayout::SPARSE_CSR)),
+        "nbytes is not defined for sparse tensors.  If you want the size of "
+        "the constituent "
+        "tensors, add the nbytes of the indices and values.  If you want the "
+        "size of the  "
+        "equivalent dense tensor, multiply numel() by element_size()");
+    return tensor_.numel() * SizeOf(tensor_.dtype());
+  }
+
+  size_t itemsize() const { return SizeOf(tensor_.dtype()); }
+
+  int64_t element_size() const {
+    return static_cast<int64_t>(SizeOf(tensor_.dtype()));
+  }
+
+  inline Tensor clone() const {
+    PaddleTensor cloned_tensor = paddle::experimental::assign(tensor_);
+    return Tensor(cloned_tensor);
+  }
+
   PaddleTensor _PD_GetInner() const { return tensor_; }
   PaddleTensor& _PD_GetInner() { return tensor_; }
-
- private:
-  PaddleTensor tensor_;
 };
 
 }  // namespace at

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include <ATen/tensor.h>
+#include <ATen/core/TensorBody.h>
 #include <iostream>
 #include <memory>
 #include <stdexcept>

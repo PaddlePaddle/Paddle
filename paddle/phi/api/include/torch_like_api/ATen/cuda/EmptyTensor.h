@@ -1,5 +1,5 @@
 #pragma once
-#include <ATen/core/TensorBase.h>
+#include <ATen/core/TensorBody.h>
 
 namespace at::detail {
 using namespace c10;
