@@ -24,7 +24,10 @@ from paddle import _C_ops
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc
 from paddle.tensor.math import broadcast_shape
-from paddle.utils.decorator_utils import ParamAliasDecorator
+from paddle.utils.decorator_utils import (
+    ParamAliasDecorator,
+    VariableArgsDecorator,
+)
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
@@ -189,6 +192,36 @@ def transpose_(x, perm, name=None):
     """
     if in_dynamic_mode():
         return _C_ops.transpose_(x, perm)
+
+
+@VariableArgsDecorator('dims')
+def permute(input: Tensor, dims: Sequence[int]) -> Tensor:
+    """
+    Permute the dimensions of a tensor.
+
+    Args:
+        input (Tensor): the input tensor.
+        *dims (tuple|list|int): The desired ordering of dimensions. Supports passing as variable-length
+            arguments (e.g., permute(x, 1, 0, 2)) or as a single list/tuple (e.g., permute(x, [1, 0, 2])).
+
+    Returns:
+        Tensor: A tensor with permuted dimensions.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.randn([2, 3, 4])
+            >>> y = paddle.permute(x, (1, 0, 2))
+            >>> print(y.shape)
+            [3, 2, 4]
+
+            >>> y = x.permute([1, 0, 2])
+            >>> print(y.shape)
+            [3, 2, 4]
+    """
+    return transpose(x=input, perm=dims)
 
 
 def matrix_transpose(

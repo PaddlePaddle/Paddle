@@ -23,6 +23,12 @@ from api_gen import (
     CodeGen,
 )
 
+args_default_mapping = {
+    "x": ["input"],
+    "y": ["other"],
+    "axis": ["dim"],
+    "keepdims": ["keepdim"],
+}
 H_FILE_TEMPLATE = """
 
 #pragma once
@@ -66,6 +72,9 @@ PyObject *static_api_{api_name}(PyObject *self, PyObject *args, PyObject *kwargs
 
         // Parse Attributes
         {attrs}
+
+        // Parse input_out if needed
+        {input_out}
 
         // Check Reminding Params validity if needed
         {check_remaining_params_valid}
@@ -159,6 +168,9 @@ PyObject *static_api_{api_name}(PyObject *self, PyObject *args, PyObject *kwargs
 
         // Parse Attributes
         {attrs_py_obj}
+
+        // Parse input_out if needed
+        {input_out}
 
         // Check for mutable attrs
         {init_attrs}
@@ -304,15 +316,20 @@ class PythonCCodeGen(CodeGen):
             f.write(H_FILE_TEMPLATE.format(body=body))
 
     def _gen_keywords_vector(self, args_alias_map, arg_name):
-        alias_vector = f'{{"{arg_name}"}}'
+        alias_set = set()
         if arg_name in args_alias_map.keys():
             alias_set = set(args_alias_map[arg_name])
-            # Add the original argument name to the alias set
-            alias_set.add(arg_name)
-            # Convert to C++ vector format
-            alias_vector = (
-                "{" + ",".join(f'"{name}"' for name in alias_set) + "}"
-            )
+        elif (
+            "use_default_mapping" in args_alias_map.keys()
+            and args_alias_map['use_default_mapping']
+        ):
+            # try to use default mapping
+            if arg_name in args_default_mapping.keys():
+                alias_set = set(args_default_mapping[arg_name])
+        # Add the original argument name to the alias set
+        alias_set.add(arg_name)
+        # Convert to C++ vector format
+        alias_vector = "{" + ",".join(f'"{name}"' for name in alias_set) + "}"
         return alias_vector
 
     def _gen_inputs(self, op_info, op_name, args_alias_map={}):
@@ -635,6 +652,13 @@ class PythonCCodeGen(CodeGen):
                 args=', '.join(input_name_list + attr_name_list),
             )
         elif len(mutable_attr_name_list) > 0:
+            get_input_out_str = ""
+            if (
+                not op_name[-1:] == "_"
+                and not op_name[-4:] == "grad"
+                and "sparse" not in op_name
+            ):
+                get_input_out_str = "Check_PIR_not_support_out(kwargs);"
             ret = MUTABLE_ATTR_API_IMPL_TEMPLATE.format(
                 api_name=op_name,
                 check_params_count=self._gen_check_params_count(
@@ -655,8 +679,16 @@ class PythonCCodeGen(CodeGen):
                     + mutable_attr_name_list
                     + no_mutable_attr_name_list
                 ),
+                input_out=get_input_out_str,
             )
         else:
+            get_input_out_str = ""
+            if (
+                not op_name[-1:] == "_"
+                and not op_name[-4:] == "grad"
+                and "sparse" not in op_name
+            ):
+                get_input_out_str = "Check_PIR_not_support_out(kwargs);"
             ret = NO_MUTABLE_ATTR_API_IMPL_TEMPLATE.format(
                 api_name=op_name,
                 check_params_count=self._gen_check_params_count(
@@ -671,6 +703,7 @@ class PythonCCodeGen(CodeGen):
                     need_check=need_check_params_count
                 ),
                 pre_process=self._gen_pre_process(pre_process),
+                input_out=get_input_out_str,
             )
         ret = re.sub(r' +\n', '', ret)
         return ret

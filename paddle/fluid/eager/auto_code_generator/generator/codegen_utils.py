@@ -328,9 +328,9 @@ def ParseYamlArgs(string):
             else None
         )
 
-        assert (
-            arg_type in yaml_types_mapping.keys()
-        ), f"The argument type {arg_type} in yaml config is not supported in yaml_types_mapping."
+        assert arg_type in yaml_types_mapping.keys(), (
+            f"The argument type {arg_type} in yaml config is not supported in yaml_types_mapping."
+        )
         if arg_type in ["DataLayout"] and default_value is not None:
             default_value = f"paddle::experimental::{default_value}"
         if arg_type in ["DataType"] and default_value is not None:
@@ -369,9 +369,9 @@ def ParseYamlReturns(string):
         else:
             ret_type = ret.strip()
 
-        assert (
-            ret_type in yaml_types_mapping.keys()
-        ), f"The return type {ret_type} in yaml config is not supported in yaml_types_mapping."
+        assert ret_type in yaml_types_mapping.keys(), (
+            f"The return type {ret_type} in yaml config is not supported in yaml_types_mapping."
+        )
         ret_type = yaml_types_mapping[ret_type]
 
         assert "Tensor" in ret_type, AssertMessage("Tensor", ret_type)
@@ -481,30 +481,18 @@ class FunctionGeneratorBase:
         self.forward_api_name = ""
         self.python_api_info = {}
 
-        self.orig_forward_inputs_list = (
-            []
-        )  # [ [arg_name, arg_type, orig_position], ...]
-        self.orig_forward_attrs_list = (
-            []
-        )  # [ [attr_name, attr_type, default_value, orig_position], ...]
-        self.orig_forward_returns_list = (
-            []
-        )  # [ [ret_name, ret_type, orig_position], ...]
+        self.orig_forward_inputs_list = []  # [ [arg_name, arg_type, orig_position], ...]
+        self.orig_forward_attrs_list = []  # [ [attr_name, attr_type, default_value, orig_position], ...]
+        self.orig_forward_returns_list = []  # [ [ret_name, ret_type, orig_position], ...]
 
         # Processed Forward Data
-        self.forward_inputs_position_map = (
-            {}
-        )  # { "name" : [type, fwd_position] }
-        self.forward_outputs_position_map = (
-            {}
-        )  # { "name" : [type, fwd_position] }
+        self.forward_inputs_position_map = {}  # { "name" : [type, fwd_position] }
+        self.forward_outputs_position_map = {}  # { "name" : [type, fwd_position] }
 
         # Special Op Attributes
         self.optional_inputs = []  # [name, ...]
         self.no_need_buffers = []  # [name, ...]
-        self.composite_func_info = (
-            {}
-        )  # {name: func_name, args: [input_name, ...]}
+        self.composite_func_info = {}  # {name: func_name, args: [input_name, ...]}
         self.intermediate_outputs = []  # [name, ...]
         self.forward_inplace_map = {}  # {name : name, ...}
         self.args_alias_map = {}  # {arg_name: alias_vector, ...}
@@ -532,8 +520,11 @@ class FunctionGeneratorBase:
         if 'name' in python_api_info.keys():
             self.python_api_names = python_api_info['name']
         if 'args_alias' in python_api_info.keys():
-            for arg, alias in python_api_info['args_alias'].items():
-                alias_set = set(alias)
+            for arg, alias_or_mode in python_api_info['args_alias'].items():
+                if arg == 'use_default_mapping':
+                    args_alias.update({arg: alias_or_mode})
+                    continue
+                alias_set = set(alias_or_mode)
                 # Add the original argument name to the alias set
                 alias_set.add(arg)
                 # Convert to C++ vector format
@@ -608,15 +599,15 @@ class FunctionGeneratorBase:
         elif 'backward_op' in forward_api_contents.keys():
             self.forward_api_name = forward_api_contents['backward_op']
 
-        assert (
-            'args' in forward_api_contents.keys()
-        ), 'Unable to find "args" in forward_api_contents keys'
+        assert 'args' in forward_api_contents.keys(), (
+            'Unable to find "args" in forward_api_contents keys'
+        )
 
         forward_args_str = forward_api_contents['args']
 
-        assert (
-            'output' in forward_api_contents.keys()
-        ), 'Unable to find "output" in forward_api_contents keys'
+        assert 'output' in forward_api_contents.keys(), (
+            'Unable to find "output" in forward_api_contents keys'
+        )
 
         forward_returns_str = forward_api_contents['output']
         if 'python_api' in forward_api_contents.keys():

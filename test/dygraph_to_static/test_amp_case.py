@@ -18,7 +18,6 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
-    test_pir_only,
 )
 
 import paddle
@@ -58,7 +57,6 @@ class Net(paddle.nn.Layer):
 
 class TestPartialAutoCast(Dy2StTestBase):
     @test_ast_only
-    @test_pir_only
     def test_run(self):
         if not paddle.base.core.is_compiled_with_cuda():
             return

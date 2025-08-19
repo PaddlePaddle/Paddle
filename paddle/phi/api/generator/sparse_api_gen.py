@@ -351,9 +351,9 @@ class SparseAPI(ForwardAPI):
   {return_code}"""
 
     def get_condition_code(self, kernel_name):
-        assert self.kernel['dispatch'][
-            kernel_name
-        ], f"{self.api} api: the tensor type of inputs and outputs for kernel isn't set, see also 'kernel:func' of 'conv3d' in sparse_ops.yaml."
+        assert self.kernel['dispatch'][kernel_name], (
+            f"{self.api} api: the tensor type of inputs and outputs for kernel isn't set, see also 'kernel:func' of 'conv3d' in sparse_ops.yaml."
+        )
         input_types = self.kernel['dispatch'][kernel_name][0]
         sparse_type_map = {
             'sparse_coo': 'DataLayout::SPARSE_COO',
