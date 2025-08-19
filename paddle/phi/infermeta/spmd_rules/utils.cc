@@ -138,7 +138,8 @@ std::unordered_map<std::string, std::vector<int64_t>> ShardingMergeForTensors(
     const bool merge_conflicts) {
   std::unordered_map<std::string, std::vector<int64_t>> axis_to_dim_map;
   std::unordered_map<int64_t, std::pair<std::string, int64_t>>
-      placements_status;  // 0,1,2表示优先级，多刀切优先级最高
+      placements_status;  // 0, 1, 2 represent the priority, and co_shard has
+                          // the highest priority
   for (auto it = tensor_axes_to_dim_pairs.rbegin();
        it != tensor_axes_to_dim_pairs.rend();
        ++it) {
