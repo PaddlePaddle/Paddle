@@ -25,11 +25,6 @@ class TestTensorConstructor(unittest.TestCase):
         paddle.seed(2025)
         self.shape = [10, 20, 30]
 
-    def test_construct_random_tensor_with_float32(self):
-        res = paddle.Tensor(*self.shape)
-        self.assertEqual(res.dtype, paddle.float32)
-        self.assertEqual(res.shape, self.shape)
-
     def test_construct_from_list(self):
         x = np.random.random(size=self.shape)
         res = paddle.Tensor(list(x))
@@ -46,6 +41,138 @@ class TestTensorConstructor(unittest.TestCase):
         target = paddle.empty([0])
         res = paddle.Tensor()
         self.assertEqual(res.shape, target.shape)
+
+        target = paddle.empty(self.shape, dtype=paddle.float32)
+        res = paddle.Tensor(*self.shape)
+        self.assertEqual(res.dtype, paddle.float32)
+        self.assertEqual(res.shape, self.shape)
+
+
+class TestFloatTensor(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        paddle.seed(2025)
+        self.shape = [10, 20, 30]
+        self.set_api_and_type()
+
+    def set_api_and_type(self):
+        self.dtype = paddle.float32
+        self.np_dtype = "float32"
+        self.api = paddle.FloatTensor
+
+    def test_empty_construct(self):
+        target = paddle.empty([0], dtype=self.dtype)
+        res = self.api()
+        self.assertEqual(res.shape, target.shape)
+
+        target = paddle.empty(self.shape, dtype=self.dtype)
+        res = self.api(*self.shape)
+        self.assertEqual(res.dtype, self.dtype)
+        self.assertEqual(res.shape, self.shape)
+
+    def test_construct_from_list_and_tuple(self):
+        x = np.random.random(size=self.shape).astype(self.np_dtype)
+        res = self.api(tuple(x))
+        np.testing.assert_allclose(x, res.numpy(), rtol=1e-6, atol=1e-6)
+        self.assertEqual(res.dtype, self.dtype)
+        res = self.api(list(x))
+        np.testing.assert_allclose(x, res.numpy(), rtol=1e-6, atol=1e-6)
+        self.assertEqual(res.dtype, self.dtype)
+
+    def test_construct_from_tensor_and_numpy(self):
+        x = np.random.random(size=self.shape).astype(self.np_dtype)
+        x_tensor = paddle.to_tensor(x, dtype=self.dtype)
+        res = self.api(x_tensor)
+        np.testing.assert_allclose(x, res.numpy(), rtol=1e-6, atol=1e-6)
+        self.assertEqual(res.dtype, self.dtype)
+        res = self.api(x)
+        np.testing.assert_allclose(x, res.numpy(), rtol=1e-6, atol=1e-6)
+        self.assertEqual(res.dtype, self.dtype)
+
+
+class TestDoubleTensor(TestFloatTensor):
+    def set_api_and_type(self):
+        self.dtype = paddle.float64
+        self.np_dtype = "float64"
+        self.api = paddle.DoubleTensor
+
+
+class TestHalfTensor(TestFloatTensor):
+    def set_api_and_type(self):
+        self.dtype = paddle.float16
+        self.np_dtype = "float16"
+        self.api = paddle.HalfTensor
+
+
+class TestBFloat16Tensor(TestFloatTensor):
+    def set_api_and_type(self):
+        self.dtype = paddle.bfloat16
+        self.np_dtype = "float16"
+        self.api = paddle.BFloat16Tensor
+
+    def test_construct_from_list_and_tuple(self):
+        x = np.random.random(size=self.shape).astype(self.np_dtype)
+        x_target = paddle.to_tensor(x, dtype=self.dtype)
+        res = self.api(tuple(x))
+        np.testing.assert_allclose(
+            x_target.numpy(), res.numpy(), rtol=1e-6, atol=1e-6
+        )
+        self.assertEqual(res.dtype, self.dtype)
+        res = self.api(list(x))
+        np.testing.assert_allclose(
+            x_target.numpy(), res.numpy(), rtol=1e-6, atol=1e-6
+        )
+        self.assertEqual(res.dtype, self.dtype)
+
+    def test_construct_from_tensor_and_numpy(self):
+        x_tensor = paddle.randn(self.shape, dtype=self.dtype)
+        res = self.api(x_tensor)
+        np.testing.assert_allclose(
+            x_tensor.numpy(), res.numpy(), rtol=1e-6, atol=1e-6
+        )
+        self.assertEqual(res.dtype, self.dtype)
+
+
+class TestByteTensor(TestFloatTensor):
+    def set_api_and_type(self):
+        self.dtype = paddle.uint8
+        self.np_dtype = "uint8"
+        self.api = paddle.ByteTensor
+
+
+class TestCharTensor(TestFloatTensor):
+    def set_api_and_type(self):
+        self.dtype = paddle.int8
+        self.np_dtype = "int8"
+        self.api = paddle.CharTensor
+
+
+class TestShortTensor(TestFloatTensor):
+    def set_api_and_type(self):
+        self.dtype = paddle.int16
+        self.np_dtype = "int16"
+        self.api = paddle.ShortTensor
+
+
+class TestIntTensor(TestFloatTensor):
+    def set_api_and_type(self):
+        self.dtype = paddle.int32
+        self.np_dtype = "int32"
+        self.api = paddle.IntTensor
+
+
+class TestLongTensor(TestFloatTensor):
+    def set_api_and_type(self):
+        self.dtype = paddle.int64
+        self.np_dtype = "int64"
+        self.api = paddle.LongTensor
+
+
+class TestBoolTensor(TestFloatTensor):
+    def set_api_and_type(self):
+        self.dtype = paddle.bool
+        self.np_dtype = "bool"
+        self.api = paddle.BoolTensor
 
 
 if __name__ == "__main__":
