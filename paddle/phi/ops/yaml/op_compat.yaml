@@ -2553,11 +2553,6 @@
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
   complex_promote : [X, Y]
   manual_signature : [maximum]
-  python_api :
-    name : [paddle.maximum,paddle.Tensor.maximum]
-    args_alias:
-      x : [input]
-      y : [other]
 
 - op : maxout
   inputs :
@@ -2663,11 +2658,6 @@
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
   complex_promote : [X, Y]
   manual_signature : [minimum]
-  python_api :
-    name : [paddle.minimum,paddle.Tensor.minimum]
-    args_alias:
-      x : [input]
-      y : [other]
 
 - op : mish
   backward : mish_grad
