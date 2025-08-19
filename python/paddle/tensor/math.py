@@ -574,7 +574,7 @@ def pow(x: Tensor, y: float | Tensor, name: str | None = None) -> Tensor:
 
     # in dynamic graph mode
     if in_dynamic_or_pir_mode():
-        if isinstance(y, (int, float)) or (in_dynamic_mode() and y.size == 1):
+        if isinstance(y, (int, float)) or y.dim() == 0:
             return _C_ops.pow(x, y)
         elif isinstance(y, (paddle.Tensor, Variable, paddle.pir.Value)):
             return _C_ops.elementwise_pow(x, y)
