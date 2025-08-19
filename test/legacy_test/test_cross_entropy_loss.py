@@ -128,7 +128,11 @@ def cross_entropy_soft(
 ):
     # 1.loss
     loss = cross_entropy(
-        softmax, label, True, axis, ignore_index  # soft_label,
+        softmax,
+        label,
+        True,
+        axis,
+        ignore_index,
     )
 
     if weight is None and reduction == 'none':
@@ -173,7 +177,11 @@ def cross_entropy_soft_2d(
 ):
     # 1.loss
     loss = cross_entropy(
-        softmax, label, True, axis, ignore_index  # soft_label,
+        softmax,
+        label,
+        True,
+        axis,
+        ignore_index,
     )
 
     if weight is None and reduction == 'none':

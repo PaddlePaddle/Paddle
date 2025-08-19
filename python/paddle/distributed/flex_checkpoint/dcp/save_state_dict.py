@@ -25,8 +25,8 @@ from paddle.distributed.fleet.utils.log_util import logger
 
 from .metadata import LocalTensorIndex, LocalTensorMetadata, Metadata
 from .reshard import reshard_sharded_state_dict
-from .sharded_tensor import (
-    ShardedTensor,
+from .sharded_weight import (
+    ShardedWeight,
 )
 from .utils import (
     check_unique_id,
@@ -140,7 +140,7 @@ def dedup_tensor(
 
 
 def save_state_dict(
-    state_dict: dict[str, Tensor] | dict[str, ShardedTensor],
+    state_dict: dict[str, Tensor] | dict[str, ShardedWeight],
     path: str,
     process_group: Group | None = None,
     coordinator_rank: int = 0,
@@ -197,7 +197,7 @@ def save_state_dict(
                 numel = math.prod(min_shape)
 
                 if numel == (flat_end - flat_start):
-                    reshaped_shards[key] = ShardedTensor(
+                    reshaped_shards[key] = ShardedWeight(
                         key=key,
                         local_tensor=shard.local_tensor.reshape(min_shape),
                         local_shape=min_shape,
@@ -217,7 +217,7 @@ def save_state_dict(
                         min_offset,
                         shard,
                     )
-                    need_reshard[temp_key] = ShardedTensor(
+                    need_reshard[temp_key] = ShardedWeight(
                         key=temp_key,
                         local_tensor=tmp_tensor,
                         local_shape=(numel,),
@@ -235,7 +235,7 @@ def save_state_dict(
             for key, shard in flattened.items():
                 flat_range = shard.flattened_range
                 temp_key = f"{key}.{shard.global_offset}"
-                src[temp_key] = ShardedTensor(
+                src[temp_key] = ShardedWeight(
                     key=temp_key,
                     local_tensor=shard.local_tensor,
                     local_shape=(flat_range.stop - flat_range.start,),
@@ -252,14 +252,14 @@ def save_state_dict(
             save_dict = {}
             for key in flattened:
                 v = reshaped_shards[key]
-                if isinstance(v, ShardedTensor):
+                if isinstance(v, ShardedWeight):
                     save_dict[key] = v
                 else:
                     temp_key, min_shape, min_offset, shard = v
                     tensor = need_reshard[temp_key].local_tensor.reshape(
                         min_shape
                     )
-                    save_dict[key] = ShardedTensor(
+                    save_dict[key] = ShardedWeight(
                         key=key,
                         local_tensor=tensor,
                         local_shape=min_shape,
@@ -297,7 +297,7 @@ def save_state_dict(
 
 
 def save_state_dict_impl(
-    state_dict: dict[str, Tensor] | dict[str, ShardedTensor],
+    state_dict: dict[str, Tensor] | dict[str, ShardedWeight],
     path: str,
     process_group: Group | None = None,
     coordinator_rank: int = 0,
@@ -312,8 +312,8 @@ def save_state_dict_impl(
         if len(flat_state_dict) > 0:
             for val in flat_state_dict.values():
                 assert isinstance(
-                    val, (paddle.Tensor, ShardedTensor)
-                ), f"The value of state_dict should be a paddle.Tensor or ShardedTensor, but got: {val}."
+                    val, (paddle.Tensor, ShardedWeight)
+                ), f"The value of state_dict should be a paddle.Tensor or ShardedWeight, but got: {val}."
 
         if not os.path.exists(path):
             os.makedirs(path, exist_ok=True)
@@ -375,7 +375,7 @@ def save_state_dict_impl(
                         else ()
                     )
                     local_tensor = val
-            elif isinstance(val, ShardedTensor):
+            elif isinstance(val, ShardedWeight):
                 local_tensor = val.local_tensor
                 local_shape = val.local_shape
                 global_offset = val.global_offset
@@ -423,7 +423,7 @@ def save_state_dict_impl(
             logger.debug(f"metadata:{metadata}")
             paddle.save(metadata, os.path.join(path, f"{unique_id}.metadata"))
 
-        # TODO(zhuxinming): dedup_tensor should using replica id when using ShardedTensor.
+        # TODO(zhuxinming): dedup_tensor should using replica id when using ShardedWeight.
         dedup_tensor(
             local_state_dict, local_storage_metadata, metadata.storage_metadata
         )

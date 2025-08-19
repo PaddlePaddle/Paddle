@@ -271,7 +271,6 @@ class TestCropTensorOpTensorAttrCase4(TestCropTensorOpTensorAttr):
 
 
 class TestCropTensorException(unittest.TestCase):
-
     def test_exception(self):
         paddle.enable_static()
         input1 = paddle.static.data(

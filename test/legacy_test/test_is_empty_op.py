@@ -40,7 +40,6 @@ class TestNotEmpty(TestEmpty):
 
 
 class TestIsEmptyOpError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(

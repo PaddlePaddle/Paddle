@@ -553,7 +553,6 @@ std::tuple<Tensor, Tensor> fused_gemm_epilogue_impl(
     TransDataBackend(kernel_out_0, kernel_backend, kernel_out_0);
     TransDataBackend(kernel_out_1, kernel_backend, kernel_out_1);
   }
-  dev_ctx = GetDeviceContextByBackend(kernel_backend);
 
   return api_output;
 }
@@ -1270,7 +1269,6 @@ std::tuple<Tensor, Tensor, Tensor, std::vector<Tensor>> cudnn_lstm_grad_impl(
     TransDataBackend(kernel_out_2, kernel_backend, kernel_out_2);
     TransDataBackend(kernel_out_3, kernel_backend, kernel_out_3);
   }
-  dev_ctx = GetDeviceContextByBackend(kernel_backend);
 
   return api_output;
 }

@@ -260,7 +260,6 @@ def _math_attention(
 
 
 def _select_sdp_cuda(head_dim: int) -> str:
-
     if head_dim <= 256:
         return "flash_attn"
     else:

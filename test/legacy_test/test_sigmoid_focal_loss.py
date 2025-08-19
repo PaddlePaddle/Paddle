@@ -119,7 +119,6 @@ def calc_sigmoid_focal_loss(
 
 
 class TestSigmoidFocalLoss(unittest.TestCase):
-
     def test_SigmoidFocalLoss(self):
         logit_np = np.random.uniform(0.1, 0.8, size=(2, 3, 4, 10)).astype(
             np.float64
@@ -192,7 +191,6 @@ class TestSigmoidFocalLoss(unittest.TestCase):
 
 
 class TestSigmoidFocalLoss_ZeroSize(unittest.TestCase):
-
     def _test_dygraph(
         self,
         place,

@@ -177,7 +177,6 @@ class TestLogNormalAPI_mean_std_are_tensor(TestLogNormalAPI):
 
 
 class TestLogNormalAlias(unittest.TestCase):
-
     def test_alias(self):
         paddle.disable_static()
         shape = [1, 2, 3]
@@ -188,7 +187,6 @@ class TestLogNormalAlias(unittest.TestCase):
 
 
 class TestLogNormalErrors(unittest.TestCase):
-
     def test_errors(self):
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):

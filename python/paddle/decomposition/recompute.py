@@ -752,7 +752,6 @@ def partition_joint_graph(
 def replace_mid_values_with_forward_subgraph(
     program, saved_values, mid_values, fwd_op_end_idx, backward_op_start_idx
 ):
-
     def _extract_forward_recompute_subgraph_for_backward(
         saved_values, mid_values
     ):

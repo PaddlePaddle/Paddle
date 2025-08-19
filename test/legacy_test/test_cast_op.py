@@ -194,7 +194,6 @@ class TestCastOpFp32ToBf16(OpTest):
 
 
 class TestCastOpError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):

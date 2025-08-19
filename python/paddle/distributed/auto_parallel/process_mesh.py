@@ -447,7 +447,6 @@ class ProcessMesh(core.ProcessMesh):
                 if hasattr(fleet.fleet, "_hcg"):
                     hcg = fleet.get_hybrid_communicate_group()
                     if hcg is not None:
-
                         parallel_group_map = {
                             "pp": hcg.get_pipe_parallel_group,
                             "dp": hcg.get_data_parallel_group,
