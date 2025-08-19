@@ -1469,9 +1469,9 @@ class OutputSelector:
             self.unified_false_output,
             lambda x: isinstance(x, paddle.pir.Value),
         )
-        assert (
-            true_variable_indices == false_variable_indices
-        ), "true_variable_indices and false_variable_indices should be same"
+        assert true_variable_indices == false_variable_indices, (
+            "true_variable_indices and false_variable_indices should be same"
+        )
         return true_variable_indices
 
     @property
@@ -1955,9 +1955,9 @@ def copy_var_to_parent_block(var, layer_helper):
         return var
     prog = layer_helper.main_program
     parent_idx = prog.current_block().parent_idx
-    assert (
-        parent_idx >= 0
-    ), "Got wrong parent block index when assigning var to parent scope in control_flow"
+    assert parent_idx >= 0, (
+        "Got wrong parent block index when assigning var to parent scope in control_flow"
+    )
     parent_block = prog.block(parent_idx)
 
     if (

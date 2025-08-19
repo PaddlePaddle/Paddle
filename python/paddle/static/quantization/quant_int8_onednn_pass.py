@@ -91,9 +91,9 @@ class QuantInt8OnednnPass:
             graph(IrGraph): the applied graph.
         """
 
-        assert isinstance(
-            graph, IrGraph
-        ), 'graph must be the instance of IrGraph.'
+        assert isinstance(graph, IrGraph), (
+            'graph must be the instance of IrGraph.'
+        )
         ops = graph.all_op_nodes()
 
         persistable_vars = [p.name() for p in graph.all_persistable_nodes()]
