@@ -18,11 +18,7 @@ Only test simple cases here."""
 import sys
 from pathlib import Path
 
-from dygraph_to_static_utils import (
-    enable_to_static_guard,
-    to_legacy_ir_test,
-    to_pir_test,
-)
+from dygraph_to_static_utils import enable_to_static_guard
 
 sys.path.append(
     str(Path(__file__).absolute().parent.parent.joinpath("legacy_test"))
@@ -312,11 +308,7 @@ class TestPyLayerBase(unittest.TestCase):
 
     def _run_static(self, *args, **kwargs):
         self.to_static = True
-        fn = (
-            to_pir_test(self._run)
-            if self.run_in_pir
-            else to_legacy_ir_test(self._run)
-        )
+        fn = self._run
         return fn(*args, **kwargs)
 
     # TODO(MarioLulab): In the future, this will be supported: not only `paddle.Tensor`
@@ -641,12 +633,7 @@ class PyLayerTrainHelper(unittest.TestCase):
                 net, build_strategy=build_strategy, full_graph=True
             )
 
-            train_fn = (
-                to_pir_test(train) if in_pir else to_legacy_ir_test(train)
-            )
-            _, _, avg_loss = train_fn(net)
-        else:
-            _, _, avg_loss = train(net)
+        _, _, avg_loss = train(net)
 
         return avg_loss.numpy()
 
@@ -761,16 +748,7 @@ class TestPyLayerJitSaveLoad(unittest.TestCase):
         self.assertEqual(orig_input_types, new_input_types)
         return layer
 
-    @to_legacy_ir_test
     def test_save_load(self):
-        # train and save model
-        train_layer = self.train_and_save_model()
-        # load model
-        loaded_layer = paddle.jit.load(self.model_path)
-        self.load_and_inference(train_layer, loaded_layer)
-
-    @to_pir_test
-    def test_pir_save_load(self):
         # train and save model
         train_layer = self.train_and_save_model()
         # load model
