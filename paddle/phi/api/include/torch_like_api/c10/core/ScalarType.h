@@ -79,6 +79,28 @@ struct dummy_int1_7_t {};
   _(c10::dummy_int1_7_t<6>, Int6, Int6)               /* 42 */ \
   _(c10::dummy_int1_7_t<7>, Int7, Int7)               /* 43 */
 
+#define AT_FORALL_SCALAR_TYPES_WITH_COMPLEX(_) \
+  _(uint8_t, Byte)                             \
+  _(int8_t, Char)                              \
+  _(int16_t, Short)                            \
+  _(int, Int)                                  \
+  _(int64_t, Long)                             \
+  _(float, Float)                              \
+  _(double, Double)                            \
+  _(c10::complex<float>, ComplexFloat)         \
+  _(c10::complex<double>, ComplexDouble)       \
+  _(bool, Bool)                                \
+  _(at::BFloat16, BFloat16)                    \
+  _(c10::Float8_e5m2, Float8_e5m2)              \
+  _(c10::Float8_e4m3fn, Float8_e4m3fn)
+
+#define AT_FORALL_QINT_TYPES(_) \
+  _(c10::qint8, QInt8)          \
+  _(c10::quint8, QUInt8)        \
+  _(c10::qint32, QInt32)        \
+  _(c10::quint4x2, QUInt4x2)    \
+  _(c10::quint2x4, QUInt2x4)
+
 #define FOREACH_PADDLE_AND_TORCH_DTYPES(_)            \
   _(uint8_t, UINT8, Byte)                             \
   _(int8_t, INT8, Char)                               \
@@ -168,6 +190,29 @@ inline bool isComplexType(ScalarType t) {
       /* t == ScalarType::ComplexHalf || */ t == ScalarType::ComplexFloat ||
       t == ScalarType::ComplexDouble);
 }
+
+// inline bool isQIntType(ScalarType t) {
+//   // Don't forget to extend this when adding new QInt types
+//   return t == ScalarType::QInt8 || t == ScalarType::QUInt8 ||
+//          t == ScalarType::QInt32 || t == ScalarType::QUInt4x2 ||
+//          t == ScalarType::QUInt2x4;
+// }
+
+// inline ScalarType toUnderlying(ScalarType t) {
+//   switch (t) {
+//     case ScalarType::QUInt8:
+//     case ScalarType::QUInt4x2:
+//       [[fallthrough]];
+//     case ScalarType::QUInt2x4:
+//       return ScalarType::Byte;
+//     case ScalarType::QInt8:
+//       return ScalarType::Char;
+//     case ScalarType::QInt32:
+//       return ScalarType::Int;
+//     default:
+//       return t;
+//   }
+// }
 
 }  // namespace c10
 

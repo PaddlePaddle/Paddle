@@ -15,7 +15,7 @@
 #include <ATen/cuda/EmptyTensor.h>
 // #include <ATen/cuda/CUDAContext.h>
 // #include <ATen/EmptyTensor.h>
-#include <ATen/tensor.h>
+#include <ATen/core/TensorBody.h>
 
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/common/place.h"

@@ -30,6 +30,7 @@ inline phi::DataType _PD_AtenScalarTypeToPhiDataType(c10::ScalarType dtype) {
       return phi::DataType::UNDEFINED;
     default:
       UNSUPPORTED_FEATURE_IN_PADDLE("Unsupported ScalarType")
+      return phi::DataType::UNDEFINED;  // to avoid compile warning
   }
 }
 
@@ -44,6 +45,7 @@ inline c10::ScalarType _PD_PhiDataTypeToAtenScalarType(phi::DataType dtype) {
       return c10::ScalarType::Undefined;
     default:
       UNSUPPORTED_FEATURE_IN_PADDLE("Unsupported DataType")
+      return c10::ScalarType::Undefined;  // to avoid compile warning
   }
 }
 
