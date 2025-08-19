@@ -16,7 +16,8 @@
 #include <c10/core/ScalarType.h>
 #include <c10/core/SymInt.h>
 #include <c10/core/TensorOptions.h>
-#include <c10/cuda_guard.h>
+#include <c10/cuda/CUDAFunctions.h>
+#include <c10/cuda/CUDAGuard.h>
 
 #include "gtest/gtest.h"
 #include "paddle/phi/api/include/torch_compat_runtime.h"
@@ -59,14 +60,35 @@ TEST(conversion_basic_test, BasicCase) {
 
   {
     std::vector<int64_t> shape = {2, 3, 4, 5};
-    size_t size =
+    size_t size_ =
         c10::elementSize(at::ScalarType::Float) * c10::multiply_integers(shape);
-    std::cout << "multiply_integers out: " << size << std::endl;
+    std::cout << "multiply_integers out: " << size_ << std::endl;
   }
   {
     std::vector<int> shape = {2, 3, 4, 5};
-    size_t size =
+    size_t size_ =
         c10::elementSize(at::ScalarType::Float) * c10::sum_integers(shape);
-    std::cout << "sum_integers out: " << size << std::endl;
+    std::cout << "sum_integers out: " << size_ << std::endl;
+  }
+  {
+    auto stream = at::cuda::getCurrentCUDAStream();
+    std::cout << "stream num: " << stream.stream() << std::endl;
+    at::cuda::stream_synchronize(stream);
+    at::Tensor bb =
+        at::detail::empty_cuda(12, at::kFloat, at::kCUDA, std::nullopt);
+  }
+  {
+    at::Tensor a = at::ones(
+        {2, 3}, at::TensorOptions().dtype(at::kFloat).device(at::kCUDA));
+    std::cout << "a.device() is at::kCUDA: " << (a.device().type() == at::kCUDA)
+              << std::endl;
+    const c10::cuda::CUDAGuard device_guard(a.device());
+    std::cout << "device_guard is at::kCUDA: "
+              << (device_guard.current_device().type() == at::kCUDA)
+              << std::endl;
+    const c10::cuda::OptionalCUDAGuard device_guard_opt(a.device());
+    std::cout << "device_guard is at::kCUDA: "
+              << (device_guard_opt.current_device().value().type() == at::kCUDA)
+              << std::endl;
   }
 }

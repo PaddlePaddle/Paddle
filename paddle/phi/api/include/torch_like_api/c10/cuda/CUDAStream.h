@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "paddle/phi/api/include/context_pool.h"
 #include <c10/core/Device.h>
+#include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/cuda_stream.h"
@@ -32,6 +32,10 @@ class CUDAStream {
 
   operator cudaStream_t() const { return raw_stream_; }
 
+  // operator Stream() const { return unwrap(); }
+
+  DeviceType device_type() const { return DeviceType::CUDA; }
+
   const cudaStream_t& stream() const { return raw_stream_; }
 
  private:
@@ -46,5 +50,7 @@ inline CUDAStream getCurrentCUDAStream(c10::DeviceIndex device_index = -1) {
   return CUDAStream(
       paddle::GetCurrentCUDAStream(phi::GPUPlace(device_index))->raw_stream());
 }
+
+#define getDefaultCUDAStream getCurrentCUDAStream;
 
 }  // namespace at::cuda

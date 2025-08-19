@@ -32,6 +32,7 @@ enum class AllocationType : int8_t {
   UNDEFINED = 0,
   CPU = 1,
   GPU = 2,
+  CUDA = GPU,
   GPUPINNED = 3,
   XPU = 4,
   XPUPINNED = 5,

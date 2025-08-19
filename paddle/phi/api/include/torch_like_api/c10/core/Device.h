@@ -36,6 +36,12 @@ struct Device final {
 
 }  // namespace c10
 
+namespace at {
+using c10::Device;
+using c10::DeviceIndex;
+}  // namespace at
+
 namespace torch {
 using c10::Device;
+using c10::DeviceIndex;
 }  // namespace torch

@@ -24,9 +24,9 @@
 #include "paddle/phi/common/scalar.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <c10/cuda/CUDAException.h>
+#include <c10/cuda/CUDAGuard.h>
 #include <c10/cuda/CUDAStream.h>
 #include <c10/cuda/PhiloxCudaState.h>
-#include <c10/cuda_guard.h>
 #endif
 
 namespace at {
