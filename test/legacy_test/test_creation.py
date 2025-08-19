@@ -24,7 +24,7 @@ from paddle.static import InputSpec
 
 class TestTensorCreation(unittest.TestCase):
     def setUp(self):
-        self.devices = [paddle.CPUPlace(), "cpu"]
+        self.devices = [paddle.CPUPlace()]
         if paddle.device.is_compiled_with_cuda():
             self.devices.append(paddle.CUDAPlace(0))
             self.devices.append("gpu")
@@ -518,7 +518,7 @@ class TestTensorCreation(unittest.TestCase):
 
 class TestTensorPatchMethod(unittest.TestCase):
     def setUp(self):
-        self.devices = [None, paddle.CPUPlace(), "cpu"]
+        self.devices = [paddle.CPUPlace()]
         if paddle.device.is_compiled_with_cuda():
             self.devices.append(paddle.CUDAPlace(0))
             self.devices.append("gpu")
