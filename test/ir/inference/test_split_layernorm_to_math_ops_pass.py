@@ -46,17 +46,21 @@ class TestSplitLayernormToMathOpsPass(PassAutoScanTest):
                 "input_data": [1, 6, 16],
             },
         )
-        yield config, [
-            'reduce_mean',
-            'elementwise_sub',
-            'elementwise_pow',
-            'reduce_mean',
-            'elementwise_add',
-            'sqrt',
-            'elementwise_div',
-            'elementwise_mul',
-            'elementwise_add',
-        ], (1e-5, 1e-5)
+        yield (
+            config,
+            [
+                'reduce_mean',
+                'elementwise_sub',
+                'elementwise_pow',
+                'reduce_mean',
+                'elementwise_add',
+                'sqrt',
+                'elementwise_div',
+                'elementwise_mul',
+                'elementwise_add',
+            ],
+            (1e-5, 1e-5),
+        )
 
         # trt dynamic_shape
         config = self.create_trt_inference_config()
@@ -79,17 +83,21 @@ class TestSplitLayernormToMathOpsPass(PassAutoScanTest):
                 "input_data": [1, 6, 16],
             },
         )
-        yield config, [
-            'reduce_mean',
-            'elementwise_sub',
-            'elementwise_pow',
-            'reduce_mean',
-            'elementwise_add',
-            'sqrt',
-            'elementwise_div',
-            'elementwise_mul',
-            'elementwise_add',
-        ], (1e-2, 1e-2)
+        yield (
+            config,
+            [
+                'reduce_mean',
+                'elementwise_sub',
+                'elementwise_pow',
+                'reduce_mean',
+                'elementwise_add',
+                'sqrt',
+                'elementwise_div',
+                'elementwise_mul',
+                'elementwise_add',
+            ],
+            (1e-2, 1e-2),
+        )
 
         config = self.create_trt_inference_config()
         config.enable_tensorrt_engine(
@@ -100,17 +108,21 @@ class TestSplitLayernormToMathOpsPass(PassAutoScanTest):
             use_static=False,
             use_calib_mode=False,
         )
-        yield config, [
-            'reduce_mean',
-            'elementwise_sub',
-            'elementwise_pow',
-            'reduce_mean',
-            'elementwise_add',
-            'sqrt',
-            'elementwise_div',
-            'elementwise_mul',
-            'elementwise_add',
-        ], (1e-5, 1e-5)
+        yield (
+            config,
+            [
+                'reduce_mean',
+                'elementwise_sub',
+                'elementwise_pow',
+                'reduce_mean',
+                'elementwise_add',
+                'sqrt',
+                'elementwise_div',
+                'elementwise_mul',
+                'elementwise_add',
+            ],
+            (1e-5, 1e-5),
+        )
 
         config = self.create_trt_inference_config()
         config.enable_tensorrt_engine(
@@ -121,17 +133,21 @@ class TestSplitLayernormToMathOpsPass(PassAutoScanTest):
             use_static=False,
             use_calib_mode=False,
         )
-        yield config, [
-            'reduce_mean',
-            'elementwise_sub',
-            'elementwise_pow',
-            'reduce_mean',
-            'elementwise_add',
-            'sqrt',
-            'elementwise_div',
-            'elementwise_mul',
-            'elementwise_add',
-        ], (1e-2, 1e-2)
+        yield (
+            config,
+            [
+                'reduce_mean',
+                'elementwise_sub',
+                'elementwise_pow',
+                'reduce_mean',
+                'elementwise_add',
+                'sqrt',
+                'elementwise_div',
+                'elementwise_mul',
+                'elementwise_add',
+            ],
+            (1e-2, 1e-2),
+        )
 
     def sample_program_config(self, draw):
         epsilon = draw(st.floats(min_value=0.0000001, max_value=0.001))

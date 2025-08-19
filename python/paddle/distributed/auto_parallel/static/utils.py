@@ -373,7 +373,7 @@ def _coordinate2linear_idx(mesh_shape, coordinate):
     # that the processes in mesh are
     #    1. starts from 0
     #    2. continuous
-    # it will be wrong if ths above condition does not meet,
+    # it will be wrong if the above condition does not meet,
     # e.g. process_mesh = { process_groups = [7, 8, 9,10, 12, 13, 14, 15], mesh = [2, 4]}
     # if you want a more general mapping, you should use cartesian product
 

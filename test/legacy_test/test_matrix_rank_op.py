@@ -397,7 +397,6 @@ class TestMatrixRankAPI(unittest.TestCase):
 
 
 class TestMatrixRankZeroSizeTensor(unittest.TestCase):
-
     def _get_places(self):
         return get_places()
 

@@ -41,10 +41,10 @@ RUN rm -rf /usr/bin/python3 && ln -s /usr/bin/python${PY_VERSION} /usr/bin/pytho
 
 # install pylint and pre-commit
 RUN pip3.10 install pre-commit==2.17.0 pylint pytest astroid isort coverage qtconsole distro
-RUN pip3.10 install attrs pyyaml pathlib2 scipy requests psutil Cython clang-format==13.0.0
+RUN pip3.10 install attrs pyyaml pathlib2 scipy requests psutil Cython clang-format==13.0.0 setuptools==76.1.0
 
 # add more libs
-RUN apt-get update && apt-get install libprotobuf-dev protobuf-compiler libprotoc-dev lsof libgeos-dev \
+RUN apt-get update && apt-get install libprotobuf-dev protobuf-compiler libprotoc-dev lsof libgeos-dev zstd \
     pkg-config libhdf5-103 libhdf5-dev lrzsz libsndfile1 tree ninja-build -y
 
 # install Paddle requirement
@@ -81,9 +81,10 @@ ENV CCACHE_MAXSIZE=80G \
     CCACHE_SLOPPINESS=clang_index_store,time_macros,include_file_mtime
 
 # Install XRE 5.0.21.21
+WORKDIR /opt
 ARG XRE_VERSION=5.0.21.21
 ARG XRE_INSTALL=/usr/local/xpu-${XRE_VERSION}
-RUN wget -q https://klx-sdk-release-public.su.bcebos.com/xre/kl3-release/${XRE_VERSION}/xre-ubuntu_2004-x86_64-${XRE_VERSION}.tar.gz && \
+RUN wget -q https://klx-sdk-release-public.su.bcebos.com/xre/kl3-release/${XRE_VERSION}/xre-ubuntu_2004-x86_64-${XRE_VERSION}.tar.gz --no-check-certificate && \
     tar -zxf xre-ubuntu_2004-x86_64-${XRE_VERSION}.tar.gz && \
     mkdir -p ${XRE_INSTALL} && \
     mv -f /opt/xre-ubuntu_2004-x86_64-${XRE_VERSION}/* ${XRE_INSTALL}/ && \
@@ -93,7 +94,7 @@ RUN wget -q https://klx-sdk-release-public.su.bcebos.com/xre/kl3-release/${XRE_V
 ENV PATH=${XRE_INSTALL}/bin:$PATH
 
 # Update RDMA
-RUN wget "https://su.bcebos.com/v1/klx-sdk-release-public/xccl/resource/MLNX_OFED_LINUX-24.10-2.1.8.0-ubuntu20.04-x86_64.tgz?authorization=bce-auth-v1%2FALTAKlxQapmxlH5xQFcp7rEkCr%2F2025-05-28T02%3A24%3A09Z%2F-1%2Fhost%2Fbaad25d036a6eb868dad8ab19468884e5016507fdd6879fe1259db4bbef694e6" \
+RUN wget "https://su.bcebos.com/v1/klx-sdk-release-public/xccl/resource/MLNX_OFED_LINUX-24.10-2.1.8.0-ubuntu20.04-x86_64.tgz?authorization=bce-auth-v1%2FALTAKlxQapmxlH5xQFcp7rEkCr%2F2025-05-28T02%3A24%3A09Z%2F-1%2Fhost%2Fbaad25d036a6eb868dad8ab19468884e5016507fdd6879fe1259db4bbef694e6" --no-check-certificate \
     -O MLNX_OFED_LINUX-24.10-2.1.8.0-ubuntu20.04-x86_64.tgz && \
     tar -zxf MLNX_OFED_LINUX-24.10-2.1.8.0-ubuntu20.04-x86_64.tgz && \
     cd MLNX_OFED_LINUX-24.10-2.1.8.0-ubuntu20.04-x86_64 && \

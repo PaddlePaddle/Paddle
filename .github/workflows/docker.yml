@@ -1,7 +1,7 @@
 on:
   workflow_call:
     inputs:
-      bos_dir:
+      clone_dir:
         required: false
         type: string
         default: "Paddle"
@@ -18,10 +18,6 @@ on:
         description: "Generate images for all CI usage"
         value: ${{ jobs.build-docker-images.outputs.docker_cpu_image }}
 
-      docker_inference_image:
-        description: "Generate images for all CI usage"
-        value: ${{ jobs.build-docker-images.outputs.docker_inference_image }}
-
       docker_coverage_image:
         description: "Generate images for all CI usage"
         value: ${{ jobs.build-docker-images.outputs.docker_coverage_image }}
@@ -34,34 +30,50 @@ on:
         description: "Generate images for all CI usage"
         value: ${{ jobs.build-docker-images.outputs.docker_distribute_image }}
 
+      docker_xpu_image:
+        description: "Generate images for all CI usage"
+        value: ${{ jobs.build-docker-images.outputs.docker_xpu_image }}
+
+      docker_npu_image:
+        description: "Generate images for all CI usage"
+        value: ${{ jobs.build-docker-images.outputs.docker_npu_image }}
+
+      docker_dcu_image:
+        description: "Generate images for all CI usage"
+        value: ${{ jobs.build-docker-images.outputs.docker_dcu_image }}
+
       docker_doc_image:
         description: "Generate images for all CI usage"
         value: ${{ jobs.build-docker-images.outputs.docker_doc_image }}
 
 jobs:
   build-docker-images:
-    if: github.repository_owner == 'PaddlePaddle'
+    if: ${{ github.repository_owner == 'PaddlePaddle' }}
     name: Build docker
     runs-on:
       group: Docker-build
     outputs:
       docker_cpu_image: ${{ steps.build-docker-images.outputs.docker_cpu_image }}
-      docker_inference_image: ${{ steps.build-docker-images.outputs.docker_inference_image }}
       docker_coverage_image: ${{ steps.build-docker-images.outputs.docker_coverage_image }}
       docker_build_image: ${{ steps.build-docker-images.outputs.docker_build_image }}
       docker_distribute_image: ${{ steps.build-docker-images.outputs.docker_distribute_image }}
+      docker_xpu_image: ${{ steps.build-docker-images.outputs.docker_xpu_image }}
+      docker_npu_image: ${{ steps.build-docker-images.outputs.docker_npu_image }}
+      docker_dcu_image: ${{ steps.build-docker-images.outputs.docker_dcu_image }}
       docker_doc_image: ${{ steps.build-docker-images.outputs.docker_doc_image }}
     steps:
       - id: build-docker-images
         name: Build docker images
         env:
-          PR_ID: ${{ github.event.pull_request.number }}
-          COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+          PR_ID: ${{ github.event.pull_request.number || '0' }}
+          COMMIT_ID: ${{ github.event.pull_request.head.sha || github.sha }}
           docker_cpu_file: Dockerfile.cuda9_cudnn7_gcc48_py35_centos6
-          docker_inference_file: Dockerfile.cuda11.2_cudnn8.1_trt8.4_gcc8.2_ubuntu18
           docker_coverage_file: Dockerfile.cuda117_cudnn8_gcc82_ubuntu18_coverage
           docker_build_file: Dockerfile.cuda11.2_cudnn8_gcc82_trt8
           docker_distribute_file: Dockerfile.cuda123_cudnn9_gcc122_ubuntu20
+          docker_xpu_file: Dockerfile.develop.xre
+          docker_npu_file: Dockerfile.develop.npu
+          docker_dcu_file: Dockerfile.develop.dtk
           docker_doc_file: Dockerfile.doc
           dockerfile_script: https://raw.githubusercontent.com/PaddlePaddle/Paddle/refs/heads/develop/tools/dockerfile/ci_dockerfile.sh
           dockerfile_origin: https://raw.githubusercontent.com/PaddlePaddle/Paddle/refs/heads/develop/tools/dockerfile/Dockerfile.ubuntu20
@@ -72,7 +84,7 @@ jobs:
             mkdir -p tools/dockerfile && cd tools/dockerfile
             wget -q --tries=5 --no-proxy ${dockerfile_script} ${dockerfile_origin} --no-check-certificate
           else
-            wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/${{ inputs.bos_dir }}/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
+            wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/${{ inputs.clone_dir }}/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
             tar xf Paddle.tar.gz --strip-components=1
             rm Paddle.tar.gz
             cd tools/dockerfile
@@ -82,7 +94,7 @@ jobs:
 
           # docker build images
           if [ "${{ inputs.task }}" == "cpu" ]; then
-            declare -A docker_files=(["docker_cpu"]="$docker_cpu_file" ["docker_inference"]="$docker_inference_file" ["docker_distribute"]="$docker_distribute_file")
+            declare -A docker_files=(["docker_cpu"]="$docker_cpu_file" ["docker_distribute"]="$docker_distribute_file" ["docker_xpu"]="$docker_xpu_file" ["docker_npu"]="$docker_npu_file" ["docker_dcu"]="$docker_dcu_file")
           elif [ "${{ inputs.task }}" == "build" ]; then
             declare -A docker_files=(["docker_build"]="$docker_build_file" ["docker_doc"]="$docker_doc_file")
           else

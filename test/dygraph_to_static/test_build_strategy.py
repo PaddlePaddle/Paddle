@@ -19,7 +19,6 @@ from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
     test_default_mode_only,
-    test_pir_only,
 )
 from test_resnet import ResNetHelper
 
@@ -66,7 +65,6 @@ class TestResnetWithPass(Dy2StTestBase):
             err_msg=f'predictor_pre:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
         )
 
-    @test_pir_only
     def test_resnet(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)
@@ -80,12 +78,12 @@ class TestResnetWithPass(Dy2StTestBase):
 
     @test_default_mode_only
     def test_in_static_mode_mkldnn(self):
-        paddle.set_flags({'FLAGS_use_mkldnn': True})
+        paddle.set_flags({'FLAGS_use_onednn': True})
         try:
             if paddle.base.core.is_compiled_with_mkldnn():
                 self.resnet_helper.train(True, self.build_strategy)
         finally:
-            paddle.set_flags({'FLAGS_use_mkldnn': False})
+            paddle.set_flags({'FLAGS_use_onednn': False})
 
 
 class TestError(Dy2StTestBase):

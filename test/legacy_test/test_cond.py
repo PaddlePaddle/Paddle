@@ -478,7 +478,6 @@ class TestCondInputOutput(unittest.TestCase):
 
 
 class TestCondNestedControlFlow(unittest.TestCase):
-
     def test_cond_inside_cond(self):
         """
         pseudocode:
@@ -930,7 +929,6 @@ class TestCondWithError(unittest.TestCase):
 
 
 class TestCondWithDict(unittest.TestCase):
-
     @compare_legacy_with_pt
     def test_input_with_dict(self):
         paddle.enable_static()

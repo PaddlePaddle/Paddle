@@ -20,7 +20,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void GaussianKernel(const Context& ctx,
+void GaussianKernel(const Context& dev_ctx,
                     const IntArray& shape,
                     float mean,
                     float std,
@@ -33,10 +33,10 @@ void GaussianKernel(const Context& ctx,
     engine = std::make_shared<std::mt19937_64>();
     engine->seed(seed);
   } else {
-    engine = ctx.GetGenerator()->GetCPUEngine();
+    engine = dev_ctx.GetGenerator()->GetCPUEngine();
   }
 
-  T* data = ctx.template Alloc<T>(out);
+  T* data = dev_ctx.template Alloc<T>(out);
   for (int64_t i = 0; i < out->numel(); ++i) {
     data[i] = dist(*engine);
   }

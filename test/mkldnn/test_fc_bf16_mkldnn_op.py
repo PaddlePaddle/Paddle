@@ -60,7 +60,7 @@ class TestFcBf16MklDNNOp(OpTest):
         }
 
         self.attrs = {
-            'use_mkldnn': self.use_onednn,
+            'use_onednn': self.use_onednn,
             'force_fp32_output': self.force_fp32_output,
         }
 

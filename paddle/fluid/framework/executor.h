@@ -146,7 +146,7 @@ class TEST_API Executor {
                           bool create_vars = true,
                           bool keep_kids = false);
 
-  void EnableMKLDNN(const ProgramDesc& program);
+  void EnableONEDNN(const ProgramDesc& program);
 
   std::shared_ptr<TrainerBase> InitForDataset(
       const ProgramDesc& main_program,

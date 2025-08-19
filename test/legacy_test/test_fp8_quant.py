@@ -20,7 +20,6 @@ from paddle.incubate.nn.functional import fp8
 
 
 class TestFP8Quantization(unittest.TestCase):
-
     def setUp(self):
         paddle.seed(42)
         self.m = 32768

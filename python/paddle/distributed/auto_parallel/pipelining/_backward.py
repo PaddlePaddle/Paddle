@@ -120,7 +120,8 @@ def stage_backward(
         # Deactivate auto mixed precision context in the backward phase
         with paddle.amp.auto_cast(enable=False):
             paddle.autograd.backward(
-                stage_output_tensors, grad_tensors=output_grad_tensors  # type: ignore[arg-type]
+                stage_output_tensors,
+                grad_tensors=output_grad_tensors,
             )
 
         # Extract gradients wrt the input values

@@ -26,13 +26,13 @@ void SubtractRawKernel(const Context& dev_ctx,
                        int axis,
                        DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  auto f = [](xpu::Context* ctx,
+  auto f = [](xpu::Context* xpu_ctx,
               const XPUType* x,
               const XPUType* y,
               XPUType* z,
               const std::vector<int64_t>& xshape,
               const std::vector<int64_t>& yshape) {
-    return xpu::broadcast_sub<XPUType>(ctx, x, y, z, xshape, yshape);
+    return xpu::broadcast_sub<XPUType>(xpu_ctx, x, y, z, xshape, yshape);
   };
 
   phi::XPUElementwise<T, XPUType>(dev_ctx, x, y, axis, out, f);

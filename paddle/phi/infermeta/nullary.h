@@ -38,6 +38,12 @@ void ArangeInferMeta(const Scalar& start,
                      DataType dtype,
                      MetaTensor* out);
 
+void RangeInferMeta(const Scalar& start,
+                    const Scalar& end,
+                    const Scalar& step,
+                    DataType dtype,
+                    MetaTensor* out);
+
 void AssignValueInferMeta(const std::vector<int>& shape,
                           DataType dtype,
                           MetaTensor* out);

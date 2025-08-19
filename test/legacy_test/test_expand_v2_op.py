@@ -405,7 +405,6 @@ class TestExpandV2BF16Op(OpTest):
 
 
 class TestExpandV2Error(unittest.TestCase):
-
     def test_errors(self):
         with (
             static_guard(),
@@ -428,7 +427,6 @@ class TestExpandV2Error(unittest.TestCase):
 
 # Test python API
 class TestExpandV2API(unittest.TestCase):
-
     def test_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
             input = np.random.random([12, 14]).astype("float32")
@@ -648,7 +646,6 @@ class TestExpandV2CompOpInt64_t(OpTest):
 
 
 class TestExpandPirValueListShape(unittest.TestCase):
-
     def test_value_list_shape1(self):
         with (
             static_guard(),
@@ -730,7 +727,6 @@ class TestExpandV2CPUOp2(TestExpandV2ZeroSizeOp):
     "core is not compiled with CUDA",
 )
 class TestExpandV2ZeroSizeGPUOp(TestExpandV2ZeroSizeOp):
-
     def init_place(self):
         self.place = core.CUDAPlace(0)
 
@@ -764,7 +760,7 @@ class TestExpandV2ZeroSizeOneDNNOp(TestExpandV2ZeroSizeOp):
         self.init_place()
         self.python_api = paddle.expand
         self.x = np.zeros(self.ori_shape).astype("float32")
-        self.attrs = {'shape': self.shape, 'use_mkldnn': True}
+        self.attrs = {'shape': self.shape, 'use_onednn': True}
         self.use_onednn = True
         self.set_inputs()
         self.set_additional_inputs()
@@ -780,19 +776,19 @@ class TestExpandV2ZeroSizeOneDNNOp(TestExpandV2ZeroSizeOp):
         self.place = core.CPUPlace()
 
     def test_check_output(self):
-        flags_use_mkldnn = core.globals()["FLAGS_use_mkldnn"]
-        paddle.set_flags({'FLAGS_use_mkldnn': True})
+        flags_use_onednn = core.globals()["FLAGS_use_onednn"]
+        paddle.set_flags({'FLAGS_use_onednn': True})
         self.check_output_with_place(
             self.place,
             check_dygraph=False,
             check_pir=False,
             check_pir_onednn=True,
         )
-        paddle.set_flags({'FLAGS_use_mkldnn': flags_use_mkldnn})
+        paddle.set_flags({'FLAGS_use_onednn': flags_use_onednn})
 
     def test_check_grad(self):
-        flags_use_mkldnn = core.globals()["FLAGS_use_mkldnn"]
-        paddle.set_flags({'FLAGS_use_mkldnn': True})
+        flags_use_onednn = core.globals()["FLAGS_use_onednn"]
+        paddle.set_flags({'FLAGS_use_onednn': True})
         self.check_grad_with_place(
             self.place,
             ["X"],
@@ -801,7 +797,7 @@ class TestExpandV2ZeroSizeOneDNNOp(TestExpandV2ZeroSizeOp):
             check_pir=False,
             check_pir_onednn=True,
         )
-        paddle.set_flags({'FLAGS_use_mkldnn': flags_use_mkldnn})
+        paddle.set_flags({'FLAGS_use_onednn': flags_use_onednn})
 
 
 class TestExpandV2ZeroSizeOneDNNOp1(TestExpandV2ZeroSizeOneDNNOp):

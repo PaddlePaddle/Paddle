@@ -16,7 +16,7 @@ import copy
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_device_place
 
 import paddle
 from paddle.base import core
@@ -142,11 +142,7 @@ class TestNanmedianModeMin(unittest.TestCase):
         col_data[:, :, 2, 3:] = np.nan
         self.fake_data["col_nan_odd"] = col_data.astype(np.float32)
 
-        self.place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
         self.axis_candidate_list = [
             None,
             0,
@@ -397,11 +393,7 @@ class TestNanmedianModeMean(unittest.TestCase):
         col_data[:, :, 2, 3:] = np.nan
         self.fake_data["col_nan_odd"] = col_data.astype(np.float32)
 
-        self.place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
         self.axis_candidate_list = [
             None,
             0,
@@ -637,6 +629,21 @@ class TestNanmedianZeroSize1(TestNanmedianZeroSize):
         self.x_shape = [100, 0, 100]
         self.expect_out = np.zeros(self.x_shape[:-1], dtype='float32')
         self.axis = -1
+
+
+class TestNanmedianNan(unittest.TestCase):
+    def init_data(self):
+        x_np = np.array([1.4907, np.nan, 1.0593, 1.5696])
+        self.x = paddle.to_tensor(x_np)
+        self.expect_out = np.nanmedian(x_np)
+        self.axis = None
+
+    def test_nan(self):
+        self.init_data()
+        out = paddle.nanmedian(self.x, axis=self.axis)
+        np.testing.assert_allclose(
+            out.numpy(), self.expect_out, rtol=1e-05, equal_nan=True
+        )
 
 
 @unittest.skipIf(

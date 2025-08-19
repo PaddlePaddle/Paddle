@@ -53,6 +53,7 @@ from .creation import (  # noqa: F401
     ones,
     ones_like,
     polar,
+    range,
     resize_,
     set_,
     to_tensor,
@@ -98,6 +99,7 @@ from .linalg import (  # noqa: F401
     norm,
     ormqr,
     pca_lowrank,
+    permute,
     pinv,
     qr,
     solve,
@@ -193,6 +195,8 @@ from .manipulation import (  # noqa: F401
     moveaxis,
     put_along_axis,
     put_along_axis_,
+    ravel,
+    repeat,
     repeat_interleave,
     reshape,
     reshape_,
@@ -203,6 +207,7 @@ from .manipulation import (  # noqa: F401
     scatter_,
     scatter_nd,
     scatter_nd_add,
+    scatter_reduce,
     select_scatter,
     shard_index,
     slice,
@@ -226,6 +231,8 @@ from .manipulation import (  # noqa: F401
     unstack,
     view,
     view_as,
+    view_as_complex,
+    view_as_real,
     vsplit,
     vstack,
 )
@@ -266,6 +273,7 @@ from .math import (  # noqa: F401
     bitwise_right_shift,
     bitwise_right_shift_,
     broadcast_shape,
+    broadcast_shapes,
     cartesian_prod,
     ceil,
     ceil_,
@@ -425,6 +433,7 @@ from .math import (  # noqa: F401
     tanh_,
     trace,
     trapezoid,
+    true_divide,
     trunc,
     trunc_,
     vander,
@@ -453,12 +462,14 @@ from .search import (  # noqa: F401
     argmax,
     argmin,
     argsort,
+    argwhere,
     bucketize,
     index_sample,
     index_select,
     kthvalue,
     masked_select,
     mode,
+    msort,
     nonzero,
     searchsorted,
     sort,
@@ -478,6 +489,10 @@ from .stat import (  # noqa: F401
     var,
 )
 from .to_string import set_printoptions  # noqa: F401
+
+# API alias
+div = divide
+div_ = divide_
 
 # this list used in math_op_patch.py for _binary_creator_
 tensor_method_func = [
@@ -597,6 +612,9 @@ tensor_method_func = [
     'outer',
     'divide',
     'divide_',
+    'div',
+    'div_',
+    'true_divide',
     'floor_divide',
     'floor_divide_',
     'remainder',
@@ -607,6 +625,8 @@ tensor_method_func = [
     'floor_mod_',
     'multiply',
     'multiply_',
+    'mul',
+    'mul_',
     'add',
     'add_',
     'subtract',
@@ -631,6 +651,7 @@ tensor_method_func = [
     'isneginf',
     'isposinf',
     'isreal',
+    'broadcast_shapes',
     'broadcast_shape',
     'conj',
     'neg',
@@ -675,6 +696,7 @@ tensor_method_func = [
     'expand',
     'broadcast_to',
     'expand_as',
+    'ravel',
     'flatten',
     'flatten_',
     'gather',
@@ -702,6 +724,7 @@ tensor_method_func = [
     'strided_slice',
     'transpose',
     'transpose_',
+    'permute',
     'cauchy_',
     'geometric_',
     'tan_',
@@ -715,6 +738,7 @@ tensor_method_func = [
     'unbind',
     'roll',
     'tile',
+    'repeat',
     'argmax',
     'argmin',
     'argsort',
@@ -726,6 +750,7 @@ tensor_method_func = [
     'index_select',
     'nonzero',
     'sort',
+    'msort',
     'index_sample',
     'mean',
     'std',
@@ -776,7 +801,9 @@ tensor_method_func = [
     'lu_unpack',
     'cdist',
     'as_complex',
+    'view_as_complex',
     'as_real',
+    'view_as_real',
     'rad2deg',
     'deg2rad',
     'gcd',
@@ -793,6 +820,7 @@ tensor_method_func = [
     'moveaxis',
     'repeat_interleave',
     'take_along_axis',
+    'scatter_reduce',
     'put_along_axis',
     'select_scatter',
     'put_along_axis_',
@@ -877,7 +905,11 @@ tensor_method_func = [
     'log_normal_',
     'set_',
     'resize_',
+    'argwhere',
 ]
+
+mul = multiply
+mul_ = multiply_
 
 # this list used in math_op_patch.py for magic_method bind
 magic_method_func = [

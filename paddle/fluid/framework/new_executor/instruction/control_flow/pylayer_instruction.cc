@@ -159,7 +159,7 @@ void PyLayerInstruction::Run() {
   // Executor on being destroyed clears oneDNN cache and resets
   // registered model data layout. This is unwanted for nested
   // Executors (executors declared inside control ops)
-  paddle::platform::DontClearMKLDNNCache(fwd_inter_->GetPlace());
+  paddle::platform::DontClearONEDNNCache(fwd_inter_->GetPlace());
 #endif
   fwd_inter_->Run({}, false);
 

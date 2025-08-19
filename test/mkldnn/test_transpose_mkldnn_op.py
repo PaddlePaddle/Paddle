@@ -25,7 +25,7 @@ class TestTransposeONEDNN(OpTest):
         self.inputs = {'X': np.random.random(self.shape).astype("float32")}
         self.attrs = {
             'axis': list(self.axis),
-            'use_mkldnn': self.use_onednn,
+            'use_onednn': self.use_onednn,
         }
         self.outputs = {
             'XShape': np.random.random(self.shape).astype("float32"),

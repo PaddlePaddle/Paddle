@@ -593,23 +593,30 @@ CALCULATE_LOCAL_SHAPE_TEMPLATE = """
       }}
 """
 
+# Note: After unify the expand, expand_as and their grad kernel for all device,
+# this logic is no practical effect. But for semantically correct and can be removed.
 CALCULATE_LOCAL_SHAPE_KERNEL_TEMPLATE = """
 
       auto out_grad_shape = out_grad.dims();
       std::vector<{dtype}> local_kernel_shape;
       const auto& out_grad_dist_attr = {out_grad_dist_attr};
+      const auto& grad_mesh_shape = out_grad_dist_attr.process_mesh().shape();
       for (int i = 0; i < out_grad_shape.size(); i++) {{
-        if (out_grad_dist_attr.dims_mapping()[i] >= 0) {{
+        const auto& dims = out_grad_dist_attr.multi_dims_mapping()[i];
+        if (dims.size() > 0) {{
           {dtype} shape_i = out_grad_shape[i];
-          int64_t dim = out_grad_dist_attr.dims_mapping()[i];
-          int64_t mesh_dim = out_grad_dist_attr.process_mesh().shape()[dim];
+          int64_t num_shard = 1;
+          for (auto dim : dims) {{
+            num_shard *= grad_mesh_shape[dim];
+          }}
           // TODO: Support aliquant condition.
-          PADDLE_ENFORCE(shape_i % mesh_dim == 0,
-                common::errors::InvalidArgument(
-                    "{op_name} only support local shape dim is divisible "
-                    "by the mesh dim, however local_kernel_shape[%lld] is %lld "
-                    "and shard mesh dims is %lld.", i, shape_i, mesh_dim));
-          local_kernel_shape.push_back(shape_i / mesh_dim);
+          PADDLE_ENFORCE_EQ(
+            shape_i % num_shard, 0,
+            common::errors::InvalidArgument(
+                "{op_name} only support local shape dim is divisible "
+                "by the mesh dim, however local_kernel_shape[%lld] is %lld "
+                "and shard mesh dims is %lld.",
+                i, shape_i, num_shard));
         }} else {{
           local_kernel_shape.push_back(out_grad_shape[i]);
         }}
@@ -1133,9 +1140,16 @@ class DistForwardAPI(ForwardAPI):
                     return_type, inplace_assign_code
                 )
             else:
-                output_creation_code += API_OUT_CREATION_TEMPLATE.format(
-                    return_type, ""
-                )
+                if (
+                    len(self.outputs['names']) == 1
+                    and self.outputs['types'][0] == "Tensor"
+                    and self.api != "empty_like"
+                ):
+                    output_creation_code += "Tensor out_tmp; Tensor& api_output = input_out ? **input_out : out_tmp;"
+                else:
+                    output_creation_code += API_OUT_CREATION_TEMPLATE.format(
+                        return_type, ""
+                    )
             # kernel output generate
             self.dist_output_args.append('dist_out')
             self.dense_output_args.append('dense_out')
@@ -2085,7 +2099,9 @@ class DistForwardAPI(ForwardAPI):
         return True
 
     # override BaseAPI's method
-    def gene_base_api_code(self, inplace_flag=False):
+    def gene_base_api_code(
+        self, inplace_flag=False, grad_flag=False, append_input_out=True
+    ):
         # init status
         self.inplace_flag = inplace_flag
         self.dist_output_args = []
@@ -2151,15 +2167,25 @@ class DistForwardAPI(ForwardAPI):
 
 
 class DistBackwardAPI(DistForwardAPI):
+    def gene_base_api_code(
+        self, inplace_flag=False, grad_flag=False, append_input_out=True
+    ):
+        return BackwardAPI.gene_base_api_code(
+            self,
+            inplace_flag,
+            grad_flag=grad_flag,
+            append_input_out=append_input_out,
+        )
 
-    def gene_base_api_code(self, inplace_flag=False):
-        return BackwardAPI.gene_base_api_code(self, inplace_flag)
+    def gene_api_code(self, grad_flag=False, append_input_out=False):
+        return BackwardAPI.gene_api_code(
+            self, grad_flag=grad_flag, append_input_out=append_input_out
+        )
 
-    def gene_api_code(self):
-        return BackwardAPI.gene_api_code(self)
-
-    def gene_api_declaration(self):
-        return BackwardAPI.gene_api_declaration(self)
+    def gene_api_declaration(self, grad_flag=False, append_input_out=True):
+        return BackwardAPI.gene_api_declaration(
+            self, grad_flag=grad_flag, append_input_out=append_input_out
+        )
 
 
 def generate_api(
@@ -2226,12 +2252,22 @@ def generate_api(
 
         if dist_forward_api.is_dygraph_api and is_fused_ops_yaml:
             dist_forward_api.is_dygraph_api = False
-            header_file.write(dist_forward_api.gene_api_declaration())
-            source_file.write(dist_forward_api.gene_api_code())
+            header_file.write(
+                dist_forward_api.gene_api_declaration(
+                    grad_flag=grad_flag, append_input_out=not grad_flag
+                )
+            )
+            source_file.write(
+                dist_forward_api.gene_api_code(grad_flag=grad_flag)
+            )
             dist_forward_api.is_dygraph_api = True
 
-        header_file.write(dist_forward_api.gene_api_declaration())
-        source_file.write(dist_forward_api.gene_api_code())
+        header_file.write(
+            dist_forward_api.gene_api_declaration(
+                grad_flag=grad_flag, append_input_out=not grad_flag
+            )
+        )
+        source_file.write(dist_forward_api.gene_api_code(grad_flag=grad_flag))
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])

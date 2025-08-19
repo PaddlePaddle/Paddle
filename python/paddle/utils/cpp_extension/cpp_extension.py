@@ -32,6 +32,7 @@ from .extension_utils import (
     find_ccache_home,
     find_rocm_home,
     normalize_extension_kwargs,
+    define_paddle_extension_name,
 )
 from .extension_utils import (
     is_cuda_file,
@@ -438,6 +439,9 @@ class BuildExtension(build_ext):
             self.compiler._cpp_extensions += ['.cu', '.cuh']
             original_compile = self.compiler.compile
             original_spawn = self.compiler.spawn
+
+        for extension in self.extensions:
+            define_paddle_extension_name(extension)
 
         def unix_custom_compile_single_file(
             self, obj, src, ext, cc_args, extra_postargs, pp_opts

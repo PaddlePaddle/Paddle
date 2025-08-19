@@ -73,7 +73,7 @@ void IndexSelectKernel(const Context& dev_ctx,
     const int64_t* index_data =
         index_ptr ? reinterpret_cast<const int64_t*>(index_ptr)
                   : index.template data<int64_t>();
-    r = xpu::paddle_gather<XPUType, int64_t>(
+    r = xpu::index_select<XPUType, int64_t>(
         dev_ctx.x_context(),
         reinterpret_cast<const XPUType*>(in_data),
         reinterpret_cast<const int64_t*>(index_data),
@@ -84,7 +84,7 @@ void IndexSelectKernel(const Context& dev_ctx,
   } else {
     const int* index_data = index_ptr ? reinterpret_cast<const int*>(index_ptr)
                                       : index.template data<int>();
-    r = xpu::paddle_gather<XPUType, int>(
+    r = xpu::index_select<XPUType, int>(
         dev_ctx.x_context(),
         reinterpret_cast<const XPUType*>(in_data),
         reinterpret_cast<const int*>(index_data),
@@ -93,7 +93,7 @@ void IndexSelectKernel(const Context& dev_ctx,
         index_len,
         dim);
   }
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "paddle_gather");
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "index_select");
 }
 
 }  // namespace phi

@@ -840,7 +840,6 @@ class TestRMSNormStaticOpCPU(unittest.TestCase):
 
 
 class TestRMSNormAxisEquivalence(unittest.TestCase):
-
     def setUp(self):
         np.random.seed(123)
         paddle.seed(123)

@@ -944,6 +944,14 @@ def add_compile_flag(extra_compile_args, flags):
         extra_compile_args.extend(flags)
 
 
+def define_paddle_extension_name(extension):
+    # Allow user use PADDLE_EXTENSION_NAME to access shared library name
+    names = extension.name.split('.')
+    name = names[-1]
+    define = f'-DPADDLE_EXTENSION_NAME={name}'
+    add_compile_flag(extension.extra_compile_args, [define])
+
+
 def is_cuda_file(path):
     cuda_suffix = {'.cu'}
     items = os.path.splitext(path)
