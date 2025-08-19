@@ -137,8 +137,8 @@ std::unordered_map<std::string, std::vector<int64_t>> ShardingMergeForTensors(
         tensor_axes_to_dim_pairs,
     const bool merge_conflicts) {
   std::unordered_map<std::string, std::vector<int64_t>> axis_to_dim_map;
-  std::unordered_map<int64_t, std::string> final_placements;
-
+  std::unordered_map<int64_t, std::pair<std::string, int64_t>>
+      placements_status;  // 0,1,2表示优先级，多刀切优先级最高
   for (auto it = tensor_axes_to_dim_pairs.rbegin();
        it != tensor_axes_to_dim_pairs.rend();
        ++it) {
@@ -148,22 +148,54 @@ std::unordered_map<std::string, std::vector<int64_t>> ShardingMergeForTensors(
     }
     for (size_t i = 0; i < pair.second.size(); ++i) {
       auto tensor_axis = pair.first.substr(i, 1);
-
+      std::vector<int64_t> current_dims = pair.second[i];
       if (axis_to_dim_map.find(tensor_axis) == axis_to_dim_map.end()) {
-        axis_to_dim_map[tensor_axis] = std::vector<int64_t>{};
-      }
-
-      const auto& mesh_dim_vec = pair.second[i];
-      for (auto dim : mesh_dim_vec) {
-        final_placements[dim] = tensor_axis;
+        current_dims.erase(
+            std::remove_if(current_dims.begin(),
+                           current_dims.end(),
+                           [&](int64_t dim) {
+                             return placements_status.find(dim) !=
+                                        placements_status.end() &&
+                                    placements_status[dim].second == 2;
+                           }),
+            current_dims.end());
+        axis_to_dim_map[tensor_axis] = current_dims;
+        const int status = (current_dims.size() == 1)
+                               ? 1
+                               : 2;  // if size ==0 will pass the loop.
+        for (const auto dim : current_dims) {
+          if (placements_status.find(dim) == placements_status.end()) {
+            placements_status[dim] = {tensor_axis, status};
+          }
+        }
+      } else {
+        std::set<int64_t> set_dim(axis_to_dim_map[tensor_axis].begin(),
+                                  axis_to_dim_map[tensor_axis].end());
+        std::vector<int64_t> dim_diff;
+        for (auto dim : current_dims) {
+          if (set_dim.find(dim) == set_dim.end()) {
+            dim_diff.emplace_back(dim);
+          }
+        }
+        for (const auto dim : dim_diff) {
+          if (placements_status.find(dim) == placements_status.end()) {
+            if (axis_to_dim_map[tensor_axis].size() == 1) {
+              placements_status[axis_to_dim_map[tensor_axis][0]].second = 2;
+            }
+            axis_to_dim_map[tensor_axis].emplace_back(dim);
+            placements_status[dim] = {tensor_axis, 2};
+          } else {
+            if (placements_status[dim].first != tensor_axis &&
+                placements_status[dim].second == 1) {
+              auto before_axis = placements_status[dim].first;
+              axis_to_dim_map[before_axis].clear();
+              axis_to_dim_map[tensor_axis].emplace_back(dim);
+              placements_status[dim] = {tensor_axis, 2};
+            }
+          }
+        }
       }
     }
-  }
-
-  for (const auto& placement_pair : final_placements) {
-    const int64_t& dim = placement_pair.first;
-    const std::string& axis = placement_pair.second;
-    axis_to_dim_map[axis].emplace_back(dim);
   }
   for (auto& pair : axis_to_dim_map) {
     std::sort(pair.second.begin(), pair.second.end());

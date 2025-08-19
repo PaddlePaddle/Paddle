@@ -37,13 +37,25 @@ class TestCoShardSPMDRule:
         x = dist.shard_tensor(a, mesh, placements1)
         y = dist.shard_tensor(b, mesh, placements2)
         out = paddle.add(x, y)
-        np.testing.assert_equal(str(x.placements[0]), "Shard(dim=0)")
-        np.testing.assert_equal(str(x.placements[1]), "Shard(dim=1)")
-        np.testing.assert_equal(str(y.placements[0]), "Shard(dim=0)")
-        np.testing.assert_equal(str(y.placements[1]), "Shard(dim=1)")
+        np.testing.assert_equal(
+            str(x.placements[0]), dist.Shard(dim=0, shard_order=0)
+        )
+        np.testing.assert_equal(
+            str(x.placements[1]), dist.Shard(dim=0, shard_order=1)
+        )
+        np.testing.assert_equal(
+            str(y.placements[0]), dist.Shard(dim=0, shard_order=0)
+        )
+        np.testing.assert_equal(
+            str(y.placements[1]), dist.Shard(dim=0, shard_order=1)
+        )
         np.testing.assert_equal(out.shape, [64, 64])
-        np.testing.assert_equal(str(out.placements[0]), "Shard(dim=0)")
-        np.testing.assert_equal(str(out.placements[1]), "Shard(dim=1)")
+        np.testing.assert_equal(
+            str(out.placements[0]), dist.Shard(dim=0, shard_order=0)
+        )
+        np.testing.assert_equal(
+            str(out.placements[1]), dist.Shard(dim=0, shard_order=1)
+        )
         # [[0],[]], [[1],[]] ->[[0,1],[]], [[0,1],[]], [[0,1],[]]
         placements1 = [dist.Shard(0), dist.Replicate()]
         placements2 = [dist.Shard(1), dist.Replicate()]

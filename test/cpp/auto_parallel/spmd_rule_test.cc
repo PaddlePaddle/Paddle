@@ -1416,7 +1416,7 @@ TEST(LayerNorm, Ctor) {
   check_partial_dims(spmd1.second[1], {0, 1});
   check_partial_dims(spmd1.second[2], {0, 1});
   // test 2
-  std::vector<std::vector<int64_t>> dim_mapping = {{0, 1}, {}, {}};
+  std::vector<std::vector<int64_t>> dim_mapping = {{0}, {1}, {}};
   auto t_dist_attr = TensorDistAttr();
   t_dist_attr.set_process_mesh(process_mesh);
   t_dist_attr.set_dims_mapping(dim_mapping);
