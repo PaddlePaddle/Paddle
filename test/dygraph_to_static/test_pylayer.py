@@ -401,8 +401,10 @@ class TestPyLayerWithoutContext(TestPyLayerBase):
         input1 = paddle.randn([2, 3]).astype("float32")
         input1.stop_gradient = False
 
-        self.run_in_pir = False
-        self._run_and_compare(input1)
+        # Legacy IR is not supported any more for APIs' sinking to C++ layers.
+        # Refer to https://github.com/PaddlePaddle/Paddle/pull/74691 for more details.
+        # self.run_in_pir = False
+        # self._run_and_compare(input1)
 
         self.run_in_pir = True
         self._run_and_compare(input1)
@@ -420,8 +422,10 @@ class TestPyLayerWithoutContext(TestPyLayerBase):
         input1.stop_gradient = False
         input2.stop_gradient = False
 
-        self.run_in_pir = False
-        self._run_and_compare(input1, input2)
+        # Legacy IR is not supported any more for APIs' sinking to C++ layers.
+        # Refer to https://github.com/PaddlePaddle/Paddle/pull/74691 for more details.
+        # self.run_in_pir = False
+        # self._run_and_compare(input1, input2)
 
         self.run_in_pir = True
         self._run_and_compare(input1, input2)
@@ -439,8 +443,10 @@ class TestPyLayerWithContext(TestPyLayerBase):
         input1 = paddle.randn([2, 3]).astype("float32")
         input1.stop_gradient = False
 
-        self.run_in_pir = False
-        self._run_and_compare(input1)
+        # Legacy IR is not supported any more for APIs' sinking to C++ layers.
+        # Refer to https://github.com/PaddlePaddle/Paddle/pull/74691 for more details.
+        # self.run_in_pir = False
+        # self._run_and_compare(input1)
 
         self.run_in_pir = True
         self._run_and_compare(input1)
@@ -458,8 +464,10 @@ class TestPyLayerWithContext(TestPyLayerBase):
         input1.stop_gradient = False
         input2.stop_gradient = False
 
-        self.run_in_pir = False
-        self._run_and_compare(input1, input2)
+        # Legacy IR is not supported any more for APIs' sinking to C++ layers.
+        # Refer to https://github.com/PaddlePaddle/Paddle/pull/74691 for more details.
+        # self.run_in_pir = False
+        # self._run_and_compare(input1, input2)
 
         self.run_in_pir = True
         self._run_and_compare(input1, input2)
@@ -477,8 +485,10 @@ class TestPyLayerWithContext(TestPyLayerBase):
         input1.stop_gradient = False
         input2.stop_gradient = False
 
-        self.run_in_pir = False
-        self._run_and_compare(input1, input2)
+        # Legacy IR is not supported any more for APIs' sinking to C++ layers.
+        # Refer to https://github.com/PaddlePaddle/Paddle/pull/74691 for more details.
+        # self.run_in_pir = False
+        # self._run_and_compare(input1, input2)
 
         self.run_in_pir = True
         self._run_and_compare(input1, input2)
@@ -494,8 +504,10 @@ class TestPyLayerWithContext(TestPyLayerBase):
         input1 = paddle.randn([2, 3]).astype("float32")
         input1.stop_gradient = False
 
-        self.run_in_pir = False
-        self._run_and_compare(input1)
+        # Legacy IR is not supported any more for APIs' sinking to C++ layers.
+        # Refer to https://github.com/PaddlePaddle/Paddle/pull/74691 for more details.
+        # self.run_in_pir = False
+        # self._run_and_compare(input1)
 
         self.run_in_pir = True
         self._run_and_compare(input1)
@@ -514,8 +526,11 @@ class TestPyLayerWithContext(TestPyLayerBase):
         input1.stop_gradient = False
         input2.stop_gradient = True
 
-        self.run_in_pir = False
-        self._run_and_compare(input1, input2)
+        # Legacy IR is not supported any more for APIs' sinking to C++ layers.
+        # Refer to https://github.com/PaddlePaddle/Paddle/pull/74691 for more details.
+        # self.run_in_pir = False
+        # self._run_and_compare(input1, input2)
+
         self.run_in_pir = True
         self._run_and_compare(input1, input2)
 
@@ -533,8 +548,10 @@ class TestPyLayerWithContext(TestPyLayerBase):
         input1.stop_gradient = False
         input2.stop_gradient = False
 
-        self.run_in_pir = False
-        self._run_and_compare(input1, input2)
+        # Legacy IR is not supported any more for APIs' sinking to C++ layers.
+        # Refer to https://github.com/PaddlePaddle/Paddle/pull/74691 for more details.
+        # self.run_in_pir = False
+        # self._run_and_compare(input1, input2)
 
         self.run_in_pir = True
         self._run_and_compare(input1, input2)
@@ -552,8 +569,10 @@ class TestPyLayerWithContext(TestPyLayerBase):
         input1 = paddle.randn([2, 3]).astype("float32")
         input1.stop_gradient = False
 
-        self.run_in_pir = False
-        self._run_and_compare(input1)
+        # Legacy IR is not supported any more for APIs' sinking to C++ layers.
+        # Refer to https://github.com/PaddlePaddle/Paddle/pull/74691 for more details.
+        # self.run_in_pir = False
+        # self._run_and_compare(input1)
 
         self.run_in_pir = True
         self._run_and_compare(input1)
@@ -567,8 +586,10 @@ class TestPyLayerInsideNet(TestPyLayerBase):
         input1 = paddle.randn([3, 4]).astype("float32")
         input1.stop_gradient = False
 
-        self.run_in_pir = False
-        self._run_and_compare(input1)
+        # Legacy IR is not supported any more for APIs' sinking to C++ layers.
+        # Refer to https://github.com/PaddlePaddle/Paddle/pull/74691 for more details.
+        # self.run_in_pir = False
+        # self._run_and_compare(input1)
 
         self.run_in_pir = True
         self._run_and_compare(input1)
@@ -580,8 +601,10 @@ class TestPyLayerInsideNet(TestPyLayerBase):
         input1 = paddle.randn([3, 4]).astype("float32")
         input1.stop_gradient = False
 
-        self.run_in_pir = False
-        self._run_and_compare(input1)
+        # Legacy IR is not supported any more for APIs' sinking to C++ layers.
+        # Refer to https://github.com/PaddlePaddle/Paddle/pull/74691 for more details.
+        # self.run_in_pir = False
+        # self._run_and_compare(input1)
 
         self.run_in_pir = True
         self._run_and_compare(input1)
@@ -593,8 +616,10 @@ class TestPyLayerInsideNet(TestPyLayerBase):
         input1 = paddle.randn([3, 4]).astype("float32")
         input1.stop_gradient = False
 
-        self.run_in_pir = False
-        self._run_and_compare(input1)
+        # Legacy IR is not supported any more for APIs' sinking to C++ layers.
+        # Refer to https://github.com/PaddlePaddle/Paddle/pull/74691 for more details.
+        # self.run_in_pir = False
+        # self._run_and_compare(input1)
 
         self.run_in_pir = True
         self._run_and_compare(input1)
@@ -608,8 +633,10 @@ class TestPyLayerInsideNet(TestPyLayerBase):
         input1.stop_gradient = False
         input2.stop_gradient = True
 
-        self.run_in_pir = False
-        self._run_and_compare(input1, input2)
+        # Legacy IR is not supported any more for APIs' sinking to C++ layers.
+        # Refer to https://github.com/PaddlePaddle/Paddle/pull/74691 for more details.
+        # self.run_in_pir = False
+        # self._run_and_compare(input1, input2)
 
         self.run_in_pir = True
         self._run_and_compare(input1, input2)
