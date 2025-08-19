@@ -384,8 +384,8 @@ class TestEagerTensor(unittest.TestCase):
             )
             self.assertEqual(tensor_res.place, core.CUDAPinnedPlace())
 
-            tensor_cuda = paddle.tensor(self.array, device="cuda")
-            self.assertEqual(tensor_cuda.place, paddle.CUDAPlace())
+            tensor_cuda = paddle.tensor(self.array, device="cuda:0")
+            self.assertEqual(tensor_cuda.place, paddle.CUDAPlace(0))
 
             tensor_pin = paddle.tensor(self.array, device="gpu_pinned")
             self.assertEqual(tensor_pin.place, core.CUDAPinnedPlace())
