@@ -1001,9 +1001,7 @@ class PipelineLayer(nn.Layer):
                             param.is_firstly_shared = True
 
                 if layer.forward_func is None:
-                    run_function.append(
-                        self.shared_layers[layer.layer_name]
-                    )
+                    run_function.append(self.shared_layers[layer.layer_name])
 
                 else:
                     run_function.append(
