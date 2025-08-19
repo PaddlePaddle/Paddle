@@ -160,6 +160,18 @@ std::unordered_map<std::string, std::vector<int64_t>> ShardingMergeForTensors(
                                     placements_status[dim].second == 2;
                            }),
             current_dims.end());
+        for (int64_t i = 0; i < current_dims.size(); ++i) {
+          auto dim = current_dims[i];
+          if (placements_status.find(dim) != placements_status.end()) {
+            if (placements_status[dim].second == 2) {
+              current_dims.erase(current_dims.begin() + i);
+              --i;
+            } else {  // placements_status[dim].second == 1
+              auto before_axis = placements_status[dim].first;
+              axis_to_dim_map[before_axis].clear();
+            }
+          }
+        }
         axis_to_dim_map[tensor_axis] = current_dims;
         const int status = (current_dims.size() == 1)
                                ? 1
@@ -189,7 +201,10 @@ std::unordered_map<std::string, std::vector<int64_t>> ShardingMergeForTensors(
             if (placements_status[dim].first != tensor_axis &&
                 placements_status[dim].second == 1) {
               auto before_axis = placements_status[dim].first;
-              axis_to_dim_map[before_axis].clear();
+              auto& before_dims = axis_to_dim_map[before_axis];
+              before_dims.erase(
+                  std::remove(before_dims.begin(), before_dims.end(), dim),
+                  before_dims.end());
               axis_to_dim_map[tensor_axis].emplace_back(dim);
               placements_status[dim] = {tensor_axis, 2};
             }
