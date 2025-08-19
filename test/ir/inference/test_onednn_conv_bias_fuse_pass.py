@@ -21,7 +21,7 @@ from program_config import OpConfig, ProgramConfig, TensorConfig
 
 class TestConvBiasOneDNNFusePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
-        config = self.create_inference_config(use_gpu=False, use_mkldnn=True)
+        config = self.create_inference_config(use_gpu=False, use_onednn=True)
         yield config, ['fused_conv2d'], (1e-4, 1e-5)
 
     def is_program_valid(self, prog_config):
@@ -130,7 +130,7 @@ class TestConvBiasOneDNNFusePass(PassAutoScanTest):
         conv_bias_shape = []
         inputs = {}
         weights = {}
-        use_mkldnn = None
+        use_onednn = None
         conv_type = 'conv2d'
         if draw(st.booleans()):
             conv_bias_shape = [f_shape[0]]
@@ -145,7 +145,7 @@ class TestConvBiasOneDNNFusePass(PassAutoScanTest):
                 'bias': TensorConfig(shape=bias_shape),
                 'conv_bias': TensorConfig(shape=conv_bias_shape),
             }
-            use_mkldnn = True
+            use_onednn = True
         else:
             inputs = {
                 'Input': ['input_x'],
@@ -155,7 +155,7 @@ class TestConvBiasOneDNNFusePass(PassAutoScanTest):
                 'filter': TensorConfig(shape=f_shape),
                 'bias': TensorConfig(shape=bias_shape),
             }
-            use_mkldnn = False
+            use_onednn = False
 
         conv2d_op = OpConfig(
             conv_type,
@@ -167,7 +167,7 @@ class TestConvBiasOneDNNFusePass(PassAutoScanTest):
             groups=groups,
             dilations=dilations,
             data_format=data_format,
-            use_mkldnn=use_mkldnn,
+            use_onednn=use_onednn,
         )
 
         add_op = OpConfig(

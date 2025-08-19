@@ -106,7 +106,7 @@ def _all_to_all_in_static_mode(
     if isinstance(out_tensor_or_tensor_list, list):
         if len(out_tensor_or_tensor_list) != 0:
             raise ValueError(
-                "The 'out_tensor_list' for all_to_all " "must be an empty list."
+                "The 'out_tensor_list' for all_to_all must be an empty list."
             )
         out_tensor = helper.create_variable_for_type_inference(
             dtype=in_tensor.dtype

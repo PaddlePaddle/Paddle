@@ -2852,9 +2852,9 @@ std::vector<pir::Value> BuildInputs(
               PADDLE_THROW(common::errors::Unimplemented(
                   "builtin.combine Input type only support "
                   "VectorType<DenseTensorType> and "
-                  "VectorType<SelectedRowsType> and"
-                  "VectorType<DenseTensorArrayType> and"
-                  "VectorType<SparseCooTensorType> and"
+                  "VectorType<SelectedRowsType> and "
+                  "VectorType<DenseTensorArrayType> and "
+                  "VectorType<SparseCooTensorType> and "
                   "VectorType<SparseCsrTensorType>"));
             }
 
@@ -2913,9 +2913,9 @@ std::vector<pir::Value> BuildInputs(
                 PADDLE_THROW(common::errors::Unimplemented(
                     "builtin.combine Input type only support "
                     "VectorType<DenseTensorType> and "
-                    "VectorType<SelectedRowsType> and"
-                    "VectorType<DenseTensorArrayType> and"
-                    "VectorType<SparseCooTensorType> and"
+                    "VectorType<SelectedRowsType> and "
+                    "VectorType<DenseTensorArrayType> and "
+                    "VectorType<SparseCooTensorType> and "
                     "VectorType<SparseCsrTensorType>"));
               }
               in_i = AddPlaceTransferOp(

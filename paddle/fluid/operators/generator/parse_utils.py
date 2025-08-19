@@ -369,6 +369,7 @@ def check_op_config(op_entry, op_name):
         'support_tensor',
         'traits',
         'interfaces',
+        'python_api',
     )
     infer_meta_key_set = (
         'func',
@@ -384,6 +385,8 @@ def check_op_config(op_entry, op_name):
         'layout',
         'backend',
         'force_backend',
+        'python_api',
+        'dispatch',
     )
     for key in op_entry.keys():
         assert (
@@ -616,6 +619,9 @@ def parse_op_entry(op_entry: dict[str, Any], name_field="op"):
         else:
             forward = None
         op["forward"] = forward
+    # parse python_api
+    if "python_api" in op_entry:
+        op.update({"python_api": op_entry["python_api"]})
     return op
 
 
@@ -628,7 +634,7 @@ def validate_backward_attrs(op, forward_attrs, backward_attrs):
     for i in range(-num_exceptional_attrs, 0):
         assert (
             "default_value" in backward_attrs[i]
-        ), f"{op } has exceptional attr without default value"
+        ), f"{op} has exceptional attr without default value"
 
 
 def validate_backward_inputs(
@@ -640,7 +646,7 @@ def validate_backward_inputs(
 
     assert len(backward_input_names) <= len(forward_input_names) + 2 * len(
         forward_output_names
-    ), f"{op } has too many inputs."
+    ), f"{op} has too many inputs."
 
 
 def validate_backward_outputs(op, forward_inputs, backward_outputs):
@@ -648,7 +654,7 @@ def validate_backward_outputs(op, forward_inputs, backward_outputs):
         return
     assert len(backward_outputs) <= len(
         forward_inputs
-    ), f"{op } has too many outputs"
+    ), f"{op} has too many outputs"
 
 
 def cross_validate(ops):

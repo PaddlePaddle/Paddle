@@ -14,13 +14,15 @@
 
 import numpy as np
 
+from paddle.utils import deprecated
+
 from ...base.framework import IrGraph
 from ...framework import _get_paddle_place, core
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 
 
-class Quant2Int8MkldnnPass:
+class Quant2Int8OnednnPass:
     """
     Transform a quant model IrGraph into MKL-DNN supported INT8 IrGraph.
     The pass consists of the following transformations:
@@ -429,7 +431,7 @@ class Quant2Int8MkldnnPass:
         graph = self._update_activations(graph)
         graph = self._remove_ctrl_vars(graph)
         graph = self._apply_pass(
-            graph, 'onednn_placement_pass', ['mkldnn_enabled_op_types'], [set()]
+            graph, 'onednn_placement_pass', ['onednn_enabled_op_types'], [set()]
         )
         # remove dropout ops
         graph = self._apply_pass(graph, 'simplify_with_basic_ops_pass')
@@ -721,3 +723,14 @@ class Quant2Int8MkldnnPass:
         graph = self._apply_pass(graph, 'int8_scale_calculation_onednn_pass')
         graph = self._apply_pass(graph, 'params_quantization_onednn_pass')
         return graph
+
+
+class Quant2Int8MkldnnPass(Quant2Int8OnednnPass):
+    @deprecated(
+        since="3.1.0",
+        update_to="paddle.static.quantization.Quant2Int8OnednnPass",
+        level=1,
+        reason="Quant2Int8MkldnnPass will be removed in future",
+    )
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)

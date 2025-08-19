@@ -40,7 +40,7 @@ class TestONEDNNGaussianRandomOpSeed0(TestGaussianRandomOp):
             "mean": 1.0,
             "std": 2.0,
             "seed": 10,
-            "use_mkldnn": self.use_onednn,
+            "use_onednn": self.use_onednn,
         }
 
 
@@ -57,7 +57,7 @@ class TestGaussianRandomOp_ZeroDim(OpTest):
             "mean": self.mean,
             "std": self.std,
             "seed": 10,
-            "use_mkldnn": self.use_onednn,
+            "use_onednn": self.use_onednn,
         }
         paddle.seed(10)
 

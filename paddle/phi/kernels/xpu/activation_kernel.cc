@@ -205,12 +205,13 @@ struct XPURoundFunctor : public funcs::BaseActivationFunctor<T> {
                   const DenseTensor& x,
                   DenseTensor* out) const {
     using XPUType = typename XPUTypeTrait<T>::Type;
-    int r = xpu::round<XPUType>(dev_ctx.x_context(),
-                                reinterpret_cast<const XPUType*>(x.data<T>()),
-                                reinterpret_cast<XPUType*>(out->data<T>()),
-                                x.numel(),
-                                decimals);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "round");
+    int r = xpu::paddle_round<XPUType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(x.data<T>()),
+        reinterpret_cast<XPUType*>(out->data<T>()),
+        x.numel(),
+        decimals);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "paddle_round");
   }
 };
 
@@ -344,20 +345,20 @@ struct XPUSiluFunctor : public funcs::BaseActivationFunctor<T> {
     if (std::getenv("XPU_PADDLE_ACT_LUT") != nullptr) {
       if (!std::is_same<T, ::phi::dtype::bfloat16>::value) {
         // use fast_swish if NOT bf16
-        int r = xpu::fast_swish(
+        int r = xpu::fast_silu(
             xpu_context, x_data, y_data, x.numel(), nullptr, nullptr);
-        PADDLE_ENFORCE_XDNN_SUCCESS(r, "fast_swish");
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "fast_silu");
       } else {
         // use plain swish
-        int r = xpu::swish(
-            xpu_context, x_data, y_data, x.numel(), nullptr, nullptr);
-        PADDLE_ENFORCE_XDNN_SUCCESS(r, "swish");
+        int r =
+            xpu::silu(xpu_context, x_data, y_data, x.numel(), nullptr, nullptr);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "silu");
       }
     } else {
       // use plain swish
       int r =
-          xpu::swish(xpu_context, x_data, y_data, x.numel(), nullptr, nullptr);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "swish");
+          xpu::silu(xpu_context, x_data, y_data, x.numel(), nullptr, nullptr);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "silu");
     }
   }
 };

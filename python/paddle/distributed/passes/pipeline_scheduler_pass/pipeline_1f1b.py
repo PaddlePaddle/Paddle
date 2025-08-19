@@ -34,7 +34,6 @@ logger = get_logger(logging.INFO)
 
 @register_pass("pipeline_scheduler_1F1B")
 class Pipeline1F1BPass(PipelinePassBase):
-
     def __init__(self):
         super().__init__()
         self.jobs_in_stable_phase = [self.BACKWARD, self.FORWARD]

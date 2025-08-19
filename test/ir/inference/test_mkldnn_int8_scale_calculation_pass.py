@@ -123,7 +123,7 @@ class TestInt8ScaleCalculationOnednnPass(PassAutoScanTest):
         bias_shape = [f_shape[0]]
         inputs = {}
         weights = {}
-        use_mkldnn = True
+        use_onednn = True
 
         has_bias = draw(st.booleans())
         if has_bias:
@@ -154,7 +154,7 @@ class TestInt8ScaleCalculationOnednnPass(PassAutoScanTest):
             groups=groups,
             dilations=dilations,
             data_format=data_format,
-            use_mkldnn=use_mkldnn,
+            use_onednn=use_onednn,
             mkldnn_data_type="int8",
         )
 

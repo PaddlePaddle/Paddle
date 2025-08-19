@@ -81,6 +81,7 @@ from .moe_utils import (
     _dist_reshape,
     _dtensor_from_local,
     _NdMeshAlltoAll,
+    _only_reshard_mesh_shape,
     _reshard_mesh_shape,
     _specific_alltoall_dim,
 )
@@ -237,7 +238,7 @@ class DistAttr(core.TensorDistAttr):
 def shard_tensor(
     data: Tensor | TensorLike | NestedNumericSequence,
     mesh: ProcessMesh,
-    placements: list[Placement],
+    placements: Sequence[Placement],
     dtype: DTypeLike | None = None,
     place: PlaceLike | None = None,
     stop_gradient: bool | None = None,
@@ -779,7 +780,7 @@ def dtensor_to_local(dist_tensor, mesh, placements):
 def dtensor_from_fn(
     fn: Callable[..., Tensor],
     mesh: ProcessMesh,
-    placements: list[Placement],
+    placements: Sequence[Placement],
     *args: Any,
     **kwargs: Any,
 ) -> Tensor:
@@ -787,7 +788,7 @@ def dtensor_from_fn(
     Construct a Distributed Tensor from a function of arguments.
 
     Args:
-        fn (callable): A callable function that takes arguments of Distributed Tensor and returns tensor.
+        fn (callable): A callable function that creates and returns a tensor, such as paddle.ones, paddle.zeros, etc.
         mesh(paddle.distributed.ProcessMesh): The `ProcessMesh` object describes the Cartesian topology of the used processes.
         placements(list[paddle.distributed.Placement]): the placements describe how to place the tensor on ProcessMesh, it can
             be Shard, Replicate and Partial.
@@ -817,7 +818,7 @@ def dtensor_from_fn(
 
 
 def reshard(
-    dist_tensor: Tensor, mesh: ProcessMesh, placements: list[Placement]
+    dist_tensor: Tensor, mesh: ProcessMesh, placements: Sequence[Placement]
 ) -> Tensor:
     """
     Reshard a distributed ``paddle.Tensor`` with given distributed attributes.
@@ -851,6 +852,8 @@ def reshard(
             >>> print(out_d_tensor)
 
     """
+    if _only_reshard_mesh_shape(dist_tensor, mesh, placements):
+        return _dist_reshape(dist_tensor, dist_tensor.shape, mesh, placements)
 
     if paddle.framework.in_dynamic_mode():
         # TODO(LiYuRio): static logic here, reshard should be changed for dygraph logic

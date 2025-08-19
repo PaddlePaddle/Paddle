@@ -39,7 +39,6 @@ from .meta_parallel import model_parallel_random_seed
 from .utils.log_util import logger, set_log_level
 
 if TYPE_CHECKING:
-
     from collections.abc import (
         Callable,
         Iterable,

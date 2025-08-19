@@ -49,7 +49,7 @@ if version_detail < (3, 9):
         f"you are using Python {python_version}"
     )
 elif env_version is None:
-    print(f"export PY_VERSION = { version }")
+    print(f"export PY_VERSION = {version}")
     os.environ["PY_VERSION"] = python_version
 
 elif env_version != version:
@@ -62,9 +62,9 @@ elif env_version != version:
 
 # check cmake
 CMAKE = shutil.which('cmake3') or shutil.which('cmake')
-assert (
-    CMAKE
-), 'The "cmake" executable is not found. Please check if Cmake is installed.'
+assert CMAKE, (
+    'The "cmake" executable is not found. Please check if Cmake is installed.'
+)
 
 
 TOP_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -111,8 +111,7 @@ def parse_input_command(input_parameters):
         dist.parse_command_line()
     except:
         print(
-            f"An error occurred while parsing"
-            f"the parameters, {dist.script_args}"
+            f"An error occurred while parsing the parameters, {dist.script_args}"
         )
         sys.exit(1)
 
@@ -313,10 +312,10 @@ def git_commit() -> str:
 
 
 def _get_version_detail(idx):
-    assert (
-        idx < 3
-    ), "version info consists of %(major)d.%(minor)d.%(patch)d, \
+    assert idx < 3, (
+        "version info consists of %(major)d.%(minor)d.%(patch)d, \
         so detail index must less than 3"
+    )
     tag_version_regex = env_dict.get("TAG_VERSION_REGEX")
     paddle_version = env_dict.get("PADDLE_VERSION")
     if re.match(tag_version_regex, paddle_version):
@@ -451,7 +450,6 @@ def get_cuda_archs() -> list[int]:
 
 
 def get_tensorrt_version() -> str:
-
     def find_libnvinfer():
         """Search for libnvinfer.so file in LD_LIBRARY_PATH."""
 
@@ -1156,21 +1154,21 @@ def get_paddle_extra_install_requirements():
                 ),
             }
             if env_dict.get("WITH_CINN") == "ON":
-                PADDLE_CUDA_INSTALL_REQUIREMENTS[
-                    "12.3"
-                ] += " | nvidia-cuda-cccl-cu12==12.3.52;platform_system == 'Linux' and platform_machine == 'x86_64' "
-                PADDLE_CUDA_INSTALL_REQUIREMENTS[
-                    "12.4"
-                ] += " | nvidia-cuda-cccl-cu12==12.4.99;platform_system == 'Linux' and platform_machine == 'x86_64' "
-                PADDLE_CUDA_INSTALL_REQUIREMENTS[
-                    "12.6"
-                ] += " | nvidia-cuda-cccl-cu12==12.6.77;platform_system == 'Linux' and platform_machine == 'x86_64' "
-                PADDLE_CUDA_INSTALL_REQUIREMENTS[
-                    "12.8"
-                ] += " | nvidia-cuda-cccl-cu12==12.8.90;platform_system == 'Linux' and platform_machine == 'x86_64' "
-                PADDLE_CUDA_INSTALL_REQUIREMENTS[
-                    "12.9"
-                ] += " | nvidia-cuda-cccl-cu12==12.9.27;platform_system == 'Linux' and platform_machine == 'x86_64' "
+                PADDLE_CUDA_INSTALL_REQUIREMENTS["12.3"] += (
+                    " | nvidia-cuda-cccl-cu12==12.3.52;platform_system == 'Linux' and platform_machine == 'x86_64' "
+                )
+                PADDLE_CUDA_INSTALL_REQUIREMENTS["12.4"] += (
+                    " | nvidia-cuda-cccl-cu12==12.4.99;platform_system == 'Linux' and platform_machine == 'x86_64' "
+                )
+                PADDLE_CUDA_INSTALL_REQUIREMENTS["12.6"] += (
+                    " | nvidia-cuda-cccl-cu12==12.6.77;platform_system == 'Linux' and platform_machine == 'x86_64' "
+                )
+                PADDLE_CUDA_INSTALL_REQUIREMENTS["12.8"] += (
+                    " | nvidia-cuda-cccl-cu12==12.8.90;platform_system == 'Linux' and platform_machine == 'x86_64' "
+                )
+                PADDLE_CUDA_INSTALL_REQUIREMENTS["12.9"] += (
+                    " | nvidia-cuda-cccl-cu12==12.9.27;platform_system == 'Linux' and platform_machine == 'x86_64' "
+                )
 
         elif platform.system() == 'Windows':
             PADDLE_CUDA_INSTALL_REQUIREMENTS = {
@@ -1243,7 +1241,6 @@ def get_paddle_extra_install_requirements():
         if platform.system() == 'Linux' or (
             platform.system() == 'Windows' and version_default >= 10
         ):
-
             PADDLE_TENSORRT_INSTALL_REQUIREMENTS = [
                 "tensorrt==8.5.3.1",
                 "tensorrt==8.6.0",
@@ -1701,6 +1698,10 @@ def get_package_data_and_package_dir():
             package_data['paddle.libs'] += [env_dict.get("XPU_XFA_LIB_NAME")]
             shutil.copy(env_dict.get("XPU_XPUDNN_LIB"), libs_path)
             package_data['paddle.libs'] += [env_dict.get("XPU_XPUDNN_LIB_NAME")]
+            shutil.copy(env_dict.get("XPU_XPUDNN_OMP_LIB"), libs_path)
+            package_data['paddle.libs'] += [
+                env_dict.get("XPU_XPUDNN_OMP_LIB_NAME")
+            ]
 
     if env_dict.get("WITH_XPU_BKCL") == 'ON':
         shutil.copy(env_dict.get("XPU_BKCL_LIB"), libs_path)
@@ -1863,6 +1864,14 @@ def get_headers():
         )
         + list(  # common api
             find_files('*.h', paddle_source_dir + '/paddle/common')
+        )
+        # torch like apis
+        + list(
+            find_files(
+                '*.h',
+                paddle_source_dir + '/paddle/phi/api/include/torch_like_api',
+                recursive=True,
+            )
         )
         # phi level api headers (low level api, for training only)
         + list(  # phi extension header

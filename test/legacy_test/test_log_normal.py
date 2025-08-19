@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
 
@@ -41,11 +42,7 @@ class TestLogNormalAPI(unittest.TestCase):
         self.duplicates = 1000
         self.set_attrs()
         self.dtype = self.get_dtype()
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.base.core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def set_attrs(self):
         self.shape = [self.duplicates]
@@ -180,7 +177,6 @@ class TestLogNormalAPI_mean_std_are_tensor(TestLogNormalAPI):
 
 
 class TestLogNormalAlias(unittest.TestCase):
-
     def test_alias(self):
         paddle.disable_static()
         shape = [1, 2, 3]
@@ -191,7 +187,6 @@ class TestLogNormalAlias(unittest.TestCase):
 
 
 class TestLogNormalErrors(unittest.TestCase):
-
     def test_errors(self):
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):

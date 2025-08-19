@@ -27,7 +27,6 @@ paddle.enable_static()
 
 
 class TestSliceOpDoubleGradCheck(unittest.TestCase):
-
     @prog_scope()
     def func(self, place):
         self.config()
@@ -65,7 +64,6 @@ class TestSliceOpDoubleGradCheckCase3(TestSliceOpDoubleGradCheck):
 
 
 class TestReduceMeanWithDimDoubleGradCheck(unittest.TestCase):
-
     @prog_scope()
     def func(self, place):
         shape = [7, 11]
@@ -87,7 +85,6 @@ class TestReduceMeanWithDimDoubleGradCheck(unittest.TestCase):
 
 
 class TestReduceSumWithDimDoubleGradCheck(unittest.TestCase):
-
     @prog_scope()
     def func(self, place):
         shape = [7, 11]
@@ -109,7 +106,6 @@ class TestReduceSumWithDimDoubleGradCheck(unittest.TestCase):
 
 
 class TestReshapeDoubleGradCheck(unittest.TestCase):
-
     @prog_scope()
     def func(self, place):
         x_shape = [3, 12]
@@ -270,7 +266,6 @@ class TestClipDoubleGradCheck(unittest.TestCase):
 
 
 class TestTransposeDoubleGradCheck(unittest.TestCase):
-
     @prog_scope()
     def func(self, place):
         x_shape = [3, 40]
@@ -290,7 +285,6 @@ class TestTransposeDoubleGradCheck(unittest.TestCase):
 
 
 class TestTransposeDoubleGradCheckCase1(unittest.TestCase):
-
     @prog_scope()
     def func(self, place):
         x_shape = [2, 3, 4, 5]
@@ -340,7 +334,6 @@ class TestConstantPadDoubleGradCheck(unittest.TestCase):
 
 
 class TestConstantPadDoubleGradCheckCase1(TestConstantPadDoubleGradCheck):
-
     @prog_scope()
     def func(self, place):
         x_shape = [2, 3, 4, 5]
@@ -470,7 +463,6 @@ class TestIndexSelectDoubleGradCheck(unittest.TestCase):
 
 
 class TestAvgPool2DDoubleGradCheckCase1(unittest.TestCase):
-
     @prog_scope()
     def func(self, place):
         input_NCHW = paddle.static.data(

@@ -42,7 +42,7 @@ class TestCastBF16ToFP32ONEDNNOp(OpTest):
         self.attrs = {
             'in_dtype': prepare_dtype(self.x),
             'out_dtype': prepare_dtype(self.out),
-            'use_mkldnn': True,
+            'use_onednn': True,
         }
         self.op_type = 'cast'
 

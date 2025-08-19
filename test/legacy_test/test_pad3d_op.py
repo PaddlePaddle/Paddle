@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_places
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_places,
+    is_custom_device,
+)
 
 import paddle
 import paddle.nn.functional as F
@@ -221,7 +226,8 @@ class TestCase10(TestPad3dOp):
 
 def create_test_fp16(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestPad3dFp16(parent):
         def get_dtype(self):
@@ -304,7 +310,8 @@ create_test_bf16(TestCase10)
 # ----------------Pad3d complex64----------------
 def create_test_complex64(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestPad3dComplex64(parent):
         def get_dtype(self):
@@ -344,7 +351,8 @@ create_test_complex64(TestCase10)
 
 def create_test_complex128(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestPad3dComplex128(parent):
         def get_dtype(self):
