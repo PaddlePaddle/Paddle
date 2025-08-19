@@ -22,9 +22,9 @@ from paddle.utils.decorator_utils import (
     ParamIgnoreAndAliasDecorator,
 )
 
-from .base.data_feeder import check_dtype, check_variable_and_dtype
-from .base.framework import convert_np_dtype_to_dtype_
-from .base.layer_helper import LayerHelper
+from ..base.data_feeder import check_dtype, check_variable_and_dtype
+from ..base.framework import convert_np_dtype_to_dtype_
+from ..base.layer_helper import LayerHelper
 
 if TYPE_CHECKING:
     from paddle import Tensor
