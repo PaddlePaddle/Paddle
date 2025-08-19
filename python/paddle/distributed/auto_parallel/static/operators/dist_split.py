@@ -39,26 +39,26 @@ class DistributedSplit(DistributedOperatorImplContainer):
         op_desc = dist_op.serial_op.desc
 
         x_name = op_desc.input('X')[0]
-        assert (
-            len(op_desc.input('AxisTensor')) == 0
-        ), "Attribute AxisTensor is not supported by dist split."
-        assert (
-            len(op_desc.input('SectionsTensorList')) == 0
-        ), "Attribute SectionsTensorList is not supported by dist split."
+        assert len(op_desc.input('AxisTensor')) == 0, (
+            "Attribute AxisTensor is not supported by dist split."
+        )
+        assert len(op_desc.input('SectionsTensorList')) == 0, (
+            "Attribute SectionsTensorList is not supported by dist split."
+        )
         output_arg_names = op_desc.output('Out')
 
         num = op_desc.attr('num')
         sections = op_desc.attr('sections')
         if num:
-            assert (sections is None) or (
-                len(sections) == 0
-            ), f"Both Attributes of num: {num} and sections: {sections} are specified."
+            assert (sections is None) or (len(sections) == 0), (
+                f"Both Attributes of num: {num} and sections: {sections} are specified."
+            )
             first_attr = num
             rule_type = "split_with_num"
         else:
-            assert (
-                not num
-            ), f"Both Attributes of num: {num} and sections: {sections} are specified."
+            assert not num, (
+                f"Both Attributes of num: {num} and sections: {sections} are specified."
+            )
             first_attr = sections
             rule_type = "split"
         axis = op_desc.attr('axis')

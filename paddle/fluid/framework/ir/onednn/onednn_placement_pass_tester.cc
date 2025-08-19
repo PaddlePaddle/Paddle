@@ -33,7 +33,7 @@ class PlacementPassTest {
     op->SetType(type);
 
     if (!paddle::indeterminate(use_onednn))
-      op->SetAttr("use_mkldnn", use_onednn);
+      op->SetAttr("use_onednn", use_onednn);
 
     if (type == "conv2d") {
       op->SetAttr("name", name);

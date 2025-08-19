@@ -71,9 +71,9 @@ class PipelineParallel(ParallelModel):
             self.name_to_layer[layer_name] = layer
 
     def get_layer_by_name(self, name):
-        assert (
-            name in self.name_to_layer
-        ), f"layer name:{name} not in the model, please check the split_spec"
+        assert name in self.name_to_layer, (
+            f"layer name:{name} not in the model, please check the split_spec"
+        )
         return self.name_to_layer[name]
 
     def pipeline_parallel_fn(self, model):
@@ -135,9 +135,9 @@ class PipelineParallel(ParallelModel):
                         pipeline_layer_mark[i] = 1
                         is_valid = True
                         break
-                assert (
-                    is_valid
-                ), f"the last layer:{split_layer_name} must not be SplitPoint.END, please check the split_spec"
+                assert is_valid, (
+                    f"the last layer:{split_layer_name} must not be SplitPoint.END, please check the split_spec"
+                )
             else:
                 raise NotImplementedError(
                     "SplitPoint.BEGINNING is not supported currently"
@@ -288,12 +288,12 @@ def pipeline_parallel(model, optimizer=None, config=None):
         return model, optimizer
 
     mesh = fleet.auto.get_mesh()
-    assert (
-        mesh is not None
-    ), "global mesh must not be None, please call fleet.auto.set_mesh(global_mesh) firstly"
-    assert (
-        "pp" in mesh.dim_names
-    ), "pp must in the mesh dim_names when use pipeline_parallel"
+    assert mesh is not None, (
+        "global mesh must not be None, please call fleet.auto.set_mesh(global_mesh) firstly"
+    )
+    assert "pp" in mesh.dim_names, (
+        "pp must in the mesh dim_names when use pipeline_parallel"
+    )
 
     global_spec = config.get("global_spec")
     if isinstance(split_spec, str):
@@ -336,12 +336,12 @@ def pipeline_parallel(model, optimizer=None, config=None):
         matched_layer_name = filter_matched_layer(matched_layer_name)
         pp_size = mesh.get_dim_size("pp")
         layer_num = len(matched_layer_name)
-        assert (
-            layer_num > 0
-        ), "No layer match the split_spec, please check its correctness"
-        assert (
-            layer_num >= pp_size
-        ), "The number of layers must not be less than the pp size"
+        assert layer_num > 0, (
+            "No layer match the split_spec, please check its correctness"
+        )
+        assert layer_num >= pp_size, (
+            "The number of layers must not be less than the pp size"
+        )
         if layer_num % pp_size != 0:
             logger.warning(
                 f"The number of layers({layer_num}) must be divisible by the pp size({pp_size}), but got {layer_num} and {pp_size}"
@@ -383,18 +383,18 @@ def pipeline_parallel(model, optimizer=None, config=None):
         sublayer_names = [name for name, _ in model.named_sublayers()]
         split_spec_dict = split_spec
         for key, value in split_spec_dict.items():
-            assert (
-                key in sublayer_names
-            ), f"wrong split layer, expected one of {sublayer_names}"
+            assert key in sublayer_names, (
+                f"wrong split layer, expected one of {sublayer_names}"
+            )
             assert value is SplitPoint.END, "not supported split point at now."
 
     if global_spec:
         if isinstance(global_spec, str):
             global_spec = [global_spec]
         else:
-            assert isinstance(
-                global_spec, (list, tuple)
-            ), f"global_spec can only be list or list(str), but got:{type(global_spec)}"
+            assert isinstance(global_spec, (list, tuple)), (
+                f"global_spec can only be list or list(str), but got:{type(global_spec)}"
+            )
 
     logger.info(
         f"split_spec_dict: {split_spec_dict}, global_spec: {global_spec}, matched_layer_name: {matched_layer_name}"

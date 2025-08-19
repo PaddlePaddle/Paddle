@@ -75,9 +75,9 @@ def stage_backward(
             if isinstance(output_val, paddle.Tensor):
                 if output_val.stop_gradient and output_val.grad_fn is None:
                     return
-                assert isinstance(
-                    grad_val, (paddle.Tensor, type(None))
-                ), f"Expected Tensor or None gradient but got {type(grad_val)}"
+                assert isinstance(grad_val, (paddle.Tensor, type(None))), (
+                    f"Expected Tensor or None gradient but got {type(grad_val)}"
+                )
                 stage_output_tensors.append(output_val)
                 output_grad_tensors.append(grad_val)
             elif isinstance(output_val, (tuple, list)):

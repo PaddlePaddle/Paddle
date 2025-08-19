@@ -1096,9 +1096,9 @@ class Resharder:
                 "The type of auto_parallel_startup_prog should be Program or None, "
                 f"but got {type(auto_parallel_startup_prog)}."
             )
-        assert isinstance(
-            rank_id, int
-        ), f"The type of rank_id should be int, but got {type(rank_id)}."
+        assert isinstance(rank_id, int), (
+            f"The type of rank_id should be int, but got {type(rank_id)}."
+        )
         assert isinstance(dist_context, DistributedContext), (
             "The type of dist_context should be DistributedContext, "
             f"but got {type(dist_context)}."
@@ -1631,9 +1631,9 @@ class Resharder:
                             has_used = [False for x in has_used]
                             to_send_process = process_list[0]
                             has_used[0] = True
-                        assert (
-                            to_send_process is not None
-                        ), "Failed to find the send process."
+                        assert to_send_process is not None, (
+                            "Failed to find the send process."
+                        )
 
                         if to_send_process not in op_desc_seq.keys():
                             op_desc_seq[to_send_process] = []
@@ -1904,9 +1904,9 @@ class Resharder:
             if op.desc.id == reshard_op.desc.id:
                 idx = index
                 break
-        assert (
-            idx is not None
-        ), f"The op for reshard cannot be found in the rank {self.rank_id} program."
+        assert idx is not None, (
+            f"The op for reshard cannot be found in the rank {self.rank_id} program."
+        )
 
         src_name = src_tensor.name
 
@@ -2012,9 +2012,9 @@ class Resharder:
                                 for var_name in item[1]
                             ]
                             break
-                assert (
-                    tensor_list
-                ), "The result of parsing allgather op should not be None."
+                assert tensor_list, (
+                    "The result of parsing allgather op should not be None."
+                )
 
             elif isinstance(op_desc, SendOpDesc):
                 if src_name not in self.has_sent.keys():
@@ -2154,9 +2154,9 @@ class Resharder:
                                         )
                                         tensor_list.append(reset_lod_out)
                                         idx += 2
-                                        self.has_recv[src_name][
-                                            op_desc.src
-                                        ] = reset_lod_out
+                                        self.has_recv[src_name][op_desc.src] = (
+                                            reset_lod_out
+                                        )
                                         set_lod = True
                                         break
                                 if set_lod:
@@ -2461,9 +2461,9 @@ class Resharder:
         else:
             op_input_attrs = self._get_common_op_input_attrs(op, var_name)
 
-        assert (
-            op_input_attrs
-        ), f"The input '{op.name}' of op '{var_name}' has no distributed attributes in subblock"
+        assert op_input_attrs, (
+            f"The input '{op.name}' of op '{var_name}' has no distributed attributes in subblock"
+        )
 
         return op_input_attrs
 
@@ -2874,11 +2874,7 @@ class Resharder:
                                     -1
                                 ) != len(
                                     dist_tensor.dist_attr.dims_mapping
-                                ) or output_attr[
-                                    1
-                                ].count(
-                                    -1
-                                ) != len(
+                                ) or output_attr[1].count(-1) != len(
                                     output_attr[1]
                                 ):
                                     raise ValueError(
