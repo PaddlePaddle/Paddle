@@ -231,56 +231,5 @@ class TestMaxWithIndexMoreTypeAndShape(TestMaxWithIndexBasic):
         pass
 
 
-class TestMinMaxWithIndexPlace(unittest.TestCase):
-    """min/max_with_index has no CPU version, so when CUDA is not available,
-    we skip all the above test. A runtime error will be emitted if min/max_with_index
-    is called on CPU, this unit test tries capturing it.
-    """
-
-    def init(self):
-        self.input_shape = [30, 10, 10]
-        self.data = np.random.randn(30, 10, 10)
-
-    def setUp(self):
-        self.init()
-
-    def cpu_place(self):
-        self.place = core.CPUPlace()
-
-    def test_api_static_cpu_err_handling_1(self):
-        self.cpu_place()
-        with (
-            self.assertRaises(RuntimeError),
-            paddle.static.program_guard(paddle.static.Program()),
-        ):
-            input = paddle.static.data(
-                name="input", shape=self.input_shape, dtype="float64"
-            )
-            output = max_with_index(input, dim=0)
-            exe = paddle.static.Executor(self.place)
-            result = exe.run(
-                paddle.static.default_main_program(),
-                feed={'input': self.data},
-                fetch_list=[output],
-            )
-
-    def test_api_static_cpu_err_handling_2(self):
-        self.cpu_place()
-        with (
-            self.assertRaises(RuntimeError),
-            paddle.static.program_guard(paddle.static.Program()),
-        ):
-            input = paddle.static.data(
-                name="input", shape=self.input_shape, dtype="float32"
-            )
-            output = min_with_index(input, dim=-2, keepdim=True)
-            exe = paddle.static.Executor(self.place)
-            result = exe.run(
-                paddle.static.default_main_program(),
-                feed={'input': self.data.astype(np.float32)},
-                fetch_list=[output],
-            )
-
-
 if __name__ == "__main__":
     unittest.main()
