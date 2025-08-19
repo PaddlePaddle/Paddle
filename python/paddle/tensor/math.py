@@ -3728,20 +3728,6 @@ def clip(
     """
 
     x_dtype = str(x.dtype)
-    is_cast_x_to_fp32 = False
-    if x_dtype in ['paddle.int32', 'paddle.int64'] and (
-        isinstance(min, float)
-        or isinstance(max, float)
-        or (
-            isinstance(min, Variable)
-            and isinstance(min.item(0), float)
-            or (isinstance(max, Variable) and isinstance(max.item(0), float))
-        )
-    ):
-        is_cast_x_to_fp32 = True
-        x = paddle.cast(x, paddle.float32)
-        x_dtype = 'paddle.float32'
-
     if x_dtype == 'paddle.int32':
         min_ = np.iinfo(np.int32).min
         max_ = np.iinfo(np.int32).max - 2**7
@@ -3757,14 +3743,33 @@ def clip(
     else:
         min_ = float(np.finfo(np.float32).min)
         max_ = float(np.finfo(np.float32).max)
+    min = min_ if min is None else min
+    max = max_ if max is None else max
 
-    if in_dynamic_or_pir_mode():
-        if isinstance(min, Variable):
-            min = min.item(0)
-        if isinstance(max, Variable):
-            max = max.item(0)
-        min = min_ if min is None else min
-        max = max_ if max is None else max
+    if in_dynamic_mode():
+        if x_dtype in ['paddle.int32', 'paddle.int64']:
+            if isinstance(min, paddle.Tensor):
+                min = min.item(0)
+            if isinstance(max, paddle.Tensor):
+                max = max.item(0)
+            if isinstance(min, float) or isinstance(max, float):
+                x = paddle.cast(x, paddle.float32)
+        return _C_ops.clip(x, min, max)
+    elif in_pir_mode():
+        if x_dtype in ['paddle.int32', 'paddle.int64']:
+            if (
+                isinstance(min, float)
+                or isinstance(max, float)
+                or (
+                    isinstance(min, paddle.pir.Value)
+                    and min.dtype in [paddle.float32, paddle.float64]
+                )
+                or (
+                    isinstance(max, paddle.pir.Value)
+                    and max.dtype in [paddle.float32, paddle.float64]
+                )
+            ):
+                x = paddle.cast(x, paddle.float32)
         return _C_ops.clip(x, min, max)
     else:
         if min is not None:
@@ -3812,9 +3817,7 @@ def clip(
 
         helper = LayerHelper('clip', **locals())
         output = helper.create_variable_for_type_inference(
-            dtype=(
-                helper.input_dtype('x') if not is_cast_x_to_fp32 else "float32"
-            )
+            dtype=helper.input_dtype('x')
         )
         helper.append_op(
             type='clip', inputs=inputs, outputs={'Out': [output]}, attrs=attrs
