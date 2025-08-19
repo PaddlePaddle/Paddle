@@ -101,7 +101,13 @@ class Controller {
   void MergeOpMetaInfoMap(
       const std::unordered_map<std::string, std::vector<paddle::OpMetaInfo>>&
           map) {
-    op_meta_info_map_.insert(map.begin(), map.end());
+    for (const auto& [key, value] : map) {
+      if (op_meta_info_map_.count(key)) {
+        VLOG(3) << "Replacing existing OpMetaInfo for op: " << key;
+      }
+      VLOG(3) << "Merging OpMetaInfo for op: " << key;
+      op_meta_info_map_[key] = value;
+    }
   }
 
   std::unordered_map<std::string,

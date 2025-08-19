@@ -1029,6 +1029,52 @@ class CustomDevice : public DeviceInterface {
         reinterpret_cast<C_Profiler>(collector), start_ns, user_data));
   }
 
+  void InitBlasHandle(size_t dev_id,
+                      void** blas_handle,
+                      phi::stream::stream_t stream) override {
+    const auto device = &devices_pool[dev_id];
+    if (pimpl_->init_blas_handle) {
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+          pimpl_->init_blas_handle(device,
+                                   reinterpret_cast<C_BLASHandle*>(blas_handle),
+                                   reinterpret_cast<C_Stream>(stream)));
+    }
+  }
+
+  void BlasSetMathMode(size_t dev_id,
+                       void* blas_handle,
+                       int math_mode) override {
+    const auto device = &devices_pool[dev_id];
+    if (pimpl_->blas_set_math_mode) {
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->blas_set_math_mode(
+          device, reinterpret_cast<C_BLASHandle>(blas_handle), math_mode));
+    }
+  }
+
+  void InitBlasLtHandle(size_t dev_id, void** blaslt_handle) override {
+    const auto device = &devices_pool[dev_id];
+    if (pimpl_->init_blaslt_handle) {
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->init_blaslt_handle(
+          device, reinterpret_cast<C_BLASLtHandle*>(blaslt_handle)));
+    }
+  }
+
+  void DestroyBlasHandle(size_t dev_id, void* blas_handle) override {
+    const auto device = &devices_pool[dev_id];
+    if (pimpl_->destroy_blas_handle) {
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->destroy_blas_handle(
+          device, reinterpret_cast<C_BLASHandle>(blas_handle)));
+    }
+  }
+
+  void DestroyBlasLtHandle(size_t dev_id, void* blaslt_handle) override {
+    const auto device = &devices_pool[dev_id];
+    if (pimpl_->destroy_blaslt_handle) {
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->destroy_blaslt_handle(
+          device, reinterpret_cast<C_BLASLtHandle>(blaslt_handle)));
+    }
+  }
+
  private:
   inline int PlaceToIdNoCheck(const Place& place) {
     int dev_id = place.GetDeviceId();  // NOLINT

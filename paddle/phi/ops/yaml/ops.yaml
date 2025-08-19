@@ -3698,11 +3698,21 @@
   output : Tensor(y)
   infer_meta :
     func : MoeCombineInferMeta
-    spmd_rule : MoECombineInferSpmd
   kernel :
     func : moe_combine
     data_type : x
   backward : moe_combine_grad
+
+- op : moe_combine_auto
+  args : (Tensor x, Tensor combine_weights, Tensor scatter_index)
+  output : Tensor(y)
+  infer_meta :
+    func : MoeCombineInferMeta
+    spmd_rule : MoECombineInferSpmd
+  kernel :
+    func : moe_combine
+    data_type : x
+  backward : moe_combine_auto_grad
 
 - op : moe_combine_no_weight
   args : (Tensor x, Tensor combine_weight, Tensor scatter_index, float epsilon = 1.0e-15)
@@ -3719,7 +3729,6 @@
   output : Tensor(y), Tensor(combine_weights), Tensor(scatter_index), Tensor(expert_offset), Tensor(expert_id)
   infer_meta :
     func : MoeGateDispatchInferMeta
-    spmd_rule : MoEGateDispatchInferSpmd
   kernel :
     func : moe_gate_dispatch
     data_type : x
@@ -3735,6 +3744,18 @@
     func : moe_gate_dispatch_and_quant
     data_type : x
   optional : corr_bias
+
+- op : moe_gate_dispatch_auto
+  args : (Tensor x, Tensor gate_logits, Tensor corr_bias, int64_t k, int64_t capacity, bool use_pad)
+  output : Tensor(y), Tensor(combine_weights), Tensor(scatter_index), Tensor(expert_offset), Tensor(expert_id)
+  infer_meta :
+    func : MoeGateDispatchAutoInferMeta
+    spmd_rule : MoEGateDispatchInferSpmd
+  kernel :
+    func : moe_gate_dispatch
+    data_type : x
+  optional : corr_bias
+  backward : moe_gate_dispatch_auto_grad
 
 - op : moe_gate_dispatch_partial_nosoftmaxtopk
   args : (Tensor x, Tensor combine_weights, Tensor expert_id, int64_t k, int64_t capacity, int64_t num_experts, bool use_pad, int64_t expert_start_index, int64_t expert_end_index, bool reverse_token_drop)

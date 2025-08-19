@@ -347,8 +347,6 @@ PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(logsigmoid, LogSigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hardsigmoid, HardSigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(hardswish, HardSwishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(swish, SwishKernel)
-PD_REGISTER_ACTIVATION_KERNEL(floor, FloorKernel)
-PD_REGISTER_ACTIVATION_KERNEL(ceil, CeilKernel)
 PD_REGISTER_ACTIVATION_KERNEL(celu, CeluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(selu, SeluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(logit, LogitCUDAKernel)
@@ -435,3 +433,29 @@ PD_REGISTER_KERNEL(pow,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
+PD_REGISTER_KERNEL(ceil,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::CeilKernel,
+                   float,
+                   double,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(floor,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::FloorKernel,
+                   float,
+                   double,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
