@@ -39,6 +39,8 @@ if TYPE_CHECKING:
     from paddle import Tensor
     from paddle._typing import DTypeLike
 
+from paddle.utils.decorator_utils import ForbidKeywordsDecorator
+
 # from ..base.layers import has_inf  #DEFINE_ALIAS
 # from ..base.layers import has_nan  #DEFINE_ALIAS
 
@@ -623,6 +625,11 @@ def _restrict_nonzero(condition: Tensor, total_true_num: int) -> Tensor:
     return _C_ops.restrict_nonzero(condition, total_true_num)
 
 
+@ForbidKeywordsDecorator(
+    illegal_keys={'input', 'dim'},
+    func_name='paddle.sort',
+    correct_name='paddle.compat.sort',
+)
 def sort(
     x: Tensor,
     axis: int = -1,
