@@ -377,18 +377,27 @@ class TestEagerTensor(unittest.TestCase):
         self.assertEqual(var.dtype, paddle.float32)
         self.assertEqual(var.type, core.VarDesc.VarType.DENSE_TENSOR)
 
-    def test_tensor_pin_memory(self):
+    def test_tensor_pin_memory_and_device(self):
         if core.is_compiled_with_cuda():
             tensor_res = paddle.tensor(
                 self.array, device="gpu", pin_memory=True
             )
             self.assertEqual(tensor_res.place, core.CUDAPinnedPlace())
 
+            tensor_cuda = paddle.tensor(self.array, device="cuda")
+            self.assertEqual(tensor_cuda.place, paddle.CUDAPlace())
+
+            tensor_pin = paddle.tensor(self.array, device="gpu_pinned")
+            self.assertEqual(tensor_pin.place, core.CUDAPinnedPlace())
+
         if core.is_compiled_with_xpu():
             tensor_res = paddle.tensor(
                 self.array, device="xpu", pin_memory=True
             )
             self.assertEqual(tensor_res.place, core.XPUPinnedPlace())
+
+            tensor_pin = paddle.tensor(self.array, device="xpu_pinned")
+            self.assertEqual(tensor_pin.place, core.XPUPinnedPlace())
 
         with self.assertRaises(RuntimeError) as context:
             paddle.tensor(
