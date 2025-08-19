@@ -24,6 +24,7 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
+from paddle._C_ops import tril, triu  # noqa: F401
 from paddle.utils.decorator_utils import ParamAliasDecorator, SizeArgsDecorator
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
