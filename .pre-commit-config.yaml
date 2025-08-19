@@ -71,7 +71,7 @@ repos:
 
             | setup.py
 
-            # | paddle/.+
+            | paddle/.+
 
             | python/paddle/[a-c].+
 
@@ -127,7 +127,7 @@ repos:
 
             # | setup.py
 
-            | paddle/.+
+            # | paddle/.+
 
             # | python/paddle/[a-c].+
 
