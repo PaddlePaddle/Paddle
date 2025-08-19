@@ -1344,6 +1344,9 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
   const int64_t d = phi::funcs::SizeFromAxis(axis_v, logits.dims());
 
   if (axis_dim == 1) {
+    auto* softmax_data = dev_ctx.template Alloc<T>(softmax);
+    auto* loss_data = dev_ctx.template Alloc<T>(loss);
+
     phi::funcs::SetConstant<GPUContext, T> set_constant;
     set_constant(dev_ctx, softmax, static_cast<T>(1));
     set_constant(dev_ctx, loss, static_cast<T>(0));
@@ -1502,7 +1505,8 @@ PD_REGISTER_KERNEL(cross_entropy_with_softmax,
                    ALL_LAYOUT,
                    phi::CrossEntropyWithSoftmaxKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 #else
 #if CUDNN_VERSION_MIN(8, 1, 0)
 PD_REGISTER_KERNEL(cross_entropy_with_softmax,

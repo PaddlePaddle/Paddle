@@ -33,7 +33,7 @@ namespace phi {
 
 template <typename T, typename IndexT>
 __global__ void EmbeddingGradAddTo(T* main_grad_out,
-                                   const __nv_bfloat16* out_grad,
+                                   const phi::bfloat16* out_grad,
                                    const IndexT* token_indices,
                                    const int64_t num_tokens,
                                    const int64_t token_length) {
@@ -42,7 +42,7 @@ __global__ void EmbeddingGradAddTo(T* main_grad_out,
 
   while (idy < num_tokens) {
     auto id = static_cast<int64_t>(token_indices[idy]);
-    const __nv_bfloat16* token_out_grad = out_grad + idy * token_length;
+    const phi::bfloat16* token_out_grad = out_grad + idy * token_length;
     T* token_main_grad = main_grad_out + id * token_length;
     for (int i = idx; i < token_length; i += blockDim.x) {
       phi::CudaAtomicAdd(&token_main_grad[i],
@@ -76,7 +76,7 @@ struct EmbeddingGradAddToCUDAFunctor {
       auto main_grad_out_t = main_grad_out_;
       const auto* token_indices = token_indices_.template data<IndexT>();
       T* main_grad_out = dev_ctx_.template Alloc<T>(main_grad_out_t);
-      const __nv_bfloat16* out_grad = reinterpret_cast<const __nv_bfloat16*>(
+      const phi::bfloat16* out_grad = reinterpret_cast<const phi::bfloat16*>(
           out_grad_.template data<phi::dtype::bfloat16>());
 
       const int gridx = 2 * dev_ctx_.GetSMCount();
