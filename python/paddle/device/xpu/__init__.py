@@ -121,12 +121,12 @@ def extract_xpu_device_id(device: _XPUPlaceLike, op_name: str) -> int:
             "Please input appropriate device again!"
         )
 
-    assert (
-        device_id >= 0
-    ), f"The device id must be not less than 0, but got id = {device_id}."
-    assert (
-        device_id < device_count()
-    ), f"The device id {device_id} exceeds xpu card number {device_count()}"
+    assert device_id >= 0, (
+        f"The device id must be not less than 0, but got id = {device_id}."
+    )
+    assert device_id < device_count(), (
+        f"The device id {device_id} exceeds xpu card number {device_count()}"
+    )
     return device_id
 
 
