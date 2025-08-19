@@ -268,7 +268,6 @@ class TestYoloBoxDygraph(unittest.TestCase):
 
 
 class TestYoloBoxStatic(unittest.TestCase):
-
     def test_static(self):
         x1 = paddle.static.data('x1', [2, 14, 8, 8], 'float32')
         img_size = paddle.static.data('img_size', [2, 2], 'int32')

@@ -186,7 +186,6 @@ class TestNormalAPI_mean_std_are_tensor_with_different_dtype(TestNormalAPI):
 
 
 class TestNormalAlias(unittest.TestCase):
-
     def test_alias(self):
         paddle.disable_static()
         shape = [1, 2, 3]
@@ -197,7 +196,6 @@ class TestNormalAlias(unittest.TestCase):
 
 
 class TestNormalErrors(unittest.TestCase):
-
     def test_errors(self):
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):
@@ -402,7 +400,6 @@ class TestNormalAPIComplex_mean_std_are_tensor_with_different_dtype(
 
 
 class TestNormalComplexErrors(unittest.TestCase):
-
     def test_errors(self):
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):

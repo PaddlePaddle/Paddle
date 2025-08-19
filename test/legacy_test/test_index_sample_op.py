@@ -167,7 +167,6 @@ class TestIndexSampleOp_ZeroSize(OpTest):
 
 
 class TestIndexSampleOp_ZeroSize2(TestIndexSampleOp_ZeroSize):
-
     def config(self):
         self.x_shape = (0, 20)
         self.x_type = "float64"
@@ -247,7 +246,6 @@ class TestIndexSampleBF16Op(OpTest):
 
 
 class TestIndexSampleShape(unittest.TestCase):
-
     def test_shape(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):

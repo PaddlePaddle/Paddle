@@ -431,7 +431,6 @@ class TestSegmentOps_Mean_ZeroSize(TestSegmentOps_ZeroSize):
 
 
 class API_SegmentOpsTest(unittest.TestCase):
-
     def test_static(self):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data(name="x", shape=[3, 3], dtype="float32")
@@ -485,7 +484,6 @@ class API_SegmentOpsTest(unittest.TestCase):
 
 
 class API_GeometricSegmentOpsTest(unittest.TestCase):
-
     def test_static(self):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data(name="x", shape=[3, 3], dtype="float32")

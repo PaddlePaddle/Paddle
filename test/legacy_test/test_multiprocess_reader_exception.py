@@ -44,9 +44,9 @@ class TestMultiprocessReaderExceptionWithQueueSuccess(unittest.TestCase):
             def __impl__():
                 for _ in range(sample_num):
                     if not self.raise_exception:
-                        yield list(
-                            np.random.uniform(low=-1, high=1, size=[10])
-                        ),
+                        yield (
+                            list(np.random.uniform(low=-1, high=1, size=[10])),
+                        )
                     else:
                         raise ValueError
 

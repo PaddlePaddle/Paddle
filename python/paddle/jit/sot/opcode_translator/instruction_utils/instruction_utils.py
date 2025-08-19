@@ -99,7 +99,6 @@ def convert_instruction(instr: dis.Instruction) -> Instruction:
 
 
 def expand_super_instrs(instructions: list[Instruction]) -> list[Instruction]:
-
     expanded_instrs = []
 
     def replace_jump_target(instrs, old_target, new_target):
