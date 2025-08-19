@@ -426,7 +426,6 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             return keywords
 
         for name, (ttype, pos) in forward_inputs_position_map.items():
-
             input_names = input_names + ", " + name
             if forward_inplace_map and name in forward_inplace_map.keys():
                 inplace_args_pos_map[name] = pos
