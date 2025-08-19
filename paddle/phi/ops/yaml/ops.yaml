@@ -240,7 +240,7 @@
 - op : amax
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
   python_api :
-    name : [paddle.amax,paddle.Tensor.amax]
+    name : [paddle.amax, paddle.Tensor.amax]
     args_alias:
       use_default_mapping : True
   output : Tensor(out)
@@ -254,7 +254,7 @@
 - op : amin
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
   python_api :
-    name : [paddle.amin,paddle.Tensor.amin]
+    name : [paddle.amin, paddle.Tensor.amin]
     args_alias :
       use_default_mapping : True
   output : Tensor(out)
@@ -2872,6 +2872,10 @@
 
 - op : index_select
   args : (Tensor x, Tensor index, int axis = 0)
+  python_api:
+    name : [paddle.index_select, paddle.Tensor.index_select]
+    args_alias:
+      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : IndexSelectInferMeta
@@ -3232,6 +3236,10 @@
 
 - op : logical_and
   args : (Tensor x, Tensor y)
+  python_api:
+    name : [paddle.logical_and, paddle.Tensor.logical_and]
+    args_alias:
+      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : LogicalBinaryInferMeta
@@ -3246,6 +3254,10 @@
 
 - op : logical_not
   args : (Tensor x)
+  python_api:
+    name : [paddle.logical_not, paddle.Tensor.logical_not]
+    args_alias:
+      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : LogicalNotInferMeta
@@ -3260,6 +3272,10 @@
 
 - op : logical_or
   args : (Tensor x, Tensor y)
+  python_api:
+    name : [paddle.logical_or, paddle.Tensor.logical_or]
+    args_alias:
+      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : LogicalBinaryInferMeta

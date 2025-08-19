@@ -316,13 +316,197 @@ add_doc_and_signature(
               [0.50000000, 0.33333333]],
              [[0.50000000, 0.33333333],
               [0.        , 0.        ]]])
-    """,
+""",
     """
 def amax(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
     keepdim: bool = False,
     name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "index_select",
+    """
+    Returns a new tensor which indexes the ``input`` tensor along dimension ``axis`` using
+    the entries in ``index`` which is a Tensor. The returned tensor has the same number
+    of dimensions as the original ``x`` tensor. The dim-th dimension has the same
+    size as the length of ``index``; other dimensions have the same size as in the ``x`` tensor.
+
+    Args:
+        x (Tensor): The input Tensor to be operated. The data of ``x`` can be one of float16, float32, float64, int32, int64, complex64 and complex128.
+        index (Tensor): The 1-D Tensor containing the indices to index. The data type of ``index`` must be int32 or int64.
+        axis (int, optional): The dimension in which we index. Default: if None, the ``axis`` is 0.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Keyword Args:
+        out (Tensor|optional): The output tensor.
+
+    Returns:
+        Tensor, A Tensor with same data type as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[1.0, 2.0, 3.0, 4.0],
+            ...                       [5.0, 6.0, 7.0, 8.0],
+            ...                       [9.0, 10.0, 11.0, 12.0]])
+            >>> index = paddle.to_tensor([0, 1, 1], dtype='int32')
+            >>> out_z1 = paddle.index_select(x=x, index=index)
+            >>> print(out_z1.numpy())
+            [[1. 2. 3. 4.]
+             [5. 6. 7. 8.]
+             [5. 6. 7. 8.]]
+            >>> out_z2 = paddle.index_select(x=x, index=index, axis=1)
+            >>> print(out_z2.numpy())
+            [[ 1.  2.  2.]
+             [ 5.  6.  6.]
+             [ 9. 10. 10.]]
+""",
+    """
+def index_select(
+    x: Tensor, index: Tensor, axis: int = 0, name: str | None = None
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "torch.logical_and",
+    """
+    Compute element-wise logical AND on ``x`` and ``y``, and return ``out``. ``out`` is N-dim boolean ``Tensor``.
+    Each element of ``out`` is calculated by
+
+    .. math::
+
+        out = x \&\& y
+
+    Note:
+        ``paddle.logical_and`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+
+    Args:
+        x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, bfloat16, float16, float32, float64, complex64, complex128.
+        y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, bfloat16, float16, float32, float64, complex64, complex128.
+        out(Tensor|None, optional): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
+        out (Tensor|optional): The output tensor.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([True])
+            >>> y = paddle.to_tensor([True, False, True, False])
+            >>> res = paddle.logical_and(x, y)
+            >>> print(res)
+            Tensor(shape=[4], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [True , False, True , False])
+""",
+    """
+def logical_and(
+    x: Tensor, y: Tensor, out: Tensor | None = None, name: str | None = None
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "logical_or",
+    """
+    ``logical_or`` operator computes element-wise logical OR on ``x`` and ``y``, and returns ``out``. ``out`` is N-dim boolean ``Tensor``.
+    Each element of ``out`` is calculated by
+
+    .. math::
+
+        out = x || y
+
+    Note:
+        ``paddle.logical_or`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+
+    Args:
+        x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, bfloat16, float16, float32, float64, complex64, complex128.
+        y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, bfloat16, float16, float32, float64, complex64, complex128.
+        out(Tensor|None, optional): The ``Variable`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
+        out (Tensor|optional): The output tensor.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([True, False], dtype="bool").reshape([2, 1])
+            >>> y = paddle.to_tensor([True, False, True, False], dtype="bool").reshape([2, 2])
+            >>> res = paddle.logical_or(x, y)
+            >>> print(res)
+            Tensor(shape=[2, 2], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [[True , True ],
+             [True , False]])
+""",
+    """
+def logical_or(
+    x: Tensor, y: Tensor, out: Tensor | None = None, name: str | None = None
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "logical_not",
+    """
+    ``logical_not`` operator computes element-wise logical NOT on ``x``, and returns ``out``. ``out`` is N-dim boolean ``Variable``.
+    Each element of ``out`` is calculated by
+
+    .. math::
+
+        out = !x
+
+    Note:
+        ``paddle.logical_not`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+
+    Args:
+        x(Tensor):  Operand of logical_not operator. Must be a Tensor of type bool, int8, int16, in32, in64, bfloat16, float16, float32, or float64, complex64, complex128.
+        out(Tensor|None): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor` will be created to save the output.
+        name(str|None, optional): The default value is None. Normally there is no need for users to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
+        out (Tensor|optional): The output tensor.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([True, False, True, False])
+            >>> res = paddle.logical_not(x)
+            >>> print(res)
+            Tensor(shape=[4], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [False, True , False, True ])
+""",
+    """
+def logical_not(
+    x: Tensor, out: Tensor | None = None, name: str | None = None
 ) -> Tensor
 """,
 )
