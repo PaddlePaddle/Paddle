@@ -258,12 +258,12 @@ void ProcessMedianKernel(const Context& dev_ctx,
     int64_t sum =
         thrust::reduce(exec_policy, nan_counts_ptr, nan_counts_ptr + pre_dim);
     nan_stat_cpu_ptr[0] = sum;
-    auto maxx_ptr = thrust::max_element(
+    auto min_nan_ptr = thrust::min_element(
         exec_policy, nan_counts_ptr, nan_counts_ptr + pre_dim);
     memory_utils::Copy(phi::CPUPlace(),
                        nan_stat_cpu_ptr + 1,
                        dev_ctx.GetPlace(),
-                       maxx_ptr,
+                       min_nan_ptr,
                        sizeof(int64_t),
                        stream);
     // all elements are nan values
@@ -278,7 +278,7 @@ void ProcessMedianKernel(const Context& dev_ctx,
     }
 
     ignore_nan = nan_stat_cpu_ptr[0] > 0;
-    max_valid_num = nan_stat_cpu_ptr[1];
+    max_valid_num = stride - nan_stat_cpu_ptr[1];
   }
 
   int64_t sort_k = ignore_nan ? max_valid_num : ((stride >> 1) + 1);

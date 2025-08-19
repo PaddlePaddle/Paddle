@@ -38,8 +38,10 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                          DenseTensor* dk,
                          DenseTensor* dv) {
   int64_t numel = dout_q.numel();
-  if (numel <= 0) return;
   dev_ctx.template Alloc<T>(dq);
+  if (dout_k) dev_ctx.template Alloc<T>(dk);
+  if (dout_v) dev_ctx.template Alloc<T>(dv);
+  if (numel <= 0) return;
 
   phi::Array<int64_t, 3> inputs_num_heads;
   // small size for broadcast
@@ -70,22 +72,19 @@ void FusedRopeGradKernel(const Context& dev_ctx,
   outs_data[0] = dq->data<T>();
   int num_inputs = 1;
 
-  if (dout_k) {
-    dev_ctx.template Alloc<T>(dk);
+  if (dk && dk->numel() > 0) {
     outs_data[num_inputs] = dk->data<T>();
     ins_data[num_inputs] = dout_k->data<T>();
     inputs_num_heads[num_inputs] = dk->dims()[2];
     num_inputs++;
   }
 
-  if (dout_v) {
-    dev_ctx.template Alloc<T>(dv);
+  if (dv && dv->numel() > 0) {
     outs_data[num_inputs] = dv->data<T>();
     ins_data[num_inputs] = dout_v->data<T>();
     inputs_num_heads[num_inputs] = dv->dims()[2];
     num_inputs++;
   }
-
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   MPType div_c = static_cast<MPType>(1.0f / head_dim);
 

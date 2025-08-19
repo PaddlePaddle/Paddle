@@ -18,5 +18,18 @@
 #include "paddle/phi/kernels/impl/lu_solve_grad_kernel_impl.h"
 #include "paddle/phi/kernels/lu_solve_grad_kernel.h"
 
+#ifdef PADDLE_WITH_HIP
+// blas_impl.hip.h not support CUBlas<T>::TRSM for complex in
+// TriangularSolveKernel
 PD_REGISTER_KERNEL(
     lu_solve_grad, GPU, ALL_LAYOUT, phi::LuSolveGradKernel, float, double) {}
+#else  // PADDLE_WITH_CUDA
+PD_REGISTER_KERNEL(lu_solve_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LuSolveGradKernel,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+#endif

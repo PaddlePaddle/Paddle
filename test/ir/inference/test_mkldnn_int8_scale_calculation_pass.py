@@ -19,7 +19,7 @@ from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
-class TestInt8ScaleCalculationMkldnnPass(PassAutoScanTest):
+class TestInt8ScaleCalculationOnednnPass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_gpu=False)
         config.pass_builder().append_pass("int8_scale_calculation_onednn_pass")
@@ -123,7 +123,7 @@ class TestInt8ScaleCalculationMkldnnPass(PassAutoScanTest):
         bias_shape = [f_shape[0]]
         inputs = {}
         weights = {}
-        use_mkldnn = True
+        use_onednn = True
 
         has_bias = draw(st.booleans())
         if has_bias:
@@ -154,7 +154,7 @@ class TestInt8ScaleCalculationMkldnnPass(PassAutoScanTest):
             groups=groups,
             dilations=dilations,
             data_format=data_format,
-            use_mkldnn=use_mkldnn,
+            use_onednn=use_onednn,
             mkldnn_data_type="int8",
         )
 

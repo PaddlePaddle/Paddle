@@ -18,7 +18,12 @@ import gradient_checker
 import numpy as np
 import op_test
 from decorator_helper import prog_scope
-from op_test import convert_float_to_uint16, convert_uint16_to_float, get_places
+from op_test import (
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+    get_device_place,
+    get_places,
+)
 
 import paddle
 from paddle import base
@@ -113,7 +118,6 @@ class TestAssignBFP16Op(op_test.OpTest):
 
 
 class TestAssignOpWithTensorArray(unittest.TestCase):
-
     def test_assign_tensor_array(self):
         paddle.enable_static()
         main_program = paddle.static.Program()
@@ -132,11 +136,7 @@ class TestAssignOpWithTensorArray(unittest.TestCase):
             mean = paddle.mean(sums)
             [(_, x_grad)] = append_backward(mean, parameter_list=[x])
 
-        place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        place = get_device_place()
         exe = paddle.static.Executor(place)
         feed_x = np.random.random(size=(100, 10)).astype('float32')
         ones = np.ones((100, 10)).astype('float32')
@@ -152,7 +152,6 @@ class TestAssignOpWithTensorArray(unittest.TestCase):
 
 
 class TestAssignOpError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
@@ -275,7 +274,6 @@ class TestAssignOut_(unittest.TestCase):
 
 
 class TestAssignOpErrorApi(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(

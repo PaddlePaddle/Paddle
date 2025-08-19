@@ -45,9 +45,7 @@ class TestGatherOp(OpTest):
         self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
-        )
+        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
 
     def config(self):
         """
@@ -131,7 +129,6 @@ class TestGatherOpBFP16(TestGatherOp):
             paddle.CUDAPlace(0),
             ['X'],
             'Out',
-            check_prim=True,
             check_pir=True,
             check_prim_pir=True,
         )
@@ -703,13 +700,11 @@ class TestGatherOp5(TestGatherOp):
             ['X'],
             'Out',
             check_pir=True,
-            check_prim=True,
             check_prim_pir=True,
         )
 
 
 class API_TestGather(unittest.TestCase):
-
     def test_out1(self):
         with base.program_guard(base.Program(), base.Program()):
             data1 = paddle.static.data('data1', shape=[-1, 2], dtype='float64')
@@ -817,7 +812,6 @@ class API_TestDygraphGather(unittest.TestCase):
 
 
 class TestGathertError(unittest.TestCase):
-
     def test_error1(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -891,7 +885,6 @@ class TestGathertError(unittest.TestCase):
 
 
 class TestCheckOutType(unittest.TestCase):
-
     def test_out_type(self):
         data = paddle.static.data(shape=[16, 10], dtype='int64', name='x')
         index = paddle.static.data(shape=[4], dtype='int64', name='index')

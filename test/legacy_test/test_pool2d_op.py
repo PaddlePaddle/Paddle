@@ -451,7 +451,7 @@ class TestPool2D_Op_Mixin:
             'pooling_type': self.pool_type,
             'global_pooling': self.global_pool,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_onednn,
+            'use_onednn': self.use_onednn,
             'ceil_mode': self.ceil_mode,
             'data_format': self.data_format,
             'exclusive': self.exclusive,

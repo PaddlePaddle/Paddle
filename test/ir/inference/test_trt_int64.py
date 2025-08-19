@@ -126,13 +126,17 @@ class TrtInt64Test1(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), 1e-5
+        yield (
+            self.create_inference_config(),
+            generate_trt_nodes_num(attrs, True),
+            1e-5,
+        )
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), 1e-3
+        yield (
+            self.create_inference_config(),
+            generate_trt_nodes_num(attrs, True),
+            1e-3,
+        )
 
     def test(self):
         self.run_test()

@@ -73,7 +73,7 @@ class TestTranspose2Unsqueeze2OneDNNFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(
-            use_mkldnn=True,
+            use_onednn=True,
             passes=[
                 "operator_unsqueeze2_onednn_fuse_pass",
             ],
@@ -138,7 +138,7 @@ class TestElementwiseMulUnsqueeze2OneDNNFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(
-            use_mkldnn=True,
+            use_onednn=True,
             passes=[
                 "operator_unsqueeze2_onednn_fuse_pass",
             ],

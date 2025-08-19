@@ -35,7 +35,7 @@ class TestConcatBf16Op(OpTest):
         self.inputs = {'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)]}
         self.attrs = {
             'axis': self.axis,
-            'use_mkldnn': True,
+            'use_onednn': True,
             'mkldnn_data_type': self.onednn_data_type,
         }
 

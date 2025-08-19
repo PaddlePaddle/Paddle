@@ -204,7 +204,9 @@ class _PipelineStageBase(ABC):
         # Forward infra
         self.args_recv_info: dict[int, tuple[InputInfo, ...]] = {}
         self.act_send_info: dict[int, list] = {}
-
+        self._need_grad_indices: dict[
+            int, list
+        ] = {}  # record the index of output that needs to receive grad from the next stage.
         # Backward infra will created lazily
         self.grad_recv_info: dict = {}
         self.grad_send_info: list | None = None
@@ -258,16 +260,16 @@ class _PipelineStageBase(ABC):
         configuration, so it's important to also freeze/validate the output side to avoid any send/recv mismatches
         which could show up as hangs, silent corruption, or other errors.
         """
-        assert (
-            self._outputs_meta is None
-        ), "Attempting to reconfigure output_meta, which is not supported"
+        assert self._outputs_meta is None, (
+            "Attempting to reconfigure output_meta, which is not supported"
+        )
         self._outputs_meta = tuple(outputs_meta)  # type: ignore[assignment]
 
     def get_outputs_meta(self) -> tuple[paddle.Tensor, ...]:
         """Get the output metadata (meta tensors) representing the outputs of this stage"""
-        assert (
-            self._outputs_meta is not None
-        ), "Attempted to get_outputs_meta() without configuring output meta"
+        assert self._outputs_meta is not None, (
+            "Attempted to get_outputs_meta() without configuring output meta"
+        )
         return self._outputs_meta
 
     def _create_grad_send_info(
@@ -282,7 +284,7 @@ class _PipelineStageBase(ABC):
         def map_recv_to_send(a):
             # Note: we send gradients back to previous stage as long as in
             # forward it is a received input, regardless of whether it requires
-            # grad. It is up to the previous stage to disgard this gradient.
+            # grad. It is up to the previous stage to discard this gradient.
             if isinstance(a, _RecvInfo):
                 grad_send_info.append(a.source)
                 return a.source
@@ -374,12 +376,12 @@ class _PipelineStageBase(ABC):
         )
 
         for info, tensor in zip(recv_infos, prev_stage_outputs):
-            assert isinstance(
-                tensor, paddle.Tensor
-            ), f"expected tensor values as outputs from prev stage, got {type(tensor)}"
-            assert isinstance(
-                info, _RecvInfo
-            ), "set_local_Fwd_input should only be called on non-first stage, which should always have RecvInfo"
+            assert isinstance(tensor, paddle.Tensor), (
+                f"expected tensor values as outputs from prev stage, got {type(tensor)}"
+            )
+            assert isinstance(info, _RecvInfo), (
+                "set_local_Fwd_input should only be called on non-first stage, which should always have RecvInfo"
+            )
 
             info.buffer = _detach_and_requires_grad(tensor)
 
@@ -387,9 +389,9 @@ class _PipelineStageBase(ABC):
         """
         Returns the input grad tensors for this stage, which correspond to the stage inputs during forward.
         """
-        assert (
-            self.has_backward
-        ), "can't steal_bwd_input if this stage doesn't have backward"
+        assert self.has_backward, (
+            "can't steal_bwd_input if this stage doesn't have backward"
+        )
         assert not self.is_first, "can't get bwd output if this stage is first"
 
         self._check_chunk_id(mb_index)
@@ -404,22 +406,22 @@ class _PipelineStageBase(ABC):
         Moves 'grad input' tensors from the next stage to 'grad_output' on this stage, avoiding a copy or send/recv.
         Does not detach or set 'stop_gradient'.
         """
-        assert isinstance(
-            next_stage_bwd_outputs, tuple
-        ), f"Expected tuple, got {type(next_stage_bwd_outputs)}"
+        assert isinstance(next_stage_bwd_outputs, tuple), (
+            f"Expected tuple, got {type(next_stage_bwd_outputs)}"
+        )
 
-        assert (
-            self.has_backward
-        ), "can't set bwd input if this stage doesn't have backward"
+        assert self.has_backward, (
+            "can't set bwd input if this stage doesn't have backward"
+        )
         assert not self.is_last, "can't set bwd input if this stage is last"
         recv_infos = self.grad_recv_info[mb_index]
         for info, tensor in zip(recv_infos, next_stage_bwd_outputs):
-            assert isinstance(
-                tensor, paddle.Tensor
-            ), f"expected tensor values as outputs from prev stage, got {type(tensor)}"
-            assert isinstance(
-                info, _RecvInfo
-            ), f"Expected a recv info, got {type(info)}"
+            assert isinstance(tensor, paddle.Tensor), (
+                f"expected tensor values as outputs from prev stage, got {type(tensor)}"
+            )
+            assert isinstance(info, _RecvInfo), (
+                f"Expected a recv info, got {type(info)}"
+            )
             info.buffer = tensor
 
     def get_fwd_recv_ops(self, fwd_chunk_id: int) -> list[dist.P2POp]:
@@ -480,7 +482,7 @@ class _PipelineStageBase(ABC):
                             else dtensor_to_local(
                                 out,
                                 out.process_mesh,
-                                self.grads_meta[idx].placements,
+                                out.placements,
                             )
                         ),
                         peer_global_rank,
@@ -619,10 +621,6 @@ class _PipelineStageBase(ABC):
     def backward_maybe_with_nosync(
         self, backward_type, bwd_kwargs: dict, last_backward=False
     ) -> tuple[tuple[paddle.Tensor | None, ...], list[dict[str, Any] | None]]:
-        """
-        PP 与 DP 混用时，在每个batch的最后一个microbatch的反向开始时，此时的一些行为可能会有所差异，此时可能需要注意。
-        """
-
         def perform_backward(
             backward_type,
         ) -> Callable[
@@ -710,9 +708,19 @@ class _PipelineStageBase(ABC):
         flat_args = _flatten_args(input_args)
         flat_kwargs = _flatten_args(composite_kwargs)
         flatten_input_tensors = flat_args + flat_kwargs
+        requires_grad_output_tuple = tuple(
+            out
+            for out in output_tuple
+            if isinstance(out, paddle.Tensor) and not out.stop_gradient
+        )
+        flatten_requires_grad_input_tensors = [
+            inp
+            for inp in flatten_input_tensors
+            if isinstance(inp, paddle.Tensor) and not inp.stop_gradient
+        ]
         self.fwd_cache[fwd_chunk_id] = (
-            output_tuple,  # stage_output
-            flatten_input_tensors,  # input_values
+            requires_grad_output_tuple,  # stage_output
+            flatten_requires_grad_input_tensors,  # input_values
         )
 
         logger.debug(
@@ -894,9 +902,9 @@ class PipelineStage(_PipelineStageBase):
                 else input_args
             )
 
-            assert (
-                output_args is not None
-            ), "If passing input_args, also pass output_args to override shape inference"
+            assert output_args is not None, (
+                "If passing input_args, also pass output_args to override shape inference"
+            )
             self._configure_outputs_meta(
                 (output_args,)
                 if isinstance(output_args, TensorMeta)
@@ -969,28 +977,30 @@ class PipelineStage(_PipelineStageBase):
 
     def _validate_shared_parameter_pair(self):
         # Validate shared_parameters structure.
-        assert isinstance(
-            self.shared_parameters, list
-        ), f"Expected `shared_parameters` to return a list, but got {type(self.shared_parameters).__name__}. "
+        assert isinstance(self.shared_parameters, list), (
+            f"Expected `shared_parameters` to return a list, but got {type(self.shared_parameters).__name__}. "
+        )
 
         # Validate every pair shard parameter.
         for idx, a_shared_map in enumerate(self.shared_parameters):
             # Validate map structure.
-            assert isinstance(
-                a_shared_map, dict
-            ), f"Invalid shared parameter pair: expected dict, but got {type(a_shared_map).__name__}."
+            assert isinstance(a_shared_map, dict), (
+                f"Invalid shared parameter pair: expected dict, but got {type(a_shared_map).__name__}."
+            )
             assert len(a_shared_map) <= 3, (
                 f"shared_parameters['{idx}'] exceeds size limit (max 3 keys). "
                 f"Allowed: ['params', 'group', 'shared_param'], got: {list(a_shared_map.keys())}"
             )
             # Validate required 'params' entry.
             params = a_shared_map.get("params")
-            assert (
-                params is not None
-            ), f"Missing shared parameter 'params' not found in shared_parameters['{idx}']. Available keys: {list(a_shared_map)}."
+            assert params is not None, (
+                f"Missing shared parameter 'params' not found in shared_parameters['{idx}']. Available keys: {list(a_shared_map)}."
+            )
             assert (isinstance(params, list) or tuple(params, list)) and len(
                 params
-            ) == 2, f"Shared parameter only support 2 shared parameters in list or tuple, but got {len(params)}."
+            ) == 2, (
+                f"Shared parameter only support 2 shared parameters in list or tuple, but got {len(params)}."
+            )
             # Validate parameter types and placements.
             param_1, param_2 = params
             assert isinstance(param_1, EagerParamBase) and isinstance(
@@ -1007,24 +1017,26 @@ class PipelineStage(_PipelineStageBase):
             ranks_1 = param_1.process_mesh.process_ids
             ranks_2 = param_2.process_mesh.process_ids
             assert len(ranks_1) == len(ranks_2)
-            assert (
-                ranks_1 != ranks_2
-            ), f"Shared parameters must be on different stage meshes, but both are on {ranks_1}."
+            assert ranks_1 != ranks_2, (
+                f"Shared parameters must be on different stage meshes, but both are on {ranks_1}."
+            )
 
             # In VPP mode, a same shared_parameters is reused across stage builds. To avoid redundant group creation, the 'shared_param'
             # and 'group' attributes may already exist, as they are created during the `_init_shared_group` call.
             # Validate optional 'group' entry.
             if "group" in a_shared_map:
                 group = a_shared_map["group"]
-                assert group is None or isinstance(
-                    group, Group
-                ), f"Expected 'shared_parameters[{idx}][\"group\"]' is 'Group' or None, but got '{type(a_shared_map['group']).__name__}'."
+                assert group is None or isinstance(group, Group), (
+                    f"Expected 'shared_parameters[{idx}][\"group\"]' is 'Group' or None, but got '{type(a_shared_map['group']).__name__}'."
+                )
             # Validate optional 'sync_param' entry.
             if "sync_param" in a_shared_map:
                 sync_param = a_shared_map["sync_param"]
                 assert sync_param is None or sync_param in list(
                     param_1, param_2
-                ), f"Expected 'shared_parameters[{idx}][\"sync_param\"]' is one of the two params or None."
+                ), (
+                    f"Expected 'shared_parameters[{idx}][\"sync_param\"]' is one of the two params or None."
+                )
 
     def _init_shared_group(self):
         # Retrieve the parameters to be shared and the required communication group information for the current rank, and store them in
@@ -1046,9 +1058,9 @@ class PipelineStage(_PipelineStageBase):
                     # In VPP mode, since `shared_parameters`` is reused across stage creations,
                     # the 'group' may already exist, avoiding redundant group creation.
                     if cur_rank in group_ranks:
-                        assert group_ranks == tuple(
-                            a_map["group"].ranks
-                        ), f"Shared Parameter group ranks mismatch: expected {group_ranks}, but got {a_map['group'].ranks}. "
+                        assert group_ranks == tuple(a_map["group"].ranks), (
+                            f"Shared Parameter group ranks mismatch: expected {group_ranks}, but got {a_map['group'].ranks}. "
+                        )
                 else:
                     if group_ranks not in get_group_from_ranks:
                         get_group_from_ranks[group_ranks] = dist.new_group(
@@ -1118,9 +1130,9 @@ class PipelineStage(_PipelineStageBase):
         ):
             raise NotImplementedError
         else:
-            assert (
-                len(args) == 0
-            ), "Can't supply input args for shape inference on non-first stage"
+            assert len(args) == 0, (
+                "Can't supply input args for shape inference on non-first stage"
+            )
             objects = [None]
             logger.debug(
                 "Shape inference: stage %s receiving from stage %s",
@@ -1169,8 +1181,16 @@ class PipelineStage(_PipelineStageBase):
                 flatten_input_tensors = [
                     x for x in flatten_input_tensors if not x.stop_gradient
                 ]
+                grad_required_outputs = _normalize_model_output_as_tuple(
+                    outputs
+                )
+                grad_required_outputs = tuple(
+                    out
+                    for out in grad_required_outputs
+                    if isinstance(out, paddle.Tensor) and not out.stop_gradient
+                )
                 self.fwd_cache[0] = (
-                    _normalize_model_output_as_tuple(outputs),  # stage_output
+                    grad_required_outputs,  # stage_output
                     flatten_input_tensors,  # input_values
                 )
 
@@ -1228,7 +1248,6 @@ class PipelineStage(_PipelineStageBase):
         args: tuple[Any, ...],
         kwargs: dict[str, Any] | None = None,
     ) -> tuple[Any, ...]:
-
         assert num_microbatches is not None, "num_microbatches must be provided"
 
         outputs: tuple[Any, ...] = ()
@@ -1264,13 +1283,16 @@ class PipelineStage(_PipelineStageBase):
         # Send info during forward for each activation
         # only need the rank that is being sent to
         self.act_send_info: dict[int, list] = {}
-
-        for idx in range(len(self.get_outputs_meta())):
+        outputs_meta = self.get_outputs_meta()
+        for idx in range(len(outputs_meta)):
             # We assume we always send to stage + 1
             if not self.is_last:
                 self.act_send_info[idx] = [self.stage_index + 1]
+                if not outputs_meta[idx].stop_gradient:
+                    self._need_grad_indices[idx] = [self.stage_index + 1]
             else:
                 self.act_send_info[idx] = []
+                self._need_grad_indices[idx] = []
 
         return outputs
 
@@ -1359,9 +1381,7 @@ class PipelineStage(_PipelineStageBase):
                 self._shape_inference_bwd()
         for mb_index in range(num_microbatches):
             # `grad_recv_info` is a mirror of `act_send_info`
-            self.grad_recv_info[mb_index] = self._create_grad_recv_info(
-                self.act_send_info
-            )
+            self.grad_recv_info[mb_index] = self._create_grad_recv_info()
 
         # the last stage does not need recv grads from other rank
         if not self.is_last:
@@ -1375,7 +1395,6 @@ class PipelineStage(_PipelineStageBase):
 
     def _create_grad_recv_info(
         self,
-        act_send_info: dict,
     ) -> tuple[_RecvInfo, ...]:
         grad_recv_info: tuple[_RecvInfo, ...] = ()
         if not self.is_last:
@@ -1388,7 +1407,7 @@ class PipelineStage(_PipelineStageBase):
                         dst_list[0],
                         _make_tensor_from_meta(self.grads_meta[idx]),
                     )
-                    for idx, dst_list in act_send_info.items()
+                    for idx, dst_list in self._need_grad_indices.items()
                 ]
             )
         return grad_recv_info

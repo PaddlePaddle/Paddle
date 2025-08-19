@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/nll_loss_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/gpu/nll_loss.h"
 
@@ -43,10 +44,10 @@ void NllLossRawKernel(const Context& dev_ctx,
   auto x_dims = x->dims();
   auto batch_size = x_dims[0];
   auto n_classes = x_dims[1];
-  int64_t size_average = (int64_t)(reduction == "mean");
-
+  int size_average = static_cast<int>(reduction == "mean");
+  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
   if (x_dims.size() == 2) {
-    int blocks = NumBlocks(batch_size);
+    int64_t blocks = NumBlocks(batch_size);
     int threads = kNumCUDAThreads;
     if (reduction == "none") {
       GPUNLLLossForward1D_no_reduce<T>
@@ -58,7 +59,7 @@ void NllLossRawKernel(const Context& dev_ctx,
                                                      n_classes,
                                                      ignore_index);
     } else {
-      GPUNLLLossForward1D_with_reduce<T>
+      GPUNLLLossForward1D_with_reduce<T, AccT>
           <<<1, NTHREADS, 0, dev_ctx.stream()>>>(out_data,
                                                  total_weight_data,
                                                  x_data,
@@ -74,7 +75,7 @@ void NllLossRawKernel(const Context& dev_ctx,
     const auto in_dim3 = x_dims[3];
     const auto map_size = in_dim2 * in_dim3;
     const auto out_numel = batch_size * in_dim2 * in_dim3;
-    int blocks = NumBlocks(out_numel);
+    int64_t blocks = NumBlocks(out_numel);
     int threads = kNumCUDAThreads;
     if (reduction == "none") {
       GPUNLLLossForward2D_no_reduce<T>
@@ -90,8 +91,8 @@ void NllLossRawKernel(const Context& dev_ctx,
     } else {
       int blocks_per_sample = NumBlocks(map_size) / 128;
       blocks_per_sample = (blocks_per_sample == 0) ? 1 : blocks_per_sample;
-      int total_blocks = blocks_per_sample * batch_size;
-      GPUNLLLossForward2D_with_reduce<T>
+      int64_t total_blocks = blocks_per_sample * batch_size;
+      GPUNLLLossForward2D_with_reduce<T, AccT>
           <<<total_blocks, threads, 0, dev_ctx.stream()>>>(out_data,
                                                            total_weight_data,
                                                            x_data,

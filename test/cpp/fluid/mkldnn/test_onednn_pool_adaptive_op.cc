@@ -67,7 +67,7 @@ void test_pool2d(bool adaptive, bool ceil_mode, std::string pool_type = "max") {
   desc.SetAttr("paddings", paddings);
   desc.SetAttr("adaptive", adaptive);
   desc.SetAttr("ceil_mode", ceil_mode);
-  desc.SetAttr("use_mkldnn", true);
+  desc.SetAttr("use_onednn", true);
 
   auto op = paddle::framework::OpRegistry::CreateOp(desc);
 

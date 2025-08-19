@@ -553,7 +553,7 @@ def is_transpiler():
 
     with open(filename, 'w') as f:
         f.write(cnt % {
-            'mode': 'PSLIB' if '${WITH_PSLIB}' == 'ON' else 'TRANSPILER'
+            'mode': 'TRANSPILER'
         })
 
 write_distributed_training_mode_py(filename='@PADDLE_BINARY_DIR@/python/paddle/incubate/distributed/fleet/parameter_server/version.py')
@@ -1175,18 +1175,16 @@ if '${WITH_CINN}' == 'ON':
         shutil.copy(cinn_bf16_file, libs_path)
         package_data['paddle.libs']+=['bfloat16.h']
 
+    cinn_fp8_file = '${CINN_INCLUDE_DIR}/paddle/cinn/runtime/cuda/float8e4m3.h'
+    if os.path.exists(cinn_fp8_file):
+        shutil.copy(cinn_fp8_file, libs_path)
+        package_data['paddle.libs']+=['float8e4m3.h']
+
     if '${CMAKE_BUILD_TYPE}' == 'Release' and os.name != 'nt':
         command = "patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_nvrtc/lib/:$ORIGIN/../../nvidia/cuda_runtime/lib/:$ORIGIN/../../nvidia/cublas/lib/:$ORIGIN/../../nvidia/cudnn/lib/:$ORIGIN/../../nvidia/curand/lib/:$ORIGIN/../../nvidia/cusolver/lib/:$ORIGIN/../../nvidia/nvtx/lib/:$ORIGIN/' %s/${CINN_LIB_NAME}" % libs_path
         if os.system(command) != 0:
             raise Exception("patch %s/${CINN_LIB_NAME} failed, command: %s" % (libs_path, command))
 
-if '${WITH_PSLIB}' == 'ON':
-    shutil.copy('${PSLIB_LIB}', libs_path)
-    shutil.copy('${JVM_LIB}', libs_path)
-    if os.path.exists('${PSLIB_VERSION_PY}'):
-        shutil.copy('${PSLIB_VERSION_PY}', '${PADDLE_BINARY_DIR}/python/paddle/incubate/distributed/fleet/parameter_server/pslib/')
-    package_data['paddle.libs'] += ['libps' + ext_name]
-    package_data['paddle.libs'] += ['libjvm' + ext_name]
 
 if '${WITH_ONEDNN}' == 'ON':
     if '${CMAKE_BUILD_TYPE}' == 'Release' and os.name != 'nt':
@@ -1250,6 +1248,9 @@ if '${WITH_XPU}' == 'ON':
         package_data['paddle.libs'] += ['${XPU_XFA_LIB_NAME}']
         shutil.copy('${XPU_XPUDNN_LIB}', libs_path)
         package_data['paddle.libs'] += ['${XPU_XPUDNN_LIB_NAME}']
+        shutil.copy('${XPU_XPUDNN_OMP_LIB}', libs_path)
+        package_data['paddle.libs'] += ['${XPU_XPUDNN_OMP_LIB_NAME}']
+
 
 if '${WITH_XPU_BKCL}' == 'ON':
     shutil.copy('${XPU_BKCL_LIB}', libs_path)

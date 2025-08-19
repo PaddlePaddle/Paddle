@@ -281,8 +281,7 @@ extern inline paddle::framework::proto::VarType::Type ToRealType(
     default:
       PADDLE_THROW(common::errors::Unimplemented(
           "Unknown complex value data type (%s), now only support complex64 "
-          "and "
-          "complex128.",
+          "and complex128.",
           VarDataTypeToString(t)));
   }
 }

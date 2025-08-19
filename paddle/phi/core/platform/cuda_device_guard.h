@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include "glog/logging.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/place.h"
 
@@ -30,24 +29,7 @@ class CUDADeviceGuard {
   // create uninitialized CUDADeviceGuard
   CUDADeviceGuard() {}
 
-  ~CUDADeviceGuard() {
-    static thread_local bool is_first_time_ = true;
-    if (prev_id_ != -1) {
-      // Do not set device back for the first time, since
-      // `cudaGetDevice` returns 0 when `cudaSetDevice` is
-      // not called.
-      // In that case, if CUDADeviceGuard(7) is called,
-      // prev_id will be 0 and we don`t need to set it back to 0.
-      // If cudaSetDevice(0) is called, it may use hundreds MB of
-      // the gpu memory.
-      VLOG(10) << __func__ << " prev_id: " << prev_id_ << ", is_first_time_"
-               << is_first_time_;
-      if (!(is_first_time_ && prev_id_ == 0)) {
-        phi::backends::gpu::SetDeviceId(prev_id_);
-        is_first_time_ = false;
-      }
-    }
-  }
+  ~CUDADeviceGuard();
 
   inline void SetDeviceIndex(const int dev_id) {
     int prev_id = phi::backends::gpu::GetCurrentDeviceId();

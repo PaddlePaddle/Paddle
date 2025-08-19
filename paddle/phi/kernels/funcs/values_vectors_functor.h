@@ -47,7 +47,7 @@ static void CheckEighResult(const int batch, const int info) {
       info,
       0,
       common::errors::PreconditionNotMet(
-          "For batch [%d]: the [%d] off-diagonal elements of an intermediate"
+          "For batch [%d]: the [%d] off-diagonal elements of an intermediate "
           "tridiagonal form did not converge to zero",
           batch,
           info));

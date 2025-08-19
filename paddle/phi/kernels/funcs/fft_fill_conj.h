@@ -80,7 +80,7 @@ HOSTDEVICE inline bool is_conj_part(const int64_t dst_idx,
 
 // FFTFillConjFunctor fill the destination tensor with source tensor and
 // conjugate symmetry element of source tensor .
-// Use framework::ForRange to iterate destination element with
+// Use phi::ForRange to iterate destination element with
 // supporting different device
 template <typename C>
 struct FFTFillConjFunctor {

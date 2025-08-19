@@ -2460,6 +2460,9 @@ def margin_cross_entropy(
         label = paddle.unsqueeze(label, axis=-1)
 
     if in_dynamic_or_pir_mode():
+        out_type = logits.dtype
+        if out_type == paddle.float16:
+            logits = paddle.cast(logits, paddle.float32)
         softmax, loss = _C_ops.margin_cross_entropy(
             logits,
             label,
@@ -2476,6 +2479,11 @@ def margin_cross_entropy(
             loss = paddle.mean(loss)
         elif reduction == 'sum':
             loss = paddle.sum(loss)
+
+        if out_type == paddle.float16:
+            softmax = paddle.cast(softmax, out_type)
+            loss = paddle.cast(loss, out_type)
+
         if not return_softmax:
             return loss
         else:
@@ -3085,7 +3093,10 @@ def cross_entropy(
             #     numerator: loss's weighted sum
             #     denominator: cal the sum of weight where the sample's class_index!=ignore_index
             if ignore_index >= 0:  # ignore label
-                out_sum = _C_ops.sum(out, [], None, False)
+                if out.dtype == paddle.float16:
+                    out_sum = _C_ops.sum(out, [], paddle.float32, False)
+                else:
+                    out_sum = _C_ops.sum(out, [], None, False)
                 # for each label[i],set 1 or 0, according to ignore_index
                 # mask[i]=0, if label[i]==ignore_index
                 # mask[i]=1, otherwise
@@ -3104,7 +3115,10 @@ def cross_entropy(
                         weight_sum
                         + (weight_sum == 0.0).astype(weight_sum.dtype)
                     )
-                return ret
+                if out.dtype == paddle.float16:
+                    return paddle.cast(ret, dtype=out.dtype)
+                else:
+                    return ret
             elif weight is not None:
                 out_sum = _C_ops.sum(out, [], None, False)
                 total_weight = _C_ops.sum(
@@ -3903,9 +3917,7 @@ def triplet_margin_with_distance_loss(
 
     if not (input.shape == positive.shape == negative.shape):
         raise ValueError(
-            "input's shape must equal to "
-            "positive's shape and  "
-            "negative's shape"
+            "input's shape must equal to positive's shape and negative's shape"
         )
 
     distance_function = (
@@ -4050,9 +4062,7 @@ def triplet_margin_loss(
 
     if not (input.shape == positive.shape == negative.shape):
         raise ValueError(
-            "input's shape must equal to "
-            "positive's shape and  "
-            "negative's shape"
+            "input's shape must equal to positive's shape and negative's shape"
         )
 
     distance_function = paddle.nn.PairwiseDistance(p, epsilon=epsilon)
@@ -4406,7 +4416,7 @@ def soft_margin_loss(
         )
 
     if not (input.shape == label.shape):
-        raise ValueError("input's shape must equal to " "label's shape")
+        raise ValueError("input's shape must equal to label's shape")
 
     label = paddle.cast(label, input.dtype)
     out = paddle.log(1 + paddle.exp(-label * input))
@@ -4646,7 +4656,7 @@ def adaptive_log_softmax_with_loss(
     target_dim = label.dim()
 
     if target_dim == 1:
-        if input.shape[0] != label.shape[0]:
+        if input.shape[0] != label.shape[0] and label.shape[0] != 0:
             raise ValueError(
                 'Input and label should have the same size '
                 'in the batch dimension.'
@@ -4664,7 +4674,7 @@ def adaptive_log_softmax_with_loss(
             )
     else:
         raise ValueError(
-            '0D or 1D label tensor expected, ' 'multi-label not supported'
+            '0D or 1D label tensor expected, multi-label not supported'
         )
 
     is_batched = target_dim > 0
@@ -4743,9 +4753,10 @@ def adaptive_log_softmax_with_loss(
         x=input, weight=head_weight, bias=head_bias
     )
     head_logprob = paddle.nn.functional.log_softmax(head_output, axis=1)
-    output += paddle.take_along_axis(
-        head_logprob, gather_inds.unsqueeze(1), axis=1
-    ).squeeze()
+    if gather_inds.size != 0:
+        output += paddle.take_along_axis(
+            head_logprob, gather_inds.unsqueeze(1), axis=1
+        ).squeeze()
     loss = (-output).mean()
 
     if not is_batched:

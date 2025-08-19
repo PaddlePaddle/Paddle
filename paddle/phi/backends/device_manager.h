@@ -186,6 +186,10 @@ class DeviceManager {
 
   static std::array<unsigned int, 3> GetMaxGridDimSize(const Place& place);
 
+  static bool IsFloat16Supported(const Place& place);
+
+  static bool IsBFloat16Supported(const Place& place);
+
   static void* InitEigenDevice(const Place& place,
                                phi::stream::stream_t stream,
                                phi::Allocator* allocator);
@@ -303,6 +307,20 @@ class DeviceManager {
                                        void* context);
 
   static void Release();
+
+  static void InitBlasHandle(const Place& place,
+                             void** blas_handle,
+                             phi::stream::stream_t stream);
+
+  static void BlasSetMathMode(const Place& place,
+                              void* blas_handle,
+                              int math_mode);
+
+  static void InitBlasLtHandle(const Place& place, void** blaslt_handle);
+
+  static void DestroyBlasHandle(const Place& place, void* blas_handle);
+
+  static void DestroyBlasLtHandle(const Place& place, void* blaslt_handle);
 
  private:
   DISABLE_COPY_AND_ASSIGN(DeviceManager);

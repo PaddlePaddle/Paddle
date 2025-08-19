@@ -236,7 +236,6 @@ class TestUnStackBF16Op(OpTest):
 
 
 class TestUnstackZeroInputOp(unittest.TestCase):
-
     def unstack_zero_input_static(self):
         paddle.enable_static()
 

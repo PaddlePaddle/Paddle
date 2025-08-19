@@ -406,7 +406,7 @@ class TestReshapeInt8Op(OpTest):
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(input)}
         self.attrs = {
             'shape': self.new_shape,
-            'use_mkldnn': self.use_onednn,
+            'use_onednn': self.use_onednn,
         }
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.inferred_shape),
@@ -800,6 +800,145 @@ class TestReshapePirTensorWithZeroShape(unittest.TestCase):
             shape = [0, paddle.shape(x)[1]]
             out = paddle.reshape(x, shape)
             self.assertEqual(out.shape, [10, -1])
+
+
+# Test python Alias API
+class TestReshapeAliasAPI(unittest.TestCase):
+    def _set_paddle_api(self):
+        self.fill_constant = paddle.tensor.fill_constant
+        self.data = paddle.static.data
+        self.to_tensor = paddle.to_tensor
+        self._executed_api()
+
+    def _executed_api(self):
+        self.reshape = paddle.reshape
+
+    def _test_api(self):
+        paddle.enable_static()
+        input = np.random.random([2, 25]).astype("float32")
+        shape = [2, 5, 5]
+        main_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, paddle.static.Program()):
+            positive_five = self.fill_constant([1], "int32", 5)
+            x = self.data(name="x", shape=[2, 25], dtype="float32")
+            actual_shape = self.data(name="shape", shape=[3], dtype="int32")
+
+            out_1 = self.reshape(x, shape)
+            out_2 = paddle.reshape(x, shape=actual_shape)
+            out_3 = self.reshape(input=x, shape=[positive_five, 10])
+            out_4 = self.reshape(input=x, shape=actual_shape)
+
+        exe = paddle.static.Executor(place=paddle.CPUPlace())
+        res_1, res_2, res_3, res_4 = exe.run(
+            main_prog,
+            feed={"x": input, "shape": np.array([2, 5, 5]).astype("int32")},
+            fetch_list=[out_1, out_2, out_3, out_4],
+        )
+
+        np.testing.assert_array_equal(res_1, input.reshape(shape))
+        np.testing.assert_array_equal(res_2, input.reshape(shape))
+        np.testing.assert_array_equal(res_3, input.reshape([5, 10]))
+        np.testing.assert_array_equal(res_4, input.reshape(shape))
+
+    def _test_static_dtype(self):
+        places = [paddle.CPUPlace()] + (
+            [paddle.CUDAPlace(0)] if base.core.is_compiled_with_cuda() else []
+        )
+
+        dtypes = [
+            'float16',
+            'float32',
+            'float64',
+            'int16',
+            'int32',
+            'int64',
+            'int8',
+            'uint8',
+            'complex64',
+            'complex128',
+            'bfloat16',
+            'bool',
+        ]
+        for place in places:
+            for dtype in dtypes:
+                # core is not compiled with CUDA and not support the bfloat16
+                if (
+                    dtype == 'bfloat16'
+                    and not base.core.is_compiled_with_cuda()
+                ):
+                    continue
+
+                dtype_paddle = dtype
+                # numpy not support bfloat16, use uint16 instead
+                dtype_numpy = dtype if dtype != 'bfloat16' else 'uint16'
+
+                paddle.enable_static()
+                input = np.random.random([2, 25]).astype(dtype_numpy)
+                shape = [2, 5, 5]
+                main_prog = paddle.static.Program()
+                with paddle.static.program_guard(
+                    main_prog, paddle.static.Program()
+                ):
+                    x = self.data(name="x", shape=[2, 25], dtype=dtype_paddle)
+                    out_1 = self.reshape(input=x, shape=shape)
+
+                exe = paddle.static.Executor(place=place)
+                res_1 = exe.run(
+                    main_prog,
+                    feed={"x": input},
+                    fetch_list=[out_1],
+                )[0]
+
+                np.testing.assert_array_equal(res_1, input.reshape(shape))
+
+    def test_paddle_api(self):
+        self._set_paddle_api()
+        self._test_api()
+        self._test_static_dtype()
+
+    def test_imperative(self):
+        self._set_paddle_api()
+        input = np.random.random([2, 25]).astype("float32")
+        shape = [2, 5, 5]
+        with base.dygraph.guard():
+            x = self.to_tensor(input)
+            positive_five = self.fill_constant([1], "int32", 5)
+
+            out_1 = self.reshape(x, shape=shape)
+
+            out_2 = self.reshape(input=x, shape=[positive_five, 10])
+
+            shape_tensor = self.to_tensor(np.array([2, 5, 5]).astype("int32"))
+            out_3 = self.reshape(input=x, shape=shape_tensor)
+
+        np.testing.assert_array_equal(out_1.numpy(), input.reshape(shape))
+        np.testing.assert_array_equal(out_2.numpy(), input.reshape([5, 10]))
+        np.testing.assert_array_equal(out_3.numpy(), input.reshape(shape))
+
+    def test_tensor_reshape(self):
+        """The `shape` parameter accepts either variable arguments or a list/tuple.
+        For example, x.reshape(2, 5, 5) is equivalent to x.reshape([2, 5, 5]).
+        """
+
+        def run_test_cases(place):
+            """Helper function to run test cases on specified device."""
+            input = np.random.random([2, 25]).astype("float32")
+            input_tensor = paddle.to_tensor(input, place=place)
+
+            out_1 = input_tensor.reshape([2, 5, 5])
+            out_2 = input_tensor.reshape(2, 5, 5)
+
+            np.testing.assert_array_equal(
+                out_1.numpy(), input.reshape([2, 5, 5])
+            )
+            np.testing.assert_array_equal(
+                out_2.numpy(), input.reshape([2, 5, 5])
+            )
+
+        with base.dygraph.guard():
+            run_test_cases(paddle.CPUPlace())
+            if paddle.base.core.is_compiled_with_cuda():
+                run_test_cases(paddle.CUDAPlace(0))
 
 
 if __name__ == "__main__":

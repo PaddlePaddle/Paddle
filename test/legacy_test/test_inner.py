@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
 
@@ -33,11 +34,7 @@ class TestMultiplyApi(unittest.TestCase):
             )
             res = paddle.inner(x, y)
 
-            place = (
-                paddle.CUDAPlace(0)
-                if paddle.is_compiled_with_cuda()
-                else paddle.CPUPlace()
-            )
+            place = get_device_place()
             exe = paddle.static.Executor(place)
             outs = exe.run(
                 paddle.static.default_main_program(),
@@ -120,7 +117,6 @@ class TestMultiplyApi(unittest.TestCase):
 
 
 class TestMultiplyError(unittest.TestCase):
-
     def test_errors_static_case1(self):
         # test static computation graph: dtype can not be int8
         paddle.enable_static()

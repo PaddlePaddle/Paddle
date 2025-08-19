@@ -21,7 +21,7 @@
 
 namespace paddle::framework::ir {
 
-Int8ScaleCalculationMkldnnPass::Int8ScaleCalculationMkldnnPass() {  // NOLINT
+Int8ScaleCalculationOnednnPass::Int8ScaleCalculationOnednnPass() {  // NOLINT
   AddOpCompat(OpCompat("conv2d"))
       .AddInput("Input")
       .IsTensor()
@@ -98,12 +98,12 @@ Int8ScaleCalculationMkldnnPass::Int8ScaleCalculationMkldnnPass() {  // NOLINT
       .End();
 }
 
-void Int8ScaleCalculationMkldnnPass::ApplyImpl(ir::Graph* graph) const {
+void Int8ScaleCalculationOnednnPass::ApplyImpl(ir::Graph* graph) const {
   Int8ScaleImpl(graph, "fused_conv2d");
   Int8ScaleImpl(graph, "conv2d");
 }
 
-void Int8ScaleCalculationMkldnnPass::Int8ScaleImpl(
+void Int8ScaleCalculationOnednnPass::Int8ScaleImpl(
     ir::Graph* graph, const std::string& conv_type) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
                           common::errors::InvalidArgument(
@@ -211,7 +211,7 @@ void Int8ScaleCalculationMkldnnPass::Int8ScaleImpl(
 }  // namespace paddle::framework::ir
 
 REGISTER_PASS(int8_scale_calculation_onednn_pass,
-              paddle::framework::ir::Int8ScaleCalculationMkldnnPass);
+              paddle::framework::ir::Int8ScaleCalculationOnednnPass);
 REGISTER_PASS_CAPABILITY(int8_scale_calculation_onednn_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination().LE(

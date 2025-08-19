@@ -94,3 +94,23 @@ add_custom_target(
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_python_c_header_path}
           ${python_c_header_path}
   VERBATIM)
+
+set(ops_yaml_path "${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/ops.yaml")
+set(monkey_patch_tensor_methods_path
+    "${PADDLE_SOURCE_DIR}/python/paddle/base/dygraph/generated_tensor_methods_patch.py"
+)
+set(tmp_monkey_patch_tensor_methods_path
+    "${PADDLE_SOURCE_DIR}/python/paddle/base/dygraph/generated_tensor_methods_patch.py.tmp"
+)
+message("Eager monkey path tensor methods CodeGen")
+add_custom_target(
+  eager_monkey_patch_codegen
+  COMMAND
+    "${PYTHON_EXECUTABLE}"
+    "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/auto_code_generator/generator/monkey_patch_gen.py"
+    "--api_yaml_path=${ops_yaml_path}"
+    "--output_path=${tmp_monkey_patch_tensor_methods_path}"
+  COMMAND
+    ${CMAKE_COMMAND} -E copy_if_different
+    ${tmp_monkey_patch_tensor_methods_path} ${monkey_patch_tensor_methods_path}
+  VERBATIM)

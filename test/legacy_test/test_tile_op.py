@@ -436,7 +436,6 @@ class TestTileOpInt64_t(OpTest):
 
 
 class TestTileError(unittest.TestCase):
-
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -454,7 +453,6 @@ class TestTileError(unittest.TestCase):
 
 
 class TestTileAPIStatic(unittest.TestCase):
-
     def test_api(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -494,6 +492,38 @@ class TestTileAPI(unittest.TestCase):
             np.testing.assert_array_equal(out_1.numpy(), np.tile(np_x, (2, 3)))
             np.testing.assert_array_equal(out_2.numpy(), np.tile(np_x, (2, 3)))
             np.testing.assert_array_equal(out_3.numpy(), np.tile(np_x, (2, 3)))
+
+
+class TestTileAPI7D(unittest.TestCase):
+    def init_data(self):
+        self.ori_shape = [1, 2, 3, 4, 5]
+        self.repeat_times = [1, 1, 1, 2, 1, 2, 1]
+
+    def _test_api(self, place):
+        with base.dygraph.guard():
+            np_x = np.random.random(self.ori_shape).astype("float32")
+            x = paddle.to_tensor(np_x, place=place)
+            x.stop_gradient = False
+            repeat_times = self.repeat_times
+            out = paddle.tile(x, repeat_times)
+            np.testing.assert_array_equal(
+                out.numpy(), np.tile(np_x, repeat_times)
+            )
+            loss = out.sum()
+            loss.backward()
+            np.testing.assert_array_equal(x.grad.shape, x.shape)
+
+    def test_tile7d(self):
+        places = get_places()
+        for place in places:
+            self.init_data()
+            self._test_api(place)
+
+
+class TestTileAPI7Dcase2(TestTileAPI7D):
+    def init_data(self):
+        self.ori_shape = [1, 2, 3, 4, 5, 1, 2]
+        self.repeat_times = [3, 2, 2, 1, 1, 2, 1]
 
 
 class TestTileDoubleGradCheck(unittest.TestCase):
@@ -584,7 +614,6 @@ class TestTileAPI_ZeroDim(unittest.TestCase):
 
 
 class Testfp16TileOp(unittest.TestCase):
-
     def testfp16(self):
         if not paddle.is_compiled_with_cuda():
             return

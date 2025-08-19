@@ -230,6 +230,16 @@ class TestGetitemDygraphCombinedIndex(unittest.TestCase):
         # case 6:
         # [[[4 , 5 ],[10, 11],[16, 17],[22, 23]]]
         self.accuracy_check(x[[True, False], :, -1], y[[True, False], :, -1])
+        # case 7:
+        # [[0, 3, 4, 5], [24, 26, 28, 29]]
+        index_np = np.array([[True, False], [False, True], [True, True]])
+        index_paddle = paddle.to_tensor(index_np)
+        self.accuracy_check(x[:, 0, index_np], y[:, 0, index_paddle])
+        # case 8:
+        # [[[[0, 1]], [[2, 3]], [[24, 25]], [[26, 27]]]]
+        index_np = np.array([[0], [1]])
+        index_paddle = paddle.to_tensor(index_np)
+        self.accuracy_check(x[:, 0, index_np], y[:, 0, index_paddle])
 
 
 class Test0DTensorIndexing(unittest.TestCase):

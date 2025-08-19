@@ -533,7 +533,6 @@ create_test_fp16_class(TestElementwiseDivOpXsizeLessThanYsize)
 
 
 class TestElementwiseDivBroadcast(unittest.TestCase):
-
     def test_shape_with_batch_sizes(self):
         paddle.enable_static()
         main_program = paddle.static.Program()
@@ -589,7 +588,7 @@ class TestComplexElementwiseDivOp(OpTest):
             'X': OpTest.np_dtype_to_base_dtype(self.x),
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
-        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.attrs = {'axis': -1, 'use_onednn': False}
         self.outputs = {'Out': self.out}
 
     def init_base_dtype(self):

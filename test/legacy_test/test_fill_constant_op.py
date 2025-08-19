@@ -283,7 +283,6 @@ class TestFillConstantOp2_ValueTensor(OpTest):
 
 # Test python API
 class TestFillConstantAPI(unittest.TestCase):
-
     def test_api(self):
         paddle.enable_static()
         positive_2_int32 = paddle.tensor.fill_constant([1], "int32", 2)
@@ -422,7 +421,6 @@ class TestFillConstantImperative(unittest.TestCase):
 
 
 class TestFillConstantOpError(unittest.TestCase):
-
     def test_errors1(self):
         with (
             paddle_static_guard(),
@@ -548,7 +546,6 @@ class TestFillConstantOp_ValueTensorBf16(OpTest):
 
 
 class TestFillConstantOp_ZeroSize(unittest.TestCase):
-
     def test_shape(self):
         out = paddle.full(
             shape=[

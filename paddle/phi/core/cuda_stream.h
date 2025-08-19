@@ -28,9 +28,11 @@ using gpuStream_t = cudaStream_t;
 using gpuStream_t = hipStream_t;
 #endif
 
-#include "glog/logging.h"
-
 #include "paddle/phi/core/enforce.h"
+
+#include "paddle/common/flags.h"
+
+COMMON_DECLARE_bool(use_default_stream);
 
 namespace phi {
 
@@ -47,43 +49,9 @@ class CUDAStream {
       : place_(place), stream_(stream) {}
   CUDAStream(const Place& place,
              const int priority = 0,
-             const StreamFlag& flag = StreamFlag::kDefaultFlag) {
-    place_ = place;
-    gpuStream_t stream = nullptr;
-    backends::gpu::GPUDeviceGuard guard(place_.device);
-
-    // Stream priorities follow a convention where lower numbers imply greater
-    // priorities
-    auto priority_range = backends::gpu::GetGpuStreamPriorityRange();
-    int least_priority = priority_range.first;      // 0 in V100
-    int greatest_priority = priority_range.second;  // -5 in V100
-
-    // NOTE(Ruibiao): Replacing the following `PADDLE_ENFORCE_EQ` with
-    // `PADDLE_ENFORCE` leads to a nvcc compile error. This is probably a bug.
-    PADDLE_ENFORCE_EQ(
-        priority <= least_priority && priority >= greatest_priority,
-        true,
-        common::errors::InvalidArgument(
-            "Cannot create a stream with priority = %d because stream priority "
-            "must be inside the meaningful range [%d, %d].",
-            priority,
-            least_priority,
-            greatest_priority));
-
-#ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreateWithPriority(
-        &stream, static_cast<unsigned int>(flag), priority));
-#else
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreateWithPriority(
-        &stream, static_cast<unsigned int>(flag), priority));
-#endif
-
-    VLOG(10) << "Create CUDAStream " << stream
-             << " with priority = " << priority
-             << ", flag = " << static_cast<unsigned int>(flag);
-    stream_ = Stream(reinterpret_cast<StreamId>(stream));
-    owned_ = true;
-  }
+             const StreamFlag& flag = FLAGS_use_default_stream
+                                          ? StreamFlag::kStreamNonBlocking
+                                          : StreamFlag::kDefaultFlag);
 
   gpuStream_t raw_stream() const { return reinterpret_cast<gpuStream_t>(id()); }
 
@@ -103,33 +71,9 @@ class CUDAStream {
 
   Place place() const { return place_; }
 
-  bool Query() const {
-#ifdef PADDLE_WITH_HIP
-    hipError_t err = hipStreamQuery(raw_stream());
-    if (err == hipSuccess) {
-      return true;
-    }
-    if (err == hipErrorNotReady) {
-      return false;
-    }
-#else
-    cudaError_t err = cudaStreamQuery(raw_stream());
-    if (err == cudaSuccess) {
-      return true;
-    }
-    if (err == cudaErrorNotReady) {
-      return false;
-    }
-#endif
+  bool Query() const;
 
-    PADDLE_ENFORCE_GPU_SUCCESS(err);
-    return false;
-  }
-
-  void Synchronize() const {
-    VLOG(10) << "Synchronize " << raw_stream();
-    backends::gpu::GpuStreamSync(raw_stream());
-  }
+  void Synchronize() const;
 
   void WaitEvent(gpuEvent_t ev) const {
 #ifdef PADDLE_WITH_HIP
@@ -139,18 +83,7 @@ class CUDAStream {
 #endif
   }
 
-  ~CUDAStream() {
-    VLOG(10) << "~CUDAStream " << raw_stream();
-    if (owned_ && stream_.id() != 0) {
-      Synchronize();
-      backends::gpu::GPUDeviceGuard guard(place_.device);
-#ifdef PADDLE_WITH_HIP
-      hipStreamDestroy(raw_stream());
-#else
-      cudaStreamDestroy(raw_stream());
-#endif
-    }
-  }
+  ~CUDAStream();
 
  private:
   Place place_;

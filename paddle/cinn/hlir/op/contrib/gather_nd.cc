@@ -42,23 +42,6 @@ namespace op {
 using cinn::common::CINNValue;
 using cinn::common::CINNValuePack;
 
-Expr CastShapeElementType(Expr shape_element) {
-  // constant values should already been cast to int64_t for shape calc
-  // make sure shape expr does not contain non-matched int type for min and max
-  if (shape_element.is_constant()) return shape_element;
-  if (auto max_elem = shape_element.As<ir::Max>()) {
-    max_elem->a() = CastShapeElementType(max_elem->a());
-    max_elem->b() = CastShapeElementType(max_elem->b());
-  } else if (auto min_elem = shape_element.As<ir::Min>()) {
-    min_elem->a() = CastShapeElementType(min_elem->a());
-    min_elem->b() = CastShapeElementType(min_elem->b());
-  } else {
-    shape_element = ir::Call::Make(
-        ir::Int(64), "int64_t", {shape_element}, {}, ir::CallType::Intrinsic);
-  }
-  return shape_element;
-}
-
 ir::Tensor GatherNdSymbolic(const ir::Tensor &x,
                             const ir::Tensor &index,
                             const std::string &name) {
@@ -87,14 +70,12 @@ ir::Tensor GatherNdSymbolic(const ir::Tensor &x,
           indices_position[indices_position_size - 1] =
               ir::Cast::Make(cinn::common::Int(64), Expr(i));
           // support negative indices
-          auto idx_expr =
-              ir::Cast::Make(cinn::common::Int(64), index(indices_position));
-          auto real_expr =
-              ir::Select::Make(ir::GE::Make(idx_expr, Expr(0)),
-                               idx_expr,
-                               CastShapeElementType(x_shape[i]) + idx_expr);
-          real_indices.push_back(
-              ir::Cast::Make(cinn::common::Int(64), real_expr));
+          auto idx_expr = index(indices_position);
+          auto real_expr = ir::Select::Make(
+              ir::GE::Make(idx_expr, Expr(0)),
+              idx_expr,
+              ir::Cast::Make(idx_expr.type(), x_shape[i]) + idx_expr);
+          real_indices.push_back(real_expr);
         }
         if (real_indices.size() == x_shape_size) {
           return x(real_indices);
