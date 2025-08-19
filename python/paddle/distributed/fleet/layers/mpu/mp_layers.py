@@ -21,6 +21,7 @@ from paddle.distributed import fleet
 from paddle.nn import functional as F
 
 from ....communication.reduce import ReduceOp, _get_reduce_op
+from ....flex_checkpoint.dcp.sharded_weight import build_sharded_state_dict
 from ...base import topology as tp
 from ...utils.log_util import logger
 from . import mp_ops
@@ -182,6 +183,15 @@ class VocabParallelEmbedding(paddle.nn.Layer):
                 name=self._name,
             )
         return output
+
+    def sharded_state_dict(
+        self,
+        structured_name_prefix: str = "",
+    ):
+        state_dict = self.state_dict(structured_name_prefix="")
+        return build_sharded_state_dict(
+            state_dict, {"weight": 0}, structured_name_prefix
+        )
 
 
 _raise_cuda_env_unset_warning = True
@@ -528,6 +538,15 @@ class ColumnParallelLinear(paddle.nn.Layer):
             output = output_parallel
         return output
 
+    def sharded_state_dict(
+        self,
+        structured_name_prefix: str = "",
+    ):
+        state_dict = self.state_dict(structured_name_prefix="")
+        return build_sharded_state_dict(
+            state_dict, {"weight": 1, "bias": 0}, structured_name_prefix
+        )
+
 
 class MPScale(PyLayer):
     @staticmethod
@@ -739,6 +758,15 @@ class RowParallelLinear(paddle.nn.Layer):
             )
 
         return output
+
+    def sharded_state_dict(
+        self,
+        structured_name_prefix: str = "",
+    ):
+        state_dict = self.state_dict(structured_name_prefix="")
+        return build_sharded_state_dict(
+            state_dict, {"weight": 0}, structured_name_prefix
+        )
 
 
 class ParallelCrossEntropy(paddle.nn.Layer):

@@ -42,9 +42,9 @@ def _split_tensor(x, num_chunks, split_axis=0):
 
             def _reorder_data_for_align():
                 nonlocal x
-                assert x.placements[0] == dist.Shard(
-                    0
-                ), "inputs should be placed on S(0)."
+                assert x.placements[0] == dist.Shard(0), (
+                    "inputs should be placed on S(0)."
+                )
 
                 shardings = x.process_mesh.shape[0]
 
@@ -116,9 +116,9 @@ def _split_args_helper(
     """
     A helper function of split_args_kwargs_into_chunks.
     """
-    assert len(args_dict) == len(
-        args_chunk_spec
-    ), f"args_dict.keys() = {list(args_dict.keys())} args_chunk_spec.keys() = {list(args_chunk_spec.keys())}"
+    assert len(args_dict) == len(args_chunk_spec), (
+        f"args_dict.keys() = {list(args_dict.keys())} args_chunk_spec.keys() = {list(args_chunk_spec.keys())}"
+    )
 
     shared_args_dict_flat = {}
     # handle args one by one
@@ -129,9 +129,9 @@ def _split_args_helper(
         assert chunk_spec is not None
 
         chunk_spec_flat = flatten(chunk_spec)
-        assert len(chunk_spec_flat) == len(
-            arg_flat
-        ), f"{arg_key} {len(arg_flat)} != {len(chunk_spec_flat)}"
+        assert len(chunk_spec_flat) == len(arg_flat), (
+            f"{arg_key} {len(arg_flat)} != {len(chunk_spec_flat)}"
+        )
 
         shard_arg_flat = []
 
@@ -280,9 +280,9 @@ def merge_chunks(
     chunk_spec = flatten(chunk_spec)
     for chunk in chunks:
         chunk_flat = flatten(chunk)
-        assert len(chunk_flat) == len(
-            chunk_spec
-        ), f"Chunk {chunk} did not match chunk spec {chunk_spec}"
+        assert len(chunk_flat) == len(chunk_spec), (
+            f"Chunk {chunk} did not match chunk spec {chunk_spec}"
+        )
         chunks_flat.append(chunk_flat)
 
     def _merge_non_tensor_type_arg(chunks, idx, chunk_spec_of_arg=None):
