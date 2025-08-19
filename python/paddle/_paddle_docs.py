@@ -357,7 +357,7 @@ add_doc_and_signature(
             [-0.38941833, -0.19866933,  0.09983342,  0.29552022])
     """,
     """
-def cos(
+def sin(
     x: Tensor, name: str | None = None, *, out: Tensor | None = None
 ) -> Tensor
     """,
