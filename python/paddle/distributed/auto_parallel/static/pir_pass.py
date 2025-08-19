@@ -86,16 +86,16 @@ def reshard_single_value(program, op, operand, attr):
 def reshard_combine_value(program, op, operand, attr):
     prev_var = operand.source()
 
-    assert (
-        prev_var.get_defining_op().name() == 'builtin.combine'
-    ), f"TensorList must be defined by builtin.combine op, but is {prev_var.get_defining_op().name()}."
+    assert prev_var.get_defining_op().name() == 'builtin.combine', (
+        f"TensorList must be defined by builtin.combine op, but is {prev_var.get_defining_op().name()}."
+    )
 
     combine_op = prev_var.get_defining_op()
     array_attr = attr.as_array_attr()
 
-    assert len(combine_op.operands()) == len(
-        array_attr
-    ), "The number of combine op operands and the number of dist array_attr are not equal in op"
+    assert len(combine_op.operands()) == len(array_attr), (
+        "The number of combine op operands and the number of dist array_attr are not equal in op"
+    )
 
     reshard_vars = []
     for inner_operand, inner_attr in zip(combine_op.operands(), array_attr):
@@ -121,12 +121,12 @@ def apply_partition_pass(program, block=None):
         if op.name() in partition_skip_op_list:
             continue
 
-        assert len(op.operands()) == len(
-            op.dist_attr.operands()
-        ), f"The number of operands and the number of op_dist_attr's operands are not equal in op: {op}"
-        assert len(op.results()) == len(
-            op.dist_attr.results()
-        ), f"The number of results and the number of op_dist_attr's results are not equal in op: {op}"
+        assert len(op.operands()) == len(op.dist_attr.operands()), (
+            f"The number of operands and the number of op_dist_attr's operands are not equal in op: {op}"
+        )
+        assert len(op.results()) == len(op.dist_attr.results()), (
+            f"The number of results and the number of op_dist_attr's results are not equal in op: {op}"
+        )
 
         # deal with inplace value
         for out_idx, in_idx in paddle.core.pir.get_op_inplace_info(op).items():
@@ -142,9 +142,9 @@ def apply_partition_pass(program, block=None):
             ):
                 continue
 
-            assert (
-                not prev_var.is_combine()
-            ), f"The current partition pass not support inplace value of {op} is tensor list."
+            assert not prev_var.is_combine(), (
+                f"The current partition pass not support inplace value of {op} is tensor list."
+            )
 
             operand_attr = operand_attr.as_tensor_dist_attr()
 
@@ -156,9 +156,9 @@ def apply_partition_pass(program, block=None):
 
             result = op.result(out_idx)
             result_attr = op.dist_attr.result(out_idx).as_tensor_dist_attr()
-            assert (
-                operand_attr == result_attr
-            ), f"For inplace value, The operend dist attr should be equal to result dist attr , please check your infer_spmd func of {op}"
+            assert operand_attr == result_attr, (
+                f"For inplace value, The operend dist attr should be equal to result dist attr , please check your infer_spmd func of {op}"
+            )
 
             # reshard output
             paddle.pir.set_insertion_point_after(op)
@@ -245,9 +245,13 @@ class ReshardPasses:
             # split the reshard compose p2p and collective into one p2p reshard and one collective reshard.
             # avoid global to sub mesh case
             if (
-                input.dist_attr().process_mesh
-                != result.dist_attr().process_mesh
-            ) and input.dist_attr().process_mesh.ndim == result.dist_attr().process_mesh.ndim:
+                (
+                    input.dist_attr().process_mesh
+                    != result.dist_attr().process_mesh
+                )
+                and input.dist_attr().process_mesh.ndim
+                == result.dist_attr().process_mesh.ndim
+            ):
                 if (
                     input.dist_attr().placements
                     != result.dist_attr().placements
@@ -321,7 +325,9 @@ class ReshardPasses:
 
                 assert (
                     not var.initialized() or var.dist_attr() == src_dist_attr
-                ), f"The dist_attr of reshard op's input and operand should be equal, but got {var.dist_attr()} and {src_dist_attr}"
+                ), (
+                    f"The dist_attr of reshard op's input and operand should be equal, but got {var.dist_attr()} and {src_dist_attr}"
+                )
 
                 if src_dist_attr == dst_dist_attr:
                     op.result(0).replace_all_uses_with(var)
@@ -358,9 +364,9 @@ class ReshardPasses:
                     reshard_func = choose_reshard_func(
                         src_dist_attr, dst_dist_attr
                     )
-                    assert (
-                        reshard_func is not None
-                    ), f'There is no reshard function that matches src_dist_attr: {src_dist_attr} and dst_dist_attr: {dst_dist_attr}, {var.get_defining_op()}'
+                    assert reshard_func is not None, (
+                        f'There is no reshard function that matches src_dist_attr: {src_dist_attr} and dst_dist_attr: {dst_dist_attr}, {var.get_defining_op()}'
+                    )
 
                     with pir_op_role_guard(ref_op_role):
                         out_value = reshard_func.reshard(
@@ -407,9 +413,9 @@ def replace_moe_sub_mesh_tensors(op):
     for idx, val in enumerate(op.results()):
         val_mesh = val.dist_attr().process_mesh
         if cur_rank in val_mesh.process_ids:
-            assert (
-                out_value is None
-            ), f'{op} has more than one results on rank {cur_rank}'
+            assert out_value is None, (
+                f'{op} has more than one results on rank {cur_rank}'
+            )
             out_value = val
             out_idx = idx
 
@@ -522,9 +528,9 @@ class RemovePasses:
                 ):
                     op.erase()
                 elif op.name() == "dist_op.reshard":
-                    assert op.result(
-                        0
-                    ).use_empty(), f'There should not have useful dist.reshard op in remove_other_rank_op_pass. but find : {op}'
+                    assert op.result(0).use_empty(), (
+                        f'There should not have useful dist.reshard op in remove_other_rank_op_pass. but find : {op}'
+                    )
                     op.erase()
 
         prune_op(dist_program.global_block())
@@ -673,9 +679,9 @@ def replace_moe_global_mesh_tensor(op):
         val_mesh = val.dist_attr().process_mesh
         if cur_rank not in val_mesh.process_ids:
             continue
-        assert (
-            in_value is None
-        ), f'{op} has more than one inputs on rank {cur_rank}'
+        assert in_value is None, (
+            f'{op} has more than one inputs on rank {cur_rank}'
+        )
         in_value = val
         in_idx = idx
 
@@ -766,9 +772,9 @@ def eliminate_transpose_by_reshape(program):
 
 
 def complete_op_role(main_program, op_role_scope: list):
-    assert (
-        len(op_role_scope) == 3 and len(op_role_scope[0]) == 2
-    ), "op_role_scope should has the shape[3, 2]"
+    assert len(op_role_scope) == 3 and len(op_role_scope[0]) == 2, (
+        "op_role_scope should has the shape[3, 2]"
+    )
     forward_op_start = op_role_scope[0][0]
     forward_op_end = op_role_scope[0][1]
 
@@ -810,7 +816,9 @@ def pipeline_pass(dense_main_program, dense_startup_program, pipeline_strategy):
         "FThenB",
         "1F1B",
         "VPP",
-    ], f"pipeline scheduler only support FThenB, 1F1B and VPP now, but receive {pass_name}"
+    ], (
+        f"pipeline scheduler only support FThenB, 1F1B and VPP now, but receive {pass_name}"
+    )
 
     pass_attr = {}
     pass_attr["num_micro_batches"] = pipeline_strategy.accumulate_steps
@@ -1159,9 +1167,9 @@ def complete_chunk_id(dist_program, startup_program, pipeline_strategy):
     pp_stage_layer_nums = [0] * pp_degree
     for i in stage_ids:
         pp_stage_layer_nums[i] = pp_stage_layer_nums[i] + 1
-    assert all(
-        value >= vpp_degree for value in pp_stage_layer_nums
-    ), "The number of layers on each pp_stage must not be less than the vpp_degree in the pp_stage to ensure that each chunk contains at least one layer."
+    assert all(value >= vpp_degree for value in pp_stage_layer_nums), (
+        "The number of layers on each pp_stage must not be less than the vpp_degree in the pp_stage to ensure that each chunk contains at least one layer."
+    )
 
     seg_layer_num = [0] * num_chunks
     for pp_stage in range(
@@ -1855,9 +1863,9 @@ def fuse_attention_ffn_qkv_pass(
                 with paddle.base.dygraph.guard():
                     dyparam_dtype = concated_dy_param_list[0].dtype
                     for param in concated_dy_param_list:
-                        assert (
-                            dyparam_dtype == param.dtype
-                        ), "The dtypes of dy parameters to be fused are not the same."
+                        assert dyparam_dtype == param.dtype, (
+                            "The dtypes of dy parameters to be fused are not the same."
+                        )
 
                     dtensor = paddle.zeros(
                         shape=name2pir_param_map[pir_param].shape,

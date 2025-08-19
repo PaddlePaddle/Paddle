@@ -38,14 +38,15 @@ methods_map = [
 """
 
 METHOD_TEMPLATE = """
-def _{name}(self,*args, **kwargs):
-    return _C_ops.{name}(self,*args, **kwargs)
+def _{name}(*args, **kwargs):
+    return _C_ops.{name}(*args, **kwargs)
 """
 SET_METHOD_TEMPLATE = """
     # set methods for Tensor in dygraph
     local_tensor = core.eager.Tensor
     for method_name, method in methods_map:
         setattr(local_tensor, method_name, method)
+        setattr(paddle, method_name, method)
 
 """
 
