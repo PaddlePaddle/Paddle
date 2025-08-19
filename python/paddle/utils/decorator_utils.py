@@ -323,13 +323,36 @@ def view_decorator():
 class ForbidKeywordsDecorator(DecoratorBase):
     """A decorator that hints users to use the correct `compat` functions, when erroneous keyword arguments are detected"""
 
+    _site_format = (
+        "https://www.paddlepaddle.org.cn/documentation/docs/en/develop/"
+        "guides/model_convert/convert_from_pytorch/api_difference/{url_suffix}.html"
+    )
+
     def __init__(
-        self, illegal_keys: set[str], func_name: str, correct_name: str
+        self,
+        illegal_keys: set[str],
+        func_name: str,
+        correct_name: str,
+        url_suffix: str = "",
     ) -> None:
+        """
+        Args:
+            illegal_keys (set[str]): the keywords to reject
+            func_name (str): the name of the function being decorated (should incorporate module name, like paddle.nn.Unfold)
+            correct_name (str): the user hint that points to the correct function
+            url_suffix (str, optional): Only specified in non paddle.compat functions. If specified, the function being decorated
+                will emit a warning upon the first call, warning the users about the API difference and points to Docs.
+                Please correctly specifying the `url_suffix`, this should be the suffix of the api-difference doc. For example:
+
+                (prefix omitted)/docs/zh/develop/guides/model_convert/convert_from_pytorch/api_difference/**torch/torch.nn.Unfold**.html
+
+                In this example, the correct `url_suffix` should be 'torch/torch.nn.Unfold'. Defaults to an empty str.
+        """
         super().__init__()
         self.illegal_keys = illegal_keys
         self.func_name = func_name
         self.correct_name = correct_name
+        self.url_suffix = url_suffix
 
     def process(
         self, args: tuple[Any, ...], kwargs: dict[str, Any]
@@ -344,6 +367,12 @@ class ForbidKeywordsDecorator(DecoratorBase):
             raise TypeError(
                 f"{self.func_name}() received unexpected keyword argument{plural} {keys_str}. "
                 f"\nDid you mean to use {self.correct_name}() instead?"
+            )
+        if self.url_suffix:
+            warnings.warn(
+                f"\nThis is a non compatible API. Please refer to {self._site_format.format(url_suffix=self.url_suffix)} first."
+                f"\nA compatible version of this API: `{self.correct_name}` can be also used, make sure the correct API is called.",
+                category=Warning,
             )
         return args, kwargs
 
