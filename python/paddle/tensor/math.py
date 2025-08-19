@@ -25,6 +25,9 @@ from paddle import _C_ops
 from paddle._C_ops import (  # noqa: F401
     amax,
     amin,
+    log,
+    sign,
+    sin,
 )
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc, dygraph_utils
@@ -87,7 +90,6 @@ from .ops import (  # noqa: F401
     rsqrt_,
     sigmoid,
     sigmoid_,
-    sin,
     sin_,
     sinh,
     sinh_,
@@ -156,65 +158,6 @@ def _get_reduce_axis_with_tensor(axis, x):
         if paddle.utils._contain_var(axis):
             axis = paddle.utils._convert_to_tensor_list(axis)
     return reduce_all, axis
-
-
-@ParamAliasDecorator({"x": ["input"]})
-def log(
-    x: Tensor, name: str | None = None, *, out: Tensor | None = None
-) -> Tensor:
-    r"""
-    Calculates the natural log of the given input Tensor, element-wise.
-
-    .. math::
-
-        Out = \ln(x)
-
-    Args:
-        x (Tensor): Input Tensor. Must be one of the following types: int32, int64, float16, bfloat16, float32, float64, complex64, complex128. Alias: ``input``.
-        name (str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
-        out (Tensor, optional): The output Tensor. If set, the result will be stored in this tensor. Default is None.
-
-
-    Returns:
-        Tensor: The natural log of the input Tensor computed element-wise.
-
-    Examples:
-
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = [[2, 3, 4], [7, 8, 9]]
-            >>> x = paddle.to_tensor(x, dtype='float32')
-            >>> print(paddle.log(x))
-            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0.69314718, 1.09861231, 1.38629436],
-             [1.94591010, 2.07944155, 2.19722462]])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.log(x, out=out)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'int32',
-                'int64',
-                'uint16',
-                'float16',
-                'float32',
-                'float64',
-                'complex64',
-                'complex128',
-            ],
-            "log",
-        )
-        inputs = {'X': [x]}
-        helper = LayerHelper('log', **locals())
-        dtype = helper.input_dtype(input_param_name='x')
-        out = helper.create_variable_for_type_inference(dtype)
-        helper.append_op(type="log", inputs={"X": x}, outputs={"Out": out})
-        return out
 
 
 @inplace_apis_in_dygraph_only
@@ -4912,61 +4855,6 @@ def prod(
             outputs={'Out': out},
             attrs={'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all},
         )
-        return out
-
-
-@ParamAliasDecorator({"x": ["input"]})
-def sign(
-    x: Tensor, name: str | None = None, *, out: Tensor | None = None
-) -> Tensor:
-    """
-    Returns sign of every element in `x`: For real numbers, 1 for positive, -1 for negative and 0 for zero. For complex numbers, the return value is a complex number with unit magnitude. If a complex number element is zero, the result is 0+0j.
-
-    Args:
-        x (Tensor): The input tensor. The data type can be uint8, int8, int16, int32, int64, bfloat16, float16, float32, float64, complex64 or complex128. Alias: ``input``.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-        out (Tensor|None, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
-
-    Returns:
-        Tensor: The output sign tensor with identical shape and data type to the input :attr:`x`.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([3.0, 0.0, -2.0, 1.7], dtype='float32')
-            >>> out = paddle.sign(x=x)
-            >>> out
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [ 1.,  0., -1.,  1.])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.sign(x, out=out)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'uint8',
-                'int8',
-                'int16',
-                'int32',
-                'int64',
-                'float16',
-                'bfloat16',
-                'float32',
-                'float64',
-                'complex64',
-                'complex128',
-            ],
-            'sign',
-        )
-        helper = LayerHelper("sign", **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-        helper.append_op(type='sign', inputs={'X': [x]}, outputs={'Out': [out]})
-
         return out
 
 

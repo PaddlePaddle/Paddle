@@ -1205,6 +1205,10 @@
 
 - op : cos
   args : (Tensor x)
+  python_api:
+    name: [paddle.cos, paddle.Tensor.cos]
+    args_alias:
+      x: [input]
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -2164,6 +2168,10 @@
 
 - op : floor
   args : (Tensor x)
+  python_api:
+    name: [paddle.floor, paddle.Tensor.floor]
+    args_alias:
+      x: [input]
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -3148,6 +3156,10 @@
 
 - op : log
   args : (Tensor x)
+  python_api:
+    name: [paddle.log, paddle.Tensor.log]
+    args_alias:
+      x: [input]
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -4625,6 +4637,10 @@
 
 - op : rsqrt
   args : (Tensor x)
+  python_api:
+    name: [paddle.sqrt, paddle.Tensor.rsqrt]
+    args_alias:
+      x: [input]
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -4917,6 +4933,10 @@
 
 - op : sign
   args : (Tensor x)
+  python_api :
+    name: [paddle.sign, paddle.Tensor.sign]
+    args_alias:
+      x: [input]
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
