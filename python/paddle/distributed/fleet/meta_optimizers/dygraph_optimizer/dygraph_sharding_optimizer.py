@@ -27,10 +27,10 @@ from paddle.distributed.communication.reduce import (
     ReduceOp,
     is_avg_reduce_op_supported,
 )
-from paddle.distributed.flex_checkpoint.dcp.sharded_tensor import (
+from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
     ShardedStateDict,
-    ShardedTensor,
-    create_sharded_tensor_with_new_local,
+    ShardedWeight,
+    create_sharded_weight_with_new_local,
 )
 from paddle.framework.recall_error import (
     SHARDING_PAD_NON_ZERO_ERROR,
@@ -75,8 +75,8 @@ _optimizer_non_scaler_name = [
 def _build_static_to_struct_mapping(model_sharded_state_dict):
     """Build a mapping from tensor names to their sharded metadata keys."""
     return {
-        sharded_tensor.local_tensor.name: key
-        for key, sharded_tensor in model_sharded_state_dict.items()
+        sharded_weight.local_tensor.name: key
+        for key, sharded_weight in model_sharded_state_dict.items()
     }
 
 
@@ -642,7 +642,7 @@ class DygraphShardingOptimizer:
             model_sharded_state_dict (dict): Sharded state dict of the model, containing tensor metadata.
 
         Returns:
-            dict: A new optimizer state dict where tensors are wrapped as ShardedTensor.
+            dict: A new optimizer state dict where tensors are wrapped as ShardedWeight.
         """
         optimizer_sharded_state_dict = {}
         optimizer_state_dict = self.state_dict()
@@ -658,19 +658,19 @@ class DygraphShardingOptimizer:
         for key, tensor in optimizer_state_dict.items():
             static_name, optim_state_type = _generate_base_static_name(key)
             struct_name = static_to_struct_mapping[static_name]
-            sharded_tensor = model_sharded_state_dict[struct_name]
+            sharded_weight = model_sharded_state_dict[struct_name]
 
             unified_name = f"{struct_name}.{optim_state_type}"
 
             # Determine tensor partitioning scheme
             if _MOMENT_NAME in optim_state_type:
                 optimizer_sharded_state_dict[unified_name] = (
-                    create_sharded_tensor_with_new_local(
-                        unified_name, tensor, sharded_tensor
+                    create_sharded_weight_with_new_local(
+                        unified_name, tensor, sharded_weight
                     )
                 )
             else:  # Non-momentum parameters
-                optimizer_sharded_state_dict[unified_name] = ShardedTensor(
+                optimizer_sharded_state_dict[unified_name] = ShardedWeight(
                     key=unified_name,
                     local_tensor=tensor,
                     local_shape=(1,),
@@ -682,11 +682,11 @@ class DygraphShardingOptimizer:
         if master_weights is not None:
             for key, tensor in master_weights.items():
                 struct_name = static_to_struct_mapping[key]
-                sharded_tensor = model_sharded_state_dict[struct_name]
+                sharded_weight = model_sharded_state_dict[struct_name]
                 unified_name = f"{struct_name}.w_0"
                 optimizer_sharded_state_dict[unified_name] = (
-                    create_sharded_tensor_with_new_local(
-                        unified_name, tensor, sharded_tensor
+                    create_sharded_weight_with_new_local(
+                        unified_name, tensor, sharded_weight
                     )
                 )
 
@@ -1341,7 +1341,7 @@ class DygraphShardingOptimizerV2:
             optimizer: Optimizer with sharded parameters
 
         Returns:
-            Dictionary mapping parameter names to ShardedTensor objects
+            Dictionary mapping parameter names to ShardedWeight objects
         """
         # Group buffers by communication group
         comm_group_buffers = OrderedDict()
@@ -1475,7 +1475,7 @@ class DygraphShardingOptimizerV2:
             unified_name = f"{struct_name}.{optim_state_type}"
             # Handle scalar parameters (e.g., beta1, beta2)
             if int(tensor.numel()) == 1:
-                sharded_tensor = ShardedTensor(
+                sharded_weight = ShardedWeight(
                     key=unified_name,
                     local_tensor=tensor,
                     local_shape=tensor.shape,
@@ -1496,7 +1496,7 @@ class DygraphShardingOptimizerV2:
                 ), f"Sharding info not found for {base_name}"
                 flattened_offset = offset_mapping[base_name][sharding_rank]
 
-                sharded_tensor = ShardedTensor(
+                sharded_weight = ShardedWeight(
                     key=unified_name,
                     local_tensor=tensor,
                     local_shape=sharded_param.local_shape,
@@ -1509,7 +1509,7 @@ class DygraphShardingOptimizerV2:
                 )
             # Handle fully sharded tensors
             else:
-                sharded_tensor = ShardedTensor(
+                sharded_weight = ShardedWeight(
                     key=unified_name,
                     local_tensor=tensor,
                     local_shape=sharded_param.local_shape,
@@ -1519,7 +1519,7 @@ class DygraphShardingOptimizerV2:
                     flattened_range=slice(0, int(tensor.numel())),
                 )
 
-            sharded_state[unified_name] = sharded_tensor
+            sharded_state[unified_name] = sharded_weight
 
         # Process master weights if they exist
         if master_weights:
@@ -1539,7 +1539,7 @@ class DygraphShardingOptimizerV2:
                     ), f"Sharding info not found for {weight_key}"
                     flattened_offset = offset_mapping[weight_key][sharding_rank]
 
-                    sharded_tensor = ShardedTensor(
+                    sharded_weight = ShardedWeight(
                         key=unified_name,
                         local_tensor=tensor,
                         local_shape=sharded_param.local_shape,
@@ -1552,7 +1552,7 @@ class DygraphShardingOptimizerV2:
                         ),
                     )
                 else:
-                    sharded_tensor = ShardedTensor(
+                    sharded_weight = ShardedWeight(
                         key=unified_name,
                         local_tensor=tensor,
                         local_shape=sharded_param.local_shape,
@@ -1562,6 +1562,6 @@ class DygraphShardingOptimizerV2:
                         flattened_range=slice(0, int(tensor.numel())),
                     )
 
-                sharded_state[unified_name] = sharded_tensor
+                sharded_state[unified_name] = sharded_weight
 
         return sharded_state

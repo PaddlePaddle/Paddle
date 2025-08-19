@@ -161,7 +161,6 @@ class TestRandpermBF16Op(OpTest):
 
 
 class TestRandpermOpError(unittest.TestCase):
-
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -172,7 +171,6 @@ class TestRandpermOpError(unittest.TestCase):
 
 
 class TestRandpermAPI(unittest.TestCase):
-
     def test_out(self):
         paddle.enable_static()
         n = 10

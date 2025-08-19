@@ -22,7 +22,7 @@ class Statement:
         self.attrs = attrs  # List[Attribute]
 
     def __repr__(self):
-        return f"Statement({self.left_vars} <- {self.right_vars}, attrs={self.attrs})"
+        return f"Statement({self.left_vars} -> {self.right_vars}, attrs={self.attrs})"
 
 
 class Var:

@@ -21,7 +21,6 @@ from paddle import base
 
 
 class TestIncrement(unittest.TestCase):
-
     def test_api(self):
         paddle.enable_static()
         with base.program_guard(base.Program(), base.Program()):
@@ -62,7 +61,6 @@ class TestIncrement(unittest.TestCase):
 
 
 class TestInplaceApiWithDataTransform(unittest.TestCase):
-
     def test_increment(self):
         if base.core.is_compiled_with_cuda():
             paddle.enable_static()
@@ -77,7 +75,6 @@ class TestInplaceApiWithDataTransform(unittest.TestCase):
 
 
 class TestIncrement_ZeroSize(unittest.TestCase):
-
     def test_api(self):
         with base.dygraph.guard():
             input = paddle.randn(shape=[0]).astype('int64')

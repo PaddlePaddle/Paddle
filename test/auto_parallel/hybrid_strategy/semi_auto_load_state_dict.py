@@ -22,9 +22,9 @@ from auto_parallel.hybrid_strategy.semi_auto_save_state_dict import (
 import paddle
 import paddle.distributed as dist
 from paddle.distributed import load_state_dict
-from paddle.distributed.flex_checkpoint import (
-    ShardedTensor,
-    make_replicated_sharded_tensor,
+from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
+    ShardedWeight,
+    make_replicated_sharded_weight,
 )
 from paddle.distributed.flex_checkpoint.dcp.utils import (
     compute_local_shape_and_global_offset,
@@ -176,9 +176,9 @@ class TestLoadShardedStateDict:
             dtype='int32',
         )
         t = paddle.zeros_like(expect_tensor)
-        sharded_tensor = make_replicated_sharded_tensor("t", t)
-        load_state_dict({"t": sharded_tensor}, self._ckpt_path)
-        self.check_tensor_eq(sharded_tensor.local_tensor, expect_tensor)
+        sharded_weight = make_replicated_sharded_weight("t", t)
+        load_state_dict({"t": sharded_weight}, self._ckpt_path)
+        self.check_tensor_eq(sharded_weight.local_tensor, expect_tensor)
 
     def test_load_state_dict_with_four_devices(self):
         if dist.get_rank() == 0:
@@ -191,7 +191,7 @@ class TestLoadShardedStateDict:
             # Numbers 0~5 are local, '*' means not present on this rank.
             expect_tensor = paddle.to_tensor([0, 1, 2, 3, 4, 5], dtype='int32')
             t = paddle.zeros_like(expect_tensor)
-            sharded_tensor = ShardedTensor(
+            sharded_weight = ShardedWeight(
                 key="t",
                 local_tensor=t,
                 local_shape=(3, 4),
@@ -212,7 +212,7 @@ class TestLoadShardedStateDict:
                 [6, 7, 8, 9, 10, 11], dtype='int32'
             )
             t = paddle.zeros_like(expect_tensor)
-            sharded_tensor = ShardedTensor(
+            sharded_weight = ShardedWeight(
                 key="t",
                 local_tensor=t,
                 local_shape=(3, 4),
@@ -231,7 +231,7 @@ class TestLoadShardedStateDict:
             # Number 12 is local, '*' means not present on this rank.
             expect_tensor = paddle.to_tensor([12], dtype='int32')
             t = paddle.zeros_like(expect_tensor)
-            sharded_tensor = ShardedTensor(
+            sharded_weight = ShardedWeight(
                 key="t",
                 local_tensor=t,
                 local_shape=(1, 4),
@@ -250,7 +250,7 @@ class TestLoadShardedStateDict:
             # Numbers 13~15 are local, '*' means not present on this rank.
             expect_tensor = paddle.to_tensor([13, 14, 15], dtype='int32')
             t = paddle.zeros_like(expect_tensor)
-            sharded_tensor = ShardedTensor(
+            sharded_weight = ShardedWeight(
                 key="t",
                 local_tensor=t,
                 local_shape=(1, 4),
@@ -260,9 +260,9 @@ class TestLoadShardedStateDict:
                 flattened_range=slice(1, 4),
             )
 
-        load_state_dict({"t": sharded_tensor}, self._ckpt_path)
+        load_state_dict({"t": sharded_weight}, self._ckpt_path)
         paddle.distributed.barrier()
-        self.check_tensor_eq(sharded_tensor.local_tensor, expect_tensor)
+        self.check_tensor_eq(sharded_weight.local_tensor, expect_tensor)
 
     def test_load_state_dict_with_two_devices(self):
         if dist.get_rank() == 0:
@@ -277,7 +277,7 @@ class TestLoadShardedStateDict:
                 [[0, 1, 2, 3], [4, 5, 6, 7]], dtype='int32'
             )
             t = paddle.zeros_like(expect_tensor)
-            sharded_tensor = ShardedTensor(
+            sharded_weight = ShardedWeight(
                 key="t",
                 local_tensor=t,
                 local_shape=(2, 4),
@@ -297,7 +297,7 @@ class TestLoadShardedStateDict:
                 [[8, 9, 10, 11], [12, 13, 14, 15]], dtype='int32'
             )
             t = paddle.zeros_like(expect_tensor)
-            sharded_tensor = ShardedTensor(
+            sharded_weight = ShardedWeight(
                 key="t",
                 local_tensor=t,
                 local_shape=(2, 4),
@@ -305,9 +305,9 @@ class TestLoadShardedStateDict:
                 global_offset=(2, 0),
                 is_flattened=False,
             )
-        load_state_dict({"t": sharded_tensor}, self._ckpt_path)
+        load_state_dict({"t": sharded_weight}, self._ckpt_path)
         paddle.distributed.barrier()
-        self.check_tensor_eq(sharded_tensor.local_tensor, expect_tensor)
+        self.check_tensor_eq(sharded_weight.local_tensor, expect_tensor)
 
     def test_load_state_dict_with_eight_devices(self):
         if dist.get_rank() == 0:
@@ -320,7 +320,7 @@ class TestLoadShardedStateDict:
             # Numbers 0~4 are local, '*' means not present on this rank.
             expect_tensor = paddle.to_tensor([0, 1, 2, 3, 4], dtype='int32')
             t = paddle.zeros_like(expect_tensor)
-            sharded_tensor = ShardedTensor(
+            sharded_weight = ShardedWeight(
                 key="t",
                 local_tensor=t,
                 local_shape=(2, 4),
@@ -339,7 +339,7 @@ class TestLoadShardedStateDict:
             # Numbers 3~7 are local, '*' means not present on this rank.
             expect_tensor = paddle.to_tensor([3, 4, 5, 6, 7], dtype='int32')
             t = paddle.zeros_like(expect_tensor)
-            sharded_tensor = ShardedTensor(
+            sharded_weight = ShardedWeight(
                 key="t",
                 local_tensor=t,
                 local_shape=(3, 4),
@@ -358,7 +358,7 @@ class TestLoadShardedStateDict:
             # Numbers 8~12 are local, '*' means not present on this rank.
             expect_tensor = paddle.to_tensor([8, 9, 10, 11, 12], dtype='int32')
             t = paddle.zeros_like(expect_tensor)
-            sharded_tensor = ShardedTensor(
+            sharded_weight = ShardedWeight(
                 key="t",
                 local_tensor=t,
                 local_shape=(2, 4),
@@ -379,7 +379,7 @@ class TestLoadShardedStateDict:
                 [11, 12, 13, 14, 15], dtype='int32'
             )
             t = paddle.zeros_like(expect_tensor)
-            sharded_tensor = ShardedTensor(
+            sharded_weight = ShardedWeight(
                 key="t",
                 local_tensor=t,
                 local_shape=(2, 4),
@@ -398,7 +398,7 @@ class TestLoadShardedStateDict:
             # Numbers 0~4 are local, '*' means not present on this rank.
             expect_tensor = paddle.to_tensor([0, 1, 2, 3, 4], dtype='int32')
             t = paddle.zeros_like(expect_tensor)
-            sharded_tensor = ShardedTensor(
+            sharded_weight = ShardedWeight(
                 key="t",
                 local_tensor=t,
                 local_shape=(2, 4),
@@ -417,7 +417,7 @@ class TestLoadShardedStateDict:
             # Numbers 3~7 are local, '*' means not present on this rank.
             expect_tensor = paddle.to_tensor([3, 4, 5, 6, 7], dtype='int32')
             t = paddle.zeros_like(expect_tensor)
-            sharded_tensor = ShardedTensor(
+            sharded_weight = ShardedWeight(
                 key="t",
                 local_tensor=t,
                 local_shape=(3, 4),
@@ -436,7 +436,7 @@ class TestLoadShardedStateDict:
             # Numbers 8~12 are local, '*' means not present on this rank.
             expect_tensor = paddle.to_tensor([8, 9, 10, 11, 12], dtype='int32')
             t = paddle.zeros_like(expect_tensor)
-            sharded_tensor = ShardedTensor(
+            sharded_weight = ShardedWeight(
                 key="t",
                 local_tensor=t,
                 local_shape=(2, 4),
@@ -457,7 +457,7 @@ class TestLoadShardedStateDict:
                 [11, 12, 13, 14, 15], dtype='int32'
             )
             t = paddle.zeros_like(expect_tensor)
-            sharded_tensor = ShardedTensor(
+            sharded_weight = ShardedWeight(
                 key="t",
                 local_tensor=t,
                 local_shape=(2, 4),
@@ -467,9 +467,9 @@ class TestLoadShardedStateDict:
                 flattened_range=slice(3, 8),
             )
 
-        load_state_dict({"t": sharded_tensor}, self._ckpt_path)
+        load_state_dict({"t": sharded_weight}, self._ckpt_path)
         paddle.distributed.barrier()
-        self.check_tensor_eq(sharded_tensor.local_tensor, expect_tensor)
+        self.check_tensor_eq(sharded_weight.local_tensor, expect_tensor)
 
     def check_tensor_eq(self, a, b, verbose=True):
         np1 = a.astype("float32").numpy()

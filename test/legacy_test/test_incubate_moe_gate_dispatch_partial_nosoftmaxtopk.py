@@ -23,7 +23,6 @@ from paddle.incubate.nn.functional import (
 
 
 def test_moe_dispatch_partial_nosoftmaxtopk_nonepad_op():
-
     s, d, e = 4, 100, 8
     k, cap = 4, 3
     local_expert_num = 2
@@ -80,7 +79,7 @@ def test_moe_dispatch_partial_nosoftmaxtopk_nonepad_op():
         print(f"y:{y.mean(-1)}")
         print(f"combine_weihgts:{combine_weihgts}")
         print(f"expert_num_local:{expert_num_local}")
-        print(f"scatter_index:{scatter_index.transpose([1,0])}")
+        print(f"scatter_index:{scatter_index.transpose([1, 0])}")
         print(f"scatter_index_rev:{scatter_index_rev}")
 
         ys.append(y)
@@ -126,11 +125,13 @@ def test_moe_dispatch_partial_nosoftmaxtopk_nonepad_op():
         combine_weihgts.shape,
     )
 
-    dysum, dcombine_weights_sum = paddle.ones_like(ys_sum), paddle.randn(
-        comm_sum.shape
-    ).astype(comm_sum.dtype)
-    dy_, dcombine_weights_ = paddle.ones_like(y_), paddle.ones_like(
-        combine_weihgts_
+    dysum, dcombine_weights_sum = (
+        paddle.ones_like(ys_sum),
+        paddle.randn(comm_sum.shape).astype(comm_sum.dtype),
+    )
+    dy_, dcombine_weights_ = (
+        paddle.ones_like(y_),
+        paddle.ones_like(combine_weihgts_),
     )
     dy_[~valid_y] = 0
 
@@ -157,7 +158,6 @@ def test_moe_dispatch_partial_nosoftmaxtopk_nonepad_op():
 
 
 def test_moe_ops_partial_nosoftmaxtopk_w_reverse_token_drop():
-
     S, E, D = 3, 4, 3
     k = 2
     capacity = 2
@@ -183,7 +183,6 @@ def test_moe_ops_partial_nosoftmaxtopk_w_reverse_token_drop():
 
 
 def test_moe_ops_partial_nosoftmax_topk_empty_output():
-
     S, E, D = 3, 4, 3
     k = 2
     capacity = 2
@@ -207,7 +206,6 @@ def test_moe_ops_partial_nosoftmax_topk_empty_output():
 
 
 class TestAddition(unittest.TestCase):
-
     def test_moe_dispatch_partial_nosoftmaxtopk_nonepad_op(self):
         test_moe_dispatch_partial_nosoftmaxtopk_nonepad_op()
 

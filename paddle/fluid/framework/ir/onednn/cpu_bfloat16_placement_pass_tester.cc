@@ -25,11 +25,11 @@ void SetOp(ProgramDesc* prog,
            const std::vector<std::string>& inputs,
            const std::vector<std::string>& outputs,
            const std::string& mkldnn_data_type = "float32",
-           const bool use_mkldnn = true) {
+           const bool use_onednn = true) {
   auto* op = prog->MutableBlock(0)->AppendOp();
 
   op->SetType(type);
-  if (type != "reshape2") op->SetAttr("use_mkldnn", use_mkldnn);
+  if (type != "reshape2") op->SetAttr("use_onednn", use_onednn);
   op->SetAttr("mkldnn_data_type", mkldnn_data_type);
 
   if (type == "conv2d") {

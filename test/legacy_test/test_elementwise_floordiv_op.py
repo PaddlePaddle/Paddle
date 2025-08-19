@@ -113,7 +113,6 @@ def device_guard(device=None):
 
 
 class TestFloorDivideOp(unittest.TestCase):
-
     def test_static(self):
         paddle.enable_static()
         for p in get_places():

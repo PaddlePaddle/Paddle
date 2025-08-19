@@ -23,10 +23,8 @@ if TYPE_CHECKING:
     from paddle import Tensor
     from paddle.distributed.communication.group import Group
 
-from paddle.distributed import fleet
 
-
-class ShardedTensor:
+class ShardedWeight:
     """
     Represents a local shard of a distributed tensor parameter.
 
@@ -61,7 +59,7 @@ class ShardedTensor:
     def __str__(self) -> str:
         """Returns a formatted string representation of the sharded tensor."""
         return (
-            f"ShardedTensor(\n"
+            f"ShardedWeight(\n"
             f"  key={self.key},\n"
             f"  local_tensor={type(self.local_tensor).__name__}(shape={self.local_tensor.shape}),\n"
             f"  local_shape={self.local_shape},\n"
@@ -73,7 +71,7 @@ class ShardedTensor:
 
 
 ShardedStateDict = Union[
-    dict[str, ShardedTensor], OrderedDict[str, ShardedTensor]
+    dict[str, ShardedWeight], OrderedDict[str, ShardedWeight]
 ]
 
 
@@ -82,8 +80,8 @@ def shard_weight(
     weight: Tensor,
     axis: int,
     group: Group,
-) -> ShardedTensor:
-    """Creates a ShardedTensor by splitting the input tensor along a specified axis.
+) -> ShardedWeight:
+    """Creates a ShardedWeight by splitting the input tensor along a specified axis.
 
     Args:
         key: Unique identifier for the tensor.
@@ -92,7 +90,7 @@ def shard_weight(
         group: The process group used for distributed communication.
 
     Returns:
-        A ShardedTensor representing the local portion of the global tensor.
+        A ShardedWeight representing the local portion of the global tensor.
     """
     if axis < 0 or axis >= len(weight.shape):
         raise ValueError(
@@ -100,7 +98,6 @@ def shard_weight(
         )
 
     # Get hybrid communication group and rank information
-    hcg = fleet.get_hybrid_communicate_group()
     current_rank = group.rank
     world_size = group.nranks
 
@@ -115,7 +112,7 @@ def shard_weight(
         global_offset[axis] = current_rank * local_shape[axis]
     global_offset = tuple(global_offset)
 
-    return ShardedTensor(
+    return ShardedWeight(
         key=key,
         local_tensor=weight,
         local_shape=local_shape,
@@ -124,11 +121,11 @@ def shard_weight(
     )
 
 
-def make_tp_sharded_tensor_for_checkpoint(
+def make_tp_sharded_weight_for_checkpoint(
     key: str,
     tensor: Tensor,
     tensor_parallel_axis: int = 0,
-) -> ShardedTensor:
+) -> ShardedWeight:
     """Creates a tensor-parallel sharded tensor for checkpointing purposes.
 
     Args:
@@ -138,9 +135,11 @@ def make_tp_sharded_tensor_for_checkpoint(
                             Defaults to 0 (first dimension).
 
     Returns:
-        A ShardedTensor configured for tensor parallel checkpointing.
+        A ShardedWeight configured for tensor parallel checkpointing.
     """
-    hcg = fleet.get_hybrid_communicate_group()
+    from ...fleet.fleet import get_hybrid_communicate_group
+
+    hcg = get_hybrid_communicate_group()
     tensor_parallel_group = hcg.get_model_parallel_group()
 
     return shard_weight(
@@ -151,22 +150,22 @@ def make_tp_sharded_tensor_for_checkpoint(
     )
 
 
-def make_replicated_sharded_tensor(
+def make_replicated_sharded_weight(
     key: str,
     tensor: Tensor,
-) -> ShardedTensor:
+) -> ShardedWeight:
     """
-    Creates a ShardedTensor that represents a fully replicated tensor (each process holds a full copy).
+    Creates a ShardedWeight that represents a fully replicated tensor (each process holds a full copy).
 
     Args:
         key: Unique identifier for the tensor in the checkpoint.
         tensor: The local tensor (full copy).
 
     Returns:
-        ShardedTensor: A ShardedTensor instance representing the replicated tensor.
+        ShardedWeight: A ShardedWeight instance representing the replicated tensor.
     """
     zero_offset = tuple(0 for _ in tensor.shape)
-    return ShardedTensor(
+    return ShardedWeight(
         key=key,
         local_tensor=tensor,
         local_shape=tensor.shape,
@@ -179,7 +178,7 @@ def build_sharded_state_dict(
     state_dict: dict[str, Tensor],
     shard_rules: dict[str, int] | None = None,
     prefix: str = "",
-) -> dict[str, ShardedTensor]:
+) -> dict[str, ShardedWeight]:
     """Converts a regular state dict to a sharded state dict based on sharding rules.
 
     Args:
@@ -189,11 +188,11 @@ def build_sharded_state_dict(
         prefix: Optional prefix to prepend to all tensor keys
 
     Returns:
-        Dictionary with the same keys as input but values converted to ShardedTensor
+        Dictionary with the same keys as input but values converted to ShardedWeight
         or regular Tensor based on sharding rules.
 
     Note:
-        Tensors not in shard_rules will be wrapped as non-sharded ShardedTensors.
+        Tensors not in shard_rules will be wrapped as non-sharded ShardedWeights.
     """
     shard_rules = shard_rules or {}
     sharded_state_dict = {}
@@ -204,7 +203,7 @@ def build_sharded_state_dict(
         if key in shard_rules:
             # Apply tensor parallelism sharding
             sharded_state_dict[full_key] = (
-                make_tp_sharded_tensor_for_checkpoint(
+                make_tp_sharded_weight_for_checkpoint(
                     key=full_key,
                     tensor=tensor,
                     tensor_parallel_axis=shard_rules[key],
@@ -212,7 +211,7 @@ def build_sharded_state_dict(
             )
         else:
             # Create regular sharded tensor (non-tensor-parallel)
-            sharded_state_dict[full_key] = make_replicated_sharded_tensor(
+            sharded_state_dict[full_key] = make_replicated_sharded_weight(
                 key=full_key,
                 tensor=tensor,
             )
@@ -220,21 +219,21 @@ def build_sharded_state_dict(
     return sharded_state_dict
 
 
-def create_sharded_tensor_with_new_local(
+def create_sharded_weight_with_new_local(
     new_key: str,
     new_local_tensor: Tensor,
-    reference_tensor: ShardedTensor,
-) -> ShardedTensor:
+    reference_tensor: ShardedWeight,
+) -> ShardedWeight:
     """
-    Creates a new ShardedTensor with a new local tensor while preserving the metadata from a reference ShardedTensor.
+    Creates a new ShardedWeight with a new local tensor while preserving the metadata from a reference ShardedWeight.
 
     Args:
-        new_key (str): The new key for the ShardedTensor.
+        new_key (str): The new key for the ShardedWeight.
         new_local_tensor (Tensor): The new local tensor to use (must match reference_tensor.local_shape).
-        reference_tensor (ShardedTensor): The reference ShardedTensor to copy metadata from.
+        reference_tensor (ShardedWeight): The reference ShardedWeight to copy metadata from.
 
     Returns:
-        ShardedTensor: A new ShardedTensor with the new local tensor and copied metadata.
+        ShardedWeight: A new ShardedWeight with the new local tensor and copied metadata.
 
     """
     # Copy metadata from the reference tensor
@@ -249,7 +248,7 @@ def create_sharded_tensor_with_new_local(
             f"but expected shape {local_shape} (from reference_tensor.local_shape)."
         )
 
-    return ShardedTensor(
+    return ShardedWeight(
         key=new_key,
         local_tensor=new_local_tensor,
         local_shape=tuple(local_shape),

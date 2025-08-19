@@ -118,7 +118,6 @@ class TestAssignBFP16Op(op_test.OpTest):
 
 
 class TestAssignOpWithTensorArray(unittest.TestCase):
-
     def test_assign_tensor_array(self):
         paddle.enable_static()
         main_program = paddle.static.Program()
@@ -153,7 +152,6 @@ class TestAssignOpWithTensorArray(unittest.TestCase):
 
 
 class TestAssignOpError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
@@ -276,7 +274,6 @@ class TestAssignOut_(unittest.TestCase):
 
 
 class TestAssignOpErrorApi(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(

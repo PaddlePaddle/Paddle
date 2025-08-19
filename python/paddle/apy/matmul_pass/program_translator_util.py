@@ -16,7 +16,6 @@ import ap
 
 
 class ProgramTranslator:
-
     def __init__(
         self,
         program_property,

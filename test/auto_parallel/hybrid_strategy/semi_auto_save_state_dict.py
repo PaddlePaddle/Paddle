@@ -17,9 +17,9 @@ import os
 import paddle
 import paddle.distributed as dist
 from paddle.distributed import save_state_dict
-from paddle.distributed.flex_checkpoint import (
-    ShardedTensor,
-    make_replicated_sharded_tensor,
+from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
+    ShardedWeight,
+    make_replicated_sharded_weight,
 )
 
 
@@ -105,7 +105,7 @@ class TestSaveShardedStateDict:
             dtype='int32',
         )
         sharded_state_dict = {}
-        sharded_state_dict["t"] = make_replicated_sharded_tensor(
+        sharded_state_dict["t"] = make_replicated_sharded_weight(
             "t", local_tensor
         )
         save_state_dict(sharded_state_dict, self._ckpt_path)
@@ -120,7 +120,7 @@ class TestSaveShardedStateDict:
             #  [ *,  *,  *,  *]]
             # Numbers 0,1,4 are local, '*' means not present on this rank.
             local_tensor = paddle.to_tensor([0, 1, 4], dtype='int32')
-            sharded_tensor = ShardedTensor(
+            sharded_weight = ShardedWeight(
                 key="t",
                 local_tensor=local_tensor,
                 local_shape=(4, 2),
@@ -138,7 +138,7 @@ class TestSaveShardedStateDict:
             #  [ 12,  13,  *,  *]]
             # Numbers 5,8,9,12,13 are local, '*' means not present on this rank.
             local_tensor = paddle.to_tensor([5, 8, 9, 12, 13], dtype='int32')
-            sharded_tensor = ShardedTensor(
+            sharded_weight = ShardedWeight(
                 key="t",
                 local_tensor=local_tensor,
                 local_shape=(4, 2),
@@ -156,7 +156,7 @@ class TestSaveShardedStateDict:
             #  [ *,  *,  *,  *]]
             # Numbers 2,3,6,7,10 are local, '*' means not present on this rank.
             local_tensor = paddle.to_tensor([2, 3, 6, 7, 10], dtype='int32')
-            sharded_tensor = ShardedTensor(
+            sharded_weight = ShardedWeight(
                 key="t",
                 local_tensor=local_tensor,
                 local_shape=(4, 2),
@@ -174,7 +174,7 @@ class TestSaveShardedStateDict:
             #  [ *,  *,  14,  15]]
             # Numbers 11,14,15 are local, '*' means not present on this rank.
             local_tensor = paddle.to_tensor([11, 14, 15], dtype='int32')
-            sharded_tensor = ShardedTensor(
+            sharded_weight = ShardedWeight(
                 key="t",
                 local_tensor=local_tensor,
                 local_shape=(4, 2),
@@ -184,7 +184,7 @@ class TestSaveShardedStateDict:
                 flattened_range=slice(5, 8),
             )
 
-        sharded_state_dict = {"t": sharded_tensor}
+        sharded_state_dict = {"t": sharded_weight}
         save_state_dict(sharded_state_dict, self._ckpt_path)
         paddle.distributed.barrier()
 

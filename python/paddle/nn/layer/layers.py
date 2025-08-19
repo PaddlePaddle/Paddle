@@ -51,7 +51,7 @@ from paddle.base.framework import (
     paddle_type_to_proto_type,
 )
 from paddle.base.layer_helper_base import LayerHelperBase
-from paddle.distributed.flex_checkpoint.dcp.sharded_tensor import (
+from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
     ShardedStateDict,
     build_sharded_state_dict,
 )
@@ -1520,7 +1520,6 @@ class Layer:
         pass
 
     def _dygraph_call_func(self, *inputs: Any, **kwargs: Any) -> Any:
-
         for hook_id, forward_pre_hook in self._forward_pre_hooks.items():
             if hook_id in self._forward_pre_hooks_with_kwargs_flag:
                 args_kwargs_result = forward_pre_hook(self, inputs, kwargs)
@@ -2171,7 +2170,7 @@ class Layer:
             structured_name_prefix: Prefix to prepend to all tensor names for hierarchical naming.
 
         Returns:
-            Dictionary mapping tensor names to ShardedTensor.
+            Dictionary mapping tensor names to ShardedWeight.
             The dictionary contains both the current layer's parameters and all sub-layer parameters.
         """
         sharded_state_dict = {}

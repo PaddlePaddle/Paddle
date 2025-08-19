@@ -621,7 +621,6 @@ class _PipelineStageBase(ABC):
     def backward_maybe_with_nosync(
         self, backward_type, bwd_kwargs: dict, last_backward=False
     ) -> tuple[tuple[paddle.Tensor | None, ...], list[dict[str, Any] | None]]:
-
         def perform_backward(
             backward_type,
         ) -> Callable[
@@ -1245,7 +1244,6 @@ class PipelineStage(_PipelineStageBase):
         args: tuple[Any, ...],
         kwargs: dict[str, Any] | None = None,
     ) -> tuple[Any, ...]:
-
         assert num_microbatches is not None, "num_microbatches must be provided"
 
         outputs: tuple[Any, ...] = ()

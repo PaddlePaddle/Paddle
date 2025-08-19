@@ -26,14 +26,14 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True)
-class ShardedTensorDesc:
+class ShardedWeightDesc:
     key: str
     local_shape: tuple[int, ...]
     global_shape: tuple[int, ...]
     global_offset: tuple[int, ...]
 
 
-_ShardInfo = dict[str, list[ShardedTensorDesc]]
+_ShardInfo = dict[str, list[ShardedWeightDesc]]
 
 SliceRef = tuple[str, tuple[slice, ...], tuple[slice, ...]]
 
@@ -52,8 +52,8 @@ class TensorDesc:
 
 @dataclass(frozen=True)
 class ShardMappingEntry:
-    target_slice: ShardedTensorDesc
-    source_slice: ShardedTensorDesc
+    target_slice: ShardedWeightDesc
+    source_slice: ShardedWeightDesc
     postprocess_list: list[str] | None = None
 
 
@@ -354,7 +354,7 @@ class AoAEngine:
 
     def find_shard_sources(
         self,
-        target: ShardedTensorDesc,
+        target: ShardedWeightDesc,
     ) -> ShardMapping:
         target_key = target.key
         target_local_shape = target.local_shape
@@ -382,10 +382,10 @@ class AoAEngine:
             )
             tgt_global_offset = tuple(slc.start for slc in local_slices)
 
-            source_sharded_tensor = ShardedTensorDesc(
+            source_sharded_weight = ShardedWeightDesc(
                 src_key, src_local_shape, src_global_shape, src_global_offset
             )
-            target_sharded_tensor = ShardedTensorDesc(
+            target_sharded_weight = ShardedWeightDesc(
                 target_key,
                 tgt_local_shape,
                 target_global_shape,
@@ -396,8 +396,8 @@ class AoAEngine:
 
             shard_mappings.append(
                 ShardMappingEntry(
-                    target_sharded_tensor,
-                    source_sharded_tensor,
+                    target_sharded_weight,
+                    source_sharded_weight,
                     postprocess_list,
                 )
             )

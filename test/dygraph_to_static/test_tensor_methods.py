@@ -19,7 +19,6 @@ from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
     test_ast_only,
-    test_pir_only,
 )
 
 import paddle
@@ -101,7 +100,6 @@ class TestTensorSize(Dy2StTestBase):
             ret = ret.numpy()
         return ret
 
-    @test_pir_only
     def test_tensor_size(self):
         dygraph_res = self._run(to_static=False)
         static_res = self._run(to_static=True)

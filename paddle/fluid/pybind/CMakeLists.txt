@@ -136,7 +136,8 @@ set(PYBIND_SRCS
     sot/eval_frame.c
     sot/guards.cc
     op_callstack_utils.cc
-    python_callable_registry.cc)
+    python_callable_registry.cc
+    arg_pre_process.cc)
 
 if(WITH_DISTRIBUTE)
   set(PYBIND_SRCS ${PYBIND_SRCS} dist_api.cc)
@@ -281,7 +282,8 @@ if(WITH_PYTHON)
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(eager_generator ${os_dependency_modules})
 
-  set(EAGER_OP_IMPL_DEPS eager_generator eager_python_c_codegen)
+  set(EAGER_OP_IMPL_DEPS eager_generator eager_python_c_codegen
+                         eager_monkey_patch_codegen)
 
   if(WITH_ROCM)
     target_link_libraries(eager_generator ${ROCM_HIPRTC_LIB})
