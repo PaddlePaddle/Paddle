@@ -1003,7 +1003,6 @@ class TestStrideGPU(TestStride):
 
 
 class TestToStaticCheck(unittest.TestCase):
-
     def test_error(self):
         @paddle.jit.to_static(full_graph=True)
         def func1():
@@ -1070,7 +1069,6 @@ class TestToStaticCheck(unittest.TestCase):
             func2()
 
     def test_no_error(self):
-
         @paddle.jit.to_static(full_graph=True)
         def func1():
             x_np = np.random.random(size=[2, 3, 4]).astype('float32')

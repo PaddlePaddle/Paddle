@@ -1251,19 +1251,19 @@ class Completer:
                 seg_op_deps[struct_name] = [i]
                 seg_op_mesh[struct_name] = dist_op.dist_attr.process_mesh
             else:
-                assert (
-                    seg_op_deps[struct_name][-1] + 1 == i
-                ), "The segment's ops should be continuous."
+                assert seg_op_deps[struct_name][-1] + 1 == i, (
+                    "The segment's ops should be continuous."
+                )
                 pre_mesh = seg_op_mesh[struct_name]
-                assert (
-                    pre_mesh == dist_op.dist_attr.process_mesh
-                ), "The segment's ops should have same process_mesh."
+                assert pre_mesh == dist_op.dist_attr.process_mesh, (
+                    "The segment's ops should have same process_mesh."
+                )
                 seg_op_deps[struct_name].extend([i])
 
         num_chunks = pp_degree * vpp_degree
-        assert (
-            len(seg_op_deps) % num_chunks == 0
-        ), f"The number of layers[{seg_method}] ({len(seg_op_deps)}) should be divided by part number ({num_chunks})."
+        assert len(seg_op_deps) % num_chunks == 0, (
+            f"The number of layers[{seg_method}] ({len(seg_op_deps)}) should be divided by part number ({num_chunks})."
+        )
 
         # Step2: analysis whether the pp_stage is non-decreasing among segments
         # 1. if non_decreasing is True, the ops' process_mesh will be changed by vpp strategy
@@ -1634,9 +1634,9 @@ class Completer:
                                     input_name
                                 )
                             )
-                    assert (
-                        ref_dims_mapping is not None
-                    ), f"[{input_name}] 's dims mapping is NONE"
+                    assert ref_dims_mapping is not None, (
+                        f"[{input_name}] 's dims mapping is NONE"
+                    )
                     grad_op_dist_attr.set_input_dims_mapping(
                         input_name, ref_dims_mapping
                     )
@@ -1671,7 +1671,9 @@ class Completer:
                     output_name = grad_op.output_arg_names[0]
                     assert (
                         output_name in grad_var_to_var[appended_grad_times]
-                    ), f"sum op's output '{output_name}' has no corresponding var"
+                    ), (
+                        f"sum op's output '{output_name}' has no corresponding var"
+                    )
                     ref_fwd_var_name = grad_var_to_var[appended_grad_times][
                         output_name
                     ]
@@ -1755,9 +1757,9 @@ class Completer:
             return False
 
         def _get_forward_varname_from_grad_varname(grad_var_name):
-            assert _is_grad_var_name(
-                grad_var_name
-            ), f"[{grad_var_name}] is not a grad var name."
+            assert _is_grad_var_name(grad_var_name), (
+                f"[{grad_var_name}] is not a grad var name."
+            )
             return grad_var_name[: grad_var_name.find("@GRAD")]
 
         def _get_op_by_id(ops, id):
@@ -1828,9 +1830,9 @@ class Completer:
                                     input_name
                                 )
                             )
-                    assert (
-                        ref_dims_mapping is not None
-                    ), f"[{input_name}] 's dims mapping is NONE"
+                    assert ref_dims_mapping is not None, (
+                        f"[{input_name}] 's dims mapping is NONE"
+                    )
                     grad_op_dist_attr.set_input_dims_mapping(
                         input_name, ref_dims_mapping
                     )
@@ -1973,9 +1975,9 @@ class Completer:
                 first_backward_op_idx = idx
                 break
 
-        assert (
-            first_backward_op_idx >= 0 and loss_op is not None
-        ), "No backward procedure found in this program."
+        assert first_backward_op_idx >= 0 and loss_op is not None, (
+            "No backward procedure found in this program."
+        )
 
         ops = list(serial_main_program.global_block().ops)
         vars = serial_main_program.global_block().vars
@@ -1989,12 +1991,12 @@ class Completer:
             # complete the initial grad loss op
             if idx == first_backward_op_idx:
                 assert grad_op.type == "fill_constant"
-                assert (
-                    len(grad_op.input_arg_names) == 0
-                ), f"first backward op should has only ONE output, but got [{len(grad_op.input_arg_names)}]"
-                assert (
-                    len(grad_op.output_arg_names) == 1
-                ), f"first backward op should has only ONE output, but got [{len(grad_op.output_arg_names)}]"
+                assert len(grad_op.input_arg_names) == 0, (
+                    f"first backward op should has only ONE output, but got [{len(grad_op.input_arg_names)}]"
+                )
+                assert len(grad_op.output_arg_names) == 1, (
+                    f"first backward op should has only ONE output, but got [{len(grad_op.output_arg_names)}]"
+                )
 
                 loss_var = vars[loss_op.output_arg_names[0]]
                 loss_grad_var = vars[grad_op.output_arg_names[0]]
@@ -2069,9 +2071,9 @@ class Completer:
                 if grad_op.type in ['sum', 'grad_add']:
                     assert all(map(_is_grad_var_name, grad_op.input_arg_names))
                     output_name = grad_op.output_arg_names[0]
-                    assert (
-                        output_name in grad_var_to_var
-                    ), f"sum op's output '{output_name}' has no corresponding var"
+                    assert output_name in grad_var_to_var, (
+                        f"sum op's output '{output_name}' has no corresponding var"
+                    )
                     ref_fwd_var_name = grad_var_to_var[output_name]
                     ref_fwd_var = vars[ref_fwd_var_name]
                     ref_fwd_dist_attr = (
@@ -2297,12 +2299,12 @@ class Completer:
                     )
 
                 if "Grad" in op.input_names and "Param" in ops[idx].input_names:
-                    assert (
-                        len(op.input("Param")) == 1
-                    ), "Only support one-to-one now."
-                    assert (
-                        len(op.input("Grad")) == 1
-                    ), "Only support one-to-one now."
+                    assert len(op.input("Param")) == 1, (
+                        "Only support one-to-one now."
+                    )
+                    assert len(op.input("Grad")) == 1, (
+                        "Only support one-to-one now."
+                    )
                     param = vars[op.input("Param")[0]]
                     grad_var = vars[op.input("Grad")[0]]
 

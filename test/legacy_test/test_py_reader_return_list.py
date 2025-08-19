@@ -30,9 +30,11 @@ class TestPyReader(unittest.TestCase):
         def reader_creator_random_image(height, width):
             def reader():
                 for i in range(self.sample_num):
-                    yield np.random.uniform(
-                        low=0, high=255, size=[height, width]
-                    ),
+                    yield (
+                        np.random.uniform(
+                            low=0, high=255, size=[height, width]
+                        ),
+                    )
 
             return reader
 

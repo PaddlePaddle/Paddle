@@ -2420,6 +2420,89 @@ void FusedMultiTransformerInt8InferMeta(
   out->set_dtype(x.dtype());
 }
 
+void FusedPartialRopeInferMeta(const MetaTensor& x,
+                               const MetaTensor& cos,
+                               const MetaTensor& sin,
+                               MetaTensor* out) {
+  const auto x_dims = x.dims();
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      4,
+      common::errors::InvalidArgument("The input x must be a 4D tensor"));
+
+  const int64_t batch_size = x_dims[0];
+  const int64_t seq_len = x_dims[1];
+  const int64_t num_heads = x_dims[2];
+  const int64_t head_dim = x_dims[3];
+
+  PADDLE_ENFORCE_LE(
+      batch_size * seq_len * num_heads,
+      std::numeric_limits<int>::max(),
+      common::errors::InvalidArgument("Currently only supports batch_size * "
+                                      "seq_len * num_heads <= INT_MAX"));
+  PADDLE_ENFORCE_LE(head_dim,
+                    std::numeric_limits<int>::max(),
+                    common::errors::InvalidArgument(
+                        "Currently only supports head_dim <= INT_MAX"));
+
+  const auto cos_dims = cos.dims();
+  PADDLE_ENFORCE_EQ(
+      cos_dims.size(),
+      4,
+      common::errors::InvalidArgument("The input cos must be a 4D tensor"));
+  PADDLE_ENFORCE_EQ(
+      cos_dims[0],
+      1,
+      common::errors::InvalidArgument("The batch_size of cos must be 1"));
+  PADDLE_ENFORCE_EQ(
+      cos_dims[1],
+      seq_len,
+      common::errors::InvalidArgument("The seq_len of cos must match x"));
+  PADDLE_ENFORCE_EQ(
+      cos_dims[2],
+      1,
+      common::errors::InvalidArgument("The num_heads of cos must be 1"));
+
+  const int64_t pe_head_dim = cos_dims[3];
+  PADDLE_ENFORCE_LE(pe_head_dim,
+                    head_dim,
+                    common::errors::InvalidArgument(
+                        "pe_head_dim must be no larger than head_dim"));
+  PADDLE_ENFORCE_EQ(
+      pe_head_dim % 2,
+      0,
+      common::errors::InvalidArgument("pe_head_dim must be multiple of 2"));
+  PADDLE_ENFORCE_LE(pe_head_dim,
+                    1024,
+                    common::errors::InvalidArgument(
+                        "Currently only supports pe_head_dim <= 1024"));
+
+  const auto sin_dims = sin.dims();
+  PADDLE_ENFORCE_EQ(
+      sin_dims.size(),
+      4,
+      common::errors::InvalidArgument("The input sin must be a 4D tensor"));
+  PADDLE_ENFORCE_EQ(
+      sin_dims[0],
+      1,
+      common::errors::InvalidArgument("The batch_size of sin must be 1"));
+  PADDLE_ENFORCE_EQ(
+      sin_dims[1],
+      seq_len,
+      common::errors::InvalidArgument("The seq_len of sin must match x"));
+  PADDLE_ENFORCE_EQ(
+      sin_dims[2],
+      1,
+      common::errors::InvalidArgument("The num_heads of sin must be 1"));
+  PADDLE_ENFORCE_EQ(
+      sin_dims[3],
+      pe_head_dim,
+      common::errors::InvalidArgument("The pe_head_dim of sin must match cos"));
+
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+}
+
 void FusedTransposeSplitQuantInferMeta(const MetaTensor& x,
                                        const MetaTensor& input_scales,
                                        const IntArray& tokens_per_expert,

@@ -24,7 +24,6 @@ from paddle.base.executor import Executor
 
 
 class TestSquareErrorCost(unittest.TestCase):
-
     def test_square_error_cost(self):
         paddle.enable_static()
         shape = [2, 3]
@@ -60,7 +59,6 @@ class TestSquareErrorCost(unittest.TestCase):
 
 
 class TestSquareErrorInvalidInput(unittest.TestCase):
-
     def test_error(self):
         paddle.enable_static()
 
