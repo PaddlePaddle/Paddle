@@ -25,7 +25,6 @@ from dygraph_to_static_utils import (
 import paddle
 from paddle import base
 from paddle.autograd import PyLayer
-from paddle.jit.dy2static.partial_program import partial_program_from
 from paddle.jit.dy2static.pir_partial_program import (
     partial_program_from as pir_partial_program_from,
 )
@@ -251,14 +250,6 @@ class TestPartialProgramRaiseError(Dy2StTestBase):
         # but received <class 'paddle.base.framework.EagerParamBase'>.
         with self.assertRaises(TypeError):
             pir_partial_program_from(concrete_program)
-
-        # Under PIR, params are tuples and cannot be modified
-        params[0] = "linear.w.0"
-        concrete_program.parameters = params
-        # TypeError: Type of self._params[0] should be framework.EagerParamBase,
-        # but received <type 'str'>.
-        with self.assertRaises(TypeError):
-            partial_program_from(concrete_program)
 
 
 if __name__ == '__main__':
