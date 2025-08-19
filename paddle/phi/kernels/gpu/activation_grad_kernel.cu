@@ -322,12 +322,6 @@ void PowGradKernel(const Context& dev_ctx,
     phi::Copy<Context>(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
     return;
   }
-  if (factor.to<float>() == 1.5) {
-    funcs::CudaPow1p5GradFunctor<T> functor;
-    ActivationGradGPUImpl<T, Context, funcs::CudaPow1p5GradFunctor<T>>(
-        dev_ctx, &x, nullptr, &dout, dx, functor);
-    return;
-  }
   if (factor.to<float>() == 2) {
     funcs::CudaSquareGradFunctor<T> functor;
     ActivationGradGPUImpl<T, Context, funcs::CudaSquareGradFunctor<T>>(
@@ -347,6 +341,12 @@ void PowGradKernel(const Context& dev_ctx,
     return;
   }
   if constexpr (!std::is_integral<T>::value) {
+    if (factor.to<float>() == 1.5) {
+      funcs::CudaPow1p5GradFunctor<T> functor;
+      ActivationGradGPUImpl<T, Context, funcs::CudaPow1p5GradFunctor<T>>(
+          dev_ctx, &x, nullptr, &dout, dx, functor);
+      return;
+    }
     if (factor.to<float>() == 0.5) {
       funcs::CudaSqrtGradDepXFunctor<T> functor;
       ActivationGradGPUImpl<T, Context, funcs::CudaSqrtGradDepXFunctor<T>>(
