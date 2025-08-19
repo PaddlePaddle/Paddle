@@ -93,7 +93,7 @@ repos:
 
             # | python/paddle/[o-t].+
 
-            # | python/paddle/[u-z].+
+            | python/paddle/[u-z].+
 
             # | python/_.+
 
@@ -149,7 +149,7 @@ repos:
 
             | python/paddle/[o-t].+
 
-            | python/paddle/[u-z].+
+            # | python/paddle/[u-z].+
 
             | python/_.+
 
