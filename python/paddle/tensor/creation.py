@@ -1923,7 +1923,7 @@ def arange(
 @deprecated(
     reason=(
         "paddle.range is deprecated and will be removed in a future release because its behavior is inconsistent with Python's range builtin."
-        "Instead, use paddle.arange, which produces values in [start, end)",
+        "Instead, use paddle.arange, which produces values in [start, end)"
     )
 )
 def range(
