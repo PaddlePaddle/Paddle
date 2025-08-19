@@ -34,6 +34,22 @@ struct CustomContext::Impl {
     if (stream_owned_ && stream_) {
       stream_ = nullptr;
     }
+    if (blas_handle_) {
+      DeviceManager::DestroyBlasHandle(place_,
+                                       reinterpret_cast<void*>(blas_handle_));
+    }
+    if (blas_tensor_core_handle_) {
+      DeviceManager::DestroyBlasHandle(
+          place_, reinterpret_cast<void*>(blas_tensor_core_handle_));
+    }
+    if (blas_tf32_tensor_core_handle_) {
+      DeviceManager::DestroyBlasHandle(
+          place_, reinterpret_cast<void*>(blas_tf32_tensor_core_handle_));
+    }
+    if (blaslt_handle_) {
+      DeviceManager::DestroyBlasLtHandle(
+          place_, reinterpret_cast<void*>(blaslt_handle_));
+    }
   }
 
   void Init() {
@@ -136,6 +152,193 @@ struct CustomContext::Impl {
 
   void set_xccl_comm(phi::ccl::CCLComm comm) { comm_ = comm; }
 
+  cublasHandle_t GetBlasHandle() {
+    std::call_once(flag_blas_, [&]() {
+      if (!blas_handle_) {
+        if (!blas_handle_creator_) {
+          phi::DeviceManager::InitBlasHandle(
+              place_, reinterpret_cast<void**>(&blas_handle_), stream());
+        } else {
+          blas_handle_ = blas_handle_creator_();
+        }
+      }
+
+      if (!blas_tensor_core_handle_) {
+        if (!blas_tensor_core_handle_creator_) {
+          phi::DeviceManager::InitBlasHandle(
+              place_,
+              reinterpret_cast<void**>(&blas_tensor_core_handle_),
+              stream());
+        } else {
+          blas_tensor_core_handle_ = blas_tensor_core_handle_creator_();
+        }
+        phi::DeviceManager::BlasSetMathMode(
+            place_, blas_tensor_core_handle_, BLAS_TENSOR_OP_MATH);
+      }
+
+      if (!blas_tf32_tensor_core_handle_) {
+        if (!blas_tf32_tensor_core_handle_creator_) {
+          phi::DeviceManager ::InitBlasHandle(
+              place_,
+              reinterpret_cast<void**>(&blas_tf32_tensor_core_handle_),
+              stream());
+        } else {
+          blas_tf32_tensor_core_handle_ =
+              blas_tf32_tensor_core_handle_creator_();
+        }
+        phi::DeviceManager::BlasSetMathMode(
+            place_, blas_tf32_tensor_core_handle_, BLAS_TF32_TENSOR_OP_MATH);
+      }
+    });
+    PADDLE_ENFORCE_NOT_NULL(
+        blas_handle_,
+        common::errors::InvalidArgument(
+            "The Custom Device blas handle is nullptr. It must not be null."));
+    return blas_handle_;
+  }
+
+  void SetBlasHandle(cublasHandle_t blas) { blas_handle_ = blas; }
+
+  void SetBlasHandle(std::function<cublasHandle_t()>&& handle_creator) {
+    blas_handle_creator_ = std::move(handle_creator);
+  }
+
+  void SetBlasTensorCoreHandle(cublasHandle_t handle) {
+    blas_tensor_core_handle_ = handle;
+  }
+
+  void SetBlasTensorCoreHandle(
+      std::function<cublasHandle_t()>&& handle_creator) {
+    blas_tensor_core_handle_creator_ = std::move(handle_creator);
+  }
+
+  void SetBlasTF32Handle(cublasHandle_t handle) {
+    blas_tf32_tensor_core_handle_ = handle;
+  }
+
+  void SetBlasTF32Handle(std::function<cublasHandle_t()>&& handle_creator) {
+    blas_tf32_tensor_core_handle_creator_ = std::move(handle_creator);
+  }
+
+  void SetBlasLtHandle(cublasLtHandle_t blaslt) { blaslt_handle_ = blaslt; }
+
+  void SetBlasLtHandle(std::function<cublasLtHandle_t()>&& handle_creator) {
+    blaslt_handle_creator_ = std::move(handle_creator);
+  }
+
+  cublasLtHandle_t GetBlasLtHandle() {
+    std::call_once(flag_blaslt_, [&]() {
+      if (!blaslt_handle_) {
+        if (!blaslt_handle_creator_)
+          phi::DeviceManager::InitBlasLtHandle(
+              place_, reinterpret_cast<void**>(&blaslt_handle_));
+        else
+          blaslt_handle_ = blaslt_handle_creator_();
+      }
+    });
+    PADDLE_ENFORCE_NOT_NULL(
+        blaslt_handle_,
+        common::errors::InvalidArgument("The Custom Device blasLt handle is "
+                                        "nullptr. It must not be null."));
+    return blaslt_handle_;
+  }
+
+  bool IsTensorCoreAvailable() const {
+    return blas_tensor_core_handle_ != nullptr;
+  }
+
+  inline void CublasCall(const std::function<void(cublasHandle_t)>& callback) {
+    std::call_once(flag_cublas_, [&]() {
+      if (!blas_handle_) {
+        if (!blas_handle_creator_) {
+          phi::DeviceManager::InitBlasHandle(
+              place_, reinterpret_cast<void**>(&blas_handle_), stream());
+        } else {
+          blas_handle_ = blas_handle_creator_();
+        }
+      }
+      if (!blas_tensor_core_handle_) {
+        if (!blas_tensor_core_handle_creator_) {
+          phi::DeviceManager::InitBlasHandle(
+              place_,
+              reinterpret_cast<void**>(&blas_tensor_core_handle_),
+              stream());
+        } else {
+          blas_tensor_core_handle_ = blas_tensor_core_handle_creator_();
+        }
+        phi::DeviceManager::BlasSetMathMode(
+            place_, blas_tensor_core_handle_, BLAS_TENSOR_OP_MATH);
+      }
+      if (!blas_tf32_tensor_core_handle_) {
+        if (!blas_tf32_tensor_core_handle_creator_) {
+          phi::DeviceManager::InitBlasHandle(
+              place_,
+              reinterpret_cast<void**>(&blas_tf32_tensor_core_handle_),
+              stream());
+        } else {
+          blas_tf32_tensor_core_handle_ =
+              blas_tf32_tensor_core_handle_creator_();
+        }
+        phi::DeviceManager::BlasSetMathMode(
+            place_, blas_tf32_tensor_core_handle_, BLAS_TF32_TENSOR_OP_MATH);
+      }
+    });
+
+    if (blas_tf32_tensor_core_handle_ && allow_tf32_blas_) {
+      std::lock_guard<std::mutex> guard(blas_tf32_mtx_);
+      callback(blas_tf32_tensor_core_handle_);
+    } else {
+      std::lock_guard<std::mutex> guard(blas_mtx_);
+      callback(blas_handle_);
+    }
+  }
+
+  inline void TensorCoreCublasCallIfAvailable(
+      const std::function<void(cublasHandle_t)>& callback) {
+    std::call_once(flag_tensorcore_cublas_, [&]() {
+      if (!blas_handle_) {
+        if (!blas_handle_creator_) {
+          phi::DeviceManager::InitBlasHandle(
+              place_, reinterpret_cast<void**>(&blas_handle_), stream());
+        } else {
+          blas_handle_ = blas_handle_creator_();
+        }
+      }
+      if (!blas_tensor_core_handle_) {
+        if (!blas_tensor_core_handle_creator_) {
+          phi::DeviceManager::InitBlasHandle(
+              place_,
+              reinterpret_cast<void**>(&blas_tensor_core_handle_),
+              stream());
+        } else {
+          blas_tensor_core_handle_ = blas_tensor_core_handle_creator_();
+        }
+        phi::DeviceManager::BlasSetMathMode(
+            place_, blas_tensor_core_handle_, BLAS_TENSOR_OP_MATH);
+      }
+      if (!blas_tf32_tensor_core_handle_) {
+        if (!blas_tf32_tensor_core_handle_creator_) {
+          phi::DeviceManager::InitBlasHandle(
+              place_,
+              reinterpret_cast<void**>(&blas_tf32_tensor_core_handle_),
+              stream());
+        } else {
+          blas_tf32_tensor_core_handle_ =
+              blas_tf32_tensor_core_handle_creator_();
+        }
+        phi::DeviceManager::BlasSetMathMode(
+            place_, blas_tf32_tensor_core_handle_, BLAS_TF32_TENSOR_OP_MATH);
+      }
+    });
+    if (blas_tensor_core_handle_ != nullptr) {
+      std::lock_guard<std::mutex> guard(blas_tensor_core_mtx_);
+      callback(blas_tensor_core_handle_);
+    } else {
+      std::lock_guard<std::mutex> guard(blas_mtx_);
+      callback(blas_handle_);
+    }
+  }
+
   Place place_;
 
   std::shared_ptr<phi::stream::Stream> stream_;
@@ -157,6 +360,38 @@ struct CustomContext::Impl {
   Eigen::GpuDevice* eigen_device_{nullptr};
   std::function<Eigen::GpuDevice*()> eigen_device_creator_{nullptr};
   std::once_flag flag_eigen_device_;
+  cublasHandle_t blas_handle_{nullptr};
+  std::function<cublasHandle_t()> blas_handle_creator_{nullptr};
+  cublasHandle_t blas_tensor_core_handle_{nullptr};
+  std::function<cublasHandle_t()> blas_tensor_core_handle_creator_{nullptr};
+  cublasHandle_t blas_tf32_tensor_core_handle_{nullptr};
+  std::function<cublasHandle_t()> blas_tf32_tensor_core_handle_creator_{
+      nullptr};
+  cublasLtHandle_t blaslt_handle_{nullptr};
+  std::function<cublasLtHandle_t()> blaslt_handle_creator_{nullptr};
+
+  enum BLASMathMode {
+    BLAS_DEFAULT_MATH = 0,
+    BLAS_TENSOR_OP_MATH = 1,
+    BLAS_TF32_TENSOR_OP_MATH = 2
+  };
+
+  bool allow_tf32_blas_ = true;
+
+  std::once_flag flag_sparse_;
+  std::once_flag flag_blas_;
+  std::once_flag flag_blaslt_;
+  std::once_flag flag_dnn_;
+  std::once_flag flag_solver_;
+  std::once_flag flag_cublas_;
+  std::once_flag flag_tensorcore_cublas_;
+
+  mutable std::mutex blas_mtx_;
+  mutable std::mutex blas_tensor_core_mtx_;
+  mutable std::mutex blas_tf32_mtx_;
+  mutable std::mutex sparse_mtx_;
+  mutable std::mutex stream_call_back_mtx_;
+  mutable std::future<void> last_future_;
 };
 
 CustomContext::CustomContext(const CustomPlace& place)
@@ -271,4 +506,60 @@ void CustomContext::SetDriverVersion(int val) { impl_->driver_version_ = val; }
 void CustomContext::SetRuntimeVersion(int val) {
   impl_->runtime_version_ = val;
 }
+
+cublasHandle_t CustomContext::cublas_handle() const {
+  return impl_->GetBlasHandle();
+}
+
+cublasLtHandle_t CustomContext::cublaslt_handle() const {
+  return impl_->GetBlasLtHandle();
+}
+
+void CustomContext::SetBlasHandle(cublasHandle_t blas) {
+  impl_->SetBlasHandle(blas);
+}
+
+void CustomContext::SetBlasHandle(std::function<cublasHandle_t()>&& func) {
+  impl_->SetBlasHandle(std::move(func));
+}
+
+void CustomContext::SetBlasTensorCoreHandle(cublasHandle_t handle) {
+  impl_->SetBlasTensorCoreHandle(handle);
+}
+
+void CustomContext::SetBlasTensorCoreHandle(
+    std::function<cublasHandle_t()>&& func) {
+  impl_->SetBlasTensorCoreHandle(std::move(func));
+}
+
+void CustomContext::SetBlasTF32Handle(cublasHandle_t handle) {
+  impl_->SetBlasTF32Handle(handle);
+}
+
+void CustomContext::SetBlasTF32Handle(std::function<cublasHandle_t()>&& func) {
+  impl_->SetBlasTF32Handle(std::move(func));
+}
+
+void CustomContext::SetBlasLtHandle(cublasLtHandle_t blaslt) {
+  impl_->SetBlasLtHandle(blaslt);
+}
+
+void CustomContext::SetBlasLtHandle(std::function<cublasLtHandle_t()>&& func) {
+  impl_->SetBlasLtHandle(std::move(func));
+}
+
+bool CustomContext::tensor_core_available() const {
+  return impl_->IsTensorCoreAvailable();
+}
+
+void CustomContext::CublasCall(
+    const std::function<void(cublasHandle_t)>& callback) const {
+  impl_->CublasCall(callback);
+}
+
+void CustomContext::TensorCoreCublasCallIfAvailable(
+    const std::function<void(cublasHandle_t)>& callback) const {
+  impl_->TensorCoreCublasCallIfAvailable(callback);
+}
+
 }  // namespace phi
