@@ -2524,6 +2524,127 @@ class TestAnyZero(unittest.TestCase):
                         self._test_any(place, axis, keepdim, dtype)
 
 
+class TestAnyCompatibility(unittest.TestCase):
+    def setUp(self):
+        self.places = [paddle.CPUPlace()]
+        if paddle.base.core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+        self.func = paddle.any
+        self.init_data()
+        self.init_case()
+
+    def init_data(self):
+        self.shape = [5, 6]
+        self.dtype = 'float32'
+        self.axis = 1
+        self.np_input = np.random.randint(0, 2, self.shape).astype(self.dtype)
+        self.np_out = np.any(self.np_input, self.axis, keepdims=True)
+
+    def init_case(self):
+        params = [['x', 'input'], ['axis', 'dim']]  # param1  # param2
+
+        # Generate all valid combinations
+        def generate_cases(param_groups, case_list):
+            from itertools import product
+
+            for combo in product(*[[None, *names] for names in param_groups]):
+                args = ['pos' if p is None else 'kw' for p in combo]
+                if args == sorted(args, key=lambda x: x != 'pos'):
+                    case_list.append(combo)
+
+        # paddle.chunk()
+        self.test_cases = []
+        generate_cases(params, self.test_cases)
+        # x.chunk()
+        self.tensor_test_cases = []
+        generate_cases(params[1:], self.tensor_test_cases)
+
+    def _build_args_kwargs(self, param_names, params):
+        args = []
+        kwargs = {}
+        for name, param in zip(param_names, params):
+            if name is None:
+                args.append(param)
+            else:
+                kwargs[name] = param
+        kwargs['keepdim'] = True
+        return args, kwargs
+
+    def test_dygraph_compatibility(self):
+        with dygraph_guard():
+            for place in self.places:
+                paddle.device.set_device(place)
+                x = paddle.to_tensor(self.np_input)
+                # paddle.
+                for param_names in self.test_cases:
+                    args, kwargs = self._build_args_kwargs(
+                        param_names, (x, self.axis)
+                    )
+                    for out_flag in [False, True]:
+                        if out_flag:
+                            kwargs['out'] = paddle.empty([])
+                            self.func(*args, **kwargs)
+                            out = kwargs["out"]
+                        else:
+                            out = self.func(*args, **kwargs)
+                        np.testing.assert_allclose(
+                            self.np_out, out.numpy(), rtol=1e-10
+                        )
+                # paddle.Tensor.
+                for param_names in self.tensor_test_cases:
+                    args, kwargs = self._build_args_kwargs(
+                        param_names, (self.axis,)
+                    )
+                    out = x.any(*args, **kwargs)
+                    np.testing.assert_allclose(
+                        self.np_out, out.numpy(), rtol=1e-10
+                    )
+
+    def test_static_compatibility(self):
+        with static_guard():
+            for place in self.places:
+                main = paddle.static.Program()
+                startup = paddle.static.Program()
+                with base.program_guard(main, startup):
+                    x = paddle.static.data(
+                        name="x", shape=self.shape, dtype=self.dtype
+                    )
+                    # paddle.
+                    for param_names in self.test_cases:
+                        args, kwargs = self._build_args_kwargs(
+                            param_names, (x, self.axis)
+                        )
+
+                        out = self.func(*args, **kwargs)
+
+                        exe = base.Executor(place)
+                        fetches = exe.run(
+                            main,
+                            feed={"x": self.np_input},
+                            fetch_list=[out],
+                        )
+                        np.testing.assert_allclose(
+                            self.np_out, fetches[0], rtol=1e-10
+                        )
+                    # paddle.Tensor.
+                    for param_names in self.tensor_test_cases:
+                        args, kwargs = self._build_args_kwargs(
+                            param_names, (self.axis,)
+                        )
+
+                        out = x.any(*args, **kwargs)
+
+                        exe = base.Executor(place)
+                        fetches = exe.run(
+                            main,
+                            feed={"x": self.np_input},
+                            fetch_list=[out],
+                        )
+                        np.testing.assert_allclose(
+                            self.np_out, fetches[0], rtol=1e-10
+                        )
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
