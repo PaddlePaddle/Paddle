@@ -3706,7 +3706,8 @@ def clip(
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: A Tensor with the same data type and data shape as input.
+        Tensor: A Tensor with the same data shape as input. If either min or max is a floating-point value/Tensor, the output tensor will have a data type of ``float32``. Otherwise, the output tensor will inherit the same data type as the input.
+
 
     Examples:
         .. code-block:: python
@@ -3727,6 +3728,20 @@ def clip(
     """
 
     x_dtype = str(x.dtype)
+    is_cast_x_to_fp32 = False
+    if x_dtype in ['paddle.int32', 'paddle.int64'] and (
+        isinstance(min, float)
+        or isinstance(max, float)
+        or (
+            isinstance(min, Variable)
+            and isinstance(min.item(0), float)
+            or (isinstance(max, Variable) and isinstance(max.item(0), float))
+        )
+    ):
+        is_cast_x_to_fp32 = True
+        x = paddle.cast(x, paddle.float32)
+        x_dtype = 'paddle.float32'
+
     if x_dtype == 'paddle.int32':
         min_ = np.iinfo(np.int32).min
         max_ = np.iinfo(np.int32).max - 2**7
@@ -3797,7 +3812,9 @@ def clip(
 
         helper = LayerHelper('clip', **locals())
         output = helper.create_variable_for_type_inference(
-            dtype=helper.input_dtype('x')
+            dtype=(
+                helper.input_dtype('x') if not is_cast_x_to_fp32 else "float32"
+            )
         )
         helper.append_op(
             type='clip', inputs=inputs, outputs={'Out': [output]}, attrs=attrs
