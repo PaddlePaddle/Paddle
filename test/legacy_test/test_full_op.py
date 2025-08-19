@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from utils import dygraph_guard
 
 import paddle
 from paddle import base
@@ -443,6 +444,33 @@ class TestFullOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_shape_tensor_list_dtype)
         paddle.disable_static()
+
+    def test_fill_value_errors(self):
+        with dygraph_guard():
+            # The fill_value must be one of [int, float, bool, complex, np.number, Tensor].
+            self.assertRaises(
+                TypeError,
+                paddle.full,
+                shape=[1],
+                dtype="float32",
+                fill_value=np.array([1.0], dtype=np.float32),
+            )
+
+            self.assertRaises(
+                TypeError,
+                paddle.full,
+                shape=[1],
+                dtype="float32",
+                fill_value=[1.0],
+            )
+
+            self.assertRaises(
+                TypeError,
+                paddle.full,
+                shape=[1],
+                dtype="bool",
+                fill_value=np.bool_(True),
+            )
 
 
 if __name__ == "__main__":

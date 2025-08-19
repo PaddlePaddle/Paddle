@@ -164,8 +164,9 @@ def bootstrap_context():
 
 
 def load_op_meta_info_and_register_op(lib_filename: str) -> list[str]:
-    core.load_op_meta_info_and_register_op(lib_filename)
-    return OpProtoHolder.instance().update_op_proto()
+    new_list = core.load_op_meta_info_and_register_op(lib_filename)
+    proto_sync_ops = OpProtoHolder.instance().update_op_proto(new_list)
+    return proto_sync_ops
 
 
 def custom_write_stub(resource, pyfile):

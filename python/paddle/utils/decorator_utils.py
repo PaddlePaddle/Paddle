@@ -246,7 +246,24 @@ class SizeArgsDecorator(DecoratorBase):
         return args, kwargs
 
 
-"""
+class VariableArgsDecorator(DecoratorBase):
+    def __init__(self, var: str) -> None:
+        super().__init__()
+        if not isinstance(var, str):
+            raise TypeError("var must be a string")
+        self.var = var
+
+    def process(
+        self, args: tuple[Any, ...], kwargs: dict[str, Any]
+    ) -> tuple[tuple[Any, ...], dict[str, Any]]:
+        if len(args) >= 2 and isinstance(args[1], int):
+            kwargs[self.var] = list(args[1:])
+            args = args[:1]
+        return args, kwargs
+
+
+def view_decorator():
+    """
     Usage Example:
     paddle.view(x=tensor_x, shape_or_dtype=[-1, 1, 3], name=None)
     tensor_x.view(paddle.float32) -> paddle.view(tensor_x, paddle.float32)
@@ -254,10 +271,8 @@ class SizeArgsDecorator(DecoratorBase):
     tensor_x.view([-1, 1, 3]) -> paddle.view(tensor_x, [-1, 1, 3])
     tensor_x.view(-1, 1, 3) -> paddle.view(tensor_x, -1, 1, 3)
     tensor_x.view(size=[-1, 1, 3]) -> paddle.view(tensor_x, size=[-1, 1, 3])
-"""
+    """
 
-
-def view_decorator():
     def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
         @functools.wraps(func)
         def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:

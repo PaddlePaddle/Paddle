@@ -629,14 +629,14 @@ class Cost:
         assert val >= 0, "Time must be greater than or equal to 0."
 
     def _check_memory(self, val):
-        assert (
-            isinstance(val, int) and val >= 0
-        ), "Memory must be int and greater than equal to 0."
+        assert isinstance(val, int) and val >= 0, (
+            "Memory must be int and greater than equal to 0."
+        )
 
     def _check_flops(self, val):
-        assert (
-            isinstance(val, int) and val >= 0
-        ), "FLOPs must be int and greater than equal to 0."
+        assert isinstance(val, int) and val >= 0, (
+            "FLOPs must be int and greater than equal to 0."
+        )
 
     @property
     def time(self):
@@ -987,9 +987,9 @@ def calc_time_by_cost_model(op, cluster=None):
         var_name = op.output_arg_names[0]
         dtype = op.block._var_recursive(var_name).dtype
         device = cluster.get_device(0)
-        assert (
-            device.type == DeviceType.GPU
-        ), "Only GPU device is supported currently."
+        assert device.type == DeviceType.GPU, (
+            "Only GPU device is supported currently."
+        )
 
         gflops = 0.0
         if dtype == paddle.float64:

@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Literal
 import paddle
 from paddle import _C_ops, in_dynamic_mode
 from paddle.framework import core, in_dynamic_or_pir_mode
+from paddle.utils.decorator_utils import ParamAliasDecorator
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ...base.data_feeder import check_dtype, check_variable_and_dtype
@@ -1127,6 +1128,7 @@ def silu(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
+@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
 def softmax(
     x: Tensor,
     axis: int = -1,
@@ -1208,12 +1210,18 @@ def softmax(
                          [0.26762315, 0.26762315, 0.26762315, 0.26762315],
                          [0.72747516, 0.72747516, 0.72747516, 0.72747516]]]
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``dim`` can be used as an alias for ``axis``.
+        For example, ``softmax(input=tensor_x, dim=1, ...)`` is equivalent to ``softmax(x=tensor_x, axis=1, ...)``.
+
     Parameters:
         x (Tensor): The input Tensor with data type bfloat16, float16, float32, float64.
+            alias: ``input``.
         axis (int, optional): The axis along which to perform softmax
             calculations. It should be in range [-D, D), where D is the
             rank of ``x`` . If ``axis`` < 0, it works the same way as
             :math:`axis + D` . Default is -1.
+            alias: ``dim``.
         dtype (str, optional): The data type of the output tensor, can be bfloat16, float16, float32, float64.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 

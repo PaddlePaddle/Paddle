@@ -26,9 +26,8 @@ from predictor_utils import PredictorTools
 
 import paddle
 from paddle import base
-from paddle.framework import use_pir_api
 from paddle.jit.pir_translated_layer import PIR_INFER_MODEL_SUFFIX
-from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.jit.translated_layer import INFER_PARAMS_SUFFIX
 from paddle.nn import Linear
 from paddle.optimizer import Adam
 
@@ -257,16 +256,14 @@ class TestMNISTWithToStatic(TestMNIST):
             )
             model_save_dir = os.path.join(self.temp_dir.name, 'inference')
             model_save_prefix = os.path.join(model_save_dir, 'mnist')
-            MODEL_SUFFIX = (
-                PIR_INFER_MODEL_SUFFIX if use_pir_api() else INFER_MODEL_SUFFIX
-            )
+            MODEL_SUFFIX = PIR_INFER_MODEL_SUFFIX
             model_filename = "mnist" + MODEL_SUFFIX
             params_filename = "mnist" + INFER_PARAMS_SUFFIX
             paddle.jit.save(
                 layer=model,
                 path=model_save_prefix,
                 input_spec=input_spec,
-                output_spec=[gt_out_index] if use_pir_api() else [gt_out],
+                output_spec=[gt_out_index],
                 input_names_after_prune=input_names_after_prune,
             )
             # load in static graph mode
