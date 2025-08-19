@@ -52,6 +52,7 @@ class TestSemiautoSaveLoad:
             "optimizer.d": ("optimizer", "d"),
         }
         dist.save_state_dict(state_dict, self._ckpt_path)
+        paddle.distributed.barrier()
         metadata_path = os.path.join(self._ckpt_path, "0.metadata")
         assert os.path.exists(metadata_path)
         metadata = paddle.load(metadata_path)
