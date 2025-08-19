@@ -1057,8 +1057,6 @@ void FlashMaskV2GradBaseKernel(
   int const kBlockN =
       arch >= 90 ? kBlockN_sm90
                  : (arch == 86 || arch == 89 ? kBlockN_sm86 : kBlockN_sm80);
-  // std::cout << "kBlockM: " << kBlockM << ", kBlockN: " << kBlockN <<
-  // std::endl;
   auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
   int const seqlen_q_rounded = round_multiple(seqlen_q, kBlockM);
   int const seqlen_k_rounded = round_multiple(seqlen_k, kBlockN);
