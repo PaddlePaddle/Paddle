@@ -533,10 +533,11 @@ class FunctionGeneratorBase:
             self.args_alias_map = args_alias
         if 'pre_process' in python_api_info.keys():
             pre_process = python_api_info['pre_process']
-            if 'dygraph_func' in pre_process.keys():
-                self.dygraph_pre_process = pre_process['dygraph_func']
-            elif 'func' in pre_process.keys():
-                self.dygraph_pre_process = pre_process['func']
+            if pre_process is not None:
+                if 'dygraph_func' in pre_process.keys():
+                    self.dygraph_pre_process = pre_process['dygraph_func']
+                elif 'func' in pre_process.keys():
+                    self.dygraph_pre_process = pre_process['func']
 
         if 'args_mapper' in python_api_info.keys():
             args_mapper = python_api_info['args_mapper']
