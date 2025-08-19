@@ -459,8 +459,7 @@ class ColumnSequenceParallelLinear(Layer):
         self._name = name
         self.is_mp = self.world_size > 1
         assert gather_output is False, (
-            "If sequence_parallel is True, \
-                                        gather_output is False"
+            "If sequence_parallel is True, gather_output is False"
         )
 
         self.gather_output = gather_output
@@ -596,8 +595,7 @@ class RowSequenceParallelLinear(Layer):
         self.in_features = in_features
         self.out_features = out_features
         assert input_is_parallel is True, (
-            "If sequence_parallel is True, \
-                                           input_is_parallel should be true."
+            "If sequence_parallel is True, input_is_parallel should be true."
         )
 
         self.input_is_parallel = input_is_parallel
