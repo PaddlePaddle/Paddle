@@ -20,7 +20,6 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
-    test_legacy_and_pir,
 )
 
 import paddle
@@ -94,7 +93,6 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
         self.temp_dir.cleanup()
 
     @test_ast_only
-    @test_legacy_and_pir
     def test_save_inference_model(self):
         fc_size = 20
         x_data = np.random.random((fc_size, fc_size)).astype('float32')
@@ -140,7 +138,6 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
 
     # TODO(MarioLulab): Disable PT test until we support PIR PyLayer
     @test_ast_only
-    @test_legacy_and_pir
     def test_save_pylayer_model(self):
         fc_size = 20
         x_data = np.random.random((fc_size, fc_size)).astype('float32')

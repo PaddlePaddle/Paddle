@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
+from utils import dygraph_guard
 
 import paddle
 from paddle import base
@@ -226,6 +227,76 @@ class TestZeroSizeOpCase2(TestNonzeroOp):
 
     def test_check_output(self):
         self.check_output(check_pir=True, check_symbol_infer=True)
+
+
+class TestNonzeroCompatibility(unittest.TestCase):
+    def setUp(self):
+        self.places = [paddle.CPUPlace()]
+        if paddle.base.core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+        self.input_data = [[1, 0, 3], [0, 5, 0], [7, 0, 9]]
+        self.expected_indices = np.array(
+            [[0, 0], [0, 2], [1, 1], [2, 0], [2, 2]]
+        )
+
+    def test_nonzero_with_param_aliases(self):
+        with dygraph_guard():
+            for place in self.places:
+                paddle.device.set_device(place)
+                input_tensor = paddle.to_tensor(
+                    self.input_data, dtype='float32'
+                )
+                for param_name in ['x', 'input']:
+                    for as_tuple in [False, True]:
+                        kwargs = {
+                            param_name: input_tensor,
+                            'as_tuple': as_tuple,
+                        }
+                        result = paddle.nonzero(**kwargs)
+                        if as_tuple:
+                            combined = np.stack(
+                                [r.numpy() for r in result], axis=1
+                            )
+                            np.testing.assert_array_equal(
+                                combined, self.expected_indices
+                            )
+                        else:
+                            np.testing.assert_array_equal(
+                                result.numpy(), self.expected_indices
+                            )
+
+    def test_nonzero_with_out(self):
+        def run_nonzero(test_type):
+            x = paddle.to_tensor(self.input_data, dtype='float32')
+            x.stop_gradient = False
+            out_shape = [len(self.expected_indices), 2]
+            out = (
+                paddle.zeros(out_shape, dtype='int64')
+                if test_type in ["with_out", "both"]
+                else None
+            )
+            if test_type == "return":
+                out = paddle.nonzero(x, out=None)
+            elif test_type == "with_out":
+                paddle.nonzero(x, out=out)
+            elif test_type == "both":
+                out = paddle.nonzero(x, out=out)
+            expected = paddle._C_ops.nonzero(x)
+            np.testing.assert_array_equal(out.numpy(), expected.numpy())
+            loss = out.sum().astype('float32')
+            loss.backward()
+            return out, x.grad
+
+        with dygraph_guard():
+            for place in self.places:
+                paddle.device.set_device(place)
+                out1, _ = run_nonzero("return")
+                out2, _ = run_nonzero("with_out")
+                out3, _ = run_nonzero("both")
+                for out in [out2, out3]:
+                    np.testing.assert_allclose(
+                        out1.numpy(), out.numpy(), rtol=1e-10
+                    )
 
 
 if __name__ == "__main__":

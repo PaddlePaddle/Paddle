@@ -16,3 +16,17 @@
     backend : place
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : paddle::dialect::ForwardOnlyTrait
+
+- op : range_v2
+  args : (Scalar start, Scalar end, Scalar step, DataType dtype=DataType::FLOAT64, Place place=CPUPlace())
+  output : Tensor(out)
+  infer_meta :
+    func : RangeInferMeta
+    param : [start, end, step, dtype]
+  kernel :
+    func : range
+    param : [start, end, step]
+    data_type : dtype
+    backend : place
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : paddle::dialect::ForwardOnlyTrait
