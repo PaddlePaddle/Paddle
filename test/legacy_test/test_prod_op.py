@@ -230,7 +230,6 @@ class TestProdComplexOp(TestProdOp):
 
 
 class TestProdOpError(unittest.TestCase):
-
     def test_error(self):
         with (
             static_guard(),

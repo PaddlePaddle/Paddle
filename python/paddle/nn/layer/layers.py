@@ -1516,7 +1516,6 @@ class Layer:
         pass
 
     def _dygraph_call_func(self, *inputs: Any, **kwargs: Any) -> Any:
-
         for hook_id, forward_pre_hook in self._forward_pre_hooks.items():
             if hook_id in self._forward_pre_hooks_with_kwargs_flag:
                 args_kwargs_result = forward_pre_hook(self, inputs, kwargs)

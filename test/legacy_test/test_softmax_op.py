@@ -21,7 +21,7 @@ from op_test import (
     get_device_place,
     get_places,
 )
-from utils import static_guard
+from utils import dygraph_guard, static_guard
 
 import paddle
 import paddle.nn.functional as F

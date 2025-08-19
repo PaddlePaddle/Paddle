@@ -1194,7 +1194,7 @@ class PrimGradChecker(PrimForwardChecker):
                 atol=atol,
                 err_msg=(
                     'Check static comp grad out failed. Mismatch between static comp '
-                    f'and eager on {self.place}, when enable_fw_comp is {self.enable_fw_comp},enable_rev_comp is { self.enable_rev_comp},'
+                    f'and eager on {self.place}, when enable_fw_comp is {self.enable_fw_comp},enable_rev_comp is {self.enable_rev_comp},'
                     f'the forward api out tensor\'s index is : {i} \n'
                     f'static comp grad out tensor:\n{actual_ret[i]}\n eager grad out tensor:\n{self.eager_desire[i]}\n'
                 ),

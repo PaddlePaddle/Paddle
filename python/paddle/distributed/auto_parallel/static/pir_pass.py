@@ -232,7 +232,6 @@ def apply_partition_pass(program, block=None):
 
 
 class ReshardPasses:
-
     @staticmethod
     def decompose_reshard_pass(dist_program):
         # split composed reshard op into atomic reshard ops, which would increase the opportunity of reshard Re-Use in following fold_reshard_pass.
@@ -445,7 +444,6 @@ def remove_sub_block_unused_inputs(op):
 
 
 class RemovePasses:
-
     @staticmethod
     def remove_other_rank_op_pass(dist_program):
         # pruning op and value not belong to cur rank
@@ -1855,7 +1853,6 @@ def fuse_attention_ffn_qkv_pass(
 
                 # Fuse params and init pir program fusion params.
                 with paddle.base.dygraph.guard():
-
                     dyparam_dtype = concated_dy_param_list[0].dtype
                     for param in concated_dy_param_list:
                         assert (

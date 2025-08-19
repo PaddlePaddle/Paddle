@@ -165,7 +165,6 @@ class TestNumelOp1BF16(TestNumelOpBF16):
 
 
 class TestNumelAPI(unittest.TestCase):
-
     def test_numel_static(self):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()

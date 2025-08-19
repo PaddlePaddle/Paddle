@@ -25,7 +25,6 @@ paddle.enable_static()
 
 
 class TestFunctionSpec(unittest.TestCase):
-
     def test_constructor(self):
         foo_spec = FunctionSpec(foo_func)
         args_name = foo_spec.args_name

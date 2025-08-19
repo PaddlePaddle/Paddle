@@ -22,7 +22,6 @@ from paddle import base
 
 # Test python API
 class TestFullAPI(unittest.TestCase):
-
     def test_api(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -415,7 +414,6 @@ class TestFullAPI(unittest.TestCase):
 
 
 class TestFullOpError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(
