@@ -327,7 +327,7 @@ class Unfold(nn.Unfold):
     """
     A compatible version of paddle.nn.Unfold:
 
-    The keyword arguments are in non-plural forms, example: `kernel_size` instead of kernel_sizes `padding` restricts the size of the input to be 1(int) or 2, Size4 is not allowed.
+    The keyword arguments are in non-plural forms, example: `kernel_size` instead of `kernel_sizes`. `padding` restricts the size of the input to be 1(int) or 2, Size4 is not allowed.
 
     All the input parameters allow `Tensor` or `pir.Value` as inputs, and will be converted to lists. Other aspects are the same. To use a more input-flexible version of Unfold, please refer to `paddle.nn.Unfold`.
 
