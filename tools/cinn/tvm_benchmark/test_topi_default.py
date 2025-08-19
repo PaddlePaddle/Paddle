@@ -122,11 +122,9 @@ def test_conv2d_nchw():
 
 # depthwise_conv2d_nchw
 def test_depthwise_conv2d_nchw():
-    input_shapes, out_shape = [(2, 32, 112, 112), (32, 1, 3, 3)], (
-        2,
-        32,
-        112,
-        112,
+    input_shapes, out_shape = (
+        [(2, 32, 112, 112), (32, 1, 3, 3)],
+        (2, 32, 112, 112),
     )
     name = "depthwise_conv2d_nchw"
     strides, padding, dilation = [1, 1], [1, 1], [1, 1]
@@ -309,11 +307,9 @@ def test_matmul():
 
 # batch_norm
 def test_batch_norm():
-    input_shapes, out_shape = [(2, 32, 112, 112), (32,), (32,)], (
-        2,
-        32,
-        112,
-        112,
+    input_shapes, out_shape = (
+        [(2, 32, 112, 112), (32,), (32,)],
+        (2, 32, 112, 112),
     )
     # mean,variance=32,32
     name = "batch_norm"

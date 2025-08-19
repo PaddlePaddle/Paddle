@@ -104,9 +104,10 @@ def modify_segment(m, name, ffma_lines):
     for i in range(num_lines // 2):
         dst_reg = parse_registers(ffma_lines[i * 2])[-2]
         low_line, high_line = ffma_lines[i * 2], ffma_lines[i * 2 + 1]
-        low_hex, high_hex = extract_hex_from_line(
-            low_line
-        ), extract_hex_from_line(high_line)
+        low_hex, high_hex = (
+            extract_hex_from_line(low_line),
+            extract_hex_from_line(high_line),
+        )
         le_bytes.append(
             low_hex.to_bytes(8, "little") + high_hex.to_bytes(8, "little")
         )

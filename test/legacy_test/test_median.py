@@ -378,7 +378,6 @@ class TestMedianAvg_ZeroSize(unittest.TestCase):
 
 
 class TestMedianMin_ZeroSize(unittest.TestCase):
-
     def dygraph_single_test_median(self, lis_test):
         x, axis, keepdims = lis_test
         res_np = np_median_min_axis(x, axis=axis, keepdims=keepdims)

@@ -338,7 +338,6 @@ def check_remove_syntax_error(filename: str, limit: int = 10000):
     )
 
     while limit > 0:
-
         limit -= 1
 
         # check syntax error

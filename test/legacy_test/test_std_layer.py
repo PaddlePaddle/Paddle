@@ -118,7 +118,6 @@ class TestStdError(unittest.TestCase):
 
 
 class Testfp16Std(unittest.TestCase):
-
     def test_fp16_with_gpu(self):
         paddle.enable_static()
         if paddle.base.core.is_compiled_with_cuda():

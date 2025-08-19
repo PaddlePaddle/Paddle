@@ -481,10 +481,9 @@ class PipelineOptimizer:
             else None
         )
         if device:
-            assert device[0:3] == 'gpu', (
-                "Now, only gpu devices are "
-                "supported in pipeline parallelism."
-            )
+            assert (
+                device[0:3] == 'gpu'
+            ), "Now, only gpu devices are supported in pipeline parallelism."
         return device
 
     def _add_op_device_attr_for_op(self, op, idx, block):
@@ -669,17 +668,16 @@ class PipelineOptimizer:
             ), f"op ({op.type}) has no {self._op_device_key} attribute."
 
             device = op.attr(self._op_device_key)
-            assert device, (
-                "op_device attribute for op " f"{op.type} has not been set."
-            )
+            assert (
+                device
+            ), f"op_device attribute for op {op.type} has not been set."
             if device == f"{self._device}:all":
                 continue
 
             dev_type = device.split(':')[0]
-            assert dev_type == "gpu", (
-                "Now only gpu devices are supported "
-                "for pipeline parallelism."
-            )
+            assert (
+                dev_type == "gpu"
+            ), "Now only gpu devices are supported for pipeline parallelism."
 
             if device not in device_list:
                 device_list.append(device)

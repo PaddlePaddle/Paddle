@@ -18,8 +18,6 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
-    test_pir_only,
-    test_pt_only,
 )
 from test_fetch_feed import Linear
 
@@ -132,38 +130,6 @@ class TestWithNestedOutput(Dy2StTestBase):
 
 class TestWithTrainAndEval(Dy2StTestBase):
     @test_ast_only
-    @test_pt_only
-    def test_legacy_ir_switch_eval_and_train(self):
-        # TODO(cleanup-legacy-ir): Remove this test case
-        linear_net = Linear()
-        linear_net = paddle.jit.to_static(linear_net, full_graph=True)
-        x_data = np.random.random((4, 10)).astype('float32')
-        x = paddle.to_tensor(x_data)
-        linear_net(x)
-
-        _, train_partial_layer = linear_net.forward.program_cache.last()[-1]
-        # check default mode is for training
-        self.assertEqual(
-            train_partial_layer.program, train_partial_layer._train_program
-        )
-
-        # switch to run test program after `eval()`
-        linear_net.eval()
-        linear_net(x)
-        _, eval_partial_layer = linear_net.forward.program_cache.last()[-1]
-        self.assertEqual(
-            eval_partial_layer.program, eval_partial_layer._infer_program
-        )
-
-        # switch back into training
-        linear_net.train()
-        linear_net(x)
-        self.assertEqual(
-            train_partial_layer.program, train_partial_layer._train_program
-        )
-
-    @test_ast_only
-    @test_pir_only
     def test_switch_eval_and_train(self):
         linear_net = Linear()
         linear_net = paddle.jit.to_static(linear_net, full_graph=True)
@@ -196,24 +162,6 @@ class TestWithTrainAndEval(Dy2StTestBase):
 
 class TestWithNoGrad(Dy2StTestBase):
     @test_ast_only
-    @test_pt_only
-    def test_legacy_ir_with_no_grad(self):
-        # TODO(cleanup-legacy-ir): Remove this test case
-        linear_net = Linear()
-        linear_net = paddle.jit.to_static(linear_net, full_graph=True)
-        x_data = np.random.random((5, 10)).astype('float32')
-        x = paddle.to_tensor(x_data)
-
-        with paddle.no_grad():
-            linear_net.train()
-            linear_net(x)
-            _, partial_layer = linear_net.forward.program_cache.last()[-1]
-            self.assertEqual(
-                partial_layer.program, partial_layer._train_program
-            )
-
-    @test_ast_only
-    @test_pir_only
     def test_with_no_grad(self):
         linear_net = Linear()
         linear_net = paddle.jit.to_static(linear_net, full_graph=True)

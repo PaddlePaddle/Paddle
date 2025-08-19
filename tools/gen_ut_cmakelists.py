@@ -31,7 +31,7 @@ def _process_envs(envs):
     """
     Desc:
         Input a str and output a str with the same function to specify some environment variables.
-    Here we can give a specital process for some variable if needed.
+    Here we can give a special process for some variable if needed.
     Example 1:
         Input: "http_proxy=;PYTHONPATH=.."
         Output: "http_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python"
@@ -103,7 +103,7 @@ def _process_archs(arch):
                 "GPU",
                 "ROCM",
                 "XPU",
-            ], f"""Supported arhc options are "GPU", "ROCM", and "XPU", but the options is {a}"""
+            ], f"""Supported arch options are "GPU", "ROCM", and "XPU", but the options is {a}"""
             archs += "WITH_" + a.upper() + " OR "
         arch = "(" + archs[:-4] + ")"
     else:
@@ -221,7 +221,7 @@ class DistUTPortManager:
     def get_current_port(self):
         return self.dist_ut_port
 
-    def gset_port(self, test_name, port):
+    def get_set_port(self, test_name, port):
         '''
         Get and set a port for unit test named test_name. If the test has been already holding a port, return the port it holds.
         Else assign the input port as a new port to the test.
@@ -270,14 +270,14 @@ class DistUTPortManager:
                         break
                 name = lines[k - 1].strip()
 
-                # matcg right tets name format, the name must start with 'test_' followed bu at least one char of
+                # match right tests name format, the name must start with 'test_' followed by at least one char of
                 # '0-9'. 'a-z'. 'A-Z' or '_'
                 assert re.compile("^test_[0-9a-zA-Z_]+").search(
                     name
                 ), f'''we found a test for initial the latest dist_port but the test name '{name}' seems to be wrong
                     at line {k - 1}, in file {cmake_file_name}
                     '''
-                self.gset_port(name, port)
+                self.get_set_port(name, port)
 
                 # get the test_name which latest assigned port belongs to
                 if self.assigned_ports[name] == self.dist_ut_port:
@@ -320,7 +320,7 @@ class DistUTPortManager:
             # 1. Get the num_port of last added test and set DIST_UT_PORT+=num_port
             #    to guarantee the DIST_UT_PORT is not assigned
             # 2. Summary all the directories which include csv but no cmake and show an error
-            #    if such a drectory exists
+            #    if such a directory exists
 
             # step 1
             if (
@@ -397,7 +397,7 @@ class CMakeGenerator:
     def _find_root_dirs(self):
         root_dirs = []
         # for each current directory, find its highest ancient directory (at least itself)
-        # which includes CMakeLists.txt or testslist.csv.txt in the filesys tree
+        # which includes CMakeLists.txt or testslist.csv.txt in the file system tree
         for c in self.current_dirs:
             while True:
                 ppath = os.path.dirname(c)
@@ -467,7 +467,7 @@ class CMakeGenerator:
         if launcher[-3:] == ".sh":
             run_type = _process_run_type(run_type)
             dist_ut_port = self.port_manager.process_dist_port_num(num_port)
-            dist_ut_port = self.port_manager.gset_port(name, dist_ut_port)
+            dist_ut_port = self.port_manager.get_set_port(name, dist_ut_port)
             cmd += f'''if({archs} AND {os_})
         bash_test_modules(
         {name}
@@ -600,7 +600,7 @@ if __name__ == "__main__":
         required=False,
         default=[],
         nargs="+",
-        help="Input a list of files named testslist.csv and output files named CmakeLists.txt in the same directories as the csv files respectly",
+        help="Input a list of files named testslist.csv and output files named CMakeLists.txt in the same directories as the csv files respectively",
     )
     parser.add_argument(
         "--dirpaths",
@@ -609,7 +609,7 @@ if __name__ == "__main__":
         required=False,
         default=[],
         nargs="+",
-        help="Input a list of dir paths including files named testslist.csv and output CmakeLists.txt in these directories respectly",
+        help="Input a list of dir paths including files named testslist.csv and output CMakeLists.txt in these directories respectively",
     )
     parser.add_argument(
         "--ignore-cmake-dirs",
@@ -618,7 +618,7 @@ if __name__ == "__main__":
         required=False,
         default=[],
         nargs='*',
-        help="To keep dist ports the same with old version cmake, old cmakelists.txt files are needed to parse dist_ports. If a directories are newly created and there is no cmakelists.txt file, the directory path must be specified by this option. The dirs are not recursive.",
+        help="To keep dist ports the same with old version cmake, old CMakeLists.txt files are needed to parse dist_ports. If a directories are newly created and there is no CMakeLists.txt file, the directory path must be specified by this option. The dirs are not recursive.",
     )
     parser.add_argument(
         "--only-check-changed",

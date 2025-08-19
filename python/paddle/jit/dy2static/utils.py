@@ -130,7 +130,6 @@ class CUDAGraphState(IntEnum):
 
 
 class TransformOptions:
-
     class ToStaticMode(Flag):
         SOT = auto()
         AST = auto()

@@ -316,7 +316,6 @@ class TestCUDABFP16(unittest.TestCase):
 
 
 class TestError(unittest.TestCase):
-
     def test_bad_input(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):

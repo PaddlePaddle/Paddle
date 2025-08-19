@@ -34,7 +34,7 @@ void SetOp(ProgramDesc* prog,
            bool is_negative_input = true) {
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
-  op->SetAttr("use_mkldnn", use_onednn);
+  op->SetAttr("use_onednn", use_onednn);
   op->SetAttr("name", name);
   if (type != "dropout" && type != "quantize" && type != "dequantize") {
     op->SetAttr("mkldnn_data_type", onednn_data_type);

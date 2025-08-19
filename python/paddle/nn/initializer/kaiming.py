@@ -117,7 +117,12 @@ class MSRAInitializer(Initializer):
         ), "Currently, kaiming initializer not support lazy init for dist param."
         block = self._check_block(block)
         assert isinstance(
-            var, (framework.Variable, paddle.pir.core.ParameterMeta)
+            var,
+            (
+                framework.Variable,
+                paddle.pir.Value,
+                paddle.pir.core.ParameterMeta,
+            ),
         )
         assert isinstance(block, (framework.Block, paddle.pir.Block))
         f_in, f_out = self._compute_fans(var)

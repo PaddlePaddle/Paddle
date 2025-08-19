@@ -541,7 +541,6 @@ class TestBF16BatchNormOpInference(TestBatchNormOpInference):
 
 
 class TestDygraphBatchNormAPIError(unittest.TestCase):
-
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -610,7 +609,6 @@ class TestDygraphBatchNormTrainableStats(unittest.TestCase):
 
 
 class TestDygraphBatchNormOpenReserveSpace(unittest.TestCase):
-
     def test_reservespace(self):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()

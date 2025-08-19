@@ -251,7 +251,6 @@ class AutoScanTest(unittest.TestCase):
         self,
         passes: list[str] | None = None,
         use_gpu: bool = False,
-        use_mkldnn: bool = False,
         use_onednn: bool = False,
         use_xpu: bool = False,
         ir_optim: bool | None = None,
@@ -264,8 +263,6 @@ class AutoScanTest(unittest.TestCase):
             config.switch_ir_optim(ir_optim)
         if use_gpu:
             config.enable_use_gpu(100, 0)
-        if use_mkldnn:
-            use_onednn = True
         if not use_onednn:
             config.disable_onednn()
         if use_xpu:
@@ -846,11 +843,9 @@ class TrtLayerAutoScanTest(AutoScanTest):
                         pir_main_program, startup_program
                     ),
                 ):
-
                     feed_dict = {}
                     feed_data = prog_config.get_feed_data()
                     for key, value in feed_data.items():
-
                         feed_dict[key] = value['data']
 
                     place = (

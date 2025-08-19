@@ -5,6 +5,7 @@ add_subdirectory(spmd_rules)
 add_subdirectory(hybrid_strategy)
 add_subdirectory(custom_op)
 add_subdirectory(pir)
+add_subdirectory(end_to_end)
 
 if(WITH_DISTRIBUTE AND WITH_GPU)
 
@@ -148,6 +149,10 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   # End of unittests WITH multi cards and timeout
 
   # NOTE(zyl): unittests WITH multi cards and WITHOUT timeout
+  py_test_modules(test_semi_auto_parallel_moe_utils MODULES
+                  test_semi_auto_parallel_moe_utils)
+  set_tests_properties(test_semi_auto_parallel_moe_utils
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
   # End of unittests WITH multi cards and WITHOUT timeout
 
   py_test_modules(test_semi_auto_parallel_functional_in_single_card MODULES
