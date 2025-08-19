@@ -17,6 +17,10 @@ import os
 import paddle
 import paddle.distributed as dist
 from paddle.distributed import save_state_dict
+from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
+    ShardedWeight,
+    make_replicated_sharded_weight,
+)
 
 
 def get_global_state_dict():
@@ -86,5 +90,112 @@ class TestSaveStateDict:
             self.test_save_state_dict_with_four_devices()
 
 
+class TestSaveShardedStateDict:
+    def __init__(self):
+        self._ckpt_path = os.getenv("ckpt_path_2")
+
+    def test_save_state_dict_with_one_device(self):
+        # Construct a 4x4 integer tensor as expected result:
+        # [[ 0,  1,  2,  3],
+        #  [ 4,  5,  6,  7],
+        #  [ 8,  9, 10, 11],
+        #  [12, 13, 14, 15]]
+        local_tensor = paddle.to_tensor(
+            [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11], [12, 13, 14, 15]],
+            dtype='int32',
+        )
+        sharded_state_dict = {}
+        sharded_state_dict["t"] = make_replicated_sharded_weight(
+            "t", local_tensor
+        )
+        save_state_dict(sharded_state_dict, self._ckpt_path)
+
+    def test_save_state_dict_with_four_devices(self):
+        if dist.get_rank() == 0:
+            # On rank 0:
+            # The global tensor (4x4) is distributed as:
+            # [[ 0,  1,  *,  *],
+            #  [ 4,  *,  *,  *],
+            #  [ *,  *,  *,  *],
+            #  [ *,  *,  *,  *]]
+            # Numbers 0,1,4 are local, '*' means not present on this rank.
+            local_tensor = paddle.to_tensor([0, 1, 4], dtype='int32')
+            sharded_weight = ShardedWeight(
+                key="t",
+                local_tensor=local_tensor,
+                local_shape=(4, 2),
+                global_shape=(4, 4),
+                global_offset=(0, 0),
+                is_flattened=True,
+                flattened_range=slice(0, 3),
+            )
+        elif dist.get_rank() == 1:
+            # On rank 1:
+            # The global tensor (4x4) is distributed as:
+            # [[ *,  *,  *,  *],
+            #  [ *,  5,  *,  *],
+            #  [ 8,  9,  *,  *],
+            #  [ 12,  13,  *,  *]]
+            # Numbers 5,8,9,12,13 are local, '*' means not present on this rank.
+            local_tensor = paddle.to_tensor([5, 8, 9, 12, 13], dtype='int32')
+            sharded_weight = ShardedWeight(
+                key="t",
+                local_tensor=local_tensor,
+                local_shape=(4, 2),
+                global_shape=(4, 4),
+                global_offset=(0, 0),
+                is_flattened=True,
+                flattened_range=slice(3, 8),
+            )
+        elif dist.get_rank() == 2:
+            # On rank 2:
+            # The global tensor (4x4) is distributed as:
+            # [[ *,  *,  2,  3],
+            #  [ *,  *,  6,  7],
+            #  [ *,  *,  10,  *],
+            #  [ *,  *,  *,  *]]
+            # Numbers 2,3,6,7,10 are local, '*' means not present on this rank.
+            local_tensor = paddle.to_tensor([2, 3, 6, 7, 10], dtype='int32')
+            sharded_weight = ShardedWeight(
+                key="t",
+                local_tensor=local_tensor,
+                local_shape=(4, 2),
+                global_shape=(4, 4),
+                global_offset=(0, 2),
+                is_flattened=True,
+                flattened_range=slice(0, 5),
+            )
+        else:
+            # On rank 3:
+            # The global tensor (4x4) is distributed as:
+            # [[ *,  *,  *,  *],
+            #  [ *,  *,  *,  *],
+            #  [ *,  *,  *,  11],
+            #  [ *,  *,  14,  15]]
+            # Numbers 11,14,15 are local, '*' means not present on this rank.
+            local_tensor = paddle.to_tensor([11, 14, 15], dtype='int32')
+            sharded_weight = ShardedWeight(
+                key="t",
+                local_tensor=local_tensor,
+                local_shape=(4, 2),
+                global_shape=(4, 4),
+                global_offset=(0, 2),
+                is_flattened=True,
+                flattened_range=slice(5, 8),
+            )
+
+        sharded_state_dict = {"t": sharded_weight}
+        save_state_dict(sharded_state_dict, self._ckpt_path)
+        paddle.distributed.barrier()
+
+    def run_test_case(self):
+        device_num = int(os.getenv("device_num"))
+        if device_num == 1:
+            self.test_save_state_dict_with_one_device()
+        elif device_num == 4:
+            self.test_save_state_dict_with_four_devices()
+
+
 if __name__ == "__main__":
     TestSaveStateDict().run_test_case()
+    TestSaveShardedStateDict().run_test_case()

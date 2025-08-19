@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place
 
 import paddle
 from paddle.base import core
@@ -64,14 +64,12 @@ class TestBatchFCOp(OpTest):
         self.outputs = {"Out": np_out}
 
     def test_check_output_gpu(self):
-        if core.is_compiled_with_cuda():
-            self.check_output_with_place(core.CUDAPlace(0))
+        self.check_output_with_place(get_device_place())
 
     def test_check_grad_gpu(self):
-        if core.is_compiled_with_cuda():
-            self.check_grad_with_place(
-                core.CUDAPlace(0), ["Bias", "W", "Input"], "Out"
-            )
+        self.check_grad_with_place(
+            get_device_place(), ["Bias", "W", "Input"], "Out"
+        )
 
 
 class TestBatchFCOp1(OpTest):

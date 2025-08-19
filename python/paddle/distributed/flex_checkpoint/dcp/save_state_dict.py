@@ -295,8 +295,7 @@ def save_state_dict(
             async_save,
         )
 
-
-## test_ci
+## test 
 def save_state_dict_impl(
     state_dict: dict[str, Tensor] | dict[str, ShardedWeight],
     path: str,
@@ -313,8 +312,8 @@ def save_state_dict_impl(
         if len(flat_state_dict) > 0:
             for val in flat_state_dict.values():
                 assert isinstance(
-                    val, paddle.Tensor
-                ), f"The value of state_dict should be a paddle.Tensor, but got: {val}."
+                    val, (paddle.Tensor, ShardedWeight)
+                ), f"The value of state_dict should be a paddle.Tensor or ShardedWeight, but got: {val}."
 
         if not os.path.exists(path):
             os.makedirs(path, exist_ok=True)
