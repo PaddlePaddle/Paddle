@@ -664,8 +664,6 @@ def get_pp_stage_id(layer_id, num_hidden_layers, virtual_pp_degree):
     chunk_id = layer_id // chunk_size
     pp_stage_id = chunk_id % pp_degree
     pp_stage = get_pp_stage_by_pp_degree(pp_degree)
-    print("lzx debug pp_stage:", pp_stage)
-    print("lzx debug pp_stage_id:", pp_stage_id)
     return pp_stage_id
 
 
