@@ -31,9 +31,7 @@ if TYPE_CHECKING:
     from paddle._typing import DTypeLike
 
 
-@ParamIgnoreAndAliasDecorator(
-    [('_stacklevel', 2, int)], {"x": ["input"], "axis": ["dim"]}
-)
+@ParamIgnoreAndAliasDecorator
 def softmax(
     x: Tensor,
     axis: int = -1,

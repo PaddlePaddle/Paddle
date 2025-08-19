@@ -159,84 +159,27 @@ class SetDefaultParaAliasDecorator(DecoratorBase):
         return args, kwargs
 
 
-class ParamIgnoreAndAliasDecorator(DecoratorBase):
-    """Decorator for handling ignored parameters and parameter alias.
-
-    Args:
-        ignore_specs: An iterable of ignore specifications where each element is either:
-            - A string (parameter name to ignore)
-            - A tuple of (parameter_name, index, type) to ignore by name, position and type
-        alias_mapping: A dict mapping from origin to alias. Alias is iterable.
-    """
-
-    def __init__(
-        self,
-        ignore_specs: Iterable[str | tuple[str, int, type[Any]]],
-        alias_mapping: dict[str, Iterable[str]],
-    ) -> None:
-        super().__init__()
-        self._ignore_names = set()
-        self._ignore_index_type = {}
-        for spec in ignore_specs:
-            if isinstance(spec, str):
-                self._ignore_names.add(spec)
-            elif isinstance(spec, tuple) and len(spec) == 3:
-                name, index, typ = spec
-                self._ignore_names.add(name)
-                self._ignore_index_type[index] = typ
-            else:
-                raise ValueError(
-                    f"Invalid ignore specification: {spec}. "
-                    "Expected str or tuple[str, int, Type[Any]]"
-                )
-        self._ignore_index_type = dict(sorted(self._ignore_index_type.items()))
-
-        # Check alias_mapping types
-        if not isinstance(alias_mapping, dict):
-            raise TypeError("alias_mapping must be a dictionary")
-        # Build a reverse alias map for faster lookup
-        self._alias_mapping = {}
-        for original, aliases in alias_mapping.items():
-            if not isinstance(aliases, (list, tuple, set)):
-                raise TypeError(f"Aliases for '{aliases}' must be iterable")
-            for alias in aliases:
-                self._alias_mapping[alias] = original
-
-    def process(self, args: tuple[Any, ...], kwargs: dict[str, Any]):
-        # Remove ignored parameters from kwargs
-        ignore_names = self._ignore_names
-        if ignore_names and (args or kwargs):  # Skip if no names to ignore
-            if kwargs:
-                for name in ignore_names:
-                    kwargs.pop(name, None)
-
-            # Remove ignored parameters from args
-            ignore_index_type = self._ignore_index_type
-            if ignore_index_type and args:
-                args = tuple(
-                    arg
-                    for i, arg in enumerate(args)
-                    if not (
-                        i in ignore_index_type
-                        and isinstance(arg, ignore_index_type[i])
-                    )
-                )
+def ParamIgnoreAndAliasDecorator(
+    func: Callable[_InputT, _RetT],
+) -> Callable[_InputT, _RetT]:
+    @functools.wraps(func)
+    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+        # Remove ignored parameters from args
+        if 2 < len(args) and isinstance(args[2], int):
+            args = args[:2] + args[2 + 1 :]
+        else:
+            # Remove ignored parameters from kwargs
+            kwargs.pop("_stacklevel", None)
 
         # Process parameters to handle alias mapping
-        alias_mapping = self._alias_mapping
-        if alias_mapping and kwargs:
-            # Directly modify kwargs based on alias mapping (only modify if necessary)
-            for alias, original in alias_mapping.items():
-                if alias in kwargs:
-                    if original not in kwargs:
-                        # Only modify the dictionary if necessary
-                        kwargs[original] = kwargs.pop(alias)
-                    else:
-                        raise ValueError(
-                            f"Cannot specify both '{original}' and its alias '{alias}'"
-                        )
+        if "input" in kwargs:
+            kwargs["x"] = kwargs.pop("input")
+        if "dim" in kwargs:
+            kwargs["axis"] = kwargs.pop("dim")
+        return func(*args, **kwargs)
 
-        return args, kwargs
+    wrapper.__signature__ = inspect.signature(func)
+    return cast("Callable[_InputT, _RetT]", wrapper)
 
 
 def param_one_alias(alias_list):
