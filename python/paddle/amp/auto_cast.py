@@ -512,9 +512,9 @@ def amp_guard(
             paddle.float32
             >>> # doctest: -SKIP
     """
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "We only support 'amp_guard' in dynamic or pir mode."
+    assert in_dynamic_or_pir_mode(), (
+        "We only support 'amp_guard' in dynamic or pir mode."
+    )
 
     amp_state = locals()
     global _g_amp_state_

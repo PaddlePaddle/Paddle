@@ -61,8 +61,23 @@ void FuseOperatorScaleOneDNNPass::FuseScale(Graph *graph,
     GET_IR_NODE_FROM_SUBGRAPH(scale_op, activation, op_scale_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(scale_out, activation_out, op_scale_pattern);
 
+    bool use_onednn_not = false;
+    // use_mkldnn, use_onednn both set to false.
     if (operator_op->Op()->HasAttr("use_mkldnn") &&
-        !(PADDLE_GET_CONST(bool, operator_op->Op()->GetAttr("use_mkldnn")))) {
+        !(PADDLE_GET_CONST(bool, operator_op->Op()->GetAttr("use_mkldnn"))) &&
+        operator_op->Op()->HasAttr("use_onednn") &&
+        !(PADDLE_GET_CONST(bool, operator_op->Op()->GetAttr("use_onednn")))) {
+      use_onednn_not = true;
+    } else if (operator_op->Op()->HasAttr("use_mkldnn") &&
+               !(PADDLE_GET_CONST(bool,
+                                  operator_op->Op()->GetAttr("use_mkldnn")))) {
+      use_onednn_not = true;
+    } else if (operator_op->Op()->HasAttr("use_mkldnn") &&
+               !(PADDLE_GET_CONST(bool,
+                                  operator_op->Op()->GetAttr("use_mkldnn")))) {
+      use_onednn_not = true;
+    }
+    if (use_onednn_not) {
       VLOG(4) << "Only oneDNN version of " << op_type
               << "can be fused with scale.";
       return;
