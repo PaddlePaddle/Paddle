@@ -72,9 +72,9 @@ class DistributedUpdateLossScalingImpl(DistributedOperatorImpl):
         backward_op = dist_op_context.cur_src_op
         rank_id = dist_op_context.rank_id
         dist_attr = ctx.get_op_dist_attr_for_program(backward_op)
-        assert (
-            dist_attr is not None
-        ), f"backward op [{backward_op}] don't have dist attribute !"
+        assert dist_attr is not None, (
+            f"backward op [{backward_op}] don't have dist attribute !"
+        )
 
         assert rank_id in dist_attr.process_mesh.process_ids
 
@@ -103,46 +103,46 @@ class DistributedUpdateLossScalingImpl(DistributedOperatorImpl):
             'OutBadSteps'
         )
 
-        assert (
-            len(kwargs['FoundInfinite']) == 1
-        ), "update_loss_scaling input FoundInfinite take 1 variable but got {}".format(
-            kwargs['FoundInfinite']
+        assert len(kwargs['FoundInfinite']) == 1, (
+            "update_loss_scaling input FoundInfinite take 1 variable but got {}".format(
+                kwargs['FoundInfinite']
+            )
         )
-        assert (
-            len(kwargs['PrevLossScaling']) == 1
-        ), "update_loss_scaling input PrevLossScaling take 1 variable but got {}".format(
-            kwargs['PrevLossScaling']
+        assert len(kwargs['PrevLossScaling']) == 1, (
+            "update_loss_scaling input PrevLossScaling take 1 variable but got {}".format(
+                kwargs['PrevLossScaling']
+            )
         )
-        assert (
-            len(kwargs['InGoodSteps']) == 1
-        ), "update_loss_scaling input InGoodSteps take 1 variable but got {}".format(
-            kwargs['InGoodSteps']
+        assert len(kwargs['InGoodSteps']) == 1, (
+            "update_loss_scaling input InGoodSteps take 1 variable but got {}".format(
+                kwargs['InGoodSteps']
+            )
         )
-        assert (
-            len(kwargs['InBadSteps']) == 1
-        ), "update_loss_scaling input InBadSteps take 1 variable but got {}".format(
-            kwargs['InBadSteps']
+        assert len(kwargs['InBadSteps']) == 1, (
+            "update_loss_scaling input InBadSteps take 1 variable but got {}".format(
+                kwargs['InBadSteps']
+            )
         )
-        assert (
-            len(kwargs['LossScaling']) == 1
-        ), "update_loss_scaling output LossScaling take 1 variable but got {}".format(
-            kwargs['LossScaling']
+        assert len(kwargs['LossScaling']) == 1, (
+            "update_loss_scaling output LossScaling take 1 variable but got {}".format(
+                kwargs['LossScaling']
+            )
         )
-        assert (
-            len(kwargs['OutGoodSteps']) == 1
-        ), "update_loss_scaling output OutGoodSteps take 1 variable but got {}".format(
-            kwargs['OutGoodSteps']
+        assert len(kwargs['OutGoodSteps']) == 1, (
+            "update_loss_scaling output OutGoodSteps take 1 variable but got {}".format(
+                kwargs['OutGoodSteps']
+            )
         )
-        assert (
-            len(kwargs['OutBadSteps']) == 1
-        ), "update_loss_scaling output OutBadSteps take 1 variable but got {}".format(
-            kwargs['OutBadSteps']
+        assert len(kwargs['OutBadSteps']) == 1, (
+            "update_loss_scaling output OutBadSteps take 1 variable but got {}".format(
+                kwargs['OutBadSteps']
+            )
         )
 
-        assert len(kwargs['X']) == len(
-            kwargs['Out']
-        ), "update_loss_scaling got [{}] X and [{}] Out, which are supposed to be equal".format(
-            len(kwargs['X']), len(kwargs['Out'])
+        assert len(kwargs['X']) == len(kwargs['Out']), (
+            "update_loss_scaling got [{}] X and [{}] Out, which are supposed to be equal".format(
+                len(kwargs['X']), len(kwargs['Out'])
+            )
         )
 
         filter_vars = []

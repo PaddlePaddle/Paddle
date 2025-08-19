@@ -77,7 +77,7 @@ repos:
 
             | python/paddle/de.+
 
-            # | python/paddle/distributed/a.+
+            | python/paddle/distributed/a.+
 
             | python/paddle/distributed/[b-e].+
 
@@ -133,7 +133,7 @@ repos:
 
             # | python/paddle/de.+
 
-            | python/paddle/distributed/a.+
+            # | python/paddle/distributed/a.+
 
             # | python/paddle/distributed/[b-e].+
 
