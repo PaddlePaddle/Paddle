@@ -25,6 +25,9 @@ from paddle.distributed.fleet.meta_parallel import get_rng_state_tracker
 from paddle.distributed.fleet.utils.hybrid_parallel_util import (
     fused_allreduce_gradients_with_group,
 )
+from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
+    build_sharded_state_dict,
+)
 from paddle.nn import (
     Layer,
     functional as F,
@@ -555,6 +558,15 @@ class ColumnSequenceParallelLinear(Layer):
             )
         return output
 
+    def sharded_state_dict(
+        self,
+        structured_name_prefix: str = "",
+    ):
+        state_dict = self.state_dict(structured_name_prefix="")
+        return build_sharded_state_dict(
+            state_dict, {"weight": 1, "bias": 0}, structured_name_prefix
+        )
+
 
 class MPScale(PyLayer):
     @staticmethod
@@ -690,3 +702,12 @@ class RowSequenceParallelLinear(Layer):
                 input_parallel, self.weight, self.bias, name=self._name
             )
         return output
+
+    def sharded_state_dict(
+        self,
+        structured_name_prefix: str = "",
+    ):
+        state_dict = self.state_dict(structured_name_prefix="")
+        return build_sharded_state_dict(
+            state_dict, {"weight": 0}, structured_name_prefix
+        )

@@ -21,6 +21,7 @@ jobs:
     uses: ./.github/workflows/_Clone-linux.yml
     with:
       clone_dir: Paddle-build
+      workflow-name: 'CI-build'
 
   build-docker:
     name: build docker images
@@ -33,21 +34,22 @@ jobs:
   inference:
     name: PR-CI-Inference
     uses: ./.github/workflows/_Inference.yml
-    needs: build-docker
+    needs: [clone, build-docker]
     with:
       docker_inference_image: ${{ needs.build-docker.outputs.docker_build_image }}
+      clone-can-skip: ${{ needs.clone.outputs.can-skip }}
 
   build:
     name: Linux-build
     uses: ./.github/workflows/_Linux-build.yml
-    needs: build-docker
+    needs: [clone, build-docker]
     with:
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
 
   static-check:
     name: Static-Check
     uses: ./.github/workflows/_Static-Check.yml
-    needs: [build-docker, build]
+    needs: [clone, build-docker, build]
     with:
       can-skip: ${{ needs.build.outputs.can-skip }}
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
@@ -55,7 +57,7 @@ jobs:
   ce-framework:
     name: CE-Framework
     uses: ./.github/workflows/_CE-Framework.yml
-    needs: [build-docker, build]
+    needs: [clone, build-docker, build]
     with:
       can-skip: ${{ needs.build.outputs.can-skip }}
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
@@ -63,7 +65,7 @@ jobs:
   ce-cinn-framework:
     name: CE-CINN-Framework
     uses: ./.github/workflows/_CE-CINN-Framework.yml
-    needs: [build-docker, build]
+    needs: [clone, build-docker, build]
     with:
       can-skip: ${{ needs.build.outputs.can-skip }}
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
@@ -71,7 +73,7 @@ jobs:
   api-benchmark:
     name: Api-Benchmark
     uses: ./.github/workflows/_Api-Benchmark.yml
-    needs: [build-docker, build]
+    needs: [clone, build-docker, build]
     with:
       can-skip: ${{ needs.build.outputs.can-skip }}
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
@@ -79,7 +81,7 @@ jobs:
   auto-parallel:
     name: Auto-Parallel
     uses: ./.github/workflows/_Auto-Parallel.yml
-    needs: [build-docker, build]
+    needs: [clone, build-docker, build]
     with:
       can-skip: ${{ needs.build.outputs.can-skip }}
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
@@ -87,7 +89,7 @@ jobs:
   model-benchmark:
     name: Model-Benchmark
     uses: ./.github/workflows/_Model-Benchmark.yml
-    needs: [build-docker, build]
+    needs: [clone, build-docker, build]
     with:
       can-skip: ${{ needs.build.outputs.can-skip }}
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
@@ -95,11 +97,10 @@ jobs:
   doc-preview:
     name: Doc-Preview
     uses: ./.github/workflows/_Doc-Preview.yml
-    needs: [build-docker, build]
+    needs: [clone, build-docker, build]
     with:
       can-skip: ${{ needs.build.outputs.can-skip }}
       docker_doc_image: ${{ needs.build-docker.outputs.docker_doc_image }}
-
 
   slice:
     name: Slice

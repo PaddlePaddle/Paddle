@@ -470,7 +470,9 @@ class ScheduleFThenB(PipelineScheduleSingle):
                 for work in works.values():
                     work.wait()
 
-                output = self._stage.forward_one_chunk(i, arg_mbs[i], kwarg_mbs[i])  # type: ignore[index]
+                output = self._stage.forward_one_chunk(
+                    i, arg_mbs[i], kwarg_mbs[i]
+                )
 
                 ops = self._stage.get_fwd_send_ops(i)
                 works = _sorted_batch_p2p(ops, desc="fwd_send")
@@ -577,7 +579,9 @@ class Schedule1F1B(PipelineScheduleSingle):
                 recv_work.wait()
 
             # Compute
-            output = self._stage.forward_one_chunk(fwd_mb_index, arg_mbs[fwd_mb_index], kwarg_mbs[fwd_mb_index])  # type: ignore[index]
+            output = self._stage.forward_one_chunk(
+                fwd_mb_index, arg_mbs[fwd_mb_index], kwarg_mbs[fwd_mb_index]
+            )
 
             # Clear previous chunk's forward sends (hopefully they have well
             # finished, otherwise, we are heavily communication bound, in which
@@ -639,7 +643,9 @@ class Schedule1F1B(PipelineScheduleSingle):
                 fuse_work.wait()
 
             # Now do the fwd
-            output = self._stage.forward_one_chunk(fwd_mb_index, arg_mbs[fwd_mb_index], kwarg_mbs[fwd_mb_index])  # type: ignore[index]
+            output = self._stage.forward_one_chunk(
+                fwd_mb_index, arg_mbs[fwd_mb_index], kwarg_mbs[fwd_mb_index]
+            )
 
             # Compute loss
             self._maybe_compute_loss(
@@ -854,9 +860,9 @@ class PipelineScheduleMulti(_PipelineSchedule):
                     computation_type = action.computation_type
                     mb_index = action.microbatch_index
                     stage_index = action.stage_index
-                    assert (
-                        mb_index is not None
-                    ), "All currently supported action types require valid microbatch_index"
+                    assert mb_index is not None, (
+                        "All currently supported action types require valid microbatch_index"
+                    )
                     if computation_type == _ActType.FORWARD:
                         # perform forward computation
                         stage = stage_index_to_stage[stage_index]
@@ -916,9 +922,9 @@ class PipelineScheduleMulti(_PipelineSchedule):
                         computation_type = prev_rank_action.computation_type
                         mb_index = prev_rank_action.microbatch_index
                         stage_index = prev_rank_action.stage_index
-                        assert (
-                            mb_index is not None
-                        ), "All currently supported action types require valid microbatch_index"
+                        assert mb_index is not None, (
+                            "All currently supported action types require valid microbatch_index"
+                        )
                         # Only handle sends for the forward from a previous rank
                         if computation_type == _ActType.FORWARD:
                             # If not the last stage, then receive fwd activations
@@ -947,9 +953,9 @@ class PipelineScheduleMulti(_PipelineSchedule):
                         computation_type = next_rank_action.computation_type
                         mb_index = next_rank_action.microbatch_index
                         stage_index = next_rank_action.stage_index
-                        assert (
-                            mb_index is not None
-                        ), "All currently supported action types require valid microbatch_index"
+                        assert mb_index is not None, (
+                            "All currently supported action types require valid microbatch_index"
+                        )
                         # Only handle receives for the backwards from a next rank
                         if computation_type in (FORWARD, BACKWARD_WEIGHT):
                             # Next rank doing forward or weight update has no influence for the current rank backward recv

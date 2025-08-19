@@ -310,7 +310,7 @@ class TestTransformsCV2(unittest.TestCase):
             transforms.ContrastTransform(-1.0)
 
         with self.assertRaises(ValueError):
-            transforms.SaturationTransform(-1.0),
+            transforms.SaturationTransform(-1.0)
 
         with self.assertRaises(ValueError):
             transforms.HueTransform(-1.0)
@@ -360,12 +360,12 @@ class TestTransformsCV2(unittest.TestCase):
             transforms.RandomAffine([-30, 60], translate=[2, 2])
 
         with self.assertRaises(ValueError):
-            transforms.RandomAffine(10, translate=[0.2, 0.2], scale=[1, 2, 3]),
+            transforms.RandomAffine(10, translate=[0.2, 0.2], scale=[1, 2, 3])
 
         with self.assertRaises(ValueError):
             transforms.RandomAffine(
                 10, translate=[0.2, 0.2], scale=[0.5, 0.5], shear=[1, 2, 3]
-            ),
+            )
 
         with self.assertRaises(ValueError):
             transforms.RandomAffine(
@@ -633,15 +633,15 @@ class TestTransformsTensor(TestTransformsCV2):
             transforms.RandomAffine([-30, 60], translate=[2, 2])
 
         with self.assertRaises(ValueError):
-            transforms.RandomAffine(10, translate=[0.2, 0.2], scale=[-2, -1]),
+            transforms.RandomAffine(10, translate=[0.2, 0.2], scale=[-2, -1])
 
         with self.assertRaises(ValueError):
-            transforms.RandomAffine(10, translate=[0.2, 0.2], scale=[1, 2, 3]),
+            transforms.RandomAffine(10, translate=[0.2, 0.2], scale=[1, 2, 3])
 
         with self.assertRaises(ValueError):
             transforms.RandomAffine(
                 10, translate=[0.2, 0.2], scale=[0.5, 0.5], shear=[1, 2, 3]
-            ),
+            )
 
         with self.assertRaises(ValueError):
             transforms.RandomAffine(

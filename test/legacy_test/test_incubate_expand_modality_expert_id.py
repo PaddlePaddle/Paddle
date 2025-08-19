@@ -177,5 +177,4 @@ class Test_expand_modality_expert_id_API(unittest.TestCase):
 
 
 if __name__ == "__main__":
-
     unittest.main()

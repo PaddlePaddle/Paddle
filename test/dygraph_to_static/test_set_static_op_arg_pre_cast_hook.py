@@ -20,7 +20,6 @@ from dygraph_to_static_utils import (
     enable_to_static_guard,
     static_guard,
     test_ast_only,
-    test_pir_only,
 )
 
 import paddle
@@ -29,7 +28,6 @@ from paddle.pir.core import _convert_into_value, static_op_arg_cast_guard
 
 class TestSetStaticOpArgPreCastHook(Dy2StTestBase):
     @test_ast_only
-    @test_pir_only
     def test_set_static_op_arg_pre_cast_hook(self):
         eager_tensor = paddle.rand((10, 10), 'float32')
 
@@ -61,7 +59,6 @@ class NetWithEagerTensor(paddle.nn.Layer):
 
 class TestSetStaticOpArgPreCastHookWithEagerTensor(Dy2StTestBase):
     @test_ast_only
-    @test_pir_only
     def test_net_with_eager_tensor(self):
         net = NetWithEagerTensor()
         net.extra_inputs.append(paddle.rand((10, 10), 'float32'))

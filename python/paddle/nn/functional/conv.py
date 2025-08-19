@@ -963,8 +963,7 @@ def conv1d_transpose(
     else:
         if output_padding != 0:
             raise ValueError(
-                'output_padding option is mutually exclusive with '
-                'output_size'
+                'output_padding option is mutually exclusive with output_size'
             )
         if isinstance(output_size, (list, tuple, int)):
             output_size = [*convert_to_list(output_size, 1, 'output_size'), 1]
@@ -1236,8 +1235,7 @@ def conv2d_transpose(
     else:
         if output_padding != 0:
             raise ValueError(
-                'output_padding option is mutually exclusive with '
-                'output_size'
+                'output_padding option is mutually exclusive with output_size'
             )
         if isinstance(output_size, (list, tuple)):
             if _contain_var(output_size):
@@ -1710,8 +1708,7 @@ def conv3d_transpose(
     else:
         if output_padding != 0:
             raise ValueError(
-                'output_padding option is mutually exclusive with '
-                'output_size'
+                'output_padding option is mutually exclusive with output_size'
             )
         if isinstance(output_size, (list, tuple, int)):
             output_size = convert_to_list(output_size, 3, 'output_size')

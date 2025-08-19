@@ -16,6 +16,7 @@
 """
 TestCases for check_api_compatible.py
 """
+
 import tempfile
 import unittest
 

@@ -179,5 +179,7 @@ PD_REGISTER_KERNEL(put_along_axis_grad,
                    double,
                    int64_t,
                    int,
+                   int16_t,
+                   uint8_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
