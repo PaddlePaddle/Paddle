@@ -266,9 +266,9 @@ class Buffer:
             144: Config(Buffer.num_sms, 32, 720, 12, 128),
             160: Config(Buffer.num_sms, 28, 720, 12, 128),
         }
-        assert (
-            num_ranks in config_map
-        ), f'Unsupported number of EP ranks: {num_ranks}'
+        assert num_ranks in config_map, (
+            f'Unsupported number of EP ranks: {num_ranks}'
+        )
         return config_map[num_ranks]
 
     @staticmethod
@@ -294,9 +294,9 @@ class Buffer:
             144: Config(Buffer.num_sms, 2, 720, 8, 128),
             160: Config(Buffer.num_sms, 2, 720, 8, 128),
         }
-        assert (
-            num_ranks in config_map
-        ), f'Unsupported number of EP ranks: {num_ranks}'
+        assert num_ranks in config_map, (
+            f'Unsupported number of EP ranks: {num_ranks}'
+        )
         return config_map[num_ranks]
 
     # noinspection PyTypeChecker

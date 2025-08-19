@@ -1693,6 +1693,70 @@ PYBIND11_MODULE(libpaddle, m) {
                               phi::DataLayout::NCHW,
                               phi::CPUPlace());
            });
+  m.def(
+      "frombuffer",
+      [](py::object buffer,
+         phi::DataType dtype,
+         int64_t count,
+         int64_t offset) {
+        int64_t actual_count = 0;
+        auto elsize = phi::SizeOf(dtype);
+        Py_buffer view;
+        if (PyObject_GetBuffer(buffer.ptr(), &view, PyBUF_WRITABLE) < 0) {
+          PADDLE_ENFORCE_EQ(
+              PyObject_GetBuffer(buffer.ptr(), &view, PyBUF_SIMPLE) >= 0,
+              true,
+              common::errors::InvalidArgument(
+                  "could not retrieve buffer from object"));
+          PyErr_Clear();
+        }
+        Py_INCREF(view.obj);
+        std::unique_ptr<PyObject> obj(view.obj);
+        auto len = view.len;
+        auto buf = view.buf;
+        PyBuffer_Release(&view);
+        PADDLE_ENFORCE_EQ(
+            len > 0 && count != 0,
+            true,
+            common::errors::InvalidArgument(
+                "both buffer length and count must be greater than 0"));
+        PADDLE_ENFORCE_EQ(
+            offset >= 0 && offset < len,
+            true,
+            common::errors::InvalidArgument("offset must be non-negative and "
+                                            "no greater than buffer length"));
+        PADDLE_ENFORCE_EQ(
+            count > 0 || (len - offset) % elsize == 0,
+            true,
+            common::errors::InvalidArgument("buffer length after offset must "
+                                            "be a multiple of element size"));
+        if (count < 0) {
+          actual_count = static_cast<int64_t>(len - offset) / elsize;
+        } else {
+          actual_count = static_cast<int64_t>(count);
+        }
+
+        PADDLE_ENFORCE_LE(static_cast<int64_t>(offset) + actual_count * elsize,
+                          static_cast<int64_t>(len),
+                          common::errors::InvalidArgument(
+                              "requested buffer length after offset must not "
+                              "be greater than actual buffer length"));
+
+        auto offset_buf = static_cast<char *>(buf) + offset;
+        return from_blob(offset_buf,
+                         phi::IntArray({actual_count}),
+                         dtype,
+                         phi::DataLayout::NCHW,
+                         phi::CPUPlace(),
+                         [obj = obj.release()](void *) {
+                           pybind11::gil_scoped_acquire gil;
+                           Py_DECREF(obj);
+                         });
+      },
+      py::arg("buffer"),
+      py::arg("dtype"),
+      py::arg("count") = -1,
+      py::arg("offset") = 0);
 
   m.def("from_dlpack", [](py::object data) {
     DLManagedTensor *dlMTensor = reinterpret_cast<DLManagedTensor *>(

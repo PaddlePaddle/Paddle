@@ -457,6 +457,60 @@ CUDA_ATOMIC_WRAPPER(Mul, float) {
   return __int_as_float(old);
 }
 
+__device__ __forceinline__ uint32_t __loadAligned(const uintptr_t base_addr,
+                                                  uint32_t mask,
+                                                  uint32_t shift) {
+  // get 4B aligned address
+  uint32_t aligned_value = *reinterpret_cast<const uint32_t *>(base_addr);
+  return (aligned_value & mask) >> shift;
+}
+
+CUDA_ATOMIC_WRAPPER(Mul, uint8_t) {
+  // get 4D aligned base address
+  uintptr_t base_addr = reinterpret_cast<uintptr_t>(address) & (~3);
+  uint32_t offset = reinterpret_cast<uintptr_t>(address) - base_addr;
+  uint32_t shift = offset * 8;
+  uint32_t mask = 0xFFU << shift;
+
+  uint32_t old32 = __loadAligned(base_addr, mask, shift), assumed32 = 0;
+
+  do {
+    assumed32 = old32;
+    uint8_t current = static_cast<uint8_t>((old32 & mask) >> shift);
+    uint8_t new_val = current * val;
+    uint32_t new32 =
+        (old32 & ~mask) | (static_cast<uint32_t>(new_val) << shift);
+
+    old32 =
+        atomicCAS(reinterpret_cast<uint32_t *>(base_addr), assumed32, new32);
+  } while (assumed32 != old32);
+
+  return static_cast<uint8_t>((old32 & mask) >> shift);
+}
+
+CUDA_ATOMIC_WRAPPER(Mul, int16_t) {
+  // get 4D aligned base address
+  uintptr_t base_addr = reinterpret_cast<uintptr_t>(address) & (~3);
+  uint32_t offset = (reinterpret_cast<uintptr_t>(address) - base_addr) / 2;
+  uint32_t shift = offset * 16;
+  uint32_t mask = 0xFFFFU << shift;
+
+  uint32_t old32 = __loadAligned(base_addr, mask, shift), assumed32 = 0;
+
+  do {
+    assumed32 = old32;
+    int16_t current = static_cast<int16_t>((old32 & mask) >> shift);
+    int16_t new_val = current * val;
+    uint32_t new32 =
+        (old32 & ~mask) | (static_cast<uint32_t>(new_val) << shift);
+
+    old32 =
+        atomicCAS(reinterpret_cast<uint32_t *>(base_addr), assumed32, new32);
+  } while (assumed32 != old32);
+
+  return static_cast<int16_t>((old32 & mask) >> shift);
+}
+
 CUDA_ATOMIC_WRAPPER(Mul, double) {
   unsigned long long int *const address_as_ull =            // NOLINT
       reinterpret_cast<unsigned long long int *>(address);  // NOLINT
@@ -942,6 +996,41 @@ CUDA_ATOMIC_WRAPPER(Min, phi::dtype::bfloat16) {
     return ret;
   }
 }
+
+#define DEFINE_ATOMIC_MINMAX(Dtype, OpType, operator)                         \
+  __device__ __forceinline__ Dtype CudaAtomic##OpType(Dtype *address,         \
+                                                      const Dtype val) {      \
+    uintptr_t base_addr = reinterpret_cast<uintptr_t>(address) & (~3);        \
+    uint32_t offset_bytes = reinterpret_cast<uintptr_t>(address) - base_addr; \
+    uint32_t shift = 0, mask = 0;                                             \
+    if constexpr (sizeof(Dtype) == 1) {                                       \
+      shift = offset_bytes * 8;                                               \
+      mask = 0xFFU << shift;                                                  \
+    } else {                                                                  \
+      shift = (offset_bytes / 2) * 16;                                        \
+      mask = 0xFFFFU << shift;                                                \
+    }                                                                         \
+    Dtype current = 0;                                                        \
+    Dtype new_val = 0;                                                        \
+    uint32_t assumed32 = 0, old32 = __loadAligned(base_addr, mask, shift);    \
+    do {                                                                      \
+      assumed32 = old32;                                                      \
+      current = static_cast<Dtype>((old32 & mask) >> shift);                  \
+      new_val = operator(current, val);                                       \
+      uint32_t new32 =                                                        \
+          (old32 & ~mask) | (static_cast<uint32_t>(new_val) << shift);        \
+      old32 = atomicCAS(                                                      \
+          reinterpret_cast<uint32_t *>(base_addr), assumed32, new32);         \
+    } while (assumed32 != old32);                                             \
+    return current;                                                           \
+  }
+
+DEFINE_ATOMIC_MINMAX(int16_t, Min, min)
+DEFINE_ATOMIC_MINMAX(int16_t, Max, max)
+DEFINE_ATOMIC_MINMAX(uint8_t, Min, min)
+DEFINE_ATOMIC_MINMAX(uint8_t, Max, max)
+
+#undef DEFINE_ATOMIC_MINMAX
 
 #ifdef PADDLE_WITH_CUDA
 /*
