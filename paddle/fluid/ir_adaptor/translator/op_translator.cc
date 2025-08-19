@@ -266,7 +266,7 @@ inline std::string GetPrefix(pir::IrContext* ctx, const OpDesc& op_desc) {
       paddle::dialect::IsOneDNNOnlyOp(op_desc.Type())) {
     if (!HasOpInfo(ctx, op_desc, kOneDNNTargetDialectPrefix)) {
       VLOG(3) << op_desc.Type()
-              << "'s use_mkldnn == True, but PIR not support OneDNN for this "
+              << "'s use_onednn == True, but PIR not support OneDNN for this "
                  "op right now.";
       return kTargetDialectPrefix;
     } else {

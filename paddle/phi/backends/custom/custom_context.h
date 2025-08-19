@@ -22,11 +22,21 @@ limitations under the License. */
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
 
+// Forward declaration of cuBLAS types.
+using cublasHandle_t = struct cublasContext*;
+using cublasLtHandle_t = struct cublasLtContext*;
+
 namespace Eigen {
 struct GpuDevice;
 }  // namespace Eigen
 
 namespace phi {
+
+// #ifndef BLAS_HANDLE_TYPE
+// #define BLAS_HANDLE_TYPE void*
+// // #else
+// // // using cublasHandle_t = struct cublasContext*;
+// #endif
 
 class CustomContext : public DeviceContext,
                       public TypeInfoTraits<DeviceContext, CustomContext> {
@@ -117,6 +127,29 @@ class CustomContext : public DeviceContext,
   void SetDriverVersion(int val);
 
   void SetRuntimeVersion(int val);
+
+  cublasHandle_t cublas_handle() const;
+
+  cublasLtHandle_t cublaslt_handle() const;
+
+  void SetBlasHandle(cublasHandle_t);
+  void SetBlasHandle(std::function<cublasHandle_t()>&&);
+
+  void SetBlasTensorCoreHandle(cublasHandle_t);
+  void SetBlasTensorCoreHandle(std::function<cublasHandle_t()>&&);
+
+  void SetBlasTF32Handle(cublasHandle_t);
+  void SetBlasTF32Handle(std::function<cublasHandle_t()>&&);
+
+  void SetBlasLtHandle(cublasLtHandle_t);
+  void SetBlasLtHandle(std::function<cublasLtHandle_t()>&&);
+
+  bool tensor_core_available() const;
+
+  void CublasCall(const std::function<void(cublasHandle_t)>&) const;
+
+  void TensorCoreCublasCallIfAvailable(
+      const std::function<void(cublasHandle_t)>&) const;
 
  private:
   CustomContext();
