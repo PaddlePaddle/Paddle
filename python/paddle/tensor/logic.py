@@ -20,7 +20,7 @@ from typing_extensions import TypeGuard
 
 import paddle
 from paddle import _C_ops
-from paddle._C_ops import logical_and, logical_not, logical_or
+from paddle._C_ops import logical_and, logical_not, logical_or  # noqa: F401
 from paddle.tensor.creation import full
 from paddle.tensor.math import broadcast_shape
 from paddle.utils.decorator_utils import ParamAliasDecorator, param_two_alias

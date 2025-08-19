@@ -21,7 +21,7 @@ from typing_extensions import overload
 
 import paddle
 from paddle import _C_ops
-from paddle._C_ops import index_select
+from paddle._C_ops import index_select  # noqa: F401
 from paddle.common_ops_import import VarDesc, Variable
 from paddle.utils.decorator_utils import ParamAliasDecorator, param_one_alias
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
