@@ -14,11 +14,9 @@
 
 import unittest
 
-from paddle.distributed.flex_checkpoint import (
+from paddle.distributed.flex_checkpoint.aoa.aoa_engine import (
     AoAEngine,
     ShardedWeightDesc,
-)
-from paddle.distributed.flex_checkpoint.aoa.aoa_engine import (
     ShardMappingEntry,
 )
 
@@ -117,7 +115,7 @@ class TestAoAEngine(unittest.TestCase):
             global_shape=(1, 4),
             global_offset=(0, 0),
         )
-        src_sharded_tensor_desc = ShardedWeightDesc(
+        src_sharded_weight_desc = ShardedWeightDesc(
             key="s0",
             local_shape=(1, 2),
             global_shape=(2, 2),
@@ -125,7 +123,7 @@ class TestAoAEngine(unittest.TestCase):
         )
         shard_mapping_entry = ShardMappingEntry(
             target_slice=query,
-            source_slice=src_sharded_tensor_desc,
+            source_slice=src_sharded_weight_desc,
             postprocess_list=[],
         )
         answer = [shard_mapping_entry]
@@ -149,7 +147,7 @@ class TestAoAEngine(unittest.TestCase):
             global_shape=(1, 4),
             global_offset=(0, 2),
         )
-        src_sharded_tensor_desc = ShardedWeightDesc(
+        src_sharded_weight_desc = ShardedWeightDesc(
             key="s1",
             local_shape=(1, 2),
             global_shape=(2, 2),
@@ -157,7 +155,7 @@ class TestAoAEngine(unittest.TestCase):
         )
         shard_mapping_entry = ShardMappingEntry(
             target_slice=query,
-            source_slice=src_sharded_tensor_desc,
+            source_slice=src_sharded_weight_desc,
             postprocess_list=[],
         )
         answer = [shard_mapping_entry]
@@ -198,13 +196,13 @@ class TestAoAEngine(unittest.TestCase):
         )
 
         # d1[:, 0:2] <--- s0[1, :]
-        src_sharded_tensor_desc0 = ShardedWeightDesc(
+        src_sharded_weight_desc0 = ShardedWeightDesc(
             key="s0",
             local_shape=(1, 2),
             global_shape=(2, 2),
             global_offset=(1, 0),  # row 1, columns 0:2
         )
-        dst_sharded_tensor_desc0 = ShardedWeightDesc(
+        dst_sharded_weight_desc0 = ShardedWeightDesc(
             key="d1",
             local_shape=(1, 2),
             global_shape=(1, 4),
@@ -215,13 +213,13 @@ class TestAoAEngine(unittest.TestCase):
         #  +------+------+------+------+
         #  |==s0==|==s0==|      |      |
         #  +------+------+------+------+
-        src_sharded_tensor_desc1 = ShardedWeightDesc(
+        src_sharded_weight_desc1 = ShardedWeightDesc(
             key="s1",
             local_shape=(1, 2),
             global_shape=(2, 2),
             global_offset=(1, 0),
         )
-        dst_sharded_tensor_desc1 = ShardedWeightDesc(
+        dst_sharded_weight_desc1 = ShardedWeightDesc(
             key="d1",
             local_shape=(1, 2),
             global_shape=(1, 4),
@@ -234,13 +232,13 @@ class TestAoAEngine(unittest.TestCase):
         #  +------+------+------+------+
 
         shard_mapping_entry0 = ShardMappingEntry(
-            target_slice=dst_sharded_tensor_desc0,
-            source_slice=src_sharded_tensor_desc0,
+            target_slice=dst_sharded_weight_desc0,
+            source_slice=src_sharded_weight_desc0,
             postprocess_list=[],
         )
         shard_mapping_entry1 = ShardMappingEntry(
-            target_slice=dst_sharded_tensor_desc1,
-            source_slice=src_sharded_tensor_desc1,
+            target_slice=dst_sharded_weight_desc1,
+            source_slice=src_sharded_weight_desc1,
             postprocess_list=[],
         )
         answer = [shard_mapping_entry0, shard_mapping_entry1]

@@ -22,7 +22,7 @@ from auto_parallel.hybrid_strategy.semi_auto_save_state_dict import (
 import paddle
 import paddle.distributed as dist
 from paddle.distributed import load_state_dict
-from paddle.distributed.flex_checkpoint import (
+from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
     ShardedWeight,
     make_replicated_sharded_weight,
 )
