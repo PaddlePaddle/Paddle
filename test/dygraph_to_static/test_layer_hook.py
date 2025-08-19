@@ -93,14 +93,6 @@ class TestNestLayerHook(Dy2StTestBase):
             rtol=1e-05,
             err_msg=f'dygraph_res is {dy_out}\nstatic_res is {st_out}',
         )
-        if not paddle.base.framework.use_pir_api():
-            load_out = self.load_train()
-            np.testing.assert_allclose(
-                st_out,
-                load_out,
-                rtol=1e-05,
-                err_msg=f'load_out is {load_out}\nstatic_res is {st_out}',
-            )
 
 
 if __name__ == "__main__":

@@ -33,21 +33,21 @@ def parse_arg(op_name: str, s: str) -> dict[str, str]:
     2. typename name = default_value
     """
     typename, rest = (item.strip() for item in s.split(" ", 1))
-    assert (
-        len(typename) > 0
-    ), f"The arg typename should not be empty. Please check the args of {op_name} in yaml."
+    assert len(typename) > 0, (
+        f"The arg typename should not be empty. Please check the args of {op_name} in yaml."
+    )
 
-    assert (
-        rest.count("=") <= 1
-    ), f"There is more than 1 = in an arg in {op_name}"
+    assert rest.count("=") <= 1, (
+        f"There is more than 1 = in an arg in {op_name}"
+    )
     if rest.count("=") == 1:
         name, default_value = (item.strip() for item in rest.split("=", 1))
-        assert (
-            len(name) > 0
-        ), f"The arg name should not be empty. Please check the args of {op_name} in yaml."
-        assert (
-            len(default_value) > 0
-        ), f"The default value should not be empty. Please check the args of {op_name} in yaml."
+        assert len(name) > 0, (
+            f"The arg name should not be empty. Please check the args of {op_name} in yaml."
+        )
+        assert len(default_value) > 0, (
+            f"The default value should not be empty. Please check the args of {op_name} in yaml."
+        )
         return {
             "typename": typename,
             "name": name,
@@ -55,9 +55,9 @@ def parse_arg(op_name: str, s: str) -> dict[str, str]:
         }
     else:
         name = rest.strip()
-        assert (
-            len(name) > 0
-        ), f"The arg name should not be empty. Please check the args of {op_name} in yaml."
+        assert len(name) > 0, (
+            f"The arg name should not be empty. Please check the args of {op_name} in yaml."
+        )
         return {"typename": typename, "name": name}
 
 

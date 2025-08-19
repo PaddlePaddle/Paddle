@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
+from utils import dygraph_guard, static_guard
 
 import paddle
 import paddle.framework.dtype as dtypes
@@ -41,7 +42,7 @@ def fill_any_like_wrapper(x, value, out_dtype=None, name=None):
     return paddle.full_like(x, value, tmp_dtype, name=name)
 
 
-class TestFullOp(unittest.TestCase):
+class TestFullLikeOp(unittest.TestCase):
     """Test fill_any_like op(whose API is full_like) for attr out."""
 
     def test_attr_tensor_API(self):
@@ -94,7 +95,8 @@ class TestFullOp(unittest.TestCase):
         paddle.enable_static()
 
 
-class TestFullOpError(unittest.TestCase):
+class TestFullLikeOpError(unittest.TestCase):
+
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -112,6 +114,33 @@ class TestFullOpError(unittest.TestCase):
                 x=input_data,
                 fill_value=2,
                 dtype='uint4',
+            )
+
+    def test_fill_value_errors(self):
+        with dygraph_guard():
+            # The fill_value must be one of [int, float, bool, complex, Tensor, np.number].
+            self.assertRaises(
+                TypeError,
+                paddle.full_like,
+                x=paddle.to_tensor([1.0, 2.0]),
+                fill_value=np.array([1.0], dtype=np.float32),
+                dtype="float32",
+            )
+
+            self.assertRaises(
+                TypeError,
+                paddle.full_like,
+                x=paddle.to_tensor([1.0, 2.0]),
+                fill_value=[1.0],
+                dtype="float32",
+            )
+
+            self.assertRaises(
+                TypeError,
+                paddle.full_like,
+                x=paddle.to_tensor([1.0, 2.0]),
+                fill_value=np.bool_(True),
+                dtype="bool",
             )
 
 
@@ -198,6 +227,16 @@ class TestFullLikeOp4(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestFullLikeOp5(TestFullLikeOp1):
+    def init_data(self):
+        self.fill_value = True
+        self.shape = [10, 10]
+        self.dtype = np.bool
+
+    def if_enable_cinn(self):
+        pass
+
+
 class TestFullLikeFP16Op(TestFullLikeOp1):
     def init_data(self):
         self.fill_value = 6666
@@ -266,6 +305,46 @@ class TestFullLikeKernelZeroSize(unittest.TestCase):
         expected = np.full_like(base_tensor.numpy(), value)
         self.assertTrue(np.array_equal(result.numpy(), expected))
         paddle.enable_static()
+
+
+class TestFullLikeWithTensorValue(unittest.TestCase):
+    def test_dygraph_api(self):
+        with dygraph_guard():
+            base_np = np.array([[1, 2], [3, 4]], dtype=np.float32)
+            value_np = np.array([5.0], dtype=np.float32)
+            base_tensor = paddle.to_tensor(base_np)
+            value_tensor = paddle.to_tensor(value_np)
+            result = paddle.full_like(base_tensor, value_tensor)
+            expected = np.full_like(base_np, value_np)
+            np.testing.assert_array_equal(result.numpy(), expected)
+
+    def test_static_api(self):
+        with static_guard():
+            startup_program = paddle.static.Program()
+            train_program = paddle.static.Program()
+            with paddle.static.program_guard(train_program, startup_program):
+                base_tensor = paddle.static.data(
+                    name='base_tensor', dtype='float32', shape=[2, 2]
+                )
+                value_tensor = paddle.static.data(
+                    name='value_tensor', dtype='float32', shape=[1]
+                )
+                result = paddle.full_like(base_tensor, value_tensor)
+
+                place = paddle.CPUPlace()
+                exe = paddle.static.Executor(place)
+
+                base_np = np.array([[1, 2], [3, 4]], dtype=np.float32)
+                value_np = np.array([5.0], dtype=np.float32)
+
+                res = exe.run(
+                    train_program,
+                    feed={'base_tensor': base_np, 'value_tensor': value_np},
+                    fetch_list=[result],
+                )
+
+                expected = np.full_like(base_np, value_np)
+                np.testing.assert_array_equal(res[0], expected)
 
 
 if __name__ == "__main__":

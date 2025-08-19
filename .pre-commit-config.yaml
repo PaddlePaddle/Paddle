@@ -71,13 +71,13 @@ repos:
 
             | setup.py
 
-            # | paddle/.+
+            | paddle/.+
 
             | python/paddle/[a-c].+
 
-            # | python/paddle/de.+
+            | python/paddle/de.+
 
-            # | python/paddle/distributed/a.+
+            | python/paddle/distributed/a.+
 
             | python/paddle/distributed/[b-e].+
 
@@ -127,13 +127,13 @@ repos:
 
             # | setup.py
 
-            | paddle/.+
+            # | paddle/.+
 
             # | python/paddle/[a-c].+
 
-            | python/paddle/de.+
+            # | python/paddle/de.+
 
-            | python/paddle/distributed/a.+
+            # | python/paddle/distributed/a.+
 
             # | python/paddle/distributed/[b-e].+
 
