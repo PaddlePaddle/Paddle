@@ -1262,8 +1262,8 @@ def topk(
         values, indices = _C_ops.topk(x, k, axis, largest, sorted)
         if out is not None:
             out_values, out_indices = out
-            out_values.assign(values)
-            out_indices.assign(indices)
+            out_values = paddle.assign(values, output=out_values)
+            out_indices = paddle.assign(indices, output=out_indices)
             return out_values, out_indices
         return values, indices
     else:
