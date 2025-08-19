@@ -124,8 +124,8 @@ def case_generator(op_type, Xshape, diagonal, expected, dtype):
         f"{expected}_{op_type}_shape_{Xshape}_diag_{diagonal}_dtype_{dtype}"
     )
     errmsg = {
-        "diagonal: TypeError": f"diagonal in {op_type} must be a python Int",
-        "input: ValueError": f"x shape in {op_type} must be at least 2-D",
+        "diagonal: TypeError": r"\(InvalidType\) (triu|tril)\(\): argument \(position \d+\) must be int, but got \w+",
+        "input: TypeError": r"\(InvalidType\) (triu|tril)\(\): argument \(position \d+\) must be int, but got \w+",
     }
 
     class FailureCase(unittest.TestCase):
@@ -223,7 +223,7 @@ cases = {
             20.20,
         ],  # str, list, dict, tuple, float
     },
-    'input: ValueError': {
+    'input: TypeError': {
         (2020,): [None],
     },
 }
