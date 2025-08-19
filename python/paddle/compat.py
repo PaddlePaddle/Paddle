@@ -13,9 +13,11 @@
 # limitations under the License.
 
 from .tensor.compat import (
+    sort,
     split,
 )
 
 __all__ = [
     'split',
+    'sort',
 ]
