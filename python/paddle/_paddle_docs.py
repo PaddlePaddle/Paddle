@@ -494,7 +494,7 @@ add_doc_and_signature(
 
     Examples:
         .. code-block:: python
-
+            >>> # type: ignore
             >>> import paddle
 
             >>> x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
@@ -525,7 +525,7 @@ add_doc_and_signature(
 
     Examples:
         .. code-block:: python
-
+            >>> # type: ignore
             >>> import paddle
 
             >>> x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
@@ -556,7 +556,7 @@ add_doc_and_signature(
 
     Examples:
         .. code-block:: python
-
+            >>> # type: ignore
             >>> import paddle
 
             >>> x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
