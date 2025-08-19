@@ -334,6 +334,9 @@ def no_grad(func=None):
 
     Also functions as a decorator. (Make sure to instantiate without parenthesis.)
 
+    .. note::
+        Alias Support: The parameter name ``orig_func`` can be used as an alias for ``func``.
+
     Examples:
 
         .. code-block:: python
