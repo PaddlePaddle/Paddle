@@ -29,7 +29,7 @@ from paddle.framework import (
     in_pir_mode,
     use_pir_api,
 )
-from paddle.utils.decorator_utils import param_one_alias
+from paddle.utils.decorator_utils import SizeArgsDecorator, param_one_alias
 
 from ..base.data_feeder import (
     check_dtype,
@@ -903,6 +903,7 @@ def standard_normal(
         return gaussian(shape=shape, mean=0.0, std=1.0, dtype=dtype, name=name)
 
 
+@SizeArgsDecorator()
 def randn(
     shape: ShapeLike, dtype: DTypeLike | None = None, name: str | None = None
 ) -> Tensor:
@@ -912,9 +913,11 @@ def randn(
     and ``dtype``.
 
     Args:
-        shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
+        shape (tuple|list|Tensor|*shape): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
+            If ``shape`` is *shape, directly pass integers as variable-length arguments (e.g., `randn(2, 3)`).
+            alias: ``size``.
         dtype (str|np.dtype|paddle.dtype|None, optional): The data type of the output Tensor.
             Supported data types: float16, bfloat16, float32, float64, complex64, complex128.
             Default is None, use global default dtype (see ``get_default_dtype``

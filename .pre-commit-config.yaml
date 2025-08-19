@@ -73,7 +73,7 @@ repos:
 
             # | paddle/.+
 
-            # | python/paddle/[a-c].+
+            | python/paddle/[a-c].+
 
             # | python/paddle/de.+
 
@@ -129,7 +129,7 @@ repos:
 
             | paddle/.+
 
-            | python/paddle/[a-c].+
+            # | python/paddle/[a-c].+
 
             | python/paddle/de.+
 
