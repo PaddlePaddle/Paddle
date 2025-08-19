@@ -24,7 +24,6 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
-from paddle.utils import deprecated
 from paddle.utils.decorator_utils import ParamAliasDecorator, SizeArgsDecorator
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -1001,12 +1000,6 @@ def tensor(
             return tensor
 
 
-@deprecated(
-    since="3.1.2",
-    update_to="paddle.tensor",
-    level=1,
-    reason="`paddle.to_tensor` will be deprecated. Please use `paddle.tensor` instead.",
-)
 def to_tensor(
     data: TensorLike | NestedNumericSequence,
     dtype: DTypeLike | None = None,
