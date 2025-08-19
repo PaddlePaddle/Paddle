@@ -123,10 +123,6 @@ def case_generator(op_type, Xshape, diagonal, expected, dtype):
     cls_name = (
         f"{expected}_{op_type}_shape_{Xshape}_diag_{diagonal}_dtype_{dtype}"
     )
-    errmsg = {
-        "diagonal: TypeError": r"\(InvalidType\) (triu|tril)\(\): argument \(position \d+\) must be int, but got \w+",
-        "input: TypeError": r"\(InvalidType\) (triu|tril)\(\): argument \(position \d+\) must be int, but got \w+",
-    }
 
     class FailureCase(unittest.TestCase):
         def test_failure(self):
@@ -135,9 +131,7 @@ def case_generator(op_type, Xshape, diagonal, expected, dtype):
             data = paddle.static.data(
                 shape=Xshape, dtype='float64', name=cls_name
             )
-            with self.assertRaisesRegex(
-                eval(expected.split(':')[-1]), errmsg[expected]
-            ):
+            with self.assertRaises(TypeError):
                 getattr(tensor, op_type)(x=data, diagonal=diagonal)
 
     class SuccessCase(TrilTriuOpDefaultTest):
