@@ -25,6 +25,7 @@ from ..framework import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
 
     from paddle import Tensor
     from paddle._typing import (
@@ -638,24 +639,35 @@ def min(
         ret = paddle.min(input)
     elif isinstance(dim_or_other, int):
         _check_out_status(out, True)
-        if in_dynamic_mode() and not input.place.is_gpu_place():
-            _min_max_allow_cpu_composite(input)
-            # CPUPlace and other placements are implemented by composition
-            indices = paddle.argmin(input, axis=dim_or_other, keepdim=True)
-            values = paddle.take_along_axis(input, indices, axis=dim_or_other)
-            if keepdim:
-                ret = MinMaxRetType(values=values, indices=indices)
-            else:
-                ret = MinMaxRetType(
-                    values=values.squeeze_(axis=dim_or_other),
-                    indices=indices.squeeze_(axis=dim_or_other),
+        if input.ndim:
+            if in_dynamic_mode() and not input.place.is_gpu_place():
+                _min_max_allow_cpu_composite(input)
+                # CPUPlace and other placements are implemented by composition
+
+                indices = paddle.argmin(input, axis=dim_or_other, keepdim=True)
+                values = paddle.take_along_axis(
+                    input, indices, axis=dim_or_other
                 )
+                if keepdim:
+                    ret = MinMaxRetType(values=values, indices=indices)
+                else:
+                    ret = MinMaxRetType(
+                        values=values.squeeze_(axis=dim_or_other),
+                        indices=indices.squeeze_(axis=dim_or_other),
+                    )
+            else:
+                vals, inds = _C_ops.min_with_index(
+                    input, dim_or_other, keepdim, False
+                )
+                inds.stop_gradient = True
+                ret = MinMaxRetType(values=vals, indices=inds)
         else:
-            vals, inds = _C_ops.min_with_index(
-                input, dim_or_other, keepdim, False
+            ret = MinMaxRetType(
+                values=input,
+                indices=paddle.zeros(
+                    [], dtype=paddle.int64, device=input.place
+                ),
             )
-            inds.stop_gradient = True
-            ret = MinMaxRetType(values=vals, indices=inds)
     else:
         _check_out_status(out, False)
         ret = _C_ops.minimum(input, dim_or_other)
@@ -779,23 +791,33 @@ def max(
         ret = paddle.max(input)
     elif isinstance(dim_or_other, int):
         _check_out_status(out, True)
-        if in_dynamic_mode() and not input.place.is_gpu_place():
-            _min_max_allow_cpu_composite(input)
-            indices = paddle.argmax(input, axis=dim_or_other, keepdim=True)
-            values = paddle.take_along_axis(input, indices, axis=dim_or_other)
-            if keepdim:
-                ret = MinMaxRetType(values=values, indices=indices)
-            else:
-                ret = MinMaxRetType(
-                    values=values.squeeze_(axis=dim_or_other),
-                    indices=indices.squeeze_(axis=dim_or_other),
+        if input.ndim:
+            if in_dynamic_mode() and not input.place.is_gpu_place():
+                _min_max_allow_cpu_composite(input)
+                indices = paddle.argmax(input, axis=dim_or_other, keepdim=True)
+                values = paddle.take_along_axis(
+                    input, indices, axis=dim_or_other
                 )
+                if keepdim:
+                    ret = MinMaxRetType(values=values, indices=indices)
+                else:
+                    ret = MinMaxRetType(
+                        values=values.squeeze_(axis=dim_or_other),
+                        indices=indices.squeeze_(axis=dim_or_other),
+                    )
+            else:
+                vals, inds = _C_ops.max_with_index(
+                    input, dim_or_other, keepdim, False
+                )
+                inds.stop_gradient = True
+                ret = MinMaxRetType(values=vals, indices=inds)
         else:
-            vals, inds = _C_ops.max_with_index(
-                input, dim_or_other, keepdim, False
+            ret = MinMaxRetType(
+                values=input,
+                indices=paddle.zeros(
+                    [], dtype=paddle.int64, device=input.place
+                ),
             )
-            inds.stop_gradient = True
-            ret = MinMaxRetType(values=vals, indices=inds)
     else:
         _check_out_status(out, False)
         ret = _C_ops.maximum(input, dim_or_other)

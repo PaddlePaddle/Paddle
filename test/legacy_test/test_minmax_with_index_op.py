@@ -232,6 +232,11 @@ class TestMaxWithIndexMoreTypeAndShape(TestMaxWithIndexBasic):
 
 
 class TestMinMaxWithIndexPlace(unittest.TestCase):
+    """min/max_with_index has no CPU version, so when CUDA is not available,
+    we skip all the above test. A runtime error will be emitted if min/max_with_index
+    is called on CPU, this unit test tries capturing it.
+    """
+
     def init(self):
         self.input_shape = [30, 10, 10]
         self.data = np.random.randn(30, 10, 10)

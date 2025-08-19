@@ -73,6 +73,45 @@ class ArgMaxMinOpInferSymbolicShapeTest(TestBase):
         return True
 
 
+class MaxMinWithIndexNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        min_vals, min_inds = paddle.compat.min(x, dim=-1, keepdim=False)
+        max_vals, max_inds = paddle.compat.max(x, dim=-1, keepdim=True)
+        return min_vals + max_vals.squeeze(axis=-1), min_inds + max_inds
+
+
+class MinMaxWithIndexOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.cases = [np.random.rand(3, 4, 5, 6), np.random.rand(257)]
+        self.expected = [
+            [
+                'shape[S0, S1, S2], data[NULL]',
+                'shape[S0, Broadcast(S0, S1), Broadcast(S1, S2), S2], data[NULL]',
+            ],
+            ['shape[], data[NULL]', 'shape[1], data[NULL]'],
+        ]
+
+    def test_eval_symbolic(self):
+        net = MaxMinWithIndexNet()
+
+        for i in range(len(self.cases)):
+            x = self.cases[i]
+            x_spec = InputSpec(
+                shape=[None for index in range(len(x.shape))], dtype='float32'
+            )
+            input_spec = [x_spec]
+            net = apply_to_static(net, False, input_spec)
+            net.eval()
+            check_infer_results(
+                net, input_spec, 'builtin.shadow_output', self.expected[i]
+            )
+
+        return True
+
+
 class AsComplexAsRealNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
