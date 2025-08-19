@@ -19,15 +19,38 @@ from typing import Any
 import paddle
 from paddle.base import core
 
+_core_manager = core._ZeroFragmentationAllocatorManager
+
 
 class ZeroFragmentationAllocatorManager:
     """Manager for zero-fragmentation memory allocator operations.
 
-    This class provides static methods to control the behavior of the
-    zero-fragmentation memory allocator in PaddlePaddle.
+    This class provides methods to control the behavior of the zero-fragmentation
+    memory allocator in PaddlePaddle, which helps reduce memory fragmentation
+    during tensor allocation.
+
+    Example:
+        >>> # Enable zero-fragmentation allocator
+        >>> ZeroFragmentationAllocatorManager.enable()
+        >>>
+        >>> # Allocate a buffer with zero fragmentation
+        >>> ZeroFragmentationAllocatorManager.allocate_buffer(1024)
+        >>>
+        >>> # Use context manager for temporary zero-fragmentation mode
+        >>> with ZeroFragmentationAllocatorManager.enter_zero_fragmentation_mode():
+        ...     # Your memory intensive operations here
+        ...     pass
     """
 
-    _core_manager = core._ZeroFragmentationAllocatorManager
+    @staticmethod
+    def disable() -> None:
+        """Disable the zero-fragmentation memory allocator."""
+        _core_manager._disable()
+
+    @staticmethod
+    def enable() -> None:
+        """Enable the zero-fragmentation memory allocator."""
+        _core_manager._enable()
 
     @staticmethod
     def allocate_buffer(size: int) -> None:
@@ -36,6 +59,9 @@ class ZeroFragmentationAllocatorManager:
         Args:
             size: Size of the buffer to allocate in bytes.
         """
+        if size < 0:
+            raise ValueError(f"Buffer size must be positive, got {size}")
+
         with ZeroFragmentationAllocatorManager._prealloc_context():
             size = min(
                 paddle.core.allocator_get_max_free_block_size(
@@ -47,13 +73,13 @@ class ZeroFragmentationAllocatorManager:
 
     @staticmethod
     @contextlib.contextmanager
-    def zero_fragmentation_allocator_context() -> Generator[None, Any, None]:
+    def enter_zero_fragmentation_mode() -> Generator[None, Any, None]:
         """Context manager for temporarily enabling the monotonic allocator."""
-        ZeroFragmentationAllocatorManager._core_manager._enable()
+        _core_manager._enter_zero_fragmentation_mode()
         try:
             yield
         finally:
-            ZeroFragmentationAllocatorManager._core_manager._disable()
+            _core_manager._exit_zero_fragmentation_mode()
 
     @staticmethod
     def _allocate(size: int) -> paddle.Tensor:
@@ -70,11 +96,20 @@ class ZeroFragmentationAllocatorManager:
     @staticmethod
     @contextlib.contextmanager
     def _prealloc_context() -> Generator[None, Any, None]:
-        """Context manager for preallocation mode."""
-        ZeroFragmentationAllocatorManager._core_manager._enable()
-        ZeroFragmentationAllocatorManager._core_manager._enable_prealloc()
+        """Context manager for preallocation mode.
+
+        This handles enabling/disabling the allocator and entering/exiting
+        preallocation mode with proper cleanup.
+        """
+        was_enabled = _core_manager._is_enabled()
+        if not was_enabled:
+            _core_manager._enable()
+        _core_manager._enter_zero_fragmentation_mode()
+        _core_manager._begin_preallocation()
         try:
             yield
         finally:
-            ZeroFragmentationAllocatorManager._core_manager._disable_prealloc()
-            ZeroFragmentationAllocatorManager._core_manager._disable()
+            _core_manager._end_preallocation()
+            _core_manager._exit_zero_fragmentation_mode()
+            if not was_enabled:
+                _core_manager._disable()

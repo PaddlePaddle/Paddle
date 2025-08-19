@@ -35,8 +35,8 @@ phi::Allocation *ZeroFragmentationAllocator::AllocateImpl(
   size_t size = AlignedSize(unaligned_size + extra_padding_size_, alignment_);
   phi::Allocation *allocation = nullptr;
 
-  if (ZeroFragmentationAllocatorManager::Instance().IsEnabled()) {
-    if (ZeroFragmentationAllocatorManager::Instance().IsPeralloc()) {
+  if (ZeroFragmentationAllocatorManager::Instance().IsZeroFragmentationMode()) {
+    if (ZeroFragmentationAllocatorManager::Instance().IsPreallocating()) {
       FreeZeroFragmentationBlocks();
       allocation = AutoGrowthBestFitAllocator::AllocateImpl(size);
       zero_fragmentation_block_ =
@@ -78,7 +78,7 @@ phi::Allocation *ZeroFragmentationAllocator::AllocateImpl(
 }
 
 void ZeroFragmentationAllocator::FreeImpl(phi::Allocation *allocation) {
-  if (ZeroFragmentationAllocatorManager::Instance().IsPeralloc()) {
+  if (ZeroFragmentationAllocatorManager::Instance().IsPreallocating()) {
     HoldZeroFragmentationBlocks(allocation);
   } else {
     AutoGrowthBestFitAllocator::FreeImpl(allocation);

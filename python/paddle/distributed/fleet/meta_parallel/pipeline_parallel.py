@@ -49,6 +49,9 @@ else:
     from .pp_utils import p2p_communication as p2p
 
 from paddle.distributed import fleet
+from paddle.distributed.fleet.utils.allocator_utils import (
+    ZeroFragmentationAllocatorManager,
+)
 from paddle.distributed.fleet.utils.tensor_fusion_helper import (
     HOOK_ACTION,
     FusedCommBuffer,
@@ -64,6 +67,9 @@ g_profile_pipeline_details_steps = int(
 )
 g_log_allocator_fragmentation = int(
     os.getenv("FLAGS_pipeline_log_allocator_fragmentation", "0")
+)
+g_zero_fragmentation_micro_steps = int(
+    os.getenv("FLAGS_zero_fragmentation_micro_steps", "0")
 )
 
 __all__ = []
@@ -3249,6 +3255,10 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
         )
         cooldown_steps = startup_steps
 
+        zero_fragmentationmicro_step = (
+            num_steps - g_zero_fragmentation_micro_steps
+        )
+
         # Bubbles before startup_steps
         for _ in range(self.stage_id):
             if self.user_hooks_enabled:
@@ -3266,6 +3276,10 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
         # In startup_steps, we send every output_tensor of last stage,
         # to simplify the code logic of stage 1F1B.
         for micro_step in range(startup_steps):
+            forward_micro_step_id = micro_step
+            if forward_micro_step_id > zero_fragmentationmicro_step:
+                ZeroFragmentationAllocatorManager.enable()
+
             self._record_stamp("F", micro_step, '"B"', forward=True)
             output_tensor = self._forward_step_helper(micro_dataset, micro_step)
             self._record_stamp("F", micro_step, '"E"', forward=True)
@@ -3298,6 +3312,12 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
                 input_tensor
             )
             self._release_output(output_tensor)
+
+        if g_log_allocator_fragmentation:
+            logger.info("fragmentation metric after start up")
+            paddle.core.allocator_dump_fragmentation_metric(
+                paddle.framework._current_expected_place()
+            )
 
         if self.is_pipeline_first_stage(ignore_virtual=True):
             assert (
@@ -3392,9 +3412,12 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
         )
 
         if g_log_allocator_fragmentation:
+            logger.info("fragmentation metric after steady")
             paddle.core.allocator_dump_fragmentation_metric(
                 paddle.framework._current_expected_place()
             )
+
+        ZeroFragmentationAllocatorManager.disable()
 
         # no more fwd, but we need to send the input_tensor_grad.
         if self.is_pipeline_first_stage(ignore_virtual=True):

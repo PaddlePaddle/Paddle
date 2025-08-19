@@ -3567,16 +3567,34 @@ All parameter, weight, gradient are variables in Paddle.
                  Instance()
                      .Disable();
            })
-      .def("_enable_prealloc",
+      .def("_is_enabled",
+           [] {
+             return paddle::memory::allocation::
+                 ZeroFragmentationAllocatorManager::Instance()
+                     .IsEnabled();
+           })
+      .def("_begin_preallocation",
            [] {
              paddle::memory::allocation::ZeroFragmentationAllocatorManager::
                  Instance()
-                     .EnablePeralloc();
+                     .BeginPreallocation();
            })
-      .def("_disable_prealloc", [] {
+      .def("_end_preallocation",
+           [] {
+             paddle::memory::allocation::ZeroFragmentationAllocatorManager::
+                 Instance()
+                     .EndPreallocation();
+           })
+      .def("_enter_zero_fragmentation_mode",
+           [] {
+             paddle::memory::allocation::ZeroFragmentationAllocatorManager::
+                 Instance()
+                     .EnterZeroFragmentationMode();
+           })
+      .def("_exit_zero_fragmentation_mode", [] {
         paddle::memory::allocation::ZeroFragmentationAllocatorManager::
             Instance()
-                .DisablePeralloc();
+                .ExitZeroFragmentationMode();
       });
 
 #if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)

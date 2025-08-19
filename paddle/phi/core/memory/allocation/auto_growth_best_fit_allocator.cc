@@ -252,12 +252,6 @@ void AutoGrowthBestFitAllocator::FreeImpl(phi::Allocation *allocation) {
     auto prev_it = block_it;
     --prev_it;
 
-    // Memory block management rules:
-    // - If a block is free and belongs to the default pool:
-    //   → It must be present in `free_blocks`
-    // - If a block is free but belongs to a zero-fragmentation pool:
-    //   → It must NOT be in `free_blocks`
-    //   → Instead, it should be managed by `zero_fragmentation_block`
     if (prev_it->is_free_) {
       free_blocks_.erase(std::make_pair(prev_it->size_, prev_it->ptr_));
       prev_it->size_ += block_it->size_;

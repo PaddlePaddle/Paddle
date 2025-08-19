@@ -72,29 +72,64 @@ class ZeroFragmentationAllocatorManager {
   ZeroFragmentationAllocatorManager& operator=(
       ZeroFragmentationAllocatorManager&&) = delete;
 
-  void Enable() { enabled_ = true; }
-  void Disable() { enabled_ = false; }
-  bool IsEnabled() const { return enabled_; }
+  // Enable/disable functionality
+  void Enable() {
+    std::lock_guard<SpinLock> guard(spinlock_);
+    enabled_ = true;
+  }
+  void Disable() {
+    std::lock_guard<SpinLock> guard(spinlock_);
+    enabled_ = false;
+  }
+  bool IsEnabled() {
+    std::lock_guard<SpinLock> guard(spinlock_);
+    return enabled_;
+  }
 
-  void EnablePeralloc() { prealloc_ = true; }
-  void DisablePeralloc() { prealloc_ = false; }
-  bool IsPeralloc() const { return prealloc_; }
+  // Zero fragmentation state management
+  void EnterZeroFragmentationMode() {
+    std::lock_guard<SpinLock> guard(spinlock_);
+    zero_frag_mode_ = true;
+  }
+  void ExitZeroFragmentationMode() {
+    std::lock_guard<SpinLock> guard(spinlock_);
+    zero_frag_mode_ = false;
+  }
+  bool IsZeroFragmentationMode() {
+    std::lock_guard<SpinLock> guard(spinlock_);
+    return enabled_ && zero_frag_mode_;
+  }
+  void BeginPreallocation() {
+    std::lock_guard<SpinLock> guard(spinlock_);
+    preallocating_ = true;
+  }
+  void EndPreallocation() {
+    std::lock_guard<SpinLock> guard(spinlock_);
+    preallocating_ = false;
+  }
+  bool IsPreallocating() {
+    std::lock_guard<SpinLock> guard(spinlock_);
+    return enabled_ && zero_frag_mode_ && preallocating_;
+  }
 
  private:
   ZeroFragmentationAllocatorManager() = default;
 
+  SpinLock spinlock_;
+
   bool enabled_{false};
-  bool prealloc_{false};
+  bool zero_frag_mode_{false};
+  bool preallocating_{false};
 };
 
 class ZeroFragmentationAllocatorGuard {
  public:
   ZeroFragmentationAllocatorGuard() {
-    ZeroFragmentationAllocatorManager::Instance().Enable();
+    ZeroFragmentationAllocatorManager::Instance().EnterZeroFragmentationMode();
   }
 
   ~ZeroFragmentationAllocatorGuard() {
-    ZeroFragmentationAllocatorManager::Instance().Disable();
+    ZeroFragmentationAllocatorManager::Instance().ExitZeroFragmentationMode();
   }
 
   ZeroFragmentationAllocatorGuard(const ZeroFragmentationAllocatorGuard&) =

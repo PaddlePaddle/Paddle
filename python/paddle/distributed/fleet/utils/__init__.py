@@ -24,7 +24,6 @@ from . import (  # noqa: F401
     sequence_parallel_utils,
     tensor_parallel_utils,
 )
-from .allocator_utils import ZeroFragmentationAllocatorManager
 from .fs import HDFSClient, LocalFS
 from .ps_util import DistributedInfer
 
@@ -36,7 +35,6 @@ __all__ = [
     "recompute",
     "DistributedInfer",
     "HDFSClient",
-    "ZeroFragmentationAllocatorManager",
 ]
 
 
