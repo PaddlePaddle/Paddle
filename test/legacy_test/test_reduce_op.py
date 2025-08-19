@@ -2248,11 +2248,11 @@ class TestAllAPI_Compatibility(unittest.TestCase):
         paddle.enable_static()
         self.places = get_places()
         self.shape = [5, 6]
-        self.dtype = 'float32'
+        self.dtype = 'bool'
         self.init_data()
 
     def init_data(self):
-        self.np_input = np.random.randint(0, 2, [4, 4]).astype(self.dtype)
+        self.np_input = np.random.randint(0, 8, self.shape).astype(self.dtype)
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
@@ -2304,19 +2304,18 @@ class TestAllAPI_Compatibility(unittest.TestCase):
             out5 = x.all(1, True)
             # Tensor method kwargs
             out6 = x.all(dim=1, keepdim=True)
-            # Test out
-            out7 = paddle.empty([])
-            paddle.all(x, 1, True, out=out7)
-
+            # Do not support out in static
+            # out7 = paddle.empty([])
+            # paddle.all(x, 1, True, out=out7)
             exe = base.Executor(paddle.CPUPlace())
             fetches = exe.run(
                 main,
                 feed={"x": self.np_input},
-                fetch_list=[out1, out2, out3, out4, out5, out6, out7],
+                fetch_list=[out1, out2, out3, out4, out5, out6],
             )
             ref_out = np.all(self.np_input, 1, keepdims=True)
             for out in fetches:
-                self.assertTrue((out == ref_out).all())
+                np.testing.assert_allclose(out, ref_out)
 
 
 class TestAnyAPI(unittest.TestCase):
