@@ -718,5 +718,4 @@ set_tests_properties(test_apply_pass_to_program_deprecated PROPERTIES TIMEOUT
 set_tests_properties(test_conv3d_layer_deprecated PROPERTIES TIMEOUT 100)
 set_tests_properties(test_attribute_var_deprecated PROPERTIES TIMEOUT 100)
 set_tests_properties(test_inference_api_deprecated PROPERTIES TIMEOUT 100)
-set_tests_properties(test_lbfgs_deprecated PROPERTIES TIMEOUT 100)
 set_tests_properties(test_group_norm_op_deprecated PROPERTIES TIMEOUT 1000)

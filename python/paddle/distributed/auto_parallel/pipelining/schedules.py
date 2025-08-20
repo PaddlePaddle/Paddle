@@ -860,9 +860,9 @@ class PipelineScheduleMulti(_PipelineSchedule):
                     computation_type = action.computation_type
                     mb_index = action.microbatch_index
                     stage_index = action.stage_index
-                    assert (
-                        mb_index is not None
-                    ), "All currently supported action types require valid microbatch_index"
+                    assert mb_index is not None, (
+                        "All currently supported action types require valid microbatch_index"
+                    )
                     if computation_type == _ActType.FORWARD:
                         # perform forward computation
                         stage = stage_index_to_stage[stage_index]
@@ -922,9 +922,9 @@ class PipelineScheduleMulti(_PipelineSchedule):
                         computation_type = prev_rank_action.computation_type
                         mb_index = prev_rank_action.microbatch_index
                         stage_index = prev_rank_action.stage_index
-                        assert (
-                            mb_index is not None
-                        ), "All currently supported action types require valid microbatch_index"
+                        assert mb_index is not None, (
+                            "All currently supported action types require valid microbatch_index"
+                        )
                         # Only handle sends for the forward from a previous rank
                         if computation_type == _ActType.FORWARD:
                             # If not the last stage, then receive fwd activations
@@ -953,9 +953,9 @@ class PipelineScheduleMulti(_PipelineSchedule):
                         computation_type = next_rank_action.computation_type
                         mb_index = next_rank_action.microbatch_index
                         stage_index = next_rank_action.stage_index
-                        assert (
-                            mb_index is not None
-                        ), "All currently supported action types require valid microbatch_index"
+                        assert mb_index is not None, (
+                            "All currently supported action types require valid microbatch_index"
+                        )
                         # Only handle receives for the backwards from a next rank
                         if computation_type in (FORWARD, BACKWARD_WEIGHT):
                             # Next rank doing forward or weight update has no influence for the current rank backward recv
