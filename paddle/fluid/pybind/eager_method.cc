@@ -707,12 +707,16 @@ static PyObject* tensor_method_copy_(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
   EAGER_TRY
-  PyObject* other = nullptr;
-  bool blocking = false;
-  static char* kwlist[] = {
-      const_cast<char*>("other"), const_cast<char*>("non_blocking"), nullptr};
+  PyObject* other_tensor = nullptr;
+  bool blocking = true;
+  bool non_blocking = false;
+  static char* kwlist[] = {const_cast<char*>("other"),
+                           const_cast<char*>("blocking"),
+                           const_cast<char*>("non_blocking"),
+                           nullptr};
   bool flag = PyArg_ParseTupleAndKeywords(
-      args, kwargs, "|Ob", kwlist, &other, &blocking);
+      args, kwargs, "|Obb", kwlist, &other, &blocking, &non_blocking);
+  blocking = !non_blocking ? non_blocking : blocking;
   PADDLE_ENFORCE_EQ(flag,
                     true,
                     common::errors::PreconditionNotMet(
@@ -720,14 +724,9 @@ static PyObject* tensor_method_copy_(TensorObject* self,
                         "please check your input first and make "
                         "sure you are on the right way. "
                         "The expected arguments as follow: ("
-                        "other, non_blocking)"));
-  PADDLE_ENFORCE_EQ(
-      other != nullptr,
-      true,
-      common::errors::PreconditionNotMet(
-          "Must provide the `other: Tensor` params for paddle.Tensor.copy_"));
+                        "other, blocking, non_blocking)"));
 
-  paddle::Tensor& src_tensor = CastPyArg2Tensor(other, 0);
+  paddle::Tensor& src_tensor = CastPyArg2Tensor(other_tensor, 0);
   const phi::distributed::ProcessMesh* mesh = nullptr;
   if (InputsContainDistTensor(&mesh, src_tensor, self->tensor)) {
     ConvertAllInputsToDistTensor(mesh, src_tensor, self->tensor);
