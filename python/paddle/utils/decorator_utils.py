@@ -246,6 +246,35 @@ class SizeArgsDecorator(DecoratorBase):
         return args, kwargs
 
 
+def size_args_decorator(func: Callable) -> Callable:
+    """
+    A decorator that normalizes the 'size' argument to 'shape'.
+
+    Usage Example:
+
+    paddle.ones(1, dtype=paddle.float32)
+    paddle.ones(1, 2, 3, dtype=paddle.float32)
+    paddle.ones([1, 2, 3], dtype=paddle.float32)
+    paddle.ones(size=[1, 2, 3], dtype=paddle.float32)
+    paddle.ones([1, 2, 3], paddle.float32)
+    paddle.ones(shape=[1, 2, 3], dtype=paddle.float32)
+    """
+
+    @functools.wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        # 如果 kwargs 中有 'size'，改成 'shape'
+        if 'size' in kwargs:
+            kwargs['shape'] = kwargs.pop('size')
+        # 如果第一个位置参数是整数，则把所有位置参数组成 shape
+        elif len(args) >= 1 and all(isinstance(a, int) for a in args):
+            kwargs['shape'] = list(args)
+            args = ()
+
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
 class VariableArgsDecorator(DecoratorBase):
     def __init__(self, var: str) -> None:
         super().__init__()

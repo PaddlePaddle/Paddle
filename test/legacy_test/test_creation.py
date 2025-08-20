@@ -53,11 +53,31 @@ class TestTensorCreation(unittest.TestCase):
                 self.assertEqual(x.stop_gradient, not requires_grad)
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
+
+                def wrapped_ones(
+                    shape,
+                    dtype=None,
+                    name=None,
+                    *,
+                    out=None,
+                    device=None,
+                    requires_grad=False,
+                ):
+                    return paddle.ones(
+                        shape,
+                        dtype,
+                        name,
+                        out=out,
+                        device=device,
+                        requires_grad=requires_grad,
+                    )
+
                 st_f = paddle.jit.to_static(
-                    paddle.ones, full_graph=True, backend=None
+                    wrapped_ones, full_graph=True, backend=None
                 )
                 x = st_f(
                     [2],
+                    out=None,
                     dtype=dtype,
                     requires_grad=requires_grad,
                     device=device,
@@ -84,11 +104,31 @@ class TestTensorCreation(unittest.TestCase):
                 self.assertEqual(x.stop_gradient, not requires_grad)
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
+
+                def wrapped_zeros(
+                    shape,
+                    dtype=None,
+                    name=None,
+                    *,
+                    out=None,
+                    device=None,
+                    requires_grad=False,
+                ):
+                    return paddle.zeros(
+                        shape,
+                        dtype,
+                        name,
+                        out=out,
+                        device=device,
+                        requires_grad=requires_grad,
+                    )
+
                 st_f = paddle.jit.to_static(
-                    paddle.zeros, full_graph=True, backend=None
+                    wrapped_zeros, full_graph=True, backend=None
                 )
                 x = st_f(
                     [2],
+                    out=None,
                     dtype=dtype,
                     requires_grad=requires_grad,
                     device=device,
@@ -148,11 +188,31 @@ class TestTensorCreation(unittest.TestCase):
                 self.assertEqual(x.stop_gradient, not requires_grad)
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
+
+                def wrapped_empty(
+                    shape,
+                    dtype=None,
+                    name=None,
+                    *,
+                    out=None,
+                    device=None,
+                    requires_grad=False,
+                ):
+                    return paddle.empty(
+                        shape,
+                        dtype,
+                        name,
+                        out=out,
+                        device=device,
+                        requires_grad=requires_grad,
+                    )
+
                 st_f = paddle.jit.to_static(
-                    paddle.empty, full_graph=True, backend=None
+                    wrapped_empty, full_graph=True, backend=None
                 )
                 x = st_f(
                     [2],
+                    out=None,
                     dtype=dtype,
                     requires_grad=requires_grad,
                     device=device,
