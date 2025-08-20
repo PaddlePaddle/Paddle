@@ -176,7 +176,7 @@ jobs:
           pip config set global.cache-dir "$CACHE_DIR/pip"
           pip config set global.index-url https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple
           python -m pip install pip --upgrade
-          pip install /paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+          pip install /paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --no-index --no-deps
           pip install -r /PaddleTest/inference/python_api_test/requirements.txt
           '
 
@@ -275,7 +275,7 @@ jobs:
           pip config set global.cache-dir "${CFS_DIR}/.cache/pip"
           pip config set global.index-url https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple
           pip install sympy
-          pip install /paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+          pip install /paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl --no-index --no-deps
           '
 
       - name: Check

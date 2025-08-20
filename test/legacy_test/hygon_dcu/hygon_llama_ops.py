@@ -401,7 +401,6 @@ class TestElementwiseDivFP16Op(OpTest):
 
 # test mean op
 class TestFP16MeanOp(OpTest):
-
     def setUp(self):
         self.op_type = "mean"
         self.python_api = paddle.mean
@@ -441,7 +440,6 @@ class TestFP16MeanOp(OpTest):
 
 # test scale op
 class TestScaleFp16Op(OpTest):
-
     def setUp(self):
         self.op_type = "scale"
         self.python_api = paddle.scale
@@ -466,7 +464,6 @@ class TestScaleFp16Op(OpTest):
 
 # test sum op
 class TestAFP16SumOp(OpTest):
-
     def setUp(self):
         self.op_type = "sum"
         self.python_api = paddle.add_n
@@ -480,7 +477,7 @@ class TestAFP16SumOp(OpTest):
         self.inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
         y = x0 + x1 + x2
         self.outputs = {'Out': y}
-        self.attrs = {'use_mkldnn': self.use_onednn}
+        self.attrs = {'use_onednn': self.use_onednn}
 
     def init_kernel_type(self):
         self.dtype = np.float16
@@ -528,7 +525,6 @@ class TestAnyOp(OpTest):
 
 # test add, add_grad op
 class TestFP16ElementwiseAddOp(OpTest):
-
     def setUp(self):
         self.op_type = "elementwise_add"
         self.python_api = paddle.add
@@ -545,7 +541,7 @@ class TestFP16ElementwiseAddOp(OpTest):
             'X': OpTest.np_dtype_to_base_dtype(self.x),
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_onednn}
+        self.attrs = {'axis': self.axis, 'use_onednn': self.use_onednn}
         self.outputs = {'Out': self.out}
 
     def init_kernel_type(self):
@@ -612,7 +608,6 @@ class TestFP16ElementwiseAddOp(OpTest):
 
 # test multiply, multiply_grad op
 class TestElementwiseMulOpFp16(OpTest):
-
     def setUp(self):
         self.op_type = "elementwise_mul"
         self.prim_op_type = "prim"
@@ -631,7 +626,7 @@ class TestElementwiseMulOpFp16(OpTest):
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.outputs = {'Out': self.out}
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_onednn}
+        self.attrs = {'axis': self.axis, 'use_onednn': self.use_onednn}
 
     def init_kernel_type(self):
         self.use_onednn = False
@@ -791,7 +786,6 @@ class TestAdamW(OpTest):
 
 # test matmul, matmul_grad op
 class TestMatMulV2Op(OpTest):
-
     def config(self):
         self.x_shape = (100,)
         self.y_shape = (100,)

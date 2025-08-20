@@ -46,7 +46,7 @@ void ConvGradKernel(const Context& dev_ctx,
 
   DenseTensor filter = filter_t;
   // 0-size
-  if (input.numel() == 0) {
+  if (input.numel() == 0 || filter_t.numel() == 0) {
     if (input_grad) dev_ctx.template Alloc<T>(input_grad);
     if (filter_grad) {
       phi::Full<T, Context>(

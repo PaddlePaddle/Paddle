@@ -31,6 +31,7 @@ void LUUnpackGradKernel(const Context& dev_ctx,
                         bool unpack_pivots UNUSED,
                         DenseTensor* x_grad) {
   dev_ctx.template Alloc<T>(x_grad);
+  if (x_grad->numel() == 0) return;
 
   DenseTensor dl_tril, du_triu;
   const auto ldims = l_grad.dims();

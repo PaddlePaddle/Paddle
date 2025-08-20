@@ -52,7 +52,6 @@ void GPUIndexElementwisePutGradKernel(
     sizes[i] = index_dims[i];
     strides[i] = index_strides[i];
   }
-  auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
 
   std::array<int64_t*, 3> strides_array;
   std::vector<int64_t> desired_shape;
@@ -91,26 +90,40 @@ void GPUIndexElementwisePutGradKernel(
   using dtype = funcs::OpaqueType<sizeof(T)>;
   if (!value_grad) {
     char* out_ptr = reinterpret_cast<char*>(x_grad->data<T>());
-    funcs::index_elementwise_with_tensor_kernel<nt, vt>
-        <<<grid, block, 0, stream>>>(N, [=] __device__(int idx) {
-          const auto offsets = offset_calc.get(idx);
-          char* const out_data = out_ptr + offsets[0] + slice_offset;
-
-          int64_t offset = 0;
-#pragma unroll
-          for (int64_t i = 0; i < num_indices; i++) {
-            int64_t index =
-                *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
-            if (index < 0) {
-              index += sizes[i];
+    if (index.size() == 1 && index[0]->dtype() == phi::DataType::BOOL) {
+      const bool* mask_data = index[0]->data<bool>();
+      funcs::index_elementwise_with_tensor_kernel<nt, vt>
+          <<<grid, block, 0, stream>>>(N, [=] __device__(int idx) {
+            const auto offsets = offset_calc.get(idx);
+            char* const out_data = out_ptr + offsets[0] + slice_offset;
+            if (mask_data[idx]) {
+              *reinterpret_cast<T*>(out_data) = T(0);
             }
-            offset += index * strides[i];
-          }
-          T num = T(0);
-          *reinterpret_cast<dtype*>(out_data + offset) =
-              *reinterpret_cast<dtype*>(&num);
-        });
+          });
+    } else {
+      auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
+      funcs::index_elementwise_with_tensor_kernel<nt, vt>
+          <<<grid, block, 0, stream>>>(N, [=] __device__(int idx) {
+            const auto offsets = offset_calc.get(idx);
+            char* const out_data = out_ptr + offsets[0] + slice_offset;
+
+            int64_t offset = 0;
+#pragma unroll
+            for (int64_t i = 0; i < num_indices; i++) {
+              int64_t index =
+                  *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
+              if (index < 0) {
+                index += sizes[i];
+              }
+              offset += index * strides[i];
+            }
+            T num = T(0);
+            *reinterpret_cast<dtype*>(out_data + offset) =
+                *reinterpret_cast<dtype*>(&num);
+          });
+    }
   } else if (!x_grad) {
+    auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
     const char* out_ptr = reinterpret_cast<const char*>(out_grad.data<T>());
     char* value_ptr = reinterpret_cast<char*>(value_grad->data<T>());
     funcs::index_elementwise_with_tensor_kernel<nt, vt>
@@ -133,6 +146,7 @@ void GPUIndexElementwisePutGradKernel(
               *reinterpret_cast<const dtype*>(out_data + offset);
         });
   } else {
+    auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
     char* out_ptr = reinterpret_cast<char*>(x_grad->data<T>());
     char* value_ptr = reinterpret_cast<char*>(value_grad->data<T>());
     funcs::index_elementwise_with_tensor_kernel<nt, vt>
@@ -305,14 +319,15 @@ void IndexElementwisePutGradKernel(
     const int64_t slice_offset,
     DenseTensor* x_grad) {
   const auto& index_type = indices[0]->dtype();
-  PADDLE_ENFORCE_EQ(index_type == phi::DataType::INT64,
-                    true,
-                    common::errors::InvalidArgument(
-                        "Index holds the wrong type, it holds [%s], but "
-                        "desires to be [%s].",
-                        index_type,
-                        phi::DataType::INT64));
-
+  PADDLE_ENFORCE_EQ(
+      index_type == phi::DataType::INT64 ||
+          (index_type == phi::DataType::BOOL && indices.size() == 1),
+      true,
+      common::errors::InvalidArgument(
+          "Index holds the wrong type, it holds [%s], but "
+          "desires to be [%s].",
+          index_type,
+          phi::DataType::INT64));
   std::vector<DenseTensor> tmp_args;
   if (indices.empty()) {
     if (x_grad) {

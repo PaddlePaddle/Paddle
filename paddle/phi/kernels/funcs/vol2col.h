@@ -69,7 +69,7 @@ using DataLayout = phi::DataLayout;
 template <typename DeviceContext, typename T>
 class Vol2ColFunctor {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& vol,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
@@ -81,7 +81,7 @@ class Vol2ColFunctor {
 template <typename DeviceContext, typename T>
 class Col2VolFunctor {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& col,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,

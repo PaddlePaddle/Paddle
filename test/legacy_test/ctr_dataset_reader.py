@@ -93,9 +93,10 @@ class DatasetCtrReader(fleet.MultiSlotDataGenerator):
                 dnn_input = load_dnn_input_record(fs[0])
                 lr_input = load_lr_input_record(fs[1])
                 click = [int(fs[2])]
-                yield ("dnn_data", dnn_input), ("lr_data", lr_input), (
-                    "click",
-                    click,
+                yield (
+                    ("dnn_data", dnn_input),
+                    ("lr_data", lr_input),
+                    ("click", click),
                 )
 
         return iter

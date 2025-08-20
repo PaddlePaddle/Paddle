@@ -119,7 +119,7 @@ IfInstruction::IfInstruction(size_t id,
       outputs.emplace(value, GetValueIds(value, *value_exec_info));
     }
     if (value.use_count() > 0) {
-      VLOG(6) << "value " << i << " use conutn != 0";
+      VLOG(6) << "value " << i << " use count != 0";
       is_last_op = false;
     }
   }
@@ -255,7 +255,7 @@ void IfInstruction::Run() {
     // Executor on being destroyed clears oneDNN cache and resets
     // registered model data layout. This is unwanted for nested
     // Executors (executors declared inside control ops)
-    paddle::platform::DontClearMKLDNNCache(true_branch_inter_->GetPlace());
+    paddle::platform::DontClearONEDNNCache(true_branch_inter_->GetPlace());
 #endif
     true_branch_inter_->Run({}, false);
   } else {
@@ -264,7 +264,7 @@ void IfInstruction::Run() {
     // Executor on being destroyed clears oneDNN cache and resets
     // registered model data layout. This is unwanted for nested
     // Executors (executors declared inside control ops)
-    paddle::platform::DontClearMKLDNNCache(false_branch_inter_->GetPlace());
+    paddle::platform::DontClearONEDNNCache(false_branch_inter_->GetPlace());
 #endif
     false_branch_inter_->Run({}, false);
   }

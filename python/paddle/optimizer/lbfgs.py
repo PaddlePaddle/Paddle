@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+import os
+import warnings
 from collections import defaultdict
 from functools import reduce
 from typing import TYPE_CHECKING, NoReturn, TypedDict
@@ -53,6 +55,16 @@ class _LbfgsState(TypedDict):
 
 class _LbfgsStateDict(TypedDict):
     state: _LbfgsState
+
+
+def check_tf32_override():
+    """Check and warn about TF32 acceleration status"""
+    if os.getenv("NVIDIA_TF32_OVERRIDE") != "0":  # None or "1"
+        warnings.warn(
+            "Warning! TF32 Tensor Cores are enabled by default on some NVIDIA GPUs for faster computation, "
+            "but may compromise numerical precision in specific cases, particularly with the L-BFGS optimizer. "
+            "To disable it, set: NVIDIA_TF32_OVERRIDE=0"
+        )
 
 
 def dot(x, y):
@@ -444,6 +456,8 @@ class LBFGS(Optimizer):
         grad_clip: GradientClipBase | None = None,
         name: str | None = None,
     ) -> None:
+        check_tf32_override()
+
         if max_eval is None:
             max_eval = max_iter * 5 // 4
 

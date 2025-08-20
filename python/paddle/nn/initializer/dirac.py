@@ -114,7 +114,9 @@ class Dirac(Initializer):
             isinstance(var, framework.EagerParamBase) and var.is_dist()
         ), "Currently, dirac initializer not support lazy init for dist param."
         block = self._check_block(block)
-        assert isinstance(var, (framework.Variable, pir.core.ParameterMeta))
+        assert isinstance(
+            var, (framework.Variable, paddle.pir.Value, pir.core.ParameterMeta)
+        )
         assert isinstance(block, (framework.Block, pir.Block))
         check_variable_and_dtype(
             var, "Out", ['float16', 'bfloat16', 'float32', 'float64'], 'Dirac'

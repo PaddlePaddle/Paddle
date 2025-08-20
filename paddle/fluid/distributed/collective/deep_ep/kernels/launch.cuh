@@ -24,16 +24,29 @@
 #ifndef SETUP_LAUNCH_CONFIG
 #define SETUP_LAUNCH_CONFIG(num_sms, num_threads, stream)                     \
   cudaLaunchConfig_t cfg = {(num_sms), (num_threads), 0, stream, nullptr, 0}; \
-  cudaLaunchAttribute attr[1];                                                \
+  cudaLaunchAttribute attr[2];                                                \
   attr[0].id = cudaLaunchAttributeCooperative;                                \
   attr[0].val.cooperative = 1;                                                \
+  attr[1].id = cudaLaunchAttributeClusterDimension;                           \
+  attr[1].val.clusterDim.x = (num_sms % 2 == 0 ? 2 : 1);                      \
+  attr[1].val.clusterDim.y = 1;                                               \
+  attr[1].val.clusterDim.z = 1;                                               \
   cfg.attrs = attr;                                                           \
-  cfg.numAttrs = 1
+  cfg.numAttrs = 2
 #endif
 
 #ifndef LAUNCH_KERNEL
 #define LAUNCH_KERNEL(config, kernel, ...) \
   CUDA_CHECK(cudaLaunchKernelEx(config, kernel, ##__VA_ARGS__))
+#endif
+
+#ifndef SET_SHARED_MEMORY_FOR_TMA
+#define SET_SHARED_MEMORY_FOR_TMA(kernel)                               \
+  EP_HOST_ASSERT(                                                       \
+      cudaFuncSetAttribute(kernel,                                      \
+                           cudaFuncAttributeMaxDynamicSharedMemorySize, \
+                           smem_size) == cudaSuccess);                  \
+  cfg.dynamicSmemBytes = smem_size;
 #endif
 
 #define SWITCH_RANKS(case_macro)                     \

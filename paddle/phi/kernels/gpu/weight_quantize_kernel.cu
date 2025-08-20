@@ -147,10 +147,17 @@ void WeightQuantizeKernel(const Context& dev_ctx,
                                      weight_shape,
                                      arch,
                                      algo);
+  } else if (algo == "w4afp8") {
+    weight_permute_gpu_w4afp8<Context>(dev_ctx,
+                                       x.data<int8_t>(),
+                                       out->data<int8_t>(),
+                                       weight_shape,
+                                       arch,
+                                       algo);
   } else {
     PADDLE_FATAL(
         "The algo must be in ['weight_only_int8', 'weight_only_int4', "
-        "'llm.int8', 'w4a8'], but got[%s]",
+        "'llm.int8', 'w4a8', 'w4afp8'], but got[%s]",
         algo);
   }
 }

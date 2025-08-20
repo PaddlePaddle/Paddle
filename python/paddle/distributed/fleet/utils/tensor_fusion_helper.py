@@ -89,7 +89,7 @@ def assign_group_by_size(parameters, group_size=128 * 1024 * 1024):
             group_size += np.prod(parameters[index].shape)
         dtype = parameters[indices[0]].dtype
         bytes = group_size * core.size_of_dtype(dtype)
-        msg = f"group_{group_idx}: {bytes / 1024 ** 2:.4f} MB, dtype: {dtype!s}"
+        msg = f"group_{group_idx}: {bytes / 1024**2:.4f} MB, dtype: {dtype!s}"
         group_msg.append(msg)
 
     logger.info(f"Tensor Fusion Group Info:\n{group_msg}\n")
@@ -416,7 +416,6 @@ def get_grad_address(param, use_main_grad):
 
 
 class FusedCommBuffer:
-
     class Status(enum.Enum):
         """Status of this bucket, Only useful when param allgather overlap is enabled"""
 
@@ -807,6 +806,7 @@ class FusedCommBuffer:
     def scale_grads(self):
         if self.need_reduce_scale_sync():
             if self._comm_group.nranks == 1 and self._task is None:
+                self._reset_params_checked_in()
                 return
             assert self._task is not None, "Task is not initialized."
             self._task.wait()

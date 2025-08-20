@@ -590,7 +590,6 @@ class TestMatrixRankError(unittest.TestCase):
 
 
 class TestMatrixRankAtolRtolZeroSizeTensor(unittest.TestCase):
-
     def _get_places(self):
         return get_places()
 

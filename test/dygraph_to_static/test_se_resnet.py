@@ -29,7 +29,6 @@ from predictor_utils import PredictorTools
 
 import paddle
 from paddle import base
-from paddle.framework import use_pir_api
 from paddle.jit.pir_translated_layer import PIR_INFER_MODEL_SUFFIX
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import BatchNorm, Linear
@@ -445,10 +444,7 @@ class TestSeResnet(Dy2StTestBase):
                     step_idx += 1
                     if step_idx == STEP_NUM:
                         if to_static:
-                            if use_pir_api():
-                                output_spec = [0]
-                            else:
-                                output_spec = [pred]
+                            output_spec = [0]
 
                             paddle.jit.save(
                                 se_resnext,
@@ -496,10 +492,7 @@ class TestSeResnet(Dy2StTestBase):
 
     def predict_static(self, data):
         paddle.enable_static()
-        if use_pir_api():
-            model_filename = self.pir_model_filename
-        else:
-            model_filename = self.model_filename
+        model_filename = self.pir_model_filename
 
         exe = base.Executor(place)
         [
@@ -531,10 +524,8 @@ class TestSeResnet(Dy2StTestBase):
             return pred_res.numpy()
 
     def predict_analysis_inference(self, data):
-        if use_pir_api():
-            model_filename = self.pir_model_filename
-        else:
-            model_filename = self.model_filename
+        model_filename = self.pir_model_filename
+
         output = PredictorTools(
             self.model_save_dir,
             model_filename,

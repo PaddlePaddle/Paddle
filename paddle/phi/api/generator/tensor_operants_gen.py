@@ -479,24 +479,24 @@ class OperantsAPI(ForwardAPI):
         api_func_name = self.get_api_func_name()
         if api_func_name[-1] != '_':
             return f"""
-{indent}virtual {self.get_return_type()} {api_func_name}({self.get_declare_args()}) = 0;
+{indent}virtual {self.get_return_type()} {api_func_name}({self.get_declare_args(append_input_out=False)}) = 0;
 """
         else:
             return f"""
-{indent}virtual {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_declare_args(inplace_flag=True)}) = 0;
+{indent}virtual {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_declare_args(inplace_flag=True, append_input_out=False)}) = 0;
 """
 
     def get_declare_args_without_first_tensor(self, inplace_flag=False):
         func_name = self.get_api_func_name()
         declare_args = self.get_input_tensor_args(inplace_flag)
-        assert (
-            len(declare_args) >= 1
-        ), f"Error! Api {func_name} has no Tensor inputs"
+        assert len(declare_args) >= 1, (
+            f"Error! Api {func_name} has no Tensor inputs"
+        )
         first_input_type = " ".join(declare_args[0].split(" ")[:-1])
         # NOTE(HongyuJia): Do not consider "const paddle::optional<Tensor>&"
-        assert (
-            first_input_type == "const Tensor&"
-        ), f"Error! The first argument of Tensor Api {func_name} must be Tensor, but received {first_input_type}"
+        assert first_input_type == "const Tensor&", (
+            f"Error! The first argument of Tensor Api {func_name} must be Tensor, but received {first_input_type}"
+        )
         for name in self.attrs['names']:
             default_value = ''
             if self.attrs['attr_info'][name][1] is not None:
@@ -510,14 +510,14 @@ class OperantsAPI(ForwardAPI):
     def get_define_args_without_first_tensor(self, inplace_flag=False):
         func_name = self.get_api_func_name()
         define_args = self.get_input_tensor_args(inplace_flag)
-        assert (
-            len(define_args) >= 1
-        ), f"Error! Api {func_name} has no Tensor inputs"
+        assert len(define_args) >= 1, (
+            f"Error! Api {func_name} has no Tensor inputs"
+        )
         first_input_type = " ".join(define_args[0].split(" ")[:-1])
         # NOTE(HongyuJia): Do not consider "const paddle::optional<Tensor>&"
-        assert (
-            first_input_type == "const Tensor&"
-        ), f"Error! The first argument of Tensor Api {func_name} must be Tensor, but received {first_input_type}"
+        assert first_input_type == "const Tensor&", (
+            f"Error! The first argument of Tensor Api {func_name} must be Tensor, but received {first_input_type}"
+        )
         for name in self.attrs['names']:
             define_args.append(self.attrs['attr_info'][name][0] + ' ' + name)
         # remove first Tensor argument
@@ -525,9 +525,9 @@ class OperantsAPI(ForwardAPI):
 
     def gene_tensor_api_implementation(self):
         func_name = self.get_api_func_name()
-        assert (
-            len(self.inputs['names']) >= 1
-        ), f"Error! Api {func_name} has no Tensor inputs"
+        assert len(self.inputs['names']) >= 1, (
+            f"Error! Api {func_name} has no Tensor inputs"
+        )
         # remove first Tensor argument
         func_args = self.inputs['names'][1:] + self.attrs['names']
         if len(func_args) > 0:
@@ -553,11 +553,11 @@ class OperantsAPI(ForwardAPI):
         api_func_name = self.get_api_func_name()
         if api_func_name[-1] != '_':
             return f"""
-{indent}{self.get_return_type()} {api_func_name}({self.get_declare_args()});
+{indent}{self.get_return_type()} {api_func_name}({self.get_declare_args(append_input_out=False)});
 """
         else:
             return f"""
-{indent}{self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_declare_args(inplace_flag=True)});
+{indent}{self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_declare_args(inplace_flag=True, append_input_out=False)});
 """
 
     def gene_operants_implementation(self):
@@ -567,13 +567,13 @@ class OperantsAPI(ForwardAPI):
         # func declaration
         if func_name[-1] != '_':
             return f"""
-{self.get_return_type()} PhiTensorOperants::{func_name}({self.get_define_args()}) {{
+{self.get_return_type()} PhiTensorOperants::{func_name}({self.get_define_args(append_input_out=False)}) {{
 {indent}return paddle::experimental::{func_name}({func_args_code});
 }}
 """
         else:
             return f"""
-{self.get_return_type(inplace_flag=True)} PhiTensorOperants::{func_name}({self.get_define_args(inplace_flag=True)}) {{
+{self.get_return_type(inplace_flag=True)} PhiTensorOperants::{func_name}({self.get_define_args(inplace_flag=True, append_input_out=False)}) {{
 {indent}return paddle::experimental::{func_name}({func_args_code});
 }}
 
@@ -640,14 +640,14 @@ class OperantsAPI(ForwardAPI):
             return (
                 final_code
                 + f"""
-{self.get_return_type()} OperantsManager::{func_name}({self.get_define_args()}) {{{self.gene_operants_manager_code()}}}
+{self.get_return_type()} OperantsManager::{func_name}({self.get_define_args(append_input_out=False)}) {{{self.gene_operants_manager_code()}}}
 """
             )
         else:
             return (
                 final_code
                 + f"""
-{self.get_return_type(inplace_flag=True)} OperantsManager::{func_name}({self.get_define_args(inplace_flag=True)}) {{
+{self.get_return_type(inplace_flag=True)} OperantsManager::{func_name}({self.get_define_args(inplace_flag=True, append_input_out=False)}) {{
 {self.gene_operants_manager_code()}
 }}
 """

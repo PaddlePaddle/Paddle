@@ -18,6 +18,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/cpu/elementwise.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
@@ -39,6 +40,21 @@ void LayerNormGradKernel(const Context& dev_ctx,
                          DenseTensor* x_grad,
                          DenseTensor* scale_grad,
                          DenseTensor* bias_grad) {
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    if (scale_grad)
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(scale_grad->dims())),
+          0,
+          scale_grad);
+    if (bias_grad)
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(bias_grad->dims())),
+                            0,
+                            bias_grad);
+    return;
+  }
   auto* scale = scale_opt.get_ptr();
   auto d_y = out_grad;
 

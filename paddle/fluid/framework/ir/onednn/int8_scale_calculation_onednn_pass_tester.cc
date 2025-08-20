@@ -28,7 +28,7 @@ void SetOp(ProgramDesc* prog,
 
   op->SetType(type);
   if (type == "conv2d") {
-    op->SetAttr("use_mkldnn", true);
+    op->SetAttr("use_onednn", true);
     op->SetAttr("name", name);
     op->SetAttr("strides", std::vector<int>({1, 1}));
     op->SetAttr("groups", 1);
@@ -47,7 +47,7 @@ void SetOp(ProgramDesc* prog,
     op->SetAttr("Scale_in", 1.0f);
     op->SetAttr("Scale_out", 1.0f);
     op->SetAttr("Scale_weights", scale_weights);
-    op->SetAttr("use_mkldnn", true);
+    op->SetAttr("use_onednn", true);
     op->SetAttr("mkldnn_data_type", std::string("int8"));
   } else {
     FAIL() << "Unexpected operator type.";
@@ -103,7 +103,7 @@ void MainTest(bool convWithExistingBias,
   for (auto* node : graph->Nodes()) {
     if (node->IsOp() && node->Op()->Type() == "conv2d") {
       auto* op = node->Op();
-      ASSERT_TRUE(op->HasAttr("use_mkldnn"));
+      ASSERT_TRUE(op->HasAttr("use_mkldnn") || op->HasAttr("use_onednn"));
 
       EXPECT_EQ(op->GetAttrIfExists<std::vector<float>>("Scale_weights"),
                 scale_weights);
@@ -125,21 +125,21 @@ void MainTest(bool convWithExistingBias,
   EXPECT_EQ(original_nodes_num - removed_nodes_count, current_nodes_num);
 }
 
-TEST(Int8ScaleCalculationMkldnnPass, int8_scale_calculation_with_no_bias) {
+TEST(Int8ScaleCalculationOnednnPass, int8_scale_calculation_with_no_bias) {
   auto scale = 1.0f;
   int removed_nodes_count = 0;
   auto scale_weights = {1.5f};
   MainTest(false, removed_nodes_count, scale, scale_weights);
 }
 
-TEST(Int8ScaleCalculationMkldnnPass, int8_scale_calculation_with_bias) {
+TEST(Int8ScaleCalculationOnednnPass, int8_scale_calculation_with_bias) {
   auto scale = 1.0f;
   int removed_nodes_count = 0;
   auto scale_weights = {1.5f};
   MainTest(true, removed_nodes_count, scale, scale_weights);
 }
 
-TEST(Int8ScaleCalculationMkldnnPass,
+TEST(Int8ScaleCalculationOnednnPass,
      int8_scale_calculation_with_bias_scale_weights) {
   auto scale = 1.0f;
   int removed_nodes_count = 0;

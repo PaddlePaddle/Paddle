@@ -20,8 +20,7 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/tensor_utils.h"
 
-namespace paddle {
-namespace funcs {
+namespace phi::funcs {
 
 void TensorFormatter::SetPrintTensorType(bool print_tensor_type) {
   print_tensor_type_ = print_tensor_type;
@@ -185,5 +184,4 @@ template void TensorFormatter::FormatData<phi::dtype::complex<float>>(
 template void TensorFormatter::FormatData<phi::dtype::complex<double>>(
     const phi::DenseTensor& print_tensor, std::stringstream& log_stream);
 
-}  // namespace funcs
-}  // namespace paddle
+}  // namespace phi::funcs

@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
 from paddle import base
@@ -181,11 +182,7 @@ class TestPirArrayOp(unittest.TestCase):
                 out0 = paddle.tensor.array_read(array, 0)
                 out1 = paddle.tensor.array_read(array, 1)
 
-            place = (
-                paddle.base.CPUPlace()
-                if not paddle.base.core.is_compiled_with_cuda()
-                else paddle.base.CUDAPlace(0)
-            )
+            place = get_device_place()
             exe = paddle.base.Executor(place)
             [fetched_out0, fetched_out1] = exe.run(
                 main_program, feed={}, fetch_list=[out0, out1]
@@ -214,11 +211,7 @@ class TestPirArrayOp(unittest.TestCase):
             mean = paddle.mean(out)
             grad_list = append_backward(mean)
 
-            place = (
-                base.CUDAPlace(0)
-                if core.is_compiled_with_cuda()
-                else base.CPUPlace()
-            )
+            place = get_device_place()
             d = np.random.random(size=[10]).astype('float32')
             exe = base.Executor(place)
 
@@ -277,11 +270,7 @@ class TestPirArrayOp(unittest.TestCase):
                 i = paddle.increment(i, 1)
                 out_2 = paddle.tensor.array_read(array=add_array, i=i)
 
-                place = (
-                    base.CUDAPlace(0)
-                    if core.is_compiled_with_cuda()
-                    else base.CPUPlace()
-                )
+                place = get_device_place()
                 d0 = np.random.random(size=[10]).astype('float32')
                 d1 = np.random.random(size=[10]).astype('float32')
                 exe = base.Executor(place)

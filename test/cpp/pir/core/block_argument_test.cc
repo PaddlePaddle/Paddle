@@ -14,6 +14,8 @@
 
 #include <gtest/gtest.h>
 
+#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/include/core/builder.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/builtin_type.h"
@@ -23,8 +25,7 @@
 
 TEST(block_argument_test, base) {
   pir::IrContext ctx;
-  ctx.GetOrRegisterDialect<test::TestDialect>();
-
+  ctx.GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   pir::Program program(&ctx);
   pir::Block* block = program.block();
   pir::Builder builder(&ctx, block);

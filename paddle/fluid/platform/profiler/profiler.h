@@ -47,8 +47,8 @@ struct ProfilerOptions {
 class Profiler {
  public:
   static uint32_t
-      span_indx;  // index of profiler range, when user profiles multiple ranges
-                  // such as [2,4], [6,8], the first range is index 0.
+      span_index;  // index of profiler range, when user profiles multiple
+                   // ranges such as [2,4], [6,8], the first range is index 0.
   static const char* version;  // profiler version.
   static std::unique_ptr<Profiler> Create(
       const ProfilerOptions& options,

@@ -31,64 +31,36 @@ static TensorAssign tensor_assign;
 
 class ReduceAdd {
  public:
-  template <
-      typename tensor_t,
-      std::enable_if_t<!std::is_same<tensor_t, uint8_t>::value>* = nullptr>
+  template <typename tensor_t>
   __device__ void operator()(tensor_t* self_data, tensor_t* src_data) const {
     phi::CudaAtomicAdd(self_data, *src_data);
-  }
-  template <typename tensor_t,
-            std::enable_if_t<std::is_same<tensor_t, uint8_t>::value>* = nullptr>
-  __device__ void operator()(tensor_t* self_data, tensor_t* src_data) const {
-    *self_data += *src_data;
   }
 };
 static ReduceAdd reduce_add;
 
 class ReduceMul {
  public:
-  template <
-      typename tensor_t,
-      std::enable_if_t<!std::is_same<tensor_t, uint8_t>::value>* = nullptr>
+  template <typename tensor_t>
   __device__ void operator()(tensor_t* self_data, tensor_t* src_data) const {
     phi::CudaAtomicMul(self_data, *src_data);
-  }
-  template <typename tensor_t,
-            std::enable_if_t<std::is_same<tensor_t, uint8_t>::value>* = nullptr>
-  __device__ void operator()(tensor_t* self_data, tensor_t* src_data) const {
-    *self_data *= *src_data;
   }
 };
 static ReduceMul reduce_mul;
 
 class ReduceMax {
  public:
-  template <
-      typename tensor_t,
-      std::enable_if_t<!std::is_same<tensor_t, uint8_t>::value>* = nullptr>
+  template <typename tensor_t>
   __device__ void operator()(tensor_t* self_data, tensor_t* src_data) const {
     phi::CudaAtomicMax(self_data, *src_data);
-  }
-  template <typename tensor_t,
-            std::enable_if_t<std::is_same<tensor_t, uint8_t>::value>* = nullptr>
-  __device__ void operator()(tensor_t* self_data, tensor_t* src_data) const {
-    *self_data = *src_data > *self_data ? *src_data : *self_data;
   }
 };
 static ReduceMax reduce_max;
 
 class ReduceMin {
  public:
-  template <
-      typename tensor_t,
-      std::enable_if_t<!std::is_same<tensor_t, uint8_t>::value>* = nullptr>
+  template <typename tensor_t>
   __device__ void operator()(tensor_t* self_data, tensor_t* src_data) const {
     phi::CudaAtomicMin(self_data, *src_data);
-  }
-  template <typename tensor_t,
-            std::enable_if_t<std::is_same<tensor_t, uint8_t>::value>* = nullptr>
-  __device__ void operator()(tensor_t* self_data, tensor_t* src_data) const {
-    *self_data = *src_data < *self_data ? *src_data : *self_data;
   }
 };
 static ReduceMin reduce_min;

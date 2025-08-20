@@ -25,9 +25,9 @@ namespace pir {
 namespace {
 
 int64_t GetRandomId() {
-  std::random_device rd{};
-  std::mt19937_64 gen(rd());
-  std::uniform_int_distribution<int64_t> dis(
+  static std::random_device rd{};
+  static std::mt19937_64 gen(rd());
+  static std::uniform_int_distribution<int64_t> dis(
       0, std::numeric_limits<int64_t>::max());
   return dis(gen);
 }

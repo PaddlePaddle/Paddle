@@ -179,7 +179,6 @@ class TestAllcloseError(unittest.TestCase):
 
 
 class TestAllcloseOpFp16(unittest.TestCase):
-
     def test_fp16(self):
         if core.is_compiled_with_cuda():
             x_data = np.random.rand(10, 10).astype('float16')

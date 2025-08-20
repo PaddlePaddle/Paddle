@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_devices
 
 import paddle
 from paddle.base import core
@@ -199,10 +199,7 @@ class TestIndexAddAPI(unittest.TestCase):
         self.index_type = np.int32
 
     def setPlace(self):
-        self.place = []
-        self.place.append('cpu')
-        if paddle.is_compiled_with_cuda():
-            self.place.append('gpu')
+        self.place = get_devices()
 
     def config(self):
         self.axis = 0

@@ -21,7 +21,7 @@ from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
-class TestMatmulActivationMkldnnFusePass(PassAutoScanTest):
+class TestMatmulActivationOnednnFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
         transpose_X = draw(st.booleans())
         transpose_Y = draw(st.booleans())
@@ -140,7 +140,7 @@ class TestMatmulActivationMkldnnFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(
-            use_mkldnn=True,
+            use_onednn=True,
             passes=[
                 'matmul_activation_onednn_fuse_pass',
                 'operator_scale_onednn_fuse_pass',

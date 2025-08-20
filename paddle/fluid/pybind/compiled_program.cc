@@ -162,6 +162,7 @@
 #include "pybind11/stl.h"
 
 COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_onednn);
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(phi::TensorArray);
@@ -387,7 +388,7 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
             self.fuse_gemm_epilogue_ = b;
           },
           R"DOC((bool, optional): fuse_gemm_epilogue indicate whether
-                to fuse matmul_op, elemenewist_add_op and activation_op,
+                to fuse matmul_op, elementwise_add_op and activation_op,
                 it may make the execution faster. Default is False.
 
                 Examples:
@@ -410,7 +411,7 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               common::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, cannot be "
+                                  "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.fuse_dot_product_attention_ = b;
           },
@@ -817,11 +818,20 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
       .def_property(
           "mkldnn_enabled_op_types",
           [](const BuildStrategy &self) {
-            return self.mkldnn_enabled_op_types_;
+            return self.onednn_enabled_op_types_;
           },
           [](BuildStrategy &self,
-             const std::unordered_set<std::string> &mkldnn_enabled_op_types) {
-            self.mkldnn_enabled_op_types_ = mkldnn_enabled_op_types;
+             const std::unordered_set<std::string> &onednn_enabled_op_types) {
+            self.onednn_enabled_op_types_ = onednn_enabled_op_types;
+          })
+      .def_property(
+          "onednn_enabled_op_types",
+          [](const BuildStrategy &self) {
+            return self.onednn_enabled_op_types_;
+          },
+          [](BuildStrategy &self,
+             const std::unordered_set<std::string> &onednn_enabled_op_types) {
+            self.onednn_enabled_op_types_ = onednn_enabled_op_types;
           })
       .def_property(
           "allow_cuda_graph_capture",

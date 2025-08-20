@@ -138,14 +138,14 @@ __global__ void GraphSendUERecvCUDAKernel(const T* x_data,
                                           bool use_bcast,
                                           ComputeFunctor cfunctor,
                                           ReduceFunctor rfunctor) {
-  IndexT ty = blockIdx.y * blockDim.y + threadIdx.y;
-  const IndexT stride_y = blockDim.y * gridDim.y;
+  IndexT ty = static_cast<IndexT>(blockIdx.y) * blockDim.y + threadIdx.y;
+  const IndexT stride_y = static_cast<IndexT>(blockDim.y) * gridDim.y;
 
   while (ty < index_size) {
     IndexT src = src_indices[ty];
     IndexT dst = dst_indices[ty];
-    int64_t tx = blockIdx.x * blockDim.x + threadIdx.x;
-    int64_t stride_x = blockDim.x * gridDim.x;
+    int64_t tx = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+    int64_t stride_x = blockDim.x * static_cast<int64_t>(gridDim.x);
 
     const T* x_off = x_data + src * x_len;
     const T* e_off = e_data + ty * e_len;

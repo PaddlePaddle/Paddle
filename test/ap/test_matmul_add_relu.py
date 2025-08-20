@@ -72,7 +72,6 @@ class TestMatmulEpilogue(unittest.TestCase):
             w: pct.Tensor([K, N], DType),
             b: pct.Tensor([B, M, N], DType),
         ):
-
             y = paddle.matmul(x, w)
             tmp = paddle.nn.functional.relu(y)
             tmp2 = tmp + b

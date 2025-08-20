@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import is_custom_device
 
 import paddle
 from paddle.base import core
@@ -109,7 +110,8 @@ class TestBlhaGetMaxLenOp(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    and not core.is_compiled_with_xpu(),
     "Only support XPU or GPU in CUDA mode.",
 )
 class TestBlhaGetMaxLenOp_ZeroSize(unittest.TestCase):
