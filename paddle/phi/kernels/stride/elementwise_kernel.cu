@@ -26,6 +26,11 @@
 #include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
 
+#include "paddle/phi/kernels/bitwise_kernel.h"
+#include "paddle/phi/kernels/funcs/bitwise_functors.h"
+#include "paddle/phi/kernels/funcs/logical_functor.h"
+#include "paddle/phi/kernels/logical_kernel.h"
+
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 #include "paddle/phi/kernels/funcs/dims_simplifier.h"
 
@@ -158,14 +163,17 @@ void LaunchBinaryElementwiseStrideKernel(const Context &dev_ctx,
       dev_ctx, inputs, &outputs, func, axis);
 }
 
-template <typename T, typename Context>
+template <typename Context>
 phi::DenseTensor Tensor2Contiguous(const Context &dev_ctx,
                                    const phi::DenseTensor &tensor) {
   phi::DenseTensor dense_out;
   phi::MetaTensor meta_input(tensor);
   phi::MetaTensor meta_out(&dense_out);
   UnchangedInferMeta(meta_input, &meta_out);
-  phi::ContiguousKernel<T, Context>(dev_ctx, tensor, &dense_out);
+  PD_VISIT_ALL_TYPES(tensor.dtype(), "Tensor2Contiguous", ([&] {
+                       phi::ContiguousKernel<data_t, Context>(
+                           dev_ctx, tensor, &dense_out);
+                     }));
   return dense_out;
 }
 
@@ -185,12 +193,12 @@ phi::DenseTensor Tensor2Contiguous(const Context &dev_ctx,
     if (!FLAGS_use_stride_compute_kernel || x.offset() != 0 ||                \
         y.offset() != 0) {                                                    \
       if (!x.meta().is_contiguous() || x.offset() != 0) {                     \
-        x_ = Tensor2Contiguous<T, Context>(dev_ctx, x);                       \
+        x_ = Tensor2Contiguous<Context>(dev_ctx, x);                          \
       } else {                                                                \
         x_ = x;                                                               \
       }                                                                       \
       if (!y.meta().is_contiguous() || y.offset() != 0) {                     \
-        y_ = Tensor2Contiguous<T, Context>(dev_ctx, y);                       \
+        y_ = Tensor2Contiguous<Context>(dev_ctx, y);                          \
       } else {                                                                \
         y_ = y;                                                               \
       }                                                                       \
@@ -216,6 +224,124 @@ phi::DenseTensor Tensor2Contiguous(const Context &dev_ctx,
   }
 
 DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(Add)
+DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(BitwiseAnd)
+DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(BitwiseOr)
+DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(BitwiseXor)
+
+template <typename T, typename Context, typename Functor>
+void LogicalKernelStrideImpl(const Context &dev_ctx,
+                             const DenseTensor &x,
+                             const DenseTensor &y,
+                             DenseTensor *out) {
+  dev_ctx.template Alloc<bool>(out);
+  Functor binary_func;
+  LaunchBinaryElementwiseStrideKernel<bool, Context>(
+      dev_ctx, x, y, binary_func, -1, out);
+}
+
+template <typename T, typename Context, typename Functor>
+void InplaceLogicalKernelStrideImpl(const Context &dev_ctx,
+                                    const DenseTensor &x,
+                                    const DenseTensor &y,
+                                    DenseTensor *out) {
+  auto x_origin = x;
+  dev_ctx.template Alloc<bool>(out);
+  out->set_type(phi::DataType::BOOL);
+  Functor binary_func;
+  LaunchBinaryElementwiseStrideKernel<bool, Context>(
+      dev_ctx, x_origin, y, binary_func, -1, out);
+}
+
+template <typename T, typename Context, typename Functor>
+void LogicalKernelImpl(const Context &dev_ctx,
+                       const DenseTensor &x,
+                       const DenseTensor &y,
+                       DenseTensor *out) {
+  dev_ctx.template Alloc<bool>(out);
+  Functor binary_func;
+  std::vector<const DenseTensor *> ins = {&x, &y};
+  std::vector<DenseTensor *> outs = {out};
+  funcs::BroadcastKernel<bool>(dev_ctx, ins, &outs, binary_func);
+}
+
+template <typename T, typename Context, typename Functor>
+void InplaceLogicalKernelImpl(const Context &dev_ctx,
+                              const DenseTensor &x,
+                              const DenseTensor &y,
+                              DenseTensor *out) {
+  auto x_origin = x;
+  dev_ctx.template Alloc<bool>(out);
+  out->set_type(phi::DataType::BOOL);
+  Functor binary_func;
+  std::vector<const DenseTensor *> ins = {&x_origin, &y};
+  std::vector<DenseTensor *> outs = {out};
+  funcs::BroadcastKernel<bool>(dev_ctx, ins, &outs, binary_func);
+}
+
+#define DEFINE_CUDA_BINARY_LOGICAL_ELEMENTWISE_STRIDE_OP(name)                \
+  template <typename T, typename Context>                                     \
+  void Logical##name##StrideKernel(const Context &dev_ctx,                    \
+                                   const DenseTensor &x,                      \
+                                   const DenseTensor &y,                      \
+                                   DenseTensor *out) {                        \
+    if (!FLAGS_use_stride_kernel) {                                           \
+      PADDLE_THROW(common::errors::Fatal(                                     \
+          "FLAGS_use_stride_kernel is closed. Strided kernel "                \
+          "be called, something wrong has happened!"));                       \
+    }                                                                         \
+    DenseTensor x_;                                                           \
+    DenseTensor y_;                                                           \
+    if (!FLAGS_use_stride_compute_kernel || x.offset() != 0 ||                \
+        y.offset() != 0) {                                                    \
+      if (!x.meta().is_contiguous() || x.offset() != 0) {                     \
+        x_ = Tensor2Contiguous<Context>(dev_ctx, x);                          \
+      } else {                                                                \
+        x_ = x;                                                               \
+      }                                                                       \
+      if (!y.meta().is_contiguous() || y.offset() != 0) {                     \
+        y_ = Tensor2Contiguous<Context>(dev_ctx, y);                          \
+      } else {                                                                \
+        y_ = y;                                                               \
+      }                                                                       \
+    } else {                                                                  \
+      x_ = x;                                                                 \
+      y_ = y;                                                                 \
+    }                                                                         \
+    if (x_.meta().is_contiguous() && y_.meta().is_contiguous()) {             \
+      auto meta = out->meta();                                                \
+      meta.strides = meta.calc_strides(out->dims());                          \
+      out->set_meta(meta);                                                    \
+      if (out->IsSharedWith(x_)) {                                            \
+        InplaceLogicalKernelImpl<T,                                           \
+                                 Context,                                     \
+                                 funcs::Logical##name##Functor<T>>(           \
+            dev_ctx, x_, y_, out);                                            \
+      } else {                                                                \
+        LogicalKernelImpl<T, Context, funcs::Logical##name##Functor<T>>(      \
+            dev_ctx, x_, y_, out);                                            \
+      }                                                                       \
+      return;                                                                 \
+    }                                                                         \
+    if (!FLAGS_use_stride_compute_kernel) {                                   \
+      PADDLE_THROW(                                                           \
+          common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. " \
+                                "Kernel using DenseTensorIterator "           \
+                                "be called, something wrong has happened!")); \
+    }                                                                         \
+    if (out->IsSharedWith(x_)) {                                              \
+      InplaceLogicalKernelStrideImpl<T,                                       \
+                                     Context,                                 \
+                                     funcs::Logical##name##Functor<T>>(       \
+          dev_ctx, x_, y_, out);                                              \
+    } else {                                                                  \
+      LogicalKernelStrideImpl<T, Context, funcs::Logical##name##Functor<T>>(  \
+          dev_ctx, x_, y_, out);                                              \
+    }                                                                         \
+  }
+
+DEFINE_CUDA_BINARY_LOGICAL_ELEMENTWISE_STRIDE_OP(And)
+DEFINE_CUDA_BINARY_LOGICAL_ELEMENTWISE_STRIDE_OP(Or)
+DEFINE_CUDA_BINARY_LOGICAL_ELEMENTWISE_STRIDE_OP(Xor)
 
 }  // namespace phi
 
@@ -240,5 +366,61 @@ PD_REGISTER_KERNEL(add,
                    phi::dtype::bfloat16,
                    complex64,
                    complex128) {}
+
+PD_REGISTER_KERNEL(bitwise_and,
+                   GPU,
+                   STRIDED,
+                   phi::BitwiseAndStrideKernel,
+                   bool,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
+
+PD_REGISTER_KERNEL(bitwise_or,
+                   GPU,
+                   STRIDED,
+                   phi::BitwiseOrStrideKernel,
+                   bool,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
+
+PD_REGISTER_KERNEL(bitwise_xor,
+                   GPU,
+                   STRIDED,
+                   phi::BitwiseXorStrideKernel,
+                   bool,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
+
+#define REGISTER_LOGICAL_CUDA_KERNEL(logical_and, func_type) \
+  PD_REGISTER_KERNEL(logical_and,                            \
+                     GPU,                                    \
+                     STRIDED,                                \
+                     phi::Logical##func_type##StrideKernel,  \
+                     float,                                  \
+                     phi::dtype::float16,                    \
+                     phi::dtype::bfloat16,                   \
+                     double,                                 \
+                     bool,                                   \
+                     int64_t,                                \
+                     int,                                    \
+                     int8_t,                                 \
+                     phi::dtype::complex<float>,             \
+                     phi::dtype::complex<double>,            \
+                     int16_t) {                              \
+    kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);    \
+  }
+
+REGISTER_LOGICAL_CUDA_KERNEL(logical_and, And)
+REGISTER_LOGICAL_CUDA_KERNEL(logical_or, Or)
+REGISTER_LOGICAL_CUDA_KERNEL(logical_xor, Xor)
 
 #endif
