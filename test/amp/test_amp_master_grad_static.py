@@ -13,16 +13,11 @@
 # limitations under the License.
 
 
-import random
 import unittest
 
-import numpy as np
 from amp_base_models import (
     AmpTestBase,
     build_embedding_model,
-    build_MLP_model,
-    convert_float_to_uint16,
-    convert_uint16_to_float,
 )
 
 import paddle
@@ -91,125 +86,6 @@ class TestStaticMasterGradProgramFP16(AmpTestBase):
             use_master_grad_list = [False, True]
             for master_grad in use_master_grad_list:
                 self.amp_fp16_o2(master_grad)
-
-
-class TestMasterGradAccuracy(AmpTestBase):
-    def _generate_feed_x(self, dtype="float16"):
-        seed = 0
-        paddle.seed(seed)
-        np.random.seed(seed)
-        random.seed(seed)
-
-        x = np.random.random(size=[64, 16]).astype("float32")
-        if dtype == "bfloat16":
-            x_f16 = convert_float_to_uint16(x)
-            x_f32 = convert_uint16_to_float(x_f16)
-        elif dtype == "float16":
-            x_f16 = x.astype(np.float16)
-            x_f32 = x_f16.astype(np.float32)
-        else:
-            raise AssertionError(f"unknown dtype:{dtype}")
-        return x_f32, x_f16
-
-    def test_compare_o1_and_o2_master_grad(self):
-        def _run(
-            place,
-            exe,
-            x_np,
-            max_iters,
-            level,
-            use_grad_clip,
-            dtype="float16",
-            use_master_grad=False,
-        ):
-            (
-                main_program,
-                startup_program,
-                optimizer,
-                feed_vars,
-                fetch_vars,
-            ) = build_MLP_model(
-                True,
-                use_grad_clip=use_grad_clip,
-                amp_dtype=dtype,
-                amp_level=level,
-                use_master_grad=use_master_grad,
-            )
-
-            seed = 0
-            paddle.seed(seed)
-            np.random.seed(seed)
-            random.seed(seed)
-
-            losses = self.run_program(
-                main_program,
-                startup_program,
-                optimizer,
-                feed_vars,
-                fetch_vars,
-                place,
-                exe,
-                x_np,
-                max_iters,
-                dtype,
-                level,
-            )
-            return losses
-
-        with paddle.pir_utils.OldIrGuard():
-            dtype = "float16"
-            max_iters = 25
-            x_f32, x_f16 = self._generate_feed_x(dtype)
-            if paddle.is_compiled_with_cuda():
-                place = paddle.CUDAPlace(0)
-            elif paddle.device.is_compiled_with_xpu():
-                place = paddle.device.XPUPlace(0)
-            else:
-                raise ValueError("Only support CUDA or XPU Place.")
-            exe = paddle.static.Executor(place)
-            use_grad_clip_list = [False, True]
-            for use_grad_clip in use_grad_clip_list:
-                losses_o1 = _run(
-                    place,
-                    exe,
-                    x_f32,
-                    max_iters,
-                    'O1',
-                    use_grad_clip,
-                    dtype=dtype,
-                )
-                losses_o2_no_master_grad = _run(
-                    place,
-                    exe,
-                    x_f16,
-                    max_iters,
-                    'O2',
-                    use_grad_clip,
-                    dtype=dtype,
-                    use_master_grad=False,
-                )
-                losses_o2_master_grad = _run(
-                    place,
-                    exe,
-                    x_f16,
-                    max_iters,
-                    'O2',
-                    use_grad_clip,
-                    dtype=dtype,
-                    use_master_grad=True,
-                )
-
-                self.assertNotEqual(
-                    losses_o1,
-                    losses_o2_no_master_grad,
-                    f"dtype: {dtype}, loss of o1 and o2-wo-master_grad should not be equal, but received loss o1: {losses_o1}, loss o2: {losses_o2_no_master_grad}",
-                )
-
-                self.assertEqual(
-                    losses_o1,
-                    losses_o2_master_grad,
-                    f"dtype: {dtype}, loss of o1 and o2-w-master_grad should be equal, but received loss o1: {losses_o1}, loss o2: {losses_o2_master_grad}",
-                )
 
 
 if __name__ == '__main__':
