@@ -79,7 +79,7 @@ def parameter_accuracy(body):
                 if i not in test_list_lower:
                     single_mess += f'{i}.'
             if len(single_mess) != 0:
-                message += f'{key} should be in {test_list}. but now is [{single_mess}].'
+                message += f'{key} should  be in {test_list}. but now is [{single_mess}].'
     return message
 
 
@@ -95,7 +95,7 @@ def checkComments(url):
 
 def checkPRTemplate(repo, body, CHECK_TEMPLATE):
     """
-    Check if PR's description meet the standard of template
+    Check if  PR's description meet the standard of template
     Args:
         body: PR's Body.
         CHECK_TEMPLATE: check template str.
