@@ -84,7 +84,8 @@ add_doc_and_signature(
     Returns:
         Tensor, results of minimum on the specified axis of input tensor,
         it's data type is the same as input's Tensor.
-
+    Keyword args:
+        out(Tensor, optional): The output tensor.
     Examples:
         .. code-block:: python
             >>> # type: ignore
@@ -188,6 +189,8 @@ def amin(
     axis: int | Sequence[int] | None = None,
     keepdim: bool = False,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor
 """,
 )
@@ -215,7 +218,8 @@ add_doc_and_signature(
             than the `x` unless :attr:`keepdim` is true, default
             value is False.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
+    Keyword args:
+        out(Tensor, optional): The output tensor.
     Returns:
         Tensor, results of maximum on the specified axis of input tensor,
         it's data type is the same as `x`.
@@ -323,6 +327,8 @@ def amax(
     axis: int | Sequence[int] | None = None,
     keepdim: bool = False,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor
 """,
 )
