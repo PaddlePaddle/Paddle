@@ -1068,7 +1068,7 @@ void LegacyRunProgramGradImpl(
   if (!cache.Has(cache_key)) {
     phi::RecordEvent record_event(
         "create_new_interpretercore", phi::TracerEventType::UserDefined, 1);
-    VLOG(2) << "No interpretercore cache, so create a new interpretercore"
+    VLOG(2) << "No interpretercore cache, so create a new interpretercore "
                "for program: "
             << program_id;
     details::ShareTensorsIntoScope(out_grad, global_inner_scope);

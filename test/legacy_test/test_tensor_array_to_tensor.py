@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
 from paddle import base
@@ -194,11 +195,7 @@ class TestPirArrayOp(unittest.TestCase):
                     input=array, axis=1, use_stack=False
                 )
 
-            place = (
-                paddle.base.CPUPlace()
-                if not paddle.base.core.is_compiled_with_cuda()
-                else paddle.base.CUDAPlace(0)
-            )
+            place = get_device_place()
             exe = paddle.base.Executor(place)
             [fetched_out0, fetched_out1] = exe.run(
                 main_program, feed={}, fetch_list=[output, output_index]
@@ -235,11 +232,7 @@ class TestPirArrayOp(unittest.TestCase):
             loss = paddle.mean(output)
             dout = paddle.base.gradients(loss, [x, y])
 
-        place = (
-            paddle.base.CPUPlace()
-            if not paddle.base.core.is_compiled_with_cuda()
-            else paddle.base.CUDAPlace(0)
-        )
+        place = get_device_place()
         exe = paddle.base.Executor(place)
         [fetched_out0, fetched_out1, fetched_out2] = exe.run(
             main_program, feed={}, fetch_list=[output, dout[0], dout[1]]
@@ -283,11 +276,7 @@ class TestPirArrayOp(unittest.TestCase):
             loss = paddle.mean(output)
             dout = paddle.base.gradients(loss, [x, y])
 
-        place = (
-            paddle.base.CPUPlace()
-            if not paddle.base.core.is_compiled_with_cuda()
-            else paddle.base.CUDAPlace(0)
-        )
+        place = get_device_place()
         exe = paddle.base.Executor(place)
         [fetched_out0, fetched_out1, fetched_out2] = exe.run(
             main_program, feed={}, fetch_list=[output, dout[0], dout[1]]

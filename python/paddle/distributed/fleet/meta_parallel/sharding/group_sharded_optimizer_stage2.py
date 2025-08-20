@@ -349,9 +349,10 @@ class GroupShardedOptimizerStage2(Optimizer):
         Divide all optimizer parameters equally into rank.
         """
         if len(self.__segment_params) == 0:
-            self.__segment_params, param_lists = [
-                [] for _ in range(self.world_size)
-            ], [[] for _ in range(self.world_size)]
+            self.__segment_params, param_lists = (
+                [[] for _ in range(self.world_size)],
+                [[] for _ in range(self.world_size)],
+            )
             sizes = [0] * self.world_size
             for param in self._local_params:
                 # Add this param to rank with smallest size.

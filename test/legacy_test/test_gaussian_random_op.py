@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_uint16_to_float, paddle_static_guard
+from op_test import (
+    OpTest,
+    convert_uint16_to_float,
+    is_custom_device,
+    paddle_static_guard,
+)
 
 import paddle
 from paddle import base
@@ -35,7 +40,7 @@ class TestGaussianRandomOp(OpTest):
             "mean": self.mean,
             "std": self.std,
             "seed": 10,
-            "use_mkldnn": self.use_onednn,
+            "use_onednn": self.use_onednn,
         }
         paddle.seed(10)
 
@@ -61,7 +66,8 @@ class TestGaussianRandomOp(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestGaussianRandomFP16Op(OpTest):
     def setUp(self):
@@ -76,7 +82,7 @@ class TestGaussianRandomFP16Op(OpTest):
             "std": self.std,
             "seed": 10,
             "dtype": paddle.float16,
-            "use_mkldnn": self.use_onednn,
+            "use_onednn": self.use_onednn,
         }
         paddle.seed(10)
 
@@ -111,7 +117,8 @@ def gaussian_wrapper(dtype_=np.uint16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestGaussianRandomBF16Op(OpTest):
     def setUp(self):
@@ -127,7 +134,7 @@ class TestGaussianRandomBF16Op(OpTest):
             "std": self.std,
             "seed": 10,
             "dtype": paddle.bfloat16,
-            "use_mkldnn": self.use_onednn,
+            "use_onednn": self.use_onednn,
         }
         paddle.seed(10)
 
@@ -177,7 +184,7 @@ class TestGaussianRandomOp_ShapeTensorList(TestGaussianRandomOp):
             'mean': self.mean,
             'std': self.std,
             'seed': self.seed,
-            'use_mkldnn': self.use_onednn,
+            'use_onednn': self.use_onednn,
         }
 
         self.inputs = {"ShapeTensorList": shape_tensor_list}
@@ -244,7 +251,7 @@ class TestGaussianRandomOp1_ShapeTensor(TestGaussianRandomOp):
             'mean': self.mean,
             'std': self.std,
             'seed': self.seed,
-            'use_mkldnn': self.use_onednn,
+            'use_onednn': self.use_onednn,
         }
         self.outputs = {'Out': np.zeros((123, 92), dtype='float32')}
 

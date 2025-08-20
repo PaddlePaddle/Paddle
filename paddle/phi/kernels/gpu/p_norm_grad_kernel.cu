@@ -42,10 +42,12 @@ struct AbsMaxAndMinGradFunctor {
 
 template <typename T>
 struct PNormGradFunctor {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   HOSTDEVICE explicit inline PNormGradFunctor(float porder, float eps) {
-    this->porder = static_cast<T>(porder - 1.);
-    this->eps = static_cast<T>(eps);
+    this->porder = static_cast<MT>(porder - 1.);
+    this->eps = static_cast<MT>(eps);
   }
+
   template <typename Context,
             typename X,
             typename Y,
@@ -59,12 +61,33 @@ struct PNormGradFunctor {
                   DY* dy,
                   const Dim& dim,
                   int size) {
+    auto x_mt = x->template cast<MT>();
+    auto y_mt = y->template cast<MT>();
+    auto dy_mt = dy->template cast<MT>();
+
+    auto norm_pow = y_mt.pow(-this->porder);
+    auto mask_norm_nonzero = (y_mt != static_cast<MT>(0)).template cast<MT>();
+
+    // Set to 0 where porder < 0 and x == 0
+    MT zero = static_cast<MT>(0);
+    auto mask_x_zero = (x_mt == zero).template cast<MT>();
+
+    MT is_porder_negative =
+        this->porder < zero ? static_cast<MT>(1) : static_cast<MT>(0);
+    auto invalid_mask = (mask_x_zero * is_porder_negative);
+    auto safe_pow =
+        x_mt.abs().pow(this->porder) * (static_cast<MT>(1) - invalid_mask);
+
     dx->device(place) =
-        (*x).abs().pow(this->porder) * (*x).sign() * dy->broadcast(dim) *
-        (*y + y->constant(eps)).pow(-this->porder).broadcast(dim);
+        (safe_pow * x_mt.sign() * dy_mt.broadcast(dim) *
+         norm_pow.broadcast(dim) *
+         mask_norm_nonzero.broadcast(dim)  // Mask out positions where norm == 0
+         )
+            .template cast<T>();
   }
-  T porder;
-  T eps;
+
+  MT porder;
+  MT eps;
 };
 
 template <typename T, typename Context>

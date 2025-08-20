@@ -332,7 +332,6 @@ from paddle.utils.dlpack import DLDeviceType
 class TestDLPackDevice(unittest.TestCase):
     def test_dlpack_device(self):
         with dygraph_guard():
-
             tensor_cpu = paddle.to_tensor([1, 2, 3], place=base.CPUPlace())
             device_type, device_id = tensor_cpu.__dlpack_device__()
             self.assertEqual(device_type, DLDeviceType.kDLCPU)
@@ -362,7 +361,6 @@ class TestDLPackDevice(unittest.TestCase):
 
     def test_dlpack_device_zero_dim(self):
         with dygraph_guard():
-
             tensor = paddle.to_tensor(5.0, place=base.CPUPlace())
             device_type, device_id = tensor.__dlpack_device__()
             self.assertEqual(device_type, DLDeviceType.kDLCPU)
