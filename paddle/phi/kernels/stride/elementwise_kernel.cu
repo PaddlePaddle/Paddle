@@ -17,6 +17,7 @@
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/contiguous_kernel.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
@@ -158,14 +159,17 @@ void LaunchBinaryElementwiseStrideKernel(const Context &dev_ctx,
       dev_ctx, inputs, &outputs, func, axis);
 }
 
-template <typename T, typename Context>
+template <typename Context>
 phi::DenseTensor Tensor2Contiguous(const Context &dev_ctx,
                                    const phi::DenseTensor &tensor) {
   phi::DenseTensor dense_out;
   phi::MetaTensor meta_input(tensor);
   phi::MetaTensor meta_out(&dense_out);
   UnchangedInferMeta(meta_input, &meta_out);
-  phi::ContiguousKernel<T, Context>(dev_ctx, tensor, &dense_out);
+  PD_VISIT_ALL_TYPES(tensor.dtype(), "Tensor2Contiguous", ([&] {
+                       phi::ContiguousKernel<data_t, Context>(
+                           dev_ctx, tensor, &dense_out);
+                     }));
   return dense_out;
 }
 
@@ -185,12 +189,12 @@ phi::DenseTensor Tensor2Contiguous(const Context &dev_ctx,
     if (!FLAGS_use_stride_compute_kernel || x.offset() != 0 ||                \
         y.offset() != 0) {                                                    \
       if (!x.meta().is_contiguous() || x.offset() != 0) {                     \
-        x_ = Tensor2Contiguous<T, Context>(dev_ctx, x);                       \
+        x_ = Tensor2Contiguous<Context>(dev_ctx, x);                          \
       } else {                                                                \
         x_ = x;                                                               \
       }                                                                       \
       if (!y.meta().is_contiguous() || y.offset() != 0) {                     \
-        y_ = Tensor2Contiguous<T, Context>(dev_ctx, y);                       \
+        y_ = Tensor2Contiguous<Context>(dev_ctx, y);                          \
       } else {                                                                \
         y_ = y;                                                               \
       }                                                                       \

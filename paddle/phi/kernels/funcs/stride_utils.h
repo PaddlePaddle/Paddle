@@ -28,6 +28,7 @@
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
+#include "paddle/phi/kernels/funcs/indexing.h"
 #include "paddle/phi/kernels/nonzero_kernel.h"
 #include "paddle/phi/kernels/slice_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
@@ -135,35 +136,6 @@ static inline void permute_dimensions(const std::vector<int64_t> stride_size,
   }
 }
 
-static inline void permute_dimensions_v2(const int64_t ntensor,
-                                         const std::vector<int64_t> stride_size,
-                                         const std::vector<int64_t> perm,
-                                         std::vector<int64_t*>* strides_array,
-                                         std::vector<int64_t>* shape_) {
-  auto reorder = [perm](std::vector<int64_t> data) {
-    auto res = std::vector<int64_t>(data.size(), 0);
-    for (size_t i = 0; i < perm.size(); i++) {
-      res[i] = data[perm[i]];
-    }
-    return res;
-  };
-
-  // Update shape and strides
-  *shape_ = reorder(*shape_);
-  std::vector<std::vector<int64_t>> temp_strides;
-  temp_strides.resize(ntensor);
-  for (int64_t i = 0; i < ntensor; i++) {
-    if ((*strides_array)[i] != nullptr) {
-      std::vector<int64_t> original_data((*strides_array)[i],
-                                         (*strides_array)[i] + stride_size[i]);
-      temp_strides[i] = reorder(original_data);
-      for (int64_t j = 0; j < stride_size[i]; j++) {
-        (*strides_array)[i][j] = temp_strides[i][j];
-      }
-    }
-  }
-}
-
 template <int N>
 static inline void reorder_dimensions(const std::vector<int64_t> stride_size,
                                       std::vector<int64_t>* shape_,
@@ -235,78 +207,6 @@ static inline void reorder_dimensions(const std::vector<int64_t> stride_size,
 
   // perform re-ordering of shape and strides
   permute_dimensions<N>(stride_size, perm_, strides_array, shape_);
-}
-
-static inline void reorder_dimensions_v2(const int64_t ntensor,
-                                         const std::vector<int64_t> stride_size,
-                                         std::vector<int64_t>* shape_,
-                                         std::vector<int64_t*>* strides_array) {
-  // Sort the dimensions based on strides in ascending order with reduced dims
-  // at the front. NOTE: that this inverts the order of C-contiguous tensors.
-  // strides[0] is the fastest moving dimension instead of strides[ndim - 1].
-  // See NOTE: [Computing output strides] and inline  comments for more detailed
-  // description
-  auto ndim = shape_->size();
-  std::vector<int64_t> perm_;
-
-  perm_.resize(ndim);
-  if (ndim == 1) {
-    perm_[0] = 0;
-    return;
-  }
-
-  // initialize perm with n-1, n-2, ..., 1, 0
-  std::iota(perm_.rbegin(), perm_.rend(), 0);
-  // returns 1 if the dim0 should come after dim1, -1 if dim0 should come
-  // before dim1, and 0 if the comparison is ambiguous.
-  auto should_swap = [&](size_t dim0, size_t dim1) {
-    for (int64_t arg = 0; arg < ntensor; arg++) {
-      // ignore undefined or incorrectly sized tensors
-      if ((*strides_array)[arg] == nullptr) {
-        continue;
-      }
-      int64_t stride0 = (*strides_array)[arg][dim0];
-      int64_t stride1 = (*strides_array)[arg][dim1];
-      // move on to the next input if one of the dimensions is broadcasted
-      if (stride0 == 0 || stride1 == 0) {
-        continue;
-        // it is important to return here only with strict comparisons, for
-        // equal strides we try to break the tie later by comparing
-        // corresponding dimensions or if that does not work, moving on to the
-        // next tensor
-      } else if (stride0 < stride1) {
-        return -1;
-      } else if (stride0 > stride1) {
-        return 1;
-      } else {  // equal strides, use dimensions themselves as the tie-breaker.
-        // at this point, with zero strides out of the way, we are guaranteed
-        // that operand dimensions are equal to shape_
-        auto t_dim0 = (*shape_)[dim0];
-        auto t_dim1 = (*shape_)[dim1];
-        // return only if dimensions should be swapped, otherwise move on to the
-        // next tensor
-        if (t_dim0 > t_dim1) {
-          return 1;
-        }
-      }
-    }
-    return 0;
-  };
-  // insertion sort with support for ambiguous comparisons
-  for (size_t i = 1; i < ndim; i++) {
-    int dim1 = i;
-    for (int dim0 = i - 1; dim0 >= 0; dim0--) {
-      int comparison = should_swap(perm_[dim0], perm_[dim1]);
-      if (comparison > 0) {
-        std::swap(perm_[dim0], perm_[dim1]);
-        dim1 = dim0;
-      } else if (comparison < 0) {
-        break;
-      }
-    }
-  }
-  // perform re-ordering of shape and strides
-  permute_dimensions_v2(ntensor, stride_size, perm_, strides_array, shape_);
 }
 
 static inline std::vector<int64_t> compatible_stride(
@@ -388,61 +288,6 @@ static inline void coalesce_dimensions(const int64_t ndim,
   }
   (*shape_).resize(prev_dim + 1);
   for (int64_t i = 0; i < N; i++) {
-    (*stride_size)[i] = shape_->size();
-  }
-}
-
-static inline void coalesce_dimensions_v2(const int ntensor,
-                                          const int64_t ndim,
-                                          std::vector<int64_t*>* strides_array,
-                                          std::vector<int64_t>* stride_size,
-                                          std::vector<int64_t>* shape_) {
-  if (ndim <= 1) {
-    return;
-  }
-
-  // We can coalesce two adjacent dimensions if either dim has size 1 or if:
-  // shape[n] * stride[n] == stride[n + 1].
-  auto can_coalesce = [&](int dim0, int dim1) {
-    auto shape0 = (*shape_)[dim0];
-    auto shape1 = (*shape_)[dim1];
-    if (shape0 == 1 || shape1 == 1) {
-      return true;
-    }
-    for (int64_t i = 0; i < ntensor; i++) {
-      auto& stride = (*strides_array)[i];
-      if (shape0 * stride[dim0] != stride[dim1]) {
-        return false;
-      }
-    }
-    return true;
-  };
-
-  // replace each operands stride at dim0 with its stride at dim1
-  auto replace_stride = [&](int dim0, int dim1) {
-    for (int64_t i = 0; i < ntensor; i++) {
-      auto& stride = (*strides_array)[i];
-      stride[dim0] = stride[dim1];
-    }
-  };
-
-  int prev_dim = 0;
-  for (int64_t dim = 1; dim < ndim; dim++) {
-    if (can_coalesce(prev_dim, dim)) {
-      if ((*shape_)[prev_dim] == 1) {
-        replace_stride(prev_dim, dim);
-      }
-      (*shape_)[prev_dim] *= (*shape_)[dim];
-    } else {
-      prev_dim++;
-      if (prev_dim != dim) {
-        replace_stride(prev_dim, dim);
-        (*shape_)[prev_dim] = (*shape_)[dim];
-      }
-    }
-  }
-  (*shape_).resize(prev_dim + 1);
-  for (int64_t i = 0; i < ntensor; i++) {
     (*stride_size)[i] = shape_->size();
   }
 }
@@ -539,95 +384,6 @@ static inline void IndexPutStride(
   reorder_dimensions<N>(stride_size, desired_shape, strides_array);
 
   coalesce_dimensions<N>(ndim, strides_array, &stride_size, desired_shape);
-
-  int num = 1;
-  for (size_t i = 0; i < desired_shape->size(); i++) {
-    num *= (*desired_shape)[i];
-  }
-  *numel = num;
-}
-
-static inline void IndexPutStrideV2(
-    const int64_t ntensor,
-    const DenseTensor output,
-    const DenseTensor input,
-    const std::vector<DenseTensor*> index,
-    std::vector<int64_t>* desired_shape,
-    std::vector<int64_t*>* strides_array,
-    int64_t* numel,
-    std::vector<std::vector<int64_t>>& strides_vec) {  // NOLINT
-
-  std::vector<int64_t> output_dims;
-  std::vector<int64_t> output_strides;
-  int64_t output_elesize = phi::SizeOf(output.dtype());
-  std::vector<int64_t> input_dims;
-  std::vector<int64_t> input_strides;
-  int64_t input_elesize = phi::SizeOf(input.dtype());
-
-  if (output.dims().size() == 0) {
-    output_dims = {1};
-  } else {
-    output_dims = common::vectorize<int64_t>(output.dims());
-  }
-  if (output.strides().size() == 0) {
-    output_strides = {1};
-  } else {
-    output_strides = common::vectorize<int64_t>(output.strides());
-  }
-  if (input.dims().size() == 0) {
-    input_dims = {1};
-  } else {
-    input_dims = common::vectorize<int64_t>(input.dims());
-  }
-  if (input.strides().size() == 0) {
-    input_strides = {1};
-  } else {
-    input_strides = common::vectorize<int64_t>(input.strides());
-  }
-
-  int ndim = output_dims.size();
-
-  std::vector<int64_t> stride_size;
-
-  std::vector<std::vector<int64_t>> temp_dims;
-  temp_dims.push_back(input_dims);
-  temp_dims.push_back(output_dims);
-  for (int i = 0; i < ntensor - 2; i++) {
-    temp_dims.push_back(common::vectorize<int64_t>(index[i]->dims()));
-  }
-
-  *desired_shape = compute_shapes(temp_dims);
-
-  strides_vec[0] = compute_strides(output_dims,  // input_tensor
-                                   output_strides,
-                                   output_elesize,
-                                   ndim,
-                                   desired_shape,
-                                   &stride_size);
-
-  strides_vec[1] = compute_strides(input_dims,  // value_tensor
-                                   input_strides,
-                                   input_elesize,
-                                   ndim,
-                                   desired_shape,
-                                   &stride_size);
-  for (int64_t i = 2; i < ntensor; i++) {
-    strides_vec[i] = compute_strides(
-        common::vectorize<int64_t>(index[i - 2]->dims()),  // index_tensor
-        common::vectorize<int64_t>(index[i - 2]->strides()),
-        phi::SizeOf(index[i - 2]->dtype()),
-        ndim,
-        desired_shape,
-        &stride_size);
-  }
-
-  for (int64_t i = 0; i < ntensor; i++) {
-    (*strides_array)[i] = strides_vec[i].data();
-  }
-  reorder_dimensions_v2(ntensor, stride_size, desired_shape, strides_array);
-
-  coalesce_dimensions_v2(
-      ntensor, ndim, strides_array, &stride_size, desired_shape);
 
   int num = 1;
   for (size_t i = 0; i < desired_shape->size(); i++) {
@@ -788,36 +544,6 @@ static inline void ScatterAddStride(
     num *= (*desired_shape)[i];
   }
   *numel = num;
-}
-
-static inline common::DDim infer_size_symdimvector(common::DDim a,
-                                                   common::DDim b) {
-  auto dimsA = a.size();
-  auto dimsB = b.size();
-  auto ndim = dimsA > dimsB ? dimsA : dimsB;
-  common::DDim expandedSizes = common::make_ddim(std::vector<int64_t>(ndim, 0));
-
-  for (int64_t i = ndim - 1; i >= 0; --i) {
-    int64_t offset = ndim - 1 - i;
-    int64_t dimA = dimsA - 1 - offset;
-    int64_t dimB = dimsB - 1 - offset;
-    auto sizeA = (dimA >= 0) ? a[dimA] : 1;
-    auto sizeB = (dimB >= 0) ? b[dimB] : 1;
-
-    PADDLE_ENFORCE_EQ(
-        sizeA == sizeB || sizeA == 1 || sizeB == 1,
-        true,
-        common::errors::Fatal("The size of tensor a (",
-                              sizeA,
-                              ") must match the size of tensor b (",
-                              sizeB,
-                              ") at non-singleton dimension ",
-                              i));
-
-    expandedSizes[i] = sizeA == 1 ? sizeB : sizeA;
-  }
-
-  return expandedSizes;
 }
 
 static inline bool hasContiguousSubspace(

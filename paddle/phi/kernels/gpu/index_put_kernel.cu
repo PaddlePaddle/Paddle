@@ -22,6 +22,7 @@
 #include "paddle/phi/kernels/contiguous_kernel.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
 #include "paddle/phi/kernels/funcs/index_put_utils.h"
+#include "paddle/phi/kernels/funcs/indexing.h"
 #include "paddle/phi/kernels/funcs/stride_utils.h"
 #include "paddle/phi/kernels/funcs/strided_utils.h"
 #include "paddle/phi/kernels/index_elementwise_put_kernel.h"
@@ -272,35 +273,26 @@ void IndexPutKernel_V2(const Context& dev_ctx,
   int64_t numel = 0;
   int64_t num_indices = ad.indexed_sizes.size();
 
-  std::vector<int64_t*> strides_array;
-  std::vector<int64_t> desired_shape;
-  std::vector<std::vector<int64_t>> strides_vec;
-
-  int64_t ntensor = 2 + num_indices;
-  strides_array.resize(ntensor);
-  strides_vec.resize(ntensor);
-
-  funcs::IndexPutStrideV2(ntensor,
-                          ad.src,
-                          value,
-                          ad.indices,
-                          &desired_shape,
-                          &strides_array,
-                          &numel,
-                          strides_vec);
+  DenseTensorIteratorConfig config;
+  config.add_output(ad.src);
+  config.add_const_input(value);
+  for (size_t i = 0; i < ad.indices.size(); i++) {
+    config.add_const_input(*(ad.indices[i]));
+  }
+  DenseTensorIterator iter = config.build();
 
   auto sizes = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
   auto strides = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
+  auto index_ptrs = std::array<const char*, phi::DDim::kMaxRank + 1>{};
   for (int64_t i = 0; i < num_indices; i++) {
     sizes[i] = ad.indexed_sizes[i];
     strides[i] = ad.indexed_strides[i];
+    index_ptrs[i] = reinterpret_cast<const char*>(iter.data_ptr(i + 2));
   }
 
-  auto index_ptrs = funcs::GetIndexDataPtrs_v2<int64_t>(ad.indices);
-  auto offset_calc =
-      funcs::make_offset_calculator_put_v2<3>(desired_shape, strides_array);
+  funcs::OffsetCalculator offset_calc = funcs::make_offset_calculator<3>(iter);
 
-  const int64_t N = numel;
+  const int64_t N = iter.numel();
   PADDLE_ENFORCE(N >= 0 && N <= std::numeric_limits<int32_t>::max(),
                  "N >= 0 && N <= std::numeric_limits<int32_t>::max()");
   constexpr int nt = 128;
@@ -333,7 +325,7 @@ void IndexPutKernel_V2(const Context& dev_ctx,
 #pragma unroll
         for (int64_t i = 0; i < num_indices; i++) {
           int64_t index =
-              *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
+              *reinterpret_cast<const int64_t*>(index_ptrs[i] + offsets[2]);
           if (index < 0) {
             index += sizes[i];
           }

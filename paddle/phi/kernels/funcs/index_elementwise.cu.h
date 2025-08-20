@@ -200,14 +200,6 @@ static OffsetCalculator<N, uint32_t, signed_strides> make_offset_calculator_put(
 }
 
 template <int N, bool signed_strides = false>
-static OffsetCalculator<N, uint32_t, signed_strides>
-make_offset_calculator_put_v2(std::vector<int64_t> desired_shape,
-                              std::vector<int64_t*> strides_array) {
-  return OffsetCalculator<N, uint32_t, signed_strides>(
-      desired_shape.size(), desired_shape.data(), strides_array.data());
-}
-
-template <int N, bool signed_strides = false>
 static OffsetCalculator<N, uint32_t, signed_strides> make_offset_calculator(
     int ndim,
     const int64_t* shape,
