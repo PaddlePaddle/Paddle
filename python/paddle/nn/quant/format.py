@@ -36,15 +36,11 @@ def fake_fp8_quant(input, scale, axis=-1, type='e4m3'):
     if type == 'e4m3':
         return paddle.cast(
             (inp * 448 / scale).clip(-448, 448), "float8_e4m3fn"
-        ).astype(
-            input.dtype
-        )  # clip then cast
+        ).astype(input.dtype)  # clip then cast
     elif type == 'e5m2':
         return paddle.cast(
             (inp * 57344 / scale).clip(-57344, 57344), "float8_e5m2"
-        ).astype(
-            input.dtype
-        )  # clip then cast
+        ).astype(input.dtype)  # clip then cast
     else:
         raise NotImplementedError("only support e4m3 or e5m2 now")
 

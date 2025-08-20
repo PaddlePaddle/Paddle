@@ -70,9 +70,9 @@ def _convert_param_attr_to_list(param_attr, n):
         list: A list composed of each including cell's `param_attr`.
     """
     if isinstance(param_attr, (list, tuple)):
-        assert (
-            len(param_attr) == n
-        ), f"length of param_attr should be {n} when it is a list/tuple"
+        assert len(param_attr) == n, (
+            f"length of param_attr should be {n} when it is a list/tuple"
+        )
         param_attrs = []
         for attr in param_attr:
             if isinstance(attr, bool):
@@ -197,12 +197,12 @@ class MultiHeadAttention(Layer):
     ) -> None:
         super().__init__()
 
-        assert (
-            embed_dim > 0
-        ), f"Expected embed_dim to be greater than 0, but received {embed_dim}"
-        assert (
-            num_heads > 0
-        ), f"Expected num_heads to be greater than 0, but received {num_heads}"
+        assert embed_dim > 0, (
+            f"Expected embed_dim to be greater than 0, but received {embed_dim}"
+        )
+        assert num_heads > 0, (
+            f"Expected num_heads to be greater than 0, but received {num_heads}"
+        )
 
         self.embed_dim = embed_dim
         self.kdim = kdim if kdim is not None else embed_dim
@@ -212,9 +212,9 @@ class MultiHeadAttention(Layer):
         self.need_weights = need_weights
 
         self.head_dim = embed_dim // num_heads
-        assert (
-            self.head_dim * num_heads == self.embed_dim
-        ), "embed_dim must be divisible by num_heads"
+        assert self.head_dim * num_heads == self.embed_dim, (
+            "embed_dim must be divisible by num_heads"
+        )
 
         self.q_proj = Linear(
             embed_dim, embed_dim, weight_attr, bias_attr=bias_attr
@@ -646,12 +646,12 @@ class TransformerEncoderLayer(Layer):
 
         super().__init__()
 
-        assert (
-            d_model > 0
-        ), f"Expected d_model to be greater than 0, but received {d_model}"
-        assert (
-            nhead > 0
-        ), f"Expected nhead to be greater than 0, but received {nhead}"
+        assert d_model > 0, (
+            f"Expected d_model to be greater than 0, but received {d_model}"
+        )
+        assert nhead > 0, (
+            f"Expected nhead to be greater than 0, but received {nhead}"
+        )
         assert dim_feedforward > 0, (
             "Expected dim_feedforward to be greater than 0, "
             f"but received {dim_feedforward}"
@@ -1017,12 +1017,12 @@ class TransformerDecoderLayer(Layer):
 
         super().__init__()
 
-        assert (
-            d_model > 0
-        ), f"Expected d_model to be greater than 0, but received {d_model}"
-        assert (
-            nhead > 0
-        ), f"Expected nhead to be greater than 0, but received {nhead}"
+        assert d_model > 0, (
+            f"Expected d_model to be greater than 0, but received {d_model}"
+        )
+        assert nhead > 0, (
+            f"Expected nhead to be greater than 0, but received {nhead}"
+        )
         assert dim_feedforward > 0, (
             "Expected dim_feedforward to be greater than 0, "
             f"but received {dim_feedforward}"
@@ -1547,12 +1547,12 @@ class Transformer(Layer):
     ) -> None:
         super().__init__()
 
-        assert (
-            d_model > 0
-        ), f"Expected d_model to be greater than 0, but received {d_model}"
-        assert (
-            nhead > 0
-        ), f"Expected nhead to be greater than 0, but received {nhead}"
+        assert d_model > 0, (
+            f"Expected d_model to be greater than 0, but received {d_model}"
+        )
+        assert nhead > 0, (
+            f"Expected nhead to be greater than 0, but received {nhead}"
+        )
         assert dim_feedforward > 0, (
             "Expected dim_feedforward to be greater than 0, "
             f"but received {dim_feedforward}"
