@@ -137,7 +137,7 @@ jobs:
             if [[ "${{ inputs.MANUALLY_PR_ID }}" == "" ]]; then
               export pr_wheel_link=https://paddle-github-action.bj.bcebos.com/PR/build/${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
             else
-              export pr_wheel_link=https://paddle-github-action.bj.bcebos.com/PR/build/${{ inputs.MANUALLY_PR_ID }}/${{ inputs.MANUALLY_COMMIT_ID }}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.wh
+              export pr_wheel_link=https://paddle-github-action.bj.bcebos.com/PR/build/${{ inputs.MANUALLY_PR_ID }}/${{ inputs.MANUALLY_COMMIT_ID }}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
             fi
             ${python} runner_ci_action.py --yaml ../yaml/api_benchmark_fp32.yml --baseline_whl_link $pr_wheel_link
             exit 0
