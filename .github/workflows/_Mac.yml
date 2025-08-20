@@ -84,6 +84,7 @@ jobs:
       - name: Build with mac python3.10
         if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
+          source ../../../proxy
           set -x
           cd ${work_dir}/Paddle
           source ~/.zshrc
