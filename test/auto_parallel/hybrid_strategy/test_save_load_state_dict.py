@@ -29,10 +29,15 @@ class TestSaveLoadStateDict(test_base.CommunicationTestDistBase):
     def test_reshard(self):
         # save with 1 device
         ckpt_path = tempfile.TemporaryDirectory()
+        ckpt_path_2 = tempfile.TemporaryDirectory()
         super().setUp(num_of_devices=1, timeout=120, nnode=1)
         self.run_test_case(
             "semi_auto_save_state_dict.py",
-            user_defined_envs={"device_num": "1", "ckpt_path": ckpt_path.name},
+            user_defined_envs={
+                "device_num": "1",
+                "ckpt_path": ckpt_path.name,
+                "ckpt_path_2": ckpt_path_2.name,
+            },
         )
 
         # load with 1, 2, 4, 8 devices
@@ -41,6 +46,7 @@ class TestSaveLoadStateDict(test_base.CommunicationTestDistBase):
         )
         for envs in envs_list:
             envs["ckpt_path"] = ckpt_path.name
+            envs["ckpt_path_2"] = ckpt_path_2.name
             super().setUp(
                 num_of_devices=int(envs["device_num"]),
                 timeout=180,
@@ -54,10 +60,15 @@ class TestSaveLoadStateDict(test_base.CommunicationTestDistBase):
 
         # save with 4 devices
         ckpt_path = tempfile.TemporaryDirectory()
+        ckpt_path_2 = tempfile.TemporaryDirectory()
         super().setUp(num_of_devices=4, timeout=120, nnode=1)
         self.run_test_case(
             "semi_auto_save_state_dict.py",
-            user_defined_envs={"device_num": "4", "ckpt_path": ckpt_path.name},
+            user_defined_envs={
+                "device_num": "4",
+                "ckpt_path": ckpt_path.name,
+                "ckpt_path_2": ckpt_path_2.name,
+            },
         )
         # load with 1, 2, 4, 8 devices
         envs_list = test_base.gen_product_envs_list(
@@ -65,6 +76,7 @@ class TestSaveLoadStateDict(test_base.CommunicationTestDistBase):
         )
         for envs in envs_list:
             envs["ckpt_path"] = ckpt_path.name
+            envs["ckpt_path_2"] = ckpt_path_2.name
             super().setUp(
                 num_of_devices=int(envs["device_num"]),
                 timeout=180,

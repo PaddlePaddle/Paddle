@@ -3823,7 +3823,8 @@ def clip(
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: A Tensor with the same data type and data shape as input.
+        Tensor: A Tensor with the same data shape as input. If either min or max is a floating-point value/Tensor, the output tensor will have a data type of ``float32``. Otherwise, the output tensor will inherit the same data type as the input.
+
 
     Examples:
         .. code-block:: python
@@ -3859,14 +3860,33 @@ def clip(
     else:
         min_ = float(np.finfo(np.float32).min)
         max_ = float(np.finfo(np.float32).max)
+    min = min_ if min is None else min
+    max = max_ if max is None else max
 
-    if in_dynamic_or_pir_mode():
-        if isinstance(min, Variable):
-            min = min.item(0)
-        if isinstance(max, Variable):
-            max = max.item(0)
-        min = min_ if min is None else min
-        max = max_ if max is None else max
+    if in_dynamic_mode():
+        if x_dtype in ['paddle.int32', 'paddle.int64']:
+            if isinstance(min, paddle.Tensor):
+                min = min.item(0)
+            if isinstance(max, paddle.Tensor):
+                max = max.item(0)
+            if isinstance(min, float) or isinstance(max, float):
+                x = paddle.cast(x, paddle.float32)
+        return _C_ops.clip(x, min, max)
+    elif in_pir_mode():
+        if x_dtype in ['paddle.int32', 'paddle.int64']:
+            if (
+                isinstance(min, float)
+                or isinstance(max, float)
+                or (
+                    isinstance(min, paddle.pir.Value)
+                    and min.dtype in [paddle.float32, paddle.float64]
+                )
+                or (
+                    isinstance(max, paddle.pir.Value)
+                    and max.dtype in [paddle.float32, paddle.float64]
+                )
+            ):
+                x = paddle.cast(x, paddle.float32)
         return _C_ops.clip(x, min, max)
     else:
         if min is not None:
