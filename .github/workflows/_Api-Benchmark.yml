@@ -133,15 +133,16 @@ jobs:
           cd ./PaddleTest/framework/e2e/api_benchmark_new
           cp /paddle/PTSTools/Uploader/apibm_config.yml .
           source ${{ github.workspace }}/../../../proxy
-          ${python} -m pip install $wheel_link
           if [[ "${{ inputs.baseline }}" == "true" ]];then
             if [[ "${{ inputs.MANUALLY_PR_ID }}" == "" ]]; then
-              ${python} runner_ci_action.py --yaml ../yaml/api_benchmark_fp32.yml --baseline_whl_link https://paddle-github-action.bj.bcebos.com/PR/build/${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+              export pr_wheel_link=https://paddle-github-action.bj.bcebos.com/PR/build/${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
             else
-              ${python} runner_ci_action.py --yaml ../yaml/api_benchmark_fp32.yml --baseline_whl_link https://paddle-github-action.bj.bcebos.com/PR/build/${{ inputs.MANUALLY_PR_ID }}/${{ inputs.MANUALLY_COMMIT_ID }}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+              export pr_wheel_link=https://paddle-github-action.bj.bcebos.com/PR/build/${{ inputs.MANUALLY_PR_ID }}/${{ inputs.MANUALLY_COMMIT_ID }}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
             fi
+            ${python} runner_ci_action.py --yaml ../yaml/api_benchmark_fp32.yml --baseline_whl_link $pr_wheel_link
             exit 0
           fi
+          ${python} -m pip install $wheel_link
           if [ ${core_index} -eq -1 ];then
             ${python} runner_ci_action.py --yaml ../yaml/api_benchmark_fp32.yml --core_index 2
           else
