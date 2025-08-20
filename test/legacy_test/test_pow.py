@@ -259,17 +259,23 @@ class TestPowerAPI_Specialization(unittest.TestCase):
 
     def _test_power(self, factor: float):
         np.random.seed(7)
-        for place in self.places:
-            x = (np.random.rand(10, 10) * 10).astype(np.float64)
-            paddle.disable_static()
-            paddle.set_device(place)
-            x_ = paddle.to_tensor(x)
-            x_.stop_gradient = False
-            res = paddle.pow(x_, factor)
-            np.testing.assert_allclose(res, np.power(x, factor), rtol=1e-05)
-            loss = paddle.sum(res)
-            loss.backward()
-            np.testing.assert_allclose(x_.grad.shape, x_.shape)
+        inputs = [
+            np.random.rand(10, 10) * 10,
+            np.complex64(
+                np.random.rand(10, 10) * 10 + 1j * np.random.rand(10, 10)
+            ),
+        ]
+        for x in inputs:
+            for place in self.places:
+                paddle.disable_static()
+                paddle.set_device(place)
+                x_ = paddle.to_tensor(x)
+                x_.stop_gradient = False
+                res = paddle.pow(x_, factor)
+                np.testing.assert_allclose(res, np.power(x, factor), rtol=1e-05)
+                loss = paddle.sum(res)
+                loss.backward()
+                np.testing.assert_allclose(x_.grad.shape, x_.shape)
 
     def test_power(self):
         self._test_power(0)
