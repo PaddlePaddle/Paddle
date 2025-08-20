@@ -206,7 +206,6 @@ class TestUniformRandomBF16Op(TestUniformRandomOp):
 
 
 class TestUniformRandomOpError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         main_prog = Program()
@@ -305,7 +304,6 @@ class TestUniformRandomOpSelectedRowsWithDiagInit(
 
 
 class TestUniformRandomOpApi(unittest.TestCase):
-
     def test_api(self):
         paddle.enable_static()
         paddle.seed(10)
@@ -343,7 +341,6 @@ class TestUniformRandomOpApi(unittest.TestCase):
 
 
 class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
-
     def test_attr_tensor_API(self):
         paddle.enable_static()
         startup_program = base.Program()
@@ -402,7 +399,6 @@ class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
 
 
 class TestUniformRandomOp_API_seed(unittest.TestCase):
-
     def test_attr_tensor_API(self):
         paddle.enable_static()
         _seed = 10
@@ -456,7 +452,6 @@ class TestUniformRandomOpSelectedRowsShapeTensor(unittest.TestCase):
 
 
 class TestUniformRandomOpSelectedRowsShapeTensorList(unittest.TestCase):
-
     def test_check_output(self):
         for place in get_places():
             self.check_with_place(place)
@@ -493,7 +488,6 @@ class TestUniformRandomDygraphMode(unittest.TestCase):
 
 
 class TestUniformRandomBatchSizeLikeOpError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         main_prog = Program()
@@ -527,7 +521,6 @@ class TestUniformRandomBatchSizeLikeOpError(unittest.TestCase):
 
 
 class TestUniformAlias(unittest.TestCase):
-
     def test_alias(self):
         paddle.uniform([2, 3], min=-5.0, max=5.0)
         paddle.tensor.uniform([2, 3], min=-5.0, max=5.0)
@@ -540,7 +533,6 @@ class TestUniformAlias(unittest.TestCase):
 
 
 class TestUniformOpError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         main_prog = Program()

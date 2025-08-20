@@ -28,6 +28,9 @@ from paddle.base.framework import (
 )
 from paddle.common_ops_import import Variable
 from paddle.framework import LayerHelper
+from paddle.utils.decorator_utils import (
+    param_one_alias,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -879,6 +882,7 @@ def expm1(x: Tensor, name: str | None = None) -> Tensor:
     return _C_ops.sparse_expm1(x)
 
 
+@param_one_alias(["x", "input"])
 def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
     """
     Changes the shape of ``x`` without changing its value, requiring x to be a SparseCooTensor or SparseCsrTensor.
@@ -900,6 +904,10 @@ def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
         - 2. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape is [2, 3, -1, 2], the reshape operator will transform x into a 4-D tensor with shape [2, 3, 4, 2] and leaving x's data unchanged. In this case, one dimension of the target shape is set to -1, the value of this dimension is inferred from the total element number of x and remaining dimensions.
 
         - 3. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape is [-1, 0, 3, 2], the reshape operator will transform x into a 4-D tensor with shape [2, 4, 3, 2] and leaving x's data unchanged. In this case, besides -1, 0 means the actual dimension value is going to be copied from the corresponding dimension of x.
+
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``reshape(input=tensor_x, ...)`` is equivalent to ``reshape(x=tensor_x, ...)``.
 
     Args:
         x (Tensor): The input sparse tensor with data type ``float32``, ``float64``, ``int32``, ``int64`` or ``bool``.

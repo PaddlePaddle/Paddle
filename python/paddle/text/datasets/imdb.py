@@ -160,8 +160,8 @@ class Imdb(Dataset):
         return data
 
     def _load_anno(self) -> None:
-        pos_pattern = re.compile(fr"aclImdb/{self.mode}/pos/.*\.txt$")
-        neg_pattern = re.compile(fr"aclImdb/{self.mode}/neg/.*\.txt$")
+        pos_pattern = re.compile(rf"aclImdb/{self.mode}/pos/.*\.txt$")
+        neg_pattern = re.compile(rf"aclImdb/{self.mode}/neg/.*\.txt$")
 
         UNK = self.word_idx['<unk>']
 

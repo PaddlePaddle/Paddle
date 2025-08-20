@@ -29,7 +29,6 @@ from predictor_utils import PredictorTools
 
 import paddle
 from paddle.base import core
-from paddle.framework import use_pir_api
 
 SEED = 2020
 IMAGENET1000 = 1281167
@@ -371,10 +370,7 @@ class ResNetHelper:
     def predict_static(self, data):
         with static_guard():
             exe = paddle.static.Executor(place)
-            if use_pir_api():
-                model_filename = self.pir_model_filename
-            else:
-                model_filename = self.model_filename
+            model_filename = self.pir_model_filename
 
             [
                 inference_program,
@@ -405,10 +401,8 @@ class ResNetHelper:
         return ret
 
     def predict_analysis_inference(self, data):
-        if use_pir_api():
-            model_filename = self.pir_model_filename
-        else:
-            model_filename = self.model_filename
+        model_filename = self.pir_model_filename
+
         output = PredictorTools(
             self.model_save_dir,
             model_filename,

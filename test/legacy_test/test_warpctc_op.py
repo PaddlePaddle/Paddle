@@ -528,7 +528,6 @@ class TestWarpCTCOpFp64(OpTest):
 
 
 class TestWarpCTCOpError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         main_program = paddle.static.Program()

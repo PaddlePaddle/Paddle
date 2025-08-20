@@ -409,7 +409,6 @@ class TestTakeAlongAxisAPICase2(unittest.TestCase):
 class TestTakeAlongAxisAPICase4(unittest.TestCase):
     def test_static_shape_take_along_axis(self):
         with dygraph_guard():
-
             x = paddle.randn([4, 2])
             ind = paddle.to_tensor([[0, 1]])
 
@@ -461,6 +460,42 @@ class TestTakeAlongAxis_ZeroSize(OpTest):
             self.check_grad_with_place(
                 core.CUDAPlace(0), ['Input'], 'Result', check_pir=self.check_pir
             )
+
+
+class TestTakeAlongAxisInt16(TestTakeAlongAxisOp):
+    def init_data(self):
+        self.dtype = np.int16
+        self.x_type = "int16"
+        self.x_shape = (5, 5, 5)
+        self.index_type = "int32"
+        self.axis = 2
+        dim_size = self.x_shape[self.axis]
+        self.index = np.random.randint(
+            -dim_size, dim_size, size=(5, 1, 1)
+        ).astype(self.index_type)
+        self.axis_type = "int64"
+
+    def test_check_grad(self):
+        """int16 does not require and allow for grad check"""
+        pass
+
+
+class TestTakeAlongAxisUInt8(TestTakeAlongAxisOp):
+    def init_data(self):
+        self.dtype = np.uint8
+        self.x_type = "uint8"
+        self.x_shape = (5, 5, 5)
+        self.index_type = "int32"
+        self.axis = 2
+        dim_size = self.x_shape[self.axis]
+        self.index = np.random.randint(
+            -dim_size, dim_size, size=(5, 1, 1)
+        ).astype(self.index_type)
+        self.axis_type = "int64"
+
+    def test_check_grad(self):
+        """uint8 does not require and allow for grad check"""
+        pass
 
 
 if __name__ == "__main__":
