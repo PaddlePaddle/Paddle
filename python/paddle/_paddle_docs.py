@@ -458,8 +458,13 @@ add_doc_and_signature(
 """,
     """
 def index_select(
-    x: Tensor, index: Tensor, axis: int = 0, name: str | None = None
-) -> Tensor
+    x: Tensor,
+    index: Tensor,
+    axis: int = 0,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
 """,
 )
 
