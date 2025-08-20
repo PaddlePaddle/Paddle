@@ -672,14 +672,13 @@ def min(
         _check_out_status(out, False)
         ret = _C_ops.minimum(input, dim_or_other)
 
-    if out is None:
-        return ret
-    else:
+    if out is not None:
         if isinstance(ret, MinMaxRetType):
             paddle.assign(ret.values, out[0])
             paddle.assign(ret.indices, out[1])
         else:
             paddle.assign(ret, out)
+    return ret
 
 
 @ForbidKeywordsDecorator(
@@ -822,11 +821,10 @@ def max(
         _check_out_status(out, False)
         ret = _C_ops.maximum(input, dim_or_other)
 
-    if out is None:
-        return ret
-    else:
+    if out is not None:
         if isinstance(ret, MinMaxRetType):
             paddle.assign(ret.values, out[0])
             paddle.assign(ret.indices, out[1])
         else:
             paddle.assign(ret, out)
+    return ret
