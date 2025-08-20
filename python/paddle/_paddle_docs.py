@@ -402,6 +402,8 @@ add_doc_and_signature(
     axis: int | Sequence[int] | None = None,
     keepdim: bool = False,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor
     """,
 )
