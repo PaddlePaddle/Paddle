@@ -106,9 +106,9 @@ class BooleanEnvironmentVariable(EnvironmentVariable[bool]):
 class IntegerEnvironmentVariable(EnvironmentVariable[int]):
     def __init__(self, name: str, default: int):
         super().__init__(name, default)
-        assert isinstance(default, int) and not isinstance(
-            default, bool
-        ), "default must be an integer"
+        assert isinstance(default, int) and not isinstance(default, bool), (
+            "default must be an integer"
+        )
 
     def parse_from_string(self) -> int:
         try:
@@ -117,9 +117,9 @@ class IntegerEnvironmentVariable(EnvironmentVariable[int]):
             return self.default
 
     def convert_to_string(self, value: int) -> str:
-        assert isinstance(value, int) and not isinstance(
-            value, bool
-        ), "value must be an integer"
+        assert isinstance(value, int) and not isinstance(value, bool), (
+            "value must be an integer"
+        )
         return str(value)
 
 
@@ -133,9 +133,9 @@ class StringListEnvironmentVariable(EnvironmentVariable[list[str]]):
 
     def convert_to_string(self, value: list[str]) -> str:
         assert isinstance(value, list), "value must be a list"
-        assert all(
-            isinstance(x, str) for x in value
-        ), "value must be a list of strings"
+        assert all(isinstance(x, str) for x in value), (
+            "value must be a list of strings"
+        )
         return ",".join(value)
 
 
