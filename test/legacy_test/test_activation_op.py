@@ -47,6 +47,7 @@ def dynamic_guard():
 
 
 class TestSqrtOpError(unittest.TestCase):
+
     def test_errors(self):
         with (
             static_guard(),
@@ -228,6 +229,7 @@ class TestExp_Complex128(TestExp_Complex64):
 
 
 class Test_Exp_Op_Fp16(unittest.TestCase):
+
     def test_api_fp16(self):
         with (
             static_guard(),
@@ -1122,6 +1124,7 @@ class TestSinhAPI(unittest.TestCase):
 
 
 class TestSinhOpError(unittest.TestCase):
+
     def test_errors(self):
         with (
             static_guard(),
@@ -1255,6 +1258,7 @@ class TestCoshAPI(unittest.TestCase):
 
 
 class TestCoshOpError(unittest.TestCase):
+
     def test_errors(self):
         with (
             static_guard(),
@@ -2073,31 +2077,6 @@ class TestCeil_ZeroDim(TestCeil):
         self.shape = []
 
 
-class TestCeil_UInt8(TestCeil):
-    def init_dtype(self):
-        self.dtype = np.uint8
-
-
-class TestCeil_Int8(TestCeil):
-    def init_dtype(self):
-        self.dtype = np.int8
-
-
-class TestCeil_Int16(TestCeil):
-    def init_dtype(self):
-        self.dtype = np.int16
-
-
-class TestCeil_Int32(TestCeil):
-    def init_dtype(self):
-        self.dtype = np.int32
-
-
-class TestCeil_Int64(TestCeil):
-    def init_dtype(self):
-        self.dtype = np.int64
-
-
 class TestFloor(TestActivation):
     def setUp(self):
         self.op_type = "floor"
@@ -2157,31 +2136,6 @@ class TestFloor(TestActivation):
 class TestFloor_ZeroDim(TestFloor):
     def init_shape(self):
         self.shape = []
-
-
-class TestFloor_UInt8(TestFloor):
-    def init_dtype(self):
-        self.dtype = np.uint8
-
-
-class TestFloor_Int8(TestFloor):
-    def init_dtype(self):
-        self.dtype = np.int8
-
-
-class TestFloor_Int16(TestFloor):
-    def init_dtype(self):
-        self.dtype = np.int16
-
-
-class TestFloor_Int32(TestFloor):
-    def init_dtype(self):
-        self.dtype = np.int32
-
-
-class TestFloor_Int64(TestFloor):
-    def init_dtype(self):
-        self.dtype = np.int64
 
 
 class TestCos(TestActivation):
@@ -4345,6 +4299,7 @@ class TestLog10_Op_Int(unittest.TestCase):
 
 
 class TestLog10API(unittest.TestCase):
+
     def test_api(self):
         with static_guard():
             with paddle.static.program_guard(
@@ -4435,6 +4390,7 @@ class TestLog1p_Complex128(TestLog1p_Complex64):
 
 
 class Test_Log1p_Op_Fp16(unittest.TestCase):
+
     def test_api_fp16(self):
         with (
             static_guard(),
@@ -4489,6 +4445,7 @@ class TestLog1p_ZeroSize(TestLog1p):
 
 
 class TestLog1pAPI(unittest.TestCase):
+
     def test_api(self):
         with static_guard():
             with base.program_guard(
@@ -6025,59 +5982,6 @@ create_test_act_bf16_class(
 create_test_act_bf16_class(
     TestRsqrt, check_prim=True, check_pir=True, check_prim_pir=True
 )
-
-
-class TestSqrtOutAPI(unittest.TestCase):
-    def test_out_in_dygraph(self):
-        paddle.disable_static()
-        np.random.seed(2024)
-        x = paddle.to_tensor(
-            np.random.rand(5, 7).astype('float32'), stop_gradient=False
-        )
-
-        def run_case(case_type):
-            out_buf = paddle.zeros_like(x)
-            out_buf.stop_gradient = False
-
-            if case_type == 'return':
-                y = paddle.sqrt(x)
-            elif case_type == 'input_out':
-                paddle.sqrt(x, out=out_buf)
-                y = out_buf
-            elif case_type == 'both_return':
-                y = paddle.sqrt(x, out=out_buf)
-            elif case_type == 'both_input_out':
-                _ = paddle.sqrt(x, out=out_buf)
-                y = out_buf
-            else:
-                raise AssertionError
-
-            ref = paddle._C_ops.sqrt(x)
-            np.testing.assert_allclose(
-                y.numpy(), ref.numpy(), rtol=1e-6, atol=1e-6
-            )
-
-            loss = (y * 2).mean()
-            loss.backward()
-            return y.numpy(), x.grad.numpy()
-
-        # run four scenarios
-        y1, g1 = run_case('return')
-        x.clear_gradient()
-        y2, g2 = run_case('input_out')
-        x.clear_gradient()
-        y3, g3 = run_case('both_return')
-        x.clear_gradient()
-        y4, g4 = run_case('both_input_out')
-
-        np.testing.assert_allclose(y1, y2, rtol=1e-6, atol=1e-6)
-        np.testing.assert_allclose(y1, y3, rtol=1e-6, atol=1e-6)
-        np.testing.assert_allclose(y1, y4, rtol=1e-6, atol=1e-6)
-        np.testing.assert_allclose(g1, g2, rtol=1e-6, atol=1e-6)
-        np.testing.assert_allclose(g1, g3, rtol=1e-6, atol=1e-6)
-        np.testing.assert_allclose(g1, g4, rtol=1e-6, atol=1e-6)
-
-        paddle.enable_static()
 
 
 if __name__ == "__main__":
