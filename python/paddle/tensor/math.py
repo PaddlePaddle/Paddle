@@ -3131,7 +3131,6 @@ def outer(
         return out
 
 
-@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
 def logsumexp(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
@@ -3149,7 +3148,7 @@ def logsumexp(
     Args:
         x (Tensor): The input Tensor with data type bfloat16, float16, float32,
             float64, uint8, int8, int16, int32, int64, which have no more than
-            4 dimensions. Alias: input.
+            4 dimensions.
         axis (int|list|tuple|None, optional): The axis along which to perform
             logsumexp calculations. ``axis`` should be int, list(int) or
             tuple(int). If ``axis`` is a list/tuple of dimension(s), logsumexp
@@ -3158,7 +3157,7 @@ def logsumexp(
             dimensions of ``x`` . If ``axis`` or element(s) of ``axis`` is
             less than 0, it works the same way as :math:`axis + D` . If
             ``axis`` is None, logsumexp is calculated along all elements of
-            ``x``. Default is None. Alias: dim.
+            ``x``. Default is None.
         keepdim (bool, optional): Whether to reserve the reduced dimension(s)
             in the output Tensor. If ``keep_dim`` is True, the dimensions of
             the output Tensor is the same as ``x`` except in the reduced

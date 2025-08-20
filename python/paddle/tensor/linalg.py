@@ -253,7 +253,6 @@ def matrix_transpose(
     return x.mT
 
 
-@ParamAliasDecorator({"x": ["input"], "y": ["other"]})
 def matmul(
     x: Tensor,
     y: Tensor,
@@ -305,9 +304,7 @@ def matmul(
 
     Args:
         x (Tensor): The input tensor which is a Tensor.
-            Alias: input.
         y (Tensor): The input tensor which is a Tensor.
-            Alias: other.
         transpose_x (bool, optional): Whether to transpose :math:`x` before multiplication. Default is False.
         transpose_y (bool, optional): Whether to transpose :math:`y` before multiplication. Default is False.
         name (str|None, optional): If set None, the layer will be named automatically. For more information, please refer to :ref:`api_guide_Name`. Default is None.

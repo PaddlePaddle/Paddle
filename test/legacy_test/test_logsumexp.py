@@ -352,10 +352,10 @@ class TestLogsumexpOutAndParamDecorator(unittest.TestCase):
             paddle.special.logsumexp,
         ]
         self.test_types = [
-            "decorator1",
-            "decorator2",
+            # "decorator1",
+            # "decorator2",
             "out",
-            "out_decorator",
+            # "out_decorator",
         ]
 
     def do_test(self, api, test_type):
