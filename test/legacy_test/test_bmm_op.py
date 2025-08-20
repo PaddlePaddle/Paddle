@@ -26,8 +26,8 @@ class TestBmmOp(OpTest):
     def setUp(self):
         self.op_type = "bmm"
         self.prim_op_type = "comp"
-        self.python_api = paddle.tensor.bmm
-        self.public_python_api = paddle.tensor.bmm
+        self.python_api = paddle.Tensor.bmm
+        self.public_python_api = paddle.Tensor.bmm
         X = np.random.random((10, 3, 4)).astype("float64")
         Y = np.random.random((10, 4, 5)).astype("float64")
         self.inputs = {'X': X, 'Y': Y}
@@ -46,8 +46,8 @@ class TestBmmFP16Op(OpTest):
         self.op_type = "bmm"
         self.prim_op_type = "comp"
         self.dtype = np.float16
-        self.python_api = paddle.tensor.bmm
-        self.public_python_api = paddle.tensor.bmm
+        self.python_api = paddle.Tensor.bmm
+        self.public_python_api = paddle.Tensor.bmm
         X = np.random.random((10, 3, 4)).astype("float16")
         Y = np.random.random((10, 4, 5)).astype("float16")
         self.inputs = {'X': X, 'Y': Y}
@@ -71,8 +71,8 @@ class TestBmmBF16Op(OpTest):
         self.op_type = "bmm"
         self.prim_op_type = "comp"
         self.dtype = np.uint16
-        self.python_api = paddle.tensor.bmm
-        self.public_python_api = paddle.tensor.bmm
+        self.python_api = paddle.Tensor.bmm
+        self.public_python_api = paddle.Tensor.bmm
         X = np.random.random((10, 3, 4)).astype("float32")
         Y = np.random.random((10, 4, 5)).astype("float32")
         self.inputs = {'X': X, 'Y': Y}
