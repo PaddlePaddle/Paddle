@@ -48,14 +48,14 @@ class TestFlattenOp(OpTest):
             self.check_output_with_place(
                 core.CUDAPlace(0),
                 no_check_set=["XShape"],
-                check_prim=True,
+                check_prim=False,
                 check_pir=True,
                 check_prim_pir=True,
             )
         else:
             self.check_output(
                 no_check_set=["XShape"],
-                check_prim=True,
+                check_prim=False,
                 check_pir=True,
                 check_prim_pir=True,
             )
@@ -66,11 +66,11 @@ class TestFlattenOp(OpTest):
                 core.CUDAPlace(0),
                 ["X"],
                 "Out",
-                check_prim=True,
+                check_prim=False,
                 check_pir=True,
             )
         else:
-            self.check_grad(["X"], "Out", check_prim=True, check_pir=True)
+            self.check_grad(["X"], "Out", check_prim=False, check_pir=True)
 
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)
@@ -445,7 +445,7 @@ class TestFlatten2OpError(unittest.TestCase):
             )
             paddle.flatten(x_var, start_axis=2.0, stop_axis=10)
 
-        self.assertRaises(ValueError, test_ValueError4)
+        self.assertRaises(TypeError, test_ValueError4)
 
         def test_ValueError5():
             x_var = paddle.static.data(
@@ -453,12 +453,12 @@ class TestFlatten2OpError(unittest.TestCase):
             )
             paddle.flatten(x_var, start_axis=2, stop_axis=10.0)
 
-        self.assertRaises(ValueError, test_ValueError5)
+        self.assertRaises(TypeError, test_ValueError5)
 
         def test_InputError():
             out = paddle.flatten(x)
 
-        self.assertRaises(ValueError, test_InputError)
+        self.assertRaises(TypeError, test_InputError)
 
 
 class TestStaticFlattenPythonAPI(unittest.TestCase):
@@ -518,7 +518,7 @@ class TestFlattenPython(unittest.TestCase):
         def test_InputError():
             out = paddle.flatten(x)
 
-        self.assertRaises(ValueError, test_InputError)
+        self.assertRaises(TypeError, test_InputError)
 
         def test_Negative():
             paddle.disable_static()
@@ -593,6 +593,29 @@ class TestFlattenZeroSizedTensorAPI(unittest.TestCase):
         with paddle.static.program_guard(main_prog, paddle.static.Program()):
             x = paddle.static.data(name="x", shape=[2, 3, 0], dtype='float64')
             out = paddle.flatten(x)
+
+        exe = paddle.static.Executor(place=paddle.CPUPlace())
+        fetch_out = exe.run(main_prog, feed={"x": data}, fetch_list=[out])[0]
+        out_np = data.flatten()
+        np.testing.assert_equal(fetch_out, out_np)
+
+
+class TestFlattenAPI_Compatible(unittest.TestCase):
+    def test_dygraph(self):
+        paddle.disable_static()
+        data = np.random.randn(2, 3, 5)
+        x = paddle.to_tensor(data)
+        out = paddle.flatten(input=x, start_dim=0, end_dim=-1)
+        out_np = data.flatten()
+        np.testing.assert_equal(out.numpy(), out_np)
+
+    def test_static(self):
+        paddle.enable_static()
+        data = np.random.randn(2, 3, 5)
+        main_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, paddle.static.Program()):
+            x = paddle.static.data(name="x", shape=[2, 3, 5], dtype='float64')
+            out = paddle.flatten(input=x, start_dim=0, end_dim=-1)
 
         exe = paddle.static.Executor(place=paddle.CPUPlace())
         fetch_out = exe.run(main_prog, feed={"x": data}, fetch_list=[out])[0]

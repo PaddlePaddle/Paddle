@@ -219,9 +219,9 @@ MUTABLE_ATTR_OBJ_TEMPLATE = """
         PyObject *{name}_obj = PyTuple_GET_ITEM(args, {index});"""
 
 MUTABLE_ATTR_OBJ_FROM_ARGS_KWARGS_WITH_DEFAULT_VALUE_TEMPLATE = """
-        PyObject *{name}_obj = GetItemFromArgsOrKWArgs(args, {index},kwargs,{keywords}, nargs, &remaining_kwargs,false);"""
-MUTABLE_ATTR_OBJ_FROM_ARGS_KWARGS_TEMPLATE = """
         PyObject *{name}_obj = GetItemFromArgsOrKWArgs(args, {index},kwargs,{keywords}, nargs, &remaining_kwargs);"""
+MUTABLE_ATTR_OBJ_FROM_ARGS_KWARGS_TEMPLATE = """
+        PyObject *{name}_obj = GetItemFromArgsOrKWArgs(args, {index},kwargs,{keywords}, nargs, &remaining_kwargs,false);"""
 
 MUTABLE_ATTR_CAST_TEMPLATE = """
             {type} {name_} = {cast_func}({name}_obj, "{api_name}", {index});"""

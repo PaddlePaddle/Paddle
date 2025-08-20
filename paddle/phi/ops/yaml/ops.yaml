@@ -2139,7 +2139,15 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : flatten
-  args : (Tensor x, int start_axis = 1, int stop_axis = 1)
+  args : (Tensor x, int start_axis = 0, int stop_axis = -1)
+  python_api :
+    name : [paddle.flatten, paddle.Tensor.flatten]
+    args_alias:
+      x :  [input]
+      start_axis : [start_dim]
+      stop_axis : [end_dim]
+    pre_process:
+      func : FlattenPreProcess(x,start_axis,stop_axis)
   output : Tensor(out)
   infer_meta :
     func : FlattenInferMeta
@@ -4574,6 +4582,13 @@
 
 - op : roll
   args : (Tensor x, IntArray shifts={}, int64_t[] axis={})
+  python_api:
+    name : [paddle.roll, paddle.Tensor.roll]
+    args_alias:
+      axis : [dims]
+      use_default_mapping : True
+    pre_process:
+      func : RollPreProcess(x, shifts, axis)
   output : Tensor(out)
   infer_meta :
     func : RollInferMeta

@@ -15,9 +15,23 @@
 #pragma once
 
 #include <Python.h>
+#include "paddle/fluid/ir_adaptor/translator/program_translator.h"
+#include "paddle/phi/api/include/tensor.h"
 
 namespace paddle {
 
-namespace pybind {}  // namespace pybind
+namespace pybind {
+using Tensor = paddle::Tensor;
+using Value = pir::Value;
+using IntArray = paddle::experimental::IntArray;
+using IntVector = std::vector<int64_t>;
+
+void FlattenPreProcess(Tensor* x, int* start_axis, int* stop_axis);
+void FlattenPreProcess(Value* x, int* start_axis, int* stop_axis);
+
+void RollPreProcess(Tensor* x, IntArray* shifts, IntVector* axis);
+void RollPreProcess(Value* x, Value* shifts, IntVector* axis);
+
+}  // namespace pybind
 
 }  // namespace paddle

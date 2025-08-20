@@ -326,3 +326,155 @@ def amax(
 ) -> Tensor
 """,
 )
+
+add_doc_and_signature(
+    "roll",
+    """
+    Roll the `x` tensor along the given axis(axes). With specific 'shifts', Elements that
+    roll beyond the last position are re-introduced at the first according to 'shifts'.
+    If a axis is not specified,
+    the tensor will be flattened before rolling and then restored to the original shape.
+
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and the parameter name ``dim`` can be used as an alias for ``axis``.
+        For example, ``roll(input=tensor_x, dim=1)`` is equivalent to ``roll(x=tensor_x, axis=1)``.
+
+    Args:
+        x (Tensor): The x tensor as input.
+            alias: ``input``.
+        shifts (int|list|tuple): The number of places by which the elements
+                           of the `x` tensor are shifted.
+        axis (int|list|tuple, optional): axis(axes) along which to roll. Default: None
+            alias: ``dim``.
+        name(str|None, optional): The default value is None.  Normally there is no need for user to set this property.
+                For more information, please refer to :ref:`api_guide_Name` .
+
+    The image below shows a 2D tensor `[[1,2,3],[4,5,6],[7,8,9]]` being transformed into tensors with
+    different shapes through the roll operation.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/roll.png
+        :width: 700
+        :align: center
+        :alt: legend of roll API
+
+    Returns:
+        Tensor, A Tensor with same data type as `x`.
+
+    Examples:
+        .. code-block:: python
+            >>> # type: ignore
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[1.0, 2.0, 3.0],
+            ...                       [4.0, 5.0, 6.0],
+            ...                       [7.0, 8.0, 9.0]])
+            >>> out_z1 = paddle.roll(x, shifts=1)
+            >>> print(out_z1.numpy())
+            [[9. 1. 2.]
+             [3. 4. 5.]
+             [6. 7. 8.]]
+            >>> out_z2 = paddle.roll(x, shifts=1, axis=0)
+            >>> print(out_z2.numpy())
+            [[7. 8. 9.]
+             [1. 2. 3.]
+             [4. 5. 6.]]
+            >>> out_z3 = paddle.roll(x, shifts=1, axis=1)
+            >>> print(out_z3.numpy())
+            [[3. 1. 2.]
+             [6. 4. 5.]
+             [9. 7. 8.]]
+    """,
+    """
+def roll(
+    x: Tensor,
+    shifts: int | Sequence[int],
+    axis: int | Sequence[int] | None = None,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "flatten",
+    """
+    Flattens a contiguous range of axes in a tensor according to start_axis and stop_axis.
+
+    Note:
+        The output Tensor will share data with origin Tensor and doesn't have a Tensor copy in ``dygraph`` mode.
+        If you want to use the Tensor copy version, please use `Tensor.clone` like ``flatten_clone_x = x.flatten().clone()``.
+
+    For Example:
+
+    .. code-block:: text
+
+        Case 1:
+
+          Given
+            X.shape = (3, 100, 100, 4)
+
+          and
+            start_axis = 1
+            end_axis = 2
+
+          We get:
+            Out.shape = (3, 100 * 100, 4)
+
+        Case 2:
+
+          Given
+            X.shape = (3, 100, 100, 4)
+
+          and
+            start_axis = 0
+            stop_axis = -1
+
+          We get:
+            Out.shape = (3 * 100 * 100 * 4)
+
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, the parameter name ``start_dim`` can be used as an alias for ``start_axis`` , and the parameter name ``end_dim`` can be used as an alias for ``stop_axis``.
+        For example, ``flatten(input=tensor_x, start_dim=0, end_dim=-1)`` is equivalent to ``flatten(x=tensor_x, start_axis=0, stop_axis=-1)``.
+
+    Args:
+        x (Tensor): A tensor of number of dimensions >= axis. A tensor with data type float16, float32,
+                      float64, int8, int32, int64, uint8.
+            alias: ``input``.
+        start_axis (int): the start axis to flatten
+            alias: ``start_dim``.
+        stop_axis (int): the stop axis to flatten
+            alias: ``end_dim``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, A tensor with the contents of the input tensor, whose input axes are flattened by indicated :attr:`start_axis` and :attr:`end_axis`, and data type is the same as input :attr:`x`.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> image_shape=(2, 3, 4, 4)
+
+            >>> x = paddle.arange(end=image_shape[0] * image_shape[1] * image_shape[2] * image_shape[3])
+            >>> img = paddle.reshape(x, image_shape)
+
+            >>> out = paddle.flatten(img, start_axis=1, stop_axis=2)
+            >>> print(out.shape)
+            [2, 12, 4]
+
+            >>> # out shares data with img in dygraph mode
+            >>> img[0, 0, 0, 0] = -1
+            >>> print(out[0, 0, 0])
+            Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,
+            -1)
+    """,
+    """
+def flatten(
+    x: Tensor,
+    start_axis: int = 0,
+    stop_axis: int = -1,
+    name: str | None = None
+) -> Tensor
+""",
+)
