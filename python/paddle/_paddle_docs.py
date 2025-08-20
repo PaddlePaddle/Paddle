@@ -375,7 +375,7 @@ def index_select(
 )
 
 add_doc_and_signature(
-    "torch.logical_and",
+    "logical_and",
     r"""
     Compute element-wise logical AND on ``x`` and ``y``, and return ``out``. ``out`` is N-dim boolean ``Tensor``.
     Each element of ``out`` is calculated by
