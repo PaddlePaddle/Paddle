@@ -37,6 +37,7 @@ def _parse_function_signature(func_name: str, code: str) -> inspect.Signature:
     return inspect.signature(globals[func_name])
 
 
+# sundong
 def add_doc_and_signature(func_name: str, docstr: str, func_def: str) -> None:
     """
     Add docstr for function (paddle.*) and method (paddle.Tensor.*) if method exists
@@ -401,6 +402,9 @@ add_doc_and_signature(
     """,
 )
 
+# zhengsheng
+
+# liuyi
 add_doc_and_signature(
     "any",
     """
@@ -483,3 +487,23 @@ add_doc_and_signature(
     ) -> Tensor
     """,
 )
+
+# shenwei
+
+# zhouxin
+
+# hehongyu
+
+# lousiyu
+
+# zhengshijie
+
+# lihaoyang
+
+# lubingxin
+
+# chenhuangrun
+
+# zhanrongrun
+
+# other
