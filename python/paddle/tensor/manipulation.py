@@ -3312,6 +3312,7 @@ def vsplit(
     return tensor_split(x, num_or_indices, axis=0, name=name)
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def squeeze(
     x: Tensor, axis: int | Sequence[int] | None = None, name: str | None = None
 ) -> Tensor:
@@ -3360,12 +3361,18 @@ def squeeze(
           Output:
             out.shape = [1, 3, 5]
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``dim`` can be used as an alias for ``axis``.
+        For example, ``squeeze(input=tensor_x, dim=1)`` is equivalent to ``squeeze(x=tensor_x, axis=1)``.
+
     Args:
         x (Tensor): The input Tensor. Supported data type: float32, float64, bool, int8, int32, int64.
+            alias: ``input``.
         axis (int|list|tuple, optional): An integer or list/tuple of integers, indicating the dimensions to be squeezed. Default is None.
                           The range of axis is :math:`[-ndim(x), ndim(x))`.
                           If axis is negative, :math:`axis = axis + ndim(x)`.
                           If axis is None, all the dimensions of x of size 1 will be removed.
+            alias: ``dim``.
         name (str|None, optional): Please refer to :ref:`api_guide_Name`, Default None.
 
     Returns:

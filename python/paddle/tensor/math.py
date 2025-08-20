@@ -29,7 +29,11 @@ from paddle._C_ops import (  # noqa: F401
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc, dygraph_utils
 from paddle.pir import Value
-from paddle.utils.decorator_utils import ParamAliasDecorator, param_two_alias
+from paddle.utils.decorator_utils import (
+    ParamAliasDecorator,
+    param_one_alias,
+    param_two_alias,
+)
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
@@ -745,11 +749,17 @@ def add(
             shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0
             shape(X) = (2, 3, 4, 5), shape(Y) = (2, 1), with axis=0
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``other`` can be used as an alias for ``y``.
+        For example, ``add(input=tensor_x, other=tensor_y)`` is equivalent to ``add(x=tensor_x, y=tensor_y)``.
+
     Args:
         x (Tensor): Tensor of any dimensions. Its dtype should be bool, bfloat16, float16, float32, float64,
             int8, int16, int32, int64, uint8, complex64, complex128.
+            alias: ``input``.
         y (Tensor): Tensor of any dimensions. Its dtype should be bool, bfloat16, float16, float32, float64,
             int8, int16, int32, int64, uint8, complex64, complex128.
+            alias: ``other``.
         alpha (Number, optional): Scaling factor for Y. Default: 1.
         out (Tensor, optional): The output tensor. Default: None.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
@@ -984,11 +994,17 @@ def divide(
 
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``other`` can be used as an alias for ``y``.
+        For example, ``divide(input=tensor_x, other=tensor_y)`` is equivalent to ``divide(x=tensor_x, y=tensor_y)``.
+
     Args:
         x (Tensor): the input tensor, it's data type should be bool, bfloat16, float16, float32, float64,
             int8, int16, int32, int64, uint8, complex64, complex128.
+            alias: ``input``.
         y (Tensor): the input tensor, it's data type should be bool, bfloat16, float16, float32, float64,
             int8, int16, int32, int64, uint8, complex64, complex128.
+            alias: ``other``.
         rounding_mode (str|None, optional): The rounding mode. Can be None (default), "trunc" (truncate toward zero), or "floor" (round down toward negative infinity).
         out (Tensor, optional): The output tensor. Default: None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
@@ -3800,11 +3816,14 @@ def log10_(x: Tensor, name: str | None = None) -> Tensor:
         return _C_ops.log10_(x)
 
 
+@param_one_alias(["x", "input"])
 def clip(
     x: Tensor,
     min: float | None = None,
     max: float | None = None,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     This operator clip all elements in input into the range [ min, max ] and return
@@ -3814,13 +3833,19 @@ def clip(
 
         Out = MIN(MAX(x, min), max)
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``clip(input=tensor_x)`` is equivalent to ``clip(x=tensor_x)``.
+
     Args:
         x (Tensor): An N-D Tensor with data type bfloat16, float16, float32, float64, int32 or int64.
+            alias: ``input``.
         min (float|int|Tensor, optional): The lower bound with type ``float`` , ``int`` or a ``0-D Tensor``
             with shape [] and type ``bfloat16``, ``float16``, ``float32``, ``float64``, ``int32``.
         max (float|int|Tensor, optional): The upper bound with type ``float``, ``int`` or a ``0-D Tensor``
             with shape [] and type ``bfloat16``, ``float16``, ``float32``, ``float64``, ``int32``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor: A Tensor with the same data type and data shape as input.
@@ -3867,7 +3892,7 @@ def clip(
             max = max.item(0)
         min = min_ if min is None else min
         max = max_ if max is None else max
-        return _C_ops.clip(x, min, max)
+        return _C_ops.clip(x, min, max, out=out)
     else:
         if min is not None:
             check_type(min, 'min', (float, int, Variable), 'clip')
