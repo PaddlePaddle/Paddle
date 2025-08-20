@@ -83,7 +83,10 @@ class Shard : public Placement {
 
   bool operator==(const Placement& other) const override {
     const Shard* other_shard = dynamic_cast<const Shard*>(&other);
-    return other_shard && this->dim_ == other_shard->dim_;
+    if (!other_shard) return false;
+    if (other_shard->get_co_shard_order() != 0) return false;
+    return this->dim_ == other_shard->dim_ &&
+           this->split_factor_ == other_shard->split_factor_;
   }
 
   bool operator!=(const Placement& other) const override {
@@ -152,11 +155,42 @@ class CoShard : public Shard {
   }
 
   std::shared_ptr<Shard> copy() const override {
-    return std::make_shared<Shard>(*this);
+    return std::make_shared<CoShard>(*this);
   }
 
   std::shared_ptr<Shard> deepcopy() const override {
     return std::make_shared<CoShard>(*this);
+  }
+
+  bool operator==(const Placement& other) const override {
+    if (const CoShard* other_coshard = dynamic_cast<const CoShard*>(&other)) {
+      return this->dim_ == other_coshard->dim_ &&
+             this->split_factor_ == other_coshard->split_factor_ &&
+             this->co_shard_order_ == other_coshard->co_shard_order_;
+    }
+    if (const Shard* other_shard = dynamic_cast<const Shard*>(&other)) {
+      return this->co_shard_order_ == 0 &&
+             this->dim_ == other_shard->get_dim() &&
+             this->split_factor_ == other_shard->get_split_factor();
+    }
+    return false;
+  }
+
+  bool operator!=(const Placement& other) const override {
+    return !(*this == other);
+  }
+
+  std::size_t hash() const override {
+    std::stringstream ss;
+    ss << "Shard(dim=" << std::to_string(dim_);
+    if (split_factor_ != 1) {
+      ss << ", split_factor=" << std::to_string(split_factor_);
+    }
+    if (co_shard_order_ != 0) {
+      ss << ", shard_order=" << std::to_string(co_shard_order_);
+    }
+    ss << ")";
+    return std::hash<std::string>{}(ss.str());
   }
 
  private:

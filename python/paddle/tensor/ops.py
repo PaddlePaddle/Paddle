@@ -701,7 +701,6 @@ def floor(x: Tensor, name: str | None = None) -> Tensor:
 
     Returns:
         Tensor. Output of Floor operator, a Tensor with shape same as input
-            (integer types are autocasted into float32).
 
     Examples:
         .. code-block:: python

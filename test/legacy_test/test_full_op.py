@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from utils import dygraph_guard
 
 import paddle
 from paddle import base
@@ -22,7 +23,6 @@ from paddle import base
 
 # Test python API
 class TestFullAPI(unittest.TestCase):
-
     def test_api(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -370,9 +370,51 @@ class TestFullAPI(unittest.TestCase):
             np.testing.assert_allclose(out_20, np.full([1, 2, 3], 1.1 + 1.1j))
             np.testing.assert_array_equal(out_21, np.full([1, 2, 3], True))
 
+    def test_full_alias(self):
+        """
+        Test the alias of full function.
+        ``full(shape=[1])`` is equivalent to ``full(size=[1])``
+        """
+        paddle.disable_static()
+        shape_cases = [
+            [2],
+            [2, 4],
+            [2, 4, 8],
+        ]
+        dtype_cases = [
+            "float32",
+            "float64",
+            "int32",
+            "int64",
+            "bool",
+        ]
+        fill_value_cases = [
+            1,
+            0,
+            -1,
+            True,
+            False,
+            3.14,
+        ]
+        for shape in shape_cases:
+            for param_alias in ["shape", "size"]:
+                for dtype in dtype_cases:
+                    for fill_value in fill_value_cases:
+                        if dtype == "bool" and not isinstance(fill_value, bool):
+                            continue  # skip invalid bool cases
+                        out = paddle.full(
+                            **{param_alias: shape},
+                            fill_value=fill_value,
+                            dtype=dtype,
+                        )
+                        expected = np.full(shape, fill_value, dtype=dtype)
+                        if dtype == "bool":
+                            np.testing.assert_array_equal(out, expected)
+                        else:
+                            np.testing.assert_allclose(out, expected)
+
 
 class TestFullOpError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -402,6 +444,33 @@ class TestFullOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_shape_tensor_list_dtype)
         paddle.disable_static()
+
+    def test_fill_value_errors(self):
+        with dygraph_guard():
+            # The fill_value must be one of [int, float, bool, complex, np.number, Tensor].
+            self.assertRaises(
+                TypeError,
+                paddle.full,
+                shape=[1],
+                dtype="float32",
+                fill_value=np.array([1.0], dtype=np.float32),
+            )
+
+            self.assertRaises(
+                TypeError,
+                paddle.full,
+                shape=[1],
+                dtype="float32",
+                fill_value=[1.0],
+            )
+
+            self.assertRaises(
+                TypeError,
+                paddle.full,
+                shape=[1],
+                dtype="bool",
+                fill_value=np.bool_(True),
+            )
 
 
 if __name__ == "__main__":

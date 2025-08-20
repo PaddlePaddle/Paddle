@@ -966,7 +966,7 @@ class ReshapeTransform(Transform):
             self._in_event_shape
         ):
             raise ValueError(
-                f"Event shape mismatch, expected: {self._in_event_shape}, but got {shape[-len(self._in_event_shape):]}"
+                f"Event shape mismatch, expected: {self._in_event_shape}, but got {shape[-len(self._in_event_shape) :]}"
             )
         return (
             tuple(shape[: -len(self._in_event_shape)]) + self._out_event_shape
@@ -981,7 +981,7 @@ class ReshapeTransform(Transform):
             self._out_event_shape
         ):
             raise ValueError(
-                f"Event shape mismatch, expected: {self._out_event_shape}, but got {shape[-len(self._out_event_shape):]}"
+                f"Event shape mismatch, expected: {self._out_event_shape}, but got {shape[-len(self._out_event_shape) :]}"
             )
         return (
             tuple(shape[: -len(self._out_event_shape)]) + self._in_event_shape

@@ -29,6 +29,11 @@ using gpuStream_t = cudaStream_t;
 using gpuStream_t = hipStream_t;
 #endif
 
+#ifdef PADDLE_WITH_XPU
+#include "xpu/runtime.h"
+#include "xpu/runtime_ex.h"
+#endif
+
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/stream.h"
 #endif
@@ -434,6 +439,10 @@ class PADDLE_API Tensor final {
    * @return gpuStream_t
    */
   gpuStream_t stream() const;
+#elif defined(PADDLE_WITH_XPU)
+
+  void record_stream(XPUStream stream) const;
+
 #elif defined(PADDLE_WITH_CUSTOM_DEVICE)
   /**
    * @brief Get the stream where the tensor is currently located

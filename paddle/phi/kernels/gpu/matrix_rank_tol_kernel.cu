@@ -634,8 +634,16 @@ void MatrixRankTolKernel(const Context& dev_ctx,
 
   auto dim_x = x.dims();
   auto dim_out = out->dims();
-  int rows = dim_x[dim_x.size() - 2];
-  int cols = dim_x[dim_x.size() - 1];
+  int64_t rows = dim_x[dim_x.size() - 2];
+  int64_t cols = dim_x[dim_x.size() - 1];
+  // cusolverDn<t>gesvdj() don't support int64_t, so we need to check it.
+  int64_t numel_single_batch = rows * cols;
+  PADDLE_ENFORCE_LE(numel_single_batch,
+                    (1LL << 31) - 1,
+                    common::errors::PreconditionNotMet(
+                        "The element size of x should be <= INT_MAX(2147483647)"
+                        ", but got %lld",
+                        numel_single_batch));
 
   if (x.numel() == 0) {
     dev_ctx.template Alloc<int64_t>(out);

@@ -33,7 +33,7 @@ class TestFCINT8OneDNNOp(OpTest):
         )
 
         self.attrs = {
-            'use_mkldnn': True,
+            'use_onednn': True,
             'Scale_in': self.x_scale,
             'Scale_weights': [self.y_scale] * y_scales_size,
             'Scale_out': self.out_scale,

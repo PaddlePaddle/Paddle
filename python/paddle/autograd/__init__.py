@@ -28,11 +28,14 @@ from .backward_mode import backward
 from .py_layer import PyLayer, PyLayerContext
 from .saved_tensors_hooks import saved_tensors_hooks
 
+Function = PyLayer
+
 __all__ = [
     'jacobian',
     'hessian',
     'backward',
     'PyLayer',
+    'Function',
     'PyLayerContext',
     'saved_tensors_hooks',
 ]

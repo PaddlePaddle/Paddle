@@ -304,14 +304,16 @@ class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
                 dynamic_shape_constraint, paddle.randn([8, 7, const_dim])
             )
             self.assertEqual(
-                ctx.translate_count, 4  # add constraint 2 * (s0 + s1 - 2) <= 30
+                ctx.translate_count,
+                4,  # add constraint 2 * (s0 + s1 - 2) <= 30
             )
 
             self.assert_results(
                 dynamic_shape_constraint, paddle.randn([9, 8, const_dim])
             )
             self.assertEqual(
-                ctx.translate_count, 4  # hit constraint 2 * (s0 + s1 - 2) <= 30
+                ctx.translate_count,
+                4,  # hit constraint 2 * (s0 + s1 - 2) <= 30
             )
 
             self.assert_results(
@@ -338,7 +340,8 @@ class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
                 dynamic_shape_constraint, paddle.randn([8, 8, const_dim])
             )
             self.assertEqual(
-                ctx.translate_count, 5  # hit 2 * (s0 + s1 - 2) <= 30
+                ctx.translate_count,
+                5,  # hit 2 * (s0 + s1 - 2) <= 30
             )
 
             with self.assertRaises(ConditionalFallbackError):

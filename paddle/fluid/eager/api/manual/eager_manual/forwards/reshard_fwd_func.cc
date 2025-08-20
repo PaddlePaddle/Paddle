@@ -22,7 +22,8 @@ COMMON_DECLARE_bool(check_cuda_error);
 
 paddle::Tensor reshard_ad_function(
     const paddle::Tensor& input,
-    const phi::distributed::TensorDistAttr dist_attr) {
+    const phi::distributed::TensorDistAttr dist_attr,
+    paddle::optional<paddle::Tensor*> input_out) {
 #ifdef PADDLE_WITH_DISTRIBUTE
   VLOG(3) << "Running AD API: "
           << "reshard dygraph";

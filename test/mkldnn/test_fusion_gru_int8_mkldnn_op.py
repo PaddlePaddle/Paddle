@@ -141,7 +141,7 @@ class TestFusionGRUINT8ONEDNNOp(OpTest):
             'gate_activation': self.act_gate,
             'is_reverse': self.is_reverse,
             'origin_mode': self.origin_mode,
-            'use_mkldnn': self.use_onednn,
+            'use_onednn': self.use_onednn,
             'mkldnn_data_type': self.onednn_data_type,
             'force_fp32_output': self.force_fp32_output,
             'Scale_data': scale_data,

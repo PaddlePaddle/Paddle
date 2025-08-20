@@ -167,8 +167,9 @@ def simple_fc_net(img, label, use_py_func_op):
 
 def reader():
     for _ in range(dev_cnt * 100):
-        yield np.random.random([784]), np.random.random_integers(
-            size=[1], low=0, high=9
+        yield (
+            np.random.random([784]),
+            np.random.random_integers(size=[1], low=0, high=9),
         )
 
 

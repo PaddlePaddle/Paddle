@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
 
@@ -33,11 +34,7 @@ class TestMultiplyApi(unittest.TestCase):
             )
             res = paddle.outer(x, y)
 
-            place = (
-                paddle.CUDAPlace(0)
-                if paddle.is_compiled_with_cuda()
-                else paddle.CPUPlace()
-            )
+            place = get_device_place()
             exe = paddle.static.Executor(place)
             outs = exe.run(
                 paddle.static.default_main_program(),
@@ -164,7 +161,6 @@ class TestMultiplyApi(unittest.TestCase):
 
 
 class TestMultiplyError(unittest.TestCase):
-
     def test_errors_static(self):
         # test static computation graph: dtype can not be int8
         paddle.enable_static()
@@ -212,6 +208,50 @@ class TestMultiplyApi_ZeroSize(unittest.TestCase):
         loss = paddle.sum(res)
         loss.backward()
         np.testing.assert_allclose(x.grad.shape, x.shape)
+
+
+class TestOuterAlias(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_outer_alias(self):
+        """
+        Test the alias of outer function.
+        ``outer(input=x, vec2=y)`` is equivalent to ``outer(x=x, y=y)``
+        """
+        shape_cases = [
+            [2],
+            [2, 4],
+            [2, 4, 8],
+        ]
+        dtype_cases = [
+            "float32",
+            "float64",
+            "int32",
+            "int64",
+        ]
+
+        for shape in shape_cases:
+            for dtype in dtype_cases:
+                x = paddle.rand(shape).astype(dtype)
+                y = paddle.rand(shape).astype(dtype)
+
+                # Test all alias combinations
+                combinations = [
+                    {"x": x, "y": y},
+                    {"input": x, "y": y},
+                    {"x": x, "vec2": y},
+                    {"input": x, "vec2": y},
+                ]
+
+                # Get baseline result
+                expected = np.outer(x.numpy(), y.numpy())
+
+                for params in combinations:
+                    out = paddle.outer(**params)
+                    np.testing.assert_allclose(
+                        out.numpy(), expected, rtol=1e-05
+                    )
 
 
 if __name__ == '__main__':

@@ -90,7 +90,7 @@ class TestConv2DTransposeBF16ONEDNNOp(OpTest):
             'groups': self.groups,
             'dilations': self.dilations,
             'is_test': self.is_test,
-            'use_mkldnn': self.use_onednn,
+            'use_onednn': self.use_onednn,
             'mkldnn_data_type': self.onednn_data_type,
             'force_fp32_output': self.force_fp32_output,
             'data_format': self.data_format,

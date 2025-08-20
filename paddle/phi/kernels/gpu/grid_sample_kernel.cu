@@ -293,9 +293,9 @@ __global__ void GridSample3DCudaKernel(const IndexT nthreads,
         }
       }
     } else if (interpolation_mode == Mode::nearest) {
-      IndexT ix_nearest = static_cast<IndexT>(std::round(ix));
-      IndexT iy_nearest = static_cast<IndexT>(std::round(iy));
-      IndexT iz_nearest = static_cast<IndexT>(std::round(iz));
+      IndexT ix_nearest = static_cast<IndexT>(std::nearbyint(ix));
+      IndexT iy_nearest = static_cast<IndexT>(std::nearbyint(iy));
+      IndexT iz_nearest = static_cast<IndexT>(std::nearbyint(iz));
 
       // assign nearest neighbor pixel value to output pixel
       const T* inp_ptr_NC = input + n * inp_sN;

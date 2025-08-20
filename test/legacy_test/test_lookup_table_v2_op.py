@@ -23,7 +23,6 @@ from paddle.base import core
 
 
 class TestStaticGraphSupportMultipleInt(unittest.TestCase):
-
     def test_main(self):
         dtypes = ['uint8', 'int8', 'int16', 'int32', 'int64']
         if paddle.in_dynamic_mode():
