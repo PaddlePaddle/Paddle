@@ -85,7 +85,7 @@ repos:
 
             | python/paddle/distributed/[g-z].+
 
-            # | python/paddle/[e-i].+
+            | python/paddle/[e-i].+
 
             # | python/paddle/j.+
 
@@ -141,7 +141,7 @@ repos:
 
             # | python/paddle/distributed/[g-z].+
 
-            | python/paddle/[e-i].+
+            # | python/paddle/[e-i].+
 
             | python/paddle/j.+
 
