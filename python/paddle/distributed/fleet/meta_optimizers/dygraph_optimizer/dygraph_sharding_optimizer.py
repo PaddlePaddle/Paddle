@@ -27,9 +27,9 @@ from paddle.distributed.communication.reduce import (
     ReduceOp,
     is_avg_reduce_op_supported,
 )
-from paddle.distributed.flex_checkpoint.dcp.sharded_tensor import (
+from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
     ShardedStateDict,
-    ShardedTensor,
+    ShardedWeight,
 )
 from paddle.framework.recall_error import (
     SHARDING_PAD_NON_ZERO_ERROR,
@@ -1244,7 +1244,7 @@ class DygraphShardingOptimizerV2:
             optimizer: Optimizer with sharded parameters
 
         Returns:
-            Dictionary mapping parameter names to ShardedTensor objects
+            Dictionary mapping parameter names to ShardedWeight objects
         """
 
         _FP32_MASTER = "fp32_master_0"
@@ -1399,7 +1399,7 @@ class DygraphShardingOptimizerV2:
             unified_name = f"{struct_name}.{optim_state_type}"
             # Handle scalar parameters (e.g., beta1, beta2)
             if int(tensor.numel()) == 1:
-                sharded_tensor = ShardedTensor(
+                sharded_weight = ShardedWeight(
                     key=unified_name,
                     local_tensor=tensor,
                     local_shape=tensor.shape,
@@ -1420,7 +1420,7 @@ class DygraphShardingOptimizerV2:
                 ), f"Sharding info not found for {base_name}"
                 flattened_offset = offset_mapping[base_name][sharding_rank]
 
-                sharded_tensor = ShardedTensor(
+                sharded_weight = ShardedWeight(
                     key=unified_name,
                     local_tensor=tensor,
                     local_shape=sharded_param.local_shape,
@@ -1433,7 +1433,7 @@ class DygraphShardingOptimizerV2:
                 )
             # Handle fully sharded tensors
             else:
-                sharded_tensor = ShardedTensor(
+                sharded_weight = ShardedWeight(
                     key=unified_name,
                     local_tensor=tensor,
                     local_shape=sharded_param.local_shape,
@@ -1443,7 +1443,7 @@ class DygraphShardingOptimizerV2:
                     flattened_range=slice(0, int(tensor.numel())),
                 )
 
-            sharded_state[unified_name] = sharded_tensor
+            sharded_state[unified_name] = sharded_weight
 
         # Process master weights if they exist
         if master_weights:
@@ -1463,7 +1463,7 @@ class DygraphShardingOptimizerV2:
                     ), f"Sharding info not found for {weight_key}"
                     flattened_offset = offset_mapping[weight_key][sharding_rank]
 
-                    sharded_tensor = ShardedTensor(
+                    sharded_weight = ShardedWeight(
                         key=unified_name,
                         local_tensor=tensor,
                         local_shape=sharded_param.local_shape,
@@ -1476,7 +1476,7 @@ class DygraphShardingOptimizerV2:
                         ),
                     )
                 else:
-                    sharded_tensor = ShardedTensor(
+                    sharded_weight = ShardedWeight(
                         key=unified_name,
                         local_tensor=tensor,
                         local_shape=sharded_param.local_shape,
@@ -1486,6 +1486,6 @@ class DygraphShardingOptimizerV2:
                         flattened_range=slice(0, int(tensor.numel())),
                     )
 
-                sharded_state[unified_name] = sharded_tensor
+                sharded_state[unified_name] = sharded_weight
 
         return sharded_state

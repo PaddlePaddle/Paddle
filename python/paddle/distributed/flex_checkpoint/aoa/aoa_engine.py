@@ -397,13 +397,13 @@ class AOAEngine:
             )
             tgt_global_offset = tuple(slc.start for slc in local_slices)
 
-            source_sharded_tensor = ShardedWeightDesc(
+            source_sharded_weight = ShardedWeightDesc(
                 src_key,
                 src_local_shape,
                 tuple(src_global_shape),
                 src_global_offset,
             )
-            target_sharded_tensor = ShardedWeightDesc(
+            target_sharded_weight = ShardedWeightDesc(
                 target_key,
                 tgt_local_shape,
                 tuple(target_global_shape),
@@ -414,8 +414,8 @@ class AOAEngine:
 
             shard_mappings.append(
                 ShardMappingEntry(
-                    target_sharded_tensor,
-                    source_sharded_tensor,
+                    target_sharded_weight,
+                    source_sharded_weight,
                     postprocess_list,
                 )
             )
