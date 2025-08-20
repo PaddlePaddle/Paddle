@@ -317,10 +317,10 @@ def sort(
     """
     _check_out_status(out, expect_multiple=True)
     outputs, indices = _C_ops.argsort(input, dim, descending, stable)
-    if out is None:
-        return SortRetType(values=outputs, indices=indices)
-    paddle.assign(outputs, out[0])
-    paddle.assign(indices, out[1])
+    if out is not None:
+        paddle.assign(outputs, out[0])
+        paddle.assign(indices, out[1])
+    return SortRetType(values=outputs, indices=indices)
 
 
 class Unfold(nn.Unfold):
