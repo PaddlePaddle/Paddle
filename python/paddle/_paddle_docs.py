@@ -37,6 +37,7 @@ def _parse_function_signature(func_name: str, code: str) -> inspect.Signature:
     return inspect.signature(globals[func_name])
 
 
+# sundong
 def add_doc_and_signature(func_name: str, docstr: str, func_def: str) -> None:
     """
     Add docstr for function (paddle.*) and method (paddle.Tensor.*) if method exists
@@ -400,15 +401,19 @@ add_doc_and_signature(
     """,
 )
 
-
-# ningzhengsheng code
+# zhengsheng
 add_doc_and_signature(
     "isfinite",
     """
     Return whether every element of input tensor is finite number or not.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``isfinite(input=tensor_x)`` is equivalent to ``isfinite(x=tensor_x)``.
+
     Args:
         x (Tensor): The input tensor, it's data type should be float16, float32, float64, int32, int64, complex64, complex128.
+            alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -432,8 +437,13 @@ add_doc_and_signature(
     """
     Return whether every element of input tensor is `+/-INF` or not.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``isinf(input=tensor_x)`` is equivalent to ``isinf(x=tensor_x)``.
+
     Args:
         x (Tensor): The input tensor, it's data type should be float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
+            alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -463,8 +473,13 @@ add_doc_and_signature(
     """
     Return whether every element of input tensor is `NaN` or not.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``isnan(input=tensor_x)`` is equivalent to ``isnan(x=tensor_x)``.
+
     Args:
         x (Tensor): The input tensor, it's data type should be float16, float32, float64, int32, int64, complex64, complex128.
+            alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -488,3 +503,25 @@ def isnan(
 ) -> Tensor
 """,
 )
+
+# liuyi
+
+# shenwei
+
+# zhouxin
+
+# hehongyu
+
+# lousiyu
+
+# zhengshijie
+
+# lihaoyang
+
+# lubingxin
+
+# chenhuangrun
+
+# zhanrongrun
+
+# other
