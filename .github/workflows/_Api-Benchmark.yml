@@ -37,7 +37,7 @@ jobs:
   data-storage:
     name: Performance data storage
     needs: check-bypass
-    if: ${{ inputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' }}
+    if: ${{ inputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' && false }}
     runs-on:
       group: Api-bm
     steps:
