@@ -430,6 +430,9 @@ add_doc_and_signature(
         axis (int, optional): The dimension in which we index. Default: if None, the ``axis`` is 0.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
+    Keyword Args:
+        out (Tensor|optional): The output tensor.
+
     Returns:
         Tensor, A Tensor with same data type as ``x``.
 
