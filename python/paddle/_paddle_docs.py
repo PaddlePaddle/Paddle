@@ -359,6 +359,7 @@ add_doc_and_signature(
         .. code-block:: python
 
             >>> import paddle
+            >>> # type: ignore
 
             >>> x = paddle.to_tensor([[1, 0], [1, 1]], dtype='int32')
             >>> x = paddle.assign(x)

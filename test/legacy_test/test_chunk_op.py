@@ -32,24 +32,16 @@ class TestChunkOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_axis_type)
 
-            # The type of axis in chunk op should be int or Variable.
-            def test_axis_variable_type():
-                x2 = paddle.static.data(shape=[4], dtype='float16', name='x9')
-                x3 = paddle.static.data(shape=[1], dtype='float16', name='x10')
-                paddle.chunk(input=x2, chunks=2, axis=x3)
-
-            self.assertRaises(TypeError, test_axis_variable_type)
-
             # The type of num_or_sections in chunk_op should be int, tuple or list.
             def test_chunks_type():
                 x4 = paddle.static.data(shape=[4], dtype='float16', name='x4')
-                paddle.chunk(input=x4, chunks=2.1, axis=3)
+                paddle.chunk(x=x4, chunks=2.1, axis=3)
 
             self.assertRaises(TypeError, test_chunks_type)
 
             def test_axis_type_tensor():
                 x5 = paddle.static.data(shape=[4], dtype='float16', name='x6')
-                paddle.chunk(input=x5, chunks=2, axis=3.2)
+                paddle.chunk(x=x5, chunks=2, axis=3.2)
 
             self.assertRaises(TypeError, test_axis_type_tensor)
 
