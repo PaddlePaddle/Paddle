@@ -20,7 +20,12 @@ from typing_extensions import TypeGuard
 
 import paddle
 from paddle import _C_ops
-from paddle._C_ops import logical_and, logical_not, logical_or  # noqa: F401
+from paddle._C_ops import (  # noqa: F401
+    logical_and,
+    logical_not,
+    logical_or,
+    logical_xor,
+)
 from paddle.tensor.creation import full
 from paddle.tensor.math import broadcast_shape
 from paddle.utils.decorator_utils import ParamAliasDecorator, param_two_alias
@@ -141,53 +146,6 @@ def logical_or_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         )
     if in_dynamic_mode():
         return _C_ops.logical_or_(x, y)
-
-
-def logical_xor(
-    x: Tensor, y: Tensor, out: Tensor | None = None, name: str | None = None
-) -> Tensor:
-    r"""
-
-    ``logical_xor`` operator computes element-wise logical XOR on ``x`` and ``y``, and returns ``out``. ``out`` is N-dim boolean ``Tensor``.
-    Each element of ``out`` is calculated by
-
-    .. math::
-
-        out = (x || y) \&\& !(x \&\& y)
-
-    Note:
-        ``paddle.logical_xor`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
-
-        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
-
-    Args:
-        x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, int32, int64, bfloat16, float16, float32, float64, complex64, complex128.
-        y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, int32, int64, bfloat16, float16, float32, float64, complex64, complex128.
-        out(Tensor|None, optional): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([True, False], dtype="bool").reshape([2, 1])
-            >>> y = paddle.to_tensor([True, False, True, False], dtype="bool").reshape([2, 2])
-            >>> res = paddle.logical_xor(x, y)
-            >>> print(res)
-            Tensor(shape=[2, 2], dtype=bool, place=Place(cpu), stop_gradient=True,
-            [[False, True ],
-             [True , False]])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.logical_xor(x, y)
-
-    return _logical_op(
-        op_name="logical_xor", x=x, y=y, name=name, out=out, binary_op=True
-    )
 
 
 @inplace_apis_in_dygraph_only

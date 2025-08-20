@@ -3290,6 +3290,10 @@
 
 - op : logical_xor
   args : (Tensor x, Tensor y)
+  python_api:
+    name : [paddle.logical_xor, paddle.Tensor.logical_xor]
+    args_alias:
+      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : LogicalBinaryInferMeta

@@ -315,5 +315,99 @@ class TestIndexSelectAPI(unittest.TestCase):
         np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
 
+def get_places():
+    places = []
+    if base.is_compiled_with_cuda():
+        places.append(paddle.CUDAPlace(0))
+    places.append(paddle.CPUPlace())
+    return places
+
+
+class TestIndexSelectAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        self.places = get_places()
+        self.shape = [10, 20]
+        self.index_shape = [5]
+        self.axis = 1
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_input = np.random.rand(*self.shape).astype(self.dtype)
+        self.np_index = np.random.randint(
+            0, self.shape[self.axis], self.index_shape
+        ).astype('int64')
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_input)
+        index = paddle.to_tensor(self.np_index)
+        paddle_dygraph_out = []
+        # Position args (args)
+        out1 = paddle.index_select(x, index, self.axis)
+        paddle_dygraph_out.append(out1)
+        # Key words args (kwargs) for paddle
+        out2 = paddle.index_select(x=x, index=index, axis=self.axis)
+        paddle_dygraph_out.append(out2)
+        # Key words args for torch
+        out3 = paddle.index_select(input=x, index=index, dim=self.axis)
+        paddle_dygraph_out.append(out3)
+        # Combined args and kwargs
+        out4 = paddle.index_select(x, index, dim=self.axis)
+        paddle_dygraph_out.append(out4)
+        # Tensor method args
+        out5 = x.index_select(index, self.axis)
+        paddle_dygraph_out.append(out5)
+        # Tensor method kwargs
+        out6 = x.index_select(index=index, dim=self.axis)
+        paddle_dygraph_out.append(out6)
+        # Test out
+        ref_out_shape = list(self.np_input.shape)
+        ref_out_shape[self.axis] = len(self.np_index)
+        out7 = paddle.empty(ref_out_shape, dtype=x.dtype)
+        paddle.index_select(input=x, index=index, dim=self.axis, out=out7)
+        paddle_dygraph_out.append(out7)
+        # Numpy reference out
+        ref_out = np.take(self.np_input, self.np_index, axis=self.axis)
+        # Check
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-05)
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            index = paddle.static.data(
+                name="index", shape=self.index_shape, dtype='int64'
+            )
+            # Position args (args)
+            out1 = paddle.index_select(x, index, self.axis)
+            # Key words args (kwargs) for paddle
+            out2 = paddle.index_select(x=x, index=index, axis=self.axis)
+            # Key words args for torch
+            out3 = paddle.index_select(input=x, index=index, dim=self.axis)
+            # Combined args and kwargs
+            out4 = paddle.index_select(x, index, dim=self.axis)
+            # Tensor method args
+            out5 = x.index_select(index, self.axis)
+            # Tensor method kwargs
+            out6 = x.index_select(index=index, dim=self.axis)
+            # Do not support out in static
+            ref_out = np.take(self.np_input, self.np_index, axis=self.axis)
+            for place in self.places:
+                exe = base.Executor(place)
+                fetches = exe.run(
+                    main,
+                    feed={"x": self.np_input, "index": self.np_index},
+                    fetch_list=[out1, out2, out3, out4, out5, out6],
+                )
+                for out in fetches:
+                    np.testing.assert_allclose(out, ref_out, rtol=1e-05)
+
+
 if __name__ == '__main__':
     unittest.main()

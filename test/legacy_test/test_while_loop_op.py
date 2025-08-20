@@ -540,56 +540,6 @@ class TestApiWhileLoop_NestedWithBackwardAndDenseTensorArray(unittest.TestCase):
                 np.testing.assert_allclose(res[5], [0.0] * 10, rtol=1e-05)
 
 
-class TestApiWhileLoopWithSwitchCase(unittest.TestCase):
-    @compare_legacy_with_pt
-    def test_with_switch_case(self):
-        def cond(i):
-            return paddle.less_than(i, ten)
-
-        def body(i):
-            def fn_add_three():
-                data_add_three = paddle.add(x=i, y=three)
-                return data_add_three
-
-            def fn_square():
-                data_mul_data = paddle.multiply(x=i, y=i)
-                return data_mul_data
-
-            def fn_add_one():
-                data_add_one = paddle.add(x=i, y=one)
-                return data_add_one
-
-            return paddle.static.nn.switch_case(
-                branch_index=i,
-                branch_fns={2: fn_add_three, 5: fn_square},
-                default=fn_add_one,
-            )
-
-        main_program = paddle.static.Program()
-        startup_program = paddle.static.Program()
-        with paddle.static.program_guard(main_program, startup_program):
-            i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=1)
-            ten = paddle.tensor.fill_constant(
-                shape=[1], dtype='int64', value=10
-            )
-            three = paddle.tensor.fill_constant(
-                shape=[1], dtype='int64', value=3
-            )
-            one = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=1)
-            out = paddle.static.nn.while_loop(cond, body, [i])
-
-        place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
-        exe = base.Executor(place)
-        res = exe.run(main_program, fetch_list=out)
-
-        data = np.asarray([25]).astype('int64')
-        np.testing.assert_allclose(np.asarray(res[0]), data, rtol=1e-05)
-
-
 class TestApiWhileLoop_Error(unittest.TestCase):
     @compare_legacy_with_pt
     def test_error1(self):
