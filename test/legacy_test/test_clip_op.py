@@ -487,6 +487,153 @@ class TestClipAPI(unittest.TestCase):
         paddle.disable_static()
 
 
+class TestClipAPI_Int(unittest.TestCase):
+    def _executed_api(self, x, min=None, max=None):
+        return paddle.clip(x, min, max)
+
+    def test_clip(self):
+        paddle.enable_static()
+        data_shape = [1, 9, 9, 4]
+        data = np.random.random(data_shape).astype('int32')
+        place = (
+            base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda()
+            else base.CPUPlace()
+        )
+        exe = base.Executor(place)
+
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            images = paddle.static.data(
+                name='image', shape=data_shape, dtype='int32'
+            )
+            min = paddle.static.data(name='min', shape=[1], dtype='float32')
+            max = paddle.static.data(name='max', shape=[1], dtype='float32')
+            out_1 = self._executed_api(images, min=min, max=max)
+            out_2 = self._executed_api(images, min=2.2, max=8.9)
+            out_3 = self._executed_api(images, min=3.3)
+            out_4 = self._executed_api(images, max=4.7)
+            out_5 = self._executed_api(images, min=min)
+            out_6 = self._executed_api(images, max=max)
+            out_7 = self._executed_api(images, max=-1.0)
+            out_8 = self._executed_api(images)
+            out_9 = self._executed_api(
+                paddle.cast(images, 'int32'), min=2.2, max=8.9
+            )
+            out_10 = self._executed_api(
+                paddle.cast(images * 10, 'int32'), min=2.8, max=8.8
+            )
+            out_11 = self._executed_api(
+                paddle.cast(images * 10, 'int64'), min=2.8, max=8.8
+            )
+
+        (
+            res1,
+            res2,
+            res3,
+            res4,
+            res5,
+            res6,
+            res7,
+            res8,
+            res9,
+            res10,
+            res11,
+        ) = exe.run(
+            main,
+            feed={
+                "image": data,
+                "min": np.array([2.2]).astype('float32'),
+                "max": np.array([8.8]).astype('float32'),
+            },
+            fetch_list=[
+                out_1,
+                out_2,
+                out_3,
+                out_4,
+                out_5,
+                out_6,
+                out_7,
+                out_8,
+                out_9,
+                out_10,
+                out_11,
+            ],
+        )
+
+        np.testing.assert_allclose(res1, data.clip(2.2, 8.8), rtol=1e-05)
+        np.testing.assert_allclose(res2, data.clip(2.2, 8.9), rtol=1e-05)
+        np.testing.assert_allclose(res3, data.clip(min=3.3), rtol=1e-05)
+        np.testing.assert_allclose(res4, data.clip(max=4.7), rtol=1e-05)
+        np.testing.assert_allclose(res5, data.clip(min=2.2), rtol=1e-05)
+        np.testing.assert_allclose(res6, data.clip(max=8.8), rtol=1e-05)
+        np.testing.assert_allclose(res7, data.clip(max=-1.0), rtol=1e-05)
+        np.testing.assert_allclose(res8, data, rtol=1e-05)
+        np.testing.assert_allclose(
+            res9, data.astype(np.int32).clip(2.2, 8.9), rtol=1e-05
+        )
+        np.testing.assert_allclose(
+            res10, (data * 10).astype(np.int32).clip(2.8, 8.8), rtol=1e-05
+        )
+        np.testing.assert_allclose(
+            res11, (data * 10).astype(np.int64).clip(2.8, 8.8), rtol=1e-05
+        )
+        paddle.disable_static()
+
+    def test_clip_dygraph(self):
+        paddle.disable_static()
+        place = (
+            base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda()
+            else base.CPUPlace()
+        )
+        paddle.disable_static(place)
+        data_shape = [1, 9, 9, 4]
+        data = np.random.random(data_shape).astype('int32')
+        images = paddle.to_tensor(data, dtype='int32')
+        v_min = paddle.to_tensor(np.array([2.2], dtype=np.float32))
+        v_max = paddle.to_tensor(np.array([8.8], dtype=np.float32))
+
+        out_1 = self._executed_api(images, min=2.2, max=8.8)
+        images = paddle.to_tensor(data, dtype='int32')
+        out_2 = self._executed_api(images, min=2.2, max=8.9)
+        images = paddle.to_tensor(data, dtype='int32')
+        out_3 = self._executed_api(images, min=v_min, max=v_max)
+
+        out_4 = self._executed_api(
+            paddle.cast(images * 10, 'int32'), min=2.2, max=8.8
+        )
+        out_5 = self._executed_api(
+            paddle.cast(images * 10, 'int64'), min=2.2, max=8.8
+        )
+        # test with numpy.generic
+        out_6 = self._executed_api(images, min=np.abs(2.2), max=np.abs(8.8))
+
+        np.testing.assert_allclose(
+            out_1.numpy(), data.clip(2.2, 8.8), rtol=1e-05
+        )
+        np.testing.assert_allclose(
+            out_2.numpy(), data.clip(2.2, 8.9), rtol=1e-05
+        )
+        np.testing.assert_allclose(
+            out_3.numpy(), data.clip(2.2, 8.8), rtol=1e-05
+        )
+        np.testing.assert_allclose(
+            out_4.numpy(),
+            (data * 10).astype(np.int32).clip(2.2, 8.8),
+            rtol=1e-05,
+        )
+        np.testing.assert_allclose(
+            out_5.numpy(),
+            (data * 10).astype(np.int64).clip(2.2, 8.8),
+            rtol=1e-05,
+        )
+        np.testing.assert_allclose(
+            out_6.numpy(), data.clip(2.2, 8.8), rtol=1e-05
+        )
+
+
 class TestClipOpFp16(unittest.TestCase):
     def test_fp16(self):
         if base.core.is_compiled_with_cuda():

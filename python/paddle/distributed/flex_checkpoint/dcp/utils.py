@@ -21,9 +21,8 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 import paddle
-from paddle.distributed.auto_parallel.placement_type import (
-    placemetns_to_dist_status,
-)
+
+from .sharded_weight import ShardedWeight
 
 if TYPE_CHECKING:
     from paddle.framework import core
@@ -56,6 +55,11 @@ def compute_local_shape_and_global_offset(
     process_mesh: core.ProcessMesh,
     placements: list[core.Placement],
 ) -> tuple[tuple[int], tuple[int]]:
+
+    from paddle.distributed.auto_parallel.placement_type import (
+        placemetns_to_dist_status,
+    )
+
     mesh = np.array(process_mesh.process_ids).reshape(process_mesh.shape)
     # deal with cross mesh case
     if paddle.distributed.get_rank() not in mesh:
@@ -98,7 +102,7 @@ def flatten_state_dict(state_dict):
             for k, v in value.items():
                 assert isinstance(k, str), f"The key should be str, but is {k}"
                 _flatten((*key, k), v)
-        elif isinstance(value, paddle.Tensor):
+        elif isinstance(value, (paddle.Tensor, ShardedWeight)):
             flatten_key_str = ".".join(key)
             flatten_state_dict[flatten_key_str] = value
             mapping[flatten_key_str] = key
@@ -120,9 +124,9 @@ def unflatten_state_dict(flat_state_dict, mapping):
     state_dict = {}
     for key, value in flat_state_dict.items():
         key_tuple = mapping[key]
-        assert isinstance(key_tuple, tuple), (
-            f"The key should be tuple, but is {key_tuple}"
-        )
+        assert isinstance(
+            key_tuple, tuple
+        ), f"The key should be tuple, but is {key_tuple}"
         tmp = state_dict
         for i in range(len(key_tuple) - 1):
             key = key_tuple[i]
@@ -150,3 +154,60 @@ def check_unique_id(unique_id, process_group):
     )
     for id in all_unique_id[1:]:
         assert id == all_unique_id[0], f"id:{id} !=  all_unique_id[0]"
+
+
+def ravel_index(indices, shape):
+    idx = 0
+    for i, dim in zip(indices, shape):
+        idx = idx * dim + i
+    return idx
+
+
+def unravel_index(idx, shape):
+    indices = []
+    for dim in reversed(shape):
+        indices.append(idx % dim)
+        idx //= dim
+    return tuple(reversed(indices))
+
+
+def minimal_nd_slice(shape, flat_start, flat_end):
+    start_idx = unravel_index(flat_start, shape)
+    end_idx = unravel_index(flat_end - 1, shape)
+    min_slices = []
+    for axis in range(len(shape)):
+        if axis == 0:
+            s = start_idx[axis]
+            e = end_idx[axis] + 1
+        else:
+            if start_idx[axis - 1] == end_idx[axis - 1]:
+                s = min(start_idx[axis], end_idx[axis])
+                e = max(start_idx[axis], end_idx[axis]) + 1
+            else:
+                s = 0
+                e = shape[axis]
+        min_slices.append((s, e))
+    return min_slices, start_idx, end_idx
+
+
+def flat_range_in_min_slice(shape, min_slices, flat_start, flat_end):
+    min_starts = tuple(s[0] for s in min_slices)
+    min_flat_start = ravel_index(min_starts, shape)
+    return flat_start - min_flat_start, flat_end - min_flat_start
+
+
+def is_sharded_state_dict(o):
+    if not isinstance(o, dict):
+        return False
+
+    values = list(o.values())
+    has_sharded_weight = any(isinstance(v, ShardedWeight) for v in values)
+
+    if has_sharded_weight:
+        if not all(isinstance(v, ShardedWeight) for v in values):
+            raise TypeError(
+                "All values must be ShardedWeight if any value is ShardedWeight."
+            )
+        return True
+    else:
+        return False
