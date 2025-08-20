@@ -22,7 +22,7 @@ from typing_extensions import overload
 import paddle
 from paddle import _C_ops
 from paddle.common_ops_import import VarDesc, Variable
-from paddle.utils.decorator_utils import ParamAliasDecorator
+from paddle.utils.decorator_utils import ParamAliasDecorator, param_one_alias
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import check_dtype, check_variable_and_dtype
@@ -467,7 +467,8 @@ def nonzero(x: Tensor, as_tuple: Literal[True] = ...) -> tuple[Tensor, ...]: ...
 def nonzero(x: Tensor, as_tuple: bool = ...) -> Tensor | tuple[Tensor, ...]: ...
 
 
-def nonzero(x: Tensor, as_tuple=False):
+@param_one_alias(['x', 'input'])
+def nonzero(x: Tensor, as_tuple=False, *, out: Tensor | None = None):
     """
     Return a tensor containing the indices of all non-zero elements of the `input`
     tensor. If as_tuple is True, return a tuple of 1-D tensors, one for each dimension
@@ -477,9 +478,15 @@ def nonzero(x: Tensor, as_tuple=False):
     number of all non-zero elements in the `input` tensor. If as_tuple is True, we can get
     a 1-D tensor tuple of length `n`, and the shape of each 1-D tensor is [z, 1].
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``nonzero(input=tensor_x)`` is equivalent to ``nonzero(x=tensor_x)``.
+
     Args:
         x (Tensor): The input tensor variable.
+            alias: ``input``.
         as_tuple (bool, optional): Return type, Tensor or tuple of Tensor.
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor or tuple of Tensor, The data type is int64.
@@ -504,14 +511,10 @@ def nonzero(x: Tensor, as_tuple=False):
             >>> out_z1_tuple = paddle.nonzero(x1, as_tuple=True)
             >>> for out in out_z1_tuple:
             ...     print(out)
-            Tensor(shape=[3, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[0],
-             [1],
-             [2]])
-            Tensor(shape=[3, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[0],
-             [1],
-             [2]])
+            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [0, 1, 2])
+            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [0, 1, 2])
 
             >>> out_z2 = paddle.nonzero(x2)
             >>> print(out_z2)
@@ -522,13 +525,12 @@ def nonzero(x: Tensor, as_tuple=False):
             >>> out_z2_tuple = paddle.nonzero(x2, as_tuple=True)
             >>> for out in out_z2_tuple:
             ...     print(out)
-            Tensor(shape=[2, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[1],
-             [3]])
+            Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [1, 3])
 
     """
     if in_dynamic_or_pir_mode():
-        outs = _C_ops.nonzero(x)
+        outs = _C_ops.nonzero(x, out=out)
     else:
         check_variable_and_dtype(
             x,

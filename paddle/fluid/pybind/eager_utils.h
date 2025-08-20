@@ -540,6 +540,8 @@ void EagerSetDeviceId();
 
 paddle::optional<Tensor*> GetInputOutTensorFromKwargs(PyObject* kwargs);
 
+void Check_PIR_not_support_out(PyObject* kwargs);
+
 /*----------------------for arg parse-----------------------------*/
 paddle::Tensor& GetTensorFromArgsOrKWArgs(
     const std::string& op_type,

@@ -104,12 +104,12 @@ def _dtensor_from_local(
 
     # TODO Adopt Mix2Dist Pass to allow the program could be executed actually.
     elif paddle.framework.in_pir_mode():
-        assert isinstance(
-            local_tensor, (type(None), paddle.pir.Value)
-        ), "input tensor is not pir value."
-        assert (
-            local_tensor.is_dense_tensor_type()
-        ), "dtensor_from_local() are only supported dense tensor type right."
+        assert isinstance(local_tensor, (type(None), paddle.pir.Value)), (
+            "input tensor is not pir value."
+        )
+        assert local_tensor.is_dense_tensor_type(), (
+            "dtensor_from_local() are only supported dense tensor type right."
+        )
         sharding_specs = (
             paddle.distributed.auto_parallel.placement_type.get_shard_spec(
                 mesh, placements, local_tensor.ndim
@@ -246,9 +246,9 @@ def infer_positive_shape(src_shape, tgt_shape):
 
     minus_one_idx = np.where(ret_shape == -1)[0]
     if minus_one_idx.size > 0:
-        assert (
-            minus_one_idx.size <= 1
-        ), "At most one -1 is allowed in target shape."
+        assert minus_one_idx.size <= 1, (
+            "At most one -1 is allowed in target shape."
+        )
 
         nelem = np.prod(src_shape)
         ret_shape[minus_one_idx[0]] = 1
@@ -340,9 +340,9 @@ def _dist_reshape(
             "dist_reshape is only supported in dynamic and pir mode."
         )
 
-    assert np.prod(tgt_local_shape) == np.prod(
-        src_local_shape
-    ), f"The local shapes {src_local_shape} and {tgt_local_shape} are mismatched."
+    assert np.prod(tgt_local_shape) == np.prod(src_local_shape), (
+        f"The local shapes {src_local_shape} and {tgt_local_shape} are mismatched."
+    )
 
     if paddle.in_dynamic_mode():
         return _local_reshape.apply(

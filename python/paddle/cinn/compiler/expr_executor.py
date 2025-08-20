@@ -111,9 +111,9 @@ class ExprExecutor:
         return AST2CINN[type(fields["op"])].make(*args)
 
     def eval_Compare(self, fields):
-        assert (
-            len(fields["ops"]) == 1
-        ), "Only binary comparison symbols are supported. Expressions such as '1 <= a < 10' are not supported."
+        assert len(fields["ops"]) == 1, (
+            "Only binary comparison symbols are supported. Expressions such as '1 <= a < 10' are not supported."
+        )
         args = [
             self.exec_expr(fields["left"]),
             self.exec_expr(fields["comparators"][0]),

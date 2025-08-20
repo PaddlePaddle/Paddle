@@ -190,9 +190,9 @@ def monkey_patch_math_tensor():
 
     def _complex_(var: Tensor) -> complex:
         numel = np.prod(var.shape)
-        assert (
-            numel == 1
-        ), "only one element variable can be converted to complex."
+        assert numel == 1, (
+            "only one element variable can be converted to complex."
+        )
         assert var._is_initialized(), "variable's tensor is not initialized"
         if not var.is_complex():
             var = var.astype('complex64')
@@ -200,9 +200,9 @@ def monkey_patch_math_tensor():
 
     def _float_(var: Tensor) -> float:
         numel = np.prod(var.shape)
-        assert (
-            numel == 1
-        ), "only one element variable can be converted to float."
+        assert numel == 1, (
+            "only one element variable can be converted to float."
+        )
         assert var._is_initialized(), "variable's tensor is not initialized"
         if (
             var.dtype == core.VarDesc.VarType.BF16
@@ -244,9 +244,9 @@ def monkey_patch_math_tensor():
 
     def _index_(var: Tensor) -> int:
         numel = np.prod(var.shape)
-        assert (
-            numel == 1
-        ), "only one element variable can be converted to python index."
+        assert numel == 1, (
+            "only one element variable can be converted to python index."
+        )
         assert var._is_initialized(), "variable's tensor is not initialized"
         if (
             var.dtype == core.VarDesc.VarType.BF16
