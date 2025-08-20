@@ -289,7 +289,32 @@ class TestIndexSelectAPI(unittest.TestCase):
         )
         np.testing.assert_allclose(expect_out, res, rtol=1e-05)
 
-        # case 6 output_size error
+        # case 6 output_size = -1
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.static.data(name='x', shape=[-1, 3], dtype='float32')
+            index = paddle.static.data(
+                name='repeats_',
+                shape=[3],
+                dtype='int32',
+            )
+            if not paddle.framework.in_pir_mode():
+                x.desc.set_need_check_feed(False)
+                index.desc.set_need_check_feed(False)
+
+            z2 = paddle.repeat_interleave(x, index, axis=1, output_size=-1)
+            exe = base.Executor(base.CPUPlace())
+            (res2,) = exe.run(
+                feed={
+                    'x': self.data_x[:, :3],
+                    'repeats_': self.data_index_output_size,
+                },
+                fetch_list=[z2],
+            )
+        np.testing.assert_allclose(expect_out, res2, rtol=1e-05)
+
+        # case 7 output_size error
         with (
             self.assertRaises(ValueError),
             paddle.static.program_guard(
