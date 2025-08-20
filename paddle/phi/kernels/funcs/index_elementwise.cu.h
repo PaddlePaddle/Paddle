@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
+#include "paddle/phi/kernels/funcs/dense_tensor_iterator.h"
 #include "paddle/phi/kernels/funcs/index_elementwise_utils.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
@@ -194,6 +195,21 @@ static OffsetCalculator<N, uint32_t, signed_strides> make_offset_calculator(
 
   return OffsetCalculator<N, uint32_t, signed_strides>(
       ndim, shape, strides_array.data());
+}
+
+template <int N, bool signed_strides = false>
+static OffsetCalculator<N, uint32_t, signed_strides> make_offset_calculator(
+    const phi::DenseTensorIteratorBase& iter) {
+  PADDLE_ENFORCE_LE(N,
+                    iter.ntensors(),
+                    ::common::errors::InvalidArgument(
+                        "Tensor Numel must less or equal than Args"));
+  std::array<const int64_t*, N> strides;
+  for (int i = 0; i < N; i++) {
+    strides[i] = iter.operands_[i].stride_bytes.data();
+  }
+  return OffsetCalculator<N, uint32_t, signed_strides>(
+      iter.ndim(), iter.shape().data(), strides.data());
 }
 
 }  // namespace funcs

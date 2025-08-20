@@ -26,7 +26,9 @@ from paddle import _C_ops
 from paddle.tensor import fill_constant
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
-    param_one_alias,
+    VariableArgsDecorator,
+    param_two_alias,
+    reshape_decorator,
     view_decorator,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
@@ -61,6 +63,8 @@ if TYPE_CHECKING:
         ShapeLike,
         TensorOrTensors,
     )
+
+from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
 __all__ = []
 
@@ -2734,6 +2738,11 @@ def row_stack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
     return paddle.vstack(x, name=name)
 
 
+@ForbidKeywordsDecorator(
+    illegal_keys={"tensor", "split_size_or_sections", "dim"},
+    func_name="paddle.split",
+    correct_name="paddle.compat.split",
+)
 def split(
     x: Tensor,
     num_or_sections: int | Sequence[int],
@@ -3471,7 +3480,7 @@ def squeeze_(
         return _C_ops.squeeze_(input, axes)
 
 
-@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def unique_consecutive(
     x: Tensor,
     return_inverse: bool = False,
@@ -3487,14 +3496,20 @@ def unique_consecutive(
         This function is different from :ref:`api_paddle_unique` in the sense that this function
         only eliminates consecutive duplicate values. This semantics is similar to :ref:`api_paddle_unique` in C++.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``dim`` can be used as an alias for ``axis``.
+        For example, ``unique_consecutive(input=tensor_x, dim=1, ...)`` is equivalent to ``unique_consecutive(x=tensor_x, axis=1, ...)``.
+
     Args:
         x(Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+            alias: ``input``.
         return_inverse(bool, optional): If True, also return the indices for where elements in
             the original input ended up in the returned unique consecutive tensor. Default is False.
         return_counts(bool, optional): If True, also return the counts for each unique consecutive element.
             Default is False.
         axis(int, optional): The axis to apply unique consecutive. If None, the input will be flattened.
             Default is None.
+            alias: ``dim``.
         dtype(np.dtype|str, optional): The data type `inverse` tensor: int32 or int64.
             Default: int64.
         name(str|None, optional): Name for the operation. For more information, please refer to
@@ -4731,6 +4746,69 @@ def tile(
         return out
 
 
+@VariableArgsDecorator('repeats')
+def repeat(
+    input: Tensor,
+    repeats: int | Sequence[int] | Tensor,
+) -> Tensor:
+    """
+    Repeat elements of a tensor along specified dimensions.
+
+    Args:
+        input (Tensor): The input tensor to be repeated.
+        *repeats (int|list|tuple|Tensor): The number of times to repeat along each dimension.
+            Can be a single integer (applies to the first dimension only), or multiple integers (one per dimension).
+
+    Returns:
+        Tensor: The repeated tensor with expanded dimensions.
+
+    Note:
+        When using a single integer, it only repeats along the first dimension.
+        The total number of repeat values must match the number of dimensions in the tensor when using multiple values.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> # Example 1: 1D tensor - single repeat
+            >>> x = paddle.to_tensor([1, 2, 3])
+            >>> out = x.repeat(2)
+            >>> print(out)
+            Tensor(shape=[6], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [1, 2, 3, 1, 2, 3])
+
+            >>> # Example 2: 2D tensor - single repeat value
+            >>> x = paddle.to_tensor([[1, 2], [3, 4]])
+            >>> out = x.repeat(2)
+            >>> print(out)
+            Tensor(shape=[2, 4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            [[1, 2, 1, 2],
+            [3, 4, 3, 4]])
+
+            >>> # Example 3: 2D tensor - multiple repeats
+            >>> x = paddle.to_tensor([[1, 2], [3, 4]])
+            >>> out = x.repeat([2, 3])
+            >>> print(out)
+            Tensor(shape=[4, 6], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            [[1, 2, 1, 2, 1, 2],
+            [3, 4, 3, 4, 3, 4],
+            [1, 2, 1, 2, 1, 2],
+            [3, 4, 3, 4, 3, 4]])
+
+            >>> # Example 4: 3D tensor - mixed repeats
+            >>> x = paddle.to_tensor([[[1, 2], [3, 4]]])
+            >>> out = x.repeat([2, 1, 3])
+            >>> print(out)
+            Tensor(shape=[2, 2, 6], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            [[[1, 2, 1, 2, 1, 2],
+            [3, 4, 3, 4, 3, 4]],
+            [[1, 2, 1, 2, 1, 2],
+            [3, 4, 3, 4, 3, 4]]])
+    """
+    return tile(input, repeat_times=repeats)
+
+
 def expand_as(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
 
@@ -4832,11 +4910,17 @@ def broadcast_to(
         :alt: broadcast_to API
         :align: center
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``size`` can be used as an alias for ``shape``.
+        For example, ``broadcast_to(input=tensor_x, size=[2, 3], ...)`` is equivalent to ``broadcast_to(x=tensor_x, shape=[2, 3], ...)``.
+
     Args:
         x (Tensor): The input tensor, its data type is bool, float16, float32, float64, int32, int64, uint8 or uint16.
+            alias: ``input``.
         shape (list|tuple|Tensor): The result shape after broadcasting. The data type is int32. If shape is a list or tuple, all its elements
             should be integers or 0-D or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32.
             The value -1 in shape means keeping the corresponding dimension unchanged.
+            alias: ``size``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
     Returns:
         N-D Tensor, A Tensor with the given shape. The data type is the same as ``x``.
@@ -4988,7 +5072,7 @@ def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
         return out
 
 
-@param_one_alias({"x": "input"})
+@reshape_decorator()
 def reshape(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
     """
     Changes the shape of ``x`` without changing its data.
@@ -6297,7 +6381,84 @@ def as_real(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
-@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
+def view_as_complex(input: Tensor) -> Tensor:
+    """Return a complex tensor that is a view of the input real tensor .
+
+    The data type of the input tensor is 'float32' or 'float64', and the data
+    type of the returned tensor is 'complex64' or 'complex128', respectively.
+
+    The shape of the input tensor is ``(* ,2)``, (``*`` means arbitrary shape), i.e.
+    the size of the last axis should be 2, which represent the real and imag part
+    of a complex number. The shape of the returned tensor is ``(*,)``.
+
+    The complex tensor is a view of the input real tensor, meaning that it shares the same memory with real tensor.
+
+    The image below demonstrates the case that a real 3D-tensor with shape [2, 3, 2] is transformed into a complex 2D-tensor with shape [2, 3].
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/as_complex.png
+       :width: 500
+       :alt: Illustration of as_complex
+       :align: center
+
+    Args:
+        input (Tensor): The input tensor. Data type is 'float32' or 'float64'.
+
+    Returns:
+        Tensor, The output. Data type is 'complex64' or 'complex128', sharing the same memory with input.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.arange(12, dtype=paddle.float32).reshape([2, 3, 2])
+            >>> y = paddle.as_complex(x)
+            >>> print(y)
+            Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
+            [[1j      , (2+3j)  , (4+5j)  ],
+             [(6+7j)  , (8+9j)  , (10+11j)]])
+    """
+
+    return as_complex(x=input)
+
+
+def view_as_real(input: Tensor) -> Tensor:
+    """Return a real tensor that is a view of the input complex tensor.
+
+    The data type of the input tensor is 'complex64' or 'complex128', and the data
+    type of the returned tensor is 'float32' or 'float64', respectively.
+
+    When the shape of the input tensor is ``(*, )``, (``*`` means arbitrary shape),
+    the shape of the output tensor is ``(*, 2)``, i.e. the shape of the output is
+    the shape of the input appended by an extra ``2``.
+
+    The real tensor is a view of the input complex tensor, meaning that it shares the same memory with complex tensor.
+
+    Args:
+        input (Tensor): The input tensor. Data type is 'complex64' or 'complex128'.
+
+    Returns:
+        Tensor, The output. Data type is 'float32' or 'float64', sharing the same memory with input.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.arange(12, dtype=paddle.float32).reshape([2, 3, 2])
+            >>> y = paddle.as_complex(x)
+            >>> z = paddle.as_real(y)
+            >>> print(z)
+            Tensor(shape=[2, 3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[0. , 1. ],
+             [2. , 3. ],
+             [4. , 5. ]],
+            [[6. , 7. ],
+             [8. , 9. ],
+             [10., 11.]]])
+    """
+    return as_real(x=input)
+
+
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def repeat_interleave(
     x: Tensor,
     repeats: int | Tensor,
@@ -6319,11 +6480,16 @@ def repeat_interleave(
         :alt: legend of repeat_interleave API
         :align: center
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``dim`` can be used as an alias for ``axis``.
+        For example, ``repeat_interleave(input=tensor_x, dim=1, ...)`` is equivalent to ``repeat_interleave(x=tensor_x, axis=1, ...)``.
 
     Args:
         x (Tensor): The input Tensor to be operated. The data of ``x`` can be one of float32, float64, int32, int64.
+            alias: ``input``.
         repeats (Tensor|int): The number of repetitions for each element. repeats is broadcasted to fit the shape of the given axis.
         axis (int|None, optional): The dimension in which we manipulate. Default: None, the output tensor is flatten.
+            alias: ``dim``.
         name(str|None, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
@@ -6707,12 +6873,18 @@ def take_along_axis(
     """
     Take values from the input array by given indices matrix along the designated axis.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``arr``, and ``dim`` can be used as an alias for ``axis``.
+        For example, ``repeat_interleave(input=tensor_arr, dim=1, ...)`` is equivalent to ``repeat_interleave(arr=tensor_arr, axis=1, ...)``.
+
     Args:
         arr (Tensor) : The input Tensor. Supported data types are bfloat16, float16, float32, float64,
             int32, int64, uint8.
+            alias: ``input``.
         indices (Tensor) : Indices to take along each 1d slice of arr. This must match the dimension of arr,
             and need to broadcast against arr. Supported data type are int32 and int64.
         axis (int) : The axis to take 1d slices along.
+            alias: ``dim``.
         broadcast (bool, optional): whether the indices broadcast.
 
     Returns:
@@ -6792,6 +6964,68 @@ def take_along_axis(
             outputs={"Result": result},
         )
         return result
+
+
+def scatter_reduce(
+    input: Tensor,
+    dim: int,
+    index: Tensor,
+    src: Tensor,
+    reduce: Literal['sum', 'prod', 'mean', 'amin', 'amax'],
+    *,
+    include_self: bool = True,
+) -> Tensor:
+    """
+    Scatter the values of the source tensor to the target tensor according to the given indices, and perform a reduction operation along the designated axis.
+
+    Args:
+        input (Tensor) : The Input Tensor. Supported data types are bfloat16, float16, float32, float64,
+            int32, int64, uint8.
+        dim (int) : The axis to scatter 1d slices along.
+        index (Tensor) : Indices to scatter along each 1d slice of input. This must match the dimension of input,
+             Supported data type are int32 and int64.
+        src (Tensor) : The value element(s) to scatter. The data types should be same as input.
+        reduce (str): The reduce operation, support 'sum', 'prod', 'mean', 'amin', 'amax'.
+        include_self (bool, optional): whether to reduce with the elements of input, default is 'True'.
+
+    Returns:
+        Tensor, The indexed element, same dtype with input
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[10, 20, 30], [40, 50, 60]])
+            >>> indices = paddle.zeros((2,3)).astype("int32")
+            >>> values = paddle.to_tensor([[1, 2, 3],[4, 5, 6]]).astype(x.dtype)
+            >>> result = paddle.scatter_reduce(x, 0, indices, values, "sum", include_self=True)
+            >>> print(result)
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[15, 27, 39],
+             [40, 50, 60]])
+
+            >>> result = paddle.scatter_reduce(x, 0, indices, values, "prod", include_self=True)
+            >>> print(result)
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[40 , 200, 540],
+             [40 , 50 , 60 ]])
+
+            >>> result = paddle.scatter_reduce(x, 0, indices, values, "mean", include_self=True)
+            >>> print(result)
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[5 , 9 , 13],
+             [40, 50, 60]])
+
+    """
+
+    if reduce == 'sum':
+        reduce = 'add'
+    if reduce == 'prod':
+        reduce = 'multiply'
+    return put_along_axis(
+        input, index, src, dim, reduce, include_self, broadcast=False
+    )
 
 
 def put_along_axis(
@@ -7354,9 +7588,19 @@ def view(
     Note that the output Tensor will share data with origin Tensor and doesn't
     have a Tensor copy in ``dygraph`` mode.
 
+    .. note::
+        Alias Support: The parameter name ``size`` and ``dtype`` can be used as an alias for ``shape_or_dtype``.
+        ``shape_or_dtype`` can be a variable number of arguments.
+        For example:
+            ``tensor_x.view(dtype=paddle.float32)``
+            ``tensor_x.view(size=[-1, 1, 3])``
+            ``tensor_x.view(-1, 1, 3)``
+
     Args:
         x (Tensor): An N-D Tensor. The data type is ``float32``, ``float64``, ``int32``, ``int64`` or ``bool``
-        shape_or_dtype (list|tuple|np.dtype|str|VarType): Define the target shape or dtype. If list or tuple, shape_or_dtype represents shape, each element of it should be integer. If np.dtype or str or VarType, shape_or_dtype represents dtype, it can be bool, float16, float32, float64, int8, int32, int64, uint8.
+        shape_or_dtype (list|tuple|np.dtype|str|VarType|variable number of arguments): Define the target shape or dtype. If list or tuple, shape_or_dtype represents shape, each element of it should be integer. If np.dtype or str or VarType, shape_or_dtype represents dtype, it can be bool, float16, float32, float64, int8, int32, int64, uint8.
+            ``shape_or_dtype`` can be a variable number of arguments.
+            alias: ``size`` or ``dtype``.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:

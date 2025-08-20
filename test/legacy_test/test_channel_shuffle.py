@@ -252,7 +252,6 @@ class TestChannelShuffleAPI(unittest.TestCase):
 
 
 class TestChannelShuffleError(unittest.TestCase):
-
     def test_error_functional(self):
         def error_input():
             with paddle.base.dygraph.guard():

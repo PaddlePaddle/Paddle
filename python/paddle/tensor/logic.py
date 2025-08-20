@@ -22,7 +22,7 @@ import paddle
 from paddle import _C_ops
 from paddle.tensor.creation import full
 from paddle.tensor.math import broadcast_shape
-from paddle.utils.decorator_utils import ParamAliasDecorator
+from paddle.utils.decorator_utils import ParamAliasDecorator, param_two_alias
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
@@ -1330,7 +1330,7 @@ def bitwise_and_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         return _C_ops.bitwise_and_(x, y)
 
 
-@ParamAliasDecorator({"x": ["input"], "y": ["other"]})
+@param_two_alias(["x", "input"], ["y", "other"])
 def bitwise_or(
     x: Tensor, y: Tensor, out: Tensor | None = None, name: str | None = None
 ) -> Tensor:
@@ -1346,9 +1346,15 @@ def bitwise_or(
 
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``other`` can be used as an alias for ``y``.
+        For example, ``bitwise_or(input=tensor_x, other=tensor_y, ...)`` is equivalent to ``bitwise_or(x=tensor_x, y=tensor_y, ...)``.
+
     Args:
         x (Tensor): Input Tensor of ``bitwise_or`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+            alias: ``input``.
         y (Tensor): Input Tensor of ``bitwise_or`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+            alias: ``oth``.
         out (Tensor|None, optional): Result of ``bitwise_or`` . It is a N-D Tensor with the same data type of input Tensor. Default: None.
         name (str|None, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.

@@ -376,10 +376,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._persistent_workers = loader._persistent_workers
         self._resume_worker_cnt = 0
 
-        assert self._num_workers > 0, (
-            "Multi-process DataLoader "
-            f"invalid num_workers({self._num_workers})"
-        )
+        assert (
+            self._num_workers > 0
+        ), f"Multi-process DataLoader invalid num_workers({self._num_workers})"
 
         # subprocess wrokers' result queue
         self._data_queue = None

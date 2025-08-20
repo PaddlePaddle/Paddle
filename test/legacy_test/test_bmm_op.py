@@ -96,7 +96,6 @@ class TestBmmBF16Op(OpTest):
 
 
 class API_TestBmm(unittest.TestCase):
-
     def test_out(self):
         with paddle_static_guard():
             with paddle.static.program_guard(

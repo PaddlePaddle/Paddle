@@ -123,7 +123,7 @@ void FuseBatchNormActOneDNNPass::FuseBatchNormAct(
               "The BatchNorm+Act fusion may happen only during inference."));
     }
 
-    bn_op->SetAttr("use_mkldnn", true);
+    bn_op->SetAttr("use_onednn", true);
     bn_op->SetAttr("is_test", true);
     bn_op->SetAttr("fuse_with_relu", true);
     bn_op->SetAttr("trainable_statistics", false);

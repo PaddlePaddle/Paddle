@@ -253,18 +253,18 @@ def extract_cuda_device_id(device: _CudaPlaceLike, op_name: str) -> int:
             "Please input appropriate device again!"
         )
 
-    assert (
-        device_id >= 0
-    ), f"The device id must be not less than 0, but got id = {device_id}."
+    assert device_id >= 0, (
+        f"The device id must be not less than 0, but got id = {device_id}."
+    )
 
     if core.is_compiled_with_cuda():
-        assert (
-            device_id < device_count()
-        ), f"The device id {device_id} exceeds gpu card number {device_count()}"
+        assert device_id < device_count(), (
+            f"The device id {device_id} exceeds gpu card number {device_count()}"
+        )
     else:
-        assert device_id < core.get_custom_device_count(
-            device_type
-        ), f"The device id {device_id} exceeds {device_type} device card number {core.get_custom_device_count(device_type)}"
+        assert device_id < core.get_custom_device_count(device_type), (
+            f"The device id {device_id} exceeds {device_type} device card number {core.get_custom_device_count(device_type)}"
+        )
     return device_id
 
 

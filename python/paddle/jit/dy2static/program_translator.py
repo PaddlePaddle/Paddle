@@ -1642,7 +1642,6 @@ class ProgramCache:
         self._recent_cache_key = None
 
     def _build_once(self, cache_key):
-
         if use_pir_api():
             concrete_program = ConcreteProgram.pir_from_func_spec(
                 func_spec=cache_key.function_spec,

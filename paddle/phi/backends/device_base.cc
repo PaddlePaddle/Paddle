@@ -461,6 +461,30 @@ void DeviceInterface::ProfilerCollectTraceData(
   INTERFACE_UNIMPLEMENT;
 }
 
+void DeviceInterface::InitBlasHandle(size_t dev_id,
+                                     void** blas_handle,
+                                     phi::stream::stream_t stream) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::BlasSetMathMode(size_t dev_id,
+                                      void* blas_handle,
+                                      int math_mode) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::InitBlasLtHandle(size_t dev_id, void** blaslt_handle) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::DestroyBlasHandle(size_t dev_id, void* blas_handle) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::DestroyBlasLtHandle(size_t dev_id, void* blaslt_handle) {
+  INTERFACE_UNIMPLEMENT;
+}
+
 #undef INTERFACE_UNIMPLEMENT
 
 }  // namespace phi
