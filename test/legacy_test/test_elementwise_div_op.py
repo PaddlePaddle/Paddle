@@ -852,7 +852,6 @@ class TestElementwiseDivOp_Stride(OpTest):
         self.public_python_api = paddle.divide
         self.transpose_api = paddle.transpose
         self.as_stride_api = paddle.as_strided
-        self.check_dygraph = True
         self.init_dtype()
         self.init_input_output()
 
@@ -877,7 +876,6 @@ class TestElementwiseDivOp_Stride(OpTest):
         self.check_strided_forward = True
         self.check_output(
             place,
-            check_dygraph=self.check_dygraph,
         )
 
     def init_input_output(self):

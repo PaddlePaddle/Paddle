@@ -1171,7 +1171,6 @@ class TestElementwiseAddOp_Stride(TestElementwiseAddOp):
         self.check_strided_forward = True
         self.check_output(
             place,
-            check_dygraph=self.check_dygraph(),
         )
 
     def init_input_output(self):
@@ -1191,7 +1190,6 @@ class TestElementwiseAddOp_Stride(TestElementwiseAddOp):
             place,
             ['X', 'Y'],
             'Out',
-            check_dygraph=self.check_dygraph(),
         )
 
     def test_check_grad_ignore_x(self):
@@ -1204,7 +1202,6 @@ class TestElementwiseAddOp_Stride(TestElementwiseAddOp):
             ['Y'],
             'Out',
             no_grad_set=set("X"),
-            check_dygraph=self.check_dygraph(),
         )
 
     def test_check_grad_ignore_y(self):
@@ -1217,7 +1214,6 @@ class TestElementwiseAddOp_Stride(TestElementwiseAddOp):
             ['X'],
             'Out',
             no_grad_set=set('Y'),
-            check_dygraph=self.check_dygraph(),
         )
 
 

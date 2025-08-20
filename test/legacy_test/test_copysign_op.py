@@ -407,7 +407,7 @@ class TestCopySignNan8(TestCopySignAPI):
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
-class TestElementwiseDivOp_Stride(OpTest):
+class TestCopySignOp_Stride(OpTest):
     no_need_check_grad = True
 
     def setUp(self):
@@ -416,7 +416,6 @@ class TestElementwiseDivOp_Stride(OpTest):
         self.public_python_api = paddle.copysign
         self.transpose_api = paddle.transpose
         self.as_stride_api = paddle.as_strided
-        self.check_dygraph = True
         self.init_dtype()
         self.init_input_output()
 
@@ -441,7 +440,6 @@ class TestElementwiseDivOp_Stride(OpTest):
         self.check_strided_forward = True
         self.check_output(
             place,
-            check_dygraph=self.check_dygraph,
         )
 
     def init_input_output(self):
@@ -456,7 +454,7 @@ class TestElementwiseDivOp_Stride(OpTest):
         pass
 
 
-class TestElementwiseDivOp_Stride1(TestElementwiseDivOp_Stride):
+class TestCopySignOp_Stride1(TestCopySignOp_Stride):
     def init_input_output(self):
         self.strided_input_type = "transpose"
         self.x = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
@@ -466,7 +464,7 @@ class TestElementwiseDivOp_Stride1(TestElementwiseDivOp_Stride):
         self.y_trans = np.transpose(self.y, self.perm)
 
 
-class TestElementwiseDivOp_Stride2(TestElementwiseDivOp_Stride):
+class TestCopySignOp_Stride2(TestCopySignOp_Stride):
     def init_input_output(self):
         self.strided_input_type = "transpose"
         self.x = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
@@ -476,7 +474,7 @@ class TestElementwiseDivOp_Stride2(TestElementwiseDivOp_Stride):
         self.y_trans = np.transpose(self.y, self.perm)
 
 
-class TestElementwiseDivOp_Stride3(TestElementwiseDivOp_Stride):
+class TestCopySignOp_Stride3(TestCopySignOp_Stride):
     def init_input_output(self):
         self.strided_input_type = "transpose"
         self.x = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
@@ -486,7 +484,7 @@ class TestElementwiseDivOp_Stride3(TestElementwiseDivOp_Stride):
         self.y_trans = np.transpose(self.y, self.perm)
 
 
-class TestElementwiseDivOp_Stride4(TestElementwiseDivOp_Stride):
+class TestCopySignOp_Stride4(TestCopySignOp_Stride):
     def init_input_output(self):
         self.strided_input_type = "transpose"
         self.x = np.random.uniform(0.1, 1, [1, 2, 13, 17]).astype(self.dtype)
@@ -496,7 +494,7 @@ class TestElementwiseDivOp_Stride4(TestElementwiseDivOp_Stride):
         self.y_trans = np.transpose(self.y, self.perm)
 
 
-class TestElementwiseDivOp_Stride5(TestElementwiseDivOp_Stride):
+class TestCopySignOp_Stride5(TestCopySignOp_Stride):
     def init_input_output(self):
         self.strided_input_type = "as_stride"
         self.x = np.random.uniform(0.1, 1, [23, 10, 1, 17]).astype(self.dtype)
@@ -508,7 +506,7 @@ class TestElementwiseDivOp_Stride5(TestElementwiseDivOp_Stride):
         self.stride_param = [520, 260, 20, 1]
 
 
-class TestElementwiseDivOp_Stride_ZeroDim1(TestElementwiseDivOp_Stride):
+class TestCopySignOp_Stride_ZeroDim1(TestCopySignOp_Stride):
     def init_input_output(self):
         self.strided_input_type = "transpose"
         self.x = np.random.uniform(0.1, 1, []).astype(self.dtype)
@@ -518,7 +516,7 @@ class TestElementwiseDivOp_Stride_ZeroDim1(TestElementwiseDivOp_Stride):
         self.y_trans = np.transpose(self.y, self.perm)
 
 
-class TestElementwiseDivOp_Stride_ZeroSize1(TestElementwiseDivOp_Stride):
+class TestCopySignOp_Stride_ZeroSize1(TestCopySignOp_Stride):
     def init_data(self):
         self.strided_input_type = "transpose"
         self.x = np.random.rand(1, 0, 2).astype('float32')
