@@ -48,7 +48,6 @@ class MyTest(Dy2StTestBase):
     @set_to_static_mode(
         ToStaticMode.AST | ToStaticMode.SOT
     )
-    @set_ir_mode(IrMode.LEGACY_IR | IrMode.PT | IrMode.PIR)
     @set_backend_mode(BackendMode.PHI | BackendMode.CINN)
     def test_case1(self):
         raise ValueError("MyTest 1")
@@ -62,9 +61,6 @@ class MyTest2(MyTest):
         raise ValueError("MyTest2 1")
 """
 
-ENV_ENABLE_PIR_WITH_PT_IN_DY2ST = BooleanEnvironmentVariable(
-    "FLAGS_enable_pir_with_pt_in_dy2st", True
-)
 ENV_EXE_SEQUENTIAL_RUN = BooleanEnvironmentVariable(
     "FLAGS_new_executor_sequential_run", False
 )
@@ -90,17 +86,6 @@ class ToStaticMode(Flag):
         return self.name.lower()
 
 
-class IrMode(Flag):
-    LEGACY_IR = auto()
-    # pir translator mode, Reference link: https://github.com/PaddlePaddle/community/blob/master/pfcc/paddle-code-reading/IR_Dialect/program_translator.md
-    PT = auto()
-    # using native pir api mode
-    PIR = auto()
-
-    def lower_case_name(self):
-        return self.name.lower()
-
-
 class BackendMode(Flag):
     PHI = auto()
     CINN = auto()
@@ -109,20 +94,19 @@ class BackendMode(Flag):
         return self.name.lower()
 
 
-ModeTuple: TypeAlias = tuple[ToStaticMode, IrMode, BackendMode]
+ModeTuple: TypeAlias = tuple[ToStaticMode, BackendMode]
 DEFAULT_TO_STATIC_MODE = (
     ToStaticMode.AST | ToStaticMode.SOT | ToStaticMode.SOT_MGS10
 )
-DEFAULT_IR_MODE = IrMode.PIR
 DEFAULT_BACKEND_MODE = BackendMode.PHI | BackendMode.CINN
 VALID_MODES = [
-    (ToStaticMode.AST, IrMode.PIR, BackendMode.PHI),
-    (ToStaticMode.SOT, IrMode.PIR, BackendMode.PHI),
-    (ToStaticMode.SOT_MGS10, IrMode.PIR, BackendMode.PHI),
+    (ToStaticMode.AST, BackendMode.PHI),
+    (ToStaticMode.SOT, BackendMode.PHI),
+    (ToStaticMode.SOT_MGS10, BackendMode.PHI),
 ]
 if cinn_is_available():
     VALID_MODES.append(
-        (ToStaticMode.SOT, IrMode.PIR, BackendMode.CINN),
+        (ToStaticMode.SOT, BackendMode.CINN),
     )  # For default mode, we test SOT+CINN
 
 
@@ -131,25 +115,10 @@ DISABLED_TO_STATIC_TEST_FILES = {
     ToStaticMode.SOT: [],
     ToStaticMode.SOT_MGS10: [],
 }
-
-DISABLED_IR_TEST_FILES = {
-    IrMode.LEGACY_IR: [],
-    IrMode.PT: [],
-    IrMode.PIR: [],
-}
 DISABLED_BACKEND_TEST_FILES = {
     BackendMode.PHI: [],
     BackendMode.CINN: [],
 }
-
-
-@contextmanager
-def pir_dygraph_guard():
-    in_dygraph_mode = paddle.in_dynamic_mode()
-    with paddle.pir_utils.IrGuard():
-        if in_dygraph_mode:
-            paddle.disable_static()
-        yield
 
 
 def to_ast_test(fn):
@@ -204,24 +173,6 @@ def to_sot_mgs10_test(fn):
     return sot_mgs10_impl
 
 
-def to_legacy_ir_test(fn):
-    raise NotImplementedError("Legacy IR is not supported")
-
-
-def to_pt_test(fn):
-    raise NotImplementedError("PT is not supported")
-
-
-def to_pir_test(fn):
-    @wraps(fn)
-    def pir_impl(*args, **kwargs):
-        logger.info("[PIR] running pir")
-        with pir_dygraph_guard():
-            return fn(*args, **kwargs)
-
-    return pir_impl
-
-
 def to_phi_test(fn):
     @wraps(fn)
     def phi_impl(*args, **kwargs):
@@ -248,12 +199,6 @@ class Dy2StTestMeta(type):
         ToStaticMode.AST: to_ast_test,
         ToStaticMode.SOT: to_sot_test,
         ToStaticMode.SOT_MGS10: to_sot_mgs10_test,
-    }
-
-    IR_HANDLER_MAP = {
-        IrMode.LEGACY_IR: to_legacy_ir_test,
-        IrMode.PT: to_pt_test,
-        IrMode.PIR: to_pir_test,
     }
 
     BACKEND_HANDLER_MAP = {
@@ -322,18 +267,14 @@ class Dy2StTestMeta(type):
         fn_to_static_modes = getattr(
             fn, "to_static_mode", DEFAULT_TO_STATIC_MODE
         )
-        fn_ir_modes = getattr(fn, "ir_mode", DEFAULT_IR_MODE)
         fn_backend_modes = getattr(fn, "backend_mode", DEFAULT_BACKEND_MODE)
         logger.info(f"fn_to_static_modes: {fn_to_static_modes}")
-        logger.info(f"fn_ir_modes: {fn_ir_modes}")
         logger.info(f"fn_backend_modes: {fn_backend_modes}")
         return [
-            (to_static_mode, ir_mode, backend_mode)
+            (to_static_mode, backend_mode)
             for to_static_mode in ToStaticMode
-            for ir_mode in IrMode
             for backend_mode in BackendMode
             if to_static_mode & fn_to_static_modes
-            and ir_mode & fn_ir_modes
             and backend_mode & fn_backend_modes
         ]
 
@@ -341,15 +282,13 @@ class Dy2StTestMeta(type):
     def is_disabled_by_attr(
         fn_disabled_test_cases: list[ModeTuple], mode_tuple: ModeTuple
     ):
-        to_static_mode, ir_mode, backend_mode = mode_tuple
+        to_static_mode, backend_mode = mode_tuple
         for (
             disabled_to_static_mode,
-            disabled_ir_mode,
             disabled_backend_mode,
         ) in fn_disabled_test_cases:
             if (
                 to_static_mode & disabled_to_static_mode
-                and ir_mode & disabled_ir_mode
                 and backend_mode & disabled_backend_mode
             ):
                 return True
@@ -360,10 +299,9 @@ class Dy2StTestMeta(type):
         filename: str,
         mode_tuple: ModeTuple,
     ):
-        to_static_mode, ir_mode, backend_mode = mode_tuple
+        to_static_mode, backend_mode = mode_tuple
         if (
             filename in DISABLED_TO_STATIC_TEST_FILES[to_static_mode]
-            or filename in DISABLED_IR_TEST_FILES[ir_mode]
             or filename in DISABLED_BACKEND_TEST_FILES[backend_mode]
         ):
             return True
@@ -371,14 +309,13 @@ class Dy2StTestMeta(type):
 
     @staticmethod
     def test_case_name(original_name: str, mode_tuple: ModeTuple):
-        to_static_mode, ir_mode, backend_mode = mode_tuple
-        return f"{original_name}__{to_static_mode.lower_case_name()}_{ir_mode.lower_case_name()}_{backend_mode.lower_case_name()}"
+        to_static_mode, backend_mode = mode_tuple
+        return f"{original_name}__{to_static_mode.lower_case_name()}_{backend_mode.lower_case_name()}"
 
     @staticmethod
     def convert_test_case(fn, mode_tuple: ModeTuple):
-        to_static_mode, ir_mode, backend_mode = mode_tuple
+        to_static_mode, backend_mode = mode_tuple
         fn = Dy2StTestMeta.BACKEND_HANDLER_MAP[backend_mode](fn)
-        fn = Dy2StTestMeta.IR_HANDLER_MAP[ir_mode](fn)
         fn = Dy2StTestMeta.TO_STATIC_HANDLER_MAP[to_static_mode](fn)
         return fn
 
@@ -397,14 +334,6 @@ def set_to_static_mode(mode: ToStaticMode):
     return decorator
 
 
-def set_ir_mode(mode: IrMode):
-    def decorator(fn):
-        fn.ir_mode = mode
-        return fn
-
-    return decorator
-
-
 def set_backend_mode(mode: BackendMode):
     def decorator(fn):
         fn.backend_mode = mode
@@ -413,7 +342,7 @@ def set_backend_mode(mode: BackendMode):
     return decorator
 
 
-def disable_test_case(flags: tuple[ToStaticMode, IrMode, BackendMode]):
+def disable_test_case(flags: tuple[ToStaticMode, BackendMode]):
     def decorator(fn):
         disabled_test_cases = getattr(fn, "disabled_test_cases", [])
         disabled_test_cases.append(flags)
@@ -435,11 +364,6 @@ def test_sot_only(fn):
     return fn
 
 
-def test_pir_only(fn):
-    fn = set_ir_mode(IrMode.PIR)(fn)
-    return fn
-
-
 def test_phi_only(fn):
     fn = set_backend_mode(BackendMode.PHI)(fn)
     return fn
@@ -454,7 +378,6 @@ def test_cinn_only(fn):
 def test_default_mode_only(fn):
     # Some unittests has high time complexity, we only test them with default mode
     fn = set_to_static_mode(ToStaticMode.SOT)(fn)
-    fn = set_ir_mode(IrMode.PIR)(fn)
     fn = set_backend_mode(BackendMode.PHI)(fn)
     return fn
 

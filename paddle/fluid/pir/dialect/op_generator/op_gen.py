@@ -612,13 +612,13 @@ class OpInfoParser:
             return None
 
     def cross_check(self, name_list, type_list, optional_list=None):
-        assert len(name_list) == len(
-            type_list
-        ), "name list size != type list size."
+        assert len(name_list) == len(type_list), (
+            "name list size != type list size."
+        )
         if optional_list is not None:
-            assert len(name_list) == len(
-                optional_list
-            ), "type list size != optional list size."
+            assert len(name_list) == len(optional_list), (
+                "type list size != optional list size."
+            )
 
     def parse_custom_verify(self):
         if 'custom_verify' in self.op_yaml_item:
@@ -807,9 +807,9 @@ class OpInfoParser:
         }
         type_list = []
         for input_info in self.op_yaml_item['inputs']:
-            assert (
-                input_info['typename'] in input_types_map
-            ), f"{self.op_phi_name} : Input type error: the input type only support Tensor and Tensor[], but now is {input_info['typename']}."
+            assert input_info['typename'] in input_types_map, (
+                f"{self.op_phi_name} : Input type error: the input type only support Tensor and Tensor[], but now is {input_info['typename']}."
+            )
             type_list.append(input_types_map[input_info['typename']])
         return type_list
 
@@ -825,9 +825,9 @@ class OpInfoParser:
             }
             type_list = []
             for input_info in self.op_yaml_item['inputs']:
-                assert (
-                    input_info['typename'] in input_types_map
-                ), f"{self.op_phi_name} : Input type error: the input type only support Tensor and Tensor[], but now is {input_info['typename']}."
+                assert input_info['typename'] in input_types_map, (
+                    f"{self.op_phi_name} : Input type error: the input type only support Tensor and Tensor[], but now is {input_info['typename']}."
+                )
                 type_list.append(input_types_map[input_info['typename']])
 
             if self.kernel_map is None:
@@ -847,9 +847,9 @@ class OpInfoParser:
                 inputs = self.kernel_map['dispatch'][kernel_func_name][0]
                 type_list = []
                 for input_info in inputs:
-                    assert (
-                        input_info in input_types_map
-                    ), f"{self.op_phi_name} : Input type error: the input type only support dense and selected_rows, but now is {input_info}."
+                    assert input_info in input_types_map, (
+                        f"{self.op_phi_name} : Input type error: the input type only support dense and selected_rows, but now is {input_info}."
+                    )
                     type_list.append(input_types_map[input_info])
 
                 type_dict[kernel_func_name] = type_list
@@ -887,9 +887,9 @@ class OpInfoParser:
         }
         type_list = []
         for output_info in self.op_yaml_item['outputs']:
-            assert (
-                output_info['typename'] in output_type_map
-            ), f"{self.op_phi_name} : Output type error: the output type only support Tensor and Tensor[], but now is {output_info['typename']}."
+            assert output_info['typename'] in output_type_map, (
+                f"{self.op_phi_name} : Output type error: the output type only support Tensor and Tensor[], but now is {output_info['typename']}."
+            )
             type_list.append(output_type_map[output_info['typename']])
         return type_list
 
@@ -907,9 +907,9 @@ class OpInfoParser:
             }
             type_list = []
             for output_info in self.op_yaml_item['outputs']:
-                assert (
-                    output_info['typename'] in output_type_map
-                ), f"{self.op_phi_name} : Output type error: the output type only support Tensor and Tensor[], but now is {output_info['typename']}."
+                assert output_info['typename'] in output_type_map, (
+                    f"{self.op_phi_name} : Output type error: the output type only support Tensor and Tensor[], but now is {output_info['typename']}."
+                )
                 type_list.append(output_type_map[output_info['typename']])
 
             if self.kernel_map is None:
@@ -929,9 +929,9 @@ class OpInfoParser:
                 outputs = self.kernel_map['dispatch'][kernel_func_name][1]
                 type_list = []
                 for output_info in outputs:
-                    assert (
-                        output_info in output_type_map
-                    ), f"{self.op_phi_name} : Input type error: the input type only support dense and selected_rows, but now is {output_info}."
+                    assert output_info in output_type_map, (
+                        f"{self.op_phi_name} : Input type error: the input type only support dense and selected_rows, but now is {output_info}."
+                    )
                     type_list.append(output_type_map[output_info])
 
                 type_dict[kernel_func_name] = type_list
@@ -989,9 +989,9 @@ class OpInfoParser:
     def parse_attribute_build_arg_type_list(self):
         type_list = []
         for attribute_info in self.op_yaml_item['attrs']:
-            assert (
-                attribute_info['typename'] in self.attr_types_map
-            ), f"{self.op_phi_name} : Attr type error."
+            assert attribute_info['typename'] in self.attr_types_map, (
+                f"{self.op_phi_name} : Attr type error."
+            )
 
             # Scalar & IntArray has data_type
             temp_type = self.attr_types_map[attribute_info['typename']][1]
@@ -1020,9 +1020,9 @@ class OpInfoParser:
     def parse_attribute_gen_arg_type_list(self):
         type_list = []
         for attribute_info in self.op_yaml_item['attrs']:
-            assert (
-                attribute_info['typename'] in self.attr_types_map
-            ), f"{self.op_phi_name} : Attr type error."
+            assert attribute_info['typename'] in self.attr_types_map, (
+                f"{self.op_phi_name} : Attr type error."
+            )
 
             temp_type = self.attr_types_map[attribute_info['typename']][1]
             type_list.append(self.get_phi_dtype_name(temp_type))
@@ -1031,9 +1031,9 @@ class OpInfoParser:
     def parse_attribute_type_list(self):
         type_list = []
         for attribute_info in self.op_yaml_item['attrs']:
-            assert (
-                attribute_info['typename'] in self.attr_types_map
-            ), f"{self.op_phi_name} : Attr type error."
+            assert attribute_info['typename'] in self.attr_types_map, (
+                f"{self.op_phi_name} : Attr type error."
+            )
             type_list.append(self.attr_types_map[attribute_info['typename']][0])
         return type_list
 
@@ -1137,9 +1137,9 @@ def get_input_grad_semantic(
 
         bwd_fwd_input_list = bwd_op_info.forward_input_name_list
         if bwd_fwd_input_list is not None:
-            assert (
-                len(bwd_fwd_input_list) == num_inputs
-            ), "Configuration of forward op and backward op is not match."
+            assert len(bwd_fwd_input_list) == num_inputs, (
+                "Configuration of forward op and backward op is not match."
+            )
             for i in range(num_inputs):
                 if bwd_fwd_input_list[i] in bwd_output_list_new:
                     input_grad_semantics.append("true")
@@ -1218,9 +1218,9 @@ pir::Attribute attr_{attr_name} = pir::ArrayAttribute::get(pir::IrContext::Insta
     attr_str = ""
     array_attr_type = "pir::ArrayAttribute<"
     for idx in range(len(onednn_extra_args)):
-        assert (
-            onednn_extra_args[idx]['typename'] in attr_types_map
-        ), f"{onednn_extra_args[idx]['typename']} : Attr type error."
+        assert onednn_extra_args[idx]['typename'] in attr_types_map, (
+            f"{onednn_extra_args[idx]['typename']} : Attr type error."
+        )
         extra_arg_type = attr_types_map[onednn_extra_args[idx]['typename']][0]
 
         if array_attr_type in extra_arg_type:
