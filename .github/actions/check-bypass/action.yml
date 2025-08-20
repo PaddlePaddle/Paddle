@@ -22,7 +22,7 @@ runs:
       uses: PFCCLab/ci-bypass@v1
       with:
         github-token: ${{ inputs.github-token }}
-        non-pull-request-event-strategy: 'always-skipped'
+        non-pull-request-event-strategy: 'never-skipped'
         type: 'composite'
         composite-rule: |
           {
