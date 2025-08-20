@@ -3496,14 +3496,20 @@ def unique_consecutive(
         This function is different from :ref:`api_paddle_unique` in the sense that this function
         only eliminates consecutive duplicate values. This semantics is similar to :ref:`api_paddle_unique` in C++.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``dim`` can be used as an alias for ``axis``.
+        For example, ``unique_consecutive(input=tensor_x, dim=1, ...)`` is equivalent to ``unique_consecutive(x=tensor_x, axis=1, ...)``.
+
     Args:
         x(Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+            alias: ``input``.
         return_inverse(bool, optional): If True, also return the indices for where elements in
             the original input ended up in the returned unique consecutive tensor. Default is False.
         return_counts(bool, optional): If True, also return the counts for each unique consecutive element.
             Default is False.
         axis(int, optional): The axis to apply unique consecutive. If None, the input will be flattened.
             Default is None.
+            alias: ``dim``.
         dtype(np.dtype|str, optional): The data type `inverse` tensor: int32 or int64.
             Default: int64.
         name(str|None, optional): Name for the operation. For more information, please refer to
@@ -4904,11 +4910,17 @@ def broadcast_to(
         :alt: broadcast_to API
         :align: center
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``size`` can be used as an alias for ``shape``.
+        For example, ``broadcast_to(input=tensor_x, size=[2, 3], ...)`` is equivalent to ``broadcast_to(x=tensor_x, shape=[2, 3], ...)``.
+
     Args:
         x (Tensor): The input tensor, its data type is bool, float16, float32, float64, int32, int64, uint8 or uint16.
+            alias: ``input``.
         shape (list|tuple|Tensor): The result shape after broadcasting. The data type is int32. If shape is a list or tuple, all its elements
             should be integers or 0-D or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32.
             The value -1 in shape means keeping the corresponding dimension unchanged.
+            alias: ``size``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
     Returns:
         N-D Tensor, A Tensor with the given shape. The data type is the same as ``x``.
@@ -6446,6 +6458,7 @@ def view_as_real(input: Tensor) -> Tensor:
     return as_real(x=input)
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def repeat_interleave(
     x: Tensor,
     repeats: int | Tensor,
@@ -6467,11 +6480,16 @@ def repeat_interleave(
         :alt: legend of repeat_interleave API
         :align: center
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``dim`` can be used as an alias for ``axis``.
+        For example, ``repeat_interleave(input=tensor_x, dim=1, ...)`` is equivalent to ``repeat_interleave(x=tensor_x, axis=1, ...)``.
 
     Args:
         x (Tensor): The input Tensor to be operated. The data of ``x`` can be one of float32, float64, int32, int64.
+            alias: ``input``.
         repeats (Tensor|int): The number of repetitions for each element. repeats is broadcasted to fit the shape of the given axis.
         axis (int|None, optional): The dimension in which we manipulate. Default: None, the output tensor is flatten.
+            alias: ``dim``.
         name(str|None, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
@@ -6855,12 +6873,18 @@ def take_along_axis(
     """
     Take values from the input array by given indices matrix along the designated axis.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``arr``, and ``dim`` can be used as an alias for ``axis``.
+        For example, ``repeat_interleave(input=tensor_arr, dim=1, ...)`` is equivalent to ``repeat_interleave(arr=tensor_arr, axis=1, ...)``.
+
     Args:
         arr (Tensor) : The input Tensor. Supported data types are bfloat16, float16, float32, float64,
             int32, int64, uint8.
+            alias: ``input``.
         indices (Tensor) : Indices to take along each 1d slice of arr. This must match the dimension of arr,
             and need to broadcast against arr. Supported data type are int32 and int64.
         axis (int) : The axis to take 1d slices along.
+            alias: ``dim``.
         broadcast (bool, optional): whether the indices broadcast.
 
     Returns:
@@ -7564,9 +7588,19 @@ def view(
     Note that the output Tensor will share data with origin Tensor and doesn't
     have a Tensor copy in ``dygraph`` mode.
 
+    .. note::
+        Alias Support: The parameter name ``size`` and ``dtype`` can be used as an alias for ``shape_or_dtype``.
+        ``shape_or_dtype`` can be a variable number of arguments.
+        For example:
+            ``tensor_x.view(dtype=paddle.float32)``
+            ``tensor_x.view(size=[-1, 1, 3])``
+            ``tensor_x.view(-1, 1, 3)``
+
     Args:
         x (Tensor): An N-D Tensor. The data type is ``float32``, ``float64``, ``int32``, ``int64`` or ``bool``
-        shape_or_dtype (list|tuple|np.dtype|str|VarType): Define the target shape or dtype. If list or tuple, shape_or_dtype represents shape, each element of it should be integer. If np.dtype or str or VarType, shape_or_dtype represents dtype, it can be bool, float16, float32, float64, int8, int32, int64, uint8.
+        shape_or_dtype (list|tuple|np.dtype|str|VarType|variable number of arguments): Define the target shape or dtype. If list or tuple, shape_or_dtype represents shape, each element of it should be integer. If np.dtype or str or VarType, shape_or_dtype represents dtype, it can be bool, float16, float32, float64, int8, int32, int64, uint8.
+            ``shape_or_dtype`` can be a variable number of arguments.
+            alias: ``size`` or ``dtype``.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:

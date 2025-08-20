@@ -32,12 +32,6 @@ struct GpuDevice;
 
 namespace phi {
 
-// #ifndef BLAS_HANDLE_TYPE
-// #define BLAS_HANDLE_TYPE void*
-// // #else
-// // // using cublasHandle_t = struct cublasContext*;
-// #endif
-
 class CustomContext : public DeviceContext,
                       public TypeInfoTraits<DeviceContext, CustomContext> {
  public:

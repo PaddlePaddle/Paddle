@@ -92,7 +92,7 @@ void moe_dispatch_fwd(const Context &dev_ctx,
 }
 
 template <typename T, typename Context>
-void MoeGradDispatchKernel(const Context &dev_ctx,
+void MoeGateDispatchKernel(const Context &dev_ctx,
                            const DenseTensor &x,
                            const DenseTensor &gate_logits,
                            const paddle::optional<DenseTensor> &corr_bias,
@@ -130,7 +130,7 @@ void MoeGradDispatchKernel(const Context &dev_ctx,
 PD_REGISTER_KERNEL(moe_gate_dispatch,
                    XPU,
                    ALL_LAYOUT,
-                   phi::MoeGradDispatchKernel,
+                   phi::MoeGateDispatchKernel,
                    float,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
