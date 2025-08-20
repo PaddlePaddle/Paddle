@@ -1958,7 +1958,8 @@ def arange(
     reason=(
         "paddle.range is deprecated and will be removed in a future release because its behavior is inconsistent with Python's range builtin."
         "Instead, use paddle.arange, which produces values in [start, end)"
-    )
+    ),
+    level=1,
 )
 def range(
     start: float | paddle.Tensor = 0,
@@ -2043,19 +2044,7 @@ def range(
         start = 0
 
     if dtype is None:
-        for val in [start, end, step]:
-            if isinstance(val, (Variable, paddle.pir.Value)):
-                if not paddle.is_integer(val):
-                    dtype = paddle.get_default_dtype()
-                    break
-                else:
-                    dtype = 'int64'
-            else:
-                if not isinstance(val, np.integer) and not isinstance(val, int):
-                    dtype = paddle.get_default_dtype()
-                    break
-                else:
-                    dtype = 'int64'
+        dtype = paddle.get_default_dtype()
 
     is_value_input = (
         not isinstance(start, (Variable, paddle.pir.Value))
