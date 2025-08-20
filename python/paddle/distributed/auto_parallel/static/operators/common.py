@@ -107,9 +107,9 @@ class DistributedOperatorImplContainer(abc.ABC):
         return self._impls
 
     def register_impl(self, dist_impl):
-        assert (
-            self.type == dist_impl.type
-        ), "Op type of container must be same as that of the implementation."
+        assert self.type == dist_impl.type, (
+            "Op type of container must be same as that of the implementation."
+        )
         impl_idx = len(self.impls)
         dist_impl.idx = impl_idx
         self._impls.append(dist_impl)
@@ -353,9 +353,9 @@ def is_parameter_related(varname, block, dist_context=None):
         varname = varname[: varname.index(".cast_bf")]
     if ".quantized" in varname:
         varname = varname[: varname.index(".quantized")]
-    assert block._find_var_recursive(
-        varname
-    ), f"cannot find var {varname} in cur block"
+    assert block._find_var_recursive(varname), (
+        f"cannot find var {varname} in cur block"
+    )
     var = block._var_recursive(varname)
     # NOTE(hack method): to find the param which is resharded
     if dist_context and "@RESHARD" in varname:
@@ -551,9 +551,9 @@ def sync_and_scale_gradients(dist_ctx, op, groups, allreduce_var_names):
                 added_ops.append(scale_op)
 
             dims_mapping = op_dist_attr.get_output_dims_mapping(grad_var.name)
-            assert (
-                dims_mapping is not None
-            ), f"Unexpected: dims_mapping of output [{grad_var.name}] of op [{op_dist_attr.op_type}] is None"
+            assert dims_mapping is not None, (
+                f"Unexpected: dims_mapping of output [{grad_var.name}] of op [{op_dist_attr.op_type}] is None"
+            )
             # NOTE auxiliary op's dist attr should follow dist_op not dist_tensor
             for new_op in added_ops:
                 new_op_attr = OperatorDistAttr()
@@ -586,9 +586,9 @@ def get_partial_groups(dist_ctx, op, out_grad_names, rank):
         if partial_dims is None:
             partial_dims = var_dist_attr._partial_dims()
         else:
-            assert (
-                partial_dims == var_dist_attr._partial_dims()
-            ), f"Partial dims of outputs {out_grad_names} of op [{op.type}] is not consistent"
+            assert partial_dims == var_dist_attr._partial_dims(), (
+                f"Partial dims of outputs {out_grad_names} of op [{op.type}] is not consistent"
+            )
 
     partial_dims = list(partial_dims)
     partial_dims.sort()

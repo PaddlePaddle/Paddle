@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import builtins
 import math
+import numbers
 import re
 import warnings
 from typing import TYPE_CHECKING, overload
@@ -1043,7 +1044,7 @@ class MmapStorage(paddle.base.core.MmapStorage):
 
 def full_like(
     x: paddle.Tensor,
-    fill_value: bool | float,
+    fill_value: Numeric | str,
     dtype: DTypeLike | None = None,
     name: str | None = None,
     *,
@@ -1057,9 +1058,10 @@ def full_like(
 
     Args:
         x(Tensor): The input tensor which specifies shape and data type. The data type can be bool, float16, float32, float64, int32, int64.
-        fill_value(bool|float|int): The value to fill the tensor with. Note: this value shouldn't exceed the range of the output data type.
+        fill_value(Scalar|Tensor): The value to fill the tensor with. Note: this value shouldn't exceed the range of the output data type.
+            If ``fill_value`` is an Tensor, it should be an 0-D Tensor which represents a scalar.
         dtype(np.dtype|str, optional): The data type of output. The data type can be one
-            of bool, float16, float32, float64, int32, int64. The default value is None, which means the output
+            of bool, float16, float32, float64, int32, int64, complex64, complex128. The default value is None, which means the output
             data type is the same as input.
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
         device(PlaceLike|None, optional): The desired device of returned tensor.
@@ -1081,6 +1083,15 @@ def full_like(
             [[2. 2. 2.]
              [2. 2. 2.]]
     """
+    # Include str type check to handle string numeric values like "0.5" that occur in CI tests.
+    # The compatible method for fliud operators, may be it can be removed in the future.
+    if not isinstance(
+        fill_value,
+        (numbers.Number, str, core.eager.Tensor, Variable, paddle.pir.Value),
+    ):
+        raise TypeError(
+            f"The fill_value should be int, float, bool, complex, np.number, string numeric value or Tensor, but received {type(fill_value)}."
+        )
 
     if dtype is None:
         dtype = x.dtype
@@ -1347,9 +1358,14 @@ def ones_like(
     Returns a Tensor filled with the value 1, with the same shape and
     data type (use ``dtype`` if ``dtype`` is not None) as ``x``.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``ones_like(input=tensor_x, ...)`` is equivalent to ``ones_like(x=tensor_x, ...)``.
+
     Args:
         x(Tensor): The input tensor which specifies shape and dtype. The
             dtype of ``x`` can be bool, float16, float32, float64, int32, int64.
+            alias: ``input``.
         dtype(str|np.dtype, optional): The data type of the
             output tensor. Supported data types: bool, float16, float32, float64,
             int32, int64. If ``dtype`` is None, the data type is the same as ``x``.
@@ -1401,10 +1417,19 @@ def zeros(
     """
     Creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 0.
 
+    .. note::
+        Alias Support: The parameter name ``size`` can be used as an alias for ``shape``.
+        ``shape`` can be a variable number of arguments.
+        For example:
+            ``paddle.ones(1, 2, 3, dtype=paddle.float32)``
+            ``paddle.ones(size=[1, 2, 3], dtype=paddle.float32)``
+
     Args:
-        shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
+        shape (tuple|list|Tensor|variable number of arguments): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
+            alias: ``size``.
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
+            ``shape`` can be a variable number of arguments.
         dtype(np.dtype|str, optional): Data type of output Tensor, it supports
             bool, float16, float32, float64, int32 and int64. Default: if None, the data type is float32.
             property.  For more information, please refer to :ref:`api_guide_Name`.
@@ -1635,7 +1660,7 @@ def eye(
 @ParamAliasDecorator({"shape": ["size"]})
 def full(
     shape: ShapeLike,
-    fill_value: bool | float | paddle.Tensor,
+    fill_value: Numeric | str,
     dtype: DTypeLike | None = None,
     name: str | None = None,
     *,
@@ -1656,10 +1681,10 @@ def full(
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
             Alias: ``size``.
-        fill_value(bool|float|int|Tensor): The constant value used to initialize the Tensor to be created.
+        fill_value(Scalar|Tensor): The constant value used to initialize the Tensor to be created.
             If ``fill_value`` is an Tensor, it should be an 0-D Tensor which represents a scalar.
         dtype(np.dtype|str, optional): Data type of the output Tensor
-            which can be float16, float32, float64, int32, int64, if dtype is `None`, the data
+            which can be float16, float32, float64, int32, int64, complex64, complex128. If dtype is `None`, the data
             type of created Tensor is `float32`.
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
         out(Tensor, optional): The output tensor.
@@ -1707,6 +1732,15 @@ def full(
              [2. 2.]
              [2. 2.]]
     """
+    # Include str type check to handle string numeric values like "0.5" that occur in CI tests.
+    # The compatible method for fliud operators, may be it can be removed in the future.
+    if not isinstance(
+        fill_value,
+        (numbers.Number, str, core.eager.Tensor, Variable, paddle.pir.Value),
+    ):
+        raise TypeError(
+            f"The fill_value should be int, float, bool, complex, np.number, string numeric values or Tensor, but received {type(fill_value)}."
+        )
 
     if dtype is None:
         if isinstance(fill_value, (bool)):

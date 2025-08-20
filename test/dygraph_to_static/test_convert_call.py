@@ -20,7 +20,6 @@ from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
     test_ast_only,
-    test_pir_only,
 )
 
 import paddle
@@ -97,7 +96,6 @@ class TestRecursiveCall1(Dy2StTestBase):
             res = self.dyfunc(self.input).numpy()
         return res
 
-    @test_pir_only
     def test_transformed_static_result(self):
         self.init_test_func()
         static_res = self.get_static_output()
@@ -186,7 +184,6 @@ class TestRecursiveCall2(Dy2StTestBase):
         with enable_to_static_guard(True):
             return self._run()
 
-    @test_pir_only
     def test_transformed_static_result(self):
         self.set_func()
         dygraph_res = self.get_dygraph_output()
@@ -230,7 +227,6 @@ class TestNotToConvert(TestRecursiveCall2):
         paddle.jit.not_to_static()(self.net.sum)
         self.dygraph_func = paddle.jit.to_static(self.net.outer)
 
-    @test_pir_only
     def test_transform_options(self):
         self.set_func()
         self.assertTrue(
@@ -244,7 +240,6 @@ class TestNotToConvert(TestRecursiveCall2):
             )
         )
 
-    @test_pir_only
     def test_code(self):
         self.set_func()
         # check 'if statement' is not converted
@@ -260,7 +255,6 @@ class TestNotToConvert2(TestRecursiveCall2):
         paddle.jit.not_to_static(self.net.sum)
         self.dygraph_func = paddle.jit.to_static(self.net.sum)
 
-    @test_pir_only
     def test_transform_options(self):
         self.set_func()
         self.assertTrue(
@@ -275,7 +269,6 @@ class TestNotToConvert2(TestRecursiveCall2):
         )
 
     @test_ast_only
-    @test_pir_only
     def test_code(self):
         self.set_func()
         self.dygraph_func = paddle.jit.to_static(self.net.sum)
@@ -293,7 +286,6 @@ def forward(self, x):
 
 class TestConvertPaddleAPI(Dy2StTestBase):
     @test_ast_only
-    @test_pir_only
     def test_functional_api(self):
         func = paddle.nn.functional.relu
         func = paddle.jit.to_static(func)
@@ -301,7 +293,6 @@ class TestConvertPaddleAPI(Dy2StTestBase):
         self.assertIn("if in_dynamic_or_pir_mode()", func.code)
 
     @test_ast_only
-    @test_pir_only
     def test_class_api(self):
         bn = paddle.nn.SyncBatchNorm(2)
         paddle.jit.to_static(bn)
@@ -309,7 +300,6 @@ class TestConvertPaddleAPI(Dy2StTestBase):
         self.assertIn("if in_dynamic_or_pir_mode()", bn.forward.code)
 
     @test_ast_only
-    @test_pir_only
     def test_class_patch_api(self):
         paddle.nn.SyncBatchNorm.forward = forward
         bn = paddle.nn.SyncBatchNorm(2)
