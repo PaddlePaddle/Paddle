@@ -26,7 +26,7 @@ import numpy as np
 import paddle
 from paddle import _C_ops
 from paddle.utils import deprecated
-from paddle.utils.decorator_utils import ParamAliasDecorator, SizeArgsDecorator
+from paddle.utils.decorator_utils import ParamAliasDecorator, view_decorator
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
@@ -1278,7 +1278,7 @@ def fill_constant(
         return out
 
 
-@SizeArgsDecorator()
+@view_decorator()
 def ones(
     shape: ShapeLike,
     dtype: DTypeLike | None = None,
@@ -1405,7 +1405,7 @@ def ones_like(
     )
 
 
-@SizeArgsDecorator()
+@view_decorator()
 def zeros(
     shape: ShapeLike,
     dtype: DTypeLike | None = None,
@@ -2825,7 +2825,7 @@ def diag(
         return out
 
 
-@SizeArgsDecorator()
+@view_decorator()
 def empty(
     shape: ShapeLike,
     dtype: DTypeLike | None = None,
