@@ -96,7 +96,7 @@ def parameter_accuracy(body):
                 message += f'{key} should be in {test_list}. but now is [{single_mess}].     '
     PR_dic['Description'] = body[changes_end + len('### Description') :]
     des_pr_id = extract_pr_links(PR_dic['Description'])
-    if not check_link_accessible(
+    if len(des_pr_id) == 0 or not check_link_accessible(
         "https://github.com/PaddlePaddle/Paddle/pull/" + str(des_pr_id[0])
     ):
         message += 'The PR link does not exist. To merge into the fleety branch, you need to merge into the develop branch first and then cherry-pick it to the fleety branch. Please merge into develop first and fill in the PR link in the Description'
