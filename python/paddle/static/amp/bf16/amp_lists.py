@@ -68,7 +68,7 @@ class AutoMixedPrecisionListsBF16:
             for op_name in self._custom_bf16_list:
                 if op_name in self._custom_fp32_list:
                     raise ValueError(
-                        "Custom bf16 list overlap " "custom fp32 list"
+                        "Custom bf16 list overlap custom fp32 list"
                     )
         if self._custom_bf16_list:
             for op_name in self._custom_bf16_list:

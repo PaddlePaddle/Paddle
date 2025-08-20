@@ -1000,7 +1000,7 @@ void FusedGemmEpilogueGradOp::Build(pir::Builder &builder,
 
   PADDLE_ENFORCE(
       attributes.find("activation_grad") != attributes.end(),
-      common::errors::NotFound("'activation_grad' Attribute is expected for"
+      common::errors::NotFound("'activation_grad' Attribute is expected for "
                                "FusedGemmEpilogueGradOp"));
   std::string activation_grad =
       attributes.at("activation_grad").dyn_cast<pir::StrAttribute>().AsString();
@@ -1071,7 +1071,7 @@ std::vector<pir::Type> FusedGemmEpilogueGradOp::InferMeta(
 
   PADDLE_ENFORCE(
       attributes.find("activation_grad") != attributes.end(),
-      common::errors::NotFound("'activation_grad' Attribute is expected for"
+      common::errors::NotFound("'activation_grad' Attribute is expected for "
                                "FusedGemmEpilogueGradOp"));
   std::string activation_grad =
       attributes.at("activation_grad").dyn_cast<pir::StrAttribute>().AsString();

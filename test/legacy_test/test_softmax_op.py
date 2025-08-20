@@ -15,8 +15,13 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
-from utils import static_guard
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+)
+from utils import dygraph_guard, static_guard
 
 import paddle
 import paddle.nn.functional as F
@@ -73,7 +78,7 @@ class TestSoftmaxOp(OpTest):
         self.attrs = {
             'axis': self.axis,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_onednn,
+            'use_onednn': self.use_onednn,
         }
         self.enable_cinn = True
 
@@ -156,7 +161,7 @@ class TestSoftmaxOp_ZeroDim1(TestSoftmaxOp):
         self.attrs = {
             'axis': -1,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_onednn,
+            'use_onednn': self.use_onednn,
         }
         self.enable_cinn = False
 
@@ -205,7 +210,7 @@ class TestSoftmaxOp_ZeroDim2(TestSoftmaxOp):
         self.attrs = {
             'axis': -1,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_onednn,
+            'use_onednn': self.use_onednn,
         }
         self.enable_cinn = False
 
@@ -482,7 +487,7 @@ class TestSoftmaxBF16Op(OpTest):
         self.attrs = {
             'axis': self.axis,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_onednn,
+            'use_onednn': self.use_onednn,
         }
 
     def init_cudnn(self):
@@ -528,11 +533,7 @@ class TestSoftmaxBF16CUDNNOp(TestSoftmaxBF16Op):
 
 class TestSoftmaxAPI(unittest.TestCase):
     def setUp(self):
-        self.place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
         self.x_np = np.random.uniform(-1.0, 1.0, [2, 3, 4, 5]).astype('float32')
         self.out_ref = np.apply_along_axis(stable_softmax, -1, self.x_np)
         self.executed_api()
@@ -644,6 +645,62 @@ class TestSoftmaxAPI_ZeroDim(unittest.TestCase):
 class TestSoftmaxInplaceAPI(TestSoftmaxAPI):
     def executed_api(self):
         self.softmax = F.softmax_
+
+
+class TestSoftmaxAPI_ZeroSize(unittest.TestCase):
+    def test_dygraph(self):
+        for place in get_places():
+            paddle.disable_static(place)
+            x = paddle.rand([0, 2, 3])
+            x.stop_gradient = False
+            x.retain_grads()
+            out = paddle.nn.functional.softmax(x)
+            out.retain_grads()
+            out.backward()
+            np.testing.assert_allclose(out.numpy(), np.random.random([0, 2, 3]))
+            np.testing.assert_allclose(x.grad.shape, x.shape)
+            paddle.enable_static()
+
+
+class TestSoftmaxCompatibility(unittest.TestCase):
+    def setUp(self):
+        self.input = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]
+        self.axes = [0, 1]
+        self.places = [paddle.CPUPlace()]
+        if paddle.base.core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+
+    def test_gather_with_param_aliases(self):
+        with dygraph_guard():
+            for place in self.places:
+                paddle.device.set_device(place)
+                for axis in self.axes:
+                    input_tensor = paddle.to_tensor(self.input, dtype='float32')
+                    for param_x in ['x', 'input']:
+                        for param_axis in ['axis', 'dim']:
+                            kwargs = {param_x: input_tensor, param_axis: axis}
+                            result = paddle.nn.functional.softmax(**kwargs)
+                            expected = np.exp(
+                                input_tensor.numpy()
+                                - np.max(
+                                    input_tensor.numpy(),
+                                    axis=axis,
+                                    keepdims=True,
+                                )
+                            )
+                            expected = expected / np.sum(
+                                expected, axis=axis, keepdims=True
+                            )
+                            np.testing.assert_allclose(
+                                (
+                                    result.numpy()
+                                    if place.is_cpu_place()
+                                    else result.cpu().numpy()
+                                ),
+                                expected,
+                                rtol=1e-5,
+                                err_msg=f"Failed at axis={axis}, param_x={param_x}, param_axis={param_axis}",
+                            )
 
 
 if __name__ == "__main__":

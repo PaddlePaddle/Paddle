@@ -16,6 +16,7 @@
 import unittest
 
 import numpy as np
+from op_test import is_custom_device
 
 import paddle
 from paddle import base
@@ -51,7 +52,10 @@ class TestGeneratorSeed(unittest.TestCase):
         x2_np = x2.numpy()
         x3_np = x3.numpy()
 
-        if not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu():
+        if (
+            not (core.is_compiled_with_cuda() or is_custom_device())
+            and not core.is_compiled_with_xpu()
+        ):
             np.testing.assert_allclose(x1_np, x2_np, rtol=1e-05)
             np.testing.assert_allclose(x_np, x3_np, rtol=1e-05)
 
@@ -85,7 +89,7 @@ class TestGeneratorSeed(unittest.TestCase):
             out2_res2 = np.array(out2[1])
 
             if (
-                not core.is_compiled_with_cuda()
+                not (core.is_compiled_with_cuda() or is_custom_device())
                 and not core.is_compiled_with_xpu()
             ):
                 np.testing.assert_allclose(out1_res1, out2_res1, rtol=1e-05)
@@ -107,7 +111,10 @@ class TestGeneratorSeed(unittest.TestCase):
         y_np = y.numpy()
         y1_np = y1.numpy()
 
-        if not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu():
+        if (
+            not (core.is_compiled_with_cuda() or is_custom_device())
+            and not core.is_compiled_with_xpu()
+        ):
             print(">>>>>>> dropout dygraph >>>>>>>")
             np.testing.assert_allclose(y_np, y1_np, rtol=1e-05)
 
@@ -132,7 +139,10 @@ class TestGeneratorSeed(unittest.TestCase):
         out1_np = np.array(out1[0])
         out2_np = np.array(out2[0])
 
-        if not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu():
+        if (
+            not (core.is_compiled_with_cuda() or is_custom_device())
+            and not core.is_compiled_with_xpu()
+        ):
             print(">>>>>>> dropout static >>>>>>>")
             np.testing.assert_allclose(out1_np, out2_np, rtol=1e-05)
 
@@ -153,7 +163,10 @@ class TestGeneratorSeed(unittest.TestCase):
         x2_np = x2.numpy()
         x3_np = x3.numpy()
 
-        if not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu():
+        if (
+            not (core.is_compiled_with_cuda() or is_custom_device())
+            and not core.is_compiled_with_xpu()
+        ):
             print(">>>>>>> gaussian random dygraph >>>>>>>")
             np.testing.assert_allclose(x1_np, x2_np, rtol=1e-05)
             np.testing.assert_allclose(x_np, x3_np, rtol=1e-05)
@@ -188,7 +201,7 @@ class TestGeneratorSeed(unittest.TestCase):
             out2_res2 = np.array(out2[1])
 
             if (
-                not core.is_compiled_with_cuda()
+                not (core.is_compiled_with_cuda() or is_custom_device())
                 and not core.is_compiled_with_xpu()
             ):
                 print(">>>>>>> gaussian random static >>>>>>>")
@@ -213,7 +226,10 @@ class TestGeneratorSeed(unittest.TestCase):
         x2_np = x2.numpy()
         x3_np = x3.numpy()
 
-        if not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu():
+        if (
+            not (core.is_compiled_with_cuda() or is_custom_device())
+            and not core.is_compiled_with_xpu()
+        ):
             print(">>>>>>> randint dygraph >>>>>>>")
             np.testing.assert_allclose(x1_np, x2_np, rtol=1e-05)
             np.testing.assert_allclose(x_np, x3_np, rtol=1e-05)
@@ -248,7 +264,7 @@ class TestGeneratorSeed(unittest.TestCase):
             out2_res2 = np.array(out2[1])
 
             if (
-                not core.is_compiled_with_cuda()
+                not (core.is_compiled_with_cuda() or is_custom_device())
                 and not core.is_compiled_with_xpu()
             ):
                 np.testing.assert_allclose(out1_res1, out2_res1, rtol=1e-05)
@@ -271,7 +287,10 @@ class TestGeneratorSeed(unittest.TestCase):
         x1_np = x1.numpy()
         x2_np = x2.numpy()
         x3_np = x3.numpy()
-        if not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu():
+        if (
+            not (core.is_compiled_with_cuda() or is_custom_device())
+            and not core.is_compiled_with_xpu()
+        ):
             np.testing.assert_allclose(x1_np, x2_np, rtol=1e-05)
             np.testing.assert_allclose(x_np, x3_np, rtol=1e-05)
 
@@ -305,7 +324,7 @@ class TestGeneratorSeed(unittest.TestCase):
             out2_res2 = np.array(out2[1])
 
             if (
-                not core.is_compiled_with_cuda()
+                not (core.is_compiled_with_cuda() or is_custom_device())
                 and not core.is_compiled_with_xpu()
             ):
                 print(">>>>>>> randint static >>>>>>>")
@@ -331,7 +350,10 @@ class TestGeneratorSeed(unittest.TestCase):
         x2_np = x2.numpy()
         x3_np = x3.numpy()
 
-        if not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu():
+        if (
+            not (core.is_compiled_with_cuda() or is_custom_device())
+            and not core.is_compiled_with_xpu()
+        ):
             print(">>>>>>> randperm dygraph >>>>>>>")
             np.testing.assert_allclose(x1_np, x2_np, rtol=1e-05)
             np.testing.assert_allclose(x_np, x3_np, rtol=1e-05)
@@ -366,7 +388,7 @@ class TestGeneratorSeed(unittest.TestCase):
             out2_res2 = np.array(out2[1])
 
             if (
-                not core.is_compiled_with_cuda()
+                not (core.is_compiled_with_cuda() or is_custom_device())
                 and not core.is_compiled_with_xpu()
             ):
                 print(">>>>>>> randperm static >>>>>>>")

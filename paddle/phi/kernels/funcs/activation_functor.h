@@ -308,6 +308,41 @@ struct ReciprocalFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct Reciprocal {
+  HOSTDEVICE ComplexType<T> operator()(const ComplexType<T>& val) const {
+    auto both_inf = [](T real, T imag) {
+      return (std::isinf(real) && std::isinf(imag));
+    };
+
+    auto either_inf = [](T real, T imag) {
+      return std::isinf(real) || std::isinf(imag);
+    };
+
+    auto either_nan = [](T real, T imag) {
+      return std::isnan(real) || std::isnan(imag);
+    };
+    if (either_nan(val.real, val.imag) || both_inf(val.real, val.imag)) {
+      // If either is Nan or both are infinite, return {nan, nan}
+      return ComplexType<T>(std::numeric_limits<T>::quiet_NaN(),
+                            std::numeric_limits<T>::quiet_NaN());
+    } else if (either_inf(val.real, val.imag)) {
+      // If either is Inf, return {0, 0}
+      return ComplexType<T>{static_cast<T>(0), static_cast<T>(0)};
+    }
+    return static_cast<ComplexType<T>>(1.0) / val;
+  }
+};
+
+template <typename T>
+struct ReciprocalFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.unaryExpr(Reciprocal<T>());
+  }
+};
+
+template <typename T>
 struct ReciprocalGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device,
             typename X,
@@ -3001,7 +3036,16 @@ template <typename T>
 struct FloorFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.floor();
+    if constexpr ((std::is_same<T, uint8_t>::value) ||
+                  (std::is_same<T, int8_t>::value) ||
+                  (std::is_same<T, uint16_t>::value) ||
+                  (std::is_same<T, int16_t>::value) ||
+                  (std::is_same<T, int>::value) ||
+                  (std::is_same<T, int64_t>::value)) {
+      out.device(d) = x;
+    } else {
+      out.device(d) = x.floor();
+    }
   }
 };
 
@@ -3125,7 +3169,16 @@ template <typename T>
 struct CeilFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.ceil();
+    if constexpr ((std::is_same<T, uint8_t>::value) ||
+                  (std::is_same<T, int8_t>::value) ||
+                  (std::is_same<T, uint16_t>::value) ||
+                  (std::is_same<T, int16_t>::value) ||
+                  (std::is_same<T, int>::value) ||
+                  (std::is_same<T, int64_t>::value)) {
+      out.device(d) = x;
+    } else {
+      out.device(d) = x.ceil();
+    }
   }
 };
 
@@ -3604,6 +3657,37 @@ struct CudaReciprocalFunctor : public BaseActivationFunctor<T> {
 
   __device__ __forceinline__ T operator()(const T x) const {
     return static_cast<T>(one / static_cast<MPType>(x));
+  }
+};
+
+template <typename T>
+struct CudaReciprocalFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  __device__ __forceinline__ ComplexType<T> operator()(
+      const ComplexType<T> x) const {
+    auto both_inf = [](T real, T imag) {
+      return (::isinf(real) && ::isinf(imag));
+    };
+
+    auto either_inf = [](T real, T imag) {
+      return ::isinf(real) || ::isinf(imag);
+    };
+
+    auto either_nan = [](T real, T imag) {
+      return ::isnan(real) || ::isnan(imag);
+    };
+    if (either_nan(x.real, x.imag) || both_inf(x.real, x.imag)) {
+      // If either is Nan or both are infinite, return {nan, nan}
+      if constexpr (std::is_same<T, float>::value) {
+        return ComplexType<T>(nanf(""), nanf(""));
+      } else if constexpr (std::is_same<T, double>::value) {
+        return ComplexType<T>(nan(""), nan(""));
+      }
+    } else if (either_inf(x.real, x.imag)) {
+      // If either is Inf, return {0, 0}
+      return ComplexType<T>(static_cast<T>(0), static_cast<T>(0));
+    }
+    return static_cast<ComplexType<T>>(1.0) / x;
   }
 };
 
@@ -5337,7 +5421,16 @@ struct CudaCeilFunctor : public BaseActivationFunctor<T> {
   // ceil(x) = ceil(x)
   __device__ __forceinline__ T operator()(const T arg_x) const {
     MPType x = static_cast<MPType>(arg_x);
-    return static_cast<T>(ceil(x));
+    if constexpr ((std::is_same<T, uint8_t>::value) ||
+                  (std::is_same<T, int8_t>::value) ||
+                  (std::is_same<T, uint16_t>::value) ||
+                  (std::is_same<T, int16_t>::value) ||
+                  (std::is_same<T, int>::value) ||
+                  (std::is_same<T, int64_t>::value)) {
+      return static_cast<T>(x);
+    } else {
+      return static_cast<T>(ceil(x));
+    }
   }
 };
 
@@ -5426,7 +5519,16 @@ struct CudaFloorFunctor : public BaseActivationFunctor<T> {
   // floor(x) = floor(x)
   __device__ __forceinline__ T operator()(const T arg_x) const {
     MPType x = static_cast<MPType>(arg_x);
-    return static_cast<T>(floor(x));
+    if constexpr ((std::is_same<T, uint8_t>::value) ||
+                  (std::is_same<T, int8_t>::value) ||
+                  (std::is_same<T, uint16_t>::value) ||
+                  (std::is_same<T, int16_t>::value) ||
+                  (std::is_same<T, int>::value) ||
+                  (std::is_same<T, int64_t>::value)) {
+      return static_cast<T>(x);
+    } else {
+      return static_cast<T>(floor(x));
+    }
   }
 };
 

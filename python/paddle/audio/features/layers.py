@@ -410,9 +410,9 @@ class MFCC(nn.Layer):
         dtype: str = 'float32',
     ) -> None:
         super().__init__()
-        assert (
-            n_mfcc <= n_mels
-        ), f'n_mfcc cannot be larger than n_mels: {n_mfcc} vs {n_mels}'
+        assert n_mfcc <= n_mels, (
+            f'n_mfcc cannot be larger than n_mels: {n_mfcc} vs {n_mels}'
+        )
         self._log_melspectrogram = LogMelSpectrogram(
             sr=sr,
             n_fft=n_fft,
@@ -446,7 +446,5 @@ class MFCC(nn.Layer):
         log_mel_feature = self._log_melspectrogram(x)
         mfcc = paddle.matmul(
             log_mel_feature.transpose((0, 2, 1)), self.dct_matrix
-        ).transpose(
-            (0, 2, 1)
-        )  # (B, n_mels, L)
+        ).transpose((0, 2, 1))  # (B, n_mels, L)
         return mfcc

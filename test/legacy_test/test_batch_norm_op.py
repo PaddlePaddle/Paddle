@@ -317,7 +317,7 @@ class TestBatchNormOpInference(unittest.TestCase):
             # attrs
             is_test=True,
             data_layout=data_layout,
-            use_mkldnn=self.use_onednn,
+            use_onednn=self.use_onednn,
             fuse_with_relu=self.fuse_with_relu,
             epsilon=epsilon,
         )
@@ -541,7 +541,6 @@ class TestBF16BatchNormOpInference(TestBatchNormOpInference):
 
 
 class TestDygraphBatchNormAPIError(unittest.TestCase):
-
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -610,7 +609,6 @@ class TestDygraphBatchNormTrainableStats(unittest.TestCase):
 
 
 class TestDygraphBatchNormOpenReserveSpace(unittest.TestCase):
-
     def test_reservespace(self):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
@@ -623,6 +621,29 @@ class TestDygraphBatchNormOpenReserveSpace(unittest.TestCase):
             batch_norm = paddle.nn.BatchNorm(7, data_layout="NHWC")
             hidden1 = batch_norm(x)
             os.environ['FLAGS_cudnn_batchnorm_spatial_persistent'] = '0'
+
+
+class TestBatchNormAPI_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.places = get_places()
+
+    def test_dygraph(self):
+        for place in self.places:
+            with paddle.base.dygraph.guard(place):
+                dims = [0, 2, 3]
+                x_np = np.random.rand(*dims) * 10
+                x = paddle.to_tensor(x_np)
+                running_mean = paddle.to_tensor(np.random.random([2]))
+                running_var = paddle.to_tensor(np.random.random([2]))
+                x.stop_gradient = False
+                ret = paddle.nn.functional.batch_norm(
+                    x, running_mean, running_var
+                )
+                np.testing.assert_allclose(
+                    ret.numpy(), np.random.random(x.shape)
+                )
+                ret.sum().backward()
+                np.testing.assert_allclose(x.grad.shape, x.shape)
 
 
 if __name__ == '__main__':

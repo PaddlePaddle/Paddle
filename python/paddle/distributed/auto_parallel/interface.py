@@ -73,17 +73,17 @@ def shard_tensor(x, process_mesh=None, shard_spec=None):
     """
 
     if process_mesh is not None:
-        assert isinstance(
-            process_mesh, core.ProcessMesh
-        ), f"Argument process_mesh {process_mesh} is not an instance of ProcessMesh"
+        assert isinstance(process_mesh, core.ProcessMesh), (
+            f"Argument process_mesh {process_mesh} is not an instance of ProcessMesh"
+        )
     else:
         process_mesh = get_current_process_mesh()
-        assert (
-            process_mesh is not None
-        ), "Specify the process mesh argument or use ProcessMesh context manager first."
-    assert isinstance(
-        shard_spec, list
-    ), f"Argument shard_spec {shard_spec} is not an instance of list"
+        assert process_mesh is not None, (
+            "Specify the process mesh argument or use ProcessMesh context manager first."
+        )
+    assert isinstance(shard_spec, list), (
+        f"Argument shard_spec {shard_spec} is not an instance of list"
+    )
     if isinstance(x, str):
         x = (
             paddle.static.default_main_program()
@@ -100,9 +100,9 @@ def shard_tensor(x, process_mesh=None, shard_spec=None):
     else:
         tensor_shape = serial_tensor.shape
     if shard_spec is not None:
-        assert verify_shard_spec(
-            shard_spec, tensor_shape, process_mesh
-        ), f"For tensor {serial_tensor.name}, shard_spec {shard_spec} is invalid with tensor_shape {tensor_shape} and process_mesh {process_mesh}."
+        assert verify_shard_spec(shard_spec, tensor_shape, process_mesh), (
+            f"For tensor {serial_tensor.name}, shard_spec {shard_spec} is invalid with tensor_shape {tensor_shape} and process_mesh {process_mesh}."
+        )
         dist_tensor.dist_attr.dims_mapping = convert_to_dims_mapping(
             shard_spec, process_mesh
         )
@@ -164,14 +164,14 @@ def shard_op(
     """
 
     if process_mesh is not None:
-        assert isinstance(
-            process_mesh, ProcessMesh
-        ), f"Argument process_mesh {process_mesh} is not an instance of ProcessMesh"
+        assert isinstance(process_mesh, ProcessMesh), (
+            f"Argument process_mesh {process_mesh} is not an instance of ProcessMesh"
+        )
     else:
         process_mesh = get_current_process_mesh()
-        assert (
-            process_mesh is not None
-        ), "Specify the process mesh argument or use ProcessMesh context manager first."
+        assert process_mesh is not None, (
+            "Specify the process mesh argument or use ProcessMesh context manager first."
+        )
     in_dims_mappings = []
     if in_shard_specs is not None:
         assert all(

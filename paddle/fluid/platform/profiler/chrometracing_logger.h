@@ -45,7 +45,7 @@ class ChromeTracingLogger : public BaseLogger {
   void LogDeviceProperty(
       const std::map<uint32_t, gpuDeviceProp>& device_property_map);
 #endif
-  void LogMetaInfo(const std::string& version, uint32_t span_indx);
+  void LogMetaInfo(const std::string& version, uint32_t span_index);
 
  private:
   void OpenFile();

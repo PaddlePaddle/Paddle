@@ -32,6 +32,13 @@ void UnbindStridedKernel(const Context& dev_ctx,
         "FLAGS_use_stride_kernel is closed. Strided kernel "
         "be called, something wrong has happened!"));
   }
+  int64_t unbind_numel = x.numel();
+  PADDLE_ENFORCE_LE(unbind_numel,
+                    std::numeric_limits<int>::max(),
+                    ::common::errors::PreconditionNotMet(
+                        "The number of proposals in unbind should be less than "
+                        "2^31, but got %lld. Please check the input tensor. ",
+                        unbind_numel));
   int64_t num = static_cast<int64_t>(outs.size());
   int64_t start = 0;
 

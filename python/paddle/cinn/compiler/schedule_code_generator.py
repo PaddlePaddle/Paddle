@@ -57,9 +57,9 @@ class ScheduleCodeGenerator(ast.NodeVisitor):
         return self.cinn_llir_func
 
     def visit_For(self, node):
-        assert isinstance(
-            node.target, ast.Name
-        ), "Current only support range() to make ForLoop"
+        assert isinstance(node.target, ast.Name), (
+            "Current only support range() to make ForLoop"
+        )
         with self.variable_table:
             self.loop_var_stack.append(node.target)
             self.generic_visit(node)

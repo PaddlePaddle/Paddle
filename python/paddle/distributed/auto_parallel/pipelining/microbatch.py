@@ -38,10 +38,29 @@ def _split_tensor(x, num_chunks, split_axis=0):
         chunk_tensors = paddle.tensor_split(x, num_chunks, split_axis)
     # dp_degree > 1 , placements of model input is [S(0), R, ...]
     else:
+        if dist.in_auto_parallel_align_mode():
+
+            def _reorder_data_for_align():
+                nonlocal x
+                assert x.placements[0] == dist.Shard(0), (
+                    "inputs should be placed on S(0)."
+                )
+
+                shardings = x.process_mesh.shape[0]
+
+                rows_per_shard = x.shape[0] // shardings
+                new_indices = []
+                for s_id in range(shardings):
+                    for row_in_shard in range(rows_per_shard):
+                        new_indices.append(s_id + row_in_shard * shardings)
+                tmp = x[new_indices]
+                x = dist.reshard(tmp, x.process_mesh, x.placements)
+
+            _reorder_data_for_align()
         mesh = x.process_mesh
         placements = x.placements
-        x = dtensor_to_local(x, mesh, placements)
-        chunk_tensors = paddle.tensor_split(x, num_chunks, split_axis)
+        dense_x = dtensor_to_local(x, mesh, placements)
+        chunk_tensors = paddle.tensor_split(dense_x, num_chunks, split_axis)
         for i in range(num_chunks):
             chunk_tensors[i] = dtensor_from_local(
                 chunk_tensors[i], mesh, placements
@@ -97,9 +116,9 @@ def _split_args_helper(
     """
     A helper function of split_args_kwargs_into_chunks.
     """
-    assert len(args_dict) == len(
-        args_chunk_spec
-    ), f"args_dict.keys() = {list(args_dict.keys())} args_chunk_spec.keys() = {list(args_chunk_spec.keys())}"
+    assert len(args_dict) == len(args_chunk_spec), (
+        f"args_dict.keys() = {list(args_dict.keys())} args_chunk_spec.keys() = {list(args_chunk_spec.keys())}"
+    )
 
     shared_args_dict_flat = {}
     # handle args one by one
@@ -110,9 +129,9 @@ def _split_args_helper(
         assert chunk_spec is not None
 
         chunk_spec_flat = flatten(chunk_spec)
-        assert len(chunk_spec_flat) == len(
-            arg_flat
-        ), f"{arg_key} {len(arg_flat)} != {len(chunk_spec_flat)}"
+        assert len(chunk_spec_flat) == len(arg_flat), (
+            f"{arg_key} {len(arg_flat)} != {len(chunk_spec_flat)}"
+        )
 
         shard_arg_flat = []
 
@@ -142,13 +161,15 @@ def _split_args_helper(
     for idx in range(num_chunks):
         chunk_args = {}
         for key, arg in shared_args_dict_flat.items():
+            last_arg = None if not arg else arg[0][idx]
             arg_of_curr_chunk = (
-                [v[idx] for v in arg] if len(arg) > 1 else arg[0][idx]
+                [v[idx] for v in arg] if len(arg) > 1 else last_arg
             )
             chunk_args[key] = arg_of_curr_chunk
 
         # flatten chunk_args first, and then pack chunk_args as the origin args_dict
-        chunk_args = pack_sequence_as(args_dict, flatten(chunk_args))
+        flatten_chunk_args = [x for x in flatten(chunk_args) if x is not None]
+        chunk_args = pack_sequence_as(args_dict, flatten_chunk_args)
         args_split.append(chunk_args)
     return args_split
 
@@ -259,9 +280,9 @@ def merge_chunks(
     chunk_spec = flatten(chunk_spec)
     for chunk in chunks:
         chunk_flat = flatten(chunk)
-        assert len(chunk_flat) == len(
-            chunk_spec
-        ), f"Chunk {chunk} did not match chunk spec {chunk_spec}"
+        assert len(chunk_flat) == len(chunk_spec), (
+            f"Chunk {chunk} did not match chunk spec {chunk_spec}"
+        )
         chunks_flat.append(chunk_flat)
 
     def _merge_non_tensor_type_arg(chunks, idx, chunk_spec_of_arg=None):

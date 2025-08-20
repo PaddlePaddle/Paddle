@@ -97,6 +97,7 @@ class AllocatorFacade {
 #elif defined(PADDLE_WITH_XPU)
   TEST_API const std::shared_ptr<Allocator>& GetAllocator(
       const phi::Place& place, XPUStream stream);
+  bool RecordStream(std::shared_ptr<Allocation> allocation, XPUStream stream);
   void SetDefaultStream(const phi::XPUPlace& place, XPUStream stream);
 #endif
 

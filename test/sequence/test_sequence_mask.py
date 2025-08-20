@@ -185,7 +185,6 @@ class SequenceMaskTest5_tensor_attr(SequenceMaskTestBase_tensor_attr):
 
 
 class TestSequenceMaskOpError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(

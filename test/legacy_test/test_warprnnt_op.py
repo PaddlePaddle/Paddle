@@ -249,7 +249,6 @@ class TestWarpRNNTFP64Op(TestWarpRNNTOp):
 
 
 class TestWarpRNNTOpError(unittest.TestCase):
-
     def test_errors1(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()

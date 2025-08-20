@@ -232,6 +232,13 @@ class TestUniqueConsecutiveAPI(unittest.TestCase):
                 x = paddle.to_tensor(input_x)
                 result = paddle.unique_consecutive(x)
 
+    def test_dygraph_alias(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                input_x = np.random.randint(20, size=100).astype("float64")
+                x = paddle.to_tensor(input_x)
+                result = paddle.unique_consecutive(input=x)
+
 
 class TestUniqueConsecutiveCase2API(unittest.TestCase):
     def setUp(self):
@@ -299,9 +306,32 @@ class TestUniqueConsecutiveCase3API(unittest.TestCase):
                 fetch_list=[result],
             )
 
+    def check_static_result_alias(self, place):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            paddle.enable_static()
+            input_x = paddle.static.data(
+                name="input_x",
+                shape=[
+                    100,
+                ],
+                dtype="float32",
+            )
+            result, inverse, counts = paddle.unique_consecutive(
+                input=input_x, return_inverse=True, return_counts=True, axis=-1
+            )
+            x_np = np.random.randint(20, size=100).astype("float32")
+            exe = base.Executor(place)
+            fetches = exe.run(
+                feed={"input_x": x_np},
+                fetch_list=[result],
+            )
+
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)
+            self.check_static_result_alias(place=place)
 
     def test_dygraph(self):
         for place in self.places:
@@ -334,6 +364,33 @@ class TestUniqueConsecutiveEmptyInput(OpTest):
         )
         out = reference_unique_consecutive(x)
         out = np.array(out).astype(self.dtype)
+        self.inputs = {
+            'X': x,
+        }
+        self.python_out_sig = ["Out"]
+        self.attrs = {'dtype': paddle.int32}
+        self.outputs = {
+            'Out': out,
+        }
+
+    def test_check_output(self):
+        self.check_output(check_pir=True, check_symbol_infer=False)
+
+
+class TestUniqueConsecutive_ZeroSize(OpTest):
+    def config(self):
+        self.python_api = paddle.unique_consecutive
+
+    def init_kernel_type(self):
+        self.dtype = "float32" if core.is_compiled_with_rocm() else "float64"
+
+    def setUp(self):
+        paddle.disable_static()
+        self.init_kernel_type()
+        self.config()
+        self.op_type = "unique_consecutive"
+        x = np.random.random([2, 0]).astype(self.dtype)
+        out = np.array([]).astype(self.dtype)
         self.inputs = {
             'X': x,
         }

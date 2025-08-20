@@ -213,7 +213,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
            test_binary model_dir disable_fc)
     inference_analysis_test_run(
       ${TARGET_NAME} COMMAND ${test_binary} ARGS
-      --infer_model=${model_dir}/model --disable_mkldnn_fc=${disable_fc})
+      --infer_model=${model_dir}/model --disable_onednn_fc=${disable_fc})
   endfunction()
 
   function(

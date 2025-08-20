@@ -157,7 +157,13 @@ class ConvTransposeOneDNNHandlerT
                                dev_ctx.GetDnnAttr("mkldnn_data_type")) ==
                   "bfloat16"
             : false;
-    if (is_BFLOAT16 || std::is_same<T_out, dtype::bfloat16>::value) {
+    const bool is_onednn_BFLOAT16 =
+        dev_ctx.HasDnnAttr("onednn_data_type")
+            ? PADDLE_GET_CONST(std::string,
+                               dev_ctx.GetDnnAttr("onednn_data_type")) ==
+                  "bfloat16"
+            : is_BFLOAT16;
+    if (is_onednn_BFLOAT16 || std::is_same<T_out, dtype::bfloat16>::value) {
       data_type = dnnl::memory::data_type::bf16;
     }
 
@@ -370,7 +376,12 @@ void Execute(const OneDNNContext& dev_ctx,
   std::shared_ptr<dnnl::memory> dst_memory_p;
   std::unordered_map<int, dnnl::memory> args;
 
+  // Note(ZKK):
+  // Add thread_id to cache_key
+  // fix issue https://github.com/PaddlePaddle/PaddleOCR/issues/15621
+  // https://github.com/PaddlePaddle/PaddleOCR/issues/15393
   std::string cache_key = funcs::CreateKey(dev_ctx,
+                                           phi::funcs::ThreadIDasStr(),
                                            dev_ctx.GetInputsName("Input")[0],
                                            dev_ctx.GetInputsName("Filter")[0],
                                            common::vectorize(x->dims()),
@@ -494,11 +505,17 @@ void Conv2dTransposeKernel(const Context& dev_ctx,
                              dev_ctx.GetDnnAttr("mkldnn_data_type")) ==
                 "bfloat16"
           : false;
+  const bool is_onednn_BFLOAT16 =
+      dev_ctx.HasDnnAttr("onednn_data_type")
+          ? PADDLE_GET_CONST(std::string,
+                             dev_ctx.GetDnnAttr("onednn_data_type")) ==
+                "bfloat16"
+          : is_BFLOAT16;
   const bool force_fp32_output =
       dev_ctx.HasDnnAttr("force_fp32_output")
           ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("force_fp32_output"))
           : false;
-  const bool use_bfloat16 = (!force_fp32_output && is_BFLOAT16);
+  const bool use_bfloat16 = (!force_fp32_output && is_onednn_BFLOAT16);
 
   if (use_bfloat16) {
     Execute<T, dtype::bfloat16>(dev_ctx,
@@ -545,11 +562,17 @@ void Conv2dTransposeBiasKernel(const Context& dev_ctx,
                              dev_ctx.GetDnnAttr("mkldnn_data_type")) ==
                 "bfloat16"
           : false;
+  const bool is_one_BFLOAT16 =
+      dev_ctx.HasDnnAttr("onednn_data_type")
+          ? PADDLE_GET_CONST(std::string,
+                             dev_ctx.GetDnnAttr("onednn_data_type")) ==
+                "bfloat16"
+          : is_BFLOAT16;
   const bool force_fp32_output =
       dev_ctx.HasDnnAttr("force_fp32_output")
           ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("force_fp32_output"))
           : false;
-  const bool use_bfloat16 = (!force_fp32_output && is_BFLOAT16);
+  const bool use_bfloat16 = (!force_fp32_output && is_one_BFLOAT16);
 
   if (use_bfloat16) {
     Execute<T, dtype::bfloat16>(dev_ctx,

@@ -15,6 +15,7 @@
 #include "paddle/common/errors.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
@@ -22,7 +23,6 @@
 #include "paddle/phi/kernels/fusion/gpu/fused_attention_utils.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_dropout_helper.h"
 #include "paddle/phi/kernels/impl/matmul_grad_kernel_impl.h"
-
 namespace phi {
 namespace fusion {
 
@@ -327,7 +327,59 @@ void FusedFeedForwardGradKernel(
   dev_ctx.template Alloc<T>(d_linear2_weight,
                             d_linear2_weight->numel() * sizeof(T));
 
-  if (d_x->numel() == 0) return;
+  if (d_x->numel() == 0) {
+    // for 0-size Tensor init the grad tensor to 0
+    if (d_ln1_scale)
+      phi::Full<U, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(d_ln1_scale->dims())),
+          0,
+          d_ln1_scale);
+    if (d_ln1_bias)
+      phi::Full<U, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(d_ln1_bias->dims())),
+          0,
+          d_ln1_bias);
+    if (d_ln2_scale)
+      phi::Full<U, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(d_ln2_scale->dims())),
+          0,
+          d_ln2_scale);
+    if (d_ln2_bias)
+      phi::Full<U, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(d_ln2_bias->dims())),
+          0,
+          d_ln2_bias);
+    if (d_linear1_bias)
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(d_linear1_bias->dims())),
+          0,
+          d_linear1_bias);
+    if (d_linear2_bias)
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(d_linear2_bias->dims())),
+          0,
+          d_linear2_bias);
+    if (d_linear1_weight)
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(d_linear1_weight->dims())),
+          0,
+          d_linear1_weight);
+    if (d_linear2_weight)
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(d_linear2_weight->dims())),
+          0,
+          d_linear2_weight);
+
+    return;
+  }
 
   auto x_dim = x.dims();
   auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(

@@ -837,9 +837,10 @@ class TestTransformer(unittest.TestCase):
                 (batch_size, n_head, target_length, source_length)
             ).astype("float32")
             memory_mask[0][0][0][0] = -1e9
-            tgt_mask, memory_mask = paddle.to_tensor(
-                tgt_mask
-            ), paddle.to_tensor(memory_mask)
+            tgt_mask, memory_mask = (
+                paddle.to_tensor(tgt_mask),
+                paddle.to_tensor(memory_mask),
+            )
             trans_output = transformer(
                 src, tgt, src_mask, tgt_mask, memory_mask
             )
@@ -890,9 +891,10 @@ class TestTransformer(unittest.TestCase):
                 (batch_size, n_head, target_length, source_length)
             ).astype("float32")
             memory_mask[0][0][0][0] = -1e9
-            tgt_mask, memory_mask = paddle.to_tensor(
-                tgt_mask
-            ), paddle.to_tensor(memory_mask)
+            tgt_mask, memory_mask = (
+                paddle.to_tensor(tgt_mask),
+                paddle.to_tensor(memory_mask),
+            )
             trans_output = transformer(
                 src, tgt, src_mask, tgt_mask, memory_mask
             )
@@ -943,9 +945,10 @@ class TestTransformer(unittest.TestCase):
                 (batch_size, n_head, target_length, source_length)
             ).astype("float32")
             memory_mask[0][0][0][0] = -1e9
-            tgt_mask, memory_mask = paddle.to_tensor(
-                tgt_mask
-            ), paddle.to_tensor(memory_mask)
+            tgt_mask, memory_mask = (
+                paddle.to_tensor(tgt_mask),
+                paddle.to_tensor(memory_mask),
+            )
             trans_output = transformer(
                 src, tgt, src_mask, tgt_mask, memory_mask
             )
@@ -996,9 +999,10 @@ class TestTransformer(unittest.TestCase):
                 (batch_size, n_head, target_length, source_length)
             ).astype("float32")
             memory_mask[0][0][0][0] = -1e9
-            tgt_mask, memory_mask = paddle.to_tensor(
-                tgt_mask
-            ), paddle.to_tensor(memory_mask)
+            tgt_mask, memory_mask = (
+                paddle.to_tensor(tgt_mask),
+                paddle.to_tensor(memory_mask),
+            )
             trans_output = transformer(
                 src, tgt, src_mask, tgt_mask, memory_mask
             )
@@ -1048,9 +1052,10 @@ class TestTransformer(unittest.TestCase):
                 (batch_size, n_head, target_length, source_length)
             ).astype("float32")
             memory_mask[0][0][0][0] = -1e9
-            tgt_mask, memory_mask = paddle.to_tensor(
-                tgt_mask
-            ), paddle.to_tensor(memory_mask)
+            tgt_mask, memory_mask = (
+                paddle.to_tensor(tgt_mask),
+                paddle.to_tensor(memory_mask),
+            )
             trans_output = transformer(
                 src, tgt, src_mask, tgt_mask, memory_mask
             )

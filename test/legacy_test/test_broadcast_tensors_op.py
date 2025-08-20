@@ -112,7 +112,7 @@ class TestCPUBroadcastTensorsOp(OpTest):
     def setUp(self):
         self.op_type = "broadcast_tensors"
         self.use_onednn = False
-        self.attrs = {'use_mkldnn': self.use_onednn}
+        self.attrs = {'use_onednn': self.use_onednn}
         self.test_gen_func_list = [
             gen_rank_diff_test,
             gen_no_broadcast_test,
@@ -198,7 +198,7 @@ class TestBroadcastTensorsBF16Op(OpTest):
         self.dtype = np.uint16
         self.np_dtype = "float32"
         self.use_onednn = False
-        self.attrs = {'use_mkldnn': self.use_onednn}
+        self.attrs = {'use_onednn': self.use_onednn}
         self.test_gen_func_list = [
             gen_rank_diff_test,
             gen_no_broadcast_test,
@@ -259,7 +259,6 @@ class TestBroadcastTensorsAPI(unittest.TestCase):
         self.dtype = 'float32'
 
     def test_api(self):
-
         def test_static():
             with (
                 static_guard(),
@@ -501,7 +500,27 @@ class TestBroadcastTensorsAPIZeroSize(unittest.TestCase):
             ]
             outputs = paddle.broadcast_tensors(inputs)
             self.assertEqual(outputs[0].shape, self.expected_shape)
+
+    def test_zero_size_dynamic_backward(self):
+        with dygraph_guard():
+            data1 = np.ones(self.shape1, dtype=self.dtype)
+            data2 = np.ones(self.shape2, dtype=self.dtype)
+            input1 = paddle.to_tensor(
+                data1, dtype=self.dtype, stop_gradient=False
+            )
+            input2 = paddle.to_tensor(
+                data2, dtype=self.dtype, stop_gradient=False
+            )
+            inputs = [
+                input1,
+                input2,
+            ]
+            outputs = paddle.broadcast_tensors(inputs)
+            self.assertEqual(outputs[0].shape, self.expected_shape)
             self.assertEqual(outputs[1].shape, self.expected_shape)
+            grads = paddle.grad(
+                inputs, outputs, retain_graph=True, allow_unused=True
+            )
 
 
 class TestBroadcastTensorsAPIZeroSize_bool(TestBroadcastTensorsAPIZeroSize):

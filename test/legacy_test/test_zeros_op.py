@@ -23,6 +23,7 @@ from paddle.base import Program, program_guard
 
 class ApiZerosTest(unittest.TestCase):
     def test_out(self):
+        paddle.enable_static()
         with program_guard(Program()):
             zeros = paddle.zeros(shape=[10], dtype='float64')
             place = paddle.CPUPlace()
@@ -58,6 +59,7 @@ class ApiZerosTest(unittest.TestCase):
             exe = paddle.static.Executor(place)
             result = exe.run(fetch_list=[out])
             self.assertEqual((result == out_np).all(), True)
+        paddle.disable_static()
 
 
 class ApiZerosError(unittest.TestCase):
@@ -77,6 +79,68 @@ class ApiZerosWithDynamicShape(unittest.TestCase):
             x = paddle.static.data("x", shape=[], dtype='int32')
             out = paddle.zeros(shape=[101, x])
             self.assertEqual(out.shape, [101, -1])
+
+
+class ZerosAliasTest(unittest.TestCase):
+    def test_out(self):
+        paddle.enable_static()
+        with program_guard(Program()):
+            zeros = paddle.zeros(3, 3, dtype='float64')
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            (result,) = exe.run(fetch_list=[zeros])
+            expected_result = np.zeros((3, 3), dtype='float64')
+        self.assertEqual((result == expected_result).all(), True)
+
+        with program_guard(Program()):
+            zeros = paddle.zeros((3, 3), dtype='float64')
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            (result,) = exe.run(fetch_list=[zeros])
+            expected_result = np.zeros((3, 3), dtype='float64')
+        self.assertEqual((result == expected_result).all(), True)
+
+        with program_guard(Program()):
+            zeros = paddle.zeros([3, 3], dtype='float64')
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            (result,) = exe.run(fetch_list=[zeros])
+            expected_result = np.zeros((3, 3), dtype='float64')
+        self.assertEqual((result == expected_result).all(), True)
+
+        with program_guard(Program()):
+            zeros = paddle.zeros(size=(3, 3), dtype='float64')
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            (result,) = exe.run(fetch_list=[zeros])
+            expected_result = np.zeros((3, 3), dtype='float64')
+        self.assertEqual((result == expected_result).all(), True)
+        paddle.disable_static()
+
+    def test_dygraph_ones(self):
+        paddle.disable_static()
+        result = paddle.zeros(10, dtype=paddle.float32)
+        expect = np.zeros([10], dtype="float32")
+        np.testing.assert_equal(result, expect)
+
+        result = paddle.zeros(10, 2, 3, dtype=paddle.float32)
+        expect = np.zeros([10, 2, 3], dtype="float32")
+        np.testing.assert_equal(result, expect)
+
+        result = paddle.zeros([10, 2, 3], dtype=paddle.float32)
+        np.testing.assert_equal(result, expect)
+
+        result = paddle.zeros(size=[10, 2, 3], dtype=paddle.float32)
+        np.testing.assert_equal(result, expect)
+
+        result = paddle.zeros([10, 2, 3], paddle.float32)
+        np.testing.assert_equal(result, expect)
+
+        result = paddle.zeros([10, 2, 3], "float32")
+        np.testing.assert_equal(result, expect)
+
+        result = paddle.zeros(shape=[10, 2, 3], dtype=paddle.float32)
+        np.testing.assert_equal(result, expect)
 
 
 if __name__ == '__main__':

@@ -21,7 +21,7 @@ from auto_scan_test import PassAutoScanTest
 from program_config import ProgramConfig, TensorConfig
 
 
-class TestScaleMatmulMkldnnFusePass(PassAutoScanTest):
+class TestScaleMatmulOnednnFusePass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -137,7 +137,7 @@ class TestScaleMatmulMkldnnFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(
-            use_mkldnn=True, passes=['scale_matmul_fuse_pass']
+            use_onednn=True, passes=['scale_matmul_fuse_pass']
         )
         yield config, ['matmul'], (1e-5, 1e-5)
 

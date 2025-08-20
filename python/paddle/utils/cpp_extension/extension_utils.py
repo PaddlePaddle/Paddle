@@ -164,8 +164,9 @@ def bootstrap_context():
 
 
 def load_op_meta_info_and_register_op(lib_filename: str) -> list[str]:
-    core.load_op_meta_info_and_register_op(lib_filename)
-    return OpProtoHolder.instance().update_op_proto()
+    new_list = core.load_op_meta_info_and_register_op(lib_filename)
+    proto_sync_ops = OpProtoHolder.instance().update_op_proto(new_list)
+    return proto_sync_ops
 
 
 def custom_write_stub(resource, pyfile):
@@ -942,6 +943,14 @@ def add_compile_flag(extra_compile_args, flags):
             args.extend(flags)
     else:
         extra_compile_args.extend(flags)
+
+
+def define_paddle_extension_name(extension):
+    # Allow user use PADDLE_EXTENSION_NAME to access shared library name
+    names = extension.name.split('.')
+    name = names[-1]
+    define = f'-DPADDLE_EXTENSION_NAME={name}'
+    add_compile_flag(extension.extra_compile_args, [define])
 
 
 def is_cuda_file(path):

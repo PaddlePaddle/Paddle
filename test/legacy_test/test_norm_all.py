@@ -1711,6 +1711,79 @@ class API_NormTest_ZeroSize(unittest.TestCase):
             )
 
 
+class API_NormTest_Alias(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_alias(self):
+        """
+        Test the alias of norm function.
+        ``norm(x=x, axis=1)`` is equivalent to ``norm(input=x, dim=1)``
+        """
+        shape_cases = [
+            [2, 3, 4],
+            [3, 4, 5],
+        ]
+        p_cases = [2, 'fro', 'nuc', np.inf, -np.inf, 1, -1]
+        axis_cases = [None, 1, [0, 1], [-2, -1]]
+
+        for shape in shape_cases:
+            x = paddle.rand(shape)
+            for p in p_cases:
+                for axis in axis_cases:
+                    # Skip invalid combinations
+                    if p == 'fro' and (axis is None or isinstance(axis, int)):
+                        continue
+                    if p == 'nuc' and (axis is None or isinstance(axis, int)):
+                        continue
+
+                    # Test x/input alias
+                    kwargs1 = {'x': x, 'p': p, 'axis': axis}
+                    kwargs2 = {'input': x, 'p': p, 'axis': axis}
+
+                    out1 = paddle.norm(**kwargs1).numpy()
+                    out2 = paddle.norm(**kwargs2).numpy()
+                    np.testing.assert_allclose(out1, out2, rtol=1e-6, atol=1e-8)
+
+                    # Test axis/dim alias
+                    kwargs3 = {'x': x, 'p': p, 'dim': axis}
+                    out3 = paddle.norm(**kwargs3).numpy()
+                    np.testing.assert_allclose(out1, out3, rtol=1e-6, atol=1e-8)
+
+                    # Test both aliases together
+                    kwargs4 = {'input': x, 'p': p, 'dim': axis}
+                    out4 = paddle.norm(**kwargs4).numpy()
+                    np.testing.assert_allclose(out1, out4, rtol=1e-6, atol=1e-8)
+
+    def test_static_alias(self):
+        """
+        Test alias in static mode
+        """
+        paddle.enable_static()
+        with base.program_guard(base.Program()):
+            x = paddle.static.data(name='x', shape=[2, 3, 4], dtype='float32')
+
+            # Test x/input alias
+            out1 = paddle.norm(x=x, p=2, axis=1)
+            out2 = paddle.norm(input=x, p=2, axis=1)
+
+            # Test axis/dim alias
+            out3 = paddle.norm(x=x, p=2, dim=1)
+            out4 = paddle.norm(input=x, p=2, dim=1)
+
+            place = base.CPUPlace()
+            exe = base.Executor(place)
+            x_np = np.random.random([2, 3, 4]).astype('float32')
+            res1, res2, res3, res4 = exe.run(
+                feed={'x': x_np}, fetch_list=[out1, out2, out3, out4]
+            )
+
+            np.testing.assert_allclose(res1, res2, rtol=1e-6, atol=1e-8)
+            np.testing.assert_allclose(res1, res3, rtol=1e-6, atol=1e-8)
+            np.testing.assert_allclose(res1, res4, rtol=1e-6, atol=1e-8)
+        paddle.disable_static()
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

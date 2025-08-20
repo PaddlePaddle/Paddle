@@ -21,7 +21,7 @@ from auto_scan_test import PassAutoScanTest
 from program_config import ProgramConfig, TensorConfig
 
 
-class TestConvHardSigmoidMkldnnFusePass(PassAutoScanTest):
+class TestConvHardSigmoidOnednnFusePass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -92,7 +92,7 @@ class TestConvHardSigmoidMkldnnFusePass(PassAutoScanTest):
         return program_config
 
     def sample_predictor_configs(self, program_config):
-        config = self.create_inference_config(use_mkldnn=True)
+        config = self.create_inference_config(use_onednn=True)
         yield config, ["fused_conv2d"], (1e-5, 1e-5)
 
     def test(self):

@@ -404,7 +404,7 @@ __global__ void scatter_gather_elementwise_kernel(int N, func_t f) {
 }
 
 template <typename T, typename IndexT = int>
-void GPUScatterAdd(const phi::GPUContext& ctx,
+void GPUScatterAdd(const phi::GPUContext& dev_ctx,
                    const DenseTensor& src,
                    const DenseTensor& index,
                    DenseTensor* output,
@@ -483,7 +483,7 @@ void GPUScatterAdd(const phi::GPUContext& ctx,
   constexpr int vt = 8;
   const dim3 block(nt);
   const dim3 grid((N + block.x * vt - 1) / (block.x * vt));
-  auto stream = ctx.stream();
+  auto stream = dev_ctx.stream();
 
   scatter_gather_elementwise_kernel<nt, vt>
       <<<grid, block, 0, stream>>>(N, reduce_add);

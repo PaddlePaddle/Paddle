@@ -17,29 +17,25 @@ from itertools import product
 
 from dygraph_to_static_utils import (
     DEFAULT_BACKEND_MODE,
-    DEFAULT_IR_MODE,
     DEFAULT_TO_STATIC_MODE,
     VALID_MODES,
     BackendMode,
     Dy2StTestBase,
     Dy2StTestMeta,
-    IrMode,
     ModeTuple,
     ToStaticMode,
     disable_test_case,
     set_backend_mode,
-    set_ir_mode,
     set_to_static_mode,
 )
 
-ALL_MODES = list(product(ToStaticMode, IrMode, BackendMode))
+ALL_MODES = list(product(ToStaticMode, BackendMode))
 DEFAULT_MODES = [
-    (to_static_mode, ir_mode, backend_mode)
-    for (to_static_mode, ir_mode, backend_mode) in ALL_MODES
+    (to_static_mode, backend_mode)
+    for (to_static_mode, backend_mode) in ALL_MODES
     if (
-        (to_static_mode, ir_mode, backend_mode) in VALID_MODES
+        (to_static_mode, backend_mode) in VALID_MODES
         and to_static_mode & DEFAULT_TO_STATIC_MODE
-        and ir_mode & DEFAULT_IR_MODE
         and backend_mode & DEFAULT_BACKEND_MODE
     )
 ]
@@ -47,10 +43,14 @@ DEFAULT_MODES = [
 
 class CheckTestCaseExistsMixin:
     def assert_hasattr(self, obj: object, attr: str):
-        self.assertTrue(hasattr(obj, attr), msg=f"{attr} not in {obj.__dict__.keys()}")  # type: ignore
+        self.assertTrue(  # type: ignore
+            hasattr(obj, attr), msg=f"{attr} not in {obj.__dict__.keys()}"
+        )
 
     def assert_not_hasattr(self, obj: object, attr: str):
-        self.assertFalse(hasattr(obj, attr), msg=f"{attr} in {obj.__dict__.keys()}")  # type: ignore
+        self.assertFalse(  # type: ignore
+            hasattr(obj, attr), msg=f"{attr} in {obj.__dict__.keys()}"
+        )
 
     def check_test_case_exists(
         self, test_case: Dy2StTestBase, case_name: str, mode_tuple: ModeTuple
@@ -70,17 +70,15 @@ class TestCaseBasic(Dy2StTestBase):
 
 
 class TestCaseDisableTestCase(Dy2StTestBase):
-    @disable_test_case((ToStaticMode.SOT, IrMode.PIR, BackendMode.CINN))
+    @disable_test_case((ToStaticMode.SOT, BackendMode.CINN))
     def test_disable_one(self): ...
 
-    @disable_test_case((ToStaticMode.SOT, IrMode.PIR, BackendMode.CINN))
-    @disable_test_case((ToStaticMode.SOT, IrMode.PIR, BackendMode.PHI))
-    @disable_test_case((ToStaticMode.AST, IrMode.PIR, BackendMode.PHI))
+    @disable_test_case((ToStaticMode.SOT, BackendMode.CINN))
+    @disable_test_case((ToStaticMode.SOT, BackendMode.PHI))
+    @disable_test_case((ToStaticMode.AST, BackendMode.PHI))
     def test_disable_multiple(self): ...
 
-    @disable_test_case(
-        (ToStaticMode.SOT, IrMode.PIR, BackendMode.CINN | BackendMode.PHI)
-    )
+    @disable_test_case((ToStaticMode.SOT, BackendMode.CINN | BackendMode.PHI))
     def test_disable_multiple_with_or(self): ...
 
 
@@ -88,14 +86,10 @@ class TestCaseSetMode(Dy2StTestBase):
     @set_to_static_mode(ToStaticMode.SOT)
     def test_set_to_static_mode(self): ...
 
-    @set_ir_mode(IrMode.PIR)
-    def test_set_ir_mode(self): ...
-
     @set_backend_mode(BackendMode.CINN)
     def test_set_backend_mode(self): ...
 
     @set_to_static_mode(ToStaticMode.SOT)
-    @set_ir_mode(IrMode.PIR)
     @set_backend_mode(BackendMode.CINN)
     def test_set_all(self): ...
 
@@ -113,7 +107,7 @@ class TestCheckTestCases(unittest.TestCase, CheckTestCaseExistsMixin):
         case_name = "test_disable_one"
         self.assert_not_hasattr(test_case, case_name)
         for mode_tuple in DEFAULT_MODES:
-            if mode_tuple == (ToStaticMode.SOT, IrMode.PIR, BackendMode.CINN):
+            if mode_tuple == (ToStaticMode.SOT, BackendMode.CINN):
                 self.check_test_case_not_exists(
                     test_case, case_name, mode_tuple
                 )
@@ -124,9 +118,9 @@ class TestCheckTestCases(unittest.TestCase, CheckTestCaseExistsMixin):
         self.assert_not_hasattr(test_case, case_name)
         for mode_tuple in DEFAULT_MODES:
             if mode_tuple in [
-                (ToStaticMode.SOT, IrMode.PIR, BackendMode.CINN),
-                (ToStaticMode.SOT, IrMode.PIR, BackendMode.PHI),
-                (ToStaticMode.AST, IrMode.PIR, BackendMode.PHI),
+                (ToStaticMode.SOT, BackendMode.CINN),
+                (ToStaticMode.SOT, BackendMode.PHI),
+                (ToStaticMode.AST, BackendMode.PHI),
             ]:
                 self.check_test_case_not_exists(
                     test_case, case_name, mode_tuple
@@ -138,8 +132,8 @@ class TestCheckTestCases(unittest.TestCase, CheckTestCaseExistsMixin):
         self.assert_not_hasattr(test_case, case_name)
         for mode_tuple in DEFAULT_MODES:
             if mode_tuple in [
-                (ToStaticMode.SOT, IrMode.PIR, BackendMode.CINN),
-                (ToStaticMode.SOT, IrMode.PIR, BackendMode.PHI),
+                (ToStaticMode.SOT, BackendMode.CINN),
+                (ToStaticMode.SOT, BackendMode.PHI),
             ]:
                 self.check_test_case_not_exists(
                     test_case, case_name, mode_tuple
@@ -152,19 +146,8 @@ class TestCheckTestCases(unittest.TestCase, CheckTestCaseExistsMixin):
         case_name = "test_set_to_static_mode"
         self.assert_not_hasattr(test_case, case_name)
         for mode_tuple in DEFAULT_MODES:
-            to_static_mode, _, _ = mode_tuple
+            to_static_mode, _ = mode_tuple
             if to_static_mode == ToStaticMode.SOT:
-                self.check_test_case_exists(test_case, case_name, mode_tuple)
-            else:
-                self.check_test_case_not_exists(
-                    test_case, case_name, mode_tuple
-                )
-
-        case_name = "test_set_ir_mode"
-        self.assert_not_hasattr(test_case, case_name)
-        for mode_tuple in DEFAULT_MODES:
-            _, ir_mode, _ = mode_tuple
-            if ir_mode == IrMode.PIR:
                 self.check_test_case_exists(test_case, case_name, mode_tuple)
             else:
                 self.check_test_case_not_exists(
@@ -174,7 +157,7 @@ class TestCheckTestCases(unittest.TestCase, CheckTestCaseExistsMixin):
         case_name = "test_set_backend_mode"
         self.assert_not_hasattr(test_case, case_name)
         for mode_tuple in DEFAULT_MODES:
-            _, _, backend_mode = mode_tuple
+            _, backend_mode = mode_tuple
             if backend_mode == BackendMode.CINN:
                 self.check_test_case_exists(test_case, case_name, mode_tuple)
             else:
@@ -185,7 +168,7 @@ class TestCheckTestCases(unittest.TestCase, CheckTestCaseExistsMixin):
         case_name = "test_set_all"
         self.assert_not_hasattr(test_case, case_name)
         for mode_tuple in DEFAULT_MODES:
-            if mode_tuple == (ToStaticMode.SOT, IrMode.PIR, BackendMode.CINN):
+            if mode_tuple == (ToStaticMode.SOT, BackendMode.CINN):
                 self.check_test_case_exists(test_case, case_name, mode_tuple)
             else:
                 self.check_test_case_not_exists(

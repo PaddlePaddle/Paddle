@@ -30,7 +30,6 @@ def get_value_by_name(name, ops):
 
 
 class TestModelAverage(unittest.TestCase):
-
     def test_model_average_static(self):
         paddle.enable_static()
         place = base.CPUPlace()

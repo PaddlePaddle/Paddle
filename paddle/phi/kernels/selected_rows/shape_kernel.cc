@@ -95,7 +95,7 @@ PD_REGISTER_KERNEL(shape_sr,
 }
 #endif
 
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#if defined(PADDLE_WITH_CUSTOM_DEVICE) && !defined(PADDLE_WITH_CUDA)
 PD_REGISTER_KERNEL(shape_sr,
                    Custom,
                    ALL_LAYOUT,
@@ -171,7 +171,7 @@ PD_REGISTER_KERNEL(shape64_sr,
 }
 #endif
 
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#if defined(PADDLE_WITH_CUSTOM_DEVICE) && !defined(PADDLE_WITH_CUDA)
 PD_REGISTER_KERNEL(shape64_sr,
                    Custom,
                    ALL_LAYOUT,

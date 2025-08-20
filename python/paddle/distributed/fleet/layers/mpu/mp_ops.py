@@ -899,16 +899,15 @@ def split(
             ...     num_partitions=2)
 
     """
-    assert isinstance(size, (list, tuple)), (
-        "The type of size for "
-        "paddle.distributed.split must be list or tuple."
-    )
-    assert len(size) == 2, (
-        "Number of elements in size of " "paddle.distributed.split must be two."
-    )
-    assert isinstance(operation, str), (
-        "The type of operation for " "paddle.distributed.split must be str."
-    )
+    assert isinstance(
+        size, (list, tuple)
+    ), "The type of size for paddle.distributed.split must be list or tuple."
+    assert (
+        len(size) == 2
+    ), "Number of elements in size of paddle.distributed.split must be two."
+    assert isinstance(
+        operation, str
+    ), "The type of operation for paddle.distributed.split must be str."
     supported_operations = [
         'linear',
         'embedding',

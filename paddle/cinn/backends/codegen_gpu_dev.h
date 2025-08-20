@@ -127,6 +127,10 @@ class CodeGenGpuDev : public CodeGenC {
   // prefix
   std::unordered_set<std::string> vectorized_tensor_names_;
 
+  // This map is used to store the name and type of the dynamic shape func args
+  // so that during codegen of ir::Min & ir::Max call, we can have correct type
+  std::unordered_map<std::string, common::Type> dynamic_shape_map_;
+
   ir::Expr dyn_shared_mem_offset_{-1};
   std::vector<ir::Buffer> dynamic_alloc_buffers_;
 };

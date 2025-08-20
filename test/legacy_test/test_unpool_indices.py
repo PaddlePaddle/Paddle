@@ -377,7 +377,6 @@ class TestUnpool1DAPI_dy(unittest.TestCase):
 
 
 class TestUnpool1DAPI_st(unittest.TestCase):
-
     def test_case(self):
         paddle.enable_static()
         for place in get_places():
@@ -455,7 +454,6 @@ class TestUnpool2DAPI_dy(unittest.TestCase):
 
 
 class TestUnpool2DAPI_st(unittest.TestCase):
-
     def test_case(self):
         paddle.enable_static()
         for place in get_places():
@@ -542,7 +540,6 @@ class TestUnpool3DAPI_dy(unittest.TestCase):
 
 
 class TestUnpool3DAPI_st2(unittest.TestCase):
-
     def test_case(self):
         paddle.enable_static()
         for place in get_places():

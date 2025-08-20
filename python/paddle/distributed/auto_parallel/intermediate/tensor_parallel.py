@@ -821,15 +821,15 @@ class TensorParallel(ParallelModel):
         if parallelize_plan is not None:
             assert isinstance(parallelize_plan, dict)
             for key, plan in parallelize_plan.items():
-                assert isinstance(
-                    key, str
-                ), "The key of the parallelize plan should be a string."
+                assert isinstance(key, str), (
+                    "The key of the parallelize plan should be a string."
+                )
                 if not isinstance(plan, list):
                     plan = [plan]
                 for p in plan:
-                    assert isinstance(
-                        p, PlanBase
-                    ), "The value the the parallelize plan should be a instance of PlanBase or a list of PlanBase."
+                    assert isinstance(p, PlanBase), (
+                        "The value the the parallelize plan should be a instance of PlanBase or a list of PlanBase."
+                    )
 
             self.global_mesh = dist.auto_parallel.get_mesh()
             self.parallelize_plan = parallelize_plan
@@ -934,12 +934,12 @@ def tensor_parallel(model, optimizer=None, config=None):
 
     global_mesh = dist.auto_parallel.get_mesh()
 
-    assert (
-        global_mesh is not None
-    ), "global mesh must not be None, please call fleet.auto.set_mesh(global_mesh) firstly"
-    assert (
-        "mp" in global_mesh.dim_names
-    ), "mp must in the mesh dim_names when use tensor_parallel"
+    assert global_mesh is not None, (
+        "global mesh must not be None, please call fleet.auto.set_mesh(global_mesh) firstly"
+    )
+    assert "mp" in global_mesh.dim_names, (
+        "mp must in the mesh dim_names when use tensor_parallel"
+    )
 
     model = TensorParallel(model, parallelize_plan)
     if optimizer is not None:

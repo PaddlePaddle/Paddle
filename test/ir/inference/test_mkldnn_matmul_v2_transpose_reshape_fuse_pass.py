@@ -21,7 +21,7 @@ from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
-class TestMatmulv2TransposeReshapeMkldnnFusePass(PassAutoScanTest):
+class TestMatmulv2TransposeReshapeOnednnFusePass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         if (
             program_config.inputs["input_data1"].shape[-4] != 1
@@ -129,7 +129,7 @@ class TestMatmulv2TransposeReshapeMkldnnFusePass(PassAutoScanTest):
         return program_config
 
     def sample_predictor_configs(self, program_config):
-        config = self.create_inference_config(use_mkldnn=True)
+        config = self.create_inference_config(use_onednn=True)
         yield config, ['fused_matmul'], (1e-5, 1e-5)
 
     def test(self):

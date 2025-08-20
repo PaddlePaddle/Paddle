@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.base.core import Config
-
 from .buffer import Buffer
 from .utils import (
     EventOverlap,
@@ -25,7 +23,6 @@ from .utils import (
 __all__ = [
     "Buffer",
     "EventOverlap",
-    "Config",
     "get_event_from_calc_stream",
     "get_event_from_comm_stream",
     "get_event_from_custom_stream",

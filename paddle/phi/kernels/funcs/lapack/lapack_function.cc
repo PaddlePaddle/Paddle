@@ -79,6 +79,48 @@ void lapackLuSolve<float>(char trans,
   dynload::sgetrs_(&trans, &n, &nrhs, a, &lda, ipiv, b, &ldb, info);
 }
 
+template <>
+void lapackLuSolve<phi::dtype::complex<float>>(char trans,
+                                               int n,
+                                               int nrhs,
+                                               phi::dtype::complex<float> *a,
+                                               int lda,
+                                               int *ipiv,
+                                               phi::dtype::complex<float> *b,
+                                               int ldb,
+                                               int *info) {
+  dynload::cgetrs_(&trans,
+                   &n,
+                   &nrhs,
+                   reinterpret_cast<std::complex<float> *>(a),
+                   &lda,
+                   ipiv,
+                   reinterpret_cast<std::complex<float> *>(b),
+                   &ldb,
+                   info);
+}
+
+template <>
+void lapackLuSolve<phi::dtype::complex<double>>(char trans,
+                                                int n,
+                                                int nrhs,
+                                                phi::dtype::complex<double> *a,
+                                                int lda,
+                                                int *ipiv,
+                                                phi::dtype::complex<double> *b,
+                                                int ldb,
+                                                int *info) {
+  dynload::zgetrs_(&trans,
+                   &n,
+                   &nrhs,
+                   reinterpret_cast<std::complex<double> *>(a),
+                   &lda,
+                   ipiv,
+                   reinterpret_cast<std::complex<double> *>(b),
+                   &ldb,
+                   info);
+}
+
 // eigh
 template <>
 void lapackEigh<float>(char jobz,

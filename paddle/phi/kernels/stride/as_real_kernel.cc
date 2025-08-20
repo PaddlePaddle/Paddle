@@ -71,7 +71,7 @@ PD_REGISTER_KERNEL(as_real,
 }
 #endif
 
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#if defined(PADDLE_WITH_CUSTOM_DEVICE) && !defined(PADDLE_WITH_CUDA)
 PD_REGISTER_KERNEL(as_real,
                    Custom,
                    STRIDED,
