@@ -160,28 +160,28 @@ class ProcessMesh(core.ProcessMesh):
         self._shape = list(self._mesh.shape)
         self._process_ids = self._mesh.flatten().tolist()
 
-        assert all(
-            isinstance(p, int) for p in self._process_ids
-        ), "All elements of the mesh must be integer"
-        assert (
-            min(self._process_ids) >= 0
-        ), 'All elements of the mesh must be >= 0.'
+        assert all(isinstance(p, int) for p in self._process_ids), (
+            "All elements of the mesh must be integer"
+        )
+        assert min(self._process_ids) >= 0, (
+            'All elements of the mesh must be >= 0.'
+        )
         unique_process_ids = set(self._process_ids)
-        assert len(unique_process_ids) == len(
-            self._process_ids
-        ), 'All elements of the mesh must be unique.'
+        assert len(unique_process_ids) == len(self._process_ids), (
+            'All elements of the mesh must be unique.'
+        )
 
         if dim_names is not None:
-            assert len(dim_names) == len(
-                self._shape
-            ), "The length of dims_names must be same as the shape of the mesh."
+            assert len(dim_names) == len(self._shape), (
+                "The length of dims_names must be same as the shape of the mesh."
+            )
             self._dim_names = copy.deepcopy(dim_names)
         else:
             self._dim_names = ["d" + str(i) for i in range(len(self._shape))]
         unique_dim_names = set(self._dim_names)
-        assert len(unique_dim_names) == len(
-            self._dim_names
-        ), f'All dim_names {dim_names} must be unique.'
+        assert len(unique_dim_names) == len(self._dim_names), (
+            f'All dim_names {dim_names} must be unique.'
+        )
 
         # Follow the requirement for using pybind11
         core.ProcessMesh.__init__(
@@ -296,9 +296,9 @@ class ProcessMesh(core.ProcessMesh):
         dim_name: str,
         index: slice | tuple[slice, ...] | SupportsIndex | None = None,
     ) -> ProcessMesh:
-        assert (
-            dim_name in self._dim_names
-        ), f'{dim_name} is not a valid dim name.'
+        assert dim_name in self._dim_names, (
+            f'{dim_name} is not a valid dim name.'
+        )
         index_axis = self._dim_names.index(dim_name)
         new_order = [index_axis] + [
             i for i in range(len(self._dim_names)) if i != index_axis

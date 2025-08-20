@@ -140,7 +140,7 @@ struct ConvProgramStrategy : public ProgramStrategy {
   OpDesc* CreateBasicConvOp(const std::string conv_name = "Conv1") {
     auto op = program.MutableBlock(0)->AppendOp();
     op->SetType("fused_conv2d");
-    op->SetAttr("use_mkldnn", true);
+    op->SetAttr("use_onednn", true);
     op->SetAttr("name", conv_name);
     op->SetAttr("mkldnn_data_type", std::string{"int8"});
     op->SetAttr("data_format", std::string{"NCHW"});
