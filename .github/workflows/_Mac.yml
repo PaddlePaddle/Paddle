@@ -85,7 +85,7 @@ jobs:
         if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           pwd
-          ls -al ../../../..
+          find / -type f -name "*proxy*"
           source ../../../../proxy.sh
           set -x
           cd ${work_dir}/Paddle
