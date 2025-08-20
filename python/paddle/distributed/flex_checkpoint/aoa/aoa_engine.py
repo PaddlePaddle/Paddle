@@ -83,7 +83,7 @@ class AoAShardInfoContext:
                 f"layer_id_macro_tag '{layer_id_macro_tag}' not in name_with_layer_id '{name_with_layer_id}'"
             )
         prefix, suffix = name_with_layer_id.split(layer_id_macro_tag, 1)
-        pattern = re.compile(fr"{re.escape(prefix)}(\d+){re.escape(suffix)}")
+        pattern = re.compile(rf"{re.escape(prefix)}(\d+){re.escape(suffix)}")
         max_layer = 0
         for key in self.get_all_dst_state_keys():
             match = pattern.fullmatch(key)
@@ -155,7 +155,6 @@ class AoAEngine:
             sub_dst_slice[axis] = slice(0, sz)
             sub_slices = []
             for aidx, src_sl, dst_sl in tensor.slices:
-
                 dst_start = (
                     dst_sl[axis].start if dst_sl[axis].start is not None else 0
                 )
