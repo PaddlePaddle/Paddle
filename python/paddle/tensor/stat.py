@@ -442,8 +442,9 @@ def nanmedian(
     elif isinstance(axis, int):
         axis = [axis]
 
+    ignore_nan = True
     if in_dynamic_or_pir_mode():
-        out, indices = _C_ops.nanmedian(x, axis, keepdim, mode)
+        out, indices = _C_ops.nanmedian(x, axis, keepdim, mode, ignore_nan)
         indices.stop_gradient = True
     else:
         check_variable_and_dtype(
@@ -454,7 +455,12 @@ def nanmedian(
         )
 
         helper = LayerHelper('nanmedian', **locals())
-        attrs = {'axis': axis, 'keepdim': keepdim, 'mode': mode}
+        attrs = {
+            'axis': axis,
+            'keepdim': keepdim,
+            'mode': mode,
+            "ignore_nan": ignore_nan,
+        }
         out = helper.create_variable_for_type_inference(x.dtype)
         indices = helper.create_variable_for_type_inference(paddle.int64)
         helper.append_op(
@@ -626,110 +632,52 @@ def median(
             )
         if axis < 0:
             axis += dims
-    sz = x.shape[axis]
-    kth = sz >> 1
-    # Use `sort` when:
-    # 1. The axis is not the last dimension (memory non-contiguous)
-    # 2. The axis size exceeds 10000 (heuristic threshold for performance crossover)
-    # Rationale:
-    # - `paddle.topk` in non-contiguous dimensions has O(N*k) complexity (k=n/2 for median → O(n²)). in paddle/phi/kernels/gpu/top_k_kernel.cu
-    # - `paddle.sort` has guaranteed O(n log n) complexity regardless of axis
-    use_sort = (axis != dims - 1) and (sz > 10000)
-    if use_sort:
-        sorted_x = paddle.sort(x, axis=axis, stable=True)
-        tensor_topk = paddle.slice(
-            sorted_x, axes=[axis], starts=[0], ends=[kth + 1]
-        )
-        if need_idx:
-            idx = paddle.argsort(x, axis=axis, stable=True)
-            idx = paddle.slice(idx, axes=[axis], starts=[0], ends=[kth + 1])
+
+    if axis is None:
+        axis = []
+    elif isinstance(axis, tuple):
+        axis = list(axis)
+    elif isinstance(axis, int):
+        axis = [axis]
+
+    ignore_nan = False
+    if mode == "avg" and not x.dtype == paddle.float64:
+        x = x.astype(paddle.float32)
+    if in_dynamic_or_pir_mode():
+        out, indices = _C_ops.nanmedian(x, axis, keepdim, mode, ignore_nan)
+        indices.stop_gradient = True
     else:
-        tensor_topk, idx = paddle.topk(x, kth + 1, axis=axis, largest=False)
-    if mode == 'avg':
-        dtype = (
-            'float64'
-            if x.dtype
-            in [core.VarDesc.VarType.FP64, paddle.base.core.DataType.FLOAT64]
-            else 'float32'
+        check_variable_and_dtype(
+            x,
+            'X',
+            ['int32', 'int64', 'float16', 'float32', 'float64', 'uint16'],
+            'nanmedian',
         )
-        if sz & 1 == 0:
-            out_tensor = paddle.slice(
-                tensor_topk, axes=[axis], starts=[kth - 1], ends=[kth]
-            ) + paddle.slice(
-                tensor_topk, axes=[axis], starts=[kth], ends=[kth + 1]
-            )
-            out_tensor = paddle.cast(out_tensor, dtype=dtype) / 2
-        else:
-            out_tensor = paddle.cast(
-                paddle.slice(
-                    tensor_topk, axes=[axis], starts=[kth], ends=[kth + 1]
-                ),
-                dtype=dtype,
-            )
-        out_tensor = out_tensor + paddle.sum(
-            paddle.cast(paddle.isnan(x), dtype=dtype) * x.astype(dtype),
-            axis=axis,
-            keepdim=True,
+        helper = LayerHelper('nanmedian', **locals())
+        attrs = {
+            'axis': axis,
+            'keepdim': keepdim,
+            'mode': mode,
+            "ignore_nan": ignore_nan,
+        }
+        out = helper.create_variable_for_type_inference(x.dtype)
+        indices = helper.create_variable_for_type_inference(paddle.int64)
+        helper.append_op(
+            type='nanmedian',
+            inputs={'X': x},
+            outputs={'Out': out, 'MedianIndex': indices},
+            attrs=attrs,
         )
-    else:  # mode == 'min'
-        if sz & 1 == 0 and kth != 0:
-            out_tensor = paddle.slice(
-                tensor_topk, axes=[axis], starts=[kth - 1], ends=[kth]
-            )
-            if need_idx:
-                out_idx = paddle.slice(
-                    idx, axes=[axis], starts=[kth - 1], ends=[kth]
-                )
-        else:
-            out_tensor = paddle.slice(
-                tensor_topk, axes=[axis], starts=[kth], ends=[kth + 1]
-            )
-            if need_idx:
-                out_idx = paddle.slice(
-                    idx, axes=[axis], starts=[kth], ends=[kth + 1]
-                )
-        # if contain nan on axis, return nan for that axis
-        out_tensor = out_tensor + paddle.sum(
-            paddle.cast(paddle.isnan(x), dtype=x.dtype) * x,
-            axis=axis,
-            keepdim=True,
-        ).astype(x.dtype)
-        if need_idx:
-            # replace index using the first nan value's index on axis for out_idx
-            # topk is not stable on cpu device, use argsort instead
-            x_isnan = paddle.isnan(x).astype("int64")
-            x_all_zero = paddle.zeros_like(x_isnan)
-            index_along_axis = paddle.argsort(
-                x_all_zero, axis=axis, stable=True
-            )
-
-            # find the index of the leading one in x_isnan
-            cumsum = x_isnan.cumsum(axis=axis)
-            x_isnan = x_isnan * paddle.where(cumsum > 1, 0, 1)
-
-            nan_index = paddle.sum(
-                index_along_axis * x_isnan, axis=axis, keepdim=True
-            )
-            nan_index_mask = paddle.sum(x_isnan, axis=axis, keepdim=True)
-            out_idx = (
-                out_idx * paddle.logical_not(nan_index_mask).astype('int64')
-                + nan_index
-            )
-
+        indices.stop_gradient = True
     if is_flatten:
         if keepdim:
-            out_tensor = out_tensor.reshape([1] * dims)
+            out = out.reshape([1] * dims)
         else:
-            out_tensor = out_tensor.reshape([])
-    else:
-        if not keepdim:
-            out_tensor = out_tensor.squeeze(axis)
-
+            out = out.reshape([])
     if mode == 'min' and need_idx:
-        if not keepdim:
-            out_idx = out_idx.squeeze(axis)
-        return out_tensor, out_idx
-    return out_tensor
+        return out, indices
+    else:
+        return out
 
 
 def _compute_quantile(

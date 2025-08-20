@@ -25,6 +25,7 @@ void NanmedianKernel(const Context& dev_ctx,
                      const IntArray& axes,
                      bool keep_dim,
                      const std::string& mode,
+                     bool ignore_nan,
                      DenseTensor* out,
                      DenseTensor* medians);
 }  // namespace phi

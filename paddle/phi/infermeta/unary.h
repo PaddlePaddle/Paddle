@@ -476,6 +476,7 @@ void NanmedianInferMeta(const MetaTensor& x,
                         const IntArray& axes,
                         bool keep_dim,
                         const std::string& mode,
+                        bool ignore_nan,
                         MetaTensor* out,
                         MetaTensor* median_index);
 

@@ -2454,7 +2454,7 @@
     func : mv_grad
 
 - backward_op : nanmedian_grad
-  forward : nanmedian (Tensor x, IntArray axis, bool keepdim, str mode) -> Tensor(out), Tensor(medians)
+  forward : nanmedian (Tensor x, IntArray axis, bool keepdim, str mode, bool ignore_nan) -> Tensor(out), Tensor(medians)
   args : (Tensor x, Tensor medians, Tensor out_grad, IntArray axis, bool keepdim, str mode)
   output : Tensor(x_grad)
   infer_meta :

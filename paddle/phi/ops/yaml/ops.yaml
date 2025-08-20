@@ -3863,7 +3863,7 @@
   traits : pir::SideEffectTrait, paddle::dialect::ForwardOnlyTrait
 
 - op : nanmedian
-  args : (Tensor x, IntArray axis = {}, bool keepdim = true, str mode="avg")
+  args : (Tensor x, IntArray axis = {}, bool keepdim = true, str mode="avg", bool ignore_nan = false)
   output : Tensor(out), Tensor(medians)
   infer_meta :
     func : NanmedianInferMeta
