@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING, Literal
 import paddle
 from paddle import _C_ops, in_dynamic_mode
 from paddle.framework import core, in_dynamic_or_pir_mode
-from paddle.utils.decorator_utils import ParamAliasDecorator
+from paddle.utils.decorator_utils import ParamAliasDecorator, param_one_alias
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ...base.data_feeder import check_dtype, check_variable_and_dtype
@@ -1076,7 +1076,8 @@ def selu(
         return out
 
 
-def silu(x: Tensor, name: str | None = None) -> Tensor:
+@param_one_alias(["x", "input"])
+def silu(x: Tensor, inplace: bool = False, name: str | None = None) -> Tensor:
     r"""
     silu activation
 
@@ -1088,6 +1089,7 @@ def silu(x: Tensor, name: str | None = None) -> Tensor:
 
     Parameters:
         x (Tensor): The input Tensor with data type bfloat16, float16, float32, float64, complex64, complex128.
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1104,10 +1106,21 @@ def silu(x: Tensor, name: str | None = None) -> Tensor:
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.73105860, 1.76159406, 2.85772228, 3.92805505])
+
+            >>> out = F.silu(x, True)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.73105860, 1.76159406, 2.85772228, 3.92805505])
+            >>> print(x)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.73105860, 1.76159406, 2.85772228, 3.92805505])
     """
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.silu(x)
+        if inplace:
+            return _C_ops.silu_(x)
+        else:
+            return _C_ops.silu(x)
     else:
         check_variable_and_dtype(
             x,
