@@ -9,10 +9,24 @@ on:
       can-skip:
         type: string
         required: false
+      baseline:
+        type: string
+        required: false
+        default: "false"
+      MANUALLY_PR_ID:
+        type: string
+        required: false
+      MANUALLY_COMMIT_ID:
+        type: string
+        required: false
+      run-labels:
+        type: string
+        required: false
+        default: "api-bm"
 
 env:
-  PR_ID: ${{ github.event.pull_request.number }}
-  COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+  PR_ID: ${{ github.event.pull_request.number || '0' }}
+  COMMIT_ID: ${{ github.event.pull_request.head.sha || github.sha }}
   work_dir: /paddle
   PADDLE_ROOT: /paddle
   TASK: paddle-CI-${{ github.event.pull_request.number }}-api-benchmark
@@ -41,6 +55,7 @@ jobs:
     if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: Api-bm
+      labels: [self-hosted, "${{ inputs.run-labels }}"]
     steps:
       - name: Determine the runner
         run: |
@@ -118,7 +133,15 @@ jobs:
           cd ./PaddleTest/framework/e2e/api_benchmark_new
           cp /paddle/PTSTools/Uploader/apibm_config.yml .
           source ${{ github.workspace }}/../../../proxy
-          ${python} -m pip install https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+          ${python} -m pip install $wheel_link
+          if [[ "${{ inputs.baseline }}" == "true" ]];then
+            if [[ "${{ inputs.MANUALLY_PR_ID }}" == "" ]]; then
+              ${python} runner_ci_action.py --yaml ../yaml/api_benchmark_fp32.yml --baseline_whl_link https://paddle-github-action.bj.bcebos.com/PR/build/${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+            else
+              ${python} runner_ci_action.py --yaml ../yaml/api_benchmark_fp32.yml --baseline_whl_link https://paddle-github-action.bj.bcebos.com/PR/build/${{ inputs.MANUALLY_PR_ID }}/${{ inputs.MANUALLY_COMMIT_ID }}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+            fi
+            exit 0
+          fi
           if [ ${core_index} -eq -1 ];then
             ${python} runner_ci_action.py --yaml ../yaml/api_benchmark_fp32.yml --core_index 2
           else

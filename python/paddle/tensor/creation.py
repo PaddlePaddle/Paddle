@@ -25,6 +25,7 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
+from paddle.utils import deprecated
 from paddle.utils.decorator_utils import ParamAliasDecorator, SizeArgsDecorator
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -1543,8 +1544,8 @@ def zeros_like(
 
 
 def eye(
-    num_rows: int,
-    num_columns: int | None = None,
+    num_rows: int | paddle.Tensor,
+    num_columns: int | paddle.Tensor | None = None,
     dtype: DTypeLike | None = None,
     name: str | None = None,
     *,
@@ -1557,8 +1558,8 @@ def eye(
     This function constructs 2-D Tensor with ones on the diagonal and zeros elsewhere.
 
     Args:
-        num_rows(int): the number of rows in each batch Tensor.
-        num_columns(int|None, optional): the number of columns in each batch Tensor.
+        num_rows(int | paddle.Tensor): the number of rows in each batch Tensor.
+        num_columns(int | paddle.Tensor | None, optional): the number of columns in each batch Tensor.
             If None, default: num_rows.
         dtype(np.dtype|str, optional): The data type of the returned Tensor.
             It should be int32, int64, float16, float32, float64, complex64, complex128. Default: if None, the data type
@@ -1953,6 +1954,12 @@ def arange(
         return out
 
 
+@deprecated(
+    reason=(
+        "paddle.range is deprecated and will be removed in a future release because its behavior is inconsistent with Python's range builtin."
+        "Instead, use paddle.arange, which produces values in [start, end)"
+    )
+)
 def range(
     start: float | paddle.Tensor = 0,
     end: float | paddle.Tensor | None = None,
@@ -2829,6 +2836,7 @@ def diag(
         return out
 
 
+@SizeArgsDecorator()
 def empty(
     shape: ShapeLike,
     dtype: DTypeLike | None = None,
