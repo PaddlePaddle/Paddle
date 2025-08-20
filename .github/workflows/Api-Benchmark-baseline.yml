@@ -18,7 +18,7 @@ on:
           - others
   schedule:
     - cron: '0 21 * * *'
-    - cron: '0 22 * * 1'
+    - cron: '0 22 * * 3'
 
 permissions: read-all
 
@@ -86,7 +86,7 @@ jobs:
 
   test3:
     runs-on: ubuntu-latest
-    if: github.event.schedule == '0 22 * * 1'
+    if: github.event.schedule == '0 22 * * 3'
     steps:
       - name: Test
         run: |
