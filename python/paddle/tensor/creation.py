@@ -1965,7 +1965,7 @@ def range(
     start: float | paddle.Tensor = 0,
     end: float | paddle.Tensor | None = None,
     step: float | paddle.Tensor = 1,
-    dtype=None,
+    dtype: DTypeLike = None,
     *,
     out: paddle.Tensor | None = None,
     device: PlaceLike | None = None,

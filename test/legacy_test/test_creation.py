@@ -35,7 +35,7 @@ class TestTensorCreation(unittest.TestCase):
             self.devices.append(paddle.device.IPUPlace())
 
         self.requires_grads = [True, False]
-        self.dtypes = ["float32", paddle.float32, "int32", paddle.int32]
+        self.dtypes = [None, "float32", paddle.float32, "int32", paddle.int32]
 
     def test_ones(self):
         for device, requires_grad, dtype in product(
@@ -368,6 +368,8 @@ class TestTensorCreation(unittest.TestCase):
             if end is None:
                 end = start
                 start = 0
+            if dtype is None:
+                dtype = paddle.get_default_dtype()
             size_ = int(np.abs(np.trunc((end - start) / step))) + 1
             out = paddle.empty([size_])
 
@@ -430,14 +432,26 @@ class TestTensorCreation(unittest.TestCase):
                             err_msg=f"[FAILED] wrong result when testing: range({start},{end},{step})",
                         )
 
+                        def wrapped_range(
+                            start, end, step, dtype, device, requires_grad
+                        ):
+                            return paddle.range(
+                                start,
+                                end,
+                                step,
+                                dtype,
+                                device=device,
+                                requires_grad=requires_grad,
+                            )
+
                         st_f = paddle.jit.to_static(
-                            paddle.range, full_graph=True, backend=None
+                            wrapped_range, full_graph=True, backend=None
                         )
                         x = st_f(
                             start,
                             end,
                             step,
-                            dtype=dtype,
+                            dtype,
                             device=device,
                             requires_grad=requires_grad,
                         )
