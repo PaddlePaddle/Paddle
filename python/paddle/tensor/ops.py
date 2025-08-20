@@ -636,7 +636,6 @@ def expm1(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
-
 def reciprocal(x: Tensor, name: str | None = None) -> Tensor:
     """
 
