@@ -323,11 +323,6 @@ def view_decorator():
 class ForbidKeywordsDecorator(DecoratorBase):
     """A decorator that hints users to use the correct `compat` functions, when erroneous keyword arguments are detected"""
 
-    _site_format = (
-        "https://www.paddlepaddle.org.cn/documentation/docs/en/develop/"
-        "guides/model_convert/convert_from_pytorch/api_difference/{url_suffix}.html"
-    )
-
     def __init__(
         self,
         illegal_keys: set[str],
@@ -352,7 +347,9 @@ class ForbidKeywordsDecorator(DecoratorBase):
         self.illegal_keys = illegal_keys
         self.func_name = func_name
         self.correct_name = correct_name
-        self.url_suffix = url_suffix
+        self.warn_msg = None
+        if url_suffix:
+            self.warn_msg = f"\nNon compatible API. Please refer to https://www.paddlepaddle.org.cn/documentation/docs/en/develop/guides/model_convert/convert_from_pytorch/api_difference/{url_suffix}.html first."
 
     def process(
         self, args: tuple[Any, ...], kwargs: dict[str, Any]
@@ -368,10 +365,9 @@ class ForbidKeywordsDecorator(DecoratorBase):
                 f"{self.func_name}() received unexpected keyword argument{plural} {keys_str}. "
                 f"\nDid you mean to use {self.correct_name}() instead?"
             )
-        if self.url_suffix:
+        if self.warn_msg is not None:
             warnings.warn(
-                f"\nThis is a non compatible API. Please refer to {self._site_format.format(url_suffix=self.url_suffix)} first."
-                f"\nA compatible version of this API: `{self.correct_name}` can be also used, make sure the correct API is called.",
+                self.warn_msg,
                 category=Warning,
             )
         return args, kwargs
