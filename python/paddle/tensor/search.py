@@ -22,7 +22,11 @@ from typing_extensions import overload
 import paddle
 from paddle import _C_ops
 from paddle.common_ops_import import VarDesc, Variable
-from paddle.utils.decorator_utils import ParamAliasDecorator, param_one_alias
+from paddle.utils.decorator_utils import (
+    ParamAliasDecorator,
+    param_one_alias,
+    param_two_alias,
+)
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import check_dtype, check_variable_and_dtype
@@ -1187,7 +1191,7 @@ def masked_select(x: Tensor, mask: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
-@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def topk(
     x: Tensor,
     k: int | Tensor,

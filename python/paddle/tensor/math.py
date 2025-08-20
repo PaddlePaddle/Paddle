@@ -1368,7 +1368,7 @@ def _divide_with_axis(x, y, axis=-1, name=None):
         return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
-@ParamAliasDecorator({"x": ["input"], "y": ["other"]})
+@param_two_alias(["x", "input"], ["y", "other"])
 def maximum(
     x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
 ) -> Tensor:
@@ -1433,7 +1433,7 @@ def maximum(
         return _elementwise_op(LayerHelper('elementwise_max', **locals()))
 
 
-@ParamAliasDecorator({"x": ["input"], "y": ["other"]})
+@param_two_alias(["x", "input"], ["y", "other"])
 def minimum(
     x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
 ) -> Tensor:
@@ -3130,7 +3130,7 @@ def outer(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
-@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def logsumexp(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
