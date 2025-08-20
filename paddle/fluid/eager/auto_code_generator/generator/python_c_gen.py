@@ -545,9 +545,9 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                 and parsing_function_name == "CastPyArg2Place"
             ):
                 expected_place_str = ""
-                assert (
-                    name == "place"
-                ), "Only support 'place' as template argument name in FUNCTION_SET_DEVICE_TEMPLATE."
+                assert name == "place", (
+                    "Only support 'place' as template argument name in FUNCTION_SET_DEVICE_TEMPLATE."
+                )
             if need_parse_python_api_args:
                 keywords = _get_keywords(name, args_alias_map)
                 if default_value is None:

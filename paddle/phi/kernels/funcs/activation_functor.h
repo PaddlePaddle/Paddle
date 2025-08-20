@@ -3036,7 +3036,16 @@ template <typename T>
 struct FloorFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.floor();
+    if constexpr ((std::is_same<T, uint8_t>::value) ||
+                  (std::is_same<T, int8_t>::value) ||
+                  (std::is_same<T, uint16_t>::value) ||
+                  (std::is_same<T, int16_t>::value) ||
+                  (std::is_same<T, int>::value) ||
+                  (std::is_same<T, int64_t>::value)) {
+      out.device(d) = x;
+    } else {
+      out.device(d) = x.floor();
+    }
   }
 };
 
@@ -3160,7 +3169,16 @@ template <typename T>
 struct CeilFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.ceil();
+    if constexpr ((std::is_same<T, uint8_t>::value) ||
+                  (std::is_same<T, int8_t>::value) ||
+                  (std::is_same<T, uint16_t>::value) ||
+                  (std::is_same<T, int16_t>::value) ||
+                  (std::is_same<T, int>::value) ||
+                  (std::is_same<T, int64_t>::value)) {
+      out.device(d) = x;
+    } else {
+      out.device(d) = x.ceil();
+    }
   }
 };
 
@@ -5403,7 +5421,16 @@ struct CudaCeilFunctor : public BaseActivationFunctor<T> {
   // ceil(x) = ceil(x)
   __device__ __forceinline__ T operator()(const T arg_x) const {
     MPType x = static_cast<MPType>(arg_x);
-    return static_cast<T>(ceil(x));
+    if constexpr ((std::is_same<T, uint8_t>::value) ||
+                  (std::is_same<T, int8_t>::value) ||
+                  (std::is_same<T, uint16_t>::value) ||
+                  (std::is_same<T, int16_t>::value) ||
+                  (std::is_same<T, int>::value) ||
+                  (std::is_same<T, int64_t>::value)) {
+      return static_cast<T>(x);
+    } else {
+      return static_cast<T>(ceil(x));
+    }
   }
 };
 
@@ -5492,7 +5519,16 @@ struct CudaFloorFunctor : public BaseActivationFunctor<T> {
   // floor(x) = floor(x)
   __device__ __forceinline__ T operator()(const T arg_x) const {
     MPType x = static_cast<MPType>(arg_x);
-    return static_cast<T>(floor(x));
+    if constexpr ((std::is_same<T, uint8_t>::value) ||
+                  (std::is_same<T, int8_t>::value) ||
+                  (std::is_same<T, uint16_t>::value) ||
+                  (std::is_same<T, int16_t>::value) ||
+                  (std::is_same<T, int>::value) ||
+                  (std::is_same<T, int64_t>::value)) {
+      return static_cast<T>(x);
+    } else {
+      return static_cast<T>(floor(x));
+    }
   }
 };
 
