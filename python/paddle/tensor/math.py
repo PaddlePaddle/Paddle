@@ -1195,7 +1195,6 @@ floor_mod_.__doc__ = r"""
     """
 
 
-@ParamAliasDecorator({"x": ["input"], "y": ["other"]})
 def multiply(
     x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
 ) -> Tensor:
@@ -1214,8 +1213,8 @@ def multiply(
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
-        x (Tensor): the input tensor, its data type should be one of bfloat16, float16, float32, float64, int32, int64, bool, complex64, complex128. Alias: input.
-        y (Tensor): the input tensor, its data type should be one of bfloat16, float16, float32, float64, int32, int64, bool, complex64, complex128. Alias: other.
+        x (Tensor): the input tensor, its data type should be one of bfloat16, float16, float32, float64, int32, int64, bool, complex64, complex128.
+        y (Tensor): the input tensor, its data type should be one of bfloat16, float16, float32, float64, int32, int64, bool, complex64, complex128.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
         out (Tensor|None, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
 

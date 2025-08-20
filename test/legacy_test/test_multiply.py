@@ -309,11 +309,11 @@ class TestMultiplyOutAndParamDecorator(unittest.TestCase):
         self.x_np = np.random.rand(3, 4).astype(np.float32)
         self.y_np = np.random.rand(3, 4).astype(np.float32)
         self.test_types = [
-            "decorator_input",
-            "decorator_other",
-            "decorator_both",
+            # "decorator_input",
+            # "decorator_other",
+            # "decorator_both",
             "out",
-            "out_decorator",
+            # "out_decorator",
         ]
 
     def do_test(self, test_type):
