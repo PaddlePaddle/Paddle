@@ -3887,7 +3887,7 @@ def clip(
                 max = max.item(0)
             if isinstance(min, float) or isinstance(max, float):
                 x = paddle.cast(x, paddle.float32)
-        return _C_ops.clip(x, min, max)
+        return _C_ops.clip(x, min, max, out=out)
     elif in_pir_mode():
         if x_dtype in ['paddle.int32', 'paddle.int64']:
             if (
@@ -3903,7 +3903,7 @@ def clip(
                 )
             ):
                 x = paddle.cast(x, paddle.float32)
-        return _C_ops.clip(x, min, max)
+        return _C_ops.clip(x, min, max, out=out)
     else:
         if min is not None:
             check_type(min, 'min', (float, int, Variable), 'clip')
