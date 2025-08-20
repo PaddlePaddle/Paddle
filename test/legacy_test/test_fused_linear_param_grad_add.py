@@ -97,9 +97,9 @@ def run_fused_linear_param_grad_add(
     if dweight is not None:
         assert dweight_new.data_ptr() == dweight.data_ptr()
     if has_bias and dbias is not None:
-        assert (
-            dbias_new.data_ptr() == dbias.data_ptr()
-        ), f"multi_precision={multi_precision}, has_bias={has_bias}, dbias.dtype={dbias.dtype}."
+        assert dbias_new.data_ptr() == dbias.data_ptr(), (
+            f"multi_precision={multi_precision}, has_bias={has_bias}, dbias.dtype={dbias.dtype}."
+        )
     if has_bias:
         return (
             promote_dtype(dweight_new).numpy(),
