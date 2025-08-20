@@ -17,11 +17,20 @@ from __future__ import annotations
 
 from collections import OrderedDict
 from copy import deepcopy
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
     from paddle import Tensor
     from paddle.distributed.communication.group import Group
+
+
+@dataclass(frozen=True)
+class ShardedWeightDesc:
+    key: str
+    local_shape: tuple[int, ...]
+    global_shape: tuple[int, ...]
+    global_offset: tuple[int, ...]
 
 
 class ShardedWeight:

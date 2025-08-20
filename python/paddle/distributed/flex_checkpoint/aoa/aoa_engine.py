@@ -18,20 +18,12 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from ..dcp.sharded_weight import ShardedWeightDesc
 from .lexer import Lexer
 from .parser import Parser
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
-
-
-@dataclass(frozen=True)
-class ShardedWeightDesc:
-    key: str
-    local_shape: tuple[int, ...]
-    global_shape: tuple[int, ...]
-    global_offset: tuple[int, ...]
-
 
 _ShardInfo = dict[str, list[ShardedWeightDesc]]
 
@@ -60,7 +52,7 @@ class ShardMappingEntry:
 ShardMapping = list[ShardMappingEntry]
 
 
-class AoAShardInfoContext:
+class AOAShardInfoContext:
     def __init__(
         self,
         source_state_shard_info: _ShardInfo,
@@ -68,6 +60,13 @@ class AoAShardInfoContext:
     ) -> None:
         self.source_state_shard_info = source_state_shard_info
         self.destination_state_shard_info = destination_state_shard_info
+        self.optim_state_name = [
+            ".w_0",
+            ".moment1_0 ",
+            ".moment2_0",
+            ".beta1_pow_acc_0",
+            ".beta2_pow_acc_0",
+        ]
 
     def get_all_dst_state_keys(self) -> Iterable[str]:
         return self.destination_state_shard_info.keys()
@@ -97,17 +96,33 @@ class AoAShardInfoContext:
             raise KeyError(
                 f"src_state_key '{src_state_key}' not in  source_state_shard_info"
             )
-        return len(self.source_state_shard_info[src_state_key])
+        new_state_key = src_state_key
+        for state_name in self.optim_state_name:
+            if state_name in src_state_key:
+                new_state_key = src_state_key.replace(state_name, "")
+                break
+
+        return len(self.source_state_shard_info[new_state_key])
 
     def get_dst_state_shard_num(self, dst_state_key: str) -> int:
         if dst_state_key not in self.destination_state_shard_info:
             raise KeyError(
                 f"dst_state_key '{dst_state_key}' not in destination_state_shard_info"
             )
-        return len(self.destination_state_shard_info[dst_state_key])
+        for state_name in self.optim_state_name:
+            if state_name in dst_state_key:
+                new_state_key = dst_state_key.replace(state_name, "")
+                break
+        new_state_key = dst_state_key
+        shard_infos = self.destination_state_shard_info[new_state_key]
+        global_offset_set = set()
+        for shard_info in shard_infos:
+            global_offset_set.add(shard_info.global_offset)
+
+        return len(global_offset_set)
 
 
-class AoAEngine:
+class AOAEngine:
     def __init__(
         self,
         aoa_config: dict[str, list[str]],
@@ -117,7 +132,7 @@ class AoAEngine:
         self.aoa_config = aoa_config
         self.source_state_shard_info = source_state_shard_info
         self.destination_state_shard_info = destination_state_shard_info
-        self.context = AoAShardInfoContext(
+        self.context = AOAShardInfoContext(
             source_state_shard_info, destination_state_shard_info
         )
         self.lexer = Lexer(self.context)
@@ -382,13 +397,16 @@ class AoAEngine:
             )
             tgt_global_offset = tuple(slc.start for slc in local_slices)
 
-            source_sharded_weight = ShardedWeightDesc(
-                src_key, src_local_shape, src_global_shape, src_global_offset
+            source_sharded_tensor = ShardedWeightDesc(
+                src_key,
+                src_local_shape,
+                tuple(src_global_shape),
+                src_global_offset,
             )
-            target_sharded_weight = ShardedWeightDesc(
+            target_sharded_tensor = ShardedWeightDesc(
                 target_key,
                 tgt_local_shape,
-                target_global_shape,
+                tuple(target_global_shape),
                 tgt_global_offset,
             )
 
@@ -396,8 +414,8 @@ class AoAEngine:
 
             shard_mappings.append(
                 ShardMappingEntry(
-                    target_sharded_weight,
-                    source_sharded_weight,
+                    target_sharded_tensor,
+                    source_sharded_tensor,
                     postprocess_list,
                 )
             )
