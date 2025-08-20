@@ -51,6 +51,10 @@ from paddle.base.framework import (
     paddle_type_to_proto_type,
 )
 from paddle.base.layer_helper_base import LayerHelperBase
+from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
+    ShardedStateDict,
+    build_sharded_state_dict,
+)
 from paddle.framework import ParamAttr
 from paddle.profiler.utils import in_profiler_mode
 from paddle.utils import deprecated
@@ -2155,6 +2159,44 @@ class Layer:
             use_hook=use_hook,
             keep_vars=keep_vars,
         )
+
+    def sharded_state_dict(
+        self,
+        structured_name_prefix: str = "",
+    ) -> ShardedStateDict:
+        """Recursively builds a sharded state dictionary for the model and its sub-layers.
+
+        Args:
+            structured_name_prefix: Prefix to prepend to all tensor names for hierarchical naming.
+
+        Returns:
+            Dictionary mapping tensor names to ShardedWeight.
+            The dictionary contains both the current layer's parameters and all sub-layer parameters.
+        """
+        sharded_state_dict = {}
+        # Get current layer's state dict (without sub-layers)
+        state_dict = self.state_dict(
+            structured_name_prefix="",  # We handle prefixing ourselves
+            include_sublayers=False,
+        )
+
+        # Convert to sharded state dict
+        current_sharded_dict = build_sharded_state_dict(
+            state_dict=state_dict,
+            shard_rules=None,  # No tensor parallelism rules by default
+            prefix=structured_name_prefix,
+        )
+        sharded_state_dict.update(current_sharded_dict)
+
+        # Recursively process sub-layers
+        for layer_name, layer_item in self._sub_layers.items():
+            if layer_item is not None:
+                sub_sharded = layer_item.sharded_state_dict(
+                    structured_name_prefix=f"{structured_name_prefix}{layer_name}.",
+                )
+                sharded_state_dict.update(sub_sharded)
+
+        return sharded_state_dict
 
     @framework.deprecate_stat_dict
     def set_state_dict(
