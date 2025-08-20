@@ -87,7 +87,7 @@ repos:
 
             | python/paddle/[e-i].+
 
-            # | python/paddle/j.+
+            | python/paddle/j.+
 
             | python/paddle/[k-n].+
 
@@ -143,7 +143,7 @@ repos:
 
             # | python/paddle/[e-i].+
 
-            | python/paddle/j.+
+            # | python/paddle/j.+
 
             # | python/paddle/[k-n].+
 
