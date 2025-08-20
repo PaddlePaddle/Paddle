@@ -1011,7 +1011,8 @@ def load_merged_state_dict(
         prefix(str): The flat_mapping prefix of state_dict key. e.g., 'model', Default None.
         unique_id(int): The unique id of checkpoint, used to distinguish between different checkpoint versions. Default is None, in which case the id the max id of given path, and the newest version checkpoint is loaded.
         offload(bool): Whether to offload the checkpoint data from GPU to CPU, set to True if GPU memory is not enough.
-
+        aoa_config(dict[str, list[str]]): AOA config to change parameters. Default is None.
+        safetensors(bool): Whether to use safetensors format. Default is False.
     Returns:
         dict: Merged state_dict.
 

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import tempfile
 import unittest
 
@@ -125,9 +126,8 @@ class TestDistCheckpoint(unittest.TestCase):
 
     def test_dist_checkpoint(self):
         flag = False
-        model_path = './ckpt/model'  # os.path.join(self.temp_dir.name, 'model')
-        opt_path = './ckpt/opt'  # os.path.join(self.temp_dir.name, 'opt')
-        print("model_path", model_path)
+        model_path = os.path.join(self.temp_dir.name, '/model')
+        opt_path = os.path.join(self.temp_dir.name, '/opt')
 
         # Test checkpoint saving
         with paddle.LazyGuard():
