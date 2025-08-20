@@ -457,9 +457,14 @@ def multinomial(
     0. ``replacement`` indicates whether it is a replaceable sample. If ``replacement``
     is True, a category can be sampled more than once.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``multinomial(input=tensor_x, ...)`` is equivalent to ``multinomial(x=tensor_x, ...)``.
+
     Args:
         x(Tensor):  A tensor with probabilities for generating the random number. The data type
             should be float32, float64.
+            alias: ``input``.
         num_samples(int, optional): Number of samples, default is 1.
         replacement(bool, optional): Whether it is a replaceable sample, default is False.
         name(str|None, optional): The default value is None. Normally there is no
@@ -1967,9 +1972,14 @@ def exponential_(
 
         f(x) = \lambda e^{-\lambda x}
 
+    .. note::
+        Alias Support: The parameter name ``lambd`` can be used as an alias for ``lam``.
+        For example, ``exponential_(tensor_x, lambd=1.0, ...)`` is equivalent to ``exponential_(tensor_x, lam=1.0, ...)``.
+
     Args:
         x(Tensor):  Input tensor. The data type should be float32, float64.
         lam(float, optional): :math:`\lambda` parameter of Exponential Distribution. Default, 1.0.
+            alias: ``lambd``.
         name(str|None, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.

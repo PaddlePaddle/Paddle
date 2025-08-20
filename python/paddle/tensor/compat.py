@@ -28,7 +28,12 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from paddle import Tensor
+    from paddle._typing import (
+        Size2,
+    )
 
+
+from paddle import nn
 from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
 __all__ = []
@@ -316,3 +321,81 @@ def sort(
         return SortRetType(values=outputs, indices=indices)
     paddle.assign(outputs, out[0])
     paddle.assign(indices, out[1])
+
+
+class Unfold(nn.Unfold):
+    """
+    A compatible version of paddle.nn.Unfold:
+    - The keyword arguments are in non-plural forms, example: `kernel_size` instead of kernel_sizes
+    - `padding` restricts the size of the input to be 1(int) or 2, Size4 is not allowed. To use a more
+       input-flexible version of Unfold, please refer to `paddle.nn.Unfold`.
+    - All the input parameters allow `Tensor` or `pir.Value` as inputs, and will be converted to list
+    Other aspects are the same. See ``paddle.nn.Unfold`` for more details.
+    Parameters:
+        kernel_size(int|list|tuple|Tensor): The size of convolution kernel, should be [k_h, k_w]
+            or an integer k treated as [k, k].
+        stride(int|list|tuple|Tensor, optional): The strides, should be [stride_h, stride_w]
+            or an integer stride treated as [sride, stride]. For default, strides will be [1, 1].
+        padding(int|list|tuple|Tensor, optional): The paddings of each dimension, should be
+            a single integer or [padding_h, padding_w]. If [padding_h, padding_w] was given, it will expanded to
+            [padding_h, padding_w, padding_h, padding_w]. If an integer padding was given,
+            [padding, padding, padding, padding] will be used. By default, paddings will be 0.
+        dilation(int|list|tuple|Tensor, optional): The dilations of convolution kernel, should be
+            [dilation_h, dilation_w], or an integer dilation treated as [dilation, dilation].
+            For default, it will be [1, 1].
+    Examples:
+        .. code-block:: python
+            >>> import paddle
+            >>> x = paddle.randn((100, 3, 224, 224))
+            >>> unfold = paddle.compat.Unfold(kernel_size=[3, 3])
+            >>> result = unfold(x)
+            >>> print(result.shape)
+            [100, 27, 49284]
+    """
+
+    kernel_sizes: Size2
+    dilations: Size2
+    paddings: Size2
+    strides: Size2
+
+    @ForbidKeywordsDecorator(
+        illegal_keys={"kernel_sizes", "dilations", "paddings", "strides"},
+        func_name="paddle.compat.Unfold",
+        correct_name="paddle.nn.Unfold",
+    )
+    def __init__(
+        self,
+        kernel_size: Size2,
+        dilation: Size2 = 1,
+        padding: Size2 = 0,
+        stride: Size2 = 1,
+    ) -> None:
+
+        super().__init__(kernel_size, dilation, padding, stride)
+
+    def forward(self, input: Tensor) -> Tensor:
+        def to_list_if_necessary(x, size_check=False):
+            res = x
+            if in_dynamic_mode() and isinstance(
+                x, (paddle.pir.Value, paddle.Tensor)
+            ):
+                res = x.tolist()
+            else:
+                if not isinstance(x, (list, tuple, int)):
+                    raise TypeError(
+                        "paddle.compat.Unfold does not allow paddle.Tensor or pir.Value as inputs in static graph mode."
+                    )
+            if size_check and isinstance(res, (list, tuple)) and len(res) > 2:
+                raise ValueError(
+                    f"The `padding` field of paddle.compat.Unfold can only have size 1 or 2, now len={len(res)}. \nDid you mean to use paddle.nn.Unfold() instead?"
+                )
+            return res
+
+        return nn.functional.unfold(
+            input,
+            kernel_sizes=to_list_if_necessary(self.kernel_sizes),
+            strides=to_list_if_necessary(self.strides),
+            paddings=to_list_if_necessary(self.paddings, size_check=True),
+            dilations=to_list_if_necessary(self.dilations),
+            name=self.name,
+        )
