@@ -2676,6 +2676,51 @@ class TestAnyCompatibility(unittest.TestCase):
                         self.np_out, out.numpy(), rtol=1e-10
                     )
 
+    def test_dygraph_out(self):
+        def run_any(test_type):
+            x = paddle.to_tensor(self.np_input)
+            x.stop_gradient = False
+            out = (
+                paddle.zeros(self.np_out.shape)
+                if test_type in ["with_out", "both"]
+                else None
+            )
+            if test_type == "return":
+                out = paddle.any(x, axis=self.axis, keepdim=True)
+            elif test_type == "with_out":
+                paddle.any(x, axis=self.axis, keepdim=True, out=out)
+            elif test_type == "both":
+                out = paddle.any(x, axis=self.axis, keepdim=True, out=out)
+            else:
+                raise ValueError(f"Invalid test_mode: {test_type}")
+
+            expected = paddle._C_ops.any(x, self.axis, True)
+            np.testing.assert_array_equal(out.numpy(), expected.numpy())
+            loss = out.sum().astype('float32')
+            loss.backward()
+            return out, x.grad
+
+        def assert_outputs_equal(outputs, rtol: float = 1e-10):
+            for out in outputs[1:]:
+                np.testing.assert_allclose(
+                    outputs[0].numpy(), out.numpy(), rtol=rtol
+                )
+
+        with dygraph_guard():
+            for place in self.places:
+                paddle.device.set_device(place)
+                out1, grad1 = run_any("return")
+                out2, grad2 = run_any("with_out")
+                out3, grad3 = run_any("both")
+
+                assert_outputs_equal([out1, out2, out3])
+                if (
+                    grad1 is not None
+                    and grad2 is not None
+                    and grad3 is not None
+                ):
+                    assert_outputs_equal([grad1, grad2, grad3])
+
     def test_static_compatibility(self):
         with static_guard():
             for place in self.places:
