@@ -29,7 +29,6 @@ defaults:
 jobs:
   clone:
     name: Api benchmark clone
-    if: github.event.schedule == '0 21 * * *'
     uses: ./.github/workflows/_Clone-linux.yml
     with:
       clone_dir: Paddle-build
@@ -37,7 +36,6 @@ jobs:
 
   build-docker:
     name: Api benchmark build docker
-    if: github.event.schedule == '0 21 * * *'
     needs: clone
     uses: ./.github/workflows/docker.yml
     with:
@@ -46,21 +44,33 @@ jobs:
 
   build:
     name: Api benchmark build
-    if: github.event.schedule == '0 21 * * *'
+    if: github.event_name == 'schedule' && github.event.schedule == '0 21 * * *'
     needs: [clone, build-docker]
     uses: ./.github/workflows/_Linux-build.yml
     with:
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
       is_pr: 'false'
 
-  api-benchmark-baseline:
+  api-benchmark-baseline-schedule:
     name: Api benchmark baseline
-    if: github.event.schedule == '0 21 * * *' || github.event.inputs.job-name == 'api-benchmark'
     strategy:
       matrix:
         run-labels: [api-bm-20, api-bm-27]
     uses: ./.github/workflows/_Api-Benchmark.yml
     needs: [clone, build-docker, build]
+    with:
+      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
+      baseline: 'true'
+      run-labels: ${{ matrix.run-labels }}
+
+  api-benchmark-baseline-pr:
+    name: Api benchmark baseline
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.job-name == 'api-benchmark'
+    strategy:
+      matrix:
+        run-labels: [api-bm-20, api-bm-27]
+    uses: ./.github/workflows/_Api-Benchmark.yml
+    needs: [clone, build-docker]
     with:
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
       baseline: 'true'
