@@ -5488,53 +5488,56 @@ struct CudaCeilFunctor : public BaseActivationFunctor<T> {
   }
 };
 
-template <typename T, typename MPType>
+template <typename T>
 __device__ __forceinline__
-    typename std::enable_if<std::is_integral<T>::value, T>::type
-    compute_pow(const T a, const MPType b) {
+    typename std::enable_if<std::is_integral<T>::value, int64_t>::type
+    compute_pow(const T a, const double b) {
   // TODO(wujionghao): A potential speed improvement is supporting different
   // types in C++.
   // On CUDAPlace, pow(3, 1) calls pow(float, float), and
   // it will return a float number like 2.99... , which floor to 2
   // when cast to int by default and it is wrong.
   // Use llrint to cast it to the nearest integer, which is 3.
-  return llrint(pow(static_cast<double>(a), static_cast<double>(b)));
+  return llrint(pow(static_cast<double>(a), b));
 }
 
-template <typename T, typename MPType>
+template <typename T>
 __device__ __forceinline__
-    typename std::enable_if<!std::is_integral<T>::value, T>::type
-    compute_pow(const T a, const MPType b) {
-  MPType a_val = static_cast<MPType>(a);
-  return static_cast<T>(pow(a_val, b));
+    typename std::enable_if<!std::is_integral<T>::value, double>::type
+    compute_pow(const T a, const double b) {
+  return pow(static_cast<double>(a), b);
+}
+
+template <typename T>
+__device__ __forceinline__ typename std::enable_if<!std::is_integral<T>::value,
+                                                   ComplexType<double>>::type
+compute_pow(const ComplexType<T> a, const ComplexType<double> b) {
+  return pow(static_cast<ComplexType<double>>(a), b);
 }
 
 template <typename T>
 struct BaseCudaPowFunctor : public BaseActivationFunctor<T> {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-  float factor;
+  double factor;
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
     return {{"factor", &factor}};
   }
-  void SetFactor(float factor) { this->factor = factor; }
+  void SetFactor(double factor) { this->factor = factor; }
 };
 
 template <typename T>
 struct BaseCudaPowGradFunctor : public BaseActivationFunctor<T> {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-  float factor;
+  double factor;
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
     return {{"factor", &factor}};
   }
-  void SetFactor(float factor) { this->factor = factor; }
+  void SetFactor(double factor) { this->factor = factor; }
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
 template <typename T>
 struct CudaPowFunctor : public BaseCudaPowFunctor<T> {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   __device__ __forceinline__ T operator()(const T x) const {
-    return compute_pow<T, MT>(x, static_cast<MT>(this->factor));
+    return static_cast<T>(compute_pow(x, this->factor));
   }
 };
 
@@ -5543,28 +5546,31 @@ struct CudaPowFunctor<ComplexType<T>>
     : public BaseCudaPowFunctor<ComplexType<T>> {
   __device__ __forceinline__ ComplexType<T> operator()(
       const ComplexType<T> x) const {
-    return pow(x, static_cast<ComplexType<T>>(this->factor));
+    return static_cast<ComplexType<T>>(
+        compute_pow(x, static_cast<ComplexType<double>>(this->factor)));
   }
 };
 
 template <typename T>
 struct CudaPowGradFunctor : public BaseCudaPowGradFunctor<T> {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   // dx = dout * n * pow(x, n - 1)
   __device__ __forceinline__ T operator()(const T dout, const T x) const {
-    return dout * (static_cast<T>(this->factor) *
-                   compute_pow<T, MT>(x, static_cast<MT>(this->factor - 1)));
+    return dout *
+           static_cast<T>(this->factor * compute_pow(x, this->factor - 1));
   }
 };
 
 template <typename T>
 struct CudaPowGradFunctor<ComplexType<T>>
     : public BaseCudaPowGradFunctor<ComplexType<T>> {
+  ComplexType<double> one = static_cast<ComplexType<double>>(1.0f);
+
   // dx = dout * (4 * (x*x*x))
   __device__ __forceinline__ ComplexType<T> operator()(
       const ComplexType<T> dout, const ComplexType<T> x) const {
-    return dout * conj(static_cast<ComplexType<T>>(this->factor) *
-                       pow(x, static_cast<ComplexType<T>>(this->factor - 1)));
+    auto factor = static_cast<ComplexType<double>>(this->factor);
+    return dout * static_cast<ComplexType<T>>(
+                      conj(factor * compute_pow(x, factor - one)));
   }
 };
 
