@@ -53,21 +53,21 @@ def parse_arg(op_name: str, s: str) -> dict[str, str]:
     2. typename name = default_value
     """
     typename, rest = (item.strip() for item in s.split(" ", 1))
-    assert (
-        len(typename) > 0
-    ), f"The arg typename should not be empty. Please check the args of {op_name} in yaml."
+    assert len(typename) > 0, (
+        f"The arg typename should not be empty. Please check the args of {op_name} in yaml."
+    )
 
-    assert (
-        rest.count("=") <= 1
-    ), f"There is more than 1 = in an arg in {op_name}"
+    assert rest.count("=") <= 1, (
+        f"There is more than 1 = in an arg in {op_name}"
+    )
     if rest.count("=") == 1:
         name, default_value = (item.strip() for item in rest.split("=", 1))
-        assert (
-            len(name) > 0
-        ), f"The arg name should not be empty. Please check the args of {op_name} in yaml."
-        assert (
-            len(default_value) > 0
-        ), f"The default value should not be empty. Please check the args of {op_name} in yaml."
+        assert len(name) > 0, (
+            f"The arg name should not be empty. Please check the args of {op_name} in yaml."
+        )
+        assert len(default_value) > 0, (
+            f"The default value should not be empty. Please check the args of {op_name} in yaml."
+        )
         return {
             "typename": typename,
             "name": name,
@@ -75,9 +75,9 @@ def parse_arg(op_name: str, s: str) -> dict[str, str]:
         }
     else:
         name = rest.strip()
-        assert (
-            len(name) > 0
-        ), f"The arg name should not be empty. Please check the args of {op_name} in yaml."
+        assert len(name) > 0, (
+            f"The arg name should not be empty. Please check the args of {op_name} in yaml."
+        )
         return {"typename": typename, "name": name}
 
 
@@ -110,9 +110,9 @@ def parse_input_and_attr(
             inputs.append(item)
         elif is_attr(typename):
             if met_attr_with_default_value:
-                assert (
-                    "default_value" in item
-                ), f"{op_name}: Arguments with default value should not precede those without default value"
+                assert "default_value" in item, (
+                    f"{op_name}: Arguments with default value should not precede those without default value"
+                )
             elif "default_value" in item:
                 met_attr_with_default_value = True
             if typename.startswith('Scalar') or typename == 'IntArray':
@@ -249,14 +249,18 @@ def parse_kernel(op_name: str, kernel_config: dict[str, Any]) -> dict[str, Any]:
                 'selected_rows',
                 'sparse_coo',
                 'sparse_csr',
-            ], f"{op_name} : Invalid input tensor type ('{item}'), here we only support 'dense', 'selected_rows', 'sparse_coo' and 'sparse_csr'."
+            ], (
+                f"{op_name} : Invalid input tensor type ('{item}'), here we only support 'dense', 'selected_rows', 'sparse_coo' and 'sparse_csr'."
+            )
         for item in outputs:
             assert item in [
                 'dense',
                 'selected_rows',
                 'sparse_coo',
                 'sparse_csr',
-            ], f"{op_name} : Invalid output tensor type ('{item}'), here we only support 'dense', 'selected_rows', 'sparse_coo' and 'sparse_csr'."
+            ], (
+                f"{op_name} : Invalid output tensor type ('{item}'), here we only support 'dense', 'selected_rows', 'sparse_coo' and 'sparse_csr'."
+            )
 
         return (inputs, outputs)
 
@@ -389,21 +393,21 @@ def check_op_config(op_entry, op_name):
         'dispatch',
     )
     for key in op_entry.keys():
-        assert (
-            key in base_key_set
-        ), f"Op ({op_name}) : invalid key ({key}) in Yaml."
+        assert key in base_key_set, (
+            f"Op ({op_name}) : invalid key ({key}) in Yaml."
+        )
 
     if 'infer_meta' in op_entry:
         for infer_meta_key in op_entry['infer_meta'].keys():
-            assert (
-                infer_meta_key in infer_meta_key_set
-            ), f"Op ({op_name}) : invalid key (infer_meta.{infer_meta_key}) in Yaml."
+            assert infer_meta_key in infer_meta_key_set, (
+                f"Op ({op_name}) : invalid key (infer_meta.{infer_meta_key}) in Yaml."
+            )
 
     if 'kernel' in op_entry:
         for kernel_key in op_entry['kernel'].keys():
-            assert (
-                kernel_key in kernel_key_set
-            ), f"Op ({op_name}) : invalid key (kernel.{kernel_key}) in Yaml."
+            assert kernel_key in kernel_key_set, (
+                f"Op ({op_name}) : invalid key (kernel.{kernel_key}) in Yaml."
+            )
 
 
 def parse_op_entry(op_entry: dict[str, Any], name_field="op"):
@@ -419,16 +423,16 @@ def parse_op_entry(op_entry: dict[str, Any], name_field="op"):
             typename = attr["typename"]
             default_value = attr["default_value"]
             if typename == "DataType":
-                assert (
-                    "DataType" in default_value
-                ), f"invalid DataType default value in {op_name}"
+                assert "DataType" in default_value, (
+                    f"invalid DataType default value in {op_name}"
+                )
                 # remove namespace
                 default_value = default_value[default_value.find("DataType") :]
                 attr["default_value"] = default_value
             elif typename == "DataLayout":
-                assert (
-                    "DataLayout" in default_value
-                ), f"invalid DataLayout default value in {op_name}"
+                assert "DataLayout" in default_value, (
+                    f"invalid DataLayout default value in {op_name}"
+                )
                 default_value = default_value[
                     default_value.find("DataLayout") :
                 ]
@@ -447,9 +451,9 @@ def parse_op_entry(op_entry: dict[str, Any], name_field="op"):
     if "optional" in op_entry:
         optional_args = parse_plain_list(op_entry["optional"])
         for name in optional_args:
-            assert (
-                name in input_names or name in output_names
-            ), f"{op_name} has an optional tensor: '{name}' which is not in input or output."
+            assert name in input_names or name in output_names, (
+                f"{op_name} has an optional tensor: '{name}' which is not in input or output."
+            )
         for input in inputs:
             if input["name"] in optional_args:
                 input["optional"] = True
@@ -463,9 +467,9 @@ def parse_op_entry(op_entry: dict[str, Any], name_field="op"):
     if "intermediate" in op_entry:
         intermediate_outs = parse_plain_list(op_entry["intermediate"])
         for name in intermediate_outs:
-            assert (
-                name in output_names
-            ), f"{op_name} has an intermediate output: '{name}' which is not an output."
+            assert name in output_names, (
+                f"{op_name} has an intermediate output: '{name}' which is not an output."
+            )
         for output in outputs:
             if output["name"] in intermediate_outs:
                 output["intermediate"] = True
@@ -476,9 +480,9 @@ def parse_op_entry(op_entry: dict[str, Any], name_field="op"):
     if "no_need_buffer" in op_entry:
         no_buffer_args = parse_plain_list(op_entry["no_need_buffer"])
         for name in no_buffer_args:
-            assert (
-                name in input_names
-            ), f"{op_name} has an no buffer input: '{name}' which is not an input."
+            assert name in input_names, (
+                f"{op_name} has an no buffer input: '{name}' which is not an input."
+            )
         for input in inputs:
             if input["name"] in no_buffer_args:
                 input["no_need_buffer"] = True
@@ -496,18 +500,18 @@ def parse_op_entry(op_entry: dict[str, Any], name_field="op"):
         if "skip_transform" in data_trans:
             skip_trans_args = parse_plain_list(data_trans["skip_transform"])
             for name in skip_trans_args:
-                assert (
-                    name in input_names
-                ), f"{op_name} has an skip_transform input: '{name}' which is not an input."
+                assert name in input_names, (
+                    f"{op_name} has an skip_transform input: '{name}' which is not an input."
+                )
             data_trans["skip_transform"] = skip_trans_args
         if "support_trans_dtype" in data_trans:
             support_trans_args = parse_plain_list(
                 data_trans["support_trans_dtype"]
             )
             for name in support_trans_args:
-                assert (
-                    name in input_names
-                ), f"{op_name} has an support_trans_dtype input: '{name}' which is not an input."
+                assert name in input_names, (
+                    f"{op_name} has an support_trans_dtype input: '{name}' which is not an input."
+                )
             data_trans["support_trans_dtype"] = support_trans_args
         for input in inputs:
             if input["name"] in skip_trans_args:
@@ -632,9 +636,9 @@ def validate_backward_attrs(op, forward_attrs, backward_attrs):
     # this is a not-that-clean trick to allow backward op to has more attrs
     # than the forward op , as long as they all have default value
     for i in range(-num_exceptional_attrs, 0):
-        assert (
-            "default_value" in backward_attrs[i]
-        ), f"{op} has exceptional attr without default value"
+        assert "default_value" in backward_attrs[i], (
+            f"{op} has exceptional attr without default value"
+        )
 
 
 def validate_backward_inputs(
@@ -652,9 +656,9 @@ def validate_backward_inputs(
 def validate_backward_outputs(op, forward_inputs, backward_outputs):
     if op in ['fused_attention_grad']:
         return
-    assert len(backward_outputs) <= len(
-        forward_inputs
-    ), f"{op} has too many outputs"
+    assert len(backward_outputs) <= len(forward_inputs), (
+        f"{op} has too many outputs"
+    )
 
 
 def cross_validate(ops):
@@ -673,21 +677,21 @@ def cross_validate(ops):
                         f"Something Wrong here, {name}'s forward op ({fw_name}) does not claim {name} as its backward."
                     )
                 else:
-                    assert (
-                        fw_op["backward"] == name
-                    ), f"{name}: backward and forward name mismatch"
+                    assert fw_op["backward"] == name, (
+                        f"{name}: backward and forward name mismatch"
+                    )
 
-                assert len(fw_call["inputs"]) <= len(
-                    fw_op["inputs"]
-                ), f"{name}: forward call has more inputs than the op "
+                assert len(fw_call["inputs"]) <= len(fw_op["inputs"]), (
+                    f"{name}: forward call has more inputs than the op "
+                )
                 for input, input_ in zip(fw_call["inputs"], fw_op["inputs"]):
-                    assert (
-                        input["typename"] == input_["typename"]
-                    ), f"type mismatch in {name} and {fw_name}"
+                    assert input["typename"] == input_["typename"], (
+                        f"type mismatch in {name} and {fw_name}"
+                    )
 
-                assert len(fw_call["attrs"]) <= len(
-                    fw_op["attrs"]
-                ), f"{name}: forward call has more attrs than the op "
+                assert len(fw_call["attrs"]) <= len(fw_op["attrs"]), (
+                    f"{name}: forward call has more attrs than the op "
+                )
                 for attr, attr_ in zip(fw_call["attrs"], fw_op["attrs"]):
                     if attr["typename"] == "Scalar":
                         # special case for Scalar, fw_call can omit the type
@@ -695,16 +699,16 @@ def cross_validate(ops):
                             r"Scalar(\(\w+\))*", attr_["typename"]
                         ), f"type mismatch in {name} and {fw_name}"
                     else:
-                        assert (
-                            attr["typename"] == attr_["typename"]
-                        ), f"type mismatch in {name} and {fw_name}"
+                        assert attr["typename"] == attr_["typename"], (
+                            f"type mismatch in {name} and {fw_name}"
+                        )
 
-                assert len(fw_call["outputs"]) == len(
-                    fw_op["outputs"]
-                ), f"{name}: requires outputs number of fw_call == fw_op, but received {fw_call['outputs']} != {fw_op['outputs']}"
+                assert len(fw_call["outputs"]) == len(fw_op["outputs"]), (
+                    f"{name}: requires outputs number of fw_call == fw_op, but received {fw_call['outputs']} != {fw_op['outputs']}"
+                )
                 for output, output_ in zip(
                     fw_call["outputs"], fw_op["outputs"]
                 ):
-                    assert (
-                        output["typename"] == output_["typename"]
-                    ), f"type mismatch in {name} and {fw_name}"
+                    assert output["typename"] == output_["typename"], (
+                        f"type mismatch in {name} and {fw_name}"
+                    )

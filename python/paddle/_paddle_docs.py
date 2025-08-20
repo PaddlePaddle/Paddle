@@ -16,27 +16,48 @@ import inspect
 
 import paddle
 
+from .base.dygraph.generated_tensor_methods_patch import methods_map
+
 # Add docstr for some C++ functions in paddle
 _add_docstr = paddle.base.core.eager._add_docstr
+_code_template = R"""
+from __future__ import annotations
+
+{}:
+    ...
+
+"""
 
 
-def add_doc_all(method: str, docstr: str) -> None:
+def _parse_function_signature(func_name: str, code: str) -> inspect.Signature:
+    code = _code_template.format(code.strip())
+    code_obj = compile(code, "<string>", "exec")
+    globals = {}
+    eval(code_obj, globals)
+    return inspect.signature(globals[func_name])
+
+
+def add_doc_and_signature(func_name: str, docstr: str, func_def: str) -> None:
     """
     Add docstr for function (paddle.*) and method (paddle.Tensor.*) if method exists
     """
+    python_api_sig = _parse_function_signature(func_name, func_def)
     for module in [paddle, paddle.Tensor]:
-        if hasattr(module, method):
-            func = getattr(module, method)
+        if hasattr(module, func_name):
+            func = getattr(module, func_name)
             if inspect.isfunction(func):
                 func.__doc__ = docstr
             elif inspect.ismethod(func):
                 func.__self__.__doc__ = docstr
             elif inspect.isbuiltin(func):
                 _add_docstr(func, docstr)
+    methods_dict = dict(methods_map)
+    if func_name in methods_dict.keys():
+        tensor_func = methods_dict[func_name]
+        tensor_func.__signature__ = python_api_sig
 
 
-__all__ = ['add_doc_all']
-add_doc_all(
+add_doc_and_signature(
     "amin",
     r"""
     Computes the minimum of tensor elements over the given axis
@@ -161,9 +182,17 @@ add_doc_all(
              [[0.50000000, 0.33333333],
               [0.        , 0.        ]]])
 """,
+    """
+def amin(
+    x: Tensor,
+    axis: int | Sequence[int] | None = None,
+    keepdim: bool = False,
+    name: str | None = None,
+) -> Tensor
+""",
 )
 
-add_doc_all(
+add_doc_and_signature(
     "amax",
     """
     Computes the maximum of tensor elements over the given axis.
@@ -288,4 +317,12 @@ add_doc_all(
              [[0.50000000, 0.33333333],
               [0.        , 0.        ]]])
     """,
+    """
+def amax(
+    x: Tensor,
+    axis: int | Sequence[int] | None = None,
+    keepdim: bool = False,
+    name: str | None = None,
+) -> Tensor
+""",
 )
