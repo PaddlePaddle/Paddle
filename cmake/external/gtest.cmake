@@ -126,6 +126,7 @@ else()
                -DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}
                -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}
                -DCMAKE_INSTALL_PREFIX=${GTEST_INSTALL_DIR}
+               -DCMAKE_INSTALL_LIBDIR=${CMAKE_INSTALL_LIBDIR}
                -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                -DBUILD_GMOCK=ON
                -Dgtest_disable_pthreads=ON

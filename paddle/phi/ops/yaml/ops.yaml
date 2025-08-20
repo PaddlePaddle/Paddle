@@ -183,6 +183,10 @@
 
 - op : all
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
+  python_api:
+    name : [paddle.all,paddle.Tensor.all]
+    args_alias:
+      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
