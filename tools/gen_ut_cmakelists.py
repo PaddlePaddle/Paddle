@@ -99,11 +99,7 @@ def _process_archs(arch):
         for a in arch.split(";"):
             if '' == a:
                 continue
-            assert a in [
-                "GPU",
-                "ROCM",
-                "XPU",
-            ], (
+            assert a in ["GPU", "ROCM", "XPU"], (
                 f"""Supported arch options are "GPU", "ROCM", and "XPU", but the options is {a}"""
             )
             archs += "WITH_" + a.upper() + " OR "
@@ -129,11 +125,7 @@ def _process_os(os_):
     if len(os_) > 0:
         os_ = os_.upper()
         for p in os_.split(';'):
-            assert p in [
-                "WIN32",
-                "APPLE",
-                "LINUX",
-            ], (
+            assert p in ["WIN32", "APPLE", "LINUX"], (
                 f"""Supported os options are 'WIN32', 'APPLE' and 'LINUX', but the options is {p}"""
             )
         os_ = os_.replace(";", " OR ")
