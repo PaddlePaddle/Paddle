@@ -4136,6 +4136,7 @@ def kron(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def cumsum(
     x: Tensor,
     axis: int | None = None,
@@ -4148,9 +4149,15 @@ def cumsum(
     Note:
         The first element of the result is the same as the first element of the input.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``dim`` can be used as an alias for ``axis``.
+        For example, ``cumsum(input=tensor_x, dim=1, ...)`` is equivalent to ``cumsum(x=tensor_x, axis=1, ...)``.
+
     Args:
         x (Tensor): The input tensor needed to be cumsumed.
+            alias: ``input``.
         axis (int, optional): The dimension to accumulate along. -1 means the last dimension. The default (None) is to compute the cumsum over the flattened array.
+            alias: ``dim``.
         dtype (str|paddle.dtype|np.dtype|None, optional): The data type of the output tensor, can be bfloat16, float16, float32, float64, int32, int64, complex64, complex128. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
