@@ -151,41 +151,41 @@ def _parse_configs(user_config):
         weight_types = WEIGHT_QUANTIZATION_TYPES
         activation_types = WEIGHT_QUANTIZATION_TYPES
         platform = 'PaddleLite'
-    assert (
-        configs['weight_quantize_type'] in weight_types
-    ), "Unknown weight_quantize_type: {}. {} only supports {} ".format(
-        configs['weight_quantize_type'], platform, weight_types
+    assert configs['weight_quantize_type'] in weight_types, (
+        "Unknown weight_quantize_type: {}. {} only supports {} ".format(
+            configs['weight_quantize_type'], platform, weight_types
+        )
     )
 
-    assert (
-        configs['activation_quantize_type'] in activation_types
-    ), "Unknown activation_quantize_type: {}. {} only supports {}".format(
-        configs['activation_quantize_type'], platform, activation_types
+    assert configs['activation_quantize_type'] in activation_types, (
+        "Unknown activation_quantize_type: {}. {} only supports {}".format(
+            configs['activation_quantize_type'], platform, activation_types
+        )
     )
 
-    assert isinstance(
-        configs['weight_bits'], int
-    ), "weight_bits must be int value."
+    assert isinstance(configs['weight_bits'], int), (
+        "weight_bits must be int value."
+    )
 
-    assert (
-        configs['weight_bits'] >= 1 and configs['weight_bits'] <= 16
-    ), "weight_bits should be between 1 and 16."
+    assert configs['weight_bits'] >= 1 and configs['weight_bits'] <= 16, (
+        "weight_bits should be between 1 and 16."
+    )
 
-    assert isinstance(
-        configs['activation_bits'], int
-    ), "activation_bits must be int value."
+    assert isinstance(configs['activation_bits'], int), (
+        "activation_bits must be int value."
+    )
 
     assert (
         configs['activation_bits'] >= 1 and configs['activation_bits'] <= 16
     ), "activation_bits should be between 1 and 16."
 
-    assert isinstance(
-        configs['not_quant_pattern'], (list, str)
-    ), "not_quant_pattern must be list or str"
+    assert isinstance(configs['not_quant_pattern'], (list, str)), (
+        "not_quant_pattern must be list or str"
+    )
 
-    assert isinstance(
-        configs['quantize_op_types'], list
-    ), "quantize_op_types must be a list"
+    assert isinstance(configs['quantize_op_types'], list), (
+        "quantize_op_types must be a list"
+    )
 
     if configs['for_tensorrt']:
         configs['quantize_op_types'] = TENSORRT_OP_TYPES
@@ -197,8 +197,10 @@ def _parse_configs(user_config):
         for op_type in configs['quantize_op_types']:
             assert (op_type in QUANT_DEQUANT_PASS_OP_TYPES) or (
                 op_type in TRANSFORM_PASS_OP_TYPES
-            ), f"{op_type} is not support, \
+            ), (
+                f"{op_type} is not support, \
                         now support op types are {TRANSFORM_PASS_OP_TYPES + QUANT_DEQUANT_PASS_OP_TYPES}"
+            )
 
     assert isinstance(configs['dtype'], str), "dtype must be a str."
 
@@ -206,13 +208,13 @@ def _parse_configs(user_config):
         VALID_DTYPES
     )
 
-    assert isinstance(
-        configs['window_size'], int
-    ), "window_size must be int value, window size for 'range_abs_max' quantization, default is 10000."
+    assert isinstance(configs['window_size'], int), (
+        "window_size must be int value, window size for 'range_abs_max' quantization, default is 10000."
+    )
 
-    assert isinstance(
-        configs['moving_rate'], float
-    ), "moving_rate must be float value, The decay coefficient of moving average, default is 0.9."
+    assert isinstance(configs['moving_rate'], float), (
+        "moving_rate must be float value, The decay coefficient of moving average, default is 0.9."
+    )
 
     return configs
 
@@ -519,9 +521,9 @@ def convert(program, place, config=None, scope=None, save_int8=False):
             persistables.extend(_op.input('X'))
             _op.desc.set_input("X", persistables)
 
-    assert not (
-        save_int8 and config['onnx_format']
-    ), "When onnx_format=True, already saved int8 weight,so you can't set save_int8=True."
+    assert not (save_int8 and config['onnx_format']), (
+        "When onnx_format=True, already saved int8 weight,so you can't set save_int8=True."
+    )
     if save_int8:
         convert_int8_pass = ConvertToInt8Pass(scope=scope, place=place)
         for sub_graph in test_graph.all_sub_graphs():

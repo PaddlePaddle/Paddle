@@ -155,9 +155,9 @@ def tensor_array_to_tensor(
             >>> output, output_index = paddle.tensor.manipulation.tensor_array_to_tensor(input=array)
     """
     if in_dynamic_mode():
-        assert isinstance(
-            input, list
-        ), "The 'input' in tensor_array_to_tensor must be list"
+        assert isinstance(input, list), (
+            "The 'input' in tensor_array_to_tensor must be list"
+        )
         from paddle import concat, stack
 
         op = stack if use_stack else concat
@@ -1144,12 +1144,12 @@ def _fill_diagonal_tensor_impl(
     inplace: bool = False,
 ) -> Tensor:
     inshape = x.shape
-    assert dim1 < len(inshape) and dim1 >= -len(
-        inshape
-    ), 'dim1 should between [-rank,rank) in fill_diagonal_tensor_'
-    assert dim2 < len(inshape) and dim2 >= -len(
-        inshape
-    ), 'dim2 should between [-rank,rank) in fill_diagonal_tensor_'
+    assert dim1 < len(inshape) and dim1 >= -len(inshape), (
+        'dim1 should between [-rank,rank) in fill_diagonal_tensor_'
+    )
+    assert dim2 < len(inshape) and dim2 >= -len(inshape), (
+        'dim2 should between [-rank,rank) in fill_diagonal_tensor_'
+    )
     assert len(inshape) >= 2, 'Tensor dims should >= 2 in fill_diagonal_tensor_'
     dim1 %= len(inshape)
     dim2 %= len(inshape)
@@ -1165,9 +1165,9 @@ def _fill_diagonal_tensor_impl(
         inshape[dim2] - offset,
     )
     predshape.append(diaglen)
-    assert tuple(predshape) == tuple(
-        y.shape
-    ), f"the y shape should be {predshape}"
+    assert tuple(predshape) == tuple(y.shape), (
+        f"the y shape should be {predshape}"
+    )
     if len(y.shape) == 1:
         y = y.reshape([1, -1])
 
@@ -2857,9 +2857,9 @@ def split(
             return _C_ops.split_with_num(input, num_or_sections, dim)
         else:
             if isinstance(dim, int) and input_shape[dim] > 0:
-                assert (
-                    len(num_or_sections) <= input_shape[dim]
-                ), 'len(num_or_sections) must not be more than input.shape[dim].'
+                assert len(num_or_sections) <= input_shape[dim], (
+                    'len(num_or_sections) must not be more than input.shape[dim].'
+                )
             if paddle.utils._contain_var(num_or_sections):
                 num_or_sections = paddle.utils.get_int_tensor_list(
                     num_or_sections
@@ -2942,9 +2942,9 @@ def split(
             num = num_or_sections
         else:
             if isinstance(dim, int) and input_shape[dim] > 0:
-                assert (
-                    len(num_or_sections) <= input_shape[dim]
-                ), 'len(num_or_sections) must not be more than input.shape[dim].'
+                assert len(num_or_sections) <= input_shape[dim], (
+                    'len(num_or_sections) must not be more than input.shape[dim].'
+                )
             num = len(num_or_sections)
             attrs['sections'] = [
                 -1 if isinstance(ele, Variable) else ele
@@ -4654,21 +4654,21 @@ def tile(
             'tile',
         )
         if isinstance(repeat_times, (Variable, paddle.pir.Value)):
-            assert (
-                len(repeat_times.shape) == 1
-            ), 'repeat_times must be a Tensor with ndim == 1.'
+            assert len(repeat_times.shape) == 1, (
+                'repeat_times must be a Tensor with ndim == 1.'
+            )
         else:
             for elem in repeat_times:
                 if isinstance(elem, (Variable, paddle.pir.Value)):
                     numel = functools.reduce(lambda x, y: x * y, elem.shape, 1)
-                    assert (
-                        numel == 1
-                    ), 'Elements in repeat_times must be Tensor with one element or integers.'
+                    assert numel == 1, (
+                        'Elements in repeat_times must be Tensor with one element or integers.'
+                    )
                 else:
                     type_tuple = (int, np.int32, np.int64)
-                    assert isinstance(
-                        elem, type_tuple
-                    ), 'Elements in repeat_times must be Tensor with one element or integers.'
+                    assert isinstance(elem, type_tuple), (
+                        'Elements in repeat_times must be Tensor with one element or integers.'
+                    )
 
         check_variable_and_dtype(
             x,
@@ -4695,9 +4695,9 @@ def tile(
 
     if in_dynamic_mode():
         if isinstance(repeat_times, core.eager.Tensor):
-            assert (
-                repeat_times.ndim == 1
-            ), "Only support ndim == 1 while repeat_times is a Tensor."
+            assert repeat_times.ndim == 1, (
+                "Only support ndim == 1 while repeat_times is a Tensor."
+            )
             repeat_times = repeat_times.tolist()
 
         return _C_ops.tile(x, repeat_times)
@@ -4717,9 +4717,9 @@ def tile(
                     attrs_repeat_times.append(-1)
                 else:
                     attrs_repeat_times.append(times)
-                    assert (
-                        times > 0
-                    ), "All elements in repeat_times must be positive for tile."
+                    assert times > 0, (
+                        "All elements in repeat_times must be positive for tile."
+                    )
             return attrs_repeat_times
 
         helper = LayerHelper('tile', **locals())
@@ -5002,14 +5002,14 @@ def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
         else:
             for elem in shape:
                 if isinstance(elem, Variable):
-                    assert (
-                        elem.numel() == 1
-                    ), 'Elements in shape must be Tensor with one element or integers.'
+                    assert elem.numel() == 1, (
+                        'Elements in shape must be Tensor with one element or integers.'
+                    )
                 else:
                     type_tuple = (int, np.int32, np.int64)
-                    assert isinstance(
-                        elem, type_tuple
-                    ), 'Elements in shape must be Tensor with one element or integers.'
+                    assert isinstance(elem, type_tuple), (
+                        'Elements in shape must be Tensor with one element or integers.'
+                    )
 
         check_variable_and_dtype(
             x,
@@ -5049,9 +5049,9 @@ def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
                     attrs_expand_shape.append(-2)
                 else:
                     attrs_expand_shape.append(shape)
-                    assert (
-                        shape > 0 or shape == -1
-                    ), "All elements in shape of expand must be positive or -1."
+                    assert shape > 0 or shape == -1, (
+                        "All elements in shape of expand must be positive or -1."
+                    )
             return attrs_expand_shape
 
         if isinstance(shape, Variable):
@@ -5340,18 +5340,18 @@ def masked_scatter(
 
     """
     # make sure the dtype of x and value is the same
-    assert (
-        x.dtype == value.dtype
-    ), f'x and value must have the same dtype, but got x dtype is {x.dtype}, value dtype is {value.dtype}'
+    assert x.dtype == value.dtype, (
+        f'x and value must have the same dtype, but got x dtype is {x.dtype}, value dtype is {value.dtype}'
+    )
     assert mask.dtype == paddle.bool
 
     zeros_like_x = paddle.zeros_like(x, dtype=int)
     mask = paddle.add(paddle.cast(mask, dtype="int"), zeros_like_x)
     mask_prefix = paddle.clip(mask.cumsum() - 1, min=0)
     if in_dynamic_mode() and mask_prefix.numel() != 0:
-        assert (
-            mask_prefix[-1] <= value.numel()
-        ), f'mask true nums must be <= value size, but got mask true nums is {mask_prefix[-1].item()}, value size is {value.numel().item()}'
+        assert mask_prefix[-1] <= value.numel(), (
+            f'mask true nums must be <= value size, but got mask true nums is {mask_prefix[-1].item()}, value size is {value.numel().item()}'
+        )
 
     value = value.flatten()[mask_prefix].reshape(mask.shape)
     mask = paddle.logical_not(mask.astype(bool))
@@ -5366,16 +5366,16 @@ def masked_scatter_(
     Inplace version of ``masked_scatter`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_masked_scatter`.
     """
-    assert (
-        x.dtype == value.dtype
-    ), f'x and value must have the same dtype, but got x dtype is {x.dtype}, value dtype is {value.dtype}'
+    assert x.dtype == value.dtype, (
+        f'x and value must have the same dtype, but got x dtype is {x.dtype}, value dtype is {value.dtype}'
+    )
     assert mask.dtype == paddle.bool
     zeros_like_x = paddle.zeros_like(x, dtype=int)
     mask = paddle.add(paddle.cast(mask, dtype="int"), zeros_like_x)
     mask_prefix = paddle.clip(mask.cumsum() - 1, min=0)
-    assert (
-        mask_prefix[-1] <= value.numel()
-    ), f'mask true nums must be <= value size, but got mask true nums is {mask_prefix[-1].item()}, value size is {value.numel().item()}'
+    assert mask_prefix[-1] <= value.numel(), (
+        f'mask true nums must be <= value size, but got mask true nums is {mask_prefix[-1].item()}, value size is {value.numel().item()}'
+    )
 
     value = value.flatten()[mask_prefix].reshape(mask.shape)
     mask = paddle.logical_not(mask.astype(bool))
@@ -6602,9 +6602,9 @@ def moveaxis(
         src = list(source)
     if isinstance(destination, tuple):
         dst = list(destination)
-    assert len(src) == len(
-        dst
-    ), "'source' must have the same number with 'destination'"
+    assert len(src) == len(dst), (
+        "'source' must have the same number with 'destination'"
+    )
 
     if len(src) != len(set(src)):
         raise ValueError("Each element of 'source' must be unique!")
@@ -6619,31 +6619,31 @@ def moveaxis(
     dst_dims = list(range(ndim))
 
     for i, axis in enumerate(zip(src, dst)):
-        assert isinstance(
-            axis[0], int
-        ), "Each element of 'source' must be integer."
+        assert isinstance(axis[0], int), (
+            "Each element of 'source' must be integer."
+        )
         if axis[0] < 0:
-            assert (
-                axis[0] >= -ndim
-            ), f"'source' must be in the range of [-{ndim}, {ndim})"
+            assert axis[0] >= -ndim, (
+                f"'source' must be in the range of [-{ndim}, {ndim})"
+            )
             src[i] += ndim
         else:
-            assert (
-                axis[0] < ndim
-            ), f"'source' must be in the range of [-{ndim}, {ndim})"
+            assert axis[0] < ndim, (
+                f"'source' must be in the range of [-{ndim}, {ndim})"
+            )
 
-        assert isinstance(
-            axis[1], int
-        ), "Each element of 'source' must be integer."
+        assert isinstance(axis[1], int), (
+            "Each element of 'source' must be integer."
+        )
         if axis[1] < 0:
-            assert (
-                axis[1] >= -ndim
-            ), f"'source' must be in the range of [-{ndim}, {ndim})"
+            assert axis[1] >= -ndim, (
+                f"'source' must be in the range of [-{ndim}, {ndim})"
+            )
             dst[i] += ndim
         else:
-            assert (
-                axis[1] < ndim
-            ), f"'source' must be in the range of [-{ndim}, {ndim})"
+            assert axis[1] < ndim, (
+                f"'source' must be in the range of [-{ndim}, {ndim})"
+            )
         perm[dst[i]] = src[i]
         src_dims.remove(src[i])
         dst_dims.remove(dst[i])
@@ -6806,9 +6806,9 @@ def non_negative_axis(arr, axis):
     if axis >= 0:
         assert axis < ndim, f"'axis'  must be in the range of [-{ndim}, {ndim})"
     else:
-        assert (
-            axis >= -ndim
-        ), f"'axis'  must be in the range of [-{ndim}, {ndim})"
+        assert axis >= -ndim, (
+            f"'axis'  must be in the range of [-{ndim}, {ndim})"
+        )
         axis += ndim
 
     return axis

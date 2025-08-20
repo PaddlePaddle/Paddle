@@ -91,7 +91,7 @@ repos:
 
             | python/paddle/[k-n].+
 
-            # | python/paddle/[o-t].+
+            | python/paddle/[o-t].+
 
             | python/paddle/[u-z].+
 
@@ -147,7 +147,7 @@ repos:
 
             # | python/paddle/[k-n].+
 
-            | python/paddle/[o-t].+
+            # | python/paddle/[o-t].+
 
             # | python/paddle/[u-z].+
 

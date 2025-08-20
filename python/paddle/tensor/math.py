@@ -1310,15 +1310,17 @@ def multiply_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
 
 def _elementwise_op_with_axis(x, y, axis=-1, name=None, op_type="Undefined"):
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "You can only call `_elementwise_op_with_axis` function within in_dynamic_or_pir_mode"
+    assert in_dynamic_or_pir_mode(), (
+        "You can only call `_elementwise_op_with_axis` function within in_dynamic_or_pir_mode"
+    )
     assert op_type in [
         "add",
         "subtract",
         "multiply",
         "divide",
-    ], f"op_name input error! _elementwise_op_with_axis is an inner function to replace elementwise_add/sub/mul/div. Input op_name={op_type}, Expect op_name=[add|subtract|multiply|divide]\n"
+    ], (
+        f"op_name input error! _elementwise_op_with_axis is an inner function to replace elementwise_add/sub/mul/div. Input op_name={op_type}, Expect op_name=[add|subtract|multiply|divide]\n"
+    )
     op = getattr(_C_ops, op_type)
     x_shape = list(x.shape)
     y_shape = list(y.shape)
@@ -4038,13 +4040,13 @@ def trace(
         axis1_ = axis1 if axis1 >= 0 else len(input_shape) + axis1
         axis2_ = axis2 if axis2 >= 0 else len(input_shape) + axis2
 
-        assert (0 <= axis1_) and (
-            axis1_ < len(input_shape)
-        ), f"The argument axis1 is out of range (expected to be in range of [{-(len(input_shape))}, {len(input_shape) - 1}], but got {axis1}).\n"
+        assert (0 <= axis1_) and (axis1_ < len(input_shape)), (
+            f"The argument axis1 is out of range (expected to be in range of [{-(len(input_shape))}, {len(input_shape) - 1}], but got {axis1}).\n"
+        )
 
-        assert (0 <= axis2_) and (
-            axis2_ < len(input_shape)
-        ), f"The argument axis2 is out of range (expected to be in range of [{-(len(input_shape))}, {len(input_shape) - 1}], but got {axis2}).\n"
+        assert (0 <= axis2_) and (axis2_ < len(input_shape)), (
+            f"The argument axis2 is out of range (expected to be in range of [{-(len(input_shape))}, {len(input_shape) - 1}], but got {axis2}).\n"
+        )
 
         assert axis1_ != axis2_, (
             "axis1 and axis2 cannot be the same axis."
@@ -5636,9 +5638,9 @@ def multigammaln(x: Tensor, p: int, name: str | None = None) -> Tensor:
                 [0.85704780  , 2.46648574  , 3.56509781  , 11.02241898 , 15.84497833 ,
                     26.09257698 , 170.68318176])
     """
-    assert (
-        p >= 1
-    ), f"The p must be greater than or equal to 1, But received p is {p}.\n"
+    assert p >= 1, (
+        f"The p must be greater than or equal to 1, But received p is {p}.\n"
+    )
     c = 0.25 * p * (p - 1) * math.log(math.pi)
     b = 0.5 * paddle.arange(start=(1 - p), end=1, step=1, dtype=x.dtype)
     return paddle.sum(paddle.lgamma(x.unsqueeze(-1) + b), axis=-1) + c
@@ -5650,9 +5652,9 @@ def multigammaln_(x: Tensor, p: int, name: str | None = None) -> Tensor:
     Inplace version of ``multigammaln_`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_multigammaln`.
     """
-    assert (
-        p >= 1
-    ), f"The p must be greater than or equal to 1, But received p is {p}.\n"
+    assert p >= 1, (
+        f"The p must be greater than or equal to 1, But received p is {p}.\n"
+    )
     c = 0.25 * p * (p - 1) * math.log(math.pi)
     c = paddle.to_tensor(c, dtype=x.dtype)
     b = 0.5 * paddle.arange(start=(1 - p), end=1, step=1, dtype=x.dtype)
