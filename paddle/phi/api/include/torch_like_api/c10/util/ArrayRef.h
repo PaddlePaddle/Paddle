@@ -217,8 +217,10 @@ using IntArrayRef = ArrayRef<int64_t>;
 
 namespace at {
 using c10::ArrayRef;
+using c10::IntArrayRef;
 }  // namespace at
 
 namespace torch {
 using c10::ArrayRef;
+using c10::IntArrayRef;
 }  // namespace torch

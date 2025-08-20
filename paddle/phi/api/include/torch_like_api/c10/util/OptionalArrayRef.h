@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #pragma once
+#include <c10/util/ArrayRef.h>
 #include <cstdint>
 #include <optional>
 #include <vector>
-#include <c10/util/ArrayRef.h>
 
 namespace c10 {
 template <typename T>

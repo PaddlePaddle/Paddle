@@ -14,19 +14,26 @@
 
 #pragma once
 
-#include <cstdint>
+#include <c10/core/TensorOptions.h>
+#include <optional>
+#include <string_view>
 
-namespace c10 {
-enum class PADDLE_API MemoryFormat : int8_t {
-  Contiguous,
-  Preserve,
-  ChannelsLast,
-  ChannelsLast3d,
-  NumOptions
-};
+#include "paddle/phi/api/include/api.h"
+namespace at {
 
+inline at::Tensor reshape(const at::Tensor& self, at::IntArrayRef shape) {
+  return paddle::experimental::reshape(self._PD_GetInner(),
+                                       shape._PD_ToPaddleIntArray());
 }
 
+inline at::Tensor reshape_symint(const at::Tensor& self,
+                                 c10::SymIntArrayRef shape) {
+  return paddle::experimental::reshape(self._PD_GetInner(),
+                                       shape._PD_ToPaddleIntArray());
+}
+
+}  // namespace at
 namespace torch {
-using c10::MemoryFormat;
+using at::reshape;
+using at::reshape_symint;
 }  // namespace torch

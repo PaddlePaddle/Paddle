@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <c10/core/DefaultDtype.h>
 #include <c10/core/Device.h>
 #include <c10/core/Layout.h>
 #include <c10/core/MemoryFormat.h>
@@ -31,10 +32,14 @@ inline Layout layout_or_default(std::optional<Layout> layout) {
 inline Device device_or_default(std::optional<Device> device) {
   return device.value_or(Device(kCPU));
 }
+inline ScalarType dtype_or_default(std::optional<ScalarType> dtype) {
+  return dtype.value_or(get_default_dtype());
+}
 
 inline bool pinned_memory_or_default(std::optional<bool> pinned_memory) {
   return pinned_memory.value_or(false);
 }
+
 struct PADDLE_API TensorOptions {
   TensorOptions()
       : requires_grad_(false),
@@ -143,6 +148,8 @@ struct PADDLE_API TensorOptions {
   /// Returns the device index of the `TensorOptions`.
   c10::DeviceIndex device_index() const noexcept { return device().index(); }
 
+  ScalarType dtype() const noexcept { return dtype_or_default(dtype_opt()); }
+
   /// Returns whether the dtype is specified.
   bool has_dtype() const noexcept { return has_dtype_; }
 
@@ -228,7 +235,6 @@ struct PADDLE_API TensorOptions {
     return merged;
   }
 
-  c10::ScalarType _PD_GetScalarType() const { return dtype_; }
   ::phi::Place _PD_GetPlace() const { return device_._PD_GetInner(); }
 
  private:
@@ -308,4 +314,58 @@ struct PADDLE_API TensorOptions {
   bool has_memory_format_ : 1;
 };
 
+inline TensorOptions dtype(ScalarType dtype) {
+  return TensorOptions().dtype(dtype);
+}
+
+inline TensorOptions layout(Layout layout) {
+  return TensorOptions().layout(layout);
+}
+
+/// Convenience function that returns a `TensorOptions` object with the `device`
+/// set to the given one.
+inline TensorOptions device(Device device) {
+  return TensorOptions().device(device);
+}
+
+/// Convenience function that returns a `TensorOptions` object with the
+/// `device` set to CUDA and the `device_index` set to the given one.
+inline TensorOptions device_index(c10::DeviceIndex device_index) {
+  return TensorOptions().device_index(device_index);
+}
+
+/// Convenience function that returns a `TensorOptions` object with the
+/// `requires_grad` set to the given one.
+inline TensorOptions requires_grad(bool requires_grad = true) {
+  return TensorOptions().requires_grad(requires_grad);
+}
+
+/// Convenience function that returns a `TensorOptions` object with the
+/// `memory_format` set to the given one.
+inline TensorOptions memory_format(MemoryFormat memory_format) {
+  return TensorOptions().memory_format(memory_format);
+}
+
+std::ostream& operator<<(std::ostream& stream, const TensorOptions& options);
+
+inline std::string toString(const TensorOptions& options) {
+  std::ostringstream stream;
+  stream << options;
+  return stream.str();
+}
+
 }  // namespace c10
+
+namespace at {
+using c10::device_or_default;
+using c10::layout_or_default;
+using c10::pinned_memory_or_default;
+using c10::TensorOptions;
+}  // namespace at
+
+namespace torch {
+using c10::device_or_default;
+using c10::layout_or_default;
+using c10::pinned_memory_or_default;
+using c10::TensorOptions;
+}  // namespace torch

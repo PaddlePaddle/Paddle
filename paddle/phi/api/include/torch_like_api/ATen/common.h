@@ -17,10 +17,11 @@
 #include <c10/core/Device.h>
 #include <c10/core/MemoryFormat.h>
 #include <c10/core/ScalarType.h>
+#include <c10/core/SymIntArrayRef.h>
 #include <c10/core/TensorOptions.h>
-#include <c10/optional_array_ref.h>
 #include <c10/util/ArrayRef.h>
 #include <c10/util/Exception.h>
+#include <c10/util/OptionalArrayRef.h>
 #include "paddle/phi/common/scalar.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <c10/cuda/CUDAException.h>

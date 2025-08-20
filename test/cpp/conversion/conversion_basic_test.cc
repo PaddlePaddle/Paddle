@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <ATen/Functions.h>
 #include <ATen/core/TensorBody.h>
 #include <ATen/cuda/EmptyTensor.h>
 #include <c10/core/ScalarType.h>
@@ -189,15 +190,16 @@ TEST(conversion_basic_test, BasicCase) {
               << std::endl;
     ASSERT_EQ(result_ptr[i], 12);
   }
-  // for test empty_cuda:
-  at::Tensor bb =
-      at::detail::empty_cuda(12, at::kFloat, at::kCUDA, std::nullopt);
+  {
+    // for test empty_cuda:
+    at::Tensor bb =
+        at::detail::empty_cuda(12, at::kFloat, at::kCUDA, std::nullopt);
 
-  // for test sizoof(at::Half):
-  std::cout << sizeof(at::Half) << std::endl;
-  at::Tensor num_non_exiting_ctas = at::empty(
-      {}, at::TensorOptions().device(a.device()).dtype(at::ScalarType::Int));
-
+    // for test sizoof(at::Half):
+    std::cout << sizeof(at::Half) << std::endl;
+    at::Tensor num_non_exiting_ctas = at::empty(
+        {}, at::TensorOptions().device(a.device()).dtype(at::ScalarType::Int));
+  }
   {
     std::vector<int64_t> shape = {2, 3, 4, 5};
     size_t size_ =
@@ -229,6 +231,38 @@ TEST(conversion_basic_test, BasicCase) {
     const c10::cuda::OptionalCUDAGuard device_guard_opt(a.device());
     std::cout << "device_guard is at::kCUDA: "
               << (device_guard_opt.current_device().value().type() == at::kCUDA)
+              << std::endl;
+  }
+
+  {
+    std::cout << "num_tokens_per_rank.device() is at::kCUDA: " << std::endl;
+    // for test empty:
+    auto num_tokens_per_rank =
+        torch::empty({3},
+                     dtype(torch::kInt32).device(torch::kCUDA),
+                     c10::MemoryFormat::Contiguous);
+    std::cout << "num_tokens_per_rank.device() is at::kCUDA: "
+              << (num_tokens_per_rank.device().type() == at::kCUDA)
+              << std::endl;
+  }
+  {
+    auto num_tokens_per_rank = torch::empty(
+        {3}, dtype(torch::kInt32).device(torch::kCUDA), std::nullopt);
+    std::cout << "num_tokens_per_rank.device() is at::kCUDA: "
+              << (num_tokens_per_rank.device().type() == at::kCUDA)
+              << std::endl;
+  }
+  {
+    int a = 10, b = 20, c = 30;
+    int* p[] = {&a, &b, &c};  // int* array[3]
+    int** pp = p;
+
+    torch::Tensor t =
+        torch::from_blob(pp, {3}, torch::TensorOptions().dtype(torch::kInt64));
+
+    // 取出原始 int**
+    int** restored = reinterpret_cast<int**>(t.data_ptr<int64_t>());
+    std::cout << *restored[0] << ", " << *restored[1] << ", " << *restored[2]
               << std::endl;
   }
 }

@@ -14,19 +14,19 @@
 
 #pragma once
 
-#include <cstdint>
+#include <c10/core/ScalarType.h>
 
 namespace c10 {
-enum class PADDLE_API MemoryFormat : int8_t {
-  Contiguous,
-  Preserve,
-  ChannelsLast,
-  ChannelsLast3d,
-  NumOptions
-};
+static auto default_dtype = ScalarType::Float;
+static auto default_complex_dtype = ScalarType::ComplexFloat;
 
+void inline set_default_dtype(ScalarType dtype) { default_dtype = dtype; }
+
+const ScalarType inline get_default_dtype() { return default_dtype; }
+
+ScalarType inline get_default_dtype_as_scalartype() { return default_dtype; }
+
+const ScalarType inline get_default_complex_dtype() {
+  return default_complex_dtype;
 }
-
-namespace torch {
-using c10::MemoryFormat;
-}  // namespace torch
+}  // namespace c10

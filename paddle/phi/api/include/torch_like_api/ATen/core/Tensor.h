@@ -14,19 +14,4 @@
 
 #pragma once
 
-#include <cstdint>
-
-namespace c10 {
-enum class PADDLE_API MemoryFormat : int8_t {
-  Contiguous,
-  Preserve,
-  ChannelsLast,
-  ChannelsLast3d,
-  NumOptions
-};
-
-}
-
-namespace torch {
-using c10::MemoryFormat;
-}  // namespace torch
+#include <ATen/core/TensorBody.h>

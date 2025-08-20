@@ -50,5 +50,10 @@ void __inline__ stream_synchronize(cudaStream_t stream) {
 }  // namespace c10::cuda
 
 namespace at::cuda {
-using c10::cuda;
+using c10::cuda::device_synchronize;
+using c10::cuda::stream_synchronize;
 }  // namespace at::cuda
+
+// namespace at {
+// using c10::cuda;
+// }  // namespace at

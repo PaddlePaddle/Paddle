@@ -130,5 +130,6 @@ struct OptionalCUDAGuard {
 }  // namespace c10::cuda
 
 namespace at::cuda {
-using c10::cuda;
+using c10::cuda::CUDAGuard;
+using c10::cuda::OptionalCUDAGuard;
 }  // namespace at::cuda

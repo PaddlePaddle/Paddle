@@ -14,19 +14,26 @@
 
 #pragma once
 
-#include <cstdint>
+#include <c10/core/TensorOptions.h>
+#include <optional>
+#include <string_view>
 
-namespace c10 {
-enum class PADDLE_API MemoryFormat : int8_t {
-  Contiguous,
-  Preserve,
-  ChannelsLast,
-  ChannelsLast3d,
-  NumOptions
-};
+#include "paddle/phi/api/include/api.h"
 
+namespace at {
+
+// aten::abs(Tensor self) -> Tensor
+inline at::Tensor abs(const at::Tensor& self) {
+  return paddle::experimental::abs(self._PD_GetInner());
 }
 
+// inline at::Tensor& abs_(at::Tensor& self) {
+//   return paddle::experimental::abs_(self._PD_GetInner());
+// }
+
+}  // namespace at
+
 namespace torch {
-using c10::MemoryFormat;
+using at::abs;
+// using c10::abs_;
 }  // namespace torch

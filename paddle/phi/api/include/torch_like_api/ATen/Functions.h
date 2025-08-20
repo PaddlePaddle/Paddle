@@ -13,20 +13,19 @@
 // limitations under the License.
 
 #pragma once
+#include <ATen/ops/from_blob.h>
 
-#include <cstdint>
+#include <ATen/common.h>
+#include <ATen/core/TensorBody.h>
+#include <ATen/ops/abs.h>
+#include <ATen/ops/empty.h>
+#include <ATen/ops/empty_like.h>
+#include <ATen/ops/full.h>
+#include <ATen/ops/ones.h>
+#include <ATen/ops/reshape.h>
+#include <ATen/ops/zeros.h>
+#include <ATen/ops/zeros_like.h>
 
-namespace c10 {
-enum class PADDLE_API MemoryFormat : int8_t {
-  Contiguous,
-  Preserve,
-  ChannelsLast,
-  ChannelsLast3d,
-  NumOptions
-};
+#include "paddle/phi/api/include/api.h"
 
-}
-
-namespace torch {
-using c10::MemoryFormat;
-}  // namespace torch
+namespace at {}  // namespace at

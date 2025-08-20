@@ -14,7 +14,7 @@
 
 #pragma once
 
+#include <ATen/Functions.h>
 #include <ATen/common.h>
-#include <ATen/functions.h>
 #include <torch/csrc/api/include/torch/types.h>
 #include <torch/library.h>
