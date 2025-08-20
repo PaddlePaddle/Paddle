@@ -29,7 +29,6 @@ defaults:
 jobs:
   clone:
     name: Api benchmark clone
-    if: github.event_name == 'schedule' && github.event.schedule == '0 21 * * *'
     uses: ./.github/workflows/_Clone-linux.yml
     with:
       clone_dir: Paddle-build
@@ -45,6 +44,7 @@ jobs:
 
   build:
     name: Api benchmark build
+    if: github.event_name == 'schedule' && github.event.schedule == '0 21 * * *'
     needs: [clone, build-docker]
     uses: ./.github/workflows/_Linux-build.yml
     with:
@@ -70,6 +70,7 @@ jobs:
       matrix:
         run-labels: [api-bm-20, api-bm-27]
     uses: ./.github/workflows/_Api-Benchmark.yml
+    needs: [clone, build-docker]
     with:
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
       baseline: 'true'
