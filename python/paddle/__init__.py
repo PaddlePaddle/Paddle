@@ -101,14 +101,15 @@ else:
 
     def new_init(self, *args, **kwargs):
         kwargs_cnt = len(kwargs.keys())
-        if kwargs_cnt:
+        default_dtype = kwargs.get("dtype", "float32")
+        if kwargs_cnt and not (kwargs_cnt == 1 and "dtype" in kwargs):
             super_init(self, *args, **kwargs)
             return
         if len(args) == 0:
-            super_init(self, paddle.empty(shape=[0], dtype="float32"))
+            super_init(self, paddle.empty(shape=[0], dtype=default_dtype))
             return
         elif len(args) == 1 and isinstance(args[0], (list, tuple)):
-            super_init(self, paddle.to_tensor(args[0], dtype="float32"))
+            super_init(self, paddle.tensor(args[0], dtype=default_dtype))
             return
         is_all_int = True
         for arg in args:
@@ -116,7 +117,7 @@ else:
                 is_all_int = False
                 break
         if is_all_int:
-            super_init(self, paddle.empty(list(args), dtype="float32"))
+            super_init(self, paddle.empty(list(args), dtype=default_dtype))
             return
         else:
             super_init(self, *args, **kwargs)

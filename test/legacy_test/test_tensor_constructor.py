@@ -25,14 +25,11 @@ class TestTensorConstructor(unittest.TestCase):
         paddle.seed(2025)
         self.shape = [10, 20, 30]
 
-    def test_construct_from_list(self):
+    def test_construct_from_list_and_tuple(self):
         x = np.random.random(size=self.shape)
         res = paddle.Tensor(list(x))
         np.testing.assert_allclose(x, res.numpy(), rtol=1e-6, atol=1e-6)
         self.assertEqual(res.dtype, paddle.float32)
-
-    def test_construct_from_tuple(self):
-        x = np.random.random(size=self.shape)
         res = paddle.Tensor(tuple(x))
         np.testing.assert_allclose(x, res.numpy(), rtol=1e-6, atol=1e-6)
         self.assertEqual(res.dtype, paddle.float32)
