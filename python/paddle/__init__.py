@@ -626,6 +626,9 @@ from .tensor.search import (
     where,
     where_,
 )
+from .tensor.softmax import (
+    softmax,
+)
 from .tensor.stat import (
     mean,
     median,
@@ -1329,6 +1332,7 @@ __all__ = [
     'get_autocast_dtype',
     'get_autocast_cpu_dtype',
     'get_autocast_gpu_dtype',
+    'softmax',
 ]
 import os
 

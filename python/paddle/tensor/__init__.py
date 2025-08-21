@@ -479,6 +479,7 @@ from .search import (  # noqa: F401
     where,
     where_,
 )
+from .softmax import softmax as softmax
 from .stat import (  # noqa: F401
     mean,
     median,
@@ -908,6 +909,7 @@ tensor_method_func = [
     'set_',
     'resize_',
     'argwhere',
+    'softmax',
 ]
 
 mul = multiply
