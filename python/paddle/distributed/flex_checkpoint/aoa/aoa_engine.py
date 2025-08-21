@@ -219,7 +219,7 @@ class AOAEngine:
                         )
                     else:
                         sub_slices.append(
-                            (aidx, tuple(sub_src_sl), tuple(sub_dst_sl)), None
+                            (aidx, tuple(sub_src_sl), tuple(sub_dst_sl), None)
                         )
             new_shape = list(tensor.shape)
             new_shape[axis] = sz
