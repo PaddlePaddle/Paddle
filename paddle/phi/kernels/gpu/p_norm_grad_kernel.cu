@@ -52,12 +52,10 @@ struct PNormGradFunctor {
                   int size) {
     auto unstable_term =
         (*x).abs().template cast<MT>().pow(this->porder).template cast<T>();
-
     auto mask = (*x) == x->constant(static_cast<T>(0));
     auto stable_term =
         mask.select(x->constant(static_cast<T>(0)), unstable_term);
     auto self_scaled = (*x).sign() * stable_term;
-
     auto norm_term =
         (*y).template cast<MT>().pow(-this->porder).template cast<T>();
     dx->device(place) =
