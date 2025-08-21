@@ -126,6 +126,7 @@
   kernel :
     func : cross_entropy_with_softmax_bwd_w_downcast
     data_type : softmax
+  support_dygraph_mode : true
 
 - op : dequantize_xpu
   args : (Tensor x, DataType out_dtype, float scale = 1.0f)
@@ -158,6 +159,7 @@
     param : [token_indices, main_grad_, out_grad]
     data_type : main_grad_
   inplace : (main_grad_ -> main_grad_out)
+  support_dygraph_mode : true
 
 - op : embedding_with_eltwise_add_xpu
   args : (Tensor[] ids, Tensor[] tables, Tensor mask, int64_t padding_idx)

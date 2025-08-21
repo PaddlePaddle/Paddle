@@ -81,7 +81,9 @@ if(((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
     "fusion/gpu/fused_transpose_split_quant_kernel.cu"
     "fusion/gpu/fused_transpose_wlch_split_quant_kernel.cu"
     "fusion/gpu/fused_swiglu_weighted_bwd_kernel.cu"
-    "fusion/gpu/fused_weighted_swiglu_act_quant_kernel.cu")
+    "fusion/gpu/fused_weighted_swiglu_act_quant_kernel.cu",
+    "fusion/gpu/cross_entropy_bwd_w_downcast.cu",
+    "fusion/gpu/embedding_grad_add_to_kernel.cu")
 endif()
 
 # Get flag for CUDA arch >= 80
