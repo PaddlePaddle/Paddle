@@ -348,6 +348,8 @@ add_doc_and_signature(
 
     Keyword Args:
         out (Tensor|optional): The output tensor.
+
+    Returns:
         Tensor: Results the ``logical and`` on the specified axis of input Tensor `x`,  it's data type is bool.
 
     Examples:
