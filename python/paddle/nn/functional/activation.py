@@ -603,9 +603,9 @@ def prelu(
                [-1.25000000,  6.        ,  7.        , -2.        ],
                [ 6.        ,  7.        ,  8.        ,  9.        ]]]])
     """
-    assert (
-        len(weight.shape) == 0 or len(weight.shape) == 1
-    ), "The dim count of weight shape should be 0 or 1 in prelu()."
+    assert len(weight.shape) == 0 or len(weight.shape) == 1, (
+        "The dim count of weight shape should be 0 or 1 in prelu()."
+    )
 
     mode = 'all'
     if len(weight.shape) == 1 and weight.shape[0] > 1:
@@ -626,19 +626,19 @@ def prelu(
 
         data_format = 'NCHW' if data_format[1] == 'C' else 'NHWC'
 
-        assert (
-            len(x.shape) > 1
-        ), "The dim count of x should be equal or larger than 2 in prelu() when weight shape is not [1]."
+        assert len(x.shape) > 1, (
+            "The dim count of x should be equal or larger than 2 in prelu() when weight shape is not [1]."
+        )
 
         # NOTE(GuoxiaWang): support NHWC data format
         if data_format == 'NHWC':
-            assert (
-                weight.shape[0] == x.shape[-1]
-            ), "The weight size should be equal to x input channel in prelu() when weight shape is not [1]."
+            assert weight.shape[0] == x.shape[-1], (
+                "The weight size should be equal to x input channel in prelu() when weight shape is not [1]."
+            )
         else:
-            assert (
-                weight.shape[0] == x.shape[1]
-            ), "The weight size should be equal to x input channel in prelu() when weight shape is not [1]."
+            assert weight.shape[0] == x.shape[1], (
+                "The weight size should be equal to x input channel in prelu() when weight shape is not [1]."
+            )
         mode = 'channel'
 
     if in_dynamic_or_pir_mode():

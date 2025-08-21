@@ -508,30 +508,30 @@ def flash_attention(
             fa_version = paddle.base.framework.get_flags(
                 ["FLAGS_flash_attn_version"]
             )["FLAGS_flash_attn_version"]
-        assert (
-            in_dynamic_or_pir_mode() or fa_version == 2
-        ), "flash attention 3 only support dynamic or pir mode"
-        assert (
-            dropout == 0.0 or fa_version == 2
-        ), "flash attention 3 does not support dropout"
-        assert (
-            not return_softmax or fa_version == 2
-        ), "flash attention 3 does not support return softmax"
-        assert (
-            fixed_seed_offset is None or fa_version == 2
-        ), "flash attention 3 does not support return softmax"
-        assert (
-            rng_name == "" or fa_version == 2
-        ), "flash attention 3 does not support setting rng_name"
-        assert (
-            training or fa_version == 2
-        ), "flash attention 3 does not support setting training"
-        assert (
-            name is None or fa_version == 2
-        ), "flash attention 3 does not support setting name"
-        assert (
-            softmax_scale is None or fa_version == 3
-        ), "flash attention 2 does not support setting softmax_scale"
+        assert in_dynamic_or_pir_mode() or fa_version == 2, (
+            "flash attention 3 only support dynamic or pir mode"
+        )
+        assert dropout == 0.0 or fa_version == 2, (
+            "flash attention 3 does not support dropout"
+        )
+        assert not return_softmax or fa_version == 2, (
+            "flash attention 3 does not support return softmax"
+        )
+        assert fixed_seed_offset is None or fa_version == 2, (
+            "flash attention 3 does not support return softmax"
+        )
+        assert rng_name == "" or fa_version == 2, (
+            "flash attention 3 does not support setting rng_name"
+        )
+        assert training or fa_version == 2, (
+            "flash attention 3 does not support setting training"
+        )
+        assert name is None or fa_version == 2, (
+            "flash attention 3 does not support setting name"
+        )
+        assert softmax_scale is None or fa_version == 3, (
+            "flash attention 2 does not support setting softmax_scale"
+        )
         if in_dynamic_or_pir_mode():
             if fa_version == 2:
                 (result_attention, result_softmax, _, _) = _C_ops.flash_attn(
@@ -1142,9 +1142,9 @@ def flash_attn_varlen_func(
             >>> output = paddle.nn.functional.flash_attention.flash_attention_v3_varlen(q, q, q, cu_seqlens_q, cu_seqlens_q, max_seqlen_q=max_seq_len_q, max_seqlen_k=max_seq_len_q, causal=True)
             >>> # doctest: -SKIP
     """
-    assert (
-        "xpu" not in paddle.get_device()
-    ), "flash_attn_varlen_func is not supported on xpu"
+    assert "xpu" not in paddle.get_device(), (
+        "flash_attn_varlen_func is not supported on xpu"
+    )
 
     assert not paddle.get_flags(["FLAGS_cudnn_deterministic"])[
         "FLAGS_cudnn_deterministic"
@@ -1157,9 +1157,9 @@ def flash_attn_varlen_func(
         == 3
     ), "FLAGS_flash_attn_version is 2, conflicts with flash_attn_varlen_func"
 
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "flash_attn_varlen_func only support dynamic or pir mode"
+    assert in_dynamic_or_pir_mode(), (
+        "flash_attn_varlen_func only support dynamic or pir mode"
+    )
 
     assert qv is None, "flash_attn_varlen_func does not support setting qv"
 
@@ -2203,9 +2203,9 @@ def flashmask_attention(
             window_size = (window_size, window_size)
         sq = query.shape[1]
         bsz = query.shape[0]
-        assert (
-            startend_row_indices is None
-        ), "can't use window_size with startend_row_indices"
+        assert startend_row_indices is None, (
+            "can't use window_size with startend_row_indices"
+        )
         if causal:
             startend_row_indices = paddle.arange(
                 window_size[0] + 1, sq + window_size[0] + 1, dtype="int32"
@@ -2246,24 +2246,26 @@ def flashmask_attention(
         )
 
     else:
-        assert (
-            startend_row_indices.dtype == paddle.int32
-        ), f"startend_row_indices.dtype must be paddle.int32, but got {startend_row_indices.dtype}"
-        assert (
-            len(startend_row_indices.shape) == 4
-        ), f"startend_row_indices rank must be 4,but got {startend_row_indices.shape}"
+        assert startend_row_indices.dtype == paddle.int32, (
+            f"startend_row_indices.dtype must be paddle.int32, but got {startend_row_indices.dtype}"
+        )
+        assert len(startend_row_indices.shape) == 4, (
+            f"startend_row_indices rank must be 4,but got {startend_row_indices.shape}"
+        )
 
-        assert (
-            startend_row_indices.shape[0] == key.shape[0]
-        ), f"startend_row_indices.shape[0] must be equal to batch_size, but got {startend_row_indices.shape[0]} and {key.shape[0]}"
+        assert startend_row_indices.shape[0] == key.shape[0], (
+            f"startend_row_indices.shape[0] must be equal to batch_size, but got {startend_row_indices.shape[0]} and {key.shape[0]}"
+        )
 
-        assert (
-            startend_row_indices.shape[2] == key.shape[1]
-        ), f"startend_row_indices.shape[2] must be equal to seqlen_k, but got {startend_row_indices.shape[2]} and {key.shape[2]}"
+        assert startend_row_indices.shape[2] == key.shape[1], (
+            f"startend_row_indices.shape[2] must be equal to seqlen_k, but got {startend_row_indices.shape[2]} and {key.shape[2]}"
+        )
         assert startend_row_indices.shape[1] in [
             1,
             key.shape[2],
-        ], "startend_row_indices head_num must be equal to 1(broadcast) or head_num_k."
+        ], (
+            "startend_row_indices head_num must be equal to 1(broadcast) or head_num_k."
+        )
 
         if causal:
             if startend_row_indices.shape[-1] == 1:
@@ -2383,9 +2385,9 @@ def calc_reduced_attention_scores(
             >>> )
             >>> # doctest: -SKIP
     """
-    assert (
-        query.stop_gradient and key.stop_gradient
-    ), 'calc_reduced_attention_scores() is for inference only.'
+    assert query.stop_gradient and key.stop_gradient, (
+        'calc_reduced_attention_scores() is for inference only.'
+    )
 
     if in_dynamic_or_pir_mode():
         reduced_scores = _C_ops.calc_reduced_attn_scores(

@@ -37,6 +37,7 @@ def _parse_function_signature(func_name: str, code: str) -> inspect.Signature:
     return inspect.signature(globals[func_name])
 
 
+# sundong
 def add_doc_and_signature(func_name: str, docstr: str, func_def: str) -> None:
     """
     Add docstr for function (paddle.*) and method (paddle.Tensor.*) if method exists
@@ -349,6 +350,7 @@ add_doc_and_signature(
 
     Returns:
         Tensor: Results the ``logical and`` on the specified axis of input Tensor `x`,  it's data type is bool.
+
     Examples:
         .. code-block:: python
             >>> # type: ignore
@@ -396,11 +398,10 @@ add_doc_and_signature(
     keepdim: bool = False,
     name: str | None = None,
 ) -> Tensor
-""",
+    """,
 )
 
-
-# ningzhengsheng code
+# zhengsheng
 add_doc_and_signature(
     "roll",
     """
@@ -550,3 +551,25 @@ def flatten(
 ) -> Tensor
 """,
 )
+
+# liuyi
+
+# shenwei
+
+# zhouxin
+
+# hehongyu
+
+# lousiyu
+
+# zhengshijie
+
+# lihaoyang
+
+# lubingxin
+
+# chenhuangrun
+
+# zhanrongrun
+
+# other

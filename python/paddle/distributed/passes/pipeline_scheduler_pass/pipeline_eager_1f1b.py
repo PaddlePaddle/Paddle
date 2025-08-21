@@ -34,9 +34,9 @@ class PipelineEager1F1BPass(PipelinePassBase):
         pp_degree = self.get_attr("pp_degree")
 
         job_list = []
-        assert (
-            2 * (pp_degree - pp_stage) - 1 <= num_micro_batches
-        ), "Num of micro batches should larger than 2 * (pp_degree - pp_stage) - 1."
+        assert 2 * (pp_degree - pp_stage) - 1 <= num_micro_batches, (
+            "Num of micro batches should larger than 2 * (pp_degree - pp_stage) - 1."
+        )
 
         micro_batch_in_warmup = 2 * (pp_degree - pp_stage) - 1
         micro_batch_in_1f1b = num_micro_batches - micro_batch_in_warmup
