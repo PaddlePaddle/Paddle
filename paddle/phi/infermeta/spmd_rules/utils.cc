@@ -131,6 +131,119 @@ std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
   return axis_to_dim_map;
 }
 
+std::unordered_map<std::string, int64_t> GetAxesSizes(
+    const std::vector<std::pair<std::string, std::vector<int64_t>>>&
+        axes_to_size) {
+  std::unordered_map<std::string, int64_t> axis_to_size_map;
+  for (auto& pair : axes_to_size) {
+    for (size_t i = 0; i < pair.second.size(); ++i) {
+      auto axis = pair.first.substr(i, 1);
+      axis_to_size_map[axis] = pair.second[i];
+    }
+  }
+  return axis_to_size_map;
+}
+
+int64_t calculate_total_shards(const std::vector<int64_t>& sharding_vec,
+                               const std::vector<int64_t>& mesh_shape) {
+  if (sharding_vec.empty()) return 1;
+  return std::accumulate(
+      sharding_vec.begin(),
+      sharding_vec.end(),
+      1LL,
+      [&](int64_t acc, int64_t dim) { return acc * mesh_shape.at(dim); });
+}
+
+std::unordered_map<std::string, std::vector<int64_t>> ShardingMergeForTensors(
+    const std::vector<
+        std::pair<std::string, std::vector<std::vector<int64_t>>>>&
+        tensor_axes_to_dim_pairs,
+    const std::unordered_map<std::string, int64_t>& axis_sizes,
+    const std::vector<int64_t>& mesh_shape,
+    const bool merge_conflicts) {
+  // Merging Suggestions
+  std::unordered_map<std::string, std::vector<int64_t>> current_sharding;
+  for (auto& pair : tensor_axes_to_dim_pairs) {
+    const std::string& einsum_str = pair.first;
+    const std::vector<std::vector<int64_t>>& dims_mapping = pair.second;
+    for (size_t i = 0; i < einsum_str.length(); ++i) {
+      auto axis = pair.first.substr(i, 1);
+      auto& target_vec = current_sharding[axis];
+      for (int64_t mesh_dim : dims_mapping[i]) {
+        if (std::find(target_vec.begin(), target_vec.end(), mesh_dim) ==
+            target_vec.end()) {
+          target_vec.push_back(mesh_dim);
+        }
+      }
+    }
+  }
+
+  // Iterative Conflict Resolution
+  bool conflicts_resolved = false;
+  while (!conflicts_resolved) {
+    conflicts_resolved = true;
+    std::string worst_conflict_axis = "";
+    int mesh_dim_to_remove = -1;
+    int64_t max_mesh_dim_size = -1;
+
+    for (auto const& [axis, sharding_vec] : current_sharding) {
+      int64_t axis_size = axis_sizes.at(axis);
+      int64_t total_shards = calculate_total_shards(sharding_vec, mesh_shape);
+
+      if (axis_size % total_shards != 0) {
+        conflicts_resolved = false;
+        for (int64_t mesh_dim : sharding_vec) {
+          int64_t current_mesh_dim_size = mesh_shape[mesh_dim];
+          // First reduce the max mesh dim size
+          if (current_mesh_dim_size > max_mesh_dim_size) {
+            max_mesh_dim_size = current_mesh_dim_size;
+            worst_conflict_axis = axis;
+            mesh_dim_to_remove = mesh_dim;
+          }
+        }
+        break;
+      }
+    }
+    if (!conflicts_resolved && !worst_conflict_axis.empty()) {
+      auto& vec_to_modify = current_sharding.at(worst_conflict_axis);
+      vec_to_modify.erase(
+          std::remove(
+              vec_to_modify.begin(), vec_to_modify.end(), mesh_dim_to_remove),
+          vec_to_modify.end());
+    }
+  }
+  // Mesh Dimension Reuse Conflict
+  std::unordered_map<int64_t, std::string> mesh_dim_to_axes;
+  for (auto const& [axis, sharding_vec] : current_sharding) {
+    for (int64_t mesh_dim : sharding_vec) {
+      mesh_dim_to_axes[mesh_dim] += axis;
+    }
+  }
+  for (auto const& [mesh_dim, competing_axes] : mesh_dim_to_axes) {
+    if (competing_axes.size() > 1) {
+      std::string winning_axis = "";
+      int64_t max_size = -1;
+      for (auto const& axis_char : competing_axes) {
+        std::string axis_str(1, axis_char);
+        int64_t size = axis_sizes.at(axis_str);
+        // Pick the axis with the largest size.
+        if (size > max_size) {
+          max_size = size;
+          winning_axis = axis_char;
+        }
+      }
+      for (auto const& axis_char : competing_axes) {
+        std::string axis_str(1, axis_char);
+        if (axis_str != winning_axis) {
+          auto& vec = current_sharding.at(axis_str);
+          vec.erase(std::remove(vec.begin(), vec.end(), mesh_dim), vec.end());
+        }
+      }
+    }
+  }
+  return current_sharding;
+}
+
 TensorDistAttr CopyTensorDistAttrForOutput(
     const TensorDistAttr& src_dist_attr) {
   TensorDistAttr new_dist_attr = TensorDistAttr();
