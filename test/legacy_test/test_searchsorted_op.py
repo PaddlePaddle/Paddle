@@ -251,7 +251,6 @@ class TestSearchSortedAPI(unittest.TestCase):
 
 
 class TestSearchSortedError(unittest.TestCase):
-
     def test_error_api(self):
         paddle.enable_static()
 

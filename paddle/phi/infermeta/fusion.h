@@ -668,7 +668,13 @@ void FusedMultiTransformerInt8InferMeta(
     std::vector<MetaTensor*> cache_kv_out,
     MetaTensor* out);
 
+void FusedPartialRopeInferMeta(const MetaTensor& x,
+                               const MetaTensor& cos,
+                               const MetaTensor& sin,
+                               MetaTensor* out);
+
 void FusedTransposeSplitQuantInferMeta(const MetaTensor& x,
+                                       const MetaTensor& input_scales,
                                        const IntArray& tokens_per_expert,
                                        bool pow_2_scales,
                                        std::vector<MetaTensor*> outs,

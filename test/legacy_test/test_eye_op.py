@@ -119,7 +119,6 @@ class TestEyeOp3(OpTest):
 
 
 class API_TestTensorEye(unittest.TestCase):
-
     def test_static_out(self):
         with paddle.static.program_guard(paddle.static.Program()):
             data = paddle.eye(10)

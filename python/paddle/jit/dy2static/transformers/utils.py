@@ -268,16 +268,16 @@ def generate_name_node(name_ids, ctx=gast.Load(), gen_tuple_if_single=False):
 
 
 def get_attribute_full_name(node):
-    assert isinstance(
-        node, gast.Attribute
-    ), "Input non-Attribute node to get attribute full name"
+    assert isinstance(node, gast.Attribute), (
+        "Input non-Attribute node to get attribute full name"
+    )
     return ast_to_source_code(node).strip()
 
 
 def is_api_in_module(node, module_prefix):
-    assert isinstance(
-        node, gast.Call
-    ), "Input non-Call node for is_api_in_module"
+    assert isinstance(node, gast.Call), (
+        "Input non-Call node for is_api_in_module"
+    )
 
     # Python can have gast.Call as function, for example: convert_call(func)(x)
     # We only check the most outside function
@@ -385,9 +385,9 @@ class NameScope:
         it means global vars; otherwise, it means local vars.
         Only valid after FunctionNameLivenessAnalysis visitor.
         """
-        assert self._is_simple_name(
-            name
-        ), "is_global_var accept a simple name, but get `{name}`."
+        assert self._is_simple_name(name), (
+            "is_global_var accept a simple name, but get `{name}`."
+        )
         ancestor = self
         while ancestor is not None:
             if name in ancestor.globals:
@@ -612,9 +612,9 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
         this node is local to the function and shouldn't
         be created.
         """
-        assert isinstance(
-            node, gast.FunctionDef
-        ), "Input node is not function define node"
+        assert isinstance(node, gast.FunctionDef), (
+            "Input node is not function define node"
+        )
         names = list(node.args.args)
         names.append(node.args.vararg)
         names.append(node.args.kwarg)

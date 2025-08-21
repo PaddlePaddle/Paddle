@@ -456,7 +456,6 @@ class TestUnpoolOpAPI_dy4(unittest.TestCase):
 
 
 class TestUnpoolOpAPI_st(unittest.TestCase):
-
     def test_case(self):
         import paddle
         import paddle.nn.functional as F

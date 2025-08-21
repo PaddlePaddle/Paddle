@@ -203,9 +203,9 @@ def local_map(
             for out, out_placement in zip(flat_out, out_placements):
                 if paddle.in_dynamic_mode():
                     if isinstance(out, paddle.Tensor):
-                        assert not dist.auto_parallel.api.is_dist_tensor(
-                            out
-                        ), f"Expected dense tensor output but got {type(out)}: {out}"
+                        assert not dist.auto_parallel.api.is_dist_tensor(out), (
+                            f"Expected dense tensor output but got {type(out)}: {out}"
+                        )
 
                         flat_dist_and_arg_out.append(
                             dist.auto_parallel.api.dtensor_from_local(
@@ -220,9 +220,9 @@ def local_map(
                         flat_dist_and_arg_out.append(out)
                 else:
                     if isinstance(out, paddle.base.libpaddle.pir.Value):
-                        assert not dist.auto_parallel.api.is_dist_tensor(
-                            out
-                        ), f"Expected dense tensor output but got {type(out)}: {out}"
+                        assert not dist.auto_parallel.api.is_dist_tensor(out), (
+                            f"Expected dense tensor output but got {type(out)}: {out}"
+                        )
 
                         flat_dist_and_arg_out.append(
                             dist.auto_parallel.api.dtensor_from_local(
@@ -241,9 +241,9 @@ def local_map(
             flat_dist_and_arg_out = []
             for out, out_placement in zip(flat_out, out_placements):
                 if out_placement is not None:
-                    assert (
-                        process_mesh is not None
-                    ), "process_mesh must be specified when out_placements is not None"
+                    assert process_mesh is not None, (
+                        "process_mesh must be specified when out_placements is not None"
+                    )
                     flat_dist_and_arg_out.append(
                         dist.auto_parallel.api.dtensor_from_local(
                             out, process_mesh, out_placement

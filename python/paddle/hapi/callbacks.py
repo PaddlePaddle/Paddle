@@ -909,8 +909,7 @@ class EarlyStopping(Callback):
         self.save_dir: str | None = None
         if mode not in ['auto', 'min', 'max']:
             warnings.warn(
-                f'EarlyStopping mode {mode} is unknown, '
-                'fallback to auto mode.'
+                f'EarlyStopping mode {mode} is unknown, fallback to auto mode.'
             )
             mode = 'auto'
         if mode == 'min':
@@ -1361,7 +1360,7 @@ class ReduceLROnPlateau(Callback):
         self.monitor = monitor
         if factor >= 1.0:
             raise ValueError(
-                'ReduceLROnPlateau ' 'does not support a factor >= 1.0.'
+                'ReduceLROnPlateau does not support a factor >= 1.0.'
             )
 
         self.factor = factor

@@ -38,7 +38,7 @@ void SetOp(ProgramDesc* prog,
            const std::string& onednn_data_type = "float32") {
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
-  op->SetAttr("use_mkldnn", use_onednn);
+  op->SetAttr("use_onednn", use_onednn);
   op->SetAttr("name", name);
   if (type != "dropout" && type != "quantize" && type != "dequantize") {
     op->SetAttr("mkldnn_data_type", onednn_data_type);
@@ -773,7 +773,7 @@ void SetMultiGruOp(ProgramDesc* prog,
   op->SetOutput("Hidden", {h});
   op->SetAttr("layers", layers);
   op->SetAttr("origin_mode", false);
-  op->SetAttr("use_mkldnn", true);
+  op->SetAttr("use_onednn", true);
   op->SetAttr("name", std::string("Multi_gru"));
   op->SetAttr("mkldnn_data_type", std::string("int8"));
   op->SetAttr("Scale_data", 1.0f);

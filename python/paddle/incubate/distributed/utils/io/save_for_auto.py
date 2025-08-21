@@ -145,13 +145,13 @@ def _save_param_attr(state_dict_, path, dims_mapping_dict=None):
     state_dict.pop("LR_Scheduler", None)
 
     if dims_mapping_dict is not None:
-        assert isinstance(
-            dims_mapping_dict, dict
-        ), "dims_mapping_dict must be an instance of dict"
+        assert isinstance(dims_mapping_dict, dict), (
+            "dims_mapping_dict must be an instance of dict"
+        )
         for k in state_dict.keys():
-            assert (
-                k in dims_mapping_dict
-            ), f"param {k} cannot find dims mapping in dims_mapping_dict"
+            assert k in dims_mapping_dict, (
+                f"param {k} cannot find dims mapping in dims_mapping_dict"
+            )
     if dist.get_world_size() > 1:
         hcg = fleet.get_hybrid_communicate_group()
         dp_degree = hcg.get_data_parallel_world_size()
@@ -289,9 +289,9 @@ def _name_mapping_dist2single(state_dict, pp_group):
         for k in keys:
             matched = matcher.search(k)
             logger.debug(f"matched: {k}: {matched}")
-            assert (
-                matched is not None
-            ), f"the name of param, '{k}', is not satisfied the format 'name_idx.xxx'"
+            assert matched is not None, (
+                f"the name of param, '{k}', is not satisfied the format 'name_idx.xxx'"
+            )
             name_idx = k[matched.start() : matched.end()]
             logger.debug(f"get param_type_idx: {name_idx}")
 
@@ -313,9 +313,9 @@ def _name_mapping_dist2single(state_dict, pp_group):
             else:
                 types_idx[v[0]].append(v[1])
         for k, v in types_idx.items():
-            assert v == list(
-                range(v[0], v[-1] + 1)
-            ), f"{k} is not continuous: {v}"
+            assert v == list(range(v[0], v[-1] + 1)), (
+                f"{k} is not continuous: {v}"
+            )
 
     logger.debug(f"param type: {param_types}")
 

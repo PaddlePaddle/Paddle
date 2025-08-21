@@ -62,12 +62,12 @@ class GroupWiseWeightObserverLayer(BaseObserver):
         absmax method to calculate the scale
         """
         input_shape = inputs.shape
-        assert (
-            self.group_size == 64 or self.group_size == 128
-        ), "group_size only support 64 or 128"
-        assert (
-            inputs.shape[0] % self.group_size == 0
-        ), "group_size must be a factor of input channels"
+        assert self.group_size == 64 or self.group_size == 128, (
+            "group_size only support 64 or 128"
+        )
+        assert inputs.shape[0] % self.group_size == 0, (
+            "group_size must be a factor of input channels"
+        )
         assert len(inputs.shape) == 2, "Currently only support 2D tensor"
         input_processed = inputs.transpose([1, 0]).reshape(
             [input_shape[1], input_shape[0] // self.group_size, self.group_size]

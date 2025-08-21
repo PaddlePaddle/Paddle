@@ -47,7 +47,6 @@ def dynamic_guard():
 
 
 class TestSqrtOpError(unittest.TestCase):
-
     def test_errors(self):
         with (
             static_guard(),
@@ -229,7 +228,6 @@ class TestExp_Complex128(TestExp_Complex64):
 
 
 class Test_Exp_Op_Fp16(unittest.TestCase):
-
     def test_api_fp16(self):
         with (
             static_guard(),
@@ -1124,7 +1122,6 @@ class TestSinhAPI(unittest.TestCase):
 
 
 class TestSinhOpError(unittest.TestCase):
-
     def test_errors(self):
         with (
             static_guard(),
@@ -1258,7 +1255,6 @@ class TestCoshAPI(unittest.TestCase):
 
 
 class TestCoshOpError(unittest.TestCase):
-
     def test_errors(self):
         with (
             static_guard(),
@@ -2077,6 +2073,31 @@ class TestCeil_ZeroDim(TestCeil):
         self.shape = []
 
 
+class TestCeil_UInt8(TestCeil):
+    def init_dtype(self):
+        self.dtype = np.uint8
+
+
+class TestCeil_Int8(TestCeil):
+    def init_dtype(self):
+        self.dtype = np.int8
+
+
+class TestCeil_Int16(TestCeil):
+    def init_dtype(self):
+        self.dtype = np.int16
+
+
+class TestCeil_Int32(TestCeil):
+    def init_dtype(self):
+        self.dtype = np.int32
+
+
+class TestCeil_Int64(TestCeil):
+    def init_dtype(self):
+        self.dtype = np.int64
+
+
 class TestFloor(TestActivation):
     def setUp(self):
         self.op_type = "floor"
@@ -2136,6 +2157,31 @@ class TestFloor(TestActivation):
 class TestFloor_ZeroDim(TestFloor):
     def init_shape(self):
         self.shape = []
+
+
+class TestFloor_UInt8(TestFloor):
+    def init_dtype(self):
+        self.dtype = np.uint8
+
+
+class TestFloor_Int8(TestFloor):
+    def init_dtype(self):
+        self.dtype = np.int8
+
+
+class TestFloor_Int16(TestFloor):
+    def init_dtype(self):
+        self.dtype = np.int16
+
+
+class TestFloor_Int32(TestFloor):
+    def init_dtype(self):
+        self.dtype = np.int32
+
+
+class TestFloor_Int64(TestFloor):
+    def init_dtype(self):
+        self.dtype = np.int64
 
 
 class TestCos(TestActivation):
@@ -4299,7 +4345,6 @@ class TestLog10_Op_Int(unittest.TestCase):
 
 
 class TestLog10API(unittest.TestCase):
-
     def test_api(self):
         with static_guard():
             with paddle.static.program_guard(
@@ -4390,7 +4435,6 @@ class TestLog1p_Complex128(TestLog1p_Complex64):
 
 
 class Test_Log1p_Op_Fp16(unittest.TestCase):
-
     def test_api_fp16(self):
         with (
             static_guard(),
@@ -4445,7 +4489,6 @@ class TestLog1p_ZeroSize(TestLog1p):
 
 
 class TestLog1pAPI(unittest.TestCase):
-
     def test_api(self):
         with static_guard():
             with base.program_guard(
