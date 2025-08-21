@@ -261,18 +261,18 @@ def size_args_decorator(func: Callable) -> Callable:
     """
 
     @functools.wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
-        # 如果 kwargs 中有 'size'，改成 'shape'
+    def wrapped_func(*args: Any, **kwargs: Any) -> Any:
         if 'size' in kwargs:
             kwargs['shape'] = kwargs.pop('size')
-        # 如果第一个位置参数是整数，则把所有位置参数组成 shape
-        elif len(args) >= 1 and all(isinstance(a, int) for a in args):
+        elif len(args) >= 1 and isinstance(args[0], int):
             kwargs['shape'] = list(args)
             args = ()
 
         return func(*args, **kwargs)
 
-    return wrapper
+    wrapped_func.__signature__ = inspect.signature(func)
+
+    return wrapped_func
 
 
 class VariableArgsDecorator(DecoratorBase):
