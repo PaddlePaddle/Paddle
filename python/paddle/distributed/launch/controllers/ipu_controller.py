@@ -69,9 +69,9 @@ class IPUController(CollectiveController):
 
         num_ipus = int(self.ctx.args.devices)
         # The number of replicas for data parallel
-        assert (
-            num_ipus % poprun_args.ipus_per_replica
-        ) == 0, f"The number of IPUs:{num_ipus} mod the number of IPUs per replica:{poprun_args.ipus_per_replica} must == 0"
+        assert (num_ipus % poprun_args.ipus_per_replica) == 0, (
+            f"The number of IPUs:{num_ipus} mod the number of IPUs per replica:{poprun_args.ipus_per_replica} must == 0"
+        )
         num_replicas = num_ipus // poprun_args.ipus_per_replica
         self.ctx.logger.info(f"The number of total replicas is {num_replicas}.")
 
@@ -79,9 +79,9 @@ class IPUController(CollectiveController):
         num_nodes = len(poprun_args.hosts.split(','))
         num_procs = num_nodes * poprun_args.nproc_per_host
         self.ctx.logger.info(f"The number of total processes is {num_procs}.")
-        assert (
-            num_replicas % num_procs
-        ) == 0, f"The number of replicas:{num_replicas} mod the number of processes:{num_procs} must == 0"
+        assert (num_replicas % num_procs) == 0, (
+            f"The number of replicas:{num_replicas} mod the number of processes:{num_procs} must == 0"
+        )
 
         # hosts and endpoints
         hosts = poprun_args.hosts.replace(' ', '').split(',')
