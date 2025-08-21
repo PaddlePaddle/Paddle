@@ -112,9 +112,9 @@ class QAT(Quantization):
                   )
                 )
         """
-        assert (
-            model.training
-        ), "Quantization-Aware Training should work on training models. Please set training mode by model.train()."
+        assert model.training, (
+            "Quantization-Aware Training should work on training models. Please set training mode by model.train()."
+        )
         _model = model if inplace else copy.deepcopy(model)
         self._config._specify(_model)
         self._convert_to_quant_layers(_model, self._config)

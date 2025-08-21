@@ -97,9 +97,9 @@ def get_axes_for_reduce_op(
         dim = (dim,)
 
     if has_implicit_batch_dimension:
-        assert (
-            0 not in dim
-        ), "Can't reduce over batch dimension when it's implicit."
+        assert 0 not in dim, (
+            "Can't reduce over batch dimension when it's implicit."
+        )
 
     axes = 0
     for d in dim:
@@ -133,9 +133,9 @@ def get_trt_plugin(plugin_name, field_collection, version, plugin_namespace=""):
     plugin_creator = plugin_registry.get_plugin_creator(
         plugin_name, version, plugin_namespace
     )
-    assert (
-        plugin_creator
-    ), f"Unable to found plugin creator with name {plugin_name}"
+    assert plugin_creator, (
+        f"Unable to found plugin creator with name {plugin_name}"
+    )
     plugin = plugin_creator.create_plugin(
         name=plugin_name, field_collection=field_collection
     )
@@ -362,9 +362,9 @@ def resize_to_1d(network, shape_tensor, name=None):
 
 # Get element tensor of 1D shape tensor
 def get_shape_tensor_element(network, x, index, is_scalar=False, name=None):
-    assert (
-        index >= 0
-    ), f"The index should be greater or equal than 0, but got {index}"
+    assert index >= 0, (
+        f"The index should be greater or equal than 0, but got {index}"
+    )
     index_tensor_name = [name[0], "index_tensor"] if name is not None else None
     index_tensor = add_1D_constant_layer(
         network, index, is_scalar=is_scalar, name=index_tensor_name
@@ -632,9 +632,9 @@ def convert_conv2d(network, paddle_op, inputs):
     groups = paddle_op.attrs().get("groups", 1)
 
     if has_dynamic_shape(input_shape):
-        assert (
-            input_shape[1] != -1
-        ), "Channel dim can't be dynamic for transpose convolution."
+        assert input_shape[1] != -1, (
+            "Channel dim can't be dynamic for transpose convolution."
+        )
 
     output_padding = paddle_op.attrs().get("output_padding", [0, 0])
     padding_algorithm = paddle_op.attrs().get("padding_algorithm", "EXPLICIT")
@@ -850,9 +850,9 @@ def add_reduce_layer(network, paddle_op, inputs, op_type):
     input_shape = paddle_op.operands()[0].source().shape
     keepdim = paddle_op.attrs()["keepdim"]
     if network.has_implicit_batch_dimension:
-        assert (
-            axis != 0
-        ), "can't reduce on axis == 0 when network has implicit batch dimension"
+        assert axis != 0, (
+            "can't reduce on axis == 0 when network has implicit batch dimension"
+        )
     output_shape = []
     if len(axis) == 0:
         axis = list(range(len(input_shape)))

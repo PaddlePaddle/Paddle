@@ -398,16 +398,16 @@ class ComposeDataset(Dataset[tuple[Unpack[_Ts]]]):
         self.datasets = list(datasets)
         assert len(self.datasets) > 0, "input datasets should not be empty"
         for i, dataset in enumerate(self.datasets):
-            assert isinstance(
-                dataset, Dataset
-            ), "each input dataset should be paddle.io.Dataset"
-            assert not isinstance(
-                dataset, IterableDataset
-            ), "paddle.io.IterableDataset not supported"
+            assert isinstance(dataset, Dataset), (
+                "each input dataset should be paddle.io.Dataset"
+            )
+            assert not isinstance(dataset, IterableDataset), (
+                "paddle.io.IterableDataset not supported"
+            )
             if i > 0:
-                assert len(dataset) == len(
-                    self.datasets[i - 1]
-                ), "lengths of datasets should be same"
+                assert len(dataset) == len(self.datasets[i - 1]), (
+                    "lengths of datasets should be same"
+                )
 
     def __len__(self) -> int:
         return len(self.datasets[0])
@@ -463,9 +463,9 @@ class ChainDataset(IterableDataset[Any]):
         self.datasets = list(datasets)
         assert len(self.datasets) > 0, "input datasets should not be empty"
         for i, dataset in enumerate(self.datasets):
-            assert isinstance(
-                dataset, IterableDataset
-            ), "ChainDataset only support paddle.io.IterableDataset"
+            assert isinstance(dataset, IterableDataset), (
+                "ChainDataset only support paddle.io.IterableDataset"
+            )
 
     def __iter__(self) -> Iterator[Any]:
         for dataset in self.datasets:
@@ -694,13 +694,13 @@ class ConcatDataset(Dataset[_T]):
 
     def __init__(self, datasets: Iterable[Dataset[Any]]) -> None:
         self.datasets = list(datasets)
-        assert (
-            len(self.datasets) > 0
-        ), 'datasets should not be an empty iterable'
+        assert len(self.datasets) > 0, (
+            'datasets should not be an empty iterable'
+        )
         for d in self.datasets:
-            assert not isinstance(
-                d, IterableDataset
-            ), "ConcatDataset does not support IterableDataset"
+            assert not isinstance(d, IterableDataset), (
+                "ConcatDataset does not support IterableDataset"
+            )
         self.cumulative_sizes = self.cumsum(self.datasets)
 
     def __len__(self) -> int:

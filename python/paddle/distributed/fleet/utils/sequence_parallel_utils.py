@@ -48,9 +48,9 @@ def scatter(input):
     parallelism = group.nranks
     rank = group.rank
     seq_len = input.shape[0]
-    assert (
-        seq_len % parallelism == 0
-    ), f"Input sequence length {seq_len} can't be divided exactly by sequence parallelism {parallelism}"
+    assert seq_len % parallelism == 0, (
+        f"Input sequence length {seq_len} can't be divided exactly by sequence parallelism {parallelism}"
+    )
     interval = seq_len // parallelism
     input = paddle.slice(
         input, axes=[0], starts=[interval * rank], ends=[interval * (rank + 1)]
@@ -74,9 +74,9 @@ def reduce_scatter(input):
     group = hcg.get_model_parallel_group()
     parallelism = group.nranks
     output_shape = input.shape
-    assert (
-        input.shape[0] % parallelism == 0
-    ), f"Input sequence length {input.shape[0]} can't be divided exactly by sequence parallelism {parallelism}"
+    assert input.shape[0] % parallelism == 0, (
+        f"Input sequence length {input.shape[0]} can't be divided exactly by sequence parallelism {parallelism}"
+    )
     output_shape[0] = output_shape[0] // parallelism
     output = paddle.empty(shape=output_shape, dtype=input.dtype)
     dist.stream.reduce_scatter(
@@ -318,9 +318,9 @@ class SPInnerOverlapLinear(paddle.autograd.PyLayer):
                 dy, paddle.cast(weight, dtype=dy.dtype), transpose_y=True
             )
 
-        assert (
-            dinput_parallel.shape[0] % parallelism == 0
-        ), f"Input sequence length {dinput_parallel.shape[0]} can't be divided exactly by sequence parallelism {parallelism}"
+        assert dinput_parallel.shape[0] % parallelism == 0, (
+            f"Input sequence length {dinput_parallel.shape[0]} can't be divided exactly by sequence parallelism {parallelism}"
+        )
 
         if ctx.recompute_allgather:
             # wait the finish of all-gather of x
@@ -452,16 +452,15 @@ class ColumnSequenceParallelLinear(Layer):
             if mp_group is None
             else mp_group.nranks
         )
-        assert (
-            self.world_size > 1
-        ), "tensor parallel degree must be greater than 1 in sequence parallel"
+        assert self.world_size > 1, (
+            "tensor parallel degree must be greater than 1 in sequence parallel"
+        )
 
         self._name = name
         self.is_mp = self.world_size > 1
-        assert (
-            gather_output is False
-        ), "If sequence_parallel is True, \
-                                        gather_output is False"
+        assert gather_output is False, (
+            "If sequence_parallel is True, gather_output is False"
+        )
 
         self.gather_output = gather_output
         assert out_features % self.world_size == 0, (
@@ -595,10 +594,9 @@ class RowSequenceParallelLinear(Layer):
 
         self.in_features = in_features
         self.out_features = out_features
-        assert (
-            input_is_parallel is True
-        ), "If sequence_parallel is True, \
-                                           input_is_parallel should be true."
+        assert input_is_parallel is True, (
+            "If sequence_parallel is True, input_is_parallel should be true."
+        )
 
         self.input_is_parallel = input_is_parallel
         self._weight_attr = weight_attr

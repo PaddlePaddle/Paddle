@@ -147,9 +147,9 @@ class FusedBiasDropoutResidualLayerNorm(Layer):
         name: str | None = None,
     ) -> None:
         super().__init__()
-        assert (
-            embed_dim > 0
-        ), f"Expected embed_dim to be greater than 0, but received {embed_dim}"
+        assert embed_dim > 0, (
+            f"Expected embed_dim to be greater than 0, but received {embed_dim}"
+        )
         self._dtype = self._helper.get_default_dtype()
         self._bias_attr = bias_attr
         self._weight_attr = weight_attr
@@ -337,12 +337,12 @@ class FusedMultiHeadAttention(Layer):
     ) -> None:
         super().__init__()
 
-        assert (
-            embed_dim > 0
-        ), f"Expected embed_dim to be greater than 0, but received {embed_dim}"
-        assert (
-            num_heads > 0
-        ), f"Expected nhead to be greater than 0, but received {num_heads}"
+        assert embed_dim > 0, (
+            f"Expected embed_dim to be greater than 0, but received {embed_dim}"
+        )
+        assert num_heads > 0, (
+            f"Expected nhead to be greater than 0, but received {num_heads}"
+        )
 
         self.normalize_before = normalize_before
         self._dtype = self._helper.get_default_dtype()
@@ -355,9 +355,9 @@ class FusedMultiHeadAttention(Layer):
         self.kdim = kdim
         self.vdim = vdim
         self.need_weights = need_weights
-        assert (
-            self.head_dim * num_heads == embed_dim
-        ), "embed_dim must be divisible by num_heads"
+        assert self.head_dim * num_heads == embed_dim, (
+            "embed_dim must be divisible by num_heads"
+        )
         assert need_weights is False, "Only support need_weight is False now."
 
         # tensor model parallel
@@ -615,12 +615,12 @@ class FusedFeedForward(Layer):
         name: str | None = None,
     ) -> None:
         super().__init__()
-        assert (
-            d_model > 0
-        ), f"Expected d_model to be greater than 0, but received {d_model}"
-        assert (
-            dim_feedforward > 0
-        ), f"Expected dim_feedforward to be greater than 0, but received {dim_feedforward}"
+        assert d_model > 0, (
+            f"Expected d_model to be greater than 0, but received {d_model}"
+        )
+        assert dim_feedforward > 0, (
+            f"Expected dim_feedforward to be greater than 0, but received {dim_feedforward}"
+        )
 
         self._dtype = self._helper.get_default_dtype()
         self._d_model = d_model
@@ -828,12 +828,12 @@ class FusedTransformerEncoderLayer(Layer):
         self._config.pop("__class__", None)  # py3
 
         super().__init__()
-        assert (
-            d_model > 0
-        ), f"Expected d_model to be greater than 0, but received {d_model}"
-        assert (
-            nhead > 0
-        ), f"Expected nhead to be greater than 0, but received {nhead}"
+        assert d_model > 0, (
+            f"Expected d_model to be greater than 0, but received {d_model}"
+        )
+        assert nhead > 0, (
+            f"Expected nhead to be greater than 0, but received {nhead}"
+        )
         assert dim_feedforward > 0, (
             "Expected dim_feedforward to be greater than 0, "
             f"but received {dim_feedforward}"
@@ -1304,15 +1304,15 @@ class FusedMultiTransformer(Layer):
     ) -> None:
         super().__init__()
 
-        assert (
-            embed_dim > 0
-        ), f"Expected embed_dim to be greater than 0, but received {embed_dim}"
-        assert (
-            num_heads > 0
-        ), f"Expected nhead to be greater than 0, but received {num_heads}"
-        assert (
-            dim_feedforward > 0
-        ), f"Expected dim_feedforward to be greater than 0, but received {dim_feedforward}"
+        assert embed_dim > 0, (
+            f"Expected embed_dim to be greater than 0, but received {embed_dim}"
+        )
+        assert num_heads > 0, (
+            f"Expected nhead to be greater than 0, but received {num_heads}"
+        )
+        assert dim_feedforward > 0, (
+            f"Expected dim_feedforward to be greater than 0, but received {dim_feedforward}"
+        )
 
         self.normalize_before = normalize_before
         self._dtype = self._helper.get_default_dtype()
@@ -1330,9 +1330,9 @@ class FusedMultiTransformer(Layer):
         self.embed_dim = embed_dim
         self.num_heads = num_heads
         self.head_dim = embed_dim // num_heads
-        assert (
-            self.head_dim * num_heads == embed_dim
-        ), "embed_dim must be divisible by num_heads"
+        assert self.head_dim * num_heads == embed_dim, (
+            "embed_dim must be divisible by num_heads"
+        )
 
         # tensor model parallel
         if nranks > 1:
