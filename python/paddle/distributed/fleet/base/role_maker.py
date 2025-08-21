@@ -764,9 +764,9 @@ class PaddleCloudRoleMaker(RoleMakerBase):
     def _get_trainer_endpoint(self) -> str:
         if not self._role_is_generated:
             self._generate_role()
-        assert (
-            self._role == Role.WORKER
-        ), "get_trainer_endpoint should be called by trainer"
+        assert self._role == Role.WORKER, (
+            "get_trainer_endpoint should be called by trainer"
+        )
         return self._cur_endpoint
 
     def _get_heter_worker_endpoints(self) -> list[str]:
@@ -776,9 +776,9 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         """
         if not self._role_is_generated:
             self._generate_role()
-        assert (
-            self._heter_trainer_endpoints != []
-        ), "Heter Worker Endpoints Not initialized"
+        assert self._heter_trainer_endpoints != [], (
+            "Heter Worker Endpoints Not initialized"
+        )
         return self._heter_trainer_endpoints
 
     def _get_heter_worker_endpoint(self) -> str:
@@ -788,9 +788,9 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         """
         if not self._role_is_generated:
             self._generate_role()
-        assert (
-            self._role == Role.HETER_WORKER
-        ), "_get_heter_worker_endpoint should be invoked by heter worker"
+        assert self._role == Role.HETER_WORKER, (
+            "_get_heter_worker_endpoint should be invoked by heter worker"
+        )
         return self._cur_endpoint
 
     def _get_pserver_endpoints(self) -> list[str]:

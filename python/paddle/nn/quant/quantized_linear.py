@@ -106,11 +106,13 @@ def weight_quantize(
             or arch == 89
             or arch == 90
             or arch == 92
-        ), f"Currently weight_quantize only support SM70/75/80/86/89/90. but got {arch} "
+        ), (
+            f"Currently weight_quantize only support SM70/75/80/86/89/90. but got {arch} "
+        )
 
-    assert (
-        group_size == -1 or group_size == 64 or group_size == 128
-    ), f"Currently group_size only support -1/64/128. but got {group_size} "
+    assert group_size == -1 or group_size == 64 or group_size == 128, (
+        f"Currently group_size only support -1/64/128. but got {group_size} "
+    )
     if in_dynamic_or_pir_mode():
         return _C_ops.weight_quantize(x, algo, arch, group_size)
     else:
@@ -160,9 +162,9 @@ def weight_dequantize(
             >>> out, scale = weight_quantize(x, algo='weight_only_int8')
             >>> x_dequant = weight_dequantize(out, scale)
     """
-    assert (
-        group_size == -1 or group_size == 64 or group_size == 128
-    ), f"Currently group_size only support -1/64/128. but got {group_size} "
+    assert group_size == -1 or group_size == 64 or group_size == 128, (
+        f"Currently group_size only support -1/64/128. but got {group_size} "
+    )
 
     if in_dynamic_or_pir_mode():
         return _C_ops.weight_dequantize(x, scale, algo, group_size)
@@ -236,10 +238,12 @@ def weight_only_linear(
             or arch == 86
             or arch == 89
             or arch == 90
-        ), f"Currently weight_quantize only support SM70/75/80/86/89/90. but got {arch} "
-    assert (
-        group_size == -1 or group_size == 64 or group_size == 128
-    ), f"Currently weight_quantize only support group size of -1, 64 or 128. but got {group_size} "
+        ), (
+            f"Currently weight_quantize only support SM70/75/80/86/89/90. but got {arch} "
+        )
+    assert group_size == -1 or group_size == 64 or group_size == 128, (
+        f"Currently weight_quantize only support group size of -1, 64 or 128. but got {group_size} "
+    )
 
     if in_dynamic_or_pir_mode():
         out = _C_ops.weight_only_linear(

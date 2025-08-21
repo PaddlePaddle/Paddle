@@ -130,9 +130,9 @@ class GroupShardedStage3(nn.Layer):
         # stage3 support some layer set by users to be unslice
         # _exclude_layer=[layer_name or id(layer)]
         self._exclude_layer = [] if exclude_layer is None else exclude_layer
-        assert isinstance(
-            self._exclude_layer, (list, tuple)
-        ), "the exclude_layers must be a list with layers' name or layers' id"
+        assert isinstance(self._exclude_layer, (list, tuple)), (
+            "the exclude_layers must be a list with layers' name or layers' id"
+        )
 
         # segmentation size
         assert segment_size >= 0, "segment_size must be GE than 0."
@@ -161,9 +161,9 @@ class GroupShardedStage3(nn.Layer):
         )
         self._dp_group = dp_group
         self._world_size_scaling = 1.0 / self._group.nranks
-        assert (
-            self._group.nranks > 1
-        ), "Training must be distributed, ranks must be greater than 1."
+        assert self._group.nranks > 1, (
+            "Training must be distributed, ranks must be greater than 1."
+        )
         self._rank = self._group.rank
         self._global_root_rank = self._group.ranks[
             0
@@ -172,17 +172,15 @@ class GroupShardedStage3(nn.Layer):
         # Parameter segmentation for global ranks
         # After flatten -> self._param2buffer_size, self._param2buffer, self._trainable_params
         self._param2buffer_size = {}  # {param.name: size}
-        self._param2buffer = (
-            {}
-        )  # {param.name: [(start0, end0),(start1, end1), ...]}
+        self._param2buffer = {}  # {param.name: [(start0, end0),(start1, end1), ...]}
         self._trainable_params = {}  # {id(layer): [trainable_params]}
         self._unslice_params = OrderedSet()  # param's numel <= segment_size
         self._unslice_params2align = {}  # {param.name: param's align}
         self._grad_storages = {}  # {param.dtype: GradStorage}
 
-        assert not isinstance(
-            optimizer, list
-        ), "Multiple optimizers are not supported now."
+        assert not isinstance(optimizer, list), (
+            "Multiple optimizers are not supported now."
+        )
         self._optim = _OptimizerWrapper(
             optimizer, self._offload, self._group, self._update_params_slice
         )
@@ -247,9 +245,9 @@ class GroupShardedStage3(nn.Layer):
             if self.use_main_grad is None and hasattr(param, "main_grad"):
                 self.use_main_grad = True
             if self.use_main_grad:
-                assert hasattr(
-                    param, "main_grad"
-                ), "Params have different main grad attributes."
+                assert hasattr(param, "main_grad"), (
+                    "Params have different main grad attributes."
+                )
 
     @paddle.autograd.no_grad()
     def _sync_params_and_buffers(self):
@@ -280,9 +278,9 @@ class GroupShardedStage3(nn.Layer):
             )
         )
         for param in trainable_params:
-            assert hasattr(
-                param, "fw_storage"
-            ), f"Find {param.name} don't have fw_storage attribute."
+            assert hasattr(param, "fw_storage"), (
+                f"Find {param.name} don't have fw_storage attribute."
+            )
             if self.use_main_grad:
                 param.fw_storage.main_grad._clear()
                 param.fw_storage.main_grad = None
@@ -654,9 +652,9 @@ class GroupShardedStage3(nn.Layer):
         )
         # 1.Handle param's slice
         for param in trainable_params:
-            assert hasattr(
-                param, "fw_storage"
-            ), f"Find {param.name} don't have fw_storage attribute"
+            assert hasattr(param, "fw_storage"), (
+                f"Find {param.name} don't have fw_storage attribute"
+            )
 
             param.fw_storage = _TensorWrapper(param)
             if self.use_main_grad:
@@ -746,9 +744,9 @@ class GroupShardedStage3(nn.Layer):
     def _get_allreduce_fn(self, param):
         @paddle.autograd.no_grad()
         def allreduce_(*_):
-            assert (
-                param.trainable
-            ), "the param must be trainable for grad allreduced"
+            assert param.trainable, (
+                "the param must be trainable for grad allreduced"
+            )
             if param.name in self._task_flow.full_grad.keys():
                 full_grad = self._task_flow.full_grad[param.name]
                 # Only support sync allreduce current rank's layer now

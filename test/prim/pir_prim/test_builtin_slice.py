@@ -60,15 +60,16 @@ class TestBuildOp(unittest.TestCase):
         pir_program = self.get_ir_program()
         y = pir_program.global_block().ops[-1].results()
         orig_shape = y[0].shape
-        core._set_prim_forward_enabled(True)
-        y_new = decompose(pir_program, y)
-        core._set_prim_forward_enabled(False)
-        new_shape = y_new[0].shape
-        assert (
-            orig_shape == new_shape
-        ), f"Original shape {orig_shape} is not equal to new shape {new_shape}"
-        op_name_list = [op.name() for op in pir_program.global_block().ops]
-        assert "pd_op.meshgrid" not in op_name_list
+        with paddle.pir_utils.IrGuard():
+            core._set_prim_forward_enabled(True)
+            y_new = decompose(pir_program, y)
+            core._set_prim_forward_enabled(False)
+            new_shape = y_new[0].shape
+            assert orig_shape == new_shape, (
+                f"Original shape {orig_shape} is not equal to new shape {new_shape}"
+            )
+            op_name_list = [op.name() for op in pir_program.global_block().ops]
+            assert "pd_op.meshgrid" not in op_name_list
 
 
 if __name__ == "__main__":
