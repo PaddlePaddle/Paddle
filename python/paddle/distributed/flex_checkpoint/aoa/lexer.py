@@ -55,7 +55,7 @@ def star_macro(tokens, expression, context):
         return expression
 
     def _sort_keys_by_numeric_part(prefix, suffix, allkeys):
-        pattern = re.compile(fr"{re.escape(prefix)}(\d+){re.escape(suffix)}")
+        pattern = re.compile(rf"{re.escape(prefix)}(\d+){re.escape(suffix)}")
         filtered_keys = []
         for key in allkeys:
             match = pattern.match(key)
@@ -77,9 +77,9 @@ def star_macro(tokens, expression, context):
                 if not pre_rarrow
                 else context.get_all_dst_state_keys()
             )
-            assert (
-                len(allkeys) != 0
-            ), f"No keys found with prefix {prefix} and suffix {suffix}!"
+            assert len(allkeys) != 0, (
+                f"No keys found with prefix {prefix} and suffix {suffix}!"
+            )
             keys = list(_sort_keys_by_numeric_part(prefix, suffix, allkeys))
             for key in keys:
                 new_tokens.append(Token(TokenType.IDENTIFIER, key))
@@ -198,14 +198,14 @@ def fused_qkv_macro(tokens, expression, context):
             right_var_end_pos = idx + 1
 
     assert attn_head_num and attn_head_num > 0, "num_heads must be positive."
-    assert (
-        num_key_value_groups and num_key_value_groups > 0
-    ), "num_key_value_groups must be positive."
+    assert num_key_value_groups and num_key_value_groups > 0, (
+        "num_key_value_groups must be positive."
+    )
     assert fused_qkv_pos is not None, "No fused_qkv tag found in expression."
     assert rarrow_pos is not None, "No -> found in expression."
-    assert (
-        attn_head_num % num_key_value_groups == 0
-    ), "num_heads must be divisible by num_key_value_groups."
+    assert attn_head_num % num_key_value_groups == 0, (
+        "num_heads must be divisible by num_key_value_groups."
+    )
 
     num_key_value_heads = attn_head_num // num_key_value_groups
 
@@ -278,9 +278,9 @@ def fused_ffn_macro(tokens, expression, context):
     FUSED_FFN_TAG = "fused_ffn"
     if FUSED_FFN_TAG not in expression:
         return expression
-    assert (
-        len(tokens) == 5 and tokens[4].value == FUSED_FFN_TAG
-    ), "Invalid tokens for FUSED_FFN operation ！"
+    assert len(tokens) == 5 and tokens[4].value == FUSED_FFN_TAG, (
+        "Invalid tokens for FUSED_FFN operation ！"
+    )
     src_ffn_weight_name = tokens[2].value
     dst_ffn_weight_name = tokens[0].value
     src_state_shard_num = context.get_src_state_shard_num(src_ffn_weight_name)

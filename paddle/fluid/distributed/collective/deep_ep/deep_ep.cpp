@@ -1685,11 +1685,11 @@ Buffer::low_latency_dispatch(
   EP_HOST_ASSERT(!(async && return_recv_hook));
   if (!return_recv_hook) stream_wait(launch_stream, compute_stream);
 
-  EP_HOST_ASSERT(
-      !(expertwise_scale.has_value() && use_fp8) &&
-      "expertwise_scale and use_fp8 can not arise at the same time.");
   auto return_x_dtype = phi::DataType::BFLOAT16;
   if (use_fp8) {
+    if (expertwise_scale.has_value()) {
+      EP_HOST_ASSERT(expertwise_scale.value().size(0) == num_experts);
+    }
     return_x_dtype = phi::DataType::FLOAT8_E4M3FN;
   } else if (expertwise_scale.has_value()) {
     EP_HOST_ASSERT(expertwise_scale.value().size(0) == num_experts);
@@ -1721,7 +1721,7 @@ Buffer::low_latency_dispatch(
 
   float* packed_recv_x_scales_ptr = nullptr;
 
-  if (use_fp8) {
+  if (use_fp8 && !expertwise_scale.has_value()) {
     EP_HOST_ASSERT((num_ranks * num_max_dispatch_tokens_per_rank) % 4 == 0 &&
                    "TMA requires the number of tokens to be multiple of 4");
     packed_recv_x_scales =

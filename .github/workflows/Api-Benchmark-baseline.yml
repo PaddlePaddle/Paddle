@@ -18,7 +18,6 @@ on:
           - others
   schedule:
     - cron: '0 21 * * *'
-    - cron: '0 22 * * 3'
 
 permissions: read-all
 
@@ -29,7 +28,6 @@ defaults:
 jobs:
   clone:
     name: Api benchmark clone
-    if: github.event.schedule == '0 21 * * *'
     uses: ./.github/workflows/_Clone-linux.yml
     with:
       clone_dir: Paddle-build
@@ -37,7 +35,6 @@ jobs:
 
   build-docker:
     name: Api benchmark build docker
-    if: github.event.schedule == '0 21 * * *'
     needs: clone
     uses: ./.github/workflows/docker.yml
     with:
@@ -46,16 +43,15 @@ jobs:
 
   build:
     name: Api benchmark build
-    if: github.event.schedule == '0 21 * * *'
+    if: github.event_name == 'schedule' && github.event.schedule == '0 21 * * *'
     needs: [clone, build-docker]
     uses: ./.github/workflows/_Linux-build.yml
     with:
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
       is_pr: 'false'
 
-  api-benchmark-baseline:
-    name: Api benchmark baseline
-    if: github.event.schedule == '0 21 * * *' || github.event.inputs.job-name == 'api-benchmark'
+  api-benchmark-baseline-schedule:
+    name: Api benchmark baseline with schedule
     strategy:
       matrix:
         run-labels: [api-bm-20, api-bm-27]
@@ -64,38 +60,28 @@ jobs:
     with:
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
       baseline: 'true'
-      MANUALLY_PR_ID: ${{ inputs.PR_ID }}
-      MANUALLY_COMMIT_ID: ${{ inputs.COMMIT_ID }}
       run-labels: ${{ matrix.run-labels }}
 
-  test1:
-    runs-on: ubuntu-latest
-    if: github.event.schedule == '0 0 * * *'
-    steps:
-      - name: Test
-        run: |
-          echo "test1"
+  api-benchmark-baseline-pr-20:
+    name: Api benchmark baseline with PR on 20
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.job-name == 'api-benchmark'
+    uses: ./.github/workflows/_Api-Benchmark.yml
+    needs: [clone, build-docker]
+    with:
+      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
+      baseline: 'true'
+      MANUALLY_PR_ID: ${{ inputs.PR_ID }}
+      MANUALLY_COMMIT_ID: ${{ inputs.COMMIT_ID }}
+      run-labels: api-bm-20
 
-  test2:
-    runs-on: ubuntu-latest
-    if: github.event.schedule == '0 21 * * *'
-    steps:
-      - name: Test
-        run: |
-          echo "test2"
-
-  test3:
-    runs-on: ubuntu-latest
-    if: github.event.schedule == '0 22 * * 3'
-    steps:
-      - name: Test
-        run: |
-          echo "test3"
-
-  test4:
-    runs-on: ubuntu-latest
-    if: github.event.schedule == '0 21 * * 1'
-    steps:
-      - name: Test
-        run: |
-          echo "test4"
+  api-benchmark-baseline-pr-27:
+    name: Api benchmark baseline with PR on 27
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.job-name == 'api-benchmark'
+    uses: ./.github/workflows/_Api-Benchmark.yml
+    needs: [clone, build-docker]
+    with:
+      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
+      baseline: 'true'
+      MANUALLY_PR_ID: ${{ inputs.PR_ID }}
+      MANUALLY_COMMIT_ID: ${{ inputs.COMMIT_ID }}
+      run-labels: api-bm-27

@@ -94,9 +94,9 @@ class _ConvNd(Layer):
         data_format: DataLayoutND = "NCHW",
     ) -> None:
         super().__init__()
-        assert (
-            weight_attr is not False
-        ), "weight_attr should not be False in Conv."
+        assert weight_attr is not False, (
+            "weight_attr should not be False in Conv."
+        )
         self._param_attr = weight_attr
         self._bias_attr = bias_attr
         self._groups = groups
