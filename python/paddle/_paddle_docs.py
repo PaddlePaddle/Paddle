@@ -326,3 +326,141 @@ def amax(
 ) -> Tensor
 """,
 )
+add_doc_and_signature(
+    "all",
+    """
+    Computes the ``logical and`` of tensor elements over the given dimension.
+
+    Args:
+        x (Tensor): An N-D Tensor, the input data type should be 'bool', 'float32', 'float64', 'int32', 'int64', 'complex64', 'complex128'.
+        axis (int|list|tuple|None, optional): The dimensions along which the ``logical and`` is compute. If
+            :attr:`None`, and all elements of :attr:`x` and return a
+            Tensor with a single element, otherwise must be in the
+            range :math:`[-rank(x), rank(x))`. If :math:`axis[i] < 0`,
+            the dimension to reduce is :math:`rank + axis[i]`.
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the
+            output Tensor. The result Tensor will have one fewer dimension
+            than the :attr:`x` unless :attr:`keepdim` is true, default
+            value is False.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+    Keyword Args:
+        out (Tensor|optional): The output tensor.
+
+    Returns:
+        Tensor: Results the ``logical and`` on the specified axis of input Tensor `x`,  it's data type is bool.
+
+    Examples:
+        .. code-block:: python
+            >>> # type: ignore
+            >>> import paddle
+
+            >>> # x is a bool Tensor with following elements:
+            >>> #    [[True, False]
+            >>> #     [True, True]]
+            >>> x = paddle.to_tensor([[1, 0], [1, 1]], dtype='int32')
+            >>> x
+            Tensor(shape=[2, 2], dtype=int32, place=Place(cpu), stop_gradient=True,
+            [[1, 0],
+             [1, 1]])
+            >>> x = paddle.cast(x, 'bool')
+
+            >>> # out1 should be False
+            >>> out1 = paddle.all(x)
+            >>> out1
+            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
+            False)
+
+            >>> # out2 should be [True, False]
+            >>> out2 = paddle.all(x, axis=0)
+            >>> out2
+            Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [True , False])
+
+            >>> # keepdim=False, out3 should be [False, True], out.shape should be (2,)
+            >>> out3 = paddle.all(x, axis=-1)
+            >>> out3
+            Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [False, True ])
+
+            >>> # keepdim=True, out4 should be [[False], [True]], out.shape should be (2, 1)
+            >>> out4 = paddle.all(x, axis=1, keepdim=True)
+            >>> out4
+            Tensor(shape=[2, 1], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [[False],
+             [True ]])
+
+    """,
+    """
+    def all(
+    x: Tensor,
+    axis: int | Sequence[int] | None = None,
+    keepdim: bool = False,
+    name: str | None = None,
+) -> Tensor
+    """,
+)
+
+# zhengsheng
+
+# liuyi
+
+# shenwei
+
+add_doc_and_signature(
+    "sigmoid",
+    r"""
+    Sigmoid Activation.
+
+    .. math::
+       out = \\frac{1}{1 + e^{-x}}
+
+    Args:
+        x (Tensor): Input of Sigmoid operator, an N-D Tensor, with data type bfloat16, float16, float32, float64,
+            uint8, int8, int16, int32, int64, complex64 or complex128.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+    Keyword Args:
+        out (Tensor|optional): The output tensor.
+
+    Returns:
+        Tensor. Output of Sigmoid operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn.functional as F
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = F.sigmoid(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.40131235, 0.45016602, 0.52497917, 0.57444251])
+    """,
+    """
+    def sigmoid(
+        x: paddle.Tensor,
+        name: str | None = None,
+        *,
+        out: Tensor | None = None,
+    ) -> paddle.Tensor
+    """,
+)
+
+# zhouxin
+
+# hehongyu
+
+# lousiyu
+
+# zhengshijie
+
+# lihaoyang
+
+# lubingxin
+
+# chenhuangrun
+
+# zhanrongrun
+
+# other
