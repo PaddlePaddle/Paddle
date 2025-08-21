@@ -451,5 +451,139 @@ class TestTrilTriuOutAndParamDecorator(unittest.TestCase):
                 )
 
 
+class TestTrilTriuAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.shape = [10, 8]
+        self.dtype = 'float64'
+        self.init_data()
+
+    def init_data(self):
+        self.np_input = np.random.randint(0, 8, self.shape).astype(self.dtype)
+
+    def test_tril_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_input)
+        paddle_dygraph_out = []
+        # Position args (args)
+        out1 = paddle.tril(x, 1)
+        paddle_dygraph_out.append(out1)
+        # Key words args (kwargs) for paddle
+        out2 = paddle.tril(x=x, diagonal=1)
+        paddle_dygraph_out.append(out2)
+        # Key words args for torch
+        out3 = paddle.tril(input=x, diagonal=1)
+        paddle_dygraph_out.append(out3)
+        # Combined args and kwargs
+        out4 = paddle.tril(x, diagonal=1)
+        paddle_dygraph_out.append(out4)
+        # Tensor method args
+        out5 = x.tril(1)
+        paddle_dygraph_out.append(out5)
+        # Tensor method kwargs
+        out6 = x.tril(diagonal=1)
+        paddle_dygraph_out.append(out6)
+        # Test out
+        out7 = paddle.empty([])
+        paddle.tril(x, 1, out=out7)
+        paddle_dygraph_out.append(out7)
+        # Numpy reference  out
+        ref_out = np.tril(self.np_input, 1)
+        # Check
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy())
+        paddle.enable_static()
+
+    def test_triu_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_input)
+        paddle_dygraph_out = []
+        # Position args (args)
+        out1 = paddle.triu(x, -2)
+        paddle_dygraph_out.append(out1)
+        # Key words args (kwargs) for paddle
+        out2 = paddle.triu(x=x, diagonal=-2)
+        paddle_dygraph_out.append(out2)
+        # Key words args for torch
+        out3 = paddle.triu(input=x, diagonal=-2)
+        paddle_dygraph_out.append(out3)
+        # Combined args and kwargs
+        out4 = paddle.triu(x, diagonal=-2)
+        paddle_dygraph_out.append(out4)
+        # Tensor method args
+        out5 = x.triu(-2)
+        paddle_dygraph_out.append(out5)
+        # Tensor method kwargs
+        out6 = x.triu(diagonal=-2)
+        paddle_dygraph_out.append(out6)
+        # Test out
+        out7 = paddle.empty([])
+        paddle.triu(x, -2, out=out7)
+        paddle_dygraph_out.append(out7)
+        # Numpy reference  out
+        ref_out = np.triu(self.np_input, -2)
+        # Check
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy())
+        paddle.enable_static()
+
+    def test_tril_static_Compatibility(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            # Position args (args)
+            out1 = paddle.tril(x, 1)
+            # Key words args (kwargs) for paddle
+            out2 = paddle.tril(x=x, diagonal=1)
+            # Key words args for torch
+            out3 = paddle.tril(input=x, diagonal=1)
+            # Combined args and kwargs
+            out4 = paddle.tril(x, diagonal=1)
+            # Tensor method args
+            out5 = x.tril(1)
+            # Tensor method kwargs
+            out6 = x.tril(diagonal=1)
+            # Do not support out in static
+            exe = base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_input},
+                fetch_list=[out1, out2, out3, out4, out5, out6],
+            )
+            ref_out = np.tril(self.np_input, 1)
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out)
+
+    def test_triu_static_Compatibility(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            # Position args (args)
+            out1 = paddle.triu(x, -2)
+            # Key words args (kwargs) for paddle
+            out2 = paddle.triu(x=x, diagonal=-2)
+            # Key words args for torch
+            out3 = paddle.triu(input=x, diagonal=-2)
+            # Combined args and kwargs
+            out4 = paddle.triu(x, diagonal=-2)
+            # Tensor method args
+            out5 = x.triu(-2)
+            # Tensor method kwargs
+            out6 = x.triu(diagonal=-2)
+            # Do not support out in static
+            exe = base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_input},
+                fetch_list=[out1, out2, out3, out4, out5, out6],
+            )
+            ref_out = np.triu(self.np_input, -2)
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out)
+
+
 if __name__ == '__main__':
     unittest.main()
