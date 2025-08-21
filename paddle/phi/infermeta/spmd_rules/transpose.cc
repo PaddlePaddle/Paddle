@@ -182,7 +182,7 @@ SpmdInfo TransposeGradInferSpmd(const DistMetaTensor& out_grad,
       common::vectorize(out_grad.dims());
   size_t out_grad_ndim = out_grad_shape.size();
   const std::vector<std::vector<int64_t>> out_grad_dims_mapping =
-      out_grad.dist_attr().multi_dims_mapping());
+      out_grad.dist_attr().multi_dims_mapping();
   size_t out_grad_dims_mapping_size = out_grad_dims_mapping.size();
   PADDLE_ENFORCE_EQ(out_grad_ndim,
                     out_grad_dims_mapping_size,
@@ -199,7 +199,8 @@ SpmdInfo TransposeGradInferSpmd(const DistMetaTensor& out_grad,
                         "[%d] are not matched.",
                         out_grad_ndim,
                         perm_size));
-  std::vector<std::vector<int64_t>> x_dims_mapping(out_grad_ndim, {});
+  std::vector<std::vector<int64_t>> x_dims_mapping(out_grad_ndim,
+                                                   std::vector<int64_t>({}));
   for (size_t i = 0; i < perm.size(); ++i) {
     int origin_index = perm[i] >= 0 ? perm[i] : out_grad_ndim + perm[i];
     x_dims_mapping[origin_index] = out_grad_dims_mapping[i];
