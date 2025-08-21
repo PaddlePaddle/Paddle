@@ -340,9 +340,9 @@ class AMPState:
                     out_var = block.var(out_var_name)
                     in_var = block._find_var_recursive(in_var_name)
                     for in_var_name in op.input_arg_names:
-                        assert (
-                            in_var.dtype == block.var(in_var_name).dtype
-                        ), f"{in_var}, {block.var(in_var_name)}, {op}"
+                        assert in_var.dtype == block.var(in_var_name).dtype, (
+                            f"{in_var}, {block.var(in_var_name)}, {op}"
+                        )
                     out_var.desc.set_dtype(in_var.dtype)
                 elif int(op.attr('op_role')) == 257:
                     pass
@@ -545,9 +545,9 @@ class AMPState:
                             cast_name, in_var_dist_attr
                         )
                     else:
-                        assert (
-                            in_var.dtype == dst_dtype
-                        ), f"op [{op.type}] expect input [{in_name}] to be dtype [{dst_dtype}] BUT got [{in_var.dtype}]. {op}"
+                        assert in_var.dtype == dst_dtype, (
+                            f"op [{op.type}] expect input [{in_name}] to be dtype [{dst_dtype}] BUT got [{in_var.dtype}]. {op}"
+                        )
 
         for out_name in op.output_names:
             if src_dtype == paddle.float32 and _keep_fp32_output(op, out_name):
@@ -1158,13 +1158,13 @@ class AMPPass(PassBase):
                 e, "x", ['float16', 'float32', 'float64'], 'update_loss_scaling'
             )
             if e.dtype == paddle.float16:
-                assert (
-                    self._loss_scaling.dtype == paddle.float32
-                ), "The dtype of prev_loss_scaling should be float32 when the dtype of x is float16."
+                assert self._loss_scaling.dtype == paddle.float32, (
+                    "The dtype of prev_loss_scaling should be float32 when the dtype of x is float16."
+                )
             else:
-                assert (
-                    self._loss_scaling.dtype == e.dtype
-                ), "The dtype of prev_loss_scaling should be equal to the dtype of x."
+                assert self._loss_scaling.dtype == e.dtype, (
+                    "The dtype of prev_loss_scaling should be equal to the dtype of x."
+                )
 
         inputs = {
             'X': grads,

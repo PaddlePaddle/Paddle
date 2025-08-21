@@ -72,17 +72,17 @@ def get_checkpoint_files(path, use_cache=True, unique_id=None):
         for file in accessible_files
         if file.endswith(f"{unique_id}.metadata")
     ]
-    assert (
-        len(metadata_files) > 0
-    ), f"No metadata file ends with '{unique_id}.metadata' found in the checkpoint directory: {path}."
+    assert len(metadata_files) > 0, (
+        f"No metadata file ends with '{unique_id}.metadata' found in the checkpoint directory: {path}."
+    )
     local_data_files = [
         file
         for file in accessible_files
         if file.endswith(f"{unique_id}.distcp")
     ]
-    assert (
-        len(local_data_files) > 0
-    ), f"No data file ends with '{unique_id}.distcp' found in the checkpoint directory:{path}."
+    assert len(local_data_files) > 0, (
+        f"No data file ends with '{unique_id}.distcp' found in the checkpoint directory:{path}."
+    )
     if use_cache:
         PATH_TO_CHECKPOINT_FILES[path] = (metadata_files, local_data_files)
     return (metadata_files, local_data_files)
@@ -107,9 +107,9 @@ def get_rank_to_files(
 
     for metadata in metadata_list:
         for local_tensor_index, file_name in metadata.storage_metadata.items():
-            assert (
-                local_tensor_index not in tensor_key_list
-            ), f"Duplicate tensor_key:{local_tensor_index} found. Check whether the metadata."
+            assert local_tensor_index not in tensor_key_list, (
+                f"Duplicate tensor_key:{local_tensor_index} found. Check whether the metadata."
+            )
             tensor_key_list.append(local_tensor_index.tensor_key)
             if local_tensor_index.tensor_key in state_dict:
                 necessary_files.append(file_name)
@@ -153,7 +153,9 @@ def get_rank_to_files(
     assert (
         global_data_files_set & global_necessary_files_set
         == global_necessary_files_set
-    ), f"The checkpoint files are not complete. Please check the checkpoint directory. global_data_files_set:{global_data_files_set}, necessary_data_files_set:{global_necessary_files_set}"
+    ), (
+        f"The checkpoint files are not complete. Please check the checkpoint directory. global_data_files_set:{global_data_files_set}, necessary_data_files_set:{global_necessary_files_set}"
+    )
     missing_keys = set(state_dict.keys()) - set(tensor_key_list)
     if len(missing_keys) > 0:
         if mw_name_compatibility:
@@ -424,9 +426,9 @@ def compute_overlap(
                 f"Invalid begin_offset:{begin_offset}, cur_offset:{cur_offset}, storage_offset:{storage_offset}"
             )
         lengths.append(end_offset - begin_offset)
-        assert (
-            lengths[-1] >= 0
-        ), f"Invalid length:{lengths[-1]}, end_offset:{end_offset}, begin_offset:{begin_offset}"
+        assert lengths[-1] >= 0, (
+            f"Invalid length:{lengths[-1]}, end_offset:{end_offset}, begin_offset:{begin_offset}"
+        )
     return cur_offsets, storage_offsets, lengths
 
 
@@ -501,9 +503,9 @@ def get_read_items(metadata_list, state_dict, process_group, use_dist):
         cur_chunk_metadata = LocalTensorMetadata(
             global_offset, local_shape, dtype
         )
-        assert (
-            tensor_key in storage_state_dict_metadata
-        ), f"tensor_key:{tensor_key} not found in storage_state_dict_metadata:{storage_state_dict_metadata}."
+        assert tensor_key in storage_state_dict_metadata, (
+            f"tensor_key:{tensor_key} not found in storage_state_dict_metadata:{storage_state_dict_metadata}."
+        )
         for storage_local_tensor_metadata in storage_state_dict_metadata[
             tensor_key
         ]:
@@ -671,9 +673,9 @@ def load_state_dict(
         else:
             load_dict = {}
             for key, val in state_dict.items():
-                assert (
-                    val.local_shape == val.global_shape
-                ), f"{key} is not replicated !"
+                assert val.local_shape == val.global_shape, (
+                    f"{key} is not replicated !"
+                )
                 load_dict[key] = val.local_tensor
 
             load_state_dict_impl(
@@ -708,15 +710,15 @@ def load_state_dict_impl(
     mw_name_compatibility: bool = True,
 ) -> None:
     with paddle.base.dygraph.guard():
-        assert isinstance(
-            state_dict, dict
-        ), "The state_dict should be a dictionary."
+        assert isinstance(state_dict, dict), (
+            "The state_dict should be a dictionary."
+        )
         flat_state_dict, mapping = flatten_state_dict(state_dict)
         if len(flat_state_dict) > 0:
             for val in flat_state_dict.values():
-                assert isinstance(
-                    val, (paddle.Tensor, ShardedWeight)
-                ), f"The value of state_dict should be a paddle.Tensor, but got: {val}."
+                assert isinstance(val, (paddle.Tensor, ShardedWeight)), (
+                    f"The value of state_dict should be a paddle.Tensor, but got: {val}."
+                )
 
         use_dist = True if paddle.distributed.get_world_size() > 1 else False
 
@@ -824,7 +826,6 @@ def _load_state_dict(
     offload=False,
 ) -> None:
     with paddle.base.dygraph.guard():
-
         use_dist = True if paddle.distributed.get_world_size() > 1 else False
 
         local_load_files = list(source_state_dict.keys())
@@ -855,9 +856,9 @@ def _load_state_dict(
                     copied_target_state_dict[key] = copied_target_state_dict[
                         key
                     ].cuda()
-            assert (
-                item.local_tensor_index in load_infos
-            ), f"read item:{item}, load_infos:{load_infos}"
+            assert item.local_tensor_index in load_infos, (
+                f"read item:{item}, load_infos:{load_infos}"
+            )
 
             logger.debug(f"read item: {item}")
             src_rank, file_name = load_infos[item.local_tensor_index]

@@ -94,9 +94,9 @@ class Quant2Int8OnednnPass:
         self._pass_group = 'int8'
 
     def apply(self, graph):
-        assert isinstance(
-            graph, IrGraph
-        ), 'graph must be the instance of IrGraph.'
+        assert isinstance(graph, IrGraph), (
+            'graph must be the instance of IrGraph.'
+        )
 
         self._reset_pass_idx_and_group('int8')
         graph = self._label_skip_quantized_op(graph)
@@ -115,9 +115,9 @@ class Quant2Int8OnednnPass:
         return graph
 
     def prepare_and_optimize_fp32(self, graph):
-        assert isinstance(
-            graph, IrGraph
-        ), 'graph must be the instance of IrGraph.'
+        assert isinstance(graph, IrGraph), (
+            'graph must be the instance of IrGraph.'
+        )
 
         self._reset_pass_idx_and_group('fp32')
         graph = self._optimize_fp32_graph(graph)
@@ -192,9 +192,9 @@ class Quant2Int8OnednnPass:
         for op in graph.all_op_nodes():
             if op.name() in fake_ops:
                 bit_length = op.op().attr("bit_length")
-                assert (
-                    bit_length == 8
-                ), f'Unsupported number quantization bits ({bit_length}). Only 8 is supported now.'
+                assert bit_length == 8, (
+                    f'Unsupported number quantization bits ({bit_length}). Only 8 is supported now.'
+                )
 
                 input_name = op.input("X")[0]
                 scale_name = op.input("InScale")[0]
@@ -499,9 +499,9 @@ class Quant2Int8OnednnPass:
         if not cpp_graph.has('__param_scope__'):
             cpp_graph.set_not_owned('__param_scope__', self._scope)
         if attrs:
-            assert attr_values and len(attrs) == len(
-                attr_values
-            ), "Different number of pass attributes and their values."
+            assert attr_values and len(attrs) == len(attr_values), (
+                "Different number of pass attributes and their values."
+            )
             for attr, value in zip(attrs, attr_values):
                 ir_pass.set(attr, value)
         ir_pass.apply(cpp_graph)
@@ -606,9 +606,9 @@ class Quant2Int8OnednnPass:
         def _compute_gru_weight_scales(wx_name, wh_name):
             for op in graph.all_op_nodes():
                 if op.op().type() in self._gru_ops:
-                    assert len(op.input(wx_name)) == len(
-                        op.input(wh_name)
-                    ), f'Mismatch in number of weights inputs ({len(op.input(wx_name))} for WeightX vs. {len(op.input(wh_name))} for WeightH).'
+                    assert len(op.input(wx_name)) == len(op.input(wh_name)), (
+                        f'Mismatch in number of weights inputs ({len(op.input(wx_name))} for WeightX vs. {len(op.input(wh_name))} for WeightH).'
+                    )
                     for i, wx_var_name in enumerate(op.input(wx_name)):
                         wh_var_name = op.input(wh_name)[i]
                         use_unsigned_int = False
@@ -634,9 +634,9 @@ class Quant2Int8OnednnPass:
         def _compute_lstm_weight_scales(wx_name, wh_name):
             for op in graph.all_op_nodes():
                 if op.op().type() in self._lstm_ops:
-                    assert len(op.input(wx_name)) == len(
-                        op.input(wh_name)
-                    ), f'Mismatch in number of weights inputs ({len(op.input(wx_name))} for WeightX vs. {len(op.input(wh_name))} for WeightH).'
+                    assert len(op.input(wx_name)) == len(op.input(wh_name)), (
+                        f'Mismatch in number of weights inputs ({len(op.input(wx_name))} for WeightX vs. {len(op.input(wh_name))} for WeightH).'
+                    )
                     for i, wx_var_name in enumerate(op.input(wx_name)):
                         wh_var_name = op.input(wh_name)[i]
                         use_unsigned_int = False

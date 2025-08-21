@@ -391,9 +391,9 @@ class DataParallel(Layer):
     ) -> None:
         super().__init__(layers.full_name() + "_data_parallel")
 
-        assert (
-            in_dynamic_mode()
-        ), "It's not supported to construct DataParallel in static graph mode."
+        assert in_dynamic_mode(), (
+            "It's not supported to construct DataParallel in static graph mode."
+        )
 
         self._layers = layers
         self.find_unused_parameters = find_unused_parameters
@@ -756,12 +756,12 @@ class ParallelEnv:
         ).split(",")
         self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT", "")
         self._nrings = int(os.getenv("FLAGS_nccl_nrings", "1"))
-        assert (
-            self._nrings > 0
-        ), "nccl_nrings must be an integer greater than 0."
-        assert (
-            self._nrings < 9
-        ), "nccl_nrings should be less than 9, which is enough in most scenarios."
+        assert self._nrings > 0, (
+            "nccl_nrings must be an integer greater than 0."
+        )
+        assert self._nrings < 9, (
+            "nccl_nrings should be less than 9, which is enough in most scenarios."
+        )
 
     @property
     def rank(self) -> int:

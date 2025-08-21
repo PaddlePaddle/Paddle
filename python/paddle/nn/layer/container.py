@@ -631,9 +631,9 @@ class LayerList(Layer):
         """
         assert isinstance(index, int) and -len(
             self._sub_layers
-        ) <= index <= len(
-            self._sub_layers
-        ), f"index should be an integer in range [{-len(self)}, {len(self)}]"
+        ) <= index <= len(self._sub_layers), (
+            f"index should be an integer in range [{-len(self)}, {len(self)}]"
+        )
 
         if index < 0:
             index += len(self)
