@@ -99,7 +99,7 @@ repos:
 
             | test/a.+
 
-            # | test/[b-h].+
+            | test/[b-h].+
 
             | test/[i-k].+
 
@@ -155,7 +155,7 @@ repos:
 
             # | test/a.+
 
-            | test/[b-h].+
+            # | test/[b-h].+
 
             # | test/[i-k].+
 
