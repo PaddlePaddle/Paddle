@@ -299,7 +299,6 @@ jobs:
         if: always()
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          sleep 4h
           rm -rf * .[^.]*
           '
           docker stop ${container_name}
