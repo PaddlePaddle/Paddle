@@ -19,7 +19,8 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/stride/stride_elementwise.cu.h"
 
-#include "paddle/phi/kernels/elementwise_add_kernel.h"
+#include "paddle/phi/kernels/bitwise_kernel.h"
+#include "paddle/phi/kernels/funcs/bitwise_functors.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 #include "paddle/phi/kernels/funcs/dims_simplifier.h"
@@ -76,7 +77,10 @@ namespace phi {
         dev_ctx, x_, y_, funcs::name##Functor<T>(), -1, out);                 \
   }
 
-DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(Add)
+DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(BitwiseAnd)
+DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(BitwiseOr)
+DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(BitwiseXor)
+
 }  // namespace phi
 
 using float16 = phi::dtype::float16;
@@ -84,20 +88,37 @@ using bfloat16 = phi::dtype::bfloat16;
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
 
-PD_REGISTER_KERNEL(add,
+PD_REGISTER_KERNEL(bitwise_and,
                    GPU,
                    STRIDED,
-                   phi::AddStrideKernel,
-                   float,
-                   double,
-                   int16_t,
-                   int,
+                   phi::BitwiseAndStrideKernel,
                    bool,
                    uint8_t,
                    int8_t,
-                   int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   complex64,
-                   complex128) {}
+                   int16_t,
+                   int,
+                   int64_t) {}
+
+PD_REGISTER_KERNEL(bitwise_or,
+                   GPU,
+                   STRIDED,
+                   phi::BitwiseOrStrideKernel,
+                   bool,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
+
+PD_REGISTER_KERNEL(bitwise_xor,
+                   GPU,
+                   STRIDED,
+                   phi::BitwiseXorStrideKernel,
+                   bool,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
+
 #endif
