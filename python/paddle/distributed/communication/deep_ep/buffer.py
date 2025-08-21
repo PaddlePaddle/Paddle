@@ -912,7 +912,11 @@ class Buffer:
             packed_recv_layout_range,
         )
         return (
-            (packed_recv_x, packed_recv_x_scales) if use_fp8 else packed_recv_x,
+            (
+                (packed_recv_x, packed_recv_x_scales)
+                if use_fp8 and expertwise_scale is None
+                else packed_recv_x
+            ),
             packed_recv_count,
             handle,
             EventOverlap(event, tensors_to_record if async_finish else None),

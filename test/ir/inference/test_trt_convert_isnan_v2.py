@@ -91,7 +91,9 @@ class TrtConvertIsnanV2Test(TrtLayerAutoScanTest):
 
             yield program_config
 
-    def sample_predictor_configs(self, program_config) -> Generator[
+    def sample_predictor_configs(
+        self, program_config
+    ) -> Generator[
         tuple[
             paddle_infer.Config, tuple[int, int], tuple[float, float] | float
         ],

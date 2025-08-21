@@ -25,6 +25,7 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
+from paddle.utils import deprecated
 from paddle.utils.decorator_utils import ParamAliasDecorator, SizeArgsDecorator
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -64,7 +65,7 @@ if TYPE_CHECKING:
 
 __all__ = []
 
-_warned_in_to_tensor = False
+_warned_in_tensor = False
 
 
 def _complex_to_real_dtype(dtype: DTypeLike) -> DTypeLike:
@@ -878,7 +879,129 @@ def _to_tensor_static(
     return output
 
 
-@ParamAliasDecorator({"place": ["device"]})
+def tensor(
+    data: TensorLike | NestedNumericSequence,
+    dtype: DTypeLike | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
+    pin_memory: bool = False,
+) -> paddle.Tensor:
+    r"""
+    Constructs a ``paddle.Tensor`` from ``data`` ,
+    which can be scalar, tuple, list, numpy\.ndarray, paddle\.Tensor.
+
+    If the ``data`` is already a Tensor, copy will be performed and return a new tensor.
+    If you only want to change stop_gradient property, please call ``Tensor.stop_gradient = stop_gradient`` directly.
+
+    .. code-block:: text
+
+        We use the dtype conversion rules following this:
+                Keep dtype
+        np.number ───────────► paddle.Tensor
+                                (0-D Tensor)
+                    default_dtype
+        Python Number ───────────────► paddle.Tensor
+                                        (0-D Tensor)
+                    Keep dtype
+        np.ndarray ───────────► paddle.Tensor
+
+    Args:
+        data(scalar|tuple|list|ndarray|Tensor): Initial data for the tensor.
+            Can be a scalar, list, tuple, numpy\.ndarray, paddle\.Tensor.
+        dtype(str|np.dtype, optional): The desired data type of returned tensor. Can be 'bool' , 'float16' ,
+            'float32' , 'float64' , 'int8' , 'int16' , 'int32' , 'int64' , 'uint8',
+            'complex64' , 'complex128'. Default: None, infers dtype from ``data``
+            except for python float number which gets dtype from ``get_default_type`` .
+        device(CPUPlace|CUDAPinnedPlace|CUDAPlace|str, optional): The place to allocate Tensor. Can be
+            CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place. If ``device`` is
+            string, It can be ``cpu``, ``gpu:x`` and ``gpu_pinned``, where ``x`` is the index of the GPUs.
+        requires_grad(bool, optional): Whether to block the gradient propagation of Autograd. Default: False.
+        pin_memory(bool, optional): If set, return tensor would be allocated in the pinned memory. Works only for CPU tensors. Default: False
+
+    Returns:
+        Tensor: A Tensor constructed from ``data`` .
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> type(paddle.tensor(1))
+            <class 'paddle.Tensor'>
+
+            >>> paddle.tensor(1)
+            Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,
+            1)
+
+            >>> x = paddle.tensor(1, requires_grad=True)
+            >>> print(x)
+            Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=False,
+            1)
+
+            >>> paddle.tensor(x)  # A new tensor will be created with default stop_gradient=True
+            Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,
+            1)
+
+            >>> paddle.tensor([[0.1, 0.2], [0.3, 0.4]], device=paddle.CPUPlace(), requires_grad=True)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[0.10000000, 0.20000000],
+             [0.30000001, 0.40000001]])
+
+            >>> type(paddle.tensor([[1+1j, 2], [3+2j, 4]], dtype='complex64'))
+            <class 'paddle.Tensor'>
+
+            >>> paddle.tensor([[1+1j, 2], [3+2j, 4]], dtype='complex64')
+            Tensor(shape=[2, 2], dtype=complex64, place=Place(cpu), stop_gradient=True,
+            [[(1+1j), (2+0j)],
+             [(3+2j), (4+0j)]])
+    """
+    if isinstance(device, str) and "cuda" in device:
+        device = device.replace("cuda", "gpu")
+    stop_gradient = not requires_grad
+    place = _get_paddle_place(device)
+    if place is None:
+        place = _current_expected_place_()
+    if pin_memory and not isinstance(
+        place, (core.CUDAPinnedPlace, core.XPUPinnedPlace)
+    ):
+        if isinstance(place, core.CUDAPlace):
+            place = core.CUDAPinnedPlace()
+        elif isinstance(place, core.XPUPlace):
+            place = core.XPUPinnedPlace()
+        else:
+            raise RuntimeError(f"Pinning memory is not supported for {place}.")
+
+    if in_dynamic_mode():
+        is_tensor = paddle.is_tensor(data)
+        if not is_tensor and hasattr(data, "__cuda_array_interface__"):
+            if not core.is_compiled_with_cuda():
+                raise RuntimeError(
+                    "PaddlePaddle is not compiled with CUDA, but trying to create a Tensor from a CUDA array."
+                )
+            tensor = core.tensor_from_cuda_array_interface(data)
+            if pin_memory:
+                tensor = tensor.pin_memory()
+        else:
+            if is_tensor:
+                global _warned_in_tensor
+                if not _warned_in_tensor:
+                    warnings.warn(
+                        "To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach(), "
+                        "rather than paddle.to_tensor(sourceTensor).",
+                        stacklevel=2,
+                    )
+                    _warned_in_tensor = True
+            tensor = _to_tensor_non_static(data, dtype, place, stop_gradient)
+        return tensor
+    # call assign for static graph
+    else:
+        re_exp = re.compile(r'[(](.+?)[)]', re.DOTALL)
+        place_str = re.findall(re_exp, str(place))[0]
+        with paddle.static.device_guard(place_str):
+            tensor = _to_tensor_static(data, dtype, stop_gradient)
+            return tensor
+
+
 def to_tensor(
     data: TensorLike | NestedNumericSequence,
     dtype: DTypeLike | None = None,
@@ -958,34 +1081,9 @@ def to_tensor(
             [[(1+1j), (2+0j)],
              [(3+2j), (4+0j)]])
     """
-    place = _get_paddle_place(place)
-    if place is None:
-        place = _current_expected_place_()
-    if in_dynamic_mode():
-        is_tensor = paddle.is_tensor(data)
-        if not is_tensor and hasattr(data, "__cuda_array_interface__"):
-            if not core.is_compiled_with_cuda():
-                raise RuntimeError(
-                    "PaddlePaddle is not compiled with CUDA, but trying to create a Tensor from a CUDA array."
-                )
-            return core.tensor_from_cuda_array_interface(data)
-        if is_tensor:
-            global _warned_in_to_tensor
-            if not _warned_in_to_tensor:
-                warnings.warn(
-                    "To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach(), "
-                    "rather than paddle.to_tensor(sourceTensor).",
-                    stacklevel=2,
-                )
-                _warned_in_to_tensor = True
-        return _to_tensor_non_static(data, dtype, place, stop_gradient)
-
-    # call assign for static graph
-    else:
-        re_exp = re.compile(r'[(](.+?)[)]', re.DOTALL)
-        place_str = re.findall(re_exp, str(place))[0]
-        with paddle.static.device_guard(place_str):
-            return _to_tensor_static(data, dtype, stop_gradient)
+    return tensor(
+        data, dtype=dtype, device=place, requires_grad=not stop_gradient
+    )
 
 
 class MmapStorage(paddle.base.core.MmapStorage):
@@ -1358,9 +1456,14 @@ def ones_like(
     Returns a Tensor filled with the value 1, with the same shape and
     data type (use ``dtype`` if ``dtype`` is not None) as ``x``.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``ones_like(input=tensor_x, ...)`` is equivalent to ``ones_like(x=tensor_x, ...)``.
+
     Args:
         x(Tensor): The input tensor which specifies shape and dtype. The
             dtype of ``x`` can be bool, float16, float32, float64, int32, int64.
+            alias: ``input``.
         dtype(str|np.dtype, optional): The data type of the
             output tensor. Supported data types: bool, float16, float32, float64,
             int32, int64. If ``dtype`` is None, the data type is the same as ``x``.
@@ -1412,10 +1515,19 @@ def zeros(
     """
     Creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 0.
 
+    .. note::
+        Alias Support: The parameter name ``size`` can be used as an alias for ``shape``.
+        ``shape`` can be a variable number of arguments.
+        For example:
+            ``paddle.ones(1, 2, 3, dtype=paddle.float32)``
+            ``paddle.ones(size=[1, 2, 3], dtype=paddle.float32)``
+
     Args:
-        shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
+        shape (tuple|list|Tensor|variable number of arguments): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
+            alias: ``size``.
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
+            ``shape`` can be a variable number of arguments.
         dtype(np.dtype|str, optional): Data type of output Tensor, it supports
             bool, float16, float32, float64, int32 and int64. Default: if None, the data type is float32.
             property.  For more information, please refer to :ref:`api_guide_Name`.
@@ -1529,8 +1641,8 @@ def zeros_like(
 
 
 def eye(
-    num_rows: int,
-    num_columns: int | None = None,
+    num_rows: int | paddle.Tensor,
+    num_columns: int | paddle.Tensor | None = None,
     dtype: DTypeLike | None = None,
     name: str | None = None,
     *,
@@ -1543,8 +1655,8 @@ def eye(
     This function constructs 2-D Tensor with ones on the diagonal and zeros elsewhere.
 
     Args:
-        num_rows(int): the number of rows in each batch Tensor.
-        num_columns(int|None, optional): the number of columns in each batch Tensor.
+        num_rows(int | paddle.Tensor): the number of rows in each batch Tensor.
+        num_columns(int | paddle.Tensor | None, optional): the number of columns in each batch Tensor.
             If None, default: num_rows.
         dtype(np.dtype|str, optional): The data type of the returned Tensor.
             It should be int32, int64, float16, float32, float64, complex64, complex128. Default: if None, the data type
@@ -1939,6 +2051,12 @@ def arange(
         return out
 
 
+@deprecated(
+    reason=(
+        "paddle.range is deprecated and will be removed in a future release because its behavior is inconsistent with Python's range builtin."
+        "Instead, use paddle.arange, which produces values in [start, end)"
+    )
+)
 def range(
     start: float | paddle.Tensor = 0,
     end: float | paddle.Tensor | None = None,
@@ -2527,13 +2645,13 @@ def diag_embed(
             f"But received Input's dimensional: {len(input_shape)}.\n"
         )
 
-        assert np.abs(dim1) <= len(
-            input_shape
-        ), f"Dim1 is out of range (expected to be in range of [{-(len(input_shape) + 1)}, {len(input_shape)}], but got {dim1}).\n"
+        assert np.abs(dim1) <= len(input_shape), (
+            f"Dim1 is out of range (expected to be in range of [{-(len(input_shape) + 1)}, {len(input_shape)}], but got {dim1}).\n"
+        )
 
-        assert np.abs(dim2) <= len(
-            input_shape
-        ), f"Dim2 is out of range (expected to be in range of [{-(len(input_shape) + 1)}, {len(input_shape)}], but got {dim2}).\n"
+        assert np.abs(dim2) <= len(input_shape), (
+            f"Dim2 is out of range (expected to be in range of [{-(len(input_shape) + 1)}, {len(input_shape)}], but got {dim2}).\n"
+        )
 
         dim1_ = dim1 if dim1 >= 0 else len(input_shape) + dim1 + 1
         dim2_ = dim2 if dim2 >= 0 else len(input_shape) + dim2 + 1
@@ -2815,6 +2933,7 @@ def diag(
         return out
 
 
+@SizeArgsDecorator()
 def empty(
     shape: ShapeLike,
     dtype: DTypeLike | None = None,
@@ -3979,7 +4098,6 @@ def resize_(
 
 
 def dtype_tensor_factory(dtype):
-
     class _DtypeTensorFactory:
         def __new__(cls, *args, **kwargs):
             if len(args) == 0:

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import unittest
 
 import numpy as np
 
@@ -26,7 +27,7 @@ from paddle.distributed.auto_parallel.moe_utils import (
 )
 
 
-class TestMoEUtils:
+class TestMoEUtils(unittest.TestCase):
     def __init__(self):
         self._dtype = os.getenv("dtype")
         self._seeds = eval(os.getenv("seeds"))
@@ -159,6 +160,25 @@ class TestMoEUtils:
             dist_x_local_slices[1]['partial'][1],
             dist_x.placements[1].reduce_type(),
         )
+
+        y = paddle.arange(0, h * w).reshape(src_shape)
+        y_placements = [dist.Shard(0)]
+        dist_y = dist.shard_tensor(y, self._mesh0, y_placements)
+        dist_y_local_slices = get_local_slices(
+            dist_y, self._mesh0, y_placements
+        )
+        np.testing.assert_equal(
+            dist_y_local_slices[0]['slice'], [(0, 2), (0, 4)]
+        )
+        np.testing.assert_equal(
+            dist_y_local_slices[1]['slice'], [(2, 4), (0, 4)]
+        )
+
+        with self.assertRaises(ValueError):
+            tmp_placements = [dist.Shard(0), dist.Shard(1), dist.Replicate()]
+            dist_y_local_slices = get_local_slices(
+                dist_y, self._mesh0, tmp_placements
+            )
 
     # python -m paddle.distributed.launch --devices=0,1 semi_auto_parallel_moe_utils.py
     def test_reshard_general_case(self):
