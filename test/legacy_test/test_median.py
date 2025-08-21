@@ -141,6 +141,12 @@ class TestMedianAvg(unittest.TestCase):
         res_pd = paddle.median(paddle.to_tensor(x), axis, keepdims)
         self.check_numpy_res(res_pd.numpy(False), res_np)
 
+    def dygraph_single_test_median_cpu(self, lis_test):
+        x, axis, keepdims = lis_test
+        res_np = np.median(x, axis=axis, keepdims=keepdims)
+        res_pd = paddle.median(paddle.to_tensor(x).to('cpu'), axis, keepdims)
+        self.check_numpy_res(res_pd.numpy(False), res_np)
+
     def test_median_static(self):
         h = 3
         w = 4
@@ -192,6 +198,7 @@ class TestMedianAvg(unittest.TestCase):
         ]
         for lis_test in lis_tests:
             self.dygraph_single_test_median(lis_test)
+            self.dygraph_single_test_median_cpu(lis_test)
 
     @unittest.skipIf(
         not core.is_compiled_with_cuda()

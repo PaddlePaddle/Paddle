@@ -189,23 +189,26 @@ void ProcessMedianKernel(const Context& dev_ctx,
     col_vec.clear();
     col_vec.insert(
         col_vec.begin(), x_data + i * stride, x_data + (i + 1) * stride);
-    nan_counts[i] =
-        std::count_if(col_vec.begin(), col_vec.end(), [&](const T& val) {
-          return std::isnan(static_cast<float>(val));
-        });
-    if (!ignore_nan && nan_counts[i] > 0) {
-      auto it = std::find_if(col_vec.begin(), col_vec.end(), [&](const T& val) {
-        return std::isnan(static_cast<float>(val));
-      });
-      if (it != col_vec.end()) {
-        nan_indice[i] = std::distance(col_vec.begin(), it);
-      } else {
-        nan_indice[i] = -1;
+
+    int64_t first_nan_idx = -1;
+    int64_t nan_count = 0;
+
+    for (int64_t j = 0; j < stride; ++j) {
+      if (std::isnan(static_cast<float>(col_vec[j]))) {
+        ++nan_count;
+        if (first_nan_idx == -1) {
+          first_nan_idx = j;
+        }
       }
     }
-    total_nan_num += nan_counts[i];
-    if (stride - nan_counts[i] > max_valid_num)
-      max_valid_num = stride - nan_counts[i];
+
+    nan_counts[i] = nan_count;
+    nan_indice[i] = first_nan_idx;
+
+    total_nan_num += nan_count;
+    if (stride - nan_count > max_valid_num) {
+      max_valid_num = stride - nan_count;
+    }
   }
   if (total_nan_num == numel) {
     for (i = 0; i < pre_dim; i++) {
