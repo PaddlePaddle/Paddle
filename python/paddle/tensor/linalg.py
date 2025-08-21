@@ -27,6 +27,7 @@ from paddle.tensor.math import broadcast_shape
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     VariableArgsDecorator,
+    transpose_decorator,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -61,6 +62,7 @@ __all__ = []
 K_DEFAULT_DIM = 9
 
 
+@transpose_decorator()
 def transpose(
     x: Tensor, perm: Sequence[int], name: str | None = None
 ) -> Tensor:
