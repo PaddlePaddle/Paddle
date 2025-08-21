@@ -1021,9 +1021,9 @@ class ResumeFunctionCreator:
         self, inputs: list[str], stack_size: int, null_indices: list[int] = []
     ):
         stack_arg_str = self.name + '_stack_{}'
-        assert all(
-            idx < stack_size for idx in null_indices
-        ), "null index out of range"
+        assert all(idx < stack_size for idx in null_indices), (
+            "null index out of range"
+        )
 
         self.codegen._code_options['co_argcount'] = (
             len(inputs) + stack_size - len(null_indices)

@@ -276,9 +276,9 @@ class HybridCommunicateGroup:
         self._sep_parallel_id = self._get_sep_parallel_id()
         self.stage_id = self._get_pipe_parallel_id()
 
-        assert (
-            self._check_valid_topo()
-        ), f"nranks: {self.nranks}, mp_num: {self._mp_degree}, sharding_num: {self._sharding_degree}, pp_num: {self._pp_degree}, dp_num: {self._dp_degree}, sep_num: {self._sep_degree}"
+        assert self._check_valid_topo(), (
+            f"nranks: {self.nranks}, mp_num: {self._mp_degree}, sharding_num: {self._sharding_degree}, pp_num: {self._pp_degree}, dp_num: {self._dp_degree}, sep_num: {self._sep_degree}"
+        )
 
         # create comm group for pipe parallel
         self._pp_group, self._pp_comm_group = self._set_comm_group(
@@ -680,9 +680,9 @@ class HybridCommunicateGroup:
         return self._pp_comm_group
 
     def get_p2p_groups(self) -> tuple[Group, Group, Group, Group]:
-        assert (
-            _use_four_directions
-        ), "If you want to use four directions p2p group, set the environment variable PADDLE_USE_FOUR_DIRECTIONS_P2P to True."
+        assert _use_four_directions, (
+            "If you want to use four directions p2p group, set the environment variable PADDLE_USE_FOUR_DIRECTIONS_P2P to True."
+        )
         return (
             self.send_next_group,
             self.send_prev_group,
@@ -736,9 +736,9 @@ class HybridCommunicateGroup:
         fused_strategy_list: list[str],
         nccl_config: NCCLConfig | None = None,
     ) -> tuple[list[list[int]], list[Group]] | tuple[list[int], Group]:
-        assert (
-            len(fused_strategy_list) > 0
-        ), "the length of fused_strategy_list must be greater than 0."
+        assert len(fused_strategy_list) > 0, (
+            "the length of fused_strategy_list must be greater than 0."
+        )
 
         parallel_group = []
         parallel_comm_group = []
@@ -827,9 +827,9 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
         dense_dims = [dim_dict[name] for name in dense_group_names]
         assert dense_group_names.index(
             "moe_sharding"
-        ) < dense_group_names.index(
-            "dense_sharding"
-        ), "moe_sharding must be before sharding."
+        ) < dense_group_names.index("dense_sharding"), (
+            "moe_sharding must be before sharding."
+        )
 
         self._dense_topo = CommunicateTopology(dense_group_names, dense_dims)
 
@@ -851,15 +851,15 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
             self._moe_topo, "moe_sharding"
         )
 
-        assert (
-            self._moe_pp_degree == self._pp_degree
-        ), f"Mismatch moe_pp_degree:{self._moe_pp_degree}, pp_degree:{self._pp_degree}."
-        assert (
-            self._topo._world_size == self._moe_topo._world_size
-        ), f"Mismatch world_size:{self._topo._world_size}, moe_world_size:{self._moe_topo._world_size}."
-        assert (
-            self._sep_degree == 1 and self._dp_degree == 1
-        ), f"sep_degree {self._sep_degree} and dp_degree {self._dp_degree} must be 1 in MoE."
+        assert self._moe_pp_degree == self._pp_degree, (
+            f"Mismatch moe_pp_degree:{self._moe_pp_degree}, pp_degree:{self._pp_degree}."
+        )
+        assert self._topo._world_size == self._moe_topo._world_size, (
+            f"Mismatch world_size:{self._topo._world_size}, moe_world_size:{self._moe_topo._world_size}."
+        )
+        assert self._sep_degree == 1 and self._dp_degree == 1, (
+            f"sep_degree {self._sep_degree} and dp_degree {self._dp_degree} must be 1 in MoE."
+        )
 
         self._pp_group, self._pp_comm_group = self._set_comm_group(
             "pipe",
@@ -1076,9 +1076,9 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
         for i in range(num_merged_groups):
             comm = []
             for j in range(topo._dims[outer_axis]):
-                assert i + j * interval < len(
-                    inner_comm_list
-                ), f"Unexpected error in merge_inner_comm_list, {i}, {j}, {interval}, {len(inner_comm_list)}"
+                assert i + j * interval < len(inner_comm_list), (
+                    f"Unexpected error in merge_inner_comm_list, {i}, {j}, {interval}, {len(inner_comm_list)}"
+                )
                 comm += inner_comm_list[i + j * interval]
             merged_comm_list.append(comm)
 
