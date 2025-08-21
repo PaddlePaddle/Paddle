@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import unittest
-from op_test import OpTest, get_device_place
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
-from paddle.base import core
 
 
 class TestPaddleAddNewFeatures(unittest.TestCase):
