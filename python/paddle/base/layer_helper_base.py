@@ -455,11 +455,14 @@ class LayerHelperBase:
             if in_pir_mode():
                 if isinstance(dtype, core.VarDesc.VarType):
                     dtype = paddle.pir.core.vartype_to_datatype[dtype]
-                return paddle.pir.core.create_parameter(
+                param = paddle.pir.core.create_parameter(
                     dtype=dtype,
                     shape=shape,
                     **attr._to_kwargs(with_initializer=True),
                 )
+                if device is not None:
+                    param = param.to(device)
+                return param
             self.startup_program.global_block().create_parameter(
                 dtype=dtype,
                 shape=shape,
