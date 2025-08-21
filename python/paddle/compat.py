@@ -13,11 +13,9 @@
 # limitations under the License.
 
 from .tensor.compat import (
+    Unfold,
     sort,
     split,
 )
 
-__all__ = [
-    'split',
-    'sort',
-]
+__all__ = ['split', 'sort', 'Unfold']

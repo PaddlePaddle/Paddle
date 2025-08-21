@@ -105,12 +105,12 @@ class ForwardAPI(BaseAPI):
                     result = re.search(r"(?P<in>\w+)\s*->\s*(?P<out>\w+)", item)
                     in_val = result.group('in')
                     out_val = result.group('out')
-                    assert (
-                        in_val in self.inputs['names']
-                    ), f"{self.api} : {mode} input error: the input var name('{in_val}') is not found in the input args of {self.api}."
-                    assert (
-                        out_val in self.outputs['names']
-                    ), f"{self.api} : {mode} output error: the output var name('{out_val}') is not found in the output args of {self.api}."
+                    assert in_val in self.inputs['names'], (
+                        f"{self.api} : {mode} input error: the input var name('{in_val}') is not found in the input args of {self.api}."
+                    )
+                    assert out_val in self.outputs['names'], (
+                        f"{self.api} : {mode} output error: the output var name('{out_val}') is not found in the output args of {self.api}."
+                    )
 
                     if mode == 'inplace':
                         inplace_map[out_val] = in_val
@@ -242,9 +242,9 @@ class ForwardAPI(BaseAPI):
                 return_type == 'std::vector<Tensor>'
                 or return_type == 'std::vector<Tensor>&'
             ):
-                assert (
-                    self.outputs['out_size_expr'][0] is not None
-                ), f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                assert self.outputs['out_size_expr'][0] is not None, (
+                    f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                )
                 output_create = (
                     output_create
                     + f"""
@@ -254,9 +254,9 @@ class ForwardAPI(BaseAPI):
                 return_type == 'paddle::optional<std::vector<Tensor>>'
                 or return_type == 'paddle::optional<std::vector<Tensor>>&'
             ):
-                assert (
-                    self.outputs['out_size_expr'][0] is not None
-                ), f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                assert self.outputs['out_size_expr'][0] is not None, (
+                    f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                )
                 output_create = (
                     output_create
                     + f"""
@@ -326,9 +326,9 @@ class ForwardAPI(BaseAPI):
                     get_out_code = f"std::get<{i}>(api_output).get_ptr()"
 
                 if out_dtype_list[i] == 'std::vector<Tensor>':
-                    assert (
-                        self.outputs['out_size_expr'][i] is not None
-                    ), f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                    assert self.outputs['out_size_expr'][i] is not None, (
+                        f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                    )
                     # Special case for inplace vector and inplace optional<vector>
                     if self.outputs['names'][i] in self.inplace_map:
                         set_out_func = "SetInplaceVectorKernelOutput"

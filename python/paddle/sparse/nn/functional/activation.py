@@ -177,9 +177,9 @@ def relu6(x: Tensor, name: str | None = None) -> Tensor:
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.nn.functional.relu6(sparse_x)
     """
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "Currently, Sparse API only support dynamic mode or pir mode."
+    assert in_dynamic_or_pir_mode(), (
+        "Currently, Sparse API only support dynamic mode or pir mode."
+    )
     return _C_ops.sparse_relu6(x)
 
 
@@ -217,7 +217,7 @@ def leaky_relu(
             >>> sparse_x = dense_x.to_sparse_coo(1)
             >>> out = paddle.sparse.nn.functional.leaky_relu(sparse_x, 0.5)
     """
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "Currently, Sparse API only support dynamic mode or pir mode."
+    assert in_dynamic_or_pir_mode(), (
+        "Currently, Sparse API only support dynamic mode or pir mode."
+    )
     return _C_ops.sparse_leaky_relu(x, negative_slope)

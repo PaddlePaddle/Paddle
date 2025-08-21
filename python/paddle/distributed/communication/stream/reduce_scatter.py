@@ -191,9 +191,9 @@ def reduce_scatter(
                 use_calc_stream,
             )
     else:
-        assert (
-            group is None
-        ), "Group can not be used in static graph mode for now."
+        assert group is None, (
+            "Group can not be used in static graph mode for now."
+        )
         return _reduce_scatter_in_static_mode(
             tensor, tensor_or_tensor_list, group
         )

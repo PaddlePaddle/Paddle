@@ -140,9 +140,9 @@ def placemetns_to_dist_status(
                 split_factor_map[i] = cast(
                     "Shard", placement
                 ).get_split_factor()
-                assert (
-                    len(split_factor_map) == 1
-                ), "only support to rerrange at one mesh dim."
+                assert len(split_factor_map) == 1, (
+                    "only support to rerrange at one mesh dim."
+                )
         if placement.is_partial():
             partial_status[i] = cast("Partial", placement).reduce_type()
 

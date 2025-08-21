@@ -167,10 +167,10 @@ class ComputeCodeGenerator(ast.NodeVisitor):
         ):
             return "no compute"
 
-        assert (
-            len(node.targets) == 1
-        ), "Unsupported targets is a \
+        assert len(node.targets) == 1, (
+            "Unsupported targets is a \
                list of nodes, like 'a = b = c'"
+        )
         lhs = node.targets[0]
 
         # 1 parse RHS

@@ -652,7 +652,9 @@ def argument_to_value(while_op):
 
     assert len(while_op.as_while_op().block_arguments()) + 1 == len(
         while_op.operands_source()
-    ), "while op's block_arguments size + 1 should same to while op's operands_source size"
+    ), (
+        "while op's block_arguments size + 1 should same to while op's operands_source size"
+    )
     arg_to_value_map = ValueDict()
     value_to_arg_map = ValueDict()
     for arg, value in zip(

@@ -117,13 +117,13 @@ class RecomputeOptimizer(Optimizer):
         Args:
             checkpoints (list): List of Variable or string
         """
-        assert isinstance(
-            checkpoints, list
-        ), "_checkpoints should be a list of Variable or a list of String"
+        assert isinstance(checkpoints, list), (
+            "_checkpoints should be a list of Variable or a list of String"
+        )
         for ckpt in checkpoints:
-            assert isinstance(
-                ckpt, (Variable, str)
-            ), "_checkpoints should be a list of Variable or a list of String"
+            assert isinstance(ckpt, (Variable, str)), (
+                "_checkpoints should be a list of Variable or a list of String"
+            )
         self._checkpoints = checkpoints
 
     # should enable offload before calling backward
@@ -302,18 +302,18 @@ class RecomputeOptimizer(Optimizer):
         )
 
     def _insert_fetch_op(self, idx, varname):
-        assert (
-            varname in self.checkpoint_name2pinned_name
-        ), f"Try to fetch {varname} from Pinned Memory, but it is NOT a checkpoint"
+        assert varname in self.checkpoint_name2pinned_name, (
+            f"Try to fetch {varname} from Pinned Memory, but it is NOT a checkpoint"
+        )
 
         pinned_varname = self.checkpoint_name2pinned_name[varname]
         fetch_varname = self.checkpoint_name2fetch_name[varname]
         self._insert_async_memcpy_op(idx, pinned_varname, fetch_varname, 1, 1)
 
     def _insert_offload_op(self, idx, varname):
-        assert (
-            varname in self.checkpoint_name2pinned_name
-        ), f"Try to offload {varname} to Pinned Memory, but it is NOT a checkpoint"
+        assert varname in self.checkpoint_name2pinned_name, (
+            f"Try to offload {varname} to Pinned Memory, but it is NOT a checkpoint"
+        )
         pinned_varname = self.checkpoint_name2pinned_name[varname]
         self._insert_async_memcpy_op(idx, varname, pinned_varname, 0, 2)
 
@@ -322,9 +322,9 @@ class RecomputeOptimizer(Optimizer):
         pass
 
     def _record_fetch_op(self, idx):
-        assert (
-            len(self.un_fetch_checkpoint_names) > 0
-        ), "Could NOT found checkpoint to fetch"
+        assert len(self.un_fetch_checkpoint_names) > 0, (
+            "Could NOT found checkpoint to fetch"
+        )
         checkpoint_name = self.un_fetch_checkpoint_names.pop(-1)
         logging.debug(f"Record fetch [{checkpoint_name}]")
         self.idx2insertions[idx] = ("fetch", checkpoint_name)
@@ -333,16 +333,16 @@ class RecomputeOptimizer(Optimizer):
 
     def _record_offload_op(self, idx, checkpoint_name):
         expected_checkpoint_name = self.un_offload_checkpoint_names.pop(0)
-        assert (
-            checkpoint_name == expected_checkpoint_name
-        ), f"expected to offload [{expected_checkpoint_name}] but got [{checkpoint_name}]"
+        assert checkpoint_name == expected_checkpoint_name, (
+            f"expected to offload [{expected_checkpoint_name}] but got [{checkpoint_name}]"
+        )
         logging.debug(f"Record offload [{checkpoint_name}]")
         self.idx2insertions[idx] = ("offload", checkpoint_name)
 
     def _record_sync_op(self, idx, checkpoint_name):
-        assert (
-            checkpoint_name not in self.synced_checkpoints
-        ), f"Try to sync the checkpoint [{checkpoint_name}] twice"
+        assert checkpoint_name not in self.synced_checkpoints, (
+            f"Try to sync the checkpoint [{checkpoint_name}] twice"
+        )
         self.synced_checkpoints.add(checkpoint_name)
         logging.debug(f"Record offload sync [{checkpoint_name}]")
         self.idx2insertions[idx] = ("sync", checkpoint_name)
@@ -363,9 +363,9 @@ class RecomputeOptimizer(Optimizer):
                 self.bw_start_op_idx = idx
                 break
 
-        assert self.bw_start_op_idx < len(
-            self.block.ops
-        ), "Could NOT found backward op in prog"
+        assert self.bw_start_op_idx < len(self.block.ops), (
+            "Could NOT found backward op in prog"
+        )
 
         # fetch second to last checkpoint at the beginning of BW
         fetched_checkpoint_varname = self._record_fetch_op(self.bw_start_op_idx)
@@ -391,9 +391,9 @@ class RecomputeOptimizer(Optimizer):
                                 )
 
                         # should check the current used checkpoint is the last fetch one
-                        assert (
-                            second_to_last_fetch_checkpoint == input_var
-                        ), f"Current recompute segment should use [{second_to_last_fetch_checkpoint}] BUT got [{input_var}]"
+                        assert second_to_last_fetch_checkpoint == input_var, (
+                            f"Current recompute segment should use [{second_to_last_fetch_checkpoint}] BUT got [{input_var}]"
+                        )
                         # rename
                         self.block.ops[idx]._rename_input(
                             input_var,
@@ -405,9 +405,9 @@ class RecomputeOptimizer(Optimizer):
                             f"use checkpoint [{input_var}] before fetch in BW"
                         )
 
-        assert (
-            len(self.un_fetch_checkpoint_names) == 0
-        ), f"{self.un_fetch_checkpoint_names} checkpoints have NOT been Recorded"
+        assert len(self.un_fetch_checkpoint_names) == 0, (
+            f"{self.un_fetch_checkpoint_names} checkpoints have NOT been Recorded"
+        )
 
     def _update_backward(self):
         if len(self.idx2insertions) == 0:
@@ -424,9 +424,9 @@ class RecomputeOptimizer(Optimizer):
                     self._insert_sync_op(op_idx, checkpoint_name)
                     logging.debug(f"Sync [{checkpoint_name}] fetch op.")
         self.block._sync_with_cpp()
-        assert (
-            len(self.idx2insertions) == 0
-        ), f"{[ele[1] for ele in self.idx2insertions.values()]} checkpoints left un-Fetched"
+        assert len(self.idx2insertions) == 0, (
+            f"{[ele[1] for ele in self.idx2insertions.values()]} checkpoints left un-Fetched"
+        )
 
     def _parse_forward(self):
         self.idx2insertions = {}
@@ -447,9 +447,9 @@ class RecomputeOptimizer(Optimizer):
                 self.fw_start_op_idx = idx
                 break
 
-        assert self.fw_start_op_idx < len(
-            self.block.ops
-        ), "Could NOT found Forward op in prog"
+        assert self.fw_start_op_idx < len(self.block.ops), (
+            "Could NOT found Forward op in prog"
+        )
         last_offload_checkpoint = None
 
         for i, op in enumerate(
@@ -461,9 +461,9 @@ class RecomputeOptimizer(Optimizer):
 
             for output_var in output_vars:
                 if output_var in need_offload_checkpoint_names:
-                    assert (
-                        len(output_vars) == 1
-                    ), f"checkpoint should be the only Output of a certain op, but [{output_var}] is from [{op}]"
+                    assert len(output_vars) == 1, (
+                        f"checkpoint should be the only Output of a certain op, but [{output_var}] is from [{op}]"
+                    )
 
                     if output_var in self.un_offload_checkpoint_names:
                         # insert sync op if last checkpoint has not been sync
@@ -483,9 +483,9 @@ class RecomputeOptimizer(Optimizer):
                                         last_offload_checkpoint
                                     ]['idx']
                                 )
-                                assert (
-                                    last_usage_idx > 0
-                                ), f"last_usage_idx of checkpoint [{last_offload_checkpoint}] should large than 0"
+                                assert last_usage_idx > 0, (
+                                    f"last_usage_idx of checkpoint [{last_offload_checkpoint}] should large than 0"
+                                )
                                 self._record_sync_op(
                                     last_usage_idx + 1, last_offload_checkpoint
                                 )
@@ -498,13 +498,15 @@ class RecomputeOptimizer(Optimizer):
                         )
                 # need to sync the last need to offload checkpoint before the last checkpoint as output op
                 if output_var == last_checkpoint:
-                    assert (
-                        len(output_vars) == 1
-                    ), f"checkpoint should be the only Output of a certain op, but [{output_var}] is from [{op}]"
+                    assert len(output_vars) == 1, (
+                        f"checkpoint should be the only Output of a certain op, but [{output_var}] is from [{op}]"
+                    )
                     assert (
                         last_offload_checkpoint
                         == self.sorted_checkpoint_names[-2]
-                    ), f"the last offload checkpoint before [{last_checkpoint}] is suppose to be [{self.sorted_checkpoint_names[-2]}], but got [{last_offload_checkpoint}]"
+                    ), (
+                        f"the last offload checkpoint before [{last_checkpoint}] is suppose to be [{self.sorted_checkpoint_names[-2]}], but got [{last_offload_checkpoint}]"
+                    )
                     # sync if last checkpoint has not been sync
                     if (
                         self.checkpoint_usage_count_and_idx[
@@ -517,27 +519,29 @@ class RecomputeOptimizer(Optimizer):
                         last_usage_idx = self.checkpoint_usage_count_and_idx[
                             last_offload_checkpoint
                         ]['idx']
-                        assert (
-                            last_usage_idx > 0
-                        ), f"last_usage_idx of checkpoint [{last_offload_checkpoint}] should large than 0"
+                        assert last_usage_idx > 0, (
+                            f"last_usage_idx of checkpoint [{last_offload_checkpoint}] should large than 0"
+                        )
                         self._record_sync_op(
                             last_usage_idx + 1, last_offload_checkpoint
                         )
             # record checkpoint usage
             for input_var in input_vars:
                 if input_var in need_offload_checkpoint_names:
-                    assert (
-                        input_var not in self.synced_checkpoints
-                    ), f"checkpoint [{input_var}] used after sync"
+                    assert input_var not in self.synced_checkpoints, (
+                        f"checkpoint [{input_var}] used after sync"
+                    )
                     self.checkpoint_usage_count_and_idx[input_var]['count'] += 1
                     self.checkpoint_usage_count_and_idx[input_var]['idx'] = idx
 
-        assert (
-            len(self.un_offload_checkpoint_names) == 0
-        ), f"{self.un_fetch_checkpoint_names} checkpoints have NOT been Recorded"
+        assert len(self.un_offload_checkpoint_names) == 0, (
+            f"{self.un_fetch_checkpoint_names} checkpoints have NOT been Recorded"
+        )
         assert len(self.synced_checkpoints) == len(
             need_offload_checkpoint_names
-        ), f"{set(need_offload_checkpoint_names) - set(self.synced_checkpoints)} checkpoints have NOT been Recorded"
+        ), (
+            f"{set(need_offload_checkpoint_names) - set(self.synced_checkpoints)} checkpoints have NOT been Recorded"
+        )
 
     def _update_forward(self):
         if len(self.idx2insertions) == 0:
@@ -559,9 +563,9 @@ class RecomputeOptimizer(Optimizer):
                     del self.idx2insertions[op_idx]
 
         self.block._sync_with_cpp()
-        assert (
-            len(self.idx2insertions) == 0
-        ), f"{[ele[1] for ele in self.idx2insertions.values()]} checkpoints left un-Offloaded"
+        assert len(self.idx2insertions) == 0, (
+            f"{[ele[1] for ele in self.idx2insertions.values()]} checkpoints left un-Offloaded"
+        )
 
     def _check_offload_fetch(self):
         # TODO(JZ-LIANG) the single stream offload need no sync
@@ -581,12 +585,12 @@ class RecomputeOptimizer(Optimizer):
             startup_program = paddle.static.default_startup_program()
 
         with program_guard(self._main_program, startup_program):
-            assert (
-                len(self.checkpoint_shape) > 0
-            ), f"checkpoints shape {self.checkpoint_shape} should be an non empty list like: [12, 512, 1024]"
-            assert all(
-                ele > 0 for ele in self.checkpoint_shape
-            ), f"all ele in checkpoints shape {self.checkpoint_shape} should be a determined integer larger than 0"
+            assert len(self.checkpoint_shape) > 0, (
+                f"checkpoints shape {self.checkpoint_shape} should be an non empty list like: [12, 512, 1024]"
+            )
+            assert all(ele > 0 for ele in self.checkpoint_shape), (
+                f"all ele in checkpoints shape {self.checkpoint_shape} should be a determined integer larger than 0"
+            )
             self.checkpoint_name2pinned_name = {}
             self.checkpoint_name2fetch_name = {}
             for checkpoint_varname in self.sorted_checkpoint_names:
@@ -665,9 +669,9 @@ class RecomputeOptimizer(Optimizer):
                 >>> print("Finished backward")
                 Finished backward
         """
-        assert (
-            self._checkpoints is not None
-        ), "You should call _set_checkpoints first"
+        assert self._checkpoints is not None, (
+            "You should call _set_checkpoints first"
+        )
 
         if in_dygraph_mode():
             raise NotImplementedError(
@@ -766,9 +770,9 @@ class RecomputeOptimizer(Optimizer):
         self, loss, startup_program=None, parameter_list=None, no_grad_set=None
     ):
         assert isinstance(loss, Variable), "The loss should be an Variable."
-        assert (
-            self._checkpoints is not None
-        ), "You should call _set_checkpoints first"
+        assert self._checkpoints is not None, (
+            "You should call _set_checkpoints first"
+        )
         if in_dygraph_mode():
             raise NotImplementedError(
                 "DyGraph current does not support recompute"
