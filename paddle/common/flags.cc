@@ -2196,7 +2196,7 @@ PHI_DEFINE_EXPORTED_bool(use_stride_compute_kernel,
 /**
  * Allocator related FLAG
  * Name: use_deep_ep_comm_prealloc
- * Since Version: 3.1.1
+ * Since Version: 3.2
  * Value Range: bool, default=false
  * Example:
  * Note: Whether use prealloc for deepep communication.
