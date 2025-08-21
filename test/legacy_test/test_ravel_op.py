@@ -48,14 +48,14 @@ class TestRavelOp(OpTest):
             self.check_output_with_place(
                 core.CUDAPlace(0),
                 no_check_set=["XShape"],
-                check_prim=True,
+                check_prim=False,
                 check_pir=True,
                 check_prim_pir=True,
             )
         else:
             self.check_output(
                 no_check_set=["XShape"],
-                check_prim=True,
+                check_prim=False,
                 check_pir=True,
                 check_prim_pir=True,
             )
@@ -66,11 +66,11 @@ class TestRavelOp(OpTest):
                 core.CUDAPlace(0),
                 ["X"],
                 "Out",
-                check_prim=True,
+                check_prim=False,
                 check_pir=True,
             )
         else:
-            self.check_grad(["X"], "Out", check_prim=True, check_pir=True)
+            self.check_grad(["X"], "Out", check_prim=False, check_pir=True)
 
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)

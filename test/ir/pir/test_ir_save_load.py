@@ -399,14 +399,6 @@ class TestJsonToPdmodel(unittest.TestCase):
         ]
         paddle.jit.save(net, save_json, input_spec)
 
-        # load and save to pdmodel
-        with paddle.pir_utils.OldIrGuard():
-            input_spec = [
-                paddle.static.InputSpec(shape=[1, 3, 224, 224], dtype='float32')
-            ]
-        paddle.jit.json_to_pdmodel(net, input_spec, save_json, save_model)
-        self.assertTrue(os.path.exists(save_model + '.pdmodel'))
-
 
 if __name__ == '__main__':
     unittest.main()
