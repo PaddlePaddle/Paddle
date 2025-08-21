@@ -4006,7 +4006,11 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : one_hot
-  args : (Tensor x, Scalar(int) num_classes)
+  args : (Tensor x, Scalar(int) num_classes = -1)
+  python_api:
+    name : [paddle.nn.functional.one_hot]
+    args_alias:
+      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : OneHotInferMeta
