@@ -601,9 +601,9 @@ def interpolate(
                 if isinstance(dim_size, (Variable, paddle.pir.Value)):
                     contain_var = True
                     continue
-                assert (
-                    dim_size > 0
-                ), "Each dimension size given in out_shape must be greater than 0."
+                assert dim_size > 0, (
+                    "Each dimension size given in out_shape must be greater than 0."
+                )
 
             if contain_var:
                 new_size_tensor = []
@@ -2068,7 +2068,9 @@ def pad(
         'replicate',
         'constant',
         'circular',
-    ], f"mode should be one of constant, reflect, replicate, circular, but got {mode}."
+    ], (
+        f"mode should be one of constant, reflect, replicate, circular, but got {mode}."
+    )
 
     x_dim = len(x.shape)
     if in_dynamic_mode():
@@ -2162,9 +2164,9 @@ def pad(
         4: ["NCHW", "NHWC"],
         5: ["NCDHW", "NDHWC"],
     }
-    assert (
-        data_format in supported_format_map[x_dim]
-    ), f"input tensor dimension is {x_dim}, it's data format should be in {supported_format_map[x_dim]} but got {data_format}"
+    assert data_format in supported_format_map[x_dim], (
+        f"input tensor dimension is {x_dim}, it's data format should be in {supported_format_map[x_dim]} but got {data_format}"
+    )
 
     unsqueezed_dim = []
 
@@ -2831,9 +2833,9 @@ def fold(
     )
 
     assert len(x.shape) == 3, "input should be the format of [N, C, L]"
-    assert (
-        math.prod(x.shape) >= 0
-    ), "The number of elements must greater or equal than zero."
+    assert math.prod(x.shape) >= 0, (
+        "The number of elements must greater or equal than zero."
+    )
 
     def _is_list_or_tuple_(data):
         return isinstance(data, (list, tuple))
@@ -2841,30 +2843,30 @@ def fold(
     if isinstance(output_sizes, int):
         output_sizes = [output_sizes, output_sizes]
     else:
-        assert _is_list_or_tuple_(output_sizes) and (
-            len(output_sizes) == 2
-        ), "output_sizes should either be an integer or a list/tuple of two integers"
+        assert _is_list_or_tuple_(output_sizes) and (len(output_sizes) == 2), (
+            "output_sizes should either be an integer or a list/tuple of two integers"
+        )
 
     if isinstance(kernel_sizes, int):
         kernel_sizes = [kernel_sizes, kernel_sizes]
     else:
-        assert _is_list_or_tuple_(kernel_sizes) and (
-            len(kernel_sizes) == 2
-        ), "kernel_sizes should either be an integer or a list/tuple of two integers"
+        assert _is_list_or_tuple_(kernel_sizes) and (len(kernel_sizes) == 2), (
+            "kernel_sizes should either be an integer or a list/tuple of two integers"
+        )
 
     if isinstance(strides, int):
         strides = [strides, strides]
     else:
-        assert _is_list_or_tuple_(strides) and (
-            len(strides) == 2
-        ), "strides should either be an integer or a list/tuple of two integers"
+        assert _is_list_or_tuple_(strides) and (len(strides) == 2), (
+            "strides should either be an integer or a list/tuple of two integers"
+        )
 
     if isinstance(dilations, int):
         dilations = [dilations, dilations]
     else:
-        assert _is_list_or_tuple_(dilations) and (
-            len(dilations) == 2
-        ), "dilations should either be an integer or a list/tuple of two integers"
+        assert _is_list_or_tuple_(dilations) and (len(dilations) == 2), (
+            "dilations should either be an integer or a list/tuple of two integers"
+        )
 
     if isinstance(paddings, int):
         paddings = [paddings] * 4

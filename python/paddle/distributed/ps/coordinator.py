@@ -64,15 +64,15 @@ class ClientSelectorBase(abc.ABC):
                 bytes(info, encoding="utf8"), self.fl_client_info_desc
             )
             self.clients_info[client_id] = {}
-            self.clients_info[client_id][
-                ClientInfoAttr.DEVICE_TYPE
-            ] = self.fl_client_info_desc.device_type
-            self.clients_info[client_id][
-                ClientInfoAttr.COMPUTE_CAPACITY
-            ] = self.fl_client_info_desc.compute_capacity
-            self.clients_info[client_id][
-                ClientInfoAttr.BANDWIDTH
-            ] = self.fl_client_info_desc.bandwidth
+            self.clients_info[client_id][ClientInfoAttr.DEVICE_TYPE] = (
+                self.fl_client_info_desc.device_type
+            )
+            self.clients_info[client_id][ClientInfoAttr.COMPUTE_CAPACITY] = (
+                self.fl_client_info_desc.compute_capacity
+            )
+            self.clients_info[client_id][ClientInfoAttr.BANDWIDTH] = (
+                self.fl_client_info_desc.bandwidth
+            )
 
     @abc.abstractmethod
     def select(self):

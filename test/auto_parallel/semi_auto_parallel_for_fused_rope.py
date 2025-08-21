@@ -47,9 +47,9 @@ class TestFusedRopeApiForSemiAutoParallel(SemiAutoParallelTestBase):
         self._position_ids_shape = [self._bs, self._seq_len]
 
     def check_placements(self, output, expected_placements):
-        assert (
-            output.placements == expected_placements
-        ), f"{output.placements}  vs {expected_placements}"
+        assert output.placements == expected_placements, (
+            f"{output.placements}  vs {expected_placements}"
+        )
 
     def test_only_q_input(self):
         paddle.seed(self._seed)

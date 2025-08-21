@@ -84,9 +84,9 @@ class TestCustomOpReluModelStaticMultiDevice(unittest.TestCase):
                 count = paddle.framework.core.get_cuda_device_count()
             elif paddle.framework.core.is_compiled_with_xpu():
                 count = paddle.framework.core.get_xpu_device_count()
-            assert (
-                count > 1
-            ), "TestCustomOpReluModelStaticMultiDevice needs at least two devices"
+            assert count > 1, (
+                "TestCustomOpReluModelStaticMultiDevice needs at least two devices"
+            )
 
             for id in range(count):
                 loss_custom = np.load(

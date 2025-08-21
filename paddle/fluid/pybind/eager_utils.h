@@ -479,7 +479,7 @@ class TensorListBufferAllocator {
     bool is_available;
     std::vector<paddle::Tensor> buffer;
     TensorListBuffer() = default;
-    explicit TensorListBuffer(ssize_t len) : buffer(len), is_available(true) {}
+    explicit TensorListBuffer(ssize_t len) : is_available(true), buffer(len) {}
   };
 
   using MapType =
@@ -539,6 +539,8 @@ CvtPlacements(phi::distributed::Placements placements, int ndim);
 void EagerSetDeviceId();
 
 paddle::optional<Tensor*> GetInputOutTensorFromKwargs(PyObject* kwargs);
+
+void Check_PIR_not_support_out(PyObject* kwargs);
 
 /*----------------------for arg parse-----------------------------*/
 paddle::Tensor& GetTensorFromArgsOrKWArgs(

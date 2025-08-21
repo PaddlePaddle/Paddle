@@ -45,6 +45,8 @@ if TYPE_CHECKING:
 
     _T_Padding = TypeVar("_T_Padding", Tensor, Sequence[int])
 
+from paddle.utils.decorator_utils import ForbidKeywordsDecorator
+
 __all__ = []
 
 
@@ -1908,6 +1910,11 @@ class Unfold(Layer):
     strides: Size2
     name: str | None
 
+    @ForbidKeywordsDecorator(
+        illegal_keys={"kernel_size", "dilation", "padding", "stride"},
+        func_name="paddle.nn.Unfold",
+        correct_name="paddle.compat.Unfold",
+    )
     def __init__(
         self,
         kernel_sizes: Size2,

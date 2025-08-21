@@ -202,9 +202,9 @@ class DualPipeVParallel(PipelineParallel):
             if isinstance(loss_tensor, (tuple, list)):
                 assert len(loss_tensor) == 1
                 loss_tensor = loss_tensor[0]
-            assert isinstance(
-                loss_tensor, paddle.Tensor
-            ), "Currently, loss_fn should obtain Paddle.Tensor dtype"
+            assert isinstance(loss_tensor, paddle.Tensor), (
+                "Currently, loss_fn should obtain Paddle.Tensor dtype"
+            )
 
             self.loss_tensors.append(loss_tensor)
             self.loss_fn_chunks.append(loss_fn_node)
@@ -623,18 +623,18 @@ class DualPipeVParallel(PipelineParallel):
         return micro_dataset
 
     def _prepare_training(self, data, optimizer, lr_scheduler):
-        assert isinstance(
-            optimizer, HybridParallelOptimizer
-        ), 'optimizer should be HybridParallelOptimizer subclass.'
+        assert isinstance(optimizer, HybridParallelOptimizer), (
+            'optimizer should be HybridParallelOptimizer subclass.'
+        )
 
-        assert (
-            framework._dygraph_tracer()._has_grad
-        ), 'Please enable the generation of gradients.'
+        assert framework._dygraph_tracer()._has_grad, (
+            'Please enable the generation of gradients.'
+        )
 
         if self.is_pipeline_first_stage():
-            assert (
-                data is not None
-            ), "For the first and the last stage, the data must be set."
+            assert data is not None, (
+                "For the first and the last stage, the data must be set."
+            )
         else:
             data = None
 
@@ -648,9 +648,9 @@ class DualPipeVParallel(PipelineParallel):
     def _broadcast_final_loss(self):
         loss_sum_tensor = paddle.zeros([1], "float32")
         if self.is_pipeline_first_stage():
-            assert (
-                len(self.loss_tensors) > 0
-            ), "train_batch() in last stage should obtain valid loss"
+            assert len(self.loss_tensors) > 0, (
+                "train_batch() in last stage should obtain valid loss"
+            )
             for loss in self.loss_tensors:
                 loss_sum_tensor += loss.detach().astype("float32")
             if self._delay_scale_loss:
