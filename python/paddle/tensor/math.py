@@ -26,6 +26,9 @@ from paddle._C_ops import (  # noqa: F401
     all,
     amax,
     amin,
+    isfinite,
+    isinf,
+    isnan,
 )
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc, dygraph_utils
@@ -1310,15 +1313,17 @@ def multiply_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
 
 def _elementwise_op_with_axis(x, y, axis=-1, name=None, op_type="Undefined"):
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "You can only call `_elementwise_op_with_axis` function within in_dynamic_or_pir_mode"
+    assert in_dynamic_or_pir_mode(), (
+        "You can only call `_elementwise_op_with_axis` function within in_dynamic_or_pir_mode"
+    )
     assert op_type in [
         "add",
         "subtract",
         "multiply",
         "divide",
-    ], f"op_name input error! _elementwise_op_with_axis is an inner function to replace elementwise_add/sub/mul/div. Input op_name={op_type}, Expect op_name=[add|subtract|multiply|divide]\n"
+    ], (
+        f"op_name input error! _elementwise_op_with_axis is an inner function to replace elementwise_add/sub/mul/div. Input op_name={op_type}, Expect op_name=[add|subtract|multiply|divide]\n"
+    )
     op = getattr(_C_ops, op_type)
     x_shape = list(x.shape)
     y_shape = list(y.shape)
@@ -4038,13 +4043,13 @@ def trace(
         axis1_ = axis1 if axis1 >= 0 else len(input_shape) + axis1
         axis2_ = axis2 if axis2 >= 0 else len(input_shape) + axis2
 
-        assert (0 <= axis1_) and (
-            axis1_ < len(input_shape)
-        ), f"The argument axis1 is out of range (expected to be in range of [{-(len(input_shape))}, {len(input_shape) - 1}], but got {axis1}).\n"
+        assert (0 <= axis1_) and (axis1_ < len(input_shape)), (
+            f"The argument axis1 is out of range (expected to be in range of [{-(len(input_shape))}, {len(input_shape) - 1}], but got {axis1}).\n"
+        )
 
-        assert (0 <= axis2_) and (
-            axis2_ < len(input_shape)
-        ), f"The argument axis2 is out of range (expected to be in range of [{-(len(input_shape))}, {len(input_shape) - 1}], but got {axis2}).\n"
+        assert (0 <= axis2_) and (axis2_ < len(input_shape)), (
+            f"The argument axis2 is out of range (expected to be in range of [{-(len(input_shape))}, {len(input_shape) - 1}], but got {axis2}).\n"
+        )
 
         assert axis1_ != axis2_, (
             "axis1 and axis2 cannot be the same axis."
@@ -4152,7 +4157,7 @@ def cumsum(
     Args:
         x (Tensor): The input tensor needed to be cumsumed.
         axis (int, optional): The dimension to accumulate along. -1 means the last dimension. The default (None) is to compute the cumsum over the flattened array.
-        dtype (str|paddle.dtype|np.dtype|None, optional): The data type of the output tensor, can be bfloat16, float16, float32, float64, int32, int64, complex64, complex128. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
+        dtype (str|paddle.dtype|np.dtype|None, optional): The data type of the output tensor, can be bfloat16, float16, float32, float64, int32, int64, complex64, complex128. By default, it is int64 if the input x is int8/int16/int32; otherwise, it is None. If it is not None, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4194,6 +4199,13 @@ def cumsum(
         flatten = False
     if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
         x = cast(x, dtype)
+    elif isinstance(x, paddle.Tensor) and x.dtype in [
+        paddle.uint8,
+        paddle.int8,
+        paddle.int16,
+        paddle.int32,
+    ]:
+        x = cast(x, "int64")
 
     if in_dynamic_or_pir_mode():
         if axis is None:
@@ -4652,152 +4664,6 @@ def cumprod_(
 
     if in_dynamic_mode():
         return _C_ops.cumprod_(x, dim, False, False)
-
-
-def isfinite(x: Tensor, name: str | None = None) -> Tensor:
-    """
-
-    Return whether every element of input tensor is finite number or not.
-
-    Args:
-        x (Tensor): The input tensor, it's data type should be float16, float32, float64, int32, int64, complex64, complex128.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        `Tensor`, the bool result which shows every element of `x` whether it is finite number or not.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
-            >>> out = paddle.isfinite(x)
-            >>> out
-            Tensor(shape=[7], dtype=bool, place=Place(cpu), stop_gradient=True,
-            [False, True , True , False, True , False, False])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.isfinite(x)
-    else:
-        helper = LayerHelper("isfinite_v2", **locals())
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'float32',
-                'float64',
-                'int32',
-                'int64',
-                'uint16',
-                'complex64',
-                'complex128',
-            ],
-            'isfinite',
-        )
-        out = helper.create_variable_for_type_inference('bool')
-        helper.append_op(
-            type="isfinite_v2", inputs={"X": x}, outputs={"Out": out}
-        )
-        return out
-
-
-def isinf(x: Tensor, name: str | None = None) -> Tensor:
-    """
-
-    Return whether every element of input tensor is `+/-INF` or not.
-
-    Args:
-        x (Tensor): The input tensor, it's data type should be float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        `Tensor`, the bool result which shows every element of `x` whether it is `+/-INF` or not.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
-            >>> out = paddle.isinf(x)
-            >>> out
-            Tensor(shape=[7], dtype=bool, place=Place(cpu), stop_gradient=True,
-            [True , False, False, True , False, False, False])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.isinf(x)
-    else:
-        helper = LayerHelper("isinf_v2", **locals())
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'float32',
-                'float64',
-                'int8',
-                'int16',
-                'int32',
-                'int64',
-                'uint8',
-                'uint16',
-                'complex64',
-                'complex128',
-            ],
-            'isinf',
-        )
-        out = helper.create_variable_for_type_inference(dtype='bool')
-        helper.append_op(type="isinf_v2", inputs={"X": x}, outputs={"Out": out})
-        return out
-
-
-def isnan(x: Tensor, name: str | None = None) -> Tensor:
-    """
-
-    Return whether every element of input tensor is `NaN` or not.
-
-    Args:
-        x (Tensor): The input tensor, it's data type should be float16, float32, float64, int32, int64, complex64, complex128.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        `Tensor`, the bool result which shows every element of `x` whether it is `NaN` or not.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
-            >>> out = paddle.isnan(x)
-            >>> out
-            Tensor(shape=[7], dtype=bool, place=Place(cpu), stop_gradient=True,
-            [False, False, False, False, False, True , True ])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.isnan(x)
-    else:
-        helper = LayerHelper("isnan_v2", **locals())
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'float32',
-                'float64',
-                'int32',
-                'int64',
-                'uint16',
-                'complex64',
-                'complex128',
-            ],
-            'isnan',
-        )
-        out = helper.create_variable_for_type_inference(dtype='bool')
-        helper.append_op(type="isnan_v2", inputs={"X": x}, outputs={"Out": out})
-        return out
 
 
 @param_two_alias(["x", "input"], ["axis", "dim"])
@@ -5629,9 +5495,9 @@ def multigammaln(x: Tensor, p: int, name: str | None = None) -> Tensor:
                 [0.85704780  , 2.46648574  , 3.56509781  , 11.02241898 , 15.84497833 ,
                     26.09257698 , 170.68318176])
     """
-    assert (
-        p >= 1
-    ), f"The p must be greater than or equal to 1, But received p is {p}.\n"
+    assert p >= 1, (
+        f"The p must be greater than or equal to 1, But received p is {p}.\n"
+    )
     c = 0.25 * p * (p - 1) * math.log(math.pi)
     b = 0.5 * paddle.arange(start=(1 - p), end=1, step=1, dtype=x.dtype)
     return paddle.sum(paddle.lgamma(x.unsqueeze(-1) + b), axis=-1) + c
@@ -5643,9 +5509,9 @@ def multigammaln_(x: Tensor, p: int, name: str | None = None) -> Tensor:
     Inplace version of ``multigammaln_`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_multigammaln`.
     """
-    assert (
-        p >= 1
-    ), f"The p must be greater than or equal to 1, But received p is {p}.\n"
+    assert p >= 1, (
+        f"The p must be greater than or equal to 1, But received p is {p}.\n"
+    )
     c = 0.25 * p * (p - 1) * math.log(math.pi)
     c = paddle.to_tensor(c, dtype=x.dtype)
     b = 0.5 * paddle.arange(start=(1 - p), end=1, step=1, dtype=x.dtype)
