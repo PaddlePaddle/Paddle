@@ -148,9 +148,16 @@ std::unordered_map<std::string, std::vector<int64_t>> ShardingMergeForTensors(
       throw std::runtime_error("Mismatched sharding spec and mesh dimensions.");
     }
     for (size_t i = 0; i < pair.second.size(); ++i) {
-      auto tensor_axis = pair.first.substr(i, 1);
+      std::string tensor_axis(1, pair.first[i]);
       std::vector<int64_t> current_dims = pair.second[i];
       if (axis_to_dim_map.find(tensor_axis) == axis_to_dim_map.end()) {
+        for (const auto dim : current_dims) {
+          auto it = placements_status.find(dim);
+          if (it != placements_status.end() && it->second.second == 1) {
+            const auto& before_axis = it->second.first;
+            axis_to_dim_map[before_axis].clear();
+          }
+        }
         current_dims.erase(
             std::remove_if(current_dims.begin(),
                            current_dims.end(),
@@ -160,18 +167,6 @@ std::unordered_map<std::string, std::vector<int64_t>> ShardingMergeForTensors(
                                     placements_status[dim].second == 2;
                            }),
             current_dims.end());
-        for (int64_t i = 0; i < current_dims.size(); ++i) {
-          auto dim = current_dims[i];
-          if (placements_status.find(dim) != placements_status.end()) {
-            if (placements_status[dim].second == 2) {
-              current_dims.erase(current_dims.begin() + i);
-              --i;
-            } else {  // placements_status[dim].second == 1
-              auto before_axis = placements_status[dim].first;
-              axis_to_dim_map[before_axis].clear();
-            }
-          }
-        }
         axis_to_dim_map[tensor_axis] = current_dims;
         const int status = (current_dims.size() == 1)
                                ? 1
