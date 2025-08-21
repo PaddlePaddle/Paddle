@@ -672,9 +672,9 @@ class StaticFunction(Generic[_InputT, _RetT]):
             if self._patched_name is not None
             else self._dygraph_function.__name__
         )
-        assert (
-            fn_name in self.class_instance._original_funcs
-        ), f"Not Found function '{fn_name}' in class '{self.class_instance.__class__}'."
+        assert fn_name in self.class_instance._original_funcs, (
+            f"Not Found function '{fn_name}' in class '{self.class_instance.__class__}'."
+        )
         func = self.class_instance._original_funcs[fn_name]
         setattr(self.class_instance, fn_name, func.__get__(self.class_instance))
         return getattr(self.class_instance, fn_name)
@@ -1733,9 +1733,9 @@ class ProgramCache:
         return self._caches[item_id]
 
     def last(self):
-        assert (
-            len(self._caches) >= 1
-        ), "No valid cached program in ProgramCache."
+        assert len(self._caches) >= 1, (
+            "No valid cached program in ProgramCache."
+        )
         assert self._recent_key is not None
         return self._recent_key, self._caches[self._recent_key]
 

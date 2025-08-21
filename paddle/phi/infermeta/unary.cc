@@ -6333,7 +6333,7 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
       common::errors::InvalidArgument(
           "The x tensor of quant op must be 2D, but got[%d]", x_dims.size()));
 
-  if (algo == "w4a8") {
+  if (algo == "w4a8" || algo == "w4afp8") {
     PADDLE_ENFORCE_EQ(
         x_dims[0] % 32,
         0,
@@ -6379,10 +6379,12 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
     dim_out = std::vector<int64_t>({x_dims[1] / 2, x_dims[0]});
   } else if (algo == "w4a8") {
     dim_out = vectorize(x_dims);
+  } else if (algo == "w4afp8") {
+    dim_out = vectorize(x_dims);
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "The algo must be in ['weight_only_int8', 'weight_only_int4', "
-        "'llm.int8', 'w4a8'], but got[%s]",
+        "'llm.int8', 'w4a8', 'w4afp8'], but got[%s]",
         algo));
   }
   out->set_dims(common::make_ddim(dim_out));
