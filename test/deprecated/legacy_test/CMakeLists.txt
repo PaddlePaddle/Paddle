@@ -622,8 +622,6 @@ set_tests_properties(test_argsort_op_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_sgd_op_deprecated PROPERTIES TIMEOUT 250)
 set_tests_properties(test_generator_dataloader_deprecated PROPERTIES TIMEOUT
                                                                      120)
-set_tests_properties(test_program_prune_backward_deprecated PROPERTIES TIMEOUT
-                                                                       120)
 set_tests_properties(test_decoupled_py_reader_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fuse_bn_act_pass_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv2d_api_deprecated PROPERTIES TIMEOUT 120)
@@ -634,7 +632,6 @@ set_tests_properties(test_dataloader_keep_order_deprecated PROPERTIES TIMEOUT
 set_tests_properties(test_dataloader_unkeep_order_deprecated PROPERTIES TIMEOUT
                                                                         120)
 set_tests_properties(test_reader_reset_deprecated PROPERTIES TIMEOUT 120)
-set_tests_properties(test_split_program_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_uniform_random_op_deprecated PROPERTIES TIMEOUT 60)
 
 set_tests_properties(test_inplace_addto_strategy_deprecated PROPERTIES TIMEOUT
@@ -713,8 +710,6 @@ set_tests_properties(test_layer_norm_op_deprecated_static_build
 
 set_pir_tests_properties()
 
-set_tests_properties(test_apply_pass_to_program_deprecated PROPERTIES TIMEOUT
-                                                                      120)
 set_tests_properties(test_conv3d_layer_deprecated PROPERTIES TIMEOUT 100)
 set_tests_properties(test_attribute_var_deprecated PROPERTIES TIMEOUT 100)
 set_tests_properties(test_inference_api_deprecated PROPERTIES TIMEOUT 100)
