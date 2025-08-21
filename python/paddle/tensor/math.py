@@ -26,6 +26,9 @@ from paddle._C_ops import (  # noqa: F401
     all,
     amax,
     amin,
+    isfinite,
+    isinf,
+    isnan,
 )
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc, dygraph_utils
@@ -4661,152 +4664,6 @@ def cumprod_(
 
     if in_dynamic_mode():
         return _C_ops.cumprod_(x, dim, False, False)
-
-
-def isfinite(x: Tensor, name: str | None = None) -> Tensor:
-    """
-
-    Return whether every element of input tensor is finite number or not.
-
-    Args:
-        x (Tensor): The input tensor, it's data type should be float16, float32, float64, int32, int64, complex64, complex128.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        `Tensor`, the bool result which shows every element of `x` whether it is finite number or not.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
-            >>> out = paddle.isfinite(x)
-            >>> out
-            Tensor(shape=[7], dtype=bool, place=Place(cpu), stop_gradient=True,
-            [False, True , True , False, True , False, False])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.isfinite(x)
-    else:
-        helper = LayerHelper("isfinite_v2", **locals())
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'float32',
-                'float64',
-                'int32',
-                'int64',
-                'uint16',
-                'complex64',
-                'complex128',
-            ],
-            'isfinite',
-        )
-        out = helper.create_variable_for_type_inference('bool')
-        helper.append_op(
-            type="isfinite_v2", inputs={"X": x}, outputs={"Out": out}
-        )
-        return out
-
-
-def isinf(x: Tensor, name: str | None = None) -> Tensor:
-    """
-
-    Return whether every element of input tensor is `+/-INF` or not.
-
-    Args:
-        x (Tensor): The input tensor, it's data type should be float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        `Tensor`, the bool result which shows every element of `x` whether it is `+/-INF` or not.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
-            >>> out = paddle.isinf(x)
-            >>> out
-            Tensor(shape=[7], dtype=bool, place=Place(cpu), stop_gradient=True,
-            [True , False, False, True , False, False, False])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.isinf(x)
-    else:
-        helper = LayerHelper("isinf_v2", **locals())
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'float32',
-                'float64',
-                'int8',
-                'int16',
-                'int32',
-                'int64',
-                'uint8',
-                'uint16',
-                'complex64',
-                'complex128',
-            ],
-            'isinf',
-        )
-        out = helper.create_variable_for_type_inference(dtype='bool')
-        helper.append_op(type="isinf_v2", inputs={"X": x}, outputs={"Out": out})
-        return out
-
-
-def isnan(x: Tensor, name: str | None = None) -> Tensor:
-    """
-
-    Return whether every element of input tensor is `NaN` or not.
-
-    Args:
-        x (Tensor): The input tensor, it's data type should be float16, float32, float64, int32, int64, complex64, complex128.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        `Tensor`, the bool result which shows every element of `x` whether it is `NaN` or not.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
-            >>> out = paddle.isnan(x)
-            >>> out
-            Tensor(shape=[7], dtype=bool, place=Place(cpu), stop_gradient=True,
-            [False, False, False, False, False, True , True ])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.isnan(x)
-    else:
-        helper = LayerHelper("isnan_v2", **locals())
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'float32',
-                'float64',
-                'int32',
-                'int64',
-                'uint16',
-                'complex64',
-                'complex128',
-            ],
-            'isnan',
-        )
-        out = helper.create_variable_for_type_inference(dtype='bool')
-        helper.append_op(type="isnan_v2", inputs={"X": x}, outputs={"Out": out})
-        return out
 
 
 @param_two_alias(["x", "input"], ["axis", "dim"])
