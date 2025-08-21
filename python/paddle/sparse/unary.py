@@ -79,9 +79,9 @@ def sin(x: Tensor, name: str | None = None) -> Tensor:
                 indices=[[0, 2]],
                 values=[-0.90929741,  0.84147102])
     """
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "Currently, Sparse API only support dynamic mode or pir mode."
+    assert in_dynamic_or_pir_mode(), (
+        "Currently, Sparse API only support dynamic mode or pir mode."
+    )
     return _C_ops.sparse_sin(x)
 
 
@@ -114,9 +114,9 @@ def tan(x: Tensor, name: str | None = None) -> Tensor:
                 indices=[[0, 2]],
                 values=[2.18503976, 1.55740774])
     """
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "Currently, Sparse API only support dynamic mode or pir mode."
+    assert in_dynamic_or_pir_mode(), (
+        "Currently, Sparse API only support dynamic mode or pir mode."
+    )
     return _C_ops.sparse_tan(x)
 
 
@@ -149,9 +149,9 @@ def asin(x: Tensor, name: str | None = None) -> Tensor:
                 indices=[[0, 2]],
                 values=[nan       , 1.57079625])
     """
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "Currently, Sparse API only support dynamic mode or pir mode."
+    assert in_dynamic_or_pir_mode(), (
+        "Currently, Sparse API only support dynamic mode or pir mode."
+    )
     return _C_ops.sparse_asin(x)
 
 
@@ -191,9 +191,9 @@ def transpose(
                         [ 1.,  2.]])
 
     """
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "Currently, Sparse API only support dynamic mode or pir mode."
+    assert in_dynamic_or_pir_mode(), (
+        "Currently, Sparse API only support dynamic mode or pir mode."
+    )
     return _C_ops.sparse_transpose(x, perm)
 
 
@@ -334,9 +334,9 @@ def atan(x: Tensor, name: str | None = None) -> Tensor:
                 indices=[[0, 2]],
                 values=[-1.10714877,  0.78539819])
     """
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "Currently, Sparse API only support dynamic mode or pir mode."
+    assert in_dynamic_or_pir_mode(), (
+        "Currently, Sparse API only support dynamic mode or pir mode."
+    )
     return _C_ops.sparse_atan(x)
 
 
@@ -369,9 +369,9 @@ def sinh(x: Tensor, name: str | None = None) -> Tensor:
                 indices=[[0, 2]],
                 values=[-3.62686038,  1.17520118])
     """
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "Currently, Sparse API only support dynamic mode or pir mode."
+    assert in_dynamic_or_pir_mode(), (
+        "Currently, Sparse API only support dynamic mode or pir mode."
+    )
     return _C_ops.sparse_sinh(x)
 
 
@@ -404,9 +404,9 @@ def asinh(x: Tensor, name: str | None = None) -> Tensor:
                 indices=[[0, 2]],
                 values=[-1.44363546,  0.88137358])
     """
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "Currently, Sparse API only support dynamic mode or pir mode."
+    assert in_dynamic_or_pir_mode(), (
+        "Currently, Sparse API only support dynamic mode or pir mode."
+    )
     return _C_ops.sparse_asinh(x)
 
 
@@ -439,9 +439,9 @@ def atanh(x: Tensor, name: str | None = None) -> Tensor:
                 indices=[[0, 2]],
                 values=[nan , inf.])
     """
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "Currently, Sparse API only support dynamic mode or pir mode."
+    assert in_dynamic_or_pir_mode(), (
+        "Currently, Sparse API only support dynamic mode or pir mode."
+    )
     return _C_ops.sparse_atanh(x)
 
 
@@ -474,9 +474,9 @@ def tanh(x: Tensor, name: str | None = None) -> Tensor:
                 indices=[[0, 2]],
                 values=[-0.96402758,  0.76159418])
     """
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "Currently, Sparse API only support dynamic mode or pir mode."
+    assert in_dynamic_or_pir_mode(), (
+        "Currently, Sparse API only support dynamic mode or pir mode."
+    )
     return _C_ops.sparse_tanh(x)
 
 
@@ -509,9 +509,9 @@ def square(x: Tensor, name: str | None = None) -> Tensor:
                 indices=[[0, 2]],
                 values=[4., 1.])
     """
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "Currently, Sparse API only support dynamic mode or pir mode."
+    assert in_dynamic_or_pir_mode(), (
+        "Currently, Sparse API only support dynamic mode or pir mode."
+    )
     return _C_ops.sparse_square(x)
 
 
@@ -544,9 +544,9 @@ def sqrt(x: Tensor, name: str | None = None) -> Tensor:
                 indices=[[0, 2]],
                 values=[nan, 1. ])
     """
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "Currently, Sparse API only support dynamic mode or pir mode."
+    assert in_dynamic_or_pir_mode(), (
+        "Currently, Sparse API only support dynamic mode or pir mode."
+    )
     return _C_ops.sparse_sqrt(x)
 
 
@@ -579,9 +579,9 @@ def log1p(x: Tensor, name: str | None = None) -> Tensor:
                 indices=[[0, 2]],
                 values=[nan       , 0.69314718])
     """
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "Currently, Sparse API only support dynamic mode or pir mode."
+    assert in_dynamic_or_pir_mode(), (
+        "Currently, Sparse API only support dynamic mode or pir mode."
+    )
     return _C_ops.sparse_log1p(x)
 
 
@@ -620,9 +620,9 @@ def cast(
                 indices=[[0, 2]],
                 values=[-2.,  1.])
     """
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "Currently, Sparse API only support dynamic mode or pir mode."
+    assert in_dynamic_or_pir_mode(), (
+        "Currently, Sparse API only support dynamic mode or pir mode."
+    )
     if index_dtype and not isinstance(index_dtype, core.VarDesc.VarType):
         index_dtype = convert_np_dtype_to_dtype_(index_dtype)
     if value_dtype and not isinstance(value_dtype, core.VarDesc.VarType):
@@ -660,9 +660,9 @@ def pow(x: Tensor, factor: float, name: str | None = None) -> Tensor:
                 indices=[[0, 2]],
                 values=[4., 9.])
     """
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "Currently, Sparse API only support dynamic mode or pir mode."
+    assert in_dynamic_or_pir_mode(), (
+        "Currently, Sparse API only support dynamic mode or pir mode."
+    )
     return _C_ops.sparse_pow(x, float(factor))
 
 
@@ -695,9 +695,9 @@ def neg(x: Tensor, name: str | None = None) -> Tensor:
                 indices=[[0, 2]],
                 values=[ 2., -3.])
     """
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "Currently, Sparse API only support dynamic mode or pir mode."
+    assert in_dynamic_or_pir_mode(), (
+        "Currently, Sparse API only support dynamic mode or pir mode."
+    )
     return _C_ops.sparse_scale(x, -1.0, 0.0, True)
 
 
@@ -730,9 +730,9 @@ def abs(x: Tensor, name: str | None = None) -> Tensor:
                 indices=[[0, 2]],
                 values=[2., 3.])
     """
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "Currently, Sparse API only support dynamic mode or pir mode."
+    assert in_dynamic_or_pir_mode(), (
+        "Currently, Sparse API only support dynamic mode or pir mode."
+    )
     return _C_ops.sparse_abs(x)
 
 
@@ -765,9 +765,9 @@ def coalesce(x: Tensor, name: str | None = None) -> Tensor:
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [3., 3.])
     """
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "Currently, Sparse API only support dynamic mode or pir mode."
+    assert in_dynamic_or_pir_mode(), (
+        "Currently, Sparse API only support dynamic mode or pir mode."
+    )
     return _C_ops.sparse_coalesce(x)
 
 
@@ -801,9 +801,9 @@ def rad2deg(x: Tensor, name: str | None = None) -> Tensor:
                 indices=[[0, 2]],
                 values=[ 180.02334595, -180.02334595])
     """
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "Currently, Sparse API only support dynamic mode or pir mode."
+    assert in_dynamic_or_pir_mode(), (
+        "Currently, Sparse API only support dynamic mode or pir mode."
+    )
     if x.dtype in _int_dtype_:
         x = _C_ops.sparse_cast(x, None, core.VarDesc.VarType.FP32)
     return _C_ops.sparse_scale(x, 180.0 / np.pi, 0.0, True)
@@ -839,9 +839,9 @@ def deg2rad(x: Tensor, name: str | None = None) -> Tensor:
                 indices=[[0, 2]],
                 values=[-3.14159274,  3.14159274])
     """
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "Currently, Sparse API only support dynamic mode or pir mode."
+    assert in_dynamic_or_pir_mode(), (
+        "Currently, Sparse API only support dynamic mode or pir mode."
+    )
     if x.dtype in _int_dtype_:
         x = _C_ops.sparse_cast(x, None, core.VarDesc.VarType.FP32)
     return _C_ops.sparse_scale(x, np.pi / 180.0, 0.0, True)
@@ -876,9 +876,9 @@ def expm1(x: Tensor, name: str | None = None) -> Tensor:
                 indices=[[0, 2]],
                 values=[-0.86466473,  1.71828187])
     """
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "Currently, Sparse API only support dynamic mode or pir mode."
+    assert in_dynamic_or_pir_mode(), (
+        "Currently, Sparse API only support dynamic mode or pir mode."
+    )
     return _C_ops.sparse_expm1(x)
 
 

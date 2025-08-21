@@ -283,13 +283,13 @@ class CompileTimeStrategy:
         self.tensor_table_dict[feed_var_name] = {}
         self.tensor_table_dict[feed_var_name]["feed_var_name"] = feed_var_name
         self.tensor_table_dict[feed_var_name]["fetch_var_name"] = fetch_var_name
-        self.tensor_table_dict[feed_var_name][
-            "startup_program"
-        ] = startup_program
+        self.tensor_table_dict[feed_var_name]["startup_program"] = (
+            startup_program
+        )
         self.tensor_table_dict[feed_var_name]["main_program"] = main_program
-        self.tensor_table_dict[feed_var_name][
-            "tensor_table_class"
-        ] = tensor_table_class
+        self.tensor_table_dict[feed_var_name]["tensor_table_class"] = (
+            tensor_table_class
+        )
 
     def get_tensor_table_dict(self):
         return self.tensor_table_dict
