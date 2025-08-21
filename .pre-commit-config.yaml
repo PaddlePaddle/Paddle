@@ -97,7 +97,7 @@ repos:
 
             | python/_.+
 
-            # | test/a.+
+            | test/a.+
 
             # | test/[b-h].+
 
@@ -153,7 +153,7 @@ repos:
 
             # | python/_.+
 
-            | test/a.+
+            # | test/a.+
 
             | test/[b-h].+
 
