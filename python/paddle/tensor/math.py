@@ -26,12 +26,12 @@ from paddle._C_ops import (  # noqa: F401
     all,
     amax,
     amin,
-    log,
-    sign,
-    sin,
     isfinite,
     isinf,
     isnan,
+    log,
+    sign,
+    sin,
 )
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc, dygraph_utils
