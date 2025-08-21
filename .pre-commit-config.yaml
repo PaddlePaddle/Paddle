@@ -103,7 +103,7 @@ repos:
 
             | test/[i-k].+
 
-            # | test/l.+
+            | test/l.+
 
             | test/[m-z].+
 
@@ -159,7 +159,7 @@ repos:
 
             # | test/[i-k].+
 
-            | test/l.+
+            # | test/l.+
 
             # | test/[m-z].+
 

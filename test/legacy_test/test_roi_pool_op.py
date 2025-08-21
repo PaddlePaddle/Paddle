@@ -164,12 +164,19 @@ class TestROIPoolOp(OpTest):
 
     def setUp(self):
         self.op_type = "roi_pool"
-        self.python_api = lambda x, boxes, boxes_num, pooled_height, pooled_width, spatial_scale: paddle.vision.ops.roi_pool(
-            x,
+        self.python_api = (
+            lambda x,
             boxes,
             boxes_num,
-            (pooled_height, pooled_width),
-            spatial_scale,
+            pooled_height,
+            pooled_width,
+            spatial_scale: paddle.vision.ops.roi_pool(
+                x,
+                boxes,
+                boxes_num,
+                (pooled_height, pooled_width),
+                spatial_scale,
+            )
         )
         self.python_out_sig = ["Out"]
         self.set_data()
