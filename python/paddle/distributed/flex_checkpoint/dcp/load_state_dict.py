@@ -1039,7 +1039,7 @@ def load_merged_state_dict(
             >>> import paddle
             >>> import paddle.distributed as dist
             >>> ckpt_path = "./checkpoint"
-            >>> unsharded_state_dict = dist.load_merged_state_dict(ckpt_path) # load unsharded checkpoint
+            >>> unsharded_state_dict = dist.load_merged_state_dict(ckpt_path)  # load unsharded checkpoint
             >>> print(f"unsharded_state_dict:{unsharded_state_dict}")
             unsharded_state_dict:{'w1':
             [[0 , 1 , 2 , 3 , 4 , 5 , 6 , 7 ],
