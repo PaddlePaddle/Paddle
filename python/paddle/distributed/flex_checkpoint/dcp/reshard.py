@@ -134,9 +134,9 @@ def validate_sharded_state_dict_boundaries(state_dict_shard_info):
                 shard
             )
             ndim = len(global_shape)
-            assert (
-                len(local_shape) == ndim == len(global_offset)
-            ), f"{tensor_key}: shape/offset dims mismatch"
+            assert len(local_shape) == ndim == len(global_offset), (
+                f"{tensor_key}: shape/offset dims mismatch"
+            )
             for d in range(ndim):
                 gs = global_shape[d]
                 ls = local_shape[d]
@@ -192,7 +192,6 @@ def reshard_sharded_state_dict(
     offload: bool | None = False,
     aoa_config: dist[str, list[str]] | None = None,
 ) -> None:
-
     local_src_state_dict_shard_info = {
         key: (
             value.global_offset,

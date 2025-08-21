@@ -157,9 +157,9 @@ def split(
 
         if isinstance(split_size_or_sections, int):
             # check whether shape is divisible
-            assert (
-                split_size_or_sections > 0
-            ), 'split_size_or_sections must be greater than 0.'
+            assert split_size_or_sections > 0, (
+                'split_size_or_sections must be greater than 0.'
+            )
 
             split_size_or_sections = GetSplitSize(
                 split_size_or_sections, GetShapeOnDimInRange(tensor.shape, dim)
@@ -190,9 +190,9 @@ def split(
                 "The type of 'split_size_or_sections' in split must be int, list or tuple in imperative mode."
             )
         if isinstance(split_size_or_sections, int):
-            assert (
-                split_size_or_sections > 0
-            ), 'split_size_or_sections must be greater than 0.'
+            assert split_size_or_sections > 0, (
+                'split_size_or_sections must be greater than 0.'
+            )
 
             split_size_or_sections = GetSplitSize(
                 split_size_or_sections, GetShapeOnDimInRange(tensor.shape, dim)
@@ -209,9 +209,9 @@ def split(
                 )
         else:
             if isinstance(dim, int) and input_shape[dim] > 0:
-                assert (
-                    len(split_size_or_sections) <= input_shape[dim]
-                ), 'len(split_size_or_sections) must not be more than input.shape[dim].'
+                assert len(split_size_or_sections) <= input_shape[dim], (
+                    'len(split_size_or_sections) must not be more than input.shape[dim].'
+                )
             if paddle.utils._contain_var(split_size_or_sections):
                 split_size_or_sections = paddle.utils.get_int_tensor_list(
                     split_size_or_sections
@@ -370,7 +370,6 @@ class Unfold(nn.Unfold):
         padding: Size2 = 0,
         stride: Size2 = 1,
     ) -> None:
-
         super().__init__(kernel_size, dilation, padding, stride)
 
     def forward(self, input: Tensor) -> Tensor:
