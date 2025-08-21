@@ -74,9 +74,9 @@ def topo_path(
 
     # Initialize reached vars
     for x in xs:
-        assert (
-            x is None or x.block == block
-        ), 'x is not None and x.block != block'
+        assert x is None or x.block == block, (
+            'x is not None and x.block != block'
+        )
         reached_vars[id(x)] = x
 
     # Reaching test, returning whether an op is reached from the given input
@@ -216,9 +216,9 @@ class Transform:
     dot2bar: VarMap
 
     def __init__(self, block: Block) -> None:
-        assert (
-            block == default_main_program().current_block()
-        ), 'only support transform on current block of main program.'
+        assert block == default_main_program().current_block(), (
+            'only support transform on current block of main program.'
+        )
         self.block = block
         self.vars = self.init_vars(block)
         self.var2dot = VarMap('var2dot', self.vars)
@@ -342,9 +342,9 @@ def _lower(block, reverse, blacklist):
                 expand_nested_list(get_output_var_list(op)),
                 expand_nested_list(as_tensors(lower_fn(op, *input_args))),
             ):
-                assert not (orig_out is None) ^ (
-                    new_out is None
-                ), "orig_out and new_out should match."
+                assert not (orig_out is None) ^ (new_out is None), (
+                    "orig_out and new_out should match."
+                )
                 vars_to_remove.add(new_out.name)
                 value_table[new_out.name] = new_out
                 to_bind[orig_out.name] = new_out.name
@@ -394,9 +394,9 @@ def _lower(block, reverse, blacklist):
                 op._rename_output(out_name, to_bind_rev[out_name])
 
     for var_name in sorted(vars_to_remove):
-        assert (
-            var_name in to_bind_rev
-        ), f'var_name "{var_name}" is not in to_bind_rev.'
+        assert var_name in to_bind_rev, (
+            f'var_name "{var_name}" is not in to_bind_rev.'
+        )
         if var_name != to_bind_rev[var_name]:
             block.desc._remove_var(var_name.encode())
             del block.vars[var_name]
@@ -467,15 +467,15 @@ def _lower_composite(
         # Note, start_idx and backward_length cannot be both given, because the length of non-processed part must be kept unchanged.
         length = len(block.ops)
         idx_list = range(length)
-        assert (
-            -1 <= backward_length <= length
-        ), f'expect -1 <= backward_length <= {length}, but got backward_length: {backward_length}'
-        assert (
-            -1 <= start_idx <= length
-        ), f'expect -1 <= start_idx <= {length}, but got start_idx: {start_idx}'
-        assert not (
-            backward_length > -1 and start_idx > -1
-        ), f'got start_idx: {start_idx} and backward_length: {backward_length}'
+        assert -1 <= backward_length <= length, (
+            f'expect -1 <= backward_length <= {length}, but got backward_length: {backward_length}'
+        )
+        assert -1 <= start_idx <= length, (
+            f'expect -1 <= start_idx <= {length}, but got start_idx: {start_idx}'
+        )
+        assert not (backward_length > -1 and start_idx > -1), (
+            f'got start_idx: {start_idx} and backward_length: {backward_length}'
+        )
         if backward_length > -1:
             idx_list = range(length - backward_length)
         if start_idx > -1:
@@ -538,16 +538,16 @@ def _lower_composite(
                             f'when replace origin op {op_name} with composite rule, origin out dtype should be equal to new out dtype, '
                             f'but orig_out: {orig_out.name}.dtype={orig_out.dtype} and new_out: {new_out.name}.dtype={new_out.dtype}'
                         )
-                        assert (
-                            -1 not in new_out.shape
-                        ), f'when replace origin op {op_name} with composite rule, composite out shape has -1.'
+                        assert -1 not in new_out.shape, (
+                            f'when replace origin op {op_name} with composite rule, composite out shape has -1.'
+                        )
                         assert orig_out.shape == new_out.shape, (
                             f'when replace origin op {op_name} with composite rule, origin out shape should be equal to new out shape, '
                             f'but orig_out: {orig_out.name}.shape={orig_out.shape} and new_out: {new_out.name}.shape={new_out.shape}'
                         )
-                        assert not (orig_out is None) ^ (
-                            new_out is None
-                        ), "orig_out and new_out should match."
+                        assert not (orig_out is None) ^ (new_out is None), (
+                            "orig_out and new_out should match."
+                        )
                         vars_to_remove.add(new_out.name)
                         value_table[new_out.name] = new_out
                         to_bind[orig_out.name] = new_out.name
@@ -576,9 +576,9 @@ def _lower_composite(
                     op._rename_output(out_name, to_bind_rev[out_name])
 
         for var_name in sorted(vars_to_remove):
-            assert (
-                var_name in to_bind_rev
-            ), f'var_name "{var_name}" is not in to_bind_rev.'
+            assert var_name in to_bind_rev, (
+                f'var_name "{var_name}" is not in to_bind_rev.'
+            )
             if var_name != to_bind_rev[var_name]:
                 block.desc._remove_var(var_name.encode())
                 del block.vars[var_name]
@@ -635,9 +635,9 @@ def orig2prim(block: Block | None = None) -> None:
     """
 
     block = default_main_program().current_block() if block is None else block
-    assert (
-        block == default_main_program().current_block()
-    ), 'block is neither None nor current block of main program'
+    assert block == default_main_program().current_block(), (
+        'block is neither None nor current block of main program'
+    )
     _lower(block, reverse=False, blacklist=[])
 
 
@@ -683,8 +683,8 @@ def prim2orig(
     """
 
     block = default_main_program().current_block() if block is None else block
-    assert (
-        block == default_main_program().current_block()
-    ), 'block is neither None nor current block of main program'
+    assert block == default_main_program().current_block(), (
+        'block is neither None nor current block of main program'
+    )
     blacklist = [] if blacklist is None else blacklist
     _lower(block, reverse=True, blacklist=blacklist)

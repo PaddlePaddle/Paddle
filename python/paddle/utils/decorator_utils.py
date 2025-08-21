@@ -12,13 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import functools
 import inspect
 import warnings
-from collections.abc import Iterable
-from typing import Any, Callable, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast
 
 from typing_extensions import ParamSpec
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 _InputT = ParamSpec("_InputT")
 _RetT = TypeVar("_RetT")
@@ -155,6 +159,29 @@ class SetDefaultParaAliasDecorator(DecoratorBase):
         return args, kwargs
 
 
+def ParamIgnoreAndAliasDecorator(
+    func: Callable[_InputT, _RetT],
+) -> Callable[_InputT, _RetT]:
+    @functools.wraps(func)
+    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+        # Remove ignored parameters from args
+        if 2 < len(args) and isinstance(args[2], int):
+            args = args[:2] + args[2 + 1 :]
+        else:
+            # Remove ignored parameters from kwargs
+            kwargs.pop("_stacklevel", None)
+
+        # Process parameters to handle alias mapping
+        if "input" in kwargs:
+            kwargs["x"] = kwargs.pop("input")
+        if "dim" in kwargs:
+            kwargs["axis"] = kwargs.pop("dim")
+        return func(*args, **kwargs)
+
+    wrapper.__signature__ = inspect.signature(func)
+    return cast("Callable[_InputT, _RetT]", wrapper)
+
+
 def param_one_alias(alias_list):
     def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
         @functools.wraps(func)
@@ -262,7 +289,8 @@ class VariableArgsDecorator(DecoratorBase):
         return args, kwargs
 
 
-"""
+def view_decorator():
+    """
     Usage Example:
     paddle.view(x=tensor_x, shape_or_dtype=[-1, 1, 3], name=None)
     tensor_x.view(paddle.float32) -> paddle.view(tensor_x, paddle.float32)
@@ -270,10 +298,8 @@ class VariableArgsDecorator(DecoratorBase):
     tensor_x.view([-1, 1, 3]) -> paddle.view(tensor_x, [-1, 1, 3])
     tensor_x.view(-1, 1, 3) -> paddle.view(tensor_x, -1, 1, 3)
     tensor_x.view(size=[-1, 1, 3]) -> paddle.view(tensor_x, size=[-1, 1, 3])
-"""
+    """
 
-
-def view_decorator():
     def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
         @functools.wraps(func)
         def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:

@@ -255,9 +255,9 @@ class AdamW(Optimizer):
         if self._parameter_list:
             if isinstance(self._parameter_list[0], dict):
                 for param_group in self._parameter_list:
-                    assert (
-                        'params' in param_group
-                    ), 'params should be set in parameters if parameter groups are optimized in different options'
+                    assert 'params' in param_group, (
+                        'params should be set in parameters if parameter groups are optimized in different options'
+                    )
                 self._dtype = self._parameter_list[0]['params'][0].dtype
             else:
                 self._dtype = self._parameter_list[0].dtype
