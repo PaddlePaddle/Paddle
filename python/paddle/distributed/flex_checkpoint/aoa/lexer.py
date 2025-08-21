@@ -17,7 +17,6 @@ from enum import Enum, auto
 
 from .macros import macro_registry
 
-
 class Token:
     def __init__(self, type, value):
         self.type = type

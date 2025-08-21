@@ -667,13 +667,17 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 assert (
                     trainers_num
                     > self.config.hierarchical_allreduce_inter_nranks
-                ), f"trainers_num:{trainers_num} < hierarchical_allreduce_inter_nranks:{self.config.hierarchical_allreduce_inter_nranks}"
+                ), (
+                    f"trainers_num:{trainers_num} < hierarchical_allreduce_inter_nranks:{self.config.hierarchical_allreduce_inter_nranks}"
+                )
 
                 assert (
                     trainers_num
                     % self.config.hierarchical_allreduce_inter_nranks
                     == 0
-                ), f"trainers_num:{trainers_num} mod hierarchical_allreduce_inter_nranks:{self.config.hierarchical_allreduce_inter_nranks} != 0"
+                ), (
+                    f"trainers_num:{trainers_num} mod hierarchical_allreduce_inter_nranks:{self.config.hierarchical_allreduce_inter_nranks} != 0"
+                )
 
                 self.origin_program._hierarchical_allreduce_inter_nranks = int(
                     self.config.hierarchical_allreduce_inter_nranks
@@ -842,10 +846,10 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             name=framework.generate_control_dev_var_name()
         )
         if self.has_distributed_lookup_table:
-            self.grad_name_to_send_dummy_out[
-                self.table_name
-            ] = program.global_block().create_var(
-                name=framework.generate_control_dev_var_name()
+            self.grad_name_to_send_dummy_out[self.table_name] = (
+                program.global_block().create_var(
+                    name=framework.generate_control_dev_var_name()
+                )
             )
         input_deps = list(self.grad_name_to_send_dummy_out.values())
 

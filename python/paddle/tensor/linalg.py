@@ -2349,9 +2349,9 @@ def cholesky(x: Tensor, upper: bool = False, name: str | None = None) -> Tensor:
     """
     if in_dynamic_or_pir_mode():
         x_shape = x.shape
-        assert (
-            len(x_shape) >= 2 and x_shape[-1] == x_shape[-2]
-        ), "Shape must have at least 2 dimensions and last two dimensions must be equal."
+        assert len(x_shape) >= 2 and x_shape[-1] == x_shape[-2], (
+            "Shape must have at least 2 dimensions and last two dimensions must be equal."
+        )
         return _C_ops.cholesky(x, upper)
     else:
         check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'cholesky')
@@ -5083,9 +5083,9 @@ def cdist(
         f"But received Input x's last dimension is {x_shape[-1]}, "
         f"Input y's last dimension is {y_shape[-1]}.\n"
     )
-    assert (
-        p >= 0
-    ), f"The p must be greater than or equal to 0, But received p is {p}.\n"
+    assert p >= 0, (
+        f"The p must be greater than or equal to 0, But received p is {p}.\n"
+    )
 
     r1 = x.shape[-2]
     r2 = y.shape[-2]
@@ -5182,9 +5182,9 @@ def householder_product(
         ],
         'householder_product',
     )
-    assert (
-        x.dtype == tau.dtype
-    ), "The input x must have the same dtype with input tau.\n"
+    assert x.dtype == tau.dtype, (
+        "The input x must have the same dtype with input tau.\n"
+    )
     assert (
         len(x.shape) >= 2
         and len(tau.shape) >= 1
@@ -5193,16 +5193,16 @@ def householder_product(
         "The input x must have more than 2 dimensions, and input tau must have more than 1 dimension,"
         "and the dimension of x is 1 larger than the dimension of tau\n"
     )
-    assert (
-        x.shape[-2] >= x.shape[-1]
-    ), "The rows of input x must be greater than or equal to the columns of input x.\n"
-    assert (
-        x.shape[-1] >= tau.shape[-1]
-    ), "The last dim of x must be greater than tau.\n"
+    assert x.shape[-2] >= x.shape[-1], (
+        "The rows of input x must be greater than or equal to the columns of input x.\n"
+    )
+    assert x.shape[-1] >= tau.shape[-1], (
+        "The last dim of x must be greater than tau.\n"
+    )
     for idx, _ in enumerate(x.shape[:-2]):
-        assert (
-            x.shape[idx] == tau.shape[idx]
-        ), "The input x must have the same batch dimensions with input tau.\n"
+        assert x.shape[idx] == tau.shape[idx], (
+            "The input x must have the same batch dimensions with input tau.\n"
+        )
 
     def _householder_product(x, tau):
         m, n = x.shape[-2:]
@@ -5694,9 +5694,9 @@ def histogramdd(
     """
 
     def __check_x(x):
-        assert (
-            len(x.shape) >= 2
-        ), "input x must be a tensor with at least 2 dimensions."
+        assert len(x.shape) >= 2, (
+            "input x must be a tensor with at least 2 dimensions."
+        )
         check_variable_and_dtype(
             x,
             'x',
@@ -5719,9 +5719,9 @@ def histogramdd(
                 ],
                 'histogramdd',
             )
-            assert (
-                bins_tensor.dtype == x.dtype
-            ), "When bins is Tensor[], the dtype of bins must be the same as x.\n"
+            assert bins_tensor.dtype == x.dtype, (
+                "When bins is Tensor[], the dtype of bins must be the same as x.\n"
+            )
 
     def __check_weights(x, weights):
         if weights is None:
@@ -5745,17 +5745,17 @@ def histogramdd(
             ],
             'histogramdd',
         )
-        assert (
-            weights.dtype == x.dtype
-        ), "The dtype of weights must be the same as x.\n"
+        assert weights.dtype == x.dtype, (
+            "The dtype of weights must be the same as x.\n"
+        )
 
     def __check_ranges(D, ranges):
         if ranges is None:
             return
         check_type(ranges, 'ranges', (list, tuple), 'histogramdd')
-        assert D * 2 == len(
-            ranges
-        ), f"The length of ranges list must be {D * 2}\n"
+        assert D * 2 == len(ranges), (
+            f"The length of ranges list must be {D * 2}\n"
+        )
 
     def __compute_flattened_index(index_list, hist_shape):
         strides = paddle.to_tensor(hist_shape[::-1]).cumprod(dim=0).flip(0)[1:]
@@ -5803,9 +5803,9 @@ def histogramdd(
     if isinstance(bins, (int, list)):  # int or int[]
         if isinstance(bins, int):
             bins = [bins] * D
-        assert (
-            len(bins) == D
-        ), f"The length of bins must be {D} when bins is a list.\n"
+        assert len(bins) == D, (
+            f"The length of bins must be {D} when bins is a list.\n"
+        )
         for idx, r in enumerate(ranges):
             if not isinstance(bins[idx], int):
                 raise ValueError(
@@ -5926,38 +5926,40 @@ def ormqr(
     )
     check_type(left, 'left', bool, 'ormqr')
     check_type(transpose, 'transpose', bool, 'ormqr')
-    assert (
-        x.dtype == tau.dtype and x.dtype == y.dtype
-    ), "The input tau and y must have the same dtype with the x.\n"
-    assert (
-        len(x.shape) >= 2 and len(y.shape) >= 2 and len(tau.shape) >= 1
-    ), "The input x and y must have more than 2 dimensions, and input tau must have more than 1 dimension"
+    assert x.dtype == tau.dtype and x.dtype == y.dtype, (
+        "The input tau and y must have the same dtype with the x.\n"
+    )
+    assert len(x.shape) >= 2 and len(y.shape) >= 2 and len(tau.shape) >= 1, (
+        "The input x and y must have more than 2 dimensions, and input tau must have more than 1 dimension"
+    )
     assert len(x.shape) == len(tau.shape) + 1 and len(x.shape) == len(
         y.shape
-    ), "the dimension of x is 1 larger than the dimension of tau\n and the dimension of x is equal to the dimension of input"
-    assert (
-        x.shape[-1] == tau.shape[-1]
-    ), "The innermost dimension of x and tau should be the same"
+    ), (
+        "the dimension of x is 1 larger than the dimension of tau\n and the dimension of x is equal to the dimension of input"
+    )
+    assert x.shape[-1] == tau.shape[-1], (
+        "The innermost dimension of x and tau should be the same"
+    )
     if transpose and left:
-        assert (
-            x.shape[-2] == y.shape[-2]
-        ), "The row dimensions of x and y should be the same"
+        assert x.shape[-2] == y.shape[-2], (
+            "The row dimensions of x and y should be the same"
+        )
     elif not transpose and left:
-        assert (
-            x.shape[-1] == y.shape[-2]
-        ), "The column dimension of x and the row dimension of y should be the same"
+        assert x.shape[-1] == y.shape[-2], (
+            "The column dimension of x and the row dimension of y should be the same"
+        )
     elif transpose and not left:
-        assert (
-            x.shape[-2] == y.shape[-1]
-        ), "The row dimension of x and the column dimension of y should be the same"
+        assert x.shape[-2] == y.shape[-1], (
+            "The row dimension of x and the column dimension of y should be the same"
+        )
     else:
-        assert (
-            x.shape[-1] == y.shape[-1]
-        ), "The column dimensions of Impt and Osser's should be the same"
+        assert x.shape[-1] == y.shape[-1], (
+            "The column dimensions of Impt and Osser's should be the same"
+        )
     if len(x.shape) == 3:
-        assert (
-            x.shape[0] == y.shape[0] and x.shape[0] == tau.shape[0]
-        ), "The input and tau and y parameters should have the same batch"
+        assert x.shape[0] == y.shape[0] and x.shape[0] == tau.shape[0], (
+            "The input and tau and y parameters should have the same batch"
+        )
     Q = householder_product(x, tau)
     if len(x.shape) == 2:
         Q = Q.T if transpose else Q
@@ -6132,13 +6134,13 @@ def diagonal(
             axis1_ = axis1 if axis1 >= 0 else len(input_shape) + axis1
             axis2_ = axis2 if axis2 >= 0 else len(input_shape) + axis2
 
-            assert axis1_ < len(
-                input_shape
-            ), f"The argument axis1 is out of range (expected to be in range of [{-(len(input_shape))}, {len(input_shape) - 1}], but got {axis1}).\n"
+            assert axis1_ < len(input_shape), (
+                f"The argument axis1 is out of range (expected to be in range of [{-(len(input_shape))}, {len(input_shape) - 1}], but got {axis1}).\n"
+            )
 
-            assert axis2_ < len(
-                input_shape
-            ), f"The argument axis2 is out of range (expected to be in range of [{-(len(input_shape))}, {len(input_shape) - 1}], but got {axis2}).\n"
+            assert axis2_ < len(input_shape), (
+                f"The argument axis2 is out of range (expected to be in range of [{-(len(input_shape))}, {len(input_shape) - 1}], but got {axis2}).\n"
+            )
 
             assert axis1_ != axis2_, (
                 "axis1 and axis2 cannot be the same axis."

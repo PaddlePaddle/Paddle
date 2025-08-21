@@ -1701,9 +1701,9 @@ class Layer:
                 self._parameters[name] = None
 
             if len(self._loaddict_holder) > 0:
-                assert (
-                    parameter.name in self._loaddict_holder
-                ), f"Parameter not found, Can't not find [ {parameter.name} ] in state_dict"
+                assert parameter.name in self._loaddict_holder, (
+                    f"Parameter not found, Can't not find [ {parameter.name} ] in state_dict"
+                )
 
                 parameter.set_value(self._loaddict_holder[parameter.name])
 
@@ -1814,9 +1814,9 @@ class Layer:
             if params is None:
                 raise ValueError("super().__init__() should be called first")
             if len(self._loaddict_holder) > 0:
-                assert (
-                    value.name in self._loaddict_holder
-                ), f"Parameter not found, Can't not find [ {value.name} ] in state_dict"
+                assert value.name in self._loaddict_holder, (
+                    f"Parameter not found, Can't not find [ {value.name} ] in state_dict"
+                )
 
                 value.set_value(self._loaddict_holder[value.name])
 
@@ -2555,9 +2555,9 @@ class Layer:
         if blocking is None:
             blocking = True
         else:
-            assert isinstance(
-                blocking, bool
-            ), "blocking value error, must be the True, False or None"
+            assert isinstance(blocking, bool), (
+                "blocking value error, must be the True, False or None"
+            )
 
         def transform(t, device, dtype, blocking):
             if floating_only and (not paddle.is_floating_point(t)):
