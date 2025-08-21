@@ -55,7 +55,6 @@ def compute_local_shape_and_global_offset(
     process_mesh: core.ProcessMesh,
     placements: list[core.Placement],
 ) -> tuple[tuple[int], tuple[int]]:
-
     from paddle.distributed.auto_parallel.placement_type import (
         placemetns_to_dist_status,
     )
@@ -124,9 +123,9 @@ def unflatten_state_dict(flat_state_dict, mapping):
     state_dict = {}
     for key, value in flat_state_dict.items():
         key_tuple = mapping[key]
-        assert isinstance(
-            key_tuple, tuple
-        ), f"The key should be tuple, but is {key_tuple}"
+        assert isinstance(key_tuple, tuple), (
+            f"The key should be tuple, but is {key_tuple}"
+        )
         tmp = state_dict
         for i in range(len(key_tuple) - 1):
             key = key_tuple[i]

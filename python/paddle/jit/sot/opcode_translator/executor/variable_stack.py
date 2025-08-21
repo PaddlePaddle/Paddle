@@ -84,20 +84,20 @@ class VariableStack(Generic[StackDataT]):
                 assert 0 < index <= len(self._data)
                 return self._data[-index]
             if isinstance(index, slice):
-                assert (
-                    index.start is None and index.step is None
-                ), "slice which has start or step not supported"
+                assert index.start is None and index.step is None, (
+                    "slice which has start or step not supported"
+                )
                 assert 0 < index.stop <= len(self._data)
                 return self._data[-index.stop :]
             raise NotImplementedError(f"index type {type(index)} not supported")
 
         def __setitem__(self, index: int, value: Any):
-            assert isinstance(
-                index, int
-            ), f"index type {type(index)} not supported"
-            assert (
-                0 < index <= len(self._data)
-            ), f"index should be in [1, {len(self._data)}], but get {index}"
+            assert isinstance(index, int), (
+                f"index type {type(index)} not supported"
+            )
+            assert 0 < index <= len(self._data), (
+                f"index should be in [1, {len(self._data)}], but get {index}"
+            )
             self.validate_value_func(value)
             self._data[-index] = value
 
@@ -151,9 +151,9 @@ class VariableStack(Generic[StackDataT]):
             val: The variable to be inserted.
 
         """
-        assert (
-            0 <= index <= len(self)
-        ), f"index should be in [0, {len(self)}], but get {index}"
+        assert 0 <= index <= len(self), (
+            f"index should be in [0, {len(self)}], but get {index}"
+        )
         self.validate_value_func(val)
         self._data.insert(len(self) - index, val)
 
@@ -179,9 +179,9 @@ class VariableStack(Generic[StackDataT]):
             A list of the popped values.
 
         """
-        assert (
-            len(self) >= n >= 0
-        ), f"n should be in [0, {len(self)}], but get {n}"
+        assert len(self) >= n >= 0, (
+            f"n should be in [0, {len(self)}], but get {n}"
+        )
         if n == 0:
             return []
         retval = self._data[-n:]

@@ -114,13 +114,13 @@ class PipelineOptimizer:
         while hasattr(self._origin_optimizer, "inner_opt"):
             self._origin_optimizer = self._origin_optimizer.inner_opt
 
-        assert (
-            num_microbatches >= 1
-        ), "num_microbatches must be a positive value."
+        assert num_microbatches >= 1, (
+            "num_microbatches must be a positive value."
+        )
         self._num_microbatches = num_microbatches
-        assert (
-            start_cpu_core_id >= 0
-        ), "start_cpu_core_id must be a non-negative integer."
+        assert start_cpu_core_id >= 0, (
+            "start_cpu_core_id must be a non-negative integer."
+        )
         self._start_cpu_core_id = start_cpu_core_id
         self._place_list = None
         op_maker = core.op_proto_and_checker_maker
@@ -481,9 +481,9 @@ class PipelineOptimizer:
             else None
         )
         if device:
-            assert (
-                device[0:3] == 'gpu'
-            ), "Now, only gpu devices are supported in pipeline parallelism."
+            assert device[0:3] == 'gpu', (
+                "Now, only gpu devices are supported in pipeline parallelism."
+            )
         return device
 
     def _add_op_device_attr_for_op(self, op, idx, block):
@@ -502,15 +502,15 @@ class PipelineOptimizer:
         elif op.type == "sum" and self._is_backward_op(op):
             # For sum ops that compute the sum of @RENAMED@ vars
             for name in op.desc.input_arg_names():
-                assert (
-                    '@RENAME@' in name
-                ), "The op must be sum used to accumulate renamed vars."
+                assert '@RENAME@' in name, (
+                    "The op must be sum used to accumulate renamed vars."
+                )
             assert len(op.desc.output_arg_names()) == 1
             out_name = op.desc.output_arg_names()[0]
             post_op = self._find_post_op(idx, out_name)
-            assert post_op.has_attr(
-                'op_device'
-            ), f"{post_op.type} has no op_device attr for var {out_name}"
+            assert post_op.has_attr('op_device'), (
+                f"{post_op.type} has no op_device attr for var {out_name}"
+            )
             device = post_op.attr(self._op_device_key)
             assert device, "The post op must have op_device set."
             op._set_attr(self._op_device_key, device)
@@ -655,29 +655,29 @@ class PipelineOptimizer:
                     "Now, the only supported op without kernel is "
                     "conditional_block, and its op role must be LRSched."
                 )
-            assert op.has_attr(
-                self._op_role_key
-            ), f"op ({op.type}) has no {self._op_role_key} attribute."
+            assert op.has_attr(self._op_role_key), (
+                f"op ({op.type}) has no {self._op_role_key} attribute."
+            )
             op_role = op.attr(self._op_role_key)
-            assert (
-                int(op_role) in valid_op_role_value
-            ), f"op_role {op_role} for op {op.type} must be one of {valid_op_role_value}"
+            assert int(op_role) in valid_op_role_value, (
+                f"op_role {op_role} for op {op.type} must be one of {valid_op_role_value}"
+            )
 
-            assert op.has_attr(
-                self._op_device_key
-            ), f"op ({op.type}) has no {self._op_device_key} attribute."
+            assert op.has_attr(self._op_device_key), (
+                f"op ({op.type}) has no {self._op_device_key} attribute."
+            )
 
             device = op.attr(self._op_device_key)
-            assert (
-                device
-            ), f"op_device attribute for op {op.type} has not been set."
+            assert device, (
+                f"op_device attribute for op {op.type} has not been set."
+            )
             if device == f"{self._device}:all":
                 continue
 
             dev_type = device.split(':')[0]
-            assert (
-                dev_type == "gpu"
-            ), "Now only gpu devices are supported for pipeline parallelism."
+            assert dev_type == "gpu", (
+                "Now only gpu devices are supported for pipeline parallelism."
+            )
 
             if device not in device_list:
                 device_list.append(device)
@@ -1835,9 +1835,9 @@ class PipelineOptimizer:
             'mp_rank',
         ]
         for key in required_keys:
-            assert (
-                key in pipeline_opt
-            ), f'Please use pipeline with fleet to use {key}.'
+            assert key in pipeline_opt, (
+                f'Please use pipeline with fleet to use {key}.'
+            )
         self.local_rank = pipeline_opt['local_rank']
         self.schedule_mode = pipeline_opt['schedule_mode']
         self.micro_batch_size = pipeline_opt['micro_batch_size']

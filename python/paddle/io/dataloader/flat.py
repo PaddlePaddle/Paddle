@@ -106,9 +106,9 @@ def _restore_batch(flat_batch, structure):
                 if isinstance(field, str) and field.startswith(FIELD_PREFIX):
                     cur_field_idx = int(field.replace(FIELD_PREFIX, ''))
                     field_idx = max(field_idx, cur_field_idx)
-                    assert (
-                        flat_batch[cur_field_idx] is not None
-                    ), "flat_batch[{}] parsed repeatedly"
+                    assert flat_batch[cur_field_idx] is not None, (
+                        "flat_batch[{}] parsed repeatedly"
+                    )
                     structure[i] = flat_batch[cur_field_idx]
                     flat_batch[cur_field_idx] = None
                 elif isinstance(field, (str, bytes, numbers.Number)):
@@ -120,9 +120,9 @@ def _restore_batch(flat_batch, structure):
                 if isinstance(field, str) and field.startswith(FIELD_PREFIX):
                     cur_field_idx = int(field.replace(FIELD_PREFIX, ''))
                     field_idx = max(field_idx, cur_field_idx)
-                    assert (
-                        flat_batch[cur_field_idx] is not None
-                    ), "flat_batch[{}] parsed repeatedly"
+                    assert flat_batch[cur_field_idx] is not None, (
+                        "flat_batch[{}] parsed repeatedly"
+                    )
                     structure[k] = flat_batch[cur_field_idx]
                     flat_batch[cur_field_idx] = None
                 elif isinstance(field, (str, bytes, numbers.Number)):
@@ -143,9 +143,9 @@ def _restore_batch(flat_batch, structure):
 
     # sample only contains single fields
     if isinstance(structure, (str, bytes)):
-        assert (
-            structure == f'{FIELD_PREFIX}{0}'
-        ), f"invalid structure: {structure}"
+        assert structure == f'{FIELD_PREFIX}{0}', (
+            f"invalid structure: {structure}"
+        )
         return flat_batch[0]
     field_idx = _restore(structure, 0)
     assert field_idx + 1 == len(flat_batch), "Tensor parse incomplete"

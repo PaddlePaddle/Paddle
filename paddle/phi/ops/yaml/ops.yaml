@@ -2953,6 +2953,10 @@
 
 - op : isfinite
   args : (Tensor x)
+  python_api:
+    name : [paddle.isfinite, paddle.Tensor.isfinite]
+    args_alias:
+      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : IsfiniteInferMeta
@@ -2964,6 +2968,10 @@
 
 - op : isinf
   args : (Tensor x)
+  python_api:
+    name : [paddle.isinf, paddle.Tensor.isinf]
+    args_alias:
+      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : IsfiniteInferMeta
@@ -2975,6 +2983,10 @@
 
 - op : isnan
   args : (Tensor x)
+  python_api:
+    name : [paddle.isnan, paddle.Tensor.isnan]
+    args_alias:
+      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : IsfiniteInferMeta

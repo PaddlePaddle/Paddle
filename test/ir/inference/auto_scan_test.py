@@ -465,9 +465,9 @@ class PassAutoScanTest(AutoScanTest):
             report_multiple_bugs=False,
         )
         settings.load_profile("ci")
-        assert (
-            passes is not None
-        ), "Parameter of passes must be defined in function run_and_statis."
+        assert passes is not None, (
+            "Parameter of passes must be defined in function run_and_statis."
+        )
         self.passes = passes
 
         self.add_ignore_pass_case()
@@ -979,7 +979,9 @@ class TrtLayerAutoScanTest(AutoScanTest):
                         assert any(
                             op.name() == "pd_op.tensorrt_engine"
                             for op in trt_program.global_block().ops
-                        ), "trt_program does not contain any tensorrt_engine ops."
+                        ), (
+                            "trt_program does not contain any tensorrt_engine ops."
+                        )
 
                         feed_data = prog_config.get_feed_data()
                         for key, value in feed_data.items():
