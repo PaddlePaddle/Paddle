@@ -2876,6 +2876,10 @@
 
 - op : index_select
   args : (Tensor x, Tensor index, int axis = 0)
+  python_api:
+    name : [paddle.index_select, paddle.Tensor.index_select]
+    args_alias:
+      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : IndexSelectInferMeta
