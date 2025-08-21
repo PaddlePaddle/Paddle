@@ -1,14 +1,3 @@
-[tool.black]
-line-length = 80
-skip-string-normalization = true
-target-version = ["py39", "py310", "py311", "py312", "py313"]
-extend-exclude = '''
-(
-    third_party/.+      # Exclude third_party directory
-    | build/.+          # Exclude build directory
-)
-'''
-
 [tool.ruff]
 exclude = [
     "./build",
