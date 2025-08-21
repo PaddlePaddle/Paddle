@@ -27,9 +27,9 @@ class TestSplitAndConcatSemiAutoParallel(SemiAutoParallelTestBase):
         super().__init__()
 
     def check_placements(self, output, expected_placements):
-        assert (
-            output.placements == expected_placements
-        ), f"{output.placements}  vs {expected_placements}"
+        assert output.placements == expected_placements, (
+            f"{output.placements}  vs {expected_placements}"
+        )
 
     def test_concat_forward(self):
         shapes = [[16, 4, 4], [64, 4, 4]]
