@@ -2242,6 +2242,82 @@ class TestAllAPI(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestAllAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.places = get_places()
+        self.shape = [5, 6]
+        self.dtype = 'bool'
+        self.init_data()
+
+    def init_data(self):
+        self.np_input = np.random.randint(0, 8, self.shape).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_input)
+        paddle_dygraph_out = []
+        # Position args (args)
+        out1 = paddle.all(x, 1, True)
+        paddle_dygraph_out.append(out1)
+        # Key words args (kwargs) for paddle
+        out2 = paddle.all(x=x, axis=1, keepdim=True)
+        paddle_dygraph_out.append(out2)
+        # Key words args for torch
+        out3 = paddle.all(input=x, dim=1, keepdim=True)
+        paddle_dygraph_out.append(out3)
+        # Combined args and kwargs
+        out4 = paddle.all(x, dim=1, keepdim=True)
+        paddle_dygraph_out.append(out4)
+        # Tensor method args
+        out5 = x.all(1, True)
+        paddle_dygraph_out.append(out5)
+        # Tensor method kwargs
+        out6 = x.all(dim=1, keepdim=True)
+        paddle_dygraph_out.append(out6)
+        # Test out
+        out7 = paddle.empty([])
+        paddle.all(x, 1, True, out=out7)
+        paddle_dygraph_out.append(out7)
+        # Numpy reference  out
+        ref_out = np.all(self.np_input, 1, keepdims=True)
+        # Check
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy())
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            # Position args (args)
+            out1 = paddle.all(x, 1, True)
+            # Key words args (kwargs) for paddle
+            out2 = paddle.all(x=x, axis=1, keepdim=True)
+            # Key words args for torch
+            out3 = paddle.all(input=x, dim=1, keepdim=True)
+            # Combined args and kwargs
+            out4 = paddle.all(x, dim=1, keepdim=True)
+            # Tensor method args
+            out5 = x.all(1, True)
+            # Tensor method kwargs
+            out6 = x.all(dim=1, keepdim=True)
+            # Do not support out in static
+            # out7 = paddle.empty([])
+            # paddle.all(x, 1, True, out=out7)
+            exe = base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_input},
+                fetch_list=[out1, out2, out3, out4, out5, out6],
+            )
+            ref_out = np.all(self.np_input, 1, keepdims=True)
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out)
+
+
 class TestAnyAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)

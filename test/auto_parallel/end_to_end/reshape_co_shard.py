@@ -11,186 +11,193 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 import paddle
 import paddle.distributed as dist
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+
+class ReshapeTestCase:
+    def __init__(
+        self,
+        input_shape: list[int],
+        input_placements: list[dist.Placement],
+        target_shape: list[int],
+        output_placements: list[dist.Placement],
+        slice_funtor: Callable[[int], Any] | None = None,
+    ):
+        self.input_shape = input_shape
+        self.input_placements = input_placements
+        self.target_shape = target_shape
+        self.output_placements = output_placements
+        self.slice_funtor = slice_funtor
+
 
 class TestReshapeCoShard:
-    def run_test_flatten(self):
-        a = paddle.rand([2, 12, 8], "float32")
-        mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=['x', 'y'])
-
-        placements = [
-            dist.Shard(0),
-            dist.Shard(1),
+    def setUp(self):
+        self.mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=['x', 'y'])
+        self.test_cases = [
+            # test flatten
+            ReshapeTestCase(
+                [4, 6, 8],
+                [dist.Shard(0), dist.Shard(1)],
+                [192],
+                [dist.Shard(0, shard_order=0), dist.Shard(0, shard_order=1)],
+                lambda idx: (idx,),
+            ),
+            ReshapeTestCase(
+                [4, 6, 8],
+                [dist.Shard(1), dist.Shard(2)],
+                [192],
+                [dist.Replicate(), dist.Replicate()],
+                lambda idx: slice(None),
+            ),
+            ReshapeTestCase(
+                [4, 6, 8],
+                [dist.Shard(0, shard_order=0), dist.Shard(0, shard_order=1)],
+                [192],
+                [dist.Shard(0, shard_order=0), dist.Shard(0, shard_order=1)],
+                lambda idx: (idx,),
+            ),
+            ReshapeTestCase(
+                [2, 12, 8],
+                [dist.Shard(0), dist.Shard(1)],
+                [192],
+                [dist.Shard(0), dist.Replicate()],
+                lambda idx: (idx // 2,),
+            ),
+            # test split
+            ReshapeTestCase(
+                [192],
+                [dist.Shard(0, shard_order=0), dist.Shard(0, shard_order=1)],
+                [4, 6, 8],
+                [dist.Shard(0, shard_order=0), dist.Shard(0, shard_order=1)],
+                lambda idx: (idx,),
+            ),
+            ReshapeTestCase(
+                [192],
+                [dist.Shard(0, shard_order=0), dist.Shard(0, shard_order=1)],
+                [6, 4, 8],
+                [dist.Replicate(), dist.Replicate()],
+                lambda idx: slice(None),
+            ),
+            # test combination
+            ReshapeTestCase(
+                [4, 6, 8],
+                [dist.Shard(0), dist.Shard(1)],
+                [2, 12, 8],
+                [dist.Shard(0), dist.Replicate()],
+                lambda idx: (idx // 2,),
+            ),
+            ReshapeTestCase(
+                [4, 6, 8],
+                [dist.Shard(0, shard_order=0), dist.Shard(0, shard_order=1)],
+                [2, 12, 8],
+                [dist.Replicate(), dist.Replicate()],
+                lambda idx: slice(None),
+            ),
+            ReshapeTestCase(
+                [4, 6, 8],
+                [dist.Shard(0), dist.Shard(1)],
+                [12, 2, 8],
+                [dist.Shard(0, shard_order=0), dist.Shard(0, shard_order=1)],
+                lambda idx: slice(idx % 4 * 3, idx % 4 * 3 + 3),
+            ),
+            ReshapeTestCase(
+                [4, 6, 8],
+                [dist.Shard(0, shard_order=0), dist.Shard(0, shard_order=1)],
+                [12, 2, 8],
+                [dist.Shard(0, shard_order=0), dist.Shard(0, shard_order=1)],
+                lambda idx: slice(idx % 4 * 3, idx % 4 * 3 + 3),
+            ),
+            ReshapeTestCase(
+                [4, 6, 8],
+                [dist.Shard(0), dist.Shard(1)],
+                [8, 6, 4],
+                [dist.Shard(0, shard_order=0), dist.Shard(0, shard_order=1)],
+                lambda idx: slice(idx % 4 * 2, idx % 4 * 2 + 2),
+            ),
+            ReshapeTestCase(
+                [4, 6, 8],
+                [dist.Shard(1), dist.Shard(2)],
+                [8, 6, 4],
+                [dist.Replicate(), dist.Replicate()],
+                lambda idx: slice(None),
+            ),
+            ReshapeTestCase(
+                [4, 6, 8],
+                [dist.Shard(0), dist.Shard(2)],
+                [8, 6, 4],
+                [dist.Shard(0), dist.Replicate()],
+                lambda idx: (idx // 2, idx // 2 + 4),
+            ),
+            ReshapeTestCase(
+                [4, 6, 8],
+                [dist.Shard(0, shard_order=0), dist.Shard(0, shard_order=1)],
+                [8, 6, 4],
+                [dist.Shard(0, shard_order=0), dist.Shard(0, shard_order=1)],
+                lambda idx: slice(idx % 4 * 2, idx % 4 * 2 + 2),
+            ),
+            ReshapeTestCase(
+                [4, 6, 8],
+                [dist.Shard(2, shard_order=0), dist.Shard(2, shard_order=1)],
+                [24, 2, 4],
+                [dist.Replicate(), dist.Replicate()],
+                lambda idx: slice(None),
+            ),
+            ReshapeTestCase(
+                [4, 6, 8],
+                [dist.Shard(2, shard_order=0), dist.Shard(1, shard_order=1)],
+                [24, 4, 2],
+                [dist.Shard(2, shard_order=0), dist.Shard(1, shard_order=1)],
+                lambda idx: (slice(None), idx % 4, slice(None)),
+            ),
         ]
-        idx = dist.get_rank()
-        input = dist.shard_tensor(a, mesh, placements)
-        out = paddle.reshape(input, [-1])
-        np.testing.assert_equal(out.shape, [192])
+
+    def run_test_case(self, test_case: ReshapeTestCase):
+        a = paddle.rand(test_case.input_shape, "float32")
+        input_placements = test_case.input_placements
+        input = dist.shard_tensor(a, self.mesh, input_placements)
+        out = paddle.reshape(input, test_case.target_shape)
+        case_info = f"input_shape: {test_case.input_shape}, input_placements: {input_placements}, target_shape: {test_case.target_shape}"
+        # Verify output shape
         np.testing.assert_equal(
-            str(out.placements[0]), 'Shard(dim=0, shard_order=0)'
-        )
-        np.testing.assert_equal(str(out.placements[1]), 'Replicate()')
-        new_slice = (idx // 2,)
-        np.testing.assert_equal(
-            out._local_value().numpy().flatten(), a[new_slice].numpy().flatten()
+            out.shape,
+            test_case.target_shape,
+            err_msg=f"Output shape mismatch when {case_info}. Expected: {test_case.target_shape}, Actual: {out.shape}",
         )
 
-        a = paddle.rand([4, 6, 8], "float32")
-        placements = [
-            dist.Shard(0, shard_order=0),
-            dist.Shard(1, shard_order=1),
-        ]
-        input = dist.shard_tensor(a, mesh, placements)
-        out = paddle.reshape(input, [-1])
-        np.testing.assert_equal(out.shape, [192])
-        np.testing.assert_equal(
-            str(out.placements[0]), 'Shard(dim=0, shard_order=0)'
-        )
-        np.testing.assert_equal(
-            str(out.placements[1]), 'Shard(dim=0, shard_order=1)'
-        )
-        new_slice = (idx,)
-        np.testing.assert_equal(
-            out._local_value().numpy().flatten(), a[new_slice].numpy().flatten()
-        )
+        # Verify placements
+        assert out.placements
+        for actual, expected in zip(
+            out.placements, test_case.output_placements
+        ):
+            np.testing.assert_equal(
+                actual,
+                expected,
+                err_msg=f"Output placements mismatch when {case_info}. Expected: {test_case.output_placements}, Actual: {out.placements}",
+            )
+        # Verify local_value if given
+        if test_case.slice_funtor:
+            idx = dist.get_rank()
+            np.testing.assert_equal(
+                out._local_value().numpy().flatten(),
+                a[test_case.slice_funtor(idx)].numpy().flatten(),
+                err_msg=f"Local values mismatch when {case_info}.",
+            )
 
-        placements = [
-            dist.Shard(1),
-            dist.Shard(2),
-        ]
-        input = dist.shard_tensor(a, mesh, placements)
-        out = paddle.reshape(input, [-1])
-        np.testing.assert_equal(out.shape, [192])
-        np.testing.assert_equal(str(out.placements[0]), 'Replicate()')
-        np.testing.assert_equal(str(out.placements[1]), 'Replicate()')
-        new_idx = slice(None)
-        np.testing.assert_equal(
-            out._local_value().numpy().flatten(), a[new_idx].numpy().flatten()
-        )
-
-    def run_test_split(self):
-        a = paddle.rand([192], dtype='float32')
-        mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=['x', 'y'])
-        placements = [
-            dist.Shard(0, shard_order=0),
-            dist.Shard(0, shard_order=1),
-        ]
-        idx = dist.get_rank()
-        input = dist.shard_tensor(a, mesh, placements)
-
-        out = paddle.reshape(input, [4, 6, -1])
-        np.testing.assert_equal(out.shape, [4, 6, 8])
-        np.testing.assert_equal(
-            str(out.placements[0]), 'Shard(dim=0, shard_order=0)'
-        )
-        np.testing.assert_equal(
-            str(out.placements[1]), 'Shard(dim=0, shard_order=1)'
-        )
-        new_slice = (idx,)
-        np.testing.assert_equal(
-            out._local_value().numpy().flatten(), a[new_slice].numpy().flatten()
-        )
-
-        input = dist.shard_tensor(a, mesh, placements)
-        out = paddle.reshape(input, [6, -1, 8])
-        np.testing.assert_equal(out.shape, [6, 4, 8])
-        np.testing.assert_equal(str(out.placements[0]), 'Replicate()')
-        np.testing.assert_equal(str(out.placements[1]), 'Replicate()')
-        new_slice = (slice(None),)
-        np.testing.assert_equal(
-            out._local_value().numpy().flatten(), a[new_slice].numpy().flatten()
-        )
-
-    def run_test_combination(self):
-        a = paddle.rand([4, 6, 8], "float32")
-        mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=['x', 'y'])
-        placements = [
-            dist.Shard(0),
-            dist.Shard(1),
-        ]
-        idx = dist.get_rank()
-        input = dist.shard_tensor(a, mesh, placements)
-        out = paddle.reshape(input, [2, 12, 8])
-        np.testing.assert_equal(out.shape, [2, 12, 8])
-        np.testing.assert_equal(
-            str(out.placements[0]), 'Shard(dim=0, shard_order=0)'
-        )
-        np.testing.assert_equal(str(out.placements[1]), 'Replicate()')
-        new_slice = (idx // 2,)
-        np.testing.assert_equal(
-            out._local_value().numpy().flatten(), a[new_slice].numpy().flatten()
-        )
-
-        placements = [
-            dist.Shard(0, shard_order=0),
-            dist.Shard(1, shard_order=1),
-        ]
-        input = dist.shard_tensor(a, mesh, placements)
-        out = paddle.reshape(input, [2, 12, 8])
-        np.testing.assert_equal(out.shape, [2, 12, 8])
-        np.testing.assert_equal(str(out.placements[0]), 'Replicate()')
-        np.testing.assert_equal(str(out.placements[1]), 'Replicate()')
-        new_slice = (slice(None),)
-        np.testing.assert_equal(
-            out._local_value().numpy().flatten(), a[new_slice].numpy().flatten()
-        )
-
-        input = dist.shard_tensor(a, mesh, placements)
-        out = paddle.reshape(input, [12, 2, 8])
-        np.testing.assert_equal(out.shape, [12, 2, 8])
-        np.testing.assert_equal(
-            str(out.placements[0]), 'Shard(dim=0, shard_order=0)'
-        )
-        np.testing.assert_equal(
-            str(out.placements[1]), 'Shard(dim=0, shard_order=1)'
-        )
-        new_slice = slice(idx % 4 * 3, idx % 4 * 3 + 3)
-        np.testing.assert_equal(
-            out._local_value().numpy().flatten(), a[new_slice].numpy().flatten()
-        )
-
-        placements = [
-            dist.Shard(1),
-            dist.Shard(2),
-        ]
-        input = dist.shard_tensor(a, mesh, placements)
-        out = paddle.reshape(input, [8, 6, 4])
-        np.testing.assert_equal(out.shape, [8, 6, 4])
-        np.testing.assert_equal(str(out.placements[0]), 'Replicate()')
-        np.testing.assert_equal(str(out.placements[1]), 'Replicate()')
-        new_slice = (slice(None),)
-        np.testing.assert_equal(
-            out._local_value().numpy().flatten(), a[new_slice].numpy().flatten()
-        )
-
-        placements = [
-            dist.Shard(2, shard_order=0),
-            dist.Shard(2, shard_order=1),
-        ]
-        input = dist.shard_tensor(a, mesh, placements)
-        out = paddle.reshape(input, [24, 4, 2])
-        np.testing.assert_equal(out.shape, [24, 4, 2])
-        np.testing.assert_equal(
-            str(out.placements[0]), 'Shard(dim=1, shard_order=0)'
-        )
-        np.testing.assert_equal(
-            str(out.placements[1]), 'Shard(dim=1, shard_order=1)'
-        )
-        new_slice = (slice(None), dist.get_rank() % 4, slice(None))
-        np.testing.assert_equal(
-            out._local_value().numpy().flatten(), a[new_slice].numpy().flatten()
-        )
-
-    def run_test_case_main(self):
-        self.run_test_flatten()
-        self.run_test_split()
-        self.run_test_combination()
+    def run_all_tests(self):
+        self.setUp()
+        for test_case in self.test_cases:
+            self.run_test_case(test_case)
 
 
 if __name__ == '__main__':
-    TestReshapeCoShard().run_test_case_main()
+    TestReshapeCoShard().run_all_tests()

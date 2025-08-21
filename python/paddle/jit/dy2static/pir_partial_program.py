@@ -218,15 +218,15 @@ class RunnableProgram:
         forward_range=None,
         backward_range=None,
     ):
-        assert isinstance(
-            in_out_values, tuple
-        ), "in_out_values must be tuple with len == 3"
-        assert (
-            len(in_out_values) == 3
-        ), "in_out_values must be tuple with len == 3"
-        assert isinstance(
-            in_out_values[0], list
-        ), "in_out_values must be tuple with len == 3"
+        assert isinstance(in_out_values, tuple), (
+            "in_out_values must be tuple with len == 3"
+        )
+        assert len(in_out_values) == 3, (
+            "in_out_values must be tuple with len == 3"
+        )
+        assert isinstance(in_out_values[0], list), (
+            "in_out_values must be tuple with len == 3"
+        )
         self.program = program
         self.x_names = self.convert_name(in_out_values[0])
         self.param_names = self.convert_name(in_out_values[1])
@@ -310,9 +310,9 @@ class RunnableProgram:
         )
 
     def split_forward_backward(self):
-        assert (
-            self.has_splited is False
-        ), "Please ensure only split once! don't call split_forward_backward manually."
+        assert self.has_splited is False, (
+            "Please ensure only split once! don't call split_forward_backward manually."
+        )
         self.has_splited = True
         self.update_op_range()
         (
@@ -406,9 +406,9 @@ class RunnableProgram:
 
     @cached_property  # shouldn't changed when call this once.
     def program_attr(self):
-        assert (
-            self.finish_pass is False
-        ), "program_attr() is called by PartialProgramLayer, don't call it manually, use program_name_attr instead."
+        assert self.finish_pass is False, (
+            "program_attr() is called by PartialProgramLayer, don't call it manually, use program_name_attr instead."
+        )
         # can't apply pass after call this function.
         self.finish_pass = True
         fwd_map = RunnableProgram._get_name_value_map_from_program(
@@ -445,9 +445,9 @@ class RunnableProgram:
             program_attr[f"{k}_names"] = ns
 
         # Restore stop_gradient for output values
-        assert len(program_attr["fo_values"]) == len(
-            self.out_stop_gradients
-        ), "Output values and stop gradients length mismatch"
+        assert len(program_attr["fo_values"]) == len(self.out_stop_gradients), (
+            "Output values and stop gradients length mismatch"
+        )
         for v, stop_gradient in zip(
             program_attr["fo_values"], self.out_stop_gradients
         ):
@@ -474,9 +474,9 @@ class RunnableProgram:
         # Get all values again because some values has been erased.
         for value in RunnableProgram._get_program_all_values(program):
             if value.has_name:
-                assert (
-                    value._has_only_one_name()
-                ), f"Expected all values in Program have only one name, but {value} has multiple names: {value._names}"
+                assert value._has_only_one_name(), (
+                    f"Expected all values in Program have only one name, but {value} has multiple names: {value._names}"
+                )
         return rename_mapping
 
     @staticmethod

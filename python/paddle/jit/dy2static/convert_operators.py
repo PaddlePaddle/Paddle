@@ -756,13 +756,17 @@ def convert_var_dtype(var, dtype):
             'int32',
             'int64',
             'uint8',
-        ], f"The dtype of var {var.name} is {src_dtype}, which is not supported in the cast op."
+        ], (
+            f"The dtype of var {var.name} is {src_dtype}, which is not supported in the cast op."
+        )
         assert dtype in [
             'bool',
             'int',
             'float',
             'complex',
-        ], f"The casted target dtype is {dtype}, which is not supported in type casting."
+        ], (
+            f"The casted target dtype is {dtype}, which is not supported in type casting."
+        )
         cast_map = {
             'bool': 'bool',
             'int': 'int32',
@@ -776,7 +780,9 @@ def convert_var_dtype(var, dtype):
             'int',
             'float',
             'complex',
-        ], f"The casted target dtype is {dtype}, which is not supported in type casting."
+        ], (
+            f"The casted target dtype is {dtype}, which is not supported in type casting."
+        )
         return eval(dtype)(var)
 
 

@@ -97,9 +97,9 @@ def _apply_pass(
     if not cpp_graph.has('__param_scope__'):
         cpp_graph.set_not_owned('__param_scope__', scope)
     if attrs:
-        assert attr_values and len(attrs) == len(
-            attr_values
-        ), "Different number of pass attributes and their values."
+        assert attr_values and len(attrs) == len(attr_values), (
+            "Different number of pass attributes and their values."
+        )
         for attr, value in zip(attrs, attr_values):
             ir_pass.set(attr, value)
     ir_pass.apply(cpp_graph)
@@ -312,15 +312,17 @@ class PostTrainingQuantization:
         assert data_loader is not None, "data_loader cannot be None."
 
         assert batch_size > 0, "The batch_size should be greater than 0."
-        assert (
-            algo in self._support_algo_type
-        ), "The algo should be KL, hist, mse, avg, abs_max, min_max or ptf."
+        assert algo in self._support_algo_type, (
+            "The algo should be KL, hist, mse, avg, abs_max, min_max or ptf."
+        )
         assert (
             activation_quantize_type in self._support_activation_quantize_type
-        ), f"The activation_quantize_type ({activation_quantize_type}) should in ({self._support_activation_quantize_type})."
-        assert (
-            weight_quantize_type in self._support_weight_quantize_type
-        ), f"The weight_quantize_type ({weight_quantize_type}) should in ({self._support_weight_quantize_type})."
+        ), (
+            f"The activation_quantize_type ({activation_quantize_type}) should in ({self._support_activation_quantize_type})."
+        )
+        assert weight_quantize_type in self._support_weight_quantize_type, (
+            f"The weight_quantize_type ({weight_quantize_type}) should in ({self._support_weight_quantize_type})."
+        )
 
         # Save input params
         self._bias_correction = bias_correction
@@ -388,9 +390,9 @@ class PostTrainingQuantization:
                 assert op_type in list(SUPPORT_QUANTIZATION_OP_DICT.keys()), (
                     op_type + " is not supported for quantization."
                 )
-        assert (
-            activation_bits == weight_bits
-        ), "activation_bits and weight_bits must be the same, other cases are not supported."
+        assert activation_bits == weight_bits, (
+            "activation_bits and weight_bits must be the same, other cases are not supported."
+        )
         support_deploy_backend = [None, "tensorrt", "mkldnn", "onednn", "arm"]
         if not deploy_backend:
             self.quant_config = BaseQuantizer(
@@ -1043,9 +1045,9 @@ class PostTrainingQuantization:
         '''
         Save input threshold to the quantized op.
         '''
-        assert (
-            self._algo == "min_max"
-        ), "The algo should be min_max to save input threshold."
+        assert self._algo == "min_max", (
+            "The algo should be min_max to save input threshold."
+        )
         for block_id in range(len(self._program.blocks)):
             for op in self._program.blocks[block_id].ops:
                 if (
@@ -1344,9 +1346,9 @@ class PostTrainingQuantization:
                 )
                 return
             else:
-                assert (
-                    out_var_name in threshold_map
-                ), f"The output ({out_var_name}) of {op_node.type} node does not have threshold."
+                assert out_var_name in threshold_map, (
+                    f"The output ({out_var_name}) of {op_node.type} node does not have threshold."
+                )
             if self._onnx_format:
                 # For easy extension, every var_node set a dict to save parameters of quant.
                 self._calibration_scales[out_var_name] = {}
@@ -1622,9 +1624,9 @@ class WeightQuantization:
             8,
             16,
         ], "Input error: weight_bits should be 8 or 16."
-        assert (
-            weight_quantize_type in self._supported_weight_quantize_type
-        ), f"Input error: weight_quantize_type should in {self._supported_weight_quantize_type}"
+        assert weight_quantize_type in self._supported_weight_quantize_type, (
+            f"Input error: weight_quantize_type should in {self._supported_weight_quantize_type}"
+        )
 
         quantized_model_dir = os.path.join(save_model_dir, "quantized_model")
         self._quantize_weight_to_int(

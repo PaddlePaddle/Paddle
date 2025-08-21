@@ -343,9 +343,9 @@ def instance_norm(
         'instance_norm',
     )
     if param_attr is False:
-        assert (
-            bias_attr is False
-        ), "param_attr and bias_attr must be set to False at the same time in instance_norm"
+        assert bias_attr is False, (
+            "param_attr and bias_attr must be set to False at the same time in instance_norm"
+        )
 
     helper = LayerHelper('instance_norm', **locals())
     dtype = helper.input_dtype()
@@ -716,9 +716,9 @@ def conv2d(
             >>> print(conv2d.shape)
             (-1, 2, 30, 30)
     """
-    assert (
-        not in_pir_mode()
-    ), "paddle.static.nn.conv2d is not supported in pir mode, please set the environment variable FLAGS_enable_pir_api=0 to switch old static mode."
+    assert not in_pir_mode(), (
+        "paddle.static.nn.conv2d is not supported in pir mode, please set the environment variable FLAGS_enable_pir_api=0 to switch old static mode."
+    )
 
     check_variable_and_dtype(
         input, 'input', ['uint16', 'float16', 'float32', 'float64'], 'conv2d'
@@ -1362,9 +1362,9 @@ def conv2d_transpose(
             >>> print(conv2d_transpose.shape)
             (-1, 2, 34, 34)
     """
-    assert (
-        param_attr is not False
-    ), "param_attr should not be False in conv2d_transpose."
+    assert param_attr is not False, (
+        "param_attr should not be False in conv2d_transpose."
+    )
     if len(input.shape) != 4:
         raise ValueError(
             f"Input size should be 4, but received {len(input.shape)}"
@@ -1741,9 +1741,9 @@ def conv3d_transpose(
             >>> print(output)
             [array(0.5148856, dtype=float32)]
     """
-    assert (
-        param_attr is not False
-    ), "param_attr should not be False in conv3d_transpose."
+    assert param_attr is not False, (
+        "param_attr should not be False in conv3d_transpose."
+    )
     if data_format not in ['NCDHW', 'NDHWC']:
         raise ValueError(
             "Param(data_format) of Op(paddle.static.nn.conv3d_transpose) got wrong value: received "
@@ -2547,9 +2547,9 @@ def batch_norm(
             >>> print(hidden2.shape)
             (3, 200)
     """
-    assert (
-        bias_attr is not False
-    ), "bias_attr should not be False in batch_norm."
+    assert bias_attr is not False, (
+        "bias_attr should not be False in batch_norm."
+    )
     helper = LayerHelper('batch_norm', **locals())
 
     check_variable_and_dtype(
@@ -2806,9 +2806,9 @@ def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
 
         data_format = 'NCHW' if data_format[1] == 'C' else 'NHWC'
 
-        assert (
-            len(x.shape) >= 2
-        ), "The size of input shape should be equal or larger than 2 in prelu() when mode is 'channel'"
+        assert len(x.shape) >= 2, (
+            "The size of input shape should be equal or larger than 2 in prelu() when mode is 'channel'"
+        )
         # NOTE(zhiqiu): The alpha_shape should be [1, channel] + [1] * len(x.shape[2:]).
         # To be consistent with Prelu, it is simplified.
         # NOTE(zhiqiu): Revert shape to [1, channel, 1, 1] for compatibility with saved model of old version.
@@ -2819,9 +2819,9 @@ def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
             alpha_shape = [1, x.shape[1], 1, 1]
 
     elif mode == 'element':
-        assert (
-            len(x.shape) >= 1
-        ), "The size of input shape should be equal or larger than 1 in prelu() when mode is 'element'"
+        assert len(x.shape) >= 1, (
+            "The size of input shape should be equal or larger than 1 in prelu() when mode is 'element'"
+        )
         alpha_shape = [1, *list(x.shape)[1:]]
     dtype = helper.input_dtype(input_param_name='x')
     alpha = helper.create_parameter(
@@ -3426,9 +3426,9 @@ def layer_norm(
             >>> print(output.shape)
             (8, 32, 32)
     """
-    assert (
-        in_dygraph_mode() is not True
-    ), "please use LayerNorm instead of layer_norm in dygraph mode!"
+    assert in_dygraph_mode() is not True, (
+        "please use LayerNorm instead of layer_norm in dygraph mode!"
+    )
     helper = LayerHelper('layer_norm', **locals())
     check_variable_and_dtype(
         input, 'input', ['float32', 'float64'], 'layer_norm'
@@ -3440,9 +3440,9 @@ def layer_norm(
     input_shape = input.shape
     param_shape = [reduce(lambda x, y: x * y, input_shape[begin_norm_axis:], 1)]
     if scale:
-        assert (
-            param_attr is not False
-        ), "param_attr should not be False when using scale."
+        assert param_attr is not False, (
+            "param_attr should not be False when using scale."
+        )
         scale = helper.create_parameter(
             attr=helper.param_attr,
             shape=param_shape,
@@ -3454,9 +3454,9 @@ def layer_norm(
         if param_attr:
             warnings.warn("param_attr is only available with scale is True.")
     if shift:
-        assert (
-            bias_attr is not False
-        ), "bias_attr should not be False when using shift."
+        assert bias_attr is not False, (
+            "bias_attr should not be False when using shift."
+        )
         bias = helper.create_parameter(
             attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True
         )
@@ -3624,7 +3624,9 @@ def embedding(
     padding_idx = (
         -1
         if padding_idx is None
-        else padding_idx if padding_idx >= 0 else (size[0] + padding_idx)
+        else padding_idx
+        if padding_idx >= 0
+        else (size[0] + padding_idx)
     )
     helper.append_op(
         type='lookup_table_v2',
@@ -3790,7 +3792,9 @@ def sparse_embedding(
     padding_idx = (
         -1
         if padding_idx is None
-        else padding_idx if padding_idx >= 0 else (size[0] + padding_idx)
+        else padding_idx
+        if padding_idx >= 0
+        else (size[0] + padding_idx)
     )
 
     if table_class not in [
