@@ -134,15 +134,15 @@ class MasterGradPass(PassBase):
                 producer_op_dist_attr = (
                     dist_context.get_op_dist_attr_for_program(producer_op)
                 )
-                assert (
-                    producer_op_dist_attr is not None
-                ), f"The op: '{producer_op}' should be distributed"
+                assert producer_op_dist_attr is not None, (
+                    f"The op: '{producer_op}' should be distributed"
+                )
                 ref_output_dist_attr = (
                     producer_op_dist_attr.get_output_dist_attr(grad_name)
                 )
-                assert (
-                    ref_output_dist_attr is not None
-                ), f"The output: '{grad_name}' should be distributed"
+                assert ref_output_dist_attr is not None, (
+                    f"The output: '{grad_name}' should be distributed"
+                )
                 ref_mesh = ref_output_dist_attr.process_mesh
                 ref_dims_mapping = ref_output_dist_attr.dims_mapping
                 ref_chunk_id = producer_op_dist_attr.chunk_id
@@ -216,9 +216,9 @@ class MasterGradPass(PassBase):
             if is_optimize_op(op) and is_gradient_clip_op(op):
                 first_optimize_idx = idx
                 break
-        assert (
-            first_optimize_idx < main_ops_len
-        ), "The first optimizer op is not found!"
+        assert first_optimize_idx < main_ops_len, (
+            "The first optimizer op is not found!"
+        )
         deleted_temp_var_names = []
         deleted_persist_var_names = []
         reserved_var_names = []

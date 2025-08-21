@@ -272,9 +272,9 @@ def _conv_nd(
                     attrs={'axis': -1},
                 )
             else:
-                assert len(x_shape) > len(
-                    y_shape
-                ), 'The length of pre_bias must greater than the length of bias'
+                assert len(x_shape) > len(y_shape), (
+                    'The length of pre_bias must greater than the length of bias'
+                )
                 padding = len(x_shape) - len(y_shape) - channel_dim
                 bias = reshape(
                     bias, [1] * channel_dim + y_shape + [1] * padding
@@ -1336,9 +1336,9 @@ def conv2d_transpose(
                     attrs={'axis': -1},
                 )
             else:
-                assert len(x_shape) > len(
-                    y_shape
-                ), 'The length of pre_bias must greater than the length of bias'
+                assert len(x_shape) > len(y_shape), (
+                    'The length of pre_bias must greater than the length of bias'
+                )
                 padding = len(x_shape) - len(y_shape) - channel_dim
                 bias = reshape(
                     bias, [1] * channel_dim + y_shape + [1] * padding

@@ -37,9 +37,9 @@ class PirAttrsSerializer:
         print(attributes)
         attributes_names = {name for name, _ in attributes.items()}
         attr_names = {name for name, _ in self.attributes_schema}
-        assert (
-            attributes_names == attr_names
-        ), f"expected attr_names: {attr_names}, but actual attr_names are {attributes_names}"
+        assert attributes_names == attr_names, (
+            f"expected attr_names: {attr_names}, but actual attr_names are {attributes_names}"
+        )
         py_assigns = "\n".join(
             py_stmt
             for attr_name, attr_val in attributes.items()
@@ -76,15 +76,15 @@ class PirAttrsSerializer:
     def _check_attributes_schema_item_is_valid(self, attr_type):
         if attr_type in self._supported_basic_types():
             return
-        assert isinstance(
-            attr_type, list
-        ), f"attribute type {attr_type} is not supported."
-        assert (
-            len(attr_type) == 1
-        ), "only syntax like [bool], [int], [float], [str] supported."
-        assert (
-            attr_type[0] in self._supported_basic_types()
-        ), f"supported list element types are bool/int/float/str, not include {attr_type[0]}."
+        assert isinstance(attr_type, list), (
+            f"attribute type {attr_type} is not supported."
+        )
+        assert len(attr_type) == 1, (
+            "only syntax like [bool], [int], [float], [str] supported."
+        )
+        assert attr_type[0] in self._supported_basic_types(), (
+            f"supported list element types are bool/int/float/str, not include {attr_type[0]}."
+        )
 
     def _supported_basic_types(self):
         return (bool, int, float, str, DType)

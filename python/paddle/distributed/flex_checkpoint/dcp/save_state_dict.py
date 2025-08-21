@@ -86,9 +86,9 @@ def copy_dict_to_cpu(nested_dict):
 
 
 def merge_state_dict_metadata(global_state_dict_metadata):
-    assert isinstance(
-        global_state_dict_metadata, list
-    ), "The global_state_dict should be a list."
+    assert isinstance(global_state_dict_metadata, list), (
+        "The global_state_dict should be a list."
+    )
     out = {}
     for state_dict in global_state_dict_metadata:
         for key, val in state_dict.items():
@@ -272,9 +272,9 @@ def save_state_dict(
         else:
             save_dict = {}
             for key, val in state_dict.items():
-                assert (
-                    val.local_shape == val.global_shape
-                ), f"{key} is not replicated !"
+                assert val.local_shape == val.global_shape, (
+                    f"{key} is not replicated !"
+                )
                 save_dict[key] = val.local_tensor
 
         save_state_dict_impl(
@@ -305,15 +305,15 @@ def save_state_dict_impl(
     async_save: bool = False,
 ) -> None:
     with paddle.base.dygraph.guard():
-        assert isinstance(
-            state_dict, dict
-        ), "The state_dict should be a dictionary."
+        assert isinstance(state_dict, dict), (
+            "The state_dict should be a dictionary."
+        )
         flat_state_dict, mapping = flatten_state_dict(state_dict)
         if len(flat_state_dict) > 0:
             for val in flat_state_dict.values():
-                assert isinstance(
-                    val, (paddle.Tensor, ShardedWeight)
-                ), f"The value of state_dict should be a paddle.Tensor or ShardedWeight, but got: {val}."
+                assert isinstance(val, (paddle.Tensor, ShardedWeight)), (
+                    f"The value of state_dict should be a paddle.Tensor or ShardedWeight, but got: {val}."
+                )
 
         if not os.path.exists(path):
             os.makedirs(path, exist_ok=True)

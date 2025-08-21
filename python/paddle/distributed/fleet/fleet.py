@@ -707,12 +707,12 @@ class Fleet:
 
         assert self.mp_degree >= 0, "mp_degree should be greater or equal to 0"
         assert self.pp_degree >= 0, "pp_degree should be greater or equal to 0"
-        assert (
-            self.sep_degree >= 0
-        ), "sep_degree should be greater or equal to 0"
-        assert (
-            self.sharding_degree >= 0
-        ), "sharding_degree should be greater or equal to 0"
+        assert self.sep_degree >= 0, (
+            "sep_degree should be greater or equal to 0"
+        )
+        assert self.sharding_degree >= 0, (
+            "sharding_degree should be greater or equal to 0"
+        )
 
         self.mp_degree = max(self.mp_degree, 1)
         self.pp_degree = max(self.pp_degree, 1)
@@ -1534,9 +1534,9 @@ class Fleet:
             if hasattr(self.user_defined_optimizer, 'amp_init'):
                 amp_optimizer = self.user_defined_optimizer
 
-        assert (
-            amp_optimizer is not None
-        ), "amp_init can only be used when the amp(auto mixed precision) strategy is turned on."
+        assert amp_optimizer is not None, (
+            "amp_init can only be used when the amp(auto mixed precision) strategy is turned on."
+        )
         return amp_optimizer
 
     def get_loss_scaling(self) -> float:
@@ -1620,9 +1620,9 @@ class Fleet:
             if hasattr(self.user_defined_optimizer, 'qat_init'):
                 qat_optimizer = self.user_defined_optimizer
 
-        assert (
-            qat_optimizer is not None
-        ), "qat_init can only be used when the qat(quantization aware training) strategy is turned on."
+        assert qat_optimizer is not None, (
+            "qat_init can only be used when the qat(quantization aware training) strategy is turned on."
+        )
         return qat_optimizer
 
     def qat_init(

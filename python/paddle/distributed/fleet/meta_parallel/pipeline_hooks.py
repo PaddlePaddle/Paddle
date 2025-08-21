@@ -31,15 +31,15 @@ class PipelineHook:
         self._hooks_capacity = capacity
 
     def register_hook(self, hook_id: int, hook: Callable):
-        assert (
-            hook_id < self._hooks_capacity
-        ), f"hook_id {hook_id} is out of range, maximum capacity is {self._hooks_capacity}."
+        assert hook_id < self._hooks_capacity, (
+            f"hook_id {hook_id} is out of range, maximum capacity is {self._hooks_capacity}."
+        )
         self.hooks[hook_id].append(hook)
 
     def run_hook(self):
-        assert (
-            self._current_id < self._hooks_capacity
-        ), f"hook_id {self._current_id} is out of range, maximum capacity is {self._hooks_capacity}."
+        assert self._current_id < self._hooks_capacity, (
+            f"hook_id {self._current_id} is out of range, maximum capacity is {self._hooks_capacity}."
+        )
         for hook in self.hooks[self._current_id]:
             hook(self._current_id)
         self._current_id += 1

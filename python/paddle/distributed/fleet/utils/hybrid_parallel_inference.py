@@ -250,9 +250,9 @@ class HybridParallelInferenceHelper:
                 dev_ids.append(cur_id)
         num_pp = len(dev_ids)
         num_pp = max(1, num_pp)
-        assert (
-            num_pp == self.num_pp
-        ), f'num_pp: {num_pp}, self.num_pp: {self.num_pp}'
+        assert num_pp == self.num_pp, (
+            f'num_pp: {num_pp}, self.num_pp: {self.num_pp}'
+        )
 
         collective_helper = fleet.meta_optimizers.common.CollectiveHelper(
             self.role_maker, wait_port=False
@@ -491,13 +491,13 @@ class HybridParallelInferenceHelper:
 
         pre_stage_id = None
         for op in block.ops:
-            assert op.has_attr(
-                self._op_role_key
-            ), f"{op.type} has no {self._op_role_key} set ."
+            assert op.has_attr(self._op_role_key), (
+                f"{op.type} has no {self._op_role_key} set ."
+            )
             op_role = op.attr(self._op_role_key)
-            assert op_role == int(
-                self._op_role.Forward
-            ), "Only forward is supported for inference."
+            assert op_role == int(self._op_role.Forward), (
+                "Only forward is supported for inference."
+            )
             if not op._has_kernel(op.type):
                 assert op.type in [
                     "while",
@@ -506,9 +506,9 @@ class HybridParallelInferenceHelper:
                 sub_block_id = op.attr('sub_block').id
                 sub_block = block.program.block(sub_block_id)
                 self._check_validation(sub_block)
-            assert op.has_attr(
-                self._op_device_key
-            ), f"{op.type} has no {self._op_device_key} set."
+            assert op.has_attr(self._op_device_key), (
+                f"{op.type} has no {self._op_device_key} set."
+            )
 
             device = op.attr(self._op_device_key)
             assert device, f"{op.type} has no {self._op_device_key} set."
@@ -571,9 +571,9 @@ class HybridParallelInferenceHelper:
                 if (cur_device, prev_device) in input_var_to_device[var_name]:
                     continue
 
-                assert (
-                    self._device == cur_device.split(':')[0]
-                ), "More than one device type found."
+                assert self._device == cur_device.split(':')[0], (
+                    "More than one device type found."
+                )
                 device_type = cur_device.split(':')[0] + ':'
 
                 def _insert_send_recv(cur_id, prev_id):

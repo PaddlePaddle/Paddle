@@ -33,9 +33,9 @@ class ResNet:
             else self.prefix_name + '_'
         )
         supported_layers = [34, 50, 101, 152]
-        assert (
-            layers in supported_layers
-        ), f"supported layers are {supported_layers} but input layer is {layers}"
+        assert layers in supported_layers, (
+            f"supported layers are {supported_layers} but input layer is {layers}"
+        )
 
         if layers == 34 or layers == 50:
             depth = [3, 4, 6, 3]
