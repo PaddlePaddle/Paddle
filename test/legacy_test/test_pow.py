@@ -261,7 +261,7 @@ class TestPowerAPI_Specialization(unittest.TestCase):
         np.random.seed(7)
         inputs = [
             np.random.rand(10, 10) * 10,
-            np.complex64(
+            np.complex128(
                 np.random.rand(10, 10) * 10 + 1j * np.random.rand(10, 10)
             ),
         ]
