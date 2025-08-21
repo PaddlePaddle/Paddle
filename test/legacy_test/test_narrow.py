@@ -64,8 +64,11 @@ def check_narrow_alias(input_tensor, output_tensor, dim, start):
     return is_alias
 
 
-@unittest.skipIf(paddle.device.get_device() == "xpu", "Skip on XPU")
+@unittest.skipIf(paddle.device.get_device().startswith("xpu"), "Skip on XPU")
 class TestNarrowBase(unittest.TestCase):
+    @unittest.skipIf(
+        paddle.device.get_device().startswith("xpu"), "Skip on XPU"
+    )
     def setUp(self):
         self.input_np = np.array([1, 2, 3, 4, 5], dtype='float32')
         self.input_shape = self.input_np.shape
@@ -110,7 +113,9 @@ class TestNarrowBase(unittest.TestCase):
                 f"narrow should be an alias! input={input.numpy()}, result={result.numpy()}",
             )
 
-    @unittest.skipIf(paddle.device.get_device() == "xpu", "Skip on XPU")
+    @unittest.skipIf(
+        paddle.device.get_device().startswith("xpu"), "Skip on XPU"
+    )
     def test_dygraph(self):
         for place in self.places:
             self.check_dygraph_result(place=place)
@@ -277,9 +282,11 @@ class TestPaddleNarrowMultiDim(TestNarrowBase):
 #         self.length = 0
 
 
-@unittest.skipIf(paddle.device.get_device() == "xpu", "Skip on XPU")
+@unittest.skipIf(paddle.device.get_device().startswith("xpu"), "Skip on XPU")
 class TestNarrowExtra(unittest.TestCase):
-    @unittest.skipIf(paddle.device.get_device() == "xpu", "Skip on XPU")
+    @unittest.skipIf(
+        paddle.device.get_device().startswith("xpu"), "Skip on XPU"
+    )
     def test_start_tensor(self):
         arr = np.arange(10, dtype='int64')
         x = paddle.to_tensor(arr)
@@ -287,7 +294,9 @@ class TestNarrowExtra(unittest.TestCase):
         out = paddle.narrow(x, dim=0, start=s, length=2)
         np.testing.assert_array_equal(out.numpy(), arr[3:5])
 
-    @unittest.skipIf(paddle.device.get_device() == "xpu", "Skip on XPU")
+    @unittest.skipIf(
+        paddle.device.get_device().startswith("xpu"), "Skip on XPU"
+    )
     def test_start_tensor_wrong_dtype(self):
         arr = np.arange(10, dtype='float32')
         x = paddle.to_tensor(arr)
@@ -295,7 +304,9 @@ class TestNarrowExtra(unittest.TestCase):
         with self.assertRaises(AssertionError):
             paddle.narrow(x, dim=0, start=s, length=2)
 
-    @unittest.skipIf(paddle.device.get_device() == "xpu", "Skip on XPU")
+    @unittest.skipIf(
+        paddle.device.get_device().startswith("xpu"), "Skip on XPU"
+    )
     def test_start_tensor_wrong_shape(self):
         arr = np.arange(10, dtype='float32')
         x = paddle.to_tensor(arr)
@@ -303,7 +314,9 @@ class TestNarrowExtra(unittest.TestCase):
         with self.assertRaises(AssertionError):
             paddle.narrow(x, dim=0, start=s, length=2)
 
-    @unittest.skipIf(paddle.device.get_device() == "xpu", "Skip on XPU")
+    @unittest.skipIf(
+        paddle.device.get_device().startswith("xpu"), "Skip on XPU"
+    )
     def test_dim_out_of_range(self):
         arr = np.arange(10)
         x = paddle.to_tensor(arr)
@@ -312,7 +325,9 @@ class TestNarrowExtra(unittest.TestCase):
         with self.assertRaises(IndexError):
             paddle.narrow(x, dim=-2, start=0, length=1)
 
-    @unittest.skipIf(paddle.device.get_device() == "xpu", "Skip on XPU")
+    @unittest.skipIf(
+        paddle.device.get_device().startswith("xpu"), "Skip on XPU"
+    )
     def test_start_out_of_range(self):
         arr = np.arange(5)
         x = paddle.to_tensor(arr)
@@ -321,34 +336,44 @@ class TestNarrowExtra(unittest.TestCase):
         with self.assertRaises(AssertionError):
             paddle.narrow(x, dim=0, start=-6, length=1)
 
-    @unittest.skipIf(paddle.device.get_device() == "xpu", "Skip on XPU")
+    @unittest.skipIf(
+        paddle.device.get_device().startswith("xpu"), "Skip on XPU"
+    )
     def test_length_negative(self):
         arr = np.arange(5)
         x = paddle.to_tensor(arr)
         with self.assertRaises(AssertionError):
             paddle.narrow(x, dim=0, start=1, length=-1)
 
-    @unittest.skipIf(paddle.device.get_device() == "xpu", "Skip on XPU")
+    @unittest.skipIf(
+        paddle.device.get_device().startswith("xpu"), "Skip on XPU"
+    )
     def test_0_dim_tensor(self):
         x = paddle.to_tensor(111)
         with self.assertRaises(AssertionError):
             paddle.narrow(x, dim=0, start=0, length=1)
 
-    @unittest.skipIf(paddle.device.get_device() == "xpu", "Skip on XPU")
+    @unittest.skipIf(
+        paddle.device.get_device().startswith("xpu"), "Skip on XPU"
+    )
     def test_start_plus_length_overflow(self):
         arr = np.arange(5)
         x = paddle.to_tensor(arr)
         with self.assertRaises(AssertionError):
             paddle.narrow(x, dim=0, start=3, length=3)
 
-    @unittest.skipIf(paddle.device.get_device() == "xpu", "Skip on XPU")
+    @unittest.skipIf(
+        paddle.device.get_device().startswith("xpu"), "Skip on XPU"
+    )
     def test_negative_start(self):
         arr = np.arange(8)
         x = paddle.to_tensor(arr)
         out = paddle.narrow(x, dim=0, start=-3, length=2)
         np.testing.assert_array_equal(out.numpy(), arr[5:7])
 
-    @unittest.skipIf(paddle.device.get_device() == "xpu", "Skip on XPU")
+    @unittest.skipIf(
+        paddle.device.get_device().startswith("xpu"), "Skip on XPU"
+    )
     def test_negative_dim(self):
         arr = np.arange(12).reshape(3, 4)
         x = paddle.to_tensor(arr)
