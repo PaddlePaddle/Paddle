@@ -115,7 +115,7 @@ unfixable = [
     "NPY001"
 ]
 ignore = [
-    # Whitespace before ‘,’, ‘;’, or ‘:’, it is not compatible with black
+    # Whitespace before ‘,’, ‘;’, or ‘:’, it is not compatible with ruff format
     "E203",
     # Module level import not at top of file
     "E402",
