@@ -285,9 +285,9 @@ class DenseNet(nn.Layer):
         self.num_classes = num_classes
         self.with_pool = with_pool
         supported_layers = [121, 161, 169, 201, 264]
-        assert (
-            layers in supported_layers
-        ), f"supported layers are {supported_layers} but input layer is {layers}"
+        assert layers in supported_layers, (
+            f"supported layers are {supported_layers} but input layer is {layers}"
+        )
         densenet_spec = {
             121: (64, 32, [6, 12, 24, 16]),
             161: (96, 48, [6, 12, 36, 24]),
@@ -384,9 +384,9 @@ def _densenet(
 ) -> DenseNet:
     model = DenseNet(layers=layers, **kwargs)
     if pretrained:
-        assert (
-            arch in model_urls
-        ), f"{arch} model do not have a pretrained model now, you should set pretrained=False"
+        assert arch in model_urls, (
+            f"{arch} model do not have a pretrained model now, you should set pretrained=False"
+        )
         weight_path = get_weights_path_from_url(
             model_urls[arch][0], model_urls[arch][1]
         )

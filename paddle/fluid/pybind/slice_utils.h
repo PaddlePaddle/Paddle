@@ -820,6 +820,43 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
       indices_int64.push_back(indice);
     }
 
+    // AMP Logic
+    if (egr::Controller::Instance().GetAMPLevel() !=
+        paddle::imperative::AmpLevel::O0) {
+      auto op_name = phi::TransToFluidOpName("index_elementwise_get");
+      paddle::small_vector<std::vector<paddle::Tensor>,
+                           egr::kSlotSmallVectorSize>
+          amp_tensors_vector = {{self_tensor}};
+
+      auto amp_dst_dtype =
+          paddle::imperative::GetAmpDestDtype(op_name, amp_tensors_vector);
+
+      auto new_self_tensor = paddle::imperative::AmpAutoCast(
+          "self_tensor", self_tensor, amp_dst_dtype, op_name);
+      auto new_tensor = paddle::imperative::AmpAutoCast(
+          "tensor", tensor, amp_dst_dtype, op_name);
+
+      {
+        paddle::imperative::AutoCastGuard guard(
+            egr::Controller::Instance().GetCurrentAmpAttrs(),
+            paddle::imperative::AmpLevel::O0);
+
+        AdvancedIndex ad = AdvancedIndex(new_tensor, indices_int64);
+        const bool is_combined = false;
+        const bool accumulate = false;
+
+        return index_elementwise_get_ad_func(new_self_tensor,
+                                             ad.indices,
+                                             ad.src_sizes,
+                                             ad.src_strides,
+                                             ad.indexed_sizes,
+                                             ad.indexed_strides,
+                                             slice_offset,
+                                             accumulate,
+                                             is_combined);
+      }
+    }
+
     AdvancedIndex ad = AdvancedIndex(tensor, indices_int64);
     const bool is_combined = false;
     const bool accumulate = false;
@@ -1286,6 +1323,45 @@ static void ApplyGetitem(const int index_size,
                     sub_tensor,
                     transed_tensor,
                     &transed_index_int64);
+
+      // AMP Logic
+      if (egr::Controller::Instance().GetAMPLevel() !=
+          paddle::imperative::AmpLevel::O0) {
+        auto op_name = phi::TransToFluidOpName("index_elementwise_get");
+        paddle::small_vector<std::vector<paddle::Tensor>,
+                             egr::kSlotSmallVectorSize>
+            amp_tensors_vector = {{*self_tensor}};
+
+        auto amp_dst_dtype =
+            paddle::imperative::GetAmpDestDtype(op_name, amp_tensors_vector);
+
+        auto new_self_tensor = paddle::imperative::AmpAutoCast(
+            "self_tensor", *self_tensor, amp_dst_dtype, op_name);
+        auto new_transed_tensor = paddle::imperative::AmpAutoCast(
+            "transed_tensor", *transed_tensor, amp_dst_dtype, op_name);
+
+        {
+          paddle::imperative::AutoCastGuard guard(
+              egr::Controller::Instance().GetCurrentAmpAttrs(),
+              paddle::imperative::AmpLevel::O0);
+
+          AdvancedIndex ad =
+              AdvancedIndex(new_transed_tensor, transed_index_int64);
+
+          const bool is_combined = (index_size == 1) ? false : true;
+          const bool accumulate = true;
+          *out = index_elementwise_get_ad_func(new_self_tensor,
+                                               ad.indices,
+                                               ad.src_sizes,
+                                               ad.src_strides,
+                                               ad.indexed_sizes,
+                                               ad.indexed_strides,
+                                               slice_offset,
+                                               accumulate,
+                                               is_combined);
+        }
+        return;
+      }
 
       AdvancedIndex ad = AdvancedIndex(*transed_tensor, transed_index_int64);
       // is_combined:

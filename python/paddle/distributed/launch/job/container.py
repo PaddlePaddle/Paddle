@@ -94,9 +94,9 @@ class Container:
 
     def _validate_env(self):
         for k, v in self._env.items():
-            assert isinstance(k, str) and isinstance(
-                v, str
-            ), f'env {k}:{v} must be str'
+            assert isinstance(k, str) and isinstance(v, str), (
+                f'env {k}:{v} must be str'
+            )
 
     def _get_fd(self, pth):
         if not pth:

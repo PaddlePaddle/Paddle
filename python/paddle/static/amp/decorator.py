@@ -155,9 +155,9 @@ class OptimizerWithMixedPrecision:
 
     def get_loss_scaling(self):
         """Return the real-time loss scaling factor."""
-        assert (
-            self._loss_scaling is not None
-        ), 'Please call minimize() before calling get_loss_scaling().'
+        assert self._loss_scaling is not None, (
+            'Please call minimize() before calling get_loss_scaling().'
+        )
         return self._loss_scaling
 
     def get_scaled_loss(self):
@@ -420,9 +420,9 @@ class OptimizerWithMixedPrecision:
                 >>> if paddle.is_compiled_with_cuda() and len(paddle.static.cuda_places()) > 0:
                 ...     run_example_code()
         """
-        assert (
-            self._train_program is not None
-        ), "Please call the minimize method first."
+        assert self._train_program is not None, (
+            "Please call the minimize method first."
+        )
         if self._use_pure_fp16:
             cast_parameters_to_fp16(
                 place,
@@ -583,9 +583,9 @@ class OptimizerWithMixedPrecision:
             if g.dtype == paddle.float32 or g.dtype == core.DataType.FLOAT32
         ]
         fp16_grads = [g for g in grads if g.dtype == self._amp_vartype]
-        assert len(fp32_grads) + len(fp16_grads) == len(
-            grads
-        ), "Data types of all grads must be either fp16/bf16 or fp32."
+        assert len(fp32_grads) + len(fp16_grads) == len(grads), (
+            "Data types of all grads must be either fp16/bf16 or fp32."
+        )
         return grads, fp32_grads, fp16_grads
 
     def _check_finite_and_unscale(self, params_grads):

@@ -33,9 +33,7 @@ from paddle.framework import core
 from paddle.nn import ClipGradByGlobalNorm
 from paddle.optimizer import Optimizer
 
-HybridParallelClipGrad = (
-    fleet.meta_optimizers.dygraph_optimizer.hybrid_parallel_optimizer.HybridParallelClipGrad
-)
+HybridParallelClipGrad = fleet.meta_optimizers.dygraph_optimizer.hybrid_parallel_optimizer.HybridParallelClipGrad
 from paddle.distributed.collective import _get_global_group, new_group
 
 from .group_sharded_storage import GradStorage, ParamStorage
@@ -103,9 +101,9 @@ class GroupShardedOptimizerStage2(Optimizer):
         # record the last task used for comm overlap for sharding stage 2
         self._comm_task = None
 
-        assert hasattr(
-            self._optim, "_master_weights"
-        ), "Must use optimizer with _master_weights attribute"
+        assert hasattr(self._optim, "_master_weights"), (
+            "Must use optimizer with _master_weights attribute"
+        )
 
         # Support parameter group and parameter list
         self._local_params = []
@@ -120,9 +118,9 @@ class GroupShardedOptimizerStage2(Optimizer):
             if self.use_main_grad is None and hasattr(param, "main_grad"):
                 self.use_main_grad = True
             if self.use_main_grad:
-                assert hasattr(
-                    param, "main_grad"
-                ), "Params have different main grad attributes."
+                assert hasattr(param, "main_grad"), (
+                    "Params have different main grad attributes."
+                )
         if self.use_main_grad:
             assert not offload, "offload not support main_grad for now"
 
@@ -173,9 +171,9 @@ class GroupShardedOptimizerStage2(Optimizer):
         self._global_root_rank = self._group.ranks[0]
 
         if self._dp_group is not None and self._dp_group.nranks > 1:
-            assert (
-                not offload
-            ), "Not support! when using offload with sharding stage2, please use pure sharding stage2, exclude data parallel."
+            assert not offload, (
+                "Not support! when using offload with sharding stage2, please use pure sharding stage2, exclude data parallel."
+            )
 
         # Synchronous all ranks models
         if pretrain_sync_models:
@@ -222,9 +220,9 @@ class GroupShardedOptimizerStage2(Optimizer):
                         item["grad_clip"] = self._optim._grad_clip
 
         if offload:
-            assert (
-                self._pfp16
-            ), "Only support offload strategy while using 'Adam', 'AdamW' and 'Momentum' optimizer with AMP/Pure FP16"
+            assert self._pfp16, (
+                "Only support offload strategy while using 'Adam', 'AdamW' and 'Momentum' optimizer with AMP/Pure FP16"
+            )
 
         self.offload = offload  # Using for offload
         self.offload_device = "cpu"
@@ -280,9 +278,9 @@ class GroupShardedOptimizerStage2(Optimizer):
         # Enable post optimizer broadcasts overlap with the forward calculation of next batch.
         self._broadcast_overlap = broadcast_overlap
         if self._broadcast_overlap:
-            assert (
-                layers is not None
-            ), "To enable broadcast overlap forward, please pass the module to the function."
+            assert layers is not None, (
+                "To enable broadcast overlap forward, please pass the module to the function."
+            )
             self._layers = layers
             warnings.warn(
                 "Setting overlap broadcast means the `paddle.device.cuda.synchronize()` "
@@ -303,9 +301,9 @@ class GroupShardedOptimizerStage2(Optimizer):
             )
             num_groups = 1
 
-        assert (
-            isinstance(num_groups, int) and num_groups > 0
-        ), "num_groups should be a positive integer"
+        assert isinstance(num_groups, int) and num_groups > 0, (
+            "num_groups should be a positive integer"
+        )
 
         self._number_of_broadcast_groups = num_groups
         self._broadcast_groups = [
