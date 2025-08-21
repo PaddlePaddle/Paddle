@@ -920,36 +920,18 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         self.backward_forward_str = ""
         self.backward_api_name = ""
 
-        self.forward_attrs_list = (
-            []
-        )  # [ [attr_name, attr_type, default_value, orig_position], ...]
-        self.forward_inputs_list = (
-            []
-        )  # [ [arg_name, arg_type, orig_position], ...]
-        self.forward_returns_list = (
-            []
-        )  # [ [ret_name, ret_type, orig_position], ...]
+        self.forward_attrs_list = []  # [ [attr_name, attr_type, default_value, orig_position], ...]
+        self.forward_inputs_list = []  # [ [arg_name, arg_type, orig_position], ...]
+        self.forward_returns_list = []  # [ [ret_name, ret_type, orig_position], ...]
 
-        self.backward_attrs_list = (
-            []
-        )  # [ [attr_name, attr_type, default_value, orig_position], ...]
-        self.backward_inputs_list = (
-            []
-        )  # [ [arg_name, arg_type, orig_position], ...]
-        self.backward_returns_list = (
-            []
-        )  # [ [ret_name, ret_type, orig_position], ...]
+        self.backward_attrs_list = []  # [ [attr_name, attr_type, default_value, orig_position], ...]
+        self.backward_inputs_list = []  # [ [arg_name, arg_type, orig_position], ...]
+        self.backward_returns_list = []  # [ [ret_name, ret_type, orig_position], ...]
 
         # SlotNameMatched Backward Data
-        self.backward_forward_inputs_map = (
-            {}
-        )  # { "name" : [type, is_fwd_input, orig_position] ...}
-        self.backward_grad_inputs_map = (
-            {}
-        )  # { "name" : [type, fwd_position, orig_position] ...}
-        self.backward_grad_outputs_map = (
-            {}
-        )  # { "name" : [type, fwd_position, orig_position] ...}
+        self.backward_forward_inputs_map = {}  # { "name" : [type, is_fwd_input, orig_position] ...}
+        self.backward_grad_inputs_map = {}  # { "name" : [type, fwd_position, orig_position] ...}
+        self.backward_grad_outputs_map = {}  # { "name" : [type, fwd_position, orig_position] ...}
 
         self.backward_inplace_map = {}  # {name : name, ...}
 
@@ -969,26 +951,26 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
             'op' in forward_api_contents
             or 'backward_op' in forward_api_contents
         ), 'Unable to find "op" in ops.yaml'
-        assert (
-            'args' in forward_api_contents
-        ), 'Unable to find "args" in ops.yaml'
-        assert (
-            'output' in forward_api_contents
-        ), 'Unable to find "output" in ops.yaml'
+        assert 'args' in forward_api_contents, (
+            'Unable to find "args" in ops.yaml'
+        )
+        assert 'output' in forward_api_contents, (
+            'Unable to find "output" in ops.yaml'
+        )
 
         if grad_api_contents is not None:
-            assert (
-                'backward' in forward_api_contents
-            ), 'Unable to find "backward" in ops.yaml'
-            assert (
-                'args' in grad_api_contents
-            ), 'Unable to find "args" in backward.yaml'
-            assert (
-                'output' in grad_api_contents
-            ), 'Unable to find "output" in backward.yaml'
-            assert (
-                'forward' in grad_api_contents
-            ), 'Unable to find "forward" in backward.yaml'
+            assert 'backward' in forward_api_contents, (
+                'Unable to find "backward" in ops.yaml'
+            )
+            assert 'args' in grad_api_contents, (
+                'Unable to find "args" in backward.yaml'
+            )
+            assert 'output' in grad_api_contents, (
+                'Unable to find "output" in backward.yaml'
+            )
+            assert 'forward' in grad_api_contents, (
+                'Unable to find "forward" in backward.yaml'
+            )
 
     def ForwardsValidationCheck(self):
         forward_inputs_list = self.forward_inputs_list
@@ -1153,10 +1135,10 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
             backward_fwd_name = FindForwardName(backward_input_name)
             if backward_fwd_name:
                 # Grad Input
-                assert (
-                    backward_fwd_name in forward_outputs_position_map
-                ), AssertMessage(
-                    backward_fwd_name, forward_outputs_position_map.keys()
+                assert backward_fwd_name in forward_outputs_position_map, (
+                    AssertMessage(
+                        backward_fwd_name, forward_outputs_position_map.keys()
+                    )
                 )
                 matched_forward_output_type = forward_outputs_position_map[
                     backward_fwd_name
@@ -1202,13 +1184,13 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
             backward_output_pos = backward_output[2]
 
             backward_fwd_name = FindForwardName(backward_output_name)
-            assert (
-                backward_fwd_name is not None
-            ), f"Detected {backward_fwd_name} = None"
-            assert (
-                backward_fwd_name in forward_inputs_position_map
-            ), AssertMessage(
-                backward_fwd_name, forward_inputs_position_map.keys()
+            assert backward_fwd_name is not None, (
+                f"Detected {backward_fwd_name} = None"
+            )
+            assert backward_fwd_name in forward_inputs_position_map, (
+                AssertMessage(
+                    backward_fwd_name, forward_inputs_position_map.keys()
+                )
             )
 
             matched_forward_input_type = forward_inputs_position_map[
@@ -1706,14 +1688,14 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 for key, value in self.forward_inplace_map.items():
                     if key not in self.forward_inputs_position_map:
                         key = FindRenameForwardName(key)
-                        assert (
-                            key in self.forward_inputs_position_map
-                        ), f"{key} not in {self.forward_api_name} forward_inputs_position_map"
+                        assert key in self.forward_inputs_position_map, (
+                            f"{key} not in {self.forward_api_name} forward_inputs_position_map"
+                        )
                     if value not in self.forward_outputs_position_map:
                         value = FindRenameForwardName(value)
-                        assert (
-                            value in self.forward_outputs_position_map
-                        ), f"{value} not in {self.forward_api_name} forward_outputs_position_map"
+                        assert value in self.forward_outputs_position_map, (
+                            f"{value} not in {self.forward_api_name} forward_outputs_position_map"
+                        )
                     forward_inplace_map[key] = value
                 self.forward_inplace_map = forward_inplace_map
             else:

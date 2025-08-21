@@ -77,9 +77,9 @@ class TestException(unittest.TestCase):
         except Exception as e:
             match_results = re.compile(r'File ".*", line (\d+)').findall(str(e))
             match_results = list(map(int, match_results))
-            assert (
-                match_results == error_lines
-            ), f"{match_results} is not equal {error_lines}"
+            assert match_results == error_lines, (
+                f"{match_results} is not equal {error_lines}"
+            )
 
     def test_all_case(self):
         self.catch_error(case1, paddle.rand([2, 1]), 25)

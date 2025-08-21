@@ -113,13 +113,13 @@ def _fuse_func(layer_list):
 
 def _fuse_conv_bn(conv, bn):
     '''fuse conv and bn for train or eval'''
-    assert (
-        conv.training == bn.training
-    ), "Conv and BN both must be in the same mode (train or eval)."
+    assert conv.training == bn.training, (
+        "Conv and BN both must be in the same mode (train or eval)."
+    )
     if conv.training:
-        assert (
-            bn._num_features == conv._out_channels
-        ), 'Output channel of Conv2d must match num_features of BatchNorm2d'
+        assert bn._num_features == conv._out_channels, (
+            'Output channel of Conv2d must match num_features of BatchNorm2d'
+        )
         raise NotImplementedError
     else:
         return _fuse_conv_bn_eval(conv, bn)
@@ -166,13 +166,13 @@ def _fuse_conv_bn_weights(conv_w, conv_b, bn_rm, bn_rv, bn_eps, bn_w, bn_b):
 
 def _fuse_linear_bn(linear, bn):
     '''fuse linear and bn'''
-    assert (
-        linear.training == bn.training
-    ), "Linear and BN both must be in the same mode (train or eval)."
+    assert linear.training == bn.training, (
+        "Linear and BN both must be in the same mode (train or eval)."
+    )
     if linear.training:
-        assert (
-            bn._num_features == linear.weight.shape[1]
-        ), 'Output channel of Linear must match num_features of BatchNorm'
+        assert bn._num_features == linear.weight.shape[1], (
+            'Output channel of Linear must match num_features of BatchNorm'
+        )
         raise NotImplementedError
     else:
         return _fuse_linear_bn_eval(linear, bn)

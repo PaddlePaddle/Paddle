@@ -257,9 +257,9 @@ class CustomOpInfo:
         return cls._instance
 
     def __init__(self):
-        assert not hasattr(
-            self.__class__, '_instance'
-        ), 'Please use `instance()` to get CustomOpInfo object!'
+        assert not hasattr(self.__class__, '_instance'), (
+            'Please use `instance()` to get CustomOpInfo object!'
+        )
         # NOTE(Aurelius84): Use OrderedDict to save more order information
         self.op_info_map = collections.OrderedDict()
 
@@ -522,9 +522,9 @@ def _get_include_dirs_when_compiling(compile_dir):
     include_dirs_file = 'includes.txt'
     path = os.path.abspath(compile_dir)
     include_dirs_file = os.path.join(path, include_dirs_file)
-    assert os.path.isfile(
-        include_dirs_file
-    ), f"File {include_dirs_file} does not exist"
+    assert os.path.isfile(include_dirs_file), (
+        f"File {include_dirs_file} does not exist"
+    )
     with open(include_dirs_file, 'r') as f:
         include_dirs = [line.strip() for line in f if line.strip()]
 

@@ -67,10 +67,10 @@ class BackwardAPI(BaseAPI):
             if input not in fw_inputs['names'] and input not in fw_outputs:
                 if input.endswith('_grad'):
                     original_name = input[:-5]
-                    assert (
-                        original_name in fw_outputs
-                    ), f"{self.api} : Input Tensor error: the input tensor({input}) of backward should be an input or output or grad of output in forward api. \
+                    assert original_name in fw_outputs, (
+                        f"{self.api} : Input Tensor error: the input tensor({input}) of backward should be an input or output or grad of output in forward api. \
                          Please check the forward of {self.api} in yaml."
+                    )
 
         # check the attributes of backward
         for attr in self.attrs['names']:
@@ -78,16 +78,16 @@ class BackwardAPI(BaseAPI):
                 attr in fw_attrs['names']
                 and self.attrs['attr_info'][attr][0]
                 == fw_attrs['attr_info'][attr][0]
-            ) or self.attrs['attr_info'][attr][
-                1
-            ] is not None, f"{self.api} : Attribute error: The attribute({attr}) of backward isn't consistent with forward api or doesn't have default value. \
+            ) or self.attrs['attr_info'][attr][1] is not None, (
+                f"{self.api} : Attribute error: The attribute({attr}) of backward isn't consistent with forward api or doesn't have default value. \
                  Please check the args of {self.api} in yaml."
+            )
 
         # check the output of backward
-        assert len(self.outputs['types']) <= len(
-            fw_inputs['names']
-        ), f"{self.api} : Output error: The number of outputs should be less then the number of inputs of forward api. \
+        assert len(self.outputs['types']) <= len(fw_inputs['names']), (
+            f"{self.api} : Output error: The number of outputs should be less then the number of inputs of forward api. \
              Please check the output of {self.api} in yaml."
+        )
 
     def get_declare_args(
         self, inplace_flag=False, grad_flag=False, append_input_out=False
@@ -181,9 +181,9 @@ PADDLE_API void {api_func_name}({self.get_declare_args()});
                 else 'SetSelectedRowsKernelOutput'
             )
             if out_dtype_list[0] == 'std::vector<Tensor>':
-                assert (
-                    self.outputs['out_size_expr'] is not None
-                ), f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                assert self.outputs['out_size_expr'] is not None, (
+                    f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                )
                 output_create = (
                     output_create
                     + f"""
@@ -238,9 +238,9 @@ PADDLE_API void {api_func_name}({self.get_declare_args()});
 {code_indent}  *{self.outputs['names'][i]} = {self.inplace_map[self.outputs['names'][i]]};"""
                         )
 
-                    assert (
-                        self.outputs['out_size_expr'][i] is not None
-                    ), f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                    assert self.outputs['out_size_expr'][i] is not None, (
+                        f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                    )
                     output_create = (
                         output_create
                         + f"""

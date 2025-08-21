@@ -410,19 +410,19 @@ def fused_bias_dropout_residual_layer_norm(
     )  # semantic transfer
 
     if ln_scale is not None:
-        assert (
-            len(ln_scale.shape) == 1
-        ), "The dims of the shape of ln_scale should be 1."
-        assert (
-            x.shape[len(x.shape) - 1] == ln_scale.shape[0]
-        ), "The dim of ln_scale must equal to the last dim of x."
+        assert len(ln_scale.shape) == 1, (
+            "The dims of the shape of ln_scale should be 1."
+        )
+        assert x.shape[len(x.shape) - 1] == ln_scale.shape[0], (
+            "The dim of ln_scale must equal to the last dim of x."
+        )
     if ln_bias is not None:
-        assert (
-            len(ln_bias.shape) == 1
-        ), "The dims of the shape of ln_bias should be 1."
-        assert (
-            x.shape[len(x.shape) - 1] == ln_bias.shape[0]
-        ), "The dim of ln_bias must equal to the last dim of x."
+        assert len(ln_bias.shape) == 1, (
+            "The dims of the shape of ln_bias should be 1."
+        )
+        assert x.shape[len(x.shape) - 1] == ln_bias.shape[0], (
+            "The dim of ln_bias must equal to the last dim of x."
+        )
 
     if in_dynamic_or_pir_mode():
         if default_main_program().random_seed != 0:
@@ -677,15 +677,15 @@ def fused_multi_head_attention(
         # qktv_out, softmax_out, attn_dropout_mask_out, attn_dropout_out, attn_mask_out, fmha_out,
         # linear_out, dropout_mask_out, ln_mean_out, ln_var_out, bias_dropout_residual_out, final_out
         if not transpose_qkv_wb:
-            assert (
-                len(qkv_weight.shape) == 4
-            ), "The dims of the shape of qkv_weight should be 4."
-            assert (
-                qkv_weight.shape[0] == 3
-            ), "The shape of qkv_weight should be [3, num_head, head_dim, embed_dim]."
-            assert (
-                qkv_weight.shape[3] == x.shape[2]
-            ), "The 3rd dim of qkv_weight and 2nd dim of x should be the same, i.e., embed_dim."
+            assert len(qkv_weight.shape) == 4, (
+                "The dims of the shape of qkv_weight should be 4."
+            )
+            assert qkv_weight.shape[0] == 3, (
+                "The shape of qkv_weight should be [3, num_head, head_dim, embed_dim]."
+            )
+            assert qkv_weight.shape[3] == x.shape[2], (
+                "The 3rd dim of qkv_weight and 2nd dim of x should be the same, i.e., embed_dim."
+            )
             if ring_id == -1:
                 # under mp, the num head will be split, this equation will not hold
                 assert (
@@ -693,9 +693,9 @@ def fused_multi_head_attention(
                     == qkv_weight.shape[3]
                 ), "embed_dim must be divisible by num_heads."
         else:
-            assert (
-                num_heads > 0
-            ), "When enable transpose_qkv_wb, the num_heads should be provided and greater than 0."
+            assert num_heads > 0, (
+                "When enable transpose_qkv_wb, the num_heads should be provided and greater than 0."
+            )
             assert len(qkv_weight.shape) == 2, (
                 "When enable transpose_qkv_wb, the dims of the shape of qkv_weight "
                 "should be 2 when enable transpose_qkv_wb."
@@ -711,9 +711,9 @@ def fused_multi_head_attention(
                 "should be the same, i.e., embed_dim."
             )
             if qkv_bias is not None:
-                assert (
-                    len(qkv_bias.shape) == 1
-                ), "When enable transpose_qkv_wb, the dims of the shape of qkv_bias should be 1."
+                assert len(qkv_bias.shape) == 1, (
+                    "When enable transpose_qkv_wb, the dims of the shape of qkv_bias should be 1."
+                )
                 assert qkv_bias.shape[0] == qkv_weight.shape[1], (
                     "When enable transpose_qkv_wb, the 1st dim of qkv_bias and 2nd dim of "
                     "qkv_weight should be the same, i.e., embed_dim."

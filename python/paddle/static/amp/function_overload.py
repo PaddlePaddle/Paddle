@@ -86,9 +86,9 @@ class Namespace:
             fn (function): the native python function handle.
             key (FunctionType): the specified type.
         """
-        assert isinstance(
-            key, FunctionType
-        ), f"The type of  key is expected to be FunctionType, but received {type(key)}."
+        assert isinstance(key, FunctionType), (
+            f"The type of  key is expected to be FunctionType, but received {type(key)}."
+        )
         func = Function(fn)
         self.function_map[key] = fn
         return func
