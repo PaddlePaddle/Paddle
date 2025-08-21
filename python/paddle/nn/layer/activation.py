@@ -1301,8 +1301,10 @@ class Silu(Layer):
         return F.silu(x, self._inplace, self._name)
 
     def extra_repr(self) -> str:
-        name_str = f', name={self._name}' if self._name else ''
-        return f'inplace={self._inplace}{name_str}'
+        name_str = f'inplace={self._inplace}' + (
+            f', name={self._name}' if self._name else ''
+        )
+        return name_str
 
 
 class LogSigmoid(Layer):

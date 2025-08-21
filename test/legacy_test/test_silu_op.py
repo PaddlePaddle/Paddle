@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import unittest
 
 import numpy as np
+from op_test import OpTest
 
 import paddle
 import paddle.base.dygraph as dg
@@ -270,6 +272,54 @@ class TestSiluParamDecorator(unittest.TestCase):
             np.testing.assert_allclose(
                 grad_x.numpy(), grad_x_std.numpy(), rtol=1e-7
             )
+
+
+class SiluOpDefaultTest(OpTest):
+    """the base class of other op testcases"""
+
+    def setUp(self):
+        self.initTestCase()
+        self.python_api = F.silu
+
+        self.op_type = "silu"
+        self.inputs = {'X': self.X}
+
+        self.target = copy.deepcopy(self.X)
+        self.target = silu(self.target)
+        self.outputs = {'Out': (self.target)}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True, check_symbol_infer=False)
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X'], 'Out', check_pir=True)
+
+    def init_dtype(self):
+        self.dtype = np.float64
+
+    def initTestCase(self):
+        self.init_dtype()
+        self.X = np.arange(1, 101, dtype=self.dtype).reshape([10, -1])
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            self.X = (
+                np.random.uniform(-1, 1, [10, 10])
+                + 1j * np.random.uniform(-1, 1, [10, 10])
+            ).astype(self.dtype)
+
+
+class SiluOpDefaultTestFP16(SiluOpDefaultTest):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class SiluOpDefaultTestComplex_64(SiluOpDefaultTest):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class SiluOpDefaultTestComplex_128(SiluOpDefaultTest):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 if __name__ == '__main__':
