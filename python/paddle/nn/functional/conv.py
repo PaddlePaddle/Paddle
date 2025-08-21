@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-import contextlib
 from typing import TYPE_CHECKING
 
 import paddle
@@ -197,28 +196,23 @@ def _conv_nd(
             return pre_bias
 
     if in_dynamic_or_pir_mode() and op_type == "conv3d":
-        with (
-            paddle.base.framework._dygraph_place_guard(place=weight.place)
-            if in_dynamic_mode()
-            else contextlib.nullcontext()
-        ):
-            pre_bias = _C_ops.conv3d(
-                x,
-                weight,
-                stride,
-                padding,
-                padding_algorithm,
-                groups,
-                dilation,
-                data_format,
-            )
-            if bias is not None:
-                new_shape = [1] * len(x.shape)
-                new_shape[channel_dim] = -1
-                bias = bias.reshape(new_shape)
-                return _C_ops.add(pre_bias, bias)
-            else:
-                return pre_bias
+        pre_bias = _C_ops.conv3d(
+            x,
+            weight,
+            stride,
+            padding,
+            padding_algorithm,
+            groups,
+            dilation,
+            data_format,
+        )
+        if bias is not None:
+            new_shape = [1] * len(x.shape)
+            new_shape[channel_dim] = -1
+            bias = bias.reshape(new_shape)
+            return _C_ops.add(pre_bias, bias)
+        else:
+            return pre_bias
 
     if in_dynamic_mode():
         attrs = (
