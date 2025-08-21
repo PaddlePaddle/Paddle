@@ -437,7 +437,7 @@ add_doc_and_signature(
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.31622776, 0.44721359, 0.54772258, 0.63245553])
-    """
+    """,
     """
 def sqrt(
     x: Tensor,
