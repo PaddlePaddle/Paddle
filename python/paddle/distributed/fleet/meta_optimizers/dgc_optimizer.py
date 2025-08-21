@@ -50,9 +50,9 @@ class DGCMomentumOptimizer(Optimizer):
         if in_dynamic_mode():
             raise Exception("In dygraph, don't support DGCMomentumOptimizer.")
 
-        assert (
-            core.is_compiled_with_cuda()
-        ), "Paddle is not compiled with CUDA. DGC is only support GPU for now."
+        assert core.is_compiled_with_cuda(), (
+            "Paddle is not compiled with CUDA. DGC is only support GPU for now."
+        )
 
         assert learning_rate is not None
         assert momentum is not None
@@ -82,12 +82,12 @@ class DGCMomentumOptimizer(Optimizer):
                 raise TypeError(
                     "The type of grad_clip should be 'ClipGradByNorm', because DGCMomentumOptimizer only support ClipGradByNorm"
                 )
-            assert isinstance(
-                num_trainers, int
-            ), f"The type of num_trainers should be 'int', but received {type(num_trainers)}"
-            assert (
-                num_trainers > 0
-            ), "The value of num_trainers should be greater than 0!"
+            assert isinstance(num_trainers, int), (
+                f"The type of num_trainers should be 'int', but received {type(num_trainers)}"
+            )
+            assert num_trainers > 0, (
+                "The value of num_trainers should be greater than 0!"
+            )
 
             self._dgc_clip_norm = grad_clip.clip_norm * (num_trainers**-0.5)
 
