@@ -40,10 +40,6 @@ class TestConvertToMixedPrecision(unittest.TestCase):
             input_spec=[InputSpec(shape=[None, 3, 224, 224], name='x')],
             full_graph=True,
         )
-        with paddle.pir_utils.OldIrGuard():
-            paddle.jit.save(
-                net, os.path.join(self.temp_dir.name, 'resnet50/inference')
-            )
 
     def tearDown(self):
         self.temp_dir.cleanup()
