@@ -22,6 +22,7 @@ from api_gen import (
     VECTOR_TYPE,
     CodeGen,
 )
+from gen_utils import ParsePythonAPIInfoFromYAML
 
 args_default_mapping = {
     "x": ["input"],
@@ -29,6 +30,9 @@ args_default_mapping = {
     "axis": ["dim"],
     "keepdims": ["keepdim"],
 }
+# The python api info which not in ops.yaml
+python_api_info_from_yaml = {}
+
 H_FILE_TEMPLATE = """
 
 #pragma once
@@ -627,6 +631,8 @@ class PythonCCodeGen(CodeGen):
         need_check_params_count = False
         self.need_parse_python_api_args = False
 
+        if op_name in python_api_info_from_yaml.keys():
+            python_api_info = python_api_info_from_yaml[op_name]
         if python_api_info is not None:
             self.need_parse_python_api_args = True
             if "args_alias" in python_api_info.keys():
@@ -748,6 +754,7 @@ def ParseArguments():
     )
     parser.add_argument('--op_yaml_files', type=str)
     parser.add_argument('--op_compat_yaml_file', type=str)
+    parser.add_argument('--python_api_info_yaml_path', type=str)
     parser.add_argument('--namespaces', type=str)
     parser.add_argument('--python_c_def_h_file', type=str)
     parser.add_argument('--python_c_def_cc_file', type=str)
@@ -758,6 +765,12 @@ if __name__ == '__main__':
     args = ParseArguments()
     op_yaml_files = args.op_yaml_files.split(",")
     op_compat_yaml_file = args.op_compat_yaml_file
+
+    python_api_info_yaml_path = args.python_api_info_yaml_path
+    python_api_info_from_yaml = ParsePythonAPIInfoFromYAML(
+        python_api_info_yaml_path
+    )
+
     if args.namespaces is not None:
         namespaces = args.namespaces.split(",")
     python_c_def_h_file = args.python_c_def_h_file
