@@ -464,7 +464,7 @@ def index_select(
     name: str | None = None,
     *,
     out: Tensor | None = None,
-) -> Tensor:
+) -> Tensor
 """,
 )
 
