@@ -715,7 +715,7 @@ static PyObject* tensor_method_copy_(TensorObject* self,
                            const_cast<char*>("non_blocking"),
                            nullptr};
   bool flag = PyArg_ParseTupleAndKeywords(
-      args, kwargs, "|Obb", kwlist, &other, &blocking, &non_blocking);
+      args, kwargs, "|Obb", kwlist, &other_tensor, &blocking, &non_blocking);
   blocking = !non_blocking ? non_blocking : blocking;
   PADDLE_ENFORCE_EQ(flag,
                     true,
