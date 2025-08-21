@@ -130,6 +130,10 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_dist_checkpoint_utils MODULES test_dist_checkpoint_utils)
   set_tests_properties(test_dist_checkpoint_utils
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
+
+  py_test_modules(test_flexcheckpoint_merge MODULES test_dist_checkpoint_utils)
+  set_tests_properties(test_flexcheckpoint_merge
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
   py_test_modules(
     test_semi_auto_parallel_unshard_dtensor MODULES
     test_semi_auto_parallel_unshard_dtensor ENVS FLAGS_enable_pir_api=1)

@@ -124,8 +124,8 @@ class TestDistCheckpoint(unittest.TestCase):
 
         return losses[0]
 
-    def test_dist_checkpoint(self):
-        flag = False
+    def dist_checkpoint(self, offload=False):
+        flag = True
         model_path = os.path.join(self.temp_dir.name, '/model')
         opt_path = os.path.join(self.temp_dir.name, '/opt')
 
@@ -161,7 +161,7 @@ class TestDistCheckpoint(unittest.TestCase):
         dist.save_state_dict(opt.state_dict(), opt_path, safetensors=flag)
 
         unsharded_state_dict = dist.load_merged_state_dict(
-            model_path, safetensors=flag
+            model_path, offload=offload, safetensors=flag
         )
         # Get single loss
         single_loss = self._get_single_loss(dataloader, unsharded_state_dict)
@@ -177,6 +177,10 @@ class TestDistCheckpoint(unittest.TestCase):
         np.testing.assert_array_equal(
             unsharded_state_dict['w1'].numpy(), shard_state_dict['w1'].numpy()
         )
+
+    def test_dist_checkpoint(self):
+        self.dist_checkpoint(True)
+        self.dist_checkpoint(False)
 
 
 if __name__ == '__main__':

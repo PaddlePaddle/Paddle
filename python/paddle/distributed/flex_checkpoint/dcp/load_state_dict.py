@@ -969,11 +969,16 @@ def _load_state_dict(
                         tmp_tensor, src=src_rank, group=process_group
                     )
                     paddle.assign(tmp_tensor, cur_chunk_tensor)
-            if (
-                key in state_dict_in_cpu
-                and idx + 1 < len(read_items)
-                and read_items[idx + 1].local_tensor_index.tensor_key != key
+            if key in state_dict_in_cpu and (
+                (
+                    idx + 1 < len(read_items)
+                    and read_items[idx + 1].local_tensor_index.tensor_key != key
+                )
+                or idx + 1 == len(read_items)
             ):
+                paddle.assign(
+                    copied_target_state_dict[key].cpu(), target_state_dict[key]
+                )
                 copied_target_state_dict[key] = copied_target_state_dict[
                     key
                 ].cpu()
@@ -1002,7 +1007,7 @@ def load_merged_state_dict(
     offload: bool = False,
     aoa_config: dict[str, list[str]] | None = None,
     safetensors: bool = False,
-):
+) -> dict:
     """
     Load the distributed checkpoint and merge it to unsharded state_dict.
 
@@ -1033,7 +1038,7 @@ def load_merged_state_dict(
             >>> import paddle
             >>> import paddle.distributed as dist
             >>> ckpt_path = "./checkpoint"
-            >>> unsharded_state_dict = dist.checkpoint.utils.merge_state_dict(ckpt_path) # load unsharded checkpoint
+            >>> unsharded_state_dict = dist.load_merged_state_dict(ckpt_path) # load unsharded checkpoint
             >>> print(f"unsharded_state_dict:{unsharded_state_dict}")
             unsharded_state_dict:{'w1':
             [[0 , 1 , 2 , 3 , 4 , 5 , 6 , 7 ],
