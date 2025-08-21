@@ -393,10 +393,6 @@ class TestPyLayerWithoutContext(TestPyLayerBase):
         input1 = paddle.randn([2, 3]).astype("float32")
         input1.stop_gradient = False
 
-        self.run_in_pir = False
-        self._run_and_compare(input1)
-
-        self.run_in_pir = True
         self._run_and_compare(input1)
 
     def test_multi_in_single_out(self):
@@ -412,10 +408,6 @@ class TestPyLayerWithoutContext(TestPyLayerBase):
         input1.stop_gradient = False
         input2.stop_gradient = False
 
-        self.run_in_pir = False
-        self._run_and_compare(input1, input2)
-
-        self.run_in_pir = True
         self._run_and_compare(input1, input2)
 
 
@@ -431,10 +423,6 @@ class TestPyLayerWithContext(TestPyLayerBase):
         input1 = paddle.randn([2, 3]).astype("float32")
         input1.stop_gradient = False
 
-        self.run_in_pir = False
-        self._run_and_compare(input1)
-
-        self.run_in_pir = True
         self._run_and_compare(input1)
 
     def test_nested_pylayer(self):
@@ -450,10 +438,6 @@ class TestPyLayerWithContext(TestPyLayerBase):
         input1.stop_gradient = False
         input2.stop_gradient = False
 
-        self.run_in_pir = False
-        self._run_and_compare(input1, input2)
-
-        self.run_in_pir = True
         self._run_and_compare(input1, input2)
 
     def test_apply_kwargs_pylayer(self):
@@ -469,10 +453,6 @@ class TestPyLayerWithContext(TestPyLayerBase):
         input1.stop_gradient = False
         input2.stop_gradient = False
 
-        self.run_in_pir = False
-        self._run_and_compare(input1, input2)
-
-        self.run_in_pir = True
         self._run_and_compare(input1, input2)
 
     def test_non_variable_inputs(self):
@@ -486,10 +466,6 @@ class TestPyLayerWithContext(TestPyLayerBase):
         input1 = paddle.randn([2, 3]).astype("float32")
         input1.stop_gradient = False
 
-        self.run_in_pir = False
-        self._run_and_compare(input1)
-
-        self.run_in_pir = True
         self._run_and_compare(input1)
 
     def test_simple_pylayer_return_none_with_no_grad(self):
@@ -506,9 +482,6 @@ class TestPyLayerWithContext(TestPyLayerBase):
         input1.stop_gradient = False
         input2.stop_gradient = True
 
-        self.run_in_pir = False
-        self._run_and_compare(input1, input2)
-        self.run_in_pir = True
         self._run_and_compare(input1, input2)
 
     def test_simple_pylayer_return_none(self):
@@ -525,10 +498,6 @@ class TestPyLayerWithContext(TestPyLayerBase):
         input1.stop_gradient = False
         input2.stop_gradient = False
 
-        self.run_in_pir = False
-        self._run_and_compare(input1, input2)
-
-        self.run_in_pir = True
         self._run_and_compare(input1, input2)
 
     def test_non_variable_inputs_and_userdefined_call(self):
@@ -544,10 +513,6 @@ class TestPyLayerWithContext(TestPyLayerBase):
         input1 = paddle.randn([2, 3]).astype("float32")
         input1.stop_gradient = False
 
-        self.run_in_pir = False
-        self._run_and_compare(input1)
-
-        self.run_in_pir = True
         self._run_and_compare(input1)
 
 
@@ -559,10 +524,6 @@ class TestPyLayerInsideNet(TestPyLayerBase):
         input1 = paddle.randn([3, 4]).astype("float32")
         input1.stop_gradient = False
 
-        self.run_in_pir = False
-        self._run_and_compare(input1)
-
-        self.run_in_pir = True
         self._run_and_compare(input1)
 
     def test_inplace(self):
@@ -572,10 +533,6 @@ class TestPyLayerInsideNet(TestPyLayerBase):
         input1 = paddle.randn([3, 4]).astype("float32")
         input1.stop_gradient = False
 
-        self.run_in_pir = False
-        self._run_and_compare(input1)
-
-        self.run_in_pir = True
         self._run_and_compare(input1)
 
     def test_non_variable_args_pylayernet(self):
@@ -585,10 +542,6 @@ class TestPyLayerInsideNet(TestPyLayerBase):
         input1 = paddle.randn([3, 4]).astype("float32")
         input1.stop_gradient = False
 
-        self.run_in_pir = False
-        self._run_and_compare(input1)
-
-        self.run_in_pir = True
         self._run_and_compare(input1)
 
     def test_pylayer_net_with_no_grad(self):
@@ -600,10 +553,6 @@ class TestPyLayerInsideNet(TestPyLayerBase):
         input1.stop_gradient = False
         input2.stop_gradient = True
 
-        self.run_in_pir = False
-        self._run_and_compare(input1, input2)
-
-        self.run_in_pir = True
         self._run_and_compare(input1, input2)
 
 
