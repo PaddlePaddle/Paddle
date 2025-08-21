@@ -45,9 +45,9 @@ def assert_inputs_equals(instruction_offset: int, expected_inputs: set[str]):
     reads, writes = analysis_used_names(
         instructions, current_instr_idx + instruction_offset
     )
-    assert (
-        set(reads) == expected_inputs
-    ), f"actual_inputs: {reads}, expected_inputs: {expected_inputs}"
+    assert set(reads) == expected_inputs, (
+        f"actual_inputs: {reads}, expected_inputs: {expected_inputs}"
+    )
 
 
 def case1(x):
