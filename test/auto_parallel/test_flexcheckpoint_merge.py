@@ -125,7 +125,7 @@ class TestDistCheckpoint(unittest.TestCase):
         return losses[0]
 
     def dist_checkpoint(self, offload=False):
-        flag = True
+        flag = False
         model_path = os.path.join(self.temp_dir.name, '/model')
         opt_path = os.path.join(self.temp_dir.name, '/opt')
 
