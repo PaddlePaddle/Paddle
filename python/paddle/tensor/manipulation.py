@@ -6866,6 +6866,47 @@ def infer_broadcast_shape(
     return broadcast_shape
 
 
+def scatter_add(
+    input: Tensor,
+    dim: int,
+    index: Tensor,
+    src: Tensor,
+) -> Tensor:
+    """
+    Scatter the values of the source tensor to the target tensor according to the given indices, and perform a add operation along the designated axis.
+
+    Args:
+        input (Tensor) : The Input Tensor. Supported data types are bfloat16, float16, float32, float64,
+            int32, int64, uint8.
+        dim (int) : The axis to scatter 1d slices along.
+        index (Tensor) : Indices to scatter along each 1d slice of input. This must match the dimension of input,
+             Supported data type are int32 and int64.
+        src (Tensor) : The value element(s) to scatter. The data types should be same as input.
+
+    Returns:
+        Tensor, The indexed element, same dtype with input
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[10, 20, 30], [40, 50, 60]])
+            >>> indices = paddle.zeros((2,3)).astype("int32")
+            >>> values = paddle.to_tensor([[1, 2, 3],[4, 5, 6]]).astype(x.dtype)
+            >>> result = paddle.scatter_add(x, 0, indices, values)
+            >>> print(result)
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[15, 27, 39],
+             [40, 50, 60]])
+
+    """
+
+    return put_along_axis(
+        input, index, src, dim, 'add', include_self=True, broadcast=False
+    )
+
+
 @ParamAliasDecorator({"arr": ["input"], "axis": ["dim"]})
 def take_along_axis(
     arr: Tensor, indices: Tensor, axis: int, broadcast: bool = True
