@@ -38,7 +38,7 @@ void ExpandKernel(const Context& dev_ctx,
           "The rank of the target shape (%d) must be greater than or equal to "
           "the rank of the input tensor (%d).",
           expand_shape.size(),
-          vec_in_dims.size()))
+          vec_in_dims.size()));
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   auto out_shape = vec_in_dims;
   bool has_zero_dim = false;
