@@ -403,17 +403,117 @@ add_doc_and_signature(
 
 # zhengsheng
 add_doc_and_signature(
+    "isfinite",
+    """
+    Return whether every element of input tensor is finite number or not.
+
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``isfinite(input=tensor_x)`` is equivalent to ``isfinite(x=tensor_x)``.
+
+    Args:
+        x (Tensor): The input tensor, it's data type should be float16, float32, float64, int32, int64, complex64, complex128.
+            alias: ``input``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        `Tensor`, the bool result which shows every element of `x` whether it is finite number or not.
+    >>> x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
+            >>> out = paddle.isfinite(x)
+            >>> out
+            Tensor(shape=[7], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [False, True , True , False, True , False, False])
+    """,
+    """
+def isfinite(
+    x: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "isinf",
+    """
+    Return whether every element of input tensor is `+/-INF` or not.
+
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``isinf(input=tensor_x)`` is equivalent to ``isinf(x=tensor_x)``.
+
+    Args:
+        x (Tensor): The input tensor, it's data type should be float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
+            alias: ``input``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        `Tensor`, the bool result which shows every element of `x` whether it is `+/-INF` or not.
+
+    Examples:
+        .. code-block:: python
+            >>> # type: ignore
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
+            >>> out = paddle.isinf(x)
+            >>> out
+            Tensor(shape=[7], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [True , False, False, True , False, False, False])
+    """,
+    """
+def isinf(
+    x: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "isnan",
+    """
+    Return whether every element of input tensor is `NaN` or not.
+
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``isnan(input=tensor_x)`` is equivalent to ``isnan(x=tensor_x)``.
+
+    Args:
+        x (Tensor): The input tensor, it's data type should be float16, float32, float64, int32, int64, complex64, complex128.
+            alias: ``input``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        `Tensor`, the bool result which shows every element of `x` whether it is `NaN` or not.
+
+    Examples:
+        .. code-block:: python
+            >>> # type: ignore
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
+            >>> out = paddle.isnan(x)
+            >>> out
+            Tensor(shape=[7], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [False, False, False, False, False, True , True ])
+    """,
+    """
+def isnan(
+    x: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
     "roll",
     """
     Roll the `x` tensor along the given axis(axes). With specific 'shifts', Elements that
     roll beyond the last position are re-introduced at the first according to 'shifts'.
     If a axis is not specified,
     the tensor will be flattened before rolling and then restored to the original shape.
-
     .. note::
         Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and the parameter name ``dim`` can be used as an alias for ``axis``.
         For example, ``roll(input=tensor_x, dim=1)`` is equivalent to ``roll(x=tensor_x, axis=1)``.
-
     Args:
         x (Tensor): The x tensor as input.
             alias: ``input``.
@@ -423,15 +523,12 @@ add_doc_and_signature(
             alias: ``dim``.
         name(str|None, optional): The default value is None.  Normally there is no need for user to set this property.
                 For more information, please refer to :ref:`api_guide_Name` .
-
     The image below shows a 2D tensor `[[1,2,3],[4,5,6],[7,8,9]]` being transformed into tensors with
     different shapes through the roll operation.
-
     .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/roll.png
         :width: 700
         :align: center
         :alt: legend of roll API
-
     Returns:
         Tensor, A Tensor with same data type as `x`.
     Examples:
@@ -471,43 +568,30 @@ add_doc_and_signature(
     "flatten",
     """
     Flattens a contiguous range of axes in a tensor according to start_axis and stop_axis.
-
     Note:
         The output Tensor will share data with origin Tensor and doesn't have a Tensor copy in ``dygraph`` mode.
         If you want to use the Tensor copy version, please use `Tensor.clone` like ``flatten_clone_x = x.flatten().clone()``.
-
     For Example:
-
     .. code-block:: text
-
         Case 1:
-
           Given
             X.shape = (3, 100, 100, 4)
-
           and
             start_axis = 1
             end_axis = 2
-
           We get:
             Out.shape = (3, 100 * 100, 4)
-
         Case 2:
-
           Given
             X.shape = (3, 100, 100, 4)
-
           and
             start_axis = 0
             stop_axis = -1
-
           We get:
             Out.shape = (3 * 100 * 100 * 4)
-
     .. note::
         Alias Support: The parameter name ``input`` can be used as an alias for ``x``, the parameter name ``start_dim`` can be used as an alias for ``start_axis`` , and the parameter name ``end_dim`` can be used as an alias for ``stop_axis``.
         For example, ``flatten(input=tensor_x, start_dim=0, end_dim=-1)`` is equivalent to ``flatten(x=tensor_x, start_axis=0, stop_axis=-1)``.
-
     Args:
         x (Tensor): A tensor of number of dimensions >= axis. A tensor with data type float16, float32,
                       float64, int8, int32, int64, uint8.
@@ -517,25 +601,17 @@ add_doc_and_signature(
         stop_axis (int): the stop axis to flatten
             alias: ``end_dim``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
     Returns:
         Tensor, A tensor with the contents of the input tensor, whose input axes are flattened by indicated :attr:`start_axis` and :attr:`end_axis`, and data type is the same as input :attr:`x`.
-
     Examples:
-
         .. code-block:: python
-
             >>> import paddle
-
             >>> image_shape=(2, 3, 4, 4)
-
             >>> x = paddle.arange(end=image_shape[0] * image_shape[1] * image_shape[2] * image_shape[3])
             >>> img = paddle.reshape(x, image_shape)
-
             >>> out = paddle.flatten(img, start_axis=1, stop_axis=2)
             >>> print(out.shape)
             [2, 12, 4]
-
             >>> # out shares data with img in dygraph mode
             >>> img[0, 0, 0, 0] = -1
             >>> print(out[0, 0, 0])
