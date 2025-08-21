@@ -753,7 +753,7 @@ def get_test_results(
     for api_name, raw_docstring in docstrings_to_test.items():
         docstrings_extracted = []
         if doctester.target == 'codeblock':
-            # if the target is `codeblock`, we may extract more than one codeblocks from docsting.
+            # if the target is `codeblock`, we may extract more than one codeblocks from docstring.
             for codeblock in extract_code_blocks_from_docstr(
                 raw_docstring, google_style=google_style
             ):
@@ -773,7 +773,7 @@ def get_test_results(
             )
 
         for doc_extracted in docstrings_extracted:
-            # run docstester for one docstring at a time.
+            # run doctester for one docstring at a time.
             test_results.extend(
                 doctester.run(
                     api_name=doc_extracted['name'],

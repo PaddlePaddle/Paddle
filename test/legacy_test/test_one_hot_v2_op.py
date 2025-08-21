@@ -167,7 +167,6 @@ class TestOneHotOp_default_dtype_attr(OpTest):
 
 
 class TestOneHotOpApi(unittest.TestCase):
-
     def test_api(self):
         main = paddle.static.Program()
         startup = paddle.static.Program()

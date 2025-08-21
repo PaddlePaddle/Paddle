@@ -585,9 +585,9 @@ def append_backward_ops(
             i += 1
 
     def update_if_double_grad_input_grad_map(input_grads, all_inputs):
-        assert len(input_grads) == len(
-            all_inputs
-        ), "input_grads should same to all_inputs"
+        assert len(input_grads) == len(all_inputs), (
+            "input_grads should same to all_inputs"
+        )
         for input, input_grad in zip(all_inputs, input_grads):
             if isinstance(input_grad, list):
                 state.value_to_valuegrad[input].append(input_grad)

@@ -116,7 +116,7 @@ class TestLayerNormBF16ONEDNNOp(TestLayerNormONEDNNOp):
                     attrs={
                         "epsilon": epsilon,
                         "begin_norm_axis": begin_norm_axis,
-                        "use_mkldnn": True,
+                        "use_onednn": True,
                         "is_test": with_is_test,
                     },
                 )

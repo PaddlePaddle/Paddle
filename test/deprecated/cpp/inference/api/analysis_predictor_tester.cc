@@ -317,7 +317,7 @@ TEST(AnalysisPredictor, bf16_gpu_pass_strategy) {
   config.SetModel(FLAGS_dirname);
   config.SwitchIrOptim(true);
   config.EnableUseGpu(100, 0);
-  config.EnableMkldnnBfloat16();
+  config.EnableOnednnBfloat16();
 #ifdef PADDLE_WITH_DNNL
   if (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512_core))
     ASSERT_EQ(config.onednn_bfloat16_enabled(), true);
@@ -332,10 +332,10 @@ TEST(AnalysisPredictor, bf16_gpu_pass_strategy) {
 TEST(AnalysisPredictor, bf16_pass_strategy) {
   std::vector<std::string> passes;
   PassStrategy passStrategy(passes);
-  passStrategy.EnableMkldnnBfloat16();
+  passStrategy.EnableOnednnBfloat16();
 }
 
-TEST(AnalysisPredictor, mkldnn_fc_pass_strategy) {
+TEST(AnalysisPredictor, onednn_fc_pass_strategy) {
   std::vector<std::string> passes;
   PassStrategy passStrategy(passes);
   passStrategy.DisableOnednnFcPasses();
@@ -343,7 +343,7 @@ TEST(AnalysisPredictor, mkldnn_fc_pass_strategy) {
 }
 
 #ifdef PADDLE_WITH_DNNL
-TEST(AnalysisPredictor, mkldnn_fc_passes_cpu_pass_strategy) {
+TEST(AnalysisPredictor, onednn_fc_passes_cpu_pass_strategy) {
   CpuPassStrategy cpuPassStrategy;
   cpuPassStrategy.EnableONEDNN();
   const std::vector<std::string> fc_passes_to_erase(
@@ -359,15 +359,15 @@ TEST(AnalysisPredictor, mkldnn_fc_passes_cpu_pass_strategy) {
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-TEST(AnalysisPredictor, mkldnn_fc_passes_gpu_pass_strategy) {
+TEST(AnalysisPredictor, onednn_fc_passes_gpu_pass_strategy) {
   AnalysisConfig config;
   config.EnableUseGpu(100, 0);
   config.EnableONEDNN();
   config.DisableOnednnFcPasses();
 #ifdef PADDLE_WITH_DNNL
-  ASSERT_TRUE(config.mkldnn_fc_passes_disabled());
+  ASSERT_TRUE(config.onednn_fc_passes_disabled());
 #else
-  ASSERT_FALSE(config.mkldnn_fc_passes_disabled());
+  ASSERT_FALSE(config.onednn_fc_passes_disabled());
 #endif
 }
 #endif

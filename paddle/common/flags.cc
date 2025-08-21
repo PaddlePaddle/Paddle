@@ -2182,6 +2182,18 @@ PHI_DEFINE_EXPORTED_bool(use_default_stream,
                          "Whether use default stream.");
 
 /**
+ * Stride_Compute_Kernel related FLAG
+ * Name: FLAGS_use_stride_compute_kernel
+ * Since Version: 3.2
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Whether use Stride_Compute_Kernel.
+ */
+PHI_DEFINE_EXPORTED_bool(use_stride_compute_kernel,
+                         false,
+                         "Whether use Stride_Compute_Kernel.");
+
+/**
  * Allocator related FLAG
  * Name: use_deep_ep_comm_prealloc
  * Since Version: 3.1.1

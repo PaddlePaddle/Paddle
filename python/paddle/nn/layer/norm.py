@@ -94,9 +94,9 @@ class _InstanceNormBase(Layer):
         super().__init__()
 
         if weight_attr is False or bias_attr is False:
-            assert (
-                weight_attr == bias_attr
-            ), "weight_attr and bias_attr must be set to False at the same time in InstanceNorm"
+            assert weight_attr == bias_attr, (
+                "weight_attr and bias_attr must be set to False at the same time in InstanceNorm"
+            )
         self._momentum = momentum
         self._epsilon = epsilon
         self._weight_attr = weight_attr
@@ -1919,9 +1919,9 @@ class SpectralNorm(Layer):
         self._dtype = dtype
 
         self._weight_shape = list(weight_shape)
-        assert (
-            np.prod(self._weight_shape) > 0
-        ), "Any dimension of `weight_shape` cannot be equal to 0."
+        assert np.prod(self._weight_shape) > 0, (
+            "Any dimension of `weight_shape` cannot be equal to 0."
+        )
         assert dim < len(self._weight_shape), (
             "The input `dim` should be less than the "
             "length of `weight_shape`, but received dim="

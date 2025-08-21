@@ -44,13 +44,12 @@ ir::Module CreateSwitchWithBroadcastConditionModule(
       ir::Argument(kernel_args, ir::Argument::IO::kOutput),
       ir::Argument(kernel_args_num, ir::Argument::IO::kInput),
       ir::Argument(tensor_shape_args, ir::Argument::IO::kOutput)};
-
   const auto &symbolic_arg_define = [&]() -> std::vector<ir::Expr> {
     std::vector<ir::Expr> arg_defs;
     for (const auto &item : symbolic_shape_var_index) {
       ir::Expr call_get_value_in_kernel_args =
           ir::Call::Make(Int(64),
-                         runtime::intrinsic::get_value_in_cuda_kernel_args,
+                         runtime::intrinsic::get_value_in_kernel_args,
                          {kernel_args, ir::Expr(item.first)},
                          {},
                          ir::CallType::Extern,
@@ -384,7 +383,7 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessArgs(
     if (args[i].is_var()) {
       ir::Expr call_get_value_in_kernel_args =
           ir::Call::Make(Int(64),
-                         runtime::intrinsic::get_value_in_cuda_kernel_args,
+                         runtime::intrinsic::get_value_in_kernel_args,
                          {kernel_args_, ir::Expr(i)},
                          {},
                          ir::CallType::Extern,

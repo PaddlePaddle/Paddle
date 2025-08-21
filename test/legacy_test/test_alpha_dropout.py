@@ -118,7 +118,6 @@ class TestAlphaDropoutFunctionAPI(unittest.TestCase):
 
 
 class TestAlphaDropoutFunctionAPIError(unittest.TestCase):
-
     def test_input_type_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()

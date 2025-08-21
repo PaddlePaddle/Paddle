@@ -130,7 +130,6 @@ class CUDAGraphState(IntEnum):
 
 
 class TransformOptions:
-
     class ToStaticMode(Flag):
         SOT = auto()
         AST = auto()
@@ -791,9 +790,9 @@ class GetterSetterHelper:
         if vars is None:
             return ()
         for n in names:
-            assert (
-                n in self.name2id
-            ), f"the name `{n}` not in name union set`{self.name2id.keys()}`."
+            assert n in self.name2id, (
+                f"the name `{n}` not in name union set`{self.name2id.keys()}`."
+            )
         return tuple(vars[self.name2id[n]] for n in names)
 
     def set(self, names, values):
@@ -805,9 +804,9 @@ class GetterSetterHelper:
         if vars is None:
             return
         for n in names:
-            assert (
-                n in self.name2id
-            ), f"the name `{n}` not in name union set`{self.name2id.keys()}`."
+            assert n in self.name2id, (
+                f"the name `{n}` not in name union set`{self.name2id.keys()}`."
+            )
         vars = list(vars)
         indices = [self.name2id[n] for n in names]
         for i, v in zip(indices, values):

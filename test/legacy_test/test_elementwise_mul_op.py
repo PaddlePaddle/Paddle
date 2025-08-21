@@ -49,7 +49,7 @@ class ElementwiseMulOp(OpTest):
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.outputs = {'Out': self.out}
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_onednn}
+        self.attrs = {'axis': self.axis, 'use_onednn': self.use_onednn}
 
     def test_check_output(self):
         # TODO(wangzhongpu): support onednn op in dygraph mode
@@ -242,7 +242,7 @@ class TestBF16ElementwiseMulOp(OpTest):
             'Y': OpTest.np_dtype_to_base_dtype(convert_float_to_uint16(self.y)),
         }
         self.outputs = {'Out': convert_float_to_uint16(self.out)}
-        self.attrs = {'axis': self.axis, 'use_mkldnn': False}
+        self.attrs = {'axis': self.axis, 'use_onednn': False}
         self.if_enable_cinn()
 
     def test_check_output(self):
@@ -381,7 +381,7 @@ class ElementwiseMulOp_broadcast(OpTest):
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.outputs = {'Out': self.out}
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_onednn}
+        self.attrs = {'axis': self.axis, 'use_onednn': self.use_onednn}
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -406,7 +406,7 @@ class TestElementwiseMulOp_broadcast_0(ElementwiseMulOp_broadcast):
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.outputs = {'Out': self.out}
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_onednn}
+        self.attrs = {'axis': self.axis, 'use_onednn': self.use_onednn}
 
     def init_axis(self):
         self.axis = 0
@@ -592,7 +592,7 @@ class TestComplexElementwiseMulOp(OpTest):
             'X': OpTest.np_dtype_to_base_dtype(self.x),
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
-        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.attrs = {'axis': -1, 'use_onednn': False}
         self.outputs = {'Out': self.out}
 
     def init_base_dtype(self):

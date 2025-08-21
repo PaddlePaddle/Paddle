@@ -410,7 +410,6 @@ class TestUnpool3DOpAPI_dygraph4(unittest.TestCase):
 
 
 class TestUnpool3DOpAPI_static(unittest.TestCase):
-
     def test_case(self):
         paddle.enable_static()
         for place in get_places():

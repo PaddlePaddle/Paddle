@@ -113,9 +113,9 @@ def broadcast_object_list(
             >>> print(object_list)
             >>> # [{"bar": [4, 5, 6]}] (2 GPUs)
     """
-    assert (
-        framework.in_dynamic_mode()
-    ), "broadcast_object_list doesn't support static graph mode."
+    assert framework.in_dynamic_mode(), (
+        "broadcast_object_list doesn't support static graph mode."
+    )
 
     rank = dist.get_rank()
     obj_tensors = []

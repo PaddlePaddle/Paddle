@@ -14,11 +14,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import paddle
 from paddle import _C_ops, in_dynamic_mode
 from paddle.framework import core, in_dynamic_or_pir_mode
+from paddle.utils.decorator_utils import ParamAliasDecorator
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ...base.data_feeder import check_dtype, check_variable_and_dtype
@@ -150,14 +151,18 @@ def elu_(x: Tensor, alpha: float = 1.0, name: str | None = None) -> Tensor:
 
 
 def gelu(
-    x: Tensor, approximate: bool = False, name: str | None = None
+    x: Tensor,
+    approximate: Literal["tanh", "none"] | bool = False,
+    name: str | None = None,
 ) -> Tensor:
     r"""
     gelu activation.
 
     The activation function of Gelu is calculated element by element. More information refers to :ref: `Gaussian Error Linear Units`.
 
-    if approximate is True
+    approximate parameter must be True, False, "tanh", "none".
+
+    if approximate is True or "tanh"
 
     .. math::
 
@@ -171,7 +176,7 @@ def gelu(
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
-        approximate (bool, optional): Whether to enable approximation. Default is False.
+        approximate (str|bool, optional): Whether to enable approximation. Default is False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -194,7 +199,22 @@ def gelu(
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-0.15880796,  0.34571400],
              [ 0.84119201,  1.39957154]])
+            >>> out3 = F.gelu(x, "none")
+            >>> print(out3)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.15865529,  0.34573123],
+             [ 0.84134471,  1.39978933]])
+            >>> out4 = F.gelu(x, "tanh")
+            >>> print(out4)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.15880796,  0.34571400],
+             [ 0.84119201,  1.39957154]])
     """
+
+    if approximate == "tanh":
+        approximate = True
+    elif approximate == "none":
+        approximate = False
 
     if in_dynamic_or_pir_mode():
         return _C_ops.gelu(x, approximate)
@@ -583,9 +603,9 @@ def prelu(
                [-1.25000000,  6.        ,  7.        , -2.        ],
                [ 6.        ,  7.        ,  8.        ,  9.        ]]]])
     """
-    assert (
-        len(weight.shape) == 0 or len(weight.shape) == 1
-    ), "The dim count of weight shape should be 0 or 1 in prelu()."
+    assert len(weight.shape) == 0 or len(weight.shape) == 1, (
+        "The dim count of weight shape should be 0 or 1 in prelu()."
+    )
 
     mode = 'all'
     if len(weight.shape) == 1 and weight.shape[0] > 1:
@@ -606,19 +626,19 @@ def prelu(
 
         data_format = 'NCHW' if data_format[1] == 'C' else 'NHWC'
 
-        assert (
-            len(x.shape) > 1
-        ), "The dim count of x should be equal or larger than 2 in prelu() when weight shape is not [1]."
+        assert len(x.shape) > 1, (
+            "The dim count of x should be equal or larger than 2 in prelu() when weight shape is not [1]."
+        )
 
         # NOTE(GuoxiaWang): support NHWC data format
         if data_format == 'NHWC':
-            assert (
-                weight.shape[0] == x.shape[-1]
-            ), "The weight size should be equal to x input channel in prelu() when weight shape is not [1]."
+            assert weight.shape[0] == x.shape[-1], (
+                "The weight size should be equal to x input channel in prelu() when weight shape is not [1]."
+            )
         else:
-            assert (
-                weight.shape[0] == x.shape[1]
-            ), "The weight size should be equal to x input channel in prelu() when weight shape is not [1]."
+            assert weight.shape[0] == x.shape[1], (
+                "The weight size should be equal to x input channel in prelu() when weight shape is not [1]."
+            )
         mode = 'channel'
 
     if in_dynamic_or_pir_mode():
@@ -1108,6 +1128,7 @@ def silu(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
+@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
 def softmax(
     x: Tensor,
     axis: int = -1,
@@ -1189,12 +1210,18 @@ def softmax(
                          [0.26762315, 0.26762315, 0.26762315, 0.26762315],
                          [0.72747516, 0.72747516, 0.72747516, 0.72747516]]]
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``dim`` can be used as an alias for ``axis``.
+        For example, ``softmax(input=tensor_x, dim=1, ...)`` is equivalent to ``softmax(x=tensor_x, axis=1, ...)``.
+
     Parameters:
         x (Tensor): The input Tensor with data type bfloat16, float16, float32, float64.
+            alias: ``input``.
         axis (int, optional): The axis along which to perform softmax
             calculations. It should be in range [-D, D), where D is the
             rank of ``x`` . If ``axis`` < 0, it works the same way as
             :math:`axis + D` . Default is -1.
+            alias: ``dim``.
         dtype (str, optional): The data type of the output tensor, can be bfloat16, float16, float32, float64.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 

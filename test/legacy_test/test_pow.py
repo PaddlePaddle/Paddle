@@ -251,5 +251,58 @@ class TestPowerAPI_ZeroSize(unittest.TestCase):
         self._test_power((0, 0))
 
 
+class TestPowerAPI_Alias(unittest.TestCase):
+    """
+    Test the alias of pow function.
+    ``pow(input=2, exponent=1.1)`` is equivalent to ``pow(x=2, y=1.1)``
+    """
+
+    def setUp(self):
+        self.places = get_devices()
+        self.test_cases = [
+            ([1.0, 2.0, 3.0], [1.1]),  # 1D tensor
+            ([[1, 2], [3, 4]], 2),  # 2D tensor with scalar exponent
+            (3.0, [2.0]),  # Scalar input
+        ]
+
+    def test_powxy(self):
+        for alias_param_1 in ["x", "input"]:
+            for alias_param_2 in ["y", "exponent"]:
+                for place in self.places:
+                    paddle.set_device(place)
+                    paddle.disable_static(place)
+                    for input_data, exp_data in self.test_cases:
+                        input_tensor = paddle.to_tensor(input_data)
+                        exp_tensor = paddle.to_tensor(exp_data)
+                        output_alias = paddle.pow(
+                            **{
+                                alias_param_1: input_tensor,
+                                alias_param_2: exp_tensor,
+                            }
+                        )
+                        output_std = paddle.pow(x=input_tensor, y=exp_tensor)
+                        self.assertTrue(
+                            paddle.allclose(output_alias, output_std),
+                            msg=f"Alias {alias_param_1}/{alias_param_2} failed on {place} with input {input_data}, exp {exp_data}",
+                        )
+
+    def test_xpowy(self):
+        for alias_param_2 in ["y", "exponent"]:
+            for place in self.places:
+                paddle.set_device(place)
+                paddle.disable_static(place)
+                for input_data, exp_data in self.test_cases:
+                    input_tensor = paddle.to_tensor(input_data)
+                    exp_tensor = paddle.to_tensor(exp_data)
+                    output_alias = input_tensor.pow(
+                        **{alias_param_2: exp_tensor}
+                    )
+                    output_std = input_tensor.pow(y=exp_tensor)
+                    self.assertTrue(
+                        paddle.allclose(output_alias, output_std),
+                        msg=f"Alias {alias_param_2} failed on {place} with input {input_data}, exp {exp_data}",
+                    )
+
+
 if __name__ == '__main__':
     unittest.main()

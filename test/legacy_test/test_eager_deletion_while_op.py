@@ -31,7 +31,6 @@ base.core._set_eager_deletion_mode(0.0, 1.0, True)
 
 
 class TestEagerDeletionWhileOpBase(unittest.TestCase):
-
     def test_main(self):
         for p in get_places():
             with (

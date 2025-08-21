@@ -37,9 +37,206 @@ limitations under the License. */
 #endif
 #include "paddle/phi/kernels/full_kernel.h"
 
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+// clang-format off
+#include "paddle/phi/backends/dynload/cudnn_frontend.h"
+#include "paddle/phi/kernels/autotune/cache.h"
+#include "paddle/phi/kernels/gpudnn/conv_cudnn_frontend.h"
+// clang-format on
+#endif
+
 namespace phi {
 
 using GPUDNNDataLayout = phi::backends::gpu::DataLayout;
+
+template <typename T, typename Context>
+void ConvTransposeCudnnKernelImplV7(const DenseTensor* transformed_x,
+                                    const DenseTensor* filter,
+                                    const Context& dev_ctx,
+                                    const std::vector<int>& strides,
+                                    const std::vector<int>& padding_common,
+                                    const std::vector<int>& dilations_,
+                                    GPUDNNDataLayout data_layout,
+                                    GPUDNNDataLayout layout,
+                                    bool exhaustive_search,
+                                    bool deterministic,
+                                    int groups,
+                                    DenseTensor* transformed_out) {
+  int iwo_groups = 1;
+  int c_groups = groups;
+  groups = 1;
+  size_t workspace_size = 0;
+
+  const T* x_data = transformed_x->data<T>();
+  const T* filter_data = filter->data<T>();
+  T* transformed_out_data = transformed_out->data<T>();
+#ifdef PADDLE_WITH_HIP
+  miopenConvBwdDataAlgorithm_t algo{};
+#else
+  cudnnConvolutionBwdDataAlgo_t algo{};
+#endif
+  // ------------------- cudnn conv algorithm ---------------------
+  auto handle = dev_ctx.cudnn_handle();
+  auto layout_tensor = phi::backends::gpu::GetCudnnTensorFormat(layout);
+  auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
+  // ------------------- cudnn descriptors ---------------------
+  ConvArgs args{handle,
+                transformed_out,
+                filter,
+                transformed_x,
+                strides,
+                padding_common,
+                dilations_,
+                dtype,
+                groups,
+                data_layout};
+  args.idesc.set(*transformed_out, iwo_groups);
+  args.wdesc.set(*filter, layout_tensor, iwo_groups);
+  args.odesc.set(*transformed_x, iwo_groups);
+  args.cdesc.set(dtype,
+                 padding_common,
+                 strides,
+                 dilations_,
+                 phi::AllowTF32Cudnn(),
+                 c_groups);
+
+#ifdef PADDLE_WITH_HIP
+  SearchResult<miopenConvBwdDataAlgorithm_t> bwd_result;
+  using search = SearchAlgorithm<miopenConvBwdDataAlgorithm_t>;
+  workspace_size = std::max(workspace_size, search::GetWorkspaceSize(args));
+  bwd_result.algo = search::Find<T>(
+      args, exhaustive_search, deterministic, workspace_size, dev_ctx);
+#else
+  SearchResult<cudnnConvolutionBwdDataAlgo_t> bwd_result;
+  using search = SearchAlgorithm<ConvKind::kBackwardData>;
+  bwd_result =
+      search::Find<T>(dev_ctx, args, exhaustive_search, deterministic, false);
+  workspace_size =
+      std::max(workspace_size, search::GetWorkspaceSize(args, bwd_result.algo));
+#endif
+
+  // ------------------- cudnn conv transpose forward ---------------------
+  int x_offset = transformed_x->numel() / transformed_x->dims()[0] / groups;
+  int out_offset =
+      transformed_out->numel() / transformed_out->dims()[0] / groups;
+  int filter_offset = filter->numel() / groups;
+  ScalingParamType<T> alpha = 1.0f;
+  ScalingParamType<T> beta = 0.0f;
+  auto workspace_handle = dev_ctx.cudnn_workspace_handle();
+#ifdef PADDLE_WITH_HIP
+  for (int g = 0; g < groups; g++) {
+    auto cudnn_func = [&](void* cudnn_workspace) {
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenConvolutionBackwardData(
+          handle,
+          &alpha,
+          args.odesc.desc(),
+          x_data + x_offset * g,
+          args.wdesc.desc(),
+          filter_data + filter_offset * g,
+          args.cdesc.desc(),
+          bwd_result.algo,
+          &beta,
+          args.idesc.desc(),
+          transformed_out_data + out_offset * g,
+          cudnn_workspace,
+          workspace_size));
+    };
+    workspace_handle.RunFunc(cudnn_func, workspace_size);
+  }
+#else
+  ConvRunner<T, ConvKind::kBackwardData>::Apply(dev_ctx,
+                                                args,
+                                                bwd_result,
+                                                x_data,
+                                                filter_data,
+                                                transformed_out_data,
+                                                groups,
+                                                out_offset,
+                                                filter_offset,
+                                                x_offset,
+                                                workspace_size,
+                                                &workspace_handle,
+                                                false);
+#endif
+}
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+template <typename T, typename Context>
+void ConvTransposeCudnnKernelImplV8(const DenseTensor* transformed_x,
+                                    const DenseTensor* filter,
+                                    const Context& dev_ctx,
+                                    const std::vector<int>& strides,
+                                    const std::vector<int>& padding_common,
+                                    const std::vector<int>& dilations_,
+                                    GPUDNNDataLayout data_layout,
+                                    GPUDNNDataLayout layout,
+                                    bool exhaustive_search,
+                                    bool deterministic,
+                                    int groups,
+                                    DenseTensor* transformed_out) {
+  auto& plan_cache = phi::autotune::AutoTuneCache::Instance().GetConvV8(
+      phi::autotune::AlgorithmType::kConvBackwardDataV8);
+
+  T* input_data = const_cast<T*>(transformed_x->data<T>());
+  T* filter_data = const_cast<T*>(filter->data<T>());
+  T* output_data = transformed_out->data<T>();
+  cudnnHandle_t handle = const_cast<cudnnHandle_t>(dev_ctx.cudnn_handle());
+  auto workspace_handle = dev_ctx.cudnn_workspace_handle();
+
+  auto layout_format = phi::backends::gpu::GetCudnnTensorFormat(layout);
+  auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
+
+  float alpha = 1.0f;
+  float beta = 0.0f;
+
+  using helper = CudnnFrontendConvHelper;
+  auto op_graph = helper::BuildConvOperationGraph<
+      CUDNN_BACKEND_OPERATION_CONVOLUTION_BACKWARD_DATA_DESCRIPTOR>(
+      transformed_out,
+      transformed_x,
+      filter,
+      layout_format,
+      strides,
+      padding_common,
+      dilations_,
+      dtype,
+      handle,
+      alpha,
+      beta);
+  if (plan_cache.FindPlan(op_graph, handle)) {
+    const cudnn_frontend::ExecutionPlan* cached_plan = nullptr;
+    int64_t workspace_size = 0;
+    plan_cache.GetPlanAndWorkspaceSize(
+        op_graph, &cached_plan, &workspace_size, handle);
+    helper::ExecutePlan(handle,
+                        &workspace_handle,
+                        output_data,
+                        input_data,
+                        filter_data,
+                        cached_plan->get_raw_desc(),
+                        workspace_size);
+    return;
+  }
+
+  auto plans = helper::FindExecutionPlans(&op_graph,
+                                          exhaustive_search,
+                                          deterministic,
+                                          output_data,
+                                          input_data,
+                                          filter_data,
+                                          handle,
+                                          &workspace_handle);
+
+  helper::ExecutePlansAndCache(handle,
+                               &workspace_handle,
+                               output_data,
+                               input_data,
+                               filter_data,
+                               &plans,
+                               exhaustive_search,
+                               op_graph,
+                               &plan_cache);
+}
+#endif
 
 template <typename T, typename Context>
 void ConvTransposeRawGPUDNNKernel(const Context& dev_ctx,
@@ -57,15 +254,28 @@ void ConvTransposeRawGPUDNNKernel(const Context& dev_ctx,
         dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
     return;
   }
+
+  bool has_exhaustive_search = dev_ctx.HasDnnAttr("exhaustive_search");
+  bool exhaustive_search_attr =
+      has_exhaustive_search
+          ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("exhaustive_search"))
+          : false;
+  bool exhaustive_search =
+      FLAGS_cudnn_exhaustive_search || exhaustive_search_attr;
+  bool deterministic = FLAGS_cudnn_deterministic;
+  PADDLE_ENFORCE_EQ(exhaustive_search && deterministic,
+                    false,
+                    common::errors::InvalidArgument(
+                        "Can't set exhaustive_search True and "
+                        "FLAGS_cudnn_deterministic True at same time."));
+
   std::vector<int> paddings_ = paddings;
-  std::vector<int> dilations_ =
-      dilations;  // cudnn v5 does not support dilations
-  const T* filter_data = filter.data<T>();
+  std::vector<int> dilations_ = dilations;
   const GPUDNNDataLayout data_layout =
       (data_format != "NHWC" ? GPUDNNDataLayout::kNCHW
                              : GPUDNNDataLayout::kNHWC);
-  std::vector<int> x_vec = common::vectorize<int>(x.dims());
-  std::vector<int> out_vec = common::vectorize<int>(out->dims());
+  std::vector<int64_t> x_vec = common::vectorize<int64_t>(x.dims());
+  std::vector<int64_t> out_vec = common::vectorize<int64_t>(out->dims());
   // if channel_last, transpose to channel_first
   DenseTensor x_transpose;
   if (data_layout == GPUDNNDataLayout::kNHWC) {
@@ -106,7 +316,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& dev_ctx,
   std::vector<int> padding_common(data_dim, 0);
   if (!is_sys_pad) {
     std::vector<int> padding_diff(data_dim);
-    std::vector<int> new_x_shape_vec(data_dim + 2);
+    std::vector<int64_t> new_x_shape_vec(data_dim + 2);
     new_x_shape_vec[0] = x_dims[0];
     new_x_shape_vec[1] = x_dims[1];
 
@@ -158,10 +368,9 @@ void ConvTransposeRawGPUDNNKernel(const Context& dev_ctx,
     axes[i] = i + 2;
   }
 
-  const T* x_data = transformed_x.data<T>();
-  x_vec = common::vectorize<int>(transformed_x.dims());
+  x_vec = common::vectorize<int64_t>(transformed_x.dims());
 
-  std::vector<int> transformed_out_vec = out_vec;
+  std::vector<int64_t> transformed_out_vec = out_vec;
   for (size_t i = 0; i < data_dim; ++i) {
     transformed_out_vec[i + 2] =
         out_vec[i + 2] + (x_pad[2 * i + 4] + x_pad[2 * i + 5]) * strides[i] -
@@ -177,119 +386,55 @@ void ConvTransposeRawGPUDNNKernel(const Context& dev_ctx,
     transformed_out.ShareDataWith(*out);
     transformed_out.Resize(common::make_ddim(transformed_out_vec));
   }
-  T* transformed_out_data = transformed_out.data<T>();
-
-#ifndef PADDLE_WITH_HIP
-  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(transformed_x);
-  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(filter);
-  CUDNN_ENFORCE_TENSOR_SIZE_SUPPORTED(transformed_out);
-#endif
 
   GPUDNNDataLayout layout;
-
-  int iwo_groups = groups;
-  int c_groups = 1;
-#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 0, 1)
-  iwo_groups = 1;
-  c_groups = groups;
-  groups = 1;
-#endif
-
   if (strides.size() == 2U) {
     layout = GPUDNNDataLayout::kNCHW;
   } else {
     layout = GPUDNNDataLayout::kNCDHW;
   }
 
-  size_t workspace_size = 0;
-#ifdef PADDLE_WITH_HIP
-  miopenConvBwdDataAlgorithm_t algo{};
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+  if (dynload::IsCudnnFrontendEnabled())
+    ConvTransposeCudnnKernelImplV8<T>(&transformed_x,
+                                      &filter,
+                                      dev_ctx,
+                                      strides,
+                                      padding_common,
+                                      dilations_,
+                                      data_layout,
+                                      layout,
+                                      exhaustive_search,
+                                      deterministic,
+                                      groups,
+                                      &transformed_out);
+  else
+    ConvTransposeCudnnKernelImplV7<T>(&transformed_x,
+                                      &filter,
+                                      dev_ctx,
+                                      strides,
+                                      padding_common,
+                                      dilations_,
+                                      data_layout,
+                                      layout,
+                                      exhaustive_search,
+                                      deterministic,
+                                      groups,
+                                      &transformed_out);
 #else
-  cudnnConvolutionBwdDataAlgo_t algo{};
+  ConvTransposeCudnnKernelImplV7<T>(&transformed_x,
+                                    &filter,
+                                    dev_ctx,
+                                    strides,
+                                    padding_common,
+                                    dilations_,
+                                    data_layout,
+                                    layout,
+                                    exhaustive_search,
+                                    deterministic,
+                                    groups,
+                                    &transformed_out);
 #endif
-  // ------------------- cudnn conv algorithm ---------------------
-  auto handle = dev_ctx.cudnn_handle();
-  auto layout_tensor = phi::backends::gpu::GetCudnnTensorFormat(layout);
-  bool deterministic = FLAGS_cudnn_deterministic;
-
-  auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
-  // ------------------- cudnn descriptors ---------------------
-  ConvArgs args{handle,
-                &transformed_out,
-                &filter,
-                &transformed_x,
-                strides,
-                padding_common,
-                dilations_,
-                dtype,
-                groups,
-                data_layout};
-  args.idesc.set(transformed_out, iwo_groups);
-  args.wdesc.set(filter, layout_tensor, iwo_groups);
-  args.odesc.set(transformed_x, iwo_groups);
-  args.cdesc.set(dtype,
-                 padding_common,
-                 strides,
-                 dilations_,
-                 phi::AllowTF32Cudnn(),
-                 c_groups);
-
-#ifdef PADDLE_WITH_HIP
-  SearchResult<miopenConvBwdDataAlgorithm_t> bwd_result;
-  using search = SearchAlgorithm<miopenConvBwdDataAlgorithm_t>;
-  workspace_size = std::max(workspace_size, search::GetWorkspaceSize(args));
-  bwd_result.algo =
-      search::Find<T>(args, false, deterministic, workspace_size, dev_ctx);
-#else
-  SearchResult<cudnnConvolutionBwdDataAlgo_t> bwd_result;
-  using search = SearchAlgorithm<ConvKind::kBackwardData>;
-  bwd_result = search::Find<T>(dev_ctx, args, false, deterministic, false);
-  workspace_size =
-      std::max(workspace_size, search::GetWorkspaceSize(args, bwd_result.algo));
-#endif
-
-  // ------------------- cudnn conv transpose forward ---------------------
-  int x_offset = transformed_x.numel() / transformed_x.dims()[0] / groups;
-  int out_offset = transformed_out.numel() / transformed_out.dims()[0] / groups;
-  int filter_offset = filter.numel() / groups;
-  ScalingParamType<T> alpha = 1.0f;
-  ScalingParamType<T> beta = 0.0f;
-  auto workspace_handle = dev_ctx.cudnn_workspace_handle();
-#ifdef PADDLE_WITH_HIP
-  for (int g = 0; g < groups; g++) {
-    auto cudnn_func = [&](void* cudnn_workspace) {
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenConvolutionBackwardData(
-          handle,
-          &alpha,
-          args.odesc.desc(),
-          x_data + x_offset * g,
-          args.wdesc.desc(),
-          filter_data + filter_offset * g,
-          args.cdesc.desc(),
-          bwd_result.algo,
-          &beta,
-          args.idesc.desc(),
-          transformed_out_data + out_offset * g,
-          cudnn_workspace,
-          workspace_size));
-    };
-    workspace_handle.RunFunc(cudnn_func, workspace_size);
-  }
-#else   // PADDLE_WITH_HIP
-  ConvRunner<T, ConvKind::kBackwardData>::Apply(dev_ctx,
-                                                args,
-                                                bwd_result,
-                                                x_data,
-                                                filter_data,
-                                                transformed_out_data,
-                                                groups,
-                                                out_offset,
-                                                filter_offset,
-                                                x_offset,
-                                                workspace_size,
-                                                &workspace_handle,
-                                                false);
-#endif  // PADDLE_WITH_HIP
 
   if (!is_sys_pad && strides.size() == 2U) {
     funcs::Slice<Context, T, 4>(

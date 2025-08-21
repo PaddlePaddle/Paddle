@@ -633,8 +633,10 @@ class OpTest(unittest.TestCase):
     def is_onednn_op(self):
         return (hasattr(self, "use_onednn") and self.use_onednn) or (
             hasattr(self, "attrs")
-            and "use_mkldnn" in self.attrs
-            and self.attrs["use_mkldnn"]
+            and (
+                ("use_mkldnn" in self.attrs and self.attrs["use_mkldnn"])
+                or ("use_onednn" in self.attrs and self.attrs["use_onednn"])
+            )
         )
 
     def is_xpu_op(self):
@@ -1206,6 +1208,17 @@ class OpTest(unittest.TestCase):
             args = OpTestUtils.assumption_assert_and_transform(
                 args, len(inputs_sig)
             )
+            if hasattr(self, "check_strided_input"):
+                if self.strided_input_type == "transpose":
+                    args[1] = self.transpose_api(args[1], self.perm)
+                elif self.strided_input_type == "as_stride":
+                    args[1] = self.as_stride_api(
+                        args[1], self.shape_param, self.stride_param
+                    )
+                else:
+                    raise TypeError(
+                        f"Unsupported test type {self.strided_input_type}."
+                    )
             ret_tuple = python_api(*args)
             result = construct_output_dict_by_kernel_sig(ret_tuple, outputs_sig)
             if hasattr(self, "python_out_sig_sub_name"):
@@ -1220,11 +1233,14 @@ class OpTest(unittest.TestCase):
             block = base.framework.default_main_program().global_block()
             op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
             # prepare input variable
+            input_vars = self.inputs
+            if hasattr(self, "check_strided_input"):
+                input_vars = self.inputs_stride
             dygraph_tensor_inputs = (
                 egr_inps
                 if egr_inps
                 else self.append_input_output_for_dygraph(
-                    op_proto, self.inputs, True, False, block
+                    op_proto, input_vars, True, False, block
                 )
             )
             # prepare output variable
@@ -2198,7 +2214,10 @@ class OpTest(unittest.TestCase):
                 attrs_use_mkldnn = hasattr(self, 'attrs') and bool(
                     self.attrs.get('use_mkldnn', False)
                 )
-                if flags_use_onednn or attrs_use_mkldnn:
+                attrs_use_onednn = hasattr(self, 'attrs') and bool(
+                    self.attrs.get('use_onednn', False)
+                )
+                if flags_use_onednn or attrs_use_mkldnn or attrs_use_onednn:
                     warnings.warn(
                         "check inplace_grad for ops using mkldnn is not supported"
                     )
@@ -3441,9 +3460,13 @@ class OpTest(unittest.TestCase):
             cache_list = self.cache_name_list
 
         # oneDNN numeric gradient should use CPU kernel
-        use_onednn = False
+        use_mkldnn = False
         if op_attrs.get("use_mkldnn"):
             op_attrs["use_mkldnn"] = False
+            use_mkldnn = True
+        use_onednn = False
+        if op_attrs.get("use_onednn"):
+            op_attrs["use_onednn"] = False
             use_onednn = True
         if hasattr(self, "attrs"):
             for k, v in self.attrs.items():
@@ -3459,8 +3482,10 @@ class OpTest(unittest.TestCase):
             cache_list=cache_list,
         )
 
-        if use_onednn:
+        if use_mkldnn:
             op_attrs["use_mkldnn"] = True
+        if use_onednn:
+            op_attrs["use_onednn"] = True
 
         if no_grad_set is None:
             no_grad_set = set()
