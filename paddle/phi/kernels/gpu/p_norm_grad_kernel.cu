@@ -33,7 +33,7 @@ template <typename T>
 struct PNormGradFunctor {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   HOSTDEVICE explicit inline PNormGradFunctor(float porder, float eps) {
-    this->porder = static_cast<MT>(porder - 1.);
+    this->porder = static_cast<MT>(porder - 1.0f);
     this->eps = static_cast<MT>(eps);
   }
 
@@ -50,12 +50,16 @@ struct PNormGradFunctor {
                   DY* dy,
                   const Dim& dim,
                   int size) {
-    auto unstable_term = (*x).abs().pow(this->porder);
+    auto unstable_term =
+        (*x).abs().template cast<MT>().pow(this->porder).template cast<T>();
+
     auto mask = (*x) == x->constant(static_cast<T>(0));
     auto stable_term =
         mask.select(x->constant(static_cast<T>(0)), unstable_term);
     auto self_scaled = (*x).sign() * stable_term;
-    auto norm_term = (*y).pow(-this->porder);
+
+    auto norm_term =
+        (*y).template cast<MT>().pow(-this->porder).template cast<T>();
     dx->device(place) =
         self_scaled * dy->broadcast(dim) * norm_term.broadcast(dim);
   }
@@ -63,6 +67,50 @@ struct PNormGradFunctor {
   MT porder;
   MT eps;
 };
+
+//   template <typename Context,
+//             typename X,
+//             typename Y,
+//             typename DX,
+//             typename DY,
+//             typename Dim>
+//   void operator()(const Context& place,
+//                   X* x,
+//                   Y* y,
+//                   DX* dx,
+//                   DY* dy,
+//                   const Dim& dim,
+//                   int size) {
+//     auto x_mt = x->template cast<MT>();
+//     auto y_mt = y->template cast<MT>();
+//     auto dy_mt = dy->template cast<MT>();
+
+//     auto norm_pow = y_mt.pow(-this->porder);
+//     auto mask_norm_nonzero = (y_mt != static_cast<MT>(0)).template
+//     cast<MT>();
+
+//     // Set to 0 where porder < 0 and x == 0
+//     MT zero = static_cast<MT>(0);
+//     auto mask_x_zero = (x_mt == zero).template cast<MT>();
+
+//     MT is_porder_negative =
+//         this->porder < zero ? static_cast<MT>(1) : static_cast<MT>(0);
+//     auto invalid_mask = (mask_x_zero * is_porder_negative);
+//     auto safe_pow =
+//         x_mt.abs().pow(this->porder) * (static_cast<MT>(1) - invalid_mask);
+
+//     dx->device(place) =
+//         (safe_pow * x_mt.sign() * dy_mt.broadcast(dim) *
+//          norm_pow.broadcast(dim) *
+//          mask_norm_nonzero.broadcast(dim)  // Mask out positions where norm
+//          == 0
+//          )
+//             .template cast<T>();
+//   }
+
+//   MT porder;
+//   MT eps;
+// };
 
 template <typename T, typename Context>
 void PNormGradKernel(const Context& dev_ctx,
@@ -120,7 +168,6 @@ void PNormGradKernel(const Context& dev_ctx,
     x_sign.Resize(in_x->dims());
     dev_ctx.template Alloc<T>(&x_sign);
     phi::SignKernel<T, Context>(dev_ctx, *in_x, &x_sign);
-
     phi::MultiplyKernel<T, Context>(dev_ctx, amax_grad_out, x_sign, out_dx);
   } else {
     auto functor = PNormGradFunctor<T>(porder, epsilon);
