@@ -99,11 +99,9 @@ def _process_archs(arch):
         for a in arch.split(";"):
             if '' == a:
                 continue
-            assert a in [
-                "GPU",
-                "ROCM",
-                "XPU",
-            ], f"""Supported arch options are "GPU", "ROCM", and "XPU", but the options is {a}"""
+            assert a in ["GPU", "ROCM", "XPU"], (
+                f"""Supported arch options are "GPU", "ROCM", and "XPU", but the options is {a}"""
+            )
             archs += "WITH_" + a.upper() + " OR "
         arch = "(" + archs[:-4] + ")"
     else:
@@ -127,11 +125,9 @@ def _process_os(os_):
     if len(os_) > 0:
         os_ = os_.upper()
         for p in os_.split(';'):
-            assert p in [
-                "WIN32",
-                "APPLE",
-                "LINUX",
-            ], f"""Supported os options are 'WIN32', 'APPLE' and 'LINUX', but the options is {p}"""
+            assert p in ["WIN32", "APPLE", "LINUX"], (
+                f"""Supported os options are 'WIN32', 'APPLE' and 'LINUX', but the options is {p}"""
+            )
         os_ = os_.replace(";", " OR ")
         os_ = "(" + os_ + ")"
     else:
@@ -146,7 +142,9 @@ def _process_run_serial(run_serial):
         "1",
         "0",
         "",
-    ], f"""the value of run_serial must be one of 0, 1 or empty. But this value is {rs}"""
+    ], (
+        f"""the value of run_serial must be one of 0, 1 or empty. But this value is {rs}"""
+    )
     if rs == "":
         return ""
     return rs
@@ -175,9 +173,9 @@ def _process_name(name, curdir):
     )
     filepath_prefix = os.path.join(curdir, name)
     suffix = [".py", ".sh"]
-    assert _file_with_extension(
-        filepath_prefix, suffix
-    ), f""" Please ensure the test file with the prefix '{filepath_prefix}' and one of the suffix {suffix} exists, because you specified a unittest named '{name}'"""
+    assert _file_with_extension(filepath_prefix, suffix), (
+        f""" Please ensure the test file with the prefix '{filepath_prefix}' and one of the suffix {suffix} exists, because you specified a unittest named '{name}'"""
+    )
 
     return name
 
@@ -238,7 +236,9 @@ class DistUTPortManager:
             re.compile("^[0-9]+$").search(port_num)
             and int(port_num) > 0
             or port_num.strip() == ""
-        ), f"""port_num must be format as a positive integer or empty, but this port_num is '{port_num}'"""
+        ), (
+            f"""port_num must be format as a positive integer or empty, but this port_num is '{port_num}'"""
+        )
         port_num = port_num.strip()
         if len(port_num) == 0:
             return 0
@@ -272,7 +272,9 @@ class DistUTPortManager:
 
                 # match right tests name format, the name must start with 'test_' followed by at least one char of
                 # '0-9'. 'a-z'. 'A-Z' or '_'
-                assert re.compile("^test_[0-9a-zA-Z_]+").search(
+                assert re.compile(
+                    "^test_[0-9a-zA-Z_]+"
+                ).search(
                     name
                 ), f'''we found a test for initial the latest dist_port but the test name '{name}' seems to be wrong
                     at line {k - 1}, in file {cmake_file_name}
@@ -349,9 +351,9 @@ class DistUTPortManager:
                         if name == self.last_test_name:
                             found = True
                             break
-                assert (
-                    found
-                ), f"no such test named '{self.last_test_name}' in file '{self.last_test_cmake_file}'"
+                assert found, (
+                    f"no such test named '{self.last_test_name}' in file '{self.last_test_cmake_file}'"
+                )
                 if launcher[-2:] == ".sh":
                     self.process_dist_port_num(num_port)
 
@@ -485,9 +487,9 @@ class CMakeGenerator:
             try:
                 run_type = _process_run_type(run_type)
             except Exception as e:
-                assert (
-                    run_type.strip() == ""
-                ), f"{e}\nIf use test_runner.py, the run_type can be ''"
+                assert run_type.strip() == "", (
+                    f"{e}\nIf use test_runner.py, the run_type can be ''"
+                )
             cmd += f'''if({archs} AND {os_})
         py_test_modules(
         {name}
@@ -580,7 +582,9 @@ class CMakeGenerator:
             assert (
                 f"{current_work_dir}/CMakeLists.txt"
                 not in self.modified_or_created_files
-            ), f"the file {current_work_dir}/CMakeLists.txt are modified twice, which may cause some error"
+            ), (
+                f"the file {current_work_dir}/CMakeLists.txt are modified twice, which may cause some error"
+            )
             self.modified_or_created_files.append(
                 f"{current_work_dir}/CMakeLists.txt"
             )
@@ -630,15 +634,15 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    assert not (
-        len(args.files) == 0 and len(args.dirpaths) == 0
-    ), "You must provide at least one file or dirpath"
+    assert not (len(args.files) == 0 and len(args.dirpaths) == 0), (
+        "You must provide at least one file or dirpath"
+    )
     current_work_dirs = []
     if len(args.files) >= 1:
         for p in args.files:
-            assert (
-                os.path.basename(p) == "testslist.csv"
-            ), "you must input file named testslist.csv"
+            assert os.path.basename(p) == "testslist.csv", (
+                "you must input file named testslist.csv"
+            )
         current_work_dirs = current_work_dirs + [
             os.path.dirname(file) for file in args.files
         ]
