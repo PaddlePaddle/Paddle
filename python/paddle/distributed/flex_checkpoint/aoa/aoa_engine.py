@@ -325,13 +325,9 @@ class AOAEngine:
         assert len(local_slice) == len(tensor.shape)
         ndim = len(tensor.shape)
 
-        def slice_intersect(a: slice, b: slice, dim_len: int):
-            a_start, a_stop, a_step = a.indices(dim_len)
-            b_start, b_stop, b_step = b.indices(dim_len)
-            if a_step != 1 or b_step != 1:
-                raise NotImplementedError("Only support step size of 1")
-            start = max(a_start, b_start)
-            stop = min(a_stop, b_stop)
+        def slice_intersect(a: slice, b: slice):
+            start = max(a.start, b.start)
+            stop = min(a.stop, b.stop)
             if start >= stop:
                 return None
             return slice(start, stop, 1)
@@ -339,9 +335,7 @@ class AOAEngine:
         for src_key, sl_src, sl_dst in tensor.slices:
             intersection = []
             for i in range(ndim):
-                inter = slice_intersect(
-                    local_slice[i], sl_dst[i], tensor.shape[i]
-                )
+                inter = slice_intersect(local_slice[i], sl_dst[i])
                 if inter is None:
                     break
                 intersection.append(inter)
@@ -351,11 +345,11 @@ class AOAEngine:
                 for i in range(ndim):
                     dst = sl_dst[i]
                     src = sl_src[i]
-                    dim_len = tensor.shape[i]
-                    dst_start, _, _ = dst.indices(dim_len)
-                    src_start, _, _ = src.indices(dim_len)
-                    inter_start, inter_stop, _ = intersection[i].indices(
-                        dim_len
+                    dst_start = dst.start
+                    src_start = src.start
+                    inter_start, inter_stop = (
+                        intersection[i].start,
+                        intersection[i].stop,
                     )
                     offset = inter_start - dst_start
                     src_inter_start = src_start + offset

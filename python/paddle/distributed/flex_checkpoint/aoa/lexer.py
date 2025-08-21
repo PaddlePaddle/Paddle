@@ -15,7 +15,6 @@
 import re
 from enum import Enum, auto
 
-from .macros import macro_registry
 
 class Token:
     def __init__(self, type, value):
@@ -57,6 +56,8 @@ class Lexer:
     ]
 
     def __init__(self, context):
+        from .macros import macro_registry
+
         self.macros = [list(d.values())[1] for d in macro_registry.macros]
         self.get_token = re.compile(
             '|'.join(
