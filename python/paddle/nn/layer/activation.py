@@ -1631,9 +1631,9 @@ class Softmax2D(Layer):
         self._name = name
 
     def forward(self, x: Tensor) -> Tensor:
-        assert (
-            x.ndim == 3 or x.ndim == 4
-        ), f"Softmax2D requires a 3D or 4D tensor as input. Received: {x.ndim}D."
+        assert x.ndim == 3 or x.ndim == 4, (
+            f"Softmax2D requires a 3D or 4D tensor as input. Received: {x.ndim}D."
+        )
         return F.softmax(x, axis=-3, dtype=self._dtype, name=self._name)
 
     def extra_repr(self) -> str:

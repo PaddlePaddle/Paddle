@@ -134,9 +134,9 @@ class NameVisitor(gast.NodeVisitor):
         self.visit(root_node)
 
     def get_loop_var_names(self, node):
-        assert isinstance(
-            node, (gast.While, gast.For)
-        ), "Input node is not gast loop node"
+        assert isinstance(node, (gast.While, gast.For)), (
+            "Input node is not gast loop node"
+        )
         loop_var_names = set()
         create_var_names = set()
         read_context = {type(gast.Load()), type(gast.AugLoad())}

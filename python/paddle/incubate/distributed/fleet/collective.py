@@ -233,9 +233,9 @@ class CollectiveOpBasedOptimizer(DistributedOptimizer):
     """
 
     def __init__(self, optimizer, strategy=None):
-        assert isinstance(
-            strategy, DistributedStrategy
-        ), "strategy must be DistributedStrategy"
+        assert isinstance(strategy, DistributedStrategy), (
+            "strategy must be DistributedStrategy"
+        )
         super().__init__(optimizer, strategy)
 
     def backward(
@@ -320,9 +320,9 @@ class CollectiveOptimizer(DistributedOptimizer):
                 use_local_sgd=strategy.use_local_sgd,
                 use_lamb=main_program._use_lamb,
             )
-            assert (
-                strategy.dist_fc_config is not None
-            ), "DistributedStrategy.dist_fc_config should be set"
+            assert strategy.dist_fc_config is not None, (
+                "DistributedStrategy.dist_fc_config should be set"
+            )
 
         if strategy._ut4grad_allreduce:
             strategy.mode = "collective"
@@ -337,9 +337,9 @@ class CollectiveOptimizer(DistributedOptimizer):
             self._strategy.collective_mode == "local_sgd"
             or self._strategy.collective_mode == "grad_allreduce"
         ):
-            assert (
-                self._strategy.mode == "collective"
-            ), "local_sgd and grad_allreduce can be used under collective mode"
+            assert self._strategy.mode == "collective", (
+                "local_sgd and grad_allreduce can be used under collective mode"
+            )
 
     def _transpile(self, startup_program, main_program):
         """

@@ -164,9 +164,15 @@ def var(
     """
     Computes the variance of ``x`` along ``axis`` .
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``dim`` can be used as an alias for ``axis``.
+        For example, ``var(input=tensor_x, dim=1, ...)`` is equivalent to ``var(x=tensor_x, axis=1, ...)``.
+
     Args:
         x (Tensor): The input Tensor with data type float16, float32, float64.
+            alias: ``input``.
         axis (int|list|tuple|None, optional): The axis along which to perform variance calculations. ``axis`` should be int, list(int) or tuple(int).
+            alias: ``dim``.
 
             - If ``axis`` is a list/tuple of dimension(s), variance is calculated along all element(s) of ``axis`` . ``axis`` or element(s) of ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
             - If ``axis`` or element(s) of ``axis`` is less than 0, it works the same way as :math:`axis + D` .
@@ -506,9 +512,16 @@ def median(
     """
     Compute the median along the specified axis.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``dim`` can be used as an alias for ``axis``.
+        When an alias replacement occurs, the default parameter for mode setting is min instead of avg.
+        For example, ``median(input=tensor_x, dim=1, ...)`` is equivalent to ``median(x=tensor_x, axis=1, ...)``.
+
     Args:
         x (Tensor): The input Tensor, it's data type can be bfloat16, float16, float32, float64, int32, int64.
+            alias: ``input``.
         axis (int|None, optional): The axis along which to perform median calculations ``axis`` should be int.
+            alias: ``dim``.
             ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
             If ``axis`` is less than 0, it works the same way as :math:`axis + D`.
             If ``axis`` is None, median is calculated over all elements of ``x``. Default is None.
@@ -520,6 +533,7 @@ def median(
         mode (str, optional): Whether to use mean or min operation to calculate
             the median values when the input tensor has an even number of elements
             in the dimension ``axis``. Support 'avg' and 'min'. Default is 'avg'.
+            When an alias replacement occurs, the default parameter for mode setting is min instead of avg.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 

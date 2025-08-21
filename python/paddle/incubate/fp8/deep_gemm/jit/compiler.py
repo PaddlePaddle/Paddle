@@ -46,9 +46,9 @@ def get_jit_include_dir() -> str:
 def get_deep_gemm_version() -> str:
     # Update include directories
     include_dir = f"{get_jit_include_dir()}/../../../../include/paddle/fluid/fp8/deep_gemm/include"
-    assert os.path.exists(
-        include_dir
-    ), f"Cannot find GEMM include directory {include_dir}"
+    assert os.path.exists(include_dir), (
+        f"Cannot find GEMM include directory {include_dir}"
+    )
     md5 = hashlib.md5()
     for filename in filter(
         lambda x: x.endswith(".cuh"), sorted(os.listdir(include_dir))
@@ -81,9 +81,9 @@ def get_nvcc_compiler() -> tuple[str, str]:
             match = version_pattern.search(os.popen(f"{path} --version").read())
             version = match.group(1)
             assert match, f"Cannot get the version of NVCC compiler {path}"
-            assert (
-                version >= least_version_required
-            ), f"NVCC {path} version {version} is lower than {least_version_required}"
+            assert version >= least_version_required, (
+                f"NVCC {path} version {version} is lower than {least_version_required}"
+            )
             return path, version
     raise RuntimeError("Cannot find any available NVCC compiler")
 
