@@ -420,12 +420,16 @@ class AOAEngine:
                         list(src_slice), pp_list, reverse=True
                     )
                     results.append(
-                        (src_key, tuple(src_slice), tuple(intersection)),
-                        pp_list.copy(),
+                        (
+                            src_key,
+                            tuple(src_slice),
+                            tuple(intersection),
+                            pp_list.copy(),
+                        ),
                     )
                 else:
                     results.append(
-                        (src_key, tuple(src_slice), tuple(intersection)), None
+                        (src_key, tuple(src_slice), tuple(intersection), None)
                     )
         return results
 
