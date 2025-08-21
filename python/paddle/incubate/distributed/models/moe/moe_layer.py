@@ -341,9 +341,9 @@ class MoELayer(nn.Layer):
         if gate is None:
             gate = {}
 
-        assert isinstance(
-            gate, (dict, BaseGate)
-        ), "gate config' type must be dict or an instance of BaseGate"
+        assert isinstance(gate, (dict, BaseGate)), (
+            "gate config' type must be dict or an instance of BaseGate"
+        )
         # only support mp/dp
         self.group = moe_group
 

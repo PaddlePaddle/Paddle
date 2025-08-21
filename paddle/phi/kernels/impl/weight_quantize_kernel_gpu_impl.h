@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -531,6 +532,81 @@ void weight_permute_gpu_w4a8(const GPUContext& dev_ctx,
       }
       w4a8_inplace_permute<<<grid_size, block_dim>>>(
           reinterpret_cast<uint32_t*>(output_data), original_numel / 8);
+    }
+  } else {
+    common::errors::Unimplemented(
+        "The algo %s support need arch > 70, but got algo = %d.", algo, arch);
+  }
+}
+
+template <typename IndexT>
+__global__ void weight_permute_interleave_kernelw4afp8(const int8_t* input_data,
+                                                       int8_t* output_data,
+                                                       IndexT original_k,
+                                                       IndexT original_n) {
+  IndexT numel = original_k * original_n / 4;
+  const IndexT pack_group_size = 64;
+  const IndexT thread_group_size = pack_group_size / 4;  // 16
+  const IndexT thread_k_stride = original_k / 4;
+  CUDA_KERNEL_LOOP_TYPE(linear_idx, numel, IndexT) {
+    const IndexT n_id = linear_idx / thread_k_stride;
+    const IndexT k_id = linear_idx % thread_k_stride;
+    const IndexT k_group_idx = k_id / thread_group_size;
+    const IndexT k_idx_in_group = k_id % thread_group_size;
+
+    const int8_t* src = input_data +
+                        k_group_idx * pack_group_size / 2 * original_n +
+                        k_idx_in_group * original_n + n_id;
+
+    int8_t tmp0 = src[0];
+    int8_t tmp1 = src[pack_group_size / 4 * original_n];
+
+    int8_t tmp00 = (tmp0 & 0xF0) + 112;
+    int8_t tmp01 = ((tmp0 << 4) & 0xF0) + 112;
+    int8_t tmp10 = (tmp1 & 0xF0) + 112;
+    int8_t tmp11 = ((tmp1 << 4) & 0xF0) + 112;
+
+    uint8_t utmp00 = *(reinterpret_cast<uint8_t*>(&tmp00));
+    uint8_t utmp01 = *(reinterpret_cast<uint8_t*>(&tmp01));
+    uint8_t utmp10 = *(reinterpret_cast<uint8_t*>(&tmp10));
+    uint8_t utmp11 = *(reinterpret_cast<uint8_t*>(&tmp11));
+
+    int8_t dst0 = (utmp01 & 0xF0) | ((utmp11 & 0xF0) >> 4);
+    int8_t dst1 = (utmp00 & 0xF0) | ((utmp10 & 0xF0) >> 4);
+
+    int8_t* dst = output_data + n_id * original_k / 2 +
+                  (k_group_idx * pack_group_size / 2) + k_idx_in_group * 2;
+    dst[0] = dst0;
+    dst[1] = dst1;
+  }
+}
+
+template <typename GPUContext>
+void weight_permute_gpu_w4afp8(const GPUContext& dev_ctx,
+                               const int8_t* input_data,
+                               int8_t* output_data,
+                               const std::vector<int64_t>& shape,
+                               const int32_t arch,
+                               const std::string& algo) {
+  auto original_k = shape[0] * 2;
+  auto original_n = shape[1];
+  auto original_numel = original_k * original_n;
+  auto gpu_config =
+      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, original_numel, 1);
+  int grid_size = gpu_config.GetGridSize();
+  VLOG(2) << "weight_permute_gpu: original_k = " << original_k
+          << "original_n = " << original_n << "grid size = " << grid_size;
+  if (arch > 70) {
+    if (algo == "w4afp8") {
+      dim3 block_dim(128);
+      if (original_numel <= std::numeric_limits<int>::max()) {
+        weight_permute_interleave_kernelw4afp8<int><<<grid_size, block_dim>>>(
+            input_data, output_data, original_k, original_n);
+      } else {
+        weight_permute_interleave_kernelw4afp8<int64_t>
+            <<<grid_size, block_dim>>>(
+                input_data, output_data, original_k, original_n);
+      }
     }
   } else {
     common::errors::Unimplemented(

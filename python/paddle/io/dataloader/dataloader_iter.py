@@ -376,9 +376,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._persistent_workers = loader._persistent_workers
         self._resume_worker_cnt = 0
 
-        assert (
-            self._num_workers > 0
-        ), f"Multi-process DataLoader invalid num_workers({self._num_workers})"
+        assert self._num_workers > 0, (
+            f"Multi-process DataLoader invalid num_workers({self._num_workers})"
+        )
 
         # subprocess wrokers' result queue
         self._data_queue = None
@@ -784,9 +784,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     continue
 
     def _try_put_indices(self):
-        assert (
-            self._batches_outstanding <= self._outstanding_capacity
-        ), "too many indices have been put to queue"
+        assert self._batches_outstanding <= self._outstanding_capacity, (
+            "too many indices have been put to queue"
+        )
         # In multi-process mode for IterableDataset, _try_put_indices will
         # be called both in main process(for our implement has blocking queue,
         # and blocking queue read is in main process) and thread, which may

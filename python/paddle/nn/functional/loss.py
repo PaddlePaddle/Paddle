@@ -94,9 +94,9 @@ def dice_loss(
     """
     assert input.dtype in (paddle.float32, paddle.float64)
     assert label.dtype in (paddle.int32, paddle.int64)
-    assert (
-        len(input.shape) >= 2
-    ), "The rank of input should be greater than or equal to 2."
+    assert len(input.shape) >= 2, (
+        "The rank of input should be greater than or equal to 2."
+    )
     assert len(input.shape) == len(label.shape), (
         "The rank of input and label should be equal, "
         f"but received input: {len(input.shape)}, label: {len(label.shape)}."
@@ -105,9 +105,9 @@ def dice_loss(
         "The last dimension of label should be 1, "
         f"but received {label.shape[-1]}."
     )
-    assert (
-        input.shape[:-1] == label.shape[:-1]
-    ), "All dimensions should be equal except the last one."
+    assert input.shape[:-1] == label.shape[:-1], (
+        "All dimensions should be equal except the last one."
+    )
 
     label = paddle.squeeze(label, [-1])
     label = paddle.nn.functional.one_hot(label, input.shape[-1])
