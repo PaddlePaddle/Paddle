@@ -81,33 +81,33 @@ repos:
 
             | python/paddle/distributed/[b-e].+
 
-            # | python/paddle/distributed/f.+
+            | python/paddle/distributed/f.+
 
-            # | python/paddle/distributed/[g-z].+
+            | python/paddle/distributed/[g-z].+
 
-            # | python/paddle/[e-i].+
+            | python/paddle/[e-i].+
 
-            # | python/paddle/j.+
+            | python/paddle/j.+
 
-            # | python/paddle/[k-n].+
+            | python/paddle/[k-n].+
 
-            # | python/paddle/[o-t].+
+            | python/paddle/[o-t].+
 
-            # | python/paddle/[u-z].+
+            | python/paddle/[u-z].+
 
-            # | python/_.+
+            | python/_.+
 
             # | test/a.+
 
             # | test/[b-h].+
 
-            # | test/[i-k].+
+            | test/[i-k].+
 
             # | test/l.+
 
-            # | test/[m-z].+
+            | test/[m-z].+
 
-            # | tools/.+
+            | tools/.+
           )$
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.12.0
@@ -137,33 +137,33 @@ repos:
 
             # | python/paddle/distributed/[b-e].+
 
-            | python/paddle/distributed/f.+
+            # | python/paddle/distributed/f.+
 
-            | python/paddle/distributed/[g-z].+
+            # | python/paddle/distributed/[g-z].+
 
-            | python/paddle/[e-i].+
+            # | python/paddle/[e-i].+
 
-            | python/paddle/j.+
+            # | python/paddle/j.+
 
-            | python/paddle/[k-n].+
+            # | python/paddle/[k-n].+
 
-            | python/paddle/[o-t].+
+            # | python/paddle/[o-t].+
 
-            | python/paddle/[u-z].+
+            # | python/paddle/[u-z].+
 
-            | python/_.+
+            # | python/_.+
 
             | test/a.+
 
             | test/[b-h].+
 
-            | test/[i-k].+
+            # | test/[i-k].+
 
             | test/l.+
 
-            | test/[m-z].+
+            # | test/[m-z].+
 
-            | tools/.+
+            # | tools/.+
           )$
   # For C++ files
   - repo: local
