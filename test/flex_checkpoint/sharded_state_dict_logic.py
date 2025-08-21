@@ -25,7 +25,7 @@ from paddle.distributed.fleet.utils.sequence_parallel_utils import (
     ColumnSequenceParallelLinear,
     RowSequenceParallelLinear,
 )
-from paddle.distributed.flex_checkpoint import ShardedTensor
+from paddle.distributed.flex_checkpoint import ShardedWeight
 
 
 class SimpleMLPForSharding(nn.Layer):
@@ -106,13 +106,13 @@ class TestParallelLayersLogic:
         if self.has_bias:
             assert 'bias' in sharded_dict
             bias_shard = sharded_dict['bias']
-            assert isinstance(bias_shard, ShardedTensor)
+            assert isinstance(bias_shard, ShardedWeight)
         else:
             assert 'bias' not in sharded_dict
 
         assert 'weight' in sharded_dict
         weight_shard = sharded_dict['weight']
-        assert isinstance(weight_shard, ShardedTensor)
+        assert isinstance(weight_shard, ShardedWeight)
 
         if self.layer_type == "ColumnParallelLinear":
             in_f, out_f = self.hidden_size, self.hidden_size * 2

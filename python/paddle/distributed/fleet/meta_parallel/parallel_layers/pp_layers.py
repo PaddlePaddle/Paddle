@@ -424,7 +424,6 @@ class PipelineLayer(nn.Layer):
         from paddle.distributed import fleet
 
         self.device_id = dist.ParallelEnv().device_id
-        self.layers = layers
         self._loss_fn = loss_fn if isinstance(loss_fn, list) else [loss_fn]
         self._topo = topology
         self._recompute_interval = recompute_interval
@@ -478,7 +477,7 @@ class PipelineLayer(nn.Layer):
         )
 
         # initialize segment
-        self._layers_desc = list(self.layers)
+        self._layers_desc = list(layers)
         self._num_layers = len(self._layers_desc)
         self.shared_layers = paddle.nn.LayerDict()
         self.local_shared_layers = paddle.nn.LayerDict()
