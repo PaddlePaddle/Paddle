@@ -492,6 +492,12 @@ class TestAoAEngineTranspose4(TestAoAEngineTranspose):
             global_shape=(1, 4, 4),
             global_offset=(0, 0, 0),
         )
+        d1 = ShardedWeightDesc(
+            key="d1",
+            local_shape=(1, 4, 2),
+            global_shape=(1, 4, 2),
+            global_offset=(0, 0, 0),
+        )
 
         self.source_state_shard_info = {
             "s0": [s0],
@@ -499,6 +505,7 @@ class TestAoAEngineTranspose4(TestAoAEngineTranspose):
         }
         self.destination_state_shard_info = {
             "d0": [d0],
+            "d1": [d1],
         }
 
         self.aoa_statements = [
@@ -507,7 +514,8 @@ class TestAoAEngineTranspose4(TestAoAEngineTranspose):
             "a -> b1, b2, b3, axis = 0\n",
             "b1 -> b1, transpose = '[0, 2, 1]'\n",
             "b2 -> b2, transpose = '[0, 2, 1]'\n",
-            "b1, b2 -> d0, axis = 1",
+            "b1, b2 -> d0, axis = 1\n",
+            "b3 -> d1",
         ]
 
     def generate_query_answer(self):
@@ -604,6 +612,56 @@ class TestAoAEngineTranspose4(TestAoAEngineTranspose):
             shard_mapping_entry2,
             shard_mapping_entry3,
         ]
+        self.queries.append(query)
+        self.answers.append(answer)
+
+        # ======================================================
+        # Query 2:
+        query = ShardedWeightDesc(
+            key="d1",
+            local_shape=(1, 4, 2),
+            global_shape=(1, 4, 2),
+            global_offset=(0, 0, 0),
+        )
+        # d1[:, :, 0:1] <--- s0[:, :, 2:3].transpose([2, 0, 1])
+        src_sharded_weight_desc0 = ShardedWeightDesc(
+            key="s0",
+            local_shape=(4, 1, 1),
+            global_shape=(4, 1, 3),
+            global_offset=(0, 0, 2),
+        )
+        dst_sharded_weight_desc0 = ShardedWeightDesc(
+            key="d1",
+            local_shape=(1, 4, 1),
+            global_shape=(1, 4, 2),
+            global_offset=(0, 0, 0),
+        )
+
+        # d1[:, :, 1:2] <--- s1[:, :, 2:3].transpose([2, 0, 1])
+        src_sharded_weight_desc1 = ShardedWeightDesc(
+            key="s1",
+            local_shape=(4, 1, 1),
+            global_shape=(4, 1, 3),
+            global_offset=(0, 0, 2),
+        )
+        dst_sharded_weight_desc1 = ShardedWeightDesc(
+            key="d1",
+            local_shape=(1, 4, 1),
+            global_shape=(1, 4, 2),
+            global_offset=(0, 0, 1),
+        )
+
+        shard_mapping_entry0 = ShardMappingEntry(
+            target_slice=dst_sharded_weight_desc0,
+            source_slice=src_sharded_weight_desc0,
+            postprocess_list=["[2, 0, 1]"],
+        )
+        shard_mapping_entry1 = ShardMappingEntry(
+            target_slice=dst_sharded_weight_desc1,
+            source_slice=src_sharded_weight_desc1,
+            postprocess_list=["[2, 0, 1]"],
+        )
+        answer = [shard_mapping_entry0, shard_mapping_entry1]
         self.queries.append(query)
         self.answers.append(answer)
 
